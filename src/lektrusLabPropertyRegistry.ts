@@ -14,6 +14,8 @@ import {LAB_CALORIMETRY_REFERENCE} from "./lektrusLabCalorimetry";
 import {labIsTypicallyWaterSoluble} from "./lektrusLabReactionNetwork";
 import {labHydrateNearestMeasuredReferences,labHydrateCrystalDensityReferences} from "./lektrusLabHydrateReferences";
 import {labSaturatedSolutionReferences} from "./lektrusLabSaturatedSolutionReferences";
+import {labNearestMeasuredSolubilityReference} from "./lektrusLabSolubilityMeasurements";
+import {LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES} from "./lektrusLabMaterialConstants";
 type Phase="gas"|"precipitate"|"other";
 export type LabProductIdentity={
  formula:string;name:string;coeff:number;reactionPhase:Phase;
@@ -64,6 +66,10 @@ export function labSubstanceProperties(formula:string,temperatureC=22){
  const thermal=labThermalInfo(formula,stock?.kind==="газ"||LAB_GAS_FORMULAS.has(formula)?"ml":"g");
  const solubilityGPer100gWater=
   labSingleSaltSolubilityGPer100gWater(formula,temperatureC);
+ const literatureSolubilityReference=
+  labNearestMeasuredSolubilityReference(formula,temperatureC);
+ const binaryCrystallizationUnsupported=
+  LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES.has(formula);
  // These are distinct formulae with waters of crystallization and remain
  // REFERENCE-ONLY. Their mass values never enter anhydrous Ksp or dosing.
  const hydratedSolubilityReferences=
@@ -85,6 +91,8 @@ export function labSubstanceProperties(formula:string,temperatureC=22){
   sublimationC:thermal.known?thermal.sublimationC:undefined,
   physicalForm:thermal.form,
   solubilityGPer100gWater,
+  literatureSolubilityReference,
+  binaryCrystallizationUnsupported,
   hydratedSolubilityReferences,
   hydratedCrystalDensityReferences,
   saturatedSolutionReferences,

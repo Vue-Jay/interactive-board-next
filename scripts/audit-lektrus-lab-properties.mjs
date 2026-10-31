@@ -37,6 +37,7 @@ const material=load("src/lektrusLabMaterialConstants.ts");
 const thermal=load("src/lektrusLabPhysicalProperties.ts");
 const heat=load("src/lektrusLabCalorimetry.ts");
 const hydrate=load("src/lektrusLabHydrateReferences.ts");
+const measured=load("src/lektrusLabSolubilityMeasurements.ts");
 const provenance=load("src/lektrusLabPropertyProvenance.ts");
 const perry=load("src/lektrusLabPerryHeatReferences.ts");
 const saturated=load("src/lektrusLabSaturatedSolutionReferences.ts");
@@ -106,8 +107,15 @@ const hydrateBases=new Set(hydrateRows.map(row=>row.baseFormula));
 const cabinetBaseSet=new Set(db.substances.map(s=>s.id));
 const hydrateKnownCells=hydrateRows.reduce((count,row)=>
  count+row.massGPer100gWater.filter(has).length+(row.extra?.length??0),0);
+const measuredRows=measured.LAB_MEASURED_PURE_WATER_SOLUBILITIES;
+const gridTemps=new Set(material.LAB_SALT_SOLUBILITY_TEMPERATURES_C);
 const rawTotals={
  stock:db.substances.length,
+ measuredPureWaterSourcePoints:measuredRows.length,
+ measuredPureWaterStockBases:new Set(measuredRows.map(x=>x.formula)
+  .filter(x=>cabinetBaseSet.has(x))).size,
+ measuredPureWaterOffGridPoints:measuredRows.filter(x=>
+  !gridTemps.has(x.temperatureC)).length,
  curatedSourceCheckedProperties:provenance.LAB_REVIEWED_PROPERTY_DATUMS.length,
  perryRoomTemperatureCrystalHeats:perry.LAB_PERRY_SOLID_HEAT_REFERENCES.length,
  hydrateReferenceVariants:hydrateRows.length,
@@ -137,7 +145,8 @@ for(const row of stockRows){
  bucket.total++;
  if(row.missing.length)bucket.rowsWithGaps++;
 }
-const report={schemaVersion:6,rawTotals,
+const report={schemaVersion:7,rawTotals,
+ measuredPureWaterSourceRows:measuredRows,
  perryRoomTemperatureCrystalHeatRows:perry.LAB_PERRY_SOLID_HEAT_REFERENCES,
  sourceCheckedPropertyDatums:provenance.LAB_REVIEWED_PROPERTY_DATUMS,
  hydratedReferenceRows:hydrateRows,
@@ -274,6 +283,27 @@ if(process.argv.includes("--verify")){
   assert.equal(actual?.specificJPerGK,row.roomHeatJPerGK,
    "Cp did not reach simulator calorimetry: "+row.formula);
  }
+ // Every literature measurement is verified against the very same
+ // helper used by the chemistry model, including 18/25/48/50°C data.
+ const sourcePairs=new Set();
+ for(const item of measuredRows){
+  const identity=item.formula+"|"+item.temperatureC;
+  assert.ok(!sourcePairs.has(identity),"Duplicate water measurement "+identity);
+  sourcePairs.add(identity);
+  assert.ok(cabinetBaseSet.has(item.formula),
+   "Source formula is absent from cabinet "+item.formula);
+  assert.ok(item.sourceUrl.startsWith("https://"),"No source "+identity);
+  assert.ok(has(item.temperatureC)&&has(item.sourceValue)&&item.sourceValue>=0);
+  const normalized=measured.labMeasuredSolubilityGPer100gWater(item);
+  assert.ok(has(normalized)&&normalized>0,
+   "Source conversion to g/100 g water failed for "+identity);
+  const actual=material.labSingleSaltSolubilityGPer100gWater(
+   item.formula,item.temperatureC);
+  assert.ok(has(actual)&&Math.abs(actual-normalized)<1e-10,
+   "Measured source value does not reach simulator "+identity);
+  assert.ok(material.LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES.has(item.formula),
+   "Phase chemistry must not be inferred from reference solubility "+identity);
+ }
  assert.ok(hydrateKnownCells>0);
  assert.ok(producedOnly.every(x=>x.molarMassKnown),
   "Every existing reviewed product must have a calculable formula mass");
@@ -307,6 +337,12 @@ if(process.argv.includes("--json")){
   "",
   "Проверенных записей с индивидуальным источником (текущая партия): "+
   rawTotals.curatedSourceCheckedProperties+".",
+  "",
+  "Новые измерения растворимости в чистой воде: "+
+  rawTotals.measuredPureWaterSourcePoints+
+  " точек у "+rawTotals.measuredPureWaterStockBases+
+  " веществ, из них "+rawTotals.measuredPureWaterOffGridPoints+
+  " точек при температурах вне стандартной сетки.",
   "",
   "Кристаллогидраты: "+rawTotals.hydrateReferenceVariants+
   " отдельных форм у "+rawTotals.hydrateReferenceCabinetBases+
@@ -344,6 +380,10 @@ if(process.argv.includes("--json")){
   " checked empirical molar-to-mass conversions");
  console.log("Source-checked individual property records: "+
   rawTotals.curatedSourceCheckedProperties);
+ console.log("Source-traced pure-water solubility: "+
+  rawTotals.measuredPureWaterSourcePoints+" exact measured points, "+
+  rawTotals.measuredPureWaterStockBases+" stock compounds, "+
+  rawTotals.measuredPureWaterOffGridPoints+" off-grid temperatures");
  console.log("Hydrate reference: "+
   rawTotals.hydrateReferenceVariants+" distinct hydrate phases, "+
   rawTotals.hydrateReferenceCabinetBases+" cabinet formulas out of "+

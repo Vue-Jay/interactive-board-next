@@ -1,3 +1,4 @@
+import {labExactMeasuredSolubility} from "./lektrusLabSolubilityMeasurements";
 /** Reference material constants for the school laboratory.
  * Density is CRYSTAL true density in g/cm³ at ~20–25°C, NOT bulk/packing
  * density, and is valid only for the indicated chemical formula/hydration.
@@ -330,11 +331,31 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
  Na2SO3:[null,null,37,33.2,29,26.6],
  Na2SO4:[null,null,48.1,45.26,43.09,42.3],
  ZnCl2:[null,null,453,488,541,614],
- NaH2PO4:[null,null,null,179.3,207.3,284.4]
+ NaH2PO4:[null,null,null,179.3,207.3,284.4],
+ // PubChem individually published measurements with original units and
+ // exact temperatures preserved in lektrusLabSolubilityMeasurements.ts.
+ // Unknown grid cells MUST remain null, never fabricated by interpolation.
+ // These salts are reference-only for crystal equilibria: weak acid/base,
+ // gas pressure, crystal hydrates and mixed ionic solutions are not solved.
+ LiCl:[null,83.2,89.8,98.4,111.9,128.3],
+ Na2S:[12.4,18.6,29,null,null,null],
+ KNO2:[labExactMeasuredSolubility("KNO2",0)??null,306,null,null,null,
+  labExactMeasuredSolubility("KNO2",100)??null],
+ BaSO4:[null,.00031,null,null,null,null],
+ CaCO3:[null,.00066,null,null,null,null],
+ BaCO3:[null,.0014,null,null,null,null],
+ MgCO3:[null,labExactMeasuredSolubility("MgCO3",20)??null,null,null,null,null],
+ CaSO4:[null,labExactMeasuredSolubility("CaSO4",20)??null,null,null,null,null],
+ PbI2:[null,labExactMeasuredSolubility("PbI2",20)??null,null,null,null,null],
+ PbCO3:[null,labExactMeasuredSolubility("PbCO3",20)??null,null,null,null,null]
 });
 export const LAB_SALT_SOLUBILITY_TEMPERATURES_C=[0,20,40,60,80,100] as const;
 export function labSingleSaltSolubilityGPer100gWater(
  formula:string,tempC:number):number|undefined{
+ // Exact non-grid data (18, 25, 48, 50 °C) take precedence over
+ // interpolation. Never use nearby sources to invent a 20 °C measurement.
+ const direct=labExactMeasuredSolubility(formula,tempC);
+ if(direct!==undefined)return direct;
  if(formula==="NaCl")return labNaClSolubilityGPer100gWater(tempC);
  if(formula==="PbCl2"||formula==="PbBr2"){
   // Binary solubility of the ANHYDROUS lead halide in PURE WATER.
@@ -385,6 +406,16 @@ export const LAB_HYDRATE_PHASE_REQUIRES_SPECIAL_MODEL:ReadonlySet<string>=new Se
  "CuSO4","Na2CO3","Na2SO4","K2CO3","NaBr","Na2SO3","ZnCl2",
  "NaH2PO4"
 ]);
+/** These measurements describe the amount dissolved in isolated pure water,
+ * NOT a validated standalone solid-liquid phase calculation. Carbonates,
+ * sulfides and phosphates may change aqueous speciation or depend on pCO2,
+ * hydration and polymorph. Publishing a saturation reference does not
+ * permit creating/destroying a fictitious dry crystal.
+ */
+export const LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES:ReadonlySet<string>=new Set([
+ "LiCl","Na2S","KNO2","BaSO4","CaCO3","BaCO3","MgCO3","CaSO4",
+ "PbI2","PbCO3","PbSO4","SrCO3","FeS","ZnS","Ca3(PO4)2"
+]);
 /** Phase fractions for EXACTLY one supported anhydrous crystalline salt
  * and pure explicitly measured H2O. Aqueous mixed salts, prepared stocks
  * with unspecified solvent, and hydrates require a different equilibrium
@@ -409,7 +440,8 @@ export function labEquilibrateSingleSaltCrystals(
  // Disable solid-liquid rebalancing for these salts until hydrate-specific
  // formula and enthalpy accounting is implemented. Do still expose their
  // independently measured binary solubility in reference UI.
- if(LAB_HYDRATE_PHASE_REQUIRES_SPECIAL_MODEL.has(salt))return;
+ if(LAB_HYDRATE_PHASE_REQUIRES_SPECIAL_MODEL.has(salt)||
+  LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES.has(salt))return;
  const waterMass=(inventory.speciesMol.H2O??0)*18.01528;
  const molarMass:Record<string,number>={
   NaCl:58.44277,KNO3:101.1032,KCl:74.5513,NaNO3:84.9947,

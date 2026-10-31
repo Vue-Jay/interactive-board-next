@@ -5,8 +5,12 @@ const src=readFileSync(new URL("../src/lektrusLabEvaporation.ts",import.meta.url
 const exports={};
 const options={target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS};
 const material={};
+const measurements={};
+const measuredSource=readFileSync(new URL("../src/lektrusLabSolubilityMeasurements.ts",import.meta.url),"utf8");
+new Function("exports",ts.transpileModule(measuredSource,{compilerOptions:options}).outputText)(measurements);
 const materialSource=readFileSync(new URL("../src/lektrusLabMaterialConstants.ts",import.meta.url),"utf8");
-new Function("exports",ts.transpileModule(materialSource,{compilerOptions:options}).outputText)(material);
+new Function("require","exports",ts.transpileModule(materialSource,{compilerOptions:options}).outputText)(
+ key=>{assert.equal(key,"./lektrusLabSolubilityMeasurements");return measurements;},material);
 const js=ts.transpileModule(src,{compilerOptions:options}).outputText;
 new Function("require","exports",js)(key=>{
  assert.equal(key,"./lektrusLabMaterialConstants");return material;
