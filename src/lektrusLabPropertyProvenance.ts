@@ -18,6 +18,21 @@ export type LabReviewedPropertyDatum={
  sourceUrl:string;
 };
 export const LAB_REVIEWED_PROPERTY_DATUMS:readonly LabReviewedPropertyDatum[]=[
+ // Verified NIST SRD 69 pure-solid room-temperature heats, 298.15 K.
+ {formula:"LiOH",property:"specificHeatJPerGK",value:2.070231,
+  sourceUrl:"https://webbook.nist.gov/cgi/cbook.cgi?ID=C1310652&Table=on&Type=JANAFS"},
+ {formula:"KI",property:"specificHeatJPerGK",value:0.317878,
+  sourceUrl:"https://webbook.nist.gov/cgi/cbook.cgi?ID=C7681110&Table=on&Type=JANAFS"},
+ {formula:"Li2CO3",property:"specificHeatJPerGK",value:1.302975,
+  sourceUrl:"https://webbook.nist.gov/cgi/cbook.cgi?ID=C554132&Table=on&Type=JANAFS"},
+ {formula:"CH3COONa",property:"specificHeatJPerGK",value:1.229128,
+  sourceUrl:"https://webbook.nist.gov/cgi/cbook.cgi?ID=C127093&Mask=2"},
+ {formula:"CH3COOK",property:"specificHeatJPerGK",value:1.114504,
+  sourceUrl:"https://webbook.nist.gov/cgi/cbook.cgi?ID=C127082&Mask=2"},
+ {formula:"C6H12O6",property:"specificHeatJPerGK",value:1.216668,
+  sourceUrl:"https://webbook.nist.gov/cgi/cbook.cgi?ID=C492626&Mask=2"},
+ {formula:"C12H22O11",property:"specificHeatJPerGK",value:1.239567,
+  sourceUrl:"https://webbook.nist.gov/cgi/cbook.cgi?ID=C57501&Mask=2"},
  // Dry phase provenance: hydrous salts and solution data are excluded.
  {formula:"Co(OH)2",property:"crystalDensityGPerMl",value:3.597,
   sourceUrl:"https://cameo.mfa.org/wiki/Cobaltous_hydroxide"},
