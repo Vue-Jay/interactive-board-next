@@ -897,11 +897,15 @@ export function setLabQuickReagent(bench:LabBench,id:string,dose?:LabDose):LabBe
  return {...bench,quickReagents:existing?list.map(v=>v.id===id?normalized:v):
   [...list,normalized],event:bench.event+1};
 }
+/** Each full tabletop replacement starts a new generation. Simulation timers
+ * from the previous generation must never recreate its emptied vessels. */
+export const nextLabTableEpoch=()=>Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,10);
 export function clearLabTable(bench:LabBench):LabBench{
  if(!bench.vessels.length&&!placedLabDevices(bench).length&&!bench.pouring)return bench;
  // Empty only the physical worktop. The configured quick shelf and
  // presentation settings must survive cleaning.
- return {...bench,vessels:[],selectedId:"",placedDevices:[],devices:[],
+ return {...bench,vessels:[],selectedId:"",tableEpoch:nextLabTableEpoch(),
+  placedDevices:[],devices:[],
   titration:undefined,titrationPair:undefined,stirringVesselId:undefined,
   instrumentTarget:undefined,simulationAtMs:undefined,pouring:undefined,event:bench.event+1};
 }
@@ -913,6 +917,8 @@ export const labPourAmounts=(p:LabPourProgress)=>Object.entries(p.initialDoses).
  id,unit:d.unit,transferred:Math.round(d.value*p.step/p.totalSteps*1000)/1000,
  remaining:Math.round(d.value*(1-p.step/p.totalSteps)*1000)/1000}));
 export type LabBench={vessels:LabVessel[];selectedId:string;event:number;mode?:LabMode;pouring?:LabPourProgress;
+ /** Explicit clear/replace token; never changed by passive simulation ticks. */
+ tableEpoch?:string;
  /** Equations remain on the shared chalkboard until manually wiped. */
  reactionLog?:string[];
  /** Prevents a wiped, still-present reaction from being written again. */
@@ -2322,6 +2328,15 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
 /** Reconcile simultaneous edits to different vessels. Array replacement would
  * silently erase a peer's vessel. Merge by stable vessel ID and changed fields. */
 export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):LabBench{
+ const oldEpoch=previous.tableEpoch??"";
+ const localEpoch=mine.tableEpoch??"";
+ const remoteEpoch=remote.tableEpoch??"";
+ // A teacher's explicit clear or experiment replacement is an atomic new
+ // tabletop. Never merge old evaporation/heating snapshots into that epoch.
+ // This also protects a newly prepared kit whose vessel IDs were reused.
+ if(remoteEpoch!==oldEpoch&&localEpoch===oldEpoch)return remote;
+ if(localEpoch!==oldEpoch&&remoteEpoch===oldEpoch)return mine;
+ if(localEpoch!==remoteEpoch)return mine;
  const old=new Map(previous.vessels.map(v=>[v.id,v]));
  const local=new Map(mine.vessels.map(v=>[v.id,v]));
  const peer=new Map(remote.vessels.map(v=>[v.id,v]));
@@ -2330,7 +2345,7 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
  for(const id of allIds){
   const base=old.get(id),a=local.get(id),b=peer.get(id);
   if(!a&&base)continue; // Explicit local removal
-  if(!b&&base&&a&&JSON.stringify(a)===JSON.stringify(base))continue; // Peer removal
+  if(!b&&base)continue; // An explicit peer deletion beats stale thermal ticks
   if(!a){if(b)vessels.push(b);continue}
   if(!base||!b){vessels.push(a);continue}
   const merged={...b} as LabVessel;
@@ -2415,6 +2430,7 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
   [...new Set(logSources)]).slice(-30);
  const seenReactionKeys=[...new Set([...(previous.seenReactionKeys??[]),
   ...(remote.seenReactionKeys??[]),...(mine.seenReactionKeys??[])])].slice(-150);
- return {vessels:limited,selectedId,mode,settings,quickReagents,devices,placedDevices:limitedDevices,titration,titrationPair,stirringVesselId,instrumentTarget,simulationAtMs,pouring,
+ return {vessels:limited,selectedId,mode,tableEpoch:mine.tableEpoch??remote.tableEpoch,
+  settings,quickReagents,devices,placedDevices:limitedDevices,titration,titrationPair,stirringVesselId,instrumentTarget,simulationAtMs,pouring,
   reactionLog,seenReactionKeys,event:Math.max(remote.event,mine.event)+1};
 }
