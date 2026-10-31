@@ -443,15 +443,24 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   const stirring=devices.some(d=>d.kind==="stirrer"&&d.active&&
    d.powered&&d.linkedVesselId===v.id)||
    bench.stirringVesselId===v.id&&devices.some(d=>d.kind==="stirrer"&&d.powered);
-  const kinetic=labAdvanceBinarySaltPhase({...v,doses:updatedDoses,
-   reagents:updatedReagents},next,seconds,stirring,v.binarySaltPhase,
-   v.physicalProcess==="dissolving"&&!v.binarySaltPhase);
+  const phaseInput={...v,doses:updatedDoses,reagents:updatedReagents};
+  const kinetic=labAdvanceBinarySaltPhase(phaseInput,next,seconds,stirring,
+   v.binarySaltPhase,v.physicalProcess==="dissolving"&&!v.binarySaltPhase);
+  const mixedKinetic=kinetic?undefined:labAdvanceSchoolMixedSaltPhase(
+   phaseInput,next,seconds,stirring,v.mixedSaltPhase,
+   v.physicalProcess==="dissolving"&&!v.mixedSaltPhase);
   const nextSalt=kinetic?.state;
-  const phaseMotion:LabVessel["physicalProcess"]=kinetic?.active?
-   (kinetic.direction==="crystallizing"?"crystallizing":"dissolving"):undefined;
+  const phaseMotion:LabVessel["physicalProcess"]=
+   kinetic?.active||mixedKinetic?.active?
+    ((mixedKinetic?.direction??kinetic?.direction)==="crystallizing"?
+     "crystallizing":"dissolving"):undefined;
   const kineticChanged=!!nextSalt&&(nextSalt.formula!==v.binarySaltPhase?.formula||
    Math.abs(nextSalt.solidMol-(v.binarySaltPhase?.solidMol??-1))>1e-10);
-  const dissolutionComplete=kinetic?
+  const mixedChanged=!!mixedKinetic&&(Object.keys(mixedKinetic.state).some(id=>
+   Math.abs(mixedKinetic.state[id]-(v.mixedSaltPhase?.[id]??-1))>1e-10)||
+   Object.keys(v.mixedSaltPhase??{}).length!==
+    Object.keys(mixedKinetic.state).length);
+  const dissolutionComplete=kinetic||mixedKinetic?
    v.physicalProcess!==phaseMotion:
    v.physicalProcess==="crystallizing"||
    v.physicalProcess==="dissolving"&&
@@ -461,18 +470,21 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   const phaseChanged=meltFraction!==(v.meltFraction??0)||
    phaseTransition!==v.phaseTransition;
   if(next!==old||cooling||evaporating||popped||dissolutionComplete||
-   phaseChanged||kineticChanged)changed=true;
+   phaseChanged||kineticChanged||mixedChanged)changed=true;
   if(next===old&&!cooling&&!evaporating&&!popped&&!dissolutionComplete&&
-   !phaseChanged&&!kineticChanged)return v;
+   !phaseChanged&&!kineticChanged&&!mixedChanged)return v;
   const doses=updatedDoses,reagents=updatedReagents;
   const hasLiquid=Object.entries(doses??{}).some(([id,d])=>d.unit==="ml"&&
    substances.find(s=>s.id===id)?.kind!=="газ");
   return {...v,temperatureC:next,
    ...(phaseChanged?{meltFraction,phaseTransition}:{}),
-   ...(kinetic?{binarySaltPhase:nextSalt,physicalProcess:phaseMotion,
-    physicalStartedAtMs:phaseMotion?(v.physicalStartedAtMs??nowMs):undefined}:
+   ...(kinetic||mixedKinetic?
+    {binarySaltPhase:nextSalt,mixedSaltPhase:mixedKinetic?.state,
+     physicalProcess:phaseMotion,
+     physicalStartedAtMs:phaseMotion?(v.physicalStartedAtMs??nowMs):undefined}:
     dissolutionComplete?{physicalProcess:undefined,physicalStartedAtMs:undefined,
-     binarySaltPhase:undefined}:{binarySaltPhase:undefined}),
+     binarySaltPhase:undefined,mixedSaltPhase:undefined}:
+    {binarySaltPhase:undefined,mixedSaltPhase:undefined}),
    ...(evaporating?{doses,reagents,observed:reagents.length>1,
     ventedVaporMl:phase.ventedVaporMl}:{}),
    ...(popped?{stoppered:false,stopperedAtC:undefined,
@@ -1455,11 +1467,45 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
   const binarySaltPhase=eq?{formula:eq.formula,
    solidMol:Math.min(eq.totalMol,prior?prior.solidMol+freshDryMol:
     physicalDissolution?eq.totalMol:eq.equilibriumSolidMol)}:undefined;
+  // Store separately moving solid fractions when adding water or dry
+  // material to two or more salts. An actual balanced reaction takes
+  // priority over the approximate nonreactive mixture calculation.
+  const proposedMix=!recorded&&!preservedAmounts&&!v.uncertain?
+   labSchoolMixedSaltEquilibrium({...v,reagents,doses:nextDoses,
+    environment,completedReaction:undefined,reactionAmounts:undefined},
+    v.temperatureC??22):undefined;
+  const mixedEq=proposedMix&&!simulateLabInventory({
+   reagents,doses:nextDoses,environment,
+   temperatureC:v.temperatureC??22}).steps.length?proposedMix:undefined;
+  const mixedSaltPhase:Record<string,number>|undefined=mixedEq?
+   Object.fromEntries(mixedEq.formulas.map(key=>{
+    const mass=labMolarMass(key)!;
+    const priorMeasured=v.doses?.[key];
+    const priorTotal=priorMeasured?.unit==="g"?priorMeasured.value/mass:0;
+    const oldPhase=v.mixedSaltPhase?.[key]??
+     (v.binarySaltPhase?.formula===key?v.binarySaltPhase.solidMol:
+      priorMeasured?.unit==="g"?
+       !v.doses?.H2O?priorTotal:
+        labBinarySaltEquilibrium(v,v.temperatureC??22)?.equilibriumSolidMol??priorTotal:
+       0);
+    const added=key===reagent&&validDose.unit==="g"?
+     validDose.value/mass:0;
+    const total=nextDoses?.[key]?.value?nextDoses[key].value/mass:0;
+    return [key,Math.max(0,Math.min(total,oldPhase+added))];
+   })):undefined;
+  const movingMixture=!!mixedEq&&mixedEq.formulas.some(key=>
+   Math.abs((mixedSaltPhase?.[key]??0)-(mixedEq.solidMol[key]??0))>
+   Math.max(1e-10,(nextDoses?.[key]?.value??0)/
+    (labMolarMass(key)??1)*.0005));
+  const crystallizingMixture=movingMixture&&mixedEq!.formulas.some(key=>
+   (mixedSaltPhase?.[key]??0)<(mixedEq!.solidMol[key]??0)-1e-10);
   return {...v,reagents,meltFraction:undefined,phaseTransition:undefined,
    reactionHeat:unsupportedAddition?undefined:v.reactionHeat,
-   binarySaltPhase,
-   physicalProcess:physicalDissolution?"dissolving":undefined,
-   physicalStartedAtMs:physicalDissolution?Date.now():undefined,
+   binarySaltPhase,mixedSaltPhase,
+   physicalProcess:movingMixture?
+    (crystallizingMixture?"crystallizing":"dissolving"):
+    physicalDissolution?"dissolving":undefined,
+   physicalStartedAtMs:movingMixture||physicalDissolution?Date.now():undefined,
    reactionAmounts:preservedAmounts,
    completedReaction:recorded,
    doses:nextDoses,
