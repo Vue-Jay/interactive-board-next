@@ -689,6 +689,26 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
   return {...v,reactionAmounts:next};
  });
  result={...result,vessels};
+ // A newly combined persistent mixture is staged unchanged while processes
+ // are paused. Commit its measured products only inside an actual simulation
+ // tick after resume, never during reagent preparation.
+ vessels=result.vessels.map(v=>{
+  if(!v.pendingInventoryReaction||!v.chemicalInventory)return v;
+  const measured=simulateLabInventory({
+   ...v,volumeMl:labVesselQuantity(v).volumeMl
+  });
+  const step=measured.steps[measured.steps.length-1];
+  const completed=step?reviewedReactionCases.find(row=>row.equation===step.equation):undefined;
+  changed=true;
+  return {...v,
+   chemicalInventory:labInventorySnapshot(measured),
+   reagents:Object.keys(measured.speciesMol),
+   pendingInventoryReaction:undefined,
+   completedReaction:completed??v.completedReaction,
+   uncertain:measured.limited||measured.unmeasured.length>0,
+   visualStartedAtMs:completed?nowMs:v.visualStartedAtMs};
+ });
+ result={...result,vessels};
  // An outlet captures only NEW measured gas, never the final predicted yield.
  // Receiver capacity bounds retained gas; anything additional vents.
  for(const source of [...result.vessels]){
@@ -1049,6 +1069,8 @@ export type LabVessel={pourFraction?:number;
  /** Exact persistent chemical phase amounts after separation or transfer.
   * The current doses then describe NEW additions, not consumed stock. */
  chemicalInventory?:LabChemicalSnapshot;
+ /** Paused preparation of an already reacted mixture awaits a simulation tick. */
+ pendingInventoryReaction?:boolean;
  /** Moles of reagents/products; solvent volume is conserved separately. */
  reactionAmounts?:LabReactionAmounts;
  /** A verified reaction already completed in this material; survives full transfer. */
@@ -1241,22 +1263,15 @@ export function recordLabReactions(bench:LabBench):LabBench{
  const log=[...(bench.reactionLog??[])];
  let changed=false;
  for(const vessel of bench.vessels){
-  const inventory=vessel.chemicalInventory?
-   simulateLabInventory({...vessel,volumeMl:labVesselQuantity(vessel).volumeMl}):
-   vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
-   simulateLabInventory(vessel):undefined;
-  const current=labObservation(vessel);
-  const row=current.status==="reaction"?current.caseData:undefined;
-  // Predicted inventory steps are not reactions that have actually occurred.
-  // Record only after measurable progress, or a confirmed completed reaction.
-  const progressed=!!vessel.reactionAmounts&&
-   vessel.reactionAmounts.extentMol>1e-12;
-  const confirmed=progressed||!!vessel.completedReaction;
-  const equations=!confirmed?[]:inventory?.steps.length?
-   inventory.steps.map(step=>step.equation):
-   vessel.completedReaction?.equation?[vessel.completedReaction.equation]:
-   row?.equation?[row.equation]:[];
-  for(const equation of equations){
+  // Only the completed, measured equation belongs on the chalkboard.
+  // A solver's equilibrium forecast, a partly progressed reaction or a
+  // queued reaction prepared during pause cannot write on the wall.
+  if(vessel.pendingInventoryReaction||(
+   vessel.reactionAmounts&&!vessel.reactionAmounts.complete))continue;
+  const equation=vessel.reactionAmounts?.complete?
+   vessel.reactionAmounts.equation:vessel.completedReaction?.equation;
+  if(!equation)continue;
+  {
    const key=vessel.id+"|"+equation;
    if(seen.has(key))continue;
    seen.add(key);changed=true;
@@ -1283,7 +1298,7 @@ function calculateLabVesselContents(v:LabVessel){
  // The chemical species inventory is reconstructed from the measured initial
  // doses, so adding another reagent cannot erase prior precipitates and
  // previously formed products can react in the next reviewed stage.
- const inventory=v.chemicalInventory?
+ const inventory=v.pendingInventoryReaction?undefined:v.chemicalInventory?
   simulateLabInventory({...v,volumeMl}):
   !v.filteredResidue&&!v.filteredSolution&&v.doses&&v.reagents.length?
   simulateLabInventory(v):undefined;
@@ -1343,6 +1358,25 @@ function calculateLabVesselContents(v:LabVessel){
   precipitateG=v.filteredResidue.massG;
   if(precipitateG!==undefined&&precipitateDensity(v.filteredResidue.formula))
    precipitateVolumeMl=precipitateG/precipitateDensity(v.filteredResidue.formula);
+ }else if(v.pendingInventoryReaction&&v.chemicalInventory){
+  // During pause, show the stored reactants and previously settled solids,
+  // not the products of a chemical transformation that has yet to run.
+  for(const [formula,mol] of Object.entries(v.chemicalInventory.speciesMol)){
+   if(mol<=1e-12)continue;
+   const solidMol=v.chemicalInventory.solidMol[formula]??0;
+   if(solidMol>1e-12){
+    const mass=labMolarMass(formula);
+    const solidMass=mass===undefined?undefined:mass*solidMol;
+    solid.push({formula,massG:solidMass});
+    if(solidMass!==undefined){
+     precipitateG=(precipitateG??0)+solidMass;
+     const density=precipitateDensity(formula);
+     if(density)precipitateVolumeMl=(precipitateVolumeMl??0)+solidMass/density;
+    }
+   }
+   if(mol-solidMol>1e-12&&substances.find(s=>s.id===formula)?.kind!=="газ")
+    solution.push({formula,mmol:formatMol(mol-solidMol)});
+  }
  }else if(quantities){
   for(const [formula,mol] of Object.entries(quantities.productsMol)){
    if(mol<=1e-12||gases.has(formula))continue;
@@ -1428,6 +1462,7 @@ export function labReactionNeedsTick(vessel:LabVessel):boolean{
  return needed;
 }
 function calculateLabReactionNeedsTick(vessel:LabVessel):boolean{
+ if(vessel.pendingInventoryReaction)return true;
  if(vessel.uncertain)return false;
  if(vessel.reactionHeat&&!vessel.reactionHeat.complete)return true;
  if(vessel.reactionAmounts&&!vessel.reactionAmounts.complete)return true;
@@ -1441,6 +1476,8 @@ function calculateLabReactionNeedsTick(vessel:LabVessel):boolean{
 export function labObservation(vessel:LabVessel):{status:ReactionStatus;message:string;
  caseData?:ReturnType<typeof identifyReaction>["caseData"]}{
  if(vessel.reagents.length===0)return{status:"unknown",message:"Сосуд пуст."};
+ if(vessel.pendingInventoryReaction)return{status:"unknown",
+  message:"Реакция ожидает запуска процессов."};
  const inventory=vessel.chemicalInventory?
   simulateLabInventory({...vessel,volumeMl:labVesselQuantity(vessel).volumeMl}):
   vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
@@ -1744,7 +1781,8 @@ export function setLabEnvironment(bench:LabBench,id:string,environment:ReactionE
   return {...v,environment,
    reactionHeat:environment!==v.environment?undefined:v.reactionHeat,
    reactionAmounts:environment===v.environment?v.reactionAmounts:undefined,
-   completedReaction:v.completedReaction??(previous.status==="reaction"?previous.caseData:undefined),
+   completedReaction:v.completedReaction??(v.reactionAmounts?.complete&&
+    previous.status==="reaction"?previous.caseData:undefined),
    // Future chemistry is unknown, but previously visible products stay visible.
    uncertain:v.uncertain||previous.status==="reaction",
    visualStartedAtMs:starts?Date.now():v.visualStartedAtMs,
@@ -1854,26 +1892,33 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
      equilibriumEquations:original.equilibriumEquations,
      settled:original.settled===true&&reagent==="H2O"}
    });
-   const productIds=Object.keys(quantified.speciesMol);
+   const defer=!!bench.simulationPaused&&
+    (!!v.pendingInventoryReaction||quantified.steps.length>0);
+   const productIds=Object.keys(defer?speciesMol:quantified.speciesMol);
    const confirmed=quantified.steps.length?
     reviewedReactionCases.find(row=>row.equation===quantified.steps[quantified.steps.length-1].equation):
     undefined;
    return {...v,reagents:productIds,doses:nextDoses,environment,
-    chemicalInventory:{...labInventorySnapshot(quantified),
-     ...(original.settled===true&&reagent==="H2O"?{settled:true}:{})},
+    chemicalInventory:defer?{...original,speciesMol,solidMol,
+     settled:original.settled===true&&reagent==="H2O"}:
+     {...labInventorySnapshot(quantified),
+      ...(original.settled===true&&reagent==="H2O"?{settled:true}:{})},
+    pendingInventoryReaction:defer||undefined,
     binarySaltPhase:undefined,mixedSaltPhase:undefined,
     physicalProcess:undefined,physicalStartedAtMs:undefined,
     filteredSolution:v.filteredSolution?
      {...v.filteredSolution,solutes:productIds.filter(x=>x!=="H2O")}:undefined,
-    reactionAmounts:undefined,completedReaction:confirmed??v.completedReaction,
+    reactionAmounts:undefined,completedReaction:defer?v.completedReaction:
+     confirmed??v.completedReaction,
     reactionHeat:undefined,
-    observed:true,uncertain:quantified.limited||quantified.unmeasured.length>0,
-    visualStartedAtMs:confirmed?Date.now():v.visualStartedAtMs};
+    observed:true,uncertain:defer?false:
+     quantified.limited||quantified.unmeasured.length>0,
+    visualStartedAtMs:confirmed&&!defer?Date.now():v.visualStartedAtMs};
   }
   const matching=identifyReaction(reagents,environment);
   const previousAmounts=v.reactionAmounts;
-  const recorded=v.completedReaction??(beforeReaction.status==="reaction"?
-   beforeReaction.caseData:undefined);
+  const recorded=v.completedReaction??(v.reactionAmounts?.complete&&
+   beforeReaction.status==="reaction"?beforeReaction.caseData:undefined);
   const equation=previousAmounts?.equation??recorded?.equation;
   // Adding solvent cannot annihilate an existing precipitate! Pure carrier
   // H2O is distinguished from H2O consumed by a balanced reaction.
