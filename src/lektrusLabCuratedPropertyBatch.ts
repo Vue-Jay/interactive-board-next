@@ -64,7 +64,24 @@ export const LAB_CURATED_PROPERTY_BATCH:readonly LabCuratedPropertyBatchRow[]=[
  {formula:"FeCl3",property:"meltingC",value:304,
   phase:"anhydrous-solid",sourceCondition:"pure anhydrous FeCl3 CRC solid 304 C, NOT hydrate 37 C",
   sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/24380",
-  note:"Безводный FeCl₃: справочное плавление 304 °C; значение 37 °C относится к образцу с кристаллизационной водой. При контакте с водой FeCl₃ гидролизуется."}
+  note:"Безводный FeCl₃: справочное плавление 304 °C; значение 37 °C относится к образцу с кристаллизационной водой. При контакте с водой FeCl₃ гидролизуется."},
+ // Four pure-phase properties in one source-qualified batch.
+ {formula:"Ba3(PO4)2",property:"crystalDensityGPerMl",value:5.25,
+  phase:"anhydrous-solid",sourceCondition:"anhydrous rhombohedral Ba3(PO4)2, XRD calculated solid density",
+  sourceUrl:"https://doi.org/10.1107/S0365110X48000697",
+  note:"Расчётная плотность кристаллического Ba₃(PO₄)₂, не насыпная плотность порошка."},
+ {formula:"Ba3(PO4)2",property:"meltingC",value:1605,
+  phase:"anhydrous-solid",sourceCondition:"dry barium phosphate congruent fusion 1605 ± 2 C, other reported >1620 C",
+  sourceUrl:"https://link.springer.com/article/10.1007/s10973-010-0962-y",
+  note:"Плавление безводного Ba₃(PO₄)₂: 1605 ± 2 °C, в других исследованиях более 1620 °C."},
+ {formula:"Mg(CH3COO)2",property:"crystalDensityGPerMl",value:1.42,
+  phase:"anhydrous-solid",sourceCondition:"anhydrous magnesium acetate crystal at 20 C, CRC 95th edition; not tetrahydrate",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=3897",
+  note:"Безводный ацетат магния, 1,42 г/см³, не тетрагидрат с плотностью 1,45 г/см³."},
+ {formula:"Mg(CH3COO)2",property:"decompositionC",value:323,
+  phase:"anhydrous-solid",sourceCondition:"anhydrous magnesium acetate 323 C listed for both melting and decomposition",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=3897",
+  note:"Безводный ацетат магния разлагается около 323 °C, без устойчивого кипения."}
 ];
 
 /** Generated dry crystal density map (single source of truth). */

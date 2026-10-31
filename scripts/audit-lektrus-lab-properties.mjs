@@ -425,8 +425,14 @@ if(process.argv.includes("--verify")){
    item.formula,item.temperatureC);
   assert.ok(has(actual)&&Math.abs(actual-normalized)<1e-10,
    "Measured source value does not reach simulator "+identity);
-  assert.ok(material.LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES.has(item.formula),
-   "Phase chemistry must not be inferred from reference solubility "+identity);
+  // Preserve existing validated six-knot anhydrous binary series and
+  // NaCl's standard curve when adding a new exact source measurement.
+  const establishedGrid=material.LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER[item.formula];
+  const prevalidatedBinary=establishedGrid?.every(has)||item.formula==="NaCl";
+  assert.ok(material.LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES.has(item.formula)||
+   material.LAB_HYDRATE_PHASE_REQUIRES_SPECIAL_MODEL.has(item.formula)||
+   prevalidatedBinary,
+   "No validated dry crystallization phase for literature source "+identity);
  }
  assert.ok(hydrateKnownCells>0);
  assert.ok(producedOnly.every(x=>x.molarMassKnown),

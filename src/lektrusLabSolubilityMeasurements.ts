@@ -22,6 +22,32 @@ export type LabMeasuredSolubility={
  sourceTemperatureKelvin?:number;
  originalUnit:LabMeasuredSolubilityUnit;sourceUrl:string;
 };
+/** Kaye & Laby / Lange handbook at 293 K, not the 20 C grid.
+ * Each row is g of ANHYDROUS formula-equivalent per 100g pure water;
+ * this does NOT prove that the precipitating solid is anhydrous.
+ * Source: https://www.wiredchemist.com/chemistry/data/solubilities_inorganic.html
+ */
+const LAB_KAYE_LABY_293K_SOURCE=
+ "https://www.wiredchemist.com/chemistry/data/solubilities_inorganic.html";
+const LAB_KAYE_LABY_293K_BATCH:readonly (readonly [string,number])[]=[
+ ["NH4Cl",37.2],
+ ["KCl",34.2],
+ ["NaCl",35.9],
+ ["NH4NO3",192],
+ ["Ba(NO3)2",9],
+ ["Pb(NO3)2",54.3],
+ ["KNO3",31.6],
+ ["AgNO3",216],
+ ["NaNO3",87.6],
+ ["(NH4)2SO4",75.4],
+ ["MgSO4",33.7],
+ ["K2SO4",11.1],
+ ["Na2SO4",19.5],
+ ["Li2CO3",1.33],
+ ["K2CO3",111],
+ ["Na2CO3",21.5],
+];
+
 export const LAB_MEASURED_PURE_WATER_SOLUBILITIES:readonly LabMeasuredSolubility[]=[
  // ILO/WHO ICSC 1200: pure anhydrous sodium sulfite solubility
  // is 22 g in 100 mL pure water at exactly 20°C; not the mass
@@ -196,6 +222,11 @@ export const LAB_MEASURED_PURE_WATER_SOLUBILITIES:readonly LabMeasuredSolubility
  {formula:"ZnSO4",temperatureC:19.85,sourceTemperatureKelvin:293,
   sourceValue:53.8,originalUnit:"g/100g-water",
   sourceUrl:"https://www.wiredchemist.com/chemistry/data/solubilities_inorganic.html"},
+ // Import once from exact-temperature source, retaining original units.
+ ...LAB_KAYE_LABY_293K_BATCH.map(([formula,sourceValue])=>({
+  formula,temperatureC:19.85,sourceTemperatureKelvin:293,sourceValue,
+  originalUnit:"g/100g-water" as const,sourceUrl:LAB_KAYE_LABY_293K_SOURCE
+ })),
  {formula:"LiCl",temperatureC:20,sourceValue:83.2,
   originalUnit:"g/100g-water",sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/433294"},
  {formula:"LiCl",temperatureC:40,sourceValue:89.8,

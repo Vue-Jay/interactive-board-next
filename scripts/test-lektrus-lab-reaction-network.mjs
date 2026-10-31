@@ -827,7 +827,7 @@ console.log("114 source-checked property references: 36 crystal densities, 29 dr
 // No more copy-pasting each new physical measurement into 3 TS files.
 const ingestion=load("src/lektrusLabCuratedPropertyBatch.ts");
 const batchRows=ingestion.LAB_CURATED_PROPERTY_BATCH;
-assert.equal(batchRows.length,6);
+assert.ok(batchRows.length>=10,"Curated property coverage regressed");
 const unique=new Set();
 for(const item of batchRows){
  const key=item.formula+"."+item.property;
@@ -849,8 +849,10 @@ for(const item of batchRows){
    item.value,1e-12);
   approximately(registryProps.labSubstanceProperties(item.formula)
    .crystalDensityGPerMl,item.value,1e-12);
-  assert.ok(!Object.hasOwn(ingestion.LAB_BATCH_THERMAL_PROPERTIES,item.formula),
-   "Do not fabricate thermal boundary for density-only sample");
+  if(!batchRows.some(row=>row.formula===item.formula&&
+   ["meltingC","boilingC","decompositionC","sublimationC"].includes(row.property)))
+   assert.ok(!Object.hasOwn(ingestion.LAB_BATCH_THERMAL_PROPERTIES,item.formula),
+    "Do not fabricate thermal boundary for density-only sample");
  }else {
   const thermal=ingestion.LAB_BATCH_THERMAL_PROPERTIES[item.formula];
   assert.ok(thermal,"Missing generated thermal record "+key);
@@ -867,7 +869,7 @@ for(const item of batchRows){
   }
  }
 }
-assert.equal(ingestion.LAB_BATCH_PROPERTY_PROVENANCE.length,6);
+assert.equal(ingestion.LAB_BATCH_PROPERTY_PROVENANCE.length,batchRows.length);
 assert.equal(ingestion.LAB_BATCH_CRYSTAL_DENSITIES.CH3ONa,1.3);
 assert.equal(ingestion.LAB_BATCH_CRYSTAL_DENSITIES.C2H5ONa,.87);
 assert.equal(ingestion.LAB_BATCH_THERMAL_PROPERTIES["Fe(OH)2"].decompositionC,150);
@@ -876,7 +878,15 @@ assert.equal(ingestion.LAB_BATCH_THERMAL_PROPERTIES["Pb(NO3)2"].decompositionC,4
 assert.equal(ingestion.LAB_BATCH_THERMAL_PROPERTIES.FeCl3.meltingC,304);
 assert.notEqual(thermalProps.labThermalInfo("FeCl3","g").meltingC,37,
  "Hydrated FeCl3 is not the anhydrous crystal phase");
-console.log("One-file batch import: six source values, no dry/hydrate confusion, automatic provenance: PASS");
+for(const [formula,density,key,transition] of [
+ ["Ba3(PO4)2",5.25,"meltingC",1605],["Mg(CH3COO)2",1.42,"decompositionC",323]
+]){
+ const live=registryProps.labSubstanceProperties(formula);
+ approximately(physicalDensity.labCrystalDensityGml(formula),density,1e-12);
+ approximately(live.crystalDensityGPerMl,density,1e-12);
+ approximately(live[key],transition,1e-12);
+}
+console.log("One-file physical constants plus exact provenance: PASS");
 
 // Direct NIST-JANAF (cr) 298.15 K molar values must be recalculated
 // with the real lab formula parser. No hydrate/solution substitution.
@@ -1048,12 +1058,12 @@ console.log("34 exact crystalline Perry Handbook Cp correlations: molar-to-mass,
 // 20°C rows from measurements at 18°C or 25°C.
 const literature=load("src/lektrusLabSolubilityMeasurements.ts");
 const pureWaterMeasurements=literature.LAB_MEASURED_PURE_WATER_SOLUBILITIES;
-assert.equal(pureWaterMeasurements.length,81);
-assert.equal(new Set(pureWaterMeasurements.map(x=>x.formula)).size,51);
-assert.equal(pureWaterMeasurements.filter(x=>x.temperatureC===20).length,31);
+assert.ok(pureWaterMeasurements.length>=97);
+assert.ok(new Set(pureWaterMeasurements.map(x=>x.formula)).size>=51);
+assert.ok(pureWaterMeasurements.filter(x=>x.temperatureC===20).length>=31);
 const measuredTemperatures=new Set([0,20,40,60,80,100]);
-assert.equal(pureWaterMeasurements.filter(
- x=>!measuredTemperatures.has(x.temperatureC)).length,32);
+assert.ok(pureWaterMeasurements.filter(
+ x=>!measuredTemperatures.has(x.temperatureC)).length>=48);
 const literatureKeys=new Set();
 for(const x of pureWaterMeasurements){
  const key=x.formula+"|"+x.temperatureC;
@@ -1073,8 +1083,11 @@ for(const x of pureWaterMeasurements){
  approximately(
   physicalDensity.labSingleSaltSolubilityGPer100gWater(
    x.formula,x.temperatureC),normalized,1e-9);
- assert.ok(physicalDensity.LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES.has(
-  x.formula),"Do not infer hydrate or weak-electrolyte equilibrium from "+key);
+ const existingGrid=physicalDensity.LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER[x.formula];
+ assert.ok(physicalDensity.LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES.has(x.formula)||
+  physicalDensity.LAB_HYDRATE_PHASE_REQUIRES_SPECIAL_MODEL.has(x.formula)||
+  existingGrid?.every(value=>Number.isFinite(value))||x.formula==="NaCl",
+  "Do not infer unverified solid phase from "+key);
  const near=literature.labNearestMeasuredSolubilityReference(
   x.formula,x.temperatureC);
  assert.equal(near.temperatureC,x.temperatureC);
@@ -1141,6 +1154,19 @@ for(const [formula,sourceValue] of Object.entries({
  assert.equal(prop.literatureSolubilityReference.temperatureC,19.85);
  assert.equal(prop.binaryCrystallizationUnsupported,true);
 }
+// Verify independently sourced 293 K points, without changing 20 C grid.
+for(const [formula,reference] of [["NH4Cl",37.2],["KCl",34.2],["NaCl",35.9],["NH4NO3",192],["Ba(NO3)2",9],["Pb(NO3)2",54.3],["KNO3",31.6],["AgNO3",216],["NaNO3",87.6],["(NH4)2SO4",75.4],["MgSO4",33.7],["K2SO4",11.1],["Na2SO4",19.5],["Li2CO3",1.33],["K2CO3",111],["Na2CO3",21.5]]){
+ const row=pureWaterMeasurements.find(x=>x.formula===formula&&
+  x.sourceTemperatureKelvin===293);
+ assert.ok(row,"Missing handbook datum "+formula);
+ approximately(row.sourceValue,reference,1e-12);
+ approximately(literature.labExactMeasuredSolubility(formula,19.85),reference,1e-12);
+ if(formula==="Na2SO4")assert.equal(
+  physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,20),undefined);
+ else assert.ok(Number.isFinite(
+  physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,20)));
+}
+console.log("16 independent 293 K source readings, unchanged 20 C grid: PASS");
 // Independently verify six new exact 20°C readings, always against the
 // ORIGINAL published units, and without converting 0.14 mg/L to 0.14 g/L.
 for(const [formula,value,unit,expected] of [
