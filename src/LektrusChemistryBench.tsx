@@ -1235,7 +1235,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      onClick={e=>{e.stopPropagation();onChange?.(setLabBenchSettings(bench,{pourMode:id}))}}>
      {id==="fast"?"Быстро":"Постепенно"}</button>)}
    </div>
-   <button type="button" disabled={!editable>
+   <button type="button" disabled={!editable}
     onClick={e=>{e.stopPropagation();setConfirmClear(true)}}>
     Очистить стол
    </button>
