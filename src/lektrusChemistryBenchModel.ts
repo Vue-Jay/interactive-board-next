@@ -504,7 +504,10 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // The same ideal liquid activity governs both vapor escape and the
   // measured mixture's boiling plateau, rather than using arbitrary 100°C
   // for an ethanol/water mixture.
-  const boilingPoint=(profile.solutionBoiling?labIdealBoilingC(v):undefined)??
+  // Boiling exists at every realism level: a simplified lesson still needs
+  // correct known solvent/solution bubble points. Fidelity may simplify
+  // diffusion/kinetics but cannot remove a supported physical transition.
+  const boilingPoint=labIdealBoilingC(v)??
    (pure?.unit==="ml"?pure.info.boilingC:undefined);
   if(boilingPoint!==undefined&&next>boilingPoint&&!v.stoppered)next=boilingPoint;
   const canEvaporate=settings.evaporationEnabled&&
@@ -518,21 +521,27 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // A liquid first warms to its actual boiling point; only EXCESS delivered
   // heat becomes latent heat for vaporization. Otherwise a cool flask could
   // absorb its full heating power as both warmth and newly generated steam.
+  // Vaporising a liquid costs latent heat. Only the power that remains
+  // after reaching its boiling point can produce extra steam. This also
+  // bounds the simplified mode, which uses approximate sample heat capacity.
   const deliveredHeatW=calorimetry?.heaterWattsToContents??heaterPower;
-  const heatForBoilingW=calorimetry&&boilingPoint!==undefined&&
-   !v.stoppered&&next>=boilingPoint-.05&&seconds>0?
+  const approximateHeatCapacity=calorimetry?.capacityJPerK??(50+volumes*4.2);
+  const atBoiling=boilingPoint!==undefined&&!v.stoppered&&
+   next>=boilingPoint-.15&&seconds>0&&device?.powered&&
+   device.kind!=="cooler";
+  const heatForBoilingW=atBoiling?
    Math.min(deliveredHeatW,Math.max(0,
-    (raw-boilingPoint)*calorimetry.capacityJPerK/seconds)):deliveredHeatW;
+    (raw-boilingPoint!)*approximateHeatCapacity/seconds)):0;
   const phase=computePhase?labEvaporate({...v,
    headspaceMl:Math.max(1,capacityMl-occupiedMl),
    reactionGasMol:gasMoles},canEvaporate?seconds:0,next,toward,
    canEvaporate?heatForBoilingW:0):undefined;
-  // Surface evaporation ALSO spends latent heat. Apply it to the same
-  // measured heat capacity, so an unheated warm solution cools rather than
-  // producing vapor with no thermal cost. Ambient transfer recovers it later.
-  if(canEvaporate&&calorimetry&&phase&&phase.latentEnergyJ>0&&!v.stoppered){
-   next=Math.round(Math.max(0,Math.min(next,
-    raw-phase.latentEnergyJ/calorimetry.capacityJPerK))*10)/10;
+  // Surface evaporation and boiling spend latent heat from the SAME
+  // sensible-energy budget. Subtract after the plateau, never both from
+  // the sensible increment and from a second invented heater budget.
+  if(canEvaporate&&phase&&phase.latentEnergyJ>0&&!v.stoppered){
+   next=Math.round(Math.max(-30,Math.min(next,
+    raw-phase.latentEnergyJ/approximateHeatCapacity))*10)/10;
   }
   // When disabled, keep measured solvent, composition and energy intact.
   // Pressure protection still runs independently for a closed vessel.
@@ -864,7 +873,7 @@ export type LabBenchSettings={
 };
 export const defaultLabBenchSettings=():LabBenchSettings=>({
  showEquationBoard:true,showVesselLabels:true,animateEffects:true,showTemperatures:true,
- pourMode:"gradual",evaporationEnabled:true,timeScale:1,realism:"high"
+ pourMode:"gradual",evaporationEnabled:true,timeScale:1,realism:"low"
 });
 export const labBenchSettings=(bench:LabBench):LabBenchSettings=>({
  ...defaultLabBenchSettings(),...bench.settings
