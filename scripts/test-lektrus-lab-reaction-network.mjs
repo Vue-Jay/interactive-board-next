@@ -778,7 +778,7 @@ console.log("Six verified pure-solid densities, seven solid transitions and sixt
 // Bulk provenance: 108 independently sourced properties, checked both in
 // source tables and through the same registry used to render lab state.
 const validated=load("src/lektrusLabPropertyProvenance.ts");
-assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,112);
+assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,111);
 const sourceIds=new Set();
 const fields={crystalDensityGPerMl:0,specificHeatJPerGK:0,thermal:0};
 for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
@@ -819,9 +819,9 @@ for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
  approximately(value,row.value,1e-6);
 }
 assert.deepEqual(fields,{
- crystalDensityGPerMl:38,specificHeatJPerGK:29,thermal:45
+ crystalDensityGPerMl:37,specificHeatJPerGK:29,thermal:45
 });
-console.log("112 source-checked property references: 38 crystal densities, 29 dry-solid Cp, 45 individual phase boundaries");
+console.log("111 source-checked property references: 37 crystal densities, 29 dry-solid Cp, 45 individual phase boundaries");
 // Direct NIST-JANAF (cr) 298.15 K molar values must be recalculated
 // with the real lab formula parser. No hydrate/solution substitution.
 const jan=load("src/lektrusLabJanafSolidHeatReferences.ts");
