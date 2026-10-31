@@ -201,7 +201,7 @@ export function labIdealBoilingC(v:LabEvaporationState):number|undefined{
  // activity and the boiling plateau. Cache by those physical quantities,
  // otherwise unrelated filtrates all share the same "{}" cache entry.
  const key=JSON.stringify([v.doses??{},v.filteredSolution?.volumeMl??0,
-  v.chemicalInventory?.speciesMol??null,v.temperatureC??25]);
+  v.chemicalInventory?.speciesMol??null]);
  if(bubbleCache.has(key))return bubbleCache.get(key);
  let lowerT=20,lowerP=labVaporPressureKPa(v,lowerT);
  if(lowerP!==undefined&&lowerP>=101.325)return lowerT;
