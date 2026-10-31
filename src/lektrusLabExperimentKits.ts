@@ -3,7 +3,7 @@
  * Replacing a tabletop is an EXPLICIT user choice in the catalogue UI. */
 import {labDefaultStockDose,labReagentForms} from "./lektrusLabCatalog";
 import {substances,type ReactionCase} from "./lektrusReactionDatabase";
-import {addPlacedLabDevice,type LabBench,type LabGlassware,
+import {addPlacedLabDevice,applyPlacedLabDevice,type LabBench,type LabGlassware,
  type LabDose,type LabVessel,type LabAvailableDevice} from "./lektrusChemistryBenchModel";
 
 const glassName:Record<LabGlassware,string>={
@@ -15,9 +15,15 @@ const layout=[{x:32,y:70},{x:67,y:70},{x:82,y:70}];
 const isWet=(row:ReactionCase)=>row.environment==="aqueous";
 const dryHeating=(row:ReactionCase)=>row.environment==="heated"||row.environment==="ignited";
 export function labExperimentGlassware(row:ReactionCase):LabGlassware[]{
+ // The hottest vessel should contain the solid substrate, not an arbitrary
+ // first-listed gas from the balanced reaction's reactant order.
+ const dryTarget=row.reactants.findIndex(id=>{
+  const material=substances.find(v=>v.id===id);
+  return !!material&&labReagentForms(material).includes("g");
+ });
  return row.reactants.map((_,i)=>{
+  if(dryHeating(row))return i===(dryTarget>=0?dryTarget:0)?"crucible":"tube";
   if(i>0)return "tube";
-  if(dryHeating(row))return "crucible";
   return row.reactants.length===1?"tube":row.reactants.length===3?"conical":"beaker";
  });
 }
@@ -71,13 +77,20 @@ export function prepareLabExperimentKit(bench:LabBench,row:ReactionCase):LabBenc
  const devices=labExperimentEquipment(row);
  for(const [i,kind] of devices.entries()){
   result=addPlacedLabDevice(result,kind,kind==="tripod"?{x:49,y:65}:
-   {x:50,y:79+i});
+   {x:52,y:79+i});
  }
- // Heater and stand are only arranged near the reaction vessel. Do NOT
- // switch on flame or auto-fire reactions in an unattended classroom.
- // If the vessel does not fit the tool, leave the tool detached.
- result={...result,placedDevices:result.placedDevices?.map(d=>({
-  ...d,active:false,linkedVesselId:undefined,powered:false
- }))};
+ if(devices.length){
+  const working=vessels.find(v=>v.kind==="crucible")??vessels[0];
+  const stand=result.placedDevices?.find(d=>d.kind==="tripod");
+  const burner=result.placedDevices?.find(d=>d.kind==="burner");
+  if(stand){
+   result={...result,placedDevices:result.placedDevices!.map(d=>
+    d.id===stand.id?{...d,standHeight:.6}:d)};
+   result=applyPlacedLabDevice(result,stand.id,working.id);
+  }
+  if(burner)result=applyPlacedLabDevice(result,burner.id,working.id);
+ }
+ // Prepared equipment may be mounted but is NEVER powered automatically.
+ // This arranges the apparatus without running ignition or changing quantities.
  return result;
 }
