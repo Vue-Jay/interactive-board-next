@@ -1170,6 +1170,10 @@ assert.match(editorFixed,/const width=compact\?w:w\/scale/,
  "Phones use native pixels while desktop continues fitted layout zoom");
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-fit-stage/);
 const polishedSurface=read("src/LektrusChemistryBench.tsx");
+assert.ok(polishedSurface.includes('window.addEventListener("lektrus-lab-fullscreen-change",resume)'),
+ "The embedded laboratory resumes its clock after fullscreen closes");
+assert.ok(editorFixed.includes('window.dispatchEvent(new Event("lektrus-lab-fullscreen-change"))'),
+ "The fullscreen editor notifies the underlying laboratory on open and exit");
 assert.match(polishedSurface,/bench\.reactionLog/);
 assert.match(polishedSurface,/labSimulationTickWaitMs\(current,now\)/,
  "The surface follows the adaptive laboratory clock");
