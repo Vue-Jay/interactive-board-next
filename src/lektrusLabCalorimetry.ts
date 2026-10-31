@@ -107,7 +107,23 @@ export const LAB_CALORIMETRY_REFERENCE:Readonly<Record<string,SubstanceHeat>>={
  CaSO4:{specificJPerGK:0.707096,phase:"solid"},
  CuSO4:{specificJPerGK:0.656888,phase:"solid"},
  PbCO3:{specificJPerGK:0.406266,phase:"solid"},
- "Pb(NO3)2":{specificJPerGK:0.490783,phase:"solid"}
+ "Pb(NO3)2":{specificJPerGK:0.490783,phase:"solid"},
+ // NIST-JANAF, Chase (1998), solid Shomate 298.15 K at 1 bar:
+ // Cp,mol=A+B*t+C*t²+D*t³+E/t², t=298.15/1000;
+ // converted to J/(g K) by dividing by molecular weight.
+ // https://webbook.nist.gov/cgi/cbook.cgi?ID=C1310583&Mask=2
+ KOH:{specificJPerGK:1.156642,phase:"solid"},
+ // https://webbook.nist.gov/cgi/cbook.cgi?ID=C1309428&Mask=2
+ "Mg(OH)2":{specificJPerGK:1.323907,phase:"solid"},
+ // U.S. Army Materiel Command AMCP 706-106, appendix A, table A-4:
+ // measured room-temp CAL/(g K), thermochemical cal=4.184 J.
+ // https://ru.djvu.online/file/FxAstfSBiPOi2
+ K2Cr2O7:{specificJPerGK:.761488,phase:"solid"},
+ K2CO3:{specificJPerGK:.904581,phase:"solid"},
+ AgCl:{specificJPerGK:.367355,phase:"solid"},
+ NaNO3:{specificJPerGK:1.083656,phase:"solid"},
+ Na2S:{specificJPerGK:.380744,phase:"solid"},
+ SrSO4:{specificJPerGK:.597475,phase:"solid"}
 };
 /** Effective glass + utensil thermal mass by vessel type, grams of glass
  * equivalent (c_glass≈0.84 J/g/K). Intended for comparative teaching only. */
