@@ -176,6 +176,8 @@ assert.equal(added,barelyFits,
  "An added liquid dose must be rejected if its known crystalline sediment would overflow the rim");
 const incomplete=lab.labVesselQuantity({...physicalVessel,
  chemicalInventory:{speciesMol:{"Fe(OH)3":1},solidMol:{"Fe(OH)3":1}}});
-assert.equal(incomplete.solidVolumeComplete,false,
- "Unknown crystal density must not be silently presented as a complete displacement calculation");
+assert.equal(incomplete.solidVolumeComplete,true,
+ "School estimate still supplies finite precipitate displacement");
+assert.equal(incomplete.solidVolumeEstimated,true,
+ "Unknown crystal density must be clearly marked as a classroom estimate");
 console.log("Curated precipitate density conserves occupied space and closed-flask gas headspace");

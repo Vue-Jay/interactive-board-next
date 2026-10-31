@@ -6,7 +6,7 @@ import {labSensibleHeatStep} from "./lektrusLabCalorimetry";
 import {labBinarySaltEquilibrium,labAdvanceBinarySaltPhase,labVisibleBinarySaltSolid,type LabBinarySaltState} from "./lektrusLabDissolution";
 import {labReactionGasProgress} from "./lektrusLabGasDynamics";
 import {labEvaporate,labCanStopper,labIdealBoilingC} from "./lektrusLabEvaporation";
-import {labSchoolSolidDensityGml,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
+import {LAB_CRYSTAL_DENSITY_G_ML,labSchoolSolidDensityGml,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,labDoseMoles,type LabReactionAmounts}
  from "./lektrusLabStoichiometry";
 import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint} from "./lektrusLabLayout";
@@ -1770,9 +1770,9 @@ export function pourLabIntoFilter(bench:LabBench,sourceId:string,filterId:string
   event:separated.event+1};
 }
 
-/** Estimate displacement from crystalline solids with individually curated
- * densities. This is TRUE solid volume, not a guess at the wet sediment's
- * porosity; an unsupported density is reported as incomplete.
+/** School displacement: source crystal density when measured, a marked
+ * illustrative particle density otherwise. This is not wet-sediment porosity.
+ * A separate flag distinguishes estimates from verified true densities.
  * BaSO4 4.5 g/cm³: ICSC 0827 (ILO/WHO);
  * density table shared with the existing precipitate appearance model.
  * Keep this independent of labVesselQuantity to avoid recursion. */
@@ -1784,15 +1784,16 @@ export function labVesselSolidDisplacement(vessel:LabVessel){
  const inventory=vessel.reagents.length?simulateLabInventory({
   ...vessel,volumeMl:liquidMl}):undefined;
  let volumeMl=0;
- let complete=true;
+ let complete=true,estimated=false;
  if(inventory?.unmeasured.length||inventory?.limited)complete=false;
  for(const [formula,mol] of Object.entries(inventory?.solidMol??{})){
   if(mol<=1e-12)continue;
   const density=precipitateDensity(formula),mass=labMolarMass(formula);
+  if(LAB_CRYSTAL_DENSITY_G_ML[formula]===undefined)estimated=true;
   if(!density||mass===undefined){complete=false;continue}
   volumeMl+=mol*mass/density;
  }
- return {volumeMl,complete};
+ return {volumeMl,complete,estimated};
 }
 export function labVesselQuantity(vessel:LabVessel){
  const doses=Object.values(vessel.doses??{});
@@ -1812,6 +1813,7 @@ export function labVesselQuantity(vessel:LabVessel){
  return {volumeMl,massG,capacityMl,massReferenceG,solidVolumeMl,occupiedMl,
   availableMl:Math.max(0,capacityMl-occupiedMl),
   solidVolumeComplete:displacement.complete,
+  solidVolumeEstimated:displacement.estimated,
   liquidFraction:Math.min(.96,volumeMl/capacityMl),
   solidFraction:Math.min(.9,massG/massReferenceG)};
 }
