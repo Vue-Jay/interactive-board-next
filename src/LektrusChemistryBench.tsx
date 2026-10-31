@@ -112,13 +112,14 @@ function LabReactionBurst({vessel,visual,formula,visualNow}:{
  </div>;
 }
 
-const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,readoutLeft=false,stirring=false,titrationResult,temperatureC,temperatureVisible=true,realism="high",evaporationEnabled=true,simulationPaused=false,pausedAtMs}:{
+const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,readoutLeft=false,stirring=false,titrationResult,temperatureC,temperatureVisible=true,realism="high",evaporationEnabled=true,simulationPaused=false,pausedAtMs,visualNowMs}:{
  vessel:LabVessel;small?:boolean;showLabels?:boolean;details?:boolean;readoutLeft?:boolean;stirring?:boolean;
  titrationResult?:ReturnType<typeof titrationReading>;temperatureC?:number;
  temperatureVisible?:boolean;realism?:LabRealism;
- evaporationEnabled?:boolean;simulationPaused?:boolean;pausedAtMs?:number}){
+ evaporationEnabled?:boolean;simulationPaused?:boolean;pausedAtMs?:number;
+ visualNowMs?:number}){
  const id=useId().replace(/:/g,"");
- const visualNow=simulationPaused?pausedAtMs??Date.now():Date.now();
+ const visualNow=simulationPaused?pausedAtMs??visualNowMs??Date.now():visualNowMs??Date.now();
  const result=labObservation(vessel);
  const verified=result.status==="reaction"?result.caseData:undefined;
  const inventory=vessel.chemicalInventory?
@@ -150,7 +151,6 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   n.toLocaleString("ru-RU",{maximumFractionDigits:decimals}):labDisplayNumber(n,realism);
  const solutionNames=contents.solution.map(x=>x.formula+(x.mmol===undefined?"":" ("+readable(x.mmol)+" ммоль)"));
  const solidNames=contents.solid.map(x=>x.formula+(x.massG===undefined?"":" ("+readable(x.massG)+" г)"));
- const evaporatedWaterMl=vessel.ventedVaporMl?.H2O??0;
  const realCrystals=labVisibleBinarySaltSolid(vessel,vessel.binarySaltPhase,vessel.temperatureC??22);
  const crystallineSalt=realCrystals&&realCrystals.solidMol>1e-12?
   [realCrystals.formula,realCrystals.solidMol] as const:
@@ -293,7 +293,8 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
       fill="#f7faf8" stroke="#a2b4c0" strokeWidth=".65"
       style={{animationDelay:-(i%6)*.4+"s"}}/>)}
     </g>}
-    {boiling&&<g className="lektrus-lab-boiling-particles">
+    {boiling&&<g className="lektrus-lab-boiling-particles"
+     clipPath={"url(#"+id+"level)"}>
      {Array.from({length:18},(_,i)=><circle key={i}
       cx={28+i*19%46} cy={80+i*23%30} r={1.6+i%4*.7}
       fill="#fff" fillOpacity=".18" stroke="#9ecfd7" strokeWidth=".8"
@@ -325,10 +326,13 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
       r={1.1+i%3*.5} fill={appearance.solidColor||"#cddbe0"}
       style={{animationDelay:-(i%9)*.25+"s"}}/>)}
     </>}
-    {active&&observation==="gas"&&gasEventActive&&Array.from({length:gasBubbleCount},(_,i)=><circle key={i}
-     className="lektrus-lab-bubble" cx={31+i*29%38} cy={98-i*17%45}
-     r={1.6+i%3*.6} stroke="#528eb1" strokeWidth=".9" fill="#fff" fillOpacity=".25"
-     style={{animationDelay:-(i%8)*.27+"s",animationDuration:2+i%5*.32+"s"}}/>)}
+    {active&&observation==="gas"&&gasEventActive&&
+     <g className="lektrus-lab-gas-bubbles" clipPath={"url(#"+id+"level)"}>
+      {Array.from({length:gasBubbleCount},(_,i)=><circle key={i}
+       className="lektrus-lab-bubble" cx={31+i*29%38} cy={98-i*17%45}
+       r={1.6+i%3*.6} stroke="#528eb1" strokeWidth=".9" fill="#fff" fillOpacity=".25"
+       style={{animationDelay:-(i%8)*.27+"s",animationDuration:2+i%5*.32+"s"}}/>)}
+     </g>}
     {gasFoaming&&<g className="lektrus-lab-gas-foam" aria-label="Газ образует пену на поверхности жидкости">
      {Array.from({length:Math.min(20,gasBubbleCount)},(_,i)=>
       <circle key={i} cx={22+i*17%55} cy={120-106*fillFraction-(i%3)*2.3}
@@ -733,12 +737,23 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  const settings=labBenchSettings(bench);
  const [clockNow,setClockNow]=useState(()=>Date.now());
  useEffect(()=>{
-  if(!bench.experimentClock?.running)return;
+  // Clock and short-lived physics effects need a LOCAL repaint. Physics
+  // ticks can be ten seconds apart, otherwise an evaporative plume would
+  // never appear (or could remain permanently on the last rendered frame).
+  if(bench.simulationPaused)return;
+  const active=(now:number)=>bench.vessels.some(v=>
+   [v.lastEvaporatedAtMs,v.visualStartedAtMs,v.indicatorAddedAtMs,
+    v.physicalStartedAtMs].some(t=>t!==undefined&&now>=t&&now-t<8500));
+  if(!bench.experimentClock?.running&&!active(Date.now()))return;
   setClockNow(Date.now());
-  // Purely presentational ticker: no board writes and no second simulation.
-  const timer=window.setInterval(()=>setClockNow(Date.now()),250);
+  const timer=window.setInterval(()=>{
+   const now=Date.now();
+   setClockNow(now);
+   if(!bench.experimentClock?.running&&!active(now))
+    window.clearInterval(timer);
+  },500);
   return()=>window.clearInterval(timer);
- },[bench.experimentClock?.running]);
+ },[bench.experimentClock?.running,bench.simulationPaused,bench.vessels]);
  const selected=bench.selectedId?selectedLabVessel(bench):undefined;
  const physicalDevices=placedLabDevices(bench);
  const vesselPosition=(v:LabVessel)=>{
@@ -2097,6 +2112,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      temperatureVisible={settings.showTemperatures&&v.kind!=="burette"}
      evaporationEnabled={settings.evaporationEnabled}
      simulationPaused={!!bench.simulationPaused} pausedAtMs={bench.pausedAtMs}
+     visualNowMs={clockNow}
      stirring={bench.stirringVesselId===v.id||
       labAppliancesBelowStand(bench,v.id).some(d=>d.kind==="stirrer"&&d.powered)}
      temperatureC={v.temperatureC??22}
