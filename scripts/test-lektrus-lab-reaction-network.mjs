@@ -826,10 +826,10 @@ console.log("114 source-checked property references: 36 crystal densities, 29 dr
 // (1) the active physical value and (2) the provenance catalogue.
 // No more copy-pasting each new physical measurement into 3 TS files.
 const ingestion=load("src/lektrusLabCuratedPropertyBatch.ts");
-const rows=ingestion.LAB_CURATED_PROPERTY_BATCH;
-assert.equal(rows.length,6);
+const batchRows=ingestion.LAB_CURATED_PROPERTY_BATCH;
+assert.equal(batchRows.length,6);
 const unique=new Set();
-for(const item of rows){
+for(const item of batchRows){
  const key=item.formula+"."+item.property;
  assert.ok(!unique.has(key),"Duplicate measured property "+key);
  unique.add(key);
