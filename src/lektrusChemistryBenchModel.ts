@@ -409,6 +409,7 @@ export function labSimulationTickWaitMs(bench:LabBench,nowMs:number):number|null
  const evaporating=settings.evaporationEnabled&&profile.passiveEvaporation&&
   vessels.some(v=>!v.stoppered&&
    labVaporPressureKPa(v,v.temperatureC??22)!==undefined);
+ if(bench.simulationPaused)return null;
  if(!burette&&!reactions&&!phase&&!powered&&!thermal&&!evaporating)return null;
  const cadenceMs=settings.realism==="low"?
   (burette||reactions?900:phase||powered||thermal?2600:9800):
@@ -426,7 +427,7 @@ export function labSimulationTickWaitMs(bench:LabBench,nowMs:number):number|null
  * This also prevents one large tick from vaporizing solvent before warming it.
  * All intermediate results remain local: only one final revision is synced. */
 export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
- if(!Number.isFinite(nowMs)||nowMs<0)return bench;
+ if(bench.simulationPaused||!Number.isFinite(nowMs)||nowMs<0)return bench;
  if(bench.simulationAtMs===undefined)
   return {...bench,simulationAtMs:nowMs,event:bench.event+1};
  const settings=labBenchSettings(bench);
@@ -674,10 +675,13 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
    if(reaction.status!=="reaction"||!reaction.caseData)return v;
    state=startQuantifiedLabReaction(reaction.caseData,v.reagents,v.doses,nowMs)??undefined;
    if(!state)return v;
+   // Gas reactions need a watchable 24-second school demonstration.
+   if(reaction.caseData.observation==="gas")state={...state,durationSeconds:24};
   }else if(state.complete)return v;
   // Increment by simulation time; subtracting wall-clock elapsed would stall
   // progress after the first accelerated reaction step.
-  const elapsed=profile.fastReactions?Math.max(seconds,30):seconds;
+  const elapsed=profile.fastReactions&&!labReactionGasProgress(state)?
+   Math.max(seconds,30):seconds;
   const next=v.reactionAmounts?advanceQuantifiedLabReaction(state,elapsed):state;
   if(next===v.reactionAmounts)return v;
   changed=true;
@@ -1063,7 +1067,8 @@ export function clearLabTable(bench:LabBench):LabBench{
   placedDevices:[],devices:[],
   titration:undefined,titrationPair:undefined,stirringVesselId:undefined,
   instrumentTarget:undefined,simulationAtMs:undefined,pouring:undefined,
-  experimentClock:undefined,event:bench.event+1};
+  simulationPaused:bench.simulationPaused,experimentClock:undefined,
+  resumeExperimentClock:undefined,event:bench.event+1};
 }
 export type LabPourProgress={id:string;sourceId:string;targetId:string;step:number;totalSteps:20;
  initialDoses:Record<string,LabDose>;unmeasured:boolean;
@@ -1116,7 +1121,9 @@ export type LabBench={vessels:LabVessel[];selectedId:string;event:number;mode?:L
  seenReactionKeys?:string[];
  settings?:LabBenchSettings;quickReagents?:LabQuickReagent[];devices?:LabDevice[];placedDevices?:LabPlacedDevice[];titration?:TitrationModel;stirringVesselId?:string;
  instrumentTarget?:{kind:"tripod"|"thermometer";vesselId:string};
- titrationPair?:{sourceId:string;targetId:string};simulationAtMs?:number;}
+ titrationPair?:{sourceId:string;targetId:string};simulationAtMs?:number;
+ /** Single shared pause for chemistry, heat, crystallization and titration. */
+ simulationPaused?:boolean;resumeExperimentClock?:boolean;}
 export const MAX_BENCH_VESSELS=6,MAX_VESSEL_REAGENTS=48;
 const clamp=(v:number)=>Math.round(Math.min(90,Math.max(10,v))*10)/10;
 export function setLabBenchSettings(bench:LabBench,settings:Partial<LabBenchSettings>,
@@ -1130,6 +1137,19 @@ export function setLabBenchSettings(bench:LabBench,settings:Partial<LabBenchSett
   {elapsedSeconds:labExperimentClockSeconds(bench,nowMs),anchorMs:nowMs,running:true}:
   bench.experimentClock;
  return {...bench,settings:next,experimentClock,event:bench.event+1};
+}
+/** Pausing banks the stopwatch and re-bases simulation time on resume. */
+export function setLabSimulationPaused(bench:LabBench,paused:boolean,nowMs=Date.now()):LabBench{
+ if(!!bench.simulationPaused===paused||!Number.isFinite(nowMs)||nowMs<0)return bench;
+ const clock=bench.experimentClock;
+ const banked=clock?.running?
+  {elapsedSeconds:labExperimentClockSeconds(bench,nowMs),anchorMs:nowMs,
+   running:false}:clock;
+ const resumeClock=paused?!!clock?.running:!!bench.resumeExperimentClock;
+ const experimentClock=!paused&&resumeClock?
+  {elapsedSeconds:banked?.elapsedSeconds??0,anchorMs:nowMs,running:true}:banked;
+ return {...bench,simulationPaused:paused,simulationAtMs:nowMs,
+  experimentClock,resumeExperimentClock:paused?resumeClock:false,event:bench.event+1};
 }
 export const defaultLabBench=():LabBench=>({
  vessels:[{id:"v1",kind:"beaker",x:48,y:70,reagents:[],environment:"aqueous",observed:false}],
@@ -2654,5 +2674,9 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
  return {vessels:limited,selectedId,mode,tableEpoch:mine.tableEpoch??remote.tableEpoch,
   settings,quickReagents,devices,placedDevices:limitedDevices,titration,titrationPair,
   stirringVesselId,instrumentTarget,simulationAtMs,experimentClock,pouring,
+  simulationPaused:mine.simulationPaused===previous.simulationPaused?
+   remote.simulationPaused:mine.simulationPaused,
+  resumeExperimentClock:mine.resumeExperimentClock===previous.resumeExperimentClock?
+   remote.resumeExperimentClock:mine.resumeExperimentClock,
   reactionLog,seenReactionKeys,event:Math.max(remote.event,mine.event)+1};
 }
