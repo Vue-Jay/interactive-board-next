@@ -17,6 +17,7 @@ const materialSource=readFileSync(new URL("../src/lektrusLabMaterialConstants.ts
 new Function("require","exports",ts.transpileModule(materialSource,{compilerOptions:options}).outputText)(
  key=>{
  if(key==="./lektrusLabCuratedPropertyBatch")return curated;
+ if(key==="./lektrusReactionDatabase")return {};
  assert.equal(key,"./lektrusLabSolubilityMeasurements");return measurements;
 },material);
 const js=ts.transpileModule(src,{compilerOptions:options}).outputText;

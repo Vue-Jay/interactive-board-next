@@ -120,7 +120,14 @@ export function labDoseMoles(formula:string,dose:LabDose):number|undefined{
    return dose.value/REFERENCE_GAS_MOLAR_VOLUME_ML;
   const density=NEAT_DENSITY_G_ML[formula];
   const mass=density!==undefined?labMolarMass(formula):undefined;
-  return density!==undefined&&mass?dose.value*density/mass:undefined;
+  if(density!==undefined&&mass)return dose.value*density/mass;
+  // Older classroom saves may contain volumes of prepared solutions
+  // without a separate molarity field. Cabinet default is 0.1 mol/L;
+  // assume that only for aqueous-stock classes, never for pure gases.
+  if(substance&&(["соль","кислота","основание"].includes(substance.kind)||
+    ["H2O2","NH4OH","HCHO","CH3COOH"].includes(formula)))
+   return dose.value*.1/1000;
+  return undefined;
  }
  if(dose.unit!=="g")return undefined;
  const mass=labMolarMass(formula);

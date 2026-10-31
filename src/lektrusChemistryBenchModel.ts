@@ -6,7 +6,7 @@ import {labSensibleHeatStep} from "./lektrusLabCalorimetry";
 import {labBinarySaltEquilibrium,labAdvanceBinarySaltPhase,labVisibleBinarySaltSolid,type LabBinarySaltState} from "./lektrusLabDissolution";
 import {labReactionGasProgress} from "./lektrusLabGasDynamics";
 import {labEvaporate,labCanStopper,labIdealBoilingC} from "./lektrusLabEvaporation";
-import {LAB_CRYSTAL_DENSITY_G_ML,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
+import {LAB_CRYSTAL_DENSITY_G_ML,labSchoolSolidDensityGml,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,labDoseMoles,type LabReactionAmounts}
  from "./lektrusLabStoichiometry";
 import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint} from "./lektrusLabLayout";
@@ -916,7 +916,7 @@ export function wipeLabChalkboard(bench:LabBench):LabBench{
  * Insoluble products are selected ONLY by a ↓ in the reviewed equation.
  * Mass is calculated from measured product moles, never inferred from a
  * precipitation animation. Densities give physical layer volume. */
-const precipitateDensity=LAB_CRYSTAL_DENSITY_G_ML;
+const precipitateDensity=labSchoolSolidDensityGml;
 const formatMol=(v:number)=>Number((v*1000).toPrecision(4));
 export function labVesselContents(v:LabVessel){
  const {volumeMl,capacityMl}=labVesselQuantity(v);
@@ -952,8 +952,8 @@ export function labVesselContents(v:LabVessel){
      if(mass!==undefined){
       const productMass=mass*solidMol;
       precipitateG+=productMass;
-      if(precipitateDensity[formula])
-       precipitateVolumeMl+=productMass/precipitateDensity[formula];
+      if(precipitateDensity(formula))
+       precipitateVolumeMl+=productMass/precipitateDensity(formula);
       else unknownDensity=true;
      }
     }
@@ -981,8 +981,8 @@ export function labVesselContents(v:LabVessel){
  if(v.filteredResidue){
   solid.push({formula:v.filteredResidue.formula,massG:v.filteredResidue.massG});
   precipitateG=v.filteredResidue.massG;
-  if(precipitateG!==undefined&&precipitateDensity[v.filteredResidue.formula])
-   precipitateVolumeMl=precipitateG/precipitateDensity[v.filteredResidue.formula];
+  if(precipitateG!==undefined&&precipitateDensity(v.filteredResidue.formula))
+   precipitateVolumeMl=precipitateG/precipitateDensity(v.filteredResidue.formula);
  }else if(quantities){
   for(const [formula,mol] of Object.entries(quantities.productsMol)){
    if(mol<=1e-12||gases.has(formula))continue;
@@ -991,8 +991,8 @@ export function labVesselContents(v:LabVessel){
     const massG=mass===undefined?undefined:mol*mass;
     solid.push({formula,massG});
     if(massG!==undefined)precipitateG=(precipitateG??0)+massG;
-    if(massG!==undefined&&precipitateDensity[formula])
-     precipitateVolumeMl=(precipitateVolumeMl??0)+massG/precipitateDensity[formula];
+    if(massG!==undefined&&precipitateDensity(formula))
+     precipitateVolumeMl=(precipitateVolumeMl??0)+massG/precipitateDensity(formula);
    }else solution.push({formula,mmol:formatMol(mol)});
   }
   for(const [formula,mol] of Object.entries(quantities.remainingMol)){
@@ -1365,8 +1365,8 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
   if((v.kind==="pipette"||v.kind==="burette")&&validDose?.unit==="g")return v;
   // Known crystalline solids occupy physical vessel volume too. Don't
   // accept an extra weighed sample if it would exceed the rim.
-  if(validDose.unit==="g"&&precipitateDensity[reagent]&&
-   priorMl+validDose.value/precipitateDensity[reagent]>
+  if(validDose.unit==="g"&&precipitateDensity(reagent)&&
+   priorMl+validDose.value/precipitateDensity(reagent)>
     labVesselQuantity(v).capacityMl+1e-7)return v;
   const present=v.reagents.includes(reagent);
   if(!present&&v.reagents.length>=MAX_VESSEL_REAGENTS)return v;
@@ -1770,9 +1770,9 @@ export function pourLabIntoFilter(bench:LabBench,sourceId:string,filterId:string
   event:separated.event+1};
 }
 
-/** Estimate displacement from crystalline solids with individually curated
- * densities. This is TRUE solid volume, not a guess at the wet sediment's
- * porosity; an unsupported density is reported as incomplete.
+/** School displacement: source crystal density when measured, a marked
+ * illustrative particle density otherwise. This is not wet-sediment porosity.
+ * A separate flag distinguishes estimates from verified true densities.
  * BaSO4 4.5 g/cm³: ICSC 0827 (ILO/WHO);
  * density table shared with the existing precipitate appearance model.
  * Keep this independent of labVesselQuantity to avoid recursion. */
@@ -1784,15 +1784,16 @@ export function labVesselSolidDisplacement(vessel:LabVessel){
  const inventory=vessel.reagents.length?simulateLabInventory({
   ...vessel,volumeMl:liquidMl}):undefined;
  let volumeMl=0;
- let complete=true;
+ let complete=true,estimated=false;
  if(inventory?.unmeasured.length||inventory?.limited)complete=false;
  for(const [formula,mol] of Object.entries(inventory?.solidMol??{})){
   if(mol<=1e-12)continue;
-  const density=precipitateDensity[formula],mass=labMolarMass(formula);
+  const density=precipitateDensity(formula),mass=labMolarMass(formula);
+  if(LAB_CRYSTAL_DENSITY_G_ML[formula]===undefined)estimated=true;
   if(!density||mass===undefined){complete=false;continue}
   volumeMl+=mol*mass/density;
  }
- return {volumeMl,complete};
+ return {volumeMl,complete,estimated};
 }
 export function labVesselQuantity(vessel:LabVessel){
  const doses=Object.values(vessel.doses??{});
@@ -1812,6 +1813,7 @@ export function labVesselQuantity(vessel:LabVessel){
  return {volumeMl,massG,capacityMl,massReferenceG,solidVolumeMl,occupiedMl,
   availableMl:Math.max(0,capacityMl-occupiedMl),
   solidVolumeComplete:displacement.complete,
+  solidVolumeEstimated:displacement.estimated,
   liquidFraction:Math.min(.96,volumeMl/capacityMl),
   solidFraction:Math.min(.9,massG/massReferenceG)};
 }

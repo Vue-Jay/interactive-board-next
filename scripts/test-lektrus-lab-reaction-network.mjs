@@ -21,10 +21,23 @@ function load(file){
  return mod.exports;
 }
 const {simulateLabInventory,labInventoryMassG}=load("src/lektrusLabReactionNetwork.ts");
+const schoolMaterial=load("src/lektrusLabMaterialConstants.ts");
+const schoolHeat=load("src/lektrusLabCalorimetry.ts");
+const schoolDose=load("src/lektrusLabStoichiometry.ts");
 const {labMolarMass}=load("src/lektrusLabStoichiometry.ts");
 const solution=(value,concentrationM=.1)=>({value,unit:"ml",concentrationM});
 const approximately=(actual,expected,tolerance=1e-9)=>
  assert.ok(Math.abs(actual-expected)<tolerance,`Expected ${actual} ≈ ${expected}`);
+// Estimated school properties never overwrite original scientific values.
+assert.equal(schoolMaterial.labCrystalDensityGml("Fe(OH)3"),undefined);
+assert.equal(schoolMaterial.labSchoolSolidDensityGml("Fe(OH)3"),1.8);
+assert.equal(schoolMaterial.labSingleSaltSolubilityGPer100gWater("Zn(NO3)2",37),undefined);
+assert.ok(schoolMaterial.labSchoolSolubilityGPer100gWater("Zn(NO3)2",37).value>0);
+assert.equal(schoolMaterial.labSchoolSolubilityGPer100gWater("Fe",22),undefined);
+assert.ok(schoolHeat.labKnownHeatCapacityJPerK("beaker",{
+ H2O:{value:10,unit:"ml"},NaCl:{value:3,unit:"g"}
+})>95);
+assert.ok(Math.abs(schoolDose.labDoseMoles("NaCl",{value:10,unit:"ml"})-.001)<1e-12);
 const mixtures=[
  ["AgNO3","NaCl"],["BaCl2","Na2SO4"],["HCl","NaOH"]
 ];
@@ -472,9 +485,9 @@ for(const [id,cp] of Object.entries(bulkHeatCapacities)){
  approximately(heatProps.labKnownHeatCapacityJPerK("beaker",{
   [id]:{unit:"g",value:5}
  }),heatProps.LAB_VESSEL_GLASS_EQUIVALENT_G.beaker*.84+5*cp,1e-8);
- assert.equal(heatProps.labKnownHeatCapacityJPerK("beaker",{
+ assert.ok(heatProps.labKnownHeatCapacityJPerK("beaker",{
   H2O:{unit:"ml",value:5},[id]:{unit:"g",value:5}
- }),undefined,"Mixing with water needs solution heat capacity: "+id);
+ })>65*.84,"School mixture estimate covers water and solid "+id);
 }
 for(const [id,d] of Object.entries({FeO:6,CuS:4.76,Na2O:2.27,NiSO4:4.01})){
  approximately(physicalDensity.labCrystalDensityGml(id),d,1e-12);
@@ -736,9 +749,9 @@ for(const [formula,cp] of Object.entries(curatedRoomHeat)){
  });
  approximately(known,65*.84+5*cp,2e-5);
  // A dry salt's heat capacity is not that of its aqueous solution.
- assert.equal(heatProps.labKnownHeatCapacityJPerK("beaker",{
+ assert.ok(heatProps.labKnownHeatCapacityJPerK("beaker",{
   [formula]:{unit:"g",value:5},H2O:{unit:"ml",value:5}
- }),undefined,"Cp must not be incorrectly transferred to a solution "+formula);
+ })>known,"Classroom mixture adds heat capacity while pure solid Cp stays sourced: "+formula);
  assert.ok(registryProps.labSubstanceProperties(formula).specificHeatJPerGK>0);
 }
 const additionalDryDensities={
@@ -801,9 +814,10 @@ for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
   approximately(heatProps.labKnownHeatCapacityJPerK("beaker",{
    [row.formula]:{value:3,unit:"g"}
   }),expected,5e-6);
-  assert.equal(heatProps.labKnownHeatCapacityJPerK("beaker",{
+  assert.ok(heatProps.labKnownHeatCapacityJPerK("beaker",{
    [row.formula]:{value:3,unit:"g"},H2O:{value:3,unit:"ml"}
-  }),undefined,"Do not substitute pure solid Cp for aqueous heat capacity");
+  })>0,
+ "A mixture gets estimated classroom Cp; dry-solid reference stays separate");
  }else{
   fields.thermal++;
   value=thermalProps.labThermalInfo(row.formula,"g")[row.property];
@@ -952,9 +966,10 @@ for(const row of jan.LAB_JANAF_SOLID_HEAT_REFERENCES){
  approximately(heatProps.labKnownHeatCapacityJPerK("beaker",{
   [row.formula]:{value:5,unit:"g"}
  }),expected,5e-6);
- assert.equal(heatProps.labKnownHeatCapacityJPerK("beaker",{
+ assert.ok(heatProps.labKnownHeatCapacityJPerK("beaker",{
   [row.formula]:{value:5,unit:"g"},H2O:{value:5,unit:"ml"}
- }),undefined,"Never assign crystalline Cp to prepared aqueous stock");
+ })>0,
+ "A mixture gets estimated classroom Cp; dry-solid reference stays separate");
 }
 console.log("Fourteen NIST-JANAF crystal specific heats audited from source molar measurements");
 
@@ -1007,9 +1022,10 @@ for(const row of nist.LAB_NIST_ROOM_HEAT_REFERENCES){
  const expected=heatProps.LAB_VESSEL_GLASS_EQUIVALENT_G.beaker*.84+
   3*row.roomHeatJPerGK;
  approximately(solidHeat,expected,5e-6);
- assert.equal(heatProps.labKnownHeatCapacityJPerK("beaker",{
+ assert.ok(heatProps.labKnownHeatCapacityJPerK("beaker",{
   [row.formula]:{value:3,unit:"g"},H2O:{value:3,unit:"ml"}
- }),undefined,"Never assign dry Cp to an aqueous stock");
+ })>0,
+ "A mixture gets estimated classroom Cp; dry-solid reference stays separate");
 }
 console.log("NIST seven measured dry-crystal Cp values reach simulator and keep phase guards");
 
@@ -1062,10 +1078,11 @@ for(const item of perry.LAB_PERRY_SOLID_HEAT_REFERENCES){
  approximately(heatProps.labKnownHeatCapacityJPerK("beaker",{
   [item.formula]:{value:5,unit:"g"}
  }),glass+5*expected,1e-5);
- assert.equal(heatProps.labKnownHeatCapacityJPerK("beaker",{
+ assert.ok(heatProps.labKnownHeatCapacityJPerK("beaker",{
   H2O:{value:5,unit:"ml"},
   [item.formula]:{value:5,unit:"g"}
- }),undefined,"Perry solid Cp must not be applied to aqueous mixtures");
+ })>0,
+ "A mixture gets estimated classroom Cp; dry-solid reference stays separate");
  assert.equal(perry.labPerryMolarHeatCalPerMolK(item,item.minKelvin-1),undefined);
  assert.equal(perry.labPerryMolarHeatCalPerMolK(item,item.maxKelvin+1),undefined);
 }

@@ -4,7 +4,7 @@
  * Real rates also depend on crystal surface, hydrodynamics and grain sizes:
  * rate coefficients below must not be presented as measured material data.
  */
-import {labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
+import {labSchoolSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 import {labMolarMass} from "./lektrusLabStoichiometry";
 type Dose={value:number;unit:"g"|"ml";concentrationM?:number};
 export type LabBinarySaltState={formula:string;solidMol:number};
@@ -27,7 +27,7 @@ export function labBinarySaltEquilibrium(v:LabBinarySaltInput,tempC:number){
  if(dose.unit!=="g"||dose.concentrationM!==undefined||
   !Number.isFinite(dose.value)||dose.value<=0||
   !v.reagents.includes(formula)||v.reagents.some(id=>id!=="H2O"&&id!==formula))return;
- const solubility=labSingleSaltSolubilityGPer100gWater(formula,tempC);
+ const solubility=labSchoolSolubilityGPer100gWater(formula,tempC)?.value;
  const molarMass=labMolarMass(formula);
  if(solubility===undefined||molarMass===undefined||molarMass<=0)return;
  const totalMol=dose.value/molarMass;
