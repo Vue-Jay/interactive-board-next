@@ -3,7 +3,7 @@
  * Replacing a tabletop is an EXPLICIT user choice in the catalogue UI. */
 import {labDefaultStockDose,labReagentForms} from "./lektrusLabCatalog";
 import {substances,type ReactionCase} from "./lektrusReactionDatabase";
-import {addPlacedLabDevice,canMountLabVessel,type LabBench,type LabGlassware,
+import {addPlacedLabDevice,type LabBench,type LabGlassware,
  type LabDose,type LabVessel,type LabAvailableDevice} from "./lektrusChemistryBenchModel";
 
 const glassName:Record<LabGlassware,string>={
@@ -17,7 +17,7 @@ const dryHeating=(row:ReactionCase)=>row.environment==="heated"||row.environment
 export function labExperimentGlassware(row:ReactionCase):LabGlassware[]{
  return row.reactants.map((_,i)=>{
   if(i>0)return "tube";
-  if(dryHeating(row))return row.reactants.length===1?"crucible":"crucible";
+  if(dryHeating(row))return "crucible";
   return row.reactants.length===1?"tube":row.reactants.length===3?"conical":"beaker";
  });
 }
@@ -32,7 +32,7 @@ export function labExperimentDose(row:ReactionCase,id:string):LabDose|undefined{
  // In aqueous experiments use prepared school solutions where possible.
  // In combustion/decomposition prefer a weighed solid, not an invented
  // liquid form of metals/oxides. Gases remain measured by volume.
- const unit:isUnit = isWet(row)&&forms.includes("ml")?"ml":
+ const unit:"ml"|"g" = isWet(row)&&forms.includes("ml")?"ml":
   forms.includes("g")?"g":"ml";
  const dose=labDefaultStockDose(id,unit);
  if(!dose)return;
@@ -40,7 +40,6 @@ export function labExperimentDose(row:ReactionCase,id:string):LabDose|undefined{
  // fill the receiver excessively and keeps hot experiments controlled.
  return {...dose,value:unit==="ml"?5:0.5};
 }
-type isUnit="ml"|"g";
 export function labExperimentKitSummary(row:ReactionCase){
  const glassware=labExperimentGlassware(row);
  const equipment=labExperimentEquipment(row);
@@ -80,9 +79,5 @@ export function prepareLabExperimentKit(bench:LabBench,row:ReactionCase):LabBenc
  result={...result,placedDevices:result.placedDevices?.map(d=>({
   ...d,active:false,linkedVesselId:undefined,powered:false
  }))};
- // Use the same compatible glassware rules as the rest of the laboratory.
- if(devices.length&&devices.some(d=>canMountLabVessel(d,kinds[0]))){
-  return result;
- }
  return result;
 }
