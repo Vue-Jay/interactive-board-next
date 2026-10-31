@@ -1840,6 +1840,15 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
          {soluble!==undefined&&
           " · Растворимость при "+formatted(v.temperatureC??22)+
           " °C: "+formatted(soluble)+" г/100 г чистой воды"}
+         {soluble===undefined&&property.literatureSolubilityReference&&
+          " · По справочнику при "+
+          formatted(property.literatureSolubilityReference.temperatureC)+
+          " °C: "+formatted(property.literatureSolubilityReference.gPer100gWater)+
+          " г/100 г чистой воды (температура измерения отличается)"}
+         {property.binaryCrystallizationUnsupported&&
+          (soluble!==undefined||property.literatureSolubilityReference)&&
+          " · Только справочно: условия гидратации, кислотно-основного "+
+          "равновесия или состава раствора пока не рассчитаны"}
          {property.hydratedSolubilityReferences.map(hydrate=>
           <span key={hydrate.hydrateFormula} className="lektrus-lab-hydrate-reference">
            {" · Справочно, "+hydrate.hydrateFormula+" при "+
