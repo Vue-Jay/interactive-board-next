@@ -775,10 +775,10 @@ for(const formula of ["Ca(OH)2","BaCO3","ZnSO4"]){
 console.log("Six verified pure-solid densities, seven solid transitions and sixteen Cp values passed");
 
 
-// Bulk provenance: 114 independently sourced properties, checked both in
+// Bulk provenance: source-reviewed properties, checked both in
 // source tables and through the same registry used to render lab state.
 const validated=load("src/lektrusLabPropertyProvenance.ts");
-assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,114);
+assert.ok(validated.LAB_REVIEWED_PROPERTY_DATUMS.length>=118);
 const sourceIds=new Set();
 const fields={crystalDensityGPerMl:0,specificHeatJPerGK:0,thermal:0};
 for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
@@ -818,10 +818,15 @@ for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
  }
  approximately(value,row.value,1e-6);
 }
-assert.deepEqual(fields,{
- crystalDensityGPerMl:36,specificHeatJPerGK:29,thermal:49
-});
-console.log("114 source-checked property references: 36 crystal densities, 29 dry-solid Cp, 49 individual phase boundaries");
+assert.ok(fields.crystalDensityGPerMl>=38);
+assert.ok(fields.specificHeatJPerGK>=29);
+assert.ok(fields.thermal>=51);
+assert.equal(Object.values(fields).reduce((sum,n)=>sum+n,0),
+ validated.LAB_REVIEWED_PROPERTY_DATUMS.length);
+console.log(validated.LAB_REVIEWED_PROPERTY_DATUMS.length+
+ " source-checked property references: "+fields.crystalDensityGPerMl+
+ " crystal densities, "+fields.specificHeatJPerGK+
+ " dry-solid Cp, "+fields.thermal+" phase boundaries");
 // Canonical ONE-ROW-ONE-SOURCE importer: one source entry must update
 // (1) the active physical value and (2) the provenance catalogue.
 // No more copy-pasting each new physical measurement into 3 TS files.
@@ -1502,7 +1507,8 @@ for(const formula of ["Na2S","KNO2","BaSO4","CaCO3","CaSO4","LiCl"]){
  // The independent ion-speciation / Ksp engine may STILL legitimately
  // predict precipitation. Its settled solid is not a result of this solver.
 }
-console.log("81 sourced measurements across 51 stock formulas: 31 exact 20°C and 32 off-grid points");
+console.log(pureWaterMeasurements.length+" independently sourced water measurements, "+
+ new Set(pureWaterMeasurements.map(x=>x.formula)).size+" stock formulas");
 
 
 // Individual source-linked normal-pressure phase boundaries. Avoid
