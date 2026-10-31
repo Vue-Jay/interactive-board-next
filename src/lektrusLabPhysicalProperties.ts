@@ -18,6 +18,28 @@ export const LAB_GAS_FORMULAS:ReadonlySet<string>=new Set([
  "CH4","C2H4","C2H2","C2H6","C3H8","C4H10","C3H6"
 ]);
 const physical:Record<string,LabThermalRecord>={
+ // ILO/WHO ICSC 1197: dry magnesium sulfate decomposes at 1124 C,
+ // NOT an ordinary boiling point; MgSO4·7H2O loses crystal water earlier.
+ // https://www.inchem.org/documents/icsc/icsc/eics1197.htm
+ MgSO4:{decompositionC:1124,behavior:"decomposes",
+  note:"Безводный MgSO₄ разлагается при ~1124 °C; гидраты дегидратируются значительно раньше."},
+ // ILO/WHO ICSC via NIH PubChem CID 517044: anhydrous crystalline KAc
+ // 292 C fusion. The 309 C PAC entry differs; select explicit ICSC.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/517044
+ CH3COOK:{meltingC:292,note:"Безводный ацетат калия; справочное значение ICSC, не водный раствор."},
+ // OECD SIDS 2006: (NH4)2SO4 begins decomposing in OPEN system
+ // near 150 C to NH4HSO4 + NH3; complete decomposition is much later.
+ // This is a boundary for ONSET, NOT a melting or boiling point.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/6097028
+ "(NH4)2SO4":{decompositionC:150,behavior:"decomposes",
+  note:"Начало разложения в открытой системе около 150 °C, выделяется NH₃; не температура плавления и не полное разложение."},
+ // ATSDR white-phosphorus smoke table: the physical substance P4O10 is
+ // conventionally recorded in school chemistry as P2O5 (formula unit).
+ // Source melting 340 C applies to the P4O10 molecular solid ONLY.
+ // https://www.ncbi.nlm.nih.gov/books/NBK598126/table/ch3.tab3/
+ P2O5:{meltingC:340,
+  note:"Условная формула P₂O₅ соответствует молекулярной форме P₄O₁₀; указан переход чистой твёрдой фазы, не гидрат и не реакция с водой."},
+
  // CRC via PubChem: dry orthorhombic MnSO4 melts at 700 C;
  // decomposition 850 C is NOT a normal boiling point.
  // https://pubchem.ncbi.nlm.nih.gov/compound/24580
