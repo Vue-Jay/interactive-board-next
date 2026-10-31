@@ -29,6 +29,28 @@ import {labExactMeasuredSolubility} from "./lektrusLabSolubilityMeasurements";
  *   https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.260-223.pdf
  */
 export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
+ // Phase-identified dry-crystal densities, g/cm³ at ambient conditions.
+ // Co(OH)2 rose-red rhombohedral crystals (not aqueous hydroxide suspension):
+ // https://cameo.mfa.org/wiki/Cobaltous_hydroxide
+ "Co(OH)2":3.597,
+ // Cubic yellow silver(I) orthophosphate:
+ // https://www.sshade.eu/data/solid/SOLID_Ag3PO4
+ Ag3PO4:6.37,
+ // Anhydrous calcium nitrate, ILO/WHO ICSC 1037; NOT tetrahydrate:
+ // https://www.inchem.org/documents/icsc/icsc/eics1037.htm
+ "Ca(NO3)2":2.50,
+ // Anhydrous copper(II) nitrate, CAS 3251-23-8, NOT blue trihydrate:
+ // https://www.americanelements.com/print/view/pdf/product_datasheet/block_1?view_args%5B%5D=36554
+ "Cu(NO3)2":3.05,
+ // Millerite trigonal NiS crystal, Ohio Geological Survey (specific gravity 5.5).
+ // Other NiS polymorphs and freshly precipitated NiS are not this reference.
+ // https://ohiodnr.gov/discover-and-learn/rock-minerals-fossils/minerals/Millerite
+ NiS:5.5,
+ // Potassium manganate(VI), solid dry K2MnO4 (not KMnO4, not aqueous);
+ // UNODC table of physical densities corroborates 2.78 g/cm3:
+ // https://www.elementschina.com/potassium-manganate.html
+ K2MnO4:2.78,
+
  // Solid density sources: each formula is anhydrous (17–25 °C), not a powder bulk density.
  // FeS2 refers specifically to cubic pyrite; marcasite has a different density.
  CH3COONa:1.528,

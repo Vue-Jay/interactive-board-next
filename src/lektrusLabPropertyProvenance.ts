@@ -18,6 +18,25 @@ export type LabReviewedPropertyDatum={
  sourceUrl:string;
 };
 export const LAB_REVIEWED_PROPERTY_DATUMS:readonly LabReviewedPropertyDatum[]=[
+ // Dry phase provenance: hydrous salts and solution data are excluded.
+ {formula:"Co(OH)2",property:"crystalDensityGPerMl",value:3.597,
+  sourceUrl:"https://cameo.mfa.org/wiki/Cobaltous_hydroxide"},
+ {formula:"Ag3PO4",property:"crystalDensityGPerMl",value:6.37,
+  sourceUrl:"https://www.sshade.eu/data/solid/SOLID_Ag3PO4"},
+ {formula:"Ca(NO3)2",property:"crystalDensityGPerMl",value:2.5,
+  sourceUrl:"https://www.inchem.org/documents/icsc/icsc/eics1037.htm"},
+ {formula:"Cu(NO3)2",property:"crystalDensityGPerMl",value:3.05,
+  sourceUrl:"https://www.americanelements.com/print/view/pdf/product_datasheet/block_1?view_args%5B%5D=36554"},
+ {formula:"NiS",property:"crystalDensityGPerMl",value:5.5,
+  sourceUrl:"https://ohiodnr.gov/discover-and-learn/rock-minerals-fossils/minerals/Millerite"},
+ {formula:"K2MnO4",property:"crystalDensityGPerMl",value:2.78,
+  sourceUrl:"https://www.elementschina.com/potassium-manganate.html"},
+ {formula:"Ag3PO4",property:"meltingC",value:849,
+  sourceUrl:"https://www.sshade.eu/data/solid/SOLID_Ag3PO4"},
+ {formula:"Ca(NO3)2",property:"meltingC",value:560,
+  sourceUrl:"https://www.inchem.org/documents/icsc/icsc/eics1037.htm"},
+ {formula:"Cu(NO3)2",property:"decompositionC",value:256,
+  sourceUrl:"https://www.americanelements.com/print/view/pdf/product_datasheet/block_1?view_args%5B%5D=36554"},
  // Phase-specific, individually verified anhydrous solid reference values.
  {formula:"CH3COONa",property:"crystalDensityGPerMl",value:1.528,
   sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/517045"},
