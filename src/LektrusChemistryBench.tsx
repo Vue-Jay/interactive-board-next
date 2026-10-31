@@ -354,7 +354,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
     
    </g>}
    {/* Vapor rises outside the SVG: earlier duplicate paths were clipped
-       by viewBox while extending above the glass rim. */}}
+       by viewBox while extending above the glass rim. */}
    <path d={geo.outline} fill="none" stroke="#75a4a4" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
    {vessel.stoppered&&labCanStopper(vessel.kind)&&<g className="lektrus-lab-physical-stopper">
     <ellipse cx="50" cy="7.5" rx={vessel.kind==="tube"?17:21} ry="4.5"
