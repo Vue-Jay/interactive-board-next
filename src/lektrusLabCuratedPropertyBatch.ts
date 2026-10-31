@@ -196,7 +196,40 @@ export const LAB_CURATED_PROPERTY_BATCH:readonly LabCuratedPropertyBatchRow[]=[
   phase:"anhydrous-solid",
   sourceCondition:"anhydrous Fe(CH3COO)2 white crystals, CRC Handbook 90th ed. p.4-68: decomposition coincides with reported 190 C fusion",
   sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=12170",
-  note:"Безводный ацетат железа(II) разлагается около 190 °C; справочник также отмечает плавление при этой температуре, поэтому устойчивую жидкую фазу не предполагаем."}
+  note:"Безводный ацетат железа(II) разлагается около 190 °C; справочник также отмечает плавление при этой температуре, поэтому устойчивую жидкую фазу не предполагаем."},
+
+ // Royal Society of Chemistry periodic-table graphite phase (not diamond,
+ // activated carbon or porous charcoal). True solid density at ambient.
+ {formula:"C",property:"crystalDensityGPerMl",value:2.2,
+  phase:"anhydrous-solid",
+  sourceCondition:"pure graphite allotrope at approximately 20 C; true density 2.2 g/cm3, not diamond (3.513 g/cm3) or powder bulk density",
+  sourceUrl:"https://periodic-table.rsc.org/element/6/carbon",
+  note:"Плотность кристаллического графита около 20 °C; не переносить на алмаз, сажу или древесный уголь."},
+ // RSC gives graphite's sublimation, not normal-pressure liquid boiling.
+ // The temperature is indicative and pressure-dependent.
+ {formula:"C",property:"sublimationC",value:3825,
+  phase:"anhydrous-solid",
+  sourceCondition:"graphite carbon, reported sublimation temperature 3825 C in RSC element reference; approximate normal-pressure boundary, not melting or boiling",
+  sourceUrl:"https://periodic-table.rsc.org/element/6/carbon",
+  note:"Графит: справочная температура сублимации около 3825 °C; зависит от давления, не считать плавлением или кипением."},
+ // Efimov et al. 1983 / Rabinovich & Khavin 1977, via Chemister.
+ // Published Cp,mol = 120.1 J/(mol K) for dry hexagonal Na2SO3 at
+ // 298.15 K; the heptahydrate has a DIFFERENT Cp,mol (420).
+ {formula:"Na2SO3",property:"specificHeatJPerGK",value:0.952898,
+  phase:"anhydrous-solid",sourceMolarHeatJPerMolK:120.1,
+  sourceTemperatureKelvin:298.15,
+  sourceCondition:"dry hexagonal Na2SO3 solid, 298.15 K; Cp,mol=120.1 J/(mol K) / live formula mass 126.036538 g/mol; not Na2SO3.7H2O",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=777",
+  note:"Теплоёмкость безводного кристаллического Na₂SO₃ при 25 °C, не гептагидрата."},
+ // Thermo Fisher/Avantor product CAS 557-34-6 is explicitly ANHYDROUS
+ // zinc acetate, with 'Melting Pt 200 C (dec.)'. The annotation means
+ // decomposition, not a stable melt. WHO EHC 221 likewise flags 200 C
+ // with its decomposition footnote.
+ {formula:"Zn(CH3COO)2",property:"decompositionC",value:200,
+  phase:"anhydrous-solid",
+  sourceCondition:"anhydrous crystalline zinc(II) acetate CAS 557-34-6; product specification 200 C (dec.), NOT dihydrate or stable boiling point",
+  sourceUrl:"https://www.vwr.com/de/en/product/10592784/zinc-acetate-anhydrous-999",
+  note:"Безводный ацетат цинка: справочная отметка 200 °C с пометкой «разложение», не устойчивое плавление; гидрат отдельно."},
 
 ];
 
