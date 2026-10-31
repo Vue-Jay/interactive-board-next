@@ -44,7 +44,10 @@ assert.ok(warm.solidMol.NaCl<crystal.solidMol.NaCl);
 close(net.labInventoryMassG(crystal),net.labInventoryMassG(first));
 // Passive evaporation must cool the liquid by the energy needed to form vapor,
 // not silently lose mass while using only the glass/ambient heat equation.
-const bare=lab.defaultLabBench();
+const newBench=lab.defaultLabBench();
+assert.equal(lab.labBenchSettings(newBench).realism,"low",
+ "New experiments default to the simple school simulation");
+const bare=lab.setLabBenchSettings(newBench,{realism:"high"});
 const water={...bare.vessels[0],kind:"beaker",temperatureC:80,
  doses:{H2O:{unit:"ml",value:40}},reagents:["H2O"],environment:"aqueous"};
 const idle={...bare,simulationAtMs:1000,vessels:[water],placedDevices:[]};
@@ -127,7 +130,7 @@ console.log("Lab experiment settings, accelerated clock and virtual high heat: O
 
 // Realism changes the actual engine work, not only presentation.
 assert.equal(lab.labBenchSettings(bare).realism,"high",
- "Old classroom boards retain the previous detailed model");
+ "Detailed-mode fixtures retain the existing quantitative physics");
 const classroom=lab.setLabBenchSettings(idle,{realism:"low"});
 const standard=lab.setLabBenchSettings(idle,{realism:"medium"});
 const detailed=lab.setLabBenchSettings(idle,{realism:"high"});
@@ -218,3 +221,35 @@ assert.match(ui,/aria-label="Закрыть настройки опыта"/);
 assert.match(ui,/clipPath=\{"url\(#"\+id\+"clip\)"\}/,
  "Glass reflection must be clipped to the vessel geometry");
 console.log("Cooling bath, unbounded vessel heating, settings dismissal and glass glare: OK");
+
+// All profiles must still boil water and conserve its evaporated mass.
+for(const realism of ["low","medium","high"]){
+ const source=lab.setLabBenchSettings(boiling,{realism});
+ const before=source.vessels[0].doses.H2O.value;
+ const after=lab.advanceLabSimulation(source,11000).vessels[0];
+ assert.ok(after.temperatureC>=98&&after.temperatureC<=100.5,
+  realism+": at boiling the thermometer must remain near the phase plateau");
+ assert.ok(after.doses.H2O.value<before,
+  realism+": boiling must actually release some water, not only show bubbles");
+ close(after.doses.H2O.value+(after.ventedVaporMl?.H2O??0),before,1e-5);
+}
+// Aqueous prepared school stocks must use their measured water carrier's
+// bubble point even in simple mode; solute amount is conserved.
+const stock={...water,temperatureC:100,
+ reagents:["HCl"],doses:{HCl:{value:40,unit:"ml",concentrationM:.1}}};
+assert.ok(phase.labIdealBoilingC(stock)!>=99&&phase.labIdealBoilingC(stock)!<104);
+const warmedStock=lab.advanceLabSimulation(lab.setLabBenchSettings(
+ {...boiling,vessels:[stock]}, {realism:"low"}),11000).vessels[0];
+assert.ok(warmedStock.temperatureC<=104);
+assert.ok(warmedStock.doses.HCl.value<=40);
+const ui=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
+assert.match(ui,/document\.addEventListener\("keydown",handleLabDelete,true\)/,
+ "Lab keyboard Delete must precede the parent board's global handler");
+assert.match(ui,/data-lab-device-id=\{device\.id\}/);
+assert.match(ui,/data-lab-vessel-id=\{v\.id\}/);
+assert.match(ui,/setPendingReturnId\(v\.id\)/,
+ "Deleting a filled vessel must require explicit confirmation");
+const css=fs.readFileSync("src/lektrusChemistryBench.css","utf8");
+assert.match(css,/is-cooler \.lektrus-lab-device-face-controls\{/,
+ "Cooler controls must follow the actual icon height");
+console.log("Delete isolation, simple default, liquid/solution boiling, cooler layout: OK");
