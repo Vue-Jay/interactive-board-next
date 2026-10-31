@@ -2128,8 +2128,8 @@ assert.ok(acidBase.labVesselPH({...perfectNeutral,doses:{...perfectNeutral.doses
 assert.ok(acidBase.labVesselPH({...perfectNeutral,doses:{...perfectNeutral.doses,
  NaOH:{value:30,unit:"ml",concentrationM:.1}}}).pH>12);
 assert.equal(acidBase.labVesselPH({reagents:["HCl"],environment:"aqueous",
- doses:{HCl:{value:20,unit:"ml"}}}),null,
- "Missing molarity must not produce an invented pH");
+ doses:{HCl:{value:20,unit:"ml"}}}).pH,1,
+ "Legacy school stock uses the same 0.1 M default for pH and stoichiometry");
 assert.equal(acidBase.labVesselPH({reagents:["HCl","CuSO4"],environment:"aqueous",
  doses:{HCl:{value:20,unit:"ml",concentrationM:.1},CuSO4:{value:10,unit:"ml"}}}),null,
  "Unmodelled hydrolysis must not borrow pH from a strong acid");
