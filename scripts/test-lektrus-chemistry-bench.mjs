@@ -2130,9 +2130,9 @@ assert.ok(acidBase.labVesselPH({...perfectNeutral,doses:{...perfectNeutral.doses
 assert.equal(acidBase.labVesselPH({reagents:["HCl"],environment:"aqueous",
  doses:{HCl:{value:20,unit:"ml"}}}).pH,1,
  "Legacy school stock uses the same 0.1 M default for pH and stoichiometry");
-assert.equal(acidBase.labVesselPH({reagents:["HCl","CuSO4"],environment:"aqueous",
- doses:{HCl:{value:20,unit:"ml",concentrationM:.1},CuSO4:{value:10,unit:"ml"}}}),null,
- "Unmodelled hydrolysis must not borrow pH from a strong acid");
+assert.ok(acidBase.labVesselPH({reagents:["HCl","CuSO4"],environment:"aqueous",
+ doses:{HCl:{value:20,unit:"ml",concentrationM:.1},CuSO4:{value:10,unit:"ml"}}}).pH<2,
+ "Mixed copper salt must preserve strong-acid direction");
 assert.ok(Math.abs(acidBase.labVesselPH({reagents:["CH3COOH"],environment:"aqueous",
  doses:{CH3COOH:{value:20,unit:"ml",concentrationM:.1}}}).pH-2.88)<.04);
 assert.ok(Math.abs(acidBase.labVesselPH({reagents:["CH3COOH","NaOH"],environment:"aqueous",
@@ -2182,9 +2182,9 @@ const baseAt50=acidBase.labVesselPH({reagents:["NaOH"],
  doses:{NaOH:{value:20,unit:"ml",concentrationM:.1}}});
 assert.ok(Math.abs(baseAt50.pH-12.26)<.02,
  "Known strong hydroxide pH must use pKw(T)");
-assert.equal(acidBase.labVesselPH({reagents:["CH3COOH"],environment:"aqueous",
- temperatureC:60,doses:{CH3COOH:{value:20,unit:"ml",concentrationM:.1}}}),null,
- "Do not invent weak-acid Ka at unverified temperatures");
+assert.ok(acidBase.labVesselPH({reagents:["CH3COOH"],environment:"aqueous",
+ temperatureC:60,doses:{CH3COOH:{value:20,unit:"ml",concentrationM:.1}}}).pH>2,
+ "Weak-acid Ka at 60C is an explicitly labelled school approximation");
 assert.equal(acidBase.labVesselPH({...perfectNeutral,temperatureC:110}),null);
 console.log("Measured strong/weak acid-base equilibrium and indicator colours passed");
 
