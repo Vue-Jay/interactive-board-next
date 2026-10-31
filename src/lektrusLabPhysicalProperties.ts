@@ -18,6 +18,11 @@ export const LAB_GAS_FORMULAS:ReadonlySet<string>=new Set([
  "CH4","C2H4","C2H2","C2H6","C3H8","C4H10","C3H6"
 ]);
 const physical:Record<string,LabThermalRecord>={
+ // CRC Handbook (reported by PubChem CID 23672064):
+ // anhydrous NaH2PO4 decomposes near 200 C, not a melting transition.
+ NaH2PO4:{decompositionC:200,behavior:"decomposes",
+  note:"Безводный NaH₂PO₄ при ~200 °C разлагается до конденсированных фосфатов; это не плавление. Гидраты имеют другие переходы."},
+
  // Published pure-solid boundaries reviewed at normal pressure:
  // https://pubchem.ncbi.nlm.nih.gov/compound/25517  NH4Cl ICSC/NIOSH
  // https://pubchem.ncbi.nlm.nih.gov/compound/24497  CaSO4 ICSC
