@@ -1201,6 +1201,7 @@ export function setLabSimulationPaused(bench:LabBench,paused:boolean,nowMs=Date.
   ...v,
   visualStartedAtMs:v.visualStartedAtMs===undefined?undefined:v.visualStartedAtMs+pauseMs,
   physicalStartedAtMs:v.physicalStartedAtMs===undefined?undefined:v.physicalStartedAtMs+pauseMs,
+  lastEvaporatedAtMs:v.lastEvaporatedAtMs===undefined?undefined:v.lastEvaporatedAtMs+pauseMs,
   reactionAmounts:v.reactionAmounts?.startedAtMs!==undefined?
    {...v.reactionAmounts,startedAtMs:v.reactionAmounts.startedAtMs+pauseMs}:
    v.reactionAmounts
