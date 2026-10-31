@@ -2361,7 +2361,8 @@ assert.ok(Math.abs(chem.labDoseMoles("C2H5OH",{value:10,unit:"ml"})-
 assert.ok(Math.abs(chem.labDoseMoles("HCl",{value:10,unit:"ml"})-.001)<1e-12,
  "Legacy prepared acid stock uses the school's default 0.1 M");
 assert.match(read("src/LektrusChemistryBench.tsx"),/labIsPreparedStock\(reagent\.id\)/);
-assert.match(read("src/LektrusChemistryBench.tsx"),/labDefaultStockDose\(reagent/);
+assert.match(read("src/lektrusLabExperimentKits.ts"),/labDefaultStockDose\(id,unit\)/,
+ "Ready experiments must use measured catalogue stock doses in their own kit module");
 console.log("Quantified stocks, reproducible molarity and moles by known physical dose: OK");
 
 
