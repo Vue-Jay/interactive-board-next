@@ -6,7 +6,7 @@ import {putLabReagent,pourLabVessel,readLabBench,selectLabVessel,type LabBench,t
  from "./lektrusChemistryBenchModel";
 import {subjectEditorStyle} from "./lektrusSubjectAccent";
 
-type Props={item:Item;onChange:(next:Item)=>void;onSave:()=>void;onCancel:()=>void};
+type Props={item:Item;onChange:(next:Item,simulationOnly?:boolean)=>void;onSave:()=>void;onCancel:()=>void};
 /** The fullscreen view renders the EXACT shared bench used by the board object.
  * Its only extra control is an unobtrusive exit button; all apparatus settings
  * and the reagent cupboard remain directly on the same tabletop. */
@@ -45,9 +45,9 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
   observer.observe(node);
   return()=>observer.disconnect();
  },[]);
- const patch=(updated:LabBench)=>{
+ const patch=(updated:LabBench,simulationOnly=false)=>{
   if(updated!==bench)onChange({...item,scienceLabBench:updated,
-   scienceReagents:undefined,scienceExperimentStage:undefined});
+   scienceReagents:undefined,scienceExperimentStage:undefined},simulationOnly);
  };
  useEffect(()=>{
   const onKey=(event:KeyboardEvent)=>{

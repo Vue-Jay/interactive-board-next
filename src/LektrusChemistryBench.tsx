@@ -466,7 +466,7 @@ function LabTemperatureInput({temperature,onSet}:{temperature:number;onSet:(v:nu
 type SurfaceProps={
  bench:LabBench;editable?:boolean;compactFullscreen?:boolean;fullscreenOwner?:boolean;
  pouringId?:string|null;
- onChange?:(bench:LabBench)=>void;
+ onChange?:(bench:LabBench,simulationOnly?:boolean)=>void;
  onSelect?:(id:string)=>void;
  onPour?:(sourceId:string,targetId:string)=>void;
  onDropReagent?:(id:string,reagent:string,dose?:LabDose)=>void;
@@ -639,7 +639,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    if(session.step<=lastPourStepRef.current)return;
    lastPourStepRef.current=session.step;
    const next=advanceLabPour(current);
-   if(next!==current){benchRef.current=next;changeRef.current?.(next)}
+   if(next!==current){benchRef.current=next;changeRef.current?.(next,true)}
   },LAB_POUR_INTERVAL_MS);
   return()=>clearInterval(timer);
  },[bench.pouring?.id,editable]);
@@ -676,7 +676,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    const next=advanceLabSimulation(current,now);
    if(next!==current){
     benchRef.current=next;
-    changeRef.current?.(next);
+    changeRef.current?.(next,true);
    }
    // A no-op calculation must not spin when the shared clock is due.
    // A saved revision normally remounts the timer with its new deadline.

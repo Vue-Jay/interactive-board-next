@@ -25,7 +25,7 @@ type Props={
   onClose?:(item:Item)=>void;
   onOrganicLiveChange?:(before:Item,next:Item)=>void;
   onFormulaLiveChange?:(before:Item,next:Item)=>void;
-  onExperimentLiveChange?:(before:Item,next:Item)=>void;
+  onExperimentLiveChange?:(before:Item,next:Item,simulationOnly?:boolean)=>void;
   shared?:boolean;
   canTeach?:boolean;
 };
@@ -280,7 +280,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   // interaction is published immediately, rather than waiting for Save.
   if(experiment&&draft.graphFigureId==="chem-experiment-free")
    return <LektrusChemistryBenchEditor item={draft}
-    onChange={next=>{setDraft(next);onExperimentLiveChange?.(draft,next)}}
+    onChange={(next,simulationOnly)=>{setDraft(next);onExperimentLiveChange?.(draft,next,simulationOnly)}}
     onSave={()=>onSave(draft)}
     onCancel={()=>{if(onClose)onClose(draft);else onCancel()}}/>;
   if(formula)return <LektrusChemicalEquationEditor canTeach={canTeach===true} item={draft}

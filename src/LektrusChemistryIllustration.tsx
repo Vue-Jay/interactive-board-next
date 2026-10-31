@@ -55,13 +55,15 @@ const experiments:Record<string,Experiment>={
 };
 export default function LektrusChemistryIllustration({item,onStageChange,onBenchChange,onOpenEditor}:{
  item:Item;onStageChange?:(stage:0|1)=>void;
- onBenchChange?:(bench:LabBench)=>void;onOpenEditor?:()=>void
+ onBenchChange?:(bench:LabBench,simulationOnly?:boolean)=>void;onOpenEditor?:()=>void
 }){
  const experiment=experiments[item.graphFigureId??""];
  const [localStage,setLocalStage]=useState<0|1>(item.scienceExperimentStage??0);
  const [pourSource]=useState<string|null>(null);
  const bench=readLabBench(item);
- const changeBench=(next:LabBench)=>{if(next!==bench)onBenchChange?.(next)};
+ const changeBench=(next:LabBench,simulationOnly=false)=>{
+  if(next!==bench)onBenchChange?.(next,simulationOnly);
+ };
  const pour=(from:string,to:string)=>changeBench(pourLabVessel(bench,from,to));
  useEffect(()=>setLocalStage(item.scienceExperimentStage??0),[item.scienceExperimentStage,item.id]);
  const stage=onStageChange?(item.scienceExperimentStage??0):localStage;
