@@ -743,10 +743,10 @@ for(const formula of ["Ca(OH)2","BaCO3","ZnSO4"]){
 console.log("Six verified pure-solid densities, seven solid transitions and sixteen Cp values passed");
 
 
-// Bulk provenance: 84 independently sourced properties, checked both in
+// Bulk provenance: 89 independently sourced properties, checked both in
 // source tables and through the same registry used to render lab state.
 const validated=load("src/lektrusLabPropertyProvenance.ts");
-assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,84);
+assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,89);
 const sourceIds=new Set();
 const fields={crystalDensityGPerMl:0,specificHeatJPerGK:0,thermal:0};
 for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
@@ -787,9 +787,38 @@ for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
  approximately(value,row.value,1e-6);
 }
 assert.deepEqual(fields,{
- crystalDensityGPerMl:31,specificHeatJPerGK:15,thermal:38
+ crystalDensityGPerMl:32,specificHeatJPerGK:15,thermal:42
 });
-console.log("84 source-checked property references: 31 crystal densities, 15 dry-solid Cp, 38 individual phase boundaries");
+console.log("89 source-checked property references: 32 crystal densities, 15 dry-solid Cp, 42 individual phase boundaries");
+ 
+// Precise pure-phase source constants from ICSC / OECD / ATSDR.
+// An ammonium sulfate decomposition ONSET does not imply melting at
+// 150°C. P2O5 is the school formula UNIT for molecular P4O10.
+const reviewedThermalAdditions={
+ MgSO4:{decompositionC:1124,behavior:"decomposes"},
+ CH3COOK:{meltingC:292},
+ "(NH4)2SO4":{decompositionC:150,behavior:"decomposes"},
+ P2O5:{meltingC:340}
+};
+for(const [formula,properties] of Object.entries(reviewedThermalAdditions)){
+ const dry=thermalProps.labThermalInfo(formula,"g");
+ assert.equal(dry.known,true,"Missing reviewed thermal solid "+formula);
+ for(const [field,value] of Object.entries(properties)){
+  if(typeof value==="number")approximately(dry[field],value,1e-9);
+  else assert.equal(dry[field],value);
+ }
+ assert.equal(thermalProps.labThermalInfo(formula,"ml").known,false,
+  "Dry phase data must NOT apply to prepared liquid "+formula);
+}
+for(const formula of ["MgSO4","(NH4)2SO4"]){
+ const data=thermalProps.labThermalInfo(formula,"g");
+ assert.equal(data.meltingC,undefined);
+ assert.equal(data.boilingC,undefined);
+}
+approximately(physicalDensity.labCrystalDensityGml("P2O5"),2.39,1e-9);
+assert.equal(registryProps.labSubstanceProperties("P2O5").crystalDensityGPerMl,2.39);
+console.log("Four pure crystal transitions and P4O10 structural density: PASS");
+
  
 // Independently recompute NIST solid Shomate / measured Cp and verify the
 // EXACT value used by calorimetry, including 3 g weighed dry-solid samples.

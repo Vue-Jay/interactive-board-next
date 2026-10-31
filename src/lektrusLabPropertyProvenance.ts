@@ -18,6 +18,18 @@ export type LabReviewedPropertyDatum={
  sourceUrl:string;
 };
 export const LAB_REVIEWED_PROPERTY_DATUMS:readonly LabReviewedPropertyDatum[]=[
+ // Four phase-specific boundaries and one molecular P4O10 (P2O5)
+ // crystalline density, independently traceable to source publications.
+ {formula:"MgSO4",property:"decompositionC",value:1124,
+  sourceUrl:"https://www.inchem.org/documents/icsc/icsc/eics1197.htm"},
+ {formula:"CH3COOK",property:"meltingC",value:292,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/517044"},
+ {formula:"(NH4)2SO4",property:"decompositionC",value:150,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/6097028"},
+ {formula:"P2O5",property:"meltingC",value:340,
+  sourceUrl:"https://www.ncbi.nlm.nih.gov/books/NBK598126/table/ch3.tab3/"},
+ {formula:"P2O5",property:"crystalDensityGPerMl",value:2.39,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/Phosphorus-pentoxide"},
  // Separate original chemical phases; no molar/mass or melt/decomposition
  // substitution and no assignment to prepared aqueous reagent stocks.
  {formula:"K2SO3",property:"crystalDensityGPerMl",value:2.35,
