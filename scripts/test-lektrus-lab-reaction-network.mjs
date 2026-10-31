@@ -708,10 +708,10 @@ for(const formula of ["Ca(OH)2","BaCO3","ZnSO4"]){
 console.log("Six verified pure-solid densities, seven solid transitions and sixteen Cp values passed");
 
 
-// Bulk provenance: 63 independently sourced properties, checked both in
+// Bulk provenance: 72 independently sourced properties, checked both in
 // source tables and through the same registry used to render lab state.
 const validated=load("src/lektrusLabPropertyProvenance.ts");
-assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,63);
+assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,72);
 const sourceIds=new Set();
 const fields={crystalDensityGPerMl:0,specificHeatJPerGK:0,thermal:0};
 for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
@@ -752,9 +752,34 @@ for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
  approximately(value,row.value,1e-6);
 }
 assert.deepEqual(fields,{
- crystalDensityGPerMl:24,specificHeatJPerGK:8,thermal:31
+ crystalDensityGPerMl:30,specificHeatJPerGK:8,thermal:34
 });
-console.log("63 source-checked property references: 24 crystal densities, 8 dry-solid Cp, 31 individual phase boundaries");
+console.log("72 source-checked property references: 30 crystal densities, 8 dry-solid Cp, 34 individual phase boundaries");
+ 
+// Phase-aware density and heating regression for the newest actual cabinet
+// materials. In particular an aqueous nitrate is not an anhydrous crystal.
+for(const [formula,density] of Object.entries({
+ "Co(OH)2":3.597,Ag3PO4:6.37,"Ca(NO3)2":2.5,
+ "Cu(NO3)2":3.05,NiS:5.5,K2MnO4:2.78
+})){
+ assert.equal(registryProps.labSubstanceProperties(formula,20).crystalDensityGPerMl,
+  density,formula+" reference density absent from actual simulator");
+}
+for(const [formula,kind,temperature] of [
+ ["Ag3PO4","meltingC",849],
+ ["Ca(NO3)2","meltingC",560],
+ ["Cu(NO3)2","decompositionC",256]
+]){
+ const dry=thermalProps.labThermalInfo(formula,"g");
+ assert.equal(dry.known,true,"No verified phase data for "+formula);
+ assert.equal(dry[kind],temperature);
+ assert.equal(thermalProps.labThermalInfo(formula,"ml").known,false,
+  "Do not transfer a pure-solid phase to an aqueous stock");
+}
+assert.equal(thermalProps.labThermalInfo("Cu(NO3)2","g").boilingC,undefined);
+assert.equal(thermalProps.labThermalInfo("Cu(NO3)2","g").meltingC,undefined);
+console.log("New six crystal densities and three dry-only phase events: PASS");
+
 
 
 // Perry's Chemical Engineers' Handbook, Table 2-194. These 34 documented
