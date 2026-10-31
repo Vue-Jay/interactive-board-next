@@ -728,6 +728,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     keyboardOwnedRef.current=false;keyboardTargetRef.current=null;
    }
   };
+  const resetOnFocus=(e:FocusEvent)=>{
+   if(e.target instanceof Node&&!host.current?.contains(e.target)){
+    keyboardOwnedRef.current=false;keyboardTargetRef.current=null;
+   }
+  };
   const handleLabDelete=(e:KeyboardEvent)=>{
    if(!keyboardOwnedRef.current||!["Delete","Backspace"].includes(e.key)||
     e.ctrlKey||e.metaKey||e.altKey||e.isComposing)return;
@@ -757,9 +762,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    setNotice("Пустой сосуд убран со стола");
   };
   document.addEventListener("pointerdown",resetOnOutside,true);
+  document.addEventListener("focusin",resetOnFocus,true);
   document.addEventListener("keydown",handleLabDelete,true);
   return()=>{
    document.removeEventListener("pointerdown",resetOnOutside,true);
+   document.removeEventListener("focusin",resetOnFocus,true);
    document.removeEventListener("keydown",handleLabDelete,true);
   };
  },[editable]);
@@ -1360,6 +1367,15 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   (pendingGlassware?" is-placing-glassware":"")+
   (!settings.animateEffects?" lab-reduced-animation":"")} ref={host}
   aria-label="Интерактивный химический стол с шкафами и раковиной"
+  onFocusCapture={e=>{
+   if(!editable)return;
+   keyboardOwnedRef.current=true;
+   const target=e.target instanceof Element?e.target:null;
+   const device=target?.closest("[data-lab-device-id]")?.getAttribute("data-lab-device-id");
+   const vessel=target?.closest("[data-lab-vessel-id]")?.getAttribute("data-lab-vessel-id");
+   if(device)keyboardTargetRef.current={kind:"device",id:device};
+   else if(vessel)keyboardTargetRef.current={kind:"vessel",id:vessel};
+  }}
   onPointerDownCapture={e=>{
    if(!editable)return;
    keyboardOwnedRef.current=true;
