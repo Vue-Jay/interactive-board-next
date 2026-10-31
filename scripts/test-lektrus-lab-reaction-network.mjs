@@ -852,12 +852,12 @@ console.log("34 exact crystalline Perry Handbook Cp correlations: molar-to-mass,
 // 20°C rows from measurements at 18°C or 25°C.
 const literature=load("src/lektrusLabSolubilityMeasurements.ts");
 const pureWaterMeasurements=literature.LAB_MEASURED_PURE_WATER_SOLUBILITIES;
-assert.equal(pureWaterMeasurements.length,46);
-assert.equal(new Set(pureWaterMeasurements.map(x=>x.formula)).size,34);
-assert.equal(pureWaterMeasurements.filter(x=>x.temperatureC===20).length,21);
+assert.equal(pureWaterMeasurements.length,61);
+assert.equal(new Set(pureWaterMeasurements.map(x=>x.formula)).size,40);
+assert.equal(pureWaterMeasurements.filter(x=>x.temperatureC===20).length,25);
 const measuredTemperatures=new Set([0,20,40,60,80,100]);
 assert.equal(pureWaterMeasurements.filter(
- x=>!measuredTemperatures.has(x.temperatureC)).length,15);
+ x=>!measuredTemperatures.has(x.temperatureC)).length,22);
 const literatureKeys=new Set();
 for(const x of pureWaterMeasurements){
  const key=x.formula+"|"+x.temperatureC;
@@ -994,6 +994,71 @@ for(const temp of [1,20,50,99]){
 assert.equal(registryProps.labSubstanceProperties("Ca(CH3COO)2",20).solubilityKnown,false);
 console.log("Six traceable 20C water solubilities plus isolated 0/100C calcium acetate points passed");
 
+// International Chemical Safety Cards and the Colorado DOT published
+// exact-temperature measurements. Original units are never g/100g WATER
+// unless the source actually reported them (kilogram-solvent is divided 10).
+for(const [formula,temp,sourceValue,unit,normalized] of [
+ ["CaCl2",20,74.5,"g/100ml-water",74.5/.9982],
+ ["Na3PO4",20,121,"g/l-water",121/10/.9982],
+ ["Mg(CH3COO)2",20,53.4,"g/100g-water",53.4],
+ ["BaCl2",25,37,"g/100g-water",37],
+ ["ZnCl2",25,432,"g/100ml-water",432/.997]
+]){
+ const row=pureWaterMeasurements.find(x=>
+  x.formula===formula&&x.temperatureC===temp);
+ assert.ok(row,"Missing individually sourced reference "+formula+" at "+temp+"°C");
+ assert.equal(row.sourceValue,sourceValue);
+ assert.equal(row.originalUnit,unit);
+ approximately(literature.labMeasuredSolubilityGPer100gWater(row),
+  normalized,1e-10);
+ approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+  formula,temp),normalized,1e-10);
+ const prop=registryProps.labSubstanceProperties(formula,temp);
+ assert.equal(prop.solubilityKnown,true);
+ approximately(prop.solubilityGPer100gWater,normalized,1e-10);
+ assert.equal(prop.binaryCrystallizationUnsupported,true,
+  "Single-salt solver must never invent hydrate equilibrium for "+formula);
+ const inventory={speciesMol:{H2O:1,[formula]:.2},solidMol:{}};
+ assert.equal(physicalDensity.labEquilibrateSingleSaltCrystals(
+  inventory,temp,true,labMolarMass),undefined);
+ assert.deepEqual(inventory.solidMol,{});
+}
+const alNitrateGPerKg={
+ 0:587.3,10:618.1,20:663.9,25:689.2,30:724.1,
+ 40:801.8,50:897.5,60:1016.1,70:1164.5,100:1597.4
+};
+for(const [tempText,raw] of Object.entries(alNitrateGPerKg)){
+ const temp=Number(tempText),formula="Al(NO3)3";
+ const row=pureWaterMeasurements.find(x=>
+  x.formula===formula&&x.temperatureC===temp);
+ assert.ok(row,"Missing Al(NO3)3 reference at "+temp+"°C");
+ assert.equal(row.sourceValue,raw);
+ assert.equal(row.originalUnit,"g/kg-water");
+ approximately(literature.labMeasuredSolubilityGPer100gWater(row),
+  raw/10,1e-10);
+ approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+  formula,temp),raw/10,1e-10);
+ const prop=registryProps.labSubstanceProperties(formula,temp);
+ assert.equal(prop.solubilityKnown,true);
+ assert.equal(prop.binaryCrystallizationUnsupported,true);
+ const inventory={speciesMol:{H2O:1,[formula]:.2},solidMol:{}};
+ assert.equal(physicalDensity.labEquilibrateSingleSaltCrystals(
+  inventory,temp,true,labMolarMass),undefined);
+ assert.deepEqual(inventory.solidMol,{});
+}
+// The published aluminum-nitrate table explicitly switches hydrated
+// equilibrium solids. Only EXACT measured temperature points are exposed.
+for(const temp of [5,15,35,55,65,75,80,90]){
+ assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+  "Al(NO3)3",temp),undefined,
+  "Hydrate-phase transition must not be interpolated at "+temp+"°C");
+}
+assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+ "BaCl2",20),undefined,"A 25°C BaCl2 point cannot fill 20°C");
+assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+ "ZnCl2",20),undefined,"A 25°C ZnCl2 point cannot fill 20°C");
+console.log("15 new source-traced solubilities: 10-point nitrate series, five chloride/phosphate/acetate references, source units and phase guards verified");
+
 // Invalid extrapolation: a 25°C measurement does NOT define the
 // solubility at 20°C, and an isolated 20°C record does not define 21°C.
 for(const formula of ["PbSO4","SrCO3","ZnS","FeS","Ca3(PO4)2"])
@@ -1021,7 +1086,7 @@ for(const formula of ["Na2S","KNO2","BaSO4","CaCO3","CaSO4","LiCl"]){
  // The independent ion-speciation / Ksp engine may STILL legitimately
  // predict precipitation. Its settled solid is not a result of this solver.
 }
-console.log("46 sourced measurements across 34 salts: 21 exact 20°C points, 15 off-grid points");
+console.log("61 sourced measurements across 40 salts: 25 exact 20°C and 22 off-grid points");
 
 
 // Individual source-linked normal-pressure phase boundaries. Avoid
