@@ -1403,10 +1403,21 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
   const environment=labMixEnvironment([{environment:v.environment,doses:v.doses},
    {environment:validDose?.unit==="g"?"dry":"aqueous",
     doses:validDose?{[reagent]:validDose}:undefined}],nextDoses);
-  if(v.chemicalInventory){
+  // Once a reviewed reaction has FINISHED, material is identified by
+  // its balanced products and leftover reactants, not by historical stock
+  // names. Switch to the persistent species ledger before a new addition.
+  // Never replay a partially completed gas reaction as a final product.
+  const finishedPrevious=!!v.completedReaction||!!v.reactionAmounts?.complete;
+  const previousInventory=!v.chemicalInventory&&finishedPrevious&&
+   !v.uncertain&&v.doses?
+   simulateLabInventory({...v,volumeMl:labVesselQuantity(v).volumeMl}):undefined;
+  const persistent= v.chemicalInventory??(
+   previousInventory&&!previousInventory.unmeasured.length&&
+   !previousInventory.limited?labInventorySnapshot(previousInventory):undefined);
+  if(persistent){
    const addedMol=labDoseMoles(reagent,validDose);
    if(addedMol===undefined||!Number.isFinite(addedMol)||addedMol<=0)return v;
-   const original=v.chemicalInventory;
+   const original=persistent;
    const speciesMol={...original.speciesMol,
     [reagent]:(original.speciesMol[reagent]??0)+addedMol};
    const solidMol={...original.solidMol};
@@ -1428,9 +1439,12 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
     undefined;
    return {...v,reagents:productIds,doses:nextDoses,environment,
     chemicalInventory:labInventorySnapshot(quantified),
+    binarySaltPhase:undefined,mixedSaltPhase:undefined,
+    physicalProcess:undefined,physicalStartedAtMs:undefined,
     filteredSolution:v.filteredSolution?
      {...v.filteredSolution,solutes:productIds.filter(x=>x!=="H2O")}:undefined,
     reactionAmounts:undefined,completedReaction:confirmed??v.completedReaction,
+    reactionHeat:undefined,
     observed:true,uncertain:quantified.limited||quantified.unmeasured.length>0,
     visualStartedAtMs:confirmed?Date.now():v.visualStartedAtMs};
   }
