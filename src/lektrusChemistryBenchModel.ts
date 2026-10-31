@@ -95,6 +95,9 @@ export type LabFilteredResidue={formula:string;massG?:number;color:string;
  /** Each retained solid is conserved separately, even with one cartridge. */
  components?:{formula:string;massG:number;color:string}[]};
 export const MAX_LAB_DEVICES=10;
+/** High-temperature virtual heater for classroom demonstrations.
+ * Actual ordinary hotplates must NOT be assumed to reach this temperature. */
+export const LAB_HOTPLATE_MAX_C=1000;
 const clampDevice=(v:number,min:number,max:number)=>Math.round(Math.min(max,Math.max(min,v))*10)/10;
 /** Normalize placed devices once per immutable lab revision. A physical
  * simulation step previously reconstructed the same apparatus list for every
@@ -177,7 +180,7 @@ export function returnPlacedLabDevice(bench:LabBench,id:string):LabBench{
 const LAB_MOUNTABLE:Record<LabAvailableDevice,readonly LabGlassware[]>={
  tripod:["beaker","tube","flask","conical","volumetric","crucible","pipette","burette","dish"],
  filter:[],
- hotplate:["beaker","conical","dish"],
+ hotplate:["beaker","conical","dish","crucible"],
  stirrer:["beaker","conical"],
  burner:["beaker","tube","flask","conical","crucible","dish"]
 };
@@ -216,7 +219,7 @@ export function setLabStandHeight(bench:LabBench,id:string,height:number):LabBen
 export function setLabHotplateTemperature(bench:LabBench,id:string,temperature:number):LabBench{
  const device=placedLabDevices(bench).find(d=>d.id===id&&d.kind==="hotplate");
  if(!device||!Number.isFinite(temperature))return bench;
- const targetTemperatureC=Math.round(Math.min(350,Math.max(30,temperature)));
+ const targetTemperatureC=Math.round(Math.min(LAB_HOTPLATE_MAX_C,Math.max(30,temperature)));
  if(device.targetTemperatureC===targetTemperatureC)return bench;
  return {...bench,placedDevices:placedLabDevices(bench).map(d=>d.id===id?
   {...d,targetTemperatureC}:d),event:bench.event+1};
@@ -373,6 +376,7 @@ export function dispenseLabBurette(bench:LabBench,id:string,targetId:string,ml:n
  * catch-up after a hidden tab becomes visible again. */
 export function labSimulationTickWaitMs(bench:LabBench,nowMs:number):number|null{
  const vessels=bench.vessels;
+ const settings=labBenchSettings(bench);
  const burette=vessels.some(v=>v.buretteOpen);
  const reactions=vessels.some(labReactionNeedsTick);
  const phase=vessels.some(v=>
@@ -380,12 +384,14 @@ export function labSimulationTickWaitMs(bench:LabBench,nowMs:number):number|null
  const devices=placedLabDevices(bench);
  const powered=devices.some(d=>d.powered||(d.temperatureC??22)>22.1);
  const thermal=vessels.some(v=>Math.abs((v.temperatureC??22)-22)>.1);
- const evaporating=vessels.some(v=>!v.stoppered&&
+ const evaporating=settings.evaporationEnabled&&vessels.some(v=>!v.stoppered&&
   labVaporPressureKPa(v,v.temperatureC??22)!==undefined);
  if(!burette&&!reactions&&!phase&&!powered&&!thermal&&!evaporating)return null;
  const cadenceMs=burette||reactions||phase?500:powered||thermal?1900:9800;
+ // Faster simulation means shorter, smoother UI intervals, not extra timers.
+ const intervalMs=Math.max(400,Math.round(cadenceMs/Math.sqrt(settings.timeScale)));
  if(bench.simulationAtMs===undefined)return 500;
- return Math.max(0,Math.ceil(cadenceMs-Math.max(0,nowMs-bench.simulationAtMs)));
+ return Math.max(0,Math.ceil(intervalMs-Math.max(0,nowMs-bench.simulationAtMs)));
 }
 
 /** Deterministic approximate educational heat-transfer model.
@@ -394,7 +400,9 @@ export function labSimulationTickWaitMs(bench:LabBench,nowMs:number):number|null
 export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
  if(!Number.isFinite(nowMs)||nowMs<0)return bench;
  if(bench.simulationAtMs===undefined)return {...bench,simulationAtMs:nowMs,event:bench.event+1};
- const seconds=Math.min(10,Math.max(0,(nowMs-bench.simulationAtMs)/1000));
+ // Advance physical processes in simulated time, not wall-clock time.
+ const settings=labBenchSettings(bench);
+ const seconds=Math.min(10,Math.max(0,(nowMs-bench.simulationAtMs)/1000))*settings.timeScale;
  if(seconds<.05)return bench;
  const ambient=22;
  let changed=false;
@@ -443,8 +451,9 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // No generic 100°C ceiling: concentrations and gaseous samples have no
   // single verified boiling point. Only a neat liquid with known properties
   // receives a boiling plateau below.
-  const maxVesselC=device?.kind==="burner"&&v.kind==="crucible"?1250:
-   device?.kind==="burner"?450:350;
+  // Crucibles tolerate high-temperature virtual heating; normal glass does not.
+  const maxVesselC=v.kind==="crucible"&&(device?.kind==="burner"||device?.kind==="hotplate")?1250:
+   device?.kind==="burner"?450:550;
   // Endothermic cooling below room temperature is physical and should
   // recover gradually by ambient heat exchange, never jump to 22°C.
   let next=Math.round(Math.max(0,Math.min(maxVesselC,raw))*10)/10;
@@ -493,11 +502,13 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // Surface evaporation ALSO spends latent heat. Apply it to the same
   // measured heat capacity, so an unheated warm solution cools rather than
   // producing vapor with no thermal cost. Ambient transfer recovers it later.
-  if(calorimetry&&phase.latentEnergyJ>0&&!v.stoppered){
+  if(settings.evaporationEnabled&&calorimetry&&phase.latentEnergyJ>0&&!v.stoppered){
    next=Math.round(Math.max(0,Math.min(next,
     raw-phase.latentEnergyJ/calorimetry.capacityJPerK))*10)/10;
   }
-  const evaporating=phase.evaporatedMl>0,popped=phase.popped;
+  // When disabled, keep measured solvent, composition and energy intact.
+  // Pressure protection still runs independently for a closed vessel.
+  const evaporating=settings.evaporationEnabled&&phase.evaporatedMl>0,popped=phase.popped;
   const updatedDoses=evaporating?phase.doses:v.doses;
   const updatedReagents=evaporating?v.reagents.filter(id=>
    !v.doses?.[id]||updatedDoses?.[id]):v.reagents;
@@ -525,7 +536,7 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
    v.physicalProcess!==phaseMotion:
    v.physicalProcess==="crystallizing"||
    v.physicalProcess==="dissolving"&&
-   v.physicalStartedAtMs!==undefined&&nowMs-v.physicalStartedAtMs>=4500;
+   v.physicalStartedAtMs!==undefined&&nowMs-v.physicalStartedAtMs>=4500/settings.timeScale;
   const cooling=!device?.powered&&next<42&&v.temperatureC!==undefined&&
    ["heated","ignited"].includes(v.environment);
   const phaseChanged=meltFraction!==(v.meltFraction??0)||
@@ -567,8 +578,9 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
    state=startQuantifiedLabReaction(reaction.caseData,v.reagents,v.doses,nowMs)??undefined;
    if(!state)return v;
   }else if(state.complete)return v;
-  const elapsed=state.startedAtMs===undefined?seconds:
-   Math.max(0,(nowMs-state.startedAtMs)/1000-state.elapsedSeconds);
+  // Increment by simulation time; subtracting wall-clock elapsed would stall
+  // progress after the first accelerated reaction step.
+  const elapsed=seconds;
   const next=v.reactionAmounts?advanceQuantifiedLabReaction(state,elapsed):state;
   if(next===v.reactionAmounts)return v;
   changed=true;
@@ -787,10 +799,11 @@ export function dripLabVessel(bench:LabBench,sourceId:string,targetId:string,req
 export type LabBenchSettings={
  showEquationBoard:boolean;showVesselLabels:boolean;animateEffects:boolean;
  showTemperatures:boolean;pourMode:"gradual"|"fast";
+ evaporationEnabled:boolean;timeScale:1|2|5|10;
 };
 export const defaultLabBenchSettings=():LabBenchSettings=>({
  showEquationBoard:true,showVesselLabels:true,animateEffects:true,showTemperatures:true,
- pourMode:"gradual"
+ pourMode:"gradual",evaporationEnabled:true,timeScale:1
 });
 export const labBenchSettings=(bench:LabBench):LabBenchSettings=>({
  ...defaultLabBenchSettings(),...bench.settings
