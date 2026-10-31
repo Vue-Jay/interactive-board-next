@@ -18,7 +18,11 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
  // board out of Android WebView's paint tree while the portal is shown.
  useEffect(()=>{
   document.body.classList.add("lektrus-lab-fullscreen-active");
-  return()=>document.body.classList.remove("lektrus-lab-fullscreen-active");
+  window.dispatchEvent(new Event("lektrus-lab-fullscreen-change"));
+  return()=>{
+   document.body.classList.remove("lektrus-lab-fullscreen-active");
+   window.dispatchEvent(new Event("lektrus-lab-fullscreen-change"));
+  };
  },[]);
  useEffect(()=>{
   const node=viewport.current;if(!node)return;
