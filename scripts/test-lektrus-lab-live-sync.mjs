@@ -100,10 +100,17 @@ assert.equal(new Set(distinctRecovered.placedDevices.map(d=>d.id)).size,2);
 const addedHeater={...start,scienceLabBench:{...start.scienceLabBench,
  placedDevices:[burner]}};
 const addedOps=live.labLiveEditorDiff(start,addedHeater);
-assert.ok(addedOps.some(op=>op.kind==="upsert-id"&&
- op.path.join(".")==="scienceLabBench.placedDevices"&&op.id==="heater-1"));
+assert.ok(addedOps.some(op=>op.kind==="set"&&
+ op.path.join(".")==="scienceLabBench.placedDevices"),
+ "Adding the first heater initializes the absent apparatus array");
 assert.equal(live.applyLabLivePreview(start,undefined,addedOps)?.
  scienceLabBench.placedDevices.length,1);
+const heatedHeater={...addedHeater,scienceLabBench:{
+ ...addedHeater.scienceLabBench,placedDevices:[{...burner,temperatureC:60}]}};
+const deviceOps=live.labLiveEditorDiff(addedHeater,heatedHeater);
+assert.ok(deviceOps.some(op=>op.kind==="upsert-id"&&
+ op.path.join(".")==="scienceLabBench.placedDevices"&&op.id==="heater-1"),
+ "Subsequent heater temperature updates target the same ID, never append");
 const erased={...start,scienceLabBench:{...start.scienceLabBench,
  vessels:[start.scienceLabBench.vessels[0]]}};
 const removedOps=live.labLiveEditorDiff(start,erased);
