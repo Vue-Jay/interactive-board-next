@@ -18,6 +18,18 @@ export type LabReviewedPropertyDatum={
  sourceUrl:string;
 };
 export const LAB_REVIEWED_PROPERTY_DATUMS:readonly LabReviewedPropertyDatum[]=[
+ // Separate original chemical phases; no molar/mass or melt/decomposition
+ // substitution and no assignment to prepared aqueous reagent stocks.
+ {formula:"K2SO3",property:"crystalDensityGPerMl",value:2.35,
+  sourceUrl:"https://www.cdhfinechemical.com/images/product/msds/92_1413110475_PotassiumSulphite-CASNO-10117-38-1-MSDS.pdf"},
+ {formula:"MnSO4",property:"meltingC",value:700,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/24580"},
+ {formula:"MnSO4",property:"decompositionC",value:850,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/24580"},
+ {formula:"CH3COOLi",property:"meltingC",value:280,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/3474584"},
+ {formula:"(NH4)2CO3",property:"decompositionC",value:58,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/517111"},
  // Verified NIST SRD 69 pure-solid room-temperature heats, 298.15 K.
  {formula:"LiOH",property:"specificHeatJPerGK",value:2.070231,
   sourceUrl:"https://webbook.nist.gov/cgi/cbook.cgi?ID=C1310652&Table=on&Type=JANAFS"},
