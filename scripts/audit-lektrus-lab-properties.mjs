@@ -41,6 +41,7 @@ const measured=load("src/lektrusLabSolubilityMeasurements.ts");
 const provenance=load("src/lektrusLabPropertyProvenance.ts");
 const perry=load("src/lektrusLabPerryHeatReferences.ts");
 const nist=load("src/lektrusLabNistHeatReferences.ts");
+const janaf=load("src/lektrusLabJanafSolidHeatReferences.ts");
 const saturated=load("src/lektrusLabSaturatedSolutionReferences.ts");
 
 const has=(value)=>typeof value==="number"&&Number.isFinite(value);
@@ -120,6 +121,7 @@ const rawTotals={
  curatedSourceCheckedProperties:provenance.LAB_REVIEWED_PROPERTY_DATUMS.length,
  perryRoomTemperatureCrystalHeats:perry.LAB_PERRY_SOLID_HEAT_REFERENCES.length,
  nistRoomTemperatureSolidHeats:nist.LAB_NIST_ROOM_HEAT_REFERENCES.length,
+ janafRoomTemperatureCrystalHeats:janaf.LAB_JANAF_SOLID_HEAT_REFERENCES.length,
  hydrateReferenceVariants:hydrateRows.length,
  hydrateCrystalDensityRecords:hydrateDensities.length,
  hydrateReferenceAllBases:hydrateBases.size,
@@ -151,6 +153,7 @@ const report={schemaVersion:7,rawTotals,
  measuredPureWaterSourceRows:measuredRows,
  perryRoomTemperatureCrystalHeatRows:perry.LAB_PERRY_SOLID_HEAT_REFERENCES,
  nistRoomTemperatureSolidHeatRows:nist.LAB_NIST_ROOM_HEAT_REFERENCES,
+ janafRoomTemperatureCrystalHeatRows:janaf.LAB_JANAF_SOLID_HEAT_REFERENCES,
  sourceCheckedPropertyDatums:provenance.LAB_REVIEWED_PROPERTY_DATUMS,
  hydratedReferenceRows:hydrateRows,
  saturatedSolutionDensityRows:saturationRows,
@@ -299,6 +302,32 @@ if(process.argv.includes("--verify")){
    p.value===row.roomHeatJPerGK&&p.sourceUrl===row.sourceUrl),
    "NIST calorimetry lacks matching traceable provenance: "+row.formula);
  }
+ // Direct NIST-JANAF tables publish 298.15 K molar heat of the
+ // specified DRY crystalline form, NOT solution or hydrated solid heat.
+ const janafIds=new Set();
+ for(const row of janaf.LAB_JANAF_SOLID_HEAT_REFERENCES){
+  assert.ok(stockNames.has(row.formula),
+   "JANAF source compound absent from cabinet: "+row.formula);
+  assert.ok(!janafIds.has(row.formula),"Duplicate JANAF Cp "+row.formula);
+  janafIds.add(row.formula);
+  assert.equal(row.phase,"solid");
+  assert.equal(row.temperatureKelvin,298.15);
+  assert.equal(row.pressureMPa,.1);
+  assert.ok(row.crystalForm.length>=10);
+  assert.ok(row.sourceUrl.startsWith("https://janaf.nist.gov/tables/"));
+  const mm=registry.labSubstanceProperties(row.formula).molarMassGPerMol;
+  assert.ok(has(mm)&&mm>0);
+  assert.ok(has(row.molarHeatJPerMolK)&&row.molarHeatJPerMolK>0);
+  assert.ok(Math.abs(row.molarHeatJPerMolK/mm-row.roomHeatJPerGK)<.000001,
+   "JANAF molar-to-mass Cp conversion mismatch for "+row.formula);
+  const real=heat.LAB_CALORIMETRY_REFERENCE[row.formula];
+  assert.equal(real?.phase,"solid");
+  assert.equal(real?.specificJPerGK,row.roomHeatJPerGK);
+  assert.ok(provenance.LAB_REVIEWED_PROPERTY_DATUMS.some(item=>
+   item.formula===row.formula&&item.property==="specificHeatJPerGK"&&
+   item.value===row.roomHeatJPerGK&&item.sourceUrl===row.sourceUrl),
+   "Missing JANAF source provenance "+row.formula);
+ }
  // The handbook reports crystalline molar Cp, not dry mass Cp or Cp
  // of a salt solution. Recalculate against the ACTUAL lab formula parser
  // to verify that every conversion, temperature range and identity matches.
@@ -383,6 +412,10 @@ if(process.argv.includes("--json")){
  for(const [key,v] of Object.entries(counted))
   lines.push("| "+labels[key]+" | "+v.filled+" | "+v.remaining+" | "+v.eligible+" |");
  lines.push("",
+  "Из таблиц NIST-JANAF: "+
+  rawTotals.janafRoomTemperatureCrystalHeats+
+  " теплоёмкостей кристаллов с исходными молярными значениями при 298,15 K.",
+  "",
   "Из NIST Chemistry WebBook SRD 69: "+
   rawTotals.nistRoomTemperatureSolidHeats+
   " проверенных теплоёмкостей чистых кристаллов при 298,15 K.",
@@ -431,6 +464,8 @@ if(process.argv.includes("--json")){
    v.firstMissing.slice(0,14).join(", ")+")");
  console.log("Unique stock formulas with applicable gaps: "+
   report.stockWithOutstandingProperties);
+ console.log("NIST-JANAF verified direct crystalline Cp at 298.15 K: "+
+  rawTotals.janafRoomTemperatureCrystalHeats);
  console.log("NIST SRD 69 verified solid Cp at 298.15 K: "+
   rawTotals.nistRoomTemperatureSolidHeats);
  console.log("Perry's handbook crystalline Cp at 298.15 K: "+
