@@ -852,12 +852,12 @@ console.log("34 exact crystalline Perry Handbook Cp correlations: molar-to-mass,
 // 20°C rows from measurements at 18°C or 25°C.
 const literature=load("src/lektrusLabSolubilityMeasurements.ts");
 const pureWaterMeasurements=literature.LAB_MEASURED_PURE_WATER_SOLUBILITIES;
-assert.equal(pureWaterMeasurements.length,26);
-assert.equal(new Set(pureWaterMeasurements.map(x=>x.formula)).size,15);
-assert.equal(pureWaterMeasurements.filter(x=>x.temperatureC===20).length,10);
+assert.equal(pureWaterMeasurements.length,38);
+assert.equal(new Set(pureWaterMeasurements.map(x=>x.formula)).size,27);
+assert.equal(pureWaterMeasurements.filter(x=>x.temperatureC===20).length,15);
 const measuredTemperatures=new Set([0,20,40,60,80,100]);
 assert.equal(pureWaterMeasurements.filter(
- x=>!measuredTemperatures.has(x.temperatureC)).length,8);
+ x=>!measuredTemperatures.has(x.temperatureC)).length,15);
 const literatureKeys=new Set();
 for(const x of pureWaterMeasurements){
  const key=x.formula+"|"+x.temperatureC;
@@ -865,6 +865,13 @@ for(const x of pureWaterMeasurements){
  literatureKeys.add(key);
  assert.ok(x.sourceUrl.startsWith("https://"));
  assert.ok(labMolarMass(x.formula)>0);
+ if(x.sourceTemperatureKelvin!==undefined){
+  assert.equal(x.sourceTemperatureKelvin,293);
+  assert.equal(x.temperatureC,19.85,
+   "293 K is 19.85°C, not an exact 20°C point");
+  approximately(x.temperatureC+273.15,x.sourceTemperatureKelvin,1e-9);
+  assert.equal(x.originalUnit,"g/100g-water");
+ }
  const normalized=literature.labMeasuredSolubilityGPer100gWater(x);
  assert.ok(Number.isFinite(normalized)&&normalized>0);
  approximately(
@@ -894,6 +901,50 @@ for(const [formula,t,expected] of [
  ["Ca3(PO4)2",25,.0025]
 ])approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater(
  formula,t),expected,1e-9);
+// Five exact 20°C published g/100 mL-WATER measurements become
+// g/100 g of PURE solvent using rho_water(20°C) = 0.9982 g/mL.
+const newExactAt20={
+ FeCl2:62.5,CoCl2:53,MgCl2:54.3,MgSO4:30,NiCl2:64.2
+};
+for(const [formula,original] of Object.entries(newExactAt20)){
+ const expected=original/.9982;
+ const row=pureWaterMeasurements.find(x=>
+  x.formula===formula&&x.temperatureC===20);
+ assert.ok(row);
+ assert.equal(row.originalUnit,"g/100ml-water");
+ approximately(row.sourceValue,original,1e-12);
+ approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+  formula,20),expected,1e-9);
+ const registry=registryProps.labSubstanceProperties(formula,20);
+ approximately(registry.solubilityGPer100gWater,expected,1e-9);
+ assert.equal(registry.binaryCrystallizationUnsupported,true);
+ // One point never permits a smooth fake curve or a fabricated crystal.
+ assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+  formula,21),undefined);
+ const inventory={speciesMol:{H2O:.5,[formula]:.05},solidMol:{}};
+ assert.equal(physicalDensity.labEquilibrateSingleSaltCrystals(
+  inventory,20,true,labMolarMass),undefined);
+ assert.deepEqual(inventory.solidMol,{});
+}
+for(const [formula,sourceValue] of Object.entries({
+ AlCl3:45.8,CuCl2:73,LiNO3:70.1,"Cu(NO3)2":125,
+ "Al2(SO4)3":36.4,Li2SO4:34.8,ZnSO4:53.8
+})){
+ const row=pureWaterMeasurements.find(x=>
+  x.formula===formula&&x.sourceTemperatureKelvin===293);
+ assert.ok(row,"Missing 293K source "+formula);
+ assert.equal(row.temperatureC,19.85);
+ approximately(row.sourceValue,sourceValue,1e-12);
+ approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+  formula,19.85),sourceValue,1e-9);
+ assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+  formula,20),undefined,
+  "The 293 K value MUST NOT impersonate a measured 20.00°C point");
+ const prop=registryProps.labSubstanceProperties(formula,20);
+ assert.equal(prop.solubilityKnown,false);
+ assert.equal(prop.literatureSolubilityReference.temperatureC,19.85);
+ assert.equal(prop.binaryCrystallizationUnsupported,true);
+}
 // Invalid extrapolation: a 25°C measurement does NOT define the
 // solubility at 20°C, and an isolated 20°C record does not define 21°C.
 for(const formula of ["PbSO4","SrCO3","ZnS","FeS","Ca3(PO4)2"])
@@ -921,7 +972,7 @@ for(const formula of ["Na2S","KNO2","BaSO4","CaCO3","CaSO4","LiCl"]){
  // The independent ion-speciation / Ksp engine may STILL legitimately
  // predict precipitation. Its settled solid is not a result of this solver.
 }
-console.log("26 sourced measurements across 15 salts, including 10 new 20°C series and 8 exact non-grid temperatures");
+console.log("38 sourced measurements across 27 salts: fifteen 20°C points and fifteen exact off-grid points");
 
 
 // Individual source-linked normal-pressure phase boundaries. Avoid

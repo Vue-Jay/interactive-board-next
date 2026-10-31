@@ -327,6 +327,16 @@ if(process.argv.includes("--verify")){
   assert.ok(cabinetBaseSet.has(item.formula),
    "Source formula is absent from cabinet "+item.formula);
   assert.ok(item.sourceUrl.startsWith("https://"),"No source "+identity);
+  // A literature table at 293 K is 19.85 C, not exactly 20 C.
+  // Keep the source's originally quoted Kelvin condition auditable.
+  if(item.sourceTemperatureKelvin!==undefined){
+   assert.equal(item.sourceTemperatureKelvin,293);
+   assert.ok(Math.abs(item.temperatureC+273.15-
+    item.sourceTemperatureKelvin)<1e-10,
+    "Kelvin and Celsius source conditions disagree: "+identity);
+   assert.ok(!gridTemps.has(item.temperatureC),
+    "A 293 K source cannot silently fill the 20 C grid: "+identity);
+  }
   assert.ok(has(item.temperatureC)&&has(item.sourceValue)&&item.sourceValue>=0);
   const normalized=measured.labMeasuredSolubilityGPer100gWater(item);
   assert.ok(has(normalized)&&normalized>0,
