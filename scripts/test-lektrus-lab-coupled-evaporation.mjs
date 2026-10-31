@@ -237,7 +237,9 @@ for(const realism of ["low","medium","high"]){
 // bubble point even in simple mode; solute amount is conserved.
 const stock={...water,temperatureC:100,
  reagents:["HCl"],doses:{HCl:{value:40,unit:"ml",concentrationM:.1}}};
-assert.ok(phase.labIdealBoilingC(stock)!>=99&&phase.labIdealBoilingC(stock)!<104);
+const stockBoilingPoint=phase.labIdealBoilingC(stock);
+assert.ok(stockBoilingPoint>=99&&stockBoilingPoint<104,
+ "Dilute school stock must have a supported aqueous boiling point");
 const warmedStock=lab.advanceLabSimulation(lab.setLabBenchSettings(
  {...boiling,vessels:[stock]}, {realism:"low"}),11000).vessels[0];
 assert.ok(warmedStock.temperatureC<=104);
