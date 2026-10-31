@@ -134,7 +134,10 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   reviewedReactionCases.find(row=>row.equation===mostRecentEquation):undefined;
  // Forecast reactions must not recolor the mixture before they happen.
  const hasReactionProgress=!!vessel.reactionAmounts&&vessel.reactionAmounts.extentMol>1e-12;
- const visualCase=(hasReactionProgress||vessel.reactionAmounts?.complete||
+ const gradualCase=vessel.inventoryPrecipitation?
+  reviewedReactionCases.find(row=>
+   row.equation===vessel.inventoryPrecipitation?.equation):undefined;
+ const visualCase=gradualCase??(hasReactionProgress||vessel.reactionAmounts?.complete||
   !!vessel.completedReaction||!!vessel.chemicalInventory&&!vessel.pendingInventoryReaction?
   recentCase:undefined)??vessel.completedReaction??
   (hasReactionProgress?verified:undefined);
