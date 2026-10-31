@@ -241,9 +241,21 @@ carbonate=lab.advanceLabSimulation(carbonate,6000);
 const carbonateBefore=chemistry.simulateLabInventory(carbonate.vessels[0]);
 assert.ok(carbonateBefore.solidMol.CaCO3>.0009);
 carbonate=addSolution(carbonate,"HCl",20);
+assert.equal(carbonate.vessels[0].pendingInventoryReaction,true,
+ "The second carbonate reaction starts only on an actual simulation tick");
+assert.equal(carbonate.vessels[0].chemicalInventory?.releasedGasMol?.CO2??0,0,
+ "Adding acid does not instantly vent the future full CO2 yield");
+carbonate=lab.advanceLabSimulation(carbonate,7000);
+assert.ok((carbonate.vessels[0].chemicalInventory?.releasedGasMol?.CO2??0)>0,
+ "The first tick visibly releases only its measured gas portion");
+assert.ok((carbonate.vessels[0].chemicalInventory?.solidMol.CaCO3??0)>0,
+ "The carbonate solid remains visible during progressive acid dissolution");
+for(const at of [17000,27000,37000])
+ carbonate=lab.advanceLabSimulation(carbonate,at);
 const carbonateVessel=carbonate.vessels[0];
 const carbonateResult=chemistry.simulateLabInventory(carbonateVessel);
 assert.equal(carbonateVessel.uncertain,false);
+assert.equal(carbonateVessel.pendingInventoryReaction,undefined);
 assert.ok((carbonateResult.solidMol.CaCO3??0)<.00001);
 assert.ok((carbonateVessel.chemicalInventory?.speciesMol.CaCl2??0)>.0009);
 assert.ok((carbonateVessel.chemicalInventory?.speciesMol.NaCl??0)>.0019);
