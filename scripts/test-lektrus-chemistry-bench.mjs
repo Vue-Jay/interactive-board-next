@@ -286,8 +286,9 @@ assert.equal(actuallyReacted.vessels[0].reactionAmounts?.complete,true);
 let unknown=lab.putLabReagent(actuallyReacted,"v1","HCl");
 assert.equal(lab.labObservation(unknown.vessels[0]).status,"unknown",
  "A new unsupported mixture is uncertain even though prior measured products remain");
-assert.equal(unknown.vessels[0].completedReaction?.observation,"precipitate",
- "Existing precipitate must stay visually represented even when later chemistry is unknown");
+assert.ok(lab.labVesselContents(unknown.vessels[0]).solid.some(item=>
+ item.formula==="AgCl"&&(item.massG??0)>0),
+ "Existing AgCl must remain in the real solid inventory after adding another reagent");
 let heated=detailedBench();
 heated=lab.putLabReagent(heated,"v1","CaCO3");
 assert.equal(lab.labObservation(heated.vessels[0]).status,"unknown");
