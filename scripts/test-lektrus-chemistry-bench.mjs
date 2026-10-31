@@ -88,6 +88,24 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
 let bench=lab.defaultLabBench();
 assert.equal(bench.vessels.length,1,"New lab starts with a single empty beaker");
 assert.equal(bench.selectedId,"v1");
+
+/** A quiet tabletop does no background work, but titration remains fast. */
+const idleClock=lab.defaultLabBench();
+assert.equal(lab.labSimulationTickWaitMs(idleClock,11000),null);
+const waterClock=lab.putLabReagent(idleClock,"v1","H2O",{value:10,unit:"ml"});
+const ambientClock={...waterClock,simulationAtMs:1000};
+assert.equal(lab.labSimulationTickWaitMs(ambientClock,1000),9800);
+assert.equal(lab.labSimulationTickWaitMs(ambientClock,10799),1);
+assert.equal(lab.labSimulationTickWaitMs(ambientClock,10800),0);
+const hotClock={...ambientClock,placedDevices:[{id:"heater-clock",kind:"hotplate",x:35,y:74,powered:true}]};
+assert.equal(lab.labSimulationTickWaitMs(hotClock,1000),1900);
+const buretteClock={...ambientClock,vessels:[{...ambientClock.vessels[0],kind:"burette",buretteOpen:true}]};
+assert.equal(lab.labSimulationTickWaitMs(buretteClock,1000),500);
+const stopperedClock={...ambientClock,vessels:[{...ambientClock.vessels[0],stoppered:true}]};
+assert.equal(lab.labSimulationTickWaitMs(stopperedClock,1000),null);
+const loadedClock=lab.readLabBench({scienceLabBench:ambientClock});
+assert.strictEqual(loadedClock.vessels,ambientClock.vessels);
+
 bench=lab.addLabVessel(bench,"tube");
 assert.equal(bench.vessels.length,2,"Additional test tube sits on same bench");
 assert.equal(bench.selectedId,"v2");
