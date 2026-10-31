@@ -134,8 +134,13 @@ const fireKit=kits.prepareLabExperimentKit(kitBench,ignition);
 assert.equal(fireKit.vessels[0].kind,"crucible",
  "Dry heated demonstrations use a crucible instead of a liquid beaker");
 assert.deepEqual((fireKit.placedDevices??[]).map(d=>d.kind),["burner","tripod"]);
-assert.ok(fireKit.placedDevices.every(d=>d.powered===false&&!d.linkedVesselId),
- "Ready experiments never automatically ignite or reconnect old instruments");
+assert.ok(fireKit.placedDevices.every(d=>d.powered===false),
+ "Ready experiments never ignite a burner or turn on a hotplate automatically");
+assert.ok(fireKit.placedDevices.every(d=>d.linkedVesselId===
+ fireKit.vessels.find(v=>v.kind==="crucible").id),
+ "Ready heating kits mount the reactant crucible instead of loose apparatus");
+assert.equal(fireKit.placedDevices.find(d=>d.kind==="tripod").standHeight,.6,
+ "Heating demonstrations keep the retort clamp within burner range");
 assert.deepEqual(kits.labExperimentKitSummary(ignition).equipment,["Горелка","Штатив"]);
 assert.equal(fireKit.pouring,undefined);
 assert.equal(fireKit.titration,undefined);
