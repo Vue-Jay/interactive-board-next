@@ -1766,7 +1766,19 @@ export function setLabVesselStopper(bench:LabBench,id:string,stoppered:boolean):
    // headspace. Only production AFTER sealing raises the gas partial pressure.
    sealedReactionGasBaselineMol:stoppered?
     labHeadspaceGasMoles({...v,stoppered:false,
-     sealedReactionGasBaselineMol:undefined}):undefined}:v);
+     sealedReactionGasBaselineMol:undefined}):undefined,
+   // Removing a cork vents the real retained gas. Never leave old pressure
+   // to return on resealing or delete gas mass from the measured ledger.
+   chemicalInventory:!stoppered&&v.chemicalInventory&&
+    Object.keys(v.chemicalInventory.retainedGasMol??{}).length?{
+     ...v.chemicalInventory,retainedGasMol:{},
+     releasedGasMol:Object.fromEntries(new Set([
+      ...Object.keys(v.chemicalInventory.releasedGasMol??{}),
+      ...Object.keys(v.chemicalInventory.retainedGasMol??{})
+     ]).values().map(formula=>[formula,
+      (v.chemicalInventory?.releasedGasMol?.[formula]??0)+
+      (v.chemicalInventory?.retainedGasMol?.[formula]??0)]))
+    }:v.chemicalInventory}:v);
 }
 /** Ideal-gas headspace uses the same measured chemical species ledger as the
  * vessel inspector. The seal temperature is saved, never assumed to equal
@@ -2276,7 +2288,7 @@ function transferSnapshotSample(bench:LabBench,source:LabVessel,target:LabVessel
     {...source.filteredSolution,solutes:fromIds.filter(x=>x!=="H2O"),
      volumeMl:leftCarrier}:undefined,
    observed:fromIds.length>0,uncertain:false,
-   reactionAmounts:undefined,
+   reactionAmounts:undefined,inventoryGasReaction:undefined,
    completedReaction:fromIds.length?v.completedReaction:undefined};
   if(v.id===target.id)return {...v,reagents:toIds,
    doses:Object.keys(toDoses).length?toDoses:undefined,
@@ -2287,7 +2299,7 @@ function transferSnapshotSample(bench:LabBench,source:LabVessel,target:LabVessel
      solutes:toIds.filter(x=>x!=="H2O"),volumeMl:toCarrier}:undefined,
    environment:medium,observed:true,uncertain:false,
    completedReaction:pending?v.completedReaction:lastCase??v.completedReaction,
-   reactionAmounts:undefined,
+   reactionAmounts:undefined,inventoryGasReaction:undefined,
    ...carriedLabIndicator(source,v),
    visualStartedAtMs:lastCase&&!pending?Date.now():v.visualStartedAtMs};
   return v;
@@ -2807,7 +2819,7 @@ function pourMeasuredFiltrate(bench:LabBench,source:LabVessel,target:LabVessel):
   if(v.id===source.id)return {...v,reagents:[],doses:undefined,
    filteredSolution:undefined,filteredResidue:undefined,chemicalInventory:undefined,
    reactionAmounts:undefined,completedReaction:undefined,reactionHeat:undefined,
-   pendingInventoryReaction:undefined,
+   inventoryGasReaction:undefined,pendingInventoryReaction:undefined,
    observed:false,uncertain:false,indicator:undefined,
    indicatorDrops:undefined,indicatorAddedAtMs:undefined};
   if(v.id===target.id)return {...v,reagents:ids,
@@ -2821,6 +2833,7 @@ function pourMeasuredFiltrate(bench:LabBench,source:LabVessel,target:LabVessel):
    reactionAmounts:undefined,completedReaction:pending?
     target.completedReaction:lastCase??target.completedReaction,
    reactionHeat:undefined,environment,observed:true,uncertain:false,
+   inventoryGasReaction:undefined,
    ...carriedLabIndicator(source,v),
    visualStartedAtMs:lastCase&&!pending?Date.now():v.visualStartedAtMs};
   return v;
