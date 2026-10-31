@@ -1129,6 +1129,8 @@ export function parseDocument(raw: string): DocumentData {
              Number.isFinite(v.sealedReactionGasBaselineMol)&&
              v.sealedReactionGasBaselineMol>=0&&
              v.sealedReactionGasBaselineMol<=10000&&v.stoppered===true))&&
+            (v.lastEvaporatedAtMs==null||(
+             Number.isFinite(v.lastEvaporatedAtMs)&&v.lastEvaporatedAtMs>=0))&&
             (v.ventedVaporMl==null||(!!v.ventedVaporMl&&
              typeof v.ventedVaporMl==="object"&&!Array.isArray(v.ventedVaporMl)&&
              Object.keys(v.ventedVaporMl).length<=5&&
