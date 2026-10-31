@@ -692,21 +692,56 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
   return {...v,reactionAmounts:next};
  });
  result={...result,vessels};
- // A newly combined persistent mixture is staged unchanged while processes
- // are paused. Commit its measured products only inside an actual simulation
- // tick after resume, never during reagent preparation.
+ // In a previously reacted mixture, let NEW precipitate form across several
+ // physical ticks. Solids, dissolved species and free volume all interpolate
+ // between two independently balanced inventory snapshots. A newly formed
+ // layer is not declared completed until the final real reaction step.
  vessels=result.vessels.map(v=>{
   if(!v.pendingInventoryReaction||!v.chemicalInventory)return v;
+  const baseline=v.inventoryPrecipitation?.initial??v.chemicalInventory;
   const measured=simulateLabInventory({
-   ...v,volumeMl:labVesselQuantity(v).volumeMl
+   ...v,chemicalInventory:baseline,
+   volumeMl:labVesselQuantity(v).volumeMl
   });
+  const nextStep=measured.steps[0];
+  const nextCase=nextStep?reviewedReactionCases.find(row=>
+   row.equation===nextStep.equation):undefined;
+  const active=v.inventoryPrecipitation;
+  // Only verified precipitation pathways have a gradual molecule/solid
+  // trajectory so far. Other reviewed reactions retain the existing
+  // single-tick solver, including quantitative collection of gases.
+  if((active||nextCase?.observation==="precipitate")&&
+    !measured.unmeasured.length&&!measured.limited){
+   const initial=active?.initial??baseline;
+   const equation=active?.equation??nextCase!.equation;
+   const durationSeconds=active?.durationSeconds??6;
+   const elapsedSeconds=Math.min(durationSeconds,
+    (active?.elapsedSeconds??0)+seconds);
+   const complete=elapsedSeconds>=durationSeconds;
+   const snapshot=complete?labInventorySnapshot(measured):
+    labInterpolateInventory(initial,labInventorySnapshot(measured),
+     elapsedSeconds/durationSeconds);
+   const lastStep=measured.steps[measured.steps.length-1];
+   const lastCase=lastStep?reviewedReactionCases.find(row=>
+    row.equation===lastStep.equation):undefined;
+   changed=true;
+   return {...v,
+    chemicalInventory:snapshot,
+    reagents:Object.keys(snapshot.speciesMol),
+    pendingInventoryReaction:complete?undefined:true,
+    inventoryPrecipitation:complete?undefined:
+     {equation,initial,elapsedSeconds,durationSeconds},
+    completedReaction:complete?lastCase??v.completedReaction:v.completedReaction,
+    uncertain:complete&&(measured.limited||measured.unmeasured.length>0),
+    visualStartedAtMs:!active?nowMs:v.visualStartedAtMs};
+  }
   const step=measured.steps[measured.steps.length-1];
   const completed=step?reviewedReactionCases.find(row=>row.equation===step.equation):undefined;
   changed=true;
   return {...v,
    chemicalInventory:labInventorySnapshot(measured),
    reagents:Object.keys(measured.speciesMol),
-   pendingInventoryReaction:undefined,
+   pendingInventoryReaction:undefined,inventoryPrecipitation:undefined,
    completedReaction:completed??v.completedReaction,
    uncertain:measured.limited||measured.unmeasured.length>0,
    visualStartedAtMs:completed?nowMs:v.visualStartedAtMs};
@@ -1074,6 +1109,12 @@ export type LabVessel={pourFraction?:number;
  chemicalInventory?:LabChemicalSnapshot;
  /** Paused preparation of an already reacted mixture awaits a simulation tick. */
  pendingInventoryReaction?:boolean;
+ /** Current quantitative precipitation in a persistent, previously used
+  * mixture. The baseline remains immutable across ticks and pause/resume. */
+ inventoryPrecipitation?:{
+  equation:string;initial:LabChemicalSnapshot;
+  elapsedSeconds:number;durationSeconds:number;
+ };
  /** Moles of reagents/products; solvent volume is conserved separately. */
  reactionAmounts?:LabReactionAmounts;
  /** A verified reaction already completed in this material; survives full transfer. */
@@ -1234,6 +1275,29 @@ export function setLabSimulationPaused(bench:LabBench,paused:boolean,nowMs=Date.
  return {...bench,vessels,simulationPaused:paused,simulationAtMs:nowMs,
   pausedAtMs:paused?nowMs:undefined,
   experimentClock,resumeExperimentClock:paused?resumeClock:false,event:bench.event+1};
+}
+/** Mass-conserving visual progression between present and final reviewed
+ * chemistry. Every molecule and phase has the same linear reaction extent.
+ * The final inventory comes directly from the verified equilibrium solver. */
+function labInterpolateInventory(
+ from:LabChemicalSnapshot,to:LabChemicalSnapshot,fraction:number
+):LabChemicalSnapshot{
+ const blend=(a:Record<string,number>|undefined,b:Record<string,number>|undefined)=>{
+  const result:Record<string,number>={};
+  for(const id of new Set([...Object.keys(a??{}),...Object.keys(b??{})])){
+   const mol=(a?.[id]??0)+((b?.[id]??0)-(a?.[id]??0))*fraction;
+   if(mol>1e-12)result[id]=mol;
+  }
+  return result;
+ };
+ return {speciesMol:blend(from.speciesMol,to.speciesMol),
+  solidMol:blend(from.solidMol,to.solidMol),
+  retainedGasMol:blend(from.retainedGasMol,to.retainedGasMol),
+  releasedGasMol:blend(from.releasedGasMol,to.releasedGasMol),
+  equilibriumEquations:from.equilibriumEquations,
+  // Mark a partial state as already measured so readouts cannot run a
+  // separate complete-equilibrium prediction and skip ahead.
+  settled:true};
 }
 export const defaultLabBench=():LabBench=>({
  vessels:[{id:"v1",kind:"beaker",x:48,y:70,reagents:[],environment:"aqueous",observed:false}],
@@ -1746,7 +1810,7 @@ export function labVesselPressure(v:LabVessel,temperatureC=v.temperatureC??22){
   reactionGasMol:v.stoppered?labHeadspaceGasMoles(v):0},0,temperatureC);
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,chemicalInventory:undefined,pendingInventoryReaction:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,binarySaltPhase:undefined,sealedReactionGasBaselineMol:undefined,gasCollectionTargetId:undefined,
+ const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,chemicalInventory:undefined,pendingInventoryReaction:undefined,inventoryPrecipitation:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,binarySaltPhase:undefined,sealedReactionGasBaselineMol:undefined,gasCollectionTargetId:undefined,
   gasCollectionProcessedMol:undefined,gasCollectedMol:undefined,
   meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined,ventedVaporMl:undefined,lastEvaporatedAtMs:undefined}));
  return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId,
@@ -1788,6 +1852,9 @@ export function setLabEnvironment(bench:LabBench,id:string,environment:ReactionE
   const next=identifyReaction(v.reagents,environment);
   const starts=previous.status!=="reaction"&&!v.uncertain&&next.status==="reaction";
   return {...v,environment,
+   // Changing conditions while a precipitate is growing keeps the current
+   // measured material, but the old future trajectory is no longer valid.
+   inventoryPrecipitation:environment!==v.environment?undefined:v.inventoryPrecipitation,
    reactionHeat:environment!==v.environment?undefined:v.reactionHeat,
    reactionAmounts:environment===v.environment?v.reactionAmounts:undefined,
    completedReaction:v.completedReaction??(v.reactionAmounts?.complete&&
@@ -1916,6 +1983,7 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
      {...labInventorySnapshot(quantified),
       ...(original.settled===true&&reagent==="H2O"?{settled:true}:{})},
     pendingInventoryReaction:defer||undefined,
+    inventoryPrecipitation:undefined,
     binarySaltPhase:undefined,mixedSaltPhase:undefined,
     physicalProcess:undefined,physicalStartedAtMs:undefined,
     filteredSolution:v.filteredSolution?
@@ -2042,7 +2110,8 @@ function labInventoryAvailableForTransfer(v:LabVessel){
  * by the requested physical liquid-volume fraction. */
 function transferSnapshotSample(bench:LabBench,source:LabVessel,target:LabVessel,
  amountMl:number):LabBench{
- if(source.reactionAmounts&&!source.reactionAmounts.complete||
+ if(source.inventoryPrecipitation||target.inventoryPrecipitation||
+  source.reactionAmounts&&!source.reactionAmounts.complete||
   target.reactionAmounts&&!target.reactionAmounts.complete)return bench;
  const donorMl=labVesselQuantity(source).volumeMl;
  if(donorMl<amountMl-1e-8||donorMl<=0||
@@ -2148,7 +2217,8 @@ export function transferLabMeasuredLiquid(
   Math.abs(volumeMl*100-Math.round(volumeMl*100))>1e-6)return bench;
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
- if(!source||!target||!source.reagents.length||source.stoppered||target.stoppered)return bench;
+ if(!source||!target||!source.reagents.length||source.stoppered||target.stoppered||
+  source.inventoryPrecipitation||target.inventoryPrecipitation)return bench;
  if(source.chemicalInventory||target.chemicalInventory)
   return transferSnapshotSample(bench,source,target,volumeMl);
  const entries=source.reagents.map(id=>({id,dose:source.doses?.[id]}));
@@ -2481,7 +2551,8 @@ export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:strin
  // A reaction still in progress cannot be represented by final products yet:
  // retain the original state until its measured progression finishes.
  if((a.reactionAmounts&&!a.reactionAmounts.complete)||
-    (t.reactionAmounts&&!t.reactionAmounts.complete))return b;
+    (t.reactionAmounts&&!t.reactionAmounts.complete)||
+    a.inventoryPrecipitation||t.inventoryPrecipitation)return b;
  if(a.chemicalInventory||t.chemicalInventory||a.reactionAmounts?.complete||
     t.reactionAmounts?.complete||a.completedReaction||t.completedReaction)
   return pourLabVessel(b,sourceId,targetId);
@@ -2672,7 +2743,8 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
  if(sourceId===targetId)return bench;
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
- if(!source||!target||!source.reagents.length||source.stoppered||target.stoppered)return bench;
+ if(!source||!target||!source.reagents.length||source.stoppered||target.stoppered||
+  source.inventoryPrecipitation||target.inventoryPrecipitation)return bench;
  // Do not mistake a partially reacted suspension for completed products.
  if((source.reactionAmounts&&!source.reactionAmounts.complete)||
     (target.reactionAmounts&&!target.reactionAmounts.complete))return bench;

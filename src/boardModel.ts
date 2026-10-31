@@ -934,6 +934,25 @@ export function parseDocument(raw: string): DocumentData {
           (v.pendingInventoryReaction==null||(
             typeof v.pendingInventoryReaction==="boolean"&&
             (!v.pendingInventoryReaction||!!v.chemicalInventory)))&&
+          (v.inventoryPrecipitation==null||(
+            v.pendingInventoryReaction===true&&!!v.chemicalInventory&&
+            typeof v.inventoryPrecipitation.equation==="string"&&
+            v.inventoryPrecipitation.equation.length<=500&&
+            v.inventoryPrecipitation.equation.includes("↓")&&
+            !!v.inventoryPrecipitation.initial&&
+            typeof v.inventoryPrecipitation.initial==="object"&&
+            Number.isFinite(v.inventoryPrecipitation.elapsedSeconds)&&
+            Number.isFinite(v.inventoryPrecipitation.durationSeconds)&&
+            v.inventoryPrecipitation.elapsedSeconds>=0&&
+            v.inventoryPrecipitation.durationSeconds>0&&
+            v.inventoryPrecipitation.durationSeconds<=120&&
+            v.inventoryPrecipitation.elapsedSeconds<=v.inventoryPrecipitation.durationSeconds&&
+            validMolRecord(v.inventoryPrecipitation.initial.speciesMol)&&
+            validMolRecord(v.inventoryPrecipitation.initial.solidMol)&&
+            (v.inventoryPrecipitation.initial.retainedGasMol==null||
+             validMolRecord(v.inventoryPrecipitation.initial.retainedGasMol))&&
+            (v.inventoryPrecipitation.initial.releasedGasMol==null||
+             validMolRecord(v.inventoryPrecipitation.initial.releasedGasMol))))&&
           (v.meltFraction==null||(Number.isFinite(v.meltFraction)&&
             v.meltFraction>=0&&v.meltFraction<=1))&&
           (v.phaseTransition==null||["melting","crystallizing"].includes(v.phaseTransition))&&
@@ -1159,6 +1178,9 @@ export function parseDocument(raw: string): DocumentData {
                  // Evaporation keeps that water dose without synthesizing a
                  // second reagent entry. Never discard its measured volume.
                  (v.reagents.includes(id)||
+                  // A persistent inventory identifies current species;
+                  // historical stock doses still preserve measured volume.
+                  !!v.chemicalInventory||
                   (id==="H2O"&&dose.unit==="ml"&&dose.concentrationM==null))&&
                  validDose(dose))))&&
             validReaction(v.completedReaction)&&validReactionAmounts(v.reactionAmounts)&&

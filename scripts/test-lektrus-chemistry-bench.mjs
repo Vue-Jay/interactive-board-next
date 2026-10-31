@@ -2220,9 +2220,31 @@ deferred=lab.setLabSimulationPaused(deferred,false,9000);
 assert.equal(lab.recordLabReactions(deferred).reactionLog.length,1,
  "Resume alone cannot write an equation before the reaction tick");
 deferred=lab.advanceLabSimulation(deferred,10000);
+assert.equal(deferred.vessels[0].pendingInventoryReaction,true);
+const growingAgCl=deferred.vessels[0].chemicalInventory.solidMol.AgCl??0;
+assert.doesNotThrow(()=>parseLab(deferred),
+ "An in-progress precipitation and its historic stock doses must survive saving");
+const corruptProgress=structuredClone(deferred);
+corruptProgress.vessels[0].inventoryPrecipitation.initial.solidMol.AgCl=-1;
+assert.throws(()=>parseLab(corruptProgress),/Повреждено состояние химического стола/,
+ "Malformed persisted precipitation progress is rejected before reopening");
+assert.ok(growingAgCl>0&&growingAgCl<.001,
+ "A real intermediate solid fraction forms during the resumed experiment");
+assert.ok((deferred.vessels[0].chemicalInventory.speciesMol.AgNO3??0)>0,
+ "The partially reacted sample retains unconsumed dissolved silver nitrate");
+assert.equal(lab.labVesselContents(deferred.vessels[0]).solid.find(x=>
+ x.formula==="AgCl")?.massG>0,true);
+assert.equal(lab.recordLabReactions(deferred).reactionLog.length,1,
+ "An in-progress follow-up reaction cannot write a premature equation");
+deferred=lab.setLabSimulationPaused(deferred,true,11000);
+assert.equal(lab.advanceLabSimulation(deferred,16000),deferred,
+ "Pausing during precipitation freezes the actual measured extent");
+deferred=lab.setLabSimulationPaused(deferred,false,17000);
+deferred=lab.advanceLabSimulation(deferred,23000);
 assert.equal(deferred.vessels[0].pendingInventoryReaction,undefined);
-assert.ok((deferred.vessels[0].chemicalInventory.solidMol.AgCl??0)>0,
- "The resumed simulation actually deposits AgCl");
+assert.equal(deferred.vessels[0].inventoryPrecipitation,undefined);
+assert.ok((deferred.vessels[0].chemicalInventory.solidMol.AgCl??0)>growingAgCl,
+ "The settled precipitate finishes growing only after resuming");
 deferred=lab.recordLabReactions(deferred);
 assert.equal(deferred.reactionLog.length,2,
  "The follow-up equation is written once, after the reaction runs");
@@ -2280,9 +2302,16 @@ console.log("Paused follow-up preparation, settled solids and delayed chalk: OK"
  moved=lab.setLabSimulationPaused(moved,false,2000);
  moved=lab.advanceLabSimulation(moved,3000);
  receiver=moved.vessels.find(v=>v.id==="v2");
+ assert.equal(receiver.pendingInventoryReaction,true);
+ const midwayMass=receiver.chemicalInventory.solidMol.AgCl??0;
+ assert.ok(midwayMass>0&&midwayMass<.0009,
+  "An initially prepared AgCl experiment grows solid gradually");
+ assert.equal(lab.recordLabReactions(moved).reactionLog?.length??0,0);
+ moved=lab.advanceLabSimulation(moved,9000);
+ receiver=moved.vessels.find(v=>v.id==="v2");
  assert.equal(receiver.pendingInventoryReaction,undefined);
  assert.ok((receiver.chemicalInventory.solidMol.AgCl??0)>.0009,
-  "New precipitate is deposited only when resumed simulation advances");
+  "New precipitate settles completely after the scheduled reaction duration");
  assert.equal(lab.recordLabReactions(moved).reactionLog.length,1);
  
  const partialBefore=preparation(40,140,.01);
@@ -2299,8 +2328,12 @@ console.log("Paused follow-up preparation, settled solids and delayed chalk: OK"
  partial=lab.setLabSimulationPaused(partial,false,2000);
  partial=lab.advanceLabSimulation(partial,3000);
  receiver=partial.vessels.find(v=>v.id==="v2");
- assert.ok((receiver.chemicalInventory.solidMol.AgCl??0)>.0009,
-  "Partially poured mixture reacts after process resume");
+ assert.ok((receiver.chemicalInventory.solidMol.AgCl??0)>0,
+  "Partial pouring starts forming a nonzero measured precipitate after resume");
+ assert.equal(receiver.pendingInventoryReaction,true,
+  "Partial decanting produces a gradually changing reaction state");
+ assert.ok((receiver.chemicalInventory.solidMol.AgCl??0)<.001,
+  "New precipitate cannot instantly jump to its final mass");
  assert.ok((partial.vessels.find(v=>v.id==="v1").chemicalInventory.speciesMol.NaCl??0)>.0029,
   "Donor keeps the conserved leftover sodium chloride");
  
