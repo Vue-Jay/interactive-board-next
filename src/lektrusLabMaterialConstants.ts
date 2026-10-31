@@ -29,6 +29,10 @@ import {labExactMeasuredSolubility} from "./lektrusLabSolubilityMeasurements";
  *   https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.260-223.pdf
  */
 export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
+ // CDH Fine Chemical safety sheet, exact K2SO3 anhydrous reference:
+ // true material density 2.35 g/cm3 at 20 C (NOT powder bulk density).
+ // https://www.cdhfinechemical.com/images/product/msds/92_1413110475_PotassiumSulphite-CASNO-10117-38-1-MSDS.pdf
+ K2SO3:2.35,
  // Phase-identified dry-crystal densities, g/cm³ at ambient conditions.
  // Co(OH)2 rose-red rhombohedral crystals (not aqueous hydroxide suspension):
  // https://cameo.mfa.org/wiki/Cobaltous_hydroxide
@@ -367,6 +371,10 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
  Na2SO4:[null,null,48.1,45.26,43.09,42.3],
  ZnCl2:[null,null,453,488,541,614],
  NaH2PO4:[null,null,null,179.3,207.3,284.4],
+ // Celestite SrSO4: 20 C in distilled pure water, 0.0138 g per
+ // 100 mL of water. Do NOT round the small positive number to zero.
+ // https://www.mdpi.com/2227-9717/14/1/172
+ SrSO4:[null,labExactMeasuredSolubility("SrSO4",20)??null,null,null,null,null],
  // Source-specific 20 C points plus individually measured Al(NO3)3
  // temperature series; null means UNKNOWN at that exact temperature.
  // Al(NO3)3 becomes the nonahydrate in water. This reference series
@@ -535,7 +543,11 @@ export const LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES:ReadonlySet<string>=new
  // Explicit 20/25/50 C data, not validated precipitation equilibria;
  // sulphate hydrates, lithium acetate crystals and magnesium nitrate
  // transition between different solid phases in water.
- "NiSO4","CH3COOLi","FeSO4","Mg(NO3)2","AgI"
+ "NiSO4","CH3COOLi","FeSO4","Mg(NO3)2","AgI",
+ // Explicit source temperatures only. Sulfite/carbonate speciation,
+ // sulfide mineral Ksp and sulfate solid-phase equilibria remain
+ // reference-only until a fully validated chemical equilibrium model.
+ "K2SO3","Li2SO4","CuS","SrSO4","(NH4)2CO3"
 ]);
 /** Phase fractions for EXACTLY one supported anhydrous crystalline salt
  * and pure explicitly measured H2O. Aqueous mixed salts, prepared stocks
