@@ -380,7 +380,8 @@ export function labSimulationTickWaitMs(bench:LabBench,nowMs:number):number|null
  const profile=LAB_REALISM_PROFILES[settings.realism];
  const burette=vessels.some(v=>v.buretteOpen);
  const reactions=vessels.some(labReactionNeedsTick);
- const phase=profile.binarySaltKinetics&&vessels.some(v=>
+ // Even simple demos need a cleanup tick to finish an existing phase effect.
+ const phase=vessels.some(v=>
   v.physicalProcess==="dissolving"||v.physicalProcess==="crystallizing");
  const devices=placedLabDevices(bench);
  const powered=devices.some(d=>d.powered||(d.temperatureC??22)>22.1);
@@ -390,7 +391,7 @@ export function labSimulationTickWaitMs(bench:LabBench,nowMs:number):number|null
    labVaporPressureKPa(v,v.temperatureC??22)!==undefined);
  if(!burette&&!reactions&&!phase&&!powered&&!thermal&&!evaporating)return null;
  const cadenceMs=settings.realism==="low"?
-  (burette||reactions?900:powered||thermal?2600:9800):
+  (burette||reactions?900:phase||powered||thermal?2600:9800):
   burette||reactions||phase?500:powered||thermal?1900:9800;
  // Faster simulation means shorter, smoother UI intervals, not extra timers.
  const intervalMs=Math.max(400,Math.round(cadenceMs/Math.sqrt(settings.timeScale)));
