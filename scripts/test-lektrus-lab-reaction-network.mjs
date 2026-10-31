@@ -794,3 +794,77 @@ for(const [formula,cp] of Object.entries({
  approximately(row.roomHeatJPerGK,cp,1e-12);
 }
 console.log("34 exact crystalline Perry Handbook Cp correlations: molar-to-mass, temperature range, and laboratory heat transfer verified");
+
+
+// PubChem/CRC/ICSC/Ullmann/Merck exact-temperature measurements, with
+// their original source units, are converted without inventing missing
+// 20°C rows from measurements at 18°C or 25°C.
+const literature=load("src/lektrusLabSolubilityMeasurements.ts");
+const pureWaterMeasurements=literature.LAB_MEASURED_PURE_WATER_SOLUBILITIES;
+assert.equal(pureWaterMeasurements.length,26);
+assert.equal(new Set(pureWaterMeasurements.map(x=>x.formula)).size,15);
+assert.equal(pureWaterMeasurements.filter(x=>x.temperatureC===20).length,10);
+const measuredTemperatures=new Set([0,20,40,60,80,100]);
+assert.equal(pureWaterMeasurements.filter(
+ x=>!measuredTemperatures.has(x.temperatureC)).length,8);
+const literatureKeys=new Set();
+for(const x of pureWaterMeasurements){
+ const key=x.formula+"|"+x.temperatureC;
+ assert.ok(!literatureKeys.has(key),"Duplicate experimental solvent record "+key);
+ literatureKeys.add(key);
+ assert.ok(x.sourceUrl.startsWith("https://"));
+ assert.ok(labMolarMass(x.formula)>0);
+ const normalized=literature.labMeasuredSolubilityGPer100gWater(x);
+ assert.ok(Number.isFinite(normalized)&&normalized>0);
+ approximately(
+  physicalDensity.labSingleSaltSolubilityGPer100gWater(
+   x.formula,x.temperatureC),normalized,1e-9);
+ assert.ok(physicalDensity.LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES.has(
+  x.formula),"Do not infer hydrate or weak-electrolyte equilibrium from "+key);
+ const near=literature.labNearestMeasuredSolubilityReference(
+  x.formula,x.temperatureC);
+ assert.equal(near.temperatureC,x.temperatureC);
+ approximately(near.gPer100gWater,normalized,1e-9);
+}
+for(const [formula,t,expected] of [
+ ["LiCl",20,83.2],["LiCl",40,89.8],["LiCl",60,98.4],
+ ["LiCl",80,111.9],["LiCl",100,128.3],
+ ["Na2S",0,12.4],["Na2S",20,18.6],["Na2S",40,29],
+ ["Na2S",48,35.7],["Na2S",50,39],
+ ["KNO2",20,306],["KNO2",25,312],
+ ["BaSO4",20,.00031],["CaCO3",20,.00066],
+ ["BaCO3",20,.0014],
+ ["MgCO3",20,.01/.9982],["CaSO4",20,.2/.9982],
+ ["PbI2",20,.076/.9982],["PbCO3",20,.00011/.9982],
+ ["PbSO4",25,.0404/.997],
+ ["SrCO3",18,11/10000/.9986],
+ ["FeS",18,.00062/.9986],
+ ["ZnS",18,.00069/.9986],
+ ["Ca3(PO4)2",25,.0025]
+])approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+ formula,t),expected,1e-9);
+// Invalid extrapolation: a 25°C measurement does NOT define the
+// solubility at 20°C, and an isolated 20°C record does not define 21°C.
+for(const formula of ["PbSO4","SrCO3","ZnS","FeS","Ca3(PO4)2"])
+ assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+  formula,20),undefined,"Never mislabel an 18/25°C reading as 20°C");
+for(const formula of ["CaCO3","BaCO3","BaSO4","MgCO3","PbI2","PbCO3"]){
+ assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+  formula,22),undefined,"One measured knot does not define a curve");
+ const p=registryProps.labSubstanceProperties(formula,22);
+ assert.equal(p.literatureSolubilityReference.temperatureC,20);
+ assert.equal(p.binaryCrystallizationUnsupported,true);
+}
+const sr=registryProps.labSubstanceProperties("SrCO3",22);
+assert.equal(sr.literatureSolubilityReference.temperatureC,18);
+assert.equal(sr.solubilityKnown,false,
+ "18°C evidence alone cannot claim a numerical 22°C solubility");
+for(const formula of ["Na2S","KNO2","BaSO4","CaCO3","CaSO4","LiCl"]){
+ const inventory=simulateLabInventory({
+  reagents:[formula,"H2O"],environment:"aqueous",temperatureC:20,
+  doses:{[formula]:{unit:"g",value:10},H2O:{unit:"ml",value:2}}
+ });
+ assert.ok(!(inventory.solidMol[formula]>0),
+  "No fictitious dry crystallization before hydrate/ion speciation: "+formula);
+}
+console.log("26 sourced measurements across 15 salts, including 10 new 20°C series and 8 exact non-grid temperatures");
