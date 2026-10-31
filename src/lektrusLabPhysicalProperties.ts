@@ -18,6 +18,44 @@ export const LAB_GAS_FORMULAS:ReadonlySet<string>=new Set([
  "CH4","C2H4","C2H2","C2H6","C3H8","C4H10","C3H6"
 ]);
 const physical:Record<string,LabThermalRecord>={
+ // 19 source-reviewed solid phase boundaries. All refer only to dry,
+ // exactly specified compounds. A solid that decomposes has no invented
+ // normal boiling point, and a hydrated salt has a separate record.
+ // ATSDR Zinc: https://www.ncbi.nlm.nih.gov/books/NBK600540/table/ch4.tab2/
+ // ATSDR Barium: https://www.ncbi.nlm.nih.gov/books/NBK598782/table/ch4.tab2/
+ // ATSDR Nickel: https://www.ncbi.nlm.nih.gov/books/NBK610343/table/ch4.tab2/
+ // ATSDR Aluminum: https://www.ncbi.nlm.nih.gov/books/NBK597310/table/ch4.tab2/
+ // Other primary references:
+ // https://pubchem.ncbi.nlm.nih.gov/compound/11727 (PbCO3)
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24826 (Fe2(SO4)3)
+ // https://pubchem.ncbi.nlm.nih.gov/compound/5362485 (SrCl2)
+ // https://pubchem.ncbi.nlm.nih.gov/compound/3032536 (CoCl2)
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24456 (Ca3(PO4)2)
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24014 (CuCl2)
+ // https://pubchem.ncbi.nlm.nih.gov/compound/10129889 (LiNO3)
+ // https://www.ncbi.nlm.nih.gov/books/NBK598782/table/ch4.tab2/ (BaSO4)
+ // https://pubchem.ncbi.nlm.nih.gov/compound/14792 (MgO)
+ // https://pubchem.ncbi.nlm.nih.gov/compound/14778 (CaO)
+ "Ba(OH)2":{meltingC:408,note:"Безводный гидроксид бария; октагидрат разлагается при ~78 °C."},
+ "Zn(OH)2":{decompositionC:125,behavior:"decomposes",note:"Zn(OH)₂ разлагается, не кипит."},
+ ZnCl2:{meltingC:290,boilingC:732},
+ NiCl2:{sublimationC:985,behavior:"sublimes",note:"Безводный NiCl₂ сублимирует около 985 °C; справочный расплав при более высокой температуре не является нормальным кипением."},
+ NiSO4:{decompositionC:840,behavior:"decomposes",note:"Безводный NiSO₄; гидраты могут дегидратироваться гораздо раньше."},
+ PbCO3:{decompositionC:315,behavior:"decomposes",note:"Церуссит PbCO₃ выделяет CO₂ при разложении."},
+ "Fe2(SO4)3":{decompositionC:480,behavior:"decomposes",note:"Сухой Fe₂(SO₄)₃; не температура плавления кристаллогидрата."},
+ SrCl2:{meltingC:874,boilingC:1250},
+ CoCl2:{meltingC:735,boilingC:1049},
+ "Ca3(PO4)2":{meltingC:1670,note:"Кристаллический трикальцийфосфат, не фосфатный раствор."},
+ CuCl2:{decompositionC:300,behavior:"decomposes",note:"Около 300 °C начинается ЧАСТИЧНОЕ образование CuCl и Cl₂; показатель порога, не скорость и не обычное кипение."},
+ "Al(OH)3":{decompositionC:300,behavior:"decomposes",note:"При нагревании происходит дегидратация Al(OH)₃; не обычное кипение."},
+ AgBr:{meltingC:432},
+ LiNO3:{meltingC:253},
+ "Al2(SO4)3":{decompositionC:770,behavior:"decomposes",note:"Сульфат алюминия, безводная форма; гидраты теряют воду раньше."},
+ MgO:{meltingC:2852,note:"Безводный оксид магния (периклаз), не Mg(OH)₂."},
+ CaO:{meltingC:2572,note:"Чистый CaO, не гидроксид и не CaCO₃."},
+ BaSO4:{meltingC:1580,note:"Чистый барит BaSO₄ при обычном давлении."},
+ ZnO:{meltingC:1975,note:"Высокотемпературное значение для ZnO; на воздухе возможна летучесть."},
+
  // Further individually checked anhydrous phases. None of these records
  // applies to hydrated variants or dilute prepared solutions.
  // ILO/WHO ICSC: Ca(OH)2 loses water, it does not melt at 580 C.
