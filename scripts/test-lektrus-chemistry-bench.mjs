@@ -2345,6 +2345,107 @@ console.log("Paused follow-up preparation, settled solids and delayed chalk: OK"
 }
 console.log("Paused full/partial/volumetric transfers stage follow-up chemistry: OK");
 
+{
+ const stock=(value,concentrationM)=>({unit:"ml",value,concentrationM});
+ const gasPrepared=(closed=false)=>{
+  let b=lab.putLabReagent(detailedBench(),"v1","Na2CO3",stock(10,.1));
+  b=lab.addLabVessel(b,"beaker");
+  b={...b,vessels:b.vessels.map(v=>v.id!=="v1"?v:{
+   ...v,kind:closed?"flask":v.kind,
+   chemicalInventory:{speciesMol:{Na2CO3:.001},solidMol:{},
+    releasedGasMol:{},retainedGasMol:{}}
+  })};
+  b=lab.setLabSimulationPaused(b,true,1000);
+  b=lab.putLabReagent(b,"v1","HCl",stock(20,.1));
+  return b;
+ };
+ let g=gasPrepared();
+ assert.equal(g.vessels[0].pendingInventoryReaction,true);
+ assert.equal(g.vessels[0].chemicalInventory.releasedGasMol.CO2??0,0,
+  "Preparatory mixing cannot release a future gas on pause");
+ g=lab.setLabGasCollection(g,"v1","v2");
+ assert.equal(lab.labFollowUpGasProgress(g.vessels[0]),undefined);
+ g=lab.setLabSimulationPaused(g,false,2000);
+ assert.equal(lab.recordLabReactions(g).reactionLog?.length??0,0);
+ g=lab.advanceLabSimulation(g,3000);
+ let source=g.vessels.find(v=>v.id==="v1");
+ let receiver=g.vessels.find(v=>v.id==="v2");
+ const progress=lab.labFollowUpGasProgress(source);
+ assert.equal(source.pendingInventoryReaction,true);
+ assert.equal(source.inventoryGasReaction.durationSeconds,24);
+ assert.ok(progress.totalMol>0&&progress.totalMol<.001,
+  "First reaction tick has a measurable but not full gas yield");
+ assert.ok(progress.rateMolPerSecond>0);
+ assert.ok((receiver.doses?.CO2?.value??0)>.9,
+  "Connected tube receives only gas produced in the current tick");
+ assert.ok((receiver.doses?.CO2?.value??0)<3,
+  "A receiving vessel cannot collect all 24 seconds of gas in the first second");
+ assert.equal(lab.recordLabReactions(g).reactionLog?.length??0,0);
+ const gasMass=ledger=>{
+  return Object.entries(ledger.speciesMol).concat(
+   Object.entries(ledger.releasedGasMol??{}),
+   Object.entries(ledger.retainedGasMol??{})).reduce((n,[id,mol])=>
+    n+mol*chem.labMolarMass(id),0);
+ };
+ const startingMass=gasMass(source.inventoryGasReaction.initial);
+ assert.ok(Math.abs(gasMass(source.chemicalInventory)-startingMass)<1e-6,
+  "Each intermediate mole ledger conserves full chemical mass");
+ g=lab.setLabSimulationPaused(g,true,3500);
+ assert.equal(lab.advanceLabSimulation(g,9000),g,
+  "Global pause holds measured gas and its receiver frozen");
+ const pausedYield=lab.labFollowUpGasProgress(g.vessels[0]).totalMol;
+ g=lab.setLabSimulationPaused(g,false,10000);
+ g=lab.advanceLabSimulation(g,11000);
+ assert.ok(lab.labFollowUpGasProgress(g.vessels[0]).totalMol>pausedYield,
+  "Resuming continues the saved gas yield rather than restarting it");
+ for(const at of [21000,31000,41000])
+  g=lab.advanceLabSimulation(g,at);
+ source=g.vessels.find(v=>v.id==="v1");
+ receiver=g.vessels.find(v=>v.id==="v2");
+ assert.equal(source.pendingInventoryReaction,undefined);
+ assert.ok(Math.abs(lab.labFollowUpGasProgress(source).totalMol-.001)<1e-8,
+  "Completed measured carbonate reaction yields stoichiometric CO2");
+ assert.equal(lab.labFollowUpGasProgress(source).rateMolPerSecond,0);
+ assert.ok((receiver.doses?.CO2?.value??0)>24,
+  "Gas collection spans all measured reaction intervals");
+ assert.ok(Math.abs(gasMass(source.chemicalInventory)-startingMass)<1e-6);
+ assert.equal(lab.recordLabReactions(g).reactionLog?.length??0,1,
+  "The gas equation is written only after all reaction progress is complete");
+ const beforeHook=receiver.doses.CO2.value;
+ const lateHook=lab.setLabGasCollection(g,"v1",undefined);
+ const rehooked=lab.setLabGasCollection(lateHook,"v1","v2");
+ assert.equal(lab.labFollowUpGasProgress(rehooked.vessels[0]).rateMolPerSecond,0);
+ assert.equal(rehooked.vessels[1].doses.CO2.value,beforeHook,
+  "Reconnecting after completion cannot collect the same gas twice");
+ assert.doesNotThrow(()=>parseLab(g),
+  "Persisted measured gas history can reopen with completed collection");
+
+ let sealed=gasPrepared(true);
+ sealed=lab.setLabSimulationPaused(sealed,false,2000);
+ sealed=lab.advanceLabSimulation(sealed,3000);
+ sealed=lab.setLabVesselStopper(sealed,"v1",true);
+ const beforePressure=lab.labVesselPressure(sealed.vessels[0]).reactionGasPressureKPa;
+ sealed=lab.advanceLabSimulation(sealed,4000);
+ assert.ok(lab.labVesselPressure(sealed.vessels[0]).reactionGasPressureKPa>
+  beforePressure,"New CO2 adds pressure to the sealed vessel progressively");
+ const trapped=sealed.vessels[0].chemicalInventory.retainedGasMol.CO2;
+ assert.ok(trapped>0);
+ sealed=lab.setLabVesselStopper(sealed,"v1",false);
+ assert.equal(sealed.vessels[0].chemicalInventory.retainedGasMol.CO2??0,0,
+  "Removing the stopper physically vents existing pressurised CO2");
+ assert.ok((sealed.vessels[0].chemicalInventory.releasedGasMol.CO2??0)>
+  trapped,"Vented gas remains conserved in the product ledger");
+ sealed=lab.setLabVesselStopper(sealed,"v1",true);
+ assert.ok((lab.labVesselPressure(sealed.vessels[0]).reactionGasPressureKPa??0)<.001,
+  "Replacing the stopper cannot re-pressurise the vessel from already vented gas");
+ const damaged=structuredClone(sealed);
+ damaged.vessels[0].inventoryGasReaction.initial.speciesMol.Na2CO3=-10;
+ assert.throws(()=>parseLab(damaged),/Повреждено состояние химического стола/,
+  "Invalid gas history must not poison a saved collaborative board");
+}
+console.log("Measured follow-up gas, sealed pressure, collection and pause: OK");
+
+
 
 const originalShared=lab.recordLabReactions(measuredSediment);
 const localShared={...originalShared,reactionLog:[...originalShared.reactionLog,
