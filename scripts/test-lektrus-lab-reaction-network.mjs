@@ -395,7 +395,7 @@ const bulkBinary={
  K2Cr2O7:[4.68,12.49,26.3,45.6,73,103],
  CuSO4:[25.5,36.2,48,60,70,83],
  Na2CO3:[7.1,21.4,48.5,46.5,45.8,45.5],
- Li2CO3:[null,1.33,null,null,null,null],
+ Li2CO3:[1.543,1.33,1.174,1.010,.847,.715],
  NaF:[null,4.1,null,null,null,null],
  NaBr:[null,null,null,118,118.3,121.2],
  Na2SO3:[null,null,37,33.2,29,26.6],
@@ -419,11 +419,21 @@ for(const [formula,values] of Object.entries(bulkBinary)){
  assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,-1),undefined);
  assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,101),undefined);
 }
-assert.equal(measuredNewCells,44);
-for(const id of ["Li2CO3","NaF"]){
- assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(id,15),undefined);
- assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(id,20.01),undefined);
-}
+assert.equal(measuredNewCells,49);
+// NaF remains an isolated 20 C measurement. Li2CO3 is now a fully
+// independently tabulated retrograde solubility series, not isolated data.
+assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater("NaF",15),undefined);
+assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater("NaF",20.01),undefined);
+const lithiumCarbonateKnot=[1.543,1.33,1.174,1.010,.847,.715];
+for(let i=0;i<lithiumCarbonateKnot.length;i++)
+ approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+  "Li2CO3",[0,20,40,60,80,100][i]),lithiumCarbonateKnot[i],1e-10);
+approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+ "Li2CO3",30),(1.33+1.174)/2,1e-10);
+assert.ok(lithiumCarbonateKnot.every((v,i,a)=>i===0||v<a[i-1]),
+ "Lithium carbonate should become LESS soluble as water warms");
+assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+ "Li2CO3",101),undefined);
 approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater("K2Cr2O7",30),
  (12.49+26.3)/2,1e-9);
 for(const id of ["CuSO4","Na2CO3","Na2SO4","K2CO3","NaBr","Na2SO3","ZnCl2","NaH2PO4"]){
@@ -445,8 +455,8 @@ for(const id of ["Li2CO3","NaF","K2Cr2O7"]){
  assert.ok((result.solidMol[id]??0)>0,id+" should crystallize in binary pure water");
 }
 const dataOnly=Object.values(bulkBinary).reduce((n,row)=>n+row.filter(v=>v!==null).length,0);
-assert.equal(dataOnly,44);
-console.log("Eleven new salt solubility datasets; 44 measured knots; hydrate-safe crystallization");
+assert.equal(dataOnly,49);
+console.log("Eleven salt solubility datasets; 49 measured knots; hydrate-safe crystallization");
 
 // Heat capacity of these exact dry compounds, not the unknown mixture Cp.
 // Source entries are J/g/K, from University Medical Lublin and
@@ -635,3 +645,64 @@ assert.equal(registryProps.labSubstanceProperties("NaCl")
 assert.equal(registryProps.labSubstanceProperties("CuSO4")
  .liquidDensityGPerMl,undefined);
 console.log("37 validated saturated water-solution densities kept distinct from dilute stocks and pure substances");
+
+
+// Additional mass-specific c_p values for dry crystals at ~298 K. The first
+// nine are converted from Cp(298 K)/R (Smith/Van Ness/Abbott Appendix C,
+// reference Kelley US Bureau of Mines); the last seven from room-temperature
+// cal/(g K), AMCP 706-106 Appendix A, using 1 cal = 4.184 J.
+const curatedRoomHeat={
+ "CaO":.749943,"CaCO3":.818097,"Ca(OH)2":1.258738,
+ "CuO":.531720,"FeS":.621705,"LiCl":1.133202,
+ "NaHCO3":1.043086,"SiO2":.739641,"Fe2O3":.649799,
+ "BaCO3":.430952,"BaCl2":.366100,"Ba(NO3)2":.637223,
+ "CaSO4":.707096,"CuSO4":.656888,"PbCO3":.406266,
+ "Pb(NO3)2":.490783
+};
+assert.equal(Object.keys(curatedRoomHeat).length,16);
+for(const [formula,cp] of Object.entries(curatedRoomHeat)){
+ const prop=heatProps.LAB_CALORIMETRY_REFERENCE[formula];
+ assert.equal(prop?.phase,"solid",formula+" must be dry phase");
+ approximately(prop.specificJPerGK,cp,1e-6);
+ const known=heatProps.labKnownHeatCapacityJPerK("beaker",{
+  [formula]:{unit:"g",value:5}
+ });
+ approximately(known,65*.84+5*cp,2e-5);
+ // A dry salt's heat capacity is not that of its aqueous solution.
+ assert.equal(heatProps.labKnownHeatCapacityJPerK("beaker",{
+  [formula]:{unit:"g",value:5},H2O:{unit:"ml",value:5}
+ }),undefined,"Cp must not be incorrectly transferred to a solution "+formula);
+ assert.ok(registryProps.labSubstanceProperties(formula).specificHeatJPerGK>0);
+}
+const additionalDryDensities={
+ ZnSO4:3.8,Li2CO3:2.11,Na3PO4:2.54,"Mg(NO3)2":2.3,
+ Li2SO4:2.2,K3PO4:2.564
+};
+for(const [formula,density] of Object.entries(additionalDryDensities)){
+ approximately(physicalDensity.labCrystalDensityGml(formula),density);
+ assert.equal(registryProps.labSubstanceProperties(formula).crystalDensityGPerMl,density);
+}
+for(const [formula,data] of Object.entries({
+ "Ca(OH)2":{decompositionC:580,behavior:"decomposes"},
+ "BaCO3":{decompositionC:1380,behavior:"decomposes"},
+ "ZnSO4":{decompositionC:680,behavior:"decomposes"},
+ "Li2CO3":{meltingC:723,decompositionC:1310,behavior:"decomposes"},
+ "Li2SO4":{meltingC:860},
+ "K3PO4":{meltingC:1340},
+ "Na3PO4":{meltingC:1583}
+})){
+ const t=thermalProps.labThermalInfo(formula,"g");
+ assert.equal(t.known,true,formula+" thermal reference missing");
+ for(const [key,value] of Object.entries(data)){
+  if(typeof value==="number")approximately(t[key],value);
+  else assert.equal(t[key],value);
+ }
+ assert.equal(thermalProps.labThermalInfo(formula,"ml").known,false,
+  "Do not transfer dry-solid decomposition/melting data into aqueous stock");
+}
+for(const formula of ["Ca(OH)2","BaCO3","ZnSO4"]){
+ const t=thermalProps.labThermalInfo(formula,"g");
+ assert.equal(t.boilingC,undefined,"Decomposition cannot be modelled as boiling");
+ assert.equal(t.meltingC,undefined,"Do not invent congruent melt before decomposition");
+}
+console.log("Six verified pure-solid densities, seven solid transitions and sixteen Cp values passed");

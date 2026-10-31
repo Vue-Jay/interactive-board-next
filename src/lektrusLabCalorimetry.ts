@@ -80,7 +80,34 @@ export const LAB_CALORIMETRY_REFERENCE:Readonly<Record<string,SubstanceHeat>>={
  Al2O3:{specificJPerGK:.840,phase:"solid"},
  Fe3O4:{specificJPerGK:.752,phase:"solid"},
  KCl:{specificJPerGK:.670,phase:"solid"},
- K2SO4:{specificJPerGK:.920,phase:"solid"}
+ K2SO4:{specificJPerGK:.920,phase:"solid"},
+ // K.K. Kelley, US Bureau of Mines 584 (1960), Pankratz (1982),
+ // as tabulated in Smith, Van Ness, Abbott & Swihart, app. C.2:
+ // https://www.scribd.com/document/672105614/Smith-Van-Ness-Abbott-and-Swihart-2018-Appendix-C
+ // From experimental Cp(298 K)/R to J/(g K):
+ // specific Cp = (Cp/R) * 8.314462618 / molarMass(g/mol).
+ // Pure crystalline phases, e.g. CaCO3 calcite and SiO2 quartz, not
+ // carbonates in solution or hydrated variants.
+ CaO:{specificJPerGK:0.749943,phase:"solid"},
+ CaCO3:{specificJPerGK:0.818097,phase:"solid"},
+ "Ca(OH)2":{specificJPerGK:1.258738,phase:"solid"},
+ CuO:{specificJPerGK:0.53172,phase:"solid"},
+ FeS:{specificJPerGK:0.621705,phase:"solid"},
+ LiCl:{specificJPerGK:1.133202,phase:"solid"},
+ NaHCO3:{specificJPerGK:1.043086,phase:"solid"},
+ SiO2:{specificJPerGK:0.739641,phase:"solid"},
+ Fe2O3:{specificJPerGK:0.649799,phase:"solid"},
+ // US Army Materiel Command AMCP 706-106 (1964), appendix A table A-4,
+ // independently tabulated room-temperature CAL/(g K) for dry solids.
+ // 1 thermochemical calorie = 4.184 J, converted explicitly.
+ // https://ru.djvu.online/file/FxAstfSBiPOi2
+ BaCO3:{specificJPerGK:0.430952,phase:"solid"},
+ BaCl2:{specificJPerGK:0.3661,phase:"solid"},
+ "Ba(NO3)2":{specificJPerGK:0.637223,phase:"solid"},
+ CaSO4:{specificJPerGK:0.707096,phase:"solid"},
+ CuSO4:{specificJPerGK:0.656888,phase:"solid"},
+ PbCO3:{specificJPerGK:0.406266,phase:"solid"},
+ "Pb(NO3)2":{specificJPerGK:0.490783,phase:"solid"}
 };
 /** Effective glass + utensil thermal mass by vessel type, grams of glass
  * equivalent (c_glass≈0.84 J/g/K). Intended for comparative teaching only. */
