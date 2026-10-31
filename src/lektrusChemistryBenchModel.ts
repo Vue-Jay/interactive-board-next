@@ -1107,7 +1107,15 @@ export function labVesselContents(v:LabVessel){
  return contents;
 }
 
+const reactionTickByVessel=new WeakMap<LabVessel,boolean>();
 export function labReactionNeedsTick(vessel:LabVessel):boolean{
+ const cached=reactionTickByVessel.get(vessel);
+ if(cached!==undefined)return cached;
+ const needed=calculateLabReactionNeedsTick(vessel);
+ reactionTickByVessel.set(vessel,needed);
+ return needed;
+}
+function calculateLabReactionNeedsTick(vessel:LabVessel):boolean{
  if(vessel.uncertain)return false;
  if(vessel.reactionHeat&&!vessel.reactionHeat.complete)return true;
  if(vessel.reactionAmounts&&!vessel.reactionAmounts.complete)return true;
@@ -1993,10 +2001,16 @@ export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:strin
  const a=b.vessels.find(v=>v.id===sourceId),t=b.vessels.find(v=>v.id===targetId);
  if(!a||!t||!a.reagents.length||a.stoppered||t.stoppered||
   [...new Set([...a.reagents,...t.reagents])].length>MAX_VESSEL_REAGENTS)return b;
- // A quantified filtrate is a phase snapshot, not a set of stock doses.
- // Transfer it atomically rather than running the old dose-only 20-step
- // algorithm which would otherwise leave its dissolved products behind.
- if(a.chemicalInventory||t.chemicalInventory)return pourLabVessel(b,sourceId,targetId);
+ // A measured mixture after reaction must be transferred using its CURRENT
+ // molecular species ledger, not the historical stock names. The same applies
+ // to a filtrate, or a recipient that already contains reaction products.
+ // A reaction still in progress cannot be represented by final products yet:
+ // retain the original state until its measured progression finishes.
+ if((a.reactionAmounts&&!a.reactionAmounts.complete)||
+    (t.reactionAmounts&&!t.reactionAmounts.complete))return b;
+ if(a.chemicalInventory||t.chemicalInventory||a.reactionAmounts?.complete||
+    t.reactionAmounts?.complete||a.completedReaction||t.completedReaction)
+  return pourLabVessel(b,sourceId,targetId);
  const initialDoses={...a.doses};
  const volume=labVesselQuantity(a).volumeMl;
  const current=labVesselQuantity(t).volumeMl;
@@ -2011,11 +2025,15 @@ export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:strin
   unmeasured:a.reagents.some(r=>!initialDoses[r])},event:b.event+1};
 }
 const portionRound=(x:number)=>Math.round(x*1000000)/1000000;
-export function advanceLabPour(b:LabBench):LabBench{
- const p=b.pouring;if(!p||p.step>=20)return b;
+export function advanceLabPour(b:LabBench,portions=1):LabBench{
+ const p=b.pouring;if(!p||p.step>=LAB_POUR_STEPS)return b;
  const source=b.vessels.find(v=>v.id===p.sourceId),target=b.vessels.find(v=>v.id===p.targetId);
  if(!source||!target||!source.reagents.length)return stopLabPour(b);
- const n=p.step+1,finish=n===20;
+ // Gradual mode advances exactly one 5% portion per animation step. Fast mode
+ // transfers the same measured total in a single calculation, avoiding 20
+ // redundant chemical-equilibrium evaluations and 20 intermediate board states.
+ const count=Number.isFinite(portions)?Math.max(1,Math.min(LAB_POUR_STEPS,Math.trunc(portions))):1;
+ const n=Math.min(LAB_POUR_STEPS,p.step+count),finish=n===LAB_POUR_STEPS;
  const left={...source.doses},received={...target.doses};
  for(const [reagent,original] of Object.entries(p.initialDoses)){
   const amount=portionRound(portionRound(original.value*n/20)-
@@ -2080,12 +2098,8 @@ export function advanceLabPour(b:LabBench):LabBench{
 export function fastLabPour(b:LabBench,sourceId:string,targetId:string):LabBench{
  const started=startLabPour(b,sourceId,targetId,"fast-"+Date.now().toString(36));
  if(started===b||!started.pouring)return started;
- let result=started;
- for(let step=0;step<LAB_POUR_STEPS;step++){
-  const next=advanceLabPour(result);
-  if(next===result||!next.pouring||next.pouring.step!==step+1)return b;
-  result=next;
- }
+ const result=advanceLabPour(started,LAB_POUR_STEPS);
+ if(!result.pouring||result.pouring.step!==LAB_POUR_STEPS)return b;
  return stopLabPour(result);
 }
 export function stopLabPour(b:LabBench,id?:string):LabBench{
@@ -2167,7 +2181,12 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
  if(!source||!target||!source.reagents.length||source.stoppered||target.stoppered)return bench;
- if(source.chemicalInventory||target.chemicalInventory){
+ // Do not mistake a partially reacted suspension for completed products.
+ if((source.reactionAmounts&&!source.reactionAmounts.complete)||
+    (target.reactionAmounts&&!target.reactionAmounts.complete))return bench;
+ if(source.chemicalInventory||target.chemicalInventory||
+    source.reactionAmounts?.complete||target.reactionAmounts?.complete||
+    source.completedReaction||target.completedReaction){
   if(labVesselQuantity(source).occupiedMl+labVesselQuantity(target).occupiedMl>
    labVesselQuantity(target).capacityMl+1e-7)return bench;
   return pourMeasuredFiltrate(bench,source,target);
