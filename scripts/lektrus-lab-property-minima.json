@@ -4,7 +4,7 @@
     "stock": 180,
     "crystalDensity": 127,
     "thermal": 131,
-    "specificHeat": 100,
+    "specificHeat": 105,
     "binarySolubility": 53,
     "binarySolubilityAnyTemperature": 60,
     "binarySolubilityMeasuredPoints": 194,
@@ -16,11 +16,12 @@
     "hydrateReferenceAllBases": 36,
     "saturatedSolutionDensityRecords": 37,
     "saturatedSolutionDensityCabinetBases": 37,
-    "curatedSourceCheckedProperties": 89,
+    "curatedSourceCheckedProperties": 94,
     "perryRoomTemperatureCrystalHeats": 34,
     "measuredPureWaterSourcePoints": 79,
     "measuredPureWaterStockBases": 49,
     "measuredPureWaterOffGridPoints": 32,
-    "nistRoomTemperatureSolidHeats": 7
+    "nistRoomTemperatureSolidHeats": 7,
+    "janafRoomTemperatureCrystalHeats": 5
   }
 }
