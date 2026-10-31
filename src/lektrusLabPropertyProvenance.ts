@@ -18,6 +18,17 @@ export type LabReviewedPropertyDatum={
  sourceUrl:string;
 };
 export const LAB_REVIEWED_PROPERTY_DATUMS:readonly LabReviewedPropertyDatum[]=[
+ // Two NIST-JANAF anhydrous room-temperature crystal heat capacities;
+ // and phase-specific correction of lithium hydroxide 924C from a
+ // nonexistent normal boiling point to documented DECOMPOSITION.
+ {formula:"Na2O",property:"specificHeatJPerGK",value:1.11495,
+  sourceUrl:"https://janaf.nist.gov/tables/Na-012.html"},
+ {formula:"Li2SO4",property:"specificHeatJPerGK",value:1.069786,
+  sourceUrl:"https://janaf.nist.gov/tables/Li-026.html"},
+ {formula:"LiOH",property:"meltingC",value:471.15,
+  sourceUrl:"https://janaf.nist.gov/tables/H-020.html"},
+ {formula:"LiOH",property:"decompositionC",value:924,
+  sourceUrl:"https://inchem.org/documents/icsc/icsc/eics0913.htm"},
  // NIST-JANAF direct 298.15 K crystalline measurements. These five
  // values are separate from Perry handbook and NIST WebBook imports.
  {formula:"MgCO3",property:"specificHeatJPerGK",value:0.903894,
