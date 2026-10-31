@@ -18,6 +18,33 @@ export const LAB_GAS_FORMULAS:ReadonlySet<string>=new Set([
  "CH4","C2H4","C2H2","C2H6","C3H8","C4H10","C3H6"
 ]);
 const physical:Record<string,LabThermalRecord>={
+ // Published pure-solid boundaries reviewed at normal pressure:
+ // https://pubchem.ncbi.nlm.nih.gov/compound/25517  NH4Cl ICSC/NIOSH
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24497  CaSO4 ICSC
+ // https://pubchem.ncbi.nlm.nih.gov/compound/11029  MgCO3 NIOSH
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24931  PbI2 CRC
+ // https://pubchem.ncbi.nlm.nih.gov/compound/517045 CH3COONa CRC
+ // https://pubchem.ncbi.nlm.nih.gov/compound/10340  Na2CO3 ICSC
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24462  CuSO4 CRC
+ // https://pubchem.ncbi.nlm.nih.gov/compound/9833931 ZnS CRC
+ // https://pubchem.ncbi.nlm.nih.gov/compound/16211978 Fe3O4 DOE
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24261 SiO2 ICSC
+ NH4Cl:{sublimationC:338,behavior:"sublimes",
+  note:"NH₄Cl возгоняется при нормальном давлении; пары частично диссоциируют на NH₃ и HCl. Не считать температурой кипения."},
+ CaSO4:{decompositionC:1450,behavior:"decomposes",
+  note:"Безводный ангидрит CaSO₄: сильный нагрев вызывает разложение; гипс теряет воду намного раньше."},
+ MgCO3:{decompositionC:350,behavior:"decomposes",
+  note:"Магнезит MgCO₃, разложение зависит от давления CO₂; не устойчивое плавление."},
+ PbI2:{meltingC:410,decompositionC:872,behavior:"decomposes",
+  note:"Чистый PbI₂: плавление ~410°C и высокотемпературное разложение ~872°C, не кипение."},
+ CH3COONa:{meltingC:324,note:"Безводный ацетат натрия, не тригидрат (температура плавления тригидрата существенно ниже)."},
+ Na2CO3:{meltingC:851,note:"Безводный карбонат натрия, не декагидрат или моногидрат."},
+ CuSO4:{decompositionC:650,behavior:"decomposes",
+  note:"Безводный CuSO₄ при сильном нагревании разлагается до CuO и оксидов серы; гидрат теряет воду гораздо раньше."},
+ ZnS:{meltingC:1700,note:"Сульфид цинка, справочная высокая температура для кристаллической фазы, зависящая от полиморфа."},
+ Fe3O4:{meltingC:1597,note:"Магнетит Fe₃O₄, чистая твёрдая фаза."},
+ SiO2:{meltingC:1713,note:"Кристаллический кремнезём, температура зависит от полиморфа и примесей."},
+
  // 19 source-reviewed solid phase boundaries. All refer only to dry,
  // exactly specified compounds. A solid that decomposes has no invented
  // normal boiling point, and a hydrated salt has a separate record.
