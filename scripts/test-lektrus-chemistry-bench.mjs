@@ -2252,6 +2252,67 @@ assert.equal(envChanged.vessels[0].uncertain,false,
  "Changing conditions before any reaction progress must not declare unknown consumed products");
 console.log("Paused follow-up preparation, settled solids and delayed chalk: OK");
 
+{
+ const dose=(value,concentrationM)=>({unit:"ml",value,concentrationM});
+ const preparation=(fromMl,toMl,toConcentration)=>{
+  let b=lab.putLabReagent(detailedBench(),"v1","NaCl",dose(fromMl,.1));
+  b=lab.addLabVessel(b,"beaker");
+  b=lab.putLabReagent(b,"v2","AgNO3",dose(toMl,toConcentration));
+  b={...b,vessels:b.vessels.map(v=>v.id!=="v1"?v:{
+   ...v,chemicalInventory:{speciesMol:{NaCl:fromMl*.1/1000},
+    solidMol:{},retainedGasMol:{},releasedGasMol:{}}
+  })};
+  return lab.setLabSimulationPaused(b,true,1000);
+ };
+ const before=preparation(10,10,.1);
+ let moved=lab.pourLabVessel(before,"v1","v2");
+ assert.notEqual(moved,before,"Paused liquid transfer must still move the substances");
+ let receiver=moved.vessels.find(v=>v.id==="v2");
+ assert.equal(receiver.pendingInventoryReaction,true,
+  "Full transfer stages any reviewed follow-up chemistry until resume");
+ assert.ok((receiver.chemicalInventory.speciesMol.AgNO3??0)>.0009);
+ assert.ok((receiver.chemicalInventory.speciesMol.NaCl??0)>.0009);
+ assert.equal(receiver.chemicalInventory.solidMol.AgCl??0,0,
+  "Full transfer cannot instantly create a precipitate on pause");
+ assert.equal(lab.labVesselContents(receiver).solid.length,0);
+ assert.equal(lab.recordLabReactions(moved),moved,
+  "A poured but unstarted reaction cannot write on the chalkboard");
+ moved=lab.setLabSimulationPaused(moved,false,2000);
+ moved=lab.advanceLabSimulation(moved,3000);
+ receiver=moved.vessels.find(v=>v.id==="v2");
+ assert.equal(receiver.pendingInventoryReaction,undefined);
+ assert.ok((receiver.chemicalInventory.solidMol.AgCl??0)>.0009,
+  "New precipitate is deposited only when resumed simulation advances");
+ assert.equal(lab.recordLabReactions(moved).reactionLog.length,1);
+ 
+ const partialBefore=preparation(40,140,.01);
+ let partial=lab.pourLabVessel(partialBefore,"v1","v2");
+ let source=partial.vessels.find(v=>v.id==="v1");
+ receiver=partial.vessels.find(v=>v.id==="v2");
+ assert.ok(source.doses.NaCl.value>=29.99,
+  "Overflowing a receiver leaves the liquid remainder with the sender");
+ assert.equal(receiver.pendingInventoryReaction,true,
+  "Capacity-limited decanting stages follow-up precipitation on pause");
+ assert.equal(receiver.chemicalInventory.solidMol.AgCl??0,0);
+ assert.ok((receiver.chemicalInventory.speciesMol.NaCl??0)>.0009);
+ assert.equal(lab.labVesselContents(receiver).solid.length,0);
+ partial=lab.setLabSimulationPaused(partial,false,2000);
+ partial=lab.advanceLabSimulation(partial,3000);
+ receiver=partial.vessels.find(v=>v.id==="v2");
+ assert.ok((receiver.chemicalInventory.solidMol.AgCl??0)>.0009,
+  "Partially poured mixture reacts after process resume");
+ assert.ok((partial.vessels.find(v=>v.id==="v1").chemicalInventory.speciesMol.NaCl??0)>.0029,
+  "Donor keeps the conserved leftover sodium chloride");
+ 
+ const sampledBefore=preparation(20,10,.1);
+ const sampled=lab.transferLabMeasuredLiquid(sampledBefore,"v1","v2",5);
+ assert.equal(sampled.vessels.find(v=>v.id==="v2").pendingInventoryReaction,true,
+  "Graduated sampling also preserves global pause semantics");
+ assert.equal(sampled.vessels.find(v=>v.id==="v2").chemicalInventory.solidMol.AgCl??0,0);
+}
+console.log("Paused full/partial/volumetric transfers stage follow-up chemistry: OK");
+
+
 const originalShared=lab.recordLabReactions(measuredSediment);
 const localShared={...originalShared,reactionLog:[...originalShared.reactionLog,
  "CaCO3 → CaO + CO2↑"],event:originalShared.event+1};
