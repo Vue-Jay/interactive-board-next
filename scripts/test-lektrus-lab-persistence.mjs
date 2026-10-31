@@ -34,6 +34,8 @@ for(const [name,body] of [["App.tsx",source],["LektrusChemistryBench.tsx",surfac
  const parsed=ts.createSourceFile(name,body,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  assert.equal(parsed.parseDiagnostics.length,0,name+" syntax must remain valid");
 }
+assert.match(surface,/const next=advanceLabPour\(current\);[\s\S]*?changeRef\.current\?\.\(next,true\)/,
+ "Automatic 5% pouring portions are batched but remain realtime");
 assert.match(surface,/changeRef\.current\?\.\(next,true\)/,
  "Only automatic simulation ticking sends the checkpoint hint");
 assert.match(illustration,/onBenchChange\?\.\(next,simulationOnly\)/);
