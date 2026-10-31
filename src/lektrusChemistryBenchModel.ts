@@ -96,14 +96,25 @@ export type LabFilteredResidue={formula:string;massG?:number;color:string;
  components?:{formula:string;massG:number;color:string}[]};
 export const MAX_LAB_DEVICES=10;
 const clampDevice=(v:number,min:number,max:number)=>Math.round(Math.min(max,Math.max(min,v))*10)/10;
-/** V1 cabinets only stored the types. Preserve them when a board is upgraded. */
+/** Normalize placed devices once per immutable lab revision. A physical
+ * simulation step previously reconstructed the same apparatus list for every
+ * vessel, including separate checks for heating, stirring and supports.
+ * Weak cache keys are safely released with retired board revisions. */
+const normalizedDevicesByBench=new WeakMap<LabBench,LabPlacedDevice[]>();
 export function placedLabDevices(bench:LabBench):LabPlacedDevice[]{
- if(bench.placedDevices)return bench.placedDevices.filter(d=>d.kind!=="thermometer").map(d=>
-  d.kind==="tripod"&&d.shelfVesselId?{...d,active:!!(d.linkedVesselId||d.shelfVesselId),
-   linkedVesselId:d.linkedVesselId??d.shelfVesselId,shelfVesselId:undefined}:d);
- return (bench.devices??[]).filter(kind=>kind!=="thermometer").map((kind,i)=>({
-  id:"legacy-"+kind,kind,x:35+(i%4)*11,y:74+Math.floor(i/4)*5
- }));
+ const cached=normalizedDevicesByBench.get(bench);
+ if(cached)return cached;
+ const normalized:LabPlacedDevice[]=bench.placedDevices?
+  bench.placedDevices.filter(d=>d.kind!=="thermometer").map(d=>
+   d.kind==="tripod"&&d.shelfVesselId?{
+    ...d,active:!!(d.linkedVesselId||d.shelfVesselId),
+    linkedVesselId:d.linkedVesselId??d.shelfVesselId,shelfVesselId:undefined
+   }:d):
+  (bench.devices??[]).filter(kind=>kind!=="thermometer").map((kind,i)=>({
+   id:"legacy-"+kind,kind,x:35+(i%4)*11,y:74+Math.floor(i/4)*5
+  }));
+ normalizedDevicesByBench.set(bench,normalized);
+ return normalized;
 }
 export function addPlacedLabDevice(bench:LabBench,kind:LabDevice,point?:{x:number;y:number}):LabBench{
  if(!labDevices.some(v=>v.id===kind))return bench;
