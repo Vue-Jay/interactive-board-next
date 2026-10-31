@@ -73,6 +73,10 @@ test('after reconnect completed strokes are not replaced by newer previews',asyn
   const h=harness();await h.tick();
   let ws=h.sockets[0];ws.open();ws.join();
   h.channel.sendInk(ink('existing',true));
+  // This final packet was ACKed before the connection dropped. UnACKed
+  // packets have a separate test and MUST be replayed after reconnect.
+  const confirmed=ws.sent.filter(item=>item.payload?.event==='live_ink').at(-1);
+  ws.message('phx_reply',{status:'ok'},confirmed.topic,confirmed.ref);
   ws.onclose();
   h.channel.sendInk(ink('offline-a',true));
   h.channel.sendInk(ink('offline-b',true));
