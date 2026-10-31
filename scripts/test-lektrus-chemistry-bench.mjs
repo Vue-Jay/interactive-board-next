@@ -2222,6 +2222,12 @@ assert.equal(lab.recordLabReactions(deferred).reactionLog.length,1,
 deferred=lab.advanceLabSimulation(deferred,10000);
 assert.equal(deferred.vessels[0].pendingInventoryReaction,true);
 const growingAgCl=deferred.vessels[0].chemicalInventory.solidMol.AgCl??0;
+assert.doesNotThrow(()=>parseLab(deferred),
+ "An in-progress precipitation and its historic stock doses must survive saving");
+const corruptProgress=structuredClone(deferred);
+corruptProgress.vessels[0].inventoryPrecipitation.initial.solidMol.AgCl=-1;
+assert.throws(()=>parseLab(corruptProgress),/Повреждено состояние химического стола/,
+ "Malformed persisted precipitation progress is rejected before reopening");
 assert.ok(growingAgCl>0&&growingAgCl<.001,
  "A real intermediate solid fraction forms during the resumed experiment");
 assert.ok((deferred.vessels[0].chemicalInventory.speciesMol.AgNO3??0)>0,
