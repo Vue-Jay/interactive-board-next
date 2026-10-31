@@ -3,7 +3,9 @@ import {labVesselPH,labIndicatorTint} from "./lektrusLabPH";
 import {labDefaultStockDose,labIsPreparedStock,LAB_STOCK_MOLARITY_M} from "./lektrusLabCatalog";
 import {labVesselThermal} from "./lektrusLabPhysicalProperties";
 import {labSensibleHeatStep} from "./lektrusLabCalorimetry";
-import {labBinarySaltEquilibrium,labAdvanceBinarySaltPhase,labVisibleBinarySaltSolid,type LabBinarySaltState} from "./lektrusLabDissolution";
+import {labBinarySaltEquilibrium,labAdvanceBinarySaltPhase,labVisibleBinarySaltSolid,
+ labSchoolMixedSaltEquilibrium,labAdvanceSchoolMixedSaltPhase,
+ type LabBinarySaltState} from "./lektrusLabDissolution";
 import {labReactionGasProgress} from "./lektrusLabGasDynamics";
 import {labEvaporate,labCanStopper,labIdealBoilingC} from "./lektrusLabEvaporation";
 import {LAB_CRYSTAL_DENSITY_G_ML,labSchoolSolidDensityGml,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
@@ -778,6 +780,8 @@ export type LabVessel={pourFraction?:number;
  physicalProcess?:"dissolving"|"crystallizing";physicalStartedAtMs?:number;
  /** Persisted crystalline fraction, conserved with dissolved molecules. */
  binarySaltPhase?:LabBinarySaltState;
+ /** Each solid's independently evolving mass fraction in nonreacting mixtures. */
+ mixedSaltPhase?:Record<string,number>;
  /** Filtered insoluble solid; mass only when quantities were measured. */
  filteredResidue?:{formula:string;massG?:number;color:string};
  /** Physical carrier volume and identities of dissolved filtrate products. */
