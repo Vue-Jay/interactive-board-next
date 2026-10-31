@@ -85,6 +85,7 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabMaterialConstants")return constants;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
+{
 const kits=load("src/lektrusLabExperimentKits.ts",key=>{
  if(key==="./lektrusLabCatalog")return catalog;
  if(key==="./lektrusChemistryBenchModel")return lab;
@@ -159,6 +160,7 @@ const styleText=read("src/lektrusChemistryBench.css");
 assert.match(styleText,/\.lektrus-lab-experiment-grid/);
 assert.match(styleText,/\.lektrus-lab-pour-mode/);
 
+}
 let bench=lab.defaultLabBench();
 assert.equal(bench.vessels.length,1,"New lab starts with a single empty beaker");
 assert.equal(bench.selectedId,"v1");
