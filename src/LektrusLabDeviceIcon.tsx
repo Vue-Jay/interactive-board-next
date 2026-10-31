@@ -62,6 +62,36 @@ export default function LektrusLabDeviceIcon({
    {temperatureVisible&&<text x="43" y="84" fill="#2b6a5a" fontSize="7.5" fontWeight="800"
     textAnchor="middle">≈{Math.round(temperatureC??22)}°C</text>}
   </>}
+  {kind==="cooler"&&<>
+   {/* Insulated cooling basin with real ice crystals and a small target display. */}
+   <path d="M14 42H96L92 81Q90 91 78 91H30Q18 91 17 81Z"
+    fill={"url(#"+plastic+")"} stroke="#487d8c" strokeWidth="2.7"/>
+   <path d="M16 42Q55 52 94 42L88 70Q55 83 22 70Z"
+    fill="#8fc5d5" stroke="#397e94" strokeWidth="2"/>
+   <ellipse cx="55" cy="42" rx="40" ry="12" fill="#c6edf1"
+    stroke="#649aa7" strokeWidth="2.4"/>
+   <ellipse cx="55" cy="41" rx="32" ry="8" fill={active?"#9bd8ec":"#c0e4e7"}
+    stroke="#f4ffff" strokeWidth="1.4"/>
+   {Array.from({length:5},(_,i)=><g key={i}
+    transform={`translate(${29+(i*13)%50} ${38+(i%2)*7}) rotate(${i*26})`}>
+    <path d="M0 -6L5 0L0 6L-5 0Z" fill="#f3feff"
+     stroke="#74aab7" strokeWidth="1.1"/>
+    <path d="M-4 0H4M0 -4V4" stroke="#acdce5" strokeWidth=".9"/>
+   </g>)}
+   <rect x="29" y="64" width="40" height="16" rx="4"
+    fill="#255568" stroke="#70a2ad" strokeWidth="1.3"/>
+   <text x="49" y="75" textAnchor="middle" fontSize="9" fontWeight="800"
+    fill="#d8faff">{Math.round(targetTemperatureC)}°</text>
+   <circle cx="83" cy="73" r="7.7" fill={"url(#"+metal+")"}
+    stroke="#477a8b" strokeWidth="1.7"/>
+   <path d="M83 68V72" stroke="#376d7d" strokeWidth="2.2"/>
+   {active&&<g stroke="#d1f6fc" strokeWidth="1.8" strokeLinecap="round">
+    <path d="M21 27l-4 -5M34 20v-6M77 20v-6M90 27l4 -5"/>
+   </g>}
+   {temperatureVisible&&<text x="51" y="88" textAnchor="middle"
+    fontSize="8" fontWeight="750" fill="#316c80">
+    ≈{Math.round(temperatureC??22)}°C</text>}
+  </>}
   {kind==="burner"&&<>
    <path d="M36 88H74L89 96H21Z" fill={"url(#"+metal+")"} stroke="#406d69" strokeWidth="2.7"/>
    <rect x="46" y="37" width="19" height="50" rx="3" fill={"url(#"+metal+")"}
