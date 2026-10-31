@@ -37,23 +37,23 @@ export const LAB_MODES:{id:LabMode;name:string;description:string;
  {id:"reactions",name:"Реакции",
   description:"Качественные наблюдения и расчёты по измеренным количествам",
   glassware:["tube","beaker","pipette","conical","dish","flask"],
-  devices:["tripod","burner","hotplate","stirrer","filter"]},
+  devices:["tripod","burner","hotplate","cooler","stirrer","filter"]},
  {id:"titration",name:"Титрование",
   description:"Бюретка со штативом, дозирование по каплям и точка эквивалентности",
   glassware:["burette","conical","pipette","beaker"],
-  devices:["tripod","stirrer"]},
+  devices:["tripod","stirrer","cooler"]},
  {id:"solutions",name:"Приготовление растворов",
   description:"Растворение, дозирование и перемешивание",
   glassware:["beaker","pipette","flask","conical"],
-  devices:["stirrer","hotplate","tripod"]},
+  devices:["stirrer","hotplate","cooler","tripod"]},
  {id:"evaporation",name:"Выпаривание",
   description:"Нагревание водного раствора, удаление растворителя и рост кристаллов",
   glassware:["dish","beaker","flask","conical","pipette"],
-  devices:["hotplate","burner","tripod","stirrer"]},
+  devices:["hotplate","burner","cooler","tripod","stirrer"]},
  {id:"synthesis",name:"Синтез",
   description:"Нагревание, получение и сбор продуктов проверенных превращений",
   glassware:["flask","conical","tube","beaker","crucible","dish"],
-  devices:["tripod","burner","hotplate","stirrer","filter"]}
+  devices:["tripod","burner","hotplate","cooler","stirrer","filter"]}
 ];
 export const labMode=(bench:LabBench):LabMode=>
  bench.mode==="qualitative"||bench.mode==="quantitative"?"reactions":
@@ -75,11 +75,12 @@ export type LabReactionHeat={
  equation:string;direction:"exothermic"|"endothermic";
  elapsedSeconds:number;durationSeconds:number;deltaC:number;complete:boolean;
 };
-export type LabDevice="hotplate"|"burner"|"stirrer"|"tripod"|"filter"|"thermometer";
+export type LabDevice="hotplate"|"burner"|"cooler"|"stirrer"|"tripod"|"filter"|"thermometer";
 export type LabAvailableDevice=Exclude<LabDevice,"thermometer">;
 export const labDevices:{id:LabAvailableDevice;name:string;description:string;symbol:string}[]=[
  {id:"hotplate",name:"Плитка",description:"Для посуды с устойчивым плоским дном",symbol:"▤"},
  {id:"burner",name:"Горелка",description:"Нагревание посуды над пламенем",symbol:"♨"},
+ {id:"cooler",name:"Охлаждающая ванна",description:"Ледяная или солево-ледяная ванна, от +20 до −20 °C",symbol:"❄"},
  {id:"stirrer",name:"Магнитная мешалка",description:"Перемешивание в плоскодонных сосудах",symbol:"◌"},
  {id:"tripod",name:"Штатив",description:"Один регулируемый зажим для посуды",symbol:"⌁"},
  {id:"filter",name:"Мембранный фильтр",description:"Отделение твёрдого осадка от жидкого фильтрата",symbol:"▧"}
@@ -128,7 +129,7 @@ export function addPlacedLabDevice(bench:LabBench,kind:LabDevice,point?:{x:numbe
  const placed:LabPlacedDevice={id,kind,
   x:clampDevice(point?.x??(22+(occupied%5)*13),9,79),
   y:clampDevice(point?.y??(62+Math.floor(occupied/5)*22),58,kind==="tripod"?72:84),
-  powered:false,heatLevel:2,temperatureC:22,targetTemperatureC:150,standHeight:kind==="tripod"?.88:.5};
+  powered:false,heatLevel:2,temperatureC:22,targetTemperatureC:kind==="cooler"?0:150,standHeight:kind==="tripod"?.88:.5};
  return {...bench,placedDevices:[...existing,placed],
   devices:[...new Set([...(bench.devices??[]),kind])],event:bench.event+1};
 }
@@ -181,6 +182,7 @@ const LAB_MOUNTABLE:Record<LabAvailableDevice,readonly LabGlassware[]>={
  tripod:["beaker","tube","flask","conical","volumetric","crucible","pipette","burette","dish"],
  filter:[],
  hotplate:["beaker","conical","dish","crucible"],
+ cooler:["beaker","conical","dish","tube","flask"],
  stirrer:["beaker","conical"],
  burner:["beaker","tube","flask","conical","crucible","dish"]
 };
@@ -224,6 +226,15 @@ export function setLabHotplateTemperature(bench:LabBench,id:string,temperature:n
  return {...bench,placedDevices:placedLabDevices(bench).map(d=>d.id===id?
   {...d,targetTemperatureC}:d),event:bench.event+1};
 }
+/** Simulated ice / salt-ice bath with a finite thermal transfer rate. */
+export function setLabCoolerTemperature(bench:LabBench,id:string,temperature:number):LabBench{
+ const device=placedLabDevices(bench).find(d=>d.id===id&&d.kind==="cooler");
+ if(!device||!Number.isFinite(temperature))return bench;
+ const targetTemperatureC=Math.round(Math.min(20,Math.max(-20,temperature)));
+ if(device.targetTemperatureC===targetTemperatureC)return bench;
+ return {...bench,placedDevices:placedLabDevices(bench).map(d=>d.id===id?
+  {...d,targetTemperatureC}:d),event:bench.event+1};
+}
 export function applyPlacedLabDevice(bench:LabBench,id:string,vesselId:string,
  mount:"clamp"|"shelf"="clamp"):LabBench{
  if(mount==="shelf")return setLabStandShelf(bench,id,vesselId);
@@ -263,7 +274,7 @@ export function labAppliancesBelowStand(bench:LabBench,vesselId:string){
  const stands=placedLabDevices(bench).filter(d=>d.kind==="tripod"&&
   d.active&&d.linkedVesselId===vesselId);
  return placedLabDevices(bench).filter(d=>
-  ["hotplate","burner","stirrer"].includes(d.kind)&&
+  ["hotplate","burner","cooler","stirrer"].includes(d.kind)&&
   // A heater clamped to a DIFFERENT vessel cannot also heat the vessel
   // standing above it merely because their screen coordinates overlap.
   (!d.active||d.linkedVesselId===vesselId)&&stands.some(stand=>{
@@ -314,7 +325,7 @@ export function setPlacedDevicePower(bench:LabBench,id:string,powered:boolean):L
 }
 export function setPlacedDeviceLevel(bench:LabBench,id:string,level:1|2|3):LabBench{
  const d=placedLabDevices(bench).find(v=>v.id===id);
- if(!d||!["hotplate","burner","stirrer"].includes(d.kind)||
+ if(!d||!["hotplate","burner","cooler","stirrer"].includes(d.kind)||
   ![1,2,3].includes(level))return bench;
  return {...bench,placedDevices:placedLabDevices(bench).map(v=>v.id===id?
   {...v,heatLevel:level}:v),event:bench.event+1};
@@ -384,7 +395,7 @@ export function labSimulationTickWaitMs(bench:LabBench,nowMs:number):number|null
  const phase=vessels.some(v=>
   v.physicalProcess==="dissolving"||v.physicalProcess==="crystallizing");
  const devices=placedLabDevices(bench);
- const powered=devices.some(d=>d.powered||(d.temperatureC??22)>22.1);
+ const powered=devices.some(d=>d.powered||Math.abs((d.temperatureC??22)-22)>.1);
  const thermal=vessels.some(v=>Math.abs((v.temperatureC??22)-22)>.1);
  const evaporating=settings.evaporationEnabled&&profile.passiveEvaporation&&
   vessels.some(v=>!v.stoppered&&
@@ -413,12 +424,13 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
  const ambient=22;
  let changed=false;
  const devices=placedLabDevices(bench).map(d=>{
-  if(d.kind!=="hotplate"&&d.kind!=="burner")return d;
+  if(d.kind!=="hotplate"&&d.kind!=="burner"&&d.kind!=="cooler")return d;
   const old=d.temperatureC??ambient;
   const level=d.heatLevel??2;
   // The open flame is hotter than the effective vessel temperature.
   // A crucible can take substantially more heat than ordinary glassware.
   const target=d.powered?(d.kind==="hotplate"?(d.targetTemperatureC??150):
+   d.kind==="cooler"?(d.targetTemperatureC??0):
    level===1?450:level===2?850:1350):ambient;
   const rate=d.powered?0.075:0.11;
   const next=Math.round((old+(target-old)*(1-Math.exp(-seconds*rate)))*10)/10;
@@ -431,7 +443,7 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
  const heatingDeviceByVessel=new Map<string,LabPlacedDevice>();
  for(const vessel of bench.vessels){
   const activeHeat=(d:LabPlacedDevice)=>!!d.powered&&
-   (d.kind==="hotplate"||d.kind==="burner");
+   (d.kind==="hotplate"||d.kind==="burner"||d.kind==="cooler");
   const direct=devices.find(d=>d.active&&d.linkedVesselId===vessel.id&&activeHeat(d));
   const heater=direct??labAppliancesBelowStand(result,vessel.id).find(activeHeat);
   if(heater)heatingDeviceByVessel.set(vessel.id,heater);
@@ -442,9 +454,10 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   const toward=device&&device.powered?(device.temperatureC??ambient):ambient;
   const volumes=Object.values(v.doses??{}).reduce((total,d)=>total+d.value,0);
   const inertia=Math.max(.035,Math.min(.18,60/Math.max(100,volumes)*.10));
-  const heaterPower=device?.powered?
+  const coolingBath=device?.powered&&device.kind==="cooler";
+  const heaterPower=device?.powered&&!coolingBath?
    device.kind==="hotplate"?160:120*(device.heatLevel??2):0;
-  const calorimetry=profile.calorimetry?
+  const calorimetry=profile.calorimetry&&!coolingBath?
    labSensibleHeatStep(v.kind,v.doses,old,ambient,seconds,
     device?.powered?{kind:device.kind==="hotplate"?"hotplate":"burner",
      temperatureC:toward,powerW:heaterPower}:undefined,
@@ -452,18 +465,19 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // Measured pure materials follow energy conservation (m*c*delta(T)).
   // Unsupported prepared solutions keep the previous bounded educational
   // temperature curve rather than receiving a fictitious specific heat.
-  const raw=calorimetry?.temperatureC??
+  // Cooling bath exchanges heat with the sample gradually, depending on volume.
+  const bathRate=Math.max(.012,Math.min(.095,3/Math.max(35,volumes+25)));
+  const raw=coolingBath?
+   old+(toward-old)*(1-Math.exp(-seconds*bathRate)):
+   calorimetry?.temperatureC??
    old+(toward-old)*(1-Math.exp(-seconds*(device?.powered?inertia:.018)));
   const pure=labVesselThermal(v.reagents,v.doses);
   // No generic 100°C ceiling: concentrations and gaseous samples have no
   // single verified boiling point. Only a neat liquid with known properties
   // receives a boiling plateau below.
-  // Crucibles tolerate high-temperature virtual heating; normal glass does not.
-  const maxVesselC=v.kind==="crucible"?1250:
-   device?.kind==="burner"?450:550;
-  // Endothermic cooling below room temperature is physical and should
-  // recover gradually by ambient heat exchange, never jump to 22°C.
-  let next=Math.round(Math.max(0,Math.min(maxVesselC,raw))*10)/10;
+  // No arbitrary 450/550°C vessel ceiling: actual phase changes and heater
+  // energy set the temperature. Only cap the numerical model's safe range.
+  let next=Math.round(Math.max(-30,Math.min(1450,raw))*10)/10;
   let meltFraction=v.meltFraction??0;
   let phaseTransition=v.phaseTransition;
   const point=profile.melting&&pure?.unit==="g"&&!v.uncertain&&!v.completedReaction?
