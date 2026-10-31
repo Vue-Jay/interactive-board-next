@@ -1235,6 +1235,8 @@ export const selectedLabVessel=(bench:LabBench)=>bench.vessels.find(v=>v.id===be
 /** Persistent equation history. Recognized reactions are recorded once per
  * source vessel and equation; wiping the board never restarts an old entry. */
 export function recordLabReactions(bench:LabBench):LabBench{
+ // Preparation on a paused bench must not write predicted equations.
+ if(bench.simulationPaused)return bench;
  const seen=new Set(bench.seenReactionKeys??[]);
  const log=[...(bench.reactionLog??[])];
  let changed=false;
@@ -1245,8 +1247,15 @@ export function recordLabReactions(bench:LabBench):LabBench{
    simulateLabInventory(vessel):undefined;
   const current=labObservation(vessel);
   const row=current.status==="reaction"?current.caseData:undefined;
-  const equations=inventory?.steps.length?
-   inventory.steps.map(step=>step.equation):row?.equation?[row.equation]:[];
+  // Predicted inventory steps are not reactions that have actually occurred.
+  // Record only after measurable progress, or a confirmed completed reaction.
+  const progressed=!!vessel.reactionAmounts&&
+   vessel.reactionAmounts.extentMol>1e-12;
+  const confirmed=progressed||!!vessel.completedReaction;
+  const equations=!confirmed?[]:inventory?.steps.length?
+   inventory.steps.map(step=>step.equation):
+   vessel.completedReaction?.equation?[vessel.completedReaction.equation]:
+   row?.equation?[row.equation]:[];
   for(const equation of equations){
    const key=vessel.id+"|"+equation;
    if(seen.has(key))continue;
