@@ -852,9 +852,9 @@ console.log("34 exact crystalline Perry Handbook Cp correlations: molar-to-mass,
 // 20°C rows from measurements at 18°C or 25°C.
 const literature=load("src/lektrusLabSolubilityMeasurements.ts");
 const pureWaterMeasurements=literature.LAB_MEASURED_PURE_WATER_SOLUBILITIES;
-assert.equal(pureWaterMeasurements.length,38);
-assert.equal(new Set(pureWaterMeasurements.map(x=>x.formula)).size,27);
-assert.equal(pureWaterMeasurements.filter(x=>x.temperatureC===20).length,15);
+assert.equal(pureWaterMeasurements.length,46);
+assert.equal(new Set(pureWaterMeasurements.map(x=>x.formula)).size,34);
+assert.equal(pureWaterMeasurements.filter(x=>x.temperatureC===20).length,21);
 const measuredTemperatures=new Set([0,20,40,60,80,100]);
 assert.equal(pureWaterMeasurements.filter(
  x=>!measuredTemperatures.has(x.temperatureC)).length,15);
@@ -945,6 +945,55 @@ for(const [formula,sourceValue] of Object.entries({
  assert.equal(prop.literatureSolubilityReference.temperatureC,19.85);
  assert.equal(prop.binaryCrystallizationUnsupported,true);
 }
+// Independently verify six new exact 20°C readings, always against the
+// ORIGINAL published units, and without converting 0.14 mg/L to 0.14 g/L.
+for(const [formula,value,unit,expected] of [
+ ["CH3COONa",46.5,"g/100ml-water",46.5/.9982],
+ ["CH3COOK",256,"g/100ml-water",256/.9982],
+ ["AgCl",1.93,"mg/l-water",1.93/10000/.9982],
+ ["AgBr",.14,"mg/l-water",.14/10000/.9982],
+ ["SrCl2",538,"g/l-water",538/10/.9982],
+ ["K3PO4",51,"g/100g-water",51]
+]){
+ const original=pureWaterMeasurements.find(x=>x.formula===formula&&x.temperatureC===20);
+ assert.ok(original,"Source row not found: "+formula);
+ assert.equal(original.sourceValue,value);
+ assert.equal(original.originalUnit,unit);
+ approximately(literature.labMeasuredSolubilityGPer100gWater(original),expected,1e-11);
+ approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+  formula,20),expected,1e-11);
+ const live=registryProps.labSubstanceProperties(formula,20);
+ assert.equal(live.solubilityKnown,true,formula+" not reported by active registry");
+ approximately(live.solubilityGPer100gWater,expected,1e-11);
+ assert.equal(live.binaryCrystallizationUnsupported,true);
+ assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+  formula,21),undefined,"Isolated exact measurement invented 21°C value");
+ const inventory={speciesMol:{H2O:.5,[formula]:.05},solidMol:{}};
+ assert.equal(physicalDensity.labEquilibrateSingleSaltCrystals(
+  inventory,20,true,labMolarMass),undefined);
+ assert.deepEqual(inventory.solidMol,{},"Reference cannot create solid phase");
+}
+// The historical CRC calcium-acetate data provide only two end points,
+// not 20°C or a valid smooth curve across changing hydrate equilibria.
+for(const [temp,raw,waterDensity] of [
+ [0,37.4,.99984],[100,29.7,.9584]
+]){
+ const id="Ca(CH3COO)2";
+ const row=pureWaterMeasurements.find(x=>x.formula===id&&x.temperatureC===temp);
+ assert.ok(row&&row.originalUnit==="g/100ml-water");
+ assert.equal(row.sourceValue,raw);
+ approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+  id,temp),raw/waterDensity,1e-10);
+ assert.equal(registryProps.labSubstanceProperties(id,temp)
+  .binaryCrystallizationUnsupported,true);
+}
+for(const temp of [1,20,50,99]){
+ assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+  "Ca(CH3COO)2",temp),undefined,"Calcium acetate interpolated through missing data");
+}
+assert.equal(registryProps.labSubstanceProperties("Ca(CH3COO)2",20).solubilityKnown,false);
+console.log("Six traceable 20C water solubilities plus isolated 0/100C calcium acetate points passed");
+
 // Invalid extrapolation: a 25°C measurement does NOT define the
 // solubility at 20°C, and an isolated 20°C record does not define 21°C.
 for(const formula of ["PbSO4","SrCO3","ZnS","FeS","Ca3(PO4)2"])
@@ -972,7 +1021,7 @@ for(const formula of ["Na2S","KNO2","BaSO4","CaCO3","CaSO4","LiCl"]){
  // The independent ion-speciation / Ksp engine may STILL legitimately
  // predict precipitation. Its settled solid is not a result of this solver.
 }
-console.log("38 sourced measurements across 27 salts: fifteen 20°C points and fifteen exact off-grid points");
+console.log("46 sourced measurements across 34 salts: 21 exact 20°C points, 15 off-grid points");
 
 
 // Individual source-linked normal-pressure phase boundaries. Avoid
