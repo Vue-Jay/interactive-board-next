@@ -743,10 +743,10 @@ for(const formula of ["Ca(OH)2","BaCO3","ZnSO4"]){
 console.log("Six verified pure-solid densities, seven solid transitions and sixteen Cp values passed");
 
 
-// Bulk provenance: 89 independently sourced properties, checked both in
+// Bulk provenance: 94 independently sourced properties, checked both in
 // source tables and through the same registry used to render lab state.
 const validated=load("src/lektrusLabPropertyProvenance.ts");
-assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,89);
+assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,94);
 const sourceIds=new Set();
 const fields={crystalDensityGPerMl:0,specificHeatJPerGK:0,thermal:0};
 for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
@@ -787,9 +787,36 @@ for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
  approximately(value,row.value,1e-6);
 }
 assert.deepEqual(fields,{
- crystalDensityGPerMl:32,specificHeatJPerGK:15,thermal:42
+ crystalDensityGPerMl:32,specificHeatJPerGK:20,thermal:42
 });
-console.log("89 source-checked property references: 32 crystal densities, 15 dry-solid Cp, 42 individual phase boundaries");
+console.log("94 source-checked property references: 32 crystal densities, 20 dry-solid Cp, 42 individual phase boundaries");
+// Direct NIST-JANAF (cr) 298.15 K molar values must be recalculated
+// with the real lab formula parser. No hydrate/solution substitution.
+const jan=load("src/lektrusLabJanafSolidHeatReferences.ts");
+assert.equal(jan.LAB_JANAF_SOLID_HEAT_REFERENCES.length,5);
+for(const row of jan.LAB_JANAF_SOLID_HEAT_REFERENCES){
+ assert.equal(row.phase,"solid");
+ assert.equal(row.temperatureKelvin,298.15);
+ assert.equal(row.pressureMPa,.1);
+ assert.ok(row.crystalForm);
+ assert.ok(row.sourceUrl.startsWith("https://janaf.nist.gov/"));
+ const mm=labMolarMass(row.formula);
+ assert.ok(mm>0);
+ approximately(row.molarHeatJPerMolK/mm,row.roomHeatJPerGK,1e-6);
+ const registry=registryProps.labSubstanceProperties(row.formula);
+ approximately(registry.specificHeatJPerGK,row.roomHeatJPerGK,1e-12);
+ assert.equal(heatProps.LAB_CALORIMETRY_REFERENCE[row.formula]?.phase,"solid");
+ const expected=heatProps.LAB_VESSEL_GLASS_EQUIVALENT_G.beaker*.84+
+  5*row.roomHeatJPerGK;
+ approximately(heatProps.labKnownHeatCapacityJPerK("beaker",{
+  [row.formula]:{value:5,unit:"g"}
+ }),expected,5e-6);
+ assert.equal(heatProps.labKnownHeatCapacityJPerK("beaker",{
+  [row.formula]:{value:5,unit:"g"},H2O:{value:5,unit:"ml"}
+ }),undefined,"Never assign crystalline Cp to prepared aqueous stock");
+}
+console.log("Five NIST-JANAF crystal specific heats audited from molar measurements");
+
  
 // Precise pure-phase source constants from ICSC / OECD / ATSDR.
 // An ammonium sulfate decomposition ONSET does not imply melting at
