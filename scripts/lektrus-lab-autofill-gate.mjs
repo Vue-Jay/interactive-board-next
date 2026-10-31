@@ -64,6 +64,7 @@ export async function main(env = process.env, now = Date.now()) {
   console.log("Dispatched " + WORKER + " for " + repo);
 }
 if (process.argv[1] && import.meta.url === new URL("file://" +
-  process.argv[1]).href) {
+  (process.argv[1].startsWith("/") ? process.argv[1] :
+    process.cwd() + "/" + process.argv[1])).href) {
   main().catch(error => { console.error(error); process.exitCode = 1; });
 }
