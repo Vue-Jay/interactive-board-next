@@ -1,4 +1,4 @@
-/** NIST-JANAF Thermochemical Tables, fourth edition (1998): seven pure
+/** NIST-JANAF Thermochemical Tables, fourth edition (1998): fourteen pure
  * crystalline solids' Cp,molar at exactly 298.15 kelvin and 0.1 MPa.
  * Each original source explicitly labels its phase "(cr)" and the first
  * heat column in J/(mol K). No arbitrary Cp(T) interpolation is inferred.
@@ -15,11 +15,46 @@ export type LabJanafSolidHeatReference={
  crystalForm:string;
  temperatureKelvin:298.15;
  pressureMPa:0.1;
+ /** Number of stock empirical formula units in the original JANAF species.
+  * P4O10 has two P2O5 formula units; all other rows use one. */
+ sourceFormulaUnits?:number;
  molarHeatJPerMolK:number;
  roomHeatJPerGK:number;
  sourceUrl:string;
 };
 export const LAB_JANAF_SOLID_HEAT_REFERENCES:readonly LabJanafSolidHeatReference[]=[
+ // NIST-JANAF directly tabulated 298.15 K (cr) values for the
+ // seven additional pure phases. P4O10 has TWO empirical P2O5 units:
+ // source molar Cp 211.710 J/(mol P4O10 K), not per mole of P2O5.
+ {formula:"Cu(OH)2",phase:"solid",
+  crystalForm:"crystalline copper(II) hydroxide Cu(OH)2",temperatureKelvin:298.15,pressureMPa:0.1,
+  molarHeatJPerMolK:95.186,roomHeatJPerGK:0.975666,
+  sourceUrl:"https://janaf.nist.gov/tables/Cu-014.html"},
+ {formula:"Fe(OH)2",phase:"solid",
+  crystalForm:"crystalline iron(II) hydroxide Fe(OH)2",temperatureKelvin:298.15,pressureMPa:0.1,
+  molarHeatJPerMolK:97.069,roomHeatJPerGK:1.080237,
+  sourceUrl:"https://janaf.nist.gov/tables/Fe-011.html"},
+ {formula:"Fe(OH)3",phase:"solid",
+  crystalForm:"crystalline iron(III) hydroxide Fe(OH)3",temperatureKelvin:298.15,pressureMPa:0.1,
+  molarHeatJPerMolK:101.671,roomHeatJPerGK:0.951388,
+  sourceUrl:"https://janaf.nist.gov/tables/Fe-013.html"},
+ {formula:"NiCl2",phase:"solid",
+  crystalForm:"anhydrous nickel(II) chloride crystal NiCl2",temperatureKelvin:298.15,pressureMPa:0.1,
+  molarHeatJPerMolK:71.66,roomHeatJPerGK:0.55296,
+  sourceUrl:"https://janaf.nist.gov/tables/Cl-099.html"},
+ {formula:"CoCl2",phase:"solid",
+  crystalForm:"anhydrous cobalt(II) chloride crystal CoCl2",temperatureKelvin:298.15,pressureMPa:0.1,
+  molarHeatJPerMolK:78.492,roomHeatJPerGK:0.60456,
+  sourceUrl:"https://janaf.nist.gov/tables/Cl-074.html"},
+ {formula:"PbI2",phase:"solid",
+  crystalForm:"anhydrous lead(II) iodide crystal PbI2",temperatureKelvin:298.15,pressureMPa:0.1,
+  molarHeatJPerMolK:77.573,roomHeatJPerGK:0.168268,
+  sourceUrl:"https://janaf.nist.gov/tables/I-036.html"},
+ {formula:"P2O5",phase:"solid",
+  crystalForm:"molecular P4O10 crystalline oxide, represented in cabinet as P2O5",temperatureKelvin:298.15,pressureMPa:0.1,
+  sourceFormulaUnits:2,
+  molarHeatJPerMolK:211.71,roomHeatJPerGK:0.74576,
+  sourceUrl:"https://janaf.nist.gov/tables/O-094.html"},
  // NIST tables specifically label crystalline (cr), not liquid (l)
  // or beta-Li2SO4 (a different polymorph at elevated temperature).
  // The alpha-Li2SO4 crystal is stable at room conditions.

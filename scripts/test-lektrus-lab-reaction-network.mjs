@@ -775,10 +775,10 @@ for(const formula of ["Ca(OH)2","BaCO3","ZnSO4"]){
 console.log("Six verified pure-solid densities, seven solid transitions and sixteen Cp values passed");
 
 
-// Bulk provenance: 98 independently sourced properties, checked both in
+// Bulk provenance: 105 independently sourced properties, checked both in
 // source tables and through the same registry used to render lab state.
 const validated=load("src/lektrusLabPropertyProvenance.ts");
-assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,98);
+assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,105);
 const sourceIds=new Set();
 const fields={crystalDensityGPerMl:0,specificHeatJPerGK:0,thermal:0};
 for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
@@ -819,22 +819,39 @@ for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
  approximately(value,row.value,1e-6);
 }
 assert.deepEqual(fields,{
- crystalDensityGPerMl:32,specificHeatJPerGK:22,thermal:44
+ crystalDensityGPerMl:32,specificHeatJPerGK:29,thermal:44
 });
-console.log("98 source-checked property references: 32 crystal densities, 22 dry-solid Cp, 44 individual phase boundaries");
+console.log("105 source-checked property references: 32 crystal densities, 29 dry-solid Cp, 44 individual phase boundaries");
 // Direct NIST-JANAF (cr) 298.15 K molar values must be recalculated
 // with the real lab formula parser. No hydrate/solution substitution.
 const jan=load("src/lektrusLabJanafSolidHeatReferences.ts");
-assert.equal(jan.LAB_JANAF_SOLID_HEAT_REFERENCES.length,7);
+assert.equal(jan.LAB_JANAF_SOLID_HEAT_REFERENCES.length,14);
+const phosphorusOxideSource=jan.LAB_JANAF_SOLID_HEAT_REFERENCES
+ .find(row=>row.formula==="P2O5");
+assert.ok(phosphorusOxideSource);
+assert.equal(phosphorusOxideSource.sourceFormulaUnits,2);
+assert.ok(phosphorusOxideSource.crystalForm.includes("P4O10"));
+assert.equal(phosphorusOxideSource.molarHeatJPerMolK,211.710);
+// If the source P4O10 molar Cp is divided by the EMPIRICAL P2O5 mass
+// without doubling it, reported specific Cp is incorrectly 2x too high.
+approximately(phosphorusOxideSource.molarHeatJPerMolK/
+ (2*labMolarMass("P2O5")),phosphorusOxideSource.roomHeatJPerGK,1e-6);
+assert.ok(phosphorusOxideSource.roomHeatJPerGK<1.0);
+
 for(const row of jan.LAB_JANAF_SOLID_HEAT_REFERENCES){
  assert.equal(row.phase,"solid");
  assert.equal(row.temperatureKelvin,298.15);
  assert.equal(row.pressureMPa,.1);
  assert.ok(row.crystalForm);
+ const sourceFormulaUnits=row.sourceFormulaUnits??1;
+ assert.ok(Number.isInteger(sourceFormulaUnits)&&sourceFormulaUnits>=1&&
+  sourceFormulaUnits<=2);
+ if(sourceFormulaUnits===2)assert.equal(row.formula,"P2O5");
  assert.ok(row.sourceUrl.startsWith("https://janaf.nist.gov/"));
  const mm=labMolarMass(row.formula);
  assert.ok(mm>0);
- approximately(row.molarHeatJPerMolK/mm,row.roomHeatJPerGK,1e-6);
+ approximately(row.molarHeatJPerMolK/(mm*(row.sourceFormulaUnits??1)),
+  row.roomHeatJPerGK,1e-6);
  const registry=registryProps.labSubstanceProperties(row.formula);
  approximately(registry.specificHeatJPerGK,row.roomHeatJPerGK,1e-12);
  assert.equal(heatProps.LAB_CALORIMETRY_REFERENCE[row.formula]?.phase,"solid");
@@ -847,7 +864,7 @@ for(const row of jan.LAB_JANAF_SOLID_HEAT_REFERENCES){
   [row.formula]:{value:5,unit:"g"},H2O:{value:5,unit:"ml"}
  }),undefined,"Never assign crystalline Cp to prepared aqueous stock");
 }
-console.log("Seven NIST-JANAF crystal specific heats audited from molar measurements");
+console.log("Fourteen NIST-JANAF crystal specific heats audited from source molar measurements");
 
  
 // Precise pure-phase source constants from ICSC / OECD / ATSDR.

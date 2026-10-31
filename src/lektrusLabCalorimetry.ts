@@ -15,6 +15,16 @@
 type HeatDose={value:number;unit:"ml"|"g";concentrationM?:number};
 type SubstanceHeat={specificJPerGK:number;densityGPerMl?:number;phase:"liquid"|"solid"};
 export const LAB_CALORIMETRY_REFERENCE:Readonly<Record<string,SubstanceHeat>>={
+ // NIST-JANAF fourth edition, source-measured Cp,mol at 298.15 K.
+ // Per original CRYSTAL only, not hydrated/aqueous state. Molecular
+ // P4O10 source value is converted using TWO P2O5 formula units.
+ "Cu(OH)2":{specificJPerGK:0.975666,phase:"solid"},
+ "Fe(OH)2":{specificJPerGK:1.080237,phase:"solid"},
+ "Fe(OH)3":{specificJPerGK:0.951388,phase:"solid"},
+ "NiCl2":{specificJPerGK:0.55296,phase:"solid"},
+ "CoCl2":{specificJPerGK:0.60456,phase:"solid"},
+ "PbI2":{specificJPerGK:0.168268,phase:"solid"},
+ "P2O5":{specificJPerGK:0.74576,phase:"solid"},
  // NIST-JANAF directly measured Cp of dry Na2O and alpha-Li2SO4
  // crystals at 298.15 K: not hydration/solution heat capacity.
  Na2O:{specificJPerGK:1.114950,phase:"solid"},
