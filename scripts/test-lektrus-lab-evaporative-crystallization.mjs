@@ -268,3 +268,23 @@ for(const id of ["NaCl","KCl"]){
   4/stoich.labMolarMass(id),1e-10);
 }
 console.log("Mixed salt common-ion model, kinetic dissolution, stirring, cooling and visible crystal conservation: PASS");
+
+
+// Fully accelerated high-realism mixed-salt dissolution must integrate the
+// same 100 simulated seconds as ten conventional ten-second time steps.
+const mixtureSeed={...mixedBench,simulationAtMs:1000};
+const mixtureFast=lab.advanceLabSimulation(
+ lab.setLabBenchSettings(mixtureSeed,{timeScale:10}),11000);
+let mixtureSlow=mixtureSeed;
+for(let i=1;i<=10;i++)
+ mixtureSlow=lab.advanceLabSimulation(mixtureSlow,1000+i*10000);
+for(const id of ["NaCl","KCl"]){
+ const fastSolid=mixtureFast.vessels[0].mixedSaltPhase?.[id]??0;
+ const slowSolid=mixtureSlow.vessels[0].mixedSaltPhase?.[id]??0;
+ approx(fastSolid,slowSolid,1e-8);
+ approx(reaction.simulateLabInventory(mixtureFast.vessels[0]).speciesMol[id],
+  reaction.simulateLabInventory(mixtureSlow.vessels[0]).speciesMol[id],1e-8);
+}
+approx(reaction.labInventoryMassG(reaction.simulateLabInventory(mixtureFast.vessels[0])),
+ reaction.labInventoryMassG(reaction.simulateLabInventory(mixtureSlow.vessels[0])),1e-7);
+console.log("Accelerated ×10 mixed-salt dissolution and crystallization mass are conserved");
