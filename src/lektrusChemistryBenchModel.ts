@@ -90,7 +90,10 @@ export type LabPlacedDevice={id:string;kind:LabDevice;x:number;y:number;
  powered?:boolean;heatLevel?:1|2|3;temperatureC?:number;
  targetTemperatureC?:number;standHeight?:number;shelfVesselId?:string;
  /** Solid retained inside the cartridge after pouring a precipitated mixture. */
- collectedResidue?:{formula:string;massG?:number;color:string};filterStartedAtMs?:number;};
+ collectedResidue?:LabFilteredResidue;filterStartedAtMs?:number;};
+export type LabFilteredResidue={formula:string;massG?:number;color:string;
+ /** Each retained solid is conserved separately, even with one cartridge. */
+ components?:{formula:string;massG:number;color:string}[]};
 export const MAX_LAB_DEVICES=10;
 const clampDevice=(v:number,min:number,max:number)=>Math.round(Math.min(max,Math.max(min,v))*10)/10;
 /** V1 cabinets only stored the types. Preserve them when a board is upgraded. */
@@ -795,7 +798,7 @@ export type LabVessel={pourFraction?:number;
  /** Each solid's independently evolving mass fraction in nonreacting mixtures. */
  mixedSaltPhase?:Record<string,number>;
  /** Filtered insoluble solid; mass only when quantities were measured. */
- filteredResidue?:{formula:string;massG?:number;color:string};
+ filteredResidue?:LabFilteredResidue;
  /** Physical carrier volume and identities of dissolved filtrate products. */
  filteredSolution?:{sourceEquation:string;solutes:string[];volumeMl?:number};
  /** Exact persistent chemical phase amounts after separation or transfer.
@@ -1752,14 +1755,19 @@ export function filterLabPrecipitate(bench:LabBench,sourceId:string,targetId:str
  });
  if(inventory.unmeasured.length||inventory.limited)return bench;
  const solidEntries=Object.entries(inventory.solidMol).filter(([,mol])=>mol>1e-12);
- // A single-filter cartridge is not able to split two distinct solids
- // without their individual retention properties. Refuse rather than
- // quietly discarding the second precipitate.
- if(solidEntries.length!==1)return bench;
- const [solid,solidMol]=solidEntries[0];
- const molar=labMolarMass(solid);
- if(molar===undefined||solidMol<=0)return bench;
- const massG=solidMol*molar;
+ // Filter paper RETAINS every solid particle. It does not identify or
+ // chemically separate one precipitate from another. Retain their
+ // distinct quantified inventories and masses as a mixed filter cake.
+ if(!solidEntries.length)return bench;
+ const components=solidEntries.map(([formula,mol])=>{
+  const molar=labMolarMass(formula);
+  return molar!==undefined?{formula,massG:mol*molar,
+   color:reaction.afterColor??"#eef0ed"}:undefined;
+ });
+ if(components.some(component=>!component))return bench;
+ const retained=components as {formula:string;massG:number;color:string}[];
+ const [first]=retained;
+ const solid=first.formula,massG=retained.reduce((mass,c)=>mass+c.massG,0);
  const volume=labVesselQuantity(source).volumeMl;
  if(volume<=0||volume>labVesselQuantity(target).capacityMl)return bench;
  const soluble:Record<string,number>={};
@@ -1774,14 +1782,21 @@ export function filterLabPrecipitate(bench:LabBench,sourceId:string,targetId:str
   filter(id=>id!=="H2O"&&(soluble[id]??0)>1e-12);
  if(solutes.length>MAX_VESSEL_REAGENTS)return bench;
  const color=reaction.afterColor??"#eef0ed";
+ const mixed=retained.length>1;
+ const solidMoles=Object.fromEntries(solidEntries);
+ const filteredResidue:LabFilteredResidue={formula:solid,color,massG,
+  ...(mixed?{components:retained}: {})};
  const vessels=bench.vessels.map(v=>{
-  if(v.id===sourceId)return {...v,reagents:[solid],
+  if(v.id===sourceId)return {...v,reagents:mixed?
+   retained.map(item=>item.formula):[solid],
    reactionHeat:undefined,
    environment:"dry" as const,observed:false,uncertain:false,
    indicator:undefined,completedReaction:undefined,reactionAmounts:undefined,
-   chemicalInventory:undefined,filteredSolution:undefined,
-   filteredResidue:{formula:solid,color,massG},
-   doses:{[solid]:{unit:"g" as const,value:massG}},
+   chemicalInventory:mixed?{speciesMol:{...solidMoles},
+    solidMol:{...solidMoles},retainedGasMol:{},
+    releasedGasMol:{...inventory.releasedGasMol}}:undefined,
+   filteredSolution:undefined,filteredResidue,
+   doses:mixed?undefined:{[solid]:{unit:"g" as const,value:massG}},
    visualStartedAtMs:undefined};
   if(v.id===targetId)return {...v,reagents:solutes,
    reactionHeat:undefined,environment:"aqueous" as const,

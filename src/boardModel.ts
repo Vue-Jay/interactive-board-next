@@ -938,7 +938,15 @@ export function parseDocument(raw: string): DocumentData {
                 d.collectedResidue.formula.length<=70&&typeof d.collectedResidue.color==="string"&&
                 d.collectedResidue.color.length<=35&&
                 (d.collectedResidue.massG==null||(Number.isFinite(d.collectedResidue.massG)&&
-                 d.collectedResidue.massG>=0&&d.collectedResidue.massG<=10000)))))))||
+                 d.collectedResidue.massG>=0&&d.collectedResidue.massG<=10000))&&
+                (d.collectedResidue.components==null||
+                 (Array.isArray(d.collectedResidue.components)&&
+                  d.collectedResidue.components.length>=2&&
+                  d.collectedResidue.components.length<=maxSavedLabReagents&&
+                  d.collectedResidue.components.every(c=>
+                   typeof c.formula==="string"&&c.formula.length<=70&&
+                   typeof c.color==="string"&&c.color.length<=35&&
+                   Number.isFinite(c.massG)&&c.massG>0&&c.massG<=10000))))))))||
           (bench.simulationAtMs!=null&&
            (!Number.isFinite(bench.simulationAtMs)||bench.simulationAtMs<0))||
           (bench.titration!=null&&!validLabTitration(bench.titration))||
@@ -965,7 +973,15 @@ export function parseDocument(raw: string): DocumentData {
             (v.filteredResidue==null||(typeof v.filteredResidue.formula==="string"&&
              typeof v.filteredResidue.color==="string"&&
              v.filteredResidue.formula.length<=70&&v.filteredResidue.color.length<=35&&
-             (v.filteredResidue.massG==null||Number.isFinite(v.filteredResidue.massG))))&&
+             (v.filteredResidue.massG==null||Number.isFinite(v.filteredResidue.massG))&&
+             (v.filteredResidue.components==null||
+              (Array.isArray(v.filteredResidue.components)&&
+               v.filteredResidue.components.length>=2&&
+               v.filteredResidue.components.length<=maxSavedLabReagents&&
+               v.filteredResidue.components.every(c=>typeof c.formula==="string"&&
+                c.formula.length<=70&&typeof c.color==="string"&&
+                c.color.length<=35&&Number.isFinite(c.massG)&&
+                c.massG>0&&c.massG<=10000)))))&&
             (v.filteredSolution==null||(typeof v.filteredSolution.sourceEquation==="string"&&
              v.filteredSolution.sourceEquation.length<=500&&
              Array.isArray(v.filteredSolution.solutes)&&
