@@ -668,7 +668,10 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
  // Quantitative progress is allowed only for balanced and fully measured cases.
  // Carrier-solution volume stays constant while solute moles are consumed.
  vessels=result.vessels.map(v=>{
-  if(v.uncertain||!v.observed)return v;
+  // A staged multi-step mixture is owned by the conserved inventory solver.
+  // Starting a second stoichiometric timer from its historic dose labels
+  // would produce two conflicting phases and block the finished equation.
+  if(v.pendingInventoryReaction||v.uncertain||!v.observed)return v;
   let state=v.reactionAmounts;
   if(!state){
    if(v.completedReaction)return v;
