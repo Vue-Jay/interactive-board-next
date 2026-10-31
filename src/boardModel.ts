@@ -773,7 +773,7 @@ export function parseDocument(raw: string): DocumentData {
         const savedBench=i.scienceLabBench as import("./lektrusChemistryBenchModel").LabBench;
         if(savedBench&&Array.isArray(savedBench.vessels)){
           let repaired=false;
-          const vessels=savedBench.vessels.map(v=>{
+          let vessels=savedBench.vessels.map(v=>{
             if(!v||typeof v!=="object")return v;
             let next=v;
             if((v.kind as string)==="funnel"){
@@ -788,11 +788,40 @@ export function parseDocument(raw: string): DocumentData {
             }
             return next;
           });
+          // A legacy positional live-merge could append the SAME glassware
+          // twice when a slow evaporation save raced with a new server version.
+          // Recover the actual vessel, never reject the other 100+ board items.
+          // Equal ID + kind means the same physical vessel at two timestamps:
+          // retain the last observed state rather than double its substances.
+          // A genuinely different kind with a colliding ID gets a fresh ID.
+          const vesselSeen=new Map<string,number>();
+          const uniqueVessels:typeof vessels=[];
+          for(const vessel of vessels){
+            if(!vessel||typeof vessel.id!=="string"||!vessel.id){
+              uniqueVessels.push(vessel);continue;
+            }
+            const prior=vesselSeen.get(vessel.id);
+            if(prior===undefined){
+              vesselSeen.set(vessel.id,uniqueVessels.length);
+              uniqueVessels.push(vessel);continue;
+            }
+            repaired=true;
+            if(uniqueVessels[prior].kind===vessel.kind){
+              uniqueVessels[prior]=vessel;
+              continue;
+            }
+            let suffix=2,id="";
+            do{id=vessel.id.slice(0,29)+"-copy-"+suffix++;}while(
+              vesselSeen.has(id)||vessels.some(v=>v?.id===id));
+            vesselSeen.set(id,uniqueVessels.length);
+            uniqueVessels.push({...vessel,id});
+          }
+          vessels=uniqueVessels;
           const ids=new Set(vessels.filter(v=>v&&typeof v.id==="string").map(v=>v.id));
           const selectedId=savedBench.selectedId&&
             !ids.has(savedBench.selectedId)?"":savedBench.selectedId;
           if(selectedId!==savedBench.selectedId)repaired=true;
-          const placedDevices=Array.isArray(savedBench.placedDevices)?
+          let placedDevices=Array.isArray(savedBench.placedDevices)?
             savedBench.placedDevices.map(device=>{
               if(device?.linkedVesselId&&!ids.has(device.linkedVesselId)){
                 repaired=true;
@@ -804,6 +833,29 @@ export function parseDocument(raw: string): DocumentData {
               }
               return device;
             }):savedBench.placedDevices;
+          if(Array.isArray(placedDevices)){
+            const seen=new Map<string,number>();
+            const unique:typeof placedDevices=[];
+            for(const device of placedDevices){
+              if(!device||typeof device.id!=="string"||!device.id){
+                unique.push(device);continue;
+              }
+              const prior=seen.get(device.id);
+              if(prior===undefined){
+                seen.set(device.id,unique.length);unique.push(device);continue;
+              }
+              repaired=true;
+              if(unique[prior].kind===device.kind){
+                unique[prior]=device;
+                continue;
+              }
+              let suffix=2,id="";
+              do{id=device.id.slice(0,39)+"-copy-"+suffix++;}while(
+                seen.has(id)||placedDevices.some(d=>d?.id===id));
+              seen.set(id,unique.length);unique.push({...device,id});
+            }
+            placedDevices=unique;
+          }
           const stirringVesselId=savedBench.stirringVesselId&&
             (!ids.has(savedBench.stirringVesselId)||
              !(savedBench.devices??[]).includes("stirrer"))?
