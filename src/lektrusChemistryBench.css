@@ -4471,3 +4471,70 @@
  .lektrus-lab-bench .lektrus-lab-scene-brand{display:none!important}
  .lektrus-lab-bench .lektrus-lab-mode-picker{min-width:104px!important}
 }
+
+
+/* One compact experiment-settings flyout instead of scattered toggles.
+   Scoped to the board surface, stays above apparatus without moving it. */
+.lektrus-lab-bench .lektrus-lab-scene-header:has(.lektrus-lab-experiment-settings[open]){
+ z-index:140!important;overflow:visible!important}
+.lektrus-lab-bench .lektrus-lab-experiment-settings{position:relative;flex:none}
+.lektrus-lab-bench .lektrus-lab-experiment-settings>summary{
+ list-style:none;min-height:29px;display:inline-flex;align-items:center;
+ justify-content:center;gap:6px;padding:4px 10px;border:1px solid #86bda2;
+ border-radius:9px;background:#e6f4e9;color:#26674b;
+ font:800 11px/1.15 system-ui,sans-serif;white-space:nowrap;cursor:pointer}
+.lektrus-lab-bench .lektrus-lab-experiment-settings>summary::-webkit-details-marker{display:none}
+.lektrus-lab-bench .lektrus-lab-experiment-settings[open]>summary,
+.lektrus-lab-bench .lektrus-lab-experiment-settings>summary:hover{
+ background:#cfe9d8;border-color:#4d9b79}
+.lektrus-lab-bench .lektrus-lab-experiment-settings>summary:focus-visible{
+ outline:2px solid #218460;outline-offset:2px}
+.lektrus-lab-bench .lektrus-lab-experiment-panel{
+ position:absolute;top:calc(100% + 9px);right:0;z-index:160;
+ width:320px;max-width:calc(100vw - 24px);box-sizing:border-box;
+ padding:15px;background:#f8fcf8;border:1px solid #91bfa9;
+ border-radius:14px;box-shadow:0 12px 34px #174d3d48;color:#214b3d}
+.lektrus-lab-bench .lektrus-lab-experiment-panel h3,
+.lektrus-lab-bench .lektrus-lab-compact-settings h3{
+ flex-basis:100%;margin:0 0 10px;color:#245b42;
+ font:850 15px/1.2 system-ui,sans-serif}
+.lektrus-lab-bench .lektrus-lab-experiment-controls{
+ width:100%;min-width:0;box-sizing:border-box;
+ display:flex;flex-direction:column;gap:12px}
+.lektrus-lab-bench .lektrus-lab-experiment-control{
+ display:flex;flex-direction:column;gap:6px;min-width:0;
+ padding:0 0 11px;border-bottom:1px solid #d3e7d8}
+.lektrus-lab-bench .lektrus-lab-experiment-copy{
+ display:flex;flex-direction:column;gap:3px;min-width:0}
+.lektrus-lab-bench .lektrus-lab-experiment-copy strong{
+ font:800 12px/1.2 system-ui,sans-serif;color:#28674c}
+.lektrus-lab-bench .lektrus-lab-experiment-copy small,
+.lektrus-lab-bench .lektrus-lab-experiment-footnote{
+ font:500 11px/1.35 system-ui,sans-serif;color:#657f6b}
+.lektrus-lab-bench .lektrus-lab-experiment-options{
+ display:flex;align-items:stretch;gap:5px}
+.lektrus-lab-bench .lektrus-lab-experiment-options button,
+.lektrus-lab-bench .lektrus-lab-experiment-switch{
+ flex:1 1 auto;min-width:0;min-height:34px;padding:7px 9px;
+ border:1px solid #b4cdbb;border-radius:8px;background:#fff;
+ color:#376d55;font:750 11px/1.15 system-ui,sans-serif;
+ cursor:pointer;white-space:nowrap}
+.lektrus-lab-bench .lektrus-lab-experiment-options button[aria-pressed="true"],
+.lektrus-lab-bench .lektrus-lab-experiment-switch[aria-checked="true"]{
+ background:#297957!important;border-color:#297957!important;color:#fff!important}
+.lektrus-lab-bench .lektrus-lab-experiment-options button:disabled,
+.lektrus-lab-bench .lektrus-lab-experiment-switch:disabled{
+ opacity:.55;cursor:default}
+.lektrus-lab-bench .lektrus-lab-experiment-options button:focus-visible,
+.lektrus-lab-bench .lektrus-lab-experiment-switch:focus-visible{
+ outline:2px solid #187b57;outline-offset:2px}
+.lektrus-lab-bench .lektrus-lab-experiment-footnote{display:block;margin-top:0}
+@container(max-width:920px){
+ .lektrus-lab-bench .lektrus-lab-experiment-settings>summary span{display:none}
+ .lektrus-lab-bench .lektrus-lab-experiment-settings>summary{font-size:15px;padding:4px 9px}
+}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-settings .lektrus-lab-experiment-controls{
+ flex:0 0 100%;width:100%;gap:10px}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-settings .lektrus-lab-experiment-controls button{
+ flex:1 1 auto;min-height:40px!important}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-settings h3{margin-bottom:0}
