@@ -218,10 +218,10 @@ function labCoupledRecordedPrecipitates(
    const record=knownRows.find(item=>item.row.equation===text&&
     item.row.environment==="aqueous"&&item.row.observation==="precipitate");
    if(!record||record.equation.reactants.length!==2)continue;
-   const products=(text.split("→")[1]??"").split(/\\s+\\+\\s+/).
+   const products=(text.split("→")[1]??"").split(/\s+\+\s+/).
     filter(item=>item.includes("↓"));
    if(products.length!==1)continue;
-   const marked=products[0].replace(/^\\s*\\d+\\s*/,"").
+   const marked=products[0].replace(/^\s*\d+\s*/,"").
     replace(/[↓↑]/g,"").trim();
    const coeff=record.equation.products.find(t=>t.formula===precipitate);
    const remaining=record.equation.products.filter(t=>t.formula!==precipitate);
