@@ -155,8 +155,8 @@ const surfaceText=read("src/LektrusChemistryBench.tsx");
 assert.match(surfaceText,/Переливание: по 5% каждые 0,15 секунды/);
 assert.match(surfaceText,/fastLabPour\(bench,sourceId,targetId\)/);
 assert.match(surfaceText,/fastLabPour\(latest,sourceId,targetId\)/);
-assert.match(surfaceText,/setTimeout\(perform,2000\)/,
- "Both pour modes keep the two-second intentional contact");
+assert.match(surfaceText,/setTimeout\(perform,1000\)/,
+ "Both pour modes require one second of intentional contact");
 assert.match(surfaceText,/Показать ещё 36 опытов/,
  "Ready experiments must avoid rendering the whole reaction catalogue at once");
 assert.match(surfaceText,/Текущая посуда и содержимое будут заменены/,
@@ -1150,7 +1150,7 @@ assert.match(gradualUi,/stopLabPour\(bench,p\.id\)/);
 const hoverSurface=read("src/LektrusChemistryBench.tsx");
 assert.match(hoverSurface,/contactTimer\.current=setTimeout/);
 assert.match(hoverSurface,/const drawing=pipette\.reagents\.length===0/,"Empty pipette draws after the contact delay");
-assert.match(hoverSurface,/setTimeout\(perform,2000\)/,"Pouring and pipettes both require two seconds uninterrupted contact");
+assert.match(hoverSurface,/setTimeout\(perform,1000\)/,"Pouring and pipettes require one second uninterrupted contact");
 assert.match(hoverSurface,/endContact\(\)/,"Release cancels the active pour");
 assert.match(hoverSurface,/beginContact\(g\.id,pouring\)/);
 assert.match(hoverSurface,/const drawing=pipette\.reagents\.length===0/);
@@ -1448,7 +1448,7 @@ for(const width of [400,690,700,900,1200,1600,2600]){
 
 // Real-time pipette dwell: a contact must survive a full second.
 const polishedLabSource=read("src/LektrusChemistryBench.tsx");
-assert.match(polishedLabSource,/contactTimer\.current=setTimeout\(perform,2000\)/);
+assert.match(polishedLabSource,/contactTimer\.current=setTimeout\(perform,1000\)/);
 assert.match(polishedLabSource,/if\(contactRef\.current\)endContact\(\)/);
 assert.match(polishedLabSource,/endContact\(\);\s*event\.preventDefault\(\)/);
 assert.doesNotMatch(polishedLabSource,/className="lektrus-lab-svg-ware-control"/);

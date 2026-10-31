@@ -910,12 +910,15 @@ export function clearLabTable(bench:LabBench):LabBench{
   instrumentTarget:undefined,simulationAtMs:undefined,pouring:undefined,event:bench.event+1};
 }
 export type LabPourProgress={id:string;sourceId:string;targetId:string;step:number;totalSteps:20;
- initialDoses:Record<string,LabDose>;unmeasured:boolean};
+ initialDoses:Record<string,LabDose>;unmeasured:boolean;
+ /** Fraction of the donor's original contents that fits in the receiver.
+  * One session is always 20 equal parts of THAT amount, not always the donor. */
+ transferFraction?:number;};
 export const LAB_POUR_STEPS=20,LAB_POUR_INTERVAL_MS=150;
 export const labPourPercent=(p:LabPourProgress)=>Math.round(p.step/p.totalSteps*100);
 export const labPourAmounts=(p:LabPourProgress)=>Object.entries(p.initialDoses).map(([id,d])=>({
- id,unit:d.unit,transferred:Math.round(d.value*p.step/p.totalSteps*1000)/1000,
- remaining:Math.round(d.value*(1-p.step/p.totalSteps)*1000)/1000}));
+ id,unit:d.unit,transferred:Math.round(d.value*(p.transferFraction??1)*p.step/p.totalSteps*1000)/1000,
+ remaining:Math.round(d.value*(1-(p.transferFraction??1)*p.step/p.totalSteps)*1000)/1000}));
 export type LabBench={vessels:LabVessel[];selectedId:string;event:number;mode?:LabMode;pouring?:LabPourProgress;
  /** Explicit clear/replace token; never changed by passive simulation ticks. */
  tableEpoch?:string;
@@ -1647,8 +1650,7 @@ function transferSnapshotSample(bench:LabBench,source:LabVessel,target:LabVessel
   target.reactionAmounts&&!target.reactionAmounts.complete)return bench;
  const donorMl=labVesselQuantity(source).volumeMl;
  if(donorMl<amountMl-1e-8||donorMl<=0||
-  labVesselQuantity(target).volumeMl+amountMl>
-   labVesselQuantity(target).capacityMl+1e-8)return bench;
+  amountMl>labVesselQuantity(target).availableMl+1e-8)return bench;
  const donor=simulateLabInventory({...source,volumeMl:donorMl});
  const receiver=simulateLabInventory({...target,
   volumeMl:labVesselQuantity(target).volumeMl});
@@ -2077,16 +2079,21 @@ export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:strin
     t.reactionAmounts?.complete||a.completedReaction||t.completedReaction)
   return pourLabVessel(b,sourceId,targetId);
  const initialDoses={...a.doses};
- const volume=labVesselQuantity(a).volumeMl;
- const current=labVesselQuantity(t).volumeMl;
- const max=labVesselQuantity(t).capacityMl;
- if(volume+current+labVesselQuantity(a).solidVolumeMl+
-   labVesselQuantity(t).solidVolumeMl>max+1e-7)return b;
+ const donorQuantity=labVesselQuantity(a),receiverQuantity=labVesselQuantity(t);
+ // Fill ONLY the remaining capacity. The leftover liquid/solid quantities
+ // remain in the donor, rather than rejecting the entire attempt.
+ const freeMl=receiverQuantity.availableMl;
+ if(freeMl<0.005)return b;
+ const transferFraction=donorQuantity.occupiedMl>1e-9?
+  Math.min(1,freeMl/donorQuantity.occupiedMl):1;
+ if(transferFraction<=0)return b;
  if(Object.entries(initialDoses).some(([name,d])=>{
   const old=t.doses?.[name];
-  return old&&(old.unit!==d.unit||old.value+d.value>10000);
+  return old&&(old.unit!==d.unit||
+   old.value+d.value*transferFraction>10000+1e-8);
  }))return b;
  return {...b,pouring:{id,sourceId,targetId,step:0,totalSteps:20,initialDoses,
+  transferFraction:Math.round(transferFraction*1e12)/1e12,
   unmeasured:a.reagents.some(r=>!initialDoses[r])},event:b.event+1};
 }
 const portionRound=(x:number)=>Math.round(x*1000000)/1000000;
@@ -2101,8 +2108,9 @@ export function advanceLabPour(b:LabBench,portions=1):LabBench{
  const n=Math.min(LAB_POUR_STEPS,p.step+count),finish=n===LAB_POUR_STEPS;
  const left={...source.doses},received={...target.doses};
  for(const [reagent,original] of Object.entries(p.initialDoses)){
-  const amount=portionRound(portionRound(original.value*n/20)-
-   portionRound(original.value*p.step/20));
+  const fraction=p.transferFraction??1;
+  const amount=portionRound(portionRound(original.value*fraction*n/LAB_POUR_STEPS)-
+   portionRound(original.value*fraction*p.step/LAB_POUR_STEPS));
   const remaining=left[reagent]?.value??0,old=received[reagent];
   if(amount>remaining+1e-7||(old?.value??0)+amount>10000)return stopLabPour(b);
   const updated=portionRound((old?.value??0)+amount);
@@ -2125,23 +2133,25 @@ export function advanceLabPour(b:LabBench,portions=1):LabBench{
  const uncertain=target.uncertain||source.uncertain||!!source.reactionAmounts||
   (!!target.reactionAmounts&&!sameReaction)||
   (p.step===0&&!targetWasEmpty&&Boolean(sourceReaction||targetReaction));
+ const fullyEmptied=finish&&(p.transferFraction??1)>=1-1e-9;
  const vessels=b.vessels.map(v=>{
   if(v.id===source.id)return {...v,reactionAmounts:undefined,
-    reactionHeat:finish?undefined:v.reactionHeat,
-    uncertain:!!source.reactionAmounts||v.uncertain,reagents:finish?[]:v.reagents,
-   doses:finish?undefined:left,observed:finish?false:v.observed,
-   completedReaction:finish?undefined:v.completedReaction,
-   indicator:finish?undefined:v.indicator,
-    indicatorDrops:finish?undefined:v.indicatorDrops,
-    indicatorAddedAtMs:finish?undefined:v.indicatorAddedAtMs,
-   pourFraction:p.unmeasured?portionRound(.5*(20-n)/20):v.pourFraction};
+    reactionHeat:fullyEmptied?undefined:v.reactionHeat,
+    uncertain:!!source.reactionAmounts||v.uncertain,reagents:fullyEmptied?[]:v.reagents,
+   doses:fullyEmptied?undefined:left,observed:fullyEmptied?false:v.observed,
+   completedReaction:fullyEmptied?undefined:v.completedReaction,
+   indicator:fullyEmptied?undefined:v.indicator,
+    indicatorDrops:fullyEmptied?undefined:v.indicatorDrops,
+    indicatorAddedAtMs:fullyEmptied?undefined:v.indicatorAddedAtMs,
+   pourFraction:p.unmeasured?portionRound(.5*(1-(p.transferFraction??1)*n/20)):v.pourFraction};
   if(v.id===target.id){
    const dissolving=received.H2O?.unit==="ml"&&combined.some(key=>
     key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&received[key]?.unit==="g")&&
     identifyReaction(combined,medium).status!=="reaction";
    return {...v,reactionAmounts:undefined,reagents:combined,doses:received,
    temperatureC:labMixedContentsTemperatureC(source,v,
-    (n-p.step)/(LAB_POUR_STEPS-p.step)),
+    (p.transferFraction??1)*(n-p.step)/
+      (LAB_POUR_STEPS-(p.transferFraction??1)*p.step)),
    reactionHeat:p.step===0?undefined:v.reactionHeat,
    physicalProcess:dissolving?"dissolving" as const:undefined,
    physicalStartedAtMs:dissolving?(v.physicalStartedAtMs??Date.now()):undefined,
@@ -2151,7 +2161,8 @@ export function advanceLabPour(b:LabBench,portions=1):LabBench{
     (v.visualStartedAtMs??Date.now()):v.visualStartedAtMs,
    completedReaction:targetWasEmpty?sourceReaction:v.completedReaction,
    ...carriedLabIndicator(source,v),
-   pourFraction:p.unmeasured?portionRound(Math.min(1,(v.pourFraction??(targetWasEmpty?0:.5))+.025)):v.pourFraction};
+   pourFraction:p.unmeasured?portionRound(Math.min(1,(v.pourFraction??(targetWasEmpty?0:.5))+
+     .025*(p.transferFraction??1))):v.pourFraction};
   }
   return v;
  });
@@ -2252,17 +2263,24 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
  // Do not mistake a partially reacted suspension for completed products.
  if((source.reactionAmounts&&!source.reactionAmounts.complete)||
     (target.reactionAmounts&&!target.reactionAmounts.complete))return bench;
+ const donorQuantity=labVesselQuantity(source),receiverQuantity=labVesselQuantity(target);
+ if(receiverQuantity.availableMl<.005)return bench;
  if(source.chemicalInventory||target.chemicalInventory||
     source.reactionAmounts?.complete||target.reactionAmounts?.complete||
     source.completedReaction||target.completedReaction){
-  if(labVesselQuantity(source).occupiedMl+labVesselQuantity(target).occupiedMl>
-   labVesselQuantity(target).capacityMl+1e-7)return bench;
-  return pourMeasuredFiltrate(bench,source,target);
+  if(donorQuantity.occupiedMl<=receiverQuantity.availableMl+1e-7)
+   return pourMeasuredFiltrate(bench,source,target);
+  // During partial decanting, only measured liquid and dissolved substances
+  // move. A settled precipitate remains in its original vessel.
+  // Hundredth-millilitre rounding cannot exceed the real free headspace.
+  const sampleMl=Math.floor((Math.min(donorQuantity.volumeMl,
+   receiverQuantity.availableMl)+1e-9)*100)/100;
+  return sampleMl>=.01?transferSnapshotSample(bench,source,target,sampleMl):bench;
  }
  const reagents=[...new Set([...target.reagents,...source.reagents])];
  if(reagents.length>MAX_VESSEL_REAGENTS)return bench;
- if(labVesselQuantity(source).occupiedMl+labVesselQuantity(target).occupiedMl>
-  labVesselQuantity(target).capacityMl+1e-7)return bench;
+ if(donorQuantity.occupiedMl>receiverQuantity.availableMl+1e-7)
+  return fastLabPour(bench,sourceId,targetId);
  const incompatible=Object.entries(source.doses??{}).some(([id,dose])=>{
   const previous=target.doses?.[id];
   return previous&&(previous.unit!==dose.unit||previous.value+dose.value>10000);

@@ -847,9 +847,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    if(next!==latest){benchRef.current=next;changeRef.current?.(next)}
    contactRef.current={...c,activated:true};setContactCountdown(null);
   };
-  // All contact-initiated transfers (including pipettes) require two full
-  // seconds of uninterrupted contact; moving off the target cancels the timer.
-  contactTimer.current=setTimeout(perform,2000);
+  // All contact-initiated transfers (including pipettes) begin after one
+  // second of uninterrupted contact. Leaving the receiver cancels the timer.
+  contactTimer.current=setTimeout(perform,1000);
  };
  const clean=(id:string)=>{
   const next=emptyLabVessel(bench,id);
@@ -1320,7 +1320,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      <button type="button" key={id} disabled={!editable}
       aria-pressed={settings.pourMode===id}
       className={settings.pourMode===id?"is-active":""}
-      title={id==="fast"?"Перелить всё за одно действие после двух секунд контакта":
+      title={id==="fast"?"Перелить всё за одно действие после одной секунды контакта":
        "Переливать порциями по 5%, пока удерживается сосуд"}
       onClick={e=>{e.stopPropagation();onChange?.(setLabBenchSettings(bench,{pourMode:id}))}}>
       {label}</button>)}
