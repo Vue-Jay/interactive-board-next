@@ -367,6 +367,20 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
  Na2SO4:[null,null,48.1,45.26,43.09,42.3],
  ZnCl2:[null,null,453,488,541,614],
  NaH2PO4:[null,null,null,179.3,207.3,284.4],
+ // Exact 20 °C from ILO-WHO/Canada/WHO and published phosphate table.
+ // Numerators remain in source units in LabSolubilityMeasurements;
+ // the lookup converts g/100mL, g/L and mg/L to g/100g pure H2O.
+ // No fabricated points: missing grid knots remain null.
+ CH3COONa:[null,labExactMeasuredSolubility("CH3COONa",20)??null,null,null,null,null],
+ CH3COOK:[null,labExactMeasuredSolubility("CH3COOK",20)??null,null,null,null,null],
+ AgCl:[null,labExactMeasuredSolubility("AgCl",20)??null,null,null,null,null],
+ AgBr:[null,labExactMeasuredSolubility("AgBr",20)??null,null,null,null,null],
+ SrCl2:[null,labExactMeasuredSolubility("SrCl2",20)??null,null,null,null,null],
+ K3PO4:[null,labExactMeasuredSolubility("K3PO4",20)??null,null,null,null,null],
+ // Calcium acetate source reports two extremes (0 and 100 °C) only.
+ // Neither a 20 °C value nor interpolation across missing cells is valid.
+ "Ca(CH3COO)2":[labExactMeasuredSolubility("Ca(CH3COO)2",0)??null,
+  null,null,null,null,labExactMeasuredSolubility("Ca(CH3COO)2",100)??null],
  // Source-verified EXACT 20 °C binary water-solubility points.
  // Original ICSC / Nickel Institute measurements are g/100 ml WATER.
  // Measured conversion uses the independently sourced pure-water density.
@@ -467,7 +481,11 @@ export const LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES:ReadonlySet<string>=new
  // chloride/nitrate hydrolysis, hydrated sulfate/chloride phase boundaries,
  // water binding and mixed salt activities all require separate models.
  "FeCl2","CoCl2","MgCl2","MgSO4","NiCl2","AlCl3","CuCl2",
- "LiNO3","Cu(NO3)2","Al2(SO4)3","Li2SO4","ZnSO4"
+ "LiNO3","Cu(NO3)2","Al2(SO4)3","Li2SO4","ZnSO4",
+ // Binary-water references do not model silver halide Ksp, dissolution
+ // kinetics, acetate hydrolysis, crystal waters or phosphate speciation.
+ "CH3COONa","CH3COOK","AgCl","AgBr","SrCl2","K3PO4",
+ "Ca(CH3COO)2"
 ]);
 /** Phase fractions for EXACTLY one supported anhydrous crystalline salt
  * and pure explicitly measured H2O. Aqueous mixed salts, prepared stocks
