@@ -196,7 +196,7 @@ export const LAB_CURATED_PROPERTY_BATCH:readonly LabCuratedPropertyBatchRow[]=[
   phase:"anhydrous-solid",
   sourceCondition:"anhydrous Fe(CH3COO)2 white crystals, CRC Handbook 90th ed. p.4-68: decomposition coincides with reported 190 C fusion",
   sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=12170",
-  note:"Безводный ацетат железа(II) разлагается около 190 °C; справочник также отмечает плавление при этой температуре, поэтому устойчивую жидкую фазу не предполагаем."}
+  note:"Безводный ацетат железа(II) разлагается около 190 °C; справочник также отмечает плавление при этой температуре, поэтому устойчивую жидкую фазу не предполагаем."},
 
  // Royal Society of Chemistry periodic-table graphite phase (not diamond,
  // activated carbon or porous charcoal). True solid density at ambient.
