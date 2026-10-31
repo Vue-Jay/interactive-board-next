@@ -99,5 +99,29 @@ export const LAB_REVIEWED_PROPERTY_DATUMS:readonly LabReviewedPropertyDatum[]=[
  {formula:"BaSO4",property:"meltingC",value:1580,
   sourceUrl:"https://www.ncbi.nlm.nih.gov/books/NBK598782/table/ch4.tab2/"},
  {formula:"ZnO",property:"meltingC",value:1975,
-  sourceUrl:"https://www.ncbi.nlm.nih.gov/books/NBK600540/table/ch4.tab2/"}
+  sourceUrl:"https://www.ncbi.nlm.nih.gov/books/NBK600540/table/ch4.tab2/"},
+ // Additional phase-specific boundaries from CRC / NIH / ICSC / NIOSH.
+ // All sources explicitly identify the PURE solid rather than solution.
+ {formula:"NH4Cl",property:"sublimationC",value:338,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/25517"},
+ {formula:"CaSO4",property:"decompositionC",value:1450,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/24497"},
+ {formula:"MgCO3",property:"decompositionC",value:350,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/11029"},
+ {formula:"PbI2",property:"meltingC",value:410,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/24931"},
+ {formula:"PbI2",property:"decompositionC",value:872,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/24931"},
+ {formula:"CH3COONa",property:"meltingC",value:324,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/517045"},
+ {formula:"Na2CO3",property:"meltingC",value:851,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/10340"},
+ {formula:"CuSO4",property:"decompositionC",value:650,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/24462"},
+ {formula:"ZnS",property:"meltingC",value:1700,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/9833931"},
+ {formula:"Fe3O4",property:"meltingC",value:1597,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/16211978"},
+ {formula:"SiO2",property:"meltingC",value:1713,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/24261"}
 ];
