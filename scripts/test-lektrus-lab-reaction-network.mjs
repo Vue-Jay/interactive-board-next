@@ -852,12 +852,12 @@ console.log("34 exact crystalline Perry Handbook Cp correlations: molar-to-mass,
 // 20°C rows from measurements at 18°C or 25°C.
 const literature=load("src/lektrusLabSolubilityMeasurements.ts");
 const pureWaterMeasurements=literature.LAB_MEASURED_PURE_WATER_SOLUBILITIES;
-assert.equal(pureWaterMeasurements.length,61);
-assert.equal(new Set(pureWaterMeasurements.map(x=>x.formula)).size,40);
-assert.equal(pureWaterMeasurements.filter(x=>x.temperatureC===20).length,25);
+assert.equal(pureWaterMeasurements.length,74);
+assert.equal(new Set(pureWaterMeasurements.map(x=>x.formula)).size,45);
+assert.equal(pureWaterMeasurements.filter(x=>x.temperatureC===20).length,28);
 const measuredTemperatures=new Set([0,20,40,60,80,100]);
 assert.equal(pureWaterMeasurements.filter(
- x=>!measuredTemperatures.has(x.temperatureC)).length,22);
+ x=>!measuredTemperatures.has(x.temperatureC)).length,28);
 const literatureKeys=new Set();
 for(const x of pureWaterMeasurements){
  const key=x.formula+"|"+x.temperatureC;
@@ -1059,6 +1059,67 @@ assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
  "ZnCl2",20),undefined,"A 25°C ZnCl2 point cannot fill 20°C");
 console.log("15 new source-traced solubilities: 10-point nitrate series, five chloride/phosphate/acetate references, source units and phase guards verified");
 
+// Thirteen individually sourced measurements: original temperature and
+// units survive all the way through the real lab property registry.
+// Hydrated salts are NOT a single-phase solubility function; direct
+// measurements are available, but we do not interpolate or crystallise.
+const newMeasuredSourceRows=[
+ ["NiSO4",0,29.3,"g/100ml-water",29.3/.99984],
+ ["NiSO4",20,29.3,"g/100ml-water",29.3/.9982],
+ ["NiSO4",100,83.7,"g/100ml-water",83.7/.9584],
+ ["CH3COOLi",20,40.8,"g/100g-water",40.8],
+ ["CH3COOLi",40,66.7,"g/100g-water",66.7],
+ ["CH3COOLi",50,93.8,"g/100g-water",93.8],
+ ["FeSO4",0,15.65,"g/100g-water",15.65],
+ ["FeSO4",20.13,26.56,"g/100g-water",26.56],
+ ["FeSO4",70.04,56.08,"g/100g-water",56.08],
+ ["FeSO4",90.13,37.27,"g/100g-water",37.27],
+ ["Mg(NO3)2",20,420,"g/l-water",420/10/.9982],
+ ["Mg(NO3)2",25,71.2,"g/100g-water",71.2],
+ ["AgI",25,.0028,"mg/l-water",.0028/10000/.997]
+];
+for(const [formula,temp,sourceValue,unit,expected] of newMeasuredSourceRows){
+ const sample=pureWaterMeasurements.find(x=>
+  x.formula===formula&&x.temperatureC===temp);
+ assert.ok(sample,"Missing original measured source for "+formula+" "+temp);
+ assert.equal(sample.sourceValue,sourceValue);
+ assert.equal(sample.originalUnit,unit);
+ const standardized=literature.labMeasuredSolubilityGPer100gWater(sample);
+ approximately(standardized,expected,1e-12);
+ approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+  formula,temp),expected,1e-12);
+ const prop=registryProps.labSubstanceProperties(formula,temp);
+ assert.equal(prop.solubilityKnown,true,
+  "Exact source value did not reach active lab for "+formula+" "+temp);
+ approximately(prop.solubilityGPer100gWater,expected,1e-12);
+ assert.equal(prop.binaryCrystallizationUnsupported,true,
+  "Measured saturation is not a validated phase model for "+formula);
+ const inventory={speciesMol:{H2O:1,[formula]:.25},solidMol:{}};
+ assert.equal(physicalDensity.labEquilibrateSingleSaltCrystals(
+  inventory,temp,true,labMolarMass),undefined,
+  "Reference-only formula cannot create dry crystals: "+formula);
+ assert.deepEqual(inventory.solidMol,{});
+}
+// Even adjacent tabulated NiSO4/Li-acetate measurements do not justify a
+// single dry-crystal equilibrium when the stable hydrate is unspecified.
+for(const [formula,unmeasured] of [
+ ["NiSO4",10],["NiSO4",70],
+ ["CH3COOLi",30],["CH3COOLi",45],
+ ["FeSO4",20],["FeSO4",60],
+ ["Mg(NO3)2",22],["Mg(NO3)2",24],
+ ["AgI",20]
+]){
+ assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+  formula,unmeasured),undefined,
+  "Unknown/phase-changing solubility temperature was invented: "+
+   formula+" at "+unmeasured);
+}
+// This is an EXACT 20.13 °C source, not a reported 20 °C knot.
+assert.equal(registryProps.labSubstanceProperties("FeSO4",20).solubilityKnown,false);
+// The AgI environmental water reference is truly small, never 0.0028 g/L.
+assert.ok(physicalDensity.labSingleSaltSolubilityGPer100gWater("AgI",25)<.000001);
+console.log("13 phase-guarded source solubility points: original units, exact temperatures, no inventing crystals or curves");
+
 // Invalid extrapolation: a 25°C measurement does NOT define the
 // solubility at 20°C, and an isolated 20°C record does not define 21°C.
 for(const formula of ["PbSO4","SrCO3","ZnS","FeS","Ca3(PO4)2"])
@@ -1086,7 +1147,7 @@ for(const formula of ["Na2S","KNO2","BaSO4","CaCO3","CaSO4","LiCl"]){
  // The independent ion-speciation / Ksp engine may STILL legitimately
  // predict precipitation. Its settled solid is not a result of this solver.
 }
-console.log("61 sourced measurements across 40 salts: 25 exact 20°C and 22 off-grid points");
+console.log("74 sourced measurements across 45 salts: 28 exact 20°C and 28 off-grid points");
 
 
 // Individual source-linked normal-pressure phase boundaries. Avoid
