@@ -698,7 +698,8 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
  // layer is not declared completed until the final real reaction step.
  vessels=result.vessels.map(v=>{
   if(!v.pendingInventoryReaction||!v.chemicalInventory)return v;
-  const baseline=v.inventoryPrecipitation?.initial??v.chemicalInventory;
+  const baseline=v.inventoryPrecipitation?.initial??
+   v.inventoryGasReaction?.initial??v.chemicalInventory;
   const measured=simulateLabInventory({
    ...v,chemicalInventory:baseline,
    volumeMl:labVesselQuantity(v).volumeMl
@@ -707,8 +708,9 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
   const nextCase=nextStep?reviewedReactionCases.find(row=>
    row.equation===nextStep.equation):undefined;
   const active=v.inventoryPrecipitation;
-  const activeGas=v.inventoryGasReaction?.elapsedSeconds!<
-   (v.inventoryGasReaction?.durationSeconds??0)?v.inventoryGasReaction:undefined;
+  const activeGas=v.inventoryGasReaction&&
+   v.inventoryGasReaction.elapsedSeconds<v.inventoryGasReaction.durationSeconds?
+   v.inventoryGasReaction:undefined;
   // Progress is purely instructional, not an invented reaction-rate constant.
   // Both gas and sediment are partitioned from the same balanced final ledger.
   if((active||activeGas||nextCase?.observation==="precipitate"||
@@ -1580,7 +1582,9 @@ export function labObservation(vessel:LabVessel):{status:ReactionStatus;message:
  caseData?:ReturnType<typeof identifyReaction>["caseData"]}{
  if(vessel.reagents.length===0)return{status:"unknown",message:"Сосуд пуст."};
  if(vessel.pendingInventoryReaction)return{status:"unknown",
-  message:"Реакция ожидает запуска процессов."};
+  message:vessel.inventoryPrecipitation||vessel.inventoryGasReaction?
+   "Реакция протекает; состав продуктов изменяется постепенно.":
+   "Реакция ожидает запуска процессов."};
  const inventory=vessel.chemicalInventory?
   simulateLabInventory({...vessel,volumeMl:labVesselQuantity(vessel).volumeMl}):
   vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
@@ -1921,6 +1925,7 @@ export function setLabEnvironment(bench:LabBench,id:string,environment:ReactionE
   const previous=labObservation(v);
   const next=identifyReaction(v.reagents,environment);
   const starts=previous.status!=="reaction"&&!v.uncertain&&next.status==="reaction";
+  if(v.inventoryGasReaction&&v.pendingInventoryReaction)return v;
   return {...v,environment,
    // Changing conditions while a precipitate is growing keeps the current
    // measured material, but the old future trajectory is no longer valid.
@@ -2188,6 +2193,8 @@ function labInventoryAvailableForTransfer(v:LabVessel){
 function transferSnapshotSample(bench:LabBench,source:LabVessel,target:LabVessel,
  amountMl:number):LabBench{
  if(source.inventoryPrecipitation||target.inventoryPrecipitation||
+  source.inventoryGasReaction&&source.pendingInventoryReaction||
+  target.inventoryGasReaction&&target.pendingInventoryReaction||
   source.reactionAmounts&&!source.reactionAmounts.complete||
   target.reactionAmounts&&!target.reactionAmounts.complete)return bench;
  const donorMl=labVesselQuantity(source).volumeMl;
@@ -2295,7 +2302,9 @@ export function transferLabMeasuredLiquid(
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
  if(!source||!target||!source.reagents.length||source.stoppered||target.stoppered||
-  source.inventoryPrecipitation||target.inventoryPrecipitation)return bench;
+  source.inventoryPrecipitation||target.inventoryPrecipitation||
+  source.inventoryGasReaction&&source.pendingInventoryReaction||
+  target.inventoryGasReaction&&target.pendingInventoryReaction)return bench;
  if(source.chemicalInventory||target.chemicalInventory)
   return transferSnapshotSample(bench,source,target,volumeMl);
  const entries=source.reagents.map(id=>({id,dose:source.doses?.[id]}));
@@ -2629,7 +2638,9 @@ export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:strin
  // retain the original state until its measured progression finishes.
  if((a.reactionAmounts&&!a.reactionAmounts.complete)||
     (t.reactionAmounts&&!t.reactionAmounts.complete)||
-    a.inventoryPrecipitation||t.inventoryPrecipitation)return b;
+    a.inventoryPrecipitation||t.inventoryPrecipitation||
+    a.inventoryGasReaction&&a.pendingInventoryReaction||
+    t.inventoryGasReaction&&t.pendingInventoryReaction)return b;
  if(a.chemicalInventory||t.chemicalInventory||a.reactionAmounts?.complete||
     t.reactionAmounts?.complete||a.completedReaction||t.completedReaction)
   return pourLabVessel(b,sourceId,targetId);
@@ -2821,7 +2832,9 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
  if(!source||!target||!source.reagents.length||source.stoppered||target.stoppered||
-  source.inventoryPrecipitation||target.inventoryPrecipitation)return bench;
+  source.inventoryPrecipitation||target.inventoryPrecipitation||
+  source.inventoryGasReaction&&source.pendingInventoryReaction||
+  target.inventoryGasReaction&&target.pendingInventoryReaction)return bench;
  // Do not mistake a partially reacted suspension for completed products.
  if((source.reactionAmounts&&!source.reactionAmounts.complete)||
     (target.reactionAmounts&&!target.reactionAmounts.complete))return bench;
