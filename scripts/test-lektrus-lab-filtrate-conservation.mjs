@@ -287,16 +287,12 @@ assert.equal(mixedFiltrate.filteredSolution.volumeMl,40);
 const cakeContents=lab.labVesselContents(mixedCake);
 assert.deepEqual(cakeContents.solid.map(x=>x.formula).sort(),["AgCl","BaSO4"]);
 assert.ok((cakeContents.precipitateG??0)>.42);
+assert.equal(mixedFiltrate.chemicalInventory.settled,true,
+ "Filtered liquid is an already-separated chemical snapshot");
 const mixedReadback=chemistry.simulateLabInventory({
  ...mixedFiltrate,volumeMl:40});
-console.log("COUPLED_KSP_FILTRATE_DIAGNOSTIC",JSON.stringify({
- source:priorMulti.speciesMol,
- sourceSolids:priorMulti.solidMol,
- filterSolutes:mixedFiltrate.chemicalInventory.speciesMol,
- reconstructed:mixedReadback.speciesMol,
- readbackSolid:mixedReadback.solidMol,
- readbackSteps:mixedReadback.steps.map(x=>({equation:x.equation,extent:x.extentMol}))
-}));
+assert.deepEqual(mixedReadback.solidMol,{},
+ "Reopening a filtrate must not regenerate previously removed particles");
 assert.equal(lab.labVesselContents(mixedFiltrate).solid.length,0);
 const retainedMass=chemistry.labInventoryMassG(
  chemistry.simulateLabInventory(mixedCake));

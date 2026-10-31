@@ -21,6 +21,9 @@ export type LabChemicalSnapshot={
  /** Balanced precipitation equations verified for this exact molecule ledger.
   * No guessed reaction identity and no implicit creation of ions. */
  equilibriumEquations?:string[];
+ /** A physically separated filtrate has already reached its measured
+  * composition. Readback and sampling never redo its original chemistry. */
+ settled?:boolean;
 };
 export type LabInventoryStep={equation:string;extentMol:number;observation:string;heatKJ?:number};
 export type LabInventory={
@@ -304,6 +307,7 @@ export function simulateLabInventory(input:{
  reagents:readonly string[];doses?:Record<string,LabDose>;
  environment:ReactionEnvironment;temperatureC?:number;stoppered?:boolean;
  chemicalInventory?:LabChemicalSnapshot;
+ filteredSolution?:{volumeMl?:number};
  /** Partial progress of a measured gas-generating reaction. */
  reactionAmounts?:Pick<LabReactionAmounts,"equation"|"productsMol"|"remainingMol">&
   Partial<LabReactionAmounts>;
@@ -352,6 +356,15 @@ export function simulateLabInventory(input:{
  // Unknown quantities must not be treated as absent: suppress the entire
  // predictive stage rather than claiming a chemically complete result.
  if(inventory.unmeasured.length)return remember(key,inventory);
+ // A filtered and physically SEPARATED solution is not a fresh mixture of
+ // the original molecular salts. Replaying its historical spectator stocks
+ // can create imaginary precipitates via alternative, otherwise-valid
+ // reaction paths. Only a NEW chemical addition explicitly clears settled.
+ // The second branch protects older saved filtrates that lack this flag.
+ if(input.chemicalInventory&&(input.chemicalInventory.settled||
+   (input.filteredSolution?.volumeMl??0)>0&&
+    Object.keys(doses).length===0))
+  return remember(key,inventory);
  // A measured, running gas reaction has a defined extent. For this
  // single validated step, never borrow the future final equilibrium.
  const progress=input.chemicalInventory?undefined:input.reactionAmounts;

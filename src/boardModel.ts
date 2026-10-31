@@ -1012,6 +1012,8 @@ export function parseDocument(raw: string): DocumentData {
                Object.entries(v.chemicalInventory.retainedGasMol).every(([formula,mol])=>
                 formula.length>0&&formula.length<=70&&
                 typeof mol==="number"&&Number.isFinite(mol)&&mol>=0&&mol<=10000)))&&
+             (v.chemicalInventory.settled==null||
+              typeof v.chemicalInventory.settled==="boolean")&&
              (v.chemicalInventory.equilibriumEquations==null||
               (Array.isArray(v.chemicalInventory.equilibriumEquations)&&
                v.chemicalInventory.equilibriumEquations.length<=8&&
