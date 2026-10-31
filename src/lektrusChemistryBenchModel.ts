@@ -2,7 +2,7 @@ import type {Item} from "./boardModel";
 import {labVesselPH,labIndicatorTint} from "./lektrusLabPH";
 import {labDefaultStockDose,labIsPreparedStock,LAB_STOCK_MOLARITY_M} from "./lektrusLabCatalog";
 import {labVesselThermal} from "./lektrusLabPhysicalProperties";
-import {labSensibleHeatStep,labSchoolSpecificHeatJPerGK,LAB_CALORIMETRY_REFERENCE} from "./lektrusLabCalorimetry";
+import {labSensibleHeatStep,labKnownHeatCapacityJPerK,labSchoolSpecificHeatJPerGK,LAB_CALORIMETRY_REFERENCE} from "./lektrusLabCalorimetry";
 import {labBinarySaltEquilibrium,labAdvanceBinarySaltPhase,labVisibleBinarySaltSolid,
  labSchoolMixedSaltEquilibrium,labAdvanceSchoolMixedSaltPhase,
  type LabBinarySaltState} from "./lektrusLabDissolution";
@@ -385,6 +385,15 @@ export function dispenseLabBurette(bench:LabBench,id:string,targetId:string,ml:n
  * slower than a reaction, titration or active phase transition.
  * The simulation clock itself stays in the shared bench for deterministic
  * catch-up after a hidden tab becomes visible again. */
+/** Measured/compiled latent heats of FUSION in J/g, for selected
+ * ANHYDROUS pure samples. No invented latent heat for unverified species.
+ * Sources: OpenStax Physics heat-of-fusion table (Na 115 J/g);
+ * Energies 18 (2025) 1233, Table 5 (salt values, approximate).
+ * https://www.mdpi.com/1996-1073/18/5/1233 */
+export const LAB_FUSION_HEAT_J_PER_G:Readonly<Record<string,number>>={
+ Na:115,NaCl:482,KCl:353,NaOH:165,NaNO3:182,KNO3:266,
+ LiNO3:370,LiCl:441,MgCl2:454,Na2SO4:165,NaF:794
+};
 export function labSimulationTickWaitMs(bench:LabBench,nowMs:number):number|null{
  const vessels=bench.vessels;
  const settings=labBenchSettings(bench);
@@ -507,15 +516,44 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
    // this process, at the same point (equilibrium crystallization).
    const heating=toward>point+.1&&(raw>=point||old>=point-.1&&meltFraction<1);
    const cooling=toward<point-.1&&(raw<=point||old<=point+.1&&meltFraction>0);
+   const fusionJPerG=pure?LAB_FUSION_HEAT_J_PER_G[pure.id]:undefined;
+   const sampleMassG=pure?v.doses?.[pure.id]?.value??0:0;
+   const heatCapacity=calorimetry?.capacityJPerK??
+    labKnownHeatCapacityJPerK(v.kind,v.doses,v.filteredSolution?.volumeMl??0);
+   const latentJ=fusionJPerG!==undefined&&sampleMassG>0?
+    fusionJPerG*sampleMassG:undefined;
    if(heating&&meltFraction<1){
     phaseTransition="melting";
-    meltFraction=Math.min(1,meltFraction+seconds*Math.max(.008,(toward-point)/350)*.14);
-    next=point;
+    if(latentJ&&heatCapacity){
+     // Above-melt sensible energy is absorbed by the solid until it melts.
+     // Any surplus heats the newly molten sample in the SAME time step.
+     const availableJ=Math.max(0,(raw-point)*heatCapacity);
+     const usedJ=Math.min(availableJ,(1-meltFraction)*latentJ);
+     meltFraction=Math.min(1,meltFraction+usedJ/latentJ);
+     next=point+Math.max(0,availableJ-usedJ)/heatCapacity;
+    }else{
+     // Unmeasured latent heats retain the previous illustrative transition.
+     meltFraction=Math.min(1,meltFraction+
+      seconds*Math.max(.008,(toward-point)/350)*.14);
+     next=point;
+    }
    }else if(cooling&&meltFraction>0){
     phaseTransition="crystallizing";
-    meltFraction=Math.max(0,meltFraction-seconds*Math.max(.008,(point-toward)/350)*.14);
-    next=point;
+    if(latentJ&&heatCapacity){
+     // Crystallization returns latent heat to the cooling bath/ambient;
+     // the sample remains at its melting point until all liquid freezes.
+     const removedJ=Math.max(0,(point-raw)*heatCapacity);
+     const releasedJ=Math.min(removedJ,meltFraction*latentJ);
+     meltFraction=Math.max(0,meltFraction-releasedJ/latentJ);
+     next=point-Math.max(0,removedJ-releasedJ)/heatCapacity;
+    }else{
+     meltFraction=Math.max(0,meltFraction-
+      seconds*Math.max(.008,(point-toward)/350)*.14);
+     next=point;
+    }
    }
+   next=Math.round(Math.max(-30,Math.min(1450,next))*10)/10;
+   meltFraction=Math.round(meltFraction*1e7)/1e7;
   }
   // Verified pure liquids receive a boiling plateau. Neat mixtures get
   // ideal Raoult vapor pressures; stock solvents with unrecorded composition
