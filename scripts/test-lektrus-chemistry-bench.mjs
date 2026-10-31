@@ -28,7 +28,10 @@ const catalog=load("src/lektrusLabCatalog.ts",key=>{
 });
 const thermal=load("src/lektrusLabPhysicalProperties.ts");
 const calorimetry=load("src/lektrusLabCalorimetry.ts");
-const constants=load("src/lektrusLabMaterialConstants.ts");
+const solubilityMeasurements=load("src/lektrusLabSolubilityMeasurements.ts");
+const constants=load("src/lektrusLabMaterialConstants.ts",key=>{
+ assert.equal(key,"./lektrusLabSolubilityMeasurements");return solubilityMeasurements;
+});
 const dissolution=load("src/lektrusLabDissolution.ts",key=>{
  if(key==="./lektrusLabMaterialConstants")return constants;
  assert.equal(key,"./lektrusLabStoichiometry");return chem;
@@ -46,6 +49,7 @@ const saturatedReferences=load("src/lektrusLabSaturatedSolutionReferences.ts");
 const materialRegistry=load("src/lektrusLabPropertyRegistry.ts",key=>{
  if(key==="./lektrusLabHydrateReferences")return hydratedReferences;
  if(key==="./lektrusLabSaturatedSolutionReferences")return saturatedReferences;
+ if(key==="./lektrusLabSolubilityMeasurements")return solubilityMeasurements;
  if(key==="./lektrusReactionDatabase")return reaction;
  if(key==="./lektrusLabStoichiometry")return chem;
  if(key==="./lektrusLabMaterialConstants")return constants;
