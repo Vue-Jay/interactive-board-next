@@ -32,7 +32,8 @@ test('unsaved edits and active drafts conflict; a clean viewer applies changes',
 test('changing local pan or zoom is not a collaborative document edit', () => {
   const original={...document,items:[{id:'one',kind:'pen',points:[{x:1,y:1}]}]};
   const anotherView={...original,view:{x:400,y:-200,zoom:3}};
-  assert.notEqual(documentFingerprint(original),documentFingerprint(anotherView));
+  assert.equal(documentFingerprint(original),documentFingerprint(anotherView),
+    'the fingerprint deliberately omits personal viewport state');
   assert.equal(sharedBoardFingerprint(original),sharedBoardFingerprint(anotherView));
   assert.notEqual(sharedBoardFingerprint(original),
     sharedBoardFingerprint({...anotherView,items:[...anotherView.items,{id:'two',kind:'pen'}]}));
