@@ -90,55 +90,63 @@ const aperture:Record<string,number>={
 };
 const own=(obj:object,key:string)=>Object.prototype.hasOwnProperty.call(obj,key);
 import {labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
-/** Ideal liquid-phase mole fractions. For explicitly weighed soluble
+/** Classroom Raoult-style fractions. Prepared solutions use a water carrier
+ * and conserve solute moles while increasing molarity on evaporation.
+ * Activity coefficients, acid fumes and high-strength stock solutions
+ * are beyond the school model. For explicitly weighed soluble
  * nonvolatile salt/sugar in measured water, use the number of dissolved
  * solute particles; electrolyte coefficients are upper-bound dilute ideals.
  * Reject any unknown stock solvent, mixed undissolved powder, or molality
  * outside the dilute range instead of silently treating it as pure water. */
 function components(v:LabEvaporationState){
  const entries=Object.entries(v.doses??{});
- const liquid=entries.filter(([id,d])=>
-  own(table,id)&&d.unit==="ml"&&d.concentrationM===undefined&&d.value>0);
- const otherLiquids=entries.some(([id,d])=>
-  d.unit==="ml"&&(!own(table,id)||d.concentrationM!==undefined));
- if(otherLiquids||liquid.length===0)return [];
+ const gasIds=new Set(["CO2","H2","O2","NH3","Cl2","NO2","SO2","CO","H2S","N2"]);
+ const liquid=entries.flatMap(([sourceId,d])=>{
+  if(d.unit!=="ml"||!Number.isFinite(d.value)||d.value<=0)return [];
+  if(own(table,sourceId)&&d.concentrationM===undefined)
+   return [{sourceId,id:sourceId,d,aqueous:false}];
+  if(!own(table,sourceId)&&d.concentrationM!==undefined&&
+   Number.isFinite(d.concentrationM)&&d.concentrationM>0&&d.concentrationM<=2)
+   return [{sourceId,id:"H2O",d,aqueous:true}];
+  return [];
+ });
+ if(entries.some(([id,d])=>d.unit==="ml"&&d.value>0&&!gasIds.has(id)&&
+  !liquid.some(c=>c.sourceId===id))||!liquid.length)return [];
  const solids=entries.filter(([,d])=>d.unit==="g"&&d.value>0);
- let particlesMol=0;
+ let particleMoles=liquid.reduce((sum,c)=>sum+
+  (c.aqueous?c.d.value*(c.d.concentrationM??0)/1000*2:0),0);
  let activityOverride:number|undefined;
+ const waterKg=liquid.filter(c=>c.id==="H2O").reduce(
+  (sum,c)=>sum+c.d.value*.000997,0);
  if(solids.length){
-  if(liquid.length!==1||liquid[0][0]!=="H2O")return [];
-  const waterKg=liquid[0][1].value*.000997;
-  if(waterKg<=0)return [];
+  if(liquid.some(c=>c.id!=="H2O")||waterKg<=0)return [];
+  let solidParticles=0;
   for(const [id,d] of solids){
    const known=aqueousNonvolatile[id];
    if(!known)return [];
-   particlesMol+=d.value/known.molarG*known.i;
+   solidParticles+=d.value/known.molarG*known.i;
   }
-  const singleSalt=solids.length===1?solids[0][0]:undefined;
-  const saturation=singleSalt?labSingleSaltSolubilityGPer100gWater(singleSalt,25):undefined;
-  if(singleSalt&&saturation!==undefined){
-   const salt=aqueousNonvolatile[singleSalt];
-   const saturationMolal=saturation/100*1000/salt.molarG;
+  const saltId=solids.length===1?solids[0][0]:undefined;
+  const saturation=saltId?
+   labSingleSaltSolubilityGPer100gWater(saltId,25):undefined;
+  if(saltId&&saturation!==undefined){
+   const salt=aqueousNonvolatile[saltId];
+   const saturatedMolal=saturation/100*1000/salt.molarG;
    const molal=solids[0][1].value/salt.molarG/waterKg;
-   if(singleSalt==="NaCl"){
-    // Greenspan (1977): saturated NaCl water activity ~0.753 at 25°C.
-    // Interpolation below saturation is an explicitly approximate model.
-    activityOverride=1-.247*Math.min(1,molal/saturationMolal);
-   }
-   // Do not attribute additional dissolved ions to crystallised salt.
-   // For KCl, KNO3 and NaNO3 retain a bounded *ideal* mole fraction,
-   // NOT an invented measured activity coefficient.
-   particlesMol=Math.min(particlesMol,saturationMolal*waterKg*salt.i);
-  }else if(particlesMol/waterKg>4)return [];
+   if(saltId==="NaCl"&&liquid.length===1&&!liquid[0].aqueous)
+    activityOverride=1-.247*Math.min(1,molal/saturatedMolal);
+   solidParticles=Math.min(solidParticles,saturatedMolal*waterKg*salt.i);
+  }else if(solidParticles/waterKg>4)return [];
+  particleMoles+=solidParticles;
  }
- const totalMol=particlesMol+liquid.reduce((s,[id,d])=>{
-  const p=table[id as EvaporatingLiquid];
-  return s+d.value*p.densityGml/p.molG;
+ const totalMoles=particleMoles+liquid.reduce((sum,c)=>{
+  const p=table[c.id as EvaporatingLiquid];
+  return sum+c.d.value*p.densityGml/p.molG;
  },0);
- return liquid.map(([id,d])=>{
-  const p=table[id as EvaporatingLiquid];
-  const ideal=(d.value*p.densityGml/p.molG)/totalMol;
-  return {id,d,moleFraction:activityOverride??ideal};
+ return liquid.map(c=>{
+  const p=table[c.id as EvaporatingLiquid];
+  const ideal=c.d.value*p.densityGml/p.molG/totalMoles;
+  return {...c,moleFraction:activityOverride??ideal};
  });
 }
 export function labVaporPressureKPa(v:LabEvaporationState,tempC:number):number|undefined{
@@ -206,9 +214,8 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
  const sealedAtK=(v.stopperedAtC??22)+273.15;
  const kelvin=temperatureC+273.15;
  const hasUnsupportedLiquid=Object.entries(v.doses??{}).some(([id,d])=>
-  d.unit==="ml"&&d.value>0&&
-  (!own(table,id)||d.concentrationM!==undefined)&&
-  !["CO2","H2","O2","NH3","Cl2","NO2","SO2","CO","H2S"].includes(id));
+  d.unit==="ml"&&d.value>0&&!items.some(c=>c.sourceId===id)&&
+  !["CO2","H2","O2","NH3","Cl2","NO2","SO2","CO","H2S","N2"].includes(id));
  const gasOnly=!items.length&&!hasUnsupportedLiquid;
  const vaporKnown=known||gasOnly;
  const vaporAtSeal=known?items.reduce((s,item)=>
@@ -249,15 +256,23 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
   const heatedLoss=boiling&&heaterPowerW>0&&heaterTargetC>temperatureC&&latent?
    heaterPowerW*item.moleFraction/(latent*table[item.id as EvaporatingLiquid].densityGml):0;
   const heatBoost=heatedLoss;
-  const loss=Math.min(item.d.value,dt*(diffusionMlPerS+heatBoost));
+  // School aqueous solution: evaporate the WATER CARRIER, never the
+  // calculated solute. Preserve original n=M*V and bound to <=2 mol/L.
+  const capacity=item.aqueous?item.d.value*
+   (1-(item.d.concentrationM??0)/2):item.d.value;
+  const loss=Math.min(Math.max(0,capacity),dt*(diffusionMlPerS+heatBoost));
   if(loss<1e-7)continue;
-  const left=Math.max(0,Math.round((item.d.value-loss)*1e5)/1e5);
+  const left=Math.max(0,Math.round((item.d.value-loss)*1e7)/1e7);
   const actual=item.d.value-left;
   if(actual<=0)continue;
   evaporatedMl+=actual;
-  if(left>0)doses[item.id]={...item.d,value:left};
-  else delete doses[item.id];
-  vented[item.id]=Math.round(((vented[item.id]??0)+actual)*1e5)/1e5;
+  if(item.aqueous){
+   doses[item.sourceId]={...item.d,value:left,
+    concentrationM:item.d.value*(item.d.concentrationM??0)/left};
+  }else if(left>0)doses[item.sourceId]={...item.d,value:left};
+  else delete doses[item.sourceId];
+  const vaporId=item.aqueous?"H2O":item.id;
+  vented[vaporId]=Math.round(((vented[vaporId]??0)+actual)*1e7)/1e7;
  }
  return {
   doses,ventedVaporMl:vented,stoppered:popped?false:v.stoppered,
