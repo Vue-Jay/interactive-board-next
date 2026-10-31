@@ -2,7 +2,7 @@
   "description": "Monotone numeric reference coverage floors for current reagent catalog; update only after validated growth.",
   "minimum": {
     "stock": 180,
-    "crystalDensity": 131,
+    "crystalDensity": 130,
     "thermal": 132,
     "specificHeat": 114,
     "binarySolubility": 55,
@@ -16,7 +16,7 @@
     "hydrateReferenceAllBases": 38,
     "saturatedSolutionDensityRecords": 37,
     "saturatedSolutionDensityCabinetBases": 37,
-    "curatedSourceCheckedProperties": 112,
+    "curatedSourceCheckedProperties": 111,
     "perryRoomTemperatureCrystalHeats": 34,
     "measuredPureWaterSourcePoints": 79,
     "measuredPureWaterStockBases": 50,

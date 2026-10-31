@@ -30,6 +30,17 @@ const hydrate=load("src/lektrusLabHydrateReferences.ts");
 const provenance=load("src/lektrusLabPropertyProvenance.ts");
 const db=load("src/lektrusReactionDatabase.ts");
 const stocks=new Set(db.substances.map(x=>x.id));
+// New batches cannot restate a dry density already present in the
+// original manual source registry. Read literal keys only, excluding
+// the batch spread and all comments.
+const legacyDensitySource=fs.readFileSync(path.join(root,
+ "src/lektrusLabMaterialConstants.ts"),"utf8")
+ .split("export const LAB_CRYSTAL_DENSITY_G_ML")[1]
+ .split("\n};")[0].replace(/\/\/[^\n]*/g,"")
+ .replace("...LAB_BATCH_SOLID_DENSITIES,","");
+const previousDensityIds=new Set([...legacyDensitySource.matchAll(
+ /(?:^|,|\n)\s*"?([A-Za-z0-9()]+)"?\s*:\s*\d+(?:\.\d+)?/g
+)].map(match=>match[1]));
 const seenBatch=new Set(),seenProperties=new Set(),seenWater=new Set();
 const existingProvenance=new Set(provenance.LAB_REVIEWED_PROPERTY_DATUMS
  .map(x=>x.formula+":"+x.property));
@@ -47,6 +58,9 @@ for(const data of batch.LAB_REFERENCE_BATCHES){
   assert.ok(x.sourceUrl.startsWith("https://"));
   assert.ok(Number.isFinite(x.value)&&x.value>0);
   const key=x.formula+":"+x.property;
+  if(x.property==="crystalDensityGPerMl")assert.ok(
+   !previousDensityIds.has(x.formula),
+   "Existing dry density must not be counted again: "+x.formula);
   assert.ok(!seenProperties.has(key),"Repeated dry property "+key);
   seenProperties.add(key);
   const actual=registry.labSubstanceProperties(x.formula);
@@ -109,9 +123,9 @@ for(const data of batch.LAB_REFERENCE_BATCHES){
 }
 for(const formula of Object.keys(batch.LAB_BATCH_SOLID_DENSITIES))
  assert.ok(stocks.has(formula));
+assert.equal(material.LAB_CRYSTAL_DENSITY_G_ML["Ba3(PO4)2"],5.253);
+assert.equal(material.LAB_CRYSTAL_DENSITY_G_ML.C,2.2);
 assert.equal(material.LAB_CRYSTAL_DENSITY_G_ML.KNO2,1.915);
-assert.equal(material.LAB_CRYSTAL_DENSITY_G_ML.Na3PO4,2.54);
-assert.equal(material.LAB_CRYSTAL_DENSITY_G_ML.K3PO4,2.564);
 assert.equal(material.LAB_CRYSTAL_DENSITY_G_ML.CH3ONa,1.3);
 const calcium=hydrate.labHydrateSolubilityAtTemperature("Ca(CH3COO)2·2H2O",20);
 assert.equal(calcium?.massGPer100gWater,34.7);
