@@ -2100,7 +2100,8 @@ const pausedChalk=lab.setLabSimulationPaused(chalkReacted,true,0);
 assert.equal(lab.recordLabReactions(pausedChalk),pausedChalk,
  "A paused preparation cannot write a predicted equation");
 const chalkReactedProgressed=lab.advanceLabSimulation(
- lab.advanceLabSimulation(chalkReacted,0),6000);
+ lab.advanceLabSimulation(lab.advanceLabSimulation(chalkReacted,0),6000),
+ 12000);
 let chalk=lab.recordLabReactions(chalkReactedProgressed);
 assert.equal(chalk.reactionLog.length,1,
  "An actually progressed reaction is added to the permanent wall");
@@ -2119,7 +2120,8 @@ nextReaction=lab.putLabReagent(nextReaction,"v1","NaOH",
 assert.equal(lab.recordLabReactions(nextReaction),nextReaction,
  "Unstarted neutralization must not appear on the chalkboard");
 nextReaction=lab.advanceLabSimulation(
- lab.advanceLabSimulation(nextReaction,10000),16000);
+ lab.advanceLabSimulation(lab.advanceLabSimulation(nextReaction,10000),16000),
+ 22000);
 nextReaction=lab.recordLabReactions(nextReaction);
 assert.equal(nextReaction.reactionLog.length,1);
 assert.match(nextReaction.reactionLog[0],/NaCl \+ H2O/);
