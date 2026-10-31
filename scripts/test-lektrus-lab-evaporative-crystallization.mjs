@@ -174,8 +174,11 @@ const multicomponent=reaction.simulateLabInventory({
  reagents:["KNO3","KCl","H2O"],environment:"aqueous",temperatureC:20,
  doses:{KNO3:g(1),KCl:g(1),H2O:ml(.5)}
 });
-assert.ok(!multicomponent.solidMol.KNO3&&!multicomponent.solidMol.KCl,
- "Do not apply independent pure-water solubility curves to ionic mixtures");
+assert.ok((multicomponent.solidMol.KNO3??0)>0&&
+ (multicomponent.solidMol.KCl??0)>0,
+ "School mixed-solute equilibrium computes two independent saturation targets");
+approx(multicomponent.speciesMol.KNO3,1/stoich.labMolarMass("KNO3"));
+approx(multicomponent.speciesMol.KCl,1/stoich.labMolarMass("KCl"));
 const stockKNO3=reaction.simulateLabInventory({
  reagents:["KNO3"],environment:"aqueous",temperatureC:20,
  doses:{KNO3:{unit:"ml",value:10,concentrationM:.1}}
