@@ -1445,7 +1445,8 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
     reviewedReactionCases.find(row=>row.equation===quantified.steps[quantified.steps.length-1].equation):
     undefined;
    return {...v,reagents:productIds,doses:nextDoses,environment,
-    chemicalInventory:labInventorySnapshot(quantified),
+    chemicalInventory:{...labInventorySnapshot(quantified),
+     ...(original.settled===true&&reagent==="H2O"?{settled:true}:{})},
     binarySaltPhase:undefined,mixedSaltPhase:undefined,
     physicalProcess:undefined,physicalStartedAtMs:undefined,
     filteredSolution:v.filteredSolution?
