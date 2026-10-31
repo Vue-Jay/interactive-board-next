@@ -635,3 +635,64 @@ assert.equal(registryProps.labSubstanceProperties("NaCl")
 assert.equal(registryProps.labSubstanceProperties("CuSO4")
  .liquidDensityGPerMl,undefined);
 console.log("37 validated saturated water-solution densities kept distinct from dilute stocks and pure substances");
+
+
+// Additional mass-specific c_p values for dry crystals at ~298 K. The first
+// nine are converted from Cp(298 K)/R (Smith/Van Ness/Abbott Appendix C,
+// reference Kelley US Bureau of Mines); the last seven from room-temperature
+// cal/(g K), AMCP 706-106 Appendix A, using 1 cal = 4.184 J.
+const curatedRoomHeat={
+ "CaO":.749943,"CaCO3":.818097,"Ca(OH)2":1.258738,
+ "CuO":.531720,"FeS":.621705,"LiCl":1.133202,
+ "NaHCO3":1.043086,"SiO2":.739641,"Fe2O3":.649799,
+ "BaCO3":.430952,"BaCl2":.366100,"Ba(NO3)2":.637223,
+ "CaSO4":.707096,"CuSO4":.656888,"PbCO3":.406266,
+ "Pb(NO3)2":.490783
+};
+assert.equal(Object.keys(curatedRoomHeat).length,16);
+for(const [formula,cp] of Object.entries(curatedRoomHeat)){
+ const prop=heatProps.LAB_CALORIMETRY_REFERENCE[formula];
+ assert.equal(prop?.phase,"solid",formula+" must be dry phase");
+ approximately(prop.specificJPerGK,cp,1e-6);
+ const known=heatProps.labKnownHeatCapacityJPerK("beaker",{
+  [formula]:{unit:"g",value:5}
+ });
+ approximately(known,65*.84+5*cp,2e-5);
+ // A dry salt's heat capacity is not that of its aqueous solution.
+ assert.equal(heatProps.labKnownHeatCapacityJPerK("beaker",{
+  [formula]:{unit:"g",value:5},H2O:{unit:"ml",value:5}
+ }),undefined,"Cp must not be incorrectly transferred to a solution "+formula);
+ assert.ok(registryProps.labSubstanceProperties(formula).specificHeatJPerGK>0);
+}
+const additionalDryDensities={
+ ZnSO4:3.8,Li2CO3:2.11,Na3PO4:2.54,"Mg(NO3)2":2.3,
+ Li2SO4:2.2,K3PO4:2.564
+};
+for(const [formula,density] of Object.entries(additionalDryDensities)){
+ approximately(physicalDensity.labCrystalDensityGml(formula),density);
+ assert.equal(registryProps.labSubstanceProperties(formula).crystalDensityGPerMl,density);
+}
+for(const [formula,data] of Object.entries({
+ "Ca(OH)2":{decompositionC:580,behavior:"decomposes"},
+ "BaCO3":{decompositionC:1380,behavior:"decomposes"},
+ "ZnSO4":{decompositionC:680,behavior:"decomposes"},
+ "Li2CO3":{meltingC:723,decompositionC:1310,behavior:"decomposes"},
+ "Li2SO4":{meltingC:860},
+ "K3PO4":{meltingC:1340},
+ "Na3PO4":{meltingC:1583}
+})){
+ const t=thermalProps.labThermalInfo(formula,"g");
+ assert.equal(t.known,true,formula+" thermal reference missing");
+ for(const [key,value] of Object.entries(data)){
+  if(typeof value==="number")approximately(t[key],value);
+  else assert.equal(t[key],value);
+ }
+ assert.equal(thermalProps.labThermalInfo(formula,"ml").known,false,
+  "Do not transfer dry-solid decomposition/melting data into aqueous stock");
+}
+for(const formula of ["Ca(OH)2","BaCO3","ZnSO4"]){
+ const t=thermalProps.labThermalInfo(formula,"g");
+ assert.equal(t.boilingC,undefined,"Decomposition cannot be modelled as boiling");
+ assert.equal(t.meltingC,undefined,"Do not invent congruent melt before decomposition");
+}
+console.log("Six verified pure-solid densities, seven solid transitions and sixteen Cp values passed");
