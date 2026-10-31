@@ -72,7 +72,7 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
      // layer with animated SVG filters was intermittently repainted as pale
      // rectangles on Android when selections and thermal ticks updated.
      width:stage.width,height:stage.height,zoom:stage.scale}}>
-     <LektrusChemistryBenchSurface bench={bench} editable compactFullscreen={stage.compact}
+     <LektrusChemistryBenchSurface bench={bench} editable fullscreenOwner compactFullscreen={stage.compact}
       onSelect={id=>patch(selectLabVessel(bench,id))}
       onPour={pour} onChange={patch} onDropReagent={addReagent}/>
     </div>
