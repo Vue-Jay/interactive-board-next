@@ -911,11 +911,16 @@ export const defaultLabBench=():LabBench=>({
  selectedId:"v1",event:0,mode:"reactions",settings:defaultLabBenchSettings()
 });
 export function readLabBench(item:Item):LabBench{
- if(item.scienceLabBench)return {...item.scienceLabBench,
-  // Legacy funnels were retired: preserve any measured contents by migrating
-  // the old vessel to a beaker instead of silently deleting its reagents.
-  vessels:item.scienceLabBench.vessels.map(v=>(v.kind as string)==="funnel"?
+ if(item.scienceLabBench){
+  const saved=item.scienceLabBench;
+  // Preserve the original vessel-array identity for ordinary board reads.
+  // Rebuilding it on every local UI render reschedules the simulation clock
+  // and defeats per-vessel rendering optimizations.
+  if(!saved.vessels.some(v=>(v.kind as string)==="funnel"))return {...saved};
+  // Retired funnels are migrated without losing their measured contents.
+  return {...saved,vessels:saved.vessels.map(v=>(v.kind as string)==="funnel"?
    {...v,kind:"beaker" as const}:v)};
+ }
  const initial=defaultLabBench();
  initial.vessels[0].reagents=(item.scienceReagents??[]).slice(0,MAX_VESSEL_REAGENTS);
  initial.vessels[0].environment=item.scienceEnvironment??"aqueous";
