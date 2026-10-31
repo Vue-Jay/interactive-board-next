@@ -380,6 +380,11 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
  // 100 mL of water. Do NOT round the small positive number to zero.
  // https://www.mdpi.com/2227-9717/14/1/172
  SrSO4:[null,labExactMeasuredSolubility("SrSO4",20)??null,null,null,null,null],
+ // ILO/WHO measured pure LiOH at exact 20°C. IMPORTANT: its
+ // monohydrate LiOH·H2O has a separate measured 19.1 g/100mL
+ // crystal-water source; neither phase can be inferred from the other.
+ LiOH:[null,labExactMeasuredSolubility("LiOH",20)??null,
+  null,null,null,null],
  // Source-specific 20 C points plus individually measured Al(NO3)3
  // temperature series; null means UNKNOWN at that exact temperature.
  // Al(NO3)3 becomes the nonahydrate in water. This reference series
@@ -552,7 +557,9 @@ export const LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES:ReadonlySet<string>=new
  // Explicit source temperatures only. Sulfite/carbonate speciation,
  // sulfide mineral Ksp and sulfate solid-phase equilibria remain
  // reference-only until a fully validated chemical equilibrium model.
- "K2SO3","Li2SO4","CuS","SrSO4","(NH4)2CO3"
+ "K2SO3","Li2SO4","CuS","SrSO4","(NH4)2CO3",
+ // Liquid LiOH speciation / hydrate water inventory are unsupported:
+ "LiOH"
 ]);
 /** Phase fractions for EXACTLY one supported anhydrous crystalline salt
  * and pure explicitly measured H2O. Aqueous mixed salts, prepared stocks
