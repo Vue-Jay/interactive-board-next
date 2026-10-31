@@ -6,7 +6,7 @@ import {labSensibleHeatStep,labKnownHeatCapacityJPerK,labSchoolSpecificHeatJPerG
 import {labBinarySaltEquilibrium,labAdvanceBinarySaltPhase,labVisibleBinarySaltSolid,
  labSchoolMixedSaltEquilibrium,labAdvanceSchoolMixedSaltPhase,
  type LabBinarySaltState} from "./lektrusLabDissolution";
-import {labReactionGasProgress} from "./lektrusLabGasDynamics";
+import {labIdealGasVolumeMl,labReactionGasProgress} from "./lektrusLabGasDynamics";
 import {labEvaporate,labCanStopper,labIdealBoilingC,labVaporPressureKPa} from "./lektrusLabEvaporation";
 import {LAB_CRYSTAL_DENSITY_G_ML,labSchoolSolidDensityGml,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,labDoseMoles,type LabReactionAmounts}
@@ -707,20 +707,48 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
   const nextCase=nextStep?reviewedReactionCases.find(row=>
    row.equation===nextStep.equation):undefined;
   const active=v.inventoryPrecipitation;
-  // Only verified precipitation pathways have a gradual molecule/solid
-  // trajectory so far. Other reviewed reactions retain the existing
-  // single-tick solver, including quantitative collection of gases.
-  if((active||nextCase?.observation==="precipitate")&&
+  const activeGas=v.inventoryGasReaction?.elapsedSeconds!<
+   (v.inventoryGasReaction?.durationSeconds??0)?v.inventoryGasReaction:undefined;
+  // Progress is purely instructional, not an invented reaction-rate constant.
+  // Both gas and sediment are partitioned from the same balanced final ledger.
+  if((active||activeGas||nextCase?.observation==="precipitate"||
+    nextCase?.observation==="gas")&&
     !measured.unmeasured.length&&!measured.limited){
-   const initial=active?.initial??baseline;
-   const equation=active?.equation??nextCase!.equation;
-   const durationSeconds=active?.durationSeconds??6;
-   const elapsedSeconds=Math.min(durationSeconds,
-    (active?.elapsedSeconds??0)+seconds);
+   const gas=!!activeGas||!active&&nextCase?.observation==="gas";
+   const initial=active?.initial??activeGas?.initial??baseline;
+   const equation=active?.equation??activeGas?.equation??nextCase!.equation;
+   const durationSeconds=active?.durationSeconds??activeGas?.durationSeconds??
+    (gas?24:6);
+   const previousSeconds=active?.elapsedSeconds??activeGas?.elapsedSeconds??0;
+   const elapsedSeconds=Math.min(durationSeconds,previousSeconds+seconds);
    const complete=elapsedSeconds>=durationSeconds;
-   const snapshot=complete?labInventorySnapshot(measured):
-    labInterpolateInventory(initial,labInventorySnapshot(measured),
-     elapsedSeconds/durationSeconds);
+   const final=labInventorySnapshot(measured);
+   const snapshot=complete?final:
+    labInterpolateInventory(initial,final,elapsedSeconds/durationSeconds);
+   if(gas){
+    // The full reacted ledger contains the theoretical gas yield. Distribute
+    // only THIS tick's newly produced moles to the current open or stoppered
+    // vessel. Sealing midway cannot reclassify gas already vented earlier.
+    const previous=v.chemicalInventory!;
+    const released={...previous.releasedGasMol};
+    const retained={...previous.retainedGasMol};
+    for(const id of new Set([
+     ...Object.keys(final.releasedGasMol??{}),
+     ...Object.keys(final.retainedGasMol??{})
+    ])){
+     const initialGas=(initial.releasedGasMol?.[id]??0)+
+      (initial.retainedGasMol?.[id]??0);
+     const yielded=Math.max(0,(final.releasedGasMol?.[id]??0)+
+      (final.retainedGasMol?.[id]??0)-initialGas);
+     const increment=yielded*(elapsedSeconds-previousSeconds)/durationSeconds;
+     if(increment>1e-12){
+      const record=v.stoppered?retained:released;
+      record[id]=(record[id]??0)+increment;
+     }
+    }
+    snapshot.releasedGasMol=released;
+    snapshot.retainedGasMol=retained;
+   }
    const lastStep=measured.steps[measured.steps.length-1];
    const lastCase=lastStep?reviewedReactionCases.find(row=>
     row.equation===lastStep.equation):undefined;
@@ -729,8 +757,10 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
     chemicalInventory:snapshot,
     reagents:Object.keys(snapshot.speciesMol),
     pendingInventoryReaction:complete?undefined:true,
-    inventoryPrecipitation:complete?undefined:
+    inventoryPrecipitation:gas?undefined:complete?undefined:
      {equation,initial,elapsedSeconds,durationSeconds},
+    inventoryGasReaction:gas?
+     {equation,initial,elapsedSeconds,durationSeconds}:undefined,
     completedReaction:complete?lastCase??v.completedReaction:v.completedReaction,
     uncertain:complete&&(measured.limited||measured.unmeasured.length>0),
     visualStartedAtMs:!active?nowMs:v.visualStartedAtMs};
@@ -742,6 +772,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
    chemicalInventory:labInventorySnapshot(measured),
    reagents:Object.keys(measured.speciesMol),
    pendingInventoryReaction:undefined,inventoryPrecipitation:undefined,
+   inventoryGasReaction:undefined,
    completedReaction:completed??v.completedReaction,
    uncertain:measured.limited||measured.unmeasured.length>0,
    visualStartedAtMs:completed?nowMs:v.visualStartedAtMs};
@@ -752,7 +783,8 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
  for(const source of [...result.vessels]){
   if(!source.gasCollectionTargetId||source.stoppered)continue;
   const receiver=result.vessels.find(v=>v.id===source.gasCollectionTargetId);
-  const progress=labReactionGasProgress(source.reactionAmounts);
+  const progress=labFollowUpGasProgress(source)??
+   labReactionGasProgress(source.reactionAmounts);
   if(!receiver||!progress||receiver.stoppered)continue;
   const processed={...source.gasCollectionProcessedMol};
   const collected={...source.gasCollectedMol};
@@ -786,7 +818,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
  // THIS tick's stoichiometric progress, not one thermal tick later. The
  // labEvaporate pressure helper already accounts for air, vapor and nRT/V.
  vessels=result.vessels.map(v=>{
-  if(!v.stoppered||!v.reactionAmounts)return v;
+  if(!v.stoppered||!v.reactionAmounts&&!v.inventoryGasReaction)return v;
   const pressure=labVesselPressure(v);
   if(!pressure.popped)return v;
   changed=true;
@@ -1112,6 +1144,12 @@ export type LabVessel={pourFraction?:number;
  /** Current quantitative precipitation in a persistent, previously used
   * mixture. The baseline remains immutable across ticks and pause/resume. */
  inventoryPrecipitation?:{
+  equation:string;initial:LabChemicalSnapshot;
+  elapsedSeconds:number;durationSeconds:number;
+ };
+ /** Quantified follow-up gas production. Progress belongs to the persistent
+  * reactant ledger; keep the completed record to collect the final gas tick. */
+ inventoryGasReaction?:{
   equation:string;initial:LabChemicalSnapshot;
   elapsedSeconds:number;durationSeconds:number;
  };
@@ -1764,12 +1802,44 @@ export function labHeadspaceGasMoles(v:LabVessel){
 }
 /** Tube from reaction flask to a gas receiving vessel, without an
  * imaginary supply of gases already vented before connection. */
+/** The measured gas output of a follow-up reaction. The produced amount is
+ * read from the current conserved gas ledger, never a future final yield.
+ * A completed record remains readable for the last collection tick. */
+export function labFollowUpGasProgress(v:LabVessel){
+ const progress=v.inventoryGasReaction;
+ if(!progress||!v.chemicalInventory)return;
+ const elapsedFraction=progress.elapsedSeconds/progress.durationSeconds;
+ const producedMol:Record<string,number>={};
+ let totalMol=0;
+ for(const id of new Set([
+  ...Object.keys(v.chemicalInventory.releasedGasMol??{}),
+  ...Object.keys(v.chemicalInventory.retainedGasMol??{})
+ ])){
+  const name=substances.find(s=>s.id===id);
+  if(name?.kind!=="газ")continue;
+  const already=(progress.initial.releasedGasMol?.[id]??0)+
+   (progress.initial.retainedGasMol?.[id]??0);
+  const total=(v.chemicalInventory.releasedGasMol?.[id]??0)+
+   (v.chemicalInventory.retainedGasMol?.[id]??0);
+  const produced=Math.max(0,total-already);
+  if(produced<=1e-12)continue;
+  producedMol[id]=produced;
+  totalMol+=produced;
+ }
+ const volumeMl=labIdealGasVolumeMl(totalMol,v.temperatureC??22);
+ if(volumeMl===undefined)return;
+ const completeYieldMol=elapsedFraction>0?totalMol/elapsedFraction:0;
+ return {producedMol,totalMol,completeYieldMol,volumeMl,
+  rateMolPerSecond:progress.elapsedSeconds>=progress.durationSeconds?0:
+   completeYieldMol/progress.durationSeconds};
+}
 export function setLabGasCollection(bench:LabBench,sourceId:string,targetId?:string):LabBench{
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
  if(!source||source.stoppered||targetId&&(!target||targetId===sourceId||target.stoppered)||
   source.gasCollectionTargetId===targetId)return bench;
- const already=labReactionGasProgress(source.reactionAmounts)?.producedMol??{};
+ const already=(labFollowUpGasProgress(source)??
+  labReactionGasProgress(source.reactionAmounts))?.producedMol??{};
  return revise(bench,sourceId,v=>({...v,gasCollectionTargetId:targetId,
   gasCollectionProcessedMol:targetId?{...already}:undefined}));
 }
@@ -1810,7 +1880,7 @@ export function labVesselPressure(v:LabVessel,temperatureC=v.temperatureC??22){
   reactionGasMol:v.stoppered?labHeadspaceGasMoles(v):0},0,temperatureC);
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,chemicalInventory:undefined,pendingInventoryReaction:undefined,inventoryPrecipitation:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,binarySaltPhase:undefined,sealedReactionGasBaselineMol:undefined,gasCollectionTargetId:undefined,
+ const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,chemicalInventory:undefined,pendingInventoryReaction:undefined,inventoryPrecipitation:undefined,inventoryGasReaction:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,binarySaltPhase:undefined,sealedReactionGasBaselineMol:undefined,gasCollectionTargetId:undefined,
   gasCollectionProcessedMol:undefined,gasCollectedMol:undefined,
   meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined,ventedVaporMl:undefined,lastEvaporatedAtMs:undefined}));
  return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId,
@@ -1894,7 +1964,9 @@ export const LAB_WATER_SOLUTES=new Set([
  "C12H22O11","C6H12O6"
 ]);
 export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabDose):LabBench{
- if(!bench.vessels.some(v=>v.id===id&&!v.stoppered))return bench;
+ if(!bench.vessels.some(v=>v.id===id&&!v.stoppered&&
+  !v.inventoryPrecipitation&&
+  !(v.inventoryGasReaction&&v.pendingInventoryReaction)))return bench;
  // Legacy callsites and presets receive a REAL, explicit stock dose.
  // Never create a reagent name without material quantity / concentration.
  const stock=dose??labDefaultStockDose(reagent);
@@ -1971,8 +2043,13 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
      equilibriumEquations:original.equilibriumEquations,
      settled:original.settled===true&&reagent==="H2O"}
    });
-   const defer=!!bench.simulationPaused&&
-    (!!v.pendingInventoryReaction||quantified.steps.length>0);
+   // Follow-up gas reactions also start progressively without needing an
+   // explicit pause; ordinary existing non-gas additions are unchanged.
+   const gradualGas=quantified.steps.some(step=>
+    reviewedReactionCases.some(row=>row.equation===step.equation&&
+     row.observation==="gas"));
+   const defer=!!v.pendingInventoryReaction||!!bench.simulationPaused&&
+    quantified.steps.length>0||gradualGas;
    const productIds=Object.keys(defer?speciesMol:quantified.speciesMol);
    const confirmed=quantified.steps.length?
     reviewedReactionCases.find(row=>row.equation===quantified.steps[quantified.steps.length-1].equation):
@@ -1983,7 +2060,7 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
      {...labInventorySnapshot(quantified),
       ...(original.settled===true&&reagent==="H2O"?{settled:true}:{})},
     pendingInventoryReaction:defer||undefined,
-    inventoryPrecipitation:undefined,
+    inventoryPrecipitation:undefined,inventoryGasReaction:undefined,
     binarySaltPhase:undefined,mixedSaltPhase:undefined,
     physicalProcess:undefined,physicalStartedAtMs:undefined,
     filteredSolution:v.filteredSolution?
