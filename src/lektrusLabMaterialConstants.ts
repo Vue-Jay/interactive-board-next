@@ -367,6 +367,19 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
  Na2SO4:[null,null,48.1,45.26,43.09,42.3],
  ZnCl2:[null,null,453,488,541,614],
  NaH2PO4:[null,null,null,179.3,207.3,284.4],
+ // Source-verified EXACT 20 °C binary water-solubility points.
+ // Original ICSC / Nickel Institute measurements are g/100 ml WATER.
+ // Measured conversion uses the independently sourced pure-water density.
+ // All five names remain REFERENCE-ONLY: aqueous hydrolysis/hydrates
+ // and crystal water are not currently solved by the simulator.
+ FeCl2:[null,labExactMeasuredSolubility("FeCl2",20)??null,null,null,null,null],
+ CoCl2:[null,labExactMeasuredSolubility("CoCl2",20)??null,null,null,null,null],
+ MgCl2:[null,labExactMeasuredSolubility("MgCl2",20)??null,null,null,null,null],
+ MgSO4:[null,labExactMeasuredSolubility("MgSO4",20)??null,null,null,null,null],
+ NiCl2:[null,labExactMeasuredSolubility("NiCl2",20)??null,null,null,null,null],
+ // Seven additional Kaye/Laby-Lange values are measured at 293 K
+ // (=19.85 °C) in the EXACT-temperature dataset. Do not inject them
+ // into this 20 °C grid, and do not interpolate across unknown cells.
  // PubChem individually published measurements with original units and
  // exact temperatures preserved in lektrusLabSolubilityMeasurements.ts.
  // Unknown grid cells MUST remain null, never fabricated by interpolation.
@@ -449,7 +462,12 @@ export const LAB_HYDRATE_PHASE_REQUIRES_SPECIAL_MODEL:ReadonlySet<string>=new Se
  */
 export const LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES:ReadonlySet<string>=new Set([
  "LiCl","Na2S","KNO2","BaSO4","CaCO3","BaCO3","MgCO3","CaSO4",
- "PbI2","PbCO3","PbSO4","SrCO3","FeS","ZnS","Ca3(PO4)2"
+ "PbI2","PbCO3","PbSO4","SrCO3","FeS","ZnS","Ca3(PO4)2",
+ // Measured binary-water ceilings do not validate a dry crystal phase:
+ // chloride/nitrate hydrolysis, hydrated sulfate/chloride phase boundaries,
+ // water binding and mixed salt activities all require separate models.
+ "FeCl2","CoCl2","MgCl2","MgSO4","NiCl2","AlCl3","CuCl2",
+ "LiNO3","Cu(NO3)2","Al2(SO4)3","Li2SO4","ZnSO4"
 ]);
 /** Phase fractions for EXACTLY one supported anhydrous crystalline salt
  * and pure explicitly measured H2O. Aqueous mixed salts, prepared stocks
