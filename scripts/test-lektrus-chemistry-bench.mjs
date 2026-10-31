@@ -49,6 +49,7 @@ const vapor=load("src/lektrusLabEvaporation.ts",key=>{
 const network=load("src/lektrusLabReactionNetwork.ts",key=>{
  if(key==="./lektrusLabStoichiometry")return chem;
  if(key==="./lektrusLabMaterialConstants")return constants;
+ if(key==="./lektrusLabDissolution")return dissolution;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 const hydratedReferences=load("src/lektrusLabHydrateReferences.ts");
