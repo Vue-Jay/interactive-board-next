@@ -1011,8 +1011,12 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    if(deviceId){
     const next=returnPlacedLabDevice(bench,deviceId);
     if(next!==bench){
-     onChange?.(next);setActiveDeviceId(null);setVesselMenuId(null);
-     onSelect?.("");setNotice("Выбранный прибор убран со стола");
+     // Apply removal and deselection in ONE shared revision. Sending
+     // two separate writes from the same stale bench could resurrect
+     // the removed apparatus during collaborative merging.
+     onChange?.({...next,selectedId:""});
+     setActiveDeviceId(null);setVesselMenuId(null);
+     setNotice("Выбранный прибор убран со стола");
     }
     return;
    }
