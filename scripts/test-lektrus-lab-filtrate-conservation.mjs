@@ -323,3 +323,36 @@ const excessPH=acidPH.labVesselPH(neutral.vessels[0]);
 assert.ok(excessPH&&excessPH.pH>11,
  "Excess base changes the indicator and pH on the next addition");
 console.log("Sequential acid-base dosing: acidic, neutral, alkaline pH PASS");
+
+
+/* Vessel-level dilution must use a verified old precipitation equation,
+ * not reset the reaction clock, create products, or delete the solid.
+ * A 1:2 lead chloride mixture starts partly precipitated near 25 C;
+ * enough added water redissolves the material without mass loss. */
+let reversible=lab.defaultLabBench();
+reversible=lab.putLabReagent(reversible,"v1","Pb(NO3)2",dose(10));
+reversible=lab.putLabReagent(reversible,"v1","NaCl",dose(20));
+reversible=lab.advanceLabSimulation({...reversible,simulationAtMs:0},1000);
+reversible=lab.advanceLabSimulation(reversible,6000);
+const oldLead=chemistry.simulateLabInventory(reversible.vessels[0]);
+assert.ok((oldLead.solidMol.PbCl2??0)>.0001);
+assert.equal(reversible.vessels[0].reactionAmounts?.complete,true);
+const oldMass=chemistry.labInventoryMassG(oldLead);
+reversible=lab.putLabReagent(reversible,"v1","H2O",
+ {value:100,unit:"ml"});
+const revisedLead=reversible.vessels[0];
+assert.equal(revisedLead.uncertain,false);
+assert.ok(revisedLead.chemicalInventory?.equilibriumEquations?.
+ some(equation=>equation.includes("PbCl2↓")));
+const equilibratedLead=chemistry.simulateLabInventory({
+ ...revisedLead,volumeMl:lab.labVesselQuantity(revisedLead).volumeMl
+});
+assert.ok((equilibratedLead.solidMol.PbCl2??0)<
+ (oldLead.solidMol.PbCl2??0)*.01,
+ "Dilution should dissolve previously formed PbCl2");
+assert.equal(revisedLead.reactionAmounts,undefined,
+ "Old reaction animation does not restart on dilution");
+approx(chemistry.labInventoryMassG(equilibratedLead),
+ oldMass+stoich.labDoseMoles("H2O",{unit:"ml",value:100})*
+ stoich.labMolarMass("H2O"),1e-5);
+console.log("Saved vessel reversible precipitation and quantitative dilution: PASS");
