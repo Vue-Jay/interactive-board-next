@@ -57,6 +57,17 @@ const LAB_KAYE_LABY_293K_BATCH:readonly (readonly [string,number])[]=[
 ];
 
 export const LAB_MEASURED_PURE_WATER_SOLUBILITIES:readonly LabMeasuredSolubility[]=[
+ // Seidell 1940, vol. 1 p.31 (via Chemister): pale-yellow
+ // monoclinic Ag2CO3 in PURE water, at exactly 20 and 100 C.
+ // These are equilibrium reference points only; pH, light and thermal
+ // decomposition may affect real solutions. No arbitrary interpolated
+ // solubility curve or dry crystallisation is inferred.
+ {formula:"Ag2CO3",temperatureC:20,sourceValue:0.0032,
+  originalUnit:"g/100g-water",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=2374"},
+ {formula:"Ag2CO3",temperatureC:100,sourceValue:0.05,
+  originalUnit:"g/100g-water",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=2374"},
  // ILO/WHO ICSC 1200: pure anhydrous sodium sulfite solubility
  // is 22 g in 100 mL pure water at exactly 20°C; not the mass
  // of the final saturated liquid. Reference only, no crystallisation.
