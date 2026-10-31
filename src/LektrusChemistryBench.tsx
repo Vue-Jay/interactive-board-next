@@ -392,7 +392,8 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
        <b>Раствор · {readable(contents.solutionMl)} мл</b>
        <span>{solutionNames.join(", ")||"Растворённых веществ нет"}</span>
        <small className="lektrus-lab-inline-ph" title={ph?.note??"Недостаточно данных о равновесии и концентрации"}>
-        {ph?.label??"pH не определён"}
+        {ph?.pH===undefined?(ph?.label??"pH не определён"):
+         "pH "+labDisplayNumber(ph.pH,realism)}
         {isLiquidIndicator?" · "+(vessel.indicatorDrops??1)+" кап.":""}
        </small>
       </span>}
@@ -1889,8 +1890,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      labProductIdentities(step.equation).map(p=>p.formula))??[])
    ])].slice(0,48);
    const massOf=(formula:string,mmol:number)=>labMolarMass(formula)===undefined?
-    "масса не определена":(labMolarMass(formula)!*mmol/1000).toLocaleString("ru-RU",{maximumFractionDigits:6})+" г";
-   const formatted=(n:number)=>n.toLocaleString("ru-RU",{maximumFractionDigits:6});
+    "масса не определена":
+    labDisplayNumber(labMolarMass(formula)!*mmol/1000,settings.realism)+" г";
+   const formatted=(n:number)=>settings.realism==="high"?
+    n.toLocaleString("ru-RU",{maximumFractionDigits:6}):labDisplayNumber(n,settings.realism);
    return <div data-board-interactive="true" role="presentation" onPointerDown={e=>e.stopPropagation()}
     style={{position:"absolute",inset:0,zIndex:110,display:"grid",placeItems:"center",background:"#132c2b99"}}>
     <section role="dialog" aria-modal="true" aria-label="Полный состав сосуда"
