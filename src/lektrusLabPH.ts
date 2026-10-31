@@ -9,6 +9,7 @@
  */
 import {simulateLabInventory,type LabChemicalSnapshot} from "./lektrusLabReactionNetwork";
 import {labWaterIonProduct,labNeutralWaterPH} from "./lektrusLabWaterIonization";
+import {substances} from "./lektrusReactionDatabase";
 export type LabPHInput={
  reagents:readonly string[];
  doses?:Record<string,{value:number;unit:"ml"|"g";concentrationM?:number}>;
@@ -20,6 +21,11 @@ export type LabPHInput={
   remainingMol:Record<string,number>};
 };
 export type LabPHResult={pH:number;label:string;note:string;acidMol:number;baseMol:number};
+// Share the chemical catalogue's physical phase with the bench volume model.
+ // A preloaded H2/CO2 sample is measured in gas ml, NOT aqueous solvent ml.
+ // Including those millilitres would artificially dilute real acids/bases and
+ // change the indicator colour whenever gas is collected above the liquid.
+const GAS_REAGENTS=new Set(substances.filter(s=>s.kind==="газ").map(s=>s.id));
 const STRONG_ACIDS=new Set(["HCl","HBr","HNO3","HI"]);
 const STRONG_BASES=new Set(["NaOH","KOH","LiOH"]);
 const NEUTRAL_SPECTATORS=new Set([
@@ -39,9 +45,12 @@ function doseMoles(id:string,dose:{value:number;unit:"ml"|"g";concentrationM?:nu
  return mass?dose.value/mass:null;
 }
 export function labVesselPH(v:LabPHInput):LabPHResult|null{
- if(v.environment!=="aqueous"||!v.reagents.length)return null;
- const volumeMl=(v.filteredSolution?.volumeMl??0)+Object.values(v.doses??{}).reduce((total,d)=>
-  total+(d.unit==="ml"?d.value:0),0);
+ if(v.environment!=="aqueous"||
+  (!v.reagents.length&&!v.chemicalInventory))return null;
+ const volumeMl=(v.filteredSolution?.volumeMl??0)+
+  Object.entries(v.doses??{}).reduce((total,[id,d])=>
+   total+(d.unit==="ml"&&!GAS_REAGENTS.has(id)?d.value:0),0);
+ if(!Number.isFinite(volumeMl)||volumeMl<=0)return null;
  const inventory=v.chemicalInventory||v.doses?
   simulateLabInventory({...v,environment:"aqueous",volumeMl}):undefined;
  if(v.uncertain&&(!inventory||inventory.unmeasured.length||inventory.limited))return null;
@@ -49,7 +58,10 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
  const KW=labWaterIonProduct(temperatureC);
  if(KW===undefined)return null;
  const doses=v.doses??{};
- if(v.reagents.length===1&&v.reagents[0]==="H2O"){
+ // "H2O" is only a display label on some preserved/legacy chemical ledgers.
+ // Do not report neutral water if the molecule inventory still has real acid
+ // or base products from a previous stage of this experiment.
+ if(!v.chemicalInventory&&v.reagents.length===1&&v.reagents[0]==="H2O"){
   const neutral=labNeutralWaterPH(temperatureC)!;
   const pH=Math.round(neutral*100)/100;
   return {pH,label:"pH "+pH.toFixed(2).replace(".",","),
@@ -165,7 +177,6 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
    schoolApproximation=true;
   }
  }
- if(!Number.isFinite(volumeMl)||volumeMl<=0)return null;
  // 25°C reference Ka are used as explicit qualitative classroom estimates
  // at other water temperatures. Kw itself follows temperature-dependent data.
  const weak=aceticMol>0||ammoniaMol>0||carbonateMol>0||

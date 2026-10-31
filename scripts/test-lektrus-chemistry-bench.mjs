@@ -68,6 +68,7 @@ const materialRegistry=load("src/lektrusLabPropertyRegistry.ts",key=>{
 const waterIonization=load("src/lektrusLabWaterIonization.ts");
 const acidBase=load("src/lektrusLabPH.ts",key=>{
  if(key==="./lektrusLabWaterIonization")return waterIonization;
+ if(key==="./lektrusReactionDatabase")return reaction;
  assert.equal(key,"./lektrusLabReactionNetwork");return network;
 });
 const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
