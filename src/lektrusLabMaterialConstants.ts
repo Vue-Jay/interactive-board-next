@@ -191,7 +191,45 @@ export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
  Li2SO4:2.2,
  // Sigma Aldrich: K3PO4, anhydrous 2.564 g/mL at 25 C.
  // https://www.sigmaaldrich.com/NU/en/product/sigma/rdd019
- K3PO4:2.564
+ K3PO4:2.564,
+ // New independent pure-solid crystal density records, ~20–25°C.
+ // Zinc hydroxide: ATSDR zinc compounds, tab 4-2 (3.053 g/cm3).
+ // https://www.ncbi.nlm.nih.gov/books/NBK600540/table/ch4.tab2/
+ "Zn(OH)2":3.053,
+ // Barium hydroxide ANHYDROUS specific gravity 4.495. The mono- and
+ // octahydrate are 3.743 and 2.18 and must NOT replace this value.
+ // https://www.ncbi.nlm.nih.gov/books/NBK598782/table/ch4.tab2/
+ "Ba(OH)2":4.495,
+ // Solid-phase Fe(OH)2 (3.40) and Ni(OH)2 (3.65), not loose fluffy
+ // precipitate apparent densities. Distinct from bulk settled suspension.
+ // https://pmc.ncbi.nlm.nih.gov/articles/PMC12982534/
+ "Fe(OH)2":3.40,"Ni(OH)2":3.65,
+ // Anhydrous CuCl2 3.386 g/cm3 (CuCl2·2H2O has ~2.51);
+ // anhydrous NiCl2 3.51 and CoCl2 3.36.
+ // https://onlinelibrary.wiley.com/doi/10.1002/047084289X.rc214.pub3
+ // https://www.ncbi.nlm.nih.gov/books/NBK610343/table/ch4.tab2/
+ // https://pubchem.ncbi.nlm.nih.gov/compound/3032536
+ CuCl2:3.386,NiCl2:3.51,CoCl2:3.36,
+ // SrCl2 anhydrous DOE PAC experimental data 3.052 g/cm3.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/5362485
+ SrCl2:3.052,
+ // Cerussite (pure PbCO3), 6.582 g/cm3 CRC (not white lead mixture).
+ // https://pubchem.ncbi.nlm.nih.gov/compound/11727
+ PbCO3:6.582,
+ // Tricalcium phosphate 3.14 g/cm3 crystalline, not granular packing.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24456
+ "Ca3(PO4)2":3.14,
+ // Dry LiNO3 @ 25 C 2.38 g/cm3, not lithium nitrate trihydrate.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/10129889
+ LiNO3:2.38,
+ // Pure anhydrous iron sulfates: FeSO4 3.56 (CRC) and Fe2(SO4)3
+ // 3.097 g/cm3 (Merck). Hydrated forms have different densities.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24393
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24826
+ FeSO4:3.56,"Fe2(SO4)3":3.097,
+ // beta-CoS crystalline 5.45 (CRC). Amorphous alpha-CoS is not equivalent.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/14832
+ CoS:5.45
 };
 export const labCrystalDensityGml=(formula:string):number|undefined=>
  LAB_CRYSTAL_DENSITY_G_ML[formula];
