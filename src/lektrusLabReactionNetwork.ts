@@ -295,6 +295,13 @@ export function simulateLabInventory(input:{
    const {row,equation}=entry;
    if(used.has(row.equation+"|"+row.environment))continue;
    if(row.environment!==input.environment)continue;
+   // A persisted, partially saturated solid was already equilibrated
+   // using a 25 °C Ksp. At a different temperature there is no vetted
+   // Ksp(T) in this model: do not manufacture a complete precipitation
+   // merely because the equilibrium constant is unavailable there.
+   if(input.chemicalInventory?.equilibriumEquations?.includes(row.equation)&&
+    Math.abs((input.temperatureC??25)-25)>5&&
+    row.equation.includes("↓")&&row.observation==="precipitate")continue;
    // A dry powder mixture cannot precipitate, neutralise or bubble merely
    // because the editor is set to "aqueous". Require actual liquid volume;
    // verified heated/ignited dry reactions keep their own environment.
