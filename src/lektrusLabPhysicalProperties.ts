@@ -18,6 +18,22 @@ export const LAB_GAS_FORMULAS:ReadonlySet<string>=new Set([
  "CH4","C2H4","C2H2","C2H6","C3H8","C4H10","C3H6"
 ]);
 const physical:Record<string,LabThermalRecord>={
+ // Phase-specific temperatures at ~101.3 kPa. These are for dry
+ // compounds, NEVER hydrates or laboratory aqueous stock solutions.
+ // Ag3PO4: solid-to-solid 520 C and solid-to-liquid 849 C are DISTINCT;
+ // only verified fusion at 849 C is supported by the current model.
+ // https://www.sshade.eu/data/solid/SOLID_Ag3PO4
+ Ag3PO4:{meltingC:849,
+  note:"Кубический Ag₃PO₄: плавление около 849 °C; отдельный переход к γ-фазе при ~520 °C не моделируется."},
+ // Ca(NO3)2: ILO/WHO ICSC 1037, pure anhydrous crystal, not tetrahydrate.
+ // https://www.inchem.org/documents/icsc/icsc/eics1037.htm
+ "Ca(NO3)2":{meltingC:560,
+  note:"Безводный Ca(NO₃)₂ плавится при ~560 °C; гидраты имеют другие температурные переходы."},
+ // Cu(NO3)2: American Elements CAS 3251-23-8 dry solid dec. at 256 C.
+ // https://www.americanelements.com/print/view/pdf/product_datasheet/block_1?view_args%5B%5D=36554
+ "Cu(NO3)2":{decompositionC:256,behavior:"decomposes",
+  note:"Безводный Cu(NO₃)₂ термически разлагается при ~256 °C. Это не температура плавления; трёхводный гидрат разлагается иначе."},
+
  // CRC Handbook (reported by PubChem CID 23672064):
  // anhydrous NaH2PO4 decomposes near 200 C, not a melting transition.
  NaH2PO4:{decompositionC:200,behavior:"decomposes",
