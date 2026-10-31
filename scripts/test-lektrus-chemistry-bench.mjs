@@ -1572,7 +1572,9 @@ assert.doesNotMatch(polishedLabSource,/lektrus-lab-filter-actions/,
  "Direct filtration must not reopen the previous receiver selection panel");
 assert.match(polishedLabSource,/lektrus-lab-dissolving-particles/);
 assert.match(polishedLabSource,/lektrus-lab-boiling-particles/);
-assert.match(polishedLabSource,/lektrus-lab-steam-plumes/);
+assert.match(polishedLabSource,/lektrus-lab-vapor-plume/);
+assert.doesNotMatch(polishedLabSource,/className="lektrus-lab-steam-plumes"/,
+ "Steam must rise from the actual glass mouth, without double and clipped SVG paths");
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-reagent-form-tabs/);
 assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-catalog-extra/,
  "Less-used filters stay collapsed to enlarge the reactant catalogue");
