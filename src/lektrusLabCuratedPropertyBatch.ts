@@ -145,7 +145,7 @@ export const LAB_CURATED_PROPERTY_BATCH:readonly LabCuratedPropertyBatchRow[]=[
   phase:"anhydrous-solid",
   sourceCondition:"rhombic Zn(OH)2 crystals; 298.15 K; Rabinovich & Khavin 1977 p.113, Cp,mol 72.27 J/(mol K) / 99.39 g/mol",
   sourceUrl:"https://www.chemister.ru/Databases/Chemdatabase/properties-en.php?id=4200",
-  note:"Теплоёмкость кристаллического Zn(OH)₂ при 25 °C, не ZnO и не водной суспензии."}
+  note:"Теплоёмкость кристаллического Zn(OH)₂ при 25 °C, не ZnO и не водной суспензии."},
  // Source-transcribed room-temperature crystalline Cp values. Molar
  // originals are retained so the audit can verify the real formula mass.
  // Chemister cites Rabinovich & Khavin / CRC and labels these SOLID forms.
