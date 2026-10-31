@@ -326,8 +326,9 @@ export function simulateLabInventory(input:{
  const inventory:LabInventory={speciesMol:{},solidMol:{},releasedGasMol:{},retainedGasMol:{},
   steps:[],equilibriumEquations:[],unmeasured:[],limited:false,heatEstimateComplete:true};
  const doses=input.doses??{};
- const volumeMl=input.volumeMl??Object.entries(doses).reduce((n,[id,d])=>
-  n+(d.unit==="ml"&&!["CO2","H2","O2","NH3","Cl2","NO2","SO2"].includes(id)?d.value:0),0);
+ const volumeMl=input.volumeMl??((input.filteredSolution?.volumeMl??0)+
+  Object.entries(doses).reduce((n,[id,d])=>
+   n+(d.unit==="ml"&&!["CO2","H2","O2","NH3","Cl2","NO2","SO2"].includes(id)?d.value:0),0));
  // An aqueous reaction MODE does not conjure any actual solvent.
  // Dry weighed NaCl, KNO3, or a base pellet stays SOLID until it receives
  // a measured volume of water, a solution, or another liquid medium.
@@ -363,8 +364,41 @@ export function simulateLabInventory(input:{
  // The second branch protects older saved filtrates that lack this flag.
  if(input.chemicalInventory&&(input.chemicalInventory.settled||
    (input.filteredSolution?.volumeMl??0)>0&&
-    Object.keys(doses).length===0))
+    Object.keys(doses).length===0)){
+  // A physically separated filtrate is never reconstructed from old
+  // stock reagents. But a measured, nonvolatile SALT solution can become
+  // supersaturated as its remaining water evaporates. Partition the same
+  // conserved solute moles between liquid and crystals. The approximation
+  // is limited to school salts with measured water-solubility curves;
+  // unsupported mixed chemistry keeps its recorded phase untouched.
+  if(input.chemicalInventory.settled&&input.filteredSolution&&
+    input.environment==="aqueous"){
+   const dissolved=Object.entries(inventory.speciesMol).filter(([id,mol])=>
+    id!=="H2O"&&mol>EPS);
+   const known=dissolved.map(([id,mol])=>({
+    id,mol,solubility:labSingleSaltSolubilityGPer100gWater(id,input.temperatureC??25),
+    molarMass:labMolarMass(id)
+   }));
+   const supported=known.filter(s=>s.solubility!==undefined&&
+    s.molarMass!==undefined&&s.molarMass>0);
+   const measuredMol=supported.reduce((n,s)=>n+s.mol,0);
+   const unknownMol=known.filter(s=>!supported.includes(s)).
+    reduce((n,s)=>n+s.mol,0);
+   // A few ppm of equilibrated spectators must not suppress the familiar
+   // salt crystallization demonstration. But an unknown major solute makes
+   // the school activity/solubility approximation inappropriate.
+   if(supported.length&&unknownMol<=measuredMol*.005){
+    const waterMassG=Math.max(0,volumeMl)*.997;
+    for(const salt of supported){
+     const capacityMol=salt.solubility!/100*waterMassG/salt.molarMass!;
+     const crystalline=Math.max(0,salt.mol-capacityMol);
+     if(crystalline>EPS)inventory.solidMol[salt.id]=crystalline;
+     else delete inventory.solidMol[salt.id];
+    }
+   }
+  }
   return remember(key,inventory);
+ }
  // A measured, running gas reaction has a defined extent. For this
  // single validated step, never borrow the future final equilibrium.
  const progress=input.chemicalInventory?undefined:input.reactionAmounts;
