@@ -2225,8 +2225,8 @@ assert.ok(Math.abs(chem.labDoseMoles("C2H5OH",{value:10,unit:"ml"})-
   10*calorimetry.LAB_CALORIMETRY_REFERENCE.C2H5OH.densityGPerMl/
    chem.labMolarMass("C2H5OH"))<1e-10,
  "A pure ethanol portion must use the same measured density in thermodynamics and mole inventory");
-assert.ok(chem.labDoseMoles("HCl",{value:10,unit:"ml"})===undefined,
- "An arbitrary no-concentration liquid dose must not silently become 0.1 M in the formula calculator");
+assert.ok(Math.abs(chem.labDoseMoles("HCl",{value:10,unit:"ml"})-.001)<1e-12,
+ "Legacy prepared acid stock uses the school's default 0.1 M");
 assert.match(read("src/LektrusChemistryBench.tsx"),/labIsPreparedStock\(reagent\.id\)/);
 assert.match(read("src/LektrusChemistryBench.tsx"),/labDefaultStockDose\(reagent/);
 console.log("Quantified stocks, reproducible molarity and moles by known physical dose: OK");
@@ -2446,21 +2446,22 @@ assert.equal(layout.isLabReturnDrop({x:80,y:23},65,1000,false),true);
 console.log("Return by upward drag: glassware confirmation, instrument top zone and safe movement");
 
 
-/* Calorimetry: actual measured thermal mass controls the warming curve.
- * Sources: OpenStax Chemistry 2e §5.1, Physics §11.2; methanol source is
- * documented in lektrusLabCalorimetry.ts. Unknown solutions stay unsupported. */
+/* School calorimetry: pure reference Cp first, bounded teaching estimates
+ * for prepared solutions and dissolved solids, without altering Cp maps. */
 assert.equal(calorimetry.LAB_CALORIMETRY_REFERENCE.H2O.specificJPerGK,4.184);
 assert.equal(calorimetry.LAB_CALORIMETRY_REFERENCE.C2H5OH.specificJPerGK,2.376);
 assert.equal(calorimetry.LAB_CALORIMETRY_REFERENCE.CH3OH.specificJPerGK,2.53);
 const heat20=calorimetry.labKnownHeatCapacityJPerK("beaker",{H2O:{unit:"ml",value:20}});
 const heat80=calorimetry.labKnownHeatCapacityJPerK("beaker",{H2O:{unit:"ml",value:80}});
 assert.ok(heat20>50&&heat80>heat20*2,"Water quantity must affect heat capacity");
-assert.equal(calorimetry.labKnownHeatCapacityJPerK("beaker",
- {HCl:{unit:"ml",value:20,concentrationM:.1}}),undefined,
- "Unverified stock solution gets no fabricated heat capacity");
-assert.equal(calorimetry.labKnownHeatCapacityJPerK("beaker",
- {H2O:{unit:"ml",value:20},NaCl:{unit:"g",value:2}}),undefined,
- "Mixed unknown-solid heat capacity stays unsupported");
+assert.ok(calorimetry.labKnownHeatCapacityJPerK("beaker",
+ {HCl:{unit:"ml",value:20,concentrationM:.1}})>130,
+ "Prepared aqueous stock must use waterlike Cp");
+assert.ok(calorimetry.labKnownHeatCapacityJPerK("beaker",
+ {H2O:{unit:"ml",value:20},NaCl:{unit:"g",value:2}})>135,
+ "Salt and water share finite classroom heat capacity");
+assert.equal(calorimetry.labSchoolSpecificHeatJPerGK("NaCl","g").estimated,false);
+assert.equal(calorimetry.labSchoolSpecificHeatJPerGK("HCl","ml",.1).estimated,true);
 const source={kind:"hotplate",temperatureC:150,powerW:160};
 const warm20=calorimetry.labSensibleHeatStep("beaker",
  {H2O:{unit:"ml",value:20}},22,22,10,source);
