@@ -1135,7 +1135,8 @@ export function labExperimentClockSeconds(bench:LabBench,nowMs:number):number{
 }
 export function setLabExperimentClock(bench:LabBench,
  action:"start"|"pause"|"reset",nowMs:number):LabBench{
- if(!Number.isFinite(nowMs)||nowMs<0)return bench;
+ if(!Number.isFinite(nowMs)||nowMs<0||
+  action==="start"&&bench.simulationPaused)return bench;
  const old=bench.experimentClock;
  if(action==="reset"){
   if(!old||(old.elapsedSeconds===0&&!old.running))return bench;
