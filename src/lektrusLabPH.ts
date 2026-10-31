@@ -94,6 +94,23 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
   if(mol<=1e-12)continue;
   if(!Number.isFinite(mol))return null;
   if(NEUTRAL_SPECTATORS.has(id))continue;
+  // Apply first-order hydrated-metal-ion hydrolysis EVEN when its sulfate
+  // or acetate already has an acid/base counterion model. Distinguish
+  // Fe(II) from strongly hydrolysing Fe(III), never confuse valences.
+  const metal=/^(Fe2|Al2|Fe|Al|Cu|Zn|Ni|Co|Mg|Pb|Ag)(?=Cl|NO3|\(NO3\)|\(SO4\)|SO4|\(CH3COO\))/.exec(id);
+  if(metal){
+   const species=metal[1];
+   const ferric=species.startsWith("Fe")&&
+    (id==="FeCl3"||id==="Fe(NO3)3"||id==="Fe2(SO4)3");
+   const ka:Record<string,number>={Al:1e-5,Cu:1e-8,Zn:1e-9,
+    Ni:1e-10,Co:1e-10,Mg:4e-12,Pb:1e-8,Ag:1e-12};
+   const strength=species.startsWith("Fe")?
+    (ferric?1e-3:3e-10):
+    (ka[species.replace(/2$/,"")]??1e-10);
+   const ions=species.endsWith("2")?2*mol:mol;
+   metalAcidMol+=ions;metalWeightedKa+=ions*strength;
+   schoolApproximation=true;
+  }
   if(STRONG_ACIDS.has(id))acidMol+=mol;
   else if(STRONG_BASES.has(id))baseMol+=mol;
   else if(id==="CH3COOH")aceticMol+=mol;
@@ -143,16 +160,8 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
   }else if(id==="Fe(OH)3"||id==="Al(OH)3"){
    baseMol+=3*mol;schoolApproximation=true;
   }else{
-   // One effective metal-aqua hydrolysis stage, bounded classroom model.
-   // Precise ionic activities and amphoteric equilibria are not asserted.
-   const metal=/^(Fe|Al|Cu|Zn|Ni|Co|Mg|Pb)(?=Cl|\(NO3\)|SO4|\(CH3COO\))/.exec(id);
-   if(metal){
-    const ka:Record<string,number>={Fe:1e-3,Al:1e-5,
-     Cu:1e-8,Zn:1e-9,Ni:1e-10,Co:1e-10,Mg:4e-12,Pb:1e-8};
-    metalAcidMol+=mol;metalWeightedKa+=mol*ka[metal[1]];
-   }
-   // Unlisted dissolved ions are neutral spectators in the SCHOOL
-   // fallback. The same measured number of moles is still preserved.
+   // Unknown aqueous solute: contribute no extra acid/base charge.
+   // It remains present in the mass ledger; pH is marked approximate.
    schoolApproximation=true;
   }
  }

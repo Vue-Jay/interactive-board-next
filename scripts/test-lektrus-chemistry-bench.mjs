@@ -2278,8 +2278,11 @@ assert.ok(beforeDye.precipitateG>.143&&beforeDye.precipitateG<.14332,
 assert.ok(beforeDye.solution.some(x=>x.formula==="NaNO3"));
 assert.ok((beforeDye.solution.find(x=>x.formula==="AgNO3")?.mmol??0)<.002,
  "Dissolved silver remains at the small equilibrium concentration");
-assert.equal(acidBase.labVesselPH(preserved.vessels[0]),null,
- "Trace AgNO3 ion hydrolysis lacks a validated pH model and must not be labelled pH 7");
+const traceSilverPH=acidBase.labVesselPH(preserved.vessels[0]);
+assert.ok(traceSilverPH&&traceSilverPH.pH>=4&&traceSilverPH.pH<=9,
+ "Trace AgNO3 hydrolysis is bounded by the remaining dissolved silver");
+assert.match(traceSilverPH.note,/Школьная приближённая/,
+ "The pH of dilute transition-metal salts is labelled approximate");
 const measuredBefore=JSON.stringify(preserved.vessels[0].reactionAmounts);
 preserved=lab.setLabIndicator(preserved,"v1","litmus");
 assert.equal(JSON.stringify(preserved.vessels[0].reactionAmounts),measuredBefore,
