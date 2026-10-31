@@ -321,6 +321,10 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
  */
 const aqueousNonvolatile:Record<string,{molarG:number;i:number}>={
  NaCl:{molarG:58.44,i:2},KCl:{molarG:74.55,i:2},
+ // Small spectator residues of the ACTUAL precipitating reaction remain in
+ // the filtrate after Ksp equilibration. These salts are nonvolatile; keep
+ // their ideal particle counts instead of disabling water evaporation.
+ BaCl2:{molarG:208.23,i:3},Na2SO4:{molarG:142.04,i:3},
  KNO3:{molarG:101.1032,i:2},NaNO3:{molarG:84.9947,i:2},
  NaBr:{molarG:102.89,i:2},KBr:{molarG:119.00,i:2},
  C6H12O6:{molarG:180.16,i:1},C12H22O11:{molarG:342.30,i:1}
