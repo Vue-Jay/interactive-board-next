@@ -2109,7 +2109,8 @@ export function advanceLabPour(b:LabBench,portions=1):LabBench{
     key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&received[key]?.unit==="g")&&
     identifyReaction(combined,medium).status!=="reaction";
    return {...v,reactionAmounts:undefined,reagents:combined,doses:received,
-   temperatureC:labMixedContentsTemperatureC(source,v,(n-p.step)/LAB_POUR_STEPS),
+   temperatureC:labMixedContentsTemperatureC(source,v,
+    (n-p.step)/(LAB_POUR_STEPS-p.step)),
    reactionHeat:p.step===0?undefined:v.reactionHeat,
    physicalProcess:dissolving?"dissolving" as const:undefined,
    physicalStartedAtMs:dissolving?(v.physicalStartedAtMs??Date.now()):undefined,
