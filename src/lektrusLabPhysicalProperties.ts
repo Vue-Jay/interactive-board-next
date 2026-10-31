@@ -18,6 +18,12 @@ export const LAB_GAS_FORMULAS:ReadonlySet<string>=new Set([
  "CH4","C2H4","C2H2","C2H6","C3H8","C4H10","C3H6"
 ]);
 const physical:Record<string,LabThermalRecord>={
+ // ILO/WHO ICSC 1200: nominal anhydrous Na2SO3 decomposes
+ // at 600°C. The quoted "melting >500°C" is only a lower bound
+ // and must not produce an invented congruent melting event.
+ // https://inchem.org/documents/icsc/icsc/eics1200.htm
+ Na2SO3:{decompositionC:600,behavior:"decomposes",
+  note:"Безводный Na₂SO₃ разлагается при 600 °C; точная температура плавления не подтверждена."},
  // ILO/WHO ICSC 1197: dry magnesium sulfate decomposes at 1124 C,
  // NOT an ordinary boiling point; MgSO4·7H2O loses crystal water earlier.
  // https://www.inchem.org/documents/icsc/icsc/eics1197.htm

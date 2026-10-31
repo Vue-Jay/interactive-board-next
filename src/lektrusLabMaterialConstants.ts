@@ -377,7 +377,11 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
  Li2CO3:[1.543,1.33,1.174,1.010,.847,.715],
  NaF:[null,4.1,null,null,null,null],
  NaBr:[null,null,null,118,118.3,121.2],
- Na2SO3:[null,null,37,33.2,29,26.6],
+ // ICSC 1200 source 22 g / 100mL pure initial water at 20°C.
+ // The independent UCT Prague density reference (2.66 g/cm³)
+ // is a separate measured property; ICSC quotes 2.63 g/cm³,
+ // hence the two sources must not be conflated or averaged.
+ Na2SO3:[null,labExactMeasuredSolubility("Na2SO3",20)??null,37,33.2,29,26.6],
  Na2SO4:[null,null,48.1,45.26,43.09,42.3],
  ZnCl2:[null,null,453,488,541,614],
  NaH2PO4:[null,null,null,179.3,207.3,284.4],
@@ -564,7 +568,10 @@ export const LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES:ReadonlySet<string>=new
  // reference-only until a fully validated chemical equilibrium model.
  "K2SO3","Li2SO4","CuS","SrSO4","(NH4)2CO3",
  // Liquid LiOH speciation / hydrate water inventory are unsupported:
- "LiOH"
+ "LiOH",
+ // Sulfite oxidation/hydration and reactive FeCl3 hydrolysis prohibit
+ // an arbitrary single-solute anhydrous crystallisation calculation.
+ "Na2SO3","FeCl3"
 ]);
 /** Phase fractions for EXACTLY one supported anhydrous crystalline salt
  * and pure explicitly measured H2O. Aqueous mixed salts, prepared stocks

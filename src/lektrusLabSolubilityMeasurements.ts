@@ -23,6 +23,12 @@ export type LabMeasuredSolubility={
  originalUnit:LabMeasuredSolubilityUnit;sourceUrl:string;
 };
 export const LAB_MEASURED_PURE_WATER_SOLUBILITIES:readonly LabMeasuredSolubility[]=[
+ // ILO/WHO ICSC 1200: pure anhydrous sodium sulfite solubility
+ // is 22 g in 100 mL pure water at exactly 20°C; not the mass
+ // of the final saturated liquid. Reference only, no crystallisation.
+ {formula:"Na2SO3",temperatureC:20,sourceValue:22,
+  originalUnit:"g/100ml-water",
+  sourceUrl:"https://inchem.org/documents/icsc/icsc/eics1200.htm"},
  // ILO/WHO ICSC 0913 for PURE anhydrous LiOH, 12.8 g/100 mL
  // starting WATER at exactly 20°C. Distinct from LiOH·H2O: 19.1
  // g/100 mL of water reported separately by ICSC 0914. The hydrated

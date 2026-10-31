@@ -18,6 +18,15 @@ export type LabReviewedPropertyDatum={
  sourceUrl:string;
 };
 export const LAB_REVIEWED_PROPERTY_DATUMS:readonly LabReviewedPropertyDatum[]=[
+ // Independent original references for EXISTING true-solid densities
+ // and new exact sodium sulfite chemical decomposition. Do not use the
+ // FeCl3 reactive 92 g/100mL water figure as binary solubility.
+ {formula:"Na2SO3",property:"crystalDensityGPerMl",value:2.66,
+  sourceUrl:"https://uchi.vscht.cz/e-tables/density-solids?jazyk=en&lang=en"},
+ {formula:"FeCl3",property:"crystalDensityGPerMl",value:2.9,
+  sourceUrl:"https://inchem.org/documents/icsc/icsc/eics1499.htm"},
+ {formula:"Na2SO3",property:"decompositionC",value:600,
+  sourceUrl:"https://inchem.org/documents/icsc/icsc/eics1200.htm"},
  // Individually original NIST-JANAF 298.15 K pure-crystal heat values.
  // Source P4O10 is mapped exactly to empirical P2O5, not conflated with
  // unrelated phosphorus oxides or moisture-reacted solution.
