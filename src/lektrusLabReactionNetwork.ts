@@ -191,6 +191,108 @@ function labReequilibrateRecordedPrecipitates(
   if(!moved)break;
  }
 }
+/** Simultaneous school-level Ksp for 2–4 proven precipitates.
+ * Unlike independently reversing each equation, all coordinates read and
+ * update the SAME conserved molecular ledger. A shared counterion stock
+ * therefore cannot be spent twice. Every move is one signed, balanced
+ * reaction extent and conserves every element.
+ *
+ * Strict scope: one known Ksp solid per vetted two-reactant equation;
+ * a separate recorded equation for EVERY present solid; 25 +/- 5 C;
+ * no unknown hydrate, ligand-complex, or untracked ionic species.
+ * The quotient still uses neutral stocks as an IDEAL CLASSROOM proxy for
+ * free ions: it is not a quantitative activity-based speciation model.
+ */
+function labCoupledRecordedPrecipitates(
+ inventory:LabInventory,volumeL:number,equationTexts:readonly string[]
+):boolean{
+ const solids=Object.entries(inventory.solidMol).
+  filter(([,mol])=>mol>EPS).map(([formula])=>formula);
+ if(solids.length<2||solids.length>4||volumeL<=0)return false;
+ type Candidate={precipitate:string;equation:NonNullable<ReturnType<typeof parseBalancedLabEquation>>;
+  ksp:number};
+ const candidates:Candidate[]=[];
+ for(const precipitate of solids.sort()){
+  let picked:Candidate|undefined;
+  for(const text of equationTexts){
+   const record=knownRows.find(item=>item.row.equation===text&&
+    item.row.environment==="aqueous"&&item.row.observation==="precipitate");
+   if(!record||record.equation.reactants.length!==2)continue;
+   const products=(text.split("→")[1]??"").split(/\\s+\\+\\s+/).
+    filter(item=>item.includes("↓"));
+   if(products.length!==1)continue;
+   const marked=products[0].replace(/^\\s*\\d+\\s*/,"").
+    replace(/[↓↑]/g,"").trim();
+   const coeff=record.equation.products.find(t=>t.formula===precipitate);
+   const remaining=record.equation.products.filter(t=>t.formula!==precipitate);
+   const ksp=LAB_KSP_25C[precipitate];
+   if(marked!==precipitate||!coeff||coeff.coefficient!==1||
+    !ksp||remaining.length===0||record.equation.reactants.some(t=>
+     t.coefficient>3)||remaining.some(t=>t.formula==="H2O"))continue;
+   picked={precipitate,equation:record.equation,ksp};
+   break;
+  }
+  // One unidentified solid invalidates the coupled approximation.
+  if(!picked)return false;
+  candidates.push(picked);
+ }
+ for(let sweep=0;sweep<40;sweep++){
+  let largest=0;
+  for(const {precipitate,equation,ksp} of candidates){
+   const forward=Math.min(...equation.reactants.map(t=>
+    available(inventory.speciesMol,t.formula)/t.coefficient));
+   const other=equation.products.filter(t=>t.formula!==precipitate);
+   const reverse=Math.min(available(inventory.solidMol,precipitate),
+    ...other.map(t=>available(inventory.speciesMol,t.formula)/t.coefficient));
+   if(forward<EPS&&reverse<EPS)continue;
+   const quotient=(extent:number)=>equation.reactants.reduce((product,t)=>{
+    const remaining=Math.max(0,available(inventory.speciesMol,t.formula)-
+     extent*t.coefficient);
+    return product*Math.pow(remaining/volumeL,t.coefficient);
+   },1);
+   const present=quotient(0);
+   if(Math.abs(present-ksp)/ksp<1e-7)continue;
+   // At positive extent, stock ions precipitate and Q falls; negative
+   // extent dissolves solid and Q rises. Clamp by every stoichiometric
+   // stock and spectator, not only by the crystalline phase.
+   let extent=0;
+   if(present>ksp){
+    if(forward<=EPS)continue;
+    if(quotient(forward)>=ksp)extent=forward;
+    else{
+     let low=0,high=forward;
+     for(let i=0;i<65;i++){
+      const mid=(low+high)/2;
+      if(quotient(mid)>ksp)low=mid;else high=mid;
+     }
+     extent=low;
+    }
+   }else{
+    if(reverse<=EPS)continue;
+    if(quotient(-reverse)<=ksp)extent=-reverse;
+    else{
+     let low=-reverse,high=0;
+     for(let i=0;i<65;i++){
+      const mid=(low+high)/2;
+      if(quotient(mid)>ksp)low=mid;else high=mid;
+     }
+     extent=high;
+    }
+   }
+   if(Math.abs(extent)<=EPS)continue;
+   for(const t of equation.reactants)
+    sum(inventory.speciesMol,t.formula,-extent*t.coefficient);
+   for(const t of equation.products){
+    sum(inventory.speciesMol,t.formula,extent*t.coefficient);
+    if(t.formula===precipitate)
+     sum(inventory.solidMol,t.formula,extent*t.coefficient);
+   }
+   largest=Math.max(largest,Math.abs(extent));
+  }
+  if(largest<1e-11)break;
+ }
+ return true;
+}
 const inventoryCache=new Map<string,LabInventory>();
 const remember=(key:string,value:LabInventory)=>{
  if(inventoryCache.size>=256)inventoryCache.delete(inventoryCache.keys().next().value!);
@@ -415,8 +517,13 @@ export function simulateLabInventory(input:{
  // molecular bookkeeping; Ksp sets the dissolved limit only near 25 °C.
  // Reverse effects are intentionally excluded for unknown mineral phases.
  if(input.environment==="aqueous"&&!inventory.limited&&
-  volumeMl>0&&Math.abs((input.temperatureC??25)-25)<=5)
-  labReequilibrateRecordedPrecipitates(inventory,volumeMl/1000);
+  volumeMl>0&&Math.abs((input.temperatureC??25)-25)<=5){
+  const verified=[...new Set([...inventory.equilibriumEquations,
+   ...inventory.steps.filter(step=>step.equation.includes("↓")).
+    map(step=>step.equation)])];
+  if(!labCoupledRecordedPrecipitates(inventory,volumeMl/1000,verified))
+   labReequilibrateRecordedPrecipitates(inventory,volumeMl/1000);
+ }
  return remember(key,inventory);
 }
 export function labInventorySnapshot(inventory:LabInventory):LabChemicalSnapshot{
