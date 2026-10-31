@@ -85,11 +85,11 @@ export const reactionFamilyLabels:Record<ReactionFamily,string>={
 };
 /** Ephemeral visual events share their clock through the board model.
  * Existing settled products stay visible, flames and flashes do not. */
-function LabReactionBurst({vessel,visual,formula}:{
- vessel:LabVessel;visual?:ReactionVisual;formula:string}){
+function LabReactionBurst({vessel,visual,formula,visualNow}:{
+ vessel:LabVessel;visual?:ReactionVisual;formula:string;visualNow:number}){
  const started=vessel.visualStartedAtMs;
  if(!visual||!started)return null;
- const elapsed=Math.max(0,Date.now()-started);
+ const elapsed=Math.max(0,visualNow-started);
  if(elapsed>6500||elapsed<0)return null;
  const shift={animationDelay:-elapsed/1000+"s"} as React.CSSProperties;
  const blazing=["flame","flash","sparks","glow"].includes(visual);
@@ -112,11 +112,13 @@ function LabReactionBurst({vessel,visual,formula}:{
  </div>;
 }
 
-const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,readoutLeft=false,stirring=false,titrationResult,temperatureC,temperatureVisible=true,realism="high"}:{
+const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,readoutLeft=false,stirring=false,titrationResult,temperatureC,temperatureVisible=true,realism="high",evaporationEnabled=true,simulationPaused=false,pausedAtMs}:{
  vessel:LabVessel;small?:boolean;showLabels?:boolean;details?:boolean;readoutLeft?:boolean;stirring?:boolean;
  titrationResult?:ReturnType<typeof titrationReading>;temperatureC?:number;
- temperatureVisible?:boolean;realism?:LabRealism}){
+ temperatureVisible?:boolean;realism?:LabRealism;
+ evaporationEnabled?:boolean;simulationPaused?:boolean;pausedAtMs?:number}){
  const id=useId().replace(/:/g,"");
+ const visualNow=simulationPaused?pausedAtMs??Date.now():Date.now();
  const result=labObservation(vessel);
  const verified=result.status==="reaction"?result.caseData:undefined;
  const inventory=vessel.chemicalInventory?
@@ -154,10 +156,28 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   [realCrystals.formula,realCrystals.solidMol] as const:
   Object.entries(inventory?.solidMol??{}).find(([formula,mol])=>
    mol>1e-12&&labSingleSaltSolubilityGPer100gWater(formula,vessel.temperatureC??22)!==undefined);
- const growingSaltCrystals=(evaporatedWaterMl>0||
-  vessel.physicalProcess==="crystallizing")&&!!crystallineSalt;
+ // The equilibrium inventory predicts the FINAL solid even before the
+ // measured reaction has progressed. Render only the CURRENT extent.
+ const identifiedPrecipitate=labObservation(vessel).caseData?.observation==="precipitate";
+ const pendingPrecipitate=identifiedPrecipitate&&vessel.observed&&
+  !vessel.reactionAmounts&&!vessel.completedReaction&&
+  !vessel.chemicalInventory&&!vessel.filteredResidue;
+ const precipitationProgress=pendingPrecipitate?0:
+  identifiedPrecipitate&&vessel.reactionAmounts&&!vessel.completedReaction&&
+  !vessel.chemicalInventory&&!vessel.filteredResidue?
+   Math.max(0,Math.min(1,vessel.reactionAmounts.extentMol/
+    Math.max(1e-12,vessel.reactionAmounts.maxExtentMol))):1;
+ const measuredPrecipitateG=(contents.precipitateG??0)*precipitationProgress;
+ // Settled crystals persist, but only active crystallization / evaporation
+ // may shimmer. Old vented solvent must not animate forever.
+ const growingSaltCrystals=!!crystallineSalt&&
+  (vessel.physicalProcess==="crystallizing"||
+   !!vessel.lastEvaporatedAtMs&&visualNow-vessel.lastEvaporatedAtMs>=0&&
+    visualNow-vessel.lastEvaporatedAtMs<5000);
  const sedimentH=contents.precipitateFraction===undefined?0:
-  Math.min(105*liquidFraction,Math.max(3,106*contents.precipitateFraction));
+  precipitationProgress<=0?0:
+  Math.min(105*liquidFraction,Math.max(1.8,
+   106*contents.precipitateFraction*precipitationProgress));
  const totalLabel=[volumeMl>0?labDisplayNumber(volumeMl,realism)+" мл":null,
   massG>0?labDisplayNumber(massG,realism)+" г":null].filter(Boolean).join(" · ");
  const reagent=vessel.reagents[0]?reagentAppearance(vessel.reagents[0],
@@ -172,8 +192,10 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   indicator?.color??naturalColor:naturalColor);
  const observation=visualCase?.observation??"none";
  const gasEventActive=gasProgress?
-  gasProgress.rateMolPerSecond>1e-12:
-  !!vessel.visualStartedAtMs&&Date.now()-vessel.visualStartedAtMs<6500;
+  !vessel.reactionAmounts?.complete&&gasProgress.rateMolPerSecond>1e-12:
+  !!vessel.visualStartedAtMs&&
+   visualNow-vessel.visualStartedAtMs>=0&&
+   visualNow-vessel.visualStartedAtMs<6500;
  // Rate-dependent bubbles have a bounded visual count. Gas volume is
  // calculated independently by PV=nRT; circles are not literal molecules.
  const gasBubbleCount=gasProgress?
@@ -181,8 +203,14 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   12;
  const gasFoaming=!!gasProgress&&gasProgress.rateMolPerSecond*24465>3&&
   volumeMl>0&&!vessel.stoppered;
- const vaporVisible=!small&&!vessel.stoppered&&volumeMl>0&&
-  (labVaporPressureKPa(vessel,temperatureC??vessel.temperatureC??22)??0)>5;
+ // Do not draw perpetual vapor above a merely warm open beaker.
+ // Require actual evaporated mass, elevated vapor activity and open neck.
+ const vaporVisible=!small&&evaporationEnabled&&!vessel.stoppered&&
+  volumeMl>1e-9&&!!vessel.lastEvaporatedAtMs&&
+  visualNow-vessel.lastEvaporatedAtMs>=0&&
+  visualNow-vessel.lastEvaporatedAtMs<6000&&
+  (temperatureC??vessel.temperatureC??22)>=40&&
+  (labVaporPressureKPa(vessel,temperatureC??vessel.temperatureC??22)??0)>=10;
  const gasOnly=vessel.reagents.length>0&&vessel.reagents.every(id=>
   substances.find(s=>s.id===id)?.kind==="газ")&&massG===0;
  const singlePhase=vessel.filteredResidue?"solid":gasOnly?"gas":
@@ -203,7 +231,8 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   amounts.extentMol/amounts.maxExtentMol:0:1;
  // Bubble and steam artwork must agree with the same reviewed
  // temperature criterion used by the mass/energy vaporization model.
- const boiling=volumeMl>1e-9&&labIsBoiling(vessel,temperatureC??vessel.temperatureC??22);
+ const boiling=evaporationEnabled&&volumeMl>1e-9&&
+  labIsBoiling(vessel,temperatureC??vessel.temperatureC??22);
  const renderedSolidFraction=vessel.filteredResidue?Math.max(.23,solidFraction):
   solidFraction*(1-moltenFraction);
  const fillFraction=volumeMl>0?Math.max(.008,liquidFraction):
@@ -254,7 +283,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
       {Array.from({length:16},(_,i)=><circle key={i}
        cx={28+i*23%44} cy={85+i*17%27} r={1.3+i%3*.6}
        fill={i%2?"#e9f8ff":"#d7e7f1"} stroke="#83afbb" strokeWidth=".5"
-       style={{animationDelay:-(Math.max(0,Date.now()-vessel.physicalStartedAtMs!)/1000)
+       style={{animationDelay:-(Math.max(0,visualNow-vessel.physicalStartedAtMs!)/1000)
         -(i%5)*.13+"s"}}/>)}
      </g>}
     {growingSaltCrystals&&<g className="lektrus-lab-evaporation-crystals"
@@ -277,18 +306,21 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
     </g>}
     {/* The measured precipitate is material state, not a transient visual
          effect. Indicator additions and dilution must never hide it. */}
-    {(contents.precipitateG!==undefined&&contents.precipitateG>1e-10||
-      active&&observation==="precipitate"&&conversionFraction>0)&&<>
+    {(measuredPrecipitateG>1e-10||
+      active&&observation==="precipitate"&&precipitationProgress>0&&
+      conversionFraction>0)&&<>
      {/* Quantified precipitation uses actual produced mass/density and vessel volume.
          The one-pixel minimum only keeps subpixel traces perceptible. */}
      {sedimentH>0&&<rect className="lektrus-lab-sediment"
       x="16" y={120-sedimentH} width="70" height={sedimentH}
       fill={appearance.solidColor||"#d6dee1"} opacity=".94"/>}
-     {contents.precipitateFraction===undefined&&<g className="lektrus-lab-qualitative-residue">
+     {contents.precipitateFraction===undefined&&precipitationProgress>0&&
+      <g className="lektrus-lab-qualitative-residue">
       {Array.from({length:18},(_,i)=><circle key={i} cx={23+i*17%56}
        cy={116-i%3*1.8} r=".7" fill={appearance.solidColor||"#d6dee1"}/>)}
      </g>}
-     {!amounts?.complete&&Array.from({length:14},(_,i)=><circle key={i}
+     {precipitationProgress>0&&!amounts?.complete&&
+      Array.from({length:14},(_,i)=><circle key={i}
       className="lektrus-lab-particle" cx={28+i*31%45} cy={76+i*13%31}
       r={1.1+i%3*.5} fill={appearance.solidColor||"#cddbe0"}
       style={{animationDelay:-(i%9)*.25+"s"}}/>)}
@@ -317,12 +349,8 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
     <circle cx="52" cy="114" r="4" fill="#e2f3ed" stroke="#47776f" strokeWidth="1.5"/>
     
    </g>}
-   {boiling&&<g className="lektrus-lab-steam-plumes" aria-hidden="true">
-    {Array.from({length:5},(_,i)=><path key={i}
-     d={`M${31+i*10} 13q-5 -7 0 -15t0 -14`}
-     fill="none" stroke="#dffbfb" strokeWidth="2.5" strokeLinecap="round"
-     style={{animationDelay:-(i*.45)+"s"}}/>)}
-   </g>}
+   {/* Vapor rises outside the SVG: earlier duplicate paths were clipped
+       by viewBox while extending above the glass rim. */}}
    <path d={geo.outline} fill="none" stroke="#75a4a4" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
    {vessel.stoppered&&labCanStopper(vessel.kind)&&<g className="lektrus-lab-physical-stopper">
     <ellipse cx="50" cy="7.5" rx={vessel.kind==="tube"?17:21} ry="4.5"
@@ -341,7 +369,8 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
     <rect x="73" y="71" width="7" height="24" rx="1" fill={indicator?.color??"#b5b9b3"} opacity=".95" transform="rotate(12 76 60)"/>
    </g>}
    {isLiquidIndicator&&vessel.indicatorAddedAtMs&&
-    Date.now()-vessel.indicatorAddedAtMs>=0&&Date.now()-vessel.indicatorAddedAtMs<2100&&
+    visualNow-vessel.indicatorAddedAtMs>=0&&
+    visualNow-vessel.indicatorAddedAtMs<2100&&
     <g className="lektrus-lab-indicator-drops" aria-label="Капли индикатора">
      {Array.from({length:Math.min(3,vessel.indicatorDrops??1)},(_,i)=>
       <path key={i} d={`M${45+i*6} ${12-i*7}q-3 6 0 8q3 -2 0 -8`}
@@ -370,13 +399,20 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
 
 
   </svg>
-  {vaporVisible&&<div className="lektrus-lab-vapor-plume"
+  {(vaporVisible||boiling&&!small)&&<div className={"lektrus-lab-vapor-plume"+
+   (boiling?" is-boiling":"")}
    title="Испарение летучей жидкости при текущей температуре">
    {Array.from({length:3},(_,i)=><span key={i}/>)}
   </div>}
-  <LabReactionBurst vessel={vessel} visual={visualCase?.visual} formula={visualCase?.equation??""}/>
+  {gasEventActive&&!vessel.stoppered&&!vessel.gasCollectionTargetId&&
+   active&&observation==="gas"&&<div className="lektrus-lab-gas-vent"
+    role="img" aria-label="Газ выходит из открытого сосуда">
+    {Array.from({length:5},(_,i)=><i key={i} style={{animationDelay:-(i*.36)+"s"}}/>)}
+   </div>}
+  <LabReactionBurst vessel={vessel} visual={visualCase?.visual}
+   formula={visualCase?.equation??""} visualNow={visualNow}/>
   {vessel.reactionHeat&&(!vessel.reactionHeat.complete||
-   !!vessel.visualStartedAtMs&&Date.now()-vessel.visualStartedAtMs<8500)&&
+   !!vessel.visualStartedAtMs&&visualNow-vessel.visualStartedAtMs<8500)&&
    <span className={"lektrus-lab-reaction-heat is-"+vessel.reactionHeat.direction}
     title={"Учебная оценка теплового эффекта, не показание реального термометра"}>
     {vessel.reactionHeat.direction==="exothermic"?"↑ Нагрев":"↓ Охлаждение"}
@@ -2059,6 +2095,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     <LabVesselGraphic vessel={v} realism={settings.realism} showLabels={settings.showVesselLabels}
      details={selectedVessel} readoutLeft={p.x>62}
      temperatureVisible={settings.showTemperatures&&v.kind!=="burette"}
+     evaporationEnabled={settings.evaporationEnabled}
+     simulationPaused={!!bench.simulationPaused} pausedAtMs={bench.pausedAtMs}
      stirring={bench.stirringVesselId===v.id||
       labAppliancesBelowStand(bench,v.id).some(d=>d.kind==="stirrer"&&d.powered)}
      temperatureC={v.temperatureC??22}
