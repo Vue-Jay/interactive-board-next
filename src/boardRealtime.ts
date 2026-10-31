@@ -19,9 +19,21 @@ export function subscribeBoardDocument(boardId: string, onDocument: (row: Remote
   let pendingHeartbeat: string | null = null;
   let reading = false;
   let readAgain = false;
+  let scheduledRead = false;
+  let newestVersion = -1;
   const topic = `realtime:board:${boardId}`;
 
-  // Re-read through RLS, also recovering changes missed while disconnected.
+  // Supabase change notifications are already RLS-filtered. A complete
+  // row can be applied immediately, without a second REST round-trip.
+  // Monotone versions also guard against delayed HTTP reads and duplicates.
+  const deliver = (row: RemoteBoardDocument) => {
+    if (stopped || row.board_id !== boardId ||
+        !Number.isSafeInteger(row.version) || row.version < 0 ||
+        row.version <= newestVersion) return;
+    newestVersion = row.version;
+    onDocument(row);
+  };
+  // Re-read through RLS after reconnect or with key-only WAL messages.
   const readLatest = async () => {
     if (stopped) return;
     if (reading) { readAgain = true; return; }
@@ -30,13 +42,23 @@ export function subscribeBoardDocument(boardId: string, onDocument: (row: Remote
       do {
         readAgain = false;
         const row = await getRemoteBoardDocument(boardId);
-        if (!stopped && row) onDocument(row);
+        if (!stopped && row) deliver(row);
       } while (!stopped && readAgain);
     } catch {
       if (!stopped) reconnect();
     } finally { reading = false; }
   };
 
+  // Burst of key-only UPDATE events means one REST read, not a request
+  // for every packet. A queued read is cancelled on unmount automatically.
+  const scheduleRead = () => {
+    if (stopped || scheduledRead) return;
+    scheduledRead = true;
+    void Promise.resolve().then(() => {
+      scheduledRead = false;
+      if (!stopped) void readLatest();
+    });
+  };
   const closeSocket = () => {
     clearTimeout(deadline);
     clearInterval(heartbeat);
@@ -118,7 +140,17 @@ export function subscribeBoardDocument(boardId: string, onDocument: (row: Remote
             onStatus("online");
             void readLatest();
           }
-          if (joined && message.event === "postgres_changes") void readLatest();
+          if (joined && message.event === "postgres_changes") {
+            const record = message.payload?.data?.record ?? message.payload?.record;
+            if (record && record.board_id === boardId &&
+                Number.isSafeInteger(record.version) && record.version >= 0 &&
+                record.document && typeof record.document === "object" &&
+                !Array.isArray(record.document)) {
+              deliver(record as RemoteBoardDocument);
+            } else {
+              scheduleRead();
+            }
+          }
         } catch { /* Ignore malformed/unrelated protocol frames. */ }
       };
       ws.onerror = ws.onclose = () => { if (active()) reconnect(); };

@@ -1,4 +1,4 @@
-import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
+import {useEffect,useId,useMemo,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labReactionNeedsTick,pourLabIntoFilter,
@@ -599,11 +599,16 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   if(cabinetTab==="organic")return v.kind==="органика";
   return !["кислота","основание","соль","оксид","металл","неметалл","органика"].includes(v.kind);
  };
- const catalogue=buildLabCatalog({query,kind:isGlobalSearch?"Все":category,
-  phase:isGlobalSearch?"all":phase,sort,group})
-  .map(section=>({...section,items:section.items.filter(catalogKind)}))
-  .filter(section=>section.items.length>0);
- const visibleSubstances=catalogue.flatMap(v=>v.items);
+ // Thermal and live-collaboration ticks re-render the bench many times.
+ // Catalogue sorting/searching is expensive on low-memory Android phones,
+ // and does not depend on any vessel or animation state.
+ const catalogue=useMemo(()=>buildLabCatalog({
+  query,kind:isGlobalSearch?"Все":category,
+  phase:isGlobalSearch?"all":phase,sort,group
+ }).map(section=>({...section,items:section.items.filter(catalogKind)}))
+  .filter(section=>section.items.length>0),
+ [query,isGlobalSearch,category,phase,sort,group,cabinetTab]);
+ const visibleSubstances=useMemo(()=>catalogue.flatMap(v=>v.items),[catalogue]);
  const reagent=chosen?substances.find(s=>s.id===chosen):null;
  const classes=["Все",...new Set(substances.map(s=>s.kind))];
  const selectedBurette=selected?.kind==="burette"?selected:undefined;
@@ -617,10 +622,12 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    (selectedBurette?.buretteTargetId??titrationTarget):
    buretteTargets[0]?.id;
  const effectivePouringId=pouringId??localPourId;
- const experimentCases=reviewedReactionCases.filter(v=>v.status==="reaction"&&
-  v.reactants.length<=3&&(effectFilter==="all"||v.observation===effectFilter||v.family===effectFilter)&&
-  (v.equation+" "+v.description+" "+v.reactants.join(" ")).toLocaleLowerCase("ru-RU")
-   .includes(query.trim().toLocaleLowerCase("ru-RU")));
+ const experimentCases=useMemo(()=>{
+  const term=query.trim().toLocaleLowerCase("ru-RU");
+  return reviewedReactionCases.filter(v=>v.status==="reaction"&&
+   v.reactants.length<=3&&(effectFilter==="all"||v.observation===effectFilter||v.family===effectFilter)&&
+   (v.equation+" "+v.description+" "+v.reactants.join(" ")).toLocaleLowerCase("ru-RU").includes(term));
+ },[query,effectFilter]);
  /** Only the participant who starts a pour advances the shared 5% ticks.
   * The session itself lives in the board so other users see every portion. */
  useEffect(()=>{
@@ -652,6 +659,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  useEffect(()=>{
   if(!editable)return;
   const timer=setInterval(()=>{
+   // Background tabs on mobile must not compete with the visible teacher
+   // for CPU and repeated full-board uploads. Elapsed simulation time is
+   // applied deterministically on the next visible tick.
+   if(document.visibilityState==="hidden")return;
    const current=benchRef.current;
    const openBurette=current.vessels.some(v=>v.buretteOpen);
    const active=openBurette||current.vessels.some(labReactionNeedsTick)||

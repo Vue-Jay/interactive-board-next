@@ -74,6 +74,7 @@ export function connectBoardCursorChannel(
   // when stroke B starts immediately afterwards. Keep completed strokes
   // separately so short handwritten letters never disappear on peers.
   const completedInk = new Map<string, OutgoingInk>();
+  const unconfirmedFinals = new Map<string, OutgoingInk>();
   let pendingInk: OutgoingInk | null = null;
   let inkTimer: ReturnType<typeof setTimeout> | undefined;
   const sendInkNow = () => {
@@ -85,6 +86,7 @@ export function connectBoardCursorChannel(
       lastInkSent = Date.now();
       sentInkCount++;
       pendingAcks.add(ref);
+      if (ink.finished) unconfirmedFinals.set(ref,ink);
       if(sentInkCount===1 || sentInkCount%25===0) report("подключено");
       return true;
     };
@@ -163,6 +165,11 @@ export function connectBoardCursorChannel(
 
     flushTimer = undefined;
     pendingHeartbeat = null;
+    // The socket may close after writing a final packet but before its
+    // server acknowledgement. Replay the exact stroke on the next join.
+    for (const ink of unconfirmedFinals.values())
+      completedInk.set(ink.id,ink);
+    unconfirmedFinals.clear();
     pendingAcks.clear();
     ready = false;
     report("отключено");
@@ -313,8 +320,16 @@ export function connectBoardCursorChannel(
 
           if (message.topic !== topic) return;
           if (message.event === "phx_reply" && pendingAcks.delete(String(message.ref))) {
+            const pendingFinal=unconfirmedFinals.get(String(message.ref));
+            unconfirmedFinals.delete(String(message.ref));
             if (message.payload?.status === "ok") acknowledged++;
-            else report("broadcast отклонён сервером");
+            else {
+              if (pendingFinal) {
+                completedInk.set(pendingFinal.id,pendingFinal);
+                sendInkNow();
+              }
+              report("broadcast отклонён сервером");
+            }
             if(acknowledged===1 || acknowledged%25===0) report("подключено");
             return;
           }
@@ -340,7 +355,7 @@ export function connectBoardCursorChannel(
             report("подключено");
 
             if (latest) flush();
-            if (pendingInk) sendInkNow();
+            if (pendingInk || completedInk.size) sendInkNow();
             return;
           }
 

@@ -19,6 +19,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:eraser
+      - run: npm run test:realtime
       - run: node scripts/test-ink-hit.mjs
       - run: node scripts/test-ink-layer.mjs
       - run: node scripts/test-lektrus-board-three-way-merge.mjs
