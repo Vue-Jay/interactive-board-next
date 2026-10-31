@@ -1055,7 +1055,8 @@ export function setLabQuickReagent(bench:LabBench,id:string,dose?:LabDose):LabBe
  * from the previous generation must never recreate its emptied vessels. */
 export const nextLabTableEpoch=()=>Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,10);
 export function clearLabTable(bench:LabBench):LabBench{
- if(!bench.vessels.length&&!placedLabDevices(bench).length&&!bench.pouring)return bench;
+ if(!bench.vessels.length&&!placedLabDevices(bench).length&&!bench.pouring&&
+  !bench.experimentClock)return bench;
  // Empty only the physical worktop. The configured quick shelf and
  // presentation settings must survive cleaning.
  return {...bench,vessels:[],selectedId:"",tableEpoch:nextLabTableEpoch(),
