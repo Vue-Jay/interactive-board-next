@@ -4608,3 +4608,30 @@
 .lektrus-lab-bench .lektrus-lab-placed-device.is-cooler{
  width:clamp(119px,10.3cqw,175px)!important;
  height:clamp(130px,11.5cqw,178px)!important}
+
+
+/* Cooler v2: distinct instrument face zones with touch-size hit targets.
+ * Neither the screen nor power knob can cover the other on 100px phones. */
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler .lektrus-lab-device-face-temp{
+ left:42.5%!important;top:69.5%!important;
+ width:clamp(34px,31%,54px)!important;height:clamp(23px,15%,30px)!important;
+ min-width:34px!important;max-width:54px!important;
+ border:1px solid #70a2ad!important;border-radius:4px!important;
+ background:#255568!important;color:#e1faff!important;
+ font:800 clamp(10px,.9cqw,13px)/1 ui-monospace,monospace!important;
+ text-align:center!important;letter-spacing:-.4px!important;
+ box-shadow:inset 0 1px 3px #102f3b55!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler .lektrus-lab-device-power{
+ left:79%!important;top:70%!important;
+ width:clamp(25px,20%,33px)!important;height:clamp(25px,20%,33px)!important;
+ min-width:25px!important;min-height:25px!important;
+ border:2px solid #668e98!important;border-radius:50%!important;
+ background:#d8ecea!important;color:#326b7a!important;
+ font-size:clamp(16px,1.3cqw,21px)!important;
+ box-shadow:0 1px 2px #24546244!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler .lektrus-lab-device-power[aria-pressed="true"]{
+ background:#3b8da8!important;color:#fff!important;border-color:#b3e5ee!important}
+.lektrus-lab-bench .lektrus-lab-placed-device.is-cooler .lektrus-lab-device-grip>.lektrus-lab-device-icon{
+ filter:drop-shadow(0 4px 3px #356f7c38)!important}
+.lektrus-lab-bench .lektrus-lab-placed-device.is-cooler.is-selected .lektrus-lab-device-grip>.lektrus-lab-device-icon{
+ filter:drop-shadow(0 0 5px #6bc9e8)!important}
