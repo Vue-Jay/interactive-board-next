@@ -1178,6 +1178,9 @@ export function parseDocument(raw: string): DocumentData {
                  // Evaporation keeps that water dose without synthesizing a
                  // second reagent entry. Never discard its measured volume.
                  (v.reagents.includes(id)||
+                  // A persistent inventory identifies current species;
+                  // historical stock doses still preserve measured volume.
+                  !!v.chemicalInventory||
                   (id==="H2O"&&dose.unit==="ml"&&dose.concentrationM==null))&&
                  validDose(dose))))&&
             validReaction(v.completedReaction)&&validReactionAmounts(v.reactionAmounts)&&
