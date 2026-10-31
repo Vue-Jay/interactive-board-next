@@ -937,7 +937,7 @@ export function wipeLabChalkboard(bench:LabBench):LabBench{
  * precipitation animation. Densities give physical layer volume. */
 const precipitateDensity=labSchoolSolidDensityGml;
 const formatMol=(v:number)=>Number((v*1000).toPrecision(4));
-export function labVesselContents(v:LabVessel){
+function calculateLabVesselContents(v:LabVessel){
  const {volumeMl,capacityMl}=labVesselQuantity(v);
  const quantities=v.reactionAmounts;
  // The chemical species inventory is reconstructed from the measured initial
@@ -1064,6 +1064,19 @@ export function labVesselContents(v:LabVessel){
   precipitateG,precipitateVolumeMl,
   precipitateFraction:precipitateVolumeMl===undefined?undefined:
    Math.max(0,Math.min(.8,precipitateVolumeMl/capacityMl))};
+}
+
+/** The board updates vessel objects immutably. A fixed vessel reference has
+ * a fixed measured composition, so UI redraws and unrelated apparatus edits
+ * can reuse its already resolved phase / precipitate readout. Weak keys do
+ * not retain removed glassware or old collaborative versions in memory. */
+const contentsByVessel=new WeakMap<LabVessel,ReturnType<typeof calculateLabVesselContents>>();
+export function labVesselContents(v:LabVessel){
+ const cached=contentsByVessel.get(v);
+ if(cached)return cached;
+ const contents=calculateLabVesselContents(v);
+ contentsByVessel.set(v,contents);
+ return contents;
 }
 
 export function labReactionNeedsTick(vessel:LabVessel):boolean{
@@ -1890,7 +1903,7 @@ export function labVesselSolidDisplacement(vessel:LabVessel){
  }
  return {volumeMl,complete,estimated};
 }
-export function labVesselQuantity(vessel:LabVessel){
+function calculateLabVesselQuantity(vessel:LabVessel){
  const doses=Object.values(vessel.doses??{});
  const volumeMl=Math.round(((vessel.filteredSolution?.volumeMl??0)+
   Object.entries(vessel.doses??{}).reduce((total,[id,d])=>
@@ -1912,6 +1925,18 @@ export function labVesselQuantity(vessel:LabVessel){
   liquidFraction:Math.min(.96,volumeMl/capacityMl),
   solidFraction:Math.min(.9,massG/massReferenceG)};
 }
+/** Solid displacement runs a full measured reaction inventory. It must not
+ * repeat on every render, pointer movement or unrelated bench state change.
+ * Every actual lab process produces a new vessel object and is recalculated. */
+const quantityByVessel=new WeakMap<LabVessel,ReturnType<typeof calculateLabVesselQuantity>>();
+export function labVesselQuantity(vessel:LabVessel){
+ const cached=quantityByVessel.get(vessel);
+ if(cached)return cached;
+ const quantity=calculateLabVesselQuantity(vessel);
+ quantityByVessel.set(vessel,quantity);
+ return quantity;
+}
+
 /** Adjust the exact sampling volume (ml) of this graduated pipette. */
 export function setLabPipetteTarget(bench:LabBench,id:string,ml:number):LabBench{
  if(!Number.isFinite(ml)||ml<.01||ml>25||Math.abs(ml*100-Math.round(ml*100))>1e-6)
