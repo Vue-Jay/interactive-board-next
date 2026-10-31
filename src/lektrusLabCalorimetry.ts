@@ -15,6 +15,15 @@
 type HeatDose={value:number;unit:"ml"|"g";concentrationM?:number};
 type SubstanceHeat={specificJPerGK:number;densityGPerMl?:number;phase:"liquid"|"solid"};
 export const LAB_CALORIMETRY_REFERENCE:Readonly<Record<string,SubstanceHeat>>={
+ // NIST-JANAF 1998 pure crystal Cp at 298.15 K. Original J/(mol K)
+ // and exact solid phases live in lektrusLabJanafSolidHeatReferences.ts.
+ // Per-entry conversion uses the real formula parser; these values must
+ // NEVER be assigned to aqueous mixtures or hydrated salt crystals.
+ "MgCO3":{specificJPerGK:0.903894,phase:"solid"},
+ "CuCl2":{specificJPerGK:0.534646,phase:"solid"},
+ "FeCl2":{specificJPerGK:0.604868,phase:"solid"},
+ "FeCl3":{specificJPerGK:0.595888,phase:"solid"},
+ "Ba(OH)2":{specificJPerGK:0.593139,phase:"solid"},
  // NIST Chemistry WebBook SRD 69, pure solid Cp at 298.15 K:
  // Seven phase-specific measurements and original molar values are tracked
  // in lektrusLabNistHeatReferences.ts (six decimals are conversion rounding).
