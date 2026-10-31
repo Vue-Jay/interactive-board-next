@@ -232,11 +232,11 @@ assert.ok(firstSlow.state.NaCl<dryPhase.NaCl&&
 assert.ok(firstStirred.state.NaCl<firstSlow.state.NaCl,
  "Stirring increases the school dissolution rate");
 const warmed=dissolution.labSchoolMixedSaltEquilibrium(mixedIons,85);
-assert.ok(warmed.solidMol.KCl<shared.solidMol.KCl,
+assert.ok((warmed.solidMol.KCl??0)<(shared.solidMol.KCl??0),
  "Warm water holds more potassium chloride");
 const cooling=dissolution.labAdvanceSchoolMixedSaltPhase(
  mixedIons,20,3,false,warmed.solidMol);
-assert.ok(cooling.state.KCl>warmed.solidMol.KCl,
+assert.ok(cooling.state.KCl>(warmed.solidMol.KCl??0),
  "Cooling permits a gradual, visible crystal growth");
 const inMotion=reaction.simulateLabInventory({
  ...mixedIons,temperatureC:20,mixedSaltPhase:firstSlow.state
