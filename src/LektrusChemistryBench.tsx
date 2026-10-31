@@ -1499,6 +1499,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    const from=vesselPosition(source),to=vesselPosition(receiver);
    const y=Math.max(31,Math.min(from.y,to.y)-21);
    const path=`M ${from.x} ${from.y-9} Q ${(from.x+to.x)/2} ${y} ${to.x} ${to.y-9}`;
+   const gasState=labReactionGasProgress(source.reactionAmounts);
+   const flowing=!bench.simulationPaused&&
+    !source.reactionAmounts?.complete&&
+    !!gasState&&gasState.rateMolPerSecond>1e-12;
    return <svg key={"gas-tube-"+source.id} className="lektrus-lab-gas-tube"
     viewBox="0 0 100 100" preserveAspectRatio="none"
     aria-label="Газоотводная трубка между сосудами" role="img">
@@ -1506,6 +1510,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      strokeLinecap="round" opacity=".55"/>
     <path d={path} fill="none" stroke="#daffff" strokeWidth=".33"
      strokeLinecap="round" opacity=".95"/>
+    {flowing&&<path d={path} className="lektrus-lab-gas-tube-flow"
+     stroke="#75e1e7" strokeWidth=".37" strokeDasharray="1 1.8"
+     strokeLinecap="round" fill="none"/>}
     <circle cx={to.x} cy={to.y-9} r="1.2" fill="#c6f7f9"
      stroke="#45858e" strokeWidth=".35"/>
    </svg>;
