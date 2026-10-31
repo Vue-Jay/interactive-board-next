@@ -37,7 +37,9 @@ import {fitGeoMatchingItem} from "./lektrusGeoMatchingLayout";
 import {boardObjectTypeName} from "./boardObjectNames";
 import LektrusSchoolDiagramEditor from "./LektrusSchoolDiagramEditor";
 import {isSchoolDiagramId,isSchoolDiagram} from "./lektrusSchoolDiagramModel";
-import LektrusScienceEditor from "./LektrusScienceEditor";
+// Load heavy chemistry/physics editors only when a teacher opens one.
+// The board itself stays interactive while its optional tools download.
+const LektrusScienceEditor = lazy(() => import("./LektrusScienceEditor"));
 import {mergeLabBench,readLabBench,type LabBench} from "./lektrusChemistryBenchModel";
 import LektrusChemicalEquationEditor from "./LektrusChemicalEquationEditor";
 import {LektrusSubjectBoardView,LektrusSubjectBoardTaskEditor,isSubjectBoard,boardTone,subjectBoardLocked,entryBelongsToSubject,newSubjectBoardEntry,subjectBoardEntryFilled} from "./LektrusSubjectBoard";
@@ -7947,7 +7949,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             onCancel={()=>setScienceEditorItem(null)}
             onClose={next=>{finalizePhysicalEditor(next,false);setScienceEditorItem(null)}}
             onSave={next=>{finalizePhysicalEditor(next,true);setScienceEditorItem(null);setNotice("Физический график синхронизирован")}}/>:
-          <LektrusScienceEditor key={scienceEditorItem.id}
+          <Suspense fallback={<div className="board-server-overlay" role="status"><div className="board-server-card"><strong>Открываем предметный инструмент…</strong><span>Загружаем только необходимые модели.</span></div></div>}><LektrusScienceEditor key={scienceEditorItem.id}
           canTeach={roleCapabilities.canUseTeacherTools}
           item={scienceEditorItem.graphFigureId?.startsWith("chem-organic-")||
             scienceEditorItem.graphFigureId?.startsWith("chem-formula-")||
@@ -7985,7 +7987,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               setNotice("Предметная схема сохранена");
             }
             setScienceEditorItem(null);
-          }}/>}</>}
+          }}/></Suspense>}</>}
         {chartEditorItem&&createPortal(<LektrusDataChartEditor key={chartEditorItem.id}
           item={chartEditorItem} onClose={()=>setChartEditorItem(null)}
           onSave={next=>{
