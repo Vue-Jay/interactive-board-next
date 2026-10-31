@@ -966,6 +966,7 @@ export function labVesselContents(v:LabVessel){
     const mass=labMolarMass(formula);
     solid.push({formula,massG:mass===undefined?undefined:mass*solidMol});
     if(precipitated.has(formula)||labSingleSaltSolubilityGPer100gWater(formula,v.temperatureC??22)!==undefined||
+     (v.filteredResidue?.components?.some(component=>component.formula===formula))||
      (v.chemicalInventory&&v.environment==="aqueous"&&
       !LAB_WATER_SOLUTES.has(formula))){
      if(mass!==undefined){
