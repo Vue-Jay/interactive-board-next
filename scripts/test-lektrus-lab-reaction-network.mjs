@@ -952,6 +952,44 @@ for(const row of batchRows.filter(x=>x.sourceMolarHeatJPerMolK!==undefined)){
  const real=registryProps.labSubstanceProperties(row.formula);
  approximately(real.specificHeatJPerGK,row.value,1e-12);
 }
+// Phase-identity and numerical regression for the graphite/sulfite batch.
+// RSC explicitly distinguishes graphite density 2.2 from diamond 3.513.
+// The Chemister Na2SO3 Cp,mol=120.1 belongs to ANHYDROUS hexagonal
+// crystals, never the 420 J/mol/K of Na2SO3.7H2O.
+const sourcedGraphite=registryProps.labSubstanceProperties("C",20);
+approximately(sourcedGraphite.crystalDensityGPerMl,2.2,1e-12);
+approximately(physicalDensity.labCrystalDensityGml("C"),2.2,1e-12);
+const graphiteTransition=thermalProps.labThermalInfo("C","g");
+assert.equal(graphiteTransition.behavior,"sublimes");
+approximately(graphiteTransition.sublimationC,3825,1e-12);
+assert.equal(graphiteTransition.meltingC,undefined);
+assert.equal(graphiteTransition.boilingC,undefined);
+assert.equal(thermalProps.labThermalInfo("C","ml").known,false);
+const sodiumSulfiteMass=labMolarMass("Na2SO3");
+approximately(sodiumSulfiteMass,126.036538,1e-6);
+approximately(heatProps.LAB_CALORIMETRY_REFERENCE.Na2SO3.specificJPerGK,
+ 120.1/sodiumSulfiteMass,0.00000051);
+assert.equal(heatProps.LAB_CALORIMETRY_REFERENCE.Na2SO3.phase,"solid");
+approximately(heatProps.labKnownHeatCapacityJPerK("beaker",{
+ Na2SO3:{value:3,unit:"g"}
+}),heatProps.LAB_VESSEL_GLASS_EQUIVALENT_G.beaker*.84+
+ 3*(120.1/sodiumSulfiteMass),0.000002);
+const zincAcetateDry=thermalProps.labThermalInfo("Zn(CH3COO)2","g");
+assert.equal(zincAcetateDry.behavior,"decomposes");
+approximately(zincAcetateDry.decompositionC,200,1e-12);
+assert.equal(zincAcetateDry.meltingC,undefined);
+assert.equal(zincAcetateDry.boilingC,undefined);
+assert.equal(thermalProps.labThermalInfo("Zn(CH3COO)2","ml").known,false);
+for(const [formula,property,sourceUrl] of [
+ ["C","crystalDensityGPerMl","https://periodic-table.rsc.org/element/6/carbon"],
+ ["C","sublimationC","https://periodic-table.rsc.org/element/6/carbon"],
+ ["Na2SO3","specificHeatJPerGK","https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=777"],
+ ["Zn(CH3COO)2","decompositionC","https://www.vwr.com/de/en/product/10592784/zinc-acetate-anhydrous-999"]
+]){
+ assert.ok(batchRows.some(row=>row.formula===formula&&
+  row.property===property&&row.sourceUrl===sourceUrl&&
+  row.phase==="anhydrous-solid"),"Untraceable pure phase: "+formula+" "+property);
+}
 for(const [formula,transitionC] of [
  ["Ag2CO3",120],["K2MnO4",500],["Fe(CH3COO)2",190]
 ]){
