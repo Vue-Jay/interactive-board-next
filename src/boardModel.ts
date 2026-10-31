@@ -852,7 +852,9 @@ export function parseDocument(raw: string): DocumentData {
         const validSettings=!settings||(
           typeof settings.showEquationBoard==="boolean"&&
           typeof settings.showVesselLabels==="boolean"&&
-          typeof settings.animateEffects==="boolean");
+          typeof settings.animateEffects==="boolean"&&
+          (settings.pourMode==null||["fast","gradual"].includes(settings.pourMode))&&
+          (settings.showTemperatures==null||typeof settings.showTemperatures==="boolean"));
         const validDose=(entry:unknown)=>!!entry&&typeof entry==="object"&&
           Number.isFinite((entry as {value:number}).value)&&
           (entry as {value:number}).value>0&&(entry as {value:number}).value<=10000&&
