@@ -4522,6 +4522,11 @@
 .lektrus-lab-bench .lektrus-lab-experiment-options button[aria-pressed="true"],
 .lektrus-lab-bench .lektrus-lab-experiment-switch[aria-checked="true"]{
  background:#297957!important;border-color:#297957!important;color:#fff!important}
+.lektrus-lab-bench .lektrus-lab-header-tools .lektrus-lab-experiment-options button,
+.lektrus-lab-bench .lektrus-lab-header-tools .lektrus-lab-experiment-switch{
+ height:auto!important;min-height:36px!important;
+ padding:7px 9px!important;line-height:1.2!important;
+}
 .lektrus-lab-bench .lektrus-lab-experiment-options button:disabled,
 .lektrus-lab-bench .lektrus-lab-experiment-switch:disabled{
  opacity:.55;cursor:default}
