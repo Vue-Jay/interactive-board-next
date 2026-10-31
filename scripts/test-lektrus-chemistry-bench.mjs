@@ -352,14 +352,20 @@ const decanted=lab.pourLabVessel(precip,"v1","v3");
 assert.equal(lab.labObservation(decanted.vessels[2]).status,"reaction",
  "Previously reacted material stays visibly reacted after pouring into clean glassware");
 assert.equal(lab.labObservation(decanted.vessels[2]).caseData.observation,"precipitate");
-assert.ok(decanted.vessels[2].completedReaction,"The verified result is preserved separately from reactant IDs");
+assert.equal(decanted.vessels[2].completedReaction,undefined,
+ "Moving unreacted stocks does not mark predicted precipitation as completed");
 assert.equal(decanted.vessels[2].doses.NaCl.value,12);
 assert.equal(decanted.vessels[2].doses.AgNO3.value,7);
 assert.equal(decanted.vessels[0].completedReaction,undefined,"Emptied source loses its products");
-const postReaction=lab.putLabReagent(decanted,"v3","HCl",{value:5,unit:"ml"});
-assert.equal(lab.labObservation(postReaction.vessels[2]).status,"reaction",
- "Verified precipitate persists and additional measured reactants can participate");
-assert.ok(postReaction.vessels[2].completedReaction,"Previously precipitated solid should remain visible as last known appearance");
+let reactedDecanted=lab.advanceLabSimulation(decanted,0);
+reactedDecanted=lab.advanceLabSimulation(reactedDecanted,1000);
+reactedDecanted=lab.advanceLabSimulation(reactedDecanted,6000);
+assert.equal(reactedDecanted.vessels[2].reactionAmounts?.complete,true,
+ "The transferred solution must react before receiving its final status");
+const postReaction=lab.putLabReagent(reactedDecanted,"v3","HCl",{value:5,unit:"ml"});
+assert.ok(lab.labVesselContents(postReaction.vessels[2]).solid.some(x=>
+ x.formula==="AgCl"&&(x.massG??0)>0),
+ "Previous measured precipitate remains visible after later chemical additions");
 const cleaned=lab.emptyLabVessel(postReaction,"v3");
 assert.equal(cleaned.vessels[2].completedReaction,undefined,"Sink removes all products");
 const stored=lab.removeLabVessel(cleaned,"v3");
