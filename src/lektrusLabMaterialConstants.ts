@@ -177,7 +177,21 @@ export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
  Na2O:2.27,
  // Anhydrous NiSO4 4.01 g/cm3 (NOT hexahydrate 2.03 g/cm3).
  // https://pubchem.ncbi.nlm.nih.gov/compound/24586
- NiSO4:4.01
+ NiSO4:4.01,
+ // Independent ANHYDROUS solid density measurements, g/cm3 at ~20-25 C.
+ // Do not substitute tetra-/hepta-hydrate, saturated solution, or bulk powder.
+ // CRC / DOE PAC experiments via NIH PubChem:
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24424  ZnSO4: 3.8
+ // https://pubchem.ncbi.nlm.nih.gov/compound/11125  Li2CO3: 2.11
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24243  Na3PO4: 2.54
+ // https://pubchem.ncbi.nlm.nih.gov/compound/25212  Mg(NO3)2: ~2.3
+ ZnSO4:3.8,Li2CO3:2.11,Na3PO4:2.54,"Mg(NO3)2":2.3,
+ // Manufacturer datasheet: Li2SO4 pure anhydrous, 2.2 g/cm3 at 20 C.
+ // https://www.albemarle.com/sites/default/files/2025-03/lithium-sulfate-pure-anhydrous-min-990-00000167.pdf
+ Li2SO4:2.2,
+ // Sigma Aldrich: K3PO4, anhydrous 2.564 g/mL at 25 C.
+ // https://www.sigmaaldrich.com/NU/en/product/sigma/rdd019
+ K3PO4:2.564
 };
 export const labCrystalDensityGml=(formula:string):number|undefined=>
  LAB_CRYSTAL_DENSITY_G_ML[formula];
