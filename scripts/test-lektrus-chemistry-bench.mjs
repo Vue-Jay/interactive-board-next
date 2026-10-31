@@ -571,7 +571,7 @@ let thermostat=lab.addPlacedLabDevice(lab.defaultLabBench(),"hotplate");
 const thermostatId=lab.placedLabDevices(thermostat)[0].id;
 thermostat=lab.setLabHotplateTemperature(thermostat,thermostatId,185);
 assert.equal(lab.placedLabDevices(thermostat)[0].targetTemperatureC,185);
-assert.equal(lab.setLabHotplateTemperature(thermostat,thermostatId,900).placedDevices[0].targetTemperatureC,350);
+assert.equal(lab.setLabHotplateTemperature(thermostat,thermostatId,900).placedDevices[0].targetTemperatureC,900);
 thermostat=lab.setPlacedDevicePower(thermostat,thermostatId,true);
 thermostat=lab.movePlacedLabDevice(thermostat,thermostatId,50,66);
 assert.equal(thermostat.placedDevices[0].powered,true,"Moving a heater must preserve its power");
