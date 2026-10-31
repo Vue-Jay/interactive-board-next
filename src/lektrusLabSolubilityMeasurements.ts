@@ -23,6 +23,46 @@ export type LabMeasuredSolubility={
  originalUnit:LabMeasuredSolubilityUnit;sourceUrl:string;
 };
 export const LAB_MEASURED_PURE_WATER_SOLUBILITIES:readonly LabMeasuredSolubility[]=[
+ // Individually verified pure-water reference measurements, with exact
+ // ORIGINAL units, not mass percentage of the final saturated solution.
+ // Nickel sulfate: CRC 0/100 C and ILO/WHO ICSC 20 C. Values at 0 and
+ // 20 both happen to round to 29.3 g/100mL, but do not imply a flat curve.
+ // Hydrate stability and ionic activities are NOT solved here.
+ // Lithium acetate (CAS 546-89-4): Nama supplier specifies anhydrous
+ // crystalline product, water solubility in g/100g H2O at 20/40/50 C.
+ // Ferrous sulfate: Seidell primary measurements via chemister.ru,
+ // measured at EXACT 20.13/70.04/90.13 C, not rounded to grid knots.
+ // GESTIS IFA Mg(NO3)2: its 20 C 420 g/L and 25 C 71.2 g/100g H2O
+ // use different original units and likely different stable hydrate
+ // equilibria, so they are kept isolated with NO interpolation.
+ // AgI: HSDB/Haz-Map 28 * 10^-7 g/L at 25 C = 0.0028 mg/L,
+ // NOT zero or 0.0028 g/L. No precipitation Ksp is inferred.
+ {formula:"NiSO4",temperatureC:0,sourceValue:29.3,
+  originalUnit:"g/100ml-water",sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/24586"},
+ {formula:"NiSO4",temperatureC:20,sourceValue:29.3,
+  originalUnit:"g/100ml-water",sourceUrl:"https://www.inchem.org/documents/icsc/icsc/eics0063.htm"},
+ {formula:"NiSO4",temperatureC:100,sourceValue:83.7,
+  originalUnit:"g/100ml-water",sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/24586"},
+ {formula:"CH3COOLi",temperatureC:20,sourceValue:40.8,
+  originalUnit:"g/100g-water",sourceUrl:"https://nama-group.com/portfolio-items/lithium-acetate/"},
+ {formula:"CH3COOLi",temperatureC:40,sourceValue:66.7,
+  originalUnit:"g/100g-water",sourceUrl:"https://nama-group.com/portfolio-items/lithium-acetate/"},
+ {formula:"CH3COOLi",temperatureC:50,sourceValue:93.8,
+  originalUnit:"g/100g-water",sourceUrl:"https://nama-group.com/portfolio-items/lithium-acetate/"},
+ {formula:"FeSO4",temperatureC:0,sourceValue:15.65,
+  originalUnit:"g/100g-water",sourceUrl:"https://www.chemister.ru/Databases/Chemdatabase/properties-en.php?id=4387"},
+ {formula:"FeSO4",temperatureC:20.13,sourceValue:26.56,
+  originalUnit:"g/100g-water",sourceUrl:"https://www.chemister.ru/Databases/Chemdatabase/properties-en.php?id=4387"},
+ {formula:"FeSO4",temperatureC:70.04,sourceValue:56.08,
+  originalUnit:"g/100g-water",sourceUrl:"https://www.chemister.ru/Databases/Chemdatabase/properties-en.php?id=4387"},
+ {formula:"FeSO4",temperatureC:90.13,sourceValue:37.27,
+  originalUnit:"g/100g-water",sourceUrl:"https://www.chemister.ru/Databases/Chemdatabase/properties-en.php?id=4387"},
+ {formula:"Mg(NO3)2",temperatureC:20,sourceValue:420,
+  originalUnit:"g/l-water",sourceUrl:"https://haber.archive.fhi.mpg.de/send/8IKpJO3bKSzf"},
+ {formula:"Mg(NO3)2",temperatureC:25,sourceValue:71.2,
+  originalUnit:"g/100g-water",sourceUrl:"https://haber.archive.fhi.mpg.de/send/8IKpJO3bKSzf"},
+ {formula:"AgI",temperatureC:25,sourceValue:0.0028,
+  originalUnit:"mg/l-water",sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/24563"},
  // Exact-temperature binary-water measurements, preserved in
  // ORIGINAL source units. These values describe pure-water saturation,
  // not the density of the final saturated solution or a general Ksp model.
