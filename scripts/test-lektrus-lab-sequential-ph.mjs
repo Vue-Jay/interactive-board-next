@@ -24,8 +24,12 @@ const lab=load("src/lektrusChemistryBenchModel.ts");
 const ph=load("src/lektrusLabPH.ts");
 const network=load("src/lektrusLabReactionNetwork.ts");
 const dose=(ml=10,m=.1)=>({unit:"ml",value:ml,concentrationM:m});
-const near=(v,goal,tolerance=.06)=>assert.ok(
- Math.abs(v-goal)<=tolerance,"pH "+v+" expected "+goal);
+const near=(v,goal,tolerance=.06,note="")=>{
+ const toleranceValue=typeof tolerance==="number"?tolerance:.06;
+ const description=typeof tolerance==="string"?tolerance:note;
+ assert.ok(Math.abs(v-goal)<=toleranceValue,
+  "pH "+v+" expected "+goal+" "+description);
+};
 const acid={reagents:["HCl"],environment:"aqueous",doses:{HCl:dose()}};
 near(ph.labVesselPH(acid).pH,1);
 const withHeadspace={...acid,reagents:["HCl","H2"],
