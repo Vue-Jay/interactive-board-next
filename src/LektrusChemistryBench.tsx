@@ -468,14 +468,24 @@ type SurfaceProps={
  bench:LabBench;editable?:boolean;compactFullscreen?:boolean;fullscreenOwner?:boolean;
  pouringId?:string|null;
  onChange?:(bench:LabBench,simulationOnly?:boolean)=>void;
+ cabinetSessionKey?:string;
  onSelect?:(id:string)=>void;
  onPour?:(sourceId:string,targetId:string)=>void;
  onDropReagent?:(id:string,reagent:string,dose?:LabDose)=>void;
 };
+/** A simulation tick may replace its surrounding React tree while an
+ * apparatus/cupboard window is open. Keep transient cabinet selection by
+ * stable item/surface ID, NEVER inside the shared chemistry document.
+ * Clearing an opened cabinet removes the entry immediately. */
+type LabCabinet="reagents"|"glassware"|"equipment";
+const openLabCabinets=new Map<string,LabCabinet>();
+export function clearLabCabinetSession(sessionKey:string){
+ openLabCabinets.delete(sessionKey);
+}
 /** Furniture is part of the shared bench, not a second toolbar. Both the
  * editor and the board use these exact same interactions. */
 export default function LektrusChemistryBenchSurface({bench,editable=false,compactFullscreen=false,fullscreenOwner=false,pouringId,
- onChange,onSelect,onPour,onDropReagent}:SurfaceProps){
+ onChange,onSelect,onPour,onDropReagent,cabinetSessionKey}:SurfaceProps){
  const host=useRef<HTMLDivElement>(null);
  const [stageSize,setStageSize]=useState({width:1600,height:1000});
  useEffect(()=>{
@@ -518,7 +528,15 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  const [dropFurniture,setDropFurniture]=useState<"sink"|"glassware"|null>(null);
  const [dropDeviceShelf,setDropDeviceShelf]=useState(false);
  const [transfer,setTransfer]=useState<{from:{x:number;y:number};to:{x:number;y:number}}|null>(null);
- const [cabinet,setCabinet]=useState<"reagents"|"glassware"|"equipment"|null>(null);
+ const [cabinet,setCabinetState]=useState<LabCabinet|null>(()=>
+  cabinetSessionKey?openLabCabinets.get(cabinetSessionKey)??null:null);
+ const setCabinet=(next:LabCabinet|null)=>{
+  if(cabinetSessionKey){
+   if(next)openLabCabinets.set(cabinetSessionKey,next);
+   else openLabCabinets.delete(cabinetSessionKey);
+  }
+  setCabinetState(next);
+ };
  const [pendingGlassware,setPendingGlassware]=useState<LabGlassware|null>(null);
  const [showAllDevices,setShowAllDevices]=useState(false);
  type MobileDrawer="reagents"|"glassware"|"equipment"|"indicators"|"equations"|"settings";
