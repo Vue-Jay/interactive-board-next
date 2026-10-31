@@ -100,6 +100,25 @@ assert.equal(lab.labObservation(bench.vessels[0]).status,"reaction","Mixing trig
 assert.equal(lab.labObservation(bench.vessels[0]).caseData.observation,"precipitate");
 assert.equal(bench.vessels[1].reagents.length,0,"Transferred container is empty");
 assert.deepEqual(bench.vessels[0].reagents,["NaCl","AgNO3"]);
+
+/** Rendering must not rerun phase and density calculations for a vessel
+ * whose measured inventory has not changed. A real simulation update creates
+ * a new vessel reference, invalidating both memoized derived results. */
+const measuredVessel=bench.vessels[0];
+const measuredQuantity=lab.labVesselQuantity(measuredVessel);
+const measuredContents=lab.labVesselContents(measuredVessel);
+assert.strictEqual(lab.labVesselQuantity(measuredVessel),measuredQuantity,
+ "An unchanged vessel reuses its measured volume and displacement");
+assert.strictEqual(lab.labVesselContents(measuredVessel),measuredContents,
+ "An unchanged vessel reuses its phase composition");
+const heatedCopy={...measuredVessel,temperatureC:80};
+assert.notStrictEqual(lab.labVesselQuantity(heatedCopy),measuredQuantity,
+ "A different simulated temperature invalidates displacement memoization");
+assert.notStrictEqual(lab.labVesselContents(heatedCopy),measuredContents,
+ "A new chemical revision invalidates the phase readout");
+assert.deepEqual(lab.labVesselQuantity(measuredVessel),measuredQuantity,
+ "The previous vessel revision is not mutated by recalculating another");
+
 let unknown=lab.putLabReagent(bench,"v1","HCl");
 assert.equal(lab.labObservation(unknown.vessels[0]).status,"reaction",
  "Reviewed first-stage products remain recognised after additional reagent dosing");
