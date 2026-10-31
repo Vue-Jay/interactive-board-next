@@ -19,7 +19,9 @@
     "native:check": "node scripts/test-native-mobile.mjs",
     "test:realtime": "node --test tests/realtime.test.mjs tests/live-ink.test.mjs",
     "test:brush-crop": "node scripts/test-lektrus-brush-crop.mjs",
-    "test:math-gesture": "node scripts/test-lektrus-math-gesture.mjs"
+    "test:math-gesture": "node scripts/test-lektrus-math-gesture.mjs",
+    "lab:batch-check": "node scripts/test-lektrus-lab-reference-batches.mjs && node scripts/test-lektrus-lab-reaction-network.mjs && node scripts/audit-lektrus-lab-properties.mjs --verify",
+    "lab:coverage-sync": "node scripts/sync-lektrus-lab-property-minima.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",

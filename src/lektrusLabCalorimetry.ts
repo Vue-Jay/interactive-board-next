@@ -1,3 +1,5 @@
+import {LAB_BATCH_SOLID_HEATS} from "./lektrusLabReferenceBatches";
+
 /** Calorimetry for explicitly measured pure materials, near ambient pressure.
  *
  * q = m * c * delta(T), C = sum(m_i*c_i) + C_vessel.
@@ -15,6 +17,7 @@
 type HeatDose={value:number;unit:"ml"|"g";concentrationM?:number};
 type SubstanceHeat={specificJPerGK:number;densityGPerMl?:number;phase:"liquid"|"solid"};
 export const LAB_CALORIMETRY_REFERENCE:Readonly<Record<string,SubstanceHeat>>={
+ ...LAB_BATCH_SOLID_HEATS,
  // NIST-JANAF fourth edition, source-measured Cp,mol at 298.15 K.
  // Per original CRYSTAL only, not hydrated/aqueous state. Molecular
  // P4O10 source value is converted using TWO P2O5 formula units.

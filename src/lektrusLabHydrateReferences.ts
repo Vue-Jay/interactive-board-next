@@ -1,3 +1,5 @@
+import {LAB_BATCH_HYDRATES} from "./lektrusLabReferenceBatches";
+
 /** Phase-aware, source-tabulated solubility for HYDRATED salts in water.
  *
  * All numerical entries are GRAMS OF THE HYDRATE AS PRINTED in the source
@@ -31,6 +33,7 @@ export type LabHydrateSolubilitySample={
 };
 /** Independent hydrate formulas; not interchangeable with dry stocks. */
 export const LAB_HYDRATE_SOLUBILITY_REFERENCES:readonly LabHydrateSolubilityRow[]=[
+ ...LAB_BATCH_HYDRATES,
  // ILO/WHO ICSC 0914 reports the LiOH MONOHYDRATE explicitly,
  // not the anhydrous LiOH solid. 19.1 g of LiOH·H2O per 100 mL of
  // pure H2O at 20°C = 19.1/0.9982 g per 100 g initial water.

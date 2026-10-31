@@ -1,3 +1,5 @@
+import {LAB_BATCH_WATER_MEASUREMENTS} from "./lektrusLabReferenceBatches";
+
 /** Independently sourced measured solubility of specific dry salts or
  * crystalline minerals in PURE water at an EXACT documented temperature.
  *
@@ -23,6 +25,7 @@ export type LabMeasuredSolubility={
  originalUnit:LabMeasuredSolubilityUnit;sourceUrl:string;
 };
 export const LAB_MEASURED_PURE_WATER_SOLUBILITIES:readonly LabMeasuredSolubility[]=[
+ ...LAB_BATCH_WATER_MEASUREMENTS,
  // ILO/WHO ICSC 1200: pure anhydrous sodium sulfite solubility
  // is 22 g in 100 mL pure water at exactly 20°C; not the mass
  // of the final saturated liquid. Reference only, no crystallisation.
@@ -151,10 +154,9 @@ export const LAB_MEASURED_PURE_WATER_SOLUBILITIES:readonly LabMeasuredSolubility
   originalUnit:"g/l-water",sourceUrl:"https://www.inchem.org/documents/cicads/cicads/cicad77.pdf"},
  {formula:"K3PO4",temperatureC:20,sourceValue:51,
   originalUnit:"g/100g-water",sourceUrl:"https://www.specialisednutritioneurope.eu/wp-content/uploads/2019/07/SNE-Literature-Review-December-2018.pdf"},
- {formula:"Ca(CH3COO)2",temperatureC:0,sourceValue:37.4,
-  originalUnit:"g/100ml-water",sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/6116"},
- {formula:"Ca(CH3COO)2",temperatureC:100,sourceValue:29.7,
-  originalUnit:"g/100ml-water",sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/6116"},
+ // Reviewed correction: the former 0/100 C records actually belong
+ // to the Ca(CH3COO)2·2H2O hydrate, in g/100g initial water, not
+ // g/100 mL. Now recorded with its 20 C knot in the batch registry.
  // ILO/WHO ICSC cards + Nickel Institute. Measured at exactly 20 °C,
  // originally g per 100 mL of PURE WATER, not g per 100 g solvent
  // and not per 100 mL of the final saturated SOLUTION.
