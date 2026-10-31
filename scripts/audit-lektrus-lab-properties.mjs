@@ -318,7 +318,17 @@ if(process.argv.includes("--verify")){
   const mm=registry.labSubstanceProperties(row.formula).molarMassGPerMol;
   assert.ok(has(mm)&&mm>0);
   assert.ok(has(row.molarHeatJPerMolK)&&row.molarHeatJPerMolK>0);
-  assert.ok(Math.abs(row.molarHeatJPerMolK/mm-row.roomHeatJPerGK)<.000001,
+  const units=row.sourceFormulaUnits??1;
+  assert.ok(Number.isInteger(units)&&units>=1&&units<=2,
+   "JANAF source formula unit scaling invalid: "+row.formula);
+  if(units!==1){
+   assert.equal(row.formula,"P2O5",
+    "Only P4O10 mapped to P2O5 requires a doubled source molar mass");
+   assert.equal(units,2);
+   assert.ok(row.crystalForm.includes("P4O10"));
+  }
+  assert.ok(Math.abs(row.molarHeatJPerMolK/(mm*units)-
+   row.roomHeatJPerGK)<.000001,
    "JANAF molar-to-mass Cp conversion mismatch for "+row.formula);
   const real=heat.LAB_CALORIMETRY_REFERENCE[row.formula];
   assert.equal(real?.phase,"solid");
