@@ -80,7 +80,7 @@ export const LAB_BATCH_THERMAL_PROPERTIES:Readonly<Record<string,{
 }>>=Object.freeze(LAB_CURATED_PROPERTY_BATCH.reduce((out,row)=>{
  if(!["meltingC","boilingC","decompositionC","sublimationC"]
   .includes(row.property))return out;
- const entry=out[row.formula]??={};
+ const entry=out[row.formula]??(out[row.formula]={});
  (entry as Record<string,number|string>)[row.property]=row.value;
  if(row.property==="decompositionC")entry.behavior="decomposes";
  if(row.property==="sublimationC")entry.behavior="sublimes";
