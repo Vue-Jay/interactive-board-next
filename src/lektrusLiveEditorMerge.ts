@@ -7,7 +7,10 @@
 const same=(a:unknown,b:unknown)=>a===b||JSON.stringify(a)===JSON.stringify(b);
 const record=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v);
 const isIdCollection=(values:unknown[],key:string)=>(
- ["contourMarks","contourStrokes","bodies","supports","forces","components","junctions","wires","elements","rays"].includes(key)&&
+ ["contourMarks","contourStrokes","bodies","supports","forces","components","junctions","wires","elements","rays",
+  // Chemical glassware and appliances are addressed by persistent IDs.
+  // Index-based array appends can duplicate a beaker on an evaporation tick.
+  "vessels","placedDevices"].includes(key)&&
  values.every(x=>record(x)&&typeof x.id==="string")
 );
 function mergeArray(base:unknown[],edit:unknown[],latest:unknown[],key:string):unknown[]{
