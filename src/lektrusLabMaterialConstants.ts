@@ -29,6 +29,19 @@ import {labExactMeasuredSolubility} from "./lektrusLabSolubilityMeasurements";
  *   https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.260-223.pdf
  */
 export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
+ // Solid density sources: each formula is anhydrous (17–25 °C), not a powder bulk density.
+ // FeS2 refers specifically to cubic pyrite; marcasite has a different density.
+ CH3COONa:1.528,
+ CH3COOK:1.57,
+ CH3COOLi:1.28,
+ NaH2PO4:2.36,
+ MnSO4:3.25,
+ FeS2:5,
+ LiOH:1.46,
+ "Al2(SO4)3":2.71,
+ "Ca(CH3COO)2":1.5,
+ "Zn(CH3COO)2":1.735,
+
  NaCl:2.16,KCl:1.984,KNO3:2.109,NaNO3:2.261,NaHCO3:2.20,
  KBr:2.75,CuSO4:3.6,AgNO3:4.35,
  AgCl:5.56,AgBr:6.47,BaSO4:4.50,
