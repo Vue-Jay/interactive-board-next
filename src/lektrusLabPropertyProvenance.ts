@@ -18,6 +18,23 @@ export type LabReviewedPropertyDatum={
  sourceUrl:string;
 };
 export const LAB_REVIEWED_PROPERTY_DATUMS:readonly LabReviewedPropertyDatum[]=[
+ // Individually original NIST-JANAF 298.15 K pure-crystal heat values.
+ // Source P4O10 is mapped exactly to empirical P2O5, not conflated with
+ // unrelated phosphorus oxides or moisture-reacted solution.
+ {formula:"Cu(OH)2",property:"specificHeatJPerGK",value:0.975666,
+  sourceUrl:"https://janaf.nist.gov/tables/Cu-014.html"},
+ {formula:"Fe(OH)2",property:"specificHeatJPerGK",value:1.080237,
+  sourceUrl:"https://janaf.nist.gov/tables/Fe-011.html"},
+ {formula:"Fe(OH)3",property:"specificHeatJPerGK",value:0.951388,
+  sourceUrl:"https://janaf.nist.gov/tables/Fe-013.html"},
+ {formula:"NiCl2",property:"specificHeatJPerGK",value:0.55296,
+  sourceUrl:"https://janaf.nist.gov/tables/Cl-099.html"},
+ {formula:"CoCl2",property:"specificHeatJPerGK",value:0.60456,
+  sourceUrl:"https://janaf.nist.gov/tables/Cl-074.html"},
+ {formula:"PbI2",property:"specificHeatJPerGK",value:0.168268,
+  sourceUrl:"https://janaf.nist.gov/tables/I-036.html"},
+ {formula:"P2O5",property:"specificHeatJPerGK",value:0.74576,
+  sourceUrl:"https://janaf.nist.gov/tables/O-094.html"},
  // Two NIST-JANAF anhydrous room-temperature crystal heat capacities;
  // and phase-specific correction of lithium hydroxide 924C from a
  // nonexistent normal boiling point to documented DECOMPOSITION.
