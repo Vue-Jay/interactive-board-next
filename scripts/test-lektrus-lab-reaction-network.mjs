@@ -559,6 +559,18 @@ assert.equal(measured,147);
   assert.equal(hydrates.labHydrateSolubilityAtTemperature(formula,30),
    undefined,"Unknown hydrate phase must not be interpolated");
  }
+ // Hydrate crystal density belongs to the SPECIFIC crystal-water count.
+ // A tetranitrate hydrate cannot assume its hexahydrate's true density,
+ // and no hydrated measurement may overwrite the anhydrous solid.
+ const nitrateDensity=hydrates.labHydrateCrystalDensityReferences("Zn(NO3)2");
+ assert.equal(nitrateDensity.length,1);
+ assert.equal(nitrateDensity[0].hydrateFormula,"Zn(NO3)2·6H2O");
+ assert.equal(nitrateDensity[0].densityGPerMl,2.065);
+ assert.ok(nitrateDensity.every(x=>x.hydrateFormula!=="Zn(NO3)2·4H2O"));
+ const lithiumHydrateDensity=hydrates.labHydrateCrystalDensityReferences("LiOH");
+ assert.equal(lithiumHydrateDensity.length,1);
+ assert.equal(lithiumHydrateDensity[0].hydrateFormula,"LiOH·H2O");
+ assert.equal(lithiumHydrateDensity[0].densityGPerMl,1.51);
  // The existing 4-hydrate reference for zinc nitrate is distinct from the
  // new hexahydrate; do not conflate these in the laboratory inspector.
  assert.equal(hydrates.labHydrateSolubilityAtTemperature(
@@ -600,13 +612,18 @@ console.log("41 hydrate forms with 147 source-specific measured temperatures; no
 
 
 const crystalHydrates=hydrates.LAB_HYDRATE_CRYSTAL_DENSITIES;
-assert.equal(crystalHydrates.length,5);
+assert.equal(crystalHydrates.length,10);
 for(const [hydrateFormula,baseFormula,density] of [
  ["CuSO4·5H2O","CuSO4",2.29],
  ["Na2CO3·10H2O","Na2CO3",1.46],
  ["Na2SO4·10H2O","Na2SO4",1.46],
  ["K2CO3·2H2O","K2CO3",2.04],
- ["2K2CO3·3H2O","K2CO3",2.13]
+ ["2K2CO3·3H2O","K2CO3",2.13],
+ ["LiOH·H2O","LiOH",1.51],
+ ["BaCl2·2H2O","BaCl2",3.86],
+ ["MnSO4·H2O","MnSO4",2.95],
+ ["Zn(NO3)2·6H2O","Zn(NO3)2",2.065],
+ ["CoCl2·6H2O","CoCl2",1.924]
 ]){
  const item=crystalHydrates.find(x=>x.hydrateFormula===hydrateFormula);
  assert.equal(item?.baseFormula,baseFormula);
@@ -617,7 +634,7 @@ for(const [hydrateFormula,baseFormula,density] of [
  assert.notEqual(physicalDensity.labCrystalDensityGml(baseFormula),density,
   "A crystal hydrate may NOT overwrite true density of the anhydrous salt");
 }
-console.log("Five crystal hydrate true-density references remain distinct from pure anhydrous solids");
+console.log("Ten true hydrate crystal density records remain distinct from pure anhydrous solids");
 
 
 // Added second batch: identities that change their hydration phases as the
