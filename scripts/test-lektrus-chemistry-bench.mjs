@@ -88,6 +88,24 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
 let bench=lab.defaultLabBench();
 assert.equal(bench.vessels.length,1,"New lab starts with a single empty beaker");
 assert.equal(bench.selectedId,"v1");
+
+/** A quiet tabletop does no background work, but titration remains fast. */
+const idleClock=lab.defaultLabBench();
+assert.equal(lab.labSimulationTickWaitMs(idleClock,11000),null);
+const waterClock=lab.putLabReagent(idleClock,"v1","H2O",{value:10,unit:"ml"});
+const ambientClock={...waterClock,simulationAtMs:1000};
+assert.equal(lab.labSimulationTickWaitMs(ambientClock,1000),9800);
+assert.equal(lab.labSimulationTickWaitMs(ambientClock,10799),1);
+assert.equal(lab.labSimulationTickWaitMs(ambientClock,10800),0);
+const hotClock={...ambientClock,placedDevices:[{id:"heater-clock",kind:"hotplate",x:35,y:74,powered:true}]};
+assert.equal(lab.labSimulationTickWaitMs(hotClock,1000),1900);
+const buretteClock={...ambientClock,vessels:[{...ambientClock.vessels[0],kind:"burette",buretteOpen:true}]};
+assert.equal(lab.labSimulationTickWaitMs(buretteClock,1000),500);
+const stopperedClock={...ambientClock,vessels:[{...ambientClock.vessels[0],stoppered:true}]};
+assert.equal(lab.labSimulationTickWaitMs(stopperedClock,1000),null);
+const loadedClock=lab.readLabBench({scienceLabBench:ambientClock});
+assert.strictEqual(loadedClock.vessels,ambientClock.vessels);
+
 bench=lab.addLabVessel(bench,"tube");
 assert.equal(bench.vessels.length,2,"Additional test tube sits on same bench");
 assert.equal(bench.selectedId,"v2");
@@ -1152,8 +1170,15 @@ assert.match(editorFixed,/const width=compact\?w:w\/scale/,
  "Phones use native pixels while desktop continues fitted layout zoom");
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-fit-stage/);
 const polishedSurface=read("src/LektrusChemistryBench.tsx");
+assert.ok(polishedSurface.includes('window.addEventListener("lektrus-lab-fullscreen-change",resume)'),
+ "The embedded laboratory resumes its clock after fullscreen closes");
+assert.ok(editorFixed.includes('window.dispatchEvent(new Event("lektrus-lab-fullscreen-change"))'),
+ "The fullscreen editor notifies the underlying laboratory on open and exit");
 assert.match(polishedSurface,/bench\.reactionLog/);
-assert.match(polishedSurface,/current.vessels.some\(labReactionNeedsTick\)/);
+assert.match(polishedSurface,/labSimulationTickWaitMs\(current,now\)/,
+ "The surface follows the adaptive laboratory clock");
+assert.match(read("src/lektrusChemistryBenchModel.ts"),/vessels\.some\(labReactionNeedsTick\)/,
+ "The adaptive clock must preserve quantified reaction ticking");
 assert.match(polishedSurface,/isQuantifiedSolution/);
 assert.match(polishedSurface,/settings.showEquationBoard&&<div className="lektrus-lab-chalk-writing"/);
 const standFoot=read("src/LektrusLabDeviceIcon.tsx");
