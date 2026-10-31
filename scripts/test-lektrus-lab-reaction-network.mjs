@@ -420,10 +420,20 @@ for(const [formula,values] of Object.entries(bulkBinary)){
  assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,101),undefined);
 }
 assert.equal(measuredNewCells,44);
-for(const id of ["Li2CO3","NaF"]){
- assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(id,15),undefined);
- assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(id,20.01),undefined);
-}
+// NaF remains an isolated 20 C measurement. Li2CO3 is now a fully
+// independently tabulated retrograde solubility series, not isolated data.
+assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater("NaF",15),undefined);
+assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater("NaF",20.01),undefined);
+const lithiumCarbonateKnot=[1.543,1.33,1.174,1.010,.847,.715];
+for(let i=0;i<lithiumCarbonateKnot.length;i++)
+ approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+  "Li2CO3",[0,20,40,60,80,100][i]),lithiumCarbonateKnot[i],1e-10);
+approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+ "Li2CO3",30),(1.33+1.174)/2,1e-10);
+assert.ok(lithiumCarbonateKnot.every((v,i,a)=>i===0||v<a[i-1]),
+ "Lithium carbonate should become LESS soluble as water warms");
+assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+ "Li2CO3",101),undefined);
 approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater("K2Cr2O7",30),
  (12.49+26.3)/2,1e-9);
 for(const id of ["CuSO4","Na2CO3","Na2SO4","K2CO3","NaBr","Na2SO3","ZnCl2","NaH2PO4"]){
