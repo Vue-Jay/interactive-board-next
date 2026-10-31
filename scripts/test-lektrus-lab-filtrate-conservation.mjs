@@ -294,6 +294,23 @@ const mixedReadback=chemistry.simulateLabInventory({
 assert.deepEqual(mixedReadback.solidMol,{},
  "Reopening a filtrate must not regenerate previously removed particles");
 assert.equal(lab.labVesselContents(mixedFiltrate).solid.length,0);
+// A settled filtrate may be diluted or sampled without recomputing a
+// second, fictitious precipitation from historic counterion stocks.
+const dilutedFiltrate=lab.putLabReagent(separatedMulti,
+ multiReceiverId,"H2O",{unit:"ml",value:10});
+assert.notEqual(dilutedFiltrate,separatedMulti);
+const dilutedVessel=dilutedFiltrate.vessels.find(v=>v.id===multiReceiverId);
+assert.equal(dilutedVessel.chemicalInventory.settled,true);
+assert.deepEqual(chemistry.simulateLabInventory(dilutedVessel).solidMol,{});
+let aliquot=lab.addLabVessel(separatedMulti,"pipette");
+const aliquotId=aliquot.selectedId;
+aliquot=lab.transferLabMeasuredLiquid(aliquot,multiReceiverId,aliquotId,5);
+const aliquotVessel=aliquot.vessels.find(v=>v.id===aliquotId);
+const aliquotDonor=aliquot.vessels.find(v=>v.id===multiReceiverId);
+assert.equal(aliquotVessel.chemicalInventory?.settled,true);
+assert.equal(aliquotDonor.chemicalInventory?.settled,true);
+assert.deepEqual(chemistry.simulateLabInventory(aliquotVessel).solidMol,{});
+assert.deepEqual(chemistry.simulateLabInventory(aliquotDonor).solidMol,{});
 const retainedMass=chemistry.labInventoryMassG(
  chemistry.simulateLabInventory(mixedCake));
 const filtrateMass=chemistry.labInventoryMassG(
