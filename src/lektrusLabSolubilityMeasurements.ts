@@ -23,6 +23,13 @@ export type LabMeasuredSolubility={
  originalUnit:LabMeasuredSolubilityUnit;sourceUrl:string;
 };
 export const LAB_MEASURED_PURE_WATER_SOLUBILITIES:readonly LabMeasuredSolubility[]=[
+ // ILO/WHO ICSC 0913 for PURE anhydrous LiOH, 12.8 g/100 mL
+ // starting WATER at exactly 20°C. Distinct from LiOH·H2O: 19.1
+ // g/100 mL of water reported separately by ICSC 0914. The hydrated
+ // measurement is stored in the hydrate-specific source registry.
+ {formula:"LiOH",temperatureC:20,sourceValue:12.8,
+  originalUnit:"g/100ml-water",
+  sourceUrl:"https://inchem.org/documents/icsc/icsc/eics0913.htm"},
  // Additional independent EXACT-temperature readings. Manufacturer
  // SDS lithium sulfate and potassium sulfite values are expressed per L
  // of pure WATER, not per L of final solution.
