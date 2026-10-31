@@ -7,7 +7,7 @@ import {labBinarySaltEquilibrium,labAdvanceBinarySaltPhase,labVisibleBinarySaltS
  labSchoolMixedSaltEquilibrium,labAdvanceSchoolMixedSaltPhase,
  type LabBinarySaltState} from "./lektrusLabDissolution";
 import {labReactionGasProgress} from "./lektrusLabGasDynamics";
-import {labEvaporate,labCanStopper,labIdealBoilingC} from "./lektrusLabEvaporation";
+import {labEvaporate,labCanStopper,labIdealBoilingC,labVaporPressureKPa} from "./lektrusLabEvaporation";
 import {LAB_CRYSTAL_DENSITY_G_ML,labSchoolSolidDensityGml,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,labDoseMoles,type LabReactionAmounts}
  from "./lektrusLabStoichiometry";
@@ -352,6 +352,28 @@ export function dispenseLabBurette(bench:LabBench,id:string,targetId:string,ml:n
  });
  return {...updated,vessels};
 }
+/** Schedule simulation work only while something can actually evolve.
+ * A dormant tabletop has NO timer. Ambient evaporation is deliberately
+ * slower than a reaction, titration or active phase transition.
+ * The simulation clock itself stays in the shared bench for deterministic
+ * catch-up after a hidden tab becomes visible again. */
+export function labSimulationTickWaitMs(bench:LabBench,nowMs:number):number|null{
+ const vessels=bench.vessels;
+ const burette=vessels.some(v=>v.buretteOpen);
+ const reactions=vessels.some(labReactionNeedsTick);
+ const phase=vessels.some(v=>
+  v.physicalProcess==="dissolving"||v.physicalProcess==="crystallizing");
+ const devices=placedLabDevices(bench);
+ const powered=devices.some(d=>d.powered||(d.temperatureC??22)>22.1);
+ const hot=vessels.some(v=>(v.temperatureC??22)>22.1);
+ const evaporating=vessels.some(v=>!v.stoppered&&
+  labVaporPressureKPa(v,v.temperatureC??22)!==undefined);
+ if(!burette&&!reactions&&!phase&&!powered&&!hot&&!evaporating)return null;
+ const cadenceMs=burette||reactions||phase?500:powered||hot?1900:9800;
+ if(bench.simulationAtMs===undefined)return 500;
+ return Math.max(0,Math.ceil(cadenceMs-Math.max(0,nowMs-bench.simulationAtMs)));
+}
+
 /** Deterministic approximate educational heat-transfer model.
  * No claim of laboratory-grade thermometry or chemistry at arbitrary temperatures.
  * Time is passed explicitly so all viewers can reproduce the same evolution. */
