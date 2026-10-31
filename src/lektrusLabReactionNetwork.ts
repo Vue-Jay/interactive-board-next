@@ -88,6 +88,17 @@ const knownRows=reviewedReactionCases.flatMap((row,index)=>{
  if(equation.reactants.some(t=>!row.reactants.includes(t.formula)))return [];
  return [{row,equation,index}];
 });
+/** Index the curated Ksp-capable reactions once. Simultaneous experiments
+ * can evaluate 2-4 precipitates for up to 40 bounded solver sweeps; previously
+ * every sweep scanned the entire school reaction catalog repeatedly.
+ * Keep the FIRST matching reviewed equation, as in the older linear search.
+ */
+const reviewedAqueousPrecipitates=new Map<string,typeof knownRows[number]>();
+for(const entry of knownRows){
+ if(entry.row.environment==="aqueous"&&entry.row.observation==="precipitate"&&
+  !reviewedAqueousPrecipitates.has(entry.row.equation))
+  reviewedAqueousPrecipitates.set(entry.row.equation,entry);
+}
 const sum=(record:Record<string,number>,name:string,delta:number)=>{
  const value=(record[name]??0)+delta;
  if(value>EPS)record[name]=value;
@@ -149,8 +160,7 @@ function labReequilibrateRecordedPrecipitates(
  for(let round=0;round<4;round++){
   let moved=false;
   for(const equationText of inventory.equilibriumEquations){
-   const row=knownRows.find(r=>r.row.equation===equationText&&
-    r.row.environment==="aqueous"&&r.row.observation==="precipitate");
+   const row=reviewedAqueousPrecipitates.get(equationText);
    if(!row)continue;
    const {equation}=row;
    if(equation.reactants.length!==2)continue;
@@ -220,8 +230,7 @@ function labCoupledRecordedPrecipitates(
  for(const precipitate of solids.sort()){
   let picked:Candidate|undefined;
   for(const text of equationTexts){
-   const record=knownRows.find(item=>item.row.equation===text&&
-    item.row.environment==="aqueous"&&item.row.observation==="precipitate");
+   const record=reviewedAqueousPrecipitates.get(text);
    if(!record||record.equation.reactants.length!==2)continue;
    const products=(text.split("→")[1]??"").split(/\s+\+\s+/).
     filter(item=>item.includes("↓"));
