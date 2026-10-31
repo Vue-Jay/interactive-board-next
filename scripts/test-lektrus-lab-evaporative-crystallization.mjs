@@ -246,7 +246,7 @@ approx(inMotion.speciesMol.NaCl,sharedInv.speciesMol.NaCl,1e-12);
 approx(reaction.labInventoryMassG(inMotion),baseMass,1e-8);
 // Add both DRY samples first. Adding water must start visible dissolution
 // with all solid matter still present, then tick toward the phase ceiling.
-let mixedBench=lab.defaultLabBench();
+let mixedBench=lab.setLabBenchSettings(lab.defaultLabBench(),{realism:"high"});
 mixedBench=lab.putLabReagent(mixedBench,"v1","NaCl",g(4));
 mixedBench=lab.putLabReagent(mixedBench,"v1","KCl",g(4));
 mixedBench=lab.putLabReagent(mixedBench,"v1","H2O",ml(10));
