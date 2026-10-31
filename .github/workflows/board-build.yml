@@ -58,6 +58,7 @@ jobs:
       - run: node scripts/test-lektrus-lab-filtrate-conservation.mjs
       - run: node scripts/test-lektrus-lab-filtrate-evaporation.mjs
       - run: node scripts/test-lektrus-lab-filtrate-thermal.mjs
+      - run: node scripts/test-lektrus-lab-coupled-evaporation.mjs
       - run: node scripts/test-lektrus-lab-reacted-transfer.mjs
       - run: node scripts/test-lektrus-lab-capacity-pouring.mjs
       - run: node scripts/test-lektrus-lab-table-reset.mjs

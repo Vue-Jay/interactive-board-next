@@ -270,12 +270,14 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
   doses:v.doses,filteredSolution:v.filteredSolution,
   ventedVaporMl:v.ventedVaporMl,
   stoppered:popped?false:v.stoppered,popped,boiling:false,
-  pressureKPa:totalPressureKPa,reactionGasPressureKPa,evaporatedMl:0
+  pressureKPa:totalPressureKPa,reactionGasPressureKPa,evaporatedMl:0,
+  latentEnergyJ:0
  };
  const boiling=(vaporPressureKPa??0)>=101.325;
  const doses={...v.doses},vented={...v.ventedVaporMl};
  let filteredSolution=v.filteredSolution;
  let evaporatedMl=0;
+ let latentEnergyJ=0;
  for(const item of partials){
   const partial=item.moleFraction*item.pressureKPa!;
   // Diffusion-limited loss to a ventilated virtual room. Area coefficient is
@@ -301,6 +303,11 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
   const actual=item.d.value-left;
   if(actual<=0)continue;
   evaporatedMl+=actual;
+  // This energy is spent changing phase, NOT raising the liquid temperature.
+  // The bench subtracts it from the same calorimetric heat budget used for
+  // warming the vessel. Both passive surface evaporation and boiling count.
+  latentEnergyJ+=actual*table[item.id as EvaporatingLiquid].densityGml*
+   LAB_LATENT_VAPORIZATION_J_PER_G[item.id as EvaporatingLiquid];
   if(item.sourceId===FILTRATE_WATER_ID&&filteredSolution){
    filteredSolution={...filteredSolution,volumeMl:left};
   }else if(item.aqueous){
@@ -313,7 +320,8 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
  }
  return {
   doses,filteredSolution,ventedVaporMl:vented,stoppered:popped?false:v.stoppered,
-  popped,boiling,pressureKPa:totalPressureKPa,reactionGasPressureKPa,evaporatedMl
+  popped,boiling,pressureKPa:totalPressureKPa,reactionGasPressureKPa,
+  evaporatedMl,latentEnergyJ
  };
 }
 /** First-order colligative boiling elevation for explicitly measured water
