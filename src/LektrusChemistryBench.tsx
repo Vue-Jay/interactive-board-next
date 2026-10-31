@@ -639,7 +639,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    if(session.step<=lastPourStepRef.current)return;
    lastPourStepRef.current=session.step;
    const next=advanceLabPour(current);
-   if(next!==current){benchRef.current=next;changeRef.current?.(next)}
+   if(next!==current){benchRef.current=next;changeRef.current?.(next,true)}
   },LAB_POUR_INTERVAL_MS);
   return()=>clearInterval(timer);
  },[bench.pouring?.id,editable]);
