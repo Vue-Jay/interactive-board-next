@@ -15,6 +15,8 @@ export type LabPHInput={
  doses?:Record<string,{value:number;unit:"ml"|"g";concentrationM?:number}>;
  environment:string;uncertain?:boolean;temperatureC?:number;
  chemicalInventory?:LabChemicalSnapshot;
+ /** A follow-up transformation staged while the global simulation is paused. */
+ pendingInventoryReaction?:boolean;
  filteredSolution?:{volumeMl?:number};
  /** Products and reactants tracked by the measured balanced equation. */
  reactionAmounts?:{equation:string;productsMol:Record<string,number>;
@@ -51,8 +53,12 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
   Object.entries(v.doses??{}).reduce((total,[id,d])=>
    total+(d.unit==="ml"&&!GAS_REAGENTS.has(id)?d.value:0),0);
  if(!Number.isFinite(volumeMl)||volumeMl<=0)return null;
+ // For paused multi-stage experiments, pH must use the PRESENT species.
+ // A saved mixture's possible future neutralisation cannot tint indicators.
  const inventory=v.chemicalInventory||v.doses?
-  simulateLabInventory({...v,environment:"aqueous",volumeMl}):undefined;
+  simulateLabInventory({...v,environment:"aqueous",volumeMl,
+   chemicalInventory:v.pendingInventoryReaction&&v.chemicalInventory?
+    {...v.chemicalInventory,settled:true}:v.chemicalInventory}):undefined;
  if(v.uncertain&&(!inventory||inventory.unmeasured.length||inventory.limited))return null;
  const temperatureC=v.temperatureC??25;
  const KW=labWaterIonProduct(temperatureC);
