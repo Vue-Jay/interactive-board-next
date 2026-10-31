@@ -15,6 +15,9 @@ export type LabChemicalSnapshot={
  speciesMol:Record<string,number>;
  solidMol:Record<string,number>;
  retainedGasMol?:Record<string,number>;
+ /** Ventilated products belong to the global mass balance but not the
+  * vessel headspace. Never transfer this historical gas to new glassware. */
+ releasedGasMol?:Record<string,number>;
 };
 export type LabInventoryStep={equation:string;extentMol:number;observation:string;heatKJ?:number};
 export type LabInventory={
@@ -155,6 +158,7 @@ export function simulateLabInventory(input:{
   Object.assign(inventory.speciesMol,input.chemicalInventory.speciesMol);
   Object.assign(inventory.solidMol,input.chemicalInventory.solidMol);
   Object.assign(inventory.retainedGasMol,input.chemicalInventory.retainedGasMol??{});
+  Object.assign(inventory.releasedGasMol,input.chemicalInventory.releasedGasMol??{});
  }else for(const id of input.reagents){
   const dose=doses[id];
   const mol=dose?labDoseMoles(id,dose):undefined;
@@ -329,7 +333,8 @@ export function simulateLabInventory(input:{
 }
 export function labInventorySnapshot(inventory:LabInventory):LabChemicalSnapshot{
  return {speciesMol:{...inventory.speciesMol},solidMol:{...inventory.solidMol},
-  retainedGasMol:{...inventory.retainedGasMol}};
+  retainedGasMol:{...inventory.retainedGasMol},
+  releasedGasMol:{...inventory.releasedGasMol}};
 }
 export function labInventoryMassG(inventory:LabInventory):number|undefined{
  let sumMass=0;
