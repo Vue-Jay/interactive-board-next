@@ -4575,3 +4575,36 @@
  overscroll-behavior:contain}
 .lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-realism-options button{
  min-height:78px!important;flex:1 1 auto!important}
+
+
+/* Experiment settings must close without covering the table after dismissal. */
+.lektrus-lab-bench .lektrus-lab-experiment-panel-head{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:12px;width:100%;margin:0 0 10px}
+.lektrus-lab-bench .lektrus-lab-experiment-panel-head h3{
+ margin:0!important;flex:1 1 auto;min-width:0}
+.lektrus-lab-bench .lektrus-lab-header-tools .lektrus-lab-experiment-close,
+.lektrus-lab-bench .lektrus-lab-compact-settings .lektrus-lab-experiment-close{
+ flex:0 0 34px!important;min-width:34px!important;width:34px!important;
+ height:34px!important;min-height:34px!important;padding:0!important;
+ border:1px solid #bfd7c8!important;border-radius:9px!important;
+ color:#376b58!important;background:#fff!important;
+ font:700 23px/1 system-ui,sans-serif!important;cursor:pointer}
+.lektrus-lab-bench .lektrus-lab-experiment-close:hover{
+ background:#e1f1e7!important;color:#1c6245!important}
+.lektrus-lab-bench .lektrus-lab-experiment-close:focus-visible{
+ outline:2px solid #26865e!important;outline-offset:2px!important}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-settings .lektrus-lab-experiment-panel-head{
+ flex:0 0 100%;margin:0}
+/* Cooler is one compact, touch-operable instrument with an engraved display. */
+.lektrus-lab-device-art.is-cooler,.lektrus-lab-device-chip.is-cooler span{color:#38869b}
+.lektrus-lab-bench .lektrus-lab-placed-device.is-running.is-cooler .lektrus-lab-device-icon{
+ filter:drop-shadow(0 0 5px #88d9f2) drop-shadow(0 4px 3px #27536b55)!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler .lektrus-lab-device-power{
+ left:75.5%!important;top:67%!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler .lektrus-lab-device-face-temp{
+ left:44%!important;top:69%!important;width:30%!important;height:15%!important;
+ background:#255568!important;color:#d9faff!important}
+.lektrus-lab-bench .lektrus-lab-placed-device.is-cooler{
+ width:clamp(119px,10.3cqw,175px)!important;
+ height:clamp(130px,11.5cqw,178px)!important}

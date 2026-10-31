@@ -379,7 +379,7 @@ for(const substance of reaction.substances)
   "Every catalogued reagent must have a representative appearance");
 let devices=lab.defaultLabBench();
 for(const device of lab.labDevices)devices=lab.toggleLabDevice(devices,device.id);
-assert.equal(devices.devices.length,5,"The lab provides five physical instruments without thermometer");
+assert.equal(devices.devices.length,6,"The lab provides six physical instruments including cooling bath, without thermometer");
 devices=lab.putLabReagent(devices,"v1","CaCO3");
 devices=lab.useLabDevice(devices,"hotplate","v1");
 assert.equal(lab.labObservation(devices.vessels[0]).caseData.observation,"gas",
@@ -684,7 +684,7 @@ assert.ok(Math.abs(decant.vessels.find(v=>v.id==="v2").doses.HCl.concentrationM-
  (10*.1+20*.3)/30)<.00001,
  "Same-solute concentrations must be volume-weighted during decanting");
 assert.equal(decant.vessels.find(v=>v.id==="v1").reagents.length,0);
-assert.equal(lab.labDevices.length,5);
+assert.equal(lab.labDevices.length,6);
 assert.ok(lab.labDevices.some(d=>d.id==="filter"),"Filtration uses a physical membrane-filter cartridge");
 assert.ok(!lab.labDevices.some(d=>d.id==="thermometer"));
 assert.equal(lab.canMountLabVessel("hotplate","beaker"),true);
@@ -2040,6 +2040,9 @@ assert.throws(()=>parseLab(badBurner),/Повреждено состояние �
  "Implausible temperatures must still be rejected");
 const badVessel=structuredClone(persistedLab);
 badVessel.vessels[2].temperatureC=1400;
+assert.doesNotThrow(()=>parseLab(badVessel),
+ "High virtual heating above the previous vessel cap is valid");
+badVessel.vessels[2].temperatureC=2000;
 assert.throws(()=>parseLab(badVessel),/Повреждено состояние химического стола/);
 const safeThermo=structuredClone(persistedLab);
 safeThermo.vessels[2].meltFraction=.5;

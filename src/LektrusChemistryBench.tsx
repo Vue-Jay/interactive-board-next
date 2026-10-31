@@ -2,7 +2,7 @@ import {memo,useEffect,useId,useMemo,useRef,useState,type PointerEvent} from "re
 import {createPortal} from "react-dom";
 import type {LabBench,LabBenchSettings,LabRealism,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labSimulationTickWaitMs,pourLabIntoFilter,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,LAB_HOTPLATE_MAX_C,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labDisplayNumber,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabCoolerTemperature,LAB_HOTPLATE_MAX_C,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labDisplayNumber,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -349,7 +349,11 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
        fill={indicator?.color??"#9b82c1"} stroke="#f7fff8" strokeWidth=".7"
        style={{animationDelay:i*.18+"s"}}/>)}
     </g>}
-   <path d="M29 32V57" stroke="#fff" strokeWidth="5" strokeLinecap="round" opacity=".5"/>
+   {/* Reflective highlight is clipped to the inside of the actual vessel,
+       including narrow test tubes, flasks and laboratory dishes. */}
+   <g clipPath={"url(#"+id+"clip)"}>
+    <path d="M29 32V57" stroke="#fff" strokeWidth="5" strokeLinecap="round" opacity=".5"/>
+   </g>
    {/* Contents are labelled above the vessel; temperature stays on glass. */}
    {temperatureVisible&&vessel.kind!=="burette"&&<g className="lektrus-lab-ware-engraving">
     <rect x="27" y="75" width="46" height="16" rx="4"
@@ -522,6 +526,22 @@ function LabExperimentControls({settings,editable,onUpdate}:{
  </div>;
 }
 /** A draft value must not clamp while its digits are still being typed. */
+function LabCoolerTemperatureInput({temperature,onSet}:{temperature:number;onSet:(v:number)=>void}){
+ const [draft,setDraft]=useState(String(temperature));
+ useEffect(()=>setDraft(String(temperature)),[temperature]);
+ const commit=()=>{
+  const value=Number(draft);
+  if(draft.trim()&&Number.isFinite(value)&&value>=-20&&value<=20)onSet(value);
+  else setDraft(String(temperature));
+ };
+ return <input type="number" className="lektrus-lab-device-face-temp"
+  aria-label="Задать температуру охлаждающей ванны в °C"
+  title="Лёд / солевой лёд: −20…+20 °C" min={-20} max={20} step={1}
+  value={draft} onChange={e=>setDraft(e.target.value)}
+  onPointerDown={e=>e.stopPropagation()}
+  onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"){commit();e.currentTarget.blur()}}}
+  onBlur={commit}/>;
+}
 function LabTemperatureInput({temperature,onSet}:{temperature:number;onSet:(v:number)=>void}){
  const [draft,setDraft]=useState(String(temperature));
  useEffect(()=>setDraft(String(temperature)),[temperature]);
@@ -615,6 +635,32 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  const [showAllDevices,setShowAllDevices]=useState(false);
  type MobileDrawer="reagents"|"glassware"|"equipment"|"indicators"|"equations"|"settings";
  const [mobileDrawer,setMobileDrawer]=useState<MobileDrawer|null>(null);
+ const experimentSettingsRef=useRef<HTMLDetailsElement>(null);
+ const compactSettingsRef=useRef<HTMLDivElement>(null);
+ // Close either settings surface on an outside pointer or Escape. No global
+ // overlay: apparatus and worktop remain interactive outside the settings.
+ useEffect(()=>{
+  const onOutside=(event:globalThis.PointerEvent)=>{
+   const target=event.target;
+   if(!(target instanceof Node))return;
+   const details=experimentSettingsRef.current;
+   if(details?.open&&!details.contains(target))details.open=false;
+   if(mobileDrawer==="settings"&&!compactSettingsRef.current?.contains(target)&&
+    !(target instanceof Element&&target.closest(".lektrus-lab-compact-drawer-bar")))
+    setMobileDrawer(null);
+  };
+  const onEscape=(event:KeyboardEvent)=>{
+   if(event.key!=="Escape")return;
+   if(experimentSettingsRef.current?.open)experimentSettingsRef.current.open=false;
+   if(mobileDrawer==="settings")setMobileDrawer(null);
+  };
+  document.addEventListener("pointerdown",onOutside);
+  document.addEventListener("keydown",onEscape);
+  return()=>{
+   document.removeEventListener("pointerdown",onOutside);
+   document.removeEventListener("keydown",onEscape);
+  };
+ },[mobileDrawer]);
  useEffect(()=>{if(!compactFullscreen)setMobileDrawer(null)},[compactFullscreen]);
  const [query,setQuery]=useState("");
  const [category,setCategory]=useState("Все");
@@ -1310,10 +1356,16 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     {label}<span aria-hidden="true">{mobileDrawer===id?"⌃":"⌄"}</span>
    </button>)}
   </nav>}
-  {compactFullscreen&&mobileDrawer==="settings"&&<div className="lektrus-lab-compact-settings"
+  {compactFullscreen&&mobileDrawer==="settings"&&<div ref={compactSettingsRef}
+    className="lektrus-lab-compact-settings"
     id="lektrus-lab-compact-settings" data-board-interactive="true"
     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
-   <h3>Настройки опыта</h3>
+   <div className="lektrus-lab-experiment-panel-head">
+    <h3>Настройки опыта</h3>
+    <button type="button" className="lektrus-lab-experiment-close"
+     aria-label="Закрыть настройки опыта" title="Закрыть"
+     onClick={e=>{e.stopPropagation();setMobileDrawer(null)}}>×</button>
+   </div>
    <LabExperimentControls settings={settings} editable={editable}
     onUpdate={next=>onChange?.(setLabBenchSettings(bench,next))}/>
    <button type="button" disabled={!editable}
@@ -1420,10 +1472,15 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     </div>}
    <div className="lektrus-lab-header-tools" data-board-interactive="true"
     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
-    {!compactFullscreen&&<details className="lektrus-lab-experiment-settings">
+    {!compactFullscreen&&<details ref={experimentSettingsRef} className="lektrus-lab-experiment-settings">
      <summary aria-label="Настройки опытов" title="Настройки опытов">⚙ <span>Настройки опыта</span></summary>
      <section className="lektrus-lab-experiment-panel" aria-label="Настройки опытов">
-      <h3>Настройки опыта</h3>
+      <div className="lektrus-lab-experiment-panel-head">
+       <h3>Настройки опыта</h3>
+       <button type="button" className="lektrus-lab-experiment-close"
+        aria-label="Закрыть настройки опыта" title="Закрыть"
+        onClick={e=>{e.stopPropagation();if(experimentSettingsRef.current)experimentSettingsRef.current.open=false}}>×</button>
+      </div>
       <LabExperimentControls settings={settings} editable={editable}
        onUpdate={next=>onChange?.(setLabBenchSettings(bench,next))}/>
      </section>
@@ -1691,6 +1748,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
         {device.kind==="hotplate"&&<LabTemperatureInput
          temperature={device.targetTemperatureC??150}
          onSet={value=>onChange?.(setLabHotplateTemperature(bench,device.id,value))}/>}
+        {device.kind==="cooler"&&<LabCoolerTemperatureInput
+         temperature={device.targetTemperatureC??0}
+         onSet={value=>onChange?.(setLabCoolerTemperature(bench,device.id,value))}/>}
         {device.kind==="burner"&&focused&&<button type="button"
          className="lektrus-lab-device-level" title="Изменить мощность горелки"
          aria-label="Мощность горелки"

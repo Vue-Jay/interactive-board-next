@@ -979,19 +979,19 @@ export function parseDocument(raw: string): DocumentData {
           !validEquationHistory(bench.reactionLog,30,500)||
           !validEquationHistory(bench.seenReactionKeys,150,650)||
           (bench.devices!=null&&(!Array.isArray(bench.devices)||
-            bench.devices.length>6||new Set(bench.devices).size!==bench.devices.length||
-            !bench.devices.every(id=>["hotplate","burner","stirrer","tripod","filter","thermometer"].includes(id))))||
+            bench.devices.length>7||new Set(bench.devices).size!==bench.devices.length||
+            !bench.devices.every(id=>["hotplate","burner","cooler","stirrer","tripod","filter","thermometer"].includes(id))))||
           (bench.placedDevices!=null&&(!Array.isArray(bench.placedDevices)||
             bench.placedDevices.length>10||
             new Set(bench.placedDevices.map(d=>d.id)).size!==bench.placedDevices.length||
             !bench.placedDevices.every(d=>
               typeof d.id==="string"&&d.id.length>0&&d.id.length<=50&&
-              ["hotplate","burner","stirrer","tripod","filter","thermometer"].includes(d.kind)&&
+              ["hotplate","burner","cooler","stirrer","tripod","filter","thermometer"].includes(d.kind)&&
               Number.isFinite(d.x)&&d.x>=9&&d.x<=81&&Number.isFinite(d.y)&&d.y>=53&&d.y<=84&&
               (d.active==null||typeof d.active==="boolean")&&
               (d.powered==null||typeof d.powered==="boolean")&&
               (d.heatLevel==null||[1,2,3].includes(d.heatLevel))&&
-              (d.temperatureC==null||(Number.isFinite(d.temperatureC)&&d.temperatureC>=0&&d.temperatureC<=1450))&&
+              (d.temperatureC==null||(Number.isFinite(d.temperatureC)&&d.temperatureC>=-30&&d.temperatureC<=1450))&&
               (d.linkedVesselId==null||bench.vessels.some(v=>v.id===d.linkedVesselId))&&
                (d.filterStartedAtMs==null||(Number.isFinite(d.filterStartedAtMs)&&d.filterStartedAtMs>=0))&&
                (d.collectedResidue==null||(typeof d.collectedResidue.formula==="string"&&
@@ -1124,7 +1124,7 @@ export function parseDocument(raw: string): DocumentData {
              v.indicator!=null&&v.indicator!=="universal"))&&
             (v.indicatorAddedAtMs==null||(Number.isFinite(v.indicatorAddedAtMs)&&
              v.indicatorAddedAtMs>=0&&v.indicator!=null&&v.indicator!=="universal"))&&
-            (v.temperatureC==null||(Number.isFinite(v.temperatureC)&&v.temperatureC>=0&&v.temperatureC<=1300))&&
+            (v.temperatureC==null||(Number.isFinite(v.temperatureC)&&v.temperatureC>=-30&&v.temperatureC<=1450))&&
             (v.buretteOpen==null||typeof v.buretteOpen==="boolean")&&
             (v.buretteRateMlS==null||[.05,.2,1].includes(v.buretteRateMlS))&&
             (v.buretteRemainderMl==null||(Number.isFinite(v.buretteRemainderMl)&&v.buretteRemainderMl>=0&&v.buretteRemainderMl<.01))&&
