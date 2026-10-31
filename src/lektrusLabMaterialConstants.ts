@@ -280,7 +280,13 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
  Na2CO3:[7.1,21.4,48.5,46.5,45.8,45.5],
  // At isolated reference knots only. Null is UNKNOWN, NOT insoluble.
  // A knot is usable alone but no interpolating over gaps.
- Li2CO3:[null,1.33,null,null,null,null],
+ // Li2CO3: independent Kirk-Othmer experimental MASS PERCENT in the
+ // final solution at 0/20/40/60/80/100 °C (1.52/1.31/1.16/1/.84/.71).
+ // Convert wt% to grams dry salt / 100 g WATER as 100*w/(100-w),
+ // rounded to 3 decimals. Existing 20 C 1.33 knot retained, within
+ // source precision. Its retrograde temperature-dependence is real.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/11125
+ Li2CO3:[1.543,1.33,1.174,1.010,.847,.715],
  NaF:[null,4.1,null,null,null,null],
  NaBr:[null,null,null,118,118.3,121.2],
  Na2SO3:[null,null,37,33.2,29,26.6],
