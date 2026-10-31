@@ -36,6 +36,7 @@ const calorimetry=load("src/lektrusLabCalorimetry.ts",key=>{
 const solubilityMeasurements=load("src/lektrusLabSolubilityMeasurements.ts");
 const constants=load("src/lektrusLabMaterialConstants.ts",key=>{
  if(key==="./lektrusLabCuratedPropertyBatch")return curatedBatch;
+ if(key==="./lektrusReactionDatabase")return reaction;
  assert.equal(key,"./lektrusLabSolubilityMeasurements");return solubilityMeasurements;
 });
 const dissolution=load("src/lektrusLabDissolution.ts",key=>{

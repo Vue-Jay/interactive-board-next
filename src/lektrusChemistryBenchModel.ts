@@ -6,7 +6,7 @@ import {labSensibleHeatStep} from "./lektrusLabCalorimetry";
 import {labBinarySaltEquilibrium,labAdvanceBinarySaltPhase,labVisibleBinarySaltSolid,type LabBinarySaltState} from "./lektrusLabDissolution";
 import {labReactionGasProgress} from "./lektrusLabGasDynamics";
 import {labEvaporate,labCanStopper,labIdealBoilingC} from "./lektrusLabEvaporation";
-import {LAB_CRYSTAL_DENSITY_G_ML,labSchoolSolidDensityGml,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
+import {labSchoolSolidDensityGml,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,labDoseMoles,type LabReactionAmounts}
  from "./lektrusLabStoichiometry";
 import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint} from "./lektrusLabLayout";
@@ -1365,8 +1365,8 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
   if((v.kind==="pipette"||v.kind==="burette")&&validDose?.unit==="g")return v;
   // Known crystalline solids occupy physical vessel volume too. Don't
   // accept an extra weighed sample if it would exceed the rim.
-  if(validDose.unit==="g"&&precipitateDensity[reagent]&&
-   priorMl+validDose.value/precipitateDensity[reagent]>
+  if(validDose.unit==="g"&&precipitateDensity(reagent)&&
+   priorMl+validDose.value/precipitateDensity(reagent)>
     labVesselQuantity(v).capacityMl+1e-7)return v;
   const present=v.reagents.includes(reagent);
   if(!present&&v.reagents.length>=MAX_VESSEL_REAGENTS)return v;
