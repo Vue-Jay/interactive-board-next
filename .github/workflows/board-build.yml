@@ -48,6 +48,7 @@ jobs:
       - run: node scripts/test-lektrus-lab-live-sync.mjs
       - run: node scripts/test-lektrus-lab-persistence.mjs
       - run: node scripts/test-lektrus-lab-reaction-network.mjs
+      - run: node scripts/test-lektrus-lab-room-heat-references.mjs
       - run: node scripts/test-lektrus-lab-classroom-coverage.mjs
       - name: Check chemical property coverage and publish remaining work
         run: |

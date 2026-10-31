@@ -98,7 +98,50 @@ export const LAB_CURATED_PROPERTY_BATCH:readonly LabCuratedPropertyBatchRow[]=[
  {formula:"Al(OH)3",property:"specificHeatJPerGK",value:1.175968,
   phase:"anhydrous-solid",sourceCondition:"USGS 1979 monoclinic gibbsite Al(OH)3, 298.15 K Cp,mol=91.729 J/(mol K) / 78.003 g/mol; not bayerite",
   sourceUrl:"https://pubs.usgs.gov/of/1980/0908/report.pdf",
-  note:"Удельная теплоёмкость чистого гиббсита при 25 °C из экспериментальной таблицы USGS."}
+  note:"Удельная теплоёмкость чистого гиббсита при 25 °C из экспериментальной таблицы USGS."},
+
+ // U.S. Geological Survey Bulletin 1452 (Robie, Hemingway & Fisher,
+ // 1978, corrected 1979), tables at 298.15 K and 0.1 MPa.
+ // Original values are Cp,mol in J/(mol K), divided by the stated
+ // mass in g/mol. Never use solution/hydrate or diamond values.
+ {formula:"C",property:"specificHeatJPerGK",value:0.710182,
+  phase:"anhydrous-solid",
+  sourceCondition:"graphite C (not diamond or charcoal); 298.15 K, 0.1 MPa; USGS Cp,mol 8.53 J/(mol K) / 12.011 g/mol",
+  sourceUrl:"https://pubs.usgs.gov/bul/1452/report.pdf",
+  note:"Теплоёмкость графита при 25 °C; для алмаза и аморфного углерода нужны отдельные данные."},
+ {formula:"Ca(NO3)2",property:"specificHeatJPerGK",value:0.910293,
+  phase:"anhydrous-solid",
+  sourceCondition:"anhydrous Ca(NO3)2 crystals; 298.15 K, 0.1 MPa; USGS Cp,mol 149.37 J/(mol K) / 164.090 g/mol; not tetrahydrate",
+  sourceUrl:"https://pubs.usgs.gov/bul/1452/report.pdf",
+  note:"Теплоёмкость безводного нитрата кальция при 25 °C, не кристаллогидрата."},
+ {formula:"Mg(NO3)2",property:"specificHeatJPerGK",value:0.956882,
+  phase:"anhydrous-solid",
+  sourceCondition:"anhydrous Mg(NO3)2 crystals; 298.15 K, 0.1 MPa; USGS Cp,mol 141.92 J/(mol K) / 148.315 g/mol; not hexahydrate",
+  sourceUrl:"https://pubs.usgs.gov/bul/1452/report.pdf",
+  note:"Теплоёмкость безводного нитрата магния при 25 °C, не гексагидрата."},
+ // US Bureau of Mines Bulletin 584 (1960), p.43, Table 160:
+ // Ca3(PO4)2 alpha-crystal fit 298-1373 K, Cp,mol in cal/(mol K).
+ // Cp(298.15)=48.24+39.68e-3*T-5.00e5/T^2, multiply by 4.184.
+ {formula:"Ca3(PO4)2",property:"specificHeatJPerGK",value:0.734394,
+  phase:"anhydrous-solid",
+  sourceCondition:"Ca3(PO4)2 alpha-crystals, 298.15 K, US Bureau of Mines 584 p.43; Cp,mol=(48.24+39.68e-3*T-5.00e5/T^2) cal/(mol K), T in K, /310.19 g/mol",
+  sourceUrl:"https://digital.library.unt.edu/ark:/67531/metadc12739/m1/59/",
+  note:"Теплоёмкость фосфата кальция в кристаллической форме, указанной в исходном экспериментальном справочнике, при 25 °C."},
+ // OECD Nuclear Energy Agency, Chemical Thermodynamics of Nickel, vol.6,
+ // Section V.3.2.2.2, experimentally reviewed beta-Ni(OH)2, not
+ // hydrated alpha-Ni(OH)2; Cp,mol=(82.01 +/- 0.30) J/(mol K).
+ {formula:"Ni(OH)2",property:"specificHeatJPerGK",value:0.884605,
+  phase:"anhydrous-solid",
+  sourceCondition:"beta-Ni(OH)2 crystalline phase; 298.15 K, 0.1 MPa; OECD NEA Cp,mol 82.01 +/- 0.30 J/(mol K) / 92.708 g/mol",
+  sourceUrl:"https://www.oecd-nea.org/upload/docs/application/pdf/2020-09/chemical_thermodynamics_of_nickel_volume_6.pdf",
+  note:"Теплоёмкость β-Ni(OH)₂ при 25 °C, не гидратированной α-фазы."},
+ // Rabinovich & Khavin 1977 p.113, via Chemister: rhombic Zn(OH)2
+ // Cp,mol=72.27 J/(mol K) at 298.15 K. Distinct from ZnO.
+ {formula:"Zn(OH)2",property:"specificHeatJPerGK",value:0.727136,
+  phase:"anhydrous-solid",
+  sourceCondition:"rhombic Zn(OH)2 crystals; 298.15 K; Rabinovich & Khavin 1977 p.113, Cp,mol 72.27 J/(mol K) / 99.39 g/mol",
+  sourceUrl:"https://www.chemister.ru/Databases/Chemdatabase/properties-en.php?id=4200",
+  note:"Теплоёмкость кристаллического Zn(OH)₂ при 25 °C, не ZnO и не водной суспензии."}
 ];
 
 /** Generated dry crystal density map (single source of truth). */
