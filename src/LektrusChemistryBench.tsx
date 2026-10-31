@@ -16,7 +16,7 @@ import {labVesselPH} from "./lektrusLabPH";
 import {simulateLabInventory,labInventoryMassG} from "./lektrusLabReactionNetwork";
 import {labMolarMass} from "./lektrusLabStoichiometry";
 import {labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
-import {buildLabCatalog,cabinetColor,labReagentForms,labReagentPhaseLabel,labIsPreparedStock,labDefaultStockDose,type CatalogueGroup,type CatalogueSort,type StoragePhase}
+import {buildLabCatalog,cabinetColor,labReagentForms,labReagentPhaseLabel,labIsPreparedStock,type CatalogueGroup,type CatalogueSort,type StoragePhase}
  from "./lektrusLabCatalog";
 import {titrationReading} from "./lektrusLabTitration";
 import {labExperimentKitSummary,prepareLabExperimentKit} from "./lektrusLabExperimentKits";
