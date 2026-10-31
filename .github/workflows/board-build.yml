@@ -48,6 +48,7 @@ jobs:
       - name: Check chemical property coverage and publish remaining work
         run: |
           node scripts/audit-lektrus-lab-properties.mjs --verify
+          node scripts/sync-lektrus-lab-property-minima.mjs --check
           node scripts/audit-lektrus-lab-properties.mjs --markdown >> "$GITHUB_STEP_SUMMARY"
       - run: node scripts/test-lektrus-lab-filtrate-conservation.mjs
       - run: node scripts/test-lektrus-lab-interface-layout.mjs
