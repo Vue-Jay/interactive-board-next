@@ -2,7 +2,7 @@ import type {Item} from "./boardModel";
 import {labVesselPH,labIndicatorTint} from "./lektrusLabPH";
 import {labDefaultStockDose,labIsPreparedStock,LAB_STOCK_MOLARITY_M} from "./lektrusLabCatalog";
 import {labVesselThermal} from "./lektrusLabPhysicalProperties";
-import {labSensibleHeatStep} from "./lektrusLabCalorimetry";
+import {labSensibleHeatStep,labSchoolSpecificHeatJPerGK,LAB_CALORIMETRY_REFERENCE} from "./lektrusLabCalorimetry";
 import {labBinarySaltEquilibrium,labAdvanceBinarySaltPhase,labVisibleBinarySaltSolid,
  labSchoolMixedSaltEquilibrium,labAdvanceSchoolMixedSaltPhase,
  type LabBinarySaltState} from "./lektrusLabDissolution";
@@ -96,14 +96,25 @@ export type LabFilteredResidue={formula:string;massG?:number;color:string;
  components?:{formula:string;massG:number;color:string}[]};
 export const MAX_LAB_DEVICES=10;
 const clampDevice=(v:number,min:number,max:number)=>Math.round(Math.min(max,Math.max(min,v))*10)/10;
-/** V1 cabinets only stored the types. Preserve them when a board is upgraded. */
+/** Normalize placed devices once per immutable lab revision. A physical
+ * simulation step previously reconstructed the same apparatus list for every
+ * vessel, including separate checks for heating, stirring and supports.
+ * Weak cache keys are safely released with retired board revisions. */
+const normalizedDevicesByBench=new WeakMap<LabBench,LabPlacedDevice[]>();
 export function placedLabDevices(bench:LabBench):LabPlacedDevice[]{
- if(bench.placedDevices)return bench.placedDevices.filter(d=>d.kind!=="thermometer").map(d=>
-  d.kind==="tripod"&&d.shelfVesselId?{...d,active:!!(d.linkedVesselId||d.shelfVesselId),
-   linkedVesselId:d.linkedVesselId??d.shelfVesselId,shelfVesselId:undefined}:d);
- return (bench.devices??[]).filter(kind=>kind!=="thermometer").map((kind,i)=>({
-  id:"legacy-"+kind,kind,x:35+(i%4)*11,y:74+Math.floor(i/4)*5
- }));
+ const cached=normalizedDevicesByBench.get(bench);
+ if(cached)return cached;
+ const normalized:LabPlacedDevice[]=bench.placedDevices?
+  bench.placedDevices.filter(d=>d.kind!=="thermometer").map(d=>
+   d.kind==="tripod"&&d.shelfVesselId?{
+    ...d,active:!!(d.linkedVesselId||d.shelfVesselId),
+    linkedVesselId:d.linkedVesselId??d.shelfVesselId,shelfVesselId:undefined
+   }:d):
+  (bench.devices??[]).filter(kind=>kind!=="thermometer").map((kind,i)=>({
+   id:"legacy-"+kind,kind,x:35+(i%4)*11,y:74+Math.floor(i/4)*5
+  }));
+ normalizedDevicesByBench.set(bench,normalized);
+ return normalized;
 }
 export function addPlacedLabDevice(bench:LabBench,kind:LabDevice,point?:{x:number;y:number}):LabBench{
  if(!labDevices.some(v=>v.id===kind))return bench;
@@ -365,11 +376,11 @@ export function labSimulationTickWaitMs(bench:LabBench,nowMs:number):number|null
   v.physicalProcess==="dissolving"||v.physicalProcess==="crystallizing");
  const devices=placedLabDevices(bench);
  const powered=devices.some(d=>d.powered||(d.temperatureC??22)>22.1);
- const hot=vessels.some(v=>(v.temperatureC??22)>22.1);
+ const thermal=vessels.some(v=>Math.abs((v.temperatureC??22)-22)>.1);
  const evaporating=vessels.some(v=>!v.stoppered&&
   labVaporPressureKPa(v,v.temperatureC??22)!==undefined);
- if(!burette&&!reactions&&!phase&&!powered&&!hot&&!evaporating)return null;
- const cadenceMs=burette||reactions||phase?500:powered||hot?1900:9800;
+ if(!burette&&!reactions&&!phase&&!powered&&!thermal&&!evaporating)return null;
+ const cadenceMs=burette||reactions||phase?500:powered||thermal?1900:9800;
  if(bench.simulationAtMs===undefined)return 500;
  return Math.max(0,Math.ceil(cadenceMs-Math.max(0,nowMs-bench.simulationAtMs)));
 }
@@ -423,7 +434,9 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // receives a boiling plateau below.
   const maxVesselC=device?.kind==="burner"&&v.kind==="crucible"?1250:
    device?.kind==="burner"?450:350;
-  let next=Math.round(Math.max(ambient,Math.min(maxVesselC,raw))*10)/10;
+  // Endothermic cooling below room temperature is physical and should
+  // recover gradually by ambient heat exchange, never jump to 22°C.
+  let next=Math.round(Math.max(0,Math.min(maxVesselC,raw))*10)/10;
   let meltFraction=v.meltFraction??0;
   let phaseTransition=v.phaseTransition;
   const point=pure?.unit==="g"&&!v.uncertain&&!v.completedReaction?
@@ -1107,7 +1120,15 @@ export function labVesselContents(v:LabVessel){
  return contents;
 }
 
+const reactionTickByVessel=new WeakMap<LabVessel,boolean>();
 export function labReactionNeedsTick(vessel:LabVessel):boolean{
+ const cached=reactionTickByVessel.get(vessel);
+ if(cached!==undefined)return cached;
+ const needed=calculateLabReactionNeedsTick(vessel);
+ reactionTickByVessel.set(vessel,needed);
+ return needed;
+}
+function calculateLabReactionNeedsTick(vessel:LabVessel):boolean{
  if(vessel.uncertain)return false;
  if(vessel.reactionHeat&&!vessel.reactionHeat.complete)return true;
  if(vessel.reactionAmounts&&!vessel.reactionAmounts.complete)return true;
@@ -1987,16 +2008,56 @@ export function activateLabVessel(bench:LabBench,id:string):LabBench{
 }
 /** Complete transfer of contents: products and their visible appearance move with
  * the liquid. Adding a new reagent to spent material is deliberately unknown. */
+/** Approximate energy-conserving temperature of combined vessel contents.
+ * Each source dose contributes its actual school heat capacity. Pure liquid
+ * densities/Cp come from the existing calorimetry reference; aqueous stocks
+ * use its documented dilute-solution approximation. This is sensible heat
+ * only: latent heat and reaction enthalpy remain in their own simulation steps.
+ * Gas doses do not count as an imaginary 5 ml liquid pool.
+ */
+function labDoseHeatCapacity(doses:Record<string,LabDose>|undefined):number{
+ let total=0;
+ for(const [id,d] of Object.entries(doses??{})){
+  if(d.value<=0||!Number.isFinite(d.value)||
+     d.unit==="ml"&&substances.find(s=>s.id===id)?.kind==="газ")continue;
+  const reference=LAB_CALORIMETRY_REFERENCE[id];
+  const density=d.unit==="ml"&&d.concentrationM===undefined&&
+   reference?.phase==="liquid"?reference.densityGPerMl??1:1;
+  total+=d.value*density*labSchoolSpecificHeatJPerGK(id,d.unit,d.concentrationM).value;
+ }
+ return total;
+}
+export function labMixedContentsTemperatureC(
+ source:LabVessel,target:LabVessel,sourceFraction=1
+):number{
+ const fraction=Math.max(0,Math.min(1,sourceFraction));
+ const sourceCapacity=labDoseHeatCapacity(source.doses)*fraction+
+  (source.filteredSolution?.volumeMl??0)*fraction*4.18;
+ const targetCapacity=labDoseHeatCapacity(target.doses)+
+  (target.filteredSolution?.volumeMl??0)*4.18;
+ const sourceC=source.temperatureC??22,targetC=target.temperatureC??22;
+ const total=sourceCapacity+targetCapacity;
+ if(total<=1e-10)return targetC;
+ return Math.round(Math.max(0,Math.min(1250,
+  (sourceCapacity*sourceC+targetCapacity*targetC)/total))*10)/10;
+}
+
 /** One shared 20-step pour. The initiating client advances 5% per 150ms tick. */
 export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:string):LabBench{
  if(!id||sourceId===targetId||(b.pouring&&b.pouring.step<20))return b;
  const a=b.vessels.find(v=>v.id===sourceId),t=b.vessels.find(v=>v.id===targetId);
  if(!a||!t||!a.reagents.length||a.stoppered||t.stoppered||
   [...new Set([...a.reagents,...t.reagents])].length>MAX_VESSEL_REAGENTS)return b;
- // A quantified filtrate is a phase snapshot, not a set of stock doses.
- // Transfer it atomically rather than running the old dose-only 20-step
- // algorithm which would otherwise leave its dissolved products behind.
- if(a.chemicalInventory||t.chemicalInventory)return pourLabVessel(b,sourceId,targetId);
+ // A measured mixture after reaction must be transferred using its CURRENT
+ // molecular species ledger, not the historical stock names. The same applies
+ // to a filtrate, or a recipient that already contains reaction products.
+ // A reaction still in progress cannot be represented by final products yet:
+ // retain the original state until its measured progression finishes.
+ if((a.reactionAmounts&&!a.reactionAmounts.complete)||
+    (t.reactionAmounts&&!t.reactionAmounts.complete))return b;
+ if(a.chemicalInventory||t.chemicalInventory||a.reactionAmounts?.complete||
+    t.reactionAmounts?.complete||a.completedReaction||t.completedReaction)
+  return pourLabVessel(b,sourceId,targetId);
  const initialDoses={...a.doses};
  const volume=labVesselQuantity(a).volumeMl;
  const current=labVesselQuantity(t).volumeMl;
@@ -2011,11 +2072,15 @@ export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:strin
   unmeasured:a.reagents.some(r=>!initialDoses[r])},event:b.event+1};
 }
 const portionRound=(x:number)=>Math.round(x*1000000)/1000000;
-export function advanceLabPour(b:LabBench):LabBench{
- const p=b.pouring;if(!p||p.step>=20)return b;
+export function advanceLabPour(b:LabBench,portions=1):LabBench{
+ const p=b.pouring;if(!p||p.step>=LAB_POUR_STEPS)return b;
  const source=b.vessels.find(v=>v.id===p.sourceId),target=b.vessels.find(v=>v.id===p.targetId);
  if(!source||!target||!source.reagents.length)return stopLabPour(b);
- const n=p.step+1,finish=n===20;
+ // Gradual mode advances exactly one 5% portion per animation step. Fast mode
+ // transfers the same measured total in a single calculation, avoiding 20
+ // redundant chemical-equilibrium evaluations and 20 intermediate board states.
+ const count=Number.isFinite(portions)?Math.max(1,Math.min(LAB_POUR_STEPS,Math.trunc(portions))):1;
+ const n=Math.min(LAB_POUR_STEPS,p.step+count),finish=n===LAB_POUR_STEPS;
  const left={...source.doses},received={...target.doses};
  for(const [reagent,original] of Object.entries(p.initialDoses)){
   const amount=portionRound(portionRound(original.value*n/20)-
@@ -2057,6 +2122,8 @@ export function advanceLabPour(b:LabBench):LabBench{
     key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&received[key]?.unit==="g")&&
     identifyReaction(combined,medium).status!=="reaction";
    return {...v,reactionAmounts:undefined,reagents:combined,doses:received,
+   temperatureC:labMixedContentsTemperatureC(source,v,
+    (n-p.step)/(LAB_POUR_STEPS-p.step)),
    reactionHeat:p.step===0?undefined:v.reactionHeat,
    physicalProcess:dissolving?"dissolving" as const:undefined,
    physicalStartedAtMs:dissolving?(v.physicalStartedAtMs??Date.now()):undefined,
@@ -2080,12 +2147,8 @@ export function advanceLabPour(b:LabBench):LabBench{
 export function fastLabPour(b:LabBench,sourceId:string,targetId:string):LabBench{
  const started=startLabPour(b,sourceId,targetId,"fast-"+Date.now().toString(36));
  if(started===b||!started.pouring)return started;
- let result=started;
- for(let step=0;step<LAB_POUR_STEPS;step++){
-  const next=advanceLabPour(result);
-  if(next===result||!next.pouring||next.pouring.step!==step+1)return b;
-  result=next;
- }
+ const result=advanceLabPour(started,LAB_POUR_STEPS);
+ if(!result.pouring||result.pouring.step!==LAB_POUR_STEPS)return b;
  return stopLabPour(result);
 }
 export function stopLabPour(b:LabBench,id?:string):LabBench{
@@ -2149,6 +2212,7 @@ function pourMeasuredFiltrate(bench:LabBench,source:LabVessel,target:LabVessel):
    observed:false,uncertain:false,indicator:undefined,
    indicatorDrops:undefined,indicatorAddedAtMs:undefined};
   if(v.id===target.id)return {...v,reagents:ids,
+   temperatureC:labMixedContentsTemperatureC(source,v),
    doses:Object.keys(received).length?received:undefined,
    filteredSolution:carrier>0?{sourceEquation:source.filteredSolution?.sourceEquation??
     target.filteredSolution?.sourceEquation??"",solutes:ids.filter(x=>x!=="H2O"),
@@ -2167,7 +2231,12 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
  if(!source||!target||!source.reagents.length||source.stoppered||target.stoppered)return bench;
- if(source.chemicalInventory||target.chemicalInventory){
+ // Do not mistake a partially reacted suspension for completed products.
+ if((source.reactionAmounts&&!source.reactionAmounts.complete)||
+    (target.reactionAmounts&&!target.reactionAmounts.complete))return bench;
+ if(source.chemicalInventory||target.chemicalInventory||
+    source.reactionAmounts?.complete||target.reactionAmounts?.complete||
+    source.completedReaction||target.completedReaction){
   if(labVesselQuantity(source).occupiedMl+labVesselQuantity(target).occupiedMl>
    labVesselQuantity(target).capacityMl+1e-7)return bench;
   return pourMeasuredFiltrate(bench,source,target);
@@ -2215,7 +2284,9 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
     identifyReaction(reagents,medium).status==="reaction";
    const dissolving=!newReaction&&doses.H2O?.unit==="ml"&&
     reagents.some(key=>key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&doses[key]?.unit==="g");
-   return {...v,reagents,reactionAmounts:undefined,reactionHeat:undefined,observed:reagents.length>1||source.observed,
+   return {...v,reagents,reactionAmounts:undefined,reactionHeat:undefined,
+    temperatureC:labMixedContentsTemperatureC(source,v),
+    observed:reagents.length>1||source.observed,
     // A complete transfer to empty glassware carries the physical crystal
     // inventory. Mixed recipients must re-evaluate their phase separately.
     binarySaltPhase:targetWasEmpty?source.binarySaltPhase:undefined,
