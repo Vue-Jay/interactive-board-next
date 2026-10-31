@@ -31,6 +31,14 @@ export type LabHydrateSolubilitySample={
 };
 /** Independent hydrate formulas; not interchangeable with dry stocks. */
 export const LAB_HYDRATE_SOLUBILITY_REFERENCES:readonly LabHydrateSolubilityRow[]=[
+ // ILO/WHO ICSC 0914 reports the LiOH MONOHYDRATE explicitly,
+ // not the anhydrous LiOH solid. 19.1 g of LiOH·H2O per 100 mL of
+ // pure H2O at 20°C = 19.1/0.9982 g per 100 g initial water.
+ // The hydrate's water of crystallisation remains bound to the solid;
+ // no hydrated precipitation is inferred from this isolated reference.
+ {baseFormula:"LiOH",waters:1,hydrateFormula:"LiOH·H2O",
+  massGPer100gWater:[null,19.1/.9982,null,null,null,null],
+  sourceUrl:"https://inchem.org/documents/icsc/icsc/eics0914.htm"},
  // Independent phase-identified crystal-water measurements, never
  // merged into pure anhydrous salt saturation.
  // Wired Chemist Kaye/Laby table: 293 K = 19.85 C (NOT 20 C).

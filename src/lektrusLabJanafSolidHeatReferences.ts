@@ -1,4 +1,4 @@
-/** NIST-JANAF Thermochemical Tables, fourth edition (1998): five pure
+/** NIST-JANAF Thermochemical Tables, fourth edition (1998): seven pure
  * crystalline solids' Cp,molar at exactly 298.15 kelvin and 0.1 MPa.
  * Each original source explicitly labels its phase "(cr)" and the first
  * heat column in J/(mol K). No arbitrary Cp(T) interpolation is inferred.
@@ -20,6 +20,19 @@ export type LabJanafSolidHeatReference={
  sourceUrl:string;
 };
 export const LAB_JANAF_SOLID_HEAT_REFERENCES:readonly LabJanafSolidHeatReference[]=[
+ // NIST tables specifically label crystalline (cr), not liquid (l)
+ // or beta-Li2SO4 (a different polymorph at elevated temperature).
+ // The alpha-Li2SO4 crystal is stable at room conditions.
+ {formula:"Na2O",phase:"solid",
+  crystalForm:"pure anhydrous crystalline sodium oxide Na2O",
+  temperatureKelvin:298.15,pressureMPa:0.1,
+  molarHeatJPerMolK:69.103,roomHeatJPerGK:1.114950,
+  sourceUrl:"https://janaf.nist.gov/tables/Na-012.html"},
+ {formula:"Li2SO4",phase:"solid",
+  crystalForm:"alpha anhydrous lithium sulfate crystal Li2SO4",
+  temperatureKelvin:298.15,pressureMPa:0.1,
+  molarHeatJPerMolK:117.608,roomHeatJPerGK:1.069786,
+  sourceUrl:"https://janaf.nist.gov/tables/Li-026.html"},
  {formula:"MgCO3",phase:"solid",
   crystalForm:"crystalline magnesite MgCO3",temperatureKelvin:298.15,pressureMPa:0.1,
   molarHeatJPerMolK:76.21,roomHeatJPerGK:0.903894,

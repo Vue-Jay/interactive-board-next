@@ -347,7 +347,14 @@ const physical:Record<string,LabThermalRecord>={
   note:"Оксид меди(II) при сильном нагревании разлагается; это не кипение."},
  NaOH:{meltingC:318,boilingC:1388},
  KOH:{meltingC:360,boilingC:1327},
- LiOH:{meltingC:462,boilingC:924},
+ // NIST-JANAF (H-020, crystal-liquid fusion at 744.30 K):
+ // Tfusion = 744.30 - 273.15 = 471.15 °C for ANHYDROUS LiOH.
+ // ILO/WHO ICSC 0913 specifically reports decomposition at 924 °C.
+ // That is NOT a normal-pressure boiling point; LiOH·H2O differs.
+ // https://janaf.nist.gov/tables/H-020.html
+ // https://inchem.org/documents/icsc/icsc/eics0913.htm
+ LiOH:{meltingC:471.15,decompositionC:924,behavior:"decomposes",
+  note:"Безводный LiOH плавится около 471 °C, разлагается при 924 °C; прежнее отнесение 924 °C к кипению было неверным. Моногидрат имеет отдельные переходы."},
  AgNO3:{meltingC:212,decompositionC:440,behavior:"decomposes"},
  NaNO3:{meltingC:308,decompositionC:380,behavior:"decomposes"},
  KNO3:{meltingC:334,decompositionC:400,behavior:"decomposes"},
