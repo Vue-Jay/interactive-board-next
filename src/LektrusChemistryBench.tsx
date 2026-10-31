@@ -267,8 +267,9 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
       fill="#f7faf8" stroke="#a2b4c0" strokeWidth=".65"
       style={{animationDelay:-(i%6)*.4+"s"}}/>)}
     </g>}
-    {boiling&&<g className="lektrus-lab-boiling-particles">
-     {Array.from({length:18},(_,i)=><circle key={i}
+    {boiling&&<g className="lektrus-lab-boiling-particles"
+     clipPath={"url(#"+id+"level)"} aria-label="Пузырьки внутри кипящей жидкости">
+     {Array.from({length:Math.max(3,Math.min(18,Math.ceil(18*Math.sqrt(liquidFraction))))},(_,i)=><circle key={i}
       cx={28+i*19%46} cy={80+i*23%30} r={1.6+i%4*.7}
       fill="#fff" fillOpacity=".18" stroke="#9ecfd7" strokeWidth=".8"
       style={{animationDelay:-(i%8)*.31+"s"}}/>)}
