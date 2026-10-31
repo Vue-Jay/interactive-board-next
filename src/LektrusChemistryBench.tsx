@@ -11,7 +11,7 @@ import {labKnownHeatCapacityJPerK} from "./lektrusLabCalorimetry";
 import {labReactionGasProgress} from "./lektrusLabGasDynamics";
 import {labVisibleBinarySaltSolid} from "./lektrusLabDissolution";
 import {labProductIdentities,labSubstanceProperties} from "./lektrusLabPropertyRegistry";
-import {labCanStopper,labVaporPressureKPa,labIdealBoilingC} from "./lektrusLabEvaporation";
+import {labCanStopper,labVaporPressureKPa,labIdealBoilingC,labIsBoiling} from "./lektrusLabEvaporation";
 import {labVesselPH} from "./lektrusLabPH";
 import {simulateLabInventory,labInventoryMassG} from "./lektrusLabReactionNetwork";
 import {labMolarMass} from "./lektrusLabStoichiometry";
@@ -203,8 +203,9 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
  const conversionFraction=amounts?amounts.maxExtentMol>0?
   amounts.extentMol/amounts.maxExtentMol:0:1;
  const solutionBoiling=labIdealBoilingC(vessel);
- const boiling=!!volumeMl&&!vessel.stoppered&&(thermalState.boiling||
-  solutionBoiling!==undefined&&(temperatureC??vessel.temperatureC??22)>=solutionBoiling-.5);
+ // Bubble and steam artwork must agree with the same reviewed
+ // temperature criterion used by the mass/energy vaporization model.
+ const boiling=volumeMl>1e-9&&labIsBoiling(vessel,temperatureC??vessel.temperatureC??22);
  const renderedSolidFraction=vessel.filteredResidue?Math.max(.23,solidFraction):
   solidFraction*(1-moltenFraction);
  const fillFraction=volumeMl>0?Math.max(.008,liquidFraction):
