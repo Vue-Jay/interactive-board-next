@@ -18,6 +18,22 @@ export const LAB_GAS_FORMULAS:ReadonlySet<string>=new Set([
  "CH4","C2H4","C2H2","C2H6","C3H8","C4H10","C3H6"
 ]);
 const physical:Record<string,LabThermalRecord>={
+ // CRC via PubChem: dry orthorhombic MnSO4 melts at 700 C;
+ // decomposition 850 C is NOT a normal boiling point.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24580
+ MnSO4:{meltingC:700,decompositionC:850,behavior:"decomposes",
+  note:"Безводный MnSO₄; разложение при ~850 °C, не кипение. Моногидрат имеет другое поведение."},
+ // DOE experimental anhydrous lithium acetate fusion at 280 C.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/3474584
+ CH3COOLi:{meltingC:280,
+  note:"Безводный ацетат лития; гидратные кристаллы требуют отдельной модели."},
+ // CRC: nominal crystalline (NH4)2CO3 at 58 C DECOMPOSES;
+ // the commercial material is often a bicarbonate/carbamate mixture.
+ // Do not simulate stable liquid ammonium carbonate at this point.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/517111
+ "(NH4)2CO3":{decompositionC:58,behavior:"decomposes",
+  note:"Номинальный карбонат аммония разлагается при ~58 °C на NH₃/CO₂ и другие формы; коммерческие образцы могут быть смесями, плавление не моделируется."},
+
  // Phase-specific temperatures at ~101.3 kPa. These are for dry
  // compounds, NEVER hydrates or laboratory aqueous stock solutions.
  // Ag3PO4: solid-to-solid 520 C and solid-to-liquid 849 C are DISTINCT;

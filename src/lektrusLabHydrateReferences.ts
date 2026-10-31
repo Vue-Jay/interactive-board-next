@@ -21,7 +21,9 @@ export const LAB_HYDRATE_KNOT_TEMPERATURES_C=[0,20,40,60,80,100] as const;
 export type LabHydrateSolubilityRow={
  baseFormula:string;waters:number;hydrateFormula:string;
  massGPer100gWater:readonly (number|null)[];
- extra?:readonly {temperatureC:number;massGPer100gWater:number}[];
+ extra?:readonly {temperatureC:number;massGPer100gWater:number;sourceUrl?:string}[];
+ /** Reference for THIS hydrate; default Merck for legacy rows. */
+ sourceUrl?:string;
 };
 export type LabHydrateSolubilitySample={
  baseFormula:string;hydrateFormula:string;waters:number;
@@ -29,6 +31,29 @@ export type LabHydrateSolubilitySample={
 };
 /** Independent hydrate formulas; not interchangeable with dry stocks. */
 export const LAB_HYDRATE_SOLUBILITY_REFERENCES:readonly LabHydrateSolubilityRow[]=[
+ // Independent phase-identified crystal-water measurements, never
+ // merged into pure anhydrous salt saturation.
+ // Wired Chemist Kaye/Laby table: 293 K = 19.85 C (NOT 20 C).
+ // Zinc nitrate hexahydrate: CRC 184.3 g/100 mL WATER at 20 C;
+ // converted explicitly by rho_pure_water(20 C)=0.9982 g/mL.
+ // Zinc acetate dihydrate: CRC reports 20 C 30 g/100g, 25 C 40 g/100g,
+ // 100 C 67 g/100g. The large 20->25 change is left as discrete
+ // source points; never interpolate across a phase-identity uncertainty.
+ {baseFormula:"Fe(NO3)2",waters:6,hydrateFormula:"Fe(NO3)2·6H2O",
+  massGPer100gWater:[null,null,null,null,null,null],
+  extra:[{temperatureC:19.85,massGPer100gWater:140}],
+  sourceUrl:"https://www.wiredchemist.com/chemistry/data/solubilities_inorganic.html"},
+ {baseFormula:"Fe(NO3)3",waters:9,hydrateFormula:"Fe(NO3)3·9H2O",
+  massGPer100gWater:[null,null,null,null,null,null],
+  extra:[{temperatureC:19.85,massGPer100gWater:138}],
+  sourceUrl:"https://www.wiredchemist.com/chemistry/data/solubilities_inorganic.html"},
+ {baseFormula:"Zn(NO3)2",waters:6,hydrateFormula:"Zn(NO3)2·6H2O",
+  massGPer100gWater:[null,184.3/.9982,null,null,null,null],
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/24518"},
+ {baseFormula:"Zn(CH3COO)2",waters:2,hydrateFormula:"Zn(CH3COO)2·2H2O",
+  massGPer100gWater:[null,30,null,null,null,67],
+  extra:[{temperatureC:25,massGPer100gWater:40}],
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/11192"},
  {baseFormula:"AlCl3",waters:6,hydrateFormula:"AlCl3·6H2O",
   massGPer100gWater:[44.9,45.6,46.3,47,47.7,null]},
  {baseFormula:"Al(NO3)3",waters:9,hydrateFormula:"Al(NO3)3·9H2O",
@@ -36,13 +61,17 @@ export const LAB_HYDRATE_SOLUBILITY_REFERENCES:readonly LabHydrateSolubilityRow[
  {baseFormula:"Al2(SO4)3",waters:18,hydrateFormula:"Al2(SO4)3·18H2O",
   massGPer100gWater:[31.2,36.44,45.6,58,73,89]},
  {baseFormula:"BaCl2",waters:2,hydrateFormula:"BaCl2·2H2O",
-  massGPer100gWater:[30.7,35.7,40.8,46.4,52.5,58.7]},
+  massGPer100gWater:[30.7,35.7,40.8,46.4,52.5,58.7],
+  extra:[{temperatureC:19.85,massGPer100gWater:35.8,
+   sourceUrl:"https://www.wiredchemist.com/chemistry/data/solubilities_inorganic.html"}]},
  {baseFormula:"Ba(OH)2",waters:8,hydrateFormula:"Ba(OH)2·8H2O",
   massGPer100gWater:[1.5,3.48,8.2,21,null,null]},
  {baseFormula:"CaCl2",waters:2,hydrateFormula:"CaCl2·2H2O",
   massGPer100gWater:[null,null,128.1,136.8,147,159]},
  {baseFormula:"Ca(NO3)2",waters:4,hydrateFormula:"Ca(NO3)2·4H2O",
-  massGPer100gWater:[101,129.39,196,null,null,null]},
+  massGPer100gWater:[101,129.39,196,null,null,null],
+  extra:[{temperatureC:19.85,massGPer100gWater:129,
+   sourceUrl:"https://www.wiredchemist.com/chemistry/data/solubilities_inorganic.html"}]},
  {baseFormula:"CaSO4",waters:2,hydrateFormula:"CaSO4·2H2O",
   massGPer100gWater:[0.176,0.36,0.2122,0.2047,0.1966,0.1619]},
  {baseFormula:"CoCl2",waters:6,hydrateFormula:"CoCl2·6H2O",
@@ -55,7 +84,10 @@ export const LAB_HYDRATE_SOLUBILITY_REFERENCES:readonly LabHydrateSolubilityRow[
  {baseFormula:"CuSO4",waters:5,hydrateFormula:"CuSO4·5H2O",
   massGPer100gWater:[14.8,20.77,29,39.1,53.6,73.6]},
  {baseFormula:"FeCl3",waters:6,hydrateFormula:"FeCl3·6H2O",
-  massGPer100gWater:[74.5,91.94,null,null,null,null]},
+  massGPer100gWater:[74.5,91.94,null,null,null,null],
+  extra:[{temperatureC:19.85,massGPer100gWater:91.8,
+   sourceUrl:"https://www.wiredchemist.com/chemistry/data/solubilities_inorganic.html"}],
+  sourceUrl:LAB_HYDRATE_REFERENCE_SOURCE},
  {baseFormula:"FeCl2",waters:4,hydrateFormula:"FeCl2·4H2O",
   massGPer100gWater:[null,62.35,68.6,78.3,null,null]},
  {baseFormula:"FeSO4",waters:7,hydrateFormula:"FeSO4·7H2O",
@@ -121,12 +153,14 @@ export function labHydrateSolubilityAtTemperature(
  if(!entry)return;
  const i=LAB_HYDRATE_KNOT_TEMPERATURES_C.indexOf(
   temperatureC as (typeof LAB_HYDRATE_KNOT_TEMPERATURES_C)[number]);
- const measurement=i<0?entry.extra?.find(x=>x.temperatureC===temperatureC)?.massGPer100gWater:
+ const nonGridSample=i<0?entry.extra?.find(x=>x.temperatureC===temperatureC):undefined;
+ const measurement=i<0?nonGridSample?.massGPer100gWater:
   entry.massGPer100gWater[i];
  if(typeof measurement!=="number"||!Number.isFinite(measurement))return;
  return {baseFormula:entry.baseFormula,hydrateFormula:entry.hydrateFormula,
   waters:entry.waters,temperatureC,
-  massGPer100gWater:measurement,sourceUrl:LAB_HYDRATE_REFERENCE_SOURCE};
+  massGPer100gWater:measurement,
+  sourceUrl:nonGridSample?.sourceUrl??entry.sourceUrl??LAB_HYDRATE_REFERENCE_SOURCE};
 }
 
 /** One nearest published temperature per *distinct* hydrate formula.

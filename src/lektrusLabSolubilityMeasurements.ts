@@ -23,6 +23,23 @@ export type LabMeasuredSolubility={
  originalUnit:LabMeasuredSolubilityUnit;sourceUrl:string;
 };
 export const LAB_MEASURED_PURE_WATER_SOLUBILITIES:readonly LabMeasuredSolubility[]=[
+ // Additional independent EXACT-temperature readings. Manufacturer
+ // SDS lithium sulfate and potassium sulfite values are expressed per L
+ // of pure WATER, not per L of final solution.
+ // CuS (CRC 18 C) and celestite SrSO4 (distilled H2O 20 C) must never
+ // be rounded to zero or transformed into universal Ksp constants.
+ // Ammonium carbonate 15 C is a nominal composition that decomposes in
+ // air and water: reference only, NOT stable dry-crystal equilibrium.
+ {formula:"K2SO3",temperatureC:25,sourceValue:1060,
+  originalUnit:"g/l-water",sourceUrl:"https://www.cdhfinechemical.com/images/product/msds/92_1413110475_PotassiumSulphite-CASNO-10117-38-1-MSDS.pdf"},
+ {formula:"Li2SO4",temperatureC:25,sourceValue:342,
+  originalUnit:"g/l-water",sourceUrl:"https://www.albemarle.com/us/en/product/lithium-sulfate-pure-anhydrous-min-990"},
+ {formula:"CuS",temperatureC:18,sourceValue:0.000033,
+  originalUnit:"g/100ml-water",sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/165914"},
+ {formula:"SrSO4",temperatureC:20,sourceValue:0.0138,
+  originalUnit:"g/100ml-water",sourceUrl:"https://www.mdpi.com/2227-9717/14/1/172"},
+ {formula:"(NH4)2CO3",temperatureC:15,sourceValue:100,
+  originalUnit:"g/100g-water",sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/517111"},
  // Individually verified pure-water reference measurements, with exact
  // ORIGINAL units, not mass percentage of the final saturated solution.
  // Nickel sulfate: CRC 0/100 C and ILO/WHO ICSC 20 C. Values at 0 and

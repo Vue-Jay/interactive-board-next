@@ -196,9 +196,17 @@ if(process.argv.includes("--verify")){
   assert.ok(Number.isInteger(row.waters)&&row.waters>0);
   assert.equal(row.massGPer100gWater.length,6);
   assert.ok(row.massGPer100gWater.every(x=>x===null||has(x)&&x>0));
+  if(row.sourceUrl)assert.ok(row.sourceUrl.startsWith("https://"),
+   "New hydrate variant must be individually sourced: "+row.hydrateFormula);
   for(const extra of row.extra??[]){
    assert.ok(has(extra.temperatureC)&&has(extra.massGPer100gWater));
    assert.ok(!hydrate.LAB_HYDRATE_KNOT_TEMPERATURES_C.includes(extra.temperatureC));
+   if(extra.sourceUrl)assert.ok(extra.sourceUrl.startsWith("https://"));
+   const actual=hydrate.labHydrateSolubilityAtTemperature(
+    row.hydrateFormula,extra.temperatureC);
+   assert.equal(actual?.massGPer100gWater,extra.massGPer100gWater);
+   assert.equal(actual?.sourceUrl,
+    extra.sourceUrl??row.sourceUrl??hydrate.LAB_HYDRATE_REFERENCE_SOURCE);
   }
  }
  for(const crystal of hydrateDensities){
