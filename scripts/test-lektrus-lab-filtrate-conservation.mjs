@@ -492,16 +492,18 @@ console.log("Acetic acid on previously formed carbonates: balanced gas and aceta
 /** Magnesium carbonate is explicitly placed as a weighed solid here;
  * no unsupported aqueous MgCO3 precipitation is invented. */
 let magnesium=lab.defaultLabBench();
-const magnesiumMass=.001*stoich.labMolarMass("MgCO3");
+// The editor stores weighed doses to 0.01 g; use an EXACT 0.10 g
+// sample instead of asking the simulator to retain 0.08431 g precision.
+const magnesiumMass=.10;
 magnesium=lab.putLabReagent(magnesium,"v1","MgCO3",
  {unit:"g",value:magnesiumMass});
 const magnesiumStart=chemistry.simulateLabInventory(magnesium.vessels[0]);
-assert.ok((magnesiumStart.solidMol.MgCO3??0)>.00099);
-magnesium=addSolution(magnesium,"CH3COOH",20);
+assert.ok((magnesiumStart.solidMol.MgCO3??0)>.0011);
+magnesium=addSolution(magnesium,"CH3COOH",30);
 const magnesiumEnd=chemistry.simulateLabInventory(magnesium.vessels[0]);
 assert.ok((magnesiumEnd.solidMol.MgCO3??0)<1e-6);
-assert.ok((magnesiumEnd.speciesMol["Mg(CH3COO)2"]??0)>.00099);
-assert.ok((magnesiumEnd.releasedGasMol.CO2??0)>.00099);
+assert.ok((magnesiumEnd.speciesMol["Mg(CH3COO)2"]??0)>.0011);
+assert.ok((magnesiumEnd.releasedGasMol.CO2??0)>.0011);
 approx(chemistry.labInventoryMassG(magnesiumEnd),
- chemistry.labInventoryMassG(magnesiumStart)+.002*stoich.labMolarMass("CH3COOH"),2e-6);
+ chemistry.labInventoryMassG(magnesiumStart)+.003*stoich.labMolarMass("CH3COOH"),2e-6);
 console.log("Weighed MgCO3 plus measured acetic acid: stoichiometric CO2 PASS");
