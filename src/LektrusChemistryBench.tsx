@@ -1440,6 +1440,25 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    <div className="lektrus-lab-counter-front"/>
    <div className="lektrus-lab-worktop-zone"/>
   </div>
+  {/* A connected, deliberately chosen gas outlet tube is visible to pupils.
+      It does not intercept drops, pouring or worktop pointer gestures. */}
+  {bench.vessels.filter(v=>!!v.gasCollectionTargetId).map(source=>{
+   const receiver=bench.vessels.find(v=>v.id===source.gasCollectionTargetId);
+   if(!receiver)return null;
+   const from=vesselPosition(source),to=vesselPosition(receiver);
+   const y=Math.max(31,Math.min(from.y,to.y)-21);
+   const path=`M ${from.x} ${from.y-9} Q ${(from.x+to.x)/2} ${y} ${to.x} ${to.y-9}`;
+   return <svg key={"gas-tube-"+source.id} className="lektrus-lab-gas-tube"
+    viewBox="0 0 100 100" preserveAspectRatio="none"
+    aria-label="Газоотводная трубка между сосудами" role="img">
+    <path d={path} fill="none" stroke="#366e77" strokeWidth=".85"
+     strokeLinecap="round" opacity=".55"/>
+    <path d={path} fill="none" stroke="#daffff" strokeWidth=".33"
+     strokeLinecap="round" opacity=".95"/>
+    <circle cx={to.x} cy={to.y-9} r="1.2" fill="#c6f7f9"
+     stroke="#45858e" strokeWidth=".35"/>
+   </svg>;
+  })}
   <div className={"lektrus-lab-experiment-clock"+
    (bench.experimentClock?.running?" is-running":"")}
    data-board-interactive="true" role="group" aria-label="Часы времени опыта"
