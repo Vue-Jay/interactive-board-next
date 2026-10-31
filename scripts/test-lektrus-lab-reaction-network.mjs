@@ -1678,3 +1678,67 @@ const noChangesOutside25=simulateLabInventory({
 });
 approximately(noChangesOutside25.solidMol.PbCl2,leadChlorideSolid,1e-10);
 console.log("Reversible measured PbCl2: source equation, dilution, common-ion and mass balance PASS");
+
+
+/** Two coupled, independently proven chloride precipitates.
+ * AgCl and PbCl2 draw from the SAME molecular NaCl counterion ledger.
+ * Neither reverse equilibrium may spend spectators already used by
+ * the other. After dilution, both solids and all dissolved stocks retain
+ * the exact initial mass, independent of equation entry order. */
+const coupledDoses={
+ "Pb(NO3)2":solution(10),AgNO3:solution(10),NaCl:solution(40)
+};
+const coupledInitial=simulateLabInventory({
+ reagents:["Pb(NO3)2","AgNO3","NaCl"],
+ environment:"aqueous",temperatureC:25,doses:coupledDoses
+});
+assert.ok((coupledInitial.solidMol.AgCl??0)>.0009,
+ "The silver chloride precipitate must form");
+assert.ok((coupledInitial.solidMol.PbCl2??0)>.0001,
+ "The second, less insoluble lead chloride must also form");
+const coupledSnapshot=labInventorySnapshot(coupledInitial);
+assert.ok(coupledSnapshot.equilibriumEquations.some(e=>e.includes("AgCl↓")));
+assert.ok(coupledSnapshot.equilibriumEquations.some(e=>e.includes("PbCl2↓")));
+const coupleMass=labInventoryMassG(coupledInitial);
+const coupledInput={
+ reagents:Object.keys(coupledSnapshot.speciesMol),
+ chemicalInventory:coupledSnapshot,
+ temperatureC:25,environment:"aqueous",volumeMl:200
+};
+const coupledDiluted=simulateLabInventory(coupledInput);
+assert.ok((coupledDiluted.solidMol.PbCl2??0)<
+ (coupledInitial.solidMol.PbCl2??0)*.1,
+ "The joint solver must dissolve much of PbCl2 after dilution");
+assert.ok((coupledDiluted.solidMol.AgCl??0)>.0009,
+ "Much less soluble AgCl survives the same dilution");
+approximately(labInventoryMassG(coupledDiluted),coupleMass,1e-8);
+for(const id of Object.keys(coupledDiluted.speciesMol)){
+ assert.ok(coupledDiluted.speciesMol[id]>0,"No negative reagent: "+id);
+ assert.ok((coupledDiluted.solidMol[id]??0)<=coupledDiluted.speciesMol[id]+1e-12);
+}
+const coupledAfterSnapshot=labInventorySnapshot(coupledDiluted);
+const secondEquilibrium=simulateLabInventory({
+ ...coupledInput,
+ chemicalInventory:coupledAfterSnapshot,
+ reagents:Object.keys(coupledAfterSnapshot.speciesMol)
+});
+approximately(labInventoryMassG(secondEquilibrium),coupleMass,1e-8);
+approximately(secondEquilibrium.solidMol.AgCl??0,
+ coupledDiluted.solidMol.AgCl??0,1e-8);
+approximately(secondEquilibrium.solidMol.PbCl2??0,
+ coupledDiluted.solidMol.PbCl2??0,1e-8);
+const reversedEquationOrder=simulateLabInventory({
+ ...coupledInput,chemicalInventory:{...coupledSnapshot,
+  equilibriumEquations:[...coupledSnapshot.equilibriumEquations].reverse()}
+});
+approximately(reversedEquationOrder.solidMol.AgCl??0,
+ coupledDiluted.solidMol.AgCl??0,1e-8);
+approximately(reversedEquationOrder.solidMol.PbCl2??0,
+ coupledDiluted.solidMol.PbCl2??0,1e-8);
+const noCoupledSource=simulateLabInventory({
+ ...coupledInput,chemicalInventory:{...coupledSnapshot,equilibriumEquations:[]}
+});
+assert.ok((noCoupledSource.solidMol.PbCl2??0)>
+ (coupledDiluted.solidMol.PbCl2??0),
+ "Two unknown old solids must not undergo fabricated reverse chemistry");
+console.log("Coupled AgCl/PbCl2: shared counterion, conservation, repeatability and provenance PASS");
