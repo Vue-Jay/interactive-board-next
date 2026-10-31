@@ -14,7 +14,7 @@
  * the density of the final *saturated solution*.
  */
 export type LabMeasuredSolubilityUnit=
- "g/100g-water"|"g/100ml-water"|"g/l-water"|"mg/l-water"|"mg/100g-water";
+ "g/100g-water"|"g/100ml-water"|"g/l-water"|"g/kg-water"|"mg/l-water"|"mg/100g-water";
 export type LabMeasuredSolubility={
  formula:string;temperatureC:number;sourceValue:number;
  /** Original source in kelvin (where specified); 293 K means 19.85 °C,
@@ -23,6 +23,46 @@ export type LabMeasuredSolubility={
  originalUnit:LabMeasuredSolubilityUnit;sourceUrl:string;
 };
 export const LAB_MEASURED_PURE_WATER_SOLUBILITIES:readonly LabMeasuredSolubility[]=[
+ // Exact-temperature binary-water measurements, preserved in
+ // ORIGINAL source units. These values describe pure-water saturation,
+ // not the density of the final saturated solution or a general Ksp model.
+ // ILO-WHO ICSC: anhydrous CaCl2 and Na3PO4 at 20 C, ZnCl2 at 25 C.
+ // Colorado DOT report CDOT-2009-1 Table 15(B), p.242: magnesium acetate
+ // 53.4 g per 100 g of water at exactly 20 C, from cited MSDS.
+ // Health Canada barium table: BaCl2 37 g/100 g water at exactly 25 C.
+ // Chemlin Al(NO3)3 water table: exact source g per KG of solvent at
+ // each published temperature, INCLUDING 10/25/30/50/70 C (off-grid).
+ // The equilibrium changes hydrate solid phases: this is REFERENCE-ONLY.
+ {formula:"CaCl2",temperatureC:20,sourceValue:74.5,
+  originalUnit:"g/100ml-water",sourceUrl:"https://inchem.org/documents/icsc/icsc/eics1184.htm"},
+ {formula:"Na3PO4",temperatureC:20,sourceValue:121,
+  originalUnit:"g/l-water",sourceUrl:"https://www.inchem.org/documents/icsc/icsc/eics1178.htm"},
+ {formula:"Mg(CH3COO)2",temperatureC:20,sourceValue:53.4,
+  originalUnit:"g/100g-water",sourceUrl:"https://rosap.ntl.bts.gov/view/dot/36465/dot_36465_DS1.pdf"},
+ {formula:"ZnCl2",temperatureC:25,sourceValue:432,
+  originalUnit:"g/100ml-water",sourceUrl:"https://www.inchem.org/documents/icsc/icsc/eics1064.htm"},
+ {formula:"BaCl2",temperatureC:25,sourceValue:37,
+  originalUnit:"g/100g-water",sourceUrl:"https://www.canada.ca/en/health-canada/services/publications/healthy-living/guidelines-canadian-drinking-water-quality-guideline-technical-document-barium.html"},
+ {formula:"Al(NO3)3",temperatureC:0,sourceValue:587.3,
+  originalUnit:"g/kg-water",sourceUrl:"https://chemlin.org/chemical-compound/Aluminium%20nitrate.php"},
+ {formula:"Al(NO3)3",temperatureC:10,sourceValue:618.1,
+  originalUnit:"g/kg-water",sourceUrl:"https://chemlin.org/chemical-compound/Aluminium%20nitrate.php"},
+ {formula:"Al(NO3)3",temperatureC:20,sourceValue:663.9,
+  originalUnit:"g/kg-water",sourceUrl:"https://chemlin.org/chemical-compound/Aluminium%20nitrate.php"},
+ {formula:"Al(NO3)3",temperatureC:25,sourceValue:689.2,
+  originalUnit:"g/kg-water",sourceUrl:"https://chemlin.org/chemical-compound/Aluminium%20nitrate.php"},
+ {formula:"Al(NO3)3",temperatureC:30,sourceValue:724.1,
+  originalUnit:"g/kg-water",sourceUrl:"https://chemlin.org/chemical-compound/Aluminium%20nitrate.php"},
+ {formula:"Al(NO3)3",temperatureC:40,sourceValue:801.8,
+  originalUnit:"g/kg-water",sourceUrl:"https://chemlin.org/chemical-compound/Aluminium%20nitrate.php"},
+ {formula:"Al(NO3)3",temperatureC:50,sourceValue:897.5,
+  originalUnit:"g/kg-water",sourceUrl:"https://chemlin.org/chemical-compound/Aluminium%20nitrate.php"},
+ {formula:"Al(NO3)3",temperatureC:60,sourceValue:1016.1,
+  originalUnit:"g/kg-water",sourceUrl:"https://chemlin.org/chemical-compound/Aluminium%20nitrate.php"},
+ {formula:"Al(NO3)3",temperatureC:70,sourceValue:1164.5,
+  originalUnit:"g/kg-water",sourceUrl:"https://chemlin.org/chemical-compound/Aluminium%20nitrate.php"},
+ {formula:"Al(NO3)3",temperatureC:100,sourceValue:1597.4,
+  originalUnit:"g/kg-water",sourceUrl:"https://chemlin.org/chemical-compound/Aluminium%20nitrate.php"},
  // Individually traceable exact-temperature aqueous solubility in PURE
  // water, not density or mass of the final saturated SOLUTION. AgCl/AgBr
  // are in mg per L solvent and must remain very small positive values.
@@ -150,6 +190,7 @@ export function labMeasuredSolubilityGPer100gWater(
  const {sourceValue,temperatureC,originalUnit}=sample;
  if(!Number.isFinite(sourceValue)||sourceValue<0)return;
  if(originalUnit==="g/100g-water")return sourceValue;
+ if(originalUnit==="g/kg-water")return sourceValue/10;
  if(originalUnit==="mg/100g-water")return sourceValue/1000;
  const waterDensity=LAB_PURE_WATER_DENSITY_FOR_SOLUBILITY[temperatureC];
  if(!waterDensity)return;
