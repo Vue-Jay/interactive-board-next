@@ -78,17 +78,23 @@ export default function LektrusLabDeviceIcon({
      stroke="#74aab7" strokeWidth="1.1"/>
     <path d="M-4 0H4M0 -4V4" stroke="#acdce5" strokeWidth=".9"/>
    </g>)}
-   <rect x="29" y="64" width="40" height="16" rx="4"
-    fill="#255568" stroke="#70a2ad" strokeWidth="1.3"/>
-   <text x="49" y="75" textAnchor="middle" fontSize="9" fontWeight="800"
-    fill="#d8faff">{Math.round(targetTemperatureC)}°</text>
-   <circle cx="83" cy="73" r="7.7" fill={"url(#"+metal+")"}
+   {/* The broad display and separate knob have independent hit areas.
+        The editable value input owns the display on the tabletop; the
+        shelf thumbnail keeps an engraved value instead. */}
+   <rect x="19" y="64" width="55" height="22" rx="5"
+    fill="#d1e9ee" stroke="#558a99" strokeWidth="1.2"/>
+   <rect x="26" y="68" width="42" height="14" rx="3"
+    fill="#255568" stroke="#70a2ad" strokeWidth="1"/>
+   {size<100&&<text x="47" y="78" textAnchor="middle"
+    fontSize="10" fontWeight="800" fill="#d8faff">
+    {Math.round(targetTemperatureC)}°</text>}
+   <circle cx="87" cy="76" r="8" fill={"url(#"+metal+")"}
     stroke="#477a8b" strokeWidth="1.7"/>
-   <path d="M83 68V72" stroke="#376d7d" strokeWidth="2.2"/>
+   <path d="M87 70V74" stroke="#376d7d" strokeWidth="2.2"/>
    {active&&<g stroke="#d1f6fc" strokeWidth="1.8" strokeLinecap="round">
     <path d="M21 27l-4 -5M34 20v-6M77 20v-6M90 27l4 -5"/>
    </g>}
-   {temperatureVisible&&<text x="51" y="88" textAnchor="middle"
+   {temperatureVisible&&<text x="53" y="100" textAnchor="middle"
     fontSize="8" fontWeight="750" fill="#316c80">
     ≈{Math.round(temperatureC??22)}°C</text>}
   </>}
