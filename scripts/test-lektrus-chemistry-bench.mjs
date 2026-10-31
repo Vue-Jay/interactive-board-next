@@ -1171,7 +1171,10 @@ assert.match(editorFixed,/const width=compact\?w:w\/scale/,
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-fit-stage/);
 const polishedSurface=read("src/LektrusChemistryBench.tsx");
 assert.match(polishedSurface,/bench\.reactionLog/);
-assert.match(polishedSurface,/current.vessels.some\(labReactionNeedsTick\)/);
+assert.match(polishedSurface,/labSimulationTickWaitMs\\(current,now\\)/,
+ "The surface follows the adaptive laboratory clock");
+assert.match(read("src/lektrusChemistryBenchModel.ts"),/vessels\\.some\\(labReactionNeedsTick\\)/,
+ "The adaptive clock must preserve quantified reaction ticking");
 assert.match(polishedSurface,/isQuantifiedSolution/);
 assert.match(polishedSurface,/settings.showEquationBoard&&<div className="lektrus-lab-chalk-writing"/);
 const standFoot=read("src/LektrusLabDeviceIcon.tsx");
