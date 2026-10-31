@@ -15,6 +15,19 @@
 type HeatDose={value:number;unit:"ml"|"g";concentrationM?:number};
 type SubstanceHeat={specificJPerGK:number;densityGPerMl?:number;phase:"liquid"|"solid"};
 export const LAB_CALORIMETRY_REFERENCE:Readonly<Record<string,SubstanceHeat>>={
+ // NIST Chemistry WebBook SRD 69, pure solid Cp at 298.15 K:
+ // Seven phase-specific measurements and original molar values are tracked
+ // in lektrusLabNistHeatReferences.ts (six decimals are conversion rounding).
+ // Alpha-D-glucose CRYSTALS, not dissolved glucose, hydrates, or other phases.
+ // Na/K acetate and LiOH/Li2CO3 are ANHYDROUS dry crystals.
+ LiOH:{specificJPerGK:2.070231,phase:"solid"},
+ KI:{specificJPerGK:0.317878,phase:"solid"},
+ Li2CO3:{specificJPerGK:1.302975,phase:"solid"},
+ CH3COONa:{specificJPerGK:1.229128,phase:"solid"},
+ CH3COOK:{specificJPerGK:1.114504,phase:"solid"},
+ C6H12O6:{specificJPerGK:1.216668,phase:"solid"},
+ C12H22O11:{specificJPerGK:1.239567,phase:"solid"},
+
  H2O:{specificJPerGK:4.184,densityGPerMl:.997,phase:"liquid"},
  C2H5OH:{specificJPerGK:2.376,densityGPerMl:.789,phase:"liquid"},
  CH3OH:{specificJPerGK:2.53,densityGPerMl:.792,phase:"liquid"},

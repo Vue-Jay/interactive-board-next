@@ -708,10 +708,10 @@ for(const formula of ["Ca(OH)2","BaCO3","ZnSO4"]){
 console.log("Six verified pure-solid densities, seven solid transitions and sixteen Cp values passed");
 
 
-// Bulk provenance: 72 independently sourced properties, checked both in
+// Bulk provenance: 79 independently sourced properties, checked both in
 // source tables and through the same registry used to render lab state.
 const validated=load("src/lektrusLabPropertyProvenance.ts");
-assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,72);
+assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,79);
 const sourceIds=new Set();
 const fields={crystalDensityGPerMl:0,specificHeatJPerGK:0,thermal:0};
 for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
@@ -752,9 +752,35 @@ for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
  approximately(value,row.value,1e-6);
 }
 assert.deepEqual(fields,{
- crystalDensityGPerMl:30,specificHeatJPerGK:8,thermal:34
+ crystalDensityGPerMl:30,specificHeatJPerGK:15,thermal:34
 });
-console.log("72 source-checked property references: 30 crystal densities, 8 dry-solid Cp, 34 individual phase boundaries");
+console.log("79 source-checked property references: 30 crystal densities, 15 dry-solid Cp, 34 individual phase boundaries");
+ 
+// Independently recompute NIST solid Shomate / measured Cp and verify the
+// EXACT value used by calorimetry, including 3 g weighed dry-solid samples.
+// A dry crystalline heat is never substituted for an aqueous preparation.
+const nist=load("src/lektrusLabNistHeatReferences.ts");
+assert.equal(nist.LAB_NIST_ROOM_HEAT_REFERENCES.length,7);
+for(const row of nist.LAB_NIST_ROOM_HEAT_REFERENCES){
+ const mm=labMolarMass(row.formula);
+ assert.ok(Number.isFinite(mm)&&mm>0);
+ assert.ok(Math.abs(nist.labNistMolarHeatAt298K(row)/mm-
+  row.roomHeatJPerGK)<1e-6);
+ assert.equal(heatProps.LAB_CALORIMETRY_REFERENCE[row.formula]?.phase,"solid");
+ approximately(registryProps.labSubstanceProperties(row.formula).specificHeatJPerGK,
+  row.roomHeatJPerGK,1e-8);
+ const solidHeat=heatProps.labKnownHeatCapacityJPerK("beaker",{
+  [row.formula]:{value:3,unit:"g"}
+ });
+ const expected=heatProps.LAB_VESSEL_GLASS_EQUIVALENT_G.beaker*.84+
+  3*row.roomHeatJPerGK;
+ approximately(solidHeat,expected,5e-6);
+ assert.equal(heatProps.labKnownHeatCapacityJPerK("beaker",{
+  [row.formula]:{value:3,unit:"g"},H2O:{value:3,unit:"ml"}
+ }),undefined,"Never assign dry Cp to an aqueous stock");
+}
+console.log("NIST seven measured dry-crystal Cp values reach simulator and keep phase guards");
+
  
 // Phase-aware density and heating regression for the newest actual cabinet
 // materials. In particular an aqueous nitrate is not an anhydrous crystal.
