@@ -18,6 +18,35 @@ export const LAB_GAS_FORMULAS:ReadonlySet<string>=new Set([
  "CH4","C2H4","C2H2","C2H6","C3H8","C4H10","C3H6"
 ]);
 const physical:Record<string,LabThermalRecord>={
+ // Further individually checked anhydrous phases. None of these records
+ // applies to hydrated variants or dilute prepared solutions.
+ // ILO/WHO ICSC: Ca(OH)2 loses water, it does not melt at 580 C.
+ // https://www.inchem.org/documents/icsc/icsc/eics0408.htm
+ "Ca(OH)2":{decompositionC:580,behavior:"decomposes",
+  note:"Безводный гидроксид кальция: при нагреве разлагается с выделением H₂O, не кипит."},
+ // Witherite BaCO3 decomposition ~1380 C, highly dependent on CO2 pressure.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/10563
+ BaCO3:{decompositionC:1380,behavior:"decomposes",
+  note:"Карбонат бария, разложение зависит от парциального давления CO₂."},
+ // Anhydrous zinc sulfate at ~680 C begins decomposing to oxysulfates;
+ // no claim of ordinary melting or boiling at this temperature.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24424
+ ZnSO4:{decompositionC:680,behavior:"decomposes",
+  note:"Безводный ZnSO₄: многостадийное разложение; не температура кипения."},
+ // Lithium carbonate: 723 C congruent melt and 1310 C decomposition,
+ // as listed on ILO-WHO ICSC 1109 (pressure dependent).
+ // https://www.inchem.org/documents/icsc/icsc/eics1109.htm
+ Li2CO3:{meltingC:723,decompositionC:1310,behavior:"decomposes"},
+ // Lithium sulfate anhydrous, manufacturer's data sheet, 860 C fusion.
+ // https://www.albemarle.com/sites/default/files/2025-03/lithium-sulfate-pure-anhydrous-min-990-00000167.pdf
+ Li2SO4:{meltingC:860},
+ // K3PO4 anhydrous, Flinn Scientific material property reference.
+ // https://www.syracusecityschools.com/tfiles/folder1024/Flinn%20Scientific%20Inc%20-%20Potassium%20Phosphate%2C%20Tribasic.pdf
+ K3PO4:{meltingC:1340,note:"Безводный трикалийфосфат, не гидрат."},
+ // Trisodium phosphate: 1583 C is anhydrous CRC value; 77 C entry in
+ // same database is the hydrated salt, not the dry phosphate.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24243
+ Na3PO4:{meltingC:1583,note:"Безводный фосфат натрия; гидраты имеют иные переходы."},
  // Additional solid phase boundaries from PubChem/CRC experimental data.
  // CuS: ~220°C decomposition; cannot be treated as congruent melting.
  // https://pubchem.ncbi.nlm.nih.gov/compound/165914
