@@ -77,6 +77,10 @@ export function labSaturationPressureKPa(id:string,tempC:number):number|undefine
 export type LabEvaporationState={
  doses?:Record<string,LabDose>;stoppered?:boolean;kind:string;
  temperatureC?:number;ventedVaporMl?:Record<string,number>;
+ /** Persisted solvent of an experimentally separated, measured filtrate. */
+ filteredSolution?:{sourceEquation:string;solutes:string[];volumeMl?:number};
+ /** Actual soluble molecular counts, not replayed pre-reaction stock names. */
+ chemicalInventory?:{speciesMol:Record<string,number>};
  /** Actual temperature when the stopper was put in. */
  stopperedAtC?:number;
  /** Explicit gas retained by reviewed equations or measured gas stocks. */
@@ -98,9 +102,19 @@ import {labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstant
  * solute particles; electrolyte coefficients are upper-bound dilute ideals.
  * Reject any unknown stock solvent, mixed undissolved powder, or molality
  * outside the dilute range instead of silently treating it as pure water. */
+const FILTRATE_WATER_ID="__measured_filtrate_water";
 function components(v:LabEvaporationState){
  const entries=Object.entries(v.doses??{});
  const gasIds=new Set(["CO2","H2","O2","NH3","Cl2","NO2","SO2","CO","H2S","N2"]);
+ // Filtration records its exact solvent volume separately from stock doses.
+ // Recreating the original BaCl2 / Na2SO4 doses would invent chemistry;
+ // treat only the MEASURED nonvolatile solution carrier as evaporating water.
+ const soluble=Object.entries(v.chemicalInventory?.speciesMol??{}).
+  filter(([id,mol])=>id!=="H2O"&&mol>1e-12);
+ const filtrateMl=v.filteredSolution?.volumeMl??0;
+ const supportedFiltrate=filtrateMl>0&&Number.isFinite(filtrateMl)&&
+  !!v.chemicalInventory&&soluble.every(([id,mol])=>
+   !!aqueousNonvolatile[id]&&Number.isFinite(mol)&&mol>=0);
  const liquid=entries.flatMap(([sourceId,d])=>{
   if(d.unit!=="ml"||!Number.isFinite(d.value)||d.value<=0)return [];
   if(own(table,sourceId)&&d.concentrationM===undefined)
@@ -110,6 +124,8 @@ function components(v:LabEvaporationState){
    return [{sourceId,id:"H2O",d,aqueous:true}];
   return [];
  });
+ if(supportedFiltrate)liquid.push({sourceId:FILTRATE_WATER_ID,
+  id:"H2O",d:{value:filtrateMl,unit:"ml"},aqueous:false});
  if(entries.some(([id,d])=>d.unit==="ml"&&d.value>0&&!gasIds.has(id)&&
   !liquid.some(c=>c.sourceId===id))||!liquid.length)return [];
  const solids=entries.filter(([,d])=>d.unit==="g"&&d.value>0);
@@ -118,6 +134,18 @@ function components(v:LabEvaporationState){
  let activityOverride:number|undefined;
  const waterKg=liquid.filter(c=>c.id==="H2O").reduce(
   (sum,c)=>sum+c.d.value*.000997,0);
+ if(supportedFiltrate&&waterKg>0){
+  // Ideal particle activity is bounded by the known solubility curve:
+  // once the carrier evaporates, excess salt is crystalline, not a fictitious
+  // dissolved concentration that increases without limit.
+  for(const [id,mol] of soluble){
+   const salt=aqueousNonvolatile[id];
+   const limit=labSingleSaltSolubilityGPer100gWater(id,v.temperatureC??25);
+   const maxMol=limit===undefined?mol:
+    Math.min(mol,limit/100*waterKg*1000/salt.molarG);
+   particleMoles+=maxMol*salt.i;
+  }
+ }
  if(solids.length){
   if(liquid.some(c=>c.id!=="H2O")||waterKg<=0)return [];
   let solidParticles=0;
@@ -240,6 +268,7 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
  };
  const boiling=(vaporPressureKPa??0)>=101.325;
  const doses={...v.doses},vented={...v.ventedVaporMl};
+ let filteredSolution=v.filteredSolution;
  let evaporatedMl=0;
  for(const item of partials){
   const partial=item.moleFraction*item.pressureKPa!;
@@ -266,7 +295,9 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
   const actual=item.d.value-left;
   if(actual<=0)continue;
   evaporatedMl+=actual;
-  if(item.aqueous){
+  if(item.sourceId===FILTRATE_WATER_ID&&filteredSolution){
+   filteredSolution={...filteredSolution,volumeMl:left};
+  }else if(item.aqueous){
    doses[item.sourceId]={...item.d,value:left,
     concentrationM:item.d.value*(item.d.concentrationM??0)/left};
   }else if(left>0)doses[item.sourceId]={...item.d,value:left};
@@ -275,7 +306,7 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
   vented[vaporId]=Math.round(((vented[vaporId]??0)+actual)*1e7)/1e7;
  }
  return {
-  doses,ventedVaporMl:vented,stoppered:popped?false:v.stoppered,
+  doses,filteredSolution,ventedVaporMl:vented,stoppered:popped?false:v.stoppered,
   popped,boiling,pressureKPa:totalPressureKPa,reactionGasPressureKPa,evaporatedMl
  };
 }
