@@ -656,6 +656,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
      ...(profile.mixedSaltKinetics?{binarySaltPhase:undefined,mixedSaltPhase:undefined}:{})}:
     profile.mixedSaltKinetics?{binarySaltPhase:undefined,mixedSaltPhase:undefined}:{}),
    ...(evaporating?{doses,reagents,observed:reagents.length>1,
+    lastEvaporatedAtMs:nowMs,
     filteredSolution:phase?.filteredSolution??v.filteredSolution,
     ventedVaporMl:phase?.ventedVaporMl}:{}),
    ...(popped?{stoppered:false,stopperedAtC:undefined,
@@ -1020,6 +1021,8 @@ export type LabVessel={pourFraction?:number;
  gasCollectedMol?:Record<string,number>;
  /** Gas formed before this stopper was inserted already escaped if open. */
  sealedReactionGasBaselineMol?:number;
+ /** Most recent actual solvent loss: drives the short-lived vapor animation. */
+ lastEvaporatedAtMs?:number;
  /** Measured liquid volumes vented to the room as vapor. */
  ventedVaporMl?:Record<string,number>;
  /** 0 = solid, 1 = fully molten. Conserved across viewers and cooling. */
@@ -1689,7 +1692,7 @@ export function labVesselPressure(v:LabVessel,temperatureC=v.temperatureC??22){
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
  const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,chemicalInventory:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,binarySaltPhase:undefined,sealedReactionGasBaselineMol:undefined,gasCollectionTargetId:undefined,
   gasCollectionProcessedMol:undefined,gasCollectedMol:undefined,
-  meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined,ventedVaporMl:undefined}));
+  meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined,ventedVaporMl:undefined,lastEvaporatedAtMs:undefined}));
  return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId,
   placedDevices:placedLabDevices(next).map(d=>({
    ...d,...(d.linkedVesselId===id?{linkedVesselId:undefined,active:false}:{}),
