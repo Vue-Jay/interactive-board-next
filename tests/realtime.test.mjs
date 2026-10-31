@@ -32,7 +32,8 @@ test('unsaved edits and active drafts conflict; a clean viewer applies changes',
 test('changing local pan or zoom is not a collaborative document edit', () => {
   const original={...document,items:[{id:'one',kind:'pen',points:[{x:1,y:1}]}]};
   const anotherView={...original,view:{x:400,y:-200,zoom:3}};
-  assert.notEqual(documentFingerprint(original),documentFingerprint(anotherView));
+  assert.equal(documentFingerprint(original),documentFingerprint(anotherView),
+    'the fingerprint deliberately omits personal viewport state');
   assert.equal(sharedBoardFingerprint(original),sharedBoardFingerprint(anotherView));
   assert.notEqual(sharedBoardFingerprint(original),
     sharedBoardFingerprint({...anotherView,items:[...anotherView.items,{id:'two',kind:'pen'}]}));
@@ -198,4 +199,59 @@ test('join timeout retries and cleanup cancels the pending retry', async () => {
   assert.equal(h.timers.size, 1);
   h.stop();
   assert.equal(h.timers.size, 0);
+});
+
+
+test('full Realtime record is applied immediately, without an extra REST fetch',async()=>{
+  const h=harness();await h.tick();
+  const ws=h.sockets[0];ws.open();ws.ready();await h.tick();
+  assert.equal(h.reads(),1);
+  const latest={board_id:'board-id',version:31,
+    document:{...document,title:'Immediate peer edit'}};
+  ws.message('postgres_changes',{data:{record:latest}});
+  assert.equal(h.documents.length,2,'full WAL row is applied within the message callback');
+  assert.equal(h.documents[1].version,31);
+  assert.equal(h.reads(),1,'fast path must avoid a second authenticated fetch');
+  ws.message('postgres_changes',{data:{record:latest}});
+  assert.equal(h.documents.length,2,'duplicate event must not trigger another application');
+  ws.message('postgres_changes',{record:{...latest,version:29}});
+  assert.equal(h.documents.length,2,'late event must never roll back a newer version');
+  h.stop();
+});
+
+test('key-only notifications are coalesced and still recover via RLS',async()=>{
+  const h=harness();await h.tick();const ws=h.sockets[0];
+  ws.open();ws.ready();await h.tick();
+  ws.message('postgres_changes');
+  ws.message('postgres_changes');
+  ws.message('postgres_changes');
+  await h.tick();
+  assert.equal(h.reads(),2,'burst must trigger just one REST read');
+  assert.equal(h.documents.length,2);
+  h.stop();
+});
+
+test('a slow initial REST result cannot overwrite a newer Realtime record',async()=>{
+  let release;
+  const h=harness({read:()=>new Promise(resolve=>{release=resolve})});
+  await h.tick();const ws=h.sockets[0];ws.open();ws.ready();await h.tick();
+  const newRow={board_id:'board-id',version:40,
+    document:{...document,title:'New live state'}};
+  ws.message('postgres_changes',{data:{record:newRow}});
+  release({board_id:'board-id',version:39,document});
+  await h.tick();
+  assert.equal(h.documents.length,1);
+  assert.equal(h.documents[0].version,40);
+  h.stop();
+});
+
+test('malformed or cross-board full WAL records cannot apply to this board',async()=>{
+  const h=harness();await h.tick();const ws=h.sockets[0];
+  ws.open();ws.ready();await h.tick();
+  ws.message('postgres_changes',{data:{record:{
+    board_id:'another-board',version:50,document}}});
+  await h.tick();
+  assert.equal(h.documents.length,1);
+  assert.equal(h.documents[0].board_id,'board-id');
+  h.stop();
 });
