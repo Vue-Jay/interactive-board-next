@@ -1435,7 +1435,9 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
     reagents:Object.keys(speciesMol),environment,stoppered:v.stoppered,
     temperatureC:v.temperatureC,volumeMl:currentVolume,
     chemicalInventory:{speciesMol,solidMol,
-     retainedGasMol:original.retainedGasMol}
+     retainedGasMol:original.retainedGasMol,
+     releasedGasMol:original.releasedGasMol,
+     equilibriumEquations:original.equilibriumEquations}
    });
    const productIds=Object.keys(quantified.speciesMol);
    const confirmed=quantified.steps.length?
@@ -1607,13 +1609,18 @@ function transferSnapshotSample(bench:LabBench,source:LabVessel,target:LabVessel
   volumeMl:labVesselQuantity(target).volumeMl+amountMl,
   temperatureC:target.temperatureC,
   chemicalInventory:{speciesMol:toSpecies,solidMol:receiver.solidMol,
-   retainedGasMol:receiver.retainedGasMol}
+   retainedGasMol:receiver.retainedGasMol,
+   releasedGasMol:receiver.releasedGasMol,
+   equilibriumEquations:[...new Set([
+    ...donor.equilibriumEquations,...receiver.equilibriumEquations])].slice(-8)}
  });
  if(targetInventory.limited||targetInventory.unmeasured.length||
   Object.keys(targetInventory.speciesMol).length>MAX_VESSEL_REAGENTS)return bench;
  const toSnapshot=labInventorySnapshot(targetInventory);
  const fromSnap:LabChemicalSnapshot={speciesMol:fromSpecies,
-  solidMol:{...donor.solidMol},retainedGasMol:{...donor.retainedGasMol}};
+  solidMol:{...donor.solidMol},retainedGasMol:{...donor.retainedGasMol},
+  releasedGasMol:{...donor.releasedGasMol},
+  equilibriumEquations:[...donor.equilibriumEquations]};
  const fromIds=Object.keys(fromSpecies),toIds=Object.keys(toSnapshot.speciesMol);
  const last=targetInventory.steps[targetInventory.steps.length-1];
  const lastCase=last?reviewedReactionCases.find(c=>c.equation===last.equation):undefined;
@@ -2043,7 +2050,10 @@ function pourMeasuredFiltrate(bench:LabBench,source:LabVessel,target:LabVessel):
  const chemicalInventory:LabChemicalSnapshot={
   speciesMol:mergeLabMoles(a.speciesMol,b.speciesMol),
   solidMol:mergeLabMoles(a.solidMol,b.solidMol),
-  retainedGasMol:{}
+  retainedGasMol:{},
+  releasedGasMol:mergeLabMoles(a.releasedGasMol,b.releasedGasMol),
+  equilibriumEquations:[...new Set([
+   ...a.equilibriumEquations,...b.equilibriumEquations])].slice(-8)
  };
  const reacted=simulateLabInventory({reagents:Object.keys(chemicalInventory.speciesMol),
   chemicalInventory,volumeMl:volume,environment,stoppered:false,
