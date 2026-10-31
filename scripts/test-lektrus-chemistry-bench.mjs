@@ -102,12 +102,12 @@ const pourPair=lab.addLabVessel(pourSource,"beaker");
 const rapid=lab.fastLabPour(pourPair,"v1","v2");
 const session=lab.startLabPour(pourPair,"v1","v2","test-gradual");
 assert.ok(session.pouring,"Gradual mode starts a 20-step session");
-let gradual=session;
+let gradualComparison=session;
 for(let tick=0;tick<lab.LAB_POUR_STEPS;tick++)
- gradual=lab.advanceLabPour(gradual);
-gradual=lab.stopLabPour(gradual,"test-gradual");
+ gradualComparison=lab.advanceLabPour(gradualComparison);
+gradualComparison=lab.stopLabPour(gradualComparison,"test-gradual");
 assert.deepEqual(rapid.vessels.map(v=>({reagents:v.reagents,doses:v.doses})),
- gradual.vessels.map(v=>({reagents:v.reagents,doses:v.doses})),
+ gradualComparison.vessels.map(v=>({reagents:v.reagents,doses:v.doses})),
  "Fast transfer conserves precisely the same measured mass and concentration as gradual");
 assert.equal(rapid.pouring,undefined,"Fast pouring completes without a dangling shared session");
 assert.equal(rapid.vessels[1].doses.NaCl.value,10);
