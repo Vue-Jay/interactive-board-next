@@ -534,6 +534,7 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
      binarySaltPhase:undefined,mixedSaltPhase:undefined}:
     {binarySaltPhase:undefined,mixedSaltPhase:undefined}),
    ...(evaporating?{doses,reagents,observed:reagents.length>1,
+    filteredSolution:phase.filteredSolution??v.filteredSolution,
     ventedVaporMl:phase.ventedVaporMl}:{}),
    ...(popped?{stoppered:false,stopperedAtC:undefined,
     sealedReactionGasBaselineMol:undefined}:{}),
