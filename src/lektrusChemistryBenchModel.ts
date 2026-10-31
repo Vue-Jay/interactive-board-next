@@ -2278,7 +2278,8 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
  const originalSettings=labBenchSettings(previous),mineSettings=labBenchSettings(mine);
  const settings={...labBenchSettings(remote)};
  for(const key of Object.keys(mineSettings) as (keyof LabBenchSettings)[]){
-  if(mineSettings[key]!==originalSettings[key])settings[key]=mineSettings[key];
+  if(mineSettings[key]!==originalSettings[key])
+   (settings as unknown as Record<string,unknown>)[key]=mineSettings[key];
  }
  // Merge concurrent apparatus additions and moves by durable instance ID.
  // Replacing the entire array would erase a peer's newly placed instrument.
