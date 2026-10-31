@@ -260,7 +260,10 @@ export function labAppliancesBelowStand(bench:LabBench,vesselId:string){
  const stands=placedLabDevices(bench).filter(d=>d.kind==="tripod"&&
   d.active&&d.linkedVesselId===vesselId);
  return placedLabDevices(bench).filter(d=>
-  ["hotplate","burner","stirrer"].includes(d.kind)&&stands.some(stand=>{
+  ["hotplate","burner","stirrer"].includes(d.kind)&&
+  // A heater clamped to a DIFFERENT vessel cannot also heat the vessel
+  // standing above it merely because their screen coordinates overlap.
+  (!d.active||d.linkedVesselId===vesselId)&&stands.some(stand=>{
    const maxHeight=d.kind==="burner"?.7:.36;
    return (stand.standHeight??.5)<=maxHeight&&
     Math.abs(d.x-(stand.x+3.5))<=7&&
@@ -409,12 +412,19 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   return {...d,temperatureC:next};
  });
  let result:LabBench={...bench,placedDevices:devices,simulationAtMs:nowMs};
+ // Resolve the actually powered heater for each vessel ONCE per tick.
+ // Multiple heaters and neighbouring stands must not heat unrelated glass.
+ const heatingDeviceByVessel=new Map<string,LabPlacedDevice>();
+ for(const vessel of bench.vessels){
+  const activeHeat=(d:LabPlacedDevice)=>!!d.powered&&
+   (d.kind==="hotplate"||d.kind==="burner");
+  const direct=devices.find(d=>d.active&&d.linkedVesselId===vessel.id&&activeHeat(d));
+  const heater=direct??labAppliancesBelowStand(result,vessel.id).find(activeHeat);
+  if(heater)heatingDeviceByVessel.set(vessel.id,heater);
+ }
  let vessels=bench.vessels.map(v=>{
   const old=v.temperatureC??ambient;
-  const device=devices.find(d=>d.active&&d.linkedVesselId===v.id&&
-   ["hotplate","burner"].includes(d.kind))??
-   labAppliancesBelowStand({...bench,placedDevices:devices},v.id).find(d=>
-    d.powered&&["hotplate","burner"].includes(d.kind));
+  const device=heatingDeviceByVessel.get(v.id);
   const toward=device&&device.powered?(device.temperatureC??ambient):ambient;
   const volumes=Object.values(v.doses??{}).reduce((total,d)=>total+d.value,0);
   const inertia=Math.max(.035,Math.min(.18,60/Math.max(100,volumes)*.10));
@@ -566,10 +576,7 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
  // Start pre-reviewed heated cases only after reaching a sufficiently warm state.
  vessels=result.vessels.map(v=>{
   if(v.temperatureC===undefined||v.temperatureC<60||!v.reagents.length)return v;
-  const heater=devices.find(d=>d.active&&d.powered&&d.linkedVesselId===v.id&&
-   ["hotplate","burner"].includes(d.kind))??
-   labAppliancesBelowStand({...bench,placedDevices:devices},v.id).find(d=>
-    d.powered&&["hotplate","burner"].includes(d.kind));
+  const heater=heatingDeviceByVessel.get(v.id);
   if(!heater)return v;
   // Only a matching reviewed thermal or combustion case can start.
   // No ignition of an unrelated aqueous solution and no invented explosion.
@@ -1312,8 +1319,11 @@ export function removeLabVessel(bench:LabBench,id:string,discardContents=false):
 export function setLabVesselStopper(bench:LabBench,id:string,stoppered:boolean):LabBench{
  return revise(bench,id,v=>labCanStopper(v.kind)&&!!v.stoppered!==stoppered?
   {...v,stoppered,stopperedAtC:stoppered?(v.temperatureC??22):undefined,
+   // Existing gas at atmospheric pressure belongs to the sealed initial
+   // headspace. Only production AFTER sealing raises the gas partial pressure.
    sealedReactionGasBaselineMol:stoppered?
-    (labReactionGasProgress(v.reactionAmounts)?.totalMol??0):undefined}:v);
+    labHeadspaceGasMoles({...v,stoppered:false,
+     sealedReactionGasBaselineMol:undefined}):undefined}:v);
 }
 /** Ideal-gas headspace uses the same measured chemical species ledger as the
  * vessel inspector. The seal temperature is saved, never assumed to equal
@@ -1321,28 +1331,30 @@ export function setLabVesselStopper(bench:LabBench,id:string,stoppered:boolean):
 /** One shared gas tally for live pressure and saved lab inspection.
  * During a measured gas reaction, inventory equilibrium is a FUTURE final
  * state: only progress so far may pressurize a sealed container. */
+/** Net gas produced AFTER the stopper was fitted. In a ventilated
+ * container existing gas stock does not add pressure on top of atmospheric
+ * air when the cork is first inserted. Older saved reaction-progress
+ * baselines keep the same numerical interpretation. */
 export function labHeadspaceGasMoles(v:LabVessel){
+ const baseline=v.stoppered?Math.max(0,v.sealedReactionGasBaselineMol??0):0;
+ const sourceGas=Object.entries(v.doses??{}).reduce((sum,[id,d])=>
+  sum+(substances.find(x=>x.id===id)?.kind==="газ"?
+   labDoseMoles(id,d)??0:0),0);
  const measured=labReactionGasProgress(v.reactionAmounts);
- if(measured){
-  // Existing gaseous stock may be present independently of products.
-  const sourceGas=Object.entries(v.doses??{}).reduce((sum,[id,d])=>
-   sum+(substances.find(x=>x.id===id)?.kind==="газ"?
-    labDoseMoles(id,d)??0:0),0);
-  const baseline=v.stoppered?Math.max(0,
-   v.sealedReactionGasBaselineMol??0):0;
-  return Math.max(0,measured.totalMol-baseline)+sourceGas;
- }
- // Before the first reaction tick, the measured inputs have not produced
- // their final gas yield. Do not import future products into the headspace.
+ if(measured)return Math.max(0,measured.totalMol+sourceGas-baseline);
+ // Before the first reaction tick the inventory solver predicts the final
+ // equilibrium. Do not allow that FUTURE gas to enter a sealed headspace.
  if(!v.completedReaction&&!v.chemicalInventory){
   const row=identifyReaction(v.reagents,v.environment);
   if(row.status==="reaction"&&row.caseData?.observation==="gas"&&
-   startQuantifiedLabReaction(row.caseData,v.reagents,v.doses))return 0;
+   startQuantifiedLabReaction(row.caseData,v.reagents,v.doses))
+   return Math.max(0,sourceGas-baseline);
  }
  const inventory=simulateLabInventory({...v,volumeMl:labVesselQuantity(v).volumeMl});
- return Object.values(inventory.retainedGasMol).reduce((s,m)=>s+m,0)+
-  Object.entries(inventory.speciesMol).reduce((s,[id,m])=>
-   s+(substances.find(x=>x.id===id)?.kind==="газ"?m:0),0);
+ const total=Object.values(inventory.retainedGasMol).reduce((sum,m)=>sum+m,0)+
+  Object.entries(inventory.speciesMol).reduce((sum,[id,m])=>
+   sum+(substances.find(x=>x.id===id)?.kind==="газ"?m:0),0);
+ return Math.max(0,total-baseline);
 }
 export function labVesselPressure(v:LabVessel,temperatureC=v.temperatureC??22){
  const {occupiedMl,capacityMl}=labVesselQuantity(v);
