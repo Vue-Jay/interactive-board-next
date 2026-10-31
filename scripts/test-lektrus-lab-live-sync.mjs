@@ -79,8 +79,9 @@ assert.equal(repairedBench.vessels[1].temperatureC,36.4,
 assert.equal(repairedBench.placedDevices.length,1);
 assert.equal(repairedBench.placedDevices[0].temperatureC,36.3);
 const repairedAgain=board.parseDocument(JSON.stringify(recovered));
-assert.deepEqual(repairedAgain.items[1].scienceLabBench,repairedBench,
- "Reopening a repaired classroom lab is idempotent");
+assert.deepEqual(repairedAgain.items[1].scienceLabBench,
+ JSON.parse(JSON.stringify(repairedBench)),
+ "Reopening a repaired classroom lab is idempotent after JSON serialization");
 // An actual different item with the same ID should survive under a new ID,
 // rather than dropping its content when two edits collide.
 const distinct={...duplicated,scienceLabBench:{...duplicated.scienceLabBench,
