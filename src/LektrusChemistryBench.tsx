@@ -989,6 +989,38 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   setVesselMenuId(null);setCompositionId(null);setActiveDeviceId(null);
   onChange?.(next);setNotice("Чистая посуда убрана со стола");
  };
+ // The laboratory owns the Delete key while one of its parts has focus.
+ // Capture before the board-wide keyboard handler, which otherwise deletes
+ // the enclosing "chem-experiment-free" graph and loses the entire table.
+ useEffect(()=>{
+  const onDelete=(event:KeyboardEvent)=>{
+   if(!editable||event.repeat||event.ctrlKey||event.metaKey||event.altKey||
+    (event.key!=="Delete"&&event.key!=="Backspace"))return;
+   const target=event.target instanceof Element?event.target:null;
+   if(target?.closest('input,textarea,select,[contenteditable="true"],[role="textbox"]'))return;
+   if(cabinet||pendingReturnId||compositionId||confirmClear)return;
+   const focused=document.activeElement;
+   if(!fullscreenOwner&&!(focused instanceof Node&&host.current?.contains(focused)))return;
+   const deviceId=activeDeviceId&&placedLabDevices(bench).some(d=>d.id===activeDeviceId)?
+    activeDeviceId:null;
+   const vesselId=bench.selectedId&&bench.vessels.some(v=>v.id===bench.selectedId)?
+    bench.selectedId:null;
+   if(!deviceId&&!vesselId)return;
+   event.preventDefault();event.stopImmediatePropagation();
+   if(deviceId){
+    const next=returnPlacedLabDevice(bench,deviceId);
+    if(next!==bench){
+     onChange?.(next);setActiveDeviceId(null);setVesselMenuId(null);
+     onSelect?.("");setNotice("Выбранный прибор убран со стола");
+    }
+    return;
+   }
+   if(vesselId)returnGlass(vesselId);
+  };
+  document.addEventListener("keydown",onDelete,true);
+  return()=>document.removeEventListener("keydown",onDelete,true);
+ },[editable,fullscreenOwner,activeDeviceId,bench,cabinet,pendingReturnId,
+   compositionId,confirmClear,onChange,onSelect]);
  const take=(kind:LabGlassware,p?:{x:number;y:number})=>{
   if(!p||!isLabWorktop(p)){setNotice("Нажмите на свободное место стола");return}
   const next=addLabVessel(bench,kind,labLogicalPoint(p));
