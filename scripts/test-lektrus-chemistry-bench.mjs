@@ -279,11 +279,16 @@ assert.notStrictEqual(lab.labVesselContents(heatedCopy),measuredContents,
 assert.deepEqual(lab.labVesselQuantity(measuredVessel),measuredQuantity,
  "The previous vessel revision is not mutated by recalculating another");
 
-let unknown=lab.putLabReagent(bench,"v1","HCl");
-assert.equal(lab.labObservation(unknown.vessels[0]).status,"reaction",
- "Reviewed first-stage products remain recognised after additional reagent dosing");
-assert.equal(unknown.vessels[0].completedReaction?.observation,"precipitate",
- "Existing precipitate must stay visually represented even when later chemistry is unknown");
+let actuallyReacted=lab.advanceLabSimulation(bench,0);
+actuallyReacted=lab.advanceLabSimulation(actuallyReacted,1000);
+actuallyReacted=lab.advanceLabSimulation(actuallyReacted,6000);
+assert.equal(actuallyReacted.vessels[0].reactionAmounts?.complete,true);
+let unknown=lab.putLabReagent(actuallyReacted,"v1","HCl");
+assert.equal(lab.labObservation(unknown.vessels[0]).status,"unknown",
+ "A new unsupported mixture is uncertain even though prior measured products remain");
+assert.ok(lab.labVesselContents(unknown.vessels[0]).solid.some(item=>
+ item.formula==="AgCl"&&(item.massG??0)>0),
+ "Existing AgCl must remain in the real solid inventory after adding another reagent");
 let heated=detailedBench();
 heated=lab.putLabReagent(heated,"v1","CaCO3");
 assert.equal(lab.labObservation(heated.vessels[0]).status,"unknown");
@@ -347,14 +352,20 @@ const decanted=lab.pourLabVessel(precip,"v1","v3");
 assert.equal(lab.labObservation(decanted.vessels[2]).status,"reaction",
  "Previously reacted material stays visibly reacted after pouring into clean glassware");
 assert.equal(lab.labObservation(decanted.vessels[2]).caseData.observation,"precipitate");
-assert.ok(decanted.vessels[2].completedReaction,"The verified result is preserved separately from reactant IDs");
+assert.equal(decanted.vessels[2].completedReaction,undefined,
+ "Moving unreacted stocks does not mark predicted precipitation as completed");
 assert.equal(decanted.vessels[2].doses.NaCl.value,12);
 assert.equal(decanted.vessels[2].doses.AgNO3.value,7);
 assert.equal(decanted.vessels[0].completedReaction,undefined,"Emptied source loses its products");
-const postReaction=lab.putLabReagent(decanted,"v3","HCl",{value:5,unit:"ml"});
-assert.equal(lab.labObservation(postReaction.vessels[2]).status,"reaction",
- "Verified precipitate persists and additional measured reactants can participate");
-assert.ok(postReaction.vessels[2].completedReaction,"Previously precipitated solid should remain visible as last known appearance");
+let reactedDecanted=lab.advanceLabSimulation(decanted,0);
+reactedDecanted=lab.advanceLabSimulation(reactedDecanted,1000);
+reactedDecanted=lab.advanceLabSimulation(reactedDecanted,6000);
+assert.equal(reactedDecanted.vessels[2].reactionAmounts?.complete,true,
+ "The transferred solution must react before receiving its final status");
+const postReaction=lab.putLabReagent(reactedDecanted,"v3","HCl",{value:5,unit:"ml"});
+assert.ok(lab.labVesselContents(postReaction.vessels[2]).solid.some(x=>
+ x.formula==="AgCl"&&(x.massG??0)>0),
+ "Previous measured precipitate remains visible after later chemical additions");
 const cleaned=lab.emptyLabVessel(postReaction,"v3");
 assert.equal(cleaned.vessels[2].completedReaction,undefined,"Sink removes all products");
 const stored=lab.removeLabVessel(cleaned,"v3");
@@ -2091,43 +2102,43 @@ const chalkSource=lab.putLabReagent(detailedBench(),"v1","NaCl",
  {value:10,unit:"ml",concentrationM:.1});
 const chalkReacted=lab.putLabReagent(chalkSource,"v1","AgNO3",
  {value:10,unit:"ml",concentrationM:.1});
-// The wall records observed progress, never a merely predicted
-// reaction or a paused preparation. This follows the live simulator's
-// "reaction first, chalk later" contract.
 assert.equal(lab.recordLabReactions(chalkReacted),chalkReacted,
- "Mixing before a simulation tick must not write a predicted equation");
-const pausedChalk=lab.setLabSimulationPaused(chalkReacted,true,0);
-assert.equal(lab.recordLabReactions(pausedChalk),pausedChalk,
- "A paused preparation cannot write a predicted equation");
-const chalkReactedProgressed=lab.advanceLabSimulation(
- lab.advanceLabSimulation(lab.advanceLabSimulation(chalkReacted,0),6000),
- 12000);
-let chalk=lab.recordLabReactions(chalkReactedProgressed);
+ "Predicted precipitation does not write the equation before chemistry runs");
+const pausedPreparation=lab.setLabSimulationPaused(chalkReacted,true,100);
+assert.equal(lab.recordLabReactions(pausedPreparation),pausedPreparation,
+ "A paused reaction must not write an equation");
+assert.equal(lab.advanceLabSimulation(pausedPreparation,2000),pausedPreparation,
+ "Pausing prevents both reaction advancement and equation logging");
+let measuredSediment=lab.advanceLabSimulation(chalkReacted,0);
+measuredSediment=lab.advanceLabSimulation(measuredSediment,1000);
+assert.equal(lab.recordLabReactions(measuredSediment),measuredSediment,
+ "Starting a gradual reaction cannot write a final equation");
+measuredSediment=lab.advanceLabSimulation(measuredSediment,6000);
+assert.equal(measuredSediment.vessels[0].reactionAmounts?.complete,true);
+let chalk=lab.recordLabReactions(measuredSediment);
 assert.equal(chalk.reactionLog.length,1,
- "An actually progressed reaction is added to the permanent wall");
+ "Only a completed measured reaction is added to the permanent wall");
 assert.match(chalk.reactionLog[0],/AgCl↓/);
 assert.equal(lab.recordLabReactions(chalk),chalk,
  "Simulation ticks must not duplicate previously recorded equations");
 chalk=lab.wipeLabChalkboard(chalk);
 assert.deepEqual(chalk.reactionLog,[]);
 assert.equal(lab.recordLabReactions(chalk),chalk,
- "A wiped but ongoing reaction must not magically reappear");
+ "A wiped completed reaction must not magically reappear");
 let nextReaction=lab.emptyLabVessel(chalk,"v1");
 nextReaction=lab.putLabReagent(nextReaction,"v1","HCl",
  {value:20,unit:"ml",concentrationM:.1});
 nextReaction=lab.putLabReagent(nextReaction,"v1","NaOH",
  {value:20,unit:"ml",concentrationM:.1});
-assert.equal(lab.recordLabReactions(nextReaction),nextReaction,
- "Unstarted neutralization must not appear on the chalkboard");
-nextReaction=lab.advanceLabSimulation(
- lab.advanceLabSimulation(lab.advanceLabSimulation(nextReaction,10000),16000),
- 22000);
+assert.equal(lab.recordLabReactions(nextReaction),nextReaction);
+nextReaction=lab.advanceLabSimulation(nextReaction,10000);
+nextReaction=lab.advanceLabSimulation(nextReaction,16000);
+nextReaction=lab.advanceLabSimulation(nextReaction,22000);
+assert.equal(nextReaction.vessels[0].reactionAmounts?.complete,true,
+ "Neutralization must finish before chalk is written");
 nextReaction=lab.recordLabReactions(nextReaction);
 assert.equal(nextReaction.reactionLog.length,1);
 assert.match(nextReaction.reactionLog[0],/NaCl \+ H2O/);
-let measuredSediment=lab.advanceLabSimulation(chalkReacted,0);
-measuredSediment=lab.advanceLabSimulation(measuredSediment,1000);
-measuredSediment=lab.advanceLabSimulation(measuredSediment,6000);
 const physical=lab.labVesselContents(measuredSediment.vessels[0]);
 assert.ok(physical.solutionMl>=19.9&&physical.solutionMl<=20.1);
 assert.equal(physical.solid.length,1);
@@ -2155,6 +2166,10 @@ assert.match(labUi,/lektrus-lab-quantity-info/);
 assert.doesNotMatch(labUi,/className="lektrus-lab-vessel-composition"/,
  "No composition popup separate from volume/mass gauges");
 assert.match(labUi,/contents\.precipitateFraction/);
+assert.match(labUi,/sedimentFloor-sedimentH/,
+ "Solid artwork stays on the inside bottom of differently shaped glassware");
+assert.doesNotMatch(labUi,/y=\{120-sedimentH\}/,
+ "The sediment must never be clipped below the vessel interior");
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-indicator-shelf/);
 const labWithBoard={
  ...persistedLab,mode:"reactions",reactionLog:[nextReaction.reactionLog[0]],
@@ -2164,7 +2179,41 @@ assert.doesNotThrow(()=>parseLab(labWithBoard),
  "Persistent equations and the unified reaction mode are valid save data");
 console.log("Cabinets, reaction history, and proportional precipitate regression passed");
 
-const originalShared=lab.recordLabReactions(chalkReactedProgressed);
+
+// Reaction products from a saved mixture must not be materialized while paused.
+// After resuming, the simulation tick commits them and only then adds chalk.
+let deferred=lab.putLabReagent(detailedBench(),"v1","BaCl2",
+ {unit:"ml",value:10,concentrationM:.1});
+deferred=lab.putLabReagent(deferred,"v1","Na2SO4",
+ {unit:"ml",value:10,concentrationM:.1});
+deferred=lab.advanceLabSimulation(deferred,0);
+deferred=lab.advanceLabSimulation(deferred,1000);
+deferred=lab.advanceLabSimulation(deferred,6500);
+deferred=lab.recordLabReactions(deferred);
+assert.equal(deferred.reactionLog.length,1);
+deferred=lab.setLabSimulationPaused(deferred,true,7000);
+deferred=lab.putLabReagent(deferred,"v1","AgNO3",
+ {unit:"ml",value:10,concentrationM:.1});
+assert.equal(deferred.vessels[0].pendingInventoryReaction,true,
+ "Adding reactants to a completed mixture during pause queues chemistry");
+assert.equal(deferred.vessels[0].chemicalInventory.solidMol.AgCl??0,0,
+ "Unstarted precipitation cannot create settled AgCl during pause");
+assert.equal(lab.recordLabReactions(deferred),deferred,
+ "An unstarted follow-up reaction cannot write chalk");
+deferred=lab.setLabSimulationPaused(deferred,false,9000);
+assert.equal(lab.recordLabReactions(deferred).reactionLog.length,1,
+ "Resume alone cannot write an equation before the reaction tick");
+deferred=lab.advanceLabSimulation(deferred,10000);
+assert.equal(deferred.vessels[0].pendingInventoryReaction,undefined);
+assert.ok((deferred.vessels[0].chemicalInventory.solidMol.AgCl??0)>0,
+ "The resumed simulation actually deposits AgCl");
+deferred=lab.recordLabReactions(deferred);
+assert.equal(deferred.reactionLog.length,2,
+ "The follow-up equation is written once, after the reaction runs");
+assert.match(deferred.reactionLog.at(-1),/AgCl↓/);
+console.log("Paused follow-up preparation, settled solids and delayed chalk: OK");
+
+const originalShared=lab.recordLabReactions(measuredSediment);
 const localShared={...originalShared,reactionLog:[...originalShared.reactionLog,
  "CaCO3 → CaO + CO2↑"],event:originalShared.event+1};
 const remoteShared={...originalShared,reactionLog:[...originalShared.reactionLog,

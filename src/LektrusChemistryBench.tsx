@@ -122,7 +122,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
  const visualNow=simulationPaused?pausedAtMs??visualNowMs??Date.now():visualNowMs??Date.now();
  const result=labObservation(vessel);
  const verified=result.status==="reaction"?result.caseData:undefined;
- const inventory=vessel.chemicalInventory?
+ const inventory=vessel.pendingInventoryReaction?undefined:vessel.chemicalInventory?
   simulateLabInventory({...vessel,volumeMl:labVesselQuantity(vessel).volumeMl}):
   vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
   simulateLabInventory(vessel):undefined;
@@ -132,7 +132,12 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
  const retainedGasTotal=vessel.stoppered?labHeadspaceGasMoles(vessel):0;
  const recentCase=mostRecentEquation?
   reviewedReactionCases.find(row=>row.equation===mostRecentEquation):undefined;
- const visualCase=recentCase??vessel.completedReaction??verified;
+ // Forecast reactions must not recolor the mixture before they happen.
+ const hasReactionProgress=!!vessel.reactionAmounts&&vessel.reactionAmounts.extentMol>1e-12;
+ const visualCase=(hasReactionProgress||vessel.reactionAmounts?.complete||
+  !!vessel.completedReaction||!!vessel.chemicalInventory&&!vessel.pendingInventoryReaction?
+  recentCase:undefined)??vessel.completedReaction??
+  (hasReactionProgress?verified:undefined);
  const appearance=reactionAppearance(visualCase);
  const isLiquidIndicator=!!vessel.indicator&&vessel.indicator!=="universal";
  const ph=labVesselPH(vessel);
@@ -176,9 +181,17 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   (vessel.physicalProcess==="crystallizing"||
    !!vessel.lastEvaporatedAtMs&&visualNow-vessel.lastEvaporatedAtMs>=0&&
     visualNow-vessel.lastEvaporatedAtMs<5000);
- const sedimentH=contents.precipitateFraction===undefined?0:
+ // Keep a real settled layer ON the inner base of each vessel shape.
+ // A 4px minimum makes a small but measurable precipitate visible at
+ // classroom/mobile scale without inventing extra substance.
+ const sedimentBase:Record<LabGlassware,number>={
+  beaker:115,tube:119,flask:116,cylinder:117,dish:115,
+  conical:119,volumetric:120,crucible:119,pipette:120,burette:107
+ };
+ const sedimentFloor=sedimentBase[vessel.kind];
+ const sedimentH=contents.precipitateFraction===undefined||
   precipitationProgress<=0?0:
-  Math.min(105,Math.max(2.5,
+  Math.min(70,Math.max(4,
    106*contents.precipitateFraction*precipitationProgress));
  const totalLabel=[volumeMl>0?labDisplayNumber(volumeMl,realism)+" мл":null,
   massG>0?labDisplayNumber(massG,realism)+" г":null].filter(Boolean).join(" · ");
@@ -315,12 +328,12 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
      {/* Quantified precipitation uses actual produced mass/density and vessel volume.
          The one-pixel minimum only keeps subpixel traces perceptible. */}
      {sedimentH>0&&<rect className="lektrus-lab-sediment"
-      x="16" y={120-sedimentH} width="70" height={sedimentH}
+      x="16" y={sedimentFloor-sedimentH} width="70" height={sedimentH}
       fill={appearance.solidColor||"#d6dee1"} opacity=".94"/>}
      {contents.precipitateFraction===undefined&&precipitationProgress>0&&
       <g className="lektrus-lab-qualitative-residue">
       {Array.from({length:18},(_,i)=><circle key={i} cx={23+i*17%56}
-       cy={116-i%3*1.8} r=".7" fill={appearance.solidColor||"#d6dee1"}/>)}
+       cy={sedimentFloor-3-i%3*1.8} r="1.1" fill={appearance.solidColor||"#d6dee1"}/>)}
      </g>}
      {precipitationProgress>0&&!amounts?.complete&&
       Array.from({length:14},(_,i)=><circle key={i}

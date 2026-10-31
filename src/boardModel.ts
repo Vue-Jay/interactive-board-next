@@ -931,6 +931,9 @@ export function parseDocument(raw: string): DocumentData {
             typeof reaction.description==="string"&&reaction.description.length<=600;
         };
         const validPhaseState=(v:import("./lektrusChemistryBenchModel").LabVessel)=>
+          (v.pendingInventoryReaction==null||(
+            typeof v.pendingInventoryReaction==="boolean"&&
+            (!v.pendingInventoryReaction||!!v.chemicalInventory)))&&
           (v.meltFraction==null||(Number.isFinite(v.meltFraction)&&
             v.meltFraction>=0&&v.meltFraction<=1))&&
           (v.phaseTransition==null||["melting","crystallizing"].includes(v.phaseTransition))&&
