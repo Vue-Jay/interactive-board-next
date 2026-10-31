@@ -775,10 +775,10 @@ for(const formula of ["Ca(OH)2","BaCO3","ZnSO4"]){
 console.log("Six verified pure-solid densities, seven solid transitions and sixteen Cp values passed");
 
 
-// Bulk provenance: 108 independently sourced properties, checked both in
+// Bulk provenance: 114 independently sourced properties, checked both in
 // source tables and through the same registry used to render lab state.
 const validated=load("src/lektrusLabPropertyProvenance.ts");
-assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,108);
+assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,114);
 const sourceIds=new Set();
 const fields={crystalDensityGPerMl:0,specificHeatJPerGK:0,thermal:0};
 for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
@@ -819,9 +819,65 @@ for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
  approximately(value,row.value,1e-6);
 }
 assert.deepEqual(fields,{
- crystalDensityGPerMl:34,specificHeatJPerGK:29,thermal:45
+ crystalDensityGPerMl:36,specificHeatJPerGK:29,thermal:49
 });
-console.log("108 source-checked property references: 34 crystal densities, 29 dry-solid Cp, 45 individual phase boundaries");
+console.log("114 source-checked property references: 36 crystal densities, 29 dry-solid Cp, 49 individual phase boundaries");
+// Canonical ONE-ROW-ONE-SOURCE importer: one source entry must update
+// (1) the active physical value and (2) the provenance catalogue.
+// No more copy-pasting each new physical measurement into 3 TS files.
+const ingestion=load("src/lektrusLabCuratedPropertyBatch.ts");
+const batchRows=ingestion.LAB_CURATED_PROPERTY_BATCH;
+assert.equal(batchRows.length,6);
+const unique=new Set();
+for(const item of batchRows){
+ const key=item.formula+"."+item.property;
+ assert.ok(!unique.has(key),"Duplicate measured property "+key);
+ unique.add(key);
+ assert.equal(item.phase,"anhydrous-solid");
+ assert.ok(labMolarMass(item.formula)>0,"Wrong chemical formula: "+key);
+ assert.ok(item.value>0&&Number.isFinite(item.value));
+ assert.ok(item.sourceUrl.startsWith("https://"));
+ assert.ok(item.sourceCondition.length>=12);
+ assert.ok(validated.LAB_REVIEWED_PROPERTY_DATUMS.some(p=>
+  p.formula===item.formula&&p.property===item.property&&
+  p.value===item.value&&p.sourceUrl===item.sourceUrl),
+  "Batch source did not enter provenance: "+key);
+ if(item.property==="crystalDensityGPerMl"){
+  approximately(ingestion.LAB_BATCH_CRYSTAL_DENSITIES[item.formula],
+   item.value,1e-12);
+  approximately(physicalDensity.labCrystalDensityGml(item.formula),
+   item.value,1e-12);
+  approximately(registryProps.labSubstanceProperties(item.formula)
+   .crystalDensityGPerMl,item.value,1e-12);
+  assert.ok(!Object.hasOwn(ingestion.LAB_BATCH_THERMAL_PROPERTIES,item.formula),
+   "Do not fabricate thermal boundary for density-only sample");
+ }else {
+  const thermal=ingestion.LAB_BATCH_THERMAL_PROPERTIES[item.formula];
+  assert.ok(thermal,"Missing generated thermal record "+key);
+  const pure=thermalProps.labThermalInfo(item.formula,"g");
+  assert.equal(pure.known,true);
+  approximately(pure[item.property],item.value,1e-12);
+  assert.equal(thermalProps.labThermalInfo(item.formula,"ml").known,false,
+   "Dry crystal transition cannot be assigned to a liquid mixture");
+  if(item.property==="decompositionC"){
+   assert.equal(pure.behavior,"decomposes");
+   assert.equal(pure.boilingC,undefined);
+   assert.equal(pure.meltingC,undefined,
+    "Decomposition must not be stored as normal fusion");
+  }
+ }
+}
+assert.equal(ingestion.LAB_BATCH_PROPERTY_PROVENANCE.length,6);
+assert.equal(ingestion.LAB_BATCH_CRYSTAL_DENSITIES.CH3ONa,1.3);
+assert.equal(ingestion.LAB_BATCH_CRYSTAL_DENSITIES.C2H5ONa,.87);
+assert.equal(ingestion.LAB_BATCH_THERMAL_PROPERTIES["Fe(OH)2"].decompositionC,150);
+assert.equal(ingestion.LAB_BATCH_THERMAL_PROPERTIES["Ni(OH)2"].decompositionC,230);
+assert.equal(ingestion.LAB_BATCH_THERMAL_PROPERTIES["Pb(NO3)2"].decompositionC,470);
+assert.equal(ingestion.LAB_BATCH_THERMAL_PROPERTIES.FeCl3.meltingC,304);
+assert.notEqual(thermalProps.labThermalInfo("FeCl3","g").meltingC,37,
+ "Hydrated FeCl3 is not the anhydrous crystal phase");
+console.log("One-file batch import: six source values, no dry/hydrate confusion, automatic provenance: PASS");
+
 // Direct NIST-JANAF (cr) 298.15 K molar values must be recalculated
 // with the real lab formula parser. No hydrate/solution substitution.
 const jan=load("src/lektrusLabJanafSolidHeatReferences.ts");

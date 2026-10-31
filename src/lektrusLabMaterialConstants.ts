@@ -1,4 +1,5 @@
 import {labExactMeasuredSolubility} from "./lektrusLabSolubilityMeasurements";
+import {LAB_BATCH_CRYSTAL_DENSITIES} from "./lektrusLabCuratedPropertyBatch";
 /** Reference material constants for the school laboratory.
  * Density is CRYSTAL true density in g/cm³ at ~20–25°C, NOT bulk/packing
  * density, and is valid only for the indicated chemical formula/hydration.
@@ -29,6 +30,9 @@ import {labExactMeasuredSolubility} from "./lektrusLabSolubilityMeasurements";
  *   https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.260-223.pdf
  */
 export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
+ // Source-qualified batch import. Each new pure solid's numerical
+ // density is entered ONCE in lektrusLabCuratedPropertyBatch.ts.
+ ...LAB_BATCH_CRYSTAL_DENSITIES,
  // School empirical formula P2O5 means molecular solid P4O10. EPA
  // chemical hazard reference via PubChem: crystalline true density
  // 2.39 g/cm3, NOT loosely packed phosphoric anhydride powder.

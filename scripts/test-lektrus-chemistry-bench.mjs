@@ -26,10 +26,14 @@ const catalog=load("src/lektrusLabCatalog.ts",key=>{
  if(key==="./lektrusLabAppearance")return appearance;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
-const thermal=load("src/lektrusLabPhysicalProperties.ts");
+const curatedBatch=load("src/lektrusLabCuratedPropertyBatch.ts");
+const thermal=load("src/lektrusLabPhysicalProperties.ts",key=>{
+ assert.equal(key,"./lektrusLabCuratedPropertyBatch");return curatedBatch;
+});
 const calorimetry=load("src/lektrusLabCalorimetry.ts");
 const solubilityMeasurements=load("src/lektrusLabSolubilityMeasurements.ts");
 const constants=load("src/lektrusLabMaterialConstants.ts",key=>{
+ if(key==="./lektrusLabCuratedPropertyBatch")return curatedBatch;
  assert.equal(key,"./lektrusLabSolubilityMeasurements");return solubilityMeasurements;
 });
 const dissolution=load("src/lektrusLabDissolution.ts",key=>{

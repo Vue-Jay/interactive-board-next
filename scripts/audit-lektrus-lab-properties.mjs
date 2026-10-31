@@ -42,6 +42,7 @@ const provenance=load("src/lektrusLabPropertyProvenance.ts");
 const perry=load("src/lektrusLabPerryHeatReferences.ts");
 const nist=load("src/lektrusLabNistHeatReferences.ts");
 const janaf=load("src/lektrusLabJanafSolidHeatReferences.ts");
+const batch=load("src/lektrusLabCuratedPropertyBatch.ts");
 const saturated=load("src/lektrusLabSaturatedSolutionReferences.ts");
 
 const has=(value)=>typeof value==="number"&&Number.isFinite(value);
@@ -119,6 +120,7 @@ const rawTotals={
  measuredPureWaterOffGridPoints:measuredRows.filter(x=>
   !gridTemps.has(x.temperatureC)).length,
  curatedSourceCheckedProperties:provenance.LAB_REVIEWED_PROPERTY_DATUMS.length,
+ curatedBatchSourceProperties:batch.LAB_CURATED_PROPERTY_BATCH.length,
  perryRoomTemperatureCrystalHeats:perry.LAB_PERRY_SOLID_HEAT_REFERENCES.length,
  nistRoomTemperatureSolidHeats:nist.LAB_NIST_ROOM_HEAT_REFERENCES.length,
  janafRoomTemperatureCrystalHeats:janaf.LAB_JANAF_SOLID_HEAT_REFERENCES.length,
@@ -304,6 +306,37 @@ if(process.argv.includes("--verify")){
  }
  // Direct NIST-JANAF tables publish 298.15 K molar heat of the
  // specified DRY crystalline form, NOT solution or hydrated solid heat.
+ // One source-qualified canonical row must populate the TRUE app values
+ // and the independently inspected provenance without manual duplication.
+ const batchKeys=new Set();
+ for(const row of batch.LAB_CURATED_PROPERTY_BATCH){
+  const key=row.formula+"."+row.property;
+  assert.ok(!batchKeys.has(key),"Duplicate batch datum "+key);
+  batchKeys.add(key);
+  assert.ok(stockNames.has(row.formula),"Unknown stock formula "+row.formula);
+  assert.equal(row.phase,"anhydrous-solid","Only dry pure phases go in batch");
+  assert.ok(has(row.value)&&row.value>0,"Invalid numeric source "+key);
+  assert.ok(row.sourceUrl.startsWith("https://"));
+  assert.ok(row.sourceCondition.length>=12);
+  assert.ok(provenance.LAB_REVIEWED_PROPERTY_DATUMS.some(x=>
+   x.formula===row.formula&&x.property===row.property&&
+   x.value===row.value&&x.sourceUrl===row.sourceUrl),
+   "Batch reference not forwarded into provenance "+key);
+  if(row.property==="crystalDensityGPerMl"){
+   assert.equal(material.LAB_CRYSTAL_DENSITY_G_ML[row.formula],row.value,
+    "Source density not connected to actual material map: "+key);
+   assert.equal(registry.labSubstanceProperties(row.formula)
+    .crystalDensityGPerMl,row.value);
+  }else{
+   assert.equal(thermal.LAB_THERMAL_REFERENCE[row.formula]?.[row.property],
+    row.value,"Source transition not wired into simulator "+key);
+   if(row.property==="decompositionC")
+    assert.equal(thermal.LAB_THERMAL_REFERENCE[row.formula]?.behavior,
+     "decomposes");
+  }
+ }
+ assert.equal(batch.LAB_BATCH_PROPERTY_PROVENANCE.length,
+  batch.LAB_CURATED_PROPERTY_BATCH.length);
  const janafIds=new Set();
  for(const row of janaf.LAB_JANAF_SOLID_HEAT_REFERENCES){
   assert.ok(stockNames.has(row.formula),
@@ -474,6 +507,8 @@ if(process.argv.includes("--json")){
    v.firstMissing.slice(0,14).join(", ")+")");
  console.log("Unique stock formulas with applicable gaps: "+
   report.stockWithOutstandingProperties);
+ console.log("Single-source source-qualified batch records: "+
+  rawTotals.curatedBatchSourceProperties);
  console.log("NIST-JANAF verified direct crystalline Cp at 298.15 K: "+
   rawTotals.janafRoomTemperatureCrystalHeats);
  console.log("NIST SRD 69 verified solid Cp at 298.15 K: "+
