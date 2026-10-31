@@ -1411,7 +1411,10 @@ export function removeLabVessel(bench:LabBench,id:string,discardContents=false):
  const target=bench.vessels.find(v=>v.id===id);
  // A filled vessel requires explicit confirmation. Never silently discard
  // the student's reagents just because of a swipe toward the top shelf.
- if(!target||(!discardContents&&target.reagents.length>0))return bench;
+ if(!target||(!discardContents&&(
+  target.reagents.length>0||!!target.filteredSolution||
+  !!target.filteredResidue||!!target.chemicalInventory||
+  !!target.reactionAmounts)))return bench;
  const vessels=bench.vessels.filter(v=>v.id!==id);
  return {...bump(bench,vessels,""),
   stirringVesselId:bench.stirringVesselId===id?undefined:bench.stirringVesselId,
