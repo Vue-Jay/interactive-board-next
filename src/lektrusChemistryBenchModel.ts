@@ -531,8 +531,17 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // measured heat capacity, so an unheated warm solution cools rather than
   // producing vapor with no thermal cost. Ambient transfer recovers it later.
   if(canEvaporate&&calorimetry&&phase&&phase.latentEnergyJ>0&&!v.stoppered){
-   next=Math.round(Math.max(0,Math.min(next,
-    raw-phase.latentEnergyJ/calorimetry.capacityJPerK))*10)/10;
+   // Only ambient / surplus latent heat can cool the sample. The power
+   // that would have driven it ABOVE its boiling plateau is already
+   // assigned to vaporization, so subtracting it a second time made
+   // boiling samples oscillate below 100°C and stopped the bubbles.
+   const plateauEnergyJ=boilingPoint!==undefined&&
+    next>=boilingPoint-.25&&raw>=boilingPoint?
+    (raw-boilingPoint)*calorimetry.capacityJPerK:0;
+   const extraLatentJ=Math.max(0,phase.latentEnergyJ-plateauEnergyJ);
+   if(extraLatentJ>0)
+    next=Math.round(Math.max(-30,Math.min(next,
+     raw-extraLatentJ/calorimetry.capacityJPerK))*10)/10;
   }
   // When disabled, keep measured solvent, composition and energy intact.
   // Pressure protection still runs independently for a closed vessel.
