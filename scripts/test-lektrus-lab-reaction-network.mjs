@@ -498,9 +498,9 @@ console.log("Twelve dry specific heats, four crystal densities, five solid phase
 // binary saturation or a fictitious source of dry-crystal mass.
 const hydrates=load("src/lektrusLabHydrateReferences.ts");
 const rows=hydrates.LAB_HYDRATE_SOLUBILITY_REFERENCES;
-assert.equal(rows.length,40);
-assert.equal(new Set(rows.map(x=>x.baseFormula)).size,36);
-assert.equal(new Set(rows.map(x=>x.hydrateFormula)).size,40);
+assert.equal(rows.length,41);
+assert.equal(new Set(rows.map(x=>x.baseFormula)).size,37);
+assert.equal(new Set(rows.map(x=>x.hydrateFormula)).size,41);
 let measured=0;
 const waterKnots=hydrates.LAB_HYDRATE_KNOT_TEMPERATURES_C;
 for(const row of rows){
@@ -530,7 +530,7 @@ for(const row of rows){
   assert.equal(sample.massGPer100gWater,extra.massGPer100gWater);
  }
 }
-assert.equal(measured,146);
+assert.equal(measured,147);
  // Standalone hydrate identities must keep the source crystal water: a
  // nitrate hexahydrate is NEVER an anhydrous nitrate saturation reading.
  const newlySourcedHydrates=[
@@ -596,7 +596,7 @@ assert.equal(zinc.length,2,
 assert.deepEqual(zinc.map(x=>x.temperatureC),[20,60]);
 assert.equal(registryProps.labSubstanceProperties("NaCl",22)
  .hydratedSolubilityReferences.length,0);
-console.log("40 hydrate forms with 146 source-specific measured temperatures; no invented points");
+console.log("41 hydrate forms with 147 source-specific measured temperatures; no invented points");
 
 
 const crystalHydrates=hydrates.LAB_HYDRATE_CRYSTAL_DENSITIES;
@@ -743,10 +743,10 @@ for(const formula of ["Ca(OH)2","BaCO3","ZnSO4"]){
 console.log("Six verified pure-solid densities, seven solid transitions and sixteen Cp values passed");
 
 
-// Bulk provenance: 94 independently sourced properties, checked both in
+// Bulk provenance: 98 independently sourced properties, checked both in
 // source tables and through the same registry used to render lab state.
 const validated=load("src/lektrusLabPropertyProvenance.ts");
-assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,94);
+assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,98);
 const sourceIds=new Set();
 const fields={crystalDensityGPerMl:0,specificHeatJPerGK:0,thermal:0};
 for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
@@ -787,13 +787,13 @@ for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
  approximately(value,row.value,1e-6);
 }
 assert.deepEqual(fields,{
- crystalDensityGPerMl:32,specificHeatJPerGK:20,thermal:42
+ crystalDensityGPerMl:32,specificHeatJPerGK:22,thermal:44
 });
-console.log("94 source-checked property references: 32 crystal densities, 20 dry-solid Cp, 42 individual phase boundaries");
+console.log("98 source-checked property references: 32 crystal densities, 22 dry-solid Cp, 44 individual phase boundaries");
 // Direct NIST-JANAF (cr) 298.15 K molar values must be recalculated
 // with the real lab formula parser. No hydrate/solution substitution.
 const jan=load("src/lektrusLabJanafSolidHeatReferences.ts");
-assert.equal(jan.LAB_JANAF_SOLID_HEAT_REFERENCES.length,5);
+assert.equal(jan.LAB_JANAF_SOLID_HEAT_REFERENCES.length,7);
 for(const row of jan.LAB_JANAF_SOLID_HEAT_REFERENCES){
  assert.equal(row.phase,"solid");
  assert.equal(row.temperatureKelvin,298.15);
@@ -815,7 +815,7 @@ for(const row of jan.LAB_JANAF_SOLID_HEAT_REFERENCES){
   [row.formula]:{value:5,unit:"g"},H2O:{value:5,unit:"ml"}
  }),undefined,"Never assign crystalline Cp to prepared aqueous stock");
 }
-console.log("Five NIST-JANAF crystal specific heats audited from molar measurements");
+console.log("Seven NIST-JANAF crystal specific heats audited from molar measurements");
 
  
 // Precise pure-phase source constants from ICSC / OECD / ATSDR.
@@ -943,9 +943,9 @@ console.log("34 exact crystalline Perry Handbook Cp correlations: molar-to-mass,
 // 20°C rows from measurements at 18°C or 25°C.
 const literature=load("src/lektrusLabSolubilityMeasurements.ts");
 const pureWaterMeasurements=literature.LAB_MEASURED_PURE_WATER_SOLUBILITIES;
-assert.equal(pureWaterMeasurements.length,79);
-assert.equal(new Set(pureWaterMeasurements.map(x=>x.formula)).size,49);
-assert.equal(pureWaterMeasurements.filter(x=>x.temperatureC===20).length,29);
+assert.equal(pureWaterMeasurements.length,80);
+assert.equal(new Set(pureWaterMeasurements.map(x=>x.formula)).size,50);
+assert.equal(pureWaterMeasurements.filter(x=>x.temperatureC===20).length,30);
 const measuredTemperatures=new Set([0,20,40,60,80,100]);
 assert.equal(pureWaterMeasurements.filter(
  x=>!measuredTemperatures.has(x.temperatureC)).length,32);
@@ -1262,6 +1262,45 @@ assert.equal(thermalProps.labThermalInfo("(NH4)2CO3","g").meltingC,undefined);
 assert.equal(thermalProps.labThermalInfo("MnSO4","g").boilingC,undefined);
 console.log("New water and thermal source values: exact-only with conservative phase guards");
 
+// LiOH: anhydrous powder and its stoichiometric monohydrate are
+// DISTINCT independently measured solids (ILO/WHO ICSC 0913/0914).
+// Both say "g/100 mL WATER", not hydrated-equivalent "g/100g solution".
+const liDry=pureWaterMeasurements.find(x=>x.formula==="LiOH"&&x.temperatureC===20);
+assert.ok(liDry);
+assert.equal(liDry.originalUnit,"g/100ml-water");
+assert.equal(liDry.sourceValue,12.8);
+approximately(literature.labMeasuredSolubilityGPer100gWater(liDry),12.8/.9982,1e-11);
+approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+ "LiOH",20),12.8/.9982,1e-11);
+const liProp=registryProps.labSubstanceProperties("LiOH",20);
+assert.equal(liProp.solubilityKnown,true);
+assert.equal(liProp.binaryCrystallizationUnsupported,true);
+approximately(liProp.solubilityGPer100gWater,12.8/.9982,1e-11);
+const lithiumHydrate=hydrates.labHydrateSolubilityAtTemperature("LiOH·H2O",20);
+assert.ok(lithiumHydrate);
+assert.equal(lithiumHydrate.baseFormula,"LiOH");
+assert.equal(lithiumHydrate.waters,1);
+assert.equal(lithiumHydrate.sourceUrl,
+ "https://inchem.org/documents/icsc/icsc/eics0914.htm");
+approximately(lithiumHydrate.massGPer100gWater,19.1/.9982,1e-11);
+assert.equal(hydrates.labHydrateSolubilityAtTemperature("LiOH·H2O",22),
+ undefined,"A hydrate cannot invent 22°C solubility from an isolated point");
+assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater("LiOH",22),
+ undefined,"A dry LiOH point cannot invent a solubility curve");
+const dryLiOH=thermalProps.labThermalInfo("LiOH","g");
+assert.equal(dryLiOH.known,true);
+approximately(dryLiOH.meltingC,471.15,1e-10);
+assert.equal(dryLiOH.decompositionC,924);
+assert.equal(dryLiOH.boilingC,undefined,
+ "924°C is documented decomposition, never ordinary boiling");
+assert.equal(dryLiOH.behavior,"decomposes");
+assert.equal(thermalProps.labThermalInfo("LiOH","ml").known,false);
+const liInventory={speciesMol:{LiOH:.1,H2O:1},solidMol:{}};
+assert.equal(physicalDensity.labEquilibrateSingleSaltCrystals(
+ liInventory,20,true,labMolarMass),undefined);
+assert.deepEqual(liInventory.solidMol,{});
+console.log("LiOH dry/monohydrate separate, exact 20C solubilities, corrected decomposition: PASS");
+
 // Invalid extrapolation: a 25°C measurement does NOT define the
 // solubility at 20°C, and an isolated 20°C record does not define 21°C.
 for(const formula of ["PbSO4","SrCO3","ZnS","FeS","Ca3(PO4)2"])
@@ -1289,7 +1328,7 @@ for(const formula of ["Na2S","KNO2","BaSO4","CaCO3","CaSO4","LiCl"]){
  // The independent ion-speciation / Ksp engine may STILL legitimately
  // predict precipitation. Its settled solid is not a result of this solver.
 }
-console.log("79 sourced measurements across 49 salts: 29 exact 20°C and 32 off-grid points");
+console.log("80 sourced measurements across 50 stock formulas: 30 exact 20°C and 32 off-grid points");
 
 
 // Individual source-linked normal-pressure phase boundaries. Avoid
