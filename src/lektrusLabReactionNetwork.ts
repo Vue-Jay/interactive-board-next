@@ -115,7 +115,9 @@ function kspLimitedExtent(row:ReactionCase,
   const concentration=Math.max(0,stocks[i]-extent*term.coefficient)/volumeL;
   return value*concentration**term.coefficient;
  },1);
- if(quotient(0)<=ksp)return 0;
+ // A second inspection of an equilibrated filtrate must not create
+ // microscopic new solids from floating-point roundoff at Q ~= Ksp.
+ if(quotient(0)<=ksp*(1+1e-7))return 0;
  let low=0,high=fullExtent;
  for(let i=0;i<70;i++){
   const x=(low+high)/2;
