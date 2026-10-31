@@ -15,6 +15,10 @@
 type HeatDose={value:number;unit:"ml"|"g";concentrationM?:number};
 type SubstanceHeat={specificJPerGK:number;densityGPerMl?:number;phase:"liquid"|"solid"};
 export const LAB_CALORIMETRY_REFERENCE:Readonly<Record<string,SubstanceHeat>>={
+ // NIST-JANAF directly measured Cp of dry Na2O and alpha-Li2SO4
+ // crystals at 298.15 K: not hydration/solution heat capacity.
+ Na2O:{specificJPerGK:1.114950,phase:"solid"},
+ Li2SO4:{specificJPerGK:1.069786,phase:"solid"},
  // NIST-JANAF 1998 pure crystal Cp at 298.15 K. Original J/(mol K)
  // and exact solid phases live in lektrusLabJanafSolidHeatReferences.ts.
  // Per-entry conversion uses the real formula parser; these values must
