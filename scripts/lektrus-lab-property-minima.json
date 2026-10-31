@@ -3,7 +3,7 @@
   "minimum": {
     "stock": 180,
     "crystalDensity": 109,
-    "thermal": 110,
+    "thermal": 120,
     "specificHeat": 93,
     "binarySolubility": 34,
     "binarySolubilityAnyTemperature": 39,
@@ -16,7 +16,7 @@
     "hydrateReferenceAllBases": 33,
     "saturatedSolutionDensityRecords": 37,
     "saturatedSolutionDensityCabinetBases": 37,
-    "curatedSourceCheckedProperties": 41,
+    "curatedSourceCheckedProperties": 52,
     "perryRoomTemperatureCrystalHeats": 34,
     "measuredPureWaterSourcePoints": 26,
     "measuredPureWaterStockBases": 15,
