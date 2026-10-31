@@ -2,7 +2,7 @@ import type {Item} from "./boardModel";
 import {labVesselPH,labIndicatorTint} from "./lektrusLabPH";
 import {labDefaultStockDose,labIsPreparedStock,LAB_STOCK_MOLARITY_M} from "./lektrusLabCatalog";
 import {labVesselThermal} from "./lektrusLabPhysicalProperties";
-import {labSensibleHeatStep} from "./lektrusLabCalorimetry";
+import {labSensibleHeatStep,labSchoolSpecificHeatJPerGK,LAB_CALORIMETRY_REFERENCE} from "./lektrusLabCalorimetry";
 import {labBinarySaltEquilibrium,labAdvanceBinarySaltPhase,labVisibleBinarySaltSolid,
  labSchoolMixedSaltEquilibrium,labAdvanceSchoolMixedSaltPhase,
  type LabBinarySaltState} from "./lektrusLabDissolution";
@@ -1995,6 +1995,40 @@ export function activateLabVessel(bench:LabBench,id:string):LabBench{
 }
 /** Complete transfer of contents: products and their visible appearance move with
  * the liquid. Adding a new reagent to spent material is deliberately unknown. */
+/** Approximate energy-conserving temperature of combined vessel contents.
+ * Each source dose contributes its actual school heat capacity. Pure liquid
+ * densities/Cp come from the existing calorimetry reference; aqueous stocks
+ * use its documented dilute-solution approximation. This is sensible heat
+ * only: latent heat and reaction enthalpy remain in their own simulation steps.
+ * Gas doses do not count as an imaginary 5 ml liquid pool.
+ */
+function labDoseHeatCapacity(doses:Record<string,LabDose>|undefined):number{
+ let total=0;
+ for(const [id,d] of Object.entries(doses??{})){
+  if(d.value<=0||!Number.isFinite(d.value)||
+     d.unit==="ml"&&substances.find(s=>s.id===id)?.kind==="газ")continue;
+  const reference=LAB_CALORIMETRY_REFERENCE[id];
+  const density=d.unit==="ml"&&d.concentrationM===undefined&&
+   reference?.phase==="liquid"?reference.densityGPerMl??1:1;
+  total+=d.value*density*labSchoolSpecificHeatJPerGK(id,d.unit,d.concentrationM).value;
+ }
+ return total;
+}
+export function labMixedContentsTemperatureC(
+ source:LabVessel,target:LabVessel,sourceFraction=1
+):number{
+ const fraction=Math.max(0,Math.min(1,sourceFraction));
+ const sourceCapacity=labDoseHeatCapacity(source.doses)*fraction+
+  (source.filteredSolution?.volumeMl??0)*fraction*4.18;
+ const targetCapacity=labDoseHeatCapacity(target.doses)+
+  (target.filteredSolution?.volumeMl??0)*4.18;
+ const sourceC=source.temperatureC??22,targetC=target.temperatureC??22;
+ const total=sourceCapacity+targetCapacity;
+ if(total<=1e-10)return targetC;
+ return Math.round(Math.max(0,Math.min(1250,
+  (sourceCapacity*sourceC+targetCapacity*targetC)/total))*10)/10;
+}
+
 /** One shared 20-step pour. The initiating client advances 5% per 150ms tick. */
 export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:string):LabBench{
  if(!id||sourceId===targetId||(b.pouring&&b.pouring.step<20))return b;
@@ -2075,6 +2109,7 @@ export function advanceLabPour(b:LabBench,portions=1):LabBench{
     key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&received[key]?.unit==="g")&&
     identifyReaction(combined,medium).status!=="reaction";
    return {...v,reactionAmounts:undefined,reagents:combined,doses:received,
+   temperatureC:labMixedContentsTemperatureC(source,v,(n-p.step)/LAB_POUR_STEPS),
    reactionHeat:p.step===0?undefined:v.reactionHeat,
    physicalProcess:dissolving?"dissolving" as const:undefined,
    physicalStartedAtMs:dissolving?(v.physicalStartedAtMs??Date.now()):undefined,
@@ -2163,6 +2198,7 @@ function pourMeasuredFiltrate(bench:LabBench,source:LabVessel,target:LabVessel):
    observed:false,uncertain:false,indicator:undefined,
    indicatorDrops:undefined,indicatorAddedAtMs:undefined};
   if(v.id===target.id)return {...v,reagents:ids,
+   temperatureC:labMixedContentsTemperatureC(source,v),
    doses:Object.keys(received).length?received:undefined,
    filteredSolution:carrier>0?{sourceEquation:source.filteredSolution?.sourceEquation??
     target.filteredSolution?.sourceEquation??"",solutes:ids.filter(x=>x!=="H2O"),
@@ -2234,7 +2270,9 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
     identifyReaction(reagents,medium).status==="reaction";
    const dissolving=!newReaction&&doses.H2O?.unit==="ml"&&
     reagents.some(key=>key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&doses[key]?.unit==="g");
-   return {...v,reagents,reactionAmounts:undefined,reactionHeat:undefined,observed:reagents.length>1||source.observed,
+   return {...v,reagents,reactionAmounts:undefined,reactionHeat:undefined,
+    temperatureC:labMixedContentsTemperatureC(source,v),
+    observed:reagents.length>1||source.observed,
     // A complete transfer to empty glassware carries the physical crystal
     // inventory. Mixed recipients must re-evaluate their phase separately.
     binarySaltPhase:targetWasEmpty?source.binarySaltPhase:undefined,
