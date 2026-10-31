@@ -329,8 +329,8 @@ const solidNa={...bare.vessels[0],reagents:["Na"],
 const sodiumSample={...bare,simulationAtMs:1000,
  vessels:[solidNa],placedDevices:[{...hotplate,temperatureC:180,
  targetTemperatureC:180,active:true,powered:true}]};
-const heatedNa=lab.advanceLabSimulation(sodiumSample,11000).vessels[0];
-const sensibleNa=heat.labSensibleHeatStep("beaker",solidNa.doses,97.79,22,10,
+const heatedNa=lab.advanceLabSimulation(sodiumSample,3000).vessels[0];
+const sensibleNa=heat.labSensibleHeatStep("beaker",solidNa.doses,97.79,22,2,
  {kind:"hotplate",temperatureC:180,powerW:160});
 const capacityNa=heat.labKnownHeatCapacityJPerK("beaker",solidNa.doses);
 const expectedFusion=Math.max(0,(sensibleNa.temperatureC-97.79)*capacityNa)/(8*115);
