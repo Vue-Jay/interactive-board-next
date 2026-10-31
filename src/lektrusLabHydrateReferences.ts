@@ -201,6 +201,29 @@ export function labHydrateNearestMeasuredReferences(
 export const LAB_HYDRATE_CRYSTAL_DENSITIES:readonly {
  baseFormula:string;hydrateFormula:string;densityGPerMl:number;sourceUrl:string;
 }[]=[
+ // Independent named hydrate crystal true densities, not ANY of the
+ // corresponding ANHYDROUS salts or loose powder packing densities.
+ // LiOH·H2O: ILO/WHO ICSC 0914, 1.51 g/cm3.
+ // Zn(CH3COO)2·2H2O: Seidell/Lange chemistry database,
+ // specifically dihydrate monoclinic crystals, 1.735 g/cm3 at 20 C.
+ // https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=2737
+ // BaCl2·2H2O: ILO/WHO ICSC 0615, 3.86 g/cm3.
+ // MnSO4·H2O: ILO/WHO ICSC 0290, 2.95 g/cm3.
+ // Zn(NO3)2·6H2O: NCBI PubChem/Hazardous Substances Data Bank
+ //   2.065 g/cm3 at 14 C, hexahydrate specifically.
+ // CoCl2·6H2O: NCBI PubChem US DOE PAC, 1.924 g/cm3 at 25 C.
+ {baseFormula:"Zn(CH3COO)2",hydrateFormula:"Zn(CH3COO)2·2H2O",densityGPerMl:1.735,
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=2737"},
+ {baseFormula:"LiOH",hydrateFormula:"LiOH·H2O",densityGPerMl:1.51,
+  sourceUrl:"https://inchem.org/documents/icsc/icsc/eics0914.htm"},
+ {baseFormula:"BaCl2",hydrateFormula:"BaCl2·2H2O",densityGPerMl:3.86,
+  sourceUrl:"https://www.inchem.org/documents/icsc/icsc/eics0615.htm"},
+ {baseFormula:"MnSO4",hydrateFormula:"MnSO4·H2O",densityGPerMl:2.95,
+  sourceUrl:"https://www.inchem.org/documents/icsc/icsc/eics0290.htm"},
+ {baseFormula:"Zn(NO3)2",hydrateFormula:"Zn(NO3)2·6H2O",densityGPerMl:2.065,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/Zinc-Nitrate"},
+ {baseFormula:"CoCl2",hydrateFormula:"CoCl2·6H2O",densityGPerMl:1.924,
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/Cobalt-chloride-hexahydrate"},
  {baseFormula:"CuSO4",hydrateFormula:"CuSO4·5H2O",densityGPerMl:2.29,
   sourceUrl:"https://uchi.vscht.cz/e-tables/density-solids?jazyk=en&lang=en"},
  {baseFormula:"Na2CO3",hydrateFormula:"Na2CO3·10H2O",densityGPerMl:1.46,
