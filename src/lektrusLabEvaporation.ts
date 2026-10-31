@@ -262,7 +262,8 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
   (!vaporKnown&&reactionGasPressureKPa>=160));
  const totalPressureKPa=v.stoppered?sealedPressureKPa:vaporPressureKPa;
  if((!known&&!gasOnly)||dt===0||v.stoppered&&!popped)return {
-  doses:v.doses,ventedVaporMl:v.ventedVaporMl,
+  doses:v.doses,filteredSolution:v.filteredSolution,
+  ventedVaporMl:v.ventedVaporMl,
   stoppered:popped?false:v.stoppered,popped,boiling:false,
   pressureKPa:totalPressureKPa,reactionGasPressureKPa,evaporatedMl:0
  };
