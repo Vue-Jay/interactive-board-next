@@ -4331,3 +4331,143 @@
  text-align:center!important;
  line-height:1.3!important;
 }
+
+
+/* Shared pour-speed switch. It stays reachable inside the tabletop header
+   rather than becoming a floating action that obstructs glassware. */
+.lektrus-lab-bench .lektrus-lab-pour-mode,
+.lektrus-lab-bench .lektrus-lab-compact-pour-mode{
+ display:inline-flex;align-items:center;gap:2px;min-width:0;flex:0 0 auto;
+ padding:3px;border:1px solid #b6d7c4;border-radius:10px;
+ background:#e9f4ee;color:#326a55;box-shadow:inset 0 1px 3px #174d3210}
+.lektrus-lab-bench .lektrus-lab-pour-mode button,
+.lektrus-lab-bench .lektrus-lab-compact-pour-mode button{
+ white-space:nowrap;min-height:28px;min-width:0;padding:5px 9px;
+ border:0;border-radius:7px;background:transparent;color:#436f5a;
+ font:750 11px/1.15 system-ui,sans-serif;cursor:pointer}
+.lektrus-lab-bench .lektrus-lab-pour-mode button.is-active,
+.lektrus-lab-bench .lektrus-lab-compact-pour-mode button[aria-pressed="true"]{
+ background:#22775a;color:#fff;box-shadow:0 2px 6px #12593b30}
+.lektrus-lab-bench .lektrus-lab-pour-mode button:focus-visible,
+.lektrus-lab-bench .lektrus-lab-compact-pour-mode button:focus-visible{
+ outline:2px solid #1e9271;outline-offset:2px}
+.lektrus-lab-bench .lektrus-lab-pour-mode button:disabled{cursor:default;opacity:.7}
+.lektrus-lab-bench .lektrus-lab-compact-pour-mode{flex-wrap:nowrap}
+@container(max-width:760px){
+ .lektrus-lab-bench .lektrus-lab-pour-mode{order:2;flex:0 0 auto}
+ .lektrus-lab-bench .lektrus-lab-pour-mode button{font-size:10px;padding:5px 7px}
+}
+/* Experiment catalogue: readable two-column cards, compact condition tags,
+   selection preview and an explicit replacement confirmation. */
+.lektrus-lab-furniture-modal .lektrus-lab-experiments-intro{
+ display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+ margin:2px 14px;padding:9px 12px;border-radius:11px;
+ background:linear-gradient(110deg,#e4f3ed,#f2f9ed);
+ border:1px solid #bedeca;color:#3e6d59}
+.lektrus-lab-furniture-modal .lektrus-lab-experiments-intro strong{
+ font-size:12px;color:#145a46;white-space:nowrap}
+.lektrus-lab-furniture-modal .lektrus-lab-experiments-intro span{
+ font-size:11px;line-height:1.35;flex:1 1 245px}
+.lektrus-lab-furniture-modal .lektrus-lab-experiment-preview{
+ display:grid;gap:8px;margin:2px 14px;padding:12px 14px;
+ border:1px solid #9acbb4;border-radius:13px;
+ background:linear-gradient(135deg,#f0faf3,#fff);
+ box-shadow:0 5px 16px #164c3610;color:#245844}
+.lektrus-lab-furniture-modal .lektrus-lab-experiment-preview-top{
+ display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.lektrus-lab-experiment-preview-top>div{display:grid;gap:3px;min-width:0}
+.lektrus-lab-experiment-preview-top small{
+ font-size:9px;font-weight:850;letter-spacing:.12em;color:#5d947b}
+.lektrus-lab-experiment-preview-top strong{
+ font:800 14px/1.35 system-ui,sans-serif;overflow-wrap:anywhere}
+.lektrus-lab-experiment-preview-top>button{
+ width:28px;height:28px;flex:0 0 28px;border:1px solid #c1dccb;
+ border-radius:8px;background:#fff;color:#42735c;cursor:pointer}
+.lektrus-lab-experiment-preview p{
+ margin:0;font-size:11px;line-height:1.4;color:#4c6d5a}
+.lektrus-lab-experiment-kit-rows{
+ display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.lektrus-lab-experiment-kit-rows>span{
+ padding:5px 8px;background:#fff;border:1px solid #d6e8dc;
+ border-radius:7px;font-size:10px;line-height:1.35}
+.lektrus-lab-experiment-kit-rows b{color:#226a4d;margin-right:5px}
+.lektrus-lab-experiment-safety{color:#985d34;font-size:10px}
+.lektrus-lab-experiment-prepare,
+.lektrus-lab-experiment-confirm button:first-of-type{
+ justify-self:start;min-height:34px;padding:7px 14px;border:0;
+ border-radius:8px;background:#247a59;color:#fff;
+ font:800 11px/1.2 system-ui,sans-serif;cursor:pointer}
+.lektrus-lab-experiment-prepare span{margin-left:5px;font-size:15px}
+.lektrus-lab-experiment-prepare:disabled{opacity:.5;cursor:default}
+.lektrus-lab-experiment-confirm{
+ display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ padding-top:5px;border-top:1px solid #c8dfd2}
+.lektrus-lab-experiment-confirm span{
+ color:#805532;font-size:11px;flex:1 1 190px}
+.lektrus-lab-experiment-confirm button:last-child{
+ border:1px solid #b7d5c5;border-radius:8px;background:#fff;
+ min-height:34px;padding:7px 12px;color:#3c6d54;cursor:pointer}
+.lektrus-lab-furniture-modal .lektrus-lab-experiment-grid{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;align-content:start;padding:2px 4px 8px}
+.lektrus-lab-furniture-modal .lektrus-lab-example-choice{
+ width:100%;min-width:0;display:grid;align-content:start;gap:8px;
+ padding:12px;border:1px solid #d2e5d8;border-radius:12px;
+ background:#fff;color:#315f4c;text-align:left;cursor:pointer;
+ box-shadow:0 2px 9px #255a3d09}
+.lektrus-lab-furniture-modal .lektrus-lab-example-choice:hover,
+.lektrus-lab-furniture-modal .lektrus-lab-example-choice.is-selected{
+ border-color:#70b58d;background:#f0faf3;box-shadow:0 3px 13px #246a4420}
+.lektrus-lab-experiment-card-head{display:flex;align-items:center;gap:7px}
+.lektrus-lab-experiment-number{
+ display:inline-grid;place-items:center;width:28px;height:27px;
+ flex:0 0 28px;border-radius:7px;background:#e8f4ee;
+ font:800 10px/1 system-ui,sans-serif;color:#287b5b}
+.lektrus-lab-experiment-chips{display:flex;flex-wrap:wrap;gap:4px}
+.lektrus-lab-experiment-chips small{
+ padding:3px 6px;border-radius:6px;background:#eaf3ef;color:#437862;
+ font-size:9px;line-height:1.15}
+.lektrus-lab-experiment-chips small:first-child{background:#dcefe5;color:#22674d}
+.lektrus-lab-furniture-modal .lektrus-lab-example-choice>strong{
+ font-size:12px;line-height:1.35;overflow-wrap:anywhere;color:#205c47}
+.lektrus-lab-furniture-modal .lektrus-lab-example-choice>span{
+ font-size:10px;line-height:1.4;color:#607969}
+.lektrus-lab-furniture-modal .lektrus-lab-example-choice .lektrus-lab-experiment-card-kit{
+ display:block;padding-top:6px;border-top:1px solid #e1ede6;
+ font-size:10px;color:#2d7457}
+.lektrus-lab-furniture-modal .lektrus-lab-experiment-more{
+ grid-column:1/-1;padding:11px;border:1px dashed #8fbea5;
+ border-radius:10px;background:#eef7f0;color:#256b4e;
+ font-size:11px;font-weight:800;cursor:pointer}
+@media(max-width:680px){
+ .lektrus-lab-furniture-modal .lektrus-lab-experiment-grid{
+  grid-template-columns:minmax(0,1fr);gap:7px}
+ .lektrus-lab-furniture-modal .lektrus-lab-experiment-preview{
+  margin:2px 9px;padding:9px 10px;gap:6px}
+ .lektrus-lab-furniture-modal .lektrus-lab-experiments-intro{margin:2px 9px}
+ .lektrus-lab-furniture-modal .lektrus-lab-example-choice{padding:10px}
+}
+
+
+/* Narrow tabletop / landscape phone: let the mode picker and pouring choice
+   remain in the header without forcing the fixed-width desktop select. */
+@container(max-width:690px){
+ .lektrus-lab-bench .lektrus-lab-mode-picker{
+  flex:1 1 132px!important;width:auto!important;
+  max-width:195px!important;min-width:112px!important;gap:3px!important}
+ .lektrus-lab-bench .lektrus-lab-mode-picker>span{display:none!important}
+ .lektrus-lab-bench .lektrus-lab-mode-picker select{
+  font-size:10px!important;padding-left:7px!important;padding-right:19px!important}
+ .lektrus-lab-bench .lektrus-lab-mode-picker:after{
+  width:6px;height:6px;right:7px}
+ .lektrus-lab-bench .lektrus-lab-pour-mode{
+  flex:0 0 auto!important;gap:1px!important;padding:2px!important}
+ .lektrus-lab-bench .lektrus-lab-pour-mode button{
+  min-height:27px!important;padding:4px 5px!important;font-size:9px!important}
+ .lektrus-lab-bench .lektrus-lab-prepare-mode{
+  min-width:28px!important;padding:3px 5px!important}
+}
+@container(max-width:460px){
+ .lektrus-lab-bench .lektrus-lab-scene-brand{display:none!important}
+ .lektrus-lab-bench .lektrus-lab-mode-picker{min-width:104px!important}
+}

@@ -752,10 +752,11 @@ export function dripLabVessel(bench:LabBench,sourceId:string,targetId:string,req
 }
 export type LabBenchSettings={
  showEquationBoard:boolean;showVesselLabels:boolean;animateEffects:boolean;
- showTemperatures:boolean;
+ showTemperatures:boolean;pourMode:"gradual"|"fast";
 };
 export const defaultLabBenchSettings=():LabBenchSettings=>({
- showEquationBoard:true,showVesselLabels:true,animateEffects:true,showTemperatures:true
+ showEquationBoard:true,showVesselLabels:true,animateEffects:true,showTemperatures:true,
+ pourMode:"gradual"
 });
 export const labBenchSettings=(bench:LabBench):LabBenchSettings=>({
  ...defaultLabBenchSettings(),...bench.settings
@@ -2073,6 +2074,20 @@ export function advanceLabPour(b:LabBench):LabBench{
   ...(b.titrationPair&&(b.titrationPair.sourceId===source.id||
    b.titrationPair.targetId===target.id)?{titrationPair:undefined,titration:undefined}:{})};
 }
+/** Complete the SAME 20 measured portions in one atomic user action.
+ * Both modes use exactly the same mass/concentration/phase mathematics.
+ * No intermediate quantities are broadcast when the fast mode is chosen. */
+export function fastLabPour(b:LabBench,sourceId:string,targetId:string):LabBench{
+ const started=startLabPour(b,sourceId,targetId,"fast-"+Date.now().toString(36));
+ if(started===b||!started.pouring)return started;
+ let result=started;
+ for(let step=0;step<LAB_POUR_STEPS;step++){
+  const next=advanceLabPour(result);
+  if(next===result||!next.pouring||next.pouring.step!==step+1)return b;
+  result=next;
+ }
+ return stopLabPour(result);
+}
 export function stopLabPour(b:LabBench,id?:string):LabBench{
  if(!b.pouring||(id&&b.pouring.id!==id))return b;
  return {...b,pouring:undefined,event:b.event+1};
@@ -2263,7 +2278,8 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
  const originalSettings=labBenchSettings(previous),mineSettings=labBenchSettings(mine);
  const settings={...labBenchSettings(remote)};
  for(const key of Object.keys(mineSettings) as (keyof LabBenchSettings)[]){
-  if(mineSettings[key]!==originalSettings[key])settings[key]=mineSettings[key];
+  if(mineSettings[key]!==originalSettings[key])
+   (settings as unknown as Record<string,unknown>)[key]=mineSettings[key];
  }
  // Merge concurrent apparatus additions and moves by durable instance ID.
  // Replacing the entire array would erase a peer's newly placed instrument.
