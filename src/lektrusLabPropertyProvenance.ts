@@ -18,6 +18,18 @@ export type LabReviewedPropertyDatum={
  sourceUrl:string;
 };
 export const LAB_REVIEWED_PROPERTY_DATUMS:readonly LabReviewedPropertyDatum[]=[
+ // NIST-JANAF direct 298.15 K crystalline measurements. These five
+ // values are separate from Perry handbook and NIST WebBook imports.
+ {formula:"MgCO3",property:"specificHeatJPerGK",value:0.903894,
+  sourceUrl:"https://janaf.nist.gov/tables/C-079.html"},
+ {formula:"CuCl2",property:"specificHeatJPerGK",value:0.534646,
+  sourceUrl:"https://janaf.nist.gov/tables/Cl-079.html"},
+ {formula:"FeCl2",property:"specificHeatJPerGK",value:0.604868,
+  sourceUrl:"https://janaf.nist.gov/tables/Cl-081.html"},
+ {formula:"FeCl3",property:"specificHeatJPerGK",value:0.595888,
+  sourceUrl:"https://janaf.nist.gov/tables/Cl-134.html"},
+ {formula:"Ba(OH)2",property:"specificHeatJPerGK",value:0.593139,
+  sourceUrl:"https://janaf.nist.gov/tables/Ba-025.html"},
  // Four phase-specific boundaries and one molecular P4O10 (P2O5)
  // crystalline density, independently traceable to source publications.
  {formula:"MgSO4",property:"decompositionC",value:1124,
