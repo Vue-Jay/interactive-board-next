@@ -1023,7 +1023,8 @@ export function clearLabTable(bench:LabBench):LabBench{
  return {...bench,vessels:[],selectedId:"",tableEpoch:nextLabTableEpoch(),
   placedDevices:[],devices:[],
   titration:undefined,titrationPair:undefined,stirringVesselId:undefined,
-  instrumentTarget:undefined,simulationAtMs:undefined,pouring:undefined,event:bench.event+1};
+  instrumentTarget:undefined,simulationAtMs:undefined,pouring:undefined,
+  experimentClock:undefined,event:bench.event+1};
 }
 export type LabPourProgress={id:string;sourceId:string;targetId:string;step:number;totalSteps:20;
  initialDoses:Record<string,LabDose>;unmeasured:boolean;
@@ -1035,7 +1036,39 @@ export const labPourPercent=(p:LabPourProgress)=>Math.round(p.step/p.totalSteps*
 export const labPourAmounts=(p:LabPourProgress)=>Object.entries(p.initialDoses).map(([id,d])=>({
  id,unit:d.unit,transferred:Math.round(d.value*(p.transferFraction??1)*p.step/p.totalSteps*1000)/1000,
  remaining:Math.round(d.value*(1-(p.transferFraction??1)*p.step/p.totalSteps)*1000)/1000}));
+export type LabExperimentClock={elapsedSeconds:number;anchorMs:number;running:boolean};
+/** A shared stopwatch. Its wall-time anchor and speed-normalized elapsed
+ * duration are persisted, while the display updates LOCALLY every second.
+ * Consequently an idle clock generates zero network writes. */
+export function labExperimentClockSeconds(bench:LabBench,nowMs:number):number{
+ const clock=bench.experimentClock;
+ if(!clock)return 0;
+ const additional=clock.running&&Number.isFinite(nowMs)?
+  Math.max(0,nowMs-clock.anchorMs)/1000*labBenchSettings(bench).timeScale:0;
+ return Math.max(0,clock.elapsedSeconds+additional);
+}
+export function setLabExperimentClock(bench:LabBench,
+ action:"start"|"pause"|"reset",nowMs:number):LabBench{
+ if(!Number.isFinite(nowMs)||nowMs<0)return bench;
+ const old=bench.experimentClock;
+ if(action==="reset"){
+  if(!old||(old.elapsedSeconds===0&&!old.running))return bench;
+  return {...bench,experimentClock:{elapsedSeconds:0,anchorMs:nowMs,running:false},
+   event:bench.event+1};
+ }
+ if(action==="start"&&old?.running||action==="pause"&&!old?.running)return bench;
+ const elapsedSeconds=labExperimentClockSeconds(bench,nowMs);
+ return {...bench,experimentClock:{elapsedSeconds,anchorMs:nowMs,
+  running:action==="start"},event:bench.event+1};
+}
+export function formatLabClock(seconds:number):string{
+ const total=Math.floor(Math.max(0,seconds));
+ const h=Math.floor(total/3600),m=Math.floor(total/60)%60,s=total%60;
+ const pad=(n:number)=>String(n).padStart(2,"0");
+ return pad(h)+":"+pad(m)+":"+pad(s);
+}
 export type LabBench={vessels:LabVessel[];selectedId:string;event:number;mode?:LabMode;pouring?:LabPourProgress;
+ experimentClock?:LabExperimentClock;
  /** Explicit clear/replace token; never changed by passive simulation ticks. */
  tableEpoch?:string;
  /** Equations remain on the shared chalkboard until manually wiped. */
@@ -1047,10 +1080,17 @@ export type LabBench={vessels:LabVessel[];selectedId:string;event:number;mode?:L
  titrationPair?:{sourceId:string;targetId:string};simulationAtMs?:number;}
 export const MAX_BENCH_VESSELS=6,MAX_VESSEL_REAGENTS=48;
 const clamp=(v:number)=>Math.round(Math.min(90,Math.max(10,v))*10)/10;
-export function setLabBenchSettings(bench:LabBench,settings:Partial<LabBenchSettings>):LabBench{
- const next={...labBenchSettings(bench),...settings};
- return JSON.stringify(next)===JSON.stringify(labBenchSettings(bench))?bench:
-  {...bench,settings:next,event:bench.event+1};
+export function setLabBenchSettings(bench:LabBench,settings:Partial<LabBenchSettings>,
+ nowMs=Date.now()):LabBench{
+ const previous=labBenchSettings(bench);
+ const next={...previous,...settings};
+ if(JSON.stringify(next)===JSON.stringify(previous))return bench;
+ // Bank elapsed time at the OLD speed before selecting another speed.
+ const experimentClock=bench.experimentClock?.running&&
+  previous.timeScale!==next.timeScale?
+  {elapsedSeconds:labExperimentClockSeconds(bench,nowMs),anchorMs:nowMs,running:true}:
+  bench.experimentClock;
+ return {...bench,settings:next,experimentClock,event:bench.event+1};
 }
 export const defaultLabBench=():LabBench=>({
  vessels:[{id:"v1",kind:"beaker",x:48,y:70,reagents:[],environment:"aqueous",observed:false}],
@@ -2546,6 +2586,11 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
  const titrationPair=JSON.stringify(mine.titrationPair??null)===JSON.stringify(previous.titrationPair??null)?
   remote.titrationPair:mine.titrationPair;
  const simulationAtMs=Math.max(mine.simulationAtMs??0,remote.simulationAtMs??0)||undefined;
+ // Stopwatch commands are explicit persisted edits, never produced by
+ // simulation ticks. Thus unrelated peer edits retain the latest command.
+ const experimentClock=JSON.stringify(mine.experimentClock??null)===
+  JSON.stringify(previous.experimentClock??null)?
+  remote.experimentClock:mine.experimentClock;
  const pouring=mine.pouring?.id===remote.pouring?.id&&mine.pouring&&remote.pouring?
   (mine.pouring.step>=remote.pouring.step?mine.pouring:remote.pouring):
   JSON.stringify(mine.pouring??null)===JSON.stringify(previous.pouring??null)?
@@ -2568,6 +2613,7 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
  const seenReactionKeys=[...new Set([...(previous.seenReactionKeys??[]),
   ...(remote.seenReactionKeys??[]),...(mine.seenReactionKeys??[])])].slice(-150);
  return {vessels:limited,selectedId,mode,tableEpoch:mine.tableEpoch??remote.tableEpoch,
-  settings,quickReagents,devices,placedDevices:limitedDevices,titration,titrationPair,stirringVesselId,instrumentTarget,simulationAtMs,pouring,
+  settings,quickReagents,devices,placedDevices:limitedDevices,titration,titrationPair,
+  stirringVesselId,instrumentTarget,simulationAtMs,experimentClock,pouring,
   reactionLog,seenReactionKeys,event:Math.max(remote.event,mine.event)+1};
 }
