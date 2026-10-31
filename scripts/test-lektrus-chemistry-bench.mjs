@@ -1065,9 +1065,10 @@ const measuredReaction=chem.startQuantifiedLabReaction(neutralization,["HCl","Na
  NaOH:{value:5,unit:"ml",concentrationM:.1}
 });
 assert.ok(measuredReaction);
-assert.equal(chem.startQuantifiedLabReaction(neutralization,["HCl","NaOH"],{
+assert.ok(Math.abs(chem.startQuantifiedLabReaction(neutralization,["HCl","NaOH"],{
  HCl:{value:10,unit:"ml"},NaOH:{value:5,unit:"ml",concentrationM:.1}
-}),null,"Missing source molarity must not be guessed");
+}).maxExtentMol-.0005)<1e-12,
+ "Legacy prepared school stock receives the catalogue default 0.1 M");
 assert.ok(Math.abs(measuredReaction.maxExtentMol-.0005)<1e-12);
 const halfway=chem.advanceQuantifiedLabReaction(measuredReaction,2);
 assert.ok(Math.abs(halfway.remainingMol.HCl-.00075)<1e-12);
