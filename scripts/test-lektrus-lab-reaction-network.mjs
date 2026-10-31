@@ -711,7 +711,7 @@ console.log("Six verified pure-solid densities, seven solid transitions and sixt
 // Bulk provenance: 41 independently sourced properties, checked both in
 // source tables and through the same registry used to render lab state.
 const validated=load("src/lektrusLabPropertyProvenance.ts");
-assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,41);
+assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,52);
 const sourceIds=new Set();
 const fields={crystalDensityGPerMl:0,specificHeatJPerGK:0,thermal:0};
 for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
@@ -752,9 +752,9 @@ for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
  approximately(value,row.value,1e-6);
 }
 assert.deepEqual(fields,{
- crystalDensityGPerMl:14,specificHeatJPerGK:8,thermal:19
+ crystalDensityGPerMl:14,specificHeatJPerGK:8,thermal:30
 });
-console.log("41 source-checked property references: 14 crystal densities, 8 pure-solid heat capacities, 19 phase boundaries");
+console.log("52 source-checked property references: 14 crystal densities, 8 dry-solid Cp, 30 individual phase boundaries");
 
 
 // Perry's Chemical Engineers' Handbook, Table 2-194. These 34 documented
@@ -871,3 +871,34 @@ for(const formula of ["Na2S","KNO2","BaSO4","CaCO3","CaSO4","LiCl"]){
  // predict precipitation. Its settled solid is not a result of this solver.
 }
 console.log("26 sourced measurements across 15 salts, including 10 new 20°C series and 8 exact non-grid temperatures");
+
+
+// Individual source-linked normal-pressure phase boundaries. Avoid
+// mistaking dry-solid melting/sublimation/decomposition for the behavior
+// of an aqueous stock solution or of a hydrated crystal.
+const phaseBatch={
+ NH4Cl:{sublimationC:338,behavior:"sublimes"},
+ CaSO4:{decompositionC:1450,behavior:"decomposes"},
+ MgCO3:{decompositionC:350,behavior:"decomposes"},
+ PbI2:{meltingC:410,decompositionC:872,behavior:"decomposes"},
+ CH3COONa:{meltingC:324},
+ Na2CO3:{meltingC:851},
+ CuSO4:{decompositionC:650,behavior:"decomposes"},
+ ZnS:{meltingC:1700},
+ Fe3O4:{meltingC:1597},
+ SiO2:{meltingC:1713}
+};
+assert.equal(Object.keys(phaseBatch).length,10);
+for(const [formula,expected] of Object.entries(phaseBatch)){
+ const dry=thermalProps.labThermalInfo(formula,"g");
+ assert.equal(dry.known,true,formula+" experimental dry reference unavailable");
+ for(const [key,value] of Object.entries(expected)){
+  if(typeof value==="number")approximately(dry[key],value);
+  else assert.equal(dry[key],value);
+ }
+ assert.equal(thermalProps.labThermalInfo(formula,"ml").known,false,
+  "Pure-solid phase change should not be used as aqueous boiling point: "+formula);
+ if(expected.behavior==="decomposes")assert.equal(dry.boilingC,undefined,
+  "A decomposing material has no normal-pressure boiling model");
+}
+console.log("Ten reviewed dry-solid thermal materials, eleven individually sourced boundaries checked");
