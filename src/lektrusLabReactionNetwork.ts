@@ -136,6 +136,11 @@ function kspLimitedExtent(row:ReactionCase,
 function labReequilibrateRecordedPrecipitates(
  inventory:LabInventory,volumeL:number
 ):void{
+ // Multiple precipitates can share metal/anion inventories. Applying
+ // independent molecular Ksp reversals to each would double-count ionic
+ // spectators and can reprecipitate material after filtration. Leave
+ // multi-solid equilibria unchanged until a coupled ion solver exists.
+ if(Object.values(inventory.solidMol).filter(mol=>mol>EPS).length!==1)return;
  for(let round=0;round<4;round++){
   let moved=false;
   for(const equationText of inventory.equilibriumEquations){
