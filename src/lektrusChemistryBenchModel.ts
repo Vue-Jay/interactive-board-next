@@ -2963,6 +2963,36 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
   {...result,titrationPair:undefined,titration:undefined}:result;
 }
 
+/** A reaction's quantities and progress are ONE conserved state. Combining
+ * their fields from two competing ticks can create products from the later
+ * tick with the earlier tick's reaction extent (or the reverse).
+ * Position, mounting and indicator selection are independent UI fields. */
+const LAB_ATOMIC_MATERIAL_FIELDS:readonly (keyof LabVessel)[]=[
+ "reagents","doses","environment","observed","uncertain",
+ "chemicalInventory","pendingInventoryReaction","inventoryPrecipitation",
+ "inventoryGasReaction","reactionAmounts","completedReaction","reactionHeat",
+ "temperatureC","filteredResidue","filteredSolution","binarySaltPhase",
+ "mixedSaltPhase","physicalProcess","physicalStartedAtMs","meltFraction",
+ "phaseTransition","lastEvaporatedAtMs","ventedVaporMl","visualStartedAtMs",
+ "stoppered","stopperedAtC","sealedReactionGasBaselineMol",
+ "gasCollectionTargetId","gasCollectionProcessedMol","gasCollectedMol",
+ "buretteOpen","buretteTargetId","buretteRateMlS","buretteRemainderMl"
+];
+const labMaterialChanged=(before:LabVessel,after:LabVessel)=>
+ LAB_ATOMIC_MATERIAL_FIELDS.some(key=>
+  JSON.stringify(before[key])!==JSON.stringify(after[key]));
+/** A measured addition or apparatus command beats a concurrent stale
+ * simulation tick. Never try to synthesize an unmeasured merged mixture. */
+function labMaterialCommand(before:LabVessel,after:LabVessel){
+ const added=Object.entries(after.doses??{}).some(([id,dose])=>{
+  const was=before.doses?.[id];
+  return !was||was.unit!==dose.unit||dose.value>was.value+1e-8;
+ });
+ return added||before.stoppered!==after.stoppered||
+  before.gasCollectionTargetId!==after.gasCollectionTargetId||
+  before.buretteOpen!==after.buretteOpen||
+  before.environment!==after.environment;
+}
 /** Reconcile simultaneous edits to different vessels. Array replacement would
  * silently erase a peer's vessel. Merge by stable vessel ID and changed fields. */
 export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):LabBench{
@@ -3001,6 +3031,24 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
       merged.reactionAmounts=a.reactionAmounts.elapsedSeconds>=b.reactionAmounts.elapsedSeconds?
        a.reactionAmounts:b.reactionAmounts;
     }else (merged as unknown as Record<string,unknown>)[key]=a[key];
+   }
+  }
+  // When BOTH peers touched one physical sample, choose an entire material
+  // snapshot, not independently picked moles/extent/heat/stopper. Latest
+  // simulated time wins for competing ticks. An actual new dose or instrument
+  // command wins over a stale tick, regardless of who sent it. Unrelated
+  // coordinates and the indicator UI still merge field by field above.
+  if(labMaterialChanged(base,a)&&labMaterialChanged(base,b)){
+   const localCommand=labMaterialCommand(base,a);
+   const remoteCommand=labMaterialCommand(base,b);
+   const localWins=localCommand!==remoteCommand?localCommand:
+    (mine.simulationAtMs??0)>=(remote.simulationAtMs??0);
+   const source=localWins?a:b;
+   const destination=merged as unknown as Record<string,unknown>;
+   for(const key of LAB_ATOMIC_MATERIAL_FIELDS){
+    if(Object.prototype.hasOwnProperty.call(source,key))
+     destination[key]=source[key];
+    else delete destination[key];
    }
   }
   vessels.push(merged);
