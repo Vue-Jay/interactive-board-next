@@ -28,7 +28,7 @@ const near=(a,b,tol=1e-7)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=tol,a+" 
 const state=b=>b.vessels.find(v=>v.id==="v1");
 const measured=b=>chemistry.simulateLabInventory({...state(b),
  volumeMl:lab.labVesselQuantity(state(b)).volumeMl});
-let bench=lab.defaultLabBench();
+let bench=lab.setLabSimulationPaused(lab.defaultLabBench(),false,0);
 bench=lab.putLabReagent(bench,"v1","CaCl2",dose());
 bench=lab.putLabReagent(bench,"v1","Na2CO3",dose());
 let created=measured(bench);
