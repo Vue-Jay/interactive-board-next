@@ -308,7 +308,7 @@ export const LAB_MEASURED_PURE_WATER_SOLUBILITIES:readonly LabMeasuredSolubility
  {formula:"FeS",temperatureC:18,sourceValue:0.00062,
   originalUnit:"g/100ml-water",sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/14828"},
  {formula:"Ca3(PO4)2",temperatureC:25,sourceValue:2.5,
-  originalUnit:"mg/100g-water",sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/24456"}
+  originalUnit:"mg/100g-water",sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/24456"},
  // Independently transcribed exact-temperature binary-water observations.
  // All numbers are grams of the stated SALT FORMULA equivalent per 100 g
  // pure H2O, NOT grams of an identified crystallizing hydrate. A salt
