@@ -328,7 +328,8 @@ const resetClock=lab.setLabExperimentClock(resumed,"reset",101000);
 assert.equal(resetClock.experimentClock.running,true,
  "Resetting time must not stop the running experiment");
 assert.equal(lab.labExperimentClockSeconds(resetClock,101000),0);
-assert.equal(lab.labExperimentClockSeconds(resetClock,110000),9);
+assert.equal(lab.labExperimentClockSeconds(resetClock,110000),45,
+ "Reset does not interrupt the active ×5 experiment clock");
 const clearedClock=lab.clearLabTable(started);
 assert.equal(clearedClock.experimentClock,undefined,
  "Cleaning the tabletop starts a fresh experiment clock");
