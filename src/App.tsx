@@ -14,6 +14,7 @@ import {
 } from "react";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import {boardWorldTransform,boardOverlayTransform} from "./boardPanTransform";
+import {boardGridTransform} from "./boardBackgroundPan";
 import {chemistryBoardHasContent} from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
 import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./rectSelection";
@@ -2547,6 +2548,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const viewerPendingPan = useRef<View | null>(null);
   const fastPanWorld = useRef<HTMLDivElement>(null);
   const fastPanOverlay = useRef<HTMLDivElement>(null);
+  const fastPanBackground = useRef<HTMLDivElement>(null);
   const fastPanDirty = useRef(false);
   const panBoardBounds = useRef<{left:number;top:number}|null>(null);
   const viewRef = useRef(view);
@@ -2557,10 +2559,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       fastPanWorld.current.style.transform=boardWorldTransform(next);
     if (fastPanOverlay.current)
       fastPanOverlay.current.style.transform=boardOverlayTransform(next,viewRef.current);
-    if (board.current) {
-      board.current.style.backgroundPosition=`${next.x}px ${next.y}px`;
-      board.current.style.backgroundSize=`${24*next.zoom}px ${24*next.zoom}px`;
-    }
+    // Moving the CSS gradient directly forced a full-screen
+    // repaint every frame on Android. The repeating sheet can instead
+    // translate by the remainder of a single grid period on the GPU.
+    if (fastPanBackground.current)
+      fastPanBackground.current.style.transform=boardGridTransform(next,viewRef.current);
     fastPanDirty.current=true;
   };
   const scheduleViewerPan = (next: View) => {
@@ -2588,6 +2591,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       const target=restore??viewRef.current;
       paintPendingPan(target);
       if (fastPanOverlay.current)fastPanOverlay.current.style.transform="none";
+      if (fastPanBackground.current)fastPanBackground.current.style.transform="none";
       fastPanDirty.current=false;
       return;
     }
@@ -2601,6 +2605,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   useLayoutEffect(() => {
     if (!fastPanDirty.current || viewerPendingPan.current)return;
     if (fastPanOverlay.current)fastPanOverlay.current.style.transform="none";
+    if (fastPanBackground.current)fastPanBackground.current.style.transform="none";
     fastPanDirty.current=false;
   }, [view]);
   useEffect(() => () => {
@@ -8674,10 +8679,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           style={{
             touchAction:"none",
             overscrollBehavior:"none",
-            backgroundSize: `${24 * view.zoom}px ${24 * view.zoom}px`,
-            backgroundPosition: `${view.x}px ${view.y}px`,
+            // Keep the solid color on the board; the repeating pattern is
+            // a separate GPU-composited layer and never repaints per swipe.
             backgroundColor:backgroundAppearance.backgroundColor,
-            backgroundImage:backgroundAppearance.backgroundImage,
+            backgroundImage:"none",
           } as CSSProperties}
           onPointerDownCapture={(e) => {
             const target=e.target as HTMLElement;
@@ -9011,6 +9016,16 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             {showBoardDiagnostics && <div>Соединение: {realtimeStatus} · курсоров: {Object.keys(remoteCursors).length} · участников: {visiblePresenceUsers.length} · версия: {remoteVersion.current ?? "нет"}</div>}
             {showPerformanceDiagnostics && <div>Объектов: {items.length} · штрихов: {items.filter(x=>x.kind==="pen"||x.kind==="marker").length} · масштаб: {Math.round(view.zoom*100)}%</div>}
           </div>}
+          <div
+            ref={fastPanBackground}
+            className="board-background-pattern-layer"
+            aria-hidden="true"
+            style={{
+              backgroundImage:backgroundAppearance.backgroundImage,
+              backgroundSize:`${24*view.zoom}px ${24*view.zoom}px`,
+              backgroundPosition:`${view.x+256}px ${view.y+256}px`,
+            }}
+          />
           <div ref={fastPanOverlay} className="remote-cursors-layer" aria-hidden="true" style={{transformOrigin:"0 0"}}>
             <svg className="remote-live-ink-layer" width="100%" height="100%" style={{position:"absolute",inset:0,overflow:"hidden",pointerEvents:"none"}}>
               {Object.values(remoteInk).filter(ink => !items.some(item => item.id === ink.id)).map(ink => (

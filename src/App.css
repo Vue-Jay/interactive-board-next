@@ -8732,3 +8732,37 @@ option{background:#fff;color:#343741}
   .command-palette-search .command-palette-close{flex-basis:36px;width:36px;height:36px}
   .command-palette-search>kbd{display:none}
 }
+
+
+/* The dotted / squared school paper is a periodic GPU layer. During an
+   active board gesture App changes only transform on this sheet, not a
+   full-viewport CSS gradient backgroundPosition and backgroundSize. */
+.board .board-background-pattern-layer{
+ position:absolute;
+ inset:-256px;
+ z-index:0;
+ pointer-events:none;
+ transform-origin:256px 256px;
+ will-change:transform;
+ background-color:transparent;
+ background-repeat:repeat;
+ contain:layout style;
+}
+.board.board-bg-plain .board-background-pattern-layer{
+ display:none;
+}
+/* Embedded exercises and animated subject tools should not continuously
+   repaint during a camera gesture on low-power Android GPUs. Their state
+   continues running; only decorative CSS motion is paused until release. */
+.board.board-panning .board-object :is(
+ .lektrus-lab-vapor-plume,.lektrus-lab-gas-vent,
+ .lektrus-lab-particle,.lektrus-lab-device-flame,
+ .lektrus-lab-reaction-mote,.lektrus-lab-titration-drops,
+ .lektrus-lab-stream-pulses) *,
+.board.board-panning .board-object :is(
+ .lektrus-lab-vapor-plume,.lektrus-lab-gas-vent,
+ .lektrus-lab-particle,.lektrus-lab-device-flame,
+ .lektrus-lab-reaction-mote,.lektrus-lab-titration-drops,
+ .lektrus-lab-stream-pulses){
+ animation-play-state:paused!important;
+}
