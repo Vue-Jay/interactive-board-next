@@ -1357,12 +1357,21 @@ for(const [formula,sourceValue] of Object.entries({
  approximately(row.sourceValue,sourceValue,1e-12);
  approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater(
   formula,19.85),sourceValue,1e-9);
- assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
-  formula,20),undefined,
-  "The 293 K value MUST NOT impersonate a measured 20.00°C point");
+ // LiNO3 and Cu(NO3)2 now have INDEPENDENT measurements at exactly
+ // 20 C; the old 293 K (=19.85 C) values must remain separate records.
+ const independentlyMeasured20={"LiNO3":70,"Cu(NO3)2":124.7}[formula];
+ const actual20=physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,20);
+ if(independentlyMeasured20===undefined)assert.equal(actual20,undefined,
+  "A 293 K value cannot impersonate a measured 20.00 C point");
+ else {
+  approximately(actual20,independentlyMeasured20,1e-10);
+  assert.ok(pureWaterMeasurements.some(x=>x.formula===formula&&
+   x.temperatureC===20&&x.sourceTemperatureKelvin===undefined));
+ }
  const prop=registryProps.labSubstanceProperties(formula,20);
- assert.equal(prop.solubilityKnown,false);
- assert.equal(prop.literatureSolubilityReference.temperatureC,19.85);
+ assert.equal(prop.solubilityKnown,independentlyMeasured20!==undefined);
+ assert.equal(prop.literatureSolubilityReference.temperatureC,
+  independentlyMeasured20===undefined?19.85:20);
  assert.equal(prop.binaryCrystallizationUnsupported,true);
 }
 // Verify independently sourced 293 K points, without changing 20 C grid.
