@@ -1280,8 +1280,10 @@ export function setLabExperimentClock(bench:LabBench,
  const old=bench.experimentClock;
  if(action==="reset"){
   if(!old||(old.elapsedSeconds===0&&!old.running))return bench;
-  return {...bench,experimentClock:{elapsedSeconds:0,anchorMs:nowMs,running:false},
-   event:bench.event+1};
+  // Reset only the elapsed count. The single Play/Pause control owns both
+  // the stopwatch and chemical processes; resetting must not stop either.
+  return {...bench,experimentClock:{elapsedSeconds:0,anchorMs:nowMs,
+   running:!bench.simulationPaused&&!!old.running},event:bench.event+1};
  }
  if(action==="start"&&old?.running||action==="pause"&&!old?.running)return bench;
  const elapsedSeconds=labExperimentClockSeconds(bench,nowMs);
@@ -1329,9 +1331,11 @@ export function setLabSimulationPaused(bench:LabBench,paused:boolean,nowMs=Date.
  const banked=clock?.running?
   {elapsedSeconds:labExperimentClockSeconds(bench,nowMs),anchorMs:nowMs,
    running:false}:clock;
- const resumeClock=paused?!!clock?.running:!!bench.resumeExperimentClock;
- const experimentClock=!paused&&resumeClock?
-  {elapsedSeconds:banked?.elapsedSeconds??0,anchorMs:nowMs,running:true}:banked;
+ // A freshly prepared experiment has no clock yet. The FIRST Play starts
+ // both time and chemistry; subsequent Pause/Play banks and resumes both.
+ const experimentClock=paused?
+  {elapsedSeconds:banked?.elapsedSeconds??0,anchorMs:nowMs,running:false}:
+  {elapsedSeconds:banked?.elapsedSeconds??0,anchorMs:nowMs,running:true};
  const pauseMs=!paused&&bench.pausedAtMs!==undefined?
   Math.max(0,nowMs-bench.pausedAtMs):0;
  const vessels=pauseMs?bench.vessels.map(v=>({
@@ -1372,7 +1376,8 @@ function labInterpolateInventory(
 }
 export const defaultLabBench=():LabBench=>({
  vessels:[{id:"v1",kind:"beaker",x:48,y:70,reagents:[],environment:"aqueous",observed:false}],
- selectedId:"v1",event:0,mode:"reactions",settings:defaultLabBenchSettings()
+ selectedId:"v1",event:0,mode:"reactions",settings:defaultLabBenchSettings(),
+ simulationPaused:true
 });
 export function readLabBench(item:Item):LabBench{
  if(item.scienceLabBench){
