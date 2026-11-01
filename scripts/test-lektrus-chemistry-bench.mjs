@@ -89,7 +89,8 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
 // Detailed legacy physics assertions explicitly opt into high realism.
 const detailedBench=()=>{
  const bench=lab.defaultLabBench();
- return {...bench,settings:{...bench.settings,realism:"high"}};
+ return {...bench,simulationPaused:false,
+  settings:{...bench.settings,realism:"high"}};
 };
 assert.equal(lab.labBenchSettings(lab.defaultLabBench()).realism,"low",
  "New chemistry laboratories start in simple classroom mode");
