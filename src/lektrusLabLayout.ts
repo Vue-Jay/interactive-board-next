@@ -27,6 +27,15 @@ export const isLabSink=(p:{x:number;y:number})=>
 export const isLabCupboard=(p:{x:number;y:number})=>p.x>=55&&p.x<83&&p.y>=8&&p.y<=41;
 export const isLabWorktop=(p:{x:number;y:number})=>
  p.x>=5&&p.x<=82&&p.y>=43&&p.y<=91;
+/** Distinguish a real tap from a scroll/drag in either equipment cupboard.
+ * On touch the browser owns scrolling, so pointer capture is deliberately
+ * NOT used. Pointer-up also checks displacement in case WebView coalesces or
+ * suppresses intermediate pointermove events. All thresholds are screen px. */
+export function labShelfGestureMoved(startX:number,startY:number,
+ currentX:number,currentY:number,touch=false):boolean{
+ if(![startX,startY,currentX,currentY].every(Number.isFinite))return true;
+ return Math.hypot(currentX-startX,currentY-startY)>(touch?10:7);
+}
 /** A drag to the TOP returns an item to storage. On phones the top
  * toolbar uses real screen pixels, not the old desktop shelf coordinates.
  * The minimum travel protects short accidental swipes and simple taps. */
