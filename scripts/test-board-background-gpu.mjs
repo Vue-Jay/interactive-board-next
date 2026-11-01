@@ -15,7 +15,7 @@ for(const base of [{x:0,y:0,zoom:1},{x:-555,y:238,zoom:1.75},{x:400,y:-700,zoom:
   for(const zoom of [base.zoom,base.zoom*.75,base.zoom*1.4]){
    const next={x:base.x+delta,y:base.y-delta/3,zoom};
    const result=boardGridTransform(next,base);
-   const match=/^translate3d\\((-?[\\d.e+-]+)px,(-?[\\d.e+-]+)px,0\\) scale\\((-?[\\d.e+-]+)\\)$/.exec(result);
+   const match=/^translate3d\((-?[\d.e+-]+)px,(-?[\d.e+-]+)px,0\) scale\((-?[\d.e+-]+)\)$/.exec(result);
    assert.ok(match,"Expected a GPU-only transform: "+result);
    const [,tx,ty,k]=match.map(Number);
    const period=24*next.zoom;
