@@ -754,8 +754,34 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
    const lastStep=measured.steps[measured.steps.length-1];
    const lastCase=lastStep?reviewedReactionCases.find(row=>
     row.equation===lastStep.equation):undefined;
+   // Heat is released/absorbed by the measured reaction EXTENT, never a
+   // second four-second timer or a recycled first-experiment stock dose.
+   // Only curated enthalpies qualify. Otherwise retain the current
+   // temperature instead of inventing a thermal signature.
+   const heatStep=measured.steps.find(step=>step.equation===equation);
+   const heatCase=reviewedReactionCases.find(row=>row.equation===equation);
+   const heatCapacity=labKnownHeatCapacityJPerK(
+    v.kind,v.doses,v.filteredSolution?.volumeMl??0);
+   const energyKJ=heatCase?.enthalpyKJPerMol!==undefined&&
+    heatCase.thermalEffect?heatStep?.heatKJ:undefined;
+   const possibleDelta=energyKJ!==undefined&&heatCapacity?
+    -energyKJ*1000/heatCapacity:undefined;
+   const totalDeltaC=possibleDelta===undefined?undefined:
+    Math.max(-30,Math.min(42,possibleDelta));
+   const matchingDirection=totalDeltaC!==undefined&&
+    (heatCase!.thermalEffect==="exothermic"?totalDeltaC>=0:totalDeltaC<=0);
+   const reactionHeat:LabReactionHeat|undefined=matchingDirection?{
+    equation,direction:heatCase!.thermalEffect!,deltaC:totalDeltaC!,
+    elapsedSeconds,durationSeconds,complete
+   }:undefined;
+   const heatIncrement=reactionHeat?
+    reactionHeat.deltaC*(elapsedSeconds-previousSeconds)/durationSeconds:0;
+   const temperatureC=reactionHeat?
+    Math.round(Math.max(-30,Math.min(1450,
+     (v.temperatureC??ambient)+heatIncrement))*10)/10:v.temperatureC;
    changed=true;
    return {...v,
+    ...(reactionHeat?{temperatureC,reactionHeat}:{}),
     chemicalInventory:snapshot,
     reagents:Object.keys(snapshot.speciesMol),
     pendingInventoryReaction:complete?undefined:true,
@@ -854,7 +880,10 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
  // quantified and qualitative reactions, including single-solid calcination.
  // A fallback change is explicitly illustrative when no amounts are known.
  vessels=result.vessels.map(v=>{
-  if(!v.observed||v.uncertain||v.completedReaction)return v;
+  // Persistent multi-stage chemistry has one conserved progress clock.
+  // Do not run an independent illustrative heat animation on its old stock
+  // names, or award heat twice during a partially formed precipitate/gas.
+  if(v.pendingInventoryReaction||!v.observed||v.uncertain||v.completedReaction)return v;
   const matching=identifyReaction(v.reagents,v.environment);
   const row=matching.status==="reaction"?matching.caseData:undefined;
   if(!row?.thermalEffect)return v;
