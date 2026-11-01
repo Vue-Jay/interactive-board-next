@@ -303,6 +303,15 @@ assert.equal(lab.labSimulationTickWaitMs(clockSeed,1000),null);
 const started=lab.setLabSimulationPaused(clockSeed,false,1000);
 assert.equal(started.experimentClock.running,true);
 close(lab.labExperimentClockSeconds(started,3500),2.5);
+const singlePaused=lab.setLabSimulationPaused(started,true,3500);
+assert.equal(singlePaused.experimentClock.running,false);
+close(lab.labExperimentClockSeconds(singlePaused,99999),2.5);
+assert.equal(lab.labSimulationTickWaitMs(singlePaused,99999),null);
+const singleResumed=lab.setLabSimulationPaused(singlePaused,false,99999);
+assert.equal(singleResumed.experimentClock.running,true);
+close(lab.labExperimentClockSeconds(singleResumed,100999),3.5);
+assert.equal(singleResumed.simulationAtMs,99999,
+ "Resuming the single control never catches up the paused interval");
 assert.equal(lab.labSimulationTickWaitMs(started,3500),null,
  "An idle stopwatch must never schedule a network simulation tick");
 assert.strictEqual(lab.setLabExperimentClock(started,"start",2000),started,
@@ -315,8 +324,10 @@ close(lab.labExperimentClockSeconds(paused,99999),12.5);
 const resumed=lab.setLabExperimentClock(paused,"start",100000);
 close(lab.labExperimentClockSeconds(resumed,101000),17.5);
 const resetClock=lab.setLabExperimentClock(resumed,"reset",101000);
-assert.equal(resetClock.experimentClock.running,false);
-assert.equal(lab.labExperimentClockSeconds(resetClock,110000),0);
+assert.equal(resetClock.experimentClock.running,true,
+ "Resetting time must not stop the running experiment");
+assert.equal(lab.labExperimentClockSeconds(resetClock,101000),0);
+assert.equal(lab.labExperimentClockSeconds(resetClock,110000),9);
 const clearedClock=lab.clearLabTable(started);
 assert.equal(clearedClock.experimentClock,undefined,
  "Cleaning the tabletop starts a fresh experiment clock");
