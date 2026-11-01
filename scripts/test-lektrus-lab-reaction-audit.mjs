@@ -27,7 +27,7 @@ const lab=load("src/lektrusChemistryBenchModel.ts");
 const kits=load("src/lektrusLabExperimentKits.ts");
 const substances=new Set(database.substances.map(s=>s.id));
 const failures=[],statistics={cases:0,reactions:0,nonReactions:0,aqueous:0,heated:0,dry:0,ignited:0,
- kits:0,scheduled:0,completed:0,precipitates:0,gases:0,products:0};
+ kits:0,scheduled:0,completed:0,mixed:0,mixedCompleted:0,precipitates:0,gases:0,products:0};
 const reportFailure=(row,stage,error)=>{
  const message=String(error?.message??error);
  failures.push({equation:row.equation||row.reactants.join(" + "),
@@ -89,6 +89,37 @@ for(const row of database.reviewedReactionCases){
    "The kit must not switch heaters on automatically");
   statistics.kits++;
  }))continue;
+ // The real cabinet path can differ from a mathematically valid ready
+ // mixture. Verify actual dosing while paused for every 1-2 reagent
+ // aqueous case that includes a liquid stock.
+ if(row.environment==="aqueous"&&row.reactants.length<=2&&
+  row.reactants.some(id=>doses[id].unit==="ml")){
+  verify(row,"cabinet-mixing",()=>{
+   let mixed=lab.defaultLabBench();
+   for(const id of row.reactants){
+    const updated=lab.putLabReagent(mixed,"v1",id,doses[id]);
+    assert.notStrictEqual(updated,mixed,"Cabinet dose was rejected: "+id);
+    mixed=updated;
+   }
+   assert.ok(row.reactants.every(id=>mixed.vessels[0].doses?.[id]?.value>0),
+    "A reactant disappeared while filling the vessel");
+   assert.equal(mixed.vessels[0].environment,"aqueous",
+    "Stock mixing selected the wrong reaction environment");
+   assert.equal(mixed.simulationPaused,true);
+   assert.equal(lab.labReactionNeedsTick(mixed.vessels[0]),true,
+    "The actual mixed vessel is not scheduled for reaction");
+   statistics.mixed++;
+   mixed=lab.setLabSimulationPaused(mixed,false,1000);
+   for(const t of [6000,16000,26000,36000])
+    mixed=lab.advanceLabSimulation(mixed,t);
+   assert.ok(mixed.vessels[0].reactionAmounts?.complete||
+    mixed.vessels[0].completedReaction,
+    "The actual cabinet mixture did not complete the reaction");
+   assert.ok((lab.recordLabReactions(mixed).reactionLog??[]).includes(row.equation),
+    "The actual reaction was not entered in the equation board");
+   statistics.mixedCompleted++;
+  });
+ }
  // A ready mixture with all measured reagents is the unit underneath
  // both cabinet addition and vessel-to-vessel pouring. Check all four modes:
  // heated/ignited scenarios are placed in their explicitly selected conditions.
