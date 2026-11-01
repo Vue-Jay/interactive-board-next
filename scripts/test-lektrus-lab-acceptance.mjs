@@ -147,6 +147,24 @@ check("LAB-02","Осадок остаётся на дне и уравнение 
   "Adding an indicator cannot remove solid already on the bottom");
 });
 
+check("LAB-02A","HCl + AgNO3 образует AgCl после запуска опыта",()=>{
+ let b=lab.putLabReagent(high(),"v1","HCl",dose());
+ b=lab.putLabReagent(b,"v1","AgNO3",dose());
+ assert.equal(lab.labReactionNeedsTick(b.vessels[0]),true,
+  "The mixed acid and silver nitrate must enter the simulation scheduler");
+ b=lab.advanceLabSimulation(b,0);
+ b=lab.advanceLabSimulation(b,1000);
+ assert.equal(lab.recordLabReactions(b).reactionLog?.length??0,0,
+  "Do not write the equation before completion");
+ b=lab.advanceLabSimulation(b,6000);
+ assert.equal(b.vessels[0].reactionAmounts?.complete,true);
+ const contents=lab.labVesselContents(b.vessels[0]);
+ assert.ok(contents.solid.some(s=>s.formula==="AgCl"),
+  "White silver chloride must remain on the vessel bottom");
+ assert.ok(contents.precipitateG>.143&&contents.precipitateG<.144);
+ assert.equal(lab.recordLabReactions(b).reactionLog?.length,1);
+});
+
 check("LAB-03","Фильтрация разделяет массу твёрдого и раствора",()=>{
  let b=makePrecipitate();
  b=lab.addLabVessel(b,"conical");
