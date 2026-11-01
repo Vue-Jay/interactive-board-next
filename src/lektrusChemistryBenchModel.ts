@@ -1349,7 +1349,7 @@ export function setLabSimulationPaused(bench:LabBench,paused:boolean,nowMs=Date.
  })):bench.vessels;
  return {...bench,vessels,simulationPaused:paused,simulationAtMs:nowMs,
   pausedAtMs:paused?nowMs:undefined,
-  experimentClock,resumeExperimentClock:paused?resumeClock:false,event:bench.event+1};
+  experimentClock,resumeExperimentClock:false,event:bench.event+1};
 }
 /** Mass-conserving visual progression between present and final reviewed
  * chemistry. Every molecule and phase has the same linear reaction extent.
