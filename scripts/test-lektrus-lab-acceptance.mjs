@@ -236,6 +236,60 @@ check("LAB-10","Синхронизация и очистка исключают 
  assert.equal(cleared.vessels.length,0);
  const final=lab.mergeLabBench(previous,merged,cleared);
  assert.equal(final.vessels.length,0,"Stale peer must not resurrect cleaned table");
+
+ // Two teachers can receive different ticks of the SAME reaction. Its
+ // molecule ledger, temperature and progress must never be stitched from
+ // incompatible snapshots, even if one peer also moves the vessel.
+ const originalInventory={speciesMol:{Na2CO3:.001,HCl:.002},
+  solidMol:{},retainedGasMol:{},releasedGasMol:{}};
+ const base={...previous,simulationAtMs:1000,vessels:previous.vessels.map(v=>
+  v.id!=="v1"?v:{...v,observed:true,environment:"aqueous",
+   reagents:["Na2CO3","HCl"],doses:{Na2CO3:dose(),HCl:dose(20)},
+   chemicalInventory:originalInventory,pendingInventoryReaction:true})};
+ const initial=base.vessels[0];
+ const ticking=(seconds,temperatureC)=>({
+  ...initial,reagents:["Na2CO3","HCl","CO2"],
+  chemicalInventory:{
+   speciesMol:{Na2CO3:.001*(1-seconds/24),
+    HCl:.002*(1-seconds/24),NaCl:.002*seconds/24},
+   solidMol:{},retainedGasMol:{},
+   releasedGasMol:{CO2:.001*seconds/24}
+  },
+  inventoryGasReaction:{equation:"Na2CO3 + 2HCl → 2NaCl + H2O + CO2↑",
+   initial:originalInventory,elapsedSeconds:seconds,durationSeconds:24},
+  temperatureC
+ });
+ const localTick={...base,simulationAtMs:2000,vessels:base.vessels.map(v=>
+  v.id==="v1"?{...ticking(1,23),x:44}:v)};
+ const remoteTick={...base,simulationAtMs:4000,vessels:base.vessels.map(v=>
+  v.id==="v1"?ticking(3,25):v)};
+ const joined=lab.mergeLabBench(base,localTick,remoteTick).vessels[0];
+ assert.equal(joined.x,44,"Independent vessel position must still merge");
+ assert.equal(joined.inventoryGasReaction.elapsedSeconds,3,
+  "Newer tick's kinetic state must survive");
+ approx(joined.chemicalInventory.releasedGasMol.CO2,.000125,1e-12,
+  "Gas moles must come from the SAME newer tick");
+ assert.equal(joined.temperatureC,25,
+  "Temperature must not come from a stale kinetic step");
+ const reverse=lab.mergeLabBench(base,remoteTick,localTick).vessels[0];
+ assert.equal(reverse.inventoryGasReaction.elapsedSeconds,3);
+ approx(reverse.chemicalInventory.releasedGasMol.CO2,.000125,1e-12,
+  "Reversing peer order cannot roll back chemistry");
+ assert.equal(reverse.x,44);
+
+ // Explicit addition of fresh acid must win over a concurrent, older-state
+ // solver tick, never silently lose the learner's measured new reagent.
+ const newInput={...base,vessels:base.vessels.map(v=>v.id!=="v1"?v:{
+  ...v,doses:{...initial.doses,HCl:dose(25)},
+  chemicalInventory:{...originalInventory,
+   speciesMol:{...originalInventory.speciesMol,HCl:.0025}}})};
+ const inputWins=lab.mergeLabBench(base,newInput,remoteTick).vessels[0];
+ assert.equal(inputWins.doses.HCl.value,25);
+ assert.equal(inputWins.chemicalInventory.speciesMol.HCl,.0025);
+ assert.equal(inputWins.inventoryGasReaction,undefined);
+ const inputWinsAsPeer=lab.mergeLabBench(base,remoteTick,newInput).vessels[0];
+ assert.equal(inputWinsAsPeer.doses.HCl.value,25);
+ assert.equal(inputWinsAsPeer.chemicalInventory.speciesMol.HCl,.0025);
 });
 
 check("LAB-11","Сохранение опыта не повреждает другие объекты доски",()=>{
