@@ -91,8 +91,8 @@ function InstrumentGraphic({type}:{type:InstrumentType}){
  </svg>;
 }
 
-function SharedInstrument({item,view,boardRef,editable,selected,onUpdate,onRemove}:{
- item:Item;view:View;boardRef:RefObject<HTMLElement|null>;editable:boolean;selected:boolean;
+function SharedInstrument({item,view,boardRef,portalContainer,editable,selected,onUpdate,onRemove}:{
+ item:Item;view:View;boardRef:RefObject<HTMLElement|null>;portalContainer?:HTMLElement|null;editable:boolean;selected:boolean;
  onUpdate:(id:string,patch:Partial<Item>)=>void;
  onRemove:(id:string)=>void;
 }){
@@ -150,7 +150,12 @@ function SharedInstrument({item,view,boardRef,editable,selected,onUpdate,onRemov
  const updateScale=(delta:number)=>editable&&onUpdate(item.id,{
   instrumentScale:clamp(+((item.instrumentScale??1)+delta).toFixed(2),.25,3)
  });
- if(!boardRef.current)return null;
+ // The measuring instruments must share one compositor surface. Their
+ // positions are screen-space coordinates relative to the committed view;
+ // the parent surface follows live pan/pinch transforms between commits.
+ // Undefined preserves the original standalone GeometryInstruments behavior.
+ const host=portalContainer===undefined?boardRef.current:portalContainer;
+ if(!boardRef.current||!host)return null;
  return createPortal(
   <div className="geometry-instrument geometry-instrument-centered"
     data-shared-instrument={item.id}
@@ -184,14 +189,15 @@ function SharedInstrument({item,view,boardRef,editable,selected,onUpdate,onRemov
       <InstrumentGraphic type={type}/>
     </div>
 
-  </div>,boardRef.current);
+  </div>,host);
 }
 
 export default function GeometryInstruments({
- mobile=false,view,boardRef,instruments,onAdd,onUpdate,onRemove,
+ mobile=false,view,boardRef,portalContainer,instruments,onAdd,onUpdate,onRemove,
  editable=true,renderOverlays=true
 }:{
  mobile?:boolean;view:View;boardRef:RefObject<HTMLElement|null>;
+ portalContainer?:HTMLElement|null;
  instruments:readonly Item[];
  onAdd:(type:InstrumentType,point:Point,scale:number)=>void;
  onUpdate:(id:string,patch:Partial<Item>)=>void;
@@ -267,6 +273,7 @@ export default function GeometryInstruments({
   </div>
   {renderOverlays&&instruments.filter(i=>!i.hidden).map(item=>
     <SharedInstrument key={item.id} item={item} view={view} boardRef={boardRef}
+      portalContainer={portalContainer}
       editable={editable&&!item.locked} selected={selectedInstrumentId===item.id}
       onUpdate={onUpdate} onRemove={onRemove}/>)}
  </>;

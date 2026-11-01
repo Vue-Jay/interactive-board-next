@@ -2578,6 +2578,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const fastPanWorld = useRef<HTMLDivElement>(null);
   const fastPanOverlay = useRef<HTMLDivElement>(null);
   const fastPanBackground = useRef<HTMLDivElement>(null);
+  // Stable portal host for rulers, set squares and protractors. Their
+  // screen-space positions follow the same live camera delta as remote ink.
+  const [instrumentViewportHost,setInstrumentViewportHost]=useState<HTMLDivElement|null>(null);
   const fastPanDirty = useRef(false);
   const panBoardBounds = useRef<{left:number;top:number}|null>(null);
   const viewRef = useRef(view);
@@ -2588,6 +2591,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       fastPanWorld.current.style.transform=boardWorldTransform(next);
     if (fastPanOverlay.current)
       fastPanOverlay.current.style.transform=boardOverlayTransform(next,viewRef.current);
+    if (instrumentViewportHost)
+      instrumentViewportHost.style.transform=boardOverlayTransform(next,viewRef.current);
     // Moving the CSS gradient directly forced a full-screen
     // repaint every frame on Android. The repeating sheet can instead
     // translate by the remainder of a single grid period on the GPU.
@@ -2624,6 +2629,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       const target=restore??viewRef.current;
       paintPendingPan(target);
       if (fastPanOverlay.current)fastPanOverlay.current.style.transform="none";
+      if (instrumentViewportHost)instrumentViewportHost.style.transform="none";
       if (fastPanBackground.current)fastPanBackground.current.style.transform="none";
       fastPanDirty.current=false;
       return;
@@ -2638,6 +2644,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   useLayoutEffect(() => {
     if (!fastPanDirty.current || viewerPendingPan.current)return;
     if (fastPanOverlay.current)fastPanOverlay.current.style.transform="none";
+    if (instrumentViewportHost)instrumentViewportHost.style.transform="none";
     if (fastPanBackground.current)fastPanBackground.current.style.transform="none";
     fastPanDirty.current=false;
   }, [view]);
@@ -8586,6 +8593,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           {toolAllowedForRole("comment")&&<button type="button" className={`tool-button lektrus-direct-comment ${tool==="comment"?"active":""}`} title="Комментарий" aria-label="Комментарий" onClick={()=>{finishEdit();setTool("comment");setDesktopToolsExpanded(false)}}><Icon name="comment" size={20}/><span className="tool-tooltip">Комментарий</span></button>}
           <div className="lektrus-toolbar-measure" aria-label="Измерительные инструменты">
             <GeometryInstruments view={view} boardRef={board}
+              portalContainer={instrumentViewportHost}
               instruments={sharedInstruments} onAdd={addSharedInstrument}
               onUpdate={updateSharedInstrument} onRemove={removeSharedInstrument}
               editable={canEdit} renderOverlays />
@@ -9104,6 +9112,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               backgroundPosition:`${view.x+256}px ${view.y+256}px`,
             }}
           />
+          {/* Separate edit handles stay interactive but share the camera's
+              per-frame transform; only React position updates wait for release. */}
+          <div ref={setInstrumentViewportHost}
+            className="geometry-instrument-viewport-layer" aria-label="Измерительные инструменты" />
           <div ref={fastPanOverlay} className="remote-cursors-layer" aria-hidden="true" style={{transformOrigin:"0 0"}}>
             <svg className="remote-live-ink-layer" width="100%" height="100%" style={{position:"absolute",inset:0,overflow:"hidden",pointerEvents:"none"}}>
               {Object.values(remoteInk).filter(ink => !items.some(item => item.id === ink.id)).map(ink => (
