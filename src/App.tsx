@@ -679,9 +679,9 @@ const snappedConnectorEnd = (start: Point, end: Point, snap45: boolean): Point =
 
 type ConnectorAnchorHit = { point: Point; binding: ConnectorBinding };
 
-const bindingPoint = (binding: ConnectorBinding | undefined, items: Item[]): Point | null => {
+const bindingPoint = (binding: ConnectorBinding | undefined, byId: ReadonlyMap<string,Item>): Point | null => {
   if (!binding) return null;
-  const target = items.find((item) => item.id === binding.itemId);
+  const target = byId.get(binding.itemId);
   if (!target) return null;
   return {
     x: target.x + target.width * binding.nx,
@@ -717,13 +717,18 @@ const connectorAnchor = (point: Point, items: Item[], threshold: number, exclude
 };
 
 const syncBoundConnectors = (source: Item[]): Item[] => {
-  const current = source;
-  return current.map((item) => {
+  // Most handwritten boards contain no connector arrows. Keep their original
+  // array reference and skip a full-map allocation on every drawing/move frame.
+  if(!source.some(item=>item.kind==="connector"))return source;
+  // Resolve attachment anchors through one index rather than scanning ALL
+  // board items twice per connector on every drag frame (O(N*connectors)).
+  const byId=new Map(source.map(item=>[item.id,item] as const));
+  return source.map((item) => {
     if (item.kind !== "connector") return item;
     const startFallback = { x: item.x + (item.connectorStart?.x ?? 0), y: item.y + (item.connectorStart?.y ?? item.height / 2) };
     const endFallback = { x: item.x + (item.connectorEnd?.x ?? item.width), y: item.y + (item.connectorEnd?.y ?? item.height / 2) };
-    const boundStart = bindingPoint(item.connectorStartBinding, current);
-    const boundEnd = bindingPoint(item.connectorEndBinding, current);
+    const boundStart = bindingPoint(item.connectorStartBinding, byId);
+    const boundEnd = bindingPoint(item.connectorEndBinding, byId);
     const start = boundStart ?? startFallback;
     const end = boundEnd ?? endFallback;
     const startBinding = boundStart ? item.connectorStartBinding : undefined;
@@ -2223,6 +2228,24 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   controlSettingsRef.current=controlSettings;
   const [developerPrefs, setDeveloperPrefs] = useState(readDeveloperPreferences);
   const {showInkDiagnostics,showBoardDiagnostics,showPerformanceDiagnostics} = developerPrefs;
+  const diagnosticFps = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if(!isAppAdmin||!showPerformanceDiagnostics)return;
+    let frame=0,last=0,animation=0;
+    const sample=(now:number)=>{
+      if(!last)last=now;
+      frame++;
+      const elapsed=now-last;
+      if(elapsed>=900){
+        if(diagnosticFps.current)
+          diagnosticFps.current.textContent=String(Math.round(frame*1000/elapsed));
+        frame=0;last=now;
+      }
+      animation=requestAnimationFrame(sample);
+    };
+    animation=requestAnimationFrame(sample);
+    return()=>cancelAnimationFrame(animation);
+  },[isAppAdmin,showPerformanceDiagnostics]);
   const changeRolePreview=(next:BoardRolePreview)=>{
     if(!isAppAdmin)return;
     end(true);setEditing(null);
@@ -2422,6 +2445,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [eraserSize, setEraserSize] = useState(22);
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [guides, setGuides] = useState<GuideState>({});
+  // Never schedule a React render if the guides are already absent. On a
+  // busy board, the old clearGuides() inside pointermove rebuilt the whole
+  // workspace despite the compositor-only camera optimization.
+  const clearGuides = () => setGuides(current =>
+    current.x == null && current.y == null ? current : {});
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [layersOpen, setLayersOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -2545,6 +2573,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     return initial.data.view;
   });
   const viewerPanFrame = useRef<number | null>(null);
+  const viewerWheelTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const viewerPendingPan = useRef<View | null>(null);
   const fastPanWorld = useRef<HTMLDivElement>(null);
   const fastPanOverlay = useRef<HTMLDivElement>(null);
@@ -2578,6 +2607,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // Commit once at finger/mouse release, when the expensive React culling and
   // raster cache update can happen without blocking pointer event handling.
   const finishViewerPan = (cancel=false,restore?:View) => {
+    if(viewerWheelTimer.current!==null){
+      clearTimeout(viewerWheelTimer.current);
+      viewerWheelTimer.current=null;
+    }
     if (viewerPanFrame.current !== null) {
       cancelAnimationFrame(viewerPanFrame.current);
       viewerPanFrame.current=null;
@@ -2610,6 +2643,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   }, [view]);
   useEffect(() => () => {
     if (viewerPanFrame.current !== null) cancelAnimationFrame(viewerPanFrame.current);
+    if (viewerWheelTimer.current !== null) clearTimeout(viewerWheelTimer.current);
     viewerPendingPan.current = null;
   }, []);
   const viewSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -3857,14 +3891,32 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       const unit=e.deltaMode===1?16:e.deltaMode===2?element.clientHeight:1;
       const ctrl=e.ctrlKey||e.metaKey;
       const useZoom=ctrl ? settings.wheel!=="zoom" : settings.wheel==="zoom";
+      const current=viewerPendingPan.current??viewRef.current;
+      let next:View;
       if(useZoom){
         const direction=settings.invertZoom?-1:1;
-        zoom(Math.exp(-e.deltaY*unit*.002*settings.zoomSpeed*direction),local(e.clientX,e.clientY));
+        const factor=Math.exp(-e.deltaY*unit*.002*settings.zoomSpeed*direction);
+        const zoom=Math.max(.1,Math.min(8,current.zoom*factor));
+        if(!panBoardBounds.current){
+          const rect=element.getBoundingClientRect();
+          panBoardBounds.current={left:rect.left,top:rect.top};
+        }
+        const anchor={x:e.clientX-panBoardBounds.current.left,y:e.clientY-panBoardBounds.current.top};
+        next={zoom,
+          x:anchor.x-(anchor.x-current.x)*zoom/current.zoom,
+          y:anchor.y-(anchor.y-current.y)*zoom/current.zoom};
       }else{
         const dx=e.deltaX*unit*settings.panSpeed,dy=e.deltaY*unit*settings.panSpeed;
         const shiftHorizontal=settings.horizontalShift&&e.shiftKey&&Math.abs(dx)<Math.abs(dy);
-        setView(v=>({...v,x:v.x-(shiftHorizontal?dy:dx),y:v.y-(shiftHorizontal?0:dy)}));
+        next={...current,x:current.x-(shiftHorizontal?dy:dx),
+          y:current.y-(shiftHorizontal?0:dy)};
       }
+      // Wheel events can arrive >100 times/second on trackpads. Follow them
+      // through the same compositor path as a finger; commit the React view
+      // only when the wheel stream becomes idle, not on each delta.
+      scheduleViewerPan(next);
+      if(viewerWheelTimer.current!==null)clearTimeout(viewerWheelTimer.current);
+      viewerWheelTimer.current=window.setTimeout(()=>finishViewerPan(),90);
     };
     element.addEventListener("wheel", wheel, { passive: false });
     return () => element.removeEventListener("wheel", wheel);
@@ -4010,7 +4062,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setMarqueeRect(null);
     setPreview(null);
     setPanning(false);
-    setGuides({});
+    clearGuides();
     if (board.current?.hasPointerCapture(g.pointer))
       board.current.releasePointerCapture(g.pointer);
     if (!cancel && g.mode === "draw" && g.ink) {
@@ -4043,7 +4095,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setRightPointerActive(false);
     setPanning(false);
     setMarqueeRect(null);
-    setGuides({});
+    clearGuides();
     if(tool!=="select")setSelected([]);
   },[tool]);
   // Some embedded widgets consume pointerup, and a captured element can be
@@ -4514,6 +4566,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     });
   };
 
+  const dragSnapCache = useRef(new WeakMap<Gesture,{
+    selected:Set<string>; moving:Bounds|null; others:Item[];
+  }>());
   const move = (e: PE<HTMLElement>) => {
     const g = gesture.current;
     if (!g || e.pointerId !== g.pointer) return;
@@ -4538,30 +4593,37 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         const worldDx=dx/g.view.zoom, worldDy=dy/g.view.zoom;
         display(g.before.map(item=>g.ids.includes(item.id)?{...item,x:item.x+worldDx,y:item.y+worldDy}:item));
       } else {
-        setGuides({});
+        // A navigation frame must not mutate React state.
         scheduleViewerPan({...g.view,x:g.view.x+dx,y:g.view.y+dy});
       }
     } else if (g.mode === "pan") {
-      setGuides({});
       scheduleViewerPan({ ...g.view, x: g.view.x + dx, y: g.view.y + dy });
     } else if (g.mode === "drag") {
       let worldDx = dx / g.view.zoom;
       let worldDy = dy / g.view.zoom;
+      let cache=dragSnapCache.current.get(g);
+      if(!cache){
+        const selected=new Set(g.ids);
+        cache={
+          selected,
+          moving:boundsOf(g.before.filter(item=>selected.has(item.id))),
+          others:g.before.filter(item=>!item.hidden&&!selected.has(item.id)),
+        };
+        dragSnapCache.current.set(g,cache);
+      }
       if (snapEnabled && !e.altKey) {
-        const moving = boundsOf(g.before.filter((item) => g.ids.includes(item.id)));
-        const others = g.before.filter((item) => !item.hidden && !g.ids.includes(item.id));
-        if (moving) {
-          const snapped = snapDraggedBounds(moving, others, worldDx, worldDy, 7 / g.view.zoom);
+        if (cache.moving) {
+          const snapped = snapDraggedBounds(cache.moving, cache.others, worldDx, worldDy, 7 / g.view.zoom);
           worldDx = snapped.dx;
           worldDy = snapped.dy;
-          setGuides(snapped.guides);
+          setGuides(previous=>previous.x===snapped.guides.x&&previous.y===snapped.guides.y?previous:snapped.guides);
         }
       } else {
-        setGuides({});
+        clearGuides();
       }
       display(
         g.before.map((item) =>
-          g.ids.includes(item.id)
+          cache.selected.has(item.id)
             ? {
                 ...item,
                 x: item.x + worldDx,
@@ -4571,7 +4633,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         ),
       );
     } else if (g.mode === "connector-end" && g.handle && g.transformItem?.kind === "connector") {
-      setGuides({});
+      clearGuides();
       const base = g.transformItem;
       const baseStart = { x: base.x + (base.connectorStart?.x ?? 0), y: base.y + (base.connectorStart?.y ?? 0) };
       const baseEnd = { x: base.x + (base.connectorEnd?.x ?? base.width), y: base.y + (base.connectorEnd?.y ?? base.height) };
@@ -4597,7 +4659,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       const nextConnector: Item = { ...rebuilt, groupId: base.groupId, locked: base.locked, hidden: base.hidden };
       display(g.before.map((item) => item.id === base.id ? nextConnector : item));
     } else if (g.mode === "resize" && g.handle) {
-      setGuides({});
+      clearGuides();
       const wx = dx / g.view.zoom, wy = dy / g.view.zoom;
       if (g.transformItems && g.transformBounds) {
         const baseBounds = g.transformBounds;
@@ -4628,7 +4690,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         display(g.before.map((item) => item.id === base.id ? fitItemToRect(base, rect) : item));
       }
     } else if (g.mode === "rotate") {
-      setGuides({});
+      clearGuides();
       const now = world(p);
       const startWorld = world(g.start);
       if (g.transformItems && g.transformBounds) {
@@ -8958,7 +9020,23 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const transformHandle=target.closest("[data-transform-handle],[data-group-transform-handle],[data-connector-endpoint],[data-group-selection-drag],[data-board-selection-grip]");
             if(!transformHandle&&target.closest("button,input,select,textarea,[role='button'],[role='slider'],[contenteditable='true'],[data-board-interactive]"))return;
             if(tool==="eraser")return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; if (presentation) { const point = local(e.clientX, e.clientY); if (presentationLaser) setPresentationLaserPos(point); if (presentationSpotlight) setPresentationSpotlightPos(point); return; } down(e); }}
-          onPointerMove={(e) => { if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y);}return;} if(eraserSession.current)return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; const localPoint = local(e.clientX, e.clientY); const worldPoint = world(localPoint); if(!adminHidden) cursorChannel.current?.sendCursor(worldPoint.x, worldPoint.y); if (presentation) { if (presentationLaser) setPresentationLaserPos(localPoint); if (presentationSpotlight) setPresentationSpotlightPos(localPoint); } move(e); }}
+          onPointerMove={(e) => {
+            if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y);}return;}
+            if(eraserSession.current||pinchState.current||consumedTouchIds.current.has(e.pointerId))return;
+            const activeGesture=gesture.current;
+            // Navigation uses cached board bounds and CSS transforms. It does
+            // not need live cursor broadcasts, a second geometry lookup or
+            // calculations of world coordinates for every pointer sample.
+            if(activeGesture?.mode==="pan"||(activeGesture?.mode==="hand-smart"&&activeGesture.dragging&&!activeGesture.handMoveSelection)){
+              move(e);
+              return;
+            }
+            const localPoint=local(e.clientX,e.clientY);
+            const worldPoint=world(localPoint);
+            if(!adminHidden)cursorChannel.current?.sendCursor(worldPoint.x,worldPoint.y);
+            if(presentation){if(presentationLaser)setPresentationLaserPos(localPoint);if(presentationSpotlight)setPresentationSpotlightPos(localPoint);}
+            move(e);
+          }}
           onContextMenu={(e) => {
             e.preventDefault();
             // Mouse RMB is handled on pointerup. Prevent the native menu from
@@ -9014,7 +9092,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           {isAppAdmin && (showInkDiagnostics || showBoardDiagnostics || showPerformanceDiagnostics) && <div style={{position:"absolute",right:12,top:12,zIndex:2400,background:"rgba(20,23,33,.85)",color:"#fff",padding:"7px 10px",borderRadius:8,fontSize:11,pointerEvents:"none",maxWidth:"min(90vw,480px)"}}>
             {showInkDiagnostics && <div>Штрихи: {inkDiagnostics}</div>}
             {showBoardDiagnostics && <div>Соединение: {realtimeStatus} · курсоров: {Object.keys(remoteCursors).length} · участников: {visiblePresenceUsers.length} · версия: {remoteVersion.current ?? "нет"}</div>}
-            {showPerformanceDiagnostics && <div>Объектов: {items.length} · штрихов: {items.filter(x=>x.kind==="pen"||x.kind==="marker").length} · масштаб: {Math.round(view.zoom*100)}%</div>}
+            {showPerformanceDiagnostics && <div>Объектов: {items.length} · штрихов: {drawingCount} · масштаб: {Math.round(view.zoom*100)}% · rAF FPS: <span ref={diagnosticFps}>…</span></div>}
           </div>}
           <div
             ref={fastPanBackground}
@@ -9996,7 +10074,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </div>
           <button
             className={`snap-toggle ${snapEnabled ? "active" : ""}`}
-            onClick={() => { setSnapEnabled((value) => !value); setGuides({}); }}
+            onClick={() => { setSnapEnabled((value) => !value); clearGuides(); }}
             title="Умные привязки при перемещении · Alt временно отключает"
           >
             <Icon name="snap" size={16} />
