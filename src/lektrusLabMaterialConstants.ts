@@ -393,6 +393,10 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
  // source precision. Its retrograde temperature-dependence is real.
  // https://pubchem.ncbi.nlm.nih.gov/compound/11125
  Li2CO3:[1.543,1.33,1.174,1.010,.847,.715],
+ // WHO/IPCS CICAD 33: exact 20 C BaCl2 aqueous reference, 375 g/L
+ // of starting WATER. The solid hydrate in equilibrium is unspecified;
+ // one measured knot must not create a dry-crystal saturation curve.
+ BaCl2:[null,labExactMeasuredSolubility("BaCl2",20)??null,null,null,null,null],
  NaF:[null,4.1,null,null,null,null],
  NaBr:[null,null,null,118,118.3,121.2],
  // ICSC 1200 source 22 g / 100mL pure initial water at 20°C.
