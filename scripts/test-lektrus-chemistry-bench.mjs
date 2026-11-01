@@ -2445,6 +2445,81 @@ console.log("Paused full/partial/volumetric transfers stage follow-up chemistry:
 }
 console.log("Measured follow-up gas, sealed pressure, collection and pause: OK");
 
+{
+ // A previously consumed sample still has measured water and NaCl in its
+ // species ledger. Introducing a NEW sodium granule is a second reaction,
+ // not a replay of the historic stock amounts.
+ const waterMol=20*.997/chem.labMolarMass("H2O");
+ let thermalFollowUp=lab.defaultLabBench();
+ thermalFollowUp={...thermalFollowUp,vessels:[{
+  ...thermalFollowUp.vessels[0],
+  reagents:["H2O","NaCl"],observed:true,environment:"aqueous",
+  doses:{H2O:{unit:"ml",value:20},
+   NaCl:{unit:"ml",value:10,concentrationM:.1}},
+  chemicalInventory:{speciesMol:{H2O:waterMol,NaCl:.001},
+   solidMol:{},retainedGasMol:{},releasedGasMol:{},settled:true}
+ }]};
+ thermalFollowUp=lab.setLabSimulationPaused(thermalFollowUp,true,1000);
+ thermalFollowUp=lab.putLabReagent(
+  thermalFollowUp,"v1","Na",{unit:"g",value:.1});
+ assert.equal(thermalFollowUp.vessels[0].pendingInventoryReaction,true,
+  "Water + new sodium should queue its verified follow-up reaction");
+ const temperatureBefore=thermalFollowUp.vessels[0].temperatureC??22;
+ assert.equal(thermalFollowUp.vessels[0].reactionHeat,undefined,
+  "Preparatory dosing while paused cannot heat the chemical mixture");
+ thermalFollowUp=lab.setLabSimulationPaused(thermalFollowUp,false,2000);
+ thermalFollowUp=lab.advanceLabSimulation(thermalFollowUp,3000);
+ let warm=thermalFollowUp.vessels[0];
+ assert.equal(warm.inventoryGasReaction?.elapsedSeconds,1);
+ assert.match(warm.reactionHeat?.equation??"",/NaOH/);
+ assert.equal(warm.reactionHeat?.direction,"exothermic");
+ assert.ok(warm.reactionHeat?.deltaC>0);
+ assert.ok(warm.temperatureC>temperatureBefore,
+  "Measured sodium-water follow-up releases heat while hydrogen forms");
+ const firstHeat=warm.reactionHeat.elapsedSeconds;
+ const firstTemperature=warm.temperatureC;
+ thermalFollowUp=lab.setLabSimulationPaused(thermalFollowUp,true,4000);
+ assert.equal(lab.advanceLabSimulation(thermalFollowUp,9000),thermalFollowUp,
+  "Pausing freezes chemistry and calorimetry in the same tick");
+ assert.equal(thermalFollowUp.vessels[0].reactionHeat.elapsedSeconds,firstHeat);
+ assert.equal(thermalFollowUp.vessels[0].temperatureC,firstTemperature);
+ thermalFollowUp=lab.setLabSimulationPaused(thermalFollowUp,false,10000);
+ for(const at of [20000,30000,40000])
+  thermalFollowUp=lab.advanceLabSimulation(thermalFollowUp,at);
+ warm=thermalFollowUp.vessels[0];
+ assert.equal(warm.pendingInventoryReaction,undefined);
+ assert.equal(warm.reactionHeat?.complete,true);
+ assert.equal(warm.reactionHeat.elapsedSeconds,warm.reactionHeat.durationSeconds);
+ assert.ok(warm.temperatureC>firstTemperature,
+  "Verified exothermic energy is delivered with the completed mole conversion");
+ assert.ok((warm.chemicalInventory?.releasedGasMol.H2??0)>.002,
+  "Hydrogen production and temperature rise use the same completed reaction");
+ assert.doesNotThrow(()=>parseLab(thermalFollowUp),
+  "Completed multi-stage reaction and its thermal state survive persistence");
+
+ // A carbonate + acid follow-up has no measured reaction enthalpy in this
+ // catalog. Gas emission must not introduce a fictional temperature rise.
+ let noEnthalpy=lab.defaultLabBench();
+ noEnthalpy={...noEnthalpy,vessels:[{
+  ...noEnthalpy.vessels[0],
+  reagents:["CaCO3"],observed:true,environment:"aqueous",
+  doses:{CaCO3:{unit:"g",value:.1}},
+  chemicalInventory:{speciesMol:{CaCO3:.1/chem.labMolarMass("CaCO3")},
+   solidMol:{CaCO3:.1/chem.labMolarMass("CaCO3")},
+   retainedGasMol:{},releasedGasMol:{},settled:true}
+ }]};
+ noEnthalpy=lab.setLabSimulationPaused(noEnthalpy,true,1000);
+ noEnthalpy=lab.putLabReagent(noEnthalpy,"v1","HCl",
+  {unit:"ml",value:20,concentrationM:.1});
+ noEnthalpy=lab.setLabSimulationPaused(noEnthalpy,false,2000);
+ noEnthalpy=lab.advanceLabSimulation(noEnthalpy,3000);
+ assert.equal(noEnthalpy.vessels[0].inventoryGasReaction?.elapsedSeconds,1);
+ assert.equal(noEnthalpy.vessels[0].reactionHeat,undefined,
+  "Unknown enthalpy cannot be replaced by an invented temperature pulse");
+}
+console.log("Follow-up gas reaction enthalpy, pause and no invented heat: OK");
+
+
 
 
 const originalShared=lab.recordLabReactions(measuredSediment);
