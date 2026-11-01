@@ -485,7 +485,7 @@ const bulkBinary={
  Na2CO3:[7.1,21.4,48.5,46.5,45.8,45.5],
  Li2CO3:[1.543,1.33,1.174,1.010,.847,.715],
  NaF:[null,4.1,null,null,null,null],
- NaBr:[null,null,null,118,118.3,121.2],
+ NaBr:[80.1,90.8,null,118,118.3,121.2],
  Na2SO3:[null,22/.9982,37,33.2,29,26.6],
  Na2SO4:[null,null,48.1,45.26,43.09,42.3],
  ZnCl2:[null,null,453,488,541,614],
@@ -507,7 +507,7 @@ for(const [formula,values] of Object.entries(bulkBinary)){
  assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,-1),undefined);
  assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,101),undefined);
 }
-assert.equal(measuredNewCells,50);
+assert.equal(measuredNewCells,52);
 // NaF remains an isolated 20 C measurement. Li2CO3 is now a fully
 // independently tabulated retrograde solubility series, not isolated data.
 assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater("NaF",15),undefined);
