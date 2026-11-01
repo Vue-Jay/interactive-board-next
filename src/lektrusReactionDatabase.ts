@@ -218,6 +218,7 @@ add("H2SO4+KOH","aqueous","H2SO4 + 2KOH → K2SO4 + 2H2O","heat","Нейтрал
 add("HNO3+NaOH","aqueous","HNO3 + NaOH → NaNO3 + H2O","heat","Нейтрализация.");
 add("CH3COOH+NaOH","aqueous","CH3COOH + NaOH → CH3COONa + H2O","heat","Нейтрализация слабой кислоты.");
 add("HCl+Ca(OH)2","aqueous","2HCl + Ca(OH)2 → CaCl2 + 2H2O","heat","Нейтрализация.");
+add("AgNO3+HCl","aqueous","AgNO3 + HCl → AgCl↓ + HNO3","precipitate","При смешивании растворов образуется белый осадок хлорида серебра.",{afterColor:"#f4f5f5"});
 add("AgNO3+NaCl","aqueous","AgNO3 + NaCl → AgCl↓ + NaNO3","precipitate","Образуется белый творожистый осадок хлорида серебра.",{afterColor:"#f4f5f5"});
 add("AgNO3+KCl","aqueous","AgNO3 + KCl → AgCl↓ + KNO3","precipitate","Белый осадок AgCl.",{afterColor:"#f4f5f5"});
 add("BaCl2+Na2SO4","aqueous","BaCl2 + Na2SO4 → BaSO4↓ + 2NaCl","precipitate","Белый осадок сульфата бария.",{afterColor:"#f4f4f3"});
