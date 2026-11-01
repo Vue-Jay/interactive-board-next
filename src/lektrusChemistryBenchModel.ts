@@ -645,6 +645,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
   const doses=updatedDoses,reagents=updatedReagents;
   const hasLiquid=Object.entries(doses??{}).some(([id,d])=>d.unit==="ml"&&
    substances.find(s=>s.id===id)?.kind!=="газ");
+  const vented=popped?labVentStopperedVessel(v):undefined;
   return {...v,temperatureC:next,
    ...(phaseChanged?{meltFraction,phaseTransition}:{}),
    ...(kinetic||mixedKinetic?
@@ -659,7 +660,10 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
     lastEvaporatedAtMs:nowMs,
     filteredSolution:phase?.filteredSolution??v.filteredSolution,
     ventedVaporMl:phase?.ventedVaporMl}:{}),
-   ...(popped?labVentStopperedVessel(v):{}),
+   ...(vented?{stoppered:false,stopperedAtC:undefined,
+    sealedReactionGasBaselineMol:undefined,
+    chemicalInventory:vented.chemicalInventory,
+    gasCollectionProcessedMol:vented.gasCollectionProcessedMol}:{}),
    environment:evaporating&&reagents.length===0?"dry":
     cooling?(hasLiquid?"aqueous":"dry"):v.environment};
  });
