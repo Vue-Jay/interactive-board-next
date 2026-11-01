@@ -1247,6 +1247,28 @@ console.log("34 exact crystalline Perry Handbook Cp correlations: molar-to-mass,
 // 20°C rows from measurements at 18°C or 25°C.
 const literature=load("src/lektrusLabSolubilityMeasurements.ts");
 const pureWaterMeasurements=literature.LAB_MEASURED_PURE_WATER_SOLUBILITIES;
+// Original-unit regression: independently published exact water-solubility
+// observations must reach the LIVE simulator lookup without rounding their
+// temperatures or silently authorizing an anhydrous crystal phase.
+for(const [formula,temperatureC,sourceValue] of [["NaBr",0,80.1],["NaBr",10,85.2],["NaBr",20,90.8],["NaBr",25,94.6],["NaBr",30,98.4],["LiNO3",0,53],["LiNO3",20,70],["LiNO3",40,145],["LiNO3",60,182],["LiNO3",70,206],["Cu(NO3)2",0,83.5],["Cu(NO3)2",20,124.7],["Cu(NO3)2",25,150],["Cu(NO3)2",100,247],["Zn(NO3)2",0,93.8],["Zn(NO3)2",20,118.8],["Zn(NO3)2",25,128],["Zn(NO3)2",30,139.23],["MnSO4",0,52.9],["MnSO4",20,62.9],["MnSO4",25,64.5],["MnSO4",30,62.9],["MnSO4",40,60],["MnSO4",60,53.6],["MnSO4",80,45.6]] ){
+ const row=pureWaterMeasurements.find(x=>x.formula===formula&&x.temperatureC===temperatureC);
+ assert.ok(row,"Missing exact aqueous source "+formula+" at "+temperatureC+" C");
+ assert.equal(row.originalUnit,"g/100g-water");
+ approximately(row.sourceValue,sourceValue,1e-10);
+ approximately(literature.labExactMeasuredSolubility(formula,temperatureC),sourceValue,1e-10);
+ approximately(schoolMaterial.labSingleSaltSolubilityGPer100gWater(formula,temperatureC),sourceValue,1e-10);
+ assert.equal(schoolMaterial.labSchoolSolubilityGPer100gWater(formula,temperatureC).estimated,false);
+}
+for(const formula of ["NaBr","LiNO3","Cu(NO3)2","Zn(NO3)2","MnSO4"]){
+ assert.equal(schoolMaterial.labSingleSaltSolubilityGPer100gWater(formula,21),undefined,
+  "A nearby 20 C source must not invent a 21 C observation: "+formula);
+ const inventory={speciesMol:{H2O:1,[formula]:1},solidMol:{}};
+ assert.equal(schoolMaterial.labEquilibrateSingleSaltCrystals(inventory,20,true,labMolarMass),undefined,
+  "Hydrate-sensitive source is not an anhydrous precipitation model: "+formula);
+ assert.deepEqual(inventory.solidMol,{}, "No invented dry precipitate: "+formula);
+}
+console.log("25 new source-qualified exact aqueous measurements; five protected salts PASS");
+
 assert.ok(pureWaterMeasurements.length>=103);
 assert.ok(new Set(pureWaterMeasurements.map(x=>x.formula)).size>=51);
 assert.ok(pureWaterMeasurements.filter(x=>x.temperatureC===20).length>=31);
