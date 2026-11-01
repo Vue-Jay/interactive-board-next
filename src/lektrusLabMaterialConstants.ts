@@ -398,7 +398,7 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
  // one measured knot must not create a dry-crystal saturation curve.
  BaCl2:[null,labExactMeasuredSolubility("BaCl2",20)??null,null,null,null,null],
  NaF:[null,4.1,null,null,null,null],
- NaBr:[null,null,null,118,118.3,121.2],
+ NaBr:[null,labExactMeasuredSolubility("NaBr",20)??null,null,118,118.3,121.2],
  // ICSC 1200 source 22 g / 100mL pure initial water at 20°C.
  // The independent UCT Prague density reference (2.66 g/cm³)
  // is a separate measured property; ICSC quotes 2.63 g/cm³,
@@ -407,6 +407,13 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
  Na2SO4:[null,null,48.1,45.26,43.09,42.3],
  ZnCl2:[null,null,453,488,541,614],
  NaH2PO4:[null,null,null,179.3,207.3,284.4],
+ // Exact source-checked salt formula-equivalent aqueous observations.
+ // These five sources do not establish anhydrous equilibrium crystals;
+ // no interpolation is permitted across unknown hydration boundaries.
+ LiNO3:[null,labExactMeasuredSolubility("LiNO3",20)??null,null,null,null,null],
+ "Cu(NO3)2":[null,labExactMeasuredSolubility("Cu(NO3)2",20)??null,null,null,null,null],
+ "Zn(NO3)2":[null,labExactMeasuredSolubility("Zn(NO3)2",20)??null,null,null,null,null],
+ MnSO4:[null,labExactMeasuredSolubility("MnSO4",20)??null,null,null,null,null],
  // Celestite SrSO4: 20 C in distilled pure water, 0.0138 g per
  // 100 mL of water. Do NOT round the small positive number to zero.
  // https://www.mdpi.com/2227-9717/14/1/172
@@ -625,7 +632,7 @@ export const LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES:ReadonlySet<string>=new
  "LiOH",
  // Sulfite oxidation/hydration and reactive FeCl3 hydrolysis prohibit
  // an arbitrary single-solute anhydrous crystallisation calculation.
- "Na2SO3","FeCl3"
+ "Na2SO3","FeCl3","Zn(NO3)2","MnSO4"
 ]);
 /** Phase fractions for EXACTLY one supported anhydrous crystalline salt
  * and pure explicitly measured H2O. Aqueous mixed salts, prepared stocks
