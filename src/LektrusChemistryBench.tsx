@@ -23,7 +23,7 @@ import {titrationReading} from "./lektrusLabTitration";
 import {labExperimentKitSummary,prepareLabExperimentKit} from "./lektrusLabExperimentKits";
 import LektrusLabGlasswareIcon from "./LektrusLabGlasswareIcon";
 import LektrusLabDeviceIcon from "./LektrusLabDeviceIcon";
-import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint,labStandClampSvgY,labTitrationDropEndpoints,isLabSink,isLabCupboard,isLabWorktop,isLabReturnDrop} from "./lektrusLabLayout";
+import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint,labStandClampSvgY,labTitrationDropEndpoints,labShelfGestureMoved,isLabSink,isLabCupboard,isLabWorktop,isLabReturnDrop} from "./lektrusLabLayout";
 
 const names:Record<LabGlassware,string>=Object.fromEntries(labGlassware.map(v=>[v.id,v.name])) as Record<LabGlassware,string>;
 const shape:Record<LabGlassware,{inside:string;outline:string;liquid:string}> ={
@@ -666,8 +666,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  const sinkId=useId().replace(/:/g,"");
  const scrollRef=useRef<HTMLDivElement>(null);
  const gesture=useRef<{id:string;startX:number;startY:number;x:number;y:number;dragged:boolean}|null>(null);
- const shelfGesture=useRef<{kind:LabGlassware;startX:number;startY:number;dragged:boolean}|null>(null);
- const deviceShelfGesture=useRef<{kind:LabDevice;startX:number;startY:number;dragged:boolean}|null>(null);
+ const shelfGesture=useRef<{kind:LabGlassware;pointerId:number;startX:number;startY:number;dragged:boolean}|null>(null);
+ const deviceShelfGesture=useRef<{kind:LabDevice;pointerId:number;startX:number;startY:number;dragged:boolean}|null>(null);
  const deviceGesture=useRef<{id:string;startX:number;startY:number;x:number;y:number;dragged:boolean}|null>(null);
  const [devicePreview,setDevicePreview]=useState<{id:string;x:number;y:number}|null>(null);
  const [deviceShelfGhost,setDeviceShelfGhost]=useState<{kind:LabDevice;x:number;y:number}|null>(null);
@@ -1284,7 +1284,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  const beginShelf=(event:PointerEvent<HTMLButtonElement>,kind:LabGlassware)=>{
   if(!editable||event.button!==0||!event.isPrimary)return;
   event.stopPropagation();
-  shelfGesture.current={kind,startX:event.clientX,startY:event.clientY,dragged:false};
+  shelfGesture.current={kind,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,dragged:false};
   // A touch swipe belongs to the scrollable cupboard. Tap-to-place still
   // works, while a mouse/pen retains precise drag-and-drop.
   if(event.pointerType!=="touch"){
@@ -1293,20 +1293,29 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   }
  };
  const moveShelf=(event:PointerEvent<HTMLButtonElement>)=>{
-  const g=shelfGesture.current;if(!g)return;
+  const g=shelfGesture.current;if(!g||g.pointerId!==event.pointerId)return;
+  if(labShelfGestureMoved(g.startX,g.startY,event.clientX,event.clientY,
+   event.pointerType==="touch"))g.dragged=true;
+  // Touch movement is for scrolling the cupboard, NOT pulling a ghost item.
+  // Never call preventDefault or setPointerCapture on a touch scroll.
   if(event.pointerType==="touch")return;
   event.stopPropagation();const p=point(event);if(!p)return;
-  if(Math.hypot(event.clientX-g.startX,event.clientY-g.startY)>7)g.dragged=true;
   if(g.dragged)setShelfGhost({kind:g.kind,x:p.x,y:p.y});
  };
  const finishShelf=(event:PointerEvent<HTMLButtonElement>)=>{
-  const g=shelfGesture.current;if(!g)return;shelfGesture.current=null;
+  const g=shelfGesture.current;if(!g||g.pointerId!==event.pointerId)return;
+  shelfGesture.current=null;
+  const moved=g.dragged||labShelfGestureMoved(
+   g.startX,g.startY,event.clientX,event.clientY,event.pointerType==="touch");
+  setShelfGhost(null);
+  // An ordinary finger swipe must never close the cupboard or place glass.
+  // Do not suppress the browser's scrolling/click behavior for that swipe.
+  if(event.pointerType==="touch"&&moved)return;
   event.stopPropagation();event.preventDefault();
   if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);
-  const p=point(event);if(g.dragged&&p&&isLabWorktop(p))
-   take(g.kind,p);
-  else if(!g.dragged)chooseGlassware(g.kind);
-  setShelfGhost(null);
+  const p=point(event);
+  if(moved&&p&&isLabWorktop(p))take(g.kind,p);
+  else if(!moved)chooseGlassware(g.kind);
  };
  const takeDevice=(kind:LabDevice,p?:{x:number;y:number})=>{
   const updated=addPlacedLabDevice(bench,kind,p&&isLabWorktop(p)?p:undefined);
@@ -1320,29 +1329,34 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  const beginDeviceShelf=(e:PointerEvent<HTMLButtonElement>,kind:LabDevice)=>{
   if(!editable||e.button!==0||!e.isPrimary)return;
   e.stopPropagation();
-  deviceShelfGesture.current={kind,startX:e.clientX,startY:e.clientY,dragged:false};
+  deviceShelfGesture.current={kind,pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,dragged:false};
   if(e.pointerType!=="touch"){
    e.preventDefault();
    e.currentTarget.setPointerCapture(e.pointerId);
   }
  };
  const moveDeviceShelf=(e:PointerEvent<HTMLButtonElement>)=>{
-  const g=deviceShelfGesture.current;if(!g)return;
+  const g=deviceShelfGesture.current;if(!g||g.pointerId!==e.pointerId)return;
+  if(labShelfGestureMoved(g.startX,g.startY,e.clientX,e.clientY,
+   e.pointerType==="touch"))g.dragged=true;
   if(e.pointerType==="touch")return;
   e.stopPropagation();
   const p=point(e);if(!p)return;
-  if(Math.hypot(e.clientX-g.startX,e.clientY-g.startY)>7)g.dragged=true;
   if(g.dragged)setDeviceShelfGhost({kind:g.kind,...p});
  };
  const finishDeviceShelf=(e:PointerEvent<HTMLButtonElement>)=>{
-  const g=deviceShelfGesture.current;if(!g)return;
-  deviceShelfGesture.current=null;e.preventDefault();e.stopPropagation();
+  const g=deviceShelfGesture.current;if(!g||g.pointerId!==e.pointerId)return;
+  deviceShelfGesture.current=null;
+  const moved=g.dragged||labShelfGestureMoved(
+   g.startX,g.startY,e.clientX,e.clientY,e.pointerType==="touch");
+  setDeviceShelfGhost(null);
+  if(e.pointerType==="touch"&&moved)return;
+  e.preventDefault();e.stopPropagation();
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   const p=point(e);
-  if(!g.dragged)takeDevice(g.kind);
+  if(!moved)takeDevice(g.kind);
   else if(p&&isLabWorktop(p))takeDevice(g.kind,p);
   else setNotice("Прибор можно поставить только на рабочую поверхность");
-  setDeviceShelfGhost(null);
  };
  const nearestVessel=(p:{x:number;y:number},kind:LabDevice)=>{
   const bounds=host.current?.getBoundingClientRect();
@@ -1864,7 +1878,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
       aria-label={"Взять из шкафа "+kind.name} onPointerDown={e=>beginShelf(e,kind.id)}
       onPointerMove={moveShelf} onPointerUp={finishShelf}
       onClick={e=>{if(e.detail===0)chooseGlassware(kind.id)}}
-      onPointerCancel={e=>{e.stopPropagation();shelfGesture.current=null;setShelfGhost(null)}}>
+      onPointerCancel={e=>{e.stopPropagation();
+       if(shelfGesture.current?.pointerId===e.pointerId){shelfGesture.current=null;setShelfGhost(null)}}}>
       <LektrusLabGlasswareIcon kind={kind.id} size={32}/>
       <small>{kind.name}</small>
      </button>)}
@@ -1922,7 +1937,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      aria-label={"Взять прибор: "+device.name}
      onPointerDown={e=>beginDeviceShelf(e,device.id)}
      onPointerMove={moveDeviceShelf} onPointerUp={finishDeviceShelf}
-     onPointerCancel={e=>{e.stopPropagation();deviceShelfGesture.current=null;setDeviceShelfGhost(null)}}
+     onPointerCancel={e=>{e.stopPropagation();
+      if(deviceShelfGesture.current?.pointerId===e.pointerId){deviceShelfGesture.current=null;setDeviceShelfGhost(null)}}}
      onClick={e=>{e.stopPropagation();if(e.detail===0)takeDevice(device.id)}}>
      <LektrusLabDeviceIcon kind={device.id} size={40}/>
      <small>{device.name}</small>
