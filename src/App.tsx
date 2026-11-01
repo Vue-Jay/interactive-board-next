@@ -2559,7 +2559,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       fastPanWorld.current.style.transform=boardWorldTransform(next);
     if (fastPanOverlay.current)
       fastPanOverlay.current.style.transform=boardOverlayTransform(next,viewRef.current);
-    // Changing CSS gradient backgroundPosition/Size forced a full-screen
+    // Moving the CSS gradient directly forced a full-screen
     // repaint every frame on Android. The repeating sheet can instead
     // translate by the remainder of a single grid period on the GPU.
     if (fastPanBackground.current)
