@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 
 export type BackendSession = {
   access_token: string;
@@ -27,9 +28,9 @@ const readNativeBackendConfig = (): { url: string; anonKey: string } | null => {
     return { url: address, anonKey: publishable };
   } catch { return null; }
 };
-const nativeBackendConfig = readNativeBackendConfig();
-const url = (buildBackendUrl || nativeBackendConfig?.url || "").replace(/\/$/, "");
-const anonKey = buildBackendKey || nativeBackendConfig?.anonKey || "";
+const nativeBackendConfig = LEKTRUS_LOCAL_TEST_MODE ? null : readNativeBackendConfig();
+const url = (LEKTRUS_LOCAL_TEST_MODE ? "" : (buildBackendUrl || nativeBackendConfig?.url || "")).replace(/\/$/, "");
+const anonKey = LEKTRUS_LOCAL_TEST_MODE ? "" : buildBackendKey || nativeBackendConfig?.anonKey || "";
 
 export const nativeBackendIsBundled = () => Boolean(buildBackendUrl && buildBackendKey);
 export const clearNativeBackendConnection = (): void => {
@@ -101,7 +102,7 @@ const fetchReadWithRetry = async (input: RequestInfo | URL, init: RequestInit = 
   throw lastError instanceof Error ? lastError : new Error("Не удалось связаться с сервером");
 };
 
-export const isRemoteBackendEnabled = () => Boolean(url && anonKey);
+export const isRemoteBackendEnabled = () => !LEKTRUS_LOCAL_TEST_MODE && Boolean(url && anonKey);
 
 export const getCachedRemoteSession = (): BackendSession | null => loadSession();
 
