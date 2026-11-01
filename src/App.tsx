@@ -717,6 +717,9 @@ const connectorAnchor = (point: Point, items: Item[], threshold: number, exclude
 };
 
 const syncBoundConnectors = (source: Item[]): Item[] => {
+  // Most handwritten boards contain no connector arrows. Keep their original
+  // array reference and skip a full-map allocation on every drawing/move frame.
+  if(!source.some(item=>item.kind==="connector"))return source;
   // Resolve attachment anchors through one index rather than scanning ALL
   // board items twice per connector on every drag frame (O(N*connectors)).
   const byId=new Map(source.map(item=>[item.id,item] as const));
