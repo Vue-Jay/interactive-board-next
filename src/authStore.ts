@@ -1,3 +1,4 @@
+import { LEKTRUS_LOCAL_TEST_MODE, LEKTRUS_LOCAL_TEST_USER } from "./lektrusLocalTestMode";
 import { claimRemoteInvitations, getCachedRemoteSession, getRemoteSession, isRemoteBackendEnabled, signInRemote, signInAnonymousRemote, signOutRemote, signUpRemote, getRememberedRemoteAccount, resumeRememberedRemoteAccount, leaveRemoteAccountRemembered, clearRememberedRemoteAccount } from "./backend";
 
 export type BoardRole = "owner" | "editor" | "viewer";
@@ -20,6 +21,7 @@ const remoteUser=(s:Awaited<ReturnType<typeof getRemoteSession>>):AuthUser|null=
 };
 
 export const getCachedCurrentUser=():AuthUser|null=>{
+ if(LEKTRUS_LOCAL_TEST_MODE)return {...LEKTRUS_LOCAL_TEST_USER};
  if(isRemoteBackendEnabled())return remoteUser(getCachedRemoteSession());
  try{const raw=localStorage.getItem(SESSION_KEY);if(!raw)return null;const id=JSON.parse(raw)?.userId;const u=loadUsers().find(x=>x.id===id);return u?publicUser(u):null}catch{return null}
 };
@@ -77,6 +79,7 @@ export const forgetRememberedAccount=async()=>{
 };
 
 export const logoutUser=async()=>{
+ if(LEKTRUS_LOCAL_TEST_MODE)return;
  if(isRemoteBackendEnabled()){
    const current=getCachedRemoteSession();
    if(current?.user?.email)leaveRemoteAccountRemembered();

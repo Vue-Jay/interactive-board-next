@@ -1,3 +1,4 @@
+import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import { getCachedRemoteSession, isRemoteBackendEnabled,remoteRequest } from "./backend";
 export type AccountRole="teacher"|"student";
 export type TeacherStatus="none"|"pending"|"approved"|"rejected";
@@ -11,7 +12,7 @@ const PERSISTENT_CACHE_PREFIX="onlinerepetitor.account-access.v244.";
 let cache:{at:number;value:AccountAccess}|null=null;
 let inFlight:Promise<AccountAccess>|null=null;
 const plan=(x:any):SubscriptionPlan=>x==="pro"?"pro":x==="teacher"||x==="basic"?"teacher":"free";
-const localAccess=():AccountAccess=>({role:localStorage.getItem(KEY)==="student"?"student":"teacher",teacherStatus:"approved",isAdmin:false,requestedAt:null,reviewedAt:null,subscriptionPlan:"free",subscriptionUntil:null});
+const localAccess=():AccountAccess=>({role:LEKTRUS_LOCAL_TEST_MODE?"teacher":localStorage.getItem(KEY)==="student"?"student":"teacher",teacherStatus:"approved",isAdmin:false,requestedAt:null,reviewedAt:null,subscriptionPlan:"free",subscriptionUntil:null});
 const mapAccess=(x:any):AccountAccess=>({role:x?.role==="teacher"?"teacher":"student",teacherStatus:["pending","approved","rejected"].includes(x?.teacher_status)?x.teacher_status:"none",isAdmin:!!x?.is_admin,requestedAt:x?.requested_at??null,reviewedAt:x?.reviewed_at??null,subscriptionPlan:plan(x?.subscription_plan),subscriptionUntil:x?.subscription_until??null});
 const currentRemoteUserId=()=>getCachedRemoteSession()?.user?.id||"";
 const cacheKey=()=>`${PERSISTENT_CACHE_PREFIX}${currentRemoteUserId()}`;
