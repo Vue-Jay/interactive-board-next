@@ -25,7 +25,7 @@ const vessel=(b,id)=>b.vessels.find(v=>v.id===id);
 const approx=(value,expected,tol=.005)=>assert.ok(
  Math.abs(value-expected)<=tol,value+" !== "+expected);
 const water=volume=>({unit:"ml",value:volume});
-let setup=lab.defaultLabBench();
+let setup=lab.setLabSimulationPaused(lab.defaultLabBench(),false,0);
 setup=lab.putLabReagent(setup,"v1","H2O",water(100));
 setup=lab.addLabVessel(setup,"tube");
 setup=lab.putLabReagent(setup,"v2","H2O",water(10));
@@ -63,7 +63,7 @@ assert.deepEqual(fast.vessels.map(v=>v.doses),
 const direct=lab.pourLabVessel(setup,"v1","v2");
 approx(vessel(direct,"v1").doses.H2O.value,85);
 approx(vessel(direct,"v2").doses.H2O.value,25);
-let mix=lab.defaultLabBench();
+let mix=lab.setLabSimulationPaused(lab.defaultLabBench(),false,0);
 mix=lab.putLabReagent(mix,"v1","NaCl",
  {unit:"ml",value:100,concentrationM:.2});
 mix=lab.addLabVessel(mix,"tube");
@@ -82,13 +82,13 @@ approx(vessel(stopped,"v1").doses.H2O.value,97);
 approx(vessel(stopped,"v2").doses.H2O.value,13);
 assert.equal(stopped.pouring,undefined);
 const full=lab.putLabReagent(lab.addLabVessel(lab.putLabReagent(
- lab.defaultLabBench(),"v1","H2O",water(100)),"tube"),
+ lab.setLabSimulationPaused(lab.defaultLabBench(),false,0),"v1","H2O",water(100)),"tube"),
  "v2","H2O",water(25));
 assert.strictEqual(lab.startLabPour(full,"v1","v2","full"),full);
 assert.strictEqual(lab.fastLabPour(full,"v1","v2"),full);
 assert.strictEqual(lab.pourLabVessel(full,"v1","v2"),full);
 let solid=lab.putLabReagent(lab.addLabVessel(
- lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",water(100)),
+ lab.putLabReagent(lab.setLabSimulationPaused(lab.defaultLabBench(),false,0),"v1","H2O",water(100)),
  "tube"),"v2","H2O",water(20));
 solid=lab.putLabReagent(solid,"v2","NaCl",{unit:"g",value:2});
 const free=lab.labVesselQuantity(vessel(solid,"v2")).availableMl;
