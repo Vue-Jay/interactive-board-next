@@ -1385,10 +1385,23 @@ export function readLabBench(item:Item):LabBench{
   // Preserve the original vessel-array identity for ordinary board reads.
   // Rebuilding it on every local UI render reschedules the simulation clock
   // and defeats per-vessel rendering optimizations.
-  if(!saved.vessels.some(v=>(v.kind as string)==="funnel"))return {...saved};
+  // The old direct-insertion preset omitted simulationPaused. A fresh,
+  // not-yet-run tabletop then displayed "Pause" even though nothing had
+  // started; its first click merely paused and a second was needed to play.
+  // Normalize only genuinely unstarted legacy benches. Preserve explicit
+  // pause/running state and the kinetic progress of existing experiments.
+  const neverStarted=saved.simulationPaused===undefined&&
+   saved.simulationAtMs===undefined&&!saved.experimentClock&&
+   !(saved.reactionLog?.length)&&saved.vessels.every(v=>
+    !v.reactionAmounts&&!v.pendingInventoryReaction&&!v.chemicalInventory&&
+    v.visualStartedAtMs===undefined&&v.physicalStartedAtMs===undefined&&
+    v.lastEvaporatedAtMs===undefined);
+  const normalized=neverStarted?{...saved,simulationPaused:true}:saved;
+  if(!normalized.vessels.some(v=>(v.kind as string)==="funnel"))
+   return {...normalized};
   // Retired funnels are migrated without losing their measured contents.
-  return {...saved,vessels:saved.vessels.map(v=>(v.kind as string)==="funnel"?
-   {...v,kind:"beaker" as const}:v)};
+  return {...normalized,vessels:normalized.vessels.map(v=>
+   (v.kind as string)==="funnel"?{...v,kind:"beaker" as const}:v)};
  }
  const initial=defaultLabBench();
  initial.vessels[0].reagents=(item.scienceReagents??[]).slice(0,MAX_VESSEL_REAGENTS);
