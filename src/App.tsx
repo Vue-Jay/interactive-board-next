@@ -11,6 +11,7 @@ import {
   type PointerEvent as PE,
   type CSSProperties,
 } from "react";
+import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import {chemistryBoardHasContent} from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
 import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./rectSelection";
@@ -10104,6 +10105,14 @@ export default function App() {
   }, []);
 
   const logout = () => {
+    // Local test APK is deliberately passwordless. "Exit" returns home
+    // without deleting the isolated demo identity or asking for a server.
+    if (LEKTRUS_LOCAL_TEST_MODE) {
+      clearPendingShare();
+      setActiveBoard(null);
+      navigate("/", true);
+      return;
+    }
     clearPendingShare();
     clearAccountAccessCache();
     clearNotificationCache();
