@@ -2504,9 +2504,14 @@ console.log("Paused full/partial/volumetric transfers stage follow-up chemistry:
   "The collector receives nothing while the stopper was closed");
  justPopped=lab.advanceLabSimulation(justPopped,28000);
  const collectedAfterPop=justPopped.vessels[1].doses?.CO2?.value??0;
+ const totalProducedAfterPop=lab.labFollowUpGasProgress(
+  justPopped.vessels[0]).producedMol.CO2;
+ const freshGasMl=Math.max(0,totalProducedAfterPop-poppedYield)*24465;
  assert.ok(collectedAfterPop>=0);
- assert.ok(collectedAfterPop<poppedYield*24465+.01,
-  "Gas receiver must not recapture the CO2 that escaped at pop");
+ assert.ok(collectedAfterPop<=freshGasMl+.011,
+  "Receiver can capture only newly generated gas, never the CO2 vented on cork pop");
+ assert.ok(collectedAfterPop>0,
+  "New gas produced after the stopper pops still reaches the collector");
 
  const damaged=structuredClone(sealed);
  damaged.vessels[0].inventoryGasReaction.initial.speciesMol.Na2CO3=-10;
