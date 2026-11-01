@@ -61,7 +61,9 @@ assert.equal(ph.labVesselPH({...persisted,filteredSolution:{volumeMl:0}}),null,
 const neutral={...persisted,
  chemicalInventory:{speciesMol:{NaCl:.001,H2O:.001},solidMol:{},settled:true}};
 near(ph.labVesselPH(neutral).pH,7,.025);
-let current=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",dose(10,.1));
+let current=lab.putLabReagent(
+ lab.setLabSimulationPaused(lab.defaultLabBench(),false,0),
+ "v1","HCl",dose(10,.1));
 current=lab.putLabReagent(current,"v1","NaOH",dose(10,.1));
 let v=current.vessels[0];
 near(ph.labVesselPH(v).pH,7,.04);
