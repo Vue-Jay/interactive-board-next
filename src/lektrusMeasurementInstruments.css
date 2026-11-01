@@ -119,3 +119,24 @@
  .geometry-instrument.geometry-instrument-centered .geometry-instrument-actions button,
  .geometry-picker.geometry-picker-portal button{transition:none}
 }
+
+
+/* The viewport holds all measuring tools in committed screen coordinates.
+   Pan/pinch applies a single compositor delta to the whole surface, just
+   like the main world. The children remain independently draggable and
+   selectable; surrounding empty space never intercepts board gestures. */
+.board .geometry-instrument-viewport-layer{
+ position:absolute;
+ inset:0;
+ z-index:8;
+ pointer-events:none;
+ transform-origin:0 0;
+ will-change:transform;
+}
+.board .geometry-instrument-viewport-layer .geometry-instrument-centered{
+ pointer-events:none!important;
+}
+.board .geometry-instrument-viewport-layer .geometry-instrument-body,
+.board .geometry-instrument-viewport-layer .geometry-instrument-actions{
+ pointer-events:auto;
+}
