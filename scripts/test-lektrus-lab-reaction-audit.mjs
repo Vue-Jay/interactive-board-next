@@ -131,8 +131,8 @@ for(const row of database.reviewedReactionCases){
   }
   if(row.observation==="gas"){
    const eq=stoich.parseBalancedLabEquation(row.equation);
-   const marked=(row.equation.split("→")[1]??"").split(/\\s+\\+\\s+/)
-    .filter(x=>x.includes("↑")).map(x=>x.replace(/^\\d+\\s*/,"").replace(/[↑↓]/g,"").trim());
+   const marked=(row.equation.split("→")[1]??"").split(/\s+\+\s+/)
+    .filter(x=>x.includes("↑")).map(x=>x.replace(/^\d+\s*/,"").replace(/[↑↓]/g,"").trim());
    assert.ok(eq.products.some(t=>marked.includes(t.formula)),
     "Gas observation has no tracked gas product");
    statistics.gases++;
@@ -153,7 +153,7 @@ const header="### Exhaustive Lektrus chemistry catalog reaction audit\n\n"+
  statistics.completed+" completed.\n\n";
 const details=failures.length?"| Reaction | Stage | Failure |\n| --- | --- | --- |\n"+
  failures.slice(0,80).map(f=>"| "+f.equation+" | "+f.stage+" | "+
- f.message.replace(/\\|/g,"/").replace(/\\n/g," ")+" |").join("\n"):
+ f.message.replace(/[|]/g,"/").replace(/\n/g," ")+" |").join("\n"):
  "All audited checks passed.";
 const markdown=header+details+"\n\n";
 if(process.env.GITHUB_STEP_SUMMARY)fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,markdown);
