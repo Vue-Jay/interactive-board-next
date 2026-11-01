@@ -23,6 +23,17 @@ assert.match(moves,/const snapped = snapDraggedBounds\(cache\.moving, cache\.oth
 assert.match(source,/const dragSnapCache = useRef\(new WeakMap<Gesture/);
 assert.match(moves,/cache\.selected\.has\(item\.id\)/);
 
+// Attached arrows used to perform two O(board-size) linear searches per
+// connector during EVERY object-move preview. A single indexed lookup keeps
+// interactive movement linear even with many diagram connections.
+const anchors=fragment("const bindingPoint =","const connectorAnchor =");
+assert.match(anchors,/byId\.get\(binding\.itemId\)/);
+assert.doesNotMatch(anchors,/items\.find\(/);
+const synced=fragment("const syncBoundConnectors =","function Connector(");
+assert.match(synced,/const byId=new Map\(source\.map\(/);
+assert.match(synced,/bindingPoint\(item\.connectorStartBinding, byId\)/);
+assert.match(synced,/bindingPoint\(item\.connectorEndBinding, byId\)/);
+
 // The desktop wheel/trackpad path must use the same cheap compositor as
 // touch/hand, rather than scheduling a React update per wheel event.
 const wheel=fragment("const wheel = (e: WheelEvent) => {","element.addEventListener(\"wheel\"");
