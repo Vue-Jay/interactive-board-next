@@ -231,6 +231,24 @@ export const LAB_CURATED_PROPERTY_BATCH:readonly LabCuratedPropertyBatchRow[]=[
   sourceUrl:"https://www.vwr.com/de/en/product/10592784/zinc-acetate-anhydrous-999",
   note:"Безводный ацетат цинка: справочная отметка 200 °C с пометкой «разложение», не устойчивое плавление; гидрат отдельно."},
 
+
+ // CRC Handbook 90th ed., pp. 5-12, via Chemister's FeSO4 (NOT
+ // FeSO4.H2O or FeSO4.7H2O) reference. At ~680 C the ANHYDROUS
+ // iron(II) sulfate decomposes; it is not a stable molten phase.
+ {formula:"FeSO4",property:"decompositionC",value:680,
+  phase:"anhydrous-solid",
+  sourceCondition:"pure anhydrous crystalline FeSO4, thermal decomposition at 680 C, near atmospheric pressure; excludes mono/heptahydrates",
+  sourceUrl:"https://www.chemister.ru/Databases/Chemdatabase/properties-en.php?id=4387",
+  note:"Безводный FeSO₄ разлагается около 680 °C; кристаллогидраты теряют воду раньше. Не считать плавлением."},
+ // Rabinovich & Khavin / Samsonov & Drozdova, via Chemister:
+ // cubic, colorless, ANHYDROUS Na2S (not 6- or 9-hydrate) fuses
+ // at 1180 C. The source explicitly identifies the cubic crystal.
+ {formula:"Na2S",property:"meltingC",value:1180,
+  phase:"anhydrous-solid",
+  sourceCondition:"pure dry cubic Na2S crystal, fusion at 1180 C, near atmospheric pressure; not Na2S.6H2O or Na2S.9H2O",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?id=775",
+  note:"Безводный кубический Na₂S плавится при 1180 °C; гидраты имеют другие переходы. Реакция с водой не равна растворению инертной соли."},
+
 ];
 
 /** Generated dry crystal density map (single source of truth). */
