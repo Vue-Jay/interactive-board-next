@@ -283,3 +283,58 @@ assert.ok(headerClockCss.includes("flex-direction:row!important"));
 assert.ok(headerClockCss.includes(".lektrus-lab-experiment-panel"));
 assert.ok(headerClockCss.includes(".lektrus-lab-realism-options button small"));
 console.log("Integrated header clock, single pause, temperature setting and compact controls: OK");
+
+
+// Touch-scroll acceptance: scrolling either physical cupboard must never
+// select an item, close the tray or place a device on the work surface.
+// Run the actual shared gesture threshold and inspect BOTH pointer handlers.
+{
+ const ts=(await import("typescript")).default;
+ const source=readFileSync("src/lektrusLabLayout.ts","utf8");
+ const m={exports:{}};
+ const compiled=ts.transpileModule(source,{compilerOptions:{
+  module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+ new Function("module","exports",compiled)(m,m.exports);
+ const moved=m.exports.labShelfGestureMoved;
+ assert.equal(typeof moved,"function");
+ assert.equal(moved(30,50,34,53,true),false,"A short finger tap remains a tap");
+ assert.equal(moved(30,50,30,60,true),false,"10px touch jitter is tolerated");
+ assert.equal(moved(30,50,30,61,true),true,"11px swipe is a scroll");
+ assert.equal(moved(30,50,70,50,true),true,"Horizontal phone swipe must not select glass");
+ assert.equal(moved(30,50,37,50,false),false,"Mouse supports a short precise click");
+ assert.equal(moved(30,50,38,50,false),true,"Mouse supports drag-and-drop");
+ assert.equal(moved(30,50,NaN,55,true),true,"Invalid pointer movement is never a tap");
+ const glassMove=markup.slice(markup.indexOf(" const moveShelf="),
+  markup.indexOf(" const finishShelf="));
+ const glassFinish=markup.slice(markup.indexOf(" const finishShelf="),
+  markup.indexOf(" const takeDevice="));
+ const deviceMove=markup.slice(markup.indexOf(" const moveDeviceShelf="),
+  markup.indexOf(" const finishDeviceShelf="));
+ const deviceFinish=markup.slice(markup.indexOf(" const finishDeviceShelf="),
+  markup.indexOf(" const nearestVessel="));
+ for(const [name,move,finish] of [
+  ["Посуда",glassMove,glassFinish],["Приборы",deviceMove,deviceFinish]
+ ]){
+  assert.ok(move.length>100&&finish.length>100,name+": missing pointer handlers");
+  assert.match(move,/labShelfGestureMoved\(g\.startX,g\.startY/,
+   name+": every touch pointermove must detect scrolling");
+  assert.match(finish,/const moved=g\.dragged\|\|labShelfGestureMoved\(/,
+   name+": check pointerup coordinates even when Android coalesces pointermove");
+  assert.match(finish,/if\([^)]*\.pointerType==="touch"&&moved\)return;/,
+   name+": touch swipe must return BEFORE item action and preventDefault");
+  assert.match(move,/g\.pointerId!==\w+\.pointerId/,
+   name+": a second finger cannot hijack the active gesture");
+  assert.match(finish,/g\.pointerId!==\w+\.pointerId/,
+   name+": reject a different finger on release");
+  assert.match(move,/if\(\w+\.pointerType==="touch"\)return;/,
+   name+": browser must retain native touch scrolling");
+ }
+ assert.match(markup,/if\(event\.pointerType!=="touch"\)\{\s*event\.preventDefault\(\);\s*event\.currentTarget\.setPointerCapture/,
+  "Only a mouse/pen, not a finger, captures glassware");
+ assert.match(markup,/if\(e\.pointerType!=="touch"\)\{\s*e\.preventDefault\(\);\s*e\.currentTarget\.setPointerCapture/,
+  "Only a mouse/pen, not a finger, captures equipment");
+ assert.match(markup,/shelfGesture\.current\?\.pointerId===e\.pointerId/,
+  "A cancelled cupboard touch must not create delayed placement");
+ assert.match(markup,/deviceShelfGesture\.current\?\.pointerId===e\.pointerId/);
+ console.log("Mobile physical cupboards: swipe vs tap, both devices, precise drag and cancellation OK");
+}
