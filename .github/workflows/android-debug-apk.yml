@@ -1,0 +1,71 @@
+name: Lektrus Android Debug APK (VS Code equivalent)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-debug:
+    name: Build installable Android debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      VITE_AUTH_REDIRECT_URL: ${{ vars.LEKTRUS_AUTH_REDIRECT_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Check Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d "${ANDROID_HOME}/platforms"
+          test -d "${ANDROID_HOME}/build-tools"
+      - name: Install project dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify native configuration
+        run: npm run native:check
+      - name: Build same web bundle as VS Code
+        run: npm run build
+      - name: Sync Capacitor into Android project
+        run: npx cap sync android
+      - name: Assemble the same Gradle debug variant as VS Code
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x android/gradlew
+          (cd android && ./gradlew :app:assembleDebug --no-daemon)
+          cp android/app/build/outputs/apk/debug/app-debug.apk Lektrus-Android-Debug.apk
+          test -s Lektrus-Android-Debug.apk
+      - name: Verify signed APK and package identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOOLS_DIR="$(find "${ANDROID_HOME}/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          "${TOOLS_DIR}/apksigner" verify --verbose Lektrus-Android-Debug.apk
+          "${TOOLS_DIR}/aapt" dump badging Lektrus-Android-Debug.apk | head -1 | tee package-report.txt
+          grep -q "name='ru.lektrus.board.dev'" package-report.txt
+          sha256sum Lektrus-Android-Debug.apk | tee apk-sha256.txt
+      - name: Upload ready-to-install APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lektrus-Android-Debug-APK
+          path: |
+            Lektrus-Android-Debug.apk
+            apk-sha256.txt
+          if-no-files-found: error
+          retention-days: 14
