@@ -338,3 +338,23 @@ console.log("Integrated header clock, single pause, temperature setting and comp
  assert.match(markup,/deviceShelfGesture\.current\?\.pointerId===e\.pointerId/);
  console.log("Mobile physical cupboards: swipe vs tap, both devices, precise drag and cancellation OK");
 }
+
+
+/* Regression: the fullscreen equipment drawer must never inherit the
+ * fixed five-row wall-cupboard layout. Otherwise tall tiles paint over
+ * subsequent rows on Android landscape even if the first row looks fine. */
+const equipmentDrawerFix=css.split("/* Mobile fullscreen apparatus drawer, 2026-11-01.")[1];
+assert.ok(equipmentDrawerFix,"Expanded apparatus shelf needs an explicit track reset");
+assert.match(equipmentDrawerFix,/\.lektrus-lab-bench\.is-compact-fullscreen\.is-drawer-equipment\s+\.lektrus-lab-device-cupboard-shelf\{/);
+assert.match(equipmentDrawerFix,/grid-template-rows:none!important/,"Do not reuse five fixed 40px rows");
+assert.match(equipmentDrawerFix,/grid-auto-rows:minmax\(80px,max-content\)!important/,
+ "Each equipment row must fit its touch targets");
+assert.match(equipmentDrawerFix,/flex:0 0 auto!important/,
+ "Shelf height must follow rows instead of squeezing inside an old fixed panel");
+assert.match(equipmentDrawerFix,/grid-template-columns:40px minmax\(0,1fr\)!important/,
+ "Equipment labels must have a dedicated nonoverlapping text column");
+assert.match(equipmentDrawerFix,/white-space:normal!important/,
+ "Long Russian device names should wrap instead of colliding with icons");
+assert.match(equipmentDrawerFix,/@media\(max-width:650px\)/,
+ "Narrow phones must use fewer columns");
+console.log("Fullscreen apparatus drawer: content-height rows, no card overlap and narrow-screen fallback OK");
