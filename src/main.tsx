@@ -71,6 +71,7 @@ import "./lektrusChemistryBench.css";
 import "./lektrusLabSceneLayout.css";
 import {installInterfaceLayout} from "./lektrusInterfaceLayout";
 import { isRemoteBackendEnabled, saveNativeBackendConnection } from "./backend";
+import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import { initLectrisPalette } from "./lectrisPalette";
 import { initProfileAppearance } from "./profileStore";
 
@@ -152,7 +153,7 @@ const confirmParams = new URLSearchParams(window.location.search);
 const confirmHash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
 const confirmationError = confirmParams.get("error_description") || confirmHash.get("error_description");
 createRoot(root).render(
-  Capacitor.isNativePlatform() && !isRemoteBackendEnabled()
+  Capacitor.isNativePlatform() && !LEKTRUS_LOCAL_TEST_MODE && !isRemoteBackendEnabled()
     ? <NativeConnectionSetup />
     : isConfirmationPage
     ? <main style={{minHeight:"100dvh",display:"grid",placeItems:"center",background:"#f5f7fc",fontFamily:"system-ui,sans-serif",padding:24}}>
