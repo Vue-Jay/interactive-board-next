@@ -284,10 +284,12 @@ let actuallyReacted=lab.advanceLabSimulation(bench,0);
 actuallyReacted=lab.advanceLabSimulation(actuallyReacted,1000);
 actuallyReacted=lab.advanceLabSimulation(actuallyReacted,6000);
 assert.equal(actuallyReacted.vessels[0].reactionAmounts?.complete,true);
-let unknown=lab.putLabReagent(actuallyReacted,"v1","HCl");
-assert.equal(lab.labObservation(unknown.vessels[0]).status,"unknown",
- "A new unsupported mixture is uncertain even though prior measured products remain");
-assert.ok(lab.labVesselContents(unknown.vessels[0]).solid.some(item=>
+let afterAcid=lab.putLabReagent(actuallyReacted,"v1","HCl");
+// HCl + AgNO3 is now a vetted precipitation route. This addition is no
+// longer an "unknown pair", but the previously deposited AgCl must survive.
+assert.equal(lab.labObservation(afterAcid.vessels[0]).status,"reaction",
+ "An explicitly registered HCl + AgNO3 case must no longer be unknown");
+assert.ok(lab.labVesselContents(afterAcid.vessels[0]).solid.some(item=>
  item.formula==="AgCl"&&(item.massG??0)>0),
  "Existing AgCl must remain in the real solid inventory after adding another reagent");
 let heated=detailedBench();
