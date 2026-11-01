@@ -668,6 +668,49 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  const [pendingReturnId,setPendingReturnId]=useState<string|null>(null);
  const [compositionId,setCompositionId]=useState<string|null>(null);
  const [preview,setPreview]=useState<{id:string;x:number;y:number}|null>(null);
+ // Pointer events on Android may arrive faster than the paint refresh rate.
+ // Queue only the latest visual coordinate for each frame, never persist
+ // intermediate locations to the collaborative board. The physical drop
+ // targets and contact dwell still use every real pointer event.
+ const vesselPreviewFrame=useRef<number|null>(null);
+ const devicePreviewFrame=useRef<number|null>(null);
+ const pendingVesselPreview=useRef<{id:string;x:number;y:number}|null>(null);
+ const pendingDevicePreview=useRef<{id:string;x:number;y:number}|null>(null);
+ const queueVesselPreview=(next:{id:string;x:number;y:number})=>{
+  pendingVesselPreview.current=next;
+  if(vesselPreviewFrame.current!==null)return;
+  vesselPreviewFrame.current=window.requestAnimationFrame(()=>{
+   vesselPreviewFrame.current=null;
+   const latest=pendingVesselPreview.current;
+   pendingVesselPreview.current=null;
+   if(!latest||gesture.current?.id!==latest.id)return;
+   setPreview(prev=>prev?.id===latest.id&&
+    Math.abs(prev.x-latest.x)<.15&&Math.abs(prev.y-latest.y)<.15?prev:latest);
+  });
+ };
+ const queueDevicePreview=(next:{id:string;x:number;y:number})=>{
+  pendingDevicePreview.current=next;
+  if(devicePreviewFrame.current!==null)return;
+  devicePreviewFrame.current=window.requestAnimationFrame(()=>{
+   devicePreviewFrame.current=null;
+   const latest=pendingDevicePreview.current;
+   pendingDevicePreview.current=null;
+   if(!latest||deviceGesture.current?.id!==latest.id)return;
+   setDevicePreview(prev=>prev?.id===latest.id&&
+    Math.abs(prev.x-latest.x)<.15&&Math.abs(prev.y-latest.y)<.15?prev:latest);
+  });
+ };
+ const cancelVesselPreview=()=>{
+  if(vesselPreviewFrame.current!==null)
+   window.cancelAnimationFrame(vesselPreviewFrame.current);
+  vesselPreviewFrame.current=null;pendingVesselPreview.current=null;
+ };
+ const cancelDevicePreview=()=>{
+  if(devicePreviewFrame.current!==null)
+   window.cancelAnimationFrame(devicePreviewFrame.current);
+  devicePreviewFrame.current=null;pendingDevicePreview.current=null;
+ };
+ useEffect(()=>()=>{cancelVesselPreview();cancelDevicePreview()},[]);
  const contactRef=useRef<{sourceId:string;targetId:string;activated:boolean}|null>(null);
  const contactTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
  const [contactCountdown,setContactCountdown]=useState<string|null>(null);
@@ -756,24 +799,26 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  const [doseEffect,setDoseEffect]=useState<{x:number;y:number;color:string;solid:boolean}|null>(null);
  const settings=labBenchSettings(bench);
  const [clockNow,setClockNow]=useState(()=>Date.now());
+ const clockVesselsRef=useRef(bench.vessels);
+ clockVesselsRef.current=bench.vessels;
+ const clockRunning=!!bench.experimentClock?.running;
+ const recentEffects=(now:number)=>clockVesselsRef.current.some(v=>
+  [v.lastEvaporatedAtMs,v.visualStartedAtMs,v.indicatorAddedAtMs,
+   v.physicalStartedAtMs].some(t=>t!==undefined&&now>=t&&now-t<8500));
+ const hasRecentEffects=recentEffects(Date.now());
  useEffect(()=>{
-  // Clock and short-lived physics effects need a LOCAL repaint. Physics
-  // ticks can be ten seconds apart, otherwise an evaporative plume would
-  // never appear (or could remain permanently on the last rendered frame).
-  if(bench.simulationPaused)return;
-  const active=(now:number)=>bench.vessels.some(v=>
-   [v.lastEvaporatedAtMs,v.visualStartedAtMs,v.indicatorAddedAtMs,
-    v.physicalStartedAtMs].some(t=>t!==undefined&&now>=t&&now-t<8500));
-  if(!bench.experimentClock?.running&&!active(Date.now()))return;
+  // The stopwatch only displays whole seconds. Short effects need 500 ms,
+  // but repeated material/pressure ticks must NOT restart this interval or
+  // force a second Android repaint on every new shared vessel snapshot.
+  if(bench.simulationPaused||!clockRunning&&!hasRecentEffects)return;
   setClockNow(Date.now());
   const timer=window.setInterval(()=>{
    const now=Date.now();
    setClockNow(now);
-   if(!bench.experimentClock?.running&&!active(now))
-    window.clearInterval(timer);
-  },500);
+   if(!clockRunning&&!recentEffects(now))window.clearInterval(timer);
+  },hasRecentEffects?500:1000);
   return()=>window.clearInterval(timer);
- },[bench.experimentClock?.running,bench.simulationPaused,bench.vessels]);
+ },[clockRunning,hasRecentEffects,bench.simulationPaused]);
  const selected=bench.selectedId?selectedLabVessel(bench):undefined;
  const physicalDevices=placedLabDevices(bench);
  const vesselPosition=(v:LabVessel)=>{
@@ -1155,12 +1200,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     .sort((a,b)=>a.dist-b.dist)[0]:undefined;
    setDropDeviceId(nearestFilter?.id??nearby?.d.id??null);
    const a=labDisplayPoint({x:g.x,y:g.y},bench.vessels.length>3);
-   setPreview({id:g.id,x:Math.max(1,Math.min(99,a.x+p.x-g.startX)),
+   queueVesselPreview({id:g.id,x:Math.max(1,Math.min(99,a.x+p.x-g.startX)),
     y:Math.max(1,Math.min(99,a.y+p.y-g.startY))});
   }
  };
  const finish=(event:PointerEvent<HTMLButtonElement>)=>{
   const g=gesture.current;if(!g)return;gesture.current=null;
+  cancelVesselPreview();
   const contacted=contactRef.current?.activated===true;
   endContact();
   event.preventDefault();event.stopPropagation();
@@ -1313,7 +1359,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   if(!p||!rect)return;
   if(Math.hypot((p.x-g.startX)*rect.width/100,(p.y-g.startY)*rect.height/100)>8)g.dragged=true;
   if(g.dragged){
-   setDevicePreview({id:g.id,x:Math.max(1,Math.min(99,g.x+p.x-g.startX)),
+   queueDevicePreview({id:g.id,x:Math.max(1,Math.min(99,g.x+p.x-g.startX)),
     y:Math.max(1,Math.min(99,g.y+p.y-g.startY))});
    setDropDeviceShelf(returnUp(p,g.startY)||
     (!compactFullscreen&&p.x>=82&&p.y>=8&&p.y<=42));
@@ -1321,7 +1367,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  };
  const finishDevice=(e:PointerEvent<HTMLDivElement>)=>{
   const g=deviceGesture.current;if(!g)return;
-  deviceGesture.current=null;e.preventDefault();e.stopPropagation();
+  deviceGesture.current=null;cancelDevicePreview();
+  e.preventDefault();e.stopPropagation();
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   const p=point(e);
   if(g.dragged&&p){
@@ -1919,7 +1966,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      onPointerDown={e=>downDevice(e,device.id,device.x,device.y)}
      onPointerMove={e=>moveDevice(e)}
      onPointerUp={e=>finishDevice(e)}
-     onPointerCancel={e=>{e.stopPropagation();deviceGesture.current=null;setDevicePreview(null);setDropDeviceShelf(false)}}
+     onPointerCancel={e=>{e.stopPropagation();deviceGesture.current=null;cancelDevicePreview();setDevicePreview(null);setDropDeviceShelf(false)}}
      onClick={e=>{e.stopPropagation();if(e.detail===0)setActiveDeviceId(device.id)}}>
      <LektrusLabDeviceIcon kind={device.kind} size={150}
       collectedResidue={device.collectedResidue}
@@ -2124,7 +2171,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
       labThermalState(v.reagents,v.doses,v.temperatureC??22,v.meltFraction).label+" · ":"")+
       (editable?"Выбрать или переместить; перетащить на сосуд для переливания, на раковину для слива, вверх для возврата":"Посуда")}
     onPointerDown={e=>down(e,v)} onPointerMove={move} onPointerUp={finish}
-    onPointerCancel={e=>{e.stopPropagation();endContact();gesture.current=null;setPreview(null);
+    onPointerCancel={e=>{e.stopPropagation();endContact();gesture.current=null;cancelVesselPreview();setPreview(null);
      setDropTarget(null);setDropFurniture(null);setDropDeviceId(null)}}
     onDragOver={e=>{if(editable)e.preventDefault()}}
     onDrop={e=>{if(!editable)return;e.preventDefault();e.stopPropagation();
@@ -2513,7 +2560,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   {editable&&(dropTarget||dropDeviceId||effectivePouringId||dropFurniture||notice)&&<div className="lektrus-lab-pour-hint" role="status" aria-live="polite" aria-atomic="true">
    {dropFurniture==="sink"?"Отпустите для слива в раковину":
     dropFurniture==="glassware"?"Отпустите, чтобы вернуть пустую посуду":
-    dropTarget?(contactCountdown===dropTarget?"Удерживайте сосуд над приёмником 2 секунды":"Переливание идёт. Отпустите, чтобы остановить"):
+    dropTarget?(contactCountdown===dropTarget?"Удерживайте сосуд над приёмником 1 секунду":"Переливание идёт. Отпустите, чтобы остановить"):
      dropDeviceId?"Отпустите, чтобы установить посуду":
     effectivePouringId?"Выберите посуду для переливания":notice}
   </div>}

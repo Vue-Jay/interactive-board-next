@@ -217,3 +217,41 @@ assert.match(storageCss,/flex:0 0 auto!important/);
 assert.match(storageCss,/\.lektrus-lab-sink-caption small\{[\s\S]*?display:block!important/);
 assert.match(storageCss,/pointer-events:none!important;touch-action:none!important/);
 console.log("Upward storage gestures and safe sink-caption padding: OK");
+
+// Mobile drag stress: 120 Hz touch screens can emit multiple pointermoves
+// before the next display refresh. React visual preview is coalesced into
+// ONE requestAnimationFrame callback for vessels and devices. Physical drop
+// and 1-second contact detection still use every pointer event.
+const vesselMove=markup.slice(markup.indexOf(" const move=(event:PointerEvent<HTMLButtonElement>)=>{"),
+ markup.indexOf(" const finish=(event:PointerEvent<HTMLButtonElement>)=>{"));
+const deviceMove=markup.slice(markup.indexOf(" const moveDevice=(e:PointerEvent<HTMLDivElement>)=>{"),
+ markup.indexOf(" const finishDevice=(e:PointerEvent<HTMLDivElement>)=>{"));
+assert.ok(vesselMove.length>100&&deviceMove.length>100);
+assert.match(vesselMove,/queueVesselPreview\(\{id:g\.id/);
+assert.match(deviceMove,/queueDevicePreview\(\{id:g\.id/);
+assert.doesNotMatch(vesselMove,/setPreview\(\{/,
+ "Do not create a new React tree on each unpainted vessel pointermove");
+assert.doesNotMatch(deviceMove,/setDevicePreview\(\{/,
+ "Device drag needs the same frame-coalescing as vessel drag");
+assert.match(markup,/if\(vesselPreviewFrame\.current!==null\)return;/);
+assert.match(markup,/if\(devicePreviewFrame\.current!==null\)return;/);
+assert.match(markup,/window\.requestAnimationFrame\(\(\)=>\{/);
+assert.match(markup,/window\.cancelAnimationFrame\(vesselPreviewFrame\.current\)/);
+assert.match(markup,/window\.cancelAnimationFrame\(devicePreviewFrame\.current\)/);
+assert.match(markup,/gesture\.current=null;\s*cancelVesselPreview\(\)/);
+assert.match(markup,/deviceGesture\.current=null;cancelDevicePreview\(\)/);
+assert.match(markup,/gesture\.current=null;cancelVesselPreview\(\);setPreview\(null\)/);
+assert.match(markup,/deviceGesture\.current=null;cancelDevicePreview\(\);setDevicePreview\(null\)/);
+assert.match(markup,/useEffect\(\(\)=>\(\)=>\{cancelVesselPreview\(\);cancelDevicePreview\(\)\},\[\]\)/,
+ "Unmount must cancel queued mobile paint work");
+assert.match(markup,/contactTimer\.current=setTimeout\(perform,1000\)/);
+assert.match(markup,/Удерживайте сосуд над приёмником 1 секунду/);
+assert.doesNotMatch(markup,/Удерживайте сосуд над приёмником 2 секунды/,
+ "On-screen dwell must match real 1-second contact timer");
+// Clock-only repaint is once per displayed second. Physics events still
+// refresh twice as often; incoming network snapshots do not restart it.
+assert.match(markup,/const clockVesselsRef=useRef\(bench\.vessels\)/);
+assert.match(markup,/clockVesselsRef\.current=bench\.vessels/);
+assert.match(markup,/\},hasRecentEffects\?500:1000\)/);
+assert.match(markup,/\},\[clockRunning,hasRecentEffects,bench\.simulationPaused\]\)/);
+console.log("Mobile drag paint coalescing, cleanup and stable clock cadence: OK");
