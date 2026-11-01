@@ -2548,6 +2548,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const fastPanWorld = useRef<HTMLDivElement>(null);
   const fastPanOverlay = useRef<HTMLDivElement>(null);
   const fastPanDirty = useRef(false);
+  const panBoardBounds = useRef<{left:number;top:number}|null>(null);
   const viewRef = useRef(view);
   // Pointermove only schedules DOM camera transforms. No React render, ink
   // tile repaint, minimap reconstruction or object culling during a drag.
@@ -2580,6 +2581,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     }
     const next=viewerPendingPan.current;
     viewerPendingPan.current=null;
+    panBoardBounds.current=null;
     if (cancel) {
       // A cancelled gesture can restore the SAME React view object; explicitly
       // restore the DOM to prevent a stranded visual transform.
@@ -3527,7 +3529,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setSelected([]);
   };
   const local = (x: number, y: number): Point => {
-    const rect = board.current!.getBoundingClientRect();
+    // The board does not move in layout during a pan or pinch. Reading its
+    // bounding rect on every finger event forces synchronous layout after the
+    // previous composited frame on several Android WebViews.
+    const navigation=gesture.current?.mode==="pan" ||
+      (gesture.current?.mode==="hand-smart" && !gesture.current.handMoveSelection) ||
+      Boolean(pinchState.current);
+    const cached=navigation?panBoardBounds.current:null;
+    const rect=cached??board.current!.getBoundingClientRect();
+    if(navigation&&!cached)panBoardBounds.current={left:rect.left,top:rect.top};
     return { x: x - rect.left, y: y - rect.top };
   };
   const world = (p: Point): Point => ({
@@ -6657,7 +6667,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     // Wait for ResizeObserver before mounting a heavy board. Without viewport
     // dimensions the old renderer mounted every single object at startup.
     if (!boardViewportSize.width || !boardViewportSize.height) return [] as typeof inkLayers;
-    const margin = 180 / Math.max(0.1, view.zoom);
+    // Prefetch part of the next screen for compositor-only swipes: otherwise
+    // the user could see empty edges before the gesture's final React commit.
+    const margin = Math.min(600,Math.max(280,boardViewportSize.width*.45)) / Math.max(0.1, view.zoom);
     const left = -view.x / view.zoom - margin, top = -view.y / view.zoom - margin;
     const right = (boardViewportSize.width - view.x) / view.zoom + margin;
     const bottom = (boardViewportSize.height - view.y) / view.zoom + margin;
