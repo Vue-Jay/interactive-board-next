@@ -485,7 +485,7 @@ const bulkBinary={
  Na2CO3:[7.1,21.4,48.5,46.5,45.8,45.5],
  Li2CO3:[1.543,1.33,1.174,1.010,.847,.715],
  NaF:[null,4.1,null,null,null,null],
- NaBr:[null,null,null,118,118.3,121.2],
+ NaBr:[80.1,90.8,null,118,118.3,121.2],
  Na2SO3:[null,22/.9982,37,33.2,29,26.6],
  Na2SO4:[null,null,48.1,45.26,43.09,42.3],
  ZnCl2:[null,null,453,488,541,614],
@@ -507,7 +507,7 @@ for(const [formula,values] of Object.entries(bulkBinary)){
  assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,-1),undefined);
  assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,101),undefined);
 }
-assert.equal(measuredNewCells,50);
+assert.equal(measuredNewCells,52);
 // NaF remains an isolated 20 C measurement. Li2CO3 is now a fully
 // independently tabulated retrograde solubility series, not isolated data.
 assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater("NaF",15),undefined);
@@ -543,8 +543,8 @@ for(const id of ["Li2CO3","NaF","K2Cr2O7"]){
  assert.ok((result.solidMol[id]??0)>0,id+" should crystallize in binary pure water");
 }
 const dataOnly=Object.values(bulkBinary).reduce((n,row)=>n+row.filter(v=>v!==null).length,0);
-assert.equal(dataOnly,50);
-console.log("Eleven salt solubility datasets; 50 measured knots; hydrate-safe crystallization");
+assert.equal(dataOnly,52);
+console.log("Eleven salt solubility datasets; 52 measured knots; hydrate-safe crystallization");
 
 // Heat capacity of these exact dry compounds, not the unknown mixture Cp.
 // Source entries are J/g/K, from University Medical Lublin and
@@ -1247,6 +1247,28 @@ console.log("34 exact crystalline Perry Handbook Cp correlations: molar-to-mass,
 // 20°C rows from measurements at 18°C or 25°C.
 const literature=load("src/lektrusLabSolubilityMeasurements.ts");
 const pureWaterMeasurements=literature.LAB_MEASURED_PURE_WATER_SOLUBILITIES;
+// Original-unit regression: independently published exact water-solubility
+// observations must reach the LIVE simulator lookup without rounding their
+// temperatures or silently authorizing an anhydrous crystal phase.
+for(const [formula,temperatureC,sourceValue] of [["NaBr",0,80.1],["NaBr",10,85.2],["NaBr",20,90.8],["NaBr",25,94.6],["NaBr",30,98.4],["LiNO3",0,53],["LiNO3",20,70],["LiNO3",40,145],["LiNO3",60,182],["LiNO3",70,206],["Cu(NO3)2",0,83.5],["Cu(NO3)2",20,124.7],["Cu(NO3)2",25,150],["Cu(NO3)2",100,247],["Zn(NO3)2",0,93.8],["Zn(NO3)2",20,118.8],["Zn(NO3)2",25,128],["Zn(NO3)2",30,139.23],["MnSO4",0,52.9],["MnSO4",20,62.9],["MnSO4",25,64.5],["MnSO4",30,62.9],["MnSO4",40,60],["MnSO4",60,53.6],["MnSO4",80,45.6]] ){
+ const row=pureWaterMeasurements.find(x=>x.formula===formula&&x.temperatureC===temperatureC);
+ assert.ok(row,"Missing exact aqueous source "+formula+" at "+temperatureC+" C");
+ assert.equal(row.originalUnit,"g/100g-water");
+ approximately(row.sourceValue,sourceValue,1e-10);
+ approximately(literature.labExactMeasuredSolubility(formula,temperatureC),sourceValue,1e-10);
+ approximately(schoolMaterial.labSingleSaltSolubilityGPer100gWater(formula,temperatureC),sourceValue,1e-10);
+ assert.equal(schoolMaterial.labSchoolSolubilityGPer100gWater(formula,temperatureC).estimated,false);
+}
+for(const formula of ["NaBr","LiNO3","Cu(NO3)2","Zn(NO3)2","MnSO4"]){
+ assert.equal(schoolMaterial.labSingleSaltSolubilityGPer100gWater(formula,21),undefined,
+  "A nearby 20 C source must not invent a 21 C observation: "+formula);
+ const inventory={speciesMol:{H2O:1,[formula]:1},solidMol:{}};
+ assert.equal(schoolMaterial.labEquilibrateSingleSaltCrystals(inventory,20,true,labMolarMass),undefined,
+  "Hydrate-sensitive source is not an anhydrous precipitation model: "+formula);
+ assert.deepEqual(inventory.solidMol,{}, "No invented dry precipitate: "+formula);
+}
+console.log("25 new source-qualified exact aqueous measurements; five protected salts PASS");
+
 assert.ok(pureWaterMeasurements.length>=103);
 assert.ok(new Set(pureWaterMeasurements.map(x=>x.formula)).size>=51);
 assert.ok(pureWaterMeasurements.filter(x=>x.temperatureC===20).length>=31);
@@ -1335,12 +1357,21 @@ for(const [formula,sourceValue] of Object.entries({
  approximately(row.sourceValue,sourceValue,1e-12);
  approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater(
   formula,19.85),sourceValue,1e-9);
- assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
-  formula,20),undefined,
-  "The 293 K value MUST NOT impersonate a measured 20.00°C point");
+ // LiNO3 and Cu(NO3)2 now have INDEPENDENT measurements at exactly
+ // 20 C; the old 293 K (=19.85 C) values must remain separate records.
+ const independentlyMeasured20={"LiNO3":70,"Cu(NO3)2":124.7}[formula];
+ const actual20=physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,20);
+ if(independentlyMeasured20===undefined)assert.equal(actual20,undefined,
+  "A 293 K value cannot impersonate a measured 20.00 C point");
+ else {
+  approximately(actual20,independentlyMeasured20,1e-10);
+  assert.ok(pureWaterMeasurements.some(x=>x.formula===formula&&
+   x.temperatureC===20&&x.sourceTemperatureKelvin===undefined));
+ }
  const prop=registryProps.labSubstanceProperties(formula,20);
- assert.equal(prop.solubilityKnown,false);
- assert.equal(prop.literatureSolubilityReference.temperatureC,19.85);
+ assert.equal(prop.solubilityKnown,independentlyMeasured20!==undefined);
+ assert.equal(prop.literatureSolubilityReference.temperatureC,
+  independentlyMeasured20===undefined?19.85:20);
  assert.equal(prop.binaryCrystallizationUnsupported,true);
 }
 // Verify independently sourced 293 K points, without changing 20 C grid.
