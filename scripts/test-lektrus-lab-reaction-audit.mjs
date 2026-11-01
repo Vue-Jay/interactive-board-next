@@ -90,9 +90,9 @@ for(const row of database.reviewedReactionCases){
   statistics.kits++;
  }))continue;
  // The real cabinet path can differ from a mathematically valid ready
- // mixture. Verify actual dosing while paused for every 1-2 reagent
+ // mixture. Verify actual dosing while paused for every 1-3 reagent
  // aqueous case that includes a liquid stock.
- if(row.environment==="aqueous"&&row.reactants.length<=2&&
+ if(row.environment==="aqueous"&&row.reactants.length<=3&&
   row.reactants.some(id=>doses[id].unit==="ml")){
   verify(row,"cabinet-mixing",()=>{
    let mixed=lab.defaultLabBench();
