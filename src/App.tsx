@@ -7,11 +7,13 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useLayoutEffect,
   useState,
   type PointerEvent as PE,
   type CSSProperties,
 } from "react";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
+import {boardWorldTransform,boardOverlayTransform} from "./boardPanTransform";
 import {chemistryBoardHasContent} from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
 import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./rectSelection";
@@ -2543,21 +2545,68 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   });
   const viewerPanFrame = useRef<number | null>(null);
   const viewerPendingPan = useRef<View | null>(null);
+  const fastPanWorld = useRef<HTMLDivElement>(null);
+  const fastPanOverlay = useRef<HTMLDivElement>(null);
+  const fastPanDirty = useRef(false);
+  const panBoardBounds = useRef<{left:number;top:number}|null>(null);
+  const viewRef = useRef(view);
+  // Pointermove only schedules DOM camera transforms. No React render, ink
+  // tile repaint, minimap reconstruction or object culling during a drag.
+  const paintPendingPan = (next: View) => {
+    if (fastPanWorld.current)
+      fastPanWorld.current.style.transform=boardWorldTransform(next);
+    if (fastPanOverlay.current)
+      fastPanOverlay.current.style.transform=boardOverlayTransform(next,viewRef.current);
+    if (board.current) {
+      board.current.style.backgroundPosition=`${next.x}px ${next.y}px`;
+      board.current.style.backgroundSize=`${24*next.zoom}px ${24*next.zoom}px`;
+    }
+    fastPanDirty.current=true;
+  };
   const scheduleViewerPan = (next: View) => {
     viewerPendingPan.current = next;
     if (viewerPanFrame.current !== null) return;
     viewerPanFrame.current = requestAnimationFrame(() => {
       viewerPanFrame.current = null;
       const pending = viewerPendingPan.current;
-      viewerPendingPan.current = null;
-      if (pending) setView(pending);
+      if (pending) paintPendingPan(pending);
     });
   };
+  // Commit once at finger/mouse release, when the expensive React culling and
+  // raster cache update can happen without blocking pointer event handling.
+  const finishViewerPan = (cancel=false,restore?:View) => {
+    if (viewerPanFrame.current !== null) {
+      cancelAnimationFrame(viewerPanFrame.current);
+      viewerPanFrame.current=null;
+    }
+    const next=viewerPendingPan.current;
+    viewerPendingPan.current=null;
+    panBoardBounds.current=null;
+    if (cancel) {
+      // A cancelled gesture can restore the SAME React view object; explicitly
+      // restore the DOM to prevent a stranded visual transform.
+      const target=restore??viewRef.current;
+      paintPendingPan(target);
+      if (fastPanOverlay.current)fastPanOverlay.current.style.transform="none";
+      fastPanDirty.current=false;
+      return;
+    }
+    if (next) {
+      paintPendingPan(next);
+      setView(next);
+    }
+  };
+  // React has committed the final camera and rerendered its child layers.
+  // Remove the temporary offset on remote cursors and live ink only now.
+  useLayoutEffect(() => {
+    if (!fastPanDirty.current || viewerPendingPan.current)return;
+    if (fastPanOverlay.current)fastPanOverlay.current.style.transform="none";
+    fastPanDirty.current=false;
+  }, [view]);
   useEffect(() => () => {
     if (viewerPanFrame.current !== null) cancelAnimationFrame(viewerPanFrame.current);
     viewerPendingPan.current = null;
   }, []);
-  const viewRef = useRef(view);
   const viewSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastViewSerialized = useRef<string | null>(null);
   const [items, setItems] = useState<Item[]>(() => expandDocumentInk(initial.data));
@@ -3480,7 +3529,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setSelected([]);
   };
   const local = (x: number, y: number): Point => {
-    const rect = board.current!.getBoundingClientRect();
+    // The board does not move in layout during a pan or pinch. Reading its
+    // bounding rect on every finger event forces synchronous layout after the
+    // previous composited frame on several Android WebViews.
+    const navigation=gesture.current?.mode==="pan" ||
+      (gesture.current?.mode==="hand-smart" && !gesture.current.handMoveSelection) ||
+      Boolean(pinchState.current);
+    const cached=navigation?panBoardBounds.current:null;
+    const rect=cached??board.current!.getBoundingClientRect();
+    if(navigation&&!cached)panBoardBounds.current={left:rect.left,top:rect.top};
     return { x: x - rect.left, y: y - rect.top };
   };
   const world = (p: Point): Point => ({
@@ -3876,22 +3933,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if(touchPoints.current.size<2){
       pinchState.current=null;
       setPanning(false);
-      const pending=viewerPendingPan.current;
-      if(pending){viewerPendingPan.current=null;setView(pending)}
+      finishViewerPan();
     }
     if(touchPoints.current.size===0)pinchSelectionSnapshot.current=null;
     return consumed;
   };
 
   const end = (cancel = false) => {
-    if (viewerPanFrame.current !== null) {
-      cancelAnimationFrame(viewerPanFrame.current);
-      viewerPanFrame.current = null;
-    }
-    const pendingPan = viewerPendingPan.current;
-    viewerPendingPan.current = null;
-    if (pendingPan && !cancel) setView(pendingPan);
     const g = gesture.current;
+    finishViewerPan(cancel,g?.view);
     if (!g) return;
     gesture.current = null;
     if (g.mode === "draw" && g.ink) cursorChannel.current?.sendInk({id:g.ink.id,kind:g.ink.kind,color:g.ink.color,weight:g.ink.weight,points:g.path.slice(-500),finished:true});
@@ -6617,7 +6667,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     // Wait for ResizeObserver before mounting a heavy board. Without viewport
     // dimensions the old renderer mounted every single object at startup.
     if (!boardViewportSize.width || !boardViewportSize.height) return [] as typeof inkLayers;
-    const margin = 180 / Math.max(0.1, view.zoom);
+    // Prefetch part of the next screen for compositor-only swipes: otherwise
+    // the user could see empty edges before the gesture's final React commit.
+    const margin = Math.min(600,Math.max(280,boardViewportSize.width*.45)) / Math.max(0.1, view.zoom);
     const left = -view.x / view.zoom - margin, top = -view.y / view.zoom - margin;
     const right = (boardViewportSize.width - view.x) / view.zoom + margin;
     const bottom = (boardViewportSize.height - view.y) / view.zoom + margin;
@@ -8959,7 +9011,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             {showBoardDiagnostics && <div>Соединение: {realtimeStatus} · курсоров: {Object.keys(remoteCursors).length} · участников: {visiblePresenceUsers.length} · версия: {remoteVersion.current ?? "нет"}</div>}
             {showPerformanceDiagnostics && <div>Объектов: {items.length} · штрихов: {items.filter(x=>x.kind==="pen"||x.kind==="marker").length} · масштаб: {Math.round(view.zoom*100)}%</div>}
           </div>}
-          <div className="remote-cursors-layer" aria-hidden="true">
+          <div ref={fastPanOverlay} className="remote-cursors-layer" aria-hidden="true" style={{transformOrigin:"0 0"}}>
             <svg className="remote-live-ink-layer" width="100%" height="100%" style={{position:"absolute",inset:0,overflow:"hidden",pointerEvents:"none"}}>
               {Object.values(remoteInk).filter(ink => !items.some(item => item.id === ink.id)).map(ink => (
                 ink.points.length === 1
@@ -8981,9 +9033,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             </div>)}
           </div>
           <div
+            ref={fastPanWorld}
             className="world"
             style={{
-              transform: `translate(${view.x}px,${view.y}px) scale(${view.zoom})`,
+              transform: boardWorldTransform(view),
             }}
           >
             {!items.length && (
