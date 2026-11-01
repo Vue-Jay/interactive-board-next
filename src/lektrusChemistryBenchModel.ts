@@ -2252,7 +2252,10 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
    reactionAmounts:preservedAmounts,
    completedReaction:recorded,
    doses:nextDoses,
-   observed:reagents.length>1,
+   // A verified single-substance decomposition is a real experiment too.
+   // Mark it prepared now, but the scheduler still waits for Play.
+   observed:reagents.length>1||(matching.status==="reaction"&&
+    matching.caseData?.reactants.length===1),
    environment,
    visualStartedAtMs:reagents.length>1&&!v.uncertain&&!priorReaction&&
     matching.status==="reaction"?Date.now():v.visualStartedAtMs,
