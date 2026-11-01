@@ -567,6 +567,14 @@ function LabExperimentControls({settings,editable,onUpdate}:{
     {settings.evaporationEnabled?"Включено":"Выключено"}
    </button>
   </div>
+  <div className="lektrus-lab-experiment-control is-inline-switch">
+   <div className="lektrus-lab-experiment-copy"><strong>Показывать температуры</strong></div>
+   <button type="button" className="lektrus-lab-experiment-switch"
+    role="switch" aria-checked={settings.showTemperatures} disabled={!editable}
+    onClick={()=>onUpdate({showTemperatures:!settings.showTemperatures})}>
+    {settings.showTemperatures?"Включено":"Выключено"}
+   </button>
+  </div>
   <div className="lektrus-lab-experiment-control">
    <div className="lektrus-lab-experiment-copy">
     <strong>Скорость времени</strong>
@@ -1534,10 +1542,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    <LabExperimentControls settings={settings} editable={editable}
     onUpdate={next=>onChange?.(setLabBenchSettings(bench,next))}/>
    <button type="button" disabled={!editable}
-    onClick={e=>{e.stopPropagation();onChange?.(setLabBenchSettings(bench,{showTemperatures:!settings.showTemperatures}))}}>
-    {settings.showTemperatures?"Скрыть температуры":"Показать температуры"}
-   </button>
-   <button type="button" disabled={!editable}
     onClick={e=>{e.stopPropagation();onChange?.(arrangeLabVessels(bench));setMobileDrawer(null)}}>
     Расставить посуду
    </button>
@@ -1584,45 +1588,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      stroke="#45858e" strokeWidth=".35"/>
    </svg>;
   })}
-  <div className={"lektrus-lab-experiment-clock"+
-   (bench.experimentClock?.running?" is-running":"")}
-   data-board-interactive="true" role="group" aria-label="Часы времени опыта"
-   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
-   onClick={e=>e.stopPropagation()}>
-   <div className="lektrus-lab-clock-readout">
-    <span className="lektrus-lab-clock-symbol" aria-hidden="true">◷</span>
-    <span className="lektrus-lab-clock-caption">ВРЕМЯ ОПЫТА</span>
-    <strong className="lektrus-lab-clock-digits" role="timer"
-     aria-label={"Время опыта "+formatLabClock(labExperimentClockSeconds(bench,clockNow))}>
-     {formatLabClock(labExperimentClockSeconds(bench,clockNow))}
-    </strong>
-    <span className="lektrus-lab-clock-speed">×{settings.timeScale}</span>
-   </div>
-   {editable&&<button type="button"
-    className={"lektrus-lab-simulation-toggle"+(bench.simulationPaused?" is-paused":"")}
-    aria-pressed={!!bench.simulationPaused}
-    aria-label={bench.simulationPaused?"Запустить все процессы лаборатории":"Поставить все процессы на паузу"}
-    title="Останавливает нагрев, реакции, испарение, газовыделение и титрование"
-    onClick={e=>{e.stopPropagation();
-     onChange?.(setLabSimulationPaused(bench,!bench.simulationPaused,Date.now()))}}>
-    {bench.simulationPaused?"▶ Запустить процессы":"Ⅱ Пауза процессов"}
-   </button>}
-   {editable&&<div className="lektrus-lab-clock-buttons">
-    <button type="button" className="lektrus-lab-clock-toggle"
-     disabled={!!bench.simulationPaused}
-     aria-label={bench.experimentClock?.running?"Пауза часов опыта":"Запустить часы опыта"}
-     title={bench.experimentClock?.running?"Остановить секундомер":"Начать отсчёт времени опыта"}
-     onClick={e=>{e.stopPropagation();onChange?.(setLabExperimentClock(bench,
-      bench.experimentClock?.running?"pause":"start",Date.now()))}}>
-     <span aria-hidden="true">{bench.experimentClock?.running?"Ⅱ":"▶"}</span>
-     {bench.experimentClock?.running?"Пауза":"Пуск"}
-    </button>
-    <button type="button" className="lektrus-lab-clock-reset"
-     aria-label="Сбросить часы опыта" title="Сбросить секундомер на ноль"
-     onClick={e=>{e.stopPropagation();onChange?.(setLabExperimentClock(bench,
-      "reset",Date.now()))}}>↺</button>
-   </div>}
-  </div>
   {editable&&selected&&(()=>{
    const reaction=labObservation(selected).caseData;
    const gasReaction=reaction?.observation==="gas"||!!selected.gasCollectionTargetId;
@@ -1720,6 +1685,34 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     }}>
     <span aria-hidden="true">⚗</span><span className="lektrus-lab-prepare-label">Комплект</span>
    </button>
+   {/* The elapsed experiment time belongs to the header, never as a floating
+       window above the worktop. One action controls BOTH clock and physics. */}
+   <div className={"lektrus-lab-experiment-clock"+
+    (!bench.simulationPaused?" is-running":" is-paused")}
+    data-board-interactive="true" role="group" aria-label="Часы времени опыта"
+    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
+    <div className="lektrus-lab-clock-readout">
+     <span className="lektrus-lab-clock-symbol" aria-hidden="true">◷</span>
+     <strong className="lektrus-lab-clock-digits" role="timer"
+      aria-label={"Время опыта "+formatLabClock(labExperimentClockSeconds(bench,clockNow))}>
+      {formatLabClock(labExperimentClockSeconds(bench,clockNow))}
+     </strong>
+     {settings.timeScale!==1&&<small className="lektrus-lab-clock-speed">×{settings.timeScale}</small>}
+    </div>
+    <button type="button" className={"lektrus-lab-simulation-toggle"+
+     (bench.simulationPaused?" is-paused":"")}
+     disabled={!editable} aria-pressed={!bench.simulationPaused}
+     aria-label={bench.simulationPaused?"Пуск: запустить часы и все процессы":"Пауза: остановить часы и все процессы"}
+     title={bench.simulationPaused?"Начать отсчёт времени и все процессы опыта":
+      "Приостановить время, реакции, нагрев, испарение и титрование"}
+     onClick={e=>{e.stopPropagation();
+      onChange?.(setLabSimulationPaused(bench,!bench.simulationPaused,Date.now()))}}>
+     {bench.simulationPaused?"▶ Пуск":"Ⅱ Пауза"}
+    </button>
+    {editable&&<button type="button" className="lektrus-lab-clock-reset"
+     aria-label="Сбросить время опыта" title="Обнулить время, не изменяя состояние процессов"
+     onClick={e=>{e.stopPropagation();onChange?.(setLabExperimentClock(bench,"reset",Date.now()))}}>↺</button>}
+   </div>
 
    {editable&&bench.vessels.some(v=>v.id===bench.selectedId)&&
     <div className="lektrus-lab-selected-vessel-actions" data-board-interactive="true">
@@ -1754,15 +1747,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
        onUpdate={next=>onChange?.(setLabBenchSettings(bench,next))}/>
      </section>
     </details>}
-    <button type="button" className="lektrus-lab-temperature-toggle"
-     aria-label={settings.showTemperatures?"Скрыть температуры посуды":"Показать температуры посуды"}
-     aria-pressed={settings.showTemperatures}
-     title={settings.showTemperatures?"Скрыть температуры на посуде":"Показать температуры на посуде"}
-     disabled={!editable} onClick={e=>{e.stopPropagation();
-      onChange?.(setLabBenchSettings(bench,{showTemperatures:!settings.showTemperatures}))}}>
-     <span aria-hidden="true">°C</span>
-     <span>{settings.showTemperatures?"Температуры":"Показать °C"}</span>
-    </button>
     {editable&&(bench.vessels.length>0||physicalDevices.length>0)&&
      <button type="button" className={"lektrus-lab-clear-worktop"+(confirmClear?" is-confirm":"")}
       aria-label={confirmClear?"Подтвердить очистку стола":"Очистить стол"}
