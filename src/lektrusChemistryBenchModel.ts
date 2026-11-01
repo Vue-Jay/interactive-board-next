@@ -1243,14 +1243,17 @@ export function setLabQuickReagent(bench:LabBench,id:string,dose?:LabDose):LabBe
 export const nextLabTableEpoch=()=>Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,10);
 export function clearLabTable(bench:LabBench):LabBench{
  if(!bench.vessels.length&&!placedLabDevices(bench).length&&!bench.pouring&&
-  !bench.experimentClock)return bench;
- // Empty only the physical worktop. The configured quick shelf and
- // presentation settings must survive cleaning.
+  !bench.experimentClock&&bench.simulationPaused===true&&
+  bench.pausedAtMs===undefined&&bench.simulationAtMs===undefined)return bench;
+ // Clearing is the beginning of the NEXT experiment, not a continuation of
+ // the previous one. Restore the one-button Play state even if the teacher
+ // cleared a running table (including an already empty legacy tabletop).
+ // Preserve the configured quick shelf, mode and presentation settings.
  return {...bench,vessels:[],selectedId:"",tableEpoch:nextLabTableEpoch(),
   placedDevices:[],devices:[],
   titration:undefined,titrationPair:undefined,stirringVesselId:undefined,
   instrumentTarget:undefined,simulationAtMs:undefined,pouring:undefined,
-  simulationPaused:bench.simulationPaused,pausedAtMs:bench.pausedAtMs,
+  simulationPaused:true,pausedAtMs:undefined,
   experimentClock:undefined,
   resumeExperimentClock:undefined,event:bench.event+1};
 }

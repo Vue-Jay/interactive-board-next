@@ -46,6 +46,52 @@ assert.strictEqual(lab.mergeLabBench(oldWithEquipment,cleared,heatingTick),clear
  "A locally cleared tabletop must win against a late server heat revision");
 assert.equal(lab.labSimulationTickWaitMs(cleared,30001),null,
  "Clearing equipment must stop the simulation clock");
+assert.equal(cleared.simulationPaused,true,
+ "Cleared table must offer Play, not already appear running");
+
+// A running trial is finished by CLEAR, and the next freshly prepared kit
+// cannot begin heating, reacting or counting time until the teacher presses
+// the ONE shared Play button.
+const playing=lab.setLabSimulationPaused(oldWithEquipment,false,1000);
+assert.equal(playing.experimentClock?.running,true);
+const resetWhilePlaying=lab.clearLabTable(playing);
+assert.equal(resetWhilePlaying.simulationPaused,true,
+ "Clear during Play must pause the next experiment");
+assert.equal(resetWhilePlaying.experimentClock,undefined,
+ "Clear must reset the single shared stopwatch to 00:00");
+assert.equal(resetWhilePlaying.pausedAtMs,undefined,
+ "Do not carry the previous trial's pause interval into the next one");
+assert.equal(resetWhilePlaying.simulationAtMs,undefined,
+ "Do not carry the previous trial's integration cursor into the next one");
+assert.equal(lab.labSimulationTickWaitMs(resetWhilePlaying,90000),null);
+assert.equal(lab.clearLabTable(resetWhilePlaying),resetWhilePlaying,
+ "Repeated clear of an already prepared table is a no-op");
+const newGlass=lab.addLabVessel(resetWhilePlaying,"beaker");
+const newId=newGlass.selectedId;
+const preparedAcid=lab.putLabReagent(newGlass,newId,"HCl",
+ {unit:"ml",value:10,concentrationM:1});
+const preparedMix=lab.putLabReagent(preparedAcid,newId,"NaOH",
+ {unit:"ml",value:10,concentrationM:1});
+assert.equal(preparedMix.simulationPaused,true);
+assert.equal(preparedMix.experimentClock,undefined);
+assert.strictEqual(lab.advanceLabSimulation(preparedMix,20000),preparedMix,
+ "Preparing reagents after table reset must NOT start chemistry");
+assert.equal(preparedMix.vessels.find(v=>v.id===newId).completedReaction,undefined,
+ "No reaction can be recorded before first Play");
+const oneClick=lab.setLabSimulationPaused(preparedMix,false,20000);
+assert.equal(oneClick.simulationPaused,false);
+assert.equal(oneClick.experimentClock?.running,true);
+assert.equal(lab.labExperimentClockSeconds(oneClick,22000),2,
+ "One Play starts time after clear, never requiring a preliminary Pause");
+// Older saved worktops could be empty but still marked running: a deliberate
+// Clear must normalize those without inventing another reaction or vessel.
+const brokenLegacyEmpty={...resetWhilePlaying,simulationPaused:false,
+ simulationAtMs:3000};
+const recovered=lab.clearLabTable(brokenLegacyEmpty);
+assert.notStrictEqual(recovered,brokenLegacyEmpty);
+assert.equal(recovered.simulationPaused,true);
+assert.equal(recovered.simulationAtMs,undefined);
+assert.equal(recovered.vessels.length,0);
 // If a collaborator removes a vessel, even an unrelated local heating update
 // to it must not put it back. Older boards without epochs need this guarantee.
 const justOne={...oldWithEquipment,
