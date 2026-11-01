@@ -241,6 +241,37 @@ assert.equal(thermalProps.labThermalInfo("CO2","ml").form,"gas");
 assert.equal(thermalProps.labThermalInfo("CO2","ml").boilingC,undefined);
 assert.equal(thermalProps.labThermalInfo("CO2","ml").sublimationC,-78.5);
 assert.equal(thermalProps.labThermalInfo("O2","ml").boilingC,-183);
+
+ // Source-verified anhydrous boundaries must propagate to the live
+ // inspector and phase model without creating fictitious boiling or
+ // misusing a hydrated/aqueous stock's transition.
+ const ferrousSulfate=thermalProps.labThermalInfo("FeSO4","g");
+ assert.equal(ferrousSulfate.form,"pure");
+ assert.equal(ferrousSulfate.decompositionC,680);
+ assert.equal(ferrousSulfate.behavior,"decomposes");
+ assert.equal(ferrousSulfate.meltingC,undefined);
+ assert.equal(ferrousSulfate.boilingC,undefined);
+ assert.equal(registryProps.labSubstanceProperties("FeSO4").decompositionC,680);
+ assert.equal(thermalProps.labThermalInfo("FeSO4","ml").known,false,
+  "Aqueous FeSO4 stock cannot inherit dry sulfate decomposition");
+ const drySodiumSulfide=thermalProps.labThermalInfo("Na2S","g");
+ assert.equal(drySodiumSulfide.form,"pure");
+ assert.equal(drySodiumSulfide.meltingC,1180);
+ assert.equal(drySodiumSulfide.boilingC,undefined);
+ assert.equal(drySodiumSulfide.decompositionC,undefined);
+ assert.equal(registryProps.labSubstanceProperties("Na2S").meltingC,1180);
+ assert.equal(thermalProps.labThermalInfo("Na2S","ml").known,false);
+ assert.equal(thermalProps.labThermalState(["Na2S"],{
+  Na2S:{value:2,unit:"g"}
+ },1170,0).molten,false);
+ assert.equal(thermalProps.labThermalState(["Na2S"],{
+  Na2S:{value:2,unit:"g"}
+ },1185,1).molten,true);
+ assert.equal(thermalProps.labThermalState(["FeSO4"],{
+  FeSO4:{value:2,unit:"g"}
+ },700,1).molten,false,
+  "Thermal decomposition must never create a fictitious melt");
+
 assert.equal(thermalProps.labVesselThermal(["O2"],{
  O2:{value:10,unit:"ml"}
 }),null,"Gas bottles do not count as boiling liquid");
