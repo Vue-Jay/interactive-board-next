@@ -23,6 +23,7 @@ function load(file){
  return mod.exports;
 }
 const lab=load("src/lektrusChemistryBenchModel.ts");
+const presets=load("src/lektrusSciencePresets.ts");
 const reaction=load("src/lektrusReactionDatabase.ts");
 const stoich=load("src/lektrusLabStoichiometry.ts");
 const network=load("src/lektrusLabReactionNetwork.ts");
@@ -76,6 +77,52 @@ check("LAB-01","Каталог и сбалансированные школьн�
  assert.equal(lab.defaultLabBench().simulationPaused,true,
   "Every new school experiment must start on pause");
  assert.equal(lab.LAB_MODES.length,5);
+
+ // Use the actual board insertion factory. A separate older preset used to
+ // omit simulationPaused, so "Pause" was rendered before physics had started
+ // and the first click only paused the otherwise idle empty bench.
+ const newItem=presets.makeSciencePresetItem("chem-experiment-free",
+  800,600,()=>"first-click-lab");
+ assert.equal(newItem.scienceLabBench.simulationPaused,true);
+ assert.equal(newItem.scienceLabBench.vessels[0].y,57);
+ const serialized=boardModel.parseDocument(JSON.stringify({
+  version:1,title:"One-click lab",view:{x:0,y:0,zoom:1},items:[newItem]
+ })).items[0];
+ const prepared=lab.readLabBench(serialized);
+ assert.equal(prepared.simulationPaused,true);
+ assert.equal(prepared.experimentClock,undefined);
+ const playing=lab.setLabSimulationPaused(prepared,false,1000);
+ assert.equal(playing.simulationPaused,false,
+  "First click on Play immediately unpauses actual chemical processes");
+ assert.equal(playing.experimentClock?.running,true,
+  "First click also starts the ONE shared stopwatch");
+ assert.equal(lab.labExperimentClockSeconds(playing,2000),1);
+ const paused=lab.setLabSimulationPaused(playing,true,2000);
+ assert.equal(paused.simulationPaused,true);
+ assert.equal(paused.experimentClock?.running,false);
+ assert.equal(lab.labExperimentClockSeconds(paused,12000),1);
+
+ // Repair already-created but never-started old benches in memory as well,
+ // without a disruptive board migration or resetting a real ongoing trial.
+ const brokenOldItem={...newItem,scienceLabBench:{
+  ...newItem.scienceLabBench,simulationPaused:undefined}};
+ const recovered=lab.readLabBench(brokenOldItem);
+ assert.equal(recovered.simulationPaused,true);
+ assert.strictEqual(recovered.vessels,brokenOldItem.scienceLabBench.vessels,
+  "Restoring pause should not re-create vessel arrays on every render");
+ const recoveredPlay=lab.setLabSimulationPaused(recovered,false,15000);
+ assert.equal(recoveredPlay.simulationPaused,false);
+ assert.equal(recoveredPlay.experimentClock.running,true);
+ const preparedOld={...brokenOldItem,scienceLabBench:{
+  ...brokenOldItem.scienceLabBench,event:3,
+  vessels:[{...brokenOldItem.scienceLabBench.vessels[0],
+   reagents:["NaCl"],doses:{NaCl:{value:1,unit:"g"}}}]}};
+ assert.equal(lab.readLabBench(preparedOld).simulationPaused,true,
+  "Preparing glassware on an old unstarted table still starts from Play");
+ const alreadyRunningOld={...brokenOldItem,scienceLabBench:{
+  ...brokenOldItem.scienceLabBench,simulationAtMs:1000}};
+ assert.equal(lab.readLabBench(alreadyRunningOld).simulationPaused,undefined,
+  "Do not force-pause previously started legacy experiments");
 });
 
 check("LAB-02","Осадок остаётся на дне и уравнение пишется после реакции",()=>{
