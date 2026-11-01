@@ -46,7 +46,8 @@ close(net.labInventoryMassG(crystal),net.labInventoryMassG(first));
 // not silently lose mass while using only the glass/ambient heat equation.
 assert.equal(lab.labBenchSettings(lab.defaultLabBench()).realism,"low",
  "Every new school experiment must begin in simple mode");
-const bare=lab.setLabBenchSettings(lab.defaultLabBench(),{realism:"high"});
+const bare={...lab.setLabBenchSettings(lab.defaultLabBench(),{realism:"high"}),
+ simulationPaused:false};
 const water={...bare.vessels[0],kind:"beaker",temperatureC:80,
  doses:{H2O:{unit:"ml",value:40}},reagents:["H2O"],environment:"aqueous"};
 const idle={...bare,simulationAtMs:1000,vessels:[water],placedDevices:[]};
@@ -297,7 +298,9 @@ console.log("×2/×5/×10 substepping: heat, boiling, vapor mass and cooling sta
 const clockSeed=lab.defaultLabBench();
 assert.equal(lab.labExperimentClockSeconds(clockSeed,1000),0);
 assert.equal(lab.formatLabClock(3661.9),"01:01:01");
-const started=lab.setLabExperimentClock(clockSeed,"start",1000);
+assert.equal(clockSeed.simulationPaused,true,"New lab starts paused");
+assert.equal(lab.labSimulationTickWaitMs(clockSeed,1000),null);
+const started=lab.setLabSimulationPaused(clockSeed,false,1000);
 assert.equal(started.experimentClock.running,true);
 close(lab.labExperimentClockSeconds(started,3500),2.5);
 assert.equal(lab.labSimulationTickWaitMs(started,3500),null,
@@ -352,7 +355,8 @@ assert.ok(Math.abs(coolingNa.temperatureC-97.79)<.12);
 const layoutSource=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
 const clockStyles=fs.readFileSync("src/lektrusLabSceneLayout.css","utf8");
 assert.match(layoutSource,/aria-label="Часы времени опыта"/);
-assert.match(layoutSource,/setLabExperimentClock\(bench/);
+assert.match(layoutSource,/setLabSimulationPaused\(bench,!bench\.simulationPaused/);
+assert.match(layoutSource,/setLabExperimentClock\(bench,"reset"/);
 assert.match(clockStyles,/\.lektrus-lab-experiment-clock\{/);
 console.log("Shared stopwatch, ×5/×10 elapsed time, latent fusion and cooled sodium: OK");
 
@@ -369,7 +373,7 @@ assert.equal(continueAll.simulationAtMs,105000,
  "Resuming rebases the clock, not 100 s of accumulated fictitious physics");
 const resumedHeat=lab.advanceLabSimulation(continueAll,106000);
 assert.ok(resumedHeat.vessels[0].doses.H2O.value<40);
-const timed=lab.setLabExperimentClock(lab.defaultLabBench(),"start",1000);
+const timed=lab.setLabSimulationPaused(lab.defaultLabBench(),false,1000);
 const timedPause=lab.setLabSimulationPaused(timed,true,5000);
 close(lab.labExperimentClockSeconds(timedPause,100000),4);
 const timedResume=lab.setLabSimulationPaused(timedPause,false,100000);
@@ -405,7 +409,7 @@ assert.ok((recheck.vessels.find(v=>v.id==="v2").doses?.CO2?.value??0)<=
  gasBench.vessels.find(v=>v.id==="v2").doses.CO2.value+1,
  "Gas that already entered a vessel must never be collected twice");
 const gasUI=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
-assert.match(gasUI,/Пауза процессов/);
+assert.match(gasUI,/Ⅱ Пауза/);
 assert.match(gasUI,/Газоотвод/);
 assert.match(gasUI,/Перенести до 20 мл/);
 console.log("Measured gas collection, reuse and slow gas release: OK");
