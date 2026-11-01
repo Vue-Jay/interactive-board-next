@@ -181,7 +181,8 @@ assert.deepEqual(lowPhase.binarySaltPhase,phaseState,
 console.log("Lab low/medium/high fidelity engine, conservative switching and coarse readings: OK");
 
 // Cooling bath is an actual apparatus with persisted temperature and contact.
-let chilled=lab.addPlacedLabDevice(lab.defaultLabBench(),"cooler");
+let chilled=lab.addPlacedLabDevice(
+ lab.setLabSimulationPaused(lab.defaultLabBench(),false,0),"cooler");
 const coolerId=chilled.placedDevices[0].id;
 assert.ok(lab.labDevices.some(d=>d.id==="cooler"),"Cooling bath must be offered in cabinet");
 assert.equal(lab.canMountLabVessel("cooler","beaker"),true);
