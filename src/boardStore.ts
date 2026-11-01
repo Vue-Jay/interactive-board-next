@@ -1,4 +1,5 @@
 import { STORAGE_KEY } from "./boardModel";
+import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import { getUserByEmail, getUserById, type AuthUser, type BoardRole } from "./authStore";
 import { claimRemoteInvitations, deleteRemoteStorageObjects, isRemoteBackendEnabled, listRemoteStorageObjects, remoteRequest } from "./backend";
 
@@ -8,12 +9,14 @@ export type BoardInvitation={id:string;boardId:string;email:string;role:Exclude<
 export type BoardAccessMember=BoardMember&{user:AuthUser|null};
 export type AdminBoardSummary=BoardSummary&{ownerName:string;ownerEmail:string;memberCount:number};
 
-const BOARDS_KEY="lesson-board.boards.v1",MEMBERS_KEY="lesson-board.board-members.v1",INVITES_KEY="lesson-board.board-invites.v1";
+const localPrefix=LEKTRUS_LOCAL_TEST_MODE?"lesson-board.local-test.":"lesson-board.";
+const BOARDS_KEY=localPrefix+"boards.v1",MEMBERS_KEY=localPrefix+"board-members.v1",INVITES_KEY=localPrefix+"board-invites.v1";
 const REMOTE_BOARD_CACHE_PREFIX="onlinerepetitor.user-boards.v244.";
 const read=<T,>(k:string):T[]=>{try{const v=JSON.parse(localStorage.getItem(k)||"[]");return Array.isArray(v)?v:[]}catch{return []}};
 const write=(k:string,v:unknown)=>localStorage.setItem(k,JSON.stringify(v));
 const boards=()=>read<BoardSummary>(BOARDS_KEY),members=()=>read<BoardMember>(MEMBERS_KEY),invites=()=>read<BoardInvitation>(INVITES_KEY);const norm=(s:string)=>s.trim().toLowerCase();
-export const boardStorageKey=(id:string)=>`${STORAGE_KEY}.board.${id}`;
+export const boardStorageKey=(id:string)=>LEKTRUS_LOCAL_TEST_MODE?
+ `${STORAGE_KEY}.local-test.board.${id}`:`${STORAGE_KEY}.board.${id}`;
 
 const localRole=(u:string,b:string):BoardRole|null=>{const x=boards().find(v=>v.id===b);if(!x)return null;if(x.ownerId===u)return"owner";return members().find(m=>m.boardId===b&&m.userId===u)?.role??null};
 const claimLocal=(user:AuthUser)=>{const matched=invites().filter(i=>norm(i.email)===norm(user.email));if(!matched.length)return;const next=members();for(const i of matched)if(!next.some(m=>m.boardId===i.boardId&&m.userId===user.id))next.push({boardId:i.boardId,userId:user.id,role:i.role,addedAt:new Date().toISOString()});write(MEMBERS_KEY,next);write(INVITES_KEY,invites().filter(i=>!matched.some(x=>x.id===i.id)))};
