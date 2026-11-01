@@ -255,3 +255,31 @@ assert.match(markup,/clockVesselsRef\.current=bench\.vessels/);
 assert.match(markup,/\},hasRecentEffects\?500:1000\)/);
 assert.match(markup,/\},\[clockRunning,hasRecentEffects,bench\.simulationPaused\]\)/);
 console.log("Mobile drag paint coalescing, cleanup and stable clock cadence: OK");
+
+
+// One integrated control in the header, not an independent floating stopwatch.
+const clockHead=markup.indexOf('className={"lektrus-lab-experiment-clock"+');
+const headerStart=markup.indexOf('className="lektrus-lab-scene-header"');
+const headerEnd=markup.indexOf('className="lektrus-lab-chalkboard"',headerStart);
+assert.ok(headerStart>0&&clockHead>headerStart&&clockHead<headerEnd,
+ "The stopwatch must physically belong inside the header after Kit");
+assert.equal((markup.match(/className=\{"lektrus-lab-experiment-clock"\+/g)??[]).length,1);
+assert.equal((markup.match(/className=\{"lektrus-lab-simulation-toggle"\+/g)??[]).length,1,
+ "Only one Play/Pause action controls both simulation and timer");
+assert.doesNotMatch(markup,/lektrus-lab-clock-toggle/,
+ "No separate clock Play/Pause action should be rendered");
+assert.match(markup,/setLabSimulationPaused\(bench,!bench\.simulationPaused,Date\.now\(\)\)/);
+assert.match(markup,/setLabExperimentClock\(bench,"reset",Date\.now\(\)\)/,
+ "Resetting the display remains a secondary, independent action");
+assert.doesNotMatch(markup,/className="lektrus-lab-temperature-toggle"/,
+ "Temperature visibility belongs in experiment settings, not the header");
+assert.equal((markup.match(/<strong>Показывать температуры<\/strong>/g)??[]).length,1);
+assert.match(markup,/aria-checked=\{settings\.showTemperatures\}/);
+assert.match(markup,/className="lektrus-lab-experiment-control is-inline-switch"/);
+const headerClockCss=css.slice(css.lastIndexOf("FINAL laboratory header:"));
+assert.ok(headerClockCss.includes("position:relative!important"));
+assert.ok(headerClockCss.includes("inset:auto!important"));
+assert.ok(headerClockCss.includes("flex-direction:row!important"));
+assert.ok(headerClockCss.includes(".lektrus-lab-experiment-panel"));
+assert.ok(headerClockCss.includes(".lektrus-lab-realism-options button small"));
+console.log("Integrated header clock, single pause, temperature setting and compact controls: OK");
