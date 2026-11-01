@@ -1,0 +1,100 @@
+name: Lektrus signed offline test APK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-apk:
+    name: Signed install-over offline Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      # Compile-time offline mode. NEVER pass Supabase credentials into this APK.
+      VITE_LEKTRUS_LOCAL_TEST: "true"
+      VITE_SUPABASE_URL: ""
+      VITE_SUPABASE_ANON_KEY: ""
+      VITE_AUTH_REDIRECT_URL: ""
+      LEKTRUS_SIGNING_STORE_BASE64: ${{ secrets.LEKTRUS_SIGNING_STORE_BASE64 }}
+      LEKTRUS_SIGNING_STORE_PASSWORD: ${{ secrets.LEKTRUS_SIGNING_STORE_PASSWORD }}
+      LEKTRUS_SIGNING_KEY_ALIAS: ${{ secrets.LEKTRUS_SIGNING_KEY_ALIAS }}
+      LEKTRUS_SIGNING_KEY_PASSWORD: ${{ secrets.LEKTRUS_SIGNING_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify Android SDK availability
+        shell: bash
+        run: |
+          test -d "${ANDROID_HOME}/platforms"
+          test -d "${ANDROID_HOME}/build-tools"
+      - run: npm ci --no-audit --no-fund
+      - name: Test offline identity, no-server mode and isolation
+        run: node scripts/test-lektrus-local-test-build.mjs
+      - name: Check native project
+        run: npm run native:check
+      - name: Build offline Lektrus web app
+        run: npm run build
+      - name: Require offline test identity in bundled JavaScript
+        shell: bash
+        run: |
+          if ! grep -R -q 'local-test@lektrus.invalid' dist/assets; then
+            echo "::error::Offline identity missing from production bundle"
+            exit 1
+          fi
+      - name: Copy assets to Capacitor Android
+        run: npx cap sync android
+      - name: Require existing permanent release signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          for key in LEKTRUS_SIGNING_STORE_BASE64 LEKTRUS_SIGNING_STORE_PASSWORD LEKTRUS_SIGNING_KEY_ALIAS LEKTRUS_SIGNING_KEY_PASSWORD; do
+            if [[ -z "${!key}" ]]; then
+              echo "::error::Missing ${key}; cannot issue an install-over APK"
+              exit 1
+            fi
+          done
+      - name: Build and verify signed update APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x android/gradlew
+          export LEKTRUS_SIGNING_STORE_FILE="$RUNNER_TEMP/lektrus-release.jks"
+          trap 'rm -f "$LEKTRUS_SIGNING_STORE_FILE"' EXIT
+          printf '%s' "$LEKTRUS_SIGNING_STORE_BASE64" | base64 --decode > "$LEKTRUS_SIGNING_STORE_FILE"
+          chmod 600 "$LEKTRUS_SIGNING_STORE_FILE"
+          # Current signed native workflow is in the 329x version range.
+          # Keep this test APK ahead of installed builds while using the
+          # exact same package name and permanent release certificate.
+          export LEKTRUS_ANDROID_VERSION_CODE="$((3294 + GITHUB_RUN_NUMBER))"
+          export LEKTRUS_ANDROID_VERSION_NAME="1.0.${LEKTRUS_ANDROID_VERSION_CODE}-local"
+          (cd android && ./gradlew :app:assembleRelease --no-daemon)
+          cp android/app/build/outputs/apk/release/app-release.apk Lektrus-Offline-Test.apk
+          SDK_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          "$SDK_TOOLS/apksigner" verify --verbose --print-certs Lektrus-Offline-Test.apk | tee apk-signing-report.txt
+          "$SDK_TOOLS/aapt" dump badging Lektrus-Offline-Test.apk | head -1 | tee apk-package.txt
+          grep -q "name='ru.lektrus.board'" apk-package.txt
+          grep -q "versionCode='${LEKTRUS_ANDROID_VERSION_CODE}'" apk-package.txt
+          sha256sum Lektrus-Offline-Test.apk | tee apk-sha256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lektrus-Offline-Install-Over-APK
+          path: |
+            Lektrus-Offline-Test.apk
+            apk-package.txt
+            apk-signing-report.txt
+            apk-sha256.txt
+          if-no-files-found: error
+          retention-days: 14
