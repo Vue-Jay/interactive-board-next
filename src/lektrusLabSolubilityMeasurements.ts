@@ -20,6 +20,8 @@ export type LabMeasuredSolubility={
  /** Original source in kelvin (where specified); 293 K means 19.85 °C,
   * not an independently measured 20.00 °C point. */
  sourceTemperatureKelvin?:number;
+ /** Original source conditions; especially hydrate/aqueous phase caveats. */
+ sourceCondition?:string;
  originalUnit:LabMeasuredSolubilityUnit;sourceUrl:string;
 };
 /** Kaye & Laby / Lange handbook at 293 K, not the 20 C grid.
@@ -57,6 +59,15 @@ const LAB_KAYE_LABY_293K_BATCH:readonly (readonly [string,number])[]=[
 ];
 
 export const LAB_MEASURED_PURE_WATER_SOLUBILITIES:readonly LabMeasuredSolubility[]=[
+ // WHO/IPCS CICAD 33 (2001), section 2.2: 375 g/L at exactly 20 C
+ // for barium chloride in WATER. This is an aqueous BaCl2 formula-
+ // equivalent reference, not a measurement of an anhydrous crystal
+ // saturation phase. The source does not identify the equilibrium hydrate;
+ // do not extrapolate or allow dry BaCl2 crystallisation from this point.
+ {formula:"BaCl2",temperatureC:20,sourceValue:375,
+  originalUnit:"g/l-water",
+  sourceCondition:"BaCl2 dissolved in pure water at 20 C; source gives 375 g/L, equilibrium hydrate not identified; aqueous reference only",
+  sourceUrl:"https://www.inchem.org/documents/cicads/cicad33.htm"},
  // Seidell 1940, vol. 1 p.31 (via Chemister): pale-yellow
  // monoclinic Ag2CO3 in PURE water, at exactly 20 and 100 C.
  // These are equilibrium reference points only; pH, light and thermal
