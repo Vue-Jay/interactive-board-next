@@ -799,24 +799,26 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  const [doseEffect,setDoseEffect]=useState<{x:number;y:number;color:string;solid:boolean}|null>(null);
  const settings=labBenchSettings(bench);
  const [clockNow,setClockNow]=useState(()=>Date.now());
+ const clockVesselsRef=useRef(bench.vessels);
+ clockVesselsRef.current=bench.vessels;
+ const clockRunning=!!bench.experimentClock?.running;
+ const recentEffects=(now:number)=>clockVesselsRef.current.some(v=>
+  [v.lastEvaporatedAtMs,v.visualStartedAtMs,v.indicatorAddedAtMs,
+   v.physicalStartedAtMs].some(t=>t!==undefined&&now>=t&&now-t<8500));
+ const hasRecentEffects=recentEffects(Date.now());
  useEffect(()=>{
-  // Clock and short-lived physics effects need a LOCAL repaint. Physics
-  // ticks can be ten seconds apart, otherwise an evaporative plume would
-  // never appear (or could remain permanently on the last rendered frame).
-  if(bench.simulationPaused)return;
-  const active=(now:number)=>bench.vessels.some(v=>
-   [v.lastEvaporatedAtMs,v.visualStartedAtMs,v.indicatorAddedAtMs,
-    v.physicalStartedAtMs].some(t=>t!==undefined&&now>=t&&now-t<8500));
-  if(!bench.experimentClock?.running&&!active(Date.now()))return;
+  // The stopwatch only displays whole seconds. Short effects need 500 ms,
+  // but repeated material/pressure ticks must NOT restart this interval or
+  // force a second Android repaint on every new shared vessel snapshot.
+  if(bench.simulationPaused||!clockRunning&&!hasRecentEffects)return;
   setClockNow(Date.now());
   const timer=window.setInterval(()=>{
    const now=Date.now();
    setClockNow(now);
-   if(!bench.experimentClock?.running&&!active(now))
-    window.clearInterval(timer);
-  },500);
+   if(!clockRunning&&!recentEffects(now))window.clearInterval(timer);
+  },hasRecentEffects?500:1000);
   return()=>window.clearInterval(timer);
- },[bench.experimentClock?.running,bench.simulationPaused,bench.vessels]);
+ },[clockRunning,hasRecentEffects,bench.simulationPaused]);
  const selected=bench.selectedId?selectedLabVessel(bench):undefined;
  const physicalDevices=placedLabDevices(bench);
  const vesselPosition=(v:LabVessel)=>{
