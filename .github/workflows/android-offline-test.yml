@@ -75,11 +75,11 @@ jobs:
           trap 'rm -f "$LEKTRUS_SIGNING_STORE_FILE"' EXIT
           printf '%s' "$LEKTRUS_SIGNING_STORE_BASE64" | base64 --decode > "$LEKTRUS_SIGNING_STORE_FILE"
           chmod 600 "$LEKTRUS_SIGNING_STORE_FILE"
-          # Current signed native workflow is in the 329x version range.
-          # Keep this test APK ahead of installed builds while using the
-          # exact same package name and permanent release certificate.
-          export LEKTRUS_ANDROID_VERSION_CODE="$((3294 + GITHUB_RUN_NUMBER))"
-          export LEKTRUS_ANDROID_VERSION_NAME="1.0.${LEKTRUS_ANDROID_VERSION_CODE}-local"
+          # Same release key and monotonic UTC versionCode as the standard
+          # Android workflow: users can switch between online/offline builds
+          # by installing a NEWER APK directly over the previous one.
+          export LEKTRUS_ANDROID_VERSION_CODE="$(date -u +%s)"
+          export LEKTRUS_ANDROID_VERSION_NAME="1.0.${GITHUB_RUN_NUMBER}-local"
           (cd android && ./gradlew :app:assembleRelease --no-daemon)
           cp android/app/build/outputs/apk/release/app-release.apk Lektrus-Offline-Test.apk
           SDK_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
