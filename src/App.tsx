@@ -2223,6 +2223,24 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   controlSettingsRef.current=controlSettings;
   const [developerPrefs, setDeveloperPrefs] = useState(readDeveloperPreferences);
   const {showInkDiagnostics,showBoardDiagnostics,showPerformanceDiagnostics} = developerPrefs;
+  const diagnosticFps = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if(!isAppAdmin||!showPerformanceDiagnostics)return;
+    let frame=0,last=0,animation=0;
+    const sample=(now:number)=>{
+      if(!last)last=now;
+      frame++;
+      const elapsed=now-last;
+      if(elapsed>=900){
+        if(diagnosticFps.current)
+          diagnosticFps.current.textContent=String(Math.round(frame*1000/elapsed));
+        frame=0;last=now;
+      }
+      animation=requestAnimationFrame(sample);
+    };
+    animation=requestAnimationFrame(sample);
+    return()=>cancelAnimationFrame(animation);
+  },[isAppAdmin,showPerformanceDiagnostics]);
   const changeRolePreview=(next:BoardRolePreview)=>{
     if(!isAppAdmin)return;
     end(true);setEditing(null);
@@ -9069,7 +9087,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           {isAppAdmin && (showInkDiagnostics || showBoardDiagnostics || showPerformanceDiagnostics) && <div style={{position:"absolute",right:12,top:12,zIndex:2400,background:"rgba(20,23,33,.85)",color:"#fff",padding:"7px 10px",borderRadius:8,fontSize:11,pointerEvents:"none",maxWidth:"min(90vw,480px)"}}>
             {showInkDiagnostics && <div>Штрихи: {inkDiagnostics}</div>}
             {showBoardDiagnostics && <div>Соединение: {realtimeStatus} · курсоров: {Object.keys(remoteCursors).length} · участников: {visiblePresenceUsers.length} · версия: {remoteVersion.current ?? "нет"}</div>}
-            {showPerformanceDiagnostics && <div>Объектов: {items.length} · штрихов: {items.filter(x=>x.kind==="pen"||x.kind==="marker").length} · масштаб: {Math.round(view.zoom*100)}%</div>}
+            {showPerformanceDiagnostics && <div>Объектов: {items.length} · штрихов: {drawingCount} · масштаб: {Math.round(view.zoom*100)}% · rAF FPS: <span ref={diagnosticFps}>…</span></div>}
           </div>}
           <div
             ref={fastPanBackground}
