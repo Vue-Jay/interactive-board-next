@@ -679,9 +679,9 @@ const snappedConnectorEnd = (start: Point, end: Point, snap45: boolean): Point =
 
 type ConnectorAnchorHit = { point: Point; binding: ConnectorBinding };
 
-const bindingPoint = (binding: ConnectorBinding | undefined, items: Item[]): Point | null => {
+const bindingPoint = (binding: ConnectorBinding | undefined, byId: ReadonlyMap<string,Item>): Point | null => {
   if (!binding) return null;
-  const target = items.find((item) => item.id === binding.itemId);
+  const target = byId.get(binding.itemId);
   if (!target) return null;
   return {
     x: target.x + target.width * binding.nx,
@@ -717,13 +717,15 @@ const connectorAnchor = (point: Point, items: Item[], threshold: number, exclude
 };
 
 const syncBoundConnectors = (source: Item[]): Item[] => {
-  const current = source;
-  return current.map((item) => {
+  // Resolve attachment anchors through one index rather than scanning ALL
+  // board items twice per connector on every drag frame (O(N*connectors)).
+  const byId=new Map(source.map(item=>[item.id,item] as const));
+  return source.map((item) => {
     if (item.kind !== "connector") return item;
     const startFallback = { x: item.x + (item.connectorStart?.x ?? 0), y: item.y + (item.connectorStart?.y ?? item.height / 2) };
     const endFallback = { x: item.x + (item.connectorEnd?.x ?? item.width), y: item.y + (item.connectorEnd?.y ?? item.height / 2) };
-    const boundStart = bindingPoint(item.connectorStartBinding, current);
-    const boundEnd = bindingPoint(item.connectorEndBinding, current);
+    const boundStart = bindingPoint(item.connectorStartBinding, byId);
+    const boundEnd = bindingPoint(item.connectorEndBinding, byId);
     const start = boundStart ?? startFallback;
     const end = boundEnd ?? endFallback;
     const startBinding = boundStart ? item.connectorStartBinding : undefined;
