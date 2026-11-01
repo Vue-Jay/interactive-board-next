@@ -1464,8 +1464,28 @@ for(const temp of [5,15,35,55,65,75,80,90]){
   "Al(NO3)3",temp),undefined,
   "Hydrate-phase transition must not be interpolated at "+temp+"°C");
 }
+// WHO/IPCS independently reports 375 g/L of dissolved BaCl2 at exactly
+// 20 C. It is a single reference-only aqueous observation: the stable
+// hydrate is unspecified, so no interpolation or dry crystallisation.
+const ba20=pureWaterMeasurements.find(x=>x.formula==="BaCl2"&&x.temperatureC===20);
+assert.ok(ba20,"Missing WHO/IPCS BaCl2 measurement at 20 C");
+assert.equal(ba20.sourceValue,375);
+assert.equal(ba20.originalUnit,"g/l-water");
+assert.ok(ba20.sourceCondition.includes("hydrate not identified"));
+assert.equal(ba20.sourceUrl,"https://www.inchem.org/documents/cicads/cicad33.htm");
+approximately(literature.labMeasuredSolubilityGPer100gWater(ba20),37.5/.9982,1e-10);
+approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+ "BaCl2",20),37.5/.9982,1e-10);
+approximately(registryProps.labSubstanceProperties("BaCl2",20)
+ .solubilityGPer100gWater,37.5/.9982,1e-10);
+assert.equal(registryProps.labSubstanceProperties("BaCl2",20)
+ .binaryCrystallizationUnsupported,true);
 assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
- "BaCl2",20),undefined,"A 25°C BaCl2 point cannot fill 20°C");
+ "BaCl2",21),undefined,"No invented 21 C solubility from isolated 20 C reading");
+const ba20Inventory={speciesMol:{H2O:1,BaCl2:.2},solidMol:{}};
+assert.equal(physicalDensity.labEquilibrateSingleSaltCrystals(
+ ba20Inventory,20,true,labMolarMass),undefined);
+assert.deepEqual(ba20Inventory.solidMol,{});
 assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
  "ZnCl2",20),undefined,"A 25°C ZnCl2 point cannot fill 20°C");
 console.log("15 new source-traced solubilities: 10-point nitrate series, five chloride/phosphate/acetate references, source units and phase guards verified");

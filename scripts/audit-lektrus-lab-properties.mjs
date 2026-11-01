@@ -430,6 +430,10 @@ if(process.argv.includes("--verify")){
   assert.ok(cabinetBaseSet.has(item.formula),
    "Source formula is absent from cabinet "+item.formula);
   assert.ok(item.sourceUrl.startsWith("https://"),"No source "+identity);
+  if(item.sourceCondition!==undefined)
+   assert.ok(typeof item.sourceCondition==="string"&&
+    item.sourceCondition.length>=24,
+    "Source conditions must describe the measured material: "+identity);
   // A literature table at 293 K is 19.85 C, not exactly 20 C.
   // Keep the source's originally quoted Kelvin condition auditable.
   if(item.sourceTemperatureKelvin!==undefined){
