@@ -89,7 +89,8 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
 // Detailed legacy physics assertions explicitly opt into high realism.
 const detailedBench=()=>{
  const bench=lab.defaultLabBench();
- return {...bench,settings:{...bench.settings,realism:"high"}};
+ return {...bench,simulationPaused:false,
+  settings:{...bench.settings,realism:"high"}};
 };
 assert.equal(lab.labBenchSettings(lab.defaultLabBench()).realism,"low",
  "New chemistry laboratories start in simple classroom mode");
@@ -1070,7 +1071,8 @@ assert.ok(lab.addLabVessel(quickBench,"tube").vessels.some(v=>v.kind==="tube"),
 const surface=read("src/LektrusChemistryBench.tsx");
 assert.match(surface,/lektrus-lab-content-tag/);
 assert.match(surface,/lektrus-lab-content-quantity/);
-assert.match(surface,/lektrus-lab-temperature-toggle/);
+assert.match(surface,/Показывать температуры/,
+ "Temperature toggle now belongs inside compact experiment settings");
 assert.match(surface,/lektrus-lab-clear-worktop/);
 assert.match(surface,/clearLabTable\(bench\)/);
 assert.match(surface,/lektrus-lab-quick-editor/);

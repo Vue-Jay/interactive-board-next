@@ -24,7 +24,7 @@ const stoich=load("src/lektrusLabStoichiometry.ts");
 const dose=(volume=10,molarity=.1)=>({unit:"ml",value:volume,concentrationM:molarity});
 const approx=(a,b,tol=1e-6)=>assert.ok(Math.abs(a-b)<=tol,a+" != "+b);
 const qty=(bench,id)=>bench.vessels.find(v=>v.id===id);
-let transfer=lab.addLabVessel(lab.defaultLabBench(),"beaker");
+let transfer=lab.addLabVessel(lab.setLabSimulationPaused(lab.defaultLabBench(),false,0),"beaker");
 transfer=lab.putLabReagent(transfer,"v1","NaCl",dose(10,.1));
 const moved=lab.fastLabPour(transfer,"v1","v2");
 assert.equal(moved.pouring,undefined);
@@ -33,7 +33,7 @@ assert.equal(qty(moved,"v2").doses.NaCl.value,10);
 // The hot source and cold receiver exchange sensible heat. Mixing 10 ml
 // of the same pure liquid at 80C with 10 ml at 20C gives about 50C;
 // no vessel is allowed to remain at the old 20C after a complete transfer.
-let thermal=lab.defaultLabBench();
+let thermal=lab.setLabSimulationPaused(lab.defaultLabBench(),false,0);
 thermal=lab.putLabReagent(thermal,"v1","H2O",{value:10,unit:"ml"});
 thermal=lab.addLabVessel(thermal,"beaker");
 thermal=lab.putLabReagent(thermal,"v2","H2O",{value:10,unit:"ml"});
@@ -68,7 +68,7 @@ assert.equal(lab.fastLabPour(moved,"v1","v2"),moved,
  "Transfer of an emptied source should preserve the unchanged board");
 
 const reagents=["BaCl2","Na2SO4"];
-let reacted=lab.defaultLabBench();
+let reacted=lab.setLabSimulationPaused(lab.defaultLabBench(),false,0);
 for(const id of reagents)reacted=lab.putLabReagent(reacted,"v1",id,dose(10,.1));
 reacted=lab.addLabVessel(reacted,"beaker");
 const sourceId="v1",targetId="v2";
@@ -121,7 +121,7 @@ const another=lab.addLabVessel(second,"tube");
 assert.ok(another.vessels.length>=3);
 // The same immutable lab revision must normalize equipment exactly once,
 // even when six simultaneous vessels ask for heating and stand placement.
-const equipment=lab.addPlacedLabDevice(lab.defaultLabBench(),"hotplate");
+const equipment=lab.addPlacedLabDevice(lab.setLabSimulationPaused(lab.defaultLabBench(),false,0),"hotplate");
 assert.strictEqual(lab.placedLabDevices(equipment),lab.placedLabDevices(equipment));
 const movedEquipment=lab.movePlacedLabDevice(equipment,equipment.placedDevices[0].id,45,70);
 assert.notStrictEqual(lab.placedLabDevices(equipment),lab.placedLabDevices(movedEquipment));
@@ -129,7 +129,7 @@ assert.equal(lab.placedLabDevices(movedEquipment)[0].x,45);
 // An endothermic demonstration can cool a solution to 10°C. Ambient air
 // restores temperature gradually; there must be no instantaneous jump to 22°C
 // and the adaptive clock must continue while the vessel is cold.
-const coldStock=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",{value:20,unit:"ml"});
+const coldStock=lab.putLabReagent(lab.setLabSimulationPaused(lab.defaultLabBench(),false,0),"v1","H2O",{value:20,unit:"ml"});
 const coldBench={...coldStock,simulationAtMs:1000,vessels:coldStock.vessels.map(v=>({
  ...v,temperatureC:10
 }))};
@@ -145,7 +145,7 @@ assert.ok(recovering.vessels[0].temperatureC>=10&&
 assert.ok(lab.labSimulationTickWaitMs(recovering,2900)>0,
  "A cooled solution must not lose its scheduled ambient thermal updates");
 
-const dormant=lab.defaultLabBench().vessels[0];
+const dormant=lab.setLabSimulationPaused(lab.defaultLabBench(),false,0).vessels[0];
 assert.equal(lab.labReactionNeedsTick(dormant),false);
 assert.equal(lab.labReactionNeedsTick(dormant),false);
 console.log("Laboratory transfers: fast path, measured products, secondary reaction and conservation OK");

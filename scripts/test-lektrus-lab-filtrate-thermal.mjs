@@ -72,7 +72,7 @@ const stockWater=heat.labKnownHeatCapacityJPerK("conical",
 assert.ok(stockWater>filtrateCapacity,
  "Added stock water contributes extra thermal mass, not a replacement for the filtrate");
 // Detailed filtrate heat-capacity comparison explicitly enables full realism.
-const fresh=lab.setLabBenchSettings(lab.defaultLabBench(),{realism:"high"});
+const fresh=lab.setLabBenchSettings(lab.setLabSimulationPaused(lab.defaultLabBench(),false,0),{realism:"high"});
 const fixture={...fresh,simulationAtMs:1000,
  vessels:[{...fresh.vessels[0],kind:"conical",reagents:["NaCl"],
   doses:undefined,filteredSolution:measured.filteredSolution,

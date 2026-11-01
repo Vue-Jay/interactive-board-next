@@ -46,7 +46,8 @@ close(net.labInventoryMassG(crystal),net.labInventoryMassG(first));
 // not silently lose mass while using only the glass/ambient heat equation.
 assert.equal(lab.labBenchSettings(lab.defaultLabBench()).realism,"low",
  "Every new school experiment must begin in simple mode");
-const bare=lab.setLabBenchSettings(lab.defaultLabBench(),{realism:"high"});
+const bare={...lab.setLabBenchSettings(lab.defaultLabBench(),{realism:"high"}),
+ simulationPaused:false};
 const water={...bare.vessels[0],kind:"beaker",temperatureC:80,
  doses:{H2O:{unit:"ml",value:40}},reagents:["H2O"],environment:"aqueous"};
 const idle={...bare,simulationAtMs:1000,vessels:[water],placedDevices:[]};
@@ -180,7 +181,8 @@ assert.deepEqual(lowPhase.binarySaltPhase,phaseState,
 console.log("Lab low/medium/high fidelity engine, conservative switching and coarse readings: OK");
 
 // Cooling bath is an actual apparatus with persisted temperature and contact.
-let chilled=lab.addPlacedLabDevice(lab.defaultLabBench(),"cooler");
+let chilled=lab.addPlacedLabDevice(
+ lab.setLabSimulationPaused(lab.defaultLabBench(),false,0),"cooler");
 const coolerId=chilled.placedDevices[0].id;
 assert.ok(lab.labDevices.some(d=>d.id==="cooler"),"Cooling bath must be offered in cabinet");
 assert.equal(lab.canMountLabVessel("cooler","beaker"),true);
@@ -297,9 +299,20 @@ console.log("×2/×5/×10 substepping: heat, boiling, vapor mass and cooling sta
 const clockSeed=lab.defaultLabBench();
 assert.equal(lab.labExperimentClockSeconds(clockSeed,1000),0);
 assert.equal(lab.formatLabClock(3661.9),"01:01:01");
-const started=lab.setLabExperimentClock(clockSeed,"start",1000);
+assert.equal(clockSeed.simulationPaused,true,"New lab starts paused");
+assert.equal(lab.labSimulationTickWaitMs(clockSeed,1000),null);
+const started=lab.setLabSimulationPaused(clockSeed,false,1000);
 assert.equal(started.experimentClock.running,true);
 close(lab.labExperimentClockSeconds(started,3500),2.5);
+const singlePaused=lab.setLabSimulationPaused(started,true,3500);
+assert.equal(singlePaused.experimentClock.running,false);
+close(lab.labExperimentClockSeconds(singlePaused,99999),2.5);
+assert.equal(lab.labSimulationTickWaitMs(singlePaused,99999),null);
+const singleResumed=lab.setLabSimulationPaused(singlePaused,false,99999);
+assert.equal(singleResumed.experimentClock.running,true);
+close(lab.labExperimentClockSeconds(singleResumed,100999),3.5);
+assert.equal(singleResumed.simulationAtMs,99999,
+ "Resuming the single control never catches up the paused interval");
 assert.equal(lab.labSimulationTickWaitMs(started,3500),null,
  "An idle stopwatch must never schedule a network simulation tick");
 assert.strictEqual(lab.setLabExperimentClock(started,"start",2000),started,
@@ -312,8 +325,11 @@ close(lab.labExperimentClockSeconds(paused,99999),12.5);
 const resumed=lab.setLabExperimentClock(paused,"start",100000);
 close(lab.labExperimentClockSeconds(resumed,101000),17.5);
 const resetClock=lab.setLabExperimentClock(resumed,"reset",101000);
-assert.equal(resetClock.experimentClock.running,false);
-assert.equal(lab.labExperimentClockSeconds(resetClock,110000),0);
+assert.equal(resetClock.experimentClock.running,true,
+ "Resetting time must not stop the running experiment");
+assert.equal(lab.labExperimentClockSeconds(resetClock,101000),0);
+assert.equal(lab.labExperimentClockSeconds(resetClock,110000),45,
+ "Reset does not interrupt the active ×5 experiment clock");
 const clearedClock=lab.clearLabTable(started);
 assert.equal(clearedClock.experimentClock,undefined,
  "Cleaning the tabletop starts a fresh experiment clock");
@@ -352,7 +368,8 @@ assert.ok(Math.abs(coolingNa.temperatureC-97.79)<.12);
 const layoutSource=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
 const clockStyles=fs.readFileSync("src/lektrusLabSceneLayout.css","utf8");
 assert.match(layoutSource,/aria-label="Часы времени опыта"/);
-assert.match(layoutSource,/setLabExperimentClock\(bench/);
+assert.match(layoutSource,/setLabSimulationPaused\(bench,!bench\.simulationPaused/);
+assert.match(layoutSource,/setLabExperimentClock\(bench,"reset"/);
 assert.match(clockStyles,/\.lektrus-lab-experiment-clock\{/);
 console.log("Shared stopwatch, ×5/×10 elapsed time, latent fusion and cooled sodium: OK");
 
@@ -369,7 +386,7 @@ assert.equal(continueAll.simulationAtMs,105000,
  "Resuming rebases the clock, not 100 s of accumulated fictitious physics");
 const resumedHeat=lab.advanceLabSimulation(continueAll,106000);
 assert.ok(resumedHeat.vessels[0].doses.H2O.value<40);
-const timed=lab.setLabExperimentClock(lab.defaultLabBench(),"start",1000);
+const timed=lab.setLabSimulationPaused(lab.defaultLabBench(),false,1000);
 const timedPause=lab.setLabSimulationPaused(timed,true,5000);
 close(lab.labExperimentClockSeconds(timedPause,100000),4);
 const timedResume=lab.setLabSimulationPaused(timedPause,false,100000);
@@ -405,7 +422,7 @@ assert.ok((recheck.vessels.find(v=>v.id==="v2").doses?.CO2?.value??0)<=
  gasBench.vessels.find(v=>v.id==="v2").doses.CO2.value+1,
  "Gas that already entered a vessel must never be collected twice");
 const gasUI=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
-assert.match(gasUI,/Пауза процессов/);
+assert.match(gasUI,/Ⅱ Пауза/);
 assert.match(gasUI,/Газоотвод/);
 assert.match(gasUI,/Перенести до 20 мл/);
 console.log("Measured gas collection, reuse and slow gas release: OK");

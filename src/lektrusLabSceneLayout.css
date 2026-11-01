@@ -1546,3 +1546,139 @@ body.lektrus-lab-fullscreen-active .workspace{
  .lektrus-lab-bench :is(.lektrus-lab-gas-vent>i,
  .lektrus-lab-gas-tube-flow){animation:none!important;opacity:.5}
 }
+
+
+/* FINAL laboratory header: the teacher sees time and one shared Play/Pause
+   beside the mode/kit. Never place a clock window over the work surface.
+   Keep selectors after the historical 2026 worktop overrides. */
+.lektrus-lab-bench .lektrus-lab-scene-header>.lektrus-lab-experiment-clock,
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-scene-header>.lektrus-lab-experiment-clock{
+ position:relative!important;inset:auto!important;top:auto!important;left:auto!important;
+ right:auto!important;bottom:auto!important;z-index:auto!important;
+ display:flex!important;flex:0 1 auto!important;flex-direction:row!important;
+ align-items:center!important;justify-content:flex-start!important;
+ min-width:0!important;width:auto!important;max-width:none!important;
+ margin:0 2px 0 auto!important;padding:0!important;gap:5px!important;
+ border:0!important;border-radius:0!important;background:none!important;
+ box-shadow:none!important;color:#2a604a!important;
+ overflow:visible!important;white-space:nowrap!important;
+}
+.lektrus-lab-bench .lektrus-lab-scene-header .lektrus-lab-clock-readout{
+ display:inline-flex!important;flex:0 1 auto!important;align-items:center!important;
+ min-width:0!important;gap:4px!important;border-radius:6px!important;
+ padding:2px 6px!important;background:#dcece1!important;
+ border:1px solid #bdd8c5!important;
+}
+.lektrus-lab-bench .lektrus-lab-scene-header .lektrus-lab-clock-symbol{
+ font-size:14px!important;line-height:1!important;color:#46886a}
+.lektrus-lab-bench .lektrus-lab-scene-header .lektrus-lab-clock-digits,
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-scene-header .lektrus-lab-clock-digits{
+ display:inline!important;grid-column:auto!important;
+ font:800 13px/1.25 ui-monospace,monospace!important;
+ font-variant-numeric:tabular-nums!important;letter-spacing:0!important;
+ color:#215e45!important;background:transparent!important;
+ border:0!important;border-radius:0!important;box-shadow:none!important;
+ text-shadow:none!important;padding:0!important;text-align:left!important;
+}
+.lektrus-lab-bench .lektrus-lab-scene-header .lektrus-lab-clock-speed{
+ grid-column:auto!important;grid-row:auto!important;font-size:10px!important;
+ background:#c4e0d0!important;padding:1px 3px!important;
+}
+.lektrus-lab-bench .lektrus-lab-scene-header .lektrus-lab-simulation-toggle,
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-scene-header .lektrus-lab-simulation-toggle{
+ flex:0 0 auto!important;min-width:68px!important;width:auto!important;
+ min-height:30px!important;height:30px!important;margin:0!important;
+ padding:4px 9px!important;border:1px solid #5e9b7d!important;
+ border-radius:7px!important;color:#fff!important;background:#2f7958!important;
+ font:800 11px/1.1 system-ui,sans-serif!important;white-space:nowrap!important;
+}
+.lektrus-lab-bench .lektrus-lab-scene-header .lektrus-lab-simulation-toggle:not(.is-paused){
+ background:#e5f2e9!important;color:#286449!important;border-color:#a1c5ae!important}
+.lektrus-lab-bench .lektrus-lab-scene-header .lektrus-lab-clock-reset{
+ flex:0 0 auto!important;display:inline-flex!important;align-items:center!important;
+ justify-content:center!important;width:27px!important;height:30px!important;
+ min-width:27px!important;min-height:30px!important;
+ padding:0!important;border:1px solid #c0dac9!important;border-radius:7px!important;
+ background:#f3faf3!important;color:#387958!important;font:750 20px/1 system-ui,sans-serif!important;
+ cursor:pointer!important}
+.lektrus-lab-bench .lektrus-lab-scene-header .lektrus-lab-experiment-clock button:focus-visible{
+ outline:2px solid #23865d!important;outline-offset:2px!important}
+.lektrus-lab-bench .lektrus-lab-scene-header .lektrus-lab-header-tools{
+ margin-left:4px!important;flex:0 1 auto!important;min-width:0!important}
+@container(max-width:980px){
+ .lektrus-lab-bench .lektrus-lab-scene-header>.lektrus-lab-experiment-clock{
+  gap:3px!important;margin-left:auto!important}
+ .lektrus-lab-bench .lektrus-lab-scene-header .lektrus-lab-clock-readout{
+  padding:2px 4px!important;gap:2px!important}
+ .lektrus-lab-bench .lektrus-lab-scene-header .lektrus-lab-clock-symbol{display:none!important}
+ .lektrus-lab-bench .lektrus-lab-scene-header .lektrus-lab-clock-digits{font-size:11px!important}
+ .lektrus-lab-bench .lektrus-lab-scene-header .lektrus-lab-simulation-toggle{
+  min-width:50px!important;padding:4px 5px!important}
+ .lektrus-lab-bench .lektrus-lab-scene-header .lektrus-lab-clock-reset{
+  width:24px!important;min-width:24px!important;height:28px!important;min-height:28px!important}
+}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-scene-header>.lektrus-lab-experiment-clock{
+ gap:3px!important;margin-left:auto!important}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-scene-header .lektrus-lab-clock-readout{
+ padding:2px 4px!important;gap:2px!important}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-scene-header .lektrus-lab-clock-symbol{display:none!important}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-scene-header .lektrus-lab-simulation-toggle{
+ min-width:52px!important;height:30px!important;min-height:30px!important;padding:4px 6px!important}
+@container(max-width:575px){
+ .lektrus-lab-bench .lektrus-lab-scene-header{gap:4px!important;padding:3px 5px!important}
+ .lektrus-lab-bench .lektrus-lab-mode-picker{margin-left:0!important;min-width:85px!important}
+ .lektrus-lab-bench .lektrus-lab-scene-header .lektrus-lab-clock-reset{display:none!important}
+ .lektrus-lab-bench .lektrus-lab-scene-header .lektrus-lab-clock-speed{display:none!important}
+ .lektrus-lab-bench .lektrus-lab-scene-header .lektrus-lab-clock-digits{font-size:10px!important}
+ .lektrus-lab-bench .lektrus-lab-scene-header .lektrus-lab-simulation-toggle{
+  min-width:48px!important;padding:3px 4px!important}
+}
+
+/* Experiment settings are a small, scannable menu. The two long realism
+   descriptions remain available through button title/tooltips, not giant
+   tiles that force scrolling. The same controls are used on mobile. */
+.lektrus-lab-bench .lektrus-lab-experiment-panel{
+ width:318px!important;max-width:calc(100vw - 20px)!important;
+ max-height:min(76vh,480px)!important;padding:11px!important;
+}
+.lektrus-lab-bench .lektrus-lab-experiment-panel-head{
+ margin-bottom:7px!important;gap:8px!important}
+.lektrus-lab-bench .lektrus-lab-experiment-panel-head h3{
+ font-size:14px!important;margin:0!important}
+.lektrus-lab-bench .lektrus-lab-experiment-controls{
+ gap:6px!important}
+.lektrus-lab-bench .lektrus-lab-experiment-control{
+ gap:5px!important;padding:0 0 7px!important}
+.lektrus-lab-bench .lektrus-lab-experiment-copy{gap:1px!important}
+.lektrus-lab-bench .lektrus-lab-experiment-copy strong{
+ font-size:11px!important}
+.lektrus-lab-bench .lektrus-lab-experiment-copy small,
+.lektrus-lab-bench .lektrus-lab-experiment-realism-note,
+.lektrus-lab-bench .lektrus-lab-experiment-footnote{
+ display:none!important}
+.lektrus-lab-bench .lektrus-lab-realism-options{
+ gap:4px!important}
+.lektrus-lab-bench .lektrus-lab-realism-options button,
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-realism-options button{
+ min-height:34px!important;height:34px!important;
+ padding:5px 4px!important;gap:0!important}
+.lektrus-lab-bench .lektrus-lab-realism-options button strong{
+ font-size:10px!important}
+.lektrus-lab-bench .lektrus-lab-realism-options button small{
+ display:none!important}
+.lektrus-lab-bench .lektrus-lab-experiment-options button,
+.lektrus-lab-bench .lektrus-lab-experiment-switch,
+.lektrus-lab-bench .lektrus-lab-header-tools .lektrus-lab-experiment-options button,
+.lektrus-lab-bench .lektrus-lab-header-tools .lektrus-lab-experiment-switch{
+ min-height:30px!important;height:30px!important;padding:5px 7px!important}
+.lektrus-lab-bench .lektrus-lab-experiment-control.is-inline-switch{
+ display:grid!important;grid-template-columns:minmax(0,1fr) 104px!important;
+ gap:8px!important;align-items:center!important}
+.lektrus-lab-bench .lektrus-lab-experiment-control.is-inline-switch button{
+ min-width:0!important}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-settings{
+ padding:9px!important;gap:5px!important}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-settings .lektrus-lab-experiment-controls{
+ gap:5px!important}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-settings .lektrus-lab-experiment-controls button{
+ min-height:34px!important;height:34px!important;padding:5px 6px!important}
