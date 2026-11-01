@@ -250,7 +250,9 @@ check("LAB-11","Сохранение опыта не повреждает дру
  const parsed=boardModel.parseDocument(JSON.stringify(document));
  assert.equal(parsed.items.length,2);
  assert.equal(parsed.items[1].text,"Работа ученика");
- assert.deepEqual(parsed.items[0].scienceLabBench.vessels,b.vessels);
+ assert.deepEqual(parsed.items[0].scienceLabBench.vessels,
+  JSON.parse(JSON.stringify(b.vessels)),
+  "JSON roundtrip preserves all serializable material, progress and doses");
 });
 
 const passed=results.filter(r=>r.ok).length;
