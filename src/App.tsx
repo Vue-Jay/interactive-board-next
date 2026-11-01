@@ -2422,6 +2422,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [eraserSize, setEraserSize] = useState(22);
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [guides, setGuides] = useState<GuideState>({});
+  // Never schedule a React render if the guides are already absent. On a
+  // busy board, the old clearGuides() inside pointermove rebuilt the whole
+  // workspace despite the compositor-only camera optimization.
+  const clearGuides = () => setGuides(current =>
+    current.x == null && current.y == null ? current : {});
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [layersOpen, setLayersOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -4010,7 +4015,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setMarqueeRect(null);
     setPreview(null);
     setPanning(false);
-    setGuides({});
+    clearGuides();
     if (board.current?.hasPointerCapture(g.pointer))
       board.current.releasePointerCapture(g.pointer);
     if (!cancel && g.mode === "draw" && g.ink) {
@@ -4043,7 +4048,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setRightPointerActive(false);
     setPanning(false);
     setMarqueeRect(null);
-    setGuides({});
+    clearGuides();
     if(tool!=="select")setSelected([]);
   },[tool]);
   // Some embedded widgets consume pointerup, and a captured element can be
@@ -4514,6 +4519,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     });
   };
 
+  const dragSnapCache = useRef(new WeakMap<Gesture,{
+    selected:Set<string>; moving:Bounds|null; others:Item[];
+  }>());
   const move = (e: PE<HTMLElement>) => {
     const g = gesture.current;
     if (!g || e.pointerId !== g.pointer) return;
@@ -4538,30 +4546,37 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         const worldDx=dx/g.view.zoom, worldDy=dy/g.view.zoom;
         display(g.before.map(item=>g.ids.includes(item.id)?{...item,x:item.x+worldDx,y:item.y+worldDy}:item));
       } else {
-        setGuides({});
+        // A navigation frame must not mutate React state.
         scheduleViewerPan({...g.view,x:g.view.x+dx,y:g.view.y+dy});
       }
     } else if (g.mode === "pan") {
-      setGuides({});
       scheduleViewerPan({ ...g.view, x: g.view.x + dx, y: g.view.y + dy });
     } else if (g.mode === "drag") {
       let worldDx = dx / g.view.zoom;
       let worldDy = dy / g.view.zoom;
+      let cache=dragSnapCache.current.get(g);
+      if(!cache){
+        const selected=new Set(g.ids);
+        cache={
+          selected,
+          moving:boundsOf(g.before.filter(item=>selected.has(item.id))),
+          others:g.before.filter(item=>!item.hidden&&!selected.has(item.id)),
+        };
+        dragSnapCache.current.set(g,cache);
+      }
       if (snapEnabled && !e.altKey) {
-        const moving = boundsOf(g.before.filter((item) => g.ids.includes(item.id)));
-        const others = g.before.filter((item) => !item.hidden && !g.ids.includes(item.id));
-        if (moving) {
-          const snapped = snapDraggedBounds(moving, others, worldDx, worldDy, 7 / g.view.zoom);
+        if (cache.moving) {
+          const snapped = snapDraggedBounds(cache.moving, cache.others, worldDx, worldDy, 7 / g.view.zoom);
           worldDx = snapped.dx;
           worldDy = snapped.dy;
-          setGuides(snapped.guides);
+          setGuides(previous=>previous.x===snapped.guides.x&&previous.y===snapped.guides.y?previous:snapped.guides);
         }
       } else {
-        setGuides({});
+        clearGuides();
       }
       display(
         g.before.map((item) =>
-          g.ids.includes(item.id)
+          cache.selected.has(item.id)
             ? {
                 ...item,
                 x: item.x + worldDx,
@@ -4571,7 +4586,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         ),
       );
     } else if (g.mode === "connector-end" && g.handle && g.transformItem?.kind === "connector") {
-      setGuides({});
+      clearGuides();
       const base = g.transformItem;
       const baseStart = { x: base.x + (base.connectorStart?.x ?? 0), y: base.y + (base.connectorStart?.y ?? 0) };
       const baseEnd = { x: base.x + (base.connectorEnd?.x ?? base.width), y: base.y + (base.connectorEnd?.y ?? base.height) };
@@ -4597,7 +4612,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       const nextConnector: Item = { ...rebuilt, groupId: base.groupId, locked: base.locked, hidden: base.hidden };
       display(g.before.map((item) => item.id === base.id ? nextConnector : item));
     } else if (g.mode === "resize" && g.handle) {
-      setGuides({});
+      clearGuides();
       const wx = dx / g.view.zoom, wy = dy / g.view.zoom;
       if (g.transformItems && g.transformBounds) {
         const baseBounds = g.transformBounds;
@@ -4628,7 +4643,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         display(g.before.map((item) => item.id === base.id ? fitItemToRect(base, rect) : item));
       }
     } else if (g.mode === "rotate") {
-      setGuides({});
+      clearGuides();
       const now = world(p);
       const startWorld = world(g.start);
       if (g.transformItems && g.transformBounds) {
@@ -8958,7 +8973,23 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const transformHandle=target.closest("[data-transform-handle],[data-group-transform-handle],[data-connector-endpoint],[data-group-selection-drag],[data-board-selection-grip]");
             if(!transformHandle&&target.closest("button,input,select,textarea,[role='button'],[role='slider'],[contenteditable='true'],[data-board-interactive]"))return;
             if(tool==="eraser")return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; if (presentation) { const point = local(e.clientX, e.clientY); if (presentationLaser) setPresentationLaserPos(point); if (presentationSpotlight) setPresentationSpotlightPos(point); return; } down(e); }}
-          onPointerMove={(e) => { if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y);}return;} if(eraserSession.current)return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; const localPoint = local(e.clientX, e.clientY); const worldPoint = world(localPoint); if(!adminHidden) cursorChannel.current?.sendCursor(worldPoint.x, worldPoint.y); if (presentation) { if (presentationLaser) setPresentationLaserPos(localPoint); if (presentationSpotlight) setPresentationSpotlightPos(localPoint); } move(e); }}
+          onPointerMove={(e) => {
+            if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y);}return;}
+            if(eraserSession.current||pinchState.current||consumedTouchIds.current.has(e.pointerId))return;
+            const activeGesture=gesture.current;
+            // Navigation uses cached board bounds and CSS transforms. It does
+            // not need live cursor broadcasts, a second geometry lookup or
+            // calculations of world coordinates for every pointer sample.
+            if(activeGesture?.mode==="pan"||(activeGesture?.mode==="hand-smart"&&activeGesture.dragging&&!activeGesture.handMoveSelection)){
+              move(e);
+              return;
+            }
+            const localPoint=local(e.clientX,e.clientY);
+            const worldPoint=world(localPoint);
+            if(!adminHidden)cursorChannel.current?.sendCursor(worldPoint.x,worldPoint.y);
+            if(presentation){if(presentationLaser)setPresentationLaserPos(localPoint);if(presentationSpotlight)setPresentationSpotlightPos(localPoint);}
+            move(e);
+          }}
           onContextMenu={(e) => {
             e.preventDefault();
             // Mouse RMB is handled on pointerup. Prevent the native menu from
@@ -9996,7 +10027,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </div>
           <button
             className={`snap-toggle ${snapEnabled ? "active" : ""}`}
-            onClick={() => { setSnapEnabled((value) => !value); setGuides({}); }}
+            onClick={() => { setSnapEnabled((value) => !value); clearGuides(); }}
             title="Умные привязки при перемещении · Alt временно отключает"
           >
             <Icon name="snap" size={16} />
