@@ -68,6 +68,11 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x android/gradlew
+          # Signed regular and offline builds share a timestamp-based Android
+          # versionCode so either flavor can update the other in place.
+          # UTC epoch seconds stay below Play/Android's 2,100,000,000 limit
+          # until 2036 and always outrank earlier sequential 329x builds.
+          export LEKTRUS_ANDROID_VERSION_CODE="$(date -u +%s)"
           export LEKTRUS_SIGNING_STORE_FILE="$RUNNER_TEMP/lektrus-release.jks"
           trap 'rm -f "$LEKTRUS_SIGNING_STORE_FILE"' EXIT
           printf '%s' "$LEKTRUS_SIGNING_STORE_BASE64" | base64 --decode > "$LEKTRUS_SIGNING_STORE_FILE"
