@@ -24,7 +24,7 @@ const physical=load("src/lektrusLabEvaporation.ts");
 const network=load("src/lektrusLabReactionNetwork.ts");
 const eq=(a,b,tol=1e-6)=>assert.ok(Math.abs(a-b)<=tol,a+" vs "+b);
 const dose=(value=10)=>({value,unit:"ml",concentrationM:.1});
-let bench=lab.defaultLabBench();
+let bench=lab.setLabSimulationPaused(lab.defaultLabBench(),false,0);
 bench=lab.putLabReagent(bench,"v1","BaCl2",dose());
 bench=lab.putLabReagent(bench,"v1","Na2SO4",dose());
 bench=lab.addLabVessel(bench,"conical");
