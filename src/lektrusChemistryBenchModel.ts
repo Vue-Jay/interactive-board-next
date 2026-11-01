@@ -791,7 +791,9 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
      {equation,initial,elapsedSeconds,durationSeconds}:undefined,
     completedReaction:complete?lastCase??v.completedReaction:v.completedReaction,
     uncertain:complete&&(measured.limited||measured.unmeasured.length>0),
-    visualStartedAtMs:!active?nowMs:v.visualStartedAtMs};
+    // A progressing gas reaction retains one visual start timestamp across
+    // ticks; refreshing it each frame replays the initial bubble burst.
+    visualStartedAtMs:!active&&!activeGas?nowMs:v.visualStartedAtMs};
   }
   const step=measured.steps[measured.steps.length-1];
   const completed=step?reviewedReactionCases.find(row=>row.equation===step.equation):undefined;
