@@ -67,6 +67,8 @@ jobs:
       - run: node scripts/test-lektrus-lab-interface-layout.mjs
       - run: node scripts/test-lektrus-lab-phase-equilibrium.mjs
       - run: node scripts/test-lektrus-lab-evaporative-crystallization.mjs
+      - name: School chemistry laboratory release acceptance (11 experiments)
+        run: npm run test:lab-acceptance
       - run: node scripts/test-lektrus-chemistry-bench.mjs
       - run: node scripts/test-lektrus-physics-templates.mjs
       - run: node scripts/test-lektrus-optics-editor.mjs
