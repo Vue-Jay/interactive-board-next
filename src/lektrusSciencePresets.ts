@@ -1,6 +1,7 @@
 import type {Item} from "./boardModel";
 import type {CircuitSymbol} from "./ScienceCircuitGlyph";
 import {makeMathPresetItem} from "./lektrusMathPresets";
+import {defaultLabBench} from "./lektrusChemistryBenchModel";
 
 /** School diagrams only: symbols and qualitative constructions, never solved work. */
 export type SciencePresetId=
@@ -67,7 +68,11 @@ export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,creat
     "chem-experiment-lime":"Реакция CO₂ с известковой водой"
   };
   if(id==="chem-experiment-free")
-    return {...base,x:x-830,y:y-530,text:"",scienceLabBench:{vessels:[{id:"v1",kind:"beaker",x:48,y:57,reagents:[],environment:"aqueous",observed:false}],selectedId:"v1",event:0},scienceReagents:[],scienceEnvironment:"aqueous",scienceExperimentStage:0,width:1660,height:1060};
+    return {...base,x:x-830,y:y-530,text:"",
+      scienceLabBench:{...defaultLabBench(),
+       vessels:[{...defaultLabBench().vessels[0],y:57}]},
+      scienceReagents:[],scienceEnvironment:"aqueous",scienceExperimentStage:0,
+      width:1660,height:1060};
   if(experimentPresets[id])
     return {...base,text:experimentPresets[id],scienceExperimentStage:0,width:630,height:390};
   switch(id){
