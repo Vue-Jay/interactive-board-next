@@ -659,8 +659,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
     lastEvaporatedAtMs:nowMs,
     filteredSolution:phase?.filteredSolution??v.filteredSolution,
     ventedVaporMl:phase?.ventedVaporMl}:{}),
-   ...(popped?{stoppered:false,stopperedAtC:undefined,
-    sealedReactionGasBaselineMol:undefined}:{}),
+   ...(popped?labVentStopperedVessel(v):{}),
    environment:evaporating&&reagents.length===0?"dry":
     cooling?(hasLiquid?"aqueous":"dry"):v.environment};
  });
@@ -852,8 +851,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
   const pressure=labVesselPressure(v);
   if(!pressure.popped)return v;
   changed=true;
-  return {...v,stoppered:false,stopperedAtC:undefined,
-   sealedReactionGasBaselineMol:undefined,visualStartedAtMs:nowMs};
+  return labVentStopperedVessel(v,nowMs);
  });
  result={...result,vessels};
  // Start pre-reviewed heated cases only after reaching a sufficiently warm state.
@@ -1808,26 +1806,43 @@ export function removeLabVessel(bench:LabBench,id:string,discardContents=false):
   titrationPair:bench.titrationPair&&(bench.titrationPair.sourceId===id||bench.titrationPair.targetId===id)?
    undefined:bench.titrationPair};
 }
+/** A cork leaving a vessel is a physical vent, whether removed by a
+ * student or pushed off by measured pressure. The trapped gas remains in
+ * the conserved reaction ledger as RELEASED, not falsely pressurised.
+ * A tube connected during a closed interval cannot retroactively collect
+ * the gas that escaped when the cork was released. */
+function labVentStopperedVessel(v:LabVessel,nowMs?:number):LabVessel{
+ const trapped=v.chemicalInventory?.retainedGasMol??{};
+ const released=v.chemicalInventory?.releasedGasMol??{};
+ const ids=new Set([...Object.keys(trapped),...Object.keys(released)]);
+ const chemicalInventory=v.chemicalInventory&&Object.values(trapped).some(n=>n>0)?
+  {...v.chemicalInventory,retainedGasMol:{},
+   releasedGasMol:Object.fromEntries([...ids].map(id=>[id,
+    (released[id]??0)+(trapped[id]??0)]))}:v.chemicalInventory;
+ // The receiver is allowed to collect only gas manufactured AFTER this
+ // release. It must not receive trapped gas from the previously closed flask
+ // at the next simulation tick (or after a delayed WebSocket update).
+ const generated=(labFollowUpGasProgress(v)??
+  labReactionGasProgress(v.reactionAmounts))?.producedMol??{};
+ const oldProcessed=v.gasCollectionProcessedMol??{};
+ const processed={...oldProcessed};
+ for(const [id,mol] of Object.entries(generated))
+  processed[id]=Math.max(processed[id]??0,mol);
+ return {...v,stoppered:false,stopperedAtC:undefined,
+  sealedReactionGasBaselineMol:undefined,chemicalInventory,
+  ...(Object.keys(generated).length?{gasCollectionProcessedMol:processed}:{}),
+  ...(nowMs===undefined?{}:{visualStartedAtMs:nowMs})};
+}
 export function setLabVesselStopper(bench:LabBench,id:string,stoppered:boolean):LabBench{
- return revise(bench,id,v=>labCanStopper(v.kind)&&!!v.stoppered!==stoppered?
-  {...v,stoppered,stopperedAtC:stoppered?(v.temperatureC??22):undefined,
-   // Existing gas at atmospheric pressure belongs to the sealed initial
-   // headspace. Only production AFTER sealing raises the gas partial pressure.
-   sealedReactionGasBaselineMol:stoppered?
-    labHeadspaceGasMoles({...v,stoppered:false,
-     sealedReactionGasBaselineMol:undefined}):undefined,
-   // Removing a cork vents the real retained gas. Never leave old pressure
-   // to return on resealing or delete gas mass from the measured ledger.
-   chemicalInventory:!stoppered&&v.chemicalInventory&&
-    Object.keys(v.chemicalInventory.retainedGasMol??{}).length?{
-     ...v.chemicalInventory,retainedGasMol:{},
-     releasedGasMol:Object.fromEntries(Array.from(new Set([
-      ...Object.keys(v.chemicalInventory.releasedGasMol??{}),
-      ...Object.keys(v.chemicalInventory.retainedGasMol??{})
-     ]),formula=>[formula,
-      (v.chemicalInventory?.releasedGasMol?.[formula]??0)+
-      (v.chemicalInventory?.retainedGasMol?.[formula]??0)]))
-    }:v.chemicalInventory}:v);
+ return revise(bench,id,v=>{
+  if(!labCanStopper(v.kind)||!!v.stoppered===stoppered)return v;
+  if(!stoppered)return labVentStopperedVessel(v);
+  return {...v,stoppered:true,stopperedAtC:v.temperatureC??22,
+   // Already present gas is the sealed baseline; only NEW gas increases
+   // pressure after the cork is fitted.
+   sealedReactionGasBaselineMol:labHeadspaceGasMoles({
+    ...v,stoppered:false,sealedReactionGasBaselineMol:undefined})};
+ });
 }
 /** Ideal-gas headspace uses the same measured chemical species ledger as the
  * vessel inspector. The seal temperature is saved, never assumed to equal
