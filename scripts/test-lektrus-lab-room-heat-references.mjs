@@ -43,9 +43,20 @@ const cases=[
   "beta-Ni(OH)2"],
  ["Zn(OH)2",72.27,99.39,
   "https://www.chemister.ru/Databases/Chemdatabase/properties-en.php?id=4200",
-  "rhombic"]
+  "rhombic"],
+ // Original ThermoML DSC Cp,mol at 298 K, not alkoxide solution heat.
+ ["CH3ONa",65.05,54.023769,
+  "https://trc.nist.gov/ThermoML/10.1016/j.tca.2005.06.044.html",
+  "CH3ONa","298 K"],
+ ["C2H5ONa",90.87,68.050769,
+  "https://trc.nist.gov/ThermoML/10.1016/j.tca.2005.06.044.html",
+  "C2H5ONa","298 K"],
+ // Bulletin 696 prints 21.920 thermochemical cal/(mol K), not J.
+ ["CaSO3",21.920*4.1840,120.135,
+  "https://stacks.cdc.gov/view/cdc/206356/cdc_206356_DS1.pdf",
+  "CaSO3(c)","298.15 K"]
 ];
-for(const [formula,sourceMolarCp,sourceMolarMass,sourceUrl,form] of cases){
+for(const [formula,sourceMolarCp,sourceMolarMass,sourceUrl,form,sourceTemp] of cases){
  const entry=batch.LAB_CURATED_PROPERTY_BATCH.filter(row=>
   row.formula===formula&&row.property==="specificHeatJPerGK");
  assert.equal(entry.length,1,"Missing or duplicate reviewed solid Cp "+formula);
@@ -53,7 +64,12 @@ for(const [formula,sourceMolarCp,sourceMolarMass,sourceUrl,form] of cases){
  assert.equal(row.phase,"anhydrous-solid");
  assert.equal(row.sourceUrl,sourceUrl);
  assert.ok(row.sourceCondition.includes(form),"Wrong solid form "+formula);
- assert.ok(row.sourceCondition.includes("298.15 K"),"Missing temperature "+formula);
+ assert.ok(row.sourceCondition.includes(sourceTemp??"298.15 K"),"Missing original measurement temperature "+formula);
+ if(sourceTemp){
+  assert.equal(row.sourceTemperatureKelvin,sourceTemp==="298 K"?298:298.15);
+  assert.ok(Math.abs(row.sourceMolarHeatJPerMolK-sourceMolarCp)<1e-9,
+   "Original published molar Cp not retained "+formula);
+ }
  const expected=sourceMolarCp/sourceMolarMass;
  assert.ok(Math.abs(row.value-expected)<0.000001,
   "Incorrect molar-to-mass Cp conversion for "+formula);
@@ -67,5 +83,5 @@ for(const [formula,sourceMolarCp,sourceMolarMass,sourceUrl,form] of cases){
   p.formula===formula&&p.property===row.property&&p.value===row.value&&
   p.sourceUrl===sourceUrl),"Source provenance missing "+formula);
 }
-assert.equal(cases.length,6);
-console.log("Six original-form 298.15 K molar Cp sources, exact unit conversions, live simulator wiring: PASS");
+assert.equal(cases.length,9);
+console.log("Nine source-verified pure-crystal Cp references, 298/298.15 K original units, live simulator wiring: PASS");

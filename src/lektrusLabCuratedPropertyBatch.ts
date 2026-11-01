@@ -249,6 +249,35 @@ export const LAB_CURATED_PROPERTY_BATCH:readonly LabCuratedPropertyBatchRow[]=[
   sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?id=775",
   note:"Безводный кубический Na₂S плавится при 1180 °C; гидраты имеют другие переходы. Реакция с водой не равна растворению инертной соли."},
 
+
+ // NIST ThermoML: Chandran et al., Thermochimica Acta 438 (2005)
+ // 107-111, DOI 10.1016/j.tca.2005.06.044. DSC of pure dry
+ // crystalline alkoxides over 240-550 K. Original Cp,mol at 298 K.
+ // Water and alcohol solutions are different physical materials.
+ {formula:"CH3ONa",property:"specificHeatJPerGK",value:1.204100,
+  phase:"anhydrous-solid",sourceMolarHeatJPerMolK:65.05,
+  sourceTemperatureKelvin:298,
+  sourceCondition:"dry crystalline sodium methoxide CH3ONa (ThermoML CH3NaO), 298 K; DSC 240-550 K, Cp,mol=65.05 J/(mol K) / 54.023769 g/mol; not methanol solution",
+  sourceUrl:"https://trc.nist.gov/ThermoML/10.1016/j.tca.2005.06.044.html",
+  note:"Теплоёмкость чистого сухого CH₃ONa при 298 К по экспериментальной DSC; не переносить на метанольный или водный раствор."},
+ {formula:"C2H5ONa",property:"specificHeatJPerGK",value:1.335327,
+  phase:"anhydrous-solid",sourceMolarHeatJPerMolK:90.87,
+  sourceTemperatureKelvin:298,
+  sourceCondition:"dry crystalline sodium ethoxide C2H5ONa (ThermoML C2H5NaO), 298 K; DSC 240-550 K, Cp,mol=90.87 J/(mol K) / 68.050769 g/mol; not ethanolic solution",
+  sourceUrl:"https://trc.nist.gov/ThermoML/10.1016/j.tca.2005.06.044.html",
+  note:"Теплоёмкость чистого сухого C₂H₅ONa при 298 К; не применять к этанольному раствору."},
+ // U.S. Bureau of Mines Bulletin 696 (Pankratz, 1994), calcium sulfite
+ // CaSO3(c) 298.15 K table, Cp°=21.920 cal/(mol K). The source
+ // states 1 thermochemical cal = 4.1840 J. 298 K heat capacity was
+ // derived from original low-temperature calorimetry (Kelley 248);
+ // high-temperature extrapolations in this report are NOT imported.
+ {formula:"CaSO3",property:"specificHeatJPerGK",value:0.763418,
+  phase:"anhydrous-solid",sourceMolarHeatJPerMolK:91.71328,
+  sourceTemperatureKelvin:298.15,
+  sourceCondition:"pure anhydrous crystalline CaSO3(c), 298.15 K, U.S. Bureau of Mines Bulletin 696 p.170; Cp,mol=21.920 cal/(mol K) * 4.1840 J/cal = 91.71328 J/(mol K) / 120.135 g/mol; not CaSO3.2H2O",
+  sourceUrl:"https://stacks.cdc.gov/view/cdc/206356/cdc_206356_DS1.pdf",
+  note:"Теплоёмкость безводного CaSO₃ при 298,15 К; исходная единица кал/(моль·К), не дигидрат."},
+
 ];
 
 /** Generated dry crystal density map (single source of truth). */
