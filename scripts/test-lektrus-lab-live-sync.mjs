@@ -119,6 +119,60 @@ assert.ok(removedOps.some(op=>op.kind==="remove-id"&&op.id==="v2"),
 assert.deepEqual(live.applyLabLivePreview(start,undefined,removedOps)?.
  scienceLabBench.vessels.map(v=>v.id),["v1"]);
 
+// Realtime packets can arrive in reverse order. A heating or dragging
+// update from the old experiment must NEVER re-create glassware after an
+// explicit table reset, even before the authoritative saved board arrives.
+const oldGeneration={...start,scienceLabBench:{...start.scienceLabBench,
+ tableEpoch:"lab-old-001"}};
+const outdatedHeat={...oldGeneration,scienceLabBench:{
+ ...oldGeneration.scienceLabBench,event:8,simulationAtMs:10000,
+ vessels:oldGeneration.scienceLabBench.vessels.map(v=>v.id==="v1"?
+  {...v,temperatureC:85}:v)}};
+const delayedHeatOps=live.labLiveEditorDiff(oldGeneration,outdatedHeat);
+const generationAssert=delayedHeatOps.find(op=>
+ op.path.join(".")==="scienceLabBench.tableEpoch");
+assert.equal(generationAssert?.before,"lab-old-001");
+assert.equal(generationAssert?.value,"lab-old-001");
+assert.equal(generationAssert?.kind,"set");
+const resetGeneration={...oldGeneration,scienceLabBench:{
+ ...oldGeneration.scienceLabBench,event:9,
+ tableEpoch:"lab-new-002",selectedId:"",vessels:[],simulationAtMs:undefined}};
+const resetOps=live.labLiveEditorDiff(oldGeneration,resetGeneration);
+assert.ok(resetOps.some(op=>op.path.join(".")==="scienceLabBench.tableEpoch"&&
+ op.before==="lab-old-001"&&op.value==="lab-new-002"));
+const freshEmpty=live.applyLabLivePreview(oldGeneration,undefined,resetOps);
+assert.deepEqual(freshEmpty?.scienceLabBench?.vessels,[]);
+assert.equal(freshEmpty.scienceLabBench.tableEpoch,"lab-new-002");
+assert.equal(live.applyLabLivePreview(oldGeneration,freshEmpty,delayedHeatOps),null,
+ "Delayed old-generation gas/heat update cannot resurrect cleared glassware");
+assert.equal(live.applyLabLivePreview(freshEmpty,undefined,delayedHeatOps),null,
+ "An already-saved new generation also rejects old reaction frames");
+const legacyHeatOps=edits.editorDiff(
+ {scienceLabBench:oldGeneration.scienceLabBench},
+ {scienceLabBench:outdatedHeat.scienceLabBench});
+assert.ok(!legacyHeatOps.some(op=>op.path.join(".")==="scienceLabBench.tableEpoch"));
+assert.equal(live.applyLabLivePreview(freshEmpty,undefined,legacyHeatOps),null,
+ "Older clients cannot bypass the generation barrier on a reset table");
+const newVessel={...oldGeneration.scienceLabBench.vessels[0],
+ id:"v3",temperatureC:22,reagents:[]};
+const replenished={...resetGeneration,scienceLabBench:{
+ ...resetGeneration.scienceLabBench,event:10,selectedId:"v3",vessels:[newVessel]}};
+const newVesselOps=live.labLiveEditorDiff(resetGeneration,replenished);
+assert.equal(newVesselOps.find(op=>
+ op.path.join(".")==="scienceLabBench.tableEpoch")?.before,"lab-new-002");
+const freshPreview=live.applyLabLivePreview(oldGeneration,freshEmpty,newVesselOps);
+assert.deepEqual(freshPreview?.scienceLabBench?.vessels.map(v=>v.id),["v3"],
+ "New-generation valid packets still work before the next saved revision");
+assert.equal(live.applyLabLivePreview(oldGeneration,freshPreview,delayedHeatOps),null,
+ "An older thermal tick must not undo the next experiment's equipment");
+const priorLegacy=live.labLiveEditorDiff(start,after);
+assert.equal(priorLegacy.find(op=>
+ op.path.join(".")==="scienceLabBench.tableEpoch")?.before,null,
+ "Legacy unversioned boards send an explicit JSON-safe null base generation");
+assert.equal(live.applyLabLivePreview(start,undefined,priorLegacy)?.scienceLabBench
+ .vessels[0].temperatureC,83.5);
+console.log("Realtime generation fence: reset, reversed packets, legacy and next kit OK");
+
 const noop=live.labLiveEditorDiff(start,{...start});
 assert.deepEqual(noop,[]);
 assert.deepEqual(live.labLiveEditorDiff(start,{...after,id:"other"}),[]);
