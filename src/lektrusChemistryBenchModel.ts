@@ -1917,6 +1917,23 @@ export function labFollowUpGasProgress(v:LabVessel){
   rateMolPerSecond:progress.elapsedSeconds>=progress.durationSeconds?0:
    completeYieldMol/progress.durationSeconds};
 }
+/** The outlet animation describes ONLY gas that can move into its
+ * receiver right now. A continued reaction is supported just like the
+ * first reaction; closed glass, a paused clock and a full receiver do not
+ * display fictitious flow. This uses the exact capacity criterion employed
+ * by the quantitative gas transfer step. */
+export function labGasTubeFlowActive(source:LabVessel,
+ receiver:LabVessel|undefined,simulationPaused=false):boolean{
+ if(simulationPaused||source.stoppered||!source.gasCollectionTargetId||
+  !receiver||receiver.id!==source.gasCollectionTargetId||receiver.stoppered)return false;
+ const progress=labFollowUpGasProgress(source)??
+  labReactionGasProgress(source.reactionAmounts);
+ if(!progress||progress.rateMolPerSecond<=1e-12)return false;
+ const stocked=Object.entries(receiver.doses??{}).reduce((total,[id,d])=>
+  total+(substances.find(s=>s.id===id)?.kind==="газ"?d.value:0),0);
+ const room=Math.max(0,labVesselQuantity(receiver).availableMl-stocked);
+ return room>=.01;
+}
 export function setLabGasCollection(bench:LabBench,sourceId:string,targetId?:string):LabBench{
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);

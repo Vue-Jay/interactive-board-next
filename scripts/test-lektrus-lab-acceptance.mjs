@@ -222,11 +222,31 @@ check("LAB-06","Газ выделяется постепенно и собира
  b=lab.advanceLabSimulation(b,3000);
  const partial=b.vessels[1].doses?.CO2?.value??0;
  assert.ok(partial>0&&partial<5,"Only gas actually produced is collected");
+ assert.equal(lab.labGasTubeFlowActive(b.vessels[0],b.vessels[1]),true,
+  "The outlet displays real motion for a follow-up gas reaction");
+ assert.equal(lab.labGasTubeFlowActive(b.vessels[0],b.vessels[1],true),false,
+  "Pause freezes the outlet just like measured gas production");
+ assert.equal(lab.labGasTubeFlowActive({...b.vessels[0],stoppered:true},
+  b.vessels[1]),false,"A sealed flask cannot send gas through the outlet");
+ assert.equal(lab.labGasTubeFlowActive(b.vessels[0],
+  {...b.vessels[1],stoppered:true}),false,
+  "A sealed receiver cannot accept more gas");
+ assert.equal(lab.labGasTubeFlowActive(b.vessels[0],
+  {...b.vessels[1],doses:{CO2:{unit:"ml",value:150}}}),false,
+  "A physically full receiver never displays fictitious flowing gas");
+ assert.equal(lab.labGasTubeFlowActive(
+  {...b.vessels[0],gasCollectionTargetId:undefined},b.vessels[1]),false,
+  "A disconnected outlet must be visually idle");
+ assert.match(fs.readFileSync("src/LektrusChemistryBench.tsx","utf8"),
+  /const flowing=labGasTubeFlowActive\(source,receiver,!!bench\.simulationPaused\)/,
+  "The on-board and fullscreen visualizer must use measured tube flow");
  assert.equal(lab.recordLabReactions(b).reactionLog?.length??0,0);
  for(const at of [13000,23000,33000])
   b=lab.advanceLabSimulation(b,at);
  const source=b.vessels[0],receiver=b.vessels[1];
  assert.equal(source.pendingInventoryReaction,undefined);
+ assert.equal(lab.labGasTubeFlowActive(source,receiver),false,
+  "A completed reaction must not display an endless moving gas stream");
  assert.ok((source.chemicalInventory.releasedGasMol.CO2??0)>.00099);
  assert.ok((receiver.doses?.CO2?.value??0)>24);
  assert.ok((receiver.doses?.CO2?.value??0)<=24.47);
