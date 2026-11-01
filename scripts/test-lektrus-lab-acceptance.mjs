@@ -304,6 +304,19 @@ check("LAB-10","Синхронизация и очистка исключают 
  assert.equal(merged.vessels.find(v=>v.id==="v2").x,72);
  const cleared=lab.clearLabTable(merged);
  assert.equal(cleared.vessels.length,0);
+ assert.equal(cleared.simulationPaused,true,
+  "Empty worktop must be ready for Play");
+ const playingPrevious=lab.setLabSimulationPaused(merged,false,5000);
+ const clearedFromRunning=lab.clearLabTable(playingPrevious);
+ assert.equal(clearedFromRunning.simulationPaused,true,
+  "Clearing while the clock runs prepares the next trial on pause");
+ assert.equal(clearedFromRunning.experimentClock,undefined);
+ assert.equal(clearedFromRunning.simulationAtMs,undefined);
+ assert.equal(lab.labSimulationTickWaitMs(clearedFromRunning,9000),null);
+ const newTrial=lab.setLabSimulationPaused(clearedFromRunning,false,9000);
+ assert.equal(newTrial.experimentClock?.running,true);
+ assert.equal(lab.labExperimentClockSeconds(newTrial,10000),1,
+  "One Play immediately starts the next trial's stopwatch");
  const final=lab.mergeLabBench(previous,merged,cleared);
  assert.equal(final.vessels.length,0,"Stale peer must not resurrect cleaned table");
 
