@@ -1,0 +1,44 @@
+name: Lektrus portable Windows browser build
+
+on:
+  push:
+    branches: [main, feature/portable-windows-local-server]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      VITE_AUTH_REDIRECT_URL: ${{ vars.LEKTRUS_AUTH_REDIRECT_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Build production site
+        run: npm run build
+      - name: Assemble portable release
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p portable-release/site
+          cp -R dist/. portable-release/site/
+          cp portable-windows/server.ps1 portable-release/server.ps1
+          cp 'portable-windows/Запустить Lektrus.bat' 'portable-release/Запустить Lektrus.bat'
+          cp portable-windows/README.txt portable-release/README.txt
+          test -s portable-release/site/index.html
+          test -s portable-release/server.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lektrus-Windows-Portable
+          path: portable-release/
+          if-no-files-found: error
+          retention-days: 14

@@ -64,3 +64,18 @@ PWA и HTTPS: [docs/CROSS_PLATFORM.md](docs/CROSS_PLATFORM.md).
 В репозитории удалены устаревшие текстовые отчёты `README_v*.txt`,
 разовые скрипты `install_v*.mjs` и конфигурации старых хостингов.
 История их изменений остаётся доступна через Git.
+
+## Проверка на Windows без установки инструментов
+
+Для передачи сборки проверяющему предусмотрен архив
+**Lektrus-Windows-Portable** из [GitHub Actions](https://github.com/Vue-Jay/interactive-board-next/actions/workflows/portable-windows.yml).
+После скачивания архива его нужно распаковать полностью и дважды нажать
+`Запустить Lektrus.bat`. Встроенный в Windows PowerShell запустит локальный
+сервер на `http://localhost:4173/` и откроет браузер. Node.js и Python
+на компьютере проверяющего не нужны. Сервер слушает только localhost.
+Закрытие консольного окна останавливает сервер.
+
+Архив создаётся из production-сборки Vite в GitHub Actions, поэтому
+дополнительная установка при тестировании не нужна. Для входа и
+синхронизации с Supabase необходим интернет и настроенные переменные
+сборки `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
