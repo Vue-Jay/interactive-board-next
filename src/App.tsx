@@ -2550,6 +2550,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     return initial.data.view;
   });
   const viewerPanFrame = useRef<number | null>(null);
+  const viewerWheelTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const viewerPendingPan = useRef<View | null>(null);
   const fastPanWorld = useRef<HTMLDivElement>(null);
   const fastPanOverlay = useRef<HTMLDivElement>(null);
@@ -2583,6 +2584,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // Commit once at finger/mouse release, when the expensive React culling and
   // raster cache update can happen without blocking pointer event handling.
   const finishViewerPan = (cancel=false,restore?:View) => {
+    if(viewerWheelTimer.current!==null){
+      clearTimeout(viewerWheelTimer.current);
+      viewerWheelTimer.current=null;
+    }
     if (viewerPanFrame.current !== null) {
       cancelAnimationFrame(viewerPanFrame.current);
       viewerPanFrame.current=null;
@@ -2615,6 +2620,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   }, [view]);
   useEffect(() => () => {
     if (viewerPanFrame.current !== null) cancelAnimationFrame(viewerPanFrame.current);
+    if (viewerWheelTimer.current !== null) clearTimeout(viewerWheelTimer.current);
     viewerPendingPan.current = null;
   }, []);
   const viewSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -3862,14 +3868,32 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       const unit=e.deltaMode===1?16:e.deltaMode===2?element.clientHeight:1;
       const ctrl=e.ctrlKey||e.metaKey;
       const useZoom=ctrl ? settings.wheel!=="zoom" : settings.wheel==="zoom";
+      const current=viewerPendingPan.current??viewRef.current;
+      let next:View;
       if(useZoom){
         const direction=settings.invertZoom?-1:1;
-        zoom(Math.exp(-e.deltaY*unit*.002*settings.zoomSpeed*direction),local(e.clientX,e.clientY));
+        const factor=Math.exp(-e.deltaY*unit*.002*settings.zoomSpeed*direction);
+        const zoom=Math.max(.1,Math.min(8,current.zoom*factor));
+        if(!panBoardBounds.current){
+          const rect=element.getBoundingClientRect();
+          panBoardBounds.current={left:rect.left,top:rect.top};
+        }
+        const anchor={x:e.clientX-panBoardBounds.current.left,y:e.clientY-panBoardBounds.current.top};
+        next={zoom,
+          x:anchor.x-(anchor.x-current.x)*zoom/current.zoom,
+          y:anchor.y-(anchor.y-current.y)*zoom/current.zoom};
       }else{
         const dx=e.deltaX*unit*settings.panSpeed,dy=e.deltaY*unit*settings.panSpeed;
         const shiftHorizontal=settings.horizontalShift&&e.shiftKey&&Math.abs(dx)<Math.abs(dy);
-        setView(v=>({...v,x:v.x-(shiftHorizontal?dy:dx),y:v.y-(shiftHorizontal?0:dy)}));
+        next={...current,x:current.x-(shiftHorizontal?dy:dx),
+          y:current.y-(shiftHorizontal?0:dy)};
       }
+      // Wheel events can arrive >100 times/second on trackpads. Follow them
+      // through the same compositor path as a finger; commit the React view
+      // only when the wheel stream becomes idle, not on each delta.
+      scheduleViewerPan(next);
+      if(viewerWheelTimer.current!==null)clearTimeout(viewerWheelTimer.current);
+      viewerWheelTimer.current=window.setTimeout(()=>finishViewerPan(),90);
     };
     element.addEventListener("wheel", wheel, { passive: false });
     return () => element.removeEventListener("wheel", wheel);
