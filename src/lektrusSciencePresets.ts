@@ -67,12 +67,13 @@ export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,creat
     "chem-experiment-litmus":"Действие кислой среды на лакмус",
     "chem-experiment-lime":"Реакция CO₂ с известковой водой"
   };
-  if(id==="chem-experiment-free")
+  if(id==="chem-experiment-free"){
+    const bench=defaultLabBench();
     return {...base,x:x-830,y:y-530,text:"",
-      scienceLabBench:{...defaultLabBench(),
-       vessels:[{...defaultLabBench().vessels[0],y:57}]},
+      scienceLabBench:{...bench,vessels:[{...bench.vessels[0],y:57}]},
       scienceReagents:[],scienceEnvironment:"aqueous",scienceExperimentStage:0,
       width:1660,height:1060};
+  }
   if(experimentPresets[id])
     return {...base,text:experimentPresets[id],scienceExperimentStage:0,width:630,height:390};
   switch(id){
