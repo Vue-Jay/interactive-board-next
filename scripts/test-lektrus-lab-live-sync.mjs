@@ -123,7 +123,7 @@ assert.deepEqual(live.applyLabLivePreview(start,undefined,removedOps)?.
 // update from the old experiment must NEVER re-create glassware after an
 // explicit table reset, even before the authoritative saved board arrives.
 const oldGeneration={...start,scienceLabBench:{...start.scienceLabBench,
- tableEpoch:"lab-old-001"}};
+ tableEpoch:"labold-001"}};
 const outdatedHeat={...oldGeneration,scienceLabBench:{
  ...oldGeneration.scienceLabBench,event:8,simulationAtMs:10000,
  vessels:oldGeneration.scienceLabBench.vessels.map(v=>v.id==="v1"?
@@ -131,18 +131,18 @@ const outdatedHeat={...oldGeneration,scienceLabBench:{
 const delayedHeatOps=live.labLiveEditorDiff(oldGeneration,outdatedHeat);
 const generationAssert=delayedHeatOps.find(op=>
  op.path.join(".")==="scienceLabBench.tableEpoch");
-assert.equal(generationAssert?.before,"lab-old-001");
-assert.equal(generationAssert?.value,"lab-old-001");
+assert.equal(generationAssert?.before,"labold-001");
+assert.equal(generationAssert?.value,"labold-001");
 assert.equal(generationAssert?.kind,"set");
 const resetGeneration={...oldGeneration,scienceLabBench:{
  ...oldGeneration.scienceLabBench,event:9,
- tableEpoch:"lab-new-002",selectedId:"",vessels:[],simulationAtMs:undefined}};
+ tableEpoch:"labnew-002",selectedId:"",vessels:[],simulationAtMs:undefined}};
 const resetOps=live.labLiveEditorDiff(oldGeneration,resetGeneration);
 assert.ok(resetOps.some(op=>op.path.join(".")==="scienceLabBench.tableEpoch"&&
- op.before==="lab-old-001"&&op.value==="lab-new-002"));
+ op.before==="labold-001"&&op.value==="labnew-002"));
 const freshEmpty=live.applyLabLivePreview(oldGeneration,undefined,resetOps);
 assert.deepEqual(freshEmpty?.scienceLabBench?.vessels,[]);
-assert.equal(freshEmpty.scienceLabBench.tableEpoch,"lab-new-002");
+assert.equal(freshEmpty.scienceLabBench.tableEpoch,"labnew-002");
 assert.equal(live.applyLabLivePreview(oldGeneration,freshEmpty,delayedHeatOps),null,
  "Delayed old-generation gas/heat update cannot resurrect cleared glassware");
 assert.equal(live.applyLabLivePreview(freshEmpty,undefined,delayedHeatOps),null,
@@ -159,7 +159,7 @@ const replenished={...resetGeneration,scienceLabBench:{
  ...resetGeneration.scienceLabBench,event:10,selectedId:"v3",vessels:[newVessel]}};
 const newVesselOps=live.labLiveEditorDiff(resetGeneration,replenished);
 assert.equal(newVesselOps.find(op=>
- op.path.join(".")==="scienceLabBench.tableEpoch")?.before,"lab-new-002");
+ op.path.join(".")==="scienceLabBench.tableEpoch")?.before,"labnew-002");
 const freshPreview=live.applyLabLivePreview(oldGeneration,freshEmpty,newVesselOps);
 assert.deepEqual(freshPreview?.scienceLabBench?.vessels.map(v=>v.id),["v3"],
  "New-generation valid packets still work before the next saved revision");
