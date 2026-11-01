@@ -2440,6 +2440,79 @@ console.log("Paused full/partial/volumetric transfers stage follow-up chemistry:
  sealed=lab.setLabVesselStopper(sealed,"v1",true);
  assert.ok((lab.labVesselPressure(sealed.vessels[0]).reactionGasPressureKPa??0)<.001,
   "Replacing the stopper cannot re-pressurise the vessel from already vented gas");
+ // A reaction-driven cork release and a heating-driven release must do
+ // EXACTLY what manual unsealing does: vent accumulated measured headspace,
+ // preserve molecular mass, and never deliver previously trapped CO2 to a
+ // receiver as if it were freshly produced AFTER the cork flew off.
+ const pressurized=lab.defaultLabBench();
+ const trappedInventory={speciesMol:{NaCl:.002},solidMol:{},
+  retainedGasMol:{CO2:.03},releasedGasMol:{CO2:.001},settled:true};
+ const pressuredVessel={...pressurized.vessels[0],kind:"flask",
+  reagents:["H2O"],doses:{H2O:{unit:"ml",value:10}},
+  observed:false,stoppered:true,stopperedAtC:22,
+  sealedReactionGasBaselineMol:0,chemicalInventory:trappedInventory};
+ const heatedPressure={...detailedBench(),simulationAtMs:1000,
+  vessels:[pressuredVessel]};
+ assert.equal(lab.labVesselPressure(pressuredVessel).popped,true,
+  "Real headspace gas should trigger a safety cork release");
+ const poppedHeated=lab.advanceLabSimulation(heatedPressure,11000).vessels[0];
+ assert.equal(poppedHeated.stoppered,false,
+  "The thermal/pressure stage must physically pop the cork");
+ assert.equal(poppedHeated.chemicalInventory.retainedGasMol.CO2??0,0,
+  "Thermal cork pop must not leave invisible compressed CO2");
+ assert.ok(Math.abs(poppedHeated.chemicalInventory.releasedGasMol.CO2-.031)<1e-9,
+  "Thermal cork pop must conserve all existing measured CO2");
+ assert.equal(poppedHeated.stopperedAtC,undefined);
+ assert.ok((lab.labVesselPressure(poppedHeated).reactionGasPressureKPa??0)<.001,
+  "An open flask cannot stay pressurized by gas that has already vented");
+ const resealedHeated=lab.setLabVesselStopper(
+  {...heatedPressure,vessels:[poppedHeated]},"v1",true);
+ assert.equal(resealedHeated.vessels[0].stoppered,true);
+ assert.ok((lab.labVesselPressure(resealedHeated.vessels[0])
+  .reactionGasPressureKPa??0)<.001,
+  "Cork replacement cannot re-compress escaped CO2");
+
+ let poppedReaction=gasPrepared(true);
+ poppedReaction={...poppedReaction,vessels:poppedReaction.vessels.map(v=>
+  v.id==="v1"?{...v,
+   doses:{Na2CO3:stock(10,2),HCl:stock(20,2)},
+   chemicalInventory:{speciesMol:{Na2CO3:.02,HCl:.04},
+    solidMol:{},releasedGasMol:{},retainedGasMol:{}}}:v)};
+ poppedReaction=lab.setLabGasCollection(poppedReaction,"v1","v2");
+ poppedReaction=lab.setLabVesselStopper(poppedReaction,"v1",true);
+ poppedReaction=lab.setLabSimulationPaused(poppedReaction,false,2000);
+ assert.equal(poppedReaction.vessels[0].stoppered,true);
+ let justPopped;
+ for(const at of [3000,5000,8000,11000,14000,17000,20000,23000,26000]){
+  poppedReaction=lab.advanceLabSimulation(poppedReaction,at);
+  if(!poppedReaction.vessels[0].stoppered){justPopped=poppedReaction;break;}
+ }
+ assert.ok(justPopped,
+  "The progressive measured gas should eventually release the cork");
+ const escaped=justPopped.vessels[0].chemicalInventory;
+ assert.equal(escaped.retainedGasMol.CO2??0,0,
+  "A reaction-driven cork pop cannot preserve high-pressure gas inventory");
+ const poppedYield=lab.labFollowUpGasProgress(justPopped.vessels[0])
+  .producedMol.CO2;
+ assert.ok(poppedYield>0&&poppedYield<.02);
+ assert.ok(Math.abs(escaped.releasedGasMol.CO2-poppedYield)<1e-8,
+  "Reaction cork pop must vent exactly the gas already made");
+ assert.ok(Math.abs((justPopped.vessels[0].gasCollectionProcessedMol?.CO2??0)-
+  poppedYield)<1e-8,
+  "Trapped gas escaped on cork pop cannot be collected on the next tick");
+ assert.equal(justPopped.vessels[1].doses?.CO2?.value??0,0,
+  "The collector receives nothing while the stopper was closed");
+ justPopped=lab.advanceLabSimulation(justPopped,28000);
+ const collectedAfterPop=justPopped.vessels[1].doses?.CO2?.value??0;
+ const totalProducedAfterPop=lab.labFollowUpGasProgress(
+  justPopped.vessels[0]).producedMol.CO2;
+ const freshGasMl=Math.max(0,totalProducedAfterPop-poppedYield)*24465;
+ assert.ok(collectedAfterPop>=0);
+ assert.ok(collectedAfterPop<=freshGasMl+.011,
+  "Receiver can capture only newly generated gas, never the CO2 vented on cork pop");
+ assert.ok(collectedAfterPop>0,
+  "New gas produced after the stopper pops still reaches the collector");
+
  const damaged=structuredClone(sealed);
  damaged.vessels[0].inventoryGasReaction.initial.speciesMol.Na2CO3=-10;
  assert.throws(()=>parseLab(damaged),/Повреждено состояние химического стола/,
