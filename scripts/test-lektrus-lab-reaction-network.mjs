@@ -1401,7 +1401,7 @@ for(const [formula,sourceValue] of Object.entries({
   formula,19.85),sourceValue,1e-9);
  // LiNO3 and Cu(NO3)2 now have INDEPENDENT measurements at exactly
  // 20 C; the old 293 K (=19.85 C) values must remain separate records.
- const independentlyMeasured20={"LiNO3":70,"Cu(NO3)2":124.7}[formula];
+ const independentlyMeasured20={"LiNO3":70,"Cu(NO3)2":124.7,"Li2SO4":34.7}[formula];
  const actual20=physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,20);
  if(independentlyMeasured20===undefined)assert.equal(actual20,undefined,
   "A 293 K value cannot impersonate a measured 20.00 C point");
@@ -1650,10 +1650,10 @@ for(const [formula,temp,raw,unit,expected] of [
   inventory,temp,true,labMolarMass),undefined);
  assert.deepEqual(inventory.solidMol,{});
 }
-for(const [id,temp] of [["K2SO3",20],["Li2SO4",20],["CuS",20],
+for(const [id,temp] of [["K2SO3",20],["Li2SO4",21],["CuS",20],
  ["(NH4)2CO3",20],["SrSO4",21]]){
- // Li2SO4 has an INDEPENDENT 293 K value, but not an exact 20.00 C
- // datum; other salts have similarly isolated source temperatures.
+ // Li2SO4 now has an independent exact 20 C observation, but NOT 21 C;
+ // other salts likewise retain isolated source temperatures.
  assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(id,temp),
   undefined,"Exact source must not be smoothed into unknown temperatures");
 }
