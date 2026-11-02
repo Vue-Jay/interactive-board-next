@@ -57,7 +57,7 @@ assert.equal(tsx.parseDiagnostics.length,0,"Detailed histology TSX parse errors"
 for(const kind of new Set(all.map(p=>p.kind)))
  assert.ok(pictures.includes('case "'+kind+'"'),"Missing dedicated illustrative family: "+kind);
 for(const safety of [
- "Парабронхи","Кератин","Купула","Тифлозоль","хитиновая",
+ "Парабронхи","Кератин","Купула","невромаста","хитиновая",
  "Волосков","Митохондр","микроспоры", "тапетум"
 ]){
  const mapSrc=src("src/lektrusBioRepresentativeMicroplates.ts");
