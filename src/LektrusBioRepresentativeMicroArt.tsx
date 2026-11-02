@@ -173,6 +173,17 @@ function TissuePanel({kind,cell}:{kind:BioRepresentativeMicroPlate["kind"];cell:
    </g>;})}
   <path d="M48 280H431" stroke="#a3bd92" strokeWidth="6"/>
  </g>;
+ case "pine-microsporangium":if(cell)return <g>
+  <circle cx="180" cy="181" r="93" fill="#e3d2a2" stroke="#b39b71" strokeWidth="8"/>
+  <circle cx="180" cy="181" r="77" fill="#f1e3b8" stroke="#b8a376" strokeWidth="5"/>
+  <N x={180} y={176} r={31}/>
+  <path d="M265 180Q294 167 305 141" fill="none" stroke="#b4a078" strokeWidth="4" strokeDasharray="7 5"/>
+  <path d="M295 149l13-13-1 18" fill="none" stroke="#a48d69" strokeWidth="4"/>
+  {[[338,111],[382,111],[338,154],[382,154]].map(([x,y],i)=><circle key={i} cx={x} cy={y} r="17" fill="#dfc59c" stroke="#ac916b" strokeWidth="3"/>)}
+  <text x="180" y="299" textAnchor="middle" fontSize="12" fill="#94794f">Спороцит 2n</text>
+  <text x="358" y="202" textAnchor="middle" fontSize="12" fill="#94794f">После мейоза</text>
+  <text x="358" y="220" textAnchor="middle" fontSize="12" fill="#94794f">4 микроспоры n</text>
+ </g>;
  case "pine-microsporangium":return <g>
   <ellipse cx="240" cy="180" rx="157" ry="110" fill="#c6b891" stroke="#9d916e" strokeWidth="9"/>
   <ellipse cx="240" cy="182" rx="130" ry="79" fill="#f1e4b8" stroke="#b4a37d" strokeWidth="7"/>
@@ -192,6 +203,18 @@ function TissuePanel({kind,cell}:{kind:BioRepresentativeMicroPlate["kind"];cell:
     <N x={x+21} y={y+50} r={7}/>
    </g>;})}
   {!cell&&<path d="M54 277Q113 223 168 275Q228 222 282 273Q351 223 420 276" stroke="#87ac85" strokeWidth="8" fill="none"/>}
+ </g>;
+ case "fern-sporocyte":if(cell)return <g>
+  <circle cx="180" cy="185" r="91" fill="#d9c498" stroke="#a68d6c" strokeWidth="9"/>
+  <circle cx="180" cy="185" r="73" fill="#f4e1b4" stroke="#b69e78" strokeWidth="5"/>
+  <N x={181} y={163} r={30}/>
+  <text x="180" y="291" fontSize="12" textAnchor="middle" fill="#8b7350">Спороцит 2n</text>
+  <path d="M266 183Q298 166 318 131" fill="none" stroke="#a99272" strokeWidth="4" strokeDasharray="7 6"/>
+  <path d="M309 138l13-13-2 17" fill="none" stroke="#a99272" strokeWidth="4"/>
+  <circle cx="355" cy="130" r="25" fill="#e2cea2" stroke="#b39b70" strokeWidth="4"/>
+  <path d="M345 118l21 24m0-24-21 24" stroke="#987998" strokeWidth="4"/>
+  {[[330,217],[379,217],[330,263],[379,263]].map(([x,y],i)=><circle key={i} cx={x} cy={y} r="16" fill="#d5b786" stroke="#a18660" strokeWidth="3"/>)}
+  <text x="356" y="307" textAnchor="middle" fill="#8b7350" fontSize="11">Микроспоры n</text>
  </g>;
  case "fern-sporocyte":return <g>
   <path d="M110 194Q130 91 224 83Q334 85 364 188Q346 277 240 284Q141 281 110 194Z"
