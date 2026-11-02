@@ -6,7 +6,9 @@
 export type BioOrganism="human"|"cat"|"sunflower"|"oak";
 export type BioLevel="organism"|"system"|"organ"|"tissue"|"cell";
 export type BioActivity="explore"|"label"|"assemble";
-export type BioNode={id:string;parentId:string|null;level:BioLevel;name:string;description:string};
+export type BioNode={id:string;parentId:string|null;level:BioLevel;name:string;description:string;
+ /** Optional reviewed source that explains THIS structure, not a blanket certification. */
+ source?:{title:string;url:string};};
 export type BioMicroscopeDiagram={
  kind:"bio-microscope";title:string;organism:BioOrganism;activity:BioActivity;
  showDescriptions:boolean;assignmentPath:string[];
@@ -58,7 +60,10 @@ export function bioNodes(organism:BioOrganism):BioNode[]{
   let parent=root.id;
   for(const [level,name,description] of nodes){
    const id=parent+"/"+slug(name);
-   if(!entries.has(id))entries.set(id,{id,parentId:parent,level,name,description});
+   if(!entries.has(id)){
+    const facts=bioReviewedNode(organism,id,name,description);
+    entries.set(id,{id,parentId:parent,level,...facts});
+   }
    parent=id;
   }
  }
@@ -144,4 +149,79 @@ export function bioChildSpot(
   return {x:190+index*95,y:164};
  }
  return {x:240,y:163};
+}
+
+
+/** References remain optional. A specific source is attributed only to
+ * the biology it actually supports. Existing document paths are stable,
+ * including older boards that saved a leaf id before wording was corrected. */
+export const BIO_REFERENCES={
+ roots:{title:"OpenStax Biology 2e · Roots",url:"https://openstax.org/books/biology-2e/pages/30-3-roots"},
+ stem:{title:"OpenStax Biology · Stems (xylem)",url:"https://openstax.org/books/biology/pages/30-2-stems"},
+ alveoli:{title:"NCBI Bookshelf · Histology, Alveolar Cells",url:"https://www.ncbi.nlm.nih.gov/books/NBK557542/"},
+ sunflower:{title:"University of Helsinki · Sunflower inflorescences",url:"https://www.helsinki.fi/en/news/life-sciences/researchers-determine-why-spirals-gerbera-inflorescences-follow-fibonacci-sequence"}
+} as const;
+function bioReviewedNode(
+ organism:BioOrganism,id:string,name:string,description:string
+):Pick<BioNode,"name"|"description"|"source">{
+ const parts=id.split("/");
+ const tail=parts.at(-1)??"";
+ const rootHair=tail==="корневой-волосок"||tail==="клетка-корневого-волоска";
+ if(rootHair)return {
+  name:"Клетка ризодермы с корневым волоском",
+  description:"Корневой волосок — вырост одной клетки ризодермы в зоне всасывания; он увеличивает площадь поглощения воды и растворённых минеральных веществ.",
+  source:BIO_REFERENCES.roots
+ };
+ if(organism==="sunflower"&&tail==="цветок")return {
+  name:"Соцветие-корзинка",
+  description:"Это не один цветок: корзинка подсолнечника состоит из множества мелких трубчатых цветков в центре и язычковых цветков по краю.",
+  source:BIO_REFERENCES.sunflower
+ };
+ if(organism==="sunflower"&&tail==="эпидермис-лепестка")return {
+  name:"Эпидермис венчика язычкового цветка",
+  description:"Покровные клетки образуют наружный слой язычкового цветка на краю соцветия-корзинки.",
+  source:BIO_REFERENCES.sunflower
+ };
+ if(organism==="sunflower"&&tail==="клетка-эпидермиса")return {
+  name:"Клетка эпидермиса венчика",
+  description:"Покровная клетка поверхности язычкового цветка. Окраска венчика обусловлена пигментами, а не обязательным наличием хлоропластов.",
+  source:BIO_REFERENCES.sunflower
+ };
+ if(organism==="cat"&&tail==="сенсорная-система")return {
+  name:"Зрительная сенсорная система",
+  description:"Глаз воспринимает свет; зрительный нерв передаёт сигналы к нервным центрам, участвующим в обработке зрительной информации."
+ };
+ if(tail==="пневмоцит-i-типа"||tail==="эпителий-альвеол")return {
+  name,description,source:BIO_REFERENCES.alveoli
+ };
+ if(tail==="сосудистый-элемент"||tail==="ксилема")return {
+  name,
+  description:tail==="сосудистый-элемент"
+   ?"Зрелый проводящий элемент ксилемы мёртв и не имеет ядра и живого содержимого. Перфорации обеспечивают транспорт воды вдоль сосудов."
+   :description,
+  source:BIO_REFERENCES.stem
+ };
+ return {name,description};
+}
+/** A sunflower flower-head is a compound inflorescence, not a single organ.
+ * Retain the five-step school atlas navigation, but label its level honestly. */
+export function bioLevelName(node:BioNode):string{
+ if(node.level==="system"&&(node.id.startsWith("sunflower/")||node.id.startsWith("oak/")))
+  return "Орган / комплекс органов";
+ if(node.level==="organ"&&node.id==="sunflower/генеративные-органы/цветок")
+  return "Соцветие";
+ return BIO_LEVEL_LABELS[node.level];
+}
+/** Stable multiple-choice alternatives. Never omit the correct answer even
+ * if it is the last cell in the last path. No network or random source needed. */
+export function bioTaskChoices(nodes:BioNode[],target:BioNode,count=4):BioNode[]{
+ const candidates=nodes.filter(node=>node.level===target.level&&node.id!==target.id);
+ const scored=candidates.map(node=>{
+  // Prefer genuine alternatives in a different parent branch to an
+  // identical sibling, so a one-child image is not an automatic "win".
+  const idScore=[...node.id].reduce((v,c)=>(v*31+c.charCodeAt(0))%997,7);
+  return {node,score:node.parentId===target.parentId?0:1,idScore};
+ }).sort((a,b)=>a.score-b.score||a.idScore-b.idScore);
+ const result=[target,...scored.slice(0,Math.max(0,count-1)).map(item=>item.node)];
+ return result.sort((a,b)=>a.name.localeCompare(b.name,"ru-RU"));
 }
