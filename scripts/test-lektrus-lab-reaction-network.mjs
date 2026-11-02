@@ -543,8 +543,8 @@ for(const id of ["Li2CO3","NaF","K2Cr2O7"]){
  assert.ok((result.solidMol[id]??0)>0,id+" should crystallize in binary pure water");
 }
 const dataOnly=Object.values(bulkBinary).reduce((n,row)=>n+row.filter(v=>v!==null).length,0);
-assert.equal(dataOnly,52);
-console.log("Eleven salt solubility datasets; 52 measured knots; hydrate-safe crystallization");
+assert.equal(dataOnly,54);
+console.log("Eleven salt solubility datasets; 54 measured knots; hydrate-safe crystallization");
 
 // Heat capacity of these exact dry compounds, not the unknown mixture Cp.
 // Source entries are J/g/K, from University Medical Lublin and
@@ -1517,8 +1517,8 @@ for(const [formula,reference] of [["NH4Cl",37.2],["KCl",34.2],["NaCl",35.9],["NH
  assert.ok(row,"Missing handbook datum "+formula);
  approximately(row.sourceValue,reference,1e-12);
  approximately(literature.labExactMeasuredSolubility(formula,19.85),reference,1e-12);
- if(formula==="Na2SO4")assert.equal(
-  physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,20),undefined);
+ if(formula==="Na2SO4")approximately(
+  physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,20),19.2,1e-12);
  else assert.ok(Number.isFinite(
   physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,20)));
 }
