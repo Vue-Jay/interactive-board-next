@@ -142,7 +142,7 @@ function TissuePanel({kind,cell}:{kind:BioRepresentativeMicroPlate["kind"];cell:
   <Vessel x={83} y={279} length={316}/>
   {cell&&<path d="M60 133Q211 104 425 132" stroke="#e7ad9c" strokeWidth="6" fill="none"/>}
  </g>;
- case "pine-needle-mesophyll":if(cell)return <g>
+ case "pine-needle-mesophyll":return cell?<g>
   <path d="M116 88Q130 73 155 87L186 69L219 88L265 75L295 93L357 82L370 122L361 166L381 205L355 257L299 254L260 281L200 266L155 276L115 235L124 190L101 150Z"
    fill="#c2dfaa" stroke="#729967" strokeWidth="8"/>
   <path d="M146 117Q231 87 338 117L346 221Q262 257 143 222Z" fill="#dceec5" stroke="#aacb9b" strokeWidth="3"/>
@@ -151,8 +151,7 @@ function TissuePanel({kind,cell}:{kind:BioRepresentativeMicroPlate["kind"];cell:
    return <Chlor key={i} x={240+Math.cos(a)*rad} y={177+Math.sin(a)*rad*.63} r={9}/>;
   })}
   <N x={157} y={216} r={17}/>
- </g>;
- case "pine-needle-mesophyll":return <g>
+ </g>:<g>
   <path d="M65 180Q141 68 238 77Q343 74 415 178Q346 284 236 279Q136 283 65 180Z" fill="#c6dfa6" stroke="#71966c" strokeWidth="9"/>
   <path d="M101 180Q155 105 238 111Q318 98 374 181Q319 255 239 244Q155 251 101 180Z" fill="#e8efc9" stroke="#9bb78a" strokeWidth="5"/>
   {Array.from({length:cell?12:21},(_,i)=>{const a=i*2.399,rad=cell?68:99;
@@ -173,7 +172,7 @@ function TissuePanel({kind,cell}:{kind:BioRepresentativeMicroPlate["kind"];cell:
    </g>;})}
   <path d="M48 280H431" stroke="#a3bd92" strokeWidth="6"/>
  </g>;
- case "pine-microsporangium":if(cell)return <g>
+ case "pine-microsporangium":return cell?<g>
   <circle cx="180" cy="181" r="93" fill="#e3d2a2" stroke="#b39b71" strokeWidth="8"/>
   <circle cx="180" cy="181" r="77" fill="#f1e3b8" stroke="#b8a376" strokeWidth="5"/>
   <N x={180} y={176} r={31}/>
@@ -183,8 +182,7 @@ function TissuePanel({kind,cell}:{kind:BioRepresentativeMicroPlate["kind"];cell:
   <text x="180" y="299" textAnchor="middle" fontSize="12" fill="#94794f">Спороцит 2n</text>
   <text x="358" y="202" textAnchor="middle" fontSize="12" fill="#94794f">После мейоза</text>
   <text x="358" y="220" textAnchor="middle" fontSize="12" fill="#94794f">4 микроспоры n</text>
- </g>;
- case "pine-microsporangium":return <g>
+ </g>:<g>
   <ellipse cx="240" cy="180" rx="157" ry="110" fill="#c6b891" stroke="#9d916e" strokeWidth="9"/>
   <ellipse cx="240" cy="182" rx="130" ry="79" fill="#f1e4b8" stroke="#b4a37d" strokeWidth="7"/>
   {Array.from({length:cell?1:19},(_,i)=>{const a=i*2.4,r=Math.sqrt(i)*25;
@@ -204,7 +202,7 @@ function TissuePanel({kind,cell}:{kind:BioRepresentativeMicroPlate["kind"];cell:
    </g>;})}
   {!cell&&<path d="M54 277Q113 223 168 275Q228 222 282 273Q351 223 420 276" stroke="#87ac85" strokeWidth="8" fill="none"/>}
  </g>;
- case "fern-sporocyte":if(cell)return <g>
+ case "fern-sporocyte":return cell?<g>
   <circle cx="180" cy="185" r="91" fill="#d9c498" stroke="#a68d6c" strokeWidth="9"/>
   <circle cx="180" cy="185" r="73" fill="#f4e1b4" stroke="#b69e78" strokeWidth="5"/>
   <N x={181} y={163} r={30}/>
@@ -215,8 +213,7 @@ function TissuePanel({kind,cell}:{kind:BioRepresentativeMicroPlate["kind"];cell:
   <path d="M345 118l21 24m0-24-21 24" stroke="#987998" strokeWidth="4"/>
   {[[330,217],[379,217],[330,263],[379,263]].map(([x,y],i)=><circle key={i} cx={x} cy={y} r="16" fill="#d5b786" stroke="#a18660" strokeWidth="3"/>)}
   <text x="356" y="307" textAnchor="middle" fill="#8b7350" fontSize="11">Микроспоры n</text>
- </g>;
- case "fern-sporocyte":return <g>
+ </g>:<g>
   <path d="M110 194Q130 91 224 83Q334 85 364 188Q346 277 240 284Q141 281 110 194Z"
    fill="#d2b991" stroke="#967d66" strokeWidth="10"/>
   <path d="M143 194Q157 119 231 111Q318 116 334 195Q314 256 239 257Q163 257 143 194Z"
