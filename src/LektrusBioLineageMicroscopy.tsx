@@ -153,6 +153,58 @@ export const LINEAGE_MICRO_SPECIES:readonly Species[]=["earthworm","seastar","cr
 export function lineageMicroKind(organism:Species,branch:number):string|null{
  return branch>=0&&branch<3?theme[organism][branch]:null;
 }
+/** The three cell annotations belong to real anatomical structures and
+ * should land ON their illustration, not at identical positions for every taxon.
+ * Coordinates are stage pixels, never physical micrometres.
+ */
+type Mark={x:number;y:number};
+type Three=readonly [Mark,Mark,Mark];
+const featureSpots:Record<Species,readonly [Three,Three,Three]>={
+ earthworm:[
+  [{x:195,y:141},{x:259,y:115},{x:242,y:222}],
+  [{x:177,y:94},{x:253,y:125},{x:258,y:214}],
+  [{x:180,y:95},{x:304,y:127},{x:221,y:216}]
+ ],
+ seastar:[
+  [{x:235,y:124},{x:327,y:189},{x:253,y:206}],
+  [{x:200,y:157},{x:266,y:117},{x:238,y:231}],
+  [{x:154,y:167},{x:328,y:174},{x:240,y:203}]
+ ],
+ crayfish:[
+  [{x:224,y:105},{x:277,y:142},{x:237,y:209}],
+  [{x:217,y:125},{x:327,y:243},{x:241,y:208}],
+  [{x:161,y:162},{x:279,y:179},{x:355,y:237}]
+ ],
+ horsetail:[
+  [{x:180,y:144},{x:265,y:103},{x:241,y:260}],
+  [{x:191,y:169},{x:239,y:177},{x:284,y:142}],
+  [{x:241,y:180},{x:284,y:213},{x:173,y:132}]
+ ],
+ lizard:[
+  [{x:169,y:156},{x:311,y:158},{x:238,y:207}],
+  [{x:206,y:141},{x:318,y:208},{x:240,y:181}],
+  [{x:198,y:129},{x:262,y:184},{x:241,y:248}]
+ ],
+ spider:[
+  [{x:173,y:126},{x:298,y:202},{x:244,y:182}],
+  [{x:183,y:158},{x:282,y:114},{x:242,y:233}],
+  [{x:242,y:182},{x:297,y:153},{x:324,y:236}]
+ ],
+ clubmoss:[
+  [{x:166,y:132},{x:242,y:97},{x:247,y:220}],
+  [{x:239,y:177},{x:294,y:223},{x:172,y:131}],
+  [{x:156,y:111},{x:237,y:191},{x:276,y:219}]
+ ],
+ magnolia:[
+  [{x:168,y:124},{x:266,y:95},{x:253,y:221}],
+  [{x:145,y:184},{x:302,y:121},{x:242,y:225}],
+  [{x:182,y:108},{x:301,y:92},{x:243,y:221}]
+ ]
+};
+export function lineageMicroSpots(organism:Species,branch:number):Three{
+ return featureSpots[organism][branch]??[{x:190,y:157},{x:290,y:195},{x:244,y:251}];
+}
+
 export default function LektrusBioLineageMicroscopy({organism,branch,level,name}:Props):ReactNode{
  const kind=lineageMicroKind(organism,branch);
  if(!kind)return null;
