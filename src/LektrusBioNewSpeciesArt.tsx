@@ -4,6 +4,7 @@
  */
 import type {ReactNode} from "react";
 import LektrusBioDetailedLineageSpecimens from "./LektrusBioDetailedLineageSpecimens";
+import LektrusBioLineageMicroscopy from "./LektrusBioLineageMicroscopy";
 import {bioNewCellFeatures,type BioNewOrganism} from "./lektrusBioNewLineages";
 import type {BioNode} from "./lektrusBioMicroscopeModel";
 
@@ -183,7 +184,9 @@ export default function LektrusBioNewSpeciesArt({organism,node,selectedFeature,o
  const cellFeatures=node.level==="cell"&&onFeatureSelect?bioNewCellFeatures(organism,node.name):[];
  const spots=[{x:192,y:152},{x:293,y:195},{x:243,y:251}];
  return <g data-bio-new-species={organism} data-bio-new-level={node.level}>
-  <SectionView organism={organism} branch={chainIndex} level={node.level}/>
+  {(node.level==="tissue"||node.level==="cell")
+   ?<LektrusBioLineageMicroscopy organism={organism} branch={chainIndex} level={node.level} name={node.name}/>
+   :<SectionView organism={organism} branch={chainIndex} level={node.level}/>}
   {cellFeatures.map((item,i)=>{
    const pt=spots[i];
    return <g key={item.name} transform={`translate(${pt.x} ${pt.y})`}
