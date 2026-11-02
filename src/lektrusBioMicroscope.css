@@ -335,3 +335,22 @@
 .lektrus-bio-specimen-explainer>a{font-size:11px;font-weight:750;color:#28664f;text-decoration:underline;text-underline-offset:2px}
 .lektrus-bio-specimen-explainer>small{font-size:10px;line-height:1.42;color:#688675}
 @media(prefers-reduced-motion:reduce){.lektrus-bio-specimen-plate{transition:none!important;animation:none!important}}
+
+
+/* Cell-level inspection: precise accessible hotspots in eight teaching plates.
+ * Keeps all art offline, with no JS render loop and no fabricated scale bar. */
+.lektrus-bio-cell-hotspot{cursor:pointer;outline:none;touch-action:manipulation}
+.lektrus-bio-cell-hotspot>circle{transition:stroke-width .14s ease,fill .14s ease,transform .14s ease}
+.lektrus-bio-cell-hotspot:hover>circle:first-child,.lektrus-bio-cell-hotspot.is-selected>circle:first-child{fill:#b9e7cb;stroke:#2e8466;stroke-width:5px}
+.lektrus-bio-cell-hotspot.is-selected>circle:nth-child(2){stroke:#156d58;stroke-width:4px}
+.lektrus-bio-cell-hotspot:focus-visible>circle:first-child{stroke:#185b83;stroke-width:6px;stroke-dasharray:5 4}
+.lektrus-bio-cell-inspector{display:grid;gap:7px;padding:10px 12px;border:1px solid #b5d8be;border-radius:11px;background:linear-gradient(155deg,#f8fcf3,#e7f5e8);color:#315f4e}
+.lektrus-bio-cell-inspector>strong{font-size:13px;font-weight:850;line-height:1.3}
+.lektrus-bio-cell-inspector>p{margin:0;font-size:11px;line-height:1.48;color:#4a6c5c}
+.lektrus-bio-cell-inspector>.lektrus-bio-cell-hint{font-size:11px;font-weight:700;color:#337959;line-height:1.4}
+.lektrus-bio-cell-inspector>.lektrus-bio-cell-selection{background:#fffdf4;border:1px solid #d7e0bc;border-radius:9px;padding:9px 11px;display:grid;gap:4px}
+.lektrus-bio-cell-selection>b{font-size:12px;color:#285e4b}
+.lektrus-bio-cell-selection>p{font-size:11px;margin:0;color:#4a6656;line-height:1.5}
+.lektrus-bio-cell-inspector>small{font-size:10px;color:#6b8372;line-height:1.5}
+.lektrus-bio-cell-inspector>a{font-size:10px;font-weight:750;color:#26765a;text-decoration:underline;text-underline-offset:2px}
+@media(prefers-reduced-motion:reduce){.lektrus-bio-cell-hotspot>circle{transition:none!important}}
