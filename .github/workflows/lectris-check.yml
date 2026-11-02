@@ -65,6 +65,8 @@ jobs:
         run: node scripts/test-lektrus-bio-core-microscopy.mjs
       - name: Eight lineage microscopic plates and interactive anatomy
         run: node scripts/test-lektrus-bio-lineage-microscopy.mjs
+      - name: Reviewed bird fish amphibian insect mollusc and plant microscopic atlas
+        run: node scripts/test-lektrus-bio-representative-microscopy.mjs
       - name: Biology drag and place anatomy exercises
         run: node scripts/test-lektrus-bio-assembly.mjs
       - name: Biology organ systems and relief regression
