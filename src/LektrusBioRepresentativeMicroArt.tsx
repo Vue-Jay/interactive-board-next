@@ -226,3 +226,22 @@ function TissuePanel({kind,cell}:{kind:BioRepresentativeMicroPlate["kind"];cell:
  default:return null;
  }
 }
+
+export default function LektrusBioRepresentativeMicroArt({plate}:{
+ plate:BioRepresentativeMicroPlate
+}):ReactNode{
+ const plant=["pine","fern","wheat"].includes(plate.organism);
+ const cell=plate.level==="cell";
+ return <g data-bio-representative-micro={plate.kind}
+  data-bio-representative-level={plate.level} data-bio-representative-species={plate.organism}>
+  <rect width="480" height="330" fill={plant?"#f1f7e9":"#fbf4ec"}/>
+  <g className="lektrus-bio-representative-micro-anatomy"><TissuePanel kind={plate.kind} cell={cell}/></g>
+  <g pointerEvents="none" aria-hidden="true">
+   <rect x="10" y="7" width="460" height="50" rx="10" fill="#fcfff9" fillOpacity=".95" stroke="#d1dfd6"/>
+   <text x="22" y="26" fill={ink} fontSize="13" fontWeight="800">
+    {plate.name.length>46?plate.name.slice(0,45)+"…":plate.name}
+   </text>
+   <text x="22" y="44" fill="#5e8074" fontSize="10.5">{plate.note.length>76?plate.note.slice(0,74)+"…":plate.note}</text>
+  </g>
+ </g>;
+}
