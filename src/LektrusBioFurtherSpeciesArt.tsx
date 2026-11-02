@@ -3,7 +3,7 @@
  */
 import type {ReactNode} from "react";
 import LektrusBioDetailedLineageSpecimens from "./LektrusBioDetailedLineageSpecimens";
-import LektrusBioLineageMicroscopy from "./LektrusBioLineageMicroscopy";
+import LektrusBioLineageMicroscopy,{lineageMicroSpots} from "./LektrusBioLineageMicroscopy";
 import type {BioFurtherOrganism,BioNode} from "./lektrusBioMicroscopeModel";
 import {bioFurtherCellFeatures} from "./lektrusBioMicroscopeModel";
 const ink="#315b50",gold="#c59d72",pink="#d8a5a2",violet="#9f8db1";
@@ -152,7 +152,7 @@ export default function LektrusBioFurtherSpeciesArt({organism,node,selectedFeatu
   <g transform="translate(125 58) scale(.50)">{section}</g>
  </g>;
  const items=node.level==="cell"&&onFeatureSelect?bioFurtherCellFeatures(organism,node.name):[];
- const points=[{x:190,y:157},{x:290,y:195},{x:244,y:251}];
+ const points=lineageMicroSpots(organism,which);
  return <g data-bio-further-species={organism} data-bio-further-level={node.level}>
   {(node.level==="tissue"||node.level==="cell")
    ?<LektrusBioLineageMicroscopy organism={organism} branch={which} level={node.level} name={node.name}/>
