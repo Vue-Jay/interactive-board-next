@@ -5,7 +5,12 @@ const load=(file)=>{
  const js=ts.transpileModule(fs.readFileSync(file,"utf8"),{
   compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
  }).outputText;
- const exports={};new Function("exports",js)(exports);return exports;
+ const exports={};
+ new Function("exports","require",js)(exports,(name)=>{
+  if(name==="./lektrusBioAdditionalSpecimenPlates")return load("src/lektrusBioAdditionalSpecimenPlates.ts");
+  throw Error("Unexpected dependency "+name);
+ });
+ return exports;
 };
 const bio=load("src/lektrusBioMicroscopeModel.ts");
 const model=load("src/lektrusBioSpecimenPlates.ts");
@@ -17,7 +22,7 @@ for(const organism of species){
  const nodes=bio.bioNodes(organism),root=nodes[0],byId=new Map(nodes.map(n=>[n.id,n]));
  assert.equal(root.id,organism);
  const found=nodes.map(n=>model.bioSpecimenPlateFor(organism,n)).filter(Boolean);
- assert.equal(found.length,2,organism+" must have exactly one real organ and one real tissue plate");
+ assert.equal(found.length,6,organism+" must have three real organ and three real tissue plates");
  for(const level of ["organ","tissue"]){
   const plate=model.BIO_SPECIMEN_PLATES[organism+":"+level];
   assert.ok(plate,"missing "+organism+" "+level);
@@ -41,10 +46,11 @@ for(const organism of species){
   assert.equal(model.bioSpecimenChildSpot(organism,n,root),null,
    "unrelated species node must not get a hotspot");
  }
- const ordinary=nodes.filter(n=>n.level==="organ"||n.level==="tissue").filter(n=>!found.includes(model.bioSpecimenPlateFor(organism,n)));
- assert.ok(ordinary.length>=4,"other anatomical branches should remain available");
- assert.ok(ordinary.every(n=>!model.bioSpecimenPlateFor(organism,n)),
- "reviewed pictures must not be borrowed for unrelated organs");
+ const uncovered=nodes.filter(n=>n.level==="organ"||n.level==="tissue")
+  .filter(n=>!model.bioSpecimenPlateFor(organism,n));
+ assert.equal(uncovered.length,0,"all eight-species organ and tissue branches now require their own art");
+ assert.equal(found.filter(p=>p.level==="organ").length,3);
+ assert.equal(found.filter(p=>p.level==="tissue").length,3);
 }
 for(const organism of ["human","cat","sunflower","oak"]){
  const nodes=bio.bioNodes(organism);

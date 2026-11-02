@@ -4,6 +4,8 @@
  * biological source via lektrusBioSpecimenPlates.ts.
  */
 import type {ReactNode} from "react";
+import LektrusBioAdditionalSpecimenArt from "./LektrusBioAdditionalSpecimenArt";
+import {bioExtraSpecimenPlateFor} from "./lektrusBioAdditionalSpecimenPlates";
 import type {BioOrganism,BioNode} from "./lektrusBioMicroscopeModel";
 import {bioSpecimenPlateFor} from "./lektrusBioSpecimenPlates";
 
@@ -242,9 +244,10 @@ const tissuePictures:Record<string,()=>ReactNode>={
 export default function LektrusBioOrganDetail({organism,node}:{organism:BioOrganism;node:BioNode}):ReactNode{
  const plate=bioSpecimenPlateFor(organism,node);
  if(!plate)return null;
- const Picture=(plate.level==="organ"?organPictures:tissuePictures)[organism];
- if(!Picture)return null;
+ const extra=bioExtraSpecimenPlateFor(organism,node);
+ const Picture=extra?null:(plate.level==="organ"?organPictures:tissuePictures)[organism];
  return <g className="lektrus-bio-specimen-plate" data-bio-specimen-plate={plate.id}>
-  <Picture/>
+  {extra?<LektrusBioAdditionalSpecimenArt kind={extra.kind} tissue={node.level==="tissue"}/>:
+   Picture?<Picture/>:null}
  </g>;
 }

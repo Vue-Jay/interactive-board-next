@@ -49,6 +49,8 @@ jobs:
         run: node scripts/test-lektrus-bio-cell-plates.mjs
       - name: Complete biology cell atlas and 72 scientific hotspots regression
         run: node scripts/test-lektrus-bio-complete-cell-atlas.mjs
+      - name: Complete eight-species organ and tissue atlas cross-sections
+        run: node scripts/test-lektrus-bio-complete-organ-tissue.mjs
       - name: Biology drag and place anatomy exercises
         run: node scripts/test-lektrus-bio-assembly.mjs
       - name: Biology organ systems and relief regression

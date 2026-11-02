@@ -3,6 +3,7 @@
  * continue to use their previous illustrations. No real optical scale.
  */
 import type {BioOrganism,BioNode} from "./lektrusBioMicroscopeModel";
+import {bioExtraSpecimenPlateFor} from "./lektrusBioAdditionalSpecimenPlates";
 export type BioSpecimenPlateKind="organ"|"tissue";
 export type BioSpecimenPlateInfo={
  id:string;organism:BioOrganism;level:BioSpecimenPlateKind;
@@ -55,8 +56,10 @@ for(const [organism,organ,tissue,title,caption,source,focus] of facts){
 export const BIO_SPECIMEN_PLATES:Readonly<Record<string,BioSpecimenPlateInfo>>=plates;
 export function bioSpecimenPlateFor(organism:BioOrganism,node:BioNode):BioSpecimenPlateInfo|null{
  if(node.level!=="organ"&&node.level!=="tissue")return null;
+ if(!node.id.startsWith(organism+"/"))return null;
  const plate=BIO_SPECIMEN_PLATES[organism+":"+node.level];
- return plate&&plate.nodeName===node.name?plate:null;
+ if(plate?.nodeName===node.name)return plate;
+ return bioExtraSpecimenPlateFor(organism,node);
 }
 export function bioSpecimenChildSpot(organism:BioOrganism,parent:BioNode,child:BioNode):{x:number;y:number}|null{
  const plate=bioSpecimenPlateFor(organism,parent);
