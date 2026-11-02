@@ -5,7 +5,7 @@
  */
 import type {BioOrganism} from "./lektrusBioMicroscopeModel";
 export type BioKingdom="animal"|"plant";
-export type BioTaxonRank="класс"|"клада"|"подкласс";
+export type BioTaxonRank="класс"|"клада"|"подкласс"|"порядок";
 export type BioRepresentative={name:string;scientific:string;anatomy?:BioOrganism};
 export type BioTaxon={
  id:string;kingdom:BioKingdom;section:string;sectionLatin:string;
@@ -87,7 +87,8 @@ section("plant","Зелёные водоросли (широкий школьн�
  ["trebouxiophyceae","Trebouxiophyceae","Требуксиофициевые","Одноклеточные зелёные водоросли; некоторые живут в симбиозе с грибами.","Часто коккоидные клетки","Симбиоз у ряда видов","Хлорелла|Chlorella vulgaris"]
 ]);
 section("plant","Мхи","Bryophyta",[
- ["bryopsida","Bryopsida","Листостебельные мхи","Мхи со спорофитом, развивающимся на гаметофите.","Ризоиды вместо настоящих корней","Споры в коробочке","Кукушкин лён|Polytrichum commune"],
+ ["bryopsida","Bryopsida","Зелёные мхи","Обширная линия листостебельных мхов со спорофитом, развивающимся на гаметофите.","Ризоиды вместо настоящих корней","Споры в коробочке","Фунария влагомерная|Funaria hygrometrica"],
+ ["polytrichopsida","Polytrichopsida","Политриховые мхи","Листостебельные мхи с хорошо развитыми фотосинтезирующими ламеллами на листьях.","Фотосинтезирующие ламеллы","Споры в коробочке","Кукушкин лён|Polytrichum commune"],
  ["sphagnopsida","Sphagnopsida","Сфагновые мхи","Мхи болот с водоудерживающими гиалиновыми клетками.","Мёртвые водоносные клетки","Участвуют в образовании торфа","Сфагнум|Sphagnum palustre"],
  ["andreaeopsida","Andreaeopsida","Андреевые мхи","Мхи каменистых местообитаний; коробочка вскрывается продольными щелями.","Растут на камнях","Характерное вскрытие коробочки","Андрея скальная|Andreaea rupestris"]
 ]);
@@ -115,11 +116,11 @@ section("plant","Цветковые растения","Angiosperms",[
  ["monocots","Monocots","Однодольные","Большая эволюционная линия цветковых, включающая злаки, орхидеи и лилии.","Одна семядоля у типичных видов","Параллельное жилкование у многих","Пшеница мягкая|Triticum aestivum"],
  ["eudicots","Eudicots","Эвдикоты","Крупнейшая линия цветковых с трёхбороздной пыльцой или её производными.","Триапертурная пыльца","Сетчатое жилкование у многих","Подсолнечник однолетний|Helianthus annuus|sunflower;Дуб черешчатый|Quercus robur|oak"],
  ["magnoliids","Magnoliids","Магнолииды","Одна из древних современных ветвей цветковых, включая магнолии и лавровые.","Разнообразные строения цветков","Часто ароматические вещества","Магнолия крупноцветковая|Magnolia grandiflora"],
- ["austrobaileyales","Austrobaileyales","Раннеотделившиеся цветковые","Небольшая эволюционная ветвь цветковых, отделившаяся до большинства современных групп.","Не относится к однодольным или эвдикотам","Разные формы роста","Бадьян настоящий|Illicium verum"]
+ ["austrobaileyales","Austrobaileyales","Австробэйлиецветные","Порядок рано отделившейся эволюционной ветви цветковых.","Не относится к однодольным или эвдикотам","Включает бадьян и родственные семейства","Бадьян настоящий|Illicium verum","Это порядок, а не класс цветковых растений."]
 ]);
-const clades=new Set(["monocots","eudicots","magnoliids","austrobaileyales"]);
+const clades=new Set(["monocots","eudicots","magnoliids"]);
 export const BIO_TAXA:ReadonlyArray<BioTaxon>=entries.map(t=>
- t.id==="equisetidae"?{...t,rank:"подкласс"}:clades.has(t.id)?{...t,rank:"клада"}:t);
+ t.id==="equisetidae"?{...t,rank:"подкласс"}:t.id==="austrobaileyales"?{...t,rank:"порядок"}:clades.has(t.id)?{...t,rank:"клада"}:t);
 export const bioTaxonById=(id:string):BioTaxon|undefined=>BIO_TAXA.find(t=>t.id===id);
 export const bioTaxaFor=(kingdom:BioKingdom):BioTaxon[]=>BIO_TAXA.filter(t=>t.kingdom===kingdom);
 export const bioTaxonForOrganism=(id:BioOrganism):BioTaxon|undefined=>
