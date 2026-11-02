@@ -2,6 +2,7 @@ import {useEffect,useMemo,useState} from "react";
 import type {BioMicroscopeDiagram,BioNode} from "./lektrusBioMicroscopeModel";
 import {BIO_LEVELS,BIO_LEVEL_LABELS,BIO_ORGANISMS,bioAncestors,bioChildren,bioNodes,bioLevelName,bioTaskChoices} from "./lektrusBioMicroscopeModel";
 import LektrusBioAnatomyScene from "./LektrusBioAnatomyScene";
+import LektrusBioAssemblyBoard from "./LektrusBioAssemblyBoard";
 import "./lektrusBioMicroscope.css";
 
 const clamp=(n:number)=>Math.max(0,Math.min(4,n));
@@ -64,7 +65,7 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
   <div className="lektrus-bio-path" aria-label="Путь изучения">
    {picked.map((n,i)=><button type="button" key={n.id} onClick={()=>setZoom(i)}>{n.name}{i<picked.length-1?" ›":""}</button>)}
   </div>
-  <div className="lektrus-bio-stage">
+  {diagram.activity!=="assemble"&&<div className="lektrus-bio-stage">
    <div className="lektrus-bio-specimen" aria-label={"Изучение структуры: "+selected.name}>
     <div className="lektrus-bio-scene-layer"
      style={{opacity:1-blend,transform:"scale("+(1+blend*.24)+")",
@@ -91,7 +92,7 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
      target="_blank" rel="noopener noreferrer">Источник: {selected.source.title}</a>}
     {children.length>0&&diagram.activity==="explore"&&<span className="lektrus-bio-detail-hint">Выберите часть, чтобы приблизить её</span>}
    </div>
-  </div>
+  </div>}
   {diagram.activity==="explore"?<div className="lektrus-bio-items" aria-label="Интерактивные части организма">
    {children.map(node=><button type="button" key={node.id} onClick={()=>next(node)}>
     <span className="lektrus-bio-dot" aria-hidden="true"/>
@@ -100,13 +101,14 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
     <span aria-hidden="true">＋</span>
    </button>)}
    {!children.length&&<p className="lektrus-bio-end">Клеточный уровень. Можно вернуться назад по шкале и исследовать другую ветвь организма.</p>}
-  </div>:<div className="lektrus-bio-task">
-   <strong>{diagram.activity==="assemble"?"Соберите последовательность уровней":"Подпишите выбранную структуру"} · {Math.min(progress,4)}/4</strong>
-   {target?<><p>Уровень «{bioLevelName(target)}». {diagram.activity==="assemble"?
-    "Выберите правильное звено цепочки.":hotspotQuestion?
+  </div>:diagram.activity==="assemble"?
+   <LektrusBioAssemblyBoard diagram={diagram} nodes={nodes}/>:
+   <div className="lektrus-bio-task">
+   <strong>Подпишите выбранную структуру · {Math.min(progress,4)}/4</strong>
+   {target?<><p>Уровень «{bioLevelName(target)}». {hotspotQuestion?
     "Найдите на изображении: "+target.name+". Нажмите на соответствующую метку.":
     "На схеме показана одна структура этого уровня. Выберите её точное название среди вариантов."}</p>
-    {(diagram.activity==="assemble"||!hotspotQuestion)&&<div className="lektrus-bio-task-answers">
+    {!hotspotQuestion&&<div className="lektrus-bio-task-answers">
      {options.map(node=><button type="button" key={node.id} onClick={()=>check(node)}>{node.name}</button>)}
     </div>}
    </>:<p>Задание выполнено. Все уровни расположены правильно.</p>}

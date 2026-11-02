@@ -6,7 +6,7 @@ import type {ReactNode} from "react";
 import type {BioNode,BioOrganism} from "./lektrusBioMicroscopeModel";
 import {BIO_ORGANISMS,bioVisualKey,bioChildSpot} from "./lektrusBioMicroscopeModel";
 
-type Props={organism:BioOrganism;node:BioNode;children:BioNode[];onSelect:(node:BioNode)=>void;interactive:boolean};
+type Props={organism:BioOrganism;node:BioNode;children:BioNode[];onSelect:(node:BioNode)=>void;interactive:boolean;focusChildId?:string};
 type BioVisualKey=ReturnType<typeof bioVisualKey>;
 const ink="#355f52";
 function OrganismShape({organism}:{organism:BioOrganism}){
@@ -191,7 +191,7 @@ function CellScene({keyName}:{keyName:BioVisualKey}){
    transform={"rotate("+(i*17)+" "+(128+i*73)+" "+(i%2?242:105)+")"}/>)}
  </g>;
 }
-export default function LektrusBioAnatomyScene({organism,node,children,onSelect,interactive}:Props){
+export default function LektrusBioAnatomyScene({organism,node,children,onSelect,interactive,focusChildId}:Props){
  const keyName=bioVisualKey(node);
  const shape:ReactNode=node.level==="organism"||node.level==="system"
   ?<><g opacity={node.level==="system"?.27:1}><OrganismShape organism={organism}/></g>
@@ -203,6 +203,16 @@ export default function LektrusBioAnatomyScene({organism,node,children,onSelect,
   aria-label={"Анатомическая схема: "+node.name}>
   <rect width="480" height="330" rx="18" fill="#f3f9f0"/>
   {shape}
+  {focusChildId&&children.map((child,i)=>{
+   if(child.id!==focusChildId)return null;
+   const pt=bioChildSpot(organism,node,child,i,children.length);
+   return <g key={child.id} className="lektrus-bio-focus-marker"
+    transform={"translate("+pt.x+" "+pt.y+")"} aria-hidden="true">
+    <circle r="35" fill="#eecb72" fillOpacity=".23" stroke="#b17830" strokeWidth="3" strokeDasharray="8 5"/>
+    <circle r="11" fill="#fff8e9" stroke="#ae722d" strokeWidth="4"/>
+    <circle r="4" fill="#ae722d"/>
+   </g>;
+  })}
   {interactive&&children.map((child,i)=>{
    const pt=bioChildSpot(organism,node,child,i,children.length);
    return <g key={child.id} role="button" tabIndex={0}

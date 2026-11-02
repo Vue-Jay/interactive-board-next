@@ -134,8 +134,10 @@ assert.ok(bioTaskChoices(oakNodes,preserved(oakNodes,"клетка-мезофи�
 const biologyView=fs.readFileSync("src/LektrusBioMicroscope.tsx","utf8");
 assert.match(biologyView,/const hotspotQuestion=diagram\.activity==="label"/,
  "Only multi-child diagram levels should rely on hotspots");
-assert.match(biologyView,/diagram\.activity==="assemble"\|\|!hotspotQuestion/,
- "Single-child levels must have meaningful alternative labels");
+assert.match(biologyView,/!hotspotQuestion&&<div className="lektrus-bio-task-answers">/,
+ "Single-child labeling levels must retain meaningful answer alternatives");
+assert.match(biologyView,/diagram\.activity==="assemble"\?\s*<LektrusBioAssemblyBoard/,
+ "Assembly must use the new graphical task rather than the old choice-only sequence");
 assert.match(biologyView,/Источник: \{selected\.source\.title\}/,
  "Scientific sources must be accessible from the actual structure");
 assert.match(biologyView,/без реального оптического масштаба/,

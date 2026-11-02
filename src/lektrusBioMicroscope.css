@@ -60,3 +60,49 @@
 @media(prefers-reduced-motion:reduce){
  .lektrus-bio-scene-layer,.lektrus-bio-hotspot .lektrus-bio-hotspot-halo{transition:none}
 }
+
+/* A complete school exercise rather than an answer button list. Positions
+   are tied to the anatomical image and the four unique ontology levels. */
+.lektrus-bio-build{display:flex;flex-direction:column;gap:9px;min-width:0;color:#28563d}
+.lektrus-bio-build-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.lektrus-bio-build-heading strong{font-size:15px}
+.lektrus-bio-build-heading p{margin:3px 0;color:#587763}
+.lektrus-bio-build-progress{font-weight:850;white-space:nowrap;color:#2a7450;background:#dcefe3;padding:4px 9px;border-radius:99px}
+.lektrus-bio-build-workbench{display:grid;grid-template-columns:minmax(0,41%) minmax(0,1fr);gap:9px;align-items:center;padding:9px;border:1px solid #b7d4c0;border-radius:13px;background:#fffefaf2}
+.lektrus-bio-build-specimen{display:grid;min-width:0;gap:4px;align-self:start}
+.lektrus-bio-build-specimen .lektrus-bio-anatomy-svg{width:100%;height:auto;max-height:265px;display:block;border-radius:9px;border:1px solid #c7ddc4}
+.lektrus-bio-build-specimen>small{font-size:10px;color:#66846c;text-align:center}
+.lektrus-bio-build-stack{display:grid;gap:5px;min-width:0;position:relative}
+.lektrus-bio-build-stack:before{content:"";position:absolute;left:17px;top:20px;bottom:20px;width:2px;background:#b4d8bf}
+.lektrus-bio-build-slot{position:relative}
+.lektrus-bio-build-drop{display:flex;align-items:center;text-align:left;gap:8px;min-width:0;width:100%;min-height:51px;border:1px dashed #a9c6b2!important;background:#f4faf4!important;border-radius:10px;padding:7px 9px!important;cursor:pointer;color:#28563d!important}
+.lektrus-bio-build-drop.is-ready{border-color:#398663!important;background:#e6f8e9!important}
+.lektrus-bio-build-drop.is-correct{border-color:#458c54!important;border-style:solid!important;background:#e0f4dd!important}
+.lektrus-bio-build-drop.is-wrong{border-color:#c6856b!important;border-style:solid!important;background:#fff0e5!important}
+.lektrus-bio-build-drop:focus-visible,.lektrus-bio-build-card:focus-visible{outline:3px solid #367aab;outline-offset:2px}
+.lektrus-bio-build-slot-number{display:grid;place-items:center;flex:0 0 24px;width:24px;height:24px;border-radius:50%;background:#36795b;color:#fff;font-size:11px;font-weight:900;z-index:1}
+.lektrus-bio-build-slot-text{display:flex;flex-direction:column;min-width:0;gap:2px;flex:1}
+.lektrus-bio-build-slot-text small{font-size:10px;color:#668473}
+.lektrus-bio-build-slot-text strong{font-size:11px;font-weight:780;overflow-wrap:anywhere;line-height:1.2}
+.lektrus-bio-build-slot-action{font-size:19px;color:#7a8e7c}
+.lektrus-bio-build-bank{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.lektrus-bio-build-group{background:#f9fcf8;padding:7px;border:1px solid #c6d9c6;border-radius:10px;min-width:0}
+.lektrus-bio-build-group>strong{display:block;font-size:11px;color:#5a7463;margin-bottom:6px}
+.lektrus-bio-build-cards{display:grid;grid-template-columns:1fr;gap:4px}
+.lektrus-bio-build-card{display:flex;align-items:center;text-align:left;justify-content:flex-start;gap:6px;min-width:0;min-height:37px;border-radius:8px;border:1px solid #b8d3c0!important;background:#fff!important;padding:7px!important;color:#28563d!important;font-size:11px!important;font-weight:720!important;line-height:1.15!important;cursor:grab;touch-action:none;overflow-wrap:anywhere}
+.lektrus-bio-build-card:active{cursor:grabbing}
+.lektrus-bio-build-card.is-selected{border-color:#2c7556!important;box-shadow:0 0 0 2px #6aa28155;background:#eaf7ed!important}
+.lektrus-bio-build-card.is-used{opacity:.65}
+.lektrus-bio-build-card-symbol{font-size:15px;flex:0 0 auto;color:#719880}
+.lektrus-bio-build-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lektrus-bio-build-check,.lektrus-bio-build-reset{border-radius:9px;padding:9px 12px!important;min-height:38px;border:1px solid #418565!important;font-weight:800!important}
+.lektrus-bio-build-check{background:#2d7655!important;color:#fff!important}
+.lektrus-bio-build-reset{background:transparent!important;color:#377358!important}
+.lektrus-bio-build-result{color:#2a7d4d;font-weight:900}
+.lektrus-bio-build-feedback{margin:0;color:#924c35;font-weight:740}
+.lektrus-bio-build-feedback.is-success{color:#327b4a}
+.lektrus-bio-build-note{display:block;color:#6e8673;font-size:10px;line-height:1.35}
+.lektrus-bio-build-ghost{position:fixed;z-index:10000;max-width:230px;padding:9px 12px;border:2px solid #438461;border-radius:10px;background:#fafff8;color:#28563d;font:800 12px/1.2 system-ui,sans-serif;box-shadow:0 7px 20px #17352135;pointer-events:none}
+@container(max-width:460px){.lektrus-bio-build-workbench{grid-template-columns:1fr}.lektrus-bio-build-bank{grid-template-columns:1fr}}
+@media(max-width:720px){.lektrus-bio-build-workbench{grid-template-columns:1fr}.lektrus-bio-build-bank{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.lektrus-bio-build-drop,.lektrus-bio-build-card{transition:none!important}}
