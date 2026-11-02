@@ -5,7 +5,7 @@
 import type {ReactNode} from "react";
 import {bioHistologyFor,type BioHistologyPlateId} from "./lektrusBioHistologyModel";
 type LabelProps={x:number;y:number;toX:number;toY:number;label:string;align?:"start"|"end"};
-const aqua="#74b9bb",green="#638c60",dark="#315a52",plum="#a487b0",gold="#d5ad6c";
+const aqua="#74b9bb",dark="#315a52",plum="#a487b0";
 function Callout({x,y,toX,toY,label,align="start"}:LabelProps){
  return <g className="lektrus-bio-histology-label" pointerEvents="none">
   <path d={`M${toX} ${toY}L${x} ${y-5}`} fill="none" stroke="#517a72" strokeWidth="1.8" strokeDasharray="3 3"/>
