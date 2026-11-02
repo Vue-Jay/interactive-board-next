@@ -97,6 +97,13 @@ assert.ok(inspect("AgNO3 + NaCl → AgCl↓ + NaN03").issues.some(v=>
 assert.equal(inspect("AgNO3 + NaCl → ").issues.filter(i=>i.kind==="missing").length,2,
  "Known but unfinished equations report which products are missing");
 assert.equal(inspect("AgNO3 + NaCl → KCl + NaNO3").status,"incorrect");
+assert.equal(model.parseEquationDraft("NaCl + KNO3 ≠ ").arrow,"≠");
+assert.equal(inspect("NaCl + KNO3 ≠ ").status,"correct",
+ "A reviewed no-reaction case is correctly represented with ≠");
+assert.equal(inspect("AgNO3 + NaCl ≠ ").status,"incorrect",
+ "An actual precipitation reaction must not be marked as absent");
+assert.equal(inspect("NaCl + KNO3 ≠ KCl").status,"incorrect",
+ "A no-reaction notation must not contain invented products");
 assert.equal(inspect("NaCl + KNO3 → KCl + NaNO3").status,"incorrect",
  "A balanced equation is not enough to establish a reaction");
 assert.equal(inspect("Na2CO3 + 2HCl → 2NaCl + CO2↑ + H2O").status,"correct");
