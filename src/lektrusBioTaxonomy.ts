@@ -4,9 +4,10 @@
  * for another species' anatomical illustration.
  */
 import type {BioOrganism} from "./lektrusBioMicroscopeModel";
+import type {BioAlternativeOrganism} from "./lektrusBioAlternativeAtlas";
 export type BioKingdom="animal"|"plant";
 export type BioTaxonRank="класс"|"клада"|"подкласс"|"порядок";
-export type BioRepresentative={name:string;scientific:string;anatomy?:BioOrganism};
+export type BioRepresentative={name:string;scientific:string;anatomy?:BioOrganism;microscopy?:BioAlternativeOrganism};
 export type BioTaxon={
  id:string;kingdom:BioKingdom;section:string;sectionLatin:string;
  name:string;scientific:string;rank:BioTaxonRank;
@@ -18,20 +19,21 @@ const entries:BioTaxon[]=[];
 function section(kingdom:BioKingdom,section:string,sectionLatin:string,rows:Raw[]){
  for(const [id,scientific,name,summary,trait1,trait2,samples,caution] of rows){
   const representatives=(samples??"").split(";").filter(Boolean).map(pair=>{
-   const [label,latin,anatomy]=pair.split("|");
-   return {name:label,scientific:latin,...(anatomy?{anatomy:anatomy as BioOrganism}:{})};
+   const [label,latin,anatomy,microscopy]=pair.split("|");
+   return {name:label,scientific:latin,...(anatomy?{anatomy:anatomy as BioOrganism}:{}),
+    ...(microscopy?{microscopy:microscopy as BioAlternativeOrganism}:{})};
   });
   entries.push({id,kingdom,section,sectionLatin,name,scientific,rank:"класс",summary,
    traits:[trait1,trait2],representatives,...(caution?{caution}:{})});
  }
 }
 section("animal","Губки","Porifera",[
- ["demospongiae","Demospongiae","Обыкновенные губки","Наиболее разнообразная группа губок; фильтруют воду через систему каналов.","Тело без настоящих органов","Скелет из спонгина и/или кремнёвых игл","Бадяга речная|Spongilla lacustris"],
+ ["demospongiae","Demospongiae","Обыкновенные губки","Наиболее разнообразная группа губок; фильтруют воду через систему каналов.","Тело без настоящих органов","Скелет из спонгина и/или кремнёвых игл","Бадяга речная|Spongilla lacustris||sponge"],
  ["calcarea","Calcarea","Известковые губки","Морские губки с известковыми скелетными иглами.","Фильтрация воды","Иглы из карбоната кальция","Клатрина|Clathrina clathrus"],
  ["hexactinellida","Hexactinellida","Стеклянные губки","Глубоководные и другие морские губки с кремнёвым скелетом.","Шестилучевые иглы","Многие ткани образуют синцитий","Корзинка Венеры|Euplectella aspergillum"]
 ]);
 section("animal","Стрекающие","Cnidaria",[
- ["hydrozoa","Hydrozoa","Гидроидные","Стрекающие с полипоидными или медузоидными стадиями; цикл развития различается.","Стрекательные клетки","У некоторых образуются колонии","Пресноводная гидра|Hydra vulgaris"],
+ ["hydrozoa","Hydrozoa","Гидроидные","Стрекающие с полипоидными или медузоидными стадиями; цикл развития различается.","Стрекательные клетки","У некоторых образуются колонии","Пресноводная гидра|Hydra vulgaris||hydra"],
  ["scyphozoa","Scyphozoa","Сцифоидные медузы","Большую часть заметного жизненного цикла составляет стадия медузы.","Стрекательные клетки","Преимущественно морские","Аурелия|Aurelia aurita"],
  ["anthozoa","Anthozoa","Коралловые полипы","Полипы без медузоидной стадии; многие формируют рифы.","Полипоидное тело","Среди представителей есть симбиотрофы","Актиния конская|Actinia equina"],
  ["cubozoa","Cubozoa","Кубомедузы","Морские медузы с кубовидным зонтиком и сложными органами зрения.","Четыре угла зонтика","Развитая зрительная система","Морская оса|Chironex fleckeri"]
@@ -109,19 +111,19 @@ section("animal","Хордовые","Chordata",[
  ["mammalia","Mammalia","Млекопитающие","Позвоночные с волосяным покровом и молочными железами.","Вскармливание молоком","Три слуховые косточки","Человек|Homo sapiens|human;Кошка домашняя|Felis catus|cat;Ёж европейский|Erinaceus europaeus"]
 ]);
 section("plant","Зелёные водоросли (широкий школьный обзор)","Chlorophyta",[
- ["chlorophyceae","Chlorophyceae","Хлорофициевые","Разнообразные одноклеточные и колониальные пресноводные зелёные водоросли.","Хлорофиллы a и b","Клеточные стенки у многих видов","Хламидомонада|Chlamydomonas reinhardtii"],
+ ["chlorophyceae","Chlorophyceae","Хлорофициевые","Разнообразные одноклеточные и колониальные пресноводные зелёные водоросли.","Хлорофиллы a и b","Клеточные стенки у многих видов","Хламидомонада|Chlamydomonas reinhardtii||chlamydomonas"],
  ["ulvophyceae","Ulvophyceae","Ульвофициевые","Многие морские зелёные водоросли с пластинчатыми или нитчатыми талломами.","Таллом без настоящих органов","Морские и пресноводные виды","Ульва|Ulva lactuca"],
  ["trebouxiophyceae","Trebouxiophyceae","Требуксиофициевые","Одноклеточные зелёные водоросли; некоторые живут в симбиозе с грибами.","Часто коккоидные клетки","Симбиоз у ряда видов","Хлорелла|Chlorella vulgaris"]
 ]);
 section("plant","Харовые и близкие зелёные водоросли","Streptophyta",[
  ["charophyceae","Charophyceae","Харовые водоросли","Сложно устроенные пресноводные зелёные водоросли с узлами и междоузлиями.","Таллом без настоящих органов","Половые органы с защитными клетками","Хара|Chara vulgaris"],
- ["zygnematophyceae","Zygnematophyceae","Зигнемовые водоросли","Пресноводные и наземные зелёные водоросли, родственные наземным растениям.","Конъюгация у многих","Нет жгутиковых стадий у многих","Спирогира|Spirogyra communis"],
+ ["zygnematophyceae","Zygnematophyceae","Зигнемовые водоросли","Пресноводные и наземные зелёные водоросли, родственные наземным растениям.","Конъюгация у многих","Нет жгутиковых стадий у многих","Спирогира|Spirogyra communis||spirogyra"],
  ["coleochaetophyceae","Coleochaetophyceae","Колеохетовые водоросли","Пресноводные зелёные водоросли с дисковидными и нитчатыми талломами.","Сложные деления клеток","Сохранение зиготы у ряда видов","Колеохета|Coleochaete scutata"]
 ]);
 
 section("plant","Мхи","Bryophyta",[
  ["bryopsida","Bryopsida","Зелёные мхи","Обширная линия листостебельных мхов со спорофитом, развивающимся на гаметофите.","Ризоиды вместо настоящих корней","Споры в коробочке","Фунария влагомерная|Funaria hygrometrica"],
- ["polytrichopsida","Polytrichopsida","Политриховые мхи","Листостебельные мхи с хорошо развитыми фотосинтезирующими ламеллами на листьях.","Фотосинтезирующие ламеллы","Споры в коробочке","Кукушкин лён|Polytrichum commune"],
+ ["polytrichopsida","Polytrichopsida","Политриховые мхи","Листостебельные мхи с хорошо развитыми фотосинтезирующими ламеллами на листьях.","Фотосинтезирующие ламеллы","Споры в коробочке","Кукушкин лён|Polytrichum commune||moss"],
  ["sphagnopsida","Sphagnopsida","Сфагновые мхи","Мхи болот с водоудерживающими гиалиновыми клетками.","Мёртвые водоносные клетки","Участвуют в образовании торфа","Сфагнум|Sphagnum palustre"],
  ["andreaeopsida","Andreaeopsida","Андреевые мхи","Мхи каменистых местообитаний; коробочка вскрывается продольными щелями.","Растут на камнях","Характерное вскрытие коробочки","Андрея скальная|Andreaea rupestris"]
 ]);
