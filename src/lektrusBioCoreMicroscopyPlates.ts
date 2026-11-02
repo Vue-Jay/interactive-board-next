@@ -42,9 +42,9 @@ const raw:ReadonlyArray<Raw>=[
 export const BIO_CORE_MICROSCOPY_PLATES:readonly BioCoreMicroPlate[]=raw.map(
  ([organism,level,name,kind,caption])=>({organism,level,name,kind,caption})
 );
-const byId=new Map(BIO_CORE_MICROSCOPY_PLATES.map(p=>[
+const byId=new Map<string,BioCoreMicroPlate>(BIO_CORE_MICROSCOPY_PLATES.map(p=>[
  p.organism+":"+p.level+":"+p.name,p
-]));
+] as const));
 export function bioCoreMicroscopyPlateFor(organism:BioOrganism,node:BioNode):BioCoreMicroPlate|null{
  if((node.level!=="tissue"&&node.level!=="cell")||!node.id.startsWith(organism+"/"))return null;
  return byId.get(organism+":"+node.level+":"+node.name)??null;
