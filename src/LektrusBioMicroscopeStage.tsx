@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from "react";
-import type {ChangeEvent,PointerEvent,WheelEvent,KeyboardEvent} from "react";
+import type {ChangeEvent,PointerEvent,KeyboardEvent} from "react";
 import {BIO_MICROSCOPE_SLIDES,bioStageZoomAt,bioStageMove,bioStageBound,microscopeClamp,type BioStageView} from "./lektrusBioMicroscopeSlides";
 import "./lektrusBioMicroscopeStage.css";
 type XY={x:number;y:number};
@@ -73,11 +73,21 @@ export default function LektrusBioMicroscopeStage(){
   pointers.current.delete(e.pointerId);
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
  };
- const wheel=(e:WheelEvent<HTMLDivElement>)=>{
-  e.preventDefault();const r=e.currentTarget.getBoundingClientRect(),{width,height}=dims();
-  setView(v=>bioStageZoomAt(v,v.zoom*Math.exp(-e.deltaY*.0018),
-   e.clientX-r.left-width/2,e.clientY-r.top-height/2,width,height));
- };
+ // React delegates wheel as a passive listener in supported browsers.
+ // Attach a non-passive listener directly to the glass so scrolling does
+ // not move the whole board while the teacher is magnifying the sample.
+ useEffect(()=>{
+  const element=viewport.current;if(!element)return;
+  const handleWheel=(event:globalThis.WheelEvent)=>{
+   event.preventDefault();
+   const bounds=element.getBoundingClientRect();
+   const width=bounds.width,height=bounds.height;
+   setView(v=>bioStageZoomAt(v,v.zoom*Math.exp(-event.deltaY*.0018),
+    event.clientX-bounds.left-width/2,event.clientY-bounds.top-height/2,width,height));
+  };
+  element.addEventListener("wheel",handleWheel,{passive:false});
+  return ()=>element.removeEventListener("wheel",handleWheel);
+ },[]);
  const keyboard=(e:KeyboardEvent<HTMLDivElement>)=>{
   const shifts:Record<string,XY>={ArrowLeft:{x:-28,y:0},ArrowRight:{x:28,y:0},
    ArrowUp:{x:0,y:-28},ArrowDown:{x:0,y:28}};
@@ -108,7 +118,7 @@ export default function LektrusBioMicroscopeStage(){
      aria-label="Перетаскивайте препарат, используйте колесо или жест двумя пальцами для увеличения, стрелки клавиатуры для перемещения"
      onPointerDown={down} onPointerMove={move} onPointerUp={end} onPointerCancel={end}
      onLostPointerCapture={e=>pointers.current.delete(e.pointerId)}
-     onWheel={wheel} onKeyDown={keyboard}>
+     onKeyDown={keyboard}>
      {!broken&&<img className="lektrus-bio-photo-image" key={src} src={src}
       draggable={false} alt={local?"Загруженная фотография микропрепарата":slide.name}
       onLoad={e=>{setLoaded(true);setResolution({w:e.currentTarget.naturalWidth,h:e.currentTarget.naturalHeight});}}

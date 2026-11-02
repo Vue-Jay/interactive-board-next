@@ -30,10 +30,13 @@ assert.equal(bioStageBound({x:999999,y:-999999,zoom:99},400,250).zoom,12);
 assert.equal(bioStageBound({x:NaN,y:0,zoom:1},600,400).y,0);
 const stage=fs.readFileSync("src/LektrusBioMicroscopeStage.tsx","utf8");
 for(const control of ["onPointerDown={down}","onPointerMove={move}","onPointerUp={end}",
- "onPointerCancel={end}","onWheel={wheel}","onKeyDown={keyboard}","type=\"file\"",
+ "onPointerCancel={end}","onKeyDown={keyboard}","type=\"file\"",
  "URL.createObjectURL","URL.revokeObjectURL","setFocus(0)","aria-label=\"Яркость осветителя\"",
  "aria-label=\"Фокусировочный винт\"","role=\"region\"","aria-pressed={i===objective}"])
  assert.ok(stage.includes(control),"Microscope missing functional control: "+control);
+assert.match(stage,/element.addEventListener\("wheel",handleWheel,\{passive:false\}\)/);
+assert.match(stage,/element.removeEventListener\("wheel",handleWheel\)/);
+assert.match(stage,/event.preventDefault\(\)/);
 assert.match(stage,/bioStageZoomAt\(v,v.zoom\*Math\.exp/);
 assert.match(stage,/map.size>=2/);
 assert.match(stage,/if\(!file\|\|!file.type.startsWith\("image\/"\)\|\|file.size>24\*1024\*1024\)return/);
