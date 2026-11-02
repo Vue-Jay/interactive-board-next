@@ -52,10 +52,10 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
  const nodes=useMemo(()=>bioNodes(diagram.organism),[diagram.organism]);
  const meta=BIO_ORGANISMS[diagram.organism];
  const [zoom,setZoom]=useState(0);
- const [path,setPath]=useState<string[]>([diagram.organism]);
+ const [path,setPath]=useState<string[]>(diagram.assignmentPath);
  const [progress,setProgress]=useState(1);
  const [feedback,setFeedback]=useState("");
- useEffect(()=>{setZoom(0);setPath([diagram.organism]);setProgress(1);setFeedback("");},[diagram.organism,diagram.activity,diagram.assignmentPath.join("|")]);
+ useEffect(()=>{setZoom(0);setPath(diagram.assignmentPath);setProgress(1);setFeedback("");},[diagram.organism,diagram.activity,diagram.assignmentPath.join("|")]);
  const step=Math.round(zoom);
  const currentId=path[Math.min(step,path.length-1)]??diagram.organism;
  const selected=nodes.find(n=>n.id===currentId)??nodes[0];
@@ -65,7 +65,11 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
  const target=tutorial[progress];
  const next=(node:BioNode)=>{
   const ancestor=bioAncestors(nodes,node.id);
-  setPath(ancestor.map(n=>n.id));setZoom(clamp(ancestor.length-1));setFeedback("");
+  // Follow the first available child on the selected branch so the slider
+  // always has a genuine tissue and cell to magnify.
+  const branch=[...ancestor];
+  while(branch.length<5){const child=bioChildren(nodes,branch.at(-1)!.id)[0];if(!child)break;branch.push(child);}
+  setPath(branch.map(n=>n.id));setZoom(clamp(ancestor.length-1));setFeedback("");
  };
  const check=(node:BioNode)=>{
   if(!target)return;
@@ -125,7 +129,7 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
     </div>
    </>:<p>Задание выполнено. Все уровни расположены правильно.</p>}
    {feedback&&<p className="lektrus-bio-feedback" role="status">{feedback}</p>}
-   <button type="button" className="lektrus-bio-restart" onClick={()=>{setProgress(1);setPath([diagram.organism]);setZoom(0);setFeedback("");}}>Начать заново</button>
+   <button type="button" className="lektrus-bio-restart" onClick={()=>{setProgress(1);setPath(diagram.assignmentPath);setZoom(0);setFeedback("");}}>Начать заново</button>
   </div>}
   <footer>LEKTRUS · БИОЛОГИЯ · Учебные схемы, не в масштабе</footer>
  </section>;
