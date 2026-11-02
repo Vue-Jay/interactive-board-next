@@ -42,7 +42,6 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
    setZoom(clamp(BIO_LEVELS.indexOf(node.level)));}
  };
  const showLabels=diagram.activity==="explore";
- const isTask=diagram.activity!=="explore";
  const hotspotQuestion=diagram.activity==="label"&&!!target&&
   selected.id===target.parentId&&children.length>1;
  const options=target?bioTaskChoices(nodes,target):[];
