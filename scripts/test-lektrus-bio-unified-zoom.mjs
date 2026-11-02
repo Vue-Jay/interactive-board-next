@@ -126,4 +126,23 @@ for(const species of ["human","cat","oak","sunflower"]){
  }
 }
 
+
+const extraArt=fs.readFileSync("src/LektrusBioDetailedExtraSpecies.tsx","utf8");
+const extraAst=ts.createSourceFile("src/LektrusBioDetailedExtraSpecies.tsx",extraArt,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+assert.equal(extraAst.parseDiagnostics.length,0,"Malformed detailed extra species SVG artwork");
+for(const species of ["sparrow","perch","frog","bee","snail","pine","fern","wheat"]){
+ assert.match(extraArt,new RegExp('data-bio-illustration="'+species+'"'),"Missing unique vector specimen "+species);
+ assert.match(extraArt,new RegExp('case "'+species+'":return'),"Wrong species illustration dispatcher "+species);
+}
+const extraScene=fs.readFileSync("src/LektrusBioSpeciesArt.tsx","utf8");
+assert.match(extraScene,/return <LektrusBioDetailedExtraSpecies organism=\{organism\}\/>/);
+assert.doesNotMatch(extraScene,/case "sparrow":return <g>/,"Primitive bird silhouette must be replaced");
+for(const species of ["sparrow","perch","frog","bee","snail","pine","fern","wheat"]){
+ const root=bio.bioNodes(species)[0],kids=zoom.bioZoomChildCandidates(bio.bioNodes(species),root);
+ for(const [index,child] of kids.entries()){
+  const p=zoom.bioZoomPoint(species,root,child,index,kids.length);
+  assert.ok(p.x>=50&&p.x<=455&&p.y>=15&&p.y<=325,"Invalid illustration region for "+child.id);
+ }
+}
+
 console.log("Unified microscope: all 20 species traverse real anatomy, spatial proximity and anchor-preserving zoom, pinch/pan/keyboard, sample provenance and unchanged assignments OK. "+paths+" cell paths; "+links+" links.");
