@@ -57,6 +57,8 @@ jobs:
         run: node scripts/test-lektrus-bio-further-lineages.mjs
       - name: Real microphotograph microscope slide, pan, pinch and focusing regression
         run: node scripts/test-lektrus-bio-photo-microscope.mjs
+      - name: Unified deep zoom anatomy and microscopy spatial regression
+        run: node scripts/test-lektrus-bio-unified-zoom.mjs
       - name: Biology drag and place anatomy exercises
         run: node scripts/test-lektrus-bio-assembly.mjs
       - name: Biology organ systems and relief regression
