@@ -161,4 +161,17 @@ for(const file of ["src/LektrusBioNewSpeciesArt.tsx","src/LektrusBioFurtherSpeci
  assert.match(src,/LektrusBioDetailedLineageSpecimens/,"Detailed figures must be wired into all atlas modes");
 }
 
+
+const coreOrganArt=fs.readFileSync("src/LektrusBioDetailedCoreOrgans.tsx","utf8");
+const coreOrganAst=ts.createSourceFile("src/LektrusBioDetailedCoreOrgans.tsx",coreOrganArt,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+assert.equal(coreOrganAst.parseDiagnostics.length,0,"Malformed detailed organ illustrations");
+for(const organ of ["heart","lungs","brain","eye","muscle","gut","flower","root","leaf","wood"]){
+ assert.match(coreOrganArt,new RegExp('data-bio-organ-illustration="'+organ+'"'),"Missing visual reconstruction "+organ);
+ assert.match(coreOrganArt,new RegExp('case "'+organ+'":return'),"Missing anatomical organ route "+organ);
+}
+assert.match(coreOrganArt,/Анатомический рисунок сердца/,"The heart must be actual cardiac anatomy instead of a heart icon");
+assert.match(coreOrganArt,/с предсердиями, желудочками и крупными сосудами/);
+assert.match(anatomy,/LektrusBioDetailedCoreOrgans organism=\{organism\} keyName=\{keyName\}/);
+assert.doesNotMatch(anatomy,/C200 239 134 211/,"Remove primitive Valentine's heart shape");
+
 console.log("Unified microscope: all 20 species traverse real anatomy, spatial proximity and anchor-preserving zoom, pinch/pan/keyboard, sample provenance and unchanged assignments OK. "+paths+" cell paths; "+links+" links.");
