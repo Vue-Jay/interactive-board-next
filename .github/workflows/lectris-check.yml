@@ -61,6 +61,8 @@ jobs:
         run: node scripts/test-lektrus-bio-unified-zoom.mjs
       - name: Sunflower real epidermis photo and continuous guard cell depth regression
         run: node scripts/test-lektrus-bio-sunflower-epidermis.mjs
+      - name: Twenty-six reviewed core tissue and cell anatomy plates
+        run: node scripts/test-lektrus-bio-core-microscopy.mjs
       - name: Biology drag and place anatomy exercises
         run: node scripts/test-lektrus-bio-assembly.mjs
       - name: Biology organ systems and relief regression
