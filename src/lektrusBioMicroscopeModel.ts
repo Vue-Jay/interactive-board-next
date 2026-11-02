@@ -139,7 +139,7 @@ export const BIO_NEW_ROOT_POINTS:Record<BioNewOrganism,readonly [{x:number;y:num
  earthworm:[{x:162,y:231},{x:266,y:204},{x:359,y:180}],
  seastar:[{x:285,y:246},{x:286,y:132},{x:173,y:190}],
  crayfish:[{x:251,y:171},{x:267,y:94},{x:364,y:227}],
- horsetail:[{x:205,y:157},{x:183,y:134},{x:331,y:70}]
+ horsetail:[{x:290,y:160},{x:181,y:134},{x:331,y:70}]
 };
 
 
@@ -215,10 +215,10 @@ export const BIO_FURTHER_CHAINS:Record<BioFurtherOrganism,[string,string,string,
  ]
 };
 export const BIO_FURTHER_ROOT_POINTS:Record<BioFurtherOrganism,readonly [{x:number;y:number},{x:number;y:number},{x:number;y:number}]>={
- lizard:[{x:246,y:159},{x:278,y:184},{x:109,y:127}],
- spider:[{x:255,y:221},{x:307,y:221},{x:180,y:166}],
+ lizard:[{x:224,y:160},{x:296,y:203},{x:109,y:127}],
+ spider:[{x:257,y:187},{x:318,y:231},{x:180,y:166}],
  clubmoss:[{x:190,y:181},{x:310,y:112},{x:220,y:273}],
- magnolia:[{x:326,y:185},{x:207,y:91},{x:262,y:84}]
+ magnolia:[{x:326,y:185},{x:185,y:88},{x:265,y:105}]
 };
 const BIO_FURTHER_FEATURES:Record<BioFurtherOrganism,Record<string,[string,string,string]>>={
  lizard:{
