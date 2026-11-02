@@ -19,7 +19,7 @@ const source=(f:string)=>"https://commons.wikimedia.org/wiki/File:"+encodeURICom
 const PINE_IMAGES:Record<string,BioZoomImage>={
  organism:{file:file("Pinus sylvestris.1.jpg"),caption:"Сосна обыкновенная целиком, фотография взрослого дерева",author:"Ateragramm",license:"CC0",source:source("Pinus sylvestris.1.jpg"),mode:"photograph"},
  system:{file:file("Pinus sylvestris 2026 G2.jpg"),caption:"Ветвь Pinus sylvestris с хвоей, другой экземпляр того же вида",author:"George Chernilevsky",license:"CC BY 4.0",source:source("Pinus sylvestris 2026 G2.jpg"),mode:"photograph"},
- organ:{file:file("Pinus sylvestris 2026 G3.jpg"),caption:"Крупный план хвои Pinus sylvestris, отдельный снимок",author:"George Chernilevsky",license:"указана на странице файла",source:source("Pinus sylvestris 2026 G3.jpg"),mode:"photograph"},
+ organ:{file:file("Pinus sylvestris 2026 G3.jpg"),caption:"Крупный план хвои Pinus sylvestris, отдельный снимок",author:"George Chernilevsky",license:"CC BY 4.0",source:source("Pinus sylvestris 2026 G3.jpg"),mode:"photograph"},
  tissue:{file:file("PineNeedleCross.png"),caption:"Настоящий поперечный срез хвои Pinus sylvestris, другой микропрепарат",author:"Lord of Konrad",license:"CC0",source:source("PineNeedleCross.png"),mode:"micrograph"}
 };
 export function bioZoomImageFor(organism:BioOrganism,node:BioNode):BioZoomImage|null{
