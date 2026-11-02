@@ -6,6 +6,7 @@ import LektrusBioAlternativeView from "./LektrusBioAlternativeView";
 import type {BioAlternativeOrganism} from "./lektrusBioAlternativeAtlas";
 import LektrusBioAnatomyScene from "./LektrusBioAnatomyScene";
 import {bioSpecimenPlateFor} from "./lektrusBioSpecimenPlates";
+import {bioCellPlateFor} from "./lektrusBioCellPlates";
 import LektrusBioAssemblyBoard from "./LektrusBioAssemblyBoard";
 import "./lektrusBioMicroscope.css";
 
@@ -20,6 +21,7 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
  const [path,setPath]=useState<string[]>(diagram.assignmentPath);
  const [progress,setProgress]=useState(1);
  const [feedback,setFeedback]=useState("");
+ const [activeFeatureName,setActiveFeatureName]=useState<string|null>(null);
  useEffect(()=>{setActiveOrganism(diagram.organism);setAtlasOpen(false);setAlternativeId(null);setZoom(0);setPath(diagram.assignmentPath);setProgress(1);setFeedback("");},[diagram.organism,diagram.activity,diagram.assignmentPath.join("|")]);
  const exploreCatalogOrganism=(organism:BioOrganism)=>{
   const next=withBioOrganism(diagram,organism);
@@ -35,6 +37,8 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
  const currentId=path[Math.min(step,path.length-1)]??diagram.organism;
  const selected=nodes.find(n=>n.id===currentId)??nodes[0];
  const specimenPlate=bioSpecimenPlateFor(activeOrganism,selected);
+ const cellPlate=bioCellPlateFor(activeOrganism,selected);
+ useEffect(()=>setActiveFeatureName(null),[activeOrganism,selected.id]);
  const children=bioChildren(nodes,selected.id);
  const picked=path.slice(0,step+1).map(id=>nodes.find(n=>n.id===id)).filter(Boolean) as BioNode[];
  const tutorial=diagram.assignmentPath.map(id=>nodes.find(n=>n.id===id)).filter(Boolean) as BioNode[];
@@ -62,6 +66,7 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
   selected.id===target.parentId&&children.length>1;
  const options=target?bioTaskChoices(nodes,target):[];
  const cellFeatures=bioCellFeatures(selected);
+ const chosenFeature=cellFeatures.find(f=>f.name===activeFeatureName)??null;
  if(diagram.activity==="explore"&&alternativeId)return <section className="lektrus-bio-microscope" onPointerDown={e=>e.stopPropagation()}>
   <LektrusBioAlternativeView speciesId={alternativeId} onBack={()=>{setAlternativeId(null);setAtlasOpen(true);}}/>
  </section>;
@@ -96,7 +101,9 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
      <LektrusBioAnatomyScene organism={activeOrganism} node={base}
       children={bioChildren(nodes,base.id)}
       interactive={step===lower&&(diagram.activity==="explore"||hotspotQuestion)}
-      onSelect={diagram.activity==="label"?check:next}/>
+      onSelect={diagram.activity==="label"?check:next}
+      activeFeatureName={activeFeatureName}
+      onFeatureSelect={diagram.activity==="explore"&&step===lower?setActiveFeatureName:undefined}/>
     </div>
     {upper!==lower&&blend>0.001&&<div className="lektrus-bio-scene-layer"
      style={{opacity:blend,transform:"scale("+(.78+blend*.22)+")",
@@ -104,13 +111,26 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
      <LektrusBioAnatomyScene organism={activeOrganism} node={ahead}
       children={bioChildren(nodes,ahead.id)}
       interactive={step===upper&&(diagram.activity==="explore"||hotspotQuestion)}
-      onSelect={diagram.activity==="label"?check:next}/>
+      onSelect={diagram.activity==="label"?check:next}
+      activeFeatureName={activeFeatureName}
+      onFeatureSelect={diagram.activity==="explore"&&step===upper?setActiveFeatureName:undefined}/>
     </div>}
    </div>
    <div className="lektrus-bio-info">
     <span className="lektrus-bio-overline">{bioLevelName(selected)}</span>
     <strong>{selected.name}</strong>
     {diagram.showDescriptions&&<p>{selected.description}</p>}
+    {cellPlate&&diagram.activity==="explore"&&<div className="lektrus-bio-cell-inspector">
+     <strong>{cellPlate.title}</strong>
+     <p>{cellPlate.description}</p>
+     <span className="lektrus-bio-cell-hint">Нажмите на номер у клеточной структуры, чтобы узнать её назначение.</span>
+     {chosenFeature&&<div className="lektrus-bio-cell-selection" role="status" aria-live="polite">
+      <b>{chosenFeature.name}</b>
+      <p>{chosenFeature.description}</p>
+     </div>}
+     <small>{cellPlate.caveat}</small>
+     <a href={cellPlate.source.url} target="_blank" rel="noopener noreferrer">Научный источник: {cellPlate.source.title}</a>
+    </div>}
     {cellFeatures.length>0&&<div className="lektrus-bio-cell-features" aria-label="Микроструктуры клетки">
      <strong>Строение клетки крупнее</strong>
      <div>{cellFeatures.map(f=><details key={f.name}><summary>{f.name}</summary><p>{f.description}</p></details>)}</div>
