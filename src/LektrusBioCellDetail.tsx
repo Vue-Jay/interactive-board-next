@@ -117,7 +117,7 @@ export default function LektrusBioCellDetail({
  if(!Picture)return null;
  return <g data-bio-cell-plate={organism}>
   <Picture/>
-  {Object.entries(plate.landmarks).map(([name,pos],i)=>
+  {onFeatureSelect&&Object.entries(plate.landmarks).map(([name,pos],i)=>
    <g key={name} role={onFeatureSelect?"button":undefined}
     tabIndex={onFeatureSelect?0:undefined}
     className={"lektrus-bio-cell-hotspot"+(selectedFeature===name?" is-selected":"")}
