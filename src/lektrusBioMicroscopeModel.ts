@@ -165,7 +165,9 @@ export function bioVisualKey(node:BioNode):BioVisualKey{
   "pine/побег":"needle","pine/мужские-репродуктивные-побеги":"microsporangium",
   "fern/листья-спорофита":"frond","fern/спороносные-структуры":"sporangium",
   "wheat/генеративные-органы":"anther",
-  "sparrow/покровная-система":"skin","frog/покровная-система":"skin"
+  "sparrow/покровная-система":"skin","frog/покровная-система":"skin",
+  "sparrow/зрительная-система":"eye","frog/зрительная-система":"eye","snail/зрительная-система":"eye",
+  "bee/двигательная-система":"muscle","wheat/побег":"leaf"
  };
  for(const [start,key] of Object.entries(special))if(p===start||p.startsWith(start+"/"))return key;
  if(p==="oak/побег")return "wood";
