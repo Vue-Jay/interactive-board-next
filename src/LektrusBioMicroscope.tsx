@@ -5,6 +5,7 @@ import LektrusBioTaxonomyBrowser from "./LektrusBioTaxonomyBrowser";
 import LektrusBioAlternativeView from "./LektrusBioAlternativeView";
 import type {BioAlternativeOrganism} from "./lektrusBioAlternativeAtlas";
 import LektrusBioAnatomyScene from "./LektrusBioAnatomyScene";
+import {bioSpecimenPlateFor} from "./lektrusBioSpecimenPlates";
 import LektrusBioAssemblyBoard from "./LektrusBioAssemblyBoard";
 import "./lektrusBioMicroscope.css";
 
@@ -33,6 +34,7 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
  const ahead=nodes.find(n=>n.id===path[upper])??base;
  const currentId=path[Math.min(step,path.length-1)]??diagram.organism;
  const selected=nodes.find(n=>n.id===currentId)??nodes[0];
+ const specimenPlate=bioSpecimenPlateFor(activeOrganism,selected);
  const children=bioChildren(nodes,selected.id);
  const picked=path.slice(0,step+1).map(id=>nodes.find(n=>n.id===id)).filter(Boolean) as BioNode[];
  const tutorial=diagram.assignmentPath.map(id=>nodes.find(n=>n.id===id)).filter(Boolean) as BioNode[];
@@ -112,6 +114,12 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
     {cellFeatures.length>0&&<div className="lektrus-bio-cell-features" aria-label="Микроструктуры клетки">
      <strong>Строение клетки крупнее</strong>
      <div>{cellFeatures.map(f=><details key={f.name}><summary>{f.name}</summary><p>{f.description}</p></details>)}</div>
+    </div>}
+    {specimenPlate&&<div className="lektrus-bio-specimen-explainer">
+     <strong>{specimenPlate.title}</strong>
+     <p>{specimenPlate.caption}</p>
+     <a href={specimenPlate.source} target="_blank" rel="noopener noreferrer">Проверить строение по научному источнику ↗</a>
+     <small>Авторская схема, без реального оптического масштаба</small>
     </div>}
     {selected.source&&<a className="lektrus-bio-reference" href={selected.source.url}
      target="_blank" rel="noopener noreferrer">Источник: {selected.source.title}</a>}

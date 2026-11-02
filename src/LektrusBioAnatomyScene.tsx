@@ -4,6 +4,8 @@
  */
 import type {ReactNode} from "react";
 import LektrusBioSpeciesArt from "./LektrusBioSpeciesArt";
+import LektrusBioOrganDetail from "./LektrusBioOrganDetail";
+import {bioSpecimenPlateFor,bioSpecimenChildSpot} from "./lektrusBioSpecimenPlates";
 import type {BioNode,BioOrganism} from "./lektrusBioMicroscopeModel";
 import {BIO_ORGANISMS,bioVisualKey,bioChildSpot} from "./lektrusBioMicroscopeModel";
 
@@ -195,20 +197,23 @@ function CellScene({keyName}:{keyName:BioVisualKey}){
 export default function LektrusBioAnatomyScene({organism,node,children,onSelect,interactive,focusChildId}:Props){
  const keyName=bioVisualKey(node);
  const extra=<LektrusBioSpeciesArt organism={organism} node={node}/>;
- const shape:ReactNode=(["sparrow","perch","frog","bee","snail","pine","fern","wheat"] as string[]).includes(organism)
+ const plate=bioSpecimenPlateFor(organism,node);
+ const detail=plate?<LektrusBioOrganDetail organism={organism} node={node}/>:null;
+ const shape:ReactNode=detail??((["sparrow","perch","frog","bee","snail","pine","fern","wheat"] as string[]).includes(organism)
   ?extra:node.level==="organism"||node.level==="system"
   ?<><g opacity={node.level==="system"?.27:1}><OrganismShape organism={organism}/></g>
     {node.level==="system"&&<g transform="translate(148 80) scale(.39)" opacity=".93"><SpecificOrgan keyName={keyName}/></g>}</>
   :node.level==="organ"?<SpecificOrgan keyName={keyName}/>
   :node.level==="tissue"?<TissueScene keyName={keyName}/>
-  :<CellScene keyName={keyName}/>;
+  :<CellScene keyName={keyName}/>);
  return <svg className="lektrus-bio-anatomy-svg" viewBox="0 0 480 330" role="group"
   aria-label={"Анатомическая схема: "+node.name}>
   <rect width="480" height="330" rx="18" fill="#f3f9f0"/>
   <g className="lektrus-bio-alt-plate" key={node.id}>{shape}</g>
+  {plate&&<text x="20" y="25" fontSize="12" fontWeight="800" fill={ink} data-bio-plate-title={plate.id}>{plate.title}</text>}
   {focusChildId&&children.map((child,i)=>{
    if(child.id!==focusChildId)return null;
-   const pt=bioChildSpot(organism,node,child,i,children.length);
+   const pt=bioSpecimenChildSpot(organism,node,child)??bioChildSpot(organism,node,child,i,children.length);
    return <g key={child.id} className="lektrus-bio-focus-marker"
     transform={"translate("+pt.x+" "+pt.y+")"} aria-hidden="true">
     <circle r="35" fill="#eecb72" fillOpacity=".23" stroke="#b17830" strokeWidth="3" strokeDasharray="8 5"/>
@@ -217,7 +222,7 @@ export default function LektrusBioAnatomyScene({organism,node,children,onSelect,
    </g>;
   })}
   {interactive&&children.map((child,i)=>{
-   const pt=bioChildSpot(organism,node,child,i,children.length);
+   const pt=bioSpecimenChildSpot(organism,node,child)??bioChildSpot(organism,node,child,i,children.length);
    return <g key={child.id} role="button" tabIndex={0}
     data-bio-node={child.id} aria-label={"Изучить: "+child.name}
     className="lektrus-bio-hotspot" onClick={()=>onSelect(child)}
