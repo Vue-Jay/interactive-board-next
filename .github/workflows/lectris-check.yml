@@ -19,6 +19,8 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+      - name: GitHub agent connector policy guard
+        run: node scripts/test-github-agent-guard.mjs
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
       - name: TypeScript and Vite build
