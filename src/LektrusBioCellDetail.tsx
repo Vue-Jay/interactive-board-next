@@ -118,15 +118,14 @@ export default function LektrusBioCellDetail({
  return <g data-bio-cell-plate={organism}>
   <Picture/>
   {onFeatureSelect&&Object.entries(plate.landmarks).map(([name,pos],i)=>
-   <g key={name} role={onFeatureSelect?"button":undefined}
-    tabIndex={onFeatureSelect?0:undefined}
+   <g key={name} role="button" tabIndex={0}
     className={"lektrus-bio-cell-hotspot"+(selectedFeature===name?" is-selected":"")}
     data-bio-cell-feature={name} aria-label={"Изучить: "+name}
-    aria-pressed={onFeatureSelect?selectedFeature===name:undefined}
-    onClick={onFeatureSelect?()=>onFeatureSelect(name):undefined}
-    onKeyDown={onFeatureSelect?e=>{
+    aria-pressed={selectedFeature===name}
+    onClick={()=>onFeatureSelect(name)}
+    onKeyDown={e=>{
      if(e.key==="Enter"||e.key===" "){e.preventDefault();onFeatureSelect(name);}
-    }:undefined}
+    }}
     transform={`translate(${pos.x} ${pos.y})`}>
     <circle r="20" fill="#dff4e6" fillOpacity=".85" stroke="#41866a" strokeWidth="3"/>
     <circle r="13" fill="#fffefa" stroke="#378260" strokeWidth="2"/>
