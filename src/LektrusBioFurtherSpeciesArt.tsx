@@ -71,7 +71,7 @@ function Specimen({organism}:{organism:BioFurtherOrganism}):ReactNode{
  case "clubmoss":return <Clubmoss/>;case "magnolia":return <Magnolia/>;}
 }
 function AnimalBranch({organism,branch,level}:{organism:"lizard"|"spider";branch:number;level:BioNode["level"]}){
- const deep=level==="cell",tissue=level==="tissue",color=organism==="lizard"?"#d8bdae":"#c9b19e";
+ const deep=level==="cell",tissue=level==="tissue";
  if(organism==="lizard"){
   if(branch===0)return <g>
    <rect x="64" y="97" width="356" height="189" rx="20" fill="#e6cfc1" stroke="#b99a8e" strokeWidth="8"/>
