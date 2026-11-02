@@ -61,7 +61,7 @@ export function bioMotionFor(species:BioAlternativeOrganism,node:BioAltNode):Bio
  }
  if(species==="spirogyra"){
   if(id.includes("/conjugation")||id.includes("/zygospore"))return BIO_MOTIONS.conjugation;
-  if(id==="spirogyra"||id.includes("/filament"))return BIO_MOTIONS["spiral-chloroplast"];
+  if(id==="spirogyra"||id==="spirogyra/filament"||id==="spirogyra/filament/cell"||id.includes("/chloroplast"))return BIO_MOTIONS["spiral-chloroplast"];
  }
  return null;
 }
