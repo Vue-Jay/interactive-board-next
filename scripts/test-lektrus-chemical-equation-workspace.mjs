@@ -35,6 +35,9 @@ assert.equal(parse(" ").arrow,"→");
 assert.equal(parse("H2 +  → ").left.length,2,"Editing must preserve blank added card");
 assert.equal(parse("H2 + O2 ⇌ H2O").arrow,"⇌");
 assert.equal(parse("H2 + O2 = H2O").arrow,"=");
+assert.equal(parse("NaCl + KNO3 ≠ ").arrow,"≠");
+assert.equal(writeEquationDraft(parse("NaCl + KNO3 ≠ ")),"NaCl + KNO3 ≠ ");
+
 assert.equal(parse("CH2=CH2 + Br2 → CH2BrCH2Br").left[0].formula,"CH2=CH2",
  "Organic double bond must not be parsed as the reaction arrow");
 assert.equal(parse("CH2=CH2"),null,"Standalone alkene structure is not an equation");
@@ -101,6 +104,9 @@ assert.deepEqual(readReactionText("H2O"),{reactants:"H2O",products:"",arrow:"→
 assert.equal(writeReactionText(readReactionText("H2O"),true),"H2O","Legacy individual formula preserved");
 assert.equal(readReactionText("N2 + 3H2 ⇌ 2NH3").arrow,"⇌");
 assert.equal(readReactionText("H2 + O2 = H2O").arrow,"=");
+assert.equal(readReactionText("NaCl + KNO3 ≠ ").arrow,"≠");
+assert.equal(writeReactionText(readReactionText("NaCl + KNO3 ≠ ")),"NaCl + KNO3 ≠ ");
+
 assert.equal(readReactionText("CH2=CH2").standalone,true);
 assert.equal(readReactionText("CH2=CH2 + Br2 → CH2BrCH2Br").reactants,"CH2=CH2 + Br2");
 assert.equal(writeReactionText(readReactionText("H2 + O2 -> H2O")),"H2 + O2 → H2O");
