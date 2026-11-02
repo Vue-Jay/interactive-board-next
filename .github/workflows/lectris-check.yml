@@ -41,6 +41,8 @@ jobs:
         run: node scripts/test-lektrus-bio-alternative.mjs
       - name: Animated biology atlas motion and accessibility regression
         run: node scripts/test-lektrus-bio-motion.mjs
+      - name: Biology microscopic plates and anatomical hotspot regression
+        run: node scripts/test-lektrus-bio-histology.mjs
       - name: Biology drag and place anatomy exercises
         run: node scripts/test-lektrus-bio-assembly.mjs
       - name: Biology organ systems and relief regression

@@ -301,3 +301,26 @@
  .lektrus-bio-motion-gamete{opacity:0}
  .lektrus-bio-motion-zygote{opacity:1}
 }
+
+
+/* Microscope illustrations are detailed schematic teaching plates, never
+ * labeled as literal optical magnifications or backed by invented scale bars. */
+.lektrus-bio-alt-scene-header{min-height:39px;flex-wrap:wrap}
+.lektrus-bio-alt-zoom-control{display:flex;gap:4px;align-items:center;background:#e8f5ed;border:1px solid #b8dac8;border-radius:10px;padding:3px;margin-left:auto;flex:none}
+.lektrus-bio-alt-zoom-control button{border:1px solid #c7e0d1;background:#fffdfa;border-radius:7px;color:#286a54;font-weight:900;font-size:16px;line-height:1;min-width:29px;min-height:29px;cursor:pointer;touch-action:manipulation}
+.lektrus-bio-alt-zoom-control button:disabled{opacity:.37;cursor:default}
+.lektrus-bio-alt-zoom-control button:focus-visible{outline:2px solid #338660;outline-offset:2px}
+.lektrus-bio-alt-zoom-control output{font-size:10px;font-weight:850;color:#417e62;font-variant-numeric:tabular-nums;min-width:37px;text-align:center}
+.lektrus-bio-alt-microplate-caption{display:flex;flex-direction:column;gap:5px;padding:10px 12px;border:1px solid #b9d8bc;background:linear-gradient(135deg,#fffef7,#edf8eb);border-radius:10px}
+.lektrus-bio-alt-microplate-caption strong{font-size:12px;color:#2b614c;line-height:1.45}
+.lektrus-bio-alt-microplate-caption span{font-size:11px;color:#53795f;line-height:1.5}
+.lektrus-bio-alt-microplate-caption a{font-size:10px;font-weight:750;color:#2b7854;text-decoration:underline;text-underline-offset:3px;align-self:flex-start}
+.lektrus-bio-histology-art{filter:drop-shadow(0px 3px 8px #2d6b4515)}
+.lektrus-bio-histology-label text{paint-order:stroke;stroke:#f0faed;stroke-width:3px;stroke-linejoin:round}
+.lektrus-bio-alt-marker:focus-visible{outline:none}
+.lektrus-bio-alt-marker:focus-visible>circle:nth-child(2){stroke:#1e5473;stroke-width:6px}
+@media(max-width:420px){
+ .lektrus-bio-alt-scene-level{flex-basis:100%;max-width:100%;text-align:right}
+ .lektrus-bio-alt-zoom-control button{min-width:35px;min-height:35px}
+}
+@media(prefers-reduced-motion:reduce){.lektrus-bio-histology-art{transition:none}}

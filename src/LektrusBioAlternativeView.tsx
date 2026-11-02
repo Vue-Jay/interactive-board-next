@@ -1,6 +1,8 @@
 import {useEffect,useMemo,useState} from "react";
 import type {ReactNode} from "react";
 import LektrusBioMotionLayer from "./LektrusBioMotionLayer";
+import LektrusBioHistologyPlate from "./LektrusBioHistologyPlate";
+import {bioHistologyFor,bioHistologyChildSpot} from "./lektrusBioHistologyModel";
 import {bioMotionFor,type BioMotionInfo} from "./lektrusBioAtlasMotion";
 import {BIO_ALTERNATIVE_SPECIES,BIO_ALT_KIND_LABELS,bioAltChildren,bioAltPath,
  type BioAlternativeOrganism,type BioAltNode,type BioAlternativeSpecies} from "./lektrusBioAlternativeAtlas";
@@ -102,11 +104,13 @@ function DrawSpirogyra({node}:{node:BioAltNode}){
    {node.id.includes("zygospore")&&<ellipse cx="240" cy="197" rx="33" ry="24" fill="#bd9a63" stroke="#806d46" strokeWidth="8"/>}</g>}
  </g>;
 }
-function BioAlternativeIllustration({species,node,children,onSelect,motion,playing,replay}:{
+function BioAlternativeIllustration({species,node,children,onSelect,motion,playing,replay,zoom}:{
  species:BioAlternativeSpecies;node:BioAltNode;children:BioAltNode[];onSelect:(node:BioAltNode)=>void;
- motion:BioMotionInfo|null;playing:boolean;replay:number
+ motion:BioMotionInfo|null;playing:boolean;replay:number;zoom:number
 }){
- const illustration:ReactNode=species.id==="sponge"?<DrawSponge node={node}/>:
+ const microPlate=bioHistologyFor(node.id);
+ const illustration:ReactNode=microPlate?<LektrusBioHistologyPlate nodeId={node.id}/>:
+  species.id==="sponge"?<DrawSponge node={node}/>:
   species.id==="hydra"?<DrawHydra node={node}/>:
   species.id==="moss"?<DrawMoss node={node}/>:
   species.id==="chlamydomonas"?<DrawChlamydomonas node={node}/>:<DrawSpirogyra node={node}/>;
@@ -132,10 +136,11 @@ function BioAlternativeIllustration({species,node,children,onSelect,motion,playi
   <rect width="480" height="340" rx="16" fill="url(#lektrus-bio-scene-ground)"/>
   <ellipse cx="100" cy="64" rx="210" ry="144" fill="url(#lektrus-bio-scene-glow)" opacity=".58"/>
   <path d="M15 278Q105 256 170 288T340 281T476 293" stroke="#fff" strokeOpacity=".65" strokeWidth="2" fill="none"/>
-  <g className="lektrus-bio-alt-plate" key={node.id}>{illustration}</g>
-  <LektrusBioMotionLayer motion={motion} playing={playing} replay={replay}/>
+  <g transform={zoom>1?`translate(240 170) scale(${zoom}) translate(-240 -170)`:undefined}>
+   <g className="lektrus-bio-alt-plate" key={node.id}>{illustration}</g>
+   <LektrusBioMotionLayer motion={motion} playing={playing} replay={replay}/>
   {children.map((child,i)=>{
-   const spot=child.spot??{x:100+(i%3)*145,y:120+Math.floor(i/3)*95};
+   const spot=bioHistologyChildSpot(node.id,child.id)??child.spot??{x:100+(i%3)*145,y:120+Math.floor(i/3)*95};
    return <g key={child.id} transform={`translate(${spot.x} ${spot.y})`}
     role="button" tabIndex={0} className="lektrus-bio-alt-marker" data-bio-alt-node={child.id}
     aria-label={"Изучить: "+child.name} onClick={()=>onSelect(child)}
@@ -146,6 +151,7 @@ function BioAlternativeIllustration({species,node,children,onSelect,motion,playi
     <title>{child.name}</title>
    </g>;
   })}
+  </g>
   <text x="466" y="325" textAnchor="end" fill="#6b886b" fontSize="10">Учебная схема · не в масштабе</text>
  </svg>;
 }
@@ -154,10 +160,12 @@ export default function LektrusBioAlternativeView({speciesId,onBack}:Props){
  const [currentId,setCurrentId]=useState<string>(speciesId);
  const [playing,setPlaying]=useState(true);
  const [replay,setReplay]=useState(0);
- useEffect(()=>{setCurrentId(speciesId);setPlaying(true);setReplay(0);},[speciesId]);
- useEffect(()=>setReplay(0),[currentId]);
+ const [zoom,setZoom]=useState(1);
+ useEffect(()=>{setCurrentId(speciesId);setPlaying(true);setReplay(0);setZoom(1);},[speciesId]);
+ useEffect(()=>{setReplay(0);setZoom(1);},[currentId]);
  const node=useMemo(()=>species.nodes.find(n=>n.id===currentId)??species.nodes[0],[species,currentId]);
  const motion=bioMotionFor(species.id,node);
+ const microPlate=bioHistologyFor(node.id);
  const children=bioAltChildren(species,node.id);
  const path=bioAltPath(species,node.id);
  const open=(next:BioAltNode)=>setCurrentId(next.id);
@@ -176,11 +184,23 @@ export default function LektrusBioAlternativeView({speciesId,onBack}:Props){
   <div className="lektrus-bio-alt-main">
    <div className="lektrus-bio-alt-figure">
     <div className="lektrus-bio-alt-scene-header">
-     <span className="lektrus-bio-alt-scene-label">ATLAS · ИНТЕРАКТИВНАЯ СЦЕНА</span>
+     <span className="lektrus-bio-alt-scene-label">{microPlate?"ATLAS · СТРОЕНИЕ ПОД УВЕЛИЧЕНИЕМ":"ATLAS · ИНТЕРАКТИВНАЯ СЦЕНА"}</span>
+     <div className="lektrus-bio-alt-zoom-control" role="group" aria-label="Масштаб рисунка">
+      <button type="button" aria-label="Уменьшить рисунок" disabled={zoom<=1}
+       onClick={()=>setZoom(v=>Math.max(1,+(v-.25).toFixed(2)))}>−</button>
+      <output aria-label="Текущий масштаб">{Math.round(zoom*100)}%</output>
+      <button type="button" aria-label="Увеличить рисунок" disabled={zoom>=2}
+       onClick={()=>setZoom(v=>Math.min(2,+(v+.25).toFixed(2)))}>＋</button>
+     </div>
      <span className="lektrus-bio-alt-scene-level">{BIO_ALT_KIND_LABELS[node.kind]}</span>
     </div>
     <BioAlternativeIllustration species={species} node={node} children={children} onSelect={open}
-     motion={motion} playing={playing} replay={replay}/>
+     motion={motion} playing={playing} replay={replay} zoom={zoom}/>
+    {microPlate&&<div className="lektrus-bio-alt-microplate-caption">
+     <strong>{microPlate.title}</strong>
+     <span>{microPlate.subtitle}</span>
+     <a href={microPlate.source} target="_blank" rel="noopener noreferrer">Научное описание ↗</a>
+    </div>}
     {motion&&<div className="lektrus-bio-alt-motion-console" aria-label="Управление анимацией">
      <div className="lektrus-bio-alt-motion-text">
       <strong>{motion.name}</strong>
@@ -193,7 +213,7 @@ export default function LektrusBioAlternativeView({speciesId,onBack}:Props){
       <button type="button" className="lektrus-bio-alt-motion-button"
        onClick={()=>setReplay(n=>n+1)}>{replay?"↻ Повторить":"▶ Показать"}</button>}
     </div>}
-    <small>Нажмите на структуру или выберите её в списке. Переходы и движения схематичны, без масштаба и реальной скорости.</small>
+    <small>Нажмите на структуру или выберите её в списке. Рисунки, увеличения и движения учебные, без реальной масштабной линейки или скорости процесса.</small>
    </div>
    <div className="lektrus-bio-alt-info">
     <div className="lektrus-bio-alt-kind">{BIO_ALT_KIND_LABELS[node.kind]}{node.ploidy?" · "+node.ploidy:""}</div>
