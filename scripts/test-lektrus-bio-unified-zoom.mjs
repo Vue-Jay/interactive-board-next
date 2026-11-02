@@ -102,4 +102,28 @@ for(const name of ["src/LektrusBioUnifiedZoom.tsx","src/LektrusBioMicroscope.tsx
  const ast=ts.createSourceFile(name,fs.readFileSync(name,"utf8"),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  assert.equal(ast.parseDiagnostics.length,0,"Malformed TSX "+name);
 }
+
+const detailed=fs.readFileSync("src/LektrusBioDetailedOrganisms.tsx","utf8");
+const detailedAst=ts.createSourceFile("src/LektrusBioDetailedOrganisms.tsx",detailed,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+assert.equal(detailedAst.parseDiagnostics.length,0,"Malformed offline detailed specimen artwork");
+for(const kind of ["human","cat","oak","sunflower"]){
+ assert.match(detailed,new RegExp('data-bio-illustration="'+kind+'"'),"Missing distinct realistic vector specimen "+kind);
+ assert.match(detailed,new RegExp('case "'+kind+'":return'),"Missing correct species mapping "+kind);
+}
+assert.match(detailed,/length:220/,"Sunflower should have a botanically recognizable packed disk of florets");
+assert.match(detailed,/length:27/,"Sunflower should have abundant ray florets around the disk");
+assert.match(detailed,/rx="1\.7" ry="2\.5"/,"Disk florets need distinct rendered geometry");
+assert.match(detailed,/Lizard|Human|Cat|Oak|Sunflower/);
+const anatomy=fs.readFileSync("src/LektrusBioAnatomyScene.tsx","utf8");
+assert.match(anatomy,/return <LektrusBioDetailedOrganisms organism=\{organism\}\/>/,"All original species should share improved specimen art");
+assert.doesNotMatch(anatomy,/if\(organism==="human"\)return <g>/,"Remove primitive human circle silhouette");
+for(const species of ["human","cat","oak","sunflower"]){
+ const root=bio.bioNodes(species)[0],kids=zoom.bioZoomChildCandidates(bio.bioNodes(species),root);
+ assert.ok(kids.length>=2);
+ for(const [index,child] of kids.entries()){
+  const p=zoom.bioZoomPoint(species,root,child,index,kids.length);
+  assert.ok(p.x>=70&&p.x<=410&&p.y>=30&&p.y<=317, "Illustration hotspot out of bounds: "+child.id);
+ }
+}
+
 console.log("Unified microscope: all 20 species traverse real anatomy, spatial proximity and anchor-preserving zoom, pinch/pan/keyboard, sample provenance and unchanged assignments OK. "+paths+" cell paths; "+links+" links.");
