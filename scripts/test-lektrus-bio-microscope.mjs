@@ -104,7 +104,7 @@ for(const species of Object.keys(BIO_ORGANISMS)){
    assert.ok(choices.length>1,"Single-choice exercise is not a real exercise: "+node.id);
   assert.ok(choices.length<=4,"Avoid endless answers on mobile");
   if(node.source){
-   assert.ok(/^https:\/\/(openstax.org|www.ncbi.nlm.nih.gov|www.helsinki.fi)\//.test(node.source.url),
+   assert.ok(/^https:\/\/(openstax.org|www.ncbi.nlm.nih.gov|www.helsinki.fi|www.bgs.ac.uk)\//.test(node.source.url),
     "Only reviewed education / scientific sources");
    assert.ok(node.source.title);
   }
