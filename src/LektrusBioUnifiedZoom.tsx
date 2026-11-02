@@ -7,17 +7,18 @@ import type {PointerEvent as ReactPointerEvent,KeyboardEvent as ReactKeyboardEve
 import type {BioNode,BioOrganism,BioImageSpot} from "./lektrusBioMicroscopeModel";
 import {BIO_LEVEL_LABELS,BIO_LEVELS,bioCellFeatures,bioNodes} from "./lektrusBioMicroscopeModel";
 import LektrusBioAnatomyScene from "./LektrusBioAnatomyScene";
+import LektrusBioParentOverview from "./LektrusBioParentOverview";
 import {
  BIO_ZOOM_GATE,BIO_ZOOM_INITIAL,BIO_ZOOM_MAX,
  bioZoomAt,bioZoomBound,bioZoomPan,bioZoomToWorld,bioZoomClosestChild,bioZoomPoint,
- bioZoomPortalCamera,bioZoomHitRadius,bioZoomScreenPoint,
+ bioZoomPortalCamera,bioZoomHitRadius,bioZoomScreenPoint,bioZoomParentContext,
  bioZoomImageFor,bioZoomSharedFrame,bioZoomPath,bioZoomChildCandidates,
  type BioZoomCamera
 } from "./lektrusBioUnifiedZoomModel";
 import "./lektrusBioUnifiedZoom.css";
 
 type XY={x:number;y:number};
-type Ghost={node:BioNode;from:BioZoomCamera;to:BioZoomCamera;direction:"in"|"out"};
+type Ghost={node:BioNode;from:BioZoomCamera;to:BioZoomCamera;direction:"in"|"out";spot?:BioImageSpot};
 const identity=(a:XY,b:XY)=>Math.hypot(a.x-b.x,a.y-b.y);
 const cameraTransform=(cam:BioZoomCamera)=>
  "translate("+(cam.x/480*100)+"%, "+(cam.y/330*100)+"%) scale("+cam.scale+")";
@@ -43,6 +44,7 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
  const visits=useRef(new Map<string,BioZoomCamera>());
  const transitionTimer=useRef<number|undefined>(undefined);
  const route=bioZoomPath(nodes,current.id);
+ const parentContext=bioZoomParentContext(organism,nodes,current);
  const children=bioZoomChildCandidates(nodes,current);
  const photo=bioZoomImageFor(organism,current);
  const cellParts=bioCellFeatures(current);
@@ -90,7 +92,7 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
    :bioZoomAt(departingCamera,Math.max(1,departingCamera.scale*.67),{x:240,y:165});
   ghostRef.current=true;
   setGhost({node:old,from:departingCamera,to:endingCamera,
-   direction:descending?"in":"out"});
+   direction:descending?"in":"out",spot:descending?spot:undefined});
   currentRef.current=target;setCurrentId(target.id);
   setCam(visits.current.get(target.id)??BIO_ZOOM_INITIAL);
   setFeature(null);setPhotoError(null);setNotice("");
@@ -204,8 +206,8 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
   else if(e.key==="Backspace"){e.preventDefault();ascend();}
   else if(e.key==="Home"){e.preventDefault();setCurrentId(organism);setCam(BIO_ZOOM_INITIAL);}
  };
- const imgBlur=isMicroscopic?Math.abs(focus)*.24:0;
- const draw=(node:BioNode,cam:BioZoomCamera,includeMarkers:boolean,portalTo?:BioZoomCamera)=>{
+ const draw=(node:BioNode,cam:BioZoomCamera,includeMarkers:boolean,portalTo?:BioZoomCamera,portalSpot?:BioImageSpot)=>{
+  const imgBlur=BIO_LEVELS.indexOf(node.level)>=3?Math.abs(focus)*.24:0;
   const sceneChildren=bioZoomChildCandidates(nodes,node);
   const image=bioZoomImageFor(organism,node);
   const portalStyle=portalTo
@@ -220,6 +222,13 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
     <LektrusBioAnatomyScene organism={organism} node={node} children={sceneChildren}
      interactive={false} onSelect={()=>{}} activeFeatureName={feature}
      onFeatureSelect={includeMarkers&&node.level==="cell"?setFeature:undefined}/>}
+   {portalSpot&&<svg className="lektrus-bio-portal-mark" viewBox="0 0 480 330"
+      aria-hidden="true" pointerEvents="none">
+     <circle data-bio-portal-focus="true" cx={portalSpot.x} cy={portalSpot.y}
+      r="42" fill="#f7edb8" fillOpacity=".12" stroke="#fff0c1"
+      strokeWidth="4" strokeDasharray="10 5"/>
+     <circle cx={portalSpot.x} cy={portalSpot.y} r="10" fill="none" stroke="#ffe69b" strokeWidth="5"/>
+   </svg>}
    {includeMarkers&&sceneChildren.length>0&&<svg className="lektrus-bio-unified-anchors" viewBox="0 0 480 330"
     aria-label="Точки следующего уровня">
     {sceneChildren.map((child,i)=>{
@@ -266,8 +275,12 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
     {draw(current,camera,true)}
    </div>
    {ghost&&<div className={"lektrus-bio-unified-ghost is-"+ghost.direction} aria-hidden="true">
-    {draw(ghost.node,ghost.from,false,ghost.to)}
+    {draw(ghost.node,ghost.from,false,ghost.to,ghost.spot)}
    </div>}
+   {parentContext&&<LektrusBioParentOverview key={parentContext.parent.id}
+    organism={organism} context={parentContext}
+    parentCamera={visits.current.get(parentContext.parent.id)??BIO_ZOOM_INITIAL}
+    onBack={ascend}/>}
    <div className="lektrus-bio-unified-hud" aria-hidden="true">
     <span>{BIO_LEVEL_LABELS[current.level]}</span><span>Масштаб просмотра ×{camera.scale.toFixed(1)}</span>
    </div>
