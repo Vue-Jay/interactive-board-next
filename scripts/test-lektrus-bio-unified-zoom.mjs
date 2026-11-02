@@ -38,7 +38,7 @@ for(const species of Object.keys(bio.BIO_ORGANISMS)){
  const root=nodes[0],children=zoom.bioZoomChildCandidates(nodes,root);
  assert.ok(children.length>=2,"No real branches "+species);
  const photo=zoom.bioZoomImageFor(species,root);
- if(species!=="pine")assert.equal(photo,null,"Do not use pine samples for other species");
+ if(species!=="pine"&&species!=="sunflower")assert.equal(photo,null,"Do not substitute other species photos");
  for(const node of nodes){
   const kids=zoom.bioZoomChildCandidates(nodes,node);
   for(const [i,child] of kids.entries()){
@@ -71,7 +71,7 @@ for(const n of [tree,shoot,needle,tissue]){
 }
 assert.equal(zoom.bioZoomImageFor("pine",cell),null,"Do not invent an intra-cell photograph");
 assert.equal(zoom.bioZoomImageFor("pine",pine.find(n=>n.name==="Молодой корень")),null);
-assert.equal(zoom.bioZoomImageFor("sunflower",bio.bioNodes("sunflower")[0]),null);
+assert.ok(zoom.bioZoomImageFor("sunflower",bio.bioNodes("sunflower")[0]),"New whole-plant photo must exist");
 const camera=fs.readFileSync("src/LektrusBioUnifiedZoom.tsx","utf8");
 assert.match(camera,/bioZoomClosestChild\(organism,node,candidates,imagePoint,68\)/);
 assert.match(camera,/bioZoomToWorld\(old,point\)/);
