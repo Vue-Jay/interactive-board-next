@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useState} from "react";
 import type {BioMicroscopeDiagram,BioNode} from "./lektrusBioMicroscopeModel";
-import {BIO_LEVELS,BIO_LEVEL_LABELS,BIO_ORGANISMS,bioAncestors,bioChildren,bioNodes} from "./lektrusBioMicroscopeModel";
+import {BIO_LEVELS,BIO_LEVEL_LABELS,BIO_ORGANISMS,bioAncestors,bioChildren,bioNodes,bioLevelName,bioTaskChoices} from "./lektrusBioMicroscopeModel";
 import LektrusBioAnatomyScene from "./LektrusBioAnatomyScene";
 import "./lektrusBioMicroscope.css";
 
@@ -42,10 +42,9 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
    setZoom(clamp(BIO_LEVELS.indexOf(node.level)));}
  };
  const showLabels=diagram.activity==="explore";
- const isTask=diagram.activity!=="explore";
- const taskOptions=isTask&&target?nodes.filter(node=>node.level===target.level&&node.parentId===target.parentId):[];
- const options=taskOptions.length>=2?taskOptions:
-  nodes.filter(node=>node.level===target?.level).slice(0,6);
+ const hotspotQuestion=diagram.activity==="label"&&!!target&&
+  selected.id===target.parentId&&children.length>1;
+ const options=target?bioTaskChoices(nodes,target):[];
  return <section className="lektrus-bio-microscope" aria-label="Биологический микроскоп" onPointerDown={e=>e.stopPropagation()}>
   <header className="lektrus-bio-head">
    <span className="lektrus-bio-eyepiece">◉</span>
@@ -58,7 +57,7 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
   </div>
   <div className="lektrus-bio-zoom">
    <button type="button" aria-label="Уменьшить" onClick={()=>setZoom(v=>clamp(Math.round(v)-1))}>−</button>
-   <input aria-label="Плавное увеличение от организма до клетки" type="range" min={0} max={4}
+   <input aria-label="Плавный переход между схемами уровней строения" type="range" min={0} max={4}
     step={0.05} value={zoom} onChange={e=>setZoom(Number(e.target.value))}/>
    <button type="button" aria-label="Увеличить" onClick={()=>setZoom(v=>clamp(Math.round(v)+1))}>+</button>
   </div>
@@ -72,7 +71,7 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
       pointerEvents:step===lower?"auto":"none"}}>
      <LektrusBioAnatomyScene organism={diagram.organism} node={base}
       children={bioChildren(nodes,base.id)}
-      interactive={step===lower&&diagram.activity!=="assemble"}
+      interactive={step===lower&&(diagram.activity==="explore"||hotspotQuestion)}
       onSelect={diagram.activity==="label"?check:next}/>
     </div>
     {upper!==lower&&blend>0.001&&<div className="lektrus-bio-scene-layer"
@@ -80,15 +79,17 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
       pointerEvents:step===upper?"auto":"none"}}>
      <LektrusBioAnatomyScene organism={diagram.organism} node={ahead}
       children={bioChildren(nodes,ahead.id)}
-      interactive={step===upper&&diagram.activity!=="assemble"}
+      interactive={step===upper&&(diagram.activity==="explore"||hotspotQuestion)}
       onSelect={diagram.activity==="label"?check:next}/>
     </div>}
    </div>
    <div className="lektrus-bio-info">
-    <span className="lektrus-bio-overline">{BIO_LEVEL_LABELS[selected.level]}</span>
+    <span className="lektrus-bio-overline">{bioLevelName(selected)}</span>
     <strong>{selected.name}</strong>
     {diagram.showDescriptions&&<p>{selected.description}</p>}
-    {children.length>0&&<span className="lektrus-bio-detail-hint">Выберите часть, чтобы приблизить её</span>}
+    {selected.source&&<a className="lektrus-bio-reference" href={selected.source.url}
+     target="_blank" rel="noopener noreferrer">Источник: {selected.source.title}</a>}
+    {children.length>0&&diagram.activity==="explore"&&<span className="lektrus-bio-detail-hint">Выберите часть, чтобы приблизить её</span>}
    </div>
   </div>
   {diagram.activity==="explore"?<div className="lektrus-bio-items" aria-label="Интерактивные части организма">
@@ -101,15 +102,17 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
    {!children.length&&<p className="lektrus-bio-end">Клеточный уровень. Можно вернуться назад по шкале и исследовать другую ветвь организма.</p>}
   </div>:<div className="lektrus-bio-task">
    <strong>{diagram.activity==="assemble"?"Соберите последовательность уровней":"Подпишите выбранную структуру"} · {Math.min(progress,4)}/4</strong>
-   {target?<><p>Уровень «{BIO_LEVEL_LABELS[target.level]}». {diagram.activity==="assemble"?
-    "Выберите правильное звено цепочки.":"Найдите на изображении: "+target.name+". Нажмите на круглую метку."}</p>
-    {diagram.activity==="assemble"&&<div className="lektrus-bio-task-answers">
+   {target?<><p>Уровень «{bioLevelName(target)}». {diagram.activity==="assemble"?
+    "Выберите правильное звено цепочки.":hotspotQuestion?
+    "Найдите на изображении: "+target.name+". Нажмите на соответствующую метку.":
+    "На схеме показана одна структура этого уровня. Выберите её точное название среди вариантов."}</p>
+    {(diagram.activity==="assemble"||!hotspotQuestion)&&<div className="lektrus-bio-task-answers">
      {options.map(node=><button type="button" key={node.id} onClick={()=>check(node)}>{node.name}</button>)}
     </div>}
    </>:<p>Задание выполнено. Все уровни расположены правильно.</p>}
    {feedback&&<p className="lektrus-bio-feedback" role="status">{feedback}</p>}
    <button type="button" className="lektrus-bio-restart" onClick={()=>{setProgress(1);setPath(diagram.assignmentPath);setZoom(0);setFeedback("");}}>Начать заново</button>
   </div>}
-  <footer>LEKTRUS · БИОЛОГИЯ · Учебные схемы, не в масштабе</footer>
+  <footer>LEKTRUS · БИОЛОГИЯ · Уровни организации, схематический переход без реального оптического масштаба</footer>
  </section>;
 }

@@ -169,7 +169,11 @@ function CellScene({keyName}:{keyName:BioVisualKey}){
   <circle cx="138" cy="178" r="12" fill="#ad8cae"/>
   {(keyName==="leaf"||keyName==="flower")&&Array.from({length:11},(_,i)=>{
    const x=110+(i%4)*85,y=86+Math.floor(i/4)*78;
-   return <ellipse key={i} cx={x} cy={y} rx="14" ry="9" fill="#5da161" stroke="#3d804b" strokeWidth="2"/>;
+   // Photosynthetic leaf mesophyll: green chloroplasts. Yellow ray-floret
+   // epidermis: chromoplast-like pigment bodies, not green chloroplasts.
+   const leaf=keyName==="leaf";
+   return <ellipse key={i} cx={x} cy={y} rx="14" ry="9"
+    fill={leaf?"#5da161":"#ebba55"} stroke={leaf?"#3d804b":"#c49335"} strokeWidth="2"/>;
   })}
   {keyName==="root"&&<path d="M72 177Q30 166 17 216" stroke="#7ca36c" strokeWidth="12" fill="none" strokeLinecap="round"/>}
  </g>;
