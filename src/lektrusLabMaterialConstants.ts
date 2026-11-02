@@ -544,7 +544,8 @@ export function labSingleSaltSolubilityGPer100gWater(
  // These salts have unknown/interchanging hydrate phase boundaries or
  // measured temperatures too sparse to justify a continuous curve.
  // An explicit exact-temperature row above still takes precedence.
- if(["Al(NO3)3","NiSO4","CH3COOLi","FeSO4","Mg(NO3)2"]
+ if(["Al(NO3)3","NiSO4","CH3COOLi","FeSO4","Mg(NO3)2",
+  "Li2SO4","Zn(CH3COO)2"]
   .includes(formula))return;
  const data=LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER[formula];
  if(!data||!Number.isFinite(tempC)||tempC<0||tempC>100)return;
@@ -632,7 +633,9 @@ export const LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES:ReadonlySet<string>=new
  "LiOH",
  // Sulfite oxidation/hydration and reactive FeCl3 hydrolysis prohibit
  // an arbitrary single-solute anhydrous crystallisation calculation.
- "Na2SO3","FeCl3","Zn(NO3)2","MnSO4"
+ "Na2SO3","FeCl3","Zn(NO3)2","MnSO4",
+ // Zinc acetate saturation is not evidence of an anhydrous solid phase.
+ "Zn(CH3COO)2"
 ]);
 /** Phase fractions for EXACTLY one supported anhydrous crystalline salt
  * and pure explicitly measured H2O. Aqueous mixed salts, prepared stocks
