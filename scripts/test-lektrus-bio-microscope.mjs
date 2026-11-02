@@ -66,7 +66,7 @@ assert.equal(key(human,"Лёгкие"),"lungs");
 assert.equal(key(human,"Нейрон"),"brain");
 assert.equal(key(cat,"Палочка"),"eye");
 assert.equal(key(cat,"Энтероцит"),"gut");
-assert.equal(key(sun,"Корневой волосок"),"root");
+assert.equal(key(sun,"Клетка ризодермы с корневым волоском"),"root");
 assert.equal(key(sun,"Фотосинтезирующая клетка"),"leaf");
 assert.equal(key(oak,"Сосудистый элемент"),"wood");
 const scene=fs.readFileSync("src/LektrusBioAnatomyScene.tsx","utf8");
