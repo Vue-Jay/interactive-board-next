@@ -31,6 +31,8 @@ jobs:
         run: node scripts/test-lektrus-next-school.mjs
       - name: Interactive biology microscope and tasks
         run: node scripts/test-lektrus-bio-microscope.mjs
+      - name: Biology drag and place anatomy exercises
+        run: node scripts/test-lektrus-bio-assembly.mjs
       - name: Biology organ systems and relief regression
         run: node scripts/test-lektrus-further-school.mjs
       - name: Approved morphemes genealogy and vocabulary regression
