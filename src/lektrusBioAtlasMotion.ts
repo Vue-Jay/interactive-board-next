@@ -52,7 +52,7 @@ export function bioMotionFor(species:BioAlternativeOrganism,node:BioAltNode):Bio
   if(id==="hydra"||id.includes("/tentacle"))return BIO_MOTIONS["tentacle-sway"];
  }
  if(species==="moss"){
-  if(id==="moss/spore"||id.includes("/capsule"))return BIO_MOTIONS["spore-release"];
+  if(id==="moss/spore"||id==="moss/sporophyte/capsule")return BIO_MOTIONS["spore-release"];
   if(id==="moss"||id.includes("/gametophyte"))return BIO_MOTIONS["moss-sway"];
  }
  if(species==="chlamydomonas"){
@@ -60,7 +60,7 @@ export function bioMotionFor(species:BioAlternativeOrganism,node:BioAltNode):Bio
   if(id==="chlamydomonas"||id.includes("/flagella"))return BIO_MOTIONS["flagellar-swim"];
  }
  if(species==="spirogyra"){
-  if(id.includes("/conjugation")||id.includes("/zygospore"))return BIO_MOTIONS.conjugation;
+  if(id.includes("/conjugation"))return BIO_MOTIONS.conjugation;
   if(id==="spirogyra"||id==="spirogyra/filament"||id==="spirogyra/filament/cell"||id.includes("/chloroplast"))return BIO_MOTIONS["spiral-chloroplast"];
  }
  return null;
