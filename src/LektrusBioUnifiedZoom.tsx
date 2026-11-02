@@ -18,9 +18,7 @@ import "./lektrusBioUnifiedZoom.css";
 type XY={x:number;y:number};
 type Ghost={node:BioNode;camera:BioZoomCamera;direction:"in"|"out"};
 const identity=(a:XY,b:XY)=>Math.hypot(a.x-b.x,a.y-b.y);
-export default function LektrusBioUnifiedZoom({organism,onOrganismChange}:{
- organism:BioOrganism;onOrganismChange?:(id:BioOrganism)=>void
-}){
+export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism}){
  const nodes=useMemo(()=>bioNodes(organism),[organism]);
  const [currentId,setCurrentId]=useState(organism);
  const current=nodes.find(n=>n.id===currentId)??nodes[0];
