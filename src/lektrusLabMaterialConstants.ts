@@ -413,7 +413,24 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
  // is a separate measured property; ICSC quotes 2.63 g/cm³,
  // hence the two sources must not be conflated or averaged.
  Na2SO3:[null,labExactMeasuredSolubility("Na2SO3",20)??null,37,33.2,29,26.6],
- Na2SO4:[null,null,48.1,45.26,43.09,42.3],
+ // Sodium sulfate crosses a decahydrate/anhydrous solid boundary near
+ // 32.4 C. Preserve the independently measured 0/20 C aqueous readings
+ // and pre-existing high-temperature grid without interpolation.
+ Na2SO4:[labExactMeasuredSolubility("Na2SO4",0)??null,
+  labExactMeasuredSolubility("Na2SO4",20)??null,48.1,45.26,43.09,42.3],
+ // Rabinovich & Khavin 1977 via Chemister: formula-equivalent solubility
+ // in pure water. The CuCl2 and Al2(SO4)3 equilibrium hydrated crystal
+ // phases are NOT identified. Only measured exact temperatures are valid.
+ CuCl2:[labExactMeasuredSolubility("CuCl2",0)??null,
+  labExactMeasuredSolubility("CuCl2",20)??null,
+  labExactMeasuredSolubility("CuCl2",40)??null,
+  labExactMeasuredSolubility("CuCl2",60)??null,
+  labExactMeasuredSolubility("CuCl2",80)??null,
+  labExactMeasuredSolubility("CuCl2",100)??null],
+ "Al2(SO4)3":[labExactMeasuredSolubility("Al2(SO4)3",0)??null,
+  null,labExactMeasuredSolubility("Al2(SO4)3",40)??null,
+  labExactMeasuredSolubility("Al2(SO4)3",60)??null,
+  null,labExactMeasuredSolubility("Al2(SO4)3",100)??null],
  ZnCl2:[null,null,453,488,541,614],
  NaH2PO4:[null,null,null,179.3,207.3,284.4],
  // Exact source-checked salt formula-equivalent aqueous observations.
@@ -546,23 +563,20 @@ export function labSingleSaltSolubilityGPer100gWater(
   }
   return;
  }
- // Aluminium nitrate saturation follows different stable hydrated phases;
- // there is no validated between-knot interpolation for the current
- // single-anhydrous-species model. The exact source temperature lookup
- // above is still valid for each individually reported observation.
- // These salts have unknown/interchanging hydrate phase boundaries or
- // measured temperatures too sparse to justify a continuous curve.
- // An explicit exact-temperature row above still takes precedence.
- if(["Al(NO3)3","NiSO4","CH3COOLi","FeSO4","Mg(NO3)2",
-  "Li2SO4","Zn(CH3COO)2","Ca(NO3)2"]
-  .includes(formula))return;
  const data=LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER[formula];
  if(!data||!Number.isFinite(tempC)||tempC<0||tempC>100)return;
- // Exact measured knots remain available even when adjacent knots are absent.
- // Never assume interpolation is possible from a single measurement.
+ // A directly measured grid point is valid even if the stable hydrate
+ // changes between knots. This is NOT permission to interpolate.
  const exact=LAB_SALT_SOLUBILITY_TEMPERATURES_C.indexOf(
   tempC as (typeof LAB_SALT_SOLUBILITY_TEMPERATURES_C)[number]);
  if(exact!==-1)return data[exact]??undefined;
+ // These aqueous series have unknown/interchanging hydrated solids or
+ // a documented phase boundary. Return only original measured points.
+ // Sodium sulfate's decahydrate transition near 32.4 C in particular
+ // prohibits a fictitious straight line between 20 and 40 C.
+ if(["Al(NO3)3","NiSO4","CH3COOLi","FeSO4","Mg(NO3)2",
+  "Li2SO4","Zn(CH3COO)2","Ca(NO3)2","CuCl2","Na2SO4",
+  "Al2(SO4)3"].includes(formula))return;
  for(let i=1;i<LAB_SALT_SOLUBILITY_TEMPERATURES_C.length;i++){
   const low=LAB_SALT_SOLUBILITY_TEMPERATURES_C[i-1];
   const high=LAB_SALT_SOLUBILITY_TEMPERATURES_C[i];
