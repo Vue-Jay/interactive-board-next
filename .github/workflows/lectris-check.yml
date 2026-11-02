@@ -33,6 +33,8 @@ jobs:
         run: node scripts/test-lektrus-bio-microscope.mjs
       - name: Biology taxonomy classes and cellular detail regression
         run: node scripts/test-lektrus-bio-taxonomy.mjs
+      - name: Biology representative anatomical models and source audit
+        run: node scripts/test-lektrus-bio-representatives.mjs
       - name: Biology drag and place anatomy exercises
         run: node scripts/test-lektrus-bio-assembly.mjs
       - name: Biology organ systems and relief regression
