@@ -4,7 +4,7 @@
 import type {ReactNode} from "react";
 import type {BioFurtherOrganism,BioNode} from "./lektrusBioMicroscopeModel";
 import {bioFurtherCellFeatures} from "./lektrusBioMicroscopeModel";
-const ink="#315b50",gold="#c59d72",jade="#70a283",pink="#d8a5a2",violet="#9f8db1";
+const ink="#315b50",gold="#c59d72",pink="#d8a5a2",violet="#9f8db1";
 function Nucleus({x=241,y=182}:{x?:number;y?:number}){return <g>
  <ellipse cx={x} cy={y} rx="27" ry="20" fill={violet} stroke="#81729e" strokeWidth="3"/>
  <circle cx={x-5} cy={y+1} r="6" fill="#785f98"/>
