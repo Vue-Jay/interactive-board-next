@@ -39,3 +39,24 @@
 .lektrus-bio-microscope>footer{margin-top:auto;font:700 10px/1.4 system-ui,sans-serif;letter-spacing:.05em;color:#74947e}
 @media(max-width:520px){.lektrus-bio-microscope{padding:8px;gap:5px}.lektrus-bio-levels button{font-size:9px;padding:6px 1px}.lektrus-bio-stage{min-height:145px;grid-template-columns:40% minmax(0,1fr)}.lektrus-bio-info p{font-size:10px}.lektrus-bio-items{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(prefers-reduced-motion:reduce){.lektrus-bio-specimen{transition:none}}
+
+/* Anatomical level transitions are layered over the same local viewing area.
+   No remote images, GL context or background animation on mobile devices. */
+.lektrus-bio-stage{grid-template-columns:minmax(0,62%) minmax(0,1fr);min-height:210px}
+.lektrus-bio-specimen{position:relative;width:100%;aspect-ratio:480/330;max-height:none;overflow:hidden;isolation:isolate;border:1px solid #c1d8bc;border-radius:12px;background:#f3f9f0;align-self:center}
+.lektrus-bio-scene-layer{position:absolute;inset:0;transform-origin:50% 50%;transition:opacity 85ms linear;will-change:auto}
+.lektrus-bio-scene-layer .lektrus-bio-anatomy-svg{display:block;width:100%;height:100%;max-width:none;max-height:none;object-fit:contain}
+.lektrus-bio-hotspot{cursor:pointer;outline:none;touch-action:manipulation}
+.lektrus-bio-hotspot .lektrus-bio-hotspot-halo{transition:fill-opacity .15s ease,transform .15s ease}
+.lektrus-bio-hotspot:hover .lektrus-bio-hotspot-halo,
+.lektrus-bio-hotspot:focus-visible .lektrus-bio-hotspot-halo{fill-opacity:.35;transform:scale(1.3)}
+.lektrus-bio-hotspot:focus-visible>circle:nth-child(2){stroke:#163e6e;stroke-width:6px}
+.lektrus-bio-hotspot:active>circle:nth-child(2){fill:#b7e1c7}
+@media(max-width:520px){
+ .lektrus-bio-stage{grid-template-columns:minmax(0,1fr);gap:7px}
+ .lektrus-bio-specimen{max-width:480px;justify-self:center}
+ .lektrus-bio-info{padding:0 5px}
+}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-bio-scene-layer,.lektrus-bio-hotspot .lektrus-bio-hotspot-halo{transition:none}
+}
