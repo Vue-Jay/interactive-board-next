@@ -142,6 +142,87 @@ function TissuePanel({kind,cell}:{kind:BioRepresentativeMicroPlate["kind"];cell:
   <Vessel x={83} y={279} length={316}/>
   {cell&&<path d="M60 133Q211 104 425 132" stroke="#e7ad9c" strokeWidth="6" fill="none"/>}
  </g>;
+ case "pine-needle-mesophyll":return <g>
+  <path d="M65 180Q141 68 238 77Q343 74 415 178Q346 284 236 279Q136 283 65 180Z" fill="#c6dfa6" stroke="#71966c" strokeWidth="9"/>
+  <path d="M101 180Q155 105 238 111Q318 98 374 181Q319 255 239 244Q155 251 101 180Z" fill="#e8efc9" stroke="#9bb78a" strokeWidth="5"/>
+  {Array.from({length:cell?12:21},(_,i)=>{const a=i*2.399,rad=cell?68:99;
+   const x=239+Math.cos(a)*rad,y=180+Math.sin(a)*rad*.70;
+   return <g key={i}><path d={"M"+(x-17)+" "+(y-11)+"q17-15 32 0l7 15-8 15q-21-13-35 1Z"} fill="#9fc896" stroke="#619368" strokeWidth="2.4"/>
+    <Chlor x={x+2} y={y+1} r={7}/></g>;})}
+  <ellipse cx="240" cy="182" rx={cell?34:41} ry={cell?40:49} fill="#f2e4bb" stroke="#b6a07c" strokeWidth="6"/>
+  <ellipse cx="240" cy="182" rx={cell?17:23} ry={cell?21:29} fill="#fbf2d4" stroke="#c6b38d" strokeWidth="3"/>
+  {cell&&<N x={151} y={210} r={19}/>}
+ </g>;
+ case "pine-rhizodermis":case "wheat-rhizodermis":return <g>
+  {Array.from({length:cell?3:9},(_,i)=>{const w=cell?112:40,x=cell?77+i*112:55+i*42;
+   return <g key={i}><PlantCell x={x} y={137} w={w} h={139} chlor={false}/>
+    {(cell?i===1:i%3===0)&&<g>
+     <path d={"M"+(x+w*.5)+" 138Q"+(x+w*.2)+" 100 "+(x+w*.6)+" 81Q"+(x+w*.9)+" 46 "+(x+w*.63)+" 36"} stroke="#75a170" strokeWidth={cell?12:7} fill="none" strokeLinecap="round"/>
+     <path d={"M"+(x+w*.5)+" 138Q"+(x+w*.2)+" 100 "+(x+w*.6)+" 81Q"+(x+w*.9)+" 46 "+(x+w*.63)+" 36"} stroke="#e5efcd" strokeWidth={cell?6:3} fill="none" strokeLinecap="round"/>
+    </g>}
+   </g>;})}
+  <path d="M48 280H431" stroke="#a3bd92" strokeWidth="6"/>
+ </g>;
+ case "pine-microsporangium":return <g>
+  <ellipse cx="240" cy="180" rx="157" ry="110" fill="#c6b891" stroke="#9d916e" strokeWidth="9"/>
+  <ellipse cx="240" cy="182" rx="130" ry="79" fill="#f1e4b8" stroke="#b4a37d" strokeWidth="7"/>
+  {Array.from({length:cell?1:19},(_,i)=>{const a=i*2.4,r=Math.sqrt(i)*25;
+   const x=cell?239:239+Math.cos(a)*r,y=cell?181:181+Math.sin(a)*r*.65;
+   return <g key={i}><circle cx={x} cy={y} r={cell?77:20} fill="#e1d3a6" stroke="#ad986a" strokeWidth={cell?7:3}/>
+    <N x={x} y={y} r={cell?28:8}/></g>;
+  })}
+  <text x="240" y="315" textAnchor="middle" fontSize="12" fill="#8a704c">Материнская клетка 2n · мейоз → микроспоры n</text>
+ </g>;
+ case "fern-frond-mesophyll":return <g>
+  <path d="M53 83H426" stroke="#6b9770" strokeWidth="16"/>
+  {Array.from({length:cell?4:13},(_,i)=>{const x=cell?65+i*100:59+(i%7)*52,y=cell?109:105+Math.floor(i/7)*91;
+   return <g key={i}><path d={"M"+x+" "+y+"q34-16 44 16l-4 41q-31 22-46-12Z"} fill="#c1e2a5" stroke="#719c6e" strokeWidth="4"/>
+    <ellipse cx={x+22} cy={y+25} rx="14" ry="21" fill="#c6e3d3"/>
+    {Array.from({length:5},(_,j)=><Chlor key={j} x={x+8+(j%2)*27} y={y+13+Math.floor(j/2)*15} r={6}/>)}
+    <N x={x+21} y={y+50} r={7}/>
+   </g>;})}
+  {!cell&&<path d="M54 277Q113 223 168 275Q228 222 282 273Q351 223 420 276" stroke="#87ac85" strokeWidth="8" fill="none"/>}
+ </g>;
+ case "fern-sporocyte":return <g>
+  <path d="M110 194Q130 91 224 83Q334 85 364 188Q346 277 240 284Q141 281 110 194Z"
+   fill="#d2b991" stroke="#967d66" strokeWidth="10"/>
+  <path d="M143 194Q157 119 231 111Q318 116 334 195Q314 256 239 257Q163 257 143 194Z"
+   fill="#f3e4b8" stroke="#b49c78" strokeWidth="7"/>
+  {Array.from({length:cell?1:11},(_,i)=>{const a=i*2.399,r=Math.sqrt(i)*24,x=cell?237:238+Math.cos(a)*r,y=cell?185:182+Math.sin(a)*r*.7;
+   return <g key={i}><circle cx={x} cy={y} r={cell?65:17} fill="#e1cca2" stroke="#b49b71" strokeWidth={cell?6:2.6}/>
+   <N x={x} y={y} r={cell?26:7}/></g>;})}
+  {Array.from({length:11},(_,i)=>{const a=(-2.5+i*3.3/10);return <ellipse key={i}
+   cx={241+129*Math.cos(a)} cy={185+99*Math.sin(a)} rx="12" ry="15" fill="#ba9d7f" stroke="#8e7968" strokeWidth="3"/>;})}
+  <text x="241" y="315" textAnchor="middle" fontSize="11.5" fill="#94734f">Кольцо спорангия · спороцит (2n) до мейоза</text>
+ </g>;
+ case "fern-root-cortex":return <g>
+  <circle cx="240" cy="179" r="128" fill="#d6deae" stroke="#8a9d79" strokeWidth="11"/>
+  {Array.from({length:cell?8:18},(_,i)=>{const a=i*2*Math.PI/(cell?8:18),r=cell?82:100,x=240+r*Math.cos(a),y=180+r*Math.sin(a);
+   return <g key={i}><ellipse cx={x} cy={y} rx={cell?28:23} ry={cell?27:22} fill="#e3e9c6" stroke="#a1b08a" strokeWidth="3"/>
+    <N x={x} y={y} r={cell?10:7}/></g>;})}
+  {!cell&&<g><circle cx="240" cy="179" r="55" fill="#f8e5c3" stroke="#b99a85" strokeWidth="6"/>
+   <path d="M239 136v86M197 180h85" stroke="#aa918c" strokeWidth="11"/><path d="M240 145v69M204 181h70" stroke="#d8ad9c" strokeWidth="5"/></g>}
+  {cell&&<ellipse cx="240" cy="179" rx="40" ry="42" fill="#c5e1d4" stroke="#a6cabc" strokeWidth="3"/>}
+ </g>;
+ case "wheat-leaf-mesophyll":return <g>
+  {Array.from({length:cell?3:9},(_,i)=>{const x=cell?68+i*127:47+i*45;
+   return <g key={i}><PlantCell x={x} y={89} w={cell?116:42} h={188} chlor/>
+    {!cell&&i%3===1&&<g><path d={"M"+(x+22)+" 97v171"} stroke="#d3bb95" strokeWidth="10"/>
+     <path d={"M"+(x+22)+" 102v166"} stroke="#e9e2bf" strokeWidth="4"/></g>}
+   </g>;})}
+  {!cell&&<path d="M47 83H440M47 282H440" stroke="#719968" strokeWidth="8"/>}
+ </g>;
+ case "wheat-tapetum":return <g>
+  <ellipse cx="241" cy="188" rx="167" ry="102" fill="#e0c4a0" stroke="#ac967e" strokeWidth="7"/>
+  <ellipse cx="240" cy="190" rx="115" ry="72" fill="#f7e5c6" stroke="#c3a58e" strokeWidth="7"/>
+  {Array.from({length:cell?10:21},(_,i)=>{const a=i*2*Math.PI/(cell?10:21),x=240+139*Math.cos(a),y=191+88*Math.sin(a);
+   return <g key={i}><ellipse cx={x} cy={y} rx={cell?18:14} ry={cell?14:10} fill="#e2b5ab" stroke="#a77e7c" strokeWidth="2"/>
+    <N x={x} y={y} r={cell?8:5}/></g>;})}
+  {Array.from({length:cell?17:9},(_,i)=>{const a=i*2.4,rad=cell?13*Math.sqrt(i):16*Math.sqrt(i);
+   return <circle key={i} cx={240+Math.cos(a)*rad} cy={187+Math.sin(a)*rad*.66} r={cell?8:14} fill="#e7c78f" stroke="#b79b72" strokeWidth="2"/>;
+  })}
+  {cell&&<N x={181} y={234} r={20}/>}
+ </g>;
  default:return null;
  }
 }
