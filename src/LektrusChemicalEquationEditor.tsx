@@ -19,7 +19,8 @@ const indexed=/([A-Z][a-z]?|[)\]])([0-9]+)/g;
 const arrows:{value:EquationArrow;label:string;title:string}[]=[
  {value:"→",label:"→",title:"Необратимая реакция"},
  {value:"⇌",label:"⇌",title:"Обратимая реакция"},
- {value:"=",label:"=",title:"Уравнение со знаком равенства"}
+ {value:"=",label:"=",title:"Уравнение со знаком равенства"},
+ {value:"≠",label:"≠",title:"Реакция не идёт в указанных условиях"}
 ];
 
 function FormulaPart({value}:{value:string}){
