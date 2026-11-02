@@ -17,7 +17,7 @@ export type BioAlternativeSpecies={
  nodes:BioAltNode[];cycle?:BioAltCycleStep[];
 };
 export const BIO_ALT_SOURCES={
- sponges:{title:"OpenStax Biology 2e · Phylum Porifera",url:"https://openstax.org/books/biology-2e/pages/28-1-phylum-porifera"},
+ sponge:{title:"OpenStax Biology 2e · Phylum Porifera",url:"https://openstax.org/books/biology-2e/pages/28-1-phylum-porifera"},
  hydra:{title:"OpenStax Biology 2e · Phylum Cnidaria",url:"https://openstax.org/books/biology-2e/pages/28-2-phylum-cnidaria"},
  moss:{title:"OpenStax Biology 2e · Bryophytes",url:"https://openstax.org/books/biology-2e/pages/25-3-bryophytes"},
  chlamydomonas:{title:"NCBI · Chlamydomonas eyespot assembly",url:"https://pmc.ncbi.nlm.nih.gov/articles/PMC3811559/"},
@@ -88,7 +88,7 @@ const spirogyra:BioAltNode[]=[
  n("spirogyra/zygospore","spirogyra","reproduction","Зигоспора (2n)","После слияния гамет диплоидная зигота покрывается устойчивой оболочкой.",370,102,"2n")
 ];
 export const BIO_ALTERNATIVE_SPECIES:Record<BioAlternativeOrganism,BioAlternativeSpecies>={
- sponge:{id:"sponge",name:"Бадяга озёрная",scientific:"Spongilla lacustris",group:"animal",badge:"Без настоящих тканей",intro:"Фильтрующее многоклеточное животное с особыми клеточными типами и водоносной системой.",warning:"Не показываем у губки сердце, желудок, лёгкие или полноценные ткани.",source:BIO_ALT_SOURCES.sponges,nodes:sponge},
+ sponge:{id:"sponge",name:"Бадяга озёрная",scientific:"Spongilla lacustris",group:"animal",badge:"Без настоящих тканей",intro:"Фильтрующее многоклеточное животное с особыми клеточными типами и водоносной системой.",warning:"Не показываем у губки сердце, желудок, лёгкие или полноценные ткани.",source:BIO_ALT_SOURCES.sponge,nodes:sponge},
  hydra:{id:"hydra",name:"Гидра обыкновенная",scientific:"Hydra vulgaris",group:"animal",badge:"Два клеточных слоя",intro:"Пресноводный полип с пищеварительной полостью, стрекательными клетками и почкованием.",warning:"Клеточные слои реальны, но сложные системы органов позвоночных гидре не присущи.",source:BIO_ALT_SOURCES.hydra,nodes:hydra},
  moss:{id:"moss",name:"Кукушкин лён",scientific:"Polytrichum commune",group:"plant",badge:"Чередование поколений",intro:"Рассматривайте отдельно гаплоидный гаметофит и диплоидный спорофит.",warning:"Ризоиды не называют корнями, листовидные структуры не приравнивают к листьям сосудистых растений.",source:BIO_ALT_SOURCES.moss,nodes:moss,cycle:[
   {id:"spore",title:"Спора (n)",description:"После мейоза формируется гаплоидная спора.",nodeId:"moss/spore",ploidy:"n"},
