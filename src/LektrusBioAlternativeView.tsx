@@ -106,8 +106,28 @@ function BioAlternativeIllustration({species,node,children,onSelect,motion,playi
   species.id==="chlamydomonas"?<DrawChlamydomonas node={node}/>:<DrawSpirogyra node={node}/>;
  return <svg className="lektrus-bio-alternative-scene" viewBox="0 0 480 340" role="group"
   aria-label={"Схематическая иллюстрация: "+node.name}>
-  <rect width="480" height="340" rx="16" fill="#f1f7eb"/>
-  <g>{illustration}</g>
+  <defs>
+   <linearGradient id="lektrus-bio-scene-ground" x1="0" y1="0" x2=".84" y2="1">
+    <stop offset="0" stopColor="#f7fbf0"/><stop offset=".55" stopColor="#dff1e5"/><stop offset="1" stopColor="#c6e6dc"/>
+   </linearGradient>
+   <linearGradient id="lektrus-bio-organism-velvet" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stopColor="#d8f1a4"/><stop offset=".48" stopColor="#76b967"/><stop offset="1" stopColor="#3c805e"/>
+   </linearGradient>
+   <linearGradient id="lektrus-bio-organism-cellular" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stopColor="#f9e5c9"/><stop offset=".48" stopColor="#d6aa8d"/><stop offset="1" stopColor="#9b746f"/>
+   </linearGradient>
+   <linearGradient id="lektrus-bio-organism-water" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stopColor="#f8fef1"/><stop offset="1" stopColor="#a2d1cb"/>
+   </linearGradient>
+   <radialGradient id="lektrus-bio-scene-glow">
+    <stop offset="0" stopColor="#fff" stopOpacity=".86"/><stop offset="1" stopColor="#fff" stopOpacity="0"/>
+   </radialGradient>
+  </defs>
+  <rect width="480" height="340" rx="16" fill="url(#lektrus-bio-scene-ground)"/>
+  <ellipse cx="100" cy="64" rx="210" ry="144" fill="url(#lektrus-bio-scene-glow)" opacity=".58"/>
+  <path d="M15 278Q105 256 170 288T340 281T476 293" stroke="#fff" strokeOpacity=".65" strokeWidth="2" fill="none"/>
+  <g className="lektrus-bio-alt-plate" key={node.id}>{illustration}</g>
+  <LektrusBioMotionLayer motion={motion} playing={playing} replay={replay}/>
   {children.map((child,i)=>{
    const spot=child.spot??{x:100+(i%3)*145,y:120+Math.floor(i/3)*95};
    return <g key={child.id} transform={`translate(${spot.x} ${spot.y})`}
@@ -149,8 +169,25 @@ export default function LektrusBioAlternativeView({speciesId,onBack}:Props){
   </nav>
   <div className="lektrus-bio-alt-main">
    <div className="lektrus-bio-alt-figure">
-    <BioAlternativeIllustration species={species} node={node} children={children} onSelect={open}/>
-    <small>Нажмите на подсвеченную структуру или выберите её ниже. Переходы показаны схематично.</small>
+    <div className="lektrus-bio-alt-scene-header">
+     <span className="lektrus-bio-alt-scene-label">ATLAS · ИНТЕРАКТИВНАЯ СЦЕНА</span>
+     <span className="lektrus-bio-alt-scene-level">{BIO_ALT_KIND_LABELS[node.kind]}</span>
+    </div>
+    <BioAlternativeIllustration species={species} node={node} children={children} onSelect={open}
+     motion={motion} playing={playing} replay={replay}/>
+    {motion&&<div className="lektrus-bio-alt-motion-console" aria-label="Управление анимацией">
+     <div className="lektrus-bio-alt-motion-text">
+      <strong>{motion.name}</strong>
+      <p>{motion.description}</p>
+     </div>
+     {motion.mode==="loop"?
+      <button type="button" className="lektrus-bio-alt-motion-button"
+       aria-pressed={playing} onClick={()=>setPlaying(p=>!p)}>
+       {playing?"Ⅱ Пауза":"▶ Пуск"}</button>:
+      <button type="button" className="lektrus-bio-alt-motion-button"
+       onClick={()=>setReplay(n=>n+1)}>{replay?"↻ Повторить":"▶ Показать"}</button>}
+    </div>}
+    <small>Нажмите на структуру или выберите её в списке. Переходы и движения схематичны, без масштаба и реальной скорости.</small>
    </div>
    <div className="lektrus-bio-alt-info">
     <div className="lektrus-bio-alt-kind">{BIO_ALT_KIND_LABELS[node.kind]}{node.ploidy?" · "+node.ploidy:""}</div>
