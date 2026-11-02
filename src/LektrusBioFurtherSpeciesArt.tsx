@@ -22,15 +22,15 @@ function Lizard(){return <g>
   fill="#88a76e" stroke="#537e64" strokeWidth="7"/>
  <path d="M88 112Q120 114 141 139" stroke="#c7cc8a" strokeWidth="10" fill="none"/>
  {Array.from({length:32},(_,i)=>{const x=164+(i%8)*21,y=130+Math.floor(i/8)*25;
-  return <path key={i} d={\`M\${x-7} \${y}q9-8 18 0q-9 9-18 0\`} fill="#9bbb78" stroke="#7a9d68" strokeWidth="1.5"/>;
+  return <path key={i} d={`M${x-7} ${y}q9-8 18 0q-9 9-18 0`} fill="#9bbb78" stroke="#7a9d68" strokeWidth="1.5"/>;
  })}
  <circle cx="83" cy="116" r="10" fill="#eedcab" stroke="#5f8265" strokeWidth="3"/><circle cx="86" cy="115" r="5" fill="#283b36"/>
  <path d="M57 148l55 2" stroke="#607e64" strokeWidth="4"/>
  </g>}
 function Spider(){return <g>
  {Array.from({length:4},(_,i)=>{const y=154+i*25;return <g key={i} stroke="#776e62" strokeWidth="9" strokeLinecap="round" fill="none">
-  <path d={\`M212 \${y}Q153 \${y-28} \${112-i*5} \${y-78}L\${68-i*5} \${y-57}\`}/>
-  <path d={\`M270 \${y}Q333 \${y-26} \${370+i*4} \${y-76}L\${414+i*5} \${y-55}\`}/>
+  <path d={`M212 ${y}Q153 ${y-28} ${112-i*5} ${y-78}L${68-i*5} ${y-57}`}/>
+  <path d={`M270 ${y}Q333 ${y-26} ${370+i*4} ${y-76}L${414+i*5} ${y-55}`}/>
  </g>})}
  <ellipse cx="279" cy="198" rx="79" ry="97" fill="#bba088" stroke="#7c7369" strokeWidth="8"/>
  <ellipse cx="178" cy="181" rx="52" ry="49" fill="#a3917a" stroke="#746f65" strokeWidth="7"/>
@@ -41,28 +41,28 @@ function Spider(){return <g>
 function Clubmoss(){return <g>
  <path d="M49 272Q151 248 240 272T420 269" stroke="#628b65" strokeWidth="16" fill="none" strokeLinecap="round"/>
  {Array.from({length:5},(_,i)=>{const x=90+i*75;return <g key={i}>
-  <path d={\`M\${x} 266Q\${x+9} 186 \${x+10} \${127+i%2*19}\`} stroke="#5e9267" strokeWidth="13" fill="none" strokeLinecap="round"/>
+  <path d={`M${x} 266Q${x+9} 186 ${x+10} ${127+i%2*19}`} stroke="#5e9267" strokeWidth="13" fill="none" strokeLinecap="round"/>
   {Array.from({length:8},(_,j)=>{const y=150+j*13+i%2*19;return <g key={j} stroke="#64936b" strokeWidth="4" strokeLinecap="round">
-   <path d={\`M\${x+6} \${y}l-24-20M\${x+13} \${y+4}l23-18\`}/>
+   <path d={`M${x+6} ${y}l-24-20M${x+13} ${y+4}l23-18`}/>
   </g>})}
   {i%2===0&&<g>
-   <path d={\`M\${x+10} \${127+i%2*19}v-60\`} stroke="#a5a36c" strokeWidth="7"/>
-   {Array.from({length:7},(_,j)=><path key={j} d={\`M\${x-3} \${68+j*9}q14-10 25 0l-12 9Z\`} fill="#c2bd82" stroke="#8f9b68" strokeWidth="2"/>)}
+   <path d={`M${x+10} ${127+i%2*19}v-60`} stroke="#a5a36c" strokeWidth="7"/>
+   {Array.from({length:7},(_,j)=><path key={j} d={`M${x-3} ${68+j*9}q14-10 25 0l-12 9Z`} fill="#c2bd82" stroke="#8f9b68" strokeWidth="2"/>)}
   </g>}
  </g>})}
- {Array.from({length:6},(_,i)=><path key={i} d={\`M\${80+i*58} 274q-12 20-12 38\`} stroke="#b49b76" strokeWidth="4" fill="none"/>)}
+ {Array.from({length:6},(_,i)=><path key={i} d={`M${80+i*58} 274q-12 20-12 38`} stroke="#b49b76" strokeWidth="4" fill="none"/>)}
  </g>}
 function Magnolia(){return <g>
  <path d="M233 320Q250 210 237 84" stroke="#827554" strokeWidth="14" fill="none"/>
  {[[125,178,-20],[343,226,23],[343,110,19]].map(([x,y,a],i)=><g key={i}>
-  <path d={\`M237 \${y+17}Q\${x} \${y-30} \${x} \${y}\`} stroke="#7a9465" strokeWidth="8" fill="none"/>
-  <ellipse cx={x} cy={y} rx="69" ry="26" fill="#4c9068" stroke="#397b5d" strokeWidth="5" transform={\`rotate(\${a} \${x} \${y})\`}/>
-  <path d={\`M\${x-47} \${y}L\${x+48} \${y}\`} stroke="#c2ddb2" strokeWidth="4" transform={\`rotate(\${a} \${x} \${y})\`}/>
+  <path d={`M237 ${y+17}Q${x} ${y-30} ${x} ${y}`} stroke="#7a9465" strokeWidth="8" fill="none"/>
+  <ellipse cx={x} cy={y} rx="69" ry="26" fill="#4c9068" stroke="#397b5d" strokeWidth="5" transform={`rotate(${a} ${x} ${y})`}/>
+  <path d={`M${x-47} ${y}L${x+48} ${y}`} stroke="#c2ddb2" strokeWidth="4" transform={`rotate(${a} ${x} ${y})`}/>
  </g>)}
  <circle cx="227" cy="106" r="73" fill="#f7f0dc" opacity=".55"/>
  {Array.from({length:9},(_,i)=>{const a=i*2*Math.PI/9;return <ellipse key={i}
   cx={225+Math.cos(a)*36} cy={106+Math.sin(a)*35} rx="35" ry="20"
-  fill="#fff9ee" stroke="#d8d0b5" strokeWidth="3" transform={\`rotate(\${a*180/Math.PI+90} \${225+Math.cos(a)*36} \${106+Math.sin(a)*35})\`}/>})}
+  fill="#fff9ee" stroke="#d8d0b5" strokeWidth="3" transform={`rotate(${a*180/Math.PI+90} ${225+Math.cos(a)*36} ${106+Math.sin(a)*35})`}/>})}
  <ellipse cx="225" cy="108" rx="17" ry="34" fill="#c4b87f" stroke="#94895e" strokeWidth="4"/>
  {Array.from({length:13},(_,i)=>{const a=i*2.4;return <circle key={i} cx={225+Math.cos(a)*24} cy={112+Math.sin(a)*23} r="3.5" fill={gold}/>})}
  </g>}
@@ -76,8 +76,8 @@ function AnimalBranch({organism,branch,level}:{organism:"lizard"|"spider";branch
   if(branch===0)return <g>
    <rect x="64" y="97" width="356" height="189" rx="20" fill="#e6cfc1" stroke="#b99a8e" strokeWidth="8"/>
    {Array.from({length:12},(_,i)=><g key={i}>
-    <path d={\`M\${73+i*29} 97q13-25 28 0v55q-13 18-28 0Z\`} fill="#ceb395" stroke="#9e9481" strokeWidth="2"/>
-    <path d={\`M\${74+i*29} 157v60\`} stroke="#b39189" strokeWidth="4"/>
+    <path d={`M${73+i*29} 97q13-25 28 0v55q-13 18-28 0Z`} fill="#ceb395" stroke="#9e9481" strokeWidth="2"/>
+    <path d={`M${74+i*29} 157v60`} stroke="#b39189" strokeWidth="4"/>
    </g>)}
    <path d="M74 229Q235 215 408 228" stroke="#d3a39c" strokeWidth="8" fill="none"/>
    {deep&&<Nucleus/>}
@@ -86,7 +86,7 @@ function AnimalBranch({organism,branch,level}:{organism:"lizard"|"spider";branch
   if(branch===1)return <g>
    <ellipse cx="240" cy="190" rx="145" ry="109" fill="#e7c2b7" stroke="#ac8887" strokeWidth="9"/>
    <ellipse cx="240" cy="190" rx="117" ry="82" fill="#fff6db" stroke="#cda19d" strokeWidth="6"/>
-   {Array.from({length:12},(_,i)=>{const a=i*2*Math.PI/12;return <path key={i} d={\`M\${240+Math.cos(a)*105} \${190+Math.sin(a)*72}Q\${240+Math.cos(a+.25)*71} \${190+Math.sin(a+.25)*54} 240 190\`} stroke="#dca6a2" strokeWidth={tissue||deep?8:13} fill="none"/>})}
+   {Array.from({length:12},(_,i)=>{const a=i*2*Math.PI/12;return <path key={i} d={`M${240+Math.cos(a)*105} ${190+Math.sin(a)*72}Q${240+Math.cos(a+.25)*71} ${190+Math.sin(a+.25)*54} 240 190`} stroke="#dca6a2" strokeWidth={tissue||deep?8:13} fill="none"/>})}
    <path d="M109 256Q218 294 372 250" stroke="#bd8088" strokeWidth="8" strokeDasharray="8 6" fill="none"/>
    {deep&&<Nucleus/>}
    <Title name={deep?"Газообменный эпителиоцит":tissue?"Эпителий фовеолы":"Лёгкое ящерицы"} detail="Ячеистые камеры · капилляры · газообмен"/>
@@ -95,7 +95,7 @@ function AnimalBranch({organism,branch,level}:{organism:"lizard"|"spider";branch
    <rect x="67" y="87" width="345" height="216" rx="20" fill="#e2decc" stroke="#aaa58d" strokeWidth="7"/>
    <rect x="77" y="103" width="325" height="40" fill="#8e9c8a"/>
    {Array.from({length:17},(_,i)=><g key={i}>
-    <path d={\`M\${88+i*18} 147v54\`} stroke="#a0bd9c" strokeWidth="10" strokeLinecap="round"/>
+    <path d={`M${88+i*18} 147v54`} stroke="#a0bd9c" strokeWidth="10" strokeLinecap="round"/>
     <circle cx={88+i*18} cy="218" r="7" fill={pink}/>
    </g>)}
    <rect x="78" y="229" width="324" height="42" fill="#c8b7cf"/>
@@ -106,8 +106,8 @@ function AnimalBranch({organism,branch,level}:{organism:"lizard"|"spider";branch
  if(branch===0)return <g>
   <path d="M112 102Q239 67 365 105V275H112Z" fill="#d5d0c5" stroke="#9a9b8e" strokeWidth="8"/>
   {Array.from({length:12},(_,i)=>{const y=106+i*12;return <g key={i}>
-   <path d={\`M128 \${y}Q244 \${y-15} 350 \${y}\`} stroke="#f1e6d7" strokeWidth="6" fill="none"/>
-   <path d={\`M128 \${y+4}Q240 \${y+19} 350 \${y+4}\`} stroke="#bb8f88" strokeWidth="6" fill="none"/>
+   <path d={`M128 ${y}Q244 ${y-15} 350 ${y}`} stroke="#f1e6d7" strokeWidth="6" fill="none"/>
+   <path d={`M128 ${y+4}Q240 ${y+19} 350 ${y+4}`} stroke="#bb8f88" strokeWidth="6" fill="none"/>
   </g>})}
   {deep&&<Nucleus/>}
   <Title name={deep?"Опорная клетка ламеллы":tissue?"Ламеллы книжного лёгкого":"Книжное лёгкое"} detail="Воздушные щели · ламеллы с гемолимфой"/>
@@ -125,7 +125,7 @@ function AnimalBranch({organism,branch,level}:{organism:"lizard"|"spider";branch
   <ellipse cx="237" cy="181" rx="138" ry="106" fill="#dbba9e" stroke="#a5897b" strokeWidth="8"/>
   <ellipse cx="237" cy="181" rx="90" ry="75" fill="#eff2d9" stroke="#a8b59d" strokeWidth="7"/>
   <ellipse cx="239" cy="186" rx="51" ry="57" fill="#a9baa8" stroke="#829e8c" strokeWidth="5"/>
-  {Array.from({length:14},(_,i)=>{const a=i*2.4;return <path key={i} d={\`M\${240+Math.cos(a)*40} \${186+Math.sin(a)*42}l\${Math.cos(a)*25} \${Math.sin(a)*23}\`} stroke="#8b7497" strokeWidth="5"/>})}
+  {Array.from({length:14},(_,i)=>{const a=i*2.4;return <path key={i} d={`M${240+Math.cos(a)*40} ${186+Math.sin(a)*42}l${Math.cos(a)*25} ${Math.sin(a)*23}`} stroke="#8b7497" strokeWidth="5"/>})}
   {deep&&<Nucleus/>}
   <Title name={deep?"Рабдомерный фоторецептор":tissue?"Фоторецепторный эпителий":"Простой глаз паука"} detail="Простой глаз · рабдомерные микроворсинки"/>
  </g>;
@@ -146,8 +146,8 @@ function PlantBranch({organism,branch,level}:{organism:"clubmoss"|"magnolia";bra
  if(club&&branch===1)return <g>
   <path d="M235 290V91" stroke="#819b6e" strokeWidth="13" strokeLinecap="round"/>
   {Array.from({length:9},(_,i)=>{const y=112+i*18;return <g key={i}>
-   <path d={\`M235 \${y}l-55-25 21 37Z\`} fill="#c9ce9c" stroke="#899d7d" strokeWidth="4"/>
-   <path d={\`M238 \${y}l49-22 -16 33Z\`} fill="#c9ce9c" stroke="#899d7d" strokeWidth="4"/>
+   <path d={`M235 ${y}l-55-25 21 37Z`} fill="#c9ce9c" stroke="#899d7d" strokeWidth="4"/>
+   <path d={`M238 ${y}l49-22 -16 33Z`} fill="#c9ce9c" stroke="#899d7d" strokeWidth="4"/>
    <ellipse cx={211} cy={y-4} rx="13" ry="10" fill="#d7ad7d" stroke="#b68e71" strokeWidth="2"/>
   </g>})}
   {deep&&<g><ellipse cx="240" cy="187" rx="70" ry="57" fill="#eed6b7" stroke="#bc997f" strokeWidth="6"/><Nucleus/></g>}
@@ -155,7 +155,7 @@ function PlantBranch({organism,branch,level}:{organism:"clubmoss"|"magnolia";bra
  </g>;
  if(club)return <g>
   <path d="M237 65Q217 172 229 285" stroke="#c2a585" strokeWidth="42" strokeLinecap="round"/>
-  {Array.from({length:14},(_,i)=>{const x=223+(i%2)*22,y=77+i*13;return <path key={i} d={\`M\${x} \${y}q\${i%2?44:-45} -18 \${i%2?58:-55} -25\`} stroke="#cdb69a" strokeWidth="4" fill="none"/>})}
+  {Array.from({length:14},(_,i)=>{const x=223+(i%2)*22,y=77+i*13;return <path key={i} d={`M${x} ${y}q${i%2?44:-45} -18 ${i%2?58:-55} -25`} stroke="#cdb69a" strokeWidth="4" fill="none"/>})}
   {deep&&<g><rect x="137" y="112" width="220" height="133" rx="24" fill="#e5edc4" stroke="#8aa779" strokeWidth="9"/><Nucleus/></g>}
   <Title name={deep?"Клетка ризодермы":tissue?"Ризодерма корня":"Придаточный корень"} detail="Молодой корень · водопоглощающие ткани"/>
  </g>;
@@ -201,7 +201,7 @@ export default function LektrusBioFurtherSpeciesArt({organism,node,selectedFeatu
  const points=[{x:190,y:157},{x:290,y:195},{x:244,y:251}];
  return <g data-bio-further-species={organism} data-bio-further-level={node.level}>
   {section}
-  {items.map((feature,i)=>{const pt=points[i];return <g key={feature.name} transform={\`translate(\${pt.x} \${pt.y})\`}
+  {items.map((feature,i)=>{const pt=points[i];return <g key={feature.name} transform={`translate(${pt.x} ${pt.y})`}
    role="button" tabIndex={0} aria-pressed={selectedFeature===feature.name}
    aria-label={"Изучить: "+feature.name} data-bio-further-feature={feature.name}
    className={"lektrus-bio-cell-hotspot"+(selectedFeature===feature.name?" is-selected":"")}
