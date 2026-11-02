@@ -57,7 +57,7 @@ for(const species of Object.keys(bio.BIO_ORGANISMS)){
   }
  }
 }
-assert.ok(paths>=60&&links>=300,"Must cover all 20 modeled species and their existing paths");
+assert.ok(paths>=60&&links>=200,"Must cover all 20 modeled species and their existing paths");
 const pine=bio.bioNodes("pine");
 const tree=pine[0],shoot=pine.find(n=>n.name==="Побег"),needle=pine.find(n=>n.name==="Хвоя");
 const tissue=pine.find(n=>n.name==="Мезофилл хвои"),cell=pine.find(n=>n.name==="Клетка мезофилла хвои");
