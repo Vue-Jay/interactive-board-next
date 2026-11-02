@@ -18,9 +18,11 @@ function DrawSponge({node}:{node:BioAltNode}){
   <path d="M165 278H315" stroke="#85b1a1" strokeWidth="8" strokeLinecap="round"/>
  </g>;
  return <g>
-  <path d="M103 278Q82 186 126 106Q152 78 182 110Q214 28 251 71Q277 38 319 83Q391 95 368 185L356 279Z" fill="#d6c4a7" stroke="#967c68" strokeWidth="7"/>
-  <path d="M175 260Q164 164 215 114Q258 101 301 144Q322 194 286 261Z" fill="#f1e7d3" stroke="#b59d81" strokeWidth="5"/>
-  {Array.from({length:24},(_,i)=>{const x=118+i%6*44,y=130+Math.floor(i/6)*37;return <circle key={i} cx={x} cy={y} r={5+i%3} fill="#c1a587" stroke="#8d7762" strokeWidth="2"/>})}
+  <path d="M88 280Q70 243 99 214Q69 183 102 145Q90 97 140 94Q157 63 186 105Q194 44 235 59Q275 35 291 84Q333 55 359 100Q409 120 378 168Q405 205 376 235L365 281Z"
+   fill="url(#lektrus-bio-organism-velvet)" stroke="#518362" strokeWidth="7" strokeLinejoin="round"/>
+  <path d="M180 259Q158 165 218 117Q264 108 301 146Q324 197 284 261Z"
+   fill="url(#lektrus-bio-organism-water)" stroke="#8aa788" strokeWidth="5"/>
+  {Array.from({length:24},(_,i)=>{const x=118+i%6*44,y=130+Math.floor(i/6)*37;return <circle key={i} cx={x} cy={y} r={5+i%3} fill="#d1e8a5" stroke="#548669" strokeWidth="2"/>})}
   <path d="M241 144V54" stroke="#72adbd" strokeWidth="10" strokeLinecap="round" fill="none"/>
   <path d="M240 53l-20 25m20-25 22 25" stroke="#72adbd" strokeWidth="6" fill="none"/>
  </g>;
@@ -35,12 +37,16 @@ function DrawHydra({node}:{node:BioAltNode}){
   <circle cx="237" cy="90" r="12" fill="#9278b0"/>
  </g>;
  return <g>
-  <path d="M218 293Q193 205 205 135Q214 117 236 115Q263 116 273 137Q285 198 264 293Z" fill="#b4d7aa" stroke="#66936f" strokeWidth="6"/>
+  <path d="M218 293Q193 205 205 135Q214 117 236 115Q263 116 273 137Q285 198 264 293Z" fill="url(#lektrus-bio-organism-cellular)" stroke="#8f887a" strokeWidth="6"/>
   {[-95,-59,-25,25,59,95].map((offset,i)=><path key={i}
    d={`M${235+offset*.20} 124Q${235+offset*1.15} 48 ${235+offset} 33`}
    stroke="#80b78d" strokeWidth="12" fill="none" strokeLinecap="round"/>)}
-  <path d="M237 133V286" stroke="#d2edc7" strokeWidth="32" strokeLinecap="round"/>
-  <path d="M268 231Q326 192 335 241Q335 282 293 268" fill="#b4d7aa" stroke="#679771" strokeWidth="6"/>
+  <path d="M237 133V286" stroke="#f5e6d6" strokeOpacity=".8" strokeWidth="32" strokeLinecap="round"/>
+  <path d="M268 231Q326 192 335 241Q335 282 293 268" fill="#d4ae9b" stroke="#a17c76" strokeWidth="6"/>
+  {Array.from({length:17},(_,i)=>{
+   const x=105+i*16,y=48+(i%4)*10;
+   return <circle key={i} cx={x} cy={y} r={2.4+(i%3)*.7} fill="#d4aa85" opacity=".75"/>;
+  })}
   <path d="M191 295H290" stroke="#658c68" strokeWidth="10" strokeLinecap="round"/>
  </g>;
 }
@@ -72,7 +78,7 @@ function DrawChlamydomonas({node}:{node:BioAltNode}){
  const emph=node.id.split("/")[1];
  return <g>
   <path d="M213 103Q189 63 179 28M258 102Q285 65 291 24" fill="none" stroke="#83b59c" strokeWidth="8" strokeLinecap="round"/>
-  <ellipse cx="237" cy="187" rx="112" ry="116" fill="#c2dca7" stroke="#5d986a" strokeWidth="9"/>
+  <ellipse cx="237" cy="187" rx="112" ry="116" fill="url(#lektrus-bio-organism-velvet)" stroke="#5d986a" strokeWidth="9"/>
   <path d="M158 160Q149 258 239 278Q326 257 322 166Q284 207 235 217Q185 207 158 160" fill={emph==="chloroplast"?"#72b174":"#8fc287"} stroke="#548e5d" strokeWidth="5"/>
   <ellipse cx="241" cy="175" rx="34" ry="28" fill="#bdadd2" stroke="#957eae" strokeWidth="5"/>
   <circle cx="291" cy="171" r="14" fill="#df8f4b" stroke="#b2784a" strokeWidth="4"/>
@@ -85,7 +91,7 @@ function DrawSpirogyra({node}:{node:BioAltNode}){
  const isConjugation=node.id.includes("conjugation")||node.id.includes("zygospore");
  return <g>
   {Array.from({length:isConjugation?2:1},(_,row)=><g key={row} transform={`translate(0 ${row*120-(isConjugation?56:0)})`}>
-   <rect x="62" y="107" width="354" height="120" rx="12" fill="#d2e7b8" stroke="#75a772" strokeWidth="8"/>
+   <rect x="62" y="107" width="354" height="120" rx="12" fill="url(#lektrus-bio-organism-water)" stroke="#75a772" strokeWidth="8"/>
    {Array.from({length:4},(_,i)=><g key={i} transform={`translate(${i*88} 0)`}>
     {i>0&&<path d="M62 111V223" stroke="#75a772" strokeWidth="6"/>}
     <path d="M75 125Q106 110 129 133Q146 155 107 178Q77 192 121 208Q141 216 143 207" fill="none" stroke="#69ab67" strokeWidth="13" strokeLinecap="round"/>
