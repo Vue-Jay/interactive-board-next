@@ -64,6 +64,8 @@ assert.match(view,/onClick=\{\(\)=>setReplay\(n=>n\+1\)\}/,"One-shot replay must
 assert.match(view,/onClick=\{\(\)=>setPlaying\(p=>!p\)\}/,"Pause must control real motion");
 assert.match(view,/className="lektrus-bio-alt-plate" key=\{node\.id\}/,"Diagram stage transitions must follow selected node");
 assert.match(view,/Источник процесса: /);
+const sharedScene=fs.readFileSync("src/LektrusBioAnatomyScene.tsx","utf8");
+assert.match(sharedScene,/<g className="lektrus-bio-alt-plate" key=\{node\.id\}>\{shape\}<\/g>/,"Existing twelve anatomy scenes must transition too");
 const layer=fs.readFileSync("src/LektrusBioMotionLayer.tsx","utf8");
 assert.match(layer,/pointerEvents="none"/,"Animation overlays must not block hotspots");
 assert.match(layer,/oneShot\?motion\.id\+"-"\+replay:motion\.id/,"One-shot must restart by React key");
