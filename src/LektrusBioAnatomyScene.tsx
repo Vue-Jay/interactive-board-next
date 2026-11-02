@@ -118,6 +118,43 @@ function TissueScene({keyName}:{keyName:BioVisualKey}){
 function CellScene({keyName}:{keyName:BioVisualKey}){
  const plant=["leaf","root","wood","flower"].includes(keyName);
  const nerve=keyName==="brain",muscle=keyName==="muscle",redCell=keyName==="heart";
+ if(keyName==="eye")return <g>
+  <rect x="176" y="28" width="128" height="128" rx="23" fill="#a3c5db" stroke="#7097b8" strokeWidth="6"/>
+  {Array.from({length:8},(_,i)=><path key={i} d={"M192 "+(41+i*14)+"H287"} stroke="#6f97b7" strokeWidth="6"/>)}
+  <rect x="188" y="157" width="106" height="64" rx="29" fill="#e1cab0" stroke="#b5a18c" strokeWidth="5"/>
+  <ellipse cx="241" cy="191" rx="21" ry="12" fill="#b69bbc"/>
+  <path d="M240 220V280L285 306" stroke="#b5a18c" strokeWidth="15" fill="none" strokeLinecap="round"/>
+  <text x="335" y="102" fontSize="13" fill="#537998">Наружный сегмент</text>
+ </g>;
+ if(keyName==="lungs")return <g>
+  <path d="M42 190Q110 110 206 180Q306 244 434 116" stroke="#d8adb0" strokeWidth="31" strokeLinecap="round" fill="none"/>
+  <path d="M44 190Q110 110 206 180Q306 244 434 116" stroke="#f9e8e5" strokeWidth="17" strokeLinecap="round" fill="none"/>
+  <ellipse cx="210" cy="181" rx="21" ry="11" transform="rotate(33 210 181)" fill="#c8aed1" stroke="#ad83ad" strokeWidth="3"/>
+  <path d="M35 253Q186 215 253 283Q345 317 449 245" fill="none" stroke="#c77b8a" strokeWidth="13" strokeLinecap="round"/>
+  <text x="231" y="58" fontSize="16" textAnchor="middle" fill="#98747d">Тонкий пневмоцит I типа</text>
+ </g>;
+ if(keyName==="heart")return <g>
+  <path d="M55 116Q165 58 240 148Q299 202 405 111M61 199Q139 145 213 222Q315 279 415 190" stroke="#d59292" strokeWidth="34" strokeLinecap="round" fill="none"/>
+  {Array.from({length:12},(_,i)=><path key={i} d={"M"+(76+i*29)+" 89l-10 53m-3 38-10 51"} stroke="#b97580" strokeWidth="5" opacity=".8"/>)}
+  <ellipse cx="239" cy="147" rx="24" ry="15" fill="#a281ae" transform="rotate(28 239 147)"/>
+  <path d="M152 110l-8 28M337 180l-9 27" stroke="#684d70" strokeWidth="10"/>
+ </g>;
+ if(keyName==="gut")return <g>
+  <path d="M92 286V85Q92 58 115 58H368Q388 58 388 85V286" fill="#f0dfc5" stroke="#bc9f8e" strokeWidth="8"/>
+  {Array.from({length:14},(_,i)=>{const x=110+i*20;return <path key={i} d={"M"+x+" 59v-21"} stroke="#c49e84" strokeWidth="7" strokeLinecap="round"/>;})}
+  {Array.from({length:5},(_,i)=>{const x=105+i*55;return <g key={i}>
+   <path d={"M"+x+" 78v192"} stroke="#b29e8a" strokeWidth="3"/>
+   <ellipse cx={x+19} cy="194" rx="11" ry="20" fill="#ad96c2"/>
+  </g>;})}
+  <text x="244" y="319" textAnchor="middle" fontSize="14" fill="#927668">Микроворсинки на поверхности</text>
+ </g>;
+ if(keyName==="wood")return <g>
+  <rect x="80" y="35" width="320" height="260" rx="55" fill="#d5b687" stroke="#906a46" strokeWidth="16"/>
+  <rect x="125" y="60" width="230" height="208" rx="42" fill="#fbf4e2" stroke="#bd9467" strokeWidth="15"/>
+  <path d="M88 104L132 104M80 173H122M350 108h45M356 205h38" stroke="#96734f" strokeWidth="11"/>
+  <text x="240" y="170" textAnchor="middle" fontSize="16" fill="#8b744e">Полый просвет</text>
+  <text x="240" y="196" textAnchor="middle" fontSize="13" fill="#8b744e">зрелого сосуда</text>
+ </g>;
  if(nerve)return <g fill="none" stroke="#8666a0" strokeLinecap="round">
   <path d="M240 171L240 42M240 171L120 97M240 171L352 104M240 171L355 261M240 171L141 266M240 171L243 307" strokeWidth="8"/>
   <path d="M240 42L195 23M120 97L83 82M352 104L398 74M355 261L408 289" strokeWidth="4"/>
