@@ -3,6 +3,7 @@
  * from unrelated clades. 480×330 is an illustration frame, not optical scale.
  */
 import type {ReactNode} from "react";
+import LektrusBioDetailedLineageSpecimens from "./LektrusBioDetailedLineageSpecimens";
 import {bioNewCellFeatures,type BioNewOrganism} from "./lektrusBioNewLineages";
 import type {BioNode} from "./lektrusBioMicroscopeModel";
 
@@ -18,79 +19,10 @@ function CellNucleus({x,y}:{x:number;y:number}){
  return <g><ellipse cx={x} cy={y} rx="28" ry="21" fill={nuc} stroke="#886d9e" strokeWidth="4"/>
   <circle cx={x-3} cy={y} r="7" fill="#86669e"/></g>;
 }
-function Earthworm(){
- return <g>
-  <path d="M51 213Q89 149 181 174Q250 198 315 138Q392 77 436 145Q448 195 405 211Q344 230 278 241Q170 275 88 238Q50 234 51 213Z"
-   fill="#c28c80" stroke="#976c6c" strokeWidth="8"/>
-  {Array.from({length:26},(_,i)=>{
-   const x=64+i*14.1,y=207+22*Math.sin(i*.31)-20*Math.sin(i*.14);
-   return <path key={i} d={`M${x} ${y-24}q-8 18-1 49`} fill="none" stroke="#a97770" strokeWidth="4" opacity=".85"/>;
-  })}
-  <path d="M183 177Q212 184 228 192L212 247Q193 252 174 245Z" fill="#d9aca0" stroke="#a77877" strokeWidth="4"/>
-  <path d="M74 224Q190 270 302 202" stroke="#e6b9a3" strokeWidth="3" fill="none" strokeDasharray="7 12"/>
-  <circle cx="423" cy="155" r="3.8" fill="#7c5b59"/>
- </g>;
-}
-function Seastar(){
- const points=Array.from({length:10},(_,i)=>{const angle=-Math.PI/2+i*Math.PI/5;const r=i%2===0?154:67;return `${240+Math.cos(angle)*r},${172+Math.sin(angle)*r}`;}).join(" ");
- return <g>
-  <polygon points={points} fill="#d7ab8a" stroke="#b88279" strokeWidth="9" strokeLinejoin="round"/>
-  <polygon points={Array.from({length:10},(_,i)=>{const a=-Math.PI/2+i*Math.PI/5,r=i%2===0?119:53;return `${240+Math.cos(a)*r},${172+Math.sin(a)*r}`;}).join(" ")}
-   fill="#eec7a1" opacity=".68"/>
-  <circle cx="240" cy="172" r="45" fill="#e0b28d" stroke="#bc8979" strokeWidth="5"/>
-  {Array.from({length:5},(_,i)=>{const a=-Math.PI/2+i*2*Math.PI/5;return <g key={i}>
-   <path d={`M${240+Math.cos(a)*45} ${172+Math.sin(a)*45}L${240+Math.cos(a)*125} ${172+Math.sin(a)*125}`}
-    stroke="#a9766d" strokeWidth="6" strokeDasharray="3 11" strokeLinecap="round"/>
-   {Array.from({length:3},(_,j)=>{const rr=71+j*19;return <circle key={j}
-    cx={240+Math.cos(a+.12)*rr} cy={172+Math.sin(a+.12)*rr} r={3+j%2*2} fill="#fff1d0" stroke="#b68c71" strokeWidth="1.5"/>;})}
-  </g>;})}
-  <circle cx="239" cy="168" r="11" fill="#ae8272" opacity=".8"/>
- </g>;
-}
-function Crayfish(){
- return <g>
-  <g stroke="#6a7772" strokeWidth="10" strokeLinecap="round" fill="none">
-   {Array.from({length:4},(_,i)=><g key={i}>
-    <path d={`M${239+i*15} ${191+i*7}Q${182-i*20} ${226+i*8} ${126-i*13} ${249+i*12}`}/>
-    <path d={`M${257+i*12} ${193+i*9}Q${319+i*17} ${222+i*5} ${365+i*18} ${253+i*11}`}/>
-   </g>)}
-  </g>
-  <path d="M185 146Q134 110 163 71Q205 42 239 87Q279 48 311 71Q337 112 291 152Z"
-   fill="#a68b75" stroke="#6b8177" strokeWidth="7"/>
-  <path d="M166 74Q144 45 111 67Q78 90 101 127Q144 118 167 97M306 72Q331 44 364 65Q397 89 373 123Q331 115 305 98"
-   fill="#a6a17f" stroke="#6d8173" strokeWidth="6"/>
-  <ellipse cx="240" cy="159" rx="64" ry="73" fill="#9da98b" stroke="#677f74" strokeWidth="7"/>
-  {Array.from({length:5},(_,i)=><g key={i}>
-   <path d={`M${196+i*17} 216L${190+i*17} ${244+i*9}Q241 ${273+i*11} ${293+i*9} ${244+i*9}L${286+i*10} 214`}
-    fill="#ad9e7d" stroke="#70877a" strokeWidth="4"/>
-  </g>)}
-  <path d="M223 101Q214 45 195 21M255 101Q279 48 302 24" fill="none" stroke="#6d7e72" strokeWidth="4" strokeLinecap="round"/>
-  <circle cx="207" cy="105" r="7" fill="#293b37"/><circle cx="269" cy="105" r="7" fill="#293b37"/>
- </g>;
-}
-function Horsetail(){
- return <g>
-  <path d="M198 298V75" stroke="#699a72" strokeWidth="21" strokeLinecap="round"/>
-  {Array.from({length:6},(_,i)=>{
-   const y=266-i*31;return <g key={i}>
-    <path d={`M198 ${y}L${108-i*4} ${y-30}M198 ${y}L${293+i*7} ${y-34}`}
-     stroke="#6c9f78" strokeWidth="7" fill="none" strokeLinecap="round"/>
-    <circle cx="198" cy={y} r="9" fill="#9cc08b"/>
-    {[-1,1].map(s=><path key={s} d={`M${198+s*50} ${y-17}l${s*19} -19`} stroke="#7dab7d" strokeWidth="3.5"/>)}
-   </g>;
-  })}
-  <path d="M198 77V37" stroke="#678c69" strokeWidth="15" strokeLinecap="round"/>
-  <path d="M185 35Q197 2 209 35Z" fill="#a99169" stroke="#8a855e" strokeWidth="4"/>
-  <path d="M345 304V117" stroke="#bea37d" strokeWidth="17" strokeLinecap="round"/>
-  {Array.from({length:6},(_,i)=><g key={i}>
-   <path d={`M${329+(i%2)*5} ${104-i*16}q16-15 32 0l-3 18q-13 12-30 0Z`}
-    fill="#bfa77d" stroke="#907c62" strokeWidth="3"/>
-  </g>)}
-  <path d="M344 22L360 54L352 116H333L327 55Z" fill="#c4ad7b" stroke="#95805f" strokeWidth="4"/>
-  {Array.from({length:4},(_,i)=><path key={i} d={`M${330+i*7} 53v45`} stroke="#a38a64" strokeWidth="2"/> )}
-  <path d="M135 298Q193 281 259 298" fill="none" stroke="#9fba90" strokeWidth="8"/>
- </g>;
-}
+function Earthworm(){return <LektrusBioDetailedLineageSpecimens organism="earthworm"/>;}
+function Seastar(){return <LektrusBioDetailedLineageSpecimens organism="seastar"/>;}
+function Crayfish(){return <LektrusBioDetailedLineageSpecimens organism="crayfish"/>;}
+function Horsetail(){return <LektrusBioDetailedLineageSpecimens organism="horsetail"/>;}
 function RootOrganism({organism}:{organism:BioNewOrganism}):ReactNode{
  switch(organism){
   case "earthworm":return <Earthworm/>;
