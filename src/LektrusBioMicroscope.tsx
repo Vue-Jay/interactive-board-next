@@ -55,8 +55,7 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
  const [path,setPath]=useState<string[]>([diagram.organism]);
  const [progress,setProgress]=useState(1);
  const [feedback,setFeedback]=useState("");
- const [revealed,setRevealed]=useState<string[]>([]);
- useEffect(()=>{setZoom(0);setPath([diagram.organism]);setProgress(1);setFeedback("");setRevealed([]);},[diagram.organism,diagram.activity,diagram.assignmentPath.join("|")]);
+ useEffect(()=>{setZoom(0);setPath([diagram.organism]);setProgress(1);setFeedback("");},[diagram.organism,diagram.activity,diagram.assignmentPath.join("|")]);
  const step=Math.round(zoom);
  const currentId=path[Math.min(step,path.length-1)]??diagram.organism;
  const selected=nodes.find(n=>n.id===currentId)??nodes[0];
@@ -126,7 +125,7 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
     </div>
    </>:<p>Задание выполнено. Все уровни расположены правильно.</p>}
    {feedback&&<p className="lektrus-bio-feedback" role="status">{feedback}</p>}
-   <button type="button" className="lektrus-bio-restart" onClick={()=>{setProgress(1);setPath([diagram.organism]);setZoom(0);setFeedback("");setRevealed([]);}}>Начать заново</button>
+   <button type="button" className="lektrus-bio-restart" onClick={()=>{setProgress(1);setPath([diagram.organism]);setZoom(0);setFeedback("");}}>Начать заново</button>
   </div>}
   <footer>LEKTRUS · БИОЛОГИЯ · Учебные схемы, не в масштабе</footer>
  </section>;
