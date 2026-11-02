@@ -45,6 +45,8 @@ jobs:
         run: node scripts/test-lektrus-bio-histology.mjs
       - name: Species-specific organ and tissue plate regression
         run: node scripts/test-lektrus-bio-specimen-plates.mjs
+      - name: Biology eight species cellular detail and 24 hotspot regression
+        run: node scripts/test-lektrus-bio-cell-plates.mjs
       - name: Biology drag and place anatomy exercises
         run: node scripts/test-lektrus-bio-assembly.mjs
       - name: Biology organ systems and relief regression
