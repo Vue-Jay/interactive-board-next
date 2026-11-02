@@ -91,7 +91,7 @@ const app=fs.readFileSync("src/LektrusBioMicroscope.tsx","utf8");
 assert.match(app,/diagram.activity==="explore"&&<LektrusBioUnifiedZoom/);
 assert.ok(!app.includes("viewerMode"),"No longer split exploration between microscope and atlas");
 assert.ok(!app.includes("<LektrusBioMicroscopeStage/>"));
-assert.ok(app.includes("diagram.activity!==\"explore\"&&<>"),"Assembly and labeling must remain unchanged");
+assert.ok(app.includes("showExercise&&<>"),"Assembly and labeling must remain unchanged");
 const css=fs.readFileSync("src/lektrusBioUnifiedZoom.css","utf8");
 assert.match(css,/touch-action:none/);
 assert.match(css,/aspect-ratio:480\/330/);
