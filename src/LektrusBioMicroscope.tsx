@@ -2,6 +2,8 @@ import {useEffect,useMemo,useState} from "react";
 import type {BioMicroscopeDiagram,BioNode} from "./lektrusBioMicroscopeModel";
 import {BIO_LEVELS,BIO_LEVEL_LABELS,BIO_ORGANISMS,bioAncestors,bioChildren,bioNodes,bioLevelName,bioTaskChoices,bioCellFeatures,withBioOrganism,type BioOrganism} from "./lektrusBioMicroscopeModel";
 import LektrusBioTaxonomyBrowser from "./LektrusBioTaxonomyBrowser";
+import LektrusBioAlternativeView from "./LektrusBioAlternativeView";
+import type {BioAlternativeOrganism} from "./lektrusBioAlternativeAtlas";
 import LektrusBioAnatomyScene from "./LektrusBioAnatomyScene";
 import LektrusBioAssemblyBoard from "./LektrusBioAssemblyBoard";
 import "./lektrusBioMicroscope.css";
@@ -10,16 +12,20 @@ const clamp=(n:number)=>Math.max(0,Math.min(4,n));
 export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDiagram}){
  const [activeOrganism,setActiveOrganism]=useState<BioOrganism>(diagram.organism);
  const [atlasOpen,setAtlasOpen]=useState(false);
+ const [alternativeId,setAlternativeId]=useState<BioAlternativeOrganism|null>(null);
  const nodes=useMemo(()=>bioNodes(activeOrganism),[activeOrganism]);
  const meta=BIO_ORGANISMS[activeOrganism];
  const [zoom,setZoom]=useState(0);
  const [path,setPath]=useState<string[]>(diagram.assignmentPath);
  const [progress,setProgress]=useState(1);
  const [feedback,setFeedback]=useState("");
- useEffect(()=>{setActiveOrganism(diagram.organism);setAtlasOpen(false);setZoom(0);setPath(diagram.assignmentPath);setProgress(1);setFeedback("");},[diagram.organism,diagram.activity,diagram.assignmentPath.join("|")]);
+ useEffect(()=>{setActiveOrganism(diagram.organism);setAtlasOpen(false);setAlternativeId(null);setZoom(0);setPath(diagram.assignmentPath);setProgress(1);setFeedback("");},[diagram.organism,diagram.activity,diagram.assignmentPath.join("|")]);
  const exploreCatalogOrganism=(organism:BioOrganism)=>{
   const next=withBioOrganism(diagram,organism);
   setActiveOrganism(organism);setPath(next.assignmentPath);setZoom(0);setProgress(1);setFeedback("");setAtlasOpen(false);
+ };
+ const exploreAlternative=(organism:BioAlternativeOrganism)=>{
+  setAlternativeId(organism);setAtlasOpen(false);setFeedback("");
  };
  const step=Math.round(zoom);
  const lower=Math.floor(zoom),upper=Math.min(4,lower+1),blend=zoom-lower;
@@ -54,8 +60,11 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
   selected.id===target.parentId&&children.length>1;
  const options=target?bioTaskChoices(nodes,target):[];
  const cellFeatures=bioCellFeatures(selected);
+ if(diagram.activity==="explore"&&alternativeId)return <section className="lektrus-bio-microscope" onPointerDown={e=>e.stopPropagation()}>
+  <LektrusBioAlternativeView speciesId={alternativeId} onBack={()=>{setAlternativeId(null);setAtlasOpen(true);}}/>
+ </section>;
  if(diagram.activity==="explore"&&atlasOpen)return <section className="lektrus-bio-microscope" onPointerDown={e=>e.stopPropagation()}>
-  <LektrusBioTaxonomyBrowser onExplore={exploreCatalogOrganism} onBack={()=>setAtlasOpen(false)}/>
+  <LektrusBioTaxonomyBrowser onExplore={exploreCatalogOrganism} onExploreAlternative={exploreAlternative} onBack={()=>setAtlasOpen(false)}/>
  </section>;
  return <section className="lektrus-bio-microscope" aria-label="Биологический микроскоп" onPointerDown={e=>e.stopPropagation()}>
   <header className="lektrus-bio-head">
