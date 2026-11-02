@@ -5,7 +5,7 @@
 import type {ReactNode} from "react";
 import type {BioExtraSpecimenKind} from "./lektrusBioAdditionalSpecimenPlates";
 
-const pine="#5d9670",ink="#365e55",blue="#79b8bf",pink="#e4bcae",gold="#c8a477",nuc="#ab94b9";
+const ink="#365e55",blue="#79b8bf",nuc="#ab94b9";
 function Label({x,y,pointX,pointY,caption,right=false}:{x:number;y:number;pointX:number;pointY:number;caption:string;right?:boolean}){
  return <g pointerEvents="none" className="lektrus-bio-specimen-callout">
   <path d={`M${pointX} ${pointY}L${x} ${y-5}`} stroke="#598474" strokeWidth="1.5" strokeDasharray="4 4" fill="none"/>
