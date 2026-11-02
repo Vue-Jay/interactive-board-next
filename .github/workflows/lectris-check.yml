@@ -35,6 +35,8 @@ jobs:
         run: node scripts/test-lektrus-bio-taxonomy.mjs
       - name: Biology representative anatomical models and source audit
         run: node scripts/test-lektrus-bio-representatives.mjs
+      - name: Variable-depth sponge, hydra, moss and algae atlas
+        run: node scripts/test-lektrus-bio-alternative.mjs
       - name: Biology drag and place anatomy exercises
         run: node scripts/test-lektrus-bio-assembly.mjs
       - name: Biology organ systems and relief regression

@@ -1,22 +1,23 @@
 import {useMemo,useState} from "react";
 import type {BioOrganism} from "./lektrusBioMicroscopeModel";
+import type {BioAlternativeOrganism} from "./lektrusBioAlternativeAtlas";
 import {BIO_TAXONOMY_SOURCES,bioTaxaFor,searchBioTaxa,type BioKingdom,type BioTaxon} from "./lektrusBioTaxonomy";
 
-type Props={onExplore:(organism:BioOrganism)=>void;onBack:()=>void};
+type Props={onExplore:(organism:BioOrganism)=>void;onExploreAlternative:(organism:BioAlternativeOrganism)=>void;onBack:()=>void};
 const symbols:Record<string,string>={
  Porifera:"🪸",Cnidaria:"🪼",Platyhelminthes:"〰️",Nematoda:"🪱",Annelida:"🪱",Mollusca:"🐚",
  Arthropoda:"🦋",Echinodermata:"⭐",Chordata:"🐾",Chlorophyta:"🌊",Bryophyta:"🌱",
  Marchantiophyta:"🍃",Anthocerotophyta:"🌿",Lycopodiophyta:"🌿",
  "Polypodiopsida (broad)":"🌿",Gymnosperms:"🌲",Angiosperms:"🌸"
 };
-export default function LektrusBioTaxonomyBrowser({onExplore,onBack}:Props){
+export default function LektrusBioTaxonomyBrowser({onExplore,onExploreAlternative,onBack}:Props){
  const [kingdom,setKingdom]=useState<BioKingdom>("animal");
  const [query,setQuery]=useState("");
  const [selectedId,setSelectedId]=useState("mammalia");
  const taxa=useMemo(()=>searchBioTaxa(query,kingdom),[query,kingdom]);
  const selected=taxa.find(t=>t.id===selectedId)??taxa[0];
  const groups=[...new Set(taxa.map(t=>t.section))];
- const anatomyCount=bioTaxaFor(kingdom).flatMap(t=>t.representatives).filter(r=>r.anatomy).length;
+ const anatomyCount=bioTaxaFor(kingdom).flatMap(t=>t.representatives).filter(r=>r.anatomy||r.microscopy).length;
  const setGroup=(next:BioKingdom)=>{setKingdom(next);setQuery("");setSelectedId(next==="animal"?"mammalia":"eudicots");};
  return <div className="lektrus-bio-atlas" aria-label="Систематический атлас животных и растений">
   <div className="lektrus-bio-atlas-top">
@@ -51,7 +52,7 @@ export default function LektrusBioTaxonomyBrowser({onExplore,onBack}:Props){
     {!taxa.length&&<p className="lektrus-bio-atlas-empty">По этому запросу групп не найдено. Попробуйте другое название.</p>}
    </nav>
    <article className="lektrus-bio-atlas-detail" aria-live="polite">
-    {selected?<TaxonDetail taxon={selected} onExplore={onExplore}/>:<p>Выберите класс или измените поисковый запрос.</p>}
+    {selected?<TaxonDetail taxon={selected} onExplore={onExplore} onExploreAlternative={onExploreAlternative}/>:<p>Выберите класс или измените поисковый запрос.</p>}
    </article>
   </div>
   <div className="lektrus-bio-atlas-sources">
@@ -61,7 +62,7 @@ export default function LektrusBioTaxonomyBrowser({onExplore,onBack}:Props){
   </div>
  </div>;
 }
-function TaxonDetail({taxon,onExplore}:{taxon:BioTaxon;onExplore:(organism:BioOrganism)=>void}){
+function TaxonDetail({taxon,onExplore,onExploreAlternative}:{taxon:BioTaxon;onExplore:(organism:BioOrganism)=>void;onExploreAlternative:(organism:BioAlternativeOrganism)=>void}){
  return <>
   <div className="lektrus-bio-atlas-detail-hero">
    <span className="lektrus-bio-atlas-detail-symbol">{symbols[taxon.sectionLatin]??"🧬"}</span>
@@ -78,6 +79,7 @@ function TaxonDetail({taxon,onExplore}:{taxon:BioTaxon;onExplore:(organism:BioOr
    {taxon.representatives.map(r=><div className="lektrus-bio-atlas-species-card" key={r.scientific}>
     <div><strong>{r.name}</strong><em>{r.scientific}</em></div>
     {r.anatomy?<button type="button" onClick={()=>onExplore(r.anatomy!)}>Изучить строение ↗</button>:
+     r.microscopy?<button type="button" onClick={()=>onExploreAlternative(r.microscopy!)}>Изучить строение ↗</button>:
      <span title="Для этого вида пока нет проверенной анатомической схемы">Карточка вида · анатомия готовится</span>}
    </div>)}
   </div>
