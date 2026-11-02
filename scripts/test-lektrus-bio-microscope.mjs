@@ -104,7 +104,7 @@ for(const species of Object.keys(BIO_ORGANISMS)){
    assert.ok(choices.length>1,"Single-choice exercise is not a real exercise: "+node.id);
   assert.ok(choices.length<=4,"Avoid endless answers on mobile");
   if(node.source){
-   assert.ok(/^https:\/\/(openstax.org|www.ncbi.nlm.nih.gov|www.helsinki.fi|www.bgs.ac.uk|pmc.ncbi.nlm.nih.gov|etheses.whiterose.ac.uk|www.nzflora.info)\//.test(node.source.url),
+   assert.ok(/^https:\/\/(openstax.org|www.ncbi.nlm.nih.gov|www.helsinki.fi|www.bgs.ac.uk|pmc.ncbi.nlm.nih.gov|etheses.whiterose.ac.uk|www.nzflora.info|australian.museum|www.delta-intkey.com|www.botanic.cam.ac.uk)\//.test(node.source.url),
     "Only named reviewed scientific and educational source domains");
    assert.ok(node.source.title);
   }
