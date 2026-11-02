@@ -3,6 +3,7 @@
  */
 import type {ReactNode} from "react";
 import LektrusBioDetailedLineageSpecimens from "./LektrusBioDetailedLineageSpecimens";
+import LektrusBioLineageMicroscopy from "./LektrusBioLineageMicroscopy";
 import type {BioFurtherOrganism,BioNode} from "./lektrusBioMicroscopeModel";
 import {bioFurtherCellFeatures} from "./lektrusBioMicroscopeModel";
 const ink="#315b50",gold="#c59d72",pink="#d8a5a2",violet="#9f8db1";
@@ -153,7 +154,9 @@ export default function LektrusBioFurtherSpeciesArt({organism,node,selectedFeatu
  const items=node.level==="cell"&&onFeatureSelect?bioFurtherCellFeatures(organism,node.name):[];
  const points=[{x:190,y:157},{x:290,y:195},{x:244,y:251}];
  return <g data-bio-further-species={organism} data-bio-further-level={node.level}>
-  {section}
+  {(node.level==="tissue"||node.level==="cell")
+   ?<LektrusBioLineageMicroscopy organism={organism} branch={which} level={node.level} name={node.name}/>
+   :section}
   {items.map((feature,i)=>{const pt=points[i];return <g key={feature.name} transform={`translate(${pt.x} ${pt.y})`}
    role="button" tabIndex={0} aria-pressed={selectedFeature===feature.name}
    aria-label={"Изучить: "+feature.name} data-bio-further-feature={feature.name}
