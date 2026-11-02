@@ -32,6 +32,27 @@ assert.ok(Math.abs(screenPoint.y-spot.y)<1e-7);
 const roundtrip=zoom.bioZoomToWorld(parentCam,screenPoint);
 assert.ok(Math.abs(roundtrip.x-spot.x)<1e-7&&Math.abs(roundtrip.y-spot.y)<1e-7);
 assert.ok(Number.isFinite(zoom.bioZoomBound({x:NaN,y:0,scale:NaN}).x));
+// Cross-layer focus is an actual camera flight, not an instant jump that
+// destroys the previous camera state. Screen-space hit radius stays physical.
+const portal=zoom.bioZoomPortalCamera(norm,{x:132,y:115});
+assert.equal(portal.scale,zoom.BIO_ZOOM_GATE);
+assert.deepEqual(zoom.bioZoomScreenPoint(portal,{x:132,y:115}),{x:240,y:165});
+assert.deepEqual(zoom.bioZoomToWorld(portal,{x:240,y:165}),{x:132,y:115});
+assert.deepEqual(zoom.bioZoomPortalCamera({x:0,y:0,scale:3},{x:240,y:165}),{x:0,y:0,scale:3});
+assert.deepEqual(zoom.bioZoomPortalCamera(norm,{x:0,y:0}),
+ {scale:2.7,x:240*(2.7-1),y:165*(2.7-1)},"Focus near edge must never show void past the photograph");
+assert.equal(zoom.bioZoomHitRadius(norm),52);
+assert.ok(Math.abs(zoom.bioZoomHitRadius({x:0,y:0,scale:3})-52/3)<1e-8);
+for(const scale of [1,1.2,1.7,2.2,2.7,3]){
+ const cam=zoom.bioZoomBound({scale,x:0,y:0});
+ assert.ok(Math.abs(zoom.bioZoomHitRadius(cam)*scale-52)<1e-7);
+ for(const x of [80,156,240,355]){
+  const point={x,y:151},screen=zoom.bioZoomScreenPoint(cam,point);
+  const world=zoom.bioZoomToWorld(cam,screen);
+  assert.ok(Math.abs(point.x-world.x)<1e-7&&Math.abs(point.y-world.y)<1e-7);
+ }
+}
+
 let paths=0,links=0;
 for(const species of Object.keys(bio.BIO_ORGANISMS)){
  const nodes=bio.bioNodes(species),byId=new Map(nodes.map(n=>[n.id,n]));
@@ -73,11 +94,21 @@ assert.equal(zoom.bioZoomImageFor("pine",cell),null,"Do not invent an intra-cell
 assert.equal(zoom.bioZoomImageFor("pine",pine.find(n=>n.name==="Молодой корень")),null);
 assert.ok(zoom.bioZoomImageFor("sunflower",bio.bioNodes("sunflower")[0]),"New whole-plant photo must exist");
 const camera=fs.readFileSync("src/LektrusBioUnifiedZoom.tsx","utf8");
-assert.match(camera,/bioZoomClosestChild\(organism,node,candidates,imagePoint,68\)/);
+assert.match(camera,/bioZoomClosestChild\(organism,node,candidates,imagePoint,bioZoomHitRadius\(old\)\)/);
 assert.match(camera,/bioZoomToWorld\(old,point\)/);
 assert.match(camera,/onPointerDown=\{onDown\}/);
 assert.match(camera,/onPointerMove=\{onMove\}/);
 assert.match(camera,/map.size>=2/);
+assert.match(camera,/const departingCamera=cameraRef.current/,"Transitions must preserve live parent camera before animation");
+assert.match(camera,/visits.current.set\(old.id,departingCamera\)/,"Do not store already-snapped zoom");
+assert.match(camera,/bioZoomPortalCamera\(departingCamera,spot\)/,"Portal must fly toward chosen anatomical region");
+assert.doesNotMatch(camera,/setCam\(zoomed\)/,"Do not instantly teleport parent before transition");
+assert.match(camera,/ghost\.from,false,ghost\.to/);
+assert.match(camera,/cameraTransform\(portalTo\)/);
+assert.match(camera,/pointerType!=="touch"/,"Mobile zoom uses deliberate touch gestures");
+assert.match(camera,/start.moved/,"Never interpret a drag as mobile double tap");
+assert.match(camera,/lastTap.current=null;zoom\(1.75,point\)/,"Double tap magnifies its own point");
+
 assert.match(camera,/el.addEventListener\("wheel",onWheel,\{passive:false\}\)/);
 assert.match(camera,/el.removeEventListener\("wheel",onWheel\)/);
 assert.match(camera,/bioZoomPan\(cameraRef.current/);
@@ -98,6 +129,12 @@ assert.match(css,/aspect-ratio:480\/330/);
 assert.match(css,/width:min\(100%,915px\)/,"Viewport must constrain both axes together");
 assert.doesNotMatch(css,/min-height:280px|max-height:630px/,"Clamping one axis would misalign hotspots");
 assert.match(css,/prefers-reduced-motion:reduce/);
+assert.match(css,/lektrus-bio-portal-flight/,"Focus transition must animate image geometry");
+assert.match(css,/--bio-ghost-start/);
+assert.match(css,/--bio-ghost-end/);
+assert.match(css,/lektrus-bio-layer-reveal/);
+assert.match(css,/lektrus-bio-unified-arriving\.is-transitioning/);
+
 for(const name of ["src/LektrusBioUnifiedZoom.tsx","src/LektrusBioMicroscope.tsx"]){
  const ast=ts.createSourceFile(name,fs.readFileSync(name,"utf8"),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  assert.equal(ast.parseDiagnostics.length,0,"Malformed TSX "+name);
