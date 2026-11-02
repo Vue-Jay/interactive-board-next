@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "test:github-agent-guard": "node scripts/test-github-agent-guard.mjs",
     "test:eraser": "node scripts/test-eraser.mjs",
     "test:atlas": "node scripts/test-lektrus-atlas.mjs && node scripts/test-lektrus-history-encyclopedia.mjs",
     "test:biology-atlas": "node scripts/test-lektrus-bio-microscope.mjs && node scripts/test-lektrus-bio-assembly.mjs && node scripts/test-lektrus-bio-taxonomy.mjs && node scripts/test-lektrus-bio-representatives.mjs && node scripts/test-lektrus-bio-alternative.mjs",
