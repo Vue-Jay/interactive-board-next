@@ -1,19 +1,26 @@
 import {useEffect,useMemo,useState} from "react";
 import type {BioMicroscopeDiagram,BioNode} from "./lektrusBioMicroscopeModel";
-import {BIO_LEVELS,BIO_LEVEL_LABELS,BIO_ORGANISMS,bioAncestors,bioChildren,bioNodes,bioLevelName,bioTaskChoices} from "./lektrusBioMicroscopeModel";
+import {BIO_LEVELS,BIO_LEVEL_LABELS,BIO_ORGANISMS,bioAncestors,bioChildren,bioNodes,bioLevelName,bioTaskChoices,bioCellFeatures,withBioOrganism,type BioOrganism} from "./lektrusBioMicroscopeModel";
+import LektrusBioTaxonomyBrowser from "./LektrusBioTaxonomyBrowser";
 import LektrusBioAnatomyScene from "./LektrusBioAnatomyScene";
 import LektrusBioAssemblyBoard from "./LektrusBioAssemblyBoard";
 import "./lektrusBioMicroscope.css";
 
 const clamp=(n:number)=>Math.max(0,Math.min(4,n));
 export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDiagram}){
- const nodes=useMemo(()=>bioNodes(diagram.organism),[diagram.organism]);
- const meta=BIO_ORGANISMS[diagram.organism];
+ const [activeOrganism,setActiveOrganism]=useState<BioOrganism>(diagram.organism);
+ const [atlasOpen,setAtlasOpen]=useState(false);
+ const nodes=useMemo(()=>bioNodes(activeOrganism),[activeOrganism]);
+ const meta=BIO_ORGANISMS[activeOrganism];
  const [zoom,setZoom]=useState(0);
  const [path,setPath]=useState<string[]>(diagram.assignmentPath);
  const [progress,setProgress]=useState(1);
  const [feedback,setFeedback]=useState("");
- useEffect(()=>{setZoom(0);setPath(diagram.assignmentPath);setProgress(1);setFeedback("");},[diagram.organism,diagram.activity,diagram.assignmentPath.join("|")]);
+ useEffect(()=>{setActiveOrganism(diagram.organism);setAtlasOpen(false);setZoom(0);setPath(diagram.assignmentPath);setProgress(1);setFeedback("");},[diagram.organism,diagram.activity,diagram.assignmentPath.join("|")]);
+ const exploreCatalogOrganism=(organism:BioOrganism)=>{
+  const next=withBioOrganism(diagram,organism);
+  setActiveOrganism(organism);setPath(next.assignmentPath);setZoom(0);setProgress(1);setFeedback("");setAtlasOpen(false);
+ };
  const step=Math.round(zoom);
  const lower=Math.floor(zoom),upper=Math.min(4,lower+1),blend=zoom-lower;
  const base=nodes.find(n=>n.id===path[lower])??nodes[0];
@@ -46,11 +53,16 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
  const hotspotQuestion=diagram.activity==="label"&&!!target&&
   selected.id===target.parentId&&children.length>1;
  const options=target?bioTaskChoices(nodes,target):[];
+ const cellFeatures=bioCellFeatures(selected);
+ if(diagram.activity==="explore"&&atlasOpen)return <section className="lektrus-bio-microscope" onPointerDown={e=>e.stopPropagation()}>
+  <LektrusBioTaxonomyBrowser onExplore={exploreCatalogOrganism} onBack={()=>setAtlasOpen(false)}/>
+ </section>;
  return <section className="lektrus-bio-microscope" aria-label="Биологический микроскоп" onPointerDown={e=>e.stopPropagation()}>
   <header className="lektrus-bio-head">
    <span className="lektrus-bio-eyepiece">◉</span>
    <div><strong>{diagram.title}</strong><small>{meta.name} · {meta.scientific}</small></div>
    <span className="lektrus-bio-kind">{meta.group==="animal"?"Животное":"Растение"}</span>
+   {diagram.activity==="explore"&&<button type="button" className="lektrus-bio-open-atlas" onClick={()=>setAtlasOpen(true)}>☷ Классы и виды</button>}
   </header>
   <div className="lektrus-bio-levels" role="group" aria-label="Уровни увеличения">
    {BIO_LEVELS.map((level,i)=><button type="button" key={level} className={Math.round(zoom)===i?"is-active":""}
@@ -70,7 +82,7 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
     <div className="lektrus-bio-scene-layer"
      style={{opacity:1-blend,transform:"scale("+(1+blend*.24)+")",
       pointerEvents:step===lower?"auto":"none"}}>
-     <LektrusBioAnatomyScene organism={diagram.organism} node={base}
+     <LektrusBioAnatomyScene organism={activeOrganism} node={base}
       children={bioChildren(nodes,base.id)}
       interactive={step===lower&&(diagram.activity==="explore"||hotspotQuestion)}
       onSelect={diagram.activity==="label"?check:next}/>
@@ -78,7 +90,7 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
     {upper!==lower&&blend>0.001&&<div className="lektrus-bio-scene-layer"
      style={{opacity:blend,transform:"scale("+(.78+blend*.22)+")",
       pointerEvents:step===upper?"auto":"none"}}>
-     <LektrusBioAnatomyScene organism={diagram.organism} node={ahead}
+     <LektrusBioAnatomyScene organism={activeOrganism} node={ahead}
       children={bioChildren(nodes,ahead.id)}
       interactive={step===upper&&(diagram.activity==="explore"||hotspotQuestion)}
       onSelect={diagram.activity==="label"?check:next}/>
@@ -88,6 +100,10 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
     <span className="lektrus-bio-overline">{bioLevelName(selected)}</span>
     <strong>{selected.name}</strong>
     {diagram.showDescriptions&&<p>{selected.description}</p>}
+    {cellFeatures.length>0&&<div className="lektrus-bio-cell-features" aria-label="Микроструктуры клетки">
+     <strong>Строение клетки крупнее</strong>
+     <div>{cellFeatures.map(f=><details key={f.name}><summary>{f.name}</summary><p>{f.description}</p></details>)}</div>
+    </div>}
     {selected.source&&<a className="lektrus-bio-reference" href={selected.source.url}
      target="_blank" rel="noopener noreferrer">Источник: {selected.source.title}</a>}
     {children.length>0&&diagram.activity==="explore"&&<span className="lektrus-bio-detail-hint">Выберите часть, чтобы приблизить её</span>}
@@ -115,6 +131,6 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
    {feedback&&<p className="lektrus-bio-feedback" role="status">{feedback}</p>}
    <button type="button" className="lektrus-bio-restart" onClick={()=>{setProgress(1);setPath(diagram.assignmentPath);setZoom(0);setFeedback("");}}>Начать заново</button>
   </div>}
-  <footer>LEKTRUS · БИОЛОГИЯ · Уровни организации, схематический переход без реального оптического масштаба</footer>
+  <footer>LEKTRUS · БИОЛОГИЯ · Схематический переход без реального оптического масштаба · Пример вида не заменяет строение всего класса</footer>
  </section>;
 }
