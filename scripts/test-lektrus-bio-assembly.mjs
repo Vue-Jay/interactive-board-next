@@ -106,8 +106,7 @@ assert.match(view,/diagram\.activity==="assemble"\?\s*<LektrusBioAssemblyBoard/,
  "Assembly must be a graphical activity, not the old multiple-choice form");
 assert.match(view,/diagram\.activity!=="assemble"&&<div className="lektrus-bio-stage">/,
  "Do not display a second redundant anatomy viewport in assembly mode");
-assert.match(anatomy,/focusChildId=\{path\[1\]\}/.source==="not-used"?/$never/:/focusChildId/,
- "Scene accepts an anatomical focus marker");
+assert.match(anatomy,/focusChildId/, "Scene accepts an anatomical focus marker");
 assert.match(component,/focusChildId=\{path\[1\]\}/,
  "Reference image highlights the exact branch from the teacher's path");
 const css=read("src/lektrusBioMicroscope.css");
