@@ -3,21 +3,24 @@
  * Deliberately avoids pretending different physical specimens are one photo.
  */
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
-import type {PointerEvent as ReactPointerEvent,KeyboardEvent as ReactKeyboardEvent} from "react";
+import type {PointerEvent as ReactPointerEvent,KeyboardEvent as ReactKeyboardEvent,CSSProperties} from "react";
 import type {BioNode,BioOrganism,BioImageSpot} from "./lektrusBioMicroscopeModel";
 import {BIO_LEVEL_LABELS,BIO_LEVELS,bioCellFeatures,bioNodes} from "./lektrusBioMicroscopeModel";
 import LektrusBioAnatomyScene from "./LektrusBioAnatomyScene";
 import {
  BIO_ZOOM_GATE,BIO_ZOOM_INITIAL,BIO_ZOOM_MAX,
  bioZoomAt,bioZoomBound,bioZoomPan,bioZoomToWorld,bioZoomClosestChild,bioZoomPoint,
+ bioZoomPortalCamera,bioZoomHitRadius,bioZoomScreenPoint,
  bioZoomImageFor,bioZoomSharedFrame,bioZoomPath,bioZoomChildCandidates,
  type BioZoomCamera
 } from "./lektrusBioUnifiedZoomModel";
 import "./lektrusBioUnifiedZoom.css";
 
 type XY={x:number;y:number};
-type Ghost={node:BioNode;camera:BioZoomCamera;direction:"in"|"out"};
+type Ghost={node:BioNode;from:BioZoomCamera;to:BioZoomCamera;direction:"in"|"out"};
 const identity=(a:XY,b:XY)=>Math.hypot(a.x-b.x,a.y-b.y);
+const cameraTransform=(cam:BioZoomCamera)=>
+ "translate("+(cam.x/480*100)+"%, "+(cam.y/330*100)+"%) scale("+cam.scale+")";
 export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism}){
  const nodes=useMemo(()=>bioNodes(organism),[organism]);
  const [currentId,setCurrentId]=useState<string>(organism);
@@ -58,32 +61,40 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
  const transition=useCallback((target:BioNode,focusPoint?:BioImageSpot)=>{
   if(ghostRef.current||currentRef.current.id===target.id)return;
   const old=currentRef.current;
-  // If the next depth is another view of the same real photograph, do not
-  // swap specimens or restart its camera. The user truly magnifies the
-  // already visible epidermal field rather than entering a new illustration.
+  const departingCamera=cameraRef.current;
+  const descending=target.parentId===old.id;
+  const spot=focusPoint??{x:240,y:165};
+  // Save the actual frame the observer saw, BEFORE any portal animation.
+  // The preceding implementation saved a temporary camera already zoomed
+  // to a child, causing a jump and a wrong Back position.
+  visits.current.set(old.id,departingCamera);
+  pointers.current.clear();
   if(bioZoomSharedFrame(organism,old,target)){
-   visits.current.set(old.id,cameraRef.current);
-   currentRef.current=target;
-   setCurrentId(target.id);
-   if(target.parentId!==old.id)setCam(visits.current.get(target.id)??BIO_ZOOM_INITIAL);
-   setFeature(null);setPhotoError(null);setNotice("");
+   // The sunflower stomatal imprint is one genuine field across two depths.
+   // Here we increase the digital magnification of THAT SAME photograph,
+   // rather than cross-fading to a fictitious different sample.
+   const incoming=descending
+    ?bioZoomAt(departingCamera,Math.min(BIO_ZOOM_MAX,
+       Math.max(departingCamera.scale+.15,departingCamera.scale*1.28)),
+       bioZoomScreenPoint(departingCamera,spot))
+    :(visits.current.get(target.id)??BIO_ZOOM_INITIAL);
+   currentRef.current=target;setCurrentId(target.id);
+   setCam(incoming);setFeature(null);setPhotoError(null);setNotice("");
    return;
   }
-  const ascending=target.parentId!==old.id;
-  const spot=focusPoint??{x:240,y:165};
+  const endingCamera=descending
+   ?bioZoomPortalCamera(departingCamera,spot)
+   :bioZoomAt(departingCamera,Math.max(1,departingCamera.scale*.67),{x:240,y:165});
   ghostRef.current=true;
-  visits.current.set(old.id,cameraRef.current);
-  const departing=ascending?cameraRef.current:
-   bioZoomBound({x:(240-spot.x)*BIO_ZOOM_GATE,y:(165-spot.y)*BIO_ZOOM_GATE,scale:BIO_ZOOM_GATE});
-  setGhost({node:old,camera:departing,direction:ascending?"out":"in"});
-  currentRef.current=target;
-  setCurrentId(target.id);
-  setCam(ascending?(visits.current.get(target.id)??BIO_ZOOM_INITIAL):BIO_ZOOM_INITIAL);
+  setGhost({node:old,from:departingCamera,to:endingCamera,
+   direction:descending?"in":"out"});
+  currentRef.current=target;setCurrentId(target.id);
+  setCam(visits.current.get(target.id)??BIO_ZOOM_INITIAL);
   setFeature(null);setPhotoError(null);setNotice("");
   if(transitionTimer.current!==undefined)window.clearTimeout(transitionTimer.current);
   transitionTimer.current=window.setTimeout(()=>{
    setGhost(null);ghostRef.current=false;transitionTimer.current=undefined;
-  },360);
+  },440);
  },[organism,setCam]);
  const descend=useCallback((child:BioNode)=>{
   const parent=currentRef.current;
@@ -91,11 +102,10 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
   const index=all.findIndex(n=>n.id===child.id);
   if(index<0)return;
   const pt=bioZoomPoint(organism,parent,child,index,all.length);
-  // Save the precise spot in the parent scene; when ascending it restores.
-  const zoomed=bioZoomBound({scale:BIO_ZOOM_GATE,x:(240-pt.x)*BIO_ZOOM_GATE,y:(165-pt.y)*BIO_ZOOM_GATE});
-  setCam(zoomed);
+  // The portal starts at the real parent camera and travels to THIS spot.
+  // Never setCam(zoomed) before saving the parent view in transition().
   transition(child,pt);
- },[nodes,organism,setCam,transition]);
+ },[nodes,organism,transition]);
  const ascend=useCallback(()=>{
   const parent=nodes.find(n=>n.id===currentRef.current.parentId);
   if(parent)transition(parent);
@@ -119,7 +129,7 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
    const candidates=bioZoomChildCandidates(nodes,node);
    const imagePoint=bioZoomToWorld(old,point);
    // Only zoom deeper when pointer really lies over a linked anatomical spot.
-   const nearby=bioZoomClosestChild(organism,node,candidates,imagePoint,68);
+   const nearby=bioZoomClosestChild(organism,node,candidates,imagePoint,bioZoomHitRadius(old));
    if(nearby){descend(nearby.child);return;}
    if(candidates.length>0)setNotice("Переместите указатель к подсвеченной области, чтобы увидеть следующий слой");
    else setNotice("Это последний проверенный уровень строения. Ниже нет достоверного изображения.");
@@ -172,11 +182,14 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
   else if(e.key==="Home"){e.preventDefault();setCurrentId(organism);setCam(BIO_ZOOM_INITIAL);}
  };
  const imgBlur=isMicroscopic?Math.abs(focus)*.24:0;
- const draw=(node:BioNode,cam:BioZoomCamera,includeMarkers:boolean)=>{
+ const draw=(node:BioNode,cam:BioZoomCamera,includeMarkers:boolean,portalTo?:BioZoomCamera)=>{
   const sceneChildren=bioZoomChildCandidates(nodes,node);
   const image=bioZoomImageFor(organism,node);
+  const portalStyle=portalTo
+   ?{"--bio-ghost-start":cameraTransform(cam),"--bio-ghost-end":cameraTransform(portalTo)} as CSSProperties
+   :{};
   return <div className="lektrus-bio-unified-world"
-   style={{transform:"translate("+cam.x/480*100+"%, "+cam.y/330*100+"%) scale("+cam.scale+")",
+   style={{...portalStyle,transform:cameraTransform(cam),
     filter:"brightness("+(.5+light*.007)+" ) blur("+imgBlur.toFixed(1)+"px)"}}>
    {image&&photoError!==node.id?
     <img key={image.file} src={image.file} loading="lazy" draggable={false} alt={image.caption}
@@ -226,9 +239,11 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
    onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onEnd}
    onPointerCancel={onEnd} onLostPointerCapture={e=>pointers.current.delete(e.pointerId)}
    onKeyDown={key}>
-   {draw(current,camera,true)}
+   <div className={"lektrus-bio-unified-arriving"+(ghost?" is-transitioning":"")}>
+    {draw(current,camera,true)}
+   </div>
    {ghost&&<div className={"lektrus-bio-unified-ghost is-"+ghost.direction} aria-hidden="true">
-    {draw(ghost.node,ghost.camera,false)}
+    {draw(ghost.node,ghost.from,false,ghost.to)}
    </div>}
    <div className="lektrus-bio-unified-hud" aria-hidden="true">
     <span>{BIO_LEVEL_LABELS[current.level]}</span><span>Масштаб просмотра ×{camera.scale.toFixed(1)}</span>
