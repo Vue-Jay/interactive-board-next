@@ -4,7 +4,6 @@ import {BIO_ALTERNATIVE_SPECIES,BIO_ALT_KIND_LABELS,bioAltChildren,bioAltPath,
  type BioAlternativeOrganism,type BioAltNode,type BioAlternativeSpecies} from "./lektrusBioAlternativeAtlas";
 
 type Props={speciesId:BioAlternativeOrganism;onBack:()=>void};
-const c={ink:"#416855",teal:"#558e76",leaf:"#88b879",gold:"#d8b36a",plum:"#997ea8",pale:"#eef5e5"};
 function DrawSponge({node}:{node:BioAltNode}){
  const cell=node.kind==="cell"||node.id.includes("choanocyte");
  if(cell)return <g>
