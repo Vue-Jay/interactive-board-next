@@ -4,6 +4,7 @@
  */
 import type {ReactNode} from "react";
 import LektrusBioSpeciesArt from "./LektrusBioSpeciesArt";
+import LektrusBioDetailedOrganisms from "./LektrusBioDetailedOrganisms";
 import LektrusBioNewSpeciesArt from "./LektrusBioNewSpeciesArt";
 import LektrusBioFurtherSpeciesArt from "./LektrusBioFurtherSpeciesArt";
 import {isBioFurtherOrganism} from "./lektrusBioMicroscopeModel";
@@ -19,36 +20,7 @@ type Props={organism:BioOrganism;node:BioNode;children:BioNode[];onSelect:(node:
 type BioVisualKey=ReturnType<typeof bioVisualKey>;
 const ink="#355f52";
 function OrganismShape({organism}:{organism:BioOrganism}){
- if(organism==="human")return <g>
-  <circle cx="240" cy="59" r="33" fill="#efcfb5" stroke="#ad8d79" strokeWidth="4"/>
-  <path d="M203 105Q240 93 278 105L294 214L264 221L257 307H227L218 220L188 215Z" fill="#d4e7dc" stroke="#779e8d" strokeWidth="4"/>
-  <path d="M200 120L162 223M280 120L320 223" fill="none" stroke="#edc9ad" strokeWidth="24" strokeLinecap="round"/>
- </g>;
- if(organism==="cat")return <g>
-  <path d="M94 196Q82 140 128 119L167 135Q211 109 260 128L307 114Q353 147 340 201L323 263H124L107 225Z" fill="#dfb994" stroke="#9e765c" strokeWidth="5"/>
-  <path d="M300 183Q389 174 367 77" fill="none" stroke="#bb966f" strokeWidth="22" strokeLinecap="round"/>
-  <path d="M128 129L142 73L174 113M257 130L289 81L304 146" fill="#d4a982" stroke="#997158" strokeWidth="4"/>
-  <ellipse cx="196" cy="166" rx="14" ry="18" fill="#f9f2de"/><ellipse cx="269" cy="166" rx="14" ry="18" fill="#f9f2de"/>
-  <ellipse cx="196" cy="167" rx="5" ry="12" fill="#597d55"/><ellipse cx="269" cy="167" rx="5" ry="12" fill="#597d55"/>
-  <path d="M222 192L244 192L233 205Z" fill="#b4777c"/>
- </g>;
- if(organism==="oak")return <g>
-  <path d="M223 276L214 170L258 170L250 276L281 303H184Z" fill="#a98560" stroke="#79583f" strokeWidth="5"/>
-  <path d="M239 210Q159 227 137 167Q81 179 89 109Q83 48 153 51Q181 1 244 26Q309 -1 343 54Q420 50 408 121Q419 180 342 182Q302 226 239 210Z" fill="#79af75" stroke="#477d57" strokeWidth="6"/>
-  <path d="M212 192L190 85M252 178L312 90" fill="none" stroke="#638f61" strokeWidth="5"/>
-  <path d="M223 290L181 312M250 290L293 312" stroke="#876a4c" strokeWidth="6"/>
- </g>;
- return <g>
-  <path d="M237 302V124" stroke="#549663" strokeWidth="12" strokeLinecap="round"/>
-  <path d="M235 214Q164 164 123 211Q168 256 235 214ZM245 181Q310 133 352 172Q311 218 245 181Z" fill="#87bf7b" stroke="#4f9258" strokeWidth="5"/>
-  {Array.from({length:12},(_,i)=>{
-   const a=i*Math.PI/6;
-   return <ellipse key={i} cx={240+61*Math.cos(a)} cy={89+61*Math.sin(a)}
-    rx="20" ry="34" transform={"rotate("+(i*30+90)+" "+(240+61*Math.cos(a))+" "+(89+61*Math.sin(a))+")"} fill="#efc856" stroke="#cb9d37" strokeWidth="2"/>;
-  })}
-  <circle cx="240" cy="89" r="37" fill="#795838" stroke="#573d2a" strokeWidth="4"/>
-  <path d="M237 295L212 317M237 295L265 315M237 289L231 323" stroke="#896d48" strokeWidth="4" fill="none"/>
- </g>;
+ return <LektrusBioDetailedOrganisms organism={organism}/>;
 }
 function SpecificOrgan({keyName}:{keyName:BioVisualKey}){
  const dark="#945d69";
