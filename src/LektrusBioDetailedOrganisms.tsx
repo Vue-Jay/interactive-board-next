@@ -6,7 +6,7 @@
 import type {ReactNode} from "react";
 import type {BioOrganism} from "./lektrusBioMicroscopeModel";
 
-const bark="#70513d",leaf="#587e4d",skin="#dcaa89";
+const bark="#70513d",skin="#dcaa89";
 function Human():ReactNode{
  return <g data-bio-illustration="human" aria-label="Схематичный вид человека спереди">
   <defs>
