@@ -166,3 +166,157 @@ function Tissue({kind}:{kind:BioCoreMicroKind}):ReactNode{
  </g>;
  }
 }
+
+function Cell({kind}:{kind:BioCoreMicroKind}):ReactNode{
+ switch(kind){
+ case "alveoli":return <g>
+  <path d="M28 140Q129 135 216 144Q319 152 455 130" stroke="#dfaeb2" strokeWidth="33" fill="none" strokeLinecap="round"/>
+  <path d="M27 138Q125 131 215 140Q323 149 453 128" stroke="#f8e2d8" strokeWidth="20" fill="none"/>
+  <path d="M32 129Q123 119 214 128Q329 140 453 118" stroke="#ba8d9a" strokeWidth="3.5" fill="none"/>
+  <path d="M37 160Q123 154 222 166Q330 176 444 151" stroke="#a78494" strokeWidth="3.5" fill="none"/>
+  <CircleNucleus x={244} y={155} rx={28} ry={13}/>
+  <path d="M35 217Q230 198 452 226" stroke="#d6a3a5" strokeWidth="12" fill="none"/>
+  <path d="M35 249Q226 233 452 256" stroke="#c57b86" strokeWidth="28" fill="none"/>
+  {Array.from({length:8},(_,i)=><ellipse key={i} cx={68+i*49} cy={254+Math.sin(i)*9} rx="15" ry="8" fill="#a9576a" stroke="#f0a8a0" strokeWidth="2"/>)}
+  <text x="37" y="73" fontSize="14" fill="#9d7181">Воздух альвеолы</text>
+  <text x="37" y="313" fontSize="14" fill="#a36c74">Капилляр</text>
+ </g>;
+ case "cardiac":return <g>
+  <path d="M36 172Q88 134 156 144Q190 116 235 140Q305 126 346 162Q387 180 447 148L454 219Q391 244 342 225Q288 237 246 204Q189 235 147 208Q80 230 30 202Z"
+   fill="#d78f92" stroke="#ab6473" strokeWidth="6"/>
+  {Array.from({length:18},(_,i)=>{const x=61+i*21;return <path key={i} d={`M${x} 149q-12 23 0 61`} fill="none" stroke={i%2?"#edb4a9":"#b66e79"} strokeWidth="4"/>;
+  })}
+  <path d="M134 132L156 225M354 148L332 229" stroke="#80546c" strokeWidth="8" strokeDasharray="9 4"/>
+  <CircleNucleus x={250} y={176} rx={30} ry={17}/>
+  {Array.from({length:11},(_,i)=><ellipse key={i} cx={65+(i%6)*61} cy={146+Math.floor(i/6)*74} rx="8" ry="4" fill="#bb6f65" stroke="#9b5963" strokeWidth="1.5"/>)}
+  <path d="M30 157L9 134M342 207L405 259" stroke="#ca8186" strokeWidth="19" strokeLinecap="round" fill="none"/>
+  <text x="34" y="92" fontSize="14" fill="#974e63">Саркомеры · вставочные диски</text>
+ </g>;
+ case "neural":return <g>
+  <path d="M217 155Q145 97 98 76M198 164Q134 160 78 186M200 186Q133 218 99 260M239 130Q239 79 203 44M259 135Q320 89 350 49"
+   stroke="#8d78ac" strokeWidth="11" fill="none" strokeLinecap="round"/>
+  <path d="M288 186Q350 181 421 215L457 240" stroke="#a283b5" strokeWidth="13" fill="none" strokeLinecap="round"/>
+  {[[98,76],[78,186],[99,260],[203,44],[350,49]].map(([x,y],i)=><g key={i} fill="none" stroke="#826da4" strokeWidth="4" strokeLinecap="round">
+   <path d={`M${x} ${y}l-18 -17M${x} ${y}l4 -23`}/></g>)}
+  <path d="M198 145Q227 115 267 136Q309 152 286 195Q259 226 221 207Q183 193 198 145Z"
+   fill="#d5b7df" stroke="#987ba9" strokeWidth="5"/>
+  <CircleNucleus x={245} y={172} rx={24} ry={21}/>
+  {Array.from({length:7},(_,i)=><path key={i} d={`M${302+i*20} ${177+i*5}l8 -12`} stroke="#745a97" strokeWidth="4"/>)}
+  {Array.from({length:5},(_,i)=><circle key={i} cx={419+i*9} cy={213+i*6} r="6" fill="#d6aacb" stroke="#85699d" strokeWidth="1.5"/>)}
+  <text x="37" y="318" fontSize="13" fill="#75618f">Дендриты ← тело клетки → аксон</text>
+ </g>;
+ case "retina":return <g>
+  <rect x="184" y="37" width="110" height="91" rx="13" fill="#a8c5d7" stroke="#6f98b4" strokeWidth="5"/>
+  {Array.from({length:14},(_,i)=><path key={i} d={`M196 ${44+i*6}h87`} stroke="#658cae" strokeWidth="3.6"/>)}
+  <rect x="197" y="127" width="82" height="69" rx="19" fill="#f0d9bd" stroke="#b1a18f" strokeWidth="4"/>
+  <CircleNucleus x={237} y={164} rx={19} ry={13}/>
+  {Array.from({length:9},(_,i)=><ellipse key={i} cx={211+(i%3)*26} cy={141+Math.floor(i/3)*17} rx="9" ry="4" fill="#bba388" stroke="#96846f" strokeWidth="1.2"/>)}
+  <path d="M237 195V256" stroke="#c39e8b" strokeWidth="17" strokeLinecap="round"/>
+  <path d="M215 254Q239 276 264 252L255 284H226Z" fill="#dba4b7" stroke="#b27f9b" strokeWidth="4"/>
+  <path d="M229 279l-26 19M248 279l30 21" stroke="#95759d" strokeWidth="4" fill="none"/>
+  <text x="303" y="84" fontSize="13" fill="#577e9b">Диски</text>
+  <path d="M297 86h-17" stroke="#688ea7" strokeWidth="2"/>
+  </g>;
+ case "skeletal":return <g>
+  <rect x="33" y="102" width="414" height="133" rx="29" fill="#d9a19d" stroke="#ac6f79" strokeWidth="8"/>
+  <rect x="45" y="113" width="390" height="110" rx="23" fill="#ebaaa3" stroke="#d69a94" strokeWidth="3"/>
+  {Array.from({length:23},(_,i)=><rect key={i} x={56+i*16} y="115" width="7" height="106" rx="2" fill={i%2?"#f4cbc0":"#ba737a"} opacity=".78"/>)}
+  {Array.from({length:9},(_,i)=><path key={i} d={`M48 ${121+i*11}h386`} stroke="#b57678" strokeWidth="1.9" opacity=".6"/>)}
+  {[72,244,404].map((x,i)=><CircleNucleus key={i} x={x} y={i%2?213:116} rx={15} ry={8}/>)}
+  <text x="38" y="86" fontSize="14" fill="#955d70">Сарколемма</text>
+  <text x="40" y="268" fontSize="13" fill="#955d70">Миофибриллы · множественные ядра</text>
+ </g>;
+ case "intestinal":return <g>
+  <path d="M124 100Q147 80 176 101L184 260Q154 284 120 265Z" fill="#f5dbc9" stroke="#b49a94" strokeWidth="5"/>
+  <path d="M177 101Q208 82 232 101L235 266Q200 279 183 260Z" fill="#f5dbc9" stroke="#b49a94" strokeWidth="5"/>
+  <path d="M230 101Q265 79 287 100L297 259Q265 281 235 265Z" fill="#f5dbc9" stroke="#b49a94" strokeWidth="5"/>
+  <path d="M292 101Q325 80 348 106L355 263Q325 283 297 259Z" fill="#f5dbc9" stroke="#b49a94" strokeWidth="5"/>
+  {Array.from({length:48},(_,i)=>{const x=125+(i%48)*4.7,y=97+(i%3)*3;return <path key={i} d={`M${x} ${y}v-26`} stroke="#ba8d7e" strokeWidth="3.2" strokeLinecap="round"/>;})}
+  {[150,211,264,328].map((x,i)=><CircleNucleus key={i} x={x} y={219} rx={15} ry={23}/>)}
+  {Array.from({length:18},(_,i)=><ellipse key={i} cx={139+(i%6)*39} cy={154+Math.floor(i/6)*15} rx="8" ry="4" fill="#c7a394" stroke="#ae887e" strokeWidth="1"/>)}
+  <path d="M178 120v94M235 123v93M296 120v93" stroke="#a77d7f" strokeWidth="4"/>
+  <text x="36" y="320" fontSize="13" fill="#98786c">Щёточная каёмка сверху · плотные контакты</text>
+ </g>;
+ case "palisade":case "mesophyll":return <g>
+  <PlantWall x={87} y={47} w={306} h={244}/>
+  <rect x="103" y="63" width="275" height="213" rx="19" fill="#ebf4d7" stroke="#a3c092" strokeWidth="3"/>
+  <rect x="155" y="84" width="190" height="176" rx="48" fill="#c2dfe2" stroke="#90bab9" strokeWidth="3"/>
+  <CircleNucleus x={130} y={201} rx={19} ry={14}/>
+  {Array.from({length:21},(_,i)=>{const a=i*2*Math.PI/21,x=240+127*Math.cos(a),y=169+91*Math.sin(a);
+   return <Chloroplast key={i} x={x} y={y} angle={i*41}/>;
+  })}
+  {Array.from({length:6},(_,i)=><path key={i} d={`M${151+i*37} 69l-9 12`} stroke="#a1bd86" strokeWidth="2"/>)}
+  <text x="32" y="319" fontSize="13" fill="#507f56">Вакуоль · стенка · хлоропласты</text>
+ </g>;
+ case "root-hair":return <g>
+  <path d="M83 114H292Q309 114 316 133Q366 130 393 155Q418 176 435 178Q447 200 428 212Q406 209 390 199Q363 183 318 186L310 246Q307 261 285 261H89Q66 258 66 238V138Q66 116 83 114Z"
+   fill="#dae7bc" stroke="#749963" strokeWidth="8" strokeLinejoin="round"/>
+  <path d="M91 135H280Q293 133 299 150L302 238H91Z" fill="#c9e6df" opacity=".8" stroke="#8cb8a4" strokeWidth="2"/>
+  <path d="M316 144Q363 149 397 179Q409 188 430 192" stroke="#eaf0d5" strokeWidth="11" fill="none" strokeLinecap="round"/>
+  <CircleNucleus x={121} y={228} rx={22} ry={15}/>
+  <path d="M75 146L74 235M308 154L312 232" stroke="#a8c893" strokeWidth="2" opacity=".8"/>
+  <text x="40" y="83" fontSize="13" fill="#5b8062">Вырост принадлежит этой же клетке</text>
+  </g>;
+ case "stomata":return <g>
+  <rect x="44" y="42" width="392" height="257" rx="22" fill="#e0edcf" stroke="#8aa775" strokeWidth="4"/>
+  <path d="M203 82Q143 90 143 172Q143 254 205 259Q236 245 224 216Q205 176 224 127Q237 94 203 82Z"
+   fill="#8ab47d" stroke="#4f885e" strokeWidth="8"/>
+  <path d="M279 82Q340 90 340 172Q338 254 278 259Q247 245 260 216Q279 177 260 127Q245 94 279 82Z"
+   fill="#8ab47d" stroke="#4f885e" strokeWidth="8"/>
+  <ellipse cx="242" cy="171" rx="15" ry="69" fill="#fff7ed" stroke="#567e5a" strokeWidth="4"/>
+  {[-1,1].map(s=>Array.from({length:9},(_,i)=><Chloroplast key={s+"-"+i} x={242+s*(54+(i%3)*10)} y={113+Math.floor(i/3)*43} angle={i*25}/>))}
+  <CircleNucleus x={187} y={201} rx={13} ry={16}/><CircleNucleus x={298} y={201} rx={13} ry={16}/>
+  <path d="M216 126Q191 170 219 216M268 126Q290 170 267 216" stroke="#4f7959" strokeWidth="7" fill="none" strokeLinecap="round"/>
+  <text x="38" y="320" fontSize="12" fill="#547950">Пара клеток показана ради устьичной щели</text>
+  </g>;
+ case "petal":return <g>
+  <path d="M82 104Q145 59 243 69Q336 58 396 98L396 261Q318 296 242 271Q154 297 82 261Z"
+   fill="#f1d8d9" stroke="#be9ca1" strokeWidth="8"/>
+  <path d="M83 100Q235 54 397 98" stroke="#c8929d" strokeWidth="9" fill="none"/>
+  <path d="M104 121Q130 101 148 110Q190 83 232 112Q290 89 347 117L367 249Q300 268 241 252Q182 276 113 245Z"
+   fill="#eab5ca" stroke="#cf9aad" strokeWidth="2.5"/>
+  <ellipse cx="240" cy="173" rx="98" ry="68" fill="#d39fbe" opacity=".86"/>
+  <CircleNucleus x={144} y={223} rx={19} ry={14}/>
+  {Array.from({length:16},(_,i)=><ellipse key={i} cx={161+(i%4)*53} cy={130+Math.floor(i/4)*31} rx="7" ry="5" fill="#c086ad" opacity=".8"/>)}
+  <text x="32" y="320" fontSize="13" fill="#9f6d8c">Пигментированная вакуоль · наружная кутикула</text>
+ </g>;
+ case "xylem":return <g>
+  <rect x="100" y="38" width="278" height="258" rx="51" fill="#c2a277" stroke="#7b5e3e" strokeWidth="15"/>
+  <rect x="125" y="56" width="229" height="221" rx="37" fill="#f7efd8" stroke="#b38a5a" strokeWidth="12"/>
+  {Array.from({length:15},(_,i)=>{const y=66+i*14;
+   return <g key={i}>
+    <path d={`M104 ${y}h22M354 ${y}h24`} stroke="#795c43" strokeWidth="3.5"/>
+    <circle cx="113" cy={y} r="3" fill="#ebd7b1"/><circle cx="365" cy={y} r="3" fill="#ebd7b1"/>
+   </g>;
+  })}
+  <path d="M130 68H351M130 267H351" stroke="#96734f" strokeWidth="8" strokeDasharray="12 6"/>
+  <text x="239" y="168" textAnchor="middle" fontSize="16" fontWeight="700" fill="#987953">Пустой просвет</text>
+  <text x="239" y="190" textAnchor="middle" fontSize="12" fill="#987953">без ядра и цитоплазмы</text>
+  </g>;
+ }
+}
+export default function LektrusBioCoreMicroscopyArt({plate,features=[],selectedFeature,onFeatureSelect}:{
+ plate:BioCoreMicroPlate;features?:BioCellFeature[];selectedFeature?:string|null;onFeatureSelect?:(name:string)=>void
+}){
+ const artwork=plate.level==="tissue"?<Tissue kind={plate.kind}/>:<Cell kind={plate.kind}/>;
+ return <g data-bio-core-micro={plate.kind} data-bio-core-level={plate.level}>
+  <rect x="0" y="0" width="480" height="330" fill={["palisade","root-hair","stomata","mesophyll","xylem"].includes(plate.kind)?"#f2f7e9":"#fbf5f1"}/>
+  {artwork}
+  <rect x="14" y="9" width="452" height="29" rx="9" fill="#ffffff" fillOpacity=".91" stroke="#e4e6d9" pointerEvents="none"/>
+  <text x="26" y="28" fontSize="13" fontWeight="700" fill="#385c54" pointerEvents="none">{plate.name}</text>
+  {plate.level==="cell"&&onFeatureSelect&&features.map((feature,i)=>{
+   const pos=spots[plate.kind][i];if(!pos)return null;
+   return <g key={feature.name} transform={`translate(${pos.x} ${pos.y})`}
+    className={"lektrus-bio-cell-hotspot"+(selectedFeature===feature.name?" is-selected":"")}
+    role="button" tabIndex={0} aria-pressed={selectedFeature===feature.name} aria-label={"Изучить: "+feature.name}
+    data-bio-core-feature={feature.name}
+    onClick={()=>onFeatureSelect(feature.name)}
+    onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onFeatureSelect(feature.name);}}}>
+    <circle r="19" fill="#e3f7eb" fillOpacity=".92" stroke={selectedFeature===feature.name?"#b97d35":"#318868"} strokeWidth="3"/>
+    <circle r="12" fill="#fffdfa" stroke="#3b876a" strokeWidth="1.8"/>
+    <text textAnchor="middle" dominantBaseline="central" fontSize="12" fontWeight="800" fill="#386d57">{i+1}</text>
+    <title>{feature.name}</title>
+   </g>;
+  })}
+ </g>;
+}
