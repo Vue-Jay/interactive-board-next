@@ -420,6 +420,28 @@ if(process.argv.includes("--verify")){
   assert.equal(actual?.specificJPerGK,row.roomHeatJPerGK,
    "Cp did not reach simulator calorimetry: "+row.formula);
  }
+ // Aqueous Ca(NO3)2 formula-equivalent measurements are NOT the
+ // crystalline Ca(NO3)2·4H2O phase. Preserve the eight original
+ // temperatures and never bridge the unverified hydration boundaries.
+ const caNitrateExact=[[0,102],[10,114.6],[20,128.8],[25,138.1],
+  [30,149.4],[40,189],[60,359],[100,363]];
+ for(const [temperatureC,expected] of caNitrateExact){
+  const source=measuredRows.find(x=>x.formula==="Ca(NO3)2"&&
+   x.temperatureC===temperatureC);
+  assert.ok(source,"Missing independently sourced calcium nitrate "+temperatureC);
+  assert.equal(source.originalUnit,"g/100g-water");
+  assert.equal(source.sourceValue,expected);
+  assert.ok(source.sourceCondition.includes("Ca(NO3)2·4H2O"));
+  assert.equal(material.labSingleSaltSolubilityGPer100gWater(
+   "Ca(NO3)2",temperatureC),expected);
+ }
+ for(const temperatureC of [1,19.85,21,35,50,80,90])
+  assert.equal(material.labSingleSaltSolubilityGPer100gWater(
+   "Ca(NO3)2",temperatureC),undefined,
+   "Do not interpolate Ca nitrate across changing crystal hydrates");
+ assert.equal(hydrate.labHydrateSolubilityAtTemperature(
+  "Ca(NO3)2·4H2O",20)?.massGPer100gWater,129.39);
+ assert.ok(material.LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES.has("Ca(NO3)2"));
  // Every literature measurement is verified against the very same
  // helper used by the chemistry model, including 18/25/48/50°C data.
  const sourcePairs=new Set();

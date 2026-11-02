@@ -393,6 +393,15 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
  // source precision. Its retrograde temperature-dependence is real.
  // https://pubchem.ncbi.nlm.nih.gov/compound/11125
  Li2CO3:[1.543,1.33,1.174,1.010,.847,.715],
+ // Rabinovich & Khavin 1977 (Chemister): Ca(NO3)2 formula-equivalent
+ // aqueous reference at 0/20/40/60/100 C. The separately measured
+ // Ca(NO3)2·4H2O saturation phase is NOT an anhydrous crystal.
+ // Missing 80 C is intentionally null, not interpolated.
+ "Ca(NO3)2":[labExactMeasuredSolubility("Ca(NO3)2",0)??null,
+  labExactMeasuredSolubility("Ca(NO3)2",20)??null,
+  labExactMeasuredSolubility("Ca(NO3)2",40)??null,
+  labExactMeasuredSolubility("Ca(NO3)2",60)??null,
+  null,labExactMeasuredSolubility("Ca(NO3)2",100)??null],
  // WHO/IPCS CICAD 33: exact 20 C BaCl2 aqueous reference, 375 g/L
  // of starting WATER. The solid hydrate in equilibrium is unspecified;
  // one measured knot must not create a dry-crystal saturation curve.
@@ -545,7 +554,7 @@ export function labSingleSaltSolubilityGPer100gWater(
  // measured temperatures too sparse to justify a continuous curve.
  // An explicit exact-temperature row above still takes precedence.
  if(["Al(NO3)3","NiSO4","CH3COOLi","FeSO4","Mg(NO3)2",
-  "Li2SO4","Zn(CH3COO)2"]
+  "Li2SO4","Zn(CH3COO)2","Ca(NO3)2"]
   .includes(formula))return;
  const data=LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER[formula];
  if(!data||!Number.isFinite(tempC)||tempC<0||tempC>100)return;
@@ -613,7 +622,7 @@ export const LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES:ReadonlySet<string>=new
  // chloride/nitrate hydrolysis, hydrated sulfate/chloride phase boundaries,
  // water binding and mixed salt activities all require separate models.
  "FeCl2","CoCl2","MgCl2","MgSO4","NiCl2","AlCl3","CuCl2",
- "LiNO3","Cu(NO3)2","Al2(SO4)3","Li2SO4","ZnSO4",
+ "LiNO3","Cu(NO3)2","Ca(NO3)2","Al2(SO4)3","Li2SO4","ZnSO4",
  // Binary-water references do not model silver halide Ksp, dissolution
  // kinetics, acetate hydrolysis, crystal waters or phosphate speciation.
  "CH3COONa","CH3COOK","AgCl","AgBr","Ag2CO3","SrCl2","K3PO4",

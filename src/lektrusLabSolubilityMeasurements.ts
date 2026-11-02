@@ -59,6 +59,44 @@ const LAB_KAYE_LABY_293K_BATCH:readonly (readonly [string,number])[]=[
 ];
 
 export const LAB_MEASURED_PURE_WATER_SOLUBILITIES:readonly LabMeasuredSolubility[]=[
+ // Rabinovich & Khavin, Kratkii khimicheskii spravochnik (1977), p. 71,
+ // via Chemister's Ca(NO3)2 water-solubility table: exact g per 100 g
+ // PURE water at the stated temperatures. These are formula-equivalent
+ // solution data, NOT proof of anhydrous Ca(NO3)2 crystallization.
+ // The Ca(NO3)2·4H2O solid-phase table is kept separately; do not
+ // interpolate over temperature intervals with unknown hydrate changes.
+ {formula:"Ca(NO3)2",temperatureC:0,sourceValue:102,
+  originalUnit:"g/100g-water",
+  sourceCondition:"Ca(NO3)2 formula-equivalent in pure water; Rabinovich & Khavin 1977 via Chemister; equilibrium hydrate not identified by this binary series; separate Ca(NO3)2·4H2O phase; aqueous reference only",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=545"},
+ {formula:"Ca(NO3)2",temperatureC:10,sourceValue:114.6,
+  originalUnit:"g/100g-water",
+  sourceCondition:"Ca(NO3)2 formula-equivalent in pure water; Rabinovich & Khavin 1977 via Chemister; equilibrium hydrate not identified by this binary series; separate Ca(NO3)2·4H2O phase; aqueous reference only",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=545"},
+ {formula:"Ca(NO3)2",temperatureC:20,sourceValue:128.8,
+  originalUnit:"g/100g-water",
+  sourceCondition:"Ca(NO3)2 formula-equivalent in pure water; Rabinovich & Khavin 1977 via Chemister; equilibrium hydrate not identified by this binary series; separate Ca(NO3)2·4H2O phase; aqueous reference only",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=545"},
+ {formula:"Ca(NO3)2",temperatureC:25,sourceValue:138.1,
+  originalUnit:"g/100g-water",
+  sourceCondition:"Ca(NO3)2 formula-equivalent in pure water; Rabinovich & Khavin 1977 via Chemister; equilibrium hydrate not identified by this binary series; separate Ca(NO3)2·4H2O phase; aqueous reference only",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=545"},
+ {formula:"Ca(NO3)2",temperatureC:30,sourceValue:149.4,
+  originalUnit:"g/100g-water",
+  sourceCondition:"Ca(NO3)2 formula-equivalent in pure water; Rabinovich & Khavin 1977 via Chemister; equilibrium hydrate not identified by this binary series; separate Ca(NO3)2·4H2O phase; aqueous reference only",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=545"},
+ {formula:"Ca(NO3)2",temperatureC:40,sourceValue:189,
+  originalUnit:"g/100g-water",
+  sourceCondition:"Ca(NO3)2 formula-equivalent in pure water; Rabinovich & Khavin 1977 via Chemister; equilibrium hydrate not identified by this binary series; separate Ca(NO3)2·4H2O phase; aqueous reference only",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=545"},
+ {formula:"Ca(NO3)2",temperatureC:60,sourceValue:359,
+  originalUnit:"g/100g-water",
+  sourceCondition:"Ca(NO3)2 formula-equivalent in pure water; Rabinovich & Khavin 1977 via Chemister; equilibrium hydrate not identified by this binary series; separate Ca(NO3)2·4H2O phase; aqueous reference only",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=545"},
+ {formula:"Ca(NO3)2",temperatureC:100,sourceValue:363,
+  originalUnit:"g/100g-water",
+  sourceCondition:"Ca(NO3)2 formula-equivalent in pure water; Rabinovich & Khavin 1977 via Chemister; equilibrium hydrate not identified by this binary series; separate Ca(NO3)2·4H2O phase; aqueous reference only",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=545"},
  // WHO/IPCS CICAD 33 (2001), section 2.2: 375 g/L at exactly 20 C
  // for barium chloride in WATER. This is an aqueous BaCl2 formula-
  // equivalent reference, not a measurement of an anhydrous crystal
