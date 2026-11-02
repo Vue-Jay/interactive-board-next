@@ -13,7 +13,7 @@ const load=(path)=>{
 const bio=load("src/lektrusBioMicroscopeModel.ts");
 const taxonomy=load("src/lektrusBioTaxonomy.ts");
 const ids=["earthworm","seastar","crayfish","horsetail"];
-assert.equal(Object.keys(bio.BIO_ORGANISMS).length,16,"Four species must extend, not replace, existing twelve");
+assert.equal(Object.keys(bio.BIO_ORGANISMS).length,20,"Earlier four lineages must remain available after further expansions");
 assert.deepEqual(bio.BIO_NEW_IDS,ids);
 assert.equal(new Set(ids.map(id=>bio.BIO_ORGANISMS[id].scientific)).size,4);
 const expectedClasses={earthworm:"clitellata",seastar:"asteroidea",crayfish:"malacostraca",horsetail:"equisetidae"};
