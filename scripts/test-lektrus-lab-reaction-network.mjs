@@ -1495,7 +1495,7 @@ for(const [formula,sourceValue] of Object.entries({
   formula,19.85),sourceValue,1e-9);
  // LiNO3 and Cu(NO3)2 now have INDEPENDENT measurements at exactly
  // 20 C; the old 293 K (=19.85 C) values must remain separate records.
- const independentlyMeasured20={"LiNO3":70,"Cu(NO3)2":124.7,"Li2SO4":34.7}[formula];
+ const independentlyMeasured20={"LiNO3":70,"Cu(NO3)2":124.7,"Li2SO4":34.7,"CuCl2":74.5}[formula];
  const actual20=physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,20);
  if(independentlyMeasured20===undefined)assert.equal(actual20,undefined,
   "A 293 K value cannot impersonate a measured 20.00 C point");
