@@ -100,6 +100,29 @@ export function bioZoomAt(camera:BioZoomCamera,scale:number,anchor:BioImageSpot)
   x:ax-(ax-camera.x)*ratio,
   y:ay-(ay-camera.y)*ratio});
 }
+/** Produce a portal that flies toward the linked structure, using the
+ * actual current camera rather than an already-snapped destination.
+ * The child remains a scientifically separate plate. The world coordinates
+ * are the focus in the departing parent image, not a fake micrometre scale.
+ */
+export function bioZoomPortalCamera(camera:BioZoomCamera,point:BioImageSpot,scale=BIO_ZOOM_GATE):BioZoomCamera{
+ const next=Math.max(camera.scale,bioZoomClamp(scale,1,BIO_ZOOM_MAX));
+ return bioZoomBound({scale:next,
+  x:(240-point.x)*next,
+  y:(165-point.y)*next});
+}
+/** Hit testing uses constant VISUAL screen distance even when heavily
+ * zoomed; otherwise at 3× a world-space radius could select another organ.
+ */
+export function bioZoomHitRadius(camera:BioZoomCamera,screenRadius=52):number{
+ return Math.min(68,Math.max(1,screenRadius/camera.scale));
+}
+/** Pixel-to-stage transform helper used for relative portal animation. */
+export function bioZoomScreenPoint(camera:BioZoomCamera,world:BioImageSpot):BioImageSpot{
+ return {x:240+(world.x-240)*camera.scale+camera.x,
+         y:165+(world.y-165)*camera.scale+camera.y};
+}
+
 export function bioZoomPan(camera:BioZoomCamera,dx:number,dy:number):BioZoomCamera{
  return bioZoomBound({...camera,x:camera.x+dx,y:camera.y+dy});
 }
