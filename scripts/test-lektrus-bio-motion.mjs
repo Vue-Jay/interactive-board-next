@@ -35,11 +35,11 @@ for(const [species,nodeId,motionId] of [
  ["chlamydomonas","chlamydomonas/eyespot","light-sensing"],
  ["spirogyra","spirogyra","spiral-chloroplast"],
  ["spirogyra","spirogyra/filament/cell","spiral-chloroplast"],
- ["spirogyra","spirogyra/conjugation","conjugation"],
- ["spirogyra","spirogyra/zygospore","conjugation"]
+ ["spirogyra","spirogyra/conjugation","conjugation"]
 ])assert.equal(fetchMotion(species,nodeId)?.id,motionId,"Incorrect lesson selected: "+nodeId);
 for(const [species,id] of [
  ["sponge","sponge/mesohyl"],["hydra","hydra/basal"],["moss","moss/sporophyte/seta"],
+ ["moss","moss/sporophyte/capsule/sporocyte"],["spirogyra","spirogyra/zygospore"],
  ["chlamydomonas","chlamydomonas/nucleus"],["spirogyra","spirogyra/filament/cell/nucleus"]
 ])assert.equal(fetchMotion(species,id),null,"Unknown cells must not inherit invented animation");
 for(const info of Object.values(BIO_MOTIONS)){
