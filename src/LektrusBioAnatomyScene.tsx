@@ -42,7 +42,7 @@ function OrganismShape({organism}:{organism:BioOrganism}){
  </g>;
 }
 function SpecificOrgan({keyName}:{keyName:BioVisualKey}){
- const accent="#74aa88",pink="#d59498",dark="#945d69",green="#67a878";
+ const dark="#945d69";
  switch(keyName){
   case "lungs":return <g stroke={dark} strokeWidth="5" fill="#eab2b6">
    <path d="M225 84Q155 65 129 130Q90 231 164 271Q213 294 227 211Z"/>
@@ -172,7 +172,6 @@ function CellScene({keyName}:{keyName:BioVisualKey}){
    return <ellipse key={i} cx={x} cy={y} rx="14" ry="9" fill="#5da161" stroke="#3d804b" strokeWidth="2"/>;
   })}
   {keyName==="root"&&<path d="M72 177Q30 166 17 216" stroke="#7ca36c" strokeWidth="12" fill="none" strokeLinecap="round"/>}
-  {keyName==="wood"&&<path d="M95 76V270M377 73V266" stroke="#9b7150" strokeWidth="12"/>}
  </g>;
  if(muscle)return <g>
   <path d="M58 85Q215 45 420 85L420 237Q240 282 58 237Z" fill="#e1a6a0" stroke="#a97476" strokeWidth="6"/>
