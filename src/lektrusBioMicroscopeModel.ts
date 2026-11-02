@@ -3,7 +3,8 @@
  * of an organism is identical or that all branches share a single cell type.
  * A species has its OWN organ systems, organs, tissue and representative cells.
  */
-export type BioOrganism="human"|"cat"|"sunflower"|"oak"|"sparrow"|"perch"|"frog"|"bee"|"snail"|"pine"|"fern"|"wheat";
+import {BIO_NEW_CHAINS,BIO_NEW_ROOT_POINTS,BIO_NEW_SOURCES,bioNewCellFeatures,isBioNewOrganism} from "./lektrusBioNewLineages";
+export type BioOrganism="human"|"cat"|"sunflower"|"oak"|"sparrow"|"perch"|"frog"|"bee"|"snail"|"pine"|"fern"|"wheat"|"earthworm"|"seastar"|"crayfish"|"horsetail";
 export type BioLevel="organism"|"system"|"organ"|"tissue"|"cell";
 export type BioActivity="explore"|"label"|"assemble";
 export type BioNode={id:string;parentId:string|null;level:BioLevel;name:string;description:string;
@@ -29,7 +30,11 @@ export const BIO_ORGANISMS:Record<BioOrganism,{name:string;group:"animal"|"plant
  snail:{name:"Улитка виноградная",group:"animal",scientific:"Helix pomatia",note:"Наземный брюхоногий моллюск с мускулистой ногой и лёгочной полостью мантии."},
  pine:{name:"Сосна обыкновенная",group:"plant",scientific:"Pinus sylvestris",note:"Хвойное голосеменное растение с хвоей, корнями и мужскими стробилами."},
  fern:{name:"Орляк обыкновенный",group:"plant",scientific:"Pteridium aquilinum",note:"Сосудистое споровое растение с вайями, корневищем и спорангиями."},
- wheat:{name:"Пшеница мягкая",group:"plant",scientific:"Triticum aestivum",note:"Однодольное цветковое растение с колосом, листом и мочковатыми корнями."}
+ wheat:{name:"Пшеница мягкая",group:"plant",scientific:"Triticum aestivum",note:"Однодольное цветковое растение с колосом, листом и мочковатыми корнями."},
+ earthworm:{name:"Дождевой червь",group:"animal",scientific:"Lumbricus terrestris",note:"Поясковый кольчатый червь с сегментированным телом, кутикулой, метанефридиями и сквозным кишечником."},
+ seastar:{name:"Морская звезда обыкновенная",group:"animal",scientific:"Asterias rubens",note:"Морское иглокожее с пятью лучами, водно-сосудистой системой и известковыми скелетными пластинками."},
+ crayfish:{name:"Речной рак широкопалый",group:"animal",scientific:"Astacus astacus",note:"Пресноводное десятиногое ракообразное с жабрами, хитиновым карапаксом и антеннальными железами."},
+ horsetail:{name:"Хвощ полевой",group:"plant",scientific:"Equisetum arvense",note:"Сосудистое споровое растение с членистыми побегами, кремнезёмом в покровах и спороносными стробилами."}
 };
 type Chain=[string,string,string,string,string,string,string,string];
 /** A chain lists three parent-child relationships plus a specialized cell,
@@ -94,7 +99,8 @@ const chains:Record<BioOrganism,Chain[]>={
   ["Побег","Включает листья и стебель.","Лист","Узкий лист с параллельными жилками.","Мезофилл листа","Фотосинтезирующая ткань.","Клетка мезофилла","Живая клетка с хлоропластами."],
   ["Корневая система","Мочковатые корни поглощают воду.","Молодой корень","Имеет зону корневых волосков.","Ризодерма","Наружная ткань молодого корня.","Клетка с корневым волоском","Корневой волосок является её выростом."],
   ["Генеративные органы","В цветках колосков формируются семена.","Пыльник","Образует пыльцу в микроспорангиях.","Тапетум","Питательный слой микроспорангия.","Клетка тапетума","Поддерживает образование пыльцы."]
- ]
+ ],
+ ...BIO_NEW_CHAINS
 };
 const slug=(v:string)=>v.toLocaleLowerCase("ru-RU").replace(/[^\p{L}\p{N}]+/gu,"-");
 export function bioNodes(organism:BioOrganism):BioNode[]{
@@ -190,6 +196,7 @@ export function bioChildSpot(
  organism:BioOrganism,parent:BioNode,child:BioNode,index:number,total:number
 ):BioImageSpot{
  if(parent.level==="organism"){
+  if(isBioNewOrganism(organism))return BIO_NEW_ROOT_POINTS[organism][index]??{x:240,y:165};
   const key=bioVisualKey(child);
   const locations:Partial<Record<BioOrganism,Record<string,BioImageSpot>>>={
    sparrow:{lungs:{x:255,y:168},skin:{x:305,y:128},eye:{x:153,y:112}},
@@ -245,6 +252,7 @@ function bioReviewedNode(
 ):Pick<BioNode,"name"|"description"|"source">{
  const parts=id.split("/");
  const tail=parts.at(-1)??"";
+ if(isBioNewOrganism(organism))return {name,description,source:BIO_NEW_SOURCES[organism]};
  const scientificSource=organism==="sparrow"&&id.includes("/дыхательная-")?BIO_REFERENCES.bird
   :organism==="perch"&&id.includes("/дыхательная-")?BIO_REFERENCES.fish
   :organism==="frog"&&id.includes("/дыхательная-")?BIO_REFERENCES.amphibian
@@ -321,6 +329,8 @@ export type BioCellFeature={name:string;description:string};
 const feature=(name:string,description:string):BioCellFeature=>({name,description});
 export function bioCellFeatures(node:BioNode):BioCellFeature[]{
  if(node.level!=="cell")return [];
+ const lineage=node.id.split("/")[0] as BioOrganism;
+ if(isBioNewOrganism(lineage))return bioNewCellFeatures(lineage,node.name);
  const id=node.id;
  if(id.endsWith("/пневмоцит-i-типа"))return [
   feature("Тонкая цитоплазма","Уплощённая часть клетки образует очень короткий путь диффузии газов."),
