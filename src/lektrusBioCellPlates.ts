@@ -4,6 +4,7 @@
  * biological children into the persisted five-step assignment graph.
  */
 import type {BioNode,BioOrganism} from "./lektrusBioMicroscopeModel";
+import {BIO_ADDITIONAL_CELL_PLATES} from "./lektrusBioAdditionalCellPlates";
 export type BioCellSpot={x:number;y:number};
 export type BioCellPlate={
  organism:BioOrganism;cellName:string;title:string;description:string;
@@ -80,6 +81,8 @@ export const BIO_CELL_PLATES:Readonly<Partial<Record<BioOrganism,BioCellPlate>>>
  }
 };
 export function bioCellPlateFor(organism:BioOrganism,node:BioNode):BioCellPlate|null{
+ if(node.level!=="cell"||!node.id.startsWith(organism+"/"))return null;
  const plate=BIO_CELL_PLATES[organism];
- return node.level==="cell"&&plate?.cellName===node.name?plate:null;
+ if(plate?.cellName===node.name)return plate;
+ return BIO_ADDITIONAL_CELL_PLATES[organism+":"+node.name]??null;
 }

@@ -5,6 +5,8 @@
 import type {ReactNode} from "react";
 import type {BioNode,BioOrganism} from "./lektrusBioMicroscopeModel";
 import {bioCellPlateFor} from "./lektrusBioCellPlates";
+import {bioAdditionalCellPlateFor} from "./lektrusBioAdditionalCellPlates";
+import LektrusBioAdditionalCellArt from "./LektrusBioAdditionalCellArt";
 const nucleus="#ae91b8",membrane="#a68180",teal="#66a6a6",leaf="#65a06d";
 function SparrowCell(){return <g>
  <path d="M34 123Q123 102 178 117Q195 128 213 123Q272 90 310 122Q374 113 448 119L452 172Q393 162 332 175Q297 200 273 198Q223 221 192 191Q146 179 36 177Z"
@@ -113,10 +115,11 @@ export default function LektrusBioCellDetail({
  onFeatureSelect?:(name:string)=>void}):ReactNode{
  const plate=bioCellPlateFor(organism,node);
  if(!plate)return null;
- const Picture=pictures[organism];
- if(!Picture)return null;
+ const extra=bioAdditionalCellPlateFor(organism,node);
+ const Picture=extra?null:pictures[organism];
+ if(!extra&&!Picture)return null;
  return <g data-bio-cell-plate={organism}>
-  <Picture/>
+  {extra?<LektrusBioAdditionalCellArt kind={extra.kind}/>:Picture?<Picture/>:null}
   {onFeatureSelect&&Object.entries(plate.landmarks).map(([name,pos],i)=>
    <g key={name} role="button" tabIndex={0}
     className={"lektrus-bio-cell-hotspot"+(selectedFeature===name?" is-selected":"")}
