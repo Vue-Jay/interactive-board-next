@@ -1269,6 +1269,46 @@ for(const formula of ["NaBr","LiNO3","Cu(NO3)2","Zn(NO3)2","MnSO4"]){
 }
 console.log("25 new source-qualified exact aqueous measurements; five protected salts PASS");
 
+// Eight individually transcribed Ca(NO3)2-in-pure-water measurements
+// from Rabinovich & Khavin (1977), via Chemister. Formula-equivalent
+// dissolved salt is not the equilibrium Ca(NO3)2·4H2O crystal mass.
+const calciumNitrateSource=[
+ [0,102],[10,114.6],[20,128.8],[25,138.1],
+ [30,149.4],[40,189],[60,359],[100,363]
+];
+for(const [temperatureC,value] of calciumNitrateSource){
+ const row=pureWaterMeasurements.find(x=>x.formula==="Ca(NO3)2"&&
+  x.temperatureC===temperatureC);
+ assert.ok(row,"Missing Ca(NO3)2 source temperature "+temperatureC);
+ assert.equal(row.originalUnit,"g/100g-water");
+ assert.equal(row.sourceValue,value);
+ assert.ok(row.sourceCondition.includes("Ca(NO3)2·4H2O"));
+ assert.ok(row.sourceCondition.includes("aqueous reference only"));
+ assert.equal(row.sourceUrl,
+  "https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=545");
+ approximately(literature.labExactMeasuredSolubility("Ca(NO3)2",temperatureC),
+  value,1e-12);
+ approximately(schoolMaterial.labSingleSaltSolubilityGPer100gWater(
+  "Ca(NO3)2",temperatureC),value,1e-12);
+ assert.equal(schoolMaterial.labSchoolSolubilityGPer100gWater(
+  "Ca(NO3)2",temperatureC).estimated,false);
+}
+for(const temperatureC of [1,19.85,21,35,50,80,90])
+ assert.equal(schoolMaterial.labSingleSaltSolubilityGPer100gWater(
+  "Ca(NO3)2",temperatureC),undefined,
+  "Do not interpolate calcium nitrate across unverified hydrate transitions");
+const caNitrateHydrate=hydrates.labHydrateSolubilityAtTemperature(
+ "Ca(NO3)2·4H2O",20);
+assert.equal(caNitrateHydrate.massGPer100gWater,129.39);
+assert.equal(caNitrateHydrate.hydrateFormula,"Ca(NO3)2·4H2O");
+assert.ok(schoolMaterial.LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES.has("Ca(NO3)2"));
+const caNitrateInventory={speciesMol:{H2O:1,"Ca(NO3)2":1},solidMol:{}};
+assert.equal(schoolMaterial.labEquilibrateSingleSaltCrystals(
+ caNitrateInventory,20,true,labMolarMass),undefined,
+ "Aqueous formula-equivalent data cannot produce anhydrous Ca(NO3)2 crystals");
+assert.deepEqual(caNitrateInventory.solidMol,{});
+console.log("8 Ca(NO3)2 exact aqueous knots, distinct tetrahydrate, no interpolation or dry crystals PASS");
+
 // Seidell (Li2SO4 / Zn acetate) and Patty (SrCO3): original exact
 // temperatures, source conditions and live lookup are independently checked.
 for(const [formula,t,original] of [
