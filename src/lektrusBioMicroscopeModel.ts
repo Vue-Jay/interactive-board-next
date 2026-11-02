@@ -471,6 +471,10 @@ export type BioImageSpot={x:number;y:number};
 export function bioChildSpot(
  organism:BioOrganism,parent:BioNode,child:BioNode,index:number,total:number
 ):BioImageSpot{
+ if(organism==="sunflower"&&parent.id==="sunflower/побег/лист"){
+  if(child.name==="Эпидермис листа")return {x:323,y:167};
+  if(child.name==="Столбчатая паренхима")return {x:170,y:165};
+ }
  if(parent.level==="organism"){
   if(isBioNewOrganism(organism))return BIO_NEW_ROOT_POINTS[organism][index]??{x:240,y:165};
   if(isBioFurtherOrganism(organism))return BIO_FURTHER_ROOT_POINTS[organism][index]??{x:240,y:165};
