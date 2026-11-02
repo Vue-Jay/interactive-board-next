@@ -96,3 +96,50 @@ export function validBioMicroscope(value:unknown):value is BioMicroscopeDiagram{
  return path.every((node,i)=>!!node&&node.level===BIO_LEVELS[i]&&
   (i===0?node.parentId===null:node.parentId===path[i-1]?.id));
 }
+
+
+/** The visual family follows the *entire* ancestor chain, not a generic
+ * organism-wide cell. A neuron, a photoreceptor and a leaf cell must not
+ * be presented as the same microscopic specimen. */
+export type BioVisualKey="lungs"|"heart"|"brain"|"eye"|"muscle"|"gut"|"flower"|"root"|"leaf"|"wood"|"other";
+export function bioVisualKey(node:BioNode):BioVisualKey{
+ const p=node.id.toLocaleLowerCase("ru-RU");
+ if(p.includes("дыхатель")||p.includes("лёгк")||p.includes("пневмоцит"))return "lungs";
+ if(p.includes("кровенос")||p.includes("сердц")||p.includes("кардиомиоцит"))return "heart";
+ if(p.includes("нервн")||p.includes("головн")||p.includes("нейрон"))return "brain";
+ if(p.includes("сенсорн")||p.includes("глаз")||p.includes("сетчатк")||p.includes("палочк"))return "eye";
+ if(p.includes("опорно")||p.includes("скелетн")||p.includes("мышечн")||p.includes("волокн"))return "muscle";
+ if(p.includes("пищевар")||p.includes("киш")||p.includes("энтероцит"))return "gut";
+ if(p.includes("генератив")||p.includes("цветк")||p.includes("лепестк"))return "flower";
+ if(p.includes("корнев")||p.includes("корень")||p.includes("ризодерм"))return "root";
+ if(p.includes("лист")||p.includes("мезофилл")||p.includes("фотосинтез")||p.includes("паренхим"))return "leaf";
+ if(p.includes("ствол")||p.includes("древес")||p.includes("ксилем")||p.includes("сосудист"))return "wood";
+ return "other";
+}
+export type BioImageSpot={x:number;y:number};
+/** Responsive SVG viewBox is 480×330. Coordinates are anatomical
+ * illustration landmarks. They describe the diagrams, not measurements. */
+export function bioChildSpot(
+ organism:BioOrganism,parent:BioNode,child:BioNode,index:number,total:number
+):BioImageSpot{
+ if(parent.level==="organism"){
+  const key=bioVisualKey(child);
+  const animal:Record<string,BioImageSpot>=organism==="human"?{
+   lungs:{x:250,y:144},heart:{x:228,y:183},brain:{x:238,y:60}
+  }:{eye:{x:195,y:160},muscle:{x:298,y:213},gut:{x:238,y:225}};
+  const plant:Record<string,BioImageSpot>=organism==="sunflower"?{
+   leaf:{x:176,y:199},root:{x:238,y:291},flower:{x:240,y:88}
+  }:{leaf:{x:305,y:128},root:{x:240,y:290},wood:{x:240,y:234}};
+  return (BIO_ORGANISMS[organism].group==="animal"?animal:plant)[key]
+   ??{x:240+index*35-(total-1)*17.5,y:170};
+ }
+ // A shared shoot has both stem and leaves: their hotspots should
+ // occupy different places, rather than one unclickable centre.
+ if(parent.level==="system"&&total>1){
+  const key=bioVisualKey(child);
+  if(key==="leaf")return {x:333,y:124};
+  if(key==="wood")return {x:206,y:218};
+  return {x:190+index*95,y:164};
+ }
+ return {x:240,y:163};
+}
