@@ -60,7 +60,7 @@ const art=fs.readFileSync("src/LektrusBioCellDetail.tsx","utf8");
 for(const organism of species)assert.ok(art.includes(organism+":"),"No original cell illustration for "+organism);
 assert.match(art,/data-bio-cell-plate=\{organism\}/);
 assert.match(art,/data-bio-cell-feature=\{name\}/);
-assert.match(art,/aria-pressed=\{onFeatureSelect\?selectedFeature===name:undefined\}/);
+assert.match(art,/aria-pressed=\{selectedFeature===name\}/);
 assert.match(art,/if\(e\.key==="Enter"\|\|e\.key===" "\)/);
 assert.match(art,/onFeatureSelect&&Object\.entries/,"Labels must stay hidden outside explore mode");
 const scene=fs.readFileSync("src/LektrusBioAnatomyScene.tsx","utf8");
