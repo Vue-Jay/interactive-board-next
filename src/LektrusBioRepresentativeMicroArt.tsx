@@ -142,6 +142,16 @@ function TissuePanel({kind,cell}:{kind:BioRepresentativeMicroPlate["kind"];cell:
   <Vessel x={83} y={279} length={316}/>
   {cell&&<path d="M60 133Q211 104 425 132" stroke="#e7ad9c" strokeWidth="6" fill="none"/>}
  </g>;
+ case "pine-needle-mesophyll":if(cell)return <g>
+  <path d="M116 88Q130 73 155 87L186 69L219 88L265 75L295 93L357 82L370 122L361 166L381 205L355 257L299 254L260 281L200 266L155 276L115 235L124 190L101 150Z"
+   fill="#c2dfaa" stroke="#729967" strokeWidth="8"/>
+  <path d="M146 117Q231 87 338 117L346 221Q262 257 143 222Z" fill="#dceec5" stroke="#aacb9b" strokeWidth="3"/>
+  <path d="M171 132Q250 103 317 135L309 226Q243 240 174 226Z" fill="#badad5" stroke="#90b8ae" strokeWidth="2.5"/>
+  {Array.from({length:24},(_,i)=>{const a=i*2.399,rad=74;
+   return <Chlor key={i} x={240+Math.cos(a)*rad} y={177+Math.sin(a)*rad*.63} r={9}/>;
+  })}
+  <N x={157} y={216} r={17}/>
+ </g>;
  case "pine-needle-mesophyll":return <g>
   <path d="M65 180Q141 68 238 77Q343 74 415 178Q346 284 236 279Q136 283 65 180Z" fill="#c6dfa6" stroke="#71966c" strokeWidth="9"/>
   <path d="M101 180Q155 105 238 111Q318 98 374 181Q319 255 239 244Q155 251 101 180Z" fill="#e8efc9" stroke="#9bb78a" strokeWidth="5"/>
