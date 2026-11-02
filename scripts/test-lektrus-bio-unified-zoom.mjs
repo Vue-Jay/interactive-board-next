@@ -95,6 +95,8 @@ assert.ok(app.includes("showExercise&&<>"),"Assembly and labeling must remain un
 const css=fs.readFileSync("src/lektrusBioUnifiedZoom.css","utf8");
 assert.match(css,/touch-action:none/);
 assert.match(css,/aspect-ratio:480\/330/);
+assert.match(css,/width:min\(100%,915px\)/,"Viewport must constrain both axes together");
+assert.doesNotMatch(css,/min-height:280px|max-height:630px/,"Clamping one axis would misalign hotspots");
 assert.match(css,/prefers-reduced-motion:reduce/);
 for(const name of ["src/LektrusBioUnifiedZoom.tsx","src/LektrusBioMicroscope.tsx"]){
  const ast=ts.createSourceFile(name,fs.readFileSync(name,"utf8"),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
