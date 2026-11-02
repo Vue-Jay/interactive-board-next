@@ -6,6 +6,8 @@ import type {ReactNode} from "react";
 import LektrusBioSpeciesArt from "./LektrusBioSpeciesArt";
 import LektrusBioDetailedOrganisms from "./LektrusBioDetailedOrganisms";
 import LektrusBioDetailedCoreOrgans from "./LektrusBioDetailedCoreOrgans";
+import LektrusBioCoreMicroscopyArt from "./LektrusBioCoreMicroscopyArt";
+import {bioCoreMicroscopyPlateFor} from "./lektrusBioCoreMicroscopyPlates";
 import LektrusBioNewSpeciesArt from "./LektrusBioNewSpeciesArt";
 import LektrusBioFurtherSpeciesArt from "./LektrusBioFurtherSpeciesArt";
 import {isBioFurtherOrganism} from "./lektrusBioMicroscopeModel";
@@ -15,7 +17,7 @@ import LektrusBioCellDetail from "./LektrusBioCellDetail";
 import {bioCellPlateFor} from "./lektrusBioCellPlates";
 import {bioSpecimenPlateFor,bioSpecimenChildSpot} from "./lektrusBioSpecimenPlates";
 import type {BioNode,BioOrganism} from "./lektrusBioMicroscopeModel";
-import {BIO_ORGANISMS,bioVisualKey,bioChildSpot} from "./lektrusBioMicroscopeModel";
+import {BIO_ORGANISMS,bioVisualKey,bioChildSpot,bioCellFeatures} from "./lektrusBioMicroscopeModel";
 
 type Props={organism:BioOrganism;node:BioNode;children:BioNode[];onSelect:(node:BioNode)=>void;interactive:boolean;focusChildId?:string;activeFeatureName?:string|null;onFeatureSelect?:(name:string)=>void};
 type BioVisualKey=ReturnType<typeof bioVisualKey>;
@@ -125,10 +127,13 @@ export default function LektrusBioAnatomyScene({organism,node,children,onSelect,
  const extra=<LektrusBioSpeciesArt organism={organism} node={node}/>;
  const plate=bioSpecimenPlateFor(organism,node);
  const cellPlate=bioCellPlateFor(organism,node);
+ const corePlate=bioCoreMicroscopyPlateFor(organism,node);
  const cellDetail=cellPlate?<LektrusBioCellDetail organism={organism} node={node}
   selectedFeature={activeFeatureName} onFeatureSelect={onFeatureSelect}/>:null;
  const detail=plate?<LektrusBioOrganDetail organism={organism} node={node}/>:null;
- const shape:ReactNode=cellDetail??detail??(isBioFurtherOrganism(organism)
+ const coreDetail=corePlate?<LektrusBioCoreMicroscopyArt plate={corePlate}
+  features={bioCellFeatures(node)} selectedFeature={activeFeatureName} onFeatureSelect={onFeatureSelect}/>:null;
+ const shape:ReactNode=cellDetail??detail??coreDetail??(isBioFurtherOrganism(organism)
   ?<LektrusBioFurtherSpeciesArt organism={organism} node={node} selectedFeature={activeFeatureName} onFeatureSelect={onFeatureSelect}/>
   :isBioNewOrganism(organism)
   ?<LektrusBioNewSpeciesArt organism={organism} node={node} selectedFeature={activeFeatureName} onFeatureSelect={onFeatureSelect}/>
