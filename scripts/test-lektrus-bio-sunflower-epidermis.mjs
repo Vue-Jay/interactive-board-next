@@ -68,7 +68,8 @@ assert.match(stage,/\(visits\.current\.get\(target\.id\)\?\?BIO_ZOOM_INITIAL\)/,
  "Returning from shared-frame depth must restore the saved camera");
 assert.match(stage,/setCam\(incoming\)/);
 assert.match(stage,/data-bio-zoom-target=\{child.id\}/);
-assert.match(stage,/setCam\(zoomed\)/);
+assert.match(stage,/setCam\(bioZoomAt\(old,desired,point\)\)/,
+ "Continuous zoom must use the live camera rather than a stale intermediate");
 assert.match(stage,/bioZoomPan\(cameraRef.current/);
 assert.match(stage,/onPointerMove=\{onMove\}/);
 assert.match(stage,/map.size>=2/);
