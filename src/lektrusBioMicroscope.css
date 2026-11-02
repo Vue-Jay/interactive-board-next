@@ -354,3 +354,10 @@
 .lektrus-bio-cell-inspector>small{font-size:10px;color:#6b8372;line-height:1.5}
 .lektrus-bio-cell-inspector>a{font-size:10px;font-weight:750;color:#26765a;text-decoration:underline;text-underline-offset:2px}
 @media(prefers-reduced-motion:reduce){.lektrus-bio-cell-hotspot>circle{transition:none!important}}
+
+/* Separate actual photographed microscope slides from the existing anatomical SVG atlas. */
+.lektrus-bio-view-mode{display:flex;gap:7px;flex-wrap:wrap;background:#e1eee6;padding:5px;border:1px solid #c5dbc9;border-radius:11px}
+.lektrus-bio-view-mode button{flex:1 1 180px;min-height:39px;border:1px solid transparent;border-radius:8px;background:transparent;color:#3e6b56;font-size:11px;font-weight:850;padding:9px}
+.lektrus-bio-view-mode button.is-active{background:#fcfffa;border-color:#b7d0c0;box-shadow:0 2px 9px #2b57421b;color:#215b44}
+.lektrus-bio-microscope:has(.lektrus-bio-photomicroscope){background:linear-gradient(155deg,#f0f5f2,#e3eee8)}
+@media(max-width:460px){.lektrus-bio-view-mode button{flex-basis:120px;padding:7px 5px}}

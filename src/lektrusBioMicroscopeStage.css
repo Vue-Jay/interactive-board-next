@@ -1,0 +1,49 @@
+/* Photo microscopy stage: genuine specimen imaging in a focusable, draggable lens. */
+.lektrus-bio-photomicroscope{display:flex;flex-direction:column;gap:10px;min-width:0;color:#243e3b}
+.lektrus-bio-photo-head{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap}
+.lektrus-bio-photo-head>div{display:grid;gap:2px}
+.lektrus-bio-photo-head strong{font-size:16px;letter-spacing:-.02em}
+.lektrus-bio-photo-head small{color:#607b72;font-size:11px}
+.lektrus-bio-photo-upload{display:flex;align-items:center;justify-content:center;min-height:38px;padding:8px 12px;border:1px solid #4c9277;border-radius:10px;background:#e1f0e5;font-weight:750;cursor:pointer;font-size:11px}
+.lektrus-bio-photo-upload input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.lektrus-bio-photo-upload:focus-within{outline:3px solid #64a4ba;outline-offset:2px}
+.lektrus-bio-slide-library{display:flex;gap:5px;overflow-x:auto;padding-bottom:5px;scrollbar-width:thin}
+.lektrus-bio-slide-library button{flex:0 0 auto;padding:8px 11px;border:1px solid #bfd1c9;background:#f8fbf9;border-radius:9px;font-size:11px;font-weight:680;white-space:nowrap}
+.lektrus-bio-slide-library button.is-selected{background:#315f52;color:#fff;border-color:#315f52}
+.lektrus-bio-slide-library>span{align-self:center;white-space:nowrap;font-size:10px;color:#6b8178}
+.lektrus-bio-photo-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(175px,228px);gap:12px;align-items:start}
+.lektrus-bio-photo-main{min-width:0}
+.lektrus-bio-photo-viewport{position:relative;isolation:isolate;overflow:hidden;aspect-ratio:4/3;min-height:220px;max-height:min(65vh,550px);border:10px solid #263c39;border-radius:50% / 48%;background:#f5eee2;box-shadow:inset 0 0 0 2px #87978c,0 5px 22px #1e42362d;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.lektrus-bio-photo-viewport:active{cursor:grabbing}
+.lektrus-bio-photo-viewport:focus-visible{outline:3px solid #2887a2;outline-offset:2px}
+.lektrus-bio-photo-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;max-width:none;max-height:none;user-select:none;pointer-events:none;transform-origin:50% 50%;will-change:transform}
+.lektrus-bio-photo-vignette{position:absolute;inset:0;border-radius:50%;pointer-events:none;background:radial-gradient(ellipse at 50% 47%,transparent 50%,#20342e33 81%,#101e18a9 100%);box-shadow:inset 0 0 44px 19px #1b282533}
+.lektrus-bio-photo-cross{position:absolute;pointer-events:none;inset:0;opacity:.42}
+.lektrus-bio-photo-cross:before,.lektrus-bio-photo-cross:after{content:"";position:absolute;background:#102e24bd}
+.lektrus-bio-photo-cross:before{height:1px;width:22px;top:50%;left:calc(50% - 11px)}
+.lektrus-bio-photo-cross:after{height:22px;width:1px;left:50%;top:calc(50% - 11px)}
+.lektrus-bio-photo-hud{position:absolute;bottom:7%;left:12%;right:12%;display:flex;justify-content:space-between;gap:7px;pointer-events:none;color:#f8fff0;font:700 clamp(9px,1.15cqw,12px)/1.25 ui-monospace,monospace;text-shadow:0 1px 4px #091a13,0 0 4px #091a13}
+.lektrus-bio-photo-fallback,.lektrus-bio-photo-loading{position:absolute;inset:14%;display:grid;place-items:center;padding:20px;text-align:center;color:#304a3b;font-size:13px;line-height:1.4;pointer-events:none}
+.lektrus-bio-photo-tip{font-size:11px;line-height:1.45;color:#577266;margin:6px 0}
+.lektrus-bio-photo-source{display:grid;gap:4px;font-size:11px;line-height:1.5;background:#f6faf7;border:1px solid #c6d9ca;border-radius:9px;padding:10px}
+.lektrus-bio-photo-source strong{color:#335d4c}
+.lektrus-bio-photo-source a{font-weight:700;color:#267e6c;text-decoration:underline;text-underline-offset:3px}
+.lektrus-bio-photo-console{min-width:0;background:#eff5f0;border:1px solid #c0d5c7;border-radius:13px;padding:11px;display:grid;gap:9px;align-content:start}
+.lektrus-bio-photo-console fieldset{border:0;padding:0;margin:0;display:grid;gap:6px}
+.lektrus-bio-photo-console legend{padding:0 0 5px;font-size:12px;font-weight:850;color:#294b3e}
+.lektrus-bio-photo-objectives{display:flex;gap:6px}
+.lektrus-bio-photo-objectives button{flex:1;min-height:40px;border:1px solid #a8c1b6;border-radius:8px;background:#f9fffa;font-weight:850;font-size:14px}
+.lektrus-bio-photo-objectives button.is-selected{background:#315f52;border-color:#315f52;color:white}
+.lektrus-bio-photo-console small{font-size:10px;color:#617a6d;line-height:1.4}
+.lektrus-bio-photo-console label{font-size:11px;display:flex;justify-content:space-between;gap:6px;color:#365849;font-weight:700}
+.lektrus-bio-photo-console label b{font-variant-numeric:tabular-nums}
+.lektrus-bio-photo-console input[type=range]{width:100%;accent-color:#3e8e6e;cursor:pointer;min-height:21px}
+.lektrus-bio-photo-zoombtns{display:grid;grid-template-columns:40px 1fr 40px;gap:5px}
+.lektrus-bio-photo-zoombtns button,.lektrus-bio-photo-autofocus{border:1px solid #aac5b6;border-radius:8px;min-height:35px;background:#fbfffa;font-weight:800;font-size:12px}
+.lektrus-bio-photo-pad{display:grid;justify-items:center;gap:2px}
+.lektrus-bio-photo-pad>div{display:flex;gap:3px;align-items:center}
+.lektrus-bio-photo-pad button{height:35px;width:42px;background:#fafffb;border:1px solid #b3ceba;border-radius:7px;font-size:17px}
+.lektrus-bio-photo-pad span{display:grid;place-items:center;width:38px;font:800 10px ui-monospace,monospace;color:#628271}
+.lektrus-bio-photo-disclaimer{border-top:1px solid #c6dacd;padding-top:6px}
+@media(max-width:650px){.lektrus-bio-photo-layout{grid-template-columns:1fr;gap:8px}.lektrus-bio-photo-viewport{border-width:7px;min-height:230px;max-height:60vh}.lektrus-bio-photo-console{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 12px}.lektrus-bio-photo-console fieldset,.lektrus-bio-photo-console .lektrus-bio-photo-pad,.lektrus-bio-photo-console .lektrus-bio-photo-disclaimer{grid-column:1/-1}.lektrus-bio-photo-console label{align-self:end}.lektrus-bio-photo-console input[type=range]{align-self:center}.lektrus-bio-photo-console small{align-self:center}}
+@media(prefers-reduced-motion:reduce){.lektrus-bio-photo-image{will-change:auto}}
