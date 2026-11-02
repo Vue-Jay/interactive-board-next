@@ -5,11 +5,13 @@
 import type {ReactNode} from "react";
 import LektrusBioSpeciesArt from "./LektrusBioSpeciesArt";
 import LektrusBioOrganDetail from "./LektrusBioOrganDetail";
+import LektrusBioCellDetail from "./LektrusBioCellDetail";
+import {bioCellPlateFor} from "./lektrusBioCellPlates";
 import {bioSpecimenPlateFor,bioSpecimenChildSpot} from "./lektrusBioSpecimenPlates";
 import type {BioNode,BioOrganism} from "./lektrusBioMicroscopeModel";
 import {BIO_ORGANISMS,bioVisualKey,bioChildSpot} from "./lektrusBioMicroscopeModel";
 
-type Props={organism:BioOrganism;node:BioNode;children:BioNode[];onSelect:(node:BioNode)=>void;interactive:boolean;focusChildId?:string};
+type Props={organism:BioOrganism;node:BioNode;children:BioNode[];onSelect:(node:BioNode)=>void;interactive:boolean;focusChildId?:string;activeFeatureName?:string|null;onFeatureSelect?:(name:string)=>void};
 type BioVisualKey=ReturnType<typeof bioVisualKey>;
 const ink="#355f52";
 function OrganismShape({organism}:{organism:BioOrganism}){
@@ -194,12 +196,15 @@ function CellScene({keyName}:{keyName:BioVisualKey}){
    transform={"rotate("+(i*17)+" "+(128+i*73)+" "+(i%2?242:105)+")"}/>)}
  </g>;
 }
-export default function LektrusBioAnatomyScene({organism,node,children,onSelect,interactive,focusChildId}:Props){
+export default function LektrusBioAnatomyScene({organism,node,children,onSelect,interactive,focusChildId,activeFeatureName,onFeatureSelect}:Props){
  const keyName=bioVisualKey(node);
  const extra=<LektrusBioSpeciesArt organism={organism} node={node}/>;
  const plate=bioSpecimenPlateFor(organism,node);
+ const cellPlate=bioCellPlateFor(organism,node);
+ const cellDetail=cellPlate?<LektrusBioCellDetail organism={organism} node={node}
+  selectedFeature={activeFeatureName} onFeatureSelect={onFeatureSelect}/>:null;
  const detail=plate?<LektrusBioOrganDetail organism={organism} node={node}/>:null;
- const shape:ReactNode=detail??((["sparrow","perch","frog","bee","snail","pine","fern","wheat"] as string[]).includes(organism)
+ const shape:ReactNode=cellDetail??detail??((["sparrow","perch","frog","bee","snail","pine","fern","wheat"] as string[]).includes(organism)
   ?extra:node.level==="organism"||node.level==="system"
   ?<><g opacity={node.level==="system"?.27:1}><OrganismShape organism={organism}/></g>
     {node.level==="system"&&<g transform="translate(148 80) scale(.39)" opacity=".93"><SpecificOrgan keyName={keyName}/></g>}</>
