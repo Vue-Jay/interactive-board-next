@@ -64,7 +64,7 @@ for(const safety of [
  // Descriptions are biology-first, not decorative decoration.
  assert.ok(mapSrc.toLocaleLowerCase("ru").includes(safety.toLocaleLowerCase("ru")),"Need explanatory biology: "+safety);
 }
-assert.match(pictures,/case "pine-needle-mesophyll":if\(cell\)return <g>/,
+assert.match(pictures,/case "pine-needle-mesophyll":return cell\?<g>/,
  "An intracellular picture cannot contain a resin canal");
 assert.match(pictures,/case "pine-rhizodermis":case "wheat-rhizodermis":return <g>/);
 assert.match(pictures,/<PlantCell x=\{x\} y=\{137\} w=\{w\} h=\{139\} chlor=\{false\}\/>/);
