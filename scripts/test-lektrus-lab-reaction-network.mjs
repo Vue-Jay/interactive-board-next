@@ -1615,7 +1615,7 @@ for(const temp of [1,19,21,26,51,99]){
   "Ca(CH3COO)2",temp),undefined,"Calcium acetate interpolated through missing data");
 }
 assert.equal(registryProps.labSubstanceProperties("Ca(CH3COO)2",20).solubilityKnown,true);
-console.log("Six traceable 20C water solubilities plus isolated 0/100C calcium acetate points passed");
+console.log("Six traceable 20C water solubilities plus original and 1999 calcium acetate points passed");
 
 // International Chemical Safety Cards and the Colorado DOT published
 // exact-temperature measurements. Original units are never g/100g WATER
