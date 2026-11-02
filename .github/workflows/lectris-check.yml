@@ -55,6 +55,8 @@ jobs:
         run: node scripts/test-lektrus-bio-new-lineages.mjs
       - name: Four additional biological lineages and differentiated anatomical levels
         run: node scripts/test-lektrus-bio-further-lineages.mjs
+      - name: Real microphotograph microscope slide, pan, pinch and focusing regression
+        run: node scripts/test-lektrus-bio-photo-microscope.mjs
       - name: Biology drag and place anatomy exercises
         run: node scripts/test-lektrus-bio-assembly.mjs
       - name: Biology organ systems and relief regression
