@@ -22,7 +22,26 @@ const PINE_IMAGES:Record<string,BioZoomImage>={
  organ:{file:file("Pinus sylvestris 2026 G3.jpg"),caption:"Крупный план хвои Pinus sylvestris, отдельный снимок",author:"George Chernilevsky",license:"CC BY 4.0",source:source("Pinus sylvestris 2026 G3.jpg"),mode:"photograph"},
  tissue:{file:file("PineNeedleCross.png"),caption:"Настоящий поперечный срез хвои Pinus sylvestris, другой микропрепарат",author:"Lord of Konrad",license:"CC0",source:source("PineNeedleCross.png"),mode:"micrograph"}
 };
+/** Different photographs of Helianthus annuus, linked only by valid morphology.
+ * The epidermal imprint is the same micrograph at tissue and guard-cell depths.
+ * It is not a cross-section of mesophyll and shows no actual intracellular Z-stack.
+ */
+const SUNFLOWER_IMAGES:Record<string,BioZoomImage>={
+ organism:{file:file("Helianthus annuus plant-9-16-04.jpg"),caption:"Подсолнечник Helianthus annuus целиком, отдельное растение",author:"Thayne Tuason",license:"CC BY-SA 4.0",source:source("Helianthus annuus plant-9-16-04.jpg"),mode:"photograph"},
+ system:{file:file("Close-up of a Common Sunflower.jpg"),caption:"Побег Helianthus annuus, соцветие и листья на другом экземпляре",author:"Rifat R",license:"CC BY 4.0",source:source("Close-up of a Common Sunflower.jpg"),mode:"photograph"},
+ organ:{file:file("Helianthus annuus leaf-9-16-04.jpg"),caption:"Лист Helianthus annuus, фотография",author:"Thayne Tuason",license:"CC BY-SA 4.0",source:source("Helianthus annuus leaf-9-16-04.jpg"),mode:"photograph"},
+ tissue:{file:file("Helianthus annuus Leaf epidermis print and stomata 400x.jpg"),caption:"Реальный отпечаток эпидермиса листа Helianthus annuus с устьицами, световая микроскопия 400×, стек фокуса",author:"ChrisInMilton",license:"CC BY-SA 4.0",source:source("Helianthus annuus Leaf epidermis print and stomata 400x.jpg"),mode:"micrograph"}
+};
 export function bioZoomImageFor(organism:BioOrganism,node:BioNode):BioZoomImage|null{
+ if(organism==="sunflower"){
+  if(node.level==="organism")return SUNFLOWER_IMAGES.organism;
+  if(node.id==="sunflower/побег")return SUNFLOWER_IMAGES.system;
+  if(node.id==="sunflower/побег/лист")return SUNFLOWER_IMAGES.organ;
+  if(node.id==="sunflower/побег/лист/эпидермис-листа"||
+     node.id==="sunflower/побег/лист/эпидермис-листа/замыкающая-клетка-устьица")
+   return SUNFLOWER_IMAGES.tissue;
+  return null;
+ }
  if(organism!=="pine")return null;
  if(node.level==="organism")return PINE_IMAGES.organism;
  // A photograph of a shoot must NOT be silently used for roots or pollen.
@@ -32,9 +51,25 @@ export function bioZoomImageFor(organism:BioOrganism,node:BioNode):BioZoomImage|
  if(node.level==="tissue"&&node.name==="Мезофилл хвои")return PINE_IMAGES.tissue;
  return null;
 }
+/** Returns true only if two consecutive levels share exactly the same
+ * original photographed field. Used to prevent faux fading to a new sample. */
+export function bioZoomSharedFrame(organism:BioOrganism,a:BioNode,b:BioNode):boolean{
+ const p=bioZoomImageFor(organism,a),q=bioZoomImageFor(organism,b);
+ return !!p&&!!q&&p.mode==="micrograph"&&p.file===q.file;
+}
 export function bioZoomPoint(organism:BioOrganism,parent:BioNode,child:BioNode,index:number,total:number):BioImageSpot{
  const exact=bioSpecimenChildSpot(organism,parent,child);
  if(exact)return exact;
+ if(organism==="sunflower"){
+  if(parent.level==="organism"&&child.name==="Побег")return {x:226,y:165};
+  if(parent.id==="sunflower/побег"&&child.name==="Лист")return {x:324,y:241};
+  if(parent.id==="sunflower/побег/лист"){
+   if(child.name==="Эпидермис листа")return {x:323,y:167};
+   if(child.name==="Столбчатая паренхима")return {x:170,y:165};
+  }
+  if(parent.id==="sunflower/побег/лист/эпидермис-листа")
+   return {x:240,y:165};
+ }
  if(organism==="pine"&&parent.level==="organism"){
   // Visible crown; root and male shoot remain labelled inferred regions.
   const pos:Record<string,BioImageSpot>={
