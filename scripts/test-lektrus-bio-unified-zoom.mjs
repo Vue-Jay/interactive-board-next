@@ -80,6 +80,45 @@ for(const species of Object.keys(bio.BIO_ORGANISMS)){
  }
 }
 assert.ok(paths>=60&&links>=200,"Must cover all 20 modeled species and their existing paths");
+// The location inset must be backed by exactly the parent atlas node and the
+// same canonical spot used by the microscope's clickable child hotspot.
+let mapped=0;
+for(const species of Object.keys(bio.BIO_ORGANISMS)){
+ const nodes=bio.bioNodes(species);
+ assert.equal(zoom.bioZoomParentContext(species,nodes,nodes[0]),null);
+ for(const node of nodes.slice(1)){
+  const context=zoom.bioZoomParentContext(species,nodes,node);
+  assert.ok(context,"Missing parent overview context "+node.id);
+  assert.equal(context.child.id,node.id);
+  assert.equal(context.parent.id,node.parentId);
+  const siblings=zoom.bioZoomChildCandidates(nodes,context.parent);
+  const index=siblings.findIndex(n=>n.id===node.id);
+  assert.ok(index>=0);
+  assert.deepEqual(context.spot,
+   zoom.bioZoomPoint(species,context.parent,node,index,siblings.length));
+  assert.equal(context.parentLevel,zoom.bioZoomPath(nodes,context.parent.id).length);
+  mapped++;
+ }
+}
+assert.equal(mapped,links,"Context mini-map covers every legitimate anatomical edge");
+assert.equal(zoom.bioZoomParentContext("human",bio.bioNodes("human"),{
+ id:"missing/path",parentId:"missing",name:"no node",description:"",level:"cell"
+}),null,"Unknown anatomy path must never produce a false position");
+assert.deepEqual(zoom.bioZoomVisibleField(norm),{x:0,y:0,width:480,height:330});
+const small=zoom.bioZoomVisibleField({x:0,y:0,scale:2});
+assert.deepEqual(small,{x:120,y:82.5,width:240,height:165});
+for(const scale of [1,1.2,1.5,2,2.7,3]){
+ const cameras=[zoom.bioZoomBound({x:400,y:300,scale}),
+  zoom.bioZoomBound({x:-400,y:-300,scale}),zoom.bioZoomBound({x:0,y:0,scale})];
+ for(const camera of cameras){
+  const rect=zoom.bioZoomVisibleField(camera);
+  assert.ok(rect.x>=-1e-8&&rect.y>=-1e-8);
+  assert.ok(rect.x+rect.width<=480+1e-8&&rect.y+rect.height<=330+1e-8);
+  assert.ok(Math.abs(rect.width-480/camera.scale)<1e-8);
+  assert.ok(Math.abs(rect.height-330/camera.scale)<1e-8);
+ }
+}
+
 const pine=bio.bioNodes("pine");
 const tree=pine[0],shoot=pine.find(n=>n.name==="Побег"),needle=pine.find(n=>n.name==="Хвоя");
 const tissue=pine.find(n=>n.name==="Мезофилл хвои"),cell=pine.find(n=>n.name==="Клетка мезофилла хвои");
@@ -105,6 +144,14 @@ assert.match(camera,/visits.current.set\(old.id,departingCamera\)/,"Do not store
 assert.match(camera,/bioZoomPortalCamera\(departingCamera,spot\)/,"Portal must fly toward chosen anatomical region");
 assert.doesNotMatch(camera,/setCam\(zoomed\)/,"Do not instantly teleport parent before transition");
 assert.match(camera,/ghost\.from,false,ghost\.to/);
+assert.match(camera,/const parentContext=bioZoomParentContext\(organism,nodes,current\)/);
+assert.match(camera,/parentContext&&<LektrusBioParentOverview/);
+assert.match(camera,/parentCamera=\{visits.current.get\(parentContext.parent.id\)\?\?BIO_ZOOM_INITIAL\}/);
+assert.match(camera,/onBack=\{ascend\}/,"Context map must restore the actual parent camera");
+assert.match(camera,/spot:descending\?spot:undefined/,"Portal ring must identify real target");
+assert.match(camera,/data-bio-portal-focus="true"/);
+assert.match(camera,/portalSpot&&<svg className="lektrus-bio-portal-mark"/);
+
 assert.match(camera,/cameraTransform\(portalTo\)/);
 assert.match(camera,/pointerType!=="touch"/,"Mobile zoom uses deliberate touch gestures");
 assert.match(camera,/start.moved/,"Never interpret a drag as mobile double tap");
@@ -130,6 +177,24 @@ assert.match(css,/aspect-ratio:480\/330/);
 assert.match(css,/width:min\(100%,915px\)/,"Viewport must constrain both axes together");
 assert.doesNotMatch(css,/min-height:280px|max-height:630px/,"Clamping one axis would misalign hotspots");
 assert.match(css,/prefers-reduced-motion:reduce/);
+const contextUi=fs.readFileSync("src/LektrusBioParentOverview.tsx","utf8");
+const contextAst=ts.createSourceFile("src/LektrusBioParentOverview.tsx",contextUi,
+ ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+assert.equal(contextAst.parseDiagnostics.length,0,"Parent overview JSX must parse");
+assert.match(contextUi,/data-bio-parent-id=\{parent.id\}/);
+assert.match(contextUi,/data-bio-context-spot="true"/);
+assert.match(contextUi,/data-bio-context-field="true"/);
+assert.match(contextUi,/const field=bioZoomVisibleField\(parentCamera\)/);
+assert.match(contextUi,/bioZoomImageFor\(organism,parent\)/);
+assert.match(contextUi,/<LektrusBioAnatomyScene organism=\{organism\} node=\{parent\}/);
+assert.match(contextUi,/onClick=\{onBack\}/);
+assert.match(contextUi,/onPointerDown=\{e=>e.stopPropagation\(\)\}/);
+assert.match(contextUi,/export default memo\(ParentOverview/,"Avoid expensive parent SVG redraw on pan");
+assert.match(css,/\.lektrus-bio-location\{position:absolute;z-index:5/);
+assert.match(css,/\.lektrus-bio-location-preview>/);
+assert.match(css,/\.lektrus-bio-portal-mark/);
+assert.match(css,/lektrus-bio-portal-mark circle:first-child\{animation:none\}/);
+
 assert.match(css,/lektrus-bio-portal-flight/,"Focus transition must animate image geometry");
 assert.match(css,/--bio-ghost-start/);
 assert.match(css,/--bio-ghost-end/);
