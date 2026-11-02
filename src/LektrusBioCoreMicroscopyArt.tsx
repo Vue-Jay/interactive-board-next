@@ -6,7 +6,7 @@ import type {ReactNode} from "react";
 import type {BioCoreMicroPlate,BioCoreMicroKind} from "./lektrusBioCoreMicroscopyPlates";
 import type {BioCellFeature} from "./lektrusBioMicroscopeModel";
 
-const wall="#648b62",chlor="#518954",pink="#d89aa1",nucleus="#9477ad";
+const wall="#648b62",nucleus="#9477ad";
 const spots:Record<BioCoreMicroKind,readonly [{x:number;y:number},{x:number;y:number},{x:number;y:number}]>={
  alveoli:[{x:98,y:170},{x:340,y:183},{x:242,y:152}],
  cardiac:[{x:182,y:149},{x:353,y:168},{x:236,y:198}],

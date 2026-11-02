@@ -62,9 +62,14 @@ assert.ok(features.some(f=>f.name==="Замыкающие клетки"));
 assert.ok(features.some(f=>f.name==="Клеточные стенки"));
 const stage=readFileSync("src/LektrusBioUnifiedZoom.tsx","utf8");
 assert.match(stage,/bioZoomSharedFrame\(organism,old,target\)/,"Same microphoto must not fade or jump");
-assert.match(stage,/if\(target.parentId!==old.id\)setCam\(visits.current.get\(target.id\)\?\?BIO_ZOOM_INITIAL\)/);
+assert.match(stage,/const incoming=descending\s*\?bioZoomAt\(/,
+ "Shared-frame descent must magnify the same photo");
+assert.match(stage,/\(visits\.current\.get\(target\.id\)\?\?BIO_ZOOM_INITIAL\)/,
+ "Returning from shared-frame depth must restore the saved camera");
+assert.match(stage,/setCam\(incoming\)/);
 assert.match(stage,/data-bio-zoom-target=\{child.id\}/);
-assert.match(stage,/setCam\(zoomed\)/);
+assert.match(stage,/setCam\(bioZoomAt\(old,desired,point\)\)/,
+ "Continuous zoom must use the live camera rather than a stale intermediate");
 assert.match(stage,/bioZoomPan\(cameraRef.current/);
 assert.match(stage,/onPointerMove=\{onMove\}/);
 assert.match(stage,/map.size>=2/);

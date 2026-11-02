@@ -14,12 +14,14 @@
  * the density of the final *saturated solution*.
  */
 export type LabMeasuredSolubilityUnit=
- "g/100g-water"|"g/100ml-water"|"g/l-water"|"g/kg-water"|"mg/l-water"|"mg/100g-water";
+ "g/100g-water"|"g/100ml-water"|"g/l-water"|"g/kg-water"|"mg/l-water"|"mg/100g-water"|"mol/kg-water";
 export type LabMeasuredSolubility={
  formula:string;temperatureC:number;sourceValue:number;
  /** Original source in kelvin (where specified); 293 K means 19.85 °C,
   * not an independently measured 20.00 °C point. */
  sourceTemperatureKelvin?:number;
+ /** Source formula-equivalent mass for an original mol/kg-water observation. */
+ sourceMolarMassGPerMol?:number;
  /** Original source conditions; especially hydrate/aqueous phase caveats. */
  sourceCondition?:string;
  originalUnit:LabMeasuredSolubilityUnit;sourceUrl:string;
@@ -613,7 +615,74 @@ export const LAB_MEASURED_PURE_WATER_SOLUBILITIES:readonly LabMeasuredSolubility
   originalUnit:"g/100g-water",
   sourceCondition:"Al2(SO4)3 formula-equivalent in pure water; Rabinovich & Khavin 1977, equilibrium hydrated solid not identified; aqueous reference only",
   sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?id=351"},
-];
+ // Apelblat & Manzurola, J. Chem. Thermodynamics 31 (1999) 1347-1357,
+ // Table 1, original direct EDTA-titration molalities in mol/kg PURE water.
+ // Calcium acetate Ca(CH3COO)2 formula equivalents (M=158.17 g/mol),
+ // NOT grams of an unknown acetate hydrate. The authors explicitly state
+ // that the equilibrium solid (mono-/di-/hemihydrate) is UNRESOLVED.
+ // Only unfootnoted observations measured in this work are imported.
+ // Do not infer an anhydrous precipitate or interpolate a phase boundary.
+ {formula:"Ca(CH3COO)2",temperatureC:7,sourceTemperatureKelvin:280.15,
+  sourceValue:2.2893,originalUnit:"mol/kg-water",sourceMolarMassGPerMol:158.17,
+  sourceCondition:"Pure-water EDTA saturation at 280.15 K; Ca(CH3COO)2 formula equivalents; equilibrium hydrate not identified (mono-/di-/hemihydrate); reference only",
+  sourceUrl:"https://www.ic.unicamp.br/~stolfi/links/programs/c/NEUROMAT/nmeeg_filter/projects/chemistry/gawklib/Metal_Acetates_.pdf"},
+ {formula:"Ca(CH3COO)2",temperatureC:10,sourceTemperatureKelvin:283.15,
+  sourceValue:2.2657,originalUnit:"mol/kg-water",sourceMolarMassGPerMol:158.17,
+  sourceCondition:"Pure-water EDTA saturation at 283.15 K; Ca(CH3COO)2 formula equivalents; equilibrium hydrate not identified (mono-/di-/hemihydrate); reference only",
+  sourceUrl:"https://www.ic.unicamp.br/~stolfi/links/programs/c/NEUROMAT/nmeeg_filter/projects/chemistry/gawklib/Metal_Acetates_.pdf"},
+ {formula:"Ca(CH3COO)2",temperatureC:16,sourceTemperatureKelvin:289.15,
+  sourceValue:2.2350,originalUnit:"mol/kg-water",sourceMolarMassGPerMol:158.17,
+  sourceCondition:"Pure-water EDTA saturation at 289.15 K; Ca(CH3COO)2 formula equivalents; equilibrium hydrate not identified (mono-/di-/hemihydrate); reference only",
+  sourceUrl:"https://www.ic.unicamp.br/~stolfi/links/programs/c/NEUROMAT/nmeeg_filter/projects/chemistry/gawklib/Metal_Acetates_.pdf"},
+ {formula:"Ca(CH3COO)2",temperatureC:20,sourceTemperatureKelvin:293.15,
+  sourceValue:2.1971,originalUnit:"mol/kg-water",sourceMolarMassGPerMol:158.17,
+  sourceCondition:"Pure-water EDTA saturation at 293.15 K; Ca(CH3COO)2 formula equivalents; equilibrium hydrate not identified (mono-/di-/hemihydrate); reference only",
+  sourceUrl:"https://www.ic.unicamp.br/~stolfi/links/programs/c/NEUROMAT/nmeeg_filter/projects/chemistry/gawklib/Metal_Acetates_.pdf"},
+ {formula:"Ca(CH3COO)2",temperatureC:25,sourceTemperatureKelvin:298.15,
+  sourceValue:2.1738,originalUnit:"mol/kg-water",sourceMolarMassGPerMol:158.17,
+  sourceCondition:"Pure-water EDTA saturation at 298.15 K; Ca(CH3COO)2 formula equivalents; equilibrium hydrate not identified (mono-/di-/hemihydrate); reference only",
+  sourceUrl:"https://www.ic.unicamp.br/~stolfi/links/programs/c/NEUROMAT/nmeeg_filter/projects/chemistry/gawklib/Metal_Acetates_.pdf"},
+ {formula:"Ca(CH3COO)2",temperatureC:30,sourceTemperatureKelvin:303.15,
+  sourceValue:2.1420,originalUnit:"mol/kg-water",sourceMolarMassGPerMol:158.17,
+  sourceCondition:"Pure-water EDTA saturation at 303.15 K; Ca(CH3COO)2 formula equivalents; equilibrium hydrate not identified (mono-/di-/hemihydrate); reference only",
+  sourceUrl:"https://www.ic.unicamp.br/~stolfi/links/programs/c/NEUROMAT/nmeeg_filter/projects/chemistry/gawklib/Metal_Acetates_.pdf"},
+ {formula:"Ca(CH3COO)2",temperatureC:35,sourceTemperatureKelvin:308.15,
+  sourceValue:2.1227,originalUnit:"mol/kg-water",sourceMolarMassGPerMol:158.17,
+  sourceCondition:"Pure-water EDTA saturation at 308.15 K; Ca(CH3COO)2 formula equivalents; equilibrium hydrate not identified (mono-/di-/hemihydrate); reference only",
+  sourceUrl:"https://www.ic.unicamp.br/~stolfi/links/programs/c/NEUROMAT/nmeeg_filter/projects/chemistry/gawklib/Metal_Acetates_.pdf"},
+ {formula:"Ca(CH3COO)2",temperatureC:42,sourceTemperatureKelvin:315.15,
+  sourceValue:2.1076,originalUnit:"mol/kg-water",sourceMolarMassGPerMol:158.17,
+  sourceCondition:"Pure-water EDTA saturation at 315.15 K; Ca(CH3COO)2 formula equivalents; equilibrium hydrate not identified (mono-/di-/hemihydrate); reference only",
+  sourceUrl:"https://www.ic.unicamp.br/~stolfi/links/programs/c/NEUROMAT/nmeeg_filter/projects/chemistry/gawklib/Metal_Acetates_.pdf"},
+ {formula:"Ca(CH3COO)2",temperatureC:45,sourceTemperatureKelvin:318.15,
+  sourceValue:2.0886,originalUnit:"mol/kg-water",sourceMolarMassGPerMol:158.17,
+  sourceCondition:"Pure-water EDTA saturation at 318.15 K; Ca(CH3COO)2 formula equivalents; equilibrium hydrate not identified (mono-/di-/hemihydrate); reference only",
+  sourceUrl:"https://www.ic.unicamp.br/~stolfi/links/programs/c/NEUROMAT/nmeeg_filter/projects/chemistry/gawklib/Metal_Acetates_.pdf"},
+ {formula:"Ca(CH3COO)2",temperatureC:50,sourceTemperatureKelvin:323.15,
+  sourceValue:2.0762,originalUnit:"mol/kg-water",sourceMolarMassGPerMol:158.17,
+  sourceCondition:"Pure-water EDTA saturation at 323.15 K; Ca(CH3COO)2 formula equivalents; equilibrium hydrate not identified (mono-/di-/hemihydrate); reference only",
+  sourceUrl:"https://www.ic.unicamp.br/~stolfi/links/programs/c/NEUROMAT/nmeeg_filter/projects/chemistry/gawklib/Metal_Acetates_.pdf"},
+ {formula:"Ca(CH3COO)2",temperatureC:55,sourceTemperatureKelvin:328.15,
+  sourceValue:2.0738,originalUnit:"mol/kg-water",sourceMolarMassGPerMol:158.17,
+  sourceCondition:"Pure-water EDTA saturation at 328.15 K; Ca(CH3COO)2 formula equivalents; equilibrium hydrate not identified (mono-/di-/hemihydrate); reference only",
+  sourceUrl:"https://www.ic.unicamp.br/~stolfi/links/programs/c/NEUROMAT/nmeeg_filter/projects/chemistry/gawklib/Metal_Acetates_.pdf"},
+ {formula:"Ca(CH3COO)2",temperatureC:60,sourceTemperatureKelvin:333.15,
+  sourceValue:2.0704,originalUnit:"mol/kg-water",sourceMolarMassGPerMol:158.17,
+  sourceCondition:"Pure-water EDTA saturation at 333.15 K; Ca(CH3COO)2 formula equivalents; equilibrium hydrate not identified (mono-/di-/hemihydrate); reference only",
+  sourceUrl:"https://www.ic.unicamp.br/~stolfi/links/programs/c/NEUROMAT/nmeeg_filter/projects/chemistry/gawklib/Metal_Acetates_.pdf"},
+ {formula:"Ca(CH3COO)2",temperatureC:65,sourceTemperatureKelvin:338.15,
+  sourceValue:2.0696,originalUnit:"mol/kg-water",sourceMolarMassGPerMol:158.17,
+  sourceCondition:"Pure-water EDTA saturation at 338.15 K; Ca(CH3COO)2 formula equivalents; equilibrium hydrate not identified (mono-/di-/hemihydrate); reference only",
+  sourceUrl:"https://www.ic.unicamp.br/~stolfi/links/programs/c/NEUROMAT/nmeeg_filter/projects/chemistry/gawklib/Metal_Acetates_.pdf"},
+ {formula:"Ca(CH3COO)2",temperatureC:70,sourceTemperatureKelvin:343.15,
+  sourceValue:2.0648,originalUnit:"mol/kg-water",sourceMolarMassGPerMol:158.17,
+  sourceCondition:"Pure-water EDTA saturation at 343.15 K; Ca(CH3COO)2 formula equivalents; equilibrium hydrate not identified (mono-/di-/hemihydrate); reference only",
+  sourceUrl:"https://www.ic.unicamp.br/~stolfi/links/programs/c/NEUROMAT/nmeeg_filter/projects/chemistry/gawklib/Metal_Acetates_.pdf"},
+ {formula:"Ca(CH3COO)2",temperatureC:75,sourceTemperatureKelvin:348.15,
+  sourceValue:2.0614,originalUnit:"mol/kg-water",sourceMolarMassGPerMol:158.17,
+  sourceCondition:"Pure-water EDTA saturation at 348.15 K; Ca(CH3COO)2 formula equivalents; equilibrium hydrate not identified (mono-/di-/hemihydrate); reference only",
+  sourceUrl:"https://www.ic.unicamp.br/~stolfi/links/programs/c/NEUROMAT/nmeeg_filter/projects/chemistry/gawklib/Metal_Acetates_.pdf"},
+]; 
 /** Density of pure WATER only at specifically sourced reference points.
  * This must not be confused with solution density.
  * 0 / 18 / 20 / 25 / 100 °C, g/ml, CRC water tables rounded. */
@@ -626,6 +695,11 @@ export function labMeasuredSolubilityGPer100gWater(
  if(!Number.isFinite(sourceValue)||sourceValue<0)return;
  if(originalUnit==="g/100g-water")return sourceValue;
  if(originalUnit==="g/kg-water")return sourceValue/10;
+ if(originalUnit==="mol/kg-water"){
+  const mm=sample.sourceMolarMassGPerMol;
+  return Number.isFinite(mm)&&mm!==undefined&&mm>0?
+   sourceValue*mm/10:undefined;
+ }
  if(originalUnit==="mg/100g-water")return sourceValue/1000;
  const waterDensity=LAB_PURE_WATER_DENSITY_FOR_SOLUBILITY[temperatureC];
  if(!waterDensity)return;

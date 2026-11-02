@@ -478,10 +478,12 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
   null,null,null,labExactMeasuredSolubility("Ag2CO3",100)??null],
  SrCl2:[null,labExactMeasuredSolubility("SrCl2",20)??null,null,null,null,null],
  K3PO4:[null,labExactMeasuredSolubility("K3PO4",20)??null,null,null,null,null],
- // Calcium acetate source reports two extremes (0 and 100 °C) only.
- // Neither a 20 °C value nor interpolation across missing cells is valid.
+ // Calcium acetate: older 0/100 C points plus independent 1999
+ // EDTA molalities at exact temperatures. Solid hydrate identity is
+ // unresolved; display isolated observations, never interpolate.
  "Ca(CH3COO)2":[labExactMeasuredSolubility("Ca(CH3COO)2",0)??null,
-  null,null,null,null,labExactMeasuredSolubility("Ca(CH3COO)2",100)??null],
+  labExactMeasuredSolubility("Ca(CH3COO)2",20)??null,
+  null,null,null,labExactMeasuredSolubility("Ca(CH3COO)2",100)??null],
  // Exact literature measurements (not inferred solubility curves).
  // Nickel(II) sulfate 0/20/100 C: PubChem CRC and ICSC. Hydrated solid
  // identity changes; equal rounded 0/20 C figures do NOT prove constant S.
@@ -575,7 +577,7 @@ export function labSingleSaltSolubilityGPer100gWater(
  // Sodium sulfate's decahydrate transition near 32.4 C in particular
  // prohibits a fictitious straight line between 20 and 40 C.
  if(["Al(NO3)3","NiSO4","CH3COOLi","FeSO4","Mg(NO3)2",
-  "Li2SO4","Zn(CH3COO)2","Ca(NO3)2","CuCl2","Na2SO4",
+  "Li2SO4","Zn(CH3COO)2","Ca(CH3COO)2","Ca(NO3)2","CuCl2","Na2SO4",
   "Al2(SO4)3"].includes(formula))return;
  for(let i=1;i<LAB_SALT_SOLUBILITY_TEMPERATURES_C.length;i++){
   const low=LAB_SALT_SOLUBILITY_TEMPERATURES_C[i-1];

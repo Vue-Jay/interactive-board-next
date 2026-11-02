@@ -459,12 +459,21 @@ if(process.argv.includes("--verify")){
   // A literature table at 293 K is 19.85 C, not exactly 20 C.
   // Keep the source's originally quoted Kelvin condition auditable.
   if(item.sourceTemperatureKelvin!==undefined){
-   assert.equal(item.sourceTemperatureKelvin,293);
    assert.ok(Math.abs(item.temperatureC+273.15-
-    item.sourceTemperatureKelvin)<1e-10,
+    item.sourceTemperatureKelvin)<1e-9,
     "Kelvin and Celsius source conditions disagree: "+identity);
-   assert.ok(!gridTemps.has(item.temperatureC),
-    "A 293 K source cannot silently fill the 20 C grid: "+identity);
+   if(item.sourceTemperatureKelvin===293)
+    assert.ok(!gridTemps.has(item.temperatureC),
+     "A 293 K source cannot silently fill the 20 C grid: "+identity);
+  }
+  if(item.originalUnit==="mol/kg-water"){
+   assert.ok(has(item.sourceMolarMassGPerMol)&&item.sourceMolarMassGPerMol>0,
+    "Original molality needs a formula mass: "+identity);
+   const parsedMass=registry.labSubstanceProperties(item.formula).molarMassGPerMol;
+   assert.ok(has(parsedMass)&&Math.abs(parsedMass-item.sourceMolarMassGPerMol)<0.05,
+    "Source molality formula mass differs from live parser: "+identity);
+   assert.ok(item.sourceCondition?.includes("hydrate"),
+    "Molality must disclose unknown hydrated solid: "+identity);
   }
   assert.ok(has(item.temperatureC)&&has(item.sourceValue)&&item.sourceValue>=0);
   const normalized=measured.labMeasuredSolubilityGPer100gWater(item);
