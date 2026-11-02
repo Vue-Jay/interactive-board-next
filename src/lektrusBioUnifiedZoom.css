@@ -26,10 +26,27 @@
 .lektrus-bio-unified-hotspot:focus-visible .lektrus-bio-unified-halo,.lektrus-bio-unified-hotspot:hover .lektrus-bio-unified-halo{fill-opacity:.5;stroke-width:4}
 .lektrus-bio-unified-hud{position:absolute;z-index:2;bottom:10px;left:12px;right:12px;display:flex;justify-content:space-between;gap:9px;pointer-events:none;text-shadow:0 1px 4px #0e211e,0 0 5px #0e211e;color:#f6fef3;font:750 11px ui-monospace,monospace}
 .lektrus-bio-unified-notice{position:absolute;z-index:2;top:13px;left:50%;transform:translateX(-50%);width:min(92%,480px);padding:10px 14px;color:#efffec;background:#204d39f0;border:1px solid #9cddaf;border-radius:10px;font-size:12px;font-weight:680;text-align:center;pointer-events:none;line-height:1.35}
-.lektrus-bio-unified-ghost{position:absolute;z-index:3;inset:0;pointer-events:none;animation:lektrus-bio-unified-fade .36s ease-in-out both}
+/* Two linked spatial plates share a single viewport. During a descent the
+ * outgoing world actually travels from its LAST visible position toward the
+ * chosen focus, then dissolves into the next anatomical level. No fabricated
+ * intermediate micrograph frames are generated.
+ */
+.lektrus-bio-unified-arriving{position:absolute;inset:0;z-index:1}
+.lektrus-bio-unified-arriving.is-transitioning{animation:lektrus-bio-layer-reveal .44s ease-out both}
+.lektrus-bio-unified-ghost{position:absolute;z-index:3;inset:0;pointer-events:none;overflow:hidden;animation:lektrus-bio-unified-fade .44s cubic-bezier(.28,.5,.4,1) both}
+.lektrus-bio-unified-ghost .lektrus-bio-unified-world{animation:lektrus-bio-portal-flight .44s cubic-bezier(.22,.62,.23,1) both;will-change:transform}
 .lektrus-bio-unified-ghost.is-out{animation-name:lektrus-bio-unified-back}
-@keyframes lektrus-bio-unified-fade{0%{opacity:1}55%{opacity:.58}100%{opacity:0}}
-@keyframes lektrus-bio-unified-back{0%{opacity:1}100%{opacity:0}}
+@keyframes lektrus-bio-portal-flight{
+ from{transform:var(--bio-ghost-start)}
+ to{transform:var(--bio-ghost-end)}
+}
+@keyframes lektrus-bio-layer-reveal{
+ 0%{opacity:.12;filter:blur(4px);transform:scale(.91)}
+ 45%{opacity:.44;filter:blur(2px);transform:scale(.97)}
+ 100%{opacity:1;filter:blur(0);transform:scale(1)}
+}
+@keyframes lektrus-bio-unified-fade{0%,30%{opacity:1}65%{opacity:.65}100%{opacity:0}}
+@keyframes lektrus-bio-unified-back{0%{opacity:1}60%{opacity:.6}100%{opacity:0}}
 @keyframes lektrus-bio-zone-pulse{0%,100%{stroke-opacity:.7}50%{stroke-opacity:.18}}
 .lektrus-bio-unified-controls{display:flex;flex-wrap:wrap;gap:10px;padding:9px 11px;border:1px solid #c5d9c7;border-radius:12px;background:#eff7f0;align-items:center}
 .lektrus-bio-unified-controls label{display:flex;align-items:center;gap:9px;color:#305c46;font-size:11px;font-weight:750;min-width:140px;flex:1}
@@ -48,4 +65,4 @@
 .lektrus-bio-unified-cell-parts>p{width:100%;margin:4px 0;font-size:12px;line-height:1.5}
 .lektrus-bio-unified-honesty{display:block;border-top:1px solid #cbdbcd;padding-top:8px;color:#6e8375;line-height:1.5;font-size:11px}
 @media(max-width:650px){.lektrus-bio-unified-heading{padding:11px}.lektrus-bio-unified-viewport{width:100%;min-height:0;max-height:none;border-radius:12px}.lektrus-bio-unified-controls{gap:8px}.lektrus-bio-unified-zoom-control{min-width:100%;flex:1}.lektrus-bio-unified-hud{font-size:9px;bottom:6px;left:7px;right:7px}.lektrus-bio-unified-breadcrumbs button{font-size:10px}.lektrus-bio-unified-details{padding:10px}}
-@media(prefers-reduced-motion:reduce){.lektrus-bio-unified-ghost{animation-duration:.01ms!important}.lektrus-bio-unified-hotspot .lektrus-bio-unified-halo{animation:none}.lektrus-bio-unified-world{will-change:auto}}
+@media(prefers-reduced-motion:reduce){.lektrus-bio-unified-ghost,.lektrus-bio-unified-ghost .lektrus-bio-unified-world,.lektrus-bio-unified-arriving.is-transitioning{animation-duration:.01ms!important}.lektrus-bio-unified-hotspot .lektrus-bio-unified-halo{animation:none}.lektrus-bio-unified-world{will-change:auto}}
