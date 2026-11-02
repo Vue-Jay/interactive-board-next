@@ -2,6 +2,7 @@
  * Schematic 480x330 anatomical views: no micrograph, no fabricated scale.
  */
 import type {ReactNode} from "react";
+import LektrusBioDetailedLineageSpecimens from "./LektrusBioDetailedLineageSpecimens";
 import type {BioFurtherOrganism,BioNode} from "./lektrusBioMicroscopeModel";
 import {bioFurtherCellFeatures} from "./lektrusBioMicroscopeModel";
 const ink="#315b50",gold="#c59d72",pink="#d8a5a2",violet="#9f8db1";
@@ -14,58 +15,10 @@ function Title({name,detail}:{name:string;detail:string}){return <g aria-hidden=
  <text x="29" y="32" fontSize="13" fontWeight="800" fill={ink}>{name}</text>
  <text x="29" y="49" fontSize="10.5" fill="#54786a">{detail}</text>
  </g>}
-function Lizard(){return <g>
- <path d="M305 197Q355 209 431 274Q444 288 423 289Q361 276 282 250Z" fill="#8ca66d" stroke="#5c7d61" strokeWidth="8"/>
- <path d="M174 218L123 287L92 295M302 214L337 288L370 298M187 173L132 139L96 157M310 166L352 132L388 147"
-  fill="none" stroke="#6c8d63" strokeWidth="23" strokeLinecap="round" strokeLinejoin="round"/>
- <path d="M99 155Q64 141 52 119L77 96Q125 85 160 121Q187 106 250 112Q327 122 343 172Q325 235 246 248Q185 249 151 197Z"
-  fill="#88a76e" stroke="#537e64" strokeWidth="7"/>
- <path d="M88 112Q120 114 141 139" stroke="#c7cc8a" strokeWidth="10" fill="none"/>
- {Array.from({length:32},(_,i)=>{const x=164+(i%8)*21,y=130+Math.floor(i/8)*25;
-  return <path key={i} d={`M${x-7} ${y}q9-8 18 0q-9 9-18 0`} fill="#9bbb78" stroke="#7a9d68" strokeWidth="1.5"/>;
- })}
- <circle cx="83" cy="116" r="10" fill="#eedcab" stroke="#5f8265" strokeWidth="3"/><circle cx="86" cy="115" r="5" fill="#283b36"/>
- <path d="M57 148l55 2" stroke="#607e64" strokeWidth="4"/>
- </g>}
-function Spider(){return <g>
- {Array.from({length:4},(_,i)=>{const y=154+i*25;return <g key={i} stroke="#776e62" strokeWidth="9" strokeLinecap="round" fill="none">
-  <path d={`M212 ${y}Q153 ${y-28} ${112-i*5} ${y-78}L${68-i*5} ${y-57}`}/>
-  <path d={`M270 ${y}Q333 ${y-26} ${370+i*4} ${y-76}L${414+i*5} ${y-55}`}/>
- </g>})}
- <ellipse cx="279" cy="198" rx="79" ry="97" fill="#bba088" stroke="#7c7369" strokeWidth="8"/>
- <ellipse cx="178" cy="181" rx="52" ry="49" fill="#a3917a" stroke="#746f65" strokeWidth="7"/>
- <path d="M277 117l-20 47 18 30-23 49M296 120l21 51-24 29 21 37" stroke="#e6d2b2" strokeWidth="14" fill="none" strokeLinecap="round"/>
- <path d="M245 151q35 21 68 0M247 219q38-22 69 0" stroke="#e5d1b7" strokeWidth="8" fill="none"/>
- {Array.from({length:8},(_,i)=><circle key={i} cx={151+i%4*16} cy={160+Math.floor(i/4)*17} r="3.8" fill="#f4dcc2"/>)}
- </g>}
-function Clubmoss(){return <g>
- <path d="M49 272Q151 248 240 272T420 269" stroke="#628b65" strokeWidth="16" fill="none" strokeLinecap="round"/>
- {Array.from({length:5},(_,i)=>{const x=90+i*75;return <g key={i}>
-  <path d={`M${x} 266Q${x+9} 186 ${x+10} ${127+i%2*19}`} stroke="#5e9267" strokeWidth="13" fill="none" strokeLinecap="round"/>
-  {Array.from({length:8},(_,j)=>{const y=150+j*13+i%2*19;return <g key={j} stroke="#64936b" strokeWidth="4" strokeLinecap="round">
-   <path d={`M${x+6} ${y}l-24-20M${x+13} ${y+4}l23-18`}/>
-  </g>})}
-  {i%2===0&&<g>
-   <path d={`M${x+10} ${127+i%2*19}v-60`} stroke="#a5a36c" strokeWidth="7"/>
-   {Array.from({length:7},(_,j)=><path key={j} d={`M${x-3} ${68+j*9}q14-10 25 0l-12 9Z`} fill="#c2bd82" stroke="#8f9b68" strokeWidth="2"/>)}
-  </g>}
- </g>})}
- {Array.from({length:6},(_,i)=><path key={i} d={`M${80+i*58} 274q-12 20-12 38`} stroke="#b49b76" strokeWidth="4" fill="none"/>)}
- </g>}
-function Magnolia(){return <g>
- <path d="M233 320Q250 210 237 84" stroke="#827554" strokeWidth="14" fill="none"/>
- {[[125,178,-20],[343,226,23],[343,110,19]].map(([x,y,a],i)=><g key={i}>
-  <path d={`M237 ${y+17}Q${x} ${y-30} ${x} ${y}`} stroke="#7a9465" strokeWidth="8" fill="none"/>
-  <ellipse cx={x} cy={y} rx="69" ry="26" fill="#4c9068" stroke="#397b5d" strokeWidth="5" transform={`rotate(${a} ${x} ${y})`}/>
-  <path d={`M${x-47} ${y}L${x+48} ${y}`} stroke="#c2ddb2" strokeWidth="4" transform={`rotate(${a} ${x} ${y})`}/>
- </g>)}
- <circle cx="227" cy="106" r="73" fill="#f7f0dc" opacity=".55"/>
- {Array.from({length:9},(_,i)=>{const a=i*2*Math.PI/9;return <ellipse key={i}
-  cx={225+Math.cos(a)*36} cy={106+Math.sin(a)*35} rx="35" ry="20"
-  fill="#fff9ee" stroke="#d8d0b5" strokeWidth="3" transform={`rotate(${a*180/Math.PI+90} ${225+Math.cos(a)*36} ${106+Math.sin(a)*35})`}/>})}
- <ellipse cx="225" cy="108" rx="17" ry="34" fill="#c4b87f" stroke="#94895e" strokeWidth="4"/>
- {Array.from({length:13},(_,i)=>{const a=i*2.4;return <circle key={i} cx={225+Math.cos(a)*24} cy={112+Math.sin(a)*23} r="3.5" fill={gold}/>})}
- </g>}
+function Lizard(){return <LektrusBioDetailedLineageSpecimens organism="lizard"/>;}
+function Spider(){return <LektrusBioDetailedLineageSpecimens organism="spider"/>;}
+function Clubmoss(){return <LektrusBioDetailedLineageSpecimens organism="clubmoss"/>;}
+function Magnolia(){return <LektrusBioDetailedLineageSpecimens organism="magnolia"/>;}
 function Specimen({organism}:{organism:BioFurtherOrganism}):ReactNode{
  switch(organism){case "lizard":return <Lizard/>;case "spider":return <Spider/>;
  case "clubmoss":return <Clubmoss/>;case "magnolia":return <Magnolia/>;}
