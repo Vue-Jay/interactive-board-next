@@ -5,7 +5,12 @@ function load(file){
  const source=fs.readFileSync(file,"utf8");
  const transpiled=ts.transpileModule(source,{compilerOptions:{
   module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
- const exports={};new Function("exports",transpiled)(exports);return exports;
+ const exports={};
+ new Function("exports","require",transpiled)(exports,(name)=>{
+  if(name==="./lektrusBioAdditionalCellPlates")return load("src/lektrusBioAdditionalCellPlates.ts");
+  throw new Error("Unexpected dependency "+name);
+ });
+ return exports;
 }
 const bio=load("src/lektrusBioMicroscopeModel.ts");
 const cell=load("src/lektrusBioCellPlates.ts");
@@ -40,7 +45,10 @@ for(const organism of species){
  featureCount+=points.length;
  // A cell belongs to exactly one tissue and must not inherit another species' plate.
  for(const n of nodes.filter(n=>n.level==="cell"&&n.id!==target.id)){
-  assert.equal(cell.bioCellPlateFor(organism,n),null);
+  const otherPlate=cell.bioCellPlateFor(organism,n);
+  assert.ok(otherPlate,"Additional real cell branch needs its own plate: "+n.id);
+  assert.notEqual(otherPlate,plate);
+  assert.equal(otherPlate.cellName,n.name);
  }
  for(const other of species.filter(s=>s!==organism)){
   assert.equal(cell.bioCellPlateFor(other,target),null);
