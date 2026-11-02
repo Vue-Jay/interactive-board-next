@@ -1,0 +1,51 @@
+/* Single spatial microscope and anatomy viewport, shared for every species.
+ * 480:330 geometric ratio is guaranteed by aspect-ratio (no hotspot drift).
+ */
+.lektrus-bio-unified{display:flex;flex-direction:column;gap:10px;min-width:0;color:#e5f4ed;--zoom-forest:#101f1b}
+.lektrus-bio-unified-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:linear-gradient(115deg,#1c3d31,#294d40);padding:14px 17px;border-radius:14px;border:1px solid #456e59}
+.lektrus-bio-unified-heading>div:first-child{display:grid;gap:4px;min-width:0}
+.lektrus-bio-unified-kicker{font-size:10px;letter-spacing:.15em;color:#aadfc0;font-weight:800}
+.lektrus-bio-unified-heading strong{font-size:clamp(17px,2.5vw,25px);line-height:1.2;color:#f6fff5}
+.lektrus-bio-unified-heading small{color:#b5d3c3;font-size:11px}
+.lektrus-bio-unified-header-actions{display:flex;gap:6px;flex-wrap:wrap}
+.lektrus-bio-unified-header-actions button{padding:8px 12px;min-height:37px;border:1px solid #68987d;background:#315c4b;color:white;border-radius:9px;font-size:11px;font-weight:800}
+.lektrus-bio-unified-breadcrumbs{display:flex;overflow-x:auto;white-space:nowrap;gap:5px;padding:2px;scrollbar-width:thin}
+.lektrus-bio-unified-breadcrumbs button{padding:6px 10px;border:1px solid #b6d6c3;border-radius:9px;background:#f2f9f3;color:#285b42;font-size:11px;font-weight:650}
+.lektrus-bio-unified-breadcrumbs button[aria-current="step"]{border-color:#327657;background:#327657;color:white}
+.lektrus-bio-unified-breadcrumbs button+button:before{content:"› ";opacity:.72}
+.lektrus-bio-unified-viewport{position:relative;width:100%;aspect-ratio:480/330;min-height:280px;max-height:630px;isolation:isolate;overflow:hidden;border:2px solid #315b4b;border-radius:18px;background:radial-gradient(circle at center,#476555,#203b30 75%,#111f1a);touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;contain:layout paint}
+.lektrus-bio-unified-viewport:active{cursor:grabbing}
+.lektrus-bio-unified-viewport:focus-visible{outline:3px solid #4cacd5;outline-offset:3px}
+.lektrus-bio-unified-world{position:absolute;inset:0;transform-origin:center center;will-change:transform;touch-action:none}
+.lektrus-bio-unified-world>.lektrus-bio-anatomy-svg{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:none;max-height:none}
+.lektrus-bio-unified-photo{position:absolute;width:100%;height:100%;inset:0;object-fit:cover;object-position:center;pointer-events:none;user-select:none}
+.lektrus-bio-unified-anchors{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.lektrus-bio-unified-hotspot{cursor:zoom-in;pointer-events:auto;outline:0}
+.lektrus-bio-unified-hotspot .lektrus-bio-unified-halo{fill:#9df5b2;fill-opacity:.2;stroke:#e0ffdb;stroke-opacity:.78;stroke-width:2;stroke-dasharray:4 4;animation:lektrus-bio-zone-pulse 2.4s ease-in-out infinite}
+.lektrus-bio-unified-hotspot .lektrus-bio-unified-dot{fill:#143f2f;stroke:#d1ffdc;stroke-width:3}
+.lektrus-bio-unified-hotspot:focus-visible .lektrus-bio-unified-halo,.lektrus-bio-unified-hotspot:hover .lektrus-bio-unified-halo{fill-opacity:.5;stroke-width:4}
+.lektrus-bio-unified-hud{position:absolute;z-index:2;bottom:10px;left:12px;right:12px;display:flex;justify-content:space-between;gap:9px;pointer-events:none;text-shadow:0 1px 4px #0e211e,0 0 5px #0e211e;color:#f6fef3;font:750 11px ui-monospace,monospace}
+.lektrus-bio-unified-notice{position:absolute;z-index:2;top:13px;left:50%;transform:translateX(-50%);width:min(92%,480px);padding:10px 14px;color:#efffec;background:#204d39f0;border:1px solid #9cddaf;border-radius:10px;font-size:12px;font-weight:680;text-align:center;pointer-events:none;line-height:1.35}
+.lektrus-bio-unified-ghost{position:absolute;z-index:3;inset:0;pointer-events:none;animation:lektrus-bio-unified-fade .36s ease-in-out both}
+.lektrus-bio-unified-ghost.is-out{animation-name:lektrus-bio-unified-back}
+@keyframes lektrus-bio-unified-fade{0%{opacity:1}55%{opacity:.58}100%{opacity:0}}
+@keyframes lektrus-bio-unified-back{0%{opacity:1}100%{opacity:0}}
+@keyframes lektrus-bio-zone-pulse{0%,100%{stroke-opacity:.7}50%{stroke-opacity:.18}}
+.lektrus-bio-unified-controls{display:flex;flex-wrap:wrap;gap:10px;padding:9px 11px;border:1px solid #c5d9c7;border-radius:12px;background:#eff7f0;align-items:center}
+.lektrus-bio-unified-controls label{display:flex;align-items:center;gap:9px;color:#305c46;font-size:11px;font-weight:750;min-width:140px;flex:1}
+.lektrus-bio-unified-controls input[type=range]{width:100%;accent-color:#36865b;min-width:75px}
+.lektrus-bio-unified-zoom-control{display:flex;align-items:center;gap:6px;flex:2;min-width:160px}
+.lektrus-bio-unified-zoom-control button{min-width:38px;min-height:36px;border:1px solid #a5c8b1;border-radius:8px;background:white;color:#2a7650;font-size:20px;font-weight:750}
+.lektrus-bio-unified-details{display:grid;gap:8px;padding:12px 14px;background:#eff8f0;border:1px solid #bad8c0;border-radius:12px;color:#355c48;font-size:12px}
+.lektrus-bio-unified-details>p{margin:0;font-size:13px;line-height:1.5}
+.lektrus-bio-unified-photo-source{display:grid;gap:3px;padding:9px 11px;background:#fffef6;border-left:3px solid #689e81;border-radius:5px}
+.lektrus-bio-unified-photo-source>a{color:#227553;font-weight:750;text-decoration:underline;text-underline-offset:3px}
+.lektrus-bio-unified-photo-source small{color:#728176;line-height:1.4}
+.lektrus-bio-unified-cell-parts,.lektrus-bio-unified-branches{display:flex;align-items:center;flex-wrap:wrap;gap:5px}
+.lektrus-bio-unified-cell-parts>strong,.lektrus-bio-unified-branches>strong{width:100%;color:#315f4c}
+.lektrus-bio-unified-cell-parts button,.lektrus-bio-unified-branches button{border:1px solid #add1b8;background:#f9fff9;color:#286d4a;border-radius:18px;min-height:31px;padding:5px 12px;font-size:11px;font-weight:740}
+.lektrus-bio-unified-cell-parts button.is-active{background:#357951;color:white}
+.lektrus-bio-unified-cell-parts>p{width:100%;margin:4px 0;font-size:12px;line-height:1.5}
+.lektrus-bio-unified-honesty{display:block;border-top:1px solid #cbdbcd;padding-top:8px;color:#6e8375;line-height:1.5;font-size:11px}
+@media(max-width:650px){.lektrus-bio-unified-heading{padding:11px}.lektrus-bio-unified-viewport{min-height:240px;max-height:65vh;border-radius:12px}.lektrus-bio-unified-controls{gap:8px}.lektrus-bio-unified-zoom-control{min-width:100%;flex:1}.lektrus-bio-unified-hud{font-size:9px;bottom:6px;left:7px;right:7px}.lektrus-bio-unified-breadcrumbs button{font-size:10px}.lektrus-bio-unified-details{padding:10px}}
+@media(prefers-reduced-motion:reduce){.lektrus-bio-unified-ghost{animation-duration:.01ms!important}.lektrus-bio-unified-hotspot .lektrus-bio-unified-halo{animation:none}.lektrus-bio-unified-world{will-change:auto}}

@@ -43,10 +43,10 @@ assert.match(stage,/if\(!file\|\|!file.type.startsWith\("image\/"\)\|\|file.size
 assert.match(stage,/!broken&&!loaded/);
 assert.match(stage,/Масштабная линейка не используется без калибровки/);
 const app=fs.readFileSync("src/LektrusBioMicroscope.tsx","utf8");
-assert.match(app,/viewerMode==="microscope"&&<LektrusBioMicroscopeStage\/>/);
-assert.match(app,/diagram.activity!=="explore"\|\|viewerMode==="atlas"/);
-assert.match(app,/aria-pressed=\{viewerMode==="atlas"\}/);
-assert.match(app,/setViewerMode\("microscope"\)/);
+assert.match(app,/diagram.activity==="explore"&&<LektrusBioUnifiedZoom/);
+assert.match(app,/showExercise&&<>/);
+assert.ok(!app.includes("viewerMode"),"One continuous viewer replaces split mode");
+assert.ok(!app.includes("<LektrusBioMicroscopeStage/>"),"Separate microscope is no longer shown");
 const css=fs.readFileSync("src/lektrusBioMicroscopeStage.css","utf8");
 assert.match(css,/touch-action:none/);
 assert.match(css,/\.lektrus-bio-photo-image/);

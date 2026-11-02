@@ -5,7 +5,7 @@ import LektrusBioTaxonomyBrowser from "./LektrusBioTaxonomyBrowser";
 import LektrusBioAlternativeView from "./LektrusBioAlternativeView";
 import type {BioAlternativeOrganism} from "./lektrusBioAlternativeAtlas";
 import LektrusBioAnatomyScene from "./LektrusBioAnatomyScene";
-import LektrusBioMicroscopeStage from "./LektrusBioMicroscopeStage";
+import LektrusBioUnifiedZoom from "./LektrusBioUnifiedZoom";
 import {bioSpecimenPlateFor} from "./lektrusBioSpecimenPlates";
 import {bioCellPlateFor} from "./lektrusBioCellPlates";
 import {isBioNewOrganism} from "./lektrusBioNewLineages";
@@ -17,7 +17,7 @@ const clamp=(n:number)=>Math.max(0,Math.min(4,n));
 export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDiagram}){
  const [activeOrganism,setActiveOrganism]=useState<BioOrganism>(diagram.organism);
  const [atlasOpen,setAtlasOpen]=useState(false);
- const [viewerMode,setViewerMode]=useState<"microscope"|"atlas">("microscope");
+ const showExercise=Boolean(diagram.activity==="label"||diagram.activity==="assemble");
  const [alternativeId,setAlternativeId]=useState<BioAlternativeOrganism|null>(null);
  const nodes=useMemo(()=>bioNodes(activeOrganism),[activeOrganism]);
  const meta=BIO_ORGANISMS[activeOrganism];
@@ -26,7 +26,7 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
  const [progress,setProgress]=useState(1);
  const [feedback,setFeedback]=useState("");
  const [activeFeatureName,setActiveFeatureName]=useState<string|null>(null);
- useEffect(()=>{setActiveOrganism(diagram.organism);setAtlasOpen(false);setAlternativeId(null);setViewerMode("microscope");setZoom(0);setPath(diagram.assignmentPath);setProgress(1);setFeedback("");},[diagram.organism,diagram.activity,diagram.assignmentPath.join("|")]);
+ useEffect(()=>{setActiveOrganism(diagram.organism);setAtlasOpen(false);setAlternativeId(null);setZoom(0);setPath(diagram.assignmentPath);setProgress(1);setFeedback("");},[diagram.organism,diagram.activity,diagram.assignmentPath.join("|")]);
  const exploreCatalogOrganism=(organism:BioOrganism)=>{
   const next=withBioOrganism(diagram,organism);
   setActiveOrganism(organism);setPath(next.assignmentPath);setZoom(0);setProgress(1);setFeedback("");setAtlasOpen(false);
@@ -84,12 +84,8 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
    <span className="lektrus-bio-kind">{meta.group==="animal"?"Животное":"Растение"}</span>
    {diagram.activity==="explore"&&<button type="button" className="lektrus-bio-open-atlas" onClick={()=>setAtlasOpen(true)}>☷ Классы и виды</button>}
   </header>
-  {diagram.activity==="explore"&&<div className="lektrus-bio-view-mode" role="group" aria-label="Режим биологического микроскопа">
-   <button type="button" className={viewerMode==="microscope"?"is-active":""} aria-pressed={viewerMode==="microscope"} onClick={()=>setViewerMode("microscope")}>Микроскоп · фотопрепараты</button>
-   <button type="button" className={viewerMode==="atlas"?"is-active":""} aria-pressed={viewerMode==="atlas"} onClick={()=>setViewerMode("atlas")}>Строение организма · интерактивный атлас</button>
-  </div>}
-  {diagram.activity==="explore"&&viewerMode==="microscope"&&<LektrusBioMicroscopeStage/>}
-  {(diagram.activity!=="explore"||viewerMode==="atlas")&&<>
+  {diagram.activity==="explore"&&<LektrusBioUnifiedZoom key={activeOrganism} organism={activeOrganism}/>}
+  {showExercise&&<>
   <div className="lektrus-bio-levels" role="group" aria-label="Уровни увеличения">
    {BIO_LEVELS.map((level,i)=><button type="button" key={level} className={Math.round(zoom)===i?"is-active":""}
     onClick={()=>{setZoom(i);setFeedback("");}}>{BIO_LEVEL_LABELS[level]}</button>)}
@@ -199,6 +195,6 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
    <button type="button" className="lektrus-bio-restart" onClick={()=>{setProgress(1);setPath(diagram.assignmentPath);setZoom(0);setFeedback("");}}>Начать заново</button>
   </div>}
   </>}
-  <footer>LEKTRUS · БИОЛОГИЯ · {viewerMode==="microscope"&&diagram.activity==="explore"?"Реальные микрофотографии, цифровой столик и имитация фокусировки; увеличение не калибровано":"Анатомический атлас, авторские схемы без реального масштаба"}</footer>
+  <footer>LEKTRUS · БИОЛОГИЯ · {diagram.activity==="explore"?"Единая камера: организм → орган → ткань → клетка. Фотосерии и цифровое увеличение не заменяют измеренную оптику.":"Учебные задания с проверкой строения организма"}</footer>
  </section>;
 }
