@@ -10,7 +10,7 @@ import LektrusBioAnatomyScene from "./LektrusBioAnatomyScene";
 import {
  BIO_ZOOM_GATE,BIO_ZOOM_INITIAL,BIO_ZOOM_MAX,
  bioZoomAt,bioZoomBound,bioZoomPan,bioZoomToWorld,bioZoomClosestChild,bioZoomPoint,
- bioZoomImageFor,bioZoomPath,bioZoomChildCandidates,
+ bioZoomImageFor,bioZoomSharedFrame,bioZoomPath,bioZoomChildCandidates,
  type BioZoomCamera
 } from "./lektrusBioUnifiedZoomModel";
 import "./lektrusBioUnifiedZoom.css";
@@ -58,6 +58,17 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
  const transition=useCallback((target:BioNode,focusPoint?:BioImageSpot)=>{
   if(ghostRef.current||currentRef.current.id===target.id)return;
   const old=currentRef.current;
+  // If the next depth is another view of the same real photograph, do not
+  // swap specimens or restart its camera. The user truly magnifies the
+  // already visible epidermal field rather than entering a new illustration.
+  if(bioZoomSharedFrame(organism,old,target)){
+   visits.current.set(old.id,cameraRef.current);
+   currentRef.current=target;
+   setCurrentId(target.id);
+   if(target.parentId!==old.id)setCam(visits.current.get(target.id)??BIO_ZOOM_INITIAL);
+   setFeature(null);setPhotoError(null);setNotice("");
+   return;
+  }
   const ascending=target.parentId!==old.id;
   const spot=focusPoint??{x:240,y:165};
   ghostRef.current=true;
@@ -73,7 +84,7 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
   transitionTimer.current=window.setTimeout(()=>{
    setGhost(null);ghostRef.current=false;transitionTimer.current=undefined;
   },360);
- },[setCam]);
+ },[organism,setCam]);
  const descend=useCallback((child:BioNode)=>{
   const parent=currentRef.current;
   const all=bioZoomChildCandidates(nodes,parent);
