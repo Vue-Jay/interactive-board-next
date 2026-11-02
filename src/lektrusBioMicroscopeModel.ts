@@ -104,6 +104,8 @@ export function validBioMicroscope(value:unknown):value is BioMicroscopeDiagram{
 export type BioVisualKey="lungs"|"heart"|"brain"|"eye"|"muscle"|"gut"|"flower"|"root"|"leaf"|"wood"|"other";
 export function bioVisualKey(node:BioNode):BioVisualKey{
  const p=node.id.toLocaleLowerCase("ru-RU");
+ if(p==="sunflower/побег")return "leaf";
+ if(p==="oak/побег")return "wood";
  if(p.includes("дыхатель")||p.includes("лёгк")||p.includes("пневмоцит"))return "lungs";
  if(p.includes("кровенос")||p.includes("сердц")||p.includes("кардиомиоцит"))return "heart";
  if(p.includes("нервн")||p.includes("головн")||p.includes("нейрон"))return "brain";
