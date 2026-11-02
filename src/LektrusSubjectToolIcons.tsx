@@ -7,6 +7,8 @@ import type {SubjectToolId} from "./lektrusSubjectToolRegistry";
  * palette, remain legible on 21px buttons and work with dark themes.
  */
 const icons:Partial<Record<SubjectToolId,ReactNode>>={
+ "bio-microscope":<><path d="M9 4h4l1 2-1 2-4-2zM12 8l4 7m-6-8-2 3m8 4a5 5 0 0 1-6 5"/><path d="M6 21h14M6 17a7 7 0 0 0 10 0M18 15l-3-3"/><circle cx="17" cy="14" r="2" fill="currentColor" fillOpacity=".22"/></>,
+
  "math-formula":<><path d="m3 12 3.2 6 4.2-13H21"/><text x="13.2" y="18.6" fontFamily="Georgia,serif" fontSize="14" fontStyle="italic" stroke="none" fill="currentColor">x</text></>,
  "math-geometry":<><path d="M11.5 6.5 5.4 20M13.5 6.5 19.5 20M5.4 20l-1.1 1.2M19.5 20l1.1 1.2"/><path d="M9.7 9 8.2 12.5M15.3 9l1.5 3.5" strokeWidth="2.7"/><circle cx="12.5" cy="5.1" r="3.1" fill="var(--lektrus-tool-surface,#fff)"/><circle cx="12.5" cy="5.1" r=".65" fill="currentColor" stroke="none"/></>,
  "math-coordinate":<><path d="M3 12H21m-3-2.5L21 12l-3 2.5M12 21V3m-2.5 3L12 3l2.5 3"/><text x="19" y="19.5" fontSize="6.5" fontStyle="italic" stroke="none" fill="currentColor">x</text><text x="15.2" y="5.2" fontSize="6.5" fontStyle="italic" stroke="none" fill="currentColor">y</text></>,

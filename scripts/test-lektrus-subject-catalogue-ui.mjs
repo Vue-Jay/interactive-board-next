@@ -14,7 +14,7 @@ for(const [subject,ids] of Object.entries({
  "математика":["math-formula","math-fractions","math-geometry","math-coordinate"],
  "физика":["physics-mechanics","physics-graphs","physics-optics","physics-circuits"],
  "химия":["chem-periodic-table","chem-organic","chem-formulas","chem-experiments"],
- "биология":["bio-cell","bio-division","bio-dna","bio-genetics","bio-taxonomy","bio-food-chain","bio-organ-systems"],
+ "биология":["bio-microscope"],
  "география":["maps-atlas","contour-atlas","geo-matching","geo-question-cards"],
  "история":["history-atlas","history-timeline","history-family-tree"],
  "информатика":["info-encoding","info-place-value","info-programming","info-flowchart","info-circuit","info-logic"],

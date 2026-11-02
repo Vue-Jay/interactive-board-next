@@ -24,6 +24,7 @@ export const subjectToolRegistry:SubjectToolDefinition[]=[
   {id:"math-coordinate",label:"Координатная плоскость",description:"Функции, точки, числовая прямая и графики",group:"Математические инструменты",subjects:["математика"]},
   {id:"math-fractions",label:"Дроби",description:"Круг и полоска с наглядными частями",group:"Математические инструменты",subjects:["математика"]},
   {id:"chem-periodic-table",label:"Периодическая система",description:"118 элементов, поиск, семейства и выделение элементов для урока",group:"Химия · элементы",subjects:["химия"]},
+  {id:"bio-microscope",label:"Биологический микроскоп",description:"Интерактивные животные и растения: организм, системы, органы, ткани, клетки и задания",group:"Биология · атлас",subjects:["биология"]},
   {id:"bio-dna",label:"Строение ДНК",description:"Комплементарность, последовательность оснований и направление цепей",group:"Биология · генетика",subjects:["биология"]},
   {id:"bio-taxonomy",label:"Классификация организмов",description:"Редактируемая схема таксономических рангов животных и растений",group:"Биология · систематика",subjects:["биология"]},
   {id:"bio-division",label:"Деление клетки",description:"Стадии митоза с подписями и учебными схемами",group:"Биология · клетка",subjects:["биология"]},
@@ -79,7 +80,7 @@ export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:
     graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,graphSnap:false,
     graphPoints:[],graphSegments:[],subjectBoardEntries:[]};
   }
-  if(id==="info-programming"||id==="info-circuit"||id==="bio-dna"||id==="bio-taxonomy"||id==="bio-division"||id==="info-encoding"||id==="bio-genetics"||id==="info-logic"||id==="maps-atlas"||id==="history-atlas"||id==="contour-atlas"||id==="geo-matching"||id==="geo-question-cards"||id==="bio-cell"||id==="bio-food-chain"||id==="history-timeline"||
+  if(id==="bio-microscope"||id==="info-programming"||id==="info-circuit"||id==="bio-dna"||id==="bio-taxonomy"||id==="bio-division"||id==="info-encoding"||id==="bio-genetics"||id==="info-logic"||id==="maps-atlas"||id==="history-atlas"||id==="contour-atlas"||id==="geo-matching"||id==="geo-question-cards"||id==="bio-cell"||id==="bio-food-chain"||id==="history-timeline"||
      id==="ru-syntax"||id==="info-flowchart"||id==="info-place-value"||
      id==="bio-organ-systems"||
      id==="ru-morphemes"||id==="history-family-tree"||id==="language-flashcards"||

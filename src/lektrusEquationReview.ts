@@ -88,6 +88,17 @@ export function reviewEquationStep(step:EquationStep,domain:EquationDomain):Revi
  if(!draft)return {status:"unknown",issues:[{kind:"formula",severity:"warning",message:"Введите знак реакции и обе части уравнения."}],
   canFillProducts:false,canMarkProducts:false,canBalance:false,description:"Недостаточно данных"};
  const left=list(draft.left),right=list(draft.right);
+ // ≠ records a documented absence of reaction, NOT a transformation.
+ // It has no products, stoichiometric coefficients or balancing operation.
+ if(draft.arrow==="≠"){
+  if(!left.length||right.length)return {status:"incorrect",issues:[{kind:"reaction",severity:"error",message:"Для знака ≠ укажите только исходные вещества, без продуктов."}],canFillProducts:false,canMarkProducts:false,canBalance:false,description:"Отсутствие реакции"};
+  if(domain==="inorganic"){
+   const outcome=identifyReaction(left,environmentFrom(step.conditions));
+   if(outcome.status==="none")return {status:"correct",issues:[],canFillProducts:false,canMarkProducts:false,canBalance:false,description:outcome.caseData?.description??"В указанных условиях реакция не наблюдается."};
+   if(outcome.status==="reaction")return {status:"incorrect",issues:[{kind:"reaction",severity:"error",message:"Для этих реагентов в указанных условиях известна реакция. Знак ≠ неверен."}],canFillProducts:false,canMarkProducts:false,canBalance:false,description:"Известно превращение"};
+  }
+  return {status:"unknown",issues:[{kind:"unknown",severity:"info",message:"Отсутствие реакции не подтверждено справочником. Проверьте условия опыта."}],canFillProducts:false,canMarkProducts:false,canBalance:false,description:"Реакция не подтверждена"};
+ }
  for(const side of ["left","right"] as const){
   const species=draft[side];
   for(const finding of inspectChemicalSpecies(species,domain)){

@@ -19,7 +19,8 @@ const indexed=/([A-Z][a-z]?|[)\]])([0-9]+)/g;
 const arrows:{value:EquationArrow;label:string;title:string}[]=[
  {value:"→",label:"→",title:"Необратимая реакция"},
  {value:"⇌",label:"⇌",title:"Обратимая реакция"},
- {value:"=",label:"=",title:"Уравнение со знаком равенства"}
+ {value:"=",label:"=",title:"Уравнение со знаком равенства"},
+ {value:"≠",label:"≠",title:"Реакция не идёт в указанных условиях"}
 ];
 
 function FormulaPart({value}:{value:string}){
@@ -90,7 +91,7 @@ export function LektrusChemicalEquationTypeset({expression,conditions}:{expressi
    {conditions?.trim()&&<small className="lektrus-reaction-above">{conditions}</small>}
    <b>{draft.arrow}</b>
   </span>
-  <ReactionSide species={draft.right}/>
+  {draft.arrow!=="≠"&&<ReactionSide species={draft.right}/>}
  </div>;
 }
 
@@ -146,7 +147,8 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
  const allReviews=reviewed?reviewEquationChain(steps,domain):[];
  const selectedConditions=parseConditionTokens(current.conditions);
  const complete=(step:EquationStep)=>{const p=readReactionText(step.expression);
-  return !!p.reactants.trim()&&!!p.products.trim()&&!p.standalone;};
+  return !!p.reactants.trim()&&!p.standalone&&
+   (p.arrow==="≠"?!p.products.trim():!!p.products.trim());};
  const canSave=steps.every(st=>st.expression.length<=500&&
   (complete(st)||(steps.length===1&&readReactionText(st.expression).standalone&&st.expression.trim())))&&steps.some(s=>s.expression.trim());
  const setSteps=(newSteps:EquationStep[],index=activeIndex)=>{
@@ -166,7 +168,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
   updateStep({...current,expression:value});
  };
  const changeArrow=(arrow:EquationArrow)=>{
-  updateStep({...current,expression:writeReactionText({...parts,arrow,standalone:false})});
+  updateStep({...current,expression:writeReactionText({...parts,arrow,products:arrow==="≠"?"":parts.products,standalone:false})});
  };
  const insert=(text:string)=>{
   const side=focused.current,el=inputs.current[side];
@@ -254,7 +256,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
       </div>
      </div>
      <div className="lektrus-chem-equation-columns">
-      {(["left","right"] as Side[]).map(side=><Fragment key={side}><label className={"lektrus-chem-equation-side "+(issuesFor(side).some(v=>v.severity==="error")?"has-error":"")} key={side}>
+      {(["left","right"] as Side[]).filter(side=>side==="left"||parts.arrow!=="≠").map(side=><Fragment key={side}><label className={"lektrus-chem-equation-side "+(issuesFor(side).some(v=>v.severity==="error")?"has-error":"")} key={side}>
        <span className="lektrus-chem-equation-side-head"><strong>{side==="left"?"Реагенты":"Продукты"}</strong>
         <small>{side==="left"?"До реакции":"После реакции"}</small></span>
        <div className={"lektrus-chem-input-shell "+(reviewed&&issuesFor(side).some(v=>v.index!==undefined&&["substance","extra","indicator","coefficient"].includes(v.kind))?"is-annotated":"")}>
