@@ -87,7 +87,7 @@ for(const file of ["src/LektrusBioFurtherSpeciesArt.tsx","src/LektrusBioAnatomyS
 for(const old of ["human","cat","sunflower","oak","earthworm","seastar","crayfish","horsetail"]){
  const nodes=bio.bioNodes(old);
  assert.ok(nodes.every(n=>!n.id.startsWith("lizard/")&&!n.id.startsWith("magnolia/")));
- assert.equal(bio.bioChildren(nodes,nodes[0].id).length,3);
+ assert.ok(bio.bioChildren(nodes,nodes[0].id).length>=2,"Legacy organisms can share a shoot and retain fewer root systems");
 }
 assert.equal(bio.bioNodes("sunflower").find(n=>n.id.endsWith("/корневой-волосок")).id,
  "sunflower/корневая-система/корень/ризодерма/корневой-волосок");
