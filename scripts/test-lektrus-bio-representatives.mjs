@@ -60,10 +60,11 @@ for(const [species,cell,expected] of [
  assert.equal(bio.bioVisualKey(node),expected,"Wrong diagram for "+cell);
 }
 for(const species of ["sparrow","perch","frog","bee","snail","pine","fern","wheat"]){
- const source=fs.readFileSync("src/LektrusBioSpeciesArt.tsx","utf8");
- assert.match(source,new RegExp('case "'+species+'"'),"Missing silhouette "+species);
+ const source=fs.readFileSync("src/LektrusBioDetailedExtraSpecies.tsx","utf8");
+ assert.match(source,new RegExp('case "'+species+'"'),"Missing unique full-body specimen "+species);
+ assert.match(source,new RegExp('data-bio-illustration="'+species+'"'),"Missing actual SVG anatomy "+species);
 }
-for(const path of ["src/LektrusBioSpeciesArt.tsx","src/LektrusBioAnatomyScene.tsx"]){
+for(const path of ["src/LektrusBioSpeciesArt.tsx","src/LektrusBioAnatomyScene.tsx","src/LektrusBioDetailedExtraSpecies.tsx"]){
  const source=fs.readFileSync(path,"utf8");
  const parsed=ts.createSourceFile(path,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  assert.equal(parsed.parseDiagnostics.length,0,path+" malformed TSX");
