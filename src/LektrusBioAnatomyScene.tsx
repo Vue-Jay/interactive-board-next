@@ -3,6 +3,7 @@
  * histology. Every tap target maps to a child of the displayed atlas node.
  */
 import type {ReactNode} from "react";
+import LektrusBioSpeciesArt from "./LektrusBioSpeciesArt";
 import type {BioNode,BioOrganism} from "./lektrusBioMicroscopeModel";
 import {BIO_ORGANISMS,bioVisualKey,bioChildSpot} from "./lektrusBioMicroscopeModel";
 
@@ -193,7 +194,9 @@ function CellScene({keyName}:{keyName:BioVisualKey}){
 }
 export default function LektrusBioAnatomyScene({organism,node,children,onSelect,interactive,focusChildId}:Props){
  const keyName=bioVisualKey(node);
- const shape:ReactNode=node.level==="organism"||node.level==="system"
+ const extra=<LektrusBioSpeciesArt organism={organism} node={node}/>;
+ const shape:ReactNode=(["sparrow","perch","frog","bee","snail","pine","fern","wheat"] as string[]).includes(organism)
+  ?extra:node.level==="organism"||node.level==="system"
   ?<><g opacity={node.level==="system"?.27:1}><OrganismShape organism={organism}/></g>
     {node.level==="system"&&<g transform="translate(148 80) scale(.39)" opacity=".93"><SpecificOrgan keyName={keyName}/></g>}</>
   :node.level==="organ"?<SpecificOrgan keyName={keyName}/>
