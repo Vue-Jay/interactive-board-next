@@ -7,7 +7,7 @@ import type {ReactNode} from "react";
 import type {BioOrganism,BioNode} from "./lektrusBioMicroscopeModel";
 import {bioSpecimenPlateFor} from "./lektrusBioSpecimenPlates";
 
-const pine="#679875",ink="#335b52",water="#80b9ca",cream="#f7ecd3",pink="#ddaba2",deep="#8a739e";
+const ink="#335b52",water="#80b9ca";
 function Callout({x,y,tx,ty,label,anchor="start"}:{x:number;y:number;tx:number;ty:number;label:string;anchor?:"start"|"middle"|"end"}){
  return <g className="lektrus-bio-specimen-callout" pointerEvents="none">
   <path d={`M${x} ${y-6}L${tx} ${ty}`} stroke="#6b8c80" strokeWidth="1.5" strokeDasharray="4 4" fill="none"/>
