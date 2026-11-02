@@ -24,6 +24,7 @@ function ParentOverview({organism,context,parentCamera,onBack}:Props){
    aria-label={"Вернуться к "+parent.name}
    title={"Вернуться к "+parent.name}
    onPointerDown={e=>e.stopPropagation()}
+   onKeyDown={e=>e.stopPropagation()}
    onClick={onBack}>
    <span className="lektrus-bio-location-preview" aria-hidden="true">
     {image?<img alt="" src={image.file} loading="lazy" draggable={false}
