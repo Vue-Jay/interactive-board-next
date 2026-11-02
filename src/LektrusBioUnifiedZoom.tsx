@@ -38,6 +38,8 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
  const [photoError,setPhotoError]=useState<string|null>(null);
  const viewport=useRef<HTMLDivElement>(null);
  const pointers=useRef(new Map<number,XY>());
+ const gestureStart=useRef<{id:number;point:XY;moved:boolean}|null>(null);
+ const lastTap=useRef<{point:XY;at:number}|null>(null);
  const visits=useRef(new Map<string,BioZoomCamera>());
  const transitionTimer=useRef<number|undefined>(undefined);
  const route=bioZoomPath(nodes,current.id);
@@ -53,6 +55,7 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
  useEffect(()=>{
   if(transitionTimer.current!==undefined)window.clearTimeout(transitionTimer.current);
   visits.current.clear();
+  pointers.current.clear();gestureStart.current=null;lastTap.current=null;
   ghostRef.current=false;setGhost(null);
   setCurrentId(organism);setCam(BIO_ZOOM_INITIAL);
   setFeature(null);setPhotoError(null);setNotice("");
@@ -68,7 +71,7 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
   // The preceding implementation saved a temporary camera already zoomed
   // to a child, causing a jump and a wrong Back position.
   visits.current.set(old.id,departingCamera);
-  pointers.current.clear();
+  pointers.current.clear();gestureStart.current=null;lastTap.current=null;
   if(bioZoomSharedFrame(organism,old,target)){
    // The sunflower stomatal imprint is one genuine field across two depths.
    // Here we increase the digital magnification of THAT SAME photograph,
@@ -150,14 +153,21 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
  const onDown=(e:ReactPointerEvent<HTMLDivElement>)=>{
   if(e.pointerType==="mouse"&&e.button!==0)return;
   e.currentTarget.setPointerCapture(e.pointerId);
-  pointers.current.set(e.pointerId,at(e.clientX,e.clientY));
+  const point=at(e.clientX,e.clientY);
+  pointers.current.set(e.pointerId,point);
+  if(e.pointerType==="touch"&&pointers.current.size===1)
+   gestureStart.current={id:e.pointerId,point,moved:false};
+  else if(pointers.current.size>1)gestureStart.current=null;
  };
  const onMove=(e:ReactPointerEvent<HTMLDivElement>)=>{
   const map=pointers.current,previous=map.get(e.pointerId);
   if(!previous||ghostRef.current)return;
   const next=at(e.clientX,e.clientY),before=[...map.values()];
   map.set(e.pointerId,next);
+  if(gestureStart.current?.id===e.pointerId&&identity(next,gestureStart.current.point)>13)
+   gestureStart.current.moved=true;
   if(map.size>=2&&before.length>=2){
+   gestureStart.current=null;lastTap.current=null;
    const after=[...map.values()];
    const p0={x:(before[0].x+before[1].x)/2,y:(before[0].y+before[1].y)/2};
    const p1={x:(after[0].x+after[1].x)/2,y:(after[0].y+after[1].y)/2};
@@ -167,8 +177,21 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
   }else setCam(bioZoomPan(cameraRef.current,next.x-previous.x,next.y-previous.y));
  };
  const onEnd=(e:ReactPointerEvent<HTMLDivElement>)=>{
+  const count=pointers.current.size,wasTracked=pointers.current.has(e.pointerId);
   pointers.current.delete(e.pointerId);
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+  // Native-feeling mobile microscope: two short taps focus on the tapped
+  // field, but never reinterpret a drag, pinch or anatomical marker as a tap.
+  const start=gestureStart.current;
+  gestureStart.current=null;
+  if(e.type!=="pointerup"||e.pointerType!=="touch"||!wasTracked||count!==1||
+     !start||start.id!==e.pointerId||start.moved||ghostRef.current)return;
+  const point=at(e.clientX,e.clientY);
+  if(identity(point,start.point)>13){lastTap.current=null;return;}
+  const now=e.timeStamp,last=lastTap.current;
+  if(last&&now-last.at<340&&identity(last.point,point)<32){
+   lastTap.current=null;zoom(1.75,point);
+  }else lastTap.current={point,at:now};
  };
  const key=(e:ReactKeyboardEvent<HTMLDivElement>)=>{
   const keys:Record<string,XY>={ArrowLeft:{x:-24,y:0},ArrowRight:{x:24,y:0},
