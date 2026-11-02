@@ -106,7 +106,7 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
   if(index<0)return;
   const pt=bioZoomPoint(organism,parent,child,index,all.length);
   // The portal starts at the real parent camera and travels to THIS spot.
-  // Never setCam(zoomed) before saving the parent view in transition().
+  // Do not apply a temporary magnified frame before saving the parent view.
   transition(child,pt);
  },[nodes,organism,transition]);
  const ascend=useCallback(()=>{
