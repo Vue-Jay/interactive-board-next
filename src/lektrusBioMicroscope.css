@@ -236,3 +236,68 @@
 @media(max-width:740px){.lektrus-bio-alt-main{grid-template-columns:minmax(0,1fr)}.lektrus-bio-alt-hero{padding:12px}.lektrus-bio-alt-cycle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:410px){.lektrus-bio-alt-back{float:none;display:block;margin-bottom:10px}.lektrus-bio-alt-cycle-grid{grid-template-columns:minmax(0,1fr)}.lektrus-bio-alt-path button{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.lektrus-bio-alt-marker>circle:first-child{transition:none}}
+
+
+/* Animated biology atlas, designed as a quiet scientific instrument rather
+ * than a game. The SVG remains a selectable diagram while its annotations move.
+ * CSS-only animation: no requestAnimationFrame, setInterval or remote assets. */
+.lektrus-bio-alt-scene-header{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:2px 3px 1px}
+.lektrus-bio-alt-scene-label{letter-spacing:.115em;font-weight:900;color:#38795b;font-size:9px}
+.lektrus-bio-alt-scene-level{max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;color:#627e6c;font-weight:800}
+.lektrus-bio-alternative-scene{border:1px solid #c5e0d0;box-shadow:inset 0 0 0 1px #fff,0 6px 19px #214f3c12;overflow:hidden;isolation:isolate}
+.lektrus-bio-alt-plate{transform-origin:240px 172px;animation:lektrus-bio-plate-arrive .34s cubic-bezier(.22,.68,.22,1) both}
+.lektrus-bio-alt-motion-console{display:flex;align-items:center;gap:10px;background:linear-gradient(110deg,#edf7eb,#e0f1e8);border:1px solid #bfddc6;border-radius:11px;padding:10px 11px}
+.lektrus-bio-alt-motion-text{min-width:0;flex:1;display:grid;gap:3px}
+.lektrus-bio-alt-motion-text strong{font-size:11px;color:#29634a}
+.lektrus-bio-alt-motion-text p{margin:0;line-height:1.48;font-size:10px;color:#557b62}
+.lektrus-bio-alt-motion-button{border:1px solid #2b7253;background:#276d51;color:#fff;flex:none;min-width:94px;min-height:38px;border-radius:9px;padding:7px 11px;font-weight:850;font-size:11px;cursor:pointer;touch-action:manipulation}
+.lektrus-bio-alt-motion-button:hover{background:#1b5941}
+.lektrus-bio-alt-motion-button:focus-visible{outline:3px solid #61a98d;outline-offset:3px}
+.lektrus-bio-alt-motion-button[aria-pressed="false"]{background:#fff;color:#276d51}
+.lektrus-bio-alt-figure{background:linear-gradient(164deg,#f8fcf3,#ecf7ee)}
+.lektrus-bio-alt-marker>circle:nth-child(2){box-shadow:none;filter:drop-shadow(0 1px 2px #326d6433)}
+/* Preserve animation frame on pause: no stateful JS animation loop. */
+.lektrus-bio-motion.is-paused *{animation-play-state:paused!important}
+.lektrus-bio-motion-inlet{animation:lektrus-bio-inflow 3.2s var(--bio-motion-delay,0s) linear infinite}
+.lektrus-bio-motion-outlet{animation:lektrus-bio-outflow 3.2s var(--bio-motion-delay,0s) linear infinite}
+.lektrus-bio-motion-flagellum{transform-origin:239px 181px;animation:lektrus-bio-flagellum .45s ease-in-out infinite alternate}
+.lektrus-bio-motion-tentacle{transform-origin:236px 131px;animation:lektrus-bio-sway 2.9s var(--bio-motion-delay,0s) ease-in-out infinite alternate}
+.lektrus-bio-motion-leaf{transform-origin:239px 170px;animation:lektrus-bio-moss-sway 4.2s var(--bio-motion-delay,0s) ease-in-out infinite alternate}
+.lektrus-bio-motion-discharge{stroke-dasharray:150;stroke-dashoffset:150;animation:lektrus-bio-sting .64s ease-out both}
+.lektrus-bio-motion-flash{opacity:0;animation:lektrus-bio-sting-flash .55s ease-out both}
+.lektrus-bio-motion-spore{opacity:0;animation:lektrus-bio-spore-fly 1.75s var(--bio-motion-delay,0s) ease-out both}
+.lektrus-bio-motion-capsule{animation:lektrus-bio-capsule-lift .55s ease-out both}
+.lektrus-bio-motion-cilium{transform-origin:237px 111px;animation:lektrus-bio-cilium .7s ease-in-out infinite alternate}
+.lektrus-bio-motion-cilium--right{animation-delay:-.36s;animation-direction:alternate-reverse}
+.lektrus-bio-motion-trail{animation:lektrus-bio-trail 1.9s linear infinite}
+.lektrus-bio-motion-light{opacity:.3;animation:lektrus-bio-light-fade 2.2s ease-in-out infinite alternate}
+.lektrus-bio-motion-sensor{animation:lektrus-bio-light-fade 2.2s ease-in-out infinite alternate}
+.lektrus-bio-motion-spiral{animation:lektrus-bio-spiral-highlight 3.1s var(--bio-motion-delay,0s) ease-in-out infinite alternate}
+.lektrus-bio-motion-bridge{stroke-dasharray:68;stroke-dashoffset:68;animation:lektrus-bio-bridge 1.15s ease-out both}
+.lektrus-bio-motion-gamete{opacity:0;animation:lektrus-bio-gamete-flow 1.95s .42s ease-in-out both}
+.lektrus-bio-motion-zygote{opacity:0;transform-origin:239px 237px;animation:lektrus-bio-zygote-grow .8s 1.65s ease-out both}
+@keyframes lektrus-bio-plate-arrive{from{opacity:.28;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+@keyframes lektrus-bio-inflow{0%{opacity:0;transform:translate(0,0)}18%{opacity:1}82%{opacity:1}100%{opacity:0;transform:translate(66px,-29px)}}
+@keyframes lektrus-bio-outflow{0%{opacity:0;transform:translateY(0)}18%{opacity:1}85%{opacity:1}100%{opacity:0;transform:translateY(-119px)}}
+@keyframes lektrus-bio-flagellum{from{transform:rotate(-12deg) scaleX(.89)}to{transform:rotate(13deg) scaleX(1.09)}}
+@keyframes lektrus-bio-sway{from{transform:rotate(-4.5deg)}to{transform:rotate(5deg)}}
+@keyframes lektrus-bio-moss-sway{from{transform:rotate(-1.8deg)}to{transform:rotate(2.8deg)}}
+@keyframes lektrus-bio-sting{0%{stroke-dashoffset:150;opacity:.3}14%{opacity:1}76%,100%{stroke-dashoffset:0;opacity:1}}
+@keyframes lektrus-bio-sting-flash{0%,100%{opacity:0;transform:scale(.6)}25%{opacity:1;transform:scale(1.2)}}
+@keyframes lektrus-bio-spore-fly{0%{opacity:0;transform:translate(0,0) scale(.6)}16%{opacity:1}83%{opacity:.9}100%{opacity:0;transform:translate(var(--bio-spore-x),var(--bio-spore-y)) scale(.8)}}
+@keyframes lektrus-bio-capsule-lift{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes lektrus-bio-cilium{from{transform:rotate(-10deg) scaleX(.9)}to{transform:rotate(12deg) scaleX(1.1)}}
+@keyframes lektrus-bio-trail{to{stroke-dashoffset:-48}}
+@keyframes lektrus-bio-light-fade{from{opacity:.18}to{opacity:.82}}
+@keyframes lektrus-bio-spiral-highlight{from{opacity:.35;stroke-width:5px}to{opacity:.9;stroke-width:9px}}
+@keyframes lektrus-bio-bridge{from{stroke-dashoffset:68;opacity:.3}to{stroke-dashoffset:0;opacity:1}}
+@keyframes lektrus-bio-gamete-flow{0%{opacity:0;transform:translateY(0) scale(.75)}18%{opacity:1}78%{opacity:1}100%{opacity:0;transform:translateY(70px) scale(.75)}}
+@keyframes lektrus-bio-zygote-grow{0%{opacity:0;transform:scale(.15)}100%{opacity:1;transform:scale(1)}}
+@media(max-width:560px){.lektrus-bio-alt-motion-console{flex-wrap:wrap}.lektrus-bio-alt-motion-button{min-height:42px;width:100%}}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-bio-alt-plate,.lektrus-bio-motion *{animation:none!important;transition:none!important}
+ .lektrus-bio-motion-discharge{stroke-dashoffset:0}
+ .lektrus-bio-motion-spore{opacity:0}
+ .lektrus-bio-motion-gamete{opacity:0}
+ .lektrus-bio-motion-zygote{opacity:1}
+}
