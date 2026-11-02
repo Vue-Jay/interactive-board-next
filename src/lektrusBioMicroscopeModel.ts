@@ -154,10 +154,20 @@ export function validBioMicroscope(value:unknown):value is BioMicroscopeDiagram{
 /** The visual family follows the *entire* ancestor chain, not a generic
  * organism-wide cell. A neuron, a photoreceptor and a leaf cell must not
  * be presented as the same microscopic specimen. */
-export type BioVisualKey="lungs"|"heart"|"brain"|"eye"|"muscle"|"gut"|"flower"|"root"|"leaf"|"wood"|"other";
+export type BioVisualKey="lungs"|"heart"|"brain"|"eye"|"muscle"|"gut"|"flower"|"root"|"leaf"|"wood"|"gills"|"lateral-line"|"trachea"|"compound-eye"|"foot"|"mantle"|"needle"|"microsporangium"|"frond"|"sporangium"|"anther"|"skin"|"other";
 export function bioVisualKey(node:BioNode):BioVisualKey{
  const p=node.id.toLocaleLowerCase("ru-RU");
  if(p==="sunflower/побег")return "leaf";
+ const special:Record<string,BioVisualKey>={
+  "perch/дыхательная-система":"gills","perch/система-боковой-линии":"lateral-line",
+  "bee/трахейная-система":"trachea","bee/зрительная-система":"compound-eye",
+  "snail/двигательная-система":"foot","snail/дыхательная-система":"mantle",
+  "pine/побег":"needle","pine/мужские-репродуктивные-побеги":"microsporangium",
+  "fern/листья-спорофита":"frond","fern/спороносные-структуры":"sporangium",
+  "wheat/генеративные-органы":"anther",
+  "sparrow/покровная-система":"skin","frog/покровная-система":"skin"
+ };
+ for(const [start,key] of Object.entries(special))if(p===start||p.startsWith(start+"/"))return key;
  if(p==="oak/побег")return "wood";
  if(p.includes("дыхатель")||p.includes("лёгк")||p.includes("пневмоцит"))return "lungs";
  if(p.includes("кровенос")||p.includes("сердц")||p.includes("кардиомиоцит"))return "heart";
@@ -179,6 +189,17 @@ export function bioChildSpot(
 ):BioImageSpot{
  if(parent.level==="organism"){
   const key=bioVisualKey(child);
+  const locations:Partial<Record<BioOrganism,Record<string,BioImageSpot>>>={
+   sparrow:{lungs:{x:255,y:168},skin:{x:305,y:128},eye:{x:153,y:112}},
+   perch:{gills:{x:169,y:173},"lateral-line":{x:275,y:167},heart:{x:224,y:220}},
+   frog:{skin:{x:308,y:164},lungs:{x:241,y:185},eye:{x:186,y:103}},
+   bee:{trachea:{x:293,y:193},"compound-eye":{x:153,y:150},muscle:{x:235,y:139}},
+   snail:{foot:{x:249,y:250},eye:{x:165,y:96},mantle:{x:287,y:177}},
+   pine:{needle:{x:307,y:117},root:{x:240,y:286},microsporangium:{x:192,y:154}},
+   fern:{frond:{x:306,y:120},sporangium:{x:191,y:188},root:{x:236,y:289}},
+   wheat:{leaf:{x:313,y:180},root:{x:237,y:293},anther:{x:236,y:61}}
+  };
+  if(locations[organism])return locations[organism]![key]??{x:160+index*145,y:182};
   const animal:Record<string,BioImageSpot>=organism==="human"?{
    lungs:{x:250,y:144},heart:{x:228,y:183},brain:{x:238,y:60}
   }:{eye:{x:195,y:160},muscle:{x:298,y:213},gut:{x:238,y:225}};
@@ -207,13 +228,30 @@ export const BIO_REFERENCES={
  roots:{title:"OpenStax Biology 2e · Roots",url:"https://openstax.org/books/biology-2e/pages/30-3-roots"},
  stem:{title:"OpenStax Biology · Stems (xylem)",url:"https://openstax.org/books/biology/pages/30-2-stems"},
  alveoli:{title:"NCBI Bookshelf · Histology, Alveolar Cells",url:"https://www.ncbi.nlm.nih.gov/books/NBK557542/"},
- sunflower:{title:"University of Helsinki · Sunflower inflorescences",url:"https://www.helsinki.fi/en/news/life-sciences/researchers-determine-why-spirals-gerbera-inflorescences-follow-fibonacci-sequence"}
+ sunflower:{title:"University of Helsinki · Sunflower inflorescences",url:"https://www.helsinki.fi/en/news/life-sciences/researchers-determine-why-spirals-gerbera-inflorescences-follow-fibonacci-sequence"},
+ insect:{title:"OpenStax Biology 2e · Systems of Gas Exchange",url:"https://openstax.org/books/biology-2e/pages/39-1-systems-of-gas-exchange"},
+ fish:{title:"OpenStax Biology 2e · Systems of Gas Exchange",url:"https://openstax.org/books/biology-2e/pages/39-1-systems-of-gas-exchange"},
+ bird:{title:"OpenStax Biology 2e · Breathing",url:"https://openstax.org/books/biology-2e/pages/39-3-breathing"},
+ amphibian:{title:"OpenStax Biology 2e · Breathing",url:"https://openstax.org/books/biology-2e/pages/39-3-breathing"},
+ mollusc:{title:"British Geological Survey · Gastropods",url:"https://www.bgs.ac.uk/discovering-geology/fossils-and-geological-time/gastropods/"},
+ conifer:{title:"OpenStax Biology 2e · Gymnosperms",url:"https://openstax.org/books/biology-2e/pages/26-2-gymnosperms"},
+ needle:{title:"OpenStax Biology 2e · Leaves",url:"https://openstax.org/books/biology-2e/pages/30-4-leaves"},
+ fern:{title:"OpenStax Biology 2e · Seedless Vascular Plants",url:"https://openstax.org/books/biology-2e/pages/25-4-seedless-vascular-plants"}
 } as const;
 function bioReviewedNode(
  organism:BioOrganism,id:string,name:string,description:string
 ):Pick<BioNode,"name"|"description"|"source">{
  const parts=id.split("/");
  const tail=parts.at(-1)??"";
+ const scientificSource=organism==="sparrow"&&id.includes("/дыхательная-")?BIO_REFERENCES.bird
+  :organism==="perch"&&id.includes("/дыхательная-")?BIO_REFERENCES.fish
+  :organism==="frog"&&id.includes("/дыхательная-")?BIO_REFERENCES.amphibian
+  :organism==="bee"&&id.includes("/трахейная-")?BIO_REFERENCES.insect
+  :organism==="snail"&&id.includes("/дыхательная-")?BIO_REFERENCES.mollusc
+  :organism==="pine"&&id.includes("/побег")?BIO_REFERENCES.needle
+  :organism==="pine"&&id.includes("/мужские-")?BIO_REFERENCES.conifer
+  :organism==="fern"&&id.includes("/спороносные-")?BIO_REFERENCES.fern:undefined;
+ if(scientificSource)return {name,description,source:scientificSource};
  const rootHair=tail==="корневой-волосок"||tail==="клетка-корневого-волоска";
  if(rootHair)return {
   name:"Клетка ризодермы с корневым волоском",
@@ -322,5 +360,261 @@ export function bioCellFeatures(node:BioNode):BioCellFeature[]{
   feature("Клеточная стенка","Образует механическую оболочку поверхностной клетки."),
   feature("Вакуоль","Может содержать растворённые пигменты и другие вещества."),
   feature("Кутикула","Восковидный наружный слой защищает надземную поверхность.")];
- return [];
+ return ADDITIONAL_CELL_FEATURES[node.name]??[];
 }
+
+/** Curated descriptions for additional specimen-specific cellular structures. */
+const ADDITIONAL_CELL_FEATURES:Record<string,BioCellFeature[]>={
+ "Клетка газообменного эпителия": [
+  {
+   "name": "Тонкая цитоплазма",
+   "description": "Сокращает путь диффузии между воздухом и кровью."
+  },
+  {
+   "name": "Базальная мембрана",
+   "description": "Участвует в воздушно-кровяном барьере."
+  },
+  {
+   "name": "Ядро",
+   "description": "Сохраняется в живой клетке."
+  }
+ ],
+ "Кератиноцит": [
+  {
+   "name": "Кератиновые нити",
+   "description": "Обеспечивают прочность покрова."
+  },
+  {
+   "name": "Контакты клеток",
+   "description": "Связывают соседние клетки эпидермиса."
+  },
+  {
+   "name": "Дифференцировка",
+   "description": "При ороговении наружные клетки теряют ядро."
+  }
+ ],
+ "Колбочка": [
+  {
+   "name": "Наружный сегмент",
+   "description": "Содержит светочувствительные пигменты."
+  },
+  {
+   "name": "Внутренний сегмент",
+   "description": "Поддерживает обмен веществ клетки."
+  },
+  {
+   "name": "Синапс",
+   "description": "Передаёт сигнал нейронам сетчатки."
+  }
+ ],
+ "Эпителиальная клетка ламеллы": [
+  {
+   "name": "Тонкая поверхность",
+   "description": "Уменьшает путь диффузии газа."
+  },
+  {
+   "name": "Контакт с водой",
+   "description": "Апикальная мембрана обращена к воде."
+  },
+  {
+   "name": "Базальная поверхность",
+   "description": "Обращена к тканям с капиллярами."
+  }
+ ],
+ "Волосковая клетка": [
+  {
+   "name": "Стереоцилии",
+   "description": "Отклоняются при движении воды."
+  },
+  {
+   "name": "Киноцилия",
+   "description": "Определяет направление чувствительности."
+  },
+  {
+   "name": "Синапс",
+   "description": "Передаёт сигнал сенсорному нейрону."
+  }
+ ],
+ "Эпителиальная клетка лёгкого": [
+  {
+   "name": "Тонкая поверхность",
+   "description": "Участвует в обмене газов."
+  },
+  {
+   "name": "Клеточные контакты",
+   "description": "Поддерживают непрерывность эпителия."
+  },
+  {
+   "name": "Ядро",
+   "description": "Сохраняется в живой эпителиальной клетке."
+  }
+ ],
+ "Трахейная эпителиальная клетка": [
+  {
+   "name": "Кутикулярная интима",
+   "description": "Хитиновая выстилка обращена к просвету трахеи."
+  },
+  {
+   "name": "Ядро",
+   "description": "Живая клетка эпителия содержит ядро."
+  },
+  {
+   "name": "Клеточная мембрана",
+   "description": "Отделяет клетки от окружающих тканей."
+  }
+ ],
+ "Рабдомерный фоторецептор": [
+  {
+   "name": "Рабдомер",
+   "description": "Содержит светочувствительную мембрану."
+  },
+  {
+   "name": "Зрительный пигмент",
+   "description": "Поглощает свет."
+  },
+  {
+   "name": "Аксон",
+   "description": "Передаёт сигнал зрительной системе."
+  }
+ ],
+ "Гладкий миоцит": [
+  {
+   "name": "Актин и миозин",
+   "description": "Обеспечивают сокращение без поперечной исчерченности."
+  },
+  {
+   "name": "Удлинённая форма",
+   "description": "Позволяет укорачиваться при сокращении."
+  },
+  {
+   "name": "Ядро",
+   "description": "Обычно одно ядро."
+  }
+ ],
+ "Фоторецепторная клетка": [
+  {
+   "name": "Светочувствительный участок",
+   "description": "Регистрирует свет."
+  },
+  {
+   "name": "Преобразование сигнала",
+   "description": "Свет влияет на состояние мембраны."
+  },
+  {
+   "name": "Нервная связь",
+   "description": "Передаёт информацию нервной системе."
+  }
+ ],
+ "Покровная эпителиальная клетка": [
+  {
+   "name": "Апикальная поверхность",
+   "description": "Обращена в мантийную полость."
+  },
+  {
+   "name": "Клеточные контакты",
+   "description": "Связывают покровные клетки."
+  },
+  {
+   "name": "Ядро",
+   "description": "Живая клетка сохраняет ядро."
+  }
+ ],
+ "Клетка мезофилла хвои": [
+  {
+   "name": "Хлоропласты",
+   "description": "Осуществляют фотосинтез."
+  },
+  {
+   "name": "Стенка",
+   "description": "Содержит целлюлозу."
+  },
+  {
+   "name": "Вакуоль",
+   "description": "Поддерживает тургор."
+  }
+ ],
+ "Клетка с корневым волоском": [
+  {
+   "name": "Корневой волосок",
+   "description": "Вырост одной живой клетки."
+  },
+  {
+   "name": "Мембрана",
+   "description": "Регулирует поглощение."
+  },
+  {
+   "name": "Вакуоль",
+   "description": "Поддерживает водный баланс."
+  }
+ ],
+ "Микроспороцит": [
+  {
+   "name": "Диплоидное ядро",
+   "description": "Начинает мейоз с двойным набором хромосом."
+  },
+  {
+   "name": "Мейоз",
+   "description": "Даёт начало гаплоидным микроспорам."
+  },
+  {
+   "name": "Клеточная стенка",
+   "description": "Изменяется при формировании спор."
+  }
+ ],
+ "Клетка мезофилла вайи": [
+  {
+   "name": "Хлоропласты",
+   "description": "Участвуют в фотосинтезе."
+  },
+  {
+   "name": "Стенка",
+   "description": "Поддерживает форму клетки."
+  },
+  {
+   "name": "Вакуоль",
+   "description": "Поддерживает тургор."
+  }
+ ],
+ "Материнская клетка спор": [
+  {
+   "name": "Диплоидное ядро",
+   "description": "Содержит набор хромосом спорофита."
+  },
+  {
+   "name": "Мейоз",
+   "description": "Даёт начало гаплоидным спорам."
+  },
+  {
+   "name": "Образование спор",
+   "description": "Споры дают начало гаметофиту."
+  }
+ ],
+ "Клетка коровой паренхимы": [
+  {
+   "name": "Цитоплазма",
+   "description": "Участвует в обмене веществ."
+  },
+  {
+   "name": "Стенка",
+   "description": "Ограничивает клетку."
+  },
+  {
+   "name": "Вакуоль",
+   "description": "Может запасать растворённые вещества."
+  }
+ ],
+ "Клетка тапетума": [
+  {
+   "name": "Питательная функция",
+   "description": "Поддерживает развитие микроспор."
+  },
+  {
+   "name": "Секреция",
+   "description": "Участвует в формировании оболочки пыльцы."
+  },
+  {
+   "name": "Исчезновение слоя",
+   "description": "Обычно разрушается к зрелости пыльцы."
+  }
+ ]
+};
