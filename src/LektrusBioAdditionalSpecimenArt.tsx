@@ -50,6 +50,21 @@ function Eye({snail=false}:{snail?:boolean}){
   <Label x={461} y={314} pointX={287} pointY={182} caption="Хрусталик" right/>
  </g>;
 }
+/** Molluscan rhabdomeric photoreceptors, NOT vertebrate rods or cones. */
+function SnailPhotoreceptorTissue(){return <g>
+ <path d="M46 91Q220 62 438 91V264H46Z" fill="#e6d4be" stroke="#b29589" strokeWidth="7"/>
+ <path d="M59 101H425" stroke="#d2e4d0" strokeWidth="16" strokeLinecap="round"/>
+ {Array.from({length:10},(_,i)=>{const x=73+i*35;return <g key={i}>
+  <path d={`M${x-14} 138Q${x} 117 ${x+14} 140V239Q${x} 251 ${x-14} 239Z`}
+   fill={i%2?"#e7beae":"#edd5be"} stroke="#b78d86" strokeWidth="3"/>
+  <ellipse cx={x} cy={197} rx="9" ry="14" fill={nuc}/>
+  {Array.from({length:5},(_,j)=><path key={j}
+   d={`M${x-12+j*6} 141v-24`} stroke="#73a98c" strokeWidth="3" strokeLinecap="round"/>)}
+  <path d={`M${x} 248v30`} stroke="#a88caa" strokeWidth="4" fill="none"/>
+ </g>})}
+ <Label x={18} y={35} pointX={206} pointY={125} caption="Рабдомерные микроворсинки"/>
+ <Label x={466} y={319} pointX={259} pointY={236} caption="Фоторецепторные клетки" right/>
+ </g>}
 function Skin({tissue=false}:{tissue?:boolean}){
  return <g>
   <rect x="47" y="70" width="386" height="234" rx="17" fill="#e6d6c3" stroke="#b5a18e" strokeWidth="6"/>
@@ -235,7 +250,7 @@ function picture(kind:BioExtraSpecimenKind,tissue:boolean):ReactNode{
   case "frog-retina":return tissue?<RetinaLayers frog/>:<Eye/>;
   case "bee-trachea":return <Trachea tissue={tissue}/>;
   case "bee-flight-muscle":return <Muscle tissue={tissue}/>;
-  case "snail-eye":return tissue?<RetinaLayers frog/>:<Eye snail/>;
+  case "snail-eye":return tissue?<SnailPhotoreceptorTissue/>:<Eye snail/>;
   case "snail-mantle":return <Mantle tissue={tissue}/>;
   case "pine-root":return <Root tissue={tissue}/>;
   case "pine-microsporangium":return <Sporangium tissue={tissue}/>;
