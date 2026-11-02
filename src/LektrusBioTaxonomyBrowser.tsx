@@ -1,6 +1,6 @@
 import {useMemo,useState} from "react";
 import type {BioOrganism} from "./lektrusBioMicroscopeModel";
-import {BIO_TAXA,BIO_TAXONOMY_SOURCES,bioTaxaFor,searchBioTaxa,type BioKingdom,type BioTaxon} from "./lektrusBioTaxonomy";
+import {BIO_TAXONOMY_SOURCES,bioTaxaFor,searchBioTaxa,type BioKingdom,type BioTaxon} from "./lektrusBioTaxonomy";
 
 type Props={onExplore:(organism:BioOrganism)=>void;onBack:()=>void};
 const symbols:Record<string,string>={
