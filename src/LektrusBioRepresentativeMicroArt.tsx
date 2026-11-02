@@ -4,7 +4,7 @@
  */
 import type {ReactNode} from "react";
 import type {BioRepresentativeMicroPlate} from "./lektrusBioRepresentativeMicroplates";
-const ink="#355d55",purple="#9876a8",red="#bf7a81",green="#67996d";
+const ink="#355d55";
 function N({x=241,y=187,r=14}:{x?:number;y?:number;r?:number}){
  return <g><ellipse cx={x} cy={y} rx={r} ry={r*.72} fill="#b7a4c9" stroke="#866fa2" strokeWidth="2"/>
  <circle cx={x-2} cy={y} r="3" fill="#846da0"/></g>;
