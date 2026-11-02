@@ -199,7 +199,7 @@ function Tissue({keyName}:{keyName:BioVisualKey}):ReactNode{
   {keyName==="lateral-line"&&<path d="M84 86Q115 22 148 88M189 86Q224 23 253 88M300 86Q338 22 376 88" stroke="#6c9e95" strokeWidth="6" fill="none"/>}
  </g>;
 }
-function Cell({node,keyName}:{node:BioNode;keyName:BioVisualKey}):ReactNode{
+function Cell({keyName}:{keyName:BioVisualKey}):ReactNode{
  const plant=["needle","frond","sporangium","microsporangium","anther","leaf","root"].includes(keyName);
  const gamete=keyName==="sporangium"||keyName==="microsporangium"||keyName==="anther";
  const photoreceptor=keyName==="eye"||keyName==="compound-eye";
@@ -260,5 +260,5 @@ export default function LektrusBioSpeciesArt({organism,node}:{organism:BioOrgani
  </g>;
  if(node.level==="organ")return <Structure organism={organism} keyName={keyName}/>;
  if(node.level==="tissue")return <Tissue keyName={keyName}/>;
- return <Cell node={node} keyName={keyName}/>;
+ return <Cell keyName={keyName}/>;
 }
