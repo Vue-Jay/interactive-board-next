@@ -150,6 +150,38 @@ export function bioZoomPath(nodes:BioNode[],id:string):BioNode[]{
  while(current){result.unshift(current);current=current.parentId?byId.get(current.parentId):undefined;}
  return result;
 }
+/** Immediate parent overview for a real atlas path. A 480×330 spot is a
+ * location on the PARENT illustration, never a fake global physical coordinate
+ * for multiple histology samples. Does not alter stored node IDs or exercises.
+ */
+export type BioZoomContext={
+ parent:BioNode;child:BioNode;spot:BioImageSpot;parentLevel:number;
+};
+export function bioZoomParentContext(
+ organism:BioOrganism,nodes:BioNode[],current:BioNode
+):BioZoomContext|null{
+ if(!current.parentId)return null;
+ const parent=nodes.find(node=>node.id===current.parentId);
+ if(!parent)return null;
+ const children=bioChildren(nodes,parent.id);
+ const index=children.findIndex(node=>node.id===current.id);
+ if(index<0)return null;
+ const spot=bioZoomPoint(organism,parent,current,index,children.length);
+ return {parent,child:current,spot,parentLevel:bioZoomPath(nodes,parent.id).length};
+}
+/** Rectangle of the actually visible parent-world field, including panning.
+ * Values are in the 480×330 canonical stage, always inside the image.
+ * Used by the anatomical navigator, not a calibrated optical field of view.
+ */
+export function bioZoomVisibleField(camera:BioZoomCamera):{
+ x:number;y:number;width:number;height:number
+}{
+ const bounded=bioZoomBound(camera);
+ const a=bioZoomToWorld(bounded,{x:0,y:0});
+ const b=bioZoomToWorld(bounded,{x:480,y:330});
+ return {x:a.x,y:a.y,width:b.x-a.x,height:b.y-a.y};
+}
+
 export function bioZoomChildCandidates(nodes:BioNode[],node:BioNode):BioNode[]{
  return bioChildren(nodes,node.id);
 }
