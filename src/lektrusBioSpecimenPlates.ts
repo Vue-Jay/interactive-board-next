@@ -2,7 +2,7 @@
  * Only exact reviewed organ/tissue names are mapped; unrelated organs
  * continue to use their previous illustrations. No real optical scale.
  */
-import type {BioOrganism,BioNode,BioLevel} from "./lektrusBioMicroscopeModel";
+import type {BioOrganism,BioNode} from "./lektrusBioMicroscopeModel";
 export type BioSpecimenPlateKind="organ"|"tissue";
 export type BioSpecimenPlateInfo={
  id:string;organism:BioOrganism;level:BioSpecimenPlateKind;
