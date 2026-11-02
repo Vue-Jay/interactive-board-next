@@ -122,7 +122,7 @@ function BioAlternativeIllustration({species,node,children,onSelect}:{
 }
 export default function LektrusBioAlternativeView({speciesId,onBack}:Props){
  const species=BIO_ALTERNATIVE_SPECIES[speciesId];
- const [currentId,setCurrentId]=useState(speciesId);
+ const [currentId,setCurrentId]=useState<string>(speciesId);
  useEffect(()=>setCurrentId(speciesId),[speciesId]);
  const node=useMemo(()=>species.nodes.find(n=>n.id===currentId)??species.nodes[0],[species,currentId]);
  const children=bioAltChildren(species,node.id);
