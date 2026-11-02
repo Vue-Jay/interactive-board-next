@@ -3,6 +3,8 @@
  * All views use explanatory geometry without a physical scale bar.
  */
 import type {ReactNode} from "react";
+import LektrusBioRepresentativeMicroArt from "./LektrusBioRepresentativeMicroArt";
+import {bioRepresentativeMicroFor} from "./lektrusBioRepresentativeMicroplates";
 import type {BioNode,BioOrganism} from "./lektrusBioMicroscopeModel";
 import {bioCellPlateFor} from "./lektrusBioCellPlates";
 import {bioAdditionalCellPlateFor} from "./lektrusBioAdditionalCellPlates";
@@ -116,10 +118,12 @@ export default function LektrusBioCellDetail({
  const plate=bioCellPlateFor(organism,node);
  if(!plate)return null;
  const extra=bioAdditionalCellPlateFor(organism,node);
+ const representative=bioRepresentativeMicroFor(organism,node);
  const Picture=extra?null:pictures[organism];
  if(!extra&&!Picture)return null;
  return <g data-bio-cell-plate={organism}>
-  {extra?<LektrusBioAdditionalCellArt kind={extra.kind}/>:Picture?<Picture/>:null}
+  {representative?<LektrusBioRepresentativeMicroArt plate={representative}/>:
+   extra?<LektrusBioAdditionalCellArt kind={extra.kind}/>:Picture?<Picture/>:null}
   {onFeatureSelect&&Object.entries(plate.landmarks).map(([name,pos],i)=>
    <g key={name} role="button" tabIndex={0}
     className={"lektrus-bio-cell-hotspot"+(selectedFeature===name?" is-selected":"")}
