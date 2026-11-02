@@ -3,13 +3,13 @@
  * incomplete structures and reactions with a non-unique nullspace require review.
  */
 export type EquationSpecies={formula:string;coefficient:number;indicator:""|"↑"|"↓"};
-export type EquationArrow="→"|"⇌"|"=";
+export type EquationArrow="→"|"⇌"|"="|"≠";
 export type EquationDraft={left:EquationSpecies[];right:EquationSpecies[];arrow:EquationArrow};
 export type BalanceResult={status:"empty"|"incomplete"|"invalid"|"unsupported"|"balanced"|"unbalanced";
  message:string;coefficients?:number[]};
 export const blankSpecies=():EquationSpecies=>({formula:"",coefficient:1,indicator:""});
 // A bare = in organic condensed structures (CH2=CH2) is a bond, not a reaction arrow.
-const arrows=/(⇌|⇄|↔|→|⟶|⟹|->)|(?<=\s)=(?=\s)/;
+const arrows=/(⇌|⇄|↔|→|⟶|⟹|->)|(?<=\s)(?:=|≠)(?=\s)/;
 const unicodeSub="₀₁₂₃₄₅₆₇₈₉";
 const elements=new Set(("H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr "+
 "Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu "+
@@ -17,7 +17,7 @@ const elements=new Set(("H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc T
 "Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og").split(" "));
 export const normalizeFormulaInput=(s:string)=>s.replace(/[₀-₉]/g,n=>String(unicodeSub.indexOf(n)))
  .replace(/[（【]/g,"(").replace(/[）】]/g,")").replace(/[［]/g,"[").replace(/[］]/g,"]").trim();
-function arrowValue(s:string):EquationArrow{return s==="⇌"||s==="⇄"||s==="↔"?"⇌":s==="="? "=":"→";}
+function arrowValue(s:string):EquationArrow{return s==="⇌"||s==="⇄"||s==="↔"?"⇌":s==="≠"?"≠":s==="="? "=":"→";}
 export function splitEquationSide(text:string):string[]{
  const parts:string[]=[];let current="",depth=0;
  for(let i=0;i<text.length;i++){
