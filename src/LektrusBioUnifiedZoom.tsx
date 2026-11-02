@@ -20,7 +20,7 @@ type Ghost={node:BioNode;camera:BioZoomCamera;direction:"in"|"out"};
 const identity=(a:XY,b:XY)=>Math.hypot(a.x-b.x,a.y-b.y);
 export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism}){
  const nodes=useMemo(()=>bioNodes(organism),[organism]);
- const [currentId,setCurrentId]=useState(organism);
+ const [currentId,setCurrentId]=useState<string>(organism);
  const current=nodes.find(n=>n.id===currentId)??nodes[0];
  const [camera,setCamera]=useState<BioZoomCamera>(BIO_ZOOM_INITIAL);
  const cameraRef=useRef<BioZoomCamera>(BIO_ZOOM_INITIAL);
