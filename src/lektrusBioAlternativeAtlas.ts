@@ -21,7 +21,7 @@ export const BIO_ALT_SOURCES={
  hydra:{title:"OpenStax Biology 2e · Phylum Cnidaria",url:"https://openstax.org/books/biology-2e/pages/28-2-phylum-cnidaria"},
  moss:{title:"OpenStax Biology 2e · Bryophytes",url:"https://openstax.org/books/biology-2e/pages/25-3-bryophytes"},
  chlamydomonas:{title:"NCBI · Chlamydomonas eyespot assembly",url:"https://pmc.ncbi.nlm.nih.gov/articles/PMC3811559/"},
- spirogyra:{title:"NIOS Biology · Spirogyra structure and conjugation",url:"https://nios.ac.in/media/documents/SrSec314NEW/314_Biology_Eng/314_Biology_Eng_Lesson19.pdf"}
+ spirogyra:{title:"NIOS Biology · Spirogyra structure and conjugation",url:"https://allenwebsite-general.s3.ap-south-1.amazonaws.com/nios/download/sr-secondary/Biology_314_Book2.pdf"}
 } satisfies Record<BioAlternativeOrganism,BioAltSource>;
 const n=(id:string,parentId:string|null,kind:BioAltKind,name:string,description:string,x?:number,y?:number,ploidy?:"n"|"2n"):BioAltNode=>({
  id,parentId,kind,name,description,...(x!==undefined&&y!==undefined?{spot:{x,y}}:{}),...(ploidy?{ploidy}: {})
@@ -58,6 +58,7 @@ const moss:BioAltNode[]=[
  n("moss/gametophyte/leaf/lamella/cell","moss/gametophyte/leaf/lamella","cell","Фотосинтезирующая клетка","Содержит хлоропласты; является клеткой гаметофита с гаплоидным ядром.",246,168,"n"),
  n("moss/gametophyte/rhizoid","moss/gametophyte","structure","Ризоиды","Многоклеточные нити для закрепления; не настоящие корни и не корневые волоски.",223,267,"n"),
  n("moss/gametophyte/gametangium","moss/gametophyte","reproduction","Гаметангии","Антеридии образуют сперматозоиды, архегонии содержат яйцеклетки; для оплодотворения нужна вода.",231,61,"n"),
+ n("moss/gametophyte/gametangium/zygote","moss/gametophyte/gametangium","reproduction","Зигота (2n)","Образуется после слияния гамет в архегонии и начинает развитие спорофита.",238,169,"2n"),
  n("moss/sporophyte","moss","generation","Спорофит (2n)","Развивается из зиготы на женском гаметофите; состоит из стопы, ножки и коробочки.",320,134,"2n"),
  n("moss/sporophyte/seta","moss/sporophyte","structure","Ножка спорофита (сета)","Поддерживает коробочку и проводит вещества от основания спорофита.",229,209,"2n"),
  n("moss/sporophyte/capsule","moss/sporophyte","structure","Коробочка (спорангий)","Содержит материнские клетки спор; в ходе мейоза образуются гаплоидные споры.",245,95,"2n"),
@@ -93,7 +94,7 @@ export const BIO_ALTERNATIVE_SPECIES:Record<BioAlternativeOrganism,BioAlternativ
   {id:"spore",title:"Спора (n)",description:"После мейоза формируется гаплоидная спора.",nodeId:"moss/spore",ploidy:"n"},
   {id:"protonema",title:"Протонема (n)",description:"Спора прорастает в нитевидную протонему.",nodeId:"moss/protonema",ploidy:"n"},
   {id:"gametophyte",title:"Гаметофит (n)",description:"Развиваются листостебельные гаметофоры и гаметы.",nodeId:"moss/gametophyte",ploidy:"n"},
-  {id:"zygote",title:"Оплодотворение → зигота (2n)",description:"Сперматозоид в воде достигает яйцеклетки; начинается диплоидная стадия.",nodeId:"moss/gametophyte/gametangium",ploidy:"2n"},
+  {id:"zygote",title:"Оплодотворение → зигота (2n)",description:"Сперматозоид в воде достигает яйцеклетки; начинается диплоидная стадия.",nodeId:"moss/gametophyte/gametangium/zygote",ploidy:"2n"},
   {id:"sporophyte",title:"Спорофит (2n)",description:"На гаметофите развивается ножка с коробочкой.",nodeId:"moss/sporophyte",ploidy:"2n"},
   {id:"meiosis",title:"Мейоз → споры (n)",description:"В коробочке образуются гаплоидные споры.",nodeId:"moss/sporophyte/capsule",ploidy:"n"}
  ]},
