@@ -1355,6 +1355,46 @@ console.log("12 new exact water measurements; Li2SO4 at 20 C; no invented hydrat
 // formula-equivalent pure-water tables. Exact source temperatures only.
 // Na2SO4 passes the decahydrate transition near 32.4 C; CuCl2 and
 // Al2(SO4)3 have unverified equilibrium hydrated solids. No dry crystals.
+
+// Apelblat & Manzurola (1999), J. Chem. Thermodynamics 31, Table 1:
+// independent EDTA saturation measurements of calcium acetate in PURE
+// water. Original molality and original Kelvin temperature are retained.
+// The paper did NOT identify the equilibrium mono-/di-/hemihydrate.
+const caAcetateMolalities=[
+ [7,2.2893],[10,2.2657],[16,2.2350],[20,2.1971],[25,2.1738],
+ [30,2.1420],[35,2.1227],[42,2.1076],[45,2.0886],[50,2.0762],
+ [55,2.0738],[60,2.0704],[65,2.0696],[70,2.0648],[75,2.0614]
+];
+const caAcetateSource="https://www.ic.unicamp.br/~stolfi/links/programs/c/NEUROMAT/nmeeg_filter/projects/chemistry/gawklib/Metal_Acetates_.pdf";
+for(const [t,m] of caAcetateMolalities){
+ const row=pureWaterMeasurements.find(x=>x.formula==="Ca(CH3COO)2"&&
+  x.temperatureC===t);
+ assert.ok(row,"Missing 1999 calcium acetate source at "+t+" C");
+ assert.equal(row.sourceUrl,caAcetateSource);
+ assert.equal(row.originalUnit,"mol/kg-water");
+ assert.equal(row.sourceMolarMassGPerMol,158.17);
+ approximately(row.sourceTemperatureKelvin,t+273.15,1e-10);
+ approximately(row.sourceValue,m,1e-10);
+ assert.ok(row.sourceCondition.includes("hydrate"));
+ const converted=m*158.17/10;
+ approximately(literature.labMeasuredSolubilityGPer100gWater(row),converted,1e-9);
+ approximately(schoolMaterial.labSingleSaltSolubilityGPer100gWater(
+  "Ca(CH3COO)2",t),converted,1e-9);
+ assert.equal(schoolMaterial.labSchoolSolubilityGPer100gWater(
+  "Ca(CH3COO)2",t).estimated,false);
+}
+assert.equal(caAcetateMolalities.length,15);
+for(const t of [1,8,19,21,24,26,37,41,43,58,61,74,76,90]){
+ assert.equal(schoolMaterial.labSingleSaltSolubilityGPer100gWater(
+  "Ca(CH3COO)2",t),undefined,
+  "Do not interpolate calcium acetate through unknown hydrate phases: "+t);
+}
+const caAcetateInventory={speciesMol:{H2O:1,"Ca(CH3COO)2":.5},solidMol:{}};
+assert.equal(schoolMaterial.labEquilibrateSingleSaltCrystals(
+ caAcetateInventory,20,true,labMolarMass),undefined);
+assert.deepEqual(caAcetateInventory.solidMol,{});
+console.log("15 original mol/kg calcium acetate observations, 20 C coverage, hydrate guards PASS");
+
 const newSourceSeries=[
  {formula:"CuCl2",source:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=712",
   values:[[0,69.2],[10,71.5],[20,74.5],[25,76.4],[30,78.3],
@@ -1419,11 +1459,16 @@ for(const x of pureWaterMeasurements){
  assert.ok(x.sourceUrl.startsWith("https://"));
  assert.ok(labMolarMass(x.formula)>0);
  if(x.sourceTemperatureKelvin!==undefined){
-  assert.equal(x.sourceTemperatureKelvin,293);
-  assert.equal(x.temperatureC,19.85,
-   "293 K is 19.85°C, not an exact 20°C point");
   approximately(x.temperatureC+273.15,x.sourceTemperatureKelvin,1e-9);
-  assert.equal(x.originalUnit,"g/100g-water");
+  if(x.sourceTemperatureKelvin===293){
+   assert.equal(x.temperatureC,19.85,
+    "293 K is 19.85°C, not an exact 20°C point");
+   assert.equal(x.originalUnit,"g/100g-water");
+  }
+ }
+ if(x.originalUnit==="mol/kg-water"){
+  assert.ok(Math.abs(labMolarMass(x.formula)-x.sourceMolarMassGPerMol)<.05,
+   "Source molality mass must agree with formula parser");
  }
  const normalized=literature.labMeasuredSolubilityGPer100gWater(x);
  assert.ok(Number.isFinite(normalized)&&normalized>0);
