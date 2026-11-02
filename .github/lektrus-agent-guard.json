@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "project": "Lektrus",
+  "repository": "Vue-Jay/interactive-board-next",
+  "default_branch": "main",
+  "execution": {
+    "environment": "ChatGPT with GitHub connector",
+    "preferred_route": "functions.exec",
+    "discovery_expression": "ALL_TOOLS.filter(t => t.name.startsWith('mcp__GitHub__'))",
+    "live_probe": "mcp__GitHub__get_repo",
+    "live_probe_arguments": {
+      "repository_full_name": "Vue-Jay/interactive-board-next"
+    },
+    "read_probe": "mcp__GitHub__fetch_file",
+    "read_probe_arguments": {
+      "repository_full_name": "Vue-Jay/interactive-board-next",
+      "path": "README.md",
+      "ref": "main"
+    }
+  },
+  "required_actions": [
+    "discover_github_tools_before_local_files",
+    "verify_connection_by_live_github_call",
+    "inspect_repository_file_via_connector",
+    "write_changes_via_connector_when_authorized",
+    "verify_changes_and_report_branch_commit_tests"
+  ],
+  "forbidden_inferences": [
+    "local_checkout_missing_means_github_unavailable",
+    "shell_git_unavailable_means_github_connector_unavailable",
+    "one_failed_transport_proves_all_github_transports_unavailable",
+    "public_unauthenticated_http_proves_authenticated_write_access",
+    "prior_turn_access_proves_current_turn_access",
+    "github_error_without_live_tool_attempt"
+  ],
+  "failure_report": {
+    "require_current_turn_live_attempt": true,
+    "require_exact_tool_name_and_error": true,
+    "require_check_of_other_available_github_tools": true,
+    "cannot_claim_missing_from_local_directory_only": true,
+    "never_claim_committed_without_github_commit_receipt": true
+  },
+  "policy_files": [
+    "AGENTS.md",
+    ".github/copilot-instructions.md",
+    "docs/development/github-access-preflight.md"
+  ]
+}
