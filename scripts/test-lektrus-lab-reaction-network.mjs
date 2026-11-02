@@ -1610,11 +1610,11 @@ for(const [temp,raw,waterDensity] of [
  assert.equal(registryProps.labSubstanceProperties(id,temp)
   .binaryCrystallizationUnsupported,true);
 }
-for(const temp of [1,20,50,99]){
+for(const temp of [1,19,21,26,51,99]){
  assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
   "Ca(CH3COO)2",temp),undefined,"Calcium acetate interpolated through missing data");
 }
-assert.equal(registryProps.labSubstanceProperties("Ca(CH3COO)2",20).solubilityKnown,false);
+assert.equal(registryProps.labSubstanceProperties("Ca(CH3COO)2",20).solubilityKnown,true);
 console.log("Six traceable 20C water solubilities plus isolated 0/100C calcium acetate points passed");
 
 // International Chemical Safety Cards and the Colorado DOT published
