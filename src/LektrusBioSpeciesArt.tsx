@@ -4,87 +4,13 @@
  * different for fish, insects, birds, molluscs, ferns and seed plants.
  */
 import type {ReactNode} from "react";
+import LektrusBioDetailedExtraSpecies from "./LektrusBioDetailedExtraSpecies";
 import type {BioNode,BioOrganism,BioVisualKey} from "./lektrusBioMicroscopeModel";
 import {bioVisualKey} from "./lektrusBioMicroscopeModel";
 const green="#4a8066",dark="#385c50",gold="#d1aa56",pink="#b87079";
 const extraSpecies=new Set<BioOrganism>(["sparrow","perch","frog","bee","snail","pine","fern","wheat"]);
 function Shell({organism}:{organism:BioOrganism}):ReactNode{
- switch(organism){
- case "sparrow":return <g>
-  <ellipse cx="247" cy="198" rx="101" ry="78" fill="#c6a27c" stroke="#886a52" strokeWidth="6"/>
-  <path d="M223 186Q292 128 335 186Q311 248 228 234Z" fill="#896b59" stroke="#745746" strokeWidth="5"/>
-  {Array.from({length:6},(_,i)=><path key={i} d={`M${241+i*14} 178q-2 35 36 57`} stroke="#d8b995" strokeWidth="4" fill="none"/>)}
-  <circle cx="155" cy="130" r="54" fill="#b69778" stroke="#886f55" strokeWidth="5"/>
-  <path d="M106 122L60 143L112 152" fill="#d6ab55" stroke="#946b38" strokeWidth="4"/>
-  <circle cx="145" cy="119" r="8" fill="#273833"/><circle cx="143" cy="116" r="2.5" fill="#fff"/>
-  <path d="M326 208L396 199L344 232Z" fill="#8a6b58"/>
-  <path d="M237 272l-13 42m41-40 12 39m-53 0-21 8m21-8 16 5m36-5 17 8" stroke="#ad7753" strokeWidth="6" fill="none" strokeLinecap="round"/>
- </g>;
- case "perch":return <g>
-  <path d="M95 172L39 99L39 251Z" fill="#d0ac63" stroke="#8e855b" strokeWidth="5"/>
-  <path d="M89 173Q203 67 361 122L432 174L360 225Q226 280 89 173Z" fill="#9bbe9f" stroke="#507967" strokeWidth="6"/>
-  <path d="M192 120L214 59L277 113M210 225L235 279L289 232" fill="#b7aa72" stroke="#7c825c" strokeWidth="5"/>
-  <path d="M313 133Q300 174 314 213" stroke="#608b70" strokeWidth="5" fill="none"/>
-  {Array.from({length:6},(_,r)=>Array.from({length:9},(_,i)=><path key={r+"-"+i} d={`M${170+i*17+r%2*9} ${139+r*13}q10 8 17 0`} fill="none" stroke="#dfe7ae" strokeWidth="2" opacity=".6"/>))}
-  <circle cx="356" cy="154" r="12" fill="#f6f6dc" stroke={dark} strokeWidth="3"/><circle cx="359" cy="153" r="6" fill="#343c39"/>
-  <path d="M405 183l-27 10" stroke="#7a7f63" strokeWidth="4"/><path d="M171 121Q148 177 173 223" stroke="#708574" strokeWidth="5" fill="none"/>
- </g>;
- case "frog":return <g>
-  <path d="M170 180Q98 207 78 278M312 177Q385 199 401 281M183 239L124 304M294 236L366 303" stroke="#719f69" strokeWidth="31" fill="none" strokeLinecap="round"/>
-  <ellipse cx="240" cy="192" rx="104" ry="100" fill="#7fb277" stroke="#508255" strokeWidth="6"/>
-  <ellipse cx="238" cy="239" rx="77" ry="51" fill="#c2d49d"/>
-  <path d="M156 163Q132 99 177 89Q223 80 238 122Q271 79 309 99Q349 121 314 171" fill="#86bd78" stroke="#508255" strokeWidth="6"/>
-  <circle cx="177" cy="116" r="20" fill="#e6d89b"/><circle cx="303" cy="116" r="20" fill="#e6d89b"/>
-  <circle cx="177" cy="114" r="10" fill="#334d41"/><circle cx="303" cy="114" r="10" fill="#334d41"/>
-  <path d="M214 164Q242 187 277 163" stroke="#476c54" strokeWidth="4" fill="none"/>
- </g>;
- case "bee":return <g>
-  <path d="M223 160Q171 55 238 59Q296 69 270 168M266 159Q304 65 358 92Q372 151 277 187" fill="#c5e2e5" opacity=".85" stroke="#79a9ac" strokeWidth="5"/>
-  <ellipse cx="314" cy="182" rx="88" ry="60" fill="#eac35a" stroke="#96783b" strokeWidth="6"/>
-  <path d="M273 132Q258 183 270 230M310 127Q290 182 309 239M345 141Q320 191 346 228" stroke="#544c3e" strokeWidth="18"/>
-  <ellipse cx="205" cy="186" rx="49" ry="52" fill="#9a794a" stroke="#705b40" strokeWidth="6"/>
-  <circle cx="140" cy="181" r="44" fill="#e2b95a" stroke="#9f7e41" strokeWidth="6"/>
-  <ellipse cx="124" cy="177" rx="19" ry="29" fill="#4b5a53"/>
-  <path d="M136 137L107 92M157 136L159 94M178 224L136 294M210 233L196 302M232 224L276 301M307 232L333 292" stroke="#6e5e43" strokeWidth="7" strokeLinecap="round"/>
- </g>;
- case "snail":return <g>
-  <path d="M74 234Q101 194 187 218Q211 136 262 166Q301 193 342 222L409 225Q448 258 408 270L95 270Q53 261 74 234" fill="#b8a47b" stroke="#907f5d" strokeWidth="6"/>
-  <circle cx="260" cy="159" r="95" fill="#caa67c" stroke="#886846" strokeWidth="7"/>
-  <path d="M319 159Q313 104 261 96Q191 86 189 158Q181 231 255 223Q307 218 297 169Q290 127 255 135Q221 140 229 174Q236 198 264 184" stroke="#8e6e4d" strokeWidth="11" fill="none" strokeLinecap="round"/>
-  <path d="M133 231L124 121M174 223L186 111" stroke="#a38a64" strokeWidth="15" strokeLinecap="round"/>
-  <circle cx="124" cy="114" r="12" fill="#a18c67"/><circle cx="186" cy="108" r="12" fill="#a18c67"/>
-  <circle cx="124" cy="110" r="5" fill="#293d38"/><circle cx="186" cy="105" r="5" fill="#293d38"/>
- </g>;
- case "pine":return <g>
-  <path d="M217 241h46l-7 70h-32Z" fill="#986b4b" stroke="#70533e" strokeWidth="5"/>
-  {[[87,210,380,210],[102,165,368,165],[126,116,350,116],[163,66,313,66]].map(([l,y,r],i)=><path key={i} d={`M240 ${y-110}L${l} ${y+18}H${r}Z`} fill={i%2?"#54835f":"#639a6e"} stroke="#397350" strokeWidth="5"/>)}
-  <path d="M229 309l-35 15m53-15 32 15" stroke="#8b6c4e" strokeWidth="5"/>
- </g>;
- case "fern":return <g>
-  <path d="M235 313Q243 158 242 59" fill="none" stroke="#52835c" strokeWidth="8"/>
-  {Array.from({length:10},(_,i)=>{
-   const y=69+i*21,spread=75+i*7;
-   return <g key={i}>
-    <path d={`M243 ${y}Q${240-spread*.58} ${y-19} ${240-spread} ${y-24}Q${240-spread*.62} ${y+13} 243 ${y+5}`} fill="#80b58a" stroke="#528761" strokeWidth="3"/>
-    <path d={`M243 ${y}Q${240+spread*.58} ${y-19} ${240+spread} ${y-24}Q${240+spread*.62} ${y+13} 243 ${y+5}`} fill="#80b58a" stroke="#528761" strokeWidth="3"/>
-   </g>;
-  })}
-  <path d="M233 298l-31 27m42-27 31 27" stroke="#95734c" strokeWidth="5"/>
- </g>;
- case "wheat":return <g>
-  <path d="M240 312V45M240 239Q177 180 140 219Q184 252 240 239M240 198Q297 153 346 175Q301 214 240 198" stroke="#729850" strokeWidth="8" fill="#a6c381"/>
-  {Array.from({length:10},(_,i)=>{
-   const y=44+i*16;
-   return <g key={i}>
-    <ellipse cx={227-i%2*5} cy={y} rx="16" ry="22" transform={`rotate(-31 227 ${y})`} fill="#d8bc73" stroke="#a78e4f" strokeWidth="2"/>
-    <ellipse cx={253+i%2*5} cy={y} rx="16" ry="22" transform={`rotate(31 253 ${y})`} fill="#d8bc73" stroke="#a78e4f" strokeWidth="2"/>
-    <path d={`M240 ${y}l${i%2?-44:44} -52`} fill="none" stroke="#bba36c" strokeWidth="2"/>
-   </g>;
-  })}
-  <path d="M240 309l-35 17m34-17 5 21m0-21 39 17" stroke="#aa9664" strokeWidth="4"/>
- </g>;
- default:return null;
- }
+ return <LektrusBioDetailedExtraSpecies organism={organism}/>;
 }
 function Structure({organism,keyName}:{organism:BioOrganism;keyName:BioVisualKey}):ReactNode{
  if(keyName==="gills")return <g>
