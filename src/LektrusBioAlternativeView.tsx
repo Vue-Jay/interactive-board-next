@@ -1,5 +1,7 @@
 import {useEffect,useMemo,useState} from "react";
 import type {ReactNode} from "react";
+import LektrusBioMotionLayer from "./LektrusBioMotionLayer";
+import {bioMotionFor,type BioMotionInfo} from "./lektrusBioAtlasMotion";
 import {BIO_ALTERNATIVE_SPECIES,BIO_ALT_KIND_LABELS,bioAltChildren,bioAltPath,
  type BioAlternativeOrganism,type BioAltNode,type BioAlternativeSpecies} from "./lektrusBioAlternativeAtlas";
 
@@ -16,9 +18,11 @@ function DrawSponge({node}:{node:BioAltNode}){
   <path d="M165 278H315" stroke="#85b1a1" strokeWidth="8" strokeLinecap="round"/>
  </g>;
  return <g>
-  <path d="M103 278Q82 186 126 106Q152 78 182 110Q214 28 251 71Q277 38 319 83Q391 95 368 185L356 279Z" fill="#d6c4a7" stroke="#967c68" strokeWidth="7"/>
-  <path d="M175 260Q164 164 215 114Q258 101 301 144Q322 194 286 261Z" fill="#f1e7d3" stroke="#b59d81" strokeWidth="5"/>
-  {Array.from({length:24},(_,i)=>{const x=118+i%6*44,y=130+Math.floor(i/6)*37;return <circle key={i} cx={x} cy={y} r={5+i%3} fill="#c1a587" stroke="#8d7762" strokeWidth="2"/>})}
+  <path d="M88 280Q70 243 99 214Q69 183 102 145Q90 97 140 94Q157 63 186 105Q194 44 235 59Q275 35 291 84Q333 55 359 100Q409 120 378 168Q405 205 376 235L365 281Z"
+   fill="url(#lektrus-bio-organism-velvet)" stroke="#518362" strokeWidth="7" strokeLinejoin="round"/>
+  <path d="M180 259Q158 165 218 117Q264 108 301 146Q324 197 284 261Z"
+   fill="url(#lektrus-bio-organism-water)" stroke="#8aa788" strokeWidth="5"/>
+  {Array.from({length:24},(_,i)=>{const x=118+i%6*44,y=130+Math.floor(i/6)*37;return <circle key={i} cx={x} cy={y} r={5+i%3} fill="#d1e8a5" stroke="#548669" strokeWidth="2"/>})}
   <path d="M241 144V54" stroke="#72adbd" strokeWidth="10" strokeLinecap="round" fill="none"/>
   <path d="M240 53l-20 25m20-25 22 25" stroke="#72adbd" strokeWidth="6" fill="none"/>
  </g>;
@@ -33,12 +37,16 @@ function DrawHydra({node}:{node:BioAltNode}){
   <circle cx="237" cy="90" r="12" fill="#9278b0"/>
  </g>;
  return <g>
-  <path d="M218 293Q193 205 205 135Q214 117 236 115Q263 116 273 137Q285 198 264 293Z" fill="#b4d7aa" stroke="#66936f" strokeWidth="6"/>
+  <path d="M218 293Q193 205 205 135Q214 117 236 115Q263 116 273 137Q285 198 264 293Z" fill="url(#lektrus-bio-organism-cellular)" stroke="#8f887a" strokeWidth="6"/>
   {[-95,-59,-25,25,59,95].map((offset,i)=><path key={i}
    d={`M${235+offset*.20} 124Q${235+offset*1.15} 48 ${235+offset} 33`}
    stroke="#80b78d" strokeWidth="12" fill="none" strokeLinecap="round"/>)}
-  <path d="M237 133V286" stroke="#d2edc7" strokeWidth="32" strokeLinecap="round"/>
-  <path d="M268 231Q326 192 335 241Q335 282 293 268" fill="#b4d7aa" stroke="#679771" strokeWidth="6"/>
+  <path d="M237 133V286" stroke="#f5e6d6" strokeOpacity=".8" strokeWidth="32" strokeLinecap="round"/>
+  <path d="M268 231Q326 192 335 241Q335 282 293 268" fill="#d4ae9b" stroke="#a17c76" strokeWidth="6"/>
+  {Array.from({length:17},(_,i)=>{
+   const x=105+i*16,y=48+(i%4)*10;
+   return <circle key={i} cx={x} cy={y} r={2.4+(i%3)*.7} fill="#d4aa85" opacity=".75"/>;
+  })}
   <path d="M191 295H290" stroke="#658c68" strokeWidth="10" strokeLinecap="round"/>
  </g>;
 }
@@ -70,7 +78,7 @@ function DrawChlamydomonas({node}:{node:BioAltNode}){
  const emph=node.id.split("/")[1];
  return <g>
   <path d="M213 103Q189 63 179 28M258 102Q285 65 291 24" fill="none" stroke="#83b59c" strokeWidth="8" strokeLinecap="round"/>
-  <ellipse cx="237" cy="187" rx="112" ry="116" fill="#c2dca7" stroke="#5d986a" strokeWidth="9"/>
+  <ellipse cx="237" cy="187" rx="112" ry="116" fill="url(#lektrus-bio-organism-velvet)" stroke="#5d986a" strokeWidth="9"/>
   <path d="M158 160Q149 258 239 278Q326 257 322 166Q284 207 235 217Q185 207 158 160" fill={emph==="chloroplast"?"#72b174":"#8fc287"} stroke="#548e5d" strokeWidth="5"/>
   <ellipse cx="241" cy="175" rx="34" ry="28" fill="#bdadd2" stroke="#957eae" strokeWidth="5"/>
   <circle cx="291" cy="171" r="14" fill="#df8f4b" stroke="#b2784a" strokeWidth="4"/>
@@ -83,7 +91,7 @@ function DrawSpirogyra({node}:{node:BioAltNode}){
  const isConjugation=node.id.includes("conjugation")||node.id.includes("zygospore");
  return <g>
   {Array.from({length:isConjugation?2:1},(_,row)=><g key={row} transform={`translate(0 ${row*120-(isConjugation?56:0)})`}>
-   <rect x="62" y="107" width="354" height="120" rx="12" fill="#d2e7b8" stroke="#75a772" strokeWidth="8"/>
+   <rect x="62" y="107" width="354" height="120" rx="12" fill="url(#lektrus-bio-organism-water)" stroke="#75a772" strokeWidth="8"/>
    {Array.from({length:4},(_,i)=><g key={i} transform={`translate(${i*88} 0)`}>
     {i>0&&<path d="M62 111V223" stroke="#75a772" strokeWidth="6"/>}
     <path d="M75 125Q106 110 129 133Q146 155 107 178Q77 192 121 208Q141 216 143 207" fill="none" stroke="#69ab67" strokeWidth="13" strokeLinecap="round"/>
@@ -94,8 +102,9 @@ function DrawSpirogyra({node}:{node:BioAltNode}){
    {node.id.includes("zygospore")&&<ellipse cx="240" cy="197" rx="33" ry="24" fill="#bd9a63" stroke="#806d46" strokeWidth="8"/>}</g>}
  </g>;
 }
-function BioAlternativeIllustration({species,node,children,onSelect}:{
- species:BioAlternativeSpecies;node:BioAltNode;children:BioAltNode[];onSelect:(node:BioAltNode)=>void
+function BioAlternativeIllustration({species,node,children,onSelect,motion,playing,replay}:{
+ species:BioAlternativeSpecies;node:BioAltNode;children:BioAltNode[];onSelect:(node:BioAltNode)=>void;
+ motion:BioMotionInfo|null;playing:boolean;replay:number
 }){
  const illustration:ReactNode=species.id==="sponge"?<DrawSponge node={node}/>:
   species.id==="hydra"?<DrawHydra node={node}/>:
@@ -103,8 +112,28 @@ function BioAlternativeIllustration({species,node,children,onSelect}:{
   species.id==="chlamydomonas"?<DrawChlamydomonas node={node}/>:<DrawSpirogyra node={node}/>;
  return <svg className="lektrus-bio-alternative-scene" viewBox="0 0 480 340" role="group"
   aria-label={"Схематическая иллюстрация: "+node.name}>
-  <rect width="480" height="340" rx="16" fill="#f1f7eb"/>
-  <g>{illustration}</g>
+  <defs>
+   <linearGradient id="lektrus-bio-scene-ground" x1="0" y1="0" x2=".84" y2="1">
+    <stop offset="0" stopColor="#f7fbf0"/><stop offset=".55" stopColor="#dff1e5"/><stop offset="1" stopColor="#c6e6dc"/>
+   </linearGradient>
+   <linearGradient id="lektrus-bio-organism-velvet" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stopColor="#d8f1a4"/><stop offset=".48" stopColor="#76b967"/><stop offset="1" stopColor="#3c805e"/>
+   </linearGradient>
+   <linearGradient id="lektrus-bio-organism-cellular" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stopColor="#f9e5c9"/><stop offset=".48" stopColor="#d6aa8d"/><stop offset="1" stopColor="#9b746f"/>
+   </linearGradient>
+   <linearGradient id="lektrus-bio-organism-water" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stopColor="#f8fef1"/><stop offset="1" stopColor="#a2d1cb"/>
+   </linearGradient>
+   <radialGradient id="lektrus-bio-scene-glow">
+    <stop offset="0" stopColor="#fff" stopOpacity=".86"/><stop offset="1" stopColor="#fff" stopOpacity="0"/>
+   </radialGradient>
+  </defs>
+  <rect width="480" height="340" rx="16" fill="url(#lektrus-bio-scene-ground)"/>
+  <ellipse cx="100" cy="64" rx="210" ry="144" fill="url(#lektrus-bio-scene-glow)" opacity=".58"/>
+  <path d="M15 278Q105 256 170 288T340 281T476 293" stroke="#fff" strokeOpacity=".65" strokeWidth="2" fill="none"/>
+  <g className="lektrus-bio-alt-plate" key={node.id}>{illustration}</g>
+  <LektrusBioMotionLayer motion={motion} playing={playing} replay={replay}/>
   {children.map((child,i)=>{
    const spot=child.spot??{x:100+(i%3)*145,y:120+Math.floor(i/3)*95};
    return <g key={child.id} transform={`translate(${spot.x} ${spot.y})`}
@@ -123,8 +152,12 @@ function BioAlternativeIllustration({species,node,children,onSelect}:{
 export default function LektrusBioAlternativeView({speciesId,onBack}:Props){
  const species=BIO_ALTERNATIVE_SPECIES[speciesId];
  const [currentId,setCurrentId]=useState<string>(speciesId);
- useEffect(()=>setCurrentId(speciesId),[speciesId]);
+ const [playing,setPlaying]=useState(true);
+ const [replay,setReplay]=useState(0);
+ useEffect(()=>{setCurrentId(speciesId);setPlaying(true);setReplay(0);},[speciesId]);
+ useEffect(()=>setReplay(0),[currentId]);
  const node=useMemo(()=>species.nodes.find(n=>n.id===currentId)??species.nodes[0],[species,currentId]);
+ const motion=bioMotionFor(species.id,node);
  const children=bioAltChildren(species,node.id);
  const path=bioAltPath(species,node.id);
  const open=(next:BioAltNode)=>setCurrentId(next.id);
@@ -142,8 +175,25 @@ export default function LektrusBioAlternativeView({speciesId,onBack}:Props){
   </nav>
   <div className="lektrus-bio-alt-main">
    <div className="lektrus-bio-alt-figure">
-    <BioAlternativeIllustration species={species} node={node} children={children} onSelect={open}/>
-    <small>Нажмите на подсвеченную структуру или выберите её ниже. Переходы показаны схематично.</small>
+    <div className="lektrus-bio-alt-scene-header">
+     <span className="lektrus-bio-alt-scene-label">ATLAS · ИНТЕРАКТИВНАЯ СЦЕНА</span>
+     <span className="lektrus-bio-alt-scene-level">{BIO_ALT_KIND_LABELS[node.kind]}</span>
+    </div>
+    <BioAlternativeIllustration species={species} node={node} children={children} onSelect={open}
+     motion={motion} playing={playing} replay={replay}/>
+    {motion&&<div className="lektrus-bio-alt-motion-console" aria-label="Управление анимацией">
+     <div className="lektrus-bio-alt-motion-text">
+      <strong>{motion.name}</strong>
+      <p>{motion.description}</p>
+     </div>
+     {motion.mode==="loop"?
+      <button type="button" className="lektrus-bio-alt-motion-button"
+       aria-pressed={playing} onClick={()=>setPlaying(p=>!p)}>
+       {playing?"Ⅱ Пауза":"▶ Пуск"}</button>:
+      <button type="button" className="lektrus-bio-alt-motion-button"
+       onClick={()=>setReplay(n=>n+1)}>{replay?"↻ Повторить":"▶ Показать"}</button>}
+    </div>}
+    <small>Нажмите на структуру или выберите её в списке. Переходы и движения схематичны, без масштаба и реальной скорости.</small>
    </div>
    <div className="lektrus-bio-alt-info">
     <div className="lektrus-bio-alt-kind">{BIO_ALT_KIND_LABELS[node.kind]}{node.ploidy?" · "+node.ploidy:""}</div>
@@ -172,7 +222,8 @@ export default function LektrusBioAlternativeView({speciesId,onBack}:Props){
   <footer className="lektrus-bio-alt-footer">
    <span>Источник для проверки структуры: </span>
    <a href={species.source.url} target="_blank" rel="noopener noreferrer">{species.source.title}</a>
-   <small>Иллюстрации авторские, условные, не являются микрофотографиями.</small>
+   {motion&&<a href={motion.sourceUrl} target="_blank" rel="noopener noreferrer">Источник процесса: {motion.name}</a>}
+   <small>Иллюстрации и движения авторские, условные: это не микрофотографии и не точное моделирование скоростей. Системное уменьшение движения отключает анимацию.</small>
   </footer>
  </section>;
 }

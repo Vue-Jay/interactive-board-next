@@ -39,6 +39,8 @@ jobs:
         run: node scripts/test-lektrus-bio-representatives.mjs
       - name: Variable-depth sponge, hydra, moss and algae atlas
         run: node scripts/test-lektrus-bio-alternative.mjs
+      - name: Animated biology atlas motion and accessibility regression
+        run: node scripts/test-lektrus-bio-motion.mjs
       - name: Biology drag and place anatomy exercises
         run: node scripts/test-lektrus-bio-assembly.mjs
       - name: Biology organ systems and relief regression

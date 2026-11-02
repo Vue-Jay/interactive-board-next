@@ -205,7 +205,7 @@ export default function LektrusBioAnatomyScene({organism,node,children,onSelect,
  return <svg className="lektrus-bio-anatomy-svg" viewBox="0 0 480 330" role="group"
   aria-label={"Анатомическая схема: "+node.name}>
   <rect width="480" height="330" rx="18" fill="#f3f9f0"/>
-  {shape}
+  <g className="lektrus-bio-alt-plate" key={node.id}>{shape}</g>
   {focusChildId&&children.map((child,i)=>{
    if(child.id!==focusChildId)return null;
    const pt=bioChildSpot(organism,node,child,i,children.length);
