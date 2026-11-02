@@ -3,10 +3,10 @@
  * from unrelated clades. 480×330 is an illustration frame, not optical scale.
  */
 import type {ReactNode} from "react";
-import type {BioNewOrganism} from "./lektrusBioNewLineages";
+import {bioNewCellFeatures,type BioNewOrganism} from "./lektrusBioNewLineages";
 import type {BioNode} from "./lektrusBioMicroscopeModel";
 
-const ink="#456e66",warm="#ca9385",sea="#78aeb3",leaf="#5b9871",nuc="#aa91b8";
+const sea="#78aeb3",nuc="#aa91b8";
 function KeyLabel({title,detail}:{title:string;detail:string}){
  return <g aria-hidden="true" pointerEvents="none">
   <rect x="18" y="14" width="444" height="48" rx="10" fill="#fffff4" fillOpacity=".82" stroke="#d5e5d4"/>
@@ -229,8 +229,9 @@ function SectionView({organism,branch,level}:{organism:BioNewOrganism;branch:num
   <KeyLabel title={deep?"Спороцит (2n)":tissue?"Спорогенная ткань":"Спорангий хвоща"} detail="После мейоза формируются гаплоидные споры (n)"/>
  </g>;
 }
-export default function LektrusBioNewSpeciesArt({organism,node}:{
- organism:BioNewOrganism;node:BioNode
+export default function LektrusBioNewSpeciesArt({organism,node,selectedFeature,onFeatureSelect}:{
+ organism:BioNewOrganism;node:BioNode;selectedFeature?:string|null;
+ onFeatureSelect?:(name:string)=>void
 }):ReactNode{
  const chainIndex=node.level==="organism"?-1:(node.id.split("/")[1]?
   // Chain names are explicitly encoded in the reviewed model, so the
@@ -247,5 +248,23 @@ export default function LektrusBioNewSpeciesArt({organism,node}:{
   <g opacity=".2"><RootOrganism organism={organism}/></g>
   <g transform="translate(142 56) scale(.45)"><SectionView organism={organism} branch={chainIndex} level="organ"/></g>
  </g>;
- return <SectionView organism={organism} branch={chainIndex} level={node.level}/>;
+ const cellFeatures=node.level==="cell"&&onFeatureSelect?bioNewCellFeatures(organism,node.name):[];
+ const spots=[{x:192,y:152},{x:293,y:195},{x:243,y:251}];
+ return <g data-bio-new-species={organism} data-bio-new-level={node.level}>
+  <SectionView organism={organism} branch={chainIndex} level={node.level}/>
+  {cellFeatures.map((item,i)=>{
+   const pt=spots[i];
+   return <g key={item.name} transform={`translate(${pt.x} ${pt.y})`}
+    role="button" tabIndex={0} data-bio-new-cell-feature={item.name}
+    aria-label={"Изучить: "+item.name} aria-pressed={selectedFeature===item.name}
+    className={"lektrus-bio-cell-hotspot"+(selectedFeature===item.name?" is-selected":"")}
+    onClick={()=>onFeatureSelect?.(item.name)}
+    onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onFeatureSelect?.(item.name);}}}>
+    <circle r="20" fill="#e8f7ed" fillOpacity=".92" stroke="#3c8366" strokeWidth="3"/>
+    <circle r="13" fill="#fffefa" stroke="#3c8366" strokeWidth="2"/>
+    <text textAnchor="middle" dominantBaseline="central" fontWeight="800" fontSize="13" fill="#326a52">{i+1}</text>
+    <title>{item.name}</title>
+   </g>;
+  })}
+ </g>;
 }
