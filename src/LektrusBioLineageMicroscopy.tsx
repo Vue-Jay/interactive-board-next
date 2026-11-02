@@ -49,7 +49,7 @@ function Muscle({cell=false}:{cell?:boolean}){
    {Array.from({length:cell?4:2},(_,j)=><N key={j} x={85+j*(cell?101:245)} y={y+h-7} r={cell?12:7}/>)}
   </g>;})}</g>;
 }
-function Plant({cell=false,spores=false,stoma=false}:{cell?:boolean;spores?:boolean;stoma?:boolean}){
+function Plant({cell=false,spores=false,stoma=false,photosynthetic=true}:{cell?:boolean;spores?:boolean;stoma?:boolean;photosynthetic?:boolean}){
  if(stoma)return <g><rect x="45" y="74" width="390" height="214" rx="20" fill="#dceaca" stroke="#7ba16b" strokeWidth="5"/>
   {Array.from({length:14},(_,i)=><path key={i} d={"M"+(61+i*27)+" 83v195"} stroke="#b4d39a" strokeWidth="3"/>)}
   <path d="M213 96Q134 130 177 251Q214 277 225 220Q210 163 232 111Z" fill="#90b77e" stroke="#598d60" strokeWidth="6"/>
@@ -64,7 +64,7 @@ function Plant({cell=false,spores=false,stoma=false}:{cell?:boolean;spores?:bool
  return <g>{Array.from({length:cell?1:6},(_,i)=>{const x=cell?110:58+i*68,w=cell?261:65;
   return <g key={i}><rect x={x} y="83" width={w} height="197" rx="15" fill="#d8ebc0" stroke="#729868" strokeWidth="5"/>
    <rect x={x+12} y="105" width={w-24} height="143" rx="17" fill="#c4dede" stroke="#a8c7bc" strokeWidth="2"/>
-   {Array.from({length:cell?24:7},(_,j)=>{const cx=x+10+(j%2)*(w-20),cy=114+Math.floor(j/2)*(cell?11:28);
+   {Array.from({length:photosynthetic?(cell?24:7):0},(_,j)=>{const cx=x+10+(j%2)*(w-20),cy=114+Math.floor(j/2)*(cell?11:28);
     return <Green key={j} x={cx} y={cy}/>;})}
    <N x={x+w*.5} y={259} r={cell?17:9}/>
   </g>;})}</g>;
@@ -142,7 +142,7 @@ function Artwork({kind,cell}:{kind:string;cell:boolean}):ReactNode{
  case "rhabdomere":return <CrossSection cell={cell} kind="rhabo"/>;
  case "microphyll":return <Plant cell={cell}/>;
  case "sporangium":return <Plant cell={cell} spores/>;
- case "rhizodermis":return <g><Plant cell={cell}/>{cell&&<path d="M366 145Q418 155 431 205" stroke="#77a46e" strokeWidth="11" fill="none"/>}</g>;
+ case "rhizodermis":return <g><Plant cell={cell} photosynthetic={false}/>{cell&&<path d="M366 145Q418 155 431 205" stroke="#77a46e" strokeWidth="11" fill="none"/>}</g>;
  case "mesophyll":return <Plant cell={cell}/>;
  case "tapetum":return <g><Secretory cell={cell}/>{!cell&&Array.from({length:9},(_,i)=><circle key={i} cx={102+i*33} cy="101" r="13" fill="#ddbd82" stroke="#b79d6f" strokeWidth="2"/>)}</g>;
  case "stigma":return <g><ColumnCells cell={cell}/>{Array.from({length:9},(_,i)=><ellipse key={i} cx={83+i*39} cy={91-i%3*7} rx="12" ry="8" fill="#e2c997" stroke="#bd9e79" strokeWidth="2"/>)}</g>;
