@@ -52,6 +52,7 @@ assert.match(art,/НЕ человеческие альвеолы/,"Reptile lung 
 assert.match(art,/Ламеллы с гемолимфой/,"Spider book lungs must not be confused with insect trachea");
 assert.match(art,/Тифлозоль/,"Earthworm intestines do not have mammalian villi");
 assert.match(art,/Спорофилл/,"Clubmoss produces spores, not seeds");
+assert.match(art,/case "rhizodermis":return <g><Plant cell=\{cell\} photosynthetic=\{false\}\/>/,"Root epidermis must not display chloroplasts");
 let branches=0;
 for(const [species,keys] of Object.entries(expected)){
  const nodes=bio.bioNodes(species);
@@ -82,6 +83,7 @@ for(const src of [newLineages,further]){
  assert.match(src,/import LektrusBioLineageMicroscopy,\{lineageMicroSpots\} from "\.\/LektrusBioLineageMicroscopy"/);
  assert.match(src,/node\.level==="tissue"\|\|node\.level==="cell"/);
  assert.match(src,/<LektrusBioLineageMicroscopy organism=\{organism\}/);
+ assert.match(src,/lineageMicroSpots\(organism,/,"Each taxon needs anatomical feature placement");
  assert.match(src,/aria-pressed=\{selectedFeature===/,"Cell inspection controls must remain present");
  assert.match(src,/onKeyDown=\{e=>\{if\(e.key==="Enter"\|\|e.key===" "\)/,"Keyboard accessible hotspots required");
 }
