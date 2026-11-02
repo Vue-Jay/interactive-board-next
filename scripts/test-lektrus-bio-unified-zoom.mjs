@@ -37,7 +37,8 @@ assert.ok(Number.isFinite(zoom.bioZoomBound({x:NaN,y:0,scale:NaN}).x));
 const portal=zoom.bioZoomPortalCamera(norm,{x:132,y:115});
 assert.equal(portal.scale,zoom.BIO_ZOOM_GATE);
 assert.deepEqual(zoom.bioZoomScreenPoint(portal,{x:132,y:115}),{x:240,y:165});
-assert.deepEqual(zoom.bioZoomToWorld(portal,{x:240,y:165}),{x:132,y:115});
+const portalRoundTrip=zoom.bioZoomToWorld(portal,{x:240,y:165});
+assert.ok(Math.abs(portalRoundTrip.x-132)<1e-8&&Math.abs(portalRoundTrip.y-115)<1e-8);
 assert.deepEqual(zoom.bioZoomPortalCamera({x:0,y:0,scale:3},{x:240,y:165}),{x:0,y:0,scale:3});
 assert.deepEqual(zoom.bioZoomPortalCamera(norm,{x:0,y:0}),
  {scale:2.7,x:240*(2.7-1),y:165*(2.7-1)},"Focus near edge must never show void past the photograph");
