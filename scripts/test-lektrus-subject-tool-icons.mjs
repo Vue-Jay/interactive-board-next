@@ -111,7 +111,11 @@ assert.ok(start>=0&&end>start,"All subject illustration IDs must be registered")
 const illustrationIds=[...icons.slice(start,end).matchAll(/"([a-z0-9-]+)"/g)].map(m=>m[1]);
 assert.equal(illustrationIds.length,43,"Keep one legacy molecules illustration for existing boards");
 assert.equal(new Set(illustrationIds).size,43,"Artwork may not duplicate subject IDs");
-for(const id of expected)assert.ok(illustrationIds.includes(id),"Missing subject image: "+id);
+// The new microscope has its own dedicated vector glyph and does not
+// overwrite the 43 approved legacy raster atlas positions.
+for(const id of expected.filter(id=>id!=="bio-microscope"))
+ assert.ok(illustrationIds.includes(id),"Missing subject image: "+id);
+assert.ok(iconIds.includes("bio-microscope"),"Microscope must use its distinct SVG glyph");
 assert.ok(icons.includes('const illustrationIndex=illustrationIndexes.get(id)'),
  "Show artwork from the actual selected image atlas rather than simple paths");
 assert.ok(icons.includes("<image href={illustrationHref}"),
