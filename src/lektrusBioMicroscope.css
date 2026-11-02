@@ -183,3 +183,56 @@
  .lektrus-bio-atlas-search span{grid-column:1;grid-row:auto}
 }
 @media(prefers-reduced-motion:reduce){.lektrus-bio-atlas-taxon{transition:none}}
+
+
+/* Distinct family atlas: specimens without the five-step organ hierarchy. */
+.lektrus-bio-alternative{min-width:0;display:flex;flex:1;flex-direction:column;gap:12px;padding-bottom:6px;color:#285343}
+.lektrus-bio-alt-hero{border-radius:15px;border:1px solid #b5d4b8;background:radial-gradient(ellipse at 92% 20%,#d7ebb7 0,transparent 50%),linear-gradient(125deg,#edf9ed,#e2f0e4);padding:16px 18px}
+.lektrus-bio-alt-back{border:1px solid #a6c7ae;border-radius:9px;padding:7px 11px;background:#fff;float:right;font-weight:800}
+.lektrus-bio-alt-badge{display:inline-flex;padding:4px 10px;border-radius:99px;background:#d4ead5;color:#286848;font-size:10px;font-weight:850;letter-spacing:.04em}
+.lektrus-bio-alt-hero h2{font-size:clamp(20px,3cqw,29px);line-height:1.2;margin:10px 0 2px}
+.lektrus-bio-alt-hero em{color:#548367;font-size:13px}
+.lektrus-bio-alt-hero p{line-height:1.55;max-width:710px;margin:9px 0 0}
+.lektrus-bio-alt-path{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.lektrus-bio-alt-path button{border:1px solid #bfd7c3;border-radius:9px;background:#f8fff4;min-height:34px;text-align:left;padding:6px 10px;font-weight:800}
+.lektrus-bio-alt-path button:not(:first-child):before{content:"›";margin-right:7px;color:#90a997}
+.lektrus-bio-alt-path button[aria-current="step"]{background:#286e51;color:#fff;border-color:#286e51}
+.lektrus-bio-alt-main{display:grid;grid-template-columns:minmax(0,1.16fr) minmax(220px,.84fr);align-items:start;gap:12px}
+.lektrus-bio-alt-figure{min-width:0;display:grid;gap:6px;border-radius:14px;border:1px solid #b5d3b8;background:#f7fbf1;padding:9px;overflow:hidden}
+.lektrus-bio-alternative-scene{display:block;aspect-ratio:480/340;width:100%;max-height:470px;border-radius:10px;background:#f2f7ec}
+.lektrus-bio-alt-figure small{color:#62836b;font-size:10px;line-height:1.45}
+.lektrus-bio-alt-marker{cursor:pointer;outline:none;touch-action:manipulation}
+.lektrus-bio-alt-marker>circle:first-child{transition:fill .18s ease,stroke .18s ease}
+.lektrus-bio-alt-marker:hover>circle:first-child,.lektrus-bio-alt-marker:focus-visible>circle:first-child{fill:#abd9c3;stroke:#1b8050;stroke-width:5px}
+.lektrus-bio-alt-marker:focus-visible>circle:nth-child(2){stroke:#164d81;stroke-width:6px}
+.lektrus-bio-alt-info{border:1px solid #b6d1bb;border-radius:14px;background:#fffef9;padding:15px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.lektrus-bio-alt-kind{color:#397959;font-size:10px;letter-spacing:.07em;text-transform:uppercase;font-weight:900}
+.lektrus-bio-alt-info h3{font-size:clamp(16px,2.3cqw,22px);line-height:1.2;margin:0}
+.lektrus-bio-alt-info>p{line-height:1.55;margin:0}
+.lektrus-bio-alt-parts{border-top:1px solid #d6e7d4;padding-top:9px;display:grid;gap:6px}
+.lektrus-bio-alt-parts>strong{font-size:11px}
+.lektrus-bio-alt-parts button{width:100%;min-height:49px;border:1px solid #bddbc4;border-radius:10px;background:#f2faf0;text-align:left;display:flex;justify-content:space-between;align-items:center;padding:8px 11px;gap:8px}
+.lektrus-bio-alt-parts button:hover,.lektrus-bio-alt-parts button:focus-visible{background:#d9efe0;border-color:#5c9f7a}
+.lektrus-bio-alt-parts button span:first-child{display:grid;min-width:0;gap:2px}
+.lektrus-bio-alt-parts button b{font-size:12px}
+.lektrus-bio-alt-parts button small{font-size:10px;color:#698c72}
+.lektrus-bio-alt-parts button span:last-child{font-size:20px;color:#4b8e65}
+.lektrus-bio-alt-end{border-radius:9px;background:#f2f8ea;padding:10px!important;color:#66876c;font-size:11px}
+.lektrus-bio-alt-cycle{border:1px solid #bcd5b8;border-radius:14px;background:linear-gradient(160deg,#fbfff8,#eef6eb);padding:14px}
+.lektrus-bio-alt-cycle h3{font-size:15px;margin:0 0 4px}
+.lektrus-bio-alt-cycle>p{font-size:11px;color:#567c62;margin:0 0 10px}
+.lektrus-bio-alt-cycle-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:7px}
+.lektrus-bio-alt-cycle-grid button{display:grid;align-content:start;text-align:left;gap:6px;border:1px solid #bed6bd;border-radius:10px;background:#fffefa;padding:11px;min-height:104px}
+.lektrus-bio-alt-cycle-grid button.is-active{border-color:#438e65;box-shadow:inset 0 0 0 1px #438e65;background:#ddf1df}
+.lektrus-bio-alt-cycle-grid button small{color:#519071;font-size:10px;font-weight:900}
+.lektrus-bio-alt-cycle-grid button strong{font-size:12px}
+.lektrus-bio-alt-cycle-grid button span{font-size:10px;line-height:1.45;color:#60816a}
+.lektrus-bio-alt-warning{padding:10px 12px;border-left:3px solid #c79b49;background:#fff8e7;border-radius:8px}
+.lektrus-bio-alt-warning strong{font-size:11px}
+.lektrus-bio-alt-warning p{font-size:11px;line-height:1.5;margin:4px 0 0;color:#75664a}
+.lektrus-bio-alt-footer{border-top:1px solid #d3e4d2;padding:10px 2px 2px;color:#58755f;font-size:11px;display:flex;flex-wrap:wrap;gap:4px}
+.lektrus-bio-alt-footer a{font-weight:800;color:#297954;text-decoration:underline;text-underline-offset:2px}
+.lektrus-bio-alt-footer small{flex-basis:100%;font-size:10px}
+@media(max-width:740px){.lektrus-bio-alt-main{grid-template-columns:minmax(0,1fr)}.lektrus-bio-alt-hero{padding:12px}.lektrus-bio-alt-cycle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:410px){.lektrus-bio-alt-back{float:none;display:block;margin-bottom:10px}.lektrus-bio-alt-cycle-grid{grid-template-columns:minmax(0,1fr)}.lektrus-bio-alt-path button{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.lektrus-bio-alt-marker>circle:first-child{transition:none}}
