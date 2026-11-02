@@ -1269,6 +1269,48 @@ for(const formula of ["NaBr","LiNO3","Cu(NO3)2","Zn(NO3)2","MnSO4"]){
 }
 console.log("25 new source-qualified exact aqueous measurements; five protected salts PASS");
 
+// Seidell (Li2SO4 / Zn acetate) and Patty (SrCO3): original exact
+// temperatures, source conditions and live lookup are independently checked.
+for(const [formula,t,original] of [
+ ["Li2SO4",0,36],["Li2SO4",20,34.7],["Li2SO4",30,34.1],
+ ["Li2SO4",40,33.6],["Li2SO4",75,31.9],["Li2SO4",100,30.9],
+ ["Zn(CH3COO)2",7,30.32],["Zn(CH3COO)2",21,33.75],
+ ["Zn(CH3COO)2",30,36.64],["Zn(CH3COO)2",47,45.74],
+ ["Zn(CH3COO)2",75,63.89]
+]){
+ const row=pureWaterMeasurements.find(x=>x.formula===formula&&x.temperatureC===t);
+ assert.ok(row,"Missing independently sourced water point "+formula+" at "+t);
+ assert.equal(row.originalUnit,"g/100g-water");
+ assert.ok(row.sourceCondition.includes("reference only"));
+ assert.ok(row.sourceUrl.startsWith("https://chemister.ru/"));
+ approximately(row.sourceValue,original,1e-12);
+ approximately(literature.labExactMeasuredSolubility(formula,t),original,1e-12);
+ approximately(schoolMaterial.labSingleSaltSolubilityGPer100gWater(formula,t),original,1e-12);
+ assert.equal(schoolMaterial.labSchoolSolubilityGPer100gWater(formula,t).estimated,false);
+}
+const sr100=pureWaterMeasurements.find(x=>x.formula==="SrCO3"&&x.temperatureC===100);
+assert.equal(sr100.sourceValue,650);
+assert.equal(sr100.originalUnit,"mg/l-water");
+assert.ok(sr100.sourceCondition.includes("CO2 partial pressure not specified"));
+approximately(schoolMaterial.labSingleSaltSolubilityGPer100gWater("SrCO3",100),
+ 650/10000/.9584,1e-12);
+for(const [formula,t] of [["Li2SO4",21],["Zn(CH3COO)2",20],
+ ["Zn(CH3COO)2",22],["SrCO3",20]]){
+ assert.equal(schoolMaterial.labSingleSaltSolubilityGPer100gWater(formula,t),undefined,
+  "Unmeasured temperature must not acquire a scientific value: "+formula+" "+t);
+}
+for(const formula of ["Li2SO4","Zn(CH3COO)2","SrCO3"]){
+ assert.ok(schoolMaterial.LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES.has(formula));
+ const inventory={speciesMol:{H2O:1,[formula]:.1},solidMol:{}};
+ assert.equal(schoolMaterial.labEquilibrateSingleSaltCrystals(
+  inventory,20,true,labMolarMass),undefined,
+  "Aqueous reference does not establish a dry crystal phase");
+ assert.deepEqual(inventory.solidMol,{});
+}
+console.log("12 new exact water measurements; Li2SO4 at 20 C; no invented hydrates or interpolation PASS");
+
+
+
 assert.ok(pureWaterMeasurements.length>=103);
 assert.ok(new Set(pureWaterMeasurements.map(x=>x.formula)).size>=51);
 assert.ok(pureWaterMeasurements.filter(x=>x.temperatureC===20).length>=31);
