@@ -13,6 +13,7 @@ import LektrusFurtherSchoolControls from "./LektrusFurtherSchoolControls";
 import LektrusApprovedSchoolControls from "./LektrusApprovedSchoolControls";
 import LektrusRussianSchoolControls from "./LektrusRussianSchoolControls";
 import LektrusLanguageSocialControls from "./LektrusLanguageSocialControls";
+import {BIO_ORGANISMS,bioNodes,bioAncestors,withBioOrganism,type BioOrganism,type BioActivity} from "./lektrusBioMicroscopeModel";
 import LektrusBiologyExtensionControls from "./LektrusBiologyExtensionControls";
 import LektrusLogicCircuitControls from "./LektrusLogicCircuitControls";
 import LektrusProgrammingControls from "./LektrusProgrammingControls";
@@ -28,6 +29,7 @@ const keys=(cell:"plant"|"animal"):CellOrganelle[]=>cell==="plant"?
 const titles:Record<SchoolDiagramId,string>={
  "info-programming":"Программирование",
  "info-circuit":"Логические схемы",
+ "bio-microscope":"Биологический микроскоп",
  "bio-dna":"Строение ДНК","bio-taxonomy":"Классификация организмов",
  "bio-division":"Деление клетки","info-encoding":"Кодирование текста",
  "bio-genetics":"Генетические скрещивания","info-logic":"Таблица истинности",
@@ -179,6 +181,33 @@ export default function LektrusSchoolDiagramEditor({item,existing,studentMode=fa
      {title}
      {draft.kind==="programming"&&<LektrusProgrammingControls diagram={draft} onChange={set}/>}
      {draft.kind==="logic-circuit"&&<LektrusLogicCircuitControls diagram={draft} onChange={set}/>}
+     {draft.kind==="bio-microscope"&&<>
+      <label className="lektrus-school-field">Организм
+       <select value={draft.organism} onChange={e=>set(withBioOrganism(draft,e.target.value as BioOrganism))}>
+        {Object.entries(BIO_ORGANISMS).map(([id,meta])=><option key={id} value={id}>{meta.name}</option>)}
+       </select>
+      </label>
+      <label className="lektrus-school-field">Режим
+       <select value={draft.activity} onChange={e=>set({...draft,activity:e.target.value as BioActivity})}>
+        <option value="explore">Изучение и исследование</option>
+        <option value="label">Подписать части</option>
+        <option value="assemble">Собрать уровни строения</option>
+       </select>
+      </label>
+      <label className="lektrus-school-toggle"><input type="checkbox" checked={draft.showDescriptions}
+       onChange={e=>set({...draft,showDescriptions:e.target.checked})}/>Показывать описания</label>
+      {draft.activity!=="explore"&&<label className="lektrus-school-field">Ветка для задания
+       <select value={draft.assignmentPath[4]} onChange={e=>{
+        const nodes=bioNodes(draft.organism);
+        set({...draft,assignmentPath:bioAncestors(nodes,e.target.value).map(n=>n.id)});
+       }}>
+        {bioNodes(draft.organism).filter(n=>n.level==="cell").map(n=><option value={n.id} key={n.id}>
+         {bioAncestors(bioNodes(draft.organism),n.id).map(v=>v.name).join(" → ")}
+        </option>)}
+       </select>
+      </label>}
+      <p className="lektrus-school-hint">Двигайте ползунок от организма к клетке, выбирайте части и открывайте сведения. В задании ученик восстанавливает уровни строения.</p>
+     </>}
      {(draft.kind==="dna"||draft.kind==="taxonomy")&&<LektrusBiologyExtensionControls diagram={draft} onChange={set}/>}
      {(draft.kind==="syntax"||draft.kind==="flowchart"||draft.kind==="place-value")&&<LektrusNextSchoolControls diagram={draft} onChange={set}/>}
      {(draft.kind==="organs"||draft.kind==="relief")&&<LektrusFurtherSchoolControls diagram={draft} onChange={set}/>}
