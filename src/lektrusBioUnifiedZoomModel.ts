@@ -53,6 +53,7 @@ export function bioZoomClamp(value:number,min:number,max:number):number{
 }
 export function bioZoomBound(camera:BioZoomCamera):BioZoomCamera{
  const scale=bioZoomClamp(camera.scale,1,BIO_ZOOM_MAX);
+ if(scale===1)return {scale:1,x:0,y:0};
  return {scale,
   x:bioZoomClamp(camera.x,-240*(scale-1),240*(scale-1)),
   y:bioZoomClamp(camera.y,-165*(scale-1),165*(scale-1))};
