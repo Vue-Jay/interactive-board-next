@@ -24,6 +24,25 @@ const kinds=Object.values(expected).flat();
 assert.equal(new Set(kinds).size,24,"24 specific histological families expected");
 assert.match(art,/data-bio-lineage-micro=\{kind\}/);
 assert.match(art,/data-bio-lineage-level=\{level\}/);
+
+const spotSection=art.slice(art.indexOf("const featureSpots:"),art.indexOf("export function lineageMicroSpots"));
+assert.match(art,/lineageMicroSpots\(organism:Species,branch:number\):Three/);
+let counted=0;
+for(const kind of kinds){
+ const coords=new RegExp('\\[\\{x:\\d+,y:\\d+\\},\\{x:\\d+,y:\\d+\\},\\{x:\\d+,y:\\d+\\}\\]','g');
+ const groups=spotSection.match(coords)??[];
+ assert.equal(groups.length,24,"Each anatomy branch needs three specific non-overlapping structure points");
+ for(const group of groups){
+  const pairs=[...group.matchAll(/x:(\d+),y:(\d+)/g)].map(x=>({x:Number(x[1]),y:Number(x[2])}));
+  assert.equal(pairs.length,3);
+  assert.ok(pairs.every(p=>p.x>25&&p.x<455&&p.y>65&&p.y<310));
+  assert.equal(new Set(pairs.map(x=>x.x+":"+x.y)).size,3);
+  counted++;
+ }
+ break;
+}
+assert.equal(counted,24);
+
 assert.match(art,/data-bio-lineage-species=\{organism\}/);
 for(const kind of kinds){
  assert.match(art,new RegExp('case "'+kind+'":'),"No detailed anatomy switch for "+kind);
@@ -60,7 +79,7 @@ assert.equal(branches,24);
 const newLineages=fs.readFileSync("src/LektrusBioNewSpeciesArt.tsx","utf8");
 const further=fs.readFileSync("src/LektrusBioFurtherSpeciesArt.tsx","utf8");
 for(const src of [newLineages,further]){
- assert.match(src,/import LektrusBioLineageMicroscopy from "\.\/LektrusBioLineageMicroscopy"/);
+ assert.match(src,/import LektrusBioLineageMicroscopy,\{lineageMicroSpots\} from "\.\/LektrusBioLineageMicroscopy"/);
  assert.match(src,/node\.level==="tissue"\|\|node\.level==="cell"/);
  assert.match(src,/<LektrusBioLineageMicroscopy organism=\{organism\}/);
  assert.match(src,/aria-pressed=\{selectedFeature===/,"Cell inspection controls must remain present");
