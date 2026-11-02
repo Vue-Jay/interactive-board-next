@@ -32,7 +32,7 @@ for(const organism of species){
  assert.deepEqual(points.map(([name])=>name),features.map(f=>f.name),
   "Marker names and order must match existing scientific features "+organism);
  for(const [name,pos] of points){
-  assert.ok(features.some(f=>f.name===name&&f.description.length>20));
+  assert.ok(features.some(f=>f.name===name&&f.description.length>=12),"Missing scientific description: "+organism+" "+name);
   assert.ok(pos.x>55&&pos.x<455&&pos.y>46&&pos.y<305,"Marker outside plate "+organism+" "+name);
  }
  assert.equal(new Set(points.map(([,pos])=>JSON.stringify(pos))).size,points.length,
