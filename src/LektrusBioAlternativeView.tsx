@@ -1,5 +1,7 @@
 import {useEffect,useMemo,useState} from "react";
 import type {ReactNode} from "react";
+import LektrusBioMotionLayer from "./LektrusBioMotionLayer";
+import {bioMotionFor,type BioMotionInfo} from "./lektrusBioAtlasMotion";
 import {BIO_ALTERNATIVE_SPECIES,BIO_ALT_KIND_LABELS,bioAltChildren,bioAltPath,
  type BioAlternativeOrganism,type BioAltNode,type BioAlternativeSpecies} from "./lektrusBioAlternativeAtlas";
 
@@ -94,8 +96,9 @@ function DrawSpirogyra({node}:{node:BioAltNode}){
    {node.id.includes("zygospore")&&<ellipse cx="240" cy="197" rx="33" ry="24" fill="#bd9a63" stroke="#806d46" strokeWidth="8"/>}</g>}
  </g>;
 }
-function BioAlternativeIllustration({species,node,children,onSelect}:{
- species:BioAlternativeSpecies;node:BioAltNode;children:BioAltNode[];onSelect:(node:BioAltNode)=>void
+function BioAlternativeIllustration({species,node,children,onSelect,motion,playing,replay}:{
+ species:BioAlternativeSpecies;node:BioAltNode;children:BioAltNode[];onSelect:(node:BioAltNode)=>void;
+ motion:BioMotionInfo|null;playing:boolean;replay:number
 }){
  const illustration:ReactNode=species.id==="sponge"?<DrawSponge node={node}/>:
   species.id==="hydra"?<DrawHydra node={node}/>:
@@ -123,8 +126,12 @@ function BioAlternativeIllustration({species,node,children,onSelect}:{
 export default function LektrusBioAlternativeView({speciesId,onBack}:Props){
  const species=BIO_ALTERNATIVE_SPECIES[speciesId];
  const [currentId,setCurrentId]=useState<string>(speciesId);
- useEffect(()=>setCurrentId(speciesId),[speciesId]);
+ const [playing,setPlaying]=useState(true);
+ const [replay,setReplay]=useState(0);
+ useEffect(()=>{setCurrentId(speciesId);setPlaying(true);setReplay(0);},[speciesId]);
+ useEffect(()=>setReplay(0),[currentId]);
  const node=useMemo(()=>species.nodes.find(n=>n.id===currentId)??species.nodes[0],[species,currentId]);
+ const motion=bioMotionFor(species.id,node);
  const children=bioAltChildren(species,node.id);
  const path=bioAltPath(species,node.id);
  const open=(next:BioAltNode)=>setCurrentId(next.id);
@@ -172,7 +179,8 @@ export default function LektrusBioAlternativeView({speciesId,onBack}:Props){
   <footer className="lektrus-bio-alt-footer">
    <span>Источник для проверки структуры: </span>
    <a href={species.source.url} target="_blank" rel="noopener noreferrer">{species.source.title}</a>
-   <small>Иллюстрации авторские, условные, не являются микрофотографиями.</small>
+   {motion&&<a href={motion.sourceUrl} target="_blank" rel="noopener noreferrer">Источник процесса: {motion.name}</a>}
+   <small>Иллюстрации и движения авторские, условные: это не микрофотографии и не точное моделирование скоростей. Системное уменьшение движения отключает анимацию.</small>
   </footer>
  </section>;
 }
