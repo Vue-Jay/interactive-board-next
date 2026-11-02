@@ -17,6 +17,7 @@ const clamp=(n:number)=>Math.max(0,Math.min(4,n));
 export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDiagram}){
  const [activeOrganism,setActiveOrganism]=useState<BioOrganism>(diagram.organism);
  const [atlasOpen,setAtlasOpen]=useState(false);
+ const showExercise=Boolean(diagram.activity==="label"||diagram.activity==="assemble");
  const [alternativeId,setAlternativeId]=useState<BioAlternativeOrganism|null>(null);
  const nodes=useMemo(()=>bioNodes(activeOrganism),[activeOrganism]);
  const meta=BIO_ORGANISMS[activeOrganism];
@@ -84,7 +85,7 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
    {diagram.activity==="explore"&&<button type="button" className="lektrus-bio-open-atlas" onClick={()=>setAtlasOpen(true)}>☷ Классы и виды</button>}
   </header>
   {diagram.activity==="explore"&&<LektrusBioUnifiedZoom key={activeOrganism} organism={activeOrganism}/>}
-  {diagram.activity!=="explore"&&<>
+  {showExercise&&<>
   <div className="lektrus-bio-levels" role="group" aria-label="Уровни увеличения">
    {BIO_LEVELS.map((level,i)=><button type="button" key={level} className={Math.round(zoom)===i?"is-active":""}
     onClick={()=>{setZoom(i);setFeedback("");}}>{BIO_LEVEL_LABELS[level]}</button>)}
