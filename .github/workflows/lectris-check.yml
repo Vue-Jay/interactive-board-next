@@ -53,6 +53,8 @@ jobs:
         run: node scripts/test-lektrus-bio-complete-organ-tissue.mjs
       - name: Four new evolutionary lineages and scientifically grounded five-level paths
         run: node scripts/test-lektrus-bio-new-lineages.mjs
+      - name: Four additional biological lineages and differentiated anatomical levels
+        run: node scripts/test-lektrus-bio-further-lineages.mjs
       - name: Biology drag and place anatomy exercises
         run: node scripts/test-lektrus-bio-assembly.mjs
       - name: Biology organ systems and relief regression

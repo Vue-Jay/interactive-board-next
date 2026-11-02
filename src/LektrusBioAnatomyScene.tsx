@@ -5,6 +5,8 @@
 import type {ReactNode} from "react";
 import LektrusBioSpeciesArt from "./LektrusBioSpeciesArt";
 import LektrusBioNewSpeciesArt from "./LektrusBioNewSpeciesArt";
+import LektrusBioFurtherSpeciesArt from "./LektrusBioFurtherSpeciesArt";
+import {isBioFurtherOrganism} from "./lektrusBioMicroscopeModel";
 import {isBioNewOrganism} from "./lektrusBioNewLineages";
 import LektrusBioOrganDetail from "./LektrusBioOrganDetail";
 import LektrusBioCellDetail from "./LektrusBioCellDetail";
@@ -206,7 +208,9 @@ export default function LektrusBioAnatomyScene({organism,node,children,onSelect,
  const cellDetail=cellPlate?<LektrusBioCellDetail organism={organism} node={node}
   selectedFeature={activeFeatureName} onFeatureSelect={onFeatureSelect}/>:null;
  const detail=plate?<LektrusBioOrganDetail organism={organism} node={node}/>:null;
- const shape:ReactNode=cellDetail??detail??(isBioNewOrganism(organism)
+ const shape:ReactNode=cellDetail??detail??(isBioFurtherOrganism(organism)
+  ?<LektrusBioFurtherSpeciesArt organism={organism} node={node} selectedFeature={activeFeatureName} onFeatureSelect={onFeatureSelect}/>
+  :isBioNewOrganism(organism)
   ?<LektrusBioNewSpeciesArt organism={organism} node={node} selectedFeature={activeFeatureName} onFeatureSelect={onFeatureSelect}/>
   :( ["sparrow","perch","frog","bee","snail","pine","fern","wheat"] as string[]).includes(organism)
   ?extra:node.level==="organism"||node.level==="system"
