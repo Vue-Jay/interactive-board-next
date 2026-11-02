@@ -145,4 +145,20 @@ for(const species of ["sparrow","perch","frog","bee","snail","pine","fern","whea
  }
 }
 
+
+const lineageArt=fs.readFileSync("src/LektrusBioDetailedLineageSpecimens.tsx","utf8");
+const lineageAst=ts.createSourceFile("src/LektrusBioDetailedLineageSpecimens.tsx",lineageArt,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+assert.equal(lineageAst.parseDiagnostics.length,0,"Malformed detailed lineage SVG");
+for(const species of ["earthworm","seastar","crayfish","horsetail","lizard","spider","clubmoss","magnolia"]){
+ assert.match(lineageArt,new RegExp('data-bio-illustration="'+species+'"'),"Missing realistic vector specimen: "+species);
+ assert.match(lineageArt,new RegExp('case "'+species+'":return'),"Wrong lineages mapped to renderers: "+species);
+}
+assert.match(lineageArt,/пять пар ходильных конечностей/,"Crayfish should have decapod appendages");
+assert.match(lineageArt,/восемью членистыми ногами/,"Spider needs four pairs of legs");
+assert.match(lineageArt,/спороносный весенний побег/,"Horsetail sterile and fertile shoots must differ");
+for(const file of ["src/LektrusBioNewSpeciesArt.tsx","src/LektrusBioFurtherSpeciesArt.tsx"]){
+ const src=fs.readFileSync(file,"utf8");
+ assert.match(src,/LektrusBioDetailedLineageSpecimens/,"Detailed figures must be wired into all atlas modes");
+}
+
 console.log("Unified microscope: all 20 species traverse real anatomy, spatial proximity and anchor-preserving zoom, pinch/pan/keyboard, sample provenance and unchanged assignments OK. "+paths+" cell paths; "+links+" links.");
