@@ -5,6 +5,7 @@
 import type {ReactNode} from "react";
 import LektrusBioSpeciesArt from "./LektrusBioSpeciesArt";
 import LektrusBioDetailedOrganisms from "./LektrusBioDetailedOrganisms";
+import LektrusBioDetailedCoreOrgans from "./LektrusBioDetailedCoreOrgans";
 import LektrusBioNewSpeciesArt from "./LektrusBioNewSpeciesArt";
 import LektrusBioFurtherSpeciesArt from "./LektrusBioFurtherSpeciesArt";
 import {isBioFurtherOrganism} from "./lektrusBioMicroscopeModel";
@@ -22,61 +23,8 @@ const ink="#355f52";
 function OrganismShape({organism}:{organism:BioOrganism}){
  return <LektrusBioDetailedOrganisms organism={organism}/>;
 }
-function SpecificOrgan({keyName}:{keyName:BioVisualKey}){
- const dark="#945d69";
- switch(keyName){
-  case "lungs":return <g stroke={dark} strokeWidth="5" fill="#eab2b6">
-   <path d="M225 84Q155 65 129 130Q90 231 164 271Q213 294 227 211Z"/>
-   <path d="M254 84Q326 65 351 130Q390 231 318 271Q268 294 252 211Z"/>
-   <path d="M238 78V215M238 132L189 169M239 132L294 169" fill="none" stroke="#ad747c" strokeWidth="10"/>
-  </g>;
-  case "heart":return <g>
-   <path d="M237 279C200 239 134 211 129 146C122 81 199 63 241 121C296 57 374 99 344 166C321 225 269 256 237 279Z" fill="#d88c95" stroke="#915a64" strokeWidth="6"/>
-   <path d="M238 123L221 45M268 135L290 45" stroke="#aa6d76" strokeWidth="18" strokeLinecap="round"/>
-   <path d="M243 140Q209 198 247 243M277 142L302 187" stroke="#b96070" strokeWidth="5" fill="none"/>
-  </g>;
-  case "brain":return <g fill="#e7b8b4" stroke="#a67c86" strokeWidth="5">
-   <path d="M233 71Q176 42 143 90Q103 108 128 149Q97 191 151 226Q170 271 232 249Q271 270 320 236Q374 211 347 169Q374 116 328 97Q304 46 250 75Z"/>
-   <path d="M234 69Q219 127 234 250M155 135Q188 116 212 139M266 131Q305 109 333 146M163 204L209 189M270 211L326 193" fill="none" stroke="#c58d95"/>
-  </g>;
-  case "eye":return <g>
-   <path d="M81 165Q235 11 398 165Q237 309 81 165Z" fill="#f5e9d7" stroke="#8c795f" strokeWidth="8"/>
-   <circle cx="241" cy="166" r="87" fill="#98c3a3" stroke="#5c9386" strokeWidth="8"/>
-   <circle cx="241" cy="166" r="40" fill="#294c43"/><circle cx="255" cy="144" r="11" fill="#fff"/>
-   <path d="M94 167Q242 45 382 165" stroke="#a57f64" strokeWidth="7" fill="none"/>
-  </g>;
-  case "muscle":return <g>
-   <path d="M62 178Q91 102 187 99Q299 104 418 153L418 212Q263 249 171 229Q89 240 62 178Z" fill="#dca1a0" stroke="#945a5c" strokeWidth="6"/>
-   {Array.from({length:8},(_,i)=><path key={i} d={"M"+(98+i*37)+" 117Q"+(110+i*31)+" 170 "+(96+i*38)+" 222"} stroke="#b87377" fill="none" strokeWidth="5"/>)}
-  </g>;
-  case "gut":return <g fill="none" strokeLinecap="round">
-   <path d="M134 98H351V251H134Z" stroke="#bf8f7e" strokeWidth="29" strokeLinejoin="round"/>
-   <path d="M167 115H321Q354 126 320 150H164Q131 177 177 194H318Q348 220 301 237H177" stroke="#e5ae99" strokeWidth="23"/>
-  </g>;
-  case "flower":return <g>
-   {Array.from({length:9},(_,i)=>{const a=i*Math.PI*2/9;return <ellipse key={i} cx={241+92*Math.cos(a)} cy={162+92*Math.sin(a)}
-    transform={"rotate("+(i*40+90)+" "+(241+92*Math.cos(a))+" "+(162+92*Math.sin(a))+")"}
-    rx="32" ry="67" fill="#efc654" stroke="#c69b3c" strokeWidth="4"/>;})}
-   <circle cx="241" cy="162" r="56" fill="#80603f" stroke="#543b27" strokeWidth="5"/>
-   {Array.from({length:17},(_,i)=><circle key={i} cx={209+(i%5)*15} cy={136+Math.floor(i/5)*18} r="4" fill="#bb955e"/>)}
-  </g>;
-  case "root":return <g stroke="#9d7c54" strokeLinecap="round" strokeWidth="11" fill="none">
-   <path d="M236 34Q225 129 242 186Q224 242 241 298"/>
-   <path d="M236 131Q192 164 166 212M239 163Q288 183 327 232M232 209Q184 250 176 289M244 253Q273 265 293 295" strokeWidth="7"/>
-   <path d="M164 213l-20 24M326 231l27 33M176 287l-15 21" strokeWidth="4"/>
-  </g>;
-  case "leaf":return <g>
-   <path d="M86 249Q66 89 362 75Q380 246 86 249Z" fill="#91c784" stroke="#4e8c56" strokeWidth="7"/>
-   <path d="M87 249L346 92M161 194L152 108M235 153L260 89M175 189L266 218M249 150L316 177" fill="none" stroke="#568e57" strokeWidth="5"/>
-  </g>;
-  case "wood":return <g>
-   <ellipse cx="240" cy="160" rx="174" ry="125" fill="#d9b28a" stroke="#865d41" strokeWidth="10"/>
-   {[44,80,115].map((delta,i)=><ellipse key={i} cx="240" cy="160" rx={174-delta} ry={125-delta*.67} fill="none" stroke={i===0?"#9e734e":"#b08056"} strokeWidth="10"/>)}
-   <ellipse cx="240" cy="160" rx="28" ry="21" fill="#bd9067"/>
-   <path d="M240 160L375 95" stroke="#986c47" strokeWidth="4"/>
-  </g>;
-  default:return <g><circle cx="238" cy="155" r="102" fill="#bde1bd" stroke="#659778" strokeWidth="7"/><circle cx="245" cy="162" r="41" fill="#e4bedf" stroke="#ad85a5" strokeWidth="5"/></g>;
- }
+function SpecificOrgan({organism,keyName}:{organism:BioOrganism;keyName:BioVisualKey}){
+ return <LektrusBioDetailedCoreOrgans organism={organism} keyName={keyName}/>;
 }
 function TissueScene({keyName}:{keyName:BioVisualKey}){
  const plant=["leaf","root","wood","flower"].includes(keyName);
@@ -187,8 +135,8 @@ export default function LektrusBioAnatomyScene({organism,node,children,onSelect,
   :( ["sparrow","perch","frog","bee","snail","pine","fern","wheat"] as string[]).includes(organism)
   ?extra:node.level==="organism"||node.level==="system"
   ?<><g opacity={node.level==="system"?.27:1}><OrganismShape organism={organism}/></g>
-    {node.level==="system"&&<g transform="translate(148 80) scale(.39)" opacity=".93"><SpecificOrgan keyName={keyName}/></g>}</>
-  :node.level==="organ"?<SpecificOrgan keyName={keyName}/>
+    {node.level==="system"&&<g transform="translate(148 80) scale(.39)" opacity=".93"><SpecificOrgan organism={organism} keyName={keyName}/></g>}</>
+  :node.level==="organ"?<SpecificOrgan organism={organism} keyName={keyName}/>
   :node.level==="tissue"?<TissueScene keyName={keyName}/>
   :<CellScene keyName={keyName}/>);
  return <svg className="lektrus-bio-anatomy-svg" viewBox="0 0 480 330" role="group"
