@@ -324,3 +324,14 @@
  .lektrus-bio-alt-zoom-control button{min-width:35px;min-height:35px}
 }
 @media(prefers-reduced-motion:reduce){.lektrus-bio-histology-art{transition:none}}
+
+/* Anatomical plates for eight additional species. Descriptions identify the
+ * exact organ and tissue and never imply optical microscopy or true scale. */
+.lektrus-bio-specimen-plate{filter:drop-shadow(0 5px 6px #245a3e12)}
+.lektrus-bio-specimen-callout text{paint-order:stroke;stroke:#f0f9ec;stroke-width:3px;stroke-linejoin:round}
+.lektrus-bio-specimen-explainer{display:grid;gap:5px;border:1px solid #b6d4c1;border-radius:10px;padding:10px;background:linear-gradient(145deg,#f6fcf0,#e7f5e9)}
+.lektrus-bio-specimen-explainer>strong{font-size:13px;line-height:1.38;color:#255d49}
+.lektrus-bio-specimen-explainer>p{font-size:11px;line-height:1.55;margin:0!important;color:#416f58}
+.lektrus-bio-specimen-explainer>a{font-size:11px;font-weight:750;color:#28664f;text-decoration:underline;text-underline-offset:2px}
+.lektrus-bio-specimen-explainer>small{font-size:10px;line-height:1.42;color:#688675}
+@media(prefers-reduced-motion:reduce){.lektrus-bio-specimen-plate{transition:none!important;animation:none!important}}
