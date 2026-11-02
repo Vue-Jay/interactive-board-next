@@ -28,7 +28,9 @@ for(const id of Object.keys(BIO_ORGANISMS)){
 }
 assert.ok(bioNodes("human").some(n=>n.name==="Кардиомиоцит"));
 assert.ok(bioNodes("cat").some(n=>n.name==="Палочка"));
-assert.ok(bioNodes("sunflower").some(n=>n.name==="Корневой волосок"));
+assert.ok(bioNodes("sunflower").some(n=>n.name==="Клетка ризодермы с корневым волоском"));
+assert.ok(bioNodes("sunflower").some(n=>n.name==="Соцветие-корзинка"));
+assert.ok(bioNodes("oak").some(n=>n.name==="Клетка ризодермы с корневым волоском"));
 assert.ok(bioNodes("oak").some(n=>n.name==="Сосудистый элемент"));
 const panel=fs.readFileSync("src/LektrusSubjectToolsPanel.tsx","utf8");
 assert.match(panel,/"биология":\[\{title:"Биологический микроскоп",ids:\["bio-microscope"\]/);
@@ -88,6 +90,57 @@ const styles=fs.readFileSync("src/lektrusBioMicroscope.css","utf8");
 assert.match(styles,/\.lektrus-bio-hotspot:focus-visible/,"Visible keyboard focus");
 assert.match(styles,/@media\(prefers-reduced-motion:reduce\)/,
  "Animation must respect reduced motion");
+
+const {bioTaskChoices,bioLevelName,BIO_REFERENCES}=exports;
+for(const species of Object.keys(BIO_ORGANISMS)){
+ const nodes=bioNodes(species);
+ for(const node of nodes){
+  if(node.level==="organism")continue;
+  const choices=bioTaskChoices(nodes,node);
+  assert.ok(choices.some(c=>c.id===node.id),"Correct answer missing: "+node.id);
+  assert.equal(new Set(choices.map(c=>c.id)).size,choices.length,"Duplicated quiz option: "+node.id);
+  assert.ok(choices.every(c=>c.level===node.level),"Quiz options must share an organizational level");
+  if(nodes.filter(n=>n.level===node.level).length>1)
+   assert.ok(choices.length>1,"Single-choice exercise is not a real exercise: "+node.id);
+  assert.ok(choices.length<=4,"Avoid endless answers on mobile");
+  if(node.source){
+   assert.ok(/^https:\/\/(openstax.org|www.ncbi.nlm.nih.gov|www.helsinki.fi)\//.test(node.source.url),
+    "Only reviewed education / scientific sources");
+   assert.ok(node.source.title);
+  }
+ }
+}
+const sunflowerNodes=bioNodes("sunflower"),oakNodes=bioNodes("oak"),humanNodes=bioNodes("human");
+const preserved=(nodes,suffix)=>nodes.find(n=>n.id.endsWith("/"+suffix));
+const rootHair=preserved(sunflowerNodes,"корневой-волосок");
+assert.ok(rootHair?.description.includes("вырост одной клетки"));
+assert.equal(rootHair?.source?.url,BIO_REFERENCES.roots.url);
+const sunflowerHead=preserved(sunflowerNodes,"цветок");
+assert.equal(sunflowerHead?.name,"Соцветие-корзинка");
+assert.equal(bioLevelName(sunflowerHead),"Соцветие");
+assert.ok(sunflowerHead?.description.includes("не один цветок"));
+assert.equal(sunflowerHead?.source?.url,BIO_REFERENCES.sunflower.url);
+assert.equal(preserved(sunflowerNodes,"клетка-эпидермиса")?.source?.url,BIO_REFERENCES.sunflower.url);
+const xylem=preserved(oakNodes,"сосудистый-элемент");
+assert.ok(xylem?.description.includes("не имеет ядра"));
+assert.equal(xylem?.source?.url,BIO_REFERENCES.stem.url);
+assert.equal(preserved(humanNodes,"пневмоцит-i-типа")?.source?.url,BIO_REFERENCES.alveoli.url);
+assert.equal(preserved(sunflowerNodes,"корневой-волосок")?.id,
+ "sunflower/корневая-система/корень/ризодерма/корневой-волосок",
+ "Existing saved IDs must remain valid and stable");
+assert.ok(bioTaskChoices(oakNodes,preserved(oakNodes,"клетка-мезофилла"))
+ .some(n=>n.id===preserved(oakNodes,"клетка-мезофилла")?.id),
+ "Farther branches must always keep the correct choice");
+const biologyView=fs.readFileSync("src/LektrusBioMicroscope.tsx","utf8");
+assert.match(biologyView,/const hotspotQuestion=diagram\.activity==="label"/,
+ "Only multi-child diagram levels should rely on hotspots");
+assert.match(biologyView,/diagram\.activity==="assemble"\|\|!hotspotQuestion/,
+ "Single-child levels must have meaningful alternative labels");
+assert.match(biologyView,/Источник: \{selected\.source\.title\}/,
+ "Scientific sources must be accessible from the actual structure");
+assert.match(biologyView,/без реального оптического масштаба/,
+ "A smooth level transition is not falsely called optical magnification");
+
 console.log("Biology anatomy: clickable landmarks, distinct tissue paths, animated zoom, on-image labeling OK");
 
 console.log("Biology microscope: animal/plant hierarchies, 5 layers, tasks, saved legacy compatibility OK");
