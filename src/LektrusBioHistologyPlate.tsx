@@ -34,7 +34,7 @@ function SpongeChamber(){return <g>
  {Array.from({length:10},(_,i)=>{
   const angle=i*Math.PI/5;
   const x=240+Math.cos(angle)*114,y=172+Math.sin(angle)*114;
-  return <g key={i} transform={`translate(${x} ${y}) rotate(${angle*180/Math.PI+90})`}>
+  return <g key={i} transform={`translate(${x} ${y}) rotate(${angle*180/Math.PI-90})`}>
    <path d="M-23 0Q-22-29 0-26Q22-29 23 0Q18 31 0 31Q-18 31-23 0Z"
     fill="#dfb698" stroke="#9b7c70" strokeWidth="3"/>
    <ellipse cx="0" cy="4" rx="8" ry="6" fill="#b798b5"/>
