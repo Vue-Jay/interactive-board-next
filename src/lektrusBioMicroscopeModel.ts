@@ -136,10 +136,10 @@ export function bioNewCellFeatures(organism:BioOrganism,name:string):BioCellFeat
 }
 /** SVG viewBox uses 480×330. Points are schematic landmarks, not measurements. */
 export const BIO_NEW_ROOT_POINTS:Record<BioNewOrganism,readonly [{x:number;y:number},{x:number;y:number},{x:number;y:number}]>={
- earthworm:[{x:162,y:185},{x:266,y:191},{x:359,y:180}],
+ earthworm:[{x:162,y:231},{x:266,y:204},{x:359,y:180}],
  seastar:[{x:285,y:246},{x:286,y:132},{x:173,y:190}],
- crayfish:[{x:251,y:171},{x:302,y:122},{x:364,y:227}],
- horsetail:[{x:285,y:157},{x:233,y:134},{x:239,y:64}]
+ crayfish:[{x:251,y:171},{x:267,y:94},{x:364,y:227}],
+ horsetail:[{x:205,y:157},{x:183,y:134},{x:331,y:70}]
 };
 
 
@@ -215,8 +215,8 @@ export const BIO_FURTHER_CHAINS:Record<BioFurtherOrganism,[string,string,string,
  ]
 };
 export const BIO_FURTHER_ROOT_POINTS:Record<BioFurtherOrganism,readonly [{x:number;y:number},{x:number;y:number},{x:number;y:number}]>={
- lizard:[{x:246,y:159},{x:278,y:184},{x:335,y:112}],
- spider:[{x:255,y:221},{x:307,y:221},{x:225,y:114}],
+ lizard:[{x:246,y:159},{x:278,y:184},{x:109,y:127}],
+ spider:[{x:255,y:221},{x:307,y:221},{x:180,y:166}],
  clubmoss:[{x:190,y:181},{x:310,y:112},{x:220,y:273}],
  magnolia:[{x:326,y:185},{x:207,y:91},{x:262,y:84}]
 };
