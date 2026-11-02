@@ -9,7 +9,7 @@ const load=(path)=>{
 const bio=load("src/lektrusBioMicroscopeModel.ts");
 const atlas=load("src/lektrusBioTaxonomy.ts");
 const addition=["sparrow","perch","frog","bee","snail","pine","fern","wheat"];
-assert.equal(Object.keys(bio.BIO_ORGANISMS).length,12);
+assert.equal(Object.keys(bio.BIO_ORGANISMS).length,16);
 for(const id of addition){
  const nodes=bio.bioNodes(id),root=nodes[0];
  assert.equal(root.level,"organism");

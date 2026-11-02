@@ -7,6 +7,7 @@ import type {BioAlternativeOrganism} from "./lektrusBioAlternativeAtlas";
 import LektrusBioAnatomyScene from "./LektrusBioAnatomyScene";
 import {bioSpecimenPlateFor} from "./lektrusBioSpecimenPlates";
 import {bioCellPlateFor} from "./lektrusBioCellPlates";
+import {isBioNewOrganism} from "./lektrusBioNewLineages";
 import LektrusBioAssemblyBoard from "./LektrusBioAssemblyBoard";
 import "./lektrusBioMicroscope.css";
 
@@ -130,6 +131,15 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
      </div>}
      <small>{cellPlate.caveat}</small>
      <a href={cellPlate.source.url} target="_blank" rel="noopener noreferrer">Научный источник: {cellPlate.source.title}</a>
+    </div>}
+    {isBioNewOrganism(activeOrganism)&&selected.level==="cell"&&diagram.activity==="explore"&&<div className="lektrus-bio-cell-inspector">
+     <strong>{selected.name} · видовые микроструктуры</strong>
+     <p>Выберите одну из трёх отмеченных структур на рисунке. Форма и пропорции клеток показаны схематично, без реального микроскопического масштаба.</p>
+     {chosenFeature&&<div className="lektrus-bio-cell-selection" role="status" aria-live="polite">
+      <b>{chosenFeature.name}</b>
+      <p>{chosenFeature.description}</p>
+     </div>}
+     <small>Анатомическое описание привязано к выбранному организму и его настоящей клетке.</small>
     </div>}
     {cellFeatures.length>0&&<div className="lektrus-bio-cell-features" aria-label="Микроструктуры клетки">
      <strong>Строение клетки крупнее</strong>
