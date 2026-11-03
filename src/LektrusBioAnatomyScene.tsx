@@ -7,6 +7,7 @@ import LektrusBioSpeciesArt from "./LektrusBioSpeciesArt";
 import LektrusBioDetailedOrganisms from "./LektrusBioDetailedOrganisms";
 import LektrusBioDetailedCoreOrgans from "./LektrusBioDetailedCoreOrgans";
 import LektrusBioMammalSystems,{bioMammalSystemKind} from "./LektrusBioMammalSystems";
+import LektrusBioMammalOrganSections,{bioMammalOrganKind} from "./LektrusBioMammalOrganSections";
 import LektrusBioCoreMicroscopyArt from "./LektrusBioCoreMicroscopyArt";
 import {bioCoreMicroscopyPlateFor} from "./lektrusBioCoreMicroscopyPlates";
 import LektrusBioNewSpeciesArt from "./LektrusBioNewSpeciesArt";
@@ -140,6 +141,7 @@ export default function LektrusBioAnatomyScene({organism,node,children,onSelect,
   ?<LektrusBioNewSpeciesArt organism={organism} node={node} selectedFeature={activeFeatureName} onFeatureSelect={onFeatureSelect}/>
   :( ["sparrow","perch","frog","bee","snail","pine","fern","wheat"] as string[]).includes(organism)
   ?extra:bioMammalSystemKind(organism,node)?<LektrusBioMammalSystems organism={organism} node={node}/>
+  :bioMammalOrganKind(organism,node)?<LektrusBioMammalOrganSections organism={organism} node={node}/>
   :node.level==="organism"||node.level==="system"
   ?<><g opacity={node.level==="system"?.27:1}><OrganismShape organism={organism}/></g>
     {node.level==="system"&&<g transform="translate(148 80) scale(.39)" opacity=".93"><SpecificOrgan organism={organism} keyName={keyName}/></g>}</>
