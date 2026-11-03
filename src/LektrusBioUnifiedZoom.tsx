@@ -167,6 +167,9 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
  },[zoom]);
  const onDown=(e:ReactPointerEvent<HTMLDivElement>)=>{
   if(e.pointerType==="mouse"&&e.button!==0)return;
+  // Do not capture presses on feature markers: pointer capture would move
+  // the following click to the viewport, making cellular hotspots unusable.
+  if((e.target as Element).closest('[role="button"],button,input,a'))return;
   if(focusTravelTimer.current!==undefined)window.clearTimeout(focusTravelTimer.current);
   focusTravelTimer.current=undefined;setFocusSeeking(false);
   e.currentTarget.setPointerCapture(e.pointerId);
@@ -211,6 +214,8 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
   }else lastTap.current={point,at:now};
  };
  const key=(e:ReactKeyboardEvent<HTMLDivElement>)=>{
+  // Arrow-key panning belongs only to the focused stage, not nested pins.
+  if(e.target!==e.currentTarget)return;
   const keys:Record<string,XY>={ArrowLeft:{x:-24,y:0},ArrowRight:{x:24,y:0},
    ArrowUp:{x:0,y:-24},ArrowDown:{x:0,y:24}};
   if(keys[e.key]){
