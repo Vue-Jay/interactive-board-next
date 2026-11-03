@@ -71,6 +71,8 @@ jobs:
         run: node scripts/test-lektrus-bio-feature-focus.mjs
       - name: Biology Mammalia one-class five-layer curriculum and system-location verification
         run: node scripts/test-lektrus-bio-mammal-layers.mjs
+      - name: Mammalia six anatomical organ sections and real tissue zoom portals
+        run: node scripts/test-lektrus-bio-mammal-organs.mjs
       - name: Biology drag and place anatomy exercises
         run: node scripts/test-lektrus-bio-assembly.mjs
       - name: Biology organ systems and relief regression
