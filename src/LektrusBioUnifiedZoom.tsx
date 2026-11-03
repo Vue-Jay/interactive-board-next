@@ -138,6 +138,8 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
  };
  const zoom=useCallback((multiplier:number,point:XY)=>{
   if(ghostRef.current)return;
+  if(focusTravelTimer.current!==undefined)window.clearTimeout(focusTravelTimer.current);
+  focusTravelTimer.current=undefined;setFocusSeeking(false);
   const node=currentRef.current,old=cameraRef.current;
   const desired=old.scale*multiplier;
   if(multiplier<1&&node.parentId&&desired<.97){
@@ -216,6 +218,8 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
  const key=(e:ReactKeyboardEvent<HTMLDivElement>)=>{
   // Arrow-key panning belongs only to the focused stage, not nested pins.
   if(e.target!==e.currentTarget)return;
+  if(focusTravelTimer.current!==undefined)window.clearTimeout(focusTravelTimer.current);
+  focusTravelTimer.current=undefined;setFocusSeeking(false);
   const keys:Record<string,XY>={ArrowLeft:{x:-24,y:0},ArrowRight:{x:24,y:0},
    ArrowUp:{x:0,y:-24},ArrowDown:{x:0,y:24}};
   if(keys[e.key]){
