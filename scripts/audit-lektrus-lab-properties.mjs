@@ -5,7 +5,7 @@
  *   node scripts/audit-lektrus-lab-properties.mjs
  *   node scripts/audit-lektrus-lab-properties.mjs --json
  *   node scripts/audit-lektrus-lab-properties.mjs --markdown
- *   node scripts/audit-lektrus-lab-properties.mjs --verify
+ *   node scripts/audit-lektrus-lab-properties.mjs --missing\n *   node scripts/audit-lektrus-lab-properties.mjs --verify
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -509,7 +509,7 @@ if(process.argv.includes("--verify")){
  assert.ok(producedOnly.every(x=>x.molarMassKnown),
   "Every existing reviewed product must have a calculable formula mass");
 }
-if(process.argv.includes("--json")){
+if(process.argv.includes("--missing")){\n // Compact, stable work queue for subsequent source-verification batches.\n // Preserve the applicability distinction: no fabricated value for gases,\n // aqueous stocks, or substances with an unverified crystal phase.\n console.log(JSON.stringify({schemaVersion:1,stock:rawTotals.stock,\n  outstanding:report.stockWithOutstandingProperties,\n  byProperty:Object.fromEntries(Object.entries(counted).map(([key,value])=>\n   [key,{remaining:value.remaining,formulas:value.firstMissing}])),\n  byReagent:stockRows.filter(row=>row.missing.length).map(row=>({\n   formula:row.formula,name:row.name,missing:row.missing\n  }))\n },null,2));\n}else if(process.argv.includes("--json")){
  console.log(JSON.stringify(report,null,2));
 }else if(process.argv.includes("--markdown")){
  const labels={
