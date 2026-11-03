@@ -166,7 +166,7 @@ function Neuron():ReactNode{
   <path d="M402 214L422 207L435 189M412 224L439 236L455 249
    M418 231L412 253L404 273"
    fill="none" stroke="#a47c9e" strokeWidth="5.8" strokeLinecap="round"/>
-  {[ [435,189],[455,249],[404,273] ].map(([x,y],i)=>
+  {[ [435,189],[418,239],[455,249],[404,273] ].map(([x,y],i)=>
    <g key={i}><ellipse cx={x} cy={y} rx="10" ry="7"
     fill="#d29ebf" stroke="#9679a4" strokeWidth="2.3"/>
     <circle cx={x-3} cy={y} r="2.1" fill="#f7e7bd"/></g>)}
@@ -250,20 +250,20 @@ function Enterocyte():ReactNode{
   <rect x="31" y="43" width="418" height="62" rx="12" fill="#fff9eb"/>
   {/* Polarized columnar enterocyte, with an adjacent epithelial neighbour
       linked by an apical tight junction. Brush border is NOT a whole villus. */}
-  <path d="M166 108Q190 104 235 109H326V275Q241 290 166 274Z"
+  <path d="M166 108Q190 104 235 109H351V275Q241 290 166 274Z"
    fill="#e8baa1" stroke="#b38578" strokeWidth="5"/>
-  <path d="M329 109Q372 104 410 112V269Q374 284 329 272Z"
+  <path d="M352 109Q382 104 421 112V269Q388 284 352 272Z"
    fill="#e0bdac" stroke="#b78d80" strokeWidth="4"/>
-  <path d="M166 111L328 111" stroke="#a1a580" strokeWidth="6"/>
-  {Array.from({length:34},(_,i)=>{
+  <path d="M166 111L352 111" stroke="#a1a580" strokeWidth="6"/>
+  {Array.from({length:39},(_,i)=>{
    const x=170+i*4.62;
    return <path key={i} d={"M"+x+" 111v-31"} stroke={i%2?"#cda97e":"#e9cc9f"}
     strokeWidth="2.4" strokeLinecap="round"/>;
   })}
   {/* Tight junction and adherens contact at the apicolateral neighbour. */}
-  <path d="M325 118h15m-15 5h15m-15 5h15"
+  <path d="M346 118h16m-16 5h16m-16 5h16"
    stroke="#815f73" strokeWidth="4" strokeLinecap="round"/>
-  <path d="M329 130v131" stroke="#a97785" strokeWidth="3" strokeDasharray="8 4"/>
+  <path d="M352 130v131" stroke="#a97785" strokeWidth="3" strokeDasharray="8 4"/>
   {/* Basally placed nucleus and mitochondria for active transport. */}
   <Nucleus x={258} y={241} rx={28} ry={22}/>
   {[[210,218,40],[215,234,-12],[293,190,12],[283,215,45],[206,170,-28],[303,253,10]]
