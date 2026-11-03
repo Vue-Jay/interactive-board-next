@@ -88,7 +88,7 @@ for(const species of ["human","cat"]){
   const inset=elements.find(e=>e.props["data-bio-mammal-tissue-preview"]===expected.kind);
   assert.ok(inset,"Missing real histological target preview "+expected.kind);
   const circles=collect(inset).filter(e=>e.type==="circle");
-  assert.ok(circles.some(c=>c.props.cx===actual.x&&c.props.cy===actual.y&&c.props.r===64),
+  assert.ok(circles.some(c=>c.props.cx===actual.x&&c.props.cy===actual.y&&Number(c.props.r)===64),
    "Focus must be in middle of its actual tissue preview");
   assert.ok(elements.some(e=>e.props["data-bio-mammal-organ-drawing"]===expected.kind),
    "Missing kind-specific organ illustration");
