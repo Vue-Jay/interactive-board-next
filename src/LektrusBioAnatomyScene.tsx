@@ -8,6 +8,7 @@ import LektrusBioDetailedOrganisms from "./LektrusBioDetailedOrganisms";
 import LektrusBioDetailedCoreOrgans from "./LektrusBioDetailedCoreOrgans";
 import LektrusBioMammalSystems,{bioMammalSystemKind} from "./LektrusBioMammalSystems";
 import LektrusBioMammalOrganSections,{bioMammalOrganKind} from "./LektrusBioMammalOrganSections";
+import LektrusBioMammalTissueSections,{bioMammalTissueKind} from "./LektrusBioMammalTissueSections";
 import LektrusBioCoreMicroscopyArt from "./LektrusBioCoreMicroscopyArt";
 import {bioCoreMicroscopyPlateFor} from "./lektrusBioCoreMicroscopyPlates";
 import LektrusBioNewSpeciesArt from "./LektrusBioNewSpeciesArt";
@@ -133,8 +134,14 @@ export default function LektrusBioAnatomyScene({organism,node,children,onSelect,
  const cellDetail=cellPlate?<LektrusBioCellDetail organism={organism} node={node}
   selectedFeature={activeFeatureName} onFeatureSelect={onFeatureSelect}/>:null;
  const detail=plate?<LektrusBioOrganDetail organism={organism} node={node}/>:null;
- const coreDetail=corePlate?<LektrusBioCoreMicroscopyArt plate={corePlate}
-  features={bioCellFeatures(node)} selectedFeature={activeFeatureName} onFeatureSelect={onFeatureSelect}/>:null;
+ // Tissue-specific mammal sections take priority over the original core
+ // histology drawing at level four. The reviewed cellular art remains
+ // unchanged at level five, preserving real feature-marker coordinates.
+ const coreDetail=corePlate?(bioMammalTissueKind(organism,node)
+  ?<LektrusBioMammalTissueSections organism={organism} node={node}/>
+  :<LektrusBioCoreMicroscopyArt plate={corePlate}
+   features={bioCellFeatures(node)} selectedFeature={activeFeatureName}
+   onFeatureSelect={onFeatureSelect}/>):null;
  const shape:ReactNode=cellDetail??detail??coreDetail??(isBioFurtherOrganism(organism)
   ?<LektrusBioFurtherSpeciesArt organism={organism} node={node} selectedFeature={activeFeatureName} onFeatureSelect={onFeatureSelect}/>
   :isBioNewOrganism(organism)
