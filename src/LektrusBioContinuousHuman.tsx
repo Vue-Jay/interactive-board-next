@@ -20,7 +20,6 @@ import {
 } from "./lektrusBioContinuousHumanModel";
 import "./lektrusBioContinuousHuman.css";
 
-type Pointer={id:number,x:number,y:number};
 const dist=(a:HumanPoint,b:HumanPoint)=>Math.hypot(a.x-b.x,a.y-b.y);
 const regionNames:Record<HumanRegion,string>={
  heart:"Сердце",lungs:"Лёгкие",brain:"Головной мозг",skin:"Кожа и покровы"
