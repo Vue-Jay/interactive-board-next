@@ -499,6 +499,19 @@ export function bioChildSpot(
   return (BIO_ORGANISMS[organism].group==="animal"?animal:plant)[key]
    ??{x:240+index*35-(total-1)*17.5,y:170};
  }
+ // Mammals are the first class with localized system plates. The selected
+ // organ hotspot must sit ON that system, not at the generic stage centre.
+ if(parent.level==="system"&&total===1&&(organism==="human"||organism==="cat")){
+  const mammalSpot:Record<string,BioImageSpot>={
+   "human/дыхательная-система":{x:259,y:150},
+   "human/кровеносная-система":{x:232,y:157},
+   "human/нервная-система":{x:240,y:52},
+   "cat/сенсорная-система":{x:190,y:158},
+   "cat/опорно-двигательная-система":{x:302,y:205},
+   "cat/пищеварительная-система":{x:281,y:213}
+  };
+  return mammalSpot[parent.id]??{x:240,y:163};
+ }
  // A shared shoot has both stem and leaves: their hotspots should
  // occupy different places, rather than one unclickable centre.
  if(parent.level==="system"&&total>1){
