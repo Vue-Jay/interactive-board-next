@@ -122,9 +122,9 @@ for(const [fn,labels] of [
  for(const label of labels)assert.ok(source.includes(label),fn+" missing real feature "+label);
 }
 assert.match(source,/Tapetum is NOT part of the retina/);
-assert.match(source,/central lymphatic capillary/);
+assert.match(source,/lymphatic capillary \\(lacteal\\)/);
 assert.match(source,/sarcolemmal PERIPHERY/);
-assert.match(source,/Alveolar macrophage is NOT a pneumocyte/);
+assert.match(source,/alveolar macrophage is NOT a pneumocyte/i);
 const scene=read("src/LektrusBioAnatomyScene.tsx");
 const sceneAst=ts.createSourceFile("src/LektrusBioAnatomyScene.tsx",scene,
  ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
