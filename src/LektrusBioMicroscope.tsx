@@ -6,6 +6,7 @@ import LektrusBioAlternativeView from "./LektrusBioAlternativeView";
 import type {BioAlternativeOrganism} from "./lektrusBioAlternativeAtlas";
 import LektrusBioAnatomyScene from "./LektrusBioAnatomyScene";
 import LektrusBioUnifiedZoom from "./LektrusBioUnifiedZoom";
+import LektrusBioContinuousHuman from "./LektrusBioContinuousHuman";
 import {bioSpecimenPlateFor} from "./lektrusBioSpecimenPlates";
 import {bioCellPlateFor} from "./lektrusBioCellPlates";
 import {isBioNewOrganism} from "./lektrusBioNewLineages";
@@ -88,7 +89,7 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
    <div className="lektrus-bio-class-focus" aria-label="Послойная разработка класса Млекопитающие">
     <div className="lektrus-bio-class-focus-heading">
      <div><strong>Млекопитающие · Mammalia</strong>
-      <small>Сейчас прорабатываем слой 5/5: строение клеток и их интерактивные структуры.
+      <small>{activeOrganism==="human"?"Человек теперь исследуется на непрерывном поле с плавным переходом от поверхности к клеткам.":"Слои организма, органов, тканей и клеток. Кошка пока использует прежний режим."}
        В атласе представлены два модельных вида, не весь класс.</small></div>
      <div className="lektrus-bio-class-species" role="group" aria-label="Представители млекопитающих">
       <button type="button" aria-pressed={activeOrganism==="human"}
@@ -102,7 +103,8 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
       aria-current={i===4?"step":undefined}>{i+1}. {BIO_LEVEL_LABELS[level]}</span>)}
     </div>
    </div>}
-  {diagram.activity==="explore"&&<LektrusBioUnifiedZoom key={activeOrganism} organism={activeOrganism}/>}
+  {diagram.activity==="explore"&&activeOrganism==="human"&&<LektrusBioContinuousHuman/>}
+  {diagram.activity==="explore"&&activeOrganism!=="human"&&<LektrusBioUnifiedZoom key={activeOrganism} organism={activeOrganism}/>}
   {showExercise&&<>
   <div className="lektrus-bio-levels" role="group" aria-label="Уровни увеличения">
    {BIO_LEVELS.map((level,i)=><button type="button" key={level} className={Math.round(zoom)===i?"is-active":""}
