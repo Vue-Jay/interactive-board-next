@@ -8,10 +8,12 @@ import type {BioNode,BioOrganism,BioImageSpot} from "./lektrusBioMicroscopeModel
 import {BIO_LEVEL_LABELS,BIO_LEVELS,bioCellFeatures,bioNodes} from "./lektrusBioMicroscopeModel";
 import LektrusBioAnatomyScene from "./LektrusBioAnatomyScene";
 import LektrusBioParentOverview from "./LektrusBioParentOverview";
+import {bioFeatureSpotFor} from "./lektrusBioFeatureFocus";
 import {
  BIO_ZOOM_GATE,BIO_ZOOM_INITIAL,BIO_ZOOM_MAX,
  bioZoomAt,bioZoomBound,bioZoomPan,bioZoomToWorld,bioZoomClosestChild,bioZoomPoint,
  bioZoomPortalCamera,bioZoomHitRadius,bioZoomScreenPoint,bioZoomParentContext,
+ bioZoomFocusCamera,
  bioZoomImageFor,bioZoomSharedFrame,bioZoomPath,bioZoomChildCandidates,
  type BioZoomCamera
 } from "./lektrusBioUnifiedZoomModel";
@@ -49,6 +51,8 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
  const photo=bioZoomImageFor(organism,current);
  const cellParts=bioCellFeatures(current);
  const selectedFeature=cellParts.find(x=>x.name===feature);
+ const featureTarget=feature&&current.level==="cell"&&!(photo&&photoError!==current.id)
+  ?bioFeatureSpotFor(organism,current,nodes,feature):null;
  const stageLevel=BIO_LEVELS.indexOf(current.level);
  const isMicroscopic=stageLevel>=3;
  const setCam=useCallback((next:BioZoomCamera)=>{
@@ -206,6 +210,20 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
   else if(e.key==="Backspace"){e.preventDefault();ascend();}
   else if(e.key==="Home"){e.preventDefault();setCurrentId(organism);setCam(BIO_ZOOM_INITIAL);}
  };
+ const focusFeature=useCallback((name:string)=>{
+  const node=currentRef.current;
+  setFeature(name);
+  // A real photomicrograph is not a pixel-matched rendering of our
+  // schematic labels. We cannot pretend to point to a subcellular feature
+  // in the unrelated field: its explanation remains available as text.
+  const photo=bioZoomImageFor(organism,node);
+  if(photo&&photoError!==node.id)return;
+  const pt=bioFeatureSpotFor(organism,node,nodes,name);
+  if(!pt||ghostRef.current)return;
+  setCam(bioZoomFocusCamera(cameraRef.current,pt));
+  setFocus(0);
+  setNotice("");
+ },[organism,nodes,photoError,setCam]);
  const draw=(node:BioNode,cam:BioZoomCamera,includeMarkers:boolean,portalTo?:BioZoomCamera,portalSpot?:BioImageSpot)=>{
   const imgBlur=BIO_LEVELS.indexOf(node.level)>=3?Math.abs(focus)*.24:0;
   const sceneChildren=bioZoomChildCandidates(nodes,node);
@@ -221,7 +239,18 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
      className="lektrus-bio-unified-photo" onError={()=>setPhotoError(node.id)}/>:
     <LektrusBioAnatomyScene organism={organism} node={node} children={sceneChildren}
      interactive={false} onSelect={()=>{}} activeFeatureName={feature}
-     onFeatureSelect={includeMarkers&&node.level==="cell"?setFeature:undefined}/>}
+     onFeatureSelect={includeMarkers&&node.level==="cell"?focusFeature:undefined}/>}
+   {includeMarkers&&node.id===current.id&&featureTarget&&<svg
+    className="lektrus-bio-feature-focus" viewBox="0 0 480 330"
+    aria-hidden="true" pointerEvents="none" data-bio-feature-target={feature}>
+    <circle cx={featureTarget.x} cy={featureTarget.y} r={24/cam.scale}
+     className="lektrus-bio-feature-focus-ring"/>
+    <circle cx={featureTarget.x} cy={featureTarget.y} r={7/cam.scale}
+     className="lektrus-bio-feature-focus-center"/>
+    <path d={"M"+(featureTarget.x-37/cam.scale)+" "+featureTarget.y+
+      "h"+(12/cam.scale)+"M"+(featureTarget.x+25/cam.scale)+" "+featureTarget.y+
+      "h"+(12/cam.scale)} stroke="#edc773" strokeWidth={2/cam.scale} fill="none"/>
+   </svg>}
    {portalSpot&&<svg className="lektrus-bio-portal-mark" viewBox="0 0 480 330"
       aria-hidden="true" pointerEvents="none">
      <circle data-bio-portal-focus="true" cx={portalSpot.x} cy={portalSpot.y}
@@ -309,7 +338,8 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
    {cellParts.length>0&&<div className="lektrus-bio-unified-cell-parts">
     <strong>Строение клетки</strong>
     {cellParts.map(x=><button type="button" key={x.name} className={feature===x.name?"is-active":""}
-     onClick={()=>setFeature(x.name)}>{x.name}</button>)}
+     title={"Найти на рисунке: "+x.name}
+     onClick={()=>focusFeature(x.name)}>{x.name}</button>)}
     {selectedFeature&&<p role="status"><b>{selectedFeature.name}:</b> {selectedFeature.description}</p>}
    </div>}
    {children.length>0&&<div className="lektrus-bio-unified-branches" aria-label="Доступные области">
