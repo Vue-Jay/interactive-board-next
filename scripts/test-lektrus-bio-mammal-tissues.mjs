@@ -134,7 +134,7 @@ assert.match(scene,/<LektrusBioMammalTissueSections organism=\{organism\} node=\
 assert.match(scene,/<LektrusBioCoreMicroscopyArt plate=\{corePlate\}/);
 assert.match(scene,/cellDetail\?\?detail\?\?coreDetail/);
 const app=read("src/LektrusBioMicroscope.tsx");
-assert.match(app,/Сейчас прорабатываем слой 5\/5/);
+assert.match(app,/Человек теперь исследуется на непрерывном поле/);
 assert.match(app,/className=\{i===4\?"is-current":i<4\?"is-established":""\}/);
 assert.match(app,/aria-current=\{i===4\?"step":undefined\}/);
 console.log("Mammalia tissue stage 4: 6 distinct tissue sections, 6 exact cell locations, 6 five-depth pathways and stable cell feature coordinates.");
