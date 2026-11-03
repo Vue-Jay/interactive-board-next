@@ -3,11 +3,16 @@ import fs from "node:fs";
 import ts from "typescript";
 
 const get=path=>fs.readFileSync(path,"utf8");
+const cache=new Map();
 function loadModel(path){
+ if(cache.has(path))return cache.get(path);
  const js=ts.transpileModule(get(path),{fileName:path,compilerOptions:{
   module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
- const exports={};
- new Function("exports",js)(exports);
+ const exports={};cache.set(path,exports);
+ new Function("exports","require",js)(exports,(name)=>{
+  assert.match(name,/^\.\//,"Only local model dependencies allowed");
+  return loadModel(path.slice(0,path.lastIndexOf("/")+1)+name.slice(2)+".ts");
+ });
  return exports;
 }
 const model=loadModel("src/lektrusBioMicroscopeModel.ts");
