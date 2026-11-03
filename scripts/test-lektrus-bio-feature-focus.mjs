@@ -90,12 +90,20 @@ for(const file of ["src/LektrusBioUnifiedZoom.tsx","src/LektrusBioCoreMicroscopy
 }
 assert.match(model,/export function bioZoomFocusCamera\(/);
 assert.match(component,/bioFeatureSpotFor\(organism,node,nodes,name\)/);
-assert.match(component,/setCam\(bioZoomFocusCamera\(cameraRef.current,pt\)\)/);
+assert.match(component,/const target=bioZoomFocusCamera\(cameraRef.current,pt\)/);
+assert.match(component,/setCam\(target\)/);
+assert.match(component,/setFocusSeeking\(true\)/);
+assert.match(component,/focusTravelTimer.current=window.setTimeout/);
+assert.match(component,/is-feature-seeking/);
+assert.match(component,/setFocus\(0\)/);
+assert.match(component,/Показать всё поле выбранной ткани/);
 assert.match(component,/onClick=\{\(\)=>focusFeature\(x.name\)\}/);
 assert.match(component,/onFeatureSelect=\{includeMarkers&&node.level==="cell"\?focusFeature:undefined\}/);
 assert.match(component,/data-bio-feature-target=\{feature\}/);
 assert.match(component,/if\(photo&&photoError!==node.id\)return;/,
  "No fabricated subcellular spots on an unregistered photo");
 assert.match(css,/lektrus-bio-feature-focus-ring/);
+assert.match(css,/lektrus-bio-unified-world.is-feature-seeking\{transition:transform/);
+assert.match(css,/lektrus-bio-unified-world.is-feature-seeking\{transition:none!important\}/);
 assert.match(css,/lektrus-bio-feature-focus-ring\{animation:none\}/);
 console.log("Microscope cellular focus: 20 organisms, 61 cells, 183 matching features, 24 specific + 13 core + 24 lineage plates, camera bounds and photo safeguards OK.");
