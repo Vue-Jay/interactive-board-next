@@ -318,6 +318,23 @@ if(process.argv.includes("--verify")){
   assert.ok(has(row.value)&&row.value>0,"Invalid numeric source "+key);
   assert.ok(row.sourceUrl.startsWith("https://"));
   assert.ok(row.sourceCondition.length>=12);
+  // Source phase and property type are part of the scientific identity.
+  // In particular a decomposition temperature must not silently become
+  // a melting/boiling point, and molar Cp must carry its own temperature.
+  if(row.property==="specificHeatJPerGK"){
+   assert.ok(row.sourceMolarHeatJPerMolK===undefined||
+    row.sourceTemperatureKelvin!==undefined,
+    "Molar Cp missing its source temperature: "+key);
+  }else{
+   assert.equal(row.sourceMolarHeatJPerMolK,undefined,
+    "Non-calorimetric property has molar Cp metadata: "+key);
+   assert.equal(row.sourceTemperatureKelvin,undefined,
+    "Non-calorimetric property has Cp temperature metadata: "+key);
+  }
+  if(row.property==="decompositionC"||row.property==="sublimationC"){
+   assert.ok(row.note&&row.note.length>=20,
+    "Chemical decomposition/sublimation needs a phase-specific note: "+key);
+  }
   // For every newly imported source Cp, compare the ORIGINAL published
   // molar number with the simulator's formula parser. Six-decimal mass
   // values must agree within the rounding bound, without using the
