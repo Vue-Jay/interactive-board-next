@@ -3,7 +3,7 @@
  * coordinate and anatomical layers alpha-blend in the same world.
  * The art is a school teaching reconstruction, not a literal optical scan.
  */
-import {useCallback,useEffect,useMemo,useRef,useState} from "react";
+import {memo,useCallback,useEffect,useMemo,useRef,useState} from "react";
 import type {PointerEvent as RP,KeyboardEvent as RK,CSSProperties} from "react";
 import bodyImage from "./assets/bio-atlas/body.webp";
 import organsImage from "./assets/bio-atlas/organs.webp";
@@ -24,6 +24,11 @@ const dist=(a:HumanPoint,b:HumanPoint)=>Math.hypot(a.x-b.x,a.y-b.y);
 const regionNames:Record<HumanRegion,string>={
  heart:"Сердце",lungs:"Лёгкие",brain:"Головной мозг",skin:"Кожа и покровы"
 };
+// Keep historical anatomy SVG trees off the wheel/pinch render hot path.
+const StaticAnatomy=memo(function StaticAnatomy({node}:{node:BioNode}){
+ return <LektrusBioAnatomyScene organism="human" node={node} children={[]}
+  interactive={false} onSelect={()=>{}}/>;
+});
 function SkinSection({depth}:{depth:number}){
  return <svg viewBox="0 0 480 330" preserveAspectRatio="xMidYMid slice"
   role="img" aria-label="Обобщённый учебный срез кожи человека">
@@ -83,8 +88,7 @@ function Layer({asset,node,opacity,className,point,annotation,depth}:{
  return <div className={"lektrus-human-tile "+className}
   aria-hidden="true" style={{opacity,left:(point.x/W*100)+"%",top:(point.y/H*100)+"%"}}>
   {asset?<img src={asset} alt="" draggable={false}/>:node?
-   <LektrusBioAnatomyScene organism="human" node={node} children={[]}
-    interactive={false} onSelect={()=>{}}/>:
+   <StaticAnatomy node={node}/>:
    <SkinSection depth={depth??2}/>}
   {annotation&&<span className="lektrus-human-tile-label">{annotation}</span>}
  </div>;
