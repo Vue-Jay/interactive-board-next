@@ -67,6 +67,8 @@ jobs:
         run: node scripts/test-lektrus-bio-lineage-microscopy.mjs
       - name: Reviewed bird fish amphibian insect mollusc and plant microscopic atlas
         run: node scripts/test-lektrus-bio-representative-microscopy.mjs
+      - name: Continuous microscopy and all 183 cell landmarks
+        run: node scripts/test-lektrus-bio-feature-focus.mjs
       - name: Biology drag and place anatomy exercises
         run: node scripts/test-lektrus-bio-assembly.mjs
       - name: Biology organ systems and relief regression
