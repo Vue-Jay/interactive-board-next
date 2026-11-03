@@ -163,7 +163,7 @@ assert.match(camera,/bioZoomPan\(cameraRef.current/);
 assert.match(camera,/data-bio-zoom-target=\{child.id\}/);
 assert.match(camera,/role="button" tabIndex=\{0\}/);
 assert.match(camera,/onKeyDown=\{e=>\{if\(e.key==="Enter"\|\|e.key===" "\)/);
-assert.match(camera,/node.level==="cell"\?setFeature:undefined/);
+assert.match(camera,/node.level==="cell"\?focusFeature:undefined/);
 assert.match(camera,/Предметный|Непрерывное исследование организма/);
 assert.match(camera,/разных экземпляров и препаратов/);
 const app=fs.readFileSync("src/LektrusBioMicroscope.tsx","utf8");
