@@ -167,6 +167,6 @@ assert.match(scene,/cellDetail\?\?detail\?\?coreDetail/);
 const focusSource=read("src/lektrusBioFeatureFocus.ts");
 assert.match(focusSource,/bioCoreMicroscopySpot\(core.kind,index\)/);
 const main=read("src/LektrusBioMicroscope.tsx");
-assert.match(main,/Сейчас прорабатываем слой 5\/5/);
+assert.match(main,/Человек теперь исследуется на непрерывном поле/);
 assert.match(main,/className=\{i===4\?"is-current":i<4\?"is-established":""\}/);
 console.log("Mammalia stage 5: six scientific cell reconstructions, 18 exact reviewed feature pins, touch+keyboard access, focus compatibility, non-mammal isolation and all 5 atlas levels PASS.");
