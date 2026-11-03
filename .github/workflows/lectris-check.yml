@@ -77,6 +77,8 @@ jobs:
         run: node scripts/test-lektrus-bio-mammal-tissues.mjs
       - name: Mammalia stage-five original cells and all 18 interactive feature markers
         run: node scripts/test-lektrus-bio-mammal-cells.mjs
+      - name: Spatial human atlas zoom camera and five high-quality offline assets
+        run: node scripts/test-lektrus-bio-continuous-human.mjs
       - name: Biology drag and place anatomy exercises
         run: node scripts/test-lektrus-bio-assembly.mjs
       - name: Biology organ systems and relief regression
