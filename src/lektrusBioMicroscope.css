@@ -379,3 +379,18 @@
 .lektrus-bio-class-depth span.is-established{color:#315c49;background:#e0eee3;border-color:#b1cbb8}
 .lektrus-bio-class-depth span.is-current{color:#fff;background:#387956;border-color:#387956}
 @media(max-width:520px){.lektrus-bio-class-focus{padding:9px;gap:7px}.lektrus-bio-class-species{width:100%}.lektrus-bio-class-species button{flex:1}.lektrus-bio-class-depth span{font-size:9px;padding:4px 6px}}
+
+/* Stage 5 Mammalia: one carefully labelled educational electrical impulse.
+ * SVG static when reducing motion; no animation of cellular morphology
+ * (organelles do not literally move along this decorative guidance line).
+ */
+.lektrus-bio-mammal-neuron-signal{
+ animation:lektrus-bio-axon-conduction 2.8s linear infinite;
+}
+@keyframes lektrus-bio-axon-conduction{
+ from{stroke-dashoffset:90;opacity:.78}
+ to{stroke-dashoffset:0;opacity:.78}
+}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-bio-mammal-neuron-signal{animation:none!important;opacity:.7}
+}
