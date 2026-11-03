@@ -69,6 +69,8 @@ jobs:
         run: node scripts/test-lektrus-bio-representative-microscopy.mjs
       - name: Continuous microscopy and all 183 cell landmarks
         run: node scripts/test-lektrus-bio-feature-focus.mjs
+      - name: Biology Mammalia one-class five-layer curriculum and system-location verification
+        run: node scripts/test-lektrus-bio-mammal-layers.mjs
       - name: Biology drag and place anatomy exercises
         run: node scripts/test-lektrus-bio-assembly.mjs
       - name: Biology organ systems and relief regression
