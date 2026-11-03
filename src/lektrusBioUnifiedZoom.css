@@ -80,6 +80,11 @@
 .lektrus-bio-unified-controls input[type=range]{width:100%;accent-color:#36865b;min-width:75px}
 .lektrus-bio-unified-zoom-control{display:flex;align-items:center;gap:6px;flex:2;min-width:160px}
 .lektrus-bio-unified-zoom-control button{min-width:38px;min-height:36px;border:1px solid #a5c8b1;border-radius:8px;background:white;color:#2a7650;font-size:20px;font-weight:750}
+.lektrus-bio-unified-stage-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.lektrus-bio-unified-stage-actions button{min-height:34px;border:1px solid #a5c8b1;background:#fff;color:#316f53;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:750;white-space:nowrap}
+.lektrus-bio-unified-stage-actions button:hover:not(:disabled){background:#e2f4e8}
+.lektrus-bio-unified-stage-actions button:disabled{opacity:.45;cursor:default}
+.lektrus-bio-unified-feature-hint{display:block;flex-basis:100%;font-size:11px;color:#668675;line-height:1.4;margin:0 0 2px}
 .lektrus-bio-unified-details{display:grid;gap:8px;padding:12px 14px;background:#eff8f0;border:1px solid #bad8c0;border-radius:12px;color:#355c48;font-size:12px}
 .lektrus-bio-unified-details>p{margin:0;font-size:13px;line-height:1.5}
 .lektrus-bio-unified-photo-source{display:grid;gap:3px;padding:9px 11px;background:#fffef6;border-left:3px solid #689e81;border-radius:5px}
@@ -91,5 +96,5 @@
 .lektrus-bio-unified-cell-parts button.is-active{background:#357951;color:white}
 .lektrus-bio-unified-cell-parts>p{width:100%;margin:4px 0;font-size:12px;line-height:1.5}
 .lektrus-bio-unified-honesty{display:block;border-top:1px solid #cbdbcd;padding-top:8px;color:#6e8375;line-height:1.5;font-size:11px}
-@media(max-width:650px){.lektrus-bio-location{width:110px;top:6px;right:6px;padding:4px}.lektrus-bio-location-caption small,.lektrus-bio-location-caption span{display:none}.lektrus-bio-location-title{font-size:8px;padding:1px 2px 3px}.lektrus-bio-location-caption strong{font-size:10px;-webkit-line-clamp:1}.lektrus-bio-unified-heading{padding:11px}.lektrus-bio-unified-viewport{width:100%;min-height:0;max-height:none;border-radius:12px}.lektrus-bio-unified-controls{gap:8px}.lektrus-bio-unified-zoom-control{min-width:100%;flex:1}.lektrus-bio-unified-hud{font-size:9px;bottom:6px;left:7px;right:7px}.lektrus-bio-unified-breadcrumbs button{font-size:10px}.lektrus-bio-unified-details{padding:10px}}
+@media(max-width:650px){.lektrus-bio-unified-stage-actions{width:100%;justify-content:flex-end}.lektrus-bio-unified-stage-actions button{min-height:38px}.lektrus-bio-location{width:110px;top:6px;right:6px;padding:4px}.lektrus-bio-location-caption small,.lektrus-bio-location-caption span{display:none}.lektrus-bio-location-title{font-size:8px;padding:1px 2px 3px}.lektrus-bio-location-caption strong{font-size:10px;-webkit-line-clamp:1}.lektrus-bio-unified-heading{padding:11px}.lektrus-bio-unified-viewport{width:100%;min-height:0;max-height:none;border-radius:12px}.lektrus-bio-unified-controls{gap:8px}.lektrus-bio-unified-zoom-control{min-width:100%;flex:1}.lektrus-bio-unified-hud{font-size:9px;bottom:6px;left:7px;right:7px}.lektrus-bio-unified-breadcrumbs button{font-size:10px}.lektrus-bio-unified-details{padding:10px}}
 @media(prefers-reduced-motion:reduce){.lektrus-bio-unified-ghost,.lektrus-bio-unified-ghost .lektrus-bio-unified-world,.lektrus-bio-unified-arriving.is-transitioning{animation-duration:.01ms!important}.lektrus-bio-portal-mark circle:first-child{animation:none}.lektrus-bio-feature-focus-ring{animation:none}.lektrus-bio-unified-hotspot .lektrus-bio-unified-halo{animation:none}.lektrus-bio-unified-world{will-change:auto}}
