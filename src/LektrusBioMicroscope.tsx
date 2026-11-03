@@ -84,6 +84,24 @@ export default function LektrusBioMicroscope({diagram}: {diagram:BioMicroscopeDi
    <span className="lektrus-bio-kind">{meta.group==="animal"?"Животное":"Растение"}</span>
    {diagram.activity==="explore"&&<button type="button" className="lektrus-bio-open-atlas" onClick={()=>setAtlasOpen(true)}>☷ Классы и виды</button>}
   </header>
+  {diagram.activity==="explore"&&(activeOrganism==="human"||activeOrganism==="cat")&&
+   <div className="lektrus-bio-class-focus" aria-label="Послойная разработка класса Млекопитающие">
+    <div className="lektrus-bio-class-focus-heading">
+     <div><strong>Млекопитающие · Mammalia</strong>
+      <small>Сейчас прорабатываем слой 2/5: расположение систем органов внутри тела.
+       В атласе представлены два модельных вида, не весь класс.</small></div>
+     <div className="lektrus-bio-class-species" role="group" aria-label="Представители млекопитающих">
+      <button type="button" aria-pressed={activeOrganism==="human"}
+       onClick={()=>exploreCatalogOrganism("human")}>Человек</button>
+      <button type="button" aria-pressed={activeOrganism==="cat"}
+       onClick={()=>exploreCatalogOrganism("cat")}>Кошка</button>
+     </div>
+    </div>
+    <div className="lektrus-bio-class-depth" aria-label="Последовательность уровней изучения">
+     {BIO_LEVELS.map((level,i)=><span key={level} className={i===1?"is-current":i===0?"is-established":""}
+      aria-current={i===1?"step":undefined}>{i+1}. {BIO_LEVEL_LABELS[level]}</span>)}
+    </div>
+   </div>}
   {diagram.activity==="explore"&&<LektrusBioUnifiedZoom key={activeOrganism} organism={activeOrganism}/>}
   {showExercise&&<>
   <div className="lektrus-bio-levels" role="group" aria-label="Уровни увеличения">
