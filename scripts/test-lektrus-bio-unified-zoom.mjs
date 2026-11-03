@@ -167,7 +167,10 @@ assert.match(camera,/node.level==="cell"\?setFeature:undefined/);
 assert.match(camera,/Предметный|Непрерывное исследование организма/);
 assert.match(camera,/разных экземпляров и препаратов/);
 const app=fs.readFileSync("src/LektrusBioMicroscope.tsx","utf8");
-assert.match(app,/diagram.activity==="explore"&&<LektrusBioUnifiedZoom/);
+assert.match(app,/diagram.activity==="explore"&&activeOrganism==="human"&&<LektrusBioContinuousHuman\/>/,
+ "Human now uses the spatial canvas, not a page-swapping zoom portal");
+assert.match(app,/diagram.activity==="explore"&&activeOrganism!=="human"&&<LektrusBioUnifiedZoom/,
+ "Other organisms keep their existing interactive atlas");
 assert.ok(!app.includes("viewerMode"),"No longer split exploration between microscope and atlas");
 assert.ok(!app.includes("<LektrusBioMicroscopeStage/>"));
 assert.ok(app.includes("showExercise&&<>"),"Assembly and labeling must remain unchanged");
