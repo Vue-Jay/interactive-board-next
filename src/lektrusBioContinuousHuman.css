@@ -1,0 +1,141 @@
+/* Human atlas: a single cinematic, free-panning image world.
+ * Images are optimized, repository-hosted local WebP, never HTTP dependencies.
+ * All 5 levels retain the same world transform and anatomical anchor.
+ */
+.lektrus-human{--lh-ink:#242244;--lh-purple:#7860b5;--lh-lilac:#f2eefc;
+ width:100%;min-width:0;max-width:1240px;margin:0 auto;display:grid;gap:12px;
+ padding:clamp(8px,1vw,14px);border-radius:22px;
+ background:linear-gradient(148deg,#fbfaff,#f7f5fc 46%,#edebf8);color:var(--lh-ink);
+ box-shadow:0 8px 35px #38335a12;font-family:inherit}
+.lektrus-human *{box-sizing:border-box}
+.lektrus-human-intro{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 9px 0}
+.lektrus-human-intro h3{font-size:clamp(17px,2.2vw,26px);letter-spacing:-.025em;
+ margin:3px 0 4px;font-weight:800;line-height:1.18;color:#29224e}
+.lektrus-human-intro p{font-size:clamp(11px,1.3vw,13px);color:#746b8c;
+ line-height:1.52;margin:0;max-width:650px}
+.lektrus-human-eyebrow{color:#8773b8;font-size:10px;font-weight:850;letter-spacing:.16em}
+.lektrus-human-reset{min-height:39px;white-space:nowrap;border:1px solid #d6cdec;
+ background:#fffafd;border-radius:99px;padding:9px 15px;color:#4f4673;
+ font-size:12px;font-weight:750;cursor:pointer;box-shadow:0 3px 12px #6c618617}
+.lektrus-human-reset:hover{background:#f1eafc}
+.lektrus-human-stage{position:relative;isolation:isolate;width:100%;aspect-ratio:960/640;
+ overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;
+ background:#f4f1fc;border-radius:19px;border:1px solid #e5def3;
+ box-shadow:inset 0 1px 0 #fff,0 7px 25px #69608a16;outline:none}
+.lektrus-human-stage:active{cursor:grabbing}
+.lektrus-human-stage:focus-visible{outline:3px solid #9482d6;outline-offset:3px}
+.lektrus-human-backdrop{position:absolute;inset:0;pointer-events:none;
+ background:radial-gradient(ellipse at 49% 43%,#fffdfd 2%,#faf7fe 44%,#eae8f6 100%);
+ box-shadow:inset 0 0 85px #c6bce725}
+.lektrus-human-backdrop:after{content:"";position:absolute;inset:0;opacity:.2;pointer-events:none;
+ background-image:radial-gradient(#aaa1c5 .6px,transparent .6px);
+ background-size:22px 22px}
+.lektrus-human-world{position:absolute;inset:0;transform-origin:50% 50%;
+ will-change:transform;pointer-events:none;touch-action:none}
+.lektrus-human-world.is-travelling{transition:transform .44s cubic-bezier(.2,.76,.24,1)}
+.lektrus-human-body{position:absolute;left:50%;top:1.5%;width:20.2%;height:97%;transform:translateX(-50%);
+ transition:opacity .12s ease-out;pointer-events:none;
+ mask-image:linear-gradient(90deg,transparent 0%,#000 13%,#000 89%,transparent 100%)}
+.lektrus-human-body img{width:100%;height:100%;object-fit:cover;display:block}
+.lektrus-human-tile{position:absolute;display:grid;place-items:center;overflow:hidden;
+ transform:translate(-50%,-50%);pointer-events:none;isolation:isolate;
+ mask-image:radial-gradient(ellipse closest-side,#000 61%,#000d 73%,transparent 100%);
+ transition:opacity .1s linear;contain:layout paint}
+.lektrus-human-tile img{position:absolute;inset:0;width:100%;height:100%;
+ object-fit:cover;object-position:center;display:block;user-select:none}
+.lektrus-human-tile>.lektrus-bio-anatomy-svg,
+.lektrus-human-tile>svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.lektrus-human-layer-organs{width:30%;height:47%;border-radius:49%}
+.lektrus-human-layer-organ{width:15.1%;height:23.5%;border-radius:49%}
+.lektrus-human-layer-tissue{width:7.5%;height:12%;border-radius:49%}
+.lektrus-human-layer-cell{width:3.85%;height:6.3%;border-radius:49%}
+.lektrus-human-tile-label{position:absolute;left:50%;bottom:5%;transform:translateX(-50%);
+ white-space:nowrap;max-width:90%;overflow:hidden;text-overflow:ellipsis;
+ color:#462f65;font-size:10px;font-weight:800;padding:3px 8px;
+ border:1px solid #ffffffa8;border-radius:99px;background:#fff9;backdrop-filter:blur(7px)}
+.lektrus-human-beacon{position:absolute;width:23px;height:23px;
+ border:2px solid #a37ed4;box-shadow:0 0 0 7px #c19ee42a,0 0 13px #b38ace70;
+ border-radius:50%;transform:translate(-50%,-50%);background:#fbfaff88;
+ animation:lektrus-human-beacon 2s ease-in-out infinite}
+.lektrus-human-beacon:after{content:"";position:absolute;inset:5px;border-radius:100%;background:#a77dd3}
+@keyframes lektrus-human-beacon{0%,100%{box-shadow:0 0 0 5px #a782d62b,0 0 13px #b38ace60}
+ 50%{box-shadow:0 0 0 12px #c19ee416,0 0 17px #a782d660}}
+.lektrus-human-stage-caption{position:absolute;left:15px;top:15px;z-index:4;
+ display:flex;gap:7px;align-items:center;max-width:min(320px,50%);min-height:36px;padding:7px 13px;
+ border:1px solid #fff;border-radius:13px;background:#fffefff0;
+ box-shadow:0 4px 15px #8d80ae27;color:#4b3c71;font-size:12px}
+.lektrus-human-stage-caption strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lektrus-human-depth-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:#9a7bd3;
+ box-shadow:0 0 0 4px #9b81c925}
+.lektrus-human-caption-sep{color:#c9bfdd}
+.lektrus-human-tip{position:absolute;bottom:14px;left:50%;z-index:4;transform:translateX(-50%);
+ pointer-events:none;max-width:min(550px,72%);text-align:center;
+ font-size:11px;color:#685b7b;background:#ffffffe5;border:1px solid #ffffff;
+ box-shadow:0 3px 15px #786a9220;padding:7px 12px;border-radius:999px}
+.lektrus-human-minimap{position:absolute;left:16px;bottom:16px;z-index:5;
+ width:90px;height:65px;border:1px solid #c8b9e2;border-radius:11px;
+ overflow:hidden;background:#f9f7ffef;box-shadow:0 3px 17px #685f9020;pointer-events:none}
+.lektrus-human-minimap img{position:absolute;left:39%;top:2%;width:21%;height:96%;object-fit:cover;
+ mask-image:linear-gradient(90deg,transparent,#000 13% 90%,transparent)}
+.lektrus-human-minimap-field{position:absolute;display:block;border:2px solid #7b5cb6;
+ border-radius:4px;background:#b79be02a;min-width:3px;min-height:3px}
+.lektrus-human-zoom{position:absolute;right:14px;top:50%;z-index:6;transform:translateY(-50%);
+ display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 6px;
+ min-width:41px;border:1px solid #d2c9e8;border-radius:22px;background:#fffaffed;
+ box-shadow:0 7px 28px #5c50782e}
+.lektrus-human-zoom button{width:33px;height:34px;border-radius:50%;border:1px solid #e2d8ee;
+ background:#fff;color:#6d53a6;font-size:22px;line-height:1;font-weight:650;cursor:pointer}
+.lektrus-human-zoom button:hover{background:#f0e6fe}
+.lektrus-human-zoom input[type="range"]{writing-mode:vertical-lr;direction:rtl;
+ appearance:slider-vertical;-webkit-appearance:slider-vertical;width:24px;height:140px;
+ accent-color:#8a67c0;cursor:pointer}
+.lektrus-human-levels{display:flex;align-items:stretch;gap:5px;justify-content:center;
+ flex-wrap:wrap;padding:2px 4px}
+.lektrus-human-levels button{display:inline-flex;align-items:center;gap:7px;
+ min-height:37px;border:1px solid #dbd2ed;border-radius:13px;background:#ffffffb3;
+ padding:7px 12px;color:#6d608a;font-size:11px;font-weight:750;cursor:pointer}
+.lektrus-human-levels button.is-current{background:#8270c1;color:#fff;border-color:#7f6ab6;
+ box-shadow:0 3px 9px #705ca449}
+.lektrus-human-levels button:not(.is-current):hover{background:#eee7f9}
+.lektrus-human-level-index{display:grid;place-items:center;width:21px;height:21px;
+ flex:0 0 21px;border-radius:50%;background:#e5ddf4;color:#795aa6;font-size:10px}
+.lektrus-human-levels button.is-current .lektrus-human-level-index{background:#fff4;color:#fff}
+.lektrus-human-footer{display:flex;gap:9px;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;padding:2px 7px}
+.lektrus-human-region-list{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.lektrus-human-region-list>span{font-size:11px;font-weight:750;color:#665b79;margin-right:4px}
+.lektrus-human-region-list button{border:1px solid #ded5ee;border-radius:99px;
+ background:#fff;color:#725d91;padding:7px 11px;font-size:11px;font-weight:750;cursor:pointer}
+.lektrus-human-region-list button[aria-pressed="true"]{border-color:#826ab8;background:#ede4fd;color:#5d4294}
+.lektrus-human-label-option{display:flex;gap:6px;align-items:center;color:#696078;font-size:11px;white-space:nowrap}
+.lektrus-human-label-option input{accent-color:#8468b8}
+.lektrus-human-notice{min-height:20px;margin:0 7px;color:#6c6080;font-size:11px}
+.lektrus-human-caveat{display:block;padding:0 7px 6px;color:#8a8397;font-size:10px;line-height:1.45}
+.lektrus-human button:focus-visible,.lektrus-human input:focus-visible{
+ outline:3px solid #9d85d0;outline-offset:2px}
+@media(max-width:650px){
+ .lektrus-human{padding:6px;gap:8px;border-radius:13px}
+ .lektrus-human-intro{padding:7px 7px 0;gap:8px}
+ .lektrus-human-intro h3{font-size:16px}
+ .lektrus-human-intro p{font-size:10px}
+ .lektrus-human-stage{border-radius:11px}
+ .lektrus-human-stage-caption{left:6px;top:6px;padding:4px 7px;min-height:26px;
+  border-radius:8px;font-size:9px;max-width:65%}
+ .lektrus-human-stage-caption .lektrus-human-caption-sep{display:none}
+ .lektrus-human-zoom{right:5px;padding:5px 3px;gap:3px;border-radius:14px;min-width:31px}
+ .lektrus-human-zoom button{width:25px;height:25px;font-size:18px}
+ .lektrus-human-zoom input[type="range"]{height:68px;width:18px}
+ .lektrus-human-minimap{width:46px;height:37px;left:6px;bottom:5px;border-radius:7px}
+ .lektrus-human-tip{display:none}
+ .lektrus-human-levels{gap:3px}
+ .lektrus-human-levels button{padding:5px 6px;min-height:30px;font-size:9px;gap:4px;border-radius:8px}
+ .lektrus-human-level-index{width:15px;height:15px;flex-basis:15px;font-size:8px}
+ .lektrus-human-reset{min-height:30px;padding:6px 9px;font-size:10px}
+ .lektrus-human-region-list button{padding:5px 8px;font-size:10px}
+ .lektrus-human-region-list>span{font-size:10px}
+}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-human-world.is-travelling{transition:none!important}
+ .lektrus-human-body,.lektrus-human-tile{transition:none!important}
+ .lektrus-human-beacon{animation:none!important}
+}
