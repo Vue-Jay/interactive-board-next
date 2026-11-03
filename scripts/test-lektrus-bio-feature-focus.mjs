@@ -94,6 +94,8 @@ assert.match(component,/const target=bioZoomFocusCamera\(cameraRef.current,pt\)/
 assert.match(component,/setCam\(target\)/);
 assert.match(component,/setFocusSeeking\(true\)/);
 assert.match(component,/focusTravelTimer.current=window.setTimeout/);
+assert.match(component,/const zoom=useCallback\(\(multiplier:number,point:XY\)=>\{\s*if\(ghostRef.current\)return;\s*if\(focusTravelTimer.current!==undefined\)window.clearTimeout/,
+ "Wheel zoom or pinch must interrupt camera seeking without dragging");
 assert.match(component,/is-feature-seeking/);
 assert.match(component,/setFocus\(0\)/);
 assert.match(component,/Показать всё поле выбранной ткани/);
