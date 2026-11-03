@@ -327,6 +327,12 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
     onChange={e=>setLight(Number(e.target.value))} aria-label="Яркость изображения"/></label>
    {isMicroscopic&&<label>Фокусировка <input type="range" min="-8" max="8" value={focus}
     onChange={e=>setFocus(Number(e.target.value))} aria-label="Фокусировка изображения"/></label>}
+   {isMicroscopic&&<div className="lektrus-bio-unified-stage-actions">
+    <button type="button" onClick={()=>setFocus(0)} disabled={focus===0}
+     aria-label="Восстановить резкость текущей ткани">Автофокус</button>
+    <button type="button" onClick={()=>{setCam(BIO_ZOOM_INITIAL);setFeature(null);}}
+     disabled={camera.scale===1} aria-label="Показать всё поле выбранной ткани">Всё поле</button>
+   </div>}
   </div>
   <div className="lektrus-bio-unified-details">
    <p>{current.description}</p>
@@ -337,6 +343,9 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
    </div>}
    {cellParts.length>0&&<div className="lektrus-bio-unified-cell-parts">
     <strong>Строение клетки</strong>
+    <small className="lektrus-bio-unified-feature-hint">{photo&&photoError!==current.id
+     ?"Для этого фотопрепарата клеточные структуры не размечены: доступно описание."
+     :"Выберите структуру, чтобы переместить поле зрения к её отметке."}</small>
     {cellParts.map(x=><button type="button" key={x.name} className={feature===x.name?"is-active":""}
      title={"Найти на рисунке: "+x.name}
      onClick={()=>focusFeature(x.name)}>{x.name}</button>)}
