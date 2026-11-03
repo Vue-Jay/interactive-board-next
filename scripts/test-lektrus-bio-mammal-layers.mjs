@@ -110,7 +110,7 @@ const uiAst=ts.createSourceFile("src/LektrusBioMicroscope.tsx",ui,
  ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(uiAst.parseDiagnostics.length,0,"The biology class selector must parse");
 assert.match(ui,/Млекопитающие · Mammalia/);
-assert.match(ui,/Сейчас прорабатываем слой 5\/5/);
+assert.match(ui,/Человек теперь исследуется на непрерывном поле/);
 assert.match(ui,/exploreCatalogOrganism\("human"\)/);
 assert.match(ui,/exploreCatalogOrganism\("cat"\)/);
 assert.match(ui,/aria-pressed=\{activeOrganism==="human"\}/);
