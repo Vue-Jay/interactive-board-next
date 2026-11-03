@@ -490,6 +490,27 @@ export function bioMammalOrganTissueSpot(
   parent.id as keyof typeof BIO_MAMMAL_ORGAN_TISSUE_SPOTS]??null;
 }
 
+/** Stage 4/5: points to the specific representative cell in each of
+ * six tissue drawings. These are educational SVG coordinates (480×330),
+ * not locations measured in a shared physical microscopy preparation.
+ */
+export const BIO_MAMMAL_TISSUE_CELL_SPOTS={
+ "human/дыхательная-система/лёгкие/эпителий-альвеол":{x:246,y:182},
+ "human/кровеносная-система/сердце/сердечная-мышечная-ткань":{x:210,y:159},
+ "human/нервная-система/головной-мозг/нервная-ткань":{x:211,y:161},
+ "cat/сенсорная-система/глаз/сетчатка":{x:277,y:229},
+ "cat/опорно-двигательная-система/скелетная-мышца/поперечнополосатая-мышечная-ткань":{x:224,y:162},
+ "cat/пищеварительная-система/тонкая-кишка/кишечный-эпителий":{x:202,y:147}
+} as const;
+export function bioMammalTissueCellSpot(
+ organism:BioOrganism,parent:BioNode
+):BioImageSpot|null{
+ if(parent.level!=="tissue"||(organism!=="human"&&organism!=="cat")||
+    !parent.id.startsWith(organism+"/"))return null;
+ return BIO_MAMMAL_TISSUE_CELL_SPOTS[
+  parent.id as keyof typeof BIO_MAMMAL_TISSUE_CELL_SPOTS]??null;
+}
+
 export function bioChildSpot(
  organism:BioOrganism,parent:BioNode,child:BioNode,index:number,total:number
 ):BioImageSpot{
@@ -539,6 +560,12 @@ export function bioChildSpot(
  if(parent.level==="organ"&&child.parentId===parent.id){
   const tissuePoint=bioMammalOrganTissueSpot(organism,parent);
   if(tissuePoint)return tissuePoint;
+ }
+ // Representative cell must be drawn at this SAME position on its
+ // own mammalian tissue section. Both exercise and microscope use bioChildSpot.
+ if(parent.level==="tissue"&&child.parentId===parent.id){
+  const cellPoint=bioMammalTissueCellSpot(organism,parent);
+  if(cellPoint)return cellPoint;
  }
  // A shared shoot has both stem and leaves: their hotspots should
  // occupy different places, rather than one unclickable centre.
