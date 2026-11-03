@@ -43,6 +43,14 @@
 .lektrus-bio-portal-mark{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
 .lektrus-bio-portal-mark circle:first-child{animation:lektrus-bio-portal-ring .44s ease-out both}
 @keyframes lektrus-bio-portal-ring{from{stroke-opacity:.9;fill-opacity:.18}to{stroke-opacity:.22;fill-opacity:0}}
+/* Focus the virtual microscope on a REAL cell annotation. The reticle is
+ * rendered in the same 480x330 coordinate system as the cellular drawing,
+ * so it stays attached to the chosen structure during zoom and panning.
+ */
+.lektrus-bio-feature-focus{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.lektrus-bio-feature-focus-ring{fill:#fff0a6;fill-opacity:.13;stroke:#d49238;stroke-width:3;stroke-dasharray:5 4;filter:drop-shadow(0 1px 2px #f7e7ba);animation:lektrus-bio-feature-found .56s ease-out both}
+.lektrus-bio-feature-focus-center{fill:#d28c37;stroke:#fff8de;stroke-width:2.5;filter:drop-shadow(0 1px 3px #ffffff)}
+@keyframes lektrus-bio-feature-found{0%{opacity:0;stroke-dashoffset:15}65%{opacity:1}100%{stroke-dashoffset:0}}
 .lektrus-bio-unified-hud{position:absolute;z-index:2;bottom:10px;left:12px;right:12px;display:flex;justify-content:space-between;gap:9px;pointer-events:none;text-shadow:0 1px 4px #0e211e,0 0 5px #0e211e;color:#f6fef3;font:750 11px ui-monospace,monospace}
 .lektrus-bio-unified-notice{position:absolute;z-index:2;top:13px;left:50%;transform:translateX(-50%);width:min(92%,480px);padding:10px 14px;color:#efffec;background:#204d39f0;border:1px solid #9cddaf;border-radius:10px;font-size:12px;font-weight:680;text-align:center;pointer-events:none;line-height:1.35}
 /* Two linked spatial plates share a single viewport. During a descent the
@@ -84,4 +92,4 @@
 .lektrus-bio-unified-cell-parts>p{width:100%;margin:4px 0;font-size:12px;line-height:1.5}
 .lektrus-bio-unified-honesty{display:block;border-top:1px solid #cbdbcd;padding-top:8px;color:#6e8375;line-height:1.5;font-size:11px}
 @media(max-width:650px){.lektrus-bio-location{width:110px;top:6px;right:6px;padding:4px}.lektrus-bio-location-caption small,.lektrus-bio-location-caption span{display:none}.lektrus-bio-location-title{font-size:8px;padding:1px 2px 3px}.lektrus-bio-location-caption strong{font-size:10px;-webkit-line-clamp:1}.lektrus-bio-unified-heading{padding:11px}.lektrus-bio-unified-viewport{width:100%;min-height:0;max-height:none;border-radius:12px}.lektrus-bio-unified-controls{gap:8px}.lektrus-bio-unified-zoom-control{min-width:100%;flex:1}.lektrus-bio-unified-hud{font-size:9px;bottom:6px;left:7px;right:7px}.lektrus-bio-unified-breadcrumbs button{font-size:10px}.lektrus-bio-unified-details{padding:10px}}
-@media(prefers-reduced-motion:reduce){.lektrus-bio-unified-ghost,.lektrus-bio-unified-ghost .lektrus-bio-unified-world,.lektrus-bio-unified-arriving.is-transitioning{animation-duration:.01ms!important}.lektrus-bio-portal-mark circle:first-child{animation:none}.lektrus-bio-unified-hotspot .lektrus-bio-unified-halo{animation:none}.lektrus-bio-unified-world{will-change:auto}}
+@media(prefers-reduced-motion:reduce){.lektrus-bio-unified-ghost,.lektrus-bio-unified-ghost .lektrus-bio-unified-world,.lektrus-bio-unified-arriving.is-transitioning{animation-duration:.01ms!important}.lektrus-bio-portal-mark circle:first-child{animation:none}.lektrus-bio-feature-focus-ring{animation:none}.lektrus-bio-unified-hotspot .lektrus-bio-unified-halo{animation:none}.lektrus-bio-unified-world{will-change:auto}}
