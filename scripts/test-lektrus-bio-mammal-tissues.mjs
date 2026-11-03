@@ -77,7 +77,7 @@ for(const organism of ["human","cat"]){
   const coreTissue=core.bioCoreMicroscopyPlateFor(organism,tissue);
   const coreCell=core.bioCoreMicroscopyPlateFor(organism,cell);
   assert.ok(coreTissue&&coreCell&&coreTissue.kind===coreCell.kind,
-   "Keep original cell drawing at level 5");
+   "Keep core cell identification and existing accurate marker coordinates at level 5");
   assert.equal(art.bioMammalTissueKind(organism,organ),null);
   assert.equal(art.bioMammalTissueKind(organism,cell),null);
   assert.equal(art.bioMammalTissueKind(organism==="cat"?"human":"cat",tissue),null);
@@ -134,7 +134,7 @@ assert.match(scene,/<LektrusBioMammalTissueSections organism=\{organism\} node=\
 assert.match(scene,/<LektrusBioCoreMicroscopyArt plate=\{corePlate\}/);
 assert.match(scene,/cellDetail\?\?detail\?\?coreDetail/);
 const app=read("src/LektrusBioMicroscope.tsx");
-assert.match(app,/Сейчас прорабатываем слой 4\/5/);
-assert.match(app,/className=\{i===3\?"is-current":i<3\?"is-established":""\}/);
-assert.match(app,/aria-current=\{i===3\?"step":undefined\}/);
-console.log("Mammalia tissue stage 4: 6 distinct tissue sections, 6 exact cell locations, 6 five-depth pathways; prior cell art and non-mammals untouched.");
+assert.match(app,/Сейчас прорабатываем слой 5\/5/);
+assert.match(app,/className=\{i===4\?"is-current":i<4\?"is-established":""\}/);
+assert.match(app,/aria-current=\{i===4\?"step":undefined\}/);
+console.log("Mammalia tissue stage 4: 6 distinct tissue sections, 6 exact cell locations, 6 five-depth pathways and stable cell feature coordinates.");
