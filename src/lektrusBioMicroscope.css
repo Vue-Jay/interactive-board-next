@@ -361,3 +361,21 @@
 .lektrus-bio-view-mode button.is-active{background:#fcfffa;border-color:#b7d0c0;box-shadow:0 2px 9px #2b57421b;color:#215b44}
 .lektrus-bio-microscope:has(.lektrus-bio-photomicroscope){background:linear-gradient(155deg,#f0f5f2,#e3eee8)}
 @media(max-width:460px){.lektrus-bio-view-mode button{flex-basis:120px;padding:7px 5px}}
+
+/* First focused biological class: mammalian systems are mapped onto the
+ * actual organism. The sequence reflects a development/review stage, NOT
+ * falsely certified coverage of every organ, tissue or mammalian species. */
+.lektrus-bio-class-focus{display:grid;gap:10px;margin:6px 0 10px;padding:11px 13px;border-radius:13px;border:1px solid #a9c7b2;background:#f0f8ef;color:#315e49}
+.lektrus-bio-class-focus-heading{display:flex;align-items:center;justify-content:space-between;gap:13px;flex-wrap:wrap}
+.lektrus-bio-class-focus-heading>div:first-child{display:grid;gap:5px;min-width:180px;flex:1}
+.lektrus-bio-class-focus-heading strong{font-size:13px;color:#285c45}
+.lektrus-bio-class-focus-heading small{font-size:11px;line-height:1.45;color:#54755f}
+.lektrus-bio-class-species{display:flex;gap:5px}
+.lektrus-bio-class-species button{border:1px solid #9bc3a9;background:#fff;color:#2e6648;border-radius:9px;min-height:38px;padding:6px 13px;font-size:12px;font-weight:760}
+.lektrus-bio-class-species button[aria-pressed="true"]{background:#367253;color:#fff;border-color:#367253}
+.lektrus-bio-class-species button:focus-visible{outline:2px solid #346eaf;outline-offset:2px}
+.lektrus-bio-class-depth{display:flex;gap:5px;flex-wrap:wrap}
+.lektrus-bio-class-depth span{display:inline-flex;align-items:center;min-height:26px;padding:5px 9px;border-radius:7px;border:1px solid #cfddd0;background:#fff;color:#6e8575;font-size:10px;font-weight:650}
+.lektrus-bio-class-depth span.is-established{color:#315c49;background:#e0eee3;border-color:#b1cbb8}
+.lektrus-bio-class-depth span.is-current{color:#fff;background:#387956;border-color:#387956}
+@media(max-width:520px){.lektrus-bio-class-focus{padding:9px;gap:7px}.lektrus-bio-class-species{width:100%}.lektrus-bio-class-species button{flex:1}.lektrus-bio-class-depth span{font-size:9px;padding:4px 6px}}
