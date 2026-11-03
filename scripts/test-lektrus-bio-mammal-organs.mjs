@@ -106,7 +106,7 @@ for(const name of ["Lungs","Heart","Brain","CatEye","CatMuscle","CatIntestine"])
  assert.match(source,new RegExp("function "+name+"\\(\\):ReactNode"));
 assert.match(source,/Anatomical right lung appears on the viewer's left/);
 assert.match(source,/LV myocardium is visibly thicker/);
-assert.match(source,/Tapetum/); // capitalized name appears in the artist notes?
+assert.match(source,/tapetum/i,"Feline reflective tissue must be named in the accurate choroidal layer");
 assert.match(source,/TissueInset x=\{point.x\} y=\{point.y\} kind=\{kind\}/);
 const main=read("src/LektrusBioAnatomyScene.tsx");
 const mainAST=ts.createSourceFile("src/LektrusBioAnatomyScene.tsx",main,
