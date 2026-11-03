@@ -21,6 +21,10 @@ const spots:Record<BioCoreMicroKind,readonly [{x:number;y:number},{x:number;y:nu
  xylem:[{x:156,y:167},{x:239,y:88},{x:246,y:192}],
  mesophyll:[{x:148,y:128},{x:257,y:176},{x:392,y:201}]
 };
+/** Share the exact drawing marker with the microscope camera. */
+export function bioCoreMicroscopySpot(kind:BioCoreMicroKind,index:number):{x:number;y:number}|null{
+ return spots[kind]?.[index]??null;
+}
 function CircleNucleus({x,y,rx=15,ry=10}:{x:number;y:number;rx?:number;ry?:number}){
  return <g><ellipse cx={x} cy={y} rx={rx} ry={ry} fill="#c2acd0" stroke="#8f77a7" strokeWidth="2.4"/>
  <circle cx={x-2} cy={y} r="3.5" fill={nucleus}/></g>;
