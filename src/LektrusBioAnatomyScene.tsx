@@ -140,8 +140,7 @@ export default function LektrusBioAnatomyScene({organism,node,children,onSelect,
  const coreDetail=corePlate?(bioMammalTissueKind(organism,node)
   ?<LektrusBioMammalTissueSections organism={organism} node={node}/>
   :<LektrusBioCoreMicroscopyArt plate={corePlate}
-   features={bioCellFeatures(node)} selectedFeature={activeFeatureName}
-   onFeatureSelect={onFeatureSelect}/>):null;
+   features={bioCellFeatures(node)} selectedFeature={activeFeatureName} onFeatureSelect={onFeatureSelect}/>):null;
  const shape:ReactNode=cellDetail??detail??coreDetail??(isBioFurtherOrganism(organism)
   ?<LektrusBioFurtherSpeciesArt organism={organism} node={node} selectedFeature={activeFeatureName} onFeatureSelect={onFeatureSelect}/>
   :isBioNewOrganism(organism)
