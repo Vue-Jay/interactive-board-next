@@ -243,8 +243,8 @@ function CatIntestine():ReactNode{
   {Array.from({length:12},(_,i)=>{
    const x=67+i*19.4,h=29+(i%3)*7;
    return <g key={i}>
-    // Apical villi project INTO the intestinal lumen (downward here);
-    // crypts extend in the opposite direction into the mucosa.
+    {/* Apical villi project INTO the lumen (downward); crypts extend into
+         the mucosa in the opposite direction. */}
     <path d={"M"+x+" 155Q"+(x-8)+" "+(155+h*.55)+" "+(x+1)+" "+(155+h)+
       "Q"+(x+8)+" "+(155+h*.55)+" "+(x+11)+" 155"}
      fill="#dfb5a2" stroke="#b6827e" strokeWidth="3"/>
