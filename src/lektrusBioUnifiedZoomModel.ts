@@ -123,6 +123,17 @@ export function bioZoomScreenPoint(camera:BioZoomCamera,world:BioImageSpot):BioI
          y:165+(world.y-165)*camera.scale+camera.y};
 }
 
+/** Move the virtual stage to an already-reviewed feature marker without
+ * jumping to another specimen. A requested focus never zooms out on a user
+ * who is inspecting at a higher scale. Near edges we retain image bounds.
+ * Magnification is DIGITAL, not calibrated microscopy.
+ */
+export function bioZoomFocusCamera(
+ camera:BioZoomCamera,spot:BioImageSpot,preferredScale=2.35
+):BioZoomCamera{
+ const scale=bioZoomClamp(Math.max(camera.scale,preferredScale),1,BIO_ZOOM_MAX);
+ return bioZoomBound({scale,x:(240-spot.x)*scale,y:(165-spot.y)*scale});
+}
 export function bioZoomPan(camera:BioZoomCamera,dx:number,dy:number):BioZoomCamera{
  return bioZoomBound({...camera,x:camera.x+dx,y:camera.y+dy});
 }
