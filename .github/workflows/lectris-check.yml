@@ -73,6 +73,8 @@ jobs:
         run: node scripts/test-lektrus-bio-mammal-layers.mjs
       - name: Mammalia six anatomical organ sections and real tissue zoom portals
         run: node scripts/test-lektrus-bio-mammal-organs.mjs
+      - name: Mammalia histology tissue layers and real cell focus positions
+        run: node scripts/test-lektrus-bio-mammal-tissues.mjs
       - name: Biology drag and place anatomy exercises
         run: node scripts/test-lektrus-bio-assembly.mjs
       - name: Biology organ systems and relief regression
