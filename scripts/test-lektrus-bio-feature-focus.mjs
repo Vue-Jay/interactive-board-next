@@ -35,7 +35,8 @@ let checked=0,specific=0,core=0,lineages=0;
 for(const organism of species){
  const nodes=bio.bioNodes(organism);
  const cells=nodes.filter(n=>n.level==="cell");
- assert.equal(cells.length,3,organism+" must retain 3 specific cell branches");
+ assert.equal(cells.length,organism==="sunflower"?4:3,
+  organism+" must retain its reviewed cell paths");
  for(const cell of cells){
   const features=bio.bioCellFeatures(cell);
   assert.equal(features.length,3,"Exactly 3 feature labels required "+cell.id);
@@ -77,7 +78,7 @@ for(const organism of species){
   checked++;
  }
 }
-assert.deepEqual([checked,specific,core,lineages],[60,24,12,24]);
+assert.deepEqual([checked,specific,core,lineages],[61,24,13,24]);
 const model=fs.readFileSync("src/lektrusBioUnifiedZoomModel.ts","utf8");
 const component=fs.readFileSync("src/LektrusBioUnifiedZoom.tsx","utf8");
 const css=fs.readFileSync("src/lektrusBioUnifiedZoom.css","utf8");
@@ -97,4 +98,4 @@ assert.match(component,/if\(photo&&photoError!==node.id\)return;/,
  "No fabricated subcellular spots on an unregistered photo");
 assert.match(css,/lektrus-bio-feature-focus-ring/);
 assert.match(css,/lektrus-bio-feature-focus-ring\{animation:none\}/);
-console.log("Microscope cellular focus: 20 organisms, 60 cells, 180 matching features, 24 specific + 12 core + 24 lineage plates, camera bounds and photo safeguards OK.");
+console.log("Microscope cellular focus: 20 organisms, 61 cells, 183 matching features, 24 specific + 13 core + 24 lineage plates, camera bounds and photo safeguards OK.");
