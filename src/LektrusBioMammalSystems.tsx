@@ -22,7 +22,8 @@ const idMap:Readonly<Record<string,BioMammalSystem>>={
  "cat/пищеварительная-система":"digestive"
 };
 export function bioMammalSystemKind(organism:BioOrganism,node:BioNode):BioMammalSystem|null{
- if((organism!=="human"&&organism!=="cat")||node.level!=="system")return null;
+ if((organism!=="human"&&organism!=="cat")||node.level!=="system"||
+    !node.id.startsWith(organism+"/"))return null;
  return idMap[node.id]??null;
 }
 function HumanRespiration():ReactNode{
