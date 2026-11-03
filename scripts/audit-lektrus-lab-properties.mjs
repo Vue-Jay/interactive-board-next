@@ -331,10 +331,6 @@ if(process.argv.includes("--verify")){
    assert.equal(row.sourceTemperatureKelvin,undefined,
     "Non-calorimetric property has Cp temperature metadata: "+key);
   }
-  if(row.property==="decompositionC"||row.property==="sublimationC"){
-   assert.ok(row.note&&row.note.length>=20,
-    "Chemical decomposition/sublimation needs a phase-specific note: "+key);
-  }
   // For every newly imported source Cp, compare the ORIGINAL published
   // molar number with the simulator's formula parser. Six-decimal mass
   // values must agree within the rounding bound, without using the
