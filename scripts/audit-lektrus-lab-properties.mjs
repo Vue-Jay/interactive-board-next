@@ -509,7 +509,19 @@ if(process.argv.includes("--verify")){
  assert.ok(producedOnly.every(x=>x.molarMassKnown),
   "Every existing reviewed product must have a calculable formula mass");
 }
-if(process.argv.includes("--missing")){\n // Compact, stable work queue for subsequent source-verification batches.\n // Preserve the applicability distinction: no fabricated value for gases,\n // aqueous stocks, or substances with an unverified crystal phase.\n console.log(JSON.stringify({schemaVersion:1,stock:rawTotals.stock,\n  outstanding:report.stockWithOutstandingProperties,\n  byProperty:Object.fromEntries(Object.entries(counted).map(([key,value])=>\n   [key,{remaining:value.remaining,formulas:value.firstMissing}])),\n  byReagent:stockRows.filter(row=>row.missing.length).map(row=>({\n   formula:row.formula,name:row.name,missing:row.missing\n  }))\n },null,2));\n}else if(process.argv.includes("--json")){
+if(process.argv.includes("--missing")){
+ // Compact, stable work queue for subsequent source-verification batches.
+ // Preserve the applicability distinction: no fabricated value for gases,
+ // aqueous stocks, or substances with an unverified crystal phase.
+ console.log(JSON.stringify({schemaVersion:1,stock:rawTotals.stock,
+  outstanding:report.stockWithOutstandingProperties,
+  byProperty:Object.fromEntries(Object.entries(counted).map(([key,value])=>
+   [key,{remaining:value.remaining,formulas:value.firstMissing}])),
+  byReagent:stockRows.filter(row=>row.missing.length).map(row=>({
+   formula:row.formula,name:row.name,missing:row.missing
+  }))
+ },null,2));
+}else if(process.argv.includes("--json")){
  console.log(JSON.stringify(report,null,2));
 }else if(process.argv.includes("--markdown")){
  const labels={
