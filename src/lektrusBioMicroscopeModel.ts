@@ -468,6 +468,28 @@ export function bioVisualKey(node:BioNode):BioVisualKey{
 export type BioImageSpot={x:number;y:number};
 /** Responsive SVG viewBox is 480×330. Coordinates are anatomical
  * illustration landmarks. They describe the diagrams, not measurements. */
+/** Exactly six reviewed stage-3 mammalian organ sections. Each coordinate
+ * points to the ACTUAL tissue inset on the parent organ diagram, never a
+ * generic screen centre. These coordinates also drive the exercise mode.
+ * Do not map another species' organ onto the illustrated sample.
+ */
+export const BIO_MAMMAL_ORGAN_TISSUE_SPOTS={
+ "human/дыхательная-система/лёгкие":{x:380,y:203},
+ "human/кровеносная-система/сердце":{x:309,y:214},
+ "human/нервная-система/головной-мозг":{x:374,y:183},
+ "cat/сенсорная-система/глаз":{x:388,y:185},
+ "cat/опорно-двигательная-система/скелетная-мышца":{x:382,y:207},
+ "cat/пищеварительная-система/тонкая-кишка":{x:387,y:191}
+} as const;
+export function bioMammalOrganTissueSpot(
+ organism:BioOrganism,parent:BioNode
+):BioImageSpot|null{
+ if(parent.level!=="organ"||(organism!=="human"&&organism!=="cat")||
+    !parent.id.startsWith(organism+"/"))return null;
+ return BIO_MAMMAL_ORGAN_TISSUE_SPOTS[
+  parent.id as keyof typeof BIO_MAMMAL_ORGAN_TISSUE_SPOTS]??null;
+}
+
 export function bioChildSpot(
  organism:BioOrganism,parent:BioNode,child:BioNode,index:number,total:number
 ):BioImageSpot{
@@ -511,6 +533,12 @@ export function bioChildSpot(
    "cat/пищеварительная-система":{x:281,y:213}
   };
   return mammalSpot[parent.id]??{x:240,y:163};
+ }
+ // In the reviewed mammalian organ sections a tissue is visibly located
+ // on the anatomical region or inset, not at the generic (240,163) marker.
+ if(parent.level==="organ"&&child.parentId===parent.id){
+  const tissuePoint=bioMammalOrganTissueSpot(organism,parent);
+  if(tissuePoint)return tissuePoint;
  }
  // A shared shoot has both stem and leaves: their hotspots should
  // occupy different places, rather than one unclickable centre.
