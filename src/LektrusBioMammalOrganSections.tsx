@@ -28,7 +28,7 @@ export function bioMammalOrganKind(organism:BioOrganism,node:BioNode):BioMammalO
     !node.id.startsWith(organism+"/"))return null;
  return stages[node.id]??null;
 }
-const sea="#477d88",ink="#385c55",rose="#af6973";
+const sea="#477d88",ink="#385c55";
 function Caption({x,y,children,color=ink}:{x:number;y:number;children:ReactNode;color?:string}){
  return <text x={x} y={y} fontSize="11" fontWeight="650" fill={color} pointerEvents="none">{children}</text>;
 }
