@@ -9,6 +9,7 @@ import LektrusBioDetailedCoreOrgans from "./LektrusBioDetailedCoreOrgans";
 import LektrusBioMammalSystems,{bioMammalSystemKind} from "./LektrusBioMammalSystems";
 import LektrusBioMammalOrganSections,{bioMammalOrganKind} from "./LektrusBioMammalOrganSections";
 import LektrusBioMammalTissueSections,{bioMammalTissueKind} from "./LektrusBioMammalTissueSections";
+import LektrusBioMammalCellDetail,{bioMammalCellKind} from "./LektrusBioMammalCellDetail";
 import LektrusBioCoreMicroscopyArt from "./LektrusBioCoreMicroscopyArt";
 import {bioCoreMicroscopyPlateFor} from "./lektrusBioCoreMicroscopyPlates";
 import LektrusBioNewSpeciesArt from "./LektrusBioNewSpeciesArt";
@@ -139,6 +140,9 @@ export default function LektrusBioAnatomyScene({organism,node,children,onSelect,
  // unchanged at level five, preserving real feature-marker coordinates.
  const coreDetail=corePlate?(bioMammalTissueKind(organism,node)
   ?<LektrusBioMammalTissueSections organism={organism} node={node}/>
+  :bioMammalCellKind(organism,node)
+  ?<LektrusBioMammalCellDetail organism={organism} node={node}
+   selectedFeature={activeFeatureName} onFeatureSelect={onFeatureSelect}/>
   :<LektrusBioCoreMicroscopyArt plate={corePlate}
    features={bioCellFeatures(node)} selectedFeature={activeFeatureName} onFeatureSelect={onFeatureSelect}/>):null;
  const shape:ReactNode=cellDetail??detail??coreDetail??(isBioFurtherOrganism(organism)
