@@ -35,6 +35,8 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
  const [ghost,setGhost]=useState<Ghost|null>(null);
  const ghostRef=useRef(false);
  const [feature,setFeature]=useState<string|null>(null);
+ const [focusSeeking,setFocusSeeking]=useState(false);
+ const focusTravelTimer=useRef<number|undefined>(undefined);
  const [notice,setNotice]=useState("");
  const [focus,setFocus]=useState(0);
  const [light,setLight]=useState(75);
@@ -60,16 +62,23 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
  },[]);
  useEffect(()=>{
   if(transitionTimer.current!==undefined)window.clearTimeout(transitionTimer.current);
+  if(focusTravelTimer.current!==undefined)window.clearTimeout(focusTravelTimer.current);
+  focusTravelTimer.current=undefined;setFocusSeeking(false);
   visits.current.clear();
   pointers.current.clear();gestureStart.current=null;lastTap.current=null;
   ghostRef.current=false;setGhost(null);
   setCurrentId(organism);setCam(BIO_ZOOM_INITIAL);
   setFeature(null);setPhotoError(null);setNotice("");
  },[organism,setCam]);
- useEffect(()=>()=>{if(transitionTimer.current!==undefined)window.clearTimeout(transitionTimer.current);},[]);
+ useEffect(()=>()=>{
+  if(transitionTimer.current!==undefined)window.clearTimeout(transitionTimer.current);
+  if(focusTravelTimer.current!==undefined)window.clearTimeout(focusTravelTimer.current);
+ },[]);
  const transition=useCallback((target:BioNode,focusPoint?:BioImageSpot)=>{
   if(ghostRef.current||currentRef.current.id===target.id)return;
   const old=currentRef.current;
+  if(focusTravelTimer.current!==undefined)window.clearTimeout(focusTravelTimer.current);
+  focusTravelTimer.current=undefined;setFocusSeeking(false);
   const departingCamera=cameraRef.current;
   const descending=target.parentId===old.id;
   const spot=focusPoint??{x:240,y:165};
@@ -158,6 +167,8 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
  },[zoom]);
  const onDown=(e:ReactPointerEvent<HTMLDivElement>)=>{
   if(e.pointerType==="mouse"&&e.button!==0)return;
+  if(focusTravelTimer.current!==undefined)window.clearTimeout(focusTravelTimer.current);
+  focusTravelTimer.current=undefined;setFocusSeeking(false);
   e.currentTarget.setPointerCapture(e.pointerId);
   const point=at(e.clientX,e.clientY);
   pointers.current.set(e.pointerId,point);
@@ -220,7 +231,13 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
   if(photo&&photoError!==node.id)return;
   const pt=bioFeatureSpotFor(organism,node,nodes,name);
   if(!pt||ghostRef.current)return;
-  setCam(bioZoomFocusCamera(cameraRef.current,pt));
+  const target=bioZoomFocusCamera(cameraRef.current,pt);
+  if(focusTravelTimer.current!==undefined)window.clearTimeout(focusTravelTimer.current);
+  setFocusSeeking(true);
+  setCam(target);
+  focusTravelTimer.current=window.setTimeout(()=>{
+   focusTravelTimer.current=undefined;setFocusSeeking(false);
+  },380);
   setFocus(0);
   setNotice("");
  },[organism,nodes,photoError,setCam]);
@@ -231,7 +248,7 @@ export default function LektrusBioUnifiedZoom({organism}:{organism:BioOrganism})
   const portalStyle=portalTo
    ?{"--bio-ghost-start":cameraTransform(cam),"--bio-ghost-end":cameraTransform(portalTo)} as CSSProperties
    :{};
-  return <div className="lektrus-bio-unified-world"
+  return <div className={"lektrus-bio-unified-world"+(includeMarkers&&focusSeeking?" is-feature-seeking":"")}
    style={{...portalStyle,transform:cameraTransform(cam),
     filter:"brightness("+(.5+light*.007)+" ) blur("+imgBlur.toFixed(1)+"px)"}}>
    {image&&photoError!==node.id?
