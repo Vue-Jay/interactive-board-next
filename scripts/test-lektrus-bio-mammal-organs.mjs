@@ -117,7 +117,7 @@ assert.ok(main.indexOf("bioMammalOrganKind(organism,node)?")<
  main.indexOf('node.level==="organism"||node.level==="system"'),
  "Mammal organs must render before obsolete generic organ icons");
 const app=read("src/LektrusBioMicroscope.tsx");
-assert.match(app,/Сейчас прорабатываем слой 4\/5/);
-assert.match(app,/className=\{i===3\?"is-current":i<3\?"is-established":""\}/);
-assert.match(app,/aria-current=\{i===3\?"step":undefined\}/);
+assert.match(app,/Сейчас прорабатываем слой 5\/5/);
+assert.match(app,/className=\{i===4\?"is-current":i<4\?"is-established":""\}/);
+assert.match(app,/aria-current=\{i===4\?"step":undefined\}/);
 console.log("Mammalia stage 3: 6 dedicated organ cutaways, 6 true tissue-preview portals, all five saved depths and cross-species guards PASS.");
