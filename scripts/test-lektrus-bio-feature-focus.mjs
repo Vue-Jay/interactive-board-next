@@ -98,6 +98,10 @@ assert.match(component,/is-feature-seeking/);
 assert.match(component,/setFocus\(0\)/);
 assert.match(component,/Показать всё поле выбранной ткани/);
 assert.match(component,/onClick=\{\(\)=>focusFeature\(x.name\)\}/);
+assert.match(component,/\(e.target as Element\).closest\(\x27\[role="button"\],button,input,a\x27\)/,
+ "The microscope must not capture pointer clicks intended for cell markers");
+assert.match(component,/if\(e.target!==e.currentTarget\)return;/,
+ "Arrow keys must pan only when the stage itself has keyboard focus");
 assert.match(component,/onFeatureSelect=\{includeMarkers&&node.level==="cell"\?focusFeature:undefined\}/);
 assert.match(component,/data-bio-feature-target=\{feature\}/);
 assert.match(component,/if\(photo&&photoError!==node.id\)return;/,
