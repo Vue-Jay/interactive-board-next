@@ -104,6 +104,7 @@
 - MSD Veterinary Manual, сетчатка и сосудистая оболочка: https://www.msdvetmanual.com/eye-diseases-and-disorders/ophthalmology/the-ocular-fundus-in-animals
 - OpenStax, организация скелетной мышцы: https://openstax.org/books/anatomy-and-physiology-2e/pages/10-2-skeletal-muscle
 - OpenStax, ворсинки и крипты тонкой кишки: https://openstax.org/books/anatomy-and-physiology-2e/pages/23-5-the-small-and-large-intestines
+- Сравнительная ветеринарная гистология тонкой кишки кошек и собак: https://pmc.ncbi.nlm.nih.gov/articles/PMC7152035/
 
 **Контроль:** `scripts/test-lektrus-bio-mammal-organs.mjs`
 проверяет шесть точных органных рисунков, совпадение каждой
