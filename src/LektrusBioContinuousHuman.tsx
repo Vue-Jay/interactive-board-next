@@ -76,13 +76,13 @@ function SkinSection({depth}:{depth:number}){
   </>}
  </svg>;
 }
-function Layer({asset,node,opacity,className,annotation,depth}:{
- asset?:string;node?:BioNode;opacity:number;className:string;
+function Layer({asset,node,opacity,className,point,annotation,depth}:{
+ asset?:string;node?:BioNode;opacity:number;className:string;point:HumanPoint;
  annotation?:string;depth?:number
 }){
  if(opacity<=0)return null;
  return <div className={"lektrus-human-tile "+className}
-  aria-hidden="true" style={{opacity}}>
+  aria-hidden="true" style={{opacity,left:(point.x/W*100)+"%",top:(point.y/H*100)+"%"}}>
   {asset?<img src={asset} alt="" draggable={false}/>:node?
    <LektrusBioAnatomyScene organism="human" node={node} children={[]}
     interactive={false} onSelect={()=>{}}/>:
@@ -225,6 +225,7 @@ export default function LektrusBioContinuousHuman(){
  const cell=tissue?bioChildren(nodes,tissue.id)[0]:undefined;
  const isHeart=region==="heart";
  const isSkin=region==="skin";
+ const atlasPoint=humanRegionAnchor(region,selectedSpot);
  // All five tiers share one camera and one spatial coordinate; the retinal
  // and histological views are qualitative reconstructions, not the same
  // physical photomicrograph at a calibrated magnification.
@@ -254,16 +255,16 @@ export default function LektrusBioContinuousHuman(){
     <div className="lektrus-human-body" style={{opacity:layer[0]}}>
      <img src={bodyImage} draggable={false} alt=""/>
     </div>
-    <Layer className="lektrus-human-layer-organs" asset={isHeart?organsImage:undefined}
+    <Layer className="lektrus-human-layer-organs" point={atlasPoint} asset={isHeart?organsImage:undefined}
      node={isSkin?undefined:sys} depth={1} opacity={layer[1]}
      annotation={showLabels?"Внутреннее строение":undefined}/>
-    <Layer className="lektrus-human-layer-organ" asset={isHeart?heartImage:undefined}
+    <Layer className="lektrus-human-layer-organ" point={atlasPoint} asset={isHeart?heartImage:undefined}
      node={isSkin?undefined:organ} depth={2} opacity={layer[2]}
      annotation={showLabels?(isSkin?"Кожа":regionNames[region]):undefined}/>
-    <Layer className="lektrus-human-layer-tissue" asset={isHeart?tissueImage:undefined}
+    <Layer className="lektrus-human-layer-tissue" point={atlasPoint} asset={isHeart?tissueImage:undefined}
      node={isSkin?undefined:tissue} depth={3} opacity={layer[3]}
      annotation={showLabels?(isSkin?"Слои эпидермиса":"Ткань"):undefined}/>
-    <Layer className="lektrus-human-layer-cell" asset={isHeart?cellImage:undefined}
+    <Layer className="lektrus-human-layer-cell" point={atlasPoint} asset={isHeart?cellImage:undefined}
      node={isSkin?undefined:cell} depth={4} opacity={layer[4]}
      annotation={showLabels?(isSkin?"Кератиноцит":"Клетка"):undefined}/>
     {cam.depth<1.15&&<span className="lektrus-human-beacon"
