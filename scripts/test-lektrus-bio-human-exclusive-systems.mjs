@@ -37,8 +37,8 @@ const overlayFile="src/LektrusBioHumanSystemOverlay.tsx";
 const overlays=load(overlayFile);
 const mannequinFile="src/LektrusBioMannequin.tsx";
 const mannequin=load(mannequinFile,{
- "./assets/bio-atlas/human-biomodel.webp":{default:"/approved-human.webp"},
- "./LektrusBioHumanSystemOverlay":{default:overlays.default},
+ "./assets/bio-atlas/human-biomodel.webp":{__esModule:true,default:"/approved-human.webp"},
+ "./LektrusBioHumanSystemOverlay":overlays,
  "./lektrusBioHumanBodySystems":systemModule
 });
 const all=traverse(mannequin.default({system:"all"}));
