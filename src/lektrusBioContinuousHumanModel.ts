@@ -7,13 +7,15 @@ export const HUMAN_ATLAS_HEIGHT=640;
 export const HUMAN_ATLAS_MAX_DEPTH=4;
 export type HumanPoint={x:number;y:number};
 export type HumanCamera={depth:number;panX:number;panY:number};
-export type HumanRegion="heart"|"lungs"|"brain"|"skin";
+export type HumanRegion="heart"|"lungs"|"brain"|"digestive"|"musculoskeletal"|"skin";
 export const HUMAN_INITIAL_CAMERA:HumanCamera={depth:0,panX:0,panY:0};
 export const HUMAN_ZOOM_LABELS=["Организм","Органы","Орган","Ткань","Клетка"] as const;
 export const HUMAN_ORGAN_ANCHORS={
  heart:{x:483,y:194},
  lungs:{x:484,y:178},
- brain:{x:485,y:62}
+ brain:{x:485,y:62},
+ digestive:{x:484,y:289},
+ musculoskeletal:{x:486,y:348}
 } as const;
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,Number.isFinite(n)?n:a));
 export const humanScale=(depth:number)=>Math.pow(2.18,clamp(depth,0,HUMAN_ATLAS_MAX_DEPTH));
@@ -54,19 +56,23 @@ export function humanFocusAt(point:HumanPoint,depth=2):HumanCamera{
 export function humanBodyAt(p:HumanPoint):boolean{
  const x=Math.abs(p.x-482),y=p.y;
  if(y<14||y>626)return false;
- if(y<122)return x<35;
- if(y<288)return x<69||(y<370&&x<95);
- if(y<382)return x<77;
- return x<49;
+ if(y<122)return x<41;
+ if(y<184)return x<86;
+ if(y<370)return x<79||(x>=79&&x<145&&y>=170);
+ if(y<395)return x<75;
+ return x<58;
 }
 /** The hand, scalp, shin and other unreviewed positions can still zoom:
  * they show explicitly identified generic skin, never an invented heart.
- * The three REVIEWED human organs use the existing five-step atlas paths. */
+ * Three reviewed human organs use existing five-step atlas paths, while the\n * digestive and locomotor systems use clearly marked human teaching views. */
 export function humanRegionAt(point:HumanPoint):HumanRegion{
  if(!humanBodyAt(point))return "skin";
  if(point.y<113)return "brain";
- if(point.y<247&&Math.abs(point.x-482)<24&&point.y>166)return "heart";
+ const lateral=Math.abs(point.x-482);
+ if(point.y>170&&lateral>84&&point.y<370)return "musculoskeletal";
+ if(point.y<247&&lateral<24&&point.y>166)return "heart";
  if(point.y<253)return "lungs";
+ if(point.y<365&&lateral<75)return "digestive";
  return "skin";
 }
 export function humanRegionAnchor(region:HumanRegion,point:HumanPoint):HumanPoint{
