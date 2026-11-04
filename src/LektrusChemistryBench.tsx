@@ -2,7 +2,7 @@ import {memo,useEffect,useId,useMemo,useRef,useState,type PointerEvent} from "re
 import {createPortal} from "react-dom";
 import type {LabBench,LabBenchSettings,LabRealism,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labSimulationTickWaitMs,pourLabIntoFilter,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,labFollowUpGasProgress,labGasTubeFlowActive,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabCoolerTemperature,LAB_HOTPLATE_MAX_C,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,setLabExperimentClock,labExperimentClockSeconds,formatLabClock,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,labFollowUpGasProgress,labGasTubeFlowActive,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabCoolerTemperature,LAB_COOLER_MIN_C,LAB_COOLER_MAX_C,LAB_HOTPLATE_MAX_C,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,setLabExperimentClock,labExperimentClockSeconds,formatLabClock,
  setLabSimulationPaused,setLabGasCollection,transferLabGasSample,formatLabDose,labDisplayNumber,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
@@ -155,7 +155,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
    label:"pH "+titrationResult.pH,color:titrationResult.tint,
    note:"Расчётное значение при титровании, 25 °C"
   }:measuredIndicator;
- const {volumeMl,massG,capacityMl,liquidFraction,solidFraction}=labVesselQuantity(vessel);
+ const {volumeMl,massG,capacityMl,liquidFraction,solidFraction,solidVolumeMl}=labVesselQuantity(vessel);
  const contents=labVesselContents(vessel);
  const readable=(n:number,decimals=3)=>realism==="high"?
   n.toLocaleString("ru-RU",{maximumFractionDigits:decimals}):labDisplayNumber(n,realism);
@@ -194,6 +194,13 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   conical:119,volumetric:120,crucible:119,pipette:120,burette:107
  };
  const sedimentFloor=sedimentBase[vessel.kind];
+ // Every measured solid has a drawable bottom layer, even when added as
+ // powder into a liquid and no chemical reaction has occurred.
+ const solidInventoryMassG=contents.solid.reduce((sum,entry)=>sum+(entry.massG??0),0);
+ const visiblePowderH=contents.solid.length>0?
+  Math.min(54,Math.max(4,106*(solidVolumeMl>1e-9?
+   solidVolumeMl/capacityMl:solidInventoryMassG>0?
+   solidInventoryMassG/Math.max(20,capacityMl):.025))):0;
  const sedimentH=contents.precipitateFraction===undefined||
   precipitationProgress<=0?0:
   Math.min(70,Math.max(4,
@@ -286,6 +293,26 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
       cx={27+(i*17)%46} cy={Math.max(73,115-46*renderedSolidFraction)+(i*13)%(Math.max(3,42*renderedSolidFraction))} r={1.2+i%3*.7}
       fill={color} stroke="#526962" strokeOpacity=".28"/>)}
     </>}
+    {contents.solid.length>0&&visiblePowderH>0&&
+     <g className="lektrus-lab-added-solid" aria-label="Твёрдое вещество на дне сосуда">
+      <path d={`M19 ${sedimentFloor-visiblePowderH}Q50 ${sedimentFloor-visiblePowderH-2} 81 ${sedimentFloor-visiblePowderH}V${sedimentFloor}H19Z`}
+       fill={contents.solid.length===1?
+        reagentAppearance(contents.solid[0].formula,"dry")?.color??appearance.solidColor??"#d5c5a7":
+        appearance.solidColor??"#d5c5a7"} opacity=".88"/>
+      {Array.from({length:Math.max(5,Math.min(24,Math.ceil(visiblePowderH)))},(_,i)=>
+       <circle key={i} cx={26+(i*17)%48}
+        cy={sedimentFloor-2-(i*7)%Math.max(3,Math.floor(visiblePowderH))}
+        r={.8+i%3*.4} fill="#fff7e8" fillOpacity=".6"/>)}
+     </g>}
+    {volumeMl>1e-9&&(vessel.frozenFraction??0)>1e-4&&
+     <g className="lektrus-lab-frozen-liquid" aria-label="Кристаллизация: жидкость застывает в лёд">
+      <path d={geo.liquid} clipPath={"url(#"+id+"level)"}
+       fill="#d7f2f9" opacity={Math.min(.91,(vessel.frozenFraction??0)*.84)}/>
+      {Array.from({length:12},(_,i)=><path key={i}
+       d={`M${24+i*23%49} ${108-i*11%48}l4 -7l4 7l-4 -3Z`}
+       fill="#fffefe" stroke="#a2d1e3" strokeWidth=".65"
+       opacity={vessel.frozenFraction??0}/>)}
+     </g>}
     {vessel.stoppered&&retainedGasTotal>1e-12&&
      <g className="lektrus-lab-retained-gas" aria-label="Газ удерживается пробкой">
       {Array.from({length:8},(_,i)=><circle key={"retained"+i}
@@ -598,12 +625,12 @@ function LabCoolerTemperatureInput({temperature,onSet}:{temperature:number;onSet
  useEffect(()=>setDraft(String(temperature)),[temperature]);
  const commit=()=>{
   const value=Number(draft);
-  if(draft.trim()&&Number.isFinite(value)&&value>=-20&&value<=20)onSet(value);
+  if(draft.trim()&&Number.isFinite(value)&&value>=LAB_COOLER_MIN_C&&value<=LAB_COOLER_MAX_C)onSet(value);
   else setDraft(String(temperature));
  };
  return <input type="number" className="lektrus-lab-device-face-temp"
   aria-label="Задать температуру охлаждающей ванны в °C"
-  title="Лёд / солевой лёд: −20…+20 °C" min={-20} max={20} step={1}
+  title="Виртуальная охлаждающая ванна: −100…+20 °C" min={LAB_COOLER_MIN_C} max={LAB_COOLER_MAX_C} step={1}
   value={draft} onChange={e=>setDraft(e.target.value)}
   onPointerDown={e=>e.stopPropagation()}
   onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"){commit();e.currentTarget.blur()}}}
