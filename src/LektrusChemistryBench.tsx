@@ -624,13 +624,18 @@ function LabCoolerTemperatureInput({temperature,onSet}:{temperature:number;onSet
  const [draft,setDraft]=useState(String(temperature));
  useEffect(()=>setDraft(String(temperature)),[temperature]);
  const commit=()=>{
-  const value=Number(draft);
-  if(draft.trim()&&Number.isFinite(value)&&value>=LAB_COOLER_MIN_C&&value<=LAB_COOLER_MAX_C)onSet(value);
+  // Tablet numeric keyboards may not expose a minus sign. Accept both - and −.
+  const cleaned=draft.trim().replace(/−/g,"-").replace(/,/g,".");
+  const value=Number(cleaned);
+  if(/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(cleaned)&&
+    Number.isFinite(value)&&value>=LAB_COOLER_MIN_C&&value<=LAB_COOLER_MAX_C)
+   onSet(value);
   else setDraft(String(temperature));
  };
- return <input type="number" className="lektrus-lab-device-face-temp"
-  aria-label="Задать температуру охлаждающей ванны в °C"
-  title="Виртуальная охлаждающая ванна: −100…+20 °C" min={LAB_COOLER_MIN_C} max={LAB_COOLER_MAX_C} step={1}
+ return <input type="text" inputMode="text" autoComplete="off" spellCheck={false}
+  pattern="[+\\-−]?[0-9]+([.,][0-9]+)?" className="lektrus-lab-device-face-temp"
+  aria-label="Задать температуру охлаждающей ванны от −100 до +20 °C"
+  title="Охлаждающая ванна: −100…+20 °C. Вводите минус перед температурой."
   value={draft} onChange={e=>setDraft(e.target.value)}
   onPointerDown={e=>e.stopPropagation()}
   onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"){commit();e.currentTarget.blur()}}}
@@ -2040,11 +2045,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
           title={(device.powered?"Выключить ":"Включить ")+(meta?.name??device.kind)}
           onClick={()=>onChange?.(setPlacedDevicePower({...bench,simulationAtMs:Date.now()},
            device.id,!device.powered))}>
-          <svg className="lektrus-lab-power-symbol" viewBox="0 0 24 24"
-           fill="none" stroke="currentColor" strokeWidth="2.5"
-           strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-           <path d="M12 3v9"/><path d="M7.4 5.8a8.5 8.5 0 1 0 9.2 0"/>
-          </svg>
+          {/* Render the power mark with CSS to avoid broken glyph/SVG
+              scaling in Android tablet WebViews. The button stays accessible. */}
+          <span className="lektrus-lab-power-glyph" aria-hidden="true"/>
          </button>}
         {device.kind==="hotplate"&&<LabTemperatureInput
          temperature={device.targetTemperatureC??150}
