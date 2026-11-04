@@ -105,7 +105,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
  };
  const showDescriptions=diagram.showDescriptions;
  const spritePosition=anatomySpritePosition(system);
- return <section className={"lek-anatomy"+(editorMode?" lek-anatomy--editor":"")}
+ return <div className="lek-anatomy-container"><section className={"lek-anatomy"+(editorMode?" lek-anatomy--editor":"")}
    aria-label="Интерактивный атлас анатомии человека">
   <nav className="lek-anatomy-rail" aria-label="Системы организма">
    <div className="lek-anatomy-rail-title">Системы человека
@@ -188,5 +188,5 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
    <p className="lek-anatomy-reference">Учебные иллюстрации, не медицинские снимки.
     Отдельные органы можно приблизить кнопками в списке.</p>
   </aside>
- </section>;
+ </section></div>;
 }
