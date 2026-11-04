@@ -28,8 +28,8 @@ assert.deepEqual(definitions.find(d=>d.id==="info-flowchart")?.subjects,["инф
 const registered=new Set(definitions.map(d=>d.id));
 assert.equal(registered.size,definitions.length);
 for(const d of definitions){
- if(d.id==="bio-microscope"){
-  assert.deepEqual(d.subjects,[],"Old microscope stays loadable, not discoverable until animal/plant tools");
+ if(d.id==="bio-microscope"||d.id==="bio-organ-systems"){
+  assert.deepEqual(d.subjects,[],"Earlier biology diagrams remain readable, but are not duplicated in the new anatomy palette");
   continue;
  }
  assert.ok(d.subjects.length>0,d.id+": a new tool must have a subject");
