@@ -4660,3 +4660,38 @@
 @media(prefers-reduced-motion:reduce){
  .lektrus-lab-bench .lektrus-lab-sediment{transition:none!important}
 }
+
+
+/* Tablet/cooling bath v3: glyph-independent power icons and aligned controls.
+ * Explicit non-overlapping hit boxes beat the old percent+clamp collisions. */
+.lektrus-lab-bench .lektrus-lab-device-face-controls .lektrus-lab-device-power{
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ line-height:1!important;font-size:0!important}
+.lektrus-lab-bench .lektrus-lab-power-symbol{
+ display:block!important;width:62%!important;height:62%!important;max-width:23px;
+ fill:none!important;stroke:currentColor!important;stroke-width:2.5;
+ flex:none;pointer-events:none}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-hotplate .lektrus-lab-device-power{
+ min-width:26px!important;min-height:26px!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler .lektrus-lab-device-face-temp{
+ left:36%!important;top:69%!important;width:43%!important;height:27px!important;
+ min-width:0!important;max-width:none!important;min-height:27px!important;
+ transform:translate(-50%,-50%)!important;
+ padding:0 2px!important;border-radius:6px!important;
+ font:800 12px/1 ui-monospace,monospace!important;
+ text-align:center!important;letter-spacing:0!important;box-sizing:border-box!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler .lektrus-lab-device-power{
+ left:77%!important;top:69%!important;
+ width:25%!important;height:28px!important;min-width:27px!important;
+ max-width:34px!important;min-height:28px!important;transform:translate(-50%,-50%)!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler input[type="number"]{
+ -moz-appearance:textfield!important;appearance:textfield!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler input[type="number"]::-webkit-outer-spin-button,
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler input[type="number"]::-webkit-inner-spin-button{
+ -webkit-appearance:none!important;margin:0!important}
+@media(pointer:coarse){
+ .lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler .lektrus-lab-device-face-temp{
+  height:30px!important;min-height:30px!important;font-size:12px!important}
+ .lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler .lektrus-lab-device-power{
+  min-height:30px!important;height:30px!important}
+}
