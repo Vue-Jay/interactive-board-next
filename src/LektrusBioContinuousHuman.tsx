@@ -238,8 +238,7 @@ export default function LektrusBioContinuousHuman(){
  const choosePreset=(next:HumanRegion)=>{
   const point=humanRegionAnchor(next,selectedSpot);
   setRegion(next);setSpot(point);
-  const matching=HUMAN_BODY_SYSTEMS.find(entry=>entry.id!=="all"&&
-   HUMAN_SYSTEM_REGION[entry.id]===next);
+  const matching=HUMAN_BODY_SYSTEMS.find(entry=>HUMAN_SYSTEM_REGION[entry.id]===next);
   setSystem(matching?.id??"all");
   setNotice("Область: "+regionNames[next]+". Увеличение остаётся плавным.");
   travel(humanFocusAt(point,Math.max(1.15,camera.current.depth)));
@@ -266,9 +265,7 @@ export default function LektrusBioContinuousHuman(){
  const study=region==="digestive"||region==="musculoskeletal"?region:undefined;
  // Newly illustrated systems share this body's world coordinates at every
  // depth. Never substitute the unrelated generic skin cell for these organs.
- const additional=system==="skeletal"||system==="muscular"||system==="urinary"||
-  system==="lymphatic"||system==="endocrine"||system==="integumentary"||
-  system==="sensory"?system:undefined;
+ const additional=system==="urinary"||system==="integumentary"?system:undefined;
  const atlasPoint=humanRegionAnchor(region,selectedSpot);
  const studyNames:Record<"digestive"|"musculoskeletal",[string,string,string,string]>={
   digestive:["Пищеварительная система","Тонкая кишка","Кишечный эпителий","Энтероцит"],
