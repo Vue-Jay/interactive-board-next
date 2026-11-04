@@ -34,6 +34,20 @@ bench=lab.setLabCoolerTemperature(bench,cooler.id,30);
 assert.equal(lab.placedLabDevices(bench).find(d=>d.id===cooler.id).targetTemperatureC,20);
 const start=bench.vessels[0];
 assert.ok(start&&start.id);
+// Weighed solid must be an actual bottom-settled phase even before
+// any reaction starts: insoluble carbonate AND initially dry soluble salt.
+for(const [formula,massG] of [["CaCO3",5],["NaCl",4]]){
+ const dry=lab.putLabReagent(lab.defaultLabBench(),start.id,formula,
+  {value:massG,unit:"g"});
+ const vessel=dry.vessels.find(v=>v.id===start.id);
+ assert.ok(vessel?.doses?.[formula],
+  "Weighed "+formula+" must be accepted by a clean beaker");
+ const contents=lab.labVesselContents(vessel);
+ assert.ok(contents.solid.some(row=>row.formula===formula&&row.massG>0),
+  "Directly added "+formula+" must have a visible settled solid phase");
+ assert.equal(contents.solutionMl,0,
+  "Dry weighed substance must not invent water in the container");
+}
 const prep=lab.putLabReagent(bench,start.id,"H2O",{value:20,unit:"ml"});
 assert.equal(prep.vessels.find(v=>v.id===start.id).doses.H2O.value,20);
 // The physical simulator must freeze only the selected pure liquid, not
@@ -72,4 +86,4 @@ assert.match(css,/\.lektrus-lab-power-symbol\{/);
 assert.match(css,/\.lektrus-lab-device-face-controls\.is-cooler \.lektrus-lab-device-face-temp/);
 assert.match(css,/@media\(pointer:coarse\)/);
 assert.match(art,/kind==="cooler"/);
-console.log("Cooling and solids PASS: -100..20°C target, pure water physically freezes with conserved mass, tablet SVG power icon, aligned cold bath controls and settled solid artwork.");
+console.log("Cooling and solids PASS: subzero refrigeration, mass-conserving pure-water freezing, dry weighed CaCO3/NaCl as visible bottom solids, tablet power icons and aligned cooler controls.");
