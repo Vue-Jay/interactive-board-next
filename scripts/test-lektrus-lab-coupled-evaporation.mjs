@@ -190,7 +190,7 @@ assert.equal(lab.canMountLabVessel("cooler","burette"),false);
 chilled=lab.setLabCoolerTemperature(chilled,coolerId,-14);
 assert.equal(chilled.placedDevices[0].targetTemperatureC,-14);
 chilled=lab.setLabCoolerTemperature(chilled,coolerId,-200);
-assert.equal(chilled.placedDevices[0].targetTemperatureC,-20);
+assert.equal(chilled.placedDevices[0].targetTemperatureC,lab.LAB_COOLER_MIN_C);
 chilled=lab.setLabCoolerTemperature(chilled,coolerId,100);
 assert.equal(chilled.placedDevices[0].targetTemperatureC,20);
 chilled=lab.setLabCoolerTemperature(chilled,coolerId,0);
