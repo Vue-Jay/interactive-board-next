@@ -67,9 +67,10 @@ assert.match(app,/useState<Tool>\(\(\)=>readBoardSessionTool\(boardSummary\.id,a
 assert.match(app,/writeBoardSessionTool\(boardSummary\.id,authUser\.id,tool\)/);
 assert.match(app,/const \[tool, setToolState\] = useState<Tool>/);
 assert.match(app,/const setTool: typeof setToolState = useCallback/);
-assert.match(app,/writeBoardSessionTool\(boardSummary\.id,authUser\.id,chosen\)/,
- "Store a locally selected tool in the same update transaction before remount");
-assert.match(app,/useLayoutEffect\(\(\)=>writeBoardSessionTool\(boardSummary\.id,authUser\.id,tool\)/,
+assert.match(app,/const viewerToolRef = useRef\(tool\)/);
+assert.match(app,/viewerToolRef\.current=chosen;\s*writeBoardSessionTool\(boardSummary\.id,authUser\.id,chosen\);\s*setToolState\(chosen\)/,
+ "The viewer's tool must be stored BEFORE React schedules a UI update");
+assert.match(app,/useLayoutEffect\(\(\)=>\{\s*viewerToolRef\.current=tool;\s*writeBoardSessionTool\(boardSummary\.id,authUser\.id,tool\)/,
  "Keep individual tool selection intact on document re-render");
 const directCss=fs.readFileSync("src/lektrusResponsive.css","utf8");
 assert.match(directCss,/Five full-width, directly tappable pen presets/);
