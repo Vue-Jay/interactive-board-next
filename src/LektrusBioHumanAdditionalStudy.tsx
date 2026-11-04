@@ -5,7 +5,8 @@
 import {memo} from "react";
 import {HUMAN_ADDITIONAL_DRAWINGS} from "./LektrusBioHumanAdditionalSystems";
 
-type System=keyof typeof HUMAN_ADDITIONAL_DRAWINGS;
+export type HumanAdditionalSystem=keyof typeof HUMAN_ADDITIONAL_DRAWINGS;
+type System=HumanAdditionalSystem;
 const views:Record<System,{x:number;y:number;width:number;height:number;name:string;organ:string}>={
  skeletal:{x:180,y:261,width:210,height:290,name:"Скелетная система",organ:"Грудная клетка и позвоночник"},
  muscular:{x:180,y:284,width:210,height:295,name:"Мышечная система",organ:"Скелетные мышцы туловища"},
