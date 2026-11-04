@@ -262,6 +262,7 @@ export default function LektrusBioContinuousHuman(){
  const tissue=organ?bioChildren(nodes,organ.id)[0]:undefined;
  const cell=tissue?bioChildren(nodes,tissue.id)[0]:undefined;
  const isSkin=region==="skin";
+ const rasterSelected=system!=="all";
  const study=region==="digestive"||region==="musculoskeletal"?region:undefined;
  // Newly illustrated systems share this body's world coordinates at every
  // depth. Never substitute the unrelated generic skin cell for these organs.
@@ -285,16 +286,18 @@ export default function LektrusBioContinuousHuman(){
   transform:"translate("+(cam.panX/W*100)+"%, "+(cam.panY/H*100)+"%) scale("+scale+")"
  };
  const mini=humanVisibleField(cam);
- const activeLabel=HUMAN_ZOOM_LABELS[Math.min(4,Math.round(cam.depth))];
+ const detailLabels=rasterSelected?
+  ["Организм","Система органов","Анатомические детали","Крупный план","Максимум"]:
+  [...HUMAN_ZOOM_LABELS];
+ const activeLabel=detailLabels[Math.min(4,Math.round(cam.depth))];
  return <section className="lektrus-human" aria-label="Непрерывный анатомический атлас человека">
   <div className="lektrus-human-intro">
    <div><span className="lektrus-human-eyebrow">LEKTRUS · BIOLOGY ATLAS</span>
     <h3>Интерактивная биомодель человека</h3>
-    <p>Выберите систему органов и исследуйте её: от целого организма до строения ткани и клетки.
-     Камера и масштаб остаются непрерывными.</p>
+    <p>Семь систем человека на полноцветных анатомических иллюстрациях. Выберите систему, перемещайте изображение и приближайте детали.</p>
    </div>
-   <button type="button" className="lektrus-human-reset" onClick={()=>changeLevel(0)}>
-    <span aria-hidden="true">↺</span> Весь организм
+   <button type="button" className="lektrus-human-reset" onClick={()=>{chooseSystem("all");changeLevel(0)}}>
+    <span aria-hidden="true">↺</span> Общий вид
    </button>
   </div>
   <div className="lektrus-human-system-switch" role="group" aria-label="Выберите систему органов">
@@ -315,20 +318,20 @@ export default function LektrusBioContinuousHuman(){
    <div className="lektrus-human-backdrop" aria-hidden="true"/>
    <div className={"lektrus-human-world"+(guided?" is-travelling":"")}
     style={spriteStyle} aria-hidden="true">
-    <div className="lektrus-human-body" style={{opacity:layer[0]}}>
+    <div className={"lektrus-human-body"+(rasterSelected?" is-raster-focus":"")} style={{opacity:rasterSelected?1:layer[0]}}>
      <LektrusBioMannequin system={system}/>
     </div>
     <Layer className="lektrus-human-layer-organs" point={atlasPoint}
-     node={isSkin?undefined:sys} study={study} additional={additional} showSkin={isSkin&&system==="all"} depth={1} opacity={layer[1]}
+     node={isSkin?undefined:sys} study={study} additional={additional} showSkin={isSkin&&system==="all"} depth={1} opacity={rasterSelected?0:layer[1]}
      annotation={showLabels?labelAt(1,sys):undefined}/>
     <Layer className="lektrus-human-layer-organ" point={atlasPoint}
-     node={isSkin?undefined:organ} study={study} additional={additional} showSkin={isSkin&&system==="all"} depth={2} opacity={layer[2]}
+     node={isSkin?undefined:organ} study={study} additional={additional} showSkin={isSkin&&system==="all"} depth={2} opacity={rasterSelected?0:layer[2]}
      annotation={showLabels?labelAt(2,organ):undefined}/>
     <Layer className="lektrus-human-layer-tissue" point={atlasPoint}
-     node={isSkin?undefined:tissue} study={study} additional={additional} showSkin={isSkin&&system==="all"} depth={3} opacity={layer[3]}
+     node={isSkin?undefined:tissue} study={study} additional={additional} showSkin={isSkin&&system==="all"} depth={3} opacity={rasterSelected?0:layer[3]}
      annotation={showLabels?labelAt(3,tissue):undefined}/>
     <Layer className="lektrus-human-layer-cell" point={atlasPoint}
-     node={isSkin?undefined:cell} study={study} additional={additional} showSkin={isSkin&&system==="all"} depth={4} opacity={layer[4]}
+     node={isSkin?undefined:cell} study={study} additional={additional} showSkin={isSkin&&system==="all"} depth={4} opacity={rasterSelected?0:layer[4]}
      annotation={showLabels?labelAt(4,cell):undefined}/>
     {cam.depth<1.15&&system==="all"&&<span className="lektrus-human-beacon"
      style={{left:(483/W*100)+"%",top:(194/H*100)+"%",opacity:1-cam.depth/1.15}}/>}
@@ -355,7 +358,7 @@ export default function LektrusBioContinuousHuman(){
    </div>
   </div>
   <div className="lektrus-human-levels" role="group" aria-label="Уровни анатомического приближения">
-   {HUMAN_ZOOM_LABELS.map((label,i)=><button type="button" key={label}
+   {detailLabels.map((label,i)=><button type="button" key={label}
     className={Math.abs(cam.depth-i)<.43?"is-current":""}
     aria-pressed={Math.abs(cam.depth-i)<.43} onClick={()=>changeLevel(i)}>
     <span className="lektrus-human-level-index">{i+1}</span>{label}
@@ -375,9 +378,7 @@ export default function LektrusBioContinuousHuman(){
   </div>
   <p className="lektrus-human-notice" role="status">{notice}</p>
   <small className="lektrus-human-caveat">
-   Учебный анатомический атлас, не медицинский снимок. Плавный цифровой масштаб не соответствует
-   физическому оптическому увеличению. В неразмеченных областях показана типовая модель кожи,
-   а не вымышленные внутренние органы.
+   Учебные иллюстрации систем организма. При увеличении выбранной системы пока используется масштабирование исходного рисунка, а не микрофотография тканей или клеток.
   </small>
  </section>;
 }
