@@ -318,7 +318,7 @@ export default function LektrusBioContinuousHuman(){
    <div className="lektrus-human-backdrop" aria-hidden="true"/>
    <div className={"lektrus-human-world"+(guided?" is-travelling":"")}
     style={spriteStyle} aria-hidden="true">
-    <div className={"lektrus-human-body"+(rasterSelected?" is-raster-focus":"")} style={{opacity:rasterSelected?1:layer[0]}}>
+    <div className={"lektrus-human-body"+(rasterSelected?" is-raster-focus":"")} data-human-active-system={system} style={{opacity:rasterSelected?1:layer[0]}}>
      <LektrusBioMannequin system={system}/>
     </div>
     <Layer className="lektrus-human-layer-organs" point={atlasPoint}
