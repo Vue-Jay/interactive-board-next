@@ -563,7 +563,8 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
   // Pure-liquid freezing and thawing. The refrigerated bath crosses 0°C.
   // Water remains at the transition while its heat of fusion is released;
   // dilute mixtures are not assigned an arbitrary freezing point.
-  const liquidPoint=profile.melting&&pure?.unit==="ml"&&!v.uncertain?
+  // Even the default simple school mode must freeze a verified pure liquid.
+  const liquidPoint=pure?.unit==="ml"&&!v.uncertain?
    pure.info.meltingC:undefined;
   if(liquidPoint!==undefined&&liquidPoint>=LAB_COOLER_MIN_C&&
      liquidPoint<=LAB_COOLER_MAX_C){
