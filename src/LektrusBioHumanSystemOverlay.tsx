@@ -10,7 +10,7 @@ import type {ReactNode} from "react";
 import type {HumanFocusedSystem} from "./lektrusBioHumanBodySystems";
 
 type Props={system:HumanFocusedSystem};
-const deepRed="#bc5966",artery="#d36c70",vein="#6595b0";
+const artery="#d36c70",vein="#6595b0";
 function Nerves(){
  return <g data-anatomy="nervous" fill="none" strokeLinecap="round" strokeLinejoin="round">
   <g fill="#c1a3d7" stroke="#7b619f" strokeWidth="3.2">
