@@ -46,7 +46,8 @@ assert.doesNotMatch(mannequin,/human-biomodel-image-focus/,
  "Selected systems must not paint the flattened multi-organ image");
 assert.match(mannequin,/maskMode:"alpha"/);
 assert.match(mannequin,/system==="all"/);
-assert.match(mannequin,/musculoskeletal/);
+assert.match(fs.readFileSync("src/LektrusBioHumanSystemOverlay.tsx","utf8"),/musculoskeletal/,
+ "Musculoskeletal system is rendered by its dedicated anatomy overlay");
 assert.match(mannequin,/maskImage:"url\("\+biomodel\+"\)"/);
 const study=fs.readFileSync(files[1],"utf8");
 assert.match(study,/function Digestive/);
