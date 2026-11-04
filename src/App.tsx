@@ -2461,19 +2461,20 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // The active tool belongs to THIS viewer/tab, not to the shared document
   // or a collaborator's presence/editor state. Restore it after remounts.
   const [tool, setToolState] = useState<Tool>(()=>readBoardSessionTool(boardSummary.id,authUser.id));
-  // A board can be remounted when another participant publishes a new
-  // document version. Persist the viewer's tool in the SAME local selection
-  // transaction, not in a passive effect that may never run before remount.
-  // Never broadcast the selected tool through the collaborative document.
+  const viewerToolRef = useRef(tool);
+  // Persist before enqueueing React state: an incoming collaborator update
+  // may remount the board BEFORE the queued React state updater runs.
+  // The selected tool is never a shared board/presence field.
   const setTool: typeof setToolState = useCallback(next=>{
-    setToolState(previous=>{
-      const chosen=typeof next==="function"?next(previous):next;
-      writeBoardSessionTool(boardSummary.id,authUser.id,chosen);
-      return chosen;
-    });
+    const chosen=typeof next==="function"?next(viewerToolRef.current):next;
+    viewerToolRef.current=chosen;
+    writeBoardSessionTool(boardSummary.id,authUser.id,chosen);
+    setToolState(chosen);
   },[boardSummary.id,authUser.id]);
-  useLayoutEffect(()=>writeBoardSessionTool(boardSummary.id,authUser.id,tool),
-    [boardSummary.id,authUser.id,tool]);
+  useLayoutEffect(()=>{
+    viewerToolRef.current=tool;
+    writeBoardSessionTool(boardSummary.id,authUser.id,tool);
+  },[boardSummary.id,authUser.id,tool]);
   // Opening the shape palette does not arm a previously chosen figure.
   useEffect(() => { if (tool !== "shape") setShapeType(null); }, [tool]);
   const inkCursorElement=useRef<HTMLDivElement|null>(null);
