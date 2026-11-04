@@ -81,16 +81,15 @@ function SkinSection({depth}:{depth:number}){
   </>}
  </svg>;
 }
-function Layer({asset,node,study,opacity,className,point,annotation,depth}:{
- asset?:string;node?:BioNode;study?:"digestive"|"musculoskeletal";
+function Layer({node,study,opacity,className,point,annotation,depth}:{
+ node?:BioNode;study?:"digestive"|"musculoskeletal";
  opacity:number;className:string;point:HumanPoint;
  annotation?:string;depth?:number
 }){
  if(opacity<=0)return null;
  return <div className={"lektrus-human-tile "+className}
   aria-hidden="true" style={{opacity,left:(point.x/W*100)+"%",top:(point.y/H*100)+"%"}}>
-  {asset?<img src={asset} alt="" draggable={false}/>:node?
-   <StaticAnatomy node={node}/>:study?
+  {node?<StaticAnatomy node={node}/>:study?
    <LektrusBioHumanSystemStudy system={study} level={depth??2}/>:
    <SkinSection depth={depth??2}/>}
   {annotation&&<span className="lektrus-human-tile-label">{annotation}</span>}
