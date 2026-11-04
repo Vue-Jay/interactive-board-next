@@ -10,7 +10,37 @@ const mannequin=read("src/LektrusBioMannequin.tsx");
 const atlas=read("src/LektrusBioContinuousHuman.tsx");
 const schoolView=read("src/LektrusSchoolDiagramView.tsx");
 const schoolEditor=read("src/LektrusSchoolDiagramEditor.tsx");
+const microscope=read("src/lektrusBioMicroscope.css");
+const microscopeComponent=read("src/LektrusBioMicroscope.tsx");
 
+// Regression against the user screenshot showing the organism displaced
+// completely to the right, with a huge blank section to the left.
+assert.match(schoolEditor,/draft\.kind==="bio-microscope"\?" lektrus-school-preview--bio"/,
+ "Only biology microscope previews get the special shrink-safe layout class");
+assert.match(human,/\.lektrus-school-preview--bio\{[\s\S]*?display:block!important/,
+ "Editor must not use flex centering for a min-content-wide atlas");
+assert.match(human,/\.lektrus-school-preview--bio>\.lektrus-bio-microscope\{[\s\S]*?min-width:0!important/,
+ "Microscope must be allowed to shrink within its editor column");
+assert.match(human,/\.lektrus-school-preview--bio \.lektrus-human\{[\s\S]*?grid-template-columns:minmax\(0,1fr\)/,
+ "The atlas grid needs a zero-minimum track instead of intrinsic width");
+assert.match(human,/\.lektrus-school-preview--bio \.lektrus-human-stage\{[\s\S]*?justify-self:center/,
+ "The complete body must stay centred in the visible preview column");
+assert.match(human,/\.lektrus-school-preview--bio \.lektrus-human-stage\{[\s\S]*?max-width:520px/,
+ "The preview stage must not grow wider than the compact centre region");
+const gridChildren=human.match(/\.lektrus-school-preview--bio \.lektrus-human>div,[\s\S]*?\}/)?.[0]??"";
+assert.ok(gridChildren.includes("min-width:0"),
+ "Grid children must be shrinkable");
+assert.ok(!gridChildren.includes("max-width:100%"),
+ "A broad max-width rule overrides the fixed stage cap and forces overflow");
+
+assert.match(human,/\.lektrus-school-preview--bio \.lektrus-human-system-options\{[\s\S]*?overflow-x:auto/,
+ "System choices must scroll INSIDE their own bar, not grow the entire atlas");
+assert.match(human,/\.lektrus-school-preview--bio \.lektrus-bio-class-focus\{[\s\S]*?display:none/,
+ "Redundant class information must not consume the limited editor preview height");
+assert.match(microscope,/\.lektrus-bio-microscope\{[\s\S]*?display:flex/,
+ "The biology root is a flex item and needs the shrink override");
+assert.match(microscopeComponent,/<LektrusBioContinuousHuman\/>/,
+ "Editor and board must still use the same continuous human atlas");
 const uncommented=editor.replace(/\/\*[\s\S]*?\*\//g,"");
 assert.doesNotMatch(uncommented,/\.lektrus-school-preview\s+svg\s*\{/,
  "A descendant SVG selector breaks every portrait organ and system icon");
@@ -18,8 +48,10 @@ assert.match(uncommented,/\.lektrus-school-preview\s*>\s*svg\s*\{/,
  "Only the DIRECT school diagram SVG may inherit the landscape ratio");
 assert.match(schoolView,/return <svg viewBox="0 0 900 500"/,
  "Standalone school diagrams continue using a 9:5 SVG");
-assert.match(schoolEditor,/<div className="lektrus-school-preview"[\s\S]*?<LektrusSchoolDiagramView/,
- "Human atlas runs inside the school diagram preview container");
+assert.match(schoolEditor,/lektrus-school-preview--bio/,
+ "Human microscope has a dedicated preview container class");
+assert.match(schoolEditor,/<LektrusSchoolDiagramView diagram=\{draft\}/,
+ "Human atlas continues rendering inside the editor preview");
 
 const webp=fs.readFileSync("src/assets/bio-atlas/human-biomodel.webp");
 assert.equal(webp.toString("ascii",0,4),"RIFF");

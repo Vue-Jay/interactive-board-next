@@ -303,7 +303,7 @@ export default function LektrusSchoolDiagramEditor({item,existing,studentMode=fa
     </div>}
     <div className="lektrus-school-preview-area">
      {!isAtlas&&<div className="lektrus-school-preview-heading"><strong>Предпросмотр</strong><span>{isGeoTraining?"Проверка задания · область прокручивается":"Так объект будет выглядеть на доске"}</span></div>}
-     <div className="lektrus-school-preview" aria-label={isGeoTraining?"Компактный предпросмотр задания":undefined}><LektrusSchoolDiagramView diagram={draft} onChange={isAtlas?set:undefined} editorMode={isAtlas} userId={userId}/></div>
+     <div className={"lektrus-school-preview"+(draft.kind==="bio-microscope"?" lektrus-school-preview--bio":"")} aria-label={isGeoTraining?"Компактный предпросмотр задания":undefined}><LektrusSchoolDiagramView diagram={draft} onChange={isAtlas?set:undefined} editorMode={isAtlas} userId={userId}/></div>
     </div>
    </div>
    <footer className="lektrus-school-footer">
