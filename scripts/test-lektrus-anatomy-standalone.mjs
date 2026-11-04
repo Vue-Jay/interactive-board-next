@@ -81,7 +81,7 @@ for(const file of ["src/LektrusHumanAnatomy.tsx","src/LektrusSchoolDiagramEditor
 assert.match(view,/import anatomySprite from "\.\/assets\/bio-atlas\/human-seven-systems.webp"/);
 assert.match(view,/const \[camera,setCamera\]=useState<AnatomyCamera>\(ANATOMY_INITIAL_CAMERA\)/);
 const choose=view.slice(view.indexOf("const chooseSystem="),view.indexOf("const dimensions="))
- .replace(/\\/\\/[^\\n]*/g,"");
+ .split("\n").filter(line=>!line.trim().startsWith("//")).join("\n");
 assert.doesNotMatch(choose,/setCamera|reset\(|travel\(|zoom\(/,
  "System selection must not move or zoom the viewport");
 assert.match(view,/const system=onChange\?diagram.system:localSystem/);
