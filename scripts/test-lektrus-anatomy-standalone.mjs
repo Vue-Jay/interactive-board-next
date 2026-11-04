@@ -103,7 +103,11 @@ assert.match(catalogue,/id:"bio-anatomy",label:"Анатомия человек�
 assert.match(catalogue,/id:"bio-microscope"[\s\S]*?subjects:\[\]/);
 assert.match(panel,/"биология":\[\{title:"Анатомия человека",ids:\["bio-anatomy"\]/);
 const css=read("src/lektrusHumanAnatomy.css");
-assert.match(css,/\.lek-anatomy-dialog-backdrop/);
+assert.match(css,/\\.lek-anatomy-dialog-backdrop/);
+assert.match(css,/\\.lek-anatomy-container\\{[\\s\\S]*?container-type:inline-size/,
+ "Responsive container queries must measure the actual anatomy item width");
+assert.match(view,/className="lek-anatomy-container"/,
+ "Anatomy root must be a child of the container query box");
 assert.match(css,/\.lek-anatomy-world/);
 assert.match(css,/@container\(max-width:730px\)/);
 assert.match(css,/\.lek-anatomy-stage\{[\s\S]*?touch-action:none/);
