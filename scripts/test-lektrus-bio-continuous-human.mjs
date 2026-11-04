@@ -72,7 +72,8 @@ for(const asset of ["organs","heart","tissue","cell"]){
  assert.equal(file.subarray(0,4).toString("utf8"),"RIFF");
  assert.equal(file.subarray(8,12).toString("utf8"),"WEBP");
  assert.ok(file.length>1000&&file.length<35000,"App images must remain optimized");
- assert.match(src,new RegExp("assets/bio-atlas/"+asset+"\\.webp"));
+ assert.doesNotMatch(src,new RegExp("assets/bio-atlas/"+asset+"\\.webp"),
+  "Legacy collage assets must not override reviewed human organ/tissue/cell drawings");
 }
 const mannequinFile="src/LektrusBioMannequin.tsx";
 const mannequin=fs.readFileSync(mannequinFile,"utf8");
@@ -87,13 +88,16 @@ const mannequinAst=ts.createSourceFile(mannequinFile,mannequin,
  ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(mannequinAst.parseDiagnostics.length,0,"Mannequin SVG component must parse");
 assert.match(mannequin,/export default memo\(LektrusBioMannequin\)/);
-assert.match(mannequin,/useId\(\)/,"Both figures must use unique SVG gradient ids");
+assert.match(mannequin,/lektrus-human-biomodel-shell/);
+assert.match(mannequin,/LektrusBioHumanSystemOverlay/);
 assert.match(mannequin,/human-biomodel\.webp/);
-assert.match(mannequin,/highlightMasks/);
+assert.doesNotMatch(mannequin,/highlightMasks/);
+assert.match(mannequin,/maskMode:"alpha"/);
 assert.match(mannequin,/data-bio-active-system=\{system\}/);
-assert.match(mannequin,/musculoskeletal/);
-assert.match(mannequin,/approved semi-transparent biomodel/i);
+assert.match(mannequin,/system==="all"/);
+assert.match(mannequin,/approved translucent human illustration/i);
 assert.match(mannequin,/is-overview/);
+assert.doesNotMatch(mannequin,/human-biomodel-image-focus/);
 assert.match(mannequin,/aria-hidden="true"/);
 assert.match(src,/import LektrusBioMannequin from "\.\/LektrusBioMannequin"/);
 assert.equal(src.includes("assets/bio-atlas/body.webp"),false,
@@ -118,6 +122,9 @@ assert.match(src,/role="application"/);
 assert.match(src,/role="status"/);
 assert.match(src,/aria-label="Глубина приближения"/);
 assert.match(src,/SkinSection depth=\{depth\?\?2\}/);
+assert.match(src,/node=\{isSkin\?undefined:organ\}/);
+assert.match(src,/node=\{isSkin\?undefined:tissue\}/);
+assert.match(src,/node=\{isSkin\?undefined:cell\}/);
 assert.match(src,/неразмеченных областях показана типовая модель кожи/);
 const parent=fs.readFileSync("src/LektrusBioMicroscope.tsx","utf8");
 assert.match(parent,/activeOrganism==="human"&&<LektrusBioContinuousHuman\/>/);
@@ -134,4 +141,4 @@ assert.match(css,/\.lektrus-human-world.is-travelling\{transition:transform/);
 assert.match(css,/mask-image:radial-gradient/);
 assert.match(css,/@media\(max-width:650px\)/);
 assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
-console.log("Continuous human atlas PASS: approved translucent biological figure, five selectable systems, four deep atlas images, correct cursor-anchored zoom, full-body minimap and touch/pinch gestures.");
+console.log("Continuous human atlas PASS: exclusive-system silhouette, three reviewed human system/organ/tissue/cell chains, exact camera zoom and keyboard/touch controls.");
