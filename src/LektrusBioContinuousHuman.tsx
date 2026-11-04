@@ -5,7 +5,7 @@
  */
 import {memo,useCallback,useEffect,useMemo,useRef,useState} from "react";
 import type {PointerEvent as RP,KeyboardEvent as RK,CSSProperties} from "react";
-import bodyImage from "./assets/bio-atlas/body.webp";
+import LektrusBioMannequin from "./LektrusBioMannequin";
 import organsImage from "./assets/bio-atlas/organs.webp";
 import heartImage from "./assets/bio-atlas/heart.webp";
 import tissueImage from "./assets/bio-atlas/tissue.webp";
@@ -256,7 +256,7 @@ export default function LektrusBioContinuousHuman(){
    <div className={"lektrus-human-world"+(guided?" is-travelling":"")}
     style={spriteStyle} aria-hidden="true">
     <div className="lektrus-human-body" style={{opacity:layer[0]}}>
-     <img src={bodyImage} draggable={false} alt=""/>
+     <LektrusBioMannequin/>
     </div>
     <Layer className="lektrus-human-layer-organs" point={atlasPoint} asset={isHeart?organsImage:undefined}
      node={isSkin?undefined:sys} depth={1} opacity={layer[1]}
@@ -281,7 +281,7 @@ export default function LektrusBioContinuousHuman(){
    </div>
    <div className="lektrus-human-tip">Потяните, чтобы переместиться. Прокрутите или разведите два пальца для увеличения.</div>
    <div className="lektrus-human-minimap" aria-label="Расположение поля зрения на теле">
-    <img src={bodyImage} draggable={false} alt=""/>
+    <LektrusBioMannequin/>
     <span className="lektrus-human-minimap-field" style={{
      left:(mini.x/W*100)+"%",top:(mini.y/H*100)+"%",
      width:(mini.width/W*100)+"%",height:(mini.height/H*100)+"%"
