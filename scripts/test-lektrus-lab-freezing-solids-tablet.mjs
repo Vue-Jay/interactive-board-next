@@ -40,6 +40,7 @@ assert.equal(prep.vessels.find(v=>v.id===start.id).doses.H2O.value,20);
 // blindly freeze every aqueous salt solution at 0°C.
 bench=lab.setLabCoolerTemperature(prep,cooler.id,-30);
 bench={...bench,simulationPaused:false,simulationAtMs:0,
+ settings:{...bench.settings,evaporationEnabled:false},
  placedDevices:lab.placedLabDevices(bench).map(d=>d.id===cooler.id?
   {...d,active:true,linkedVesselId:start.id,powered:true}:d)};
 let frozen=0;
