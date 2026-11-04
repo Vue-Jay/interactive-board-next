@@ -3,7 +3,7 @@
  * Never substitute feline tissues or the unrelated skin illustration.
  * The camera stays in the SAME world at every level.
  */
-import {memo} from "react";
+import {memo,useId} from "react";
 type StudySystem="digestive"|"musculoskeletal";
 type Props={system:StudySystem;level:number};
 function IntestinalVilli(){
@@ -130,15 +130,17 @@ function Muscle({level}:{level:number}){
  </g>;
 }
 function LektrusBioHumanSystemStudy({system,level}:Props){
+ const unique=useId().replace(/:/g,"");
+ const backgroundId="lektrus-human-study-bg-"+unique;
  return <svg className="lektrus-human-study-svg" viewBox="0 0 480 330"
   preserveAspectRatio="xMidYMid meet" role="img"
   aria-label={system==="digestive"?"Учебная схема пищеварительной системы":"Учебная схема опорно-двигательной системы"}>
   <defs>
-   <linearGradient id="human-study-bg" x1="0" y1="0" x2="1" y2="1">
+   <linearGradient id={backgroundId} x1="0" y1="0" x2="1" y2="1">
     <stop stopColor="#fcfaf7"/><stop offset="1" stopColor="#efe6ef"/>
    </linearGradient>
   </defs>
-  <rect width="480" height="330" fill="url(#human-study-bg)"/>
+  <rect width="480" height="330" fill={"url(#"+backgroundId+")"}/>
   {system==="digestive"?<Digestive level={level}/>:<Muscle level={level}/>}
   <rect x="7" y="7" width="466" height="316" rx="12" fill="none" stroke="#cebfd5"
    strokeWidth="2" strokeOpacity=".7"/>
