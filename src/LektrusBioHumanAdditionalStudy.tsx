@@ -2,7 +2,7 @@
  * histology chain. Never substitute a skin cell, feline tissue or unrelated
  * organ just to fill every depth. The world camera remains unchanged.
  */
-import {memo} from "react";
+import {memo,useId} from "react";
 import {HUMAN_ADDITIONAL_DRAWINGS} from "./LektrusBioHumanAdditionalSystems";
 
 export type HumanAdditionalSystem=keyof typeof HUMAN_ADDITIONAL_DRAWINGS;
@@ -18,16 +18,17 @@ const views:Record<System,{x:number;y:number;width:number;height:number;name:str
 };
 function LektrusBioHumanAdditionalStudy({system,level}:{system:System;level:number}){
  const view=views[system],Drawing=HUMAN_ADDITIONAL_DRAWINGS[system];
- const factor=level>=3?.6:level===2?.82:1;
+ const gradient="human-anatomy-detail-"+useId().replace(/:/g,"");
+ const factor=level>=3 ? 0.6 : level===2 ? 0.82 : 1;
  const w=view.width*factor,h=view.height*factor;
  return <svg className="lektrus-human-study-svg" viewBox="0 0 480 330"
   role="img" aria-label={view.name+": "+view.organ}>
   <defs>
-   <linearGradient id="bio-human-detail-bg" x1="0" y1="0" x2=".9" y2="1">
+   <linearGradient id={gradient} x1="0" y1="0" x2=".9" y2="1">
     <stop stopColor="#f9fbff"/><stop offset="1" stopColor="#f1eff9"/>
    </linearGradient>
   </defs>
-  <rect width="480" height="330" rx="19" fill="url(#bio-human-detail-bg)"/>
+  <rect width="480" height="330" rx="19" fill={"url(#"+gradient+")"}/>
   <rect x="22" y="43" width="436" height="233" rx="16"
    fill="#ffffffc8" stroke="#dfdaeb"/>
   <svg x="80" y="49" width="320" height="223"
