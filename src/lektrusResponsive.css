@@ -864,3 +864,31 @@
  .lektrus-control-settings .lektrus-controls-body{padding:10px}
  .lektrus-controls-section{padding:10px}
 }
+
+
+/* Five full-width, directly tappable pen presets, even on a narrow tablet.
+   The old nowrap row had a fixed 5×44px minimum: the fifth (22px) option
+   extended under the clipped right edge/neighboring action. */
+.workspace .lektrus-ink-settings-direct{
+ position:relative;isolation:isolate;z-index:12;
+ min-width:0!important;max-width:100%!important}
+.workspace .lektrus-ink-settings-direct .lektrus-direct-ink-widths{
+ display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;
+ width:min(100%,265px)!important;max-width:100%!important;min-width:0!important;
+ gap:3px!important;overflow:visible!important;
+ pointer-events:auto!important;flex:0 1 265px!important}
+.workspace .lektrus-ink-settings-direct .lektrus-direct-ink-widths>button{
+ position:relative;z-index:1;display:grid!important;place-items:center!important;
+ box-sizing:border-box!important;width:100%!important;min-width:0!important;
+ max-width:none!important;min-height:44px!important;flex:initial!important;
+ padding:3px 0!important;pointer-events:auto!important;
+ touch-action:manipulation!important}
+.workspace .lektrus-ink-settings-direct .lektrus-direct-ink-widths>button:focus-visible{
+ outline:2px solid #3165ba!important;outline-offset:-2px!important}
+.workspace .lektrus-ink-settings-direct .lektrus-ink-swatch{pointer-events:none}
+@media(max-width:700px),(pointer:coarse){
+ .workspace .lektrus-ink-settings-direct .lektrus-direct-ink-widths{
+  width:min(100%,240px)!important;gap:2px!important}
+ .workspace .lektrus-ink-settings-direct .lektrus-direct-ink-widths>button{
+  min-height:44px!important;padding:2px 0!important}
+}
