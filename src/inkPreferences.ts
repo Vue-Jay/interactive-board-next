@@ -17,7 +17,8 @@ const normalizeTool = (value: unknown, kind: InkTool): InkToolSettings => {
   if (!value || typeof value !== "object") return { ...fallback };
   const candidate = value as Partial<InkToolSettings>;
   const min = kind === "marker" ? 1 : 0.5;
-  const max = kind === "marker" ? 48 : 16;
+  // All five pen presets must be selectable, including the 22px maximum.
+  const max = kind === "marker" ? 48 : 22;
   return {
     color: colorValid(candidate.color) ? candidate.color : fallback.color,
     size: typeof candidate.size === "number" && Number.isFinite(candidate.size)
