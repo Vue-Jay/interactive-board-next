@@ -29,5 +29,5 @@ export const humanSystemById=(id:HumanBodySystem)=>
  HUMAN_BODY_SYSTEMS.find(s=>s.id===id)??HUMAN_BODY_SYSTEMS[0];
 export function humanSystemVisibility(selected:HumanBodySystem,
  drawn:HumanFocusedSystem):number{
- return selected==="all"?.72:selected===drawn?1:.075;
+ return selected==="all"?1:selected===drawn?1:0;
 }
