@@ -52,7 +52,7 @@ assert.match(study,/function Enterocyte/);
 assert.match(study,/level>=4/);
 assert.match(study,/level===3/);
 assert.match(study,/level===2/);
-assert.match(study,/school/);
+assert.match(study,/explicitly schematic depth views/);
 const viewer=fs.readFileSync(files[2],"utf8");
 assert.match(viewer,/HUMAN_BODY_SYSTEMS.map\(entry=>/);
 assert.match(viewer,/onClick=\{\(\)=>chooseSystem\(entry.id\)\}/);
