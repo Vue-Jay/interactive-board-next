@@ -72,10 +72,11 @@ function Respiration(){
 }
 function Circulation(){
  return <g data-anatomy="circulatory" fill="none" strokeLinecap="round" strokeLinejoin="round">
+  {/* Cardiovascular heart must sit between lungs, not at navel height. */}
   <path d="M190 257Q218 231 232 255Q246 283 224 318Q204 339 187 336
     Q168 315 157 282Q154 258 174 252Q182 250 190 257Z"
-   fill="#d67f8a" stroke="#a75264" strokeWidth="3.2"/>
-  <path d="M193 269Q201 286 196 320" stroke="#a94e64" strokeWidth="3" fill="none"/>
+   fill="#d67f8a" stroke="#a75264" strokeWidth="3.2" transform="translate(0 -32)"/>
+  <path d="M193 269Q201 286 196 320" stroke="#a94e64" strokeWidth="3" fill="none" transform="translate(0 -32)"/>
   <path d="M197 268Q184 239 194 212Q200 199 217 205" stroke={artery} strokeWidth="11"/>
   <path d="M184 270Q170 243 168 213Q160 202 149 204" stroke={vein} strokeWidth="9"/>
   <path d="M205 211Q226 220 256 229L286 263L308 345" stroke={artery} strokeWidth="6"/>
