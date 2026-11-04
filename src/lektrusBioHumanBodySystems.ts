@@ -1,46 +1,32 @@
-/** System-selector contract for the school human biomodel.
- * The three systems with reviewed deep paths reuse atlas node IDs.
- * Digestive and musculoskeletal illustrations are labelled as educational
- * reconstructions, never substituted with another organism's anatomy.
+/** Seven independently selectable human anatomy illustrations.
+ * "all" is the organism overview, not an eighth organ system.
+ * These identifiers are kept stable for saved diagrams and assignments.
  */
 export const HUMAN_BODY_SYSTEMS=[
- {id:"all",name:"Все системы",short:"Все",color:"#806eab",description:"Общий полупрозрачный обзор анатомии"},
- {id:"nervous",name:"Нервная",short:"Нервная",color:"#9573b6",description:"Головной мозг, спинной мозг и нервы"},
- {id:"respiratory",name:"Дыхательная",short:"Дыхательная",color:"#4f9db3",description:"Воздухоносные пути, бронхи и лёгкие"},
- {id:"circulatory",name:"Кровеносная",short:"Кровеносная",color:"#cb7387",description:"Сердце и сеть кровеносных сосудов"},
+ {id:"nervous",name:"Нервная",short:"Нервная",color:"#9573b6",description:"Головной и спинной мозг, периферические нервы"},
+ {id:"respiratory",name:"Дыхательная",short:"Дыхательная",color:"#4f9db3",description:"Дыхательные пути, бронхи и лёгкие"},
+ {id:"circulatory",name:"Кровеносная",short:"Кровеносная",color:"#cb7387",description:"Сердце, артерии и вены"},
  {id:"digestive",name:"Пищеварительная",short:"Пищеварительная",color:"#c89a5f",description:"Пищевод, желудок, печень и кишечник"},
- {id:"musculoskeletal",name:"Опорно-двигательная",short:"Опорно-двигательная",color:"#7387af",description:"Общий вид костей, суставов и скелетных мышц"},
- {id:"skeletal",name:"Скелетная",short:"Скелет",color:"#b6a178",description:"Череп, позвоночник, грудная клетка, таз и кости конечностей"},
- {id:"muscular",name:"Мышечная",short:"Мышцы",color:"#bc7677",description:"Основные скелетные мышцы головы, туловища и конечностей"},
- {id:"urinary",name:"Мочевыделительная",short:"Мочевыделение",color:"#b98f65",description:"Почки, мочеточники, мочевой пузырь и мочеиспускательный канал"},
- {id:"lymphatic",name:"Лимфатическая",short:"Лимфа",color:"#7caa7e",description:"Лимфатические сосуды, лимфоузлы, селезёнка и тимус"},
- {id:"endocrine",name:"Эндокринная",short:"Железы",color:"#ad83b4",description:"Гипофиз, щитовидная железа, тимус, надпочечники и поджелудочная железа"},
- {id:"integumentary",name:"Покровная",short:"Кожа",color:"#ca9c82",description:"Кожа и её производные, без изображения половых признаков"},
- {id:"sensory",name:"Органы чувств",short:"Чувства",color:"#659da4",description:"Глаза, уши, обонятельная и вкусовая чувствительность"}
+ {id:"urinary",name:"Мочевыделительная",short:"Мочевыделительная",color:"#b98f65",description:"Почки, мочеточники и мочевой пузырь"},
+ {id:"musculoskeletal",name:"Опорно-двигательная",short:"Опорно-двигательная",color:"#7387af",description:"Скелет, суставы и скелетная мускулатура"},
+ {id:"integumentary",name:"Покровная",short:"Покровная",color:"#ca9c82",description:"Кожа и её производные"}
 ] as const;
-export type HumanBodySystem=typeof HUMAN_BODY_SYSTEMS[number]["id"];
-export type HumanFocusedSystem=Exclude<HumanBodySystem,"all">;
+export type HumanFocusedSystem=typeof HUMAN_BODY_SYSTEMS[number]["id"];
+export type HumanBodySystem=HumanFocusedSystem|"all";
 export const HUMAN_BODY_SYSTEM_ANCHORS:Record<HumanFocusedSystem,{x:number;y:number}>={
  nervous:{x:485,y:62},
  respiratory:{x:484,y:178},
  circulatory:{x:483,y:194},
  digestive:{x:484,y:289},
- musculoskeletal:{x:486,y:348},
- skeletal:{x:486,y:253},
- muscular:{x:486,y:305},
  urinary:{x:485,y:301},
- lymphatic:{x:483,y:237},
- endocrine:{x:484,y:182},
- integumentary:{x:485,y:255},
- sensory:{x:485,y:80}
+ musculoskeletal:{x:486,y:348},
+ integumentary:{x:485,y:255}
 };
 export const HUMAN_SYSTEM_REGION:Record<HumanFocusedSystem,
- "brain"|"lungs"|"heart"|"digestive"|"musculoskeletal"|
- "skeletal"|"muscular"|"urinary"|"lymphatic"|"endocrine"|"integumentary"|"sensory">={
+ "brain"|"lungs"|"heart"|"digestive"|"musculoskeletal"|"urinary"|"integumentary">={
  nervous:"brain",respiratory:"lungs",circulatory:"heart",
- digestive:"digestive",musculoskeletal:"musculoskeletal",
- skeletal:"skeletal",muscular:"muscular",urinary:"urinary",lymphatic:"lymphatic",
- endocrine:"endocrine",integumentary:"integumentary",sensory:"sensory"
+ digestive:"digestive",urinary:"urinary",
+ musculoskeletal:"musculoskeletal",integumentary:"integumentary"
 };
 export const humanSystemById=(id:HumanBodySystem)=>
  HUMAN_BODY_SYSTEMS.find(s=>s.id===id)??HUMAN_BODY_SYSTEMS[0];
