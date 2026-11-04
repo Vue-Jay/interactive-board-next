@@ -61,6 +61,7 @@ const materialRegistry=load("src/lektrusLabPropertyRegistry.ts",key=>{
  if(key==="./lektrusReactionDatabase")return reaction;
  if(key==="./lektrusLabStoichiometry")return chem;
  if(key==="./lektrusLabMaterialConstants")return constants;
+ if(key==="./lektrusLabFreezing")return freezing;
  if(key==="./lektrusLabPhysicalProperties")return thermal;
  if(key==="./lektrusLabCalorimetry")return calorimetry;
  assert.equal(key,"./lektrusLabReactionNetwork");return network;
@@ -70,6 +71,10 @@ const acidBase=load("src/lektrusLabPH.ts",key=>{
  if(key==="./lektrusLabWaterIonization")return waterIonization;
  if(key==="./lektrusReactionDatabase")return reaction;
  assert.equal(key,"./lektrusLabReactionNetwork");return network;
+});
+const freezing=load("src/lektrusLabFreezing.ts",key=>{
+ if(key==="./lektrusLabStoichiometry")return chem;
+ assert.equal(key,"./lektrusLabMaterialConstants");return constants;
 });
 const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabTitration")return titration;
