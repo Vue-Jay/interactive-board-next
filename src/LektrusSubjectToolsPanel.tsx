@@ -23,7 +23,7 @@ const subjectToolSections:Record<string,{title:string;ids:string[]}[]>={
   "химия":[{title:"Уравнения и задания",ids:["chem-formulas","chem-assignments"]},
     {title:"Вещества и органика",ids:["chem-periodic-table","chem-organic"]},
     {title:"Реакции и опыты",ids:["chem-experiments"]}],
-  "биология":[{title:"Биологический микроскоп",ids:["bio-microscope"]}],
+  "биология":[{title:"Анатомия человека",ids:["bio-anatomy"]}],
   "география":[{title:"Карты",ids:["maps-atlas","contour-atlas"]},
     {title:"Учебные задания",ids:["geo-matching","geo-question-cards"]}],
   "история":[{title:"Карты и хронология",ids:["history-atlas","history-timeline"]},
