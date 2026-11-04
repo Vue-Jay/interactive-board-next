@@ -68,6 +68,38 @@ assert.ok(bench.vessels.find(v=>v.id===start.id).temperatureC<=.5,
  "Water freezes around 0°C before its solid temperature drops");
 assert.equal(bench.vessels.find(v=>v.id===start.id).doses.H2O.value,20,
  "Freezing does not destroy water mass");
+// A weighed soluble salt does NOT freeze at pure water's 0°C.
+const freezing=load("src/lektrusLabFreezing.ts");
+const salineDoses={H2O:{value:20,unit:"ml"},NaCl:{value:1,unit:"g"}};
+const salineReference=freezing.labAqueousFreezeReference(salineDoses);
+assert.ok(salineReference?.freezingPointC<-.1 &&
+ salineReference.freezingPointC>-20,
+ "School NaCl brine should freeze below 0°C by a bounded measured estimate");
+assert.equal(freezing.labAqueousFreezeReference({C2H5OH:{value:20,unit:"ml"}}),undefined,
+ "Pure ethanol cannot be depicted as water ice at 0°C");
+const salinePrepared=lab.putLabReagent(
+ lab.putLabReagent(lab.defaultLabBench(),start.id,"H2O",salineDoses.H2O),
+ start.id,"NaCl",salineDoses.NaCl);
+let saltBench=lab.addPlacedLabDevice(salinePrepared,"cooler",{x:48,y:72});
+const saltCooler=lab.placedLabDevices(saltBench).find(d=>d.kind==="cooler");
+assert.ok(saltCooler);
+saltBench=lab.setLabCoolerTemperature(saltBench,saltCooler.id,-45);
+saltBench={...saltBench,simulationPaused:false,simulationAtMs:0,
+ settings:{...saltBench.settings,evaporationEnabled:false},
+ placedDevices:lab.placedLabDevices(saltBench).map(d=>d.id===saltCooler.id?
+  {...d,active:true,linkedVesselId:start.id,powered:true}:d)};
+for(let n=1;n<=150;n++){
+ saltBench=lab.advanceLabSimulation(saltBench,n*10000);
+ if((saltBench.vessels.find(v=>v.id===start.id).frozenFraction??0)>.15)break;
+}
+const saltVessel=saltBench.vessels.find(v=>v.id===start.id);
+assert.ok((saltVessel.frozenFraction??0)>.15,
+ "Measured NaCl solution must gradually freeze in a sufficiently cold bath");
+assert.ok(saltVessel.temperatureC<=salineReference.freezingPointC+.6);
+assert.equal(saltVessel.doses.H2O.value,20,
+ "Ice formation conserves solvent mass");
+assert.equal(saltVessel.doses.NaCl.value,1,
+ "Freezing does not erase dissolved salt");
 const ui=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
 const css=fs.readFileSync("src/lektrusChemistryBench.css","utf8");
 const art=fs.readFileSync("src/LektrusLabDeviceIcon.tsx","utf8");
@@ -101,4 +133,4 @@ assert.match(css,/\.lektrus-lab-power-symbol\{/);
 assert.match(css,/\.lektrus-lab-device-face-controls\.is-cooler \.lektrus-lab-device-face-temp/);
 assert.match(css,/@media\(pointer:coarse\)/);
 assert.match(art,/kind==="cooler"/);
-console.log("Cooling and solids PASS: subzero refrigeration, mass-conserving pure-water freezing, dry weighed CaCO3/NaCl as visible bottom solids, tablet power icons and aligned cooler controls.");
+console.log("Cooling and solids PASS: −100°C cooler, mass-conserving pure water and saline freezing below colligative point, settled CaCO3/NaCl, tablet power icons and separated cooler controls.");
