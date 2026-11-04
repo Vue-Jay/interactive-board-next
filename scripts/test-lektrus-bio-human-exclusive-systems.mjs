@@ -32,9 +32,12 @@ function traverse(element,all=[]){
 }
 const systemModule=load("src/lektrusBioHumanBodySystems.ts");
 const systems=systemModule.HUMAN_BODY_SYSTEMS.map(x=>x.id);
-assert.deepEqual(systems,["all","nervous","respiratory","circulatory","digestive","musculoskeletal"]);
+assert.deepEqual(systems,["all","nervous","respiratory","circulatory","digestive",
+ "musculoskeletal","skeletal","muscular","urinary","lymphatic","endocrine",
+ "integumentary","sensory"]);
 const overlayFile="src/LektrusBioHumanSystemOverlay.tsx";
-const overlays=load(overlayFile);
+const extra=load("src/LektrusBioHumanAdditionalSystems.tsx");
+const overlays=load(overlayFile,{"./LektrusBioHumanAdditionalSystems":extra});
 const mannequinFile="src/LektrusBioMannequin.tsx";
 const mannequin=load(mannequinFile,{
  "./assets/bio-atlas/human-biomodel.webp":{__esModule:true,default:"/approved-human.webp"},
@@ -64,7 +67,7 @@ for(const chosen of systems.slice(1)){
  assert.ok(!seen.has(rendered[0].props["data-anatomy"]));
  seen.add(rendered[0].props["data-anatomy"]);
 }
-assert.equal(seen.size,5);
+assert.equal(seen.size,12);
 const viewer=read("src/LektrusBioContinuousHuman.tsx");
 assert.doesNotMatch(viewer,/import (?:organsImage|heartImage|tissueImage|cellImage)/,
  "Inaccurate mixed-design image collage must never reappear at zoom depth");
@@ -85,4 +88,4 @@ assert.doesNotMatch(study,/fontWeight="800" fill="#805856">Желудок/,
 const css=read("src/lektrusBioContinuousHuman.css");
 assert.match(css,/\.lektrus-human-system-overlay\{/);
 assert.match(css,/\.lektrus-human-biomodel-shell\{/);
-console.log("Exclusive human systems PASS: one system drawn, other four absent; no flattened anatomy bleed; matched organ, tissue and cell views.");
+console.log("Exclusive human systems PASS: one system drawn, other systems absent; no flattened anatomy bleed; matched organ, tissue and cell views.");
