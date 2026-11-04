@@ -152,3 +152,63 @@
 @media(prefers-reduced-motion:reduce){
  .lek-anatomy-system{transition:none}
 }
+
+/* Dedicated anatomy object editor. It is intentionally not the cramped,
+ * generic school-diagram form used for the separate microscope workflow. */
+.lek-anatomy-dialog-backdrop{
+ position:fixed;inset:0;z-index:15000;display:grid;place-items:center;
+ padding:14px;background:#172d36a8;backdrop-filter:blur(5px)}
+.lek-anatomy-dialog{
+ display:flex;flex-direction:column;overflow:hidden;min-height:0;min-width:0;
+ width:min(1420px,100%);height:min(850px,calc(100dvh - 28px));
+ border:1px solid #d7e8db;border-radius:19px;background:#fff;
+ box-shadow:0 26px 80px #101d243a;font:500 13px/1.4 system-ui,sans-serif;
+ color:#2e493a}
+.lek-anatomy-dialog *{box-sizing:border-box}
+.lek-anatomy-dialog-header{
+ display:flex;align-items:center;justify-content:space-between;gap:16px;
+ padding:13px 19px;border-bottom:1px solid #e2ebe6;
+ background:linear-gradient(105deg,#f4f9f3,#ffffff)}
+.lek-anatomy-dialog-heading small{letter-spacing:.12em;color:#77a287;
+ font-size:10px;font-weight:850}
+.lek-anatomy-dialog-heading h2{margin:2px 0 2px;font-size:21px;line-height:1.24;
+ color:#25533b;font-weight:820}
+.lek-anatomy-dialog-heading p{font-size:11px;color:#7e9487;margin:0}
+.lek-anatomy-dialog-close{border:1px solid #d4e4df;border-radius:10px;
+ width:36px;height:36px;flex:none;background:#fff;color:#5c8170;
+ font:400 24px/1 system-ui,sans-serif;cursor:pointer}
+.lek-anatomy-dialog-body{flex:1;min-height:0;min-width:0;overflow:hidden}
+.lek-anatomy-dialog-footer{
+ display:flex;align-items:center;gap:14px;padding:10px 17px;
+ border-top:1px solid #e2ebe6;background:#fbfdfb;flex:none;min-height:64px}
+.lek-anatomy-dialog-title{display:grid;gap:2px;min-width:145px;max-width:320px;
+ flex:1;font-size:10px;font-weight:750;color:#779083}
+.lek-anatomy-dialog-title input{
+ width:100%;min-width:0;height:32px;padding:5px 8px;
+ border-radius:7px;border:1px solid #ccded1;color:#345643;
+ background:#fff;font:600 12px system-ui,sans-serif}
+.lek-anatomy-dialog-check{display:flex;align-items:center;gap:6px;
+ white-space:nowrap;font-size:11px}
+.lek-anatomy-dialog-check input{accent-color:#3a8258}
+.lek-anatomy-dialog-error{font-size:11px;color:#ae3f4a}
+.lek-anatomy-dialog-actions{display:flex;gap:8px;margin-left:auto}
+.lek-anatomy-dialog-actions button{
+ padding:8px 14px;min-height:35px;border:1px solid #d2e0d8;border-radius:9px;
+ background:#fff;color:#346348;font:750 12px system-ui,sans-serif;cursor:pointer}
+.lek-anatomy-dialog-actions .is-primary{color:white;background:#3c8059;border-color:#3c8059}
+.lek-anatomy-dialog-actions button:hover{filter:brightness(.96)}
+@media(max-width:760px),(max-height:540px){
+ .lek-anatomy-dialog-backdrop{padding:4px}
+ .lek-anatomy-dialog{height:calc(100dvh - 8px);border-radius:10px}
+ .lek-anatomy-dialog-header{padding:7px 10px}
+ .lek-anatomy-dialog-heading h2{font-size:16px}
+ .lek-anatomy-dialog-heading p{display:none}
+ .lek-anatomy-dialog-footer{flex-wrap:wrap;gap:7px;padding:6px 9px}
+ .lek-anatomy-dialog-title{min-width:130px;flex:1}
+ .lek-anatomy-dialog-actions button{padding:6px 9px}
+}
+@media(max-width:480px){
+ .lek-anatomy-dialog-check{order:3}
+ .lek-anatomy-dialog-title{min-width:0}
+ .lek-anatomy-dialog-footer{min-height:0}
+}
