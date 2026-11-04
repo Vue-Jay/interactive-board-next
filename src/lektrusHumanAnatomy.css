@@ -1,7 +1,11 @@
 /* Standalone anatomy is deliberately not nested inside the biology microscope.
  * Every system is one crop of the same sized raster atlas, under one camera. */
+.lek-anatomy-container{
+ container-type:inline-size;box-sizing:border-box;
+ width:100%;height:100%;min-width:0;min-height:0;overflow:hidden;
+}
 .lek-anatomy{
- container-type:inline-size;box-sizing:border-box;display:grid;
+ box-sizing:border-box;display:grid;
  grid-template-columns:210px minmax(0,1fr) 260px;
  width:100%;height:100%;min-height:320px;min-width:0;overflow:hidden;
  background:#f8faf9;color:#233d3a;
