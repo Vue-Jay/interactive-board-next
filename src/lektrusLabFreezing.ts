@@ -22,7 +22,7 @@ const ION_COUNTS:Readonly<Record<string,number>>={
  NaCl:2,KCl:2,NaBr:2,KI:2,KNO3:2,NaNO3:2,
  NaOH:2,KOH:2,HCl:2,HNO3:2,
  CaCl2:3,MgCl2:3,BaCl2:3,Na2SO4:3,K2SO4:3,
- Ca(NO3)2:3,CuSO4:2,AgNO3:2,Na2CO3:3,NaHCO3:2,
+ "Ca(NO3)2":3,CuSO4:2,AgNO3:2,Na2CO3:3,NaHCO3:2,
  H2SO4:3,FeCl3:4,AlCl3:4
 };
 type DoseInput=Record<string,Pick<LabDose,"unit"|"value"|"concentrationM">>;
