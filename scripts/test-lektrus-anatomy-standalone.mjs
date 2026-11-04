@@ -64,6 +64,10 @@ assert.equal(m.anatomyBoundCamera({scale:99,panX:0,panY:0},780,560).scale,3.25);
 const webp=fs.readFileSync("src/assets/bio-atlas/human-seven-systems.webp");
 assert.equal(webp.toString("ascii",0,4),"RIFF");
 assert.equal(webp.toString("ascii",8,12),"WEBP");
+assert.equal(webp.toString("ascii",12,16),"VP8 ");
+assert.deepEqual([webp.readUInt16LE(26)&0x3fff,webp.readUInt16LE(28)&0x3fff],
+ [m.ANATOMY_SPRITE_WIDTH,m.ANATOMY_SPRITE_HEIGHT],
+ "Seven source plates must preserve a fixed raster coordinate space");
 assert.ok(webp.length>20000&&webp.length<180000);
 assert.equal(m.ANATOMY_SPRITE_WIDTH,2870);
 assert.equal(m.ANATOMY_PANEL_WIDTH*names.length,m.ANATOMY_SPRITE_WIDTH);
