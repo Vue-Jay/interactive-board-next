@@ -314,7 +314,8 @@
 }
 .lektrus-school-preview--bio .lektrus-human>div,
 .lektrus-school-preview--bio .lektrus-human>section{
- min-width:0;max-width:100%;
+ /* Let grid children shrink, but do NOT override stage max-width:520px. */
+ min-width:0;
 }
 .lektrus-school-preview--bio .lektrus-human-system-switch{
  width:100%;min-width:0;max-width:100%;
