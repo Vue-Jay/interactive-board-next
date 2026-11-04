@@ -2,6 +2,7 @@ import type {Item} from "./boardModel";
 import {labVesselPH,labIndicatorTint} from "./lektrusLabPH";
 import {labDefaultStockDose,labIsPreparedStock,LAB_STOCK_MOLARITY_M} from "./lektrusLabCatalog";
 import {labVesselThermal} from "./lektrusLabPhysicalProperties";
+import {labAqueousFreezeReference} from "./lektrusLabFreezing";
 import {labSensibleHeatStep,labKnownHeatCapacityJPerK,labSchoolSpecificHeatJPerGK,LAB_CALORIMETRY_REFERENCE} from "./lektrusLabCalorimetry";
 import {labBinarySaltEquilibrium,labAdvanceBinarySaltPhase,labVisibleBinarySaltSolid,
  labSchoolMixedSaltEquilibrium,labAdvanceSchoolMixedSaltPhase,
@@ -560,20 +561,26 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
    next=Math.round(Math.max(LAB_COOLER_MIN_C,Math.min(1450,next))*10)/10;
    meltFraction=Math.round(meltFraction*1e7)/1e7;
   }
-  // Pure-liquid freezing and thawing. The refrigerated bath crosses 0°C.
-  // Water remains at the transition while its heat of fusion is released;
-  // dilute mixtures are not assigned an arbitrary freezing point.
-  // Even the default simple school mode must freeze a verified pure liquid.
+  // Pure liquids use their measured melting points. School aqueous stocks
+  // and salt solutions instead follow a bounded colligative estimate with
+  // actual measured water content. Unknown non-aqueous blends are NOT
+  // falsely frozen at zero. The latent-heat plateau also applies in simple
+  // realism mode, and reversing heat energy thaws the sample.
+  const aqueous=!v.uncertain&&!v.completedReaction?
+   labAqueousFreezeReference(v.doses):undefined;
   const liquidPoint=pure?.unit==="ml"&&!v.uncertain?
-   pure.info.meltingC:undefined;
+   pure.info.meltingC:aqueous?.freezingPointC;
   if(liquidPoint!==undefined&&liquidPoint>=LAB_COOLER_MIN_C&&
      liquidPoint<=LAB_COOLER_MAX_C){
    const heatCapacity=calorimetry?.capacityJPerK??
     labKnownHeatCapacityJPerK(v.kind,v.doses,v.filteredSolution?.volumeMl??0);
-   const massG=(v.doses?.[pure!.id]?.value??0)*
-    (LAB_CALORIMETRY_REFERENCE[pure!.id]?.densityGPerMl??1);
-   const latentPerG=LAB_FUSION_HEAT_J_PER_G[pure!.id]??
-    (pure!.id==="H2O"?334:undefined);
+   const massG=pure?.unit==="ml"?
+    (v.doses?.[pure.id]?.value??0)*
+      (LAB_CALORIMETRY_REFERENCE[pure.id]?.densityGPerMl??1):
+    aqueous?.waterMassG??0;
+   const latentPerG=pure?.unit==="ml"?
+    LAB_FUSION_HEAT_J_PER_G[pure.id]??(pure.id==="H2O"?334:undefined):
+    aqueous?334:undefined;
    const latentJ=massG>0&&latentPerG?massG*latentPerG:undefined;
    const cooling=toward<liquidPoint-.1&&(raw<liquidPoint||frozenFraction>0);
    const warming=toward>liquidPoint+.1&&(raw>liquidPoint||frozenFraction>0);
