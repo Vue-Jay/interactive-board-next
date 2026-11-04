@@ -3,7 +3,7 @@ import {createPortal} from "react-dom";
 import type {LabBench,LabBenchSettings,LabRealism,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labSimulationTickWaitMs,pourLabIntoFilter,
  labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,labFollowUpGasProgress,labGasTubeFlowActive,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabCoolerTemperature,LAB_COOLER_MIN_C,LAB_COOLER_MAX_C,LAB_HOTPLATE_MAX_C,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,setLabExperimentClock,labExperimentClockSeconds,formatLabClock,
- setLabSimulationPaused,setLabGasCollection,transferLabGasSample,formatLabDose,labDisplayNumber,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ setLabSimulationPaused,setLabGasCollection,labGasStoredMl,labGasReceiverFreeMl,labGasTransferPreview,transferLabGasSample,formatLabDose,labDisplayNumber,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -822,6 +822,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  const [titrationTarget,setTitrationTarget]=useState("");
  const [measuredMl,setMeasuredMl]=useState("5");
  const [gasSampleTargetId,setGasSampleTargetId]=useState("");
+ const [gasPortionMode,setGasPortionMode]=useState<"5"|"20"|"all">("20");
  const [measuredPartnerId,setMeasuredPartnerId]=useState("");
  const [localPourId,setLocalPourId]=useState<string|null>(null);
  // Toast actions are transient UI, never persisted with the collaborative bench.
@@ -1635,41 +1636,100 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   })}
   {editable&&selected&&(()=>{
    const reaction=labObservation(selected).caseData;
-   const gasReaction=reaction?.observation==="gas"||!!selected.gasCollectionTargetId;
+   const gasReaction=reaction?.observation==="gas"||
+    !!selected.inventoryGasReaction||!!selected.gasCollectionTargetId;
    const storedGas=Object.entries(selected.doses??{}).filter(([id,d])=>
     substances.find(s=>s.id===id)?.kind==="газ"&&d.unit==="ml"&&d.value>0);
+   const storedTotal=labGasStoredMl(selected);
    const targets=bench.vessels.filter(v=>v.id!==selected.id&&!v.stoppered&&
     ["beaker","tube","flask","conical","volumetric"].includes(v.kind));
-   if(!targets.length||!gasReaction&&!storedGas.length)return null;
+   if(!gasReaction&&!storedGas.length)return null;
    const chosen=targets.some(v=>v.id===gasSampleTargetId)?
-    gasSampleTargetId:targets[0].id;
+    gasSampleTargetId:targets[0]?.id??"";
+   const requestedMl=gasPortionMode==="all"?storedTotal:Number(gasPortionMode);
+   const transfer=labGasTransferPreview(bench,selected.id,chosen,requestedMl);
+   const recipient=bench.vessels.find(v=>v.id===chosen);
+   const recipientQuantity=recipient?labVesselQuantity(recipient):undefined;
+   const receiverFill=recipient&&recipientQuantity?
+    Math.min(100,100*(recipientQuantity.occupiedMl+
+     labGasStoredMl(recipient))/recipientQuantity.capacityMl):0;
+   const collector=bench.vessels.find(v=>v.id===selected.gasCollectionTargetId);
+   const collectorFree=collector?labGasReceiverFreeMl(collector):0;
    return <div className="lektrus-lab-gas-workbench" data-board-interactive="true"
-    onPointerDown={e=>e.stopPropagation()}>
-    <strong>Газоотвод <span aria-hidden="true">↗</span></strong>
-    {gasReaction&&<label>Собирать газ в
-     <select aria-label="Сосуд для сбора газа" value={selected.gasCollectionTargetId??""}
-      onChange={e=>{e.stopPropagation();
-       onChange?.(setLabGasCollection(bench,selected.id,e.target.value||undefined))}}>
-      <option value="">Не подключён</option>
-      {targets.map(v=><option key={v.id} value={v.id}>
-       {names[v.kind]} · {bench.vessels.indexOf(v)+1}</option>)}
-     </select>
-    </label>}
-    {storedGas.length>0&&<div className="lektrus-lab-gas-transfer">
-     <span>{storedGas.map(([formula,d])=>formula+" · "+labDisplayNumber(d.value,settings.realism)+" мл").join(" + ")}</span>
-     <label>Перенести газ в
-      <select aria-label="Куда перенести собранный газ"
-       value={chosen} onChange={e=>setGasSampleTargetId(e.target.value)}>
+    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
+    <div className="lektrus-lab-gas-heading">
+     <strong>Газоотвод <span aria-hidden="true">↗</span></strong>
+     <span>{gasReaction?"Сбор и использование":"Газовая проба"}</span>
+    </div>
+    {gasReaction&&<div className="lektrus-lab-gas-stage">
+     <label><b>1. Собрать газ</b>
+      <select aria-label="Сосуд для сбора газа"
+       value={selected.gasCollectionTargetId??""}
+       onChange={e=>{e.stopPropagation();
+        onChange?.(setLabGasCollection(bench,selected.id,e.target.value||undefined))}}>
+       <option value="">Не подключён</option>
+       {selected.gasCollectionTargetId&&
+        !targets.some(v=>v.id===selected.gasCollectionTargetId)&&
+        <option value={selected.gasCollectionTargetId}>Приёмник недоступен</option>}
        {targets.map(v=><option key={v.id} value={v.id}>
         {names[v.kind]} · {bench.vessels.indexOf(v)+1}</option>)}
-      </select></label>
-     <button type="button" onClick={e=>{e.stopPropagation();
-      const next=transferLabGasSample(bench,selected.id,chosen,20);
-      if(next!==bench){onChange?.(next);setNotice("Порция газа перенесена в выбранный сосуд")}
-      else setNotice("Не хватает свободного объёма или газ не подготовлен")}}>
-      Перенести до 20 мл</button>
+      </select>
+     </label>
+     <small className="lektrus-lab-gas-status">
+      {selected.stoppered?"Снимите пробку с источника":
+       !selected.gasCollectionTargetId?"Подключите сосуд до запуска опыта":
+       collector?.stoppered?"Снимите пробку с приёмника":
+       collectorFree<.01?"Приёмник заполнен: газ выходит в воздух":
+       bench.simulationPaused?"Подключено. Сбор начнётся после пуска":
+       "Подключено. Новый газ поступает по трубке"}
+     </small>
     </div>}
-    {gasReaction&&<small>Подключите второй сосуд до запуска. Газ собирается постепенно; остаток выходит в воздух.</small>}
+    {storedTotal>.001&&<div className="lektrus-lab-gas-transfer">
+     <div className="lektrus-lab-gas-sample">
+      <b>2. Перенести собранный газ</b>
+      <span className="lektrus-lab-gas-stock">{storedGas.map(([formula,d])=>
+       formula+" · "+labDisplayNumber(d.value,settings.realism)+" мл").join(" + ")}</span>
+     </div>
+     <label>Приёмник
+      <select aria-label="Куда перенести собранный газ"
+       disabled={!targets.length}
+       value={chosen} onChange={e=>setGasSampleTargetId(e.target.value)}>
+       {!targets.length&&<option value="">Добавьте второй сосуд</option>}
+       {targets.map(v=><option key={v.id} value={v.id}>
+        {names[v.kind]} · {bench.vessels.indexOf(v)+1}</option>)}
+      </select>
+     </label>
+     <div className="lektrus-lab-gas-amount" role="group" aria-label="Порция газа">
+      {([["5","5 мл"],["20","20 мл"],["all","Всё"]] as const).map(([value,label])=>
+       <button key={value} type="button" className={gasPortionMode===value?"is-selected":""}
+        aria-pressed={gasPortionMode===value} onClick={e=>{
+         e.stopPropagation();setGasPortionMode(value)}}>{label}</button>)}
+     </div>
+     {recipient&&<div className="lektrus-lab-gas-capacity">
+      <span>Свободно в приёмнике</span>
+      <strong>{labDisplayNumber(transfer.freeMl,settings.realism)} мл</strong>
+      <div className="lektrus-lab-gas-capacity-track"
+       role="progressbar" aria-label="Заполненность приёмника"
+       aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(receiverFill)}>
+       <i style={{width:receiverFill+"%"}}/>
+      </div>
+     </div>}
+     <button type="button" className="lektrus-lab-gas-apply"
+      disabled={transfer.transferMl<.01} onClick={e=>{
+       e.stopPropagation();
+       const next=transferLabGasSample(bench,selected.id,chosen,requestedMl);
+       if(next!==bench){
+        onChange?.(next);
+        setNotice("Перенесено "+labDisplayNumber(transfer.transferMl,settings.realism)+
+         " мл газа. Остаток сохранён в исходном сосуде");
+       }else setNotice("Не удалось перенести газ: проверьте сосуд и состав")}}>
+      {transfer.transferMl>=.01?
+       "Перенести "+labDisplayNumber(transfer.transferMl,settings.realism)+" мл":
+       "Нет места для газа"}
+     </button>
+     {storedGas.length>1&&<small>Смесь переносится с сохранением пропорций газов.</small>}
+    </div>}
+    {!targets.length&&<small>Для сбора и переноса газа добавьте второй сосуд без пробки.</small>}
    </div>;
   })()}
   {compactFullscreen&&(preview||devicePreview)&&
