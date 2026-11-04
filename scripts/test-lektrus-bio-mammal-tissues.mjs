@@ -122,7 +122,7 @@ for(const [fn,labels] of [
  for(const label of labels)assert.ok(source.includes(label),fn+" missing real feature "+label);
 }
 assert.match(source,/Tapetum is NOT part of the retina/);
-assert.match(source,/lymphatic capillary \\(lacteal\\)/);
+assert.ok(source.includes("lymphatic capillary (lacteal)"),"Villus lacteal location must remain accurate");
 assert.match(source,/sarcolemmal PERIPHERY/);
 assert.match(source,/alveolar macrophage is NOT a pneumocyte/i);
 const scene=read("src/LektrusBioAnatomyScene.tsx");
