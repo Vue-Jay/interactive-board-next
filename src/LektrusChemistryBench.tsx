@@ -2012,7 +2012,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
           aria-label={(device.powered?"Выключить ":"Включить ")+(meta?.name??device.kind)}
           title={(device.powered?"Выключить ":"Включить ")+(meta?.name??device.kind)}
           onClick={()=>onChange?.(setPlacedDevicePower({...bench,simulationAtMs:Date.now()},
-           device.id,!device.powered))}>⏻</button>}
+           device.id,!device.powered))}>
+          <svg className="lektrus-lab-power-symbol" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" strokeWidth="2.5"
+           strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+           <path d="M12 3v9"/><path d="M7.4 5.8a8.5 8.5 0 1 0 9.2 0"/>
+          </svg>
+         </button>}
         {device.kind==="hotplate"&&<LabTemperatureInput
          temperature={device.targetTemperatureC??150}
          onSet={value=>onChange?.(setLabHotplateTemperature(bench,device.id,value))}/>}
