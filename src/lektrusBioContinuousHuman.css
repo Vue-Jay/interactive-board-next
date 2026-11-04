@@ -227,6 +227,8 @@
 .lektrus-human-biomodel-shell{position:absolute;inset:0;pointer-events:none;
  background:linear-gradient(94deg,#aebdc9a9 0%,#e5eaf0aa 28%,#f8f9f7bc 50%,#ccd9e5a0 80%,#9faebe9e 100%);
  opacity:.82;filter:drop-shadow(0 2px 5px #667b9460)}
+.lektrus-human-biomodel-anatomy-mask{
+ position:absolute;inset:0;pointer-events:none;isolation:isolate}
 .lektrus-human-system-overlay{position:absolute;inset:0;width:100%;height:100%;
  display:block;overflow:visible;pointer-events:none;
  filter:drop-shadow(0 2px 3px #6b708633)}
