@@ -25,7 +25,10 @@ assert.deepEqual(itemsInsideRect([a,b,stroke,nearMiss,groupA,groupB],{x:100,y:70
 assert.deepEqual(itemsInsideRect([a],{x:10,y:10},{x:10,y:10}),[]);
 const app=read("src/App.tsx");
 const css=read("src/lektrusBoardInteraction.css");
-assert.ok(app.includes('useState<Tool>("select")'),"selection must be default");
+assert.match(app,/useState<Tool>\(\(\)=>readBoardSessionTool\(boardSummary\.id,authUser\.id\)\)/,
+ "Each viewer restores their own active tool instead of inheriting remote changes");
+assert.match(read("src/boardToolSession.ts"),/:"select"/,
+ "New viewers with no saved choice still start in selection mode");
 assert.ok(app.includes('{ id: "hand", icon: "hand", label:'),"Hand must have metadata for native touch toolbar");
 assert.ok(!app.includes('KeyH: "hand"'),"no hand shortcut");
 assert.ok(app.includes('aria-label="Рука — перемещать доску одним пальцем"'),"mobile hand must be available");
