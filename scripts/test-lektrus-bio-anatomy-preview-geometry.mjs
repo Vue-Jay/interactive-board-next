@@ -25,6 +25,14 @@ assert.match(human,/\.lektrus-school-preview--bio \.lektrus-human\{[\s\S]*?grid-
  "The atlas grid needs a zero-minimum track instead of intrinsic width");
 assert.match(human,/\.lektrus-school-preview--bio \.lektrus-human-stage\{[\s\S]*?justify-self:center/,
  "The complete body must stay centred in the visible preview column");
+assert.match(human,/\.lektrus-school-preview--bio \.lektrus-human-stage\{[\s\S]*?max-width:520px/,
+ "The preview stage must not grow wider than the compact centre region");
+const gridChildren=human.match(/\.lektrus-school-preview--bio \.lektrus-human>div,[\s\S]*?\}/)?.[0]??"";
+assert.ok(gridChildren.includes("min-width:0"),
+ "Grid children must be shrinkable");
+assert.ok(!gridChildren.includes("max-width:100%"),
+ "A broad max-width rule overrides the fixed stage cap and forces overflow");
+
 assert.match(human,/\.lektrus-school-preview--bio \.lektrus-human-system-options\{[\s\S]*?overflow-x:auto/,
  "System choices must scroll INSIDE their own bar, not grow the entire atlas");
 assert.match(human,/\.lektrus-school-preview--bio \.lektrus-bio-class-focus\{[\s\S]*?display:none/,
