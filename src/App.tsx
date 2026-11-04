@@ -157,6 +157,7 @@ import { inkIdsInLasso } from "./inkLasso";
 import { hitTestInk } from "./inkHitTest";
 import { ensureBoardAssets, getAsset, getDisplayAsset, putAsset } from "./assetStore";
 import { readInkPreferences, writeInkPreferences, withInkSetting } from "./inkPreferences";
+import { readBoardSessionTool, writeBoardSessionTool } from "./boardToolSession";
 import { cacheBoardPreview, cachedBoardPreview, previewFromRemoteDocument, scheduleBackgroundBoardPreview } from "./boardPreview";
 import { getBoardHistoryVersion, listBoardHistory, type BoardHistoryEntry } from "./historyStore";
 import { changesSinceLastVisit, recentBoardHistory } from "./boardHistoryUtils";
@@ -2457,7 +2458,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [commandPaletteQuery, setCommandPaletteQuery] = useState("");
   const [commandPaletteIndex, setCommandPaletteIndex] = useState(0);
   const [preview, setPreview] = useState<Item | null>(null);
-  const [tool, setTool] = useState<Tool>("select");
+  // The active tool belongs to THIS viewer/tab, not to the shared document
+  // or a collaborator's presence/editor state. Restore it after remounts.
+  const [tool, setTool] = useState<Tool>(()=>readBoardSessionTool(boardSummary.id,authUser.id));
+  useEffect(()=>writeBoardSessionTool(boardSummary.id,authUser.id,tool),
+    [boardSummary.id,authUser.id,tool]);
   // Opening the shape palette does not arm a previously chosen figure.
   useEffect(() => { if (tool !== "shape") setShapeType(null); }, [tool]);
   const inkCursorElement=useRef<HTMLDivElement|null>(null);
