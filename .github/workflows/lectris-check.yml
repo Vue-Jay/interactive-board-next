@@ -25,6 +25,10 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: TypeScript and Vite build
         run: npm run build
+      - name: Per-viewer ink tool isolation and all five pencil widths
+        run: node scripts/test-lektrus-independent-ink-tools.mjs
+      - name: Subzero chemistry freezing, tablet device switches and solid sediment
+        run: node scripts/test-lektrus-lab-freezing-solids-tablet.mjs
       - name: School geometry regression
         run: node scripts/test-school-geometry.mjs
       - name: Subject tools and experiment persistence regression
