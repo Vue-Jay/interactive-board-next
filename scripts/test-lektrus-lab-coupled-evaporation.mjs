@@ -421,10 +421,60 @@ const recheck=lab.advanceLabSimulation(gasBench,42000);
 assert.ok((recheck.vessels.find(v=>v.id==="v2").doses?.CO2?.value??0)<=
  gasBench.vessels.find(v=>v.id==="v2").doses.CO2.value+1,
  "Gas that already entered a vessel must never be collected twice");
+// Gas samples: a mixture moves as a mixture, with a shared receiver capacity
+// and no material created/lost by rounding or partial transfer.
+let mixed=lab.defaultLabBench();
+mixed=lab.addLabVessel(mixed,"flask");
+mixed=lab.addLabVessel(mixed,"flask");
+mixed=lab.putLabReagent(mixed,"v1","CO2",{unit:"ml",value:30});
+mixed=lab.putLabReagent(mixed,"v1","H2",{unit:"ml",value:10});
+assert.equal(lab.labGasStoredMl(mixed.vessels[0]),40);
+const cap=lab.labMeasuredCapacityMl("flask")??200;
+mixed=lab.putLabReagent(mixed,"v2","H2O",{unit:"ml",value:cap-7});
+assert.ok(mixed.vessels[1].doses?.H2O,"Receiver must accept its water load");
+const plan=lab.labGasTransferPreview(mixed,"v1","v2",20);
+close(plan.freeMl,7);
+close(plan.transferMl,7);
+close(plan.portions.CO2,5.25);
+close(plan.portions.H2,1.75);
+const beforeMass=lab.labGasStoredMl(mixed.vessels[0])+
+ lab.labGasStoredMl(mixed.vessels[1]);
+const addedSample=lab.transferLabGasSample(mixed,"v1","v2",20);
+assert.notStrictEqual(addedSample,mixed);
+close(lab.labGasStoredMl(addedSample.vessels[0]),33);
+close(lab.labGasStoredMl(addedSample.vessels[1]),7);
+close(lab.labGasStoredMl(addedSample.vessels[0])+
+ lab.labGasStoredMl(addedSample.vessels[1]),beforeMass);
+close(addedSample.vessels[1].doses.CO2.value,5.25);
+close(addedSample.vessels[1].doses.H2.value,1.75);
+assert.strictEqual(lab.transferLabGasSample(addedSample,"v1","v2",20),
+ addedSample,"A full receiver must not silently lose or receive more gas");
+const allPlan=lab.labGasTransferPreview(addedSample,"v1","v3",9999);
+close(allPlan.transferMl,33);
+const allMoved=lab.transferLabGasSample(addedSample,"v1","v3",9999);
+assert.equal(lab.labGasStoredMl(allMoved.vessels[0]),0);
+close(lab.labGasStoredMl(allMoved.vessels[2]),33);
+close(lab.labGasStoredMl(allMoved.vessels[1])+
+ lab.labGasStoredMl(allMoved.vessels[2]),40);
+assert.deepEqual(lab.labGasTransferPreview(allMoved,"v1","v3",20).portions,{});
+assert.strictEqual(lab.transferLabGasSample(allMoved,"v1","v3",20),allMoved);
+assert.strictEqual(lab.transferLabGasSample(addedSample,"v1","v1",20),addedSample);
+assert.strictEqual(lab.transferLabGasSample(addedSample,"v1","v3",NaN),addedSample);
+const sealedTarget=lab.setLabVesselStopper(addedSample,"v3",true);
+assert.equal(lab.labGasReceiverFreeMl(sealedTarget.vessels[2]),0);
+assert.strictEqual(lab.transferLabGasSample(sealedTarget,"v1","v3",20),sealedTarget);
+const sealedSource=lab.setLabVesselStopper(addedSample,"v1",true);
+assert.strictEqual(lab.transferLabGasSample(sealedSource,"v1","v3",20),sealedSource);
+const withDish=lab.addLabVessel(addedSample,"dish");
+assert.strictEqual(lab.transferLabGasSample(withDish,"v1","v4",20),withDish,
+ "A shallow evaporating dish cannot be a gas storage vessel");
+console.log("Gas sample mixtures, capacity, stoppering and conservation: OK");
 const gasUI=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
 assert.match(gasUI,/Ⅱ Пауза/);
 assert.match(gasUI,/Газоотвод/);
-assert.match(gasUI,/Перенести до 20 мл/);
+assert.match(gasUI,/Порция газа/);
+assert.match(gasUI,/Свободно в приёмнике/);
+assert.match(gasUI,/Смесь переносится с сохранением пропорций/);
 console.log("Measured gas collection, reuse and slow gas release: OK");
 
 
