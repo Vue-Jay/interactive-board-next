@@ -4674,14 +4674,17 @@
 .lektrus-lab-bench .lektrus-lab-device-face-controls.is-hotplate .lektrus-lab-device-power{
  min-width:26px!important;min-height:26px!important}
 .lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler .lektrus-lab-device-face-temp{
- left:36%!important;top:69%!important;width:43%!important;height:27px!important;
+ /* Cooler SVG screen occupies x=26..68 / 110 and y=68..82 / 108.
+    Align input to the ENGRAVED screen, not an arbitrary left offset. */
+ left:42.7%!important;top:69.4%!important;width:38%!important;height:27px!important;
  min-width:0!important;max-width:none!important;min-height:27px!important;
  transform:translate(-50%,-50%)!important;
  padding:0 2px!important;border-radius:6px!important;
  font:800 12px/1 ui-monospace,monospace!important;
  text-align:center!important;letter-spacing:0!important;box-sizing:border-box!important}
 .lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler .lektrus-lab-device-power{
- left:77%!important;top:69%!important;
+ /* The SVG knob center is x=87/110, y=76/108; keep touch hit box clear. */
+ left:79.1%!important;top:70.4%!important;
  width:25%!important;height:28px!important;min-width:27px!important;
  max-width:34px!important;min-height:28px!important;transform:translate(-50%,-50%)!important}
 .lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler input[type="number"]{
