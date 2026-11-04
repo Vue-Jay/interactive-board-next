@@ -1509,6 +1509,21 @@ const precipitateDensity=labSchoolSolidDensityGml;
 const formatMol=(v:number)=>Number((v*1000).toPrecision(4));
 function calculateLabVesselContents(v:LabVessel){
  const {volumeMl,capacityMl}=labVesselQuantity(v);
+ // A dry solid sample is physically settled even for NaCl, KNO3 and other
+ // substances soluble IN WATER. A dry beaker has no solvent: the reaction
+ // inventory must not convert weighed crystals into invisible dissolved ions.
+ // Keep chemical precipitates separate from manually weighed powder.
+ if(volumeMl<=1e-9&&!v.filteredSolution&&!v.filteredResidue&&
+    !v.chemicalInventory&&!v.reactionAmounts&&!v.completedReaction&&
+    !v.pendingInventoryReaction){
+  const dry=Object.entries(v.doses??{}).filter(([,dose])=>
+   dose.unit==="g"&&Number.isFinite(dose.value)&&dose.value>0);
+  if(dry.length)return {solutionMl:0,capacityMl,
+   solution:[] as {formula:string;mmol?:number}[],
+   solid:dry.map(([formula,dose])=>({formula,massG:dose.value})),
+   remainderUnknown:false,precipitateG:undefined,precipitateVolumeMl:undefined,
+   precipitateFraction:undefined};
+ }
  const quantities=v.reactionAmounts;
  // The chemical species inventory is reconstructed from the measured initial
  // doses, so adding another reagent cannot erase prior precipitates and
