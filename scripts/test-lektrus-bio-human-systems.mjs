@@ -7,10 +7,11 @@ const transpiled=ts.transpileModule(text,{fileName:model,compilerOptions:{
 const exports={};
 new Function("exports",transpiled.outputText)(exports);
 const cfg=exports.HUMAN_BODY_SYSTEMS;
-assert.equal(cfg.length,6,"Overview plus five school human anatomy systems");
+assert.equal(cfg.length,13,"Overview plus twelve human anatomy system choices");
 assert.deepEqual(cfg.map(x=>x.id),[
- "all","nervous","respiratory","circulatory","digestive","musculoskeletal"]);
-assert.equal(new Set(cfg.map(x=>x.id)).size,6);
+ "all","nervous","respiratory","circulatory","digestive","musculoskeletal",
+ "skeletal","muscular","urinary","lymphatic","endocrine","integumentary","sensory"]);
+assert.equal(new Set(cfg.map(x=>x.id)).size,cfg.length);
 for(const row of cfg){
  assert.ok(row.name&&row.description&&row.color.startsWith("#"));
  assert.ok(exports.humanSystemById(row.id).name===row.name);
@@ -26,18 +27,20 @@ for(const focus of cfg.slice(1)){
     "No non-selected internal system may remain visible");
  }
 }
-for(const id of ["nervous","respiratory","circulatory","digestive","musculoskeletal"]){
+for(const id of cfg.filter(x=>x.id!=="all").map(x=>x.id)){
  const p=exports.HUMAN_BODY_SYSTEM_ANCHORS[id];
  assert.ok(p.x>350&&p.x<610&&p.y>30&&p.y<390);
 }
 const files=["src/LektrusBioMannequin.tsx",
+ "src/LektrusBioHumanAdditionalSystems.tsx",
+ "src/LektrusBioHumanAdditionalStudy.tsx",
  "src/LektrusBioHumanSystemStudy.tsx","src/LektrusBioContinuousHuman.tsx"];
 for(const file of files){
  const code=fs.readFileSync(file,"utf8");
  const ast=ts.createSourceFile(file,code,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  assert.equal(ast.parseDiagnostics.length,0,"Broken TSX "+file);
 }
-const mannequin=fs.readFileSync(files[0],"utf8");
+const mannequin=fs.readFileSync("src/LektrusBioMannequin.tsx","utf8");
 assert.match(mannequin,/import biomodel from "\.\/assets\/bio-atlas\/human-biomodel\.webp"/);
 assert.match(mannequin,/human-biomodel-image-base/);
 assert.match(mannequin,/lektrus-human-biomodel-shell/);
@@ -49,7 +52,7 @@ assert.match(mannequin,/system==="all"/);
 assert.match(fs.readFileSync("src/LektrusBioHumanSystemOverlay.tsx","utf8"),/musculoskeletal/,
  "Musculoskeletal system is rendered by its dedicated anatomy overlay");
 assert.match(mannequin,/maskImage:"url\("\+biomodel\+"\)"/);
-const study=fs.readFileSync(files[1],"utf8");
+const study=fs.readFileSync("src/LektrusBioHumanSystemStudy.tsx","utf8");
 assert.match(study,/function Digestive/);
 assert.match(study,/function Muscle/);
 assert.match(study,/function IntestinalVilli/);
@@ -58,7 +61,7 @@ assert.match(study,/level>=4/);
 assert.match(study,/level===3/);
 assert.match(study,/level===2/);
 assert.match(study,/explicitly schematic depth views/);
-const viewer=fs.readFileSync(files[2],"utf8");
+const viewer=fs.readFileSync("src/LektrusBioContinuousHuman.tsx","utf8");
 assert.match(viewer,/HUMAN_BODY_SYSTEMS.map\(entry=>/);
 assert.match(viewer,/onClick=\{\(\)=>chooseSystem\(entry.id\)\}/);
 assert.match(viewer,/aria-pressed=\{system===entry.id\}/);
@@ -70,6 +73,7 @@ assert.match(viewer,/study=\{study\} depth=\{4\}/);
 assert.doesNotMatch(viewer,/import (?:organsImage|heartImage|tissueImage|cellImage) from/);
 assert.match(viewer,/const choose=useCallback\(\(point:HumanPoint\)=>\{[\s\S]*?if\(system!=="all"\)/);
 assert.match(viewer,/node=\{isSkin\?undefined:cell\}/);
+assert.match(viewer,/additional=\{additional\}/);
 assert.equal((viewer.match(/<LektrusBioMannequin system=\{system\}\/>/g)||[]).length,2,
  "Human figure and orientation minimap have exactly the same selected system");
 assert.ok(!viewer.includes("body.webp"),"No inappropriate old portrait");
@@ -88,4 +92,4 @@ assert.equal(bytes.subarray(8,12).toString(),"WEBP");
 const parent=fs.readFileSync("src/LektrusBioMicroscope.tsx","utf8");
 assert.match(parent,/activeOrganism==="human"&&<LektrusBioContinuousHuman\/>/);
 assert.match(parent,/activeOrganism!=="human"&&<LektrusBioUnifiedZoom/);
-console.log("Biology human biomodel PASS: approved translucent artwork; six system choices; dynamic highlights; four tissue depths; shared world camera; accessible mobile/desktop controls.");
+console.log("Biology human biomodel PASS: approved translucent artwork; thirteen system choices; dynamic highlights; four tissue depths; shared world camera; accessible mobile/desktop controls.");
