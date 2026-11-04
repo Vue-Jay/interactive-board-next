@@ -65,7 +65,19 @@ assert.match(inkCss,/pointer-events:auto!important/,
 const app=fs.readFileSync("src/App.tsx","utf8");
 assert.match(app,/useState<Tool>\(\(\)=>readBoardSessionTool\(boardSummary\.id,authUser\.id\)\)/);
 assert.match(app,/writeBoardSessionTool\(boardSummary\.id,authUser\.id,tool\)/);
-assert.match(app,/const \[tool, setTool\] = useState<Tool>/);
+assert.match(app,/const \[tool, setToolState\] = useState<Tool>/);
+assert.match(app,/const setTool: typeof setToolState = useCallback/);
+assert.match(app,/writeBoardSessionTool\(boardSummary\.id,authUser\.id,chosen\)/,
+ "Store a locally selected tool in the same update transaction before remount");
+assert.match(app,/useLayoutEffect\(\(\)=>writeBoardSessionTool\(boardSummary\.id,authUser\.id,tool\)/,
+ "Keep individual tool selection intact on document re-render");
+const directCss=fs.readFileSync("src/lektrusResponsive.css","utf8");
+assert.match(directCss,/Five full-width, directly tappable pen presets/);
+assert.match(directCss,/\.lektrus-ink-settings-direct \.lektrus-direct-ink-widths\{/);
+assert.match(directCss,/grid-template-columns:repeat\(5,minmax\(0,1fr\)\)!important/);
+assert.match(directCss,/\.lektrus-direct-ink-widths>button\{/);
+assert.match(directCss,/touch-action:manipulation!important/,
+ "Every thickness including pen 22 px must receive touches");
 assert.match(app,/if \(gesture\.current \|\| eraserSession\.current\)/,
  "Remote document changes must defer while local ink is being drawn");
 assert.match(app,/if \(decision === "conflict"\)/,
