@@ -7,27 +7,26 @@ const transpiled=ts.transpileModule(text,{fileName:model,compilerOptions:{
 const exports={};
 new Function("exports",transpiled.outputText)(exports);
 const cfg=exports.HUMAN_BODY_SYSTEMS;
-assert.equal(cfg.length,13,"Overview plus twelve human anatomy system choices");
+assert.equal(cfg.length,7,"Only seven requested human anatomy system choices");
 assert.deepEqual(cfg.map(x=>x.id),[
- "all","nervous","respiratory","circulatory","digestive","musculoskeletal",
- "skeletal","muscular","urinary","lymphatic","endocrine","integumentary","sensory"]);
+ "nervous","respiratory","circulatory","digestive","urinary","musculoskeletal","integumentary"]);
 assert.equal(new Set(cfg.map(x=>x.id)).size,cfg.length);
 for(const row of cfg){
  assert.ok(row.name&&row.description&&row.color.startsWith("#"));
  assert.ok(exports.humanSystemById(row.id).name===row.name);
 }
-for(const focus of cfg.slice(1)){
+for(const focus of cfg){
  assert.ok(exports.HUMAN_BODY_SYSTEM_ANCHORS[focus.id]);
  assert.ok(exports.HUMAN_SYSTEM_REGION[focus.id]);
  assert.equal(exports.humanSystemVisibility(focus.id,focus.id),1);
  assert.equal(exports.humanSystemVisibility("all",focus.id),1);
- for(const other of cfg.slice(1)){
+ for(const other of cfg){
   if(other.id!==focus.id)
    assert.equal(exports.humanSystemVisibility(focus.id,other.id),0,
     "No non-selected internal system may remain visible");
  }
 }
-for(const id of cfg.filter(x=>x.id!=="all").map(x=>x.id)){
+for(const id of cfg.map(x=>x.id)){
  const p=exports.HUMAN_BODY_SYSTEM_ANCHORS[id];
  assert.ok(p.x>350&&p.x<610&&p.y>30&&p.y<390);
 }
@@ -43,15 +42,17 @@ for(const file of files){
 const mannequin=fs.readFileSync("src/LektrusBioMannequin.tsx","utf8");
 assert.match(mannequin,/import biomodel from "\.\/assets\/bio-atlas\/human-biomodel\.webp"/);
 assert.match(mannequin,/human-biomodel-image-base/);
-assert.match(mannequin,/lektrus-human-biomodel-shell/);
-assert.match(mannequin,/LektrusBioHumanSystemOverlay system=\{system\}/);
+assert.match(mannequin,/lektrus-human-raster-plate/);
+assert.match(mannequin,/human-seven-systems\.webp/);
+assert.match(mannequin,/data-anatomy=\{system\}/);
 assert.doesNotMatch(mannequin,/human-biomodel-image-focus/,
  "Selected systems must not paint the flattened multi-organ image");
-assert.match(mannequin,/maskMode:"alpha"/);
+assert.match(mannequin,/backgroundSize:"700% 100%"/);
 assert.match(mannequin,/system==="all"/);
-assert.match(fs.readFileSync("src/LektrusBioHumanSystemOverlay.tsx","utf8"),/musculoskeletal/,
- "Musculoskeletal system is rendered by its dedicated anatomy overlay");
-assert.match(mannequin,/maskImage:"url\("\+biomodel\+"\)"/);
+assert.match(mannequin,/data-image-kind="medical-raster"/,
+ "Selected systems are rendered from one local medical illustration sprite");
+assert.doesNotMatch(mannequin,/maskImage:/,
+ "Selected anatomy no longer uses simplified vector body masks");
 const study=fs.readFileSync("src/LektrusBioHumanSystemStudy.tsx","utf8");
 assert.match(study,/function Digestive/);
 assert.match(study,/function Muscle/);
@@ -75,7 +76,7 @@ assert.match(viewer,/const choose=useCallback\(\(point:HumanPoint\)=>\{[\s\S]*?i
 assert.match(viewer,/node=\{isSkin\?undefined:cell\}/);
 assert.match(viewer,/additional=\{additional\}/);
 assert.equal((viewer.match(/<LektrusBioMannequin system=\{system\}\/>/g)||[]).length,2,
- "Human figure and orientation minimap have exactly the same selected system");
+ "Human figure and orientation minimap share the selected raster system");
 assert.ok(!viewer.includes("body.webp"),"No inappropriate old portrait");
 const css=fs.readFileSync("src/lektrusBioContinuousHuman.css","utf8");
 assert.match(css,/\.lektrus-human-system-options button.is-active/);
@@ -92,4 +93,8 @@ assert.equal(bytes.subarray(8,12).toString(),"WEBP");
 const parent=fs.readFileSync("src/LektrusBioMicroscope.tsx","utf8");
 assert.match(parent,/activeOrganism==="human"&&<LektrusBioContinuousHuman\/>/);
 assert.match(parent,/activeOrganism!=="human"&&<LektrusBioUnifiedZoom/);
-console.log("Biology human biomodel PASS: approved translucent artwork; thirteen system choices; dynamic highlights; four tissue depths; shared world camera; accessible mobile/desktop controls.");
+const sprite=fs.readFileSync("src/assets/bio-atlas/human-seven-systems.webp");
+assert.equal(sprite.subarray(0,4).toString(),"RIFF");
+assert.equal(sprite.subarray(8,12).toString(),"WEBP");
+assert.ok(sprite.length>35000&&sprite.length<200000);
+console.log("Biology human atlas PASS: seven raster anatomy choices, local asset, shared zoom camera and mobile controls.");

@@ -6,7 +6,6 @@
  * is an explanatory image, NOT a patient-specific radiograph or CT scan.
  */
 import {memo,useId} from "react";
-import type {ReactNode} from "react";
 import type {HumanFocusedSystem} from "./lektrusBioHumanBodySystems";
 import {HUMAN_ADDITIONAL_DRAWINGS} from "./LektrusBioHumanAdditionalSystems";
 
@@ -149,7 +148,7 @@ function Movement(){
   </g>
  </g>;
 }
-const drawings:Record<HumanFocusedSystem,()=>ReactNode>={
+const drawings={
  nervous:Nerves,respiratory:Respiration,circulatory:Circulation,
  digestive:Digestion,musculoskeletal:Movement,
  ...HUMAN_ADDITIONAL_DRAWINGS
