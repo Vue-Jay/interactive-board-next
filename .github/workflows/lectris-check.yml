@@ -81,6 +81,8 @@ jobs:
         run: node scripts/test-lektrus-bio-continuous-human.mjs
       - name: Reviewed translucent human biomodel with selectable anatomy systems
         run: node scripts/test-lektrus-bio-human-systems.mjs
+      - name: Verify zero visibility for non-selected human systems and correct depth-linked anatomy
+        run: node scripts/test-lektrus-bio-human-exclusive-systems.mjs
       - name: Biology drag and place anatomy exercises
         run: node scripts/test-lektrus-bio-assembly.mjs
       - name: Biology organ systems and relief regression
