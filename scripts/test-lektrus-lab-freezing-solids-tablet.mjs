@@ -105,8 +105,15 @@ const css=fs.readFileSync("src/lektrusChemistryBench.css","utf8");
 const art=fs.readFileSync("src/LektrusLabDeviceIcon.tsx","utf8");
 assert.match(ui,/LAB_COOLER_MIN_C,LAB_COOLER_MAX_C/);
 assert.match(ui,/value>=LAB_COOLER_MIN_C&&value<=LAB_COOLER_MAX_C/);
-assert.match(ui,/min=\{LAB_COOLER_MIN_C\} max=\{LAB_COOLER_MAX_C\}/);
-assert.match(ui,/className="lektrus-lab-power-symbol"/);
+assert.match(ui,/inputMode="text"/,
+ "Tablet cooler must offer a text keyboard that can enter a negative sign");
+assert.match(ui,/replace\(\/−\/g,"-"\)/,
+ "Cooler accepts both Unicode minus and ASCII minus");
+assert.match(ui,/value>=LAB_COOLER_MIN_C&&value<=LAB_COOLER_MAX_C/);
+assert.match(ui,/className="lektrus-lab-power-glyph"/,
+ "Hotplate and cooler use an always-rendered CSS power icon");
+assert.doesNotMatch(ui,/<svg className="lektrus-lab-power-symbol"/,
+ "Tablet WebView must not render the broken inline power SVG");
 assert.doesNotMatch(ui,/>⏻<\/button>/,"No missing platform power font glyph");
 assert.match(ui,/className="lektrus-lab-added-solid"/);
 assert.match(ui,/contents\.solid\.length>0&&visiblePowderH>0/);
@@ -129,8 +136,12 @@ for(const width of [101,119,138,175]){
   "Tablet cooler power/temperature touch targets overlap at "+width+"px");
 }
 
-assert.match(css,/\.lektrus-lab-power-symbol\{/);
+assert.match(css,/\.lektrus-lab-power-glyph::before\{/);
+assert.match(css,/\.lektrus-lab-power-glyph::after\{/);
+assert.match(css,/Tablet face controls v4/);
+assert.match(css,/aspect-ratio:110\/108/,
+ "Temperature screen and power knob follow the SVG device aspect ratio");
 assert.match(css,/\.lektrus-lab-device-face-controls\.is-cooler \.lektrus-lab-device-face-temp/);
 assert.match(css,/@media\(pointer:coarse\)/);
 assert.match(art,/kind==="cooler"/);
-console.log("Cooling and solids PASS: −100°C cooler, mass-conserving pure water and saline freezing below colligative point, settled CaCO3/NaCl, tablet power icons and separated cooler controls.");
+console.log("Cooling and solids PASS: −100°C cooler, mass-conserving pure water and saline freezing, dry CaCO3/NaCl settled, reliable tablet power and negative-input layout.");
