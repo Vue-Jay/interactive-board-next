@@ -61,7 +61,7 @@ const app="src/LektrusBioContinuousHuman.tsx";
 const src=fs.readFileSync(app,"utf8");
 const ast=ts.createSourceFile(app,src,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(ast.parseDiagnostics.length,0,"Continuous explorer TSX must parse");
-for(const asset of ["body","organs","heart","tissue","cell"]){
+for(const asset of ["organs","heart","tissue","cell"]){
  const filename="src/assets/bio-atlas/"+asset+".webp";
  assert.ok(fs.existsSync(filename),"Visual concept art missing from repo "+filename);
  const file=fs.readFileSync(filename);
@@ -70,6 +70,22 @@ for(const asset of ["body","organs","heart","tissue","cell"]){
  assert.ok(file.length>1000&&file.length<35000,"App images must remain optimized");
  assert.match(src,new RegExp("assets/bio-atlas/"+asset+"\\.webp"));
 }
+const mannequinFile="src/LektrusBioMannequin.tsx";
+const mannequin=fs.readFileSync(mannequinFile,"utf8");
+const mannequinAst=ts.createSourceFile(mannequinFile,mannequin,
+ ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+assert.equal(mannequinAst.parseDiagnostics.length,0,"Mannequin SVG component must parse");
+assert.match(mannequin,/export default memo\(LektrusBioMannequin\)/);
+assert.match(mannequin,/useId\(\)/,"Both figures must use unique SVG gradient ids");
+assert.match(mannequin,/viewBox="0 0 240 640"/);
+assert.match(mannequin,/Cervical joint and a smooth, featureless head/);
+assert.match(mannequin,/neutral mannequin pelvis/i);
+assert.match(mannequin,/aria-hidden="true"/);
+assert.match(src,/import LektrusBioMannequin from "\.\/LektrusBioMannequin"/);
+assert.equal(src.includes("assets/bio-atlas/body.webp"),false,
+ "Do not display the realistic photograph in the school atlas");
+assert.equal((src.match(/<LektrusBioMannequin\/>/g)||[]).length,2,
+ "Main body and minimap must show exactly the same mannequin");
 assert.match(src,/onPointerDown=\{press\} onPointerMove=\{move\}/);
 assert.match(src,/onPointerUp=\{release\} onPointerCancel=\{release\}/);
 assert.match(src,/addEventListener\("wheel",wheel,\{passive:false\}\)/);
@@ -91,8 +107,12 @@ assert.match(parent,/activeOrganism!=="human"&&<LektrusBioUnifiedZoom/);
 assert.match(parent,/showExercise=Boolean\(diagram.activity==="label"\|\|diagram.activity==="assemble"\)/);
 const css=fs.readFileSync("src/lektrusBioContinuousHuman.css","utf8");
 assert.match(css,/touch-action:none/);
+assert.match(css,/\.lektrus-human-body \.lektrus-human-mannequin/);
+assert.match(css,/\.lektrus-human-minimap \.lektrus-human-mannequin/);
+assert.equal(css.includes(".lektrus-human-body img{"),false,
+ "Photograph-specific body styles must be removed");
 assert.match(css,/\.lektrus-human-world.is-travelling\{transition:transform/);
 assert.match(css,/mask-image:radial-gradient/);
 assert.match(css,/@media\(max-width:650px\)/);
 assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
-console.log("Continuous human atlas PASS: 5 embedded offline images, real cursor-anchored zoom from any stage point, smooth cross-fades, touch/pinch, keyboard and 4 anatomy focus modes.");
+console.log("Continuous human atlas PASS: one gender-neutral SVG mannequin in body and minimap, 4 local anatomy images, cursor-anchored zoom, smooth cross-fades and touch/pinch gestures.");
