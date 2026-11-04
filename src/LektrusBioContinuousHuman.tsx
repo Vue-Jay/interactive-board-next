@@ -257,6 +257,14 @@ export default function LektrusBioContinuousHuman(){
  const isSkin=region==="skin";
  const study=region==="digestive"||region==="musculoskeletal"?region:undefined;
  const atlasPoint=humanRegionAnchor(region,selectedSpot);
+ const studyNames:Record<"digestive"|"musculoskeletal",[string,string,string,string]>={
+  digestive:["Пищеварительная система","Тонкая кишка","Кишечный эпителий","Энтероцит"],
+  musculoskeletal:["Опорно-двигательная система","Скелетная мышца",
+   "Поперечнополосатая мышечная ткань","Мышечное волокно"]
+ };
+ const labelAt=(index:number,node?:BioNode)=>
+  node?.name??(study?studyNames[study][index-1]:
+   isSkin?["Кожа","Слои кожи","Эпидермис","Кератиноцит"][index-1]:"");
  // All five tiers share one camera and one spatial coordinate; the retinal
  // and histological views are qualitative reconstructions, not the same
  // physical photomicrograph at a calibrated magnification.
@@ -299,16 +307,16 @@ export default function LektrusBioContinuousHuman(){
     </div>
     <Layer className="lektrus-human-layer-organs" point={atlasPoint}
      node={isSkin?undefined:sys} study={study} depth={1} opacity={layer[1]}
-     annotation={showLabels?"Внутреннее строение":undefined}/>
+     annotation={showLabels?labelAt(1,sys):undefined}/>
     <Layer className="lektrus-human-layer-organ" point={atlasPoint}
      node={isSkin?undefined:organ} study={study} depth={2} opacity={layer[2]}
-     annotation={showLabels?(isSkin?"Кожа":regionNames[region]):undefined}/>
+     annotation={showLabels?labelAt(2,organ):undefined}/>
     <Layer className="lektrus-human-layer-tissue" point={atlasPoint}
      node={isSkin?undefined:tissue} study={study} depth={3} opacity={layer[3]}
-     annotation={showLabels?(isSkin?"Слои эпидермиса":"Ткань"):undefined}/>
+     annotation={showLabels?labelAt(3,tissue):undefined}/>
     <Layer className="lektrus-human-layer-cell" point={atlasPoint}
      node={isSkin?undefined:cell} study={study} depth={4} opacity={layer[4]}
-     annotation={showLabels?(isSkin?"Кератиноцит":"Клетка"):undefined}/>
+     annotation={showLabels?labelAt(4,cell):undefined}/>
     {cam.depth<1.15&&system==="all"&&<span className="lektrus-human-beacon"
      style={{left:(483/W*100)+"%",top:(194/H*100)+"%",opacity:1-cam.depth/1.15}}/>}
    </div>
@@ -316,7 +324,7 @@ export default function LektrusBioContinuousHuman(){
     <span className="lektrus-human-depth-dot"/>
     <span>{activeLabel}</span>
     <span className="lektrus-human-caption-sep">/</span>
-    <strong>{regionNames[region]}</strong>
+    <strong>{system==="all"&&cam.depth<.8?"Все системы":regionNames[region]}</strong>
    </div>
    <div className="lektrus-human-tip">Потяните, чтобы переместиться. Прокрутите или разведите два пальца для увеличения.</div>
    <div className="lektrus-human-minimap" aria-label="Расположение поля зрения на теле">
