@@ -82,6 +82,21 @@ assert.match(ui,/solidVolumeMl\/capacityMl/);
 assert.match(ui,/className="lektrus-lab-frozen-liquid"/);
 assert.match(ui,/vessel\.frozenFraction/);
 assert.match(css,/Tablet\/cooling bath v3/);
+const faceCss=css.slice(css.lastIndexOf("/* Tablet/cooling bath v3"));
+assert.match(faceCss,/left:42\.7%!important;top:69\.4%!important;width:38%!important/,
+ "Cooler field must sit on its engraved SVG temperature screen");
+assert.match(faceCss,/left:79\.1%!important;top:70\.4%!important/,
+ "Cooler power button must sit over the actual SVG knob");
+// Real tablet and compact widths: the input box and 27-34px power
+// target cannot overlap even after touch-target enlargement.
+for(const width of [101,119,138,175]){
+ const fieldRight=width*(.427+.38/2);
+ const buttonWidth=Math.min(34,Math.max(27,width*.25));
+ const buttonLeft=width*.791-buttonWidth/2;
+ assert.ok(buttonLeft-fieldRight>=2,
+  "Tablet cooler power/temperature touch targets overlap at "+width+"px");
+}
+
 assert.match(css,/\.lektrus-lab-power-symbol\{/);
 assert.match(css,/\.lektrus-lab-device-face-controls\.is-cooler \.lektrus-lab-device-face-temp/);
 assert.match(css,/@media\(pointer:coarse\)/);
