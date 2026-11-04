@@ -10,10 +10,6 @@ import LektrusBioHumanSystemStudy from "./LektrusBioHumanSystemStudy";
 import LektrusBioHumanSystemIcon from "./LektrusBioHumanSystemIcon";
 import {HUMAN_BODY_SYSTEMS,HUMAN_BODY_SYSTEM_ANCHORS,HUMAN_SYSTEM_REGION,
  humanSystemById,type HumanBodySystem} from "./lektrusBioHumanBodySystems";
-import organsImage from "./assets/bio-atlas/organs.webp";
-import heartImage from "./assets/bio-atlas/heart.webp";
-import tissueImage from "./assets/bio-atlas/tissue.webp";
-import cellImage from "./assets/bio-atlas/cell.webp";
 import {bioChildren,bioNodes,type BioNode} from "./lektrusBioMicroscopeModel";
 import LektrusBioAnatomyScene from "./LektrusBioAnatomyScene";
 import {
@@ -134,15 +130,20 @@ export default function LektrusBioContinuousHuman(){
   return {x:(x-rect.left)*W/rect.width,y:(y-rect.top)*H/rect.height};
  },[]);
  const choose=useCallback((point:HumanPoint)=>{
+  // A manually selected system is persistent throughout wheel/pinch zoom.
+  // Cursor geography must NEVER silently switch the chosen system.
+  if(system!=="all"){
+   const pinned=HUMAN_SYSTEM_REGION[system];
+   setRegion(pinned);
+   setSpot(HUMAN_BODY_SYSTEM_ANCHORS[system]);
+   return;
+  }
   const found=humanRegionAt(point);
   setRegion(found);setSpot(point);
-  const matching=HUMAN_BODY_SYSTEMS.find(entry=>entry.id!=="all"&&
-   HUMAN_SYSTEM_REGION[entry.id]===found);
-  setSystem(matching?.id??"all");
   setNotice(found==="skin"
    ?"Эта область доступна для свободного приближения. Для неразмеченных структур показан типовой срез кожи."
    :"Выбран участок: "+regionNames[found]+". Приближайте дальше, чтобы увидеть внутреннее строение.");
- },[]);
+ },[system]);
  const zoom=useCallback((delta:number,point:HumanPoint)=>{
   interrupt();
   const before=camera.current;
@@ -218,12 +219,12 @@ export default function LektrusBioContinuousHuman(){
  const chooseSystem=(next:HumanBodySystem)=>{
   setSystem(next);
   if(next==="all"){
-   setNotice("Все системы видны вместе. Выберите систему, чтобы выделить её органы.");
+   setNotice("Общий обзор всех систем. Выберите одну, чтобы остальные полностью исчезли.");
    return;
   }
   const point=HUMAN_BODY_SYSTEM_ANCHORS[next];
   setRegion(HUMAN_SYSTEM_REGION[next]);setSpot(point);
-  setNotice(humanSystemById(next).description);
+  setNotice(humanSystemById(next).description+". На манекене видна только эта система.");
   // Switching a system does not throw the camera out of full-body view;
   // when already magnified, it guides the SAME camera to its real body area.
   if(camera.current.depth>=.8)travel(humanFocusAt(point,camera.current.depth));
@@ -254,7 +255,6 @@ export default function LektrusBioContinuousHuman(){
  const organ=sys?bioChildren(nodes,sys.id)[0]:undefined;
  const tissue=organ?bioChildren(nodes,organ.id)[0]:undefined;
  const cell=tissue?bioChildren(nodes,tissue.id)[0]:undefined;
- const isHeart=region==="heart";
  const isSkin=region==="skin";
  const study=region==="digestive"||region==="musculoskeletal"?region:undefined;
  const atlasPoint=humanRegionAnchor(region,selectedSpot);
@@ -298,19 +298,19 @@ export default function LektrusBioContinuousHuman(){
     <div className="lektrus-human-body" style={{opacity:layer[0]}}>
      <LektrusBioMannequin system={system}/>
     </div>
-    <Layer className="lektrus-human-layer-organs" point={atlasPoint} asset={isHeart?organsImage:undefined}
+    <Layer className="lektrus-human-layer-organs" point={atlasPoint}
      node={isSkin?undefined:sys} study={study} depth={1} opacity={layer[1]}
      annotation={showLabels?"Внутреннее строение":undefined}/>
-    <Layer className="lektrus-human-layer-organ" point={atlasPoint} asset={isHeart?heartImage:undefined}
+    <Layer className="lektrus-human-layer-organ" point={atlasPoint}
      node={isSkin?undefined:organ} study={study} depth={2} opacity={layer[2]}
      annotation={showLabels?(isSkin?"Кожа":regionNames[region]):undefined}/>
-    <Layer className="lektrus-human-layer-tissue" point={atlasPoint} asset={isHeart?tissueImage:undefined}
+    <Layer className="lektrus-human-layer-tissue" point={atlasPoint}
      node={isSkin?undefined:tissue} study={study} depth={3} opacity={layer[3]}
      annotation={showLabels?(isSkin?"Слои эпидермиса":"Ткань"):undefined}/>
-    <Layer className="lektrus-human-layer-cell" point={atlasPoint} asset={isHeart?cellImage:undefined}
+    <Layer className="lektrus-human-layer-cell" point={atlasPoint}
      node={isSkin?undefined:cell} study={study} depth={4} opacity={layer[4]}
      annotation={showLabels?(isSkin?"Кератиноцит":"Клетка"):undefined}/>
-    {cam.depth<1.15&&<span className="lektrus-human-beacon"
+    {cam.depth<1.15&&system==="all"&&<span className="lektrus-human-beacon"
      style={{left:(483/W*100)+"%",top:(194/H*100)+"%",opacity:1-cam.depth/1.15}}/>}
    </div>
    <div className="lektrus-human-stage-caption">
