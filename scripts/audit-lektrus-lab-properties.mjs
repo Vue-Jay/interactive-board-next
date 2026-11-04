@@ -189,6 +189,34 @@ if(process.argv.includes("--verify")){
   assert.equal(value.remaining,value.firstMissing.length);
  }
  assert.equal(new Set(stockRows.map(r=>r.formula)).size,rawTotals.stock);
+ // Missing-property export must be a lossless partition of applicable gaps.
+ // Catch duplicate formulas, accidental inapplicable flags and drift between
+ // per-reagent and per-property counts before automated imports use --missing.
+ const missingKeys=Object.keys(counted);
+ const missingByProperty=Object.fromEntries(missingKeys.map(key=>[key,new Set()]));
+ for(const row of stockRows){
+  assert.equal(new Set(row.missing).size,row.missing.length,
+   "Duplicate missing property for "+row.formula);
+  for(const key of missingKeys){
+   assert.equal(row.known[key]===true||row.known[key]===false,true,
+    "Non-boolean known flag for "+row.formula+"."+key);
+   assert.equal(row.relevant[key]===true||row.relevant[key]===false,true,
+    "Non-boolean applicability for "+row.formula+"."+key);
+   assert.equal(row.missing.includes(key),row.relevant[key]&&!row.known[key],
+    "Inconsistent missing flag for "+row.formula+"."+key);
+   if(row.missing.includes(key))missingByProperty[key].add(row.formula);
+  }
+ }
+ for(const key of missingKeys){
+  assert.deepEqual([...missingByProperty[key]],
+   counted[key].firstMissing,
+   "Per-property missing export disagrees with reagent rows: "+key);
+  assert.equal(missingByProperty[key].size,counted[key].remaining);
+ }
+ assert.equal(stockRows.filter(row=>row.missing.length).length,
+  report.stockWithOutstandingProperties,
+  "Outstanding reagent count does not match --missing rows");
+
  const stockNames=new Set(db.substances.map(s=>s.id));
  const variants=new Set();
  for(const row of hydrateRows){
