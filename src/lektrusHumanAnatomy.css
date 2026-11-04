@@ -1,0 +1,218 @@
+/* Standalone anatomy is deliberately not nested inside the biology microscope.
+ * Every system is one crop of the same sized raster atlas, under one camera. */
+.lek-anatomy-container{
+ container-type:inline-size;box-sizing:border-box;
+ width:100%;height:100%;min-width:0;min-height:0;overflow:hidden;
+}
+.lek-anatomy{
+ box-sizing:border-box;display:grid;
+ grid-template-columns:210px minmax(0,1fr) 260px;
+ width:100%;height:100%;min-height:320px;min-width:0;overflow:hidden;
+ background:#f8faf9;color:#233d3a;
+ font:500 13px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;
+}
+.lek-anatomy *{box-sizing:border-box}
+.lek-anatomy button{font:inherit;cursor:pointer}
+.lek-anatomy-rail{
+ min-width:0;overflow-y:auto;border-right:1px solid #dce8e4;
+ background:linear-gradient(180deg,#f4faf5,#eef5f0);padding:19px 11px;
+ scrollbar-width:thin}
+.lek-anatomy-rail-title{
+ display:grid;gap:1px;margin:0 7px 15px;font-size:14px;font-weight:850;
+ color:#27533e}
+.lek-anatomy-rail-title small{font-size:10px;color:#728d7b;font-weight:550}
+.lek-anatomy-rail-options{display:grid;gap:6px}
+.lek-anatomy-system{
+ width:100%;min-height:49px;border:1px solid transparent;border-radius:12px;
+ padding:7px 9px;display:flex;align-items:center;gap:9px;
+ text-align:left;background:transparent;color:#486155;
+ font-size:12px!important;font-weight:750!important;transition:background .17s}
+.lek-anatomy-system:hover{background:#e4f0e6}
+.lek-anatomy-system.is-active{
+ background:#397f58;color:white;border-color:#276947;
+ box-shadow:0 4px 13px #36744a22}
+.lek-anatomy-system-icon{
+ display:grid;place-items:center;width:28px;height:28px;flex:none;
+ background:#ffffffb9;border:1px solid #d3e5d7;border-radius:8px;color:#416e59}
+.lek-anatomy-system-icon svg{width:20px!important;height:20px!important;max-height:none;
+ aspect-ratio:1!important;border:0!important;background:transparent!important}
+.lek-anatomy-system-check{margin-left:auto;font-size:14px;opacity:0}
+.lek-anatomy-system.is-active .lek-anatomy-system-check{opacity:1}
+.lek-anatomy-main{
+ min-width:0;min-height:0;display:flex;flex-direction:column;gap:9px;
+ padding:14px;background:#f9fbfa}
+.lek-anatomy-main-head{display:flex;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;gap:8px;padding:0 4px}
+.lek-anatomy-main-head>div{display:grid;gap:1px}
+.lek-anatomy-main-head small{color:#80a08f;font-size:10px;
+ font-weight:850;letter-spacing:.11em}
+.lek-anatomy-main-head strong{font-size:clamp(14px,2.5cqw,21px);
+ color:#2c5542;line-height:1.2}
+.lek-anatomy-reset{
+ min-height:33px;padding:6px 11px;border:1px solid #cadcd1;border-radius:9px;
+ color:#37664b;background:#fff;font-weight:700!important;font-size:11px!important}
+.lek-anatomy-reset:hover{background:#edf7ed}
+.lek-anatomy-stage{
+ position:relative;flex:1 1 auto;min-height:180px;
+ overflow:hidden;isolation:isolate;touch-action:none;cursor:grab;
+ user-select:none;-webkit-user-select:none;
+ border:1px solid #dbe8e9;border-radius:15px;
+ background:linear-gradient(150deg,#f5f9fd,#f1f6f8 53%,#eaf3f1);
+ box-shadow:inset 0 1px 3px #8ba6aa20}
+.lek-anatomy-stage:active{cursor:grabbing}
+.lek-anatomy-stage:focus-visible,.lek-anatomy button:focus-visible{
+ outline:3px solid #77b796;outline-offset:2px}
+.lek-anatomy-stage-grid{
+ position:absolute;inset:0;pointer-events:none;
+ background-image:radial-gradient(#abc9c060 .7px,transparent .7px);
+ background-size:22px 22px;opacity:.45}
+.lek-anatomy-world{
+ position:absolute;inset:0;display:flex;justify-content:center;align-items:center;
+ pointer-events:none;transform-origin:center center;will-change:transform}
+.lek-anatomy-figure{
+ position:relative;display:block;flex:0 0 auto;
+ height:min(96%,560px);width:auto;max-width:90%;
+ aspect-ratio:260/444;
+ background-repeat:no-repeat;image-rendering:auto;
+ background-clip:padding-box;
+ filter:drop-shadow(0 10px 20px #597b9d12);
+}
+/* The 7-panel source has a printed label only at upper-left. It is
+ * covered inside the crop; realistic organs are otherwise untouched. */
+.lek-anatomy-figure:before{
+ content:"";position:absolute;top:0;left:0;width:31%;height:17%;
+ background:linear-gradient(90deg,var(--lek-anatomy-paper) 0%,
+ color-mix(in srgb,var(--lek-anatomy-paper) 85%,transparent) 73%,transparent 100%);
+ pointer-events:none}
+.lek-anatomy-zoom{
+ position:absolute;right:12px;top:50%;transform:translateY(-50%);
+ z-index:3;display:grid;gap:6px;justify-items:center;padding:7px;
+ border:1px solid #cbdedb;border-radius:12px;background:#fffc;
+ backdrop-filter:blur(8px);box-shadow:0 6px 14px #3459481b}
+.lek-anatomy-zoom button{width:32px;height:32px;border:1px solid #c9dcd3;
+ border-radius:8px;background:white;color:#35634e;font-size:22px!important;
+ line-height:1!important;font-weight:650!important}
+.lek-anatomy-zoom span{font-size:10px;font-weight:800;color:#648b76}
+.lek-anatomy-stage-hint{
+ position:absolute;bottom:11px;left:50%;transform:translateX(-50%);
+ padding:5px 10px;background:#fffdf0df;border:1px solid #e7eade;
+ border-radius:99px;white-space:nowrap;pointer-events:none;
+ font-size:10px;font-weight:650;color:#6a8876}
+.lek-anatomy-footnote{display:flex;justify-content:space-between;gap:8px;
+ padding:0 4px;flex-wrap:wrap;font-size:10px;color:#879b91}
+.lek-anatomy-details{
+ display:flex;flex-direction:column;gap:14px;padding:20px 14px;
+ border-left:1px solid #dce8e4;background:#fff;min-width:0;
+ overflow-y:auto;scrollbar-width:thin}
+.lek-anatomy-section-kicker{font-size:10px;letter-spacing:.1em;
+ color:#78a389;font-weight:850}
+.lek-anatomy-details-top h3{margin:6px 0 6px;font-size:19px;line-height:1.25;color:#234f39}
+.lek-anatomy-details-top p{margin:0;color:#627a6d;font-size:12px;line-height:1.5}
+.lek-anatomy-details-heading{font-size:12px;color:#315e45;
+ padding-bottom:7px;border-bottom:1px solid #e3eee6}
+.lek-anatomy-organs{display:grid;gap:5px}
+.lek-anatomy-organ{width:100%;display:flex;align-items:flex-start;gap:9px;
+ text-align:left;padding:9px 8px;border-radius:10px;border:1px solid #e1eae6;
+ background:#fbfdfb;color:#2e5140}
+.lek-anatomy-organ:hover{border-color:#a1cbb1;background:#f1f9f3}
+.lek-anatomy-organ-number{flex:none;color:#85ab94;font-weight:850;font-size:10px}
+.lek-anatomy-organ>span:nth-child(2){min-width:0;display:grid;gap:3px}
+.lek-anatomy-organ b{font-size:11px}
+.lek-anatomy-organ small{font-size:10px;color:#82998a;line-height:1.35}
+.lek-anatomy-organ>span:last-child:not(:nth-child(2)){margin-left:auto;color:#66967d;font-size:20px}
+.lek-anatomy-reference{font-size:10px;color:#96a79d;line-height:1.4;margin-top:auto}
+@container(max-width:1050px){
+ .lek-anatomy{grid-template-columns:165px minmax(0,1fr) 210px}
+ .lek-anatomy-rail{padding:11px 6px}
+ .lek-anatomy-details{padding:12px 8px}
+ .lek-anatomy-main{padding:9px}
+ .lek-anatomy-system{font-size:10px!important;gap:5px;padding:5px}
+}
+@container(max-width:730px){
+ .lek-anatomy{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;overflow-y:auto}
+ .lek-anatomy-rail{overflow:visible;padding:7px;border:0;border-bottom:1px solid #dae8df}
+ .lek-anatomy-rail-title{display:none}
+ .lek-anatomy-rail-options{display:flex;gap:4px;overflow-x:auto;scrollbar-width:thin}
+ .lek-anatomy-system{min-width:110px;max-width:150px;flex:none;min-height:41px}
+ .lek-anatomy-system-icon{width:23px;height:23px}
+ .lek-anatomy-main{min-height:330px;gap:5px}
+ .lek-anatomy-main-head{gap:3px}
+ .lek-anatomy-details{border-left:0;border-top:1px solid #dce8e4;overflow:visible;padding:9px}
+ .lek-anatomy-details-top h3{font-size:14px}
+ .lek-anatomy-details-top p{font-size:11px}
+ .lek-anatomy-details-heading{display:none}
+ .lek-anatomy-organs{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+ .lek-anatomy-organ{padding:6px}
+ .lek-anatomy-reference{display:none}
+}
+@container(max-width:430px){
+ .lek-anatomy-main{min-height:270px}
+ .lek-anatomy-footnote span:last-child{display:none}
+ .lek-anatomy-zoom{right:5px;padding:4px}
+ .lek-anatomy-zoom button{height:27px;width:27px}
+ .lek-anatomy-stage-hint{font-size:8px}
+ .lek-anatomy-organs{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){
+ .lek-anatomy-system{transition:none}
+}
+
+/* Dedicated anatomy object editor. It is intentionally not the cramped,
+ * generic school-diagram form used for the separate microscope workflow. */
+.lek-anatomy-dialog-backdrop{
+ position:fixed;inset:0;z-index:15000;display:grid;place-items:center;
+ padding:14px;background:#172d36a8;backdrop-filter:blur(5px)}
+.lek-anatomy-dialog{
+ display:flex;flex-direction:column;overflow:hidden;min-height:0;min-width:0;
+ width:min(1420px,100%);height:min(850px,calc(100dvh - 28px));
+ border:1px solid #d7e8db;border-radius:19px;background:#fff;
+ box-shadow:0 26px 80px #101d243a;font:500 13px/1.4 system-ui,sans-serif;
+ color:#2e493a}
+.lek-anatomy-dialog *{box-sizing:border-box}
+.lek-anatomy-dialog-header{
+ display:flex;align-items:center;justify-content:space-between;gap:16px;
+ padding:13px 19px;border-bottom:1px solid #e2ebe6;
+ background:linear-gradient(105deg,#f4f9f3,#ffffff)}
+.lek-anatomy-dialog-heading small{letter-spacing:.12em;color:#77a287;
+ font-size:10px;font-weight:850}
+.lek-anatomy-dialog-heading h2{margin:2px 0 2px;font-size:21px;line-height:1.24;
+ color:#25533b;font-weight:820}
+.lek-anatomy-dialog-heading p{font-size:11px;color:#7e9487;margin:0}
+.lek-anatomy-dialog-close{border:1px solid #d4e4df;border-radius:10px;
+ width:36px;height:36px;flex:none;background:#fff;color:#5c8170;
+ font:400 24px/1 system-ui,sans-serif;cursor:pointer}
+.lek-anatomy-dialog-body{flex:1;min-height:0;min-width:0;overflow:hidden}
+.lek-anatomy-dialog-footer{
+ display:flex;align-items:center;gap:14px;padding:10px 17px;
+ border-top:1px solid #e2ebe6;background:#fbfdfb;flex:none;min-height:64px}
+.lek-anatomy-dialog-title{display:grid;gap:2px;min-width:145px;max-width:320px;
+ flex:1;font-size:10px;font-weight:750;color:#779083}
+.lek-anatomy-dialog-title input{
+ width:100%;min-width:0;height:32px;padding:5px 8px;
+ border-radius:7px;border:1px solid #ccded1;color:#345643;
+ background:#fff;font:600 12px system-ui,sans-serif}
+.lek-anatomy-dialog-check{display:flex;align-items:center;gap:6px;
+ white-space:nowrap;font-size:11px}
+.lek-anatomy-dialog-check input{accent-color:#3a8258}
+.lek-anatomy-dialog-error{font-size:11px;color:#ae3f4a}
+.lek-anatomy-dialog-actions{display:flex;gap:8px;margin-left:auto}
+.lek-anatomy-dialog-actions button{
+ padding:8px 14px;min-height:35px;border:1px solid #d2e0d8;border-radius:9px;
+ background:#fff;color:#346348;font:750 12px system-ui,sans-serif;cursor:pointer}
+.lek-anatomy-dialog-actions .is-primary{color:white;background:#3c8059;border-color:#3c8059}
+.lek-anatomy-dialog-actions button:hover{filter:brightness(.96)}
+@media(max-width:760px),(max-height:540px){
+ .lek-anatomy-dialog-backdrop{padding:4px}
+ .lek-anatomy-dialog{height:calc(100dvh - 8px);border-radius:10px}
+ .lek-anatomy-dialog-header{padding:7px 10px}
+ .lek-anatomy-dialog-heading h2{font-size:16px}
+ .lek-anatomy-dialog-heading p{display:none}
+ .lek-anatomy-dialog-footer{flex-wrap:wrap;gap:7px;padding:6px 9px}
+ .lek-anatomy-dialog-title{min-width:130px;flex:1}
+ .lek-anatomy-dialog-actions button{padding:6px 9px}
+}
+@media(max-width:480px){
+ .lek-anatomy-dialog-check{order:3}
+ .lek-anatomy-dialog-title{min-width:0}
+ .lek-anatomy-dialog-footer{min-height:0}
+}

@@ -8,6 +8,7 @@ import {isSchoolDiagram,isSchoolDiagramId,makeSchoolDiagram,months,organelleTitl
 import {normalizeAtlasDocument} from "./lektrusAtlasModel";
 import LektrusContourAssignmentSetup from "./LektrusContourAssignmentSetup";
 import LektrusSchoolDiagramView from "./LektrusSchoolDiagramView";
+import LektrusHumanAnatomy from "./LektrusHumanAnatomy";
 import LektrusNextSchoolControls from "./LektrusNextSchoolControls";
 import LektrusFurtherSchoolControls from "./LektrusFurtherSchoolControls";
 import LektrusApprovedSchoolControls from "./LektrusApprovedSchoolControls";
@@ -30,6 +31,7 @@ const titles:Record<SchoolDiagramId,string>={
  "info-programming":"Программирование",
  "info-circuit":"Логические схемы",
  "bio-microscope":"Биологический микроскоп",
+ "bio-anatomy":"Анатомия человека",
  "bio-dna":"Строение ДНК","bio-taxonomy":"Классификация организмов",
  "bio-division":"Деление клетки","info-encoding":"Кодирование текста",
  "bio-genetics":"Генетические скрещивания","info-logic":"Таблица истинности",
@@ -163,6 +165,43 @@ export default function LektrusSchoolDiagramEditor({item,existing,studentMode=fa
       <button type="button" className="lektrus-school-primary" onClick={finish}>
        {existing?"Готово":"Сохранить на доску"}
       </button>
+     </div>
+    </footer>
+   </section>
+  </div>,document.body);
+ // A dedicated anatomy studio, not another organism picker inside microscope.
+ // The camera is owned by the viewer and remains mounted across system changes.
+ if(draft.kind==="bio-anatomy")return createPortal(
+  <div className="lek-anatomy-dialog-backdrop" role="presentation"
+   onPointerDown={e=>e.stopPropagation()}>
+   <section className="lek-anatomy-dialog" role="dialog" aria-modal="true"
+    aria-label="Анатомия человека">
+    <header className="lek-anatomy-dialog-header">
+     <div className="lek-anatomy-dialog-heading">
+      <small>LEKTRUS · БИОЛОГИЯ</small><h2>Анатомия человека</h2>
+      <p>Все семь систем на одном силуэте. Переключение не перемещает камеру.</p>
+     </div>
+     <button type="button" onClick={close} className="lek-anatomy-dialog-close"
+      aria-label="Закрыть редактор">×</button>
+    </header>
+    <div className="lek-anatomy-dialog-body">
+     <LektrusHumanAnatomy diagram={draft} onChange={set} editorMode/>
+    </div>
+    <footer className="lek-anatomy-dialog-footer">
+     <label className="lek-anatomy-dialog-title">
+      <span>Название объекта</span><input value={draft.title} maxLength={120}
+       onChange={e=>set({...draft,title:max(e.target.value,120)})}/>
+     </label>
+     <label className="lek-anatomy-dialog-check">
+      <input type="checkbox" checked={draft.showDescriptions}
+       onChange={e=>set({...draft,showDescriptions:e.target.checked})}/>
+      Описания органов
+     </label>
+     {error&&<span role="alert" className="lek-anatomy-dialog-error">{error}</span>}
+     <div className="lek-anatomy-dialog-actions">
+      <button type="button" onClick={onCancel}>Отмена</button>
+      <button type="button" className="is-primary" onClick={finish}>
+       {existing?"Сохранить":"Вывести на доску"}</button>
      </div>
     </footer>
    </section>

@@ -24,7 +24,10 @@ export const subjectToolRegistry:SubjectToolDefinition[]=[
   {id:"math-coordinate",label:"Координатная плоскость",description:"Функции, точки, числовая прямая и графики",group:"Математические инструменты",subjects:["математика"]},
   {id:"math-fractions",label:"Дроби",description:"Круг и полоска с наглядными частями",group:"Математические инструменты",subjects:["математика"]},
   {id:"chem-periodic-table",label:"Периодическая система",description:"118 элементов, поиск, семейства и выделение элементов для урока",group:"Химия · элементы",subjects:["химия"]},
-  {id:"bio-microscope",label:"Биологический микроскоп",description:"Интерактивные животные и растения: организм, системы, органы, ткани, клетки и задания",group:"Биология · атлас",subjects:["биология"]},
+  {id:"bio-anatomy",label:"Анатомия человека",description:"Семь систем организма, единый центр, приближение и анатомические иллюстрации",group:"Биология · человек",subjects:["биология"]},
+  // Backwards compatibility: old microscope objects still load from saved boards.
+  // Animal and plant explorers will be exposed as separate tools later.
+  {id:"bio-microscope",label:"Биологический микроскоп",description:"Ранее созданные учебные объекты",group:"Биология · прежние инструменты",subjects:[]},
   {id:"bio-dna",label:"Строение ДНК",description:"Комплементарность, последовательность оснований и направление цепей",group:"Биология · генетика",subjects:["биология"]},
   {id:"bio-taxonomy",label:"Классификация организмов",description:"Редактируемая схема таксономических рангов животных и растений",group:"Биология · систематика",subjects:["биология"]},
   {id:"bio-division",label:"Деление клетки",description:"Стадии митоза с подписями и учебными схемами",group:"Биология · клетка",subjects:["биология"]},
@@ -39,7 +42,7 @@ export const subjectToolRegistry:SubjectToolDefinition[]=[
   {id:"ru-syntax",label:"Разбор предложения",description:"Школьное подчёркивание членов предложения, без автоматического анализа",group:"Русский язык · синтаксис",subjects:["русский язык"]},
   {id:"info-flowchart",label:"Блок-схема алгоритма",description:"Начало, действие, ввод, вывод, условия и направленные стрелки",group:"Информатика · алгоритмы",subjects:["информатика"]},
   {id:"info-place-value",label:"Системы счисления",description:"Разряды в системах с основаниями 2, 8, 10 и 16",group:"Информатика · информация",subjects:["информатика"]},
-  {id:"bio-organ-systems",label:"Системы органов",description:"Пищеварительная и дыхательная системы, скрываемые подписи",group:"Биология · человек",subjects:["биология"]},
+  {id:"bio-organ-systems",label:"Системы органов",description:"Ранее созданные двухсистемные схемы",group:"Биология · прежние инструменты",subjects:[]},
   {id:"ru-morphemes",label:"Разбор слова по составу",description:"Приставки, корни, суффиксы и окончания, основа и задания без ответов",group:"Русский язык · морфемика",subjects:["русский язык"]},
   {id:"history-family-tree",label:"Генеалогическое дерево",description:"Поколения, два родителя и редактируемые родственные связи",group:"История · родословные",subjects:["история"]},
   {id:"language-sentence-builder",label:"Составление предложений",description:"Интерактивное упражнение на порядок слов",group:"Иностранный язык · грамматика",subjects:["иностранный язык"]},
@@ -80,7 +83,7 @@ export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:
     graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,graphSnap:false,
     graphPoints:[],graphSegments:[],subjectBoardEntries:[]};
   }
-  if(id==="bio-microscope"||id==="info-programming"||id==="info-circuit"||id==="bio-dna"||id==="bio-taxonomy"||id==="bio-division"||id==="info-encoding"||id==="bio-genetics"||id==="info-logic"||id==="maps-atlas"||id==="history-atlas"||id==="contour-atlas"||id==="geo-matching"||id==="geo-question-cards"||id==="bio-cell"||id==="bio-food-chain"||id==="history-timeline"||
+  if(id==="bio-anatomy"||id==="bio-microscope"||id==="info-programming"||id==="info-circuit"||id==="bio-dna"||id==="bio-taxonomy"||id==="bio-division"||id==="info-encoding"||id==="bio-genetics"||id==="info-logic"||id==="maps-atlas"||id==="history-atlas"||id==="contour-atlas"||id==="geo-matching"||id==="geo-question-cards"||id==="bio-cell"||id==="bio-food-chain"||id==="history-timeline"||
      id==="ru-syntax"||id==="info-flowchart"||id==="info-place-value"||
      id==="bio-organ-systems"||
      id==="ru-morphemes"||id==="history-family-tree"||id==="language-flashcards"||
