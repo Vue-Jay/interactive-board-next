@@ -1,40 +1,36 @@
-/** School atlas biomodel.
- * Overview: approved translucent human illustration with all systems.
- * Selected system: ONLY the neutral transparent body shell plus one
- * anatomically positioned SVG overlay. The flattened source illustration
- * must never leak hidden organs through a dimmed or masked duplicate.
+/** Offline illustrated human atlas. The seven medical-style body plates
+ * are pixel images from the same school-age neutral front-view figure family,
+ * not SVG stroke renderings. One raster sprite prevents seven image downloads.
+ *
+ * The organism overview keeps the approved translucent biomodel; selecting
+ * any system renders exactly ONE of the seven framed raster illustrations.
  */
 import {memo} from "react";
 import type {CSSProperties} from "react";
 import biomodel from "./assets/bio-atlas/human-biomodel.webp";
-import LektrusBioHumanSystemOverlay from "./LektrusBioHumanSystemOverlay";
-import {humanSystemVisibility,type HumanBodySystem} from "./lektrusBioHumanBodySystems";
+import systemsImage from "./assets/bio-atlas/human-seven-systems.webp";
+import {HUMAN_BODY_SYSTEMS,humanSystemById,humanSystemVisibility,
+ type HumanBodySystem} from "./lektrusBioHumanBodySystems";
 
 function LektrusBioMannequin({system="all"}:{system?:HumanBodySystem}){
- // The approved bitmap contains several systems flattened into the SAME
- // image. Reusing it under a regional mask displays parts of other systems.
- // A CSS ALPHA mask keeps only its external silhouette, not its pixels.
- const shellStyle:CSSProperties={
-  maskImage:"url("+biomodel+")",WebkitMaskImage:"url("+biomodel+")",
-  maskSize:"100% 100%",WebkitMaskSize:"100% 100%",
-  maskRepeat:"no-repeat",WebkitMaskRepeat:"no-repeat",
-  maskMode:"alpha"
- };
- return <div className={"lektrus-human-biomodel "+(system==="all"?"is-overview":"is-focused")+
-  (system==="integumentary"?" is-skin-system":"")}
+ const index=HUMAN_BODY_SYSTEMS.findIndex(entry=>entry.id===system);
+ const showSystem=system!=="all"&&index>=0;
+ const plateStyle:CSSProperties=showSystem?{
+  backgroundImage:"url("+systemsImage+")",
+  backgroundSize:"700% 100%",
+  backgroundPosition:(index/6*100)+"% 50%"
+ }:{}; // Do not request the sprite while only the organism overview is shown.
+ return <div className={"lektrus-human-biomodel "+
+  (showSystem?"is-raster-focused":"is-overview")}
   data-bio-active-system={system} aria-hidden="true">
-  {system==="all"
-   ?<img className="lektrus-human-biomodel-image lektrus-human-biomodel-image-base"
-     src={biomodel} alt="" draggable={false}/>
-   :<>
-     <div className="lektrus-human-biomodel-shell" style={shellStyle}/>
-     {/* Clip selected organs to the SAME transparent external body outline.
-         This remains a spatial mask only: the flattened all-systems pixels
-         never appear beneath a selected system. */}
-     <div className="lektrus-human-biomodel-anatomy-mask" style={shellStyle}>
-      <LektrusBioHumanSystemOverlay system={system}/>
-     </div>
-    </>}
+  {showSystem
+   ?<div className="lektrus-human-raster-plate"
+     style={plateStyle}
+     data-anatomy={system}
+     data-image-kind="medical-raster"
+     title={humanSystemById(system).name}/>
+   :<img className="lektrus-human-biomodel-image lektrus-human-biomodel-image-base"
+     src={biomodel} alt="" draggable={false}/>}
   <span className="lektrus-human-biomodel-state"
    data-bio-system-opacity={system==="all"?"1":String(humanSystemVisibility(system,system))}/>
  </div>;
