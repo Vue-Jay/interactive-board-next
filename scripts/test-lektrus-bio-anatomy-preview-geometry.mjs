@@ -40,8 +40,10 @@ assert.match(uncommented,/\.lektrus-school-preview\s*>\s*svg\s*\{/,
  "Only the DIRECT school diagram SVG may inherit the landscape ratio");
 assert.match(schoolView,/return <svg viewBox="0 0 900 500"/,
  "Standalone school diagrams continue using a 9:5 SVG");
-assert.match(schoolEditor,/<div className="lektrus-school-preview"[\s\S]*?<LektrusSchoolDiagramView/,
- "Human atlas runs inside the school diagram preview container");
+assert.match(schoolEditor,/lektrus-school-preview--bio/,
+ "Human microscope has a dedicated preview container class");
+assert.match(schoolEditor,/<LektrusSchoolDiagramView diagram=\{draft\}/,
+ "Human atlas continues rendering inside the editor preview");
 
 const webp=fs.readFileSync("src/assets/bio-atlas/human-biomodel.webp");
 assert.equal(webp.toString("ascii",0,4),"RIFF");
