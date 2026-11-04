@@ -1,4 +1,4 @@
-/** Five mutually exclusive anatomy overlays for the translucent human atlas.
+/** Mutually exclusive anatomy overlays for the translucent human atlas.
  * The base portrait carries NO baked-in internal anatomy while any system
  * is selected. Each SVG is a separate educational anatomical map.
  *
@@ -8,6 +8,7 @@
 import {memo,useId} from "react";
 import type {ReactNode} from "react";
 import type {HumanFocusedSystem} from "./lektrusBioHumanBodySystems";
+import {HUMAN_ADDITIONAL_DRAWINGS} from "./LektrusBioHumanAdditionalSystems";
 
 type Props={system:HumanFocusedSystem};
 const artery="#d36c70",vein="#6595b0";
@@ -143,7 +144,8 @@ function Movement(){
 }
 const drawings:Record<HumanFocusedSystem,()=>ReactNode>={
  nervous:Nerves,respiratory:Respiration,circulatory:Circulation,
- digestive:Digestion,musculoskeletal:Movement
+ digestive:Digestion,musculoskeletal:Movement,
+ ...HUMAN_ADDITIONAL_DRAWINGS
 };
 function LektrusBioHumanSystemOverlay({system}:Props){
  const id=useId().replace(/:/g,""),clip="lektrus-bio-system-"+id;
