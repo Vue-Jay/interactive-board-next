@@ -227,6 +227,11 @@
 .lektrus-human-system-overlay{position:absolute;inset:0;width:100%;height:100%;
  display:block;overflow:visible;pointer-events:none;
  filter:drop-shadow(0 2px 3px #6b708633)}
+/* Skin is the surface of the EXISTING neutral silhouette, not a second
+ * anatomical body. A warm neutral pigment makes its own layer legible. */
+.lektrus-human-biomodel.is-skin-system .lektrus-human-biomodel-shell{
+ background:linear-gradient(97deg,#bc947f 0%,#e8cbb2 30%,#f6dfce 55%,#be9686 100%);
+ opacity:.94}
 /* Keep the same single-system anatomical content in the overview minimap;
  * simplify shadow effects to prevent shimmering at tiny resolutions. */
 .lektrus-human-minimap .lektrus-human-system-overlay{filter:none}
