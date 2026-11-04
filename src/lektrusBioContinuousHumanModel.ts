@@ -7,7 +7,8 @@ export const HUMAN_ATLAS_HEIGHT=640;
 export const HUMAN_ATLAS_MAX_DEPTH=4;
 export type HumanPoint={x:number;y:number};
 export type HumanCamera={depth:number;panX:number;panY:number};
-export type HumanRegion="heart"|"lungs"|"brain"|"digestive"|"musculoskeletal"|"skin";
+export type HumanRegion="heart"|"lungs"|"brain"|"digestive"|"musculoskeletal"|"skin"|
+ "skeletal"|"muscular"|"urinary"|"lymphatic"|"endocrine"|"integumentary"|"sensory";
 export const HUMAN_INITIAL_CAMERA:HumanCamera={depth:0,panX:0,panY:0};
 export const HUMAN_ZOOM_LABELS=["Организм","Органы","Орган","Ткань","Клетка"] as const;
 export const HUMAN_ORGAN_ANCHORS={
@@ -15,7 +16,14 @@ export const HUMAN_ORGAN_ANCHORS={
  lungs:{x:484,y:178},
  brain:{x:485,y:62},
  digestive:{x:484,y:289},
- musculoskeletal:{x:486,y:348}
+ musculoskeletal:{x:486,y:348},
+ skeletal:{x:486,y:253},
+ muscular:{x:486,y:305},
+ urinary:{x:485,y:301},
+ lymphatic:{x:483,y:237},
+ endocrine:{x:484,y:182},
+ integumentary:{x:485,y:255},
+ sensory:{x:485,y:80}
 } as const;
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,Number.isFinite(n)?n:a));
 export const humanScale=(depth:number)=>Math.pow(2.18,clamp(depth,0,HUMAN_ATLAS_MAX_DEPTH));
