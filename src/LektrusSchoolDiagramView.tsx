@@ -7,6 +7,7 @@ import LektrusRussianSchoolView from "./LektrusRussianSchoolView";
 import LektrusLanguageSocialView from "./LektrusLanguageSocialView";
 import LektrusMapAtlas from "./LektrusMapAtlas";
 import LektrusBioMicroscope from "./LektrusBioMicroscope";
+import LektrusHumanAnatomy from "./LektrusHumanAnatomy";
 import LektrusBiologyExtensionView from "./LektrusBiologyExtensionView";
 import LektrusMitosisView from "./LektrusMitosisView";
 import LektrusLogicCircuitView from "./LektrusLogicCircuitView";
@@ -170,6 +171,7 @@ function TimelineGraphic({diagram:d}:{diagram:Extract<SchoolDiagram,{kind:"timel
 }
 export default function LektrusSchoolDiagramView({diagram,onChange,editorMode,userId,onMatchingSize}:Props){
  switch(diagram.kind){
+  case "bio-anatomy":return <LektrusHumanAnatomy diagram={diagram} onChange={onChange&&((next)=>onChange(next))} editorMode={editorMode}/>;
   case "bio-microscope":return <LektrusBioMicroscope diagram={diagram}/>;
   case "programming":return <LektrusProgrammingView diagram={diagram}/>;
   case "logic-circuit":return <LektrusLogicCircuitView diagram={diagram}/>;
