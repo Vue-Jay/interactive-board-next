@@ -353,3 +353,39 @@
  .lektrus-school-preview--bio .lektrus-human-system-options{flex:1 1 100%}
  .lektrus-school-preview--bio .lektrus-human-stage{max-width:480px}
 }
+
+/* Seven independent illustrated human systems. Each illustrated plate was
+ * prepared offline from the approved rendered anatomy series; there are no
+ * live network requests and no vector organ placeholders. All seven use the
+ * same 410:444 panel grid and the original 960:640 world camera. */
+.lektrus-human-body.is-raster-focus{
+ width:59.73%;height:97%;top:1.5%;left:44.5%;
+ transform:translateX(-50%);mask-image:none;
+}
+.lektrus-human-body.is-raster-focus[data-human-active-system="digestive"],
+.lektrus-human-body.is-raster-focus[data-human-active-system="urinary"]{
+ left:40.6%;
+}
+.lektrus-human-body.is-raster-focus[data-human-active-system="integumentary"]{
+ left:47%;
+}
+.lektrus-human-biomodel.is-raster-focused{
+ width:100%;height:100%;overflow:hidden;isolation:isolate;
+ border-radius:20px;box-shadow:0 9px 26px #586b7a20;
+}
+.lektrus-human-raster-plate{
+ position:absolute;inset:0;display:block;width:100%;height:100%;
+ background-repeat:no-repeat;background-color:#f7f8fc;
+ image-rendering:auto;pointer-events:none;
+}
+.lektrus-human-minimap .lektrus-human-biomodel.is-raster-focused{
+ position:absolute;left:19.5%;top:2%;width:61%;height:95%;
+ border-radius:5px;box-shadow:none;
+}
+.lektrus-human-minimap .lektrus-human-biomodel.is-raster-focused .lektrus-human-raster-plate{
+ border-radius:5px;
+}
+@media(max-width:650px){
+ .lektrus-human-body.is-raster-focus{width:59.73%}
+ .lektrus-human-biomodel.is-raster-focused{border-radius:10px}
+}
