@@ -199,3 +199,18 @@
  .lektrus-human-biomodel-image,.lektrus-human-system-options button{
   transition:none!important}
 }
+
+
+/* Concept-option-2 buttons: anatomy symbol above the system name. */
+.lektrus-human-system-options button{display:flex;flex-direction:column;
+ align-items:center;justify-content:center;gap:5px;min-height:61px;
+ min-width:104px;padding:7px 10px}
+.lektrus-human-system-icon{width:23px;height:23px;flex:0 0 23px;
+ color:inherit;filter:drop-shadow(0 2px 2px #9380ad20)}
+.lektrus-human-system-options button span{display:block}
+.lektrus-human-system-options button.is-active .lektrus-human-system-icon{
+ filter:drop-shadow(0 1px 3px #ffffff50)}
+@media(max-width:650px){
+ .lektrus-human-system-options button{min-height:53px;min-width:90px;gap:3px;padding:5px 8px}
+ .lektrus-human-system-icon{width:20px;height:20px;flex-basis:20px}
+}
