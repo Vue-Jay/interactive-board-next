@@ -5,7 +5,8 @@
  *   node scripts/audit-lektrus-lab-properties.mjs
  *   node scripts/audit-lektrus-lab-properties.mjs --json
  *   node scripts/audit-lektrus-lab-properties.mjs --markdown
- *   node scripts/audit-lektrus-lab-properties.mjs --missing\n *   node scripts/audit-lektrus-lab-properties.mjs --verify
+ *   node scripts/audit-lektrus-lab-properties.mjs --missing
+ *   node scripts/audit-lektrus-lab-properties.mjs --verify
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
