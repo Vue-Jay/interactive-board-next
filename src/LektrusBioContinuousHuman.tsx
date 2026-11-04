@@ -7,6 +7,7 @@ import {memo,useCallback,useEffect,useMemo,useRef,useState} from "react";
 import type {PointerEvent as RP,KeyboardEvent as RK,CSSProperties} from "react";
 import LektrusBioMannequin from "./LektrusBioMannequin";
 import LektrusBioHumanSystemStudy from "./LektrusBioHumanSystemStudy";
+import LektrusBioHumanSystemIcon from "./LektrusBioHumanSystemIcon";
 import {HUMAN_BODY_SYSTEMS,HUMAN_BODY_SYSTEM_ANCHORS,HUMAN_SYSTEM_REGION,
  humanSystemById,type HumanBodySystem} from "./lektrusBioHumanBodySystems";
 import organsImage from "./assets/bio-atlas/organs.webp";
@@ -283,7 +284,8 @@ export default function LektrusBioContinuousHuman(){
      aria-pressed={system===entry.id} data-bio-system={entry.id}
      title={entry.description} className={system===entry.id?"is-active":""}
      style={{"--lektrus-system-accent":entry.color} as CSSProperties}
-     onClick={()=>chooseSystem(entry.id)}>{entry.name}</button>)}
+     onClick={()=>chooseSystem(entry.id)}><LektrusBioHumanSystemIcon system={entry.id}/>
+     <span>{entry.name}</span></button>)}
    </div>
   </div>
   <div className="lektrus-human-stage" ref={stage} tabIndex={0}
