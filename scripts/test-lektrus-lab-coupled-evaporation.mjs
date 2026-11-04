@@ -426,6 +426,8 @@ assert.ok((recheck.vessels.find(v=>v.id==="v2").doses?.CO2?.value??0)<=
 let mixed=lab.defaultLabBench();
 mixed=lab.addLabVessel(mixed,"flask");
 mixed=lab.addLabVessel(mixed,"flask");
+// v1 is a default beaker; use a stoppered flask as the sampled source.
+mixed={...mixed,vessels:mixed.vessels.map(v=>v.id==="v1"?{...v,kind:"flask"}:v)};
 mixed=lab.putLabReagent(mixed,"v1","CO2",{unit:"ml",value:30});
 mixed=lab.putLabReagent(mixed,"v1","H2",{unit:"ml",value:10});
 assert.equal(lab.labGasStoredMl(mixed.vessels[0]),40);
