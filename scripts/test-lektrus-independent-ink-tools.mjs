@@ -54,6 +54,14 @@ assert.equal(ink.normalizeInkPreferences({marker:{color:"#000000",size:100}}).ma
 const editor=fs.readFileSync("src/LectrisObjectEditor.tsx","utf8");
 assert.match(editor,/pen:\[1,3,6,12,22\]/);
 assert.match(editor,/onClick=\{\(\)=>updateWidth\(size\)\}/);
+const inkCss=fs.readFileSync("src/lektrusSubjectPolish2026.css","utf8");
+assert.match(inkCss,/Every pen-width preset, especially the fifth 22px button/,
+ "The maximum pen preset must remain accessible in narrow toolbars");
+assert.match(inkCss,/overflow-x:auto;overflow-y:hidden/,
+ "A narrow viewport must scroll the whole five-width group, not clip the last choice");
+assert.match(inkCss,/\.lektrus-ink-five-widths>\.lektrus-ink-width-button\{/);
+assert.match(inkCss,/pointer-events:auto!important/,
+ "All five ink thickness buttons must receive pointer and touch events");
 const app=fs.readFileSync("src/App.tsx","utf8");
 assert.match(app,/useState<Tool>\(\(\)=>readBoardSessionTool\(boardSummary\.id,authUser\.id\)\)/);
 assert.match(app,/writeBoardSessionTool\(boardSummary\.id,authUser\.id,tool\)/);
