@@ -45,7 +45,10 @@ function Nerves(){
  </g>;
 }
 function Respiration(){
- return <g data-anatomy="respiratory" strokeLinejoin="round" strokeLinecap="round">
+ /* Place bronchi and lungs in the chest of the 360 x 840 source figure,
+  not down over the abdominal organs. The airway starts near the nose. */
+ return <g data-anatomy="respiratory" transform="translate(0 -30) scale(1 .9)"
+  strokeLinejoin="round" strokeLinecap="round">
   <path d="M180 142V215" stroke="#d6d5c3" strokeWidth="17"/>
   {Array.from({length:9},(_,i)=><path key={i} d={`M172 ${151+i*7}h16`}
    stroke="#83a0a8" strokeWidth="2.5"/>)}
@@ -93,7 +96,10 @@ function Circulation(){
  </g>;
 }
 function Digestion(){
- return <g data-anatomy="digestive" strokeLinecap="round" strokeLinejoin="round">
+ /* Keep the liver/stomach above the intestines and the intestine
+  inside the lower abdomen of the same approved silhouette. */
+ return <g data-anatomy="digestive" transform="translate(0 6) scale(1 .9)"
+  strokeLinecap="round" strokeLinejoin="round">
   <path d="M178 142Q185 191 181 247L188 295" stroke="#d8af94" strokeWidth="10"
    fill="none"/>
   {/* The liver is on anatomical right, viewer-left. */}
