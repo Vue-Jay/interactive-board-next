@@ -880,9 +880,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
    const delta=Math.max(0,produced-(processed[formula]??0));
    if(delta<=1e-12)continue;
    const target=moved.vessels.find(v=>v.id===receiver.id)!;
-   const stocked=Object.entries(target.doses??{}).reduce((total,[id,d])=>
-    total+(substances.find(s=>s.id===id)?.kind==="газ"?d.value:0),0);
-   const room=Math.max(0,labVesselQuantity(target).availableMl-stocked);
+   const room=labGasReceiverFreeMl(target);
    const ml=Math.floor(Math.min(delta*24465,room)*100)/100;
    if(ml>=.01){
     const next=putLabReagent(moved,receiver.id,formula,{unit:"ml",value:ml});
