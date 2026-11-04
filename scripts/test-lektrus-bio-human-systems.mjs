@@ -19,11 +19,11 @@ for(const focus of cfg.slice(1)){
  assert.ok(exports.HUMAN_BODY_SYSTEM_ANCHORS[focus.id]);
  assert.ok(exports.HUMAN_SYSTEM_REGION[focus.id]);
  assert.equal(exports.humanSystemVisibility(focus.id,focus.id),1);
- assert.equal(exports.humanSystemVisibility("all",focus.id),.72);
+ assert.equal(exports.humanSystemVisibility("all",focus.id),1);
  for(const other of cfg.slice(1)){
   if(other.id!==focus.id)
-   assert.ok(exports.humanSystemVisibility(focus.id,other.id)<.1,
-    "Unselected internal systems remain a visible but dim context");
+   assert.equal(exports.humanSystemVisibility(focus.id,other.id),0,
+    "No non-selected internal system may remain visible");
  }
 }
 for(const id of ["nervous","respiratory","circulatory","digestive","musculoskeletal"]){
@@ -40,10 +40,14 @@ for(const file of files){
 const mannequin=fs.readFileSync(files[0],"utf8");
 assert.match(mannequin,/import biomodel from "\.\/assets\/bio-atlas\/human-biomodel\.webp"/);
 assert.match(mannequin,/human-biomodel-image-base/);
-assert.match(mannequin,/human-biomodel-image-focus/);
-assert.match(mannequin,/highlightMasks\[system\]/);
+assert.match(mannequin,/lektrus-human-biomodel-shell/);
+assert.match(mannequin,/LektrusBioHumanSystemOverlay system=\{system\}/);
+assert.doesNotMatch(mannequin,/human-biomodel-image-focus/,
+ "Selected systems must not paint the flattened multi-organ image");
+assert.match(mannequin,/maskMode:"alpha"/);
+assert.match(mannequin,/system==="all"/);
 assert.match(mannequin,/musculoskeletal/);
-assert.match(mannequin,/maskImage:focusMask,WebkitMaskImage:focusMask/);
+assert.match(mannequin,/maskImage:"url\("\+biomodel\+"\)"/);
 const study=fs.readFileSync(files[1],"utf8");
 assert.match(study,/function Digestive/);
 assert.match(study,/function Muscle/);
@@ -62,12 +66,17 @@ assert.match(viewer,/if\(camera.current.depth>=\.8\)travel/);
 assert.match(viewer,/humanFocusAt\(point,camera.current.depth\)/);
 assert.match(viewer,/study=\{study\} depth=\{3\}/);
 assert.match(viewer,/study=\{study\} depth=\{4\}/);
+assert.doesNotMatch(viewer,/import (?:organsImage|heartImage|tissueImage|cellImage) from/);
+assert.match(viewer,/const choose=useCallback\(\(point:HumanPoint\)=>\{[\s\S]*?if\(system!=="all"\)/);
+assert.match(viewer,/node=\{isSkin\?undefined:cell\}/);
 assert.equal((viewer.match(/<LektrusBioMannequin system=\{system\}\/>/g)||[]).length,2,
  "Human figure and orientation minimap have exactly the same selected system");
 assert.ok(!viewer.includes("body.webp"),"No inappropriate old portrait");
 const css=fs.readFileSync("src/lektrusBioContinuousHuman.css","utf8");
 assert.match(css,/\.lektrus-human-system-options button.is-active/);
 assert.match(css,/\.lektrus-human-biomodel.is-focused/);
+assert.match(css,/\.lektrus-human-biomodel-shell/);
+assert.match(css,/\.lektrus-human-system-overlay/);
 assert.match(css,/\.lektrus-human-biomodel-image-focus/);
 assert.match(css,/@media\(max-width:650px\)/);
 assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
