@@ -52,19 +52,39 @@ function Enterocyte(){
 function Digestive({level}:{level:number}){
  if(level>=4)return <Enterocyte/>;
  if(level===3)return <IntestinalVilli/>;
- if(level===2)return <g>
-  <path d="M175 48Q181 93 200 106Q230 116 234 150Q233 181 273 204
-    Q313 226 340 190Q372 149 350 118Q339 85 298 79
-    Q256 72 243 44" fill="none" stroke="#d5a28f" strokeWidth="15" strokeLinecap="round"/>
-  <path d="M209 93Q251 97 260 133Q277 151 303 149
-    Q322 145 321 116Q349 143 330 175
-    Q317 216 268 205Q234 183 227 154Z"
-    fill="#edbda8" stroke="#ad7d75" strokeWidth="4"/>
-  {Array.from({length:6},(_,i)=><path key={i}
-   d={"M"+(246+i*12)+" "+(126+i*5)+"q20 5 18 27"}
-   fill="none" stroke="#c58e86" strokeWidth="4"/>)}
-  <text x="28" y="54" fontSize="19" fontWeight="800" fill="#805856">Желудок</text>
-  <text x="38" y="282" fontSize="13" fill="#936d66">Складки слизистой и мышечная стенка</text>
+ if(level===2)return <g data-bio-human-organ="small-intestine">
+  {/* True small-intestine section: outer smooth-muscle coats, connective
+      submucosa, folded villous mucosa and a central intestinal lumen.
+      The following levels keep this SAME organ (villus -> enterocyte),
+      rather than incorrectly jumping from a stomach to intestinal villi. */}
+  <ellipse cx="243" cy="176" rx="179" ry="128" fill="#d7a4a3"
+   stroke="#a86e78" strokeWidth="6"/>
+  <ellipse cx="243" cy="176" rx="164" ry="113" fill="#f0c7b9"
+   stroke="#be8c89" strokeWidth="8"/>
+  <ellipse cx="243" cy="176" rx="143" ry="95" fill="#ead9bc"
+   stroke="#b18f8d" strokeWidth="5"/>
+  <ellipse cx="243" cy="176" rx="125" ry="79" fill="#e4b6a6"
+   stroke="#b77f7b" strokeWidth="5"/>
+  {Array.from({length:22},(_,i)=>{
+   const angle=i*Math.PI/11,outerX=243+122*Math.cos(angle),
+    outerY=176+76*Math.sin(angle),innerX=243+99*Math.cos(angle),
+    innerY=176+52*Math.sin(angle);
+   return <g key={i}>
+    <path d={`M${outerX} ${outerY}L${innerX} ${innerY}`}
+     stroke="#c89187" strokeWidth="12" strokeLinecap="round"/>
+    <path d={`M${innerX} ${innerY}l${Math.cos(angle+Math.PI/2)*5} ${Math.sin(angle+Math.PI/2)*5}`}
+     stroke="#edcfbd" strokeWidth="3" strokeLinecap="round"/>
+   </g>;
+  })}
+  <ellipse cx="243" cy="176" rx="88" ry="42" fill="#fff9e9"
+   stroke="#ead6bf" strokeWidth="3"/>
+  <path d="M99 127L44 88H16" stroke="#b18b83" strokeWidth="2" fill="none"/>
+  <text x="17" y="79" fontSize="14" fontWeight="750" fill="#825d60">Мышечная</text>
+  <text x="17" y="93" fontSize="14" fontWeight="750" fill="#825d60">оболочка</text>
+  <path d="M345 135L402 100H462" stroke="#b98e83" strokeWidth="2" fill="none"/>
+  <text x="378" y="93" fontSize="14" fontWeight="750" fill="#825d60">Слизистая</text>
+  <text x="186" y="180" fontSize="18" fontWeight="750" fill="#84635a">Просвет</text>
+  <text x="120" y="321" fontSize="13" fill="#856765">Тонкая кишка · поперечный срез</text>
  </g>;
  return <g>
   <path d="M235 49V111Q225 132 242 160" fill="none" stroke="#d7a28f" strokeWidth="11"
