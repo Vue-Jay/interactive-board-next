@@ -214,3 +214,20 @@
  .lektrus-human-system-options button{min-height:53px;min-width:90px;gap:3px;padding:5px 8px}
  .lektrus-human-system-icon{width:20px;height:20px;flex-basis:20px}
 }
+
+
+/* Exclusive system isolation: the approved bitmap is used as ALPHA geometry
+ * only when a system is selected. Its flattened organs are NEVER painted.
+ * The chosen SVG overlay is the sole visible internal anatomy.
+ */
+.lektrus-human-biomodel.is-focused{isolation:isolate}
+.lektrus-human-biomodel-shell{position:absolute;inset:0;pointer-events:none;
+ background:linear-gradient(94deg,#aebdc9a9 0%,#e5eaf0aa 28%,#f8f9f7bc 50%,#ccd9e5a0 80%,#9faebe9e 100%);
+ opacity:.82;filter:drop-shadow(0 2px 5px #667b9460)}
+.lektrus-human-system-overlay{position:absolute;inset:0;width:100%;height:100%;
+ display:block;overflow:visible;pointer-events:none;
+ filter:drop-shadow(0 2px 3px #6b708633)}
+/* Keep the same single-system anatomical content in the overview minimap;
+ * simplify shadow effects to prevent shimmering at tiny resolutions. */
+.lektrus-human-minimap .lektrus-human-system-overlay{filter:none}
+.lektrus-human-minimap .lektrus-human-biomodel-shell{opacity:.65}
