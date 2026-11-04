@@ -79,6 +79,8 @@ jobs:
         run: node scripts/test-lektrus-bio-mammal-cells.mjs
       - name: Spatial human atlas zoom camera and five high-quality offline assets
         run: node scripts/test-lektrus-bio-continuous-human.mjs
+      - name: Reviewed translucent human biomodel with selectable anatomy systems
+        run: node scripts/test-lektrus-bio-human-systems.mjs
       - name: Biology drag and place anatomy exercises
         run: node scripts/test-lektrus-bio-assembly.mjs
       - name: Biology organ systems and relief regression
