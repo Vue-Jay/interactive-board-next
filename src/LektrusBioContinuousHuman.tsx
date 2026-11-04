@@ -86,12 +86,13 @@ function SkinSection({depth}:{depth:number}){
   </>}
  </svg>;
 }
-function Layer({node,study,additional,opacity,className,point,annotation,depth}:{
+function Layer({node,study,additional,showSkin=false,opacity,className,point,annotation,depth}:{
  node?:BioNode;study?:"digestive"|"musculoskeletal";additional?:HumanAdditionalSystem;
+ showSkin?:boolean;
  opacity:number;className:string;point:HumanPoint;
  annotation?:string;depth?:number
 }){
- if(opacity<=0||!node&&!study&&!additional&&annotation===undefined)return null;
+ if(opacity<=0||!node&&!study&&!additional&&!showSkin)return null;
  return <div className={"lektrus-human-tile "+className}
   aria-hidden="true" style={{opacity,left:(point.x/W*100)+"%",top:(point.y/H*100)+"%"}}>
   {node?<StaticAnatomy node={node}/>:study?
@@ -318,16 +319,16 @@ export default function LektrusBioContinuousHuman(){
      <LektrusBioMannequin system={system}/>
     </div>
     <Layer className="lektrus-human-layer-organs" point={atlasPoint}
-     node={isSkin?undefined:sys} study={study} additional={additional} depth={1} opacity={layer[1]}
+     node={isSkin?undefined:sys} study={study} additional={additional} showSkin={isSkin&&system==="all"} depth={1} opacity={layer[1]}
      annotation={showLabels?labelAt(1,sys):undefined}/>
     <Layer className="lektrus-human-layer-organ" point={atlasPoint}
-     node={isSkin?undefined:organ} study={study} additional={additional} depth={2} opacity={layer[2]}
+     node={isSkin?undefined:organ} study={study} additional={additional} showSkin={isSkin&&system==="all"} depth={2} opacity={layer[2]}
      annotation={showLabels?labelAt(2,organ):undefined}/>
     <Layer className="lektrus-human-layer-tissue" point={atlasPoint}
-     node={isSkin?undefined:tissue} study={study} additional={additional} depth={3} opacity={layer[3]}
+     node={isSkin?undefined:tissue} study={study} additional={additional} showSkin={isSkin&&system==="all"} depth={3} opacity={layer[3]}
      annotation={showLabels?labelAt(3,tissue):undefined}/>
     <Layer className="lektrus-human-layer-cell" point={atlasPoint}
-     node={isSkin?undefined:cell} study={study} additional={additional} depth={4} opacity={layer[4]}
+     node={isSkin?undefined:cell} study={study} additional={additional} showSkin={isSkin&&system==="all"} depth={4} opacity={layer[4]}
      annotation={showLabels?labelAt(4,cell):undefined}/>
     {cam.depth<1.15&&system==="all"&&<span className="lektrus-human-beacon"
      style={{left:(483/W*100)+"%",top:(194/H*100)+"%",opacity:1-cam.depth/1.15}}/>}
