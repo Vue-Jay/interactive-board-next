@@ -9,7 +9,14 @@ export const HUMAN_BODY_SYSTEMS=[
  {id:"respiratory",name:"Дыхательная",short:"Дыхательная",color:"#4f9db3",description:"Воздухоносные пути, бронхи и лёгкие"},
  {id:"circulatory",name:"Кровеносная",short:"Кровеносная",color:"#cb7387",description:"Сердце и сеть кровеносных сосудов"},
  {id:"digestive",name:"Пищеварительная",short:"Пищеварительная",color:"#c89a5f",description:"Пищевод, желудок, печень и кишечник"},
- {id:"musculoskeletal",name:"Опорно-двигательная",short:"Опорно-двигательная",color:"#7387af",description:"Кости, суставы и скелетные мышцы"}
+ {id:"musculoskeletal",name:"Опорно-двигательная",short:"Опорно-двигательная",color:"#7387af",description:"Общий вид костей, суставов и скелетных мышц"},
+ {id:"skeletal",name:"Скелетная",short:"Скелет",color:"#b6a178",description:"Череп, позвоночник, грудная клетка, таз и кости конечностей"},
+ {id:"muscular",name:"Мышечная",short:"Мышцы",color:"#bc7677",description:"Основные скелетные мышцы головы, туловища и конечностей"},
+ {id:"urinary",name:"Мочевыделительная",short:"Мочевыделение",color:"#b98f65",description:"Почки, мочеточники, мочевой пузырь и мочеиспускательный канал"},
+ {id:"lymphatic",name:"Лимфатическая",short:"Лимфа",color:"#7caa7e",description:"Лимфатические сосуды, лимфоузлы, селезёнка и тимус"},
+ {id:"endocrine",name:"Эндокринная",short:"Железы",color:"#ad83b4",description:"Гипофиз, щитовидная железа, тимус, надпочечники и поджелудочная железа"},
+ {id:"integumentary",name:"Покровная",short:"Кожа",color:"#ca9c82",description:"Кожа и её производные, без изображения половых признаков"},
+ {id:"sensory",name:"Органы чувств",short:"Чувства",color:"#659da4",description:"Глаза, уши, обонятельная и вкусовая чувствительность"}
 ] as const;
 export type HumanBodySystem=typeof HUMAN_BODY_SYSTEMS[number]["id"];
 export type HumanFocusedSystem=Exclude<HumanBodySystem,"all">;
@@ -18,12 +25,22 @@ export const HUMAN_BODY_SYSTEM_ANCHORS:Record<HumanFocusedSystem,{x:number;y:num
  respiratory:{x:484,y:178},
  circulatory:{x:483,y:194},
  digestive:{x:484,y:289},
- musculoskeletal:{x:486,y:348}
+ musculoskeletal:{x:486,y:348},
+ skeletal:{x:486,y:253},
+ muscular:{x:486,y:305},
+ urinary:{x:485,y:301},
+ lymphatic:{x:483,y:237},
+ endocrine:{x:484,y:182},
+ integumentary:{x:485,y:255},
+ sensory:{x:485,y:80}
 };
 export const HUMAN_SYSTEM_REGION:Record<HumanFocusedSystem,
- "brain"|"lungs"|"heart"|"digestive"|"musculoskeletal">={
+ "brain"|"lungs"|"heart"|"digestive"|"musculoskeletal"|
+ "skeletal"|"muscular"|"urinary"|"lymphatic"|"endocrine"|"integumentary"|"sensory">={
  nervous:"brain",respiratory:"lungs",circulatory:"heart",
- digestive:"digestive",musculoskeletal:"musculoskeletal"
+ digestive:"digestive",musculoskeletal:"musculoskeletal",
+ skeletal:"skeletal",muscular:"muscular",urinary:"urinary",lymphatic:"lymphatic",
+ endocrine:"endocrine",integumentary:"integumentary",sensory:"sensory"
 };
 export const humanSystemById=(id:HumanBodySystem)=>
  HUMAN_BODY_SYSTEMS.find(s=>s.id===id)??HUMAN_BODY_SYSTEMS[0];

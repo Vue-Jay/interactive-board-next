@@ -20,7 +20,8 @@ function LektrusBioMannequin({system="all"}:{system?:HumanBodySystem}){
   maskRepeat:"no-repeat",WebkitMaskRepeat:"no-repeat",
   maskMode:"alpha"
  };
- return <div className={"lektrus-human-biomodel "+(system==="all"?"is-overview":"is-focused")}
+ return <div className={"lektrus-human-biomodel "+(system==="all"?"is-overview":"is-focused")+
+  (system==="integumentary"?" is-skin-system":"")}
   data-bio-active-system={system} aria-hidden="true">
   {system==="all"
    ?<img className="lektrus-human-biomodel-image lektrus-human-biomodel-image-base"

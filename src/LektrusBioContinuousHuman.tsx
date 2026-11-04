@@ -7,6 +7,8 @@ import {memo,useCallback,useEffect,useMemo,useRef,useState} from "react";
 import type {PointerEvent as RP,KeyboardEvent as RK,CSSProperties} from "react";
 import LektrusBioMannequin from "./LektrusBioMannequin";
 import LektrusBioHumanSystemStudy from "./LektrusBioHumanSystemStudy";
+import LektrusBioHumanAdditionalStudy from "./LektrusBioHumanAdditionalStudy";
+import type {HumanAdditionalSystem} from "./LektrusBioHumanAdditionalStudy";
 import LektrusBioHumanSystemIcon from "./LektrusBioHumanSystemIcon";
 import {HUMAN_BODY_SYSTEMS,HUMAN_BODY_SYSTEM_ANCHORS,HUMAN_SYSTEM_REGION,
  humanSystemById,type HumanBodySystem} from "./lektrusBioHumanBodySystems";
@@ -23,7 +25,10 @@ import "./lektrusBioContinuousHuman.css";
 const dist=(a:HumanPoint,b:HumanPoint)=>Math.hypot(a.x-b.x,a.y-b.y);
 const regionNames:Record<HumanRegion,string>={
  heart:"Сердце",lungs:"Лёгкие",brain:"Головной мозг",
- digestive:"Пищеварение",musculoskeletal:"Мышцы и скелет",skin:"Кожа и покровы"
+ digestive:"Пищеварение",musculoskeletal:"Мышцы и скелет",skin:"Кожа и покровы",
+ skeletal:"Скелет",muscular:"Скелетные мышцы",urinary:"Почки и мочевые пути",
+ lymphatic:"Лимфатические сосуды",endocrine:"Эндокринные железы",
+ integumentary:"Кожа",sensory:"Органы чувств"
 };
 // Keep historical anatomy SVG trees off the wheel/pinch render hot path.
 const StaticAnatomy=memo(function StaticAnatomy({node}:{node:BioNode}){
@@ -81,16 +86,18 @@ function SkinSection({depth}:{depth:number}){
   </>}
  </svg>;
 }
-function Layer({node,study,opacity,className,point,annotation,depth}:{
- node?:BioNode;study?:"digestive"|"musculoskeletal";
+function Layer({node,study,additional,showSkin=false,opacity,className,point,annotation,depth}:{
+ node?:BioNode;study?:"digestive"|"musculoskeletal";additional?:HumanAdditionalSystem;
+ showSkin?:boolean;
  opacity:number;className:string;point:HumanPoint;
  annotation?:string;depth?:number
 }){
- if(opacity<=0)return null;
+ if(opacity<=0||!node&&!study&&!additional&&!showSkin)return null;
  return <div className={"lektrus-human-tile "+className}
   aria-hidden="true" style={{opacity,left:(point.x/W*100)+"%",top:(point.y/H*100)+"%"}}>
   {node?<StaticAnatomy node={node}/>:study?
-   <LektrusBioHumanSystemStudy system={study} level={depth??2}/>:
+   <LektrusBioHumanSystemStudy system={study} level={depth??2}/>:additional?
+   <LektrusBioHumanAdditionalStudy system={additional} level={depth??2}/>:
    <SkinSection depth={depth??2}/>}
   {annotation&&<span className="lektrus-human-tile-label">{annotation}</span>}
  </div>;
@@ -256,6 +263,11 @@ export default function LektrusBioContinuousHuman(){
  const cell=tissue?bioChildren(nodes,tissue.id)[0]:undefined;
  const isSkin=region==="skin";
  const study=region==="digestive"||region==="musculoskeletal"?region:undefined;
+ // Newly illustrated systems share this body's world coordinates at every
+ // depth. Never substitute the unrelated generic skin cell for these organs.
+ const additional=system==="skeletal"||system==="muscular"||system==="urinary"||
+  system==="lymphatic"||system==="endocrine"||system==="integumentary"||
+  system==="sensory"?system:undefined;
  const atlasPoint=humanRegionAnchor(region,selectedSpot);
  const studyNames:Record<"digestive"|"musculoskeletal",[string,string,string,string]>={
   digestive:["Пищеварительная система","Тонкая кишка","Кишечный эпителий","Энтероцит"],
@@ -263,7 +275,8 @@ export default function LektrusBioContinuousHuman(){
    "Поперечнополосатая мышечная ткань","Мышечное волокно"]
  };
  const labelAt=(index:number,node?:BioNode)=>
-  node?.name??(study?studyNames[study][index-1]:
+  node?.name??(additional?humanSystemById(system).name+" · учебная анатомическая схема":
+   study?studyNames[study][index-1]:
    isSkin?["Кожа","Слои кожи","Эпидермис","Кератиноцит"][index-1]:"");
  // All five tiers share one camera and one spatial coordinate; the retinal
  // and histological views are qualitative reconstructions, not the same
@@ -306,16 +319,16 @@ export default function LektrusBioContinuousHuman(){
      <LektrusBioMannequin system={system}/>
     </div>
     <Layer className="lektrus-human-layer-organs" point={atlasPoint}
-     node={isSkin?undefined:sys} study={study} depth={1} opacity={layer[1]}
+     node={isSkin?undefined:sys} study={study} additional={additional} showSkin={isSkin&&system==="all"} depth={1} opacity={layer[1]}
      annotation={showLabels?labelAt(1,sys):undefined}/>
     <Layer className="lektrus-human-layer-organ" point={atlasPoint}
-     node={isSkin?undefined:organ} study={study} depth={2} opacity={layer[2]}
+     node={isSkin?undefined:organ} study={study} additional={additional} showSkin={isSkin&&system==="all"} depth={2} opacity={layer[2]}
      annotation={showLabels?labelAt(2,organ):undefined}/>
     <Layer className="lektrus-human-layer-tissue" point={atlasPoint}
-     node={isSkin?undefined:tissue} study={study} depth={3} opacity={layer[3]}
+     node={isSkin?undefined:tissue} study={study} additional={additional} showSkin={isSkin&&system==="all"} depth={3} opacity={layer[3]}
      annotation={showLabels?labelAt(3,tissue):undefined}/>
     <Layer className="lektrus-human-layer-cell" point={atlasPoint}
-     node={isSkin?undefined:cell} study={study} depth={4} opacity={layer[4]}
+     node={isSkin?undefined:cell} study={study} additional={additional} showSkin={isSkin&&system==="all"} depth={4} opacity={layer[4]}
      annotation={showLabels?labelAt(4,cell):undefined}/>
     {cam.depth<1.15&&system==="all"&&<span className="lektrus-human-beacon"
      style={{left:(483/W*100)+"%",top:(194/H*100)+"%",opacity:1-cam.depth/1.15}}/>}
