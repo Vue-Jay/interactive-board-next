@@ -34,9 +34,10 @@
  will-change:transform;pointer-events:none;touch-action:none}
 .lektrus-human-world.is-travelling{transition:transform .44s cubic-bezier(.2,.76,.24,1)}
 .lektrus-human-body{position:absolute;left:50%;top:1.5%;width:20.2%;height:97%;transform:translateX(-50%);
- transition:opacity .12s ease-out;pointer-events:none;
- mask-image:linear-gradient(90deg,transparent 0%,#000 13%,#000 89%,transparent 100%)}
-.lektrus-human-body img{width:100%;height:100%;object-fit:cover;display:block}
+ transition:opacity .12s ease-out;pointer-events:none}
+/* The articulated mannequin has a crisp silhouette; photographic feathering
+   would erase hands and the subtle anatomical joint markers. */
+.lektrus-human-body .lektrus-human-mannequin{width:100%;height:100%;display:block;filter:drop-shadow(0 5px 8px #667b941d)}
 .lektrus-human-tile{position:absolute;display:grid;place-items:center;overflow:hidden;
  transform:translate(-50%,-50%);pointer-events:none;isolation:isolate;
  mask-image:radial-gradient(ellipse closest-side,#000 61%,#000d 73%,transparent 100%);
@@ -75,8 +76,7 @@
 .lektrus-human-minimap{position:absolute;left:16px;bottom:16px;z-index:5;
  width:90px;height:65px;border:1px solid #c8b9e2;border-radius:11px;
  overflow:hidden;background:#f9f7ffef;box-shadow:0 3px 17px #685f9020;pointer-events:none}
-.lektrus-human-minimap img{position:absolute;left:39%;top:2%;width:21%;height:96%;object-fit:cover;
- mask-image:linear-gradient(90deg,transparent,#000 13% 90%,transparent)}
+.lektrus-human-minimap .lektrus-human-mannequin{position:absolute;left:39%;top:2%;width:21%;height:96%;display:block}
 .lektrus-human-minimap-field{position:absolute;display:block;border:2px solid #7b5cb6;
  border-radius:4px;background:#b79be02a;min-width:3px;min-height:3px}
 .lektrus-human-zoom{position:absolute;right:14px;top:50%;z-index:6;transform:translateY(-50%);
