@@ -45,7 +45,10 @@ function Nerves(){
  </g>;
 }
 function Respiration(){
- return <g data-anatomy="respiratory" strokeLinejoin="round" strokeLinecap="round">
+ /* Place bronchi and lungs in the chest of the 360 x 840 source figure,
+  not down over the abdominal organs. The airway starts near the nose. */
+ return <g data-anatomy="respiratory" transform="translate(0 -30) scale(1 .9)"
+  strokeLinejoin="round" strokeLinecap="round">
   <path d="M180 142V215" stroke="#d6d5c3" strokeWidth="17"/>
   {Array.from({length:9},(_,i)=><path key={i} d={`M172 ${151+i*7}h16`}
    stroke="#83a0a8" strokeWidth="2.5"/>)}
@@ -69,10 +72,11 @@ function Respiration(){
 }
 function Circulation(){
  return <g data-anatomy="circulatory" fill="none" strokeLinecap="round" strokeLinejoin="round">
+  {/* Cardiovascular heart must sit between lungs, not at navel height. */}
   <path d="M190 257Q218 231 232 255Q246 283 224 318Q204 339 187 336
     Q168 315 157 282Q154 258 174 252Q182 250 190 257Z"
-   fill="#d67f8a" stroke="#a75264" strokeWidth="3.2"/>
-  <path d="M193 269Q201 286 196 320" stroke="#a94e64" strokeWidth="3" fill="none"/>
+   fill="#d67f8a" stroke="#a75264" strokeWidth="3.2" transform="translate(0 -32)"/>
+  <path d="M193 269Q201 286 196 320" stroke="#a94e64" strokeWidth="3" fill="none" transform="translate(0 -32)"/>
   <path d="M197 268Q184 239 194 212Q200 199 217 205" stroke={artery} strokeWidth="11"/>
   <path d="M184 270Q170 243 168 213Q160 202 149 204" stroke={vein} strokeWidth="9"/>
   <path d="M205 211Q226 220 256 229L286 263L308 345" stroke={artery} strokeWidth="6"/>
@@ -93,7 +97,10 @@ function Circulation(){
  </g>;
 }
 function Digestion(){
- return <g data-anatomy="digestive" strokeLinecap="round" strokeLinejoin="round">
+ /* Keep the liver/stomach above the intestines and the intestine
+  inside the lower abdomen of the same approved silhouette. */
+ return <g data-anatomy="digestive" transform="translate(0 6) scale(1 .9)"
+  strokeLinecap="round" strokeLinejoin="round">
   <path d="M178 142Q185 191 181 247L188 295" stroke="#d8af94" strokeWidth="10"
    fill="none"/>
   {/* The liver is on anatomical right, viewer-left. */}

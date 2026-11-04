@@ -28,7 +28,12 @@ function LektrusBioMannequin({system="all"}:{system?:HumanBodySystem}){
      src={biomodel} alt="" draggable={false}/>
    :<>
      <div className="lektrus-human-biomodel-shell" style={shellStyle}/>
-     <LektrusBioHumanSystemOverlay system={system}/>
+     {/* Clip selected organs to the SAME transparent external body outline.
+         This remains a spatial mask only: the flattened all-systems pixels
+         never appear beneath a selected system. */}
+     <div className="lektrus-human-biomodel-anatomy-mask" style={shellStyle}>
+      <LektrusBioHumanSystemOverlay system={system}/>
+     </div>
     </>}
   <span className="lektrus-human-biomodel-state"
    data-bio-system-opacity={system==="all"?"1":String(humanSystemVisibility(system,system))}/>

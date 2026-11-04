@@ -114,7 +114,9 @@ assert.match(src,/humanRegionAnchor\(region,selectedSpot\)/);
 assert.match(src,/HUMAN_BODY_SYSTEMS\.map\(entry=>/);
 assert.match(src,/onClick=\{\(\)=>chooseSystem\(entry.id\)\}/);
 assert.match(src,/aria-pressed=\{system===entry.id\}/);
-assert.match(src,/study=\{study\} depth=\{4\}/);
+assert.match(src,/study=\{study\} additional=\{additional\} showSkin=\{isSkin&&system==="all"\} depth=\{4\}/);
+assert.match(src,/additional=\{additional\} showSkin=\{isSkin&&system==="all"\}/,
+ "Chosen anatomy must remain visible on deeper layers without substituted skin");
 assert.match(src,/humanLayerOpacity\(cam.depth,i\)/);
 assert.match(src,/humanUnproject\(camera.current,point\)/);
 assert.match(src,/humanVisibleField\(cam\)/);

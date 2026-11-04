@@ -56,7 +56,11 @@
 .lektrus-school-preview-heading span{font-size:11px;color:#8ca0b4}
 .lektrus-school-preview{flex:1;min-height:150px;display:flex;align-items:center;justify-content:center;min-width:0;
  border:1px solid #d4e1f1;border-radius:13px;background:#fff;overflow:hidden}
-.lektrus-school-preview svg{width:100%;height:auto;max-height:100%;aspect-ratio:9/5}
+/* Only a direct standalone school diagram gets the 9:5 page ratio.
+ * Descendant SVGs in the human microscope have their OWN portrait viewBox.
+ * A broad ".lektrus-school-preview svg" rule used to squash 360x840 organs
+ * into a landscape strip at the head and distort the selector icons. */
+.lektrus-school-preview > svg{width:100%;height:auto;max-height:100%;aspect-ratio:9/5}
 .lektrus-school-footer{display:flex;align-items:center;gap:9px;flex:none;padding:12px 17px;
  border-top:1px solid #dce5f0}
 .lektrus-school-footer>span{min-width:0;flex:1;color:#72869d;font-size:11px;line-height:1.35}
