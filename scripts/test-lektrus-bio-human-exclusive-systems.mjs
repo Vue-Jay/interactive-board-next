@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import ts from "typescript";
 
-// Runtime verification, not just checking for CSS class strings: render the
-// actual React element tree without a browser and inspect what is painted.
+// Render the real JSX tree in Node, without snapshotting screenshots.
+// A selection must have EXACTLY one anatomical raster, never an unrelated
+// SVG organ or another system accidentally visible beneath it.
 const read=path=>fs.readFileSync(path,"utf8");
 const jsx=(type,props)=>({type,props:props??{}});
-const react={memo:fn=>fn,useId:()=>":exclusive:"};
+const react={memo:fn=>fn};
 const load=(file,mocks={})=>{
  const source=read(file);
  const ast=ts.createSourceFile(file,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
@@ -14,78 +15,70 @@ const load=(file,mocks={})=>{
  const code=ts.transpileModule(source,{fileName:file,compilerOptions:{
   module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,
   jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
- const result={};
- new Function("exports","require",code)(result,name=>{
+ const exports={};
+ new Function("exports","require",code)(exports,name=>{
   if(name==="react/jsx-runtime")return {jsx,jsxs:jsx};
   if(name==="react")return react;
-  assert.ok(name in mocks,"Unexpected dependency "+name+" for "+file);
+  assert.ok(name in mocks,"Unexpected dependency "+name+" from "+file);
   return mocks[name];
  });
- return result;
+ return exports;
 };
 function traverse(element,all=[]){
  if(Array.isArray(element)){for(const child of element)traverse(child,all);return all;}
  if(!element||typeof element!=="object"||!("type" in element))return all;
  if(typeof element.type==="function")traverse(element.type(element.props),all);
- else{all.push(element);traverse(element.props.children,all);}
+ else {all.push(element);traverse(element.props.children,all);}
  return all;
 }
-const systemModule=load("src/lektrusBioHumanBodySystems.ts");
-const systems=systemModule.HUMAN_BODY_SYSTEMS.map(x=>x.id);
-assert.deepEqual(systems,["all","nervous","respiratory","circulatory","digestive",
- "musculoskeletal","skeletal","muscular","urinary","lymphatic","endocrine",
- "integumentary","sensory"]);
-const overlayFile="src/LektrusBioHumanSystemOverlay.tsx";
-const extra=load("src/LektrusBioHumanAdditionalSystems.tsx");
-const overlays=load(overlayFile,{"./LektrusBioHumanAdditionalSystems":extra});
-const mannequinFile="src/LektrusBioMannequin.tsx";
-const mannequin=load(mannequinFile,{
- "./assets/bio-atlas/human-biomodel.webp":{__esModule:true,default:"/approved-human.webp"},
- "./LektrusBioHumanSystemOverlay":overlays,
- "./lektrusBioHumanBodySystems":systemModule
+const registry=load("src/lektrusBioHumanBodySystems.ts");
+const systems=registry.HUMAN_BODY_SYSTEMS.map(x=>x.id);
+assert.deepEqual(systems,[
+ "nervous","respiratory","circulatory","digestive",
+ "urinary","musculoskeletal","integumentary"]);
+const mannequin=load("src/LektrusBioMannequin.tsx",{
+ "./assets/bio-atlas/human-biomodel.webp":{__esModule:true,default:"/human-biomodel.webp"},
+ "./assets/bio-atlas/human-seven-systems.webp":{__esModule:true,default:"/human-seven-systems.webp"},
+ "./lektrusBioHumanBodySystems":registry
 });
 const all=traverse(mannequin.default({system:"all"}));
 assert.equal(all.filter(x=>x.type==="img").length,1,
- "All-systems overview may show the approved original figure");
+ "General organism overview keeps the original approved image");
 assert.equal(all.filter(x=>x.props["data-anatomy"]!==undefined).length,0);
 const seen=new Set();
-for(const chosen of systems.slice(1)){
- const elements=traverse(mannequin.default({system:chosen}));
- const rendered=elements.filter(x=>x.props["data-anatomy"]!==undefined);
- assert.equal(rendered.length,1,"Exactly ONE internal system should render");
- assert.equal(rendered[0].props["data-anatomy"],chosen);
+for(const system of systems){
+ const elements=traverse(mannequin.default({system}));
+ const active=elements.filter(x=>x.props["data-anatomy"]!==undefined);
+ assert.equal(active.length,1,"A system must render exactly one medical raster plate: "+system);
+ const art=active[0];
+ assert.equal(art.props["data-anatomy"],system);
+ assert.equal(art.props["data-image-kind"],"medical-raster");
+ assert.equal(art.props.style.backgroundSize,"700% 100%");
+ assert.match(art.props.style.backgroundImage,/human-seven-systems\.webp/);
  assert.equal(elements.filter(x=>x.type==="img").length,0,
-  "Flattened biomodel must not paint other organs beneath selection");
- const shell=elements.find(x=>x.props.className==="lektrus-human-biomodel-shell");
- assert.ok(shell,"No translucent external body shell");
- assert.equal(shell.props.style.maskMode,"alpha");
- assert.match(shell.props.style.maskImage,/url\(\/approved-human\.webp\)/);
- assert.equal(systemModule.humanSystemVisibility(chosen,chosen),1);
- for(const other of systems.slice(1)){
-  if(other!==chosen)assert.equal(systemModule.humanSystemVisibility(chosen,other),0);
+  "A focused system must not paint the flattened multi-organ overview");
+ assert.equal(elements.filter(x=>x.type==="svg").length,0,
+  "Old vector-based organ drawings must not render on this layer");
+ assert.equal(registry.humanSystemVisibility(system,system),1);
+ assert.equal(registry.humanSystemVisibility("all",system),1);
+ for(const other of systems)if(other!==system){
+  assert.equal(registry.humanSystemVisibility(system,other),0);
  }
- assert.ok(!seen.has(rendered[0].props["data-anatomy"]));
- seen.add(rendered[0].props["data-anatomy"]);
+ assert.ok(!seen.has(system));seen.add(system);
 }
-assert.equal(seen.size,12);
+assert.equal(seen.size,7);
 const viewer=read("src/LektrusBioContinuousHuman.tsx");
-assert.doesNotMatch(viewer,/import (?:organsImage|heartImage|tissueImage|cellImage)/,
- "Inaccurate mixed-design image collage must never reappear at zoom depth");
-assert.match(viewer,/const choose=useCallback\(\(point:HumanPoint\)=>\{[\s\S]*?if\(system!=="all"\)/,
- "Pinching may not silently change a manually selected body system");
-assert.match(viewer,/const sys=root\?nodes.find/);
-assert.match(viewer,/node=\{isSkin\?undefined:sys\}/);
-assert.match(viewer,/node=\{isSkin\?undefined:organ\}/);
-assert.match(viewer,/node=\{isSkin\?undefined:tissue\}/);
-assert.match(viewer,/node=\{isSkin\?undefined:cell\}/);
-assert.match(viewer,/labelAt\(4,cell\)/);
-const study=read("src/LektrusBioHumanSystemStudy.tsx");
-assert.match(study,/data-bio-human-organ="small-intestine"/);
-assert.match(study,/function IntestinalVilli/);
-assert.match(study,/function Enterocyte/);
-assert.doesNotMatch(study,/fontWeight="800" fill="#805856">Желудок/,
- "Do not zoom from stomach into small-intestine villus and call it the same organ");
+assert.match(viewer,/rasterSelected=system!=="all"/);
+assert.match(viewer,/opacity:rasterSelected\?1:layer\[0\]/);
+for(let i=1;i<=4;i++){
+ assert.ok(viewer.includes("opacity={rasterSelected?0:layer["+i+"]}"),
+  "Selected raster must not switch to a schematic drawing when zooming");
+}
+assert.match(viewer,/HUMAN_BODY_SYSTEMS.map\(entry=>/);
+assert.match(viewer,/data-human-active-system=\{system\}/);
+assert.match(viewer,/chooseSystem\("all"\)/);
 const css=read("src/lektrusBioContinuousHuman.css");
-assert.match(css,/\.lektrus-human-system-overlay\{/);
-assert.match(css,/\.lektrus-human-biomodel-shell\{/);
-console.log("Exclusive human systems PASS: one system drawn, other systems absent; no flattened anatomy bleed; matched organ, tissue and cell views.");
+assert.match(css,/\.lektrus-human-raster-plate\{/);
+assert.match(css,/\.lektrus-human-body\.is-raster-focus\{/);
+assert.match(css,/\.lektrus-human-minimap \.lektrus-human-biomodel\.is-raster-focused\{/);
+console.log("Seven independent human raster systems PASS: exact selections, offline illustrations, no vector anatomy or other-system bleed, continuous zoom.");
