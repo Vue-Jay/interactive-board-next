@@ -21,7 +21,8 @@ export const humanClampDepth=(depth:number)=>clamp(depth,0,HUMAN_ATLAS_MAX_DEPTH
 export function humanCameraBound(cam:HumanCamera):HumanCamera{
  const depth=humanClampDepth(cam.depth),scale=humanScale(depth);
  const hx=HUMAN_ATLAS_WIDTH*(scale-1)/2,hy=HUMAN_ATLAS_HEIGHT*(scale-1)/2;
- return {depth,panX:clamp(cam.panX,-hx,hx),panY:clamp(cam.panY,-hy,hy)};
+ return {depth,panX:hx===0?0:clamp(cam.panX,-hx,hx),
+  panY:hy===0?0:clamp(cam.panY,-hy,hy)};
 }
 export function humanProject(cam:HumanCamera,p:HumanPoint):HumanPoint{
  const scale=humanScale(cam.depth);
