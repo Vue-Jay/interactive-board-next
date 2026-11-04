@@ -34,6 +34,9 @@ assert.match(scene,/viewBox="0 0 360 840"/,
 assert.match(scene,/data-bio-only-system=\{system\}/);
 assert.match(mannequin,/maskSize:"100% 100%"/);
 assert.match(mannequin,/LektrusBioHumanSystemOverlay system=\{system\}/);
+assert.match(mannequin,/className="lektrus-human-biomodel-anatomy-mask" style=\{shellStyle\}/,
+ "A selected system must use the SAME transparent external silhouette mask");
+assert.match(human,/\.lektrus-human-biomodel-anatomy-mask\{/);
 
 const bodyWidth=/\.lektrus-human-body\{width:([\d.]+)%;height:97%;mask-image:none\}/
  .exec(human);
