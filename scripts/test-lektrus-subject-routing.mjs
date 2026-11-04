@@ -11,7 +11,7 @@ const registryEnd=registry.indexOf("export function subjectToolsFor",registrySta
 const entries=registry.slice(registryStart,registryEnd);
 const rx=/\{id:"([a-z0-9-]+)",label:"[^"]+",description:"[^"]+",group:"[^"]+",subjects:\[([^\]]*)\]\}/g;
 const definitions=[...entries.matchAll(rx)].map(([,id,raw])=>({id,subjects:[...raw.matchAll(/"([^"]+)"/g)].map(m=>m[1])}));
-assert.equal(definitions.length,35,"Check all visible school tools, including unified biology microscope");
+assert.equal(definitions.length,36,"Anatomy is an independent biology workflow; old microscope stays readable");
 const humanities={
  "русский язык":["ru-syntax","ru-morphemes","ru-morphology","ru-phonetics" ,"ru-orthography"],
  "история":["history-timeline","history-family-tree","history-atlas"],
@@ -28,7 +28,11 @@ assert.deepEqual(definitions.find(d=>d.id==="info-flowchart")?.subjects,["инф
 const registered=new Set(definitions.map(d=>d.id));
 assert.equal(registered.size,definitions.length);
 for(const d of definitions){
- assert.ok(d.subjects.length>0,d.id+": a tool must have a subject");
+ if(d.id==="bio-microscope"){
+  assert.deepEqual(d.subjects,[],"Old microscope stays loadable, not discoverable until animal/plant tools");
+  continue;
+ }
+ assert.ok(d.subjects.length>0,d.id+": a new tool must have a subject");
  assert.equal(new Set(d.subjects).size,d.subjects.length,d.id+": duplicate subject registration");
  for(const s of d.subjects)assert.ok(subjects.toLocaleLowerCase("ru-RU").includes('"'+s.toLocaleLowerCase("ru-RU")+'"'),
   d.id+": unknown school subject "+s);
