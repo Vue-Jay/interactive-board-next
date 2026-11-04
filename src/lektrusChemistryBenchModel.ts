@@ -99,6 +99,9 @@ export const MAX_LAB_DEVICES=10;
 /** High-temperature virtual heater for classroom demonstrations.
  * Actual ordinary hotplates must NOT be assumed to reach this temperature. */
 export const LAB_HOTPLATE_MAX_C=1000;
+/** Virtual refrigerated bath for school phase-change demonstrations. */
+export const LAB_COOLER_MIN_C=-100;
+export const LAB_COOLER_MAX_C=20;
 const clampDevice=(v:number,min:number,max:number)=>Math.round(Math.min(max,Math.max(min,v))*10)/10;
 /** Normalize placed devices once per immutable lab revision. A physical
  * simulation step previously reconstructed the same apparatus list for every
@@ -226,11 +229,11 @@ export function setLabHotplateTemperature(bench:LabBench,id:string,temperature:n
  return {...bench,placedDevices:placedLabDevices(bench).map(d=>d.id===id?
   {...d,targetTemperatureC}:d),event:bench.event+1};
 }
-/** Simulated ice / salt-ice bath with a finite thermal transfer rate. */
+/** Simulated refrigerated bath with a finite thermal transfer rate. */
 export function setLabCoolerTemperature(bench:LabBench,id:string,temperature:number):LabBench{
  const device=placedLabDevices(bench).find(d=>d.id===id&&d.kind==="cooler");
  if(!device||!Number.isFinite(temperature))return bench;
- const targetTemperatureC=Math.round(Math.min(20,Math.max(-20,temperature)));
+ const targetTemperatureC=Math.round(Math.min(LAB_COOLER_MAX_C,Math.max(LAB_COOLER_MIN_C,temperature)));
  if(device.targetTemperatureC===targetTemperatureC)return bench;
  return {...bench,placedDevices:placedLabDevices(bench).map(d=>d.id===id?
   {...d,targetTemperatureC}:d),event:bench.event+1};
@@ -506,7 +509,8 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
   // receives a boiling plateau below.
   // No arbitrary 450/550°C vessel ceiling: actual phase changes and heater
   // energy set the temperature. Only cap the numerical model's safe range.
-  let next=Math.round(Math.max(-30,Math.min(1450,raw))*10)/10;
+  let next=Math.round(Math.max(LAB_COOLER_MIN_C,Math.min(1450,raw))*10)/10;
+  let frozenFraction=v.frozenFraction??0;
   let meltFraction=v.meltFraction??0;
   let phaseTransition=v.phaseTransition;
   const point=profile.melting&&pure?.unit==="g"&&!v.uncertain&&!v.completedReaction?
@@ -553,8 +557,50 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
      next=point;
     }
    }
-   next=Math.round(Math.max(-30,Math.min(1450,next))*10)/10;
+   next=Math.round(Math.max(LAB_COOLER_MIN_C,Math.min(1450,next))*10)/10;
    meltFraction=Math.round(meltFraction*1e7)/1e7;
+  }
+  // Pure-liquid freezing and thawing. The refrigerated bath crosses 0°C.
+  // Water remains at the transition while its heat of fusion is released;
+  // dilute mixtures are not assigned an arbitrary freezing point.
+  const liquidPoint=profile.melting&&pure?.unit==="ml"&&!v.uncertain?
+   pure.info.meltingC:undefined;
+  if(liquidPoint!==undefined&&liquidPoint>=LAB_COOLER_MIN_C&&
+     liquidPoint<=LAB_COOLER_MAX_C){
+   const heatCapacity=calorimetry?.capacityJPerK??
+    labKnownHeatCapacityJPerK(v.kind,v.doses,v.filteredSolution?.volumeMl??0);
+   const massG=(v.doses?.[pure!.id]?.value??0)*
+    (LAB_CALORIMETRY_REFERENCE[pure!.id]?.densityGPerMl??1);
+   const latentPerG=LAB_FUSION_HEAT_J_PER_G[pure!.id]??
+    (pure!.id==="H2O"?334:undefined);
+   const latentJ=massG>0&&latentPerG?massG*latentPerG:undefined;
+   const cooling=toward<liquidPoint-.1&&(raw<liquidPoint||frozenFraction>0);
+   const warming=toward>liquidPoint+.1&&(raw>liquidPoint||frozenFraction>0);
+   if(cooling&&frozenFraction<1){
+    phaseTransition="freezing";
+    if(latentJ&&heatCapacity){
+     const removedJ=Math.max(0,(liquidPoint-raw)*heatCapacity);
+     const releasedJ=Math.min(removedJ,(1-frozenFraction)*latentJ);
+     frozenFraction=Math.min(1,frozenFraction+releasedJ/latentJ);
+     next=liquidPoint-Math.max(0,removedJ-releasedJ)/heatCapacity;
+    }else{
+     frozenFraction=Math.min(1,frozenFraction+seconds*.008);
+     next=liquidPoint;
+    }
+   }else if(warming&&frozenFraction>0){
+    phaseTransition="thawing";
+    if(latentJ&&heatCapacity){
+     const availableJ=Math.max(0,(raw-liquidPoint)*heatCapacity);
+     const absorbedJ=Math.min(availableJ,frozenFraction*latentJ);
+     frozenFraction=Math.max(0,frozenFraction-absorbedJ/latentJ);
+     next=liquidPoint+Math.max(0,availableJ-absorbedJ)/heatCapacity;
+    }else{
+     frozenFraction=Math.max(0,frozenFraction-seconds*.008);
+     next=liquidPoint;
+    }
+   }
+   next=Math.round(Math.max(LAB_COOLER_MIN_C,Math.min(1450,next))*10)/10;
+   frozenFraction=Math.round(frozenFraction*1e7)/1e7;
   }
   // Verified pure liquids receive a boiling plateau. Neat mixtures get
   // ideal Raoult vapor pressures; stock solvents with unrecorded composition
@@ -598,7 +644,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
     (raw-boilingPoint)*calorimetry.capacityJPerK:0;
    const extraLatentJ=Math.max(0,phase.latentEnergyJ-plateauEnergyJ);
    if(extraLatentJ>0)
-    next=Math.round(Math.max(-30,Math.min(next,
+    next=Math.round(Math.max(LAB_COOLER_MIN_C,Math.min(next,
      raw-extraLatentJ/calorimetry.capacityJPerK))*10)/10;
   }
   // When disabled, keep measured solvent, composition and energy intact.
@@ -637,7 +683,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
   const cooling=!device?.powered&&next<42&&v.temperatureC!==undefined&&
    ["heated","ignited"].includes(v.environment);
   const phaseChanged=meltFraction!==(v.meltFraction??0)||
-   phaseTransition!==v.phaseTransition;
+   frozenFraction!==(v.frozenFraction??0)||phaseTransition!==v.phaseTransition;
   if(next!==old||cooling||evaporating||popped||dissolutionComplete||
    phaseChanged||kineticChanged||mixedChanged)changed=true;
   if(next===old&&!cooling&&!evaporating&&!popped&&!dissolutionComplete&&
@@ -647,7 +693,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
    substances.find(s=>s.id===id)?.kind!=="газ");
   const vented=popped?labVentStopperedVessel(v):undefined;
   return {...v,temperatureC:next,
-   ...(phaseChanged?{meltFraction,phaseTransition}:{}),
+   ...(phaseChanged?{meltFraction,frozenFraction,phaseTransition}:{}),
    ...(kinetic||mixedKinetic?
     {binarySaltPhase:nextSalt??v.binarySaltPhase,
      mixedSaltPhase:profile.mixedSaltKinetics?mixedKinetic?.state:v.mixedSaltPhase,
@@ -1152,7 +1198,9 @@ export type LabVessel={pourFraction?:number;
  ventedVaporMl?:Record<string,number>;
  /** 0 = solid, 1 = fully molten. Conserved across viewers and cooling. */
  meltFraction?:number;
- phaseTransition?:"melting"|"crystallizing";
+ /** Frozen portion of a pure liquid, 0=liquid, 1=solid (ice etc.). */
+ frozenFraction?:number;
+ phaseTransition?:"melting"|"crystallizing"|"freezing"|"thawing";
  /** Shared event timestamp: peer clients render brief physical effects once. */
  visualStartedAtMs?:number;
  /** Target volume when collecting a sample with a graduated pipette. */
@@ -2724,7 +2772,7 @@ export function labMixedContentsTemperatureC(
  const sourceC=source.temperatureC??22,targetC=target.temperatureC??22;
  const total=sourceCapacity+targetCapacity;
  if(total<=1e-10)return targetC;
- return Math.round(Math.max(0,Math.min(1250,
+ return Math.round(Math.max(LAB_COOLER_MIN_C,Math.min(1250,
   (sourceCapacity*sourceC+targetCapacity*targetC)/total))*10)/10;
 }
 
