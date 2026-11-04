@@ -44,6 +44,10 @@ assert.equal(m.humanRegionAt({x:483,y:194}),"heart");
 assert.equal(m.humanRegionAt({x:450,y:193}),"lungs");
 assert.equal(m.humanRegionAt({x:480,y:62}),"brain");
 assert.equal(m.humanRegionAt({x:480,y:480}),"skin");
+assert.equal(m.humanRegionAt({x:481,y:285}),"digestive");
+assert.equal(m.humanRegionAt({x:365,y:238}),"musculoskeletal");
+assert.deepEqual(m.humanRegionAnchor("digestive",{x:0,y:0}),m.HUMAN_ORGAN_ANCHORS.digestive);
+assert.deepEqual(m.humanRegionAnchor("musculoskeletal",{x:0,y:0}),m.HUMAN_ORGAN_ANCHORS.musculoskeletal);
 assert.equal(m.humanRegionAt({x:20,y:10}),"skin");
 assert.deepEqual(m.humanRegionAnchor("skin",{x:503,y:420}),{x:503,y:420});
 assert.deepEqual(m.humanRegionAnchor("brain",{x:503,y:420}),m.HUMAN_ORGAN_ANCHORS.brain);
@@ -72,19 +76,29 @@ for(const asset of ["organs","heart","tissue","cell"]){
 }
 const mannequinFile="src/LektrusBioMannequin.tsx";
 const mannequin=fs.readFileSync(mannequinFile,"utf8");
+const modelAsset="src/assets/bio-atlas/human-biomodel.webp";
+assert.ok(fs.existsSync(modelAsset),"Approved translucent human artwork must be local");
+const approved=fs.readFileSync(modelAsset);
+assert.equal(approved.subarray(0,4).toString("utf8"),"RIFF");
+assert.equal(approved.subarray(8,12).toString("utf8"),"WEBP");
+assert.ok(approved.length>75000&&approved.length<350000,
+ "Approved anatomical asset should retain detail without excessive loading");
 const mannequinAst=ts.createSourceFile(mannequinFile,mannequin,
  ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(mannequinAst.parseDiagnostics.length,0,"Mannequin SVG component must parse");
 assert.match(mannequin,/export default memo\(LektrusBioMannequin\)/);
 assert.match(mannequin,/useId\(\)/,"Both figures must use unique SVG gradient ids");
-assert.match(mannequin,/viewBox="0 0 240 640"/);
-assert.match(mannequin,/Cervical joint and a smooth, featureless head/);
-assert.match(mannequin,/neutral mannequin pelvis/i);
+assert.match(mannequin,/human-biomodel\.webp/);
+assert.match(mannequin,/highlightMasks/);
+assert.match(mannequin,/data-bio-active-system=\{system\}/);
+assert.match(mannequin,/musculoskeletal/);
+assert.match(mannequin,/approved semi-transparent biomodel/i);
+assert.match(mannequin,/is-overview/);
 assert.match(mannequin,/aria-hidden="true"/);
 assert.match(src,/import LektrusBioMannequin from "\.\/LektrusBioMannequin"/);
 assert.equal(src.includes("assets/bio-atlas/body.webp"),false,
  "Do not display the realistic photograph in the school atlas");
-assert.equal((src.match(/<LektrusBioMannequin\/>/g)||[]).length,2,
+assert.equal((src.match(/<LektrusBioMannequin system=\{system\}\/>/g)||[]).length,2,
  "Main body and minimap must show exactly the same mannequin");
 assert.match(src,/onPointerDown=\{press\} onPointerMove=\{move\}/);
 assert.match(src,/onPointerUp=\{release\} onPointerCancel=\{release\}/);
@@ -93,6 +107,10 @@ assert.match(src,/humanZoomAt\(before,before.depth\+delta,point\)/);
 assert.match(src,/Math.log\(d1\/d0\)\/Math.log\(2.18\)/,"Pinch must zoom smoothly, not advance an atlas page");
 assert.match(src,/humanRegionAt\(point\)/);
 assert.match(src,/humanRegionAnchor\(region,selectedSpot\)/);
+assert.match(src,/HUMAN_BODY_SYSTEMS\.map\(entry=>/);
+assert.match(src,/onClick=\{\(\)=>chooseSystem\(entry.id\)\}/);
+assert.match(src,/aria-pressed=\{system===entry.id\}/);
+assert.match(src,/study=\{study\} depth=\{4\}/);
 assert.match(src,/humanLayerOpacity\(cam.depth,i\)/);
 assert.match(src,/humanUnproject\(camera.current,point\)/);
 assert.match(src,/humanVisibleField\(cam\)/);
@@ -107,12 +125,13 @@ assert.match(parent,/activeOrganism!=="human"&&<LektrusBioUnifiedZoom/);
 assert.match(parent,/showExercise=Boolean\(diagram.activity==="label"\|\|diagram.activity==="assemble"\)/);
 const css=fs.readFileSync("src/lektrusBioContinuousHuman.css","utf8");
 assert.match(css,/touch-action:none/);
-assert.match(css,/\.lektrus-human-body \.lektrus-human-mannequin/);
-assert.match(css,/\.lektrus-human-minimap \.lektrus-human-mannequin/);
+assert.match(css,/\.lektrus-human-biomodel-image-focus/);
+assert.match(css,/\.lektrus-human-system-options button.is-active/);
+assert.match(css,/\.lektrus-human-minimap \.lektrus-human-biomodel/);
 assert.equal(css.includes(".lektrus-human-body img{"),false,
  "Photograph-specific body styles must be removed");
 assert.match(css,/\.lektrus-human-world.is-travelling\{transition:transform/);
 assert.match(css,/mask-image:radial-gradient/);
 assert.match(css,/@media\(max-width:650px\)/);
 assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
-console.log("Continuous human atlas PASS: one gender-neutral SVG mannequin in body and minimap, 4 local anatomy images, cursor-anchored zoom, smooth cross-fades and touch/pinch gestures.");
+console.log("Continuous human atlas PASS: approved translucent biological figure, five selectable systems, four deep atlas images, correct cursor-anchored zoom, full-body minimap and touch/pinch gestures.");
