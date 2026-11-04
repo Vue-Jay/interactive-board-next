@@ -5,6 +5,7 @@
  *   node scripts/audit-lektrus-lab-properties.mjs
  *   node scripts/audit-lektrus-lab-properties.mjs --json
  *   node scripts/audit-lektrus-lab-properties.mjs --markdown
+ *   node scripts/audit-lektrus-lab-properties.mjs --missing
  *   node scripts/audit-lektrus-lab-properties.mjs --verify
  */
 import assert from "node:assert/strict";
@@ -509,7 +510,15 @@ if(process.argv.includes("--verify")){
  assert.ok(producedOnly.every(x=>x.molarMassKnown),
   "Every existing reviewed product must have a calculable formula mass");
 }
-if(process.argv.includes("--json")){
+if(process.argv.includes("--missing")){
+ const byProperty=Object.fromEntries(Object.entries(counted).map(([key,value])=>
+  [key,{remaining:value.remaining,formulas:value.firstMissing}]));
+ console.log(JSON.stringify({schemaVersion:1,stock:rawTotals.stock,
+  outstanding:report.stockWithOutstandingProperties,byProperty,
+  byReagent:stockRows.filter(row=>row.missing.length).map(row=>({
+   formula:row.formula,name:row.name,missing:row.missing
+  }))},null,2));
+}else if(process.argv.includes("--json")){
  console.log(JSON.stringify(report,null,2));
 }else if(process.argv.includes("--markdown")){
  const labels={
