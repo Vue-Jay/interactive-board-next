@@ -21,6 +21,16 @@ export function skinMicroOpacity(scale:number){
  return {collagen:smooth(8,38,scale),adipocytes:smooth(65,145,scale),
   keratinocytes:smooth(145,310,scale)};
 }
+/** Epidermis strata from surface toward the dermal basement membrane.
+ * The expanded cutaway is schematic, not a measured tissue thickness. */
+export type SkinEpidermisStratum="corneum"|"granulosum"|"spinosum"|"basale";
+export function skinEpidermisStratum(fraction:number):SkinEpidermisStratum|null{
+ if(fraction<.007||fraction>=.13)return null;
+ if(fraction<.025)return "corneum";
+ if(fraction<.046)return "granulosum";
+ if(fraction<.107)return "spinosum";
+ return "basale";
+}
 export function skinMicroCellDiameterMicrons(kind:"adipocyte"|"keratinocyte"){
  return kind==="adipocyte"?{min:65,max:105}:{min:17,max:27};
 }
@@ -54,7 +64,7 @@ function inView(c:SkinSectionContour,b:SkinMicroBounds):boolean{
 function paintGrid(
  contours:readonly SkinSectionContour[],bounds:SkinMicroBounds,
  step:number,band:Band,budget:number,
- draw:(x:number,y:number,ix:number,iy:number)=>void
+ draw:(x:number,y:number,ix:number,iy:number,depthFraction:number)=>void
 ):number{
  if(bounds.minX>=bounds.maxX||bounds.minY>=bounds.maxY)return 0;
  let count=0;
@@ -88,7 +98,9 @@ function paintGrid(
    const startX=Math.ceil(minX/jump),endX=Math.floor(maxX/jump);
    for(let ix=startX;ix<=endX;ix++){
     const x=ix*jump;
-    draw(x,y,ix*stride,iy*stride);
+    const fraction=(x-p.x)/(c.inward*p.depth);
+    if(fraction<band.start||fraction>band.end)continue;
+    draw(x,y,ix*stride,iy*stride,fraction);
     if(++count>=budget)return count;
    }
   }
@@ -150,24 +162,41 @@ export function drawSkinMicroscopicDetails(
   ctx.globalAlpha=.72*level.keratinocytes;
   result.keratinocytes=paintGrid(contours,bounds,
    SKIN_KERATINOCYTE_GRID_WORLD,{start:.007,end:.127},
-   SKIN_MICRO_MAX_MARKS,(x,y,ix,iy)=>{
+   SKIN_MICRO_MAX_MARKS,(x,y,ix,iy,fraction)=>{
+    const stratum=skinEpidermisStratum(fraction);
+    if(!stratum)return;
     const j=(skinMicroHash(ix,iy,23)-.5)*.0012;
-    // ~17-27 µm diameter: individual cells are only resolved under
-    // deep magnification, while tissue bands remain visible much earlier.
+    // 17-27 µm: all radii stay anchored in body-world units.
     const radius=(.006+.0035*skinMicroHash(ix,iy,29))/2;
     const px=x+j,py=y+(skinMicroHash(ix,iy,31)-.5)*.0012;
-    ctx.fillStyle="#f3c5bd";ctx.strokeStyle="#ae8288";
-    ctx.lineWidth=.00085;
-    ctx.beginPath();
-    ctx.ellipse(px,py,radius,radius*.89,0,0,Math.PI*2);
+    ctx.fillStyle=stratum==="corneum"?"#f7ddc8":
+     stratum==="granulosum"?"#e8b3b0":
+     stratum==="basale"?"#cf8e9e":"#f3c5bd";
+    ctx.strokeStyle=stratum==="corneum"?"#d9b5a8":"#ae8288";
+    ctx.lineWidth=.00085;ctx.beginPath();
+    if(stratum==="corneum"){
+     // Anucleate, flattened corneocytes.
+     ctx.ellipse(px,py,radius*1.07,radius*.48,0,0,Math.PI*2);
+    }else ctx.ellipse(px,py,radius,radius*.89,0,0,Math.PI*2);
     ctx.fill();ctx.stroke();
-    // Surface corneocytes are anucleate; granular/spinous/basal cells
-    // are nucleated. Only small nuclei, never giant pink dots.
-    if(scale>=230){
-     const nuclearRadius=.0011;
-     ctx.fillStyle="#8c627a";
-     ctx.beginPath();ctx.ellipse(px,py,nuclearRadius,
-      nuclearRadius*.76,0,0,Math.PI*2);ctx.fill();
+    if(scale>=230&&stratum!=="corneum"){
+     const nr=stratum==="basale"?.0012:.00095;
+     ctx.fillStyle="#8c627a";ctx.beginPath();
+     ctx.ellipse(px,py,nr,nr*.76,0,0,Math.PI*2);ctx.fill();
+    }
+    if(scale>=285&&stratum==="granulosum"){
+     // Keratohyalin granules belong only to stratum granulosum.
+     ctx.fillStyle="#9d7087";ctx.beginPath();
+     ctx.arc(px-radius*.35,py+radius*.20,.00058,0,Math.PI*2);
+     ctx.arc(px+radius*.39,py-radius*.20,.00053,0,Math.PI*2);
+     ctx.fill();
+    }
+    if(scale>=300&&stratum==="basale"&&
+     skinMicroHash(ix,iy,43)>.989){
+     // Occasional pigmented melanocyte among basal keratinocytes.
+     ctx.fillStyle="#795752";ctx.beginPath();
+     ctx.ellipse(px,py,radius*.76,radius*.8,0,0,Math.PI*2);
+     ctx.fill();
     }
    });
   ctx.restore();
