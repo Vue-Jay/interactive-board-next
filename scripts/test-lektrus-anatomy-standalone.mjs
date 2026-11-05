@@ -68,7 +68,7 @@ assert.equal(webp.toString("ascii",12,16),"VP8 ");
 assert.deepEqual([webp.readUInt16LE(26)&0x3fff,webp.readUInt16LE(28)&0x3fff],
  [m.ANATOMY_SPRITE_WIDTH,m.ANATOMY_SPRITE_HEIGHT],
  "Seven source plates must preserve a fixed raster coordinate space");
-assert.ok(webp.length>20000&&webp.length<180000);
+assert.ok(webp.length>100000&&webp.length<350000);
 assert.equal(m.ANATOMY_SPRITE_WIDTH,2520);
 assert.equal(m.ANATOMY_PANEL_WIDTH*names.length,m.ANATOMY_SPRITE_WIDTH);
 assert.equal(m.ANATOMY_SPRITE_HEIGHT,600);
@@ -109,10 +109,10 @@ assert.ok(css.includes(".lek-anatomy-container{")&&
  "Responsive container queries must measure actual anatomy item width");
 assert.match(view,/className="lek-anatomy-container"/,
  "Anatomy root must be a child of the container query box");
-assert.match(css,/\\.lek-anatomy-world/);
-assert.doesNotMatch(css,/\\.lek-anatomy-figure:before\\{/,
- "Do not mask or cover anatomical structures to conceal old printed captions");
-assert.match(css,/aspect-ratio:360\\/600/);
+assert.ok(css.includes(".lek-anatomy-world"));
+assert.ok(!css.includes(".lek-anatomy-figure:before{"),
+ "Clean sprite must not be covered by a pseudo-element that hides anatomy");
+assert.ok(css.includes("aspect-ratio:360/600"));
 for(const entry of systems.HUMAN_BODY_SYSTEMS){
  const position=m.anatomySpritePosition(entry.id);
  assert.ok(Number.isFinite(position)&&position>=0&&position<=100);
