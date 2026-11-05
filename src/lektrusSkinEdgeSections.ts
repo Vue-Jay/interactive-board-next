@@ -81,7 +81,7 @@ export function skinEdgeDetailsAlpha(scale:number){return smooth(2.5,6.5,scale);
  * they are not a measured histological map of every body region.
  */
 export function skinEdgeDetailLevels(scale:number){
- return {appendages:smooth(4,12,scale),fibres:smooth(8,19,scale),
+ return {appendages:smooth(4,15,scale),fibres:smooth(8,19,scale),
   cells:smooth(13,30,scale)};
 }
 /** World-anchored variations prevent a stamp of identical follicles and fat
