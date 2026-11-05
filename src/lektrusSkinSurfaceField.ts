@@ -26,7 +26,7 @@ export const SKIN_SURFACE_LEVELS:Readonly<Record<SkinSurfaceLayer,{
 };
 /** Inclusive upper limit on painted individual structures per pass. */
 export const MAX_DRAWN_CELLS=8500;
-const TARGET_DRAWN_CELLS=2600;
+const TARGET_DRAWN_CELLS=2000;
 const clamp=(n:number,min:number,max:number)=>
  Number.isFinite(n)?Math.max(min,Math.min(max,n)):min;
 export function skinSmoothstep(from:number,to:number,value:number):number{
