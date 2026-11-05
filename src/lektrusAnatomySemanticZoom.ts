@@ -83,8 +83,8 @@ export function skinAvailableAt(p:AnatomyWorldPoint):boolean{
 export function skinDetailStage(scale:number):string{
  if(scale<1.8)return "Организм · боковой разрез кожи";
  if(scale<6)return "Эпидермис, дерма и подкожная клетчатка";
- if(scale<22)return "Дерма · капилляры и жировые дольки";
- if(scale<50)return "Фолликулы, железы и нервные окончания";
- if(scale<110)return "Волокна дермы и клеточные слои эпидермиса";
+ if(scale<14)return "Дерма · капилляры и жировые дольки";
+ if(scale<30)return "Фолликулы, железы и волокна дермы";
+ if(scale<65)return "Клеточные слои эпидермиса и сосудистые петли";
  return "Клеточный разрез · кератиноциты, меланоциты, адипоциты";
 }

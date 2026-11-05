@@ -62,8 +62,8 @@ const stage=ts.createSourceFile("src/LektrusSkinSemanticViewport.tsx",
  renderer,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(stage.parseDiagnostics.length,0,"Cutaway viewport must parse");
 assert.match(renderer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/);
-assert.match(renderer,/drawSkinEdgeDetails\(detailCtx,landmarks,cam.scale,visible\)/);
-assert.match(renderer,/ctx\.drawImage\(edgeAtlas,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
+assert.match(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible,/);
+assert.match(renderer,/drawSkinSectionBands\(ctx,contours,visible\)/);
 assert.doesNotMatch(renderer,/drawSkinMesoTiles|drawSkinSurfaceField|drawSkinMicrotiles/);
 assert.doesNotMatch(renderer,/skin-semantic-lod\.webp/);
 assert.doesNotMatch(renderer,/sectionBlend|modeRef/);
@@ -97,13 +97,13 @@ function record(scale,bounds){
 const visible={minX:8,maxX:14,minY:18,maxY:22};
 assert.equal(record(1,visible).count,0);
 assert.equal(record(360,{minX:100,maxX:110,minY:100,maxY:110}).count,0);
-const tissue=record(30,visible),cells=record(150,visible);
+const tissue=record(10,visible),cells=record(150,visible);
 assert.equal(tissue.count,1);assert.equal(cells.count,1);
 assert.ok(cells.calls.length>tissue.calls.length+100,"Deep zoom reveals cells");
 assert.deepEqual(cells.calls,record(150,visible).calls,"Pan/zoom must not randomize tissue");
 assert.ok(cells.calls.some(c=>c[0]==="clip"),"Stay inside lateral section");
-assert.match(renderer,/globalCompositeOperation="destination-in"/);
-assert.match(renderer,/detailCtx\.drawImage\(edgeAtlas,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
+assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
+assert.doesNotMatch(renderer,/edgeAtlas|detailCanvas|globalCompositeOperation="destination-in"/);
 console.log("Skin detail LOD PASS: continuous reveals, cells, culling, deterministic geometry, exact silhouette mask.");
 
 // Detailed cutaway geometry must be repeatable in world coordinates, rather
@@ -129,7 +129,7 @@ const trunkSamples=Array.from({length:20},(_,i)=>({x:104+i,y:220,inward:1}));
 assert.ok(trunkSamples.some(p=>model.skinEdgeHasFollicle(p)) &&
  trunkSamples.some(p=>!model.skinEdgeHasFollicle(p)),
  "Thin hairy skin should have varying follicle spacing");
-const lowCell=record(12,visible),highCell=record(180,visible);
+const lowCell=record(6,visible),highCell=record(180,visible);
 assert.ok(highCell.calls.filter(c=>c[0]==="bezierCurveTo").length>
  lowCell.calls.filter(c=>c[0]==="bezierCurveTo").length,
  "Deep zoom reveals finer connective fibres and basement membrane");
@@ -139,3 +139,58 @@ assert.ok(highCell.calls.filter(c=>c[0]==="ellipse").length>
 assert.deepEqual(record(180,visible).calls,highCell.calls,
  "Every detail remains anchored while zooming/panning");
 console.log("High-detail lateral skin PASS: varied follicles, adipocytes, epidermal strata and stable world detail.");
+
+// A vector cutaway must be sharp at 2021% and beyond. Verify the actual
+// raster alpha generates six independent, smoothly interpolated flank paths.
+const vectorCode=ts.transpileModule(fs.readFileSync(
+ "src/lektrusSkinVectorSections.ts","utf8"),{
+ compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+}).outputText;
+const vector={};
+new Function("exports","require",vectorCode)(vector,id=>{
+ assert.equal(id,"./lektrusSkinEdgeSections");
+ return model;
+});
+assert.ok(vector.SKIN_SECTION_WORLD_DEPTH>=7,
+ "A 2.9-world-unit stripe is too thin to inspect at medium zoom");
+assert.equal(vector.SKIN_SECTION_NEUTRAL_FRACTION,.20);
+const stripes=vector.skinSectionContours(alpha,width,height,factor);
+assert.ok(stripes.length>=6,"Every silhouette and each lateral edge needs its own path");
+assert.ok(stripes.every(c=>c.points.length>=8));
+assert.ok(stripes.every(c=>c.points.every(p=>Number.isFinite(p.x)&&
+ Number.isFinite(p.y)&&Number.isFinite(p.depth)&&p.depth>=0)));
+const crossAt=8; // world y=8 => synthetic row 24
+const flank=stripes.filter(c=>c.minY<=crossAt&&c.maxY>=crossAt)
+ .map(c=>({c,p:c.points.find(p=>Math.abs(p.y-crossAt)<.01)}))
+ .filter(t=>t.p);
+assert.equal(flank.length,6);
+const sorted=flank.slice().sort((a,b)=>a.p.x-b.p.x);
+assert.ok(sorted[0].p.x+sorted[0].p.depth<
+ sorted[1].p.x-sorted[1].p.depth,
+ "The left arm center must remain unpainted");
+assert.ok(sorted[2].p.x+sorted[2].p.depth<
+ sorted[3].p.x-sorted[3].p.depth,
+ "The torso center must remain unpainted");
+assert.ok(sorted[1].p.x<sorted[2].p.x,
+ "The gap between arm and torso must not be filled");
+const calls=[];
+const fakeCtx=new Proxy({},{
+ get:(_,name)=>(...args)=>{calls.push([name,...args]);},
+ set:()=>true
+});
+const crop={minX:0,maxX:50,minY:5,maxY:14};
+assert.ok(vector.drawSkinSectionBands(fakeCtx,stripes,crop)>=6);
+assert.ok(calls.filter(c=>c[0]==="quadraticCurveTo").length>50,
+ "Cutaway edges must use smooth vector curves, never enlarged image pixels");
+assert.ok(calls.filter(c=>c[0]==="fill").length>=18,
+ "Each edge contains epidermis, dermis and subcutis");
+calls.length=0;
+assert.ok(vector.clipSkinSection(fakeCtx,stripes,crop)>=6);
+assert.ok(calls.some(c=>c[0]==="clip"));
+assert.equal(vector.drawSkinSectionBands(fakeCtx,stripes,
+ {minX:300,maxX:340,minY:50,maxY:60}),0);
+assert.throws(()=>vector.skinSectionContours(alpha,width,1,factor),
+ /Invalid skin alpha or dimensions/);
+assert.match(renderer,/skinSectionContours\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/);
+assert.match(renderer,/SKIN_SECTION_WORLD_DEPTH\/SKIN_EDGE_WORLD_WIDTH/);
+console.log("Vector skin cross-section PASS: smooth paths, 3 independent regions, neutral centers, no raster zoom aliasing.");
