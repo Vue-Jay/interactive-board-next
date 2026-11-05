@@ -7,10 +7,23 @@
 export type AnatomyWorldPoint={x:number;y:number};
 export type AnatomyWorldRect={x:number;y:number;width:number;height:number};
 
+/** Coordinate source: registered warm, gender-neutral skin figure (360x600).
+ * The former {250,163} focus was transparent space ABOVE the right arm.
+ * These landmarks were verified on the actual figure alpha mask rather
+ * than guessed from a different (blue-gray) atlas plate.
+ */
+export const SKIN_BODY_SIZE={width:360,height:600} as const;
 export const SKIN_SHOULDER:AnatomyWorldRect={
- x:202,y:101,width:96,height:124
+ x:236,y:186,width:50,height:68
 };
-export const SKIN_SHOULDER_CENTER:AnatomyWorldPoint={x:250,y:163};
+export const SKIN_SHOULDER_CENTER:AnatomyWorldPoint={
+ x:SKIN_SHOULDER.x+SKIN_SHOULDER.width/2,
+ y:SKIN_SHOULDER.y+SKIN_SHOULDER.height/2
+};
+export const SKIN_BODY_LANDMARKS={
+ headTop:{x:180,y:29},rightShoulder:SKIN_SHOULDER_CENTER,
+ pelvis:{x:180,y:323},rightAnkle:{x:224,y:549}
+} as const;
 export const SKIN_MAX_SCALE=52;
 
 export function anatomyBodyFit(stageWidth:number,stageHeight:number){
@@ -42,9 +55,13 @@ export function anatomyCameraAtBody(
 }
 /** Only this confirmed region has microtexture data at present. */
 export function skinAvailableAt(p:AnatomyWorldPoint):boolean{
- return Number.isFinite(p.x)&&Number.isFinite(p.y)&&
-  p.x>=SKIN_SHOULDER.x&&p.x<=SKIN_SHOULDER.x+SKIN_SHOULDER.width&&
-  p.y>=SKIN_SHOULDER.y&&p.y<=SKIN_SHOULDER.y+SKIN_SHOULDER.height;
+ if(!Number.isFinite(p.x)||!Number.isFinite(p.y))return false;
+ const r=SKIN_SHOULDER;
+ const u=(p.x-(r.x+r.width/2))/(r.width/2);
+ const v=(p.y-(r.y+r.height/2))/(r.height/2);
+ // The deep-zoom activation region follows the deltoid/upper arm, not
+ // the rectangular empty background beside the shoulder.
+ return u*u+v*v<=1;
 }
 /** A *surface* zoom never claims to reveal a cutaway automatically. */
 export function skinDetailStage(scale:number):string{
