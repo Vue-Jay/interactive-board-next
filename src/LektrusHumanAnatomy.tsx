@@ -260,7 +260,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
       onClick={()=>{
        if(system!=="integumentary"){focus(organ.position);return;}
        if(i===0)focusSkin("right");
-       if(i===1||i===2){setSkinMode("section");focusSkin();}
+       if(i===1||i===2)focusSkin("left");
        if(i===3){
         // Nails are an actual visible body part; focus the foot without
         // opening a fictitious follicle micrograph on the shoulder.
