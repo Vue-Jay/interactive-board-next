@@ -105,3 +105,37 @@ assert.ok(cells.calls.some(c=>c[0]==="clip"),"Stay inside lateral section");
 assert.match(renderer,/globalCompositeOperation="destination-in"/);
 assert.match(renderer,/detailCtx\.drawImage\(edgeAtlas,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
 console.log("Skin detail LOD PASS: continuous reveals, cells, culling, deterministic geometry, exact silhouette mask.");
+
+// Detailed cutaway geometry must be repeatable in world coordinates, rather
+// than moving spots whenever the teacher pans or changes magnification.
+const samples=[
+ {x:82,y:205,inward:1},{x:278,y:205,inward:-1},
+ {x:82,y:213,inward:1},{x:208,y:445,inward:-1}
+];
+for(const sample of samples){
+ const value=model.skinEdgeDetailVariation(sample,23);
+ assert.ok(value>=0&&value<1);
+ assert.equal(model.skinEdgeDetailVariation(sample,23),value);
+}
+assert.ok(new Set(samples.map(p=>model.skinEdgeDetailVariation(p,23))).size>2,
+ "Landmarks need varied natural forms, not identical stamps");
+assert.equal(model.skinEdgeHasFollicle({x:150,y:80,inward:1}),false,
+ "No schematic hair on the face");
+assert.equal(model.skinEdgeHasFollicle({x:55,y:332,inward:1}),false,
+ "No hair on the palm");
+assert.equal(model.skinEdgeHasFollicle({x:225,y:550,inward:-1}),false,
+ "No hair on the sole");
+const trunkSamples=Array.from({length:20},(_,i)=>({x:104+i,y:220,inward:1}));
+assert.ok(trunkSamples.some(p=>model.skinEdgeHasFollicle(p)) &&
+ trunkSamples.some(p=>!model.skinEdgeHasFollicle(p)),
+ "Thin hairy skin should have varying follicle spacing");
+const lowCell=record(30,visible),highCell=record(180,visible);
+assert.ok(highCell.calls.filter(c=>c[0]==="bezierCurveTo").length>
+ lowCell.calls.filter(c=>c[0]==="bezierCurveTo").length,
+ "Deep zoom reveals finer connective fibres and basement membrane");
+assert.ok(highCell.calls.filter(c=>c[0]==="ellipse").length>
+ lowCell.calls.filter(c=>c[0]==="ellipse").length+100,
+ "Deep zoom reveals individual epidermal cells, not blurred spots");
+assert.deepEqual(record(180,visible).calls,highCell.calls,
+ "Every detail remains anchored while zooming/panning");
+console.log("High-detail lateral skin PASS: varied follicles, adipocytes, epidermal strata and stable world detail.");
