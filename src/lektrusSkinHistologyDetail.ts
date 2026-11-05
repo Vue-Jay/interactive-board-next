@@ -203,3 +203,127 @@ export function drawSkinMicroscopicDetails(
  }
  return result;
 }
+
+
+/** Sub-millimetre cutaway structures. Geometry uses body-world units:
+ * 1 world unit corresponds to roughly 2.83 mm on the reference figure.
+ * The schematic thickness of the section never multiplies fine radii. */
+export const SKIN_FINE_MAX_MARKS=2200;
+export function skinFineStructureOpacity(scale:number){
+ return {
+  elastic:smooth(20,68,scale),
+  papillae:smooth(62,145,scale),
+  plexus:smooth(85,185,scale),
+  fibroblasts:smooth(110,225,scale),
+  septa:smooth(115,230,scale),
+  granules:smooth(215,335,scale)
+ };
+}
+/** Rendered after the coarse organ/appendage plate and under the same
+ * silhouette-vector clip. There is no off-body or unbounded microtile work. */
+export function drawSkinFineStructures(
+ ctx:CanvasRenderingContext2D,
+ contours:readonly SkinSectionContour[],scale:number,bounds:SkinMicroBounds
+):{elastic:number;papillae:number;plexus:number;fibroblasts:number;
+ septa:number;granules:number}{
+ const a=skinFineStructureOpacity(scale);
+ const result={elastic:0,papillae:0,plexus:0,
+  fibroblasts:0,septa:0,granules:0};
+ if(a.elastic>.004){
+  ctx.save();ctx.globalAlpha=.37*a.elastic;
+  ctx.strokeStyle="#ad7384";ctx.lineWidth=.0025;
+  result.elastic=paintGrid(contours,bounds,.125,
+   {start:.21,end:.51},950,(x,y,ix,iy)=>{
+    const q=skinMicroHash(ix,iy,101);
+    const length=.065+.05*q;
+    ctx.beginPath();ctx.moveTo(x-length/2,y-.023);
+    ctx.bezierCurveTo(x-length*.18,y+.028,
+     x+length*.18,y-.029,x+length/2,y+.022);
+    ctx.stroke();
+   });
+  ctx.restore();
+ }
+ if(a.papillae>.004){
+  // A thin, gently scalloped dermal papilla boundary; small 30-70µm
+  // ondulations, not large loops or vessels inside epidermis.
+  ctx.save();ctx.strokeStyle="#a86980";
+  ctx.lineWidth=.0022;ctx.globalAlpha=.66*a.papillae;
+  for(const c of contours){
+   if(!inView(c,bounds))continue;
+   const from=Math.max(c.minY,bounds.minY-.05);
+   const to=Math.min(c.maxY,bounds.maxY+.05);
+   let started=false;
+   ctx.beginPath();
+   for(let iy=Math.ceil(from/.032);iy*.032<=to;iy++){
+    const y=iy*.032,p=contourAt(c,y);
+    if(!p||p.depth<.025){started=false;continue;}
+    const displacement=.012+.012*(1+Math.sin(y*36.2+c.inward*.7));
+    const x=p.x+c.inward*(p.depth*.13+displacement);
+    if(!started){ctx.moveTo(x,y);started=true;}
+    else ctx.lineTo(x,y);
+    result.papillae++;
+    if(result.papillae>=SKIN_FINE_MAX_MARKS)break;
+   }
+   ctx.stroke();
+   if(result.papillae>=SKIN_FINE_MAX_MARKS)break;
+  }
+  ctx.restore();
+ }
+ if(a.plexus>.004){
+  ctx.save();ctx.globalAlpha=.40*a.plexus;
+  ctx.lineWidth=.003;ctx.strokeStyle="#b64c69";
+  result.plexus=paintGrid(contours,bounds,.22,
+   {start:.155,end:.25},420,(x,y,ix,iy)=>{
+    // Local dermal capillary loops, with both limbs still inside dermis.
+    const arc=.020+.013*skinMicroHash(ix,iy,51);
+    ctx.beginPath();ctx.moveTo(x-.024,y+.03);
+    ctx.quadraticCurveTo(x-arc,y-.03,x,y-.032);
+    ctx.quadraticCurveTo(x+arc,y-.03,x+.025,y+.03);
+    ctx.stroke();
+   });
+  ctx.restore();
+ }
+ if(a.fibroblasts>.004){
+  ctx.save();ctx.globalAlpha=.48*a.fibroblasts;
+  result.fibroblasts=paintGrid(contours,bounds,.16,
+   {start:.23,end:.52},500,(x,y,ix,iy)=>{
+    const direction=skinMicroHash(ix,iy,107);
+    const x2=(direction-.5)*.025;
+    // Spindle-shaped, nucleated fibroblasts in the reticular dermis.
+    ctx.fillStyle="#d398a5";ctx.strokeStyle="#9d677c";
+    ctx.lineWidth=.0018;ctx.beginPath();
+    ctx.ellipse(x,y,.008,.0034,x2,0,Math.PI*2);
+    ctx.fill();ctx.stroke();
+    ctx.fillStyle="#77576d";ctx.beginPath();
+    ctx.ellipse(x,y,.0027,.0015,x2,0,Math.PI*2);ctx.fill();
+   });
+  ctx.restore();
+ }
+ if(a.septa>.004){
+  ctx.save();ctx.globalAlpha=.38*a.septa;
+  ctx.lineWidth=.004;ctx.strokeStyle="#b58e69";
+  result.septa=paintGrid(contours,bounds,.14,
+   {start:.59,end:.96},650,(x,y,ix,iy)=>{
+    const bend=skinMicroHash(ix,iy,69)-.5;
+    // Fine collagen septa between groups of white adipocytes.
+    ctx.beginPath();ctx.moveTo(x-.05,y-bend*.07);
+    ctx.quadraticCurveTo(x+.012,y-.022,x+.06,y+bend*.08);
+    ctx.stroke();
+   });
+  ctx.restore();
+ }
+ if(a.granules>.004){
+  ctx.save();ctx.globalAlpha=.68*a.granules;
+  ctx.fillStyle="#91677f";
+  result.granules=paintGrid(contours,bounds,.014,
+   {start:.026,end:.044},SKIN_FINE_MAX_MARKS,
+   (x,y,ix,iy)=>{
+    // 3-4 µm keratohyalin granules: subcellular detail only in granulosum.
+    const jitter=(skinMicroHash(ix,iy,11)-.5)*.001;
+    ctx.beginPath();ctx.arc(x+jitter,y,.00065,0,Math.PI*2);
+    ctx.fill();
+   });
+  ctx.restore();
+ }
+ return result;
+}
