@@ -60,6 +60,26 @@ export function skinMesoProfile(x:number,y:number):SkinMesoProfile{
  return {region:"general",direction:1.1,contrast:.77,
   furrowStep:.76,fineGrain:.98};
 }
+/** Smoothly blend relief directions across anatomy boundaries so a hand
+ * does not acquire an abrupt seam where the forearm profile ends. */
+export function skinMesoFlowDirection(x:number,y:number):number{
+ let vx=Math.cos(1.1),vy=Math.sin(1.1);
+ const blend=(angle:number,distance:number)=>{
+  const weight=1-skinSmoothstep(.70,1.22,distance);
+  if(weight<=0)return;
+  vx=vx*(1-weight)+Math.cos(angle)*weight;
+  vy=vy*(1-weight)+Math.sin(angle)*weight;
+ };
+ blend(.57,ellipse(x,y,180,235,63,130));
+ blend(.2,ellipse(x,y,180,75,38,55));
+ blend(Math.PI*.5,Math.min(ellipse(x,y,136,446,28,135),
+  ellipse(x,y,224,446,28,135)));
+ blend(Math.PI*.31,ellipse(x,y,81,245,36,103));
+ blend(Math.PI*.65,ellipse(x,y,279,245,36,103));
+ blend(Math.PI*.07,Math.min(ellipse(x,y,57,335,22,37),
+  ellipse(x,y,303,335,22,37)));
+ return Math.atan2(vy,vx);
+}
 export function skinMesoOpacity(zoom:number){
  const enter=skinSmoothstep(3.4,7.4,zoom);
  const leave=1-skinSmoothstep(22,48,zoom);
@@ -100,7 +120,7 @@ export function skinFurrowAt(ix:number,iy:number):SkinFurrow{
  const x=(ix+.20+.60*skinHash(ix,iy,43))*step;
  const y=(iy+.20+.60*skinHash(ix,iy,53))*step;
  const profile=skinMesoProfile(x,y);
- const theta=profile.direction+(skinHash(ix,iy,67)-.5)*.85;
+ const theta=skinMesoFlowDirection(x,y)+(skinHash(ix,iy,67)-.5)*.85;
  const length=step*(.30+.40*skinHash(ix,iy,73));
  const bend=(skinHash(ix,iy,79)-.5)*step*.12;
  const dx=Math.cos(theta)*length*.5;
