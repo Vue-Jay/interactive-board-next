@@ -18,6 +18,7 @@ import {drawSkinSurfaceField,skinSurfaceAlpha,
  skinVisibleWorldBounds} from "./lektrusSkinSurfaceField";
 import {SKIN_SHOULDER} from "./lektrusAnatomySemanticZoom";
 import {drawSkinMicrotiles} from "./lektrusSkinMicroTiles";
+import {drawSkinMesoTiles} from "./lektrusSkinMesoTiles";
 
 export type SkinViewMode="surface"|"section";
 type Props={camera:AnatomyCamera;mode:SkinViewMode};
@@ -118,13 +119,20 @@ export default function LektrusSkinSemanticViewport({camera,mode}:Props){
      shade.addColorStop(0,"#eab7a0");
      shade.addColorStop(.52,"#e0a58f");
      shade.addColorStop(1,"#d39a85");
-     ctx.globalAlpha=smoothBase*.92;
+     // The old near-opaque smooth gradient erased every skin highlight
+     // from the 360x600 source at medium zoom. Keep natural body shading
+     // readable while texture fills in the missing subpixel information.
+     ctx.globalAlpha=smoothBase*(.40+.29*skinSurfaceAlpha(cam.scale,"pores"));
      ctx.fillStyle=shade;
      ctx.fillRect(0,0,WORLD_WIDTH,WORLD_HEIGHT);
     }
     const region=skinVisibleWorldBounds(cam,w,h);
     if(region.maxX>region.minX&&region.maxY>region.minY){
      ctx.globalAlpha=1;
+     // World-registered mid-scale skin grain appears before pores/cells.
+     // Unlike the original bitmap it retains detail when zoomed 6–10x.
+     // This is one global field, not one stamped texture on the whole arm.
+     drawSkinMesoTiles(ctx,region,cam.scale,surfaceOpacity,requestDraw);
      drawSkinSurfaceField(ctx,cam.scale,region,surfaceOpacity);
      // Beyond the sub-mm relief, cached corneocyte structures emerge
      // smoothly at their WORLD coordinates. No image-size substitution.
