@@ -1,3 +1,5 @@
+import {skinEvidenceRegionAt} from "./lektrusSkinEvidenceModel";
+
 /** A schematic three-layer skin section drawn only along the sides of
  * each opaque part of the body. All coordinates share the 360x600 world.
  * The width is deliberately exaggerated for educational visibility.
@@ -93,11 +95,14 @@ export function skinEdgeDetailVariation(p:SkinEdgeLandmark,salt:number):number{
  v=Math.imul(v^(v>>>15),0x846ca68b);
  return ((v^(v>>>16))>>>0)/4294967296;
 }
-/** Only schematic thin hairy skin has follicles. Head, hands and feet do not
- * inherit follicles merely because their silhouette happens to have an edge. */
+/** The only registered *representative* thin-hairy sample today is the
+ * right deltoid region. Do NOT invent follicles on every scalp, hand, foot,
+ * trunk, or leg contour without an anatomical registration for that site.
+ * No follicle drawn elsewhere means "not yet documented", not bald skin.
+ */
 export function skinEdgeHasFollicle(p:SkinEdgeLandmark):boolean{
- const sample=(p.y>=146&&p.y<=286)||(p.y>=394&&p.y<=510);
- return sample&&skinEdgeDetailVariation(p,7)>.23;
+ return skinEvidenceRegionAt(p)==="thin-skin-reference"&&
+  skinEdgeDetailVariation(p,7)>.23;
 }
 export function drawSkinEdgeDetails(
  ctx:CanvasRenderingContext2D,
@@ -201,7 +206,7 @@ export function drawSkinEdgeDetails(
    // Eccrine gland: distinct sweat duct to an actual surface opening;
    // secretory coils lie in the deep dermis, not in the epidermis.
    const sy=1.45+(variation(31)-.5)*.48;
-   if(variation(93)>.44){
+   if(skinEvidenceRegionAt(p)==="thin-skin-reference"&&variation(93)>.44){
    curve("#8c729b",.092,[.045,sy-.85,.31,sy-.72,.45,sy-.20,.76,sy+.14]);
    curve("#a28ab1",.047,[.055,sy-.85,.31,sy-.72,.45,sy-.20,.76,sy+.14]);
    oval(.052,sy-.86,.07,.048,"#795f92");
