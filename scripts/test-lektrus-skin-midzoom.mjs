@@ -51,6 +51,15 @@ for(const [point,region] of [
 assert.notEqual(meso.skinMesoProfile(82,245).direction,
  meso.skinMesoProfile(57,335).direction,
  "An arm and a hand must not reuse one directional crease pattern");
+for(const p of [[57,370],[78,340],[115,245],[180,340]]){
+ const before=meso.skinMesoFlowDirection(p[0]-.02,p[1]-.02);
+ const after=meso.skinMesoFlowDirection(p[0]+.02,p[1]+.02);
+ assert.ok(Math.abs(before-after)<.08,
+  "Skin furrow direction must not jump at region boundaries");
+}
+assert.notEqual(meso.skinMesoFlowDirection(57,335),
+ meso.skinMesoFlowDirection(180,235),
+ "Hand and torso preserve their distinct skin line directions");
 assert.notEqual(meso.skinMesoTone(82,245),meso.skinMesoTone(94,245),
  "The whole arm must not be painted with one constant color");
 assert.equal(meso.skinMesoTone(82,245),meso.skinMesoTone(82,245),
