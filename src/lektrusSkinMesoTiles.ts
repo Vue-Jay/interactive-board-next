@@ -97,7 +97,7 @@ export type SkinFurrow={
  * world point and integer seed, so panning never shifts the pattern.
  */
 export function skinFurrowAt(ix:number,iy:number):SkinFurrow{
- const step=.60;
+ const step=.72;
  const x=(ix+.20+.60*skinHash(ix,iy,43))*step;
  const y=(iy+.20+.60*skinHash(ix,iy,53))*step;
  const profile=skinMesoProfile(x,y);
@@ -106,7 +106,7 @@ export function skinFurrowAt(ix:number,iy:number):SkinFurrow{
  const bend=(skinHash(ix,iy,79)-.5)*step*.12;
  const dx=Math.cos(theta)*length*.5;
  const dy=Math.sin(theta)*length*.5;
- const thickness=(.021+.018*skinHash(ix,iy,89))*profile.fineGrain;
+ const thickness=(.058+.020*skinHash(ix,iy,89))*profile.fineGrain;
  return {
   x:x-dx,y:y-dy,endX:x+dx,endY:y+dy,
   controlX:x+bend,controlY:y-bend,
@@ -117,14 +117,14 @@ export function skinFurrowAt(ix:number,iy:number):SkinFurrow{
  * relief highlight, rather than a dense speckled color noise layer.
  */
 function strokeFurrow(ctx:CanvasRenderingContext2D,g:SkinFurrow){
- ctx.globalAlpha=.16*g.weight;
+ ctx.globalAlpha=.26*g.weight;
  ctx.lineWidth=g.width;
  ctx.strokeStyle="#94675e";
  ctx.beginPath();
  ctx.moveTo(g.x,g.y);
  ctx.quadraticCurveTo(g.controlX,g.controlY,g.endX,g.endY);
  ctx.stroke();
- ctx.globalAlpha=.095*g.weight;
+ ctx.globalAlpha=.15*g.weight;
  ctx.lineWidth=g.width*.66;
  ctx.strokeStyle="#fff1dd";
  ctx.beginPath();
@@ -143,9 +143,9 @@ function strokeCrossing(ctx:CanvasRenderingContext2D,ix:number,iy:number){
  const radius=.13+.08*skinHash(ix,iy,124);
  const dx=Math.cos(theta)*radius,dy=Math.sin(theta)*radius;
  const cx=g.controlX,cy=g.controlY;
- ctx.globalAlpha=.075*g.weight;
+ ctx.globalAlpha=.12*g.weight;
  ctx.strokeStyle="#9d756d";
- ctx.lineWidth=.019;
+ ctx.lineWidth=.036;
  ctx.beginPath();
  ctx.moveTo(cx-dx,cy-dy);
  ctx.quadraticCurveTo(cx+.035,cy-.022,cx+dx,cy+dy);
@@ -186,14 +186,14 @@ function drawHandFolds(
      f.y+1<top||f.y-1>bottom)continue;
   const dx=Math.cos(f.angle)*f.length*.5;
   const dy=Math.sin(f.angle)*f.length*.5;
-  ctx.globalAlpha=.17;
+  ctx.globalAlpha=.27;
   ctx.strokeStyle="#91685f";
-  ctx.lineWidth=.055;
+  ctx.lineWidth=.085;
   ctx.beginPath();
   ctx.moveTo(f.x-dx,f.y-dy);
   ctx.quadraticCurveTo(f.x,f.y+.14,f.x+dx,f.y+dy);
   ctx.stroke();
-  ctx.globalAlpha=.09;
+  ctx.globalAlpha=.14;
   ctx.strokeStyle="#fff0d8";
   ctx.beginPath();
   ctx.moveTo(f.x-dx,f.y-dy+.11);
@@ -214,7 +214,7 @@ function buildMesoTile(tileX:number,tileY:number){
  const pixelsPerWorld=SKIN_MESO_TILE_PIXELS/SKIN_MESO_TILE_WORLD;
  ctx.setTransform(pixelsPerWorld,0,0,pixelsPerWorld,
   -originX*pixelsPerWorld,-originY*pixelsPerWorld);
- const spacing=.60;
+ const spacing=.72;
  const minX=Math.floor((originX-spacing)/spacing);
  const maxX=Math.ceil((originX+SKIN_MESO_TILE_WORLD+spacing)/spacing);
  const minY=Math.floor((originY-spacing)/spacing);
