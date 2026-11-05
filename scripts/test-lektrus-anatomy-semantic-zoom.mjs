@@ -29,20 +29,22 @@ assert.notDeepEqual(world.SKIN_SHOULDER_CENTER,{x:250,y:163},
  "The anatomical focal point must be recalibrated after replacing the body source");
 assert.equal(world.skinAvailableAt({x:280,y:197}),false,
  "The shoulder selection must not include surrounding empty background");
-assert.equal(world.SKIN_MAX_SCALE,52);
+assert.equal(world.SKIN_MAX_SCALE,360);
 assert.ok(world.skinAvailableAt(world.SKIN_SHOULDER_CENTER));
 assert.equal(world.skinAvailableAt({x:50,y:470}),false);
 assert.equal(world.skinAvailableAt({x:NaN,y:163}),false);
 assert.equal(world.skinDetailStage(52).includes("срез"),false,
  "Ordinary magnification must NEVER teleport into a cross-section");
-assert.equal(world.skinDetailStage(38).includes("чешуйки"),true);
+assert.equal(world.skinDetailStage(10).includes("чешуйки"),false,
+ "At 10x even small epidermal cells must not be exaggerated");
+assert.equal(world.skinDetailStage(360).includes("рогового"),true);
 assert.deepEqual(Object.keys(surface.SKIN_SURFACE_LEVELS),
  ["regional","relief","pores","corneocytes"]);
 
 for(const level of Object.keys(surface.SKIN_SURFACE_LEVELS)){
  let prior=surface.skinSurfaceAlpha(1,level);
  assert.equal(prior,0);
- for(let scale=1.01;scale<52;scale+=.01){
+ for(let scale=1.01;scale<360;scale+=.02){
   const alpha=surface.skinSurfaceAlpha(scale,level);
   assert.ok(alpha>=0&&alpha<=1);
   assert.ok(alpha>=prior-1e-10,level+" opacity must be monotone");
@@ -60,16 +62,29 @@ for(const shift of [1e-7,1e-5,.001]){
 }
 const mid=world.SKIN_SHOULDER_CENTER;
 assert.equal(surface.skinSurfaceInside(mid.x,mid.y),true);
-assert.equal(surface.skinSurfaceInside(10,580),false);
-assert.ok(surface.skinSurfaceEdgeOpacity(mid.x,mid.y)>.99);
-assert.equal(surface.skinSurfaceEdgeOpacity(0,0),0);
+assert.equal(surface.skinSurfaceInside(10,580),true,
+ "Entire 360x600 body plane is navigable, not a shoulder-only ellipse");
+assert.equal(surface.skinSurfaceInside(-1,550),false);
+assert.equal(surface.skinSurfaceInside(120,601),false);
+assert.equal(surface.MM_PER_WORLD_UNIT,1700/600);
+assert.ok(surface.SKIN_PORE_STEP_WORLD<1);
+assert.ok(surface.SKIN_CORNEOCYTE_STEP_WORLD<surface.SKIN_PORE_STEP_WORLD);
+const tenXPixelDiameter=(.016+.020)*2*
+ world.anatomyBodyFit(850,530).pixelPerWorld*10;
+assert.ok(tenXPixelDiameter<1,
+ "At 1029% pores should be subpixel, not huge circles or craters");
+assert.equal(surface.skinSurfaceAlpha(10,"pores"),0);
+assert.equal(surface.skinSurfaceAlpha(10,"corneocytes"),0);
+assert.equal(surface.skinSurfaceAlpha(10,"relief")>0,true);
+assert.ok(surface.skinSurfaceAlpha(25,"pores")>0);
+assert.ok(surface.skinSurfaceAlpha(150,"corneocytes")>0);
 
 for(const size of [{width:800,height:600},{width:360,height:540},
  {width:1200,height:440},{width:250,height:190}]){
  const fit=world.anatomyBodyFit(size.width,size.height);
  assert.ok(fit.width<=size.width*.901);
  assert.ok(fit.height<=size.height*.961);
- for(const scale of [1,1.6,3.25,8,22,52]){
+ for(const scale of [1,1.6,3.25,8,22,52,180,360]){
   const cam=world.anatomyCameraAtBody(mid,scale,size.width,size.height);
   const projected=world.anatomyBodyToScreen(cam,mid,size.width,size.height);
   assert.ok(Math.abs(projected.x-size.width/2)<1e-8);
@@ -82,6 +97,8 @@ for(const size of [{width:800,height:600},{width:360,height:540},
   const bounds=surface.skinVisibleWorldBounds(cam,size.width,size.height);
   assert.ok(bounds.minX<=mid.x&&bounds.maxX>=mid.x);
   assert.ok(bounds.minY<=mid.y&&bounds.maxY>=mid.y);
+  assert.ok(bounds.minX>=0&&bounds.maxX<=360);
+  assert.ok(bounds.minY>=0&&bounds.maxY<=600);
   assert.equal(surface.skinHash(22,15,7),surface.skinHash(22,15,7),
    "The same skin follicle cannot move when zoom changes");
  }
@@ -137,8 +154,10 @@ for(const p of ["src/LektrusHumanAnatomy.tsx",
 }
 assert.match(viewer,/camera=\{displayCamera\} mode=\{skinMode\}/);
 assert.match(viewer,/requestAnimationFrame\(tick\)/);
-assert.match(viewer,/zoom\([^;]*,at,overSkin\)/,
- "Deep zoom must activate at the first wheel event over skin");
+assert.match(viewer,/zoom\(Math\.exp\(-clip\(e\.deltaY,-220,220\)\*\.0018\),at\)/,
+ "Wheel zoom must work at any part of the body without activating a shoulder");
+assert.doesNotMatch(viewer,/skinRouteActive|setSkinRouteActive|overSkin/,
+ "Deep zoom must not depend on an old shoulder activation state");
 assert.match(viewer,/aria-pressed=\{skinMode==="surface"\}/);
 assert.match(viewer,/aria-pressed=\{skinMode==="section"\}/);
 assert.match(renderer,/drawSkinSurfaceField\(ctx,cam.scale,region,surfaceOpacity\)/);
@@ -147,8 +166,14 @@ assert.doesNotMatch(renderer,/SKIN_INDEX\*WORLD_WIDTH/,
  "Skin viewer must not reuse the incorrect blue-gray system sprite");
 assert.match(renderer,/ctx\.globalCompositeOperation="source-atop"/,
  "Details must be clipped to the actual figure silhouette");
-assert.match(renderer,/c\.drawImage\(sprite,640,340,120,160/,
- "The registered skin crop must not include neck, chest and background");
+assert.doesNotMatch(renderer,/cropFeathered|resources\.shoulder/,
+ "No magnified shoulder rectangle is rendered at intermediate zoom");
+assert.doesNotMatch(renderer,/ctx\.ellipse\(EDGE\.x\+EDGE\.width\/2/,
+ "No huge oval or circular skin inset may cover the torso");
+assert.match(renderer,/ctx\.fillRect\(0,0,WORLD_WIDTH,WORLD_HEIGHT\)/,
+ "Smooth material must cover the full body coordinate system");
+assert.match(renderer,/drawSkinSurfaceField\(ctx,cam\.scale,region,surfaceOpacity\)/,
+ "Procedural detail must be drawn from global body coordinates");
 assert.match(renderer,/ctx\.drawImage\(resources\.body/,
  "Keep source body visible: do not blank the scene on LOD changes");
 assert.match(renderer,/modeRef\.current==="section"/);
@@ -163,8 +188,32 @@ assert.match(renderer,/ResizeObserver/);
 assert.match(renderer,/requestAnimationFrame\(draw\)/);
 assert.doesNotMatch(field,/Math\.random/,
  "World-space microstructures must be deterministic");
-assert.match(field,/const MAX_DRAWN_CELLS=7000/,
+assert.match(field,/export const MAX_DRAWN_CELLS=8500/,
  "Mobile camera must cull invisible cells");
 assert.ok(css.includes(".lek-anatomy-semantic-canvas{"));
 assert.ok(css.includes(".lek-anatomy-skin-modes{"));
-console.log("Skin continuous zoom PASS: cursor-preserving tween, world-registered relief/pores/corneocytes, explicit cutaway and offscreen culling.");
+// Region-to-viewport transforms remain correct from head to ankle.
+for(const point of [
+ {x:180,y:64},{x:180,y:263},{x:253,y:193},
+ {x:128,y:268},{x:207,y:460},{x:220,y:540}
+]){
+ for(const scale of [1,2.4,10.29,42,180,360]){
+  const camera=world.anatomyCameraAtBody(point,scale,850,530);
+  const back=world.anatomyScreenToBody(
+   camera,{x:425,y:265},850,530);
+  assert.ok(Math.abs(back.x-point.x)<1e-6);
+  assert.ok(Math.abs(back.y-point.y)<1e-6);
+ }
+}
+for(const point of [{x:180,y:55},{x:180,y:310},{x:230,y:400}]){
+ const camera=world.anatomyCameraAtBody(point,10.29,850,530);
+ const bounds=surface.skinVisibleWorldBounds(camera,850,530);
+ assert.ok(bounds.minX<=point.x&&bounds.maxX>=point.x);
+ assert.ok(bounds.minY<=point.y&&bounds.maxY>=point.y);
+}
+const overviewBounds=surface.skinVisibleWorldBounds(
+ {scale:1,panX:0,panY:0},850,530);
+assert.ok(overviewBounds.maxX-overviewBounds.minX>300);
+assert.ok(overviewBounds.maxY-overviewBounds.minY>500,
+ "Whole body is in the surface model, not one shoulder circle");
+console.log("Whole-body skin semantic zoom PASS: calibrated tiny pores at 10x, continuous world coordinates, full-body texture, culling and explicit cutaway.");

@@ -24,7 +24,8 @@ export const SKIN_BODY_LANDMARKS={
  headTop:{x:180,y:29},rightShoulder:SKIN_SHOULDER_CENTER,
  pelvis:{x:180,y:323},rightAnkle:{x:224,y:549}
 } as const;
-export const SKIN_MAX_SCALE=52;
+/** Digital camera ratio; microstructures are rendered only when visible. */
+export const SKIN_MAX_SCALE=360;
 
 export function anatomyBodyFit(stageWidth:number,stageHeight:number){
  const width=Math.max(1,stageWidth),height=Math.max(1,stageHeight);
@@ -66,8 +67,8 @@ export function skinAvailableAt(p:AnatomyWorldPoint):boolean{
 /** A *surface* zoom never claims to reveal a cutaway automatically. */
 export function skinDetailStage(scale:number):string{
  if(scale<1.8)return "Организм";
- if(scale<5.5)return "Кожа плеча";
- if(scale<11)return "Микрорельеф поверхности";
- if(scale<26)return "Поры и волосяные фолликулы";
- return "Роговые чешуйки эпидермиса · модель";
+ if(scale<12)return "Кожа · крупный план";
+ if(scale<38)return "Мелкий рельеф поверхности";
+ if(scale<115)return "Поры и волосяные фолликулы";
+ return "Модель рогового слоя · цифровой масштаб";
 }

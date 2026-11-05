@@ -1,8 +1,9 @@
 /** A continuous skin surface scene, not a slideshow of zoom snapshots.
  *
- * Overview, registered shoulder photography, relief, pores and corneocytes
- * share one 360 x 600 coordinate system and one camera. LOD changes only
- * which *features* are legible; no system-wide fade to a different image.
+ * The same 360x600 silhouette is uniformly zoomed at ALL body locations.
+ * Natural-sized furrows, pores and corneocyte-like microstructures are
+ * anchored to body coordinates, not to a blown-up shoulder circle.
+ * No surface region is substituted or enlarged independently.
  *
  * A histological cross-section is not optically visible beneath intact
  * skin. It is therefore an explicit, reversible virtual cutaway mode and
@@ -13,38 +14,27 @@ import skinOriginal from "./assets/bio-atlas/human-skin-original-registered.webp
 import detailAtlas from "./assets/bio-atlas/skin-semantic-lod.webp";
 import type {AnatomyCamera} from "./lektrusHumanAnatomyModel";
 import {anatomyBodyFit} from "./lektrusAnatomySemanticZoom";
-import {SKIN_SURFACE_REGION,drawSkinSurfaceField,skinSurfaceAlpha,
+import {drawSkinSurfaceField,skinSurfaceAlpha,
  skinVisibleWorldBounds} from "./lektrusSkinSurfaceField";
+import {SKIN_SHOULDER} from "./lektrusAnatomySemanticZoom";
 
 export type SkinViewMode="surface"|"section";
 type Props={camera:AnatomyCamera;mode:SkinViewMode};
 const WORLD_WIDTH=360,WORLD_HEIGHT=600;
 const PLATE=900;
 const TILE=720;
-const EDGE={x:SKIN_SURFACE_REGION.x,y:SKIN_SURFACE_REGION.y,
- width:SKIN_SURFACE_REGION.width,height:SKIN_SURFACE_REGION.height};
+const EDGE=SKIN_SHOULDER;
+type SurfaceResources={body:HTMLImageElement;section:HTMLCanvasElement|null};
 
-type SurfaceResources={body:HTMLImageElement;shoulder:HTMLCanvasElement|null;
- section:HTMLCanvasElement|null};
-
-/** Cached region-specific views are not changed when zooming. An alpha
- * mask blends the shoulder patch into the exact registered body coordinates.
- * Only the upper arm/shoulder is cropped; no torso callout or labels.
+/** Only the EXPLICIT virtual cross-section needs a stored anatomical plate.
+ * Surface zoom never draws a cropped region or a radial inset.
  */
-function cropFeathered(sprite:HTMLImageElement,index:0|1):HTMLCanvasElement|null{
+function cropSection(sprite:HTMLImageElement):HTMLCanvasElement|null{
  const target=document.createElement("canvas");
  target.width=TILE;target.height=TILE;
  const c=target.getContext("2d");
  if(!c)return null;
- if(index===0){
-  // This source patch is only the textured deltoid/upper-arm skin.
-  // Previous crop 440,110,405,620 included neck, chest and background,
-  // all of which became visibly misplaced when projected on the shoulder.
-  // Its aspect now matches SKIN_SHOULDER within normal illustration tolerance.
-  c.drawImage(sprite,640,340,120,160,0,0,TILE,TILE);
- }else{
-  c.drawImage(sprite,PLATE,0,PLATE,PLATE,0,0,TILE,TILE);
- }
+ c.drawImage(sprite,PLATE,0,PLATE,PLATE,0,0,TILE,TILE);
  c.globalCompositeOperation="destination-in";
  const gradient=c.createRadialGradient(TILE/2,TILE/2,TILE*.22,
   TILE/2,TILE/2,TILE*.62);
@@ -67,9 +57,7 @@ export default function LektrusSkinSemanticViewport({camera,mode}:Props){
   let active=true,frame=0,sectionBlend=modeRef.current==="section"?1:0;
   let previousTime=0;
   let bodyReady=false,detailReady=false;
-  const resources:SurfaceResources={
-   body:new Image(),shoulder:null,section:null
-  };
+  const resources:SurfaceResources={body:new Image(),section:null};
   const sprite=new Image();
   let width=0,height=0;
   const requestDraw=()=>{
@@ -116,40 +104,28 @@ export default function LektrusSkinSemanticViewport({camera,mode}:Props){
     ctx.drawImage(resources.body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
    }
    const surfaceOpacity=1-sectionBlend;
-   const shoulderAlpha=skinSurfaceAlpha(cam.scale,"regional")*surfaceOpacity;
-   if(detailReady&&resources.shoulder&&shoulderAlpha>.001&&bodyReady){
-    ctx.save();
-    // Prevent even the soft feathered edge from bleeding into the empty
-    // space between shoulder and upper arm.
-    ctx.globalCompositeOperation="source-atop";
-    ctx.globalAlpha=shoulderAlpha*.78;
-    ctx.drawImage(resources.shoulder,EDGE.x,EDGE.y,EDGE.width,EDGE.height);
-    ctx.restore();
-   }
-   const region=skinVisibleWorldBounds(cam,w,h);
-   const relief=skinSurfaceAlpha(cam.scale,"relief")*surfaceOpacity;
-   if(bodyReady&&relief>.001&&region.maxX>region.minX&&region.maxY>region.minY){
+   if(bodyReady&&surfaceOpacity>.001){
+    // A WHOLE-BODY material field. The body bitmap sets one registered
+    // anatomical silhouette; its native alpha masks everything below.
+    // At high scale this gentle tone suppresses blurry upscaled pixels
+    // without masking the figure with a circular shoulder texture.
     ctx.save();
     ctx.globalCompositeOperation="source-atop";
-    ctx.beginPath();
-    ctx.ellipse(EDGE.x+EDGE.width/2,EDGE.y+EDGE.height/2,
-     EDGE.width/2,EDGE.height/2,0,0,Math.PI*2);
-    ctx.clip();
-    // Progressive skin-colour field suppresses enlargement artifacts from
-    // the overview raster. Its shape does not change at LOD boundaries.
-    const fillAlpha=relief*skinSurfaceAlpha(cam.scale*.8,"pores")*.96;
-    if(fillAlpha>.001){
-     const shade=ctx.createRadialGradient(
-      EDGE.x+EDGE.width*.45,EDGE.y+EDGE.height*.4,EDGE.width*.04,
-      EDGE.x+EDGE.width*.5,EDGE.y+EDGE.height*.5,EDGE.width*.69);
-     shade.addColorStop(0,"#eeb49b");
-     shade.addColorStop(.6,"#d99b86");
-     shade.addColorStop(1,"#b8796d");
-     ctx.fillStyle=shade;ctx.globalAlpha=fillAlpha;
-     ctx.fillRect(EDGE.x,EDGE.y,EDGE.width,EDGE.height);
+    const smoothBase=skinSurfaceAlpha(cam.scale,"regional")*surfaceOpacity;
+    if(smoothBase>.001){
+     const shade=ctx.createLinearGradient(80,50,290,560);
+     shade.addColorStop(0,"#eab7a0");
+     shade.addColorStop(.52,"#e0a58f");
+     shade.addColorStop(1,"#d39a85");
+     ctx.globalAlpha=smoothBase*.92;
+     ctx.fillStyle=shade;
+     ctx.fillRect(0,0,WORLD_WIDTH,WORLD_HEIGHT);
     }
-    ctx.globalAlpha=1;
-    drawSkinSurfaceField(ctx,cam.scale,region,surfaceOpacity);
+    const region=skinVisibleWorldBounds(cam,w,h);
+    if(region.maxX>region.minX&&region.maxY>region.minY){
+     ctx.globalAlpha=1;
+     drawSkinSurfaceField(ctx,cam.scale,region,surfaceOpacity);
+    }
     ctx.restore();
    }
    if(detailReady&&resources.section&&sectionBlend>.001&&bodyReady){
@@ -165,9 +141,8 @@ export default function LektrusSkinSemanticViewport({camera,mode}:Props){
   drawRef.current=requestDraw;
   const loadedBody=()=>{bodyReady=true;requestDraw();};
   const loadedDetails=()=>{
-   resources.shoulder=cropFeathered(sprite,0);
-   resources.section=cropFeathered(sprite,1);
-   detailReady=!!resources.shoulder&&!!resources.section;
+   resources.section=cropSection(sprite);
+   detailReady=!!resources.section;
    requestDraw();
   };
   resources.body.addEventListener("load",loadedBody);
