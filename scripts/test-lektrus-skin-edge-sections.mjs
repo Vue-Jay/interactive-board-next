@@ -97,10 +97,10 @@ function record(scale,bounds){
 const visible={minX:8,maxX:14,minY:18,maxY:22};
 assert.equal(record(1,visible).count,0);
 assert.equal(record(360,{minX:100,maxX:110,minY:100,maxY:110}).count,0);
-const tissue=record(10,visible),cells=record(150,visible);
+const tissue=record(10,visible),cells=record(360,visible);
 assert.equal(tissue.count,1);assert.equal(cells.count,1);
 assert.ok(cells.calls.length>tissue.calls.length+100,"Deep zoom reveals cells");
-assert.deepEqual(cells.calls,record(150,visible).calls,"Pan/zoom must not randomize tissue");
+assert.deepEqual(cells.calls,record(360,visible).calls,"Pan/zoom must not randomize tissue");
 assert.ok(cells.calls.some(c=>c[0]==="clip"),"Stay inside lateral section");
 assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
 assert.doesNotMatch(renderer,/edgeAtlas|detailCanvas|globalCompositeOperation="destination-in"/);
@@ -129,13 +129,15 @@ const trunkSamples=Array.from({length:20},(_,i)=>({x:104+i,y:220,inward:1}));
 assert.ok(trunkSamples.some(p=>model.skinEdgeHasFollicle(p)) &&
  trunkSamples.some(p=>!model.skinEdgeHasFollicle(p)),
  "Thin hairy skin should have varying follicle spacing");
-const lowCell=record(6,visible),highCell=record(180,visible);
+const lowCell=record(6,visible),highCell=record(360,visible);
 assert.ok(highCell.calls.filter(c=>c[0]==="bezierCurveTo").length>
  lowCell.calls.filter(c=>c[0]==="bezierCurveTo").length,
  "Deep zoom reveals finer connective fibres and basement membrane");
-assert.ok(highCell.calls.filter(c=>c[0]==="ellipse").length>
- lowCell.calls.filter(c=>c[0]==="ellipse").length+100,
- "Deep zoom reveals individual epidermal cells, not blurred spots");
+assert.ok(highCell.calls.filter(c=>c[0]==="moveTo").length>
+ lowCell.calls.filter(c=>c[0]==="moveTo").length+50,
+ "Fine epidermal stratum boundaries appear only at deep zoom");
+assert.equal(model.skinEdgeDetailLevels(24).cells,0,
+ "A 24x body view must not contain giant epidermal cells");
 assert.deepEqual(record(180,visible).calls,highCell.calls,
  "Every detail remains anchored while zooming/panning");
 console.log("High-detail lateral skin PASS: varied follicles, adipocytes, epidermal strata and stable world detail.");
@@ -194,3 +196,67 @@ assert.throws(()=>vector.skinSectionContours(alpha,width,1,factor),
 assert.match(renderer,/skinSectionContours\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/);
 assert.match(renderer,/SKIN_SECTION_WORLD_DEPTH\/SKIN_EDGE_WORLD_WIDTH/);
 console.log("Vector skin cross-section PASS: smooth paths, 3 independent regions, neutral centers, no raster zoom aliasing.");
+
+// Physically calibrated cells are a separate continuous field. The widened
+// teaching cutaway never scales their x radius or repeats 1-3 mm cells at 24x.
+const microCode=ts.transpileModule(fs.readFileSync(
+ "src/lektrusSkinHistologyDetail.ts","utf8"),{
+ compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+}).outputText;
+const micro={};
+new Function("exports",microCode)(micro);
+assert.equal(micro.SKIN_ADIPOCYTE_GRID_WORLD,.033);
+assert.equal(micro.SKIN_KERATINOCYTE_GRID_WORLD,.0085);
+assert.ok(micro.SKIN_MICRO_MAX_MARKS<=8500);
+const adipocyte=micro.skinMicroCellDiameterMicrons("adipocyte");
+const keratinocyte=micro.skinMicroCellDiameterMicrons("keratinocyte");
+assert.ok(adipocyte.min>=50&&adipocyte.max<=150,
+ "Adipocytes must be measured in tens of µm, not millimetres");
+assert.ok(keratinocyte.min>=10&&keratinocyte.max<=35,
+ "Keratinocytes must be much smaller than adipocytes");
+assert.ok(keratinocyte.max<adipocyte.min);
+assert.equal(micro.skinMicroOpacity(24).adipocytes,0);
+assert.equal(micro.skinMicroOpacity(24).keratinocytes,0);
+assert.ok(micro.skinMicroOpacity(24).collagen>0,
+ "At 24x there should be collagen detail instead of oversized cells");
+for(const name of ["collagen","adipocytes","keratinocytes"]){
+ let before=0;
+ for(let scale=1;scale<=360;scale+=.25){
+  const now=micro.skinMicroOpacity(scale)[name];
+  assert.ok(now>=before&&now<=1);
+  assert.ok(now-before<.04,"Cell detail must fade in continuously");
+  before=now;
+ }
+}
+const microBounds={minX:2,maxX:14,minY:7,maxY:9};
+function microDraw(scale,bounds=microBounds){
+ const logged=[];
+ const ctx=new Proxy({},{
+  get:(_,name)=>(...args)=>{
+   assert.ok(args.filter(n=>typeof n==="number").every(Number.isFinite));
+   logged.push([name,...args]);
+  },set:()=>true
+ });
+ return {count:micro.drawSkinMicroscopicDetails(ctx,stripes,scale,bounds),
+  calls:logged};
+}
+const meso=microDraw(24),deep=microDraw(360),repeat=microDraw(360);
+assert.equal(meso.count.adipocytes,0);
+assert.equal(meso.count.keratinocytes,0);
+assert.ok(meso.count.collagen>0);
+assert.ok(deep.count.adipocytes>0&&deep.count.keratinocytes>0,
+ "Both fat and epidermal cells must be present at deep magnification");
+for(const count of Object.values(deep.count))
+ assert.ok(count<=micro.SKIN_MICRO_MAX_MARKS);
+assert.deepEqual(deep,repeat,
+ "Cell coordinates and structure must not change after panning or zooming");
+const deepEllipses=deep.calls.filter(c=>c[0]==="ellipse");
+assert.ok(deepEllipses.length>50);
+assert.ok(deepEllipses.every(c=>c[3]<=.02&&c[4]<=.02),
+ "Individual cell radii should stay under 0.02 body-world units");
+const outside=microDraw(360,{minX:200,maxX:220,minY:200,maxY:210});
+assert.deepEqual(outside.count,
+ {collagen:0,adipocytes:0,keratinocytes:0});
+assert.match(renderer,/drawSkinMicroscopicDetails\(ctx,contours,cam.scale,visible\)/);
+assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
+console.log("Calibrated microscopy PASS: biologically scaled cells, correct zoom LOD, bounded work, deterministic world-space rendering.");
