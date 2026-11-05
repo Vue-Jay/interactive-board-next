@@ -1,8 +1,7 @@
-/** Human skin as an educational lateral cutaway, never a surface texture.
- * Only the left and right silhouette edges receive epidermis, dermis and
- * subcutaneous layers. The center stays a neutral silhouette; camera and
- * all world coordinates remain the same as the other six systems.
- */
+/** One continuous body camera, with a crisp anatomy section along the
+ * silhouette flanks. At deep zoom, vector tissue and cellular structures
+ * replace the pixelated stripes of the old 1080 px raster-edge mask.
+ * Nothing is drawn over the neutral center of the body. */
 import {useEffect,useRef} from "react";
 import skinHighRes from "./assets/bio-atlas/human-skin-highres-registered.webp";
 import skinFallback from "./assets/bio-atlas/human-skin-original-registered.webp";
@@ -10,7 +9,9 @@ import type {AnatomyCamera} from "./lektrusHumanAnatomyModel";
 import {anatomyBodyFit} from "./lektrusAnatomySemanticZoom";
 import {skinVisibleWorldBounds} from "./lektrusSkinSurfaceField";
 import {createSkinEdgeRaster,drawSkinEdgeDetails,
- type SkinEdgeLandmark} from "./lektrusSkinEdgeSections";
+ SKIN_EDGE_WORLD_WIDTH,type SkinEdgeLandmark} from "./lektrusSkinEdgeSections";
+import {skinSectionContours,drawSkinSectionBands,clipSkinSection,
+ SKIN_SECTION_WORLD_DEPTH,type SkinSectionContour} from "./lektrusSkinVectorSections";
 
 type Props={camera:AnatomyCamera};
 const WORLD_WIDTH=360,WORLD_HEIGHT=600;
@@ -28,31 +29,25 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
   if(!canvas.getContext("2d",{alpha:true,desynchronized:true}))return;
   let active=true,frame=0,ready=false,usingFallback=false;
   const body=new Image();
-  let edgeAtlas:HTMLCanvasElement|null=null;
-  // Reuse a viewport-sized detail buffer. Mask against the exact edge atlas
-  // so glands/cells cannot spill into a limb gap or the neutral body center.
-  const detailCanvas=document.createElement("canvas");
+  let contours:SkinSectionContour[]=[];
   let landmarks:SkinEdgeLandmark[]=[];
   let width=0,height=0;
   const requestDraw=()=>{
    if(active&&!frame)frame=requestAnimationFrame(draw);
   };
-  const makeEdgeAtlas=()=>{
-   // Raster alpha is read only when the reference image loads, not on zoom.
-   // The bundled asset is same-origin, so this is safe in offline builds.
+  const buildSkin=()=>{
+   // Read bundled, same-origin silhouette once. At no point is a scaled
+   // raster skin atlas reused as visible tissue at high magnification.
    const source=document.createElement("canvas");
    source.width=RASTER_WIDTH;source.height=RASTER_HEIGHT;
    const c=source.getContext("2d",{willReadFrequently:true});
    if(!c)return;
    c.drawImage(body,0,0,RASTER_WIDTH,RASTER_HEIGHT);
-   const image=c.getImageData(0,0,RASTER_WIDTH,RASTER_HEIGHT);
+   const rgba=c.getImageData(0,0,RASTER_WIDTH,RASTER_HEIGHT).data;
    const alpha=new Uint8ClampedArray(RASTER_WIDTH*RASTER_HEIGHT);
-   for(let i=0;i<alpha.length;i++)alpha[i]=image.data[i*4+3];
-   const result=createSkinEdgeRaster(alpha,RASTER_WIDTH,RASTER_HEIGHT);
-   image.data.set(result.rgba);
-   c.putImageData(image,0,0);
-   edgeAtlas=source;
-   landmarks=result.landmarks;
+   for(let i=0;i<alpha.length;i++)alpha[i]=rgba[i*4+3];
+   contours=skinSectionContours(alpha,RASTER_WIDTH,RASTER_HEIGHT);
+   landmarks=createSkinEdgeRaster(alpha,RASTER_WIDTH,RASTER_HEIGHT).landmarks;
   };
   const draw=()=>{
    frame=0;
@@ -83,32 +78,19 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
     ctx.save();
     ctx.globalAlpha=.46;
     ctx.drawImage(body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
-    // Neutral center. Do not color the whole body as skin.
     ctx.globalCompositeOperation="source-atop";
     ctx.fillStyle="#dfe9e7";ctx.globalAlpha=.80;
     ctx.fillRect(0,0,WORLD_WIDTH,WORLD_HEIGHT);
     ctx.restore();
-    if(edgeAtlas){
-     ctx.drawImage(edgeAtlas,0,0,WORLD_WIDTH,WORLD_HEIGHT);
-     // Capillary loops and fat lobules appear gradually at the same edge
-     // points as the atlas. Never spread across the silhouette center.
-     const visible=skinVisibleWorldBounds(cam,w,h);
+    if(contours.length){
+     const visible=skinVisibleWorldBounds(cam,w,h,5);
+     drawSkinSectionBands(ctx,contours,visible);
      if(cam.scale>2.5){
-     if(detailCanvas.width!==canvas.width||detailCanvas.height!==canvas.height){
-      detailCanvas.width=canvas.width;detailCanvas.height=canvas.height;
-     }
-     const detailCtx=detailCanvas.getContext("2d");
-     if(detailCtx){
-      detailCtx.setTransform(1,0,0,1,0,0);
-      detailCtx.clearRect(0,0,detailCanvas.width,detailCanvas.height);
-      detailCtx.setTransform(ctx.getTransform());
-      drawSkinEdgeDetails(detailCtx,landmarks,cam.scale,visible);
-      detailCtx.globalCompositeOperation="destination-in";
-      detailCtx.drawImage(edgeAtlas,0,0,WORLD_WIDTH,WORLD_HEIGHT);
-      detailCtx.globalCompositeOperation="source-over";
-      ctx.save();ctx.setTransform(1,0,0,1,0,0);
-      ctx.drawImage(detailCanvas,0,0);ctx.restore();
-     }
+      ctx.save();
+      const clipped=clipSkinSection(ctx,contours,visible);
+      if(clipped)drawSkinEdgeDetails(ctx,landmarks,cam.scale,visible,
+       SKIN_SECTION_WORLD_DEPTH/SKIN_EDGE_WORLD_WIDTH);
+      ctx.restore();
      }
     }
    }
@@ -118,10 +100,11 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
   const onLoaded=()=>{
    if(!active)return;
    ready=true;
-   try{makeEdgeAtlas();}
+   try{buildSkin();}
    catch{
-    // Browsers that block pixel reads still retain a neutral silhouette.
-    edgeAtlas=null;landmarks=[];
+    // If image alpha read is prohibited, retain the neutral silhouette
+    // without painting unrelated fallback anatomy over it.
+    contours=[];landmarks=[];
    }
    requestDraw();
   };
@@ -147,5 +130,5 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
  },[]);
  useEffect(()=>{cameraRef.current=camera;drawRef.current();},[camera]);
  return <canvas ref={canvasRef} className="lek-anatomy-semantic-canvas"
-  role="img" aria-label="Кожный покров в разрезе только по боковым контурам человека: эпидермис, дерма, подкожная клетчатка; при приближении — фолликулы, железы, сосуды и клетки"/>;
+  role="img" aria-label="Боковой разрез кожи с плавными контурами: эпидермис, дерма, подкожная клетчатка, сосуды, железы, фолликулы и клетки"/>;
 }
