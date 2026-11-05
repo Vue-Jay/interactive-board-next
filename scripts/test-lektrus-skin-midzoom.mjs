@@ -75,28 +75,31 @@ assert.notDeepEqual(meso.skinMesoTilesInBounds(
 ),meso.skinMesoTilesInBounds(
  {minX:44,maxX:64,minY:50,maxY:70}
 ));
-let created=0,putImages=0,schedules=0,draws=0,strokes=0;
-let colorVariance=false;
+// Reconstructed skin must be a network of small anatomical furrows,
+// NOT red and brown image-data dots or pigment noise.
+const creases=meso.skinHandCreaseAnchors();
+assert.equal(creases.length,30,"Hands need fixed joint crease landmarks");
+assert.ok(creases.every(p=>p.length>0&&Number.isFinite(p.angle)));
+for(const [x,y] of [[87,245],[55,335],[181,231]]){
+ const ix=Math.floor(x/.72),iy=Math.floor(y/.72);
+ const f=meso.skinFurrowAt(ix,iy);
+ assert.ok(f.width>.04&&f.width<.10);
+ assert.ok(Math.hypot(f.endX-f.x,f.endY-f.y)<.8,
+  "Furrows must be short, not large dark strokes crossing limbs");
+ assert.deepEqual(f,meso.skinFurrowAt(ix,iy),
+  "Furrow geometry must not change on zoom or pan");
+}
+let created=0,schedules=0,draws=0,strokes=0;
 const createContext=()=>({
- createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4)}),
- putImageData(image){
-  putImages++;
-  const d=image.data;
-  let min=255,max=0;
-  for(let i=3;i<d.length;i+=4){
-   min=Math.min(min,d[i]);max=Math.max(max,d[i]);
-  }
-  if(max>min+5)colorVariance=true;
- },
- setTransform(){},stroke(){strokes++;},fill(){},
+ setTransform(){},stroke(){strokes++;},
+ fill(){throw Error("Meso skin must not paint color patches");},
  beginPath(){},moveTo(){},lineTo(){},quadraticCurveTo(){},
- ellipse(){},save(){},restore(){},drawImage(){draws++}
+ save(){},restore(){},drawImage(){draws++}
 });
 const originalDocument=globalThis.document;
 try{
  globalThis.document={createElement(tag){
-  assert.equal(tag,"canvas");
-  created++;
+  assert.equal(tag,"canvas");created++;
   const context=createContext();
   return {width:0,height:0,getContext:()=>context};
  }};
@@ -111,8 +114,8 @@ try{
   meso.drawSkinMesoTiles(renderer,bounds,6.86,1,()=>schedules++);
  assert.equal(created,coords.length,
   "Each absolute-world tile is built only once");
- assert.ok(colorVariance,"Medium detail must contain real skin color variation");
- assert.ok(putImages>0&&strokes>0,"Mid-zoom texture must include furrows and pigment");
+ assert.ok(strokes>800,
+  "Medium detail must DRAW visible fine furrows, not colored dots");
  const old=created;
  drawn=meso.drawSkinMesoTiles(renderer,bounds,6.86);
  assert.equal(drawn,coords.length);
@@ -135,12 +138,16 @@ try{
 const layer=read("src/LektrusSkinSemanticViewport.tsx");
 const source=read("src/lektrusSkinMesoTiles.ts");
 assert.match(layer,/drawSkinMesoTiles\(ctx,region,cam.scale,surfaceOpacity,requestDraw\)/);
-assert.match(layer,/ctx\.globalAlpha=smoothBase\*\(\.40\+\.29\*skinSurfaceAlpha/);
+assert.match(layer,/ctx\.globalAlpha=smoothBase\*\(\.025\+\.18\*skinSurfaceAlpha/);
 assert.match(layer,/ctx\.globalCompositeOperation="source-atop"/);
 assert.match(layer,/drawSkinSurfaceField\(ctx,cam.scale,region,surfaceOpacity\)/);
-assert.match(source,/skinMesoTone\(worldX,worldY\)/);
+assert.match(source,/skinMesoTone\(worldX:number,worldY:number\)/);
+assert.doesNotMatch(source,/ctx\.putImageData\(|ctx\.createImageData\(/,
+ "No random pixel pigment overlay that produces dark blotches");
+assert.doesNotMatch(source,/ctx\.ellipse\(|ctx\.fill\(/,
+ "Skin relief must use fine strokes rather than dot/spot primitives");
 assert.doesNotMatch(source,/Math\.random/);
 const ast=ts.createSourceFile("src/LektrusSkinSemanticViewport.tsx",layer,
  ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(ast.parseDiagnostics.length,0);
-console.log("Mid-zoom skin PASS: 686% patterned detail, region-specific creases, stable world coordinates, progressive cached tiles and no flat color overlay.");
+console.log("Mid-zoom skin PASS: no blotchy pigment, fine anatomically oriented creases, stable world coordinates, bounded tiles and preserved body shading.");
