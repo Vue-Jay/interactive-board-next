@@ -334,6 +334,12 @@ assert.ok(shader.SKIN_TISSUE_MAX_PIXELS<=200000,
 assert.ok(shader.SKIN_TISSUE_MAX_WIDTH<=900);
 const tissueAt=(fraction,scale=200,x=11.2,y=8.3)=>
  shader.skinTissueSample(x,y,fraction,scale);
+const folds=Array.from({length:20},(_,i)=>shader.skinTissueReteBoundary(i*.057));
+assert.ok(Math.min(...folds)>.11&&Math.max(...folds)<.15);
+assert.ok(Math.max(...folds)-Math.min(...folds)>.006,
+ "The basal epidermal boundary must have real world-anchored rete ridges");
+assert.equal(shader.skinTissueReteBoundary(1.25),
+ shader.skinTissueReteBoundary(1.25));
 assert.equal(tissueAt(.03).region,"epidermis");
 assert.equal(tissueAt(.18).region,"dermis");
 assert.equal(tissueAt(.49).region,"dermis");
