@@ -81,8 +81,8 @@ export function skinEdgeDetailsAlpha(scale:number){return smooth(2.5,6.5,scale);
  * they are not a measured histological map of every body region.
  */
 export function skinEdgeDetailLevels(scale:number){
- return {appendages:smooth(7,22,scale),fibres:smooth(18,50,scale),
-  cells:smooth(45,110,scale)};
+ return {appendages:smooth(4,12,scale),fibres:smooth(8,19,scale),
+  cells:smooth(13,30,scale)};
 }
 /** World-anchored variations prevent a stamp of identical follicles and fat
  * cells from repeating down every limb. No Math.random, camera or frame state. */
@@ -102,7 +102,8 @@ export function skinEdgeHasFollicle(p:SkinEdgeLandmark):boolean{
 export function drawSkinEdgeDetails(
  ctx:CanvasRenderingContext2D,
  landmarks:readonly SkinEdgeLandmark[],scale:number,
- bounds:{minX:number;maxX:number;minY:number;maxY:number}
+ bounds:{minX:number;maxX:number;minY:number;maxY:number},
+ depthScale=1
 ):number{
  const opacity=skinEdgeDetailsAlpha(scale);
  if(opacity<.005)return 0;
@@ -112,7 +113,7 @@ export function drawSkinEdgeDetails(
   if(p.y<bounds.minY-4||p.y>bounds.maxY+4||
    p.x<bounds.minX-4||p.x>bounds.maxX+4)continue;
   const variation=(salt:number)=>skinEdgeDetailVariation(p,salt);
-  ctx.save();ctx.translate(p.x,p.y);ctx.scale(p.inward,1);
+  ctx.save();ctx.translate(p.x,p.y);ctx.scale(p.inward*depthScale,1);
   ctx.beginPath();ctx.rect(-.05,-4.05,SKIN_EDGE_WORLD_WIDTH+.1,8.1);ctx.clip();
   // Each station follows the curved silhouette at sub-world-unit precision.
   // All local x coordinates are tissue depth, never screen pixels.
@@ -121,7 +122,7 @@ export function drawSkinEdgeDetails(
    const t=Math.max(0,Math.min(p.offsets.length-1,
     (y+4)*SKIN_EDGE_NATIVE_FACTOR));
    const i=Math.floor(t),j=Math.min(p.offsets.length-1,i+1);
-   return p.offsets[i]+(p.offsets[j]-p.offsets[i])*(t-i);
+   return (p.offsets[i]+(p.offsets[j]-p.offsets[i])*(t-i))/depthScale;
   };
   const line=(color:string,width:number,points:readonly number[])=>{
    ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();
