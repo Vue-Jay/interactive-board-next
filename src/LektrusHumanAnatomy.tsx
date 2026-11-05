@@ -2,8 +2,8 @@ import {useCallback,useEffect,useRef,useState,type PointerEvent as ReactPointerE
 import anatomySprite from "./assets/bio-atlas/human-seven-systems-clean.webp";
 import {HUMAN_BODY_SYSTEMS,type HumanFocusedSystem} from "./lektrusBioHumanBodySystems";
 import LektrusBioHumanSystemIcon from "./LektrusBioHumanSystemIcon";
-import LektrusSkinSemanticViewport,{type SkinViewMode} from "./LektrusSkinSemanticViewport";
-import {SKIN_MAX_SCALE,SKIN_SHOULDER_CENTER,anatomyCameraAtBody,
+import LektrusSkinSemanticViewport from "./LektrusSkinSemanticViewport";
+import {SKIN_MAX_SCALE,anatomyCameraAtBody,
  skinDetailStage} from "./lektrusAnatomySemanticZoom";
 import {ANATOMY_INITIAL_CAMERA,ANATOMY_SPRITE_WIDTH,ANATOMY_CROP_WIDTH,
  ANATOMY_SPRITE_HEIGHT,ANATOMY_SYSTEM_DETAILS,anatomySpritePosition,
@@ -37,7 +37,6 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
  const [camera,setCamera]=useState<AnatomyCamera>(ANATOMY_INITIAL_CAMERA);
  const [displayCamera,setDisplayCamera]=useState<AnatomyCamera>(ANATOMY_INITIAL_CAMERA);
  const displayed=useRef<AnatomyCamera>(ANATOMY_INITIAL_CAMERA);
- const [skinMode,setSkinMode]=useState<SkinViewMode>("surface");
  // Interpolate the same scale and pan fraction at each frame: the point
  // under the cursor remains fixed throughout the animation, not only at
  // its final destination. Switching systems leaves this camera untouched.
@@ -91,10 +90,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
     at??{x:width/2,y:height/2},width,height,max);
   });
  },[system]);
- const reset=()=>{
-  setCamera(ANATOMY_INITIAL_CAMERA);
-  setSkinMode("surface");
- };
+ const reset=()=>setCamera(ANATOMY_INITIAL_CAMERA);
  const focusSkin=()=>{
   const {width,height}=dimensions();
   // Optional shortcut, not a camera requirement or a texture border.
@@ -203,7 +199,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
     }}>
     <div className="lek-anatomy-stage-grid" aria-hidden="true"/>
     {system==="integumentary"?<LektrusSkinSemanticViewport
-     camera={displayCamera} mode={skinMode}/>:<div className="lek-anatomy-world"
+     camera={displayCamera}/>:<div className="lek-anatomy-world"
      style={{transform:`translate3d(${displayCamera.panX}px,${displayCamera.panY}px,0) scale(${displayCamera.scale})`}}>
      <div className="lek-anatomy-figure"
       data-anatomy-system={system}
