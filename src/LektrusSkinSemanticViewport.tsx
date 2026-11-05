@@ -122,16 +122,19 @@ export default function LektrusSkinSemanticViewport({camera,mode}:Props){
      // The old near-opaque smooth gradient erased every skin highlight
      // from the 360x600 source at medium zoom. Keep natural body shading
      // readable while texture fills in the missing subpixel information.
-     ctx.globalAlpha=smoothBase*(.40+.29*skinSurfaceAlpha(cam.scale,"pores"));
+     // Preserve the artist's actual shading at ordinary 4–12x views.
+     // The old 40% flat tint washed away knuckles and skin contours,
+     // while red/brown pigment noise was mistaken for detail.
+     ctx.globalAlpha=smoothBase*(.025+.18*skinSurfaceAlpha(cam.scale,"pores"));
      ctx.fillStyle=shade;
      ctx.fillRect(0,0,WORLD_WIDTH,WORLD_HEIGHT);
     }
     const region=skinVisibleWorldBounds(cam,w,h);
     if(region.maxX>region.minX&&region.maxY>region.minY){
      ctx.globalAlpha=1;
-     // World-registered mid-scale skin grain appears before pores/cells.
-     // Unlike the original bitmap it retains detail when zoomed 6–10x.
-     // This is one global field, not one stamped texture on the whole arm.
+     // Fine dermatoglyphic furrows are drawn over the original skin
+     // shading. No blotchy pigment, freckles, enlarged dots or snapshots.
+     // One global field works on the entire body with regional directions.
      drawSkinMesoTiles(ctx,region,cam.scale,surfaceOpacity,requestDraw);
      drawSkinSurfaceField(ctx,cam.scale,region,surfaceOpacity);
      // Beyond the sub-mm relief, cached corneocyte structures emerge
