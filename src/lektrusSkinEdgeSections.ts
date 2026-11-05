@@ -81,7 +81,7 @@ export function skinEdgeDetailsAlpha(scale:number){return smooth(2.5,6.5,scale);
  * they are not a measured histological map of every body region.
  */
 export function skinEdgeDetailLevels(scale:number){
- return {appendages:smooth(4,15,scale),fibres:smooth(8,19,scale),
+ return {appendages:smooth(14,54,scale),fibres:smooth(8,19,scale),
   cells:smooth(145,310,scale)};
 }
 /** World-anchored variations prevent a stamp of identical follicles and fat
@@ -178,8 +178,8 @@ export function drawSkinEdgeDetails(
      2.34,y+.38,2.76,y+.43]);
   }
   if(lod.appendages>.005){
-   ctx.globalAlpha=opacity*lod.appendages;
-   if(skinEdgeHasFollicle(p)){
+   ctx.globalAlpha=opacity*lod.appendages*.75;
+   if(skinEdgeHasFollicle(p)&&variation(91)>.31){
     const fy=-1.55+(variation(21)-.5)*.8;
     // Anatomically connected follicle: follicular sheath descends obliquely
     // to its bulb, while the pigmented shaft follows the central canal.
@@ -201,6 +201,7 @@ export function drawSkinEdgeDetails(
    // Eccrine gland: distinct sweat duct to an actual surface opening;
    // secretory coils lie in the deep dermis, not in the epidermis.
    const sy=1.45+(variation(31)-.5)*.48;
+   if(variation(93)>.44){
    curve("#8c729b",.092,[.045,sy-.85,.31,sy-.72,.45,sy-.20,.76,sy+.14]);
    curve("#a28ab1",.047,[.055,sy-.85,.31,sy-.72,.45,sy-.20,.76,sy+.14]);
    oval(.052,sy-.86,.07,.048,"#795f92");
@@ -212,6 +213,7 @@ export function drawSkinEdgeDetails(
     oval(cx,cy,.065,.045,"#e9bcc9");
    }
    curve("#8c729b",.080,[.76,sy+.14,.88,sy+.36,1.03,sy+.52,1.20,sy+.64]);
+   }
   }
   if(lod.fibres>.005){
    ctx.globalAlpha=opacity*lod.fibres*.48;
