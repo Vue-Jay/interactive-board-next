@@ -13,9 +13,9 @@ export type SkinSectionContour={inward:-1|1;points:SkinSectionPoint[];
 type Track={inward:-1|1;lastRow:number;lastX:number;points:SkinSectionPoint[]};
 type Bounds={minX:number;maxX:number;minY:number;maxY:number};
 const LAYERS=[
- {start:0,end:.13,fill:"#c37e85"},
- {start:.13,end:.54,fill:"#edb1a9"},
- {start:.54,end:1,fill:"#f4d49a"}
+ {start:0,end:.13,fill:"#c995aa"},
+ {start:.13,end:.54,fill:"#eabec5"},
+ {start:.54,end:1,fill:"#f0dfce"}
 ] as const;
 export function skinSectionContours(
  alpha:Uint8ClampedArray,width:number,height:number,factor=3
@@ -123,7 +123,7 @@ export function drawSkinSectionBands(
    ctx.fillStyle=layer.fill;ctx.globalAlpha=.98;ctx.fill();
   }
   // A soft papillary border, not square raster-band pixels.
-  ctx.globalAlpha=.55;ctx.lineWidth=.045;ctx.strokeStyle="#ac6a76";
+  ctx.globalAlpha=.30;ctx.lineWidth=.020;ctx.strokeStyle="#b67f90";
   for(const fraction of [.13,.54]){
    ctx.beginPath();
    const first=points[0];
