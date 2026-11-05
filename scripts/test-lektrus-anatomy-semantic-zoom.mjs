@@ -144,6 +144,28 @@ assert.equal(body.toString("ascii",12,16),"VP8X","Skin asset must retain an alph
 assert.deepEqual([1+body.readUIntLE(24,3),1+body.readUIntLE(27,3)],
  [360,600],"Original skin figure must share the exact 360x600 body-local coordinates");
 assert.ok(body.length>10000&&body.length<120000);
+const highRes=fs.readFileSync("src/assets/bio-atlas/human-skin-highres-registered.webp");
+assert.equal(highRes.toString("ascii",0,4),"RIFF");
+assert.equal(highRes.toString("ascii",8,12),"WEBP");
+assert.equal(highRes.toString("ascii",12,16),"VP8X");
+assert.ok((highRes[20]&0x10)!==0,
+ "The high-resolution source must keep a transparent background");
+assert.deepEqual([1+highRes.readUIntLE(24,3),1+highRes.readUIntLE(27,3)],
+ [1080,1800],"High-res figure should be 3x the original 360x600 source");
+assert.ok(highRes.length>50000&&highRes.length<350000,
+ "High-resolution WebP should fit the offline/mobile texture bundle");
+assert.deepEqual(world.SKIN_BODY_RASTER_SIZE,{width:1080,height:1800});
+assert.equal(world.SKIN_BODY_RASTER_FACTOR,3);
+for(const point of [
+ {x:180,y:25},{x:254,y:182},{x:57,y:331},{x:303,y:331},
+ {x:180,y:330},{x:220,y:549}
+]){
+ const native=world.skinWorldToRaster(point);
+ assert.equal(native.x,point.x*3);
+ assert.equal(native.y,point.y*3);
+ assert.deepEqual(world.skinRasterToWorld(native),point,
+  "High-res image coordinates must agree with existing camera anchors");
+}
 
 const viewer=read("src/LektrusHumanAnatomy.tsx");
 const renderer=read("src/LektrusSkinSemanticViewport.tsx");
@@ -163,7 +185,14 @@ assert.doesNotMatch(viewer,/skinRouteActive|setSkinRouteActive|overSkin/,
 assert.match(viewer,/aria-pressed=\{skinMode==="surface"\}/);
 assert.match(viewer,/aria-pressed=\{skinMode==="section"\}/);
 assert.match(renderer,/drawSkinSurfaceField\(ctx,cam.scale,region,surfaceOpacity\)/);
-assert.match(renderer,/import skinOriginal from "\.\/assets\/bio-atlas\/human-skin-original-registered.webp"/);
+assert.match(renderer,/import skinHighRes from "\.\/assets\/bio-atlas\/human-skin-highres-registered.webp"/);
+assert.match(renderer,/import skinOriginalFallback from "\.\/assets\/bio-atlas\/human-skin-original-registered.webp"/);
+assert.match(renderer,/resources\.body\.src=skinHighRes/);
+assert.match(renderer,/ctx\.imageSmoothingQuality="high"/);
+assert.match(renderer,/ctx\.drawImage\(resources\.body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/,
+ "Native 3x raster must use exactly the old body-world rectangle");
+assert.doesNotMatch(renderer,/cam\.scale\s*\?/,
+ "Image registration cannot change with camera scale");
 assert.doesNotMatch(renderer,/SKIN_INDEX\*WORLD_WIDTH/,
  "Skin viewer must not reuse the incorrect blue-gray system sprite");
 assert.match(renderer,/ctx\.globalCompositeOperation="source-atop"/,
