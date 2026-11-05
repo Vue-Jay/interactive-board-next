@@ -22,11 +22,11 @@ const surface=loadTS("src/lektrusSkinSurfaceField.ts",{
  "./lektrusAnatomySemanticZoom":world
 });
 
-assert.deepEqual(world.SKIN_SHOULDER_CENTER,{x:261,y:220});
+assert.deepEqual(world.SKIN_SHOULDER_CENTER,{x:254,y:182});
 assert.deepEqual(world.SKIN_BODY_SIZE,{width:360,height:600});
-assert.deepEqual(world.SKIN_SHOULDER,{x:236,y:186,width:50,height:68});
-assert.equal(world.skinAvailableAt({x:250,y:163}),false,
- "Old focal point was outside the skin body and must not trigger zoom");
+assert.deepEqual(world.SKIN_SHOULDER,{x:226,y:148,width:56,height:68});
+assert.notDeepEqual(world.SKIN_SHOULDER_CENTER,{x:250,y:163},
+ "The anatomical focal point must be recalibrated after replacing the body source");
 assert.equal(world.skinAvailableAt({x:280,y:197}),false,
  "The shoulder selection must not include surrounding empty background");
 assert.equal(world.SKIN_MAX_SCALE,52);
