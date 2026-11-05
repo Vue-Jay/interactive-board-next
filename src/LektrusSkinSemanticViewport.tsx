@@ -8,6 +8,7 @@ import skinFallback from "./assets/bio-atlas/human-skin-original-registered.webp
 import type {AnatomyCamera} from "./lektrusHumanAnatomyModel";
 import {anatomyBodyFit} from "./lektrusAnatomySemanticZoom";
 import {skinVisibleWorldBounds} from "./lektrusSkinSurfaceField";
+import {drawSkinMicroscopicDetails} from "./lektrusSkinHistologyDetail";
 import {createSkinEdgeRaster,drawSkinEdgeDetails,
  SKIN_EDGE_WORLD_WIDTH,type SkinEdgeLandmark} from "./lektrusSkinEdgeSections";
 import {skinSectionContours,drawSkinSectionBands,clipSkinSection,
@@ -88,8 +89,13 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
      if(cam.scale>2.5){
       ctx.save();
       const clipped=clipSkinSection(ctx,contours,visible);
-      if(clipped)drawSkinEdgeDetails(ctx,landmarks,cam.scale,visible,
-       SKIN_SECTION_WORLD_DEPTH/SKIN_EDGE_WORLD_WIDTH);
+      if(clipped){
+       drawSkinEdgeDetails(ctx,landmarks,cam.scale,visible,
+        SKIN_SECTION_WORLD_DEPTH/SKIN_EDGE_WORLD_WIDTH);
+       // Anatomical cell sizes remain fixed in the body world, even though
+       // the lateral three-layer teaching section is made wider.
+       drawSkinMicroscopicDetails(ctx,contours,cam.scale,visible);
+      }
       ctx.restore();
      }
     }
