@@ -1,10 +1,13 @@
-/** Deterministic, medium-scale skin pattern throughout the human silhouette.
+/** Hand-drawn-looking microrelief, not random pigment noise.
  *
- * A 360x600 overview image cannot contain actual skin detail when zoomed 7x.
- * This layer supplies world-registered mesostructure without replacing the
- * underlying human, magnifying a shoulder patch or creating zoom "frames".
- * Color/tone, short furrows and tiny freckles are procedural illustration,
- * not patient-specific microscopy or a claim of calibrated photorealism.
+ * The previous version mixed saturated red/brown noise, cellular spots and
+ * thousands of flecks: at 7x it looked like blotchy diseased skin. This
+ * renderer deliberately paints NO freckles, stains or large tone fields.
+ *
+ * Every furrow and fine highlight is a stable curve in body-local
+ * coordinates. Adjacent tiles reuse the same global grid, and each stroke
+ * uses the local region's orientation (arm, hand, face, torso or leg).
+ * The original anatomical image owns the skin COLOR and LIGHTING.
  */
 import {skinHash,skinSmoothstep,skinValueNoise,type SkinBounds}
  from "./lektrusSkinSurfaceField";
@@ -24,41 +27,40 @@ export type SkinMesoProfile={
  furrowStep:number;
  fineGrain:number;
 };
-/** Region profiles reflect the illustration's rough body coordinates.
- * No separate regional camera, circular vignette or visible seam.
+const ellipse=(x:number,y:number,cx:number,cy:number,rx:number,ry:number)=>
+ Math.hypot((x-cx)/rx,(y-cy)/ry);
+/** Coarse anatomical atlas map. Direction is only orientation of fine skin
+ * relief, not a different source texture or a hard regional crop.
  */
 export function skinMesoProfile(x:number,y:number):SkinMesoProfile{
- const ellipse=(cx:number,cy:number,rx:number,ry:number)=>
-  Math.hypot((x-cx)/rx,(y-cy)/ry);
- const leftHand=ellipse(57,335,22,37),rightHand=ellipse(303,335,22,37);
- if(Math.min(leftHand,rightHand)<1.15){
+ const hand=Math.min(ellipse(x,y,57,335,22,37),
+  ellipse(x,y,303,335,22,37));
+ if(hand<1.15){
   return {region:"hand",direction:Math.PI*.07,contrast:.90,
-   furrowStep:.85,fineGrain:1.15};
+   furrowStep:.64,fineGrain:1.15};
  }
- if(ellipse(180,75,38,55)<1.0){
+ if(ellipse(x,y,180,75,38,55)<1){
   return {region:"face",direction:.2,contrast:.50,
-   furrowStep:1.55,fineGrain:.85};
+   furrowStep:.82,fineGrain:.85};
  }
- if(ellipse(81,245,36,103)<1.0||ellipse(279,245,36,103)<1.0){
+ if(ellipse(x,y,81,245,36,103)<1||
+    ellipse(x,y,279,245,36,103)<1){
   const side=x<180?-1:1;
   return {region:"arm",direction:Math.PI*.48+side*.17,
-   contrast:1.13,furrowStep:1.1,fineGrain:1.05};
+   contrast:1.05,furrowStep:.68,fineGrain:1.05};
  }
- if(ellipse(136,446,28,135)<1.0||ellipse(224,446,28,135)<1.0){
+ if(ellipse(x,y,136,446,28,135)<1||
+    ellipse(x,y,224,446,28,135)<1){
   return {region:"leg",direction:Math.PI*.5,contrast:.85,
-   furrowStep:1.35,fineGrain:1.0};
+   furrowStep:.75,fineGrain:1.0};
  }
- if(ellipse(180,235,63,130)<1.05){
+ if(ellipse(x,y,180,235,63,130)<1.05){
   return {region:"torso",direction:.57,contrast:.67,
-   furrowStep:1.85,fineGrain:.88};
+   furrowStep:.88,fineGrain:.88};
  }
  return {region:"general",direction:1.1,contrast:.77,
-  furrowStep:1.40,fineGrain:.98};
+  furrowStep:.76,fineGrain:.98};
 }
-/** The fade-on region is not the entire zoom interval: medium detail
- * resolves the blurred 360px body before microscopic pores become visible.
- * It then yields naturally to the deeper, finer corneocyte model.
- */
 export function skinMesoOpacity(zoom:number){
  const enter=skinSmoothstep(3.4,7.4,zoom);
  const leave=1-skinSmoothstep(22,48,zoom);
@@ -73,21 +75,131 @@ export function skinMesoTilesInBounds(bounds:SkinBounds):SkinMesoTileCoord[]{
  const y0=Math.floor(bounds.minY/SKIN_MESO_TILE_WORLD);
  const y1=Math.floor(bounds.maxY/SKIN_MESO_TILE_WORLD);
  const result:SkinMesoTileCoord[]=[];
- for(let y=y0;y<=y1;y++){
+ for(let y=y0;y<=y1;y++)
   for(let x=x0;x<=x1;x++)result.push({x,y,key:skinMesoKey(x,y)});
- }
  return result;
 }
 const cache=new Map<string,HTMLCanvasElement>();
 
-/** Pixel colors vary continuously with world coordinates, not tile indices.
- * Adjacent tiles share the same fBm seed and thus do not repeat as a stamp.
+/** A bounded fine-scale variation in line displacement only. We never
+ * convert this noise into broad red/brown colored stains or spots.
  */
 export function skinMesoTone(worldX:number,worldY:number){
- const broad=skinValueNoise(worldX*.42,worldY*.42,107);
- const fine=skinValueNoise(worldX*2.2,worldY*2.2,127);
- const grain=skinHash(Math.floor(worldX*11),Math.floor(worldY*11),151);
- return (broad-.5)*.54+(fine-.5)*.36+(grain-.5)*.10;
+ const grain=skinValueNoise(worldX*2.7,worldY*2.7,127);
+ const fine=skinValueNoise(worldX*7.3,worldY*7.3,151);
+ return (grain-.5)*.30+(fine-.5)*.14;
+}
+export type SkinFurrow={
+ x:number;y:number;endX:number;endY:number;
+ controlX:number;controlY:number;weight:number;width:number;
+};
+/** Region-specific fine skin line. Its coordinates are derived from global
+ * world point and integer seed, so panning never shifts the pattern.
+ */
+export function skinFurrowAt(ix:number,iy:number):SkinFurrow{
+ const step=.60;
+ const x=(ix+.20+.60*skinHash(ix,iy,43))*step;
+ const y=(iy+.20+.60*skinHash(ix,iy,53))*step;
+ const profile=skinMesoProfile(x,y);
+ const theta=profile.direction+(skinHash(ix,iy,67)-.5)*.85;
+ const length=step*(.30+.40*skinHash(ix,iy,73));
+ const bend=(skinHash(ix,iy,79)-.5)*step*.12;
+ const dx=Math.cos(theta)*length*.5;
+ const dy=Math.sin(theta)*length*.5;
+ const thickness=(.021+.018*skinHash(ix,iy,89))*profile.fineGrain;
+ return {
+  x:x-dx,y:y-dy,endX:x+dx,endY:y+dy,
+  controlX:x+bend,controlY:y-bend,
+  width:thickness,weight:profile.contrast
+ };
+}
+/** A second hairline alongside a dark skin furrow forms a very subtle
+ * relief highlight, rather than a dense speckled color noise layer.
+ */
+function strokeFurrow(ctx:CanvasRenderingContext2D,g:SkinFurrow){
+ ctx.globalAlpha=.16*g.weight;
+ ctx.lineWidth=g.width;
+ ctx.strokeStyle="#94675e";
+ ctx.beginPath();
+ ctx.moveTo(g.x,g.y);
+ ctx.quadraticCurveTo(g.controlX,g.controlY,g.endX,g.endY);
+ ctx.stroke();
+ ctx.globalAlpha=.095*g.weight;
+ ctx.lineWidth=g.width*.66;
+ ctx.strokeStyle="#fff1dd";
+ ctx.beginPath();
+ ctx.moveTo(g.x,g.y+g.width*1.7);
+ ctx.quadraticCurveTo(g.controlX,g.controlY+g.width*1.7,
+  g.endX,g.endY+g.width*1.7);
+ ctx.stroke();
+}
+/** Crossings use much finer marks. They describe the irregular mesh of
+ * the skin's shallow sulci, not a stamped dot or random pigment patch.
+ */
+function strokeCrossing(ctx:CanvasRenderingContext2D,ix:number,iy:number){
+ if(skinHash(ix,iy,123)<.42)return;
+ const g=skinFurrowAt(ix,iy);
+ const theta=Math.atan2(g.endY-g.y,g.endX-g.x)+Math.PI*.55;
+ const radius=.13+.08*skinHash(ix,iy,124);
+ const dx=Math.cos(theta)*radius,dy=Math.sin(theta)*radius;
+ const cx=g.controlX,cy=g.controlY;
+ ctx.globalAlpha=.075*g.weight;
+ ctx.strokeStyle="#9d756d";
+ ctx.lineWidth=.019;
+ ctx.beginPath();
+ ctx.moveTo(cx-dx,cy-dy);
+ ctx.quadraticCurveTo(cx+.035,cy-.022,cx+dx,cy+dy);
+ ctx.stroke();
+}
+/** Annotated anatomical hand crease landmarks, not an oval texture.
+ * Short metacarpal/finger folds are drawn only near the hands and are
+ * feathered with local weights. Their orientation follows joint lines.
+ */
+export function skinHandCreaseAnchors(){
+ const folds:{x:number;y:number;length:number;angle:number}[]=[];
+ for(const cx of [57,303]){
+  const flipped=cx>180?-1:1;
+  for(const finger of [-2,-1,0,1,2]){
+   // Multiple short folds at finger joints, positioned on the illustration.
+   for(const [row,y] of [338,349,358].entries()){
+    folds.push({
+     x:cx+finger*4.9+flipped*.35*row,
+     y:y+(Math.abs(finger)*.8),
+     length:(1.1+skinHash(finger,row,115)*.9)*(row===0?1.25:1),
+     angle:.15*flipped+(skinHash(finger,row,116)-.5)*.12
+    });
+   }
+  }
+ }
+ return folds;
+}
+const handCreases=skinHandCreaseAnchors();
+function drawHandFolds(
+ ctx:CanvasRenderingContext2D,tileX:number,tileY:number
+){
+ const left=tileX*SKIN_MESO_TILE_WORLD;
+ const top=tileY*SKIN_MESO_TILE_WORLD;
+ const right=left+SKIN_MESO_TILE_WORLD;
+ const bottom=top+SKIN_MESO_TILE_WORLD;
+ for(const f of handCreases){
+  if(f.x+f.length<left||f.x-f.length>right||
+     f.y+1<top||f.y-1>bottom)continue;
+  const dx=Math.cos(f.angle)*f.length*.5;
+  const dy=Math.sin(f.angle)*f.length*.5;
+  ctx.globalAlpha=.17;
+  ctx.strokeStyle="#91685f";
+  ctx.lineWidth=.055;
+  ctx.beginPath();
+  ctx.moveTo(f.x-dx,f.y-dy);
+  ctx.quadraticCurveTo(f.x,f.y+.14,f.x+dx,f.y+dy);
+  ctx.stroke();
+  ctx.globalAlpha=.09;
+  ctx.strokeStyle="#fff0d8";
+  ctx.beginPath();
+  ctx.moveTo(f.x-dx,f.y-dy+.11);
+  ctx.quadraticCurveTo(f.x,f.y+.25,f.x+dx,f.y+dy+.11);
+  ctx.stroke();
+ }
 }
 function buildMesoTile(tileX:number,tileY:number){
  const canvas=document.createElement("canvas");
@@ -95,84 +207,30 @@ function buildMesoTile(tileX:number,tileY:number){
  canvas.height=SKIN_MESO_TILE_PIXELS;
  const ctx=canvas.getContext("2d");
  if(!ctx)return canvas;
- const image=ctx.createImageData(SKIN_MESO_TILE_PIXELS,SKIN_MESO_TILE_PIXELS);
- const data=image.data;
- const step=SKIN_MESO_TILE_WORLD/SKIN_MESO_TILE_PIXELS;
+ // NO putImageData and NO alpha pigment blotch noise. The source body
+ // retains its natural color; only small anatomical furrows are added.
  const originX=tileX*SKIN_MESO_TILE_WORLD;
  const originY=tileY*SKIN_MESO_TILE_WORLD;
- const profile=skinMesoProfile(originX+SKIN_MESO_TILE_WORLD/2,
-  originY+SKIN_MESO_TILE_WORLD/2);
- // Transparent pigment overlay. Base outline and natural highlights remain
- // visible underneath, with low-frequency pigmentation and fine texture.
- for(let py=0;py<SKIN_MESO_TILE_PIXELS;py++){
-  const worldY=originY+(py+.5)*step;
-  for(let px=0;px<SKIN_MESO_TILE_PIXELS;px++){
-   const worldX=originX+(px+.5)*step;
-   // Pixel pigment depends on absolute coordinates only. Do not scale
-   // it by the per-tile region profile: that causes visible tile seams.
-   // Anatomical differences are expressed in the oriented furrows below.
-   const tone=skinMesoTone(worldX,worldY);
-   const magnitude=Math.min(48,Math.abs(tone)*155);
-   const offset=(py*SKIN_MESO_TILE_PIXELS+px)*4;
-   if(tone>=0){
-    data[offset]=255;data[offset+1]=221;data[offset+2]=188;
-   }else{
-    data[offset]=120;data[offset+1]=68;data[offset+2]=59;
-   }
-   data[offset+3]=Math.round(magnitude);
-  }
- }
- ctx.putImageData(image,0,0);
- // Tiny interrupted skin furrows have the spatial direction of a hand,
- // arm, face or torso instead of one generic image stamped everywhere.
  const pixelsPerWorld=SKIN_MESO_TILE_PIXELS/SKIN_MESO_TILE_WORLD;
  ctx.setTransform(pixelsPerWorld,0,0,pixelsPerWorld,
   -originX*pixelsPerWorld,-originY*pixelsPerWorld);
- const space=profile.furrowStep;
- const minX=Math.floor((originX-space)/space);
- const maxX=Math.ceil((originX+SKIN_MESO_TILE_WORLD+space)/space);
- const minY=Math.floor((originY-space)/space);
- const maxY=Math.ceil((originY+SKIN_MESO_TILE_WORLD+space)/space);
+ const spacing=.60;
+ const minX=Math.floor((originX-spacing)/spacing);
+ const maxX=Math.ceil((originX+SKIN_MESO_TILE_WORLD+spacing)/spacing);
+ const minY=Math.floor((originY-spacing)/spacing);
+ const maxY=Math.ceil((originY+SKIN_MESO_TILE_WORLD+spacing)/spacing);
  for(let iy=minY;iy<=maxY;iy++){
   for(let ix=minX;ix<=maxX;ix++){
-   const x=(ix+.25+.5*skinHash(ix,iy,43))*space;
-   const y=(iy+.25+.5*skinHash(ix,iy,53))*space;
-   const twist=(skinHash(ix,iy,67)-.5)*.60;
-   const a=profile.direction+twist;
-   const len=space*(.22+.52*skinHash(ix,iy,73));
-   const dx=Math.cos(a)*len/2,dy=Math.sin(a)*len/2;
-   const bend=(skinHash(ix,iy,79)-.5)*space*.16;
-   ctx.globalAlpha=(.13+.10*skinHash(ix,iy,83))*profile.contrast;
-   ctx.lineWidth=.055;
-   ctx.strokeStyle=skinHash(ix,iy,97)>.45?"#9c6e64":"#ffebd8";
-   ctx.beginPath();
-   ctx.moveTo(x-dx,y-dy);
-   ctx.quadraticCurveTo(x+bend,y-bend,x+dx,y+dy);
-   ctx.stroke();
+   const g=skinFurrowAt(ix,iy);
+   strokeFurrow(ctx,g);
+   strokeCrossing(ctx,ix,iy);
   }
  }
- // Sparse pigmentation spots are also world-registered and not pores.
- const sx0=Math.floor(originX/6),sx1=Math.ceil((originX+SKIN_MESO_TILE_WORLD)/6);
- const sy0=Math.floor(originY/6),sy1=Math.ceil((originY+SKIN_MESO_TILE_WORLD)/6);
- for(let iy=sy0;iy<=sy1;iy++){
-  for(let ix=sx0;ix<=sx1;ix++){
-   if(skinHash(ix,iy,109)<.87)continue;
-   const x=(ix+.22+.56*skinHash(ix,iy,131))*6;
-   const y=(iy+.22+.56*skinHash(ix,iy,137))*6;
-   const size=.11+.16*skinHash(ix,iy,139);
-   ctx.globalAlpha=.065*profile.contrast;
-   ctx.fillStyle="#a87868";
-   ctx.beginPath();ctx.ellipse(x,y,size,size*.68,.2,0,TWO_PI);ctx.fill();
-  }
- }
+ drawHandFolds(ctx,tileX,tileY);
  ctx.setTransform(1,0,0,1,0,0);
  ctx.globalAlpha=1;
  return canvas;
 }
-/** Draw up to three new tiles per frame and reuse the LRU cache.
- * On a wide overview no mesotiles are materialized: their pixel detail
- * would be subpixel anyway. The semantic surface is kept visible.
- */
 export function drawSkinMesoTiles(
  ctx:CanvasRenderingContext2D,bounds:SkinBounds,zoom:number,
  opacity=1,schedule?:()=>void
@@ -180,10 +238,9 @@ export function drawSkinMesoTiles(
  const alpha=skinMesoOpacity(zoom)*opacity;
  if(alpha<=.002)return 0;
  const coords=skinMesoTilesInBounds(bounds);
- // The visible working set must fit the cache. Otherwise the LRU would
- // evict still-visible tiles every frame and schedule a redraw forever.
- // At wide overviews the fine texture is subpixel; the body stays visible.
- if(coords.length>Math.min(SKIN_MESO_VISIBLE_TILE_LIMIT,SKIN_MESO_CACHE_LIMIT))return 0;
+ // A wide view does not allocate a giant texture array or thrash its LRU.
+ if(coords.length>Math.min(SKIN_MESO_VISIBLE_TILE_LIMIT,SKIN_MESO_CACHE_LIMIT))
+  return 0;
  let made=0,pending=false,drawn=0;
  for(const tile of coords){
   let canvas=cache.get(tile.key);
