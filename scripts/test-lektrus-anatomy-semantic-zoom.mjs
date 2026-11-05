@@ -37,7 +37,7 @@ assert.equal(world.skinDetailStage(52).includes("срез"),false,
  "Ordinary magnification must NEVER teleport into a cross-section");
 assert.equal(world.skinDetailStage(10).includes("чешуйки"),false,
  "At 10x even small epidermal cells must not be exaggerated");
-assert.equal(world.skinDetailStage(360).includes("рогового"),true);
+assert.equal(world.skinDetailStage(360).includes("разрез"),true);
 assert.deepEqual(Object.keys(surface.SKIN_SURFACE_LEVELS),
  ["regional","relief","pores","corneocytes"]);
 
@@ -176,20 +176,20 @@ for(const p of ["src/LektrusHumanAnatomy.tsx",
  const ast=ts.createSourceFile(p,read(p),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  assert.equal(ast.parseDiagnostics.length,0,p+" must parse");
 }
-assert.match(viewer,/camera=\{displayCamera\} mode=\{skinMode\}/);
+assert.match(viewer,/camera=\{displayCamera\}/);
 assert.match(viewer,/requestAnimationFrame\(tick\)/);
 assert.match(viewer,/zoom\(Math\.exp\(-clip\(e\.deltaY,-220,220\)\*\.0018\),at\)/,
  "Wheel zoom must work at any part of the body without activating a shoulder");
 assert.doesNotMatch(viewer,/skinRouteActive|setSkinRouteActive|overSkin/,
  "Deep zoom must not depend on an old shoulder activation state");
-assert.match(viewer,/aria-pressed=\{skinMode==="surface"\}/);
-assert.match(viewer,/aria-pressed=\{skinMode==="section"\}/);
-assert.match(renderer,/drawSkinSurfaceField\(ctx,cam.scale,region,surfaceOpacity\)/);
+assert.match(viewer,/Левый бок/);
+assert.match(viewer,/Правый бок/);
+assert.match(renderer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/);
 assert.match(renderer,/import skinHighRes from "\.\/assets\/bio-atlas\/human-skin-highres-registered.webp"/);
-assert.match(renderer,/import skinOriginalFallback from "\.\/assets\/bio-atlas\/human-skin-original-registered.webp"/);
-assert.match(renderer,/resources\.body\.src=skinHighRes/);
+assert.match(renderer,/import skinFallback from "\.\/assets\/bio-atlas\/human-skin-original-registered.webp"/);
+assert.match(renderer,/body\.src=skinHighRes/);
 assert.match(renderer,/ctx\.imageSmoothingQuality="high"/);
-assert.match(renderer,/ctx\.drawImage\(resources\.body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/,
+assert.match(renderer,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/,
  "Native 3x raster must use exactly the old body-world rectangle");
 assert.doesNotMatch(renderer,/cam\.scale\s*\?/,
  "Image registration cannot change with camera scale");
