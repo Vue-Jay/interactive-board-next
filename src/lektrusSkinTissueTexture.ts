@@ -180,6 +180,7 @@ export type SkinTissueRenderStats={sampledPixels:number;width:number;height:numb
 type TextureCache={
  canvas:HTMLCanvasElement;ctx:CanvasRenderingContext2D;
  rgba:ImageData;signature:string;
+ anchor:{a:number;d:number;e:number;f:number}|null;
 };
 const caches=new WeakMap<HTMLCanvasElement,TextureCache>();
 /** Capped viewport buffer. On any camera change its world-coordinate
@@ -205,18 +206,26 @@ export function drawSkinTissueTexture(
   if(!context)return {sampledPixels:0,width,height};
   canvas.width=width;canvas.height=height;
   cache={canvas,ctx:context,rgba:context.createImageData(width,height),
-   signature:""};
+   signature:"",anchor:null};
   caches.set(source,cache);
  }
  if(cache.canvas.width!==width||cache.canvas.height!==height){
   cache.canvas.width=width;cache.canvas.height=height;
   cache.rgba=cache.ctx.createImageData(width,height);
-  cache.signature="";
+  cache.signature="";cache.anchor=null;
  }
  const m=ctx.getTransform();
  if(m.a<=0||m.d<=0)return {sampledPixels:0,width,height};
  const signature=[m.a,m.d,m.e,m.f,width,height,scale].join(":");
- if(cache.signature!==signature){
+ const anchor=cache.anchor;
+ // During a small camera animation, reproject the *same* world-anchored
+ // tissue image instead of blocking every requestAnimationFrame with noise
+ // regeneration. Refresh after a meaningful pan or zoom. Cell vectors are
+ // always redrawn at native device resolution.
+ const needsRefresh=cache.signature!==signature&&(
+  !anchor||Math.abs(Math.log(m.a/anchor.a))>.06||
+  Math.abs(m.e-anchor.e)>18||Math.abs(m.f-anchor.f)>18);
+ if(needsRefresh){
   const data=cache.rgba.data;
   data.fill(0);
   const xStep=source.width/width;
@@ -247,12 +256,18 @@ export function drawSkinTissueTexture(
   }
   cache.ctx.putImageData(cache.rgba,0,0);
   cache.signature=signature;
+  cache.anchor={a:m.a,d:m.d,e:m.e,f:m.f};
  }
- ctx.save();
- ctx.setTransform(1,0,0,1,0,0);
- ctx.globalAlpha=1;
- ctx.imageSmoothingEnabled=true;
- ctx.drawImage(cache.canvas,0,0,source.width,source.height);
- ctx.restore();
+ // The cached image was generated in an earlier camera frame. Draw its
+ // EXACT world-space rectangle through the CURRENT camera matrix, so pan
+ // and smooth zoom never make fibers or cells "swim" in screen coordinates.
+ const painted=cache.anchor;
+ if(painted){
+  ctx.save();ctx.globalAlpha=1;ctx.imageSmoothingEnabled=true;
+  ctx.drawImage(cache.canvas,
+   -painted.e/painted.a,-painted.f/painted.d,
+   source.width/painted.a,source.height/painted.d);
+  ctx.restore();
+ }
  return {sampledPixels:width*height,width,height};
 }
