@@ -236,25 +236,22 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
     {showDescriptions&&<p>{details.summary}</p>}
    </div>
    {system==="integumentary"&&<div className="lek-anatomy-skin-explore">
-    <strong>Поверхность всего тела</strong>
-    <p>Приближайте любую область кожи. Микрорельеф, поры и мелкие
-     структуры постепенно появляются в тех же координатах.
-     Размеры пор остаются небольшими при обычном увеличении.</p>
-    <button type="button" onClick={focusSkin}>
-     Перейти к плечу (необязательно)
-    </button>
+    <strong>Кожный покров в разрезе</strong>
+    <p>Слои кожи видны только по боковым контурам головы,
+     туловища, рук и ног. Центр тела остаётся нейтральным.
+     Приближайте край, чтобы исследовать слои.</p>
     <div className="lek-anatomy-skin-modes" role="group"
-     aria-label="Способ исследования кожи">
-     <button type="button" aria-pressed={skinMode==="surface"}
-      className={skinMode==="surface"?"is-selected":""}
-      onClick={()=>setSkinMode("surface")}>Поверхность</button>
-     <button type="button" aria-pressed={skinMode==="section"}
-      className={skinMode==="section"?"is-selected":""}
-      onClick={()=>setSkinMode("section")}>Виртуальный срез</button>
+     aria-label="Приблизить боковой разрез">
+     <button type="button" onClick={()=>focusSkin("left")}>Левый бок</button>
+     <button type="button" onClick={()=>focusSkin("right")}>Правый бок</button>
     </div>
-    <small>{skinMode==="surface"?
-     "Поверхность всего тела. Точная клеточная микроскопия пока не реализована.":
-     "Виртуальный срез пока доступен только на плече и является учебной реконструкцией."}</small>
+    <div className="lek-anatomy-skin-legend" aria-label="Слои кожи">
+     <span><i className="is-epidermis"/> Эпидермис</span>
+     <span><i className="is-dermis"/> Дерма</span>
+     <span><i className="is-subcutis"/> Подкожная клетчатка</span>
+    </div>
+    <small>Учебная реконструкция. Толщина слоёв
+     увеличена для наглядности.</small>
    </div>}
    <strong className="lek-anatomy-details-heading">Основные органы и структуры</strong>
    <div className="lek-anatomy-organs">
