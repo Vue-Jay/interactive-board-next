@@ -44,7 +44,7 @@ export function skinSectionContours(
     const diff=Math.abs(track.lastX-candidate.x);
     if(diff<nearest&&diff<2.7){nearest=diff;match=track;}
    }
-   const track=match??{inward:candidate.inward,lastRow:row,
+   const track:Track=match??{inward:candidate.inward,lastRow:row,
     lastX:candidate.x,points:[]};
    track.points.push({x:candidate.x,y:row/factor,depth:candidate.depth});
    track.lastX=candidate.x;track.lastRow=row;
