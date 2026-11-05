@@ -4,7 +4,7 @@
  * smooths them in body-world space, and draws their tissue as vector paths.
  * Both sides of each separate limb remain independent, with neutral centers.
  */
-import {skinEdgeRuns,SKIN_EDGE_ALPHA_THRESHOLD} from "./lektrusSkinEdgeSections";
+import {skinEdgeRuns} from "./lektrusSkinEdgeSections";
 export const SKIN_SECTION_WORLD_DEPTH=8.4;
 export const SKIN_SECTION_NEUTRAL_FRACTION=.20;
 export type SkinSectionPoint={x:number;y:number;depth:number};
@@ -17,7 +17,6 @@ const LAYERS=[
  {start:.13,end:.54,fill:"#edb1a9"},
  {start:.54,end:1,fill:"#f4d49a"}
 ] as const;
-const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));
 export function skinSectionContours(
  alpha:Uint8ClampedArray,width:number,height:number,factor=3
 ):SkinSectionContour[]{
@@ -94,8 +93,10 @@ function appendBand(
  if(points.length<2)return;
  const x=(p:SkinSectionPoint,f:number)=>
   p.x+contour.inward*p.depth*f;
- const trace=(list:readonly SkinSectionPoint[],fraction:number)=>{
-  const first=list[0];ctx.moveTo(x(first,fraction),first.y);
+ const trace=(list:readonly SkinSectionPoint[],fraction:number,join:boolean)=>{
+  const first=list[0];
+  if(join)ctx.lineTo(x(first,fraction),first.y);
+  else ctx.moveTo(x(first,fraction),first.y);
   for(let i=1;i<list.length;i++){
    const prev=list[i-1],p=list[i];
    ctx.quadraticCurveTo(x(prev,fraction),prev.y,
@@ -104,8 +105,8 @@ function appendBand(
   const last=list[list.length-1];
   ctx.lineTo(x(last,fraction),last.y);
  };
- trace(points,start);
- trace([...points].reverse(),end);
+ trace(points,start,false);
+ trace([...points].reverse(),end,true);
  ctx.closePath();
 }
 /** Paint vectors at native canvas-device resolution at ANY zoom. */
