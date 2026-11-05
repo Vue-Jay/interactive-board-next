@@ -233,3 +233,22 @@
 }
 .lek-anatomy-skin-explore button:hover{background:#2b704b}
 .lek-anatomy-skin-explore small{font-size:10px;color:#859e90}
+
+/* Separate visualization choices: a surface cannot literally turn into
+ * a cross-section just by optical magnification. Camera stays untouched. */
+.lek-anatomy-skin-modes{
+ display:grid;grid-template-columns:1fr 1fr;gap:5px;
+ padding:3px;border-radius:10px;background:#deede4;
+}
+.lek-anatomy-skin-explore .lek-anatomy-skin-modes button{
+ background:transparent;color:#416850;border:1px solid transparent;
+ border-radius:8px;min-width:0;min-height:38px;
+ font-size:10px;padding:6px 3px;font-weight:750;
+}
+.lek-anatomy-skin-explore .lek-anatomy-skin-modes button.is-selected{
+ background:white;color:#276546;border-color:#bbd8c7;
+ box-shadow:0 2px 6px #2859441a;
+}
+.lek-anatomy-skin-explore .lek-anatomy-skin-modes button:focus-visible{
+ outline:2px solid #39946c;outline-offset:2px;
+}
