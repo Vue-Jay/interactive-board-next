@@ -108,7 +108,10 @@ function buildMesoTile(tileX:number,tileY:number){
   const worldY=originY+(py+.5)*step;
   for(let px=0;px<SKIN_MESO_TILE_PIXELS;px++){
    const worldX=originX+(px+.5)*step;
-   const tone=skinMesoTone(worldX,worldY)*profile.contrast;
+   // Pixel pigment depends on absolute coordinates only. Do not scale
+   // it by the per-tile region profile: that causes visible tile seams.
+   // Anatomical differences are expressed in the oriented furrows below.
+   const tone=skinMesoTone(worldX,worldY);
    const magnitude=Math.min(48,Math.abs(tone)*155);
    const offset=(py*SKIN_MESO_TILE_PIXELS+px)*4;
    if(tone>=0){
