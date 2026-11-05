@@ -404,8 +404,12 @@ try{
  assert.equal(putCount,1,"Identical camera must reuse the texture cache");
  cameraShift=4;
  shader.drawSkinTissueTexture(fakeShaderCtx,stripes,210,view);
+ assert.equal(putCount,1,
+  "Small pans must reproject cached world-space tissue without regenerating");
+ cameraShift=35;
+ shader.drawSkinTissueTexture(fakeShaderCtx,stripes,210,view);
  assert.equal(putCount,2,
-  "A changed camera must resample the same world-anchored texture");
+  "A larger camera shift must refresh the same world-anchored texture");
 }finally{globalThis.document=oldDocument;}
 assert.match(renderer,/drawSkinTissueTexture\(ctx,contours,cam.scale,visible\)/);
 assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
