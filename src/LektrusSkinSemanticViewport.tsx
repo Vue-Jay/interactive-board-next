@@ -10,7 +10,8 @@
  * never starts automatically at an arbitrary zoom threshold.
  */
 import {useEffect,useRef} from "react";
-import skinOriginal from "./assets/bio-atlas/human-skin-original-registered.webp";
+import skinHighRes from "./assets/bio-atlas/human-skin-highres-registered.webp";
+import skinOriginalFallback from "./assets/bio-atlas/human-skin-original-registered.webp";
 import detailAtlas from "./assets/bio-atlas/skin-semantic-lod.webp";
 import type {AnatomyCamera} from "./lektrusHumanAnatomyModel";
 import {anatomyBodyFit} from "./lektrusAnatomySemanticZoom";
@@ -84,6 +85,8 @@ export default function LektrusSkinSemanticViewport({camera,mode}:Props){
    ctx.clearRect(0,0,canvas.width,canvas.height);
    const dpr=canvas.width/w;
    ctx.setTransform(dpr,0,0,dpr,0,0);
+   ctx.imageSmoothingEnabled=true;
+   ctx.imageSmoothingQuality="high";
    const targetBlend=modeRef.current==="section"?1:0;
    const dt=previousTime?Math.min(64,time-previousTime):16;
    previousTime=time;
@@ -100,9 +103,9 @@ export default function LektrusSkinSemanticViewport({camera,mode}:Props){
    // Never fade the whole figure out. Even when a detail isn't available,
    // the old image remains a spatial reference rather than disappearing.
    if(bodyReady){
-    // The original warm skin mannequin is a dedicated registered 360x600
-    // transparent plate. It is NEVER copied from the blue-gray 7-system
-    // sprite. No background rectangle is painted over the atlas grid.
+    // A 1080x1800 body raster retains the original 360x600 world coords.
+    // Zoom changes only the shared camera, never crop/anchor positions.
+    // Preserve the distinct skin illustration, not the gray 7-system atlas.
     ctx.drawImage(resources.body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
    }
    const surfaceOpacity=1-sectionBlend;
@@ -160,9 +163,16 @@ export default function LektrusSkinSemanticViewport({camera,mode}:Props){
    detailReady=!!resources.section;
    requestDraw();
   };
+  const fallbackBody=()=>{
+   // Offline packages may contain older cached entrypoints. A missing
+   // high-resolution asset must not leave the anatomy stage blank.
+   if(resources.body.src!==skinOriginalFallback)
+    resources.body.src=skinOriginalFallback;
+  };
   resources.body.addEventListener("load",loadedBody);
+  resources.body.addEventListener("error",fallbackBody);
   sprite.addEventListener("load",loadedDetails);
-  resources.body.src=skinOriginal;
+  resources.body.src=skinHighRes;
   sprite.src=detailAtlas;
   if(resources.body.complete&&resources.body.naturalWidth)loadedBody();
   if(sprite.complete&&sprite.naturalWidth)loadedDetails();
@@ -174,6 +184,7 @@ export default function LektrusSkinSemanticViewport({camera,mode}:Props){
    active=false;
    observer?.disconnect();
    resources.body.removeEventListener("load",loadedBody);
+   resources.body.removeEventListener("error",fallbackBody);
    sprite.removeEventListener("load",loadedDetails);
    if(frame)cancelAnimationFrame(frame);
    drawRef.current=()=>{};
