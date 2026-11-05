@@ -8,6 +8,7 @@ import skinFallback from "./assets/bio-atlas/human-skin-original-registered.webp
 import type {AnatomyCamera} from "./lektrusHumanAnatomyModel";
 import {anatomyBodyFit} from "./lektrusAnatomySemanticZoom";
 import {skinVisibleWorldBounds} from "./lektrusSkinSurfaceField";
+import {drawSkinTissueTexture} from "./lektrusSkinTissueTexture";
 import {drawSkinMicroscopicDetails,drawSkinFineStructures} from "./lektrusSkinHistologyDetail";
 import {createSkinEdgeRaster,drawSkinEdgeDetails,
  SKIN_EDGE_WORLD_WIDTH,type SkinEdgeLandmark} from "./lektrusSkinEdgeSections";
@@ -90,6 +91,10 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
       ctx.save();
       const clipped=clipSkinSection(ctx,contours,visible);
       if(clipped){
+       // Original continuous histological texture: neither a flat colour
+       // strip nor an unrelated zoom image. It remains inside the true
+       // silhouette edges and underneath anatomical structures.
+       drawSkinTissueTexture(ctx,contours,cam.scale,visible);
        drawSkinEdgeDetails(ctx,landmarks,cam.scale,visible,
         SKIN_SECTION_WORLD_DEPTH/SKIN_EDGE_WORLD_WIDTH);
        // Anatomical cell sizes remain fixed in the body world, even though

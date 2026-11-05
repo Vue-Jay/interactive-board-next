@@ -318,3 +318,99 @@ assert.ok(fineMax.calls.filter(c=>c[0]==="arc").every(c=>c[3]<=.001),
 assert.match(renderer,/drawSkinFineStructures\(ctx,contours,cam.scale,visible\)/);
 assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
 console.log("Skin fine histology PASS: six sub-mm tiers, epidermal strata, world anchoring and mobile culling.");
+
+
+// The detailed side cutaway should resemble H&E tissue rather than three
+// flat bands with repeated identical anatomy icons. This is an original
+// procedural world-space pigment field, with no fixed zoom image.
+const shaderCode=ts.transpileModule(fs.readFileSync(
+ "src/lektrusSkinTissueTexture.ts","utf8"),{
+ compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+}).outputText;
+const shader={};
+new Function("exports",shaderCode)(shader);
+assert.ok(shader.SKIN_TISSUE_MAX_PIXELS<=200000,
+ "Procedural tissue must remain affordable on tablets");
+assert.ok(shader.SKIN_TISSUE_MAX_WIDTH<=900);
+const tissueAt=(fraction,scale=200,x=11.2,y=8.3)=>
+ shader.skinTissueSample(x,y,fraction,scale);
+const folds=Array.from({length:20},(_,i)=>shader.skinTissueReteBoundary(i*.057));
+assert.ok(Math.min(...folds)>.11&&Math.max(...folds)<.15);
+assert.ok(Math.max(...folds)-Math.min(...folds)>.006,
+ "The basal epidermal boundary must have real world-anchored rete ridges");
+assert.equal(shader.skinTissueReteBoundary(1.25),
+ shader.skinTissueReteBoundary(1.25));
+assert.equal(tissueAt(.03).region,"epidermis");
+assert.equal(tissueAt(.18).region,"dermis");
+assert.equal(tissueAt(.49).region,"dermis");
+assert.equal(tissueAt(.88).region,"subcutis");
+const corneum=tissueAt(.01),dermis=tissueAt(.3),fat=tissueAt(.75);
+assert.ok(corneum.r!==dermis.r&&dermis.r!==fat.r);
+assert.ok(fat.r>=fat.g&&fat.g>=fat.b);
+assert.ok(dermis.r>dermis.g);
+for(const frac of [.01,.036,.08,.125,.22,.4,.72,.95]){
+ for(const scale of [1,20,125,360]){
+  const p=tissueAt(frac,scale);
+  assert.ok([p.r,p.g,p.b].every(x=>Number.isInteger(x)&&x>=0&&x<=255));
+  assert.deepEqual(p,tissueAt(frac,scale),
+   "A moving camera may not reroll the same tissue pixel");
+ }
+}
+const dermalVariations=new Set(Array.from({length:20},(_,i)=>
+ JSON.stringify(tissueAt(.36,120,15+i*.027,8.3+i*.01))));
+assert.ok(dermalVariations.size>=12,
+ "Dermis must have organic spatial variation, not a flat diagram");
+const microlow=tissueAt(.77,20,2.1,8.1);
+const microhigh=tissueAt(.77,260,2.1,8.1);
+assert.notDeepEqual(microlow,microhigh,
+ "White adipocyte vacuoles should only emerge at microscopic zoom");
+assert.deepEqual(shader.skinAdiposeField(1.25,2.35),
+ shader.skinAdiposeField(1.25,2.35));
+assert.equal(shader.skinTissueNoise(1.23,2.34,5),
+ shader.skinTissueNoise(1.23,2.34,5));
+// Minimal browser-canvas mock verifies the actual viewport rasterization,
+// transparent limb gaps, memory cap, caching and stable screen registration.
+const oldDocument=globalThis.document;
+let putCount=0,lastImage=null,textureDraws=0;
+const context={
+ createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4),width:w,height:h}),
+ putImageData:(data)=>{putCount++;lastImage=data}
+};
+let cameraShift=0;
+const fakeSurface={width:150,height:75};
+const fakeShaderCtx={
+ canvas:fakeSurface,
+ getTransform:()=>({a:3,d:3,e:cameraShift,f:0}),
+ save:()=>{},restore:()=>{},
+ setTransform:()=>{},drawImage:()=>{textureDraws++}
+};
+globalThis.document={createElement:(tag)=>{
+ assert.equal(tag,"canvas");
+ return {width:0,height:0,getContext:()=>context};
+}};
+try{
+ const view={minX:0,maxX:50,minY:0,maxY:25};
+ const first=shader.drawSkinTissueTexture(fakeShaderCtx,stripes,210,view);
+ assert.ok(first.sampledPixels>0);
+ assert.ok(first.sampledPixels<=shader.SKIN_TISSUE_MAX_PIXELS);
+ assert.ok(putCount===1&&textureDraws===1);
+ const px=(x,y)=>lastImage.data[(y*first.width+x)*4+3];
+ assert.equal(px(0,24),0,"Background outside the silhouette stays clear");
+ assert.equal(px(40,24),0,"Limb gap stays transparent");
+ assert.equal(px(72,24),0,"Center of torso stays neutral");
+ assert.ok(px(9,24)>0&&px(48,24)>0,
+  "Actual side cross-sections receive the organic tissue paint");
+ shader.drawSkinTissueTexture(fakeShaderCtx,stripes,210,view);
+ assert.equal(putCount,1,"Identical camera must reuse the texture cache");
+ cameraShift=4;
+ shader.drawSkinTissueTexture(fakeShaderCtx,stripes,210,view);
+ assert.equal(putCount,1,
+  "Small pans must reproject cached world-space tissue without regenerating");
+ cameraShift=35;
+ shader.drawSkinTissueTexture(fakeShaderCtx,stripes,210,view);
+ assert.equal(putCount,2,
+  "A larger camera shift must refresh the same world-anchored texture");
+}finally{globalThis.document=oldDocument;}
+assert.match(renderer,/drawSkinTissueTexture\(ctx,contours,cam.scale,visible\)/);
+assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
+console.log("Organic skin tissue PASS: layered pigment, fine collagen, fat lacunae, transparent gaps, pixel cap and world-anchored camera.");
