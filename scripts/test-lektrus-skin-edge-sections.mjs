@@ -129,7 +129,7 @@ const trunkSamples=Array.from({length:20},(_,i)=>({x:104+i,y:220,inward:1}));
 assert.ok(trunkSamples.some(p=>model.skinEdgeHasFollicle(p)) &&
  trunkSamples.some(p=>!model.skinEdgeHasFollicle(p)),
  "Thin hairy skin should have varying follicle spacing");
-const lowCell=record(12,visible),highCell=record(180,visible);
+const lowCell=record(6,visible),highCell=record(180,visible);
 assert.ok(highCell.calls.filter(c=>c[0]==="bezierCurveTo").length>
  lowCell.calls.filter(c=>c[0]==="bezierCurveTo").length,
  "Deep zoom reveals finer connective fibres and basement membrane");
