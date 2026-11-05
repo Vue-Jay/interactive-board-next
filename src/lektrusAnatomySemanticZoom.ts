@@ -106,9 +106,9 @@ export function skinNodeVisibleInViewport(
 export function skinDetailStage(scale:number):string{
  if(scale<1.8)return "Организм";
  if(scale<5.5)return "Кожа плеча";
- if(scale<11)return "Поверхность и микрорельеф";
- if(scale<26)return "Виртуальный срез кожи";
- return "Тканевая структура · учебная реконструкция";
+ if(scale<11)return "Микрорельеф поверхности";
+ if(scale<26)return "Поры и волосяные фолликулы";
+ return "Роговые чешуйки эпидермиса · модель";
 }
 /** Deterministic reusable micro-surface locations, independent of
  * number of zoom events. The template can be shared by other regions. */
