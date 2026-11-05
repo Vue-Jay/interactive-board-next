@@ -61,7 +61,7 @@ assert.deepEqual(moved,{scale:2,panX:100,panY:-65});
 assert.deepEqual(m.anatomyBoundCamera({scale:1,panX:200,panY:200},780,560),cam);
 assert.equal(m.anatomyBoundCamera({scale:99,panX:0,panY:0},780,560).scale,3.25);
 
-const webp=fs.readFileSync("src/assets/bio-atlas/human-seven-systems.webp");
+const webp=fs.readFileSync("src/assets/bio-atlas/human-seven-systems-clean.webp");
 assert.equal(webp.toString("ascii",0,4),"RIFF");
 assert.equal(webp.toString("ascii",8,12),"WEBP");
 assert.equal(webp.toString("ascii",12,16),"VP8 ");
@@ -69,9 +69,9 @@ assert.deepEqual([webp.readUInt16LE(26)&0x3fff,webp.readUInt16LE(28)&0x3fff],
  [m.ANATOMY_SPRITE_WIDTH,m.ANATOMY_SPRITE_HEIGHT],
  "Seven source plates must preserve a fixed raster coordinate space");
 assert.ok(webp.length>20000&&webp.length<180000);
-assert.equal(m.ANATOMY_SPRITE_WIDTH,2870);
+assert.equal(m.ANATOMY_SPRITE_WIDTH,2520);
 assert.equal(m.ANATOMY_PANEL_WIDTH*names.length,m.ANATOMY_SPRITE_WIDTH);
-assert.equal(m.ANATOMY_SPRITE_HEIGHT,444);
+assert.equal(m.ANATOMY_SPRITE_HEIGHT,600);
 const view=read("src/LektrusHumanAnatomy.tsx");
 const editor=read("src/LektrusSchoolDiagramEditor.tsx");
 const diagram=read("src/LektrusSchoolDiagramView.tsx");
@@ -82,7 +82,7 @@ for(const file of ["src/LektrusHumanAnatomy.tsx","src/LektrusSchoolDiagramEditor
  const ast=ts.createSourceFile(file,read(file),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  assert.equal(ast.parseDiagnostics.length,0,file+" cannot parse");
 }
-assert.match(view,/import anatomySprite from "\.\/assets\/bio-atlas\/human-seven-systems.webp"/);
+assert.match(view,/import anatomySprite from "\.\/assets\/bio-atlas\/human-seven-systems-clean.webp"/);
 assert.match(view,/const \[camera,setCamera\]=useState<AnatomyCamera>\(ANATOMY_INITIAL_CAMERA\)/);
 const choose=view.slice(view.indexOf("const chooseSystem="),view.indexOf("const dimensions="))
  .split("\n").filter(line=>!line.trim().startsWith("//")).join("\n");
@@ -109,7 +109,14 @@ assert.ok(css.includes(".lek-anatomy-container{")&&
  "Responsive container queries must measure actual anatomy item width");
 assert.match(view,/className="lek-anatomy-container"/,
  "Anatomy root must be a child of the container query box");
-assert.match(css,/\.lek-anatomy-world/);
+assert.match(css,/\\.lek-anatomy-world/);
+assert.doesNotMatch(css,/\\.lek-anatomy-figure:before\\{/,
+ "Do not mask or cover anatomical structures to conceal old printed captions");
+assert.match(css,/aspect-ratio:360\\/600/);
+for(const entry of systems.HUMAN_BODY_SYSTEMS){
+ const position=m.anatomySpritePosition(entry.id);
+ assert.ok(Number.isFinite(position)&&position>=0&&position<=100);
+}
 assert.match(css,/@container\(max-width:730px\)/);
 assert.match(css,/\.lek-anatomy-stage\{[\s\S]*?touch-action:none/);
 console.log("Standalone anatomy PASS: 7 systems, shared raster registration, invariant camera, responsive window, legacy documents.");
