@@ -13,6 +13,21 @@ export type AnatomyWorldRect={x:number;y:number;width:number;height:number};
  * than guessed from a different (blue-gray) atlas plate.
  */
 export const SKIN_BODY_SIZE={width:360,height:600} as const;
+/** The drawing is a 3× native-resolution plate in the SAME world; pixels
+ * are samples of the same body, not another organism or independent stage.
+ * In particular, a mouse focus at world (x,y) stays at (3x,3y) in the
+ * high-res image at EVERY zoom level and for every selected system.
+ */
+export const SKIN_BODY_RASTER_SIZE={width:1080,height:1800} as const;
+export const SKIN_BODY_RASTER_FACTOR=SKIN_BODY_RASTER_SIZE.width/SKIN_BODY_SIZE.width;
+export function skinWorldToRaster(point:AnatomyWorldPoint):AnatomyWorldPoint{
+ return {x:point.x*SKIN_BODY_RASTER_FACTOR,
+  y:point.y*SKIN_BODY_RASTER_FACTOR};
+}
+export function skinRasterToWorld(point:AnatomyWorldPoint):AnatomyWorldPoint{
+ return {x:point.x/SKIN_BODY_RASTER_FACTOR,
+  y:point.y/SKIN_BODY_RASTER_FACTOR};
+}
 export const SKIN_SHOULDER:AnatomyWorldRect={
  x:226,y:148,width:56,height:68
 };
