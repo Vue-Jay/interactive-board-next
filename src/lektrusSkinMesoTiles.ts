@@ -9,8 +9,8 @@
 import {skinHash,skinSmoothstep,skinValueNoise,type SkinBounds}
  from "./lektrusSkinSurfaceField";
 
-export const SKIN_MESO_TILE_WORLD=24;
-export const SKIN_MESO_TILE_PIXELS=192;
+export const SKIN_MESO_TILE_WORLD=32;
+export const SKIN_MESO_TILE_PIXELS=224;
 export const SKIN_MESO_CACHE_LIMIT=48;
 export const SKIN_MESO_CREATIONS_PER_FRAME=3;
 export const SKIN_MESO_VISIBLE_TILE_LIMIT=72;
@@ -180,7 +180,10 @@ export function drawSkinMesoTiles(
  const alpha=skinMesoOpacity(zoom)*opacity;
  if(alpha<=.002)return 0;
  const coords=skinMesoTilesInBounds(bounds);
- if(coords.length>SKIN_MESO_VISIBLE_TILE_LIMIT)return 0;
+ // The visible working set must fit the cache. Otherwise the LRU would
+ // evict still-visible tiles every frame and schedule a redraw forever.
+ // At wide overviews the fine texture is subpixel; the body stays visible.
+ if(coords.length>Math.min(SKIN_MESO_VISIBLE_TILE_LIMIT,SKIN_MESO_CACHE_LIMIT))return 0;
  let made=0,pending=false,drawn=0;
  for(const tile of coords){
   let canvas=cache.get(tile.key);
