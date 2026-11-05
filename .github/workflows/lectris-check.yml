@@ -35,6 +35,8 @@ jobs:
         run: node scripts/test-lektrus-subject-persistence.mjs
       - name: Russian and informatics diagrams regression
         run: node scripts/test-lektrus-next-school.mjs
+      - name: Semantic skin zoom, spatial anchors and LOD regressions
+        run: node scripts/test-lektrus-anatomy-semantic-zoom.mjs
       - name: Standalone anatomy, stable camera and raster registration
         run: node scripts/test-lektrus-anatomy-standalone.mjs
       - name: Interactive biology microscope and tasks

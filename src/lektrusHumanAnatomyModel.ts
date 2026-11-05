@@ -74,8 +74,9 @@ export function validHumanAnatomy(value:unknown):value is HumanAnatomyDiagram{
   HUMAN_BODY_SYSTEMS.some(s=>s.id===d.system)&&typeof d.showDescriptions==="boolean";
 }
 const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,Number.isFinite(v)?v:a));
-export function anatomyBoundCamera(camera:AnatomyCamera,width:number,height:number):AnatomyCamera{
- const scale=clamp(camera.scale,1,3.25);
+export function anatomyBoundCamera(camera:AnatomyCamera,width:number,height:number,
+ maxScale=3.25):AnatomyCamera{
+ const scale=clamp(camera.scale,1,maxScale);
  const maxX=Math.max(0,(scale-1)*Math.max(1,width)/2);
  const maxY=Math.max(0,(scale-1)*Math.max(1,height)/2);
  return {scale,panX:clamp(camera.panX,-maxX,maxX),
@@ -84,14 +85,15 @@ export function anatomyBoundCamera(camera:AnatomyCamera,width:number,height:numb
 /** A zoom preserves the precise point under the mouse or pinch midpoint.
  * The selected anatomical SYSTEM is never an input to this calculation. */
 export function anatomyZoomAt(camera:AnatomyCamera,newScale:number,
- point:{x:number;y:number},width:number,height:number):AnatomyCamera{
- const scale=clamp(newScale,1,3.25);
+ point:{x:number;y:number},width:number,height:number,maxScale=3.25):AnatomyCamera{
+ const scale=clamp(newScale,1,maxScale);
  const ratio=scale/camera.scale;
  const x=point.x-width/2,y=point.y-height/2;
  return anatomyBoundCamera({scale,
   panX:x-(x-camera.panX)*ratio,
-  panY:y-(y-camera.panY)*ratio},width,height);
+  panY:y-(y-camera.panY)*ratio},width,height,maxScale);
 }
-export function anatomyPan(camera:AnatomyCamera,dx:number,dy:number,width:number,height:number){
- return anatomyBoundCamera({...camera,panX:camera.panX+dx,panY:camera.panY+dy},width,height);
+export function anatomyPan(camera:AnatomyCamera,dx:number,dy:number,width:number,height:number,
+ maxScale=3.25){
+ return anatomyBoundCamera({...camera,panX:camera.panX+dx,panY:camera.panY+dy},width,height,maxScale);
 }

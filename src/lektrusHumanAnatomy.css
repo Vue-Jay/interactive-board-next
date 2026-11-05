@@ -211,3 +211,25 @@
  .lek-anatomy-dialog-title{min-width:0}
  .lek-anatomy-dialog-footer{min-height:0}
 }
+
+/* First semantic-zoom pilot. Canvas buffer stays at viewport dimensions
+ * even when its virtual world is zoomed ~50x. No giant DOM image surfaces. */
+.lek-anatomy-semantic-canvas{
+ position:absolute;inset:0;width:100%;height:100%;
+ display:block;pointer-events:none;touch-action:none;
+ user-select:none;z-index:1;
+}
+.lek-anatomy-skin-explore{
+ display:flex;flex-direction:column;gap:8px;
+ padding:12px;border:1px solid #c5ded2;border-radius:12px;
+ background:linear-gradient(155deg,#f4fcf5,#e9f6f2);
+}
+.lek-anatomy-skin-explore strong{font-size:13px;color:#2c6248}
+.lek-anatomy-skin-explore p{font-size:11px;color:#637e70;line-height:1.5;margin:0}
+.lek-anatomy-skin-explore button{
+ background:#397f58;border:1px solid #2e704d;
+ border-radius:9px;padding:8px 10px;color:white;font-weight:800;
+ font-size:11px;min-height:36px
+}
+.lek-anatomy-skin-explore button:hover{background:#2b704b}
+.lek-anatomy-skin-explore small{font-size:10px;color:#859e90}
