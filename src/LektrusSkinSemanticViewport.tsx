@@ -9,7 +9,7 @@
  * never starts automatically at an arbitrary zoom threshold.
  */
 import {useEffect,useRef} from "react";
-import bodyAtlas from "./assets/bio-atlas/human-seven-systems-clean.webp";
+import skinOriginal from "./assets/bio-atlas/human-skin-original-registered.webp";
 import detailAtlas from "./assets/bio-atlas/skin-semantic-lod.webp";
 import type {AnatomyCamera} from "./lektrusHumanAnatomyModel";
 import {anatomyBodyFit} from "./lektrusAnatomySemanticZoom";
@@ -19,7 +19,6 @@ import {SKIN_SURFACE_REGION,drawSkinSurfaceField,skinSurfaceAlpha,
 export type SkinViewMode="surface"|"section";
 type Props={camera:AnatomyCamera;mode:SkinViewMode};
 const WORLD_WIDTH=360,WORLD_HEIGHT=600;
-const SKIN_INDEX=6;
 const PLATE=900;
 const TILE=720;
 const EDGE={x:SKIN_SURFACE_REGION.x,y:SKIN_SURFACE_REGION.y,
@@ -38,8 +37,11 @@ function cropFeathered(sprite:HTMLImageElement,index:0|1):HTMLCanvasElement|null
  const c=target.getContext("2d");
  if(!c)return null;
  if(index===0){
-  // Crop the upper arm skin instead of showing the original torso.
-  c.drawImage(sprite,440,110,405,620,0,0,TILE,TILE);
+  // This source patch is only the textured deltoid/upper-arm skin.
+  // Previous crop 440,110,405,620 included neck, chest and background,
+  // all of which became visibly misplaced when projected on the shoulder.
+  // Its aspect now matches SKIN_SHOULDER within normal illustration tolerance.
+  c.drawImage(sprite,640,340,120,160,0,0,TILE,TILE);
  }else{
   c.drawImage(sprite,PLATE,0,PLATE,PLATE,0,0,TILE,TILE);
  }
@@ -108,20 +110,27 @@ export default function LektrusSkinSemanticViewport({camera,mode}:Props){
    // Never fade the whole figure out. Even when a detail isn't available,
    // the old image remains a spatial reference rather than disappearing.
    if(bodyReady){
-    ctx.drawImage(resources.body,SKIN_INDEX*WORLD_WIDTH,0,
-     WORLD_WIDTH,WORLD_HEIGHT,0,0,WORLD_WIDTH,WORLD_HEIGHT);
+    // The original warm skin mannequin is a dedicated registered 360x600
+    // transparent plate. It is NEVER copied from the blue-gray 7-system
+    // sprite. No background rectangle is painted over the atlas grid.
+    ctx.drawImage(resources.body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
    }
    const surfaceOpacity=1-sectionBlend;
    const shoulderAlpha=skinSurfaceAlpha(cam.scale,"regional")*surfaceOpacity;
-   if(detailReady&&resources.shoulder&&shoulderAlpha>.001){
-    ctx.save();ctx.globalAlpha=shoulderAlpha;
+   if(detailReady&&resources.shoulder&&shoulderAlpha>.001&&bodyReady){
+    ctx.save();
+    // Prevent even the soft feathered edge from bleeding into the empty
+    // space between shoulder and upper arm.
+    ctx.globalCompositeOperation="source-atop";
+    ctx.globalAlpha=shoulderAlpha*.78;
     ctx.drawImage(resources.shoulder,EDGE.x,EDGE.y,EDGE.width,EDGE.height);
     ctx.restore();
    }
    const region=skinVisibleWorldBounds(cam,w,h);
    const relief=skinSurfaceAlpha(cam.scale,"relief")*surfaceOpacity;
-   if(relief>.001&&region.maxX>region.minX&&region.maxY>region.minY){
+   if(bodyReady&&relief>.001&&region.maxX>region.minX&&region.maxY>region.minY){
     ctx.save();
+    ctx.globalCompositeOperation="source-atop";
     ctx.beginPath();
     ctx.ellipse(EDGE.x+EDGE.width/2,EDGE.y+EDGE.height/2,
      EDGE.width/2,EDGE.height/2,0,0,Math.PI*2);
@@ -143,8 +152,9 @@ export default function LektrusSkinSemanticViewport({camera,mode}:Props){
     drawSkinSurfaceField(ctx,cam.scale,region,surfaceOpacity);
     ctx.restore();
    }
-   if(detailReady&&resources.section&&sectionBlend>.001){
+   if(detailReady&&resources.section&&sectionBlend>.001&&bodyReady){
     ctx.save();
+    ctx.globalCompositeOperation="source-atop";
     ctx.globalAlpha=sectionBlend;
     ctx.drawImage(resources.section,EDGE.x,EDGE.y,EDGE.width,EDGE.height);
     ctx.restore();
@@ -162,7 +172,7 @@ export default function LektrusSkinSemanticViewport({camera,mode}:Props){
   };
   resources.body.addEventListener("load",loadedBody);
   sprite.addEventListener("load",loadedDetails);
-  resources.body.src=bodyAtlas;
+  resources.body.src=skinOriginal;
   sprite.src=detailAtlas;
   if(resources.body.complete&&resources.body.naturalWidth)loadedBody();
   if(sprite.complete&&sprite.naturalWidth)loadedDetails();
