@@ -72,18 +72,13 @@
 .lek-anatomy-figure{
  position:relative;display:block;flex:0 0 auto;
  height:min(96%,560px);width:auto;max-width:90%;
- aspect-ratio:260/444;
+ aspect-ratio:360/600;
  background-repeat:no-repeat;image-rendering:auto;
  background-clip:padding-box;
  filter:drop-shadow(0 10px 20px #597b9d12);
 }
-/* The 7-panel source has a printed label only at upper-left. It is
- * covered inside the crop; realistic organs are otherwise untouched. */
-.lek-anatomy-figure:before{
- content:"";position:absolute;top:0;left:0;width:31%;height:17%;
- background:linear-gradient(90deg,var(--lek-anatomy-paper) 0%,
- color-mix(in srgb,var(--lek-anatomy-paper) 85%,transparent) 73%,transparent 100%);
- pointer-events:none}
+/* The supplied plates are already free of captions and callouts.
+ * Never paint a pseudo-element over the brain or other anatomy again. */
 .lek-anatomy-zoom{
  position:absolute;right:12px;top:50%;transform:translateY(-50%);
  z-index:3;display:grid;gap:6px;justify-items:center;padding:7px;

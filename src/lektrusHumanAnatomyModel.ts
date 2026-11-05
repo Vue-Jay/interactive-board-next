@@ -8,21 +8,17 @@ export type HumanAnatomyDiagram={
 };
 export type AnatomyCamera={scale:number;panX:number;panY:number};
 export const ANATOMY_INITIAL_CAMERA:AnatomyCamera={scale:1,panX:0,panY:0};
-export const ANATOMY_SPRITE_WIDTH=2870;
-export const ANATOMY_PANEL_WIDTH=410;
-export const ANATOMY_SPRITE_HEIGHT=444;
-export const ANATOMY_CROP_WIDTH=260;
-/** Centers measured in pixels of the original sprite's seven plates.
- * Different drawing margins are compensated here rather than moving the
- * viewport when the selected system changes. */
-const spriteCenters:Record<HumanFocusedSystem,number>={
- nervous:253,respiratory:275,circulatory:277,digestive:278,
- urinary:281,musculoskeletal:281,integumentary:279
-};
+export const ANATOMY_SPRITE_WIDTH=2520;
+export const ANATOMY_PANEL_WIDTH=360;
+export const ANATOMY_SPRITE_HEIGHT=600;
+export const ANATOMY_CROP_WIDTH=360;
+/** Each raster plate has the same exact 360×600 frame. There is no text,
+ * arrow, inset or system-dependent crop offset inside the source asset.
+ * Every switch changes ONLY the selected plate, never the camera.
+ */
 export function anatomySpritePosition(system:HumanFocusedSystem):number{
  const index=HUMAN_BODY_SYSTEMS.findIndex(s=>s.id===system);
- return (index*ANATOMY_PANEL_WIDTH+spriteCenters[system]-ANATOMY_CROP_WIDTH/2)/
-  (ANATOMY_SPRITE_WIDTH-ANATOMY_CROP_WIDTH)*100;
+ return index<0?0:index*100/(HUMAN_BODY_SYSTEMS.length-1);
 }
 export const ANATOMY_SYSTEM_DETAILS:Record<HumanFocusedSystem,{
  summary:string;organs:{name:string;detail:string;position?:{x:number;y:number}}[]

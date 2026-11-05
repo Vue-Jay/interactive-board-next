@@ -1,5 +1,5 @@
 import {useCallback,useRef,useState,type PointerEvent as ReactPointerEvent,type WheelEvent as ReactWheelEvent} from "react";
-import anatomySprite from "./assets/bio-atlas/human-seven-systems.webp";
+import anatomySprite from "./assets/bio-atlas/human-seven-systems-clean.webp";
 import {HUMAN_BODY_SYSTEMS,type HumanFocusedSystem} from "./lektrusBioHumanBodySystems";
 import LektrusBioHumanSystemIcon from "./LektrusBioHumanSystemIcon";
 import {ANATOMY_INITIAL_CAMERA,ANATOMY_SPRITE_WIDTH,ANATOMY_CROP_WIDTH,
