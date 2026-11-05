@@ -18,6 +18,9 @@ const model=loadTS("src/lektrusHumanAnatomyModel.ts",{
    {id:"digestive"},{id:"urinary"},{id:"musculoskeletal"},{id:"integumentary"}]
  }});
 const lod=loadTS("src/lektrusAnatomySemanticZoom.ts");
+const surface=loadTS("src/lektrusSkinSurfaceField.ts",{
+ "./lektrusAnatomySemanticZoom":lod
+});
 
 assert.equal(lod.SKIN_DETAIL_ATLAS.columns,3);
 assert.equal(lod.SKIN_DETAIL_NODES.length,4);
@@ -104,17 +107,78 @@ for(const p of ["src/LektrusHumanAnatomy.tsx","src/LektrusSkinSemanticViewport.t
  const file=ts.createSourceFile(p,read(p),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  assert.equal(file.parseDiagnostics.length,0,p+" must parse as TSX");
 }
-assert.match(viewer,/<LektrusSkinSemanticViewport camera=\{camera\}/);
-assert.match(viewer,/skinAvailableAt\(anatomyScreenToBody\(/);
-assert.match(viewer,/skinDetailStage\(camera.scale\)/);
+assert.match(viewer,/<LektrusSkinSemanticViewport[\s\S]*?camera=\{displayCamera\} mode=\{skinMode\}/);
+assert.match(viewer,/skinAvailableAt\(\s*anatomyScreenToBody\(/);
+assert.match(viewer,/skinDetailStage\(displayCamera.scale\)/);
 assert.match(viewer,/SKIN_MAX_SCALE/);
 assert.match(viewer,/setSkinRouteActive\(true\)/);
 assert.match(renderer,/requestAnimationFrame\(draw\)/);
 assert.match(renderer,/canvas\.getContext\("2d"/);
-assert.match(renderer,/skinNodeVisibleInViewport\(/);
-assert.match(renderer,/skinSurfacePores\(\)/);
+assert.match(renderer,/drawSkinSurfaceField\(/);
+assert.match(renderer,/modeRef\.current==="section"/);
+assert.doesNotMatch(renderer,/SKIN_DETAIL_NODES/,
+ "Surface must not be a slideshow of unrelated LOD frames");
+assert.doesNotMatch(renderer,/rootOpacity=cutaway/,
+ "The whole figure must never fade away on a scale threshold");
+assert.doesNotMatch(renderer,/BODY_SKIN_INDEX\*WORLD_WIDTH[\s\S]*?rootOpacity/);
 assert.match(renderer,/ResizeObserver/);
-assert.match(renderer,/учебного среза/);
+assert.match(renderer,/Виртуальный анатомический срез кожи плеча/);
 assert.ok(css.includes(".lek-anatomy-semantic-canvas{"));
 assert.ok(css.includes(".lek-anatomy-skin-explore{"));
-console.log("Semantic skin zoom PASS: 4 spatial LOD nodes, smooth opacity, reversible cursor zoom, deterministic microtexture, compact offline atlas.");
+
+// Independent continuous surface model: same coordinates at every scale.
+assert.deepEqual(Object.keys(surface.SKIN_SURFACE_LEVELS),
+ ["regional","relief","pores","corneocytes"]);
+for(const level of Object.keys(surface.SKIN_SURFACE_LEVELS)){
+ let prior=surface.skinSurfaceAlpha(1,level);
+ assert.equal(prior,0);
+ for(let scale=1.01;scale<52;scale+=.01){
+  const alpha=surface.skinSurfaceAlpha(scale,level);
+  assert.ok(alpha>=0&&alpha<=1);
+  assert.ok(alpha>=prior-1e-10,level+" opacity must be monotone");
+  assert.ok(alpha-prior<.04,level+" must not pop between small zoom steps");
+  prior=alpha;
+ }
+}
+assert.equal(surface.skinHash(17,34,2),surface.skinHash(17,34,2));
+assert.notEqual(surface.skinHash(17,34,2),surface.skinHash(17,35,2));
+assert.equal(surface.skinValueNoise(8,4,17),surface.skinValueNoise(8,4,17));
+for(const shift of [1e-7,1e-5,.001]){
+ assert.ok(Math.abs(surface.skinValueNoise(12-shift,7.3,99)-
+  surface.skinValueNoise(12+shift,7.3,99))<shift*5+1e-6,
+  "Noise should not introduce grid-aligned cracks");
+}
+const mid=lod.SKIN_SHOULDER_CENTER;
+assert.equal(surface.skinSurfaceInside(mid.x,mid.y),true);
+assert.equal(surface.skinSurfaceInside(10,580),false);
+assert.ok(surface.skinSurfaceEdgeOpacity(mid.x,mid.y)>.99);
+assert.equal(surface.skinSurfaceEdgeOpacity(0,0),0);
+for(const scale of [1,2,4,8,16,34,52]){
+ const {width,height}={width:930,height:620};
+ const cam=lod.anatomyCameraAtBody(mid,scale,width,height);
+ const bounds=surface.skinVisibleWorldBounds(cam,width,height);
+ assert.ok(bounds.minX<=mid.x&&bounds.maxX>=mid.x);
+ assert.ok(bounds.minY<=mid.y&&bounds.maxY>=mid.y);
+ const sample=surface.skinHash(22,15,7);
+ assert.equal(sample,surface.skinHash(22,15,7),
+  "Microstructures cannot be randomized by zooming");
+}
+assert.match(viewer,/const \[displayCamera,setDisplayCamera\]/);
+assert.match(viewer,/requestAnimationFrame\(tick\)/);
+assert.match(viewer,/zoom\([^;]*,at,overSkin\)/,
+ "The first wheel movement should enter deep zoom without waiting for React state");
+assert.match(viewer,/aria-pressed=\{skinMode==="surface"\}/);
+assert.match(viewer,/aria-pressed=\{skinMode==="section"\}/);
+assert.match(renderer,/drawSkinSurfaceField\(ctx,cam.scale,region,surfaceOpacity\)/);
+assert.match(renderer,/ctx\.drawImage\(resources\.body/,
+ "Body remains visible behind spatially registered detail");
+assert.match(renderer,/sectionBlend\+=/,
+ "Changing to an explicit virtual section must fade smoothly");
+assert.match(renderer,/if\(detailReady&&resources\.section&&sectionBlend>/);
+const fieldSource=read("src/lektrusSkinSurfaceField.ts");
+assert.doesNotMatch(fieldSource,/Math\.random/,
+ "Skin pores must not jump to new positions during render");
+assert.match(fieldSource,/const MAX_DRAWN_CELLS=7000/,
+ "Offscreen detail must be culled for memory and mobile performance");
+
+console.log("Skin continuous scene PASS: registered surface, deterministic pores, continuous camera, explicit cutaway, screen culling.");
