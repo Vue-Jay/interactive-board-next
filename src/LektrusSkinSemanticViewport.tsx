@@ -29,6 +29,9 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
   let active=true,frame=0,ready=false,usingFallback=false;
   const body=new Image();
   let edgeAtlas:HTMLCanvasElement|null=null;
+  // Reuse a viewport-sized detail buffer. Mask against the exact edge atlas
+  // so glands/cells cannot spill into a limb gap or the neutral body center.
+  const detailCanvas=document.createElement("canvas");
   let landmarks:SkinEdgeLandmark[]=[];
   let width=0,height=0;
   const requestDraw=()=>{
@@ -90,7 +93,23 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
      // Capillary loops and fat lobules appear gradually at the same edge
      // points as the atlas. Never spread across the silhouette center.
      const visible=skinVisibleWorldBounds(cam,w,h);
-     drawSkinEdgeDetails(ctx,landmarks,cam.scale,visible);
+     if(cam.scale>2.5){
+     if(detailCanvas.width!==canvas.width||detailCanvas.height!==canvas.height){
+      detailCanvas.width=canvas.width;detailCanvas.height=canvas.height;
+     }
+     const detailCtx=detailCanvas.getContext("2d");
+     if(detailCtx){
+      detailCtx.setTransform(1,0,0,1,0,0);
+      detailCtx.clearRect(0,0,detailCanvas.width,detailCanvas.height);
+      detailCtx.setTransform(ctx.getTransform());
+      drawSkinEdgeDetails(detailCtx,landmarks,cam.scale,visible);
+      detailCtx.globalCompositeOperation="destination-in";
+      detailCtx.drawImage(edgeAtlas,0,0,WORLD_WIDTH,WORLD_HEIGHT);
+      detailCtx.globalCompositeOperation="source-over";
+      ctx.save();ctx.setTransform(1,0,0,1,0,0);
+      ctx.drawImage(detailCanvas,0,0);ctx.restore();
+     }
+     }
     }
    }
    ctx.restore();
@@ -128,5 +147,5 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
  },[]);
  useEffect(()=>{cameraRef.current=camera;drawRef.current();},[camera]);
  return <canvas ref={canvasRef} className="lek-anatomy-semantic-canvas"
-  role="img" aria-label="Кожный покров в разрезе только по боковым контурам человека: эпидермис, дерма и подкожная клетчатка"/>;
+  role="img" aria-label="Кожный покров в разрезе только по боковым контурам человека: эпидермис, дерма, подкожная клетчатка; при приближении — фолликулы, железы, сосуды и клетки"/>;
 }
