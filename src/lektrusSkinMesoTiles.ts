@@ -120,12 +120,12 @@ export function skinFurrowAt(ix:number,iy:number):SkinFurrow{
  const x=(ix+.20+.60*skinHash(ix,iy,43))*step;
  const y=(iy+.20+.60*skinHash(ix,iy,53))*step;
  const profile=skinMesoProfile(x,y);
- const theta=skinMesoFlowDirection(x,y)+(skinHash(ix,iy,67)-.5)*.85;
- const length=step*(.30+.40*skinHash(ix,iy,73));
+ const theta=skinMesoFlowDirection(x,y)+(skinHash(ix,iy,67)-.5)*.56;
+ const length=step*(.82+.56*skinHash(ix,iy,73));
  const bend=(skinHash(ix,iy,79)-.5)*step*.12;
  const dx=Math.cos(theta)*length*.5;
  const dy=Math.sin(theta)*length*.5;
- const thickness=(.058+.020*skinHash(ix,iy,89))*profile.fineGrain;
+ const thickness=(.047+.016*skinHash(ix,iy,89))*profile.fineGrain;
  return {
   x:x-dx,y:y-dy,endX:x+dx,endY:y+dy,
   controlX:x+bend,controlY:y-bend,
@@ -136,14 +136,14 @@ export function skinFurrowAt(ix:number,iy:number):SkinFurrow{
  * relief highlight, rather than a dense speckled color noise layer.
  */
 function strokeFurrow(ctx:CanvasRenderingContext2D,g:SkinFurrow){
- ctx.globalAlpha=.26*g.weight;
+ ctx.globalAlpha=.22*g.weight;
  ctx.lineWidth=g.width;
  ctx.strokeStyle="#94675e";
  ctx.beginPath();
  ctx.moveTo(g.x,g.y);
  ctx.quadraticCurveTo(g.controlX,g.controlY,g.endX,g.endY);
  ctx.stroke();
- ctx.globalAlpha=.15*g.weight;
+ ctx.globalAlpha=.12*g.weight;
  ctx.lineWidth=g.width*.66;
  ctx.strokeStyle="#fff1dd";
  ctx.beginPath();
@@ -164,7 +164,7 @@ function strokeCrossing(ctx:CanvasRenderingContext2D,ix:number,iy:number){
  const cx=g.controlX,cy=g.controlY;
  ctx.globalAlpha=.12*g.weight;
  ctx.strokeStyle="#9d756d";
- ctx.lineWidth=.036;
+ ctx.lineWidth=.029;
  ctx.beginPath();
  ctx.moveTo(cx-dx,cy-dy);
  ctx.quadraticCurveTo(cx+.035,cy-.022,cx+dx,cy+dy);
@@ -231,6 +231,8 @@ function buildMesoTile(tileX:number,tileY:number){
  const originX=tileX*SKIN_MESO_TILE_WORLD;
  const originY=tileY*SKIN_MESO_TILE_WORLD;
  const pixelsPerWorld=SKIN_MESO_TILE_PIXELS/SKIN_MESO_TILE_WORLD;
+ ctx.lineCap="round";
+ ctx.lineJoin="round";
  ctx.setTransform(pixelsPerWorld,0,0,pixelsPerWorld,
   -originX*pixelsPerWorld,-originY*pixelsPerWorld);
  const spacing=.72;
