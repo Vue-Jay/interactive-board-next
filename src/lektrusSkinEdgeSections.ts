@@ -82,7 +82,7 @@ export function skinEdgeDetailsAlpha(scale:number){return smooth(2.5,6.5,scale);
  */
 export function skinEdgeDetailLevels(scale:number){
  return {appendages:smooth(4,15,scale),fibres:smooth(8,19,scale),
-  cells:smooth(13,30,scale)};
+  cells:smooth(145,310,scale)};
 }
 /** World-anchored variations prevent a stamp of identical follicles and fat
  * cells from repeating down every limb. No Math.random, camera or frame state. */
@@ -164,21 +164,18 @@ export function drawSkinEdgeDetails(
    line("#b58a44",.025,[.87,3.43,.72,3.70,.51,3.87]);
    oval(.52,3.04,.06,.10,"#deb96a");
   }
-  // Irregular adipocyte lobules with delicate septa, clear lipid vacuoles
-  // and peripheral flattened nuclei. They replace repeated spot rows.
-  ctx.globalAlpha=opacity*.74;
-  for(let row=0;row<9;row++)for(let col=0;col<2;col++){
-   const n=row*2+col;
-   const dx=(variation(70+n)-.5)*.11,dy=(variation(100+n)-.5)*.23;
-   const x=1.86+col*.56+(row%2)*.045+dx;
-   const y=-3.58+row*.87+(col%2)*.19+dy;
-   const rx=.245+variation(120+n)*.055;
-   const ry=.325+variation(160+n)*.075;
-   oval(x,y,rx+.030,ry+.035,"#d99f73");
-   oval(x,y,rx,ry,"#fff0b9");
-   ctx.globalAlpha=opacity*.62;
-   oval(x+rx*.88,y-ry*.52,.028,.064,"#926476");
-   ctx.globalAlpha=opacity*.74;
+  // Broad adipose lobules and connective-tissue septa are visible on the
+  // organ scale. These are NOT single adipocytes. Real cells are 65-105 µm
+  // and are painted only by the calibrated microscopic renderer.
+  ctx.globalAlpha=opacity*.25;
+  for(let row=0;row<9;row++){
+   const y=-3.75+row*.91+(variation(100+row)-.5)*.20;
+   const bend=(variation(80+row)-.5)*.26;
+   curve("#c79b76",.024,[1.65,y-.20,1.98,y+.25+bend,
+    2.45,y-.22+bend,2.85,y+.16]);
+   if(row%2===0)
+    curve("#e8b77f",.014,[1.78,y-.40,2.13,y-.16,
+     2.34,y+.38,2.76,y+.43]);
   }
   if(lod.appendages>.005){
    ctx.globalAlpha=opacity*lod.appendages;
@@ -241,37 +238,16 @@ export function drawSkinEdgeDetails(
    }
    ctx.stroke();
   }
+  // Only restrained, low-contrast stratum boundaries at this stage.
+  // Individual keratinocytes/melanocytes are drawn in body-world units at
+  // deep zoom. Never magnify cells with the teaching cutaway depthScale.
   if(lod.cells>.005){
-   // Four layers of thin epidermis: flattened anucleate corneocytes,
-   // keratohyalin granules, nucleated spinous keratinocytes and the basal
-   // cell row. The translucent details do not obscure the layer colours.
-   ctx.globalAlpha=opacity*lod.cells*.76;
-   for(let i=0;i<49;i++){
-    const y=-3.96+i*.164;
-    const stagger=(i%2)*.028;
-    // Stratum corneum, no nuclei.
-    line("#ffe2c8",.026,[.018,y,.084,y+.018]);
-    line("#8d586d",.012,[.018,y+.046,.082,y+.060]);
-    // Granulosum: small, dark keratohyalin granules.
-    oval(.128+stagger*.3,y,.033,.061,"#f4c4b9");
-    oval(.130,y-.019,.012,.019,"#945675");
-    oval(.139,y+.025,.011,.014,"#88526b");
-    // Spinosum: adjacent polygonal cells with distinct nuclei.
-    for(let col=0;col<2;col++){
-     const x=.225+col*.096+stagger*.27;
-     oval(x,y+.012*(col?1:-1),.052,.069,"#e7adb1");
-     oval(x,y,.018,.028,"#855578");
-     line("#efc5be",.012,[x-.046,y-.035,x-.008,y-.063]);
-    }
-    // Basal keratinocytes; nuclear axis perpendicular to the boundary.
-    oval(.388,y,.034,.073,"#c67d94");
-    oval(.385,y,.016,.041,"#69435f");
+   ctx.globalAlpha=opacity*lod.cells*.28;
+   for(let i=0;i<42;i++){
+    const y=-3.95+i*.19;
+    line("#f7d6c9",.007,[.012,y,.10,y+.014]);
+    line("#a97888",.005,[.12,y,.34,y+.02]);
    }
-   // Branching melanocyte in the basal layer and melanin-rich extensions.
-   oval(.375,.75,.045,.077,"#76514b");
-   line("#77504b",.022,[.375,.75,.30,.62,.245,.59]);
-   line("#77504b",.022,[.375,.75,.29,.89,.23,.94]);
-   line("#77504b",.020,[.37,.74,.31,.75,.22,.78]);
   }
   ctx.restore();painted++;
  }
