@@ -1,8 +1,8 @@
-import {useCallback,useRef,useState,type PointerEvent as ReactPointerEvent,type WheelEvent as ReactWheelEvent} from "react";
+import {useCallback,useEffect,useRef,useState,type PointerEvent as ReactPointerEvent,type WheelEvent as ReactWheelEvent} from "react";
 import anatomySprite from "./assets/bio-atlas/human-seven-systems-clean.webp";
 import {HUMAN_BODY_SYSTEMS,type HumanFocusedSystem} from "./lektrusBioHumanBodySystems";
 import LektrusBioHumanSystemIcon from "./LektrusBioHumanSystemIcon";
-import LektrusSkinSemanticViewport from "./LektrusSkinSemanticViewport";
+import LektrusSkinSemanticViewport,{type SkinViewMode} from "./LektrusSkinSemanticViewport";
 import {SKIN_MAX_SCALE,SKIN_SHOULDER_CENTER,anatomyCameraAtBody,
  anatomyScreenToBody,skinAvailableAt,skinDetailStage
 } from "./lektrusAnatomySemanticZoom";
@@ -36,7 +36,34 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
  // A single camera lives on this component, outside any system illustration.
  // Never key the viewport by system or auto-focus on a switch.
  const [camera,setCamera]=useState<AnatomyCamera>(ANATOMY_INITIAL_CAMERA);
+ const [displayCamera,setDisplayCamera]=useState<AnatomyCamera>(ANATOMY_INITIAL_CAMERA);
+ const displayed=useRef<AnatomyCamera>(ANATOMY_INITIAL_CAMERA);
  const [skinRouteActive,setSkinRouteActive]=useState(false);
+ const [skinMode,setSkinMode]=useState<SkinViewMode>("surface");
+ // Interpolate the same scale and pan fraction at each frame: the point
+ // under the cursor remains fixed throughout the animation, not only at
+ // its final destination. Switching systems leaves this camera untouched.
+ useEffect(()=>{
+  let raf=0,last=0;
+  const tick=(time:number)=>{
+   const dt=last?Math.min(60,time-last):16;last=time;
+   const k=1-Math.exp(-dt/88);
+   const from=displayed.current;
+   const next:AnatomyCamera={
+    scale:from.scale+(camera.scale-from.scale)*k,
+    panX:from.panX+(camera.panX-from.panX)*k,
+    panY:from.panY+(camera.panY-from.panY)*k
+   };
+   const done=Math.abs(next.scale-camera.scale)<.0004&&
+    Math.abs(next.panX-camera.panX)<.035&&
+    Math.abs(next.panY-camera.panY)<.035;
+   displayed.current=done?camera:next;
+   setDisplayCamera(displayed.current);
+   if(!done)raf=requestAnimationFrame(tick);
+  };
+  raf=requestAnimationFrame(tick);
+  return ()=>cancelAnimationFrame(raf);
+ },[camera]);
  const stage=useRef<HTMLDivElement>(null);
  const pointers=useRef(new Map<number,Point>());
  const gesture=useRef<Gesture|null>(null);
@@ -52,13 +79,12 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
   const r=stage.current?.getBoundingClientRect();
   return {width:Math.max(1,r?.width??700),height:Math.max(1,r?.height??500)};
  };
- const zoom=useCallback((factor:number,at?:Point)=>{
+ const zoom=useCallback((factor:number,at?:Point,overSkin=false)=>{
   const {width,height}=dimensions();
   setCamera(prev=>{
-   const max=system==="integumentary"&&skinRouteActive?
-    SKIN_MAX_SCALE:Math.max(3.25,prev.scale);
-   const safeFactor=system!=="integumentary"&&prev.scale>=3.25?
-    Math.min(1,factor):factor;
+   const deep=system==="integumentary"&&(skinRouteActive||overSkin);
+   const max=deep?SKIN_MAX_SCALE:Math.max(3.25,prev.scale);
+   const safeFactor=!deep&&prev.scale>=3.25?Math.min(1,factor):factor;
    return anatomyZoomAt(prev,prev.scale*safeFactor,
     at??{x:width/2,y:height/2},width,height,max);
   });
@@ -66,6 +92,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
  const reset=()=>{
   setCamera(ANATOMY_INITIAL_CAMERA);
   setSkinRouteActive(false);
+  setSkinMode("surface");
  };
  const focusSkin=()=>{
   const {width,height}=dimensions();
@@ -80,9 +107,12 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
   const at={x:e.clientX-r.left,y:e.clientY-r.top};
   // A user can discover the shoulder route by zooming over it directly.
   // Other body areas remain at the supported overview resolution.
-  if(system==="integumentary"&&skinAvailableAt(anatomyScreenToBody(
-   camera,at,r.width,r.height)))setSkinRouteActive(true);
-  zoom(Math.exp(-clip(e.deltaY,-220,220)*.0018),at);
+  const overSkin=system==="integumentary"&&skinAvailableAt(
+   anatomyScreenToBody(displayed.current,at,r.width,r.height));
+  if(overSkin)setSkinRouteActive(true);
+  // The first wheel event is allowed to zoom straight through 3.25x:
+  // it must not depend on an asynchronous state update.
+  zoom(Math.exp(-clip(e.deltaY,-220,220)*.0018),at,overSkin);
  };
  const onDown=(e:ReactPointerEvent<HTMLDivElement>)=>{
   if(e.button!==0&&e.pointerType==="mouse")return;
@@ -91,12 +121,14 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
   const point=pointOf(e);pointers.current.set(e.pointerId,point);
   const size=dimensions();
   if(system==="integumentary"&&skinAvailableAt(
-   anatomyScreenToBody(camera,point,size.width,size.height)))
+   anatomyScreenToBody(displayed.current,point,size.width,size.height)))
    setSkinRouteActive(true);
   const pair=[...pointers.current.entries()];
   if(pair.length>=2){
-   gesture.current={kind:"pinch",startA:pair[0][1],startB:pair[1][1],camera};
-  }else gesture.current={kind:"pan",id:e.pointerId,start:point,camera};
+   gesture.current={kind:"pinch",startA:pair[0][1],startB:pair[1][1],
+    camera:displayed.current};
+  }else gesture.current={kind:"pan",id:e.pointerId,start:point,
+   camera:displayed.current};
  };
  const onMove=(e:ReactPointerEvent<HTMLDivElement>)=>{
   if(!pointers.current.has(e.pointerId))return;
@@ -113,7 +145,10 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
    const startMid={x:(g.startA.x+g.startB.x)/2,y:(g.startA.y+g.startB.y)/2};
    const mid={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2};
    const factor=between(p[0],p[1])/Math.max(1,between(g.startA,g.startB));
-   const max=system==="integumentary"&&skinRouteActive?
+   const skinHit=system==="integumentary"&&skinAvailableAt(
+    anatomyScreenToBody(g.camera,startMid,r.width,r.height));
+   if(skinHit)setSkinRouteActive(true);
+   const max=system==="integumentary"&&(skinRouteActive||skinHit)?
     SKIN_MAX_SCALE:Math.max(3.25,g.camera.scale);
    const next=anatomyZoomAt(g.camera,g.camera.scale*factor,
     startMid,r.width,r.height,max);
@@ -126,7 +161,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
    e.currentTarget.releasePointerCapture(e.pointerId);
   const entries=[...pointers.current.entries()];
   if(entries.length===1)gesture.current={kind:"pan",id:entries[0][0],
-    start:entries[0][1],camera};
+    start:entries[0][1],camera:displayed.current};
   else gesture.current=null;
  };
  const focus=(pos:Point|undefined)=>{
@@ -180,8 +215,9 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
      }
     }}>
     <div className="lek-anatomy-stage-grid" aria-hidden="true"/>
-    {system==="integumentary"?<LektrusSkinSemanticViewport camera={camera}/>:<div className="lek-anatomy-world"
-     style={{transform:`translate3d(${camera.panX}px,${camera.panY}px,0) scale(${camera.scale})`}}>
+    {system==="integumentary"?<LektrusSkinSemanticViewport
+     camera={displayCamera} mode={skinMode}/>:<div className="lek-anatomy-world"
+     style={{transform:`translate3d(${displayCamera.panX}px,${displayCamera.panY}px,0) scale(${displayCamera.scale})`}}>
      <div className="lek-anatomy-figure"
       data-anatomy-system={system}
       role="img" aria-label={selected.name+" система человека"}
@@ -197,14 +233,17 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
      <span aria-live="off">{Math.round(camera.scale*100)}%</span>
      <button type="button" aria-label="Отдалить" onClick={()=>zoom(1/1.22)}>−</button>
     </div>
-    <span className="lek-anatomy-stage-hint">Одна точка обзора для всех систем</span>
+    <span className="lek-anatomy-stage-hint">{system==="integumentary"?
+     skinMode==="surface"?"Приближайте участок плеча · поверхность":"Виртуальный срез · учебная модель":
+     "Одна точка обзора для всех систем"}</span>
    </div>
    <div className="lek-anatomy-footnote">
     <span>{system==="integumentary"&&skinRouteActive?
-     skinDetailStage(camera.scale)+" · координаты камеры сохранены":
+     skinMode==="section"?"Виртуальный срез · точка и масштаб сохранены":
+     skinDetailStage(displayCamera.scale)+" · непрерывная поверхность":
      "Переключение системы не меняет положение и увеличение."}</span>
-    <span>{system==="integumentary"&&skinRouteActive&&camera.scale>=9?
-     "Учебная реконструкция: переход к виртуальному срезу, не оптический снимок":
+    <span>{system==="integumentary"&&skinMode==="section"?
+     "Учебный срез открывается отдельно, это не оптический снимок":
      "Колесо мыши / два пальца для масштаба"}</span>
    </div>
   </div>
@@ -216,12 +255,24 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
    </div>
    {system==="integumentary"&&<div className="lek-anatomy-skin-explore">
     <strong>Пилот: кожа плеча</strong>
-    <p>Плавно исследуйте поверхность, затем виртуальный срез и ткани.
-     Переходы привязаны к одному участку, а не к отдельным страницам.</p>
+    <p>При приближении одной и той же поверхности постепенно проявляются
+     рельеф, поры и роговые чешуйки. Камера не переключает изображения.</p>
     <button type="button" onClick={focusSkin}>
-     {skinRouteActive?"Вернуться к коже плеча":"Исследовать кожу плеча"}
+     {skinRouteActive?"Центрировать плечо":"Исследовать кожу плеча"}
     </button>
-    <small>Глубокая детализация пока доступна только для этой области.</small>
+    <div className="lek-anatomy-skin-modes" role="group"
+     aria-label="Способ исследования кожи">
+     <button type="button" aria-pressed={skinMode==="surface"}
+      className={skinMode==="surface"?"is-selected":""}
+      onClick={()=>setSkinMode("surface")}>Поверхность</button>
+     <button type="button" aria-pressed={skinMode==="section"}
+      className={skinMode==="section"?"is-selected":""}
+      onClick={()=>setSkinMode("section")}>Виртуальный срез</button>
+    </div>
+    <small>{skinMode==="surface"?
+     "Мелкие структуры закреплены за участком кожи, не за шагом увеличения.":
+     "Срез является учебной реконструкцией и открывается отдельно от поверхности."}
+     Глубокая детализация пока доступна только для плеча.</small>
    </div>}
    <strong className="lek-anatomy-details-heading">Основные органы и структуры</strong>
    <div className="lek-anatomy-organs">
