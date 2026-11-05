@@ -260,3 +260,61 @@ assert.deepEqual(outside.count,
 assert.match(renderer,/drawSkinMicroscopicDetails\(ctx,contours,cam.scale,visible\)/);
 assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
 console.log("Calibrated microscopy PASS: biologically scaled cells, correct zoom LOD, bounded work, deterministic world-space rendering.");
+
+
+// Deeper microscopy: cellular strata, tiny fibroblasts, papillary dermis,
+// elastic fibres, subcutaneous septa and granular-layer keratohyalin.
+assert.equal(micro.skinEpidermisStratum(.003),null);
+assert.equal(micro.skinEpidermisStratum(.012),"corneum");
+assert.equal(micro.skinEpidermisStratum(.032),"granulosum");
+assert.equal(micro.skinEpidermisStratum(.070),"spinosum");
+assert.equal(micro.skinEpidermisStratum(.120),"basale");
+assert.equal(micro.skinEpidermisStratum(.14),null);
+assert.equal(micro.skinFineStructureOpacity(24).granules,0);
+assert.equal(micro.skinFineStructureOpacity(24).papillae,0);
+assert.ok(micro.skinFineStructureOpacity(50).elastic>0,
+ "Elastic fibres should appear well before individual epidermal cells");
+for(const tier of Object.keys(micro.skinFineStructureOpacity(360))){
+ let last=0;
+ for(let scale=1;scale<=360;scale+=.25){
+  const v=micro.skinFineStructureOpacity(scale)[tier];
+  assert.ok(v>=last&&v<=1,"Monotone microscopic reveal: "+tier);
+  assert.ok(v-last<.04,"No sharp detail popping: "+tier);
+  last=v;
+ }
+ assert.equal(last,1);
+}
+function fineDraw(scale,bounds=microBounds){
+ const calls=[];
+ const ctx=new Proxy({},{
+  get:(_,name)=>(...args)=>{
+   assert.ok(args.filter(n=>typeof n==="number").every(Number.isFinite));
+   calls.push([name,...args]);
+  },set:()=>true
+ });
+ return {count:micro.drawSkinFineStructures(ctx,stripes,scale,bounds),calls};
+}
+const fineMid=fineDraw(50),fineMax=fineDraw(360);
+assert.ok(fineMid.count.elastic>0);
+assert.equal(fineMid.count.granules,0,
+ "Keratohyalin granules cannot appear at organ-level zoom");
+for(const [type,count] of Object.entries(fineMax.count)){
+ assert.ok(count>0,"Missing fine histology tier: "+type);
+ assert.ok(count<=micro.SKIN_FINE_MAX_MARKS,
+  "Fine histology budget exceeded: "+type);
+}
+assert.deepEqual(fineDraw(360),fineMax,
+ "All six microscopic tiers must be deterministic in world coordinates");
+const fineOutside=fineDraw(360,
+ {minX:200,maxX:220,minY:200,maxY:210});
+assert.ok(Object.values(fineOutside.count).every(v=>v===0),
+ "Offscreen microstructures must be culled");
+assert.ok(fineMax.calls.some(c=>c[0]==="bezierCurveTo"),
+ "Dermal elastin fibres need curved vector geometry");
+assert.ok(fineMax.calls.some(c=>c[0]==="ellipse"),
+ "Fine spindle-shaped fibroblasts and nuclei must be drawn");
+assert.ok(fineMax.calls.filter(c=>c[0]==="arc").every(c=>c[3]<=.001),
+ "Tiny keratohyalin granules must never be larger than cells");
+assert.match(renderer,/drawSkinFineStructures\(ctx,contours,cam.scale,visible\)/);
+assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
+console.log("Skin fine histology PASS: six sub-mm tiers, epidermal strata, world anchoring and mobile culling.");
