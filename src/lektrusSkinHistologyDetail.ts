@@ -5,6 +5,7 @@
  * Geometry is deterministic and restricted to the visible tissue bands.
  */
 import type {SkinSectionContour,SkinSectionPoint} from "./lektrusSkinVectorSections";
+import {SKIN_ILLUSTRATIVE_LAYERS} from "./lektrusSkinEvidenceModel";
 
 export type SkinMicroBounds={minX:number;maxX:number;minY:number;maxY:number};
 export const SKIN_MM_PER_WORLD_UNIT=1700/600;
@@ -25,10 +26,10 @@ export function skinMicroOpacity(scale:number){
  * The expanded cutaway is schematic, not a measured tissue thickness. */
 export type SkinEpidermisStratum="corneum"|"granulosum"|"spinosum"|"basale";
 export function skinEpidermisStratum(fraction:number):SkinEpidermisStratum|null{
- if(fraction<.007||fraction>=.13)return null;
- if(fraction<.025)return "corneum";
- if(fraction<.046)return "granulosum";
- if(fraction<.107)return "spinosum";
+ if(fraction<.0035||fraction>=SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd)return null;
+ if(fraction<SKIN_ILLUSTRATIVE_LAYERS.granulosumStart)return "corneum";
+ if(fraction<SKIN_ILLUSTRATIVE_LAYERS.spinosumStart)return "granulosum";
+ if(fraction<SKIN_ILLUSTRATIVE_LAYERS.basaleStart)return "spinosum";
  return "basale";
 }
 export function skinMicroCellDiameterMicrons(kind:"adipocyte"|"keratinocyte"){
@@ -122,7 +123,7 @@ export function drawSkinMicroscopicDetails(
   ctx.strokeStyle="#9e6a78";
   ctx.lineWidth=.0034;
   result.collagen=paintGrid(contours,bounds,SKIN_COLLAGEN_GRID_WORLD,
-   {start:.15,end:.53},1400,(x,y,ix,iy)=>{
+   {start:.105,end:.655},1400,(x,y,ix,iy)=>{
     const bend=(skinMicroHash(ix,iy,81)-.5)*.06;
     const length=.045+.05*skinMicroHash(ix,iy,83);
     ctx.beginPath();ctx.moveTo(x-length*.5,y-bend);
@@ -135,7 +136,7 @@ export function drawSkinMicroscopicDetails(
   ctx.save();
   ctx.globalAlpha=.62*level.adipocytes;
   result.adipocytes=paintGrid(contours,bounds,
-   SKIN_ADIPOCYTE_GRID_WORLD,{start:.55,end:.985},SKIN_MICRO_MAX_MARKS,
+   SKIN_ADIPOCYTE_GRID_WORLD,{start:.69,end:.985},SKIN_MICRO_MAX_MARKS,
    (x,y,ix,iy)=>{
     const jitter=.12*SKIN_ADIPOCYTE_GRID_WORLD;
     const px=x+(skinMicroHash(ix,iy,11)-.5)*jitter;
@@ -161,7 +162,7 @@ export function drawSkinMicroscopicDetails(
   ctx.save();
   ctx.globalAlpha=.72*level.keratinocytes;
   result.keratinocytes=paintGrid(contours,bounds,
-   SKIN_KERATINOCYTE_GRID_WORLD,{start:.007,end:.127},
+   SKIN_KERATINOCYTE_GRID_WORLD,{start:.0035,end:.064},
    SKIN_MICRO_MAX_MARKS,(x,y,ix,iy,fraction)=>{
     const stratum=skinEpidermisStratum(fraction);
     if(!stratum)return;
@@ -233,7 +234,7 @@ export function drawSkinFineStructures(
   ctx.save();ctx.globalAlpha=.37*a.elastic;
   ctx.strokeStyle="#ad7384";ctx.lineWidth=.0025;
   result.elastic=paintGrid(contours,bounds,.125,
-   {start:.21,end:.51},950,(x,y,ix,iy)=>{
+   {start:.19,end:.63},950,(x,y,ix,iy)=>{
     const q=skinMicroHash(ix,iy,101);
     const length=.065+.05*q;
     ctx.beginPath();ctx.moveTo(x-length/2,y-.023);
@@ -258,7 +259,7 @@ export function drawSkinFineStructures(
     const y=iy*.032,p=contourAt(c,y);
     if(!p||p.depth<.025){started=false;continue;}
     const displacement=.012+.012*(1+Math.sin(y*36.2+c.inward*.7));
-    const x=p.x+c.inward*(p.depth*.13+displacement);
+    const x=p.x+c.inward*(p.depth*SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd+displacement);
     if(!started){ctx.moveTo(x,y);started=true;}
     else ctx.lineTo(x,y);
     result.papillae++;
@@ -273,7 +274,7 @@ export function drawSkinFineStructures(
   ctx.save();ctx.globalAlpha=.40*a.plexus;
   ctx.lineWidth=.003;ctx.strokeStyle="#b64c69";
   result.plexus=paintGrid(contours,bounds,.22,
-   {start:.155,end:.25},420,(x,y,ix,iy)=>{
+   {start:.082,end:.18},420,(x,y,ix,iy)=>{
     // Local dermal capillary loops, with both limbs still inside dermis.
     const arc=.020+.013*skinMicroHash(ix,iy,51);
     ctx.beginPath();ctx.moveTo(x-.024,y+.03);
@@ -286,7 +287,7 @@ export function drawSkinFineStructures(
  if(a.fibroblasts>.004){
   ctx.save();ctx.globalAlpha=.48*a.fibroblasts;
   result.fibroblasts=paintGrid(contours,bounds,.16,
-   {start:.23,end:.52},500,(x,y,ix,iy)=>{
+   {start:.23,end:.65},500,(x,y,ix,iy)=>{
     const direction=skinMicroHash(ix,iy,107);
     const x2=(direction-.5)*.025;
     // Spindle-shaped, nucleated fibroblasts in the reticular dermis.
@@ -303,7 +304,7 @@ export function drawSkinFineStructures(
   ctx.save();ctx.globalAlpha=.38*a.septa;
   ctx.lineWidth=.004;ctx.strokeStyle="#b58e69";
   result.septa=paintGrid(contours,bounds,.14,
-   {start:.59,end:.96},650,(x,y,ix,iy)=>{
+   {start:.72,end:.96},650,(x,y,ix,iy)=>{
     const bend=skinMicroHash(ix,iy,69)-.5;
     // Fine collagen septa between groups of white adipocytes.
     ctx.beginPath();ctx.moveTo(x-.05,y-bend*.07);
@@ -316,7 +317,7 @@ export function drawSkinFineStructures(
   ctx.save();ctx.globalAlpha=.68*a.granules;
   ctx.fillStyle="#91677f";
   result.granules=paintGrid(contours,bounds,.014,
-   {start:.026,end:.044},SKIN_FINE_MAX_MARKS,
+   {start:.013,end:.022},SKIN_FINE_MAX_MARKS,
    (x,y,ix,iy)=>{
     // 3-4 µm keratohyalin granules: subcellular detail only in granulosum.
     const jitter=(skinMicroHash(ix,iy,11)-.5)*.001;
