@@ -17,7 +17,6 @@ export const SKIN_MESO_TILE_PIXELS=224;
 export const SKIN_MESO_CACHE_LIMIT=48;
 export const SKIN_MESO_CREATIONS_PER_FRAME=3;
 export const SKIN_MESO_VISIBLE_TILE_LIMIT=72;
-const TWO_PI=Math.PI*2;
 
 export type SkinMesoRegion="face"|"torso"|"arm"|"hand"|"leg"|"general";
 export type SkinMesoProfile={
