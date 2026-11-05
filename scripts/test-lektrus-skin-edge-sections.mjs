@@ -39,6 +39,14 @@ assert.deepEqual(px(94,24).slice(0,3),model.SKIN_EDGE_COLORS.dermis);
 assert.deepEqual(px(90,24).slice(0,3),model.SKIN_EDGE_COLORS.subcutis);
 assert.ok(result.landmarks.length>=12);
 assert.ok(result.landmarks.every(p=>p.x>=0&&p.x<=50));
+assert.ok(result.landmarks.every(p=>p.offsets.length===25&&p.offsets.every(Number.isFinite)));
+// Sloped side: local detail coordinates follow the contour at each row.
+const slope=new Uint8ClampedArray(width*height);
+for(let y=0;y<height;y++)for(let x=12+y;x<140;x++)slope[y*width+x]=255;
+const sloped=model.createSkinEdgeRaster(slope,width,height,factor);
+const left=sloped.landmarks.find(p=>p.y===8&&p.inward===1);
+assert.equal(left.offsets[0],-4);assert.equal(left.offsets[12],0);
+assert.equal(left.offsets[24],4);
 assert.equal(model.skinEdgeDetailsAlpha(1),0);
 assert.ok(model.skinEdgeDetailsAlpha(5)>0);
 assert.equal(model.skinEdgeDetailsAlpha(7),1);
@@ -54,7 +62,7 @@ const stage=ts.createSourceFile("src/LektrusSkinSemanticViewport.tsx",
  renderer,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(stage.parseDiagnostics.length,0,"Cutaway viewport must parse");
 assert.match(renderer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/);
-assert.match(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible\)/);
+assert.match(renderer,/drawSkinEdgeDetails\(detailCtx,landmarks,cam.scale,visible\)/);
 assert.match(renderer,/ctx\.drawImage\(edgeAtlas,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
 assert.doesNotMatch(renderer,/drawSkinMesoTiles|drawSkinSurfaceField|drawSkinMicrotiles/);
 assert.doesNotMatch(renderer,/skin-semantic-lod\.webp/);
@@ -65,3 +73,35 @@ assert.match(ui,/Правый бок/);
 assert.doesNotMatch(ui,/setSkinMode|skinMode|SkinViewMode/);
 assert.match(ui,/camera=\{displayCamera\}/);
 console.log("Lateral skin cross-section PASS: disjoint limb edges, 3 layers, untouched center, shared world camera and no full-body textures.");
+
+// Continuous LOD, deterministic geometry and bounded rendering work.
+for(const key of ["appendages","fibres","cells"]){
+ let previous=0;
+ for(let scale=1;scale<=360;scale+=.25){
+  const value=model.skinEdgeDetailLevels(scale)[key];
+  assert.ok(value>=previous&&value<=1);
+  assert.ok(value-previous<.04,"No abrupt detail pop-in");previous=value;
+ }
+ assert.equal(model.skinEdgeDetailLevels(1)[key],0);
+ assert.equal(model.skinEdgeDetailLevels(360)[key],1);
+}
+function record(scale,bounds){
+ const calls=[];
+ const ctx=new Proxy({}, {get:(_,name)=>(...args)=>{
+  assert.ok(args.filter(x=>typeof x==="number").every(Number.isFinite));
+  calls.push([name,...args]);
+ },set:()=>true});
+ const count=model.drawSkinEdgeDetails(ctx,[{x:10,y:20,inward:1}],scale,bounds);
+ return {count,calls};
+}
+const visible={minX:8,maxX:14,minY:18,maxY:22};
+assert.equal(record(1,visible).count,0);
+assert.equal(record(360,{minX:100,maxX:110,minY:100,maxY:110}).count,0);
+const tissue=record(30,visible),cells=record(150,visible);
+assert.equal(tissue.count,1);assert.equal(cells.count,1);
+assert.ok(cells.calls.length>tissue.calls.length+100,"Deep zoom reveals cells");
+assert.deepEqual(cells.calls,record(150,visible).calls,"Pan/zoom must not randomize tissue");
+assert.ok(cells.calls.some(c=>c[0]==="clip"),"Stay inside lateral section");
+assert.match(renderer,/globalCompositeOperation="destination-in"/);
+assert.match(renderer,/detailCtx\.drawImage\(edgeAtlas,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
+console.log("Skin detail LOD PASS: continuous reveals, cells, culling, deterministic geometry, exact silhouette mask.");

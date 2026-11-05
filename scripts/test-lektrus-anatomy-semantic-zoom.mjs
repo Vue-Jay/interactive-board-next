@@ -203,7 +203,7 @@ assert.doesNotMatch(renderer,/ctx\.ellipse\(EDGE\.x\+EDGE\.width\/2/,
  "No huge oval or circular skin inset may cover the torso");
 assert.match(renderer,/ctx\.fillRect\(0,0,WORLD_WIDTH,WORLD_HEIGHT\)/,
  "Smooth material must cover the full body coordinate system");
-assert.match(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible\)/);
+assert.match(renderer,/drawSkinEdgeDetails\(detailCtx,landmarks,cam.scale,visible\)/);
 assert.match(renderer,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
 assert.match(renderer,/ctx\.drawImage\(edgeAtlas,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
 assert.doesNotMatch(renderer,/modeRef|sectionBlend|drawSkinMesoTiles|drawSkinMicrotiles|drawSkinSurfaceField/);
