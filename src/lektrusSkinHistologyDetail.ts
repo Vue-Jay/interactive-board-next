@@ -52,7 +52,6 @@ function inView(c:SkinSectionContour,b:SkinMicroBounds):boolean{
 /** Iterate an anchored world grid along the true contour band. Each tier
  * has an independent budget and camera-stable power-of-two thinning. */
 function paintGrid(
- ctx:CanvasRenderingContext2D,
  contours:readonly SkinSectionContour[],bounds:SkinMicroBounds,
  step:number,band:Band,budget:number,
  draw:(x:number,y:number,ix:number,iy:number)=>void
@@ -110,7 +109,7 @@ export function drawSkinMicroscopicDetails(
   ctx.globalAlpha=.23*level.collagen;
   ctx.strokeStyle="#9e6a78";
   ctx.lineWidth=.0034;
-  result.collagen=paintGrid(ctx,contours,bounds,SKIN_COLLAGEN_GRID_WORLD,
+  result.collagen=paintGrid(contours,bounds,SKIN_COLLAGEN_GRID_WORLD,
    {start:.15,end:.53},1400,(x,y,ix,iy)=>{
     const bend=(skinMicroHash(ix,iy,81)-.5)*.06;
     const length=.045+.05*skinMicroHash(ix,iy,83);
@@ -123,7 +122,7 @@ export function drawSkinMicroscopicDetails(
  if(level.adipocytes>.003){
   ctx.save();
   ctx.globalAlpha=.62*level.adipocytes;
-  result.adipocytes=paintGrid(ctx,contours,bounds,
+  result.adipocytes=paintGrid(contours,bounds,
    SKIN_ADIPOCYTE_GRID_WORLD,{start:.55,end:.985},SKIN_MICRO_MAX_MARKS,
    (x,y,ix,iy)=>{
     const jitter=.12*SKIN_ADIPOCYTE_GRID_WORLD;
@@ -149,7 +148,7 @@ export function drawSkinMicroscopicDetails(
  if(level.keratinocytes>.003){
   ctx.save();
   ctx.globalAlpha=.72*level.keratinocytes;
-  result.keratinocytes=paintGrid(ctx,contours,bounds,
+  result.keratinocytes=paintGrid(contours,bounds,
    SKIN_KERATINOCYTE_GRID_WORLD,{start:.007,end:.127},
    SKIN_MICRO_MAX_MARKS,(x,y,ix,iy)=>{
     const j=(skinMicroHash(ix,iy,23)-.5)*.0012;
