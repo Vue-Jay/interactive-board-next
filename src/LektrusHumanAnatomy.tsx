@@ -91,11 +91,11 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
   });
  },[system]);
  const reset=()=>setCamera(ANATOMY_INITIAL_CAMERA);
- const focusSkin=()=>{
+ const focusSkin=(side:"left"|"right"="right")=>{
   const {width,height}=dimensions();
-  // Optional shortcut, not a camera requirement or a texture border.
+  const point=side==="left"?{x:80,y:245}:{x:280,y:245};
   setCamera(anatomyBoundCamera(
-   anatomyCameraAtBody(SKIN_SHOULDER_CENTER,2.4,width,height),
+   anatomyCameraAtBody(point,4.3,width,height),
    width,height,SKIN_MAX_SCALE));
  };
  const wheel=(e:ReactWheelEvent<HTMLDivElement>)=>{
@@ -217,13 +217,12 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
      <button type="button" aria-label="Отдалить" onClick={()=>zoom(1/1.22)}>−</button>
     </div>
     <span className="lek-anatomy-stage-hint">{system==="integumentary"?
-     skinMode==="surface"?"Приближайте любой участок тела":"Виртуальный срез плеча · учебная модель":
+     "Кожа в разрезе вдоль боковых контуров":
      "Одна точка обзора для всех систем"}</span>
    </div>
    <div className="lek-anatomy-footnote">
     <span>{system==="integumentary"?
-     skinMode==="section"?"Виртуальный срез плеча · положение сохранено":
-     skinDetailStage(displayCamera.scale)+" · все участки тела":
+     skinDetailStage(displayCamera.scale)+" · только по краям":
      "Переключение системы не меняет положение и увеличение."}</span>
     <span>{system==="integumentary"?
      "Цифровой зум, не физическое увеличение микроскопа":
