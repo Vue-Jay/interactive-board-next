@@ -203,14 +203,10 @@ assert.doesNotMatch(renderer,/ctx\.ellipse\(EDGE\.x\+EDGE\.width\/2/,
  "No huge oval or circular skin inset may cover the torso");
 assert.match(renderer,/ctx\.fillRect\(0,0,WORLD_WIDTH,WORLD_HEIGHT\)/,
  "Smooth material must cover the full body coordinate system");
-assert.match(renderer,/drawSkinSurfaceField\(ctx,cam\.scale,region,surfaceOpacity\)/,
- "Procedural detail must be drawn from global body coordinates");
-assert.match(renderer,/ctx\.drawImage\(resources\.body/,
- "Keep source body visible: do not blank the scene on LOD changes");
-assert.match(renderer,/modeRef\.current==="section"/);
-assert.match(renderer,/sectionBlend\+=/,
- "Explicit section mode must fade without relocating camera");
-assert.match(renderer,/if\(detailReady&&resources\.section&&sectionBlend>/);
+assert.match(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible\)/);
+assert.match(renderer,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
+assert.match(renderer,/ctx\.drawImage\(edgeAtlas,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
+assert.doesNotMatch(renderer,/modeRef|sectionBlend|drawSkinMesoTiles|drawSkinMicrotiles|drawSkinSurfaceField/);
 assert.doesNotMatch(renderer,/SKIN_DETAIL_NODES|skinNodeVisibleInViewport/,
  "No sequential cutaway/histology photo swap while zooming");
 assert.doesNotMatch(renderer,/rootOpacity=cutaway/,
