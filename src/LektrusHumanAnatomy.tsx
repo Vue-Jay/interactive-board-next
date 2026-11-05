@@ -269,8 +269,15 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
        if(system!=="integumentary"){focus(organ.position);return;}
        if(i===0){setSkinMode("surface");focusSkin();}
        if(i===1||i===2){setSkinMode("section");focusSkin();}
-       // Hair and nails are visible in the global view, but no
-       // unsupported microscopic organ is invented on selection.
+       if(i===3){
+        // Nails are an actual visible body part; focus the foot without
+        // opening a fictitious follicle micrograph on the shoulder.
+        const {width,height}=dimensions();
+        setSkinMode("surface");
+        setCamera(anatomyBoundCamera(
+         anatomyCameraAtBody({x:220,y:549},2.2,width,height),
+         width,height,SKIN_MAX_SCALE));
+       }
       }}
       title={organ.position?"Приблизить область":"Сведения об органе"}>
      <span className="lek-anatomy-organ-number">{String(i+1).padStart(2,"0")}</span>
