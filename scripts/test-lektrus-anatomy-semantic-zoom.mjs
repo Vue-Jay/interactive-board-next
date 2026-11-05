@@ -22,7 +22,13 @@ const surface=loadTS("src/lektrusSkinSurfaceField.ts",{
  "./lektrusAnatomySemanticZoom":world
 });
 
-assert.deepEqual(world.SKIN_SHOULDER_CENTER,{x:250,y:163});
+assert.deepEqual(world.SKIN_SHOULDER_CENTER,{x:261,y:220});
+assert.deepEqual(world.SKIN_BODY_SIZE,{width:360,height:600});
+assert.deepEqual(world.SKIN_SHOULDER,{x:236,y:186,width:50,height:68});
+assert.equal(world.skinAvailableAt({x:250,y:163}),false,
+ "Old focal point was outside the skin body and must not trigger zoom");
+assert.equal(world.skinAvailableAt({x:280,y:197}),false,
+ "The shoulder selection must not include surrounding empty background");
 assert.equal(world.SKIN_MAX_SCALE,52);
 assert.ok(world.skinAvailableAt(world.SKIN_SHOULDER_CENTER));
 assert.equal(world.skinAvailableAt({x:50,y:470}),false);
@@ -112,6 +118,13 @@ assert.equal(image.toString("ascii",8,12),"WEBP");
 assert.deepEqual([image.readUInt16LE(26)&0x3fff,image.readUInt16LE(28)&0x3fff],
  [2700,900]);
 assert.ok(image.length<800000,"Offline atlas must remain compact");
+const body=fs.readFileSync("src/assets/bio-atlas/human-skin-original-registered.webp");
+assert.equal(body.toString("ascii",0,4),"RIFF");
+assert.equal(body.toString("ascii",8,12),"WEBP");
+assert.equal(body.toString("ascii",12,16),"VP8X","Skin asset must retain an alpha channel");
+assert.deepEqual([1+body.readUIntLE(24,3),1+body.readUIntLE(27,3)],
+ [360,600],"Original skin figure must share the exact 360x600 body-local coordinates");
+assert.ok(body.length>10000&&body.length<120000);
 
 const viewer=read("src/LektrusHumanAnatomy.tsx");
 const renderer=read("src/LektrusSkinSemanticViewport.tsx");
@@ -129,6 +142,13 @@ assert.match(viewer,/zoom\([^;]*,at,overSkin\)/,
 assert.match(viewer,/aria-pressed=\{skinMode==="surface"\}/);
 assert.match(viewer,/aria-pressed=\{skinMode==="section"\}/);
 assert.match(renderer,/drawSkinSurfaceField\(ctx,cam.scale,region,surfaceOpacity\)/);
+assert.match(renderer,/import skinOriginal from "\.\/assets\/bio-atlas\/human-skin-original-registered.webp"/);
+assert.doesNotMatch(renderer,/SKIN_INDEX\*WORLD_WIDTH/,
+ "Skin viewer must not reuse the incorrect blue-gray system sprite");
+assert.match(renderer,/ctx\.globalCompositeOperation="source-atop"/,
+ "Details must be clipped to the actual figure silhouette");
+assert.match(renderer,/c\.drawImage\(sprite,640,340,120,160/,
+ "The registered skin crop must not include neck, chest and background");
 assert.match(renderer,/ctx\.drawImage\(resources\.body/,
  "Keep source body visible: do not blank the scene on LOD changes");
 assert.match(renderer,/modeRef\.current==="section"/);
