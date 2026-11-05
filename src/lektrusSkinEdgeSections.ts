@@ -84,6 +84,21 @@ export function skinEdgeDetailLevels(scale:number){
  return {appendages:smooth(7,22,scale),fibres:smooth(18,50,scale),
   cells:smooth(45,110,scale)};
 }
+/** World-anchored variations prevent a stamp of identical follicles and fat
+ * cells from repeating down every limb. No Math.random, camera or frame state. */
+export function skinEdgeDetailVariation(p:SkinEdgeLandmark,salt:number):number{
+ const x=Math.round(p.x*31),y=Math.round(p.y*43);
+ let v=Math.imul(x^salt,0x1b873593)^Math.imul(y,0x85ebca6b);
+ v=Math.imul(v^(v>>>16),0x7feb352d);
+ v=Math.imul(v^(v>>>15),0x846ca68b);
+ return ((v^(v>>>16))>>>0)/4294967296;
+}
+/** Only schematic thin hairy skin has follicles. Head, hands and feet do not
+ * inherit follicles merely because their silhouette happens to have an edge. */
+export function skinEdgeHasFollicle(p:SkinEdgeLandmark):boolean{
+ const sample=(p.y>=146&&p.y<=286)||(p.y>=394&&p.y<=510);
+ return sample&&skinEdgeDetailVariation(p,7)>.23;
+}
 export function drawSkinEdgeDetails(
  ctx:CanvasRenderingContext2D,
  landmarks:readonly SkinEdgeLandmark[],scale:number,
@@ -96,95 +111,166 @@ export function drawSkinEdgeDetails(
  for(const p of landmarks){
   if(p.y<bounds.minY-4||p.y>bounds.maxY+4||
    p.x<bounds.minX-4||p.x>bounds.maxX+4)continue;
+  const variation=(salt:number)=>skinEdgeDetailVariation(p,salt);
   ctx.save();ctx.translate(p.x,p.y);ctx.scale(p.inward,1);
-  // All details stay within the lateral cutaway, including at maximum zoom.
-  ctx.beginPath();ctx.rect(-6,-4,SKIN_EDGE_WORLD_WIDTH+12,8);ctx.clip();
-  // Follow the same local silhouette through the entire section, rather
-  // than repeating straight tiles that jump sideways at each new landmark.
+  ctx.beginPath();ctx.rect(-.05,-4.05,SKIN_EDGE_WORLD_WIDTH+.1,8.1);ctx.clip();
+  // Each station follows the curved silhouette at sub-world-unit precision.
+  // All local x coordinates are tissue depth, never screen pixels.
   const offset=(y:number)=>{
    if(!p.offsets)return 0;
-   const t=Math.max(0,Math.min(p.offsets.length-1,(y+4)*SKIN_EDGE_NATIVE_FACTOR));
+   const t=Math.max(0,Math.min(p.offsets.length-1,
+    (y+4)*SKIN_EDGE_NATIVE_FACTOR));
    const i=Math.floor(t),j=Math.min(p.offsets.length-1,i+1);
    return p.offsets[i]+(p.offsets[j]-p.offsets[i])*(t-i);
   };
-  const line=(color:string,width:number,points:number[])=>{
+  const line=(color:string,width:number,points:readonly number[])=>{
    ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();
    ctx.moveTo(points[0]+offset(points[1]),points[1]);
-   for(let i=2;i<points.length;i+=2)ctx.lineTo(points[i]+offset(points[i+1]),points[i+1]);
+   for(let i=2;i<points.length;i+=2)
+    ctx.lineTo(points[i]+offset(points[i+1]),points[i+1]);
    ctx.stroke();
   };
   const oval=(x:number,y:number,rx:number,ry:number,color:string)=>{
-   ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x+offset(y),y,rx,ry,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle=color;ctx.beginPath();
+   ctx.ellipse(x+offset(y),y,rx,ry,0,0,Math.PI*2);ctx.fill();
   };
-  ctx.globalAlpha=opacity*.85;
-  // Dermal capillary loop, returning to a deeper vascular plexus.
-  ctx.strokeStyle="#b64260";ctx.lineWidth=.045;ctx.beginPath();
-  ctx.moveTo(1.4+offset(-3.7),-3.7);ctx.lineTo(.85+offset(-3.7),-3.7);
-  ctx.bezierCurveTo(.45+offset(-3.7),-3.7,.45+offset(-2.9),-2.9,.85+offset(-2.9),-2.9);
-  ctx.lineTo(1.4+offset(-2.9),-2.9);ctx.stroke();
-  line("#bd4561",.055,[1.42,-4,1.42,4]);
-  line("#547da9",.05,[1.53,-4,1.53,4]);
-  // Lobules of subcutaneous adipocytes, deeper than the dermis.
+  const curve=(color:string,width:number,points:readonly number[])=>{
+   ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();
+   ctx.moveTo(points[0]+offset(points[1]),points[1]);
+   ctx.bezierCurveTo(points[2]+offset(points[3]),points[3],
+    points[4]+offset(points[5]),points[5],
+    points[6]+offset(points[7]),points[7]);
+   ctx.stroke();
+  };
+  const shift=(variation(13)-.5)*.40;
+  // Two deep dermal vessels, with ascending papillary loops. They never
+  // cross the basal membrane or enter the avascular epidermis (x < .43).
+  ctx.globalAlpha=opacity*.83;
+  curve("#bc4b65",.065,[1.43,-4,1.53,-1,1.32,1.25,1.47,4]);
+  curve("#6686ac",.066,[1.55,-4,1.61,-1,1.43,1.4,1.57,4]);
+  for(let j=0;j<3;j++){
+   const y=-3.05+j*2.75+shift*.45;
+   curve("#b74763",.048,[1.43,y-.45,.82,y-.50,.49,y-.38,.53,y+.02]);
+   curve("#c45f72",.041,[.53,y+.02,.48,y+.37,.94,y+.56,1.55,y+.43]);
+   // Papillary loops sit just below the epidermal-dermal junction.
+   oval(.56,y+.01,.07,.115,"#e47e88");
+  }
+  // An interconnected nerve reaches receptors in papillary dermis.
+  if(lod.appendages>.005){
+   ctx.globalAlpha=opacity*lod.appendages*.90;
+   curve("#b58a44",.045,[1.46,3.95,1.20,3.25,.73,3.65,.52,3.04]);
+   line("#b58a44",.028,[1.13,3.5,.74,3.15,.56,3.22]);
+   line("#b58a44",.025,[.87,3.43,.72,3.70,.51,3.87]);
+   oval(.52,3.04,.06,.10,"#deb96a");
+  }
+  // Irregular adipocyte lobules with delicate septa, clear lipid vacuoles
+  // and peripheral flattened nuclei. They replace repeated spot rows.
+  ctx.globalAlpha=opacity*.74;
   for(let row=0;row<9;row++)for(let col=0;col<2;col++){
-   const x=1.95+col*.55,y=-3.7+row*.87+col*.12;
-   oval(x,y,.26,.40,"#dcb574");oval(x,y,.23,.36,"#ffedb2");
-   if(lod.cells>.005){ctx.globalAlpha=lod.cells;oval(x+.19,y,.025,.055,"#987451");}
-   ctx.globalAlpha=opacity*.85;
+   const n=row*2+col;
+   const dx=(variation(70+n)-.5)*.11,dy=(variation(100+n)-.5)*.23;
+   const x=1.86+col*.56+(row%2)*.045+dx;
+   const y=-3.58+row*.87+(col%2)*.19+dy;
+   const rx=.245+variation(120+n)*.055;
+   const ry=.325+variation(160+n)*.075;
+   oval(x,y,rx+.030,ry+.035,"#d99f73");
+   oval(x,y,rx,ry,"#fff0b9");
+   ctx.globalAlpha=opacity*.62;
+   oval(x+rx*.88,y-ry*.52,.028,.064,"#926476");
+   ctx.globalAlpha=opacity*.74;
   }
   if(lod.appendages>.005){
-   ctx.globalAlpha=lod.appendages;
-   // Hair-bearing trunk/limb sample only: do not invent follicles on
-   // the hands, feet or face in this schematic registered outline.
-   if((p.y>140&&p.y<290)||(p.y>390&&p.y<510)){
-   // Oblique hair follicle with bulb and a central dermal papilla.
-   line("#9b5870",.25,[.07,-1.6,.65,-.9,1.28,-.35,1.77,.12]);
-   oval(1.77,.12,.20,.29,"#93506b");
-   line("#e6b7b5",.16,[.07,-1.6,.65,-.9,1.28,-.35,1.77,.12]);
-   line("#594137",.065,[.02,-1.75,.65,-.9,1.28,-.35,1.74,.1]);
-   oval(1.85,.15,.075,.13,"#d78b91");
-   // Sebaceous acini connect to the upper follicle, not the skin surface.
-   for(let i=0;i<4;i++)oval(.85+(i%2)*.19,-1.6+Math.floor(i/2)*.24,
-    .14,.17,"#f7d698");
-   line("#a57a54",.05,[.87,-1.22,.66,-.9]);
-   // Smooth arrector pili muscle attaches to the follicle.
-   line("#b8636d",.09,[.5,.5,1.28,-.35]);
+   ctx.globalAlpha=opacity*lod.appendages;
+   if(skinEdgeHasFollicle(p)){
+    const fy=-1.55+(variation(21)-.5)*.8;
+    // Anatomically connected follicle: follicular sheath descends obliquely
+    // to its bulb, while the pigmented shaft follows the central canal.
+    curve("#a65e71",.36,[.06,fy-.62,.56,fy-.13,1.34,fy+.63,1.77,fy+1.28]);
+    curve("#f1c0ad",.235,[.08,fy-.59,.56,fy-.13,1.33,fy+.63,1.77,fy+1.28]);
+    curve("#68443e",.085,[.03,fy-.8,.55,fy-.16,1.33,fy+.62,1.76,fy+1.25]);
+    oval(1.77,fy+1.28,.22,.27,"#a55b70");
+    oval(1.78,fy+1.33,.13,.16,"#e5a7a5");
+    oval(1.79,fy+1.43,.072,.095,"#aa5370");
+    // Connected sebaceous acini, not loose circles on the skin surface.
+    for(let i=0;i<5;i++){
+     const dx=(i%3)*.165,dy=Math.floor(i/3)*.20;
+     oval(.82+dx,fy+.11+dy,.15,.16,"#d0a078");
+     oval(.82+dx,fy+.11+dy,.117,.12,"#f4d6a2");
+    }
+    line("#a86c64",.050,[.91,fy+.50,.76,fy+.15]);
+    curve("#b56470",.11,[.52,fy+1.34,.73,fy+.75,1.04,fy+.63,1.27,fy+.50]);
    }
-   // Eccrine secretory coil in deep dermis; duct opens onto the surface.
-   line("#876c9c",.065,[1.35,2.35,.9,2.35,.72,2.55,.5,2.35,.3,2.5,0,2.4]);
-   for(let i=0;i<7;i++){
-    ctx.strokeStyle="#876c9c";ctx.lineWidth=.055;ctx.beginPath();
-    ctx.ellipse(1.15+(i%2)*.23+offset(1.6+Math.floor(i/2)*.23),1.6+Math.floor(i/2)*.23,.19,.16,.25,0,Math.PI*2);ctx.stroke();
+   // Eccrine gland: distinct sweat duct to an actual surface opening;
+   // secretory coils lie in the deep dermis, not in the epidermis.
+   const sy=1.45+(variation(31)-.5)*.48;
+   curve("#8c729b",.092,[.045,sy-.85,.31,sy-.72,.45,sy-.20,.76,sy+.14]);
+   curve("#a28ab1",.047,[.055,sy-.85,.31,sy-.72,.45,sy-.20,.76,sy+.14]);
+   oval(.052,sy-.86,.07,.048,"#795f92");
+   for(let i=0;i<6;i++){
+    const cx=1.00+(i%2)*.29,cy=sy+.34+Math.floor(i/2)*.22;
+    ctx.strokeStyle="#876c99";ctx.lineWidth=.085;ctx.beginPath();
+    ctx.ellipse(cx+offset(cy),cy,.20,.15,(i%2?-.4:.4),0,Math.PI*2);
+    ctx.stroke();
+    oval(cx,cy,.065,.045,"#e9bcc9");
    }
-   // Sensory nerve in dermis, branching toward the epidermal junction.
-   line("#bf8a38",.035,[1.55,3.8,.95,3.5,.65,3.1,.44,3.05]);
-   line("#bf8a38",.025,[.95,3.5,.58,3.75,.44,3.85]);
+   curve("#8c729b",.080,[.76,sy+.14,.88,sy+.36,1.03,sy+.52,1.20,sy+.64]);
   }
   if(lod.fibres>.005){
-   ctx.globalAlpha=lod.fibres*.6;
-   for(let i=0;i<23;i++){
-    const y=-3.8+i*.34;
-    line("#b46f80",.012,[.55,y,.77,y+.13,1.03,y-.08,1.33,y+.08]);
+   ctx.globalAlpha=opacity*lod.fibres*.48;
+   // Dense irregular collagen and elastic fibres occupy the reticular
+   // dermis. Both diagonal families undulate rather than forming a grid.
+   for(let i=0;i<32;i++){
+    const y=-3.86+i*.249;
+    const delta=(variation(i+201)-.5)*.13;
+    curve(i%4===0?"#a56783":"#f9d8c8",i%4===0?.031:.055,
+     [.59,y, .77,y-.16+delta, 1.05,y+.18-delta, 1.36,y+.06]);
+    if(i%3===0){
+     curve("#ac788c",.020,[.78,y-.19, .90,y+.11,
+      1.13,y-.03,1.36,y+.33]);
+    }
    }
-   // Basement membrane separates epidermis from papillary dermis.
-   line("#784c79",.018,[.43,-4,.43,4]);
+   // Wavy dermal papillae and their thin basement membrane.
+   ctx.globalAlpha=opacity*lod.fibres*.85;
+   ctx.strokeStyle="#84576d";ctx.lineWidth=.030;ctx.beginPath();
+   for(let i=0;i<=96;i++){
+    const y=-4+i/12;
+    const x=.43+.038*Math.sin((y+p.y*.31)*2.8);
+    if(!i)ctx.moveTo(x+offset(y),y);
+    else ctx.lineTo(x+offset(y),y);
+   }
+   ctx.stroke();
   }
   if(lod.cells>.005){
-   ctx.globalAlpha=lod.cells;
-   // Thin skin: corneum, granulosum, spinosum, basale; no lucidum.
-   for(let i=0;i<80;i++){
-    const y=-4+i*.10;
-    line("#efd4be",.012,[.01,y,.075,y+.025]); // anucleate corneocytes
-    oval(.105,y+.02,.025,.035,"#7e466d"); // keratohyalin granules
-    for(let j=0;j<2;j++){
-     const cy=y+(j%2)*.045,cx=.18+j*.09;
-     oval(cx,cy,.043,.046,"#eec0b9");oval(cx,cy,.012,.018,"#91577e");
+   // Four layers of thin epidermis: flattened anucleate corneocytes,
+   // keratohyalin granules, nucleated spinous keratinocytes and the basal
+   // cell row. The translucent details do not obscure the layer colours.
+   ctx.globalAlpha=opacity*lod.cells*.76;
+   for(let i=0;i<49;i++){
+    const y=-3.96+i*.164;
+    const stagger=(i%2)*.028;
+    // Stratum corneum, no nuclei.
+    line("#ffe2c8",.026,[.018,y,.084,y+.018]);
+    line("#8d586d",.012,[.018,y+.046,.082,y+.060]);
+    // Granulosum: small, dark keratohyalin granules.
+    oval(.128+stagger*.3,y,.033,.061,"#f4c4b9");
+    oval(.130,y-.019,.012,.019,"#945675");
+    oval(.139,y+.025,.011,.014,"#88526b");
+    // Spinosum: adjacent polygonal cells with distinct nuclei.
+    for(let col=0;col<2;col++){
+     const x=.225+col*.096+stagger*.27;
+     oval(x,y+.012*(col?1:-1),.052,.069,"#e7adb1");
+     oval(x,y,.018,.028,"#855578");
+     line("#efc5be",.012,[x-.046,y-.035,x-.008,y-.063]);
     }
-    oval(.382,y,.035,.045,"#b16e90");oval(.382,y,.013,.021,"#633c69");
+    // Basal keratinocytes; nuclear axis perpendicular to the boundary.
+    oval(.388,y,.034,.073,"#c67d94");
+    oval(.385,y,.016,.041,"#69435f");
    }
-   // Dendritic melanocyte in the basal layer, pigment in nearby cells.
-   oval(.39,.8,.028,.045,"#634536");
-   line("#634536",.012,[.39,.8,.30,.65,.22,.60]);
-   line("#634536",.012,[.39,.8,.29,.95,.23,1.0]);
+   // Branching melanocyte in the basal layer and melanin-rich extensions.
+   oval(.375,.75,.045,.077,"#76514b");
+   line("#77504b",.022,[.375,.75,.30,.62,.245,.59]);
+   line("#77504b",.022,[.375,.75,.29,.89,.23,.94]);
+   line("#77504b",.020,[.37,.74,.31,.75,.22,.78]);
   }
   ctx.restore();painted++;
  }
