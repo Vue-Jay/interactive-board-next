@@ -161,7 +161,7 @@ assert.match(fieldSource,/if\(variant>\.972&&palm<\.998\)/,
  "No hair shaft on glabrous palm");
 assert.match(fieldSource,/function drawPalmRidges/);
 assert.match(tileSource,/SKIN_MICROTILE_CREATIONS_PER_FRAME/);
-assert.match(canvasSource,/drawSkinMicrotiles\(ctx,region,cam.scale,surfaceOpacity,requestDraw\)/);
+assert.doesNotMatch(canvasSource,/drawSkinMicrotiles/);
 assert.doesNotMatch(canvasSource,/resources\.shoulder|cropFeathered/);
-assert.match(uiSource,/Приближайте любой участок тела/);
-console.log("Skin regional microtexture PASS: glabrous palms, stable 34µm corneocytes, gradual budgeted LOD, bounded tile cache and whole-body camera.");
+assert.match(uiSource,/Кожный покров в разрезе/);
+console.log("Legacy surface-detail helpers PASS (not mounted in edge-only skin viewer).");
