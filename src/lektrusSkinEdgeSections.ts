@@ -61,3 +61,43 @@ export function createSkinEdgeRaster(
  }
  return {rgba,landmarks};
 }
+
+const smooth=(a:number,b:number,value:number)=>{
+ const t=Math.max(0,Math.min(1,(value-a)/(b-a)));
+ return t*t*(3-2*t);
+};
+export function skinEdgeDetailsAlpha(scale:number){return smooth(2.5,6.5,scale);}
+/** Repeating schematic vessels and fat lobules are anchored to the SAME
+ * silhouette edge, never a blanket texture across the body.
+ */
+export function drawSkinEdgeDetails(
+ ctx:CanvasRenderingContext2D,
+ landmarks:readonly SkinEdgeLandmark[],scale:number,
+ bounds:{minX:number;maxX:number;minY:number;maxY:number}
+):number{
+ const opacity=skinEdgeDetailsAlpha(scale);
+ if(opacity<.005)return 0;
+ let painted=0;
+ for(const p of landmarks){
+  if(p.y<bounds.minY-4||p.y>bounds.maxY+4||
+   p.x<bounds.minX-4||p.x>bounds.maxX+4)continue;
+  const x=p.x+p.inward*1.0,y=p.y;
+  ctx.save();
+  ctx.globalAlpha=opacity*.7;
+  ctx.strokeStyle="#bb5168";ctx.lineWidth=.08;
+  ctx.beginPath();ctx.moveTo(x,y+1.0);
+  ctx.bezierCurveTo(x-p.inward*.25,y+.1,x+p.inward*.37,y-.3,
+   x+p.inward*.3,y-1);
+  ctx.stroke();
+  ctx.strokeStyle="#7c9abd";ctx.lineWidth=.055;
+  ctx.beginPath();ctx.moveTo(x+p.inward*.38,y-1);
+  ctx.quadraticCurveTo(x+p.inward*.65,y+.2,x+p.inward*.42,y+1);
+  ctx.stroke();
+  ctx.globalAlpha=opacity*.7;
+  ctx.fillStyle="#fff2c6";
+  ctx.beginPath();ctx.ellipse(p.x+p.inward*2.35,y+2.5,
+   .34,.46,.1,0,Math.PI*2);ctx.fill();
+  ctx.restore();painted++;
+ }
+ return painted;
+}
