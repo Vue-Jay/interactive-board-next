@@ -2,8 +2,8 @@ import {useCallback,useEffect,useRef,useState,type PointerEvent as ReactPointerE
 import anatomySprite from "./assets/bio-atlas/human-seven-systems-clean.webp";
 import {HUMAN_BODY_SYSTEMS,type HumanFocusedSystem} from "./lektrusBioHumanBodySystems";
 import LektrusBioHumanSystemIcon from "./LektrusBioHumanSystemIcon";
-import LektrusSkinSemanticViewport,{type SkinViewMode} from "./LektrusSkinSemanticViewport";
-import {SKIN_MAX_SCALE,SKIN_SHOULDER_CENTER,anatomyCameraAtBody,
+import LektrusSkinSemanticViewport from "./LektrusSkinSemanticViewport";
+import {SKIN_MAX_SCALE,anatomyCameraAtBody,
  skinDetailStage} from "./lektrusAnatomySemanticZoom";
 import {ANATOMY_INITIAL_CAMERA,ANATOMY_SPRITE_WIDTH,ANATOMY_CROP_WIDTH,
  ANATOMY_SPRITE_HEIGHT,ANATOMY_SYSTEM_DETAILS,anatomySpritePosition,
@@ -37,7 +37,6 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
  const [camera,setCamera]=useState<AnatomyCamera>(ANATOMY_INITIAL_CAMERA);
  const [displayCamera,setDisplayCamera]=useState<AnatomyCamera>(ANATOMY_INITIAL_CAMERA);
  const displayed=useRef<AnatomyCamera>(ANATOMY_INITIAL_CAMERA);
- const [skinMode,setSkinMode]=useState<SkinViewMode>("surface");
  // Interpolate the same scale and pan fraction at each frame: the point
  // under the cursor remains fixed throughout the animation, not only at
  // its final destination. Switching systems leaves this camera untouched.
@@ -91,15 +90,12 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
     at??{x:width/2,y:height/2},width,height,max);
   });
  },[system]);
- const reset=()=>{
-  setCamera(ANATOMY_INITIAL_CAMERA);
-  setSkinMode("surface");
- };
- const focusSkin=()=>{
+ const reset=()=>setCamera(ANATOMY_INITIAL_CAMERA);
+ const focusSkin=(side:"left"|"right"="right")=>{
   const {width,height}=dimensions();
-  // Optional shortcut, not a camera requirement or a texture border.
+  const point=side==="left"?{x:80,y:245}:{x:280,y:245};
   setCamera(anatomyBoundCamera(
-   anatomyCameraAtBody(SKIN_SHOULDER_CENTER,2.4,width,height),
+   anatomyCameraAtBody(point,4.3,width,height),
    width,height,SKIN_MAX_SCALE));
  };
  const wheel=(e:ReactWheelEvent<HTMLDivElement>)=>{
@@ -203,7 +199,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
     }}>
     <div className="lek-anatomy-stage-grid" aria-hidden="true"/>
     {system==="integumentary"?<LektrusSkinSemanticViewport
-     camera={displayCamera} mode={skinMode}/>:<div className="lek-anatomy-world"
+     camera={displayCamera}/>:<div className="lek-anatomy-world"
      style={{transform:`translate3d(${displayCamera.panX}px,${displayCamera.panY}px,0) scale(${displayCamera.scale})`}}>
      <div className="lek-anatomy-figure"
       data-anatomy-system={system}
@@ -221,13 +217,12 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
      <button type="button" aria-label="Отдалить" onClick={()=>zoom(1/1.22)}>−</button>
     </div>
     <span className="lek-anatomy-stage-hint">{system==="integumentary"?
-     skinMode==="surface"?"Приближайте любой участок тела":"Виртуальный срез плеча · учебная модель":
+     "Кожа в разрезе вдоль боковых контуров":
      "Одна точка обзора для всех систем"}</span>
    </div>
    <div className="lek-anatomy-footnote">
     <span>{system==="integumentary"?
-     skinMode==="section"?"Виртуальный срез плеча · положение сохранено":
-     skinDetailStage(displayCamera.scale)+" · все участки тела":
+     skinDetailStage(displayCamera.scale)+" · только по краям":
      "Переключение системы не меняет положение и увеличение."}</span>
     <span>{system==="integumentary"?
      "Цифровой зум, не физическое увеличение микроскопа":
@@ -241,25 +236,22 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
     {showDescriptions&&<p>{details.summary}</p>}
    </div>
    {system==="integumentary"&&<div className="lek-anatomy-skin-explore">
-    <strong>Поверхность всего тела</strong>
-    <p>Приближайте любую область кожи. Микрорельеф, поры и мелкие
-     структуры постепенно появляются в тех же координатах.
-     Размеры пор остаются небольшими при обычном увеличении.</p>
-    <button type="button" onClick={focusSkin}>
-     Перейти к плечу (необязательно)
-    </button>
+    <strong>Кожный покров в разрезе</strong>
+    <p>Слои кожи видны только по боковым контурам головы,
+     туловища, рук и ног. Центр тела остаётся нейтральным.
+     Приближайте край, чтобы исследовать слои.</p>
     <div className="lek-anatomy-skin-modes" role="group"
-     aria-label="Способ исследования кожи">
-     <button type="button" aria-pressed={skinMode==="surface"}
-      className={skinMode==="surface"?"is-selected":""}
-      onClick={()=>setSkinMode("surface")}>Поверхность</button>
-     <button type="button" aria-pressed={skinMode==="section"}
-      className={skinMode==="section"?"is-selected":""}
-      onClick={()=>setSkinMode("section")}>Виртуальный срез</button>
+     aria-label="Приблизить боковой разрез">
+     <button type="button" onClick={()=>focusSkin("left")}>Левый бок</button>
+     <button type="button" onClick={()=>focusSkin("right")}>Правый бок</button>
     </div>
-    <small>{skinMode==="surface"?
-     "Поверхность всего тела. Точная клеточная микроскопия пока не реализована.":
-     "Виртуальный срез пока доступен только на плече и является учебной реконструкцией."}</small>
+    <div className="lek-anatomy-skin-legend" aria-label="Слои кожи">
+     <span><i className="is-epidermis"/> Эпидермис</span>
+     <span><i className="is-dermis"/> Дерма</span>
+     <span><i className="is-subcutis"/> Подкожная клетчатка</span>
+    </div>
+    <small>Учебная реконструкция. Толщина слоёв
+     увеличена для наглядности.</small>
    </div>}
    <strong className="lek-anatomy-details-heading">Основные органы и структуры</strong>
    <div className="lek-anatomy-organs">
@@ -267,13 +259,12 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
       className="lek-anatomy-organ"
       onClick={()=>{
        if(system!=="integumentary"){focus(organ.position);return;}
-       if(i===0){setSkinMode("surface");focusSkin();}
-       if(i===1||i===2){setSkinMode("section");focusSkin();}
+       if(i===0)focusSkin("right");
+       if(i===1||i===2)focusSkin("left");
        if(i===3){
         // Nails are an actual visible body part; focus the foot without
         // opening a fictitious follicle micrograph on the shoulder.
         const {width,height}=dimensions();
-        setSkinMode("surface");
         setCamera(anatomyBoundCamera(
          anatomyCameraAtBody({x:220,y:549},2.2,width,height),
          width,height,SKIN_MAX_SCALE));

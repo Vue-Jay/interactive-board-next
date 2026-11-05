@@ -81,9 +81,8 @@ export function skinAvailableAt(p:AnatomyWorldPoint):boolean{
 }
 /** A *surface* zoom never claims to reveal a cutaway automatically. */
 export function skinDetailStage(scale:number):string{
- if(scale<1.8)return "Организм";
- if(scale<12)return "Кожа · крупный план";
- if(scale<38)return "Мелкий рельеф поверхности";
- if(scale<170)return "Поры, волосяные фолликулы и гребни ладоней";
- return "Модель рогового слоя · цифровой масштаб";
+ if(scale<1.8)return "Организм · боковой разрез кожи";
+ if(scale<6)return "Эпидермис, дерма и подкожная клетчатка";
+ if(scale<30)return "Слои кожи · капилляры и жировые дольки";
+ return "Учебный разрез · увеличенный боковой контур";
 }

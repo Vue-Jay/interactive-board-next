@@ -146,10 +146,9 @@ try{
 }
 const layer=read("src/LektrusSkinSemanticViewport.tsx");
 const source=read("src/lektrusSkinMesoTiles.ts");
-assert.match(layer,/drawSkinMesoTiles\(ctx,region,cam.scale,surfaceOpacity,requestDraw\)/);
-assert.match(layer,/ctx\.globalAlpha=smoothBase\*\(\.025\+\.18\*skinSurfaceAlpha/);
+assert.doesNotMatch(layer,/drawSkinMesoTiles|drawSkinSurfaceField/);
+assert.match(layer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/);
 assert.match(layer,/ctx\.globalCompositeOperation="source-atop"/);
-assert.match(layer,/drawSkinSurfaceField\(ctx,cam.scale,region,surfaceOpacity\)/);
 assert.match(source,/skinMesoTone\(worldX:number,worldY:number\)/);
 assert.doesNotMatch(source,/ctx\.putImageData\(|ctx\.createImageData\(/,
  "No random pixel pigment overlay that produces dark blotches");
@@ -159,4 +158,4 @@ assert.doesNotMatch(source,/Math\.random/);
 const ast=ts.createSourceFile("src/LektrusSkinSemanticViewport.tsx",layer,
  ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(ast.parseDiagnostics.length,0);
-console.log("Mid-zoom skin PASS: no blotchy pigment, fine anatomically oriented creases, stable world coordinates, bounded tiles and preserved body shading.");
+console.log("Legacy skin mesotexture helpers PASS (no longer rendered over the body).");
