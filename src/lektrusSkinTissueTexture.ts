@@ -65,6 +65,14 @@ export function skinAdiposeField(x:number,y:number){
  const membrane=clamp((Math.sqrt(second)-Math.sqrt(closest))/.23,0,1);
  return {interior:ease(membrane),boundary:1-ease(membrane)};
 }
+/** Shallow rete ridges and dermal papillae follow the world Y coordinate.
+ * Amplitude is only a small fraction of the teaching section, so the
+ * epidermis does not turn into a jagged high-contrast ribbon. */
+export function skinTissueReteBoundary(y:number):number{
+ const warp=skinTissueNoise(y*.33,y*.78,67);
+ return .13+.009*Math.sin(y*12+warp*3.2)+
+  .006*Math.sin(y*34.5+warp*4.1);
+}
 /** A 2D keratinocyte mosaic is only resolved far into the continuous zoom.
  * It is not enlarged by the thickness of the teaching cutaway. */
 function keratinocyteField(x:number,y:number){
@@ -86,7 +94,12 @@ function keratinocyteField(x:number,y:number){
  * finer fibres; deeper reticular dermis has denser interlacing collagen.
  * The epidermis is avascular, and the hypodermis has lipid vacuoles. */
 export function skinTissueSample(x:number,y:number,fraction:number,scale:number):SkinTissueSample{
- const depth=clamp(fraction,0,1);
+ const original=clamp(fraction,0,1);
+ const boundary=skinTissueReteBoundary(y);
+ // The basal boundary varies organically along the skin but remains fixed
+ // at each world point regardless of camera zoom.
+ const depth=clamp(original+(.13-boundary)*
+  (1-reveal(.17,.28,original)),0,1);
  const region:SkinTissueRegion=depth<.13?"epidermis":
   depth<.54?"dermis":"subcutis";
  const base=palette(region,depth);
