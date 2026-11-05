@@ -114,7 +114,7 @@ assert.match(renderer,/canvas\.getContext\("2d"/);
 assert.match(renderer,/skinNodeVisibleInViewport\(/);
 assert.match(renderer,/skinSurfacePores\(\)/);
 assert.match(renderer,/ResizeObserver/);
-assert.match(renderer,/Учебная/);
+assert.match(renderer,/учебного среза/);
 assert.ok(css.includes(".lek-anatomy-semantic-canvas{"));
 assert.ok(css.includes(".lek-anatomy-skin-explore{"));
 console.log("Semantic skin zoom PASS: 4 spatial LOD nodes, smooth opacity, reversible cursor zoom, deterministic microtexture, compact offline atlas.");
