@@ -10,9 +10,9 @@ import type {SkinSectionContour,SkinSectionPoint} from "./lektrusSkinVectorSecti
 export type SkinTissueRegion="epidermis"|"dermis"|"subcutis";
 export type SkinTissueSample={r:number;g:number;b:number;region:SkinTissueRegion};
 export type SkinTissueView={minX:number;maxX:number;minY:number;maxY:number};
-export const SKIN_TISSUE_MAX_PIXELS=260000;
-export const SKIN_TISSUE_MAX_WIDTH=860;
-export const SKIN_TISSUE_MAX_HEIGHT=600;
+export const SKIN_TISSUE_MAX_PIXELS=170000;
+export const SKIN_TISSUE_MAX_WIDTH=740;
+export const SKIN_TISSUE_MAX_HEIGHT=500;
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
 const ease=(x:number)=>x*x*(3-2*x);
@@ -208,7 +208,6 @@ export function drawSkinTissueTexture(
   data.fill(0);
   const xStep=source.width/width;
   const yStep=source.height/height;
-  const pixelWorld=xStep/m.a;
   const candidates=contours.filter(c=>c.maxX>=bounds.minX&&
    c.minX<=bounds.maxX&&c.maxY>=bounds.minY&&c.minY<=bounds.maxY);
   for(let j=0;j<height;j++){
