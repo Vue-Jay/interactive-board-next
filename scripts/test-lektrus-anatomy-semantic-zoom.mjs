@@ -77,7 +77,9 @@ assert.equal(surface.skinSurfaceAlpha(10,"pores"),0);
 assert.equal(surface.skinSurfaceAlpha(10,"corneocytes"),0);
 assert.equal(surface.skinSurfaceAlpha(10,"relief")>0,true);
 assert.ok(surface.skinSurfaceAlpha(25,"pores")>0);
-assert.ok(surface.skinSurfaceAlpha(150,"corneocytes")>0);
+assert.equal(surface.skinSurfaceAlpha(150,"corneocytes"),0,
+ "Cell boundaries should not appear early at medium zoom");
+assert.ok(surface.skinSurfaceAlpha(250,"corneocytes")>0);
 
 for(const size of [{width:800,height:600},{width:360,height:540},
  {width:1200,height:440},{width:250,height:190}]){

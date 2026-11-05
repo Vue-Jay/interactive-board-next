@@ -69,6 +69,6 @@ export function skinDetailStage(scale:number):string{
  if(scale<1.8)return "Организм";
  if(scale<12)return "Кожа · крупный план";
  if(scale<38)return "Мелкий рельеф поверхности";
- if(scale<115)return "Поры и волосяные фолликулы";
+ if(scale<170)return "Поры, волосяные фолликулы и гребни ладоней";
  return "Модель рогового слоя · цифровой масштаб";
 }

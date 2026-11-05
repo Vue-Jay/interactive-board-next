@@ -17,6 +17,7 @@ import {anatomyBodyFit} from "./lektrusAnatomySemanticZoom";
 import {drawSkinSurfaceField,skinSurfaceAlpha,
  skinVisibleWorldBounds} from "./lektrusSkinSurfaceField";
 import {SKIN_SHOULDER} from "./lektrusAnatomySemanticZoom";
+import {drawSkinMicrotiles} from "./lektrusSkinMicroTiles";
 
 export type SkinViewMode="surface"|"section";
 type Props={camera:AnatomyCamera;mode:SkinViewMode};
@@ -125,6 +126,9 @@ export default function LektrusSkinSemanticViewport({camera,mode}:Props){
     if(region.maxX>region.minX&&region.maxY>region.minY){
      ctx.globalAlpha=1;
      drawSkinSurfaceField(ctx,cam.scale,region,surfaceOpacity);
+     // Beyond the sub-mm relief, cached corneocyte structures emerge
+     // smoothly at their WORLD coordinates. No image-size substitution.
+     drawSkinMicrotiles(ctx,region,cam.scale,surfaceOpacity,requestDraw);
     }
     ctx.restore();
    }
@@ -174,5 +178,5 @@ export default function LektrusSkinSemanticViewport({camera,mode}:Props){
   role="img"
   aria-label={mode==="section"?
    "Виртуальный анатомический срез кожи плеча. Учебная реконструкция.":
-   "Непрерывное увеличение поверхности кожи плеча: рельеф, поры и роговые чешуйки."}/>;
+   "Вся поверхность тела: непрерывный рельеф, кожные гребни ладоней, поры и структуры рогового слоя."}/>;
 }
