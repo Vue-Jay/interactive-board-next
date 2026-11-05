@@ -82,7 +82,7 @@ function cellsVisible(bounds:ReturnType<typeof skinVisibleWorldBounds>,step:numb
  * Only the visible grid is evaluated, never the million offscreen pores.
  */
 export function drawSkinSurfaceField(ctx:CanvasRenderingContext2D,
- scale:number,bounds:ReturnType<typeof skinVisibleWorldBounds>){
+ scale:number,bounds:ReturnType<typeof skinVisibleWorldBounds>,opacity=1){
  if(bounds.minX>=bounds.maxX||bounds.minY>=bounds.maxY)return;
  const relief=skinSurfaceAlpha(scale,"relief");
  const pores=skinSurfaceAlpha(scale,"pores");
@@ -98,13 +98,13 @@ export function drawSkinSurfaceField(ctx:CanvasRenderingContext2D,
     const tone=skinValueNoise(ix*.49,iy*.49,18);
     const alpha=relief*edge*(.035+.11*tone);
     ctx.fillStyle=tone>.5?"#fff0d9":"#844c49";
-    ctx.globalAlpha=alpha;
+    ctx.globalAlpha=alpha*opacity;
     ctx.beginPath();ctx.ellipse(x,y,step*1.5,step*.95,
      (tone-.5)*.45,0,Math.PI*2);
     ctx.fill();
     // Skin furrows are irregular, gently curved and world-registered.
     const bend=(skinHash(ix,iy,7)-.5)*step;
-    ctx.globalAlpha=alpha*.65;
+    ctx.globalAlpha=alpha*.65*opacity;
     ctx.strokeStyle="#8b5750";ctx.lineWidth=.06+.06*tone;
     ctx.beginPath();
     ctx.moveTo(x-step*.42,y-step*.5);
@@ -126,17 +126,17 @@ export function drawSkinSurfaceField(ctx:CanvasRenderingContext2D,
     const variant=skinHash(ix,iy,47);
     const radius=.28+variant*.25;
     const alpha=pores*edge;
-    ctx.globalAlpha=alpha*.33;
+    ctx.globalAlpha=alpha*.33*opacity;
     ctx.fillStyle="#d58974";ctx.beginPath();
     ctx.ellipse(x,y,radius*1.9,radius*1.55,0,0,Math.PI*2);
     ctx.fill();
-    ctx.globalAlpha=alpha*.5;
+    ctx.globalAlpha=alpha*.5*opacity;
     ctx.fillStyle="#7a4943";ctx.beginPath();
     ctx.ellipse(x,y,radius*.7,radius*.48,0,0,Math.PI*2);
     ctx.fill();
     if(variant>.87){
      // Vellus hair emerging from this exact follicle, not a sprite overlay.
-     ctx.globalAlpha=alpha*.37;
+     ctx.globalAlpha=alpha*.37*opacity;
      ctx.strokeStyle="#795b4a";ctx.lineWidth=.095;
      ctx.beginPath();ctx.moveTo(x,y);
      ctx.quadraticCurveTo(x+1.3,y-2.4,x+.8,y-4.5);
@@ -156,7 +156,7 @@ export function drawSkinSurfaceField(ctx:CanvasRenderingContext2D,
     if(edge<=0)continue;
     const intensity=skinHash(ix,iy,73);
     const alpha=cells*edge;
-    ctx.globalAlpha=alpha*(.23+.22*intensity);
+    ctx.globalAlpha=alpha*(.23+.22*intensity)*opacity;
     ctx.fillStyle=intensity>.51?"#f4c7a8":"#c98374";
     ctx.strokeStyle="#ad6e60";ctx.lineWidth=.045;
     ctx.beginPath();
@@ -168,7 +168,7 @@ export function drawSkinSurfaceField(ctx:CanvasRenderingContext2D,
      if(i===0)ctx.moveTo(vx,vy);else ctx.lineTo(vx,vy);
     }
     ctx.closePath();ctx.fill();
-    ctx.globalAlpha=alpha*.47;ctx.stroke();
+    ctx.globalAlpha=alpha*.47*opacity;ctx.stroke();
    }
   }
  }
