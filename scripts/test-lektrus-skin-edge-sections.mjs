@@ -1,12 +1,29 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import ts from "typescript";
+const evidenceCode=ts.transpileModule(fs.readFileSync(
+ "src/lektrusSkinEvidenceModel.ts","utf8"),{
+ compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+}).outputText;
+const evidence={};
+new Function("exports",evidenceCode)(evidence);
+assert.equal(evidence.SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd,.065);
+assert.equal(evidence.SKIN_ILLUSTRATIVE_LAYERS.dermisEnd,.67);
+assert.equal(evidence.SKIN_SECTION_SCALE_IS_PHYSICAL,false);
+assert.equal(evidence.skinIllustrativeLayerAt(.03),"epidermis");
+assert.equal(evidence.skinIllustrativeLayerAt(.4),"dermis");
+assert.equal(evidence.skinIllustrativeLayerAt(.8),"hypodermis");
+assert.equal(evidence.skinEvidenceRegionAt({x:254,y:182}),"thin-skin-reference");
+assert.equal(evidence.skinEvidenceRegionAt({x:55,y:332}),"unverified-region");
+assert.equal(evidence.skinEvidenceRegionAt({x:225,y:560}),"unverified-region");
 const code=ts.transpileModule(fs.readFileSync(
  "src/lektrusSkinEdgeSections.ts","utf8"),{
  compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
 }).outputText;
 const model={};
-new Function("exports",code)(model);
+new Function("exports","require",code)(model,id=>{
+ assert.equal(id,"./lektrusSkinEvidenceModel");return evidence;
+});
 assert.equal(model.SKIN_EDGE_WORLD_WIDTH,2.9);
 assert.equal(model.SKIN_EDGE_NATIVE_FACTOR,3);
 assert.equal(model.skinEdgeLayerAt(.10),"epidermis");
@@ -124,10 +141,13 @@ assert.equal(model.skinEdgeHasFollicle({x:150,y:80,inward:1}),false,
 assert.equal(model.skinEdgeHasFollicle({x:55,y:332,inward:1}),false,
  "No hair on the palm");
 assert.equal(model.skinEdgeHasFollicle({x:225,y:550,inward:-1}),false,
- "No hair on the sole");
-const trunkSamples=Array.from({length:20},(_,i)=>({x:104+i,y:220,inward:1}));
-assert.ok(trunkSamples.some(p=>model.skinEdgeHasFollicle(p)) &&
- trunkSamples.some(p=>!model.skinEdgeHasFollicle(p)),
+ "Unmapped foot must not inherit a fictitious follicle");
+assert.equal(model.skinEdgeHasFollicle({x:208,y:445,inward:-1}),false,
+ "Unmapped leg must not get an invented follicle station");
+const deltoidSamples=Array.from({length:20},(_,i)=>
+ ({x:250+i*.18,y:174+i*.48,inward:1}));
+assert.ok(deltoidSamples.some(p=>model.skinEdgeHasFollicle(p)) &&
+ deltoidSamples.some(p=>!model.skinEdgeHasFollicle(p)),
  "Thin hairy skin should have varying follicle spacing");
 const lowCell=record(6,visible),highCell=record(360,visible);
 assert.ok(highCell.calls.filter(c=>c[0]==="bezierCurveTo").length>
@@ -150,8 +170,9 @@ const vectorCode=ts.transpileModule(fs.readFileSync(
 }).outputText;
 const vector={};
 new Function("exports","require",vectorCode)(vector,id=>{
- assert.equal(id,"./lektrusSkinEdgeSections");
- return model;
+ if(id==="./lektrusSkinEdgeSections")return model;
+ assert.equal(id,"./lektrusSkinEvidenceModel");
+ return evidence;
 });
 assert.ok(vector.SKIN_SECTION_WORLD_DEPTH>=7,
  "A 2.9-world-unit stripe is too thin to inspect at medium zoom");
@@ -204,7 +225,9 @@ const microCode=ts.transpileModule(fs.readFileSync(
  compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
 }).outputText;
 const micro={};
-new Function("exports",microCode)(micro);
+new Function("exports","require",microCode)(micro,id=>{
+ assert.equal(id,"./lektrusSkinEvidenceModel");return evidence;
+});
 assert.equal(micro.SKIN_ADIPOCYTE_GRID_WORLD,.033);
 assert.equal(micro.SKIN_KERATINOCYTE_GRID_WORLD,.0085);
 assert.ok(micro.SKIN_MICRO_MAX_MARKS<=8500);
@@ -266,10 +289,10 @@ console.log("Calibrated microscopy PASS: biologically scaled cells, correct zoom
 // elastic fibres, subcutaneous septa and granular-layer keratohyalin.
 assert.equal(micro.skinEpidermisStratum(.003),null);
 assert.equal(micro.skinEpidermisStratum(.012),"corneum");
-assert.equal(micro.skinEpidermisStratum(.032),"granulosum");
-assert.equal(micro.skinEpidermisStratum(.070),"spinosum");
-assert.equal(micro.skinEpidermisStratum(.120),"basale");
-assert.equal(micro.skinEpidermisStratum(.14),null);
+assert.equal(micro.skinEpidermisStratum(.018),"granulosum");
+assert.equal(micro.skinEpidermisStratum(.035),"spinosum");
+assert.equal(micro.skinEpidermisStratum(.060),"basale");
+assert.equal(micro.skinEpidermisStratum(.07),null);
 assert.equal(micro.skinFineStructureOpacity(24).granules,0);
 assert.equal(micro.skinFineStructureOpacity(24).papillae,0);
 assert.ok(micro.skinFineStructureOpacity(50).elastic>0,
@@ -328,19 +351,22 @@ const shaderCode=ts.transpileModule(fs.readFileSync(
  compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
 }).outputText;
 const shader={};
-new Function("exports",shaderCode)(shader);
+new Function("exports","require",shaderCode)(shader,id=>{
+ assert.equal(id,"./lektrusSkinEvidenceModel");return evidence;
+});
 assert.ok(shader.SKIN_TISSUE_MAX_PIXELS<=200000,
  "Procedural tissue must remain affordable on tablets");
 assert.ok(shader.SKIN_TISSUE_MAX_WIDTH<=900);
 const tissueAt=(fraction,scale=200,x=11.2,y=8.3)=>
  shader.skinTissueSample(x,y,fraction,scale);
 const folds=Array.from({length:20},(_,i)=>shader.skinTissueReteBoundary(i*.057));
-assert.ok(Math.min(...folds)>.11&&Math.max(...folds)<.15);
-assert.ok(Math.max(...folds)-Math.min(...folds)>.006,
+assert.ok(Math.min(...folds)>.058&&Math.max(...folds)<.072);
+assert.ok(Math.max(...folds)-Math.min(...folds)>.003,
  "The basal epidermal boundary must have real world-anchored rete ridges");
 assert.equal(shader.skinTissueReteBoundary(1.25),
  shader.skinTissueReteBoundary(1.25));
 assert.equal(tissueAt(.03).region,"epidermis");
+assert.equal(tissueAt(.062).region,"epidermis");
 assert.equal(tissueAt(.18).region,"dermis");
 assert.equal(tissueAt(.49).region,"dermis");
 assert.equal(tissueAt(.88).region,"subcutis");
@@ -414,3 +440,6 @@ try{
 assert.match(renderer,/drawSkinTissueTexture\(ctx,contours,cam.scale,visible\)/);
 assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
 console.log("Organic skin tissue PASS: layered pigment, fine collagen, fat lacunae, transparent gaps, pixel cap and world-anchored camera.");
+
+assert.match(ui,/Ширина разреза и слоёв специально увеличена/);
+console.log("Evidence-led skin proportions PASS: thinner epidermis, localized appendages, uncalibrated virtual cutaway.");
