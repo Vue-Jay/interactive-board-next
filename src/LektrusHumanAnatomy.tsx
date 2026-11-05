@@ -265,7 +265,6 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
         // Nails are an actual visible body part; focus the foot without
         // opening a fictitious follicle micrograph on the shoulder.
         const {width,height}=dimensions();
-        setSkinMode("surface");
         setCamera(anatomyBoundCamera(
          anatomyCameraAtBody({x:220,y:549},2.2,width,height),
          width,height,SKIN_MAX_SCALE));
