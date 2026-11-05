@@ -163,11 +163,15 @@ export default function LektrusSkinSemanticViewport({camera,mode}:Props){
    detailReady=!!resources.section;
    requestDraw();
   };
+  let usingFallback=false;
   const fallbackBody=()=>{
    // Offline packages may contain older cached entrypoints. A missing
    // high-resolution asset must not leave the anatomy stage blank.
-   if(resources.body.src!==skinOriginalFallback)
+   // Track explicitly: HTMLImageElement.src resolves to absolute URLs.
+   if(!usingFallback){
+    usingFallback=true;
     resources.body.src=skinOriginalFallback;
+   }
   };
   resources.body.addEventListener("load",loadedBody);
   resources.body.addEventListener("error",fallbackBody);
