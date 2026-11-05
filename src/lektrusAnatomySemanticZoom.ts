@@ -8,13 +8,13 @@ export type AnatomyWorldPoint={x:number;y:number};
 export type AnatomyWorldRect={x:number;y:number;width:number;height:number};
 
 /** Coordinate source: registered warm, gender-neutral skin figure (360x600).
- * The former {250,163} focus was transparent space ABOVE the right arm.
+ * The former {250,163} focus was on the wrong plate and often missed the arm.
  * These landmarks were verified on the actual figure alpha mask rather
  * than guessed from a different (blue-gray) atlas plate.
  */
 export const SKIN_BODY_SIZE={width:360,height:600} as const;
 export const SKIN_SHOULDER:AnatomyWorldRect={
- x:236,y:186,width:50,height:68
+ x:226,y:148,width:56,height:68
 };
 export const SKIN_SHOULDER_CENTER:AnatomyWorldPoint={
  x:SKIN_SHOULDER.x+SKIN_SHOULDER.width/2,
