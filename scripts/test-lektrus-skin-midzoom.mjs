@@ -20,13 +20,13 @@ const surface=importTS("src/lektrusSkinSurfaceField.ts",{
 const meso=importTS("src/lektrusSkinMesoTiles.ts",{
  "./lektrusSkinSurfaceField":surface
 });
-assert.equal(meso.SKIN_MESO_TILE_WORLD,24);
-assert.equal(meso.SKIN_MESO_TILE_PIXELS,192);
+assert.equal(meso.SKIN_MESO_TILE_WORLD,32);
+assert.equal(meso.SKIN_MESO_TILE_PIXELS,224);
 assert.equal(meso.SKIN_MESO_CREATIONS_PER_FRAME,3);
 assert.ok(meso.SKIN_MESO_CACHE_LIMIT<=48);
 assert.ok(meso.SKIN_MESO_CACHE_LIMIT*
- meso.SKIN_MESO_TILE_PIXELS**2*4<8*1024*1024,
- "Texture cache budget should stay below 8MB raw RGBA");
+ meso.SKIN_MESO_TILE_PIXELS**2*4<10*1024*1024,
+ "Texture cache budget should stay below 10MB raw RGBA");
 assert.equal(meso.skinMesoOpacity(1),0);
 assert.ok(meso.skinMesoOpacity(6.86)>.80,
  "At the screenshot's 686% the skin grain must be clearly visible");
@@ -119,6 +119,12 @@ try{
  assert.equal(created,old,"Returning to the same position must reuse cached skin");
  assert.ok(meso.skinMesoCacheSize()<=meso.SKIN_MESO_CACHE_LIMIT);
  assert.ok(schedules>0,"Pending tiles should appear progressively");
+ const beforeBroad=created,scheduledBroad=schedules;
+ const broad={minX:0,maxX:360,minY:0,maxY:600};
+ assert.equal(meso.drawSkinMesoTiles(renderer,broad,5,1,()=>schedules++),0);
+ assert.equal(created,beforeBroad,"Do not allocate oversized viewport tile sets");
+ assert.equal(schedules,scheduledBroad,
+  "A viewport wider than the cache must not schedule infinite redraws");
  const before=draws;
  assert.equal(meso.drawSkinMesoTiles(renderer,bounds,1),0);
  assert.equal(draws,before,"Do not paint medium detail at full-body view");
