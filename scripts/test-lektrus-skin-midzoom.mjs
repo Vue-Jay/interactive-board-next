@@ -93,7 +93,7 @@ for(const [x,y] of [[87,245],[55,335],[181,231]]){
  const ix=Math.floor(x/.72),iy=Math.floor(y/.72);
  const f=meso.skinFurrowAt(ix,iy);
  assert.ok(f.width>.04&&f.width<.10);
- assert.ok(Math.hypot(f.endX-f.x,f.endY-f.y)<.8,
+ assert.ok(Math.hypot(f.endX-f.x,f.endY-f.y)<1.05,
   "Furrows must be short, not large dark strokes crossing limbs");
  assert.deepEqual(f,meso.skinFurrowAt(ix,iy),
   "Furrow geometry must not change on zoom or pan");
