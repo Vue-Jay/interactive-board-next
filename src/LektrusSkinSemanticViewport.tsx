@@ -1,71 +1,87 @@
-/** First production pilot of continuous anatomy: skin/shoulder only.
+/** A continuous skin surface scene, not a slideshow of zoom snapshots.
  *
- * A single fixed-resolution Canvas draws registered body and detail nodes
- * through ONE camera. No huge CSS-scaled DOM texture or one-image-per-step
- * slideshow. Detail resources are reusable biological representations:
- * a regional view, an explicitly virtual cutaway, a histological
- * reconstruction and a small deterministic micro-surface template.
+ * Overview, registered shoulder photography, relief, pores and corneocytes
+ * share one 360 x 600 coordinate system and one camera. LOD changes only
+ * which *features* are legible; no system-wide fade to a different image.
+ *
+ * A histological cross-section is not optically visible beneath intact
+ * skin. It is therefore an explicit, reversible virtual cutaway mode and
+ * never starts automatically at an arbitrary zoom threshold.
  */
 import {useEffect,useRef} from "react";
 import bodyAtlas from "./assets/bio-atlas/human-seven-systems-clean.webp";
 import detailAtlas from "./assets/bio-atlas/skin-semantic-lod.webp";
 import type {AnatomyCamera} from "./lektrusHumanAnatomyModel";
-import {SKIN_DETAIL_ATLAS,SKIN_DETAIL_NODES,anatomyBodyFit,
- anatomyDetailOpacity,skinNodeVisibleInViewport,skinSurfacePores
-} from "./lektrusAnatomySemanticZoom";
+import {anatomyBodyFit} from "./lektrusAnatomySemanticZoom";
+import {SKIN_SURFACE_REGION,drawSkinSurfaceField,skinSurfaceAlpha,
+ skinVisibleWorldBounds} from "./lektrusSkinSurfaceField";
 
-type Props={camera:AnatomyCamera};
-const pores=skinSurfacePores();
-const TILE_SIZE=640;
-const BODY_SKIN_INDEX=6;
-const WORLD_WIDTH=360;
-const WORLD_HEIGHT=600;
+export type SkinViewMode="surface"|"section";
+type Props={camera:AnatomyCamera;mode:SkinViewMode};
+const WORLD_WIDTH=360,WORLD_HEIGHT=600;
+const SKIN_INDEX=6;
+const PLATE=900;
+const TILE=720;
+const EDGE={x:SKIN_SURFACE_REGION.x,y:SKIN_SURFACE_REGION.y,
+ width:SKIN_SURFACE_REGION.width,height:SKIN_SURFACE_REGION.height};
 
-/** Rasterized once per asset; soft edges ensure neighboring LODs do
- * not flash as hard rectangular image panels during a wheel/pinch zoom. */
-function makeFeatheredTiles(sprite:HTMLImageElement):HTMLCanvasElement[]{
- const tiles:HTMLCanvasElement[]=[];
- for(let i=0;i<SKIN_DETAIL_ATLAS.columns;i++){
-  const canvas=document.createElement("canvas");
-  canvas.width=TILE_SIZE;canvas.height=TILE_SIZE;
-  const c=canvas.getContext("2d");
-  if(!c)continue;
-  c.drawImage(sprite,i*SKIN_DETAIL_ATLAS.tileWidth,0,
-   SKIN_DETAIL_ATLAS.tileWidth,SKIN_DETAIL_ATLAS.tileHeight,
-   0,0,TILE_SIZE,TILE_SIZE);
-  c.globalCompositeOperation="destination-in";
-  const mask=c.createRadialGradient(
-   TILE_SIZE/2,TILE_SIZE/2,TILE_SIZE*.30,
-   TILE_SIZE/2,TILE_SIZE/2,TILE_SIZE*.70);
-  mask.addColorStop(0,"rgba(0,0,0,1)");
-  mask.addColorStop(1,"rgba(0,0,0,0)");
-  c.fillStyle=mask;c.fillRect(0,0,TILE_SIZE,TILE_SIZE);
-  tiles.push(canvas);
+type SurfaceResources={body:HTMLImageElement;shoulder:HTMLCanvasElement|null;
+ section:HTMLCanvasElement|null};
+
+/** Cached region-specific views are not changed when zooming. An alpha
+ * mask blends the shoulder patch into the exact registered body coordinates.
+ * Only the upper arm/shoulder is cropped; no torso callout or labels.
+ */
+function cropFeathered(sprite:HTMLImageElement,index:0|1):HTMLCanvasElement|null{
+ const target=document.createElement("canvas");
+ target.width=TILE;target.height=TILE;
+ const c=target.getContext("2d");
+ if(!c)return null;
+ if(index===0){
+  // Crop the upper arm skin instead of showing the original torso.
+  c.drawImage(sprite,440,110,405,620,0,0,TILE,TILE);
+ }else{
+  c.drawImage(sprite,PLATE,0,PLATE,PLATE,0,0,TILE,TILE);
  }
- return tiles;
+ c.globalCompositeOperation="destination-in";
+ const gradient=c.createRadialGradient(TILE/2,TILE/2,TILE*.22,
+  TILE/2,TILE/2,TILE*.62);
+ gradient.addColorStop(0,"rgba(0,0,0,1)");
+ gradient.addColorStop(.70,"rgba(0,0,0,.96)");
+ gradient.addColorStop(1,"rgba(0,0,0,0)");
+ c.fillStyle=gradient;c.fillRect(0,0,TILE,TILE);
+ c.globalCompositeOperation="source-over";
+ return target;
 }
-export default function LektrusSkinSemanticViewport({camera}:Props){
+export default function LektrusSkinSemanticViewport({camera,mode}:Props){
  const canvasRef=useRef<HTMLCanvasElement>(null);
  const cameraRef=useRef(camera);
+ const modeRef=useRef(mode);
  const drawRef=useRef<()=>void>(()=>{});
  useEffect(()=>{
   const canvas=canvasRef.current;
   if(!canvas)return;
-  const c=canvas.getContext("2d",{alpha:true,desynchronized:true});
-  if(!c)return;
-  let alive=true,frame=0,baseReady=false,detailReady=false;
-  const base=new Image(),details=new Image();
-  const tiles:HTMLCanvasElement[]=[];
-  let stageWidth=0,stageHeight=0;
-  const draw=()=>{
+  if(!canvas.getContext("2d",{alpha:true,desynchronized:true}))return;
+  let active=true,frame=0,sectionBlend=modeRef.current==="section"?1:0;
+  let previousTime=0;
+  let bodyReady=false,detailReady=false;
+  const resources:SurfaceResources={
+   body:new Image(),shoulder:null,section:null
+  };
+  const sprite=new Image();
+  let width=0,height=0;
+  const requestDraw=()=>{
+   if(active&&!frame)frame=requestAnimationFrame(draw);
+  };
+  const draw=(time=performance.now())=>{
    frame=0;
-   if(!alive)return;
+   if(!active)return;
    const bounds=canvas.getBoundingClientRect();
-   const width=Math.max(1,bounds.width),height=Math.max(1,bounds.height);
-   if(Math.abs(width-stageWidth)>.3||Math.abs(height-stageHeight)>.3){
-    stageWidth=width;stageHeight=height;
-    const ratio=Math.min(window.devicePixelRatio||1,1.75);
-    const pixelWidth=Math.ceil(width*ratio),pixelHeight=Math.ceil(height*ratio);
+   const w=Math.max(1,bounds.width),h=Math.max(1,bounds.height);
+   if(Math.abs(width-w)>.2||Math.abs(height-h)>.2){
+    width=w;height=h;
+    const dpr=Math.min(window.devicePixelRatio||1,1.75);
+    const pixelWidth=Math.ceil(w*dpr),pixelHeight=Math.ceil(h*dpr);
     if(canvas.width!==pixelWidth||canvas.height!==pixelHeight){
      canvas.width=pixelWidth;canvas.height=pixelHeight;
     }
@@ -74,94 +90,104 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
    if(!ctx)return;
    ctx.setTransform(1,0,0,1,0,0);
    ctx.clearRect(0,0,canvas.width,canvas.height);
-   // Memory cost stays tied to the visible viewport, even at 52x zoom.
-   const dpr=canvas.width/width;
+   const dpr=canvas.width/w;
    ctx.setTransform(dpr,0,0,dpr,0,0);
+   const targetBlend=modeRef.current==="section"?1:0;
+   const dt=previousTime?Math.min(64,time-previousTime):16;
+   previousTime=time;
+   // Cross-section changes only by explicit user action; the camera does
+   // not move and its spatial anchor stays fixed for the full transition.
+   sectionBlend+=(targetBlend-sectionBlend)*(1-Math.exp(-dt/180));
+   if(Math.abs(sectionBlend-targetBlend)<.0005)sectionBlend=targetBlend;
    const cam=cameraRef.current;
-   const fit=anatomyBodyFit(width,height);
+   const fit=anatomyBodyFit(w,h);
    ctx.save();
-   ctx.translate(width/2+cam.panX,height/2+cam.panY);
+   ctx.translate(w/2+cam.panX,h/2+cam.panY);
    ctx.scale(fit.pixelPerWorld*cam.scale,fit.pixelPerWorld*cam.scale);
    ctx.translate(-WORLD_WIDTH/2,-WORLD_HEIGHT/2);
-   const visibleNodes=SKIN_DETAIL_NODES.filter(node=>
-    skinNodeVisibleInViewport(node,cam,width,height));
-   const actualDetail=detailReady?visibleNodes:[];
-   // The original figure remains visible while nearby child detail fades
-   // into place. Unmodeled skin elsewhere is never replaced with a
-   // shoulder slice: it continues to show the main body plate.
-   const cutaway=actualDetail.some(n=>
-    (n.source==="virtual-section"||n.source==="tissue-image")&&
-     anatomyDetailOpacity(cam.scale,n.scaleWindow)>.02);
-   const rootOpacity=cutaway?
-    1-Math.min(1,Math.max(0,(cam.scale-9)/7)):1;
-   if(baseReady&&rootOpacity>0.001){
-    ctx.globalAlpha=rootOpacity;
-    ctx.drawImage(base,BODY_SKIN_INDEX*WORLD_WIDTH,0,WORLD_WIDTH,WORLD_HEIGHT,
-     0,0,WORLD_WIDTH,WORLD_HEIGHT);
+   // Never fade the whole figure out. Even when a detail isn't available,
+   // the old image remains a spatial reference rather than disappearing.
+   if(bodyReady){
+    ctx.drawImage(resources.body,SKIN_INDEX*WORLD_WIDTH,0,
+     WORLD_WIDTH,WORLD_HEIGHT,0,0,WORLD_WIDTH,WORLD_HEIGHT);
    }
-   if(detailReady){
-    for(const node of actualDetail){
-     const alpha=anatomyDetailOpacity(cam.scale,node.scaleWindow);
-     if(alpha<.001)continue;
-     ctx.save();ctx.globalAlpha=alpha;
-     const {x,y}=node.anchor;
-     const rx=x-node.width/2,ry=y-node.height/2;
-     if(node.source==="procedural-surface"){
-      // The pattern is generated once for a scientific template, not for
-      // every frame or every pixel. Coordinates stay stable while zooming.
-      ctx.fillStyle="#e7a18b";
-      for(const pore of pores){
-       const xx=rx+node.width*pore.x,yy=ry+node.height*pore.y;
-       const radius=pore.radius;
-       ctx.globalAlpha=alpha*pore.intensity;
-       ctx.beginPath();ctx.ellipse(xx,yy,radius,radius*.66,0,0,Math.PI*2);
-       ctx.fill();
-       ctx.beginPath();ctx.ellipse(xx+.16,yy+.12,radius*.45,radius*.31,0,0,Math.PI*2);
-       ctx.fillStyle="#9e6e62";ctx.fill();
-       ctx.fillStyle="#e7a18b";
-      }
-     }else{
-      const image=node.sourceIndex===null?undefined:tiles[node.sourceIndex];
-      if(image)ctx.drawImage(image,rx,ry,node.width,node.height);
-     }
-     ctx.restore();
+   const surfaceOpacity=1-sectionBlend;
+   const shoulderAlpha=skinSurfaceAlpha(cam.scale,"regional")*surfaceOpacity;
+   if(detailReady&&resources.shoulder&&shoulderAlpha>.001){
+    ctx.save();ctx.globalAlpha=shoulderAlpha;
+    ctx.drawImage(resources.shoulder,EDGE.x,EDGE.y,EDGE.width,EDGE.height);
+    ctx.restore();
+   }
+   const region=skinVisibleWorldBounds(cam,w,h);
+   const relief=skinSurfaceAlpha(cam.scale,"relief")*surfaceOpacity;
+   if(relief>.001&&region.maxX>region.minX&&region.maxY>region.minY){
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(EDGE.x+EDGE.width/2,EDGE.y+EDGE.height/2,
+     EDGE.width/2,EDGE.height/2,0,0,Math.PI*2);
+    ctx.clip();
+    // Progressive skin-colour field suppresses enlargement artifacts from
+    // the overview raster. Its shape does not change at LOD boundaries.
+    const fillAlpha=relief*skinSurfaceAlpha(cam.scale*.8,"pores")*.96;
+    if(fillAlpha>.001){
+     const shade=ctx.createRadialGradient(
+      EDGE.x+EDGE.width*.45,EDGE.y+EDGE.height*.4,EDGE.width*.04,
+      EDGE.x+EDGE.width*.5,EDGE.y+EDGE.height*.5,EDGE.width*.69);
+     shade.addColorStop(0,"#eeb49b");
+     shade.addColorStop(.6,"#d99b86");
+     shade.addColorStop(1,"#b8796d");
+     ctx.fillStyle=shade;ctx.globalAlpha=fillAlpha;
+     ctx.fillRect(EDGE.x,EDGE.y,EDGE.width,EDGE.height);
     }
+    ctx.globalAlpha=1;
+    drawSkinSurfaceField(ctx,cam.scale,region,surfaceOpacity);
+    ctx.restore();
+   }
+   if(detailReady&&resources.section&&sectionBlend>.001){
+    ctx.save();
+    ctx.globalAlpha=sectionBlend;
+    ctx.drawImage(resources.section,EDGE.x,EDGE.y,EDGE.width,EDGE.height);
+    ctx.restore();
    }
    ctx.restore();
+   if(Math.abs(sectionBlend-targetBlend)>.0005)requestDraw();
   };
-  const schedule=()=>{
-   if(!alive||frame)return;
-   frame=requestAnimationFrame(draw);
+  drawRef.current=requestDraw;
+  const loadedBody=()=>{bodyReady=true;requestDraw();};
+  const loadedDetails=()=>{
+   resources.shoulder=cropFeathered(sprite,0);
+   resources.section=cropFeathered(sprite,1);
+   detailReady=!!resources.shoulder&&!!resources.section;
+   requestDraw();
   };
-  drawRef.current=schedule;
-  const onBase=()=>{baseReady=true;schedule();};
-  const onDetail=()=>{
-   detailReady=true;
-   tiles.push(...makeFeatheredTiles(details));
-   schedule();
-  };
-  base.addEventListener("load",onBase);
-  details.addEventListener("load",onDetail);
-  base.src=bodyAtlas;details.src=detailAtlas;
-  if(base.complete&&base.naturalWidth)onBase();
-  if(details.complete&&details.naturalWidth)onDetail();
-  const resize=typeof ResizeObserver==="undefined"?null:new ResizeObserver(schedule);
-  resize?.observe(canvas);
-  schedule();
+  resources.body.addEventListener("load",loadedBody);
+  sprite.addEventListener("load",loadedDetails);
+  resources.body.src=bodyAtlas;
+  sprite.src=detailAtlas;
+  if(resources.body.complete&&resources.body.naturalWidth)loadedBody();
+  if(sprite.complete&&sprite.naturalWidth)loadedDetails();
+  const observer=typeof ResizeObserver!=="undefined"?
+   new ResizeObserver(requestDraw):null;
+  observer?.observe(canvas);
+  requestDraw();
   return ()=>{
-   alive=false;
-   resize?.disconnect();
-   base.removeEventListener("load",onBase);
-   details.removeEventListener("load",onDetail);
-   base.src="";details.src="";
+   active=false;
+   observer?.disconnect();
+   resources.body.removeEventListener("load",loadedBody);
+   sprite.removeEventListener("load",loadedDetails);
    if(frame)cancelAnimationFrame(frame);
    drawRef.current=()=>{};
   };
  },[]);
  useEffect(()=>{
-  cameraRef.current=camera;
-  drawRef.current();
+  cameraRef.current=camera;drawRef.current();
  },[camera]);
+ useEffect(()=>{
+  modeRef.current=mode;drawRef.current();
+ },[mode]);
  return <canvas ref={canvasRef} className="lek-anatomy-semantic-canvas"
-  role="img" aria-label="Кожа человека: плавная детализация от целого тела до учебного среза кожи и тканевых структур"/>;
+  role="img"
+  aria-label={mode==="section"?
+   "Виртуальный анатомический срез кожи плеча. Учебная реконструкция.":
+   "Непрерывное увеличение поверхности кожи плеча: рельеф, поры и роговые чешуйки."}/>;
 }
