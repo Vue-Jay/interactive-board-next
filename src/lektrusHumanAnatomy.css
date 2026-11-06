@@ -124,7 +124,10 @@
  .lek-anatomy-system{font-size:10px!important;gap:5px;padding:5px}
 }
 @container(max-width:730px){
- .lek-anatomy{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;overflow-y:auto}
+ /* The details panel is very tall when inspecting cells. A 0fr middle
+    row collapses beneath it and physically overlaps the stage/reset header. */
+ .lek-anatomy{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto;
+  align-content:start;overflow-y:auto}
  .lek-anatomy-rail{overflow:visible;padding:7px;border:0;border-bottom:1px solid #dae8df}
  .lek-anatomy-rail-title{display:none}
  .lek-anatomy-rail-options{display:flex;gap:4px;overflow-x:auto;scrollbar-width:thin}
