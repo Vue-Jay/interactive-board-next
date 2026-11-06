@@ -199,14 +199,17 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   onChange({...d,contourMarks:contourMarks.filter(mark=>mark.id!==id)});
  };
  type ContourUndoState={
-  marks:typeof contourMarks;strokes:typeof contourStrokes;fills:Record<string,string>
+  // Match persisted AtlasDocument keys: ID-based concurrent merges recognize
+  // contourMarks and contourStrokes, but not generic marks/strokes arrays.
+  contourMarks:typeof contourMarks;contourStrokes:typeof contourStrokes;
+  paintedCountries:Record<string,string>
  };
  type ContourUndoEntry={before:ContourUndoState;after?:ContourUndoState};
  const [contourHistory,setContourHistory]=useState<ContourUndoEntry[]>([]);
  const pendingContourCapture=useRef<ContourUndoEntry|null>(null);
  const painted=d.paintedCountries??{};
  const currentContour=():ContourUndoState=>({
-  marks:contourMarks,strokes:contourStrokes,fills:painted
+  contourMarks,contourStrokes,paintedCountries:painted
  });
  const captureContour=()=>{
   const entry:ContourUndoEntry={before:currentContour()};
@@ -218,8 +221,8 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   if(captured){
    pendingContourCapture.current=null;
    const updated:ContourUndoEntry={...captured,after:{
-    marks:next.contourMarks??[],strokes:next.contourStrokes??[],
-    fills:next.paintedCountries??{}
+    contourMarks:next.contourMarks??[],contourStrokes:next.contourStrokes??[],
+    paintedCountries:next.paintedCountries??{}
    }};
    setContourHistory(history=>history.map(entry=>entry===captured?updated:entry));
   }
@@ -232,8 +235,8 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   // added by another collaborator while the editor stayed open.
   const after=last.after??last.before;
   const restored=mergeEditedValue(after,last.before,currentContour());
-  onChange({...d,contourMarks:restored.marks,
-   contourStrokes:restored.strokes,paintedCountries:restored.fills});
+  onChange({...d,contourMarks:restored.contourMarks,
+   contourStrokes:restored.contourStrokes,paintedCountries:restored.paintedCountries});
   setContourHistory(history=>history.slice(0,-1));
  };
  const savePaint=(next:Record<string,string>)=>{captureContour();onChange?.({...d,paintedCountries:next})};
