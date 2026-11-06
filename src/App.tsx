@@ -132,6 +132,7 @@ import {mergeEditedValue,editorDiff,applyEditorOps} from "./lektrusLiveEditorMer
 import {labLiveEditorDiff,applyLabLivePreview} from "./lektrusLabLiveSync";
 import {labSimulationCheckpointDelayMs} from "./lektrusLabPersistence";
 import {mergeBoardDocumentEdits} from "./lektrusBoardThreeWayMerge";
+import {stampNewBoardItemAuthors,canRemoveBoardItem,blockedBoardItemRemovals} from "./lektrusBoardObjectAuth";
 import {
   parseDocument,
   packDocumentInk,
@@ -3229,6 +3230,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
   const restoreHistoryVersion=async(entry:BoardHistoryEntry)=>{
     if(!canEdit){setNotice("У вас доступ только для просмотра");return}
+    if(isStudent){setNotice("Восстановление всей доски доступно только преподавателю");return}
     if(!window.confirm(`Восстановить версию №${entry.version}? Текущее состояние останется в истории после следующего сохранения.`))return;
     setHistoryBusy(true);setHistoryError("");
     try{
@@ -3400,7 +3402,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     eraserSession.current=null;
     // The model is changed once per gesture, as one undo/history operation.
     const before=itemsRef.current;
-    const next=eraseInkAlongPath(before,g.path,eraserSize/2/g.zoom);
+    const next=eraseInkAlongPath(before,g.path,eraserSize/2/g.zoom,
+      isStudent?item=>canRemoveBoardItem(item,authUser.id,true):undefined);
     if(next!==before){
       // Keep the canvas preview until the actual SVG fragments have painted.
       flushSync(()=>{
@@ -3429,6 +3432,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       : itemsRef.current,
   });
   const applyDocument = (data: DocumentData, fromRemote = false) => {
+    if(!fromRemote&&isStudent){
+      setNotice("Замена всей доски доступна только преподавателю");
+      return;
+    }
     end(true);
     if (saveTimer.current) clearTimeout(saveTimer.current);
     setEditing(null);
@@ -3450,6 +3457,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
   const importBoard = async (file: File) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
+    if (isStudent) { setNotice("Импорт с заменой доски доступен только преподавателю"); return; }
     try {
       if (file.size > 120 * 1024 * 1024) throw new Error("Файл больше 120 МБ");
       const raw = await file.text();
@@ -3525,7 +3533,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
   const commit = (next: Item[], options?:{labSimulation?:boolean}) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
-    const normalized = syncBoundConnectors(next);
+    const current=itemsRef.current;
+    // Central destructive-action gate covers keyboard, toolbar, eraser,
+    // selected instruments and other paths that do not call deleteSelected().
+    const blocked=blockedBoardItemRemovals(current,next,authUser.id,isStudent);
+    if(blocked.length){
+      setNotice("Нельзя удалить чужую работу или задание преподавателя");
+      return;
+    }
+    const normalized = stampNewBoardItemAuthors(current,syncBoundConnectors(next),authUser.id);
     // Most drawing gestures only add/remove strokes. Compare identities first,
     // and serialize only genuinely changed items instead of megabytes of ink.
     const baseline = history.current[index.current];
@@ -5393,13 +5409,16 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     }
     if (!selected.length) return;
     const lockedIds = new Set(itemsRef.current.filter((item) => selected.includes(item.id) && item.locked).map((item) => item.id));
-    const deletable = selected.filter((id) => !lockedIds.has(id));
+    const foreignIds = new Set(itemsRef.current.filter(item=>selected.includes(item.id)&&
+      !canRemoveBoardItem(item,authUser.id,isStudent)).map(item=>item.id));
+    const deletable = selected.filter((id) => !lockedIds.has(id)&&!foreignIds.has(id));
+    if(foreignIds.size)setNotice("Чужие материалы сохранены. Удаляются только свои незаблокированные объекты");
     if (!deletable.length) {
       setNotice("Сначала разблокируйте выбранные объекты");
       return;
     }
     commit(itemsRef.current.filter((item) => !deletable.includes(item.id)));
-    setSelected(selected.filter((id) => lockedIds.has(id)));
+    setSelected(selected.filter((id) => lockedIds.has(id)||foreignIds.has(id)));
   };
 
   const moveLayer = (front: boolean) => {
