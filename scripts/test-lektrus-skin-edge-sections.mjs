@@ -424,7 +424,7 @@ globalThis.document={createElement:(tag)=>{
 }};
 try{
  const view={minX:0,maxX:50,minY:0,maxY:25};
- const first=shader.drawSkinTissueTexture(fakeShaderCtx,stripes,210,view);
+ const first=shader.drawSkinTissueTexture(fakeShaderCtx,legacyMicroscopeContours,210,view);
  assert.ok(first.sampledPixels>0);
  assert.ok(first.sampledPixels<=shader.SKIN_TISSUE_MAX_PIXELS);
  assert.ok(putCount===1&&textureDraws===1);
@@ -434,18 +434,18 @@ try{
  assert.equal(px(72,24),0,"Center of torso stays neutral");
  assert.ok(px(9,24)>0&&px(48,24)>0,
   "Actual side cross-sections receive the organic tissue paint");
- shader.drawSkinTissueTexture(fakeShaderCtx,stripes,210,view);
+ shader.drawSkinTissueTexture(fakeShaderCtx,legacyMicroscopeContours,210,view);
  assert.equal(putCount,1,"Identical camera must reuse the texture cache");
  cameraShift=4;
- shader.drawSkinTissueTexture(fakeShaderCtx,stripes,210,view);
+ shader.drawSkinTissueTexture(fakeShaderCtx,legacyMicroscopeContours,210,view);
  assert.equal(putCount,1,
   "Small pans must reproject cached world-space tissue without regenerating");
  cameraShift=35;
- shader.drawSkinTissueTexture(fakeShaderCtx,stripes,210,view);
+ shader.drawSkinTissueTexture(fakeShaderCtx,legacyMicroscopeContours,210,view);
  assert.equal(putCount,2,
   "A larger camera shift must refresh the same world-anchored texture");
 }finally{globalThis.document=oldDocument;}
-assert.match(renderer,/if\(cam.scale>25&&refined\)/,
+assert.match(renderer,/if\(cam.scale>25&&refined&&selectionRef\.current===null&&/,
  "No expensive texture raster while viewing intact hands and legs");
 assert.match(renderer,/if\(clipped\)drawSkinTissueTexture\(ctx,contours,cam.scale,visible\)/);
 assert.match(renderer,/drawEpidermisAtlas\(/);
