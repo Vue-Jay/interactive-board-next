@@ -92,7 +92,11 @@ export function drawEpidermisAtlas(
  const emphasized=selectedStratum(selected);
  for(const c of contours){
   if(!inside(c,bounds))continue;
-  const points=smoothVisiblePoints(c,bounds,pixelsPerWorld);
+  // During a gesture keep the contour coarse; restore fine curves
+  // only after motion stops, avoiding heavy path reconstruction on
+  // every intermediate animation frame.
+  const points=smoothVisiblePoints(c,bounds,
+   detailed?pixelsPerWorld:Math.min(pixelsPerWorld,55));
   if(points.length<2)continue;
   ctx.save();
   // Four visually distinct *tissue* layers. They do not claim absolute
