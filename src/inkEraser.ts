@@ -118,8 +118,7 @@ export function eraseInkAt(items:Item[],from:Point,to:Point,radius:number):Item[
  * Process candidate strokes independently so unrelated items on large teacher
  * boards are never scanned once per pointer movement.
  */
-export function eraseInkAlongPath(items: Item[], path: Point[], radius: number,
- canErase?: (item:Item)=>boolean): Item[] {
+export function eraseInkAlongPath(items: Item[], path: Point[], radius: number): Item[] {
   if (!path.length || radius <= 0) return items;
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
   for(const p of path){
@@ -130,7 +129,6 @@ export function eraseInkAlongPath(items: Item[], path: Point[], radius: number,
   let changed=false;
   for(const item of items){
     if((item.kind!=="pen"&&item.kind!=="marker") || item.hidden || !item.points?.length ||
-      (canErase&&!canErase(item)) ||
       item.x>maxX+radius+50 || item.x+item.width<minX-radius-50 ||
       item.y>maxY+radius+50 || item.y+item.height<minY-radius-50){
       output.push(item);
