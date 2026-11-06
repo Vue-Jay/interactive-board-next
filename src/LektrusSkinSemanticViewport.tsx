@@ -60,6 +60,7 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
   const body=new Image();
   let contours:SkinSectionContour[]=[];
   let thinContours:SkinSectionContour[]=[];
+  let neutralBody:HTMLCanvasElement|null=null;
   let width=0,height=0;
   const requestDraw=()=>{
    if(active&&!frame)frame=requestAnimationFrame(draw);
@@ -77,6 +78,13 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    for(let i=0;i<alpha.length;i++)alpha[i]=rgba[i*4+3];
    contours=skinSectionContours(alpha,RASTER_WIDTH,RASTER_HEIGHT);
    thinContours=skinUpperArmReferenceContours(contours);
+   // Keep only the supplied silhouette geometry, not its rendered
+   // muscular/shaded mannequin. Source-in preserves every antialiased
+   // fingertip while replacing the interior with neutral atlas paper.
+   c.globalCompositeOperation="source-in";
+   c.fillStyle="#e5ecf0";c.fillRect(0,0,RASTER_WIDTH,RASTER_HEIGHT);
+   c.globalCompositeOperation="source-over";
+   neutralBody=source;
    thickSitesRef.current={
     palm:resolveThickSkinSample(contours,"palm"),
     sole:resolveThickSkinSample(contours,"sole")
@@ -143,7 +151,7 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
     // The original neutral silhouette remains UNDER every section for
     // all camera scales. Never fade away the fingers, foot tips or the
     // neutral center: only the registered educational edge is overlaid.
-    ctx.drawImage(body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
+    ctx.drawImage(neutralBody??body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
     const cutawayAlpha=skinCutawayBlend(cam.scale);
     if(contours.length&&cutawayAlpha>0){
      const visible=skinVisibleWorldBounds(cam,w,h,5);
@@ -153,12 +161,16 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
      // H&E-like procedural noise was not calibrated histology and caused
      // long main-thread raster work; no synthetic noisy dermis at this stage.
      if(cam.scale>11){
-      drawEpidermisAtlas(ctx,thinContours,cam.scale,visible,
+      // Geometry is allowed a margin to prevent edge seams, but CELL
+      // budgets must cover the ACTUAL screen first. A five-world-unit
+      // overscan previously exhausted the cell budget offscreen.
+      const detailedVisible=skinVisibleWorldBounds(cam,w,h,.12);
+      drawEpidermisAtlas(ctx,thinContours,cam.scale,detailedVisible,
        selectionRef.current,refined,fit.pixelPerWorld*cam.scale,
        selectionPointRef.current);
       const thick=thickKindRef.current?
        thickSitesRef.current[thickKindRef.current]:null;
-      if(thick)drawThickEpidermisSample(ctx,thick,cam.scale,visible,
+      if(thick)drawThickEpidermisSample(ctx,thick,cam.scale,detailedVisible,
        selectionRef.current,refined,fit.pixelPerWorld*cam.scale);
      }
     }
