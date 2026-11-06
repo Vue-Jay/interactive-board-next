@@ -204,7 +204,7 @@ assert.doesNotMatch(renderer,/ctx\.ellipse\(EDGE\.x\+EDGE\.width\/2/,
 assert.match(renderer,/ctx\.fillRect\(crop\.dx,crop\.dy,crop\.dw,crop\.dh\)/,
  "Smooth material must cover the full body coordinate system");
 assert.doesNotMatch(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible,/);
-assert.match(renderer,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
+assert.match(renderer,/ctx\.drawImage\(body,crop\.sx,crop\.sy,crop\.sw,crop\.sh/);
 assert.match(renderer,/drawSkinSectionBands\(ctx,contours,visible\)/);
 assert.doesNotMatch(renderer,/clipSkinSection\(ctx,contours,visible\)/);
 assert.doesNotMatch(renderer,/edgeAtlas|detailCanvas|globalCompositeOperation="destination-in"/);
