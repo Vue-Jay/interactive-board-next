@@ -54,6 +54,26 @@ assert.ok(stripes[3].p.x<stripes[4].p.x,
  "Do not confuse finger tissue with a neighbouring forearm");
 assert.ok(stripes.every(({p})=>p.depth>=0&&p.depth<=vector.SKIN_SECTION_WORLD_DEPTH));
 assert.ok(stripes.every(({p})=>Number.isFinite(p.x)&&Number.isFinite(p.y)));
+// An intentionally magnified tissue strip cannot substitute for intact
+// fingers or toes. Narrow runs have zero side-section depth, wide runs
+// preserve the same deep-zoom anatomy without sharp seams.
+assert.equal(vector.skinCutawayDepthForSpan(4.4),0,
+ "Thin finger must have no false colored lateral bands at any zoom");
+assert.equal(vector.skinCutawayDepthForSpan(7),0);
+assert.ok(vector.skinCutawayDepthForSpan(12)>0);
+assert.equal(vector.skinCutawayDepthForSpan(17),Math.min(
+ vector.SKIN_SECTION_WORLD_DEPTH,17*(1-vector.SKIN_SECTION_NEUTRAL_FRACTION)/2));
+for(let span=0,last=0;span<=32;span+=.025){
+ const d=vector.skinCutawayDepthForSpan(span);
+ assert.ok(d>=last-1e-8&&d<=vector.SKIN_SECTION_WORLD_DEPTH,
+  "No jumps or reappearing stripes along the finger-palm transition");
+ last=d;
+}
+const digit=contours.filter(c=>c.minY<=18&&c.maxY>=18)
+ .map(c=>c.points.find(p=>Math.abs(p.y-18)<.01))
+ .filter(Boolean);
+assert.ok(digit.length>0&&digit.every(p=>p.depth<=vector.SKIN_SECTION_WORLD_DEPTH),
+ "Synthetic forearm plate keeps its registered contour geometry");
 assert.ok(!stripes.some(({p})=>p.x>24&&p.x<29),
  "No invented centreline skin from the transparent finger gap");
 
@@ -72,6 +92,12 @@ for(let z=1,last=0;z<=80;z+=.25){
 }
 assert.match(viewport,/const cutawayAlpha=skinCutawayBlend\(cam\.scale\)/);
 assert.match(viewport,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
+assert.match(viewport,/ctx\.drawImage\(neutralPlate,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/,
+ "A complete neutral silhouette must remain below every side cutaway");
+assert.match(viewport,/neutralPlate=source/,
+ "Neutral alpha plate must be built from the SAME source geometry");
+assert.doesNotMatch(viewport,/globalAlpha=1-cutawayAlpha/,
+ "At tissue zoom never fade the body and digits all the way to zero");
 assert.match(viewport,/contours\.length&&cutawayAlpha>0/);
 assert.match(viewport,/drawSkinSectionBands\(ctx,contours,visible,cutawayAlpha\)/);
 assert.doesNotMatch(viewport,/globalCompositeOperation="source-atop"/,
