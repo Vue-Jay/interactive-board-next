@@ -396,10 +396,10 @@
  display:block;flex:0 0 10px;height:19px;border-radius:5px;
  border:1px solid rgba(0,0,0,.07);
 }
-.lek-anatomy-epi-swatch.is-corneum{background:#e8b9af}
-.lek-anatomy-epi-swatch.is-granulosum{background:#98729c}
-.lek-anatomy-epi-swatch.is-spinosum{background:#d8a4bd}
-.lek-anatomy-epi-swatch.is-basale{background:#a16c94}
+.lek-anatomy-epi-swatch.is-corneum{background:#f0d2c5}
+.lek-anatomy-epi-swatch.is-granulosum{background:#ad88a8}
+.lek-anatomy-epi-swatch.is-spinosum{background:#e8bbc8}
+.lek-anatomy-epi-swatch.is-basale{background:#987293}
 .lek-anatomy-epidermis-cell-list{display:flex;flex-wrap:wrap;gap:4px}
 .lek-anatomy-epidermis-inspector .lek-anatomy-epidermis-cell-list button{
  padding:5px 7px;border-radius:6px;border:1px solid #d4e1db;
