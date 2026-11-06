@@ -305,6 +305,29 @@ begin
  if (select document->>'title' from public.board_documents where board_id=
    '55555555-5555-4555-8555-555555555555')<>'Owner change' then
   raise exception 'A rejected stale save changed the lesson';end if;
+ -- Even when a real board owner can edit everything, malformed view/preview
+ -- cannot corrupt a shared board for every connected pupil.
+ begin
+  perform public.save_board_document(
+   '55555555-5555-4555-8555-555555555555',
+   jsonb_set(v_before,'{view,zoom}','"not-a-number"'::jsonb),2);
+  raise exception 'RPC accepted a non-numeric viewport';
+ exception when sqlstate '22023' then null;end;
+ begin
+  perform public.save_board_document(
+   '55555555-5555-4555-8555-555555555555',
+   jsonb_set(v_before,'{view,zoom}','20'::jsonb),2);
+  raise exception 'RPC accepted an out-of-range viewport';
+ exception when sqlstate '22023' then null;end;
+ begin
+  perform public.save_board_document(
+   '55555555-5555-4555-8555-555555555555',
+   jsonb_set(v_before,'{preview}',to_jsonb(repeat('x',6000001))),2);
+  raise exception 'RPC accepted an oversized thumbnail payload';
+ exception when sqlstate '22023' then null;end;
+ if (select version from public.board_documents where board_id=
+   '55555555-5555-4555-8555-555555555555')<>2 then
+  raise exception 'Rejected malformed RPC unexpectedly advanced the version';end if;
 
  raise notice 'PASS: isolated Postgres policy (field diffs, actor, auth, RLS grants and trigger)';
 end;
