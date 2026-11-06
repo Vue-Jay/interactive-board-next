@@ -124,20 +124,21 @@ export function drawThickEpidermisSample(
  if(detailed&&scale>=155){
   const y0=Math.max(site.anchor.y-THICK_SKIN_SPAN,bounds.minY);
   const y1=Math.min(site.anchor.y+THICK_SKIN_SPAN,bounds.maxY);
-  const step=clamp(4/Math.max(1,pixelsPerWorld),.018,.055);
+  const step=clamp(10/Math.max(1,pixelsPerWorld),.045,.075);
   const max=Math.min(THICK_EPIDERMIS_MAX_CELLS,
    Math.ceil((y1-y0)/step));
   const gram=new Path2D(),basal=new Path2D(),basalNuclei=new Path2D();
   const spinous=new Path2D(),spinousNuclei=new Path2D();
-  for(let i=0;i<max;i++){
+  const granularCells=new Path2D(),granularNuclei=new Path2D();
+  for(let i=0;i<max&&stats.cells<THICK_EPIDERMIS_MAX_CELLS;i++){
    const y=y0+i*step,p=sectionAtY(site.contour,y);
    if(!p||thickSkinInfluence(site.contour,y,site)<.30)continue;
    // Spinous polyhedra remain distributed under the granular layer,
    // but the low-detail sampling NEVER forms uniform giant circles.
    const s0=edgeX(site,p,3,"start"),s1=edgeX(site,p,3,"end");
-   for(let k=0;k<2;k++){
-    const x=s0+(s1-s0)*(.28+k*.38);
-    const radius=.006+hash(i,k)*.002;
+   for(let k=0;k<6&&stats.cells<THICK_EPIDERMIS_MAX_CELLS;k++){
+    const x=s0+(s1-s0)*(.12+(k+.5)*.76/6);
+    const radius=Math.min(.034,Math.abs(s1-s0)*.76/6*.43);
     spinous.moveTo(x-radius,y);
     spinous.lineTo(x-radius*.48,y-radius*.8);
     spinous.lineTo(x+radius*.66,y-radius*.64);
@@ -145,24 +146,32 @@ export function drawThickEpidermisSample(
     spinous.lineTo(x+radius*.20,y+radius);
     spinous.lineTo(x-radius*.75,y+radius*.55);
     spinous.closePath();
-    spinousNuclei.moveTo(x+.0018,y);
-    spinousNuclei.ellipse(x,y,.0018,.002,0,0,Math.PI*2);
+    spinousNuclei.moveTo(x+.009,y);
+    spinousNuclei.ellipse(x,y,.009,.011,0,0,Math.PI*2);
     stats.cells++;
    }
    const g0=edgeX(site,p,2,"start"),g1=edgeX(site,p,2,"end");
-   const gx=g0+(g1-g0)*.55;
-   for(let k=0;k<2;k++){
-    const gy=y+(k-.5)*.005;
-    gram.moveTo(gx+.0008,gy);
-    gram.ellipse(gx,gy,.0008,.0005,0,0,Math.PI*2);
-    stats.granules++;
+   for(let k=0;k<3&&stats.cells<THICK_EPIDERMIS_MAX_CELLS;k++){
+    const gx=g0+(g1-g0)*(k+.5)/3;
+    const rx=Math.abs(g1-g0)/3*.43,ry=step*.45;
+    granularCells.moveTo(gx+rx,y);
+    granularCells.ellipse(gx,y,rx,ry,0,0,Math.PI*2);
+    granularNuclei.moveTo(gx+.006,y);
+    granularNuclei.ellipse(gx,y,.006,.009,0,0,Math.PI*2);
+    for(let q=0;q<3;q++){
+     const px=gx+(q-1)*rx*.35,py=y+(q%2?-.28:.27)*ry;
+     gram.moveTo(px+.0022,py);
+     gram.ellipse(px,py,.0022,.0028,0,0,Math.PI*2);
+     stats.granules++;
+    }
+    stats.cells++;
    }
    const b0=edgeX(site,p,4,"start"),b1=edgeX(site,p,4,"end");
    const bx=(b0+b1)/2;
-   basal.moveTo(bx+.004,y);
-   basal.ellipse(bx,y,.004,.0062,0,0,Math.PI*2);
-   basalNuclei.moveTo(bx+.0017,y);
-   basalNuclei.ellipse(bx,y,.0017,.0026,0,0,Math.PI*2);
+   basal.moveTo(bx+.022,y);
+   basal.ellipse(bx,y,.022,.023,0,0,Math.PI*2);
+   basalNuclei.moveTo(bx+.0085,y);
+   basalNuclei.ellipse(bx,y,.0085,.010,0,0,Math.PI*2);
    stats.cells++;
   }
   // Subtle tinted polyhedral keratinocytes in the spinous sheet,
@@ -170,8 +179,12 @@ export function drawThickEpidermisSample(
   ctx.globalAlpha=.38*fade;ctx.fillStyle="#f0c4d1";ctx.fill(spinous);
   ctx.globalAlpha=.54*fade;ctx.strokeStyle="#956b92";ctx.lineWidth=.0012;
   ctx.stroke(spinous);
-  ctx.globalAlpha=.78*fade;ctx.fillStyle="#745374";
+  ctx.globalAlpha=.63*fade;ctx.fillStyle="#bb9bae";
+  ctx.fill(granularCells);
+  ctx.globalAlpha=.76*fade;ctx.strokeStyle="#815f88";ctx.stroke(granularCells);
+  ctx.globalAlpha=.76*fade;ctx.fillStyle="#745374";
   ctx.fill(spinousNuclei);
+  ctx.fill(granularNuclei);
   ctx.fill(gram);
   ctx.globalAlpha=.72*fade;ctx.strokeStyle="#795778";ctx.stroke(basal);
   ctx.fill(basalNuclei);
