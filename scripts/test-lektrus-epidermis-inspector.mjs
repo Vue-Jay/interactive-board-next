@@ -63,12 +63,37 @@ assert.equal(atlas.pickEpidermisAt([contour],pointAt(.3),230),null,
  "No selecting the epidermis from the dermis or neutral body");
 assert.equal(atlas.pickEpidermisAt([contour],{x:270,y:500},360),null,
  "No cross-contour ghost hit outside anatomical skin");
-assert.equal(atlas.pickEpidermisAt([contour],pointAt(.0645),250),"basement");
+// The basement interface undulates in world space; use the same edge
+// for visual selection instead of testing an obsolete straight border.
+const basalBoundary=atlas.epidermisStratumEdge(
+ 181,evidence.SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd);
+assert.equal(atlas.pickEpidermisAt([contour],
+ pointAt(basalBoundary-.00045),250),"basement");
 const nearMelano=Math.round(181/.31)*.31;
 const atMelano=atlas.pickEpidermisAt([contour],
  pointAt((evidence.SKIN_ILLUSTRATIVE_LAYERS.basaleStart+
  evidence.SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd)/2,nearMelano),260);
 assert.equal(atMelano,"melanocyte");
+const kerY=Math.round(181/.23)*.23;
+const kerCenter=atlas.epidermisKeratinocyteCenter(contour,kerY);
+assert.ok(kerCenter,"Representative keratinocyte must have a world anchor");
+assert.equal(atlas.pickEpidermisAt([contour],kerCenter,260),"keratinocyte",
+ "Clicking an actually drawn spinous keratinocyte must open its own card");
+const melCenter=atlas.epidermisMelanocyteCenter(contour,nearMelano);
+assert.ok(melCenter);
+assert.equal(atlas.pickEpidermisAt([contour],melCenter,260),"melanocyte",
+ "Only the real drawn melanocyte glyph may be targeted");
+assert.equal(atlas.pickEpidermisAt([contour],
+ {...kerCenter,y:kerCenter.y+.05},260)!=="keratinocyte",true,
+ "Do not select arbitrary invisible keratinocyte targets");
+for(let y=179;y<184;y+=.027){
+ const actual=atlas.epidermisStratumEdge(y,
+  evidence.SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd);
+ assert.ok(actual>.060&&actual<.070,
+  "Papillary waves should be shallow, never false large spikes");
+ assert.equal(actual,atlas.epidermisStratumEdge(y,
+  evidence.SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd));
+}
 assert.equal(atlas.pickEpidermisAt([],pointAt(.022),260),null);
 const fakeCtx=new Proxy({},{
  get:(_,name)=>(...args)=>{
@@ -92,6 +117,8 @@ try{
   "./lektrusEpidermisAtlas":atlas
  });
  assert.ok(render.EPIDERMIS_DETAIL_MAX_CELLS<=5000);
+ assert.equal(render.epidermisStratumEdge,atlas.epidermisStratumEdge,
+  "Drawing and hit-testing must share exactly one dermal papilla geometry");
  assert.ok(render.EPIDERMIS_MICRO_MIN_SCALE>=130);
  assert.ok(Math.abs(render.epidermisStratumEdge(182,.065)-.065)<.006);
  const b={minX:260,maxX:275,minY:180,maxY:182};
