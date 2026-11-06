@@ -15,7 +15,7 @@ import {EPIDERMIS_LAYER_FRACTIONS,sectionAtY,
  type EpidermisId,type EpidermisStratum,type EpidermisPoint} from "./lektrusEpidermisAtlas";
 export {epidermisStratumEdge} from "./lektrusEpidermisAtlas";
 import type {SkinSectionContour,SkinSectionPoint} from "./lektrusSkinVectorSections";
-import {drawEpidermisCellSheet} from "./lektrusEpidermisCellSheet";
+import {drawEpidermisCellSheet,epidermisVisibleCellAt} from "./lektrusEpidermisCellSheet";
 
 type Bounds={minX:number;maxX:number;minY:number;maxY:number};
 export const EPIDERMIS_DETAIL_MAX_CELLS=1800;
@@ -209,6 +209,19 @@ export function drawEpidermisAtlas(
      stats.melanocytes++;
     }
     ctx.restore();
+   }
+  }
+  // Highlight exactly the tapped cell of the visible reconstructed
+  // epithelial sheet. Shared geometry is also used by hit testing.
+  if(selected==="keratinocyte"&&selectedPoint&&microFade>.5){
+   const cell=epidermisVisibleCellAt(c,selectedPoint);
+   if(cell){
+    ctx.save();ctx.strokeStyle="#edb93f";ctx.globalAlpha=.95;
+    ctx.lineWidth=Math.max(.002,1.8/Math.max(1,pixelsPerWorld));
+    ctx.beginPath();
+    ctx.ellipse(cell.center.x,cell.center.y,
+     cell.rx*1.16,cell.ry*1.16,0,0,Math.PI*2);
+    ctx.stroke();ctx.restore();
    }
   }
   ctx.restore();
