@@ -1152,7 +1152,7 @@ function prettyGraphEquation(expression:string):string{
     .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
 }
 
-function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onSnapChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, onLabBenchChange, onMatchingSize, onOpenEditor, onToggleConstruction, constructionActive=false, suspendPeriodicWindows, onPhysicalPartMove, onPhysicalPartPreview }: {
+function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onSnapChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, studentMode=false, onLabBenchChange, onMatchingSize, onOpenEditor, onToggleConstruction, constructionActive=false, suspendPeriodicWindows, onPhysicalPartMove, onPhysicalPartPreview }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onPointMoveEnd?: (index:number,x:number,y:number)=>void;
@@ -1169,6 +1169,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   onPeriodicChange?: (selected:number[])=>void;
   onPeriodicLayoutChange?: (layout:"school"|"long")=>void;
   onSchoolDiagramChange?: (diagram:import("./lektrusSchoolDiagramModel").SchoolDiagram)=>void;
+  studentMode?:boolean;
   onLabBenchChange?: (bench:LabBench,simulationOnly?:boolean)=>void;
   onMatchingSize?: (width:number,height:number)=>void;
   onOpenEditor?: ()=>void;
@@ -1220,7 +1221,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
       onOpenEditor={onOpenEditor} onMoveEnd={onPhysicalPartMove} onMovePreview={onPhysicalPartPreview}/>;
   if(item.graphFigureId==="lektrus-chart")return <LektrusDataChartView item={item}/>;
   if(isSchoolDiagramId(item.graphFigureId)&&isSchoolDiagram(item.schoolDiagram))
-    return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram} onChange={onSchoolDiagramChange} onMatchingSize={onMatchingSize}/></div>;
+    return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram} onChange={onSchoolDiagramChange} studentMode={studentMode} onMatchingSize={onMatchingSize}/></div>;
   if(item.graphFigureId?.startsWith("chem-organic-"))return <div className="graph-view lektrus-organic-on-board"><LektrusOrganicView item={item}/></div>;
   if(isChemicalIllustration(item))return <div className="graph-view lektrus-chemical-illustration">
     <LektrusChemistryIllustration item={item} onBenchChange={onLabBenchChange} onOpenEditor={onOpenEditor}/>
@@ -9362,7 +9363,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                    .map((value,index)=>({id:value.id,title:
                      (value.text||"Химическая доска")+" · "+(index+1)}))}
                   onCollect={destinationId=>collectChemistryObject(item.id,destinationId)}/>}
-                {item.kind === "graph" && !isSubjectBoard(item) && <GraphView item={item}
+                {item.kind === "graph" && !isSubjectBoard(item) && <GraphView item={item} studentMode={isStudent}
                   onLabBenchChange={canEdit&&!item.locked&&!presentation&&!space&&
                     // Only the full-screen editor advances this laboratory
                     // while it is open; the background preview is read-only.
