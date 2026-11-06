@@ -15,7 +15,7 @@ new Function("exports","require",compile("src/lektrusBoardObjectAuth.ts"))(
   assert.equal(id,"./lektrusBoardRolePreview");
   return roles;
  });
-const {stampNewBoardItemAuthors,canRemoveBoardItem,blockedBoardItemRemovals}=policy;
+const {stampNewBoardItemAuthors,canRemoveBoardItem,blockedBoardItemRemovals,isLockableBoardItem,withoutInkLock}=policy;
 const item=(id,createdBy,kind="shape")=>({
  id,createdBy,kind,x:0,y:0,width:110,height:30,text:"test",
 });
@@ -54,6 +54,29 @@ assert.equal(stamped[2].createdBy,"student-A","Cloning transfers creator to stud
 assert.equal(stamped[3].createdBy,"student-A","Ink gets creator automatically");
 assert.equal(teacher.createdBy,"teacher-A","Original item is immutable");
 
+// Pen and marker strokes are not lockable, even if old board JSON or a
+// malicious editor payload contains a legacy locked flag. Ownership still
+// protects against removing another participant's marks.
+assert.equal(isLockableBoardItem({kind:"pen"}),false);
+assert.equal(isLockableBoardItem({kind:"marker"}),false);
+assert.equal(isLockableBoardItem({kind:"shape"}),true);
+const invalidLockedPen={...student,id:"old-pen",kind:"pen",locked:true};
+const invalidLockedMarker={...student,id:"old-marker",kind:"marker",locked:true};
+assert.equal(withoutInkLock(invalidLockedPen).locked,undefined);
+assert.equal(withoutInkLock(invalidLockedMarker).locked,undefined);
+assert.equal(withoutInkLock({...student,locked:true}).locked,true,
+ "Placed shapes retain their explicit locks");
+const sanitized=stampNewBoardItemAuthors(
+ [invalidLockedPen,invalidLockedMarker],
+ [invalidLockedPen,invalidLockedMarker,{...invalidLockedPen,id:"new-pen"}],
+ "student-A");
+assert.ok(sanitized.every(x=>x.locked!==true),
+ "Existing and newly created ink is always unlocked");
+assert.ok(sanitized.every(x=>x.createdBy==="student-A"),
+ "Removing ink lock must not discard creator provenance");
+assert.equal(canRemoveBoardItem({...invalidLockedPen,locked:undefined},
+ "teacher-A",true),false,"Foreign ink is protected by creator, not lock");
+
 const ink={};
 new Function("exports","require",compile("src/inkEraser.ts"))(
  ink,()=>{throw Error("Unexpected runtime import in ink eraser")});
@@ -78,6 +101,16 @@ assert.ok(result.some(x=>x.createdBy==="student-A"&&x.kind==="pen"),
 
 const app=read("src/App.tsx"),model=read("src/boardModel.ts");
 assert.match(model,/createdBy\?: string;/);
+assert.match(model,/i\.kind !== "pen" && i\.kind !== "marker" \? \{ locked: true \}/,
+ "Persisted pen/marker cannot carry locked=true");
+assert.match(app,/selected\.includes\(item\.id\)&&isLockableBoardItem\(item\)/,
+ "Selection lock action skips ink even in mixed selections");
+assert.match(app,/ids\.has\(candidate\.id\)&&isLockableBoardItem\(candidate\)/,
+ "Layers-panel lock action skips ink");
+assert.match(app,/disabled=\{!family\.some\(isLockableBoardItem\)\}/,
+ "Layer lock control disabled for ink-only layer");
+assert.match(app,/!selectedItems\.some\(isLockableBoardItem\)/,
+ "Selection lock controls disabled for ink-only selections");
 assert.match(model,/typeof i\.createdBy === "string"/,"Serialized item keeps author");
 assert.match(model,/if \(i\.createdBy != null &&/,"Malformed authors are rejected");
 assert.match(app,/blockedBoardItemRemovals\(current,next,authUser\.id,isStudent\)/,
