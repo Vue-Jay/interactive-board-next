@@ -123,7 +123,8 @@ assert.equal(tissue.count,1);assert.equal(cells.count,1);
 assert.ok(cells.calls.length>tissue.calls.length+100,"Deep zoom reveals cells");
 assert.deepEqual(cells.calls,record(360,visible).calls,"Pan/zoom must not randomize tissue");
 assert.ok(cells.calls.some(c=>c[0]==="clip"),"Stay inside lateral section");
-assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
+assert.doesNotMatch(renderer,/drawSkinTissueTexture\(/,
+ "Unverified full-contour raster histology must not return");
 assert.doesNotMatch(renderer,/edgeAtlas|detailCanvas|globalCompositeOperation="destination-in"/);
 console.log("Skin detail LOD PASS: continuous reveals, cells, culling, deterministic geometry, exact silhouette mask.");
 
