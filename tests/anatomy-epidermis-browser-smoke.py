@@ -103,6 +103,22 @@ with sync_playwright() as p:
     touch_page.goto(ROOT,wait_until="networkidle",timeout=60000)
     touch_stage=touch_page.locator(".lek-anatomy-stage")
     touch_stage.wait_for()
+    touch_page.screenshot(path=str(OUT/"mobile-atlas-before-reset.png"))
+    reset_mobile=touch_page.evaluate("""() => {
+        const button=document.querySelector(".lek-anatomy-reset");
+        const main=document.querySelector(".lek-anatomy-main");
+        const details=document.querySelector(".lek-anatomy-details");
+        if(!button||!main||!details)return {clickable:false,reason:"missing anatomy pane"};
+        const rect=button.getBoundingClientRect();
+        const hit=document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2);
+        return {clickable:!!hit&&!!hit.closest(".lek-anatomy-reset"),
+                hit:hit?.className??null,mainBottom:main.getBoundingClientRect().bottom,
+                detailsTop:details.getBoundingClientRect().top};
+    }""")
+    assert reset_mobile["clickable"],(
+        "Mobile grid must keep the real reset button unobstructed",reset_mobile)
+    assert reset_mobile["detailsTop"]>=reset_mobile["mainBottom"]-2,(
+        "Details must start below the entire mobile viewport",reset_mobile)
     touch_page.get_by_role("button",name="Весь организм").click()
     touch_page.wait_for_timeout(600)
     touch_zoom=touch_page.locator(".lek-anatomy-zoom span")
