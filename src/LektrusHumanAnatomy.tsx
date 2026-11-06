@@ -305,6 +305,8 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
      <button type="button" aria-label="Отдалить" onClick={()=>zoom(1/1.22)}>−</button>
     </div>
     <span className="lek-anatomy-stage-hint">{system==="integumentary"?
+     displayCamera.scale<=10?"Кожа · цельная модель конечностей":
+     displayCamera.scale<26?"Кожа · плавное раскрытие бокового разреза":
      "Кожа в разрезе вдоль боковых контуров":
      "Одна точка обзора для всех систем"}</span>
    </div>
@@ -313,7 +315,9 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
      thickSkinKind?
       (thickSkinKind==="palm"?"Ладонь":"Подошва")+
       " · виртуальный пятислойный разрез, включая блестящий":
-      skinDetailStage(displayCamera.scale)+" · только по краям":
+      displayCamera.scale<=10?
+       "Кисти, пальцы и ноги показаны целиком · разрез откроется при дальнейшем зуме":
+       skinDetailStage(displayCamera.scale)+" · только по краям":
      "Переключение системы не меняет положение и увеличение."}</span>
     <span>{system==="integumentary"?
      "Цифровой зум, не физическое увеличение микроскопа":
@@ -328,10 +332,11 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
    </div>
    {system==="integumentary"&&<div className="lek-anatomy-skin-explore">
     <strong>Кожный покров в разрезе</strong>
-    <p>По боковым контурам тела показан условный разрез с тремя слоями.
-     Центр тела остаётся нейтральным. Реальные капилляры, железы
-     и клетки не дорисовываются произвольно при приближении.
-     Ниже доступны настоящие микроснимки для сравнения.</p>
+    <p>На общем виде кисти, пальцы и ноги остаются цельными.
+     При сильном увеличении вдоль боковых контуров плавно
+     раскрывается условный трёхслойный разрез. Центр тела
+     остаётся нейтральным; настоящие клетки и сосуды
+     сравнивайте с микропрепаратами ниже.</p>
     <div className="lek-anatomy-skin-modes" role="group"
      aria-label="Приблизить боковой разрез">
      <button type="button" onClick={()=>focusSkin("left")}>Левый бок</button>

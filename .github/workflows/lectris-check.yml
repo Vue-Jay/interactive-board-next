@@ -43,6 +43,8 @@ jobs:
         run: node scripts/test-lektrus-skin-edge-sections.mjs
       - name: Offline licensed histology reference plates and scientific provenance
         run: node scripts/test-lektrus-skin-source-plates.mjs
+      - name: Intact hands and feet at board zoom, no phantom finger skin contours
+        run: node scripts/test-lektrus-skin-limb-silhouette.mjs
       - name: Interactive epidermis strata, actual cell morphology and hit testing
         run: node scripts/test-lektrus-epidermis-inspector.mjs
       - name: Semantic skin zoom, spatial anchors and LOD regressions

@@ -82,7 +82,7 @@ assert.doesNotMatch(renderer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HE
  "Do not rasterize thousands of unnecessary faux micro-anatomy landmarks");
 assert.doesNotMatch(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible,/,
  "Repeated pink vascular loops were not valid human histology");
-assert.match(renderer,/drawSkinSectionBands\(ctx,contours,visible\)/);
+assert.match(renderer,/drawSkinSectionBands\(ctx,contours,visible,cutawayAlpha\)/);
 assert.doesNotMatch(renderer,/drawSkinMesoTiles|drawSkinSurfaceField|drawSkinMicrotiles/);
 assert.doesNotMatch(renderer,/skin-semantic-lod\.webp/);
 assert.doesNotMatch(renderer,/sectionBlend|modeRef/);
@@ -439,7 +439,8 @@ try{
  assert.equal(putCount,2,
   "A larger camera shift must refresh the same world-anchored texture");
 }finally{globalThis.document=oldDocument;}
-assert.match(renderer,/if\(cam.scale>2.5&&refined\)/);
+assert.match(renderer,/if\(cam.scale>25&&refined\)/,
+ "No expensive texture raster while viewing intact hands and legs");
 assert.match(renderer,/if\(clipped\)drawSkinTissueTexture\(ctx,contours,cam.scale,visible\)/);
 assert.match(renderer,/drawEpidermisAtlas\(/);
 assert.match(renderer,/setTimeout\(\(\)=>\{/);

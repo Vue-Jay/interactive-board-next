@@ -15,7 +15,7 @@ import type {AnatomyCamera} from "./lektrusHumanAnatomyModel";
 import {anatomyBodyFit} from "./lektrusAnatomySemanticZoom";
 import {skinVisibleWorldBounds} from "./lektrusSkinSurfaceField";
 import {drawSkinTissueTexture} from "./lektrusSkinTissueTexture";
-import {skinSectionContours,drawSkinSectionBands,clipSkinSection,
+import {skinSectionContours,skinCutawayBlend,drawSkinSectionBands,clipSkinSection,
  type SkinSectionContour} from "./lektrusSkinVectorSections";
 
 export type EpidermisHitTest=(point:EpidermisPoint,pixelsPerWorld:number)=>EpidermisId|null;
@@ -127,29 +127,30 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    ctx.scale(fit.pixelPerWorld*cam.scale,fit.pixelPerWorld*cam.scale);
    ctx.translate(-WORLD_WIDTH/2,-WORLD_HEIGHT/2);
    if(ready){
-    // Enlarging the 1080px overview plate hundreds of times creates
-    // pixellated false "microdetail". Fade it out before tissue inspection.
-    const overview=Math.max(0,Math.min(1,(20-cam.scale)/12));
-    if(overview>.001){
-     ctx.save();ctx.globalAlpha=.46*overview;
+    // At arm/leg/hand overview scale the supplied human silhouette
+    // MUST remain continuous. Previously we faded it to 46% while
+    // painting oversized cutaway bands on every little finger edge:
+    // fragmented tips and empty/white limb interiors were the result.
+    // Reveal an illustrative side section only once the teacher actually
+    // enters a tissue-level view. No abrupt mode/camera teleport.
+    const cutawayAlpha=skinCutawayBlend(cam.scale);
+    if(cutawayAlpha<1){
+     ctx.save();ctx.globalAlpha=1-cutawayAlpha;
      ctx.drawImage(body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
-     ctx.globalCompositeOperation="source-atop";
-     ctx.fillStyle="#dfe9e7";ctx.globalAlpha=.80*overview;
-     ctx.fillRect(0,0,WORLD_WIDTH,WORLD_HEIGHT);
      ctx.restore();
     }
-    if(contours.length){
+    if(contours.length&&cutawayAlpha>0){
      const visible=skinVisibleWorldBounds(cam,w,h,5);
-     drawSkinSectionBands(ctx,contours,visible);
-     if(cam.scale>2.5&&refined){
+     drawSkinSectionBands(ctx,contours,visible,cutawayAlpha);
+     if(cam.scale>25&&refined){
       ctx.save();
       const clipped=clipSkinSection(ctx,contours,visible);
       if(clipped)drawSkinTissueTexture(ctx,contours,cam.scale,visible);
       ctx.restore();
      }
-     // Four genuine anatomical strata remain registered to exactly the
-     // same world coordinates. Cell illustrations are reserved for the
-     // approved upper-arm site and the idle/detail pass.
+     // Detailed strata remain registered to the same world coordinates.
+     // Do not magnify synthetic epidermal cells over hand silhouettes
+     // until the user is examining a real side section at deep zoom.
      if(cam.scale>11){
       drawEpidermisAtlas(ctx,contours,cam.scale,visible,
        selectionRef.current,refined,fit.pixelPerWorld*cam.scale);
