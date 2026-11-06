@@ -220,7 +220,8 @@ assert.equal(thickRender.drawThickEpidermisSample(
 const viewport=source("src/LektrusSkinSemanticViewport.tsx");
 const human=source("src/LektrusHumanAnatomy.tsx");
 assert.match(viewport,/drawEpidermisAtlas\(/);
-assert.match(viewport,/pickEpidermisAt\(contours,point,ppu\)/);
+assert.match(viewport,/pickEpidermisAt\(contours,point,ppu,/,
+ "Hit testing must receive the active glabrous sample rather than assuming thin skin");
 assert.match(viewport,/selectionRef\.current/);
 assert.match(viewport,/cam\.scale>11/);
 assert.match(human,/anatomyScreenToBody\(displayed\.current,target,width,height\)/);
