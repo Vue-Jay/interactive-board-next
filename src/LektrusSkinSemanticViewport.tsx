@@ -6,6 +6,7 @@ import {useEffect,useRef} from "react";
 import {pickEpidermisAt,sectionAtY,type EpidermisId,type EpidermisPoint} from "./lektrusEpidermisAtlas";
 import {skinEvidenceRegionAt} from "./lektrusSkinEvidenceModel";
 import {drawEpidermisAtlas} from "./lektrusEpidermisRenderer";
+import {epidermisVisibleCellAt} from "./lektrusEpidermisCellSheet";
 import {resolveThickSkinSample,thickSkinFocusPoint,
  type ThickSkinKind,type ThickSkinSample} from "./lektrusThickEpidermis";
 import {drawThickEpidermisSample} from "./lektrusThickEpidermisRenderer";
@@ -105,8 +106,18 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
      const picked=pickEpidermisAt([thick.contour],point,ppu,thick);
      if(picked)return picked;
     }
-    return pickEpidermisAt(thinContours,point,ppu,null,
-     refined&&cameraRef.current.scale>=218);
+    const cellsReady=refined&&cameraRef.current.scale>=218&&ppu>=195;
+    const paintedLayer=pickEpidermisAt(thinContours,point,ppu,null,cellsReady);
+    // First honor the separate, visibly painted melanocyte markers.
+    if(!cellsReady||!paintedLayer||paintedLayer==="melanocyte"||
+     paintedLayer==="keratinocyte"||paintedLayer==="basement")
+     return paintedLayer;
+    for(const contour of thinContours){
+     if(point.y<contour.minY||point.y>contour.maxY)continue;
+     const cell=epidermisVisibleCellAt(contour,point);
+     if(cell&&cell.layer===paintedLayer)return "keratinocyte";
+    }
+    return paintedLayer;
    };
    // Register an actual epithelial contour point, not the approximate
    // shoulder centre: zooming the centre at 360× hid the epidermis entirely.
