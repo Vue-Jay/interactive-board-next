@@ -2,6 +2,7 @@
 Launch via the Vite development server started by Anatomy visual review.
 """
 from pathlib import Path
+import re
 from playwright.sync_api import sync_playwright
 ROOT = "http://127.0.0.1:5173/tests/anatomy-epidermis-interactive-preview.html"
 OUT = Path("artifacts/anatomy")
@@ -56,5 +57,62 @@ with sync_playwright() as p:
     page.get_by_role("button",name="Нервная").click()
     assert page.locator(".lek-anatomy-semantic-canvas").count()==0
     print("PASS: selecting a system hides the non-selected skin system")
+    page.get_by_role("button",name="Покровная").click()
+    page.get_by_role("button",name="Весь организм").click()
+    page.wait_for_timeout(300)
+    stage=page.locator(".lek-anatomy-stage")
+    zoom_label=page.locator(".lek-anatomy-zoom span")
+    zoom_number=lambda: int(re.search(r"(\\d+)%",zoom_label.inner_text()).group(1))
+    before=zoom_number()
+    location=stage.bounding_box()
+    assert location
+    page.mouse.move(location["x"]+location["width"]*.45,
+                    location["y"]+location["height"]*.50)
+    page.mouse.wheel(0,-480)
+    page.wait_for_timeout(450)
+    assert zoom_number()>before,"Wheel must increase the shared camera zoom"
+    page.mouse.wheel(0,480)
+    page.wait_for_timeout(450)
+    assert zoom_number()<max(200,before*3),"Reverse wheel should return toward the body"
+    assert page.locator("canvas.lek-anatomy-semantic-canvas").count()==1
+    print("PASS: Chromium pointer wheel zoom in/out does not switch anatomy system")
+
+    # Actual browser emulation (NOT a claim to have tested a physical
+    # Android tablet). Two independent touch IDs must drive the same camera
+    # without ghost epidermal taps or displacing the specimen.
+    touch_context=browser.new_context(
+        viewport={"width":420,"height":840},device_scale_factor=1,
+        is_mobile=True,has_touch=True)
+    touch_page=touch_context.new_page()
+    touch_page.goto(ROOT,wait_until="networkidle",timeout=60000)
+    touch_stage=touch_page.locator(".lek-anatomy-stage")
+    touch_stage.wait_for()
+    touch_page.get_by_role("button",name="Весь организм").click()
+    touch_page.wait_for_timeout(600)
+    touch_zoom=touch_page.locator(".lek-anatomy-zoom span")
+    initial_touch=int(re.search(r"(\\d+)%",touch_zoom.inner_text()).group(1))
+    box=touch_stage.bounding_box()
+    assert box and box["width"]>170 and box["height"]>130,box
+    x=box["x"]+box["width"]*.5
+    y=box["y"]+box["height"]*.48
+    cdp=touch_context.new_cdp_session(touch_page)
+    start=[{"x":x-34,"y":y,"id":1},{"x":x+34,"y":y,"id":2}]
+    end=[{"x":x-94,"y":y,"id":1},{"x":x+94,"y":y,"id":2}]
+    cdp.send("Input.dispatchTouchEvent",{"type":"touchStart","touchPoints":start})
+    for t in [0.25,0.50,0.75,1]:
+        points=[{"x":start[i]["x"]+(end[i]["x"]-start[i]["x"])*t,
+                 "y":y,"id":start[i]["id"]} for i in (0,1)]
+        cdp.send("Input.dispatchTouchEvent",{"type":"touchMove","touchPoints":points})
+        touch_page.wait_for_timeout(30)
+    cdp.send("Input.dispatchTouchEvent",{"type":"touchEnd","touchPoints":[]})
+    touch_page.wait_for_timeout(750)
+    after_touch=int(re.search(r"(\\d+)%",touch_zoom.inner_text()).group(1))
+    assert after_touch>initial_touch,(
+        "Emulated two-finger pinch must enlarge the complete body",
+        initial_touch,after_touch)
+    assert touch_page.locator("canvas.lek-anatomy-semantic-canvas").count()==1
+    touch_page.screenshot(path=str(OUT/"mobile-pinch-zoom.png"))
+    print("PASS: Chromium emulated two-finger pinch; physical tablet FPS NOT measured")
+    touch_context.close()
     browser.close()
 print("REAL CHROMIUM epidermis interactive test PASS")
