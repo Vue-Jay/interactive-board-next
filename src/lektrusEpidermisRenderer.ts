@@ -203,7 +203,9 @@ export function drawEpidermisAtlas(
       const jx=(hash(k,j,13)-.5)*grid*.18;
       const jy=(hash(k,j,17)-.5)*grid*.18;
       const cx=x+jx,cy=y+jy;
-      const rr=.0092+.0012*hash(k,j,19);
+      // Radius follows the adaptive LOD spacing. Formerly skipped cells
+      // stayed tiny and turned the histology into isolated dark dots.
+      const rr=Math.min(.023,step*(.45+.035*hash(k,j,19)));
       // Tissue surface runs along Y. Cornified squames and granular
       // keratinocytes are attenuated in radial X and extended in Y,
       // NOT flattened along the perpendicular axis.
@@ -251,17 +253,17 @@ export function drawEpidermisAtlas(
     // Real epithelium is a *compact sheet* of closely apposed cells.
     // Fill delicate cytoplasm shapes underneath their own borders,
     // instead of leaving tiny isolated dark dots on a flat purple band.
-    ctx.globalAlpha=.58*microFade;
+    ctx.globalAlpha=.78*microFade;
     ctx.fillStyle=isCorneum?"#f4dac8":isGranular?"#c39db2":
      isBasal?"#bc8caa":"#e8c0ca";
     ctx.fill(outlines);
-    ctx.globalAlpha=.72*microFade;
+    ctx.globalAlpha=.88*microFade;
     ctx.strokeStyle=isCorneum?"#c29c9b":isGranular?"#77577d":
      isBasal?"#805577":"#b189a5";
-    ctx.lineWidth=.0015;
+    ctx.lineWidth=.0024;
     ctx.stroke(outlines);
     if(!isCorneum){
-     ctx.globalAlpha=.74*microFade;ctx.fillStyle="#71496e";ctx.fill(nuclei);
+     ctx.globalAlpha=.91*microFade;ctx.fillStyle="#71496e";ctx.fill(nuclei);
     }
     if(isGranular){
      ctx.globalAlpha=.8*microFade;ctx.fillStyle="#694567";ctx.fill(specks);
