@@ -55,13 +55,47 @@ const preview=applyEditorOps(second,diff);
 assert.deepEqual(preview.schoolDiagram.contourMarks.map(m=>m.id),["one","three","two"]);
 assert.equal(preview.schoolDiagram.paintedCountries.KZ,"#cccccc");
 
-// Undoing a local stroke must preserve a later remote marker.
-const actionBefore={marks:[{id:"old",lon:1,lat:2}],strokes:[],fills:{}};
-const actionAfter={marks:[...actionBefore.marks,{id:"mine",lon:3,lat:4}],strokes:[],fills:{}};
-const withPeer={marks:[...actionAfter.marks,{id:"peer",lon:5,lat:6}],strokes:[],fills:{}};
+// Contour Undo uses the real AtlasDocument field names. An old wrapper
+// named marks/strokes/fills reverted entire arrays and deleted peer edits.
+const actionBefore={contourMarks:[{id:"old",lon:1,lat:2,text:"old"}],
+ contourStrokes:[],paintedCountries:{RU:"#aaaaaa"}};
+const actionAfter={...actionBefore,contourMarks:[
+ ...actionBefore.contourMarks,{id:"mine",lon:3,lat:4,text:"mine"}]};
+const withPeer={...actionAfter,contourMarks:[
+ ...actionAfter.contourMarks,{id:"peer",lon:5,lat:6,text:"peer"}],
+ paintedCountries:{RU:"#aaaaaa",KZ:"#bbbbbb"}};
 const undone=mergeEditedValue(actionAfter,actionBefore,withPeer);
-assert.deepEqual(undone.marks.map(mark=>mark.id),["old","peer"],
- "undo reverts only the user's action, leaving remote work intact");
+assert.deepEqual(undone.contourMarks.map(mark=>mark.id),["old","peer"],
+ "undo removes only the locally added mark, leaving a newer peer mark intact");
+assert.equal(undone.paintedCountries.KZ,"#bbbbbb","peer fill is not reverted");
+
+// Undo a local stroke erasure while a remote student draws another stroke.
+const savedStroke={id:"saved",points:[[0,0],[1,1]],color:"#123456"};
+const myStroke={id:"mine",points:[[2,2],[3,3]],color:"#111111"};
+const peerStroke={id:"peer",points:[[4,4],[5,5]],color:"#222222"};
+const eraseBefore={contourMarks:[],contourStrokes:[savedStroke,myStroke],
+ paintedCountries:{}};
+const eraseAfter={...eraseBefore,contourStrokes:[savedStroke]};
+const remoteStrokes={...eraseAfter,contourStrokes:[savedStroke,peerStroke]};
+const undoErasure=mergeEditedValue(eraseAfter,eraseBefore,remoteStrokes);
+assert.deepEqual(new Set(undoErasure.contourStrokes.map(s=>s.id)),
+ new Set(["saved","mine","peer"]),"undo restores erased stroke without wiping peer stroke");
+
+// Remote changes to another property of the same mark survive a local undo.
+const moveBefore={contourMarks:[{id:"one",lon:1,lat:2,text:"old"}]};
+const moveAfter={contourMarks:[{id:"one",lon:10,lat:2,text:"old"}]};
+const remoteLabel={contourMarks:[{id:"one",lon:10,lat:2,text:"updated by peer"}]};
+const undoMove=mergeEditedValue(moveAfter,moveBefore,remoteLabel);
+assert.equal(undoMove.contourMarks[0].lon,1);
+assert.equal(undoMove.contourMarks[0].text,"updated by peer");
+
+// Independent fill changes rebase by country, not by whole map snapshots.
+const paintBefore={paintedCountries:{RU:"#aaaaaa"}};
+const paintAfter={paintedCountries:{RU:"#222222"}};
+const peerPaint={paintedCountries:{RU:"#222222",KZ:"#bbbbbb"}};
+assert.deepEqual(mergeEditedValue(paintAfter,paintBefore,peerPaint),{
+ paintedCountries:{RU:"#aaaaaa",KZ:"#bbbbbb"}
+});
 
 const editMarker={schoolDiagram:{...atlas.schoolDiagram,
  contourMarks:[{...atlas.schoolDiagram.contourMarks[0],lon:20}]}};
@@ -80,6 +114,12 @@ const ws=read("src/boardWorkSync.ts");
 const atlasMap=read("src/LektrusMapAtlas.tsx");
 assert.match(atlasMap,/mergeEditedValue\(after,last.before,currentContour\(\)\)/,
  "contour undo rebases its inverse on the latest shared markings");
+assert.match(atlasMap,/contourMarks:typeof contourMarks;contourStrokes:typeof contourStrokes/,
+ "undo wrapper must preserve canonical ID-collection names");
+assert.match(atlasMap,/contourMarks:restored\.contourMarks/,
+ "undo publishes the ID-preserving merged contour marks");
+assert.match(atlasMap,/contourStrokes:restored\.contourStrokes/,
+ "undo publishes the ID-preserving merged contour strokes");
 for(const [path,body] of [["src/App.tsx",app],["src/LektrusSchoolDiagramEditor.tsx",school],["src/boardWorkSync.ts",ws]]){
  const parsed=ts.createSourceFile(path,body,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  assert.equal(parsed.parseDiagnostics.length,0,path+" parses as TSX");
