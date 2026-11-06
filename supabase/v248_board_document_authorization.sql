@@ -263,6 +263,33 @@ begin
  if tg_op='UPDATE' and new.board_id is distinct from old.board_id then
   raise exception 'Board ID is immutable' using errcode='42501';
  end if;
+ -- A pupil can legitimately edit view/preview and their own text. Those fields
+ -- still need structural/size validation: otherwise one direct RPC call could
+ -- make an entire classboard unreadable or flood Realtime with large payloads.
+ if jsonb_typeof(new.document)<>'object' or
+    new.document->'version' is distinct from '1'::jsonb or
+    jsonb_typeof(new.document->'items')<>'array' or
+    jsonb_typeof(new.document->'title')<>'string' or
+    length(new.document->>'title')>10000 or
+    (new.document ? 'subject' and
+      (jsonb_typeof(new.document->'subject')<>'string' or
+       length(new.document->>'subject')>80)) or
+    jsonb_typeof(new.document->'view')<>'object' or
+    jsonb_typeof(new.document#>'{view,x}')<>'number' or
+    jsonb_typeof(new.document#>'{view,y}')<>'number' or
+    jsonb_typeof(new.document#>'{view,zoom}')<>'number' or
+    (new.document ? 'preview' and
+      (jsonb_typeof(new.document->'preview')<>'string' or
+       length(new.document->>'preview')>6000000)) or
+    pg_column_size(new.document)>24*1024*1024 then
+  raise exception 'Malformed or oversized board document' using errcode='22023';
+ end if;
+ if abs((new.document#>>'{view,x}')::numeric)>=1000000000 or
+    abs((new.document#>>'{view,y}')::numeric)>=1000000000 or
+    (new.document#>>'{view,zoom}')::numeric<0.1 or
+    (new.document#>>'{view,zoom}')::numeric>8 then
+  raise exception 'Invalid board viewport' using errcode='22023';
+ end if;
  v_access:=public.get_my_account_access();
  if not public.can_edit_board(new.board_id) and
     not coalesce((v_access->>'is_admin')::boolean,false) then
