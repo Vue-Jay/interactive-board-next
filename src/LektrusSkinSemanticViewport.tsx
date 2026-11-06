@@ -16,7 +16,9 @@ import type {AnatomyCamera} from "./lektrusHumanAnatomyModel";
 import {anatomyBodyFit} from "./lektrusAnatomySemanticZoom";
 import {skinVisibleWorldBounds} from "./lektrusSkinSurfaceField";
 import {skinSectionContours,skinUpperArmReferenceContours,skinCutawayBlend,
- drawSkinSectionBands,drawSkinBodyContour,type SkinSectionContour} from "./lektrusSkinVectorSections";
+ drawSkinSectionBands,type SkinSectionContour} from "./lektrusSkinVectorSections";
+import {buildSkinSilhouettePaths,drawSkinSilhouettePaths,
+ type SkinSilhouettePaths} from "./lektrusSkinSilhouetteOutline";
 
 export type EpidermisHitTest=(point:EpidermisPoint,pixelsPerWorld:number)=>EpidermisId|null;
 type Props={camera:AnatomyCamera;selectedEpidermis?:EpidermisId|null;
@@ -62,6 +64,7 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
   let contours:SkinSectionContour[]=[];
   let thinContours:SkinSectionContour[]=[];
   let neutralBody:HTMLCanvasElement|null=null;
+  let bodyOutline:SkinSilhouettePaths=[];
   let width=0,height=0;
   const requestDraw=()=>{
    if(active&&!frame)frame=requestAnimationFrame(draw);
@@ -78,6 +81,7 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    const alpha=new Uint8ClampedArray(RASTER_WIDTH*RASTER_HEIGHT);
    for(let i=0;i<alpha.length;i++)alpha[i]=rgba[i*4+3];
    contours=skinSectionContours(alpha,RASTER_WIDTH,RASTER_HEIGHT);
+   bodyOutline=buildSkinSilhouettePaths(alpha,RASTER_WIDTH,RASTER_HEIGHT,ATLAS_FACTOR);
    thinContours=skinUpperArmReferenceContours(contours);
    // Keep only the supplied silhouette geometry, not its rendered
    // muscular/shaded mannequin. Source-in preserves every antialiased
@@ -164,7 +168,7 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
     // neutral center: only the registered educational edge is overlaid.
     ctx.drawImage(neutralBody??body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
     const visibleOutline=skinVisibleWorldBounds(cam,w,h,1.25);
-    drawSkinBodyContour(ctx,contours,visibleOutline,
+    drawSkinSilhouettePaths(ctx,bodyOutline,visibleOutline,
      fit.pixelPerWorld*cam.scale);
     const cutawayAlpha=skinCutawayBlend(cam.scale);
     if(contours.length&&cutawayAlpha>0){
