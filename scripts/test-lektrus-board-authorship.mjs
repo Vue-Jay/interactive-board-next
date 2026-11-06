@@ -56,9 +56,8 @@ assert.equal(stamped[2].createdBy,"student-A","Cloning transfers creator to stud
 assert.equal(stamped[3].createdBy,"student-A","Ink gets creator automatically");
 assert.equal(teacher.createdBy,"teacher-A","Original item is immutable");
 
-// Pen and marker strokes are not lockable, even if old board JSON or a
-// malicious editor payload contains a legacy locked flag. Ownership still
-// protects against removing another participant's marks.
+// Pen/marker ink belongs to the shared drawing layer. It cannot be locked;
+// even legacy locked strokes remain erasable by every editor.
 assert.equal(isLockableBoardItem({kind:"pen"}),false);
 assert.equal(isLockableBoardItem({kind:"marker"}),false);
 assert.equal(isLockableBoardItem({kind:"shape"}),true);
@@ -76,10 +75,16 @@ assert.ok(sanitized.every(x=>x.locked!==true),
  "Existing and newly created ink is always unlocked");
 assert.ok(sanitized.every(x=>x.createdBy==="student-A"),
  "Removing ink lock must not discard creator provenance");
-assert.equal(canRemoveBoardItem({...invalidLockedPen,locked:undefined},
- "teacher-A",true),false,"Authorship still protects foreign strokes independently of lock");
-assert.equal(canRemoveBoardItem(invalidLockedPen,"student-A",true),true,
- "Obsolete locked=true flag cannot prevent erasing an owned stroke");
+for(const inkItem of [invalidLockedPen,invalidLockedMarker]){
+ for(const actor of ["student-A","other-student","guest-123"])
+  assert.equal(canRemoveBoardItem(inkItem,actor,true),true,
+   "All editors may erase pen/marker ink, even from someone else");
+}
+assert.equal(canRemoveBoardItem({...task,locked:true},"student-A",true,true),true,
+ "The real board owner can delete a locked assignment");
+assert.deepEqual(blockedBoardItemRemovals([invalidLockedPen,teacher],[],
+ "student-A",true).map(x=>x.id),["teacher"],
+ "Only protected ordinary objects block student deletion");
 
 const ink={};
 new Function("exports","require",compile("src/inkEraser.ts"))(
@@ -94,14 +99,15 @@ const legacyInk=stroke("legacy-stroke",undefined,0);
 const canvas=[teacherInk,studentInk,legacyInk];
 const result=ink.eraseInkAlongPath(canvas,[{x:50,y:0}],7,
  stroke=>canRemoveBoardItem(stroke,"student-A",true));
-assert.equal(result.find(x=>x.id==="teacher-stroke"),teacherInk,
- "Pupil cannot erase teacher stroke although stroke itself has no lock");
-assert.equal(result.find(x=>x.id==="legacy-stroke"),legacyInk,
- "Pupil cannot erase unattributed older ink");
-assert.equal(result.some(x=>x.id==="student-stroke"),false,
- "Student stroke was cut at the brush intersection");
-assert.ok(result.some(x=>x.createdBy==="student-A"&&x.kind==="pen"),
- "Stroke fragments retain the original creator");
+assert.ok(!result.some(x=>canvas.some(original=>original.id===x.id)),
+ "Shared eraser cuts teacher, student and unattributed strokes together");
+for(const author of ["teacher-A","student-A",undefined])
+ assert.ok(result.some(x=>x.createdBy===author&&x.kind==="pen"),
+  "Eraser fragments preserve origin author: "+author);
+const lockedPeerInk={...teacherInk,id:"locked-peer",locked:true};
+const fragments=ink.eraseInkAlongPath([lockedPeerInk],[{x:50,y:0}],7);
+assert.ok(fragments.length>0&&fragments.every(x=>x.locked===undefined),
+ "An old locked stroke must be erasable and fragments must not inherit locks");
 
 const app=read("src/App.tsx"),model=read("src/boardModel.ts");
 assert.match(model,/createdBy\?: string;/);
@@ -111,23 +117,23 @@ assert.match(app,/selected\.includes\(item\.id\)&&isLockableBoardItem\(item\)/,
  "Selection lock action skips ink even in mixed selections");
 assert.match(app,/ids\.has\(candidate\.id\)&&isLockableBoardItem\(candidate\)/,
  "Layers-panel lock action skips ink");
-assert.match(app,/disabled=\{!family\.some\(isLockableBoardItem\)\}/,
- "Layer lock control disabled for ink-only layer");
-assert.match(app,/!selectedItems\.some\(isLockableBoardItem\)/,
- "Selection lock controls disabled for ink-only selections");
+assert.match(app,/\{family\.some\(isLockableBoardItem\)&&<button/,
+ "Layer lock command is not shown for ink-only layer");
+assert.match(app,/\{selectedItems\.some\(isLockableBoardItem\)&&<button/,
+ "Selection lock command is hidden for ink-only selections");
 assert.match(model,/typeof i\.createdBy === "string"/,"Serialized item keeps author");
 assert.match(model,/if \(i\.createdBy != null &&/,"Malformed authors are rejected");
 assert.match(app,/blockedBoardItemRemovals\(current,next,authUser\.id,isStudent/,
  "Every commit guards deletions, not just Delete key");
 assert.match(app,/stampNewBoardItemAuthors\(current,syncBoundConnectors\(next\),authUser\.id\)/,
  "Commit stamps objects in one place");
-assert.match(app,/canRemoveBoardItem\(item,authUser\.id,true/,
- "Eraser uses the shared ink policy before cutting it");
+assert.match(app,/item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\)/,
+ "Eraser applies shared-ink policy, not ownership restriction");
 assert.match(app,/const rebased=mergeBoardItems\(/,
  "Undo and redo rebase onto the present board");
-assert.match(app,/if\(!fromRemote&&isStudent\)/,
- "Student cannot restore or import a whole old board");
+assert.match(app,/if\(!fromRemote&&isStudent&&!isBoardOwner\)/,
+ "Student cannot restore entire board; actual owner can");
 assert.match(app,/const foreignIds = new Set\(/,
  "Delete keyboard and toolbar preserve foreign selected items");
 
-console.log("Board object author persistence, student/guest deletion, eraser and undo policy: OK");
+console.log("Board owner privileges and shared un-lockable pen/marker eraser: OK");
