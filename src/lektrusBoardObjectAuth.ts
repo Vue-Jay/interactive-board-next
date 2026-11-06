@@ -1,4 +1,4 @@
-import type {Item} from "./boardModel";
+import {isInkItem,type Item} from "./boardModel";
 import {STUDENT_PROTECTED_OBJECT_KINDS} from "./lektrusBoardRolePreview";
 
 /**
@@ -14,11 +14,16 @@ export function stampNewBoardItemAuthors(
  return after.map(candidate=>{
   const item=withoutInkLock(candidate);
   const existing=originals.get(item.id);
-  if(existing){
-   return item.createdBy===existing.createdBy?item:
-    {...item,createdBy:existing.createdBy};
+  const author=existing?existing.createdBy:actorId;
+  // Pen and marker strokes are never lockable, including imported legacy ink.
+  if(isInkItem(item)){
+   const {locked:_ignored,...stroke}=item;
+   return stroke.createdBy===author?stroke:{...stroke,createdBy:author};
   }
-  return {...item,createdBy:actorId};
+  if(existing){
+   return item.createdBy===author?item:{...item,createdBy:author};
+  }
+  return {...item,createdBy:author};
  });
 }
 
@@ -34,13 +39,15 @@ export function withoutInkLock<T extends Item>(item:T):T{
  return unlocked as T;
 }
 
-/** Ownership only limits destructive actions: moving and resizing unlocked
- * teacher objects remain available to students under the existing role policy.
- * Missing legacy authorship fails closed for student deletes.
+/** Ink is shared and never lockable. All editors, including pupils and guests,
+ * may erase any pen or marker stroke, regardless of its original author.
+ * For ordinary objects the author's identity still guards student deletion.
+ * The actual board owner is always allowed to remove any object.
  */
 export function canRemoveBoardItem(
- item:Item,actorId:string,isStudent:boolean
+ item:Item,actorId:string,isStudent:boolean,isBoardOwner=false
 ):boolean{
+ if(isBoardOwner||isInkItem(item))return true;
  if(!isStudent)return true;
  return !!actorId&&item.createdBy===actorId&&!item.locked&&
   !(STUDENT_PROTECTED_OBJECT_KINDS as readonly string[]).includes(item.kind);
@@ -51,10 +58,11 @@ export function canRemoveBoardItem(
  * editors may remove items without calling deleteSelected().
  */
 export function blockedBoardItemRemovals(
- before:readonly Item[],after:readonly Item[],actorId:string,isStudent:boolean
+ before:readonly Item[],after:readonly Item[],actorId:string,
+ isStudent:boolean,isBoardOwner=false
 ):Item[]{
- if(!isStudent)return [];
+ if(!isStudent||isBoardOwner)return [];
  const retained=new Set(after.map(item=>item.id));
  return before.filter(item=>!retained.has(item.id)&&
-  !canRemoveBoardItem(item,actorId,true));
+  !canRemoveBoardItem(item,actorId,true,isBoardOwner));
 }
