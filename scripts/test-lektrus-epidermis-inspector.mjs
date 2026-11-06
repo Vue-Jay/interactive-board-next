@@ -197,6 +197,11 @@ try{
  assert.equal(invalid.cells,0,
   "Never invent thin-skin cell maps on anatomically unregistered body areas");
 }finally{globalThis.Path2D=previous;}
+const savedPath2D=globalThis.Path2D;
+globalThis.Path2D=class{
+ moveTo(){}lineTo(){}closePath(){}ellipse(){}
+};
+try{
 const thickRender=load("src/lektrusThickEpidermisRenderer.ts",{
  "./lektrusThickEpidermis":thick,
  "./lektrusEpidermisAtlas":atlas
@@ -211,6 +216,7 @@ assert.ok(modeled.cells>0);
 assert.equal(thickRender.drawThickEpidermisSample(
  fakeCtx,null,220,{minX:301,maxX:315,minY:340,maxY:344},
  null,true,215).bands,0);
+}finally{globalThis.Path2D=savedPath2D;}
 const viewport=source("src/LektrusSkinSemanticViewport.tsx");
 const human=source("src/LektrusHumanAnatomy.tsx");
 assert.match(viewport,/drawEpidermisAtlas\(/);
