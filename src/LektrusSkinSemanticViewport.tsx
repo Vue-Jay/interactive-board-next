@@ -19,6 +19,7 @@ import {skinSectionContours,skinUpperArmReferenceContours,skinCutawayBlend,
 
 export type EpidermisHitTest=(point:EpidermisPoint,pixelsPerWorld:number)=>EpidermisId|null;
 type Props={camera:AnatomyCamera;selectedEpidermis?:EpidermisId|null;
+ selectedPoint?:EpidermisPoint|null;
  thickKind?:ThickSkinKind|null;
  hitTestRef?:{current:EpidermisHitTest|null};
  anchorRef?:{current:EpidermisPoint|null};
@@ -29,10 +30,11 @@ const RASTER_WIDTH=WORLD_WIDTH*ATLAS_FACTOR;
 const RASTER_HEIGHT=WORLD_HEIGHT*ATLAS_FACTOR;
 
 export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=null,
- thickKind=null,hitTestRef,anchorRef,thickAnchorsRef}:Props){
+ selectedPoint=null,thickKind=null,hitTestRef,anchorRef,thickAnchorsRef}:Props){
  const canvasRef=useRef<HTMLCanvasElement>(null);
  const cameraRef=useRef(camera);
  const selectionRef=useRef<EpidermisId|null>(selectedEpidermis);
+ const selectionPointRef=useRef<EpidermisPoint|null>(selectedPoint);
  const thickKindRef=useRef<ThickSkinKind|null>(thickKind);
  const thickSitesRef=useRef<Record<ThickSkinKind,ThickSkinSample|null>>({
   palm:null,sole:null
@@ -87,15 +89,16 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    };
    if(hitTestRef)hitTestRef.current=(point,ppu)=>{
     // The pointer may select only a section actually DRAWN at this zoom.
-    if(cameraRef.current.scale<15||skinCutawayBlend(cameraRef.current.scale)<.1)
+    if(cameraRef.current.scale<20||skinCutawayBlend(cameraRef.current.scale)<.1)
      return null;
     const thick=thickKindRef.current?
      thickSitesRef.current[thickKindRef.current]:null;
-    if(thick&&Math.abs(point.y-thick.anchor.y)<=9.4){
+    if(thick&&Math.abs(point.y-thick.anchor.y)<=8.5){
      const picked=pickEpidermisAt([thick.contour],point,ppu,thick);
      if(picked)return picked;
     }
-    return pickEpidermisAt(thinContours,point,ppu);
+    return pickEpidermisAt(thinContours,point,ppu,null,
+     refined&&cameraRef.current.scale>=218);
    };
    // Register an actual epithelial contour point, not the approximate
    // shoulder centre: zooming the centre at 360× hid the epidermis entirely.
@@ -151,7 +154,8 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
      // long main-thread raster work; no synthetic noisy dermis at this stage.
      if(cam.scale>11){
       drawEpidermisAtlas(ctx,thinContours,cam.scale,visible,
-       selectionRef.current,refined,fit.pixelPerWorld*cam.scale);
+       selectionRef.current,refined,fit.pixelPerWorld*cam.scale,
+       selectionPointRef.current);
       const thick=thickKindRef.current?
        thickSitesRef.current[thickKindRef.current]:null;
       if(thick)drawThickEpidermisSample(ctx,thick,cam.scale,visible,
@@ -199,6 +203,7 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
  },[]);
  useEffect(()=>{cameraRef.current=camera;drawRef.current();},[camera]);
  useEffect(()=>{selectionRef.current=selectedEpidermis;drawRef.current();},[selectedEpidermis]);
+ useEffect(()=>{selectionPointRef.current=selectedPoint;drawRef.current();},[selectedPoint]);
  useEffect(()=>{thickKindRef.current=thickKind;drawRef.current();},[thickKind]);
  return <canvas ref={canvasRef} className="lek-anatomy-semantic-canvas"
   role="img" aria-label="Интерактивный виртуальный разрез кожи: четыре слоя тонкой или пять слоёв толстой кожи, в том числе блестящий; нажатие открывает описание. Это не микрофотография"/>;
