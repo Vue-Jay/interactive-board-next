@@ -57,6 +57,16 @@ assert.ok(stripes.every(({p})=>Number.isFinite(p.x)&&Number.isFinite(p.y)));
 // An intentionally magnified tissue strip cannot substitute for intact
 // fingers or toes. Narrow runs have zero side-section depth, wide runs
 // preserve the same deep-zoom anatomy without sharp seams.
+assert.equal(vector.skinDistalOutlineProtected({x:312,y:342}),true,
+ "The palm must not receive a default whole-body wall slice");
+assert.equal(vector.skinDistalOutlineProtected({x:241,y:581}),true,
+ "The sole must not receive a default whole-body wall slice");
+assert.equal(vector.skinDistalOutlineProtected({x:48,y:345}),true,
+ "Both hands protect all their fingers");
+assert.equal(vector.skinDistalOutlineProtected({x:180,y:341}),false,
+ "Torso still exposes a teaching flank");
+assert.equal(vector.skinDistalOutlineProtected({x:256,y:182}),false,
+ "The source-anchored thin-skin shoulder remains investigable");
 assert.equal(vector.skinCutawayDepthForSpan(4.4),0,
  "Thin finger must have no false colored lateral bands at any zoom");
 assert.equal(vector.skinCutawayDepthForSpan(7),0);
@@ -94,6 +104,10 @@ assert.match(viewport,/const cutawayAlpha=skinCutawayBlend\(cam\.scale\)/);
 assert.match(viewport,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
 assert.match(viewport,/ctx\.drawImage\(neutralPlate,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/,
  "A complete neutral silhouette must remain below every side cutaway");
+assert.match(viewport,/clipSkinOutsideDistalOutlines\(ctx\)/,
+ "The default section must not cover the protected distal silhouette");
+assert.match(viewport,/skinDistalOutlineProtected\(point\)/,
+ "Hit geometry must exclude the same hidden tissue");
 assert.match(viewport,/neutralPlate=source/,
  "Neutral alpha plate must be built from the SAME source geometry");
 assert.doesNotMatch(viewport,/globalAlpha=1-cutawayAlpha/,
