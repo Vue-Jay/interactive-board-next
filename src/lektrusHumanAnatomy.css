@@ -441,3 +441,31 @@
 @media (max-width:480px){
  .lek-anatomy-epidermis-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+/* Five-layer virtual glabrous specimens are separate from the frontal
+ * silhouette, not falsely classified dorsal fingers or foot tops. */
+.lek-anatomy-skin-sample-switch{
+ display:grid;grid-template-columns:minmax(0,1fr);gap:5px;
+}
+.lek-anatomy-epidermis-inspector .lek-anatomy-skin-sample-switch button{
+ display:block;width:100%;min-height:36px;text-align:left;
+ padding:7px 9px;border-radius:7px;border:1px solid #c7d8cc;
+ background:#fff;color:#365c49;font-size:11px;line-height:1.35;
+ font-weight:700;cursor:pointer;
+}
+.lek-anatomy-epidermis-inspector .lek-anatomy-skin-sample-switch
+ button[aria-pressed="true"]{
+ background:#e6f2e9!important;border-color:#467a5b!important;
+ color:#214b37!important;
+}
+.lek-anatomy-thick-skin-note{
+ border-left:3px solid #94b5a3;background:#edf4ef;
+ border-radius:5px;padding:7px 9px;font-size:10px!important;
+ line-height:1.53!important;color:#426052!important;
+ margin:0!important;
+}
+.lek-anatomy-epi-swatch.is-lucidum{background:#f8e5dc}
+@media(min-width:1200px){
+ .lek-anatomy-skin-sample-switch{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .lek-anatomy-skin-sample-switch button:first-child{grid-column:1/-1}
+}
