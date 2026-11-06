@@ -449,6 +449,8 @@ export type SubjectBoardEntry={
 };
 export type Item = {
   id: string;
+  /** Creator identity on this board. Missing on historical items; never infer it. */
+  createdBy?: string;
   kind: "sticky" | "text" | "shape" | "pen" | "marker" | "image" | "pdf" | "frame" | "connector" | "comment" | "table" | "formula" | "graph" | "fraction" | "checklist" | "quiz" | "flashcard" | "cover" | "linkmedia" | "instrument";
   x: number;
   y: number;
@@ -663,6 +665,7 @@ export function parseDocument(raw: string): DocumentData {
   for (const i of d.items) {
     if (!point(i) || typeof i.id !== "string" || ids.has(i.id) || !allowedKinds.includes(i.kind) || !finite(i.width) || i.width <= 0 || !finite(i.height) || i.height <= 0 || typeof i.text !== "string") throw new Error("Повреждён объект доски");
     ids.add(i.id);
+    if (i.createdBy != null && (typeof i.createdBy !== "string" || i.createdBy.length < 1 || i.createdBy.length > 128)) throw new Error("Повреждено авторство объекта");
     if (i.kind === "shape" && i.shapeType != null && !shapes.includes(i.shapeType)) throw new Error("Неизвестная фигура");
     if (i.kind === "instrument" && (
       typeof i.instrumentType !== "string" ||
@@ -1355,6 +1358,7 @@ export function parseDocument(raw: string): DocumentData {
     backgroundShared:d.backgroundShared!==false,
     items: d.items.map((i: Item) => ({
       id: i.id,
+      ...(typeof i.createdBy === "string" && i.createdBy.length > 0 && i.createdBy.length <= 128 ? { createdBy: i.createdBy } : {}),
       kind: i.kind,
       x: i.x,
       y: i.y,
