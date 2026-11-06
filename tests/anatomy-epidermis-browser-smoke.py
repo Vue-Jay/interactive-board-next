@@ -62,7 +62,7 @@ with sync_playwright() as p:
     page.wait_for_timeout(300)
     stage=page.locator(".lek-anatomy-stage")
     zoom_label=page.locator(".lek-anatomy-zoom span")
-    zoom_number=lambda: int(re.search(r"(\\d+)%",zoom_label.inner_text()).group(1))
+    zoom_number=lambda: int(re.search(r"(\d+)%",zoom_label.inner_text()).group(1))
     before=zoom_number()
     location=stage.bounding_box()
     assert location
@@ -90,7 +90,7 @@ with sync_playwright() as p:
     touch_page.get_by_role("button",name="Весь организм").click()
     touch_page.wait_for_timeout(600)
     touch_zoom=touch_page.locator(".lek-anatomy-zoom span")
-    initial_touch=int(re.search(r"(\\d+)%",touch_zoom.inner_text()).group(1))
+    initial_touch=int(re.search(r"(\d+)%",touch_zoom.inner_text()).group(1))
     box=touch_stage.bounding_box()
     assert box and box["width"]>170 and box["height"]>130,box
     x=box["x"]+box["width"]*.5
@@ -106,7 +106,7 @@ with sync_playwright() as p:
         touch_page.wait_for_timeout(30)
     cdp.send("Input.dispatchTouchEvent",{"type":"touchEnd","touchPoints":[]})
     touch_page.wait_for_timeout(750)
-    after_touch=int(re.search(r"(\\d+)%",touch_zoom.inner_text()).group(1))
+    after_touch=int(re.search(r"(\d+)%",touch_zoom.inner_text()).group(1))
     assert after_touch>initial_touch,(
         "Emulated two-finger pinch must enlarge the complete body",
         initial_touch,after_touch)
