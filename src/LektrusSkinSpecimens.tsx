@@ -5,8 +5,9 @@ import {SKIN_REFERENCE_SPECIMENS,SKIN_CALIBRATED_EXTERNAL_REFERENCES,
 /** Only real histology appears in this independent evidence view. It never
  * replaces the shared body camera or masquerades as the sample at the cursor.
  */
-export default function LektrusSkinSpecimens({defaultOpen=false}:{defaultOpen?:boolean}){
- const [selectedId,setSelectedId]=useState<SkinReferenceType>("human");
+export default function LektrusSkinSpecimens({defaultOpen=false,defaultSelection="human"}:
+ {defaultOpen?:boolean;defaultSelection?:SkinReferenceType}){
+ const [selectedId,setSelectedId]=useState<SkinReferenceType>(defaultSelection);
  const item=SKIN_REFERENCE_SPECIMENS.find(sample=>sample.id===selectedId)
   ??SKIN_REFERENCE_SPECIMENS[0];
  return <details open={defaultOpen} className="lek-anatomy-source-plates">
