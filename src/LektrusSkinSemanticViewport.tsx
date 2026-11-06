@@ -8,6 +8,7 @@ import skinFallback from "./assets/bio-atlas/human-skin-original-registered.webp
 import type {AnatomyCamera} from "./lektrusHumanAnatomyModel";
 import {anatomyBodyFit} from "./lektrusAnatomySemanticZoom";
 import {skinVisibleWorldBounds} from "./lektrusSkinSurfaceField";
+import {skinVisibleImageCrop} from "./lektrusSkinFastViewport";
 import {drawSkinTissueTexture} from "./lektrusSkinTissueTexture";
 import {skinSectionContours,drawSkinSectionBands,clipSkinSection,
  type SkinSectionContour} from "./lektrusSkinVectorSections";
@@ -79,6 +80,7 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
    ctx.imageSmoothingEnabled=true;
    ctx.imageSmoothingQuality="high";
    const cam=cameraRef.current,fit=anatomyBodyFit(w,h);
+   const visible=skinVisibleWorldBounds(cam,w,h,1.6);
    ctx.save();
    ctx.translate(w/2+cam.panX,h/2+cam.panY);
    ctx.scale(fit.pixelPerWorld*cam.scale,fit.pixelPerWorld*cam.scale);
@@ -88,17 +90,26 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
     // pixellated false "microdetail". Fade it out before tissue inspection.
     const overview=Math.max(0,Math.min(1,(20-cam.scale)/12));
     if(overview>.001){
-     ctx.save();ctx.globalAlpha=.46*overview;
-     ctx.drawImage(body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
-     ctx.globalCompositeOperation="source-atop";
-     ctx.fillStyle="#dfe9e7";ctx.globalAlpha=.80*overview;
-     ctx.fillRect(0,0,WORLD_WIDTH,WORLD_HEIGHT);
-     ctx.restore();
+     // Even while transitioning from whole body to tissue, sample ONLY
+     // the part of the 1080×1800 source in the visible world rectangle.
+     // Drawing the full image at 1200–2000% can saturate mobile Canvas.
+     const crop=skinVisibleImageCrop(visible,
+      body.naturalWidth,body.naturalHeight,1.2);
+     if(crop){
+      ctx.save();ctx.globalAlpha=.46*overview;
+      ctx.drawImage(body,crop.sx,crop.sy,crop.sw,crop.sh,
+       crop.dx,crop.dy,crop.dw,crop.dh);
+      ctx.globalCompositeOperation="source-atop";
+      ctx.fillStyle="#dfe9e7";ctx.globalAlpha=.80*overview;
+      ctx.fillRect(crop.dx,crop.dy,crop.dw,crop.dh);
+      ctx.restore();
+     }
     }
     if(contours.length){
-     const visible=skinVisibleWorldBounds(cam,w,h,5);
      drawSkinSectionBands(ctx,contours,visible);
-     if(cam.scale>2.5){
+     // Only refine a low/medium-zoom *illustrative* tone when the camera
+     // stops. Never run 170k pixel shaders at 4152%, 12000%, 36000%.
+     if(refined&&cam.scale>2.5&&cam.scale<14){
       ctx.save();
       const clipped=clipSkinSection(ctx,contours,visible);
       if(clipped){
@@ -107,7 +118,7 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
        // microscopic anatomy. Only an explicitly *illustrative* soft tissue
        // tone is drawn. Real evidence remains in the specimen panel.
        // Never perform a pixel-sampling pass during animated zoom/pan.
-       if(refined)drawSkinTissueTexture(ctx,contours,cam.scale,visible);
+       drawSkinTissueTexture(ctx,contours,cam.scale,visible);
       }
       ctx.restore();
      }
@@ -115,7 +126,14 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
    }
    ctx.restore();
   };
-  drawRef.current=refineAfterMotion;
+  drawRef.current=()=>{
+   if(cameraRef.current.scale<14){refineAfterMotion();return;}
+   // Deep zoom has only native-resolution vector layers. Do not schedule
+   // an expensive idle refinement or extra RAF after every camera change.
+   refined=false;
+   if(idleTimer!==undefined){clearTimeout(idleTimer);idleTimer=undefined;}
+   requestDraw();
+  };
   const onLoaded=()=>{
    if(!active)return;
    ready=true;
