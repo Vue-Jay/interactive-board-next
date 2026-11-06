@@ -41,6 +41,19 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
  const [displayCamera,setDisplayCamera]=useState<AnatomyCamera>(ANATOMY_INITIAL_CAMERA);
  const displayed=useRef<AnatomyCamera>(ANATOMY_INITIAL_CAMERA);
  const [epidermisSelection,setEpidermisSelection]=useState<EpidermisId|null>(null);
+ const epidermisCardRef=useRef<HTMLDivElement>(null);
+ useEffect(()=>{
+  if(!epidermisSelection||system!=="integumentary")return;
+  const frame=requestAnimationFrame(()=>{
+   // When selecting a thin layer on the CANVAS the right panel may be
+   // scrolled above it. Bring the explanation into view immediately.
+   epidermisCardRef.current?.scrollIntoView({
+    block:"nearest",behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?
+     "instant":"smooth"
+   });
+  });
+  return ()=>cancelAnimationFrame(frame);
+ },[epidermisSelection,system]);
  const epidermisHit=useRef<EpidermisHitTest|null>(null);
  const epidermisAnchor=useRef<Point|null>(null);
  const tapStarts=useRef(new Map<number,Point>());
@@ -294,6 +307,20 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
        выберите структуру ниже. Микростроение подробно показано
        для зарегистрированного участка правого плеча.</p>
      </div>
+     {epidermisSelection?
+      <div ref={epidermisCardRef} className="lek-anatomy-epidermis-card" role="status" aria-live="polite">
+       <strong>{EPIDERMIS_RECORDS[epidermisSelection].name}</strong>
+       <em>{EPIDERMIS_RECORDS[epidermisSelection].latin}</em>
+       <p>{EPIDERMIS_RECORDS[epidermisSelection].summary}</p>
+       <p><b>Функция:</b> {EPIDERMIS_RECORDS[epidermisSelection].function}</p>
+       <p><b>Под микроскопом:</b> {EPIDERMIS_RECORDS[epidermisSelection].microAppearance}</p>
+       <a href={EPIDERMIS_RECORDS[epidermisSelection].source}
+        target="_blank" rel="noopener noreferrer">
+        Научный источник</a>
+      </div>:
+      <p className="lek-anatomy-epidermis-prompt">
+       Выберите слой, чтобы увидеть его строение и функции.
+      </p>}
      <div className="lek-anatomy-epidermis-actions">
       <button type="button" onClick={()=>focusEpidermis()}>
        К слоям плеча</button>
@@ -320,20 +347,6 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
         {EPIDERMIS_RECORDS[id].name}
        </button>)}
      </div>
-     {epidermisSelection?
-      <div className="lek-anatomy-epidermis-card" role="status" aria-live="polite">
-       <strong>{EPIDERMIS_RECORDS[epidermisSelection].name}</strong>
-       <em>{EPIDERMIS_RECORDS[epidermisSelection].latin}</em>
-       <p>{EPIDERMIS_RECORDS[epidermisSelection].summary}</p>
-       <p><b>Функция:</b> {EPIDERMIS_RECORDS[epidermisSelection].function}</p>
-       <p><b>Под микроскопом:</b> {EPIDERMIS_RECORDS[epidermisSelection].microAppearance}</p>
-       <a href={EPIDERMIS_RECORDS[epidermisSelection].source}
-        target="_blank" rel="noopener noreferrer">
-        Научный источник</a>
-      </div>:
-      <p className="lek-anatomy-epidermis-prompt">
-       Выберите слой, чтобы увидеть его строение и функции.
-      </p>}
      <small>Авторская учебная реконструкция по Leeds, OpenStax и NCBI:
       относительная ширина разреза увеличена. Клеточные изображения
       не являются микрофотографией конкретной точки тела.</small>
