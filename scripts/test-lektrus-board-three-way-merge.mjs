@@ -45,6 +45,21 @@ assert.ok(!result.some(v=>v.id==="box"));
 // A local modification before a remote deletion is not silently lost.
 result=sync.mergeBoardItems(base,[{...base[0],x:24},...base.slice(1)],base.slice(1));
 assert.equal(result.find(v=>v.id==="box").x,24);
+// Board-level Undo and Redo are inverse three-way edits, not replacement
+// snapshots. An unrelated student's new object survives both operations.
+const owned={...item("student-own"),createdBy:"student-A"};
+const byPeer={...item("peer-later"),createdBy:"student-B"};
+const teacherItem={...item("teacher-original"),createdBy:"teacher-A"};
+const beforeUndo=[teacherItem,owned];
+const targetUndo=[teacherItem];
+const withPeer=[teacherItem,owned,byPeer];
+const undone=sync.mergeBoardItems(beforeUndo,targetUndo,withPeer);
+assert.deepEqual(undone.map(x=>x.id),["teacher-original","peer-later"],
+ "Undo removes only the local object, not a remote peer's new item");
+const redone=sync.mergeBoardItems(targetUndo,beforeUndo,undone);
+assert.deepEqual(redone.map(x=>x.id),["teacher-original","peer-later","student-own"],
+ "Redo restores the authored item while keeping peer additions");
+
 // Independent shared metadata edits are rebased too.
 const doc=(items,title="Lesson",background="#fff")=>({
  version:1,title,subject:"Химия",background,backgroundShared:true,
