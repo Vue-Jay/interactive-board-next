@@ -78,8 +78,10 @@ const ui=fs.readFileSync("src/LektrusHumanAnatomy.tsx","utf8");
 const stage=ts.createSourceFile("src/LektrusSkinSemanticViewport.tsx",
  renderer,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(stage.parseDiagnostics.length,0,"Cutaway viewport must parse");
-assert.match(renderer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/);
-assert.match(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible,/);
+assert.doesNotMatch(renderer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/,
+ "Do not rasterize thousands of unnecessary faux micro-anatomy landmarks");
+assert.doesNotMatch(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible,/,
+ "Repeated pink vascular loops were not valid human histology");
 assert.match(renderer,/drawSkinSectionBands\(ctx,contours,visible\)/);
 assert.doesNotMatch(renderer,/drawSkinMesoTiles|drawSkinSurfaceField|drawSkinMicrotiles/);
 assert.doesNotMatch(renderer,/skin-semantic-lod\.webp/);
@@ -215,7 +217,7 @@ assert.equal(vector.drawSkinSectionBands(fakeCtx,stripes,
 assert.throws(()=>vector.skinSectionContours(alpha,width,1,factor),
  /Invalid skin alpha or dimensions/);
 assert.match(renderer,/skinSectionContours\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/);
-assert.match(renderer,/SKIN_SECTION_WORLD_DEPTH\/SKIN_EDGE_WORLD_WIDTH/);
+assert.doesNotMatch(renderer,/SKIN_SECTION_WORLD_DEPTH\/SKIN_EDGE_WORLD_WIDTH/);
 console.log("Vector skin cross-section PASS: smooth paths, 3 independent regions, neutral centers, no raster zoom aliasing.");
 
 // Physically calibrated cells are a separate continuous field. The widened
@@ -280,7 +282,8 @@ assert.ok(deepEllipses.every(c=>c[3]<=.02&&c[4]<=.02),
 const outside=microDraw(360,{minX:200,maxX:220,minY:200,maxY:210});
 assert.deepEqual(outside.count,
  {collagen:0,adipocytes:0,keratinocytes:0});
-assert.match(renderer,/drawSkinMicroscopicDetails\(ctx,contours,cam.scale,visible\)/);
+assert.doesNotMatch(renderer,/drawSkinMicroscopicDetails\(ctx,contours,cam.scale,visible\)/,
+ "Never draw unverified cellular stamps inside the shared body zoom");
 assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
 console.log("Calibrated microscopy PASS: biologically scaled cells, correct zoom LOD, bounded work, deterministic world-space rendering.");
 
@@ -338,7 +341,8 @@ assert.ok(fineMax.calls.some(c=>c[0]==="ellipse"),
  "Fine spindle-shaped fibroblasts and nuclei must be drawn");
 assert.ok(fineMax.calls.filter(c=>c[0]==="arc").every(c=>c[3]<=.001),
  "Tiny keratohyalin granules must never be larger than cells");
-assert.match(renderer,/drawSkinFineStructures\(ctx,contours,cam.scale,visible\)/);
+assert.doesNotMatch(renderer,/drawSkinFineStructures\(ctx,contours,cam.scale,visible\)/,
+ "Do not draw invented granular/fibroblast patterns");
 assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
 console.log("Skin fine histology PASS: six sub-mm tiers, epidermal strata, world anchoring and mobile culling.");
 
@@ -354,7 +358,7 @@ const shader={};
 new Function("exports","require",shaderCode)(shader,id=>{
  assert.equal(id,"./lektrusSkinEvidenceModel");return evidence;
 });
-assert.ok(shader.SKIN_TISSUE_MAX_PIXELS<=200000,
+assert.ok(shader.SKIN_TISSUE_MAX_PIXELS<=44000,
  "Procedural tissue must remain affordable on tablets");
 assert.ok(shader.SKIN_TISSUE_MAX_WIDTH<=900);
 const tissueAt=(fraction,scale=200,x=11.2,y=8.3)=>
@@ -388,8 +392,8 @@ assert.ok(dermalVariations.size>=12,
  "Dermis must have organic spatial variation, not a flat diagram");
 const microlow=tissueAt(.77,20,2.1,8.1);
 const microhigh=tissueAt(.77,260,2.1,8.1);
-assert.notDeepEqual(microlow,microhigh,
- "White adipocyte vacuoles should only emerge at microscopic zoom");
+assert.deepEqual(microlow,microhigh,
+ "Illustrative tone must not invent new fat cells as zoom increases");
 assert.deepEqual(shader.skinAdiposeField(1.25,2.35),
  shader.skinAdiposeField(1.25,2.35));
 assert.equal(shader.skinTissueNoise(1.23,2.34,5),
@@ -437,7 +441,14 @@ try{
  assert.equal(putCount,2,
   "A larger camera shift must refresh the same world-anchored texture");
 }finally{globalThis.document=oldDocument;}
-assert.match(renderer,/drawSkinTissueTexture\(ctx,contours,cam.scale,visible\)/);
+assert.match(renderer,/if\(refined\)drawSkinTissueTexture\(ctx,contours,cam.scale,visible\)/);
+assert.match(renderer,/setTimeout\(\(\)=>\{/);
+assert.match(renderer,/},180\)/);
+assert.doesNotMatch(renderer,/drawSkinEdgeDetails\(ctx/);
+assert.doesNotMatch(renderer,/drawSkinMicroscopicDetails\(ctx/);
+assert.doesNotMatch(renderer,/drawSkinFineStructures\(ctx/);
+assert.doesNotMatch(shaderCode,/skinAdiposeField\(x,y\)/,
+ "Sampling must not reintroduce the artificial fat-cell honeycomb");
 assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
 console.log("Organic skin tissue PASS: layered pigment, fine collagen, fat lacunae, transparent gaps, pixel cap and world-anchored camera.");
 
