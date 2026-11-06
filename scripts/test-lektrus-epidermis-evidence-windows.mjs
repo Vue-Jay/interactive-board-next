@@ -60,7 +60,8 @@ const atlas=load("src/lektrusEpidermisAtlas.ts",{
  "./lektrusThickEpidermis":thick
 });
 const sheet=load("src/lektrusEpidermisCellSheet.ts",{
- "./lektrusEpidermisAtlas":atlas
+ "./lektrusEpidermisAtlas":atlas,
+ "./lektrusSkinEvidenceModel":evidence
 });
 const p=atlas.sectionAtY(upperArm,182);
 assert.ok(p);
