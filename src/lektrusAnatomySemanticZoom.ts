@@ -84,9 +84,9 @@ export function skinAvailableAt(p:AnatomyWorldPoint):boolean{
  * Do not claim fake capillary loops or cell glyphs are microscopic evidence. */
 export function skinDetailStage(scale:number):string{
  if(scale<1.8)return "Организм · виртуальный боковой разрез кожи";
- if(scale<6)return "Модель трёх слоёв: эпидермис, дерма, гиподерма";
- if(scale<30)return "Условная модель кожи · без изображения отдельных сосудов";
- if(scale<100)return "Слои дермы · настоящие структуры см. на микропрепаратах";
- if(scale<220)return "Условная фактура ткани · без клеточной калибровки";
- return "Глубокий цифровой разрез · сравните с реальным гистопрепаратом";
+ if(scale<11)return "Модель трёх слоёв: эпидермис, дерма, гиподерма";
+ if(scale<65)return "Эпидермис · четыре слоя тонкой волосистой кожи";
+ if(scale<155)return "Эпидермис · роговой, зернистый, шиповатый и базальный";
+ if(scale<250)return "Глубокий цифровой разрез · клеточная реконструкция плеча";
+ return "Клеточная реконструкция эпидермиса · сравните с микропрепаратом";
 }
