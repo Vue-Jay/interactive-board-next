@@ -58,6 +58,22 @@ with sync_playwright() as p:
     assert page.locator(".lek-anatomy-semantic-canvas").count()==0
     print("PASS: selecting a system hides the non-selected skin system")
     page.get_by_role("button",name="Покровная").click()
+    # The epidermis information card used to scroll every ancestor on return.
+    # That moved the whole atlas and put the details header over this button.
+    # Test its REAL hit target, not a forced click through an overlay.
+    page.screenshot(path=str(OUT/"system-return-before-reset.png"))
+    reset_target=page.evaluate("""() => {
+        const button=document.querySelector(".lek-anatomy-reset");
+        if(!button)return {clickable:false,reason:"button missing"};
+        const box=button.getBoundingClientRect();
+        const hit=document.elementFromPoint(box.x+box.width/2,box.y+box.height/2);
+        return {clickable:!!hit&&!!hit.closest(".lek-anatomy-reset"),
+                hit:hit?.className??null,buttonY:box.y,
+                sidebarScroll:document.querySelector(".lek-anatomy-details")?.scrollTop??null,
+                windowScroll:window.scrollY};
+    }""")
+    assert reset_target["clickable"],(
+        "Returning to skin must not overlay the real reset button",reset_target)
     page.get_by_role("button",name="Весь организм").click()
     page.wait_for_timeout(300)
     stage=page.locator(".lek-anatomy-stage")
