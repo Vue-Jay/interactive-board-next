@@ -5,7 +5,7 @@
  * Both sides of each separate limb remain independent, with neutral centers.
  */
 import {skinEdgeRuns} from "./lektrusSkinEdgeSections";
-import {SKIN_ILLUSTRATIVE_LAYERS} from "./lektrusSkinEvidenceModel";
+import {SKIN_ILLUSTRATIVE_LAYERS,SKIN_REFERENCE_UPPER_ARM} from "./lektrusSkinEvidenceModel";
 export const SKIN_SECTION_WORLD_DEPTH=8.4;
 export const SKIN_SECTION_NEUTRAL_FRACTION=.20;
 /** Full hands/feet remain intact at a teacher's ordinary board zoom.
@@ -185,4 +185,39 @@ export function clipSkinSection(
  }
  if(count)ctx.clip();
  return count;
+}
+
+/** Restrict the detailed explanatory section to the explicitly identified
+ * upper-arm teaching SITE. Other body parts retain their intact silhouette,
+ * including individual fingers and toes at arbitrarily high zoom.
+ * This is a tapering section of the SAME world contour, not a second image.
+ * The world-registered cell and pointer geometry use this identical slice.
+ */
+export function skinUpperArmReferenceContours(
+ contours:readonly SkinSectionContour[]
+):SkinSectionContour[]{
+ const site=SKIN_REFERENCE_UPPER_ARM;
+ const result:SkinSectionContour[]=[];
+ for(const contour of contours){
+  let run:SkinSectionPoint[]=[];
+  const flush=()=>{
+   if(run.length<3){run=[];return;}
+   const points=run;run=[];
+   result.push({inward:contour.inward,points,
+    minX:Math.min(...points.map(p=>p.x-p.depth-.02)),
+    maxX:Math.max(...points.map(p=>p.x+p.depth+.02)),
+    minY:points[0].y,maxY:points[points.length-1].y});
+  };
+  for(const p of contour.points){
+   const radius=Math.hypot((p.x-site.cx)/site.rx,
+    (p.y-site.cy)/site.ry);
+   // Taper smoothly to no incision at the outside of the site.
+   const t=Math.max(0,Math.min(1,(1-radius)/.18));
+   const blend=t*t*(3-2*t);
+   if(blend<.002||p.depth<.15){flush();continue;}
+   run.push({...p,depth:p.depth*blend});
+  }
+  flush();
+ }
+ return result;
 }
