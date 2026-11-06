@@ -93,9 +93,19 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
     sole:thickSitesRef.current.sole?
      thickSkinFocusPoint(thickSitesRef.current.sole):null
    };
-   if(hitTestRef)hitTestRef.current=(point,ppu)=>
-    pickEpidermisAt(contours,point,ppu,
+   if(hitTestRef)hitTestRef.current=(point,ppu)=>{
+    const zoom=cameraRef.current.scale;
+    // Hit tests must agree with pixels, not merely with an invisible
+    // precomputed layer or a cell hidden during camera movement.
+    if(skinCutawayBlend(zoom)<=.03)return null;
+    const chosen=pickEpidermisAt(contours,point,ppu,
      thickKindRef.current?thickSitesRef.current[thickKindRef.current]:null);
+    if(chosen==="keratinocyte"&&(!refined||zoom<218))
+     return "spinosum";
+    if(chosen==="melanocyte"&&(!refined||zoom<218))
+     return "basale";
+    return chosen;
+   };
    // Register an actual epithelial contour point, not the approximate
    // shoulder centre: zooming the centre at 360× hid the epidermis entirely.
    if(anchorRef){
