@@ -1,3 +1,27 @@
+## Portable tool discovery (takes precedence over legacy names below)
+
+GitHub tool names depend on the host. The legacy `mcp__GitHub__*`
+examples below are examples, not required identifiers. In Codex desktop,
+GitHub may instead be exposed as `mcp__codex_apps__github_*`.
+Never use a case-sensitive, single-prefix search as proof that tools are absent.
+
+When `ALL_TOOLS` is available, discover candidates with:
+```js
+const candidates = ALL_TOOLS.filter(t =>
+  /github/i.test(t.name) && /get_repo|fetch_file|list_repositories/i.test(t.name));
+```
+Read each returned tool declaration and invoke the actual available name with
+its declared arguments. Other hosts may provide a separate tool-search
+interface: use that interface instead of assuming `functions.exec` or
+`ALL_TOOLS` exists everywhere. If discovery returns no candidates, search
+available plugin/provider discovery for GitHub before reporting a runtime limit.
+
+A successful connector read proves access in this session only. Missing
+container DNS, an empty checkout, or a failed browser-control URL check does
+not establish a GitHub connector failure. Repository instructions cannot install
+tools into another chat or guarantee that chat loads this file. Do not claim a
+runtime connection was repaired merely because these instructions were updated.
+
 # Lektrus: GitHub connector access preflight
 
 **Audience:** assistants performing development tasks for `Vue-Jay/interactive-board-next`.
