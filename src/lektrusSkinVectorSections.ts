@@ -8,6 +8,21 @@ import {skinEdgeRuns} from "./lektrusSkinEdgeSections";
 import {SKIN_ILLUSTRATIVE_LAYERS} from "./lektrusSkinEvidenceModel";
 export const SKIN_SECTION_WORLD_DEPTH=8.4;
 export const SKIN_SECTION_NEUTRAL_FRACTION=.20;
+/** Narrow fingers and toes must remain an intact silhouette, not a stack
+ * of enlarged virtual skin bands. Span is the OPAQUE width of one local
+ * silhouette run in body-world units, not a biological tissue measurement.
+ * The taper is continuous, so a section does not suddenly start as the
+ * contour widens from a digit into the palm or ankle. */
+export const SKIN_CUTAWAY_MIN_SPAN=7;
+export const SKIN_CUTAWAY_FULL_SPAN=17;
+export function skinCutawayDepthForSpan(span:number):number{
+ if(!Number.isFinite(span)||span<=SKIN_CUTAWAY_MIN_SPAN)return 0;
+ const t=Math.min(1,(span-SKIN_CUTAWAY_MIN_SPAN)/
+  (SKIN_CUTAWAY_FULL_SPAN-SKIN_CUTAWAY_MIN_SPAN));
+ const taper=t*t*(3-2*t);
+ return Math.min(SKIN_SECTION_WORLD_DEPTH,
+  span*(1-SKIN_SECTION_NEUTRAL_FRACTION)/2)*taper;
+}
 /** Full hands/feet remain intact at a teacher's ordinary board zoom.
  * Only fade into the deliberately widened tissue teaching cross-section
  * at higher scales. Smoothstep prevents a hard step at 1000–2600%. */
@@ -42,8 +57,7 @@ export function skinSectionContours(
    // interdigit gaps, shoelaces and holes in a giant three-layer
    // cross-section. Those small features remain in the whole-body plate.
    if(run.end-run.start+1<factor*2.2)continue;
-   const d=Math.min(SKIN_SECTION_WORLD_DEPTH,
-    (run.end-run.start+1)/factor*(1-SKIN_SECTION_NEUTRAL_FRACTION)/2);
+   const d=skinCutawayDepthForSpan((run.end-run.start+1)/factor);
    // Both sides keep a central unpainted strip even on narrow limbs.
    candidates.push({inward:1,x:run.start/factor,depth:d,
     start:run.start,end:run.end});
