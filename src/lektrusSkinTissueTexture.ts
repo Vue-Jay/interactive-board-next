@@ -75,23 +75,6 @@ export function skinTissueReteBoundary(y:number):number{
   .003*Math.sin(y*12+warp*3.2)+
   .002*Math.sin(y*34.5+warp*4.1);
 }
-/** A 2D keratinocyte mosaic is only resolved far into the continuous zoom.
- * It is not enlarged by the thickness of the teaching cutaway. */
-function keratinocyteField(x:number,y:number){
- const unit=.0082; // ~23 µm
- const gx=x/unit,gy=y/unit;
- const ix=Math.floor(gx),iy=Math.floor(gy);
- let nearest=1e9,runner=1e9;
- for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
-  const xx=ix+dx,yy=iy+dy;
-  const px=xx+.5+(skinTissueHash(xx,yy,139)-.5)*.33;
-  const py=yy+.5+(skinTissueHash(xx,yy,147)-.5)*.33;
-  const d=(gx-px)**2+(gy-py)**2;
-  if(d<nearest){runner=nearest;nearest=d;}else if(d<runner)runner=d;
- }
- return {edge:1-ease(clamp((Math.sqrt(runner)-Math.sqrt(nearest))/.19,0,1)),
-  center:clamp(Math.sqrt(nearest),0,1)};
-}
 /** Restrained illustrative tissue tones, NOT a synthetic microscopic slide.
  * Earlier Voronoi "adipocytes", wavy tubes and periodic fake nuclei were
  * interpreted as anatomical structures. They had no specimen registration.
