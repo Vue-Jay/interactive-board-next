@@ -2,10 +2,12 @@ import {useCallback,useEffect,useRef,useState,type PointerEvent as ReactPointerE
 import anatomySprite from "./assets/bio-atlas/human-seven-systems-clean.webp";
 import {HUMAN_BODY_SYSTEMS,type HumanFocusedSystem} from "./lektrusBioHumanBodySystems";
 import LektrusBioHumanSystemIcon from "./LektrusBioHumanSystemIcon";
-import LektrusSkinSemanticViewport from "./LektrusSkinSemanticViewport";
+import LektrusSkinSemanticViewport,{type EpidermisHitTest} from "./LektrusSkinSemanticViewport";
+import {EPIDERMIS_RECORDS,EPIDERMIS_STRATA_ORDER,
+ type EpidermisId} from "./lektrusEpidermisAtlas";
 import LektrusSkinSpecimens from "./LektrusSkinSpecimens";
-import {SKIN_MAX_SCALE,anatomyCameraAtBody,
- skinDetailStage} from "./lektrusAnatomySemanticZoom";
+import {SKIN_MAX_SCALE,anatomyCameraAtBody,anatomyScreenToBody,
+ anatomyBodyFit,skinDetailStage} from "./lektrusAnatomySemanticZoom";
 import {ANATOMY_INITIAL_CAMERA,ANATOMY_SPRITE_WIDTH,ANATOMY_CROP_WIDTH,
  ANATOMY_SPRITE_HEIGHT,ANATOMY_SYSTEM_DETAILS,anatomySpritePosition,
  anatomyZoomAt,anatomyPan,anatomyBoundCamera,
@@ -38,6 +40,10 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
  const [camera,setCamera]=useState<AnatomyCamera>(ANATOMY_INITIAL_CAMERA);
  const [displayCamera,setDisplayCamera]=useState<AnatomyCamera>(ANATOMY_INITIAL_CAMERA);
  const displayed=useRef<AnatomyCamera>(ANATOMY_INITIAL_CAMERA);
+ const [epidermisSelection,setEpidermisSelection]=useState<EpidermisId|null>(null);
+ const epidermisHit=useRef<EpidermisHitTest|null>(null);
+ const tapStarts=useRef(new Map<number,Point>());
+ const blockedTaps=useRef(new Set<number>());
  // Interpolate the same scale and pan fraction at each frame: the point
  // under the cursor remains fixed throughout the animation, not only at
  // its final destination. Switching systems leaves this camera untouched.
@@ -92,6 +98,13 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
   });
  },[system]);
  const reset=()=>setCamera(ANATOMY_INITIAL_CAMERA);
+ const focusEpidermis=(deep=false)=>{
+  const {width,height}=dimensions();
+  // This is the anatomically registered *representative* upper arm,
+  // not a separate zoom illustration or a camera reset on system change.
+  setCamera(anatomyBoundCamera(anatomyCameraAtBody(
+   {x:266,y:182},deep?220:65,width,height),width,height,SKIN_MAX_SCALE));
+ };
  const focusSkin=(side:"left"|"right"="right")=>{
   const {width,height}=dimensions();
   const point=side==="left"?{x:80,y:245}:{x:280,y:245};
@@ -112,8 +125,10 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
   e.preventDefault();e.stopPropagation();
   e.currentTarget.setPointerCapture(e.pointerId);
   const point=pointOf(e);pointers.current.set(e.pointerId,point);
+  tapStarts.current.set(e.pointerId,point);
   const pair=[...pointers.current.entries()];
   if(pair.length>=2){
+   for(const [id] of pair)blockedTaps.current.add(id);
    gesture.current={kind:"pinch",startA:pair[0][1],startB:pair[1][1],
     camera:displayed.current};
   }else gesture.current={kind:"pan",id:e.pointerId,start:point,
@@ -121,7 +136,10 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
  };
  const onMove=(e:ReactPointerEvent<HTMLDivElement>)=>{
   if(!pointers.current.has(e.pointerId))return;
-  pointers.current.set(e.pointerId,pointOf(e));
+  const moved=pointOf(e);
+  const from=tapStarts.current.get(e.pointerId);
+  if(from&&between(from,moved)>8)blockedTaps.current.add(e.pointerId);
+  pointers.current.set(e.pointerId,moved);
   const g=gesture.current,r=e.currentTarget.getBoundingClientRect();
   if(!g)return;
   if(g.kind==="pan"&&g.id===e.pointerId){
@@ -141,6 +159,20 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
   }
  };
  const onUp=(e:ReactPointerEvent<HTMLDivElement>)=>{
+  const from=tapStarts.current.get(e.pointerId);
+  const target=pointOf(e);
+  const isTap=system==="integumentary"&&pointers.current.size===1&&
+   gesture.current?.kind==="pan"&&!!from&&
+   between(from,target)<=8&&!blockedTaps.current.has(e.pointerId);
+  if(isTap){
+   const {width,height}=dimensions();
+   const bodyPoint=anatomyScreenToBody(displayed.current,target,width,height);
+   const hit=epidermisHit.current?.(bodyPoint,
+    anatomyBodyFit(width,height).pixelPerWorld*displayed.current.scale);
+   if(hit)setEpidermisSelection(hit);
+  }
+  tapStarts.current.delete(e.pointerId);
+  blockedTaps.current.delete(e.pointerId);
   pointers.current.delete(e.pointerId);
   if(e.currentTarget.hasPointerCapture(e.pointerId))
    e.currentTarget.releasePointerCapture(e.pointerId);
@@ -200,7 +232,8 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
     }}>
     <div className="lek-anatomy-stage-grid" aria-hidden="true"/>
     {system==="integumentary"?<LektrusSkinSemanticViewport
-     camera={displayCamera}/>:<div className="lek-anatomy-world"
+     camera={displayCamera} selectedEpidermis={epidermisSelection}
+     hitTestRef={epidermisHit}/>:<div className="lek-anatomy-world"
      style={{transform:`translate3d(${displayCamera.panX}px,${displayCamera.panY}px,0) scale(${displayCamera.scale})`}}>
      <div className="lek-anatomy-figure"
       data-anatomy-system={system}
@@ -252,6 +285,58 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
      <span><i className="is-dermis"/> Дерма</span>
      <span><i className="is-subcutis"/> Подкожная клетчатка</span>
     </div>
+    <section className="lek-anatomy-epidermis-inspector"
+     aria-label="Интерактивное исследование эпидермиса">
+     <div className="lek-anatomy-epidermis-title">
+      <strong>Эпидермис · исследование</strong>
+      <p>Нажмите на цветной слой непосредственно на теле или
+       выберите структуру ниже. Микростроение подробно показано
+       для зарегистрированного участка правого плеча.</p>
+     </div>
+     <div className="lek-anatomy-epidermis-actions">
+      <button type="button" onClick={()=>focusEpidermis()}>
+       К слоям плеча</button>
+      <button type="button" onClick={()=>focusEpidermis(true)}>
+       К клеткам</button>
+     </div>
+     <div className="lek-anatomy-epidermis-layer-list"
+      role="group" aria-label="Слои эпидермиса от наружного к внутреннему">
+      {EPIDERMIS_STRATA_ORDER.map(id=><button type="button" key={id}
+       className={epidermisSelection===id?"is-selected":""}
+       aria-pressed={epidermisSelection===id}
+       onClick={()=>setEpidermisSelection(id)}>
+       <span className={"lek-anatomy-epi-swatch is-"+id}
+        aria-hidden="true"/>
+       <span>{EPIDERMIS_RECORDS[id].name}</span>
+      </button>)}
+     </div>
+     <div className="lek-anatomy-epidermis-cell-list" role="group"
+      aria-label="Клетки и границы">
+      {(["keratinocyte","melanocyte","basement"] as const).map(id=>
+       <button key={id} type="button" aria-pressed={epidermisSelection===id}
+        className={epidermisSelection===id?"is-selected":""}
+        onClick={()=>setEpidermisSelection(id)}>
+        {EPIDERMIS_RECORDS[id].name}
+       </button>)}
+     </div>
+     {epidermisSelection?
+      <div className="lek-anatomy-epidermis-card" role="status" aria-live="polite">
+       <strong>{EPIDERMIS_RECORDS[epidermisSelection].name}</strong>
+       <em>{EPIDERMIS_RECORDS[epidermisSelection].latin}</em>
+       <p>{EPIDERMIS_RECORDS[epidermisSelection].summary}</p>
+       <p><b>Функция:</b> {EPIDERMIS_RECORDS[epidermisSelection].function}</p>
+       <p><b>Под микроскопом:</b> {EPIDERMIS_RECORDS[epidermisSelection].microAppearance}</p>
+       <a href={EPIDERMIS_RECORDS[epidermisSelection].source}
+        target="_blank" rel="noopener noreferrer">
+        Научный источник</a>
+      </div>:
+      <p className="lek-anatomy-epidermis-prompt">
+       Выберите слой, чтобы увидеть его строение и функции.
+      </p>}
+     <small>Авторская учебная реконструкция по Leeds, OpenStax и NCBI:
+      относительная ширина разреза увеличена. Клеточные изображения
+      не являются микрофотографией конкретной точки тела.</small>
+    </section>
     <LektrusSkinSpecimens/>
     {displayCamera.scale>=22&&<p>В настоящей дерме встречаются
      фолликулы, потовые и сальные железы, сосуды и нервные окончания.
