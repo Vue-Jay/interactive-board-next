@@ -54,7 +54,7 @@ const pointAt=(fraction,y=181)=>({
 });
 for(const layer of atlas.EPIDERMIS_LAYER_FRACTIONS){
  const midpoint=(layer.start+layer.end)/2;
- assert.equal(atlas.pickEpidermisAt([contour],pointAt(midpoint),230),
+ assert.equal(atlas.pickEpidermisAt([contour],pointAt(midpoint,181.10),230),
   layer.id,"Hit test must resolve "+layer.id+" in body coordinates");
 }
 assert.equal(atlas.pickEpidermisAt([contour],pointAt(.035),16),"epidermis",
