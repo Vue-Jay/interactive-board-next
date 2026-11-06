@@ -6,7 +6,7 @@ import {useEffect,useRef} from "react";
 import {pickEpidermisAt,sectionAtY,type EpidermisId,type EpidermisPoint} from "./lektrusEpidermisAtlas";
 import {skinEvidenceRegionAt} from "./lektrusSkinEvidenceModel";
 import {drawEpidermisAtlas} from "./lektrusEpidermisRenderer";
-import {resolveThickSkinSample,
+import {resolveThickSkinSample,thickSkinFocusPoint,
  type ThickSkinKind,type ThickSkinSample} from "./lektrusThickEpidermis";
 import {drawThickEpidermisSample} from "./lektrusThickEpidermisRenderer";
 import skinHighRes from "./assets/bio-atlas/human-skin-highres-registered.webp";
@@ -80,9 +80,9 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    };
    if(thickAnchorsRef)thickAnchorsRef.current={
     palm:thickSitesRef.current.palm?
-     {...thickSitesRef.current.palm.anchor}:null,
+     thickSkinFocusPoint(thickSitesRef.current.palm):null,
     sole:thickSitesRef.current.sole?
-     {...thickSitesRef.current.sole!.anchor}:null
+     thickSkinFocusPoint(thickSitesRef.current.sole):null
    };
    if(hitTestRef)hitTestRef.current=(point,ppu)=>
     pickEpidermisAt(contours,point,ppu,
