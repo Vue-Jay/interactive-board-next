@@ -17,7 +17,7 @@ export {epidermisStratumEdge} from "./lektrusEpidermisAtlas";
 import type {SkinSectionContour,SkinSectionPoint} from "./lektrusSkinVectorSections";
 
 type Bounds={minX:number;maxX:number;minY:number;maxY:number};
-export const EPIDERMIS_DETAIL_MAX_CELLS=4500;
+export const EPIDERMIS_DETAIL_MAX_CELLS=2400;
 export const EPIDERMIS_MICRO_MIN_SCALE=155;
 const clamp=(v:number)=>Math.max(0,Math.min(1,v));
 function edgeX(c:SkinSectionContour,p:SkinSectionPoint,f:number){
@@ -149,7 +149,11 @@ export function drawEpidermisAtlas(
   if(microFade>.005&&stats.cells<EPIDERMIS_DETAIL_MAX_CELLS){
    const y0=Math.max(bounds.minY,c.minY,148);
    const y1=Math.min(bounds.maxY,c.maxY,216);
-   const grid=.0106; // ~30 µm center spacing in the WHOLE-BODY coordinate.
+   // Enlarged, explicitly UNCALIBRATED teaching cutaway: these are
+   // epithelial cell shapes, not a measured 30-micrometre sampling grid.
+   // A moderate fixed lattice restores readable morphology and reduces
+   // the thousands of invisible dots formerly painted at 360x.
+   const grid=.024;
    for(const l of EPIDERMIS_LAYER_FRACTIONS){
     // Reserve independent budgets so the basal cell row cannot disappear
     // behind thousands of flattened corneocytes/spinous cell paths.
@@ -199,11 +203,16 @@ export function drawEpidermisAtlas(
       const jx=(hash(k,j,13)-.5)*grid*.18;
       const jy=(hash(k,j,17)-.5)*grid*.18;
       const cx=x+jx,cy=y+jy;
-      const rr=.0037+.0008*hash(k,j,19);
-      const ry=isCorneum?rr*.36:isGranular?rr*.63:
-       isBasal?rr*1.05:rr*.96;
-      const rx=isCorneum?rr*1.10:isGranular?rr*1.22:
-       isBasal?rr*.88:rr;
+      // Radius follows the adaptive LOD spacing. Formerly skipped cells
+      // stayed tiny and turned the histology into isolated dark dots.
+      const rr=Math.min(.023,step*(.45+.035*hash(k,j,19)));
+      // Tissue surface runs along Y. Cornified squames and granular
+      // keratinocytes are attenuated in radial X and extended in Y,
+      // NOT flattened along the perpendicular axis.
+      const ry=isCorneum?rr*1.18:isGranular?rr:
+       isBasal?rr*.82:rr*.90;
+      const rx=isCorneum?rr*.25:isGranular?rr*.52:
+       isBasal?rr*.90:rr*.92;
       // Spinous cells are polygonal, not uniformly circular stamps.
       if(l.id==="spinosum"){
        outlines.moveTo(cx-rx*.80,cy-ry*.18);
@@ -222,10 +231,12 @@ export function drawEpidermisAtlas(
        outlines.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
       }
       if(!isCorneum){
-       const nr=.0014,rotation=isBasal?0:Math.PI/8;
-       nuclei.moveTo(cx+nr*Math.cos(rotation),cy+nr*Math.sin(rotation));
-       nuclei.ellipse(cx,cy,nr,isBasal?.0024:.00165,
-        rotation,0,Math.PI*2);
+       // Rounded nuclei in viable spinous/basal cells; condensed and
+       // attenuated in the granular tier. Corneocytes remain anucleate.
+       const nx=isGranular?.00115:isBasal?.0031:.0026;
+       const ny=isGranular?.0020:isBasal?.0025:.0028;
+       nuclei.moveTo(cx+nx,cy);
+       nuclei.ellipse(cx,cy,nx,ny,0,0,Math.PI*2);
       }
       if(isGranular){
        for(let q=0;q<2;q++){
@@ -242,17 +253,17 @@ export function drawEpidermisAtlas(
     // Real epithelium is a *compact sheet* of closely apposed cells.
     // Fill delicate cytoplasm shapes underneath their own borders,
     // instead of leaving tiny isolated dark dots on a flat purple band.
-    ctx.globalAlpha=.58*microFade;
+    ctx.globalAlpha=.78*microFade;
     ctx.fillStyle=isCorneum?"#f4dac8":isGranular?"#c39db2":
      isBasal?"#bc8caa":"#e8c0ca";
     ctx.fill(outlines);
-    ctx.globalAlpha=.72*microFade;
+    ctx.globalAlpha=.88*microFade;
     ctx.strokeStyle=isCorneum?"#c29c9b":isGranular?"#77577d":
      isBasal?"#805577":"#b189a5";
-    ctx.lineWidth=.0015;
+    ctx.lineWidth=.0024;
     ctx.stroke(outlines);
     if(!isCorneum){
-     ctx.globalAlpha=.74*microFade;ctx.fillStyle="#71496e";ctx.fill(nuclei);
+     ctx.globalAlpha=.91*microFade;ctx.fillStyle="#71496e";ctx.fill(nuclei);
     }
     if(isGranular){
      ctx.globalAlpha=.8*microFade;ctx.fillStyle="#694567";ctx.fill(specks);

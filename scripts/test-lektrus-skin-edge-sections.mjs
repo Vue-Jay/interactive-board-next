@@ -180,6 +180,12 @@ assert.ok(vector.SKIN_SECTION_WORLD_DEPTH>=7,
  "A 2.9-world-unit stripe is too thin to inspect at medium zoom");
 assert.equal(vector.SKIN_SECTION_NEUTRAL_FRACTION,.20);
 const stripes=vector.skinSectionContours(alpha,width,height,factor);
+// Separate synthetic tissue geometry for tests of legacy, UNMOUNTED
+// microstructure helpers. The actual body must retain the width-gated
+// cutaway instead of enlarging cells on narrow synthetic arms.
+const legacyMicroscopeContours=stripes.map(c=>({...c,
+ points:c.points.map(p=>({...p,depth:Math.max(p.depth,6)}))
+}));
 assert.ok(stripes.length>=6,"Every silhouette and each lateral edge needs its own path");
 assert.ok(stripes.every(c=>c.points.length>=8));
 assert.ok(stripes.every(c=>c.points.every(p=>Number.isFinite(p.x)&&
@@ -262,7 +268,7 @@ function microDraw(scale,bounds=microBounds){
    logged.push([name,...args]);
   },set:()=>true
  });
- return {count:micro.drawSkinMicroscopicDetails(ctx,stripes,scale,bounds),
+ return {count:micro.drawSkinMicroscopicDetails(ctx,legacyMicroscopeContours,scale,bounds),
   calls:logged};
 }
 const meso=microDraw(24),deep=microDraw(360),repeat=microDraw(360);
@@ -318,7 +324,7 @@ function fineDraw(scale,bounds=microBounds){
    calls.push([name,...args]);
   },set:()=>true
  });
- return {count:micro.drawSkinFineStructures(ctx,stripes,scale,bounds),calls};
+ return {count:micro.drawSkinFineStructures(ctx,legacyMicroscopeContours,scale,bounds),calls};
 }
 const fineMid=fineDraw(50),fineMax=fineDraw(360);
 assert.ok(fineMid.count.elastic>0);
@@ -418,7 +424,7 @@ globalThis.document={createElement:(tag)=>{
 }};
 try{
  const view={minX:0,maxX:50,minY:0,maxY:25};
- const first=shader.drawSkinTissueTexture(fakeShaderCtx,stripes,210,view);
+ const first=shader.drawSkinTissueTexture(fakeShaderCtx,legacyMicroscopeContours,210,view);
  assert.ok(first.sampledPixels>0);
  assert.ok(first.sampledPixels<=shader.SKIN_TISSUE_MAX_PIXELS);
  assert.ok(putCount===1&&textureDraws===1);
@@ -428,18 +434,18 @@ try{
  assert.equal(px(72,24),0,"Center of torso stays neutral");
  assert.ok(px(9,24)>0&&px(48,24)>0,
   "Actual side cross-sections receive the organic tissue paint");
- shader.drawSkinTissueTexture(fakeShaderCtx,stripes,210,view);
+ shader.drawSkinTissueTexture(fakeShaderCtx,legacyMicroscopeContours,210,view);
  assert.equal(putCount,1,"Identical camera must reuse the texture cache");
  cameraShift=4;
- shader.drawSkinTissueTexture(fakeShaderCtx,stripes,210,view);
+ shader.drawSkinTissueTexture(fakeShaderCtx,legacyMicroscopeContours,210,view);
  assert.equal(putCount,1,
   "Small pans must reproject cached world-space tissue without regenerating");
  cameraShift=35;
- shader.drawSkinTissueTexture(fakeShaderCtx,stripes,210,view);
+ shader.drawSkinTissueTexture(fakeShaderCtx,legacyMicroscopeContours,210,view);
  assert.equal(putCount,2,
   "A larger camera shift must refresh the same world-anchored texture");
 }finally{globalThis.document=oldDocument;}
-assert.match(renderer,/if\(cam.scale>25&&refined\)/,
+assert.match(renderer,/if\(cam.scale>25&&refined&&selectionRef\.current===null&&/,
  "No expensive texture raster while viewing intact hands and legs");
 assert.match(renderer,/if\(clipped\)drawSkinTissueTexture\(ctx,contours,cam.scale,visible\)/);
 assert.match(renderer,/drawEpidermisAtlas\(/);

@@ -40,6 +40,28 @@ for(let y=0;y<=100;y++){
  if(y>=55&&y<=61)paint(y,85,92);
 }
 const contours=vector.skinSectionContours(alpha,width,height,factor);
+// Build the same high-resolution silhouette as a single cached vector path.
+// It must include every real finger and every disconnected limb, and use
+// quadratic curves rather than magnified JPEG/WebP pixels.
+const oldPath2D=globalThis.Path2D;
+const pathCalls=[];
+globalThis.Path2D=class{
+ moveTo(...v){pathCalls.push(["moveTo",...v]);}
+ quadraticCurveTo(...v){pathCalls.push(["curve",...v]);}
+ closePath(){pathCalls.push(["close"]);}
+};
+let outline;
+try{
+ const vectorOutline=load("src/lektrusSkinSilhouetteVectors.ts");
+ outline=vectorOutline.skinSilhouetteVector(alpha,width,height,factor);
+ assert.ok(outline.loops>=3,
+  "The source alpha contains disjoint fingers/forearm and alpha islands");
+ assert.ok(outline.boundaryEdges>100);
+ assert.ok(pathCalls.some(x=>x[0]==="curve"),
+  "Vector outline must not pixelate at 3200% and beyond");
+ assert.ok(pathCalls.every(c=>c.slice(1).every(Number.isFinite)));
+ assert.throws(()=>vectorOutline.skinSilhouetteVector(alpha,width,2,factor));
+}finally{globalThis.Path2D=oldPath2D;}
 assert.ok(contours.every(c=>c.points.length>=18),
  "Ignore very short false tracks at finger tips and antialias artefacts");
 const sampleY=23;
@@ -54,6 +76,36 @@ assert.ok(stripes[3].p.x<stripes[4].p.x,
  "Do not confuse finger tissue with a neighbouring forearm");
 assert.ok(stripes.every(({p})=>p.depth>=0&&p.depth<=vector.SKIN_SECTION_WORLD_DEPTH));
 assert.ok(stripes.every(({p})=>Number.isFinite(p.x)&&Number.isFinite(p.y)));
+// An intentionally magnified tissue strip cannot substitute for intact
+// fingers or toes. Narrow runs have zero side-section depth, wide runs
+// preserve the same deep-zoom anatomy without sharp seams.
+assert.equal(vector.skinDistalOutlineProtected({x:312,y:342}),true,
+ "The palm must not receive a default whole-body wall slice");
+assert.equal(vector.skinDistalOutlineProtected({x:241,y:581}),true,
+ "The sole must not receive a default whole-body wall slice");
+assert.equal(vector.skinDistalOutlineProtected({x:48,y:345}),true,
+ "Both hands protect all their fingers");
+assert.equal(vector.skinDistalOutlineProtected({x:180,y:341}),false,
+ "Torso still exposes a teaching flank");
+assert.equal(vector.skinDistalOutlineProtected({x:256,y:182}),false,
+ "The source-anchored thin-skin shoulder remains investigable");
+assert.equal(vector.skinCutawayDepthForSpan(4.4),0,
+ "Thin finger must have no false colored lateral bands at any zoom");
+assert.equal(vector.skinCutawayDepthForSpan(7),0);
+assert.ok(vector.skinCutawayDepthForSpan(12)>0);
+assert.equal(vector.skinCutawayDepthForSpan(17),Math.min(
+ vector.SKIN_SECTION_WORLD_DEPTH,17*(1-vector.SKIN_SECTION_NEUTRAL_FRACTION)/2));
+for(let span=0,last=0;span<=32;span+=.025){
+ const d=vector.skinCutawayDepthForSpan(span);
+ assert.ok(d>=last-1e-8&&d<=vector.SKIN_SECTION_WORLD_DEPTH,
+  "No jumps or reappearing stripes along the finger-palm transition");
+ last=d;
+}
+const digit=contours.filter(c=>c.minY<=18&&c.maxY>=18)
+ .map(c=>c.points.find(p=>Math.abs(p.y-18)<.01))
+ .filter(Boolean);
+assert.ok(digit.length>0&&digit.every(p=>p.depth<=vector.SKIN_SECTION_WORLD_DEPTH),
+ "Synthetic forearm plate keeps its registered contour geometry");
 assert.ok(!stripes.some(({p})=>p.x>24&&p.x<29),
  "No invented centreline skin from the transparent finger gap");
 
@@ -72,6 +124,20 @@ for(let z=1,last=0;z<=80;z+=.25){
 }
 assert.match(viewport,/const cutawayAlpha=skinCutawayBlend\(cam\.scale\)/);
 assert.match(viewport,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
+assert.match(viewport,/ctx\.drawImage\(neutralPlate,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/,
+ "A complete neutral silhouette must remain below every side cutaway");
+assert.match(viewport,/skinSilhouetteVector\(alpha,RASTER_WIDTH,RASTER_HEIGHT,ATLAS_FACTOR\)/,
+ "Vector silhouette must share the alpha mask used for tissue tracing");
+assert.match(viewport,/ctx\.fill\(silhouetteVector\.path,"evenodd"\)/,
+ "At deep zoom the body must not disappear or become 1080px blurry");
+assert.match(viewport,/clipSkinOutsideDistalOutlines\(ctx\)/,
+ "The default section must not cover the protected distal silhouette");
+assert.match(viewport,/skinDistalOutlineProtected\(point\)/,
+ "Hit geometry must exclude the same hidden tissue");
+assert.match(viewport,/neutralPlate=source/,
+ "Neutral alpha plate must be built from the SAME source geometry");
+assert.doesNotMatch(viewport,/globalAlpha=1-cutawayAlpha/,
+ "At tissue zoom never fade the body and digits all the way to zero");
 assert.match(viewport,/contours\.length&&cutawayAlpha>0/);
 assert.match(viewport,/drawSkinSectionBands\(ctx,contours,visible,cutawayAlpha\)/);
 assert.doesNotMatch(viewport,/globalCompositeOperation="source-atop"/,

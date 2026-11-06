@@ -15,7 +15,9 @@ import type {AnatomyCamera} from "./lektrusHumanAnatomyModel";
 import {anatomyBodyFit} from "./lektrusAnatomySemanticZoom";
 import {skinVisibleWorldBounds} from "./lektrusSkinSurfaceField";
 import {drawSkinTissueTexture} from "./lektrusSkinTissueTexture";
+import {skinSilhouetteVector,type SkinSilhouetteVector} from "./lektrusSkinSilhouetteVectors";
 import {skinSectionContours,skinCutawayBlend,drawSkinSectionBands,clipSkinSection,
+ clipSkinOutsideDistalOutlines,skinDistalOutlineProtected,
  type SkinSectionContour} from "./lektrusSkinVectorSections";
 
 export type EpidermisHitTest=(point:EpidermisPoint,pixelsPerWorld:number)=>EpidermisId|null;
@@ -57,6 +59,9 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    },180);
   };
   const body=new Image();
+  // Body alpha defines only the outline, not fictional skin anatomy.
+  let neutralPlate:HTMLCanvasElement|null=null;
+  let silhouetteVector:SkinSilhouetteVector|null=null;
   let contours:SkinSectionContour[]=[];
   let width=0,height=0;
   const requestDraw=()=>{
@@ -73,6 +78,20 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    const rgba=c.getImageData(0,0,RASTER_WIDTH,RASTER_HEIGHT).data;
    const alpha=new Uint8ClampedArray(RASTER_WIDTH*RASTER_HEIGHT);
    for(let i=0;i<alpha.length;i++)alpha[i]=rgba[i*4+3];
+   // Make a neutral plate from the exact source alpha once. No
+   // procedural texture inside the body and no disconnected fingers.
+   c.globalCompositeOperation="source-in";
+   c.fillStyle="#d8dfe3";
+   c.fillRect(0,0,RASTER_WIDTH,RASTER_HEIGHT);
+   c.globalCompositeOperation="source-over";
+   neutralPlate=source;
+   try{
+    silhouetteVector=skinSilhouetteVector(alpha,RASTER_WIDTH,RASTER_HEIGHT,ATLAS_FACTOR);
+   }catch{
+    // A vector boundary is optional for initial render. The original
+    // registered alpha plate is retained if an older browser rejects it.
+    silhouetteVector=null;
+   }
    contours=skinSectionContours(alpha,RASTER_WIDTH,RASTER_HEIGHT);
    thickSitesRef.current={
     palm:resolveThickSkinSample(contours,"palm"),
@@ -84,9 +103,26 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
     sole:thickSitesRef.current.sole?
      thickSkinFocusPoint(thickSitesRef.current.sole):null
    };
-   if(hitTestRef)hitTestRef.current=(point,ppu)=>
-    pickEpidermisAt(contours,point,ppu,
-     thickKindRef.current?thickSitesRef.current[thickKindRef.current]:null);
+   if(hitTestRef)hitTestRef.current=(point,ppu)=>{
+    const zoom=cameraRef.current.scale;
+    // Hit tests must agree with pixels, not merely with an invisible
+    // precomputed layer or a cell hidden during camera movement.
+    if(skinCutawayBlend(zoom)<=.03)return null;
+    const activeSite=thickKindRef.current?
+     thickSitesRef.current[thickKindRef.current]:null;
+    // The default huge body-wall section is never painted over hands,
+    // digits or feet. Do not let the picker select that hidden geometry.
+    // An explicit palm/sole specimen remains available at its anchor.
+    if(skinDistalOutlineProtected(point)&&
+     (!activeSite||Math.abs(point.y-activeSite.anchor.y)>6))
+     return null;
+    const chosen=pickEpidermisAt(contours,point,ppu,activeSite);
+    if(chosen==="keratinocyte"&&(!refined||zoom<218))
+     return "spinosum";
+    if(chosen==="melanocyte"&&(!refined||zoom<218))
+     return "basale";
+    return chosen;
+   };
    // Register an actual epithelial contour point, not the approximate
    // shoulder centre: zooming the centre at 360× hid the epidermis entirely.
    if(anchorRef){
@@ -127,33 +163,50 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    ctx.scale(fit.pixelPerWorld*cam.scale,fit.pixelPerWorld*cam.scale);
    ctx.translate(-WORLD_WIDTH/2,-WORLD_HEIGHT/2);
    if(ready){
-    // At arm/leg/hand overview scale the supplied human silhouette
-    // MUST remain continuous. Previously we faded it to 46% while
-    // painting oversized cutaway bands on every little finger edge:
-    // fragmented tips and empty/white limb interiors were the result.
-    // Reveal an illustrative side section only once the teacher actually
-    // enters a tissue-level view. No abrupt mode/camera teleport.
-    const cutawayAlpha=skinCutawayBlend(cam.scale);
-    if(cutawayAlpha<1){
-     ctx.save();ctx.globalAlpha=1-cutawayAlpha;
-     ctx.drawImage(body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
-     ctx.restore();
-    }
-    if(contours.length&&cutawayAlpha>0){
+    // Keep ALL of the human silhouette at every magnification. The former
+   // fade-to-zero made the hands, feet and neutral interior disappear at
+   // 2600%, exposing enlarged stripes instead of intact anatomy.
+   if(silhouetteVector?.loops){
+    // Direct vector fill and stroke stay sharp under arbitrary zoom.
+    // We do not upscale a photograph into invented epidermal detail.
+    ctx.save();
+    ctx.fillStyle="#e7edf0";
+    ctx.fill(silhouetteVector.path,"evenodd");
+    ctx.strokeStyle="#9baeba";
+    ctx.lineWidth=1.1/Math.max(.05,fit.pixelPerWorld*cam.scale);
+    ctx.stroke(silhouetteVector.path);
+    ctx.restore();
+   }else if(neutralPlate){
+    ctx.drawImage(neutralPlate,0,0,WORLD_WIDTH,WORLD_HEIGHT);
+   }else{
+    ctx.drawImage(body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
+   }
+   const cutawayAlpha=skinCutawayBlend(cam.scale);
+   if(contours.length&&cutawayAlpha>0){
      const visible=skinVisibleWorldBounds(cam,w,h,5);
+     // The silhouette is already painted. Clip ONLY the automatic
+     // explanatory ribbons, leaving hands, fingers and feet intact.
+     ctx.save();
+     clipSkinOutsideDistalOutlines(ctx);
      drawSkinSectionBands(ctx,contours,visible,cutawayAlpha);
-     if(cam.scale>25&&refined){
+     // Context tone is not an anatomical cell atlas. Never superimpose
+     // it on a selected epithelium, or during camera motion.
+     if(cam.scale>25&&refined&&selectionRef.current===null&&
+      thickKindRef.current===null){
       ctx.save();
       const clipped=clipSkinSection(ctx,contours,visible);
       if(clipped)drawSkinTissueTexture(ctx,contours,cam.scale,visible);
       ctx.restore();
      }
-     // Detailed strata remain registered to the same world coordinates.
-     // Do not magnify synthetic epidermal cells over hand silhouettes
-     // until the user is examining a real side section at deep zoom.
      if(cam.scale>11){
       drawEpidermisAtlas(ctx,contours,cam.scale,visible,
        selectionRef.current,refined,fit.pixelPerWorld*cam.scale);
+     }
+     ctx.restore();
+     // A palm/sole section exists only when explicitly chosen. It uses
+     // the same sample world anchor and remains clickable, without
+     // assigning palmar epidermis to every frontal finger silhouette.
+     if(cam.scale>11){
       const thick=thickKindRef.current?
        thickSitesRef.current[thickKindRef.current]:null;
       if(thick)drawThickEpidermisSample(ctx,thick,cam.scale,visible,

@@ -8,6 +8,21 @@ import {skinEdgeRuns} from "./lektrusSkinEdgeSections";
 import {SKIN_ILLUSTRATIVE_LAYERS} from "./lektrusSkinEvidenceModel";
 export const SKIN_SECTION_WORLD_DEPTH=8.4;
 export const SKIN_SECTION_NEUTRAL_FRACTION=.20;
+/** Narrow fingers and toes must remain an intact silhouette, not a stack
+ * of enlarged virtual skin bands. Span is the OPAQUE width of one local
+ * silhouette run in body-world units, not a biological tissue measurement.
+ * The taper is continuous, so a section does not suddenly start as the
+ * contour widens from a digit into the palm or ankle. */
+export const SKIN_CUTAWAY_MIN_SPAN=7;
+export const SKIN_CUTAWAY_FULL_SPAN=17;
+export function skinCutawayDepthForSpan(span:number):number{
+ if(!Number.isFinite(span)||span<=SKIN_CUTAWAY_MIN_SPAN)return 0;
+ const t=Math.min(1,(span-SKIN_CUTAWAY_MIN_SPAN)/
+  (SKIN_CUTAWAY_FULL_SPAN-SKIN_CUTAWAY_MIN_SPAN));
+ const taper=t*t*(3-2*t);
+ return Math.min(SKIN_SECTION_WORLD_DEPTH,
+  span*(1-SKIN_SECTION_NEUTRAL_FRACTION)/2)*taper;
+}
 /** Full hands/feet remain intact at a teacher's ordinary board zoom.
  * Only fade into the deliberately widened tissue teaching cross-section
  * at higher scales. Smoothstep prevents a hard step at 1000–2600%. */
@@ -15,6 +30,36 @@ export function skinCutawayBlend(scale:number):number{
  if(!Number.isFinite(scale))return 0;
  const t=Math.max(0,Math.min(1,(scale-10)/16));
  return t*t*(3-2*t);
+}
+/** Distal contours are too small and topologically complex for the
+ * enlarged lateral body-wall cross-section. Their real silhouette remains
+ * intact; palm/sole epidermis is available through an EXPLICIT virtual
+ * sample, not a blanket effect over the fingers. These are GUARD regions
+ * in the atlas drawing, never diagnoses of front-facing skin surfaces.
+ */
+export const SKIN_DISTAL_OUTLINE_GUARDS=[
+ {cx:48,cy:345,rx:37,ry:51},
+ {cx:312,cy:345,rx:37,ry:51},
+ {cx:120,cy:579,rx:39,ry:37},
+ {cx:240,cy:579,rx:39,ry:37}
+] as const;
+export function skinDistalOutlineProtected(p:{x:number;y:number}):boolean{
+ return SKIN_DISTAL_OUTLINE_GUARDS.some(g=>{
+  const dx=(p.x-g.cx)/g.rx,dy=(p.y-g.cy)/g.ry;
+  return dx*dx+dy*dy<=1;
+ });
+}
+/** Clip every default wide section out of hands, digits, toes and feet.
+ * The source silhouette is not clipped and remains complete. Caller
+ * restores the context before drawing an explicit palm/sole specimen. */
+export function clipSkinOutsideDistalOutlines(ctx:CanvasRenderingContext2D){
+ ctx.beginPath();
+ ctx.rect(-40,-40,440,680);
+ for(const g of SKIN_DISTAL_OUTLINE_GUARDS){
+  ctx.moveTo(g.cx+g.rx,g.cy);
+  ctx.ellipse(g.cx,g.cy,g.rx,g.ry,0,0,Math.PI*2);
+ }
+ ctx.clip("evenodd");
 }
 export type SkinSectionPoint={x:number;y:number;depth:number};
 export type SkinSectionContour={inward:-1|1;points:SkinSectionPoint[];
@@ -42,8 +87,7 @@ export function skinSectionContours(
    // interdigit gaps, shoelaces and holes in a giant three-layer
    // cross-section. Those small features remain in the whole-body plate.
    if(run.end-run.start+1<factor*2.2)continue;
-   const d=Math.min(SKIN_SECTION_WORLD_DEPTH,
-    (run.end-run.start+1)/factor*(1-SKIN_SECTION_NEUTRAL_FRACTION)/2);
+   const d=skinCutawayDepthForSpan((run.end-run.start+1)/factor);
    // Both sides keep a central unpainted strip even on narrow limbs.
    candidates.push({inward:1,x:run.start/factor,depth:d,
     start:run.start,end:run.end});
