@@ -62,7 +62,9 @@ function piece(source:Item,points:Point[]):Item {
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
   for(const p of points){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y)}
   const x=minX-weight/2,y=minY-weight/2;
-  return {...source,id:crypto.randomUUID(),x,y,width:Math.max(weight,maxX-minX+weight),
+  // An old imported ink lock must not be copied onto new erase fragments.
+  const {locked:_legacyInkLock,...unlockedSource}=source;
+  return {...unlockedSource,id:crypto.randomUUID(),x,y,width:Math.max(weight,maxX-minX+weight),
     height:Math.max(weight,maxY-minY+weight),points:points.map(p=>({x:p.x-x,y:p.y-y}))};
 }
 export function eraseInkAt(items:Item[],from:Point,to:Point,radius:number):Item[]{
