@@ -164,7 +164,7 @@ begin
  if lektrus_private.student_document_delta_allowed(v_new,
    jsonb_set(v_new,'{items,0,scienceLabBench,vessels}',
     (select jsonb_agg(jsonb_build_object('id',n,'kind','beaker'))
-      from generate_series(1,7) as n),pupil) then
+      from generate_series(1,7) as n)),pupil) then
   raise exception 'Student exceeded supported chemistry vessels';end if;
  if lektrus_private.student_document_delta_allowed(v_new,
    jsonb_set(v_new,'{items,0,scienceLabBench,event}','"oops"'::jsonb),pupil) then
@@ -172,7 +172,7 @@ begin
  if lektrus_private.student_document_delta_allowed(v_new,
    jsonb_set(v_new,'{items,0,scienceLabBench,placedDevices}',
     (select jsonb_agg(jsonb_build_object('id',n,'kind','hotplate'))
-      from generate_series(1,11) as n),pupil) then
+      from generate_series(1,11) as n)),pupil) then
   raise exception 'Student exceeded supported chemistry devices';end if;
  if lektrus_private.student_document_delta_allowed(v_new,
    jsonb_set(v_new,'{items,0,locked}','true'::jsonb),pupil) then
