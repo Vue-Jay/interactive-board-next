@@ -42,6 +42,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
  const displayed=useRef<AnatomyCamera>(ANATOMY_INITIAL_CAMERA);
  const [epidermisSelection,setEpidermisSelection]=useState<EpidermisId|null>(null);
  const epidermisHit=useRef<EpidermisHitTest|null>(null);
+ const epidermisAnchor=useRef<Point|null>(null);
  const tapStarts=useRef(new Map<number,Point>());
  const blockedTaps=useRef(new Set<number>());
  // Interpolate the same scale and pan fraction at each frame: the point
@@ -103,7 +104,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
   // This is the anatomically registered *representative* upper arm,
   // not a separate zoom illustration or a camera reset on system change.
   setCamera(anatomyBoundCamera(anatomyCameraAtBody(
-   {x:266,y:182},deep?220:65,width,height),width,height,SKIN_MAX_SCALE));
+   epidermisAnchor.current??{x:260,y:182},deep?220:65,width,height),width,height,SKIN_MAX_SCALE));
  };
  const focusSkin=(side:"left"|"right"="right")=>{
   const {width,height}=dimensions();
@@ -233,7 +234,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
     <div className="lek-anatomy-stage-grid" aria-hidden="true"/>
     {system==="integumentary"?<LektrusSkinSemanticViewport
      camera={displayCamera} selectedEpidermis={epidermisSelection}
-     hitTestRef={epidermisHit}/>:<div className="lek-anatomy-world"
+     hitTestRef={epidermisHit} anchorRef={epidermisAnchor}/>:<div className="lek-anatomy-world"
      style={{transform:`translate3d(${displayCamera.panX}px,${displayCamera.panY}px,0) scale(${displayCamera.scale})`}}>
      <div className="lek-anatomy-figure"
       data-anatomy-system={system}
