@@ -44,6 +44,34 @@ begin
 end;
 $items$;
 
+-- Student responses live inside a teacher's structured subject tasks.
+-- Compare each entry in place and allow ONLY response payloads, never the
+-- question, reference answer, worked solution, answer-key or entry order.
+create or replace function lektrus_private.subject_responses_only(
+ p_before jsonb,p_after jsonb
+) returns boolean language plpgsql immutable set search_path=pg_catalog as $response$
+declare
+ v_index integer;
+ v_old jsonb;
+ v_new jsonb;
+begin
+ if jsonb_typeof(p_before)<>'array' or jsonb_typeof(p_after)<>'array'
+    or jsonb_array_length(p_before)<>jsonb_array_length(p_after)
+    or jsonb_array_length(p_after)>200 then return false; end if;
+ for v_index in 0..jsonb_array_length(p_before)-1 loop
+  v_old:=p_before->v_index;
+  v_new:=p_after->v_index;
+  if jsonb_typeof(v_old)<>'object' or jsonb_typeof(v_new)<>'object'
+     or coalesce(v_old->>'id','')=''
+     or (v_old - array['activityResponse','russianWork']) <>
+        (v_new - array['activityResponse','russianWork']) then
+   return false;
+  end if;
+ end loop;
+ return true;
+end;
+$response$;
+
 -- Pure, side-effect-free diff guard, testable with isolated JSON fixtures.
 -- Server role/UID must be derived by the trigger, never taken from the HTTP body.
 create or replace function lektrus_private.student_document_delta_allowed(
@@ -120,6 +148,14 @@ begin
    when 'flashcard' then array['flashcardFlipped','flashcardMastery']
    when 'cover' then array['coverOpen']
    else array[]::text[] end;
+  if v_kind='graph' and v_old ? 'subjectBoardEntries' and
+     v_new ? 'subjectBoardEntries' then
+   if not lektrus_private.subject_responses_only(
+     v_old->'subjectBoardEntries',v_new->'subjectBoardEntries') then
+    return false;
+   end if;
+   v_fields:=v_fields||array['subjectBoardEntries'];
+  end if;
   if v_kind='graph' and
      v_old->'schoolDiagram'->>'kind'='atlas' and
      v_old->'schoolDiagram'->>'title'='Контурная карта' then
@@ -209,6 +245,7 @@ for each row execute function lektrus_private.check_board_document_write();
 revoke insert,update,delete on public.board_documents from public,anon,authenticated;
 grant select on public.board_documents to authenticated;
 revoke all on function lektrus_private.board_items_by_id(jsonb) from public,anon,authenticated;
+revoke all on function lektrus_private.subject_responses_only(jsonb,jsonb) from public,anon,authenticated;
 revoke all on function lektrus_private.student_document_delta_allowed(jsonb,jsonb,uuid) from public,anon,authenticated;
 revoke all on function lektrus_private.check_board_document_write() from public,anon,authenticated;
 commit;
