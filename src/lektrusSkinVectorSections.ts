@@ -15,7 +15,7 @@ type Track={inward:-1|1;lastRow:number;lastX:number;points:SkinSectionPoint[]};
 type Bounds={minX:number;maxX:number;minY:number;maxY:number};
 const LAYERS=[
  {start:0,end:SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd,fill:"#c995aa"},
- {start:SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd,end:SKIN_ILLUSTRATIVE_LAYERS.dermisEnd,fill:"#eabec5"},
+ {start:SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd,end:SKIN_ILLUSTRATIVE_LAYERS.dermisEnd,fill:"#f1dbdc"},
  {start:SKIN_ILLUSTRATIVE_LAYERS.dermisEnd,end:1,fill:"#f0dfce"}
 ] as const;
 export function skinSectionContours(
