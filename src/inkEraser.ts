@@ -70,7 +70,7 @@ export function eraseInkAt(items:Item[],from:Point,to:Point,radius:number):Item[
   const output:Item[]=[];
   let changed=false;
   for(const item of items){
-    if((item.kind!=="pen"&&item.kind!=="marker")||item.locked||item.hidden||!item.points?.length){
+    if((item.kind!=="pen"&&item.kind!=="marker")||item.hidden||!item.points?.length){
       output.push(item);continue;
     }
     const r=radius+(item.weight??1)/2;
@@ -129,7 +129,7 @@ export function eraseInkAlongPath(items: Item[], path: Point[], radius: number,
   const output:Item[]=[];
   let changed=false;
   for(const item of items){
-    if((item.kind!=="pen"&&item.kind!=="marker") || item.locked || item.hidden || !item.points?.length ||
+    if((item.kind!=="pen"&&item.kind!=="marker") || item.hidden || !item.points?.length ||
       (canErase&&!canErase(item)) ||
       item.x>maxX+radius+50 || item.x+item.width<minX-radius-50 ||
       item.y>maxY+radius+50 || item.y+item.height<minY-radius-50){
