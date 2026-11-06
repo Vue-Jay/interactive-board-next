@@ -7,8 +7,8 @@
  * OpenStax A&P 2e §5.1: keratinization, morphology, melanocytes and
  * basal membrane. Nothing in this model depicts vessels in epidermis.
  */
-import {EPIDERMIS_LAYER_FRACTIONS,epidermisStratumEdge,sectionAtY} from
- "./lektrusEpidermisAtlas";
+import {EPIDERMIS_LAYER_FRACTIONS,epidermisStratumEdge,sectionAtY,
+ type EpidermisPoint} from "./lektrusEpidermisAtlas";
 import type {SkinSectionContour,SkinSectionPoint} from "./lektrusSkinVectorSections";
 
 type Bounds={minX:number;maxX:number;minY:number;maxY:number};
@@ -35,6 +35,53 @@ const layout={
  basale:{columns:1,rowStep:.059,cells:"#c3a0b7",outline:"#7b567a"}
 } as const;
 
+export type EpidermisDrawnCell={
+ layer:keyof typeof layout;center:EpidermisPoint;rx:number;ry:number;
+};
+/** One geometry function for both painting and pointer picking.
+ * Coordinates are in body-world units, not pixel/fake optical magnification.
+ */
+function sheetCell(c:SkinSectionContour,layer:typeof EPIDERMIS_LAYER_FRACTIONS[number],
+ row:number,column:number):EpidermisDrawnCell|null{
+ const style=layout[layer.id];
+ const y=row*style.rowStep,p=sectionAtY(c,y);
+ if(!p||p.depth<1)return null;
+ const fraction=layer.start+(column+.5)*
+  (layer.end-layer.start)/style.columns;
+ const x=p.x+c.inward*p.depth*epidermisStratumEdge(y,fraction);
+ const rx=p.depth*(layer.end-layer.start)/style.columns*
+  (layer.id==="basale"?.46:.44);
+ const ry=style.rowStep*(layer.id==="corneum"?.47:
+  layer.id==="granulosum"?.45:.46);
+ const cy=y+((row+column)%2?1:-1)*style.rowStep*.025;
+ return {layer:layer.id,center:{x,y:cy},rx,ry};
+}
+/** Returns a cell ONLY within its visible drawn glyph, never from neutral
+ * space or the outside of a cutaway. The same sheetCell routine is used
+ * to paint its contour and to select it on mouse and touch.
+ */
+export function epidermisVisibleCellAt(
+ c:SkinSectionContour,point:EpidermisPoint
+):EpidermisDrawnCell|null{
+ if(point.y<148||point.y>216)return null;
+ for(const layer of EPIDERMIS_LAYER_FRACTIONS){
+  const style=layout[layer.id];
+  const row=Math.round(point.y/style.rowStep);
+  for(let j=row-1;j<=row+1;j++)
+   for(let col=0;col<style.columns;col++){
+    const cell=sheetCell(c,layer,j,col);
+    if(!cell)continue;
+    const dx=(point.x-cell.center.x)/cell.rx;
+    const dy=(point.y-cell.center.y)/cell.ry;
+    // Inner ellipse for the polygon and cuboidal cells prevents hits
+    // in invisible corners of each illustrative cell outline.
+    const limit=layer.id==="spinosum"?.69:
+     layer.id==="basale"?.70:.82;
+    if(dx*dx+dy*dy<=limit)return cell;
+   }
+ }
+ return null;
+}
 function nucleus(path:Path2D,x:number,y:number,rx:number,ry:number){
  path.moveTo(x+rx,y);path.ellipse(x,y,rx,ry,0,0,Math.PI*2);
 }
@@ -90,21 +137,12 @@ export function drawEpidermisCellSheet(
    const y=row*style.rowStep;
    const p=sectionAtY(c,y);
    if(!p||p.depth<1||stats.cells>=EPIDERMIS_CELL_SHEET_BUDGET)continue;
-   const layerWidth=p.depth*(layer.end-layer.start);
-   const centerFrac=(layer.start+layer.end)/2;
    for(let column=0;column<style.columns;column++){
     if(stats.cells>=EPIDERMIS_CELL_SHEET_BUDGET)break;
-    const fraction=layer.start+(column+.5)*
-     (layer.end-layer.start)/style.columns;
-    const centerX=p.x+c.inward*p.depth*
-     epidermisStratumEdge(y,fraction);
-    const cellWidth=layerWidth/style.columns;
-    const rx=cellWidth*(id==="basale"?.46:.44);
-    const ry=style.rowStep*(id==="corneum"?.47:
-     id==="granulosum"?.45:.46);
-    // Staggered, stable apposed epithelial cells. No random reseeding.
-    const shift=((row+column)%2?1:-1)*style.rowStep*.025;
-    const cy=y+shift;
+    const cell=sheetCell(c,layer,row,column);
+    if(!cell)continue;
+    const centerX=cell.center.x,cy=cell.center.y;
+    const {rx,ry}=cell;
     cellOutline(cells,id,centerX,cy,rx,ry,row+column);
     if(id!=="corneum"){
      nucleus(nuclei,centerX,cy,
@@ -120,8 +158,6 @@ export function drawEpidermisCellSheet(
       stats.granules++;
      }
     }
-    // Retain one row in basale and the correct flattening order.
-    void centerFrac;
     stats.cells++;
    }
   }
