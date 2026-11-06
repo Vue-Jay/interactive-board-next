@@ -72,8 +72,13 @@ for(let z=1,last=0;z<=80;z+=.25){
 }
 assert.match(viewport,/const cutawayAlpha=skinCutawayBlend\(cam\.scale\)/);
 assert.match(viewport,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
+assert.doesNotMatch(viewport,/globalAlpha=1-cutawayAlpha/,
+ "The neutral body must not disappear when the side section is fully visible");
+assert.doesNotMatch(viewport,/drawSkinTissueTexture\(/,
+ "Do not bring back slow noise pretending to be a dermal micrograph");
+assert.match(viewport,/skinUpperArmReferenceContours\(contours\)/);
 assert.match(viewport,/contours\.length&&cutawayAlpha>0/);
-assert.match(viewport,/drawSkinSectionBands\(ctx,contours,visible,cutawayAlpha\)/);
+assert.match(viewport,/drawSkinSectionBands\(ctx,thinContours,visible,cutawayAlpha\)/);
 assert.doesNotMatch(viewport,/globalCompositeOperation="source-atop"/,
  "Shading the alpha plate source-atop washed out the hand interior");
 
