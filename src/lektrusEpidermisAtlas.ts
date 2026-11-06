@@ -89,6 +89,20 @@ export function epidermisStratumEdge(y:number,fraction:number):number{
 /** Exact same melanocyte anchor is painted and selected by the pointer.
  * These are model locations in the representative shoulder, not biopsy data.
  */
+/** A few *representative*, clickable spinous keratinocytes share the
+ * same world anchors as the cell illustration. This sample is not a
+ * measured population of keratinocytes on the illustrated person. */
+export function epidermisKeratinocyteCenter(
+ contour:SkinSectionContour,anchorY:number
+):EpidermisPoint|null{
+ const p=sectionAtY(contour,anchorY);
+ if(!p||skinEvidenceRegionAt({x:p.x,y:anchorY})!=="thin-skin-reference")
+  return null;
+ const fraction=(SKIN_ILLUSTRATIVE_LAYERS.spinosumStart+
+  SKIN_ILLUSTRATIVE_LAYERS.basaleStart)/2;
+ return {x:p.x+contour.inward*p.depth*
+  epidermisStratumEdge(anchorY,fraction),y:anchorY};
+}
 export function epidermisMelanocyteCenter(
  contour:SkinSectionContour,anchorY:number
 ):EpidermisPoint|null{
@@ -154,8 +168,15 @@ export function pickEpidermisAt(
   // a wide fictitious anatomical band.
   if(Math.abs(d-epi)<=Math.min(.009,5/ppu)&&ppu>170)
    candidate="basement";
-  // Only touch a melanocyte where a melanocyte *is actually drawn*.
+  // Individual representative cell glyphs become clickable only when
+  // they are resolved on screen. Never treat a whole painted stripe as
+  // the specific cell pictured in its scientific card.
   if(ppu>=180&&skinEvidenceRegionAt({x:p.x,y:point.y})==="thin-skin-reference"){
+   const n=Math.round(point.y/.23);
+   const keratinocyte=epidermisKeratinocyteCenter(c,n*.23);
+   if(keratinocyte&&Math.hypot(point.x-keratinocyte.x,
+     point.y-keratinocyte.y)<=Math.min(.012,5/ppu))
+    candidate="keratinocyte";
    const k=Math.round(point.y/.31);
    const center=epidermisMelanocyteCenter(c,k*.31);
    if(center&&Math.hypot((point.x-center.x)*1.12,
