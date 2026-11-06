@@ -444,7 +444,7 @@ try{
  assert.equal(putCount,2,
   "A larger camera shift must refresh the same world-anchored texture");
 }finally{globalThis.document=oldDocument;}
-assert.doesNotMatch(renderer,/drawSkinTissueTexture\\(/,
+assert.doesNotMatch(renderer,/drawSkinTissueTexture\(/,
  "High zoom must not bring back unverified expensive faux dermal noise");
 assert.match(renderer,/drawEpidermisAtlas\(/);
 assert.match(renderer,/setTimeout\(\(\)=>\{/);
