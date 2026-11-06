@@ -1,0 +1,95 @@
+name: Acquire CDC human skin evidence (one-shot)
+on:
+  push:
+    branches: [feat/anatomy-verified-human-skin-20261106]
+    paths: [.github/workflows/anatomy-acquire-cdc-once.yml]
+permissions:
+  contents: write
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/anatomy-verified-human-skin-20261106
+      - name: Identify and fetch authoritative CDC PHIL image 14586
+        shell: bash
+        run: |
+          python3 -m pip install --disable-pip-version-check pillow
+          python3 - <<'PY'
+          import os,re,hashlib,html,io,urllib.request,urllib.parse
+          from PIL import Image,ImageOps
+          page='https://wwwn.cdc.gov/phil/Details.aspx?pid=14586'
+          headers={'User-Agent':'Mozilla/5.0 (compatible; Lektrus-Education/1.0)'}
+          def get(url):
+            request=urllib.request.Request(url,headers=headers)
+            with urllib.request.urlopen(request,timeout=35) as r:
+              mime=r.headers.get('Content-Type','')
+              raw=r.read(24*1024*1024)
+              print('GET',r.url,len(raw),mime,flush=True)
+              return raw,mime
+          try:
+            raw,mime=get(page)
+            body=html.unescape(raw.decode('utf-8','replace'))
+            relevant=[line.strip()[:500] for line in body.splitlines()
+              if any(s in line.lower() for s in ['14586','lores','hires','jpg','photo', 'download', 'imageurl'])]
+            print('CANDIDATES:',*relevant[:80],sep='\n',flush=True)
+            urls=re.findall(r'(?:href|src|content|data-src)\s*=\s*["\']([^"\']+)["\']',body,re.I)
+            urls=[urllib.parse.urljoin(page,url) for url in urls if
+              any(s in url.lower() for s in ['14586','hires','lores','download','phil_images'])]
+          except Exception as ex:
+            print('CDC landing page error',repr(ex),flush=True)
+            urls=[]
+          urls += [
+            'https://phil.cdc.gov/PHIL_Images/14586/14586_lores.jpg',
+            'https://phil.cdc.gov/PHIL_Images/14586/14586.jpg',
+            'https://wwwn.cdc.gov/phil/Photos/14586/14586_lores.jpg',
+            'https://wwwn.cdc.gov/phil/Photos/14586/14586.jpg',
+            'https://wwwn.cdc.gov/phil/Photos/14586/14586_hires.jpg',
+          ]
+          winner=None
+          for url in list(dict.fromkeys(urls)):
+            if not url.lower().startswith('https://'): continue
+            try:
+              blob,mime=get(url)
+              photo=Image.open(io.BytesIO(blob))
+              photo.verify()
+              image=Image.open(io.BytesIO(blob))
+              if image.width<500 or image.height<400:
+                print('REJECT small',image.size,url); continue
+              print('ACCEPT',url,image.size,flush=True)
+              winner=(url,blob,image);break
+            except Exception as e:
+              print('SKIP',url,repr(e)[:300],flush=True)
+          if winner is None: raise SystemExit('NO_VALID_CDC_IMAGE')
+          url,blob,image=winner
+          image=ImageOps.exif_transpose(image).convert('RGB')
+          image.thumbnail((1600,1600),Image.Resampling.LANCZOS)
+          os.makedirs('src/assets/bio-atlas/specimens',exist_ok=True)
+          path='src/assets/bio-atlas/specimens/skin-human-cdc-phil14586.jpg'
+          image.save(path,'JPEG',quality=88,optimize=True,progressive=True)
+          data=open(path,'rb').read()
+          print('SOURCE_URL',url,flush=True)
+          print('SOURCE_SHA256',hashlib.sha256(blob).hexdigest(),flush=True)
+          print('DERIVED_SHA256',hashlib.sha256(data).hexdigest(),flush=True)
+          print('DERIVED_FILE',path,Image.open(path).size,len(data),flush=True)
+          open('src/assets/bio-atlas/specimens/cdc-phil14586-provenance.txt','w').write(
+           'CDC PHIL 14586, normal human skin H&E, photo magnification 50x.\n'
+           'Official source: https://wwwn.cdc.gov/phil/Details.aspx?pid=14586\n'
+           'Downloaded original: '+url+'\n'
+           'Original sha256: '+hashlib.sha256(blob).hexdigest()+'\n'
+           'Derivative JPEG sha256: '+hashlib.sha256(data).hexdigest()+'\n'
+           'Derivative size: '+str(image.size)+'\n'
+           'Source local tissue region is not specified. No micrometre-per-pixel calibration.\n'
+           'CDC Public Health Image Library, public domain with CDC attribution required.\n')
+          PY
+      - name: Commit offline verified evidence on feature branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/assets/bio-atlas/specimens/
+          git commit -m 'assets(anatomy): add attributed human skin H&E from CDC PHIL 14586'
+          git push origin HEAD:feat/anatomy-verified-human-skin-20261106
