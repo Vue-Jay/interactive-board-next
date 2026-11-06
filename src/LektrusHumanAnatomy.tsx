@@ -252,7 +252,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
      <span><i className="is-dermis"/> Дерма</span>
      <span><i className="is-subcutis"/> Подкожная клетчатка</span>
     </div>
-    <LektrusSkinSpecimens/>
+    <LektrusSkinSpecimens defaultOpen={displayCamera.scale>=18}/>
     {displayCamera.scale>=22&&<p>В настоящей дерме встречаются
      фолликулы, потовые и сальные железы, сосуды и нервные окончания.
      Их расположение в этом учебном разрезе не воспроизведено
