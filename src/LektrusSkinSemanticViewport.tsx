@@ -3,7 +3,8 @@
  * replace the pixelated stripes of the old 1080 px raster-edge mask.
  * Nothing is drawn over the neutral center of the body. */
 import {useEffect,useRef} from "react";
-import {pickEpidermisAt,type EpidermisId,type EpidermisPoint} from "./lektrusEpidermisAtlas";
+import {pickEpidermisAt,sectionAtY,type EpidermisId,type EpidermisPoint} from "./lektrusEpidermisAtlas";
+import {skinEvidenceRegionAt} from "./lektrusSkinEvidenceModel";
 import {drawEpidermisAtlas} from "./lektrusEpidermisRenderer";
 import skinHighRes from "./assets/bio-atlas/human-skin-highres-registered.webp";
 import skinFallback from "./assets/bio-atlas/human-skin-original-registered.webp";
@@ -16,13 +17,14 @@ import {skinSectionContours,drawSkinSectionBands,clipSkinSection,
 
 export type EpidermisHitTest=(point:EpidermisPoint,pixelsPerWorld:number)=>EpidermisId|null;
 type Props={camera:AnatomyCamera;selectedEpidermis?:EpidermisId|null;
- hitTestRef?:{current:EpidermisHitTest|null}};
+ hitTestRef?:{current:EpidermisHitTest|null};
+ anchorRef?:{current:EpidermisPoint|null}};
 const WORLD_WIDTH=360,WORLD_HEIGHT=600;
 const ATLAS_FACTOR=3;
 const RASTER_WIDTH=WORLD_WIDTH*ATLAS_FACTOR;
 const RASTER_HEIGHT=WORLD_HEIGHT*ATLAS_FACTOR;
 
-export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=null,hitTestRef}:Props){
+export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=null,hitTestRef,anchorRef}:Props){
  const canvasRef=useRef<HTMLCanvasElement>(null);
  const cameraRef=useRef(camera);
  const selectionRef=useRef<EpidermisId|null>(selectedEpidermis);
@@ -63,6 +65,19 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    for(let i=0;i<alpha.length;i++)alpha[i]=rgba[i*4+3];
    contours=skinSectionContours(alpha,RASTER_WIDTH,RASTER_HEIGHT);
    if(hitTestRef)hitTestRef.current=(point,ppu)=>pickEpidermisAt(contours,point,ppu);
+   // Register an actual epithelial contour point, not the approximate
+   // shoulder centre: zooming the centre at 360× hid the epidermis entirely.
+   if(anchorRef){
+    const candidates=contours.filter(c=>c.inward===-1)
+     .map(c=>({c,p:sectionAtY(c,182)}))
+     .filter((item):item is {c:SkinSectionContour;p:{x:number;y:number;depth:number}}=>
+      !!item.p&&skinEvidenceRegionAt(item.p)==="thin-skin-reference");
+    const best=candidates.sort((a,b)=>
+     Math.abs(a.p.x-260)-Math.abs(b.p.x-260))[0];
+    anchorRef.current=best?
+     {x:best.p.x+best.c.inward*best.p.depth*.0325,y:182}:
+     {x:260,y:182};
+   }
   };
   const draw=()=>{
    frame=0;
@@ -151,6 +166,7 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    if(idleTimer!==undefined)clearTimeout(idleTimer);
    drawRef.current=()=>{};
    if(hitTestRef)hitTestRef.current=null;
+   if(anchorRef)anchorRef.current=null;
   };
  },[]);
  useEffect(()=>{cameraRef.current=camera;drawRef.current();},[camera]);
