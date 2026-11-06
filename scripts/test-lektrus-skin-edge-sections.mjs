@@ -78,8 +78,8 @@ const ui=fs.readFileSync("src/LektrusHumanAnatomy.tsx","utf8");
 const stage=ts.createSourceFile("src/LektrusSkinSemanticViewport.tsx",
  renderer,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(stage.parseDiagnostics.length,0,"Cutaway viewport must parse");
-assert.match(renderer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/);
-assert.match(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible,/);
+assert.doesNotMatch(renderer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/);
+assert.doesNotMatch(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible,/);
 assert.match(renderer,/drawSkinSectionBands\(ctx,contours,visible\)/);
 assert.doesNotMatch(renderer,/drawSkinMesoTiles|drawSkinSurfaceField|drawSkinMicrotiles/);
 assert.doesNotMatch(renderer,/skin-semantic-lod\.webp/);
@@ -89,7 +89,7 @@ assert.match(ui,/Левый бок/);
 assert.match(ui,/Правый бок/);
 assert.doesNotMatch(ui,/setSkinMode|skinMode|SkinViewMode/);
 assert.match(ui,/camera=\{displayCamera\}/);
-console.log("Lateral skin cross-section PASS: disjoint limb edges, 3 layers, untouched center, shared world camera and no full-body textures.");
+console.log("Lateral cutaway PASS: three schematic vector layers, no fake deep structures, untouched center and shared camera.");
 
 // Continuous LOD, deterministic geometry and bounded rendering work.
 for(const key of ["appendages","fibres","cells"]){
@@ -119,7 +119,7 @@ assert.equal(tissue.count,1);assert.equal(cells.count,1);
 assert.ok(cells.calls.length>tissue.calls.length+100,"Deep zoom reveals cells");
 assert.deepEqual(cells.calls,record(360,visible).calls,"Pan/zoom must not randomize tissue");
 assert.ok(cells.calls.some(c=>c[0]==="clip"),"Stay inside lateral section");
-assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
+assert.doesNotMatch(renderer,/clipSkinSection\(ctx,contours,visible\)/);
 assert.doesNotMatch(renderer,/edgeAtlas|detailCanvas|globalCompositeOperation="destination-in"/);
 console.log("Skin detail LOD PASS: continuous reveals, cells, culling, deterministic geometry, exact silhouette mask.");
 
@@ -215,7 +215,7 @@ assert.equal(vector.drawSkinSectionBands(fakeCtx,stripes,
 assert.throws(()=>vector.skinSectionContours(alpha,width,1,factor),
  /Invalid skin alpha or dimensions/);
 assert.match(renderer,/skinSectionContours\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/);
-assert.match(renderer,/SKIN_SECTION_WORLD_DEPTH\/SKIN_EDGE_WORLD_WIDTH/);
+assert.doesNotMatch(renderer,/SKIN_SECTION_WORLD_DEPTH\/SKIN_EDGE_WORLD_WIDTH/);
 console.log("Vector skin cross-section PASS: smooth paths, 3 independent regions, neutral centers, no raster zoom aliasing.");
 
 // Physically calibrated cells are a separate continuous field. The widened
@@ -280,8 +280,8 @@ assert.ok(deepEllipses.every(c=>c[3]<=.02&&c[4]<=.02),
 const outside=microDraw(360,{minX:200,maxX:220,minY:200,maxY:210});
 assert.deepEqual(outside.count,
  {collagen:0,adipocytes:0,keratinocytes:0});
-assert.match(renderer,/drawSkinMicroscopicDetails\(ctx,contours,cam.scale,visible\)/);
-assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
+assert.doesNotMatch(renderer,/drawSkinMicroscopicDetails\(ctx,contours,cam.scale,visible\)/);
+assert.doesNotMatch(renderer,/clipSkinSection\(ctx,contours,visible\)/);
 console.log("Calibrated microscopy PASS: biologically scaled cells, correct zoom LOD, bounded work, deterministic world-space rendering.");
 
 
@@ -338,8 +338,8 @@ assert.ok(fineMax.calls.some(c=>c[0]==="ellipse"),
  "Fine spindle-shaped fibroblasts and nuclei must be drawn");
 assert.ok(fineMax.calls.filter(c=>c[0]==="arc").every(c=>c[3]<=.001),
  "Tiny keratohyalin granules must never be larger than cells");
-assert.match(renderer,/drawSkinFineStructures\(ctx,contours,cam.scale,visible\)/);
-assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
+assert.doesNotMatch(renderer,/drawSkinFineStructures\(ctx,contours,cam.scale,visible\)/);
+assert.doesNotMatch(renderer,/clipSkinSection\(ctx,contours,visible\)/);
 console.log("Skin fine histology PASS: six sub-mm tiers, epidermal strata, world anchoring and mobile culling.");
 
 
@@ -437,8 +437,8 @@ try{
  assert.equal(putCount,2,
   "A larger camera shift must refresh the same world-anchored texture");
 }finally{globalThis.document=oldDocument;}
-assert.match(renderer,/drawSkinTissueTexture\(ctx,contours,cam.scale,visible\)/);
-assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
+assert.doesNotMatch(renderer,/drawSkinTissueTexture\(ctx,contours,cam.scale,visible\)/);
+assert.doesNotMatch(renderer,/clipSkinSection\(ctx,contours,visible\)/);
 console.log("Organic skin tissue PASS: layered pigment, fine collagen, fat lacunae, transparent gaps, pixel cap and world-anchored camera.");
 
 assert.match(ui,/Ширина разреза и слоёв специально увеличена/);
