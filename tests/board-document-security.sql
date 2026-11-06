@@ -107,6 +107,25 @@ begin
  if lektrus_private.student_document_delta_allowed(v_before,v_new,pupil) then
   raise exception 'Duplicate ID passed';
  end if;
+ -- Subject boards accept student answers without changing teacher prompts.
+ v_new:=jsonb_set(v_before,'{items,0}',jsonb_build_object(
+  'id','t','kind','graph','createdBy',teacher::text,'text','Worksheet',
+  'subjectBoardEntries',jsonb_build_array(jsonb_build_object(
+   'id','entry1','kind','task','title','Example','prompt','2 + 2',
+   'answer','4','solution','2 + 2 = 4'))));
+ if not lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,subjectBoardEntries,0,activityResponse}',
+    '{"text":"4"}'::jsonb),pupil) then
+  raise exception 'Student activity response incorrectly blocked';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,subjectBoardEntries,0,answer}','"5"'::jsonb),pupil) then
+  raise exception 'Student changed reference answer in a subject task';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,subjectBoardEntries}',
+    (v_new#>'{items,0,subjectBoardEntries}')||
+      '[{"id":"new","kind":"task","prompt":"Spoof"}]'::jsonb),pupil) then
+  raise exception 'Student added a teacher-defined subject task';end if;
+
  -- Legacy ink[] -> items[] migration must not be treated as deletion.
  v_new:=jsonb_set(v_before,'{items}',(v_before->'items')-2);
  v_new:=jsonb_set(v_new,'{ink}',jsonb_build_array(
