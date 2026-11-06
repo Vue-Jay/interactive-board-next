@@ -16,7 +16,12 @@ const ZOOMS=[1,8,24,80,120,180,220,360] as const;
 function Preview(){
  const params=new URLSearchParams(window.location.search);
  const incoming=Number(params.get("zoom"));
- const start=ZOOMS.find(x=>x===incoming)??24;
+ const start=Number.isFinite(incoming)&&incoming>=1&&incoming<=360?
+  incoming:24;
+ const region=params.get("region");
+ const regionFocus=region==="hand"?{x:300,y:343}:
+  region==="foot"?{x:241,y:568}:
+  region==="legs"?{x:175,y:485}:null;
  const modeValue=params.get("site");
  const site:ThickSkinKind|null=modeValue==="palm"||modeValue==="sole"?
   modeValue:null;
@@ -30,8 +35,9 @@ function Preview(){
  const anchorRef=useRef<{x:number;y:number}|null>(null);
  const thickAnchorsRef=useRef<Record<ThickSkinKind,
   {x:number;y:number}|null>|null>(null);
- const [focus,setFocus]=useState({x:260,y:182});
+ const [focus,setFocus]=useState(regionFocus??{x:260,y:182});
  useEffect(()=>{
+  if(regionFocus)return;
   // Wait for the *actual loaded silhouette contour*, not an estimated
   // x coordinate from the older atlas. Screenshots should inspect the
   // registered epidermis rather than hundreds of pink dermis pixels.
@@ -42,14 +48,16 @@ function Preview(){
    window.clearInterval(timer);
   },100);
   return ()=>window.clearInterval(timer);
- },[site]);
+ },[site,region]);
  const camera=anatomyCameraAtBody(scale===1?{x:180,y:300}:focus,
   scale,WIDTH,HEIGHT);
  return <main style={{fontFamily:"system-ui",padding:18,background:"#edf3f0",
   color:"#254639",minHeight:"100vh"}}>
   <h1 style={{fontSize:20,margin:"0 0 8px"}}>Lektrus · проверка покровной системы</h1>
   <p style={{fontSize:13,maxWidth:WIDTH}}>Настоящий компонент атласа, одна и та же
-   область {site?site==="palm"?"кисти (условная ладонь)":"стопы (условная подошва)":"правого плеча"}. Виртуальный разрез увеличен для обучения и не
+   область {region==="hand"?"кисти и пальцев":
+   region==="foot"?"стопы":region==="legs"?"ног":
+   site?site==="palm"?"кисти (условная ладонь)":"стопы (условная подошва)":"правого плеча"}. Виртуальный разрез увеличен для обучения и не
    является физической масштабной линейкой или фотографией.</p>
   <nav aria-label="Масштаб для проверки" style={{display:"flex",gap:7,
    marginBottom:12}}>
