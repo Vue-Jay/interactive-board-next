@@ -3403,7 +3403,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     eraserSession.current=null;
     // The model is changed once per gesture, as one undo/history operation.
     const before=itemsRef.current;
-    const next=eraseInkAlongPath(before,g.path,eraserSize/2/g.zoom);
+    const next=eraseInkAlongPath(before,g.path,eraserSize/2/g.zoom,
+      item=>canRemoveBoardItem(item,authUser.id,isStudent,isBoardOwner));
     if(next!==before){
       // Keep the canvas preview until the actual SVG fragments have painted.
       flushSync(()=>{
