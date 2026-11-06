@@ -77,4 +77,17 @@ assert.ok(Math.abs(hit.center.x-cellPoint.x)<.001);
 assert.equal(sheet.epidermisVisibleCellAt(upperArm,
  {x:cellPoint.x-1.4,y}),null,
  "Outside any drawn epidermal cell there is no invisible hit target");
-console.log("Anatomy epidermis evidence windows PASS: localized samples, preserved digits, one basal tier, registered painted cell picks.");
+// Separate alpha boundary tracing must include the entire finger/tip,
+// unlike tissue-section tracks, which intentionally omit thin segments.
+const outline=load("src/lektrusSkinSilhouetteOutline.ts");
+const sw=45,sh=55,aMask=new Uint8ClampedArray(sw*sh);
+for(let y=2;y<=47;y++)for(let x=4;x<=10;x++)
+ aMask[y*sw+x]=255;
+for(let y=4;y<=53;y++)for(let x=19;x<=25;x++)
+ aMask[y*sw+x]=255;
+const loops=outline.traceSkinSilhouette(aMask,sw,sh,1);
+assert.equal(loops.length,2,"Separate fingers must remain separate loops");
+assert.deepEqual(loops.map(l=>l.maxY).sort((a,b)=>a-b),[48,54],
+ "The closing stroke includes BOTH fingertip ends without truncation");
+assert.ok(loops.every(l=>l.points.length>=4));
+console.log("Anatomy epidermis evidence windows PASS: localized samples, complete separate digit outlines, one basal tier, precise cell picks.");
