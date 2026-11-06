@@ -15,9 +15,10 @@ import {EPIDERMIS_LAYER_FRACTIONS,sectionAtY,
  type EpidermisId,type EpidermisStratum} from "./lektrusEpidermisAtlas";
 export {epidermisStratumEdge} from "./lektrusEpidermisAtlas";
 import type {SkinSectionContour,SkinSectionPoint} from "./lektrusSkinVectorSections";
+import {drawEpidermisCellSheet} from "./lektrusEpidermisCellSheet";
 
 type Bounds={minX:number;maxX:number;minY:number;maxY:number};
-export const EPIDERMIS_DETAIL_MAX_CELLS=4500;
+export const EPIDERMIS_DETAIL_MAX_CELLS=1800;
 export const EPIDERMIS_MICRO_MIN_SCALE=155;
 const clamp=(v:number)=>Math.max(0,Math.min(1,v));
 function edgeX(c:SkinSectionContour,p:SkinSectionPoint,f:number){
@@ -73,11 +74,6 @@ function curveRow(ctx:CanvasRenderingContext2D,c:SkinSectionContour,
  if(!middle)return;
  ctx.quadraticCurveTo(edgeX(c,middle,f),middle.y,
   edgeX(c,b,f),y1);
-}
-function hash(a:number,b:number,salt:number){
- let v=Math.imul((a|0)^salt,0x1b873593)^Math.imul(b|0,0x85ebca6b);
- v=Math.imul(v^(v>>>16),0x7feb352d);
- return ((v^(v>>>15))>>>0)/4294967296;
 }
 type DetailStats={bands:number;cells:number;granules:number;melanocytes:number};
 export function drawEpidermisAtlas(
@@ -149,116 +145,10 @@ export function drawEpidermisAtlas(
   if(microFade>.005&&stats.cells<EPIDERMIS_DETAIL_MAX_CELLS){
    const y0=Math.max(bounds.minY,c.minY,148);
    const y1=Math.min(bounds.maxY,c.maxY,216);
-   const grid=.0106; // ~30 µm center spacing in the WHOLE-BODY coordinate.
-   for(const l of EPIDERMIS_LAYER_FRACTIONS){
-    // Reserve independent budgets so the basal cell row cannot disappear
-    // behind thousands of flattened corneocytes/spinous cell paths.
-    const layerBudget=EPIDERMIS_DETAIL_MAX_CELLS/4;
-    const startCount=stats.cells;
-    const localWidth=(l.end-l.start)*8.4;
-    const rows=Math.max(0,(y1-y0)/grid);
-    const estimate=Math.max(1,rows*Math.ceil(localWidth/grid));
-    const stride=Math.max(1,Math.ceil(Math.sqrt(estimate/layerBudget)));
-    const step=grid*stride;
-    const j0=Math.ceil(y0/step),j1=Math.floor(y1/step);
-    if(stats.cells>=EPIDERMIS_DETAIL_MAX_CELLS)break;
-    ctx.save();
-    if(!sectionPath(ctx,c,points,l.start,l.end)){
-     ctx.restore();continue;
-    }
-    ctx.clip();
-    const isCorneum=l.id==="corneum";
-    const isGranular=l.id==="granulosum";
-    const isBasal=l.id==="basale";
-    const outlines=new Path2D(),nuclei=new Path2D();
-    const specks=new Path2D();
-    for(let j=j0;j<=j1&&stats.cells-startCount<layerBudget;j++){
-     const y=j*step,p=sectionAtY(c,y);
-     if(!p||skinEvidenceRegionAt({x:p.x,y})!=="thin-skin-reference")
-      continue;
-     const x1=p.x+c.inward*p.depth*l.start;
-     const x2=p.x+c.inward*p.depth*l.end;
-     const minX=Math.min(x1,x2),maxX=Math.max(x1,x2);
-     const k0=Math.ceil(minX/step),k1=Math.floor(maxX/step);
-     for(let k=k0;k<=k1&&stats.cells-startCount<layerBudget;k++){
-      const x=k*step;
-      // A real basal stratum is ONE row, adjacent to its basement
-      // membrane; the granular zone of thin skin contains only a few
-      // flattened rows. Never fill their widened teaching bands with
-      // many additional fictitious rows of nuclei.
-      if(isBasal&&Math.abs(x-(x2-c.inward*.005))>step*.57)
-       continue;
-      if(isGranular&&Math.min(
-       Math.abs(x-(x1+(x2-x1)*.32)),
-       Math.abs(x-(x1+(x2-x1)*.70)))>step*.60)
-       continue;
-      const d=(x-p.x)/(c.inward*p.depth);
-      if(d<l.start||d>=l.end)continue;
-      // Cellular *morphology* comes from histology, but synthetic cell
-      // locations are explicitly representative, never a sampled biopsy.
-      const jx=(hash(k,j,13)-.5)*grid*.18;
-      const jy=(hash(k,j,17)-.5)*grid*.18;
-      const cx=x+jx,cy=y+jy;
-      const rr=.0037+.0008*hash(k,j,19);
-      const ry=isCorneum?rr*.36:isGranular?rr*.63:
-       isBasal?rr*1.05:rr*.96;
-      const rx=isCorneum?rr*1.10:isGranular?rr*1.22:
-       isBasal?rr*.88:rr;
-      // Spinous cells are polygonal, not uniformly circular stamps.
-      if(l.id==="spinosum"){
-       outlines.moveTo(cx-rx*.80,cy-ry*.18);
-       outlines.lineTo(cx-rx*.47,cy-ry);
-       outlines.lineTo(cx+rx*.58,cy-ry*.89);
-       outlines.lineTo(cx+rx,cy-ry*.15);
-       outlines.lineTo(cx+rx*.50,cy+ry);
-       outlines.lineTo(cx-rx*.68,cy+ry*.82);
-       outlines.closePath();
-      }else{
-       // Canvas Path2D.ellipse joins the current point by a straight
-       // segment when there is no fresh moveTo. Unconnected cell outlines
-       // must each start their OWN subpath, or the fill turns into giant
-       // zigzag triangles spanning the entire epidermis at deep zoom.
-       outlines.moveTo(cx+rx,cy);
-       outlines.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
-      }
-      if(!isCorneum){
-       const nr=.0014,rotation=isBasal?0:Math.PI/8;
-       nuclei.moveTo(cx+nr*Math.cos(rotation),cy+nr*Math.sin(rotation));
-       nuclei.ellipse(cx,cy,nr,isBasal?.0024:.00165,
-        rotation,0,Math.PI*2);
-      }
-      if(isGranular){
-       for(let q=0;q<2;q++){
-        const dx=(q?.002:-.002)*hash(k,j,31+q);
-        const dy=(q?.001:-.001)*hash(k,j,37+q);
-        specks.moveTo(cx+dx+.00072,cy+dy);
-        specks.ellipse(cx+dx,cy+dy,.00072,.00042,0,0,Math.PI*2);
-        stats.granules++;
-       }
-      }
-      stats.cells++;
-     }
-    }
-    // Real epithelium is a *compact sheet* of closely apposed cells.
-    // Fill delicate cytoplasm shapes underneath their own borders,
-    // instead of leaving tiny isolated dark dots on a flat purple band.
-    ctx.globalAlpha=.58*microFade;
-    ctx.fillStyle=isCorneum?"#f4dac8":isGranular?"#c39db2":
-     isBasal?"#bc8caa":"#e8c0ca";
-    ctx.fill(outlines);
-    ctx.globalAlpha=.72*microFade;
-    ctx.strokeStyle=isCorneum?"#c29c9b":isGranular?"#77577d":
-     isBasal?"#805577":"#b189a5";
-    ctx.lineWidth=.0015;
-    ctx.stroke(outlines);
-    if(!isCorneum){
-     ctx.globalAlpha=.74*microFade;ctx.fillStyle="#71496e";ctx.fill(nuclei);
-    }
-    if(isGranular){
-     ctx.globalAlpha=.8*microFade;ctx.fillStyle="#694567";ctx.fill(specks);
-    }
-    ctx.restore();
-   }
+   const detail=drawEpidermisCellSheet(
+    ctx,c,points,bounds,pixelsPerWorld,microFade);
+   stats.cells+=detail.cells;
+   stats.granules+=detail.granules;
    // A sparse set of individually selectable example keratinocytes,
    // actually present in the spinous cell sheet and positioned by the
    // same helper used for hit testing. These are NOT fabricated biopsy
@@ -270,19 +160,19 @@ export function drawEpidermisAtlas(
      if(!center)continue;
      const x=center.x;
      ctx.beginPath();
-     ctx.moveTo(x-.0065,y-.0014);
-     ctx.lineTo(x-.004,y-.0055);
-     ctx.lineTo(x+.0038,y-.005);
-     ctx.lineTo(x+.0066,y+.0008);
-     ctx.lineTo(x+.0035,y+.0054);
-     ctx.lineTo(x-.0051,y+.0048);
+     ctx.moveTo(x-.023,y-.005);
+     ctx.lineTo(x-.014,y-.027);
+     ctx.lineTo(x+.014,y-.026);
+     ctx.lineTo(x+.024,y+.005);
+     ctx.lineTo(x+.012,y+.028);
+     ctx.lineTo(x-.018,y+.024);
      ctx.closePath();
      ctx.fillStyle="#ebc4ce";ctx.fill();
      ctx.strokeStyle="#916a91";ctx.lineWidth=.0013;ctx.stroke();
-     ctx.beginPath();ctx.ellipse(x,y,.0018,.002,0,0,Math.PI*2);
+     ctx.beginPath();ctx.ellipse(x,y,.007,.009,0,0,Math.PI*2);
      ctx.fillStyle="#74536d";ctx.fill();
      if(selected==="keratinocyte"){
-      ctx.beginPath();ctx.ellipse(x,y,.010,.009,0,0,Math.PI*2);
+      ctx.beginPath();ctx.ellipse(x,y,.027,.033,0,0,Math.PI*2);
       ctx.strokeStyle="#f6d369";ctx.lineWidth=.0019;
       ctx.globalAlpha=.95;ctx.stroke();
      }
@@ -302,13 +192,13 @@ export function drawEpidermisAtlas(
      const center=epidermisMelanocyteCenter(c,y);
      if(!center)continue;
      const x=center.x;
-     ctx.beginPath();ctx.ellipse(x,y,.0034,.0042,0,0,Math.PI*2);
+     ctx.beginPath();ctx.ellipse(x,y,.015,.020,0,0,Math.PI*2);
      ctx.fill();
      ctx.beginPath();ctx.moveTo(x,y);
-     ctx.lineTo(x-c.inward*.010,y-.012);
-     ctx.moveTo(x,y);ctx.lineTo(x-c.inward*.011,y+.014);ctx.stroke();
+     ctx.lineTo(x-c.inward*.025,y-.029);
+     ctx.moveTo(x,y);ctx.lineTo(x-c.inward*.028,y+.028);ctx.stroke();
      if(selected==="melanocyte"){
-      ctx.beginPath();ctx.ellipse(x,y,.0075,.008,0,0,Math.PI*2);
+      ctx.beginPath();ctx.ellipse(x,y,.020,.025,0,0,Math.PI*2);
       ctx.strokeStyle="#f7d763";ctx.lineWidth=.002;
       ctx.globalAlpha=.95;ctx.stroke();
      }
