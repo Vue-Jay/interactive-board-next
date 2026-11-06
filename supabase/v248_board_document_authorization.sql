@@ -63,14 +63,23 @@ declare
  v_new_atlas jsonb;
 begin
  if p_actor is null or jsonb_typeof(p_before)<>'object'
-    or jsonb_typeof(p_after)<>'object' or p_before->'version' <> '1'::jsonb
-    or p_after->'version' <> '1'::jsonb then
+    or jsonb_typeof(p_after)<>'object'
+    or p_before->'version' is distinct from '1'::jsonb
+    or p_after->'version' is distinct from '1'::jsonb then
   return false;
  end if;
- -- Students can change the view and drawing/answer items, not the assignment
- -- title, subject, board background, or arbitrary metadata keys.
- if (p_before - array['items','ink','view']) <>
-    (p_after - array['items','ink','view']) then
+ -- Preview is a cache, not the lesson definition. The earliest board version
+ -- may omit subject, background and backgroundShared: compare canonical
+ -- defaults so a student's first save does not become a false metadata edit.
+ if (p_before - array['items','ink','view','preview','subject','background','backgroundShared']) <>
+    (p_after - array['items','ink','view','preview','subject','background','backgroundShared'])
+    or coalesce(p_before->>'subject','')<>coalesce(p_after->>'subject','')
+    or coalesce(p_before->'background',
+       '{"mode":"dots","color":"#f7f7f8","opacity":100}'::jsonb) <>
+       coalesce(p_after->'background',
+       '{"mode":"dots","color":"#f7f7f8","opacity":100}'::jsonb)
+    or coalesce(p_before->'backgroundShared','true'::jsonb) <>
+       coalesce(p_after->'backgroundShared','true'::jsonb) then
   return false;
  end if;
  v_before_items:=lektrus_private.board_items_by_id(p_before);
