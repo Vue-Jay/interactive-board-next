@@ -6,11 +6,13 @@
  */
 import {SKIN_ILLUSTRATIVE_LAYERS,skinEvidenceRegionAt} from "./lektrusSkinEvidenceModel";
 import type {SkinSectionContour,SkinSectionPoint} from "./lektrusSkinVectorSections";
+import {thickSkinInfluence,thickSkinBandsAt,thickSkinBoundaryAt,
+ type ThickSkinSample} from "./lektrusThickEpidermis";
 
-export type EpidermisId="epidermis"|"corneum"|"granulosum"|"spinosum"|
+export type EpidermisId="epidermis"|"corneum"|"lucidum"|"granulosum"|"spinosum"|
  "basale"|"keratinocyte"|"melanocyte"|"basement";
 export type EpidermisStratum=Extract<EpidermisId,
- "corneum"|"granulosum"|"spinosum"|"basale">;
+ "corneum"|"lucidum"|"granulosum"|"spinosum"|"basale">;
 export type EpidermisRecord={
  id:EpidermisId;name:string;latin:string;summary:string;
  function:string;microAppearance:string;source:string;
@@ -32,6 +34,11 @@ export const EPIDERMIS_RECORDS:Record<EpidermisId,EpidermisRecord>={
   summary:"Наружные плотно прилегающие безъядерные корнеоциты, наполненные кератином.",
   function:"Главный водонепроницаемый и механический барьер; поверхностные чешуйки постепенно слущиваются.",
   microAppearance:"На гистологическом срезе это тонкие параллельные слои плоских ороговевших чешуек; в них нет ядер или органелл.",
+  source:EPIDERMIS_SOURCES.leeds},
+ lucidum:{id:"lucidum",name:"Блестящий слой",latin:"Stratum lucidum",
+  summary:"Тонкая почти прозрачная прослойка уплощённых безъядерных клеток между роговым и зернистым слоями. Выделяется только в толстой коже ладоней и подошв.",
+  function:"Участвует в защитном барьере кожи, подвергающейся сильному трению и давлению.",
+  microAppearance:"В толстой коже видна как узкая, светлая, полупрозрачная полоса под толстым роговым слоем. На обычном H&E-препарате иногда различима с трудом, поэтому её нельзя рисовать гигантской яркой лентой.",
   source:EPIDERMIS_SOURCES.leeds},
  granulosum:{id:"granulosum",name:"Зернистый слой",latin:"Stratum granulosum",
   summary:"Один или несколько рядов уплощённых кератиноцитов с тёмными гранулами кератогиалина.",
@@ -67,6 +74,9 @@ export const EPIDERMIS_RECORDS:Record<EpidermisId,EpidermisRecord>={
 };
 export const EPIDERMIS_STRATA_ORDER=[
  "corneum","granulosum","spinosum","basale"
+] as const;
+export const EPIDERMIS_THICK_STRATA_ORDER=[
+ "corneum","lucidum","granulosum","spinosum","basale"
 ] as const;
 export const EPIDERMIS_LAYER_FRACTIONS=[
  {id:"corneum",start:0,end:SKIN_ILLUSTRATIVE_LAYERS.granulosumStart,color:"#f0d2c5"},
@@ -142,7 +152,7 @@ export type EpidermisPoint={x:number;y:number};
  */
 export function pickEpidermisAt(
  contours:readonly SkinSectionContour[],point:EpidermisPoint,
- pixelsPerWorld:number
+ pixelsPerWorld:number,thickSample:ThickSkinSample|null=null
 ):EpidermisId|null{
  const ppu=Math.max(1,pixelsPerWorld);
  const tol=Math.min(.11,9/ppu);
@@ -153,8 +163,15 @@ export function pickEpidermisAt(
   const p=sectionAtY(c,point.y);
   if(!p||p.depth<=.04)continue;
   const d=(point.x-p.x)*c.inward;
-  const epi=p.depth*epidermisStratumEdge(
-   point.y,SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd);
+  const thickWeight=thickSkinInfluence(c,point.y,thickSample);
+  const thickBands=thickWeight>.15?
+   thickSkinBandsAt(c,point.y,thickSample):null;
+  const epiFraction=thickBands?
+   thickBands[thickBands.length-1].end:
+   SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd;
+  const epi=p.depth*(thickBands?
+   thickSkinBoundaryAt(point.y,epiFraction,epiFraction,thickWeight):
+   epidermisStratumEdge(point.y,epiFraction));
   if(d< -tol||d>epi+tol)continue;
   const error=d<0?-d:d>epi?d-epi:0;
   if(error>=best)continue;
@@ -163,10 +180,17 @@ export function pickEpidermisAt(
   const screenWidth=ppu*epi;
   candidate="epidermis";
   if(screenWidth<28)continue;
-  const selection=EPIDERMIS_LAYER_FRACTIONS.find(l=>
-   normalized>=epidermisStratumEdge(point.y,l.start)&&
-   normalized<epidermisStratumEdge(point.y,l.end));
-  candidate=selection?.id??"epidermis";
+  if(thickBands){
+   const chosen=thickBands.find(l=>l.end-l.start>.0007&&
+    normalized>=thickSkinBoundaryAt(point.y,l.start,epiFraction,thickWeight)&&
+    normalized<thickSkinBoundaryAt(point.y,l.end,epiFraction,thickWeight));
+   candidate=chosen?.id??"epidermis";
+  }else{
+   const selection=EPIDERMIS_LAYER_FRACTIONS.find(l=>
+    normalized>=epidermisStratumEdge(point.y,l.start)&&
+    normalized<epidermisStratumEdge(point.y,l.end));
+   candidate=selection?.id??"epidermis";
+  }
   // Thin basement-membrane zone gets a pointer-friendly hit, but not
   // a wide fictitious anatomical band.
   if(Math.abs(d-epi)<=Math.min(.009,5/ppu)&&ppu>170)
@@ -174,7 +198,8 @@ export function pickEpidermisAt(
   // Individual representative cell glyphs become clickable only when
   // they are resolved on screen. Never treat a whole painted stripe as
   // the specific cell pictured in its scientific card.
-  if(ppu>=180&&skinEvidenceRegionAt({x:p.x,y:point.y})==="thin-skin-reference"){
+  if(!thickBands&&ppu>=180&&
+   skinEvidenceRegionAt({x:p.x,y:point.y})==="thin-skin-reference"){
    const n=Math.round(point.y/.23);
    const keratinocyte=epidermisKeratinocyteCenter(c,n*.23);
    if(keratinocyte&&Math.hypot(point.x-keratinocyte.x,

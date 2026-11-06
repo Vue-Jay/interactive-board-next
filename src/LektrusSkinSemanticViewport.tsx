@@ -6,6 +6,9 @@ import {useEffect,useRef} from "react";
 import {pickEpidermisAt,sectionAtY,type EpidermisId,type EpidermisPoint} from "./lektrusEpidermisAtlas";
 import {skinEvidenceRegionAt} from "./lektrusSkinEvidenceModel";
 import {drawEpidermisAtlas} from "./lektrusEpidermisRenderer";
+import {resolveThickSkinSample,thickSkinFocusPoint,
+ type ThickSkinKind,type ThickSkinSample} from "./lektrusThickEpidermis";
+import {drawThickEpidermisSample} from "./lektrusThickEpidermisRenderer";
 import skinHighRes from "./assets/bio-atlas/human-skin-highres-registered.webp";
 import skinFallback from "./assets/bio-atlas/human-skin-original-registered.webp";
 import type {AnatomyCamera} from "./lektrusHumanAnatomyModel";
@@ -17,17 +20,24 @@ import {skinSectionContours,drawSkinSectionBands,clipSkinSection,
 
 export type EpidermisHitTest=(point:EpidermisPoint,pixelsPerWorld:number)=>EpidermisId|null;
 type Props={camera:AnatomyCamera;selectedEpidermis?:EpidermisId|null;
+ thickKind?:ThickSkinKind|null;
  hitTestRef?:{current:EpidermisHitTest|null};
- anchorRef?:{current:EpidermisPoint|null}};
+ anchorRef?:{current:EpidermisPoint|null};
+ thickAnchorsRef?:{current:Record<ThickSkinKind,EpidermisPoint|null>|null}};
 const WORLD_WIDTH=360,WORLD_HEIGHT=600;
 const ATLAS_FACTOR=3;
 const RASTER_WIDTH=WORLD_WIDTH*ATLAS_FACTOR;
 const RASTER_HEIGHT=WORLD_HEIGHT*ATLAS_FACTOR;
 
-export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=null,hitTestRef,anchorRef}:Props){
+export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=null,
+ thickKind=null,hitTestRef,anchorRef,thickAnchorsRef}:Props){
  const canvasRef=useRef<HTMLCanvasElement>(null);
  const cameraRef=useRef(camera);
  const selectionRef=useRef<EpidermisId|null>(selectedEpidermis);
+ const thickKindRef=useRef<ThickSkinKind|null>(thickKind);
+ const thickSitesRef=useRef<Record<ThickSkinKind,ThickSkinSample|null>>({
+  palm:null,sole:null
+ });
  const drawRef=useRef<()=>void>(()=>{});
  useEffect(()=>{
   const canvas=canvasRef.current;
@@ -64,7 +74,19 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    const alpha=new Uint8ClampedArray(RASTER_WIDTH*RASTER_HEIGHT);
    for(let i=0;i<alpha.length;i++)alpha[i]=rgba[i*4+3];
    contours=skinSectionContours(alpha,RASTER_WIDTH,RASTER_HEIGHT);
-   if(hitTestRef)hitTestRef.current=(point,ppu)=>pickEpidermisAt(contours,point,ppu);
+   thickSitesRef.current={
+    palm:resolveThickSkinSample(contours,"palm"),
+    sole:resolveThickSkinSample(contours,"sole")
+   };
+   if(thickAnchorsRef)thickAnchorsRef.current={
+    palm:thickSitesRef.current.palm?
+     thickSkinFocusPoint(thickSitesRef.current.palm):null,
+    sole:thickSitesRef.current.sole?
+     thickSkinFocusPoint(thickSitesRef.current.sole):null
+   };
+   if(hitTestRef)hitTestRef.current=(point,ppu)=>
+    pickEpidermisAt(contours,point,ppu,
+     thickKindRef.current?thickSitesRef.current[thickKindRef.current]:null);
    // Register an actual epithelial contour point, not the approximate
    // shoulder centre: zooming the centre at 360× hid the epidermis entirely.
    if(anchorRef){
@@ -128,9 +150,14 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
      // Four genuine anatomical strata remain registered to exactly the
      // same world coordinates. Cell illustrations are reserved for the
      // approved upper-arm site and the idle/detail pass.
-     if(cam.scale>11)drawEpidermisAtlas(
-      ctx,contours,cam.scale,visible,selectionRef.current,refined,
-      fit.pixelPerWorld*cam.scale);
+     if(cam.scale>11){
+      drawEpidermisAtlas(ctx,contours,cam.scale,visible,
+       selectionRef.current,refined,fit.pixelPerWorld*cam.scale);
+      const thick=thickKindRef.current?
+       thickSitesRef.current[thickKindRef.current]:null;
+      if(thick)drawThickEpidermisSample(ctx,thick,cam.scale,visible,
+       selectionRef.current,refined,fit.pixelPerWorld*cam.scale);
+     }
     }
    }
    ctx.restore();
@@ -168,10 +195,12 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    drawRef.current=()=>{};
    if(hitTestRef)hitTestRef.current=null;
    if(anchorRef)anchorRef.current=null;
+   if(thickAnchorsRef)thickAnchorsRef.current=null;
   };
  },[]);
  useEffect(()=>{cameraRef.current=camera;drawRef.current();},[camera]);
  useEffect(()=>{selectionRef.current=selectedEpidermis;drawRef.current();},[selectedEpidermis]);
+ useEffect(()=>{thickKindRef.current=thickKind;drawRef.current();},[thickKind]);
  return <canvas ref={canvasRef} className="lek-anatomy-semantic-canvas"
-  role="img" aria-label="Интерактивный разрез кожи: четыре слоя эпидермиса выделяются на глубоком масштабе, нажмите на слой для объяснения. Модель не является микрофотографией"/>;
+  role="img" aria-label="Интерактивный виртуальный разрез кожи: четыре слоя тонкой или пять слоёв толстой кожи, в том числе блестящий; нажатие открывает описание. Это не микрофотография"/>;
 }

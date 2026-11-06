@@ -4,7 +4,8 @@ import {HUMAN_BODY_SYSTEMS,type HumanFocusedSystem} from "./lektrusBioHumanBodyS
 import LektrusBioHumanSystemIcon from "./LektrusBioHumanSystemIcon";
 import LektrusSkinSemanticViewport,{type EpidermisHitTest} from "./LektrusSkinSemanticViewport";
 import {EPIDERMIS_RECORDS,EPIDERMIS_STRATA_ORDER,
- type EpidermisId} from "./lektrusEpidermisAtlas";
+ EPIDERMIS_THICK_STRATA_ORDER,type EpidermisId} from "./lektrusEpidermisAtlas";
+import type {ThickSkinKind} from "./lektrusThickEpidermis";
 import LektrusSkinSpecimens from "./LektrusSkinSpecimens";
 import {SKIN_MAX_SCALE,anatomyCameraAtBody,anatomyScreenToBody,
  anatomyBodyFit,skinDetailStage} from "./lektrusAnatomySemanticZoom";
@@ -41,6 +42,8 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
  const [displayCamera,setDisplayCamera]=useState<AnatomyCamera>(ANATOMY_INITIAL_CAMERA);
  const displayed=useRef<AnatomyCamera>(ANATOMY_INITIAL_CAMERA);
  const [epidermisSelection,setEpidermisSelection]=useState<EpidermisId|null>(null);
+ const [thickSkinKind,setThickSkinKind]=useState<ThickSkinKind|null>(null);
+ const [thickUnavailable,setThickUnavailable]=useState(false);
  const epidermisCardRef=useRef<HTMLDivElement>(null);
  useEffect(()=>{
   if(!epidermisSelection||system!=="integumentary")return;
@@ -56,6 +59,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
  },[epidermisSelection,system]);
  const epidermisHit=useRef<EpidermisHitTest|null>(null);
  const epidermisAnchor=useRef<Point|null>(null);
+ const thickSkinAnchors=useRef<Record<ThickSkinKind,Point|null>|null>(null);
  const tapStarts=useRef(new Map<number,Point>());
  const blockedTaps=useRef(new Set<number>());
  // Interpolate the same scale and pan fraction at each frame: the point
@@ -114,10 +118,34 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
  const reset=()=>setCamera(ANATOMY_INITIAL_CAMERA);
  const focusEpidermis=(deep=false)=>{
   const {width,height}=dimensions();
-  // This is the anatomically registered *representative* upper arm,
-  // not a separate zoom illustration or a camera reset on system change.
+  // User chose a virtual palm/sole reference, so keep it within the same
+  // body world and zoom to its actual outline. Do NOT switch slide images.
+  const reference=thickSkinKind?
+   thickSkinAnchors.current?.[thickSkinKind]:null;
+  const point=reference?
+   {...reference}:
+   epidermisAnchor.current??{x:260,y:182};
   setCamera(anatomyBoundCamera(anatomyCameraAtBody(
-   epidermisAnchor.current??{x:260,y:182},deep?220:65,width,height),width,height,SKIN_MAX_SCALE));
+   point,deep?220:thickSkinKind?85:65,width,height),width,height,SKIN_MAX_SCALE));
+ };
+ const focusThickSkin=(kind:ThickSkinKind)=>{
+  const anchor=thickSkinAnchors.current?.[kind];
+  if(!anchor){setThickUnavailable(true);return;}
+  setThickUnavailable(false);
+  setThickSkinKind(kind);
+  setEpidermisSelection("lucidum");
+  const {width,height}=dimensions();
+  setCamera(anatomyBoundCamera(anatomyCameraAtBody(
+   {...anchor},85,width,height),
+   width,height,SKIN_MAX_SCALE));
+ };
+ const focusThinSkin=()=>{
+  setThickUnavailable(false);
+  setThickSkinKind(null);setEpidermisSelection(null);
+  const {width,height}=dimensions();
+  setCamera(anatomyBoundCamera(anatomyCameraAtBody(
+   epidermisAnchor.current??{x:260,y:182},65,width,height),
+   width,height,SKIN_MAX_SCALE));
  };
  const focusSkin=(side:"left"|"right"="right")=>{
   const {width,height}=dimensions();
@@ -257,7 +285,9 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
     <div className="lek-anatomy-stage-grid" aria-hidden="true"/>
     {system==="integumentary"?<LektrusSkinSemanticViewport
      camera={displayCamera} selectedEpidermis={epidermisSelection}
-     hitTestRef={epidermisHit} anchorRef={epidermisAnchor}/>:<div className="lek-anatomy-world"
+     thickKind={thickSkinKind}
+     hitTestRef={epidermisHit} anchorRef={epidermisAnchor}
+     thickAnchorsRef={thickSkinAnchors}/>:<div className="lek-anatomy-world"
      style={{transform:`translate3d(${displayCamera.panX}px,${displayCamera.panY}px,0) scale(${displayCamera.scale})`}}>
      <div className="lek-anatomy-figure"
       data-anatomy-system={system}
@@ -280,7 +310,10 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
    </div>
    <div className="lek-anatomy-footnote">
     <span>{system==="integumentary"?
-     skinDetailStage(displayCamera.scale)+" · только по краям":
+     thickSkinKind?
+      (thickSkinKind==="palm"?"Ладонь":"Подошва")+
+      " · виртуальный пятислойный разрез, включая блестящий":
+      skinDetailStage(displayCamera.scale)+" · только по краям":
      "Переключение системы не меняет положение и увеличение."}</span>
     <span>{system==="integumentary"?
      "Цифровой зум, не физическое увеличение микроскопа":
@@ -313,11 +346,29 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
      aria-label="Интерактивное исследование эпидермиса">
      <div className="lek-anatomy-epidermis-title">
       <strong>Эпидермис · исследование</strong>
-      <p>Нажмите на цветной слой прямо на теле либо выберите его
-       в списке. На глубоком увеличении отдельно выбираются
-       кератиноцит и меланоцит. Представительные клеточные формы
-       показаны на учебном разрезе правого плеча, не на микрофото.</p>
+      <p>Изучайте тонкую кожу плеча или модельные разрезы толстой
+       кожи ладони и подошвы. Нажмите на слой на теле либо выберите
+       его в списке. У тонкой кожи четыре слоя, у толстой пять.</p>
      </div>
+     <div className="lek-anatomy-skin-sample-switch" role="group"
+      aria-label="Учебный участок покровной системы">
+      <button type="button" aria-pressed={!thickSkinKind}
+       onClick={focusThinSkin}>Плечо · 4 слоя</button>
+      <button type="button" aria-pressed={thickSkinKind==="palm"}
+       onClick={()=>focusThickSkin("palm")}>Ладонь · 5 слоёв</button>
+      <button type="button" aria-pressed={thickSkinKind==="sole"}
+       onClick={()=>focusThickSkin("sole")}>Подошва · 5 слоёв</button>
+     </div>
+     {thickUnavailable&&<small role="status">Контур учебного участка
+      пока не удалось найти на загруженной фигуре. Его расположение
+      не подменяется случайным соседним участком.</small>}
+     {thickSkinKind&&<p className="lek-anatomy-thick-skin-note">
+      Виртуальный срез {thickSkinKind==="palm"?"ладонной":"подошвенной"}
+      поверхности привязан к кисти или стопе в единой модели.
+      Фронтальный силуэт не показывает, какая именно поверхность
+      видна, поэтому это <b>учебная реконструкция</b>, а не
+      микрофотография данной точки. В норме здесь нет волос
+      и сальных желёз; присутствует блестящий слой.</p>}
      {epidermisSelection?
       <div ref={epidermisCardRef} className="lek-anatomy-epidermis-card" role="status" aria-live="polite">
        <strong>{EPIDERMIS_RECORDS[epidermisSelection].name}</strong>
@@ -334,13 +385,14 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
       </p>}
      <div className="lek-anatomy-epidermis-actions">
       <button type="button" onClick={()=>focusEpidermis()}>
-       К слоям плеча</button>
+       {thickSkinKind?"К слоям участка":"К слоям плеча"}</button>
       <button type="button" onClick={()=>focusEpidermis(true)}>
-       К клеткам</button>
+       {thickSkinKind?"К деталям":"К клеткам"}</button>
      </div>
      <div className="lek-anatomy-epidermis-layer-list"
       role="group" aria-label="Слои эпидермиса от наружного к внутреннему">
-      {EPIDERMIS_STRATA_ORDER.map(id=><button type="button" key={id}
+      {(thickSkinKind?EPIDERMIS_THICK_STRATA_ORDER:
+       EPIDERMIS_STRATA_ORDER).map(id=><button type="button" key={id}
        className={epidermisSelection===id?"is-selected":""}
        aria-pressed={epidermisSelection===id}
        onClick={()=>setEpidermisSelection(id)}>
@@ -349,7 +401,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
        <span>{EPIDERMIS_RECORDS[id].name}</span>
       </button>)}
      </div>
-     <div className="lek-anatomy-epidermis-cell-list" role="group"
+     {!thickSkinKind&&<div className="lek-anatomy-epidermis-cell-list" role="group"
       aria-label="Клетки и границы">
       {(["keratinocyte","melanocyte","basement"] as const).map(id=>
        <button key={id} type="button" aria-pressed={epidermisSelection===id}
@@ -357,7 +409,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
         onClick={()=>setEpidermisSelection(id)}>
         {EPIDERMIS_RECORDS[id].name}
        </button>)}
-     </div>
+     </div>}
      <small>Авторская учебная реконструкция по Leeds, OpenStax и NCBI:
       относительная ширина разреза увеличена. Клеточные изображения
       не являются микрофотографией конкретной точки тела.</small>
@@ -370,18 +422,16 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
     {displayCamera.scale>=90&&<p>Для изучения сосочкового слоя,
      коллагена и расположения капилляров откройте сравнительные
      гистопрепараты. Цифровой зум здесь не является микроскопом.</p>}
-    {displayCamera.scale>=145&&<p>Эпидермис снаружи внутрь: роговой,
-     зернистый, шиповатый и базальный слои. В базальном слое —
-     меланоциты; глубже — волокна дермы и жировые клетки.
-     Блестящий слой характерен для толстой кожи ладоней и подошв
-     и здесь не показан.</p>}
-    {displayCamera.scale>=250&&<p>При остановке увеличения
-     в области правого плеча проявляется учебная реконструкция
-     кератиноцитов: безъядерные чешуйки снаружи, гранулы
-     зернистого слоя, многогранные клетки шиповатого слоя
-     и один ряд базальных клеток. Нажмите на слой, чтобы
-     прочитать пояснение; настоящие детали сравнивайте
-     с микрофотографиями ниже.</p>}
+    {displayCamera.scale>=145&&<p>В {thickSkinKind?
+      "толстой коже (виртуальный разрез)":"тонкой коже плеча"} эпидермис
+     снаружи внутрь: роговой, {thickSkinKind&&"блестящий, "}
+     зернистый, шиповатый и базальный слои. У ладоней и подошв
+     развит роговой слой, волос и сальных желёз нет.</p>}
+    {displayCamera.scale>=250&&<p>{thickSkinKind?
+     "В выбранном виртуальном разрезе толстой кожи показаны толстый роговой слой, узкий блестящий без ядер, зернистый, шиповатый и один базальный ряд. Эти элементы не являются точными клетками выбранного человека.":
+     "В области правого плеча показаны безъядерные роговые чешуйки, гранулы зернистого, многогранные клетки шиповатого и один базальный ряд."}
+     {" "}Нажмите на слой, чтобы прочитать пояснение; настоящие детали
+     сравнивайте с гистопрепаратами ниже.</p>}
     <small>Виртуальный учебный разрез, не микрофотография.
      Ширина разреза и слоёв специально увеличена: их размер не
      соответствует толщине кожи относительно всего тела.
