@@ -15,6 +15,7 @@ import type {AnatomyCamera} from "./lektrusHumanAnatomyModel";
 import {anatomyBodyFit} from "./lektrusAnatomySemanticZoom";
 import {skinVisibleWorldBounds} from "./lektrusSkinSurfaceField";
 import {drawSkinTissueTexture} from "./lektrusSkinTissueTexture";
+import {skinSilhouetteVector,type SkinSilhouetteVector} from "./lektrusSkinSilhouetteVectors";
 import {skinSectionContours,skinCutawayBlend,drawSkinSectionBands,clipSkinSection,
  clipSkinOutsideDistalOutlines,skinDistalOutlineProtected,
  type SkinSectionContour} from "./lektrusSkinVectorSections";
@@ -60,6 +61,7 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
   const body=new Image();
   // Body alpha defines only the outline, not fictional skin anatomy.
   let neutralPlate:HTMLCanvasElement|null=null;
+  let silhouetteVector:SkinSilhouetteVector|null=null;
   let contours:SkinSectionContour[]=[];
   let width=0,height=0;
   const requestDraw=()=>{
@@ -83,6 +85,13 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    c.fillRect(0,0,RASTER_WIDTH,RASTER_HEIGHT);
    c.globalCompositeOperation="source-over";
    neutralPlate=source;
+   try{
+    silhouetteVector=skinSilhouetteVector(alpha,RASTER_WIDTH,RASTER_HEIGHT,ATLAS_FACTOR);
+   }catch{
+    // A vector boundary is optional for initial render. The original
+    // registered alpha plate is retained if an older browser rejects it.
+    silhouetteVector=null;
+   }
    contours=skinSectionContours(alpha,RASTER_WIDTH,RASTER_HEIGHT);
    thickSitesRef.current={
     palm:resolveThickSkinSample(contours,"palm"),
@@ -157,7 +166,17 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
     // Keep ALL of the human silhouette at every magnification. The former
    // fade-to-zero made the hands, feet and neutral interior disappear at
    // 2600%, exposing enlarged stripes instead of intact anatomy.
-   if(neutralPlate){
+   if(silhouetteVector?.loops){
+    // Direct vector fill and stroke stay sharp under arbitrary zoom.
+    // We do not upscale a photograph into invented epidermal detail.
+    ctx.save();
+    ctx.fillStyle="#e7edf0";
+    ctx.fill(silhouetteVector.path,"evenodd");
+    ctx.strokeStyle="#9baeba";
+    ctx.lineWidth=1.1/Math.max(.05,fit.pixelPerWorld*cam.scale);
+    ctx.stroke(silhouetteVector.path);
+    ctx.restore();
+   }else if(neutralPlate){
     ctx.drawImage(neutralPlate,0,0,WORLD_WIDTH,WORLD_HEIGHT);
    }else{
     ctx.drawImage(body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
