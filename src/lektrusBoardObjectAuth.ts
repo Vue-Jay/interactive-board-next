@@ -11,7 +11,8 @@ export function stampNewBoardItemAuthors(
  before:readonly Item[],after:readonly Item[],actorId:string
 ):Item[]{
  const originals=new Map(before.map(item=>[item.id,item]));
- return after.map(item=>{
+ return after.map(candidate=>{
+  const item=withoutInkLock(candidate);
   const existing=originals.get(item.id);
   if(existing){
    return item.createdBy===existing.createdBy?item:
@@ -19,6 +20,18 @@ export function stampNewBoardItemAuthors(
   }
   return {...item,createdBy:actorId};
  });
+}
+
+/** Ink is never lockable. Provenance still governs destructive actions,
+ * but an explicit object lock is reserved for placed board objects. */
+export const isLockableBoardItem=(item:Pick<Item,"kind">):boolean=>
+ item.kind!=="pen"&&item.kind!=="marker";
+
+/** Ignore stale/spoofed ink locks without touching any other item flags. */
+export function withoutInkLock<T extends Item>(item:T):T{
+ if(isLockableBoardItem(item)||item.locked!==true)return item;
+ const {locked:_locked,...unlocked}=item;
+ return unlocked as T;
 }
 
 /** Ownership only limits destructive actions: moving and resizing unlocked
