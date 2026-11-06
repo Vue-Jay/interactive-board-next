@@ -72,11 +72,6 @@ function histologyLamina(
  }
  if(has){ctx.globalAlpha=alpha;ctx.stroke();}
 }
-function hash(i:number,j:number){
- let v=Math.imul(i,0x9e3779b1)^Math.imul(j,0x85ebca6b);
- v=Math.imul(v^(v>>>15),0x846ca68b);
- return ((v^(v>>>16))>>>0)/4294967296;
-}
 export function drawThickEpidermisSample(
  ctx:CanvasRenderingContext2D,site:ThickSkinSample|null,
  scale:number,bounds:Bounds,selected:EpidermisId|null,
