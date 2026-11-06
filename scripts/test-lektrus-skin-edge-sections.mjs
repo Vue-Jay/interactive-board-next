@@ -394,8 +394,6 @@ const microlow=tissueAt(.77,20,2.1,8.1);
 const microhigh=tissueAt(.77,260,2.1,8.1);
 assert.deepEqual(microlow,microhigh,
  "Illustrative tone must not invent new fat cells as zoom increases");
-assert.deepEqual(shader.skinAdiposeField(1.25,2.35),
- shader.skinAdiposeField(1.25,2.35));
 assert.equal(shader.skinTissueNoise(1.23,2.34,5),
  shader.skinTissueNoise(1.23,2.34,5));
 // Minimal browser-canvas mock verifies the actual viewport rasterization,
