@@ -49,7 +49,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
    // scrolled above it. Bring the explanation into view immediately.
    epidermisCardRef.current?.scrollIntoView({
     block:"nearest",behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?
-     "instant":"smooth"
+     "auto":"smooth"
    });
   });
   return ()=>cancelAnimationFrame(frame);
