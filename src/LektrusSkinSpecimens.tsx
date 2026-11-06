@@ -4,8 +4,8 @@ import {SKIN_REFERENCE_SPECIMENS} from "./lektrusSkinSpecimenCatalog";
  * anatomical camera. An unrelated specimen must never be substituted for
  * the exact world coordinates of the teacher's current zoom.
  */
-export default function LektrusSkinSpecimens(){
- return <details className="lek-anatomy-source-plates">
+export default function LektrusSkinSpecimens({defaultOpen=false}:{defaultOpen?:boolean}){
+ return <details open={defaultOpen} className="lek-anatomy-source-plates">
   <summary>Гистопрепараты: тонкая и толстая кожа</summary>
   <p className="lek-anatomy-source-note">
    Настоящие микроснимки окрашенной ткани для сравнения с учебным
