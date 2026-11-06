@@ -82,8 +82,11 @@ export const EPIDERMIS_LAYER_FRACTIONS=[
 export function epidermisStratumEdge(y:number,fraction:number):number{
  const width=SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd;
  if(fraction<=0)return fraction;
- const wave=.0018*Math.sin(y*31.4+.4)+
-  .00085*Math.sin(y*48.2+1.7);
+ // Thin hairy skin has low, gentle rete ridges. The previous rapid
+ // oscillations produced large staircase-like purple bumps at 220–360x
+ // that resembled pathological tissue rather than ordinary epidermis.
+ const wave=.00045*Math.sin(y*12.1+.4)+
+  .00022*Math.sin(y*19.3+1.7);
  return fraction+wave*(fraction/width)**4;
 }
 /** Exact same melanocyte anchor is painted and selected by the pointer.
