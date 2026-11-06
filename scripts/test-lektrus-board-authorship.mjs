@@ -12,6 +12,8 @@ new Function("exports","require",compile("src/lektrusBoardRolePreview.ts"))(
 const policy={};
 new Function("exports","require",compile("src/lektrusBoardObjectAuth.ts"))(
  policy,id=>{
+  if(id==="./boardModel")
+   return {isInkItem:item=>item.kind==="pen"||item.kind==="marker"};
   assert.equal(id,"./lektrusBoardRolePreview");
   return roles;
  });
