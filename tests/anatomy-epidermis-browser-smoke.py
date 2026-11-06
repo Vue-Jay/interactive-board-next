@@ -24,6 +24,12 @@ with sync_playwright() as p:
     stage.click(position=click)
     card=page.locator(".lek-anatomy-epidermis-card")
     card.wait_for(timeout=5000)
+    page.wait_for_timeout(450)
+    cardbox=card.bounding_box()
+    sidebar=page.locator(".lek-anatomy-details").bounding_box()
+    assert cardbox and sidebar and cardbox["y"]>=sidebar["y"]-2 and (
+        cardbox["y"]<sidebar["y"]+sidebar["height"]-25
+    ),"Selected epidermis explanation must scroll into the visible sidebar"
     observed=card.inner_text()
     assert any(s in observed for s in [
         "Эпидермис","Роговой","Зернистый","Шиповатый",
