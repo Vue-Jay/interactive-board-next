@@ -70,12 +70,12 @@ function hash(a:number,b:number,salt:number){
 type DetailStats={bands:number;cells:number;granules:number;melanocytes:number};
 export function drawEpidermisAtlas(
  ctx:CanvasRenderingContext2D,contours:readonly SkinSectionContour[],
- scale:number,bounds:Bounds,selected:EpidermisId|null
+ scale:number,bounds:Bounds,selected:EpidermisId|null,detailed=true
 ):DetailStats{
  const stats:DetailStats={bands:0,cells:0,granules:0,melanocytes:0};
  if(scale<11)return stats;
  const fade=clamp((scale-11)/52);
- const microFade=clamp((scale-EPIDERMIS_MICRO_MIN_SCALE)/125);
+ const microFade=detailed?clamp((scale-EPIDERMIS_MICRO_MIN_SCALE)/125):0;
  const emphasized=selectedStratum(selected);
  for(const c of contours){
   if(!inside(c,bounds))continue;
@@ -112,7 +112,7 @@ export function drawEpidermisAtlas(
    if(i===0)ctx.moveTo(x,p.y);else ctx.lineTo(x,p.y);
   }
   ctx.stroke();
-  if(fade>.08){
+  if(detailed&&fade>.08){
    // Corneum: flat, layered, ANUCLEATE squames parallel to the skin.
    const first=Math.ceil(Math.max(bounds.minY,c.minY)/.045);
    const last=Math.floor(Math.min(bounds.maxY,c.maxY)/.045);
