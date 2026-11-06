@@ -98,9 +98,31 @@ export function restrictStudentDiagramChange(
    contourCamera:next.contourCamera
   };
  }
- // Dedicated on-board school exercises allow entry of answers, but cannot
- // be used to reshape teacher-owned maps, diagrams or test definitions.
- const practiceKinds=new Set(["syntax","place-value","morphology","phonetics","orthography"]);
- if(practiceKinds.has(next.kind))return next;
+ // Syntax is a real on-board student answer: only annotate existing
+ // teacher-defined words. The sentence, word IDs and assignment title stay
+ // unchanged even when a client sends a forged complete diagram.
+ if(current.kind==="syntax"&&next.kind==="syntax"){
+  if(current.words.length!==next.words.length||
+     current.words.some((word,i)=>word.id!==next.words[i]?.id||
+       word.text!==next.words[i]?.text))return null;
+  const allowedRoles=new Set(["subject","predicate","attribute","object","adverbial","none"]);
+  if(next.words.some(word=>!allowedRoles.has(word.role)))return null;
+  return {...current,words:current.words.map((word,i)=>({
+   ...word,role:next.words[i].role
+  }))};
+ }
+ // The input in a place-value exercise is an answer; the teacher's number
+ // base and presentation settings must not be editable by a student.
+ if(current.kind==="place-value"&&next.kind==="place-value"){
+  const pattern=current.base===2?/^[01]{0,10}$/:
+   current.base===8?/^[0-7]{0,10}$/:
+   current.base===10?/^[0-9]{0,10}$/:/^[0-9A-F]{0,10}$/;
+  if(typeof next.digits!=="string"||!pattern.test(next.digits))return null;
+  return {...current,digits:next.digits};
+ }
+ // Morphology/phonetics currently store the teacher's source word and
+ // annotations, not separate student answer fields. Treat them as read-only
+ // until independent pupil-response storage exists. Orthography answers and
+ // foreign-language sentence ordering already use local per-user state.
  return null;
 }
