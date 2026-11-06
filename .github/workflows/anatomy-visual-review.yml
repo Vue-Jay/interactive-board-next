@@ -5,6 +5,8 @@ on:
     paths:
       - 'src/LektrusSkin*'
       - 'src/lektrusSkin*'
+      - 'src/lektrusEpidermis*'
+      - 'src/LektrusHumanAnatomy.tsx'
       - 'tests/anatomy-visual-preview.*'
       - 'docs/ANATOMY_HUMAN_CANONICAL_PLAN.md'
       - '.github/workflows/anatomy-visual-review.yml'
@@ -41,6 +43,12 @@ jobs:
               --wait-for-timeout 2500 --viewport-size "1200,900" \
               "http://127.0.0.1:5173/tests/anatomy-visual-preview.html?zoom=$zoom" \
               "artifacts/anatomy/skin-$zoom.png"
+          done
+          for layer in corneum granulosum spinosum basale; do
+            npx --yes playwright@1.64.1 screenshot --browser chromium \
+              --wait-for-timeout 2500 --viewport-size "1200,900" \
+              "http://127.0.0.1:5173/tests/anatomy-visual-preview.html?zoom=360&layer=$layer" \
+              "artifacts/anatomy/epidermis-$layer-360.png"
           done
           for source in thin thick; do
             npx --yes playwright@1.64.1 screenshot --browser chromium \
