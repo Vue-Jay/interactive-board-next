@@ -336,6 +336,25 @@ begin
     'true'::jsonb),pupil) then
   raise exception 'Pupil turned on teacher foreign-language answer key';end if;
 
+ -- Foreign vocabulary flashcards: flipping is ephemeral UI state.
+ -- Translation, transcription and the reveal default are teacher material.
+ v_new:=jsonb_set(v_before,'{items,0}',jsonb_build_object(
+  'id','t','kind','graph','createdBy',teacher::text,
+  'graphFigureId','language-flashcards','text','Foreign flashcards',
+  'schoolDiagram',jsonb_build_object('kind','flashcards','title','Vocabulary',
+   'showTranslation',false,'showTranscription',true,
+   'direction','foreign-first','cards',jsonb_build_array(
+    jsonb_build_object('id','word1','term','book',
+     'translation','книга','transcription','[bʊk]')))));
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,schoolDiagram,cards,0,translation}',
+    '"подмена"'::jsonb),pupil) then
+  raise exception 'Student replaced foreign vocabulary translation';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,schoolDiagram,showTranslation}',
+    'true'::jsonb),pupil) then
+  raise exception 'Student changed teacher flashcard reveal defaults';end if;
+
  -- Legacy ink[] -> items[] migration must not be treated as deletion.
  v_new:=jsonb_set(v_before,'{items}',(v_before->'items')-2);
  v_new:=jsonb_set(v_new,'{ink}',jsonb_build_array(
