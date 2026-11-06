@@ -58,7 +58,7 @@ $items$;
 -- russianWork. Do NOT allow editing prompt, solution (teacher reference),
 -- title, task order, kind or any teacher-provided structure.
 create or replace function lektrus_private.subject_responses_only(
- p_before jsonb,p_after jsonb
+ p_before jsonb,p_after jsonb,p_board_kind text
 ) returns boolean language plpgsql immutable set search_path=pg_catalog as $response$
 declare
  v_index integer;
@@ -71,6 +71,19 @@ begin
  for v_index in 0..jsonb_array_length(p_before)-1 loop
   v_old:=p_before->v_index;
   v_new:=p_after->v_index;
+  -- Legacy teacher tasks are sometimes missing a subject tag. The client
+  -- adds its canonical subject on the first student response; permit only
+  -- this exact normalization, never changes to an existing teacher tag.
+  if not (v_old ? 'subject') and (v_new ? 'subject') then
+   if p_board_kind not like 'subject-board-%' or
+      v_new->>'subject'<>substr(p_board_kind,15) or
+      v_new->>'subject' not in
+       ('chemistry','physics','mathematics','geography','history','biology',
+        'russian','literature','social','languages','informatics') then
+    return false;
+   end if;
+   v_new:=v_new-'subject';
+  end if;
   if jsonb_typeof(v_old)<>'object' or jsonb_typeof(v_new)<>'object'
      or coalesce(v_old->>'id','')=''
      or (v_old - array['answer','workedSolution','activityResponse','russianWork']) <>
@@ -161,7 +174,8 @@ begin
   if v_kind='graph' and v_old ? 'subjectBoardEntries' and
      v_new ? 'subjectBoardEntries' then
    if not lektrus_private.subject_responses_only(
-     v_old->'subjectBoardEntries',v_new->'subjectBoardEntries') then
+     v_old->'subjectBoardEntries',v_new->'subjectBoardEntries',
+     v_old->>'graphFigureId') then
     return false;
    end if;
    v_fields:=v_fields||array['subjectBoardEntries'];
@@ -286,7 +300,7 @@ for each row execute function lektrus_private.check_board_document_write();
 revoke insert,update,delete on public.board_documents from public,anon,authenticated;
 grant select on public.board_documents to authenticated;
 revoke all on function lektrus_private.board_items_by_id(jsonb) from public,anon,authenticated;
-revoke all on function lektrus_private.subject_responses_only(jsonb,jsonb) from public,anon,authenticated;
+revoke all on function lektrus_private.subject_responses_only(jsonb,jsonb,text) from public,anon,authenticated;
 revoke all on function lektrus_private.student_document_delta_allowed(jsonb,jsonb,uuid) from public,anon,authenticated;
 revoke all on function lektrus_private.check_board_document_write() from public,anon,authenticated;
 commit;
