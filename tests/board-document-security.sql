@@ -218,6 +218,124 @@ begin
        from generate_series(1,2500) n))))) <> 2500 then
   raise exception 'Large board item ID index lost strokes';end if;
 
+ -- Russian sentence: pupil role marks are legitimate saved answers.
+ -- The sentence text, IDs, word order and teacher title are immutable.
+ v_new:=jsonb_set(v_before,'{items,0}',jsonb_build_object(
+  'id','t','kind','graph','createdBy',teacher::text,
+  'graphFigureId','ru-syntax','text','Teacher sentence',
+  'schoolDiagram',jsonb_build_object('kind','syntax','title','Члены предложения',
+   'showMarks',true,'words',jsonb_build_array(
+    jsonb_build_object('id','w1','text','Мама','role','none'),
+    jsonb_build_object('id','w2','text','читает','role','none')))));
+ if not lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,schoolDiagram,words,0,role}',
+    '"subject"'::jsonb),pupil) then
+  raise exception 'Russian sentence role annotation was incorrectly blocked';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,schoolDiagram,words,0,text}',
+    '"Подменено"'::jsonb),pupil) then
+  raise exception 'Pupil rewrote a word in teacher syntax exercise';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,schoolDiagram,words,1,id}',
+    '"forged"'::jsonb),pupil) then
+  raise exception 'Pupil forged a teacher sentence word ID';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,schoolDiagram,title}',
+    '"Подменённое условие"'::jsonb),pupil) then
+  raise exception 'Pupil rewrote Russian sentence title';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,schoolDiagram,words,0,role}',
+    '"invented"'::jsonb),pupil) then
+  raise exception 'Pupil forged a grammatical role';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,schoolDiagram,words}',
+     (v_new#>'{items,0,schoolDiagram,words}')||
+      '[{"id":"w3","text":"книгу","role":"none"}]'::jsonb),pupil) then
+  raise exception 'Pupil added a word to teacher syntax exercise';end if;
+
+ -- Place-value: numeric response is editable, but the number base, teacher
+ -- title and display of correct powers may not be changed by a pupil.
+ v_new:=jsonb_set(v_before,'{items,0}',jsonb_build_object(
+  'id','t','kind','graph','createdBy',teacher::text,
+  'graphFigureId','info-place-value','text','Number base task',
+  'schoolDiagram',jsonb_build_object('kind','place-value',
+   'title','Бинарная запись','base',2,'digits','','showPowers',true)));
+ if not lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,schoolDiagram,digits}',
+    '"101101"'::jsonb),pupil) then
+  raise exception 'Valid pupil binary input incorrectly blocked';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,schoolDiagram,digits}',
+    '"102"'::jsonb),pupil) then
+  raise exception 'Invalid digit for base two accepted';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,schoolDiagram,base}',
+    '16'::jsonb),pupil) then
+  raise exception 'Student changed the teacher number base';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,schoolDiagram,showPowers}',
+    'false'::jsonb),pupil) then
+  raise exception 'Student changed the teacher powers display';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,schoolDiagram,digits}',
+    to_jsonb(repeat('1',11))),pupil) then
+  raise exception 'Oversized student number accepted';end if;
+
+ -- Linguistic source diagrams have NO independent answer fields yet.
+ -- Their tools may be shown but teacher definitions cannot be overwritten.
+ v_new:=jsonb_set(v_before,'{items,0}',jsonb_build_object(
+  'id','t','kind','graph','createdBy',teacher::text,
+  'graphFigureId','ru-morphology','text','Word analysis',
+  'schoolDiagram',jsonb_build_object('kind','morphology',
+   'title','Морфологический разбор','word','весна','sentence','',
+   'partOfSpeech','noun','showAnalysis',false,'rows','[]'::jsonb)));
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,schoolDiagram,word}',
+    '"зима"'::jsonb),pupil) then
+  raise exception 'Pupil replaced teacher morphology word';end if;
+ v_new:=jsonb_set(v_before,'{items,0}',jsonb_build_object(
+  'id','t','kind','graph','createdBy',teacher::text,
+  'graphFigureId','ru-phonetics','text','Phonetics',
+  'schoolDiagram',jsonb_build_object('kind','phonetics',
+   'title','Фонетический разбор','word','кот','letters','[]'::jsonb,
+   'showSounds',false,'showCharacteristics',false)));
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,schoolDiagram,word}',
+    '"кит"'::jsonb),pupil) then
+  raise exception 'Pupil replaced teacher phonetics word';end if;
+ v_new:=jsonb_set(v_before,'{items,0}',jsonb_build_object(
+  'id','t','kind','graph','createdBy',teacher::text,
+  'graphFigureId','ru-orthography','text','Spelling exercise',
+  'schoolDiagram',jsonb_build_object('kind','orthography',
+   'title','Орфография','showExplanation',false,'questions',
+   jsonb_build_array(jsonb_build_object('id','q1','prompt','тр□ва',
+    'options',jsonb_build_array('а','о'),'correct',0,'explanation','Травы')))));
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,schoolDiagram,questions,0,correct}',
+    '1'::jsonb),pupil) then
+  raise exception 'Pupil modified spelling answer key';end if;
+
+ -- Foreign-language sentence puzzle solves in local UI state; the saved
+ -- teacher sentence order/answer-key cannot be changed through board JSON.
+ v_new:=jsonb_set(v_before,'{items,0}',jsonb_build_object(
+  'id','t','kind','graph','createdBy',teacher::text,
+  'graphFigureId','language-sentence-builder','text','Foreign language',
+  'schoolDiagram',jsonb_build_object('kind','sentence-builder',
+   'title','Sentence','instructions','Составьте предложение',
+   'showKey',false,'showHint',false,'patternId','',
+   'parts',jsonb_build_array(
+    jsonb_build_object('id','a','text','I'),
+    jsonb_build_object('id','b','text','read'),
+    jsonb_build_object('id','c','text','books.')))));
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,schoolDiagram,parts,0,text}',
+    '"You"'::jsonb),pupil) then
+  raise exception 'Pupil changed the foreign language question';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,schoolDiagram,showKey}',
+    'true'::jsonb),pupil) then
+  raise exception 'Pupil turned on teacher foreign-language answer key';end if;
+
  -- Legacy ink[] -> items[] migration must not be treated as deletion.
  v_new:=jsonb_set(v_before,'{items}',(v_before->'items')-2);
  v_new:=jsonb_set(v_new,'{ink}',jsonb_build_array(
