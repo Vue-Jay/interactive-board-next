@@ -82,13 +82,15 @@ assert.doesNotMatch(renderer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HE
  "Do not rasterize thousands of unnecessary faux micro-anatomy landmarks");
 assert.doesNotMatch(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible,/,
  "Repeated pink vascular loops were not valid human histology");
-assert.match(renderer,/drawSkinSectionBands\(ctx,contours,visible,cutawayAlpha\)/);
+assert.match(renderer,/drawSkinSectionBands\(ctx,thinContours,visible,cutawayAlpha\)/);
 assert.doesNotMatch(renderer,/drawSkinMesoTiles|drawSkinSurfaceField|drawSkinMicrotiles/);
 assert.doesNotMatch(renderer,/skin-semantic-lod\.webp/);
 assert.doesNotMatch(renderer,/sectionBlend|modeRef/);
 assert.match(ui,/aria-label="Слои кожи"/);
-assert.match(ui,/Левый бок/);
-assert.match(ui,/Правый бок/);
+assert.match(renderer,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
+assert.doesNotMatch(renderer,/globalAlpha=1-cutawayAlpha/);
+assert.match(ui,/Плечо · тонкая кожа/);
+assert.match(ui,/Кисть · разрез ладони/);
 assert.doesNotMatch(ui,/setSkinMode|skinMode|SkinViewMode/);
 assert.match(ui,/camera=\{displayCamera\}/);
 console.log("Lateral skin cross-section PASS: disjoint limb edges, 3 layers, untouched center, shared world camera and no full-body textures.");
