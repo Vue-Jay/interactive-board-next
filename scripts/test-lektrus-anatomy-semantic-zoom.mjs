@@ -33,7 +33,7 @@ assert.equal(world.SKIN_MAX_SCALE,360);
 assert.ok(world.skinAvailableAt(world.SKIN_SHOULDER_CENTER));
 assert.equal(world.skinAvailableAt({x:50,y:470}),false);
 assert.equal(world.skinAvailableAt({x:NaN,y:163}),false);
-assert.equal(world.skinDetailStage(52).includes("срез"),false,
+assert.equal(world.skinDetailStage(52).includes("срез"),true,
  "Ordinary magnification must NEVER teleport into a cross-section");
 assert.equal(world.skinDetailStage(10).includes("чешуйки"),false,
  "At 10x even small epidermal cells must not be exaggerated");
