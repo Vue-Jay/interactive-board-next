@@ -41,6 +41,8 @@ jobs:
         run: node scripts/test-lektrus-skin-regional-microtiles.mjs
       - name: Lateral skin cutaway, three layers and untouched center
         run: node scripts/test-lektrus-skin-edge-sections.mjs
+      - name: Offline licensed histology reference plates and scientific provenance
+        run: node scripts/test-lektrus-skin-source-plates.mjs
       - name: Semantic skin zoom, spatial anchors and LOD regressions
         run: node scripts/test-lektrus-anatomy-semantic-zoom.mjs
       - name: Standalone anatomy, stable camera and raster registration
