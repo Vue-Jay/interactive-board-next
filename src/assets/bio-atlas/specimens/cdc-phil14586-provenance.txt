@@ -1,0 +1,8 @@
+CDC PHIL 14586, normal human skin H&E, photo magnification 50x.
+Official source: https://wwwn.cdc.gov/phil/Details.aspx?pid=14586
+Downloaded original: https://wwwn.cdc.gov/phil///PHIL_Images/14586/14586_lores.jpg
+Original sha256: 6db11c61ceca448c898bbcba1cc17ecf5a2a07d9d2e797f5e633de5fd428bdca
+Derivative JPEG sha256: 179fba0d9ef1929b2aba7f193a212c896a28f3a2dd82f4198298066fa3355393
+Derivative size: (700, 1064)
+Source local tissue region is not specified. No micrometre-per-pixel calibration.
+CDC Public Health Image Library, public domain with CDC attribution required.
