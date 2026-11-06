@@ -87,7 +87,7 @@ assert.doesNotMatch(renderer,/drawSkinMesoTiles|drawSkinSurfaceField|drawSkinMic
 assert.doesNotMatch(renderer,/skin-semantic-lod\.webp/);
 assert.doesNotMatch(renderer,/sectionBlend|modeRef/);
 assert.match(ui,/aria-label="Слои кожи"/);
-assert.match(renderer,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
+assert.match(renderer,/ctx\.drawImage\(neutralBody\?\?body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
 assert.doesNotMatch(renderer,/globalAlpha=1-cutawayAlpha/);
 assert.match(ui,/Плечо · тонкая кожа/);
 assert.match(ui,/Кисть · разрез ладони/);
