@@ -27,13 +27,17 @@ export function boardRoleCapabilities(input:{
  const realCanEdit=boardRole!=="viewer"||(isAppAdmin&&adminMaintenance);
  const effectiveRole:"teacher"|"student"=safePreview==="teacher"?"teacher":
    safePreview==="student"||safePreview==="guest"?"student":
+   // The server-authorized board owner always has teacher-level tools,
+   // regardless of whether their account was originally created as a pupil
+   // or an anonymous guest. Developer previews remain simulations only.
+   boardRole==="owner"?"teacher":
    (isGuest||(accountRole==="student"&&!adminMaintenance))?"student":"teacher";
  const isStudent=effectiveRole==="student";
  const isGuestPreview=safePreview==="guest";
  const canEdit=realCanEdit;
  const canUseTeacherTools=canEdit&&!isStudent;
  const canUseStudentTools=canEdit&&isStudent;
- const canManageBoard=canUseTeacherTools&&boardRole==="owner"&&!isGuest;
+ const canManageBoard=canUseTeacherTools&&boardRole==="owner";
  return {
   canEdit,isStudent,isGuestPreview,effectiveRole,canManageBoard,
   canCreateAssignments:canUseTeacherTools,
