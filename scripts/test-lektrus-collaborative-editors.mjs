@@ -131,6 +131,9 @@ assert.match(app,/item=\{remoteLiveItems\[schoolEditorItem.id\]/,"contour editor
 assert.match(app,/workChannel\.current\?\.publishEdit/,"live mutations broadcast without waiting for full save");
 assert.match(ws,/message\.payload\?\.event === "editor_mutation"/,"editor mutations received");
 assert.match(app,/remoteLiveBases/,"untrusted fast previews are kept separate from durable state");
-assert.match(app,/pendingEditorBases\.current\.get\(item.id\)/,"server version conflicts rebase field changes");
+assert.match(app,/const merged=mergeBoardDocumentEdits\(acknowledgedBoardData\.current,local,remote\)/,
+ "server conflicts rebase unsaved local changes against the last acknowledged version");
+assert.match(app,/if\(pendingEditorBases\.current\.has\(item\.id\)\)pendingEditorBases\.current\.set\(item\.id,item\)/,
+ "server conflict refreshes pending editor bases from the latest remote item");
 assert.match(app,/remoteEditor&&!\(\(item.kind==="graph"/,"common editors do not acquire exclusive UI locks");
 console.log("Lektrus collaborative editor merges, previews, and event wiring: checks passed.");
