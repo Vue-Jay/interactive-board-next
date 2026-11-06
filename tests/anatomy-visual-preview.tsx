@@ -2,7 +2,7 @@
  * This is a development-only entry under /tests, not a new atlas mode.
  * The image below is drawn by the same component as the live board.
  */
-import React,{useRef,useState} from "react";
+import React,{useEffect,useRef,useState} from "react";
 import {createRoot} from "react-dom/client";
 import LektrusSkinSemanticViewport,{type EpidermisHitTest} from "../src/LektrusSkinSemanticViewport";
 import {EPIDERMIS_RECORDS,EPIDERMIS_STRATA_ORDER,type EpidermisId} from "../src/lektrusEpidermisAtlas";
@@ -22,9 +22,19 @@ function Preview(){
   params.get("layer")&&params.get("layer")!=="none"?
    params.get("layer") as EpidermisId:null);
  const hitRef=useRef<EpidermisHitTest|null>(null);
- // Confirmed deltoid reference (not an invented palm/sole histological map).
- // Silhouette-registered shoulder epidermis, not the arm interior.
- const focus={x:260,y:182};
+ const anchorRef=useRef<{x:number;y:number}|null>(null);
+ const [focus,setFocus]=useState({x:260,y:182});
+ useEffect(()=>{
+  // Wait for the *actual loaded silhouette contour*, not an estimated
+  // x coordinate from the older atlas. Screenshots should inspect the
+  // registered epidermis rather than hundreds of pink dermis pixels.
+  const timer=window.setInterval(()=>{
+   if(!anchorRef.current)return;
+   setFocus(anchorRef.current);
+   window.clearInterval(timer);
+  },100);
+  return ()=>window.clearInterval(timer);
+ },[]);
  const camera=anatomyCameraAtBody(scale===1?{x:180,y:300}:focus,
   scale,WIDTH,HEIGHT);
  return <main style={{fontFamily:"system-ui",padding:18,background:"#edf3f0",
@@ -54,7 +64,8 @@ function Preview(){
      background:"#f5f7f8",border:"1px solid #b4c9bf",
      borderRadius:12,overflow:"hidden"}}>
     <LektrusSkinSemanticViewport camera={camera}
-     selectedEpidermis={selected} hitTestRef={hitRef}/>
+     selectedEpidermis={selected} hitTestRef={hitRef}
+     anchorRef={anchorRef}/>
    </div>
    <aside style={{width:270,maxHeight:HEIGHT,overflowY:"auto"}}>
     <div style={{border:"1px solid #bcd5ca",padding:9,borderRadius:10,
