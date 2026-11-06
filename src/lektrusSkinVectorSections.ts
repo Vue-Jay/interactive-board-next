@@ -8,6 +8,14 @@ import {skinEdgeRuns} from "./lektrusSkinEdgeSections";
 import {SKIN_ILLUSTRATIVE_LAYERS} from "./lektrusSkinEvidenceModel";
 export const SKIN_SECTION_WORLD_DEPTH=8.4;
 export const SKIN_SECTION_NEUTRAL_FRACTION=.20;
+/** Full hands/feet remain intact at a teacher's ordinary board zoom.
+ * Only fade into the deliberately widened tissue teaching cross-section
+ * at higher scales. Smoothstep prevents a hard step at 1000–2600%. */
+export function skinCutawayBlend(scale:number):number{
+ if(!Number.isFinite(scale))return 0;
+ const t=Math.max(0,Math.min(1,(scale-10)/16));
+ return t*t*(3-2*t);
+}
 export type SkinSectionPoint={x:number;y:number;depth:number};
 export type SkinSectionContour={inward:-1|1;points:SkinSectionPoint[];
  minX:number;maxX:number;minY:number;maxY:number};
