@@ -48,7 +48,8 @@ export function canRemoveBoardItem(
 ):boolean{
  if(isBoardOwner)return true;
  if(!isStudent)return true;
- return !!actorId&&item.createdBy===actorId&&!item.locked&&
+ return !!actorId&&item.createdBy===actorId&&
+  (isInkItem(item)||!item.locked)&&
   !(STUDENT_PROTECTED_OBJECT_KINDS as readonly string[]).includes(item.kind);
 }
 
