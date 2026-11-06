@@ -14,11 +14,20 @@ function load(path,mocks={}){
  return exports;
 }
 const evidence=load("src/lektrusSkinEvidenceModel.ts");
-const atlas=load("src/lektrusEpidermisAtlas.ts",{
+const thick=load("src/lektrusThickEpidermis.ts",{
  "./lektrusSkinEvidenceModel":evidence
+});
+const atlas=load("src/lektrusEpidermisAtlas.ts",{
+ "./lektrusSkinEvidenceModel":evidence,
+ "./lektrusThickEpidermis":thick
 });
 const layerIds=["corneum","granulosum","spinosum","basale"];
 assert.deepEqual([...atlas.EPIDERMIS_STRATA_ORDER],layerIds);
+assert.deepEqual([...atlas.EPIDERMIS_THICK_STRATA_ORDER],
+ ["corneum","lucidum","granulosum","spinosum","basale"]);
+assert.ok(atlas.EPIDERMIS_RECORDS.lucidum.summary.includes("безъядерных"));
+assert.ok(atlas.EPIDERMIS_RECORDS.lucidum.microAppearance.includes("тонкую"));
+assert.equal(atlas.EPIDERMIS_RECORDS.lucidum.source,atlas.EPIDERMIS_SOURCES.leeds);
 assert.deepEqual(atlas.EPIDERMIS_LAYER_FRACTIONS.map(x=>x.id),layerIds);
 assert.equal(atlas.EPIDERMIS_LAYER_FRACTIONS[0].start,0);
 assert.equal(atlas.EPIDERMIS_LAYER_FRACTIONS.at(-1).end,
@@ -33,7 +42,8 @@ assert.ok(atlas.EPIDERMIS_RECORDS.granulosum.summary.includes("кератоги�
 assert.ok(atlas.EPIDERMIS_RECORDS.basale.summary.includes("Один ряд"));
 assert.ok(atlas.EPIDERMIS_RECORDS.spinosum.microAppearance.includes("фиксации"));
 assert.ok(atlas.EPIDERMIS_RECORDS.epidermis.microAppearance.includes("не содержит кровеносных сосудов"));
-for(const id of ["epidermis",...layerIds,"keratinocyte","melanocyte","basement"]){
+for(const id of ["epidermis",...atlas.EPIDERMIS_THICK_STRATA_ORDER,
+ "keratinocyte","melanocyte","basement"]){
  const obj=atlas.EPIDERMIS_RECORDS[id];
  assert.equal(obj.id,id);
  assert.ok(obj.name&&obj.summary&&obj.function&&obj.microAppearance);
@@ -94,6 +104,52 @@ for(let y=179;y<184;y+=.027){
  assert.equal(actual,atlas.epidermisStratumEdge(y,
   evidence.SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd));
 }
+// Glabrous-skin virtual windows must remain tied to real silhouette
+// geometry, never silently classify all visible dorsal hand/foot edges.
+const palmPoints=Array.from({length:401},(_,i)=>({
+ x:312,y:332+i*.05,depth:8.4
+}));
+const footPoints=Array.from({length:401},(_,i)=>({
+ x:241,y:571+i*.05,depth:5.2
+}));
+const palmContour={inward:-1,points:palmPoints,
+ minX:300,maxX:314,minY:332,maxY:352};
+const footContour={inward:-1,points:footPoints,
+ minX:230,maxX:245,minY:571,maxY:591};
+const palm=thick.resolveThickSkinSample([palmContour,footContour],"palm");
+const sole=thick.resolveThickSkinSample([palmContour,footContour],"sole");
+assert.ok(palm&&sole,"Both teaching sites must register to separate physical contours");
+assert.equal(palm.contour,palmContour);
+assert.equal(sole.contour,footContour);
+assert.equal(thick.resolveThickSkinSample([],"palm"),null);
+assert.ok(thick.thickSkinInfluence(palmContour,342,palm)>.999);
+assert.equal(thick.thickSkinInfluence(footContour,342,palm),0);
+assert.equal(thick.thickSkinInfluence(palmContour,365,palm),0);
+const five=thick.thickSkinBandsAt(palmContour,342,palm);
+assert.deepEqual(five.map(x=>x.id),[
+ "corneum","lucidum","granulosum","spinosum","basale"]);
+assert.equal(five[0].start,0);
+assert.equal(five.at(-1).end,thick.THICK_SKIN_EPIDERMIS_END);
+assert.ok(five[0].end>five[1].end-five[1].start,
+ "Thick stratum corneum must be much wider than the thin lucidum");
+for(let i=1;i<five.length;i++)assert.equal(five[i].start,five[i-1].end);
+const thinAtHand=atlas.pickEpidermisAt(
+ [palmContour],{x:312-8.4*.0815,y:342},260);
+assert.equal(thinAtHand,null,
+ "A frontal hand silhouette MUST NOT show lucidum unless a virtual palm sample is chosen");
+const lucidMid=(five[1].start+five[1].end)/2;
+const palmLucidHit=atlas.pickEpidermisAt(
+ [palmContour],{x:312-8.4*lucidMid,y:342},260,palm);
+assert.equal(palmLucidHit,"lucidum",
+ "Clicking the actual translucent band must show stratum lucidum");
+assert.equal(atlas.pickEpidermisAt(
+ [footContour],{x:241-5.2*lucidMid,y:581},260,sole),"lucidum");
+assert.notEqual(atlas.pickEpidermisAt(
+ [palmContour],{x:312-8.4*lucidMid,y:342},260,sole),"lucidum",
+ "The sole window may not reveal the palm's bands");
+const palmFocus=thick.thickSkinFocusPoint(palm);
+assert.ok(Math.abs(palmFocus.x-(312-8.4*lucidMid))<1e-6);
+assert.equal(palmFocus.y,342);
 assert.equal(atlas.pickEpidermisAt([],pointAt(.022),260),null);
 const fakeCtx=new Proxy({},{
  get:(_,name)=>(...args)=>{
@@ -141,6 +197,20 @@ try{
  assert.equal(invalid.cells,0,
   "Never invent thin-skin cell maps on anatomically unregistered body areas");
 }finally{globalThis.Path2D=previous;}
+const thickRender=load("src/lektrusThickEpidermisRenderer.ts",{
+ "./lektrusThickEpidermis":thick,
+ "./lektrusEpidermisAtlas":atlas
+});
+assert.ok(thickRender.THICK_EPIDERMIS_MAX_CELLS<=1000);
+const modeled=thickRender.drawThickEpidermisSample(
+ fakeCtx,palm,220,{minX:301,maxX:315,minY:340,maxY:344},
+ "lucidum",true,215);
+assert.equal(modeled.bands,5);
+assert.ok(modeled.lamellae>0);
+assert.ok(modeled.cells>0);
+assert.equal(thickRender.drawThickEpidermisSample(
+ fakeCtx,null,220,{minX:301,maxX:315,minY:340,maxY:344},
+ null,true,215).bands,0);
 const viewport=source("src/LektrusSkinSemanticViewport.tsx");
 const human=source("src/LektrusHumanAnatomy.tsx");
 assert.match(viewport,/drawEpidermisAtlas\(/);
@@ -153,4 +223,9 @@ assert.match(human,/between\(from,target\)<=8/);
 assert.match(human,/setEpidermisSelection\(hit\)/);
 assert.match(human,/aria-pressed=\{epidermisSelection===id\}/);
 assert.match(human,/EPIDERMIS_RECORDS\[epidermisSelection\]\.source/);
-console.log("Epidermis PASS: four correct strata, world-space click, honest shoulder cell samples, pause budget and accessible cards.");
+assert.match(viewport,/drawThickEpidermisSample\(/);
+assert.match(viewport,/resolveThickSkinSample\(contours,"palm"\)/);
+assert.match(human,/EPIDERMIS_THICK_STRATA_ORDER/);
+assert.match(human,/Ладонь · 5 слоёв/);
+assert.match(human,/Подошва · 5 слоёв/);
+console.log("Epidermis PASS: four thin and five thick layers, no false dorsal skin classification, world-space lucidum clicks, bounded microstructure and accessible cards.");
