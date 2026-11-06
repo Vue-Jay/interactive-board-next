@@ -109,7 +109,8 @@ begin
  end if;
  -- Subject boards accept student answers without changing teacher prompts.
  v_new:=jsonb_set(v_before,'{items,0}',jsonb_build_object(
-  'id','t','kind','graph','createdBy',teacher::text,'text','Worksheet',
+  'id','t','kind','graph','createdBy',teacher::text,
+  'graphFigureId','subject-board-mathematics','text','Worksheet',
   'subjectBoardEntries',jsonb_build_array(jsonb_build_object(
    'id','entry1','kind','task','title','Example','prompt','2 + 2',
    'answer','4','solution','2 + 2 = 4'))));
@@ -128,6 +129,15 @@ begin
    jsonb_set(v_new,'{items,0,subjectBoardEntries,0,solution}',
     '"Teacher reference modified"'::jsonb),pupil) then
   raise exception 'Teacher reference solution was editable';end if;
+ if not lektrus_private.student_document_delta_allowed(v_new,
+    jsonb_set(jsonb_set(v_new,
+     '{items,0,subjectBoardEntries,0,subject}','"mathematics"'::jsonb),
+     '{items,0,subjectBoardEntries,0,answer}','"4"'::jsonb),pupil) then
+  raise exception 'First response to legacy untagged task was rejected';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,subjectBoardEntries,0,subject}',
+    '"physics"'::jsonb),pupil) then
+  raise exception 'Student changed a legacy task to another subject';end if;
  if lektrus_private.student_document_delta_allowed(v_new,
    jsonb_set(v_new,'{items,0,subjectBoardEntries}',
     (v_new#>'{items,0,subjectBoardEntries}')||
