@@ -12,7 +12,7 @@ import {skinEvidenceRegionAt,SKIN_ILLUSTRATIVE_LAYERS} from "./lektrusSkinEviden
 import {EPIDERMIS_LAYER_FRACTIONS,sectionAtY,
  epidermisStratumEdge,epidermisMelanocyteCenter,
  epidermisKeratinocyteCenter,
- type EpidermisId,type EpidermisStratum} from "./lektrusEpidermisAtlas";
+ type EpidermisId,type EpidermisStratum,type EpidermisPoint} from "./lektrusEpidermisAtlas";
 export {epidermisStratumEdge} from "./lektrusEpidermisAtlas";
 import type {SkinSectionContour,SkinSectionPoint} from "./lektrusSkinVectorSections";
 import {drawEpidermisCellSheet} from "./lektrusEpidermisCellSheet";
@@ -79,7 +79,7 @@ type DetailStats={bands:number;cells:number;granules:number;melanocytes:number};
 export function drawEpidermisAtlas(
  ctx:CanvasRenderingContext2D,contours:readonly SkinSectionContour[],
  scale:number,bounds:Bounds,selected:EpidermisId|null,detailed=true,
- pixelsPerWorld=scale
+ pixelsPerWorld=scale,selectedPoint:EpidermisPoint|null=null
 ):DetailStats{
  const stats:DetailStats={bands:0,cells:0,granules:0,melanocytes:0};
  if(scale<11)return stats;
@@ -171,7 +171,9 @@ export function drawEpidermisAtlas(
      ctx.strokeStyle="#916a91";ctx.lineWidth=.0013;ctx.stroke();
      ctx.beginPath();ctx.ellipse(x,y,.007,.009,0,0,Math.PI*2);
      ctx.fillStyle="#74536d";ctx.fill();
-     if(selected==="keratinocyte"){
+     if(selected==="keratinocyte"&&selectedPoint&&
+       Math.abs(x-selectedPoint.x)<=.024&&
+       Math.abs(y-selectedPoint.y)<=.028){
       ctx.beginPath();ctx.ellipse(x,y,.027,.033,0,0,Math.PI*2);
       ctx.strokeStyle="#f6d369";ctx.lineWidth=.0019;
       ctx.globalAlpha=.95;ctx.stroke();
@@ -197,7 +199,9 @@ export function drawEpidermisAtlas(
      ctx.beginPath();ctx.moveTo(x,y);
      ctx.lineTo(x-c.inward*.025,y-.029);
      ctx.moveTo(x,y);ctx.lineTo(x-c.inward*.028,y+.028);ctx.stroke();
-     if(selected==="melanocyte"){
+     if(selected==="melanocyte"&&selectedPoint&&
+       Math.abs(x-selectedPoint.x)<=.015&&
+       Math.abs(y-selectedPoint.y)<=.020){
       ctx.beginPath();ctx.ellipse(x,y,.020,.025,0,0,Math.PI*2);
       ctx.strokeStyle="#f7d763";ctx.lineWidth=.002;
       ctx.globalAlpha=.95;ctx.stroke();
