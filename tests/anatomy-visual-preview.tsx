@@ -5,6 +5,7 @@
 import React,{useState} from "react";
 import {createRoot} from "react-dom/client";
 import LektrusSkinSemanticViewport from "../src/LektrusSkinSemanticViewport";
+import LektrusSkinSpecimens from "../src/LektrusSkinSpecimens";
 import {anatomyCameraAtBody} from "../src/lektrusAnatomySemanticZoom";
 import "../src/lektrusHumanAnatomy.css";
 const WIDTH=840,HEIGHT=540;
@@ -31,10 +32,16 @@ function Preview(){
      background:z===scale?"#397f58":"white",color:z===scale?"white":"#294a35"}}>
     {z*100}%</button>)}
   </nav>
-  <div data-testid="skin-visual-stage"
-   style={{width:WIDTH,height:HEIGHT,position:"relative",background:"#f5f7f8",
-    border:"1px solid #b4c9bf",borderRadius:12,overflow:"hidden"}}>
-   <LektrusSkinSemanticViewport camera={camera}/>
+  <div style={{display:"flex",gap:16,alignItems:"flex-start"}}>
+   <div data-testid="skin-visual-stage"
+    style={{width:WIDTH,height:HEIGHT,flexShrink:0,position:"relative",
+     background:"#f5f7f8",border:"1px solid #b4c9bf",
+     borderRadius:12,overflow:"hidden"}}>
+    <LektrusSkinSemanticViewport camera={camera}/>
+   </div>
+   <aside style={{width:270,maxHeight:HEIGHT,overflowY:"auto"}}>
+    <LektrusSkinSpecimens defaultOpen/>
+   </aside>
   </div>
   <p style={{fontSize:12}}>Текущий цифровой масштаб: {scale*100}%.
    Научная и визуальная приёмка требуют отдельного сравнения с Leeds,
