@@ -11,9 +11,9 @@ import {SKIN_ILLUSTRATIVE_LAYERS} from "./lektrusSkinEvidenceModel";
 export type SkinTissueRegion="epidermis"|"dermis"|"subcutis";
 export type SkinTissueSample={r:number;g:number;b:number;region:SkinTissueRegion};
 export type SkinTissueView={minX:number;maxX:number;minY:number;maxY:number};
-export const SKIN_TISSUE_MAX_PIXELS=170000;
-export const SKIN_TISSUE_MAX_WIDTH=740;
-export const SKIN_TISSUE_MAX_HEIGHT=500;
+export const SKIN_TISSUE_MAX_PIXELS=44000;
+export const SKIN_TISSUE_MAX_WIDTH=360;
+export const SKIN_TISSUE_MAX_HEIGHT=260;
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
 const ease=(x:number)=>x*x*(3-2*x);
@@ -92,80 +92,32 @@ function keratinocyteField(x:number,y:number){
  return {edge:1-ease(clamp((Math.sqrt(runner)-Math.sqrt(nearest))/.19,0,1)),
   center:clamp(Math.sqrt(nearest),0,1)};
 }
-/** H&E-like pigment tied to tissue depth. The loose papillary dermis has
- * finer fibres; deeper reticular dermis has denser interlacing collagen.
- * The epidermis is avascular, and the hypodermis has lipid vacuoles. */
-export function skinTissueSample(x:number,y:number,fraction:number,scale:number):SkinTissueSample{
+/** Restrained illustrative tissue tones, NOT a synthetic microscopic slide.
+ * Earlier Voronoi "adipocytes", wavy tubes and periodic fake nuclei were
+ * interpreted as anatomical structures. They had no specimen registration.
+ * The specimen panel holds real tissue photography. Here only render a
+ * continuous, subtle connective-tissue tone without invented cells/vessels.
+ * At every camera scale the same world point has the same colour.
+ */
+export function skinTissueSample(x:number,y:number,fraction:number,_scale:number):SkinTissueSample{
  const original=clamp(fraction,0,1);
  const boundary=skinTissueReteBoundary(y);
- // The basal boundary varies organically along the skin but remains fixed
- // at each world point regardless of camera zoom.
  const depth=clamp(original+(SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd-boundary)*
   (1-reveal(.075,.12,original)),0,1);
  const region:SkinTissueRegion=depth<SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd?"epidermis":
   depth<SKIN_ILLUSTRATIVE_LAYERS.dermisEnd?"dermis":"subcutis";
  const base=palette(region,depth);
- const warp=skinTissueNoise(x*1.7,y*1.4,13)-.5;
- const n1=skinTissueNoise(x*.82,y*.94,23)-.5;
- const n2=skinTissueNoise(x*4.8,y*5.4,29)-.5;
- const n3=skinTissueNoise(x*20.2,y*17.1,37)-.5;
- const tiny=skinTissueNoise(x*67,y*68,43)-.5;
- let variation=11*n1+9*n2+5*n3+2*tiny;
- let red=base[0]+variation;
- let green=base[1]+variation*.68;
- let blue=base[2]+variation*.86;
- if(region==="dermis"){
-  // Domain-warped directional collagen: it does not form a perfect grid.
-  const angle=skinTissueNoise(x*1.5,y*1.7,51)*2.7;
-  const axis=x*Math.cos(angle)+y*Math.sin(angle);
-  const axis2=x*Math.cos(angle+1.16)+y*Math.sin(angle+1.16);
-  const f1=Math.sin(axis*34+warp*7+n2*2.8);
-  const f2=Math.sin(axis2*51-warp*8+n3*3);
-  const strandA=(1-Math.abs(f1))**8;
-  const strandB=(1-Math.abs(f2))**11;
-  const density=mix(.48,1,reveal(.13,.65,depth));
-  const fiber=(strandA*.73+strandB*.42)*density;
-  red+=fiber*33;green+=fiber*20;blue+=fiber*23;
-  const dark=(1-Math.abs(Math.sin(axis*12+n2*4)))**16;
-  red-=dark*6;green-=dark*4;blue-=dark*2;
- }else if(region==="epidermis"){
-  // Microscopic papillae/rete pegs are subtle at lower digital zoom.
-  const folds=reveal(20,90,scale);
-  const wave=Math.sin(y*24+skinTissueNoise(x*1.8,y*2.2,57)*2.2);
-  red+=folds*wave*5;green-=folds*wave*3;
-  const detail=reveal(110,245,scale);
-  if(detail>.001){
-   const c=keratinocyteField(x,y);
-   red-=c.edge*20*detail;
-   green-=c.edge*14*detail;
-   blue-=c.edge*11*detail;
-   // Basal nuclei lie near the dermis, not in the anucleate corneum.
-   if(depth>SKIN_ILLUSTRATIVE_LAYERS.spinosumStart){
-    const nuclei=(1-Math.abs(Math.sin(x*330+y*191+warp*3)))**38;
-    red-=detail*7*nuclei;green-=detail*13*nuclei;blue-=detail*5*nuclei;
-   }
-  }
- }else{
-  // White vacuoles in polygonal fat lobules, not yellow circles.
-  const opacity=reveal(56,155,scale);
-  const a=opacity>.002?skinAdiposeField(x,y):null;
-  if(a){
-   const light=a.interior*opacity;
-   red=mix(red,253,light*.88);
-   green=mix(green,247,light*.88);
-   blue=mix(blue,228,light*.88);
-   red-=a.boundary*opacity*19;
-   green-=a.boundary*opacity*13;
-   blue-=a.boundary*opacity*12;
-  }
-  // Mesoscopic collagen septa visible before individual adipocytes.
-  const septa=(1-Math.abs(Math.sin(x*3.2+y*2.2+warp*5)))**13;
-  red-=septa*10;green-=septa*7;blue-=septa*6;
- }
- return {r:Math.round(clamp(red,0,255)),
-  g:Math.round(clamp(green,0,255)),
-  b:Math.round(clamp(blue,0,255)),region};
+ // Low-contrast, stable tonal modulation does not depict individual cells.
+ const coarse=skinTissueNoise(x*1.55,y*1.36,23)-.5;
+ const medium=skinTissueNoise(x*5.4,y*4.1,29)-.5;
+ const small=skinTissueNoise(x*17.2,y*15.8,37)-.5;
+ const tone=(coarse*13+medium*6+small*2)*
+  (region==="epidermis"?.45:region==="dermis"?.60:.36);
+ const r=base[0]+tone, g=base[1]+tone*.70, b=base[2]+tone*.80;
+ return {r:Math.round(clamp(r,0,255)),g:Math.round(clamp(g,0,255)),
+  b:Math.round(clamp(b,0,255)),region};
 }
+
 function positionAt(c:SkinSectionContour,y:number):SkinSectionPoint|null{
  const points=c.points;
  if(points.length<2||y<points[0].y||y>points[points.length-1].y)return null;
