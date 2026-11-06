@@ -58,6 +58,18 @@ begin
  if lektrus_private.student_document_delta_allowed(v_before,
     jsonb_set(v_before,'{title}','"New title"'::jsonb),pupil) then
   raise exception 'Student title tampering passed';end if;
+ -- The live autosave refreshes a thumbnail cache on any editor action.
+ if not lektrus_private.student_document_delta_allowed(v_before,
+    jsonb_set(v_before,'{preview}','"data:image/png;base64,thumbnail"'::jsonb),pupil) then
+  raise exception 'Updating preview cache must not block a student save';end if;
+ if not lektrus_private.student_document_delta_allowed(v_before,
+    v_before||jsonb_build_object('background',
+      jsonb_build_object('mode','dots','color','#f7f7f8','opacity',100),
+     'backgroundShared',true),pupil) then
+  raise exception 'Default legacy board background must normalize';end if;
+ if lektrus_private.student_document_delta_allowed(v_before,
+    jsonb_set(v_before,'{subject}','"chemistry"'::jsonb),pupil) then
+  raise exception 'Student changed the subject';end if;
  if lektrus_private.student_document_delta_allowed(v_before,
     jsonb_set(v_before,'{items}',(v_before->'items')-0),pupil) then
   raise exception 'Foreign object deletion passed';end if;
