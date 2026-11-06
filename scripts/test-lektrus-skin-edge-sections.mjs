@@ -180,6 +180,12 @@ assert.ok(vector.SKIN_SECTION_WORLD_DEPTH>=7,
  "A 2.9-world-unit stripe is too thin to inspect at medium zoom");
 assert.equal(vector.SKIN_SECTION_NEUTRAL_FRACTION,.20);
 const stripes=vector.skinSectionContours(alpha,width,height,factor);
+// Separate synthetic tissue geometry for tests of legacy, UNMOUNTED
+// microstructure helpers. The actual body must retain the width-gated
+// cutaway instead of enlarging cells on narrow synthetic arms.
+const legacyMicroscopeContours=stripes.map(c=>({...c,
+ points:c.points.map(p=>({...p,depth:Math.max(p.depth,6)}))
+}));
 assert.ok(stripes.length>=6,"Every silhouette and each lateral edge needs its own path");
 assert.ok(stripes.every(c=>c.points.length>=8));
 assert.ok(stripes.every(c=>c.points.every(p=>Number.isFinite(p.x)&&
@@ -262,7 +268,7 @@ function microDraw(scale,bounds=microBounds){
    logged.push([name,...args]);
   },set:()=>true
  });
- return {count:micro.drawSkinMicroscopicDetails(ctx,stripes,scale,bounds),
+ return {count:micro.drawSkinMicroscopicDetails(ctx,legacyMicroscopeContours,scale,bounds),
   calls:logged};
 }
 const meso=microDraw(24),deep=microDraw(360),repeat=microDraw(360);
@@ -318,7 +324,7 @@ function fineDraw(scale,bounds=microBounds){
    calls.push([name,...args]);
   },set:()=>true
  });
- return {count:micro.drawSkinFineStructures(ctx,stripes,scale,bounds),calls};
+ return {count:micro.drawSkinFineStructures(ctx,legacyMicroscopeContours,scale,bounds),calls};
 }
 const fineMid=fineDraw(50),fineMax=fineDraw(360);
 assert.ok(fineMid.count.elastic>0);
