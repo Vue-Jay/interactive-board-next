@@ -1450,7 +1450,7 @@ export function parseDocument(raw: string): DocumentData {
       ...(i.kind === "frame" && finite(i.presentationOrder) ? { presentationOrder: Math.max(0, Math.round(i.presentationOrder)) } : {}),
       ...(i.kind === "frame" && typeof i.notes === "string" ? { notes: i.notes.slice(0, 20000) } : {}),
       ...(typeof i.groupId === "string" && i.groupId ? { groupId: i.groupId } : {}),
-      ...(i.locked === true ? { locked: true } : {}),
+      ...(i.locked === true && i.kind !== "pen" && i.kind !== "marker" ? { locked: true } : {}),
       ...(i.hidden === true ? { hidden: true } : {}),
     })),
   });
