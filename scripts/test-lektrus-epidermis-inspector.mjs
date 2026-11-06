@@ -77,7 +77,14 @@ const fakeCtx=new Proxy({},{
 });
 const previous=globalThis.Path2D;
 globalThis.Path2D=class{
- moveTo(){}lineTo(){}closePath(){}ellipse(){}
+ hasMove=false;
+ moveTo(){this.hasMove=true;}
+ lineTo(){}closePath(){}
+ ellipse(){
+  assert.ok(this.hasMove,
+   "Each independent nucleus or granular ellipse needs its own Path2D.moveTo: otherwise Canvas connects them into giant false triangles");
+  this.hasMove=false;
+ }
 };
 try{
  const render=load("src/lektrusEpidermisRenderer.ts",{
