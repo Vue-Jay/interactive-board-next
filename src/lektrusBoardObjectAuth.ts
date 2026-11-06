@@ -39,15 +39,14 @@ export function withoutInkLock<T extends Item>(item:T):T{
  return unlocked as T;
 }
 
-/** Ink is shared and never lockable. All editors, including pupils and guests,
- * may erase any pen or marker stroke, regardless of its original author.
- * For ordinary objects the author's identity still guards student deletion.
- * The actual board owner is always allowed to remove any object.
+/** A stroke is never locked, but authorship is separate from locking:
+ * pupils cannot erase someone else's ink. The board owner can still remove
+ * any object. This keeps shared deletion rights consistent across object types.
  */
 export function canRemoveBoardItem(
  item:Item,actorId:string,isStudent:boolean,isBoardOwner=false
 ):boolean{
- if(isBoardOwner||isInkItem(item))return true;
+ if(isBoardOwner)return true;
  if(!isStudent)return true;
  return !!actorId&&item.createdBy===actorId&&!item.locked&&
   !(STUDENT_PROTECTED_OBJECT_KINDS as readonly string[]).includes(item.kind);
