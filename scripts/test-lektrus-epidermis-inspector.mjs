@@ -160,7 +160,7 @@ const previous=globalThis.Path2D;
 globalThis.Path2D=class{
  hasMove=false;
  moveTo(){this.hasMove=true;}
- lineTo(){}closePath(){}
+ lineTo(){}quadraticCurveTo(){}closePath(){}
  ellipse(){
   assert.ok(this.hasMove,
    "Each independent nucleus or granular ellipse needs its own Path2D.moveTo: otherwise Canvas connects them into giant false triangles");
@@ -168,9 +168,14 @@ globalThis.Path2D=class{
  }
 };
 try{
+ const sheet=load("src/lektrusEpidermisCellSheet.ts",{
+  "./lektrusEpidermisAtlas":atlas,
+  "./lektrusSkinEvidenceModel":evidence
+ });
  const render=load("src/lektrusEpidermisRenderer.ts",{
   "./lektrusSkinEvidenceModel":evidence,
-  "./lektrusEpidermisAtlas":atlas
+  "./lektrusEpidermisAtlas":atlas,
+  "./lektrusEpidermisCellSheet":sheet
  });
  assert.ok(render.EPIDERMIS_DETAIL_MAX_CELLS<=5000);
  assert.equal(render.epidermisStratumEdge,atlas.epidermisStratumEdge,
