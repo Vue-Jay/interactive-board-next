@@ -8,6 +8,7 @@ on:
       - 'src/lektrusEpidermis*'
       - 'src/LektrusHumanAnatomy.tsx'
       - 'tests/anatomy-visual-preview.*'
+      - 'tests/anatomy-epidermis-*'
       - 'docs/ANATOMY_HUMAN_CANONICAL_PLAN.md'
       - '.github/workflows/anatomy-visual-review.yml'
   workflow_dispatch:
@@ -56,6 +57,9 @@ jobs:
               "http://127.0.0.1:5173/tests/anatomy-visual-preview.html?zoom=24&source=$source" \
               "artifacts/anatomy/skin-$source-comparison.png"
           done
+          python3 -m venv /tmp/lektrus-epidermis-playwright
+          /tmp/lektrus-epidermis-playwright/bin/pip -q install playwright==1.64.1
+          /tmp/lektrus-epidermis-playwright/bin/python tests/anatomy-epidermis-browser-smoke.py
       - name: Upload visual evidence
         if: always()
         uses: actions/upload-artifact@v4
