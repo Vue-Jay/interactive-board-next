@@ -26,7 +26,7 @@ assert.deepEqual([...atlas.EPIDERMIS_STRATA_ORDER],layerIds);
 assert.deepEqual([...atlas.EPIDERMIS_THICK_STRATA_ORDER],
  ["corneum","lucidum","granulosum","spinosum","basale"]);
 assert.ok(atlas.EPIDERMIS_RECORDS.lucidum.summary.includes("безъядерных"));
-assert.ok(atlas.EPIDERMIS_RECORDS.lucidum.microAppearance.includes("тонкую"));
+assert.ok(atlas.EPIDERMIS_RECORDS.lucidum.microAppearance.includes("полупрозрачную"));
 assert.equal(atlas.EPIDERMIS_RECORDS.lucidum.source,atlas.EPIDERMIS_SOURCES.leeds);
 assert.deepEqual(atlas.EPIDERMIS_LAYER_FRACTIONS.map(x=>x.id),layerIds);
 assert.equal(atlas.EPIDERMIS_LAYER_FRACTIONS[0].start,0);
