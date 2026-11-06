@@ -133,7 +133,7 @@ export function drawThickEpidermisSample(
    const s0=edgeX(site,p,3,"start"),s1=edgeX(site,p,3,"end");
    for(let k=0;k<6&&stats.cells<THICK_EPIDERMIS_MAX_CELLS;k++){
     const x=s0+(s1-s0)*(.12+(k+.5)*.76/6);
-    const radius=Math.min(.034,Math.abs(s1-s0)*.76/6*.43);
+    const radius=Math.min(.062,Math.abs(s1-s0)*.76/6*.55);
     spinous.moveTo(x-radius,y);
     spinous.lineTo(x-radius*.48,y-radius*.8);
     spinous.lineTo(x+radius*.66,y-radius*.64);
@@ -171,12 +171,12 @@ export function drawThickEpidermisSample(
   }
   // Subtle tinted polyhedral keratinocytes in the spinous sheet,
   // with nucleus only where biologically appropriate.
-  ctx.globalAlpha=.38*fade;ctx.fillStyle="#f0c4d1";ctx.fill(spinous);
-  ctx.globalAlpha=.54*fade;ctx.strokeStyle="#956b92";ctx.lineWidth=.0012;
+  ctx.globalAlpha=.82*fade;ctx.fillStyle="#f1cad6";ctx.fill(spinous);
+  ctx.globalAlpha=.80*fade;ctx.strokeStyle="#956b92";ctx.lineWidth=.0017;
   ctx.stroke(spinous);
-  ctx.globalAlpha=.63*fade;ctx.fillStyle="#bb9bae";
+  ctx.globalAlpha=.80*fade;ctx.fillStyle="#cba5b9";
   ctx.fill(granularCells);
-  ctx.globalAlpha=.76*fade;ctx.strokeStyle="#815f88";ctx.stroke(granularCells);
+  ctx.globalAlpha=.86*fade;ctx.strokeStyle="#815f88";ctx.stroke(granularCells);
   ctx.globalAlpha=.76*fade;ctx.fillStyle="#745374";
   ctx.fill(spinousNuclei);
   ctx.fill(granularNuclei);
