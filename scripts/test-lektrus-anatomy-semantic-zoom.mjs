@@ -196,18 +196,18 @@ assert.doesNotMatch(renderer,/cam\.scale\s*\?/,
  "Image registration cannot change with camera scale");
 assert.doesNotMatch(renderer,/SKIN_INDEX\*WORLD_WIDTH/,
  "Skin viewer must not reuse the incorrect blue-gray system sprite");
-assert.match(renderer,/ctx\.globalCompositeOperation="source-atop"/,
- "Details must be clipped to the actual figure silhouette");
+assert.doesNotMatch(renderer,/ctx\.globalCompositeOperation="source-atop"/,
+ "Do not wash out fingers and feet with a transparent desaturating tint");
 assert.doesNotMatch(renderer,/cropFeathered|resources\.shoulder/,
  "No magnified shoulder rectangle is rendered at intermediate zoom");
 assert.doesNotMatch(renderer,/ctx\.ellipse\(EDGE\.x\+EDGE\.width\/2/,
  "No huge oval or circular skin inset may cover the torso");
-assert.match(renderer,/ctx\.fillRect\(0,0,WORLD_WIDTH,WORLD_HEIGHT\)/,
- "Smooth material must cover the full body coordinate system");
+assert.match(renderer,/skinCutawayBlend\(cam\.scale\)/,
+ "The original body remains intact until a teacher reaches a tissue zoom");
 assert.doesNotMatch(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible,/,
  "World camera must not render unverified repeated vascular strokes");
 assert.match(renderer,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
-assert.match(renderer,/drawSkinSectionBands\(ctx,contours,visible\)/);
+assert.match(renderer,/drawSkinSectionBands\(ctx,contours,visible,cutawayAlpha\)/);
 assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
 assert.doesNotMatch(renderer,/edgeAtlas|detailCanvas|globalCompositeOperation="destination-in"/);
 assert.doesNotMatch(renderer,/modeRef|sectionBlend|drawSkinMesoTiles|drawSkinMicrotiles|drawSkinSurfaceField/);
