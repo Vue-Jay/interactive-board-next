@@ -345,3 +345,25 @@
 .lek-anatomy-calibrated-source a{
  color:#285e45;text-decoration:underline;
 }
+
+
+.lek-anatomy-external-slides{
+ display:grid;gap:5px;margin:8px 0;
+}
+.lek-anatomy-external-slides>a{
+ display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+ padding:7px 9px;text-decoration:none;border:1px solid #cadece;
+ border-radius:7px;background:#fff;color:#2c644a;
+}
+.lek-anatomy-external-slides>a strong{
+ font-size:10px;font-weight:750;color:#295a43;
+}
+.lek-anatomy-external-slides>a small{
+ font-size:9px;line-height:1.5;color:#526b5e;
+}
+.lek-anatomy-external-slides>a:hover{
+ background:#e7f2e9;border-color:#8dbba0;
+}
+.lek-anatomy-external-slides>a:focus-visible{
+ outline:2px solid #2e704d;outline-offset:2px;
+}
