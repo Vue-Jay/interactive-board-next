@@ -10,6 +10,7 @@
 import {EPIDERMIS_LAYER_FRACTIONS,epidermisStratumEdge,sectionAtY,
  type EpidermisPoint} from "./lektrusEpidermisAtlas";
 import type {SkinSectionContour,SkinSectionPoint} from "./lektrusSkinVectorSections";
+import {skinEvidenceRegionAt} from "./lektrusSkinEvidenceModel";
 
 type Bounds={minX:number;maxX:number;minY:number;maxY:number};
 export type EpidermisCellStats={cells:number;granules:number};
@@ -45,7 +46,8 @@ function sheetCell(c:SkinSectionContour,layer:typeof EPIDERMIS_LAYER_FRACTIONS[n
  row:number,column:number):EpidermisDrawnCell|null{
  const style=layout[layer.id];
  const y=row*style.rowStep,p=sectionAtY(c,y);
- if(!p||p.depth<1)return null;
+ if(!p||p.depth<1||
+  skinEvidenceRegionAt({x:p.x,y})!=="thin-skin-reference")return null;
  const fraction=layer.start+(column+.5)*
   (layer.end-layer.start)/style.columns;
  const x=p.x+c.inward*p.depth*epidermisStratumEdge(y,fraction);
