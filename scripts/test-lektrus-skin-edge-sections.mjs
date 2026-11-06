@@ -82,7 +82,7 @@ assert.doesNotMatch(renderer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HE
  "Do not rasterize thousands of unnecessary faux micro-anatomy landmarks");
 assert.doesNotMatch(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible,/,
  "Repeated pink vascular loops were not valid human histology");
-assert.match(renderer,/drawSkinSectionBands\(ctx,contours,visible\)/);
+assert.match(renderer,/drawSkinSectionBands\(ctx,contours,visible,cutawayAlpha\)/);
 assert.doesNotMatch(renderer,/drawSkinMesoTiles|drawSkinSurfaceField|drawSkinMicrotiles/);
 assert.doesNotMatch(renderer,/skin-semantic-lod\.webp/);
 assert.doesNotMatch(renderer,/sectionBlend|modeRef/);
