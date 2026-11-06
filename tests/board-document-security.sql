@@ -309,3 +309,43 @@ begin
  raise notice 'PASS: isolated Postgres policy (field diffs, actor, auth, RLS grants and trigger)';
 end;
 $test$;
+
+
+-- Unlike the DO block above (which calls privileged functions as postgres),
+-- this transaction executes with the same database ROLE as a real PostgREST
+-- user. A mocked JWT sub is used only because this is an isolated database.
+-- Everything is rolled back; no provider/project is connected.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '22222222-2222-4222-8222-222222222222';
+set local test.role = 'student';
+set local test.can_edit = 'true';
+do $authenticated_client$
+declare
+ v_result jsonb;
+begin
+ if has_table_privilege(current_user,'public.board_documents','UPDATE') then
+  raise exception 'Authenticated client unexpectedly has direct table UPDATE';
+ end if;
+ begin
+  update public.board_documents set version=99 where board_id=
+    '55555555-5555-4555-8555-555555555555';
+  raise exception 'Direct REST-equivalent document UPDATE was accepted';
+ exception when insufficient_privilege then null;end;
+ begin
+  insert into public.board_documents(board_id,document)
+   values('55555555-5555-4555-8555-555555555555','{"items":[]}'::jsonb);
+  raise exception 'Direct REST-equivalent document INSERT was accepted';
+ exception when insufficient_privilege then null;end;
+ select public.save_board_document(
+  '55555555-5555-4555-8555-555555555555',
+  document,version) into v_result
+  from public.board_documents where board_id=
+  '55555555-5555-4555-8555-555555555555';
+ if v_result->>'ok'<>'true' or (v_result->>'version')::integer<>3 then
+  raise exception 'Authenticated board owner cannot use safe RPC: %',v_result;
+ end if;
+ raise notice 'PASS: authenticated role: REST writes denied, versioned RPC allowed';
+end;
+$authenticated_client$;
+rollback;
