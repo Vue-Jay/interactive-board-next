@@ -5423,7 +5423,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     const deletable = selected.filter((id) => !lockedIds.has(id)&&!foreignIds.has(id));
     if(foreignIds.size)setNotice("Чужие материалы сохранены. Удаляются только свои незаблокированные объекты");
     if (!deletable.length) {
-      setNotice("Сначала разблокируйте выбранные объекты");
+      setNotice(foreignIds.size?
+        "Чужую работу и задания преподавателя удалять нельзя":
+        "Сначала разблокируйте выбранные объекты");
       return;
     }
     commit(itemsRef.current.filter((item) => !deletable.includes(item.id)));
