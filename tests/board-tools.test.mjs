@@ -80,7 +80,7 @@ test("eraser draws a lightweight canvas preview and commits once at gesture end"
  assert.ok(app.includes("const previewEraserSegment=(from:Point,to:Point)=>"));
  assert.ok(app.includes("const recordEraserPoint=(point:Point)=>"));
  assert.ok(app.includes("const finishEraser=(point:Point|null)=>"));
- assert.match(app,/const next=eraseInkAlongPath\(before,g\.path,eraserSize\/2\/g\.zoom,\s*isStudent\?item=>canRemoveBoardItem\(item,authUser\.id,true\):undefined\)/);
+ assert.match(app,/const next=eraseInkAlongPath\(before,g\.path,eraserSize\/2\/g\.zoom,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\)\)/);
  assert.ok(app.includes("commit(next);"));
  assert.ok(app.includes("stopEraserPreview();"));
 });
@@ -97,7 +97,7 @@ test("eraser hover does not render the entire board or broadcast cursor each mou
 test("autosave waits until eraser stroke ends and only commits once",()=>{
  const app=readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
  assert.ok(app.includes("if (saveBlocked || gesture.current || eraserSession.current) return;"));
- assert.match(app,/const next=eraseInkAlongPath\(before,g\.path,eraserSize\/2\/g\.zoom,\s*isStudent\?item=>canRemoveBoardItem\(item,authUser\.id,true\):undefined\)/);
+ assert.match(app,/const next=eraseInkAlongPath\(before,g\.path,eraserSize\/2\/g\.zoom,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\)\)/);
  assert.ok(app.includes("commit(next);"));
  assert.ok(app.includes("stopEraserPreview();"));
  assert.ok(app.includes("eraserSession.current=null;"));
