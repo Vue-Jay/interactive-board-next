@@ -46,26 +46,6 @@ function palette(region:SkinTissueRegion,fraction:number){
  }
  return [240,218,195] as const;
 }
-/** Small, irregular white adipocyte lacunae at genuine cell dimensions,
- * with mauve septa. At 20x the cell-sized term is zero (no giant discs).
- * The Voronoi cell geometry is locked to world coordinates. */
-export function skinAdiposeField(x:number,y:number){
- const unit=.034; // ~96 µm
- const gx=x/unit,gy=y/unit;
- const ix=Math.floor(gx),iy=Math.floor(gy);
- let closest=1e9,second=1e9;
- for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
-  const cx=ix+dx,cy=iy+dy;
-  const jitterX=(skinTissueHash(cx,cy,89)-.5)*.35;
-  const jitterY=(skinTissueHash(cx,cy,97)-.5)*.35;
-  const ux=gx-(cx+.5+jitterX),uy=gy-(cy+.5+jitterY);
-  const d=ux*ux+uy*uy;
-  if(d<closest){second=closest;closest=d;}
-  else if(d<second)second=d;
- }
- const membrane=clamp((Math.sqrt(second)-Math.sqrt(closest))/.23,0,1);
- return {interior:ease(membrane),boundary:1-ease(membrane)};
-}
 /** Shallow rete ridges and dermal papillae follow the world Y coordinate.
  * Amplitude is only a small fraction of the teaching section, so the
  * epidermis does not turn into a jagged high-contrast ribbon. */
