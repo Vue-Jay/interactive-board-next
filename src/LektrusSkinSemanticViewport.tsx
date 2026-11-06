@@ -57,6 +57,8 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    },180);
   };
   const body=new Image();
+  // Body alpha defines only the outline, not fictional skin anatomy.
+  let neutralPlate:HTMLCanvasElement|null=null;
   let contours:SkinSectionContour[]=[];
   let width=0,height=0;
   const requestDraw=()=>{
@@ -73,6 +75,13 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    const rgba=c.getImageData(0,0,RASTER_WIDTH,RASTER_HEIGHT).data;
    const alpha=new Uint8ClampedArray(RASTER_WIDTH*RASTER_HEIGHT);
    for(let i=0;i<alpha.length;i++)alpha[i]=rgba[i*4+3];
+   // Make a neutral plate from the exact source alpha once. No
+   // procedural texture inside the body and no disconnected fingers.
+   c.globalCompositeOperation="source-in";
+   c.fillStyle="#f5f2ee";
+   c.fillRect(0,0,RASTER_WIDTH,RASTER_HEIGHT);
+   c.globalCompositeOperation="source-over";
+   neutralPlate=source;
    contours=skinSectionContours(alpha,RASTER_WIDTH,RASTER_HEIGHT);
    thickSitesRef.current={
     palm:resolveThickSkinSample(contours,"palm"),
@@ -127,22 +136,22 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    ctx.scale(fit.pixelPerWorld*cam.scale,fit.pixelPerWorld*cam.scale);
    ctx.translate(-WORLD_WIDTH/2,-WORLD_HEIGHT/2);
    if(ready){
-    // At arm/leg/hand overview scale the supplied human silhouette
-    // MUST remain continuous. Previously we faded it to 46% while
-    // painting oversized cutaway bands on every little finger edge:
-    // fragmented tips and empty/white limb interiors were the result.
-    // Reveal an illustrative side section only once the teacher actually
-    // enters a tissue-level view. No abrupt mode/camera teleport.
-    const cutawayAlpha=skinCutawayBlend(cam.scale);
-    if(cutawayAlpha<1){
-     ctx.save();ctx.globalAlpha=1-cutawayAlpha;
-     ctx.drawImage(body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
-     ctx.restore();
-    }
-    if(contours.length&&cutawayAlpha>0){
+    // Keep ALL of the human silhouette at every magnification. The former
+   // fade-to-zero made the hands, feet and neutral interior disappear at
+   // 2600%, exposing enlarged stripes instead of intact anatomy.
+   if(neutralPlate){
+    ctx.drawImage(neutralPlate,0,0,WORLD_WIDTH,WORLD_HEIGHT);
+   }else{
+    ctx.drawImage(body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
+   }
+   const cutawayAlpha=skinCutawayBlend(cam.scale);
+   if(contours.length&&cutawayAlpha>0){
      const visible=skinVisibleWorldBounds(cam,w,h,5);
      drawSkinSectionBands(ctx,contours,visible,cutawayAlpha);
-     if(cam.scale>25&&refined){
+     // Keep a subtle unverified context tone only outside focused
+    // epidermis inspection. It is NOT used to imitate individual cells.
+    if(cam.scale>25&&refined&&selectionRef.current===null&&
+     thickKindRef.current===null){
       ctx.save();
       const clipped=clipSkinSection(ctx,contours,visible);
       if(clipped)drawSkinTissueTexture(ctx,contours,cam.scale,visible);
