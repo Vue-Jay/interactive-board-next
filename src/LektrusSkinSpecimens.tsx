@@ -1,5 +1,5 @@
 import {useState} from "react";
-import {SKIN_REFERENCE_SPECIMENS,SKIN_CALIBRATED_EXTERNAL_REFERENCE,
+import {SKIN_REFERENCE_SPECIMENS,SKIN_CALIBRATED_EXTERNAL_REFERENCES,
  type SkinReferenceType} from "./lektrusSkinSpecimenCatalog";
 
 /** Only real histology appears in this independent evidence view. It never
@@ -50,16 +50,25 @@ export default function LektrusSkinSpecimens({defaultOpen=false}:{defaultOpen?:b
    </figcaption>
   </figure>
   <section className="lek-anatomy-calibrated-source"
-   aria-label="Подтверждённый калиброванный препарат человека">
-   <strong>Калиброванный образец человека</strong>
-   <p>В <a href={SKIN_CALIBRATED_EXTERNAL_REFERENCE.sourceUrl}
-    target="_blank" rel="noopener noreferrer">научном микроскопе
-    Университета Миннесоты</a> доступна толстая кожа большого пальца
-    человека, окраска H&E. Известный масштаб оригинального изображения:
-    <b> 0,3171 мкм/пиксель</b>. Это число относится только к
-    внешнему цифровому препарату, не к картинке Lektrus.
-    Он открыт по ссылке, поскольку права на копирование его снимков
-    в наш офлайн-пакет пока не подтверждены.</p>
+   aria-label="Подтверждённые калиброванные препараты человека">
+   <strong>Калиброванные препараты человека</strong>
+   <p>Оригинальные микроснимки в научном просмотрщике
+    Университета Миннесоты. Для всех трёх указан размер пикселя
+    <b> 0,3171 мкм</b>, но он не относится к цифровому зуму Lektrus.</p>
+   <div className="lek-anatomy-external-slides">
+    {SKIN_CALIBRATED_EXTERNAL_REFERENCES.map(ref=>
+     <a key={ref.id} href={ref.sourceUrl}
+      target="_blank" rel="noopener noreferrer"
+      title={"Открыть калиброванный препарат: "+ref.title}>
+      <strong>{ref.title}</strong>
+      <small>{ref.siteVerified?"Происхождение области подтверждено":
+       "Анатомический тип подтверждён, конкретный участок не указан"}
+       {" · "+ref.objective}</small>
+     </a>)}
+   </div>
+   <p>Просмотр изображений доступен на сайте правообладателя.
+    Их копии не входят в офлайн-пакет, поскольку права на
+    распространение исходных препаратов не подтверждены.</p>
   </section>
  </details>;
 }
