@@ -52,4 +52,29 @@ const cells=fs.readFileSync("src/lektrusEpidermisCellSheet.ts","utf8");
 assert.match(cells,/basale:\{columns:1/);
 assert.match(cells,/id!=="corneum"/);
 assert.match(cells,/EPIDERMIS_CELL_SHEET_BUDGET=1800/);
-console.log("Anatomy epidermis evidence windows PASS: tapered shoulder sample, all distal digits unchanged, one basal tier, no random dermal texture.");
+const thick=load("src/lektrusThickEpidermis.ts",{
+ "./lektrusSkinEvidenceModel":evidence
+});
+const atlas=load("src/lektrusEpidermisAtlas.ts",{
+ "./lektrusSkinEvidenceModel":evidence,
+ "./lektrusThickEpidermis":thick
+});
+const sheet=load("src/lektrusEpidermisCellSheet.ts",{
+ "./lektrusEpidermisAtlas":atlas
+});
+const p=atlas.sectionAtY(upperArm,182);
+assert.ok(p);
+const row=Math.round(182/.058),y=row*.058;
+const fraction=evidence.SKIN_ILLUSTRATIVE_LAYERS.spinosumStart+
+ (evidence.SKIN_ILLUSTRATIVE_LAYERS.basaleStart-
+  evidence.SKIN_ILLUSTRATIVE_LAYERS.spinosumStart)*3.5/8;
+const cellPoint={x:p.x-upperArm.points[0].depth*
+ atlas.epidermisStratumEdge(y,fraction),y};
+const hit=sheet.epidermisVisibleCellAt(upperArm,cellPoint);
+assert.ok(hit,"A painted spinous keratinocyte is selectable at its center");
+assert.equal(hit.layer,"spinosum");
+assert.ok(Math.abs(hit.center.x-cellPoint.x)<.001);
+assert.equal(sheet.epidermisVisibleCellAt(upperArm,
+ {x:cellPoint.x-1.4,y}),null,
+ "Outside any drawn epidermal cell there is no invisible hit target");
+console.log("Anatomy epidermis evidence windows PASS: localized samples, preserved digits, one basal tier, registered painted cell picks.");
