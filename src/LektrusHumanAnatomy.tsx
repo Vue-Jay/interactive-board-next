@@ -123,7 +123,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
   const reference=thickSkinKind?
    thickSkinAnchors.current?.[thickSkinKind]:null;
   const point=reference?
-   {x:reference.x-.65,y:reference.y}:
+   {...reference}:
    epidermisAnchor.current??{x:260,y:182};
   setCamera(anatomyBoundCamera(anatomyCameraAtBody(
    point,deep?220:thickSkinKind?85:65,width,height),width,height,SKIN_MAX_SCALE));
@@ -136,7 +136,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
   setEpidermisSelection("lucidum");
   const {width,height}=dimensions();
   setCamera(anatomyBoundCamera(anatomyCameraAtBody(
-   {x:anchor.x-.65,y:anchor.y},85,width,height),
+   {...anchor},85,width,height),
    width,height,SKIN_MAX_SCALE));
  };
  const focusThinSkin=()=>{
