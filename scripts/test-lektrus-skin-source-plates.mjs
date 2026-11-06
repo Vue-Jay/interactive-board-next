@@ -26,7 +26,7 @@ const provenance=fs.readFileSync(folder+"/cdc-phil14586-provenance.txt","utf8");
 assert.match(provenance,/CDC PHIL 14586/);
 assert.match(provenance,/50x/);
 assert.match(provenance,/micrometre-per-pixel calibration are NOT specified/);
-assert.match(provenance,/www\.cdc\.gov\/phil\/Details\.aspx\?pid=14586/);
+assert.match(provenance,/wwwn\.cdc\.gov\/phil\/Details\.aspx\?pid=14586/);
 const catalog=fs.readFileSync("src/lektrusSkinSpecimenCatalog.ts","utf8");
 const src=ts.createSourceFile("catalog.ts",catalog,ts.ScriptTarget.Latest,true);
 assert.equal(src.parseDiagnostics.length,0);
