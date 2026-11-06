@@ -182,15 +182,15 @@ assert.match(viewer,/zoom\(Math\.exp\(-clip\(e\.deltaY,-220,220\)\*\.0018\),at\)
  "Wheel zoom must work at any part of the body without activating a shoulder");
 assert.doesNotMatch(viewer,/skinRouteActive|setSkinRouteActive|overSkin/,
  "Deep zoom must not depend on an old shoulder activation state");
-assert.match(viewer,/Левый бок/);
-assert.match(viewer,/Правый бок/);
+assert.match(viewer,/Плечо · тонкая кожа/);
+assert.match(viewer,/Кисть · разрез ладони/);
 assert.doesNotMatch(renderer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/,
  "No more expensive landmark raster for fake vascular loops");
 assert.match(renderer,/import skinHighRes from "\.\/assets\/bio-atlas\/human-skin-highres-registered.webp"/);
 assert.match(renderer,/import skinFallback from "\.\/assets\/bio-atlas\/human-skin-original-registered.webp"/);
 assert.match(renderer,/body\.src=skinHighRes/);
 assert.match(renderer,/ctx\.imageSmoothingQuality="high"/);
-assert.match(renderer,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/,
+assert.match(renderer,/ctx\.drawImage\(neutralBody\?\?body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/,
  "Native 3x raster must use exactly the old body-world rectangle");
 assert.doesNotMatch(renderer,/cam\.scale\s*\?/,
  "Image registration cannot change with camera scale");
@@ -206,9 +206,9 @@ assert.match(renderer,/skinCutawayBlend\(cam\.scale\)/,
  "The original body remains intact until a teacher reaches a tissue zoom");
 assert.doesNotMatch(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible,/,
  "World camera must not render unverified repeated vascular strokes");
-assert.match(renderer,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
-assert.match(renderer,/drawSkinSectionBands\(ctx,contours,visible,cutawayAlpha\)/);
-assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
+assert.match(renderer,/ctx\.drawImage\(neutralBody\?\?body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
+assert.match(renderer,/drawSkinSectionBands\(ctx,thinContours,visible,cutawayAlpha\)/);
+assert.match(renderer,/buildSkinSilhouettePaths\(alpha,RASTER_WIDTH,RASTER_HEIGHT,ATLAS_FACTOR\)/);
 assert.doesNotMatch(renderer,/edgeAtlas|detailCanvas|globalCompositeOperation="destination-in"/);
 assert.doesNotMatch(renderer,/modeRef|sectionBlend|drawSkinMesoTiles|drawSkinMicrotiles|drawSkinSurfaceField/);
 assert.doesNotMatch(renderer,/SKIN_DETAIL_NODES|skinNodeVisibleInViewport/,
