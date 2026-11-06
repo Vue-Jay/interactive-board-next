@@ -221,3 +221,37 @@ export function skinUpperArmReferenceContours(
  }
  return result;
 }
+
+/** Crisp silhouette contour above the neutral alpha fill. This follows
+ * every existing opaque outline, including the interdigital gaps, without
+ * adding a cutaway to a finger or claiming any regional skin histology.
+ * Paths share the original world geometry: zoom never replaces the model.
+ */
+export function drawSkinBodyContour(
+ ctx:CanvasRenderingContext2D,contours:readonly SkinSectionContour[],
+ bounds:Bounds,pixelsPerWorld:number
+):number{
+ let painted=0;
+ ctx.save();
+ ctx.strokeStyle="#879ba5";
+ ctx.globalAlpha=.74;
+ ctx.lineWidth=Math.max(.012,1.05/Math.max(1,pixelsPerWorld));
+ ctx.lineJoin="round";
+ ctx.lineCap="round";
+ for(const c of contours){
+  const points=visiblePoints(c,bounds);
+  if(points.length<2)continue;
+  ctx.beginPath();
+  ctx.moveTo(points[0].x,points[0].y);
+  for(let i=1;i<points.length;i++){
+   const prev=points[i-1],p=points[i];
+   ctx.quadraticCurveTo(prev.x,prev.y,(prev.x+p.x)/2,(prev.y+p.y)/2);
+  }
+  const last=points[points.length-1];
+  ctx.lineTo(last.x,last.y);
+  ctx.stroke();
+  painted++;
+ }
+ ctx.restore();
+ return painted;
+}
