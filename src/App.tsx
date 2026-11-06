@@ -132,7 +132,7 @@ import {mergeEditedValue,editorDiff,applyEditorOps} from "./lektrusLiveEditorMer
 import {labLiveEditorDiff,applyLabLivePreview} from "./lektrusLabLiveSync";
 import {labSimulationCheckpointDelayMs} from "./lektrusLabPersistence";
 import {mergeBoardDocumentEdits,mergeBoardItems} from "./lektrusBoardThreeWayMerge";
-import {stampNewBoardItemAuthors,canRemoveBoardItem,blockedBoardItemRemovals} from "./lektrusBoardObjectAuth";
+import {stampNewBoardItemAuthors,canRemoveBoardItem,blockedBoardItemRemovals,isLockableBoardItem} from "./lektrusBoardObjectAuth";
 import {
   parseDocument,
   packDocumentInk,
@@ -5484,8 +5484,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const toggleLockSelected = () => {
     if (rejectStudentStructuralEdit()) return;
     if (!selected.length) return;
-    const shouldLock = selectedItems.some((item) => !item.locked);
-    commit(itemsRef.current.map((item) => selected.includes(item.id) ? { ...item, locked: shouldLock } : item));
+    const lockable=selectedItems.filter(isLockableBoardItem);
+    if(!lockable.length){setNotice("Штрихи пера и маркера нельзя блокировать");return;}
+    const shouldLock = lockable.some((item) => !item.locked);
+    commit(itemsRef.current.map((item) => selected.includes(item.id)&&isLockableBoardItem(item) ? { ...item, locked: shouldLock } : item));
     setNotice(shouldLock ? "Объекты заблокированы" : "Объекты разблокированы");
   };
 
@@ -7988,12 +7990,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                       <Icon name={familyHidden ? "eye-off" : "eye"} size={15} />
                     </button>
                     <button
-                      className={`layer-lock ${item.locked ? "active" : ""}`}
+                      className={`layer-lock ${item.locked ? "active" : ""}`} disabled={!family.some(isLockableBoardItem)}
                       onClick={(e) => {
                         e.stopPropagation();
                         const ids = new Set(family.map((candidate) => candidate.id));
-                        const shouldLock = family.some((candidate) => !candidate.locked);
-                        commit(itemsRef.current.map((candidate) => ids.has(candidate.id) ? { ...candidate, locked: shouldLock } : candidate));
+                        const shouldLock = family.some((candidate) => isLockableBoardItem(candidate)&&!candidate.locked);
+                        commit(itemsRef.current.map((candidate) => ids.has(candidate.id)&&isLockableBoardItem(candidate) ? { ...candidate, locked: shouldLock } : candidate));
                       }}
                       title={item.locked ? "Разблокировать" : "Заблокировать"}
                       aria-label={item.locked ? "Разблокировать объект" : "Заблокировать объект"}
@@ -9862,7 +9864,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
               <span className="selection-toolbar-separator" />
               <button type="button" className="icon-action" onClick={duplicateSelected} title="Дублировать · Ctrl+D"><Icon name="duplicate" size={16} /></button>
-              <button type="button" className="icon-action" onClick={toggleLockSelected} disabled={structurallyLockedForStudent(singleSelected)} title={structurallyLockedForStudent(singleSelected)?"Доступно преподавателю":selectionLocked ? "Разблокировать" : "Заблокировать"}><Icon name={selectionLocked ? "unlock" : "lock"} size={16} /></button>
+              <button type="button" className="icon-action" onClick={toggleLockSelected} disabled={structurallyLockedForStudent(singleSelected)||!selectedItems.some(isLockableBoardItem)} title={structurallyLockedForStudent(singleSelected)?"Доступно преподавателю":selectionLocked ? "Разблокировать" : "Заблокировать"}><Icon name={selectionLocked ? "unlock" : "lock"} size={16} /></button>
               {singleSelected?.kind !== "connector" && (
                 <>
                   <button type="button" className="icon-action" disabled={selectionLocked} onClick={() => rotateSelected(-90)} title="Повернуть на 90° влево · Alt+←"><Icon name="rotate-left" size={16} /></button>
@@ -10030,7 +10032,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   {selectionHasGroup && !selectionLocked && (
                     <button onClick={() => { ungroupSelected(); setContextMenu(null); }}>Разгруппировать <span>Ctrl+Shift+G</span></button>
                   )}
-                  <button disabled={studentSelectionHasProtected()} onClick={() => { toggleLockSelected(); setContextMenu(null); }}>{selectionLocked ? "Разблокировать" : "Заблокировать"}</button>
+                  <button disabled={studentSelectionHasProtected()||!selectedItems.some(isLockableBoardItem)} onClick={() => { toggleLockSelected(); setContextMenu(null); }}>{selectionLocked ? "Разблокировать" : "Заблокировать"}</button>
                   <div className="context-separator" />
                   <button disabled={selectionLocked||studentSelectionHasProtected()} onClick={() => { moveLayerStep(true); setContextMenu(null); }}>На слой вперёд <span>Ctrl+]</span></button>
                   <button disabled={selectionLocked||studentSelectionHasProtected()} onClick={() => { moveLayerStep(false); setContextMenu(null); }}>На слой назад <span>Ctrl+[</span></button>
