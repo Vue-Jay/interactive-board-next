@@ -198,16 +198,24 @@ export function drawEpidermisAtlas(
        outlines.lineTo(cx-rx*.68,cy+ry*.82);
        outlines.closePath();
       }else{
+       // Canvas Path2D.ellipse joins the current point by a straight
+       // segment when there is no fresh moveTo. Unconnected cell outlines
+       // must each start their OWN subpath, or the fill turns into giant
+       // zigzag triangles spanning the entire epidermis at deep zoom.
+       outlines.moveTo(cx+rx,cy);
        outlines.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
       }
       if(!isCorneum){
-       nuclei.ellipse(cx,cy,.0014,isBasal?.0024:.00165,
-        isBasal?0:Math.PI/8,0,Math.PI*2);
+       const nr=.0014,rotation=isBasal?0:Math.PI/8;
+       nuclei.moveTo(cx+nr*Math.cos(rotation),cy+nr*Math.sin(rotation));
+       nuclei.ellipse(cx,cy,nr,isBasal?.0024:.00165,
+        rotation,0,Math.PI*2);
       }
       if(isGranular){
        for(let q=0;q<2;q++){
         const dx=(q?.002:-.002)*hash(k,j,31+q);
         const dy=(q?.001:-.001)*hash(k,j,37+q);
+        specks.moveTo(cx+dx+.00072,cy+dy);
         specks.ellipse(cx+dx,cy+dy,.00072,.00042,0,0,Math.PI*2);
         stats.granules++;
        }
