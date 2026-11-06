@@ -51,6 +51,14 @@ jobs:
               "http://127.0.0.1:5173/tests/anatomy-visual-preview.html?zoom=360&layer=$layer" \
               "artifacts/anatomy/epidermis-$layer-360.png"
           done
+          for site in palm sole; do
+            for zoom in 85 220; do
+              npx --yes playwright@1.64.1 screenshot --browser chromium \
+                --wait-for-timeout 2600 --viewport-size "1200,900" \
+                "http://127.0.0.1:5173/tests/anatomy-visual-preview.html?site=$site&zoom=$zoom&layer=lucidum" \
+                "artifacts/anatomy/thick-$site-$zoom.png"
+            done
+          done
           for source in thin thick; do
             npx --yes playwright@1.64.1 screenshot --browser chromium \
               --wait-for-timeout 2500 --viewport-size "1200,900" \
@@ -60,6 +68,7 @@ jobs:
           python3 -m venv /tmp/lektrus-epidermis-playwright
           /tmp/lektrus-epidermis-playwright/bin/pip -q install playwright==1.64.1
           /tmp/lektrus-epidermis-playwright/bin/python tests/anatomy-epidermis-browser-smoke.py
+          /tmp/lektrus-epidermis-playwright/bin/python tests/anatomy-thick-epidermis-browser-smoke.py
       - name: Upload visual evidence
         if: always()
         uses: actions/upload-artifact@v4
