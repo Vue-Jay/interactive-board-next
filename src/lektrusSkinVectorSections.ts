@@ -11,7 +11,8 @@ export const SKIN_SECTION_NEUTRAL_FRACTION=.20;
 export type SkinSectionPoint={x:number;y:number;depth:number};
 export type SkinSectionContour={inward:-1|1;points:SkinSectionPoint[];
  minX:number;maxX:number;minY:number;maxY:number};
-type Track={inward:-1|1;lastRow:number;lastX:number;points:SkinSectionPoint[]};
+type Track={inward:-1|1;lastRow:number;lastX:number;
+ lastStart:number;lastEnd:number;points:SkinSectionPoint[]};
 type Bounds={minX:number;maxX:number;minY:number;maxY:number};
 const LAYERS=[
  {start:0,end:SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd,fill:"#c995aa"},
@@ -26,13 +27,20 @@ export function skinSectionContours(
  const finished:Track[]=[];
  let open:Track[]=[];
  for(let row=0;row<height;row++){
-  const candidates:{inward:-1|1;x:number;depth:number}[]=[];
+  const candidates:{inward:-1|1;x:number;depth:number;
+   start:number;end:number}[]=[];
   for(const run of skinEdgeRuns(alpha,width,row)){
+   // Do not wrap 4-native-pixel antialias islands at finger tips,
+   // interdigit gaps, shoelaces and holes in a giant three-layer
+   // cross-section. Those small features remain in the whole-body plate.
+   if(run.end-run.start+1<factor*2.2)continue;
    const d=Math.min(SKIN_SECTION_WORLD_DEPTH,
     (run.end-run.start+1)/factor*(1-SKIN_SECTION_NEUTRAL_FRACTION)/2);
    // Both sides keep a central unpainted strip even on narrow limbs.
-   candidates.push({inward:1,x:run.start/factor,depth:d});
-   candidates.push({inward:-1,x:run.end/factor,depth:d});
+   candidates.push({inward:1,x:run.start/factor,depth:d,
+    start:run.start,end:run.end});
+   candidates.push({inward:-1,x:run.end/factor,depth:d,
+    start:run.start,end:run.end});
   }
   const used=new Set<Track>();
   const next:Track[]=[];
@@ -42,20 +50,28 @@ export function skinSectionContours(
    for(const track of open){
     if(used.has(track)||track.inward!==candidate.inward||
      track.lastRow!==row-1)continue;
+    // Following a single x-coordinate could jump from a finger edge
+    // to its neighbour when the hand divides into narrow alpha runs.
+    // Require that the actual opaque span overlaps between rows.
+    const overlap=Math.min(track.lastEnd,candidate.end)-
+     Math.max(track.lastStart,candidate.start)+1;
+    if(overlap<2)continue;
     const diff=Math.abs(track.lastX-candidate.x);
     if(diff<nearest&&diff<2.7){nearest=diff;match=track;}
    }
    const track:Track=match??{inward:candidate.inward,lastRow:row,
-    lastX:candidate.x,points:[]};
+    lastX:candidate.x,lastStart:candidate.start,lastEnd:candidate.end,
+    points:[]};
    track.points.push({x:candidate.x,y:row/factor,depth:candidate.depth});
    track.lastX=candidate.x;track.lastRow=row;
+   track.lastStart=candidate.start;track.lastEnd=candidate.end;
    next.push(track);used.add(track);
   }
-  for(const track of open)if(!used.has(track)&&track.points.length>=8)
+  for(const track of open)if(!used.has(track)&&track.points.length>=18)
    finished.push(track);
   open=next;
  }
- for(const track of open)if(track.points.length>=8)finished.push(track);
+ for(const track of open)if(track.points.length>=18)finished.push(track);
  return finished.map(track=>{
   const source=track.points;
   // A small bilateral filter removes pixel stair-steps but never crosses
@@ -70,7 +86,9 @@ export function skinSectionContours(
    }
    const smoothDepth=Math.min(totalDepth/totalWeight,
     point.depth+.2);
-   const endRamp=Math.min(1,(i+1)/5,(source.length-i)/5);
+   // A soft finish prevents 1-2px phantom spikes at narrow fingertips
+   // and joined fingers; it must not lop off an entire real arm.
+   const endRamp=Math.min(1,(i+1)/12,(source.length-i)/12);
    return {x:totalX/totalWeight,y:point.y,
     depth:Math.min(point.depth,smoothDepth)*endRamp};
   });
@@ -113,18 +131,20 @@ function appendBand(
 /** Paint vectors at native canvas-device resolution at ANY zoom. */
 export function drawSkinSectionBands(
  ctx:CanvasRenderingContext2D,contours:readonly SkinSectionContour[],
- bounds:Bounds
+ bounds:Bounds,opacity=1
 ):number{
+ if(opacity<=0)return 0;
+ const alpha=Math.min(1,Math.max(0,opacity));
  let drawn=0;
  for(const c of contours){
   const points=visiblePoints(c,bounds);
   if(points.length<2)continue;
   for(const layer of LAYERS){
    ctx.beginPath();appendBand(ctx,c,points,layer.start,layer.end);
-   ctx.fillStyle=layer.fill;ctx.globalAlpha=.98;ctx.fill();
+   ctx.fillStyle=layer.fill;ctx.globalAlpha=.98*alpha;ctx.fill();
   }
   // A soft papillary border, not square raster-band pixels.
-  ctx.globalAlpha=.30;ctx.lineWidth=.020;ctx.strokeStyle="#b67f90";
+  ctx.globalAlpha=.30*alpha;ctx.lineWidth=.020;ctx.strokeStyle="#b67f90";
   for(const fraction of [SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd,SKIN_ILLUSTRATIVE_LAYERS.dermisEnd]){
    ctx.beginPath();
    const first=points[0];
