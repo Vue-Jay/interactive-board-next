@@ -69,13 +69,13 @@ export const EPIDERMIS_STRATA_ORDER=[
  "corneum","granulosum","spinosum","basale"
 ] as const;
 export const EPIDERMIS_LAYER_FRACTIONS=[
- {id:"corneum",start:0,end:SKIN_ILLUSTRATIVE_LAYERS.granulosumStart,color:"#e8b9af"},
+ {id:"corneum",start:0,end:SKIN_ILLUSTRATIVE_LAYERS.granulosumStart,color:"#f0d2c5"},
  {id:"granulosum",start:SKIN_ILLUSTRATIVE_LAYERS.granulosumStart,
-  end:SKIN_ILLUSTRATIVE_LAYERS.spinosumStart,color:"#98729c"},
+  end:SKIN_ILLUSTRATIVE_LAYERS.spinosumStart,color:"#ad88a8"},
  {id:"spinosum",start:SKIN_ILLUSTRATIVE_LAYERS.spinosumStart,
-  end:SKIN_ILLUSTRATIVE_LAYERS.basaleStart,color:"#d8a4bd"},
+  end:SKIN_ILLUSTRATIVE_LAYERS.basaleStart,color:"#e8bbc8"},
  {id:"basale",start:SKIN_ILLUSTRATIVE_LAYERS.basaleStart,
-  end:SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd,color:"#a16c94"}
+  end:SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd,color:"#987293"}
 ] as const;
 /** Shallow, smoothly registered rete ridges of representative thin skin.
  * Same geometry drives painting AND picking. Not a physical thickness scale. */
