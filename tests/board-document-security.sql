@@ -117,14 +117,75 @@ begin
    jsonb_set(v_new,'{items,0,subjectBoardEntries,0,activityResponse}',
     '{"text":"4"}'::jsonb),pupil) then
   raise exception 'Student activity response incorrectly blocked';end if;
- if lektrus_private.student_document_delta_allowed(v_new,
+ if not lektrus_private.student_document_delta_allowed(v_new,
    jsonb_set(v_new,'{items,0,subjectBoardEntries,0,answer}','"5"'::jsonb),pupil) then
-  raise exception 'Student changed reference answer in a subject task';end if;
+  raise exception 'Actual student answer field was incorrectly blocked';end if;
+ if not lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,subjectBoardEntries,0,workedSolution}',
+    '{"steps":[{"expression":"2 + 2 = 4","conditions":""}],"answer":"4"}'::jsonb),pupil) then
+  raise exception 'Actual student workedSolution was incorrectly blocked';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,subjectBoardEntries,0,solution}',
+    '"Teacher reference modified"'::jsonb),pupil) then
+  raise exception 'Teacher reference solution was editable';end if;
  if lektrus_private.student_document_delta_allowed(v_new,
    jsonb_set(v_new,'{items,0,subjectBoardEntries}',
     (v_new#>'{items,0,subjectBoardEntries}')||
       '[{"id":"new","kind":"task","prompt":"Spoof"}]'::jsonb),pupil) then
   raise exception 'Student added a teacher-defined subject task';end if;
+
+ -- Chemistry lab is an interactive shared simulator, while its parent
+ -- teacher-owned graph object, title and other lesson fields remain immutable.
+ v_new:=jsonb_set(v_before,'{items,0}',jsonb_build_object(
+  'id','t','kind','graph','createdBy',teacher::text,
+  'graphFigureId','chem-experiment-free','text','Chemical laboratory',
+  'scienceLabBench',jsonb_build_object('vessels','[]'::jsonb,'event',0),
+  'scienceReagents',jsonb_build_array('H2O'),'scienceExperimentStage',0));
+ if not lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,scienceLabBench}',
+    '{"vessels":[{"id":"beaker1","kind":"beaker","x":35,"y":40,"reagents":[],
+    "environment":"aqueous","observed":false}],"event":1,"simulationPaused":false}'::jsonb),
+   pupil) then
+  raise exception 'Student cannot operate classroom chemistry bench';end if;
+ if not lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0}',(v_new->'items'->0)
+     - array['scienceReagents','scienceExperimentStage']),pupil) then
+  raise exception 'Clearing retired chemistry fields must remain allowed';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,scienceReagents}',
+     '["H2SO4"]'::jsonb),pupil) then
+  raise exception 'Student can replace teacher chemistry reagents metadata';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,text}','"Replaced lab lesson"'::jsonb),pupil) then
+  raise exception 'Student changed laboratory object title';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,graphFigureId}','"subject-board-physics"'::jsonb),pupil) then
+  raise exception 'Student replaced chemistry tool identity';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,scienceLabBench,vessels}',
+    (select jsonb_agg(jsonb_build_object('id',n,'kind','beaker'))
+      from generate_series(1,7) as n),pupil) then
+  raise exception 'Student exceeded supported chemistry vessels';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,scienceLabBench,event}','"oops"'::jsonb),pupil) then
+  raise exception 'Student saved invalid laboratory event';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,scienceLabBench,placedDevices}',
+    (select jsonb_agg(jsonb_build_object('id',n,'kind','hotplate'))
+      from generate_series(1,11) as n),pupil) then
+  raise exception 'Student exceeded supported chemistry devices';end if;
+ if lektrus_private.student_document_delta_allowed(v_new,
+   jsonb_set(v_new,'{items,0,locked}','true'::jsonb),pupil) then
+  raise exception 'Student was able to lock chemistry bench';end if;
+
+ -- Linear JSONB indexing must remain usable on a multi-thousand-stroke
+ -- classboard. No wall-clock assertion on shared CI runners.
+ if (select count(*) from jsonb_each(lektrus_private.board_items_by_id(
+    jsonb_build_object('items',(
+       select jsonb_agg(jsonb_build_object('id','stroke-'||n,
+         'kind','pen','createdBy',pupil::text))
+       from generate_series(1,2500) n))))) <> 2500 then
+  raise exception 'Large board item ID index lost strokes';end if;
 
  -- Legacy ink[] -> items[] migration must not be treated as deletion.
  v_new:=jsonb_set(v_before,'{items}',(v_before->'items')-2);
