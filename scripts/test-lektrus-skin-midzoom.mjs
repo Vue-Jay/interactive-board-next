@@ -149,7 +149,10 @@ const source=read("src/lektrusSkinMesoTiles.ts");
 assert.doesNotMatch(layer,/drawSkinMesoTiles|drawSkinSurfaceField/);
 assert.doesNotMatch(layer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/,
  "No irrelevant raster contour generation during visual skin inspection");
-assert.match(layer,/ctx\.globalCompositeOperation="source-atop"/);
+assert.doesNotMatch(layer,/ctx\.globalCompositeOperation="source-atop"/,
+ "Do not wash out the real fingers and feet with a synthetic tint");
+assert.match(layer,/skinCutawayBlend\(cam\.scale\)/,
+ "At ordinary body zoom show the intact registered silhouette");
 assert.match(source,/skinMesoTone\(worldX:number,worldY:number\)/);
 assert.doesNotMatch(source,/ctx\.putImageData\(|ctx\.createImageData\(/,
  "No random pixel pigment overlay that produces dark blotches");
