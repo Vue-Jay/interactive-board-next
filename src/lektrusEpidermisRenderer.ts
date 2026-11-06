@@ -166,6 +166,16 @@ export function drawEpidermisAtlas(
      const k0=Math.ceil(minX/step),k1=Math.floor(maxX/step);
      for(let k=k0;k<=k1&&stats.cells-startCount<layerBudget;k++){
       const x=k*step;
+      // A real basal stratum is ONE row, adjacent to its basement
+      // membrane; the granular zone of thin skin contains only a few
+      // flattened rows. Never fill their widened teaching bands with
+      // many additional fictitious rows of nuclei.
+      if(isBasal&&Math.abs(x-(x2-c.inward*.005))>step*.57)
+       continue;
+      if(isGranular&&Math.min(
+       Math.abs(x-(x1+(x2-x1)*.32)),
+       Math.abs(x-(x1+(x2-x1)*.70)))>step*.60)
+       continue;
       const d=(x-p.x)/(c.inward*p.depth);
       if(d<l.start||d>=l.end)continue;
       // Cellular *morphology* comes from histology, but synthetic cell
