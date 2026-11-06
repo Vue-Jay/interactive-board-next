@@ -61,6 +61,15 @@ export function resolveThickSkinSample(
  // or foot edge is missing from the supplied registered silhouette.
  return score<=21?best:null;
 }
+/** True body-world midpoint of the lucidum within the registered
+ * silhouette contour. The focus button and browser click both target
+ * this same visual tissue rather than an approximate "minus 0.65". */
+export function thickSkinFocusPoint(site:ThickSkinSample):{x:number;y:number}{
+ const p=sectionAtY(site.contour,site.anchor.y);
+ if(!p)return {...site.anchor};
+ return {x:p.x+site.contour.inward*p.depth*(.075+.088)/2,
+  y:p.y};
+}
 /** Quietly taper the educational window into ordinary thin-skin bands.
  * No square cutout or sudden six-centimetre "wall" in the whole body. */
 export function thickSkinInfluence(
