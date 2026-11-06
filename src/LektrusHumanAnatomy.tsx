@@ -148,12 +148,9 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
    epidermisAnchor.current??{x:260,y:182},65,width,height),
    width,height,SKIN_MAX_SCALE));
  };
- const focusSkin=(side:"left"|"right"="right")=>{
-  const {width,height}=dimensions();
-  const point=side==="left"?{x:80,y:245}:{x:280,y:245};
-  setCamera(anatomyBoundCamera(
-   anatomyCameraAtBody(point,4.3,width,height),
-   width,height,SKIN_MAX_SCALE));
+ const focusSkin=()=>{
+  // No generic body edge is automatically a verified thin-skin sample.
+  focusThinSkin();
  };
  const wheel=(e:ReactWheelEvent<HTMLDivElement>)=>{
   e.preventDefault();e.stopPropagation();
@@ -315,7 +312,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
     <span className="lek-anatomy-stage-hint">{system==="integumentary"?
      displayCamera.scale<=10?"Кожа · цельная модель конечностей":
      displayCamera.scale<26?"Кожа · плавное раскрытие бокового разреза":
-     "Кожа в разрезе вдоль боковых контуров":
+     "Локальный боковой разрез · учебная реконструкция":
      "Одна точка обзора для всех систем"}</span>
    </div>
    <div className="lek-anatomy-footnote">
@@ -325,7 +322,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
       " · виртуальный пятислойный разрез, включая блестящий":
       displayCamera.scale<=10?
        "Кисти, пальцы и ноги показаны целиком · разрез откроется при дальнейшем зуме":
-       skinDetailStage(displayCamera.scale)+" · только по краям":
+       skinDetailStage(displayCamera.scale)+" · выбранный участок":
      "Переключение системы не меняет положение и увеличение."}</span>
     <span>{system==="integumentary"?
      "Цифровой зум, не физическое увеличение микроскопа":
@@ -340,15 +337,14 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
    </div>
    {system==="integumentary"&&<div className="lek-anatomy-skin-explore">
     <strong>Кожный покров в разрезе</strong>
-    <p>На общем виде кисти, пальцы и ноги остаются цельными.
-     При сильном увеличении вдоль боковых контуров плавно
-     раскрывается условный трёхслойный разрез. Центр тела
-     остаётся нейтральным; настоящие клетки и сосуды
-     сравнивайте с микропрепаратами ниже.</p>
+    <p>На любом увеличении кисти, пальцы и стопы остаются цельными.
+     Подробный боковой срез есть на обозначенном учебном участке плеча
+     и в виртуальных образцах ладони и подошвы. Центр фигуры нейтрален.
+     Сравните модель с настоящими гистопрепаратами ниже.</p>
     <div className="lek-anatomy-skin-modes" role="group"
      aria-label="Приблизить боковой разрез">
-     <button type="button" onClick={()=>focusSkin("left")}>Левый бок</button>
-     <button type="button" onClick={()=>focusSkin("right")}>Правый бок</button>
+     <button type="button" onClick={focusThinSkin}>Плечо · тонкая кожа</button>
+     <button type="button" onClick={()=>focusThickSkin("palm")}>Кисть · разрез ладони</button>
     </div>
     <div className="lek-anatomy-skin-legend" aria-label="Слои кожи">
      <span><i className="is-epidermis"/> Эпидермис</span>
@@ -462,8 +458,8 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
       className="lek-anatomy-organ"
       onClick={()=>{
        if(system!=="integumentary"){focus(organ.position);return;}
-       if(i===0)focusSkin("right");
-       if(i===1||i===2)focusSkin("left");
+       if(i===0)focusSkin();
+       if(i===1||i===2)focusSkin();
        if(i===3){
         // Nails are an actual visible body part; focus the foot without
         // opening a fictitious follicle micrograph on the shoulder.
