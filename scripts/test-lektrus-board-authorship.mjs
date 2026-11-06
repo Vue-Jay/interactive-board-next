@@ -75,7 +75,7 @@ assert.ok(sanitized.every(x=>x.locked!==true),
 assert.ok(sanitized.every(x=>x.createdBy==="student-A"),
  "Removing ink lock must not discard creator provenance");
 assert.equal(canRemoveBoardItem({...invalidLockedPen,locked:undefined},
- "teacher-A",true),false,"Foreign ink is protected by creator, not lock");
+ "teacher-A",true),true,"Any editor may erase shared ink regardless of who drew it");
 
 const ink={};
 new Function("exports","require",compile("src/inkEraser.ts"))(
@@ -90,10 +90,10 @@ const legacyInk=stroke("legacy-stroke",undefined,0);
 const canvas=[teacherInk,studentInk,legacyInk];
 const result=ink.eraseInkAlongPath(canvas,[{x:50,y:0}],7,
  stroke=>canRemoveBoardItem(stroke,"student-A",true));
-assert.equal(result.find(x=>x.id==="teacher-stroke"),teacherInk,
- "Partial eraser cannot alter teacher stroke even when brush crosses it");
-assert.equal(result.find(x=>x.id==="legacy-stroke"),legacyInk,
- "Partial eraser cannot erase older unattributed ink");
+assert.equal(result.some(x=>x.id==="teacher-stroke"),false,
+ "Shared ink can be erased even when the teacher drew it");
+assert.equal(result.some(x=>x.id==="legacy-stroke"),false,
+ "Unattributed legacy ink is not implicitly locked");
 assert.equal(result.some(x=>x.id==="student-stroke"),false,
  "Student stroke was cut at the brush intersection");
 assert.ok(result.some(x=>x.createdBy==="student-A"&&x.kind==="pen"),
@@ -113,12 +113,12 @@ assert.match(app,/!selectedItems\.some\(isLockableBoardItem\)/,
  "Selection lock controls disabled for ink-only selections");
 assert.match(model,/typeof i\.createdBy === "string"/,"Serialized item keeps author");
 assert.match(model,/if \(i\.createdBy != null &&/,"Malformed authors are rejected");
-assert.match(app,/blockedBoardItemRemovals\(current,next,authUser\.id,isStudent\)/,
+assert.match(app,/blockedBoardItemRemovals\(current,next,authUser\.id,isStudent/,
  "Every commit guards deletions, not just Delete key");
 assert.match(app,/stampNewBoardItemAuthors\(current,syncBoundConnectors\(next\),authUser\.id\)/,
  "Commit stamps objects in one place");
-assert.match(app,/isStudent\?item=>canRemoveBoardItem\(item,authUser\.id,true\)/,
- "Eraser filters protected ink before cutting it");
+assert.match(app,/canRemoveBoardItem\(item,authUser\.id,true/,
+ "Eraser uses the shared ink policy before cutting it");
 assert.match(app,/const rebased=mergeBoardItems\(/,
  "Undo and redo rebase onto the present board");
 assert.match(app,/if\(!fromRemote&&isStudent\)/,
