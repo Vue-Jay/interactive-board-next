@@ -190,7 +190,7 @@ assert.match(renderer,/import skinHighRes from "\.\/assets\/bio-atlas\/human-ski
 assert.match(renderer,/import skinFallback from "\.\/assets\/bio-atlas\/human-skin-original-registered.webp"/);
 assert.match(renderer,/body\.src=skinHighRes/);
 assert.match(renderer,/ctx\.imageSmoothingQuality="high"/);
-assert.match(renderer,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/,
+assert.match(renderer,/ctx\.drawImage\(body,crop\.sx,crop\.sy,crop\.sw,crop\.sh/,
  "Native 3x raster must use exactly the old body-world rectangle");
 assert.doesNotMatch(renderer,/cam\.scale\s*\?/,
  "Image registration cannot change with camera scale");
@@ -202,11 +202,11 @@ assert.doesNotMatch(renderer,/cropFeathered|resources\.shoulder/,
  "No magnified shoulder rectangle is rendered at intermediate zoom");
 assert.doesNotMatch(renderer,/ctx\.ellipse\(EDGE\.x\+EDGE\.width\/2/,
  "No huge oval or circular skin inset may cover the torso");
-assert.match(renderer,/ctx\.fillRect\(0,0,WORLD_WIDTH,WORLD_HEIGHT\)/,
+assert.match(renderer,/ctx\.fillRect\(crop\.dx,crop\.dy,crop\.dw,crop\.dh\)/,
  "Smooth material must cover the full body coordinate system");
 assert.doesNotMatch(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible,/,
  "World camera must not render unverified repeated vascular strokes");
-assert.match(renderer,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
+assert.match(renderer,/ctx\.drawImage\(body,crop\.sx,crop\.sy,crop\.sw,crop\.sh/);
 assert.match(renderer,/drawSkinSectionBands\(ctx,contours,visible\)/);
 assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
 assert.doesNotMatch(renderer,/edgeAtlas|detailCanvas|globalCompositeOperation="destination-in"/);
