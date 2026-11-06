@@ -87,7 +87,7 @@ export function thickSkinBandsAt(
  const corneumEnd=lerp(thin.granulosumStart,.075,w);
  const lucidumEnd=lerp(thin.granulosumStart,.088,w);
  const granulosumEnd=lerp(thin.spinosumStart,.105,w);
- const spinosumEnd=lerp(thin.basaleStart,.168,w);
+ const spinosumEnd=lerp(thin.basaleStart,.173,w);
  const epiEnd=lerp(thin.epidermisEnd,THICK_SKIN_EPIDERMIS_END,w);
  return [
   {id:"corneum",start:0,end:corneumEnd,color:"#eed0c5"},
