@@ -15,7 +15,7 @@ import type {AnatomyCamera} from "./lektrusHumanAnatomyModel";
 import {anatomyBodyFit} from "./lektrusAnatomySemanticZoom";
 import {skinVisibleWorldBounds} from "./lektrusSkinSurfaceField";
 import {drawSkinTissueTexture} from "./lektrusSkinTissueTexture";
-import {skinSectionContours,drawSkinSectionBands,clipSkinSection,
+import {skinSectionContours,skinCutawayBlend,drawSkinSectionBands,clipSkinSection,
  type SkinSectionContour} from "./lektrusSkinVectorSections";
 
 export type EpidermisHitTest=(point:EpidermisPoint,pixelsPerWorld:number)=>EpidermisId|null;
@@ -133,7 +133,7 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
     // fragmented tips and empty/white limb interiors were the result.
     // Reveal an illustrative side section only once the teacher actually
     // enters a tissue-level view. No abrupt mode/camera teleport.
-    const cutawayAlpha=Math.max(0,Math.min(1,(cam.scale-10)/16));
+    const cutawayAlpha=skinCutawayBlend(cam.scale);
     if(cutawayAlpha<1){
      ctx.save();ctx.globalAlpha=1-cutawayAlpha;
      ctx.drawImage(body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
