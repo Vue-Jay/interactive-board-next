@@ -9,7 +9,7 @@ import LektrusSkinSpecimens from "../src/LektrusSkinSpecimens";
 import {anatomyCameraAtBody} from "../src/lektrusAnatomySemanticZoom";
 import "../src/lektrusHumanAnatomy.css";
 const WIDTH=840,HEIGHT=540;
-const ZOOMS=[1,8,24,80,180,360] as const;
+const ZOOMS=[1,8,24,42,80,180,360] as const;
 function Preview(){
  const params=new URLSearchParams(window.location.search);
  const incoming=Number(params.get("zoom"));
