@@ -65,19 +65,35 @@ export const SKIN_REFERENCE_SPECIMENS:readonly SkinReferenceSpecimen[]=[
  stainVerified:"H&E",sourcePhotoMagnification:null,micronsPerPixel:null}
 ] as const;
 
-/** University of Minnesota supplies a *site-verified* human thumb slide with
- * true digital pixel size; reuse rights for its image are NOT granted here.
- * Link to their original viewer; do not copy or embed its slide tile data.
+/** Human slides with verified spatial and pixel metadata. Images belong to
+ * the University of Minnesota and are NOT bundled while redistribution terms
+ * remain unverified. Only links/metadata are displayed in Lektrus.
  */
-export const SKIN_CALIBRATED_EXTERNAL_REFERENCE={
- title:"Толстая кожа большого пальца человека",
+export const SKIN_CALIBRATED_EXTERNAL_REFERENCES=[
+ {id:"thin-human",title:"Тонкая кожа человека",
+ site:"Тонкая кожа (конкретный участок не указан)",
+ sourceUrl:"https://histologyguide.org/slideview/MH-090-thin-skin/11-slide-1.html",
+ source:"University of Minnesota, Histology Guide, MH 090",
+ preparation:"Гематоксилин и эозин (H&E)",
+ objective:"40×",micronsPerPixel:.3171,
+ species:"Homo sapiens",siteVerified:false,usage:"external-viewer-only",
+ notes:"Калибровка оригинального цифрового препарата, а не масштаб виртуального разреза Lektrus."},
+ {id:"thumb-human",title:"Толстая кожа большого пальца человека",
  site:"Большой палец руки (человек)",
  sourceUrl:"https://histologyguide.org/slideview/MH-091bhr-thick-skin/11-slide-1.html",
  source:"University of Minnesota, Histology Guide, MH 091bhr",
  preparation:"Гематоксилин и эозин (H&E)",
- objective:"60×, масляная иммерсия",
- micronsPerPixel:.3171,
- species:"Homo sapiens",
- usage:"external-viewer-only",
- notes:"Масштаб 0,3171 мкм/пиксель относится только к оригинальному цифровому препарату в научном просмотрщике, не к зуму модели Lektrus."
-} as const;
+ objective:"60×, масляная иммерсия",micronsPerPixel:.3171,
+ species:"Homo sapiens",siteVerified:true,usage:"external-viewer-only",
+ notes:"Участок подтверждён; масштаб относится к оригиналу, не к цифровому зуму Lektrus."},
+ {id:"scalp-human",title:"Кожа волосистой части головы человека",
+ site:"Волосистая часть головы",
+ sourceUrl:"https://www.histologyguide.org/slideview/MH-086b-scalp/11-slide-1.html",
+ source:"University of Minnesota, Histology Guide, MH 086b",
+ preparation:"Гематоксилин и эозин (H&E)",
+ objective:"40×",micronsPerPixel:.3171,
+ species:"Homo sapiens",siteVerified:true,usage:"external-viewer-only",
+ notes:"Проверенный участок для изучения волоса и фолликула; изображения остаются на исходном сайте."}
+] as const;
+export const SKIN_CALIBRATED_EXTERNAL_REFERENCE=
+ SKIN_CALIBRATED_EXTERNAL_REFERENCES[1];
