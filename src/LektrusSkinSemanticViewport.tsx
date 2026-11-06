@@ -4,8 +4,9 @@
  * Nothing is drawn over the neutral center of the body. */
 import {useEffect,useRef} from "react";
 import {pickEpidermisAt,sectionAtY,type EpidermisId,type EpidermisPoint} from "./lektrusEpidermisAtlas";
-import {skinEvidenceRegionAt} from "./lektrusSkinEvidenceModel";
+import {skinEvidenceRegionAt,SKIN_REFERENCE_UPPER_ARM} from "./lektrusSkinEvidenceModel";
 import {drawEpidermisAtlas} from "./lektrusEpidermisRenderer";
+import {epidermisVisibleCellAt} from "./lektrusEpidermisCellSheet";
 import {resolveThickSkinSample,thickSkinFocusPoint,
  type ThickSkinKind,type ThickSkinSample} from "./lektrusThickEpidermis";
 import {drawThickEpidermisSample} from "./lektrusThickEpidermisRenderer";
@@ -14,12 +15,14 @@ import skinFallback from "./assets/bio-atlas/human-skin-original-registered.webp
 import type {AnatomyCamera} from "./lektrusHumanAnatomyModel";
 import {anatomyBodyFit} from "./lektrusAnatomySemanticZoom";
 import {skinVisibleWorldBounds} from "./lektrusSkinSurfaceField";
-import {drawSkinTissueTexture} from "./lektrusSkinTissueTexture";
-import {skinSectionContours,skinCutawayBlend,drawSkinSectionBands,clipSkinSection,
- type SkinSectionContour} from "./lektrusSkinVectorSections";
+import {skinSectionContours,skinUpperArmReferenceContours,skinCutawayBlend,
+ drawSkinSectionBands,type SkinSectionContour} from "./lektrusSkinVectorSections";
+import {buildSkinSilhouettePaths,drawSkinSilhouettePaths,
+ type SkinSilhouettePaths} from "./lektrusSkinSilhouetteOutline";
 
 export type EpidermisHitTest=(point:EpidermisPoint,pixelsPerWorld:number)=>EpidermisId|null;
 type Props={camera:AnatomyCamera;selectedEpidermis?:EpidermisId|null;
+ selectedPoint?:EpidermisPoint|null;
  thickKind?:ThickSkinKind|null;
  hitTestRef?:{current:EpidermisHitTest|null};
  anchorRef?:{current:EpidermisPoint|null};
@@ -30,10 +33,11 @@ const RASTER_WIDTH=WORLD_WIDTH*ATLAS_FACTOR;
 const RASTER_HEIGHT=WORLD_HEIGHT*ATLAS_FACTOR;
 
 export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=null,
- thickKind=null,hitTestRef,anchorRef,thickAnchorsRef}:Props){
+ selectedPoint=null,thickKind=null,hitTestRef,anchorRef,thickAnchorsRef}:Props){
  const canvasRef=useRef<HTMLCanvasElement>(null);
  const cameraRef=useRef(camera);
  const selectionRef=useRef<EpidermisId|null>(selectedEpidermis);
+ const selectionPointRef=useRef<EpidermisPoint|null>(selectedPoint);
  const thickKindRef=useRef<ThickSkinKind|null>(thickKind);
  const thickSitesRef=useRef<Record<ThickSkinKind,ThickSkinSample|null>>({
   palm:null,sole:null
@@ -58,6 +62,9 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
   };
   const body=new Image();
   let contours:SkinSectionContour[]=[];
+  let thinContours:SkinSectionContour[]=[];
+  let neutralBody:HTMLCanvasElement|null=null;
+  let bodyOutline:SkinSilhouettePaths=[];
   let width=0,height=0;
   const requestDraw=()=>{
    if(active&&!frame)frame=requestAnimationFrame(draw);
@@ -74,6 +81,15 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    const alpha=new Uint8ClampedArray(RASTER_WIDTH*RASTER_HEIGHT);
    for(let i=0;i<alpha.length;i++)alpha[i]=rgba[i*4+3];
    contours=skinSectionContours(alpha,RASTER_WIDTH,RASTER_HEIGHT);
+   bodyOutline=buildSkinSilhouettePaths(alpha,RASTER_WIDTH,RASTER_HEIGHT,ATLAS_FACTOR);
+   thinContours=skinUpperArmReferenceContours(contours);
+   // Keep only the supplied silhouette geometry, not its rendered
+   // muscular/shaded mannequin. Source-in preserves every antialiased
+   // fingertip while replacing the interior with neutral atlas paper.
+   c.globalCompositeOperation="source-in";
+   c.fillStyle="#eff3f5";c.fillRect(0,0,RASTER_WIDTH,RASTER_HEIGHT);
+   c.globalCompositeOperation="source-over";
+   neutralBody=source;
    thickSitesRef.current={
     palm:resolveThickSkinSample(contours,"palm"),
     sole:resolveThickSkinSample(contours,"sole")
@@ -84,9 +100,29 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
     sole:thickSitesRef.current.sole?
      thickSkinFocusPoint(thickSitesRef.current.sole):null
    };
-   if(hitTestRef)hitTestRef.current=(point,ppu)=>
-    pickEpidermisAt(contours,point,ppu,
-     thickKindRef.current?thickSitesRef.current[thickKindRef.current]:null);
+   if(hitTestRef)hitTestRef.current=(point,ppu)=>{
+    // The pointer may select only a section actually DRAWN at this zoom.
+    if(cameraRef.current.scale<20||skinCutawayBlend(cameraRef.current.scale)<.1)
+     return null;
+    const thick=thickKindRef.current?
+     thickSitesRef.current[thickKindRef.current]:null;
+    if(thick&&Math.abs(point.y-thick.anchor.y)<=8.5){
+     const picked=pickEpidermisAt([thick.contour],point,ppu,thick);
+     if(picked)return picked;
+    }
+    const cellsReady=refined&&cameraRef.current.scale>=218&&ppu>=195;
+    const paintedLayer=pickEpidermisAt(thinContours,point,ppu,null,cellsReady);
+    // First honor the separate, visibly painted melanocyte markers.
+    if(!cellsReady||!paintedLayer||paintedLayer==="melanocyte"||
+     paintedLayer==="keratinocyte"||paintedLayer==="basement")
+     return paintedLayer;
+    for(const contour of thinContours){
+     if(point.y<contour.minY||point.y>contour.maxY)continue;
+     const cell=epidermisVisibleCellAt(contour,point);
+     if(cell&&cell.layer===paintedLayer)return "keratinocyte";
+    }
+    return paintedLayer;
+   };
    // Register an actual epithelial contour point, not the approximate
    // shoulder centre: zooming the centre at 360× hid the epidermis entirely.
    if(anchorRef){
@@ -127,36 +163,57 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    ctx.scale(fit.pixelPerWorld*cam.scale,fit.pixelPerWorld*cam.scale);
    ctx.translate(-WORLD_WIDTH/2,-WORLD_HEIGHT/2);
    if(ready){
-    // At arm/leg/hand overview scale the supplied human silhouette
-    // MUST remain continuous. Previously we faded it to 46% while
-    // painting oversized cutaway bands on every little finger edge:
-    // fragmented tips and empty/white limb interiors were the result.
-    // Reveal an illustrative side section only once the teacher actually
-    // enters a tissue-level view. No abrupt mode/camera teleport.
+    // The original neutral silhouette remains UNDER every section for
+    // all camera scales. Never fade away the fingers, foot tips or the
+    // neutral center: only the registered educational edge is overlaid.
+    ctx.drawImage(neutralBody??body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
+    const visibleOutline=skinVisibleWorldBounds(cam,w,h,1.25);
     const cutawayAlpha=skinCutawayBlend(cam.scale);
-    if(cutawayAlpha<1){
-     ctx.save();ctx.globalAlpha=1-cutawayAlpha;
-     ctx.drawImage(body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
-     ctx.restore();
+    // A side section is an intentionally ENLARGED teaching window.
+    // The original alpha boundary differs by up to a raster pixel from
+    // its registered tissue edge; at extreme zoom that becomes a false
+    // second boundary across the cellular cross-section. Mask only the
+    // documented incision ellipse from the silhouette STROKE (not fill).
+    ctx.save();
+    if(cam.scale>=80&&cutawayAlpha>=.98&&thinContours.length){
+     const site=SKIN_REFERENCE_UPPER_ARM;
+     ctx.beginPath();
+     ctx.rect(-2,-2,WORLD_WIDTH+4,WORLD_HEIGHT+4);
+     ctx.moveTo(site.cx+site.rx,site.cy);
+     ctx.ellipse(site.cx,site.cy,site.rx,site.ry,
+      0,0,Math.PI*2,true);
+     const thick=thickKindRef.current?
+      thickSitesRef.current[thickKindRef.current]:null;
+     if(thick){
+      // Palm/sole are explicit virtual biopsies, not another literal
+      // outer contour. Suppress just the duplicate pixel-mask border.
+      ctx.moveTo(thick.anchor.x+3,thick.anchor.y);
+      ctx.ellipse(thick.anchor.x,thick.anchor.y,3,10,
+       0,0,Math.PI*2,true);
+     }
+     ctx.clip("evenodd");
     }
+    drawSkinSilhouettePaths(ctx,bodyOutline,visibleOutline,
+     fit.pixelPerWorld*cam.scale);
+    ctx.restore();
     if(contours.length&&cutawayAlpha>0){
      const visible=skinVisibleWorldBounds(cam,w,h,5);
-     drawSkinSectionBands(ctx,contours,visible,cutawayAlpha);
-     if(cam.scale>25&&refined){
-      ctx.save();
-      const clipped=clipSkinSection(ctx,contours,visible);
-      if(clipped)drawSkinTissueTexture(ctx,contours,cam.scale,visible);
-      ctx.restore();
-     }
-     // Detailed strata remain registered to the same world coordinates.
-     // Do not magnify synthetic epidermal cells over hand silhouettes
-     // until the user is examining a real side section at deep zoom.
+     // Old full-body band/texture rendering also painted unrelated fingers
+     // at very high zoom. Restrict histology to the named reference sample.
+     drawSkinSectionBands(ctx,thinContours,visible,cutawayAlpha);
+     // H&E-like procedural noise was not calibrated histology and caused
+     // long main-thread raster work; no synthetic noisy dermis at this stage.
      if(cam.scale>11){
-      drawEpidermisAtlas(ctx,contours,cam.scale,visible,
-       selectionRef.current,refined,fit.pixelPerWorld*cam.scale);
+      // Geometry is allowed a margin to prevent edge seams, but CELL
+      // budgets must cover the ACTUAL screen first. A five-world-unit
+      // overscan previously exhausted the cell budget offscreen.
+      const detailedVisible=skinVisibleWorldBounds(cam,w,h,.12);
+      drawEpidermisAtlas(ctx,thinContours,cam.scale,detailedVisible,
+       selectionRef.current,refined,fit.pixelPerWorld*cam.scale,
+       selectionPointRef.current);
       const thick=thickKindRef.current?
        thickSitesRef.current[thickKindRef.current]:null;
-      if(thick)drawThickEpidermisSample(ctx,thick,cam.scale,visible,
+      if(thick)drawThickEpidermisSample(ctx,thick,cam.scale,detailedVisible,
        selectionRef.current,refined,fit.pixelPerWorld*cam.scale);
      }
     }
@@ -201,6 +258,7 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
  },[]);
  useEffect(()=>{cameraRef.current=camera;drawRef.current();},[camera]);
  useEffect(()=>{selectionRef.current=selectedEpidermis;drawRef.current();},[selectedEpidermis]);
+ useEffect(()=>{selectionPointRef.current=selectedPoint;drawRef.current();},[selectedPoint]);
  useEffect(()=>{thickKindRef.current=thickKind;drawRef.current();},[thickKind]);
  return <canvas ref={canvasRef} className="lek-anatomy-semantic-canvas"
   role="img" aria-label="Интерактивный виртуальный разрез кожи: четыре слоя тонкой или пять слоёв толстой кожи, в том числе блестящий; нажатие открывает описание. Это не микрофотография"/>;

@@ -152,10 +152,13 @@ export type EpidermisPoint={x:number;y:number};
  */
 export function pickEpidermisAt(
  contours:readonly SkinSectionContour[],point:EpidermisPoint,
- pixelsPerWorld:number,thickSample:ThickSkinSample|null=null
+ pixelsPerWorld:number,thickSample:ThickSkinSample|null=null,
+ allowCells=true
 ):EpidermisId|null{
  const ppu=Math.max(1,pixelsPerWorld);
- const tol=Math.min(.11,9/ppu);
+ // No screen-pixel halo is allowed outside painted tissue: an empty
+ // fingertip or neutral body must NEVER activate an invisible epidermis.
+ const tol=0;
  let candidate:EpidermisId|null=null,best=Infinity;
  for(const c of contours){
   if(point.x<c.minX-tol||point.x>c.maxX+tol||
@@ -172,7 +175,7 @@ export function pickEpidermisAt(
   const epi=p.depth*(thickBands?
    thickSkinBoundaryAt(point.y,epiFraction,epiFraction,thickWeight):
    epidermisStratumEdge(point.y,epiFraction));
-  if(d< -tol||d>epi+tol)continue;
+  if(d<0||d>epi)continue;
   const error=d<0?-d:d>epi?d-epi:0;
   if(error>=best)continue;
   best=error;
@@ -198,17 +201,22 @@ export function pickEpidermisAt(
   // Individual representative cell glyphs become clickable only when
   // they are resolved on screen. Never treat a whole painted stripe as
   // the specific cell pictured in its scientific card.
-  if(!thickBands&&ppu>=180&&
+  if(!thickBands&&allowCells&&ppu>=195&&
    skinEvidenceRegionAt({x:p.x,y:point.y})==="thin-skin-reference"){
    const n=Math.round(point.y/.23);
    const keratinocyte=epidermisKeratinocyteCenter(c,n*.23);
-   if(keratinocyte&&Math.hypot(point.x-keratinocyte.x,
-     point.y-keratinocyte.y)<=Math.min(.012,5/ppu))
-    candidate="keratinocyte";
+   if(keratinocyte){
+    const dx=point.x-keratinocyte.x,dy=point.y-keratinocyte.y;
+    // Same compact polygon dimensions as the drawn cell, no 5–9px
+    // tolerance that could select an unseen cell outside its glyph.
+    if(Math.abs(dx)<=.024&&Math.abs(dy)<=.028&&
+     (dx/.025)**2+(dy/.030)**2<=1.15)candidate="keratinocyte";
+   }
    const k=Math.round(point.y/.31);
    const center=epidermisMelanocyteCenter(c,k*.31);
-   if(center&&Math.hypot((point.x-center.x)*1.12,
-     (point.y-center.y)*.90)<=Math.min(.014,5/ppu))
+   if(center&&
+    ((point.x-center.x)/.015)**2+
+    ((point.y-center.y)/.020)**2<=1)
     candidate="melanocyte";
   }
  }

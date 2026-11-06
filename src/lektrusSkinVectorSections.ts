@@ -5,7 +5,7 @@
  * Both sides of each separate limb remain independent, with neutral centers.
  */
 import {skinEdgeRuns} from "./lektrusSkinEdgeSections";
-import {SKIN_ILLUSTRATIVE_LAYERS} from "./lektrusSkinEvidenceModel";
+import {SKIN_ILLUSTRATIVE_LAYERS,SKIN_REFERENCE_UPPER_ARM} from "./lektrusSkinEvidenceModel";
 export const SKIN_SECTION_WORLD_DEPTH=8.4;
 export const SKIN_SECTION_NEUTRAL_FRACTION=.20;
 /** Full hands/feet remain intact at a teacher's ordinary board zoom.
@@ -185,4 +185,73 @@ export function clipSkinSection(
  }
  if(count)ctx.clip();
  return count;
+}
+
+/** Restrict the detailed explanatory section to the explicitly identified
+ * upper-arm teaching SITE. Other body parts retain their intact silhouette,
+ * including individual fingers and toes at arbitrarily high zoom.
+ * This is a tapering section of the SAME world contour, not a second image.
+ * The world-registered cell and pointer geometry use this identical slice.
+ */
+export function skinUpperArmReferenceContours(
+ contours:readonly SkinSectionContour[]
+):SkinSectionContour[]{
+ const site=SKIN_REFERENCE_UPPER_ARM;
+ const result:SkinSectionContour[]=[];
+ for(const contour of contours){
+  let run:SkinSectionPoint[]=[];
+  const flush=()=>{
+   if(run.length<3){run=[];return;}
+   const points=run;run=[];
+   result.push({inward:contour.inward,points,
+    minX:Math.min(...points.map(p=>p.x-p.depth-.02)),
+    maxX:Math.max(...points.map(p=>p.x+p.depth+.02)),
+    minY:points[0].y,maxY:points[points.length-1].y});
+  };
+  for(const p of contour.points){
+   const radius=Math.hypot((p.x-site.cx)/site.rx,
+    (p.y-site.cy)/site.ry);
+   // Taper smoothly to no incision at the outside of the site.
+   const t=Math.max(0,Math.min(1,(1-radius)/.18));
+   const blend=t*t*(3-2*t);
+   if(blend<.002||p.depth<.15){flush();continue;}
+   run.push({...p,depth:p.depth*blend});
+  }
+  flush();
+ }
+ return result;
+}
+
+/** Crisp silhouette contour above the neutral alpha fill. This follows
+ * every existing opaque outline, including the interdigital gaps, without
+ * adding a cutaway to a finger or claiming any regional skin histology.
+ * Paths share the original world geometry: zoom never replaces the model.
+ */
+export function drawSkinBodyContour(
+ ctx:CanvasRenderingContext2D,contours:readonly SkinSectionContour[],
+ bounds:Bounds,pixelsPerWorld:number
+):number{
+ let painted=0;
+ ctx.save();
+ ctx.strokeStyle="#879ba5";
+ ctx.globalAlpha=.74;
+ ctx.lineWidth=Math.max(.012,1.05/Math.max(1,pixelsPerWorld));
+ ctx.lineJoin="round";
+ ctx.lineCap="round";
+ for(const c of contours){
+  const points=visiblePoints(c,bounds);
+  if(points.length<2)continue;
+  ctx.beginPath();
+  ctx.moveTo(points[0].x,points[0].y);
+  for(let i=1;i<points.length;i++){
+   const prev=points[i-1],p=points[i];
+   ctx.quadraticCurveTo(prev.x,prev.y,(prev.x+p.x)/2,(prev.y+p.y)/2);
+  }
+  const last=points[points.length-1];
+  ctx.lineTo(last.x,last.y);
+  ctx.stroke();
+  painted++;
+ }
+ ctx.restore();
+ return painted;
 }

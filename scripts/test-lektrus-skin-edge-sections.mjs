@@ -82,13 +82,15 @@ assert.doesNotMatch(renderer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HE
  "Do not rasterize thousands of unnecessary faux micro-anatomy landmarks");
 assert.doesNotMatch(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible,/,
  "Repeated pink vascular loops were not valid human histology");
-assert.match(renderer,/drawSkinSectionBands\(ctx,contours,visible,cutawayAlpha\)/);
+assert.match(renderer,/drawSkinSectionBands\(ctx,thinContours,visible,cutawayAlpha\)/);
 assert.doesNotMatch(renderer,/drawSkinMesoTiles|drawSkinSurfaceField|drawSkinMicrotiles/);
 assert.doesNotMatch(renderer,/skin-semantic-lod\.webp/);
 assert.doesNotMatch(renderer,/sectionBlend|modeRef/);
 assert.match(ui,/aria-label="Слои кожи"/);
-assert.match(ui,/Левый бок/);
-assert.match(ui,/Правый бок/);
+assert.match(renderer,/ctx\.drawImage\(neutralBody\?\?body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
+assert.doesNotMatch(renderer,/globalAlpha=1-cutawayAlpha/);
+assert.match(ui,/Плечо · тонкая кожа/);
+assert.match(ui,/Кисть · разрез ладони/);
 assert.doesNotMatch(ui,/setSkinMode|skinMode|SkinViewMode/);
 assert.match(ui,/camera=\{displayCamera\}/);
 console.log("Lateral skin cross-section PASS: disjoint limb edges, 3 layers, untouched center, shared world camera and no full-body textures.");
@@ -121,7 +123,8 @@ assert.equal(tissue.count,1);assert.equal(cells.count,1);
 assert.ok(cells.calls.length>tissue.calls.length+100,"Deep zoom reveals cells");
 assert.deepEqual(cells.calls,record(360,visible).calls,"Pan/zoom must not randomize tissue");
 assert.ok(cells.calls.some(c=>c[0]==="clip"),"Stay inside lateral section");
-assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
+assert.doesNotMatch(renderer,/drawSkinTissueTexture\(/,
+ "Unverified full-contour raster histology must not return");
 assert.doesNotMatch(renderer,/edgeAtlas|detailCanvas|globalCompositeOperation="destination-in"/);
 console.log("Skin detail LOD PASS: continuous reveals, cells, culling, deterministic geometry, exact silhouette mask.");
 
@@ -284,7 +287,8 @@ assert.deepEqual(outside.count,
  {collagen:0,adipocytes:0,keratinocytes:0});
 assert.doesNotMatch(renderer,/drawSkinMicroscopicDetails\(ctx,contours,cam.scale,visible\)/,
  "Never draw unverified cellular stamps inside the shared body zoom");
-assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
+assert.match(renderer,/drawEpidermisAtlas\(ctx,thinContours/,
+ "Microanatomy is restricted to a documented shoulder sample");
 console.log("Calibrated microscopy PASS: biologically scaled cells, correct zoom LOD, bounded work, deterministic world-space rendering.");
 
 
@@ -343,7 +347,8 @@ assert.ok(fineMax.calls.filter(c=>c[0]==="arc").every(c=>c[3]<=.001),
  "Tiny keratohyalin granules must never be larger than cells");
 assert.doesNotMatch(renderer,/drawSkinFineStructures\(ctx,contours,cam.scale,visible\)/,
  "Do not draw invented granular/fibroblast patterns");
-assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
+assert.match(renderer,/drawEpidermisAtlas\(ctx,thinContours/,
+ "Microanatomy is restricted to a documented shoulder sample");
 console.log("Skin fine histology PASS: six sub-mm tiers, epidermal strata, world anchoring and mobile culling.");
 
 
@@ -439,9 +444,8 @@ try{
  assert.equal(putCount,2,
   "A larger camera shift must refresh the same world-anchored texture");
 }finally{globalThis.document=oldDocument;}
-assert.match(renderer,/if\(cam.scale>25&&refined\)/,
- "No expensive texture raster while viewing intact hands and legs");
-assert.match(renderer,/if\(clipped\)drawSkinTissueTexture\(ctx,contours,cam.scale,visible\)/);
+assert.doesNotMatch(renderer,/drawSkinTissueTexture\(/,
+ "High zoom must not bring back unverified expensive faux dermal noise");
 assert.match(renderer,/drawEpidermisAtlas\(/);
 assert.match(renderer,/setTimeout\(\(\)=>\{/);
 assert.match(renderer,/},180\)/);
@@ -450,7 +454,8 @@ assert.doesNotMatch(renderer,/drawSkinMicroscopicDetails\(ctx/);
 assert.doesNotMatch(renderer,/drawSkinFineStructures\(ctx/);
 assert.doesNotMatch(shaderCode,/skinAdiposeField\(x,y\)/,
  "Sampling must not reintroduce the artificial fat-cell honeycomb");
-assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
+assert.match(renderer,/drawEpidermisAtlas\(ctx,thinContours/,
+ "Microanatomy is restricted to a documented shoulder sample");
 console.log("Organic skin tissue PASS: layered pigment, fine collagen, fat lacunae, transparent gaps, pixel cap and world-anchored camera.");
 
 assert.match(ui,/Ширина разреза и слоёв специально увеличена/);

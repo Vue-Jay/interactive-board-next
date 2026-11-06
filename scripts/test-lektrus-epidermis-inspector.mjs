@@ -160,7 +160,7 @@ const previous=globalThis.Path2D;
 globalThis.Path2D=class{
  hasMove=false;
  moveTo(){this.hasMove=true;}
- lineTo(){}closePath(){}
+ lineTo(){}quadraticCurveTo(){}closePath(){}
  ellipse(){
   assert.ok(this.hasMove,
    "Each independent nucleus or granular ellipse needs its own Path2D.moveTo: otherwise Canvas connects them into giant false triangles");
@@ -168,9 +168,14 @@ globalThis.Path2D=class{
  }
 };
 try{
+ const sheet=load("src/lektrusEpidermisCellSheet.ts",{
+  "./lektrusEpidermisAtlas":atlas,
+  "./lektrusSkinEvidenceModel":evidence
+ });
  const render=load("src/lektrusEpidermisRenderer.ts",{
   "./lektrusSkinEvidenceModel":evidence,
-  "./lektrusEpidermisAtlas":atlas
+  "./lektrusEpidermisAtlas":atlas,
+  "./lektrusEpidermisCellSheet":sheet
  });
  assert.ok(render.EPIDERMIS_DETAIL_MAX_CELLS<=5000);
  assert.equal(render.epidermisStratumEdge,atlas.epidermisStratumEdge,
@@ -220,8 +225,10 @@ assert.equal(thickRender.drawThickEpidermisSample(
 const viewport=source("src/LektrusSkinSemanticViewport.tsx");
 const human=source("src/LektrusHumanAnatomy.tsx");
 assert.match(viewport,/drawEpidermisAtlas\(/);
-assert.match(viewport,/pickEpidermisAt\(contours,point,ppu,/,
- "Hit testing must receive the active glabrous sample rather than assuming thin skin");
+assert.match(viewport,/pickEpidermisAt\(\[thick\.contour\],point,ppu,thick\)/,
+ "Selected glabrous biopsy gets its own localized thick-skin contour");
+assert.match(viewport,/pickEpidermisAt\(thinContours,point,ppu,null,cellsReady\)/,
+ "Thin skin hit test only follows the declared shoulder teaching window");
 assert.match(viewport,/selectionRef\.current/);
 assert.match(viewport,/cam\.scale>11/);
 assert.match(human,/anatomyScreenToBody\(displayed\.current,target,width,height\)/);
