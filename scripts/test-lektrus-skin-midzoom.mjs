@@ -147,7 +147,7 @@ try{
 const layer=read("src/LektrusSkinSemanticViewport.tsx");
 const source=read("src/lektrusSkinMesoTiles.ts");
 assert.doesNotMatch(layer,/drawSkinMesoTiles|drawSkinSurfaceField/);
-assert.match(layer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/);
+assert.doesNotMatch(layer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/);
 assert.match(layer,/ctx\.globalCompositeOperation="source-atop"/);
 assert.match(source,/skinMesoTone\(worldX:number,worldY:number\)/);
 assert.doesNotMatch(source,/ctx\.putImageData\(|ctx\.createImageData\(/,
