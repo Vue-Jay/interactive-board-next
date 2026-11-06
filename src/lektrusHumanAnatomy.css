@@ -276,3 +276,41 @@
 .lek-anatomy-skin-explore .lek-anatomy-skin-modes button:hover{
  background:#e9f6ed;
 }
+
+/* Evidence specimens are supplemental: no independent camera, no overlay
+ * inside the registered body silhouette. Keep the narrow tablet sidebar usable. */
+.lek-anatomy-source-plates{
+ border:1px solid #c8d9d0;border-radius:10px;padding:7px 8px;
+ background:#fff;color:#244e3d;max-width:100%;min-width:0;
+}
+.lek-anatomy-source-plates summary{
+ cursor:pointer;font-size:11px;font-weight:750;line-height:1.45;
+ padding:3px;user-select:none;
+}
+.lek-anatomy-source-plates summary:focus-visible{
+ outline:2px solid #397f58;outline-offset:3px;
+}
+.lek-anatomy-source-note{
+ font-size:10px;line-height:1.5;color:#526d60;margin:8px 1px!important;
+}
+.lek-anatomy-source-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+.lek-anatomy-source-plate{
+ margin:0;padding:6px;border:1px solid #d8e2dc;border-radius:8px;
+ background:#f7faf8;min-width:0;
+}
+.lek-anatomy-source-plate>a{display:block;border-radius:6px;overflow:hidden}
+.lek-anatomy-source-plate img{
+ display:block;width:100%;max-height:208px;object-fit:contain;
+ background:#10141a;
+}
+.lek-anatomy-source-plate figcaption{display:grid;gap:4px;padding-top:6px}
+.lek-anatomy-source-plate figcaption strong{font-size:10px;line-height:1.4}
+.lek-anatomy-source-plate figcaption span{font-size:9px;line-height:1.45}
+.lek-anatomy-source-license{color:#587267;overflow-wrap:anywhere}
+.lek-anatomy-source-license a{
+ color:#356f59;text-decoration:underline;margin:0 3px;
+}
+@media(max-width:680px){
+ .lek-anatomy-source-plate img{max-height:150px}
+ .lek-anatomy-source-plates{padding:6px}
+}
