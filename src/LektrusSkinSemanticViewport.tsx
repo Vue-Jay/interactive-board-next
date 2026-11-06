@@ -175,13 +175,22 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
     // second boundary across the cellular cross-section. Mask only the
     // documented incision ellipse from the silhouette STROKE (not fill).
     ctx.save();
-    if(cutawayAlpha>=.98&&thinContours.length){
+    if(cam.scale>=80&&cutawayAlpha>=.98&&thinContours.length){
      const site=SKIN_REFERENCE_UPPER_ARM;
      ctx.beginPath();
      ctx.rect(-2,-2,WORLD_WIDTH+4,WORLD_HEIGHT+4);
      ctx.moveTo(site.cx+site.rx,site.cy);
      ctx.ellipse(site.cx,site.cy,site.rx,site.ry,
       0,0,Math.PI*2,true);
+     const thick=thickKindRef.current?
+      thickSitesRef.current[thickKindRef.current]:null;
+     if(thick){
+      // Palm/sole are explicit virtual biopsies, not another literal
+      // outer contour. Suppress just the duplicate pixel-mask border.
+      ctx.moveTo(thick.anchor.x+3,thick.anchor.y);
+      ctx.ellipse(thick.anchor.x,thick.anchor.y,3,10,
+       0,0,Math.PI*2,true);
+     }
      ctx.clip("evenodd");
     }
     drawSkinSilhouettePaths(ctx,bodyOutline,visibleOutline,
