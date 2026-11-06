@@ -11,42 +11,52 @@ revoke all on schema lektrus_private from public, anon, authenticated;
 create or replace function lektrus_private.board_items_by_id(p_document jsonb)
 returns jsonb language plpgsql immutable set search_path=pg_catalog as $items$
 declare
- v_result jsonb := '{}'::jsonb;
- v_item jsonb;
- v_id text;
- v_count integer := 0;
+ v_result jsonb;
+ v_count integer;
+ v_unique integer;
+ v_valid boolean;
 begin
  if jsonb_typeof(p_document)<>'object' or
     jsonb_typeof(p_document->'items')<>'array' or
     (p_document ? 'ink' and jsonb_typeof(p_document->'ink')<>'array') then
   raise exception 'Invalid board item collections' using errcode='22023';
  end if;
- for v_item in
-  select value from jsonb_array_elements(p_document->'items')
+ -- Enforce the cap BEFORE building a JSON index. A repeated jsonb ||
+ -- append copies the entire growing map on every stroke (quadratic cost).
+ if jsonb_array_length(p_document->'items')+
+    jsonb_array_length(coalesce(p_document->'ink','[]'::jsonb))>10000 then
+  raise exception 'Too many board items' using errcode='22023';
+ end if;
+ select count(*)::integer,
+        count(distinct item->>'id')::integer,
+        coalesce(bool_and(coalesce(
+          jsonb_typeof(item)='object' and
+          length(item->>'id') between 1 and 160 and
+          (item->>'kind') in
+           ('sticky','text','shape','pen','marker','image','pdf','frame',
+            'connector','comment','table','formula','graph','fraction',
+            'checklist','quiz','flashcard','cover','linkmedia','instrument'),
+         false)),true),
+        coalesce(jsonb_object_agg(item->>'id',item)
+          filter (where item->>'id' is not null and item->>'id'<>''),'{}'::jsonb)
+ into v_count,v_unique,v_valid,v_result
+ from (
+  select value as item from jsonb_array_elements(p_document->'items')
   union all
-  select value->'stroke' from jsonb_array_elements(
-   coalesce(p_document->'ink','[]'::jsonb))
- loop
-  v_count:=v_count+1;
-  v_id:=v_item->>'id';
-  if v_count>10000 or jsonb_typeof(v_item)<>'object'
-     or v_id is null or length(v_id)<1 or length(v_id)>160
-     or v_result ? v_id
-     or coalesce(v_item->>'kind','') not in
-      ('sticky','text','shape','pen','marker','image','pdf','frame',
-       'connector','comment','table','formula','graph','fraction',
-       'checklist','quiz','flashcard','cover','linkmedia','instrument') then
-   raise exception 'Invalid or duplicate board item ID/kind' using errcode='22023';
-  end if;
-  v_result:=v_result||jsonb_build_object(v_id,v_item);
- end loop;
+  select value->'stroke' as item from jsonb_array_elements(
+    coalesce(p_document->'ink','[]'::jsonb))
+ ) board_items;
+ if not v_valid or v_count<>v_unique then
+  raise exception 'Invalid or duplicate board item ID/kind' using errcode='22023';
+ end if;
  return v_result;
 end;
 $items$;
 
 -- Student responses live inside a teacher's structured subject tasks.
--- Compare each entry in place and allow ONLY response payloads, never the
--- question, reference answer, worked solution, answer-key or entry order.
+-- Client edits answer (student response), workedSolution, activityResponse and
+-- russianWork. Do NOT allow editing prompt, solution (teacher reference),
+-- title, task order, kind or any teacher-provided structure.
 create or replace function lektrus_private.subject_responses_only(
  p_before jsonb,p_after jsonb
 ) returns boolean language plpgsql immutable set search_path=pg_catalog as $response$
@@ -63,8 +73,8 @@ begin
   v_new:=p_after->v_index;
   if jsonb_typeof(v_old)<>'object' or jsonb_typeof(v_new)<>'object'
      or coalesce(v_old->>'id','')=''
-     or (v_old - array['activityResponse','russianWork']) <>
-        (v_new - array['activityResponse','russianWork']) then
+     or (v_old - array['answer','workedSolution','activityResponse','russianWork']) <>
+        (v_new - array['answer','workedSolution','activityResponse','russianWork']) then
    return false;
   end if;
  end loop;
@@ -155,6 +165,37 @@ begin
     return false;
    end if;
    v_fields:=v_fields||array['subjectBoardEntries'];
+  end if;
+  -- The chemistry desk is a shared, manipulable apparatus, not a quiz
+  -- answer key. Students can run an experience but cannot change its graph
+  -- identity, geometry, other teacher fields or oversized/invalid apparatus.
+  if v_kind='graph' and
+     v_old->>'graphFigureId'='chem-experiment-free' and
+     v_old ? 'scienceLabBench' and v_new ? 'scienceLabBench' and
+     coalesce(v_old->>'locked','false')<>'true' then
+   if jsonb_typeof(v_new->'scienceLabBench')<>'object' or
+      jsonb_typeof(v_new#>'{scienceLabBench,vessels}')<>'array' or
+      jsonb_array_length(v_new#>'{scienceLabBench,vessels}')>6 or
+      jsonb_typeof(v_new#>'{scienceLabBench,event}')<>'number' or
+      length((v_new->'scienceLabBench')::text)>700000 or
+      (v_new->'scienceLabBench' ? 'placedDevices' and
+       (jsonb_typeof(v_new#>'{scienceLabBench,placedDevices}')<>'array' or
+        jsonb_array_length(v_new#>'{scienceLabBench,placedDevices}')>10)) or
+      (v_new->'scienceLabBench' ? 'reactionLog' and
+       (jsonb_typeof(v_new#>'{scienceLabBench,reactionLog}')<>'array' or
+        jsonb_array_length(v_new#>'{scienceLabBench,reactionLog}')>1000)) then
+    return false;
+   end if;
+   v_fields:=v_fields||array['scienceLabBench'];
+   -- Live laboratory updates retire these two legacy fields by setting
+   -- them undefined. Treat removal as safe, but never allow substitution.
+   if v_old ? 'scienceReagents' and not (v_new ? 'scienceReagents') then
+    v_fields:=v_fields||array['scienceReagents'];
+   end if;
+   if v_old ? 'scienceExperimentStage' and
+      not (v_new ? 'scienceExperimentStage') then
+    v_fields:=v_fields||array['scienceExperimentStage'];
+   end if;
   end if;
   if v_kind='graph' and
      v_old->'schoolDiagram'->>'kind'='atlas' and
