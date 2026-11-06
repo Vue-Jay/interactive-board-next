@@ -104,9 +104,12 @@ export function drawThickEpidermisSample(
  // A clear, thin and subtle stratum lucidum. It has neither living nuclei
  // nor tiny painted "cells", and it can be indistinct in ordinary H&E.
  if(detailed&&fade>.4){
-  ctx.strokeStyle="#faeee6";ctx.lineWidth=.0014;
-  for(let k=0;k<5;k++){
-   histologyLamina(ctx,site,bounds,0,(k+.6)/6,.22*fade);
+  // Several faint parallel corneocyte lamellae instead of one large
+  // undifferentiated slab. The lines mark stratification, not 12 counted
+  // physically scaled cells from an unknown biopsy.
+  ctx.strokeStyle="#b88f9d";ctx.lineWidth=.0032;
+  for(let k=0;k<12;k++){
+   histologyLamina(ctx,site,bounds,0,(k+.6)/13,.23*fade);
    stats.lamellae++;
   }
   ctx.strokeStyle="#fdf4e8";ctx.lineWidth=.0011;
@@ -162,9 +165,12 @@ export function drawThickEpidermisSample(
    basalNuclei.ellipse(bx,y,.0017,.0026,0,0,Math.PI*2);
    stats.cells++;
   }
-  ctx.globalAlpha=.50*fade;ctx.strokeStyle="#956b92";ctx.lineWidth=.0012;
+  // Subtle tinted polyhedral keratinocytes in the spinous sheet,
+  // with nucleus only where biologically appropriate.
+  ctx.globalAlpha=.38*fade;ctx.fillStyle="#f0c4d1";ctx.fill(spinous);
+  ctx.globalAlpha=.54*fade;ctx.strokeStyle="#956b92";ctx.lineWidth=.0012;
   ctx.stroke(spinous);
-  ctx.globalAlpha=.75*fade;ctx.fillStyle="#745374";
+  ctx.globalAlpha=.78*fade;ctx.fillStyle="#745374";
   ctx.fill(spinousNuclei);
   ctx.fill(gram);
   ctx.globalAlpha=.72*fade;ctx.strokeStyle="#795778";ctx.stroke(basal);
