@@ -11,6 +11,7 @@
 import {skinEvidenceRegionAt,SKIN_ILLUSTRATIVE_LAYERS} from "./lektrusSkinEvidenceModel";
 import {EPIDERMIS_LAYER_FRACTIONS,sectionAtY,
  epidermisStratumEdge,epidermisMelanocyteCenter,
+ epidermisKeratinocyteCenter,
  type EpidermisId,type EpidermisStratum} from "./lektrusEpidermisAtlas";
 export {epidermisStratumEdge} from "./lektrusEpidermisAtlas";
 import type {SkinSectionContour,SkinSectionPoint} from "./lektrusSkinVectorSections";
@@ -251,6 +252,36 @@ export function drawEpidermisAtlas(
     }
     if(isGranular){
      ctx.globalAlpha=.8*microFade;ctx.fillStyle="#694567";ctx.fill(specks);
+    }
+    ctx.restore();
+   }
+   // A sparse set of individually selectable example keratinocytes,
+   // actually present in the spinous cell sheet and positioned by the
+   // same helper used for hit testing. These are NOT fabricated biopsy
+   // locations and never appear on unrelated hands or feet.
+   if(microFade>.50){
+    ctx.save();ctx.globalAlpha=.86*microFade;
+    for(let k=Math.ceil(y0/.23);k*.23<=y1;k++){
+     const y=k*.23,center=epidermisKeratinocyteCenter(c,y);
+     if(!center)continue;
+     const x=center.x;
+     ctx.beginPath();
+     ctx.moveTo(x-.0065,y-.0014);
+     ctx.lineTo(x-.004,y-.0055);
+     ctx.lineTo(x+.0038,y-.005);
+     ctx.lineTo(x+.0066,y+.0008);
+     ctx.lineTo(x+.0035,y+.0054);
+     ctx.lineTo(x-.0051,y+.0048);
+     ctx.closePath();
+     ctx.fillStyle="#ebc4ce";ctx.fill();
+     ctx.strokeStyle="#916a91";ctx.lineWidth=.0013;ctx.stroke();
+     ctx.beginPath();ctx.ellipse(x,y,.0018,.002,0,0,Math.PI*2);
+     ctx.fillStyle="#74536d";ctx.fill();
+     if(selected==="keratinocyte"){
+      ctx.beginPath();ctx.ellipse(x,y,.010,.009,0,0,Math.PI*2);
+      ctx.strokeStyle="#f6d369";ctx.lineWidth=.0019;
+      ctx.globalAlpha=.95;ctx.stroke();
+     }
     }
     ctx.restore();
    }
