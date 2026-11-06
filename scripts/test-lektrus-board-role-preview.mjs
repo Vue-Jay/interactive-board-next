@@ -34,7 +34,8 @@ for(const boardRole of boardRoles){
      const caps=boardRoleCapabilities(input);
      const expectedCanEdit=boardRole!=="viewer"||adminMaintenance;
      const student=preview==="student"||preview==="guest"||
-       preview==="actual"&&(guest||accountRole==="student"&&!adminMaintenance);
+       preview==="actual"&&boardRole!=="owner"&&
+        (guest||accountRole==="student"&&!adminMaintenance);
      assert.equal(caps.canEdit,expectedCanEdit,JSON.stringify(input)+" board membership stays authoritative");
      assert.equal(caps.isStudent,student,JSON.stringify(input)+" effective role");
      assert.equal(caps.effectiveRole,student?"student":"teacher");
@@ -43,7 +44,7 @@ for(const boardRole of boardRoles){
      assert.equal(caps.canCreateAssignments,expectedCanEdit&&!student);
      assert.equal(caps.canUseStudentTools,expectedCanEdit&&student);
      assert.equal(caps.canUseTeacherTools,expectedCanEdit&&!student);
-     assert.equal(caps.canManageBoard,expectedCanEdit&&!student&&boardRole==="owner"&&!guest);
+     assert.equal(caps.canManageBoard,expectedCanEdit&&!student&&boardRole==="owner");
      for(const tool of creations){
       const denied=STUDENT_BLOCKED_CREATE_TOOLS.includes(tool);
       const navigation=["select","hand","lasso"].includes(tool);
@@ -64,6 +65,13 @@ for(const boardRole of boardRoles){
 assert.deepEqual(STUDENT_BLOCKED_CREATE_TOOLS,STUDENT_PROTECTED_OBJECT_KINDS,
  "teacher-only creation and protected structure use one matrix");
 
+// Real board ownership outranks the signup category and grants full tools.
+for(const accountRole of ["teacher","student"])for(const isGuest of [false,true]){
+ const owner=boardRoleCapabilities({preview:"actual",boardRole:"owner",
+  accountRole,isGuest,isAppAdmin:false,adminMaintenance:false});
+ assert.ok(owner.canManageBoard&&owner.canCreateAssignments&&owner.canUseTeacherTools);
+ assert.equal(owner.isStudent,false);
+}
 // A simulated guest must have exactly the same functionality as a student.
 for(const boardRole of boardRoles)for(const accountRole of accountRoles){
  const common={boardRole,accountRole,isAppAdmin:true,adminMaintenance:false,isGuest:false};
