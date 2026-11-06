@@ -16,6 +16,7 @@ import {anatomyBodyFit} from "./lektrusAnatomySemanticZoom";
 import {skinVisibleWorldBounds} from "./lektrusSkinSurfaceField";
 import {drawSkinTissueTexture} from "./lektrusSkinTissueTexture";
 import {skinSectionContours,skinCutawayBlend,drawSkinSectionBands,clipSkinSection,
+ clipSkinOutsideDistalOutlines,skinDistalOutlineProtected,
  type SkinSectionContour} from "./lektrusSkinVectorSections";
 
 export type EpidermisHitTest=(point:EpidermisPoint,pixelsPerWorld:number)=>EpidermisId|null;
@@ -78,7 +79,7 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    // Make a neutral plate from the exact source alpha once. No
    // procedural texture inside the body and no disconnected fingers.
    c.globalCompositeOperation="source-in";
-   c.fillStyle="#f5f2ee";
+   c.fillStyle="#d8dfe3";
    c.fillRect(0,0,RASTER_WIDTH,RASTER_HEIGHT);
    c.globalCompositeOperation="source-over";
    neutralPlate=source;
@@ -98,8 +99,15 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
     // Hit tests must agree with pixels, not merely with an invisible
     // precomputed layer or a cell hidden during camera movement.
     if(skinCutawayBlend(zoom)<=.03)return null;
-    const chosen=pickEpidermisAt(contours,point,ppu,
-     thickKindRef.current?thickSitesRef.current[thickKindRef.current]:null);
+    const activeSite=thickKindRef.current?
+     thickSitesRef.current[thickKindRef.current]:null;
+    // The default huge body-wall section is never painted over hands,
+    // digits or feet. Do not let the picker select that hidden geometry.
+    // An explicit palm/sole specimen remains available at its anchor.
+    if(skinDistalOutlineProtected(point)&&
+     (!activeSite||Math.abs(point.y-activeSite.anchor.y)>6))
+     return null;
+    const chosen=pickEpidermisAt(contours,point,ppu,activeSite);
     if(chosen==="keratinocyte"&&(!refined||zoom<218))
      return "spinosum";
     if(chosen==="melanocyte"&&(!refined||zoom<218))
@@ -157,22 +165,29 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    const cutawayAlpha=skinCutawayBlend(cam.scale);
    if(contours.length&&cutawayAlpha>0){
      const visible=skinVisibleWorldBounds(cam,w,h,5);
+     // The silhouette is already painted. Clip ONLY the automatic
+     // explanatory ribbons, leaving hands, fingers and feet intact.
+     ctx.save();
+     clipSkinOutsideDistalOutlines(ctx);
      drawSkinSectionBands(ctx,contours,visible,cutawayAlpha);
-     // Keep a subtle unverified context tone only outside focused
-    // epidermis inspection. It is NOT used to imitate individual cells.
-    if(cam.scale>25&&refined&&selectionRef.current===null&&
-     thickKindRef.current===null){
+     // Context tone is not an anatomical cell atlas. Never superimpose
+     // it on a selected epithelium, or during camera motion.
+     if(cam.scale>25&&refined&&selectionRef.current===null&&
+      thickKindRef.current===null){
       ctx.save();
       const clipped=clipSkinSection(ctx,contours,visible);
       if(clipped)drawSkinTissueTexture(ctx,contours,cam.scale,visible);
       ctx.restore();
      }
-     // Detailed strata remain registered to the same world coordinates.
-     // Do not magnify synthetic epidermal cells over hand silhouettes
-     // until the user is examining a real side section at deep zoom.
      if(cam.scale>11){
       drawEpidermisAtlas(ctx,contours,cam.scale,visible,
        selectionRef.current,refined,fit.pixelPerWorld*cam.scale);
+     }
+     ctx.restore();
+     // A palm/sole section exists only when explicitly chosen. It uses
+     // the same sample world anchor and remains clickable, without
+     // assigning palmar epidermis to every frontal finger silhouette.
+     if(cam.scale>11){
       const thick=thickKindRef.current?
        thickSitesRef.current[thickKindRef.current]:null;
       if(thick)drawThickEpidermisSample(ctx,thick,cam.scale,visible,
