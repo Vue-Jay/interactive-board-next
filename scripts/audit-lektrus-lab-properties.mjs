@@ -544,7 +544,14 @@ if(process.argv.includes("--missing")){
  console.log(JSON.stringify({schemaVersion:1,stock:rawTotals.stock,
   outstanding:report.stockWithOutstandingProperties,byProperty,
   byReagent:stockRows.filter(row=>row.missing.length).map(row=>({
-   formula:row.formula,name:row.name,missing:row.missing
+   formula:row.formula,name:row.name,kind:row.kind,
+   missing:row.missing,
+   // Preserve applicability so source triage never substitutes a pure
+   // crystal measurement for a solution, hydrate, or gas.
+   applicable:Object.fromEntries(Object.entries(row.relevant)
+    .filter(([,applicable])=>applicable)),
+   known:Object.fromEntries(Object.entries(row.known)
+    .filter(([key])=>row.relevant[key]))
   }))},null,2));
 }else if(process.argv.includes("--json")){
  console.log(JSON.stringify(report,null,2));
