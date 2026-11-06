@@ -224,6 +224,13 @@ assert.match(foreignView,/const \[order,setOrder\]=useState<string\[\]>\(initial
  "foreign-language rearrangement uses local answer state");
 assert.doesNotMatch(foreignView,/onChange\s*\(/,
  "foreign-language puzzle cannot rewrite teacher's board JSON");
+const approvedView=read("src/LektrusApprovedSchoolView.tsx");
+assert.match(approvedView,/const \[index,setIndex\]=useState\(0\),\[revealed,setRevealed\]=useState\(false\)/,
+ "foreign vocabulary flashcards flip locally without overwriting teacher data");
+assert.doesNotMatch(approvedView,/onChange\s*\(/,
+ "foreign flashcard interactions must not save over a teacher's cards");
+assert.match(russianView,/const \[picked,setPicked\]=useState/,
+ "spelling puzzle answers remain local to the learner");
 assert.match(app,/restrictStudentDiagramChange\(before.schoolDiagram,diagram\)/,
  "students cannot rewrite a teacher's assignment");
 assert.match(app,/if\(!canManageBoard\|\|boardSummary.ownerId!==authUser.id\)return;/,
