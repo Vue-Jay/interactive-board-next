@@ -4,7 +4,7 @@
  * Nothing is drawn over the neutral center of the body. */
 import {useEffect,useRef} from "react";
 import {pickEpidermisAt,sectionAtY,type EpidermisId,type EpidermisPoint} from "./lektrusEpidermisAtlas";
-import {skinEvidenceRegionAt} from "./lektrusSkinEvidenceModel";
+import {skinEvidenceRegionAt,SKIN_REFERENCE_UPPER_ARM} from "./lektrusSkinEvidenceModel";
 import {drawEpidermisAtlas} from "./lektrusEpidermisRenderer";
 import {epidermisVisibleCellAt} from "./lektrusEpidermisCellSheet";
 import {resolveThickSkinSample,thickSkinFocusPoint,
@@ -168,9 +168,25 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
     // neutral center: only the registered educational edge is overlaid.
     ctx.drawImage(neutralBody??body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
     const visibleOutline=skinVisibleWorldBounds(cam,w,h,1.25);
+    const cutawayAlpha=skinCutawayBlend(cam.scale);
+    // A side section is an intentionally ENLARGED teaching window.
+    // The original alpha boundary differs by up to a raster pixel from
+    // its registered tissue edge; at extreme zoom that becomes a false
+    // second boundary across the cellular cross-section. Mask only the
+    // documented incision ellipse from the silhouette STROKE (not fill).
+    ctx.save();
+    if(cutawayAlpha>=.98&&thinContours.length){
+     const site=SKIN_REFERENCE_UPPER_ARM;
+     ctx.beginPath();
+     ctx.rect(-2,-2,WORLD_WIDTH+4,WORLD_HEIGHT+4);
+     ctx.moveTo(site.cx+site.rx,site.cy);
+     ctx.ellipse(site.cx,site.cy,site.rx,site.ry,
+      0,0,Math.PI*2,true);
+     ctx.clip("evenodd");
+    }
     drawSkinSilhouettePaths(ctx,bodyOutline,visibleOutline,
      fit.pixelPerWorld*cam.scale);
-    const cutawayAlpha=skinCutawayBlend(cam.scale);
+    ctx.restore();
     if(contours.length&&cutawayAlpha>0){
      const visible=skinVisibleWorldBounds(cam,w,h,5);
      // Old full-body band/texture rendering also painted unrelated fingers
