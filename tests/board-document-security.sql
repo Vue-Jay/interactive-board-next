@@ -92,10 +92,9 @@ begin
   raise exception 'Locked pen creation passed';end if;
  v_new:=jsonb_set(v_before,'{items}',
   v_before->'items'||jsonb_build_array(v_before->'items'->0));
- begin
-  perform lektrus_private.student_document_delta_allowed(v_before,v_new,pupil);
+ if lektrus_private.student_document_delta_allowed(v_before,v_new,pupil) then
   raise exception 'Duplicate ID passed';
- exception when sqlstate '22023' then null;end;
+ end if;
  -- Legacy ink[] -> items[] migration must not be treated as deletion.
  v_new:=jsonb_set(v_before,'{items}',(v_before->'items')-2);
  v_new:=jsonb_set(v_new,'{ink}',jsonb_build_array(
