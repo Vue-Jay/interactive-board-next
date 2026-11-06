@@ -8,9 +8,9 @@
 export const SKIN_ILLUSTRATIVE_LAYERS={
  epidermisEnd:.065,
  dermisEnd:.67,
- granulosumStart:.0125,
+ granulosumStart:.014,
  spinosumStart:.023,
- basaleStart:.0535
+ basaleStart:.057
 } as const;
 
 /** Evidence status of a registered *representative* thin-skin sample.

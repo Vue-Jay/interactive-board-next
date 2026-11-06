@@ -367,3 +367,77 @@
 .lek-anatomy-external-slides>a:focus-visible{
  outline:2px solid #2e704d;outline-offset:2px;
 }
+
+
+/* Epidermis layer inspector: the same 360×600 body camera is used for
+ * all interactions. Readable on 220px sidebars and tablet layouts. */
+.lek-anatomy-epidermis-inspector{
+ display:flex;flex-direction:column;gap:9px;padding:10px 9px;
+ border:1px solid #bcd5ca;border-radius:11px;background:#f7faf8;
+ min-width:0;color:#315c48;
+}
+.lek-anatomy-epidermis-title strong{font-size:12px;line-height:1.4}
+.lek-anatomy-epidermis-title p{
+ font-size:10px;line-height:1.5;color:#536d61;margin:5px 0 0;
+}
+.lek-anatomy-epidermis-actions{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.lek-anatomy-epidermis-inspector .lek-anatomy-epidermis-actions button{
+ border:1px solid #c4d5cc;background:#fff;color:#2c6549;
+ padding:6px 4px;min-height:34px;border-radius:7px;font-size:10px;
+ font-weight:750;cursor:pointer;
+}
+.lek-anatomy-epidermis-layer-list{display:grid;gap:4px}
+.lek-anatomy-epidermis-inspector .lek-anatomy-epidermis-layer-list button{
+ display:flex;align-items:center;gap:8px;text-align:left;min-height:34px;
+ border-radius:7px;border:1px solid #d4e1db;background:#fff;
+ color:#375d4d;padding:5px 6px;font-size:11px;font-weight:650;cursor:pointer;
+}
+.lek-anatomy-epi-swatch{
+ display:block;flex:0 0 10px;height:19px;border-radius:5px;
+ border:1px solid rgba(0,0,0,.07);
+}
+.lek-anatomy-epi-swatch.is-corneum{background:#e8b9af}
+.lek-anatomy-epi-swatch.is-granulosum{background:#98729c}
+.lek-anatomy-epi-swatch.is-spinosum{background:#d8a4bd}
+.lek-anatomy-epi-swatch.is-basale{background:#a16c94}
+.lek-anatomy-epidermis-cell-list{display:flex;flex-wrap:wrap;gap:4px}
+.lek-anatomy-epidermis-inspector .lek-anatomy-epidermis-cell-list button{
+ padding:5px 7px;border-radius:6px;border:1px solid #d4e1db;
+ background:#fff;font-size:10px;color:#375d4d;cursor:pointer;line-height:1.35;
+}
+.lek-anatomy-epidermis-inspector button.is-selected,
+.lek-anatomy-epidermis-inspector button[aria-pressed="true"]{
+ border-color:#52866c!important;background:#e3f1e8!important;
+ color:#244f38!important;
+}
+.lek-anatomy-epidermis-inspector button:focus-visible{
+ outline:2px solid #2f7f57;outline-offset:2px;
+}
+.lek-anatomy-epidermis-card{
+ display:grid;gap:6px;padding:9px;border:1px solid #cbdcd0;
+ border-left:3px solid #638f73;border-radius:8px;background:#fff;
+ color:#2b503f;
+}
+.lek-anatomy-epidermis-card strong{font-size:13px}
+.lek-anatomy-epidermis-card em{font-size:10px;color:#7b6680}
+.lek-anatomy-epidermis-card p{
+ margin:0!important;color:#425c50!important;
+ font-size:10px!important;line-height:1.55!important;
+}
+.lek-anatomy-epidermis-card a{
+ font-size:10px;color:#276845;text-decoration:underline;overflow-wrap:anywhere;
+}
+.lek-anatomy-epidermis-prompt{font-size:10px;color:#668072}
+.lek-anatomy-epidermis-inspector>small{
+ line-height:1.55!important;color:#668072!important;font-size:9px!important;
+}
+@media (max-width:760px){
+ .lek-anatomy-epidermis-inspector{padding:8px}
+ .lek-anatomy-epidermis-layer-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .lek-anatomy-epidermis-inspector .lek-anatomy-epidermis-layer-list button{
+  font-size:10px;min-height:39px
+ }
+}
+@media (max-width:480px){
+ .lek-anatomy-epidermis-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+}

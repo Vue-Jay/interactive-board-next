@@ -439,7 +439,9 @@ try{
  assert.equal(putCount,2,
   "A larger camera shift must refresh the same world-anchored texture");
 }finally{globalThis.document=oldDocument;}
-assert.match(renderer,/if\(refined\)drawSkinTissueTexture\(ctx,contours,cam.scale,visible\)/);
+assert.match(renderer,/if\(cam.scale>2.5&&refined\)/);
+assert.match(renderer,/if\(clipped\)drawSkinTissueTexture\(ctx,contours,cam.scale,visible\)/);
+assert.match(renderer,/drawEpidermisAtlas\(/);
 assert.match(renderer,/setTimeout\(\(\)=>\{/);
 assert.match(renderer,/},180\)/);
 assert.doesNotMatch(renderer,/drawSkinEdgeDetails\(ctx/);

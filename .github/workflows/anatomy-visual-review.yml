@@ -5,7 +5,10 @@ on:
     paths:
       - 'src/LektrusSkin*'
       - 'src/lektrusSkin*'
+      - 'src/lektrusEpidermis*'
+      - 'src/LektrusHumanAnatomy.tsx'
       - 'tests/anatomy-visual-preview.*'
+      - 'tests/anatomy-epidermis-*'
       - 'docs/ANATOMY_HUMAN_CANONICAL_PLAN.md'
       - '.github/workflows/anatomy-visual-review.yml'
   workflow_dispatch:
@@ -42,12 +45,21 @@ jobs:
               "http://127.0.0.1:5173/tests/anatomy-visual-preview.html?zoom=$zoom" \
               "artifacts/anatomy/skin-$zoom.png"
           done
+          for layer in corneum granulosum spinosum basale; do
+            npx --yes playwright@1.64.1 screenshot --browser chromium \
+              --wait-for-timeout 2500 --viewport-size "1200,900" \
+              "http://127.0.0.1:5173/tests/anatomy-visual-preview.html?zoom=360&layer=$layer" \
+              "artifacts/anatomy/epidermis-$layer-360.png"
+          done
           for source in thin thick; do
             npx --yes playwright@1.64.1 screenshot --browser chromium \
               --wait-for-timeout 2500 --viewport-size "1200,900" \
               "http://127.0.0.1:5173/tests/anatomy-visual-preview.html?zoom=24&source=$source" \
               "artifacts/anatomy/skin-$source-comparison.png"
           done
+          python3 -m venv /tmp/lektrus-epidermis-playwright
+          /tmp/lektrus-epidermis-playwright/bin/pip -q install playwright==1.64.1
+          /tmp/lektrus-epidermis-playwright/bin/python tests/anatomy-epidermis-browser-smoke.py
       - name: Upload visual evidence
         if: always()
         uses: actions/upload-artifact@v4

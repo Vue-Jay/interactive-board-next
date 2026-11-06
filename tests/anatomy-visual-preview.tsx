@@ -2,14 +2,15 @@
  * This is a development-only entry under /tests, not a new atlas mode.
  * The image below is drawn by the same component as the live board.
  */
-import React,{useState} from "react";
+import React,{useRef,useState} from "react";
 import {createRoot} from "react-dom/client";
-import LektrusSkinSemanticViewport from "../src/LektrusSkinSemanticViewport";
+import LektrusSkinSemanticViewport,{type EpidermisHitTest} from "../src/LektrusSkinSemanticViewport";
+import {EPIDERMIS_RECORDS,EPIDERMIS_STRATA_ORDER,type EpidermisId} from "../src/lektrusEpidermisAtlas";
 import LektrusSkinSpecimens from "../src/LektrusSkinSpecimens";
-import {anatomyCameraAtBody} from "../src/lektrusAnatomySemanticZoom";
+import {anatomyCameraAtBody,anatomyScreenToBody,anatomyBodyFit} from "../src/lektrusAnatomySemanticZoom";
 import "../src/lektrusHumanAnatomy.css";
 const WIDTH=840,HEIGHT=540;
-const ZOOMS=[1,8,24,80,180,360] as const;
+const ZOOMS=[1,8,24,80,120,180,220,360] as const;
 function Preview(){
  const params=new URLSearchParams(window.location.search);
  const incoming=Number(params.get("zoom"));
@@ -17,8 +18,13 @@ function Preview(){
  const querySource=params.get("source");
  const source=querySource==="thin"||querySource==="thick"?querySource:"human";
  const [scale,setScale]=useState<number>(start);
+ const [selected,setSelected]=useState<EpidermisId|null>(
+  params.get("layer")&&params.get("layer")!=="none"?
+   params.get("layer") as EpidermisId:null);
+ const hitRef=useRef<EpidermisHitTest|null>(null);
  // Confirmed deltoid reference (not an invented palm/sole histological map).
- const focus={x:254,y:182};
+ // Silhouette-registered shoulder epidermis, not the arm interior.
+ const focus={x:260,y:182};
  const camera=anatomyCameraAtBody(scale===1?{x:180,y:300}:focus,
   scale,WIDTH,HEIGHT);
  return <main style={{fontFamily:"system-ui",padding:18,background:"#edf3f0",
@@ -35,13 +41,33 @@ function Preview(){
     {z*100}%</button>)}
   </nav>
   <div style={{display:"flex",gap:16,alignItems:"flex-start"}}>
-   <div data-testid="skin-visual-stage"
+   <div data-testid="skin-visual-stage" role="button" tabIndex={0}
+    aria-label="Выбрать слой эпидермиса на модели тела"
+    onClick={e=>{
+     const bounds=e.currentTarget.getBoundingClientRect();
+     const p=anatomyScreenToBody(camera,
+      {x:e.clientX-bounds.left,y:e.clientY-bounds.top},WIDTH,HEIGHT);
+     const id=hitRef.current?.(p,anatomyBodyFit(WIDTH,HEIGHT).pixelPerWorld*scale);
+     if(id)setSelected(id);
+    }}
     style={{width:WIDTH,height:HEIGHT,flexShrink:0,position:"relative",
      background:"#f5f7f8",border:"1px solid #b4c9bf",
      borderRadius:12,overflow:"hidden"}}>
-    <LektrusSkinSemanticViewport camera={camera}/>
+    <LektrusSkinSemanticViewport camera={camera}
+     selectedEpidermis={selected} hitTestRef={hitRef}/>
    </div>
    <aside style={{width:270,maxHeight:HEIGHT,overflowY:"auto"}}>
+    <div style={{border:"1px solid #bcd5ca",padding:9,borderRadius:10,
+     background:"#fff",display:"grid",gap:6,marginBottom:8}}>
+     <b style={{fontSize:12}}>Эпидермис · нажмите на слой</b>
+     {EPIDERMIS_STRATA_ORDER.map(id=><button type="button" key={id}
+      aria-pressed={selected===id} onClick={()=>setSelected(id)}
+      style={{fontSize:11,textAlign:"left",padding:7,background:selected===id?"#e3f1e8":"#f7faf8"}}>
+      {EPIDERMIS_RECORDS[id].name}</button>)}
+     {selected&&<div role="status" style={{fontSize:11,lineHeight:1.5}}>
+      <b>{EPIDERMIS_RECORDS[selected].name}</b>
+      <p>{EPIDERMIS_RECORDS[selected].microAppearance}</p></div>}
+    </div>
     <LektrusSkinSpecimens defaultOpen defaultSelection={source}/>
    </aside>
   </div>

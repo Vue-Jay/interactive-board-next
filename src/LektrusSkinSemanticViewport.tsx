@@ -3,6 +3,9 @@
  * replace the pixelated stripes of the old 1080 px raster-edge mask.
  * Nothing is drawn over the neutral center of the body. */
 import {useEffect,useRef} from "react";
+import {pickEpidermisAt,sectionAtY,type EpidermisId,type EpidermisPoint} from "./lektrusEpidermisAtlas";
+import {skinEvidenceRegionAt} from "./lektrusSkinEvidenceModel";
+import {drawEpidermisAtlas} from "./lektrusEpidermisRenderer";
 import skinHighRes from "./assets/bio-atlas/human-skin-highres-registered.webp";
 import skinFallback from "./assets/bio-atlas/human-skin-original-registered.webp";
 import type {AnatomyCamera} from "./lektrusHumanAnatomyModel";
@@ -12,15 +15,19 @@ import {drawSkinTissueTexture} from "./lektrusSkinTissueTexture";
 import {skinSectionContours,drawSkinSectionBands,clipSkinSection,
  type SkinSectionContour} from "./lektrusSkinVectorSections";
 
-type Props={camera:AnatomyCamera};
+export type EpidermisHitTest=(point:EpidermisPoint,pixelsPerWorld:number)=>EpidermisId|null;
+type Props={camera:AnatomyCamera;selectedEpidermis?:EpidermisId|null;
+ hitTestRef?:{current:EpidermisHitTest|null};
+ anchorRef?:{current:EpidermisPoint|null}};
 const WORLD_WIDTH=360,WORLD_HEIGHT=600;
 const ATLAS_FACTOR=3;
 const RASTER_WIDTH=WORLD_WIDTH*ATLAS_FACTOR;
 const RASTER_HEIGHT=WORLD_HEIGHT*ATLAS_FACTOR;
 
-export default function LektrusSkinSemanticViewport({camera}:Props){
+export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=null,hitTestRef,anchorRef}:Props){
  const canvasRef=useRef<HTMLCanvasElement>(null);
  const cameraRef=useRef(camera);
+ const selectionRef=useRef<EpidermisId|null>(selectedEpidermis);
  const drawRef=useRef<()=>void>(()=>{});
  useEffect(()=>{
   const canvas=canvasRef.current;
@@ -57,6 +64,20 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
    const alpha=new Uint8ClampedArray(RASTER_WIDTH*RASTER_HEIGHT);
    for(let i=0;i<alpha.length;i++)alpha[i]=rgba[i*4+3];
    contours=skinSectionContours(alpha,RASTER_WIDTH,RASTER_HEIGHT);
+   if(hitTestRef)hitTestRef.current=(point,ppu)=>pickEpidermisAt(contours,point,ppu);
+   // Register an actual epithelial contour point, not the approximate
+   // shoulder centre: zooming the centre at 360× hid the epidermis entirely.
+   if(anchorRef){
+    const candidates=contours.filter(c=>c.inward===-1)
+     .map(c=>({c,p:sectionAtY(c,182)}))
+     .filter((item):item is {c:SkinSectionContour;p:{x:number;y:number;depth:number}}=>
+      !!item.p&&skinEvidenceRegionAt(item.p)==="thin-skin-reference");
+    const best=candidates.sort((a,b)=>
+     Math.abs(a.p.x-260)-Math.abs(b.p.x-260))[0];
+    anchorRef.current=best?
+     {x:best.p.x+best.c.inward*best.p.depth*.0325,y:182}:
+     {x:260,y:182};
+   }
   };
   const draw=()=>{
    frame=0;
@@ -98,19 +119,17 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
     if(contours.length){
      const visible=skinVisibleWorldBounds(cam,w,h,5);
      drawSkinSectionBands(ctx,contours,visible);
-     if(cam.scale>2.5){
+     if(cam.scale>2.5&&refined){
       ctx.save();
       const clipped=clipSkinSection(ctx,contours,visible);
-      if(clipped){
-       // The previous 8-unit vascular loops, random nuclei and fat
-       // honeycomb were not anatomically registered and looked like fake
-       // microscopic anatomy. Only an explicitly *illustrative* soft tissue
-       // tone is drawn. Real evidence remains in the specimen panel.
-       // Never perform a pixel-sampling pass during animated zoom/pan.
-       if(refined)drawSkinTissueTexture(ctx,contours,cam.scale,visible);
-      }
+      if(clipped)drawSkinTissueTexture(ctx,contours,cam.scale,visible);
       ctx.restore();
      }
+     // Four genuine anatomical strata remain registered to exactly the
+     // same world coordinates. Cell illustrations are reserved for the
+     // approved upper-arm site and the idle/detail pass.
+     if(cam.scale>11)drawEpidermisAtlas(
+      ctx,contours,cam.scale,visible,selectionRef.current,refined);
     }
    }
    ctx.restore();
@@ -146,9 +165,12 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
    if(frame)cancelAnimationFrame(frame);
    if(idleTimer!==undefined)clearTimeout(idleTimer);
    drawRef.current=()=>{};
+   if(hitTestRef)hitTestRef.current=null;
+   if(anchorRef)anchorRef.current=null;
   };
  },[]);
  useEffect(()=>{cameraRef.current=camera;drawRef.current();},[camera]);
+ useEffect(()=>{selectionRef.current=selectedEpidermis;drawRef.current();},[selectedEpidermis]);
  return <canvas ref={canvasRef} className="lek-anatomy-semantic-canvas"
-  role="img" aria-label="Условный боковой разрез кожи по контуру тела: эпидермис, дерма и подкожная клетчатка. Реальные микроснимки показаны отдельно"/>;
+  role="img" aria-label="Интерактивный разрез кожи: четыре слоя эпидермиса выделяются на глубоком масштабе, нажмите на слой для объяснения. Модель не является микрофотографией"/>;
 }
