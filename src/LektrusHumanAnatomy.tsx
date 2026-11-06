@@ -3,6 +3,7 @@ import anatomySprite from "./assets/bio-atlas/human-seven-systems-clean.webp";
 import {HUMAN_BODY_SYSTEMS,type HumanFocusedSystem} from "./lektrusBioHumanBodySystems";
 import LektrusBioHumanSystemIcon from "./LektrusBioHumanSystemIcon";
 import LektrusSkinSemanticViewport from "./LektrusSkinSemanticViewport";
+import LektrusSkinSpecimens from "./LektrusSkinSpecimens";
 import {SKIN_MAX_SCALE,anatomyCameraAtBody,
  skinDetailStage} from "./lektrusAnatomySemanticZoom";
 import {ANATOMY_INITIAL_CAMERA,ANATOMY_SPRITE_WIDTH,ANATOMY_CROP_WIDTH,
@@ -251,6 +252,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
      <span><i className="is-dermis"/> Дерма</span>
      <span><i className="is-subcutis"/> Подкожная клетчатка</span>
     </div>
+    <LektrusSkinSpecimens/>
     {displayCamera.scale>=22&&<p>В дерме: волосяной фолликул с луковицей,
      сальная железа и мышца, поднимающая волос; извитая потовая железа
      с протоком к поверхности, капилляры и нервные окончания.</p>}
