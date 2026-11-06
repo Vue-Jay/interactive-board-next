@@ -45,6 +45,16 @@ jobs:
               "http://127.0.0.1:5173/tests/anatomy-visual-preview.html?zoom=$zoom" \
               "artifacts/anatomy/skin-$zoom.png"
           done
+          # Reproduce the user's actual 733% hand and leg view, and
+          # verify that the lateral cutaway gradually begins at >1000%.
+          for region in hand foot legs; do
+            for zoom in 8 16 32; do
+              npx --yes playwright@1.64.1 screenshot --browser chromium \
+                --wait-for-timeout 2200 --viewport-size "1200,900" \
+                "http://127.0.0.1:5173/tests/anatomy-visual-preview.html?region=$region&zoom=$zoom" \
+                "artifacts/anatomy/limbs-$region-$zoom.png"
+            done
+          done
           for layer in corneum granulosum spinosum basale; do
             npx --yes playwright@1.64.1 screenshot --browser chromium \
               --wait-for-timeout 2500 --viewport-size "1200,900" \
