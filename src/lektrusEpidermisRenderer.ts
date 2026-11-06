@@ -10,22 +10,16 @@
  */
 import {skinEvidenceRegionAt,SKIN_ILLUSTRATIVE_LAYERS} from "./lektrusSkinEvidenceModel";
 import {EPIDERMIS_LAYER_FRACTIONS,sectionAtY,
+ epidermisStratumEdge,epidermisMelanocyteCenter,
+ epidermisKeratinocyteCenter,
  type EpidermisId,type EpidermisStratum} from "./lektrusEpidermisAtlas";
+export {epidermisStratumEdge} from "./lektrusEpidermisAtlas";
 import type {SkinSectionContour,SkinSectionPoint} from "./lektrusSkinVectorSections";
 
 type Bounds={minX:number;maxX:number;minY:number;maxY:number};
 export const EPIDERMIS_DETAIL_MAX_CELLS=4500;
 export const EPIDERMIS_MICRO_MIN_SCALE=155;
 const clamp=(v:number)=>Math.max(0,Math.min(1,v));
-const fracWave=(y:number)=>.0030*Math.sin(y*31.4+.4)+
- .0014*Math.sin(y*48.2+1.7);
-/** Small dermal papillae on the epithelial/dermal interface.
- * Same wave in band drawing and hit testing, no screen-fixed noise. */
-export function epidermisStratumEdge(y:number,f:number):number{
- const b=SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd;
- if(f<=0)return f;
- return f+fracWave(y)*(f/b)**4;
-}
 function edgeX(c:SkinSectionContour,p:SkinSectionPoint,f:number){
  return p.x+c.inward*p.depth*epidermisStratumEdge(p.y,f);
 }
@@ -38,6 +32,24 @@ function selectedStratum(id:EpidermisId|null):EpidermisStratum|null{
 function inside(c:SkinSectionContour,b:Bounds){
  return c.maxX>=b.minX&&c.minX<=b.maxX&&
   c.maxY>=b.minY&&c.minY<=b.maxY;
+}
+/** Densify the once-sampled body alpha contour only INSIDE the viewport.
+ * The old 1/3-world-unit polygon jumps became 80-100px sharp saw teeth
+ * at high zoom. Smooth interpolation retains the same anatomy coordinates;
+ * a ceiling on samples keeps touch-panning responsive. */
+function smoothVisiblePoints(c:SkinSectionContour,b:Bounds,ppu:number){
+ const start=Math.max(c.minY,b.minY-.03);
+ const stop=Math.min(c.maxY,b.maxY+.03);
+ if(stop<=start)return [] as SkinSectionPoint[];
+ const desired=Math.max(.006,Math.min(.10,2.5/Math.max(1,ppu)));
+ const count=Math.max(2,Math.min(950,Math.ceil((stop-start)/desired)));
+ const result:SkinSectionPoint[]=[];
+ for(let i=0;i<=count;i++){
+  const y=start+(stop-start)*i/count;
+  const p=sectionAtY(c,y);
+  if(p)result.push(p);
+ }
+ return result;
 }
 function sectionPath(ctx:CanvasRenderingContext2D,c:SkinSectionContour,
  points:readonly SkinSectionPoint[],a:number,b:number){
@@ -70,7 +82,8 @@ function hash(a:number,b:number,salt:number){
 type DetailStats={bands:number;cells:number;granules:number;melanocytes:number};
 export function drawEpidermisAtlas(
  ctx:CanvasRenderingContext2D,contours:readonly SkinSectionContour[],
- scale:number,bounds:Bounds,selected:EpidermisId|null,detailed=true
+ scale:number,bounds:Bounds,selected:EpidermisId|null,detailed=true,
+ pixelsPerWorld=scale
 ):DetailStats{
  const stats:DetailStats={bands:0,cells:0,granules:0,melanocytes:0};
  if(scale<11)return stats;
@@ -79,8 +92,11 @@ export function drawEpidermisAtlas(
  const emphasized=selectedStratum(selected);
  for(const c of contours){
   if(!inside(c,bounds))continue;
-  const points=c.points.filter(p=>
-   p.y>=bounds.minY-.06&&p.y<=bounds.maxY+.06);
+  // During a gesture keep the contour coarse; restore fine curves
+  // only after motion stops, avoiding heavy path reconstruction on
+  // every intermediate animation frame.
+  const points=smoothVisiblePoints(c,bounds,
+   detailed?pixelsPerWorld:Math.min(pixelsPerWorld,55));
   if(points.length<2)continue;
   ctx.save();
   // Four visually distinct *tissue* layers. They do not claim absolute
@@ -223,16 +239,53 @@ export function drawEpidermisAtlas(
       stats.cells++;
      }
     }
-    ctx.globalAlpha=.56*microFade;
-    ctx.strokeStyle=isCorneum?"#f6d6cd":isGranular?"#694772":
-     isBasal?"#6d507c":"#a8799f";
-    ctx.lineWidth=.00090;
+    // Real epithelium is a *compact sheet* of closely apposed cells.
+    // Fill delicate cytoplasm shapes underneath their own borders,
+    // instead of leaving tiny isolated dark dots on a flat purple band.
+    ctx.globalAlpha=.58*microFade;
+    ctx.fillStyle=isCorneum?"#f4dac8":isGranular?"#c39db2":
+     isBasal?"#bc8caa":"#e8c0ca";
+    ctx.fill(outlines);
+    ctx.globalAlpha=.72*microFade;
+    ctx.strokeStyle=isCorneum?"#c29c9b":isGranular?"#77577d":
+     isBasal?"#805577":"#b189a5";
+    ctx.lineWidth=.0015;
     ctx.stroke(outlines);
     if(!isCorneum){
-     ctx.globalAlpha=.52*microFade;ctx.fillStyle="#765478";ctx.fill(nuclei);
+     ctx.globalAlpha=.74*microFade;ctx.fillStyle="#71496e";ctx.fill(nuclei);
     }
     if(isGranular){
      ctx.globalAlpha=.8*microFade;ctx.fillStyle="#694567";ctx.fill(specks);
+    }
+    ctx.restore();
+   }
+   // A sparse set of individually selectable example keratinocytes,
+   // actually present in the spinous cell sheet and positioned by the
+   // same helper used for hit testing. These are NOT fabricated biopsy
+   // locations and never appear on unrelated hands or feet.
+   if(microFade>.50){
+    ctx.save();ctx.globalAlpha=.86*microFade;
+    for(let k=Math.ceil(y0/.23);k*.23<=y1;k++){
+     const y=k*.23,center=epidermisKeratinocyteCenter(c,y);
+     if(!center)continue;
+     const x=center.x;
+     ctx.beginPath();
+     ctx.moveTo(x-.0065,y-.0014);
+     ctx.lineTo(x-.004,y-.0055);
+     ctx.lineTo(x+.0038,y-.005);
+     ctx.lineTo(x+.0066,y+.0008);
+     ctx.lineTo(x+.0035,y+.0054);
+     ctx.lineTo(x-.0051,y+.0048);
+     ctx.closePath();
+     ctx.fillStyle="#ebc4ce";ctx.fill();
+     ctx.strokeStyle="#916a91";ctx.lineWidth=.0013;ctx.stroke();
+     ctx.beginPath();ctx.ellipse(x,y,.0018,.002,0,0,Math.PI*2);
+     ctx.fillStyle="#74536d";ctx.fill();
+     if(selected==="keratinocyte"){
+      ctx.beginPath();ctx.ellipse(x,y,.010,.009,0,0,Math.PI*2);
+      ctx.strokeStyle="#f6d369";ctx.lineWidth=.0019;
+      ctx.globalAlpha=.95;ctx.stroke();
+     }
     }
     ctx.restore();
    }
@@ -246,13 +299,19 @@ export function drawEpidermisAtlas(
      const y=k*.31,p=sectionAtY(c,y);
      if(!p||skinEvidenceRegionAt({x:p.x,y})!=="thin-skin-reference")
       continue;
-     const x=edgeX(c,p,(SKIN_ILLUSTRATIVE_LAYERS.basaleStart+
-      SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd)/2);
+     const center=epidermisMelanocyteCenter(c,y);
+     if(!center)continue;
+     const x=center.x;
      ctx.beginPath();ctx.ellipse(x,y,.0034,.0042,0,0,Math.PI*2);
      ctx.fill();
      ctx.beginPath();ctx.moveTo(x,y);
      ctx.lineTo(x-c.inward*.010,y-.012);
      ctx.moveTo(x,y);ctx.lineTo(x-c.inward*.011,y+.014);ctx.stroke();
+     if(selected==="melanocyte"){
+      ctx.beginPath();ctx.ellipse(x,y,.0075,.008,0,0,Math.PI*2);
+      ctx.strokeStyle="#f7d763";ctx.lineWidth=.002;
+      ctx.globalAlpha=.95;ctx.stroke();
+     }
      stats.melanocytes++;
     }
     ctx.restore();

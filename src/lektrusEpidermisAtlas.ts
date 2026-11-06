@@ -69,14 +69,54 @@ export const EPIDERMIS_STRATA_ORDER=[
  "corneum","granulosum","spinosum","basale"
 ] as const;
 export const EPIDERMIS_LAYER_FRACTIONS=[
- {id:"corneum",start:0,end:SKIN_ILLUSTRATIVE_LAYERS.granulosumStart,color:"#e8b9af"},
+ {id:"corneum",start:0,end:SKIN_ILLUSTRATIVE_LAYERS.granulosumStart,color:"#f0d2c5"},
  {id:"granulosum",start:SKIN_ILLUSTRATIVE_LAYERS.granulosumStart,
-  end:SKIN_ILLUSTRATIVE_LAYERS.spinosumStart,color:"#98729c"},
+  end:SKIN_ILLUSTRATIVE_LAYERS.spinosumStart,color:"#ad88a8"},
  {id:"spinosum",start:SKIN_ILLUSTRATIVE_LAYERS.spinosumStart,
-  end:SKIN_ILLUSTRATIVE_LAYERS.basaleStart,color:"#d8a4bd"},
+  end:SKIN_ILLUSTRATIVE_LAYERS.basaleStart,color:"#e8bbc8"},
  {id:"basale",start:SKIN_ILLUSTRATIVE_LAYERS.basaleStart,
-  end:SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd,color:"#a16c94"}
+  end:SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd,color:"#987293"}
 ] as const;
+/** Shallow, smoothly registered rete ridges of representative thin skin.
+ * Same geometry drives painting AND picking. Not a physical thickness scale. */
+export function epidermisStratumEdge(y:number,fraction:number):number{
+ const width=SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd;
+ if(fraction<=0)return fraction;
+ // Thin hairy skin has low, gentle rete ridges. The previous rapid
+ // oscillations produced large staircase-like purple bumps at 220–360x
+ // that resembled pathological tissue rather than ordinary epidermis.
+ const wave=.00045*Math.sin(y*12.1+.4)+
+  .00022*Math.sin(y*19.3+1.7);
+ return fraction+wave*(fraction/width)**4;
+}
+/** Exact same melanocyte anchor is painted and selected by the pointer.
+ * These are model locations in the representative shoulder, not biopsy data.
+ */
+/** A few *representative*, clickable spinous keratinocytes share the
+ * same world anchors as the cell illustration. This sample is not a
+ * measured population of keratinocytes on the illustrated person. */
+export function epidermisKeratinocyteCenter(
+ contour:SkinSectionContour,anchorY:number
+):EpidermisPoint|null{
+ const p=sectionAtY(contour,anchorY);
+ if(!p||skinEvidenceRegionAt({x:p.x,y:anchorY})!=="thin-skin-reference")
+  return null;
+ const fraction=(SKIN_ILLUSTRATIVE_LAYERS.spinosumStart+
+  SKIN_ILLUSTRATIVE_LAYERS.basaleStart)/2;
+ return {x:p.x+contour.inward*p.depth*
+  epidermisStratumEdge(anchorY,fraction),y:anchorY};
+}
+export function epidermisMelanocyteCenter(
+ contour:SkinSectionContour,anchorY:number
+):EpidermisPoint|null{
+ const p=sectionAtY(contour,anchorY);
+ if(!p||skinEvidenceRegionAt({x:p.x,y:anchorY})!=="thin-skin-reference")
+  return null;
+ const fraction=(SKIN_ILLUSTRATIVE_LAYERS.basaleStart+
+  SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd)/2;
+ return {x:p.x+contour.inward*p.depth*
+  epidermisStratumEdge(anchorY,fraction),y:anchorY};
+}
 export function epidermisLayerAt(fraction:number):EpidermisStratum|null{
  if(!Number.isFinite(fraction))return null;
  for(const l of EPIDERMIS_LAYER_FRACTIONS){
@@ -104,7 +144,8 @@ export function pickEpidermisAt(
  contours:readonly SkinSectionContour[],point:EpidermisPoint,
  pixelsPerWorld:number
 ):EpidermisId|null{
- const tol=Math.min(.11,9/Math.max(1,pixelsPerWorld));
+ const ppu=Math.max(1,pixelsPerWorld);
+ const tol=Math.min(.11,9/ppu);
  let candidate:EpidermisId|null=null,best=Infinity;
  for(const c of contours){
   if(point.x<c.minX-tol||point.x>c.maxX+tol||
@@ -112,24 +153,39 @@ export function pickEpidermisAt(
   const p=sectionAtY(c,point.y);
   if(!p||p.depth<=.04)continue;
   const d=(point.x-p.x)*c.inward;
-  const outer=Math.max(0,d);
-  const epi=p.depth*SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd;
+  const epi=p.depth*epidermisStratumEdge(
+   point.y,SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd);
   if(d< -tol||d>epi+tol)continue;
   const error=d<0?-d:d>epi?d-epi:0;
   if(error>=best)continue;
   best=error;
-  const fraction=Math.max(0,Math.min(.99999*SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd,outer/p.depth));
-  candidate=pixelsPerWorld*epi<28?"epidermis":
-   epidermisLayerAt(fraction)??"epidermis";
-  // At deep zoom, the thin basal border can be explicitly inspected.
-  if(d>epi-.009&&d<epi+.009&&pixelsPerWorld>170)
+  const normalized=d/Math.max(1e-8,p.depth);
+  const screenWidth=ppu*epi;
+  candidate="epidermis";
+  if(screenWidth<28)continue;
+  const selection=EPIDERMIS_LAYER_FRACTIONS.find(l=>
+   normalized>=epidermisStratumEdge(point.y,l.start)&&
+   normalized<epidermisStratumEdge(point.y,l.end));
+  candidate=selection?.id??"epidermis";
+  // Thin basement-membrane zone gets a pointer-friendly hit, but not
+  // a wide fictitious anatomical band.
+  if(Math.abs(d-epi)<=Math.min(.009,5/ppu)&&ppu>170)
    candidate="basement";
-  // The only deliberately registered example is the shoulder, not
-  // a fictitious melanocyte on every palm/foot edge.
-  if(candidate==="basale"&&pixelsPerWorld>=180&&
-   skinEvidenceRegionAt({x:p.x,y:p.y})==="thin-skin-reference"&&
-   Math.abs(point.y/0.31-Math.round(point.y/0.31))<.10)
-   candidate="melanocyte";
+  // Individual representative cell glyphs become clickable only when
+  // they are resolved on screen. Never treat a whole painted stripe as
+  // the specific cell pictured in its scientific card.
+  if(ppu>=180&&skinEvidenceRegionAt({x:p.x,y:point.y})==="thin-skin-reference"){
+   const n=Math.round(point.y/.23);
+   const keratinocyte=epidermisKeratinocyteCenter(c,n*.23);
+   if(keratinocyte&&Math.hypot(point.x-keratinocyte.x,
+     point.y-keratinocyte.y)<=Math.min(.012,5/ppu))
+    candidate="keratinocyte";
+   const k=Math.round(point.y/.31);
+   const center=epidermisMelanocyteCenter(c,k*.31);
+   if(center&&Math.hypot((point.x-center.x)*1.12,
+     (point.y-center.y)*.90)<=Math.min(.014,5/ppu))
+    candidate="melanocyte";
+  }
  }
  return candidate;
 }

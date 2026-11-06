@@ -129,7 +129,8 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
      // same world coordinates. Cell illustrations are reserved for the
      // approved upper-arm site and the idle/detail pass.
      if(cam.scale>11)drawEpidermisAtlas(
-      ctx,contours,cam.scale,visible,selectionRef.current,refined);
+      ctx,contours,cam.scale,visible,selectionRef.current,refined,
+      fit.pixelPerWorld*cam.scale);
     }
    }
    ctx.restore();

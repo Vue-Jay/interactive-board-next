@@ -42,7 +42,7 @@ function palette(region:SkinTissueRegion,fraction:number){
  if(region==="dermis"){
   // No false crisp boundary between papillary and reticular dermis.
   const t=reveal(.14,.48,fraction);
-  return [mix(239,225,t),mix(190,164,t),mix(197,178,t)] as const;
+  return [mix(244,237,t),mix(215,204,t),mix(216,208,t)] as const;
  }
  return [240,218,195] as const;
 }

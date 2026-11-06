@@ -149,6 +149,16 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
    camera:displayed.current};
  };
  const onMove=(e:ReactPointerEvent<HTMLDivElement>)=>{
+  // A hover pointer on a visible epidermal layer is a real interaction,
+  // not an image-only decoration. Keep touch gestures and dragging intact.
+  if(e.pointerType==="mouse"&&e.buttons===0){
+   const {width,height}=dimensions();
+   const target=pointOf(e);
+   const world=anatomyScreenToBody(displayed.current,target,width,height);
+   const hit=system==="integumentary"&&epidermisHit.current?.(
+    world,anatomyBodyFit(width,height).pixelPerWorld*displayed.current.scale);
+   e.currentTarget.style.cursor=hit?"pointer":"grab";
+  }
   if(!pointers.current.has(e.pointerId))return;
   const moved=pointOf(e);
   const from=tapStarts.current.get(e.pointerId);
@@ -303,9 +313,10 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
      aria-label="Интерактивное исследование эпидермиса">
      <div className="lek-anatomy-epidermis-title">
       <strong>Эпидермис · исследование</strong>
-      <p>Нажмите на цветной слой непосредственно на теле или
-       выберите структуру ниже. Микростроение подробно показано
-       для зарегистрированного участка правого плеча.</p>
+      <p>Нажмите на цветной слой прямо на теле либо выберите его
+       в списке. На глубоком увеличении отдельно выбираются
+       кератиноцит и меланоцит. Представительные клеточные формы
+       показаны на учебном разрезе правого плеча, не на микрофото.</p>
      </div>
      {epidermisSelection?
       <div ref={epidermisCardRef} className="lek-anatomy-epidermis-card" role="status" aria-live="polite">
