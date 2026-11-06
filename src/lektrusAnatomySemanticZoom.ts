@@ -80,13 +80,13 @@ export function skinAvailableAt(p:AnatomyWorldPoint):boolean{
  return u*u+v*v<=1;
 }
 /** A *surface* zoom never claims to reveal a cutaway automatically. */
+/** Digital zoom stage labels describe only what is actually drawn.
+ * Do not claim fake capillary loops or cell glyphs are microscopic evidence. */
 export function skinDetailStage(scale:number):string{
- if(scale<1.8)return "Организм · боковой разрез кожи";
- if(scale<6)return "Эпидермис, дерма и подкожная клетчатка";
- if(scale<14)return "Дерма · капилляры и жировые дольки";
- if(scale<30)return "Фолликулы, железы и волокна дермы";
- if(scale<65)return "Дерма · сосуды, нервные окончания и коллаген";
- if(scale<145)return "Подкожная клетчатка · становятся видны мелкие адипоциты";
- if(scale<310)return "Микростроение кожи · отдельные клетки эпидермиса";
- return "Клеточный разрез · кератиноциты, меланоциты, адипоциты";
+ if(scale<1.8)return "Организм · виртуальный боковой разрез кожи";
+ if(scale<6)return "Модель трёх слоёв: эпидермис, дерма, гиподерма";
+ if(scale<30)return "Условная модель кожи · без изображения отдельных сосудов";
+ if(scale<100)return "Слои дермы · настоящие структуры см. на микропрепаратах";
+ if(scale<220)return "Условная фактура ткани · без клеточной калибровки";
+ return "Глубокий цифровой разрез · сравните с реальным гистопрепаратом";
 }
