@@ -40,6 +40,28 @@ for(let y=0;y<=100;y++){
  if(y>=55&&y<=61)paint(y,85,92);
 }
 const contours=vector.skinSectionContours(alpha,width,height,factor);
+// Build the same high-resolution silhouette as a single cached vector path.
+// It must include every real finger and every disconnected limb, and use
+// quadratic curves rather than magnified JPEG/WebP pixels.
+const oldPath2D=globalThis.Path2D;
+const pathCalls=[];
+globalThis.Path2D=class{
+ moveTo(...v){pathCalls.push(["moveTo",...v]);}
+ quadraticCurveTo(...v){pathCalls.push(["curve",...v]);}
+ closePath(){pathCalls.push(["close"]);}
+};
+let outline;
+try{
+ const vectorOutline=load("src/lektrusSkinSilhouetteVectors.ts");
+ outline=vectorOutline.skinSilhouetteVector(alpha,width,height,factor);
+ assert.ok(outline.loops>=3,
+  "The source alpha contains disjoint fingers/forearm and alpha islands");
+ assert.ok(outline.boundaryEdges>100);
+ assert.ok(pathCalls.some(x=>x[0]==="curve"),
+  "Vector outline must not pixelate at 3200% and beyond");
+ assert.ok(pathCalls.every(c=>c.slice(1).every(Number.isFinite)));
+ assert.throws(()=>vectorOutline.skinSilhouetteVector(alpha,width,2,factor));
+}finally{globalThis.Path2D=oldPath2D;}
 assert.ok(contours.every(c=>c.points.length>=18),
  "Ignore very short false tracks at finger tips and antialias artefacts");
 const sampleY=23;
@@ -104,6 +126,10 @@ assert.match(viewport,/const cutawayAlpha=skinCutawayBlend\(cam\.scale\)/);
 assert.match(viewport,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
 assert.match(viewport,/ctx\.drawImage\(neutralPlate,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/,
  "A complete neutral silhouette must remain below every side cutaway");
+assert.match(viewport,/skinSilhouetteVector\(alpha,RASTER_WIDTH,RASTER_HEIGHT,ATLAS_FACTOR\)/,
+ "Vector silhouette must share the alpha mask used for tissue tracing");
+assert.match(viewport,/ctx\.fill\(silhouetteVector\.path,"evenodd"\)/,
+ "At deep zoom the body must not disappear or become 1080px blurry");
 assert.match(viewport,/clipSkinOutsideDistalOutlines\(ctx\)/,
  "The default section must not cover the protected distal silhouette");
 assert.match(viewport,/skinDistalOutlineProtected\(point\)/,
