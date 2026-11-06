@@ -131,7 +131,7 @@ import { documentFingerprint, sharedBoardFingerprint, isOwnRemoteRevision, remot
 import {mergeEditedValue,editorDiff,applyEditorOps} from "./lektrusLiveEditorMerge";
 import {labLiveEditorDiff,applyLabLivePreview} from "./lektrusLabLiveSync";
 import {labSimulationCheckpointDelayMs} from "./lektrusLabPersistence";
-import {mergeBoardDocumentEdits} from "./lektrusBoardThreeWayMerge";
+import {mergeBoardDocumentEdits,mergeBoardItems} from "./lektrusBoardThreeWayMerge";
 import {stampNewBoardItemAuthors,canRemoveBoardItem,blockedBoardItemRemovals} from "./lektrusBoardObjectAuth";
 import {
   parseDocument,
@@ -3600,11 +3600,20 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setEditing(item.id);
   };
   const undo = (direction: number) => {
-    if (gesture.current) return;
+    if (gesture.current || !canEdit) return;
     const next = index.current + direction;
     if (next < 0 || next >= history.current.length) return;
+    // History snapshots describe our change, not a license to replace the
+    // entire present-day board. Rebase the inverse/redo over live remote items.
+    const rebased=mergeBoardItems(
+      history.current[index.current],history.current[next],itemsRef.current);
+    if(blockedBoardItemRemovals(itemsRef.current,rebased,authUser.id,isStudent).length){
+      setNotice("Отмена не может удалить чужую работу");return;
+    }
     index.current = next;
-    display(history.current[next]);
+    display(rebased);
+    if(snapshot.current&&!saveBlocked)
+      snapshot.current=packDocumentInk({...snapshot.current,items:rebased});
     setSelected([]);
   };
   const local = (x: number, y: number): Point => {
