@@ -31,6 +31,36 @@ export function skinCutawayBlend(scale:number):number{
  const t=Math.max(0,Math.min(1,(scale-10)/16));
  return t*t*(3-2*t);
 }
+/** Distal contours are too small and topologically complex for the
+ * enlarged lateral body-wall cross-section. Their real silhouette remains
+ * intact; palm/sole epidermis is available through an EXPLICIT virtual
+ * sample, not a blanket effect over the fingers. These are GUARD regions
+ * in the atlas drawing, never diagnoses of front-facing skin surfaces.
+ */
+export const SKIN_DISTAL_OUTLINE_GUARDS=[
+ {cx:48,cy:345,rx:37,ry:51},
+ {cx:312,cy:345,rx:37,ry:51},
+ {cx:120,cy:579,rx:39,ry:37},
+ {cx:240,cy:579,rx:39,ry:37}
+] as const;
+export function skinDistalOutlineProtected(p:{x:number;y:number}):boolean{
+ return SKIN_DISTAL_OUTLINE_GUARDS.some(g=>{
+  const dx=(p.x-g.cx)/g.rx,dy=(p.y-g.cy)/g.ry;
+  return dx*dx+dy*dy<=1;
+ });
+}
+/** Clip every default wide section out of hands, digits, toes and feet.
+ * The source silhouette is not clipped and remains complete. Caller
+ * restores the context before drawing an explicit palm/sole specimen. */
+export function clipSkinOutsideDistalOutlines(ctx:CanvasRenderingContext2D){
+ ctx.beginPath();
+ ctx.rect(-40,-40,440,680);
+ for(const g of SKIN_DISTAL_OUTLINE_GUARDS){
+  ctx.moveTo(g.cx+g.rx,g.cy);
+  ctx.ellipse(g.cx,g.cy,g.rx,g.ry,0,0,Math.PI*2);
+ }
+ ctx.clip("evenodd");
+}
 export type SkinSectionPoint={x:number;y:number;depth:number};
 export type SkinSectionContour={inward:-1|1;points:SkinSectionPoint[];
  minX:number;maxX:number;minY:number;maxY:number};
