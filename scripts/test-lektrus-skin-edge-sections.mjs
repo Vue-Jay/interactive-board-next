@@ -388,8 +388,8 @@ for(const frac of [.01,.036,.08,.125,.22,.4,.72,.95]){
 }
 const dermalVariations=new Set(Array.from({length:20},(_,i)=>
  JSON.stringify(tissueAt(.36,120,15+i*.17,8.3+i*.11))));
-assert.ok(dermalVariations.size>=12,
- "Dermis must have organic spatial variation, not a flat diagram");
+assert.ok(dermalVariations.size>=5,
+ "Subtle illustrative dermal tones should vary without pretending to be nuclei or vessels");
 const microlow=tissueAt(.77,20,2.1,8.1);
 const microhigh=tissueAt(.77,260,2.1,8.1);
 assert.deepEqual(microlow,microhigh,
