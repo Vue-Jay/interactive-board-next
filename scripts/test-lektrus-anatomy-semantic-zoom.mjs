@@ -184,7 +184,8 @@ assert.doesNotMatch(viewer,/skinRouteActive|setSkinRouteActive|overSkin/,
  "Deep zoom must not depend on an old shoulder activation state");
 assert.match(viewer,/Левый бок/);
 assert.match(viewer,/Правый бок/);
-assert.match(renderer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/);
+assert.doesNotMatch(renderer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/,
+ "No more expensive landmark raster for fake vascular loops");
 assert.match(renderer,/import skinHighRes from "\.\/assets\/bio-atlas\/human-skin-highres-registered.webp"/);
 assert.match(renderer,/import skinFallback from "\.\/assets\/bio-atlas\/human-skin-original-registered.webp"/);
 assert.match(renderer,/body\.src=skinHighRes/);
@@ -203,7 +204,8 @@ assert.doesNotMatch(renderer,/ctx\.ellipse\(EDGE\.x\+EDGE\.width\/2/,
  "No huge oval or circular skin inset may cover the torso");
 assert.match(renderer,/ctx\.fillRect\(0,0,WORLD_WIDTH,WORLD_HEIGHT\)/,
  "Smooth material must cover the full body coordinate system");
-assert.match(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible,/);
+assert.doesNotMatch(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible,/,
+ "World camera must not render unverified repeated vascular strokes");
 assert.match(renderer,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
 assert.match(renderer,/drawSkinSectionBands\(ctx,contours,visible\)/);
 assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
