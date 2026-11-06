@@ -63,3 +63,16 @@ authenticated connector. A live tool call is still required.
 
 **Task priority:** When users say "дальше" on Lektrus, continue the latest
 development task in the repo, not just the planning description.
+
+## Human anatomy: permanent evidence-led delivery contract
+
+Before **any** work on `LektrusHumanAnatomy`, its zoom/cutaways, cells,
+illustrations or future human systems, **read and follow**
+[`docs/ANATOMY_HUMAN_CANONICAL_PLAN.md`](docs/ANATOMY_HUMAN_CANONICAL_PLAN.md).
+It is the canonical user-approved goal, scientific evidence/acceptance criteria,
+implementation sequence and per-iteration status; preserve this file and update
+its progress log after every development turn. Follow the **next unfinished
+substage** when the user says «дальше», «продолжай», «делай»; direct new
+user instructions take priority. Do not claim anatomy accepted from CI alone:
+scientific credibility and real browser screenshots at multiple zoom levels
+are separate acceptance gates. Keep existing GitHub access instructions above.

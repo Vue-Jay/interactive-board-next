@@ -6,6 +6,7 @@
  * Guide, skin layers. This is an educational reconstruction, not a slide.
  */
 import type {SkinSectionContour,SkinSectionPoint} from "./lektrusSkinVectorSections";
+import {SKIN_ILLUSTRATIVE_LAYERS} from "./lektrusSkinEvidenceModel";
 
 export type SkinTissueRegion="epidermis"|"dermis"|"subcutis";
 export type SkinTissueSample={r:number;g:number;b:number;region:SkinTissueRegion};
@@ -33,14 +34,14 @@ export function skinTissueNoise(x:number,y:number,salt:number):number{
 }
 function palette(region:SkinTissueRegion,fraction:number){
  if(region==="epidermis"){
-  if(fraction<.025)return [217,166,171] as const; // corneum, anucleate
-  if(fraction<.046)return [153,94,139] as const; // granulosum
-  if(fraction<.106)return [190,126,160] as const; // spinosum
+  if(fraction<SKIN_ILLUSTRATIVE_LAYERS.granulosumStart)return [217,166,171] as const; // corneum, anucleate
+  if(fraction<SKIN_ILLUSTRATIVE_LAYERS.spinosumStart)return [153,94,139] as const; // granulosum
+  if(fraction<SKIN_ILLUSTRATIVE_LAYERS.basaleStart)return [190,126,160] as const; // spinosum
   return [133,91,133] as const; // basal keratinocytes
  }
  if(region==="dermis"){
   // No false crisp boundary between papillary and reticular dermis.
-  const t=reveal(.21,.37,fraction);
+  const t=reveal(.14,.48,fraction);
   return [mix(239,225,t),mix(190,164,t),mix(197,178,t)] as const;
  }
  return [240,218,195] as const;
@@ -70,8 +71,9 @@ export function skinAdiposeField(x:number,y:number){
  * epidermis does not turn into a jagged high-contrast ribbon. */
 export function skinTissueReteBoundary(y:number):number{
  const warp=skinTissueNoise(y*.33,y*.78,67);
- return .13+.009*Math.sin(y*12+warp*3.2)+
-  .006*Math.sin(y*34.5+warp*4.1);
+ return SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd+
+  .003*Math.sin(y*12+warp*3.2)+
+  .002*Math.sin(y*34.5+warp*4.1);
 }
 /** A 2D keratinocyte mosaic is only resolved far into the continuous zoom.
  * It is not enlarged by the thickness of the teaching cutaway. */
@@ -98,10 +100,10 @@ export function skinTissueSample(x:number,y:number,fraction:number,scale:number)
  const boundary=skinTissueReteBoundary(y);
  // The basal boundary varies organically along the skin but remains fixed
  // at each world point regardless of camera zoom.
- const depth=clamp(original+(.13-boundary)*
-  (1-reveal(.17,.28,original)),0,1);
- const region:SkinTissueRegion=depth<.13?"epidermis":
-  depth<.54?"dermis":"subcutis";
+ const depth=clamp(original+(SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd-boundary)*
+  (1-reveal(.075,.12,original)),0,1);
+ const region:SkinTissueRegion=depth<SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd?"epidermis":
+  depth<SKIN_ILLUSTRATIVE_LAYERS.dermisEnd?"dermis":"subcutis";
  const base=palette(region,depth);
  const warp=skinTissueNoise(x*1.7,y*1.4,13)-.5;
  const n1=skinTissueNoise(x*.82,y*.94,23)-.5;
@@ -121,7 +123,7 @@ export function skinTissueSample(x:number,y:number,fraction:number,scale:number)
   const f2=Math.sin(axis2*51-warp*8+n3*3);
   const strandA=(1-Math.abs(f1))**8;
   const strandB=(1-Math.abs(f2))**11;
-  const density=mix(.48,1,reveal(.17,.53,depth));
+  const density=mix(.48,1,reveal(.13,.65,depth));
   const fiber=(strandA*.73+strandB*.42)*density;
   red+=fiber*33;green+=fiber*20;blue+=fiber*23;
   const dark=(1-Math.abs(Math.sin(axis*12+n2*4)))**16;
@@ -138,7 +140,7 @@ export function skinTissueSample(x:number,y:number,fraction:number,scale:number)
    green-=c.edge*14*detail;
    blue-=c.edge*11*detail;
    // Basal nuclei lie near the dermis, not in the anucleate corneum.
-   if(depth>.046){
+   if(depth>SKIN_ILLUSTRATIVE_LAYERS.spinosumStart){
     const nuclei=(1-Math.abs(Math.sin(x*330+y*191+warp*3)))**38;
     red-=detail*7*nuclei;green-=detail*13*nuclei;blue-=detail*5*nuclei;
    }

@@ -22,3 +22,13 @@ Integrity test:
 
 **Scope:** repository instructions for code assistants; they do not
 themselves control ChatGPT's runtime or authenticate its connector.
+
+## Анатомия человека: обязательный постоянный план
+
+Для всех изменений атласа человека сначала читать
+[`docs/ANATOMY_HUMAN_CANONICAL_PLAN.md`](../docs/ANATOMY_HUMAN_CANONICAL_PLAN.md).
+Там закреплены научные источники, требования к рисункам, порядок задач,
+критерии визуальной приёмки и точный следующий незавершённый этап.
+После каждой итерации обновлять журнал плана. «Дальше» = следующий этап,
+а не новые схемы или только тесты. Этот пункт дополняет, но не заменяет
+существующие правила GitHub в этом файле.

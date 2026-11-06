@@ -5,6 +5,7 @@
  * Both sides of each separate limb remain independent, with neutral centers.
  */
 import {skinEdgeRuns} from "./lektrusSkinEdgeSections";
+import {SKIN_ILLUSTRATIVE_LAYERS} from "./lektrusSkinEvidenceModel";
 export const SKIN_SECTION_WORLD_DEPTH=8.4;
 export const SKIN_SECTION_NEUTRAL_FRACTION=.20;
 export type SkinSectionPoint={x:number;y:number;depth:number};
@@ -13,9 +14,9 @@ export type SkinSectionContour={inward:-1|1;points:SkinSectionPoint[];
 type Track={inward:-1|1;lastRow:number;lastX:number;points:SkinSectionPoint[]};
 type Bounds={minX:number;maxX:number;minY:number;maxY:number};
 const LAYERS=[
- {start:0,end:.13,fill:"#c995aa"},
- {start:.13,end:.54,fill:"#eabec5"},
- {start:.54,end:1,fill:"#f0dfce"}
+ {start:0,end:SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd,fill:"#c995aa"},
+ {start:SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd,end:SKIN_ILLUSTRATIVE_LAYERS.dermisEnd,fill:"#eabec5"},
+ {start:SKIN_ILLUSTRATIVE_LAYERS.dermisEnd,end:1,fill:"#f0dfce"}
 ] as const;
 export function skinSectionContours(
  alpha:Uint8ClampedArray,width:number,height:number,factor=3
@@ -124,7 +125,7 @@ export function drawSkinSectionBands(
   }
   // A soft papillary border, not square raster-band pixels.
   ctx.globalAlpha=.30;ctx.lineWidth=.020;ctx.strokeStyle="#b67f90";
-  for(const fraction of [.13,.54]){
+  for(const fraction of [SKIN_ILLUSTRATIVE_LAYERS.epidermisEnd,SKIN_ILLUSTRATIVE_LAYERS.dermisEnd]){
    ctx.beginPath();
    const first=points[0];
    ctx.moveTo(first.x+c.inward*first.depth*fraction,first.y);

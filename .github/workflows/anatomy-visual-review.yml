@@ -1,0 +1,51 @@
+name: Anatomy visual review (screenshots)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/LektrusSkin*'
+      - 'src/lektrusSkin*'
+      - 'tests/anatomy-visual-preview.*'
+      - 'docs/ANATOMY_HUMAN_CANONICAL_PLAN.md'
+      - '.github/workflows/anatomy-visual-review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  visual-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install headless Chromium
+        run: npx --yes playwright@1.64.1 install --with-deps chromium
+      - name: Render actual skin viewport at four zoom levels
+        run: |
+          mkdir -p artifacts/anatomy
+          npm run dev -- --host 127.0.0.1 > /tmp/lektrus-anatomy-vite.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173/tests/anatomy-visual-preview.html > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5173/tests/anatomy-visual-preview.html > /dev/null
+          for zoom in 1 24 120 360; do
+            npx --yes playwright@1.64.1 screenshot --browser chromium \
+              --wait-for-timeout 2500 --viewport-size "1200,900" \
+              "http://127.0.0.1:5173/tests/anatomy-visual-preview.html?zoom=$zoom" \
+              "artifacts/anatomy/skin-$zoom.png"
+          done
+      - name: Upload visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anatomy-skin-visual-review
+          path: artifacts/anatomy/*.png
+          if-no-files-found: warn
