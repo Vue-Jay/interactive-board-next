@@ -9,11 +9,8 @@ import type {AnatomyCamera} from "./lektrusHumanAnatomyModel";
 import {anatomyBodyFit} from "./lektrusAnatomySemanticZoom";
 import {skinVisibleWorldBounds} from "./lektrusSkinSurfaceField";
 import {drawSkinTissueTexture} from "./lektrusSkinTissueTexture";
-import {drawSkinMicroscopicDetails,drawSkinFineStructures} from "./lektrusSkinHistologyDetail";
-import {createSkinEdgeRaster,drawSkinEdgeDetails,
- SKIN_EDGE_WORLD_WIDTH,type SkinEdgeLandmark} from "./lektrusSkinEdgeSections";
 import {skinSectionContours,drawSkinSectionBands,clipSkinSection,
- SKIN_SECTION_WORLD_DEPTH,type SkinSectionContour} from "./lektrusSkinVectorSections";
+ type SkinSectionContour} from "./lektrusSkinVectorSections";
 
 type Props={camera:AnatomyCamera};
 const WORLD_WIDTH=360,WORLD_HEIGHT=600;
@@ -30,9 +27,20 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
   if(!canvas)return;
   if(!canvas.getContext("2d",{alpha:true,desynchronized:true}))return;
   let active=true,frame=0,ready=false,usingFallback=false;
+  let refined=false;
+  let idleTimer:ReturnType<typeof setTimeout>|undefined;
+  // One debounced refinement, not dozens of synchronous histology
+  // regenerations during the 88ms animated camera easing.
+  const refineAfterMotion=()=>{
+   refined=false;
+   if(idleTimer!==undefined)clearTimeout(idleTimer);
+   requestDraw();
+   idleTimer=setTimeout(()=>{
+    idleTimer=undefined;refined=true;requestDraw();
+   },180);
+  };
   const body=new Image();
   let contours:SkinSectionContour[]=[];
-  let landmarks:SkinEdgeLandmark[]=[];
   let width=0,height=0;
   const requestDraw=()=>{
    if(active&&!frame)frame=requestAnimationFrame(draw);
@@ -49,7 +57,6 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
    const alpha=new Uint8ClampedArray(RASTER_WIDTH*RASTER_HEIGHT);
    for(let i=0;i<alpha.length;i++)alpha[i]=rgba[i*4+3];
    contours=skinSectionContours(alpha,RASTER_WIDTH,RASTER_HEIGHT);
-   landmarks=createSkinEdgeRaster(alpha,RASTER_WIDTH,RASTER_HEIGHT).landmarks;
   };
   const draw=()=>{
    frame=0;
@@ -77,13 +84,17 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
    ctx.scale(fit.pixelPerWorld*cam.scale,fit.pixelPerWorld*cam.scale);
    ctx.translate(-WORLD_WIDTH/2,-WORLD_HEIGHT/2);
    if(ready){
-    ctx.save();
-    ctx.globalAlpha=.46;
-    ctx.drawImage(body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
-    ctx.globalCompositeOperation="source-atop";
-    ctx.fillStyle="#dfe9e7";ctx.globalAlpha=.80;
-    ctx.fillRect(0,0,WORLD_WIDTH,WORLD_HEIGHT);
-    ctx.restore();
+    // Enlarging the 1080px overview plate hundreds of times creates
+    // pixellated false "microdetail". Fade it out before tissue inspection.
+    const overview=Math.max(0,Math.min(1,(20-cam.scale)/12));
+    if(overview>.001){
+     ctx.save();ctx.globalAlpha=.46*overview;
+     ctx.drawImage(body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
+     ctx.globalCompositeOperation="source-atop";
+     ctx.fillStyle="#dfe9e7";ctx.globalAlpha=.80*overview;
+     ctx.fillRect(0,0,WORLD_WIDTH,WORLD_HEIGHT);
+     ctx.restore();
+    }
     if(contours.length){
      const visible=skinVisibleWorldBounds(cam,w,h,5);
      drawSkinSectionBands(ctx,contours,visible);
@@ -91,16 +102,12 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
       ctx.save();
       const clipped=clipSkinSection(ctx,contours,visible);
       if(clipped){
-       // Original continuous histological texture: neither a flat colour
-       // strip nor an unrelated zoom image. It remains inside the true
-       // silhouette edges and underneath anatomical structures.
-       drawSkinTissueTexture(ctx,contours,cam.scale,visible);
-       drawSkinEdgeDetails(ctx,landmarks,cam.scale,visible,
-        SKIN_SECTION_WORLD_DEPTH/SKIN_EDGE_WORLD_WIDTH);
-       // Anatomical cell sizes remain fixed in the body world, even though
-       // the lateral three-layer teaching section is made wider.
-       drawSkinMicroscopicDetails(ctx,contours,cam.scale,visible);
-       drawSkinFineStructures(ctx,contours,cam.scale,visible);
+       // The previous 8-unit vascular loops, random nuclei and fat
+       // honeycomb were not anatomically registered and looked like fake
+       // microscopic anatomy. Only an explicitly *illustrative* soft tissue
+       // tone is drawn. Real evidence remains in the specimen panel.
+       // Never perform a pixel-sampling pass during animated zoom/pan.
+       if(refined)drawSkinTissueTexture(ctx,contours,cam.scale,visible);
       }
       ctx.restore();
      }
@@ -108,7 +115,7 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
    }
    ctx.restore();
   };
-  drawRef.current=requestDraw;
+  drawRef.current=refineAfterMotion;
   const onLoaded=()=>{
    if(!active)return;
    ready=true;
@@ -116,7 +123,7 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
    catch{
     // If image alpha read is prohibited, retain the neutral silhouette
     // without painting unrelated fallback anatomy over it.
-    contours=[];landmarks=[];
+    contours=[];
    }
    requestDraw();
   };
@@ -137,10 +144,11 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
    body.removeEventListener("load",onLoaded);
    body.removeEventListener("error",onError);
    if(frame)cancelAnimationFrame(frame);
+   if(idleTimer!==undefined)clearTimeout(idleTimer);
    drawRef.current=()=>{};
   };
  },[]);
  useEffect(()=>{cameraRef.current=camera;drawRef.current();},[camera]);
  return <canvas ref={canvasRef} className="lek-anatomy-semantic-canvas"
-  role="img" aria-label="Боковой разрез кожи с плавными контурами: эпидермис, дерма, подкожная клетчатка, сосуды, железы, фолликулы и клетки"/>;
+  role="img" aria-label="Условный боковой разрез кожи по контуру тела: эпидермис, дерма и подкожная клетчатка. Реальные микроснимки показаны отдельно"/>;
 }
