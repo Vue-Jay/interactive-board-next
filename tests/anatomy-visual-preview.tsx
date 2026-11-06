@@ -10,7 +10,7 @@ import LektrusSkinSpecimens from "../src/LektrusSkinSpecimens";
 import {anatomyCameraAtBody,anatomyScreenToBody,anatomyBodyFit} from "../src/lektrusAnatomySemanticZoom";
 import "../src/lektrusHumanAnatomy.css";
 const WIDTH=840,HEIGHT=540;
-const ZOOMS=[1,8,24,80,180,360] as const;
+const ZOOMS=[1,8,24,80,120,180,220,360] as const;
 function Preview(){
  const params=new URLSearchParams(window.location.search);
  const incoming=Number(params.get("zoom"));
@@ -23,7 +23,8 @@ function Preview(){
    params.get("layer") as EpidermisId:null);
  const hitRef=useRef<EpidermisHitTest|null>(null);
  // Confirmed deltoid reference (not an invented palm/sole histological map).
- const focus={x:254,y:182};
+ // Silhouette-registered shoulder epidermis, not the arm interior.
+ const focus={x:260,y:182};
  const camera=anatomyCameraAtBody(scale===1?{x:180,y:300}:focus,
   scale,WIDTH,HEIGHT);
  return <main style={{fontFamily:"system-ui",padding:18,background:"#edf3f0",
