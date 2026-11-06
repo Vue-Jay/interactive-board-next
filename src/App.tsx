@@ -2131,12 +2131,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     isAppAdmin,adminMaintenance,isGuest:authUser.isGuest===true
   });
   const {canEdit,isStudent,canManageBoard,canCreateAssignments}=roleCapabilities;
+  const isBoardOwner=boardSummary.role==="owner"&&boardSummary.ownerId===authUser.id;
   const adminHidden = isAppAdmin && adminInvisible;
   const toolAllowedForRole = (id:Tool) => canUseBoardCreationTool(id,roleCapabilities);
   const structurallyLockedForStudent = (item:Item|undefined|null) =>
     !!item&&isStudentProtectedBoardObject(item.kind,roleCapabilities);
   const canTransformBoardObject=(item:Item|null|undefined)=>
-    !!item&&!item.locked&&canTransformStudentBoardObject(item.kind,roleCapabilities);
+    !!item&&(!isLockableBoardItem(item)||!item.locked)&&canTransformStudentBoardObject(item.kind,roleCapabilities);
   const studentSelectionHasProtected = () => isStudent && selected.some(id=>structurallyLockedForStudent(itemsRef.current.find(item=>item.id===id)));
   const rejectStudentStructuralEdit = () => {
     if(!studentSelectionHasProtected()) return false;
@@ -3230,7 +3231,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
   const restoreHistoryVersion=async(entry:BoardHistoryEntry)=>{
     if(!canEdit){setNotice("У вас доступ только для просмотра");return}
-    if(isStudent){setNotice("Восстановление всей доски доступно только преподавателю");return}
+    if(isStudent&&!isBoardOwner){setNotice("Восстановление всей доски доступно только владельцу или преподавателю");return}
     if(!window.confirm(`Восстановить версию №${entry.version}? Текущее состояние останется в истории после следующего сохранения.`))return;
     setHistoryBusy(true);setHistoryError("");
     try{
@@ -3330,7 +3331,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     const right=(rect.width-view.x)/z,bottom=(rect.height-view.y)/z;
     ctx.setTransform(ratio*z,0,0,ratio*z,ratio*view.x,ratio*view.y);
     for(const item of itemsRef.current){
-      if((item.kind!=="pen"&&item.kind!=="marker")||item.hidden||item.locked||!item.points?.length)continue;
+      if((item.kind!=="pen"&&item.kind!=="marker")||item.hidden||!item.points?.length)continue;
       const pad=(item.weight??3)/2;
       if(item.x+item.width+pad<left||item.x-pad>right||item.y+item.height+pad<top||item.y-pad>bottom)continue;
       ctx.save();
@@ -3402,8 +3403,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     eraserSession.current=null;
     // The model is changed once per gesture, as one undo/history operation.
     const before=itemsRef.current;
-    const next=eraseInkAlongPath(before,g.path,eraserSize/2/g.zoom,
-      isStudent?item=>canRemoveBoardItem(item,authUser.id,true):undefined);
+    const next=eraseInkAlongPath(before,g.path,eraserSize/2/g.zoom);
     if(next!==before){
       // Keep the canvas preview until the actual SVG fragments have painted.
       flushSync(()=>{
@@ -3432,7 +3432,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       : itemsRef.current,
   });
   const applyDocument = (data: DocumentData, fromRemote = false) => {
-    if(!fromRemote&&isStudent){
+    if(!fromRemote&&isStudent&&!isBoardOwner){
       setNotice("Замена всей доски доступна только преподавателю");
       return;
     }
@@ -3457,7 +3457,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
   const importBoard = async (file: File) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
-    if (isStudent) { setNotice("Импорт с заменой доски доступен только преподавателю"); return; }
+    if (isStudent&&!isBoardOwner) { setNotice("Импорт с заменой доски доступен только владельцу или преподавателю"); return; }
     try {
       if (file.size > 120 * 1024 * 1024) throw new Error("Файл больше 120 МБ");
       const raw = await file.text();
@@ -3536,7 +3536,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     const current=itemsRef.current;
     // Central destructive-action gate covers keyboard, toolbar, eraser,
     // selected instruments and other paths that do not call deleteSelected().
-    const blocked=blockedBoardItemRemovals(current,next,authUser.id,isStudent);
+    const blocked=blockedBoardItemRemovals(current,next,authUser.id,isStudent,isBoardOwner);
     if(blocked.length){
       setNotice("Нельзя удалить чужую работу или задание преподавателя");
       return;
@@ -3607,7 +3607,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     // entire present-day board. Rebase the inverse/redo over live remote items.
     const rebased=mergeBoardItems(
       history.current[index.current],history.current[next],itemsRef.current);
-    if(blockedBoardItemRemovals(itemsRef.current,rebased,authUser.id,isStudent).length){
+    if(blockedBoardItemRemovals(itemsRef.current,rebased,authUser.id,isStudent,isBoardOwner).length){
       setNotice("Отмена не может удалить чужую работу");return;
     }
     index.current = next;
@@ -5061,7 +5061,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const selectedItems = useMemo(() => selected.map((id) => itemById.get(id)).filter((item): item is Item => Boolean(item)), [selected, itemById]);
   const singleSelected = selectedItems.length === 1 ? selectedItems[0] : null;
   const selectionBounds = useMemo(() => boundsOf(selectedItems), [selectedItems]);
-  const selectionLocked = useMemo(() => selectedItems.some((item) => item.locked), [selectedItems]);
+  const selectionLocked = useMemo(() => selectedItems.some((item) => isLockableBoardItem(item)&&item.locked), [selectedItems]);
   const selectionHasGroup = useMemo(() => selectedItems.some((item) => item.groupId), [selectedItems]);
   const selectionScreenBounds = selectionBounds ? {
     left: selectionBounds.x * view.zoom + view.x,
@@ -5412,16 +5412,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
 
   const deleteSelected = () => { 
-    if(isStudent && selected.some(id=>structurallyLockedForStudent(itemsRef.current.find(item=>item.id===id)))){
-      setNotice("Ученик может выполнять задание, но не изменять его конструкцию");
-      return;
-    }
     if (!selected.length) return;
-    const lockedIds = new Set(itemsRef.current.filter((item) => selected.includes(item.id) && item.locked).map((item) => item.id));
+    const lockedIds = new Set(itemsRef.current.filter((item) => !isBoardOwner&&selected.includes(item.id) &&
+      isLockableBoardItem(item)&&item.locked).map((item) => item.id));
     const foreignIds = new Set(itemsRef.current.filter(item=>selected.includes(item.id)&&
-      !canRemoveBoardItem(item,authUser.id,isStudent)).map(item=>item.id));
+      !canRemoveBoardItem(item,authUser.id,isStudent,isBoardOwner)).map(item=>item.id));
     const deletable = selected.filter((id) => !lockedIds.has(id)&&!foreignIds.has(id));
-    if(foreignIds.size)setNotice("Чужие материалы сохранены. Удаляются только свои незаблокированные объекты");
+    if(foreignIds.size)setNotice("Чужие объекты и задания сохранены; штрихи можно удалять независимо от автора");
     if (!deletable.length) {
       setNotice(foreignIds.size?
         "Чужую работу и задания преподавателя удалять нельзя":
