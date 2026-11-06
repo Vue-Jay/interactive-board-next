@@ -308,7 +308,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path=public,pg_temp
-as $
+as $versioned_save$
 declare
   v_current_version bigint;
   v_current_document jsonb;
@@ -438,7 +438,7 @@ begin
     'ok',true,'conflict',false,'version',v_next_version,'updated_at',now()
   );
 end
-$;
+$versioned_save$;
 revoke all on function public.save_board_document(uuid,jsonb,bigint) from public,anon;
 grant execute on function public.save_board_document(uuid,jsonb,bigint) to authenticated;
 
