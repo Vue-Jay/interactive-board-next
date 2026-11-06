@@ -14,6 +14,8 @@ function Preview(){
  const params=new URLSearchParams(window.location.search);
  const incoming=Number(params.get("zoom"));
  const start=ZOOMS.find(x=>x===incoming)??24;
+ const querySource=params.get("source");
+ const source=querySource==="thin"||querySource==="thick"?querySource:"human";
  const [scale,setScale]=useState<number>(start);
  // Confirmed deltoid reference (not an invented palm/sole histological map).
  const focus={x:254,y:182};
@@ -40,7 +42,7 @@ function Preview(){
     <LektrusSkinSemanticViewport camera={camera}/>
    </div>
    <aside style={{width:270,maxHeight:HEIGHT,overflowY:"auto"}}>
-    <LektrusSkinSpecimens defaultOpen/>
+    <LektrusSkinSpecimens defaultOpen defaultSelection={source}/>
    </aside>
   </div>
   <p style={{fontSize:12}}>Текущий цифровой масштаб: {scale*100}%.
