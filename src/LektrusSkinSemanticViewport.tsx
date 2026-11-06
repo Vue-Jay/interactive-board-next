@@ -1,19 +1,18 @@
-/** One continuous body camera, with a crisp anatomy section along the
- * silhouette flanks. At deep zoom, vector tissue and cellular structures
- * replace the pixelated stripes of the old 1080 px raster-edge mask.
- * Nothing is drawn over the neutral center of the body. */
+/** Continuous silhouette-registered model. The previously fabricated regular
+ * blood vessel loops, gland stamps, Voronoi fat cells and thousands of micro
+ * paths were not grounded in a particular sample and stalled the tablet at
+ * deep zoom. Until approved evidence is available we show only accurate
+ * anatomical layer order as an explicitly NOT TO SCALE educational cutaway.
+ * Human microscopy is available as an attributed independent specimen. */
 import {useEffect,useRef} from "react";
 import skinHighRes from "./assets/bio-atlas/human-skin-highres-registered.webp";
 import skinFallback from "./assets/bio-atlas/human-skin-original-registered.webp";
 import type {AnatomyCamera} from "./lektrusHumanAnatomyModel";
 import {anatomyBodyFit} from "./lektrusAnatomySemanticZoom";
 import {skinVisibleWorldBounds} from "./lektrusSkinSurfaceField";
-import {drawSkinTissueTexture} from "./lektrusSkinTissueTexture";
-import {drawSkinMicroscopicDetails,drawSkinFineStructures} from "./lektrusSkinHistologyDetail";
-import {createSkinEdgeRaster,drawSkinEdgeDetails,
- SKIN_EDGE_WORLD_WIDTH,type SkinEdgeLandmark} from "./lektrusSkinEdgeSections";
-import {skinSectionContours,drawSkinSectionBands,clipSkinSection,
- SKIN_SECTION_WORLD_DEPTH,type SkinSectionContour} from "./lektrusSkinVectorSections";
+import {skinVisibleImageCrop} from "./lektrusSkinFastViewport";
+import {skinSectionContours,drawSkinSectionBands,
+ type SkinSectionContour} from "./lektrusSkinVectorSections";
 
 type Props={camera:AnatomyCamera};
 const WORLD_WIDTH=360,WORLD_HEIGHT=600;
@@ -32,7 +31,6 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
   let active=true,frame=0,ready=false,usingFallback=false;
   const body=new Image();
   let contours:SkinSectionContour[]=[];
-  let landmarks:SkinEdgeLandmark[]=[];
   let width=0,height=0;
   const requestDraw=()=>{
    if(active&&!frame)frame=requestAnimationFrame(draw);
@@ -49,7 +47,6 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
    const alpha=new Uint8ClampedArray(RASTER_WIDTH*RASTER_HEIGHT);
    for(let i=0;i<alpha.length;i++)alpha[i]=rgba[i*4+3];
    contours=skinSectionContours(alpha,RASTER_WIDTH,RASTER_HEIGHT);
-   landmarks=createSkinEdgeRaster(alpha,RASTER_WIDTH,RASTER_HEIGHT).landmarks;
   };
   const draw=()=>{
    frame=0;
@@ -72,39 +69,31 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
    ctx.imageSmoothingEnabled=true;
    ctx.imageSmoothingQuality="high";
    const cam=cameraRef.current,fit=anatomyBodyFit(w,h);
+   const visible=skinVisibleWorldBounds(cam,w,h,1.6);
    ctx.save();
    ctx.translate(w/2+cam.panX,h/2+cam.panY);
    ctx.scale(fit.pixelPerWorld*cam.scale,fit.pixelPerWorld*cam.scale);
    ctx.translate(-WORLD_WIDTH/2,-WORLD_HEIGHT/2);
    if(ready){
-    ctx.save();
-    ctx.globalAlpha=.46;
-    ctx.drawImage(body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
-    ctx.globalCompositeOperation="source-atop";
-    ctx.fillStyle="#dfe9e7";ctx.globalAlpha=.80;
-    ctx.fillRect(0,0,WORLD_WIDTH,WORLD_HEIGHT);
-    ctx.restore();
-    if(contours.length){
-     const visible=skinVisibleWorldBounds(cam,w,h,5);
-     drawSkinSectionBands(ctx,contours,visible);
-     if(cam.scale>2.5){
-      ctx.save();
-      const clipped=clipSkinSection(ctx,contours,visible);
-      if(clipped){
-       // Original continuous histological texture: neither a flat colour
-       // strip nor an unrelated zoom image. It remains inside the true
-       // silhouette edges and underneath anatomical structures.
-       drawSkinTissueTexture(ctx,contours,cam.scale,visible);
-       drawSkinEdgeDetails(ctx,landmarks,cam.scale,visible,
-        SKIN_SECTION_WORLD_DEPTH/SKIN_EDGE_WORLD_WIDTH);
-       // Anatomical cell sizes remain fixed in the body world, even though
-       // the lateral three-layer teaching section is made wider.
-       drawSkinMicroscopicDetails(ctx,contours,cam.scale,visible);
-       drawSkinFineStructures(ctx,contours,cam.scale,visible);
-      }
-      ctx.restore();
-     }
+    // At 4152% the old code transformed the entire 1080x1800 image and
+    // repainted 170k synthetic histology pixels plus >10k vector cells
+    // *every frame*. Both were misleading AND caused frame stalls.
+    // Crop the neutral body raster to the visible region in world space.
+    const crop=skinVisibleImageCrop(visible,
+     body.naturalWidth,body.naturalHeight,1.2);
+    if(crop){
+     ctx.save();ctx.globalAlpha=.46;
+     ctx.drawImage(body,crop.sx,crop.sy,crop.sw,crop.sh,
+      crop.dx,crop.dy,crop.dw,crop.dh);
+     ctx.globalCompositeOperation="source-atop";
+     ctx.fillStyle="#dfe9e7";ctx.globalAlpha=.80;
+     ctx.fillRect(crop.dx,crop.dy,crop.dw,crop.dh);
+     ctx.restore();
     }
+    // A coherent, honest teaching section is preferable to invented
+    // capillary loops and identical fat cells. Keep the same camera
+    // and real flank geometry at any scale, with neutral body centre.
+    if(contours.length)drawSkinSectionBands(ctx,contours,visible);
    }
    ctx.restore();
   };
@@ -116,7 +105,7 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
    catch{
     // If image alpha read is prohibited, retain the neutral silhouette
     // without painting unrelated fallback anatomy over it.
-    contours=[];landmarks=[];
+    contours=[];
    }
    requestDraw();
   };
@@ -142,5 +131,5 @@ export default function LektrusSkinSemanticViewport({camera}:Props){
  },[]);
  useEffect(()=>{cameraRef.current=camera;drawRef.current();},[camera]);
  return <canvas ref={canvasRef} className="lek-anatomy-semantic-canvas"
-  role="img" aria-label="Боковой разрез кожи с плавными контурами: эпидермис, дерма, подкожная клетчатка, сосуды, железы, фолликулы и клетки"/>;
+  role="img" aria-label="Условный боковой разрез покровной системы, не в физическом масштабе: эпидермис, дерма и подкожная клетчатка. Реальные микрофотографии показаны отдельно"/>;
 }

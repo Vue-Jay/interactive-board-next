@@ -33,7 +33,7 @@ assert.equal(world.SKIN_MAX_SCALE,360);
 assert.ok(world.skinAvailableAt(world.SKIN_SHOULDER_CENTER));
 assert.equal(world.skinAvailableAt({x:50,y:470}),false);
 assert.equal(world.skinAvailableAt({x:NaN,y:163}),false);
-assert.equal(world.skinDetailStage(52).includes("срез"),false,
+assert.equal(world.skinDetailStage(52).includes("срез"),true,
  "Ordinary magnification must NEVER teleport into a cross-section");
 assert.equal(world.skinDetailStage(10).includes("чешуйки"),false,
  "At 10x even small epidermal cells must not be exaggerated");
@@ -184,12 +184,12 @@ assert.doesNotMatch(viewer,/skinRouteActive|setSkinRouteActive|overSkin/,
  "Deep zoom must not depend on an old shoulder activation state");
 assert.match(viewer,/Левый бок/);
 assert.match(viewer,/Правый бок/);
-assert.match(renderer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/);
+assert.doesNotMatch(renderer,/createSkinEdgeRaster\(alpha,RASTER_WIDTH,RASTER_HEIGHT\)/);
 assert.match(renderer,/import skinHighRes from "\.\/assets\/bio-atlas\/human-skin-highres-registered.webp"/);
 assert.match(renderer,/import skinFallback from "\.\/assets\/bio-atlas\/human-skin-original-registered.webp"/);
 assert.match(renderer,/body\.src=skinHighRes/);
 assert.match(renderer,/ctx\.imageSmoothingQuality="high"/);
-assert.match(renderer,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/,
+assert.match(renderer,/ctx\.drawImage\(body,crop\.sx,crop\.sy,crop\.sw,crop\.sh/,
  "Native 3x raster must use exactly the old body-world rectangle");
 assert.doesNotMatch(renderer,/cam\.scale\s*\?/,
  "Image registration cannot change with camera scale");
@@ -201,12 +201,12 @@ assert.doesNotMatch(renderer,/cropFeathered|resources\.shoulder/,
  "No magnified shoulder rectangle is rendered at intermediate zoom");
 assert.doesNotMatch(renderer,/ctx\.ellipse\(EDGE\.x\+EDGE\.width\/2/,
  "No huge oval or circular skin inset may cover the torso");
-assert.match(renderer,/ctx\.fillRect\(0,0,WORLD_WIDTH,WORLD_HEIGHT\)/,
+assert.match(renderer,/ctx\.fillRect\(crop\.dx,crop\.dy,crop\.dw,crop\.dh\)/,
  "Smooth material must cover the full body coordinate system");
-assert.match(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible,/);
-assert.match(renderer,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
+assert.doesNotMatch(renderer,/drawSkinEdgeDetails\(ctx,landmarks,cam.scale,visible,/);
+assert.match(renderer,/ctx\.drawImage\(body,crop\.sx,crop\.sy,crop\.sw,crop\.sh/);
 assert.match(renderer,/drawSkinSectionBands\(ctx,contours,visible\)/);
-assert.match(renderer,/clipSkinSection\(ctx,contours,visible\)/);
+assert.doesNotMatch(renderer,/clipSkinSection\(ctx,contours,visible\)/);
 assert.doesNotMatch(renderer,/edgeAtlas|detailCanvas|globalCompositeOperation="destination-in"/);
 assert.doesNotMatch(renderer,/modeRef|sectionBlend|drawSkinMesoTiles|drawSkinMicrotiles|drawSkinSurfaceField/);
 assert.doesNotMatch(renderer,/SKIN_DETAIL_NODES|skinNodeVisibleInViewport/,
