@@ -71,7 +71,8 @@ for(let z=1,last=0;z<=80;z+=.25){
  last=a;
 }
 assert.match(viewport,/const cutawayAlpha=skinCutawayBlend\(cam\.scale\)/);
-assert.match(viewport,/ctx\.drawImage\(body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
+assert.match(viewport,/ctx\.drawImage\(neutralBody\?\?body,0,0,WORLD_WIDTH,WORLD_HEIGHT\)/);
+assert.match(viewport,/globalCompositeOperation="source-in"/);
 assert.doesNotMatch(viewport,/globalAlpha=1-cutawayAlpha/,
  "The neutral body must not disappear when the side section is fully visible");
 assert.doesNotMatch(viewport,/drawSkinTissueTexture\(/,
