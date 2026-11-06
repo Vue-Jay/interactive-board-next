@@ -7987,8 +7987,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     >
                       <Icon name={familyHidden ? "eye-off" : "eye"} size={15} />
                     </button>
-                    <button
-                      className={`layer-lock ${item.locked ? "active" : ""}`} disabled={!family.some(isLockableBoardItem)}
+                    {family.some(isLockableBoardItem)&&<button
+                      className={`layer-lock ${item.locked ? "active" : ""}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         const ids = new Set(family.map((candidate) => candidate.id));
@@ -7999,7 +7999,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                       aria-label={item.locked ? "Разблокировать объект" : "Заблокировать объект"}
                     >
                       <Icon name={item.locked ? "lock" : "unlock"} size={15} />
-                    </button>
+                    </button>}
                   </div>
                 );
               })}
@@ -9862,7 +9862,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
               <span className="selection-toolbar-separator" />
               <button type="button" className="icon-action" onClick={duplicateSelected} title="Дублировать · Ctrl+D"><Icon name="duplicate" size={16} /></button>
-              <button type="button" className="icon-action" onClick={toggleLockSelected} disabled={structurallyLockedForStudent(singleSelected)||!selectedItems.some(isLockableBoardItem)} title={structurallyLockedForStudent(singleSelected)?"Доступно преподавателю":selectionLocked ? "Разблокировать" : "Заблокировать"}><Icon name={selectionLocked ? "unlock" : "lock"} size={16} /></button>
+              {selectedItems.some(isLockableBoardItem)&&<button type="button" className="icon-action" onClick={toggleLockSelected} disabled={structurallyLockedForStudent(singleSelected)} title={structurallyLockedForStudent(singleSelected)?"Доступно преподавателю":selectionLocked ? "Разблокировать" : "Заблокировать"}><Icon name={selectionLocked ? "unlock" : "lock"} size={16} /></button>}
               {singleSelected?.kind !== "connector" && (
                 <>
                   <button type="button" className="icon-action" disabled={selectionLocked} onClick={() => rotateSelected(-90)} title="Повернуть на 90° влево · Alt+←"><Icon name="rotate-left" size={16} /></button>
@@ -10030,7 +10030,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   {selectionHasGroup && !selectionLocked && (
                     <button onClick={() => { ungroupSelected(); setContextMenu(null); }}>Разгруппировать <span>Ctrl+Shift+G</span></button>
                   )}
-                  <button disabled={studentSelectionHasProtected()||!selectedItems.some(isLockableBoardItem)} onClick={() => { toggleLockSelected(); setContextMenu(null); }}>{selectionLocked ? "Разблокировать" : "Заблокировать"}</button>
+                  {selectedItems.some(isLockableBoardItem)&&<button disabled={studentSelectionHasProtected()} onClick={() => { toggleLockSelected(); setContextMenu(null); }}>{selectionLocked ? "Разблокировать" : "Заблокировать"}</button>}
                   <div className="context-separator" />
                   <button disabled={selectionLocked||studentSelectionHasProtected()} onClick={() => { moveLayerStep(true); setContextMenu(null); }}>На слой вперёд <span>Ctrl+]</span></button>
                   <button disabled={selectionLocked||studentSelectionHasProtected()} onClick={() => { moveLayerStep(false); setContextMenu(null); }}>На слой назад <span>Ctrl+[</span></button>
