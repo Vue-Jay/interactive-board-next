@@ -134,14 +134,17 @@ export function drawEpidermisAtlas(
    const y0=Math.max(bounds.minY,c.minY,148);
    const y1=Math.min(bounds.maxY,c.maxY,216);
    const grid=.0106; // ~30 µm center spacing in the WHOLE-BODY coordinate.
-   const rows=Math.max(0,Math.floor((y1-y0)/grid)+1);
-   const width=.40; // section overestimate; budget before drawing
-   const estimate=Math.max(1,rows*Math.ceil(width/grid));
-   const stride=Math.max(1,Math.ceil(Math.sqrt(
-    estimate/(EPIDERMIS_DETAIL_MAX_CELLS-stats.cells))));
-   const step=grid*stride;
-   const j0=Math.ceil(y0/step),j1=Math.floor(y1/step);
    for(const l of EPIDERMIS_LAYER_FRACTIONS){
+    // Reserve independent budgets so the basal cell row cannot disappear
+    // behind thousands of flattened corneocytes/spinous cell paths.
+    const layerBudget=EPIDERMIS_DETAIL_MAX_CELLS/4;
+    const startCount=stats.cells;
+    const localWidth=(l.end-l.start)*8.4;
+    const rows=Math.max(0,(y1-y0)/grid);
+    const estimate=Math.max(1,rows*Math.ceil(localWidth/grid));
+    const stride=Math.max(1,Math.ceil(Math.sqrt(estimate/layerBudget)));
+    const step=grid*stride;
+    const j0=Math.ceil(y0/step),j1=Math.floor(y1/step);
     if(stats.cells>=EPIDERMIS_DETAIL_MAX_CELLS)break;
     ctx.save();
     if(!sectionPath(ctx,c,points,l.start,l.end)){
@@ -153,7 +156,7 @@ export function drawEpidermisAtlas(
     const isBasal=l.id==="basale";
     const outlines=new Path2D(),nuclei=new Path2D();
     const specks=new Path2D();
-    for(let j=j0;j<=j1&&stats.cells<EPIDERMIS_DETAIL_MAX_CELLS;j++){
+    for(let j=j0;j<=j1&&stats.cells-startCount<layerBudget;j++){
      const y=j*step,p=sectionAtY(c,y);
      if(!p||skinEvidenceRegionAt({x:p.x,y})!=="thin-skin-reference")
       continue;
@@ -161,7 +164,7 @@ export function drawEpidermisAtlas(
      const x2=p.x+c.inward*p.depth*l.end;
      const minX=Math.min(x1,x2),maxX=Math.max(x1,x2);
      const k0=Math.ceil(minX/step),k1=Math.floor(maxX/step);
-     for(let k=k0;k<=k1&&stats.cells<EPIDERMIS_DETAIL_MAX_CELLS;k++){
+     for(let k=k0;k<=k1&&stats.cells-startCount<layerBudget;k++){
       const x=k*step;
       const d=(x-p.x)/(c.inward*p.depth);
       if(d<l.start||d>=l.end)continue;
