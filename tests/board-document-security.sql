@@ -6,12 +6,32 @@ create schema auth;
 create function auth.uid() returns uuid language sql stable as $uid$
  select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid;
 $uid$;
-create table public.boards(id uuid primary key,owner_id uuid not null);
+create table public.boards(
+ id uuid primary key,owner_id uuid not null,updated_at timestamptz default now());
 create table public.board_documents(
  board_id uuid primary key references public.boards(id),
  document jsonb not null,version bigint not null default 1,
  updated_at timestamptz not null default now(),updated_by uuid
 );
+-- Minimal independent copies of the existing v247 tables for exercising
+-- the REAL save RPC body; the migration itself never creates/mutates these.
+create table public.profiles(id uuid primary key,display_name text);
+create table public.board_document_history(
+ id bigint generated always as identity primary key,
+ board_id uuid not null,version bigint not null,document jsonb not null,
+ saved_at timestamptz not null default now(),saved_by uuid,
+ unique(board_id,version));
+create table public.board_activity(
+ id bigint generated always as identity primary key,
+ board_id uuid not null,version bigint not null,
+ actor_id uuid,actor_name text,
+ added_count integer,changed_count integer,removed_count integer,item_count integer,
+ unique(board_id,version));
+create function public.board_item_delta(p_old jsonb,p_new jsonb)
+returns jsonb language sql immutable as $delta$
+ select jsonb_build_object('added',0,'changed',0,'removed',0,
+   'items',coalesce(jsonb_array_length(p_new->'items'),0));
+$delta$;
 create function public.can_edit_board(p_board_id uuid)
 returns boolean language sql stable as $edit$
  select coalesce(nullif(current_setting('test.can_edit',true),'')::boolean,false);
@@ -42,6 +62,7 @@ declare
      "text":"","x":1,"y":2,"width":100,"height":80}
    ]}'::jsonb;
  v_new jsonb;
+ v_response jsonb;
 begin
  if has_table_privilege('authenticated','public.board_documents','INSERT')
     or has_table_privilege('authenticated','public.board_documents','UPDATE')
@@ -235,6 +256,56 @@ begin
  values('44444444-4444-4444-8444-444444444444',pupil);
  insert into public.board_documents(board_id,document,version)
  values('44444444-4444-4444-8444-444444444444',v_before,1);
+ -- RPC must never allow a NULL expected version to overwrite a fresh
+ -- peer edit. A new document accepts expected=0; version increments atomically.
+ perform set_config('request.jwt.claim.sub',pupil::text,true);
+ perform set_config('test.role','student',true);
+ perform set_config('test.can_edit','true',true);
+ insert into public.boards(id,owner_id)
+ values('55555555-5555-4555-8555-555555555555',pupil);
+ begin
+  perform public.save_board_document(
+   '55555555-5555-4555-8555-555555555555',v_before,null);
+  raise exception 'NULL expected version bypassed optimistic locking';
+ exception when sqlstate '22023' then null;end;
+ select public.save_board_document(
+   '55555555-5555-4555-8555-555555555555',v_before,0)
+  into v_response;
+ if v_response->>'ok' <> 'true' or (v_response->>'version')::integer<>1 then
+  raise exception 'Initial version-0 RPC save failed: %',v_response;end if;
+ select public.save_board_document(
+   '55555555-5555-4555-8555-555555555555',
+   jsonb_set(v_before,'{title}','"Wrong stale copy"'::jsonb),0)
+ into v_response;
+ if v_response->>'conflict' <> 'true' or
+    (v_response->>'version')::integer<>1 then
+  raise exception 'Stale version did not produce a conflict: %',v_response;end if;
+ select public.save_board_document(
+   '55555555-5555-4555-8555-555555555555',
+   jsonb_set(v_before,'{title}','"Owner change"'::jsonb),1)
+ into v_response;
+ if v_response->>'ok' <> 'true' or (v_response->>'version')::integer<>2 then
+  raise exception 'Valid version-1 owner update failed: %',v_response;end if;
+ select public.save_board_document(
+   '55555555-5555-4555-8555-555555555555',v_before,1)
+ into v_response;
+ if v_response->>'conflict' <> 'true' or
+    (v_response->>'version')::integer<>2 or
+    v_response->'document'->>'title'<>'Owner change' then
+  raise exception 'Stale version-1 RPC should return actual version/document: %',
+    v_response;end if;
+ if (select count(*) from public.board_document_history where board_id=
+   '55555555-5555-4555-8555-555555555555')<>2 then
+  raise exception 'Two successful RPC versions must be recoverable';end if;
+ begin
+  perform public.save_board_document(
+   '55555555-5555-4555-8555-555555555555',v_before,null);
+  raise exception 'RPC allowed NULL version after the first update';
+ exception when sqlstate '22023' then null;end;
+ if (select document->>'title' from public.board_documents where board_id=
+   '55555555-5555-4555-8555-555555555555')<>'Owner change' then
+  raise exception 'A rejected stale save changed the lesson';end if;
+
  raise notice 'PASS: isolated Postgres policy (field diffs, actor, auth, RLS grants and trigger)';
 end;
 $test$;
