@@ -75,7 +75,9 @@ assert.ok(sanitized.every(x=>x.locked!==true),
 assert.ok(sanitized.every(x=>x.createdBy==="student-A"),
  "Removing ink lock must not discard creator provenance");
 assert.equal(canRemoveBoardItem({...invalidLockedPen,locked:undefined},
- "teacher-A",true),true,"Any editor may erase shared ink regardless of who drew it");
+ "teacher-A",true),false,"Authorship still protects foreign strokes independently of lock");
+assert.equal(canRemoveBoardItem(invalidLockedPen,"student-A",true),true,
+ "Obsolete locked=true flag cannot prevent erasing an owned stroke");
 
 const ink={};
 new Function("exports","require",compile("src/inkEraser.ts"))(
@@ -90,10 +92,10 @@ const legacyInk=stroke("legacy-stroke",undefined,0);
 const canvas=[teacherInk,studentInk,legacyInk];
 const result=ink.eraseInkAlongPath(canvas,[{x:50,y:0}],7,
  stroke=>canRemoveBoardItem(stroke,"student-A",true));
-assert.equal(result.some(x=>x.id==="teacher-stroke"),false,
- "Shared ink can be erased even when the teacher drew it");
-assert.equal(result.some(x=>x.id==="legacy-stroke"),false,
- "Unattributed legacy ink is not implicitly locked");
+assert.equal(result.find(x=>x.id==="teacher-stroke"),teacherInk,
+ "Pupil cannot erase teacher stroke although stroke itself has no lock");
+assert.equal(result.find(x=>x.id==="legacy-stroke"),legacyInk,
+ "Pupil cannot erase unattributed older ink");
 assert.equal(result.some(x=>x.id==="student-stroke"),false,
  "Student stroke was cut at the brush intersection");
 assert.ok(result.some(x=>x.createdBy==="student-A"&&x.kind==="pen"),
