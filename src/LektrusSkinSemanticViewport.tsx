@@ -15,7 +15,7 @@ import type {AnatomyCamera} from "./lektrusHumanAnatomyModel";
 import {anatomyBodyFit} from "./lektrusAnatomySemanticZoom";
 import {skinVisibleWorldBounds} from "./lektrusSkinSurfaceField";
 import {skinSectionContours,skinUpperArmReferenceContours,skinCutawayBlend,
- drawSkinSectionBands,type SkinSectionContour} from "./lektrusSkinVectorSections";
+ drawSkinSectionBands,drawSkinBodyContour,type SkinSectionContour} from "./lektrusSkinVectorSections";
 
 export type EpidermisHitTest=(point:EpidermisPoint,pixelsPerWorld:number)=>EpidermisId|null;
 type Props={camera:AnatomyCamera;selectedEpidermis?:EpidermisId|null;
@@ -82,7 +82,7 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
    // muscular/shaded mannequin. Source-in preserves every antialiased
    // fingertip while replacing the interior with neutral atlas paper.
    c.globalCompositeOperation="source-in";
-   c.fillStyle="#e5ecf0";c.fillRect(0,0,RASTER_WIDTH,RASTER_HEIGHT);
+   c.fillStyle="#eff3f5";c.fillRect(0,0,RASTER_WIDTH,RASTER_HEIGHT);
    c.globalCompositeOperation="source-over";
    neutralBody=source;
    thickSitesRef.current={
@@ -152,6 +152,9 @@ export default function LektrusSkinSemanticViewport({camera,selectedEpidermis=nu
     // all camera scales. Never fade away the fingers, foot tips or the
     // neutral center: only the registered educational edge is overlaid.
     ctx.drawImage(neutralBody??body,0,0,WORLD_WIDTH,WORLD_HEIGHT);
+    const visibleOutline=skinVisibleWorldBounds(cam,w,h,1.25);
+    drawSkinBodyContour(ctx,contours,visibleOutline,
+     fit.pixelPerWorld*cam.scale);
     const cutawayAlpha=skinCutawayBlend(cam.scale);
     if(contours.length&&cutawayAlpha>0){
      const visible=skinVisibleWorldBounds(cam,w,h,5);
