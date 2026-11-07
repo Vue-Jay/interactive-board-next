@@ -16,7 +16,7 @@ const expected={
  mathematics:["task","word-problem","equation","geometry"],
  physics:["task","calculation","lab"],
  chemistry:["task","chain","calculation","experiment"],
- russian:["task","orthography","punctuation","morphemes","morphology","syntax","text"],
+ russian:["task","orthography","punctuation","morphemes","morphology","phonetics","syntax","text"],
  languages:["task","translation","gaps","vocabulary","word-order"],
  biology:["task"],geography:["task"],history:["task"],literature:["task"],
  social:["task"],informatics:["task"]
@@ -40,7 +40,7 @@ assert.equal(interaction.activityMatchesTask("russian","interactive",{mode:"orde
 assert.equal(interaction.activityMatchesTask("russian","interactive",{mode:"fill"}),false);
 for(const [tone,format,mode] of [
  ["russian","orthography","fill"],["russian","punctuation","fill"],
- ["russian","morphemes",null],["russian","morphology",null],
+ ["russian","morphemes",null],["russian","morphology",null],["russian","phonetics",null],
  ["russian","syntax",null],["russian","text",null],
  ["languages","vocabulary","match"],["languages","word-order","order"],
  ["languages","gaps","fill"],["languages","translation",null],
