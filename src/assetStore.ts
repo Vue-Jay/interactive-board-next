@@ -187,20 +187,21 @@ export async function ensureBoardAssets(boardId: string, document: DocumentData)
   const ensureOne = async (id: string) => {
     const path = assetPath(boardId, id);
     if (synchronized.has(path)) return;
-    try {
-      // Independent assets are checked in parallel. Sequential verification made
-      // boards with several images/PDFs pause during their first autosave.
-      // Existence verification must not download a possibly 50 MB PDF.
-      // The actual viewer fetch still uses getAsset's memory/IndexedDB cache.
-      if (!await remoteAssetExists(path)) throw new Error("Вложение не найдено в облаке");
+    // A transport error, expired session or RLS denial is NOT proof that the
+    // remote object is missing. Never attempt a duplicate upload in that case.
+    // In particular, re-uploading a 50-MB legacy PDF after a transient HEAD
+    // failure wastes traffic and can turn a recoverable save into a 409.
+    const exists = await remoteAssetExists(path);
+    if (exists) {
       synchronized.add(path);
-    } catch (error) {
-      const legacy = await getLocalAsset(id).catch(() => null);
-      if (!legacy) throw error;
-      const item = document.items.find(item => item.assetId === id);
-      const mime = item?.kind === "pdf" ? "application/pdf" : legacy.type || item?.mime;
-      await putAsset(id, mime && mime !== legacy.type ? legacy.slice(0, legacy.size, mime) : legacy, boardId);
+      return;
     }
+    // Only an explicit Storage "not found" response permits migration.
+    const legacy = await getLocalAsset(id).catch(() => null);
+    if (!legacy) throw new Error("Вложение не найдено в облаке");
+    const item = document.items.find(item => item.assetId === id);
+    const mime = item?.kind === "pdf" ? "application/pdf" : legacy.type || item?.mime;
+    await putAsset(id, mime && mime !== legacy.type ? legacy.slice(0, legacy.size, mime) : legacy, boardId);
   };
   let cursor = 0;
   const workers = Math.min(6, ids.length);
