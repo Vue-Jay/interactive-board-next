@@ -7001,8 +7001,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setNotice("Интерактивные задания текущего слайда сброшены");
   };
 
-  const applyServerDocument = (row: RemoteBoardDocument) => {
-    const data = parseDocument(JSON.stringify(row.document));
+  const applyServerDocument = (row: RemoteBoardDocument, prepared?: DocumentData) => {
+    // Reuse the already validated incoming document. Parsing the same full
+    // Realtime record twice doubles JSON allocations and document validation.
+    const data = prepared ?? parseDocument(JSON.stringify(row.document));
     // Normalize connector positions before setting the clean baseline.
     data.items = syncBoundConnectors(data.items);
     // Background-only revisions must not reset the active pen, zoom, current
@@ -7056,15 +7058,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         deferredRemote.current = row;
       return;
     }
-    const busy = !!(editing || tableEditorId || checklistEditorId || quizEditorId || flashcardEditorId || formulaEditorId || frameNotesEditorId);
-    const dirty = canEdit && (busy ||
-      sharedBoardFingerprint(currentDocument()) !== acknowledgedSharedContent.current);
-    const decision = remoteUpdateDecision(remoteVersion.current, row.version, remoteSaveInFlight.current, dirty || !!pendingRemote.current);
-    if (decision === "ignore") return;
-    if (decision === "defer") {
+    // Most live notifications echo a revision that the RPC has already ACKed.
+    // Reject stale/own versions and defer in-flight saves BEFORE calculating a
+    // full-board fingerprint or reconstructing its entire ink collection.
+    const preliminary = remoteUpdateDecision(remoteVersion.current, row.version, remoteSaveInFlight.current, false);
+    if (preliminary === "ignore") return;
+    if (preliminary === "defer") {
       if (!deferredRemote.current || row.version > deferredRemote.current.version) deferredRemote.current = row;
       return;
     }
+    const busy = !!(editing || tableEditorId || checklistEditorId || quizEditorId || flashcardEditorId || formulaEditorId || frameNotesEditorId);
+    const dirty = canEdit && (busy ||
+      sharedBoardFingerprint(currentDocument()) !== acknowledgedSharedContent.current);
+    const decision = dirty || !!pendingRemote.current ? "conflict" : "apply";
     try {
       const data = parseDocument(JSON.stringify(row.document));
       if (isOwnRemoteRevision(row, authUser.id, lastAttempt.current)) {
@@ -7120,7 +7126,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         window.setTimeout(()=>{if(boardMounted.current)void pushRemoteSnapshot(snapshot.current??merged)},0);
         return;
       }
-      applyServerDocument(row);
+      applyServerDocument(row, data);
     } catch { setNotice("Не удалось прочитать новую серверную версию. Ваши изменения сохранены на доске."); }
   };
   useEffect(() => layoutEditing?()=>{}:subscribeBoardDocument(boardSummary.id, row => receiveRemote.current(row), setRealtimeStatus), [boardSummary.id,layoutEditing]);
