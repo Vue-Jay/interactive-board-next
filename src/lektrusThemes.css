@@ -665,3 +665,18 @@
 .lectris-workspace-stage :is(.students-shell .students-toolbar>button,.schedule-shell .schedule-view-toggle>button):focus-visible{
   outline:2px solid var(--lt-focus);outline-offset:2px;
 }
+
+/* The canvas itself stays paper-white. Only the legacy violet onboarding
+   accent and hover treatment migrate to the selected Lektrus palette. */
+.workspace .welcome-badge{
+  background:var(--lt-selected)!important;
+  color:var(--lt-selected-ink)!important;
+}
+.workspace .welcome-actions button:hover{
+  border-color:var(--lt-primary)!important;
+  background:#f6f8fc!important;
+  color:var(--lt-primary)!important;
+}
+.workspace .welcome-actions button:focus-visible{
+  outline:2px solid var(--lt-focus);outline-offset:2px;
+}
