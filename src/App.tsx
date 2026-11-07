@@ -2566,6 +2566,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const viewerPendingPan = useRef<View | null>(null);
   const fastPanWorld = useRef<HTMLDivElement>(null);
   const fastPanOverlay = useRef<HTMLDivElement>(null);
+  // Screen-space selection handles and actions must follow compositor-only panning.
+  const fastPanSelection = useRef<HTMLDivElement>(null);
   const fastPanBackground = useRef<HTMLDivElement>(null);
   // Stable portal host for rulers, set squares and protractors. Their
   // screen-space positions follow the same live camera delta as remote ink.
@@ -2580,6 +2582,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       fastPanWorld.current.style.transform=boardWorldTransform(next);
     if (fastPanOverlay.current)
       fastPanOverlay.current.style.transform=boardOverlayTransform(next,viewRef.current);
+    if (fastPanSelection.current)
+      fastPanSelection.current.style.transform=boardOverlayTransform(next,viewRef.current);
     if (instrumentViewportHost)
       instrumentViewportHost.style.transform=boardOverlayTransform(next,viewRef.current);
     // Moving the CSS gradient directly forced a full-screen
@@ -2618,6 +2622,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       const target=restore??viewRef.current;
       paintPendingPan(target);
       if (fastPanOverlay.current)fastPanOverlay.current.style.transform="none";
+      if (fastPanSelection.current)fastPanSelection.current.style.transform="none";
       if (instrumentViewportHost)instrumentViewportHost.style.transform="none";
       if (fastPanBackground.current)fastPanBackground.current.style.transform="none";
       fastPanDirty.current=false;
@@ -2633,6 +2638,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   useLayoutEffect(() => {
     if (!fastPanDirty.current || viewerPendingPan.current)return;
     if (fastPanOverlay.current)fastPanOverlay.current.style.transform="none";
+    if (fastPanSelection.current)fastPanSelection.current.style.transform="none";
     if (instrumentViewportHost)instrumentViewportHost.style.transform="none";
     if (fastPanBackground.current)fastPanBackground.current.style.transform="none";
     fastPanDirty.current=false;
@@ -9862,6 +9868,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             />
           )}
           {presentation && presentationBlackout && <div className="presentation-blackout" onPointerDown={(e) => e.stopPropagation()} onDoubleClick={() => setPresentationBlackout(false)}><div><strong>Экран затемнён</strong><span>B или двойной щелчок — вернуться к слайду</span></div></div>}
+          <div ref={fastPanSelection} className="board-selection-pan-layer">
           {singleSelected?.kind === "connector" && selectedConnectorEndpoints && !editing && !selectionLocked && (
             <div className="connector-endpoint-overlay" aria-label="Редактирование соединительной линии">
               <svg className="connector-selection-line" aria-hidden="true">
@@ -10249,6 +10256,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               <button className="selection-toolbar-danger icon-action" disabled={selectionLocked} onClick={deleteSelected} title="Удалить · Delete"><Icon name="trash" size={16} /></button>
             </div>
           )}
+          </div>
           {guides.x != null && (
             <div
               className="smart-guide smart-guide-vertical"
