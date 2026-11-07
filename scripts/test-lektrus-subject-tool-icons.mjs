@@ -81,7 +81,7 @@ assert.ok(styles.includes('body>.lektrus-subject-tools-panel .lektrus-subject-to
 assert.ok(styles.includes("prefers-reduced-motion:reduce"));
 // The visual language is shared with the ordinary pencil/select/eraser icons.
 const inkStyles=read("src/lektrusBoardToolIcons.css");
-const entry=read("src/main.tsx");
+const entry=read("src/appEntry.tsx");
 const appIconBody=app.slice(app.indexOf("const iconBody ="),app.indexOf("function Icon("));
 const appSvg=app.slice(app.indexOf("function Icon("),app.indexOf("function loadInitial("));
 assert.ok(appSvg.includes('strokeWidth={compactCategory?1.9:name==="section-arrows"?2.4:1.9}'),

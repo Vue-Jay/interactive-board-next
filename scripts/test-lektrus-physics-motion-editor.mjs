@@ -8,7 +8,7 @@ const css=read("src/lektrusPhysicsGraphEditor.css");
 const circuit=read("src/LektrusCircuitEditor.tsx");
 const buttons=read("src/lektrusCircuitButtons2026.css");
 const icon=read("src/LektrusCircuitUiIcon.tsx");
-const entry=read("src/main.tsx");
+const entry=read("src/appEntry.tsx");
 const parsed=ts.transpileModule(editor,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ES2022},
   reportDiagnostics:true,fileName:"LektrusPhysicsGraphEditor.tsx"});
 assert.equal(parsed.diagnostics?.filter(d=>d.category===ts.DiagnosticCategory.Error).length??0,0,
