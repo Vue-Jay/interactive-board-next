@@ -166,7 +166,7 @@ const atlasEditor=fs.readFileSync(new URL("../src/LektrusSchoolDiagramEditor.tsx
 const atlasView=fs.readFileSync(new URL("../src/LektrusSchoolDiagramView.tsx",import.meta.url),"utf8");
 const atlasUi=fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8");
 const atlasEditorCss=fs.readFileSync(new URL("../src/lektrusAtlasEditor.css",import.meta.url),"utf8");
-const appBootstrap=fs.readFileSync(new URL("../src/main.tsx",import.meta.url),"utf8");
+const appBootstrap=fs.readFileSync(new URL("../src/appEntry.tsx",import.meta.url),"utf8");
 assert.match(atlasEditor,/onChange=\{isAtlas\?set:undefined\} editorMode=\{isAtlas\}/,
  "Selections in atlas preview should persist when added to board");
 assert.match(atlasView,/editorMode=\{editorMode\}/,
@@ -1010,7 +1010,7 @@ assert.deepEqual(hitLib.contourEraserHits([movable],[],{...labelHitPoint,x:label
 // as a click on the control strip. This previously disabled *all* handles.
 assert.ok(application.includes('const transformHandle=target.closest("[data-transform-handle],[data-group-transform-handle],[data-connector-endpoint],[data-group-selection-drag],[data-board-selection-grip]")'));
 assert.ok(application.includes('if(!transformHandle&&target.closest("button,input,select,textarea'));
-assert.ok(application.includes('gesture.current = {\n        pointer: e.pointerId,\n        mode: transformHandle === "rotate" ? "rotate" : "resize"'));
+assert.match(application,/gesture\.current\s*=\s*\{\s*pointer:\s*e\.pointerId,\s*mode:\s*transformHandle\s*===\s*"rotate"\s*\?\s*"rotate"\s*:\s*"resize"/);
 const contourInkTs=fs.readFileSync(new URL("../src/lektrusContourInk.ts",import.meta.url),"utf8");
 const inkEraserTs=fs.readFileSync(new URL("../src/inkEraser.ts",import.meta.url),"utf8");
 const inkExports={};
