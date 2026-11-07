@@ -16,7 +16,9 @@ export function canCompositeBoardDrag<T extends DragItemGeometry>(
 ):boolean{
   if(ids.size===0||ids.size>64)return false;
   for(const item of items){
-    if(ids.has(item.id)&&item.kind==="connector")return false;
+    // Ink can live in a raster layer rather than a mounted DOM wrapper;
+    // instruments are drawn through their own screen-space portal.
+    if(ids.has(item.id)&&["connector","pen","marker","instrument"].includes(item.kind))return false;
     if(item.kind==="connector"&&(
       item.connectorStartBinding&&ids.has(item.connectorStartBinding.itemId)||
       item.connectorEndBinding&&ids.has(item.connectorEndBinding.itemId)
