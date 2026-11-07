@@ -94,7 +94,7 @@ assert.equal((trainingView.match(/onPointerDown=\{stopInteractive\}/g)??[]).leng
 assert.equal((trainingView.match(/onPointerUp=\{stopInteractive\}/g)??[]).length,2);
 assert.doesNotMatch(trainingView,/onPointerDown=\{stop\}/,
  "Unconditional pointer suppression makes embedded exercises immovable");
-assert.equal((trainingView.match(/const codesKey=d\.countryCodes\.join\("\\|"\);/g)??[]).length,2,
+assert.equal((trainingView.match(/const codesKey=d\.countryCodes\.join\("\|"\);/g)??[]).length,2,
  "Both exercises must compare country contents instead of array identity");
 assert.equal((trainingView.match(/\[codesKey,d\.relation,d\.reverse\]/g)??[]).length,2,
  "Realtime refreshes must not erase the pupil's matching/card progress");
