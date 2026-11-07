@@ -12,8 +12,10 @@ const fragment=(from,to)=>{
 // The prior compositor optimization was accidentally undone because a fresh
 // {} guide object was passed to React on EVERY pointermove. On large boards
 // this rerendered all object and ink layers despite the direct CSS transform.
-const clear=fragment("const [guides, setGuides]","const [contextMenu,");
-assert.match(clear,/const clearGuides = \(\) => setGuides\(current =>\s*current\.x == null && current\.y == null \? current : \{\}\)/);
+const clear=fragment("const guideX=useRef<HTMLDivElement>(null);","const [contextMenu,");
+assert.match(clear,/const clearGuides=\(\)=>setDragGuides\(\{\}\)/);
+assert.doesNotMatch(clear,/setGuides\(|useState<GuideState>/,
+ "Drag guides must not queue any React state during pointermove");
 const moves=fragment("const move = (e: PE<HTMLElement>) => {","  useEffect(() => {");
 const pan=moves.slice(moves.indexOf('if (g.mode === "hand-smart")'),moves.indexOf('} else if (g.mode === "drag")'));
 assert.doesNotMatch(pan,/setGuides\(|clearGuides\(|setItems\(|setView\(/,

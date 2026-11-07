@@ -27,6 +27,7 @@ jobs:
       - run: node scripts/test-lektrus-ink-raster-budget.mjs
       - run: node scripts/test-lektrus-ink-spatial-index.mjs
       - run: node scripts/test-board-pan-performance.mjs
+      - run: node scripts/test-board-object-drag-compositor.mjs
       - run: node scripts/test-board-navigation-no-rerenders.mjs
       - run: node scripts/test-board-measuring-compositor-sync.mjs
       - run: node scripts/test-board-background-gpu.mjs

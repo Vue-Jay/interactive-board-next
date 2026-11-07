@@ -14,6 +14,7 @@ import {
 } from "react";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import {boardWorldTransform,boardOverlayTransform} from "./boardPanTransform";
+import {canCompositeBoardDrag,translatedBoardDragItems,paintBoardDragTranslation,clearBoardDragTranslation} from "./boardDragCompositor";
 import {boardGridTransform} from "./boardBackgroundPan";
 import {chemistryBoardHasContent} from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
@@ -2411,12 +2412,23 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   useEffect(() => { writeInkPreferences(authUser.id, inkPreferences); }, [authUser.id, inkPreferences]);
   const [eraserSize, setEraserSize] = useState(22);
   const [snapEnabled, setSnapEnabled] = useState(true);
-  const [guides, setGuides] = useState<GuideState>({});
-  // Never schedule a React render if the guides are already absent. On a
-  // busy board, the old clearGuides() inside pointermove rebuilt the whole
-  // workspace despite the compositor-only camera optimization.
-  const clearGuides = () => setGuides(current =>
-    current.x == null && current.y == null ? current : {});
+  const guideX=useRef<HTMLDivElement>(null);
+  const guideY=useRef<HTMLDivElement>(null);
+  // Smart guides are purely transient DOM decorations. Updating their React
+  // state every animation frame forced the entire workspace to render while
+  // an object was being dragged, even with a GPU-composited preview.
+  const setDragGuides=(next:GuideState)=>{
+    const x=guideX.current,y=guideY.current;
+    if(x){
+      if(next.x == null)x.style.display="none";
+      else{x.style.left=`${next.x*viewRef.current.zoom+viewRef.current.x}px`;x.style.display="block";}
+    }
+    if(y){
+      if(next.y == null)y.style.display="none";
+      else{y.style.top=`${next.y*viewRef.current.zoom+viewRef.current.y}px`;y.style.display="block";}
+    }
+  };
+  const clearGuides=()=>setDragGuides({});
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [layersOpen, setLayersOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -2770,6 +2782,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [online,setOnline]=useState(()=>navigator.onLine);
   const [updateReady,setUpdateReady]=useState<ServiceWorkerRegistration|null>(null);
   const gesture = useRef<Gesture | null>(null);
+  // The large React object tree stays still while an ordinary selected
+  // object travels. Keep only DOM targets and original poses for this gesture.
+  const compositorDrag=useRef<{
+    gesture:Gesture;selected:Set<string>;elements:HTMLElement[];
+    liveBases:BoardObjectPose[];dx:number;dy:number;
+  }|null>(null);
   // The capture phase starts drags even when a nested lesson widget stops
   // pointerdown/pointermove bubbling. Track the owning pointer to consume
   // movement and release exactly once, without stealing active controls.
@@ -3357,7 +3375,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     }
   };
 
-  const display = (next: Item[]) => {
+  const display = (next: Item[],immediate=false) => {
     const synced = syncBoundConnectors(next);
     const active=gesture.current;
     if(active&&canEdit&&active.ids.length&&active.ids.length<=64&&
@@ -3377,6 +3395,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     // Keep model state synchronous for pointer math, but paint at most once per frame.
     // This prevents 100+ React renders/sec on fast mouse/touch drags.
     itemsRef.current = synced;
+    if(immediate){
+      if(displayFrame.current!==null)cancelAnimationFrame(displayFrame.current);
+      displayFrame.current=null;
+      pendingDisplayItems.current=null;
+      setItems(synced);
+      return;
+    }
     pendingDisplayItems.current = synced;
     if (displayFrame.current != null) return;
     displayFrame.current = requestAnimationFrame(() => {
@@ -3609,7 +3634,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       );
     }
   };
-  const commit = (next: Item[], options?:{labSimulation?:boolean}) => {
+  const commit = (next: Item[], options?:{labSimulation?:boolean;immediatePaint?:boolean}) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
     const current=itemsRef.current;
     // Central destructive-action gate covers keyboard, toolbar, eraser,
@@ -3643,7 +3668,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       while (history.current.length > historyLimit) history.current.shift();
       index.current = history.current.length - 1;
     }
-    display(normalized);
+    display(normalized,options?.immediatePaint===true);
     // React paints the committed items on the next frame. Keep the persistence
     // snapshot synchronous so navigating away immediately cannot save the old
     // document or make a new science object revert to generic coordinates.
@@ -4134,6 +4159,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     const g = gesture.current;
     finishViewerPan(cancel,g?.view);
     if (!g) return;
+    const dragPreview=compositorDrag.current?.gesture===g?compositorDrag.current:null;
+    if(dragPreview){
+      // Materialize the last compositor position before sending FINAL and
+      // before committing the single undo/save revision. No per-frame copies.
+      itemsRef.current=cancel?(g.restore??g.before):translatedBoardDragItems(
+        g.before,dragPreview.selected,dragPreview.dx,dragPreview.dy);
+    }
     gesture.current = null;
     // The last pointer sample is applied synchronously before end(). Send it
     // immediately, even if the throttle currently holds an older preview.
@@ -4159,12 +4191,17 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       setView(g.view);
     } else if (g.mode === "hand-smart") {
       if (g.dragging) {
-        if (g.handMoveSelection) commit(itemsRef.current);
+        if (g.handMoveSelection) {
+          if(dragPreview)flushSync(()=>commit(itemsRef.current,{immediatePaint:true}));
+          else commit(itemsRef.current);
+        }
       } else {
         setSelected(g.handHitIds ?? []);
       }
-    } else if (g.mode === "drag" || g.mode === "erase" || g.mode === "resize" || g.mode === "rotate" || g.mode === "connector-end")
-      commit(itemsRef.current);
+    } else if (g.mode === "drag" || g.mode === "erase" || g.mode === "resize" || g.mode === "rotate" || g.mode === "connector-end") {
+      if(dragPreview)flushSync(()=>commit(itemsRef.current,{immediatePaint:true}));
+      else commit(itemsRef.current);
+    }
     else if (g.mode === "draw" && g.ink)
       commit([
         ...g.before,
@@ -4209,6 +4246,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       }
       const hits=[...selectedIds];
       setSelected(g.additive ? [...new Set([...g.ids,...hits])] : hits);
+    }
+    // React now owns the final coordinates. Clear the compositor translation
+    // in the same JS turn so neither selection handles nor school widgets
+    // briefly jump back to their original location.
+    if(dragPreview){
+      clearBoardDragTranslation(dragPreview.elements,fastPanSelection.current);
+      compositorDrag.current=null;
     }
     setPath([]);
     setMarqueeRect(null);
@@ -4721,6 +4765,36 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const dragSnapCache = useRef(new WeakMap<Gesture,{
     selected:Set<string>; moving:Bounds|null; snapIndex:BoardDragSnapIndex;
   }>());
+  const paintCompositorDrag=(g:Gesture,dx:number,dy:number):boolean=>{
+    let preview=compositorDrag.current;
+    if(preview?.gesture!==g){
+      const selected=new Set(g.ids);
+      if(!canCompositeBoardDrag(g.before,selected))return false;
+      const origins=getGestureOrigins(g);
+      const liveBases:BoardObjectPose[]=[];
+      // Cache original transforms only once: the board may contain 10,000+
+      // items, but only the grabbed objects need a per-frame change.
+      for(const index of gestureIndices.current.get(g)??[]){
+        const item=g.before[index];
+        const origin=item&&origins.get(item.id);
+        if(item&&origin&&selected.has(item.id))
+          liveBases.push(toBoardObjectPose(item,origin));
+      }
+      const elements=Array.from(fastPanWorld.current?.querySelectorAll<HTMLElement>(
+        ".board-object[data-object]")??[]).filter(el=>selected.has(el.dataset.object??""));
+      preview={gesture:g,selected,elements,liveBases,dx:0,dy:0};
+      compositorDrag.current=preview;
+    }
+    preview.dx=dx;preview.dy=dy;
+    paintBoardDragTranslation(preview.elements,fastPanSelection.current,
+      dx,dy,g.view.zoom);
+    if(preview.liveBases.length){
+      workChannel.current?.publishTransform(preview.liveBases.map(pose=>({
+        ...pose,x:pose.x+dx,y:pose.y+dy
+      })));
+    }
+    return true;
+  };
   const move = (e: PE<HTMLElement>) => {
     const g = gesture.current;
     if (!g || e.pointerId !== g.pointer) return;
@@ -4743,7 +4817,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       if (!g.dragging) return;
       if (g.handMoveSelection && g.ids.length) {
         const worldDx=dx/g.view.zoom, worldDy=dy/g.view.zoom;
-        display(g.before.map(item=>g.ids.includes(item.id)?{...item,x:item.x+worldDx,y:item.y+worldDy}:item));
+        if(!paintCompositorDrag(g,worldDx,worldDy))
+          display(g.before.map(item=>g.ids.includes(item.id)?{...item,x:item.x+worldDx,y:item.y+worldDy}:item));
       } else {
         // A navigation frame must not mutate React state.
         scheduleViewerPan({...g.view,x:g.view.x+dx,y:g.view.y+dy});
@@ -4768,22 +4843,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           const snapped = snapBoardDrag(cache.moving,cache.snapIndex,worldDx,worldDy,7/g.view.zoom);
           worldDx = snapped.dx;
           worldDy = snapped.dy;
-          setGuides(previous=>previous.x===snapped.guides.x&&previous.y===snapped.guides.y?previous:snapped.guides);
+          setDragGuides(snapped.guides);
         }
       } else {
         clearGuides();
       }
-      display(
-        g.before.map((item) =>
-          cache.selected.has(item.id)
-            ? {
-                ...item,
-                x: item.x + worldDx,
-                y: item.y + worldDy,
-              }
-            : item,
-        ),
-      );
+      if(!paintCompositorDrag(g,worldDx,worldDy))
+        display(
+          g.before.map((item) =>
+            cache.selected.has(item.id)
+              ? {...item,x:item.x+worldDx,y:item.y+worldDy}
+              : item,
+          ),
+        );
     } else if (g.mode === "connector-end" && g.handle && g.transformItem?.kind === "connector") {
       clearGuides();
       const base = g.transformItem;
@@ -4903,12 +4975,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
   const moveObjectFrame=(e:PE<HTMLElement>)=>{
     const active=gesture.current;
-    if(!active||!["drag","resize","rotate","connector-end"].includes(active.mode)){
+    if(!active||!["drag","resize","rotate","connector-end"].includes(active.mode)&&
+      !(active.mode==="hand-smart"&&active.handMoveSelection)){
       move(e);return;
     }
     // Capture the pointer as soon as a drag crosses its five-pixel threshold.
     // Subsequent moves are coalesced, not the initial mouse interaction.
-    if(active.mode==="drag"&&!active.dragging){move(e);return;}
+    if((active.mode==="drag"||active.mode==="hand-smart")&&!active.dragging){move(e);return;}
     pendingObjectTransform.current={
       pointerId:e.pointerId,clientX:e.clientX,clientY:e.clientY,
       altKey:e.altKey,shiftKey:e.shiftKey
@@ -10257,20 +10330,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             </div>
           )}
           </div>
-          {guides.x != null && (
-            <div
-              className="smart-guide smart-guide-vertical"
-              style={{ left: guides.x * view.zoom + view.x }}
-              aria-hidden="true"
-            />
-          )}
-          {guides.y != null && (
-            <div
-              className="smart-guide smart-guide-horizontal"
-              style={{ top: guides.y * view.zoom + view.y }}
-              aria-hidden="true"
-            />
-          )}
+          <div ref={guideX} className="smart-guide smart-guide-vertical" style={{display:"none"}} aria-hidden="true"/>
+          <div ref={guideY} className="smart-guide smart-guide-horizontal" style={{display:"none"}} aria-hidden="true"/>
           {contextMenu && createPortal(
             <div
               className="board-context-menu lektrus-context-portal"
