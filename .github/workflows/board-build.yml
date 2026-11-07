@@ -88,6 +88,7 @@ jobs:
       - run: node scripts/test-lektrus-colors.mjs
       - run: node scripts/test-lektrus-pointer-interactions.mjs
       - run: node scripts/test-lektrus-object-drag-surfaces.mjs
+      - run: node scripts/test-board-drag-snap-index.mjs
       - run: node scripts/test-lektrus-mobile-chemistry-controls.mjs
       - run: node scripts/test-lektrus-platform.mjs
       - run: node scripts/test-native-mobile.mjs

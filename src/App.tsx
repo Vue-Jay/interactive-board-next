@@ -19,6 +19,7 @@ import {chemistryBoardHasContent} from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
 import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./rectSelection";
 import {boardObjectAtInertPointerTarget} from "./boardObjectDragSurface";
+import {buildBoardDragSnapIndex,snapBoardDrag,type BoardDragSnapIndex} from "./boardDragSnapIndex";
 import {applyBoardSelectionCursor,clearBoardSelectionCursor,selectionCursorForGesture,selectionCursorForTarget} from "./lektrusSelectionCursor";
 import "./App.css";
 import AuthScreen from "./AuthScreen";
@@ -565,50 +566,6 @@ const cloneItems = (source: Item[], offset = 24): Item[] => {
       locked: false,
     };
   });
-};
-
-const snapDraggedBounds = (
-  moving: Bounds,
-  others: Item[],
-  rawDx: number,
-  rawDy: number,
-  threshold: number,
-): { dx: number; dy: number; guides: GuideState } => {
-  let dx = rawDx;
-  let dy = rawDy;
-  let bestX = threshold + 1;
-  let bestY = threshold + 1;
-  let guideX: number | undefined;
-  let guideY: number | undefined;
-  const movingX = [moving.x, moving.x + moving.width / 2, moving.x + moving.width];
-  const movingY = [moving.y, moving.y + moving.height / 2, moving.y + moving.height];
-  for (const other of others) {
-    const targetX = [other.x, other.x + other.width / 2, other.x + other.width];
-    const targetY = [other.y, other.y + other.height / 2, other.y + other.height];
-    for (const source of movingX) {
-      for (const target of targetX) {
-        const diff = target - (source + rawDx);
-        const distance = Math.abs(diff);
-        if (distance <= threshold && distance < bestX) {
-          bestX = distance;
-          dx = rawDx + diff;
-          guideX = target;
-        }
-      }
-    }
-    for (const source of movingY) {
-      for (const target of targetY) {
-        const diff = target - (source + rawDy);
-        const distance = Math.abs(diff);
-        if (distance <= threshold && distance < bestY) {
-          bestY = distance;
-          dy = rawDy + diff;
-          guideY = target;
-        }
-      }
-    }
-  }
-  return { dx, dy, guides: { x: guideX, y: guideY } };
 };
 
 const blobToDataUrl = (blob: Blob): Promise<string> =>
@@ -2715,6 +2672,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const displayFrame = useRef<number | null>(null);
   const pendingDisplayItems = useRef<Item[] | null>(null);
   const gesturePaintFrame = useRef<number | null>(null);
+  // Pointer devices emit hundreds of motion samples per second. During
+  // object transforms only the LAST sample in each display frame matters.
+  // Ink is deliberately never coalesced here: its complete stroke path must
+  // continue to be recorded at native event frequency.
+  const objectTransformFrame=useRef<number|null>(null);
+  const pendingObjectTransform=useRef<Pick<PE<HTMLElement>,
+    "pointerId"|"clientX"|"clientY"|"altKey"|"shiftKey">|null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [lectrisInspectorOpen,setLectrisInspectorOpen]=useState(false);
   const [editing, setEditing] = useState<string | null>(null);
@@ -4057,6 +4021,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
 
   const end = (cancel = false) => {
+    // Never let an old animation frame redraw a transform AFTER release,
+    // pinch cancellation, tool switch or collaborator reconciliation.
+    if(objectTransformFrame.current!==null){
+      cancelAnimationFrame(objectTransformFrame.current);
+      objectTransformFrame.current=null;
+    }
+    pendingObjectTransform.current=null;
     const g = gesture.current;
     finishViewerPan(cancel,g?.view);
     if (!g) return;
@@ -4627,7 +4598,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
 
   const dragSnapCache = useRef(new WeakMap<Gesture,{
-    selected:Set<string>; moving:Bounds|null; others:Item[];
+    selected:Set<string>; moving:Bounds|null; snapIndex:BoardDragSnapIndex;
   }>());
   const move = (e: PE<HTMLElement>) => {
     const g = gesture.current;
@@ -4667,13 +4638,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         cache={
           selected,
           moving:boundsOf(g.before.filter(item=>selected.has(item.id))),
-          others:g.before.filter(item=>!item.hidden&&!selected.has(item.id)),
+          snapIndex:buildBoardDragSnapIndex(g.before.filter(item=>!item.hidden&&!selected.has(item.id))),
         };
         dragSnapCache.current.set(g,cache);
       }
       if (snapEnabled && !e.altKey) {
         if (cache.moving) {
-          const snapped = snapDraggedBounds(cache.moving, cache.others, worldDx, worldDy, 7 / g.view.zoom);
+          const snapped = snapBoardDrag(cache.moving,cache.snapIndex,worldDx,worldDy,7/g.view.zoom);
           worldDx = snapped.dx;
           worldDy = snapped.dy;
           setGuides(previous=>previous.x===snapped.guides.x&&previous.y===snapped.guides.y?previous:snapped.guides);
@@ -4807,6 +4778,27 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       }
       scheduleGesturePaint();
     }
+  };
+  const moveObjectFrame=(e:PE<HTMLElement>)=>{
+    const active=gesture.current;
+    if(!active||!["drag","resize","rotate","connector-end"].includes(active.mode)){
+      move(e);return;
+    }
+    // Capture the pointer as soon as a drag crosses its five-pixel threshold.
+    // Subsequent moves are coalesced, not the initial mouse interaction.
+    if(active.mode==="drag"&&!active.dragging){move(e);return;}
+    pendingObjectTransform.current={
+      pointerId:e.pointerId,clientX:e.clientX,clientY:e.clientY,
+      altKey:e.altKey,shiftKey:e.shiftKey
+    };
+    if(objectTransformFrame.current!==null)return;
+    objectTransformFrame.current=requestAnimationFrame(()=>{
+      objectTransformFrame.current=null;
+      const latest=pendingObjectTransform.current;
+      pendingObjectTransform.current=null;
+      if(latest&&gesture.current?.pointer===latest.pointerId)
+        move(latest as PE<HTMLElement>);
+    });
   };
 
   useEffect(() => {
@@ -9010,7 +9002,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               // stopPropagation on pointermove. Its bubble handler must not
               // apply a second movement for the same sample.
               if(gesture.current?.pointer===e.pointerId){
-                move(e);
+                moveObjectFrame(e);
                 // This gesture is owned by the BOARD now, not the widget.
                 // Avoid moving an inner model or triggering its hover actions.
                 e.stopPropagation();
@@ -9152,7 +9144,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const worldPoint=world(localPoint);
             if(!adminHidden)cursorChannel.current?.sendCursor(worldPoint.x,worldPoint.y);
             if(presentation){if(presentationLaser)setPresentationLaserPos(localPoint);if(presentationSpotlight)setPresentationSpotlightPos(localPoint);}
-            move(e);
+            moveObjectFrame(e);
             if(tool==="select")syncSelectionCursor(e.target,e.pointerType);
           }}
           onContextMenu={(e) => {

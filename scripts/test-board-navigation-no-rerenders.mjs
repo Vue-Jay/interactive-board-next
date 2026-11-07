@@ -19,7 +19,10 @@ const pan=moves.slice(moves.indexOf('if (g.mode === "hand-smart")'),moves.indexO
 assert.doesNotMatch(pan,/setGuides\(|clearGuides\(|setItems\(|setView\(/,
  "Pan and hand-navigation pointer samples must not enqueue React updates");
 assert.match(pan,/scheduleViewerPan\(/);
-assert.match(moves,/const snapped = snapDraggedBounds\(cache\.moving, cache\.others/);
+assert.match(moves,/const snapped = snapBoardDrag\(cache\.moving,cache\.snapIndex/);
+assert.match(moves,/snapIndex:buildBoardDragSnapIndex\(g\.before\.filter/);
+assert.doesNotMatch(moves,/for\s*\(const other of cache\.others\)/,
+ "Guide lookup must not rescan the entire board on each pointermove");
 assert.match(source,/const dragSnapCache = useRef\(new WeakMap<Gesture/);
 assert.match(moves,/cache\.selected\.has\(item\.id\)/);
 
