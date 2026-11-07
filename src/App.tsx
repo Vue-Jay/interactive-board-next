@@ -2672,6 +2672,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const displayFrame = useRef<number | null>(null);
   const pendingDisplayItems = useRef<Item[] | null>(null);
   const gesturePaintFrame = useRef<number | null>(null);
+  // Pointer devices emit hundreds of motion samples per second. During
+  // object transforms only the LAST sample in each display frame matters.
+  // Ink is deliberately never coalesced here: its complete stroke path must
+  // continue to be recorded at native event frequency.
+  const objectTransformFrame=useRef<number|null>(null);
+  const pendingObjectTransform=useRef<Pick<PE<HTMLElement>,
+    "pointerId"|"clientX"|"clientY"|"altKey"|"shiftKey">|null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [lectrisInspectorOpen,setLectrisInspectorOpen]=useState(false);
   const [editing, setEditing] = useState<string | null>(null);
@@ -4014,6 +4021,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
 
   const end = (cancel = false) => {
+    // Never let an old animation frame redraw a transform AFTER release,
+    // pinch cancellation, tool switch or collaborator reconciliation.
+    if(objectTransformFrame.current!==null){
+      cancelAnimationFrame(objectTransformFrame.current);
+      objectTransformFrame.current=null;
+    }
+    pendingObjectTransform.current=null;
     const g = gesture.current;
     finishViewerPan(cancel,g?.view);
     if (!g) return;
@@ -4764,6 +4778,27 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       }
       scheduleGesturePaint();
     }
+  };
+  const moveObjectFrame=(e:PE<HTMLElement>)=>{
+    const active=gesture.current;
+    if(!active||!["drag","resize","rotate","connector-end"].includes(active.mode)){
+      move(e);return;
+    }
+    // Capture the pointer as soon as a drag crosses its five-pixel threshold.
+    // Subsequent moves are coalesced, not the initial mouse interaction.
+    if(active.mode==="drag"&&!active.dragging){move(e);return;}
+    pendingObjectTransform.current={
+      pointerId:e.pointerId,clientX:e.clientX,clientY:e.clientY,
+      altKey:e.altKey,shiftKey:e.shiftKey
+    };
+    if(objectTransformFrame.current!==null)return;
+    objectTransformFrame.current=requestAnimationFrame(()=>{
+      objectTransformFrame.current=null;
+      const latest=pendingObjectTransform.current;
+      pendingObjectTransform.current=null;
+      if(latest&&gesture.current?.pointer===latest.pointerId)
+        move(latest as PE<HTMLElement>);
+    });
   };
 
   useEffect(() => {
@@ -8967,7 +9002,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               // stopPropagation on pointermove. Its bubble handler must not
               // apply a second movement for the same sample.
               if(gesture.current?.pointer===e.pointerId){
-                move(e);
+                moveObjectFrame(e);
                 // This gesture is owned by the BOARD now, not the widget.
                 // Avoid moving an inner model or triggering its hover actions.
                 e.stopPropagation();
@@ -9109,7 +9144,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const worldPoint=world(localPoint);
             if(!adminHidden)cursorChannel.current?.sendCursor(worldPoint.x,worldPoint.y);
             if(presentation){if(presentationLaser)setPresentationLaserPos(localPoint);if(presentationSpotlight)setPresentationSpotlightPos(localPoint);}
-            move(e);
+            moveObjectFrame(e);
             if(tool==="select")syncSelectionCursor(e.target,e.pointerType);
           }}
           onContextMenu={(e) => {
