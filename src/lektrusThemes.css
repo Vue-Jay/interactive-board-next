@@ -615,3 +615,53 @@
 /* Preserve the semantic danger state in access/member management. */
 .access-backdrop .access-modal .access-person button.danger{color:#b33636}
 :root[data-theme="dark"] .access-backdrop .access-modal .access-person button.danger{color:#ffb4aa}
+
+/* The compact profile replaced the old profile cards, but its private styles
+   still used OnlineRepetitor white surfaces and violet avatar in dark mode. */
+.lectris-workspace-stage .profile-identity-card,
+.lectris-workspace-stage .profile-compact-card {
+  background:var(--lt-surface);
+  color:var(--lt-text);
+  border-color:var(--lt-line);
+}
+.lectris-workspace-stage .profile-big-avatar {
+  background:var(--lt-primary);
+  color:var(--lt-on-primary);
+}
+.lectris-workspace-stage .profile-identity-copy h1,
+.lectris-workspace-stage .profile-compact-card strong{color:var(--lt-text)}
+.lectris-workspace-stage .profile-identity-copy p,
+.lectris-workspace-stage .profile-logout-card p{color:var(--lt-muted)}
+.lectris-workspace-stage .profile-role-pills span{
+  background:var(--lt-selected);
+  color:var(--lt-selected-ink);
+}
+.lectris-workspace-stage .profile-compact-card input {
+  background:var(--lt-raised);
+  color:var(--lt-text);
+  border-color:var(--lt-line);
+}
+.lectris-workspace-stage .profile-compact-card input:focus-visible{
+  outline:2px solid var(--lt-focus);outline-offset:2px;
+}
+
+/* Remaining legacy actions with unlabeled CSS classes: scope by screen and
+   parent controls rather than changing all buttons globally. */
+.lectris-workspace-stage .students-shell .students-toolbar>button{
+  background:var(--lt-primary);color:var(--lt-on-primary);border-color:var(--lt-primary);
+}
+.lectris-workspace-stage .students-shell .students-toolbar>button:hover:not(:disabled){
+  background:var(--lt-primary-hover);border-color:var(--lt-primary-hover);
+}
+.lectris-workspace-stage .schedule-shell .schedule-view-toggle>button{
+  background:var(--lt-raised);color:var(--lt-secondary);border-color:var(--lt-line);
+}
+.lectris-workspace-stage .schedule-shell .schedule-view-toggle>button:hover:not(.active){
+  background:var(--lt-hover);color:var(--lt-text);
+}
+.lectris-workspace-stage .schedule-shell .schedule-view-toggle>button.active{
+  background:var(--lt-selected);color:var(--lt-selected-ink);border-color:var(--lt-line-strong);
+}
+.lectris-workspace-stage :is(.students-shell .students-toolbar>button,.schedule-shell .schedule-view-toggle>button):focus-visible{
+  outline:2px solid var(--lt-focus);outline-offset:2px;
+}
