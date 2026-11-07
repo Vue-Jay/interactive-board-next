@@ -2768,13 +2768,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // movement and release exactly once, without stealing active controls.
   const inertSurfaceDragPointer=useRef<number|null>(null);
   const gestureOriginCache=useRef(new WeakMap<Gesture,Map<string,string>>());
+  const gestureIndices=useRef(new WeakMap<Gesture,number[]>());
   const getGestureOrigins=(g:Gesture)=>{
     let origins=gestureOriginCache.current.get(g);
     if(!origins){
       const ids=new Set(g.ids);
-      origins=new Map(g.before.filter(item=>ids.has(item.id))
-        .map(item=>[item.id,objectPoseOrigin(item)]));
+      origins=new Map();
+      const indices:number[]=[];
+      // Capture indexes ONCE, not a whole-board scan at every animation frame.
+      g.before.forEach((item,index)=>{
+        if(ids.has(item.id)){origins!.set(item.id,objectPoseOrigin(item));indices.push(index)}
+      });
       gestureOriginCache.current.set(g,origins);
+      gestureIndices.current.set(g,indices);
       // The local pointer always wins over an old remote visual hint.
       setRemoteObjectPoses(current=>{
         const stale=g.ids.filter(id=>current[id]);
@@ -3345,14 +3351,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
        active.mode==="hand-smart"&&active.dragging&&active.handMoveSelection ||
        active.mode==="resize"||active.mode==="rotate"||
        active.mode==="connector-end")){
-      const moving=new Set(active.ids);
       const origins=getGestureOrigins(active);
       const poses:BoardObjectPose[]=[];
-      for(const item of synced){
-        if(moving.has(item.id)&&origins.has(item.id))
+      for(const index of gestureIndices.current.get(active)??[]){
+        const item=synced[index];
+        if(item&&origins.has(item.id))
           poses.push(toBoardObjectPose(item,origins.get(item.id)!));
       }
-      if(poses.length===moving.size)workChannel.current?.publishTransform(poses);
+      if(poses.length===active.ids.length)workChannel.current?.publishTransform(poses);
     }
     // Keep model state synchronous for pointer math, but paint at most once per frame.
     // This prevents 100+ React renders/sec on fast mouse/touch drags.
@@ -4124,14 +4130,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
        g.mode==="hand-smart"&&g.dragging&&g.handMoveSelection||
        g.mode==="resize"||g.mode==="rotate"||g.mode==="connector-end")){
       const finalItems=cancel?(g.restore??g.before):itemsRef.current;
-      const moving=new Set(g.ids);
       const origins=getGestureOrigins(g);
       const poses:BoardObjectPose[]=[];
-      for(const item of finalItems){
-        if(moving.has(item.id)&&origins.has(item.id))
+      for(const index of gestureIndices.current.get(g)??[]){
+        const item=finalItems[index];
+        if(item&&origins.has(item.id))
           poses.push(toBoardObjectPose(item,origins.get(item.id)!));
       }
-      if(poses.length===moving.size)workChannel.current?.publishTransform(poses,true);
+      if(poses.length===g.ids.length)workChannel.current?.publishTransform(poses,true);
     }
     if (g.mode === "draw" && g.ink) cursorChannel.current?.sendInk({id:g.ink.id,kind:g.ink.kind,color:g.ink.color,weight:g.ink.weight,points:g.path.slice(-500),finished:true});
     if (cancel) {
