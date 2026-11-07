@@ -29,7 +29,7 @@ assert.equal(canCompositeBoardResize([p,q,r],new Set()),false);
 assert.equal(canCompositeBoardResize([p,q,r],new Set(["missing"])),false);
 assert.equal(canCompositeBoardResize([p,q,r],new Set(["p","missing"])),false);
 assert.equal(canCompositeBoardResize([...Array(65)].map((_,i)=>sample("a"+i)),
- new Set([...Array(65)].map((_,i)=>"a"+i)),false);
+ new Set([...Array(65)].map((_,i)=>"a"+i))),false);
 for(const kind of ["graph","table","formula","connector","instrument",
  "pen","marker","quiz","flashcard","checklist","pdf"]){
  assert.equal(canCompositeBoardResize([{...p,kind}],new Set(["p"])),false,
