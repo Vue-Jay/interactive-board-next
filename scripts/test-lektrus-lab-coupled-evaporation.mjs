@@ -495,7 +495,7 @@ assert.match(visualSrc,/className="lektrus-lab-gas-bubbles" clipPath=/);
 assert.match(visualSrc,/className="lektrus-lab-boiling-particles"[\s\S]*?clipPath=/);
 assert.match(visualSrc,/lektrus-lab-gas-vent/);
 assert.match(visualSrc,/lektrus-lab-gas-tube-flow/);
-assert.match(visualSrc,/visualNowMs=\\{labVesselVisualClock\\(v,clockNow\\)\\}/,
+assert.match(visualSrc,/visualNowMs=\{labVesselVisualClock\(v,clockNow\)\}/,
  "Only vessels with active visual effects receive stopwatch animation frames");
 assert.match(physicsCss,/\.lektrus-lab-sediment\{[\s\S]*?animation:none!important/);
 assert.match(physicsCss,/is-simulation-paused :is\(/);
