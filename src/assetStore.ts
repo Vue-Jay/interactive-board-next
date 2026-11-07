@@ -211,6 +211,7 @@ export async function ensureBoardAssets(boardId: string, document: DocumentData)
 
 const displayPreviews = new Map<string, Promise<Blob | null>>();
 const DISPLAY_PREVIEW_LIMIT = 12;
+const DISPLAY_PREVIEW_ITEM_BYTES = 2 * 1024 * 1024;
 export function getDisplayAsset(id: string, boardId: string): Promise<Blob | null> {
   const key = boardId + "/" + id;
   const existing = displayPreviews.get(key);
@@ -259,6 +260,15 @@ export function getDisplayAsset(id: string, boardId: string): Promise<Blob | nul
     if (oldest === undefined) break;
     displayPreviews.delete(oldest);
   }
-  void pending.catch(() => { if (displayPreviews.get(key) === pending) displayPreviews.delete(key); });
+  void pending.then(blob => {
+    // A completed Promise retains its resolved Blob. Twelve original 50-MB
+    // PDFs/undecodable images could otherwise pin ~600 MB independently of
+    // the bounded memoryAssets LRU. Keep small thumbnails, not huge originals.
+    // Also allow a missing asset to be retried after it is uploaded.
+    if ((!blob || blob.size > DISPLAY_PREVIEW_ITEM_BYTES) &&
+        displayPreviews.get(key) === pending) displayPreviews.delete(key);
+  }, () => {
+    if (displayPreviews.get(key) === pending) displayPreviews.delete(key);
+  });
   return pending;
 }
