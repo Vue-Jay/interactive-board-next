@@ -16,6 +16,7 @@ import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import {boardWorldTransform,boardOverlayTransform} from "./boardPanTransform";
 import {planCompositeBoardDrag,connectorDragEndpoints,paintBoardDeformedConnector,canCompositeBoardRotation,translatedBoardDragItems,paintBoardDragTranslation,clearBoardDragTranslation,paintBoardRotationPreview,clearBoardRotationPreview,type ConnectorDragTarget} from "./boardDragCompositor";
 import {canCompositeGroupRotation,rotatedGroupItems,paintGroupRotationFrame,clearGroupRotationFrame,type GroupRotationTarget} from "./boardGroupRotationCompositor";
+import {canCompositeBoardResize,paintBoardResizePreview,type ResizePreviewTarget} from "./boardResizeCompositor";
 import {boardGridTransform} from "./boardBackgroundPan";
 import {chemistryBoardHasContent} from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
@@ -2817,6 +2818,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     frame:HTMLElement;bounds:Bounds;poses:Item[];
     delta:number;
   }|null>(null);
+  const compositorResize=useRef<{
+    gesture:Gesture;targets:ResizePreviewTarget<Item>[];
+    frame:HTMLElement;poses:Item[];
+  }|null>(null);
   // The capture phase starts drags even when a nested lesson widget stops
   // pointerdown/pointermove bubbling. Track the owning pointer to consume
   // movement and release exactly once, without stealing active controls.
@@ -4192,6 +4197,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     const rotatePreview=compositorRotation.current?.gesture===g?compositorRotation.current:null;
     const groupRotatePreview=compositorGroupRotation.current?.gesture===g
       ?compositorGroupRotation.current:null;
+    const resizePreview=compositorResize.current?.gesture===g
+      ?compositorResize.current:null;
     if(dragPreview){
       // The linked arrow geometry is materialized BEFORE the finished peer
       // packet, rather than snapping to the updated anchor after server save.
@@ -4205,6 +4212,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       if(cancel)itemsRef.current=g.restore??g.before;
       else{
         const latest=new Map(groupRotatePreview.poses.map(item=>[item.id,item] as const));
+        itemsRef.current=g.before.map(item=>latest.get(item.id)??item);
+      }
+    }else if(resizePreview){
+      if(cancel)itemsRef.current=g.restore??g.before;
+      else{
+        const latest=new Map(resizePreview.poses.map(item=>[item.id,item] as const));
         itemsRef.current=g.before.map(item=>latest.get(item.id)??item);
       }
     }
@@ -4241,7 +4254,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         setSelected(g.handHitIds ?? []);
       }
     } else if (g.mode === "drag" || g.mode === "erase" || g.mode === "resize" || g.mode === "rotate" || g.mode === "connector-end") {
-      if(dragPreview||rotatePreview||groupRotatePreview)
+      if(dragPreview||rotatePreview||groupRotatePreview||resizePreview)
             flushSync(()=>commit(itemsRef.current,{immediatePaint:true}));
       else commit(itemsRef.current);
     }
@@ -4316,6 +4329,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         groupRotatePreview.frame.style.height=`${b.height*v.zoom}px`;
       }
       compositorGroupRotation.current=null;
+    }
+    if(resizePreview){
+      // No React commit happens on cancellation, so restore the original
+      // size and selection frame explicitly, without a stale visual outline.
+      if(cancel)paintBoardResizePreview(
+        resizePreview.targets,resizePreview.targets.map(t=>t.base),
+        resizePreview.frame,g.view);
+      // A successful flushSync has already committed the exact final CSS.
+      compositorResize.current=null;
     }
     setPath([]);
     setMarqueeRect(null);
@@ -4955,6 +4977,45 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     workChannel.current?.publishTransform(poses);
     return true;
   };
+  const paintCompositorResize=(g:Gesture,poses:Item[]):boolean=>{
+    let preview=compositorResize.current;
+    if(preview?.gesture!==g){
+      const selected=new Set(g.ids);
+      if(poses.length!==selected.size||
+        !canCompositeBoardResize(g.before,selected))return false;
+      const byId=new Map<string,HTMLElement>();
+      for(const el of fastPanWorld.current?.querySelectorAll<HTMLElement>(
+        ".board-object[data-object]")??[]){
+        const id=el.dataset.object;
+        if(id&&selected.has(id))byId.set(id,el);
+      }
+      if(byId.size!==selected.size)return false;
+      const frame=g.transformItems
+        ?fastPanSelection.current?.querySelector<HTMLElement>(
+          ".screen-transform-overlay.screen-transform-group")
+        :Array.from(fastPanSelection.current?.querySelectorAll<HTMLElement>(
+          ".screen-transform-overlay[data-object]")??[]).find(
+            el=>el.dataset.object===g.ids[0]);
+      if(!frame)return false;
+      const targets:ResizePreviewTarget<Item>[]=[];
+      for(const pose of poses){
+        const base=g.transformItems?.find(item=>item.id===pose.id)
+          ??(g.transformItem?.id===pose.id?g.transformItem:undefined);
+        const element=byId.get(pose.id);
+        if(!base||!element)return false;
+        targets.push({base,element});
+      }
+      getGestureOrigins(g);
+      preview={gesture:g,targets,frame,poses};
+      compositorResize.current=preview;
+    }
+    preview.poses=poses;
+    paintBoardResizePreview(preview.targets,poses,preview.frame,g.view);
+    const origins=getGestureOrigins(g);
+    workChannel.current?.publishTransform(poses.map(item=>
+      toBoardObjectPose(item,origins.get(item.id)!)));
+    return true;
+  };
   const move = (e: PE<HTMLElement>) => {
     const g = gesture.current;
     if (!g || e.pointerId !== g.pointer) return;
@@ -5050,16 +5111,16 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         const nextBounds = resizedRect(baseBounds, g.handle, wx, wy, 80, 60, e.shiftKey);
         const sx = nextBounds.width / Math.max(1, baseBounds.width);
         const sy = nextBounds.height / Math.max(1, baseBounds.height);
-        const byId = new Map(g.transformItems.map((base) => {
-          const rect = {
-            x: nextBounds.x + (base.x - baseBounds.x) * sx,
-            y: nextBounds.y + (base.y - baseBounds.y) * sy,
-            width: Math.max(8, base.width * sx),
-            height: Math.max(8, base.height * sy),
-          };
-          return [base.id, fitItemToRect(base, rect)] as const;
+        const resized=g.transformItems.map(base=>fitItemToRect(base,{
+          x:nextBounds.x+(base.x-baseBounds.x)*sx,
+          y:nextBounds.y+(base.y-baseBounds.y)*sy,
+          width:Math.max(8,base.width*sx),
+          height:Math.max(8,base.height*sy),
         }));
-        display(g.before.map((item) => byId.get(item.id) ?? item));
+        if(!paintCompositorResize(g,resized)){
+          const byId=new Map(resized.map(item=>[item.id,item] as const));
+          display(g.before.map(item=>byId.get(item.id)??item));
+        }
       } else if (g.transformItem) {
         const base = g.transformItem;
         const minW = base.kind === "text" ? 100 : base.kind === "frame" ? 180 : base.kind === "comment" ? 180 : base.kind === "table" ? 220 : base.kind === "formula" ? 160 : base.kind === "checklist" ? 220 : base.kind === "quiz" ? 260 : base.kind === "flashcard" ? 220 : base.kind === "cover" ? 180 : base.kind === "connector" ? 24 : base.points ? 12 : 60;
@@ -5071,7 +5132,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         const localWy=wx*Math.sin(radians)+wy*Math.cos(radians);
         const localRect = resizedRect(base, g.handle, localWx, localWy, minW, minH, e.shiftKey);
         const rect = preserveRotatedAnchor(base,localRect,base.rotation??0);
-        display(g.before.map((item) => item.id === base.id ? fitItemToRect(base, rect) : item));
+        const resized=fitItemToRect(base,rect);
+        if(!paintCompositorResize(g,[resized]))
+          display(g.before.map(item=>item.id===base.id?resized:item));
       }
     } else if (g.mode === "rotate") {
       clearGuides();
