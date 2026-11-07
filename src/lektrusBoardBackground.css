@@ -1,6 +1,6 @@
 /* Drawing cursors are visual-only overlays. Actual stroke diameter is kept
    separate from the 18px sight used to locate the tip of a fine pen. */
-@media (pointer:fine) {
+@media (any-pointer:fine) {
   .workspace .board:is(.board-tool-pen,.board-tool-marker,.board-tool-eraser):not(.board-right-hand):not(.board-panning):not(.board-hand-active),
   .workspace .board:is(.board-tool-pen,.board-tool-marker,.board-tool-eraser):not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
   .workspace .board:is(.board-tool-pen,.board-tool-marker,.board-tool-eraser):not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world * {
@@ -92,10 +92,8 @@
   border-style:solid;
   background:color-mix(in srgb,var(--cursor-contrast,#263d63) 6%,transparent);
 }
-@media (pointer:coarse) {
-  /* A finger needs no lingering hover cursor after touchup. */
-  .workspace .lektrus-ink-cursor{display:none}
-}
+/* Touch pointers are hidden by their event type, not by device media: a
+   tablet can use a finger and a hovering stylus in the same session. */
 .workspace .board.board-right-hand,
 .workspace .board.board-right-hand *,
 .workspace .board.board-panning,
