@@ -2489,8 +2489,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     }
     const rect=board.current?.getBoundingClientRect();
     if(!rect)return;
-    indicator.style.left=`${clientX-rect.left}px`;
-    indicator.style.top=`${clientY-rect.top}px`;
+    indicator.style.transform=`translate3d(${clientX-rect.left}px,${clientY-rect.top}px,0)`;
     indicator.style.visibility="visible";
   };
   const [marqueeRect,setMarqueeRect] = useState<SelectionRect|null>(null);
@@ -2706,8 +2705,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if(pointerType!=="touch"&&pointerType!=="mouse"&&pointerType!=="pen"){
       el.style.visibility="hidden";return;
     }
-    el.style.left=x+"px";
-    el.style.top=y+"px";
+    el.style.transform=`translate3d(${x}px,${y}px,0) translate(-50%,-50%)`;
     el.style.visibility="visible";
   };
   const displayFrame = useRef<number | null>(null);
@@ -10046,7 +10044,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             <div ref={inkCursorElement}
               className={`lektrus-ink-cursor ${tool==="marker"?"is-marker":"is-pen"} ${(tool==="marker"?markerWeight:weight)*view.zoom<=8?"is-fine":"is-wide"}`}
               aria-hidden="true"
-              style={{left:-1000,top:-1000,visibility:"hidden",
+              style={{transform:"translate3d(-1000px,-1000px,0)",visibility:"hidden",
                 "--cursor-size":Math.max(1,(tool==="marker"?markerWeight:weight)*view.zoom)+"px",
                 "--cursor-ink":tool==="marker"?markerColor:penColor,
                 "--cursor-contrast":backgroundAppearance.foreground,
@@ -10056,7 +10054,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             </div>}
           {tool === "eraser" && (
             <div ref={eraserCursorElement} className="eraser-cursor" aria-hidden="true"
-              style={{left:-1000,top:-1000,width:eraserSize,height:eraserSize,visibility:"hidden",
+              style={{transform:"translate3d(-1000px,-1000px,0) translate(-50%,-50%)",
+                width:eraserSize,height:eraserSize,visibility:"hidden",
                 "--cursor-contrast":backgroundAppearance.foreground,
                 "--cursor-outline":backgroundAppearance.outline} as CSSProperties}/>
           )}
