@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const css=readFileSync("src/lektrusLabSceneLayout.css","utf8");
 const markup=readFileSync("src/LektrusChemistryBench.tsx","utf8");
-const main=readFileSync("src/main.tsx","utf8");
+const main=readFileSync("src/appEntry.tsx","utf8");
 const editor=readFileSync("src/LektrusChemistryBenchEditor.tsx","utf8");
 assert.match(main,/import "\.\/lektrusChemistryBench\.css";\s*import "\.\/lektrusLabSceneLayout\.css";/,
  "One scene layout stylesheet must load after old patches");
