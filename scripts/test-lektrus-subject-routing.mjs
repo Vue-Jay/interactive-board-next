@@ -13,7 +13,7 @@ const rx=/\{id:"([a-z0-9-]+)",label:"[^"]+",description:"[^"]+",group:"[^"]+",su
 const definitions=[...entries.matchAll(rx)].map(([,id,raw])=>({id,subjects:[...raw.matchAll(/"([^"]+)"/g)].map(m=>m[1])}));
 assert.equal(definitions.length,36,"Anatomy is an independent biology workflow; old microscope stays readable");
 const humanities={
- "русский язык":["ru-phonetics"],
+ "русский язык":[],
  "история":["history-timeline","history-family-tree","history-atlas"],
  "обществознание":["civics-structure"],
  "литература":["literature-analysis"],
@@ -25,13 +25,13 @@ for(const [subject,expected] of Object.entries(humanities)){
 }
 assert.deepEqual(definitions.find(d=>d.id==="info-flowchart")?.subjects,["информатика"],
  "Algorithm flowcharts belong only to informatics, never history or social studies");
-for(const id of ["ru-syntax","ru-morphemes","ru-morphology","ru-orthography"]){
+for(const id of ["ru-syntax","ru-morphemes","ru-morphology","ru-phonetics","ru-orthography"]){
  assert.ok(registry.includes('id==="'+id+'"'),"Previously saved Russian objects must remain supported: "+id);
 }
 const registered=new Set(definitions.map(d=>d.id));
 assert.equal(registered.size,definitions.length);
 for(const d of definitions){
- if(["bio-microscope","bio-organ-systems","ru-syntax","ru-morphemes","ru-morphology","ru-orthography"].includes(d.id)){
+ if(["bio-microscope","bio-organ-systems","ru-syntax","ru-morphemes","ru-morphology","ru-phonetics","ru-orthography"].includes(d.id)){
   assert.deepEqual(d.subjects,[],"Earlier standalone diagrams remain readable but are hidden from the subject catalogue");
   continue;
  }
