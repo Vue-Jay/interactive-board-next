@@ -10,7 +10,7 @@ export type RemoteCursor = {
   updatedAt: number;
 };
 
-export type LiveInkMessage = { clientId: string; userId: string; id: string; kind: "pen" | "marker"; color: string; weight: number; points: { x: number; y: number }[]; finished: boolean };
+export type LiveInkMessage = { clientId: string; userId: string; id: string; kind: "pen" | "marker"; color: string; weight: number; points: { x: number; y: number }[]; finished: boolean; offset?: number };
 
 export type BoardCursorChannel = {
   sendCursor: (x: number, y: number) => void;
@@ -74,6 +74,10 @@ export function connectBoardCursorChannel(
   // when stroke B starts immediately afterwards. Keep completed strokes
   // separately so short handwritten letters never disappear on peers.
   const completedInk = new Map<string, OutgoingInk>();
+  // Remember how many world-space points were already transmitted for each
+  // active stroke. Only new points are broadcast, not the same 500 samples
+  // every 45ms. A full final window remains available for loss recovery.
+  const sentStrokeEnd = new Map<string, number>();
   const unconfirmedFinals = new Map<string, OutgoingInk>();
   let pendingInk: OutgoingInk | null = null;
   let inkTimer: ReturnType<typeof setTimeout> | undefined;
@@ -81,12 +85,30 @@ export function connectBoardCursorChannel(
     clearTimeout(inkTimer); inkTimer = undefined;
     if (!ready || !publishInkSelf) return;
     const sendPacket = (ink: OutgoingInk) => {
+      const start = ink.offset ?? 0;
+      const end = start + ink.points.length;
+      const alreadySent = sentStrokeEnd.get(ink.id) ?? start;
+      const skip = !ink.finished && ink.offset !== undefined
+        ? Math.min(ink.points.length, Math.max(0, alreadySent - start))
+        : 0;
+      if (!ink.finished && skip === ink.points.length) return true;
+      const outgoing = skip ? {...ink,offset:start+skip,points:ink.points.slice(skip)} : ink;
       const ref = String(++sequence);
-      if (!rawSend("broadcast", {type:"broadcast",event:"live_ink",payload:{...ink,userId:me.userId,clientId}}, topic, ref)) return false;
+      if (!rawSend("broadcast", {type:"broadcast",event:"live_ink",payload:{...outgoing,userId:me.userId,clientId}}, topic, ref)) return false;
       lastInkSent = Date.now();
       sentInkCount++;
       pendingAcks.add(ref);
-      if (ink.finished) unconfirmedFinals.set(ref,ink);
+      if (ink.finished) {
+        sentStrokeEnd.delete(ink.id);
+        unconfirmedFinals.set(ref,ink);
+      } else if (ink.offset !== undefined) {
+        sentStrokeEnd.delete(ink.id);
+        sentStrokeEnd.set(ink.id,end);
+        if (sentStrokeEnd.size > 512) {
+          const oldest = sentStrokeEnd.keys().next().value;
+          if (oldest !== undefined) sentStrokeEnd.delete(oldest);
+        }
+      }
       if(sentInkCount===1 || sentInkCount%25===0) report("подключено");
       return true;
     };
@@ -171,6 +193,7 @@ export function connectBoardCursorChannel(
       completedInk.set(ink.id,ink);
     unconfirmedFinals.clear();
     pendingAcks.clear();
+    sentStrokeEnd.clear();
     ready = false;
     report("отключено");
 
@@ -364,6 +387,7 @@ export function connectBoardCursorChannel(
             if (!p || typeof p.userId !== "string" ||
                 typeof p.id !== "string" || !["pen","marker"].includes(p.kind) ||
                 !Array.isArray(p.points) || p.points.length > 500 ||
+                (p.offset !== undefined && (!Number.isSafeInteger(p.offset) || p.offset < 0 || p.offset > 1_000_000)) ||
                 p.points.some((pt: {x:number;y:number}) => !Number.isFinite(pt?.x) || !Number.isFinite(pt?.y))) return;
             if (p.clientId === clientId) {
               echoInkCount++;
@@ -372,7 +396,8 @@ export function connectBoardCursorChannel(
             }
             receivedInkCount++;
             if(receivedInkCount===1 || receivedInkCount%25===0) report("подключено");
-            onInk?.({clientId:typeof p.clientId === "string" ? p.clientId : p.userId,userId:p.userId,id:p.id,kind:p.kind,color:typeof p.color === "string" ? p.color : "#222222",weight:Number.isFinite(p.weight)?p.weight:3,points:p.points,finished:p.finished === true});
+            onInk?.({clientId:typeof p.clientId === "string" ? p.clientId : p.userId,userId:p.userId,id:p.id,kind:p.kind,color:typeof p.color === "string" ? p.color : "#222222",weight:Number.isFinite(p.weight)?p.weight:3,points:p.points,finished:p.finished === true,
+              ...(p.offset === undefined ? {} : {offset:p.offset})});
             return;
           }
           if (
@@ -440,7 +465,9 @@ export function connectBoardCursorChannel(
     if (stopped || !publishInkSelf) { blockedInkCount++; report(stopped ? "канал закрыт" : "отправка запрещена"); return; }
     if (!ready) { blockedInkCount++; report("ожидание подписки"); }
     if (attemptedInkCount === 1 || attemptedInkCount % 25 === 0) report(ready ? "подключено" : "ожидание подписки");
-    const packet={...ink,points:ink.points.slice(-500)};
+    const dropped = Math.max(0,ink.points.length-500);
+    const packet = {...ink,points:ink.points.slice(-500),
+      ...(ink.offset === undefined ? {} : {offset:ink.offset+dropped})};
     if (ink.finished) {
       completedInk.set(ink.id, packet);
       if (pendingInk?.id===ink.id) pendingInk=null;
