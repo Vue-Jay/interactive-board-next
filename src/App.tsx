@@ -14,7 +14,7 @@ import {
 } from "react";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import {boardWorldTransform,boardOverlayTransform} from "./boardPanTransform";
-import {canCompositeBoardDrag,translatedBoardDragItems,paintBoardDragTranslation,clearBoardDragTranslation} from "./boardDragCompositor";
+import {compositeLinkedConnectorIds,canCompositeBoardRotation,translatedBoardDragItems,paintBoardDragTranslation,clearBoardDragTranslation,paintBoardRotationPreview,clearBoardRotationPreview} from "./boardDragCompositor";
 import {boardGridTransform} from "./boardBackgroundPan";
 import {chemistryBoardHasContent} from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
@@ -2801,8 +2801,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // The large React object tree stays still while an ordinary selected
   // object travels. Keep only DOM targets and original poses for this gesture.
   const compositorDrag=useRef<{
-    gesture:Gesture;selected:Set<string>;elements:HTMLElement[];
+    gesture:Gesture;selected:Set<string>;linked:Set<string>;elements:HTMLElement[];
     liveBases:BoardObjectPose[];dx:number;dy:number;
+  }|null>(null);
+  const compositorRotation=useRef<{
+    gesture:Gesture;id:string;base:Item;element:HTMLElement;
+    outline:HTMLElement;origin:string;rotation:number;
   }|null>(null);
   // The capture phase starts drags even when a nested lesson widget stops
   // pointerdown/pointermove bubbling. Track the owning pointer to consume
@@ -4785,7 +4789,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     let preview=compositorDrag.current;
     if(preview?.gesture!==g){
       const selected=new Set(g.ids);
-      if(!canCompositeBoardDrag(g.before,selected))return false;
+      const linked=compositeLinkedConnectorIds(g.before,selected);
+      if(!linked)return false;
       const origins=getGestureOrigins(g);
       const liveBases:BoardObjectPose[]=[];
       // Cache original transforms only once: the board may contain 10,000+
@@ -4793,12 +4798,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       for(const index of gestureIndices.current.get(g)??[]){
         const item=g.before[index];
         const origin=item&&origins.get(item.id);
-        if(item&&origin&&selected.has(item.id))
+        if(item&&origin&&(selected.has(item.id)||linked.has(item.id)))
           liveBases.push(toBoardObjectPose(item,origin));
       }
       const elements=Array.from(fastPanWorld.current?.querySelectorAll<HTMLElement>(
-        ".board-object[data-object]")??[]).filter(el=>selected.has(el.dataset.object??""));
-      preview={gesture:g,selected,elements,liveBases,dx:0,dy:0};
+        ".board-object[data-object]")??[]).filter(el=>
+          selected.has(el.dataset.object??"")||linked.has(el.dataset.object??""));
+      preview={gesture:g,selected,linked,elements,liveBases,dx:0,dy:0};
       compositorDrag.current=preview;
     }
     preview.dx=dx;preview.dy=dy;
