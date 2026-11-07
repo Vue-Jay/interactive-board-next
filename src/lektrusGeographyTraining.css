@@ -322,3 +322,12 @@
 .lektrus-school-on-board .lektrus-geo-game--auto-matching .lektrus-geo-game-header{
  flex:none;
 }
+
+/* The teacher drags the whole exercise by its title, progress counters or
+   column labels. The answer buttons retain their own click handlers. Match
+   exercises have no nested scroll viewport; card exercises keep scrolling
+   within their content when a touch starts away from the inert header. */
+.lektrus-school-on-board .lektrus-geo-game :is(
+ .lektrus-geo-game-header,.lektrus-geo-game-progress,
+ .lektrus-geo-match-grid h3,.lektrus-geo-message
+){touch-action:none}
