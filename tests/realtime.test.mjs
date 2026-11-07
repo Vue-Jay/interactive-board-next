@@ -77,6 +77,7 @@ function harness(options = {}) {
   const sockets = [], statuses = [], documents = [], timers = new Map(), listeners = new Map();
   let timerId = 0;
   let reads = 0;
+  let probes = 0;
   class Socket {
     static OPEN = 1;
     readyState = 0;
@@ -99,6 +100,10 @@ function harness(options = {}) {
       reads++;
       return options.read ? options.read(id) : { board_id: id, version: reads, document };
     },
+    getRemoteBoardDocumentVersion: async id => {
+      probes++;
+      return options.probeVersion ? options.probeVersion(id) : null;
+    },
   };
   const clock = (callback, ms, interval) => { const id = ++timerId; timers.set(id, { callback, ms, interval }); return id; };
   const { subscribeBoardDocument } = load('boardRealtime', {
@@ -118,7 +123,7 @@ function harness(options = {}) {
     if (!entry[1].interval) timers.delete(entry[0]);
     entry[1].callback();
   };
-  return { sockets, statuses, documents, timers, listeners, stop, tick, fire, reads: () => reads };
+  return { sockets, statuses, documents, timers, listeners, stop, tick, fire, reads: () => reads, probes: () => probes };
 }
 
 test('subscription uses current-board filters and JWT; ready and events fetch latest', async () => {
@@ -270,5 +275,57 @@ test('malformed or cross-board full WAL records cannot apply to this board',asyn
   await h.tick();
   assert.equal(h.documents.length,1);
   assert.equal(h.documents[0].board_id,'board-id');
+  h.stop();
+});
+
+
+test('key-only thumbnail updates and unchanged reconnect read only revision metadata',async()=>{
+  let serverVersion=1;
+  const h=harness({
+    read:()=>({board_id:'board-id',version:serverVersion,document}),
+    probeVersion:()=>serverVersion,
+  });
+  await h.tick();const ws=h.sockets[0];ws.open();ws.ready();await h.tick();
+  assert.equal(h.reads(),1,'First load must still fetch the full board');
+  assert.equal(h.documents.length,1);
+  // Preview PATCH keeps the same revision. Before optimization each notification
+  // downloaded the entire board despite no new content.
+  for(let i=0;i<4;i++){ws.message('postgres_changes');await h.tick()}
+  assert.equal(h.reads(),1,'Unchanged key-only events must transfer zero full boards');
+  assert.equal(h.probes(),4,'Each event verifies revision under the same RLS');
+  serverVersion=2;
+  ws.message('postgres_changes');await h.tick();
+  assert.equal(h.reads(),2,'New revision must still fetch the full board');
+  assert.equal(h.documents.at(-1).version,2);
+  // Reconnection always refreshes a tiny version; no duplicate full-document GET.
+  ws.onclose();h.fire(1000);await h.tick();
+  const next=h.sockets[1];next.open();next.ready();await h.tick();
+  assert.equal(h.reads(),2,'Unchanged reconnect must not reload a full document');
+  serverVersion=3;
+  next.message('postgres_changes');await h.tick();
+  assert.equal(h.reads(),3,'Updates after reconnect must not be missed');
+  assert.equal(h.documents.at(-1).version,3);
+  h.stop();
+});
+
+test('failed or unavailable version probe falls back to full authenticated load',async()=>{
+  const h=harness({probeVersion:()=>{throw new Error('version probe unavailable')}});
+  await h.tick();const ws=h.sockets[0];ws.open();ws.ready();await h.tick();
+  assert.equal(h.reads(),1);
+  ws.message('postgres_changes');await h.tick();
+  assert.equal(h.reads(),2,'Do not mistake a failed probe for an unchanged document');
+  assert.equal(h.documents.at(-1).version,2);
+  assert.equal(h.statuses.at(-1),'online');
+  h.stop();
+});
+
+test('full WAL document bypasses extra lightweight revision checks',async()=>{
+  const h=harness({probeVersion:()=>99});
+  await h.tick();const ws=h.sockets[0];ws.open();ws.ready();await h.tick();
+  const before=h.probes(),reads=h.reads();
+  ws.message('postgres_changes',{data:{record:{board_id:'board-id',version:12,document}}});
+  assert.equal(h.documents.at(-1).version,12);
+  assert.equal(h.probes(),before,'Complete WAL record already contains the revision');
+  assert.equal(h.reads(),reads,'Complete WAL record needs no REST request');
   h.stop();
 });
