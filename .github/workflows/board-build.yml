@@ -43,6 +43,7 @@ jobs:
       - run: node scripts/test-lektrus-subject-boards.mjs
       - run: node scripts/test-lektrus-interactive-worksheets.mjs
       - run: node scripts/test-lektrus-subject-isolation.mjs
+      - run: node scripts/test-lektrus-geography-training.mjs
       - run: node scripts/test-lektrus-subject-task-audit.mjs
       - run: node scripts/test-lektrus-language-studio.mjs
       - run: node scripts/test-lektrus-russian-board-work.mjs
