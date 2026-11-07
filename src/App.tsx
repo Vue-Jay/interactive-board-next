@@ -4746,6 +4746,36 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const dragSnapCache = useRef(new WeakMap<Gesture,{
     selected:Set<string>; moving:Bounds|null; snapIndex:BoardDragSnapIndex;
   }>());
+  const paintCompositorDrag=(g:Gesture,dx:number,dy:number):boolean=>{
+    let preview=compositorDrag.current;
+    if(preview?.gesture!==g){
+      const selected=new Set(g.ids);
+      if(!canCompositeBoardDrag(g.before,selected))return false;
+      const origins=getGestureOrigins(g);
+      const liveBases:BoardObjectPose[]=[];
+      // Cache original transforms only once: the board may contain 10,000+
+      // items, but only the grabbed objects need a per-frame change.
+      for(const index of gestureIndices.current.get(g)??[]){
+        const item=g.before[index];
+        const origin=item&&origins.get(item.id);
+        if(item&&origin&&selected.has(item.id))
+          liveBases.push(toBoardObjectPose(item,origin));
+      }
+      const elements=Array.from(fastPanWorld.current?.querySelectorAll<HTMLElement>(
+        ".board-object[data-object]")??[]).filter(el=>selected.has(el.dataset.object??""));
+      preview={gesture:g,selected,elements,liveBases,dx:0,dy:0};
+      compositorDrag.current=preview;
+    }
+    preview.dx=dx;preview.dy=dy;
+    paintBoardDragTranslation(preview.elements,fastPanSelection.current,
+      dx,dy,g.view.zoom);
+    if(preview.liveBases.length){
+      workChannel.current?.publishTransform(preview.liveBases.map(pose=>({
+        ...pose,x:pose.x+dx,y:pose.y+dy
+      })));
+    }
+    return true;
+  };
   const move = (e: PE<HTMLElement>) => {
     const g = gesture.current;
     if (!g || e.pointerId !== g.pointer) return;
@@ -4768,7 +4798,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       if (!g.dragging) return;
       if (g.handMoveSelection && g.ids.length) {
         const worldDx=dx/g.view.zoom, worldDy=dy/g.view.zoom;
-        display(g.before.map(item=>g.ids.includes(item.id)?{...item,x:item.x+worldDx,y:item.y+worldDy}:item));
+        if(!paintCompositorDrag(g,worldDx,worldDy))
+          display(g.before.map(item=>g.ids.includes(item.id)?{...item,x:item.x+worldDx,y:item.y+worldDy}:item));
       } else {
         // A navigation frame must not mutate React state.
         scheduleViewerPan({...g.view,x:g.view.x+dx,y:g.view.y+dy});
@@ -4798,17 +4829,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       } else {
         clearGuides();
       }
-      display(
-        g.before.map((item) =>
-          cache.selected.has(item.id)
-            ? {
-                ...item,
-                x: item.x + worldDx,
-                y: item.y + worldDy,
-              }
-            : item,
-        ),
-      );
+      if(!paintCompositorDrag(g,worldDx,worldDy))
+        display(
+          g.before.map((item) =>
+            cache.selected.has(item.id)
+              ? {...item,x:item.x+worldDx,y:item.y+worldDy}
+              : item,
+          ),
+        );
     } else if (g.mode === "connector-end" && g.handle && g.transformItem?.kind === "connector") {
       clearGuides();
       const base = g.transformItem;
@@ -4928,12 +4956,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
   const moveObjectFrame=(e:PE<HTMLElement>)=>{
     const active=gesture.current;
-    if(!active||!["drag","resize","rotate","connector-end"].includes(active.mode)){
+    if(!active||!["drag","resize","rotate","connector-end"].includes(active.mode)&&
+      !(active.mode==="hand-smart"&&active.handMoveSelection)){
       move(e);return;
     }
     // Capture the pointer as soon as a drag crosses its five-pixel threshold.
     // Subsequent moves are coalesced, not the initial mouse interaction.
-    if(active.mode==="drag"&&!active.dragging){move(e);return;}
+    if((active.mode==="drag"||active.mode==="hand-smart")&&!active.dragging){move(e);return;}
     pendingObjectTransform.current={
       pointerId:e.pointerId,clientX:e.clientX,clientY:e.clientY,
       altKey:e.altKey,shiftKey:e.shiftKey
