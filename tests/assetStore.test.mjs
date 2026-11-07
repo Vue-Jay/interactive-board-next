@@ -154,7 +154,16 @@ test('authenticated binary transport preserves MIME and propagates access denial
   vm.runInNewContext(ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText, {
-    exports, Headers,
+    exports, Headers, AbortController, DOMException, URL,
+    // The production backend is an ES module with Capacitor and browser
+    // timers. The isolated CommonJS transport test must supply those APIs.
+    require: id => id === '@capacitor/core'
+      ? { Capacitor: { isNativePlatform: () => false } }
+      : id === './lektrusLocalTestMode'
+        ? { LEKTRUS_LOCAL_TEST_MODE: false }
+        : (() => { throw new Error('Unexpected backend import ' + id); })(),
+    window: { setTimeout, clearTimeout },
+    document: { visibilityState: 'visible' },
     localStorage: { getItem: () => session ? JSON.stringify(session) : null },
     fetch: async (url, init) => {
       calls.push({ url, init });
