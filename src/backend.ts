@@ -391,6 +391,20 @@ export const getRemoteBoardDocument = async (boardId: string): Promise<RemoteBoa
   return rows[0] ?? null;
 };
 
+/** Read only the RLS-protected revision number, not the potentially
+ * multi-megabyte JSONB document. Used to ignore key-only WAL notifications
+ * from thumbnail writes and unchanged reconnects. A missing/invalid version
+ * must never be interpreted as an up-to-date document.
+ */
+export const getRemoteBoardDocumentVersion = async (boardId: string): Promise<number | null> => {
+  if (!isRemoteBackendEnabled()) return null;
+  const rows = await remoteRequest<Array<{ version: number }>>(
+    `/rest/v1/board_documents?board_id=eq.${encodeURIComponent(boardId)}&select=version&limit=1`,
+  );
+  const version = rows[0]?.version;
+  return Number.isSafeInteger(version) && version >= 0 ? version : null;
+};
+
 export type RemoteSaveResult = {
   ok: boolean;
   conflict: boolean;
