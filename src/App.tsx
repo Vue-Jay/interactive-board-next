@@ -18,6 +18,7 @@ import {boardGridTransform} from "./boardBackgroundPan";
 import {chemistryBoardHasContent} from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
 import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./rectSelection";
+import {boardObjectAtInertPointerTarget} from "./boardObjectDragSurface";
 import {applyBoardSelectionCursor,clearBoardSelectionCursor,selectionCursorForGesture,selectionCursorForTarget} from "./lektrusSelectionCursor";
 import "./App.css";
 import AuthScreen from "./AuthScreen";
@@ -1365,6 +1366,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         })()}{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small className="graph-equation">{prettyGraphEquation(expression)}</small>}
       </div>)}
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
+      data-board-gesture-owner={onPickPoint||onAddPoint?"true":undefined}
       onPointerDownCapture={event=>{
         if((event.target as Element).closest?.(".lektrus-diagram-grid-toggle"))return;
         if(onPickPoint){
@@ -1710,6 +1712,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
                 x={(sx(a.x)+sx(b.x))/2} y={(sy(a.y)+sy(b.y))/2}
                 angle={Math.atan2(sy(b.y)-sy(a.y),sx(b.x)-sx(a.x))*180/Math.PI}/>}
             {rayControl&&onRayChange&&<line x1={sx(start.x)} y1={sy(start.y)} x2={sx(end.x)} y2={sy(end.y)}
+              data-board-interactive="true"
               stroke="transparent" strokeWidth="24" style={{cursor:"grab",touchAction:"none"}} onPointerDown={beginRayDrag}
               aria-label="Перетащите луч, чтобы изменить направление"/>}
             {segmentText&&<text className="graph-figure-label"
@@ -2779,6 +2782,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [online,setOnline]=useState(()=>navigator.onLine);
   const [updateReady,setUpdateReady]=useState<ServiceWorkerRegistration|null>(null);
   const gesture = useRef<Gesture | null>(null);
+  // The capture phase starts drags even when a nested lesson widget stops
+  // pointerdown/pointermove bubbling. Track the owning pointer to consume
+  // movement and release exactly once, without stealing active controls.
+  const inertSurfaceDragPointer=useRef<number|null>(null);
   // Selection pointers use browser-native SVG cursors; update an imperative
   // style variable only when the interaction state changes. Never rerender the
   // (potentially very large) whiteboard just because the mouse moved.
@@ -8875,10 +8882,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             }
             const atlasControl=target.closest(
               "button,input,select,textarea,a,[role='button'],[role='slider'],[contenteditable='true']");
-            // Empty atlas header/inspector space belongs to board navigation,
-            // not dragging or pinching the atlas object itself.
+            // Hand-mode atlas headers still pan the board. In select mode an
+            // inert atlas header must move the ATLAS OBJECT itself, like every
+            // other subject widget. The shared capture drag below handles it.
             if(atlas&&!atlasControl&&!presentation&&!space&&
-              (tool==="select"||tool==="hand")&&e.button===0){
+              tool==="hand"&&e.button===0){
               if(e.pointerType==="touch"){
                 touchStart(e);
                 if(pinchState.current){e.preventDefault();e.stopPropagation();return;}
@@ -8941,6 +8949,34 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               e.currentTarget.setPointerCapture(e.pointerId);
               return;
             }
+            // Every tool can create a board object with a teaching widget inside
+            // it. On SELECT, its inert area MUST begin the same drag as an
+            // ordinary shape, even if the widget stops bubbling (e.g. geo
+            // matching, biology, syntax, coding or a full subject worksheet).
+            // Active buttons/inputs and independent pan/zoom canvases are
+            // excluded by the shared DOM classifier.
+            if(tool==="select"&&!presentation&&!space&&!objectEditorOpen&&
+               e.button===0&&!pinchState.current&&!gesture.current&&canEdit){
+              const dragSurface=boardObjectAtInertPointerTarget(target);
+              const objectId=dragSurface?.dataset.object;
+              const dragItem=objectId?itemsRef.current.find(item=>item.id===objectId):null;
+              if(dragItem&&!dragItem.hidden&&canTransformBoardObject(dragItem)){
+                down(e);
+                // down() updates the gesture ref imperatively. TypeScript
+                // cannot infer that mutation after the !gesture.current guard.
+                const started=gesture.current as Gesture|null;
+                if(started?.pointer===e.pointerId&&started.mode==="drag"){
+                  inertSurfaceDragPointer.current=e.pointerId;
+                  // Do not let an inert widget's own generic pointerdown
+                  // listener reset its task, or a bubble-phase board handler
+                  // create a second gesture. No preventDefault: double-click
+                  // and text-free mouse click selection continue to work.
+                  e.stopPropagation();
+                  syncSelectionCursor(e.target,e.pointerType);
+                  return;
+                }
+              }
+            }
             // Painting never selects or drags objects, including photos, PDF
             // viewers and selection handles. Start the existing stroke gesture
             // during capture, before any embedded component handles the event.
@@ -8967,9 +9003,20 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             board.current?.setPointerCapture(e.pointerId);
           }}
           onPointerMoveCapture={(e) => {
-            if(tool==="select")syncSelectionCursor(e.target,e.pointerType);
             if(!touchPoints.current.has(e.pointerId)&&e.pointerType==="touch")return;
             if(e.pointerType==="touch"&&touchMove(e)){e.preventDefault();e.stopPropagation();return;}
+            if(inertSurfaceDragPointer.current===e.pointerId){
+              // Capture sees events even when a nested SVG/editor calls
+              // stopPropagation on pointermove. Its bubble handler must not
+              // apply a second movement for the same sample.
+              if(gesture.current?.pointer===e.pointerId){
+                move(e);
+                // This gesture is owned by the BOARD now, not the widget.
+                // Avoid moving an inner model or triggering its hover actions.
+                e.stopPropagation();
+              }
+            }
+            if(tool==="select")syncSelectionCursor(e.target,e.pointerType);
             if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType,e.target);
             if(rightPress.current?.pointer===e.pointerId){
               const p=local(e.clientX,e.clientY),start=rightPress.current.start;
@@ -8986,6 +9033,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           }}
           onPointerUpCapture={(e) => {
             if(tool==="select"&&e.pointerType!=="touch")applyBoardSelectionCursor(board.current,"idle");
+            if(inertSurfaceDragPointer.current===e.pointerId){
+              inertSurfaceDragPointer.current=null;
+              // Embedded widgets may stop the UP event too. Finalize in
+              // capture before they can interrupt it, with one undo step.
+              if(gesture.current?.pointer===e.pointerId){move(e);end();e.stopPropagation();}
+            }
             const canvasTap=geometryCanvasTouch.current;
             if(canvasTap?.pointer===e.pointerId){
               geometryCanvasTouch.current=null;
@@ -9045,6 +9098,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           }}
           onPointerCancelCapture={(e) => {
             if(tool==="select")applyBoardSelectionCursor(board.current,"idle");
+            if(inertSurfaceDragPointer.current===e.pointerId){
+              inertSurfaceDragPointer.current=null;
+              if(gesture.current?.pointer===e.pointerId){end(true);e.stopPropagation();}
+            }
             if(e.pointerType==="touch"){
               const consumed=touchEnd(e);
               if(consumed){e.preventDefault();e.stopPropagation();return;}
@@ -9080,6 +9137,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             if(!transformHandle&&target.closest("button,input,select,textarea,[role='button'],[role='slider'],[contenteditable='true'],[data-board-interactive]"))return;
             if(tool==="eraser")return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; if (presentation) { const point = local(e.clientX, e.clientY); if (presentationLaser) setPresentationLaserPos(point); if (presentationSpotlight) setPresentationSpotlightPos(point); return; } down(e); if(tool==="select")syncSelectionCursor(e.target,e.pointerType); }}
           onPointerMove={(e) => {
+            if(inertSurfaceDragPointer.current===e.pointerId)return;
             if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y,e.pointerType);}return;}
             if(eraserSession.current||pinchState.current||consumedTouchIds.current.has(e.pointerId))return;
             const activeGesture=gesture.current;
@@ -9139,8 +9197,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               end();
             }
           }}
-          onPointerCancel={(e) => { if(tool==="select")applyBoardSelectionCursor(board.current,"idle"); if(e.pointerType==="touch"&&touchEnd(e))return; if(rightPress.current?.pointer===e.pointerId){rightPress.current=null;setRightPointerActive(false)} if(gesture.current?.pointer===e.pointerId)end(true); }}
+          onPointerCancel={(e) => { if(inertSurfaceDragPointer.current===e.pointerId)inertSurfaceDragPointer.current=null; if(tool==="select")applyBoardSelectionCursor(board.current,"idle"); if(e.pointerType==="touch"&&touchEnd(e))return; if(rightPress.current?.pointer===e.pointerId){rightPress.current=null;setRightPointerActive(false)} if(gesture.current?.pointer===e.pointerId)end(true); }}
           onLostPointerCapture={(e) => {
+            if(inertSurfaceDragPointer.current===e.pointerId)inertSurfaceDragPointer.current=null;
             if(tool==="select")applyBoardSelectionCursor(board.current,"idle");
             // Releasing a previous object's capture must not cancel a NEW
             // gesture. Only the owner of the lost capture can be cleared.

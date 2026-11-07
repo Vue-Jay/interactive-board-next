@@ -143,7 +143,7 @@ export default function LektrusAtomView({model,onLabelMove,labelScale=1,compactI
    </>}
    {svgText("Схема ядра условна: размеры и расположение нуклонов не показаны",446,10)}
   </>:null}
-  {!orbital&&model.mode!=="nucleus"&&<g
+  {!orbital&&model.mode!=="nucleus"&&<g data-board-interactive="true"
     onPointerDown={beginLabel}
     onClick={e=>{e.stopPropagation();setSelectedLabel(true)}}
     style={{cursor:onLabelMove?"grab":"default"}}>

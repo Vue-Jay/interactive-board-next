@@ -37,6 +37,9 @@ function token(country:GeoCountry,d:GeoTrainingDiagram,side:"left"|"right"){
  const second=d.reverse?pair.left:pair.right;
  return asToken(country,side==="left"?first:second);
 }
+// Input buttons own their clicks. The game also stops bubbling in order not
+// to select the board accidentally; board capture now recognizes its inert
+// header, counters and whitespace as a drag surface.
 const stop=(e:React.SyntheticEvent)=>e.stopPropagation();
 
 function Matching({diagram:d,onMatchingSize}:{diagram:GeoTrainingDiagram;
