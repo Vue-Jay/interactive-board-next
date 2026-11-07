@@ -15,6 +15,7 @@ import {
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import {boardWorldTransform,boardOverlayTransform} from "./boardPanTransform";
 import {planCompositeBoardDrag,connectorDragEndpoints,paintBoardDeformedConnector,canCompositeBoardRotation,translatedBoardDragItems,paintBoardDragTranslation,clearBoardDragTranslation,paintBoardRotationPreview,clearBoardRotationPreview,type ConnectorDragTarget} from "./boardDragCompositor";
+import {canCompositeGroupRotation,rotatedGroupItems,paintGroupRotationFrame,clearGroupRotationFrame,type GroupRotationTarget} from "./boardGroupRotationCompositor";
 import {boardGridTransform} from "./boardBackgroundPan";
 import {chemistryBoardHasContent} from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
@@ -2811,6 +2812,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     gesture:Gesture;id:string;base:Item;element:HTMLElement;
     outline:HTMLElement;origin:string;rotation:number;
   }|null>(null);
+  const compositorGroupRotation=useRef<{
+    gesture:Gesture;targets:GroupRotationTarget<Item>[];
+    frame:HTMLElement;bounds:Bounds;poses:Item[];
+    delta:number;
+  }|null>(null);
   // The capture phase starts drags even when a nested lesson widget stops
   // pointerdown/pointermove bubbling. Track the owning pointer to consume
   // movement and release exactly once, without stealing active controls.
@@ -4184,6 +4190,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if (!g) return;
     const dragPreview=compositorDrag.current?.gesture===g?compositorDrag.current:null;
     const rotatePreview=compositorRotation.current?.gesture===g?compositorRotation.current:null;
+    const groupRotatePreview=compositorGroupRotation.current?.gesture===g
+      ?compositorGroupRotation.current:null;
     if(dragPreview){
       // The linked arrow geometry is materialized BEFORE the finished peer
       // packet, rather than snapping to the updated anchor after server save.
@@ -4193,6 +4201,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     }else if(rotatePreview){
       itemsRef.current=cancel?(g.restore??g.before):g.before.map(item=>
         item.id===rotatePreview.id?{...item,rotation:rotatePreview.rotation}:item);
+    }else if(groupRotatePreview){
+      if(cancel)itemsRef.current=g.restore??g.before;
+      else{
+        const latest=new Map(groupRotatePreview.poses.map(item=>[item.id,item] as const));
+        itemsRef.current=g.before.map(item=>latest.get(item.id)??item);
+      }
     }
     gesture.current = null;
     // The last pointer sample is applied synchronously before end(). Send it
@@ -4227,7 +4241,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         setSelected(g.handHitIds ?? []);
       }
     } else if (g.mode === "drag" || g.mode === "erase" || g.mode === "resize" || g.mode === "rotate" || g.mode === "connector-end") {
-      if(dragPreview||rotatePreview)flushSync(()=>commit(itemsRef.current,{immediatePaint:true}));
+      if(dragPreview||rotatePreview||groupRotatePreview)
+            flushSync(()=>commit(itemsRef.current,{immediatePaint:true}));
       else commit(itemsRef.current);
     }
     else if (g.mode === "draw" && g.ink)
@@ -4288,6 +4303,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if(rotatePreview){
       clearBoardRotationPreview(rotatePreview.element,rotatePreview.outline);
       compositorRotation.current=null;
+    }
+    if(groupRotatePreview){
+      clearGroupRotationFrame(groupRotatePreview.targets);
+      if(cancel){
+        // The selection overlay was moved imperatively too. A cancelled
+        // rotation does not change the model, so React may not repaint it.
+        const b=groupRotatePreview.bounds,v=g.view;
+        groupRotatePreview.frame.style.left=`${b.x*v.zoom+v.x}px`;
+        groupRotatePreview.frame.style.top=`${b.y*v.zoom+v.y}px`;
+        groupRotatePreview.frame.style.width=`${b.width*v.zoom}px`;
+        groupRotatePreview.frame.style.height=`${b.height*v.zoom}px`;
+      }
+      compositorGroupRotation.current=null;
     }
     setPath([]);
     setMarqueeRect(null);
@@ -4888,6 +4916,46 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     ]);
     return true;
   };
+  const paintCompositorGroupRotation=(g:Gesture,delta:number):boolean=>{
+    let preview=compositorGroupRotation.current;
+    if(preview?.gesture!==g){
+      if(!g.transformItems||!g.transformBounds)return false;
+      const selected=new Set(g.ids);
+      if(!canCompositeGroupRotation(g.before,selected))return false;
+      const byId=new Map(g.transformItems.map(item=>[item.id,item] as const));
+      const elementById=new Map<string,HTMLElement>();
+      for(const el of fastPanWorld.current?.querySelectorAll<HTMLElement>(
+        ".board-object[data-object]")??[]){
+        const id=el.dataset.object;
+        if(id&&selected.has(id))elementById.set(id,el);
+      }
+      const frame=fastPanSelection.current?.querySelector<HTMLElement>(
+        ".screen-transform-overlay.screen-transform-group");
+      if(!frame||elementById.size!==selected.size)return false;
+      const targets:GroupRotationTarget<Item>[]=[];
+      for(const base of g.transformItems){
+        const element=elementById.get(base.id);
+        if(!element)return false;
+        targets.push({base,element});
+      }
+      getGestureOrigins(g);
+      preview={
+        gesture:g,targets,frame,bounds:g.transformBounds,
+        poses:g.transformItems,delta:0,
+      };
+      compositorGroupRotation.current=preview;
+    }
+    preview.delta=delta;
+    preview.poses=rotatedGroupItems(
+      preview.targets.map(target=>target.base),preview.bounds,delta);
+    paintGroupRotationFrame(
+      preview.targets,preview.poses,delta,preview.frame,g.view);
+    const origins=getGestureOrigins(g);
+    const poses=preview.poses.map(item=>
+      toBoardObjectPose(item,origins.get(item.id)!));
+    workChannel.current?.publishTransform(poses);
+    return true;
+  };
   const move = (e: PE<HTMLElement>) => {
     const g = gesture.current;
     if (!g || e.pointerId !== g.pointer) return;
@@ -5017,21 +5085,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         const a1 = Math.atan2(now.y - cy, now.x - cx);
         let delta = (a1 - a0) * 180 / Math.PI;
         if (e.shiftKey) delta = Math.round(delta / 90) * 90;
-        const rad = delta * Math.PI / 180;
-        const cos = Math.cos(rad), sin = Math.sin(rad);
-        const byId = new Map(g.transformItems.map((base) => {
-          const bx = base.x + base.width / 2 - cx;
-          const by = base.y + base.height / 2 - cy;
-          const ncx = cx + bx * cos - by * sin;
-          const ncy = cy + bx * sin + by * cos;
-          return [base.id, {
-            ...base,
-            x: ncx - base.width / 2,
-            y: ncy - base.height / 2,
-            rotation: (base.rotation ?? 0) + delta,
-          }] as const;
-        }));
-        display(g.before.map((item) => byId.get(item.id) ?? item));
+        if(!paintCompositorGroupRotation(g,delta)){
+          const byId=new Map(rotatedGroupItems(
+            g.transformItems,g.transformBounds,delta).map(item=>[item.id,item] as const));
+          display(g.before.map(item=>byId.get(item.id)??item));
+        }
       } else if (g.transformItem) {
         const base = g.transformItem;
         const cx = base.x + base.width / 2, cy = base.y + base.height / 2;
