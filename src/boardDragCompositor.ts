@@ -11,20 +11,66 @@ export type DragItemGeometry={
 type TranslateStyle={translate:string};
 export type DragPreviewElement={style:TranslateStyle};
 
+// A connector follows a rigid translation only when BOTH attached ends move
+// together. If just one endpoint follows, its line must be recomputed instead
+// of translating the whole SVG (otherwise it detaches from the fixed endpoint).
+export function compositeLinkedConnectorIds<T extends DragItemGeometry>(
+  items:readonly T[],ids:ReadonlySet<string>,
+):Set<string>|null{
+  if(ids.size===0||ids.size>64)return null;
+  const linked=new Set<string>();
+  for(const item of items){
+    // Ink may be rasterized; rulers use a separate screen-space portal.
+    if(ids.has(item.id)&&["connector","pen","marker","instrument"].includes(item.kind))return null;
+    if(item.kind!=="connector")continue;
+    const movingStart=!!item.connectorStartBinding&&ids.has(item.connectorStartBinding.itemId);
+    const movingEnd=!!item.connectorEndBinding&&ids.has(item.connectorEndBinding.itemId);
+    if(movingStart!==movingEnd)return null;
+    if(movingStart&&movingEnd)linked.add(item.id);
+  }
+  return ids.size+linked.size<=64?linked:null;
+}
+
 export function canCompositeBoardDrag<T extends DragItemGeometry>(
   items:readonly T[], ids:ReadonlySet<string>,
 ):boolean{
-  if(ids.size===0||ids.size>64)return false;
+  return compositeLinkedConnectorIds(items,ids)!==null;
+}
+
+/** Rigid single-object rotation can be drawn without reconstructing its
+ * potentially complex React subtree. A bound arrow uses the normal path:
+ * rotating its anchor should never leave a detached visual preview.
+ */
+export function canCompositeBoardRotation<T extends DragItemGeometry>(
+  items:readonly T[],id:string,
+):boolean{
+  if(!id)return false;
+  let target=false;
   for(const item of items){
-    // Ink can live in a raster layer rather than a mounted DOM wrapper;
-    // instruments are drawn through their own screen-space portal.
-    if(ids.has(item.id)&&["connector","pen","marker","instrument"].includes(item.kind))return false;
-    if(item.kind==="connector"&&(
-      item.connectorStartBinding&&ids.has(item.connectorStartBinding.itemId)||
-      item.connectorEndBinding&&ids.has(item.connectorEndBinding.itemId)
-    ))return false;
+    if(item.id===id){
+      if(["connector","pen","marker","instrument"].includes(item.kind))return false;
+      target=true;
+    }
+    if(item.kind==="connector"&&
+      (item.connectorStartBinding?.itemId===id||
+       item.connectorEndBinding?.itemId===id))return false;
   }
-  return true;
+  return target;
+}
+
+export function paintBoardRotationPreview(
+  element:{style:{rotate:string}},outline:{style:{rotate:string}}|null,
+  delta:number,
+):void{
+  const rotation=`${delta}deg`;
+  element.style.rotate=rotation;
+  if(outline)outline.style.rotate=rotation;
+}
+export function clearBoardRotationPreview(
+  element:{style:{rotate:string}},outline:{style:{rotate:string}}|null,
+):void{
+  element.style.rotate="";
+  if(outline)outline.style.rotate="";
 }
 
 export function translatedBoardDragItems<T extends DragItemGeometry>(

@@ -14,7 +14,7 @@ import {
 } from "react";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import {boardWorldTransform,boardOverlayTransform} from "./boardPanTransform";
-import {canCompositeBoardDrag,translatedBoardDragItems,paintBoardDragTranslation,clearBoardDragTranslation} from "./boardDragCompositor";
+import {compositeLinkedConnectorIds,canCompositeBoardRotation,translatedBoardDragItems,paintBoardDragTranslation,clearBoardDragTranslation,paintBoardRotationPreview,clearBoardRotationPreview} from "./boardDragCompositor";
 import {boardGridTransform} from "./boardBackgroundPan";
 import {chemistryBoardHasContent} from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
@@ -681,14 +681,18 @@ const connectorAnchor = (point: Point, items: Item[], threshold: number, exclude
 };
 
 const syncBoundConnectors = (source: Item[]): Item[] => {
-  // Most handwritten boards contain no connector arrows. Keep their original
-  // array reference and skip a full-map allocation on every drawing/move frame.
-  if(!source.some(item=>item.kind==="connector"))return source;
-  // Resolve attachment anchors through one index rather than scanning ALL
-  // board items twice per connector on every drag frame (O(N*connectors)).
+  // Neither connector-free boards nor standalone arrows need any anchor
+  // rebuild. Preserve object identities so heavy subject widgets don't
+  // rerender just because somebody rotates or resizes an unrelated item.
+  if(!source.some(item=>item.kind==="connector"&&
+    (item.connectorStartBinding||item.connectorEndBinding)))return source;
+  // Anchors share one lookup index. Rebuild ONLY when the resolved geometry
+  // actually changes, not every connector on every pointermove.
   const byId=new Map(source.map(item=>[item.id,item] as const));
-  return source.map((item) => {
-    if (item.kind !== "connector") return item;
+  let changed=false;
+  const next=source.map((item) => {
+    if(item.kind!=="connector"||
+      (!item.connectorStartBinding&&!item.connectorEndBinding))return item;
     const startFallback = { x: item.x + (item.connectorStart?.x ?? 0), y: item.y + (item.connectorStart?.y ?? item.height / 2) };
     const endFallback = { x: item.x + (item.connectorEnd?.x ?? item.width), y: item.y + (item.connectorEnd?.y ?? item.height / 2) };
     const boundStart = bindingPoint(item.connectorStartBinding, byId);
@@ -708,11 +712,25 @@ const syncBoundConnectors = (source: Item[]): Item[] => {
       startBinding,
       endBinding,
       item.text,
+      item.arrowHeadStyle ?? "triangle",
+      item.arrowHeadSize ?? 8,
     );
-    return { ...rebuilt, groupId: item.groupId, locked: item.locked, hidden: item.hidden, rotation: item.rotation };
+    const samePoint=(a:Point|undefined,b:Point|undefined)=>
+      a?.x===b?.x&&a?.y===b?.y;
+    if(item.x===rebuilt.x&&item.y===rebuilt.y&&
+      item.width===rebuilt.width&&item.height===rebuilt.height&&
+      samePoint(item.connectorStart,rebuilt.connectorStart)&&
+      samePoint(item.connectorEnd,rebuilt.connectorEnd)&&
+      item.connectorStartBinding===startBinding&&
+      item.connectorEndBinding===endBinding)return item;
+    changed=true;
+    // Preserve authorship, arrow-head styling and future metadata. Only the
+    // computed geometry/bindings are replaced, and a missing anchor is cleared.
+    return {...item,...rebuilt,connectorStartBinding:startBinding,
+      connectorEndBinding:endBinding};
   });
+  return changed?next:source;
 };
-
 function Connector({ item }: { item: Item }) {
   const start = item.connectorStart ?? { x: 12, y: item.height / 2 };
   const end = item.connectorEnd ?? { x: item.width - 12, y: item.height / 2 };
@@ -2785,8 +2803,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // The large React object tree stays still while an ordinary selected
   // object travels. Keep only DOM targets and original poses for this gesture.
   const compositorDrag=useRef<{
-    gesture:Gesture;selected:Set<string>;elements:HTMLElement[];
+    gesture:Gesture;selected:Set<string>;linked:Set<string>;elements:HTMLElement[];
     liveBases:BoardObjectPose[];dx:number;dy:number;
+  }|null>(null);
+  const compositorRotation=useRef<{
+    gesture:Gesture;id:string;base:Item;element:HTMLElement;
+    outline:HTMLElement;origin:string;rotation:number;
   }|null>(null);
   // The capture phase starts drags even when a nested lesson widget stops
   // pointerdown/pointermove bubbling. Track the owning pointer to consume
@@ -4160,11 +4182,16 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     finishViewerPan(cancel,g?.view);
     if (!g) return;
     const dragPreview=compositorDrag.current?.gesture===g?compositorDrag.current:null;
+    const rotatePreview=compositorRotation.current?.gesture===g?compositorRotation.current:null;
     if(dragPreview){
-      // Materialize the last compositor position before sending FINAL and
-      // before committing the single undo/save revision. No per-frame copies.
-      itemsRef.current=cancel?(g.restore??g.before):translatedBoardDragItems(
-        g.before,dragPreview.selected,dragPreview.dx,dragPreview.dy);
+      // The linked arrow geometry is materialized BEFORE the finished peer
+      // packet, rather than snapping to the updated anchor after server save.
+      itemsRef.current=cancel?(g.restore??g.before):syncBoundConnectors(
+        translatedBoardDragItems(
+          g.before,dragPreview.selected,dragPreview.dx,dragPreview.dy));
+    }else if(rotatePreview){
+      itemsRef.current=cancel?(g.restore??g.before):g.before.map(item=>
+        item.id===rotatePreview.id?{...item,rotation:rotatePreview.rotation}:item);
     }
     gesture.current = null;
     // The last pointer sample is applied synchronously before end(). Send it
@@ -4199,7 +4226,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         setSelected(g.handHitIds ?? []);
       }
     } else if (g.mode === "drag" || g.mode === "erase" || g.mode === "resize" || g.mode === "rotate" || g.mode === "connector-end") {
-      if(dragPreview)flushSync(()=>commit(itemsRef.current,{immediatePaint:true}));
+      if(dragPreview||rotatePreview)flushSync(()=>commit(itemsRef.current,{immediatePaint:true}));
       else commit(itemsRef.current);
     }
     else if (g.mode === "draw" && g.ink)
@@ -4253,6 +4280,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if(dragPreview){
       clearBoardDragTranslation(dragPreview.elements,fastPanSelection.current);
       compositorDrag.current=null;
+    }
+    if(rotatePreview){
+      clearBoardRotationPreview(rotatePreview.element,rotatePreview.outline);
+      compositorRotation.current=null;
     }
     setPath([]);
     setMarqueeRect(null);
@@ -4769,7 +4800,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     let preview=compositorDrag.current;
     if(preview?.gesture!==g){
       const selected=new Set(g.ids);
-      if(!canCompositeBoardDrag(g.before,selected))return false;
+      const linked=compositeLinkedConnectorIds(g.before,selected);
+      if(!linked)return false;
       const origins=getGestureOrigins(g);
       const liveBases:BoardObjectPose[]=[];
       // Cache original transforms only once: the board may contain 10,000+
@@ -4777,12 +4809,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       for(const index of gestureIndices.current.get(g)??[]){
         const item=g.before[index];
         const origin=item&&origins.get(item.id);
-        if(item&&origin&&selected.has(item.id))
+        if(item&&origin&&(selected.has(item.id)||linked.has(item.id)))
           liveBases.push(toBoardObjectPose(item,origin));
       }
       const elements=Array.from(fastPanWorld.current?.querySelectorAll<HTMLElement>(
-        ".board-object[data-object]")??[]).filter(el=>selected.has(el.dataset.object??""));
-      preview={gesture:g,selected,elements,liveBases,dx:0,dy:0};
+        ".board-object[data-object]")??[]).filter(el=>
+          selected.has(el.dataset.object??"")||linked.has(el.dataset.object??""));
+      preview={gesture:g,selected,linked,elements,liveBases,dx:0,dy:0};
       compositorDrag.current=preview;
     }
     preview.dx=dx;preview.dy=dy;
@@ -4793,6 +4826,30 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         ...pose,x:pose.x+dx,y:pose.y+dy
       })));
     }
+    return true;
+  };
+  const paintCompositorRotation=(g:Gesture,base:Item,rotation:number):boolean=>{
+    let preview=compositorRotation.current;
+    if(preview?.gesture!==g){
+      if(g.ids.length!==1||g.ids[0]!==base.id||
+        !canCompositeBoardRotation(g.before,base.id))return false;
+      const element=Array.from(fastPanWorld.current?.querySelectorAll<HTMLElement>(
+        ".board-object[data-object]")??[]).find(el=>el.dataset.object===base.id);
+      const outline=Array.from(fastPanSelection.current?.querySelectorAll<HTMLElement>(
+        ".screen-transform-overlay[data-object]")??[]).find(el=>el.dataset.object===base.id);
+      const origin=getGestureOrigins(g).get(base.id);
+      if(!element||!outline||!origin)return false;
+      preview={gesture:g,id:base.id,base,element,outline,origin,rotation};
+      compositorRotation.current=preview;
+    }
+    preview.rotation=rotation;
+    // CSS individual rotate composes with the board-object's existing
+    // transform, without traversing/rendering its large embedded lesson.
+    const delta=rotation-(preview.base.rotation??0);
+    paintBoardRotationPreview(preview.element,preview.outline,delta);
+    workChannel.current?.publishTransform([
+      toBoardObjectPose({...preview.base,rotation},preview.origin)
+    ]);
     return true;
   };
   const move = (e: PE<HTMLElement>) => {
@@ -4946,7 +5003,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         const a1 = Math.atan2(now.y - cy, now.x - cx);
         let rotation = (base.rotation ?? 0) + (a1 - a0) * 180 / Math.PI;
         if (e.shiftKey) rotation = Math.round(rotation / 90) * 90;
-        display(g.before.map((item) => item.id === base.id ? { ...item, rotation } : item));
+        if(!paintCompositorRotation(g,base,rotation))
+          display(g.before.map((item) => item.id === base.id ? { ...item, rotation } : item));
       }
     } else if (g.mode === "connector") {
       const raw = world(p);
