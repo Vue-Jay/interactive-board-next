@@ -4922,7 +4922,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       if(!g.transformItems||!g.transformBounds)return false;
       const selected=new Set(g.ids);
       if(!canCompositeGroupRotation(g.before,selected))return false;
-      const byId=new Map(g.transformItems.map(item=>[item.id,item] as const));
       const elementById=new Map<string,HTMLElement>();
       for(const el of fastPanWorld.current?.querySelectorAll<HTMLElement>(
         ".board-object[data-object]")??[]){
