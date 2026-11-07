@@ -8962,7 +8962,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               const dragItem=objectId?itemsRef.current.find(item=>item.id===objectId):null;
               if(dragItem&&!dragItem.hidden&&canTransformBoardObject(dragItem)){
                 down(e);
-                if(gesture.current?.pointer===e.pointerId&&gesture.current.mode==="drag"){
+                // down() updates the gesture ref imperatively. TypeScript
+                // cannot infer that mutation after the !gesture.current guard.
+                const started=gesture.current as Gesture|null;
+                if(started?.pointer===e.pointerId&&started.mode==="drag"){
                   inertSurfaceDragPointer.current=e.pointerId;
                   // Do not let an inert widget's own generic pointerdown
                   // listener reset its task, or a bubble-phase board handler
