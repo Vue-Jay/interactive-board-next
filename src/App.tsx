@@ -9511,15 +9511,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 className={`board-object object-${item.kind} ${selectedIds.has(item.id) ? "selected" : ""} ${item.locked ? "locked" : ""} ${item.kind==="image"&&imageCropEditorId===item.id?"image-crop-editing":""}`}
                 data-subject-tone={subjectToneForItem(item)}
                 style={{
-                  left: item.x,
-                  top: item.y,
-                  // Realtime packets arrive less frequently than paint frames.
-                  // Interpolate only a peer's provisional transform, never
-                  // a locally dragged object or its final saved geometry.
+                  // Keep the durable position as the layout origin.
+                  // A peer's intermediate translation stays on the compositor,
+                  // avoiding layout/reflow for each network frame. When the
+                  // durable revision arrives, left and the inverse translation
+                  // change together, so the object never snaps back.
+                  left: pose?base.x:item.x,
+                  top: pose?base.y:item.y,
                   transition:pose?"left 75ms linear, top 75ms linear, width 75ms linear, height 75ms linear, transform 75ms linear":undefined,
                   width: item.width,
                   height: item.height,
-                  transform: item.rotation ? `rotate(${item.rotation}deg)` : undefined,
+                  transform: pose
+                    ? `translate3d(${item.x-base.x}px,${item.y-base.y}px,0) rotate(${item.rotation??0}deg)`
+                    : item.rotation ? `rotate(${item.rotation}deg)` : undefined,
                   borderColor: item.kind === "frame" ? (item.color ?? "#8b8f9a") : undefined,
                   background: item.points
                     ? "transparent"
