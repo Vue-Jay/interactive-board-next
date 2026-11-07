@@ -20,14 +20,30 @@ const decodeCursor=style=>{
 for(const state of states){
  const {svg,x,y}=decodeCursor(pointer.BOARD_SELECTION_CURSORS[state]);
  assert.match(svg,/<svg [^>]*width="22" height="22" viewBox="0 0 32 32"/);
- assert.doesNotMatch(svg,/(?:stroke|fill)="#(?:fff|ffffff|c8dcff)"/i,
-  "No white border or pale halo should surround the compact "+state+" cursor");
+ assert.doesNotMatch(svg,/stroke="#(?:fff|ffffff|c8dcff)"/i,
+  "No white outline should surround the compact "+state+" cursor");
  assert.ok(x>=0&&x<22&&y>=0&&y<22,"Hotspot must fit the compact raster");
 }
 for(const state of ["idle","hover"]){
  const {svg,x,y}=decodeCursor(pointer.BOARD_SELECTION_CURSORS[state]);
- assert.equal((svg.match(/<path /g)||[]).length,1,
-  "Selection arrow needs a single path without an extra white/glowing outline");
+ assert.match(svg,/fill="#ffffff" stroke="#3262c1"/,
+  "Both selection arrow states must have white fill and a fine blue border");
+ assert.equal((svg.match(/fill="#ffffff"/g)||[]).length,1,
+  "The white arrow fill must stay identical in normal and hover states");
+ assert.doesNotMatch(svg,/fill="#(?:ccddfa|85a9ed)"/i,
+  "Hover must never recolor the arrow body blue");
+ if(state==="hover"){
+  assert.equal((svg.match(/<path /g)||[]).length,2,
+   "Hover adds exactly one outer glow behind the white arrow");
+  assert.match(svg,/<path [^>]*fill="none" stroke="#73a6ff" stroke-width="4\.4" stroke-opacity="\.67"/,
+   "Hover glow must be blue, semi-transparent and outside the arrow contour");
+  assert.ok(svg.indexOf('fill="none"')<svg.indexOf('fill="#ffffff"'),
+   "Glow must be behind, not on top of, the white arrow");
+ }else{
+  assert.equal((svg.match(/<path /g)||[]).length,1,
+   "Default arrow must have no outer glow");
+  assert.ok(!svg.includes('stroke="#73a6ff"'));
+ }
  assert.equal(x,2,"Arrow's pointed hotspot scales with the 22px image");
  assert.equal(y,2);
 }

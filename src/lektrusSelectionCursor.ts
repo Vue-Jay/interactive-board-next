@@ -20,9 +20,10 @@ const cursor=(body:string,hotspotX:number,hotspotY:number,fallback:string="defau
 
 const arrowShape="M3.8 3.2v21.3l6.1-6 5 9.1 4.3-2.3-5-8.8 8.6-.3Z";
 const arrow=(hover:boolean)=>cursor(
-  // A single clean stroke, with neither the old pale/white halo nor a white
-  // border. Hover changes only the fill and contour saturation.
-  `<path d="${arrowShape}" fill="${hover?"#85a9ed":"#ccddfa"}" stroke="${hover?"#204ca3":"#3262c1"}" stroke-width="1.7" stroke-linejoin="round"/>`,
+  // White fill is constant. Only hover adds a narrow BLUE outer glow;
+  // neither state has a second white outline or grows beyond 22px.
+  (hover?`<path d="${arrowShape}" fill="none" stroke="#73a6ff" stroke-width="4.4" stroke-opacity=".67" stroke-linejoin="round"/>`:"")+
+  `<path d="${arrowShape}" fill="#ffffff" stroke="#3262c1" stroke-width="1.7" stroke-linejoin="round"/>`,
   3,3
 );
 const hand=(closed:boolean)=>cursor(closed
