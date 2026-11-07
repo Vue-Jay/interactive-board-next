@@ -712,6 +712,8 @@ const syncBoundConnectors = (source: Item[]): Item[] => {
       startBinding,
       endBinding,
       item.text,
+      item.arrowHeadStyle ?? "triangle",
+      item.arrowHeadSize ?? 8,
     );
     const samePoint=(a:Point|undefined,b:Point|undefined)=>
       a?.x===b?.x&&a?.y===b?.y;
