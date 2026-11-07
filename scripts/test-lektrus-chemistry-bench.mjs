@@ -91,6 +91,36 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabMaterialConstants")return constants;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
+// Stable, immutable vessel snapshots are reused on every visual clock tick.
+// The same observation must not re-run the reaction-network solver or allocate
+// a fresh result when only the timer, selected pane or cursor has changed.
+{
+ const dosage={value:10,unit:"ml",concentrationM:0.1};
+ let mix=lab.putLabReagent(lab.defaultLabBench(),"v1","AgNO3",dosage);
+ mix=lab.putLabReagent(mix,"v1","NaCl",dosage);
+ const vessel=mix.vessels.find(v=>v.id==="v1");
+ assert.ok(vessel);
+ const original=lab.labObservation(vessel);
+ for(let i=0;i<100;i++)
+  assert.strictEqual(lab.labObservation(vessel),original,
+   "A stable vessel must reuse its exact chemical observation");
+ const revised={...vessel,temperatureC:(vessel.temperatureC??22)+1};
+ const fresh=lab.labObservation(revised);
+ assert.notStrictEqual(fresh,original,
+  "A new measured vessel state must invalidate the observation cache");
+ assert.deepEqual(lab.labObservation({...vessel}),original,
+  "Recomputation on an equivalent new snapshot must preserve the chemistry");
+ const start=performance.now();
+ for(let i=0;i<100;i++)lab.labObservation({...vessel});
+ const recalculatedMs=performance.now()-start;
+ const cachedStart=performance.now();
+ for(let i=0;i<100;i++)lab.labObservation(vessel);
+ const cachedMs=performance.now()-cachedStart;
+ console.log("Chemistry observation render ×100: fresh vessel references "+
+  recalculatedMs.toFixed(2)+"ms; stable reference "+cachedMs.toFixed(2)+
+  "ms (synthetic Node, not device FPS)");
+}
+
 // Detailed legacy physics assertions explicitly opt into high realism.
 const detailedBench=()=>{
  const bench=lab.defaultLabBench();
