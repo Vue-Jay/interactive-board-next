@@ -23,7 +23,7 @@ export default function LektrusForeignTaskAnswer({entry,format,answer,onChange}:
  const rows=format==="grammar"?foreignTaskLines(source,12):
   format==="reading"?foreignTaskLines(details.questions??"",15):[];
  const title=format==="translation"?"Переведите текст":format==="grammar"?"Преобразуйте предложения":"Ответьте по тексту";
- return <section className="lektrus-foreign-work" data-board-interactive="true"
+ return <section className="lektrus-foreign-work"
   onPointerDown={stop} onClick={stop} onDoubleClick={stop} aria-label={title}>
   <div className="lektrus-foreign-work-head">
    <strong>{title}</strong>
