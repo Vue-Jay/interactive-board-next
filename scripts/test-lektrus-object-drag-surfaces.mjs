@@ -135,7 +135,8 @@ const css=read("src/lektrusGeographyTraining.css");
 assert.equal(ts.createSourceFile("App.tsx",app,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX).parseDiagnostics.length,0);
 assert.ok(app.includes('boardObjectAtInertPointerTarget(target)'));
 assert.ok(app.includes('inertSurfaceDragPointer.current=e.pointerId'));
-assert.ok(app.includes('gesture.current.mode==="drag"'));
+assert.ok(app.includes('started.mode==="drag"'),
+ "Capture must verify the started gesture is a board-object drag");
 assert.ok(app.includes('if(gesture.current?.pointer===e.pointerId)move(e)'),
  "Bubbling-stopping widgets still advance the drag in capture phase");
 assert.ok(app.includes('if(gesture.current?.pointer===e.pointerId){move(e);end();}'),
