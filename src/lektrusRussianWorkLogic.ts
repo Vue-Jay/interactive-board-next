@@ -1,6 +1,19 @@
-import type {RussianTaskWork} from "./boardModel";
+import type {RussianTaskWork,RussianPhoneticLetter,RussianPhoneticSound} from "./boardModel";
 import type {MorphemeRole} from "./lektrusApprovedSchoolModel";
 
+/** Sounds are authored, never inferred. A letter can make zero, one or two sounds. */
+export const emptyRussianPhoneticSound=():RussianPhoneticSound=>({
+ text:"",kind:"",voicing:"",voicingPair:"",hardness:"",hardnessPair:"",stressed:false
+});
+export function russianPhoneticRows(word:string,work?:RussianTaskWork):RussianPhoneticLetter[]{
+ const saved=work?.source===word?work.phoneticLetters:undefined;
+ return Array.from(word).slice(0,24).map((letter,index)=>
+  saved?.[index]?.letter===letter?saved[index]:{
+   letter,silent:false,sounds:[emptyRussianPhoneticSound()]
+  });
+}
+export const russianPhoneticSoundCount=(rows:RussianPhoneticLetter[]):number=>
+ rows.reduce((count,row)=>count+row.sounds.filter(sound=>sound.text.trim()).length,0);
 export type WordPart={start:number;end:number;text:string;role:MorphemeRole|"unset"};
 /** Shared tokenisation for classroom syntax work, never a grammatical parser. */
 export const russianSentenceTokens=(value:string):string[]=>
@@ -38,7 +51,8 @@ export function russianTaskHasWork(work?:RussianTaskWork):boolean{
  return Boolean((work.cuts??[]).length||(work.morphemeRoles??[]).some(role=>role!=="unset")||
  work.zeroEnding||work.syntaxRoles?.some(role=>role!=="none")||work.partOfSpeech||
  work.permanent?.trim()||work.variable?.trim()||work.syntax?.trim()||
- work.textAnswers?.some(text=>text.trim()));
+ work.textAnswers?.some(text=>text.trim())||
+ work.phoneticLetters?.some(row=>row.silent||row.sounds.some(sound=>sound.text.trim()||sound.kind||sound.voicing||sound.hardness||sound.stressed)));
 }
 export function isSingleRussianWord(value:string):boolean{
  const letters=russianLetters(value.trim());
