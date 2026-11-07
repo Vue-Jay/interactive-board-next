@@ -21,8 +21,9 @@ assert.equal(canCompositeBoardDrag(items,selected),true,
  "Geography task and ordinary text may move together on GPU");
 const bound=[...items,{id:"attached",kind:"connector",x:0,y:0,
  connectorStartBinding:{itemId:"item-500"}}];
-assert.equal(canCompositeBoardDrag(bound,selected),false,
- "Attached connectors must follow the original geometry-driven path");
+assert.equal(canCompositeBoardDrag(bound,selected),true,
+ "Partially attached connectors use the SVG compositor, not a React rerender");
+assert.deepEqual([...mod.planCompositeBoardDrag(bound,selected).deformed],["attached"]);
 assert.equal(canCompositeBoardDrag(items,new Set()),false);
 assert.equal(canCompositeBoardDrag(items,new Set(items.slice(0,65).map(i=>i.id))),false);
 for(const kind of ["pen","marker","connector","instrument"]){
