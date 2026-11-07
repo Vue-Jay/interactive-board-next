@@ -50,7 +50,7 @@ const resets=app.slice(app.indexOf("const finishViewerPan ="),app.indexOf("useEf
 assert.equal((resets.match(/fastPanSelection\.current\.style\.transform="none"/g)||[]).length,2,
   "Cancelled and completed pans must both clear the temporary selection transform");
 const start=app.indexOf('<div ref={fastPanSelection} className="board-selection-pan-layer">');
-const end=app.indexOf('          </div>\\n          <div ref={guideX}',start);
+const end=app.indexOf('          </div>\n          <div ref={guideX}',start);
 assert.ok(start>=0&&end>start,"Selection pan host wraps its controls");
 const overlay=app.slice(start,end);
 for(const kind of ["connector-endpoint-overlay","screen-transform-overlay",
