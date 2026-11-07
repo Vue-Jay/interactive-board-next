@@ -63,7 +63,7 @@ balances("KMnO4 → K2MnO4 + MnO2 + O2",[2,1,1,1]);
 balances("Na2CO3 + HCl → NaCl + CO2 + H2O",[1,2,2,1,1]);
 const ui=read("src/LektrusChemicalEquationEditor.tsx");
 const styles=read("src/lektrusChemicalEquationWorkspace.css");
-const main=read("src/main.tsx");
+const main=read("src/appEntry.tsx");
 const science=read("src/LektrusScienceEditor.tsx");
 const syntax=ts.createSourceFile("editor.tsx",ui,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(syntax.parseDiagnostics.length,0,"No TSX syntax regressions");
