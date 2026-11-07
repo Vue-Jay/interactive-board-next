@@ -8,6 +8,25 @@ new Function("exports",ts.transpileModule(read("inkCanvasBudget.ts"),{
  compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022},
 }).outputText)(budgetApi);
 const {inkCanvasBudget,MAX_INK_CANVAS_PIXELS,MAX_INK_CANVAS_AXIS}=budgetApi;
+
+const {reuseInkCanvasBacking}=budgetApi;
+let canvasDimensionWrites=0;
+const mockCanvas={_width:300,_height:150,
+ get width(){return this._width},
+ set width(value){canvasDimensionWrites++;this._width=value},
+ get height(){return this._height},
+ set height(value){canvasDimensionWrites++;this._height=value},
+};
+assert.equal(reuseInkCanvasBacking(mockCanvas,1800,1000),false);
+assert.equal(canvasDimensionWrites,2,"Initial allocation sets both backing axes");
+for(let i=0;i<100;i++)
+ assert.equal(reuseInkCanvasBacking(mockCanvas,1800,1000),true,
+  "Repeated tile redraws must preserve the same GPU backing");
+assert.equal(canvasDimensionWrites,2,
+ "Same-size 100 redraws: before = 200 forced dimension writes, after = 0");
+assert.equal(reuseInkCanvasBacking(mockCanvas,1900,1000),false);
+assert.equal(canvasDimensionWrites,3,"Resize only the axis that changed");
+
 const oldAxisOnly=(w,h,zoom,dpr)=>{
  const ratio=Math.min(1.25,Math.max(1,dpr||1));
  const x=Math.max(1,Math.ceil(w*zoom*ratio));
@@ -47,6 +66,10 @@ assert.match(source,/canvas\.width = 0; canvas\.height = 0;/,
  "Offscreen raster layers must release their backing memory");
 assert.match(source,/cacheRef\.current = null;/);
 assert.match(source,/ctx\.setTransform\(pixels\.scaleX, 0, 0, pixels\.scaleY,/);
+assert.match(source,/const reusedBacking=reuseInkCanvasBacking\(canvas,pixels\.width,pixels\.height\)/);
+assert.match(source,/if\(reusedBacking\)\{[\s\S]*?ctx\.clearRect\(0,0,canvas\.width,canvas\.height\);/,
+ "Reused canvas backing must clear previous pixels before painting the new tile");
+
 const app=read("App.tsx");
 const layerStart=app.indexOf("  const inkLayers = useMemo(() => {");
 const layerEnd=app.indexOf("  const renderEntries = useMemo(() => {",layerStart);
