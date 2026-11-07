@@ -1,4 +1,4 @@
-/* Select tool: compact white/blue pointer. JS swaps only the cursor URI,
+/* Select tool: compact pale-blue pointer with no white halo. JS swaps only the cursor URI,
    never changes board state or rerenders objects on pointermove. */
 @media (any-pointer:fine) {
   .workspace .board.board-tool-select:not(.board-hand-active):not(.board-right-hand):not(.board-panning) {

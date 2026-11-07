@@ -10,6 +10,32 @@ const pointer=await import("data:text/javascript;base64,"+Buffer.from(compiled).
 const states=["idle","hover","grab","grabbing","marquee",
  "resize-ew","resize-ns","resize-nwse","resize-nesw","rotate"];
 assert.deepEqual(Object.keys(pointer.BOARD_SELECTION_CURSORS),states);
+assert.equal(pointer.BOARD_SELECTION_CURSOR_SIZE,22,
+ "Selection cursors must remain compact, comparable to a native pointer");
+const decodeCursor=style=>{
+ const match=style.match(/^url\("data:image\/svg\+xml,([^"]+)"\) (\d+) (\d+), /);
+ assert.ok(match,"Each cursor must expose an SVG URL and explicit hotspot");
+ return {svg:decodeURIComponent(match[1]),x:Number(match[2]),y:Number(match[3])};
+};
+for(const state of states){
+ const {svg,x,y}=decodeCursor(pointer.BOARD_SELECTION_CURSORS[state]);
+ assert.match(svg,/<svg [^>]*width="22" height="22" viewBox="0 0 32 32"/);
+ assert.doesNotMatch(svg,/(?:stroke|fill)="#(?:fff|ffffff|c8dcff)"/i,
+  "No white border or pale halo should surround the compact "+state+" cursor");
+ assert.ok(x>=0&&x<22&&y>=0&&y<22,"Hotspot must fit the compact raster");
+}
+for(const state of ["idle","hover"]){
+ const {svg,x,y}=decodeCursor(pointer.BOARD_SELECTION_CURSORS[state]);
+ assert.equal((svg.match(/<path /g)||[]).length,1,
+  "Selection arrow needs a single path without an extra white/glowing outline");
+ assert.equal(x,2,"Arrow's pointed hotspot scales with the 22px image");
+ assert.equal(y,2);
+}
+for(const state of ["marquee","rotate","resize-ew","resize-ns","resize-nwse","resize-nesw"]){
+ const {x,y}=decodeCursor(pointer.BOARD_SELECTION_CURSORS[state]);
+ assert.equal(x,11,"Centered gesture hotspot stays centered when shrinking");
+ assert.equal(y,11);
+}
 for(const state of states){
  const style=pointer.BOARD_SELECTION_CURSORS[state];
  assert.match(style,/^url\("data:image\/svg\+xml,/);
