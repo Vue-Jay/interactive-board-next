@@ -43,23 +43,23 @@ const wideTouch="screen and (min-width:1101px) and (pointer:coarse)";
 const wideMouse="screen and (min-width:1101px) and (pointer:fine)";
 assert.ok(css.includes("@media "+wideMouse+" {"),
  "Wide mouse/keyboard viewports keep the desktop rail");
-const startMobile=css.indexOf("@media screen and (max-width:1100px),\\n       "+wideTouch+" {");
+const startMobile=css.indexOf("@media screen and (max-width:1100px),\n       "+wideTouch+" {");
 assert.ok(startMobile>=0,
  "Both narrow viewports and wide coarse-pointer tablets must use the touch UI");
 const mobileChunk=css.slice(startMobile,startMobile+1200);
-assert.match(mobileChunk,/\.toolbar\.compact-toolbar[\\s\\S]*?display:none!important;visibility:hidden!important/);
-assert.match(mobileChunk,/nav\.mobile-board-tools[\\s\\S]*?display:flex!important/);
-const sideDock=css.indexOf("screen and (min-width:701px) and (max-width:1100px) and (orientation:portrait),\\n       "+wideTouch+" {");
+assert.match(mobileChunk,/\.toolbar\.compact-toolbar[\s\S]*?display:none!important;visibility:hidden!important/);
+assert.match(mobileChunk,/nav\.mobile-board-tools[\s\S]*?display:flex!important/);
+const sideDock=css.indexOf("screen and (min-width:701px) and (max-width:1100px) and (orientation:portrait),\n       "+wideTouch+" {");
 assert.ok(sideDock>=0,"Wide touch tablets must receive the scrollable vertical rail");
 assert.match(css.slice(sideDock,sideDock+1800),
- /nav\.mobile-board-tools[\\s\\S]*?flex-direction:column!important/);
-assert.match(css,/screen and \\(min-width:1101px\\) and \\(pointer:coarse\\)\\{[\\s\\S]*?data-lektrus-hand-tool=/,
+ /nav\.mobile-board-tools[\s\S]*?flex-direction:column!important/);
+assert.match(css,/screen and \(min-width:1101px\) and \(pointer:coarse\)\{[\s\S]*?data-lektrus-hand-tool=/,
  "Wide touch tablets must retain the one-finger Hand control");
-assert.match(css,/max-height:calc\\(100dvh - 122px - env\\(safe-area-inset-top/,
+assert.match(css,/max-height:calc\(100dvh - 122px - env\(safe-area-inset-top/,
  "Side rail must stay within the dynamic viewport and device insets");
-assert.match(css,/mobile-tool-cluster-create[\\s\\S]*?overflow-y:auto!important/,
+assert.match(css,/mobile-tool-cluster-create[\s\S]*?overflow-y:auto!important/,
  "Long tool sets need a separately scrollable section");
-assert.match(app,/data-lektrus-hand-tool="true"[\\s\\S]*?onClick=\\{\\(\\)=>\\{finishEdit\\(\\);setTool\\("hand"\\)/,
+assert.match(app,/data-lektrus-hand-tool="true"[\s\S]*?onClick=\{\(\)=>\{finishEdit\(\);setTool\("hand"\)/,
  "Touch Hand control must remain wired to an actual tool action");
 
 console.log("Lektrus board layouts: desktop / landscape / tablet / portrait OK");
