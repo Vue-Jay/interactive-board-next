@@ -4817,6 +4817,30 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     }
     return true;
   };
+  const paintCompositorRotation=(g:Gesture,base:Item,rotation:number):boolean=>{
+    let preview=compositorRotation.current;
+    if(preview?.gesture!==g){
+      if(g.ids.length!==1||g.ids[0]!==base.id||
+        !canCompositeBoardRotation(g.before,base.id))return false;
+      const element=Array.from(fastPanWorld.current?.querySelectorAll<HTMLElement>(
+        ".board-object[data-object]")??[]).find(el=>el.dataset.object===base.id);
+      const outline=Array.from(fastPanSelection.current?.querySelectorAll<HTMLElement>(
+        ".screen-transform-overlay[data-object]")??[]).find(el=>el.dataset.object===base.id);
+      const origin=getGestureOrigins(g).get(base.id);
+      if(!element||!outline||!origin)return false;
+      preview={gesture:g,id:base.id,base,element,outline,origin,rotation};
+      compositorRotation.current=preview;
+    }
+    preview.rotation=rotation;
+    // CSS individual rotate composes with the board-object's existing
+    // transform, without traversing/rendering its large embedded lesson.
+    const delta=rotation-(preview.base.rotation??0);
+    paintBoardRotationPreview(preview.element,preview.outline,delta);
+    workChannel.current?.publishTransform([
+      toBoardObjectPose({...preview.base,rotation},preview.origin)
+    ]);
+    return true;
+  };
   const move = (e: PE<HTMLElement>) => {
     const g = gesture.current;
     if (!g || e.pointerId !== g.pointer) return;
@@ -4968,7 +4992,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         const a1 = Math.atan2(now.y - cy, now.x - cx);
         let rotation = (base.rotation ?? 0) + (a1 - a0) * 180 / Math.PI;
         if (e.shiftKey) rotation = Math.round(rotation / 90) * 90;
-        display(g.before.map((item) => item.id === base.id ? { ...item, rotation } : item));
+        if(!paintCompositorRotation(g,base,rotation))
+          display(g.before.map((item) => item.id === base.id ? { ...item, rotation } : item));
       }
     } else if (g.mode === "connector") {
       const raw = world(p);
