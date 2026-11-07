@@ -32,7 +32,7 @@ for(const status of [200,204,404,400,403,405,501]){
   [405,501].includes(status)?1:0,"Full GET only for unsupported HEAD");
 }
 const source=read("assetStore.ts");
-assert.match(source,/if \(!await remoteAssetExists\(path\)\)/,
+assert.match(source,/const exists = await remoteAssetExists\(path\)/,
  "Existing assets must be checked with HEAD instead of GET");
 const local=new Map(),server=new Map(),calls=[];
 const adapter={
@@ -68,6 +68,19 @@ assert.deepEqual(calls.slice(-1),[["download","board/large-pdf"]],
 local.set("old",new Blob(["legacy image"],{type:"image/png"}));
 await api.ensureBoardAssets("board",{items:[{kind:"image",assetId:"old"}]});
 assert.equal(server.has("board/old"),true,"Legacy assets must still migrate");
+// A temporary HEAD failure is not an absent object. The legacy local copy
+// must never trigger a duplicate POST when Storage is unreachable or denies HEAD.
+local.set("cached-legacy",new Blob(["legacy"],{type:"image/png"}));
+for (const reason of ["Network timeout","HTTP 403"]) {
+ const before=calls.length;
+ adapter.remoteAssetExists=async path=>{calls.push(["head",path]);throw new Error(reason)};
+ await assert.rejects(
+  api.ensureBoardAssets("board",{items:[{kind:"image",assetId:"cached-legacy"}]}),
+  new RegExp(reason));
+ assert.deepEqual(calls.slice(before),[["head","board/cached-legacy"]],
+  "Failed probe must not upload a cached legacy binary");
+}
+adapter.remoteAssetExists=async path=>{calls.push(["head",path]);return server.has(path)};
 const count=calls.length;
 await api.ensureBoardAssets("board",{items:[{kind:"image",assetId:"old"}]});
 assert.equal(calls.length,count,"Already synchronized media must avoid repeated probes");
