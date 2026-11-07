@@ -127,3 +127,71 @@ test('acknowledged final stroke is not replayed on reconnect',async()=>{
     'ACKed ink is durable in the realtime channel and needs no replay');
   h.channel.close();
 });
+
+function loadInkMerger() {
+  const source = readFileSync(new URL('../src/boardLiveInkPreview.ts', import.meta.url), 'utf8');
+  const exports = {};
+  vm.runInNewContext(ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText, { exports });
+  return exports.mergeLiveInkPreview;
+}
+
+test('peer keeps the full visible path after 500 points instead of jumping to the newest tail', () => {
+  const merge = loadInkMerger();
+  const path=Array.from({length:1210},(_,i)=>({x:i*3,y:Math.sin(i/10)*20}));
+  const packet=(count,finished=false)=>{
+    const offset=Math.max(0,count-500);
+    return {id:'long-stroke',clientId:'peer',userId:'student',kind:'pen',
+      color:'#000',weight:3,points:path.slice(offset,count),offset,finished};
+  };
+  let preview;
+  for(let n=1;n<=1210;n+=33)preview=merge(preview,packet(n));
+  preview=merge(preview,packet(1210,true));
+  assert.equal(preview.lastIndex,1209);
+  assert.equal(preview.finished,true);
+  assert.equal(preview.runs[0].start,0);
+  const joined=preview.runs.flatMap((run,index)=>index?run.points.slice(1):run.points);
+  assert.equal(joined.length,path.length,'no part of the long stroke vanishes');
+  assert.deepEqual(JSON.parse(JSON.stringify(joined)),path);
+  const late=merge(preview,packet(600));
+  assert.strictEqual(late,preview,'a late intermediate cannot regress a completed stroke');
+});
+
+test('packet gaps stay separate; stale or duplicated remote windows do not jump backwards', () => {
+  const merge=loadInkMerger(),points=Array.from({length:1200},(_,i)=>({x:i,y:i}));
+  const packet=(offset,count,finished=false)=>({id:'broken-link',clientId:'peer',
+    userId:'student',kind:'marker',color:'#44f',weight:6,
+    offset,points:points.slice(offset,offset+count),finished});
+  let preview=merge(undefined,packet(0,100));
+  preview=merge(preview,packet(800,250));
+  assert.equal(preview.runs.length,2);
+  assert.equal(preview.runs[0].points.at(-1).x,99);
+  assert.equal(preview.runs[1].points[0].x,800,
+    'a dropped packet must not create a false line from 99 to 800');
+  assert.strictEqual(merge(preview,packet(50,50)),preview);
+  assert.strictEqual(merge(preview,packet(800,250)),preview);
+  preview=merge(preview,packet(700,500,true));
+  assert.equal(preview.finished,true);
+  assert.equal(preview.lastIndex,1199);
+  assert.equal(preview.runs.length,2);
+});
+
+test('wire uses absolute point offsets and validates untrusted incoming offsets', () => {
+  const code=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
+  assert.match(code,/offset:Math\.max\(0,g\.path\.length-500\),finished:true/);
+  assert.match(code,/offset: Math\.max\(0,g\.path\.length-500\), finished: false/);
+  assert.match(code,/mergeLiveInkPreview\(current\[ink\.id\],ink\)/);
+  assert.match(code,/uncommittedRemoteInk\.flatMap\(ink => ink\.runs\.map/);
+  const h=harness();
+  return h.tick().then(()=>{
+    const ws=h.sockets[0];ws.open();ws.join();
+    ws.message('broadcast',{event:'live_ink',payload:{
+      ...ink('offset',false),userId:'other',clientId:'remote-client',offset:501}});
+    assert.equal(h.received[0]?.offset,501);
+    ws.message('broadcast',{event:'live_ink',payload:{
+      ...ink('bad',false),userId:'other',clientId:'remote-client',offset:-1}});
+    assert.equal(h.received.length,1,'invalid packet offsets are rejected');
+    h.channel.close();
+  });
+});
