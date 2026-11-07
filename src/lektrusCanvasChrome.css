@@ -504,7 +504,6 @@ html body .topbar .topbar-right .presence-menu>summary{
 html body .topbar .topbar-right .topbar-more-menu>summary{
   display:grid!important;place-items:center;
 }
-html body .topbar .lektrus-board-actions-menu{display:block!important}
 html body .topbar .topbar-right .board-chat-button>span{display:none!important}
 @media(max-width:1320px){
   html body .topbar .topbar-right :is(.install-app-button,.collab-editing-status){display:none!important}

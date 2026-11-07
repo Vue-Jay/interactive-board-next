@@ -3,16 +3,35 @@ import type { AuthUser } from "./authStore";
 import { boardStorageKey,createBoard,type BoardSummary } from "./boardStore";
 import type { DocumentData, Item } from "./boardModel";
 import { deleteTemplate,listTemplates,markTemplateUsed,type BoardTemplate } from "./templatesStore";
-export const starterTemplates=[
- {id:"plan",title:"План урока",category:"Планирование",description:"Тема, цели, ход урока и домашнее задание",labels:["ТЕМА И ЦЕЛЬ","ПРОВЕРКА ЗНАНИЙ","НОВЫЙ МАТЕРИАЛ","ПРАКТИКА","ДОМАШНЕЕ ЗАДАНИЕ"]},
- {id:"notes",title:"Конспект занятия",category:"Обучение",description:"Структура конспекта с ключевыми понятиями",labels:["ТЕМА","ОСНОВНЫЕ ПОНЯТИЯ","ПРИМЕРЫ","ВЫВОДЫ"]},
- {id:"brainstorm",title:"Мозговой штурм",category:"Совместная работа",description:"Область для идей, вопросов и решений",labels:["ИДЕИ","ВОПРОСЫ","ВАРИАНТЫ","РЕШЕНИЕ"]},
- {id:"compare",title:"Сравнение двух понятий",category:"Анализ",description:"Свойства, сходства и различия",labels:["ПОНЯТИЕ А","ОБЩЕЕ","ПОНЯТИЕ Б"]},
- {id:"practice",title:"Практическая работа",category:"Упражнения",description:"Задание, решение, проверка, вывод",labels:["УСЛОВИЕ","РЕШЕНИЕ","ПРОВЕРКА","ОТВЕТ"]},
- {id:"reflection",title:"Итоги занятия",category:"Рефлексия",description:"Что узнали, что осталось непонятным",labels:["ЧТО УЗНАЛИ","ЧТО ПОЛУЧИЛОСЬ","ВОПРОСЫ","СЛЕДУЮЩИЙ ШАГ"]},
+type StarterTemplate={
+ id:string;title:string;category:string;description:string;labels:string[];
+ tool?:
+  |{kind:"checklist";title:string;items:string[]}
+  |{kind:"quiz";title:string;options:string[];correct:number;explanation:string}
+  |{kind:"table";title:string;rows:number;cols:number;cells:string[]}
+  |{kind:"graph";title:string;a:number;b:number};
+};
+export const starterTemplates:StarterTemplate[]=[
+ {id:"plan",title:"План урока",category:"Планирование",description:"Цели, этапы, проверка понимания и следующий шаг",labels:["ТЕМА И ЦЕЛЬ","ПРОВЕРКА ЗНАНИЙ","НОВЫЙ МАТЕРИАЛ","ПРАКТИКА","ДОМАШНЕЕ ЗАДАНИЕ"],tool:{kind:"checklist",title:"Ход занятия",items:["Сформулировать цель урока","Проверить исходные знания","Показать новый материал","Дать время на практику","Подвести итог и назначить домашнюю работу"]}},
+ {id:"notes",title:"Конспект занятия",category:"Обучение",description:"Ключевые понятия, примеры и выводы по теме",labels:["ТЕМА","ОСНОВНЫЕ ПОНЯТИЯ","ПРИМЕРЫ","ВОПРОСЫ","ВЫВОДЫ"]},
+ {id:"brainstorm",title:"Мозговой штурм",category:"Совместная работа",description:"Сбор идей, уточняющие вопросы и выбор решения",labels:["ИДЕИ","ВОПРОСЫ","ВАРИАНТЫ","ЧТО ПРОВЕРИТЬ","РЕШЕНИЕ"]},
+ {id:"compare",title:"Сравнение двух понятий",category:"Анализ",description:"Сравните признаки, найдите сходства и сформулируйте вывод",labels:["ПОНЯТИЕ А","ОБЩЕЕ","ПОНЯТИЕ Б","ВЫВОД"],tool:{kind:"table",title:"Таблица сравнения",rows:4,cols:3,cells:["Признак","Понятие А","Понятие Б","Определение","","","Пример","","","Главное отличие","",""]}},
+ {id:"practice",title:"Практическая работа",category:"Упражнения",description:"Условие, решение, проверка и готовый ответ",labels:["УСЛОВИЕ","ПЛАН РЕШЕНИЯ","ПРОВЕРКА","ОТВЕТ"],tool:{kind:"checklist",title:"Проверка решения",items:["Я записал все данные условия","Показал ход решения","Проверил вычисления или доказательство","Записал ответ с единицами измерения"]}},
+ {id:"reflection",title:"Итоги занятия",category:"Рефлексия",description:"Зафиксируйте результат, вопросы и следующий шаг",labels:["ЧТО УЗНАЛИ","ЧТО ПОЛУЧИЛОСЬ","ВОПРОСЫ","СЛЕДУЮЩИЙ ШАГ"],tool:{kind:"checklist",title:"Самопроверка",items:["Могу объяснить главную мысль своими словами","Могу привести пример","Понимаю, что нужно повторить"]}},
+ {id:"function",title:"Исследование функции",category:"Математика",description:"Постройте график, заполните точки и объясните зависимость",labels:["ВОПРОС","ТАБЛИЦА ЗНАЧЕНИЙ","НАБЛЮДЕНИЯ","ВЫВОД"],tool:{kind:"graph",title:"График функции",a:2,b:1}},
+ {id:"quiz",title:"Мини-тест с разбором",category:"Проверка знаний",description:"Готовая карточка вопроса с вариантами и объяснением",labels:["ТЕМА","ЧТО ПРОВЕРЯЕМ","КРИТЕРИЙ УСПЕХА"],tool:{kind:"quiz",title:"Как изменится значение выражения 2x + 1, если x увеличить на 1?",options:["Увеличится на 1","Увеличится на 2","Не изменится","Уменьшится на 2"],correct:1,explanation:"Коэффициент при x равен 2, поэтому при увеличении x на 1 значение выражения растёт на 2."}},
+ {id:"lab",title:"Отчёт по эксперименту",category:"Естественные науки",description:"Цель, гипотеза, ход опыта, наблюдения и вывод",labels:["ЦЕЛЬ","ГИПОТЕЗА","ОБОРУДОВАНИЕ","ХОД ОПЫТА","НАБЛЮДЕНИЯ","ВЫВОД"],tool:{kind:"checklist",title:"Безопасность и ход опыта",items:["Подготовить оборудование","Проверить технику безопасности","Записать наблюдения по ходу опыта","Сопоставить результат с гипотезой"]}},
+ {id:"project",title:"Групповой проект",category:"Совместная работа",description:"Роли, план работы, промежуточная проверка и презентация",labels:["ЦЕЛЬ ПРОЕКТА","РОЛИ","ПЛАН","МАТЕРИАЛЫ","ПРЕЗЕНТАЦИЯ","ОБРАТНАЯ СВЯЗЬ"],tool:{kind:"checklist",title:"План команды",items:["Распределить роли","Согласовать срок и этапы","Проверить источники и материалы","Подготовить общий результат","Получить обратную связь"]}},
 ];
 export function starterDocument(t:typeof starterTemplates[number]):DocumentData{
- const items:Item[]=t.labels.map((text,index)=>({id:`starter-${t.id}-${index}`,kind:"sticky",x:80+(index%3)*350,y:100+Math.floor(index/3)*240,width:300,height:190,text,color:["#e9f0ff","#e7f6ef","#fff2df","#f3ebff"][index%4],fontSize:25}));
+ const items:Item[]=t.labels.map((text,index)=>({id:`starter-${t.id}-${index}`,kind:"sticky",x:80+(index%3)*330,y:90+Math.floor(index/3)*220,width:290,height:180,text,color:["#e9f0ff","#e7f6ef","#fff2df","#f3ebff"][index%4],fontSize:23}));
+ // Put the main interactive tool below the prompt blocks on the same left
+ // column, so a starter board remains easy to follow on phone screens.
+ const toolY=90+Math.ceil(t.labels.length/3)*220+30;
+ if(t.tool?.kind==="checklist")items.push({id:`starter-${t.id}-checklist`,kind:"checklist",x:80,y:toolY,width:400,height:330,text:t.tool.title,fontSize:15,color:"#315bd4",checklistItems:t.tool.items,checklistDone:t.tool.items.map(()=>false)});
+ if(t.tool?.kind==="quiz")items.push({id:`starter-${t.id}-quiz`,kind:"quiz",x:80,y:toolY,width:410,height:330,text:t.tool.title,fontSize:15,color:"#315bd4",quizOptions:t.tool.options,quizCorrect:t.tool.correct,quizRevealed:false,quizExplanation:t.tool.explanation});
+ if(t.tool?.kind==="table")items.push({id:`starter-${t.id}-table`,kind:"table",x:80,y:toolY,width:980,height:300,text:t.tool.title,fontSize:14,color:"#315bd4",tableRows:t.tool.rows,tableCols:t.tool.cols,tableCells:t.tool.cells,tableHeader:true,tableStripe:true});
+ if(t.tool?.kind==="graph")items.push({id:`starter-${t.id}-graph`,kind:"graph",x:80,y:toolY,width:500,height:420,text:t.tool.title,fontSize:15,color:"#315bd4",graphPurpose:"function",graphType:"linear",graphA:t.tool.a,graphB:t.tool.b,graphC:0,graphGrid:true,graphShowCurve:true,graphExpression:`y = ${t.tool.a}x + ${t.tool.b}`,graphXMin:-5,graphXMax:5,graphYMin:-10,graphYMax:12,graphPoints:[]});
  return {version:1,title:t.title,view:{x:0,y:0,zoom:1},items,background:{mode:"dots",color:"#f7f7f8",opacity:100}};
 }
 

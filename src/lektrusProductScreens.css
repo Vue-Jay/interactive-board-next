@@ -1,0 +1,212 @@
+/* Lektrus product screens: shared palette and clear hierarchy for home,
+   templates, notifications, profile, settings and administration. */
+.lectris-workspace-stage :is(.lectris-hub,.templates-shell,.notifications-shell,.profile-shell,.admin-users-shell){
+  color:var(--lt-text)!important;
+}
+
+/* Home and board library use the selected Lektrus palette throughout. */
+.lectris-workspace-stage .lectris-hub{
+  --hub-accent:var(--lt-primary);
+  --hub-border:var(--lt-line);
+  --hub-ink:var(--lt-text);
+  --hub-muted:var(--lt-muted);
+}
+.lectris-workspace-stage :is(.lectris-hub-section,.lectris-hub-stats>div,.lectris-hub-board,.lectris-hub-tile,.lectris-hub-categories,.lectris-library-card){
+  background:var(--lt-surface)!important;border-color:var(--lt-line)!important;color:var(--lt-text)!important;
+}
+.lectris-workspace-stage .lectris-hub :is(.lectris-hub-overline,.lectris-hub-section-head small,.lectris-hub-section-head>button,.lectris-hub-board-icon,.lectris-hub-board-edit){color:var(--lt-primary)!important}
+.lectris-workspace-stage .lectris-hub-board-icon{background:var(--lt-selected)!important}
+.lectris-workspace-stage .lectris-hub-board:hover{background:var(--lt-hover)!important;border-color:var(--lt-line-strong)!important}
+.lectris-workspace-stage .lectris-hub-board-arrow{color:var(--lt-muted)!important}
+.lectris-workspace-stage .lectris-hub-lesson{border-color:var(--lt-line)!important}
+.lectris-workspace-stage .lectris-hub-lesson button,
+.lectris-workspace-stage .lectris-hub-shortcuts button,
+.lectris-workspace-stage .lectris-hub-categories button,
+.lectris-workspace-stage .lectris-hub-sync button,
+.lectris-workspace-stage .lectris-hub-new-category-trigger{
+  border-color:var(--lt-line)!important;background:var(--lt-subtle)!important;color:var(--lt-secondary)!important;
+}
+.lectris-workspace-stage .lectris-hub-shortcuts button:hover,
+.lectris-workspace-stage .lectris-hub-categories button:hover,
+.lectris-workspace-stage .lectris-hub-sync button:hover:not(:disabled),
+.lectris-workspace-stage .lectris-hub-new-category-trigger:hover{
+  background:var(--lt-hover)!important;color:var(--lt-text)!important;
+}
+.lectris-workspace-stage .lectris-hub-categories button.selected{
+  background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important;
+}
+.lectris-workspace-stage .lectris-hub :is(.lectris-hub-stats strong,.lectris-hub-section-head h2,.lectris-hub-board-info strong,.lectris-hub-lesson strong,.lectris-hub-tile-copy strong){color:var(--lt-text)!important}
+.lectris-workspace-stage .lectris-hub :is(.lectris-hub-stats span,.lectris-hub-board-info small,.lectris-hub-lesson small,.lectris-hub-local-note,.lectris-hub-placeholder,.lectris-hub-tile-copy>span,.lectris-hub-tile-copy small,.lectris-hub-tile-arrow){color:var(--lt-muted)!important}
+.lectris-workspace-stage .lectris-hub-tile{background:var(--lt-surface)!important;border-color:var(--lt-line)!important;color:var(--lt-primary)!important}
+.lectris-workspace-stage .lectris-hub-tile:hover{background:var(--lt-hover)!important;border-color:var(--lt-line-strong)!important}
+.lectris-workspace-stage .lectris-hub-tile-icon{background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important}
+.lectris-workspace-stage .lectris-hub-tile-count{background:var(--lt-subtle)!important;color:var(--lt-secondary)!important}
+.lectris-workspace-stage .lectris-hub :is(.lectris-hub-section-head>button,.lectris-hub-overline){color:var(--lt-primary)!important}
+.lectris-workspace-stage .lectris-hub-empty,.lectris-workspace-stage .lectris-hub-sync{background:var(--lt-subtle)!important;border-color:var(--lt-line)!important;color:var(--lt-secondary)!important}
+.lectris-workspace-stage .lectris-hub :is(button,a):focus-visible,
+.lectris-workspace-stage .lectris-library :is(button,a):focus-visible{outline:2px solid var(--lt-focus)!important;outline-offset:2px}
+.lectris-workspace-stage .lectris-library-card .board-card-title{color:var(--lt-text)!important}
+.lectris-workspace-stage .lectris-library-card .board-card-meta{color:var(--lt-muted)!important}
+.lectris-workspace-stage .lectris-library-card .board-card-meta span:first-child{background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important}
+.lectris-workspace-stage .lectris-library-card .board-card-actions button:not(.lectris-library-open){background:var(--lt-subtle)!important;border-color:var(--lt-line)!important;color:var(--lt-secondary)!important}
+.lectris-workspace-stage .lectris-library-card .board-card-actions button:not(.lectris-library-open):hover{background:var(--lt-hover)!important;color:var(--lt-text)!important}
+.lectris-workspace-stage .lectris-library-card .board-card-actions .lectris-library-open{background:var(--lt-primary)!important;border-color:var(--lt-primary)!important;color:var(--lt-on-primary)!important}
+.lectris-workspace-stage .lectris-library-card .board-card-actions .lectris-library-open:hover{background:var(--lt-primary-hover)!important}
+
+/* A settings entry reads and behaves visually as a button, with its full label. */
+.lectris-layout-menu .lectris-panel-entry{
+  width:100%;min-width:0;min-height:42px;justify-content:flex-start;
+  margin:2px 0 6px;padding:10px 12px!important;
+  border:1px solid var(--lt-line)!important;border-radius:10px!important;
+  background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important;
+  font-size:12px;font-weight:800;line-height:1.35;white-space:normal;text-align:left;
+}
+.lectris-layout-menu .lectris-panel-entry:hover{background:var(--lt-hover)!important;border-color:var(--lt-line-strong)!important;color:var(--lt-text)!important}
+.lectris-layout-menu .lectris-panel-entry:focus-visible{outline:2px solid var(--lt-focus)!important;outline-offset:2px}
+
+/* The board's additional actions menu still had fixed OnlineRepetitor purple. */
+html body .topbar .topbar-right .topbar-more-menu[open]>.topbar-more-trigger{
+  background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important;border-color:var(--lt-line-strong)!important;
+}
+html body .topbar .topbar-right .topbar-more-popover{
+  background:var(--lt-raised)!important;border-color:var(--lt-line)!important;color:var(--lt-text)!important;
+  box-shadow:var(--lt-pop-shadow)!important;
+}
+html body .topbar .topbar-right .topbar-menu-section{border-color:var(--lt-line)!important}
+html body .topbar .topbar-right .topbar-menu-section button{color:var(--lt-secondary)!important}
+html body .topbar .topbar-right .topbar-menu-section button:hover{background:var(--lt-hover)!important;color:var(--lt-text)!important}
+html body .topbar .topbar-right .topbar-menu-section button b{background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important}
+html body .topbar .topbar-right .topbar-menu-account{border-color:var(--lt-line)!important;color:var(--lt-text)!important}
+html body .topbar .topbar-right .topbar-menu-account :is(strong,span){color:var(--lt-text)!important}
+html body .topbar .topbar-right .topbar-menu-account small{color:var(--lt-muted)!important}
+html body .topbar .topbar-right .topbar-menu-section .topbar-menu-danger{color:#a12d37!important}
+:root[data-theme="dark"] .topbar .topbar-right .topbar-menu-section .topbar-menu-danger{color:#ffb4aa!important}
+
+/* The legacy snap control keeps its existing interaction while taking its
+   selected color from the user's Lektrus palette. */
+.workspace .board-controls .snap-toggle{color:var(--lt-secondary)!important;border-radius:8px;transition:background-color .14s ease,color .14s ease,border-color .14s ease}
+.workspace .board-controls .snap-toggle:hover{background:var(--lt-hover)!important;color:var(--lt-text)!important}
+.workspace .board-controls .snap-toggle.active{background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important;border-color:var(--lt-line-strong)!important}
+.workspace .board-controls .snap-toggle:focus-visible{outline:2px solid var(--lt-focus)!important;outline-offset:2px}
+
+/* Shared top bars and input surfaces for account and learning screens. */
+.lectris-workspace-stage .students-header{
+  background:var(--lt-surface)!important;border-color:var(--lt-line)!important;
+}
+.lectris-workspace-stage .students-header strong{color:var(--lt-text)!important}
+.lectris-workspace-stage .students-header span{color:var(--lt-muted)!important}
+.lectris-workspace-stage .students-header .boards-secondary{background:var(--lt-raised)!important;border-color:var(--lt-line)!important;color:var(--lt-secondary)!important}
+.lectris-workspace-stage :is(.students-content,.templates-content,.notifications-content){color:var(--lt-text)}
+.lectris-workspace-stage :is(.templates-toolbar,.notification-filters,.notification-kind-filter,.admin-tabs,.admin-users-toolbar input){
+  background:var(--lt-surface)!important;border-color:var(--lt-line)!important;color:var(--lt-text)!important;
+}
+.lectris-workspace-stage :is(.templates-toolbar,.notification-filters,.notification-kind-filter) :is(input,select){
+  background:var(--lt-raised)!important;border-color:var(--lt-line)!important;color:var(--lt-text)!important;
+}
+.lectris-workspace-stage :is(.templates-toolbar,.notification-filters,.notification-kind-filter) button,
+.lectris-workspace-stage .admin-tabs button{
+  background:transparent;color:var(--lt-secondary);border-color:transparent;
+}
+.lectris-workspace-stage :is(.templates-toolbar,.notification-filters,.notification-kind-filter) button:hover,
+.lectris-workspace-stage .admin-tabs button:hover{background:var(--lt-hover);color:var(--lt-text)}
+.lectris-workspace-stage :is(.notification-filters button.active,.notification-kind-filter button.active,.admin-tabs button.active){
+  background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important;border-color:var(--lt-line-strong)!important;box-shadow:none!important;
+}
+.lectris-workspace-stage :is(.templates-toolbar,.notification-filters,.notification-kind-filter,.admin-tabs) :is(button,input,select):focus-visible{
+  outline:2px solid var(--lt-focus);outline-offset:2px;
+}
+
+/* Notifications: stronger unread marker and legible metadata in both themes. */
+.lectris-workspace-stage .notification-card{background:var(--lt-surface)!important;border-color:var(--lt-line)!important;color:var(--lt-text)!important}
+.lectris-workspace-stage .notification-card:hover{border-color:var(--lt-line-strong)!important;background:var(--lt-hover)!important}
+.lectris-workspace-stage .notification-card.unread{background:var(--lt-selected)!important;border-color:var(--lt-line-strong)!important;box-shadow:inset 3px 0 var(--lt-primary)!important}
+.lectris-workspace-stage .notification-card :is(small,p){color:var(--lt-muted)!important}
+.lectris-workspace-stage .notification-card strong{color:var(--lt-text)!important;font-size:13px}
+.lectris-workspace-stage .notification-dot{background:var(--lt-line-strong)!important}
+.lectris-workspace-stage .notification-card.unread .notification-dot{background:var(--lt-primary)!important}
+.lectris-workspace-stage .notification-card>span:last-child{color:var(--lt-muted)!important}
+.access-backdrop .notification-settings{background:var(--lt-raised)!important;border-color:var(--lt-line)!important;color:var(--lt-text)!important}
+.access-backdrop .notification-settings :is(h2,p,.notification-toggle){color:var(--lt-text)!important}
+.access-backdrop .notification-settings .notification-toggle{border-color:var(--lt-line)!important}
+.access-backdrop .notification-settings .notification-toggle input{accent-color:var(--lt-primary)}
+
+/* Profile and settings: clear card grouping, readable controls and palette
+   aware switches without changing saved preferences or account actions. */
+.lectris-workspace-stage :is(.profile-identity-card,.profile-compact-card,.settings-row-card){
+  background:var(--lt-surface)!important;border-color:var(--lt-line)!important;color:var(--lt-text)!important;
+  box-shadow:var(--lt-shadow);
+}
+.lectris-workspace-stage .settings-compact-grid{gap:12px}
+.lectris-workspace-stage .settings-row-card{min-height:66px;padding:14px 16px;border-radius:14px}
+.lectris-workspace-stage .settings-row-card :is(b,strong,label){color:var(--lt-text)}
+.lectris-workspace-stage .settings-row-card small{color:var(--lt-muted)!important;line-height:1.45}
+.lectris-workspace-stage .settings-row-card input[type=checkbox]{accent-color:var(--lt-primary)}
+.lectris-workspace-stage .profile-identity-card{border-radius:16px}
+.lectris-workspace-stage .profile-identity-card h1{color:var(--lt-text)!important}
+.lectris-workspace-stage .profile-identity-card p{color:var(--lt-muted)!important}
+.lectris-workspace-stage .profile-big-avatar{background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important}
+.lectris-workspace-stage .profile-role-pills span{background:var(--lt-subtle)!important;border-color:var(--lt-line)!important;color:var(--lt-secondary)!important}
+.lectris-workspace-stage .profile-compact-card{border-radius:14px}
+.lectris-workspace-stage .profile-compact-card :is(label,span,strong){color:var(--lt-text)}
+.lectris-workspace-stage .profile-compact-card input{background:var(--lt-raised)!important;border-color:var(--lt-line)!important;color:var(--lt-text)!important}
+.lectris-workspace-stage .profile-compact-card p{color:var(--lt-muted)!important}
+.lectris-workspace-stage .settings-plan-row button,.lectris-workspace-stage .settings-row-card>button{border-radius:9px}
+.lectris-workspace-stage .settings-footer-actions{border-color:var(--lt-line)!important}
+.lectris-workspace-stage .profile-logout-button{border-color:var(--lt-line)!important;background:var(--lt-subtle)!important;color:var(--lt-secondary)!important}
+.lectris-workspace-stage .profile-logout-button:hover{background:var(--lt-hover)!important;color:var(--lt-text)!important}
+
+/* Admin controls and records were the largest remaining OnlineRepetitor
+   color island. Keep danger and status meanings distinct from the accent. */
+.lectris-workspace-stage .admin-users-shell :is(.admin-user-card,.admin-board-card,.admin-request-list>article,.admin-invisible-toggle,.admin-board-list){
+  background:var(--lt-surface)!important;border-color:var(--lt-line)!important;color:var(--lt-text)!important;
+}
+.lectris-workspace-stage .admin-users-shell :is(.admin-user-card,.admin-board-card,.admin-request-list>article){
+  border:1px solid var(--lt-line)!important;border-radius:15px;box-shadow:var(--lt-shadow);
+}
+.lectris-workspace-stage .admin-users-shell :is(.admin-user-identity strong,.admin-board-main strong,.admin-invisible-toggle strong,.admin-approval-head h2,.admin-users-toolbar h2){color:var(--lt-text)!important}
+.lectris-workspace-stage .admin-users-shell :is(.admin-user-identity span,.admin-user-identity small,.admin-user-current>span,.admin-user-current small,.admin-board-main span,.admin-board-main small,.admin-invisible-toggle small){color:var(--lt-muted)!important}
+.lectris-workspace-stage .admin-users-shell .admin-user-current strong{color:var(--lt-text)!important}
+.lectris-workspace-stage .admin-users-shell .admin-user-grant{background:var(--lt-subtle)!important}
+.lectris-workspace-stage .admin-users-shell .admin-user-grant label{color:var(--lt-secondary)!important}
+.lectris-workspace-stage .admin-users-shell .admin-users-toolbar :is(h2,span){color:var(--lt-text)!important}
+.lectris-workspace-stage .admin-users-shell .admin-users-toolbar span{color:var(--lt-muted)!important}
+.lectris-workspace-stage .admin-users-shell .admin-approval-head :is(h2,span){color:var(--lt-text)!important}
+.lectris-workspace-stage .admin-users-shell .admin-request-list article>div:first-child :is(strong,span,small){color:var(--lt-text)!important}
+.lectris-workspace-stage .admin-users-shell .admin-request-list article>div:first-child :is(span,small){color:var(--lt-muted)!important}
+.lectris-workspace-stage .admin-users-shell .admin-invisible-toggle{background:var(--lt-surface)!important}
+.lectris-workspace-stage .admin-users-shell .admin-invisible-toggle input:focus-visible+.admin-toggle-track{outline:2px solid var(--lt-focus);outline-offset:2px}
+.lectris-workspace-stage .admin-users-shell :is(.admin-user-avatar,.admin-board-icon){background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important}
+.lectris-workspace-stage .admin-users-shell :is(.admin-toggle-track,.admin-invisible-toggle>input:checked+.admin-toggle-track){background:var(--lt-primary)!important}
+.lectris-workspace-stage .admin-duration-buttons button{background:var(--lt-subtle)!important;border-color:var(--lt-line)!important;color:var(--lt-secondary)!important}
+.lectris-workspace-stage .admin-duration-buttons button:hover:not(:disabled){background:var(--lt-hover)!important;color:var(--lt-text)!important}
+.lectris-workspace-stage .admin-users-shell .admin-user-current{border-color:var(--lt-line)!important}
+.lectris-workspace-stage .admin-users-shell .admin-user-grant{border-color:var(--lt-line)!important}
+.lectris-workspace-stage .admin-users-shell .admin-plan{background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important}
+.lectris-workspace-stage .admin-users-shell .danger{color:#b33636}
+:root[data-theme="dark"] .lectris-workspace-stage .admin-users-shell .danger{color:#ffb4aa}
+.lectris-workspace-stage .admin-users-shell .danger{background:#fff1f0;border-color:#f3ceca}
+:root[data-theme="dark"] .lectris-workspace-stage .admin-users-shell .danger{background:#462b30;border-color:#75454a}
+
+/* Template cards present usable starter boards and user saved boards in the
+   same responsive catalog. The preview's board objects retain their own colors. */
+.lectris-workspace-stage .template-card{background:var(--lt-surface)!important;border-color:var(--lt-line)!important;color:var(--lt-text)!important}
+.lectris-workspace-stage .template-card>div:last-child{padding:17px}
+.lectris-workspace-stage .template-card>div:last-child>strong{display:block;color:var(--lt-text);font-size:16px;line-height:1.35}
+.lectris-workspace-stage .template-card>div:last-child>span{display:block;margin-top:5px;color:var(--lt-muted);font-size:11px}
+.lectris-workspace-stage .template-card p{color:var(--lt-secondary);font-size:12px;line-height:1.5}
+.lectris-workspace-stage .template-card>div:last-child>div{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}
+.lectris-workspace-stage .template-card .danger{background:var(--lt-subtle);border:1px solid var(--lt-line);color:var(--lt-secondary)}
+.lectris-workspace-stage .template-card .danger:hover{background:var(--lt-hover);color:var(--lt-text)}
+.lectris-workspace-stage .template-card .lektrus-template-preview{background:var(--lt-subtle)!important}
+.lectris-workspace-stage .template-card .students-primary{min-height:38px;border-radius:10px}
+.lectris-workspace-stage .lektrus-template-canvas{border-color:var(--lt-line)!important}
+.lectris-workspace-stage .lektrus-template-preview-tag{background:var(--lt-raised)!important;color:var(--lt-secondary)!important;border:1px solid var(--lt-line)}
+.lectris-workspace-stage .template-card:focus-within{outline:2px solid var(--lt-focus);outline-offset:2px}
+
+@media(max-width:700px){
+  .lectris-workspace-stage .students-header{background:var(--lt-surface)!important}
+  .lectris-layout-menu{width:min(280px,calc(100vw - 20px));right:-4px}
+  .lectris-workspace-stage .template-card>div:last-child{padding:14px}
+  .lectris-workspace-stage .admin-users-shell :is(.admin-user-card,.admin-board-card,.admin-request-list>article){box-shadow:none}
+}
+@media(prefers-reduced-motion:reduce){.workspace .board-controls .snap-toggle{transition:none}}

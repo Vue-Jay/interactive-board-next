@@ -41,6 +41,7 @@ jobs:
       - run: node scripts/test-board-history.mjs
       - run: node scripts/test-lektrus-ui.mjs
       - run: node scripts/test-lektrus-responsive.mjs
+      - run: node scripts/test-lektrus-product-screens.mjs
       - run: node scripts/test-lektrus-editor-ux.mjs
       - run: node scripts/test-lektrus-subject-editors.mjs
       - run: node scripts/test-lektrus-subject-catalogue-ui.mjs

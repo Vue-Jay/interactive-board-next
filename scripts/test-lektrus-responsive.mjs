@@ -9,8 +9,11 @@ const board=source("src/App.tsx");
 const shell=source("src/LectrisWorkspaceShell.tsx");
 const manifest=JSON.parse(source("public/manifest.webmanifest"));
 
-assert.ok(entry.includes('import "./lektrusRefresh.css";\nimport "./lektrusResponsive.css";'),
-  "responsive overrides must load last");
+assert.match(entry,/import "\.\/lektrusRefresh\.css";\r?\nimport "\.\/lektrusResponsive\.css";/,
+  "responsive overrides must follow the base refresh layer");
+assert.ok(entry.indexOf('import "./lektrusProductScreens.css";')>entry.indexOf('import "./lektrusResponsive.css";')
+  &&entry.indexOf('import "./lektrusProductScreens.css";')<entry.indexOf('import "./lektrusSelectionCursor.css";'),
+  "final product screen colors must follow responsive layers and precede cursor rules");
 for(const width of ["max-width:1199px","max-width:1023px","max-width:850px","max-width:700px","max-width:380px"]){
   assert.ok(styles.includes(width),"missing responsive breakpoint: "+width);
 }
