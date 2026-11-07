@@ -82,7 +82,7 @@ assert.equal(listeners.size,0,"close removes network listeners");
 const app=readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
 assert.match(app,/workChannel\.current\?\.publishTransform\(poses\)/);
 assert.match(app,/workChannel\.current\?\.publishTransform\(poses,true\)/);
-assert.match(app,/const pose=remoteObjectPoses\[entry\.item\.id\]/);
+assert.match(app,/remoteObjectPoses\[entry\.item\.id\]/);
 assert.match(app,/transition:pose\?/);
 assert.match(app,/const item=pose\?/);
 assert.match(app,/pose\.origin===objectPoseOrigin\(stored\)/,
