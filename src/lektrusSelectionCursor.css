@@ -1,0 +1,32 @@
+/* Select tool: compact pale-blue pointer with no white halo. JS swaps only the cursor URI,
+   never changes board state or rerenders objects on pointermove. */
+@media (any-pointer:fine) {
+  .workspace .board.board-tool-select:not(.board-hand-active):not(.board-right-hand):not(.board-panning) {
+    cursor:var(--lektrus-selection-cursor,default)!important;
+  }
+  .workspace .board.board-tool-select:not(.board-hand-active):not(.board-right-hand):not(.board-panning) .world,
+  .workspace .board.board-tool-select:not(.board-hand-active):not(.board-right-hand):not(.board-panning) .world .board-object,
+  .workspace .board.board-tool-select:not(.board-hand-active):not(.board-right-hand):not(.board-panning) .world .board-object > :not(:is(button,input,textarea,select,a,[role="button"],[data-board-interactive],[contenteditable="true"])) {
+    cursor:var(--lektrus-selection-cursor,default)!important;
+  }
+  /* Selected object, group and connector handles live above .world.
+     They must show the precise native-hotspot resize/rotate icons even
+     when the pointer is over the detached overlay. */
+  .workspace .board.board-tool-select:not(.board-hand-active):not(.board-right-hand):not(.board-panning) :is(
+    [data-transform-handle],[data-group-transform-handle],[data-group-selection-drag],
+    [data-board-selection-grip],[data-connector-endpoint]
+  ) {
+    cursor:var(--lektrus-selection-cursor,default)!important;
+  }
+  /* An embedded text editor or an actual button must still communicate
+     its own meaning, not advertise dragging the whole object. */
+  .workspace .board.board-tool-select :is(input,textarea,[contenteditable="true"]){
+    cursor:text!important;
+  }
+  .workspace .board.board-tool-select :is(button:not([data-transform-handle]):not([data-group-transform-handle]):not([data-group-selection-drag]):not([data-board-selection-grip]):not([data-connector-endpoint]),select,a,[role="button"]):not([data-transform-handle]):not([data-group-transform-handle]):not([data-group-selection-drag]):not([data-board-selection-grip]):not([data-connector-endpoint]){
+    cursor:pointer!important;
+  }
+  .workspace .board.board-tool-select :is(button:disabled,[aria-disabled="true"]){
+    cursor:default!important;
+  }
+}

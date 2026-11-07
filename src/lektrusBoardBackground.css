@@ -1,35 +1,99 @@
-/* Board background controls are part of the shared board, not viewport state. */
-/* Match the true SVG stroke diameter at every zoom and tool size.
-   The overlay never intercepts drawing or object interactions. */
-@media (pointer:fine) {
-  .workspace .board:is(.board-tool-pen,.board-tool-marker):not(.board-right-hand):not(.board-panning):not(.board-hand-active),
-  .workspace .board:is(.board-tool-pen,.board-tool-marker):not(.board-right-hand):not(.board-panning):not(.board-hand-active) * {
+/* Drawing cursors are visual-only overlays. Actual stroke diameter is kept
+   separate from the 18px sight used to locate the tip of a fine pen. */
+@media (any-pointer:fine) {
+  .workspace .board:is(.board-tool-pen,.board-tool-marker,.board-tool-eraser):not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+  .workspace .board:is(.board-tool-pen,.board-tool-marker,.board-tool-eraser):not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
+  .workspace .board:is(.board-tool-pen,.board-tool-marker,.board-tool-eraser):not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world * {
     cursor:none!important;
   }
 }
+/* A zero-sized anchor keeps the tip exactly at the pointer hotspot.
+   Pointer-move updates only left/top, never React state or the canvas. */
 .workspace .lektrus-ink-cursor {
   position:absolute;
+  left:-1000px;top:-1000px;
   z-index:1100;
+  width:0;height:0;
+  pointer-events:none!important;
+  visibility:hidden;
+  color:var(--cursor-ink,#344054);
+}
+.workspace .lektrus-ink-cursor > span{
+  position:absolute;
+  left:0;top:0;
   pointer-events:none!important;
   box-sizing:border-box;
+}
+.workspace .lektrus-ink-cursor-footprint{
+  width:var(--cursor-size,3px);
+  height:var(--cursor-size,3px);
   transform:translate(-50%,-50%);
-  border:1px solid currentColor;
+  border:1.35px solid var(--cursor-ink,#344054);
   border-radius:50%;
   background:transparent;
-  box-shadow:0 0 0 1px var(--ink-cursor-outline,#fff),inset 0 0 0 .5px var(--ink-cursor-outline,#fff);
-  will-change:left,top;
+  box-shadow:0 0 0 1px var(--cursor-outline,#fff);
 }
-.workspace .lektrus-ink-cursor::after {
+.workspace .lektrus-ink-cursor.is-marker .lektrus-ink-cursor-footprint{
+  border-style:dashed;
+  border-width:1.5px;
+  background:color-mix(in srgb,var(--cursor-ink,#344054) 8%,transparent);
+}
+.workspace .lektrus-ink-cursor.is-fine .lektrus-ink-cursor-footprint{
+  border:0;
+  background:var(--cursor-ink,#344054);
+  box-shadow:0 0 0 1.3px var(--cursor-outline,#fff);
+}
+/* Four quiet alignment ticks appear only when the true brush is very small. */
+.workspace .lektrus-ink-cursor-guide{
+  display:none;
+  width:18px;height:18px;
+  transform:translate(-50%,-50%);
+  background:
+    linear-gradient(var(--cursor-contrast,#1b263a),var(--cursor-contrast,#1b263a)) center top/1.4px 4px no-repeat,
+    linear-gradient(var(--cursor-contrast,#1b263a),var(--cursor-contrast,#1b263a)) center bottom/1.4px 4px no-repeat,
+    linear-gradient(var(--cursor-contrast,#1b263a),var(--cursor-contrast,#1b263a)) left center/4px 1.4px no-repeat,
+    linear-gradient(var(--cursor-contrast,#1b263a),var(--cursor-contrast,#1b263a)) right center/4px 1.4px no-repeat;
+  filter:drop-shadow(0 0 1px var(--cursor-outline,#fff));
+}
+.workspace .lektrus-ink-cursor.is-fine .lektrus-ink-cursor-guide{display:block}
+.workspace .lektrus-ink-cursor-center{
+  width:3px;height:3px;
+  transform:translate(-50%,-50%);
+  border-radius:50%;
+  background:var(--cursor-contrast,#1b263a);
+  box-shadow:0 0 0 1px var(--cursor-outline,#fff);
+}
+.workspace .lektrus-ink-cursor.is-fine .lektrus-ink-cursor-center{display:none}
+
+/* Eraser footprint is always the true deletion diameter, not a decorative
+   enlarged target. The clear center keeps underlying ink legible. */
+.workspace .eraser-cursor{
+  position:absolute;
+  z-index:1100;
+  box-sizing:border-box;
+  transform:translate(-50%,-50%);
+  pointer-events:none!important;
+  border:1.5px dashed var(--cursor-contrast,#263d63);
+  border-radius:50%;
+  background:transparent;
+  box-shadow:0 0 0 1px var(--cursor-outline,#fff);
+}
+.workspace .eraser-cursor::after{
   content:"";
   position:absolute;
   left:50%;top:50%;
-  width:2px;height:2px;
+  width:6px;height:1.5px;
+  border-radius:2px;
   transform:translate(-50%,-50%);
-  background:currentColor;
-  border-radius:50%;
-  box-shadow:0 0 0 1px var(--ink-cursor-outline,#fff);
+  background:var(--cursor-contrast,#263d63);
+  box-shadow:0 0 0 1px var(--cursor-outline,#fff);
 }
-
+.workspace .board.eraser-live .eraser-cursor{
+  border-style:solid;
+  background:color-mix(in srgb,var(--cursor-contrast,#263d63) 6%,transparent);
+}
+/* Touch pointers are hidden by their event type, not by device media: a
+   tablet can use a finger and a hovering stylus in the same session. */
 .workspace .board.board-right-hand,
 .workspace .board.board-right-hand *,
 .workspace .board.board-panning,

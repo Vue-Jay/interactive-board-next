@@ -1,9 +1,9 @@
 import {useState} from "react";
-import type {RussianTaskWork,SubjectBoardEntry} from "./boardModel";
+import type {RussianTaskWork,RussianPhoneticLetter,RussianPhoneticSound,SubjectBoardEntry} from "./boardModel";
 import {morphemeNames,type MorphemeRole} from "./lektrusApprovedSchoolModel";
 import {grammarRoles,type WordRole} from "./lektrusNextSchoolModel";
 import {posNames,type RussianPartOfSpeech} from "./lektrusRussianSchoolModel";
-import {changeRussianMorphemeBoundary,isSingleRussianWord,russianLetters,russianWordParts,russianTaskHasWork,russianSentenceTokens} from "./lektrusRussianWorkLogic";
+import {changeRussianMorphemeBoundary,emptyRussianPhoneticSound,isSingleRussianWord,russianLetters,russianPhoneticRows,russianPhoneticSoundCount,russianWordParts,russianTaskHasWork,russianSentenceTokens} from "./lektrusRussianWorkLogic";
 
 export const splitRussianSentence=(source:string):string[]=>
  russianSentenceTokens(source).slice(0,100);
@@ -88,6 +88,115 @@ export default function LektrusRussianTaskAnswer({entry,work,onChange}:Props){
  const state=work?.source===source?work:undefined;
  const update=(delta:Partial<RussianTaskWork>)=>onChange?.({...state,...delta,source});
  const editable=Boolean(onChange);
+ if(entry.format==="phonetics"){
+  const word=source.trim();
+  if(!isSingleRussianWord(word)||Array.from(word).length>24)return <div className="lektrus-rus-answer-help">
+   {word?"Для фонетического разбора нужно одно слово до 24 букв, без пробелов и знаков препинания.":"Преподаватель ещё не указал слово для разбора."}
+  </div>;
+  const rows=russianPhoneticRows(word,state);
+  const patchRow=(index:number,next:RussianPhoneticLetter)=>
+   update({phoneticLetters:rows.map((row,i)=>i===index?next:row)});
+  const patchSound=(rowIndex:number,soundIndex:number,changes:Partial<RussianPhoneticSound>)=>
+   update({phoneticLetters:rows.map((row,i)=>({...row,sounds:row.sounds.map((sound,j)=>{
+    if(i===rowIndex&&j===soundIndex)return {...sound,...changes};
+    return changes.stressed===true?{...sound,stressed:false}:sound;
+   })}))});
+  const soundText=rows.flatMap(row=>row.sounds.map(sound=>sound.text.trim())).filter(Boolean);
+  const completed=rows.every(row=>row.silent||row.sounds.every(s=>s.text.trim()&&s.kind));
+  return <div className="lektrus-rus-task-work lektrus-rus-phonetics-work" onPointerDown={stop} onClick={stop}>
+   <div className="lektrus-rus-work-top">
+    <strong>Звуко-буквенный разбор: <span className="lektrus-rus-phonetic-word">{word}</span></strong>
+    <small>Запишите звуки в квадратных скобках. Выберите признаки каждого звука и отметьте ударный гласный. Ответы не подставляются автоматически.</small>
+   </div>
+   <div className="lektrus-rus-phonetic-list" role="group" aria-label="Фонетический разбор по буквам">
+    {rows.map((row,i)=><div className={"lektrus-rus-phonetic-row"+(row.silent?" is-silent":"")} key={i}>
+     <div className="lektrus-rus-phonetic-letter"><small>{i+1}.</small><b>{row.letter}</b></div>
+     <div className="lektrus-rus-phonetic-content">
+      {row.silent?<span className="lektrus-rus-phonetic-silent">Звука нет</span>:
+       row.sounds.map((sound,j)=><div className="lektrus-rus-phonetic-sound" key={j}>
+        <div className="lektrus-rus-phonetic-sound-head">
+         <label className="lektrus-rus-phonetic-input">
+          <span>{row.sounds.length===2?"Звук "+(j+1):"Звук"}</span>
+          <span className="lektrus-rus-phonetic-brackets">[
+           <input aria-label={"Звук "+(j+1)+" буквы "+row.letter+" номер "+(i+1)}
+            maxLength={12} disabled={!editable} value={sound.text} placeholder="звук"
+            onChange={e=>patchSound(i,j,{text:e.target.value})}/>]</span>
+         </label>
+         <label>Тип
+          <select aria-label={"Тип звука "+(j+1)+" буквы "+row.letter+" номер "+(i+1)}
+           value={sound.kind} disabled={!editable}
+           onChange={e=>patchSound(i,j,{kind:e.target.value as RussianPhoneticSound["kind"],
+            voicing:"",voicingPair:"",hardness:"",hardnessPair:"",stressed:false})}>
+           <option value="">Выберите</option>
+           <option value="vowel">Гласный</option>
+           <option value="consonant">Согласный</option>
+          </select>
+         </label>
+         {sound.kind==="vowel"&&<button type="button" className={"lektrus-rus-phonetic-stress"+(sound.stressed?" selected":"")}
+          aria-pressed={sound.stressed} disabled={!editable}
+          aria-label={"Ударный звук "+(j+1)+" буквы "+row.letter+" номер "+(i+1)}
+          onClick={()=>patchSound(i,j,{stressed:!sound.stressed})}>{sound.stressed?"´ Ударный":"Безударный · отметить ударение"}</button>}
+        </div>
+        {sound.kind==="consonant"&&<div className="lektrus-rus-phonetic-traits">
+         <label>Звонкость
+          <select aria-label={"Звонкость звука "+(j+1)+" буквы "+row.letter+" номер "+(i+1)}
+           value={sound.voicing} disabled={!editable}
+           onChange={e=>patchSound(i,j,{voicing:e.target.value as RussianPhoneticSound["voicing"]})}>
+           <option value="">—</option><option value="voiced">Звонкий</option><option value="voiceless">Глухой</option>
+          </select>
+         </label>
+         <label>Твёрдость
+          <select aria-label={"Твёрдость звука "+(j+1)+" буквы "+row.letter+" номер "+(i+1)}
+           value={sound.hardness} disabled={!editable}
+           onChange={e=>patchSound(i,j,{hardness:e.target.value as RussianPhoneticSound["hardness"]})}>
+           <option value="">—</option><option value="hard">Твёрдый</option><option value="soft">Мягкий</option>
+          </select>
+         </label>
+         <details className="lektrus-rus-phonetic-pairs">
+          <summary>Парность</summary>
+          <div>
+           <label>По звонкости
+            <select aria-label={"Парность по звонкости "+(j+1)+" буквы "+row.letter}
+             value={sound.voicingPair} disabled={!editable}
+             onChange={e=>patchSound(i,j,{voicingPair:e.target.value as RussianPhoneticSound["voicingPair"]})}>
+             <option value="">—</option><option value="paired">Парный</option><option value="unpaired">Непарный</option>
+            </select>
+           </label>
+           <label>По твёрдости
+            <select aria-label={"Парность по твёрдости "+(j+1)+" буквы "+row.letter}
+             value={sound.hardnessPair} disabled={!editable}
+             onChange={e=>patchSound(i,j,{hardnessPair:e.target.value as RussianPhoneticSound["hardnessPair"]})}>
+             <option value="">—</option><option value="paired">Парный</option><option value="unpaired">Непарный</option>
+            </select>
+           </label>
+          </div>
+         </details>
+        </div>}
+       </div>)}
+      <div className="lektrus-rus-phonetic-actions">
+       <button type="button" disabled={!editable} aria-pressed={row.silent} className={row.silent?"selected":""}
+        onClick={()=>patchRow(i,{...row,silent:!row.silent,sounds:row.silent?[emptyRussianPhoneticSound()]:[]})}>
+        {row.silent?"↶ Вернуть звук":"∅ Нет звука"}</button>
+       {!row.silent&&row.sounds.length<2&&<button type="button" disabled={!editable}
+        onClick={()=>patchRow(i,{...row,sounds:[...row.sounds,emptyRussianPhoneticSound()]})}>+ Второй звук</button>}
+       {!row.silent&&row.sounds.length===2&&<button type="button" disabled={!editable}
+        onClick={()=>patchRow(i,{...row,sounds:row.sounds.slice(0,1)})}>Убрать второй</button>}
+      </div>
+     </div>
+    </div>)}
+   </div>
+   <div className="lektrus-rus-phonetic-summary">
+    <span>Букв: <b>{rows.length}</b></span>
+    <span>Звуков записано: <b>{russianPhoneticSoundCount(rows)}</b></span>
+    {completed&&<strong>Разбор заполнен</strong>}
+   </div>
+   {soundText.length>0&&<div className="lektrus-rus-phonetic-transcription">
+    <small>Черновик звуковой записи</small><span>[{soundText.join(" ")}]</span>
+   </div>}
+   {editable&&russianTaskHasWork(state)&&<button type="button" className="lektrus-rus-clear"
+    onClick={()=>update({phoneticLetters:[]})}>Очистить фонетический разбор</button>}
+  </div>;
+ }
  if(entry.format==="morphemes"){
   // One lexical word per analysis. Existing multi-word material remains visible as a
   // prompt rather than silently splitting an unspecified word into misleading morphemes.

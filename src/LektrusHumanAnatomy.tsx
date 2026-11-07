@@ -45,15 +45,25 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
  const [thickSkinKind,setThickSkinKind]=useState<ThickSkinKind|null>(null);
  const [thickUnavailable,setThickUnavailable]=useState(false);
  const epidermisCardRef=useRef<HTMLDivElement>(null);
+ const detailsPanelRef=useRef<HTMLElement>(null);
  useEffect(()=>{
   if(!epidermisSelection||system!=="integumentary")return;
   const frame=requestAnimationFrame(()=>{
-   // When selecting a thin layer on the CANVAS the right panel may be
-   // scrolled above it. Bring the explanation into view immediately.
-   epidermisCardRef.current?.scrollIntoView({
-    block:"nearest",behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?
-     "auto":"smooth"
-   });
+   // Scroll only the information panel, not the whole atlas. Calling
+   // scrollIntoView() on the card also scrolls ancestor containers and can
+   // move the "Весь организм" button beneath the system details on return.
+   const panel=detailsPanelRef.current,card=epidermisCardRef.current;
+   if(!panel||!card)return;
+   const viewport=panel.getBoundingClientRect();
+   const selected=card.getBoundingClientRect();
+   const inset=8;
+   const delta=selected.bottom>viewport.bottom-inset?
+    selected.bottom-viewport.bottom+inset:
+    selected.top<viewport.top+inset?
+     selected.top-viewport.top-inset:0;
+   if(delta&&panel.scrollHeight>panel.clientHeight)
+    panel.scrollBy({top:delta,behavior:window.matchMedia(
+     "(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
   });
   return ()=>cancelAnimationFrame(frame);
  },[epidermisSelection,system]);
@@ -324,7 +334,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
      "Колесо мыши / два пальца для масштаба"}</span>
    </div>
   </div>
-  <aside className="lek-anatomy-details" aria-label="Сведения о системе">
+  <aside ref={detailsPanelRef} className="lek-anatomy-details" aria-label="Сведения о системе">
    <div className="lek-anatomy-details-top">
     <span className="lek-anatomy-section-kicker">СТРОЕНИЕ И ФУНКЦИИ</span>
     <h3>{selected.name}</h3>
