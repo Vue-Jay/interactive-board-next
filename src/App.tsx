@@ -126,7 +126,7 @@ import {boardRoleCapabilities,canUseBoardCreationTool,isStudentProtectedBoardObj
 import { subscribeBoardPresence, type BoardPresenceUser } from "./boardPresence";
 import {trackBoardVisit,listBoardVisits,type BoardVisit} from "./boardVisits";
 import BoardVisitHistoryDialog from "./BoardVisitHistoryDialog";
-import { connectBoardCursorChannel, type BoardCursorChannel, type RemoteCursor, type LiveInkMessage } from "./boardBroadcast";
+import { connectBoardCursorChannel, type BoardCursorChannel, type RemoteCursor } from "./boardBroadcast";
 import { mergeRemoteLiveInk, remoteInkRuns, type RemoteLiveInkPreview } from "./boardLiveInk";
 import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState, type BoardObjectPose } from "./boardWorkSync";
