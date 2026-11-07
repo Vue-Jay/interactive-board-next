@@ -244,6 +244,10 @@ export function scheduleBackgroundBoardPreview(
     try{
       const image=await renderBoardPreview(data,boardId);
       if(previewTasks.get(boardId)?.token!==token)return;
+      // The board save already transmits the last cached preview. When nothing
+      // visibly changed, a second full-document PATCH would only repeat the
+      // entire JSONB payload and invoke another server-side write path.
+      if(image===cachedBoardPreview(boardId))return;
       cacheBoardPreview(boardId,image);
       if(savedServerVersion===null||!isRemoteBackendEnabled())return;
       const payload={...data,preview:image??""};
