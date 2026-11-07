@@ -27,6 +27,18 @@ assert.ok(styles.includes(".lectris-object-inspector,.lectris-quick-properties,.
   "overlay collisions must be prevented while editing");
 assert.ok(styles.includes("pointer:coarse")&&styles.includes("orientation:landscape"),
   "touch landscape layout must have its own bounds");
+
+const safeControls=source("src/lektrusMobileSafeControls.css");
+// A browser-level 844×390 coarse-pointer acceptance exposed a real overlap:
+// the selection toolbar intercepted the rightmost zoom action (974 px²).
+// These source guards complement, but do not replace, that DOM hit test.
+assert.match(safeControls,
+  /@media screen and \(max-width:1100px\) and \(max-height:450px\) and \(orientation:landscape\)/);
+assert.match(safeControls,
+  /body \.workspace \.board-controls\s*\{\s*left:auto!important;\s*right:max\(12px,env\(safe-area-inset-right,0px\)\)!important/);
+assert.match(safeControls,
+  /html\.lektrus-android-app body \.workspace \.board-controls\s*\{\s*left:auto!important/);
+
 assert.ok(shell.includes("Lektrus"));
 assert.ok(base.includes(".lektrus-category-strip"));
 assert.equal(manifest.short_name,"Lektrus");
