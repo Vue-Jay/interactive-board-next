@@ -1,7 +1,8 @@
-/* Lektrus board toolbar geometry v2. Imported LAST.
+/* Lektrus board toolbar geometry v2.
    Layout only: board drawing, tool handlers and document content are untouched.
-   Modes: desktop >1100, compact vertical touch dock at <=1100 landscape
-   or 701-1100 portrait, and the single bottom dock at <=700 portrait. */
+   Modes: fine-pointer desktop >1100, compact vertical dock on larger
+   coarse-pointer tablets and 701-1100 portrait/landscape, and the single
+   bottom dock at <=700 portrait. Pointer capability matters on big tablets. */
 
 /* Prevent historic justify-content:space-between, which stretched the rail. */
 body .workspace .toolbar.compact-toolbar {
@@ -31,7 +32,7 @@ body .workspace .toolbar.compact-toolbar .toolbar-list {
   gap:3px!important;overflow:hidden!important;
 }
 
-@media screen and (min-width:1101px) {
+@media screen and (min-width:1101px) and (pointer:fine) {
   body .workspace .toolbar.compact-toolbar {
     display:flex!important;visibility:visible!important;opacity:1!important;
     pointer-events:auto!important;
@@ -70,7 +71,8 @@ body .workspace .toolbar.compact-toolbar .toolbar-list {
 
 /* A viewport never shows both the old desktop rail and the mobile dock.
    Width is deliberate: pointer:fine can occur on a real phone with a mouse. */
-@media screen and (max-width:1100px) {
+@media screen and (max-width:1100px),
+       screen and (min-width:1101px) and (pointer:coarse) {
   body .workspace .toolbar.compact-toolbar,
   body .workspace .toolbar.compact-toolbar.mobile-open,
   body .workspace .toolbar.compact-toolbar.expanded,
@@ -122,7 +124,8 @@ body .workspace .toolbar.compact-toolbar .toolbar-list {
 
 /* Landscape phone and portrait tablet: compact LEFT rail, never centered. */
 @media screen and (max-width:1100px) and (orientation:landscape),
-       screen and (min-width:701px) and (max-width:1100px) and (orientation:portrait) {
+       screen and (min-width:701px) and (max-width:1100px) and (orientation:portrait),
+       screen and (min-width:1101px) and (pointer:coarse) {
   body .workspace nav.mobile-board-tools {
     position:fixed!important;display:flex!important;
     flex-direction:column!important;align-items:center!important;
@@ -323,7 +326,8 @@ body .workspace .toolbar.compact-toolbar .toolbar-list {
 
 /* Lektrus mobile catalogue: consistent grid, clear separation from sticky
    title/actions, and fixed-size tiles even on incomplete rows. */
-@media screen and (max-width:1100px){
+@media screen and (max-width:1100px),
+       screen and (min-width:1101px) and (pointer:coarse){
   body .workspace .mobile-tools-sheet .mobile-tools-sheet-head{
     position:sticky!important;
     top:-10px!important;
@@ -692,7 +696,8 @@ body .workspace .toolbar.compact-toolbar .toolbar-list {
 
 
 /* Mobile tools "More": only the catalogue scrolls. The header never moves. */
-@media screen and (max-width:1100px){
+@media screen and (max-width:1100px),
+       screen and (min-width:1101px) and (pointer:coarse){
  body .workspace section.mobile-tools-sheet{
    display:flex!important;
    flex-direction:column!important;
@@ -767,7 +772,8 @@ body .workspace .lektrus-board-subject-picker select{min-width:0;max-width:135px
 
 /* A dedicated hand must stay discoverable in the phone AND tablet dock.
    Historical mobile button rules must not hide the second navigation tool. */
-@media screen and (max-width:1100px){
+@media screen and (max-width:1100px),
+       screen and (min-width:1101px) and (pointer:coarse){
  body .workspace nav.mobile-board-tools .mobile-tool-cluster-navigation > button[data-lektrus-hand-tool="true"]{
   display:grid!important;place-items:center!important;
   visibility:visible!important;opacity:1!important;
@@ -775,7 +781,8 @@ body .workspace .lektrus-board-subject-picker select{min-width:0;max-width:135px
   min-width:40px!important;min-height:40px!important;
  }
 }
-@media screen and (min-width:701px) and (max-width:1100px){
+@media screen and (min-width:701px) and (max-width:1100px),
+       screen and (min-width:1101px) and (pointer:coarse){
  body .workspace nav.mobile-board-tools .mobile-tool-cluster-navigation > button[data-lektrus-hand-tool="true"]{
   margin:0 auto!important;
  }
