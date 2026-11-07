@@ -32,7 +32,8 @@ assert.ok(save.indexOf("const payload = {...data, preview: previousPreview??\"\"
   save.indexOf("await (adminMaintenance"));
 assert.ok(app.includes('setSaveStatus(localBackupValid.current?"Сохранено в браузере":"Недостаточно места для локальной копии");'));
 assert.ok(app.includes('if(localBackupValid.current)scheduleBackgroundBoardPreview(boardSummary.id,data,null);'));
-assert.ok(app.includes('try {\n          localStorage.setItem(storageKey,serialized);'), "local storage failure must be isolated");
+assert.match(app,/try\s*\{\s*localStorage\.setItem\(storageKey,serialized\);/,
+  "local storage failure must be isolated");
 assert.ok(app.includes('localBackupValid.current=false;'), "quota error should be tracked");
 assert.ok(app.includes('await ensureBoardAssets(boardSummary.id,{...data,items:unsyncedAssets});'),
   "only newly added assets should be verified, not downloaded on every stroke");
@@ -45,6 +46,6 @@ assert.equal(preview.includes('JSON.stringify({document:payload,version:'), fals
 assert.ok(preview.includes("requestIdleCallback"));
 assert.ok(preview.includes("previewTasks.get(boardId)?.token!==token"));
 assert.ok(preview.includes("cacheBoardPreview(boardId,image)"));
-assert.ok(app.includes("scheduleBackgroundBoardPreview(board.id,parsed,null)"),
+assert.ok(app.includes("scheduleBackgroundBoardPreview(boardSummary.id,data,result.version)"),
   "opening a migrated board must not render the screenshot synchronously");
 console.log("Background preview autosave regression: board save first, version-guarded idle preview and clean history OK");
