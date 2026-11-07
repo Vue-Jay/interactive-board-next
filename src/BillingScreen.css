@@ -30,3 +30,7 @@
 .billing-page :is(button,input,select):focus-visible{outline:2px solid var(--lt-focus);outline-offset:2px}
 .billing-grid,.billing-card,.billing-head,.billing-current,.billing-qa{min-width:0}
 .billing-card :is(h2,p,li),.billing-current{overflow-wrap:anywhere}
+
+/* The content column is narrower than the full viewport inside Lektrus navigation:
+   use usable width rather than treating a 768px tablet as three wide cards. */
+.billing-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,248px),1fr))}
