@@ -4,7 +4,7 @@
  */
 export type ResizePreviewItem={
  id:string;kind:string;x:number;y:number;width:number;height:number;
- rotation?:number;points?:readonly unknown[];
+ rotation?:number;points?:readonly unknown[];hidden?:boolean;commentTargetId?:string;
  connectorStartBinding?:{itemId:string}|null;
  connectorEndBinding?:{itemId:string}|null;
 };
@@ -14,7 +14,7 @@ export type ResizePreviewTarget<T extends ResizePreviewItem>={
  base:T;element:{style:ResizePreviewStyle};
 };
 const resizeLayoutKinds=new Set([
- "text","sticky","shape","frame","comment","image","pdf"
+ "text","sticky","shape","frame","comment","image"
 ]);
 
 /** O(board size) once at gesture start. If a selected object requires
@@ -29,11 +29,14 @@ export function canCompositeBoardResize<T extends ResizePreviewItem>(
  for(const item of items){
   if(ids.has(item.id)){
    found++;
-   if(item.points||!resizeLayoutKinds.has(item.kind))return false;
+   if(item.points||item.hidden||!resizeLayoutKinds.has(item.kind))return false;
   }
   if(item.kind==="connector"&&(
    item.connectorStartBinding&&ids.has(item.connectorStartBinding.itemId)||
    item.connectorEndBinding&&ids.has(item.connectorEndBinding.itemId)))return false;
+  // This separate SVG leader would remain at the old coordinates during a
+  // DOM-only preview. Keep those cases on the geometry-driven React path.
+  if(item.commentTargetId&&(ids.has(item.id)||ids.has(item.commentTargetId)))return false;
  }
  return found===ids.size;
 }
