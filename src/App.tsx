@@ -2777,13 +2777,20 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       const indices:number[]=[];
       // Capture indexes ONCE, not a whole-board scan at every animation frame.
       g.before.forEach((item,index)=>{
-        if(ids.has(item.id)){origins!.set(item.id,objectPoseOrigin(item));indices.push(index)}
+        // A connected arrow must follow the object it is attached to on the
+        // other screen too, not teleport after the final server document.
+        const linked=item.kind==="connector"&&(
+          !!item.connectorStartBinding&&ids.has(item.connectorStartBinding.itemId)||
+          !!item.connectorEndBinding&&ids.has(item.connectorEndBinding.itemId));
+        if(ids.has(item.id)||linked){
+          origins!.set(item.id,objectPoseOrigin(item));indices.push(index);
+        }
       });
       gestureOriginCache.current.set(g,origins);
       gestureIndices.current.set(g,indices);
       // The local pointer always wins over an old remote visual hint.
       setRemoteObjectPoses(current=>{
-        const stale=g.ids.filter(id=>current[id]);
+        const stale=[...origins!.keys()].filter(id=>current[id]);
         if(!stale.length)return current;
         const next={...current};for(const id of stale)delete next[id];
         return next;
@@ -3358,7 +3365,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         if(item&&origins.has(item.id))
           poses.push(toBoardObjectPose(item,origins.get(item.id)!));
       }
-      if(poses.length===active.ids.length)workChannel.current?.publishTransform(poses);
+      if(poses.length>0&&poses.length<=64)workChannel.current?.publishTransform(poses);
     }
     // Keep model state synchronous for pointer math, but paint at most once per frame.
     // This prevents 100+ React renders/sec on fast mouse/touch drags.
@@ -4137,7 +4144,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         if(item&&origins.has(item.id))
           poses.push(toBoardObjectPose(item,origins.get(item.id)!));
       }
-      if(poses.length===g.ids.length)workChannel.current?.publishTransform(poses,true);
+      if(poses.length>0&&poses.length<=64)workChannel.current?.publishTransform(poses,true);
     }
     if (g.mode === "draw" && g.ink) cursorChannel.current?.sendInk({id:g.ink.id,kind:g.ink.kind,color:g.ink.color,weight:g.ink.weight,points:g.path.slice(-500),finished:true});
     if (cancel) {
