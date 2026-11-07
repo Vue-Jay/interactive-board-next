@@ -127,6 +127,7 @@ import { subscribeBoardPresence, type BoardPresenceUser } from "./boardPresence"
 import {trackBoardVisit,listBoardVisits,type BoardVisit} from "./boardVisits";
 import BoardVisitHistoryDialog from "./BoardVisitHistoryDialog";
 import { connectBoardCursorChannel, type BoardCursorChannel, type RemoteCursor, type LiveInkMessage } from "./boardBroadcast";
+import { mergeRemoteLiveInk } from "./boardLiveInk";
 import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState, type BoardObjectPose } from "./boardWorkSync";
 import { objectPoseOrigin, objectPoseMatches } from "./boardObjectMotion";
@@ -4146,7 +4147,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       }
       if(poses.length>0&&poses.length<=64)workChannel.current?.publishTransform(poses,true);
     }
-    if (g.mode === "draw" && g.ink) cursorChannel.current?.sendInk({id:g.ink.id,kind:g.ink.kind,color:g.ink.color,weight:g.ink.weight,points:g.path.slice(-500),finished:true});
+    if (g.mode === "draw" && g.ink) cursorChannel.current?.sendInk({id:g.ink.id,kind:g.ink.kind,color:g.ink.color,weight:g.ink.weight,points:g.path.slice(-500),offset:Math.max(0,g.path.length-500),finished:true});
     if (cancel) {
       display(g.restore ?? g.before);
       setView(g.view);
@@ -4887,7 +4888,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       if (g.mode === "draw" && g.ink) {
         cursorChannel.current?.sendInk({
           id: g.ink.id, kind: g.ink.kind, color: g.ink.color,
-          weight: g.ink.weight, points: g.path.slice(-500), finished: false,
+          weight: g.ink.weight, points: g.path.slice(-500),
+          offset: Math.max(0,g.path.length-500), finished: false,
         });
       }
       scheduleGesturePaint();
@@ -7296,7 +7298,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       (ink) => {
         // Each stroke must retain its own preview until the persisted document contains it.
         // Keying by clientId replaced the previous completed stroke as soon as a new one began.
-        setRemoteInk(current => ({...current,[ink.id]:ink}));
+        setRemoteInk(current => ({...current,[ink.id]:mergeRemoteLiveInk(current[ink.id],ink)}));
         const previous=remoteInkExpiryTimers.current.get(ink.id);
         if(previous)clearTimeout(previous);
         // Network delivery and document persistence are independent channels.

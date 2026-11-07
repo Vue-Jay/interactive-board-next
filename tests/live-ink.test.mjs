@@ -127,3 +127,74 @@ test('acknowledged final stroke is not replayed on reconnect',async()=>{
     'ACKed ink is durable in the realtime channel and needs no replay');
   h.channel.close();
 });
+
+
+test('long stroke sends only new points, then a complete final recovery window',async()=>{
+  const h=harness();await h.tick();
+  const ws=h.sockets[0];ws.open();ws.join();
+  const points=count=>Array.from({length:count},(_,i)=>({x:i,y:i*.5}));
+  const sample=(count,finished=false)=>({
+    id:'very-long',kind:'pen',color:'#234',weight:3,
+    points:points(count),offset:0,finished
+  });
+  h.channel.sendInk(sample(20));
+  assert.equal(h.packets(ws).length,1);
+  assert.equal(h.packets(ws)[0].points.length,20);
+  h.channel.sendInk(sample(30));
+  assert.equal(h.packets(ws).length,1,'intermediate state must be throttled');
+  const shortTimer=[...h.timers.values()].find(t=>t.ms<1000);
+  assert.ok(shortTimer,'a coalesced incremental packet is scheduled');
+  h.fire(shortTimer.ms);
+  assert.equal(h.packets(ws).length,2);
+  assert.equal(h.packets(ws)[1].offset,20);
+  assert.equal(h.packets(ws)[1].points.length,10,
+    'previously transmitted points must not be sent twice');
+  h.channel.sendInk(sample(40,true));
+  assert.equal(h.packets(ws).length,3,'a completed line is sent immediately');
+  assert.equal(h.packets(ws)[2].offset,0);
+  assert.equal(h.packets(ws)[2].points.length,40,
+    'the last window recovers a dropped incremental packet');
+  assert.equal(h.packets(ws)[2].finished,true);
+  h.channel.close();
+  assert.equal(h.timers.size,0);
+});
+
+test('incremental previews stitch into long strokes, reject stale packets and bound memory',()=>{
+  const source=readFileSync(new URL('../src/boardLiveInk.ts',import.meta.url),'utf8');
+  const api={};
+  vm.runInNewContext(ts.transpileModule(source,{
+    compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+  }).outputText,{exports:api});
+  const points=(from,to)=>Array.from({length:to-from},(_,i)=>({x:from+i,y:from+i}));
+  const packet=(start,end,finished=false)=>({
+    id:'stroke',clientId:'peer',userId:'other',kind:'pen',color:'#000',
+    weight:3,offset:start,points:points(start,end),finished
+  });
+  let preview=api.mergeRemoteLiveInk(undefined,packet(0,500));
+  preview=api.mergeRemoteLiveInk(preview,packet(500,510));
+  assert.equal(preview.points.length,510,'the first 500 points remain visible');
+  assert.equal(preview.points[0].x,0);
+  assert.equal(preview.points.at(-1).x,509);
+  preview=api.mergeRemoteLiveInk(preview,packet(510,620));
+  const earlier=api.mergeRemoteLiveInk(preview,packet(500,510));
+  assert.strictEqual(earlier,preview,'a delayed old packet cannot rewind handwriting');
+  const finished=api.mergeRemoteLiveInk(preview,packet(120,620,true));
+  assert.equal(finished.finished,true);
+  assert.equal(finished.points.length,620,
+    'the final overlapping window must retain the early part of the stroke');
+  assert.strictEqual(api.mergeRemoteLiveInk(finished,packet(400,510)),finished);
+  const gap=api.mergeRemoteLiveInk(packet(0,50),packet(100,130));
+  assert.equal(gap.offset,100,'a dropped packet cannot create a false diagonal stroke');
+  assert.equal(gap.points[0].x,100);
+  let long=packet(0,500);
+  for(let i=500;i<6000;i+=100){
+    long=api.mergeRemoteLiveInk(long,packet(i,i+100));
+  }
+  assert.equal(long.points.length,api.MAX_REMOTE_LIVE_INK_POINTS);
+  assert.equal(long.offset,2000);
+  const old={...packet(0,3)};delete old.offset;
+  assert.equal(api.mergeRemoteLiveInk(long,old),old,'legacy peers remain compatible');
+  const app=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
+  assert.match(app,/mergeRemoteLiveInk\(current\[ink\.id\],ink\)/);
+  assert.match(app,/offset:Math\.max\(0,g\.path\.length-500\)/);
+});
