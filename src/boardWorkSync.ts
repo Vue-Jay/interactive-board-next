@@ -219,7 +219,8 @@ export function connectBoardWorkChannel(
           if (message.payload?.event === "object_transform") {
             const raw=message.payload?.payload as Partial<BoardTransformMutation>|undefined;
             if(!raw || typeof raw.clientId!=="string" || !raw.clientId ||
-              raw.clientId===clientId || typeof raw.userId!=="string" ||
+              raw.clientId.length>128 || raw.clientId===clientId ||
+              typeof raw.userId!=="string" || !raw.userId || raw.userId.length>128 ||
               !Number.isSafeInteger(raw.seq)||raw.seq === undefined || raw.seq<=0 ||
               typeof raw.finished!=="boolean" || !Array.isArray(raw.items) ||
               !raw.items.length || raw.items.length>64) return;
@@ -233,7 +234,8 @@ export function connectBoardWorkChannel(
                   Number.isFinite(item[key as keyof BoardObjectPose]) &&
                   Math.abs(item[key as keyof BoardObjectPose] as number)<1e7) ||
                 item.width<0||item.height<0||
-                ![item.connectorStart,item.connectorEnd].every(point=>!point||
+                ![item.connectorStart,item.connectorEnd].every(point=>point===undefined||
+                  !!point&&typeof point==="object"&&!Array.isArray(point)&&
                   typeof point.x==="number"&&Number.isFinite(point.x)&&Math.abs(point.x)<1e7&&
                   typeof point.y==="number"&&Number.isFinite(point.y)&&Math.abs(point.y)<1e7)) return;
               seenIds.add(item.id);poses.push(item);
