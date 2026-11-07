@@ -6,6 +6,29 @@ import ts from "typescript";
 
 const read=(path)=>readFileSync(new URL("../src/"+path,import.meta.url),"utf8");
 const app=read("App.tsx"),preview=read("boardPreview.ts"),sync=read("boardSync.ts");
+
+assert.match(app,/const persistedItemIds=useMemo\(\(\)=>new Set\(items\.map\(item=>item\.id\)\),\[items\]\)/,
+ "Build one persisted board ID index per items revision");
+assert.match(app,/const uncommittedRemoteInk=useMemo\(/);
+assert.match(app,/\!persistedItemIds\.has\(ink\.id\)/);
+assert.match(app,/\{uncommittedRemoteInk\.map\(ink => \(/);
+assert.doesNotMatch(app,/Object\.values\(remoteInk\)\.filter\(ink => !items\.some/,
+ "Do not rescan the entire board once per live stroke");
+assert.match(app,/<polyline key=\{ink\.id\}/);
+assert.match(app,/<circle key=\{ink\.id\}/,
+ "Every peer stroke must keep a stable unique SVG key");
+const sampleObjects=Array.from({length:10_000},(_,i)=>({id:"obj-"+i}));
+const sampleRemoteInk=Array.from({length:150},(_,i)=>({id:i%10===0?"obj-"+i:"new-"+i}));
+const persistedIds=new Set(sampleObjects.map(item=>item.id));
+const slow=()=>sampleRemoteInk.filter(ink=>!sampleObjects.some(item=>item.id===ink.id));
+const indexed=()=>sampleRemoteInk.filter(ink=>!persistedIds.has(ink.id));
+assert.deepEqual(slow(),indexed(),"Fast overlay must include exactly the same uncommitted strokes");
+let slowElapsed=0,fastElapsed=0;
+for(let trial=0;trial<4;trial++){
+ const t=Date.now();for(let n=0;n<8;n++)slow();slowElapsed+=Date.now()-t;
+ const t2=Date.now();for(let n=0;n<8;n++)indexed();fastElapsed+=Date.now()-t2;
+}
+
 const receivedStart=app.indexOf("  receiveRemote.current = row => {");
 const receivedEnd=app.indexOf("  useEffect(() => layoutEditing?",receivedStart);
 assert.ok(receivedStart>=0 && receivedEnd>receivedStart);
@@ -109,6 +132,7 @@ assert.equal(changed.mock.calls[0].method,"PATCH");
 assert.ok(changed.mock.calls[0].bytes>200_000);
 console.log(JSON.stringify({
  test:"board runtime hot paths, deterministic offline harness",
+ overlayFilter:{objects:sampleObjects.length,remoteStrokes:sampleRemoteInk.length,passes:32,oldElapsedMs:slowElapsed,newElapsedMs:fastElapsed},
  ignoredRealtimeNotifications:count,
  fullLocalFingerprintCalls:{before:oldHashes,after:newHashes},
  unchangedThumbnail:{beforeFullDocPatches:old.mock.calls.length,
