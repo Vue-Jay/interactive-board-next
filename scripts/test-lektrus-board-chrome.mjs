@@ -68,7 +68,7 @@ assert.match(css,/\.start-live-lesson::after\s*\{\s*content:none!important/);
 /* The top-right settings entry must remain a real button that opens the
    existing dialog, never a decorative or truncated section label. */
 assert.match(app, /<button type="button" className="lectris-panel-entry" aria-haspopup="dialog"/);
-assert.match(app, /<\/button>Управление и интерфейс<\/button>/);
+assert.match(app, />Управление и интерфейс<\/button>/);
 assert.match(app, /setControlSettingsOpen\(true\);e\.currentTarget\.closest\("details"\)\?\.removeAttribute\("open"\)/);
 const boardChromeTheme=read("src/lektrusCanvasChrome.css");
 assert.match(boardChromeTheme, /\.lectris-layout-menu > \.lectris-panel-entry\s*\{/);
