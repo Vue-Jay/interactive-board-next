@@ -64,4 +64,25 @@ assert.doesNotMatch(legacyBoardCss,/\.topbar-right>\.start-live-lesson::after\{c
 assert.match(app,/<svg className="top-action-svg play-svg"[^>]*><path d="M8 5\.5 18 12 8 18\.5Z"\/><\/svg>/);
 assert.match(css,/\.start-live-lesson::after\s*\{\s*content:none!important/);
 
+
+/* The top-right settings entry must remain a real button that opens the
+   existing dialog, never a decorative or truncated section label. */
+assert.match(app, /<button type="button" className="lectris-panel-entry" aria-haspopup="dialog"/);
+assert.match(app, /<\/button>Управление и интерфейс<\/button>/);
+assert.match(app, /setControlSettingsOpen\(true\);e\.currentTarget\.closest\("details"\)\?\.removeAttribute\("open"\)/);
+const boardChromeTheme=read("src/lektrusCanvasChrome.css");
+assert.match(boardChromeTheme, /\.lectris-layout-menu > \.lectris-panel-entry\s*\{/);
+assert.match(boardChromeTheme, /\.lectris-layout-menu > \.lectris-panel-entry:focus-visible/);
+assert.match(boardChromeTheme, /\.lectris-layout-menu > \.lectris-panel-entry:hover:not\(:disabled\)/);
+assert.match(boardChromeTheme, /\.lectris-layout-menu > \.lectris-panel-entry\s*\{[\s\S]*?white-space:normal!important/);
+// The magnet stays a stateful toggle and uses theme tokens in both modes.
+assert.match(app, /aria-label="Умные привязки при перемещении"\s*aria-pressed=\{snapEnabled\}/);
+assert.match(app, /setSnapEnabled\(\(value\) => !value\); clearGuides\(\);/);
+assert.match(boardChromeTheme, /\.board-controls \.snap-toggle\.active/);
+assert.match(boardChromeTheme, /\.board-controls \.snap-toggle:disabled/);
+assert.match(boardChromeTheme, /\.board-controls \.snap-toggle:focus-visible/);
+for (const token of ["--lt-raised","--lt-secondary","--lt-selected","--lt-selected-ink","--lt-line-strong","--lt-hover","--lt-focus"]) {
+  assert.ok(boardChromeTheme.includes(`var(${token})`), "Missing Lektrus snap or settings state token: "+token);
+}
+
 console.log("Lektrus board chrome and adaptive toolbar source contracts pass.");
