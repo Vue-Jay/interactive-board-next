@@ -1,4 +1,4 @@
-import { isRemoteBackendEnabled, remoteAssetRequest } from "./backend";
+import { isRemoteBackendEnabled, remoteAssetExists, remoteAssetRequest } from "./backend";
 import type { DocumentData } from "./boardModel";
 
 const DB_NAME = "lesson-board.assets.v1";
@@ -188,8 +188,9 @@ export async function ensureBoardAssets(boardId: string, document: DocumentData)
     try {
       // Independent assets are checked in parallel. Sequential verification made
       // boards with several images/PDFs pause during their first autosave.
-      const blob = await remoteAssetRequest(path);
-      if (blob) await putLocalAsset(path, blob).catch(() => {});
+      // Existence verification must not download a possibly 50 MB PDF.
+      // The actual viewer fetch still uses getAsset's memory/IndexedDB cache.
+      if (!await remoteAssetExists(path)) throw new Error("Вложение не найдено в облаке");
       synchronized.add(path);
     } catch (error) {
       const legacy = await getLocalAsset(id).catch(() => null);
