@@ -169,9 +169,9 @@ assert.match(app,/const rotatePreview=compositorRotation\.current\?\.gesture===g
 assert.match(app,/syncBoundConnectors\(\s*translatedBoardDragItems\(/);
 assert.match(app,/if\(dragPreview\|\|rotatePreview\)flushSync/);
 assert.match(app,/clearBoardRotationPreview\(rotatePreview\.element,rotatePreview\.outline\)/);
-assert.match(app,/const plan=planCompositeBoardDrag\\(g\\.before,selected\\)/);
-assert.match(app,/paintBoardDeformedConnector\\(target,preview\\.selected,dx,dy\\)/);
-assert.match(app,/connectorDragEndpoints\\(attached,preview\\.selected,dx,dy\\)/);
+assert.match(app,/const plan=planCompositeBoardDrag\(g\.before,selected\)/);
+assert.match(app,/paintBoardDeformedConnector\(target,preview\.selected,dx,dy\)/);
+assert.match(app,/connectorDragEndpoints\(attached,preview\.selected,dx,dy\)/);
 console.log(JSON.stringify({
  test:"linked arrow + single rotation compositor",
  objects:many.length,unboundConnectors:standalone.length,frames:120,
