@@ -561,3 +561,53 @@
  .lectris-hub .lectris-hub-hero-compact:after{opacity:.25}
  .lectris-hub .lectris-hub-hero-compact h1{font-size:21px!important}
 }
+
+/* Remaining OnlineRepetitor access dialogs: use the same Lektrus surfaces
+   as the create-board dialog and settings cards in light and dark palettes. */
+.access-backdrop .access-modal {
+  background:var(--lt-raised)!important;
+  color:var(--lt-text)!important;
+  border:1px solid var(--lt-line)!important;
+  box-shadow:var(--lt-pop-shadow)!important;
+}
+.access-backdrop .access-modal :is(h2,h3,strong){color:var(--lt-text)}
+.access-backdrop .access-head{border-bottom-color:var(--lt-line)!important}
+.access-backdrop .access-head p,
+.access-backdrop .access-modal :is(.share-note,.access-person span){color:var(--lt-muted)!important}
+.access-backdrop .access-head>button{
+  background:var(--lt-subtle)!important;
+  color:var(--lt-secondary)!important;
+  border:1px solid var(--lt-line)!important;
+}
+.access-backdrop .access-head>button:hover{background:var(--lt-hover)!important;color:var(--lt-text)!important}
+.access-backdrop .access-modal :is(input:not([type=checkbox]):not([type=radio]),textarea,select) {
+  background:var(--lt-surface)!important;
+  color:var(--lt-text)!important;
+  border-color:var(--lt-line)!important;
+}
+.access-backdrop .access-modal :is(input,textarea)::placeholder{color:var(--lt-muted)}
+.access-backdrop .access-modal :is(input[type=checkbox],input[type=radio]){accent-color:var(--lt-primary)}
+.access-backdrop .access-modal :is(button,input,select,textarea):focus-visible{
+  outline:2px solid var(--lt-focus);outline-offset:2px;
+}
+.access-backdrop .access-modal .access-person {
+  background:var(--lt-surface);
+  border-color:var(--lt-line)!important;
+  color:var(--lt-text);
+}
+.access-backdrop .access-modal .access-person.pending{background:var(--lt-subtle)}
+.access-backdrop .access-modal .access-person button{
+  background:var(--lt-subtle);color:var(--lt-secondary);
+}
+.access-backdrop .access-modal .access-person button:hover:not(:disabled){background:var(--lt-hover);color:var(--lt-text)}
+.access-backdrop .access-modal .invite-row button {
+  background:var(--lt-primary);color:var(--lt-on-primary);
+}
+.access-backdrop .access-modal .invite-row button:hover:not(:disabled){background:var(--lt-primary-hover)}
+.access-backdrop .access-modal .access-notice{
+  background:var(--lt-selected);color:var(--lt-selected-ink);
+}
+.access-backdrop .notification-settings .notification-toggle{
+  color:var(--lt-text);border-bottom-color:var(--lt-line);
+}
+.access-backdrop .notification-settings .notification-toggle input{accent-color:var(--lt-primary)}
