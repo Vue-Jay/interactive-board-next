@@ -12,3 +12,21 @@
     padding-bottom:max(88px,calc(56px + env(safe-area-inset-bottom)));
   }
 }
+
+/* Lektrus surface and interaction tokens replace the legacy OnlineRepetitor palette.
+   The plan grid and all existing actions keep their established layout. */
+.billing-page{background:var(--lt-page);color:var(--lt-text)}
+.billing-head button,.billing-qa button{color:var(--lt-secondary);background:var(--lt-raised);border-color:var(--lt-line)}
+.billing-head button:hover,.billing-qa button:hover{color:var(--lt-text);background:var(--lt-hover);border-color:var(--lt-line-strong)}
+.billing-head h1,.billing-card h2,.billing-card>strong,.billing-current strong{color:var(--lt-text)}
+.billing-head p,.billing-card p,.billing-current>span{color:var(--lt-muted)}
+.billing-current,.billing-card,.billing-qa{background:var(--lt-surface);border-color:var(--lt-line);color:var(--lt-text)}
+.billing-card.current{outline:2px solid var(--lt-primary);outline-offset:-1px}
+.billing-card button{color:var(--lt-on-primary);background:var(--lt-primary)}
+.billing-card button:hover:not(:disabled){background:var(--lt-primary-hover)}
+.billing-card button:disabled{background:var(--lt-subtle);color:var(--lt-muted)}
+.billing-limit-strip{background:var(--lt-subtle);color:var(--lt-secondary)}
+.billing-limit-strip b{color:var(--lt-text)}
+.billing-page :is(button,input,select):focus-visible{outline:2px solid var(--lt-focus);outline-offset:2px}
+.billing-grid,.billing-card,.billing-head,.billing-current,.billing-qa{min-width:0}
+.billing-card :is(h2,p,li),.billing-current{overflow-wrap:anywhere}
