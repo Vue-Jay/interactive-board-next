@@ -137,7 +137,7 @@ assert.ok(app.includes('boardObjectAtInertPointerTarget(target)'));
 assert.ok(app.includes('inertSurfaceDragPointer.current=e.pointerId'));
 assert.ok(app.includes('started.mode==="drag"'),
  "Capture must verify the started gesture is a board-object drag");
-assert.match(app,/if\(gesture\.current\?\.pointer===e\.pointerId\)\{\s*move\(e\);\s*\/\/ This gesture is owned by the BOARD now/,
+assert.match(app,/if\(gesture\.current\?\.pointer===e\.pointerId\)\{\s*moveObjectFrame\(e\);\s*\/\/ This gesture is owned by the BOARD now/,
  "Bubbling-stopping widgets still advance the drag in capture phase");
 assert.ok(app.includes('if(gesture.current?.pointer===e.pointerId){move(e);end();}'),
  "Pointerup must finalize even when the widget swallows bubble events");
