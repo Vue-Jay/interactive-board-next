@@ -74,4 +74,19 @@ assert.equal(calls.length,count,"Already synchronized media must avoid repeated 
 await assert.rejects(
  api.ensureBoardAssets("board",{items:[{kind:"image",assetId:"missing"}]}),
  /не найдено|Missing/,"A missing attachment must still block the save");
+// A legacy board with many attachments must not create an unlimited burst.
+const originalHead=adapter.remoteAssetExists;
+let active=0,peak=0;
+adapter.remoteAssetExists=async path=>{
+ active++;peak=Math.max(peak,active);
+ try {await new Promise(resolve=>setTimeout(resolve,0));return server.has(path)}
+ finally {active--}
+};
+const many=Array.from({length:19},(_,i)=>({kind:"image",assetId:"bulk-"+i}));
+for(const item of many)server.set("board/"+item.assetId,new Blob(["img"]));
+await api.ensureBoardAssets("board",{items:many});
+assert.ok(peak>1&&peak<=6,`Storage HEAD concurrency must be bounded, got ${peak}`);
+assert.equal(calls.filter(([method,path])=>method==="download"&&path.startsWith("board/bulk-")).length,0);
+adapter.remoteAssetExists=originalHead;
+
 console.log("Storage egress regression: HEAD, denied/missing/fallback and legacy migration passed.");
