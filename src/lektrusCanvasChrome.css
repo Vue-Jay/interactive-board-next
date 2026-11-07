@@ -525,3 +525,82 @@ html body .topbar .topbar-right .board-chat-button>span{display:none!important}
   html body .topbar .topbar-right>.presence-menu{display:none!important}
   html body .topbar .topbar-right{max-width:47vw}
 }
+
+/* Board settings entry: it opens the existing control settings dialog.
+   Keep a visible, fully readable action label in both Lektrus palettes. */
+html body .workspace .lectris-layout-menu > .lectris-panel-entry {
+  box-sizing:border-box;
+  display:flex!important;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  width:100%!important;
+  min-width:0;
+  min-height:42px;
+  padding:10px 13px!important;
+  border:1px solid var(--lt-line-strong)!important;
+  border-radius:10px!important;
+  background:var(--lt-subtle)!important;
+  color:var(--lt-text)!important;
+  font-weight:750;
+  text-align:left;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  overflow-wrap:anywhere;
+  cursor:pointer;
+}
+html body .workspace .lectris-layout-menu > .lectris-panel-entry::after {
+  content:"›";
+  flex:0 0 auto;
+  color:var(--lt-primary);
+  font-size:21px;
+  line-height:1;
+}
+html body .workspace .lectris-layout-menu > .lectris-panel-entry:hover:not(:disabled) {
+  background:var(--lt-hover)!important;
+  border-color:var(--lt-primary)!important;
+  color:var(--lt-text)!important;
+}
+html body .workspace .lectris-layout-menu > .lectris-panel-entry:focus-visible {
+  outline:2px solid var(--lt-focus)!important;
+  outline-offset:2px;
+}
+html body .workspace .lectris-layout-menu > .lectris-panel-entry:disabled {
+  opacity:.55;
+  cursor:not-allowed;
+}
+
+/* The snap/magnet control used an OnlineRepetitor violet active square.
+   Preserve the existing toggle and mobile visibility rules. */
+html body .workspace .board-controls .snap-toggle {
+  border:1px solid transparent!important;
+  border-radius:8px;
+  background:var(--lt-raised)!important;
+  color:var(--lt-secondary)!important;
+  cursor:pointer;
+}
+html body .workspace .board-controls .snap-toggle.active,
+html body .workspace .board-controls .snap-toggle[aria-pressed="true"] {
+  background:var(--lt-selected)!important;
+  border-color:var(--lt-line-strong)!important;
+  color:var(--lt-selected-ink)!important;
+}
+html body .workspace .board-controls .snap-toggle:hover:not(:disabled) {
+  background:var(--lt-hover)!important;
+  border-color:var(--lt-line-strong)!important;
+  color:var(--lt-text)!important;
+}
+html body .workspace .board-controls .snap-toggle.active:hover:not(:disabled) {
+  background:var(--lt-selected)!important;
+  border-color:var(--lt-primary)!important;
+  color:var(--lt-selected-ink)!important;
+}
+html body .workspace .board-controls .snap-toggle:focus-visible {
+  outline:2px solid var(--lt-focus)!important;
+  outline-offset:2px;
+}
+html body .workspace .board-controls .snap-toggle:disabled {
+  opacity:.45;
+  cursor:not-allowed;
+}
