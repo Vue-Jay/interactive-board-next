@@ -41,6 +41,23 @@ test('changing local pan or zoom is not a collaborative document edit', () => {
     sharedBoardFingerprint(original)!==sharedBoardFingerprint(anotherView)),'apply');
 });
 
+test('subject and background sharing edits are real shared revisions', () => {
+  const baseline={...document,subject:'',backgroundShared:true};
+  const changedSubject={...baseline,subject:'chemistry'};
+  const changedSharing={...baseline,backgroundShared:false};
+  assert.notEqual(documentFingerprint(baseline),documentFingerprint(changedSubject),
+    'Changing only the board subject must create a server revision');
+  assert.notEqual(sharedBoardFingerprint(baseline),sharedBoardFingerprint(changedSharing),
+    'Changing only background-sharing must not be lost by autosave');
+  assert.equal(documentFingerprint(document),documentFingerprint(baseline),
+    'Missing legacy metadata is equivalent to the default values');
+  assert.equal(documentFingerprint(changedSubject),sharedBoardFingerprint(changedSubject),
+    'The personal viewport is omitted by both fingerprint helpers');
+  assert.equal(documentFingerprint(changedSubject),
+    documentFingerprint({...changedSubject,view:{x:55,y:-1,zoom:4}}),
+    'Different student zoom and pan never produce a shared conflict');
+});
+
 test('lost HTTP acknowledgement identifies own save without ignoring another device', () => {
   const attempt = { version: 5, fingerprint: documentFingerprint(document) };
   const row = { updated_by: 'owner', version: 5, document };
