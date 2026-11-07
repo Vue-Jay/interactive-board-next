@@ -415,6 +415,17 @@ export type SubjectTaskActivityResponse={
 };
 /** Editable student work for Russian-language exercises. Reuses the same
  * school role classifications as the standalone Russian tools. */
+/** Student-supplied phonetic transcription. One letter may give zero, one or two sounds. */
+export type RussianPhoneticSound={
+ text:string;
+ kind:""|"vowel"|"consonant";
+ voicing:""|"voiced"|"voiceless";
+ voicingPair:""|"paired"|"unpaired";
+ hardness:""|"hard"|"soft";
+ hardnessPair:""|"paired"|"unpaired";
+ stressed:boolean;
+};
+export type RussianPhoneticLetter={letter:string;silent:boolean;sounds:RussianPhoneticSound[]};
 export type RussianTaskWork={
  source?:string;
  cuts?:number[];
@@ -427,6 +438,7 @@ export type RussianTaskWork={
  variable?:string;
  syntax?:string;
  textAnswers?:string[];
+ phoneticLetters?:RussianPhoneticLetter[];
 };
 export type SubjectBoardEntry={
   id:string;
@@ -1270,6 +1282,29 @@ export function parseDocument(raw: string): DocumentData {
           !w.syntaxRoles.every((v:string)=>["subject","predicate","attribute","object","adverbial","none"].includes(v))))return true;
         if(w.textAnswers!=null&&(!Array.isArray(w.textAnswers)||w.textAnswers.length>15||
           !w.textAnswers.every((v:string)=>typeof v==="string"&&v.length<=1500)))return true;
+        if(w.phoneticLetters!=null){
+          const letters=w.phoneticLetters;
+          if(!Array.isArray(letters)||letters.length>24)return true;
+          const soundKinds=["","vowel","consonant"],voicings=["","voiced","voiceless"];
+          const pairings=["","paired","unpaired"],hardness=["","hard","soft"];
+          if(letters.some((letter:RussianPhoneticLetter)=>
+           !letter||typeof letter!=="object"||typeof letter.letter!=="string"||
+           Array.from(letter.letter).length!==1||typeof letter.silent!=="boolean"||
+           !Array.isArray(letter.sounds)||letter.sounds.length>2||
+           (letter.silent&&letter.sounds.length!==0)||
+           (!letter.silent&&letter.sounds.length===0)||
+           letter.sounds.some((sound:RussianPhoneticSound)=>!sound||typeof sound!=="object"||
+            typeof sound.text!=="string"||sound.text.length>12||
+            !soundKinds.includes(sound.kind)||!voicings.includes(sound.voicing)||
+            !pairings.includes(sound.voicingPair)||!hardness.includes(sound.hardness)||
+            !pairings.includes(sound.hardnessPair)||typeof sound.stressed!=="boolean"||
+            (sound.stressed&&sound.kind!=="vowel")||
+            (sound.kind!=="consonant"&&(sound.voicing!==""||sound.voicingPair!==""||
+             sound.hardness!==""||sound.hardnessPair!=="")))))return true;
+          if(letters.flatMap((letter:RussianPhoneticLetter)=>letter.sounds).filter((s:RussianPhoneticSound)=>s.stressed).length>1)return true;
+          if(entry.format==="phonetics"&&w.source!=null&&
+           letters.length>0&&letters.map((l:RussianPhoneticLetter)=>l.letter).join("")!==w.source.trim())return true;
+        }
         return false;
       }))throw new Error("Повреждён разбор по русскому языку");
       if(i.subjectBoardEntries?.some((entry:SubjectBoardEntry)=>entry.workedSolution!=null&&
