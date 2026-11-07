@@ -182,7 +182,9 @@ export async function ensureBoardAssets(boardId: string, document: DocumentData)
       .map(item => item.assetId)
       .filter((id): id is string => Boolean(id))
   )];
-  await Promise.all(ids.map(async (id) => {
+  // Hundreds of legacy attachments must not launch hundreds of parallel
+  // Storage probes (nor overwhelm a slower tablet/network on first save).
+  const ensureOne = async (id: string) => {
     const path = assetPath(boardId, id);
     if (synchronized.has(path)) return;
     try {
@@ -199,6 +201,11 @@ export async function ensureBoardAssets(boardId: string, document: DocumentData)
       const mime = item?.kind === "pdf" ? "application/pdf" : legacy.type || item?.mime;
       await putAsset(id, mime && mime !== legacy.type ? legacy.slice(0, legacy.size, mime) : legacy, boardId);
     }
+  };
+  let cursor = 0;
+  const workers = Math.min(6, ids.length);
+  await Promise.all(Array.from({length:workers}, async () => {
+    while (cursor < ids.length) await ensureOne(ids[cursor++]);
   }));
 }
 
