@@ -217,7 +217,7 @@ test('packet loss never erases already visible peer ink or invents a connecting 
   assert.equal(preview.offset,100);
   assert.equal(preview.priorRuns.length,1,
     'a missing packet must not erase the first 50 already visible points');
-  assert.deepEqual(api.remoteInkRuns(preview).map(run=>[run.offset,run.points.length]),
+  assert.deepEqual(Array.from(api.remoteInkRuns(preview),run=>[run.offset,run.points.length]),
     [[0,50],[100,30]],'separate SVG runs must never bridge the 50-point gap');
   const missed=packet(50,100);
   preview=api.mergeRemoteLiveInk(preview,missed);
@@ -234,7 +234,7 @@ test('packet loss never erases already visible peer ink or invents a connecting 
   finalWithGap=api.mergeRemoteLiveInk(finalWithGap,packet(100,130));
   finalWithGap=api.mergeRemoteLiveInk(finalWithGap,packet(80,150,true));
   assert.equal(finalWithGap.finished,true);
-  assert.deepEqual(api.remoteInkRuns(finalWithGap).map(run=>[run.offset,run.points.length]),
+  assert.deepEqual(Array.from(api.remoteInkRuns(finalWithGap),run=>[run.offset,run.points.length]),
     [[0,50],[80,70]],'missing samples are not joined by false geometry');
   assert.equal(api.remoteInkRuns(finalWithGap)[0].points[0].x,0);
 });
