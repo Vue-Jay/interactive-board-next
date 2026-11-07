@@ -30,7 +30,7 @@ const illustration=read("src/LektrusChemistryIllustration.tsx");
 const editor=read("src/LektrusChemicalEquationEditor.tsx");
 const science=read("src/LektrusScienceEditor.tsx");
 const styles=read("src/lektrusChemicalBoardSurface.css");
-const main=read("src/main.tsx");
+const main=read("src/appEntry.tsx");
 const tonesCode=read("src/lektrusSubjectAccent.ts");
 const subjectColors=["chemistry","physics","mathematics","geography","history","biology","russian","literature","social","languages","informatics"];
 for(const subject of subjectColors){

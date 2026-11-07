@@ -47,7 +47,7 @@ for(const selector of [".lektrus-school-editor",".lektrus-science-editor",
  ".formula-editor-backdrop"]){
  assert.ok(themes.includes(selector),selector+" editor inherits a subject theme");
 }
-assert.match(read("src/main.tsx"),/lektrusSubjectEditorThemes\.css/);
+assert.match(read("src/appEntry.tsx"),/lektrusSubjectEditorThemes\.css/);
 assert.match(app,/collectChemistryObject\(/);
 assert.match(app,/!value\.subjectBoardStandalone/);
 assert.match(app,/id==="chem-formulas"\|\|id==="chem-assignments"/);
