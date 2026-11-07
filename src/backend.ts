@@ -164,7 +164,13 @@ const normalizeSession = (data: any): BackendSession => ({
 // Native WebView origins are not valid confirmation destinations. Return through
 // the app's registered deep link so the email link reopens Lektrus itself.
 const getEmailConfirmationRedirect = (): string | null => {
-  if (Capacitor.isNativePlatform()) return "ru.lektrus.board://auth/confirmed";
+  if (Capacitor.isNativePlatform()) {
+    const configured=(import.meta.env.VITE_AUTH_REDIRECT_URL as string|undefined)?.trim();
+    if(configured){
+      try{const parsed=new URL(configured);if(parsed.protocol==="ru.lektrus.board:"&&parsed.hostname==="auth"&&parsed.pathname==="/confirmed")return parsed.href}catch{/* Use the app's registered default link. */}
+    }
+    return "ru.lektrus.board://auth/confirmed";
+  }
   return `${window.location.origin}/?email_confirmation=1`;
 };
 
