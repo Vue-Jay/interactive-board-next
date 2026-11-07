@@ -31,15 +31,24 @@ assert.equal(canCompositeBoardResize([p,q,r],new Set(["p","missing"])),false);
 assert.equal(canCompositeBoardResize([...Array(65)].map((_,i)=>sample("a"+i)),
  new Set([...Array(65)].map((_,i)=>"a"+i)),false);
 for(const kind of ["graph","table","formula","connector","instrument",
- "pen","marker","quiz","flashcard","checklist"]){
+ "pen","marker","quiz","flashcard","checklist","pdf"]){
  assert.equal(canCompositeBoardResize([{...p,kind}],new Set(["p"])),false,
   kind+" must retain React/subject geometry");
 }
-for(const kind of ["text","sticky","shape","frame","comment","image","pdf"]){
+for(const kind of ["text","sticky","shape","frame","comment","image"]){
  assert.equal(canCompositeBoardResize([{...p,kind}],new Set(["p"])),true,
   kind+" can resize with CSS layout dimensions");
 }
 assert.equal(canCompositeBoardResize([{...p,points:[]}],new Set(["p"])),false);
+assert.equal(canCompositeBoardResize([{...p,hidden:true}],new Set(["p"])),false);
+assert.equal(canCompositeBoardResize([p,{...sample("note","comment"),
+ commentTargetId:"p"}],new Set(["p"])),false,
+ "Resizing a linked target requires updating the comment leader SVG");
+assert.equal(canCompositeBoardResize([{...sample("note","comment"),
+ commentTargetId:"external"}],new Set(["note"])),false,
+ "Resizing the annotation itself must move its leader too");
+assert.equal(canCompositeBoardResize([p,{...sample("note","comment"),
+ commentTargetId:"external"}],new Set(["p"])),true);
 const arrow={id:"arrow",kind:"connector",x:0,y:0,width:500,height:80,
  connectorStartBinding:{itemId:"p"},connectorEndBinding:{itemId:"q"}};
 assert.equal(canCompositeBoardResize([p,q,r,arrow],new Set(["p"])),false,
@@ -136,7 +145,7 @@ const count=240;
 const finalPoses=oldTransform(moving,worldBounds,25,40,"se",false);
 const baseline=()=>{
  let document=board;
- for(let frameIndex=0;frameIndex<count;frameIndex++){
+ for(let frameIndex=1;frameIndex<=count;frameIndex++){
   const dx=25*(frameIndex+1)/count,dy=40*(frameIndex+1)/count;
   const byId=new Map(oldTransform(moving,worldBounds,dx,dy,"se",false)
    .map(item=>[item.id,item]));
@@ -145,7 +154,7 @@ const baseline=()=>{
  return document;
 };
 const optimized=()=>{
- for(let frameIndex=0;frameIndex<count;frameIndex++){
+ for(let frameIndex=1;frameIndex<=count;frameIndex++){
   const dx=25*(frameIndex+1)/count,dy=40*(frameIndex+1)/count;
   const poses=oldTransform(moving,worldBounds,dx,dy,"se",false);
   paintBoardResizePreview(nodes,poses,outline,view);
