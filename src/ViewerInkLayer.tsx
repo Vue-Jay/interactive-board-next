@@ -1,6 +1,6 @@
 import { memo, useLayoutEffect, useMemo, useRef } from "react";
 import type { Item, View } from "./boardModel";
-import {inkCanvasBudget} from "./inkCanvasBudget";
+import {inkCanvasBudget,reuseInkCanvasBacking} from "./inkCanvasBudget";
 import {indexInkStrokes,queryInkStrokes} from "./inkSpatialIndex";
 
 type ViewportSize = { width: number; height: number };
@@ -68,14 +68,19 @@ const ViewerInkLayer = memo(function ViewerInkLayer({
     const cssWidth = right - left;
     const cssHeight = bottom - top;
     const pixels = inkCanvasBudget(cssWidth,cssHeight,zoom,window.devicePixelRatio||1);
-    canvas.width = pixels.width;
-    canvas.height = pixels.height;
+    const reusedBacking=reuseInkCanvasBacking(canvas,pixels.width,pixels.height);
     canvas.style.left = `${left}px`;
     canvas.style.top = `${top}px`;
     canvas.style.width = `${cssWidth}px`;
     canvas.style.height = `${cssHeight}px`;
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
+    if(reusedBacking){
+      // An unchanged backing is not automatically cleared by assigning
+      // canvas dimensions. Erase the previous tile in device pixels first.
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+    }
     ctx.setTransform(pixels.scaleX, 0, 0, pixels.scaleY,
       -left * pixels.scaleX, -top * pixels.scaleY);
     for (const item of queryInkStrokes(spatialIndex,left,top,right,bottom)) {
