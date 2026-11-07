@@ -34,6 +34,7 @@ import {addBoardGeometryPoint,linkBoardGeometry,adjustBoardGeometry,constrainBoa
 import "./lektrusBoardGeometryPanel.css";
 import LektrusSubjectPicker from "./LektrusSubjectPicker";
 import LektrusInterfaceStudio from "./LektrusInterfaceStudio";
+import {loadGlobalInterfaceLayout,saveInterfaceLayout} from "./lektrusInterfaceLayout";
 const INTERFACE_STUDIO_BOARD_ID="00000000-0000-4000-8000-00000000a11a";
 import {LEKTRUS_SCHOOL_SUBJECTS,normalizeLektrusSubject} from "./lektrusSchoolSubjects";
 import {queueLectrisBoardOrganization} from "./lectrisOrganizationStore";
@@ -2680,6 +2681,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if (viewerWheelTimer.current !== null) clearTimeout(viewerWheelTimer.current);
     viewerPendingPan.current = null;
   }, []);
+
   const viewSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastViewSerialized = useRef<string | null>(null);
   const [items, setItems] = useState<Item[]>(() => expandDocumentInk(initial.data));
@@ -8032,7 +8034,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         <div className="topbar-right"><details className="lectris-layout-picker">
             <summary title="Настройки и раскладка доски" aria-label="Настройки и раскладка доски"><Icon name="settings" size={17}/></summary>
             <div className="lectris-layout-menu">
-              <button type="button" className="lectris-panel-entry" onClick={e=>{setControlSettingsOpen(true);e.currentTarget.closest("details")?.removeAttribute("open")}}>Управление и интерфейс</button>
               <strong>Рабочая раскладка</strong>
               {([["standard","Стандартная"],["lesson","Проведение урока"],["focus","Фокус на доске"]] as const).map(([id,label])=>
                 <button type="button" key={id} className={lectrisLayout===id?"active":""}
@@ -8057,6 +8058,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 <button type="button" disabled={!lectrisLayoutName.trim()} onClick={saveLectrisLayout}>Сохранить текущую</button>
                 <button type="button" onClick={()=>{setLectrisLayout("standard");setLectrisPinned(lectrisDefaultPinned);setLectrisPanelLayout({...defaultLectrisPanelLayout});setDesktopToolsExpanded(false)}}>Восстановить по умолчанию</button>
               </div>
+              <button type="button" className="lectris-interface-settings-entry" onClick={e=>{setControlSettingsOpen(true);e.currentTarget.closest("details")?.removeAttribute("open")}}><Icon name="settings" size={16}/>Управление и интерфейс<span aria-hidden="true">→</span></button>
             </div>
           </details>{!Capacitor.isNativePlatform()&&installPrompt&&!isStandalone&&<button type="button" className="install-app-button" onClick={()=>void installApp()} title="Установить Lektrus на устройство">{isCoarsePointer?"Установить приложение":"Установить"}</button>}
           {isRemoteBackendEnabled() && <details className="presence-menu" ref={visitPresenceMenuRef}>
@@ -10910,6 +10912,26 @@ export default function App() {
     });
     return () => { alive = false; };
   }, []);
+
+  // Load the administrator-published interface design for every signed-in
+  // account. Refresh on return to the app so other devices pick up updates.
+  useEffect(()=>{
+    if(!authReady||!authUser||!isRemoteBackendEnabled())return;
+    if(new URLSearchParams(window.location.search).get("layout-editor")==="1")return;
+    let alive=true;
+    let pending=false;
+    const refresh=async()=>{
+      if(pending)return;
+      pending=true;
+      try{const layout=await loadGlobalInterfaceLayout();if(alive&&layout)saveInterfaceLayout(layout)}
+      catch{/* Keep the last published design cached on this device. */}
+      finally{pending=false}
+    };
+    void refresh();
+    const interval=window.setInterval(()=>{if(document.visibilityState==="visible")void refresh()},60_000);
+    window.addEventListener("focus",refresh);
+    return()=>{alive=false;window.clearInterval(interval);window.removeEventListener("focus",refresh)};
+  },[authReady,authUser?.id]);
 
   const logout = () => {
     // Local test APK is deliberately passwordless. "Exit" returns home

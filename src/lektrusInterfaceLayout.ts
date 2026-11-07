@@ -1,6 +1,7 @@
 /** Admin-only visual layout studio. Profiles are intentionally UI preferences,
  * never part of the collaborative board document or remote board history. */
 import {applyExtraLayout,safeInterfaceSelector} from "./lektrusInterfaceTargets";
+import {isRemoteBackendEnabled,remoteRequest} from "./backend";
 export const INTERFACE_LAYOUT_KEY="lektrus.interface-layout.v1";
 export const INTERFACE_LAYOUT_EVENT="lektrus-interface-layout-changed";
 export const INTERFACE_TEMPLATE_KEY="lektrus.interface-layout-templates.v1";
@@ -91,6 +92,23 @@ export function readInterfaceLayout():InterfaceLayout{
 export function saveInterfaceLayout(layout:InterfaceLayout){
  localStorage.setItem(INTERFACE_LAYOUT_KEY,JSON.stringify(normalizeInterfaceLayout(layout)));
  window.dispatchEvent(new Event(INTERFACE_LAYOUT_EVENT));
+}
+/** Published interface design is stored once for the whole application. The
+ * database checks admin rights; this client-side check is only for the UI. */
+export async function publishGlobalInterfaceLayout(layout:InterfaceLayout){
+ const normalized=normalizeInterfaceLayout(layout);
+ if(isRemoteBackendEnabled()){
+  await remoteRequest("/rest/v1/rpc/admin_publish_interface_layout",{
+   method:"POST",body:JSON.stringify({p_layout:normalized}),
+  });
+ }
+ saveInterfaceLayout(normalized);
+}
+export async function loadGlobalInterfaceLayout():Promise<InterfaceLayout|null>{
+ if(!isRemoteBackendEnabled())return null;
+ const rows=await remoteRequest<Array<{layout:unknown}>>("/rest/v1/rpc/get_global_interface_layout",{method:"POST",body:"{}"});
+ const layout=Array.isArray(rows)?rows[0]?.layout:null;
+ return layout?normalizeInterfaceLayout(layout):null;
 }
 export function readInterfaceTemplates():NamedInterfaceLayout[]{
  try{

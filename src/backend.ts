@@ -172,18 +172,37 @@ const getEmailConfirmationRedirect = (): string | null => {
   catch { return null; }
 };
 
-export const signUpRemote = async (email: string, password: string, name: string) => {
+export const signUpRemote = async (email: string, password: string, name: string, details:{firstName?:string;lastName?:string}={}) => {
   const response = await fetchWithTimeout(`${url}/auth/v1/signup${getEmailConfirmationRedirect() ? `?redirect_to=${encodeURIComponent(getEmailConfirmationRedirect()!)}` : ""}`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({ email, password, data: { display_name: name } }),
+    body: JSON.stringify({ email, password, data: { display_name: name,full_name:name,first_name:details.firstName||"",last_name:details.lastName||"" } }),
   });
   if (!response.ok) throw new Error(await errorMessage(response));
   const data = await response.json();
-  if (!data.access_token) throw new Error("Аккаунт создан. Подтвердите email по письму, затем выполните вход.");
+  if (!data.access_token) return null; // Email confirmation is completed in the branded Lektrus screen.
   const session = normalizeSession(data);
   saveSession(session);
   return session;
+};
+
+export const verifySignupOtpRemote = async (email:string,token:string):Promise<BackendSession>=>{
+  const response=await fetchWithTimeout(`${url}/auth/v1/verify`,{
+    method:"POST",headers:authHeaders(),body:JSON.stringify({email:email.trim().toLowerCase(),token:token.trim(),type:"email"}),
+  });
+  if(!response.ok)throw new Error(await errorMessage(response));
+  const session=normalizeSession(await response.json());
+  saveSession(session);
+  if(session.user?.email)saveRememberedSession(session);
+  return session;
+};
+
+export const resendSignupOtpRemote = async (email:string):Promise<void>=>{
+  const redirect=getEmailConfirmationRedirect();
+  const response=await fetchWithTimeout(`${url}/auth/v1/resend`,{
+    method:"POST",headers:authHeaders(),body:JSON.stringify({type:"signup",email:email.trim().toLowerCase(),...(redirect?{options:{emailRedirectTo:redirect}}:{})}),
+  });
+  if(!response.ok)throw new Error(await errorMessage(response));
 };
 
 export const signInAnonymousRemote = async (name = "Гость") => {

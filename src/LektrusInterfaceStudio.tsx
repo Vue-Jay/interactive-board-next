@@ -3,7 +3,7 @@ import {createPortal} from "react-dom";
 import {applyExtraLayout,getInterfaceElements} from "./lektrusInterfaceTargets";
 import {
  applyInterfaceLayout,currentDeviceProfile,deviceProfiles,layoutControls,layoutRegions,
- readInterfaceLayout,saveInterfaceLayout,type DeviceProfile,type InterfaceLayout,type LayoutControl,type LayoutRegion
+ readInterfaceLayout,publishGlobalInterfaceLayout,type DeviceProfile,type InterfaceLayout,type LayoutControl,type LayoutRegion
 } from "./lektrusInterfaceLayout";
 
 /** Edit actual Lektrus board controls. Responsive previews also load the actual
@@ -161,9 +161,13 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
   applyInterfaceLayout();
   onClose();
  };
- const save=()=>{
-  try{saveInterfaceLayout(latest.current);onClose()}
-  catch{setMessage("Не удалось сохранить изменения интерфейса")}
+ const [saving,setSaving]=useState(false);
+ const save=async()=>{
+  if(saving)return;
+  setSaving(true);setMessage("");
+  try{await publishGlobalInterfaceLayout(latest.current);onClose()}
+  catch{setMessage("Не удалось опубликовать дизайн. Проверьте подключение и права администратора.")}
+  finally{setSaving(false)}
  };
  useEffect(()=>{
   const onKey=(event:KeyboardEvent)=>{
@@ -337,7 +341,7 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
    <button type="button" onClick={redo} disabled={!future.current.length} title="Вернуть отменённое (Ctrl+Y)">↷ Вернуть</button>
    <span className="lektrus-live-layout-actions-divider"/>
    <button type="button" onClick={leave}>Выход</button>
-   <button type="button" className="primary" onClick={save}>Сохранить</button>
+   <button type="button" className="primary" onClick={()=>void save()} disabled={saving}>{saving?"Публикуем…":"Опубликовать для всех"}</button>
   </div>
   {message&&<div role="status" className="lektrus-live-layout-status">{message}</div>}
  </div>,document.body);
