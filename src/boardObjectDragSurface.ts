@@ -9,7 +9,7 @@
  */
 export const BOARD_OBJECT_CONTROL_SELECTOR=[
   "button","input","textarea","select","option","a","summary",
-  "label[for]","iframe","video","audio","embed","object",
+  "label","iframe","video","audio","embed","object",
   "[contenteditable]","[draggable='true']",
   "[role='button']","[role='slider']","[role='link']",
   "[role='checkbox']","[role='switch']","[role='tab']",
