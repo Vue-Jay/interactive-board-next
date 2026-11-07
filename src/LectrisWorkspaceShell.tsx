@@ -103,6 +103,7 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
       <div className="lectris-role-preview-options" role="group" aria-label="Выбрать роль для просмотра">
         {([ ["actual","Администратор"],["teacher","Преподаватель"],["student","Ученик"] ] as const).map(([value,label])=><button type="button" key={value} className={rolePreview===value?"active":""} aria-pressed={rolePreview===value} onClick={()=>onRolePreviewChange(value)}>{label}</button>)}
       </div>
+      {rolePreview==="actual"&&<button type="button" className="lectris-role-preview-reset" onClick={()=>move("registration-preview")}>Проверить регистрацию</button>}
       {rolePreview!=="actual"&&<button type="button" className="lectris-role-preview-reset" onClick={()=>onRolePreviewChange("actual")}>Вернуться к администратору</button>}
     </div>}
     <div className="lectris-workspace-body">
