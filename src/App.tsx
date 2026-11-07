@@ -2690,9 +2690,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const eraserPreviewCanvas=useRef<HTMLCanvasElement>(null);
   const eraserPreviewRatio=useRef(1);
   const eraserCursorElement = useRef<HTMLDivElement>(null);
-  const setLiveEraserCursor=(x:number,y:number)=>{
+  const setLiveEraserCursor=(x:number,y:number,pointerType:string,pressed=false)=>{
     const el=eraserCursorElement.current;
     if(!el)return;
+    // A finger has no hover position. Only show its footprint during an
+    // actual erase, then retire it on release rather than leaving a ghost.
+    if(pointerType==="touch"&&!pressed){el.style.visibility="hidden";return;}
+    if(pointerType!=="touch"&&pointerType!=="mouse"&&pointerType!=="pen"){
+      el.style.visibility="hidden";return;
+    }
     el.style.left=x+"px";
     el.style.top=y+"px";
     el.style.visibility="visible";
@@ -8934,7 +8940,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setSelected([]);
             beginEraserPreview();
             previewEraserSegment(screen,screen);
-            setLiveEraserCursor(screen.x,screen.y);
+            setLiveEraserCursor(screen.x,screen.y,e.pointerType,true);
             board.current?.setPointerCapture(e.pointerId);
           }}
           onPointerMoveCapture={(e) => {
@@ -8952,7 +8958,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const previous={x:g.last.x*g.zoom+view.x,y:g.last.y*g.zoom+view.y};
             previewEraserSegment(previous,screen);
             recordEraserPoint(world(screen));
-            setLiveEraserCursor(screen.x,screen.y);
+            setLiveEraserCursor(screen.x,screen.y,e.pointerType,true);
           }}
           onPointerUpCapture={(e) => {
             const canvasTap=geometryCanvasTouch.current;
@@ -9009,6 +9015,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const previous={x:g.last.x*g.zoom+view.x,y:g.last.y*g.zoom+view.y};
             previewEraserSegment(previous,screen);
             finishEraser(world(screen));
+            if(e.pointerType==="touch"&&eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden";
             if(board.current?.hasPointerCapture(e.pointerId))board.current.releasePointerCapture(e.pointerId);
           }}
           onPointerCancelCapture={(e) => {
@@ -9028,6 +9035,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             // Pointer cancellation (e.g. a second finger) is not an erase.
             eraserSession.current=null;
             stopEraserPreview();
+            if(eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden";
           }}
           onClickCapture={(e)=>{
             if(tool==="eraser"&&!(e.target as HTMLElement).closest("button,input,select,textarea,[data-board-interactive]")){
@@ -9046,7 +9054,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             if(!transformHandle&&target.closest("button,input,select,textarea,[role='button'],[role='slider'],[contenteditable='true'],[data-board-interactive]"))return;
             if(tool==="eraser")return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; if (presentation) { const point = local(e.clientX, e.clientY); if (presentationLaser) setPresentationLaserPos(point); if (presentationSpotlight) setPresentationSpotlightPos(point); return; } down(e); }}
           onPointerMove={(e) => {
-            if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y);}return;}
+            if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y,e.pointerType);}return;}
             if(eraserSession.current||pinchState.current||consumedTouchIds.current.has(e.pointerId))return;
             const activeGesture=gesture.current;
             // Navigation uses cached board bounds and CSS transforms. It does
@@ -9095,7 +9103,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               setNotice(error instanceof Error ? error.message : "Не удалось добавить файл");
             }
           }}
-          onPointerEnter={(e) => { if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType); if (tool === "eraser") { const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y); } }}
+          onPointerEnter={(e) => { if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType); if (tool === "eraser") { const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y,e.pointerType); } }}
           onPointerLeave={() => { if(inkCursorElement.current)inkCursorElement.current.style.visibility="hidden"; if(!eraserSession.current && eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden"; }}
           onPointerUp={(e) => {
             if(e.pointerType==="touch"&&touchEnd(e))return;
@@ -9110,7 +9118,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             // gesture. Only the owner of the lost capture can be cleared.
             if(eraserSession.current?.pointer===e.pointerId){
               eraserSession.current=null;stopEraserPreview();
-            }else if(gesture.current?.pointer===e.pointerId)end(true);
+            }
+            if(e.pointerType==="touch"&&eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden";
+            if(gesture.current?.pointer===e.pointerId)end(true);
             if(e.pointerType==="touch"&&!consumedTouchIds.current.has(e.pointerId)&&!pinchState.current)touchEnd(e);
           }}
         >
@@ -10025,9 +10035,23 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               )}
             </div>, document.body
           )}
-          {(tool==="pen"||tool==="marker")&&!presentation&&!space&&!rightPointerActive&&!panning&&<div ref={inkCursorElement} className="lektrus-ink-cursor" aria-hidden="true" style={{left:-1000,top:-1000,width:Math.max(1,(tool==="marker"?markerWeight:weight)*view.zoom),height:Math.max(1,(tool==="marker"?markerWeight:weight)*view.zoom),visibility:"hidden",color:backgroundAppearance.foreground,"--ink-cursor-outline":backgroundAppearance.outline} as CSSProperties}/>}
+          {(tool==="pen"||tool==="marker")&&!presentation&&!space&&!rightPointerActive&&!panning&&
+            <div ref={inkCursorElement}
+              className={`lektrus-ink-cursor ${tool==="marker"?"is-marker":"is-pen"} ${(tool==="marker"?markerWeight:weight)*view.zoom<=8?"is-fine":"is-wide"}`}
+              aria-hidden="true"
+              style={{left:-1000,top:-1000,visibility:"hidden",
+                "--cursor-size":Math.max(1,(tool==="marker"?markerWeight:weight)*view.zoom)+"px",
+                "--cursor-ink":tool==="marker"?markerColor:penColor,
+                "--cursor-contrast":backgroundAppearance.foreground,
+                "--cursor-outline":backgroundAppearance.outline} as CSSProperties}>
+              <span className="lektrus-ink-cursor-footprint"/><span className="lektrus-ink-cursor-guide"/>
+              <span className="lektrus-ink-cursor-center"/>
+            </div>}
           {tool === "eraser" && (
-            <div ref={eraserCursorElement} className="eraser-cursor" aria-hidden="true" style={{ left:-1000, top:-1000, width:eraserSize, height:eraserSize, visibility:"hidden" }} />
+            <div ref={eraserCursorElement} className="eraser-cursor" aria-hidden="true"
+              style={{left:-1000,top:-1000,width:eraserSize,height:eraserSize,visibility:"hidden",
+                "--cursor-contrast":backgroundAppearance.foreground,
+                "--cursor-outline":backgroundAppearance.outline} as CSSProperties}/>
           )}
           {marqueeRect&&<div className="lektrus-selection-marquee" aria-hidden="true"
             style={{left:marqueeRect.x,top:marqueeRect.y,
