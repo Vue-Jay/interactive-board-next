@@ -163,6 +163,22 @@ html body .topbar .topbar-right .topbar-menu-section .topbar-menu-danger{color:#
 .lectris-layout-menu .lectris-interface-settings-entry:hover{background:var(--lt-hover,#e1eaff);border-color:var(--lt-primary,#365fd0)}
 .lectris-layout-menu .lectris-interface-settings-entry span{margin-left:auto}
 
+.lectris-role-preview-bar{display:flex;align-items:center;gap:14px;padding:9px clamp(12px,2vw,28px);border-bottom:1px solid var(--lt-line);background:var(--lt-subtle);color:var(--lt-text)}
+.lectris-role-preview-label{display:grid;gap:2px;min-width:170px}
+.lectris-role-preview-label b{font-size:11px}.lectris-role-preview-label small{font-size:10px;color:var(--lt-muted)}
+.lectris-role-preview-options{display:flex;gap:4px;padding:3px;border:1px solid var(--lt-line);border-radius:10px;background:var(--lt-surface)}
+.lectris-role-preview-options button{min-height:31px;padding:0 10px;border:0;border-radius:7px;background:transparent;color:var(--lt-secondary);font:inherit;font-size:11px;font-weight:650;white-space:nowrap;cursor:pointer}
+.lectris-role-preview-options button.active{background:var(--lt-selected);color:var(--lt-selected-ink);box-shadow:inset 0 0 0 1px var(--lt-line-strong)}
+.lectris-role-preview-reset{min-height:34px;margin-left:auto;padding:0 11px;border:1px solid var(--lt-line-strong);border-radius:9px;background:var(--lt-surface);color:var(--lt-primary);font:inherit;font-size:11px;font-weight:700;cursor:pointer}
+.lectris-role-preview-reset:hover{background:var(--lt-hover)}
+@media(max-width:700px){
+ .lectris-role-preview-bar{align-items:flex-start;flex-wrap:wrap;gap:8px;padding:9px 11px}
+ .lectris-role-preview-label{flex:1 1 100%}
+ .lectris-role-preview-options{max-width:100%;overflow:auto}
+ .lectris-role-preview-options button{padding:0 8px;font-size:10px}
+ .lectris-role-preview-reset{margin:0 0 0 auto;min-height:32px}
+}
+
 .profile-redesign-wrap{width:min(100% - 36px,980px);margin:24px auto 54px;display:grid;gap:14px}
 .profile-redesign .students-header{position:sticky;top:0;z-index:4}
 .profile-identity-wide{display:flex;align-items:center;gap:18px;padding:24px!important}

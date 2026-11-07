@@ -4,7 +4,7 @@ import {applyProfileAppearance,getProfileSettings,saveProfileSettings,type Profi
 import {emptyProfileDetails,getProfileDetails,saveProfileDetails,type ProfileDetails,validateProfileDetails} from "./profileDetailsStore";
 import type {AccountRole} from "./accountRoleStore";
 
-type Props={user:AuthUser;accountRole:AccountRole;isAppAdmin:boolean;onBack:()=>void;onLogout:()=>void};
+type Props={user:AuthUser;accountRole:AccountRole;isAppAdmin:boolean;previewMode?:boolean;onBack:()=>void;onLogout:()=>void};
 const personalFields:["firstName"|"lastName"|"middleName",string,string][]=[
  ["firstName","Имя","Например, Анна"],["lastName","Фамилия","Ваша фамилия"],["middleName","Отчество","Необязательно"],
 ];
@@ -13,7 +13,7 @@ const teacherFields:["phone"|"city"|"organization"|"focusArea",string,string][]=
  ["organization","Место работы","Школа, вуз или учебный центр"],["focusArea","Преподаваемые предметы","Например, физика и математика"],
 ];
 
-export default function ProfileScreen({user,accountRole,isAppAdmin,onBack,onLogout}:Props){
+export default function ProfileScreen({user,accountRole,isAppAdmin,previewMode=false,onBack,onLogout}:Props){
  const [profile,setProfile]=useState<ProfileSettings>({displayName:user.name,theme:"system",compactUi:false,defaultBoardZoom:100});
  const [details,setDetails]=useState<ProfileDetails>(emptyProfileDetails);
  const [loaded,setLoaded]=useState(false),[busy,setBusy]=useState(false),[saved,setSaved]=useState(""),[error,setError]=useState("");
@@ -34,6 +34,7 @@ export default function ProfileScreen({user,accountRole,isAppAdmin,onBack,onLogo
   setBusy(true);setError("");setSaved("");
   try{
    const next={...profile,displayName:name};
+   if(previewMode){setProfile(next);setSaved("Предпросмотр роли: изменения профиля не сохраняются");return}
    await Promise.all([saveProfileSettings(next),saveProfileDetails(user.id,details)]);
    applyProfileAppearance(next);setProfile(next);setSaved("Профиль сохранён");window.setTimeout(()=>setSaved(""),2500);
   }catch(value){setError(value instanceof Error?value.message:"Не удалось сохранить профиль")}
@@ -67,7 +68,7 @@ export default function ProfileScreen({user,accountRole,isAppAdmin,onBack,onLogo
     </div>
     <div className="profile-redesign-actions"><span>Обновите сведения о себе и предметах преподавания.</span><button className="boards-create" type="button" disabled={!loaded||busy} onClick={()=>void save()}>{busy?"Сохраняем…":"Сохранить изменения"}</button></div>
    </section>}
-   <section className="profile-redesign-card profile-redesign-account"><div className="profile-account-identity"><span className="profile-account-icon" aria-hidden="true">{user.email.charAt(0).toUpperCase()||"@"}</span><div><h2>Учётная запись</h2><p>Вы вошли как <strong>{user.email}</strong></p></div></div><button type="button" className="profile-logout-button" onClick={onLogout}><span aria-hidden="true">↪</span> Выйти из аккаунта</button></section>
+   <section className="profile-redesign-card profile-redesign-account"><div className="profile-account-identity"><span className="profile-account-icon" aria-hidden="true">{user.email.charAt(0).toUpperCase()||"@"}</span><div><h2>Учётная запись</h2><p>Вы вошли как <strong>{user.email}</strong></p></div></div><button type="button" className="profile-logout-button" onClick={onLogout}><span aria-hidden="true">↪</span> {previewMode?"Завершить проверку роли":"Выйти из аккаунта"}</button></section>
   </div>
  </main>
 }

@@ -4,10 +4,12 @@ import { createServer } from "vite";
 
 const read=path=>readFileSync(new URL(`../${path}`,import.meta.url),"utf8");
 const app=read("src/App.tsx");
+const shell=read("src/LectrisWorkspaceShell.tsx");
 const styles=read("src/lektrusProductScreens.css");
 const templates=read("src/TemplatesScreen.tsx");
 
 assert.ok(app.includes("Управление и интерфейс"),"the settings entry must show its full label");
+assert.ok(app.includes("effectiveAccountRole=appRolePreview")&&shell.includes("Проверка интерфейса")&&shell.includes("Вернуться к администратору"),"administrators must be able to preview app-wide role menus and switch back");
 const menuStart=app.indexOf('<div className="lectris-layout-menu">');
 const menuEnd=app.indexOf("</details>",menuStart);
 const menu=app.slice(menuStart,menuEnd);
