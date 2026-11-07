@@ -161,13 +161,83 @@ helper.clearBoardRotationPreview(visual,outline);
 assert.equal(visual.style.rotate,"");
 assert.equal(outline.style.rotate,"");
 
+
+const groupSource=readFileSync("src/boardGroupRotationCompositor.ts","utf8");
+const group={};
+new Function("exports",compile(groupSource))(group);
+const ids=new Set(["a","b"]);
+assert.equal(group.canCompositeGroupRotation(doc,ids),false,
+ "Arrows attached to rotating objects must use full geometry reconciliation");
+assert.equal(group.canCompositeGroupRotation([a,b],ids),true);
+assert.equal(group.canCompositeGroupRotation([a,b],new Set(["a"])),false);
+assert.equal(group.canCompositeGroupRotation([a,b],new Set(["a","b","missing"])),false);
+for(const kind of ["connector","pen","marker","instrument"])
+ assert.equal(group.canCompositeGroupRotation([{...a,kind},b],ids),false);
+assert.equal(group.canCompositeGroupRotation(
+ [...many.slice(0,65)],new Set(many.slice(0,65).map(x=>x.id))),false,
+ "A 65-item selection stays on the established fallback path");
+
+const groupBase=[
+ {...a,rotation:12},
+ {...b,rotation:-25},
+ {id:"formula",kind:"formula",x:305,y:540,width:240,height:110,rotation:0},
+];
+const groupBounds=group.groupRotationBounds(groupBase);
+const cx=groupBounds.x+groupBounds.width/2;
+const cy=groupBounds.y+groupBounds.height/2;
+const view={x:27,y:-48,zoom:1.4};
+const targets=groupBase.map(base=>({
+ base,element:{style:{translate:"",rotate:"",transform:"rotate("+base.rotation+"deg)"}},
+}));
+const frame={style:{left:"",top:"",width:"",height:""}};
+let updatedGroup;
+for(let step=0;step<240;step++){
+ const angle=-180+step*1.5;
+ const poses=group.rotatedGroupItems(groupBase,groupBounds,angle);
+ group.paintGroupRotationFrame(targets,poses,angle,frame,view);
+ const rad=angle*Math.PI/180,co=Math.cos(rad),si=Math.sin(rad);
+ for(let i=0;i<poses.length;i++){
+  const base=groupBase[i],pose=poses[i];
+  const bx=base.x+base.width/2-cx,by=base.y+base.height/2-cy;
+  const ncx=cx+bx*co-by*si,ncy=cy+bx*si+by*co;
+  assert.ok(Math.abs(pose.x-(ncx-base.width/2))<1e-9);
+  assert.ok(Math.abs(pose.y-(ncy-base.height/2))<1e-9);
+  assert.equal(pose.rotation,base.rotation+angle);
+  assert.equal(targets[i].element.style.translate,
+   `${pose.x-base.x}px ${pose.y-base.y}px`);
+  assert.equal(targets[i].element.style.rotate,`${angle}deg`);
+  assert.equal(targets[i].element.style.transform,"rotate("+base.rotation+"deg)",
+   "Compositor must not replace the object's existing rotation");
+  assert.strictEqual(groupBase[i],base,"Source identity survives preview frames");
+ }
+ const bounds=group.groupRotationBounds(poses);
+ assert.equal(frame.style.left,`${bounds.x*view.zoom+view.x}px`);
+ assert.equal(frame.style.top,`${bounds.y*view.zoom+view.y}px`);
+ assert.equal(frame.style.width,`${bounds.width*view.zoom}px`);
+ assert.equal(frame.style.height,`${bounds.height*view.zoom}px`);
+ updatedGroup=poses;
+}
+assert.equal(groupBase[0].x,100,"No pre-release model mutation");
+assert.equal(updatedGroup.length,3);
+group.clearGroupRotationFrame(targets);
+for(const target of targets){
+ assert.equal(target.element.style.rotate,"");
+ assert.equal(target.element.style.translate,"");
+}
+assert.match(app,/const paintCompositorGroupRotation=\(g:Gesture,delta:number\):boolean=>\{/);
+assert.match(app,/paintGroupRotationFrame\(/);
+assert.match(app,/workChannel\.current\?\.publishTransform\(poses\)/);
+assert.match(app,/const groupRotatePreview=compositorGroupRotation\.current\?\.gesture===g/);
+assert.match(app,/clearGroupRotationFrame\(groupRotatePreview\.targets\)/);
+assert.match(app,/if\(!paintCompositorGroupRotation\(g,delta\)\)/);
+
 assert.match(app,/const paintCompositorRotation=\(g:Gesture,base:Item,rotation:number\):boolean=>\{/);
 assert.match(app,/paintBoardRotationPreview\(preview\.element,preview\.outline,delta\)/);
 assert.match(app,/publishTransform\(\[\s*toBoardObjectPose\(\{\.\.\.preview\.base,rotation\},preview\.origin\)/);
 assert.match(app,/if\(!paintCompositorRotation\(g,base,rotation\)\)/);
 assert.match(app,/const rotatePreview=compositorRotation\.current\?\.gesture===g/);
 assert.match(app,/syncBoundConnectors\(\s*translatedBoardDragItems\(/);
-assert.match(app,/if\(dragPreview\|\|rotatePreview\)flushSync/);
+assert.match(app,/if\(dragPreview\|\|rotatePreview\|\|groupRotatePreview\)/);
 assert.match(app,/clearBoardRotationPreview\(rotatePreview\.element,rotatePreview\.outline\)/);
 assert.match(app,/const plan=planCompositeBoardDrag\(g\.before,selected\)/);
 assert.match(app,/paintBoardDeformedConnector\(target,preview\.selected,dx,dy\)/);
@@ -178,6 +248,6 @@ console.log(JSON.stringify({
  oldEstimatedUnboundArrowRebuilds:oldStandaloneRebuilds,
  actualUnboundArrowRebuilds:actualStandaloneRebuilds,
  linkedRigidTranslation:"preserves endpoint offsets and arrowhead",
- partialLink:"exact 240-frame SVG path and label, normalized peer coordinates",rotationFrames:240,
+ partialLink:"exact 240-frame SVG path and label, normalized peer coordinates",rotationFrames:240,groupRotationFrames:240,groupRotatedNodes:3,
  note:"Deterministic operation counts, not measured real-device FPS."
 }));
