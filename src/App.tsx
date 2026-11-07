@@ -127,6 +127,7 @@ import { subscribeBoardPresence, type BoardPresenceUser } from "./boardPresence"
 import {trackBoardVisit,listBoardVisits,type BoardVisit} from "./boardVisits";
 import BoardVisitHistoryDialog from "./BoardVisitHistoryDialog";
 import { connectBoardCursorChannel, type BoardCursorChannel, type RemoteCursor, type LiveInkMessage } from "./boardBroadcast";
+import { mergeLiveInkPreview, type LiveInkPreview } from "./boardLiveInkPreview";
 import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState } from "./boardWorkSync";
 import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest } from "./boardAttachmentApprovalSync";
@@ -2176,7 +2177,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const loadVisitHistory=async()=>{setVisitLoading(true);setVisitError("");try{setVisitRows(await listBoardVisits(boardSummary.id))}catch(error){setVisitError(error instanceof Error?error.message:"Не удалось получить посещения")}finally{setVisitLoading(false)}};
   const visiblePresenceUsers = useMemo(() => adminHidden ? presenceUsers.filter((user) => user.userId !== authUser.id) : presenceUsers, [presenceUsers, adminHidden, authUser.id]);
   const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
-  const [remoteInk, setRemoteInk] = useState<Record<string, LiveInkMessage>>({});
+  const [remoteInk, setRemoteInk] = useState<Record<string, LiveInkPreview>>({});
   const remoteInkExpiryTimers = useRef(new Map<string,ReturnType<typeof setTimeout>>());
   const [inkDiagnostics, setInkDiagnostics] = useState("подключается");
   const [developerSettingsOpen, setDeveloperSettingsOpen] = useState(false);
@@ -4069,7 +4070,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     finishViewerPan(cancel,g?.view);
     if (!g) return;
     gesture.current = null;
-    if (g.mode === "draw" && g.ink) cursorChannel.current?.sendInk({id:g.ink.id,kind:g.ink.kind,color:g.ink.color,weight:g.ink.weight,points:g.path.slice(-500),finished:true});
+    if (g.mode === "draw" && g.ink) cursorChannel.current?.sendInk({id:g.ink.id,kind:g.ink.kind,color:g.ink.color,weight:g.ink.weight,points:g.path.slice(-500),offset:Math.max(0,g.path.length-500),finished:true});
     if (cancel) {
       display(g.restore ?? g.before);
       setView(g.view);
@@ -4605,7 +4606,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if (mode === "draw") {
       const ink = gesture.current.ink!;
       setPreview(liveStroke(ink.id, ink.kind, [p], ink.color, ink.weight));
-      cursorChannel.current?.sendInk({id:ink.id,kind:ink.kind,color:ink.color,weight:ink.weight,points:[p],finished:false});
+      cursorChannel.current?.sendInk({id:ink.id,kind:ink.kind,color:ink.color,weight:ink.weight,points:[p],offset:0,finished:false});
     }
     if (mode === "connector") {
       setPreview(connectorItemFromPoints(gesturePoint, gesturePoint, connectorStyle, color, connectorWeight, createId(), connectorRouting, connectorStartHit?.binding,undefined,"",arrowHeadStyle,arrowHeadSize));
@@ -4810,7 +4811,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       if (g.mode === "draw" && g.ink) {
         cursorChannel.current?.sendInk({
           id: g.ink.id, kind: g.ink.kind, color: g.ink.color,
-          weight: g.ink.weight, points: g.path.slice(-500), finished: false,
+          weight: g.ink.weight, points: g.path.slice(-500),
+          offset: Math.max(0,g.path.length-500), finished: false,
         });
       }
       scheduleGesturePaint();
@@ -7207,7 +7209,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       (ink) => {
         // Each stroke must retain its own preview until the persisted document contains it.
         // Keying by clientId replaced the previous completed stroke as soon as a new one began.
-        setRemoteInk(current => ({...current,[ink.id]:ink}));
+        setRemoteInk(current => ({...current,[ink.id]:mergeLiveInkPreview(current[ink.id],ink)}));
         const previous=remoteInkExpiryTimers.current.get(ink.id);
         if(previous)clearTimeout(previous);
         // Network delivery and document persistence are independent channels.
@@ -9283,11 +9285,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             className="geometry-instrument-viewport-layer" aria-label="Измерительные инструменты" />
           <div ref={fastPanOverlay} className="remote-cursors-layer" aria-hidden="true" style={{transformOrigin:"0 0"}}>
             <svg className="remote-live-ink-layer" width="100%" height="100%" style={{position:"absolute",inset:0,overflow:"hidden",pointerEvents:"none"}}>
-              {uncommittedRemoteInk.map(ink => (
-                ink.points.length === 1
-                  ? <circle key={ink.id} cx={ink.points[0].x*view.zoom+view.x} cy={ink.points[0].y*view.zoom+view.y} r={Math.max(0.5,ink.weight*view.zoom/2)} fill={ink.color} opacity={ink.kind==="marker"?0.32:1}/>
-                  : <polyline key={ink.id} points={ink.points.map(point => `${point.x*view.zoom+view.x},${point.y*view.zoom+view.y}`).join(" ")} fill="none" stroke={ink.color} strokeWidth={ink.weight*view.zoom} strokeLinecap="round" strokeLinejoin="round" opacity={ink.kind==="marker"?0.32:1}/>
-              ))}
+              {uncommittedRemoteInk.flatMap(ink => ink.runs.map(run => (
+                run.points.length === 1
+                  ? <circle key={ink.id+":"+run.start} cx={run.points[0].x*view.zoom+view.x} cy={run.points[0].y*view.zoom+view.y} r={Math.max(0.5,ink.weight*view.zoom/2)} fill={ink.color} opacity={ink.kind==="marker"?0.32:1}/>
+                  : <polyline key={ink.id+":"+run.start} points={run.points.map(point => `${point.x*view.zoom+view.x},${point.y*view.zoom+view.y}`).join(" ")} fill="none" stroke={ink.color} strokeWidth={ink.weight*view.zoom} strokeLinecap="round" strokeLinejoin="round" opacity={ink.kind==="marker"?0.32:1}/>
+              )))}
             </svg>
             {Object.values(remoteCursors).map((cursor) => <div
               className="remote-cursor"
