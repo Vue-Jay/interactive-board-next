@@ -1,6 +1,7 @@
 import { getRealtimeSocketUrl, getRemoteSession, isRemoteBackendEnabled } from "./backend";
 import type { BoardRole } from "./authStore";
 import type {LiveEditorOp} from "./lektrusLiveEditorMerge";
+import { LIVE_MOTION_LIMIT, validLiveGeometry, type BoardTransformMessage, type BoardTransformPhase, type LiveBoardGeometry } from "./boardLiveMotion";
 export type BoardEditorMutation={
  id:string;itemId:string;userId:string;clientId:string;
  sentAt:number;ops:LiveEditorOp[];
@@ -18,6 +19,7 @@ export type RemoteWorkState = {
 export type BoardWorkChannel = {
   publish: (selectedIds: string[], editingId: string | null) => void;
   publishEdit: (itemId:string,ops:LiveEditorOp[])=>void;
+  publishTransform: (items:LiveBoardGeometry[],phase:BoardTransformPhase)=>void;
   close: () => void;
 };
 
@@ -28,9 +30,10 @@ export function connectBoardWorkChannel(
   onLeave: (userId: string) => void,
   publishSelf = true,
   onEdit?: (mutation:BoardEditorMutation)=>void,
+  onTransform?: (message:BoardTransformMessage)=>void,
 ): BoardWorkChannel {
   if (!isRemoteBackendEnabled()) {
-    return { publish: () => {}, publishEdit:()=>{}, close: () => {} };
+    return { publish: () => {}, publishEdit:()=>{}, publishTransform:()=>{}, close: () => {} };
   }
 
   let stopped = false;
@@ -50,6 +53,11 @@ export function connectBoardWorkChannel(
   const clientId=Math.random().toString(36).slice(2)+Date.now().toString(36);
   let editSequence=0;
   const seenEdits=new Set<string>();
+  let transformSequence=0;
+  let lastTransformSentAt=0;
+  let pendingTransform:BoardTransformMessage|null=null;
+  let transformTimer:ReturnType<typeof setTimeout>|undefined;
+  const receivedTransformSequences=new Map<string,number>();
 
   const topic = `realtime:board-work:${boardId}`;
 
@@ -58,6 +66,9 @@ export function connectBoardWorkChannel(
     clearInterval(heartbeat);
     clearInterval(refresh);
     clearTimeout(publishTimer);
+    clearTimeout(transformTimer);
+    transformTimer=undefined;
+    pendingTransform=null;
     pendingHeartbeat = null;
     ready = false;
     if (socket) {
@@ -184,6 +195,27 @@ export function connectBoardWorkChannel(
             return;
           }
           if (message.event !== "broadcast") return;
+          if (message.payload?.event === "board_transform") {
+            const raw=message.payload.payload as Partial<BoardTransformMessage>|undefined;
+            if(!raw || typeof raw.clientId!=="string" || !raw.clientId ||
+              raw.clientId.length>128 || raw.clientId===clientId ||
+              typeof raw.userId!=="string" || !raw.userId || raw.userId.length>128 ||
+              !Number.isSafeInteger(raw.sequence) || (raw.sequence??0)<1 ||
+              !["move","finish","cancel"].includes(raw.phase??"") ||
+              !Array.isArray(raw.items) || !raw.items.length ||
+              raw.items.length>LIVE_MOTION_LIMIT || !raw.items.every(validLiveGeometry))return;
+            const sequence=raw.sequence!;
+            if(sequence <= (receivedTransformSequences.get(raw.clientId)??0))return;
+            receivedTransformSequences.delete(raw.clientId);
+            receivedTransformSequences.set(raw.clientId,sequence);
+            if(receivedTransformSequences.size>128){
+              const oldest=receivedTransformSequences.keys().next().value;
+              if(oldest!==undefined)receivedTransformSequences.delete(oldest);
+            }
+            onTransform?.({clientId:raw.clientId,userId:raw.userId,
+              sequence,phase:raw.phase!,items:raw.items});
+            return;
+          }
           if (message.payload?.event === "editor_mutation"){
             const raw=message.payload?.payload as Partial<BoardEditorMutation>|undefined;
             if(!raw||!raw.clientId||raw.clientId===clientId||!raw.itemId||!raw.id||
@@ -232,6 +264,39 @@ export function connectBoardWorkChannel(
     publishTimer = setTimeout(sendState, 80);
   };
 
+  const sendTransform=(message:BoardTransformMessage)=>{
+    if(!ready||!socket||socket.readyState!==WebSocket.OPEN)return;
+    try {
+      socket.send(JSON.stringify({topic,event:"broadcast",
+        payload:{type:"broadcast",event:"board_transform",payload:message},
+        ref:String(++sequence),join_ref:null}));
+      lastTransformSentAt=Date.now();
+    } catch { reconnect(); }
+  };
+  const flushTransform=()=>{
+    clearTimeout(transformTimer);
+    transformTimer=undefined;
+    const packet=pendingTransform;
+    pendingTransform=null;
+    if(packet)sendTransform(packet);
+  };
+  const publishTransform=(items:LiveBoardGeometry[],phase:BoardTransformPhase)=>{
+    if(stopped||!publishSelf||!ready||!socket||socket.readyState!==WebSocket.OPEN||
+      !items.length||items.length>LIVE_MOTION_LIMIT||!items.every(validLiveGeometry))return;
+    const packet:BoardTransformMessage={clientId,userId:me.userId,
+      sequence:++transformSequence,phase,items};
+    if(phase!=="move"){
+      // A final/cancel message must never be overtaken by a delayed move.
+      clearTimeout(transformTimer);transformTimer=undefined;pendingTransform=null;
+      sendTransform(packet);
+      return;
+    }
+    pendingTransform=packet;
+    const remaining=45-(Date.now()-lastTransformSentAt);
+    if(remaining<=0)flushTransform();
+    else if(!transformTimer)transformTimer=setTimeout(flushTransform,remaining);
+  };
+
   const publishEdit=(itemId:string,ops:LiveEditorOp[])=>{
     if(stopped||!publishSelf||!ready||!socket||socket.readyState!==WebSocket.OPEN||
       !itemId||!ops.length||ops.length>300)return;
@@ -254,6 +319,7 @@ export function connectBoardWorkChannel(
   return {
     publish,
     publishEdit,
+    publishTransform,
     close: () => {
       stopped = true;
       generation++;
