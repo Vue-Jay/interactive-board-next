@@ -19,6 +19,7 @@ import {chemistryBoardHasContent} from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
 import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./rectSelection";
 import {boardObjectAtInertPointerTarget} from "./boardObjectDragSurface";
+import {buildBoardDragSnapIndex,snapBoardDrag,type BoardDragSnapIndex} from "./boardDragSnapIndex";
 import {applyBoardSelectionCursor,clearBoardSelectionCursor,selectionCursorForGesture,selectionCursorForTarget} from "./lektrusSelectionCursor";
 import "./App.css";
 import AuthScreen from "./AuthScreen";
@@ -565,50 +566,6 @@ const cloneItems = (source: Item[], offset = 24): Item[] => {
       locked: false,
     };
   });
-};
-
-const snapDraggedBounds = (
-  moving: Bounds,
-  others: Item[],
-  rawDx: number,
-  rawDy: number,
-  threshold: number,
-): { dx: number; dy: number; guides: GuideState } => {
-  let dx = rawDx;
-  let dy = rawDy;
-  let bestX = threshold + 1;
-  let bestY = threshold + 1;
-  let guideX: number | undefined;
-  let guideY: number | undefined;
-  const movingX = [moving.x, moving.x + moving.width / 2, moving.x + moving.width];
-  const movingY = [moving.y, moving.y + moving.height / 2, moving.y + moving.height];
-  for (const other of others) {
-    const targetX = [other.x, other.x + other.width / 2, other.x + other.width];
-    const targetY = [other.y, other.y + other.height / 2, other.y + other.height];
-    for (const source of movingX) {
-      for (const target of targetX) {
-        const diff = target - (source + rawDx);
-        const distance = Math.abs(diff);
-        if (distance <= threshold && distance < bestX) {
-          bestX = distance;
-          dx = rawDx + diff;
-          guideX = target;
-        }
-      }
-    }
-    for (const source of movingY) {
-      for (const target of targetY) {
-        const diff = target - (source + rawDy);
-        const distance = Math.abs(diff);
-        if (distance <= threshold && distance < bestY) {
-          bestY = distance;
-          dy = rawDy + diff;
-          guideY = target;
-        }
-      }
-    }
-  }
-  return { dx, dy, guides: { x: guideX, y: guideY } };
 };
 
 const blobToDataUrl = (blob: Blob): Promise<string> =>
@@ -4627,7 +4584,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
 
   const dragSnapCache = useRef(new WeakMap<Gesture,{
-    selected:Set<string>; moving:Bounds|null; others:Item[];
+    selected:Set<string>; moving:Bounds|null; snapIndex:BoardDragSnapIndex;
   }>());
   const move = (e: PE<HTMLElement>) => {
     const g = gesture.current;
@@ -4667,13 +4624,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         cache={
           selected,
           moving:boundsOf(g.before.filter(item=>selected.has(item.id))),
-          others:g.before.filter(item=>!item.hidden&&!selected.has(item.id)),
+          snapIndex:buildBoardDragSnapIndex(g.before.filter(item=>!item.hidden&&!selected.has(item.id))),
         };
         dragSnapCache.current.set(g,cache);
       }
       if (snapEnabled && !e.altKey) {
         if (cache.moving) {
-          const snapped = snapDraggedBounds(cache.moving, cache.others, worldDx, worldDy, 7 / g.view.zoom);
+          const snapped = snapBoardDrag(cache.moving,cache.snapIndex,worldDx,worldDy,7/g.view.zoom);
           worldDx = snapped.dx;
           worldDy = snapped.dy;
           setGuides(previous=>previous.x===snapped.guides.x&&previous.y===snapped.guides.y?previous:snapped.guides);
