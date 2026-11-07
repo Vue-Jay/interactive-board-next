@@ -85,6 +85,21 @@ assert.ok(trainingView.includes("new ResizeObserver(report)")&&
  trainingView.includes("Math.ceil(element.offsetHeight)"),
  "Actual matching content height is measured and observed for changes");
 assert.ok(trainingView.includes("lektrus-geo-game--auto-matching"));
+assert.match(trainingView,/const stopInteractive=\(e:React\.SyntheticEvent\)=>\{/,
+ "Exercise pointer handlers must allow non-interactive regions to reach the board");
+assert.match(trainingView,/target\.closest\("button,input,select,textarea,a,\[role='button'\],\[data-board-interactive\]"\)/,
+ "Only actual answer/teacher controls should consume board pointer gestures");
+assert.equal((trainingView.match(/onPointerDown=\{stopInteractive\}/g)??[]).length,2,
+ "Both matching and flashcards must allow background dragging");
+assert.equal((trainingView.match(/onPointerUp=\{stopInteractive\}/g)??[]).length,2);
+assert.doesNotMatch(trainingView,/onPointerDown=\{stop\}/,
+ "Unconditional pointer suppression makes embedded exercises immovable");
+assert.equal((trainingView.match(/const codesKey=d\.countryCodes\.join\("\\|"\);/g)??[]).length,2,
+ "Both exercises must compare country contents instead of array identity");
+assert.equal((trainingView.match(/\[codesKey,d\.relation,d\.reverse\]/g)??[]).length,2,
+ "Realtime refreshes must not erase the pupil's matching/card progress");
+assert.doesNotMatch(trainingView,/\[d\.countryCodes,d\.relation,d\.reverse\]/);
+
 assert.ok(app.includes("fitGeoMatchingItem(updated)")&&app.includes("onMatchingSize="),
  "Saved exercises and previously placed board objects must both auto-fit");
 
@@ -102,6 +117,8 @@ assert.ok(editor.includes('lektrus-school-editor--geo-training'),
 assert.ok(editor.includes("Компактный предпросмотр задания"),
  "matching and question cards share an explicitly compact preview");
 const geoCss=read("lektrusGeographyTraining.css");
+assert.match(geoCss,/\.workspace \.board \.lektrus-geo-game\{touch-action:none;\}/,
+ "Mobile board drag must not be cancelled by native scroll; editor preview remains scrollable");
 assert.ok(geoCss.includes(".lektrus-school-editor--geo-training .lektrus-school-body"),
  "editor column ratio changes only for geography exercises");
 assert.match(geoCss,/grid-template-columns:minmax\(0,1\.95fr\) minmax\(280px,\.86fr\)/,
