@@ -4180,11 +4180,16 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     finishViewerPan(cancel,g?.view);
     if (!g) return;
     const dragPreview=compositorDrag.current?.gesture===g?compositorDrag.current:null;
+    const rotatePreview=compositorRotation.current?.gesture===g?compositorRotation.current:null;
     if(dragPreview){
-      // Materialize the last compositor position before sending FINAL and
-      // before committing the single undo/save revision. No per-frame copies.
-      itemsRef.current=cancel?(g.restore??g.before):translatedBoardDragItems(
-        g.before,dragPreview.selected,dragPreview.dx,dragPreview.dy);
+      // The linked arrow geometry is materialized BEFORE the finished peer
+      // packet, rather than snapping to the updated anchor after server save.
+      itemsRef.current=cancel?(g.restore??g.before):syncBoundConnectors(
+        translatedBoardDragItems(
+          g.before,dragPreview.selected,dragPreview.dx,dragPreview.dy));
+    }else if(rotatePreview){
+      itemsRef.current=cancel?(g.restore??g.before):g.before.map(item=>
+        item.id===rotatePreview.id?{...item,rotation:rotatePreview.rotation}:item);
     }
     gesture.current = null;
     // The last pointer sample is applied synchronously before end(). Send it
@@ -4219,7 +4224,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         setSelected(g.handHitIds ?? []);
       }
     } else if (g.mode === "drag" || g.mode === "erase" || g.mode === "resize" || g.mode === "rotate" || g.mode === "connector-end") {
-      if(dragPreview)flushSync(()=>commit(itemsRef.current,{immediatePaint:true}));
+      if(dragPreview||rotatePreview)flushSync(()=>commit(itemsRef.current,{immediatePaint:true}));
       else commit(itemsRef.current);
     }
     else if (g.mode === "draw" && g.ink)
@@ -4273,6 +4278,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if(dragPreview){
       clearBoardDragTranslation(dragPreview.elements,fastPanSelection.current);
       compositorDrag.current=null;
+    }
+    if(rotatePreview){
+      clearBoardRotationPreview(rotatePreview.element,rotatePreview.outline);
+      compositorRotation.current=null;
     }
     setPath([]);
     setMarqueeRect(null);
