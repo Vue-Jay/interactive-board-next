@@ -1366,7 +1366,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         })()}{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small className="graph-equation">{prettyGraphEquation(expression)}</small>}
       </div>)}
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
-      data-board-gesture-owner={onPickPoint||onPointMoveEnd||onAddPoint||onRotate||onRayChange?"true":undefined}
+      data-board-gesture-owner={onPickPoint||onAddPoint?"true":undefined}
       onPointerDownCapture={event=>{
         if((event.target as Element).closest?.(".lektrus-diagram-grid-toggle"))return;
         if(onPickPoint){
@@ -1712,6 +1712,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
                 x={(sx(a.x)+sx(b.x))/2} y={(sy(a.y)+sy(b.y))/2}
                 angle={Math.atan2(sy(b.y)-sy(a.y),sx(b.x)-sx(a.x))*180/Math.PI}/>}
             {rayControl&&onRayChange&&<line x1={sx(start.x)} y1={sy(start.y)} x2={sx(end.x)} y2={sy(end.y)}
+              data-board-interactive="true"
               stroke="transparent" strokeWidth="24" style={{cursor:"grab",touchAction:"none"}} onPointerDown={beginRayDrag}
               aria-label="Перетащите луч, чтобы изменить направление"/>}
             {segmentText&&<text className="graph-figure-label"
