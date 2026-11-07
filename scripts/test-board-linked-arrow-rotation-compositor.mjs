@@ -237,7 +237,7 @@ assert.match(app,/publishTransform\(\[\s*toBoardObjectPose\(\{\.\.\.preview\.bas
 assert.match(app,/if\(!paintCompositorRotation\(g,base,rotation\)\)/);
 assert.match(app,/const rotatePreview=compositorRotation\.current\?\.gesture===g/);
 assert.match(app,/syncBoundConnectors\(\s*translatedBoardDragItems\(/);
-assert.match(app,/if\(dragPreview\|\|rotatePreview\|\|groupRotatePreview\)/);
+assert.match(app,/if\(dragPreview\|\|rotatePreview\|\|groupRotatePreview\|\|resizePreview\)/);
 assert.match(app,/clearBoardRotationPreview\(rotatePreview\.element,rotatePreview\.outline\)/);
 assert.match(app,/const plan=planCompositeBoardDrag\(g\.before,selected\)/);
 assert.match(app,/paintBoardDeformedConnector\(target,preview\.selected,dx,dy\)/);
