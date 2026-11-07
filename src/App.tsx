@@ -2676,6 +2676,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const viewSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastViewSerialized = useRef<string | null>(null);
   const [items, setItems] = useState<Item[]>(() => expandDocumentInk(initial.data));
+  // A peer ink preview arrives independently of the server document. Avoid
+  // scanning the entire board once per preview stroke (previously O(ink*items)
+  // in JSX). Rebuild the ID index only when persisted items actually change.
+  const persistedItemIds=useMemo(()=>new Set(items.map(item=>item.id)),[items]);
+  const uncommittedRemoteInk=useMemo(
+    ()=>Object.values(remoteInk).filter(ink=>!persistedItemIds.has(ink.id)),
+    [remoteInk,persistedItemIds],
+  );
   // Realtime broadcasts are untrusted display-only previews until the sender
   // persists the change through the board's RLS-protected server RPC.
   const [remoteLiveItems,setRemoteLiveItems]=useState<Record<string,Item>>({});
@@ -9177,7 +9185,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             className="geometry-instrument-viewport-layer" aria-label="Измерительные инструменты" />
           <div ref={fastPanOverlay} className="remote-cursors-layer" aria-hidden="true" style={{transformOrigin:"0 0"}}>
             <svg className="remote-live-ink-layer" width="100%" height="100%" style={{position:"absolute",inset:0,overflow:"hidden",pointerEvents:"none"}}>
-              {Object.values(remoteInk).filter(ink => !items.some(item => item.id === ink.id)).map(ink => (
+              {uncommittedRemoteInk.map(ink => (
                 ink.points.length === 1
                   ? <circle key={ink.clientId} cx={ink.points[0].x*view.zoom+view.x} cy={ink.points[0].y*view.zoom+view.y} r={Math.max(0.5,ink.weight*view.zoom/2)} fill={ink.color} opacity={ink.kind==="marker"?0.32:1}/>
                   : <polyline key={ink.clientId} points={ink.points.map(point => `${point.x*view.zoom+view.x},${point.y*view.zoom+view.y}`).join(" ")} fill="none" stroke={ink.color} strokeWidth={ink.weight*view.zoom} strokeLinecap="round" strokeLinejoin="round" opacity={ink.kind==="marker"?0.32:1}/>
