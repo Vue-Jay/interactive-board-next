@@ -8032,7 +8032,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         <div className="topbar-right"><details className="lectris-layout-picker">
             <summary title="Настройки и раскладка доски" aria-label="Настройки и раскладка доски"><Icon name="settings" size={17}/></summary>
             <div className="lectris-layout-menu">
-              <button type="button" className="lectris-panel-entry" onClick={e=>{setControlSettingsOpen(true);e.currentTarget.closest("details")?.removeAttribute("open")}}>Управление и интерфейс…</button>
+              <button type="button" className="lectris-panel-entry" aria-haspopup="dialog" title="Открыть настройки управления и интерфейса" onClick={e=>{setControlSettingsOpen(true);e.currentTarget.closest("details")?.removeAttribute("open")}}>Управление и интерфейс</button>
               <strong>Рабочая раскладка</strong>
               {([["standard","Стандартная"],["lesson","Проведение урока"],["focus","Фокус на доске"]] as const).map(([id,label])=>
                 <button type="button" key={id} className={lectrisLayout===id?"active":""}
@@ -10735,6 +10735,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </div>
           <button
             className={`snap-toggle ${snapEnabled ? "active" : ""}`}
+            aria-label="Умные привязки при перемещении"
+            aria-pressed={snapEnabled}
             onClick={() => { setSnapEnabled((value) => !value); clearGuides(); }}
             title="Умные привязки при перемещении · Alt временно отключает"
           >
