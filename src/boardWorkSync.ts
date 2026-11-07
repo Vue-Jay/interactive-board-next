@@ -6,7 +6,10 @@ export type BoardEditorMutation={
  sentAt:number;ops:LiveEditorOp[];
 };
 
-export type BoardObjectPose = { id: string; x: number; y: number; width: number; height: number; rotation: number };
+export type BoardObjectPose = {
+  id: string; x: number; y: number; width: number; height: number; rotation: number;
+  origin: string; connectorStart?: {x:number;y:number}; connectorEnd?: {x:number;y:number};
+};
 export type BoardTransformMutation = {
   clientId: string; userId: string; seq: number; sentAt: number; finished: boolean;
   items: BoardObjectPose[];
@@ -217,30 +220,34 @@ export function connectBoardWorkChannel(
             const raw=message.payload?.payload as Partial<BoardTransformMutation>|undefined;
             if(!raw || typeof raw.clientId!=="string" || !raw.clientId ||
               raw.clientId===clientId || typeof raw.userId!=="string" ||
-              !Number.isSafeInteger(raw.seq)||raw.seq!<=0 ||
+              !Number.isSafeInteger(raw.seq)||raw.seq === undefined || raw.seq<=0 ||
               typeof raw.finished!=="boolean" || !Array.isArray(raw.items) ||
               !raw.items.length || raw.items.length>64) return;
             const poses:BoardObjectPose[]=[];
             const seenIds=new Set<string>();
             for(const item of raw.items){
               if(!item||typeof item.id!=="string"||!item.id||item.id.length>128||
+                typeof item.origin!=="string"||!item.origin||item.origin.length>128||
                 seenIds.has(item.id)||!["x","y","width","height","rotation"].every(key=>
                   typeof item[key as keyof BoardObjectPose]==="number" &&
                   Number.isFinite(item[key as keyof BoardObjectPose]) &&
                   Math.abs(item[key as keyof BoardObjectPose] as number)<1e7) ||
-                item.width<0||item.height<0) return;
+                item.width<0||item.height<0||
+                ![item.connectorStart,item.connectorEnd].every(point=>!point||
+                  typeof point.x==="number"&&Number.isFinite(point.x)&&Math.abs(point.x)<1e7&&
+                  typeof point.y==="number"&&Number.isFinite(point.y)&&Math.abs(point.y)<1e7)) return;
               seenIds.add(item.id);poses.push(item);
             }
             const previous=receivedTransformSeq.get(raw.clientId)??0;
-            if(raw.seq!<=previous)return;
+            if(raw.seq===undefined || raw.seq<=previous)return;
             receivedTransformSeq.delete(raw.clientId);
-            receivedTransformSeq.set(raw.clientId,raw.seq!);
+            receivedTransformSeq.set(raw.clientId,raw.seq);
             if(receivedTransformSeq.size>256){
               const oldest=receivedTransformSeq.keys().next().value;
               if(oldest)receivedTransformSeq.delete(oldest);
             }
             onTransform?.({
-              clientId:raw.clientId,userId:raw.userId,seq:raw.seq!,
+              clientId:raw.clientId,userId:raw.userId,seq:raw.seq,
               sentAt:Date.now(),finished:raw.finished,items:poses,
             });
             return;
