@@ -126,8 +126,8 @@ import {boardRoleCapabilities,canUseBoardCreationTool,isStudentProtectedBoardObj
 import { subscribeBoardPresence, type BoardPresenceUser } from "./boardPresence";
 import {trackBoardVisit,listBoardVisits,type BoardVisit} from "./boardVisits";
 import BoardVisitHistoryDialog from "./BoardVisitHistoryDialog";
-import { connectBoardCursorChannel, type BoardCursorChannel, type RemoteCursor, type LiveInkMessage } from "./boardBroadcast";
-import { mergeRemoteLiveInk } from "./boardLiveInk";
+import { connectBoardCursorChannel, type BoardCursorChannel, type RemoteCursor } from "./boardBroadcast";
+import { mergeRemoteLiveInk, remoteInkRuns, type RemoteLiveInkPreview } from "./boardLiveInk";
 import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState, type BoardObjectPose } from "./boardWorkSync";
 import { objectPoseOrigin, objectPoseMatches } from "./boardObjectMotion";
@@ -2178,7 +2178,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const loadVisitHistory=async()=>{setVisitLoading(true);setVisitError("");try{setVisitRows(await listBoardVisits(boardSummary.id))}catch(error){setVisitError(error instanceof Error?error.message:"Не удалось получить посещения")}finally{setVisitLoading(false)}};
   const visiblePresenceUsers = useMemo(() => adminHidden ? presenceUsers.filter((user) => user.userId !== authUser.id) : presenceUsers, [presenceUsers, adminHidden, authUser.id]);
   const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
-  const [remoteInk, setRemoteInk] = useState<Record<string, LiveInkMessage>>({});
+  const [remoteInk, setRemoteInk] = useState<Record<string, RemoteLiveInkPreview>>({});
   const remoteInkExpiryTimers = useRef(new Map<string,ReturnType<typeof setTimeout>>());
   const [inkDiagnostics, setInkDiagnostics] = useState("подключается");
   const [developerSettingsOpen, setDeveloperSettingsOpen] = useState(false);
@@ -9452,11 +9452,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             className="geometry-instrument-viewport-layer" aria-label="Измерительные инструменты" />
           <div ref={fastPanOverlay} className="remote-cursors-layer" aria-hidden="true" style={{transformOrigin:"0 0"}}>
             <svg className="remote-live-ink-layer" width="100%" height="100%" style={{position:"absolute",inset:0,overflow:"hidden",pointerEvents:"none"}}>
-              {uncommittedRemoteInk.map(ink => (
-                ink.points.length === 1
-                  ? <circle key={ink.id} cx={ink.points[0].x*view.zoom+view.x} cy={ink.points[0].y*view.zoom+view.y} r={Math.max(0.5,ink.weight*view.zoom/2)} fill={ink.color} opacity={ink.kind==="marker"?0.32:1}/>
-                  : <polyline key={ink.id} points={ink.points.map(point => `${point.x*view.zoom+view.x},${point.y*view.zoom+view.y}`).join(" ")} fill="none" stroke={ink.color} strokeWidth={ink.weight*view.zoom} strokeLinecap="round" strokeLinejoin="round" opacity={ink.kind==="marker"?0.32:1}/>
-              ))}
+              {uncommittedRemoteInk.flatMap(ink => remoteInkRuns(ink).map(run => (
+                run.points.length === 1
+                  ? <circle key={ink.id+":"+run.offset} cx={run.points[0].x*view.zoom+view.x} cy={run.points[0].y*view.zoom+view.y} r={Math.max(0.5,ink.weight*view.zoom/2)} fill={ink.color} opacity={ink.kind==="marker"?0.32:1}/>
+                  : <polyline key={ink.id+":"+run.offset} points={run.points.map(point => `${point.x*view.zoom+view.x},${point.y*view.zoom+view.y}`).join(" ")} fill="none" stroke={ink.color} strokeWidth={ink.weight*view.zoom} strokeLinecap="round" strokeLinejoin="round" opacity={ink.kind==="marker"?0.32:1}/>
+              )))}
             </svg>
             {Object.values(remoteCursors).map((cursor) => <div
               className="remote-cursor"
