@@ -31,8 +31,7 @@ const subjectToolSections:Record<string,{title:string;ids:string[]}[]>={
   "информатика":[{title:"Информация",ids:["info-encoding","info-place-value"]},
     {title:"Программирование и алгоритмы",ids:["info-programming","info-flowchart"]},
     {title:"Логика",ids:["info-circuit","info-logic"]}],
-  "русский язык":[{title:"Разбор",ids:["ru-syntax","ru-morphemes","ru-morphology","ru-phonetics"]},
-    {title:"Практика",ids:["ru-orthography"]}],
+  "русский язык":[{title:"Фонетика",ids:["ru-phonetics"]}],
   "иностранный язык":[{title:"Грамматика и лексика",ids:["language-sentence-builder","language-flashcards"]}],
   "литература":[{title:"Анализ",ids:["literature-analysis"]}],
   "обществознание":[{title:"Учебные схемы",ids:["civics-structure"]}]
