@@ -34,7 +34,11 @@ export function mergeRemoteLiveInk(
      incoming.offset<0||!incoming.points.length||!previous||
      previous.offset===undefined||!Number.isSafeInteger(previous.offset)||
      previous.clientId!==incoming.clientId)return incoming;
-  if(previous.finished)return previous;
+  // A completed preview cannot grow beyond the sender's final endpoint.
+  // However an older in-flight packet may still fill a hole BEFORE that
+  // endpoint. Accept that repair without reverting the finished state.
+  if(previous.finished &&
+     incoming.offset+incoming.points.length>previous.offset+previous.points.length)return previous;
 
   const nextStart=incoming.offset,nextEnd=nextStart+incoming.points.length;
   const previousRuns=remoteInkRuns(previous);
@@ -78,5 +82,5 @@ export function mergeRemoteLiveInk(
   const latest=joined[joined.length-1];
   return {...previous,offset:latest.offset,points:latest.points,
     priorRuns:joined.length>1?joined.slice(0,-1):undefined,
-    finished:incoming.finished&&nextEnd>=oldEnd};
+    finished:previous.finished||incoming.finished&&nextEnd>=oldEnd};
 }
