@@ -20,6 +20,19 @@ assert.match(receiver,/applyServerDocument\(row,\s*data\)/,
 assert.match(app,/const applyServerDocument = \(row: RemoteBoardDocument, prepared\?: DocumentData\) => \{/);
 assert.match(app,/const data = prepared \?\? parseDocument\(JSON\.stringify\(row\.document\)\)/);
 
+const applyStart=app.indexOf("  const applyServerDocument = ");
+const applyEnd=app.indexOf("  receiveRemote.current = row => {",applyStart);
+assert.ok(applyStart>=0&&applyEnd>applyStart);
+const apply=app.slice(applyStart,applyEnd);
+assert.match(apply,/const incomingFingerprint=documentFingerprint\(data\);/);
+assert.match(apply,/acknowledgedDocument\.current = incomingFingerprint;/);
+assert.match(apply,/acknowledgedSharedContent\.current = incomingFingerprint;/);
+assert.doesNotMatch(apply,/acknowledgedSharedContent\.current = sharedBoardFingerprint\(data\)/,
+ "Remote version must not hash the same validated document twice");
+assert.match(receiver,/acknowledgedSharedContent\.current = remoteFingerprint;/,
+ "Merging a remote conflict should reuse the validated document hash");
+
+
 // Exercise the REAL decision helper, while recording the heavy call count
 // implied by the old/new receiver order. No arbitrary elapsed-time CI gate.
 const compiledSync=ts.transpileModule(sync,{
