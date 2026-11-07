@@ -41,7 +41,9 @@ await Promise.resolve();await Promise.resolve();
 const ws=sockets[0];assert.ok(ws);ws.open();
 const join=ws.sent.find(x=>x.event==="phx_join");
 ws.message("phx_reply",{status:"ok"},join.ref);
-const pose=(x)=>[{id:"object",x,y:15,width:120,height:90,rotation:0}];
+const initial={x:10,y:15,width:120,height:90,rotation:0};
+const original="10,15,120,90,0";
+const pose=(x)=>[{id:"object",x,y:15,width:120,height:90,rotation:0,origin:original}];
 sender.publishTransform(pose(10));
 const packets=()=>ws.sent.filter(x=>x.payload?.event==="object_transform")
  .map(x=>x.payload.payload);
@@ -83,5 +85,16 @@ assert.match(app,/workChannel\.current\?\.publishTransform\(poses,true\)/);
 assert.match(app,/const pose=remoteObjectPoses\[entry\.item\.id\]/);
 assert.match(app,/transition:pose\?/);
 assert.match(app,/const item=pose\?/);
+assert.match(app,/pose\.origin===objectPoseOrigin\(stored\)/,
+ "A late broadcast cannot supersede already-saved object geometry");
+assert.match(app,/objectPoseMatches\(pose,byId\.get\(id\)!\)/,
+ "Once durable data reaches the final pose, release the visual hint after tween");
+const helper=readFileSync(new URL("../src/boardObjectMotion.ts",import.meta.url),"utf8");
+const helperJs=ts.transpileModule(helper,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const geometry={};new Function("exports",helperJs)(geometry);
+assert.equal(geometry.objectPoseOrigin(initial),original);
+assert.equal(geometry.objectPoseMatches(initial,{...initial,x:10.0005}),true);
+assert.equal(geometry.objectPoseMatches(initial,{...initial,x:40}),false);
 assert.match(app,/onTransform|\(mutation\)=>\{\s*\/\/ No broadcast may mutate/);
 console.log("Live object transforms: 3 rapid samples + release -> 2 packets, final 40; stale/malformed ignored, cleanup OK.");
