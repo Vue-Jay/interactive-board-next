@@ -47,7 +47,7 @@ assert.ok(app.includes('createPortal('));
 assert.ok(css.includes('z-index:2147482400!important'));
 assert.ok(css.includes('cursor:grabbing!important'));
 assert.ok(css.includes('pointer-events:none'));
-assert.ok(read("src/main.tsx").includes('import "./lektrusBoardInteraction.css";'));
+assert.ok(read("src/appEntry.tsx").includes('import "./lektrusBoardInteraction.css";'));
 assert.ok(app.includes('saveRemoteBoardDocument'),"core persistence is unchanged");
 // Mobile gesture contract: interactive controls must never be treated as a
 // drawing pointer or first pinch contact.
