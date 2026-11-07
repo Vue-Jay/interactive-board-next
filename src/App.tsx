@@ -2478,10 +2478,17 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // Opening the shape palette does not arm a previously chosen figure.
   useEffect(() => { if (tool !== "shape") setShapeType(null); }, [tool]);
   const inkCursorElement=useRef<HTMLDivElement|null>(null);
-  const moveInkCursor=(clientX:number,clientY:number,pointerType:string)=>{
-    const indicator=inkCursorElement.current,rect=board.current?.getBoundingClientRect();
-    if(!indicator||!rect)return;
-    if(pointerType!=="mouse" && pointerType!=="pen"){indicator.style.visibility="hidden";return;}
+  const moveInkCursor=(clientX:number,clientY:number,pointerType:string,target:EventTarget|null)=>{
+    const indicator=inkCursorElement.current;
+    if(!indicator)return;
+    // Board UI remains ordinary UI. The ink reticle belongs to the drawing
+    // surface, not to text fields or embedded buttons.
+    if((pointerType!=="mouse"&&pointerType!=="pen")||
+       (target instanceof Element&&target.closest("button,input,select,textarea,[role='button'],[role='slider'],[contenteditable='true'],[data-board-interactive]"))){
+      indicator.style.visibility="hidden";return;
+    }
+    const rect=board.current?.getBoundingClientRect();
+    if(!rect)return;
     indicator.style.left=`${clientX-rect.left}px`;
     indicator.style.top=`${clientY-rect.top}px`;
     indicator.style.visibility="visible";
@@ -8901,7 +8908,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               e.currentTarget.setPointerCapture(e.pointerId);
               return;
             }
-            if((tool==="pen"||tool==="marker")&&!space&&!rightPointerActive&&e.button===0)moveInkCursor(e.clientX,e.clientY,e.pointerType);
+            if((tool==="pen"||tool==="marker")&&!space&&!rightPointerActive&&e.button===0)moveInkCursor(e.clientX,e.clientY,e.pointerType,e.target);
             // A held RMB is always temporary hand/pan, even while drawing.
             // Short click opens the custom menu only on release.
             if(e.button===2 && e.pointerType==="mouse" && !presentation){
@@ -8946,7 +8953,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           onPointerMoveCapture={(e) => {
             if(!touchPoints.current.has(e.pointerId)&&e.pointerType==="touch")return;
             if(e.pointerType==="touch"&&touchMove(e)){e.preventDefault();e.stopPropagation();return;}
-            if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType);
+            if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType,e.target);
             if(rightPress.current?.pointer===e.pointerId){
               const p=local(e.clientX,e.clientY),start=rightPress.current.start;
               if(Math.hypot(p.x-start.x,p.y-start.y)>5)rightPress.current.dragged=true;
@@ -9103,7 +9110,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               setNotice(error instanceof Error ? error.message : "Не удалось добавить файл");
             }
           }}
-          onPointerEnter={(e) => { if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType); if (tool === "eraser") { const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y,e.pointerType); } }}
+          onPointerEnter={(e) => { if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType,e.target); if (tool === "eraser") { const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y,e.pointerType); } }}
           onPointerLeave={() => { if(inkCursorElement.current)inkCursorElement.current.style.visibility="hidden"; if(!eraserSession.current && eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden"; }}
           onPointerUp={(e) => {
             if(e.pointerType==="touch"&&touchEnd(e))return;
