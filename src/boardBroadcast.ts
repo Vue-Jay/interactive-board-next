@@ -10,7 +10,7 @@ export type RemoteCursor = {
   updatedAt: number;
 };
 
-export type LiveInkMessage = { clientId: string; userId: string; id: string; kind: "pen" | "marker"; color: string; weight: number; points: { x: number; y: number }[]; finished: boolean };
+export type LiveInkMessage = { clientId: string; userId: string; id: string; kind: "pen" | "marker"; color: string; weight: number; points: { x: number; y: number }[]; startIndex?: number; finished: boolean };
 
 export type BoardCursorChannel = {
   sendCursor: (x: number, y: number) => void;
@@ -372,7 +372,7 @@ export function connectBoardCursorChannel(
             }
             receivedInkCount++;
             if(receivedInkCount===1 || receivedInkCount%25===0) report("подключено");
-            onInk?.({clientId:typeof p.clientId === "string" ? p.clientId : p.userId,userId:p.userId,id:p.id,kind:p.kind,color:typeof p.color === "string" ? p.color : "#222222",weight:Number.isFinite(p.weight)?p.weight:3,points:p.points,finished:p.finished === true});
+            onInk?.({clientId:typeof p.clientId === "string" ? p.clientId : p.userId,userId:p.userId,id:p.id,kind:p.kind,color:typeof p.color === "string" ? p.color : "#222222",weight:Number.isFinite(p.weight)?p.weight:3,points:p.points,startIndex:Number.isSafeInteger(p.startIndex)&&p.startIndex>=0?p.startIndex:undefined,finished:p.finished === true});
             return;
           }
           if (
