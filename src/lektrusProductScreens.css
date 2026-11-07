@@ -155,6 +155,70 @@ html body .topbar .topbar-right .topbar-menu-section .topbar-menu-danger{color:#
 .lectris-workspace-stage .profile-logout-button{border-color:var(--lt-line)!important;background:var(--lt-subtle)!important;color:var(--lt-secondary)!important}
 .lectris-workspace-stage .profile-logout-button:hover{background:var(--lt-hover)!important;color:var(--lt-text)!important}
 
+.lectris-layout-menu .lectris-interface-settings-entry{
+  display:flex;align-items:center;gap:10px;width:100%;min-height:44px;margin-top:12px;padding:0 12px;
+  border:1px solid var(--lt-line-strong,#cad8ef);border-radius:11px;background:var(--lt-selected,#eaf0ff);
+  color:var(--lt-selected-ink,#244fae);font-family:inherit;font-size:13px;font-weight:700;text-align:left;cursor:pointer;
+}
+.lectris-layout-menu .lectris-interface-settings-entry:hover{background:var(--lt-hover,#e1eaff);border-color:var(--lt-primary,#365fd0)}
+.lectris-layout-menu .lectris-interface-settings-entry span{margin-left:auto}
+
+.profile-redesign-wrap{width:min(100% - 36px,980px);margin:24px auto 54px;display:grid;gap:14px}
+.profile-redesign .students-header{position:sticky;top:0;z-index:4}
+.profile-identity-wide{display:flex;align-items:center;gap:18px;padding:24px!important}
+.profile-identity-wide .profile-big-avatar{width:68px;height:68px;flex:0 0 68px;font-size:27px}
+.profile-identity-wide .profile-eyebrow{margin:0 0 4px;font-size:10px;font-weight:800;letter-spacing:.13em;color:var(--lt-muted)}
+.profile-identity-wide h1{margin:0 0 3px;font-size:23px;letter-spacing:-.035em}
+.profile-identity-wide .profile-identity-copy>p:not(.profile-eyebrow){margin:0;color:var(--lt-muted);font-size:13px}
+.profile-completion{margin-left:auto;display:grid;gap:3px;text-align:right;color:var(--lt-muted);font-size:12px}
+.profile-completion strong{color:var(--lt-primary);font-size:18px}
+.profile-redesign-card{padding:22px 24px;border:1px solid var(--lt-line);border-radius:17px;background:var(--lt-surface);box-shadow:var(--lt-shadow)}
+.profile-section-heading{margin-bottom:19px}
+.profile-section-heading>div{display:flex;align-items:flex-start;gap:13px}
+.profile-section-heading>div>span{display:grid;place-items:center;width:29px;height:29px;flex:0 0 29px;border-radius:9px;background:var(--lt-selected);color:var(--lt-primary);font-size:11px;font-weight:800}
+.profile-section-heading h2,.profile-redesign-account h2{margin:0;color:var(--lt-text);font-size:16px;letter-spacing:-.015em}
+.profile-section-heading p,.profile-redesign-account p{margin:4px 0 0;color:var(--lt-muted);font-size:12px;line-height:1.45}
+.profile-redesign-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.profile-redesign-field{display:grid;align-content:start;gap:7px;min-width:0}
+.profile-redesign-field>span{font-size:12px;font-weight:700;color:var(--lt-secondary)}
+.profile-redesign-field>span i{color:var(--lt-primary);font-style:normal}
+.profile-redesign-field input,.profile-redesign-field textarea{width:100%;min-width:0;min-height:43px;padding:10px 12px;border:1px solid var(--lt-line);border-radius:10px;background:var(--lt-raised);color:var(--lt-text);font:inherit;font-size:13px;outline:none}
+.profile-redesign-field textarea{min-height:98px;resize:vertical;line-height:1.5}
+.profile-redesign-field input:focus,.profile-redesign-field textarea:focus{border-color:var(--lt-focus);box-shadow:0 0 0 3px color-mix(in srgb,var(--lt-focus) 15%,transparent)}
+.profile-redesign-field input[readonly]{opacity:.72}
+.profile-redesign-field small{color:var(--lt-muted);font-size:10px}
+.profile-field-full{grid-column:1/-1}
+.profile-redesign-actions{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:20px;padding-top:16px;border-top:1px solid var(--lt-line)}
+.profile-redesign-actions>span{font-size:11px;color:var(--lt-muted)}
+.profile-redesign-actions button{min-height:42px;padding:0 17px}
+.profile-redesign-alert,.profile-redesign-success{padding:12px 15px;border-radius:11px;font-size:13px}
+.profile-redesign-alert{background:#fff1f0;color:#a3322a;border:1px solid #f0c7c2}
+.profile-redesign-success{background:var(--lt-selected);color:var(--lt-selected-ink);border:1px solid var(--lt-line-strong)}
+.profile-redesign-account{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.profile-redesign-account>div{display:flex;align-items:center;gap:12px}
+.profile-account-icon{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:var(--lt-subtle);color:var(--lt-secondary);font-weight:800}
+.auth-register-name-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.auth-register-display-name{grid-column:1/-1}
+.auth-confirm-actions{display:flex;flex-wrap:wrap;gap:12px}
+.auth-confirm-actions button{padding:0;border:0;background:none;color:var(--lt-primary,#365fd0);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.auth-confirm-actions button:disabled{color:var(--lt-muted,#78869c);cursor:default}
+.auth-notice{padding:10px 12px;border:1px solid #c8ddcf;border-radius:10px;background:#eef8f0;color:#27633c;font-size:12px}
+@media(max-width:650px){
+ .profile-redesign-wrap{width:min(100% - 22px,980px);margin:14px auto 32px;gap:10px}
+ .profile-identity-wide{gap:12px;padding:16px!important;align-items:flex-start}
+ .profile-identity-wide .profile-big-avatar{width:52px;height:52px;flex-basis:52px;font-size:21px}
+ .profile-identity-wide h1{font-size:19px}.profile-completion{display:none}
+ .profile-redesign-card{padding:17px 15px;border-radius:14px}
+ .profile-redesign-grid{grid-template-columns:minmax(0,1fr);gap:12px}
+ .profile-field-full{grid-column:auto}
+ .profile-redesign-actions{align-items:stretch;flex-direction:column-reverse}
+ .profile-redesign-actions button{width:100%}
+ .profile-redesign-account{align-items:stretch;flex-direction:column}
+ .profile-redesign-account>.profile-logout-button{width:100%;min-height:42px}
+ .auth-register-name-grid{grid-template-columns:minmax(0,1fr)}
+ .auth-register-display-name{grid-column:auto}
+}
+
 /* Admin controls and records were the largest remaining OnlineRepetitor
    color island. Keep danger and status meanings distinct from the accent. */
 .lectris-workspace-stage .admin-users-shell :is(.admin-user-card,.admin-board-card,.admin-request-list>article,.admin-invisible-toggle,.admin-board-list){

@@ -7,6 +7,14 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text not null default 'Пользователь',
   email text not null default '',
+  first_name text not null default '',
+  last_name text not null default '',
+  middle_name text not null default '',
+  phone text not null default '',
+  city text not null default '',
+  organization text not null default '',
+  focus_area text not null default '',
+  bio text not null default '',
   created_at timestamptz not null default now()
 );
 
@@ -38,9 +46,9 @@ create table if not exists public.board_invites (
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path=public as $$
 begin
-  insert into public.profiles(id,display_name,email)
-  values(new.id,coalesce(nullif(new.raw_user_meta_data->>'display_name',''),split_part(coalesce(new.email,''),'@',1),'Пользователь'),coalesce(new.email,''))
-  on conflict(id) do update set display_name=excluded.display_name,email=excluded.email;
+  insert into public.profiles(id,display_name,email,first_name,last_name)
+  values(new.id,coalesce(nullif(new.raw_user_meta_data->>'display_name',''),split_part(coalesce(new.email,''),'@',1),'Пользователь'),coalesce(new.email,''),coalesce(new.raw_user_meta_data->>'first_name',''),coalesce(new.raw_user_meta_data->>'last_name',''))
+  on conflict(id) do update set display_name=excluded.display_name,email=excluded.email,first_name=excluded.first_name,last_name=excluded.last_name;
   return new;
 end; $$;
 
@@ -79,6 +87,11 @@ grant execute on function public.can_edit_board(uuid) to authenticated;
 
 drop policy if exists profiles_self_select on public.profiles;
 create policy profiles_self_select on public.profiles for select to authenticated using (id=auth.uid());
+drop policy if exists profiles_self_update_details on public.profiles;
+create policy profiles_self_update_details on public.profiles for update to authenticated using (id=auth.uid()) with check (id=auth.uid());
+revoke update on public.profiles from public,anon,authenticated;
+grant select on public.profiles to authenticated;
+grant update(first_name,last_name,middle_name,phone,city,organization,focus_area,bio) on public.profiles to authenticated;
 
 drop policy if exists boards_select_access on public.boards;
 create policy boards_select_access on public.boards for select to authenticated using (public.can_access_board(id));
