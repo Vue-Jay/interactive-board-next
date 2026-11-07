@@ -168,7 +168,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
    mol>1e-12&&labSingleSaltSolubilityGPer100gWater(formula,vessel.temperatureC??22)!==undefined);
  // The equilibrium inventory predicts the FINAL solid even before the
  // measured reaction has progressed. Render only the CURRENT extent.
- const identifiedPrecipitate=labObservation(vessel).caseData?.observation==="precipitate";
+ const identifiedPrecipitate=result.caseData?.observation==="precipitate";
  const pendingPrecipitate=identifiedPrecipitate&&vessel.observed&&
   !vessel.reactionAmounts&&!vessel.completedReaction&&
   !vessel.chemicalInventory&&!vessel.filteredResidue;
