@@ -6881,10 +6881,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // A peer may drag a pencil stroke that is normally in the raster ink run.
   // Promote only its ID into the DOM while being transformed, without
   // rebuilding ink layers for every intermediate coordinate update.
-  const remoteInkKey=Object.keys(remoteObjectPoses).filter(id=>{
+  const remotePoseIdsKey=Object.keys(remoteObjectPoses).sort().join("\u0000");
+  const remotePoseIds=useMemo(()=>
+    new Set(remotePoseIdsKey?remotePoseIdsKey.split("\u0000"):[]),[remotePoseIdsKey]);
+  const remoteInkKey=[...remotePoseIds].filter(id=>{
     const item=itemById.get(id);
     return !!item&&isInkItem(item)&&!!item.points?.length;
-  }).sort().join("\u0000");
+  }).join("\u0000");
   const detailedInkIds=useMemo(() =>
     new Set([...(selectedInkKey?selectedInkKey.split("\u0000"):[]),
       ...(remoteInkKey?remoteInkKey.split("\u0000"):[])]),[selectedInkKey,remoteInkKey]);
@@ -6922,12 +6925,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     const bottom = (boardViewportSize.height - view.y) / view.zoom + margin;
     return inkLayers.filter(layer => {
       if (layer.kind === "item" && (selectedIds.has(layer.item.id) ||
-          layer.item.id === editing || remoteObjectPoses[layer.item.id])) return true;
+          layer.item.id === editing || remotePoseIds.has(layer.item.id))) return true;
       const bounds = layer.kind === "ink" ? layer.bounds : layer.item;
       return bounds.x + bounds.width >= left && bounds.x <= right &&
         bounds.y + bounds.height >= top && bounds.y <= bottom;
     });
-  }, [inkLayers, boardViewportSize.width, boardViewportSize.height, view.x, view.y, view.zoom, selectedIds, editing, remoteObjectPoses]);
+  }, [inkLayers, boardViewportSize.width, boardViewportSize.height, view.x, view.y, view.zoom, selectedIds, editing, remotePoseIds]);
   const minimapBounds = allBounds ?? { x: -400, y: -300, width: 800, height: 600 };
   // ResizeObserver already maintains these dimensions. Measuring layout in
   // every pan render forced costly synchronous reflows on heavy boards.
