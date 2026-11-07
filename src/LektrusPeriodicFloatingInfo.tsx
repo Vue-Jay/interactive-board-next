@@ -59,25 +59,62 @@ export default function LektrusPeriodicFloatingInfo({
 
  useEffect(()=>{setAtomOpen(false);setMode("shell");setOffset(null)},[number,layout]);
  useLayoutEffect(()=>{
-  let alive=true,frame=0;
+  const stage=stageRef.current;
+  if(!stage)return;
+  let alive=true,frame=0,followFrames=0;
   const measure=()=>{
-   const stage=stageRef.current;
-   if(stage){
-    const rect=stage.getBoundingClientRect();
-    const localW=stage.clientWidth||rect.width,localH=stage.clientHeight||rect.height;
-    if(rect.width>0&&rect.height>0&&localW>0&&localH>0){
-     const next:Geometry={
-      left:rect.left,top:rect.top,width:rect.width,height:rect.height,
-      localW,localH,scaleX:rect.width/localW,scaleY:rect.height/localH,
-      windowScale:Math.sqrt((rect.width/BASE_STAGE_WIDTH)*(rect.height/BASE_STAGE_HEIGHT))
-     };
-     setGeometry(previous=>geometryMatches(previous,next)?previous:next);
-    }
+   frame=0;
+   if(!alive)return;
+   const rect=stage.getBoundingClientRect();
+   const localW=stage.clientWidth||rect.width,localH=stage.clientHeight||rect.height;
+   if(rect.width>0&&rect.height>0&&localW>0&&localH>0){
+    const next:Geometry={
+     left:rect.left,top:rect.top,width:rect.width,height:rect.height,
+     localW,localH,scaleX:rect.width/localW,scaleY:rect.height/localH,
+     windowScale:Math.sqrt((rect.width/BASE_STAGE_WIDTH)*(rect.height/BASE_STAGE_HEIGHT))
+    };
+    setGeometry(previous=>geometryMatches(previous,next)?previous:next);
    }
-   if(alive)frame=requestAnimationFrame(measure);
+   // Only track the short period after a transform/class change. The old
+   // implementation measured the same DOM rectangle at 60 Hz indefinitely,
+   // once per open element card, even while the board was completely idle.
+   if(followFrames>0){followFrames--;frame=requestAnimationFrame(measure)}
   };
+  const schedule=(follow=false)=>{
+   if(follow)followFrames=Math.max(followFrames,36);
+   if(!frame)frame=requestAnimationFrame(measure);
+  };
+  const onGeometryChange=()=>schedule();
+  const onTransformChange=()=>schedule(true);
+  const resizeObserver=typeof ResizeObserver==="undefined"?null:new ResizeObserver(onGeometryChange);
+  resizeObserver?.observe(stage);
+  // Board pan/zoom can change an ancestor's transform without resizing the
+  // element itself. Observe only attributes of the stage and its ancestors,
+  // not the subtree: child/card redraws cannot trigger redundant measurements.
+  const mutationObserver=typeof MutationObserver==="undefined"?null:new MutationObserver(onTransformChange);
+  if(mutationObserver){
+   for(let ancestor:Element|null=stage;ancestor;ancestor=ancestor.parentElement){
+    mutationObserver.observe(ancestor,{attributes:true,attributeFilter:["style","class"]});
+   }
+  }
+  window.addEventListener("resize",onGeometryChange);
+  window.addEventListener("scroll",onGeometryChange,true);
+  window.visualViewport?.addEventListener("resize",onGeometryChange);
+  window.visualViewport?.addEventListener("scroll",onGeometryChange);
+  // Follow CSS transitions between attribute changes, then stop polling.
+  document.addEventListener("transitionrun",onTransformChange,true);
+  document.addEventListener("transitionend",onGeometryChange,true);
   measure();
-  return()=>{alive=false;cancelAnimationFrame(frame)};
+  return()=>{
+   alive=false;cancelAnimationFrame(frame);
+   resizeObserver?.disconnect();mutationObserver?.disconnect();
+   window.removeEventListener("resize",onGeometryChange);
+   window.removeEventListener("scroll",onGeometryChange,true);
+   window.visualViewport?.removeEventListener("resize",onGeometryChange);
+   window.visualViewport?.removeEventListener("scroll",onGeometryChange);
+   document.removeEventListener("transitionrun",onTransformChange,true);
+   document.removeEventListener("transitionend",onGeometryChange,true);
+  };
  },[stageRef]);
 
  if(!element||!facts)return null;
