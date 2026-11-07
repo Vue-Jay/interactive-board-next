@@ -37,7 +37,16 @@ function token(country:GeoCountry,d:GeoTrainingDiagram,side:"left"|"right"){
  const second=d.reverse?pair.left:pair.right;
  return asToken(country,side==="left"?first:second);
 }
-const stop=(e:React.SyntheticEvent)=>e.stopPropagation();
+// Embedded answer buttons belong to the exercise, but its non-clickable
+// header, progress and blank space are valid board drag surfaces.
+// Stop only interactive targets so selecting and moving the whole exercise
+// works without clicking or changing a pupil's answer.
+const stopInteractive=(e:React.SyntheticEvent)=>{
+ const target=e.target as Element;
+ if(target.closest("button,input,select,textarea,a,[role='button'],[data-board-interactive]")){
+  e.stopPropagation();
+ }
+};
 
 function Matching({diagram:d,onMatchingSize}:{diagram:GeoTrainingDiagram;
  onMatchingSize?:(width:number,height:number)=>void}){
@@ -58,6 +67,9 @@ function Matching({diagram:d,onMatchingSize}:{diagram:GeoTrainingDiagram;
   observer?.observe(element);
   return()=>observer?.disconnect();
  },[preferredWidth,!!onMatchingSize]);
+ // Realtime and document saves may reconstruct the same country array.
+ // Reset practice only when its actual content changes, not its reference.
+ const codesKey=d.countryCodes.join("|");
  const [rightOrder,setRightOrder]=useState(()=>shuffled(d.countryCodes));
  const [selected,setSelected]=useState<{side:"left"|"right";code:string}|null>(null);
  const [matched,setMatched]=useState<string[]>([]);
@@ -66,7 +78,7 @@ function Matching({diagram:d,onMatchingSize}:{diagram:GeoTrainingDiagram;
  useEffect(()=>{
   setRightOrder(shuffled(d.countryCodes));setSelected(null);
   setMatched([]);setWrong(0);setFeedback("");
- },[d.countryCodes,d.relation,d.reverse]);
+ },[codesKey,d.relation,d.reverse]);
  const restart=()=>{setRightOrder(shuffled(d.countryCodes));setSelected(null);setMatched([]);setWrong(0);setFeedback("")};
  const choose=(side:"left"|"right",code:string)=>{
   if(matched.includes(code))return;
@@ -95,8 +107,8 @@ function Matching({diagram:d,onMatchingSize}:{diagram:GeoTrainingDiagram;
   </button>;
  };
  return <div ref={gameRef} className={"lektrus-geo-game"+(onMatchingSize?" lektrus-geo-game--auto-matching":"")}
-  style={onMatchingSize?{width:preferredWidth}:undefined} onPointerDown={stop} onPointerUp={stop}
-  onClick={stop} onDoubleClick={stop}>
+  style={onMatchingSize?{width:preferredWidth}:undefined} onPointerDown={stopInteractive} onPointerUp={stopInteractive}
+  onClick={stopInteractive} onDoubleClick={stopInteractive}>
   <header className="lektrus-geo-game-header">
    <div><strong>{d.title}</strong><small>{geoRelationNames[d.relation]} · {d.reverse?"Обратный порядок":"Обычный порядок"}</small></div>
    <button type="button" className="lektrus-geo-reset" onClick={restart}>↻ Заново</button>
@@ -119,11 +131,12 @@ function Matching({diagram:d,onMatchingSize}:{diagram:GeoTrainingDiagram;
  </div>;
 }
 function Flashcards({diagram:d}:{diagram:GeoTrainingDiagram}){
+ const codesKey=d.countryCodes.join("|");
  const [order,setOrder]=useState(()=>shuffled(d.countryCodes));
  const [index,setIndex]=useState(0),[revealed,setRevealed]=useState(false);
  const [known,setKnown]=useState<string[]>([]);
  useEffect(()=>{setOrder(shuffled(d.countryCodes));setIndex(0);setRevealed(false);setKnown([])},
-  [d.countryCodes,d.relation,d.reverse]);
+  [codesKey,d.relation,d.reverse]);
  const country=getGeoCountry(order[Math.min(index,order.length-1)]??"");
  const [frontName,backName]=sideLabels(d);
  const go=(next:number)=>{setIndex(next);setRevealed(false)};
@@ -133,8 +146,8 @@ function Flashcards({diagram:d}:{diagram:GeoTrainingDiagram}){
   setKnown(prev=>yes?[...new Set([...prev,country.code])]:prev.filter(c=>c!==country.code));
   if(index<order.length-1)go(index+1);else setRevealed(true);
  };
- return <div className="lektrus-geo-game lektrus-geo-cards" onPointerDown={stop}
-  onPointerUp={stop} onClick={stop} onDoubleClick={stop}>
+ return <div className="lektrus-geo-game lektrus-geo-cards" onPointerDown={stopInteractive}
+  onPointerUp={stopInteractive} onClick={stopInteractive} onDoubleClick={stopInteractive}>
   <header className="lektrus-geo-game-header">
    <div><strong>{d.title}</strong><small>{geoRelationNames[d.relation]} · {frontName} → {backName}</small></div>
    <button type="button" className="lektrus-geo-reset" onClick={restart}>↻ Заново</button>
