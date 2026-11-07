@@ -7,6 +7,7 @@ import {activityMatchesTask,freshActivity,interactiveModesForSubject,
  LektrusSubjectActivityRunner} from "./LektrusSubjectActivity";
 import {isLanguageGapExercise,languageGapText,parseLanguageGapText,preserveGapChoices} from "./lektrusLanguageGapModel";
 import LektrusRussianTaskAnswer from "./LektrusRussianTaskAnswer";
+import {isSingleRussianWord} from "./lektrusRussianWorkLogic";
 import LektrusForeignTaskAnswer from "./LektrusForeignTaskAnswer";
 
 type Props={
@@ -337,7 +338,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
       </label>
      </div>}
      {tone==="russian"&&template.id==="phonetics"&&!!(entry.details?.material?.trim())&&
-      (!/^[\\p{L}\\p{M}]+(?:[-’][\\p{L}\\p{M}]+)*$/u.test(entry.details?.material?.trim()??"")||Array.from(entry.details?.material?.trim()??"").length>24)&&
+      (!isSingleRussianWord(entry.details?.material?.trim()??"")||Array.from(entry.details?.material?.trim()??"").length>24)&&
       <p className="lektrus-language-studio-warning">Введите одно слово до 24 букв без цифр и знаков препинания.</p>}
      {tone==="russian"&&template.id==="morphemes"&&/\\s/.test(entry.details?.material?.trim()??"")&&
       <p className="lektrus-language-studio-warning">Для разбора по составу укажите одно слово без пробелов.</p>}
