@@ -71,10 +71,11 @@ assert.match(source,/if\(reusedBacking\)\{[\s\S]*?ctx\.clearRect\(0,0,canvas\.wi
  "Reused canvas backing must clear previous pixels before painting the new tile");
 
 const app=read("App.tsx");
-const layerStart=app.indexOf("  const inkLayers = useMemo(() => {");
+const selectionStart=app.indexOf("  const selectedInkKey=useMemo(() => ");
+const layerStart=app.indexOf("  const inkLayers = useMemo(() => {",selectionStart);
 const layerEnd=app.indexOf("  const renderEntries = useMemo(() => {",layerStart);
-assert.ok(layerStart>=0&&layerEnd>layerStart);
-const layers=app.slice(layerStart,layerEnd);
+assert.ok(selectionStart>=0&&layerStart>selectionStart&&layerEnd>layerStart);
+const layers=app.slice(selectionStart,layerEnd);
 assert.match(layers,/const selectedInkKey=useMemo\(\(\) => selectedIds\.size>24 \? "" :/);
 assert.match(layers,/const detailedInkIds=useMemo\(/);
 assert.match(layers,/\}, \[visibleItems, detailedInkIds\]\)/,
