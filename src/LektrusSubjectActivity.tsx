@@ -219,8 +219,10 @@ export function LektrusSubjectActivityRunner({activity,response,onChange,compact
   patch({values:(activity.blanks??[]).map((_,j)=>j===index?value:data.values?.[j]??"")});
  };
  return <div className={"lektrus-activity-runner"+(compact?" compact":"")}
-  data-board-interactive="true" onPointerDown={stop} onClick={stop}
+  onPointerDown={stop} onClick={stop}
   aria-label="Интерактивное упражнение">
+  {/* Only the answer controls are interactive. Titles, prompts, result
+      messages and white gaps remain valid board-object drag surfaces. */}
   {!complete&&<div className="lektrus-activity-unfinished">Добавьте содержание и ответы в конструкторе, чтобы задание стало интерактивным.</div>}
   {activity.mode==="choice"&&<div className="lektrus-activity-choice-options" role="group" aria-label="Выберите ответ">
    {(activity.options??[]).map((option,i)=><button key={i} type="button" disabled={!onChange||!option.trim()}
