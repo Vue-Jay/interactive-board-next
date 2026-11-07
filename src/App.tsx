@@ -14,6 +14,7 @@ import {
 } from "react";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import {boardWorldTransform,boardOverlayTransform} from "./boardPanTransform";
+import {canCompositeBoardDrag,translatedBoardDragItems,paintBoardDragTranslation,clearBoardDragTranslation} from "./boardDragCompositor";
 import {boardGridTransform} from "./boardBackgroundPan";
 import {chemistryBoardHasContent} from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
@@ -2411,12 +2412,23 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   useEffect(() => { writeInkPreferences(authUser.id, inkPreferences); }, [authUser.id, inkPreferences]);
   const [eraserSize, setEraserSize] = useState(22);
   const [snapEnabled, setSnapEnabled] = useState(true);
-  const [guides, setGuides] = useState<GuideState>({});
-  // Never schedule a React render if the guides are already absent. On a
-  // busy board, the old clearGuides() inside pointermove rebuilt the whole
-  // workspace despite the compositor-only camera optimization.
-  const clearGuides = () => setGuides(current =>
-    current.x == null && current.y == null ? current : {});
+  const guideX=useRef<HTMLDivElement>(null);
+  const guideY=useRef<HTMLDivElement>(null);
+  // Smart guides are purely transient DOM decorations. Updating their React
+  // state every animation frame forced the entire workspace to render while
+  // an object was being dragged, even with a GPU-composited preview.
+  const setDragGuides=(next:GuideState)=>{
+    const x=guideX.current,y=guideY.current;
+    if(x){
+      if(next.x == null)x.style.display="none";
+      else{x.style.left=`${next.x*viewRef.current.zoom+viewRef.current.x}px`;x.style.display="block";}
+    }
+    if(y){
+      if(next.y == null)y.style.display="none";
+      else{y.style.top=`${next.y*viewRef.current.zoom+viewRef.current.y}px`;y.style.display="block";}
+    }
+  };
+  const clearGuides=()=>setDragGuides({});
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [layersOpen, setLayersOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -2770,6 +2782,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [online,setOnline]=useState(()=>navigator.onLine);
   const [updateReady,setUpdateReady]=useState<ServiceWorkerRegistration|null>(null);
   const gesture = useRef<Gesture | null>(null);
+  // The large React object tree stays still while an ordinary selected
+  // object travels. Keep only DOM targets and original poses for this gesture.
+  const compositorDrag=useRef<{
+    gesture:Gesture;selected:Set<string>;elements:HTMLElement[];
+    liveBases:BoardObjectPose[];dx:number;dy:number;
+  }|null>(null);
   // The capture phase starts drags even when a nested lesson widget stops
   // pointerdown/pointermove bubbling. Track the owning pointer to consume
   // movement and release exactly once, without stealing active controls.
@@ -3357,7 +3375,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     }
   };
 
-  const display = (next: Item[]) => {
+  const display = (next: Item[],immediate=false) => {
     const synced = syncBoundConnectors(next);
     const active=gesture.current;
     if(active&&canEdit&&active.ids.length&&active.ids.length<=64&&
@@ -3377,6 +3395,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     // Keep model state synchronous for pointer math, but paint at most once per frame.
     // This prevents 100+ React renders/sec on fast mouse/touch drags.
     itemsRef.current = synced;
+    if(immediate){
+      if(displayFrame.current!==null)cancelAnimationFrame(displayFrame.current);
+      displayFrame.current=null;
+      pendingDisplayItems.current=null;
+      setItems(synced);
+      return;
+    }
     pendingDisplayItems.current = synced;
     if (displayFrame.current != null) return;
     displayFrame.current = requestAnimationFrame(() => {
@@ -3609,7 +3634,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       );
     }
   };
-  const commit = (next: Item[], options?:{labSimulation?:boolean}) => {
+  const commit = (next: Item[], options?:{labSimulation?:boolean;immediatePaint?:boolean}) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
     const current=itemsRef.current;
     // Central destructive-action gate covers keyboard, toolbar, eraser,
@@ -3643,7 +3668,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       while (history.current.length > historyLimit) history.current.shift();
       index.current = history.current.length - 1;
     }
-    display(normalized);
+    display(normalized,options?.immediatePaint===true);
     // React paints the committed items on the next frame. Keep the persistence
     // snapshot synchronous so navigating away immediately cannot save the old
     // document or make a new science object revert to generic coordinates.
@@ -4768,7 +4793,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           const snapped = snapBoardDrag(cache.moving,cache.snapIndex,worldDx,worldDy,7/g.view.zoom);
           worldDx = snapped.dx;
           worldDy = snapped.dy;
-          setGuides(previous=>previous.x===snapped.guides.x&&previous.y===snapped.guides.y?previous:snapped.guides);
+          setDragGuides(snapped.guides);
         }
       } else {
         clearGuides();
@@ -10257,20 +10282,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             </div>
           )}
           </div>
-          {guides.x != null && (
-            <div
-              className="smart-guide smart-guide-vertical"
-              style={{ left: guides.x * view.zoom + view.x }}
-              aria-hidden="true"
-            />
-          )}
-          {guides.y != null && (
-            <div
-              className="smart-guide smart-guide-horizontal"
-              style={{ top: guides.y * view.zoom + view.y }}
-              aria-hidden="true"
-            />
-          )}
+          <div ref={guideX} className="smart-guide smart-guide-vertical" style={{display:"none"}} aria-hidden="true"/>
+          <div ref={guideY} className="smart-guide smart-guide-horizontal" style={{display:"none"}} aria-hidden="true"/>
           {contextMenu && createPortal(
             <div
               className="board-context-menu lektrus-context-portal"
