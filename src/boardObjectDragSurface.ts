@@ -17,6 +17,7 @@ export const BOARD_OBJECT_INTERACTIVE_SELECTOR=[
   "[role='button']","[role='slider']","[role='link']",
   "[role='checkbox']","[role='switch']","[role='tab']",
   "[role='menuitem']","[role='textbox']","[role='combobox']",
+  "[role='log']",
   "[data-board-interactive]","[data-board-gesture-owner]",
   "[data-transform-handle]","[data-group-transform-handle]",
   "[data-connector-endpoint]","[data-group-selection-drag]",
