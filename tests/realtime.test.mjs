@@ -319,6 +319,27 @@ test('failed or unavailable version probe falls back to full authenticated load'
   h.stop();
 });
 
+test('key-only WAL with an acknowledged revision skips even the version probe',async()=>{
+  let serverVersion=1;
+  const h=harness({
+    read:()=>({board_id:'board-id',version:serverVersion,document}),
+    probeVersion:()=>serverVersion,
+  });
+  await h.tick();const ws=h.sockets[0];ws.open();ws.ready();await h.tick();
+  assert.equal(h.reads(),1);
+  ws.message('postgres_changes',{data:{record:{board_id:'board-id',version:1}}});
+  await h.tick();
+  assert.equal(h.reads(),1);
+  assert.equal(h.probes(),0,'Duplicate version metadata should require zero REST calls');
+  serverVersion=2;
+  ws.message('postgres_changes',{data:{record:{board_id:'board-id',version:2}}});
+  await h.tick();
+  assert.equal(h.probes(),1);
+  assert.equal(h.reads(),2,'New version metadata still fetches the full board');
+  assert.equal(h.documents.at(-1).version,2);
+  h.stop();
+});
+
 test('full WAL document bypasses extra lightweight revision checks',async()=>{
   const h=harness({probeVersion:()=>99});
   await h.tick();const ws=h.sockets[0];ws.open();ws.ready();await h.tick();
