@@ -14,7 +14,7 @@ import {
 } from "react";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import {boardWorldTransform,boardOverlayTransform} from "./boardPanTransform";
-import {compositeLinkedConnectorIds,canCompositeBoardRotation,translatedBoardDragItems,paintBoardDragTranslation,clearBoardDragTranslation,paintBoardRotationPreview,clearBoardRotationPreview} from "./boardDragCompositor";
+import {planCompositeBoardDrag,connectorDragEndpoints,paintBoardDeformedConnector,canCompositeBoardRotation,translatedBoardDragItems,paintBoardDragTranslation,clearBoardDragTranslation,paintBoardRotationPreview,clearBoardRotationPreview,type ConnectorDragTarget} from "./boardDragCompositor";
 import {boardGridTransform} from "./boardBackgroundPan";
 import {chemistryBoardHasContent} from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
@@ -2804,7 +2804,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // object travels. Keep only DOM targets and original poses for this gesture.
   const compositorDrag=useRef<{
     gesture:Gesture;selected:Set<string>;linked:Set<string>;elements:HTMLElement[];
-    liveBases:BoardObjectPose[];dx:number;dy:number;
+    liveBases:BoardObjectPose[];deformed:ConnectorDragTarget<Item>[];
+    deformedById:Map<string,Item>;dx:number;dy:number;
   }|null>(null);
   const compositorRotation=useRef<{
     gesture:Gesture;id:string;base:Item;element:HTMLElement;
@@ -4278,6 +4279,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     // in the same JS turn so neither selection handles nor school widgets
     // briefly jump back to their original location.
     if(dragPreview){
+      // Cancellation has no new React geometry to reset direct SVG writes.
+      if(cancel)for(const target of dragPreview.deformed)
+        paintBoardDeformedConnector(target,dragPreview.selected,0,0);
       clearBoardDragTranslation(dragPreview.elements,fastPanSelection.current);
       compositorDrag.current=null;
     }
@@ -4800,31 +4804,63 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     let preview=compositorDrag.current;
     if(preview?.gesture!==g){
       const selected=new Set(g.ids);
-      const linked=compositeLinkedConnectorIds(g.before,selected);
-      if(!linked)return false;
+      const plan=planCompositeBoardDrag(g.before,selected);
+      if(!plan)return false;
+      const {linked}=plan;
       const origins=getGestureOrigins(g);
       const liveBases:BoardObjectPose[]=[];
-      // Cache original transforms only once: the board may contain 10,000+
-      // items, but only the grabbed objects need a per-frame change.
       for(const index of gestureIndices.current.get(g)??[]){
         const item=g.before[index];
         const origin=item&&origins.get(item.id);
-        if(item&&origin&&(selected.has(item.id)||linked.has(item.id)))
+        if(item&&origin&&(selected.has(item.id)||linked.has(item.id)||plan.deformed.has(item.id)))
           liveBases.push(toBoardObjectPose(item,origin));
       }
-      const elements=Array.from(fastPanWorld.current?.querySelectorAll<HTMLElement>(
-        ".board-object[data-object]")??[]).filter(el=>
-          selected.has(el.dataset.object??"")||linked.has(el.dataset.object??""));
-      preview={gesture:g,selected,linked,elements,liveBases,dx:0,dy:0};
+      const elements:HTMLElement[]=[];
+      const deformed:ConnectorDragTarget<Item>[]=[];
+      const deformedById=new Map<string,Item>();
+      const byId=new Map(g.before.filter(item=>plan.deformed.has(item.id)).map(item=>[item.id,item] as const));
+      for(const el of fastPanWorld.current?.querySelectorAll<HTMLElement>(".board-object[data-object]")??[]){
+        const id=el.dataset.object??"";
+        if(selected.has(id)||linked.has(id))elements.push(el);
+        if(!plan.deformed.has(id))continue;
+        const item=byId.get(id);
+        const svg=el.querySelector<SVGSVGElement>("svg.connector-svg");
+        const line=svg?.querySelector<SVGLineElement>(":scope > line");
+        // Direct child only: never mutate the SVG marker definitions.
+        const path=svg?.querySelector<SVGPathElement>(":scope > path");
+        if(!item||!svg||(!line&&!path))return false;
+        deformed.push({
+          item,line:line??null,path:path??null,
+          label:svg.querySelector<SVGGElement>(".connector-label-svg"),
+        });
+        deformedById.set(id,item);
+      }
+      // A culled arrow must never be silently left behind during drag.
+      if(deformed.length!==plan.deformed.size)return false;
+      preview={gesture:g,selected,linked,elements,liveBases,deformed,deformedById,dx:0,dy:0};
       compositorDrag.current=preview;
     }
     preview.dx=dx;preview.dy=dy;
     paintBoardDragTranslation(preview.elements,fastPanSelection.current,
       dx,dy,g.view.zoom);
+    for(const target of preview.deformed)
+      paintBoardDeformedConnector(target,preview.selected,dx,dy);
     if(preview.liveBases.length){
-      workChannel.current?.publishTransform(preview.liveBases.map(pose=>({
-        ...pose,x:pose.x+dx,y:pose.y+dy
-      })));
+      workChannel.current?.publishTransform(preview.liveBases.map(pose=>{
+        const attached=preview.deformedById.get(pose.id);
+        if(!attached)return {...pose,x:pose.x+dx,y:pose.y+dy};
+        // Match the exact normalized arrow geometry in the durable document.
+        const {start,end}=connectorDragEndpoints(attached,preview.selected,dx,dy);
+        const updated=connectorItemFromPoints(
+          {x:attached.x+start.x,y:attached.y+start.y},
+          {x:attached.x+end.x,y:attached.y+end.y},
+          attached.connectorStyle??"arrow",attached.color??"#5355c9",
+          attached.weight??3,attached.id,attached.connectorRouting??"straight",
+          attached.connectorStartBinding,attached.connectorEndBinding,attached.text,
+          attached.arrowHeadStyle??"triangle",attached.arrowHeadSize??8,
+        );
+        return toBoardObjectPose(updated,pose.origin);
+      }));
     }
     return true;
   };
