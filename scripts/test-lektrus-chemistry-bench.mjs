@@ -121,6 +121,30 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
   "ms (synthetic Node, not device FPS)");
 }
 
+// Stopwatch re-renders only vessels with active visual feedback, not every
+// unchanged glassware component in the experiment.
+{
+ const idle=lab.defaultLabBench().vessels[0];
+ const now=100_000;
+ assert.equal(lab.labVesselVisualClock(idle,now),undefined);
+ const recent={...idle,visualStartedAtMs:now-1000};
+ assert.equal(lab.labVesselVisualClock(recent,now),now);
+ assert.equal(lab.labVesselVisualClock(recent,now+8500),undefined);
+ assert.equal(lab.labVesselVisualClock({...idle,lastEvaporatedAtMs:now},now+500),now+500);
+ assert.equal(lab.labVesselVisualClock({...idle,indicatorAddedAtMs:now},now+300),now+300);
+ assert.equal(lab.labVesselVisualClock({...idle,physicalStartedAtMs:now},now+500),now+500);
+ assert.equal(lab.labVesselVisualClock({...idle,visualStartedAtMs:now+500},now),undefined,
+  "An event from the future must not animate early");
+ const samples=Array.from({length:6},(_,i)=>i===2?recent:{...idle,id:"idle-"+i});
+ const ticked=samples.filter(v=>lab.labVesselVisualClock(v,now)!==undefined);
+ assert.equal(ticked.length,1,
+  "One active vessel should be the only clock-driven rerender among six");
+ const surface=read("src/LektrusChemistryBench.tsx");
+ assert.ok(surface.includes("visualNowMs={labVesselVisualClock(v,clockNow)}"),
+  "Memoized vessel renderer must receive only per-vessel active frames");
+ assert.ok(!surface.includes("visualNowMs={clockNow}"));
+}
+
 // Detailed legacy physics assertions explicitly opt into high realism.
 const detailedBench=()=>{
  const bench=lab.defaultLabBench();
