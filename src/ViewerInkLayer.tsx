@@ -1,5 +1,6 @@
 import { memo, useLayoutEffect, useRef } from "react";
 import type { Item, View } from "./boardModel";
+import {inkCanvasBudget} from "./inkCanvasBudget";
 
 type ViewportSize = { width: number; height: number };
 type InkBounds = { x: number; y: number; width: number; height: number };
@@ -54,24 +55,26 @@ const ViewerInkLayer = memo(function ViewerInkLayer({
     const top = Math.max(worldTop - tileBuffer, boundTop);
     const right = Math.min(worldRight + tileBuffer, boundRight);
     const bottom = Math.min(worldBottom + tileBuffer, boundBottom);
-    if (right <= left || bottom <= top) return;
+    if (right <= left || bottom <= top) {
+      // Release GPU/backing memory for layers far outside the viewport.
+      // Returning with the old canvas size held stale backing stores alive.
+      if (canvas.width || canvas.height) { canvas.width = 0; canvas.height = 0; }
+      cacheRef.current = null;
+      return;
+    }
     const cssWidth = right - left;
     const cssHeight = bottom - top;
-    const ratio = Math.min(1.25, Math.max(1, window.devicePixelRatio || 1));
-    const pixelWidth = Math.max(1, Math.ceil(cssWidth * zoom * ratio));
-    const pixelHeight = Math.max(1, Math.ceil(cssHeight * zoom * ratio));
-    const factor = Math.min(1, 4096 / Math.max(pixelWidth, pixelHeight));
-    const actualRatio = ratio * factor;
-    canvas.width = Math.max(1, Math.ceil(cssWidth * zoom * actualRatio));
-    canvas.height = Math.max(1, Math.ceil(cssHeight * zoom * actualRatio));
+    const pixels = inkCanvasBudget(cssWidth,cssHeight,zoom,window.devicePixelRatio||1);
+    canvas.width = pixels.width;
+    canvas.height = pixels.height;
     canvas.style.left = `${left}px`;
     canvas.style.top = `${top}px`;
     canvas.style.width = `${cssWidth}px`;
     canvas.style.height = `${cssHeight}px`;
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
-    const scale = zoom * actualRatio;
-    ctx.setTransform(scale, 0, 0, scale, -left * scale, -top * scale);
+    ctx.setTransform(pixels.scaleX, 0, 0, pixels.scaleY,
+      -left * pixels.scaleX, -top * pixels.scaleY);
     for (const item of strokes) {
       if (item.hidden || !item.points?.length) continue;
       const weight = item.weight ?? 3, pad = weight / 2;
