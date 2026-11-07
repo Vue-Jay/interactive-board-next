@@ -12,15 +12,22 @@ type InkSpan={
 export type InkSpatialIndex={
   spans:InkSpan[];
   maxRightPrefix:number[];
+  longSpans:InkSpan[];
 };
 
 export function indexInkStrokes(strokes:readonly Item[]):InkSpatialIndex{
   const spans:InkSpan[]=[];
+  const longSpans:InkSpan[]=[];
   strokes.forEach((item,order)=>{
     if(item.hidden||!item.points?.length)return;
     const pad=(item.weight??3)/2;
-    spans.push({item,order,left:item.x-pad,right:item.x+item.width+pad,
-      top:item.y-pad,bottom:item.y+item.height+pad});
+    const span={item,order,left:item.x-pad,right:item.x+item.width+pad,
+      top:item.y-pad,bottom:item.y+item.height+pad};
+    // A single kilometer-wide stroke can keep prefix maxima high and force
+    // a full scan of ALL earlier x intervals on every pan. Test rare long
+    // strokes independently; regular handwriting retains logarithmic lookup.
+    if(span.right-span.left>2048)longSpans.push(span);
+    else spans.push(span);
   });
   spans.sort((a,b)=>a.left-b.left||a.order-b.order);
   let furthest=-Infinity;
@@ -28,7 +35,7 @@ export function indexInkStrokes(strokes:readonly Item[]):InkSpatialIndex{
     furthest=Math.max(furthest,span.right);
     return furthest;
   });
-  return {spans,maxRightPrefix};
+  return {spans,maxRightPrefix,longSpans};
 }
 
 /** Same inclusion semantics as the previous Canvas bounding-box checks.
@@ -36,7 +43,7 @@ export function indexInkStrokes(strokes:readonly Item[]):InkSpatialIndex{
 export function queryInkStrokes(index:InkSpatialIndex,left:number,top:number,
   right:number,bottom:number):Item[]{
   if(right<=left||bottom<=top)return [];
-  const {spans,maxRightPrefix}=index;
+  const {spans,maxRightPrefix,longSpans}=index;
   let lo=0,hi=spans.length;
   // First interval whose left edge exceeds the visible right boundary.
   while(lo<hi){
@@ -48,6 +55,10 @@ export function queryInkStrokes(index:InkSpatialIndex,left:number,top:number,
   for(let i=lo-1;i>=0&&maxRightPrefix[i]>=left;i--){
     const span=spans[i];
     if(span.right<left||span.bottom<top||span.top>bottom)continue;
+    hits.push(span);
+  }
+  for(const span of longSpans){
+    if(span.left>right||span.right<left||span.bottom<top||span.top>bottom)continue;
     hits.push(span);
   }
   hits.sort((a,b)=>a.order-b.order);
