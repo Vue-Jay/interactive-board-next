@@ -134,7 +134,8 @@ import { documentFingerprint, sharedBoardFingerprint, isOwnRemoteRevision, remot
 import {mergeEditedValue,editorDiff,applyEditorOps} from "./lektrusLiveEditorMerge";
 import {labLiveEditorDiff,applyLabLivePreview} from "./lektrusLabLiveSync";
 import {labSimulationCheckpointDelayMs} from "./lektrusLabPersistence";
-import {mergeBoardDocumentEdits} from "./lektrusBoardThreeWayMerge";
+import {mergeBoardDocumentEdits,mergeBoardItems} from "./lektrusBoardThreeWayMerge";
+import {stampNewBoardItemAuthors,canRemoveBoardItem,blockedBoardItemRemovals,isLockableBoardItem} from "./lektrusBoardObjectAuth";
 import {
   parseDocument,
   packDocumentInk,
@@ -1110,7 +1111,7 @@ function prettyGraphEquation(expression:string):string{
     .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
 }
 
-function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onSnapChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, onLabBenchChange, onMatchingSize, onOpenEditor, onToggleConstruction, constructionActive=false, suspendPeriodicWindows, onPhysicalPartMove, onPhysicalPartPreview }: {
+function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onSnapChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, studentMode=false, onLabBenchChange, onMatchingSize, onOpenEditor, onToggleConstruction, constructionActive=false, suspendPeriodicWindows, onPhysicalPartMove, onPhysicalPartPreview }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onPointMoveEnd?: (index:number,x:number,y:number)=>void;
@@ -1127,6 +1128,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   onPeriodicChange?: (selected:number[])=>void;
   onPeriodicLayoutChange?: (layout:"school"|"long")=>void;
   onSchoolDiagramChange?: (diagram:import("./lektrusSchoolDiagramModel").SchoolDiagram)=>void;
+  studentMode?:boolean;
   onLabBenchChange?: (bench:LabBench,simulationOnly?:boolean)=>void;
   onMatchingSize?: (width:number,height:number)=>void;
   onOpenEditor?: ()=>void;
@@ -1178,7 +1180,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
       onOpenEditor={onOpenEditor} onMoveEnd={onPhysicalPartMove} onMovePreview={onPhysicalPartPreview}/>;
   if(item.graphFigureId==="lektrus-chart")return <LektrusDataChartView item={item}/>;
   if(isSchoolDiagramId(item.graphFigureId)&&isSchoolDiagram(item.schoolDiagram))
-    return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram} onChange={onSchoolDiagramChange} onMatchingSize={onMatchingSize}/></div>;
+    return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram} onChange={onSchoolDiagramChange} studentMode={studentMode} onMatchingSize={onMatchingSize}/></div>;
   if(item.graphFigureId?.startsWith("chem-organic-"))return <div className="graph-view lektrus-organic-on-board"><LektrusOrganicView item={item}/></div>;
   if(isChemicalIllustration(item))return <div className="graph-view lektrus-chemical-illustration">
     <LektrusChemistryIllustration item={item} onBenchChange={onLabBenchChange} onOpenEditor={onOpenEditor}/>
@@ -2091,12 +2093,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     isAppAdmin,adminMaintenance,isGuest:authUser.isGuest===true
   });
   const {canEdit,isStudent,canManageBoard,canCreateAssignments}=roleCapabilities;
+  const isBoardOwner=boardSummary.role==="owner"&&boardSummary.ownerId===authUser.id;
   const adminHidden = isAppAdmin && adminInvisible;
   const toolAllowedForRole = (id:Tool) => canUseBoardCreationTool(id,roleCapabilities);
   const structurallyLockedForStudent = (item:Item|undefined|null) =>
     !!item&&isStudentProtectedBoardObject(item.kind,roleCapabilities);
   const canTransformBoardObject=(item:Item|null|undefined)=>
-    !!item&&!item.locked&&canTransformStudentBoardObject(item.kind,roleCapabilities);
+    !!item&&(!isLockableBoardItem(item)||!item.locked)&&canTransformStudentBoardObject(item.kind,roleCapabilities);
   const studentSelectionHasProtected = () => isStudent && selected.some(id=>structurallyLockedForStudent(itemsRef.current.find(item=>item.id===id)));
   const rejectStudentStructuralEdit = () => {
     if(!studentSelectionHasProtected()) return false;
@@ -2640,6 +2643,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const viewSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastViewSerialized = useRef<string | null>(null);
   const [items, setItems] = useState<Item[]>(() => expandDocumentInk(initial.data));
+  // A peer ink preview arrives independently of the server document. Avoid
+  // scanning the entire board once per preview stroke (previously O(ink*items)
+  // in JSX). Rebuild the ID index only when persisted items actually change.
+  const persistedItemIds=useMemo(()=>new Set(items.map(item=>item.id)),[items]);
+  const uncommittedRemoteInk=useMemo(
+    ()=>Object.values(remoteInk).filter(ink=>!persistedItemIds.has(ink.id)),
+    [remoteInk,persistedItemIds],
+  );
   // Realtime broadcasts are untrusted display-only previews until the sender
   // persists the change through the board's RLS-protected server RPC.
   const [remoteLiveItems,setRemoteLiveItems]=useState<Record<string,Item>>({});
@@ -2927,7 +2938,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if (layoutEditing || !isRemoteBackendEnabled() || !canEdit || !boardMounted.current || pendingRemote.current) return;
     const fingerprint = knownFingerprint ?? documentFingerprint(data);
     if (fingerprint === acknowledgedDocument.current ||
-        sharedBoardFingerprint(data)===acknowledgedSharedContent.current) return;
+        fingerprint === acknowledgedSharedContent.current) return;
     if (remoteSaveInFlight.current) {
       queuedRemoteSnapshot.current = data;
       return;
@@ -2962,7 +2973,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       }
       remoteVersion.current = result.version;
       acknowledgedDocument.current = fingerprint;
-      acknowledgedSharedContent.current = sharedBoardFingerprint(data);
+      // The shared fingerprint is identical: the personal viewport is omitted.
+      // Reusing this hash avoids a second full document traversal per save.
+      acknowledgedSharedContent.current = fingerprint;
       acknowledgedBoardData.current = data;
       // A newer local edit may already be queued. Never clear its pending flag
       // merely because the previous remote revision finished.
@@ -3043,7 +3056,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       if (isRemoteBackendEnabled() && pendingRemote.current) return;
       if(isRemoteBackendEnabled() && (
         fingerprint === acknowledgedDocument.current ||
-        sharedBoardFingerprint(data)===acknowledgedSharedContent.current
+        fingerprint === acknowledgedSharedContent.current
       )){
         try{localStorage.removeItem(storageKey+".pending-sync")}catch{}
         setSaveStatus("Сохранено на сервере");
@@ -3229,6 +3242,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
   const restoreHistoryVersion=async(entry:BoardHistoryEntry)=>{
     if(!canEdit){setNotice("У вас доступ только для просмотра");return}
+    if(isStudent&&!isBoardOwner){setNotice("Восстановление всей доски доступно только владельцу или преподавателю");return}
     if(!window.confirm(`Восстановить версию №${entry.version}? Текущее состояние останется в истории после следующего сохранения.`))return;
     setHistoryBusy(true);setHistoryError("");
     try{
@@ -3328,7 +3342,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     const right=(rect.width-view.x)/z,bottom=(rect.height-view.y)/z;
     ctx.setTransform(ratio*z,0,0,ratio*z,ratio*view.x,ratio*view.y);
     for(const item of itemsRef.current){
-      if((item.kind!=="pen"&&item.kind!=="marker")||item.hidden||item.locked||!item.points?.length)continue;
+      if((item.kind!=="pen"&&item.kind!=="marker")||item.hidden||!item.points?.length)continue;
       const pad=(item.weight??3)/2;
       if(item.x+item.width+pad<left||item.x-pad>right||item.y+item.height+pad<top||item.y-pad>bottom)continue;
       ctx.save();
@@ -3400,7 +3414,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     eraserSession.current=null;
     // The model is changed once per gesture, as one undo/history operation.
     const before=itemsRef.current;
-    const next=eraseInkAlongPath(before,g.path,eraserSize/2/g.zoom);
+    const next=eraseInkAlongPath(before,g.path,eraserSize/2/g.zoom,
+      item=>canRemoveBoardItem(item,authUser.id,isStudent,isBoardOwner));
     if(next!==before){
       // Keep the canvas preview until the actual SVG fragments have painted.
       flushSync(()=>{
@@ -3429,6 +3444,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       : itemsRef.current,
   });
   const applyDocument = (data: DocumentData, fromRemote = false) => {
+    if(!fromRemote&&isStudent&&!isBoardOwner){
+      setNotice("Замена всей доски доступна только преподавателю");
+      return;
+    }
     end(true);
     if (saveTimer.current) clearTimeout(saveTimer.current);
     setEditing(null);
@@ -3450,6 +3469,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
   const importBoard = async (file: File) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
+    if (isStudent&&!isBoardOwner) { setNotice("Импорт с заменой доски доступен только владельцу или преподавателю"); return; }
     try {
       if (file.size > 120 * 1024 * 1024) throw new Error("Файл больше 120 МБ");
       const raw = await file.text();
@@ -3525,7 +3545,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
   const commit = (next: Item[], options?:{labSimulation?:boolean}) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
-    const normalized = syncBoundConnectors(next);
+    const current=itemsRef.current;
+    // Central destructive-action gate covers keyboard, toolbar, eraser,
+    // selected instruments and other paths that do not call deleteSelected().
+    const blocked=blockedBoardItemRemovals(current,next,authUser.id,isStudent,isBoardOwner);
+    if(blocked.length){
+      setNotice("Нельзя удалить чужую работу или задание преподавателя");
+      return;
+    }
+    const normalized = stampNewBoardItemAuthors(current,syncBoundConnectors(next),authUser.id);
     // Most drawing gestures only add/remove strokes. Compare identities first,
     // and serialize only genuinely changed items instead of megabytes of ink.
     const baseline = history.current[index.current];
@@ -3584,11 +3612,20 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setEditing(item.id);
   };
   const undo = (direction: number) => {
-    if (gesture.current) return;
+    if (gesture.current || !canEdit) return;
     const next = index.current + direction;
     if (next < 0 || next >= history.current.length) return;
+    // History snapshots describe our change, not a license to replace the
+    // entire present-day board. Rebase the inverse/redo over live remote items.
+    const rebased=mergeBoardItems(
+      history.current[index.current],history.current[next],itemsRef.current);
+    if(blockedBoardItemRemovals(itemsRef.current,rebased,authUser.id,isStudent,isBoardOwner).length){
+      setNotice("Отмена не может удалить чужую работу");return;
+    }
     index.current = next;
-    display(history.current[next]);
+    display(rebased);
+    if(snapshot.current&&!saveBlocked)
+      snapshot.current=packDocumentInk({...snapshot.current,items:rebased});
     setSelected([]);
   };
   const local = (x: number, y: number): Point => {
@@ -5064,7 +5101,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const selectedItems = useMemo(() => selected.map((id) => itemById.get(id)).filter((item): item is Item => Boolean(item)), [selected, itemById]);
   const singleSelected = selectedItems.length === 1 ? selectedItems[0] : null;
   const selectionBounds = useMemo(() => boundsOf(selectedItems), [selectedItems]);
-  const selectionLocked = useMemo(() => selectedItems.some((item) => item.locked), [selectedItems]);
+  const selectionLocked = useMemo(() => selectedItems.some((item) => isLockableBoardItem(item)&&item.locked), [selectedItems]);
   const selectionHasGroup = useMemo(() => selectedItems.some((item) => item.groupId), [selectedItems]);
   const selectionScreenBounds = selectionBounds ? {
     left: selectionBounds.x * view.zoom + view.x,
@@ -5415,19 +5452,21 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
 
   const deleteSelected = () => { 
-    if(isStudent && selected.some(id=>structurallyLockedForStudent(itemsRef.current.find(item=>item.id===id)))){
-      setNotice("Ученик может выполнять задание, но не изменять его конструкцию");
-      return;
-    }
     if (!selected.length) return;
-    const lockedIds = new Set(itemsRef.current.filter((item) => selected.includes(item.id) && item.locked).map((item) => item.id));
-    const deletable = selected.filter((id) => !lockedIds.has(id));
+    const lockedIds = new Set(itemsRef.current.filter((item) => !isBoardOwner&&selected.includes(item.id) &&
+      isLockableBoardItem(item)&&item.locked).map((item) => item.id));
+    const foreignIds = new Set(itemsRef.current.filter(item=>selected.includes(item.id)&&
+      !canRemoveBoardItem(item,authUser.id,isStudent,isBoardOwner)).map(item=>item.id));
+    const deletable = selected.filter((id) => !lockedIds.has(id)&&!foreignIds.has(id));
+    if(foreignIds.size)setNotice("Чужие объекты и задания сохранены; штрихи можно удалять независимо от автора");
     if (!deletable.length) {
-      setNotice("Сначала разблокируйте выбранные объекты");
+      setNotice(foreignIds.size?
+        "Чужую работу и задания преподавателя удалять нельзя":
+        "Сначала разблокируйте выбранные объекты");
       return;
     }
     commit(itemsRef.current.filter((item) => !deletable.includes(item.id)));
-    setSelected(selected.filter((id) => lockedIds.has(id)));
+    setSelected(selected.filter((id) => lockedIds.has(id)||foreignIds.has(id)));
   };
 
   const moveLayer = (front: boolean) => {
@@ -5482,8 +5521,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const toggleLockSelected = () => {
     if (rejectStudentStructuralEdit()) return;
     if (!selected.length) return;
-    const shouldLock = selectedItems.some((item) => !item.locked);
-    commit(itemsRef.current.map((item) => selected.includes(item.id) ? { ...item, locked: shouldLock } : item));
+    const lockable=selectedItems.filter(isLockableBoardItem);
+    if(!lockable.length){setNotice("Штрихи пера и маркера нельзя блокировать");return;}
+    const shouldLock = lockable.some((item) => !item.locked);
+    commit(itemsRef.current.map((item) => selected.includes(item.id)&&isLockableBoardItem(item) ? { ...item, locked: shouldLock } : item));
     setNotice(shouldLock ? "Объекты заблокированы" : "Объекты разблокированы");
   };
 
@@ -6759,6 +6800,16 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // ink remains a real DOM object for handles, moving and rotating. The
   // separate geometric hit test resolves clicks on canvas strokes.
   // Runs are separated by ordinary objects, preserving their z-order.
+  // Selecting a text box, image or subject widget must not invalidate the
+  // cached Canvas for thousands of unrelated strokes. Only the small set of
+  // selected *ink* that moves into DOM editing handles affects layer grouping.
+  const selectedInkKey=useMemo(() => selectedIds.size>24 ? "" :
+    [...selectedIds].filter(id=>{
+      const candidate=itemById.get(id);
+      return candidate && isInkItem(candidate) && !!candidate.points?.length;
+    }).sort().join("\u0000"),[selectedIds,itemById]);
+  const detailedInkIds=useMemo(() =>
+    new Set(selectedInkKey ? selectedInkKey.split("\u0000") : []),[selectedInkKey]);
   const inkLayers = useMemo(() => {
     type Layer =
       | { kind: "ink"; key: string; strokes: Item[]; bounds: Bounds }
@@ -6773,15 +6824,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     };
     // A few selected strokes may show their editing handles individually.
     // Large lasso selections remain batched to avoid thousands of DOM nodes.
-    const detailedInkSelection = selectedIds.size <= 24;
     for (const item of visibleItems) {
       if (isInkItem(item) && item.points?.length &&
-          !(detailedInkSelection && selectedIds.has(item.id))) run.push(item);
+          !detailedInkIds.has(item.id)) run.push(item);
       else { flush(); layers.push({ kind: "item", key: item.id, item }); }
     }
     flush();
     return layers;
-  }, [visibleItems, selectedIds]);
+  }, [visibleItems, detailedInkIds]);
   const renderEntries = useMemo(() => {
     // Wait for ResizeObserver before mounting a heavy board. Without viewport
     // dimensions the old renderer mounted every single object at startup.
@@ -6996,20 +7046,23 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setNotice("Интерактивные задания текущего слайда сброшены");
   };
 
-  const applyServerDocument = (row: RemoteBoardDocument) => {
-    const data = parseDocument(JSON.stringify(row.document));
+  const applyServerDocument = (row: RemoteBoardDocument, prepared?: DocumentData) => {
+    // Reuse the already validated incoming document. Parsing the same full
+    // Realtime record twice doubles JSON allocations and document validation.
+    const data = prepared ?? parseDocument(JSON.stringify(row.document));
     // Normalize connector positions before setting the clean baseline.
     data.items = syncBoundConnectors(data.items);
     // Background-only revisions must not reset the active pen, zoom, current
     // selection or object editor on a student device. They are shared document
     // data, but not drawing gestures.
     const localDoc=currentDocument();
+    const incomingFingerprint=documentFingerprint(data);
     const onlyBackgroundChanged=
-      sharedBoardFingerprint({...localDoc,background:data.background})===sharedBoardFingerprint(data) &&
+      sharedBoardFingerprint({...localDoc,background:data.background})===incomingFingerprint &&
       JSON.stringify(localDoc.background)!==JSON.stringify(data.background);
     remoteVersion.current = row.version;
-    acknowledgedDocument.current = documentFingerprint(data);
-    acknowledgedSharedContent.current = sharedBoardFingerprint(data);
+    acknowledgedDocument.current = incomingFingerprint;
+    acknowledgedSharedContent.current = incomingFingerprint;
     acknowledgedBoardData.current = data;
     pendingRemote.current = null;
     queuedRemoteSnapshot.current = null;
@@ -7051,15 +7104,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         deferredRemote.current = row;
       return;
     }
-    const busy = !!(editing || tableEditorId || checklistEditorId || quizEditorId || flashcardEditorId || formulaEditorId || frameNotesEditorId);
-    const dirty = canEdit && (busy ||
-      sharedBoardFingerprint(currentDocument()) !== acknowledgedSharedContent.current);
-    const decision = remoteUpdateDecision(remoteVersion.current, row.version, remoteSaveInFlight.current, dirty || !!pendingRemote.current);
-    if (decision === "ignore") return;
-    if (decision === "defer") {
+    // Most live notifications echo a revision that the RPC has already ACKed.
+    // Reject stale/own versions and defer in-flight saves BEFORE calculating a
+    // full-board fingerprint or reconstructing its entire ink collection.
+    const preliminary = remoteUpdateDecision(remoteVersion.current, row.version, remoteSaveInFlight.current, false);
+    if (preliminary === "ignore") return;
+    if (preliminary === "defer") {
       if (!deferredRemote.current || row.version > deferredRemote.current.version) deferredRemote.current = row;
       return;
     }
+    const busy = !!(editing || tableEditorId || checklistEditorId || quizEditorId || flashcardEditorId || formulaEditorId || frameNotesEditorId);
+    const dirty = canEdit && (busy ||
+      sharedBoardFingerprint(currentDocument()) !== acknowledgedSharedContent.current);
+    const decision = dirty || !!pendingRemote.current ? "conflict" : "apply";
     try {
       const data = parseDocument(JSON.stringify(row.document));
       if (isOwnRemoteRevision(row, authUser.id, lastAttempt.current)) {
@@ -7071,10 +7128,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       }
       // A different viewport is not new shared board content. Accept the
       // version without resetting selected objects, active tool or ink layers.
+      // Compute the validated remote fingerprint once for the clean/merge paths.
+      const remoteFingerprint=documentFingerprint(data);
       if (decision === "apply" &&
-          sharedBoardFingerprint(data) === acknowledgedSharedContent.current) {
+          remoteFingerprint === acknowledgedSharedContent.current) {
         remoteVersion.current = row.version;
-        acknowledgedDocument.current = documentFingerprint(data);
+        acknowledgedDocument.current = remoteFingerprint;
         return;
       }
       if (decision === "conflict") {
@@ -7091,8 +7150,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           if(pendingEditorBases.current.has(item.id))pendingEditorBases.current.set(item.id,item);
 
         remoteVersion.current = row.version;
-        acknowledgedDocument.current = documentFingerprint(remote);
-        acknowledgedSharedContent.current = sharedBoardFingerprint(remote);
+        acknowledgedDocument.current = remoteFingerprint;
+        acknowledgedSharedContent.current = remoteFingerprint;
         acknowledgedBoardData.current = remote;
         pendingRemote.current = null;
         setRemoteConflict(null);
@@ -7115,7 +7174,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         window.setTimeout(()=>{if(boardMounted.current)void pushRemoteSnapshot(snapshot.current??merged)},0);
         return;
       }
-      applyServerDocument(row);
+      applyServerDocument(row, data);
     } catch { setNotice("Не удалось прочитать новую серверную версию. Ваши изменения сохранены на доске."); }
   };
   useEffect(() => layoutEditing?()=>{}:subscribeBoardDocument(boardSummary.id, row => receiveRemote.current(row), setRealtimeStatus), [boardSummary.id,layoutEditing]);
@@ -7985,19 +8044,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     >
                       <Icon name={familyHidden ? "eye-off" : "eye"} size={15} />
                     </button>
-                    <button
+                    {family.some(isLockableBoardItem)&&<button
                       className={`layer-lock ${item.locked ? "active" : ""}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         const ids = new Set(family.map((candidate) => candidate.id));
-                        const shouldLock = family.some((candidate) => !candidate.locked);
-                        commit(itemsRef.current.map((candidate) => ids.has(candidate.id) ? { ...candidate, locked: shouldLock } : candidate));
+                        const shouldLock = family.some((candidate) => isLockableBoardItem(candidate)&&!candidate.locked);
+                        commit(itemsRef.current.map((candidate) => ids.has(candidate.id)&&isLockableBoardItem(candidate) ? { ...candidate, locked: shouldLock } : candidate));
                       }}
                       title={item.locked ? "Разблокировать" : "Заблокировать"}
                       aria-label={item.locked ? "Разблокировать объект" : "Заблокировать объект"}
                     >
                       <Icon name={item.locked ? "lock" : "unlock"} size={15} />
-                    </button>
+                    </button>}
                   </div>
                 );
               })}
@@ -9224,10 +9283,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             className="geometry-instrument-viewport-layer" aria-label="Измерительные инструменты" />
           <div ref={fastPanOverlay} className="remote-cursors-layer" aria-hidden="true" style={{transformOrigin:"0 0"}}>
             <svg className="remote-live-ink-layer" width="100%" height="100%" style={{position:"absolute",inset:0,overflow:"hidden",pointerEvents:"none"}}>
-              {Object.values(remoteInk).filter(ink => !items.some(item => item.id === ink.id)).map(ink => (
+              {uncommittedRemoteInk.map(ink => (
                 ink.points.length === 1
-                  ? <circle key={ink.clientId} cx={ink.points[0].x*view.zoom+view.x} cy={ink.points[0].y*view.zoom+view.y} r={Math.max(0.5,ink.weight*view.zoom/2)} fill={ink.color} opacity={ink.kind==="marker"?0.32:1}/>
-                  : <polyline key={ink.clientId} points={ink.points.map(point => `${point.x*view.zoom+view.x},${point.y*view.zoom+view.y}`).join(" ")} fill="none" stroke={ink.color} strokeWidth={ink.weight*view.zoom} strokeLinecap="round" strokeLinejoin="round" opacity={ink.kind==="marker"?0.32:1}/>
+                  ? <circle key={ink.id} cx={ink.points[0].x*view.zoom+view.x} cy={ink.points[0].y*view.zoom+view.y} r={Math.max(0.5,ink.weight*view.zoom/2)} fill={ink.color} opacity={ink.kind==="marker"?0.32:1}/>
+                  : <polyline key={ink.id} points={ink.points.map(point => `${point.x*view.zoom+view.x},${point.y*view.zoom+view.y}`).join(" ")} fill="none" stroke={ink.color} strokeWidth={ink.weight*view.zoom} strokeLinecap="round" strokeLinejoin="round" opacity={ink.kind==="marker"?0.32:1}/>
               ))}
             </svg>
             {Object.values(remoteCursors).map((cursor) => <div
@@ -9421,7 +9480,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                    .map((value,index)=>({id:value.id,title:
                      (value.text||"Химическая доска")+" · "+(index+1)}))}
                   onCollect={destinationId=>collectChemistryObject(item.id,destinationId)}/>}
-                {item.kind === "graph" && !isSubjectBoard(item) && <GraphView item={item}
+                {item.kind === "graph" && !isSubjectBoard(item) && <GraphView item={item} studentMode={isStudent}
                   onLabBenchChange={canEdit&&!item.locked&&!presentation&&!space&&
                     // Only the full-screen editor advances this laboratory
                     // while it is open; the background preview is read-only.
@@ -9921,7 +9980,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
               <span className="selection-toolbar-separator" />
               <button type="button" className="icon-action" onClick={duplicateSelected} title="Дублировать · Ctrl+D"><Icon name="duplicate" size={16} /></button>
-              <button type="button" className="icon-action" onClick={toggleLockSelected} disabled={structurallyLockedForStudent(singleSelected)} title={structurallyLockedForStudent(singleSelected)?"Доступно преподавателю":selectionLocked ? "Разблокировать" : "Заблокировать"}><Icon name={selectionLocked ? "unlock" : "lock"} size={16} /></button>
+              {selectedItems.some(isLockableBoardItem)&&<button type="button" className="icon-action" onClick={toggleLockSelected} disabled={structurallyLockedForStudent(singleSelected)} title={structurallyLockedForStudent(singleSelected)?"Доступно преподавателю":selectionLocked ? "Разблокировать" : "Заблокировать"}><Icon name={selectionLocked ? "unlock" : "lock"} size={16} /></button>}
               {singleSelected?.kind !== "connector" && (
                 <>
                   <button type="button" className="icon-action" disabled={selectionLocked} onClick={() => rotateSelected(-90)} title="Повернуть на 90° влево · Alt+←"><Icon name="rotate-left" size={16} /></button>
@@ -10089,7 +10148,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   {selectionHasGroup && !selectionLocked && (
                     <button onClick={() => { ungroupSelected(); setContextMenu(null); }}>Разгруппировать <span>Ctrl+Shift+G</span></button>
                   )}
-                  <button disabled={studentSelectionHasProtected()} onClick={() => { toggleLockSelected(); setContextMenu(null); }}>{selectionLocked ? "Разблокировать" : "Заблокировать"}</button>
+                  {selectedItems.some(isLockableBoardItem)&&<button disabled={studentSelectionHasProtected()} onClick={() => { toggleLockSelected(); setContextMenu(null); }}>{selectionLocked ? "Разблокировать" : "Заблокировать"}</button>}
                   <div className="context-separator" />
                   <button disabled={selectionLocked||studentSelectionHasProtected()} onClick={() => { moveLayerStep(true); setContextMenu(null); }}>На слой вперёд <span>Ctrl+]</span></button>
                   <button disabled={selectionLocked||studentSelectionHasProtected()} onClick={() => { moveLayerStep(false); setContextMenu(null); }}>На слой назад <span>Ctrl+[</span></button>

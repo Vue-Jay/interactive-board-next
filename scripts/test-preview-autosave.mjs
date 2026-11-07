@@ -11,6 +11,20 @@ const save = app.slice(saveStart, saveEnd);
 // The board RPC must happen BEFORE the preview is queued, with no rendering await.
 assert.equal(save.includes("await renderBoardPreview("), false);
 assert.ok(save.includes("await ensureBoardAssets("));
+
+// Full documents can exceed 1 MiB: never traverse the same immutable snapshot
+// twice merely to compare two aliases of the viewport-independent fingerprint.
+assert.match(save,/acknowledgedSharedContent\.current = fingerprint;/,
+  "A successful save must reuse the already computed fingerprint");
+assert.doesNotMatch(save,/sharedBoardFingerprint\(data\)/,
+  "Do not hash the same complete document again inside autosave");
+const flushEnd=app.indexOf("// A gesture is saved only when completed;",saveEnd);
+assert.ok(flushEnd>saveEnd);
+const flush=app.slice(saveEnd,flushEnd);
+assert.match(flush,/fingerprint === acknowledgedSharedContent\.current/,
+  "The local flush should reuse its fingerprint for both ACK checks");
+assert.doesNotMatch(flush,/sharedBoardFingerprint\(data\)/);
+
 assert.ok(save.includes("saveRemoteBoardDocument)("));
 assert.ok(save.indexOf("setSaveStatus(\"Сохранено на сервере\")") <
   save.indexOf("scheduleBackgroundBoardPreview("));

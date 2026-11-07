@@ -42,9 +42,12 @@ for (const kind of ["pen", "marker"]) {
   assert.equal(eraseInkAlongPath(cut, [point(2500, 0)], 10).length, 2,
     kind + ": erasing the gap again must not remove the remaining halves");
 }
+// An obsolete locked flag in old ink must not make a stroke unerasable.
 const locked = { ...stroke(), locked: true };
-assert.equal(eraseInkAlongPath([locked], [point(2500, 0)], 10)[0], locked,
-  "locked strokes must remain unchanged");
+assert.equal(eraseInkAlongPath([locked], [point(2500, 0)], 10).length, 2,
+  "pen/marker strokes cannot be locked, even in older documents");
+assert.equal(eraseInkAlongPath([locked], [point(2500, 0)], 10,
+  () => false)[0], locked,"role-based eraser permission still preserves foreign ink");
 const untouched = stroke();
 const nearby = stroke();
 nearby.y = 100;
@@ -52,4 +55,4 @@ const cutWithUntouched = eraseInkAlongPath([untouched, nearby], [point(2500, 0)]
 assert.equal(cutWithUntouched.length, 3);
 assert.equal(cutWithUntouched[2], nearby, "other strokes must be preserved");
 
-console.log("Eraser regression tests passed: partial, crossed, long, full, repeated and locked strokes.");
+console.log("Eraser regression tests passed: partial, crossed, long, full, repeated, non-lockable and protected strokes.");

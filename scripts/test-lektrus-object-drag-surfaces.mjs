@@ -163,8 +163,12 @@ assert.ok(app.includes('data-board-gesture-owner={onPickPoint||onAddPoint?"true"
  "Freehand/geometry point editing must retain nested gesture ownership");
 assert.ok(app.includes('data-board-interactive="true"\n              stroke="transparent"'),
  "Moving a physics ray must not turn into moving the whole graph object");
-assert.match(geoSource,/onPointerDown=\{stop\} onPointerUp=\{stop\}/,
- "Geography must work even with its own bubbling cancellation");
+assert.match(geoSource,/onPointerDown=\{stopInteractive\} onPointerUp=\{stopInteractive\}/,
+ "Geography must preserve pointer capture while honoring interactive controls");
+assert.match(geoSource,/const stopInteractive=\(e:React\.SyntheticEvent\)=>\{/,
+ "Only real controls in the geography game should swallow bubbling");
+assert.match(geoSource,/target\.closest\("button,input,select,textarea,a,/,
+ "Non-clickable geography whitespace must remain a draggable board-object surface");
 assert.match(css,/\.lektrus-school-on-board \.lektrus-geo-game :is\(/);
 assert.match(scene,/data-board-drag-surface="true" aria-live="polite"/);
 assert.doesNotMatch(subject,/data-board-interactive="true" onPointerDown=\{stop\} onClick=\{stop\}/,

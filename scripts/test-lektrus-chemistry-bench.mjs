@@ -91,6 +91,60 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabMaterialConstants")return constants;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
+// Stable, immutable vessel snapshots are reused on every visual clock tick.
+// The same observation must not re-run the reaction-network solver or allocate
+// a fresh result when only the timer, selected pane or cursor has changed.
+{
+ const dosage={value:10,unit:"ml",concentrationM:0.1};
+ let mix=lab.putLabReagent(lab.defaultLabBench(),"v1","AgNO3",dosage);
+ mix=lab.putLabReagent(mix,"v1","NaCl",dosage);
+ const vessel=mix.vessels.find(v=>v.id==="v1");
+ assert.ok(vessel);
+ const original=lab.labObservation(vessel);
+ for(let i=0;i<100;i++)
+  assert.strictEqual(lab.labObservation(vessel),original,
+   "A stable vessel must reuse its exact chemical observation");
+ const revised={...vessel,temperatureC:(vessel.temperatureC??22)+1};
+ const fresh=lab.labObservation(revised);
+ assert.notStrictEqual(fresh,original,
+  "A new measured vessel state must invalidate the observation cache");
+ assert.deepEqual(lab.labObservation({...vessel}),original,
+  "Recomputation on an equivalent new snapshot must preserve the chemistry");
+ const start=performance.now();
+ for(let i=0;i<100;i++)lab.labObservation({...vessel});
+ const recalculatedMs=performance.now()-start;
+ const cachedStart=performance.now();
+ for(let i=0;i<100;i++)lab.labObservation(vessel);
+ const cachedMs=performance.now()-cachedStart;
+ console.log("Chemistry observation render ×100: fresh vessel references "+
+  recalculatedMs.toFixed(2)+"ms; stable reference "+cachedMs.toFixed(2)+
+  "ms (synthetic Node, not device FPS)");
+}
+
+// Stopwatch re-renders only vessels with active visual feedback, not every
+// unchanged glassware component in the experiment.
+{
+ const idle=lab.defaultLabBench().vessels[0];
+ const now=100_000;
+ assert.equal(lab.labVesselVisualClock(idle,now),undefined);
+ const recent={...idle,visualStartedAtMs:now-1000};
+ assert.equal(lab.labVesselVisualClock(recent,now),now);
+ assert.equal(lab.labVesselVisualClock(recent,now+8500),undefined);
+ assert.equal(lab.labVesselVisualClock({...idle,lastEvaporatedAtMs:now},now+500),now+500);
+ assert.equal(lab.labVesselVisualClock({...idle,indicatorAddedAtMs:now},now+300),now+300);
+ assert.equal(lab.labVesselVisualClock({...idle,physicalStartedAtMs:now},now+500),now+500);
+ assert.equal(lab.labVesselVisualClock({...idle,visualStartedAtMs:now+500},now),undefined,
+  "An event from the future must not animate early");
+ const samples=Array.from({length:6},(_,i)=>i===2?recent:{...idle,id:"idle-"+i});
+ const ticked=samples.filter(v=>lab.labVesselVisualClock(v,now)!==undefined);
+ assert.equal(ticked.length,1,
+  "One active vessel should be the only clock-driven rerender among six");
+ const surface=read("src/LektrusChemistryBench.tsx");
+ assert.ok(surface.includes("visualNowMs={labVesselVisualClock(v,clockNow)}"),
+  "Memoized vessel renderer must receive only per-vessel active frames");
+ assert.ok(!surface.includes("visualNowMs={clockNow}"));
+}
+
 // Detailed legacy physics assertions explicitly opt into high realism.
 const detailedBench=()=>{
  const bench=lab.defaultLabBench();

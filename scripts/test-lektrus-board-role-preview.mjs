@@ -34,7 +34,8 @@ for(const boardRole of boardRoles){
      const caps=boardRoleCapabilities(input);
      const expectedCanEdit=boardRole!=="viewer"||adminMaintenance;
      const student=preview==="student"||preview==="guest"||
-       preview==="actual"&&(guest||accountRole==="student"&&!adminMaintenance);
+       preview==="actual"&&boardRole!=="owner"&&
+        (guest||accountRole==="student"&&!adminMaintenance);
      assert.equal(caps.canEdit,expectedCanEdit,JSON.stringify(input)+" board membership stays authoritative");
      assert.equal(caps.isStudent,student,JSON.stringify(input)+" effective role");
      assert.equal(caps.effectiveRole,student?"student":"teacher");
@@ -43,7 +44,7 @@ for(const boardRole of boardRoles){
      assert.equal(caps.canCreateAssignments,expectedCanEdit&&!student);
      assert.equal(caps.canUseStudentTools,expectedCanEdit&&student);
      assert.equal(caps.canUseTeacherTools,expectedCanEdit&&!student);
-     assert.equal(caps.canManageBoard,expectedCanEdit&&!student&&boardRole==="owner"&&!guest);
+     assert.equal(caps.canManageBoard,expectedCanEdit&&!student&&boardRole==="owner");
      for(const tool of creations){
       const denied=STUDENT_BLOCKED_CREATE_TOOLS.includes(tool);
       const navigation=["select","hand","lasso"].includes(tool);
@@ -64,6 +65,13 @@ for(const boardRole of boardRoles){
 assert.deepEqual(STUDENT_BLOCKED_CREATE_TOOLS,STUDENT_PROTECTED_OBJECT_KINDS,
  "teacher-only creation and protected structure use one matrix");
 
+// Real board ownership outranks the signup category and grants full tools.
+for(const accountRole of ["teacher","student"])for(const isGuest of [false,true]){
+ const owner=boardRoleCapabilities({preview:"actual",boardRole:"owner",
+  accountRole,isGuest,isAppAdmin:false,adminMaintenance:false});
+ assert.ok(owner.canManageBoard&&owner.canCreateAssignments&&owner.canUseTeacherTools);
+ assert.equal(owner.isStudent,false);
+}
 // A simulated guest must have exactly the same functionality as a student.
 for(const boardRole of boardRoles)for(const accountRole of accountRoles){
  const common={boardRole,accountRole,isAppAdmin:true,adminMaintenance:false,isGuest:false};
@@ -134,8 +142,46 @@ assert.deepEqual(guarded.contourMarks,changed.contourMarks);
 assert.deepEqual(guarded.paintedCountries,changed.paintedCountries);
 assert.equal(restrictStudentDiagramChange({...contour,title:"Географические карты"},changed),null);
 assert.equal(restrictStudentDiagramChange({kind:"flowchart"},{kind:"flowchart"}),null);
-assert.deepEqual(restrictStudentDiagramChange({kind:"syntax",words:[]},
- {kind:"syntax",words:[{id:"1"}]}),{kind:"syntax",words:[{id:"1"}]});
+const syntax={kind:"syntax",title:"Найдите подлежащее",showMarks:true,words:[
+ {id:"w1",text:"Мама",role:"none"},{id:"w2",text:"читает",role:"none"}]};
+const annotated={...syntax,words:[
+ {...syntax.words[0],role:"subject"},{...syntax.words[1],role:"predicate"}]};
+assert.deepEqual(restrictStudentDiagramChange(syntax,annotated),annotated,
+ "students must still annotate teacher sentences");
+assert.equal(restrictStudentDiagramChange(syntax,
+ {...annotated,words:[{...annotated.words[0],text:"Подмена"},annotated.words[1]]}),null,
+ "students cannot replace words in teacher's exercise");
+assert.equal(restrictStudentDiagramChange(syntax,
+ {...annotated,words:[annotated.words[1],annotated.words[0]]}),null,
+ "students cannot reorder or relabel teacher's word IDs");
+assert.equal(restrictStudentDiagramChange(syntax,
+ {...annotated,words:[...annotated.words,{id:"extra",text:"слово",role:"none"}]}),null,
+ "students cannot add teacher words");
+assert.equal(restrictStudentDiagramChange(syntax,
+ {...annotated,words:[{...annotated.words[0],role:"invented"},annotated.words[1]]}),null,
+ "students cannot forge role IDs");
+const falseTitle=restrictStudentDiagramChange(syntax,
+ {...annotated,title:"Исправленный мною заголовок",showMarks:false});
+assert.equal(falseTitle.title,syntax.title);
+assert.equal(falseTitle.showMarks,syntax.showMarks);
+const digits={kind:"place-value",title:"Разрядная таблица",base:2,digits:"",showPowers:true};
+assert.deepEqual(restrictStudentDiagramChange(digits,
+ {...digits,digits:"101",base:16,title:"Новый заголовок",showPowers:false}),
+ {...digits,digits:"101"},"pupil may type valid digits, not change number base");
+assert.equal(restrictStudentDiagramChange(digits,{...digits,digits:"102"}),null,
+ "invalid base-2 digits must be rejected");
+assert.equal(restrictStudentDiagramChange(digits,{...digits,digits:"1".repeat(11)}),null,
+ "pupil answer has a hard length limit");
+assert.equal(restrictStudentDiagramChange({kind:"morphology",title:"Имя",rows:[]},
+ {kind:"morphology",title:"Подмена",rows:[]}),null,
+ "teacher morphology definition cannot be modified as pupil response");
+assert.equal(restrictStudentDiagramChange({kind:"phonetics",title:"Звуки",letters:[]},
+ {kind:"phonetics",title:"Подмена",letters:[]}),null);
+assert.equal(restrictStudentDiagramChange({kind:"orthography",title:"Правило",questions:[]},
+ {kind:"orthography",title:"Подмена",questions:[]}),null);
+assert.equal(restrictStudentDiagramChange({kind:"sentence-builder",title:"Phrase",parts:[]},
+ {kind:"sentence-builder",title:"Подмена",parts:[]}),null,
+ "foreign language source is immutable; pupil sorting is local state");
 
 const app=read("src/App.tsx"),css=read("src/App.css"),model=read("src/boardStore.ts");
 for(const [path,code] of [["src/App.tsx",app],["src/lektrusBoardRolePreview.ts",source]]){
@@ -157,6 +203,34 @@ assert.match(app,/canUseBoardCreationTool\(id,roleCapabilities\)/,"single creati
 assert.match(app,/isStudentProtectedBoardObject\(item.kind,roleCapabilities\)/,
  "single protected-object policy");
 assert.match(app,/onSchoolDiagramChange=\{canEdit/,"on-board teaching answers gated");
+
+const graphView=read("src/LektrusSchoolDiagramView.tsx");
+const nextView=read("src/LektrusNextSchoolView.tsx");
+const russianView=read("src/LektrusRussianSchoolView.tsx");
+const foreignView=read("src/LektrusLanguageSocialView.tsx");
+assert.match(app,/<GraphView item=\{item\} studentMode=\{isStudent\}/,
+ "actual board role is passed into on-board school diagram controls");
+assert.match(graphView,/<LektrusNextSchoolView diagram=\{diagram\} onChange=\{onChange\} studentMode=\{studentMode\}/,
+ "syntax and numeric practice receive pupil mode");
+assert.match(graphView,/<LektrusRussianSchoolView diagram=\{diagram\} onChange=\{onChange\} studentMode=\{studentMode\}/,
+ "Russian school controls receive pupil mode");
+assert.match(nextView,/\{!studentMode&&<label>Предложение/,
+ "a pupil can annotate but cannot rewrite the sentence input");
+assert.match(nextView,/\{studentMode\?<span>Основание:/,
+ "a pupil cannot change a teacher's number base");
+assert.match(russianView,/const inline=onChange&&!studentMode&&/,
+ "teacher source-word and phonetic editor does not appear to pupil");
+assert.match(foreignView,/const \[order,setOrder\]=useState<string\[\]>\(initial\)/,
+ "foreign-language rearrangement uses local answer state");
+assert.doesNotMatch(foreignView,/onChange\s*\(/,
+ "foreign-language puzzle cannot rewrite teacher's board JSON");
+const approvedView=read("src/LektrusApprovedSchoolView.tsx");
+assert.match(approvedView,/const \[index,setIndex\]=useState\(0\),\[revealed,setRevealed\]=useState\(false\)/,
+ "foreign vocabulary flashcards flip locally without overwriting teacher data");
+assert.doesNotMatch(approvedView,/onChange\s*\(/,
+ "foreign flashcard interactions must not save over a teacher's cards");
+assert.match(russianView,/const \[picked,setPicked\]=useState/,
+ "spelling puzzle answers remain local to the learner");
 assert.match(app,/restrictStudentDiagramChange\(before.schoolDiagram,diagram\)/,
  "students cannot rewrite a teacher's assignment");
 assert.match(app,/if\(!canManageBoard\|\|boardSummary.ownerId!==authUser.id\)return;/,

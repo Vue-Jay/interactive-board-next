@@ -62,7 +62,9 @@ function piece(source:Item,points:Point[]):Item {
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
   for(const p of points){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y)}
   const x=minX-weight/2,y=minY-weight/2;
-  return {...source,id:crypto.randomUUID(),x,y,width:Math.max(weight,maxX-minX+weight),
+  // An old imported ink lock must not be copied onto new erase fragments.
+  const {locked:_legacyInkLock,...unlockedSource}=source;
+  return {...unlockedSource,id:crypto.randomUUID(),x,y,width:Math.max(weight,maxX-minX+weight),
     height:Math.max(weight,maxY-minY+weight),points:points.map(p=>({x:p.x-x,y:p.y-y}))};
 }
 export function eraseInkAt(items:Item[],from:Point,to:Point,radius:number):Item[]{
@@ -70,7 +72,7 @@ export function eraseInkAt(items:Item[],from:Point,to:Point,radius:number):Item[
   const output:Item[]=[];
   let changed=false;
   for(const item of items){
-    if((item.kind!=="pen"&&item.kind!=="marker")||item.locked||item.hidden||!item.points?.length){
+    if((item.kind!=="pen"&&item.kind!=="marker")||item.hidden||!item.points?.length){
       output.push(item);continue;
     }
     const r=radius+(item.weight??1)/2;
@@ -118,7 +120,8 @@ export function eraseInkAt(items:Item[],from:Point,to:Point,radius:number):Item[
  * Process candidate strokes independently so unrelated items on large teacher
  * boards are never scanned once per pointer movement.
  */
-export function eraseInkAlongPath(items: Item[], path: Point[], radius: number): Item[] {
+export function eraseInkAlongPath(items: Item[], path: Point[], radius: number,
+  canErase:(item:Item)=>boolean=()=>true): Item[] {
   if (!path.length || radius <= 0) return items;
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
   for(const p of path){
@@ -128,7 +131,7 @@ export function eraseInkAlongPath(items: Item[], path: Point[], radius: number):
   const output:Item[]=[];
   let changed=false;
   for(const item of items){
-    if((item.kind!=="pen"&&item.kind!=="marker") || item.locked || item.hidden || !item.points?.length ||
+    if((item.kind!=="pen"&&item.kind!=="marker") || item.hidden || !canErase(item) || !item.points?.length ||
       item.x>maxX+radius+50 || item.x+item.width<minX-radius-50 ||
       item.y>maxY+radius+50 || item.y+item.height<minY-radius-50){
       output.push(item);

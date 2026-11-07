@@ -42,7 +42,8 @@ assert.ok(cancel.includes('const consumed=touchEnd(e)'));
 assert.ok(cancel.includes('if(gesture.current?.pointer===e.pointerId){end(true);return;}'));
 assert.match(down,/if\(eraserSession\.current\|\|pinchState\.current\|\|touchPoints\.current\.size>1\|\|/);
 assert.ok(down.includes('setSelected([])'));
-assert.ok(app.includes('const next=eraseInkAlongPath(before,g.path,eraserSize/2/g.zoom)'));
+assert.match(app,/const next=eraseInkAlongPath\(before,g\.path,eraserSize\/2\/g\.zoom,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\)\)/,
+ "Touch eraser persists one gesture and allows erasing every participant's stroke");
 assert.ok(eraser.includes('item.kind!=="pen"&&item.kind!=="marker"'),
  "Brush must only erase ink strokes and marker strokes");
 assert.ok(interaction.includes('.board.board-tool-eraser [data-object] *'));

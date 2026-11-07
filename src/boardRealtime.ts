@@ -1,4 +1,4 @@
-import { getRealtimeSocketUrl, getRemoteBoardDocument, getRemoteSession, isRemoteBackendEnabled, type RemoteBoardDocument } from "./backend";
+import { getRealtimeSocketUrl, getRemoteBoardDocument, getRemoteBoardDocumentVersion, getRemoteSession, isRemoteBackendEnabled, type RemoteBoardDocument } from "./backend";
 
 export type RealtimeStatus = "online" | "reconnecting" | "offline";
 
@@ -41,6 +41,21 @@ export function subscribeBoardDocument(boardId: string, onDocument: (row: Remote
     try {
       do {
         readAgain = false;
+        // We know the last accepted revision after the initial load. Supabase
+        // can emit key-only UPDATE notifications when a background thumbnail
+        // PATCH changed JSONB without incrementing the board version. Fetching
+        // full JSON for those events wasted bandwidth for every participant.
+        if (newestVersion >= 0) {
+          let serverVersion: number | null = null;
+          try {
+            serverVersion = await getRemoteBoardDocumentVersion(boardId);
+          } catch {
+            // Proxy/version-only query unavailable: fall back to the original
+            // authenticated full GET. A probe failure is not proof of equality.
+          }
+          if (stopped) break;
+          if (serverVersion !== null && serverVersion <= newestVersion) continue;
+        }
         const row = await getRemoteBoardDocument(boardId);
         if (!stopped && row) deliver(row);
       } while (!stopped && readAgain);
@@ -143,6 +158,12 @@ export function subscribeBoardDocument(boardId: string, onDocument: (row: Remote
           if (joined && message.event === "postgres_changes") {
             const record = message.payload?.data?.record ?? message.payload?.record;
             if (record?.board_id && record.board_id !== boardId) return;
+            // Some WAL configurations carry only board_id + version. If the
+            // RLS-filtered notification already names the applied revision,
+            // it cannot contain new shared content and needs no REST probe.
+            if (record?.board_id === boardId &&
+                Number.isSafeInteger(record.version) &&
+                record.version >= 0 && record.version <= newestVersion) return;
             if (record && record.board_id === boardId &&
                 Number.isSafeInteger(record.version) && record.version >= 0 &&
                 record.document && typeof record.document === "object" &&

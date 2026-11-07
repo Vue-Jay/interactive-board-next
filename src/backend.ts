@@ -353,6 +353,28 @@ export const remoteAssetRequest = async (path: string, blob?: Blob): Promise<Blo
   return blob ? null : response.blob();
 };
 
+/** Check a private board attachment without downloading the entire image/PDF.
+ * Unlike GET, Storage HEAD transfers headers only, avoiding full-file egress on
+ * the first autosave after a cold start. Errors are not mistaken for success.
+ * A 400/404 response may represent a missing object under Storage RLS.
+ */
+export const remoteAssetExists = async (path: string): Promise<boolean> => {
+  const session = await getRemoteSession();
+  if (!session) throw new Error("Сессия истекла. Войдите снова.");
+  const response = await fetchWithTimeout(`${url}/storage/v1/object/authenticated/board-assets/${path}`, {
+    method: "HEAD",
+    headers: { apikey: anonKey, Authorization: `Bearer ${session.access_token}` },
+  });
+  if (response.ok) return true;
+  if (response.status === 404 || response.status === 400) return false;
+  // Older Storage gateways may not implement HEAD. Preserve compatibility
+  // rather than treating an existing attachment as lost or overwriting it.
+  if (response.status === 405 || response.status === 501) {
+    return (await remoteAssetRequest(path)) !== null;
+  }
+  throw new Error(`Не удалось проверить вложение (HTTP ${response.status})`);
+};
+
 export type RemoteBoardDocument = {
   board_id: string;
   document: unknown;
@@ -367,6 +389,20 @@ export const getRemoteBoardDocument = async (boardId: string): Promise<RemoteBoa
     `/rest/v1/board_documents?board_id=eq.${encodeURIComponent(boardId)}&select=board_id,document,version,updated_at,updated_by&limit=1`,
   );
   return rows[0] ?? null;
+};
+
+/** Read only the RLS-protected revision number, not the potentially
+ * multi-megabyte JSONB document. Used to ignore key-only WAL notifications
+ * from thumbnail writes and unchanged reconnects. A missing/invalid version
+ * must never be interpreted as an up-to-date document.
+ */
+export const getRemoteBoardDocumentVersion = async (boardId: string): Promise<number | null> => {
+  if (!isRemoteBackendEnabled()) return null;
+  const rows = await remoteRequest<Array<{ version: number }>>(
+    `/rest/v1/board_documents?board_id=eq.${encodeURIComponent(boardId)}&select=version&limit=1`,
+  );
+  const version = rows[0]?.version;
+  return Number.isSafeInteger(version) && version >= 0 ? version : null;
 };
 
 export type RemoteSaveResult = {

@@ -1,7 +1,7 @@
 import {useEffect,useState,type SyntheticEvent} from "react";
 import type {RussianSchoolDiagram} from "./lektrusRussianSchoolModel";
 import {posNames,totalSounds,traitGroupNames} from "./lektrusRussianSchoolModel";
-type Props={diagram:RussianSchoolDiagram;onChange?:(next:RussianSchoolDiagram)=>void};
+type Props={diagram:RussianSchoolDiagram;onChange?:(next:RussianSchoolDiagram)=>void;studentMode?:boolean};
 function MorphologyGraphic({d}:{d:Extract<RussianSchoolDiagram,{kind:"morphology"}>}){
  const sections=["permanent","variable","syntax"] as const;
  return <svg viewBox="0 0 900 500" role="img" aria-label={d.title} className="lektrus-school-svg">
@@ -122,9 +122,11 @@ function OrthographyBoard({d}:{d:Extract<RussianSchoolDiagram,{kind:"orthography
  </div>;
 }
 const stopInline=(e:React.SyntheticEvent)=>e.stopPropagation();
-export default function LektrusRussianSchoolView({diagram,onChange}:Props){
+export default function LektrusRussianSchoolView({diagram,onChange,studentMode=false}:Props){
  if(diagram.kind==="orthography")return <OrthographyBoard d={diagram}/>;
- const inline=onChange&&<div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",
+ // The inline word/phonetic annotations belong to the teacher. Pupil
+ // responses need separate answer state, not mutations of this source.
+ const inline=onChange&&!studentMode&&<div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",
   padding:"6px 9px",background:"#f5f9ff",fontSize:12,borderBottom:"1px solid #d8e5f2"}}>
   <label>Слово <input aria-label="Слово для разбора" value={diagram.word} maxLength={diagram.kind==="phonetics"?24:65}
    style={{border:"1px solid #c9dced",borderRadius:6,padding:5,maxWidth:160}}

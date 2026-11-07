@@ -14,6 +14,10 @@ function store(remote = true, persisted = {}) {
       const synchronized`);
   const backend = {
     isRemoteBackendEnabled: () => remote,
+    remoteAssetExists: async (path) => {
+      calls.push([path, 'head']);
+      return server.has(path);
+    },
     remoteAssetRequest: async (path, blob) => {
       calls.push([path, blob ? 'upload' : 'download']);
       if (blob) { server.set(path, blob); return null; }
@@ -59,6 +63,40 @@ test('legacy migration uploads once and missing media blocks server save', async
   await s.ensureBoardAssets('board', doc);
   assert.equal(s.calls.length, count);
   await assert.rejects(s.ensureBoardAssets('board', { items: [{ kind: 'image', assetId: 'missing' }] }));
+});
+
+test('HEAD avoids full PDF downloads during existing-media verification', async () => {
+  const s=store(),pdf=new Blob(['PDF body'],{type:'application/pdf'});
+  s.server.set('board/file',pdf);
+  await s.ensureBoardAssets('board',{items:[{kind:'pdf',assetId:'file'}]});
+  assert.deepEqual(s.calls,[['board/file','head']],
+    'Cold server saves must check existence without downloading binary data');
+  await s.ensureBoardAssets('board',{items:[{kind:'pdf',assetId:'file'}]});
+  assert.equal(s.calls.length,1,'Verified assets must not be probed repeatedly');
+});
+
+test('preview cache keeps small images but releases oversized and missing blobs', async () => {
+  const s=store(false);
+  const small=new Blob(['tiny'],{type:'image/png'});
+  const oversized=new Blob([new Uint8Array(3*1024*1024)],{type:'image/png'});
+  await s.putAsset('tiny',small,'board');
+  await s.putAsset('huge',oversized,'board');
+  const smallFirst=s.getDisplayAsset('tiny','board');
+  assert.strictEqual(await smallFirst,small);
+  assert.strictEqual(s.getDisplayAsset('tiny','board'),smallFirst,
+    'Small thumbnails should remain cached for repeated rendering');
+  const hugeFirst=s.getDisplayAsset('huge','board');
+  assert.strictEqual(await hugeFirst,oversized);
+  const hugeAgain=s.getDisplayAsset('huge','board');
+  assert.notStrictEqual(hugeAgain,hugeFirst,
+    'A 3-MB undecodable original should not be retained by the preview Promise cache');
+  assert.strictEqual(await hugeAgain,oversized);
+  const missingFirst=s.getDisplayAsset('missing','board');
+  assert.equal(await missingFirst,null);
+  const missingAgain=s.getDisplayAsset('missing','board');
+  assert.notStrictEqual(missingAgain,missingFirst,
+    'A missing preview must be retried after another participant uploads it');
+  assert.equal(await missingAgain,null);
 });
 
 test('existing server media is never overwritten by a legacy cache', async () => {
@@ -111,11 +149,21 @@ test('authenticated binary transport preserves MIME and propagates access denial
   const exports = {};
   const source = readFileSync(new URL('../src/backend.ts', import.meta.url), 'utf8')
     .replaceAll('import.meta.env.VITE_SUPABASE_URL', '"https://test.invalid"')
-    .replaceAll('import.meta.env.VITE_SUPABASE_ANON_KEY', '"public-anon-key"');
+    .replaceAll('import.meta.env.VITE_SUPABASE_ANON_KEY', '"public-anon-key"')
+    .replaceAll('import.meta.env.VITE_AUTH_REDIRECT_URL', 'undefined');
   vm.runInNewContext(ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText, {
-    exports, Headers,
+    exports, Headers, AbortController, DOMException, URL,
+    // The production backend is an ES module with Capacitor and browser
+    // timers. The isolated CommonJS transport test must supply those APIs.
+    require: id => id === '@capacitor/core'
+      ? { Capacitor: { isNativePlatform: () => false } }
+      : id === './lektrusLocalTestMode'
+        ? { LEKTRUS_LOCAL_TEST_MODE: false }
+        : (() => { throw new Error('Unexpected backend import ' + id); })(),
+    window: { setTimeout, clearTimeout },
+    document: { visibilityState: 'visible' },
     localStorage: { getItem: () => session ? JSON.stringify(session) : null },
     fetch: async (url, init) => {
       calls.push({ url, init });

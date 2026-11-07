@@ -1,4 +1,4 @@
-import { isRemoteBackendEnabled, remoteAssetRequest } from "./backend";
+import { isRemoteBackendEnabled, remoteAssetExists, remoteAssetRequest } from "./backend";
 import type { DocumentData } from "./boardModel";
 
 const DB_NAME = "lesson-board.assets.v1";
@@ -182,14 +182,17 @@ export async function ensureBoardAssets(boardId: string, document: DocumentData)
       .map(item => item.assetId)
       .filter((id): id is string => Boolean(id))
   )];
-  await Promise.all(ids.map(async (id) => {
+  // Hundreds of legacy attachments must not launch hundreds of parallel
+  // Storage probes (nor overwhelm a slower tablet/network on first save).
+  const ensureOne = async (id: string) => {
     const path = assetPath(boardId, id);
     if (synchronized.has(path)) return;
     try {
       // Independent assets are checked in parallel. Sequential verification made
       // boards with several images/PDFs pause during their first autosave.
-      const blob = await remoteAssetRequest(path);
-      if (blob) await putLocalAsset(path, blob).catch(() => {});
+      // Existence verification must not download a possibly 50 MB PDF.
+      // The actual viewer fetch still uses getAsset's memory/IndexedDB cache.
+      if (!await remoteAssetExists(path)) throw new Error("Вложение не найдено в облаке");
       synchronized.add(path);
     } catch (error) {
       const legacy = await getLocalAsset(id).catch(() => null);
@@ -198,11 +201,17 @@ export async function ensureBoardAssets(boardId: string, document: DocumentData)
       const mime = item?.kind === "pdf" ? "application/pdf" : legacy.type || item?.mime;
       await putAsset(id, mime && mime !== legacy.type ? legacy.slice(0, legacy.size, mime) : legacy, boardId);
     }
+  };
+  let cursor = 0;
+  const workers = Math.min(6, ids.length);
+  await Promise.all(Array.from({length:workers}, async () => {
+    while (cursor < ids.length) await ensureOne(ids[cursor++]);
   }));
 }
 
 const displayPreviews = new Map<string, Promise<Blob | null>>();
 const DISPLAY_PREVIEW_LIMIT = 12;
+const DISPLAY_PREVIEW_ITEM_BYTES = 2 * 1024 * 1024;
 export function getDisplayAsset(id: string, boardId: string): Promise<Blob | null> {
   const key = boardId + "/" + id;
   const existing = displayPreviews.get(key);
@@ -251,6 +260,15 @@ export function getDisplayAsset(id: string, boardId: string): Promise<Blob | nul
     if (oldest === undefined) break;
     displayPreviews.delete(oldest);
   }
-  void pending.catch(() => { if (displayPreviews.get(key) === pending) displayPreviews.delete(key); });
+  void pending.then(blob => {
+    // A completed Promise retains its resolved Blob. Twelve original 50-MB
+    // PDFs/undecodable images could otherwise pin ~600 MB independently of
+    // the bounded memoryAssets LRU. Keep small thumbnails, not huge originals.
+    // Also allow a missing asset to be retried after it is uploaded.
+    if ((!blob || blob.size > DISPLAY_PREVIEW_ITEM_BYTES) &&
+        displayPreviews.get(key) === pending) displayPreviews.delete(key);
+  }, () => {
+    if (displayPreviews.get(key) === pending) displayPreviews.delete(key);
+  });
   return pending;
 }

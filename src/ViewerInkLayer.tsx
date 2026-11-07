@@ -1,5 +1,7 @@
-import { memo, useLayoutEffect, useRef } from "react";
+import { memo, useLayoutEffect, useMemo, useRef } from "react";
 import type { Item, View } from "./boardModel";
+import {inkCanvasBudget,reuseInkCanvasBacking} from "./inkCanvasBudget";
+import {indexInkStrokes,queryInkStrokes} from "./inkSpatialIndex";
 
 type ViewportSize = { width: number; height: number };
 type InkBounds = { x: number; y: number; width: number; height: number };
@@ -21,6 +23,8 @@ const ViewerInkLayer = memo(function ViewerInkLayer({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cacheRef = useRef<RasterCache | null>(null);
+  // Construct the spatial index once per immutable stroke run, not per pan.
+  const spatialIndex=useMemo(()=>indexInkStrokes(strokes),[strokes]);
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || viewport.width <= 0 || viewport.height <= 0 || view.zoom <= 0) return;
@@ -54,25 +58,32 @@ const ViewerInkLayer = memo(function ViewerInkLayer({
     const top = Math.max(worldTop - tileBuffer, boundTop);
     const right = Math.min(worldRight + tileBuffer, boundRight);
     const bottom = Math.min(worldBottom + tileBuffer, boundBottom);
-    if (right <= left || bottom <= top) return;
+    if (right <= left || bottom <= top) {
+      // Release GPU/backing memory for layers far outside the viewport.
+      // Returning with the old canvas size held stale backing stores alive.
+      if (canvas.width || canvas.height) { canvas.width = 0; canvas.height = 0; }
+      cacheRef.current = null;
+      return;
+    }
     const cssWidth = right - left;
     const cssHeight = bottom - top;
-    const ratio = Math.min(1.25, Math.max(1, window.devicePixelRatio || 1));
-    const pixelWidth = Math.max(1, Math.ceil(cssWidth * zoom * ratio));
-    const pixelHeight = Math.max(1, Math.ceil(cssHeight * zoom * ratio));
-    const factor = Math.min(1, 4096 / Math.max(pixelWidth, pixelHeight));
-    const actualRatio = ratio * factor;
-    canvas.width = Math.max(1, Math.ceil(cssWidth * zoom * actualRatio));
-    canvas.height = Math.max(1, Math.ceil(cssHeight * zoom * actualRatio));
+    const pixels = inkCanvasBudget(cssWidth,cssHeight,zoom,window.devicePixelRatio||1);
+    const reusedBacking=reuseInkCanvasBacking(canvas,pixels.width,pixels.height);
     canvas.style.left = `${left}px`;
     canvas.style.top = `${top}px`;
     canvas.style.width = `${cssWidth}px`;
     canvas.style.height = `${cssHeight}px`;
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
-    const scale = zoom * actualRatio;
-    ctx.setTransform(scale, 0, 0, scale, -left * scale, -top * scale);
-    for (const item of strokes) {
+    if(reusedBacking){
+      // An unchanged backing is not automatically cleared by assigning
+      // canvas dimensions. Erase the previous tile in device pixels first.
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+    }
+    ctx.setTransform(pixels.scaleX, 0, 0, pixels.scaleY,
+      -left * pixels.scaleX, -top * pixels.scaleY);
+    for (const item of queryInkStrokes(spatialIndex,left,top,right,bottom)) {
       if (item.hidden || !item.points?.length) continue;
       const weight = item.weight ?? 3, pad = weight / 2;
       if (item.x + item.width + pad < left || item.x - pad > right ||
@@ -106,7 +117,7 @@ const ViewerInkLayer = memo(function ViewerInkLayer({
       left, top, right, bottom, zoom,
       width: viewport.width, height: viewport.height, strokes,
     };
-  }, [strokes, bounds, view.x, view.y, view.zoom, viewport.width, viewport.height]);
+  }, [strokes, spatialIndex, bounds, view.x, view.y, view.zoom, viewport.width, viewport.height]);
 
   return <canvas ref={canvasRef} className="viewer-ink-canvas" aria-hidden="true"
     style={{ position: "absolute", pointerEvents: "none", maxWidth: "none", maxHeight: "none" }} />;

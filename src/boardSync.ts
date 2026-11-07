@@ -50,7 +50,16 @@ const stableJsonHash = (value: unknown): string => {
 export function documentFingerprint(document: DocumentData): string {
   // Viewport is personal UI state. Panning/zooming must never create a collaborative
   // revision or a false conflict between participants.
-  return stableJsonHash({ version: document.version, title: document.title, background: document.background, items: document.items, ink: document.ink ?? [] });
+  // These fields are shared board state too. Omitting them made a subject-only
+  // or shared-background-toggle edit look identical to the acknowledged version,
+  // so autosave could skip that real change entirely.
+  return stableJsonHash({
+    version: document.version, title: document.title,
+    subject: document.subject ?? "",
+    background: document.background,
+    backgroundShared: document.backgroundShared !== false,
+    items: document.items, ink: document.ink ?? [],
+  });
 }
 
 export function remoteUpdateDecision(currentVersion: number | null, nextVersion: number,
@@ -64,7 +73,9 @@ export function remoteUpdateDecision(currentVersion: number | null, nextVersion:
 // The viewport is personal to each participant. Comparing it as shared
 // board content creates false edit conflicts every time users pan differently.
 export function sharedBoardFingerprint(document: DocumentData): string {
-  return documentFingerprint({...document,view:{x:0,y:0,zoom:1}});
+  // documentFingerprint already deliberately omits the personal viewport.
+  // Do not clone a multi-megabyte document merely to overwrite an ignored field.
+  return documentFingerprint(document);
 }
 
 export function isOwnRemoteRevision(row: RemoteBoardDocument, userId: string,

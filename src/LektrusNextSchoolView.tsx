@@ -1,7 +1,7 @@
 import {useId,useState} from "react";
 import type {NextSchoolDiagram,WordRole,AlgorithmNode} from "./lektrusNextSchoolModel";
 import {grammarRoles} from "./lektrusNextSchoolModel";
-type Props={diagram:NextSchoolDiagram;onChange?:(next:NextSchoolDiagram)=>void};
+type Props={diagram:NextSchoolDiagram;onChange?:(next:NextSchoolDiagram)=>void;studentMode?:boolean};
 function SyntaxView({d,onMark}:{d:Extract<NextSchoolDiagram,{kind:"syntax"}>;onMark?:(id:string)=>void}){
  const widths=d.words.map(w=>Math.min(230,Math.max(75,20+w.text.length*13)));
  const lines:{indices:number[];width:number}[]=[{indices:[],width:0}];
@@ -152,17 +152,17 @@ const stop=(e:React.SyntheticEvent)=>e.stopPropagation();
 const panelStyle:React.CSSProperties={display:"flex",gap:5,alignItems:"center",flexWrap:"wrap",
  padding:6,background:"#f5f9ff",borderBottom:"1px solid #d8e5f2",fontSize:12};
 const entryStyle:React.CSSProperties={fontSize:12,padding:"5px 7px",minWidth:0,border:"1px solid #c9dced",borderRadius:6};
-export default function LektrusNextSchoolView({diagram:d,onChange}:Props){
+export default function LektrusNextSchoolView({diagram:d,onChange,studentMode=false}:Props){
  const [markRole,setMarkRole]=useState<WordRole>("subject");
  if(d.kind==="syntax")return <div style={{width:"100%",height:"100%",display:"flex",flexDirection:"column"}}
   onPointerDown={stop} onPointerUp={stop} onClick={stop}>
   {onChange&&<div style={panelStyle}>
-   <label>Предложение <input style={entryStyle} value={d.words.map(w=>w.text).join(" ")}
+   {!studentMode&&<label>Предложение <input style={entryStyle} value={d.words.map(w=>w.text).join(" ")}
     placeholder="Введите предложение" onChange={e=>{
      const words=e.target.value.trim().split(/\s+/).filter(Boolean).slice(0,14);
      onChange({...d,words:words.map((text,i)=>({id:d.words[i]?.id??crypto.randomUUID(),
       text:text.slice(0,28),role:d.words[i]?.text===text?d.words[i].role:"none"}))});
-    }}/></label>
+    }}/></label>}
    <label>Подчёркивание
     <select style={entryStyle} aria-label="Выберите член предложения" value={markRole}
      onChange={e=>setMarkRole(e.target.value as WordRole)}>
@@ -177,9 +177,9 @@ export default function LektrusNextSchoolView({diagram:d,onChange}:Props){
  return <div style={{width:"100%",height:"100%",display:"flex",flexDirection:"column"}}
   onPointerDown={stop} onPointerUp={stop} onClick={stop}>
   {onChange&&<div style={panelStyle}>
-   <label>Основание <select style={entryStyle} value={d.base}
+   {studentMode?<span>Основание: {d.base}</span>:<label>Основание <select style={entryStyle} value={d.base}
     onChange={e=>onChange({...d,base:Number(e.target.value) as 2|8|10|16,digits:""})}>
-    {[2,8,10,16].map(v=><option value={v} key={v}>{v}</option>)}</select></label>
+    {[2,8,10,16].map(v=><option value={v} key={v}>{v}</option>)}</select></label>}
    <label>Число <input style={entryStyle} value={d.digits} maxLength={10}
     placeholder="Введите число" onChange={e=>{
      const value=e.target.value.toUpperCase();
