@@ -3,7 +3,7 @@ import {readFileSync} from "node:fs";
 import ts from "typescript";
 
 const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const interaction=read("src/lektrusBoardInteraction.css");
 const layout=read("src/lektrusToolLayout.css");
 const eraser=read("src/inkEraser.ts");

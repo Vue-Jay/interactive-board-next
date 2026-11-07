@@ -6,7 +6,7 @@ import "./test-lektrus-subject-routing.mjs";
 import "./test-lektrus-subject-catalogue-ui.mjs";
 
 const read=file=>readFileSync(new URL("../"+file,import.meta.url),"utf8");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const registry=read("src/lektrusSubjectToolRegistry.ts");
 const science=read("src/lektrusScienceCatalog.ts");
 const icons=read("src/LektrusSubjectToolIcons.tsx");
@@ -14,7 +14,7 @@ const panel=read("src/LektrusSubjectToolsPanel.tsx");
 const styles=read("src/lektrusSubjectTools.css");
 
 for(const [file,source] of [
- ["src/App.tsx",app],
+ ["src/BoardApp.tsx",app],
  ["src/LektrusSubjectToolIcons.tsx",icons],
  ["src/LektrusSubjectToolsPanel.tsx",panel]
 ]){
@@ -81,7 +81,7 @@ assert.ok(styles.includes('body>.lektrus-subject-tools-panel .lektrus-subject-to
 assert.ok(styles.includes("prefers-reduced-motion:reduce"));
 // The visual language is shared with the ordinary pencil/select/eraser icons.
 const inkStyles=read("src/lektrusBoardToolIcons.css");
-const entry=read("src/main.tsx");
+const entry=read("src/appEntry.tsx");
 const appIconBody=app.slice(app.indexOf("const iconBody ="),app.indexOf("function Icon("));
 const appSvg=app.slice(app.indexOf("function Icon("),app.indexOf("function loadInitial("));
 assert.ok(appSvg.includes('strokeWidth={compactCategory?1.9:name==="section-arrows"?2.4:1.9}'),

@@ -7,7 +7,7 @@ const hub=read("src/LectrisHub.tsx");
 const styles=read("src/lektrusRefresh.css");
 const html=read("index.html");
 const auth=read("src/AuthScreen.tsx");
-const app=read("src/App.tsx");
+const app=read("src/App.tsx")+"\n"+read("src/BoardApp.tsx");
 const settings=read("src/SettingsScreen.tsx");
 const manifest=JSON.parse(read("public/manifest.webmanifest"));
 

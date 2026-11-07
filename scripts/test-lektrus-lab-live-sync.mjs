@@ -189,10 +189,10 @@ assert.equal(live.applyLabLivePreview(start,undefined,corruptKind),null);
 const large=[{path:["scienceLabBench","vessels",0,"id"],kind:"set",value:"x".repeat(101000)}];
 assert.equal(live.applyLabLivePreview(start,undefined,large),null,
  "Oversized realtime messages are rejected before document parsing");
-assert.match(read("src/App.tsx"),/const liveLab=stored\?\.graphFigureId==="chem-experiment-free"/,
+assert.match(read("src/BoardApp.tsx"),/const liveLab=stored\?\.graphFigureId==="chem-experiment-free"/,
  "Receiver must route chemistry updates through the fast preview validator");
-assert.match(read("src/App.tsx"),/labLiveEditorDiff\(latest,updated\)/,
+assert.match(read("src/BoardApp.tsx"),/labLiveEditorDiff\(latest,updated\)/,
  "Both board and fullscreen lab must publish minimal realtime deltas");
-assert.match(read("src/App.tsx"),/applyLabLivePreview\(stored,base,mutation\.ops\)/,
+assert.match(read("src/BoardApp.tsx"),/applyLabLivePreview\(stored,base,mutation\.ops\)/,
  "Untrusted chemistry packets are sanitized before use");
 console.log("Chemistry live-sync: compact ops, independent changes, validation and immutability OK");

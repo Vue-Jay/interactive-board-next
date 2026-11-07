@@ -3,13 +3,13 @@ import {readFileSync} from "node:fs";
 import ts from "typescript";
 
 const read=file=>readFileSync(new URL("../"+file,import.meta.url),"utf8");
-for(const file of ["src/App.tsx","src/LektrusElementsCatalogue.tsx","src/LektrusDataChart.tsx"]){
+for(const file of ["src/BoardApp.tsx","src/LektrusElementsCatalogue.tsx","src/LektrusDataChart.tsx"]){
  const source=read(file);
  const parsed=ts.createSourceFile(file,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  assert.equal(parsed.parseDiagnostics.length,0,
   file+" has invalid JSX or TypeScript: "+parsed.parseDiagnostics.map(d=>d.messageText).join(" | "));
 }
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const cat=read("src/LektrusElementsCatalogue.tsx");
 const chart=read("src/LektrusDataChart.tsx");
 const model=read("src/boardModel.ts");

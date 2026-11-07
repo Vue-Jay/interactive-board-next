@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import ts from "typescript";
 const read=(name)=>fs.readFileSync(new URL("../src/"+name,import.meta.url),"utf8");
-const app=read("App.tsx"),chrome=read("lektrusObjectChrome2026.css"),
- interactions=read("lektrusBoardInteraction.css"),main=read("main.tsx");
+const app=read("BoardApp.tsx"),chrome=read("lektrusObjectChrome2026.css"),
+ interactions=read("lektrusBoardInteraction.css"),main=read("appEntry.tsx");
 const syntax=ts.createSourceFile("App.tsx",app,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(syntax.parseDiagnostics.length,0,
  "App board JSX/TypeScript must remain parsable after selection and creation changes");

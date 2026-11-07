@@ -5,7 +5,7 @@ import vm from "node:vm";
 import ts from "typescript";
 
 const read=(path)=>readFileSync(new URL("../src/"+path,import.meta.url),"utf8");
-const app=read("App.tsx"),preview=read("boardPreview.ts"),sync=read("boardSync.ts");
+const app=read("BoardApp.tsx"),preview=read("boardPreview.ts"),sync=read("boardSync.ts");
 
 assert.match(app,/const persistedItemIds=useMemo\(\(\)=>new Set\(items\.map\(item=>item\.id\)\),\[items\]\)/,
  "Build one persisted board ID index per items revision");

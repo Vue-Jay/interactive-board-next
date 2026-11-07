@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const css=readFileSync("src/lektrusLabSceneLayout.css","utf8");
 const markup=readFileSync("src/LektrusChemistryBench.tsx","utf8");
-const main=readFileSync("src/main.tsx","utf8");
+const main=readFileSync("src/appEntry.tsx","utf8");
 const editor=readFileSync("src/LektrusChemistryBenchEditor.tsx","utf8");
 assert.match(main,/import "\.\/lektrusChemistryBench\.css";\s*import "\.\/lektrusLabSceneLayout\.css";/,
  "One scene layout stylesheet must load after old patches");
@@ -142,7 +142,7 @@ console.log("New bottom-right sink and drag-to-drain bounds agree");
 // Fullscreen on Android must not cause the two bench surfaces to race a
 // simulation tick, nor repaint the entire chemistry stage through a scaled
 // GPU layer. These guards cover selection + heating in the same viewport.
-const app=readFileSync("src/App.tsx","utf8");
+const app=readFileSync("src/BoardApp.tsx","utf8");
 assert.match(app,/scienceEditorItem\?\.id!==item\.id&&/,
  "Board bench must stop writing while its fullscreen editor owns simulation");
 assert.match(editor,/document\.body\.classList\.add\("lektrus-lab-fullscreen-active"\)/);

@@ -128,7 +128,7 @@ const innerObject=new FixtureElement("div",outer,{classes:["board-object"],attrs
 assert.equal(pickup(child(innerObject,"h3")),innerObject);
 assert.equal(pickup(child(innerObject,"button")),null);
 
-const app=read("src/App.tsx"),geoSource=read("src/LektrusGeographyTrainingView.tsx");
+const app=read("src/BoardApp.tsx"),geoSource=read("src/LektrusGeographyTrainingView.tsx");
 const subject=read("src/LektrusSubjectActivity.tsx");
 const foreign=read("src/LektrusForeignTaskAnswer.tsx");
 const scene=read("src/LektrusChemistryBench.tsx");
@@ -162,7 +162,7 @@ assert.ok(app.includes('tool==="hand"&&e.button===0'),
  "Atlas header pans with hand, but moves its object with selection tool");
 assert.ok(app.includes('data-board-gesture-owner={onPickPoint||onAddPoint?"true":undefined}'),
  "Freehand/geometry point editing must retain nested gesture ownership");
-assert.ok(app.includes('data-board-interactive="true"\n              stroke="transparent"'),
+assert.match(app,/data-board-interactive="true"\s+stroke="transparent"/,
  "Moving a physics ray must not turn into moving the whole graph object");
 assert.match(geoSource,/onPointerDown=\{stopInteractive\} onPointerUp=\{stopInteractive\}/,
  "Geography must preserve pointer capture while honoring interactive controls");

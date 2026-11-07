@@ -29,7 +29,7 @@ assert.equal(api.separateRussianQuestions("Вопрос\n".repeat(23)).length,15
 assert.equal(api.russianWorkSource({format:"text",details:{material:"Весь рассказ",questions:"Кто герой?"}}),"Кто герой?");
 assert.equal(api.russianWorkSource({format:"syntax",details:{material:"Птицы поют"}}),"Птицы поют");
 const answer=read(file),board=read("src/LektrusSubjectBoard.tsx");
-const app=read("src/App.tsx"),model=read("src/boardModel.ts");
+const app=read("src/BoardApp.tsx"),model=read("src/boardModel.ts");
 const studio=read("src/LektrusLanguageTaskStudio.tsx");
 const templates=read("src/lektrusSubjectTaskTemplates.ts");
 const registry=read("src/lektrusSubjectToolRegistry.ts");

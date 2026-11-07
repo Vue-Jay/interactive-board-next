@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const hook=read("src/useAdaptiveBoardToolbar.ts");
 const css=read("src/lektrusToolRefinements.css");
-const entry=read("src/main.tsx");
+const entry=read("src/appEntry.tsx");
 assert.ok(entry.indexOf("lektrusToolLayout.css")<entry.indexOf("lektrusToolRefinements.css"));
 assert.equal((css.match(/{/g)||[]).length,(css.match(/}/g)||[]).length);
 assert.match(app,/case "select": return <path d="M4\.5 3\.5/);

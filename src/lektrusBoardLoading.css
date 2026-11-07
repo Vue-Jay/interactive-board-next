@@ -1,0 +1,16 @@
+.lektrus-board-loading{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;overflow:hidden;padding:24px;background:radial-gradient(ellipse at 50% 38%,#fff 0%,#f4f8ff 42%,#eaf1fb 100%);color:#173252;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+.lektrus-board-loading:before,.lektrus-board-loading:after{position:absolute;content:"";width:min(70vw,620px);aspect-ratio:1;border:1px solid #d9e6fa;border-radius:50%;animation:lektrus-loading-orbit 14s linear infinite;pointer-events:none}
+.lektrus-board-loading:after{width:min(52vw,450px);animation-direction:reverse;animation-duration:19s;border-style:dashed;opacity:.72}
+.lektrus-board-loading-card{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;width:min(100%,420px);padding:36px 30px 32px;border:1px solid #e0e9f6;border-radius:24px;background:#ffffffd9;box-shadow:0 24px 80px #4569971c,0 4px 16px #4569970b;backdrop-filter:blur(16px);text-align:center}
+.lektrus-board-loading-mark{position:relative;display:grid;place-items:center;width:78px;height:78px;margin:0 0 20px;border-radius:24px;background:linear-gradient(145deg,#f0f7ff,#e0edff);box-shadow:inset 0 1px #fff,0 8px 24px #4282d51c}
+.lektrus-board-loading-mark img{position:relative;z-index:1;width:54px;height:54px;object-fit:contain;animation:lektrus-loading-breathe 2.4s ease-in-out infinite}
+.lektrus-board-loading-mark i{position:absolute;inset:-5px;border:1px solid #7bb4f37a;border-radius:28px;animation:lektrus-loading-ring 2.4s ease-out infinite}
+.lektrus-board-loading-kicker{color:#6683a7;font-size:9px;font-weight:850;letter-spacing:.14em}
+.lektrus-board-loading-card h1{margin:9px 0 6px;font-size:25px;font-weight:800;letter-spacing:-.045em}
+.lektrus-board-loading-card p{margin:0;color:#71849d;font-size:12px;line-height:1.6}
+.lektrus-board-loading-progress{display:flex;align-items:center;gap:5px;margin-top:22px}
+.lektrus-board-loading-progress i{width:6px;height:6px;border-radius:50%;background:#3684de;opacity:.2;animation:lektrus-loading-dot 1.1s ease-in-out infinite}
+.lektrus-board-loading-progress i:nth-child(2n){animation-delay:.11s}.lektrus-board-loading-progress i:nth-child(3n){animation-delay:.22s}.lektrus-board-loading-progress i:nth-child(4n){animation-delay:.33s}
+@keyframes lektrus-loading-orbit{to{transform:rotate(360deg)}}@keyframes lektrus-loading-breathe{50%{transform:translateY(-3px) scale(1.04)}}@keyframes lektrus-loading-ring{0%{transform:scale(.92);opacity:.7}100%{transform:scale(1.23);opacity:0}}@keyframes lektrus-loading-dot{0%,70%,100%{opacity:.22;transform:translateY(0)}35%{opacity:1;transform:translateY(-4px)}}
+@media(max-width:560px){.lektrus-board-loading-card{padding:30px 20px 26px;border-radius:20px}.lektrus-board-loading-card h1{font-size:22px}.lektrus-board-loading:before{width:92vw}.lektrus-board-loading:after{width:70vw}}
+@media(prefers-reduced-motion:reduce){.lektrus-board-loading:before,.lektrus-board-loading:after,.lektrus-board-loading-mark img,.lektrus-board-loading-mark i,.lektrus-board-loading-progress i{animation:none}}

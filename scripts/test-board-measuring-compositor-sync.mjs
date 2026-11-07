@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import ts from "typescript";
 
-const app=readFileSync("src/App.tsx","utf8");
+const app=readFileSync("src/BoardApp.tsx","utf8");
 const instrument=readFileSync("src/GeometryInstruments.tsx","utf8");
 const css=readFileSync("src/lektrusMeasurementInstruments.css","utf8");
 const source=readFileSync("src/boardPanTransform.ts","utf8");

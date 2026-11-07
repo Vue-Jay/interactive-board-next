@@ -108,7 +108,7 @@ const patchedMark=applyEditorOps(otherMarker,editorDiff(atlas,editMarker));
 assert.equal(patchedMark.schoolDiagram.contourMarks[0].lon,20);
 assert.equal(patchedMark.schoolDiagram.contourMarks[0].label,"Новое");
 
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const school=read("src/LektrusSchoolDiagramEditor.tsx");
 const ws=read("src/boardWorkSync.ts");
 const atlasMap=read("src/LektrusMapAtlas.tsx");
@@ -120,7 +120,7 @@ assert.match(atlasMap,/contourMarks:restored\.contourMarks/,
  "undo publishes the ID-preserving merged contour marks");
 assert.match(atlasMap,/contourStrokes:restored\.contourStrokes/,
  "undo publishes the ID-preserving merged contour strokes");
-for(const [path,body] of [["src/App.tsx",app],["src/LektrusSchoolDiagramEditor.tsx",school],["src/boardWorkSync.ts",ws]]){
+for(const [path,body] of [["src/BoardApp.tsx",app],["src/LektrusSchoolDiagramEditor.tsx",school],["src/boardWorkSync.ts",ws]]){
  const parsed=ts.createSourceFile(path,body,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  assert.equal(parsed.parseDiagnostics.length,0,path+" parses as TSX");
 }

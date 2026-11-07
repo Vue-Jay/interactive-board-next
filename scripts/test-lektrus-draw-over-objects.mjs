@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const css=read("src/lektrusBoardInteraction.css");
 
 // Capture starts ink before any photo, iframe, embedded widget or handle
@@ -11,8 +11,10 @@ const captureEnd=app.indexOf('onPointerMoveCapture={(e) => {',capture);
 const captureBody=app.slice(capture,captureEnd);
 assert.ok(capture>=0&&captureEnd>capture);
 assert.match(captureBody,/if\(\(tool==="pen"\|\|tool==="marker"\) && !presentation && !space && e\.button===0\)/);
-assert.match(captureBody,/touchStart\(e\);[\s\S]*?touchPoints\.current\.size<2\)down\(e\);[\s\S]*?e\.stopPropagation\(\)/);
-assert.ok(captureBody.indexOf('if(e.button===2')<captureBody.indexOf('if((tool==="pen"'),"Right-button pan should take priority");
+assert.match(captureBody,/if\(e\.pointerType==="touch"\)\{touchStart\(e\);if\(pinchState\.current\)\{e\.preventDefault\(\);e\.stopPropagation\(\);return;\}\}/,
+  "Pinch capture should stop the second finger before other board gestures begin");
+assert.ok(captureBody.includes('if(e.button===2 && e.pointerType==="mouse" && !presentation)'),
+  "Desktop right-button pan remains available");
 assert.ok(captureBody.indexOf('if((tool==="pen"')<captureBody.indexOf('if(tool!=="eraser"'),"Preserve eraser handler");
 
 // Object manipulation is reserved for the selecting/hand tools, not ink.

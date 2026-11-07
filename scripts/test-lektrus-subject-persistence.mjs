@@ -177,7 +177,7 @@ invalidItem("state-structure",{edges:[{id:"bad",from:"root",to:"root",kind:"subo
 
 const second=parseDocument(JSON.stringify(packDocumentInk(loaded)));
 assert.deepEqual(second,loaded,"board must be stable after repeated reopening");
-const app=fs.readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+const app=fs.readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
 assert.match(app,/subject:lectrisBoardOrganization\.subject,[\s\S]{0,150}items: editing/);
 assert.match(app,/storageKey\+"\.pending-sync"/);
 assert.match(app,/snapshot\.current=packDocumentInk/);

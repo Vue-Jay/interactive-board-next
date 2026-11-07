@@ -109,7 +109,7 @@ const fragments=ink.eraseInkAlongPath([lockedPeerInk],[{x:50,y:0}],7);
 assert.ok(fragments.length>0&&fragments.every(x=>x.locked===undefined),
  "An old locked stroke must be erasable and fragments must not inherit locks");
 
-const app=read("src/App.tsx"),model=read("src/boardModel.ts");
+const app=read("src/BoardApp.tsx"),model=read("src/boardModel.ts");
 assert.match(model,/createdBy\?: string;/);
 assert.match(model,/i\.kind !== "pen" && i\.kind !== "marker" \? \{ locked: true \}/,
  "Persisted pen/marker cannot carry locked=true");

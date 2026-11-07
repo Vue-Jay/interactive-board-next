@@ -33,7 +33,7 @@ const lockedApi=load(locked);
 assert.equal(locked.randomUUID,undefined);
 assert.match(lockedApi.compatibleRandomUUID(),uuidV4,"explicit fallback for sealed crypto");
 assert.match(load(null).compatibleRandomUUID(),uuidV4,"legacy environments retain ID support");
-const main=fs.readFileSync(new URL("../src/main.tsx",import.meta.url),"utf8");
+const main=fs.readFileSync(new URL("../src/appEntry.tsx",import.meta.url),"utf8");
 assert.match(main,/^import "\.\/cryptoUuidCompatibility";/,"shim must load before app imports");
 for(const path of ["LektrusProgrammingView.tsx","LektrusSchoolDiagramEditor.tsx","LektrusProgrammingControls.tsx"]){
  const code=fs.readFileSync(new URL("../src/"+path,import.meta.url),"utf8");

@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
-const app=read("src/App.tsx"),model=read("src/boardModel.ts");
-const util=read("src/boardBackground.ts"),css=read("src/lektrusBoardBackground.css"),main=read("src/main.tsx");
+const app=read("src/BoardApp.tsx"),model=read("src/boardModel.ts");
+const util=read("src/boardBackground.ts"),css=read("src/lektrusBoardBackground.css"),main=read("src/appEntry.tsx");
 assert.match(model,/background:normalizeBoardBackground\(d\.background\)/);
 assert.match(model,/export function normalizeBoardBackground/);
 assert.doesNotMatch(model,/from "\.\/boardBackground"/);
 assert.match(model,/background:normalizeBoardBackground\(data\.background\)/);
-assert.match(app,/const canChangeBoardBackground=canEdit&&!isStudent/);
+assert.match(app,/const canChangeBoardBackground=backgroundIsShared\?canManageBoard:true/);
 assert.match(app,/setBoardBackground\(normalizeBoardBackground\(data\.background\)\)/);
 assert.match(app,/const onlyBackgroundChanged=/);
 assert.match(app,/if\(onlyBackgroundChanged\)\{[\s\S]*?setBoardBackground\(normalizeBoardBackground\(data\.background\)\)/);
@@ -19,7 +19,7 @@ assert.match(app,/className=\{`lektrus-ink-cursor/);
 assert.match(app,/backgroundAppearance\.foreground/);
 assert.match(app,/backgroundAppearance\.outline/);
 assert.match(app,/role="group" aria-label="Настройки фона доски"/);
-assert.match(app,/boardBackground,\s*editing,\s*draft,/);
+assert.match(app,/const updateBoardBackground=\(patch:Partial<BoardBackground>\)=>/);
 const sync=read("src/boardSync.ts");
 assert.match(sync,/background: document\.background/);
 

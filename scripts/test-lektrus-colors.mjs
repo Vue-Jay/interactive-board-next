@@ -24,9 +24,9 @@ assert.equal(sanitizeSavedColors(Array.from({length:70},(_,i)=>"#"+i.toString(16
 
 const picker=source("src/LektrusColorPicker.tsx");
 const quick=source("src/LectrisObjectEditor.tsx");
-const app=source("src/App.tsx");
+const app=source("src/BoardApp.tsx");
 const css=source("src/lektrusColors.css");
-const entry=source("src/main.tsx");
+const entry=source("src/appEntry.tsx");
 assert.ok(picker.includes('aria-label="Избранные цвета"'));
 assert.ok(picker.includes('aria-label="Смешанная палитра: выбрать произвольный цвет"'));
 assert.ok(picker.includes('aria-label="Новый цвет для избранного"'));

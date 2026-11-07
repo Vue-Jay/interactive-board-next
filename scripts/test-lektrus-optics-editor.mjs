@@ -108,7 +108,7 @@ assert.equal(optics.validOptics({...blank,elements:[{...src,n1:Infinity}]}),fals
 const factory=read("src/lektrusSubjectToolRegistry.ts");
 for(const id of ["physics-mechanics","physics-optics","physics-graphs","physics-circuits"])
  assert.ok(factory.includes('id==="'+id+'"'),"blank-start factory for "+id);
-const app=read("src/App.tsx"),icon=read("src/LektrusSubjectToolIcons.tsx");
+const app=read("src/BoardApp.tsx"),icon=read("src/LektrusSubjectToolIcons.tsx");
 const editor=read("src/LektrusOpticsEditor.tsx"),view=read("src/LektrusOpticsView.tsx");
 assert.match(editor,/lektrus-optics-ray-steps/,"Optics editor must explain the actual ray path");
 assert.match(view,/path\.events\?\.map/,"Selected path should display numbered interactions");

@@ -194,7 +194,7 @@ test('incremental previews stitch into long strokes, reject stale packets and bo
   assert.equal(long.offset,2000);
   const old={...packet(0,3)};delete old.offset;
   assert.equal(api.mergeRemoteLiveInk(long,old),old,'legacy peers remain compatible');
-  const app=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
+  const app=readFileSync(new URL('../src/BoardApp.tsx',import.meta.url),'utf8');
   assert.match(app,/mergeRemoteLiveInk\(current\[ink\.id\],ink\)/);
   assert.match(app,/offset:Math\.max\(0,g\.path\.length-500\)/);
 });
@@ -266,7 +266,7 @@ test('disconnected peer-ink history remains bounded and renderable',()=>{
   assert.ok(runs.length>1,'network loss remains visible as separate fragments');
   assert.equal(runs.reduce((sum,run)=>sum+run.points.length,0),
     api.MAX_REMOTE_LIVE_INK_POINTS,'RAM is bounded across ALL disconnected runs');
-  const app=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
+  const app=readFileSync(new URL('../src/BoardApp.tsx',import.meta.url),'utf8');
   assert.match(app,/uncommittedRemoteInk\.flatMap\(ink => remoteInkRuns\(ink\)\.map\(run/);
   assert.match(app,/key=\{ink\.id\+":"\+run\.offset\}/,
     'recovered fragments must keep independent SVG element identity');

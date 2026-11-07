@@ -139,7 +139,7 @@ assert.equal(documentRebase.items[0].scienceLabBench.vessels.length,0,
 const editor=read("src/LektrusChemistryBenchEditor.tsx");
 const surface=read("src/LektrusChemistryBench.tsx");
 const illustration=read("src/LektrusChemistryIllustration.tsx");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 assert.match(surface,/openLabCabinets\.get\(cabinetSessionKey\)/,
  "A rerender/remount must retain an open reagent cupboard");
 assert.match(surface,/openLabCabinets\.delete\(cabinetSessionKey\)/,
@@ -156,7 +156,7 @@ const boardModel=read("src/boardModel.ts");
 assert.match(boardModel,/bench\.tableEpoch\.length>45/);
 for(const filename of ["src/LektrusChemistryBench.tsx",
  "src/LektrusChemistryBenchEditor.tsx","src/LektrusChemistryIllustration.tsx",
- "src/App.tsx"]){
+ "src/BoardApp.tsx"]){
  const file=ts.createSourceFile(filename,read(filename),ts.ScriptTarget.Latest,true,
  ts.ScriptKind.TSX);
  assert.equal(file.parseDiagnostics.length,0,filename+" must parse cleanly");

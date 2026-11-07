@@ -79,7 +79,7 @@ receiver.close();sender.close();
 assert.equal(timers.size,0,"close releases timers");
 assert.equal(listeners.size,0,"close removes network listeners");
 
-const app=readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+const app=readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
 assert.match(app,/workChannel\.current\?\.publishTransform\(poses\)/);
 assert.match(app,/workChannel\.current\?\.publishTransform\(poses,true\)/);
 assert.match(app,/remoteObjectPoses\[entry\.item\.id\]/);

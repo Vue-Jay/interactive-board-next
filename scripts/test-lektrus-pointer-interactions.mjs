@@ -23,7 +23,7 @@ assert.equal(itemIntersectsSelection({...a,rotation:45},rect),true);
 assert.deepEqual(itemsInsideRect([a,b,stroke,nearMiss,groupA,groupB],{x:100,y:70},{x:250,y:210}).sort(),
  ["inside","ink","groupA","groupB"].sort());
 assert.deepEqual(itemsInsideRect([a],{x:10,y:10},{x:10,y:10}),[]);
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const css=read("src/lektrusBoardInteraction.css");
 assert.match(app,/useState<Tool>\(\(\)=>readBoardSessionTool\(boardSummary\.id,authUser\.id\)\)/,
  "Each viewer restores their own active tool instead of inheriting remote changes");
@@ -47,7 +47,7 @@ assert.ok(app.includes('createPortal('));
 assert.ok(css.includes('z-index:2147482400!important'));
 assert.ok(css.includes('cursor:grabbing!important'));
 assert.ok(css.includes('pointer-events:none'));
-assert.ok(read("src/main.tsx").includes('import "./lektrusBoardInteraction.css";'));
+assert.ok(read("src/appEntry.tsx").includes('import "./lektrusBoardInteraction.css";'));
 assert.ok(app.includes('saveRemoteBoardDocument'),"core persistence is unchanged");
 // Mobile gesture contract: interactive controls must never be treated as a
 // drawing pointer or first pinch contact.

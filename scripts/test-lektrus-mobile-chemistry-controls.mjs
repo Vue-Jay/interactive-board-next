@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const read=name=>readFileSync(new URL("../"+name,import.meta.url),"utf8");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const quick=read("src/LectrisObjectEditor.tsx");
 const responsive=read("src/lektrusResponsive.css");
 const catalog=read("src/lektrusScienceCatalog.ts");

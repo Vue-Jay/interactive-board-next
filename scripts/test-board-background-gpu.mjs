@@ -37,7 +37,7 @@ for(const base of [{x:0,y:0,zoom:1},{x:-555,y:238,zoom:1.75},{x:400,y:-700,zoom:
   }
  }
 }
-const app=readFileSync("src/App.tsx","utf8");
+const app=readFileSync("src/BoardApp.tsx","utf8");
 const styles=readFileSync("src/App.css","utf8");
 const paint=app.slice(app.indexOf("const paintPendingPan ="),app.indexOf("const scheduleViewerPan ="));
 assert.match(paint,/fastPanBackground\.current\.style\.transform=boardGridTransform/);

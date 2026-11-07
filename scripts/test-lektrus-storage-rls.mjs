@@ -4,7 +4,7 @@ const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
 const sql=read("supabase/lectris_fix_board_assets_rls.sql");
 const audit=read("supabase/lectris_board_assets_rls_audit.sql");
 const backend=read("src/backend.ts");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 
 assert.match(sql,/begin;/i);
 assert.match(sql,/commit;/i);

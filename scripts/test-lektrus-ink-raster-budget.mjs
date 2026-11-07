@@ -70,7 +70,7 @@ assert.match(source,/const reusedBacking=reuseInkCanvasBacking\(canvas,pixels\.w
 assert.match(source,/if\(reusedBacking\)\{[\s\S]*?ctx\.clearRect\(0,0,canvas\.width,canvas\.height\);/,
  "Reused canvas backing must clear previous pixels before painting the new tile");
 
-const app=read("App.tsx");
+const app=read("BoardApp.tsx");
 const selectionStart=app.indexOf("  const selectedInkKey=useMemo(() => ");
 const layerStart=app.indexOf("  const inkLayers = useMemo(() => {",selectionStart);
 const layerEnd=app.indexOf("  const renderEntries = useMemo(() => {",layerStart);

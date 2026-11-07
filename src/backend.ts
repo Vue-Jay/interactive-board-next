@@ -171,7 +171,7 @@ const getEmailConfirmationRedirect = (): string | null => {
     }
     return "ru.lektrus.board://auth/confirmed";
   }
-  return `${window.location.origin}/?email_confirmation=1`;
+  return `${window.location.origin}/app?email_confirmation=1`;
 };
 
 export const signUpRemote = async (email: string, password: string, name: string, details:{firstName?:string;lastName?:string}={}) => {

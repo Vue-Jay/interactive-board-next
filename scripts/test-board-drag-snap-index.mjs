@@ -76,7 +76,7 @@ const stroke={x:-36,y:84,width:8,height:0};
 const index=buildBoardDragSnapIndex([stroke]);
 assert.equal(snapBoardDrag({x:0,y:80,width:4,height:4},index,-40,0,7).guides.x,-36);
 
-const app=fs.readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+const app=fs.readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
 assert.match(app,/buildBoardDragSnapIndex/);
 assert.match(app,/snapBoardDrag\(cache\.moving,cache\.snapIndex/);
 assert.match(app,/dragSnapCache = useRef\(new WeakMap<Gesture/);

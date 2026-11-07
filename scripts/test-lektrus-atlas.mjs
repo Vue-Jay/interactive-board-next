@@ -166,7 +166,7 @@ const atlasEditor=fs.readFileSync(new URL("../src/LektrusSchoolDiagramEditor.tsx
 const atlasView=fs.readFileSync(new URL("../src/LektrusSchoolDiagramView.tsx",import.meta.url),"utf8");
 const atlasUi=fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8");
 const atlasEditorCss=fs.readFileSync(new URL("../src/lektrusAtlasEditor.css",import.meta.url),"utf8");
-const appBootstrap=fs.readFileSync(new URL("../src/main.tsx",import.meta.url),"utf8");
+const appBootstrap=fs.readFileSync(new URL("../src/appEntry.tsx",import.meta.url),"utf8");
 assert.match(atlasEditor,/onChange=\{isAtlas\?set:undefined\} editorMode=\{isAtlas\}/,
  "Selections in atlas preview should persist when added to board");
 assert.match(atlasView,/editorMode=\{editorMode\}/,
@@ -731,7 +731,7 @@ assert.match(data,/ne_110m_coastline.geojson/);
 
 // Explicit app navigation must never globally hijack every "Настройки"
 // button in an atlas, notifications dialog, or other subject tool.
-const application=fs.readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+const application=fs.readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
 const workspace=fs.readFileSync(new URL("../src/LectrisWorkspaceShell.tsx",import.meta.url),"utf8");
 const notificationPage=fs.readFileSync(new URL("../src/NotificationsScreen.tsx",import.meta.url),"utf8");
 assert.ok(!application.includes('textContent?.trim().includes("Настройки")'));
@@ -821,7 +821,7 @@ const modelContents=fs.readFileSync(new URL("../src/lektrusAtlasModel.ts",import
 assert.ok(modelContents.includes('export const defaultContourAssignment'));
 assert.ok(data.includes('export function featureIntersectsViewport'));
 assert.ok(common.includes('const target=10/Math.max(1,scale)'));
-const boardSettings=fs.readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+const boardSettings=fs.readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
 assert.ok(boardSettings.includes("Управление и интерфейс"));
 assert.ok(boardSettings.includes("Настроить расположение панелей"));
 assert.ok(boardSettings.includes("Колесо мыши и тачпад"));
@@ -1010,7 +1010,7 @@ assert.deepEqual(hitLib.contourEraserHits([movable],[],{...labelHitPoint,x:label
 // as a click on the control strip. This previously disabled *all* handles.
 assert.ok(application.includes('const transformHandle=target.closest("[data-transform-handle],[data-group-transform-handle],[data-connector-endpoint],[data-group-selection-drag],[data-board-selection-grip]")'));
 assert.ok(application.includes('if(!transformHandle&&target.closest("button,input,select,textarea'));
-assert.ok(application.includes('gesture.current = {\n        pointer: e.pointerId,\n        mode: transformHandle === "rotate" ? "rotate" : "resize"'));
+assert.match(application,/gesture\.current\s*=\s*\{\s*pointer:\s*e\.pointerId,\s*mode:\s*transformHandle\s*===\s*"rotate"\s*\?\s*"rotate"\s*:\s*"resize"/);
 const contourInkTs=fs.readFileSync(new URL("../src/lektrusContourInk.ts",import.meta.url),"utf8");
 const inkEraserTs=fs.readFileSync(new URL("../src/inkEraser.ts",import.meta.url),"utf8");
 const inkExports={};
@@ -1054,7 +1054,7 @@ assert.ok(map.includes('const worksheetOnBoard=isWorksheet&&!editorMode'));
 assert.ok(map.includes('const contourEraser=worksheetEditor&&contourAction==="erase"'));
 const schoolEditor=fs.readFileSync(new URL("../src/LektrusSchoolDiagramEditor.tsx",import.meta.url),"utf8");
 assert.ok(schoolEditor.includes('onSave({...item,schoolDiagram:structuredClone(draft),text:draft.title})'));
-const app=fs.readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+const app=fs.readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
 assert.ok(app.includes('if(isSchoolDiagramId(item.graphFigureId)){setSchoolEditorItem(item);return;}'));
 assert.ok(app.includes('className="screen-transform-overlay"'));
 assert.ok(app.includes('data-transform-handle={h}'));
@@ -1089,7 +1089,7 @@ assert.ok(atlasCss.includes('.lektrus-atlas-territory-dropdown'));
 const editorCss=fs.readFileSync(new URL("../src/lektrusAtlasEditor.css",import.meta.url),"utf8");
 assert.ok(editorCss.includes('.lektrus-contour-create-preview-map'));
 
-const studentBoard=fs.readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+const studentBoard=fs.readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
 assert.ok(studentBoard.includes('(singleSelected.locked&&!contourWorksheet)'));
 assert.ok(studentBoard.includes('item.locked&&item.graphFigureId!=="contour-atlas"'));
 assert.ok(studentBoard.includes('studentMode={isStudent&&schoolEditorItem.graphFigureId==="contour-atlas"}'));

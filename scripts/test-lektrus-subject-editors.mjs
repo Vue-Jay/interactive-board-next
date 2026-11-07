@@ -6,7 +6,7 @@ const view=read("src/LektrusPeriodicTableView.tsx");
 const editor=read("src/LektrusPeriodicTableEditor.tsx");
 const subjects=read("src/lektrusSchoolSubjects.ts");
 const board=read("src/boardModel.ts");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const registry=read("src/lektrusSubjectToolRegistry.ts");
 const formulaStyle=read("src/lektrusFormulaWindow.css");
 const source=(expression)=>{

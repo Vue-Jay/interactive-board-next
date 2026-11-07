@@ -78,7 +78,7 @@ assert.equal(db.get("lesson-board.boards.v1"),before["lesson-board.boards.v1"],
 assert.ok(db.has("lesson-board.local-test.boards.v1"),
  "Test boards should be persisted locally in isolated storage");
 assert.equal(networkCalls,0);
-const entry=readFileSync("src/main.tsx","utf8");
+const entry=readFileSync("src/appEntry.tsx","utf8");
 assert.match(entry,/!LEKTRUS_LOCAL_TEST_MODE && !isRemoteBackendEnabled\(\)/);
 const app=readFileSync("src/App.tsx","utf8");
 assert.match(app,/if \(LEKTRUS_LOCAL_TEST_MODE\) \{/);

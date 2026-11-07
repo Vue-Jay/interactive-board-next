@@ -3,7 +3,7 @@ import type { AccountRole } from "./accountRoleStore";
 import { listNotifications } from "./notificationsStore";
 
 
-type NavIcon = "search" | "home" | "subjects" | "groups" | "boards" | "users" | "assignments" | "schedule" | "progress" | "materials" | "templates" | "notification" | "profile" | "settings" | "admin" | "menu" | "chevron";
+type NavIcon = "search" | "home" | "subjects" | "groups" | "boards" | "users" | "assignments" | "schedule" | "progress" | "materials" | "templates" | "notification" | "feedback" | "profile" | "settings" | "admin" | "menu" | "chevron";
 type NavItem = { id: string; label: string; icon: NavIcon; teacher?: boolean; admin?: boolean };
 const items: NavItem[] = [
   { id:"", label:"Главная", icon:"home" },
@@ -17,6 +17,7 @@ const items: NavItem[] = [
   { id:"materials", label:"Материалы", icon:"materials", teacher:true },
   { id:"templates", label:"Шаблоны", icon:"templates", teacher:true },
   { id:"notifications", label:"Уведомления", icon:"notification" },
+  { id:"feedback", label:"Отзывы и предложения", icon:"feedback" },
   { id:"profile", label:"Профиль", icon:"profile" },
   { id:"settings", label:"Настройки", icon:"settings" },
   { id:"admin", label:"Администрирование", icon:"admin", admin:true },
@@ -34,6 +35,7 @@ const icons: Record<NavIcon, ReactNode> = {
   materials:<><path d="M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 11h18"/></>,
   templates:<><path d="M4 3h12v15H4zM8 7h12v14H8M7 11h6M7 14h4"/></>,
   notification:<><path d="M6 9a6 6 0 1 1 12 0v5l2 3H4l2-3zM10 21h4"/></>,
+  feedback:<><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></>,
   profile:<><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>,
   settings:<><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><path d="M12 1v2.5M12 20.5V23M1 12h2.5M20.5 12H23M4.2 4.2l1.8 1.8M18 18l1.8 1.8M19.8 4.2 18 6M6 18l-1.8 1.8"/></>,
   admin:<><path d="M12 2 3 6v6c0 5 4 8 9 10 5-2 9-5 9-10V6z"/><path d="m9 12 2 2 4-4"/></>,
@@ -79,7 +81,7 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
     setMenuQuery("");
     setCommandOpen(false);
     setCommandQuery("");
-    window.history.pushState({}, "",target?"/?section="+encodeURIComponent(target):"/");
+    window.history.pushState({}, "",target?"/app?section="+encodeURIComponent(target):"/app");
     window.dispatchEvent(new PopStateEvent("popstate"));
   };
   const toggle=()=>setCollapsed(prev=>{const next=!prev;try{localStorage.setItem("lectris.shell.collapsed",next?"1":"0")}catch{}return next});
@@ -112,7 +114,7 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
           </div>
           <div className="lectris-nav-group">
             <span className="lectris-nav-group-title">Библиотека и события</span>
-            {available.filter(x=>["materials","templates","notifications"].includes(x.id)).map(x=>navButton(x))}
+            {available.filter(x=>["materials","templates","notifications","feedback"].includes(x.id)).map(x=>navButton(x))}
           </div>
         </nav>
         <div className="lectris-sidebar-footer">

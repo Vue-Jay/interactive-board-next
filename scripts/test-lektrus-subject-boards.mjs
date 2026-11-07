@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import ts from "typescript";
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
-const sources=["src/App.tsx","src/LektrusSubjectBoard.tsx","src/boardModel.ts",
+const sources=["src/BoardApp.tsx","src/LektrusSubjectBoard.tsx","src/boardModel.ts",
  "src/lektrusSubjectToolRegistry.ts","src/lektrusSubjectAccent.ts",
  "src/lektrusSubjectTaskTemplates.ts","src/LektrusSubjectToolsPanel.tsx",
  "src/LektrusSubjectBoardSolution.tsx","src/LektrusChemicalEquationEditor.tsx"];
@@ -15,7 +15,7 @@ const registry=read("src/lektrusSubjectToolRegistry.ts");
 const panel=read("src/LektrusSubjectToolsPanel.tsx");
 const board=read("src/LektrusSubjectBoard.tsx");
 const model=read("src/boardModel.ts");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const styles=read("src/lektrusSubjectBoard.css");
 const templates=read("src/lektrusSubjectTaskTemplates.ts");
 const colors=read("src/lektrusSubjectAccent.ts");
@@ -47,7 +47,7 @@ for(const selector of [".lektrus-school-editor",".lektrus-science-editor",
  ".formula-editor-backdrop"]){
  assert.ok(themes.includes(selector),selector+" editor inherits a subject theme");
 }
-assert.match(read("src/main.tsx"),/lektrusSubjectEditorThemes\.css/);
+assert.match(read("src/appEntry.tsx"),/lektrusSubjectEditorThemes\.css/);
 assert.match(app,/collectChemistryObject\(/);
 assert.match(app,/!value\.subjectBoardStandalone/);
 assert.match(app,/id==="chem-formulas"\|\|id==="chem-assignments"/);

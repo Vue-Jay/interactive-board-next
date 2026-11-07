@@ -43,7 +43,7 @@ assert.equal(results.exampleIsotope(43),null,"do not fabricate neutron count fro
 
 const model=text("src/boardModel.ts"),editor=text("src/LektrusScienceEditor.tsx");
 const tableView=text("src/LektrusPeriodicTableView.tsx");
-const board=text("src/LektrusPeriodicBoard.tsx"),app=text("src/App.tsx");
+const board=text("src/LektrusPeriodicBoard.tsx"),app=text("src/BoardApp.tsx");
 const molecule=text("src/lektrusScienceInteractionNext.css");
 const school=text("src/lektrusSchoolSubjects.ts");
 assert.match(model,/labelDx\?:number;labelDy\?:number/);

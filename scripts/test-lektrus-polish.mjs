@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 
 const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8");
-const entry = read("src/main.tsx");
+const entry = read("src/appEntry.tsx");
 const polish = read("src/lektrusPolish.css");
 const contrast = read("src/lektrusContrast.css");
 const hub = read("src/LectrisHub.tsx");
@@ -18,10 +18,10 @@ for (const [name, selector] of Object.entries({
   hero:".lectris-hub-hero-compact",
   tile:".lectris-hub-tile-copy",
   board:".lectris-hub-board-cover",
-  shortcuts:".lectris-hub-shortcuts",
+  quickAccess:".lectris-hub-tiles",
   inspector:".lectris-object-inspector",
 })) assert.ok(polish.includes(selector), "Missing styling for " + name);
-for (const cls of ["lectris-sidebar-footer","lectris-hub-hero-compact","lectris-hub-tile","lectris-hub-shortcuts"]) {
+for (const cls of ["lectris-sidebar-footer","lectris-hub-hero-compact","lectris-hub-tile","lectris-hub-tiles"]) {
   assert.ok((hub + shell).includes(cls), "Missing real UI selector " + cls);
 }
 assert.equal((polish.match(/{/g) ?? []).length,(polish.match(/}/g) ?? []).length,"Unbalanced CSS blocks");

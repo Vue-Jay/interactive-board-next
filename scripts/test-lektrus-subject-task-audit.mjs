@@ -75,7 +75,7 @@ assert.match(board,/isIntegratedInteractiveTask\(tone,current.id\)/);
 assert.match(board,/interactiveModesForSubject\(tone\)\.map/);
 assert.match(board,/onClick=\{\(\)=>\{patch\(\{activity:freshActivity\(activityMode\)/);
 assert.match(board,/options.length>1/);
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 assert.match(app,/!subjectTaskTypeAllowed\(tone,changes.format\)/);
 const punctuation={mode:"fill",blanks:[{before:"Вставьте знак: ",answer:","}],tail:""};
 assert.deepEqual(interaction.activityScore(punctuation,{values:[","]}),{correct:1,total:1});

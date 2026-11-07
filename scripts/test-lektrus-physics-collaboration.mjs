@@ -54,7 +54,7 @@ const movedCircuit=movePhysicalPart(cItem,{kind:"component",id:"r"},347,323);
 assert.equal(movedCircuit.scienceCircuit.components[0].x,340,"Snap must work on board");
 assert.equal(movedCircuit.scienceCircuit.components[0].y,320);
 assert.equal(movedCircuit.scienceCircuit.wires[0].from.componentId,"r","Wires preserve terminal anchors");
-const code=read("src/App.tsx"),board=read("src/LektrusPhysicalBoardView.tsx");
+const code=read("src/BoardApp.tsx"),board=read("src/LektrusPhysicalBoardView.tsx");
 assert.ok(code.includes("onPhysicalPartMove={!presentation&&!item.locked"),"Board edit requires writable state");
 assert.ok(code.includes("!structurallyLockedForStudent(item)"),"Student permissions are enforced");
 assert.match(code,/editable=\{!!onPhysicalPartMove\}/,"Physics objects must render read-only for viewers");

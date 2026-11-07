@@ -26,7 +26,7 @@ await loadTs("src/lektrusGeometryPointNames.ts");
 
 const {mathPresets,makeMathPresetItem}=await loadTs("src/lektrusMathPresets.ts");
 const {isSolidFigure,solidWorldPoints,projectSolid}=await loadTs("src/lektrusSolid3d.ts");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const editor=read("src/LektrusGraphEditor.tsx");
 
 assert.equal(mathPresets.some(p=>p.id==="triangle-obtuse"),false,"no obtuse triangle button");

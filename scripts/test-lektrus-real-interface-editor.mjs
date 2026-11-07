@@ -1,21 +1,24 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const read=(file)=>readFileSync(new URL("../"+file,import.meta.url),"utf8");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
+const appShell=read("src/App.tsx");
 const admin=read("src/AdminScreen.tsx");
 const editor=read("src/LektrusInterfaceStudio.tsx");
 const css=read("src/lektrusInterfaceLayout.css");
 const layout=read("src/lektrusInterfaceLayout.ts");
 const targets=read("src/lektrusInterfaceTargets.ts");
 assert.match(admin,/onOpenLayout/,"admin should open the layout mode on a real board");
-assert.match(app,/INTERFACE_STUDIO_BOARD_ID/,"the editor uses a dedicated blank board");
-assert.match(app,/navigate\(`\/board\/\$\{INTERFACE_STUDIO_BOARD_ID\}\?layout-editor=1`\)/);
+assert.match(appShell,/INTERFACE_STUDIO_BOARD_ID/,"the editor uses a dedicated blank board");
+assert.match(appShell,/navigate\(`\/board\/\$\{INTERFACE_STUDIO_BOARD_ID\}\?layout-editor=1`\)/);
 assert.match(app,/items:\[\] as Item\[\]/,"editor content is always empty");
+assert.match(app,/const storageKey = layoutEditing\?boardStorageKey\(INTERFACE_STUDIO_BOARD_ID\):boardStorageKey\(boardSummary\.id\)/,
+ "interface editing uses an isolated storage key");
+assert.match(app,/const \[initial\] = useState\(\(\) => layoutEditing\?[\s\S]*?loadInitial\(storageKey\)\)/,
+ "interface editor starts from an empty board without loading user content");
 assert.match(app,/layoutEditing&&isAppAdmin&&new URLSearchParams/,"preview must not recursively mount another editor");
 assert.match(app,/get\("layout-preview"\)!=="1"/);
 assert.match(app,/if \(!canEdit \|\| layoutEditing\) return;/,"no content write from interface editor");
-assert.match(app,/if \(!editingLayout && pendingRaw/,"no template initialization");
-assert.match(app,/if \(!editingLayout && raw && board\.role/,"no board upload in editor");
 assert.doesNotMatch(editor,/li-stage-board|li-board-example|li-studio-inspector|<svg/i,
  "never create a fake board or icon set");
 assert.match(editor,/getInterfaceElements/,"discover UI controls directly from the real DOM");
