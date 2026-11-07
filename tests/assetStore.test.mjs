@@ -14,6 +14,10 @@ function store(remote = true, persisted = {}) {
       const synchronized`);
   const backend = {
     isRemoteBackendEnabled: () => remote,
+    remoteAssetExists: async (path) => {
+      calls.push([path, 'head']);
+      return server.has(path);
+    },
     remoteAssetRequest: async (path, blob) => {
       calls.push([path, blob ? 'upload' : 'download']);
       if (blob) { server.set(path, blob); return null; }
@@ -59,6 +63,16 @@ test('legacy migration uploads once and missing media blocks server save', async
   await s.ensureBoardAssets('board', doc);
   assert.equal(s.calls.length, count);
   await assert.rejects(s.ensureBoardAssets('board', { items: [{ kind: 'image', assetId: 'missing' }] }));
+});
+
+test('HEAD avoids full PDF downloads during existing-media verification', async () => {
+  const s=store(),pdf=new Blob(['PDF body'],{type:'application/pdf'});
+  s.server.set('board/file',pdf);
+  await s.ensureBoardAssets('board',{items:[{kind:'pdf',assetId:'file'}]});
+  assert.deepEqual(s.calls,[['board/file','head']],
+    'Cold server saves must check existence without downloading binary data');
+  await s.ensureBoardAssets('board',{items:[{kind:'pdf',assetId:'file'}]});
+  assert.equal(s.calls.length,1,'Verified assets must not be probed repeatedly');
 });
 
 test('existing server media is never overwritten by a legacy cache', async () => {
