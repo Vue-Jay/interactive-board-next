@@ -48,6 +48,8 @@ const TemplatesScreen = lazy(() => import("./TemplatesScreen"));
 
 const LektrusPublicSite = lazy(() => import("./LektrusPublicSite"));
 
+const PublicToolScreen = lazy(() => import("./PublicToolScreen"));
+
 const FeedbackScreen = lazy(() => import("./FeedbackScreen"));
 
 const BoardApp = lazy(() => import("./BoardApp"));
@@ -356,6 +358,7 @@ export default function App() {
     setBoardLoadError("");
     setSharePasswordRequired(false);
     if (route.kind === "site") { setBoardLoading(false); return; }
+    if (route.kind === "tool") { setBoardLoading(false); return; }
     if (route.kind === "home") { setBoardLoading(false); return; }
     setBoardLoading(true);
     void (async () => {
@@ -428,6 +431,8 @@ export default function App() {
   // also occurs inside atlas, notifications and local tool dialogs.
 
   if(route.kind==="site")return <Suspense fallback={<div className="lektrus-site-loading"/>}><LektrusPublicSite/></Suspense>;
+
+  if(route.kind==="tool")return <Suspense fallback={<BoardLoadingScreen/>}><PublicToolScreen tool={route.tool} onBack={()=>navigate("/")}/></Suspense>;
 
   if (!authReady) {
     return <main className="auth-shell"><section className="auth-card"><div className="auth-brand-row"><div className="auth-logo">B</div><div><div className="auth-brand">Учебная доска</div><div className="auth-subtitle">Проверяем сессию…</div></div></div></section></main>;
