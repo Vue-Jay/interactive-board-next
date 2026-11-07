@@ -149,7 +149,8 @@ test('authenticated binary transport preserves MIME and propagates access denial
   const exports = {};
   const source = readFileSync(new URL('../src/backend.ts', import.meta.url), 'utf8')
     .replaceAll('import.meta.env.VITE_SUPABASE_URL', '"https://test.invalid"')
-    .replaceAll('import.meta.env.VITE_SUPABASE_ANON_KEY', '"public-anon-key"');
+    .replaceAll('import.meta.env.VITE_SUPABASE_ANON_KEY', '"public-anon-key"')
+    .replaceAll('import.meta.env.VITE_AUTH_REDIRECT_URL', 'undefined');
   vm.runInNewContext(ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText, {
