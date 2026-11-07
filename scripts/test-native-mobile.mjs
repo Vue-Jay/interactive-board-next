@@ -46,7 +46,7 @@ assert.ok(pkg.dependencies["@capacitor/screen-orientation"]);
 assert.ok(app.includes('ScreenOrientation.lock({ orientation: "landscape-primary" })'));
 assert.ok(app.includes("ScreenOrientation.unlock()"));
 assert.ok(app.includes("[route.kind]"));
-assert.ok(app.includes("!Capacitor.isNativePlatform()&&installPrompt"));
+assert.ok(boardApp.includes("!Capacitor.isNativePlatform()&&installPrompt"));
 assert.ok(settings.includes('!Capacitor.isNativePlatform()&&<section className="settings-row-card lektrus-install-settings"'));
 assert.ok(activity.includes("WindowInsetsCompat.Type.tappableElement()"));
 assert.ok(activity.includes("WindowInsetsCompat.Type.navigationBars()"));

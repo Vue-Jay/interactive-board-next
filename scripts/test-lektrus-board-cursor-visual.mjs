@@ -6,7 +6,7 @@ const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 const app=read("src/BoardApp.tsx");
 const css=read("src/lektrusBoardBackground.css");
 const legacy=read("src/App.css");
-const entry=read("src/main.tsx");
+const entry=read("src/appEntry.tsx");
 
 assert.equal(ts.createSourceFile("App.tsx",app,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX).parseDiagnostics.length,0,
  "Board cursor changes must leave App.tsx syntactically valid");

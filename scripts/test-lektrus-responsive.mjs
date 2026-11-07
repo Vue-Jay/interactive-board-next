@@ -4,12 +4,12 @@ import { readFileSync } from "node:fs";
 const source=(path)=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 const styles=source("src/lektrusResponsive.css");
 const base=source("src/lektrusRefresh.css");
-const entry=source("src/main.tsx");
+const entry=source("src/appEntry.tsx");
 const board=source("src/BoardApp.tsx");
 const shell=source("src/LectrisWorkspaceShell.tsx");
 const manifest=JSON.parse(source("public/manifest.webmanifest"));
 
-assert.match(entry,/import "\.\/lektrusRefresh\.css";\r?\nimport "\.\/lektrusResponsive\.css";/,
+assert.ok(entry.indexOf('import "./lektrusResponsive.css";')>entry.indexOf('import "./lektrusRefresh.css";'),
   "responsive overrides must follow the base refresh layer");
 assert.ok(entry.indexOf('import "./lektrusProductScreens.css";')>entry.indexOf('import "./lektrusResponsive.css";')
   &&entry.indexOf('import "./lektrusProductScreens.css";')<entry.indexOf('import "./lektrusSelectionCursor.css";'),

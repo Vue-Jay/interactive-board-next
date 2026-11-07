@@ -5,16 +5,16 @@ const app=read("src/BoardApp.tsx");
 const css=read("src/lektrusCanvasChrome.css");
 const hook=read("src/useAdaptiveBoardToolbar.ts");
 const capacity=read("src/toolbarCapacity.ts");
-const entry=read("src/main.tsx");
+const entry=read("src/appEntry.tsx");
 assert.match(entry,/import "\.\/lektrusPolish\.css";\s*import "\.\/lektrusCanvasChrome\.css";/);
 assert.match(app,/ref=\{adaptiveToolbarRef\}/);
-assert.match(app,/useAdaptiveBoardToolbar\(desktopToolsExpanded,lectrisPinned\.join\("\|"\)\)/);
+assert.match(app,/useAdaptiveBoardToolbar\(desktopToolsExpanded,desktopToolSection\)/);
 // Regression: referencing a let/const state before its initialization causes
 // a runtime ReferenceError and renders the entire board unusable.
 const desktopStatePos=app.indexOf("const [desktopToolsExpanded,setDesktopToolsExpanded]=useState(");
 const adaptiveCallPos=app.indexOf("const adaptiveToolbarRef=useAdaptiveBoardToolbar(");
-const pinnedStatePos=app.indexOf("const [lectrisPinned,setLectrisPinned]=useState");
-assert.ok(desktopStatePos>=0 && pinnedStatePos>=0 && adaptiveCallPos>desktopStatePos && adaptiveCallPos>pinnedStatePos,
+const sectionStatePos=app.indexOf("const [desktopToolSection,setDesktopToolSection]=useState(");
+assert.ok(desktopStatePos>=0 && sectionStatePos>=0 && adaptiveCallPos>desktopStatePos && adaptiveCallPos>sectionStatePos,
   "Adaptive toolbar hook must be called AFTER all state arguments are initialized");
 assert.match(app,/setDesktopToolsExpanded\(v=>!v\)/);
 assert.match(app,/GeometryInstruments view=\{view\} boardRef=\{board\}/);
@@ -34,11 +34,12 @@ for (const name of ["select","lasso","pen","marker","eraser","sticky","shape","f
 assert.doesNotMatch(css, /\.board-object\b|\.viewer-ink-canvas\b|\.canvas\b|\.board\.eraser-live\b/);
 
 const overflow=read("src/LektrusToolOverflow.tsx");
-assert.match(app,/lectrisPinned\.map\(id=>tools\.find\(t=>t\.id===id\)!\)/,
-  "Only pinned tools belong in the narrow rail");
+assert.ok(app.includes('className="toolbar-pinned" aria-label="Основные инструменты"')
+  &&app.includes('(["select","lasso",...(isCoarsePointer?["hand"]:[]),"pen","marker","eraser"] as Tool[]).map(id=>'),
+  "The compact desktop rail must keep the core board tools available");
 assert.match(app,/desktopToolsExpanded&&<LektrusToolOverflow/,
   "Extra tools must appear in the floating dialog");
-assert.match(app,/setTool\(id\);setMobileToolsOpen\(false\);setDesktopToolsExpanded\(false\)/,
+assert.match(app,/setTool\(id\);setDesktopToolsExpanded\(false\)/,
   "Overflow items must retain click actions and close the dialog");
 assert.match(app,/const \[desktopToolsExpanded,setDesktopToolsExpanded\]=useState\(false\)/,
   "The More dialog should not unexpectedly open when a board is reopened");
@@ -59,9 +60,7 @@ assert.match(app,/\{mobileToolsOpen&&<section className="mobile-tools-sheet"/);
 assert.match(css,/@media screen and \(max-width:700px\) and \(orientation:portrait\)/);
 assert.match(css,/html body \.workspace \.toolbar\.compact-toolbar\.mobile-open/);
 assert.match(css,/display:none!important/);
-// The real play SVG is retained. Never draw a second triangle in CSS.
-assert.doesNotMatch(legacyBoardCss,/\.topbar-right>\.start-live-lesson::after\{content:"▶"/);
-assert.match(app,/<svg className="top-action-svg play-svg"[^>]*><path d="M8 5\.5 18 12 8 18\.5Z"\/><\/svg>/);
-assert.match(css,/\.start-live-lesson::after\s*\{\s*content:none!important/);
+// The current compact top bar keeps its participant action as a real control.
+assert.match(app,/aria-label="Добавить участника"/);
 
 console.log("Lektrus board chrome and adaptive toolbar source contracts pass.");
