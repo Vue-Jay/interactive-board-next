@@ -8,6 +8,7 @@ import {getProfileDetails} from "./profileDetailsStore";
 import {getPlan} from "./billingStore";
 import {readDeveloperPreferences,writeDeveloperPreferences} from "./developerPreferences";
 import { applyLectrisPalette,readLectrisPalette,type LectrisPalette } from "./lectrisPalette";
+import {addPreviewTeacherRequest} from "./previewTeacherRequestsStore";
 
 // Browsers without beforeinstallprompt (notably iOS Safari) still support
 // installing via the browser menu. Do not present a disabled install button.
@@ -45,9 +46,15 @@ export default function SettingsScreen({user,onBack,onLogout,installAvailable,is
  const sendTeacherApplication=async(event:FormEvent<HTMLFormElement>)=>{
   event.preventDefault();if(roleBusy)return;
   if(application.organization.trim().length<2||application.focusArea.trim().length<2){setApplicationError("Укажите место работы и предметы, которые планируете преподавать.");return}
-  if(previewRole){setApplicationOpen(false);setNotice("Анкета проверена в режиме просмотра. Настоящие данные аккаунта не изменены.");return}
+  const cleaned={...application,phone:application.phone.trim(),city:application.city.trim(),organization:application.organization.trim(),focusArea:application.focusArea.trim(),experience:application.experience.trim(),motivation:application.motivation.trim()};
+  if(previewRole){
+   if(previewRole==="student"){
+    addPreviewTeacherRequest(user,cleaned);setApplicationOpen(false);setNotice("Тестовая заявка сохранена только на этом устройстве. Удалить её можно в Администрирование → Заявки преподавателей.");
+   }else{setApplicationOpen(false);setNotice("Анкета проверена в режиме просмотра. Настоящие данные аккаунта не изменены.")}
+   return;
+  }
   setRoleBusy(true);setApplicationError("");
-  try{setAccess(await requestTeacherAccess({...application,phone:application.phone.trim(),city:application.city.trim(),organization:application.organization.trim(),focusArea:application.focusArea.trim(),experience:application.experience.trim(),motivation:application.motivation.trim()}));setApplicationOpen(false);setNotice("Заявка отправлена администратору");window.dispatchEvent(new Event("onlinerepetitor:account-access"))}
+  try{setAccess(await requestTeacherAccess(cleaned));setApplicationOpen(false);setNotice("Заявка отправлена администратору");window.dispatchEvent(new Event("onlinerepetitor:account-access"))}
   catch(value){setApplicationError(value instanceof Error?value.message:"Не удалось отправить заявку")}
   finally{setRoleBusy(false)}
  };
@@ -81,7 +88,7 @@ export default function SettingsScreen({user,onBack,onLogout,installAvailable,is
   </section>
   {applicationOpen&&<div className="access-backdrop teacher-application-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!roleBusy)setApplicationOpen(false)}}>
    <form className="access-modal teacher-application-modal" onSubmit={event=>void sendTeacherApplication(event)}>
-    <div className="access-head"><div><h2>Заявка преподавателя</h2><p>Заполните сведения, чтобы администратор мог рассмотреть ваш запрос.</p></div><button type="button" aria-label="Закрыть" disabled={roleBusy} onClick={()=>setApplicationOpen(false)}>×</button></div>
+    <div className="access-head"><div><h2>{previewRole?"Тестовая заявка преподавателя":"Заявка преподавателя"}</h2><p>{previewRole?"Заявка останется в этом браузере и не уйдёт администратору как настоящее обращение.":"Заполните сведения, чтобы администратор мог рассмотреть ваш запрос."}</p></div><button type="button" aria-label="Закрыть" disabled={roleBusy} onClick={()=>setApplicationOpen(false)}>×</button></div>
     <div className="teacher-application-grid">
      <label><span>Предметы для преподавания <i>*</i></span><input required value={application.focusArea} onChange={event=>updateApplication("focusArea",event.target.value)} placeholder="Например, математика и физика" maxLength={120}/></label>
      <label><span>Место работы или формат занятий <i>*</i></span><input required value={application.organization} onChange={event=>updateApplication("organization",event.target.value)} placeholder="Школа, учебный центр или частная практика" maxLength={160}/></label>

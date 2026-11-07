@@ -34,6 +34,9 @@ assert.ok(layoutStore.includes("admin_publish_interface_layout")&&layoutStore.in
 assert.ok(globalMigration.includes("public.is_app_admin(auth.uid())"),"only a verified application administrator may publish the shared design");
 const profile=read("src/ProfileScreen.tsx");
 const settings=read("src/SettingsScreen.tsx");
+const previewRequests=read("src/previewTeacherRequestsStore.ts");
+const adminScreen=read("src/AdminScreen.tsx");
+assert.ok(settings.includes("addPreviewTeacherRequest(user,cleaned)")&&previewRequests.includes("localStorage.setItem(KEY")&&adminScreen.includes("Удалить тестовую заявку"),"role preview teacher applications must stay local and be removable from administrator review");
 const applicationMigration=read("supabase/v251_teacher_application_details.sql");
 assert.ok(!profile.includes("Коротко о себе")&&!profile.includes("О вас и вашей работе"),"the profile must not include the biography or teacher application section heading");
 assert.ok(profile.includes("{isTeacher&&")&&settings.includes("Заявка преподавателя")&&settings.includes("experience"),"teacher information must be requested in the teacher application and shown only to teachers in their profile");
