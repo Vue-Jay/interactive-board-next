@@ -53,7 +53,7 @@ function nearestAxis(
   sourceStart:number,sourceSpan:number,rawDelta:number,
   threshold:number,index:AxisIndex
 ):{delta:number;guide?:number}{
-  let best=threshold+1,rank=Infinity,guide:number|undefined;
+  let best=threshold+1,rank=Infinity,guide:number|undefined,delta=rawDelta;
   const values=index.positions,orders=index.orders;
   const anchors=[sourceStart,sourceStart+sourceSpan/2,sourceStart+sourceSpan];
   for(let source=0;source<3;source++){
@@ -66,11 +66,11 @@ function nearestAxis(
       const targetOrder=orders[candidate];
       const originalRank=Math.floor(targetOrder/3)*9+source*3+targetOrder%3;
       if(distance<=threshold&&(distance<best||distance===best&&originalRank<rank)){
-        best=distance;rank=originalRank;guide=value;
+        best=distance;rank=originalRank;guide=value;delta=rawDelta+(value-desired);
       }
     }
   }
-  return guide===undefined?{delta:rawDelta}:{delta:rawDelta+guide-(anchors[Math.floor(rank%9/3)]+rawDelta),guide};
+  return {delta,guide};
 }
 
 /** Drop-in equivalent of scanning every other object for alignment guides. */
