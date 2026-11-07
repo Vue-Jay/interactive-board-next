@@ -25,6 +25,7 @@ const introduction:Record<string,{title:string;hint:string}>={
  "russian:morphemes":{title:"Разбор слова по составу",hint:"Разделите слово и обозначьте морфемы."},
  "russian:morphology":{title:"Морфологический разбор",hint:"Выберите слово и выполните школьный разбор."},
  "russian:syntax":{title:"Разбор предложения",hint:"Подчеркните члены предложения."},
+ "russian:phonetics":{title:"Фонетический разбор",hint:"Задайте слово. Ученик запишет звуки, ударение и характеристики."},
  "russian:text":{title:"Работа с текстом",hint:"Текст и вопросы к нему."},
  "russian:interactive":{title:"Интерактивная практика",hint:"Создайте упражнение с проверкой."},
  "languages:task":{title:"Свободное задание",hint:"Вопрос или письменное упражнение."},
@@ -39,6 +40,7 @@ const introduction:Record<string,{title:string;hint:string}>={
 /** The same stored field can have different school meaning in different workflows. */
 const subjectFieldInfo:Record<string,{label:string;hint:string;rows?:number}>={
  "russian:morphemes:material":{label:"Слово для разбора",hint:"Одно слово, без пробелов"},
+ "russian:phonetics:material":{label:"Слово для разбора",hint:"Одно слово, не больше 24 букв"},
  "russian:morphology:material":{label:"Предложение",hint:"Введите предложение с разбираемым словом",rows:4},
  "russian:morphology:target":{label:"Разбираемое слово",hint:"Введите одно слово из этого предложения"},
  "russian:syntax:material":{label:"Предложение для разбора",hint:"Введите предложение для подчёркивания членов",rows:4},
@@ -162,7 +164,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
   <div className="lektrus-language-studio-intro">
    <strong>{note.title}</strong><small>{note.hint}</small>
   </div>
-  <div className={"lektrus-language-studio-layout"+(tone==="russian"&&["morphemes","syntax","morphology"].includes(template.id)?" lektrus-language-wide-preview":"")}>
+  <div className={"lektrus-language-studio-layout"+(tone==="russian"&&["morphemes","syntax","morphology","phonetics"].includes(template.id)?" lektrus-language-wide-preview":"")}>
    <div className="lektrus-language-author">
     {promptNeeded&&<details key={tone+":"+template.id} className="lektrus-language-prompt-optional">
       <summary>Инструкция ученику <small>{entry.prompt.trim()?"заполнена":"необязательно"}</small></summary>
@@ -316,7 +318,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
        {field.multiline||content?.rows?<textarea rows={content?.rows??4} maxLength={1800}
         value={entry.details?.[field.id]??""} placeholder={content?.hint??field.placeholder}
         onChange={e=>changeMaterial(field.id,e.target.value)}/>:
-        <input maxLength={tone==="russian"&&template.id==="morphemes"&&field.id==="material"?64:1800} value={entry.details?.[field.id]??""}
+        <input maxLength={tone==="russian"&&template.id==="morphemes"&&field.id==="material"?64:tone==="russian"&&template.id==="phonetics"&&field.id==="material"?24:1800} value={entry.details?.[field.id]??""}
          placeholder={content?.hint??field.placeholder}
          onChange={e=>changeMaterial(field.id,e.target.value)}/>}
       </label>;
@@ -334,6 +336,9 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
         onChange={e=>changeMaterial("target",e.target.value)}/>
       </label>
      </div>}
+     {tone==="russian"&&template.id==="phonetics"&&!!(entry.details?.material?.trim())&&
+      (!/^[\\p{L}\\p{M}]+(?:[-’][\\p{L}\\p{M}]+)*$/u.test(entry.details?.material?.trim()??"")||Array.from(entry.details?.material?.trim()??"").length>24)&&
+      <p className="lektrus-language-studio-warning">Введите одно слово до 24 букв без цифр и знаков препинания.</p>}
      {tone==="russian"&&template.id==="morphemes"&&/\\s/.test(entry.details?.material?.trim()??"")&&
       <p className="lektrus-language-studio-warning">Для разбора по составу укажите одно слово без пробелов.</p>}
      {tone==="russian"&&template.id==="text"&&
@@ -348,7 +353,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
     <div className="lektrus-language-preview-content">
      <strong>{entry.title.trim()||template.title}</strong>
      {entry.prompt.trim()&&<p className="lektrus-language-preview-instruction">{entry.prompt}</p>}
-     {template.fields.filter(()=>!(tone==="russian"&&["morphemes","morphology","syntax"].includes(template.id))&&
+     {template.fields.filter(()=>!(tone==="russian"&&["morphemes","morphology","syntax","phonetics"].includes(template.id))&&
       !(tone==="languages"&&["translation","grammar","reading"].includes(template.id))).map(field=>(entry.details?.[field.id]?.trim()?
       <div key={field.id} className="lektrus-language-preview-material">
        <small>{subjectFieldInfo[tone+":"+template.id+":"+field.id]?.label??field.label}</small><p>{entry.details?.[field.id]}</p>
@@ -356,7 +361,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
      {tone==="languages"&&["translation","grammar","reading"].includes(template.id)?
        <LektrusForeignTaskAnswer entry={entry} format={template.id as "translation"|"grammar"|"reading"}
         answer={previewForeign} onChange={setPreviewForeign}/>:
-      tone==="russian"&&["morphemes","morphology","syntax","text"].includes(template.id)?
+      tone==="russian"&&["morphemes","morphology","syntax","phonetics","text"].includes(template.id)?
        <LektrusRussianTaskAnswer entry={entry} work={previewRussian} onChange={setPreviewRussian}/>:
       activity?<LektrusSubjectActivityRunner activity={activity} response={previewAnswer}
        onChange={setPreviewAnswer} punctuation={punctuation} compact/>:
