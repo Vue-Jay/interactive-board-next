@@ -101,9 +101,18 @@ export default function LektrusPeriodicFloatingInfo({
   window.addEventListener("scroll",onGeometryChange,true);
   window.visualViewport?.addEventListener("resize",onGeometryChange);
   window.visualViewport?.addEventListener("scroll",onGeometryChange);
-  // Follow CSS transitions between attribute changes, then stop polling.
-  document.addEventListener("transitionrun",onTransformChange,true);
-  document.addEventListener("transitionend",onGeometryChange,true);
+  // Ignore transitions elsewhere on the page (menus, cursors, etc.).
+  // Only a moving ancestor of this board can reposition its info card.
+  const onTransitionRun=(event:Event)=>{
+   const target=event.target as Element|null;
+   if(target===stage||target?.contains?.(stage))onTransformChange();
+  };
+  const onTransitionEnd=(event:Event)=>{
+   const target=event.target as Element|null;
+   if(target===stage||target?.contains?.(stage))onGeometryChange();
+  };
+  document.addEventListener("transitionrun",onTransitionRun,true);
+  document.addEventListener("transitionend",onTransitionEnd,true);
   measure();
   return()=>{
    alive=false;cancelAnimationFrame(frame);
@@ -112,8 +121,8 @@ export default function LektrusPeriodicFloatingInfo({
    window.removeEventListener("scroll",onGeometryChange,true);
    window.visualViewport?.removeEventListener("resize",onGeometryChange);
    window.visualViewport?.removeEventListener("scroll",onGeometryChange);
-   document.removeEventListener("transitionrun",onTransformChange,true);
-   document.removeEventListener("transitionend",onGeometryChange,true);
+   document.removeEventListener("transitionrun",onTransitionRun,true);
+   document.removeEventListener("transitionend",onTransitionEnd,true);
   };
  },[stageRef]);
 
