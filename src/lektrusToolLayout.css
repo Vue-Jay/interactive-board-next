@@ -32,7 +32,8 @@ body .workspace .toolbar.compact-toolbar .toolbar-list {
   gap:3px!important;overflow:hidden!important;
 }
 
-@media screen and (min-width:1101px) and (pointer:fine) {
+@media screen and (min-width:1101px) and (pointer:fine),
+       screen and (min-width:1101px) and (pointer:none) {
   body .workspace .toolbar.compact-toolbar {
     display:flex!important;visibility:visible!important;opacity:1!important;
     pointer-events:auto!important;
