@@ -135,3 +135,18 @@ html.lektrus-android-app {
     right:calc(max(var(--lektrus-cutout-right), env(safe-area-inset-right,0px)) + var(--lektrus-edge-gap))!important;
   }
 }
+
+/* Short landscape: the bottom-left zoom bar overlapped the action strip of
+   a selected object (844×390: 974 px²). Return zoom controls to the lower
+   right, away from the touch rail and the usual selection-action position.
+   Keep the native Android right cutout outside the touch targets. */
+@media screen and (max-width:1100px) and (max-height:450px) and (orientation:landscape) {
+  body .workspace .board-controls {
+    left:auto!important;
+    right:max(12px,env(safe-area-inset-right,0px))!important;
+  }
+  html.lektrus-android-app body .workspace .board-controls {
+    left:auto!important;
+    right:calc(max(var(--lektrus-cutout-right),env(safe-area-inset-right,0px)) + var(--lektrus-edge-gap))!important;
+  }
+}
