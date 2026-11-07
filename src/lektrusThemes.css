@@ -611,3 +611,7 @@
   color:var(--lt-text);border-bottom-color:var(--lt-line);
 }
 .access-backdrop .notification-settings .notification-toggle input{accent-color:var(--lt-primary)}
+
+/* Preserve the semantic danger state in access/member management. */
+.access-backdrop .access-modal .access-person button.danger{color:#b33636}
+:root[data-theme="dark"] .access-backdrop .access-modal .access-person button.danger{color:#ffb4aa}
