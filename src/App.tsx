@@ -2930,7 +2930,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if (layoutEditing || !isRemoteBackendEnabled() || !canEdit || !boardMounted.current || pendingRemote.current) return;
     const fingerprint = knownFingerprint ?? documentFingerprint(data);
     if (fingerprint === acknowledgedDocument.current ||
-        sharedBoardFingerprint(data)===acknowledgedSharedContent.current) return;
+        fingerprint === acknowledgedSharedContent.current) return;
     if (remoteSaveInFlight.current) {
       queuedRemoteSnapshot.current = data;
       return;
@@ -2965,7 +2965,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       }
       remoteVersion.current = result.version;
       acknowledgedDocument.current = fingerprint;
-      acknowledgedSharedContent.current = sharedBoardFingerprint(data);
+      // The shared fingerprint is identical: the personal viewport is omitted.
+      // Reusing this hash avoids a second full document traversal per save.
+      acknowledgedSharedContent.current = fingerprint;
       acknowledgedBoardData.current = data;
       // A newer local edit may already be queued. Never clear its pending flag
       // merely because the previous remote revision finished.
@@ -3046,7 +3048,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       if (isRemoteBackendEnabled() && pendingRemote.current) return;
       if(isRemoteBackendEnabled() && (
         fingerprint === acknowledgedDocument.current ||
-        sharedBoardFingerprint(data)===acknowledgedSharedContent.current
+        fingerprint === acknowledgedSharedContent.current
       )){
         try{localStorage.removeItem(storageKey+".pending-sync")}catch{}
         setSaveStatus("Сохранено на сервере");
