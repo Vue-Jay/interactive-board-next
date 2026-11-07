@@ -144,7 +144,7 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
       {entry.kind==="task"&&<div className="lektrus-subject-board-fields">
         {definition.fields.filter(field=>entry.details?.[field.id]?.trim()&&
          !(tone==="russian"&&
-          (["morphemes","syntax","morphology"].includes(entry.format??"")&&field.id==="material"||
+          (["morphemes","syntax","morphology","phonetics"].includes(entry.format??"")&&field.id==="material"||
            entry.format==="morphology"&&field.id==="target"))&&
          !(tone==="languages"&&["translation","grammar","reading"].includes(entry.format??""))).map(field=>
          <div className="lektrus-subject-board-field" key={field.id}>
@@ -172,7 +172,7 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
       {tone==="languages"&&["translation","grammar","reading"].includes(entry.format??"")&&
        <LektrusForeignTaskAnswer entry={entry} format={entry.format as "translation"|"grammar"|"reading"}
         answer={entry.answer} onChange={onAnswerChange?answer=>onAnswerChange(entry.id,answer):undefined}/>}
-      {tone==="russian"&&["morphemes","syntax","morphology","text"].includes(entry.format??"")&&
+      {tone==="russian"&&["morphemes","syntax","morphology","phonetics","text"].includes(entry.format??"")&&
        <LektrusRussianTaskAnswer entry={entry} work={entry.russianWork}
         onChange={onRussianWorkChange?work=>onRussianWorkChange(entry.id,work):undefined}/>}
       {tone==="russian"&&["orthography","punctuation"].includes(entry.format??"")&&!entry.activity&&
@@ -193,7 +193,7 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
         {!onEditSolution&&!hasWorkedSolution(entry.workedSolution)&&!entry.answer.trim()&&
          <span className="lektrus-subject-board-solution-hint">Решение пока не добавлено</span>}
       </div>:(activityMatchesTask(tone,entry.format,entry.activity)||
-       tone==="russian"&&["morphemes","syntax","morphology","text","orthography","punctuation"].includes(entry.format??"")||
+       tone==="russian"&&["morphemes","syntax","morphology","phonetics","text","orthography","punctuation"].includes(entry.format??"")||
        tone==="languages"&&["translation","grammar","reading"].includes(entry.format??""))?null:
        <div className="lektrus-subject-board-answer">
        <label htmlFor={"board-answer-"+entry.id}>{tone==="physics"&&entry.format==="lab"?"Результаты измерений и вывод":
