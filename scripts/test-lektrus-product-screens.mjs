@@ -9,7 +9,8 @@ const styles=read("src/lektrusProductScreens.css");
 const templates=read("src/TemplatesScreen.tsx");
 
 assert.ok(app.includes("Управление и интерфейс"),"the settings entry must show its full label");
-assert.ok(app.includes("effectiveAccountRole=appRolePreview")&&shell.includes("Проверка интерфейса")&&shell.includes("Вернуться к администратору"),"administrators must be able to preview app-wide role menus and switch back");
+assert.ok(app.includes('const effectiveAccountRole=appRolePreview==="actual"?accountRole:appRolePreview')&&app.includes("changeAppRolePreview"),"administrator role preview must affect app-wide menus");
+assert.ok(!shell.includes("Проверка интерфейса")&&!shell.includes("Вернуться к администратору"),"role preview controls must not occupy the persistent workspace header");
 const menuStart=app.indexOf('<div className="lectris-layout-menu">');
 const menuEnd=app.indexOf("</details>",menuStart);
 const menu=app.slice(menuStart,menuEnd);
@@ -36,6 +37,7 @@ const profile=read("src/ProfileScreen.tsx");
 const settings=read("src/SettingsScreen.tsx");
 const previewRequests=read("src/previewTeacherRequestsStore.ts");
 const adminScreen=read("src/AdminScreen.tsx");
+assert.ok(adminScreen.includes("Просмотр приложения по ролям")&&adminScreen.includes("onRolePreviewChange(value)")&&adminScreen.includes('"Администратор"')&&adminScreen.includes('"Преподаватель"')&&adminScreen.includes('"Ученик"')&&read("src/SettingsScreen.tsx").includes("Завершить проверку роли"),"administrators must be able to switch app-wide role menus in Administration and switch back in Settings");
 assert.ok(settings.includes("addPreviewTeacherRequest(user,cleaned)")&&previewRequests.includes("localStorage.setItem(KEY")&&adminScreen.includes("Удалить тестовую заявку"),"role preview teacher applications must stay local and be removable from administrator review");
 const applicationMigration=read("supabase/v251_teacher_application_details.sql");
 assert.ok(!profile.includes("Коротко о себе")&&!profile.includes("О вас и вашей работе"),"the profile must not include the biography or teacher application section heading");
