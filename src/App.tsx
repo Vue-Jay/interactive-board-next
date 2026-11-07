@@ -9006,7 +9006,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               // Capture sees events even when a nested SVG/editor calls
               // stopPropagation on pointermove. Its bubble handler must not
               // apply a second movement for the same sample.
-              if(gesture.current?.pointer===e.pointerId)move(e);
+              if(gesture.current?.pointer===e.pointerId){
+                move(e);
+                // This gesture is owned by the BOARD now, not the widget.
+                // Avoid moving an inner model or triggering its hover actions.
+                e.stopPropagation();
+              }
             }
             if(tool==="select")syncSelectionCursor(e.target,e.pointerType);
             if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType,e.target);
@@ -9029,7 +9034,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               inertSurfaceDragPointer.current=null;
               // Embedded widgets may stop the UP event too. Finalize in
               // capture before they can interrupt it, with one undo step.
-              if(gesture.current?.pointer===e.pointerId){move(e);end();}
+              if(gesture.current?.pointer===e.pointerId){move(e);end();e.stopPropagation();}
             }
             const canvasTap=geometryCanvasTouch.current;
             if(canvasTap?.pointer===e.pointerId){
@@ -9092,7 +9097,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             if(tool==="select")applyBoardSelectionCursor(board.current,"idle");
             if(inertSurfaceDragPointer.current===e.pointerId){
               inertSurfaceDragPointer.current=null;
-              if(gesture.current?.pointer===e.pointerId)end(true);
+              if(gesture.current?.pointer===e.pointerId){end(true);e.stopPropagation();}
             }
             if(e.pointerType==="touch"){
               const consumed=touchEnd(e);
