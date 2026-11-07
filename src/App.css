@@ -794,6 +794,18 @@ button {
   outline: none !important;
 }
 
+
+/* All screen-space selection chrome shares the live camera delta. During a
+   compositor-only pan the world moves without React rerendering its bounds;
+   this layer carries the frame, resize/rotate handles, connector endpoints and
+   action toolbar together, so none can remain at the old screen coordinates. */
+.board-selection-pan-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform-origin: 0 0;
+}
+
 .screen-transform-overlay {
   position: absolute;
   z-index: 70;
