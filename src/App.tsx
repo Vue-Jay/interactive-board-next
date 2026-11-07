@@ -129,6 +129,7 @@ import BoardVisitHistoryDialog from "./BoardVisitHistoryDialog";
 import { connectBoardCursorChannel, type BoardCursorChannel, type RemoteCursor, type LiveInkMessage } from "./boardBroadcast";
 import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState, type BoardObjectPose } from "./boardWorkSync";
+import { objectPoseOrigin, objectPoseMatches } from "./boardObjectMotion";
 import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest } from "./boardAttachmentApprovalSync";
 import { documentFingerprint, sharedBoardFingerprint, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
 import {mergeEditedValue,editorDiff,applyEditorOps} from "./lektrusLiveEditorMerge";
@@ -2766,6 +2767,31 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // pointerdown/pointermove bubbling. Track the owning pointer to consume
   // movement and release exactly once, without stealing active controls.
   const inertSurfaceDragPointer=useRef<number|null>(null);
+  const gestureOriginCache=useRef(new WeakMap<Gesture,Map<string,string>>());
+  const getGestureOrigins=(g:Gesture)=>{
+    let origins=gestureOriginCache.current.get(g);
+    if(!origins){
+      const ids=new Set(g.ids);
+      origins=new Map(g.before.filter(item=>ids.has(item.id))
+        .map(item=>[item.id,objectPoseOrigin(item)]));
+      gestureOriginCache.current.set(g,origins);
+      // The local pointer always wins over an old remote visual hint.
+      setRemoteObjectPoses(current=>{
+        const stale=g.ids.filter(id=>current[id]);
+        if(!stale.length)return current;
+        const next={...current};for(const id of stale)delete next[id];
+        return next;
+      });
+    }
+    return origins;
+  };
+  const toBoardObjectPose=(item:Item,origin:string):BoardObjectPose=>({
+    id:item.id,x:item.x,y:item.y,width:item.width,height:item.height,
+    rotation:item.rotation??0,origin,
+    ...(item.kind==="connector"?{
+      connectorStart:item.connectorStart,connectorEnd:item.connectorEnd
+    }:{}),
+  });
   // Selection pointers use browser-native SVG cursors; update an imperative
   // style variable only when the interaction state changes. Never rerender the
   // (potentially very large) whiteboard just because the mouse moved.
@@ -3317,14 +3343,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if(active&&canEdit&&active.ids.length&&active.ids.length<=64&&
       (active.mode==="drag"&&active.dragging ||
        active.mode==="hand-smart"&&active.dragging&&active.handMoveSelection ||
-       active.mode==="resize"||active.mode==="rotate")){
+       active.mode==="resize"||active.mode==="rotate"||
+       active.mode==="connector-end")){
       const moving=new Set(active.ids);
+      const origins=getGestureOrigins(active);
       const poses:BoardObjectPose[]=[];
       for(const item of synced){
-        if(moving.has(item.id))poses.push({
-          id:item.id,x:item.x,y:item.y,width:item.width,height:item.height,
-          rotation:item.rotation??0
-        });
+        if(moving.has(item.id)&&origins.has(item.id))
+          poses.push(toBoardObjectPose(item,origins.get(item.id)!));
       }
       if(poses.length===moving.size)workChannel.current?.publishTransform(poses);
     }
@@ -4096,15 +4122,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if(canEdit&&g.ids.length&&g.ids.length<=64&&
       (g.mode==="drag"&&g.dragging||
        g.mode==="hand-smart"&&g.dragging&&g.handMoveSelection||
-       g.mode==="resize"||g.mode==="rotate")){
+       g.mode==="resize"||g.mode==="rotate"||g.mode==="connector-end")){
       const finalItems=cancel?(g.restore??g.before):itemsRef.current;
       const moving=new Set(g.ids);
+      const origins=getGestureOrigins(g);
       const poses:BoardObjectPose[]=[];
       for(const item of finalItems){
-        if(moving.has(item.id))poses.push({
-          id:item.id,x:item.x,y:item.y,width:item.width,height:item.height,
-          rotation:item.rotation??0
-        });
+        if(moving.has(item.id)&&origins.has(item.id))
+          poses.push(toBoardObjectPose(item,origins.get(item.id)!));
       }
       if(poses.length===moving.size)workChannel.current?.publishTransform(poses,true);
     }
@@ -7409,9 +7434,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       (mutation)=>{
         // No broadcast may mutate board history, ownership, or saved content.
         // Unknown IDs and objects currently held by this user are ignored.
-        const existing=new Set(itemsRef.current.map(item=>item.id));
+        const storedById=new Map(itemsRef.current.map(item=>[item.id,item]));
         const localIds=new Set(gesture.current?.ids??[]);
-        const changed=mutation.items.filter(pose=>existing.has(pose.id)&&!localIds.has(pose.id));
+        const changed=mutation.items.filter(pose=>{
+          const stored=storedById.get(pose.id);
+          // A saved revision may overtake the separate broadcast socket.
+          // Never render old coordinates over a newer authoritative object.
+          return !!stored&&!localIds.has(pose.id)&&
+            pose.origin===objectPoseOrigin(stored);
+        });
         if(!changed.length)return;
         setRemoteObjectPoses(current=>{
           const next={...current};
@@ -7470,6 +7501,28 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     }, 4000);
     return () => window.clearInterval(timer);
   }, [presenceUsers]);
+
+  // Hold the last preview until the authoritative document has precisely the
+  // same geometry. Giving the CSS tween time to finish avoids a final-frame
+  // snap when a fast Supabase save wins the race against the broadcast socket.
+  useEffect(()=>{
+    const byId=new Map(items.map(item=>[item.id,item]));
+    const settled=Object.entries(remoteObjectPoses).filter(([id,pose])=>
+      pose.finished&&byId.has(id)&&objectPoseMatches(pose,byId.get(id)!));
+    if(!settled.length)return;
+    const timer=window.setTimeout(()=>{
+      setRemoteObjectPoses(current=>{
+        let next:typeof current|null=null;
+        for(const [id,pose] of settled){
+          if(current[id]!==pose)continue;
+          if(!next)next={...current};
+          delete next[id];
+        }
+        return next??current;
+      });
+    },160);
+    return()=>window.clearTimeout(timer);
+  },[items,remoteObjectPoses]);
 
   const remoteWorkValues = useMemo(() => Object.values(remoteWork), [remoteWork]);
   const remoteWorkIndex = useMemo(() => {
@@ -9420,12 +9473,18 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               // Collaborative editor previews may contain OLD geometry. Never let a
               // delayed preview put a dragged/resized object back on screen.
               const live=remoteLiveItems[entry.item.id];
-              const pose=remoteObjectPoses[entry.item.id];
+              const pose=gesture.current?.ids.includes(entry.item.id)?
+                undefined:remoteObjectPoses[entry.item.id];
               const base=live?{...live,x:entry.item.x,y:entry.item.y,
                 width:entry.item.width,height:entry.item.height,
                 rotation:entry.item.rotation}:entry.item;
               const item=pose?{...base,x:pose.x,y:pose.y,width:pose.width,
-                height:pose.height,rotation:pose.rotation}:base;
+                height:pose.height,rotation:pose.rotation,
+                ...(base.kind==="connector"?{
+                  connectorStart:pose.connectorStart??base.connectorStart,
+                  connectorEnd:pose.connectorEnd??base.connectorEnd
+                }:{}),
+              }:base;
               return (
               <div
                 data-object={item.id}
