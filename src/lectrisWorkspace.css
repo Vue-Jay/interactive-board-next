@@ -212,7 +212,6 @@
 @media (min-width:851px){
  .lectris-workspace{display:flex!important;flex-direction:column!important;height:100dvh!important;min-height:0!important;overflow:hidden!important}
  .lectris-workspace-header{position:relative!important;top:auto!important;flex:0 0 70px!important}
- .lectris-role-preview-bar{flex:0 0 auto!important}
  .lectris-workspace-body{flex:1 1 0!important;height:auto!important;min-height:0!important;overflow:hidden!important}
  .lectris-workspace-sidebar{top:0!important;height:100%!important;min-height:0!important}
  .lectris-workspace-stage{flex:1 1 auto!important;height:auto!important;min-height:0!important;overflow-x:hidden!important;overflow-y:auto!important;scrollbar-gutter:stable;overscroll-behavior-y:contain}

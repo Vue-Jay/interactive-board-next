@@ -4,12 +4,13 @@ import { adminSetSubscription,listAdminUsers,listTeacherRequests,reviewTeacherRe
 import { listAdminBoards,listAdminUserWorkspace,type AdminBoardSummary,type BoardSummary } from "./boardStore";
 import {listPreviewTeacherRequests,removePreviewTeacherRequest} from "./previewTeacherRequestsStore";
 
-type Props={user:AuthUser;onBack:()=>void;onOpenBoard:(board:BoardSummary)=>void;onOpenLayout:()=>Promise<void>;invisible:boolean;onInvisibleChange:(value:boolean)=>void;adminEdit:boolean;onAdminEditChange:(value:boolean)=>void};
+type RolePreview="actual"|"teacher"|"student";
+type Props={user:AuthUser;onBack:()=>void;onOpenBoard:(board:BoardSummary)=>void;onOpenLayout:()=>Promise<void>;invisible:boolean;onInvisibleChange:(value:boolean)=>void;adminEdit:boolean;onAdminEditChange:(value:boolean)=>void;rolePreview:RolePreview;onRolePreviewChange:(role:RolePreview)=>void;onCheckRegistration:()=>void};
 const fmt=(x:string|null,withTime=false)=>x?new Intl.DateTimeFormat("ru-RU",withTime?{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}:{day:"2-digit",month:"long",year:"numeric"}).format(new Date(x)):"—";
 const PLAN_LABEL:Record<SubscriptionPlan,string>={free:"Бесплатный",teacher:"Teacher",pro:"PRO"};
 const isoDate=(days:number)=>{const d=new Date();d.setDate(d.getDate()+days);return d.toISOString().slice(0,10)};
 
-export default function AdminScreen({user,onBack,onOpenBoard,onOpenLayout,invisible,onInvisibleChange,adminEdit,onAdminEditChange}:Props){
+export default function AdminScreen({user,onBack,onOpenBoard,onOpenLayout,invisible,onInvisibleChange,adminEdit,onAdminEditChange,rolePreview,onRolePreviewChange,onCheckRegistration}:Props){
  const [tab,setTab]=useState<"users"|"teachers"|"boards">("users");
  const [users,setUsers]=useState<AdminUser[]>([]),[requests,setRequests]=useState<Array<TeacherRequest&{isPreview?:boolean}>>([]),[boards,setBoards]=useState<AdminBoardSummary[]>([]);
  const [busy,setBusy]=useState(""),[notice,setNotice]=useState(""),[query,setQuery]=useState("");
@@ -30,6 +31,7 @@ export default function AdminScreen({user,onBack,onOpenBoard,onOpenLayout,invisi
  return <main className="students-shell admin-users-shell">
   <header className="students-header"><div><button className="boards-secondary" onClick={onBack}>← Доски</button><div><strong>Администрирование</strong><span>{user.email}</span></div></div><button className="boards-secondary" onClick={()=>void load()}>Обновить</button></header>
   <section className="students-content">
+   <section className="admin-role-preview" aria-label="Проверка интерфейса по ролям"><div className="admin-role-preview-copy"><strong>Просмотр приложения по ролям</strong><small>Меню меняется для проверки, аккаунт и права доступа остаются прежними.</small></div><div className="admin-role-preview-options" role="group" aria-label="Выбрать роль для просмотра">{([ ["actual","Администратор"],["teacher","Преподаватель"],["student","Ученик"] ] as const).map(([value,label])=><button type="button" key={value} className={rolePreview===value?"active":""} aria-pressed={rolePreview===value} onClick={()=>onRolePreviewChange(value)}>{label}</button>)}</div>{rolePreview==="actual"&&<button type="button" className="admin-role-preview-registration" onClick={onCheckRegistration}>Проверить регистрацию</button>}</section>
    {notice&&<div className="access-notice">{notice}</div>}
    <div className="admin-top-controls"><nav className="admin-tabs"><button className={tab==="users"?"active":""} onClick={()=>setTab("users")}>Все пользователи <span>{users.length}</span></button><button className={tab==="teachers"?"active":""} onClick={()=>setTab("teachers")}>Преподаватели {pending.length>0&&<span>{pending.length}</span>}</button><button className={tab==="boards"?"active":""} onClick={()=>setTab("boards")}>Все доски <span>{boards.length}</span></button><button onClick={()=>void onOpenLayout().catch(e=>setNotice(e instanceof Error?e.message:"Не удалось открыть редактор интерфейса"))}>Конструктор интерфейса</button></nav><label className="admin-invisible-toggle"><input type="checkbox" checked={adminEdit} onChange={e=>onAdminEditChange(e.target.checked)}/><span className="admin-toggle-track"><span/></span><span><strong>Редактирование</strong><small>{adminEdit?"Изменения на чужих досках сохраняются":"Только просмотр чужих досок"}</small></span></label><label className="admin-invisible-toggle"><input type="checkbox" checked={invisible} onChange={e=>onInvisibleChange(e.target.checked)}/><span className="admin-toggle-track"><span/></span><span><strong>Невидимка</strong><small>{invisible?"Вы не отображаетесь на досках":"Ваше присутствие видно участникам"}</small></span></label></div>
    {tab==="users"?<>
