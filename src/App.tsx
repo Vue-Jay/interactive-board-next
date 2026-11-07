@@ -4159,6 +4159,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     const g = gesture.current;
     finishViewerPan(cancel,g?.view);
     if (!g) return;
+    const dragPreview=compositorDrag.current?.gesture===g?compositorDrag.current:null;
+    if(dragPreview){
+      // Materialize the last compositor position before sending FINAL and
+      // before committing the single undo/save revision. No per-frame copies.
+      itemsRef.current=cancel?(g.restore??g.before):translatedBoardDragItems(
+        g.before,dragPreview.selected,dragPreview.dx,dragPreview.dy);
+    }
     gesture.current = null;
     // The last pointer sample is applied synchronously before end(). Send it
     // immediately, even if the throttle currently holds an older preview.
@@ -4184,12 +4191,17 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       setView(g.view);
     } else if (g.mode === "hand-smart") {
       if (g.dragging) {
-        if (g.handMoveSelection) commit(itemsRef.current);
+        if (g.handMoveSelection) {
+          if(dragPreview)flushSync(()=>commit(itemsRef.current,{immediatePaint:true}));
+          else commit(itemsRef.current);
+        }
       } else {
         setSelected(g.handHitIds ?? []);
       }
-    } else if (g.mode === "drag" || g.mode === "erase" || g.mode === "resize" || g.mode === "rotate" || g.mode === "connector-end")
-      commit(itemsRef.current);
+    } else if (g.mode === "drag" || g.mode === "erase" || g.mode === "resize" || g.mode === "rotate" || g.mode === "connector-end") {
+      if(dragPreview)flushSync(()=>commit(itemsRef.current,{immediatePaint:true}));
+      else commit(itemsRef.current);
+    }
     else if (g.mode === "draw" && g.ink)
       commit([
         ...g.before,
@@ -4234,6 +4246,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       }
       const hits=[...selectedIds];
       setSelected(g.additive ? [...new Set([...g.ids,...hits])] : hits);
+    }
+    // React now owns the final coordinates. Clear the compositor translation
+    // in the same JS turn so neither selection handles nor school widgets
+    // briefly jump back to their original location.
+    if(dragPreview){
+      clearBoardDragTranslation(dragPreview.elements,fastPanSelection.current);
+      compositorDrag.current=null;
     }
     setPath([]);
     setMarqueeRect(null);
