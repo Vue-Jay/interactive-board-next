@@ -35,7 +35,9 @@ const anchors=fragment("const bindingPoint =","const connectorAnchor =");
 assert.match(anchors,/byId\.get\(binding\.itemId\)/);
 assert.doesNotMatch(anchors,/items\.find\(/);
 const synced=fragment("const syncBoundConnectors =","function Connector(");
-assert.match(synced,/if\(!source\.some\(item=>item\.kind==="connector"\)\)return source;/);
+assert.match(synced,/if\(!source\.some\(item=>item\.kind==="connector"&&/);
+assert.match(synced,/return changed\?next:source;/,
+ "Unchanged connectors must keep their original references during transforms");
 assert.match(synced,/const byId=new Map\(source\.map\(/);
 assert.match(synced,/bindingPoint\(item\.connectorStartBinding, byId\)/);
 assert.match(synced,/bindingPoint\(item\.connectorEndBinding, byId\)/);
