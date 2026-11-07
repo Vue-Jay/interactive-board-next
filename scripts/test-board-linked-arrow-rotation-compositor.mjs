@@ -67,8 +67,12 @@ assert.strictEqual(model.syncBoundConnectors(doc),doc,
 assert.ok(helper.canCompositeBoardDrag(doc,new Set(["a","b"])));
 assert.deepEqual(Array.from(helper.compositeLinkedConnectorIds(doc,new Set(["a","b"]))),
  ["link"],"Both endpoints translating together must make the arrow eligible");
-assert.equal(helper.canCompositeBoardDrag(doc,new Set(["a"])),false,
- "One moving endpoint MUST retain exact geometry-driven redraw");
+assert.equal(helper.canCompositeBoardDrag(doc,new Set(["a"])),true,
+ "One moving endpoint stays on a constant-cost SVG preview");
+const partialPlan=helper.planCompositeBoardDrag(doc,new Set(["a"]));
+assert.deepEqual([...partialPlan.deformed],["link"]);
+assert.equal(partialPlan.linked.size,0);
+assert.equal(helper.compositeLinkedConnectorIds(doc,new Set(["a"])),null);
 assert.equal(helper.canCompositeBoardRotation(doc,"a"),false,
  "Rotation with bound endpoints retains the safe full geometry path");
 
@@ -95,6 +99,44 @@ assert.equal(partial[2].y+partial[2].connectorStart.y,start.y+dy,
  "The moving endpoint follows the selected object");
 assert.equal(partial[2].connectorEnd.y+partial[2].y,end.y,
  "The unmoved connector endpoint must stay anchored");
+
+
+const fakeAttr=()=>({attrs:{},setAttribute(k,v){this.attrs[k]=v}});
+const elbowPath=fakeAttr(),elbowLabel=fakeAttr(),straightLine=fakeAttr();
+const movingOnly=new Set(["a"]);
+for(let frame=1;frame<=240;frame++)
+ helper.paintBoardDeformedConnector(
+  {item:original,path:elbowPath,label:elbowLabel},
+  movingOnly,dx*frame/240,dy*frame/240);
+const endCoords=helper.connectorDragEndpoints(original,movingOnly,dx,dy);
+assert.deepEqual(endCoords.start,
+ {x:original.connectorStart.x+dx,y:original.connectorStart.y+dy});
+assert.deepEqual(endCoords.end,original.connectorEnd);
+assert.equal(elbowPath.attrs.d,
+ `M ${endCoords.start.x} ${endCoords.start.y} H ${(endCoords.start.x+endCoords.end.x)/2} V ${endCoords.end.y} H ${endCoords.end.x}`);
+assert.equal(elbowLabel.attrs.transform,
+ `translate(${(endCoords.start.x+endCoords.end.x)/2} ${(endCoords.start.y+endCoords.end.y)/2})`);
+const normalized=model.connectorItemFromPoints(
+ {x:original.x+endCoords.start.x,y:original.y+endCoords.start.y},
+ {x:original.x+endCoords.end.x,y:original.y+endCoords.end.y},
+ original.connectorStyle,original.color,original.weight,original.id,
+ original.connectorRouting,original.connectorStartBinding,original.connectorEndBinding,
+ original.text,original.arrowHeadStyle,original.arrowHeadSize);
+for(const key of ["x","y","width","height","connectorStart","connectorEnd"])
+ assert.deepEqual(normalized[key],partial[2][key],
+  "Live peer geometry must exactly match durable geometry: "+key);
+helper.paintBoardDeformedConnector(
+ {item:original,path:elbowPath,label:elbowLabel},movingOnly,0,0);
+assert.equal(elbowPath.attrs.d,
+ `M ${original.connectorStart.x} ${original.connectorStart.y} H ${(original.connectorStart.x+original.connectorEnd.x)/2} V ${original.connectorEnd.y} H ${original.connectorEnd.x}`,
+ "Cancel restores the original elbow connector");
+helper.paintBoardDeformedConnector(
+ {item:{...original,connectorRouting:"straight"},line:straightLine},
+ movingOnly,dx,dy);
+assert.equal(straightLine.attrs.x1,String(original.connectorStart.x+dx));
+assert.equal(straightLine.attrs.y1,String(original.connectorStart.y+dy));
+assert.equal(straightLine.attrs.x2,String(original.connectorEnd.x));
+assert.equal(straightLine.attrs.y2,String(original.connectorEnd.y));
 
 // A delayed/missing binding must be removed, while the user's arrowhead and
 // authorship stay intact.
@@ -127,13 +169,15 @@ assert.match(app,/const rotatePreview=compositorRotation\.current\?\.gesture===g
 assert.match(app,/syncBoundConnectors\(\s*translatedBoardDragItems\(/);
 assert.match(app,/if\(dragPreview\|\|rotatePreview\)flushSync/);
 assert.match(app,/clearBoardRotationPreview\(rotatePreview\.element,rotatePreview\.outline\)/);
-assert.match(app,/linked\.has\(el\.dataset\.object\?\?""\)/);
+assert.match(app,/const plan=planCompositeBoardDrag\(g\.before,selected\)/);
+assert.match(app,/paintBoardDeformedConnector\(target,preview\.selected,dx,dy\)/);
+assert.match(app,/connectorDragEndpoints\(attached,preview\.selected,dx,dy\)/);
 console.log(JSON.stringify({
  test:"linked arrow + single rotation compositor",
  objects:many.length,unboundConnectors:standalone.length,frames:120,
  oldEstimatedUnboundArrowRebuilds:oldStandaloneRebuilds,
  actualUnboundArrowRebuilds:actualStandaloneRebuilds,
  linkedRigidTranslation:"preserves endpoint offsets and arrowhead",
- partialLink:"geometry fallback",rotationFrames:240,
+ partialLink:"exact 240-frame SVG path and label, normalized peer coordinates",rotationFrames:240,
  note:"Deterministic operation counts, not measured real-device FPS."
 }));
