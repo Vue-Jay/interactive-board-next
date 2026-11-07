@@ -120,8 +120,9 @@ import ShareDialog from "./ShareDialog";
 import { clearPendingShare, initialRoute, parseRoute, rememberShareToken, type AppRoute } from "./routes";
 import { redeemShareLink } from "./shareLinks";
 import { Capacitor, registerPlugin } from "@capacitor/core";
+import { App as CapacitorApp } from "@capacitor/app";
 import { ScreenOrientation } from "@capacitor/screen-orientation";
-import { BOARD_ROLE_LABELS, getCachedCurrentUser, getCurrentUser, logoutUser, type AuthUser } from "./authStore";
+import { BOARD_ROLE_LABELS, completeEmailConfirmation, getCachedCurrentUser, getCurrentUser, logoutUser, type AuthUser } from "./authStore";
 import { boardStorageKey, getBoardForUser, touchBoard, type BoardSummary } from "./boardStore";
 import { getRemoteBoardDocument, isRemoteBackendEnabled, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
@@ -10870,6 +10871,7 @@ export default function App() {
     return () => window.removeEventListener("popstate", changed);
   }, []);
   const [authUser, setAuthUser] = useState<AuthUser | null>(() => getCachedCurrentUser());
+  const [authCallbackError,setAuthCallbackError]=useState("");
   const [accountRole,setAccountRoleState]=useState<AccountRole>(()=>getCachedAccountAccess()?.role??"student");
   const [isAppAdmin,setIsAppAdmin]=useState(()=>getCachedAccountAccess()?.isAdmin??false);
   const [appRolePreview,setAppRolePreview]=useState<"actual"|AccountRole>("actual");
@@ -10914,15 +10916,36 @@ export default function App() {
 
   useEffect(() => {
     let alive = true;
-    void getCurrentUser().then((user) => {
-      if (alive) setAuthUser(user);
-    }).catch(() => {
-      if (alive) setAuthUser(null);
-    }).finally(() => {
-      if (alive) setAuthReady(true);
-    });
-    return () => { alive = false; };
-  }, []);
+    let confirmationListener:{remove:()=>Promise<void>}|null=null;
+    const processConfirmation=async(callbackUrl:string)=>{
+      try{
+        const confirmedUser=await completeEmailConfirmation(callbackUrl);
+        if(!alive||!confirmedUser)return false;
+        setAuthUser(confirmedUser);
+        setActiveBoard(null);
+        navigate("/",true);
+        const callback=new URL(callbackUrl);
+        if((callback.protocol==="https:"||callback.protocol==="http:")&&callback.origin===window.location.origin){
+          callback.searchParams.delete("email_confirmation");
+          window.history.replaceState({},"",callback.pathname+callback.search);
+        }
+        return true;
+      }catch(error){const message=error instanceof Error?error.message:"Не удалось подтвердить email";console.warn("Lektrus email confirmation could not be completed",error);if(alive)setAuthCallbackError(message);return false}
+    };
+    const initialize=async()=>{
+      if(Capacitor.isNativePlatform()){
+        confirmationListener=await CapacitorApp.addListener("appUrlOpen",({url})=>{void processConfirmation(url).then(done=>{if(done&&alive)setAuthReady(true)})});
+        const launch=await CapacitorApp.getLaunchUrl();
+        if(launch?.url&&await processConfirmation(launch.url)){if(alive)setAuthReady(true);return}
+      }
+      await processConfirmation(window.location.href);
+      const user=await getCurrentUser();
+      if(alive)setAuthUser(user);
+      if(alive)setAuthReady(true);
+    };
+    void initialize().catch(error=>{console.warn("Lektrus authentication initialization failed",error);if(alive){setAuthUser(null);setAuthReady(true)}});
+    return () => {alive=false;void confirmationListener?.remove()};
+  }, [navigate]);
 
   // Load the administrator-published interface design for every signed-in
   // account. Refresh on return to the app so other devices pick up updates.
@@ -11155,7 +11178,7 @@ export default function App() {
 
 
   if (!authUser) {
-    return <AuthScreen onAuthenticated={(user) => { clearAccountAccessCache(); clearNotificationCache(); setAuthUser(user); setActiveBoard(null); }} />;
+    return <AuthScreen initialError={authCallbackError} onAuthenticated={(user) => { clearAccountAccessCache(); clearNotificationCache(); setAuthUser(user); setActiveBoard(null); }} />;
   }
 
   if (!activeBoard) {

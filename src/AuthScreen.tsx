@@ -1,21 +1,19 @@
 import { useEffect, useRef, useState, type FocusEvent, type FormEvent } from "react";
 import { isRemoteBackendEnabled } from "./backend";
 import {saveProfileDetails} from "./profileDetailsStore";
-import { confirmRegistration,forgetRememberedAccount, getRememberedAccount, loginUser, loginGuest, registerUser,resendRegistrationCode, resumeRememberedAccount, type AuthUser } from "./authStore";
+import { forgetRememberedAccount, getRememberedAccount, loginUser, loginGuest, registerUser,resendRegistrationCode, resumeRememberedAccount, type AuthUser } from "./authStore";
 
 type Mode = "login" | "register";
-type Props = { onAuthenticated: (user: AuthUser) => void; previewMode?:boolean; onPreviewClose?:()=>void };
+type Props = { onAuthenticated: (user: AuthUser) => void; previewMode?:boolean; onPreviewClose?:()=>void; initialError?:string };
 const hasJoinLink = () => window.location.pathname.startsWith("/join/") || new URL(window.location.href).searchParams.has("join");
 
-export default function AuthScreen({ onAuthenticated,previewMode=false,onPreviewClose }: Props) {
+export default function AuthScreen({ onAuthenticated,previewMode=false,onPreviewClose,initialError="" }: Props) {
   const [mode, setMode] = useState<Mode>(previewMode?"register":"login");
   const [name, setName] = useState("");
   const [firstName,setFirstName]=useState("");
   const [lastName,setLastName]=useState("");
-  const [confirmationCode,setConfirmationCode]=useState("");
   const [awaitingConfirmation,setAwaitingConfirmation]=useState(false);
   const [previewComplete,setPreviewComplete]=useState(false);
-  const previewCode=useRef("");
   const [resendCooldown,setResendCooldown]=useState(0);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,6 +22,7 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
   const [notice,setNotice]=useState("");
   const [guestName, setGuestName] = useState("");
   const [remembered,setRemembered]=useState(()=>getRememberedAccount());
+  useEffect(()=>{if(initialError)setError(initialError)},[initialError]);
   const joining = hasJoinLink();
   // Android WebView and iOS Safari sometimes blur a field while their virtual
   // keyboard changes the visual viewport. Never treat deleting the last
@@ -88,20 +87,18 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
     try {
       if(awaitingConfirmation){
         if(previewMode){
-          if(confirmationCode!==previewCode.current){setError("Код не подошёл. Проверьте демонстрационный код выше.");return}
           setPreviewComplete(true);setPassword("");setError("");setNotice("Регистрация и подтверждение пройдены. Тестовый аккаунт не создан.");return;
         }
-        const user=await confirmRegistration(email,confirmationCode);
-        onAuthenticated(user);
+        return;
       }else{
         if(previewMode){
-          previewCode.current=String(Math.floor(100000+Math.random()*900000));
-          setAwaitingConfirmation(true);setConfirmationCode("");setResendCooldown(0);
-          setNotice(`Демонстрационный код Lektrus: ${previewCode.current}. Письмо и аккаунт не создаются.`);return;
+          setAwaitingConfirmation(true);setResendCooldown(0);
+          setNotice("Демо-ссылка подтверждения готова. Нажмите кнопку ниже, чтобы проверить переход в приложение.");return;
         }
         const user = mode === "register" ? await registerUser({ name:mode==="register"?(name.trim()||[firstName,lastName].filter(Boolean).join(" ")):name,firstName:firstName.trim(),lastName:lastName.trim(),email,password }) : await loginUser({ email, password });
         if(!user&&mode==="register"){
-          setAwaitingConfirmation(true);setConfirmationCode("");setResendCooldown(30);
+          setAwaitingConfirmation(true);setResendCooldown(30);
+          setNotice("Письмо со ссылкой отправлено. Откройте его на этом устройстве — Lektrus подтвердит адрес и войдёт в аккаунт автоматически.");
           return;
         }
         if(user){
@@ -112,7 +109,7 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
     } catch (value) { setError(value instanceof Error ? value.message : "Не удалось выполнить вход"); }
     finally { setBusy(false); }
   };
-  const changeMode = (next: Mode) => { setMode(next);setError("");setNotice("");setPassword("");setAwaitingConfirmation(false);setConfirmationCode("");setPreviewComplete(false); };
+  const changeMode = (next: Mode) => { setMode(next);setError("");setNotice("");setPassword("");setAwaitingConfirmation(false);setPreviewComplete(false); };
 
   return <main className={`auth-shell${previewMode?" lektrus-registration-preview":""}`}><section className="auth-card" aria-labelledby="auth-title">
     <div className="auth-brand-row"><div className="auth-logo" aria-label="Lektrus"><img src="/lektrus-icon-192.png" width="52" height="52" alt="" /></div><div><div className="auth-brand">Lektrus</div><div className="auth-subtitle">Пространство для обучения</div></div>{previewMode&&<button type="button" className="boards-secondary auth-preview-close" onClick={onPreviewClose}>Вернуться к приложению</button>}</div>
@@ -122,14 +119,14 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
     {!previewMode&&<div className="auth-tabs" role="tablist" aria-label="Вход или регистрация"><button type="button" className={mode==="login"?"active":""} onClick={()=>changeMode("login")}>Вход</button><button type="button" className={mode==="register"?"active":""} onClick={()=>changeMode("register")}>Регистрация</button></div>}
     <form className="auth-form" onSubmit={submit}>
       {previewMode&&previewComplete?<div className="auth-preview-success"><h1 id="auth-title">Регистрация подтверждена</h1><p>Экран подтверждения Lektrus работает. Демо не отправляет письма и не создаёт аккаунты.</p><button type="button" className="auth-submit" onClick={onPreviewClose}>Вернуться к приложению</button></div>:<>
-      <div><h1 id="auth-title">{awaitingConfirmation?"Подтвердите email":mode==="register"?"Создать аккаунт":"С возвращением"}</h1><p>{awaitingConfirmation?previewMode?`Введите демонстрационный код для ${email}.`: `Введите код из письма, отправленного на ${email}.`:joining?"После входа откроется доска, которой с вами поделились.":mode==="register"?previewMode?"Заполните форму и проверьте собственный экран подтверждения Lektrus.":"Заполните данные, чтобы создать пространство для учёбы.":"Войдите, чтобы продолжить занятие или открыть свои доски."}</p></div>
+      <div><h1 id="auth-title">{awaitingConfirmation?"Проверьте почту":mode==="register"?"Создать аккаунт":"С возвращением"}</h1><p>{awaitingConfirmation?previewMode?`Предпросмотр ссылки подтверждения для ${email}.`: `Мы отправили ссылку на ${email}. Откройте её, чтобы подтвердить адрес и автоматически войти в Lektrus.`:joining?"После входа откроется доска, которой с вами поделились.":mode==="register"?previewMode?"Заполните форму и проверьте собственный экран подтверждения Lektrus.":"Заполните данные, чтобы создать пространство для учёбы.":"Войдите, чтобы продолжить занятие или открыть свои доски."}</p></div>
       {mode==="register"&&!awaitingConfirmation&&<div className="auth-register-name-grid"><label className="auth-field"><span>Имя</span><input required value={firstName} onChange={e=>fieldEdited(e.target.value,setFirstName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="given-name" autoCapitalize="words" placeholder="Ваше имя" maxLength={80} /></label><label className="auth-field"><span>Фамилия</span><input required value={lastName} onChange={e=>fieldEdited(e.target.value,setLastName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="family-name" autoCapitalize="words" placeholder="Ваша фамилия" maxLength={80} /></label><label className="auth-field auth-register-display-name"><span>Как к вам обращаться</span><input value={name} onChange={e=>fieldEdited(e.target.value,setName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="nickname" autoCapitalize="words" placeholder="Имя для участников доски" maxLength={80}/></label></div>}
-      <label className="auth-field"><span>Email</span><input required type="email" value={email} onChange={e=>fieldEdited(e.target.value,setEmail)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="name@example.com" maxLength={180} /></label>
+      <label className="auth-field"><span>Email</span><input required type="email" value={email} readOnly={awaitingConfirmation&&!previewMode} onChange={e=>fieldEdited(e.target.value,setEmail)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="name@example.com" maxLength={180} /></label>
       {!awaitingConfirmation&&<label className="auth-field"><span>Пароль</span><input required minLength={mode==="register"?6:undefined} type="password" value={password} onChange={e=>fieldEdited(e.target.value,setPassword)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete={mode==="register"?"new-password":"current-password"} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder={mode==="register"?"Минимум 6 символов":"Ваш пароль"} maxLength={200}/></label>}
-      {awaitingConfirmation&&<><label className="auth-field"><span>{previewMode?"Код подтверждения":"Код из письма"}</span><input required inputMode="numeric" autoComplete="one-time-code" value={confirmationCode} onChange={e=>fieldEdited(e.target.value.replace(/\D/g,"").slice(0,8),setConfirmationCode)} onFocus={fieldFocused} onBlur={fieldBlurred} placeholder="Введите код подтверждения" maxLength={8}/></label><div className="auth-confirm-actions"><button type="button" disabled={busy||(!previewMode&&resendCooldown>0)} onClick={async()=>{if(previewMode){previewCode.current=String(Math.floor(100000+Math.random()*900000));setNotice(`Новый демонстрационный код Lektrus: ${previewCode.current}.`);setConfirmationCode("");return}setBusy(true);setError("");setNotice("");try{await resendRegistrationCode(email);setResendCooldown(30);setNotice("Новый код отправлен.")}catch(value){setError(value instanceof Error?value.message:"Не удалось отправить код")}finally{setBusy(false)}}}>{previewMode?"Сгенерировать другой код":resendCooldown>0?`Отправить код снова через ${resendCooldown} с`:"Отправить код повторно"}</button>{!previewMode&&<button type="button" disabled={busy} onClick={()=>{setAwaitingConfirmation(false);setConfirmationCode("");setError("");setNotice("")}}>Изменить email</button>}</div></>}
+      {awaitingConfirmation&&<div className="auth-confirm-actions">{previewMode?<button type="submit" className="auth-submit" disabled={busy}>Открыть ссылку подтверждения</button>:<><button type="button" disabled={busy||resendCooldown>0} onClick={async()=>{setBusy(true);setError("");setNotice("");try{await resendRegistrationCode(email);setResendCooldown(30);setNotice("Ссылка отправлена повторно.")}catch(value){setError(value instanceof Error?value.message:"Не удалось отправить письмо")}finally{setBusy(false)}}}>{resendCooldown>0?`Отправить ссылку через ${resendCooldown} с`:"Отправить ссылку повторно"}</button><button type="button" disabled={busy} onClick={()=>{setAwaitingConfirmation(false);setError("");setNotice("")}}>Изменить email</button></>}</div>}
       {error&&<div className="auth-error" role="alert">{error}</div>}
       {notice&&<div className="auth-notice" role="status">{notice}</div>}
-      <button className="auth-submit" type="submit" disabled={busy}>{busy?"Подождите…":awaitingConfirmation?"Подтвердить и продолжить":mode==="register"?"Создать аккаунт":"Войти"}</button>
+      {!awaitingConfirmation&&<button className="auth-submit" type="submit" disabled={busy}>{busy?"Подождите…":mode==="register"?"Создать аккаунт":"Войти"}</button>}
       {joining&&<><div className="auth-or"><span>или</span></div><label className="auth-field"><span>Ваше имя на доске</span><input value={guestName} onChange={e=>fieldEdited(e.target.value,setGuestName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="nickname" placeholder="Например, Анна" maxLength={60}/></label><button className="auth-guest" type="button" disabled={busy||guestName.trim().length<2} onClick={async()=>{if(busy)return;setBusy(true);setError("");try{onAuthenticated(await loginGuest(guestName))}catch(value){setError(value instanceof Error?value.message:"Не удалось войти как гость")}finally{setBusy(false)}}}>Продолжить как гость</button><p className="auth-guest-note">Аккаунт создавать не нужно. Это имя увидят участники доски.</p></>}
       </>}
     </form>

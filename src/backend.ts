@@ -161,15 +161,11 @@ const normalizeSession = (data: any): BackendSession => ({
   user: data.user,
 });
 
-// Native WebViews run at localhost/capacitor://localhost: those origins must never
-// be used as Supabase email confirmation destinations. Return to the public
-// HTTPS confirmation page, then sign in normally inside the installed app.
+// Native WebView origins are not valid confirmation destinations. Return through
+// the app's registered deep link so the email link reopens Lektrus itself.
 const getEmailConfirmationRedirect = (): string | null => {
-  if (!Capacitor.isNativePlatform()) return `${window.location.origin}/?email_confirmation=1`;
-  const configured = (import.meta.env.VITE_AUTH_REDIRECT_URL as string | undefined)?.trim();
-  if (!configured) return null; // Supabase Site URL is the safe fallback.
-  try { const parsed = new URL(configured); return parsed.protocol === "https:" ? parsed.href : null; }
-  catch { return null; }
+  if (Capacitor.isNativePlatform()) return "ru.lektrus.board://auth/confirmed";
+  return `${window.location.origin}/?email_confirmation=1`;
 };
 
 export const signUpRemote = async (email: string, password: string, name: string, details:{firstName?:string;lastName?:string}={}) => {
@@ -180,18 +176,29 @@ export const signUpRemote = async (email: string, password: string, name: string
   });
   if (!response.ok) throw new Error(await errorMessage(response));
   const data = await response.json();
-  if (!data.access_token) return null; // Email confirmation is completed in the branded Lektrus screen.
+  if (!data.access_token) return null; // The email link returns to Lektrus to finish signing in.
   const session = normalizeSession(data);
   saveSession(session);
   return session;
 };
 
-export const verifySignupOtpRemote = async (email:string,token:string):Promise<BackendSession>=>{
-  const response=await fetchWithTimeout(`${url}/auth/v1/verify`,{
-    method:"POST",headers:authHeaders(),body:JSON.stringify({email:email.trim().toLowerCase(),token:token.trim(),type:"email"}),
-  });
+export const completeEmailConfirmationRemote = async (callbackUrl:string):Promise<BackendSession|null>=>{
+  const callback=new URL(callbackUrl);
+  const fragment=new URLSearchParams(callback.hash.replace(/^#/,""));
+  const query=callback.searchParams;
+  const accessToken=fragment.get("access_token");
+  const refreshToken=fragment.get("refresh_token");
+  const authError=query.get("error_description")||fragment.get("error_description");
+  if(authError)throw new Error(authError.replace(/\+/g," "));
+  if(!accessToken||!refreshToken)return null;
+  const response=await fetchWithTimeout(`${url}/auth/v1/user`,{method:"GET",headers:authHeaders(accessToken)});
   if(!response.ok)throw new Error(await errorMessage(response));
-  const session=normalizeSession(await response.json());
+  const session=normalizeSession({
+    access_token:accessToken,
+    refresh_token:refreshToken,
+    expires_in:Number(fragment.get("expires_in")||3600),
+    user:await response.json(),
+  });
   saveSession(session);
   if(session.user?.email)saveRememberedSession(session);
   return session;

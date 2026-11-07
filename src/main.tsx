@@ -151,20 +151,9 @@ if (!root) {
   throw new Error("Не найден корневой элемент #root");
 }
 
-const isConfirmationPage = window.location.pathname === "/auth/confirmed" || new URLSearchParams(window.location.search).get("email_confirmation") === "1";
-const confirmParams = new URLSearchParams(window.location.search);
-const confirmHash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-const confirmationError = confirmParams.get("error_description") || confirmHash.get("error_description");
 createRoot(root).render(
   Capacitor.isNativePlatform() && !LEKTRUS_LOCAL_TEST_MODE && !isRemoteBackendEnabled()
     ? <NativeConnectionSetup />
-    : isConfirmationPage
-    ? <main style={{minHeight:"100dvh",display:"grid",placeItems:"center",background:"#f5f7fc",fontFamily:"system-ui,sans-serif",padding:24}}>
-        <section style={{maxWidth:460,padding:36,borderRadius:20,background:"white",boxShadow:"0 8px 40px #14234d18",textAlign:"center"}}>
-          <h1>{confirmationError ? "Не удалось подтвердить почту" : "Почта подтверждена"}</h1>
-          <p>{confirmationError || "Адрес электронной почты подтверждён. Теперь можно закрыть эту вкладку и войти в Lektrus."}</p>
-        </section>
-      </main>
     : <ErrorBoundary><App /></ErrorBoundary>
 );
 
