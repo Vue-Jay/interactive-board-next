@@ -146,7 +146,7 @@ const finalPoses=oldTransform(moving,worldBounds,25,40,"se",false);
 const baseline=()=>{
  let document=board;
  for(let frameIndex=1;frameIndex<=count;frameIndex++){
-  const dx=25*(frameIndex+1)/count,dy=40*(frameIndex+1)/count;
+  const dx=25*frameIndex/count,dy=40*frameIndex/count;
   const byId=new Map(oldTransform(moving,worldBounds,dx,dy,"se",false)
    .map(item=>[item.id,item]));
   document=board.map(item=>byId.get(item.id)??item);
@@ -155,7 +155,7 @@ const baseline=()=>{
 };
 const optimized=()=>{
  for(let frameIndex=1;frameIndex<=count;frameIndex++){
-  const dx=25*(frameIndex+1)/count,dy=40*(frameIndex+1)/count;
+  const dx=25*frameIndex/count,dy=40*frameIndex/count;
   const poses=oldTransform(moving,worldBounds,dx,dy,"se",false);
   paintBoardResizePreview(nodes,poses,outline,view);
  }
