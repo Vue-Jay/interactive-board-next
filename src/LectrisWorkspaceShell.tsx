@@ -44,8 +44,8 @@ function NavGlyph({ name }: { name:NavIcon }) {
   return <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{icons[name]}</svg>;
 }
 type RolePreview="actual"|AccountRole;
-type Props={children:ReactNode;section:string;role:AccountRole;isAdmin:boolean;name:string;rolePreview?:RolePreview;onRolePreviewChange?:(role:RolePreview)=>void};
-export default function LectrisWorkspaceShell({children,section,role,isAdmin,name,rolePreview="actual",onRolePreviewChange}:Props) {
+type Props={children:ReactNode;section:string;role:AccountRole;isAdmin:boolean;name:string;rolePreview?:RolePreview};
+export default function LectrisWorkspaceShell({children,section,role,isAdmin,name,rolePreview="actual"}:Props) {
   const [collapsed,setCollapsed]=useState(()=>{try{return localStorage.getItem("lectris.shell.collapsed")==="1"}catch{return false}});
   const [morePage,setMorePage]=useState(false);
   const [menuQuery,setMenuQuery]=useState("");
@@ -98,14 +98,6 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
         <button type="button" className="lectris-header-account" onClick={()=>move("profile")} title="Открыть профиль"><span className="lectris-avatar">{name.trim().slice(0,1).toUpperCase()||"?"}</span><span className="lectris-account-name">{name}</span></button>
       </div>
     </header>
-    {isAdmin&&onRolePreviewChange&&<div className="lectris-role-preview-bar" role="region" aria-label="Проверка интерфейса по ролям">
-      <span className="lectris-role-preview-label"><b>Проверка интерфейса</b><small>{rolePreview==="actual"?"Сейчас показан аккаунт администратора":"Роль меняет отображение меню, но не аккаунт"}</small></span>
-      <div className="lectris-role-preview-options" role="group" aria-label="Выбрать роль для просмотра">
-        {([ ["actual","Администратор"],["teacher","Преподаватель"],["student","Ученик"] ] as const).map(([value,label])=><button type="button" key={value} className={rolePreview===value?"active":""} aria-pressed={rolePreview===value} onClick={()=>onRolePreviewChange(value)}>{label}</button>)}
-      </div>
-      {rolePreview==="actual"&&<button type="button" className="lectris-role-preview-reset" onClick={()=>move("registration-preview")}>Проверить регистрацию</button>}
-      {rolePreview!=="actual"&&<button type="button" className="lectris-role-preview-reset" onClick={()=>onRolePreviewChange("actual")}>Вернуться к администратору</button>}
-    </div>}
     <div className="lectris-workspace-body">
       <aside className="lectris-workspace-sidebar" aria-label="Основная навигация">
         <div className="lectris-sidebar-head"><span>РАЗДЕЛЫ</span><button className="lectris-collapse-button" type="button" aria-label={collapsed?"Развернуть меню":"Свернуть меню"} title={collapsed?"Развернуть меню":"Свернуть меню"} onClick={toggle}><NavGlyph name={collapsed?"menu":"chevron"}/></button></div>

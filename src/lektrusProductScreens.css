@@ -163,14 +163,6 @@ html body .topbar .topbar-right .topbar-menu-section .topbar-menu-danger{color:#
 .lectris-layout-menu .lectris-interface-settings-entry:hover{background:var(--lt-hover,#e1eaff);border-color:var(--lt-primary,#365fd0)}
 .lectris-layout-menu .lectris-interface-settings-entry span{margin-left:auto}
 
-.lectris-role-preview-bar{display:flex;align-items:center;gap:14px;padding:9px clamp(12px,2vw,28px);border-bottom:1px solid var(--lt-line);background:var(--lt-subtle);color:var(--lt-text)}
-.lectris-role-preview-label{display:grid;gap:2px;min-width:170px}
-.lectris-role-preview-label b{font-size:11px}.lectris-role-preview-label small{font-size:10px;color:var(--lt-muted)}
-.lectris-role-preview-options{display:flex;gap:4px;padding:3px;border:1px solid var(--lt-line);border-radius:10px;background:var(--lt-surface)}
-.lectris-role-preview-options button{min-height:31px;padding:0 10px;border:0;border-radius:7px;background:transparent;color:var(--lt-secondary);font:inherit;font-size:11px;font-weight:650;white-space:nowrap;cursor:pointer}
-.lectris-role-preview-options button.active{background:var(--lt-selected);color:var(--lt-selected-ink);box-shadow:inset 0 0 0 1px var(--lt-line-strong)}
-.lectris-role-preview-reset{min-height:34px;margin-left:auto;padding:0 11px;border:1px solid var(--lt-line-strong);border-radius:9px;background:var(--lt-surface);color:var(--lt-primary);font:inherit;font-size:11px;font-weight:700;cursor:pointer}
-.lectris-role-preview-reset:hover{background:var(--lt-hover)}
 .admin-preview-request-badge{display:inline-flex;margin-left:8px;padding:3px 7px;border:1px solid var(--lt-line-strong);border-radius:999px;background:var(--lt-selected);color:var(--lt-selected-ink);font-size:10px;font-style:normal;font-weight:700;vertical-align:middle}
 .lectris-workspace .auth-shell.lektrus-registration-preview{box-sizing:border-box;min-height:min(760px,calc(100dvh - 180px));padding:clamp(14px,3vw,32px);border-radius:16px;background:radial-gradient(ellipse at 12% 0%,#e2ecff 0,transparent 52%),#f2f6fc;color:var(--lt-text)}
 .auth-preview-close{margin-left:auto;white-space:nowrap}
@@ -178,11 +170,6 @@ html body .topbar .topbar-right .topbar-menu-section .topbar-menu-danger{color:#
 .auth-preview-success h1{margin:0;font-size:clamp(22px,4.2vw,28px);letter-spacing:-.035em;color:#1d304c}
 .auth-preview-success p{margin:0;color:#66758d;font-size:13px;line-height:1.5}
 @media(max-width:700px){
- .lectris-role-preview-bar{align-items:flex-start;flex-wrap:wrap;gap:8px;padding:9px 11px}
- .lectris-role-preview-label{flex:1 1 100%}
- .lectris-role-preview-options{max-width:100%;overflow:auto}
- .lectris-role-preview-options button{padding:0 8px;font-size:10px}
- .lectris-role-preview-reset{margin:0 0 0 auto;min-height:32px}
  .lectris-workspace .auth-shell.lektrus-registration-preview{min-height:calc(100dvh - 250px);padding:12px;border-radius:0}
  .auth-preview-close{padding-inline:8px;min-height:34px;font-size:11px}
 }
@@ -291,6 +278,14 @@ html body .topbar .topbar-right .topbar-menu-section .topbar-menu-danger{color:#
 .lectris-workspace-stage .admin-users-shell :is(.admin-user-card,.admin-board-card,.admin-request-list>article,.admin-invisible-toggle,.admin-board-list){
   background:var(--lt-surface)!important;border-color:var(--lt-line)!important;color:var(--lt-text)!important;
 }
+.lectris-workspace-stage .admin-role-preview{background:var(--lt-surface)!important;border-color:var(--lt-line)!important;color:var(--lt-text)!important}
+.lectris-workspace-stage .admin-role-preview-copy strong{color:var(--lt-text)!important}
+.lectris-workspace-stage .admin-role-preview-copy small{color:var(--lt-muted)!important}
+.lectris-workspace-stage .admin-role-preview-options{background:var(--lt-subtle)!important;border-color:var(--lt-line)!important}
+.lectris-workspace-stage .admin-role-preview-options button{color:var(--lt-secondary)!important}
+.lectris-workspace-stage .admin-role-preview-options button.active{background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important;box-shadow:inset 0 0 0 1px var(--lt-line-strong)!important}
+.lectris-workspace-stage .admin-role-preview-registration{background:var(--lt-surface)!important;border-color:var(--lt-line-strong)!important;color:var(--lt-primary)!important}
+.lectris-workspace-stage .admin-role-preview-registration:hover{background:var(--lt-hover)!important}
 .lectris-workspace-stage .admin-users-shell :is(.admin-user-card,.admin-board-card,.admin-request-list>article){
   border:1px solid var(--lt-line)!important;border-radius:15px;box-shadow:var(--lt-shadow);
 }
