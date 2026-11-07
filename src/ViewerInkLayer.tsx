@@ -1,6 +1,7 @@
-import { memo, useLayoutEffect, useRef } from "react";
+import { memo, useLayoutEffect, useMemo, useRef } from "react";
 import type { Item, View } from "./boardModel";
 import {inkCanvasBudget} from "./inkCanvasBudget";
+import {indexInkStrokes,queryInkStrokes} from "./inkSpatialIndex";
 
 type ViewportSize = { width: number; height: number };
 type InkBounds = { x: number; y: number; width: number; height: number };
@@ -22,6 +23,8 @@ const ViewerInkLayer = memo(function ViewerInkLayer({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cacheRef = useRef<RasterCache | null>(null);
+  // Construct the spatial index once per immutable stroke run, not per pan.
+  const spatialIndex=useMemo(()=>indexInkStrokes(strokes),[strokes]);
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || viewport.width <= 0 || viewport.height <= 0 || view.zoom <= 0) return;
@@ -75,7 +78,7 @@ const ViewerInkLayer = memo(function ViewerInkLayer({
     if (!ctx) return;
     ctx.setTransform(pixels.scaleX, 0, 0, pixels.scaleY,
       -left * pixels.scaleX, -top * pixels.scaleY);
-    for (const item of strokes) {
+    for (const item of queryInkStrokes(spatialIndex,left,top,right,bottom)) {
       if (item.hidden || !item.points?.length) continue;
       const weight = item.weight ?? 3, pad = weight / 2;
       if (item.x + item.width + pad < left || item.x - pad > right ||
@@ -109,7 +112,7 @@ const ViewerInkLayer = memo(function ViewerInkLayer({
       left, top, right, bottom, zoom,
       width: viewport.width, height: viewport.height, strokes,
     };
-  }, [strokes, bounds, view.x, view.y, view.zoom, viewport.width, viewport.height]);
+  }, [strokes, spatialIndex, bounds, view.x, view.y, view.zoom, viewport.width, viewport.height]);
 
   return <canvas ref={canvasRef} className="viewer-ink-canvas" aria-hidden="true"
     style={{ position: "absolute", pointerEvents: "none", maxWidth: "none", maxHeight: "none" }} />;
