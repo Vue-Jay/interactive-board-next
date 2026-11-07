@@ -12,3 +12,37 @@
     padding-bottom:max(88px,calc(56px + env(safe-area-inset-bottom)));
   }
 }
+
+/* Lektrus tokens for every AI-studio state, including locked/empty/error views.
+   No changes to generation, quotas, local drafts or history interactions. */
+.ai-studio{background:var(--lt-page);color:var(--lt-text)}
+.ai-head>button,.ai-locked button,.ai-result-head button,.ai-history button{
+  background:var(--lt-raised);border-color:var(--lt-line);color:var(--lt-secondary)
+}
+.ai-head>button:hover,.ai-locked button:hover,.ai-result-head button:hover,.ai-history button:hover{
+  background:var(--lt-hover);border-color:var(--lt-line-strong);color:var(--lt-text)
+}
+.ai-head :is(h1,h2),.ai-result-head h2,.ai-history h2{color:var(--lt-text)}
+.ai-head p,.ai-locked p,.ai-local-note,.ai-approval,.ai-history>button span,.ai-empty{color:var(--lt-muted)}
+.ai-head>span{background:var(--lt-selected);color:var(--lt-selected-ink)}
+.ai-compose,.ai-result,.ai-history,.ai-locked{
+  background:var(--lt-surface);border-color:var(--lt-line);color:var(--lt-text)
+}
+.ai-tool-tabs button{background:var(--lt-subtle);color:var(--lt-secondary)}
+.ai-tool-tabs button:hover:not(.active){background:var(--lt-hover);color:var(--lt-text)}
+.ai-tool-tabs button.active{background:var(--lt-primary);color:var(--lt-on-primary)}
+.ai-compose :is(input,select),.ai-result textarea{
+  background:var(--lt-raised);border-color:var(--lt-line);color:var(--lt-text)
+}
+.ai-generate,.ai-result-actions .ai-board-queue{
+  background:var(--lt-primary);border-color:var(--lt-primary);color:var(--lt-on-primary)
+}
+.ai-generate:hover:not(:disabled),.ai-result-actions .ai-board-queue:hover:not(:disabled){
+  background:var(--lt-primary-hover);border-color:var(--lt-primary-hover)
+}
+.ai-usage-meter{background:var(--lt-subtle)}
+.ai-transfer-notice{background:var(--lt-selected);color:var(--lt-selected-ink)}
+.ai-studio :is(button,input,select,textarea):focus-visible{outline:2px solid var(--lt-focus);outline-offset:2px}
+.ai-layout,.ai-compose,.ai-result,.ai-history,.ai-locked,.ai-head{min-width:0}
+.ai-studio :is(h1,h2,p,button,small){overflow-wrap:anywhere}
+:root[data-theme="dark"] .ai-studio .ai-error{color:#ffb4aa}
