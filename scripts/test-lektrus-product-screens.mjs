@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { createServer } from "vite";
 
 const read=path=>readFileSync(new URL(`../${path}`,import.meta.url),"utf8");
-const app=read("src/App.tsx");
+const app=read("src/App.tsx")+"\n"+read("src/BoardApp.tsx");
 const shell=read("src/LectrisWorkspaceShell.tsx");
 const styles=read("src/lektrusProductScreens.css");
 const templates=read("src/TemplatesScreen.tsx");

@@ -21,7 +21,7 @@ for(const [height,used] of [[470,351],[470,510],[800,790],[1200,1450],[900,781]]
 assert.equal(nextSubjectBoardHeight(0,10),null);
 assert.equal(nextSubjectBoardHeight(100,Number.NaN),null);
 const board=read("src/LektrusSubjectBoard.tsx");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const solution=read("src/LektrusSubjectBoardSolution.tsx");
 const style=read("src/lektrusSubjectBoard.css");
 assert.match(board,/const contentRef=useRef<HTMLDivElement>\(null\)/);

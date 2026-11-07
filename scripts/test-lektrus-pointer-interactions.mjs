@@ -23,7 +23,7 @@ assert.equal(itemIntersectsSelection({...a,rotation:45},rect),true);
 assert.deepEqual(itemsInsideRect([a,b,stroke,nearMiss,groupA,groupB],{x:100,y:70},{x:250,y:210}).sort(),
  ["inside","ink","groupA","groupB"].sort());
 assert.deepEqual(itemsInsideRect([a],{x:10,y:10},{x:10,y:10}),[]);
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const css=read("src/lektrusBoardInteraction.css");
 assert.match(app,/useState<Tool>\(\(\)=>readBoardSessionTool\(boardSummary\.id,authUser\.id\)\)/,
  "Each viewer restores their own active tool instead of inheriting remote changes");

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 
 const file=(path)=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 const editor=file("src/LectrisObjectEditor.tsx");
-const app=file("src/App.tsx");
+const app=file("src/BoardApp.tsx");
 const css=file("src/lektrusResponsive.css");
 const layout=file("src/lectrisPanelLayout.ts");
 const workflow=file(".github/workflows/board-build.yml");

@@ -53,7 +53,7 @@ assert.equal(validNextSchoolDiagram({...flow,edges:[...flow.edges,{...flow.edges
  "parallel duplicate arrows rejected");
 assert.equal(validNextSchoolDiagram({...flow,edges:[...flow.edges,{id:"bad",from:"n4",to:"n1",label:""}]}),false,
  "end blocks may not emit arrows");
-const board=fs.readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+const board=fs.readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
 const registry=fs.readFileSync(new URL("../src/lektrusSubjectToolRegistry.ts",import.meta.url),"utf8");
 for(const id of ["ru-syntax","info-flowchart","info-place-value"]){
  assert.ok(registry.includes('id:"'+id+'"'),id+" should be in subject tools menu");

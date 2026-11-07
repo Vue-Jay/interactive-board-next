@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const css=read("src/lektrusCanvasChrome.css");
 const hook=read("src/useAdaptiveBoardToolbar.ts");
 const capacity=read("src/toolbarCapacity.ts");

@@ -66,7 +66,7 @@ for(const len of [2,3,4,6]){
  assert.notDeepEqual(mixed,Array.from({length:len},(_,i)=>i),"The displayed choices must shuffle");
 }
 const board=read("src/LektrusSubjectBoard.tsx");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const registry=read("src/lektrusSubjectTaskTemplates.ts");
 const schema=read("src/boardModel.ts");
 assert.match(board,/LektrusSubjectActivityBuilder/);

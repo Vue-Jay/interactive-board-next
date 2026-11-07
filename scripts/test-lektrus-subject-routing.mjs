@@ -4,7 +4,7 @@ import ts from "typescript";
 
 const read=name=>readFileSync(new URL("../"+name,import.meta.url),"utf8");
 const registry=read("src/lektrusSubjectToolRegistry.ts");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const subjects=read("src/lektrusSchoolSubjects.ts");
 const registryStart=registry.indexOf("export const subjectToolRegistry");
 const registryEnd=registry.indexOf("export function subjectToolsFor",registryStart);
@@ -40,7 +40,7 @@ for(const d of definitions){
  for(const s of d.subjects)assert.ok(subjects.toLocaleLowerCase("ru-RU").includes('"'+s.toLocaleLowerCase("ru-RU")+'"'),
   d.id+": unknown school subject "+s);
 }
-const appAst=ts.createSourceFile("src/App.tsx",app,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+const appAst=ts.createSourceFile("src/BoardApp.tsx",app,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(appAst.parseDiagnostics.length,0,"Valid TSX after catalogue routing change");
 assert.ok(!app.includes("const lectrisSubjectTools=useMemo"),
  "Generic board tools must not appear disguised as subject tools");

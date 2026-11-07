@@ -66,7 +66,7 @@ assert.equal(nodes[0].style.transform,"rotate(17deg)");
 // Integration safeguards on the actual application, not a separate mock
 // renderer: the fast path skips display(), still publishes realtime poses,
 // and materializes final geometry synchronously before clearing translation.
-const app=readFileSync("src/App.tsx","utf8");
+const app=readFileSync("src/BoardApp.tsx","utf8");
 assert.match(app,/const paintCompositorDrag=\(g:Gesture,dx:number,dy:number\):boolean=>\{/);
 assert.match(app,/if\(!paintCompositorDrag\(g,worldDx,worldDy\)\)\s*display\(/);
 assert.match(app,/paintBoardDragTranslation\(preview\.elements,fastPanSelection\.current/);

@@ -62,7 +62,7 @@ assert.match(inkCss,/overflow-x:auto;overflow-y:hidden/,
 assert.match(inkCss,/\.lektrus-ink-five-widths>\.lektrus-ink-width-button\{/);
 assert.match(inkCss,/pointer-events:auto!important/,
  "All five ink thickness buttons must receive pointer and touch events");
-const app=fs.readFileSync("src/App.tsx","utf8");
+const app=fs.readFileSync("src/BoardApp.tsx","utf8");
 assert.match(app,/useState<Tool>\(\(\)=>readBoardSessionTool\(boardSummary\.id,authUser\.id\)\)/);
 assert.match(app,/writeBoardSessionTool\(boardSummary\.id,authUser\.id,tool\)/);
 assert.match(app,/const \[tool, setToolState\] = useState<Tool>/);

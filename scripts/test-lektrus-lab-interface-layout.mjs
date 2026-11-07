@@ -142,7 +142,7 @@ console.log("New bottom-right sink and drag-to-drain bounds agree");
 // Fullscreen on Android must not cause the two bench surfaces to race a
 // simulation tick, nor repaint the entire chemistry stage through a scaled
 // GPU layer. These guards cover selection + heating in the same viewport.
-const app=readFileSync("src/App.tsx","utf8");
+const app=readFileSync("src/BoardApp.tsx","utf8");
 assert.match(app,/scienceEditorItem\?\.id!==item\.id&&/,
  "Board bench must stop writing while its fullscreen editor owns simulation");
 assert.match(editor,/document\.body\.classList\.add\("lektrus-lab-fullscreen-active"\)/);

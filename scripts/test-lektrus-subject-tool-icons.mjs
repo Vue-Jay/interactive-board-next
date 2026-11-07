@@ -6,7 +6,7 @@ import "./test-lektrus-subject-routing.mjs";
 import "./test-lektrus-subject-catalogue-ui.mjs";
 
 const read=file=>readFileSync(new URL("../"+file,import.meta.url),"utf8");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const registry=read("src/lektrusSubjectToolRegistry.ts");
 const science=read("src/lektrusScienceCatalog.ts");
 const icons=read("src/LektrusSubjectToolIcons.tsx");
@@ -14,7 +14,7 @@ const panel=read("src/LektrusSubjectToolsPanel.tsx");
 const styles=read("src/lektrusSubjectTools.css");
 
 for(const [file,source] of [
- ["src/App.tsx",app],
+ ["src/BoardApp.tsx",app],
  ["src/LektrusSubjectToolIcons.tsx",icons],
  ["src/LektrusSubjectToolsPanel.tsx",panel]
 ]){

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import ts from "typescript";
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const editor=read("src/LektrusPhysicsGraphEditor.tsx");
 const css=read("src/lektrusPhysicsGraphEditor.css");
 const circuit=read("src/LektrusCircuitEditor.tsx");

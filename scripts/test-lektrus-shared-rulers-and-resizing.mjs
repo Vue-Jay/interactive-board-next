@@ -20,10 +20,10 @@ const load=(code)=>{
 
 const {resizedRect,preserveRotatedAnchor}=load(transpile("src/lektrusRotateResize.ts"));
 const model=load(transpile("src/boardModel.ts"));
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const geometry=read("src/GeometryInstruments.tsx");
 transpile("src/GeometryInstruments.tsx");
-transpile("src/App.tsx");
+transpile("src/BoardApp.tsx");
 
 const base={x:100,y:120,width:200,height:100};
 const outward={

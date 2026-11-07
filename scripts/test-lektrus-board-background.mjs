@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
-const app=read("src/App.tsx"),model=read("src/boardModel.ts");
+const app=read("src/BoardApp.tsx"),model=read("src/boardModel.ts");
 const util=read("src/boardBackground.ts"),css=read("src/lektrusBoardBackground.css"),main=read("src/main.tsx");
 assert.match(model,/background:normalizeBoardBackground\(d\.background\)/);
 assert.match(model,/export function normalizeBoardBackground/);

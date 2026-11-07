@@ -3,7 +3,7 @@ import {readFileSync} from "node:fs";
 import ts from "typescript";
 const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
 const panel=read("src/LektrusSubjectToolsPanel.tsx");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const panelCss=read("src/lektrusSubjectTools.css");
 const paletteCss=read("src/App.css");
 for(const [name,source] of [["panel",panel],["app",app]]){

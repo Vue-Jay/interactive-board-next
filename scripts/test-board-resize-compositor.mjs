@@ -10,7 +10,7 @@ const helpers={};
 new Function("exports",compile(readFileSync("src/boardResizeCompositor.ts","utf8")))(helpers);
 const geometry={};
 new Function("exports",compile(readFileSync("src/lektrusRotateResize.ts","utf8")))(geometry);
-const app=readFileSync("src/App.tsx","utf8");
+const app=readFileSync("src/BoardApp.tsx","utf8");
 const fitBegin=app.indexOf("const fitItemToRect =");
 const fitEnd=app.indexOf("const connectorItemFromPoints =",fitBegin);
 assert.ok(fitBegin>=0&&fitEnd>fitBegin);

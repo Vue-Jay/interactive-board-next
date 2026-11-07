@@ -3,7 +3,7 @@ import {readFileSync} from "node:fs";
 import ts from "typescript";
 
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const toolCss=read("src/lektrusToolLayout.css");
 const cursorCss=read("src/lektrusObjectChrome2026.css");
 const syntax=ts.createSourceFile("App.tsx",app,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);

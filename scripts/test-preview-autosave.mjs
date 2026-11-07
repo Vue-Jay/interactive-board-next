@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const app = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
+const app = readFileSync(new URL("../src/BoardApp.tsx", import.meta.url), "utf8");
 const preview = readFileSync(new URL("../src/boardPreview.ts", import.meta.url), "utf8");
 const saveStart = app.indexOf("const pushRemoteSnapshot = useCallback(");
 const saveEnd = app.indexOf("const flushSave = useCallback(", saveStart);

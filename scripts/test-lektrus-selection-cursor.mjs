@@ -101,7 +101,7 @@ pointer.clearBoardSelectionCursor(board);
 assert.equal(removes,1);
 assert.equal(board.dataset.selectionCursor,undefined);
 
-const app=read("src/App.tsx"), css=read("src/lektrusSelectionCursor.css");
+const app=read("src/BoardApp.tsx"), css=read("src/lektrusSelectionCursor.css");
 const entry=read("src/main.tsx");
 assert.equal(ts.createSourceFile("App.tsx",app,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX).parseDiagnostics.length,0);
 assert.ok(app.includes('if(tool==="select")syncSelectionCursor(e.target,e.pointerType);'));

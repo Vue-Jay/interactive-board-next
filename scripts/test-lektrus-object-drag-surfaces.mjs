@@ -128,7 +128,7 @@ const innerObject=new FixtureElement("div",outer,{classes:["board-object"],attrs
 assert.equal(pickup(child(innerObject,"h3")),innerObject);
 assert.equal(pickup(child(innerObject,"button")),null);
 
-const app=read("src/App.tsx"),geoSource=read("src/LektrusGeographyTrainingView.tsx");
+const app=read("src/BoardApp.tsx"),geoSource=read("src/LektrusGeographyTrainingView.tsx");
 const subject=read("src/LektrusSubjectActivity.tsx");
 const foreign=read("src/LektrusForeignTaskAnswer.tsx");
 const scene=read("src/LektrusChemistryBench.tsx");

@@ -248,7 +248,7 @@ const slightlyHot=lab.advanceLabSimulation({
 },11000).vessels[0];
 assert.ok(slightlyHot.temperatureC>=99.5&&slightlyHot.temperatureC<=100.2,
  "An actively boiling sample should not be artificially cooled a second time");
-const appSource=fs.readFileSync("src/App.tsx","utf8");
+const appSource=fs.readFileSync("src/BoardApp.tsx","utf8");
 const surfaceSource=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
 assert.match(appSource,/containsLab=.*itemsRef\.current/);
 assert.match(surfaceSource,/document\.addEventListener\("keydown",onDelete,true\)/);

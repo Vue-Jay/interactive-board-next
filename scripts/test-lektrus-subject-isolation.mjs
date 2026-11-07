@@ -97,7 +97,7 @@ assert.equal(board.entryBelongsToSubject("russian",{...equation,subject:undefine
 const filled={...board.newSubjectBoardEntry("written","task","mathematics"),prompt:"Условие"};
 assert.equal(board.subjectBoardLocked({subjectBoardEntries:[filled]}),true,
  "Subject locks after a substantive question is written");
-const app=read("src/App.tsx"),component=read("src/LektrusSubjectBoard.tsx");
+const app=read("src/BoardApp.tsx"),component=read("src/LektrusSubjectBoard.tsx");
 assert.match(app,/if\(mode==="equation"&&tone!=="chemistry"\)/);
 assert.match(app,/changes\.subject!==tone/);
 assert.match(app,/!subjectTaskTypeAllowed\(tone,changes.format\)/);

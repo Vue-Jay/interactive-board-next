@@ -8,7 +8,7 @@ const scienceEditor=read("src/LektrusScienceEditor.tsx");
 const science=read("src/lektrusScienceCatalog.ts");
 const registry=read("src/lektrusSubjectToolRegistry.ts");
 const panel=read("src/LektrusSubjectToolsPanel.tsx");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const css=read("src/lektrusOrganicWorkspace.css");
 const main=read("src/main.tsx");
 for(const [name,source] of [["organic canvas",canvas],["organic panel",editor],["science editor",scienceEditor],["board",app]]){

@@ -3,7 +3,7 @@ import {readFileSync} from "node:fs";
 import ts from "typescript";
 
 const script=readFileSync("src/boardPanTransform.ts","utf8");
-const app=readFileSync("src/App.tsx","utf8");
+const app=readFileSync("src/BoardApp.tsx","utf8");
 const js=ts.transpileModule(script,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const mod={exports:{}};
 new Function("require","module","exports",js)((id)=>{throw Error("Unexpected runtime dependency: "+id)},mod,mod.exports);

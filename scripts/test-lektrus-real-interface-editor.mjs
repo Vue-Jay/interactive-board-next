@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const read=(file)=>readFileSync(new URL("../"+file,import.meta.url),"utf8");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const admin=read("src/AdminScreen.tsx");
 const editor=read("src/LektrusInterfaceStudio.tsx");
 const css=read("src/lektrusInterfaceLayout.css");

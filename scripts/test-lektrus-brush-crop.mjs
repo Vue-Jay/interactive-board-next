@@ -45,7 +45,7 @@ for(const invalid of [
  assert.throws(()=>model.parseDocument(JSON.stringify({
   ...document,items:[{...image,imageCrop:invalid}]})));
 }
-const app=fs.readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+const app=fs.readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
 assert.ok(app.includes("placeImageCrop(current,crop)"));
 assert.ok(app.includes('className="inline-image-crop" style={originalBounds}'));
 assert.ok(app.includes("placeImageCrop(current,crop)"));

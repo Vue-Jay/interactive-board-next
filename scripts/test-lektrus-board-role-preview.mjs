@@ -183,8 +183,8 @@ assert.equal(restrictStudentDiagramChange({kind:"sentence-builder",title:"Phrase
  {kind:"sentence-builder",title:"Подмена",parts:[]}),null,
  "foreign language source is immutable; pupil sorting is local state");
 
-const app=read("src/App.tsx"),css=read("src/App.css"),model=read("src/boardStore.ts");
-for(const [path,code] of [["src/App.tsx",app],["src/lektrusBoardRolePreview.ts",source]]){
+const app=read("src/BoardApp.tsx"),css=read("src/App.css"),model=read("src/boardStore.ts");
+for(const [path,code] of [["src/BoardApp.tsx",app],["src/lektrusBoardRolePreview.ts",source]]){
  const parsed=ts.createSourceFile(path,code,ts.ScriptTarget.Latest,true,
   path.endsWith(".tsx")?ts.ScriptKind.TSX:ts.ScriptKind.TS);
  assert.equal(parsed.parseDiagnostics.length,0,path+" syntax parses");

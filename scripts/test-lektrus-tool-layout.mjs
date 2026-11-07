@@ -3,7 +3,7 @@ import {readFileSync} from "node:fs";
 const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
 const entry=read("src/main.tsx");
 const css=read("src/lektrusToolLayout.css");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 assert.ok(entry.indexOf("lektrusCanvasChrome.css")<entry.indexOf("lektrusToolLayout.css"));
 assert.equal((css.match(/{/g)||[]).length,(css.match(/}/g)||[]).length);
 for(const term of ["min-width:1101px","max-width:1100px","orientation:landscape",

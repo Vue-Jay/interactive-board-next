@@ -25,7 +25,7 @@ assert.equal(has({scienceReactionSteps:[{expression:" → ",conditions:"t°"}]})
  "Explicit conditions count as an edit");
 assert.equal(has({scienceReactionSteps:[{expression:" → ",conditions:""},{expression:"H2CO3 → H2O + CO2↑",conditions:""}]}),true);
 assert.equal(has({graphExpression:"H2O"}),true,"Standalone formulas remain valid content");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 const illustration=read("src/LektrusChemistryIllustration.tsx");
 const editor=read("src/LektrusChemicalEquationEditor.tsx");
 const science=read("src/LektrusScienceEditor.tsx");

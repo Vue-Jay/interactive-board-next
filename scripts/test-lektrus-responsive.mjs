@@ -5,7 +5,7 @@ const source=(path)=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 const styles=source("src/lektrusResponsive.css");
 const base=source("src/lektrusRefresh.css");
 const entry=source("src/main.tsx");
-const board=source("src/App.tsx");
+const board=source("src/BoardApp.tsx");
 const shell=source("src/LectrisWorkspaceShell.tsx");
 const manifest=JSON.parse(source("public/manifest.webmanifest"));
 

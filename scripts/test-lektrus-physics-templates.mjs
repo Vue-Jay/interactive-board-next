@@ -120,7 +120,7 @@ const approximate=(a,b,tolerance=.04)=>Math.abs(a-b)<=tolerance;
 }
 
 const editor=read("src/LektrusScienceEditor.tsx");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 assert.match(editor,/layoutScienceLabels\(points,segments,canvasPoint,520,370\)/);
 assert.match(app,/layoutScienceLabels\(item\.graphPoints/);
 const circuit=read("src/LektrusCircuitEditor.tsx");

@@ -277,7 +277,7 @@ assert.equal(linkExistingPoints(straightAngle,"angle",[0,1,2]).draft.angles.leng
  "a straight 180 degree angle is valid");
 assert.equal(linkExistingPoints(straightAngle,"angle",[0,1,0]).draft,straightAngle,
  "the same point cannot be chosen twice");
-const app=read("src/App.tsx"),editor=read("src/LektrusGraphEditor.tsx");
+const app=read("src/BoardApp.tsx"),editor=read("src/LektrusGraphEditor.tsx");
 const css=read("src/lektrusMathTouchPolish.css"),main=read("src/main.tsx");
 assert.match(app,/onCloseFreePolygon=\{\(\)=>changeLiveGraphDraft\(/,"preview closes polygon at first point");
 assert.match(app,/onCloseFreePolygon=\{graphPointEditId===item\.id&&selectedIds\.has\(item\.id\)/,"saved board can close free geometry");
@@ -440,7 +440,7 @@ assert.match(editor,/const resetLinkSelection=\(\)=>/,
  "cancel clears unfinished vertices, not just their selection");
 assert.match(css,/lektrus-connect-drawing-surface/,
  "geometry tap surface is accessible on touch devices");
-const parsedApp=ts.createSourceFile("src/App.tsx",app,ts.ScriptTarget.ES2022,true,ts.ScriptKind.TSX);
+const parsedApp=ts.createSourceFile("src/BoardApp.tsx",app,ts.ScriptTarget.ES2022,true,ts.ScriptKind.TSX);
 const parsedEditor=ts.createSourceFile("src/LektrusGraphEditor.tsx",editor,ts.ScriptTarget.ES2022,true,ts.ScriptKind.TSX);
 assert.equal(parsedApp.parseDiagnostics.length,0,
  "board JSX with nested graph action buttons must parse successfully");

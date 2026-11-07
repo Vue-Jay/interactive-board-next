@@ -898,7 +898,7 @@ assert.doesNotMatch(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-modal-set
 assert.doesNotMatch(editor,/lektrus-lab-inspector/,"No separate observation/sidebar in fullscreen");
 assert.doesNotMatch(editor,/lektrus-lab-editor-head/,"No additional lab header");
 assert.match(editor,/lektrus-lab-editor-exit/,"Only a compact close control remains");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 assert.match(app,/liveChemistryBenchUpdate/);
 assert.match(app,/mergeLabBench\(/);
 assert.match(app,/onExperimentLiveChange=\{/);
@@ -917,7 +917,7 @@ assert.match(read("src/lektrusSciencePresets.ts"),/x:x-830,y:y-530,text:""/,
  "Bench must be centered under the insertion cursor");
 
 // The visual stage is scrollable for old boards without clipping apparatus.
-const subjectInsertion=read("src/App.tsx");
+const subjectInsertion=read("src/BoardApp.tsx");
 assert.match(subjectInsertion,/if\(id==="chem-experiments"\)\{/,
  "The subject tool should create a laboratory directly on the board");
 assert.match(subjectInsertion,/commit\(\[\.\.\.itemsRef\.current,item\]\)/,

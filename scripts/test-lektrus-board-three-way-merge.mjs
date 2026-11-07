@@ -72,7 +72,7 @@ assert.equal(merged.title,"Locally renamed");
 assert.equal(merged.background,"#abc");
 assert.equal(merged.items.find(v=>v.id==="box").x,300);
 
-const code=read("src/App.tsx"),roles=read("src/lektrusBoardRolePreview.ts");
+const code=read("src/BoardApp.tsx"),roles=read("src/lektrusBoardRolePreview.ts");
 const roleModule=new Function(compile("src/lektrusBoardRolePreview.ts")+
  "\nreturn {boardRoleCapabilities,isStudentProtectedBoardObject,canTransformStudentBoardObject,canUseBoardCreationTool};")();
 const student=roleModule.boardRoleCapabilities({

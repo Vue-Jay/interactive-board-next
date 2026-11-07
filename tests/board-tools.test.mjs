@@ -64,7 +64,7 @@ test("incremental brush movement retains both halves of a stroke",()=>{
  assert.ok(current[0].x<10 && current[1].x>140);
 });
 test("eraser has dedicated capture listeners and keeps tool registry",()=>{
- const app=readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+ const app=readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
  const registered=[...app.matchAll(/\{ id: "(select|hand|lasso|pen|marker|eraser|connector|frame|comment|table|formula|graph|checklist|quiz|flashcard|cover|sticky|text|shape|media|linkmedia)", icon:/g)].map(m=>m[1]);
  assert.equal(new Set(registered).size,21);
  assert.ok(app.includes('onPointerDownCapture='));
@@ -75,7 +75,7 @@ test("eraser has dedicated capture listeners and keeps tool registry",()=>{
 });
 
 test("eraser draws a lightweight canvas preview and commits once at gesture end",()=>{
- const app=readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+ const app=readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
  assert.ok(app.includes("const beginEraserPreview=()=>"));
  assert.ok(app.includes("const previewEraserSegment=(from:Point,to:Point)=>"));
  assert.ok(app.includes("const recordEraserPoint=(point:Point)=>"));
@@ -86,7 +86,7 @@ test("eraser draws a lightweight canvas preview and commits once at gesture end"
 });
 
 test("eraser hover does not render the entire board or broadcast cursor each mouse event",()=>{
- const app=readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+ const app=readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
  assert.ok(app.includes('if(tool==="eraser"){if(!eraserSession.current)'));
  assert.ok(app.includes("setLiveEraserCursor(p.x,p.y)"));
  assert.ok(!app.includes("setEraserCursor("));
@@ -95,7 +95,7 @@ test("eraser hover does not render the entire board or broadcast cursor each mou
 });
 
 test("autosave waits until eraser stroke ends and only commits once",()=>{
- const app=readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+ const app=readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
  assert.ok(app.includes("if (saveBlocked || gesture.current || eraserSession.current) return;"));
  assert.match(app,/const next=eraseInkAlongPath\(before,g\.path,eraserSize\/2\/g\.zoom,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\)\)/);
  assert.ok(app.includes("commit(next);"));

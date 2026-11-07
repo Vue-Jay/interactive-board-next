@@ -23,7 +23,7 @@ assert.deepEqual(tickTimes.map(at=>labSimulationCheckpointDelayMs(at,0)),
  [900,900,900,700,200,0,0,0]);
 assert.equal(labSimulationCheckpointDelayMs(NaN,1000),0);
 
-const source=read("src/App.tsx");
+const source=read("src/BoardApp.tsx");
 const surface=read("src/LektrusChemistryBench.tsx");
 const illustration=read("src/LektrusChemistryIllustration.tsx");
 const editor=read("src/LektrusChemistryBenchEditor.tsx");

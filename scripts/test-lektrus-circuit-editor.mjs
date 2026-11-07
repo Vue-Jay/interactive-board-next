@@ -71,7 +71,7 @@ assert.equal(model.circuitIsDocument({...once,wires:[{...once.wires[0],to:{kind:
 const editor=read("src/LektrusCircuitEditor.tsx");
 const view=read("src/LektrusCircuitView.tsx");
 const glyph=read("src/ScienceCircuitGlyph.tsx");
-const app=read("src/App.tsx");
+const app=read("src/BoardApp.tsx");
 assert.match(editor,/Конструктор электрических цепей/);
 assert.match(editor,/Undo|history|Ctrl\+Z/);
 assert.match(editor,/onComponentDown=\{downComponent\}/);

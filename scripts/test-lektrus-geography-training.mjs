@@ -80,7 +80,7 @@ assert.deepEqual([fitted.x+fitted.width/2,fitted.y+fitted.height/2],
 assert.equal(layout.fitGeoMatchingItem({...base,graphFigureId:"geo-question-cards"}).width,810,
  "Automatic resizing must not change other school exercises");
 assert.equal(layout.fitGeoMatchingItem(fitted),fitted,"Stable content does not resize repeatedly");
-const trainingView=read("LektrusGeographyTrainingView.tsx"),app=read("App.tsx");
+const trainingView=read("LektrusGeographyTrainingView.tsx"),app=read("BoardApp.tsx");
 assert.ok(trainingView.includes("new ResizeObserver(report)")&&
  trainingView.includes("Math.ceil(element.offsetHeight)"),
  "Actual matching content height is measured and observed for changes");
