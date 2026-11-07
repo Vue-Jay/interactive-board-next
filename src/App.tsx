@@ -129,6 +129,7 @@ import BoardVisitHistoryDialog from "./BoardVisitHistoryDialog";
 import { connectBoardCursorChannel, type BoardCursorChannel, type RemoteCursor, type LiveInkMessage } from "./boardBroadcast";
 import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState } from "./boardWorkSync";
+import {captureLiveGeometry, sameLiveGeometry, mergeLiveInkPreview, type RemoteLiveGeometry} from "./boardLiveMotion";
 import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest } from "./boardAttachmentApprovalSync";
 import { documentFingerprint, sharedBoardFingerprint, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
 import {mergeEditedValue,editorDiff,applyEditorOps} from "./lektrusLiveEditorMerge";
@@ -2654,6 +2655,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // Realtime broadcasts are untrusted display-only previews until the sender
   // persists the change through the board's RLS-protected server RPC.
   const [remoteLiveItems,setRemoteLiveItems]=useState<Record<string,Item>>({});
+  // Untrusted, transient peer geometry is rendered separately from persisted items.
+  // Keeping final geometry until the authenticated document catches up avoids
+  // a visible jump backwards between pointerup and the server's WAL notification.
+  const [remoteTransforms,setRemoteTransforms]=useState<Record<string,RemoteLiveGeometry>>({});
   const remoteLiveBases=useRef(new Map<string,string>());
   const pendingEditorBases=useRef(new Map<string,Item>());
   const remoteLiveCleanup=useRef(new Map<string,ReturnType<typeof setTimeout>>());
@@ -4057,6 +4062,21 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     return consumed;
   };
 
+  const publishGestureMotion=(g:Gesture,phase:"move"|"finish"|"cancel")=>{
+    if(!(["drag","resize","rotate","connector-end"].includes(g.mode) ||
+       (g.mode==="hand-smart"&&g.handMoveSelection)))return;
+    if((g.mode==="drag"||g.mode==="hand-smart")&&!g.dragging)return;
+    const selected=new Set(g.ids);
+    // A bound connector follows its endpoints during the same gesture.
+    // Send it in the same packet so peers don't see the line jump on commit.
+    const ids=[...selected];
+    for(const item of itemsRef.current){
+      if(item.kind==="connector" && (selected.has(item.connectorStartBinding?.itemId??"") ||
+        selected.has(item.connectorEndBinding?.itemId??"")) && !selected.has(item.id))ids.push(item.id);
+    }
+    const geometry=captureLiveGeometry(itemsRef.current,ids);
+    if(geometry.length)workChannel.current?.publishTransform(geometry,phase);
+  };
   const end = (cancel = false) => {
     // Never let an old animation frame redraw a transform AFTER release,
     // pinch cancellation, tool switch or collaborator reconciliation.
@@ -4068,8 +4088,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     const g = gesture.current;
     finishViewerPan(cancel,g?.view);
     if (!g) return;
+    publishGestureMotion(g,cancel?"cancel":"finish");
     gesture.current = null;
-    if (g.mode === "draw" && g.ink) cursorChannel.current?.sendInk({id:g.ink.id,kind:g.ink.kind,color:g.ink.color,weight:g.ink.weight,points:g.path.slice(-500),finished:true});
+    if (g.mode === "draw" && g.ink) cursorChannel.current?.sendInk({id:g.ink.id,kind:g.ink.kind,color:g.ink.color,weight:g.ink.weight,points:g.path.slice(-500),startIndex:Math.max(0,g.path.length-500),finished:true});
     if (cancel) {
       display(g.restore ?? g.before);
       setView(g.view);
@@ -4605,7 +4626,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if (mode === "draw") {
       const ink = gesture.current.ink!;
       setPreview(liveStroke(ink.id, ink.kind, [p], ink.color, ink.weight));
-      cursorChannel.current?.sendInk({id:ink.id,kind:ink.kind,color:ink.color,weight:ink.weight,points:[p],finished:false});
+      cursorChannel.current?.sendInk({id:ink.id,kind:ink.kind,color:ink.color,weight:ink.weight,points:[p],startIndex:0,finished:false});
     }
     if (mode === "connector") {
       setPreview(connectorItemFromPoints(gesturePoint, gesturePoint, connectorStyle, color, connectorWeight, createId(), connectorRouting, connectorStartHit?.binding,undefined,"",arrowHeadStyle,arrowHeadSize));
@@ -4810,11 +4831,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       if (g.mode === "draw" && g.ink) {
         cursorChannel.current?.sendInk({
           id: g.ink.id, kind: g.ink.kind, color: g.ink.color,
-          weight: g.ink.weight, points: g.path.slice(-500), finished: false,
+          weight: g.ink.weight, points: g.path.slice(-500), startIndex:Math.max(0,g.path.length-500), finished: false,
         });
       }
       scheduleGesturePaint();
     }
+    publishGestureMotion(g,"move");
   };
   const moveObjectFrame=(e:PE<HTMLElement>)=>{
     const active=gesture.current;
@@ -7207,7 +7229,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       (ink) => {
         // Each stroke must retain its own preview until the persisted document contains it.
         // Keying by clientId replaced the previous completed stroke as soon as a new one began.
-        setRemoteInk(current => ({...current,[ink.id]:ink}));
+        setRemoteInk(current => {
+          const merged=mergeLiveInkPreview(current[ink.id],ink);
+          return merged===current[ink.id]?current:{...current,[ink.id]:merged};
+        });
         const previous=remoteInkExpiryTimers.current.get(ink.id);
         if(previous)clearTimeout(previous);
         // Network delivery and document persistence are independent channels.
@@ -7291,6 +7316,44 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       return updated;
     });
   },[items]);
+  // Reconcile a final live position only when the RLS-protected saved item
+  // actually has that geometry. Earlier revisions must not make it snap back.
+  useEffect(()=>{
+    const finals=Object.entries(remoteTransforms).filter(([,p])=>p.final);
+    if(!finals.length)return;
+    const indexed=new Map(items.map(item=>[item.id,item]));
+    const completed=finals.filter(([id,p])=>sameLiveGeometry(indexed.get(id),p)).map(([id])=>id);
+    if(!completed.length)return;
+    setRemoteTransforms(current=>{
+      const next={...current};
+      let changed=false;
+      for(const id of completed){
+        if(next[id]?.final&&sameLiveGeometry(indexed.get(id),next[id])){
+          delete next[id];changed=true;
+        }
+      }
+      return changed?next:current;
+    });
+  },[items,remoteTransforms]);
+  const hasRemoteTransforms=Object.keys(remoteTransforms).length>0;
+  useEffect(()=>{
+    if(!hasRemoteTransforms)return;
+    const timer=window.setInterval(()=>{
+      const now=Date.now();
+      setRemoteTransforms(current=>{
+        let next:typeof current|null=null;
+        for(const [id,p] of Object.entries(current)){
+          if(now-p.updatedAt>(p.final?12000:5000)){
+            if(!next)next={...current};
+            delete next[id];
+          }
+        }
+        return next??current;
+      });
+    },1500);
+    return()=>window.clearInterval(timer);
+  },[hasRemoteTransforms]);
+
   useEffect(() => {
     if(layoutEditing)return;
     const channel = connectBoardWorkChannel(
@@ -7358,6 +7421,26 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           });
         },15000));
       },
+      (message)=>{
+        const now=Date.now();
+        setRemoteTransforms(current=>{
+          let changed=false;
+          const next={...current};
+          for(const entry of message.items){
+            const existing=next[entry.id];
+            if(message.phase==="cancel"){
+              if(existing?.clientId===message.clientId){delete next[entry.id];changed=true;}
+            }else{
+              // Do not let an obsolete sender overwrite a newer preview.
+              if(existing?.clientId===message.clientId && existing.sequence>=message.sequence)continue;
+              next[entry.id]={...entry,clientId:message.clientId,
+                sequence:message.sequence,updatedAt:now,final:message.phase==="finish"};
+              changed=true;
+            }
+          }
+          return changed?next:current;
+        });
+      },
     );
     workChannel.current = channel;
     return () => {
@@ -7366,6 +7449,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       for(const timer of remoteLiveCleanup.current.values())clearTimeout(timer);
       remoteLiveCleanup.current.clear();remoteLiveBases.current.clear();
       setRemoteLiveItems({});
+      setRemoteTransforms({});
       setRemoteWork({});
     };
   }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden]);
@@ -9341,9 +9425,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               // Collaborative editor previews may contain OLD geometry. Never let a
               // delayed preview put a dragged/resized object back on screen.
               const live=remoteLiveItems[entry.item.id];
-              const item=live?{...live,x:entry.item.x,y:entry.item.y,
+              const baseItem=live?{...live,x:entry.item.x,y:entry.item.y,
                 width:entry.item.width,height:entry.item.height,
                 rotation:entry.item.rotation}:entry.item;
+              // Local gestures always win over transient remote previews.
+              const motion=gesture.current?.ids.includes(entry.item.id)?undefined:remoteTransforms[entry.item.id];
+              const item=motion?{...baseItem,x:motion.x,y:motion.y,
+                width:motion.width,height:motion.height,rotation:motion.rotation,
+                connectorStart:motion.connectorStart??baseItem.connectorStart,
+                connectorEnd:motion.connectorEnd??baseItem.connectorEnd}:baseItem;
               return (
               <div
                 data-object={item.id}
@@ -9356,6 +9446,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   width: item.width,
                   height: item.height,
                   transform: item.rotation ? `rotate(${item.rotation}deg)` : undefined,
+                  transition: motion?"left 65ms linear, top 65ms linear, width 65ms linear, height 65ms linear, transform 65ms linear":undefined,
                   borderColor: item.kind === "frame" ? (item.color ?? "#8b8f9a") : undefined,
                   background: item.points
                     ? "transparent"
