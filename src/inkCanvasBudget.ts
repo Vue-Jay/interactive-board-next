@@ -28,3 +28,16 @@ export function inkCanvasBudget(cssWidth: number, cssHeight: number,
   // The axes differ by at most a fractional device pixel, not a world unit.
   return {width,height,scaleX:width/cssWidth,scaleY:height/cssHeight};
 }
+
+/** Setting canvas.width/height even to their current values resets the 2D
+ * context and may reallocate the GPU backing store. Reuse it when possible;
+ * the caller must clear it before painting another tile at the same size.
+ * Returns true only when the existing backing store was preserved.
+ */
+export function reuseInkCanvasBacking(canvas:Pick<HTMLCanvasElement,"width"|"height">,
+  width:number,height:number):boolean{
+  if(canvas.width===width&&canvas.height===height)return true;
+  if(canvas.width!==width)canvas.width=width;
+  if(canvas.height!==height)canvas.height=height;
+  return false;
+}
