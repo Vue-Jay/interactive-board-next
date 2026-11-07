@@ -30,7 +30,9 @@ ink.push({id:"hidden",kind:"pen",hidden:true,x:700,y:700,width:80,height:80,
  weight:4,points:[{x:0,y:0},{x:80,y:80}]});
 ink.push({id:"empty-points",kind:"pen",x:700,y:700,width:30,height:30,points:[]});
 const indexed=indexInkStrokes(ink);
-assert.equal(indexed.spans.length,ink.length-2);
+assert.equal(indexed.spans.length+indexed.longSpans.length,ink.length-2);
+assert.equal(indexed.longSpans.length,1,
+ "A single very long stroke must not disable pruning of all normal ink");
 assert.ok(indexed.maxRightPrefix.every((max,i)=>i===0||max>=indexed.maxRightPrefix[i-1]));
 const viewports=[];
 for(let i=0;i<80;i++)viewports.push({
@@ -66,5 +68,5 @@ assert.doesNotMatch(viewer,/for \(const item of strokes\)/,
 console.log(JSON.stringify({scenario:"15k strokes, "+viewports.length+
  " viewports × "+runs+" passes",visibleStrokeCountAcrossPasses:count,
  beforeFullScanMs:Number(before.toFixed(2)),afterIndexedQueryMs:Number(after.toFixed(2)),
- indexEntries:indexed.spans.length,assertedIdenticalViews:viewports.length,
+ indexEntries:indexed.spans.length,longStrokes:indexed.longSpans.length,assertedIdenticalViews:viewports.length,
  timing:"Node CPU only, no browser FPS or GPU latency"}));
