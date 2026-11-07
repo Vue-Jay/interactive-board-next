@@ -1,10 +1,10 @@
 {
-  "id": "/",
+  "id": "/app",
   "name": "Lektrus — интерактивная доска",
   "short_name": "Lektrus",
   "description": "Интерактивная учебная доска Lektrus. Устанавливается на компьютеры, телефоны и планшеты.",
   "lang": "ru",
-  "start_url": "/?source=pwa",
+  "start_url": "/app?source=pwa",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
@@ -32,7 +32,7 @@
     {
       "name": "Мои доски",
       "short_name": "Доски",
-      "url": "/?source=pwa",
+      "url": "/app?source=pwa",
       "icons": [
         {
           "src": "/lektrus-icon-192.png",
@@ -44,7 +44,7 @@
     {
       "name": "Расписание",
       "short_name": "Расписание",
-      "url": "/?section=schedule&source=pwa",
+      "url": "/app?section=schedule&source=pwa",
       "icons": [
         {
           "src": "/lektrus-icon-192.png",
@@ -56,7 +56,7 @@
     {
       "name": "Материалы",
       "short_name": "Материалы",
-      "url": "/?section=materials&source=pwa",
+      "url": "/app?section=materials&source=pwa",
       "icons": [
         {
           "src": "/lektrus-icon-192.png",
