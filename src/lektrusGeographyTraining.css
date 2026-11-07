@@ -3,6 +3,9 @@
  min-height:0;box-sizing:border-box;padding:15px;overflow:auto;background:linear-gradient(160deg,#f8fcff,#eaf3fd);
  color:#27435e;font-family:inherit;user-select:none;touch-action:pan-y;}
 .lektrus-geo-game button{font:inherit;touch-action:manipulation}
+/* In the board, dragging an exercise from its background must not be
+   cancelled by native touch scrolling. Preview/editor scrolling stays intact. */
+.workspace .board .lektrus-geo-game{touch-action:none;}
 .lektrus-geo-game-header{display:flex;gap:12px;align-items:center;justify-content:space-between}
 .lektrus-geo-game-header>div{display:grid;gap:3px;min-width:0}
 .lektrus-geo-game-header strong{font-size:clamp(16px,2.2vw,23px);line-height:1.18}
