@@ -681,14 +681,18 @@ const connectorAnchor = (point: Point, items: Item[], threshold: number, exclude
 };
 
 const syncBoundConnectors = (source: Item[]): Item[] => {
-  // Most handwritten boards contain no connector arrows. Keep their original
-  // array reference and skip a full-map allocation on every drawing/move frame.
-  if(!source.some(item=>item.kind==="connector"))return source;
-  // Resolve attachment anchors through one index rather than scanning ALL
-  // board items twice per connector on every drag frame (O(N*connectors)).
+  // Neither connector-free boards nor standalone arrows need any anchor
+  // rebuild. Preserve object identities so heavy subject widgets don't
+  // rerender just because somebody rotates or resizes an unrelated item.
+  if(!source.some(item=>item.kind==="connector"&&
+    (item.connectorStartBinding||item.connectorEndBinding)))return source;
+  // Anchors share one lookup index. Rebuild ONLY when the resolved geometry
+  // actually changes, not every connector on every pointermove.
   const byId=new Map(source.map(item=>[item.id,item] as const));
-  return source.map((item) => {
-    if (item.kind !== "connector") return item;
+  let changed=false;
+  const next=source.map((item) => {
+    if(item.kind!=="connector"||
+      (!item.connectorStartBinding&&!item.connectorEndBinding))return item;
     const startFallback = { x: item.x + (item.connectorStart?.x ?? 0), y: item.y + (item.connectorStart?.y ?? item.height / 2) };
     const endFallback = { x: item.x + (item.connectorEnd?.x ?? item.width), y: item.y + (item.connectorEnd?.y ?? item.height / 2) };
     const boundStart = bindingPoint(item.connectorStartBinding, byId);
@@ -709,10 +713,22 @@ const syncBoundConnectors = (source: Item[]): Item[] => {
       endBinding,
       item.text,
     );
-    return { ...rebuilt, groupId: item.groupId, locked: item.locked, hidden: item.hidden, rotation: item.rotation };
+    const samePoint=(a:Point|undefined,b:Point|undefined)=>
+      a?.x===b?.x&&a?.y===b?.y;
+    if(item.x===rebuilt.x&&item.y===rebuilt.y&&
+      item.width===rebuilt.width&&item.height===rebuilt.height&&
+      samePoint(item.connectorStart,rebuilt.connectorStart)&&
+      samePoint(item.connectorEnd,rebuilt.connectorEnd)&&
+      item.connectorStartBinding===startBinding&&
+      item.connectorEndBinding===endBinding)return item;
+    changed=true;
+    // Preserve authorship, arrow-head styling and future metadata. Only the
+    // computed geometry/bindings are replaced, and a missing anchor is cleared.
+    return {...item,...rebuilt,connectorStartBinding:startBinding,
+      connectorEndBinding:endBinding};
   });
+  return changed?next:source;
 };
-
 function Connector({ item }: { item: Item }) {
   const start = item.connectorStart ?? { x: 12, y: item.height / 2 };
   const end = item.connectorEnd ?? { x: item.width - 12, y: item.height / 2 };
