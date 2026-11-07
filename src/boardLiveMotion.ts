@@ -82,6 +82,7 @@ export function mergeLiveInkPreview<T extends {
   const old=previous.points[start!+i], next=incoming.points[i];
   if (!old || old.x !== next.x || old.y !== next.y) return previous;
  }
+ if(start!+incoming.points.length<previous.points.length)return previous;
  const points = previous.points.slice(0,start!).concat(incoming.points);
  return { ...incoming, points };
 }
