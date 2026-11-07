@@ -695,3 +695,14 @@
 .workspace .topbar-menu-account .account-avatar{
   background:var(--lt-primary);color:var(--lt-on-primary);
 }
+
+/* Share dialog still inherited a black-violet email accordion and kicker
+   while its main surface used the new Lektrus palette. */
+.access-backdrop .invite-modal .invite-kicker{color:var(--lt-selected-ink)}
+.access-backdrop .invite-modal .invite-email-panel {
+  background:var(--lt-subtle)!important;
+  border-color:var(--lt-line)!important;
+}
+.access-backdrop .invite-modal .invite-email-panel>summary{color:var(--lt-text)}
+.access-backdrop .invite-modal .invite-email-panel>summary small{color:var(--lt-muted)}
+.access-backdrop .invite-modal .invite-email-panel .invite-row{border-top-color:var(--lt-line)}
