@@ -52,7 +52,7 @@ for(const kind of boardTypes){
  assert.equal(pickup(root),root,kind+" root should be draggable");
  assert.equal(pickup(inert),root,kind+" must drag from nested inert heading/label");
  // All real controls remain local to the nested teaching widget.
- for(const tag of ["button","input","textarea","select","a","summary","iframe","video"]){
+ for(const tag of ["button","input","textarea","select","a","summary","label","iframe","video"]){
   assert.equal(pickup(child(inert,tag)),null,kind+" "+tag+" must retain its native action");
  }
  for(const role of ["button","slider","switch","checkbox","tab","textbox"]){
@@ -62,6 +62,19 @@ for(const kind of boardTypes){
   kind+" dedicated data-board-interactive node cannot become a drag area");
 }
 assert.equal(pickup(new FixtureElement("h3")),null,"Plain canvas has no board object");
+// Every registered school-diagram tool appears inside the same generic graph
+// object wrapper, so the capture boundary cannot depend on a subject ID.
+const schoolSource=read("src/lektrusSchoolDiagramModel.ts");
+const catalogue=schoolSource.match(/export const ids:SchoolDiagramId\[\]=\[([^\]]+)\]/);
+assert.ok(catalogue,"School tool catalogue must be available for drag coverage");
+const schoolToolIds=[...catalogue[1].matchAll(/"([^"]+)"/g)].map(m=>m[1]);
+assert.ok(schoolToolIds.length>=30,"Audit must include the full school-tool catalogue");
+for(const id of schoolToolIds){
+ const root=object("graph");
+ const task=child(child(root,"div",["lektrus-school-on-board"]),"header");
+ assert.equal(pickup(task),root,"School tool "+id+" has a draggable, inert header");
+ assert.equal(pickup(child(task,"button")),null,"School tool "+id+" keeps active controls");
+}
 assert.ok(controls.includes("[data-board-interactive]"));
 assert.ok(gestures.includes("[data-board-gesture-owner]"));
 
@@ -116,6 +129,7 @@ assert.equal(pickup(child(innerObject,"button")),null);
 
 const app=read("src/App.tsx"),geoSource=read("src/LektrusGeographyTrainingView.tsx");
 const subject=read("src/LektrusSubjectActivity.tsx");
+const foreign=read("src/LektrusForeignTaskAnswer.tsx");
 const scene=read("src/LektrusChemistryBench.tsx");
 const css=read("src/lektrusGeographyTraining.css");
 assert.equal(ts.createSourceFile("App.tsx",app,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX).parseDiagnostics.length,0);
@@ -144,10 +158,12 @@ assert.match(css,/\.lektrus-school-on-board \.lektrus-geo-game :is\(/);
 assert.match(scene,/data-board-drag-surface="true" aria-live="polite"/);
 assert.doesNotMatch(subject,/data-board-interactive="true" onPointerDown=\{stop\} onClick=\{stop\}/,
  "Subject worksheet should not mark all nonclickable whitespace interactive");
+assert.doesNotMatch(foreign,/<section className="lektrus-foreign-work" data-board-interactive/,
+ "Foreign language exercise heading must not lose drag to a root-level control flag");
 for(const path of ["src/LektrusBioMicroscope.tsx","src/LektrusProgrammingView.tsx",
  "src/LektrusRussianSchoolView.tsx","src/LektrusLogicCircuitView.tsx",
  "src/LektrusNextSchoolView.tsx"]){
  assert.match(read(path),/onPointerDown=\{[^}]*stop[^}]*\}/,
   path+" must work even if an embedded lesson stops event bubbling");
 }
-console.log("Universal board-object capture drag: all 19 ordinary kinds, geography matching, worksheet blanks, 8 nested gestures, real controls and release/cancel semantics PASS.");
+console.log("Universal board-object capture drag: 19 kinds, "+schoolToolIds.length+" school tools, geo matching, subject worksheets, 8 gesture regions, controls, release/cancel PASS.");
