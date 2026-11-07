@@ -195,6 +195,6 @@ test('incremental previews stitch into long strokes, reject stale packets and bo
   const old={...packet(0,3)};delete old.offset;
   assert.equal(api.mergeRemoteLiveInk(long,old),old,'legacy peers remain compatible');
   const app=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
-  assert.match(app,/mergeRemoteLiveInk\\(current\\[ink\\.id\\],ink\\)/);
-  assert.match(app,/offset:Math\\.max\\(0,g\\.path\\.length-500\\)/);
+  assert.match(app,/mergeRemoteLiveInk\(current\[ink\.id\],ink\)/);
+  assert.match(app,/offset:Math\.max\(0,g\.path\.length-500\)/);
 });
