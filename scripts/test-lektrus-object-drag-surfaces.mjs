@@ -162,7 +162,7 @@ assert.ok(app.includes('tool==="hand"&&e.button===0'),
  "Atlas header pans with hand, but moves its object with selection tool");
 assert.ok(app.includes('data-board-gesture-owner={onPickPoint||onAddPoint?"true":undefined}'),
  "Freehand/geometry point editing must retain nested gesture ownership");
-assert.ok(app.includes('data-board-interactive="true"\n              stroke="transparent"'),
+assert.match(app,/data-board-interactive="true"\s+stroke="transparent"/,
  "Moving a physics ray must not turn into moving the whole graph object");
 assert.match(geoSource,/onPointerDown=\{stopInteractive\} onPointerUp=\{stopInteractive\}/,
  "Geography must preserve pointer capture while honoring interactive controls");
