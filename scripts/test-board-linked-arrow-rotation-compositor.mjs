@@ -46,7 +46,8 @@ const before=model.rebuilds();
 for(let n=0;n<120;n++)
  assert.strictEqual(model.syncBoundConnectors(noAttachments),noAttachments,
   "A connector without bindings must not be rebuilt during unrelated edits");
-assert.equal(model.rebuilds()-before,0,
+const actualStandaloneRebuilds=model.rebuilds()-before;
+assert.equal(actualStandaloneRebuilds,0,
  "No unnecessary connector reconstruction on 120 visual frames");
 // Previous implementation rebuilt all 600 standalone connectors per frame.
 const oldStandaloneRebuilds=standalone.length*120;
@@ -88,8 +89,10 @@ const stable=model.syncBoundConnectors(finalized);
 assert.strictEqual(stable,finalized,"Repeated final synchronization must be idempotent");
 const partial=model.syncBoundConnectors(helper.translatedBoardDragItems(
  doc,new Set(["a"]),dx,dy));
-assert.notEqual(partial[2].connectorStart.x,original.connectorStart.x,
- "Moving one endpoint changes the connector's local geometry");
+assert.equal(partial[2].x+partial[2].connectorStart.x,start.x+dx,
+ "Moving just one endpoint must update its absolute world coordinate");
+assert.equal(partial[2].y+partial[2].connectorStart.y,start.y+dy,
+ "The moving endpoint follows the selected object");
 assert.equal(partial[2].connectorEnd.y+partial[2].y,end.y,
  "The unmoved connector endpoint must stay anchored");
 
@@ -129,7 +132,7 @@ console.log(JSON.stringify({
  test:"linked arrow + single rotation compositor",
  objects:many.length,unboundConnectors:standalone.length,frames:120,
  oldEstimatedUnboundArrowRebuilds:oldStandaloneRebuilds,
- actualUnboundArrowRebuilds:model.rebuilds()-before,
+ actualUnboundArrowRebuilds:actualStandaloneRebuilds,
  linkedRigidTranslation:"preserves endpoint offsets and arrowhead",
  partialLink:"geometry fallback",rotationFrames:240,
  note:"Deterministic operation counts, not measured real-device FPS."
