@@ -69,6 +69,7 @@ import "./lektrusSubjectEditorThemes.css";
 import "./lektrusReactionLabNext.css";
 import "./lektrusChemistryBench.css";
 import "./lektrusLabSceneLayout.css";
+import "./lektrusProductScreens.css";
 // Import last so selection cursors win over legacy object/handle rules.
 import "./lektrusSelectionCursor.css";
 import {installInterfaceLayout} from "./lektrusInterfaceLayout";
