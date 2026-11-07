@@ -55,7 +55,7 @@ assert.deepEqual(templates.subjectTaskTemplates.chemistry.map(x=>x.id),
 assert.deepEqual(templates.subjectTaskTemplates.mathematics.map(x=>x.id),
  ["task","word-problem","equation","geometry"]);
 assert.deepEqual(templates.subjectTaskTemplates.russian.map(x=>x.id),
- ["task","orthography","punctuation","morphemes","morphology","syntax","text"]);
+ ["task","orthography","punctuation","morphemes","morphology","phonetics","syntax","text"]);
 for(const tone of ["mathematics","russian"]){
  for(const oldId of ["choice","matching","sequence"]){
   assert.equal(templates.subjectTaskTypeKnown(tone,oldId),true,
@@ -81,7 +81,7 @@ assert.equal(templates.subjectTaskTypeKnown("chemistry","balance"),true,"Keep ol
 for(const [tone,format,expected] of [
  ["mathematics","equation",null],["mathematics","word-problem",null],
  ["mathematics","geometry",null],["mathematics","interactive","choice"],["mathematics","matching","match"],
- ["russian","morphology",null],["russian","syntax",null],["russian","morphemes",null],["russian","interactive","choice"],
+ ["russian","phonetics",null],["russian","morphology",null],["russian","syntax",null],["russian","morphemes",null],["russian","interactive","choice"],
  ["russian","orthography","fill"],["russian","punctuation","fill"],
  ["languages","translation",null],["languages","reading",null],["languages","grammar",null],
  ["languages","vocabulary","match"],["languages","word-order","order"]

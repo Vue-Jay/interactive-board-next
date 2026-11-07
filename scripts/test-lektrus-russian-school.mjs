@@ -38,7 +38,7 @@ assert.equal(validateRussianSchoolDiagram({...o,questions:[{...o.questions[0],co
 assert.equal(validateRussianSchoolDiagram({...o,questions:[{...o.questions[0],options:["а","а"]}]}),false);
 assert.equal(validateRussianSchoolDiagram({...o,questions:[...o.questions,o.questions[0]]}),false);
 const registry=fs.readFileSync(new URL("../src/lektrusSubjectToolRegistry.ts",import.meta.url),"utf8");
-for(const id of russianToolIds)assert.ok(registry.includes('id:"'+id+'"'),id+" missing subject menu");
+for(const id of russianToolIds)assert.ok(registry.includes('id:"'+id+'"'),id+" missing legacy schema");
 const view=fs.readFileSync(new URL("../src/LektrusRussianSchoolView.tsx",import.meta.url),"utf8");
 assert.match(view,/onClick=\{\(\)=>setChecked\(true\)\}/,"exercise must have check button");
 assert.match(view,/picked===question\.correct/,"exercise evaluates teacher's correct answer");

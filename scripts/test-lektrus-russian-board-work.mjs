@@ -42,7 +42,7 @@ for(const text of [
  'Ответьте на вопросы к тексту'
 ])assert.ok(answer.includes(text),text);
 assert.ok(board.includes('onRussianWorkChange(entry.id,work)'));
-assert.ok(board.includes('["morphemes","syntax","morphology","text"].includes(entry.format'));
+assert.ok(board.includes('["morphemes","syntax","morphology","phonetics","text"].includes(entry.format'));
 assert.ok(board.includes('LektrusRussianTaskAnswer'));
 assert.ok(app.includes('patchSubjectBoardEntry(item.id,entryId,{russianWork:work})'));
 assert.ok(app.includes('"russianWork"].includes(key)'),"Learners and guests may submit structured analyses");

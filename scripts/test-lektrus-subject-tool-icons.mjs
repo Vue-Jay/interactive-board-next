@@ -65,7 +65,7 @@ assert.ok(!app.includes('entry.id==="math-coordinate"||entry.id==="physics-graph
 assert.ok(panel.includes('className="lektrus-subject-tools-icon"'));
 assert.ok(panel.includes("const subjectToolSections:Record<string,"),
  "Use a curated semantic layout for every classroom subject");
-for(const name of ["Разбор","Практика","Карты и хронология","Информация","Программирование и алгоритмы","Логика"]){
+for(const name of ["Карты и хронология","Информация","Программирование и алгоритмы","Логика"]){
  assert.ok(panel.includes(name),"Missing compact subject section: "+name);
 }
 assert.ok(panel.includes('section.items.map(t=>'),"Render tightly grouped subject tool cards");

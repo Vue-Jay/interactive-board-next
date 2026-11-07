@@ -1032,3 +1032,57 @@
  .lektrus-task-preview{padding:8px}
  .lektrus-task-preview-board{height:210px}
 }
+
+/* Per-sound notebook exercise on the Russian subject board. */
+.lektrus-rus-phonetics-work{gap:10px;padding:10px 12px}
+.lektrus-rus-phonetic-word{font:800 18px/1.3 Georgia,serif;color:#344f5c}
+.lektrus-rus-phonetic-list{display:grid;gap:7px;min-width:0}
+.lektrus-rus-phonetic-row{display:grid;grid-template-columns:42px minmax(0,1fr);
+ gap:9px;align-items:start;min-width:0;padding:9px;border:1px solid #e0e8ec;
+ border-radius:9px;background:#fbfdfd}
+.lektrus-rus-phonetic-letter{display:grid;justify-items:center;gap:1px;padding:4px 0}
+.lektrus-rus-phonetic-letter small{font:650 10px system-ui,sans-serif;color:#8797a3}
+.lektrus-rus-phonetic-letter b{font:750 24px/1.2 Georgia,serif;color:var(--subject-board-accent)}
+.lektrus-rus-phonetic-content{display:grid;gap:7px;min-width:0}
+.lektrus-rus-phonetic-sound{display:grid;gap:6px;min-width:0;padding:7px 9px;border:1px solid #e9edef;
+ border-radius:7px;background:#fff}
+.lektrus-rus-phonetic-sound-head{display:flex;align-items:end;flex-wrap:wrap;gap:6px 8px}
+.lektrus-rus-phonetic-sound-head>label,.lektrus-rus-phonetic-traits>label,
+.lektrus-rus-phonetic-pairs label{display:grid;gap:4px;min-width:105px;color:#677d87;font:650 10px/1.25 system-ui,sans-serif}
+.lektrus-rus-phonetic-sound-head .lektrus-rus-phonetic-input{min-width:110px;flex:0 1 125px}
+.lektrus-rus-phonetic-brackets{display:flex;gap:3px;align-items:center;color:var(--subject-board-accent);
+ font:700 14px Georgia,serif}
+.lektrus-rus-phonetic-brackets input{width:100%;min-width:0;max-width:110px}
+.lektrus-rus-phonetic-sound select,.lektrus-rus-phonetic-brackets input{
+ box-sizing:border-box;min-height:31px;padding:5px 7px;border:1px solid #d9e4e9;border-radius:6px;
+ background:#fff;color:#35505e;font:550 12px/1.4 system-ui,sans-serif}
+.lektrus-rus-phonetic-sound select:focus-visible,.lektrus-rus-phonetic-brackets input:focus-visible,
+.lektrus-rus-phonetic-row button:focus-visible{outline:2px solid var(--subject-board-accent);outline-offset:2px}
+.lektrus-rus-phonetic-sound select:disabled,.lektrus-rus-phonetic-brackets input:disabled{opacity:1;background:#f8fafb}
+.lektrus-rus-phonetic-stress,.lektrus-rus-phonetic-actions button{
+ min-height:30px;border:1px solid #d9e4e9;border-radius:6px;padding:5px 9px;
+ color:#59717e;background:#fff;font:650 10px/1.4 system-ui,sans-serif;cursor:pointer}
+.lektrus-rus-phonetic-actions{display:flex;flex-wrap:wrap;gap:6px}
+.lektrus-rus-phonetic-stress.selected,.lektrus-rus-phonetic-actions button.selected{
+ border-color:var(--subject-board-accent);background:var(--subject-board-soft);color:var(--subject-board-accent)}
+.lektrus-rus-phonetic-stress:disabled,.lektrus-rus-phonetic-actions button:disabled{cursor:default}
+.lektrus-rus-phonetic-traits{display:flex;gap:6px 9px;flex-wrap:wrap;align-items:end}
+.lektrus-rus-phonetic-pairs{flex:1 1 100%;margin-top:2px}
+.lektrus-rus-phonetic-pairs summary{cursor:pointer;color:#758a94;font:600 10px/1.3 system-ui,sans-serif}
+.lektrus-rus-phonetic-pairs>div{display:flex;flex-wrap:wrap;gap:9px;margin-top:6px}
+.lektrus-rus-phonetic-silent{padding:6px 0;color:#87939a;font:650 11px/1.35 system-ui,sans-serif}
+.lektrus-rus-phonetic-summary{display:flex;align-items:center;flex-wrap:wrap;gap:7px 16px;
+ padding:8px 10px;border-top:1px solid #e4eaed;color:#526f7a;font:600 11px/1.4 system-ui,sans-serif}
+.lektrus-rus-phonetic-summary strong{color:var(--subject-board-accent)}
+.lektrus-rus-phonetic-transcription{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;
+ padding:6px 9px;border-radius:7px;background:var(--subject-board-soft)}
+.lektrus-rus-phonetic-transcription small{font:600 10px/1.4 system-ui,sans-serif;color:#667e89}
+.lektrus-rus-phonetic-transcription span{font:650 15px/1.4 Georgia,serif;color:#304a58;overflow-wrap:anywhere}
+@media(max-width:560px){
+ .lektrus-rus-phonetics-work{padding:8px}
+ .lektrus-rus-phonetic-row{grid-template-columns:30px minmax(0,1fr);gap:6px;padding:6px}
+ .lektrus-rus-phonetic-letter b{font-size:20px}
+ .lektrus-rus-phonetic-sound{padding:7px}
+ .lektrus-rus-phonetic-sound-head .lektrus-rus-phonetic-input{flex:1 1 110px}
+ .lektrus-rus-phonetic-sound-head>label,.lektrus-rus-phonetic-traits>label{min-width:100px;flex:1 1 115px}
+}

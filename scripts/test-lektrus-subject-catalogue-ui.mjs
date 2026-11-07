@@ -18,7 +18,7 @@ for(const [subject,ids] of Object.entries({
  "география":["maps-atlas","contour-atlas","geo-matching","geo-question-cards"],
  "история":["history-atlas","history-timeline","history-family-tree"],
  "информатика":["info-encoding","info-place-value","info-programming","info-flowchart","info-circuit","info-logic"],
- "русский язык":["ru-syntax","ru-morphemes","ru-morphology","ru-phonetics","ru-orthography"],
+ "русский язык":[],
  "иностранный язык":["language-sentence-builder","language-flashcards"],
  "литература":["literature-analysis"],
  "обществознание":["civics-structure"]
@@ -31,6 +31,15 @@ for(const [subject,ids] of Object.entries({
  assert.ok(end>start,"Missing subject group terminator "+subject);
  const section=panel.slice(start,end);
  for(const id of ids)assert.ok(section.includes('"'+id+'"'),"Missing "+id+" under "+subject);
+}
+const russianSection=panel.split('"русский язык":[')[1].split('"иностранный язык":[')[0];
+for(const id of ["ru-syntax","ru-morphemes","ru-morphology","ru-phonetics","ru-orthography"]){
+ assert.ok(!russianSection.includes('"'+id+'"'),"Repeated Russian tool must be hidden: "+id);
+}
+const templates=read("src/lektrusSubjectTaskTemplates.ts");
+const russianTemplates=templates.split(" russian:[")[1].split(" languages:[")[0];
+for(const format of ["syntax","morphemes","morphology","phonetics","orthography"]){
+ assert.ok(russianTemplates.includes('type("'+format+'"'),"Russian worksheet task must stay available: "+format);
 }
 assert.match(panel,/className=\{isTask\?"is-subject-task":undefined\}/,
  "Subject assignments must have a dedicated full-width tile");
