@@ -36,6 +36,7 @@ db-backups/
 *.backup
 *.dump
 *.sql.gz
+supabase/.temp/
 
 # Generated Capacitor build outputs (native source projects are tracked)
 android/.gradle/
