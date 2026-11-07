@@ -6,6 +6,15 @@ export type BoardEditorMutation={
  sentAt:number;ops:LiveEditorOp[];
 };
 
+export type BoardObjectPose = {
+  id: string; x: number; y: number; width: number; height: number; rotation: number;
+  origin: string; connectorStart?: {x:number;y:number}; connectorEnd?: {x:number;y:number};
+};
+export type BoardTransformMutation = {
+  clientId: string; userId: string; seq: number; sentAt: number; finished: boolean;
+  items: BoardObjectPose[];
+};
+
 export type RemoteWorkState = {
   userId: string;
   name: string;
@@ -18,6 +27,7 @@ export type RemoteWorkState = {
 export type BoardWorkChannel = {
   publish: (selectedIds: string[], editingId: string | null) => void;
   publishEdit: (itemId:string,ops:LiveEditorOp[])=>void;
+  publishTransform: (items:BoardObjectPose[],finished?:boolean)=>void;
   close: () => void;
 };
 
@@ -28,9 +38,10 @@ export function connectBoardWorkChannel(
   onLeave: (userId: string) => void,
   publishSelf = true,
   onEdit?: (mutation:BoardEditorMutation)=>void,
+  onTransform?: (mutation:BoardTransformMutation)=>void,
 ): BoardWorkChannel {
   if (!isRemoteBackendEnabled()) {
-    return { publish: () => {}, publishEdit:()=>{}, close: () => {} };
+    return { publish: () => {}, publishEdit:()=>{}, publishTransform:()=>{}, close: () => {} };
   }
 
   let stopped = false;
@@ -50,6 +61,10 @@ export function connectBoardWorkChannel(
   const clientId=Math.random().toString(36).slice(2)+Date.now().toString(36);
   let editSequence=0;
   const seenEdits=new Set<string>();
+  let transformSeq=0,lastTransformSent=0;
+  let pendingTransform:BoardObjectPose[]|null=null;
+  let transformTimer:ReturnType<typeof setTimeout>|undefined;
+  const receivedTransformSeq=new Map<string,number>();
 
   const topic = `realtime:board-work:${boardId}`;
 
@@ -58,6 +73,8 @@ export function connectBoardWorkChannel(
     clearInterval(heartbeat);
     clearInterval(refresh);
     clearTimeout(publishTimer);
+    clearTimeout(transformTimer);
+    transformTimer=undefined;pendingTransform=null;
     pendingHeartbeat = null;
     ready = false;
     if (socket) {
@@ -199,6 +216,44 @@ export function connectBoardWorkChannel(
             });
             return;
           }
+          if (message.payload?.event === "object_transform") {
+            const raw=message.payload?.payload as Partial<BoardTransformMutation>|undefined;
+            if(!raw || typeof raw.clientId!=="string" || !raw.clientId ||
+              raw.clientId.length>128 || raw.clientId===clientId ||
+              typeof raw.userId!=="string" || !raw.userId || raw.userId.length>128 ||
+              !Number.isSafeInteger(raw.seq)||raw.seq === undefined || raw.seq<=0 ||
+              typeof raw.finished!=="boolean" || !Array.isArray(raw.items) ||
+              !raw.items.length || raw.items.length>64) return;
+            const poses:BoardObjectPose[]=[];
+            const seenIds=new Set<string>();
+            for(const item of raw.items){
+              if(!item||typeof item.id!=="string"||!item.id||item.id.length>128||
+                typeof item.origin!=="string"||!item.origin||item.origin.length>128||
+                seenIds.has(item.id)||!["x","y","width","height","rotation"].every(key=>
+                  typeof item[key as keyof BoardObjectPose]==="number" &&
+                  Number.isFinite(item[key as keyof BoardObjectPose]) &&
+                  Math.abs(item[key as keyof BoardObjectPose] as number)<1e7) ||
+                item.width<0||item.height<0||
+                ![item.connectorStart,item.connectorEnd].every(point=>point===undefined||
+                  !!point&&typeof point==="object"&&!Array.isArray(point)&&
+                  typeof point.x==="number"&&Number.isFinite(point.x)&&Math.abs(point.x)<1e7&&
+                  typeof point.y==="number"&&Number.isFinite(point.y)&&Math.abs(point.y)<1e7)) return;
+              seenIds.add(item.id);poses.push(item);
+            }
+            const previous=receivedTransformSeq.get(raw.clientId)??0;
+            if(raw.seq===undefined || raw.seq<=previous)return;
+            receivedTransformSeq.delete(raw.clientId);
+            receivedTransformSeq.set(raw.clientId,raw.seq);
+            if(receivedTransformSeq.size>256){
+              const oldest=receivedTransformSeq.keys().next().value;
+              if(oldest)receivedTransformSeq.delete(oldest);
+            }
+            onTransform?.({
+              clientId:raw.clientId,userId:raw.userId,seq:raw.seq,
+              sentAt:Date.now(),finished:raw.finished,items:poses,
+            });
+            return;
+          }
           if (message.payload?.event !== "work_state") return;
 
           const payload = message.payload?.payload ?? {};
@@ -246,6 +301,48 @@ export function connectBoardWorkChannel(
     if(payload.length>120000)return;
     socket.send(payload);
   };
+  const sendTransform=()=>{
+    clearTimeout(transformTimer);transformTimer=undefined;
+    const poses=pendingTransform;
+    pendingTransform=null;
+    if(!poses||!ready||!socket||socket.readyState!==WebSocket.OPEN)return;
+    const mutation:BoardTransformMutation={
+      clientId,userId:me.userId,seq:++transformSeq,
+      sentAt:Date.now(),finished:false,items:poses
+    };
+    const frame=JSON.stringify({
+      topic,event:"broadcast",payload:{type:"broadcast",event:"object_transform",payload:mutation},
+      ref:String(++sequence),join_ref:null
+    });
+    if(frame.length>24000)return;
+    try{socket.send(frame);lastTransformSent=Date.now()}
+    catch{reconnect()}
+  };
+  const publishTransform=(items:BoardObjectPose[],finished=false)=>{
+    // Preview is visual-only. Do not queue stale transforms across reconnects
+    // or grant the broadcast authority over the saved board document.
+    if(stopped||!ready||!socket||socket.readyState!==WebSocket.OPEN||
+      !items.length||items.length>64)return;
+    pendingTransform=items;
+    if(finished){
+      clearTimeout(transformTimer);transformTimer=undefined;
+      pendingTransform=null;
+      const mutation:BoardTransformMutation={
+        clientId,userId:me.userId,seq:++transformSeq,
+        sentAt:Date.now(),finished:true,items
+      };
+      const frame=JSON.stringify({
+        topic,event:"broadcast",payload:{type:"broadcast",event:"object_transform",payload:mutation},
+        ref:String(++sequence),join_ref:null
+      });
+      if(frame.length>24000)return;
+      try{socket.send(frame);lastTransformSent=Date.now()}
+      catch{reconnect()}
+      return;
+    }
+    if(Date.now()-lastTransformSent>=65){sendTransform();return}
+    if(!transformTimer)transformTimer=setTimeout(sendTransform,Math.max(1,65-(Date.now()-lastTransformSent)));
+  };
   const networkChanged = () => reconnect();
   window.addEventListener("online", networkChanged);
   window.addEventListener("offline", networkChanged);
@@ -254,6 +351,7 @@ export function connectBoardWorkChannel(
   return {
     publish,
     publishEdit,
+    publishTransform,
     close: () => {
       stopped = true;
       generation++;
