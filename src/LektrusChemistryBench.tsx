@@ -1878,7 +1878,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
         the glassware, never in a floating reaction card. */}
   <div id={compactFullscreen?"lektrus-lab-compact-equations":undefined}
    className="lektrus-lab-chalkboard" aria-label="Доска на стене за лабораторным столом"
-   aria-live="polite">
+   data-board-drag-surface="true" aria-live="polite">
    <button type="button" className={"lektrus-lab-board-write-toggle"+(settings.showEquationBoard?" is-active":"")}
     data-board-interactive="true" disabled={!editable}
     aria-label={settings.showEquationBoard?"Скрыть уравнения на доске":"Показать уравнения на доске"}
