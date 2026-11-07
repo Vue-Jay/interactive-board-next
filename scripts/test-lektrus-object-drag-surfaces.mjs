@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import ts from "typescript";
+import "./test-lektrus-live-transforms.mjs";
 
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 const source=read("src/boardObjectDragSurface.ts");
