@@ -8881,10 +8881,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             }
             const atlasControl=target.closest(
               "button,input,select,textarea,a,[role='button'],[role='slider'],[contenteditable='true']");
-            // Empty atlas header/inspector space belongs to board navigation,
-            // not dragging or pinching the atlas object itself.
+            // Hand-mode atlas headers still pan the board. In select mode an
+            // inert atlas header must move the ATLAS OBJECT itself, like every
+            // other subject widget. The shared capture drag below handles it.
             if(atlas&&!atlasControl&&!presentation&&!space&&
-              (tool==="select"||tool==="hand")&&e.button===0){
+              tool==="hand"&&e.button===0){
               if(e.pointerType==="touch"){
                 touchStart(e);
                 if(pinchState.current){e.preventDefault();e.stopPropagation();return;}
