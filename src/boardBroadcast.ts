@@ -10,7 +10,7 @@ export type RemoteCursor = {
   updatedAt: number;
 };
 
-export type LiveInkMessage = { clientId: string; userId: string; id: string; kind: "pen" | "marker"; color: string; weight: number; points: { x: number; y: number }[]; finished: boolean };
+export type LiveInkMessage = { clientId: string; userId: string; id: string; kind: "pen" | "marker"; color: string; weight: number; points: { x: number; y: number }[]; finished: boolean; offset?: number };
 
 export type BoardCursorChannel = {
   sendCursor: (x: number, y: number) => void;
@@ -363,7 +363,8 @@ export function connectBoardCursorChannel(
             const p = message.payload?.payload;
             if (!p || typeof p.userId !== "string" ||
                 typeof p.id !== "string" || !["pen","marker"].includes(p.kind) ||
-                !Array.isArray(p.points) || p.points.length > 500 ||
+                !Array.isArray(p.points) || !p.points.length || p.points.length > 500 ||
+                (p.offset !== undefined && (!Number.isSafeInteger(p.offset) || p.offset < 0 || p.offset > 1000000)) ||
                 p.points.some((pt: {x:number;y:number}) => !Number.isFinite(pt?.x) || !Number.isFinite(pt?.y))) return;
             if (p.clientId === clientId) {
               echoInkCount++;
@@ -372,7 +373,7 @@ export function connectBoardCursorChannel(
             }
             receivedInkCount++;
             if(receivedInkCount===1 || receivedInkCount%25===0) report("подключено");
-            onInk?.({clientId:typeof p.clientId === "string" ? p.clientId : p.userId,userId:p.userId,id:p.id,kind:p.kind,color:typeof p.color === "string" ? p.color : "#222222",weight:Number.isFinite(p.weight)?p.weight:3,points:p.points,finished:p.finished === true});
+            onInk?.({clientId:typeof p.clientId === "string" ? p.clientId : p.userId,userId:p.userId,id:p.id,kind:p.kind,color:typeof p.color === "string" ? p.color : "#222222",weight:Number.isFinite(p.weight)?p.weight:3,points:p.points,finished:p.finished === true,offset:p.offset === undefined ? undefined : p.offset});
             return;
           }
           if (
