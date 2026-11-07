@@ -4,7 +4,8 @@ export type AccountRole="teacher"|"student";
 export type TeacherStatus="none"|"pending"|"approved"|"rejected";
 export type SubscriptionPlan="free"|"teacher"|"pro";
 export type AccountAccess={role:AccountRole;teacherStatus:TeacherStatus;isAdmin:boolean;requestedAt:string|null;reviewedAt:string|null;subscriptionPlan:SubscriptionPlan;subscriptionUntil:string|null};
-export type TeacherRequest={userId:string;name:string;email:string;status:TeacherStatus;requestedAt:string|null;reviewedAt:string|null};
+export type TeacherApplication={phone:string;city:string;organization:string;focusArea:string;experience:string;motivation:string};
+export type TeacherRequest={userId:string;name:string;email:string;status:TeacherStatus;requestedAt:string|null;reviewedAt:string|null;application:TeacherApplication|null};
 export type AdminUser={userId:string;name:string;email:string;role:AccountRole;teacherStatus:TeacherStatus;isAdmin:boolean;subscriptionPlan:SubscriptionPlan;subscriptionUntil:string|null;createdAt:string|null};
 
 const KEY="onlinerepetitor.account-role.v81",CACHE_MS=30_000;
@@ -40,9 +41,12 @@ export async function getAccountAccess():Promise<AccountAccess>{
  try{return await inFlight}catch(error){if(stale)return stale;throw error}
 }
 export async function getAccountRole():Promise<AccountRole>{return (await getAccountAccess()).role}
-export async function requestTeacherAccess():Promise<AccountAccess>{if(!isRemoteBackendEnabled()){localStorage.setItem(KEY,"teacher");return localAccess()}clearAccountAccessCache();return remember(mapAccess(await remoteRequest("/rest/v1/rpc/request_teacher_access",{method:"POST",body:"{}"})))}
+export async function requestTeacherAccess(application:TeacherApplication):Promise<AccountAccess>{
+ if(!isRemoteBackendEnabled()){localStorage.setItem("onlinerepetitor.teacher-application.v1",JSON.stringify(application));localStorage.setItem(KEY,"teacher");return localAccess()}
+ clearAccountAccessCache();return remember(mapAccess(await remoteRequest("/rest/v1/rpc/request_teacher_access",{method:"POST",body:JSON.stringify({p_application:application})})))
+}
 export async function setStudentRole():Promise<AccountAccess>{localStorage.setItem(KEY,"student");clearAccountAccessCache();if(!isRemoteBackendEnabled())return localAccess();await remoteRequest("/rest/v1/rpc/set_my_account_role",{method:"POST",body:JSON.stringify({p_role:"student"})});return getAccountAccess()}
-export async function listTeacherRequests():Promise<TeacherRequest[]>{const x=await remoteRequest<any[]>("/rest/v1/rpc/list_teacher_requests",{method:"POST",body:"{}"});return(Array.isArray(x)?x:[]).map(v=>({userId:v.user_id,name:v.name||"Пользователь",email:v.email||"",status:v.status,requestedAt:v.requested_at??null,reviewedAt:v.reviewed_at??null}))}
+export async function listTeacherRequests():Promise<TeacherRequest[]>{const x=await remoteRequest<any[]>("/rest/v1/rpc/list_teacher_requests",{method:"POST",body:"{}"});return(Array.isArray(x)?x:[]).map(v=>({userId:v.user_id,name:v.name||"Пользователь",email:v.email||"",status:v.status,requestedAt:v.requested_at??null,reviewedAt:v.reviewed_at??null,application:v.application&&typeof v.application==="object"?{phone:String(v.application.phone||""),city:String(v.application.city||""),organization:String(v.application.organization||""),focusArea:String(v.application.focusArea||""),experience:String(v.application.experience||""),motivation:String(v.application.motivation||"")}:null}))}
 export async function reviewTeacherRequest(userId:string,approve:boolean){const result=await remoteRequest("/rest/v1/rpc/review_teacher_request",{method:"POST",body:JSON.stringify({p_user_id:userId,p_approve:approve})});clearAccountAccessCache();return result}
 export async function listAdminUsers():Promise<AdminUser[]>{const x=await remoteRequest<any[]>("/rest/v1/rpc/admin_list_users",{method:"POST",body:"{}"});return(Array.isArray(x)?x:[]).filter(v=>!!String(v.email||"").trim()).map(v=>({userId:v.user_id,name:v.name||"Пользователь",email:v.email||"",role:v.role==="teacher"?"teacher":"student",teacherStatus:["pending","approved","rejected"].includes(v.teacher_status)?v.teacher_status:"none",isAdmin:!!v.is_admin,subscriptionPlan:plan(v.subscription_plan),subscriptionUntil:v.subscription_until??null,createdAt:v.created_at??null}))}
 export async function adminSetSubscription(userId:string,subscriptionPlan:SubscriptionPlan,until:string|null):Promise<void>{await remoteRequest("/rest/v1/rpc/admin_set_subscription",{method:"POST",body:JSON.stringify({p_user_id:userId,p_plan:subscriptionPlan,p_until:until})});clearAccountAccessCache()}

@@ -4,10 +4,12 @@ import { createServer } from "vite";
 
 const read=path=>readFileSync(new URL(`../${path}`,import.meta.url),"utf8");
 const app=read("src/App.tsx");
+const shell=read("src/LectrisWorkspaceShell.tsx");
 const styles=read("src/lektrusProductScreens.css");
 const templates=read("src/TemplatesScreen.tsx");
 
 assert.ok(app.includes("Управление и интерфейс"),"the settings entry must show its full label");
+assert.ok(app.includes("effectiveAccountRole=appRolePreview")&&shell.includes("Проверка интерфейса")&&shell.includes("Вернуться к администратору"),"administrators must be able to preview app-wide role menus and switch back");
 const menuStart=app.indexOf('<div className="lectris-layout-menu">');
 const menuEnd=app.indexOf("</details>",menuStart);
 const menu=app.slice(menuStart,menuEnd);
@@ -16,6 +18,8 @@ assert.match(styles,/\.lectris-layout-menu \.lectris-interface-settings-entry[\s
   "the settings entry must read as a Lektrus button");
 assert.match(styles,/\.workspace \.board-controls \.snap-toggle\.active[\s\S]*?var\(--lt-selected\)/,
   "snap must use the selected Lektrus palette");
+assert.match(styles,/\.admin-users-shell \.admin-user-grant\{background:transparent!important\}/,
+  "tariff controls must not sit on an extra colored panel");
 for(const selector of [".lectris-hub", ".lectris-hub-tile-icon", ".topbar-more-popover", ".notification-card", ".profile-identity-card", ".settings-row-card", ".admin-users-shell", ".template-card"]){
   assert.ok(styles.includes(selector),`${selector} must be covered by the shared product screen theme`);
 }
@@ -28,8 +32,18 @@ const layoutStore=read("src/lektrusInterfaceLayout.ts");
 const globalMigration=read("supabase/v249_global_interface_layout.sql");
 assert.ok(layoutStore.includes("admin_publish_interface_layout")&&layoutStore.includes("get_global_interface_layout"),"the interface design must publish and load from the shared server setting");
 assert.ok(globalMigration.includes("public.is_app_admin(auth.uid())"),"only a verified application administrator may publish the shared design");
-assert.ok(read("src/ProfileScreen.tsx").includes("Коротко о себе")&&read("src/profileDetailsStore.ts").includes("organization"),"the profile must include editable personal and work details");
-assert.ok(read("src/AuthScreen.tsx").includes("Подтвердите email")&&read("src/backend.ts").includes("verifySignupOtpRemote"),"registration must use Lektrus code entry");
+const profile=read("src/ProfileScreen.tsx");
+const settings=read("src/SettingsScreen.tsx");
+const previewRequests=read("src/previewTeacherRequestsStore.ts");
+const adminScreen=read("src/AdminScreen.tsx");
+assert.ok(settings.includes("addPreviewTeacherRequest(user,cleaned)")&&previewRequests.includes("localStorage.setItem(KEY")&&adminScreen.includes("Удалить тестовую заявку"),"role preview teacher applications must stay local and be removable from administrator review");
+const applicationMigration=read("supabase/v251_teacher_application_details.sql");
+assert.ok(!profile.includes("Коротко о себе")&&!profile.includes("О вас и вашей работе"),"the profile must not include the biography or teacher application section heading");
+assert.ok(profile.includes("{isTeacher&&")&&settings.includes("Заявка преподавателя")&&settings.includes("experience"),"teacher information must be requested in the teacher application and shown only to teachers in their profile");
+assert.ok(applicationMigration.includes("teacher_application")&&applicationMigration.includes("is_app_admin(auth.uid())"),"the application details must be stored securely for administrator review");
+const authScreen=read("src/AuthScreen.tsx");
+assert.ok(authScreen.includes("Подтвердите email")&&read("src/backend.ts").includes("verifySignupOtpRemote"),"registration must use Lektrus code entry");
+assert.ok(authScreen.includes("previewCode.current")&&authScreen.includes("Тестовый аккаунт не создан")&&app.includes('previewMode onPreviewClose'),"administrators must be able to test the local fake registration and Lektrus confirmation without creating an account");
 
 const vite=await createServer({configFile:false,server:{middlewareMode:true},appType:"custom"});
 try{

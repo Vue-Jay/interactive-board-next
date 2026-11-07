@@ -22,7 +22,7 @@ const toolChange=slice("  // Switching tools invalidates","  const openBoardCont
 const down=slice('onPointerDownCapture={(e) => {','onPointerMoveCapture={(e) => {');
 const up=slice('onPointerUpCapture={(e) => {','onPointerCancelCapture={(e) => {');
 const cancel=slice('onPointerCancelCapture={(e) => {','onClickCapture={(e)=>{');
-const lost=slice('onLostPointerCapture={(e) => {','          {isAppAdmin &&');
+const lost=slice('onLostPointerCapture={(e) => {','          {showAdminControls &&');
 assert.ok(touchStart.includes('if(e.isPrimary && touchPoints.current.size)'),
  "Recover orphaned touches when a primary touch begins");
 assert.ok(touchStart.indexOf('consumedTouchIds.current.add(id)')<

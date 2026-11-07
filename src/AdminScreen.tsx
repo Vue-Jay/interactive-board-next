@@ -2,6 +2,7 @@ import { useEffect,useMemo,useState } from "react";
 import type { AuthUser } from "./authStore";
 import { adminSetSubscription,listAdminUsers,listTeacherRequests,reviewTeacherRequest,type AdminUser,type SubscriptionPlan,type TeacherRequest } from "./accountRoleStore";
 import { listAdminBoards,listAdminUserWorkspace,type AdminBoardSummary,type BoardSummary } from "./boardStore";
+import {listPreviewTeacherRequests,removePreviewTeacherRequest} from "./previewTeacherRequestsStore";
 
 type Props={user:AuthUser;onBack:()=>void;onOpenBoard:(board:BoardSummary)=>void;onOpenLayout:()=>Promise<void>;invisible:boolean;onInvisibleChange:(value:boolean)=>void;adminEdit:boolean;onAdminEditChange:(value:boolean)=>void};
 const fmt=(x:string|null,withTime=false)=>x?new Intl.DateTimeFormat("ru-RU",withTime?{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}:{day:"2-digit",month:"long",year:"numeric"}).format(new Date(x)):"—";
@@ -10,13 +11,13 @@ const isoDate=(days:number)=>{const d=new Date();d.setDate(d.getDate()+days);ret
 
 export default function AdminScreen({user,onBack,onOpenBoard,onOpenLayout,invisible,onInvisibleChange,adminEdit,onAdminEditChange}:Props){
  const [tab,setTab]=useState<"users"|"teachers"|"boards">("users");
- const [users,setUsers]=useState<AdminUser[]>([]),[requests,setRequests]=useState<TeacherRequest[]>([]),[boards,setBoards]=useState<AdminBoardSummary[]>([]);
+ const [users,setUsers]=useState<AdminUser[]>([]),[requests,setRequests]=useState<Array<TeacherRequest&{isPreview?:boolean}>>([]),[boards,setBoards]=useState<AdminBoardSummary[]>([]);
  const [busy,setBusy]=useState(""),[notice,setNotice]=useState(""),[query,setQuery]=useState("");
  const [previewUserId,setPreviewUserId]=useState<string|null>(null);
  const [workspaceBoards,setWorkspaceBoards]=useState<AdminBoardSummary[]>([]);
  const [workspaceLoading,setWorkspaceLoading]=useState(false);
  const [drafts,setDrafts]=useState<Record<string,{plan:SubscriptionPlan;until:string}>>({});
- const load=async()=>{try{const [u,r,b]=await Promise.all([listAdminUsers(),listTeacherRequests(),listAdminBoards()]);setUsers(u);setRequests(r);setBoards(b);setDrafts(current=>{const next={...current};for(const x of u)if(!next[x.userId])next[x.userId]={plan:x.subscriptionPlan,until:x.subscriptionUntil?.slice(0,10)??isoDate(30)};return next})}catch(e){setNotice(e instanceof Error?e.message:"Не удалось загрузить данные администратора")}};
+ const load=async()=>{try{const [u,r,b]=await Promise.all([listAdminUsers(),listTeacherRequests(),listAdminBoards()]);setUsers(u);setRequests([...listPreviewTeacherRequests(),...r]);setBoards(b);setDrafts(current=>{const next={...current};for(const x of u)if(!next[x.userId])next[x.userId]={plan:x.subscriptionPlan,until:x.subscriptionUntil?.slice(0,10)??isoDate(30)};return next})}catch(e){setNotice(e instanceof Error?e.message:"Не удалось загрузить данные администратора")}};
  useEffect(()=>{void load()},[]);
  const filtered=useMemo(()=>{const q=query.trim().toLocaleLowerCase("ru");return !q?users:users.filter(x=>`${x.name} ${x.email}`.toLocaleLowerCase("ru").includes(q))},[users,query]);
  const previewUser=users.find(x=>x.userId===previewUserId);
@@ -52,7 +53,7 @@ export default function AdminScreen({user,onBack,onOpenBoard,onOpenLayout,invisi
     {filteredBoards.length===0&&<div className="boards-empty"><strong>Доски не найдены</strong><span>Измени строку поиска.</span></div>}
    </>:<>
     <div className="admin-approval-head"><h2>Заявки преподавателей</h2><span>{pending.length} ожидают решения</span></div>
-    {pending.length===0?<div className="boards-empty"><strong>Новых заявок нет</strong><span>Когда пользователь запросит роль преподавателя, он появится здесь.</span></div>:<div className="admin-request-list">{pending.map(x=><article key={x.userId}><div><strong>{x.name}</strong><span>{x.email}</span><small>Заявка: {fmt(x.requestedAt,true)}</small></div><div><button className="students-primary" disabled={busy===x.userId} onClick={()=>void review(x.userId,true)}>Одобрить</button><button className="danger" disabled={busy===x.userId} onClick={()=>void review(x.userId,false)}>Отклонить</button></div></article>)}</div>}
+    {pending.length===0?<div className="boards-empty"><strong>Новых заявок нет</strong><span>Когда пользователь запросит роль преподавателя, его анкета появится здесь.</span></div>:<div className="admin-request-list">{pending.map(x=><article className="admin-teacher-request-card" key={x.userId}><div className="admin-teacher-request-main"><strong>{x.name}{x.isPreview&&<em className="admin-preview-request-badge">Тестовая заявка</em>}</strong><span>{x.email}</span><small>Заявка: {fmt(x.requestedAt,true)}{x.isPreview?" · только в этом браузере":""}</small>{x.application&&<dl className="admin-teacher-application"><div><dt>Предметы</dt><dd>{x.application.focusArea||"—"}</dd></div><div><dt>Место работы</dt><dd>{x.application.organization||"—"}</dd></div>{x.application.phone&&<div><dt>Телефон</dt><dd>{x.application.phone}</dd></div>}{x.application.city&&<div><dt>Город</dt><dd>{x.application.city}</dd></div>}{x.application.experience&&<div className="admin-teacher-application-full"><dt>Опыт</dt><dd>{x.application.experience}</dd></div>}{x.application.motivation&&<div className="admin-teacher-application-full"><dt>Комментарий</dt><dd>{x.application.motivation}</dd></div>}</dl>}</div><div className="admin-teacher-request-actions">{x.isPreview?<button className="danger" onClick={()=>{removePreviewTeacherRequest(x.userId);setNotice("Тестовая заявка удалена");void load()}}>Удалить тестовую заявку</button>:<><button className="students-primary" disabled={busy===x.userId} onClick={()=>void review(x.userId,true)}>Одобрить</button><button className="danger" disabled={busy===x.userId} onClick={()=>void review(x.userId,false)}>Отклонить</button></>}</div></article>)}</div>}
     <div className="admin-approval-head"><h2>История решений</h2><span>{history.length}</span></div>
     <div className="admin-request-list">{history.map(x=><article key={x.userId}><div><strong>{x.name}</strong><span>{x.email}</span><small>{x.status==="approved"?"Одобрен":"Отклонён"} · {fmt(x.reviewedAt,true)}</small></div>{x.status==="approved"?<button className="danger" disabled={busy===x.userId} onClick={()=>void review(x.userId,false)}>Отозвать доступ</button>:<button disabled={busy===x.userId} onClick={()=>void review(x.userId,true)}>Одобрить</button>}</article>)}</div>
    </>}

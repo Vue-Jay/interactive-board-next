@@ -2097,28 +2097,31 @@ const itemIconName = (item: Item): IconName => {
   return "marker";
 };
 
-function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adminMaintenance = false, adminInvisible = false, onBackToBoards, onLogout, onBoardChanged, initialRemoteVersion = null }: {
+function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adminMaintenance = false, adminInvisible = false, globalRolePreview="actual", onGlobalRolePreviewChange, onBackToBoards, onLogout, onBoardChanged, initialRemoteVersion = null }: {
   authUser: AuthUser;
   boardSummary: BoardSummary;
   accountRole: AccountRole;
   isAppAdmin?: boolean;
   adminMaintenance?: boolean;
   adminInvisible?: boolean;
+  globalRolePreview?:BoardRolePreview;
+  onGlobalRolePreviewChange?:(role:"actual"|AccountRole)=>void;
   onBackToBoards: () => void;
   onLogout: () => void;
   onBoardChanged: (board: BoardSummary) => void;
   initialRemoteVersion?: number | null;
 }) {
   const layoutEditing=new URLSearchParams(window.location.search).get("layout-editor")==="1";
-  const [rolePreview,setRolePreview]=useState<BoardRolePreview>("actual");
-  useEffect(()=>setRolePreview("actual"),[boardSummary.id]);
+  const [rolePreview,setRolePreview]=useState<BoardRolePreview>(globalRolePreview);
+  useEffect(()=>setRolePreview(globalRolePreview),[boardSummary.id,globalRolePreview]);
   const roleCapabilities=boardRoleCapabilities({
     preview:rolePreview,boardRole:boardSummary.role,accountRole,
-    isAppAdmin,adminMaintenance,isGuest:authUser.isGuest===true
+    isAppAdmin,adminMaintenance:rolePreview==="actual"&&adminMaintenance,isGuest:authUser.isGuest===true
   });
   const {canEdit,isStudent,canManageBoard,canCreateAssignments}=roleCapabilities;
+  const showAdminControls=isAppAdmin&&rolePreview==="actual";
   const isBoardOwner=boardSummary.role==="owner"&&boardSummary.ownerId===authUser.id;
-  const adminHidden = isAppAdmin && adminInvisible;
+  const adminHidden = showAdminControls && adminInvisible;
   const toolAllowedForRole = (id:Tool) => canUseBoardCreationTool(id,roleCapabilities);
   const structurallyLockedForStudent = (item:Item|undefined|null) =>
     !!item&&isStudentProtectedBoardObject(item.kind,roleCapabilities);
@@ -2219,7 +2222,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const {showInkDiagnostics,showBoardDiagnostics,showPerformanceDiagnostics} = developerPrefs;
   const diagnosticFps = useRef<HTMLSpanElement>(null);
   useEffect(() => {
-    if(!isAppAdmin||!showPerformanceDiagnostics)return;
+    if(!showAdminControls||!showPerformanceDiagnostics)return;
     let frame=0,last=0,animation=0;
     const sample=(now:number)=>{
       if(!last)last=now;
@@ -2234,12 +2237,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     };
     animation=requestAnimationFrame(sample);
     return()=>cancelAnimationFrame(animation);
-  },[isAppAdmin,showPerformanceDiagnostics]);
+  },[showAdminControls,showPerformanceDiagnostics]);
   const changeRolePreview=(next:BoardRolePreview)=>{
     if(!isAppAdmin)return;
     end(true);setEditing(null);
     flushSave();
     setRolePreview(next);
+    if(next!=="guest")onGlobalRolePreviewChange?.(next);
     // Do not carry a privileged active tool/editor into a restricted preview.
     setSelected([]);setTool("select");setSpace(false);setSharing(false);
     setBoardAiOpen(false);setImageCropEditorId(null);
@@ -7934,7 +7938,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       {linkMediaOpen&&<div className="access-backdrop link-media-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setLinkMediaOpen(false)}}><section className="access-modal link-media-dialog"><div className="access-head"><div><h2>{linkMediaEditId?"Изменить мультимедиа":"Мультимедиа по ссылке"}</h2><p>Файл не загружается в Lektrus и не занимает Storage.</p></div><button onClick={()=>setLinkMediaOpen(false)}>×</button></div><label className="link-media-field"><span>Ссылка</span><input value={linkMediaUrl} onChange={e=>setLinkMediaUrl(e.target.value)} placeholder="YouTube, Vimeo, MP3, MP4 или другая http/https ссылка"/></label><label className="link-media-field"><span>Название</span><input value={linkMediaTitle} onChange={e=>setLinkMediaTitle(e.target.value)} placeholder="Необязательно"/></label><div className="link-media-support"><strong>Внутренний плеер</strong><span>YouTube и Vimeo открываются внутри доски. Прямые ссылки на MP3/MP4/WebM и другие поддерживаемые браузером файлы используют встроенный HTML5-плеер. Для остальных ссылок показывается безопасная карточка перехода.</span></div><div className="access-actions"><button onClick={()=>setLinkMediaOpen(false)}>Отмена</button><button className="boards-create" onClick={saveLinkMedia}>{linkMediaEditId?"Сохранить":"Добавить на доску"}</button></div></section></div>}
 
       {sharing && <ShareDialog board={boardSummary} user={authUser} onClose={() => setSharing(false)}/>}
-      {isAppAdmin && developerSettingsOpen && <div className="access-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setDeveloperSettingsOpen(false)}}>
+      {showAdminControls && developerSettingsOpen && <div className="access-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setDeveloperSettingsOpen(false)}}>
         <section className="access-modal" style={{width:"min(480px,calc(100vw - 24px))",maxHeight:"85vh",overflowY:"auto"}}>
           <div className="access-head"><div><h2>Настройки разработчика</h2><p>Диагностика только для администратора этой доски</p></div><button type="button" aria-label="Закрыть" onClick={()=>setDeveloperSettingsOpen(false)}>×</button></div>
           <div style={{display:"grid",gap:14,padding:"16px 0"}}>
@@ -7944,8 +7948,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 role="group" aria-label="Тестовая роль пользователя">
                 {(["teacher","student","guest"] as const).map(role=>
                   <button key={role} type="button"
-                    className={rolePreview===role?"active":""}
-                    aria-pressed={rolePreview===role}
+                    className={(rolePreview as BoardRolePreview)===role?"active":""}
+                    aria-pressed={(rolePreview as BoardRolePreview)===role}
                     onClick={()=>changeRolePreview(role)}>
                     {BOARD_ROLE_PREVIEW_LABELS[role]}
                   </button>)}
@@ -7999,7 +8003,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
            </div>
            <button type="button" className="board-recent-full" onClick={()=>{setRecentChangesOpen(false);void openHistory()}}>Вся история изменений</button>
          </aside>}
-      {!layoutEditing&&adminMaintenance && <div className="viewer-banner" style={{background:"#fff3d6",color:"#805200"}}>Режим администратора · изменения сохраняются от вашего имени</div>}
+      {!layoutEditing&&adminMaintenance&&rolePreview==="actual" && <div className="viewer-banner" style={{background:"#fff3d6",color:"#805200"}}>Режим администратора · изменения сохраняются от вашего имени</div>}
        {!layoutEditing && !canEdit && !publicPresentation && <div className="viewer-banner">Только просмотр</div>}
       {publicPresentation&&<div className="public-presentation-badge">Публичная презентация · ← → для навигации · F — полный экран</div>}
       {!online&&<div className="offline-banner" role="status"><strong>Офлайн</strong><span>Можно продолжать работу с уже открытой локальной доской. Серверная синхронизация возобновится после подключения.</span></div>}{updateReady&&<div className="update-banner" role="status"><span>Доступна новая версия Lektrus.</span><button type="button" onClick={applyUpdate}>Обновить</button><button type="button" className="secondary" onClick={()=>setUpdateReady(null)}>Позже</button></div>}<header className={`topbar lectris-layout-${lectrisLayout}`}>
@@ -8152,7 +8156,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {previous&&<button onClick={()=>{if(window.confirm("Вернуть доску, сохранённую перед последним импортом? Текущие изменения заменятся.")){applyDocument(previous);setNotice("Доска до импорта восстановлена")}}}><Icon name="undo" size={16}/><span>Вернуть до импорта</span></button>}
                 <button onClick={()=>void exportBoard()}><Icon name="download" size={16}/><span>Скачать копию</span></button>
               </div>
-              {isAppAdmin && <div className="topbar-menu-section">
+              {showAdminControls && <div className="topbar-menu-section">
                 <button type="button" onClick={()=>setDeveloperSettingsOpen(true)}><Icon name="settings" size={16}/><span>Настройки разработчика</span></button>
               </div>}
               <div className="topbar-menu-section">
@@ -9726,7 +9730,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             if(e.pointerType==="touch"&&!consumedTouchIds.current.has(e.pointerId)&&!pinchState.current)touchEnd(e);
           }}
         >
-          {isAppAdmin && (showInkDiagnostics || showBoardDiagnostics || showPerformanceDiagnostics) && <div style={{position:"absolute",right:12,top:12,zIndex:2400,background:"rgba(20,23,33,.85)",color:"#fff",padding:"7px 10px",borderRadius:8,fontSize:11,pointerEvents:"none",maxWidth:"min(90vw,480px)"}}>
+          {showAdminControls && (showInkDiagnostics || showBoardDiagnostics || showPerformanceDiagnostics) && <div style={{position:"absolute",right:12,top:12,zIndex:2400,background:"rgba(20,23,33,.85)",color:"#fff",padding:"7px 10px",borderRadius:8,fontSize:11,pointerEvents:"none",maxWidth:"min(90vw,480px)"}}>
             {showInkDiagnostics && <div>Штрихи: {inkDiagnostics}</div>}
             {showBoardDiagnostics && <div>Соединение: {realtimeStatus} · курсоров: {Object.keys(remoteCursors).length} · участников: {visiblePresenceUsers.length} · версия: {remoteVersion.current ?? "нет"}</div>}
             {showPerformanceDiagnostics && <div>Объектов: {items.length} · штрихов: {drawingCount} · масштаб: {Math.round(view.zoom*100)}% · rAF FPS: <span ref={diagnosticFps}>…</span></div>}
@@ -10868,6 +10872,8 @@ export default function App() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(() => getCachedCurrentUser());
   const [accountRole,setAccountRoleState]=useState<AccountRole>(()=>getCachedAccountAccess()?.role??"student");
   const [isAppAdmin,setIsAppAdmin]=useState(()=>getCachedAccountAccess()?.isAdmin??false);
+  const [appRolePreview,setAppRolePreview]=useState<"actual"|AccountRole>("actual");
+  const effectiveAccountRole=appRolePreview==="actual"?accountRole:appRolePreview;
   const [adminInspecting,setAdminInspecting]=useState(false);
   const [adminEdit,setAdminEdit]=useState(()=>{try{return localStorage.getItem("onlinerepetitor.adminEdit")==="1"}catch{return false}});
   const changeAdminEdit=useCallback((value:boolean)=>{setAdminEdit(value);try{localStorage.setItem("onlinerepetitor.adminEdit",value?"1":"0")}catch{}},[]);
@@ -10884,6 +10890,11 @@ export default function App() {
   const [sharePasswordRequired, setSharePasswordRequired] = useState(false);
   const [remoteVersion, setRemoteVersion] = useState<number | null>(null);
   const [boardMountKey, setBoardMountKey] = useState(0);
+  const changeAppRolePreview=useCallback((role:"actual"|AccountRole)=>{
+    if(!isAppAdmin)return;
+    setAppRolePreview(role);
+    if(role!=="actual"&&!activeBoard)navigate("/?section=boards");
+  },[isAppAdmin,activeBoard,navigate]);
   const [globalInstallPrompt,setGlobalInstallPrompt]=useState<Event|null>(null);
   const [globalStandalone,setGlobalStandalone]=useState(()=>(window.matchMedia?.("(display-mode: standalone)").matches===true || (navigator as Navigator & {standalone?:boolean}).standalone===true));
   useEffect(()=>{
@@ -11131,6 +11142,8 @@ export default function App() {
     return()=>{alive=false;window.removeEventListener("onlinerepetitor:account-access",listener);window.removeEventListener("focus",refresh);window.removeEventListener("online",refresh);document.removeEventListener("visibilitychange",onVisibility)}
   },[authUser?.id]);
 
+  useEffect(()=>{if(!isAppAdmin)setAppRolePreview("actual")},[isAppAdmin]);
+
   // Navigation is owned by LectrisWorkspaceShell (explicit section IDs).
   // Do not intercept page clicks by their Russian button labels: "Настройки"
   // also occurs inside atlas, notifications and local tool dialogs.
@@ -11149,31 +11162,33 @@ export default function App() {
     return (
       <>
         <Suspense fallback={<div className="board-server-overlay"><div className="board-server-card"><strong>Открываем раздел…</strong><span>Загружаем только нужный модуль.</span></div></div>}>
-        {route.kind === "home" && <LectrisWorkspaceShell section={new URLSearchParams(window.location.search).get("section")||""} role={accountRole} isAdmin={isAppAdmin} name={authUser.name}>{(()=>{const section=new URLSearchParams(window.location.search).get("section");return section==="admin" && isAppAdmin
+        {route.kind === "home" && <LectrisWorkspaceShell section={new URLSearchParams(window.location.search).get("section")||""} role={effectiveAccountRole} isAdmin={isAppAdmin} name={authUser.name} rolePreview={appRolePreview} onRolePreviewChange={changeAppRolePreview}>{(()=>{const section=new URLSearchParams(window.location.search).get("section");return section==="registration-preview"&&isAppAdmin&&appRolePreview==="actual"
+          ? <AuthScreen onAuthenticated={()=>{}} previewMode onPreviewClose={()=>{window.history.pushState({}, "", "/?section=boards");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          : section==="admin" && isAppAdmin && appRolePreview==="actual"
           ? <AdminScreen user={authUser} invisible={adminInvisible} onInvisibleChange={changeAdminInvisible} adminEdit={adminEdit} onAdminEditChange={changeAdminEdit} onOpenBoard={(board)=>{setAdminInspecting(true);void openBoard(board,()=>true)}} onOpenLayout={async()=>{navigate(`/board/${INTERFACE_STUDIO_BOARD_ID}?layout-editor=1`)}} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} />
-          : section==="students" && accountRole==="teacher"
+          : section==="students" && effectiveAccountRole==="teacher"
           ? <StudentsScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
           : section==="assignments"
-          ? <AssignmentsScreen user={authUser} accountRole={accountRole} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
-          : section==="progress" && accountRole==="teacher"
+          ? <AssignmentsScreen user={authUser} accountRole={effectiveAccountRole} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
+          : section==="progress" && effectiveAccountRole==="teacher"
           ? <ProgressScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="schedule"
-          ? <ScheduleScreen user={authUser} accountRole={accountRole} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
-          : section==="materials" && accountRole==="teacher"
+          ? <ScheduleScreen user={authUser} accountRole={effectiveAccountRole} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
+          : section==="materials" && effectiveAccountRole==="teacher"
           ? <MaterialsScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="notifications"
           ? <NotificationsScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="profile"
-          ? <ProfileScreen user={authUser} accountRole={accountRole} isAppAdmin={isAppAdmin} onLogout={logout} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          ? <ProfileScreen user={authUser} accountRole={effectiveAccountRole} isAppAdmin={isAppAdmin&&appRolePreview==="actual"} previewMode={appRolePreview!=="actual"} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="settings"
-          ? <SettingsScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} onLogout={logout} installAvailable={Boolean(globalInstallPrompt)} isInstalled={globalStandalone} onInstall={()=>void installGlobalApp()} onBilling={()=>{window.history.pushState({}, "", "/?section=billing");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          ? <SettingsScreen user={authUser} previewRole={appRolePreview==="actual"?null:effectiveAccountRole} onPreviewRoleChange={changeAppRolePreview} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} installAvailable={Boolean(globalInstallPrompt)} isInstalled={globalStandalone} onInstall={()=>void installGlobalApp()} onBilling={()=>{window.history.pushState({}, "", "/?section=billing");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="billing"
           ? <BillingScreen onBack={()=>{window.history.pushState({}, "", "/?section=settings");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="ai"
           ? <AiStudioScreen onBack={()=>{window.history.pushState({}, "", "/?section=settings");window.dispatchEvent(new PopStateEvent("popstate"))}} onTariffs={()=>{window.history.pushState({}, "", "/?section=billing");window.dispatchEvent(new PopStateEvent("popstate"))}} />
-          : section==="templates" && accountRole==="teacher"
+          : section==="templates" && effectiveAccountRole==="teacher"
           ? <TemplatesScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
-          : <BoardsScreen user={authUser} accountRole={accountRole} isAppAdmin={isAppAdmin} onOpenBoard={(board) => navigate(`/board/${board.id}`)} onLogout={logout} />})()}</LectrisWorkspaceShell>}
+          : <BoardsScreen user={authUser} accountRole={effectiveAccountRole} isAppAdmin={isAppAdmin&&appRolePreview==="actual"} onOpenBoard={(board) => navigate(`/board/${board.id}`)} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} />})()}</LectrisWorkspaceShell>}
         </Suspense>
         {sharePasswordRequired && route.kind==="join" && <div className="board-server-overlay"><form className="board-server-card share-password-card" onSubmit={e=>{e.preventDefault();if(!sharePassword.trim())return;setSharePasswordRequired(false);setRoute({...route});}}><strong>Ссылка защищена паролем</strong><span>Введите пароль, который сообщил владелец доски.</span><input type="password" value={sharePassword} onChange={e=>setSharePassword(e.target.value)} placeholder="Пароль ссылки" autoComplete="off"/><div className="share-password-actions"><button className="primary" type="submit" disabled={!sharePassword.trim()}>Открыть доску</button><button type="button" onClick={()=>{setSharePassword("");clearPendingShare();navigate("/",true)}}>Отмена</button></div></form></div>}
         {boardLoading && <div className="board-server-overlay"><div className="board-server-card"><strong>Загружаем доску…</strong><span>Получаем последнюю версию с сервера.</span></div></div>}
@@ -11189,6 +11204,8 @@ export default function App() {
       boardSummary={activeBoard}
       accountRole={accountRole}
       isAppAdmin={isAppAdmin}
+      globalRolePreview={appRolePreview}
+      onGlobalRolePreviewChange={changeAppRolePreview}
       adminMaintenance={adminInspecting && isAppAdmin && adminEdit}
       adminInvisible={adminInvisible}
       initialRemoteVersion={remoteVersion}
