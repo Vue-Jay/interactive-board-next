@@ -55,11 +55,13 @@ function nearestAxis(
 ):{delta:number;guide?:number}{
   let best=threshold+1,rank=Infinity,guide:number|undefined,delta=rawDelta;
   const values=index.positions,orders=index.orders;
-  const anchors=[sourceStart,sourceStart+sourceSpan/2,sourceStart+sourceSpan];
+  // This runs for every pointer sample. Keep the exact legacy tie-breaking
+  // order without allocating an anchors array and candidate arrays per frame.
   for(let source=0;source<3;source++){
-    const desired=anchors[source]+rawDelta;
+    const desired=sourceStart+(source===0?0:source===1?sourceSpan/2:sourceSpan)+rawDelta;
     const slot=lowerBound(values,desired);
-    for(const candidate of [slot-1,slot]){
+    for(let side=-1;side<=0;side++){
+      const candidate=slot+side;
       if(candidate<0||candidate>=values.length)continue;
       const value=values[candidate],distance=Math.abs(value-desired);
       // In the old nested loops target-order came after source-order.
