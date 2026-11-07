@@ -9187,8 +9187,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             <svg className="remote-live-ink-layer" width="100%" height="100%" style={{position:"absolute",inset:0,overflow:"hidden",pointerEvents:"none"}}>
               {uncommittedRemoteInk.map(ink => (
                 ink.points.length === 1
-                  ? <circle key={ink.clientId} cx={ink.points[0].x*view.zoom+view.x} cy={ink.points[0].y*view.zoom+view.y} r={Math.max(0.5,ink.weight*view.zoom/2)} fill={ink.color} opacity={ink.kind==="marker"?0.32:1}/>
-                  : <polyline key={ink.clientId} points={ink.points.map(point => `${point.x*view.zoom+view.x},${point.y*view.zoom+view.y}`).join(" ")} fill="none" stroke={ink.color} strokeWidth={ink.weight*view.zoom} strokeLinecap="round" strokeLinejoin="round" opacity={ink.kind==="marker"?0.32:1}/>
+                  ? <circle key={ink.id} cx={ink.points[0].x*view.zoom+view.x} cy={ink.points[0].y*view.zoom+view.y} r={Math.max(0.5,ink.weight*view.zoom/2)} fill={ink.color} opacity={ink.kind==="marker"?0.32:1}/>
+                  : <polyline key={ink.id} points={ink.points.map(point => `${point.x*view.zoom+view.x},${point.y*view.zoom+view.y}`).join(" ")} fill="none" stroke={ink.color} strokeWidth={ink.weight*view.zoom} strokeLinecap="round" strokeLinejoin="round" opacity={ink.kind==="marker"?0.32:1}/>
               ))}
             </svg>
             {Object.values(remoteCursors).map((cursor) => <div
