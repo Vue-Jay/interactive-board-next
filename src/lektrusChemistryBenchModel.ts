@@ -1706,6 +1706,17 @@ function calculateLabReactionNeedsTick(vessel:LabVessel):boolean{
 // workbench requests it more than once per render, including visual effects
 // and the expanded composition panel. Avoid repeating reaction-network
 // simulations until a new measured vessel snapshot replaces this object.
+/** A running stopwatch must not rerender every memoized vessel graphic.
+ * Only recent reaction / evaporation / dissolution / indicator events need
+ * wall-clock frames. All other vessel changes are driven by new vessel data.
+ */
+export function labVesselVisualClock(vessel:LabVessel,nowMs:number):number|undefined{
+ return [
+  vessel.lastEvaporatedAtMs,vessel.visualStartedAtMs,
+  vessel.indicatorAddedAtMs,vessel.physicalStartedAtMs,
+ ].some(start=>start!==undefined&&nowMs>=start&&nowMs-start<8500)?nowMs:undefined;
+}
+
 const observationByVessel=new WeakMap<LabVessel,LabObservation>();
 type LabObservation={status:ReactionStatus;message:string;
  caseData?:ReturnType<typeof identifyReaction>["caseData"]};
