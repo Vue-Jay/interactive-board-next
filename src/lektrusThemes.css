@@ -561,3 +561,148 @@
  .lectris-hub .lectris-hub-hero-compact:after{opacity:.25}
  .lectris-hub .lectris-hub-hero-compact h1{font-size:21px!important}
 }
+
+/* Remaining OnlineRepetitor access dialogs: use the same Lektrus surfaces
+   as the create-board dialog and settings cards in light and dark palettes. */
+.access-backdrop .access-modal {
+  background:var(--lt-raised)!important;
+  color:var(--lt-text)!important;
+  border:1px solid var(--lt-line)!important;
+  box-shadow:var(--lt-pop-shadow)!important;
+}
+.access-backdrop .access-modal :is(h2,h3,strong){color:var(--lt-text)}
+.access-backdrop .access-head{border-bottom-color:var(--lt-line)!important}
+.access-backdrop .access-head p,
+.access-backdrop .access-modal :is(.share-note,.access-person span){color:var(--lt-muted)!important}
+.access-backdrop .access-head>button{
+  background:var(--lt-subtle)!important;
+  color:var(--lt-secondary)!important;
+  border:1px solid var(--lt-line)!important;
+}
+.access-backdrop .access-head>button:hover{background:var(--lt-hover)!important;color:var(--lt-text)!important}
+.access-backdrop .access-modal :is(input:not([type=checkbox]):not([type=radio]),textarea,select) {
+  background:var(--lt-surface)!important;
+  color:var(--lt-text)!important;
+  border-color:var(--lt-line)!important;
+}
+.access-backdrop .access-modal :is(input,textarea)::placeholder{color:var(--lt-muted)}
+.access-backdrop .access-modal :is(input[type=checkbox],input[type=radio]){accent-color:var(--lt-primary)}
+.access-backdrop .access-modal :is(button,input,select,textarea):focus-visible{
+  outline:2px solid var(--lt-focus);outline-offset:2px;
+}
+.access-backdrop .access-modal .access-person {
+  background:var(--lt-surface);
+  border-color:var(--lt-line)!important;
+  color:var(--lt-text);
+}
+.access-backdrop .access-modal .access-person.pending{background:var(--lt-subtle)}
+.access-backdrop .access-modal .access-person button{
+  background:var(--lt-subtle);color:var(--lt-secondary);
+}
+.access-backdrop .access-modal .access-person button:hover:not(:disabled){background:var(--lt-hover);color:var(--lt-text)}
+.access-backdrop .access-modal .invite-row button {
+  background:var(--lt-primary);color:var(--lt-on-primary);
+}
+.access-backdrop .access-modal .invite-row button:hover:not(:disabled){background:var(--lt-primary-hover)}
+.access-backdrop .access-modal .access-notice{
+  background:var(--lt-selected);color:var(--lt-selected-ink);
+}
+.access-backdrop .notification-settings .notification-toggle{
+  color:var(--lt-text);border-bottom-color:var(--lt-line);
+}
+.access-backdrop .notification-settings .notification-toggle input{accent-color:var(--lt-primary)}
+
+/* Preserve the semantic danger state in access/member management. */
+.access-backdrop .access-modal .access-person button.danger{color:#b33636}
+:root[data-theme="dark"] .access-backdrop .access-modal .access-person button.danger{color:#ffb4aa}
+
+/* The compact profile replaced the old profile cards, but its private styles
+   still used OnlineRepetitor white surfaces and violet avatar in dark mode. */
+.lectris-workspace-stage .profile-identity-card,
+.lectris-workspace-stage .profile-compact-card {
+  background:var(--lt-surface);
+  color:var(--lt-text);
+  border-color:var(--lt-line);
+}
+.lectris-workspace-stage .profile-big-avatar {
+  background:var(--lt-primary);
+  color:var(--lt-on-primary);
+}
+.lectris-workspace-stage .profile-identity-copy h1,
+.lectris-workspace-stage .profile-compact-card strong{color:var(--lt-text)}
+.lectris-workspace-stage .profile-identity-copy p,
+.lectris-workspace-stage .profile-logout-card p{color:var(--lt-muted)}
+.lectris-workspace-stage .profile-role-pills span{
+  background:var(--lt-selected);
+  color:var(--lt-selected-ink);
+}
+.lectris-workspace-stage .profile-compact-card input {
+  background:var(--lt-raised);
+  color:var(--lt-text);
+  border-color:var(--lt-line);
+}
+.lectris-workspace-stage .profile-compact-card input:focus-visible{
+  outline:2px solid var(--lt-focus);outline-offset:2px;
+}
+
+/* Remaining legacy actions with unlabeled CSS classes: scope by screen and
+   parent controls rather than changing all buttons globally. */
+.lectris-workspace-stage .students-shell .students-toolbar>button{
+  background:var(--lt-primary);color:var(--lt-on-primary);border-color:var(--lt-primary);
+}
+.lectris-workspace-stage .students-shell .students-toolbar>button:hover:not(:disabled){
+  background:var(--lt-primary-hover);border-color:var(--lt-primary-hover);
+}
+.lectris-workspace-stage .schedule-shell .schedule-view-toggle>button{
+  background:var(--lt-raised);color:var(--lt-secondary);border-color:var(--lt-line);
+}
+.lectris-workspace-stage .schedule-shell .schedule-view-toggle>button:hover:not(.active){
+  background:var(--lt-hover);color:var(--lt-text);
+}
+.lectris-workspace-stage .schedule-shell .schedule-view-toggle>button.active{
+  background:var(--lt-selected);color:var(--lt-selected-ink);border-color:var(--lt-line-strong);
+}
+.lectris-workspace-stage :is(.students-shell .students-toolbar>button,.schedule-shell .schedule-view-toggle>button):focus-visible{
+  outline:2px solid var(--lt-focus);outline-offset:2px;
+}
+
+/* The canvas itself stays paper-white. Only the legacy violet onboarding
+   accent and hover treatment migrate to the selected Lektrus palette. */
+.workspace .welcome-badge{
+  background:var(--lt-selected)!important;
+  color:var(--lt-selected-ink)!important;
+}
+.workspace .welcome-actions button:hover{
+  border-color:var(--lt-primary)!important;
+  background:#f6f8fc!important;
+  color:var(--lt-primary)!important;
+}
+.workspace .welcome-actions button:focus-visible{
+  outline:2px solid var(--lt-focus);outline-offset:2px;
+}
+
+/* Narrow profiles must wrap real account names/email, not clip them inside
+   the correctly sized card (reproduced at 390px in Chromium). */
+.lectris-workspace-stage .profile-identity-card{min-width:0}
+.lectris-workspace-stage .profile-identity-copy{min-width:0;flex:1;max-width:100%}
+.lectris-workspace-stage .profile-identity-copy :is(h1,p){
+  max-width:100%;min-width:0;
+  white-space:normal!important;
+  overflow-wrap:anywhere;
+}
+
+/* Account avatar in the board's overflow menu still had the old violet. */
+.workspace .topbar-menu-account .account-avatar{
+  background:var(--lt-primary);color:var(--lt-on-primary);
+}
+
+/* Share dialog still inherited a black-violet email accordion and kicker
+   while its main surface used the new Lektrus palette. */
+.access-backdrop .invite-modal .invite-kicker{color:var(--lt-selected-ink)}
+.access-backdrop .invite-modal .invite-email-panel {
+  background:var(--lt-subtle)!important;
+  border-color:var(--lt-line)!important;
+}
+.access-backdrop .invite-modal .invite-email-panel>summary{color:var(--lt-text)}
+.access-backdrop .invite-modal .invite-email-panel>summary small{color:var(--lt-muted)}
+.access-backdrop .invite-modal .invite-email-panel .invite-row{border-top-color:var(--lt-line)}
