@@ -160,11 +160,11 @@ drop policy if exists "teacher owns student sessions" on public.student_sessions
 create policy "session participants read"
   on public.student_sessions for select to authenticated
   using (student_id=(select auth.uid()) or
-    (teacher_id=(select auth.uid()) and is_approved_teacher((select auth.uid()))));
+    (teacher_id=(select auth.uid()) and (select private.is_approved_teacher(auth.uid()))));
 create policy "teacher owns student sessions insert"
   on public.student_sessions for insert to authenticated
   with check ((teacher_id=(select auth.uid()))
-    and is_approved_teacher((select auth.uid()))
+    and (select private.is_approved_teacher(auth.uid()))
     and exists (
       select 1 from public.boards b
       join public.board_members bm on bm.board_id=b.id
@@ -177,9 +177,9 @@ create policy "teacher owns student sessions insert"
     )));
 create policy "teacher owns student sessions update"
   on public.student_sessions for update to authenticated
-  using (teacher_id=(select auth.uid()) and is_approved_teacher((select auth.uid())))
+  using (teacher_id=(select auth.uid()) and (select private.is_approved_teacher(auth.uid())))
   with check ((teacher_id=(select auth.uid()))
-    and is_approved_teacher((select auth.uid()))
+    and (select private.is_approved_teacher(auth.uid()))
     and exists (
       select 1 from public.boards b
       join public.board_members bm on bm.board_id=b.id
@@ -192,4 +192,4 @@ create policy "teacher owns student sessions update"
     )));
 create policy "teacher owns student sessions delete"
   on public.student_sessions for delete to authenticated
-  using (teacher_id=(select auth.uid()) and is_approved_teacher((select auth.uid())));
+  using (teacher_id=(select auth.uid()) and (select private.is_approved_teacher(auth.uid())));
