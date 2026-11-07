@@ -198,3 +198,68 @@ test('incremental previews stitch into long strokes, reject stale packets and bo
   assert.match(app,/mergeRemoteLiveInk\(current\[ink\.id\],ink\)/);
   assert.match(app,/offset:Math\.max\(0,g\.path\.length-500\)/);
 });
+
+
+test('packet loss never erases already visible peer ink or invents a connecting line',()=>{
+  const source=readFileSync(new URL('../src/boardLiveInk.ts',import.meta.url),'utf8');
+  const api={};
+  vm.runInNewContext(ts.transpileModule(source,{
+    compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+  }).outputText,{exports:api});
+  const packet=(from,to,finished=false)=>({
+    id:'peer-stroke',clientId:'peer',userId:'other',kind:'pen',
+    color:'#000',weight:3,offset:from,
+    points:Array.from({length:to-from},(_,i)=>({x:from+i,y:from+i})),
+    finished
+  });
+  let preview=api.mergeRemoteLiveInk(undefined,packet(0,50));
+  preview=api.mergeRemoteLiveInk(preview,packet(100,130));
+  assert.equal(preview.offset,100);
+  assert.equal(preview.priorRuns.length,1,
+    'a missing packet must not erase the first 50 already visible points');
+  assert.deepEqual(api.remoteInkRuns(preview).map(run=>[run.offset,run.points.length]),
+    [[0,50],[100,30]],'separate SVG runs must never bridge the 50-point gap');
+  const missed=packet(50,100);
+  preview=api.mergeRemoteLiveInk(preview,missed);
+  assert.equal(preview.priorRuns,undefined,'late packet stitches the missing gap');
+  assert.equal(preview.offset,0);
+  assert.equal(preview.points.length,130);
+  assert.equal(preview.points.at(-1).x,129);
+  assert.strictEqual(api.mergeRemoteLiveInk(preview,missed),preview,
+    'a repeated packet cannot redraw or rewind a continuous line');
+
+  // Even if a final window does not fill a much older missing range, the
+  // fragment already drawn by the peer remains on the canvas.
+  let finalWithGap=api.mergeRemoteLiveInk(undefined,packet(0,50));
+  finalWithGap=api.mergeRemoteLiveInk(finalWithGap,packet(100,130));
+  finalWithGap=api.mergeRemoteLiveInk(finalWithGap,packet(80,150,true));
+  assert.equal(finalWithGap.finished,true);
+  assert.deepEqual(api.remoteInkRuns(finalWithGap).map(run=>[run.offset,run.points.length]),
+    [[0,50],[80,70]],'missing samples are not joined by false geometry');
+  assert.equal(api.remoteInkRuns(finalWithGap)[0].points[0].x,0);
+});
+
+test('disconnected peer-ink history remains bounded and renderable',()=>{
+  const source=readFileSync(new URL('../src/boardLiveInk.ts',import.meta.url),'utf8');
+  const api={};
+  vm.runInNewContext(ts.transpileModule(source,{
+    compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+  }).outputText,{exports:api});
+  let preview;
+  for(let block=0;block<100;block++){
+    const offset=block*100;
+    preview=api.mergeRemoteLiveInk(preview,{
+      id:'network-jitter',clientId:'peer',userId:'other',kind:'marker',
+      color:'#123',weight:6,offset,finished:false,
+      points:Array.from({length:50},(_,i)=>({x:offset+i,y:offset+i}))
+    });
+  }
+  const runs=api.remoteInkRuns(preview);
+  assert.ok(runs.length>1,'network loss remains visible as separate fragments');
+  assert.equal(runs.reduce((sum,run)=>sum+run.points.length,0),
+    api.MAX_REMOTE_LIVE_INK_POINTS,'RAM is bounded across ALL disconnected runs');
+  const app=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
+  assert.match(app,/uncommittedRemoteInk\.flatMap\(ink => remoteInkRuns\(ink\)\.map\(run/);
+  assert.match(app,/key=\{ink\.id\+":"\+run\.offset\}/,
+    'recovered fragments must keep independent SVG element identity');
+});
