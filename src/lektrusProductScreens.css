@@ -256,6 +256,8 @@ html body .topbar .topbar-right .topbar-menu-section .topbar-menu-danger{color:#
 .auth-confirm-actions{display:flex;flex-wrap:wrap;gap:12px}
 .auth-confirm-actions button{padding:0;border:0;background:none;color:var(--lt-primary,#365fd0);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
 .auth-confirm-actions button:disabled{color:var(--lt-muted,#78869c);cursor:default}
+.auth-confirm-actions .auth-submit{width:100%;min-height:48px;padding:0 18px;border:0;border-radius:11px;background:var(--lt-primary,#365fd0);color:#fff;font-size:14px;font-weight:700}
+.auth-confirm-actions .auth-submit:hover{background:var(--lt-primary-strong,#294dad)}
 .auth-notice{padding:10px 12px;border:1px solid #c8ddcf;border-radius:10px;background:#eef8f0;color:#27633c;font-size:12px}
 @media(max-width:650px){
  .profile-redesign-wrap{width:min(100% - 22px,980px);margin:14px auto 32px;gap:10px}

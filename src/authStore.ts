@@ -1,5 +1,5 @@
 import { LEKTRUS_LOCAL_TEST_MODE, LEKTRUS_LOCAL_TEST_USER } from "./lektrusLocalTestMode";
-import { claimRemoteInvitations, getCachedRemoteSession, getRemoteSession, isRemoteBackendEnabled, signInRemote, signInAnonymousRemote, signOutRemote, signUpRemote, verifySignupOtpRemote, resendSignupOtpRemote, getRememberedRemoteAccount, resumeRememberedRemoteAccount, leaveRemoteAccountRemembered, clearRememberedRemoteAccount } from "./backend";
+import { claimRemoteInvitations, completeEmailConfirmationRemote, getCachedRemoteSession, getRemoteSession, isRemoteBackendEnabled, signInRemote, signInAnonymousRemote, signOutRemote, signUpRemote, resendSignupOtpRemote, getRememberedRemoteAccount, resumeRememberedRemoteAccount, leaveRemoteAccountRemembered, clearRememberedRemoteAccount } from "./backend";
 
 export type BoardRole = "owner" | "editor" | "viewer";
 export const BOARD_ROLE_LABELS: Record<BoardRole, string> = { owner:"Владелец", editor:"Редактор", viewer:"Просмотр" };
@@ -46,9 +46,10 @@ export const registerUser=async(input:{name:string;email:string;password:string;
  saveUsers([...users,user]);saveSession(user.id);return publicUser(user)
 };
 
-export const confirmRegistration=async(email:string,code:string):Promise<AuthUser>=>{
- if(!isRemoteBackendEnabled())throw new Error("Подтверждение почты доступно после подключения сервера.");
- const session=await verifySignupOtpRemote(email,code);
+export const completeEmailConfirmation=async(callbackUrl:string):Promise<AuthUser|null>=>{
+ if(!isRemoteBackendEnabled())return null;
+ const session=await completeEmailConfirmationRemote(callbackUrl);
+ if(!session)return null;
  await claimRemoteInvitations();
  return remoteUser(session)!;
 };

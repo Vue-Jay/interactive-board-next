@@ -42,8 +42,9 @@ assert.ok(!profile.includes("Коротко о себе")&&!profile.includes("О
 assert.ok(profile.includes("{isTeacher&&")&&settings.includes("Заявка преподавателя")&&settings.includes("experience"),"teacher information must be requested in the teacher application and shown only to teachers in their profile");
 assert.ok(applicationMigration.includes("teacher_application")&&applicationMigration.includes("is_app_admin(auth.uid())"),"the application details must be stored securely for administrator review");
 const authScreen=read("src/AuthScreen.tsx");
-assert.ok(authScreen.includes("Подтвердите email")&&read("src/backend.ts").includes("verifySignupOtpRemote"),"registration must use Lektrus code entry");
-assert.ok(authScreen.includes("previewCode.current")&&authScreen.includes("Тестовый аккаунт не создан")&&app.includes('previewMode onPreviewClose'),"administrators must be able to test the local fake registration and Lektrus confirmation without creating an account");
+const signupEmail=read("supabase/email-templates/confirm-signup.html");
+assert.ok(authScreen.includes("Проверьте почту")&&signupEmail.includes("{{ .ConfirmationURL }}")&&!authScreen.includes("verifySignupOtpRemote"),"registration must use the branded email confirmation link");
+assert.ok(authScreen.includes("Демо-ссылка подтверждения готова")&&authScreen.includes("Открыть ссылку подтверждения")&&authScreen.includes("Демо не отправляет письма и не создаёт аккаунты")&&app.includes('previewMode onPreviewClose'),"administrators must be able to simulate confirming the local fake registration without creating an account");
 
 const vite=await createServer({configFile:false,server:{middlewareMode:true},appType:"custom"});
 try{
