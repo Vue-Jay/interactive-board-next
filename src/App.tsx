@@ -7011,12 +7011,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     // selection or object editor on a student device. They are shared document
     // data, but not drawing gestures.
     const localDoc=currentDocument();
+    const incomingFingerprint=documentFingerprint(data);
     const onlyBackgroundChanged=
-      sharedBoardFingerprint({...localDoc,background:data.background})===sharedBoardFingerprint(data) &&
+      sharedBoardFingerprint({...localDoc,background:data.background})===incomingFingerprint &&
       JSON.stringify(localDoc.background)!==JSON.stringify(data.background);
     remoteVersion.current = row.version;
-    acknowledgedDocument.current = documentFingerprint(data);
-    acknowledgedSharedContent.current = sharedBoardFingerprint(data);
+    acknowledgedDocument.current = incomingFingerprint;
+    acknowledgedSharedContent.current = incomingFingerprint;
     acknowledgedBoardData.current = data;
     pendingRemote.current = null;
     queuedRemoteSnapshot.current = null;
@@ -7082,10 +7083,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       }
       // A different viewport is not new shared board content. Accept the
       // version without resetting selected objects, active tool or ink layers.
+      // Compute the validated remote fingerprint once for the clean/merge paths.
+      const remoteFingerprint=documentFingerprint(data);
       if (decision === "apply" &&
-          sharedBoardFingerprint(data) === acknowledgedSharedContent.current) {
+          remoteFingerprint === acknowledgedSharedContent.current) {
         remoteVersion.current = row.version;
-        acknowledgedDocument.current = documentFingerprint(data);
+        acknowledgedDocument.current = remoteFingerprint;
         return;
       }
       if (decision === "conflict") {
@@ -7102,8 +7105,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           if(pendingEditorBases.current.has(item.id))pendingEditorBases.current.set(item.id,item);
 
         remoteVersion.current = row.version;
-        acknowledgedDocument.current = documentFingerprint(remote);
-        acknowledgedSharedContent.current = sharedBoardFingerprint(remote);
+        acknowledgedDocument.current = remoteFingerprint;
+        acknowledgedSharedContent.current = remoteFingerprint;
         acknowledgedBoardData.current = remote;
         pendingRemote.current = null;
         setRemoteConflict(null);
