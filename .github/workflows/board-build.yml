@@ -45,6 +45,7 @@ jobs:
       - run: node scripts/test-lektrus-subject-isolation.mjs
       - run: node scripts/test-lektrus-geography-training.mjs
       - run: node scripts/test-lektrus-storage-egress.mjs
+      - run: node scripts/test-lektrus-runtime-hotpaths.mjs
       - run: node scripts/model-lektrus-egress.mjs
       - name: Synthetic board JSON/CPU probe (not FPS or egress)
         run: node scripts/profile-lektrus-board-hotpaths.mjs >> "$GITHUB_STEP_SUMMARY"
