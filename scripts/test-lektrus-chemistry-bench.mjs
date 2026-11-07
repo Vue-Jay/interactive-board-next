@@ -1017,7 +1017,7 @@ assert.match(cabinetCss,/@container\(max-width:380px\)/,
 const model=read("src/boardModel.ts");
 assert.match(model,/"scienceLabBench"/);
 assert.match(model,/Повреждено состояние химического стола/);
-assert.match(read("src/main.tsx"),/lektrusChemistryBench\.css/);
+assert.match(read("src/appEntry.tsx"),/lektrusChemistryBench\.css/);
 assert.match(read("src/lektrusChemistryBench.css"),/prefers-reduced-motion:reduce/);
 // Every glassware silhouette must be an actionable shared bench object,
 // and special calibrated instruments have bounded physical behaviour.
