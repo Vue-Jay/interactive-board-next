@@ -128,7 +128,7 @@ import {trackBoardVisit,listBoardVisits,type BoardVisit} from "./boardVisits";
 import BoardVisitHistoryDialog from "./BoardVisitHistoryDialog";
 import { connectBoardCursorChannel, type BoardCursorChannel, type RemoteCursor, type LiveInkMessage } from "./boardBroadcast";
 import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
-import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState } from "./boardWorkSync";
+import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState, type BoardObjectPose } from "./boardWorkSync";
 import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest } from "./boardAttachmentApprovalSync";
 import { documentFingerprint, sharedBoardFingerprint, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
 import {mergeEditedValue,editorDiff,applyEditorOps} from "./lektrusLiveEditorMerge";
@@ -2654,6 +2654,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // Realtime broadcasts are untrusted display-only previews until the sender
   // persists the change through the board's RLS-protected server RPC.
   const [remoteLiveItems,setRemoteLiveItems]=useState<Record<string,Item>>({});
+  // Realtime transforms are visual-only targets until an authenticated board
+  // revision confirms them. This prevents peers from seeing an object teleport
+  // from its starting position to its final position after pointer release.
+  type RemotePose=BoardObjectPose&{clientId:string;seq:number;updatedAt:number;finished:boolean};
+  const [remoteObjectPoses,setRemoteObjectPoses]=useState<Record<string,RemotePose>>({});
   const remoteLiveBases=useRef(new Map<string,string>());
   const pendingEditorBases=useRef(new Map<string,Item>());
   const remoteLiveCleanup=useRef(new Map<string,ReturnType<typeof setTimeout>>());
@@ -3308,6 +3313,21 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
   const display = (next: Item[]) => {
     const synced = syncBoundConnectors(next);
+    const active=gesture.current;
+    if(active&&canEdit&&active.ids.length&&active.ids.length<=64&&
+      (active.mode==="drag"&&active.dragging ||
+       active.mode==="hand-smart"&&active.dragging&&active.handMoveSelection ||
+       active.mode==="resize"||active.mode==="rotate")){
+      const moving=new Set(active.ids);
+      const poses:BoardObjectPose[]=[];
+      for(const item of synced){
+        if(moving.has(item.id))poses.push({
+          id:item.id,x:item.x,y:item.y,width:item.width,height:item.height,
+          rotation:item.rotation??0
+        });
+      }
+      if(poses.length===moving.size)workChannel.current?.publishTransform(poses);
+    }
     // Keep model state synchronous for pointer math, but paint at most once per frame.
     // This prevents 100+ React renders/sec on fast mouse/touch drags.
     itemsRef.current = synced;
@@ -4069,6 +4089,25 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     finishViewerPan(cancel,g?.view);
     if (!g) return;
     gesture.current = null;
+    // The last pointer sample is applied synchronously before end(). Send it
+    // immediately, even if the throttle currently holds an older preview.
+    // Cancellation sends the ORIGINAL geometry so a remote viewer rolls back
+    // smoothly. The authoritative RPC save still decides the persisted result.
+    if(canEdit&&g.ids.length&&g.ids.length<=64&&
+      (g.mode==="drag"&&g.dragging||
+       g.mode==="hand-smart"&&g.dragging&&g.handMoveSelection||
+       g.mode==="resize"||g.mode==="rotate")){
+      const finalItems=cancel?(g.restore??g.before):itemsRef.current;
+      const moving=new Set(g.ids);
+      const poses:BoardObjectPose[]=[];
+      for(const item of finalItems){
+        if(moving.has(item.id))poses.push({
+          id:item.id,x:item.x,y:item.y,width:item.width,height:item.height,
+          rotation:item.rotation??0
+        });
+      }
+      if(poses.length===moving.size)workChannel.current?.publishTransform(poses,true);
+    }
     if (g.mode === "draw" && g.ink) cursorChannel.current?.sendInk({id:g.ink.id,kind:g.ink.kind,color:g.ink.color,weight:g.ink.weight,points:g.path.slice(-500),finished:true});
     if (cancel) {
       display(g.restore ?? g.before);
@@ -6808,8 +6847,16 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       const candidate=itemById.get(id);
       return candidate && isInkItem(candidate) && !!candidate.points?.length;
     }).sort().join("\u0000"),[selectedIds,itemById]);
+  // A peer may drag a pencil stroke that is normally in the raster ink run.
+  // Promote only its ID into the DOM while being transformed, without
+  // rebuilding ink layers for every intermediate coordinate update.
+  const remoteInkKey=Object.keys(remoteObjectPoses).filter(id=>{
+    const item=itemById.get(id);
+    return !!item&&isInkItem(item)&&!!item.points?.length;
+  }).sort().join("\u0000");
   const detailedInkIds=useMemo(() =>
-    new Set(selectedInkKey ? selectedInkKey.split("\u0000") : []),[selectedInkKey]);
+    new Set([...(selectedInkKey?selectedInkKey.split("\u0000"):[]),
+      ...(remoteInkKey?remoteInkKey.split("\u0000"):[])]),[selectedInkKey,remoteInkKey]);
   const inkLayers = useMemo(() => {
     type Layer =
       | { kind: "ink"; key: string; strokes: Item[]; bounds: Bounds }
@@ -6843,12 +6890,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     const right = (boardViewportSize.width - view.x) / view.zoom + margin;
     const bottom = (boardViewportSize.height - view.y) / view.zoom + margin;
     return inkLayers.filter(layer => {
-      if (layer.kind === "item" && (selectedIds.has(layer.item.id) || layer.item.id === editing)) return true;
+      if (layer.kind === "item" && (selectedIds.has(layer.item.id) ||
+          layer.item.id === editing || remoteObjectPoses[layer.item.id])) return true;
       const bounds = layer.kind === "ink" ? layer.bounds : layer.item;
       return bounds.x + bounds.width >= left && bounds.x <= right &&
         bounds.y + bounds.height >= top && bounds.y <= bottom;
     });
-  }, [inkLayers, boardViewportSize.width, boardViewportSize.height, view.x, view.y, view.zoom, selectedIds, editing]);
+  }, [inkLayers, boardViewportSize.width, boardViewportSize.height, view.x, view.y, view.zoom, selectedIds, editing, remoteObjectPoses]);
   const minimapBounds = allBounds ?? { x: -400, y: -300, width: 800, height: 600 };
   // ResizeObserver already maintains these dimensions. Measuring layout in
   // every pan render forced costly synchronous reflows on heavy boards.
@@ -7358,6 +7406,28 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           });
         },15000));
       },
+      (mutation)=>{
+        // No broadcast may mutate board history, ownership, or saved content.
+        // Unknown IDs and objects currently held by this user are ignored.
+        const existing=new Set(itemsRef.current.map(item=>item.id));
+        const localIds=new Set(gesture.current?.ids??[]);
+        const changed=mutation.items.filter(pose=>existing.has(pose.id)&&!localIds.has(pose.id));
+        if(!changed.length)return;
+        setRemoteObjectPoses(current=>{
+          const next={...current};
+          let applied=false;
+          for(const pose of changed){
+            const previous=current[pose.id];
+            if(previous?.clientId===mutation.clientId&&previous.seq>=mutation.seq)continue;
+            next[pose.id]={
+              ...pose,clientId:mutation.clientId,seq:mutation.seq,
+              updatedAt:Date.now(),finished:mutation.finished
+            };
+            applied=true;
+          }
+          return applied?next:current;
+        });
+      },
     );
     workChannel.current = channel;
     return () => {
@@ -7366,6 +7436,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       for(const timer of remoteLiveCleanup.current.values())clearTimeout(timer);
       remoteLiveCleanup.current.clear();remoteLiveBases.current.clear();
       setRemoteLiveItems({});
+      setRemoteObjectPoses({});
       setRemoteWork({});
     };
   }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden]);
@@ -7379,6 +7450,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     const timer = window.setInterval(() => {
       const cutoff = Date.now() - 15000;
       const online = new Set(presenceUsers.map((user) => user.userId));
+      setRemoteObjectPoses(current=>{
+        const expired=Object.entries(current).filter(([,pose])=>
+          Date.now()-pose.updatedAt>(pose.finished?12000:15000)).map(([id])=>id);
+        if(!expired.length)return current;
+        const next={...current};
+        for(const id of expired)delete next[id];
+        return next;
+      });
       setRemoteWork((current) => {
         let changed = false;
         const next: Record<string, RemoteWorkState> = {};
@@ -9341,9 +9420,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               // Collaborative editor previews may contain OLD geometry. Never let a
               // delayed preview put a dragged/resized object back on screen.
               const live=remoteLiveItems[entry.item.id];
-              const item=live?{...live,x:entry.item.x,y:entry.item.y,
+              const pose=remoteObjectPoses[entry.item.id];
+              const base=live?{...live,x:entry.item.x,y:entry.item.y,
                 width:entry.item.width,height:entry.item.height,
                 rotation:entry.item.rotation}:entry.item;
+              const item=pose?{...base,x:pose.x,y:pose.y,width:pose.width,
+                height:pose.height,rotation:pose.rotation}:base;
               return (
               <div
                 data-object={item.id}
@@ -9353,6 +9435,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 style={{
                   left: item.x,
                   top: item.y,
+                  // Realtime packets arrive less frequently than paint frames.
+                  // Interpolate only a peer's provisional transform, never
+                  // a locally dragged object or its final saved geometry.
+                  transition:pose?"left 75ms linear, top 75ms linear, width 75ms linear, height 75ms linear, transform 75ms linear":undefined,
                   width: item.width,
                   height: item.height,
                   transform: item.rotation ? `rotate(${item.rotation}deg)` : undefined,
