@@ -10,7 +10,7 @@ const registry=read("src/lektrusSubjectToolRegistry.ts");
 const panel=read("src/LektrusSubjectToolsPanel.tsx");
 const app=read("src/BoardApp.tsx");
 const css=read("src/lektrusOrganicWorkspace.css");
-const main=read("src/main.tsx");
+const main=read("src/appEntry.tsx");
 for(const [name,source] of [["organic canvas",canvas],["organic panel",editor],["science editor",scienceEditor],["board",app]]){
  const ast=ts.createSourceFile(name+".tsx",source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  assert.equal(ast.parseDiagnostics.length,0,name+": TSX syntax must be valid");

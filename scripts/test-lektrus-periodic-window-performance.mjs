@@ -5,7 +5,7 @@ import ts from "typescript";
 // Execute the actual positioning effect with a deterministic DOM/RAF scheduler.
 // Before the optimization, every open card measured its stage once per idle
 // animation frame forever. Event-triggered measurements should stop at rest.
-const source=readFileSync(new URL("../src/LektrusPeriodicFloatingInfo.tsx",import.meta.url),"utf8");
+const source=readFileSync(new URL("../src/LektrusPeriodicFloatingInfo.tsx",import.meta.url),"utf8").replace(/\r\n/g,"\n");
 const begin=source.indexOf(" useLayoutEffect(()=>{\n  const stage=stageRef.current;");
 const marker=" },[stageRef]);";
 const finish=source.indexOf(marker,begin);
