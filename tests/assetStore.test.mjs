@@ -75,6 +75,30 @@ test('HEAD avoids full PDF downloads during existing-media verification', async 
   assert.equal(s.calls.length,1,'Verified assets must not be probed repeatedly');
 });
 
+test('preview cache keeps small images but releases oversized and missing blobs', async () => {
+  const s=store(false);
+  const small=new Blob(['tiny'],{type:'image/png'});
+  const oversized=new Blob([new Uint8Array(3*1024*1024)],{type:'image/png'});
+  await s.putAsset('tiny',small,'board');
+  await s.putAsset('huge',oversized,'board');
+  const smallFirst=s.getDisplayAsset('tiny','board');
+  assert.strictEqual(await smallFirst,small);
+  assert.strictEqual(s.getDisplayAsset('tiny','board'),smallFirst,
+    'Small thumbnails should remain cached for repeated rendering');
+  const hugeFirst=s.getDisplayAsset('huge','board');
+  assert.strictEqual(await hugeFirst,oversized);
+  const hugeAgain=s.getDisplayAsset('huge','board');
+  assert.notStrictEqual(hugeAgain,hugeFirst,
+    'A 3-MB undecodable original should not be retained by the preview Promise cache');
+  assert.strictEqual(await hugeAgain,oversized);
+  const missingFirst=s.getDisplayAsset('missing','board');
+  assert.equal(await missingFirst,null);
+  const missingAgain=s.getDisplayAsset('missing','board');
+  assert.notStrictEqual(missingAgain,missingFirst,
+    'A missing preview must be retried after another participant uploads it');
+  assert.equal(await missingAgain,null);
+});
+
 test('existing server media is never overwritten by a legacy cache', async () => {
   const s = store();
   const original = new Blob(['server'], { type: 'image/png' });
