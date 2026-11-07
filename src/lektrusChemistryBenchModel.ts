@@ -1701,8 +1701,22 @@ function calculateLabReactionNeedsTick(vessel:LabVessel):boolean{
  return !vessel.reactionAmounts&&
   !!startQuantifiedLabReaction(reaction.caseData,vessel.reagents,vessel.doses);
 }
-export function labObservation(vessel:LabVessel):{status:ReactionStatus;message:string;
- caseData?:ReturnType<typeof identifyReaction>["caseData"]}{
+// Like quantity and contents, a reaction observation depends only on the
+// immutable vessel snapshot, not on the wall clock or selection state. The
+// workbench requests it more than once per render, including visual effects
+// and the expanded composition panel. Avoid repeating reaction-network
+// simulations until a new measured vessel snapshot replaces this object.
+const observationByVessel=new WeakMap<LabVessel,LabObservation>();
+type LabObservation={status:ReactionStatus;message:string;
+ caseData?:ReturnType<typeof identifyReaction>["caseData"]};
+export function labObservation(vessel:LabVessel):LabObservation{
+ const cached=observationByVessel.get(vessel);
+ if(cached)return cached;
+ const result=calculateLabObservation(vessel);
+ observationByVessel.set(vessel,result);
+ return result;
+}
+function calculateLabObservation(vessel:LabVessel):LabObservation{
  if(vessel.reagents.length===0)return{status:"unknown",message:"Сосуд пуст."};
  if(vessel.pendingInventoryReaction)return{status:"unknown",
   message:vessel.inventoryPrecipitation||vessel.inventoryGasReaction?
