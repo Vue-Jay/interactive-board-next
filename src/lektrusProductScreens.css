@@ -170,10 +170,12 @@ html body .topbar .topbar-right .topbar-menu-section .topbar-menu-danger{color:#
 .profile-identity-wide .profile-eyebrow{margin:0 0 4px;font-size:10px;font-weight:800;letter-spacing:.13em;color:var(--lt-muted)}
 .profile-identity-wide h1{margin:0 0 3px;font-size:23px;letter-spacing:-.035em}
 .profile-identity-wide .profile-identity-copy>p:not(.profile-eyebrow){margin:0;color:var(--lt-muted);font-size:13px}
-.profile-completion{margin-left:auto;display:grid;gap:3px;text-align:right;color:var(--lt-muted);font-size:12px}
-.profile-completion strong{color:var(--lt-primary);font-size:18px}
+.profile-member-since{display:grid;gap:3px;margin-left:auto;text-align:right;font-size:11px;color:var(--lt-muted)}
+.profile-member-since strong{color:var(--lt-secondary);font-size:13px;font-weight:700}
 .profile-redesign-card{padding:22px 24px;border:1px solid var(--lt-line);border-radius:17px;background:var(--lt-surface);box-shadow:var(--lt-shadow)}
 .profile-section-heading{margin-bottom:19px}
+.profile-section-heading:has(.profile-section-badge){display:flex;align-items:center;justify-content:space-between;gap:12px}
+.profile-section-badge{padding:6px 9px;border-radius:999px;background:var(--lt-selected);color:var(--lt-selected-ink);font-size:9px;font-weight:800;letter-spacing:.08em;white-space:nowrap}
 .profile-section-heading>div{display:flex;align-items:flex-start;gap:13px}
 .profile-section-heading>div>span{display:grid;place-items:center;width:29px;height:29px;flex:0 0 29px;border-radius:9px;background:var(--lt-selected);color:var(--lt-primary);font-size:11px;font-weight:800}
 .profile-section-heading h2,.profile-redesign-account h2{margin:0;color:var(--lt-text);font-size:16px;letter-spacing:-.015em}
@@ -197,6 +199,34 @@ html body .topbar .topbar-right .topbar-menu-section .topbar-menu-danger{color:#
 .profile-redesign-account{display:flex;justify-content:space-between;align-items:center;gap:16px}
 .profile-redesign-account>div{display:flex;align-items:center;gap:12px}
 .profile-account-icon{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:var(--lt-subtle);color:var(--lt-secondary);font-weight:800}
+.profile-account-identity p strong{color:var(--lt-text);font-weight:650}
+.profile-redesign-account>.profile-logout-button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 14px}
+.profile-redesign-account>.profile-logout-button span{font-size:16px}
+.settings-account-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;padding:16px 18px;border:1px solid var(--lt-line);border-radius:14px;background:var(--lt-surface)}
+.settings-account-footer>div{display:grid;gap:4px}.settings-account-footer strong{font-size:13px;color:var(--lt-text)}.settings-account-footer span{font-size:11px;color:var(--lt-muted)}
+.settings-account-footer button{min-height:40px;padding:0 14px}
+.teacher-application-modal{width:min(720px,96vw);max-height:min(90dvh,900px);padding:25px}
+.teacher-application-modal .access-head{margin-bottom:18px}
+.teacher-application-modal .access-head h2{font-size:20px;color:var(--lt-text)}
+.teacher-application-modal .access-head p{max-width:540px;font-size:12px;line-height:1.5;color:var(--lt-muted)}
+.teacher-application-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.teacher-application-grid label{display:grid;gap:7px;min-width:0}
+.teacher-application-grid label>span{font-size:12px;font-weight:700;color:var(--lt-secondary)}
+.teacher-application-grid label i,.teacher-application-actions>span i{color:var(--lt-primary);font-style:normal}
+.teacher-application-grid input,.teacher-application-grid textarea{width:100%;min-width:0;min-height:43px;padding:10px 12px;border:1px solid var(--lt-line);border-radius:10px;background:var(--lt-raised);color:var(--lt-text);font:inherit;font-size:13px;outline:none}
+.teacher-application-grid textarea{min-height:78px;resize:vertical;line-height:1.5}
+.teacher-application-grid input:focus,.teacher-application-grid textarea:focus{border-color:var(--lt-focus);box-shadow:0 0 0 3px color-mix(in srgb,var(--lt-focus) 15%,transparent)}
+.teacher-application-full{grid-column:1/-1}
+.teacher-application-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:18px;padding-top:15px;border-top:1px solid var(--lt-line)}
+.teacher-application-actions>span{font-size:11px;color:var(--lt-muted)}
+.admin-teacher-request-card{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:start!important;gap:16px!important}
+.admin-teacher-request-main{min-width:0;display:grid;gap:4px}
+.admin-teacher-request-main>strong{font-size:14px;color:var(--lt-text)}
+.admin-teacher-request-main>span,.admin-teacher-request-main>small{font-size:11px;color:var(--lt-muted)}
+.admin-teacher-request-actions{display:grid;gap:8px}
+.admin-teacher-application{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 14px;margin:8px 0 0;padding:12px;border-radius:11px;background:var(--lt-subtle)}
+.admin-teacher-application>div{min-width:0}.admin-teacher-application dt{margin-bottom:3px;color:var(--lt-muted);font-size:10px;font-weight:700}.admin-teacher-application dd{margin:0;color:var(--lt-text);font-size:12px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.admin-teacher-application-full{grid-column:1/-1}
 .auth-register-name-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .auth-register-display-name{grid-column:1/-1}
 .auth-confirm-actions{display:flex;flex-wrap:wrap;gap:12px}
@@ -207,7 +237,7 @@ html body .topbar .topbar-right .topbar-menu-section .topbar-menu-danger{color:#
  .profile-redesign-wrap{width:min(100% - 22px,980px);margin:14px auto 32px;gap:10px}
  .profile-identity-wide{gap:12px;padding:16px!important;align-items:flex-start}
  .profile-identity-wide .profile-big-avatar{width:52px;height:52px;flex-basis:52px;font-size:21px}
- .profile-identity-wide h1{font-size:19px}.profile-completion{display:none}
+ .profile-identity-wide h1{font-size:19px}.profile-member-since{display:none}
  .profile-redesign-card{padding:17px 15px;border-radius:14px}
  .profile-redesign-grid{grid-template-columns:minmax(0,1fr);gap:12px}
  .profile-field-full{grid-column:auto}
@@ -215,6 +245,17 @@ html body .topbar .topbar-right .topbar-menu-section .topbar-menu-danger{color:#
  .profile-redesign-actions button{width:100%}
  .profile-redesign-account{align-items:stretch;flex-direction:column}
  .profile-redesign-account>.profile-logout-button{width:100%;min-height:42px}
+ .settings-account-footer{align-items:stretch;flex-direction:column}
+ .settings-account-footer button{width:100%}
+ .teacher-application-modal{padding:18px 15px;border-radius:18px}
+ .teacher-application-grid{grid-template-columns:minmax(0,1fr);gap:11px}
+ .teacher-application-full{grid-column:auto}
+ .teacher-application-actions{align-items:stretch;flex-direction:column}
+ .teacher-application-actions button{width:100%;min-height:42px}
+ .admin-teacher-request-card{grid-template-columns:minmax(0,1fr)!important}
+ .admin-teacher-request-actions{grid-template-columns:1fr 1fr}
+ .admin-teacher-application{grid-template-columns:minmax(0,1fr)}
+ .admin-teacher-application-full{grid-column:auto}
  .auth-register-name-grid{grid-template-columns:minmax(0,1fr)}
  .auth-register-display-name{grid-column:auto}
 }
@@ -230,7 +271,7 @@ html body .topbar .topbar-right .topbar-menu-section .topbar-menu-danger{color:#
 .lectris-workspace-stage .admin-users-shell :is(.admin-user-identity strong,.admin-board-main strong,.admin-invisible-toggle strong,.admin-approval-head h2,.admin-users-toolbar h2){color:var(--lt-text)!important}
 .lectris-workspace-stage .admin-users-shell :is(.admin-user-identity span,.admin-user-identity small,.admin-user-current>span,.admin-user-current small,.admin-board-main span,.admin-board-main small,.admin-invisible-toggle small){color:var(--lt-muted)!important}
 .lectris-workspace-stage .admin-users-shell .admin-user-current strong{color:var(--lt-text)!important}
-.lectris-workspace-stage .admin-users-shell .admin-user-grant{background:var(--lt-subtle)!important}
+.lectris-workspace-stage .admin-users-shell .admin-user-grant{background:transparent!important}
 .lectris-workspace-stage .admin-users-shell .admin-user-grant label{color:var(--lt-secondary)!important}
 .lectris-workspace-stage .admin-users-shell .admin-users-toolbar :is(h2,span){color:var(--lt-text)!important}
 .lectris-workspace-stage .admin-users-shell .admin-users-toolbar span{color:var(--lt-muted)!important}

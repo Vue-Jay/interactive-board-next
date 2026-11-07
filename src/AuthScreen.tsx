@@ -94,7 +94,7 @@ export default function AuthScreen({ onAuthenticated }: Props) {
           return;
         }
         if(user){
-          if(mode==="register"&&!isRemoteBackendEnabled())await saveProfileDetails(user.id,{firstName:firstName.trim(),lastName:lastName.trim(),middleName:"",phone:"",city:"",organization:"",focusArea:"",bio:""});
+          if(mode==="register"&&!isRemoteBackendEnabled())await saveProfileDetails(user.id,{firstName:firstName.trim(),lastName:lastName.trim(),middleName:"",phone:"",city:"",organization:"",focusArea:""});
           onAuthenticated(user);
         }
       }
