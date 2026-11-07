@@ -6772,6 +6772,16 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // ink remains a real DOM object for handles, moving and rotating. The
   // separate geometric hit test resolves clicks on canvas strokes.
   // Runs are separated by ordinary objects, preserving their z-order.
+  // Selecting a text box, image or subject widget must not invalidate the
+  // cached Canvas for thousands of unrelated strokes. Only the small set of
+  // selected *ink* that moves into DOM editing handles affects layer grouping.
+  const selectedInkKey=useMemo(() => selectedIds.size>24 ? "" :
+    [...selectedIds].filter(id=>{
+      const candidate=itemById.get(id);
+      return candidate && isInkItem(candidate) && !!candidate.points?.length;
+    }).sort().join("\u0000"),[selectedIds,itemById]);
+  const detailedInkIds=useMemo(() =>
+    new Set(selectedInkKey ? selectedInkKey.split("\u0000") : []),[selectedInkKey]);
   const inkLayers = useMemo(() => {
     type Layer =
       | { kind: "ink"; key: string; strokes: Item[]; bounds: Bounds }
@@ -6786,15 +6796,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     };
     // A few selected strokes may show their editing handles individually.
     // Large lasso selections remain batched to avoid thousands of DOM nodes.
-    const detailedInkSelection = selectedIds.size <= 24;
     for (const item of visibleItems) {
       if (isInkItem(item) && item.points?.length &&
-          !(detailedInkSelection && selectedIds.has(item.id))) run.push(item);
+          !detailedInkIds.has(item.id)) run.push(item);
       else { flush(); layers.push({ kind: "item", key: item.id, item }); }
     }
     flush();
     return layers;
-  }, [visibleItems, selectedIds]);
+  }, [visibleItems, detailedInkIds]);
   const renderEntries = useMemo(() => {
     // Wait for ResizeObserver before mounting a heavy board. Without viewport
     // dimensions the old renderer mounted every single object at startup.
