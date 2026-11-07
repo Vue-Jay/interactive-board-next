@@ -22,6 +22,8 @@ jobs:
       - run: npm run test:realtime
       - run: node scripts/test-ink-hit.mjs
       - run: node scripts/test-ink-layer.mjs
+      - run: node scripts/test-lektrus-board-cursor-visual.mjs
+      - run: node scripts/test-lektrus-selection-cursor.mjs
       - run: node scripts/test-board-pan-performance.mjs
       - run: node scripts/test-board-navigation-no-rerenders.mjs
       - run: node scripts/test-board-measuring-compositor-sync.mjs

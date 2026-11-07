@@ -18,6 +18,7 @@ import {boardGridTransform} from "./boardBackgroundPan";
 import {chemistryBoardHasContent} from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
 import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./rectSelection";
+import {applyBoardSelectionCursor,clearBoardSelectionCursor,selectionCursorForGesture,selectionCursorForTarget} from "./lektrusSelectionCursor";
 import "./App.css";
 import AuthScreen from "./AuthScreen";
 import GeometryInstruments, {type InstrumentType} from "./GeometryInstruments";
@@ -2478,12 +2479,18 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // Opening the shape palette does not arm a previously chosen figure.
   useEffect(() => { if (tool !== "shape") setShapeType(null); }, [tool]);
   const inkCursorElement=useRef<HTMLDivElement|null>(null);
-  const moveInkCursor=(clientX:number,clientY:number,pointerType:string)=>{
-    const indicator=inkCursorElement.current,rect=board.current?.getBoundingClientRect();
-    if(!indicator||!rect)return;
-    if(pointerType!=="mouse" && pointerType!=="pen"){indicator.style.visibility="hidden";return;}
-    indicator.style.left=`${clientX-rect.left}px`;
-    indicator.style.top=`${clientY-rect.top}px`;
+  const moveInkCursor=(clientX:number,clientY:number,pointerType:string,target:EventTarget|null)=>{
+    const indicator=inkCursorElement.current;
+    if(!indicator)return;
+    // Board UI remains ordinary UI. The ink reticle belongs to the drawing
+    // surface, not to text fields or embedded buttons.
+    if((pointerType!=="mouse"&&pointerType!=="pen")||
+       (target instanceof Element&&target.closest("button,input,select,textarea,[role='button'],[role='slider'],[contenteditable='true'],[data-board-interactive]"))){
+      indicator.style.visibility="hidden";return;
+    }
+    const rect=board.current?.getBoundingClientRect();
+    if(!rect)return;
+    indicator.style.transform=`translate3d(${clientX-rect.left}px,${clientY-rect.top}px,0)`;
     indicator.style.visibility="visible";
   };
   const [marqueeRect,setMarqueeRect] = useState<SelectionRect|null>(null);
@@ -2690,11 +2697,16 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const eraserPreviewCanvas=useRef<HTMLCanvasElement>(null);
   const eraserPreviewRatio=useRef(1);
   const eraserCursorElement = useRef<HTMLDivElement>(null);
-  const setLiveEraserCursor=(x:number,y:number)=>{
+  const setLiveEraserCursor=(x:number,y:number,pointerType:string,pressed=false)=>{
     const el=eraserCursorElement.current;
     if(!el)return;
-    el.style.left=x+"px";
-    el.style.top=y+"px";
+    // A finger has no hover position. Only show its footprint during an
+    // actual erase, then retire it on release rather than leaving a ghost.
+    if(pointerType==="touch"&&!pressed){el.style.visibility="hidden";return;}
+    if(pointerType!=="touch"&&pointerType!=="mouse"&&pointerType!=="pen"){
+      el.style.visibility="hidden";return;
+    }
+    el.style.transform=`translate3d(${x}px,${y}px,0) translate(-50%,-50%)`;
     el.style.visibility="visible";
   };
   const displayFrame = useRef<number | null>(null);
@@ -2767,6 +2779,23 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [online,setOnline]=useState(()=>navigator.onLine);
   const [updateReady,setUpdateReady]=useState<ServiceWorkerRegistration|null>(null);
   const gesture = useRef<Gesture | null>(null);
+  // Selection pointers use browser-native SVG cursors; update an imperative
+  // style variable only when the interaction state changes. Never rerender the
+  // (potentially very large) whiteboard just because the mouse moved.
+  const syncSelectionCursor=(target:EventTarget|null,pointerType:string)=>{
+    if(tool!=="select"||pointerType==="touch"||presentation||space||rightPointerActive||panning){
+      clearBoardSelectionCursor(board.current);
+      return;
+    }
+    const active=gesture.current;
+    const state=active?selectionCursorForGesture(active.mode,Boolean(active.dragging),active.handle):null;
+    applyBoardSelectionCursor(board.current,state??selectionCursorForTarget(target instanceof Element?target:null));
+  };
+  useEffect(()=>{
+    if(tool==="select")applyBoardSelectionCursor(board.current,"idle");
+    else clearBoardSelectionCursor(board.current);
+    return()=>clearBoardSelectionCursor(board.current);
+  },[tool]);
   const previousInteractionTool=useRef(tool);
   useEffect(()=>{const ready=(e:Event)=>{e.preventDefault();setInstallPrompt(e)};const installed=()=>{setInstallPrompt(null);setIsStandalone(true)};window.addEventListener("beforeinstallprompt",ready);window.addEventListener("appinstalled",installed);return()=>{window.removeEventListener("beforeinstallprompt",ready);window.removeEventListener("appinstalled",installed)}},[]);
   useEffect(()=>{const sync=()=>setOnline(navigator.onLine);const update=((e:Event)=>setUpdateReady((e as CustomEvent<{registration:ServiceWorkerRegistration}>).detail.registration)) as EventListener;window.addEventListener("online",sync);window.addEventListener("offline",sync);window.addEventListener("or-sw-update",update);return()=>{window.removeEventListener("online",sync);window.removeEventListener("offline",sync);window.removeEventListener("or-sw-update",update)}},[]);
@@ -8895,7 +8924,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               e.currentTarget.setPointerCapture(e.pointerId);
               return;
             }
-            if((tool==="pen"||tool==="marker")&&!space&&!rightPointerActive&&e.button===0)moveInkCursor(e.clientX,e.clientY,e.pointerType);
+            if((tool==="pen"||tool==="marker")&&!space&&!rightPointerActive&&e.button===0)moveInkCursor(e.clientX,e.clientY,e.pointerType,e.target);
             // A held RMB is always temporary hand/pan, even while drawing.
             // Short click opens the custom menu only on release.
             if(e.button===2 && e.pointerType==="mouse" && !presentation){
@@ -8934,13 +8963,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setSelected([]);
             beginEraserPreview();
             previewEraserSegment(screen,screen);
-            setLiveEraserCursor(screen.x,screen.y);
+            setLiveEraserCursor(screen.x,screen.y,e.pointerType,true);
             board.current?.setPointerCapture(e.pointerId);
           }}
           onPointerMoveCapture={(e) => {
+            if(tool==="select")syncSelectionCursor(e.target,e.pointerType);
             if(!touchPoints.current.has(e.pointerId)&&e.pointerType==="touch")return;
             if(e.pointerType==="touch"&&touchMove(e)){e.preventDefault();e.stopPropagation();return;}
-            if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType);
+            if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType,e.target);
             if(rightPress.current?.pointer===e.pointerId){
               const p=local(e.clientX,e.clientY),start=rightPress.current.start;
               if(Math.hypot(p.x-start.x,p.y-start.y)>5)rightPress.current.dragged=true;
@@ -8952,9 +8982,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const previous={x:g.last.x*g.zoom+view.x,y:g.last.y*g.zoom+view.y};
             previewEraserSegment(previous,screen);
             recordEraserPoint(world(screen));
-            setLiveEraserCursor(screen.x,screen.y);
+            setLiveEraserCursor(screen.x,screen.y,e.pointerType,true);
           }}
           onPointerUpCapture={(e) => {
+            if(tool==="select"&&e.pointerType!=="touch")applyBoardSelectionCursor(board.current,"idle");
             const canvasTap=geometryCanvasTouch.current;
             if(canvasTap?.pointer===e.pointerId){
               geometryCanvasTouch.current=null;
@@ -9009,9 +9040,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const previous={x:g.last.x*g.zoom+view.x,y:g.last.y*g.zoom+view.y};
             previewEraserSegment(previous,screen);
             finishEraser(world(screen));
+            if(e.pointerType==="touch"&&eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden";
             if(board.current?.hasPointerCapture(e.pointerId))board.current.releasePointerCapture(e.pointerId);
           }}
           onPointerCancelCapture={(e) => {
+            if(tool==="select")applyBoardSelectionCursor(board.current,"idle");
             if(e.pointerType==="touch"){
               const consumed=touchEnd(e);
               if(consumed){e.preventDefault();e.stopPropagation();return;}
@@ -9028,6 +9061,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             // Pointer cancellation (e.g. a second finger) is not an erase.
             eraserSession.current=null;
             stopEraserPreview();
+            if(eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden";
           }}
           onClickCapture={(e)=>{
             if(tool==="eraser"&&!(e.target as HTMLElement).closest("button,input,select,textarea,[data-board-interactive]")){
@@ -9044,9 +9078,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             // board gestures, not interface controls, and must reach down().
             const transformHandle=target.closest("[data-transform-handle],[data-group-transform-handle],[data-connector-endpoint],[data-group-selection-drag],[data-board-selection-grip]");
             if(!transformHandle&&target.closest("button,input,select,textarea,[role='button'],[role='slider'],[contenteditable='true'],[data-board-interactive]"))return;
-            if(tool==="eraser")return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; if (presentation) { const point = local(e.clientX, e.clientY); if (presentationLaser) setPresentationLaserPos(point); if (presentationSpotlight) setPresentationSpotlightPos(point); return; } down(e); }}
+            if(tool==="eraser")return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; if (presentation) { const point = local(e.clientX, e.clientY); if (presentationLaser) setPresentationLaserPos(point); if (presentationSpotlight) setPresentationSpotlightPos(point); return; } down(e); if(tool==="select")syncSelectionCursor(e.target,e.pointerType); }}
           onPointerMove={(e) => {
-            if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y);}return;}
+            if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y,e.pointerType);}return;}
             if(eraserSession.current||pinchState.current||consumedTouchIds.current.has(e.pointerId))return;
             const activeGesture=gesture.current;
             // Navigation uses cached board bounds and CSS transforms. It does
@@ -9061,6 +9095,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             if(!adminHidden)cursorChannel.current?.sendCursor(worldPoint.x,worldPoint.y);
             if(presentation){if(presentationLaser)setPresentationLaserPos(localPoint);if(presentationSpotlight)setPresentationSpotlightPos(localPoint);}
             move(e);
+            if(tool==="select")syncSelectionCursor(e.target,e.pointerType);
           }}
           onContextMenu={(e) => {
             e.preventDefault();
@@ -9095,8 +9130,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               setNotice(error instanceof Error ? error.message : "Не удалось добавить файл");
             }
           }}
-          onPointerEnter={(e) => { if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType); if (tool === "eraser") { const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y); } }}
-          onPointerLeave={() => { if(inkCursorElement.current)inkCursorElement.current.style.visibility="hidden"; if(!eraserSession.current && eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden"; }}
+          onPointerEnter={(e) => { if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType,e.target); if (tool === "eraser") { const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y,e.pointerType); } if(tool==="select")syncSelectionCursor(e.target,e.pointerType); }}
+          onPointerLeave={() => { if(inkCursorElement.current)inkCursorElement.current.style.visibility="hidden"; if(!eraserSession.current && eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden"; if(tool==="select")applyBoardSelectionCursor(board.current,"idle"); }}
           onPointerUp={(e) => {
             if(e.pointerType==="touch"&&touchEnd(e))return;
             if (e.pointerId === gesture.current?.pointer) {
@@ -9104,13 +9139,16 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               end();
             }
           }}
-          onPointerCancel={(e) => { if(e.pointerType==="touch"&&touchEnd(e))return; if(rightPress.current?.pointer===e.pointerId){rightPress.current=null;setRightPointerActive(false)} if(gesture.current?.pointer===e.pointerId)end(true); }}
+          onPointerCancel={(e) => { if(tool==="select")applyBoardSelectionCursor(board.current,"idle"); if(e.pointerType==="touch"&&touchEnd(e))return; if(rightPress.current?.pointer===e.pointerId){rightPress.current=null;setRightPointerActive(false)} if(gesture.current?.pointer===e.pointerId)end(true); }}
           onLostPointerCapture={(e) => {
+            if(tool==="select")applyBoardSelectionCursor(board.current,"idle");
             // Releasing a previous object's capture must not cancel a NEW
             // gesture. Only the owner of the lost capture can be cleared.
             if(eraserSession.current?.pointer===e.pointerId){
               eraserSession.current=null;stopEraserPreview();
-            }else if(gesture.current?.pointer===e.pointerId)end(true);
+            }
+            if(e.pointerType==="touch"&&eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden";
+            if(gesture.current?.pointer===e.pointerId)end(true);
             if(e.pointerType==="touch"&&!consumedTouchIds.current.has(e.pointerId)&&!pinchState.current)touchEnd(e);
           }}
         >
@@ -10025,9 +10063,24 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               )}
             </div>, document.body
           )}
-          {(tool==="pen"||tool==="marker")&&!presentation&&!space&&!rightPointerActive&&!panning&&<div ref={inkCursorElement} className="lektrus-ink-cursor" aria-hidden="true" style={{left:-1000,top:-1000,width:Math.max(1,(tool==="marker"?markerWeight:weight)*view.zoom),height:Math.max(1,(tool==="marker"?markerWeight:weight)*view.zoom),visibility:"hidden",color:backgroundAppearance.foreground,"--ink-cursor-outline":backgroundAppearance.outline} as CSSProperties}/>}
+          {(tool==="pen"||tool==="marker")&&!presentation&&!space&&!rightPointerActive&&!panning&&
+            <div ref={inkCursorElement}
+              className={`lektrus-ink-cursor ${tool==="marker"?"is-marker":"is-pen"} ${(tool==="marker"?markerWeight:weight)*view.zoom<=8?"is-fine":"is-wide"}`}
+              aria-hidden="true"
+              style={{transform:"translate3d(-1000px,-1000px,0)",visibility:"hidden",
+                "--cursor-size":Math.max(1,(tool==="marker"?markerWeight:weight)*view.zoom)+"px",
+                "--cursor-ink":tool==="marker"?markerColor:penColor,
+                "--cursor-contrast":backgroundAppearance.foreground,
+                "--cursor-outline":backgroundAppearance.outline} as CSSProperties}>
+              <span className="lektrus-ink-cursor-footprint"/><span className="lektrus-ink-cursor-guide"/>
+              <span className="lektrus-ink-cursor-center"/>
+            </div>}
           {tool === "eraser" && (
-            <div ref={eraserCursorElement} className="eraser-cursor" aria-hidden="true" style={{ left:-1000, top:-1000, width:eraserSize, height:eraserSize, visibility:"hidden" }} />
+            <div ref={eraserCursorElement} className="eraser-cursor" aria-hidden="true"
+              style={{transform:"translate3d(-1000px,-1000px,0) translate(-50%,-50%)",
+                width:eraserSize,height:eraserSize,visibility:"hidden",
+                "--cursor-contrast":backgroundAppearance.foreground,
+                "--cursor-outline":backgroundAppearance.outline} as CSSProperties}/>
           )}
           {marqueeRect&&<div className="lektrus-selection-marquee" aria-hidden="true"
             style={{left:marqueeRect.x,top:marqueeRect.y,
