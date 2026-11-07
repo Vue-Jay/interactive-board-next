@@ -13,8 +13,8 @@ const fragment=(from,to)=>{
 // {} guide object was passed to React on EVERY pointermove. On large boards
 // this rerendered all object and ink layers despite the direct CSS transform.
 const clear=fragment("const guideX=useRef<HTMLDivElement>(null);","const [contextMenu,");
-assert.match(clear,/const clearGuides=\\(\\)=>setDragGuides\\(\\{\\}\\)/);
-assert.doesNotMatch(clear,/setGuides\\(|useState<GuideState>/,
+assert.match(clear,/const clearGuides=\(\)=>setDragGuides\(\{\}\)/);
+assert.doesNotMatch(clear,/setGuides\(|useState<GuideState>/,
  "Drag guides must not queue any React state during pointermove");
 const moves=fragment("const move = (e: PE<HTMLElement>) => {","  useEffect(() => {");
 const pan=moves.slice(moves.indexOf('if (g.mode === "hand-smart")'),moves.indexOf('} else if (g.mode === "drag")'));
