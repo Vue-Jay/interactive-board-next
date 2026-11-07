@@ -41,8 +41,8 @@ assert.match(css,/\.lektrus-board-actions-menu\{display:none!important\}/);
 // touch dock with the mouse-only desktop rail.
 const wideTouch="screen and (min-width:1101px) and (pointer:coarse)";
 const wideMouse="screen and (min-width:1101px) and (pointer:fine)";
-assert.ok(css.includes("@media "+wideMouse+" {"),
- "Wide mouse/keyboard viewports keep the desktop rail");
+assert.ok(css.includes("@media "+wideMouse+",\n       screen and (min-width:1101px) and (pointer:none) {"),
+ "Wide mouse and keyboard-only viewports keep the desktop rail");
 const startMobile=css.indexOf("@media screen and (max-width:1100px),\n       "+wideTouch+" {");
 assert.ok(startMobile>=0,
  "Both narrow viewports and wide coarse-pointer tablets must use the touch UI");
