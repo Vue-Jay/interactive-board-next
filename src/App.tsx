@@ -18,6 +18,9 @@ import {boardGridTransform} from "./boardBackgroundPan";
 import {chemistryBoardHasContent} from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
 import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./rectSelection";
+import {boardObjectAtInertPointerTarget} from "./boardObjectDragSurface";
+import {buildBoardDragSnapIndex,snapBoardDrag,type BoardDragSnapIndex} from "./boardDragSnapIndex";
+import {applyBoardSelectionCursor,clearBoardSelectionCursor,selectionCursorForGesture,selectionCursorForTarget} from "./lektrusSelectionCursor";
 import "./App.css";
 import AuthScreen from "./AuthScreen";
 import GeometryInstruments, {type InstrumentType} from "./GeometryInstruments";
@@ -564,50 +567,6 @@ const cloneItems = (source: Item[], offset = 24): Item[] => {
       locked: false,
     };
   });
-};
-
-const snapDraggedBounds = (
-  moving: Bounds,
-  others: Item[],
-  rawDx: number,
-  rawDy: number,
-  threshold: number,
-): { dx: number; dy: number; guides: GuideState } => {
-  let dx = rawDx;
-  let dy = rawDy;
-  let bestX = threshold + 1;
-  let bestY = threshold + 1;
-  let guideX: number | undefined;
-  let guideY: number | undefined;
-  const movingX = [moving.x, moving.x + moving.width / 2, moving.x + moving.width];
-  const movingY = [moving.y, moving.y + moving.height / 2, moving.y + moving.height];
-  for (const other of others) {
-    const targetX = [other.x, other.x + other.width / 2, other.x + other.width];
-    const targetY = [other.y, other.y + other.height / 2, other.y + other.height];
-    for (const source of movingX) {
-      for (const target of targetX) {
-        const diff = target - (source + rawDx);
-        const distance = Math.abs(diff);
-        if (distance <= threshold && distance < bestX) {
-          bestX = distance;
-          dx = rawDx + diff;
-          guideX = target;
-        }
-      }
-    }
-    for (const source of movingY) {
-      for (const target of targetY) {
-        const diff = target - (source + rawDy);
-        const distance = Math.abs(diff);
-        if (distance <= threshold && distance < bestY) {
-          bestY = distance;
-          dy = rawDy + diff;
-          guideY = target;
-        }
-      }
-    }
-  }
-  return { dx, dy, guides: { x: guideX, y: guideY } };
 };
 
 const blobToDataUrl = (blob: Blob): Promise<string> =>
@@ -1366,6 +1325,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         })()}{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small className="graph-equation">{prettyGraphEquation(expression)}</small>}
       </div>)}
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
+      data-board-gesture-owner={onPickPoint||onAddPoint?"true":undefined}
       onPointerDownCapture={event=>{
         if((event.target as Element).closest?.(".lektrus-diagram-grid-toggle"))return;
         if(onPickPoint){
@@ -1711,6 +1671,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
                 x={(sx(a.x)+sx(b.x))/2} y={(sy(a.y)+sy(b.y))/2}
                 angle={Math.atan2(sy(b.y)-sy(a.y),sx(b.x)-sx(a.x))*180/Math.PI}/>}
             {rayControl&&onRayChange&&<line x1={sx(start.x)} y1={sy(start.y)} x2={sx(end.x)} y2={sy(end.y)}
+              data-board-interactive="true"
               stroke="transparent" strokeWidth="24" style={{cursor:"grab",touchAction:"none"}} onPointerDown={beginRayDrag}
               aria-label="Перетащите луч, чтобы изменить направление"/>}
             {segmentText&&<text className="graph-figure-label"
@@ -2481,12 +2442,18 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // Opening the shape palette does not arm a previously chosen figure.
   useEffect(() => { if (tool !== "shape") setShapeType(null); }, [tool]);
   const inkCursorElement=useRef<HTMLDivElement|null>(null);
-  const moveInkCursor=(clientX:number,clientY:number,pointerType:string)=>{
-    const indicator=inkCursorElement.current,rect=board.current?.getBoundingClientRect();
-    if(!indicator||!rect)return;
-    if(pointerType!=="mouse" && pointerType!=="pen"){indicator.style.visibility="hidden";return;}
-    indicator.style.left=`${clientX-rect.left}px`;
-    indicator.style.top=`${clientY-rect.top}px`;
+  const moveInkCursor=(clientX:number,clientY:number,pointerType:string,target:EventTarget|null)=>{
+    const indicator=inkCursorElement.current;
+    if(!indicator)return;
+    // Board UI remains ordinary UI. The ink reticle belongs to the drawing
+    // surface, not to text fields or embedded buttons.
+    if((pointerType!=="mouse"&&pointerType!=="pen")||
+       (target instanceof Element&&target.closest("button,input,select,textarea,[role='button'],[role='slider'],[contenteditable='true'],[data-board-interactive]"))){
+      indicator.style.visibility="hidden";return;
+    }
+    const rect=board.current?.getBoundingClientRect();
+    if(!rect)return;
+    indicator.style.transform=`translate3d(${clientX-rect.left}px,${clientY-rect.top}px,0)`;
     indicator.style.visibility="visible";
   };
   const [marqueeRect,setMarqueeRect] = useState<SelectionRect|null>(null);
@@ -2701,16 +2668,28 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const eraserPreviewCanvas=useRef<HTMLCanvasElement>(null);
   const eraserPreviewRatio=useRef(1);
   const eraserCursorElement = useRef<HTMLDivElement>(null);
-  const setLiveEraserCursor=(x:number,y:number)=>{
+  const setLiveEraserCursor=(x:number,y:number,pointerType:string,pressed=false)=>{
     const el=eraserCursorElement.current;
     if(!el)return;
-    el.style.left=x+"px";
-    el.style.top=y+"px";
+    // A finger has no hover position. Only show its footprint during an
+    // actual erase, then retire it on release rather than leaving a ghost.
+    if(pointerType==="touch"&&!pressed){el.style.visibility="hidden";return;}
+    if(pointerType!=="touch"&&pointerType!=="mouse"&&pointerType!=="pen"){
+      el.style.visibility="hidden";return;
+    }
+    el.style.transform=`translate3d(${x}px,${y}px,0) translate(-50%,-50%)`;
     el.style.visibility="visible";
   };
   const displayFrame = useRef<number | null>(null);
   const pendingDisplayItems = useRef<Item[] | null>(null);
   const gesturePaintFrame = useRef<number | null>(null);
+  // Pointer devices emit hundreds of motion samples per second. During
+  // object transforms only the LAST sample in each display frame matters.
+  // Ink is deliberately never coalesced here: its complete stroke path must
+  // continue to be recorded at native event frequency.
+  const objectTransformFrame=useRef<number|null>(null);
+  const pendingObjectTransform=useRef<Pick<PE<HTMLElement>,
+    "pointerId"|"clientX"|"clientY"|"altKey"|"shiftKey">|null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [lectrisInspectorOpen,setLectrisInspectorOpen]=useState(false);
   const [editing, setEditing] = useState<string | null>(null);
@@ -2778,6 +2757,27 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [online,setOnline]=useState(()=>navigator.onLine);
   const [updateReady,setUpdateReady]=useState<ServiceWorkerRegistration|null>(null);
   const gesture = useRef<Gesture | null>(null);
+  // The capture phase starts drags even when a nested lesson widget stops
+  // pointerdown/pointermove bubbling. Track the owning pointer to consume
+  // movement and release exactly once, without stealing active controls.
+  const inertSurfaceDragPointer=useRef<number|null>(null);
+  // Selection pointers use browser-native SVG cursors; update an imperative
+  // style variable only when the interaction state changes. Never rerender the
+  // (potentially very large) whiteboard just because the mouse moved.
+  const syncSelectionCursor=(target:EventTarget|null,pointerType:string)=>{
+    if(tool!=="select"||pointerType==="touch"||presentation||space||rightPointerActive||panning){
+      clearBoardSelectionCursor(board.current);
+      return;
+    }
+    const active=gesture.current;
+    const state=active?selectionCursorForGesture(active.mode,Boolean(active.dragging),active.handle):null;
+    applyBoardSelectionCursor(board.current,state??selectionCursorForTarget(target instanceof Element?target:null));
+  };
+  useEffect(()=>{
+    if(tool==="select")applyBoardSelectionCursor(board.current,"idle");
+    else clearBoardSelectionCursor(board.current);
+    return()=>clearBoardSelectionCursor(board.current);
+  },[tool]);
   const previousInteractionTool=useRef(tool);
   useEffect(()=>{const ready=(e:Event)=>{e.preventDefault();setInstallPrompt(e)};const installed=()=>{setInstallPrompt(null);setIsStandalone(true)};window.addEventListener("beforeinstallprompt",ready);window.addEventListener("appinstalled",installed);return()=>{window.removeEventListener("beforeinstallprompt",ready);window.removeEventListener("appinstalled",installed)}},[]);
   useEffect(()=>{const sync=()=>setOnline(navigator.onLine);const update=((e:Event)=>setUpdateReady((e as CustomEvent<{registration:ServiceWorkerRegistration}>).detail.registration)) as EventListener;window.addEventListener("online",sync);window.addEventListener("offline",sync);window.addEventListener("or-sw-update",update);return()=>{window.removeEventListener("online",sync);window.removeEventListener("offline",sync);window.removeEventListener("or-sw-update",update)}},[]);
@@ -4058,6 +4058,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
 
   const end = (cancel = false) => {
+    // Never let an old animation frame redraw a transform AFTER release,
+    // pinch cancellation, tool switch or collaborator reconciliation.
+    if(objectTransformFrame.current!==null){
+      cancelAnimationFrame(objectTransformFrame.current);
+      objectTransformFrame.current=null;
+    }
+    pendingObjectTransform.current=null;
     const g = gesture.current;
     finishViewerPan(cancel,g?.view);
     if (!g) return;
@@ -4628,7 +4635,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
 
   const dragSnapCache = useRef(new WeakMap<Gesture,{
-    selected:Set<string>; moving:Bounds|null; others:Item[];
+    selected:Set<string>; moving:Bounds|null; snapIndex:BoardDragSnapIndex;
   }>());
   const move = (e: PE<HTMLElement>) => {
     const g = gesture.current;
@@ -4668,13 +4675,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         cache={
           selected,
           moving:boundsOf(g.before.filter(item=>selected.has(item.id))),
-          others:g.before.filter(item=>!item.hidden&&!selected.has(item.id)),
+          snapIndex:buildBoardDragSnapIndex(g.before.filter(item=>!item.hidden&&!selected.has(item.id))),
         };
         dragSnapCache.current.set(g,cache);
       }
       if (snapEnabled && !e.altKey) {
         if (cache.moving) {
-          const snapped = snapDraggedBounds(cache.moving, cache.others, worldDx, worldDy, 7 / g.view.zoom);
+          const snapped = snapBoardDrag(cache.moving,cache.snapIndex,worldDx,worldDy,7/g.view.zoom);
           worldDx = snapped.dx;
           worldDy = snapped.dy;
           setGuides(previous=>previous.x===snapped.guides.x&&previous.y===snapped.guides.y?previous:snapped.guides);
@@ -4808,6 +4815,27 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       }
       scheduleGesturePaint();
     }
+  };
+  const moveObjectFrame=(e:PE<HTMLElement>)=>{
+    const active=gesture.current;
+    if(!active||!["drag","resize","rotate","connector-end"].includes(active.mode)){
+      move(e);return;
+    }
+    // Capture the pointer as soon as a drag crosses its five-pixel threshold.
+    // Subsequent moves are coalesced, not the initial mouse interaction.
+    if(active.mode==="drag"&&!active.dragging){move(e);return;}
+    pendingObjectTransform.current={
+      pointerId:e.pointerId,clientX:e.clientX,clientY:e.clientY,
+      altKey:e.altKey,shiftKey:e.shiftKey
+    };
+    if(objectTransformFrame.current!==null)return;
+    objectTransformFrame.current=requestAnimationFrame(()=>{
+      objectTransformFrame.current=null;
+      const latest=pendingObjectTransform.current;
+      pendingObjectTransform.current=null;
+      if(latest&&gesture.current?.pointer===latest.pointerId)
+        move(latest as PE<HTMLElement>);
+    });
   };
 
   useEffect(() => {
@@ -8905,10 +8933,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             }
             const atlasControl=target.closest(
               "button,input,select,textarea,a,[role='button'],[role='slider'],[contenteditable='true']");
-            // Empty atlas header/inspector space belongs to board navigation,
-            // not dragging or pinching the atlas object itself.
+            // Hand-mode atlas headers still pan the board. In select mode an
+            // inert atlas header must move the ATLAS OBJECT itself, like every
+            // other subject widget. The shared capture drag below handles it.
             if(atlas&&!atlasControl&&!presentation&&!space&&
-              (tool==="select"||tool==="hand")&&e.button===0){
+              tool==="hand"&&e.button===0){
               if(e.pointerType==="touch"){
                 touchStart(e);
                 if(pinchState.current){e.preventDefault();e.stopPropagation();return;}
@@ -8954,7 +8983,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               e.currentTarget.setPointerCapture(e.pointerId);
               return;
             }
-            if((tool==="pen"||tool==="marker")&&!space&&!rightPointerActive&&e.button===0)moveInkCursor(e.clientX,e.clientY,e.pointerType);
+            if((tool==="pen"||tool==="marker")&&!space&&!rightPointerActive&&e.button===0)moveInkCursor(e.clientX,e.clientY,e.pointerType,e.target);
             // A held RMB is always temporary hand/pan, even while drawing.
             // Short click opens the custom menu only on release.
             if(e.button===2 && e.pointerType==="mouse" && !presentation){
@@ -8970,6 +8999,34 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 before:itemsRef.current,ids:[],path:[world(start)],additive:false};
               e.currentTarget.setPointerCapture(e.pointerId);
               return;
+            }
+            // Every tool can create a board object with a teaching widget inside
+            // it. On SELECT, its inert area MUST begin the same drag as an
+            // ordinary shape, even if the widget stops bubbling (e.g. geo
+            // matching, biology, syntax, coding or a full subject worksheet).
+            // Active buttons/inputs and independent pan/zoom canvases are
+            // excluded by the shared DOM classifier.
+            if(tool==="select"&&!presentation&&!space&&!objectEditorOpen&&
+               e.button===0&&!pinchState.current&&!gesture.current&&canEdit){
+              const dragSurface=boardObjectAtInertPointerTarget(target);
+              const objectId=dragSurface?.dataset.object;
+              const dragItem=objectId?itemsRef.current.find(item=>item.id===objectId):null;
+              if(dragItem&&!dragItem.hidden&&canTransformBoardObject(dragItem)){
+                down(e);
+                // down() updates the gesture ref imperatively. TypeScript
+                // cannot infer that mutation after the !gesture.current guard.
+                const started=gesture.current as Gesture|null;
+                if(started?.pointer===e.pointerId&&started.mode==="drag"){
+                  inertSurfaceDragPointer.current=e.pointerId;
+                  // Do not let an inert widget's own generic pointerdown
+                  // listener reset its task, or a bubble-phase board handler
+                  // create a second gesture. No preventDefault: double-click
+                  // and text-free mouse click selection continue to work.
+                  e.stopPropagation();
+                  syncSelectionCursor(e.target,e.pointerType);
+                  return;
+                }
+              }
             }
             // Painting never selects or drags objects, including photos, PDF
             // viewers and selection handles. Start the existing stroke gesture
@@ -8993,13 +9050,25 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setSelected([]);
             beginEraserPreview();
             previewEraserSegment(screen,screen);
-            setLiveEraserCursor(screen.x,screen.y);
+            setLiveEraserCursor(screen.x,screen.y,e.pointerType,true);
             board.current?.setPointerCapture(e.pointerId);
           }}
           onPointerMoveCapture={(e) => {
             if(!touchPoints.current.has(e.pointerId)&&e.pointerType==="touch")return;
             if(e.pointerType==="touch"&&touchMove(e)){e.preventDefault();e.stopPropagation();return;}
-            if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType);
+            if(inertSurfaceDragPointer.current===e.pointerId){
+              // Capture sees events even when a nested SVG/editor calls
+              // stopPropagation on pointermove. Its bubble handler must not
+              // apply a second movement for the same sample.
+              if(gesture.current?.pointer===e.pointerId){
+                moveObjectFrame(e);
+                // This gesture is owned by the BOARD now, not the widget.
+                // Avoid moving an inner model or triggering its hover actions.
+                e.stopPropagation();
+              }
+            }
+            if(tool==="select")syncSelectionCursor(e.target,e.pointerType);
+            if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType,e.target);
             if(rightPress.current?.pointer===e.pointerId){
               const p=local(e.clientX,e.clientY),start=rightPress.current.start;
               if(Math.hypot(p.x-start.x,p.y-start.y)>5)rightPress.current.dragged=true;
@@ -9011,9 +9080,16 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const previous={x:g.last.x*g.zoom+view.x,y:g.last.y*g.zoom+view.y};
             previewEraserSegment(previous,screen);
             recordEraserPoint(world(screen));
-            setLiveEraserCursor(screen.x,screen.y);
+            setLiveEraserCursor(screen.x,screen.y,e.pointerType,true);
           }}
           onPointerUpCapture={(e) => {
+            if(tool==="select"&&e.pointerType!=="touch")applyBoardSelectionCursor(board.current,"idle");
+            if(inertSurfaceDragPointer.current===e.pointerId){
+              inertSurfaceDragPointer.current=null;
+              // Embedded widgets may stop the UP event too. Finalize in
+              // capture before they can interrupt it, with one undo step.
+              if(gesture.current?.pointer===e.pointerId){move(e);end();e.stopPropagation();}
+            }
             const canvasTap=geometryCanvasTouch.current;
             if(canvasTap?.pointer===e.pointerId){
               geometryCanvasTouch.current=null;
@@ -9068,9 +9144,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const previous={x:g.last.x*g.zoom+view.x,y:g.last.y*g.zoom+view.y};
             previewEraserSegment(previous,screen);
             finishEraser(world(screen));
+            if(e.pointerType==="touch"&&eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden";
             if(board.current?.hasPointerCapture(e.pointerId))board.current.releasePointerCapture(e.pointerId);
           }}
           onPointerCancelCapture={(e) => {
+            if(tool==="select")applyBoardSelectionCursor(board.current,"idle");
+            if(inertSurfaceDragPointer.current===e.pointerId){
+              inertSurfaceDragPointer.current=null;
+              if(gesture.current?.pointer===e.pointerId){end(true);e.stopPropagation();}
+            }
             if(e.pointerType==="touch"){
               const consumed=touchEnd(e);
               if(consumed){e.preventDefault();e.stopPropagation();return;}
@@ -9087,6 +9169,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             // Pointer cancellation (e.g. a second finger) is not an erase.
             eraserSession.current=null;
             stopEraserPreview();
+            if(eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden";
           }}
           onClickCapture={(e)=>{
             if(tool==="eraser"&&!(e.target as HTMLElement).closest("button,input,select,textarea,[data-board-interactive]")){
@@ -9103,9 +9186,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             // board gestures, not interface controls, and must reach down().
             const transformHandle=target.closest("[data-transform-handle],[data-group-transform-handle],[data-connector-endpoint],[data-group-selection-drag],[data-board-selection-grip]");
             if(!transformHandle&&target.closest("button,input,select,textarea,[role='button'],[role='slider'],[contenteditable='true'],[data-board-interactive]"))return;
-            if(tool==="eraser")return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; if (presentation) { const point = local(e.clientX, e.clientY); if (presentationLaser) setPresentationLaserPos(point); if (presentationSpotlight) setPresentationSpotlightPos(point); return; } down(e); }}
+            if(tool==="eraser")return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; if (presentation) { const point = local(e.clientX, e.clientY); if (presentationLaser) setPresentationLaserPos(point); if (presentationSpotlight) setPresentationSpotlightPos(point); return; } down(e); if(tool==="select")syncSelectionCursor(e.target,e.pointerType); }}
           onPointerMove={(e) => {
-            if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y);}return;}
+            if(inertSurfaceDragPointer.current===e.pointerId)return;
+            if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y,e.pointerType);}return;}
             if(eraserSession.current||pinchState.current||consumedTouchIds.current.has(e.pointerId))return;
             const activeGesture=gesture.current;
             // Navigation uses cached board bounds and CSS transforms. It does
@@ -9119,7 +9203,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const worldPoint=world(localPoint);
             if(!adminHidden)cursorChannel.current?.sendCursor(worldPoint.x,worldPoint.y);
             if(presentation){if(presentationLaser)setPresentationLaserPos(localPoint);if(presentationSpotlight)setPresentationSpotlightPos(localPoint);}
-            move(e);
+            moveObjectFrame(e);
+            if(tool==="select")syncSelectionCursor(e.target,e.pointerType);
           }}
           onContextMenu={(e) => {
             e.preventDefault();
@@ -9154,8 +9239,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               setNotice(error instanceof Error ? error.message : "Не удалось добавить файл");
             }
           }}
-          onPointerEnter={(e) => { if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType); if (tool === "eraser") { const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y); } }}
-          onPointerLeave={() => { if(inkCursorElement.current)inkCursorElement.current.style.visibility="hidden"; if(!eraserSession.current && eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden"; }}
+          onPointerEnter={(e) => { if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType,e.target); if (tool === "eraser") { const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y,e.pointerType); } if(tool==="select")syncSelectionCursor(e.target,e.pointerType); }}
+          onPointerLeave={() => { if(inkCursorElement.current)inkCursorElement.current.style.visibility="hidden"; if(!eraserSession.current && eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden"; if(tool==="select")applyBoardSelectionCursor(board.current,"idle"); }}
           onPointerUp={(e) => {
             if(e.pointerType==="touch"&&touchEnd(e))return;
             if (e.pointerId === gesture.current?.pointer) {
@@ -9163,13 +9248,17 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               end();
             }
           }}
-          onPointerCancel={(e) => { if(e.pointerType==="touch"&&touchEnd(e))return; if(rightPress.current?.pointer===e.pointerId){rightPress.current=null;setRightPointerActive(false)} if(gesture.current?.pointer===e.pointerId)end(true); }}
+          onPointerCancel={(e) => { if(inertSurfaceDragPointer.current===e.pointerId)inertSurfaceDragPointer.current=null; if(tool==="select")applyBoardSelectionCursor(board.current,"idle"); if(e.pointerType==="touch"&&touchEnd(e))return; if(rightPress.current?.pointer===e.pointerId){rightPress.current=null;setRightPointerActive(false)} if(gesture.current?.pointer===e.pointerId)end(true); }}
           onLostPointerCapture={(e) => {
+            if(inertSurfaceDragPointer.current===e.pointerId)inertSurfaceDragPointer.current=null;
+            if(tool==="select")applyBoardSelectionCursor(board.current,"idle");
             // Releasing a previous object's capture must not cancel a NEW
             // gesture. Only the owner of the lost capture can be cleared.
             if(eraserSession.current?.pointer===e.pointerId){
               eraserSession.current=null;stopEraserPreview();
-            }else if(gesture.current?.pointer===e.pointerId)end(true);
+            }
+            if(e.pointerType==="touch"&&eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden";
+            if(gesture.current?.pointer===e.pointerId)end(true);
             if(e.pointerType==="touch"&&!consumedTouchIds.current.has(e.pointerId)&&!pinchState.current)touchEnd(e);
           }}
         >
@@ -10084,9 +10173,24 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               )}
             </div>, document.body
           )}
-          {(tool==="pen"||tool==="marker")&&!presentation&&!space&&!rightPointerActive&&!panning&&<div ref={inkCursorElement} className="lektrus-ink-cursor" aria-hidden="true" style={{left:-1000,top:-1000,width:Math.max(1,(tool==="marker"?markerWeight:weight)*view.zoom),height:Math.max(1,(tool==="marker"?markerWeight:weight)*view.zoom),visibility:"hidden",color:backgroundAppearance.foreground,"--ink-cursor-outline":backgroundAppearance.outline} as CSSProperties}/>}
+          {(tool==="pen"||tool==="marker")&&!presentation&&!space&&!rightPointerActive&&!panning&&
+            <div ref={inkCursorElement}
+              className={`lektrus-ink-cursor ${tool==="marker"?"is-marker":"is-pen"} ${(tool==="marker"?markerWeight:weight)*view.zoom<=8?"is-fine":"is-wide"}`}
+              aria-hidden="true"
+              style={{transform:"translate3d(-1000px,-1000px,0)",visibility:"hidden",
+                "--cursor-size":Math.max(1,(tool==="marker"?markerWeight:weight)*view.zoom)+"px",
+                "--cursor-ink":tool==="marker"?markerColor:penColor,
+                "--cursor-contrast":backgroundAppearance.foreground,
+                "--cursor-outline":backgroundAppearance.outline} as CSSProperties}>
+              <span className="lektrus-ink-cursor-footprint"/><span className="lektrus-ink-cursor-guide"/>
+              <span className="lektrus-ink-cursor-center"/>
+            </div>}
           {tool === "eraser" && (
-            <div ref={eraserCursorElement} className="eraser-cursor" aria-hidden="true" style={{ left:-1000, top:-1000, width:eraserSize, height:eraserSize, visibility:"hidden" }} />
+            <div ref={eraserCursorElement} className="eraser-cursor" aria-hidden="true"
+              style={{transform:"translate3d(-1000px,-1000px,0) translate(-50%,-50%)",
+                width:eraserSize,height:eraserSize,visibility:"hidden",
+                "--cursor-contrast":backgroundAppearance.foreground,
+                "--cursor-outline":backgroundAppearance.outline} as CSSProperties}/>
           )}
           {marqueeRect&&<div className="lektrus-selection-marquee" aria-hidden="true"
             style={{left:marqueeRect.x,top:marqueeRect.y,
