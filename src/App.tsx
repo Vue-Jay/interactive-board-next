@@ -7502,14 +7502,33 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     return () => window.clearInterval(timer);
   }, [presenceUsers]);
 
-  // Hold the last preview until the authoritative document has precisely the
-  // same geometry. Giving the CSS tween time to finish avoids a final-frame
-  // snap when a fast Supabase save wins the race against the broadcast socket.
+  // Cross-socket ordering is not guaranteed: durable document updates may
+  // arrive before the last transient preview packet. Never let a dropped FINAL
+  // packet pin an old intermediate pose over already-saved geometry.
   useEffect(()=>{
     const byId=new Map(items.map(item=>[item.id,item]));
+    const stale=Object.entries(remoteObjectPoses).filter(([id,pose])=>{
+      const stored=byId.get(id);
+      return !stored || (
+        objectPoseOrigin(stored)!==pose.origin &&
+        !objectPoseMatches(pose,stored)
+      );
+    });
+    if(stale.length){
+      setRemoteObjectPoses(current=>{
+        const next={...current};let changed=false;
+        for(const [id,pose] of stale){
+          if(current[id]!==pose)continue;
+          delete next[id];changed=true;
+        }
+        return changed?next:current;
+      });
+    }
     const settled=Object.entries(remoteObjectPoses).filter(([id,pose])=>
       pose.finished&&byId.has(id)&&objectPoseMatches(pose,byId.get(id)!));
     if(!settled.length)return;
+    // Let the 75ms CSS interpolation complete before switching from the
+    // transient target to identical authoritative coordinates.
     const timer=window.setTimeout(()=>{
       setRemoteObjectPoses(current=>{
         let next:typeof current|null=null;
