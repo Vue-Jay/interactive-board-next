@@ -237,6 +237,14 @@ test('packet loss never erases already visible peer ink or invents a connecting 
   assert.deepEqual(Array.from(api.remoteInkRuns(finalWithGap),run=>[run.offset,run.points.length]),
     [[0,50],[80,70]],'missing samples are not joined by false geometry');
   assert.equal(api.remoteInkRuns(finalWithGap)[0].points[0].x,0);
+  const repaired=api.mergeRemoteLiveInk(finalWithGap,packet(50,80));
+  assert.equal(repaired.finished,true,'late recovery must not reopen the finished stroke');
+  assert.equal(repaired.priorRuns,undefined,
+    'a delayed pre-final packet joins the already displayed fragments');
+  assert.equal(repaired.offset,0);
+  assert.equal(repaired.points.length,150);
+  assert.strictEqual(api.mergeRemoteLiveInk(repaired,packet(151,160)),repaired,
+    'no intermediate sample may extend a completed stroke beyond its final point');
 });
 
 test('disconnected peer-ink history remains bounded and renderable',()=>{
