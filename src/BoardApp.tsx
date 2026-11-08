@@ -83,7 +83,7 @@ import LectrisToolbarSettings from "./LectrisToolbarSettings";
 import LectrisPanelSettings from "./LectrisPanelSettings";
 import { defaultLectrisPanelLayout, normalizeLectrisPanelLayout, readLectrisPanelLayout, type LectrisPanelLayout } from "./lectrisPanelLayout";
 import { clearAiBoardTransfer, peekAiBoardTransfer } from "./aiLocalStore";
-import { generateCurriculumAi, type CurriculumAiLevel } from "./aiCurriculumGenerator";
+import { aiTopicPlaceholder, generateCurriculumAi, type CurriculumAiLevel } from "./aiCurriculumGenerator";
 import { type AccountRole } from "./accountRoleStore";
 import { materialBlob, markMaterialUsed, type Material } from "./materialsStore";
 import ShareDialog from "./ShareDialog";
@@ -9245,7 +9245,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <section className="board-ai-panel" role="dialog" aria-modal="true" aria-label="AI-помощник">
             <header><div className="board-ai-title"><Icon name="robot" size={22}/><div><strong>AI-помощник</strong><span>Подготовить задание для этой доски</span></div></div><button onClick={()=>setBoardAiOpen(false)} aria-label="Закрыть">×</button></header>
             <label className="board-ai-field"><span>Предмет</span><select value={boardAiSubject} onChange={e=>{setBoardAiSubject(e.target.value);setBoardAiPreview([]);setBoardAiDetected("")}}><option value="">Определить по теме</option>{LEKTRUS_SCHOOL_SUBJECTS.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
-            <label className="board-ai-field"><span>Тема</span><input value={boardAiTopic} onChange={e=>{setBoardAiTopic(e.target.value);setBoardAiPreview([]);setBoardAiDetected("")}} placeholder={boardAiSubject==="Математика"?"Например: квадратные уравнения":"Например: причины реформ Петра I"}/></label>
+            <label className="board-ai-field"><span>Тема</span><input value={boardAiTopic} onChange={e=>{setBoardAiTopic(e.target.value);setBoardAiPreview([]);setBoardAiDetected("")}} placeholder={aiTopicPlaceholder(boardAiSubject)}/></label>
             <div className="board-ai-options"><label><span>Уровень</span><select value={boardAiLevel} onChange={e=>{setBoardAiLevel(e.target.value as CurriculumAiLevel);setBoardAiPreview([])}}><option value="easy">Базовый</option><option value="medium">Средний</option><option value="hard">Углублённый</option></select></label><label><span>Количество</span><select value={boardAiCount} onChange={e=>{setBoardAiCount(Number(e.target.value));setBoardAiPreview([])}}><option value={3}>3</option><option value={5}>5</option><option value={6}>6</option><option value={8}>8</option><option value={10}>10</option><option value={15}>15</option></select></label></div>
             {(boardAiSubject===""||boardAiSubject==="Математика")&&<label className="board-ai-answer-toggle"><input type="checkbox" checked={boardAiWithAnswers} onChange={e=>{setBoardAiWithAnswers(e.target.checked);setBoardAiPreview([])}}/><span>Показывать ответы</span></label>}
             {boardAiDetected&&<div className="board-ai-detected">Распознано: <b>{boardAiDetected}</b></div>}

@@ -5,6 +5,25 @@ export type CurriculumAiTool = "assignment" | "quiz" | "flashcards";
 export type CurriculumAiLevel = "easy" | "medium" | "hard";
 export type CurriculumAiResult = { title: string; items: string[]; answers: string[]; subject: string; detected: string };
 
+const topicExamples: Record<string, string> = {
+  "": "Например: тема и нужный навык",
+  "Математика": "Например: квадратные уравнения",
+  "Физика": "Например: закон Ома",
+  "Химия": "Например: кислоты и основания",
+  "Биология": "Например: строение и функции клетки",
+  "География": "Например: климатические пояса",
+  "Русский язык": "Например: причастный оборот",
+  "Литература": "Например: образ героя в произведении",
+  "История": "Например: причины и последствия исторического события",
+  "Обществознание": "Например: права и обязанности гражданина",
+  "Информатика": "Например: алгоритмы с условиями",
+  "Иностранный язык": "Например: рассказ о прошедших событиях",
+};
+
+export function aiTopicPlaceholder(subject = "") {
+  return topicExamples[subject] ?? topicExamples[""];
+}
+
 const choose = <T,>(items: T[], index: number) => items[index % items.length];
 const levelName: Record<CurriculumAiLevel, string> = { easy: "базовый", medium: "средний", hard: "углублённый" };
 const subjectAliases: Record<string, RegExp> = {

@@ -1,5 +1,6 @@
 import {useEffect,useState} from "react";
 import {clearAiDrafts,consumeAiCredit,generateLocalAiDraft,getAiUsage,listAiDrafts,remainingAiCredits,queueAiDraftForBoard,type AiDifficulty,type AiDraft,type AiTool} from "./aiLocalStore";
+import { aiTopicPlaceholder } from "./aiCurriculumGenerator";
 import { LEKTRUS_SCHOOL_SUBJECTS } from "./lektrusSchoolSubjects";
 import {effectivePlan,getLocalSubscription} from "./billingStore";
 import "./AiStudioScreen.css";
@@ -17,7 +18,7 @@ export default function AiStudioScreen({onBack,onTariffs}:{onBack:()=>void;onTar
   {!available?<section className="ai-locked"><b>AI недоступен на текущем тарифе</b><p>{sub.planId!=="free"?"Подписка сейчас не активна, поэтому применяются возможности Free.":"AI включён в Teacher и Pro."}</p><button onClick={onTariffs}>Открыть тарифы</button></section>:
   <section className="ai-layout"><div className="ai-compose"><div className="ai-tool-tabs"><button className={tool==="assignment"?"active":""} onClick={()=>setTool("assignment")}>Задание</button><button className={tool==="quiz"?"active":""} onClick={()=>setTool("quiz")}>Тест</button><button className={tool==="flashcards"?"active":""} onClick={()=>setTool("flashcards")}>Карточки</button></div>
    <label><span>Предмет</span><select value={subject} onChange={e=>setSubject(e.target.value)}><option value="">Определить по теме</option>{LEKTRUS_SCHOOL_SUBJECTS.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
-   <label><span>Тема</span><input value={topic} onChange={e=>setTopic(e.target.value)} placeholder={subject==="Математика"?"Например: квадратные уравнения":subject?`Например: ${subject.toLocaleLowerCase("ru-RU")} — ключевые понятия`:"Например: причины реформ Петра I"}/></label>
+   <label><span>Тема</span><input value={topic} onChange={e=>setTopic(e.target.value)} placeholder={aiTopicPlaceholder(subject)}/></label>
    <div className="ai-options"><label><span>Уровень</span><select value={difficulty} onChange={e=>setDifficulty(e.target.value as AiDifficulty)}><option value="easy">Базовый</option><option value="medium">Средний</option><option value="hard">Углублённый</option></select></label><label><span>Количество</span><select value={count} onChange={e=>setCount(Number(e.target.value))}><option>3</option><option>5</option><option>7</option><option>10</option></select></label></div>
    {error&&<div className="ai-error">{error}</div>}<button className="ai-generate" disabled={busy||topic.trim().length<2||remainingAiCredits(plan.limits.aiCreditsPerMonth)<=0} onClick={()=>void generate()}>{busy?"Создаём…":"Создать черновик"}</button>
    <div className="ai-usage-meter"><span style={{width:`${plan.limits.aiCreditsPerMonth?Math.min(100,usage.used/plan.limits.aiCreditsPerMonth*100):0}%`}}/></div>
