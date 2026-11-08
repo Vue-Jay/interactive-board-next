@@ -50,6 +50,8 @@ const LektrusPublicSite = lazy(() => import("./LektrusPublicSite"));
 
 const PublicToolScreen = lazy(() => import("./PublicToolScreen"));
 
+const PublicDemoBoard = lazy(() => import("./PublicDemoBoard"));
+
 const FeedbackScreen = lazy(() => import("./FeedbackScreen"));
 
 const BoardApp = lazy(() => import("./BoardApp"));
@@ -436,12 +438,7 @@ export default function App() {
   if(route.kind==="tool")return <Suspense fallback={<BoardLoadingScreen/>}><PublicToolScreen tool={route.tool} onBack={()=>navigate("/")}/></Suspense>;
 
   if(route.kind==="demo"){
-    const demoId="00000000-0000-4000-8000-0000000000a0";
-    const demoBoard:BoardSummary={id:demoId,title:"Попробуйте доску",ownerId:"lektrus-public-demo",role:"owner",createdAt:"2026-01-01T00:00:00.000Z",updatedAt:"2026-01-01T00:00:00.000Z"};
-    const key=boardStorageKey(demoId);
-    if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify({version:1,title:demoBoard.title,view:{x:0,y:0,zoom:1},items:[]} satisfies DocumentData));
-    const returnToSite=()=>window.location.assign("/");
-    return <Suspense fallback={<BoardLoadingScreen/>}><BoardApp authUser={{id:"lektrus-public-demo",name:"Гость",email:"",createdAt:"2026-01-01T00:00:00.000Z",isGuest:true}} boardSummary={demoBoard} accountRole="student" demoMode onBackToBoards={returnToSite} onLogout={returnToSite} onBoardChanged={()=>{}}/></Suspense>;
+    return <Suspense fallback={<BoardLoadingScreen/>}><PublicDemoBoard/></Suspense>;
   }
 
   if (!authReady) {

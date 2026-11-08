@@ -2045,7 +2045,7 @@ const itemIconName = (item: Item): IconName => {
   return "marker";
 };
 
-export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adminMaintenance = false, adminInvisible = false, globalRolePreview="actual", onGlobalRolePreviewChange, onBackToBoards, onLogout, onBoardChanged, initialRemoteVersion = null, demoMode = false }: {
+export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adminMaintenance = false, adminInvisible = false, globalRolePreview="actual", onGlobalRolePreviewChange, onBackToBoards, onLogout, onBoardChanged, initialRemoteVersion = null, demoMode = false, demoInitialDocument }: {
   authUser: AuthUser;
   boardSummary: BoardSummary;
   accountRole: AccountRole;
@@ -2059,6 +2059,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   onBoardChanged: (board: BoardSummary) => void;
   initialRemoteVersion?: number | null;
   demoMode?: boolean;
+  demoInitialDocument?:DocumentData;
 }) {
   const remoteEnabled=!demoMode&&isRemoteBackendEnabled();
   const layoutEditing=new URLSearchParams(window.location.search).get("layout-editor")==="1";
@@ -2236,7 +2237,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const viewStorageKey = `${storageKey}.view`;
   const [initial] = useState(() => layoutEditing?
     {data:{version:1 as const,title:"Новая доска",view:{x:0,y:0,zoom:1},items:[] as Item[]},error:""}:
-    loadInitial(storageKey));
+    demoInitialDocument?{data:demoInitialDocument,error:""}:loadInitial(storageKey));
   const [saveBlocked, setSaveBlocked] = useState(!!initial.error);
   const fileInput = useRef<HTMLInputElement>(null);
   const mediaInput = useRef<HTMLInputElement>(null);
@@ -7982,7 +7983,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             maxLength={300}
             readOnly={!canCreateAssignments}
           />
-          {authUser.isGuest&&<span className="guest-session-badge" title="Временная гостевая сессия">Гость · {authUser.name}</span>}
+          {authUser.isGuest&&!demoMode&&<span className="guest-session-badge" title="Временная гостевая сессия">Гость · {authUser.name}</span>}
           <LektrusSubjectPicker value={lectrisBoardOrganization.subject} options={subjectCategories.filter(Boolean)} disabled={!canManageBoard||boardSummary.ownerId!==authUser.id} onChange={changeBoardSubject}/>
         </div>
         <div className="topbar-right"><details className="lectris-layout-picker">

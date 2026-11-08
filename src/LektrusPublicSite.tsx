@@ -1,4 +1,4 @@
-import {useState} from "react";
+import {useEffect,useState} from "react";
 import LektrusFeedbackForm from "./LektrusFeedbackForm";
 
 type Section="overview"|"board"|"tools"|"about"|"feedback";
@@ -7,9 +7,16 @@ const toolData=[
  {href:"/tools/atlas",index:"01",label:"ГЕОГРАФИЯ И ИСТОРИЯ",name:"Интерактивный атлас",description:"Изучайте страны, рельеф и исторические карты в отдельном полноэкранном пространстве.",symbol:"◎"},
  {href:"/tools/laboratory",index:"02",label:"ХИМИЯ",name:"Химическая лаборатория",description:"Собирайте установки и исследуйте вещества на виртуальном лабораторном столе.",symbol:"⚗"}
 ];
+const boardShots=[
+ {scene:"math",src:"/site/board-math.png",label:"МАТЕМАТИКА · ГРАФИК И ТАБЛИЦА",title:"Функция оживает на общей доске",hint:"График, формула и проверочный вопрос собраны в одном месте."},
+ {scene:"chemistry",src:"/site/board-chemistry.png",label:"ХИМИЯ · ЛАБОРАТОРИЯ И ЭЛЕМЕНТЫ",title:"От таблицы элементов — к опыту",hint:"Лабораторный стол и предметная модель работают прямо на доске."},
+ {scene:"geometry",src:"/site/board-geometry.png",label:"ГЕОМЕТРИЯ · ПОСТРОЕНИЕ И ИЗМЕРЕНИЕ",title:"Стройте и проверяйте гипотезы",hint:"Фигура, измерительные инструменты и задание — в одном рабочем поле."}
+];
 
 export default function LektrusPublicSite(){
  const [section,setSection]=useState<Section>("overview");
+ const [activeShot,setActiveShot]=useState(0),[shotPaused,setShotPaused]=useState(false);
+ useEffect(()=>{if(shotPaused)return;const timer=window.setInterval(()=>setActiveShot(value=>(value+1)%boardShots.length),7200);return()=>window.clearInterval(timer)},[shotPaused]);
  const goDemo=()=>{
   const id="00000000-0000-4000-8000-0000000000a0",key=`lesson-board.document.v1.board.${id}`;
   try{if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify({version:1,title:"Попробуйте доску",view:{x:0,y:0,zoom:1},items:[]}))}catch{/* The demo can still open without persistent storage. */}
@@ -27,8 +34,15 @@ export default function LektrusPublicSite(){
    <div className={`showcase-content showcase-${section}`}>
     {section==="overview"&&<div className="showcase-overview">
      <div className="showcase-overview-copy"><div className="showcase-kicker"><i/> ОБЩЕЕ ПРОСТРАНСТВО ДЛЯ УРОКОВ И ИДЕЙ</div><h1>Объясняйте.<br/><em>Исследуйте.</em><br/>Создавайте вместе.</h1><p>Lektrus — интерактивная доска с предметными инструментами для преподавателей и учеников.</p><div className="showcase-actions"><button className="showcase-primary" onClick={goDemo}>Открыть живую демо-доску <span>↗</span></button><button className="showcase-quiet" onClick={()=>setSection("tools")}>Посмотреть инструменты <span>→</span></button></div><div className="showcase-facts"><span><b>01</b> Одна общая доска</span><span><b>02</b> Инструменты для предметов</span><span><b>03</b> Компьютер и планшет</span></div></div>
-     <button className="showcase-board-shot" type="button" onClick={goDemo} aria-label="Открыть интерактивную демонстрацию доски"><img src="/site/board-showcase.png" alt="Реальный экран Lektrus: интерактивная доска с лабораторией и учебными материалами"/><span className="showcase-shot-label"><i/> РЕАЛЬНАЯ ДОСКА LEKTRUS</span><span className="showcase-shot-play" aria-hidden="true">▶</span><span className="showcase-shot-caption"><b>Доска, на которой объясняют наглядно</b><small>Нажмите и попробуйте инструменты сами</small></span></button>
-     <div className="showcase-bottom-note"><span>ОДИН УРОК — МНОГО СПОСОБОВ ПОКАЗАТЬ</span><b>Рисуйте · обсуждайте · исследуйте</b><button onClick={()=>setSection("board")}>Как работает доска <span>→</span></button></div>
+       <div className="showcase-carousel" aria-label="Снимки настоящих досок Lektrus">
+      <button className="showcase-board-shot" type="button" onClick={()=>window.location.assign(`/demo/board?scene=${boardShots[activeShot].scene}`)} aria-label={`Открыть интерактивную доску: ${boardShots[activeShot].title}`}>
+       <img key={boardShots[activeShot].src} src={boardShots[activeShot].src} alt={`Настоящий экран доски Lektrus: ${boardShots[activeShot].title}`}/><span className="showcase-shot-label"><i/> СНИМОК НАСТОЯЩЕЙ ДОСКИ</span><span className="showcase-shot-play" aria-hidden="true">▶</span>
+       <span className="showcase-shot-caption"><small>{boardShots[activeShot].label}</small><b>{boardShots[activeShot].title}</b><small>{boardShots[activeShot].hint}</small></span>
+      </button>
+      <div className="showcase-carousel-controls"><div className="showcase-shot-dots" role="group" aria-label="Выбрать снимок доски">{boardShots.map((shot,index)=><button key={shot.scene} type="button" className={activeShot===index?"active":""} aria-label={`Снимок ${index+1}: ${shot.title}`} aria-pressed={activeShot===index} onClick={()=>setActiveShot(index)}/>)}</div><span>{String(activeShot+1).padStart(2,"0")} <i>/</i> {String(boardShots.length).padStart(2,"0")}</span><button className="showcase-carousel-pause" type="button" aria-label={shotPaused?"Продолжить прокрутку снимков":"Остановить прокрутку снимков"} title={shotPaused?"Продолжить":"Пауза"} onClick={()=>setShotPaused(value=>!value)}>{shotPaused?"▶":"Ⅱ"}</button><button className="showcase-carousel-next" type="button" aria-label="Следующий снимок" onClick={()=>setActiveShot(value=>(value+1)%boardShots.length)}>→</button>
+      </div>
+     </div>
+     <div className="showcase-bottom-note"><span>ОДИН УРОК — МНОГО СПОСОБОВ ПОКАЗАТЬ</span><b>Рисуйте · обсуждайте · исследуйте</b><button onClick={()=>setSection("board")}>Попробовать доску <span>→</span></button></div>
     </div>}
     {section==="board"&&<div className="showcase-board-page"><div className="showcase-page-heading"><div><div className="showcase-kicker"><i/> ПОПРОБУЙТЕ САМИ</div><h1>Доска работает,<br/><em>пока вы с ней работаете.</em></h1><p>Здесь настоящее приложение Lektrus. Можно рисовать, добавлять текст и фигуры, перемещаться по рабочему пространству.</p><button className="showcase-primary" onClick={goDemo}>Запустить интерактивную доску <span>↗</span></button></div><div className="showcase-steps"><span><b>1</b><strong>Выберите инструмент</strong><small>Перо, текст, фигура или выделение</small></span><span><b>2</b><strong>Создайте на доске</strong><small>Добавьте материал в рабочее пространство</small></span><span><b>3</b><strong>Продолжайте исследовать</strong><small>Попробуйте предметные инструменты</small></span></div></div><button className="showcase-board-shot large" onClick={goDemo}><img src="/site/board-showcase.png" alt="Реальный снимок доски Lektrus с предметными материалами"/><span className="showcase-shot-label"><i/> ЭКРАН НАСТОЯЩЕГО ПРИЛОЖЕНИЯ</span><span className="showcase-shot-play" aria-hidden="true">▶</span></button><div className="showcase-board-footer"><span>Нажмите на доску — откроется интерактивная демонстрация</span><button onClick={goDemo}>Открыть доску <span>↗</span></button></div></div>}
     {section==="tools"&&<div className="showcase-tools-page"><div className="showcase-kicker"><i/> ПРЕДМЕТНЫЕ ПРОСТРАНСТВА</div><h1>Инструменты для<br/><em>открытий и практики.</em></h1><p>Каждый инструмент запускается отдельно на весь экран. Доска для этого не нужна.</p><div className="showcase-tool-grid">{toolData.map(tool=><a className="showcase-tool-card" href={tool.href} key={tool.index}><div className="showcase-tool-top"><span>{tool.symbol}</span><small>{tool.label}</small><b>{tool.index}</b></div><h2>{tool.name}</h2><p>{tool.description}</p><strong>Открыть инструмент <i>↗</i></strong><div className="showcase-tool-lines" aria-hidden="true"/></a>)}</div><div className="showcase-tools-foot"><span>Открываются отдельно, без привязки к доске</span><button onClick={goDemo}>Или открыть общую доску <b>↗</b></button></div></div>}
