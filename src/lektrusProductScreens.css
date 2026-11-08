@@ -650,7 +650,7 @@ html body select:not([multiple]) option{background:var(--lt-surface,#fff);color:
 .lectris-workspace-stage .progress-tabs button span{display:grid;min-width:20px;height:20px;place-items:center;padding:0 5px;border-radius:999px;background:var(--lt-subtle);color:var(--lt-muted);font-size:10px}
 .lectris-workspace-stage .progress-tabs button.active span{background:var(--lt-surface);color:var(--lt-primary)}
 .lectris-workspace-stage .progress-kpis{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:10px!important;margin:0 0 10px!important}
-.lectris-workspace-stage .progress-kpis>article{display:grid!important;align-content:center;gap:5px;min-width:0;min-height:94px;padding:14px!important;border:1px solid var(--lt-line)!important;border-radius:14px!important;background:var(--lt-surface)!important}
+.lectris-workspace-stage .progress-kpis>article{display:grid!important;align-content:center;justify-items:center;gap:5px;min-width:0;min-height:94px;padding:14px!important;border:1px solid var(--lt-line)!important;border-radius:14px!important;background:var(--lt-surface)!important;text-align:center}
 .lectris-workspace-stage .progress-kpis>article span{font-size:11px;letter-spacing:.02em;color:var(--lt-muted)}
 .lectris-workspace-stage .progress-kpis>article b{font-size:26px;line-height:1;color:var(--lt-text)}
 .lectris-workspace-stage .progress-kpis>article small{font-size:11px;color:var(--lt-muted)}
