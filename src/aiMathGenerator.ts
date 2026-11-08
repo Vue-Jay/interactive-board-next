@@ -18,8 +18,8 @@ function detect(topic:string,mode:MathAiMode):MathAiMode{
  if(/прост.*чис|делител|разлож.*множител/.test(t))return"prime";
  if(/степен|корен|квадрат.*числ|куб.*числ/.test(t))return"powers";
  if(/пропорц|отношен|масштаб/.test(t))return"proportion";
+ if(/неравен|квадратн|дискриминант|уравнен|систем/.test(t))return"equations";
  if(/геометр|треуг|круг|окруж|прямоуг|квадрат|площад|периметр|угол|теорем.*пифагор/.test(t))return"geometry";
- if(/квадратн|дискриминант|уравнен|систем/.test(t))return"equations";
  if(/дроб|числител|знаменател/.test(t))return"fractions";
  if(/процент|скид|нацен/.test(t))return"percent";
  if(/функц|график|парабол|координат/.test(t))return"functions";
@@ -121,6 +121,10 @@ export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,to
  const actual=detect(topic,mode),safe=Math.max(1,Math.min(20,count)),t=topic.toLowerCase();
  const make=()=>{
   if(actual==="equations"){
+   if(/неравен/.test(t)){
+    const coefficient=rnd(2,8),boundary=rnd(-6,12),constant=rnd(1,16),threshold=coefficient*boundary+constant,relation=pick(["<","≤"]);
+    return{q:`Решите неравенство: ${coefficient}x + ${constant} ${relation} ${threshold}`,a:`${coefficient}x ${relation} ${coefficient*boundary}; x ${relation} ${boundary}`};
+   }
    if(/кубическ|третьей степени|x\s*[³3]/.test(t))return cubic();
    if(/систем/.test(t))return system2();
    if(/квадратн|дискриминант|второй степени|x\s*[²2]/.test(t))return quadratic();
@@ -139,7 +143,7 @@ export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,to
    if(/прямоуг/.test(t)){const a=rnd(3,18),b=rnd(3,18);return{q:`Стороны прямоугольника равны ${a} см и ${b} см. Найдите площадь и периметр.`,a:`S = ${a*b} см²; P = ${2*(a+b)} см`};}
    if(/треуг/.test(t)){
     if(/периметр/.test(t)){const a=rnd(3,9),b=rnd(3,9),c=rnd(Math.abs(a-b)+1,a+b-1),sides=[a,b,c];return{q:`Стороны треугольника равны ${sides.join(", ")} см. Найдите периметр.`,a:`P = ${sides.join(" + ")} = ${sides.reduce((sum,x)=>sum+x,0)} см`};}
-    if(/угол/.test(t)){const a=20+rnd(0,5)*5,b=30+rnd(0,5)*5;return{q:`Два угла треугольника равны ${a}° и ${b}°. Найдите третий угол.`,a:`180° − ${a}° − ${b}° = ${180-a-b}°`};}
+   if(/(?:^|[^\p{L}])уг(?:ол|ла|лы|лов|лам|лами|лу|лом|ле)(?:$|[^\p{L}])/iu.test(t)){const a=20+rnd(0,5)*5,b=30+rnd(0,5)*5;return{q:`Два угла треугольника равны ${a}° и ${b}°. Найдите третий угол.`,a:`180° − ${a}° − ${b}° = ${180-a-b}°`};}
     const a=rnd(4,16),h=rnd(3,14);return{q:`Основание треугольника ${a} см, высота к нему ${h} см. Найдите площадь.`,a:`S = ${fmt(a*h/2)} см²`};
    }
    return geometry(level);

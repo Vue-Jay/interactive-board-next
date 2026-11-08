@@ -21,13 +21,20 @@ TEMPLATES = (
     "Сделай карточки для урока про {topic}",
     "Помоги проверить знания по теме {topic}",
     "Придумай практическую работу: {topic}",
+    "Подбери задания ученику по теме: {topic}",
+    "Хочу вопросы на тему {topic}",
+    "Сгенерируй тренировочный тест: {topic}",
+    "Нужны карточки для повторения: {topic}",
+    "Дай примеры и упражнения по теме {topic}",
+    "Помоги провести проверку знаний по теме {topic}",
 )
 TOKEN_RE = re.compile(r"[а-яёa-z0-9]+", re.IGNORECASE)
 SUBJECTS = [
     "Математика", "Физика", "Химия", "Биология", "География", "Русский язык",
     "Литература", "История", "Обществознание", "Информатика", "Иностранный язык",
 ]
-MAX_FEATURES = 1600
+MAX_FEATURES = 2400
+MIN_DOCUMENT_FREQUENCY = 12
 
 
 def features(text: str) -> set[str]:
@@ -40,16 +47,20 @@ def features(text: str) -> set[str]:
     return result
 
 
-def make_examples(corpus: dict[str, list[str]]) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+def make_examples(corpus: dict[str, list[str]]) -> tuple[list[tuple[str, str]], list[tuple[str, str]], list[tuple[str, str]]]:
     train: list[tuple[str, str]] = []
-    validation: list[tuple[str, str]] = []
+    wording_validation: list[tuple[str, str]] = []
+    topic_validation: list[tuple[str, str]] = []
     for subject in SUBJECTS:
         topics = corpus[subject]
-        for topic in topics:
-            for index, template in enumerate(TEMPLATES):
-                destination = validation if index in (1, 4) else train
+        for topic_index, topic in enumerate(topics):
+            if topic_index % 5 == 0:
+                topic_validation.extend((template.format(topic=topic), subject) for template in TEMPLATES)
+                continue
+            for template_index, template in enumerate(TEMPLATES):
+                destination = wording_validation if template_index in (3, 8) else train
                 destination.append((template.format(topic=topic), subject))
-    return train, validation
+    return train, wording_validation, topic_validation
 
 
 def fit(examples: list[tuple[str, str]]) -> dict:
@@ -63,7 +74,7 @@ def fit(examples: list[tuple[str, str]]) -> dict:
         present = features(text)
         document_frequency.update(present)
         documents.append((subject, present))
-    candidates = {feature for feature, count in document_frequency.items() if count >= 2}
+    candidates = {feature for feature, count in document_frequency.items() if count >= MIN_DOCUMENT_FREQUENCY}
     class_docs = Counter(subject for _, subject in examples)
     total_docs = len(examples)
 
@@ -124,40 +135,40 @@ def main() -> None:
     missing = set(SUBJECTS) - corpus.keys()
     if missing:
         raise SystemExit(f"В корпусе отсутствуют предметы: {', '.join(sorted(missing))}")
-    train, validation = make_examples(corpus)
+    train, wording_validation, topic_validation = make_examples(corpus)
     model = fit(train)
-    totals = Counter()
-    correct = Counter()
-    accepted = Counter()
-    accepted_correct = Counter()
-    confusion = Counter()
-    for text, expected in validation:
-        predicted, _, confidence = predict(model, text)
-        totals[expected] += 1
-        correct[expected] += predicted == expected
-        confusion[(expected, predicted)] += 1
-        if confidence >= 0.5:
-            accepted[expected] += 1
-            accepted_correct[expected] += predicted == expected
-    accuracy = sum(correct.values()) / max(1, sum(totals.values()))
+
+    def evaluate(examples: list[tuple[str, str]]) -> tuple[float, float, float, Counter, Counter]:
+        totals = Counter()
+        correct = Counter()
+        accepted = Counter()
+        accepted_correct = Counter()
+        for text, expected in examples:
+            predicted, _, confidence = predict(model, text)
+            totals[expected] += 1
+            correct[expected] += predicted == expected
+            if confidence >= 0.5:
+                accepted[expected] += 1
+                accepted_correct[expected] += predicted == expected
+        accuracy = sum(correct.values()) / max(1, sum(totals.values()))
+        accepted_total = sum(accepted.values())
+        accepted_accuracy = sum(accepted_correct.values()) / max(1, accepted_total)
+        coverage = accepted_total / max(1, len(examples))
+        return accuracy, coverage, accepted_accuracy, correct, totals
+
+    wording_accuracy, wording_coverage, wording_confident_accuracy, correct, totals = evaluate(wording_validation)
+    topic_accuracy, topic_coverage, topic_confident_accuracy, _, _ = evaluate(topic_validation)
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     serialized = json.dumps(model, ensure_ascii=False, separators=(",", ":")) + "\n"
     OUTPUT_PATH.write_text(serialized, encoding="utf-8")
     version = hashlib.sha256(serialized.encode("utf-8")).hexdigest()[:16]
     VERSION_PATH.write_text(f'export const AI_SUBJECT_MODEL_VERSION = "{version}";\n', encoding="utf-8")
-    print(f"Обучено на примерах: {len(train)}; проверочная выборка: {len(validation)}")
+    print(f"Обучено на примерах: {len(train)}; отложенные формулировки: {len(wording_validation)}; отложенные темы: {len(topic_validation)}")
     print(f"Словарь признаков: {model['vocabularySize']}; размер модели: {OUTPUT_PATH.stat().st_size / 1024:.1f} КБ; версия {version}")
-    print(f"Точность отложенной выборки: {accuracy:.1%}")
-    accepted_total = sum(accepted.values())
-    accepted_accuracy = sum(accepted_correct.values()) / max(1, accepted_total)
-    print(f"При пороге уверенности 0,5: принято {accepted_total}/{len(validation)} запросов; точность среди принятых {accepted_accuracy:.1%}")
+    print(f"Знакомые темы в новых формулировках: {wording_accuracy:.1%}; уверенных ответов {wording_coverage:.1%}, точность уверенных {wording_confident_accuracy:.1%}")
+    print(f"Новые темы целиком отложены: {topic_accuracy:.1%}; уверенных ответов {topic_coverage:.1%}, точность уверенных {topic_confident_accuracy:.1%}")
     for subject in SUBJECTS:
         print(f"  {subject}: {correct[subject]}/{totals[subject]}")
-    mistakes = [(expected, predicted, count) for (expected, predicted), count in confusion.items() if expected != predicted]
-    if mistakes:
-        print("Частые ошибки:")
-        for expected, predicted, count in sorted(mistakes, key=lambda item: -item[2])[:8]:
-            print(f"  {expected} → {predicted}: {count}")
 
 
 if __name__ == "__main__":
