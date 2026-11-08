@@ -1,4 +1,4 @@
-export type MathAiMode="auto"|"arithmetic"|"equations"|"fractions"|"geometry"|"functions"|"percent"|"word"|"mixed";
+export type MathAiMode="auto"|"arithmetic"|"equations"|"fractions"|"geometry"|"functions"|"percent"|"word"|"powers"|"prime"|"probability"|"statistics"|"proportion"|"trigonometry"|"logarithms"|"mixed";
 export type MathAiLevel="primary"|"basic"|"advanced";
 export type MathAiResult={title:string;items:string[];answers:string[];detected:string};
 
@@ -11,6 +11,13 @@ const signed=(n:number)=>n>=0?`+ ${n}`:`− ${Math.abs(n)}`;
 function detect(topic:string,mode:MathAiMode):MathAiMode{
  if(mode!=="auto")return mode;
  const t=topic.toLowerCase();
+ if(/тригонометр|синус|косинус|тангенс|sin\b|cos\b/.test(t))return"trigonometry";
+ if(/логарифм/.test(t))return"logarithms";
+ if(/вероятност|шанс|монет|кубик|игральн кост/.test(t))return"probability";
+ if(/средн.*арифмет|медиан|мода|статистик|размах/.test(t))return"statistics";
+ if(/прост.*чис|делител|разлож.*множител/.test(t))return"prime";
+ if(/степен|корен|квадрат.*числ|куб.*числ/.test(t))return"powers";
+ if(/пропорц|отношен|масштаб/.test(t))return"proportion";
  if(/геометр|треуг|круг|окруж|прямоуг|квадрат|площад|периметр|угол|теорем.*пифагор/.test(t))return"geometry";
  if(/квадратн|дискриминант|уравнен|систем/.test(t))return"equations";
  if(/дроб|числител|знаменател/.test(t))return"fractions";
@@ -75,6 +82,41 @@ function func(){
 function word(){
  const v=rnd(35,90),t=rnd(2,6);return{q:`Автомобиль ехал ${t} ч со скоростью ${v} км/ч. Какое расстояние он проехал?`,a:`${v*t} км`};
 }
+function powers(topic:string){
+ if(/корен/.test(topic)){
+  const roots=[2,3,4,5,6,7,8,9,10,11,12],root=pick(roots),power=pick([2,2,3]);
+  const value=power===2?root*root:root*root*root;
+  return{q:`Вычисли ${power===2?"квадратный":"кубический"} корень из ${value}${power===2?"":" (∛)"}.`,a:String(root)};
+ }
+ const base=rnd(2,12),exponent=pick([2,2,3,3,4]);
+ return{q:`Вычисли ${base}${exponent===2?"²":exponent===3?"³":"⁴"}. Запиши умножение как проверку.`,a:`${base**exponent} (${Array(exponent).fill(base).join(" · ")})`};
+}
+function prime(){
+ const primes=[2,3,5,7,11,13,17,19,23,29,31],p=pick(primes),q=pick(primes.filter(x=>x!==p));
+ const n=p*q;
+ return{q:`Разложи ${n} на простые множители. Затем назови все его простые делители.`,a:`${n} = ${p} · ${q}; простые делители: ${p} и ${q}.`};
+}
+function probability(){
+ if(Math.random()<.5){const face=1+rnd(0,5);return{q:`Бросают правильный шестигранный кубик. Какова вероятность выпадения числа больше ${face}? Запиши ответ дробью и процентом.`,a:`Благоприятных исходов ${6-face} из 6: ${(6-face)}/6 = ${fmt((6-face)/6*100)}%.`}}
+ const heads=1+rnd(0,1);return{q:`Монету подбрасывают ${heads===1?"один":"два"} раз${heads===1?"":"а"}. Какова вероятность получить орла во всех бросках?`,a:heads===1?"1/2 = 50%":"1/4 = 25%"};
+}
+function statistics(){
+ const values=Array.from({length:5},()=>rnd(2,20)),sum=values.reduce((a,b)=>a+b,0),mean=sum/values.length;
+ return{q:`Найди среднее арифметическое чисел: ${values.join(", ")}. Покажи сумму и количество чисел.`,a:`Сумма ${sum}; чисел ${values.length}; среднее арифметическое ${fmt(mean)}.`};
+}
+function proportion(){
+ const unit=rnd(12,90),first=rnd(2,8),second=first+rnd(1,7);
+ return{q:`${first} одинаковых тетради стоят ${first*unit} ₽. Сколько будут стоить ${second} таких тетрадей? Составь пропорцию.`,a:`Цена одной тетради ${unit} ₽; ${second} · ${unit} = ${second*unit} ₽.`};
+}
+function trigonometry(){
+ const rows=pick([[30,"1/2","√3/2","1/√3"],[45,"√2/2","√2/2","1"],[60,"√3/2","1/2","√3"]]);
+ const [angle,sin,cos,tan]=rows;
+ return{q:`Вычисли sin ${angle}°, cos ${angle}° и tg ${angle}° по таблице значений для стандартных углов.`,a:`sin ${angle}° = ${sin}; cos ${angle}° = ${cos}; tg ${angle}° = ${tan}.`};
+}
+function logarithms(){
+ const base=pick([2,3,5,10]),exponent=rnd(2,5),value=base**exponent;
+ return{q:`Вычисли log₍${base}₎ ${value}. Запиши равенство в показательной форме для проверки.`,a:`log₍${base}₎ ${value} = ${exponent}, так как ${base}^${exponent} = ${value}.`};
+}
 export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,topic:string,withAnswers=true):MathAiResult{
  const actual=detect(topic,mode),safe=Math.max(1,Math.min(20,count)),t=topic.toLowerCase();
  const make=()=>{
@@ -93,17 +135,30 @@ export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,to
    if(/окруж|круг|радиус|диаметр/.test(t)){
     const r=rnd(2,12);return{q:`Радиус круга ${r} см. Найдите длину окружности и площадь круга. π ≈ 3,14.`,a:`L ≈ ${fmt(2*3.14*r)} см; S ≈ ${fmt(3.14*r*r)} см²`};
    }
-   if(/треуг/.test(t)){const a=rnd(4,16),h=rnd(3,14);return{q:`Основание треугольника ${a} см, высота ${h} см. Найдите площадь.`,a:`S = ${fmt(a*h/2)} см²`};}
+   if(/квадрат/.test(t)){const a=rnd(3,18);return{q:`Сторона квадрата равна ${a} см. Найдите площадь и периметр.`,a:`S = ${a*a} см²; P = ${4*a} см`};}
+   if(/прямоуг/.test(t)){const a=rnd(3,18),b=rnd(3,18);return{q:`Стороны прямоугольника равны ${a} см и ${b} см. Найдите площадь и периметр.`,a:`S = ${a*b} см²; P = ${2*(a+b)} см`};}
+   if(/треуг/.test(t)){
+    if(/периметр/.test(t)){const a=rnd(3,9),b=rnd(3,9),c=rnd(Math.abs(a-b)+1,a+b-1),sides=[a,b,c];return{q:`Стороны треугольника равны ${sides.join(", ")} см. Найдите периметр.`,a:`P = ${sides.join(" + ")} = ${sides.reduce((sum,x)=>sum+x,0)} см`};}
+    if(/угол/.test(t)){const a=20+rnd(0,5)*5,b=30+rnd(0,5)*5;return{q:`Два угла треугольника равны ${a}° и ${b}°. Найдите третий угол.`,a:`180° − ${a}° − ${b}° = ${180-a-b}°`};}
+    const a=rnd(4,16),h=rnd(3,14);return{q:`Основание треугольника ${a} см, высота к нему ${h} см. Найдите площадь.`,a:`S = ${fmt(a*h/2)} см²`};
+   }
    return geometry(level);
   }
   if(actual==="percent")return percent();
   if(actual==="functions")return func();
   if(actual==="word")return word();
   if(actual==="arithmetic")return arithmetic(level);
-  return pick([()=>linear(level),()=>fraction(),()=>geometry(level),()=>percent(),()=>func(),()=>word(),()=>arithmetic(level)])();
+  if(actual==="powers")return powers(t);
+  if(actual==="prime")return prime();
+  if(actual==="probability")return probability();
+  if(actual==="statistics")return statistics();
+  if(actual==="proportion")return proportion();
+  if(actual==="trigonometry")return trigonometry();
+  if(actual==="logarithms")return logarithms();
+  return pick([()=>linear(level),()=>fraction(),()=>geometry(level),()=>percent(),()=>func(),()=>word(),()=>arithmetic(level),()=>powers(t),()=>prime(),()=>proportion()])();
  };
  const rows=Array.from({length:safe},make);
- const names:Record<string,string>={arithmetic:"Примеры",equations:"Уравнения",fractions:"Дроби",geometry:"Геометрия",functions:"Функции",percent:"Проценты",word:"Текстовые задачи",mixed:"Смешанная работа"};
+ const names:Record<string,string>={arithmetic:"Примеры",equations:"Уравнения",fractions:"Дроби",geometry:"Геометрия",functions:"Функции",percent:"Проценты",word:"Текстовые задачи",powers:"Степени и корни",prime:"Простые множители",probability:"Вероятность",statistics:"Статистика",proportion:"Пропорции",trigonometry:"Тригонометрия",logarithms:"Логарифмы",mixed:"Смешанная работа"};
  const promptTitle=topic.trim();
  const title=promptTitle?`${names[actual]} · по запросу`:(names[actual]||"Задания");
  return{title,items:rows.map(x=>x.q),answers:withAnswers?rows.map(x=>x.a):[],detected:names[actual]};

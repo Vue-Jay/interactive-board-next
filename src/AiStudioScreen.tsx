@@ -26,7 +26,7 @@ export default function AiStudioScreen({ onBack }: { onBack: () => void }) {
   const [error, setError] = useState("");
   const [usage, setUsage] = useState(() => getAiUsage());
   const [transferNotice, setTransferNotice] = useState("");
-  const parsedRequest = parseCurriculumRequest(topic, subject, count);
+  const parsedRequest = parseCurriculumRequest(topic, subject, count, difficulty, tool);
 
   useEffect(() => {
     const sync = () => setHistory(listAiDrafts());
@@ -44,7 +44,12 @@ export default function AiStudioScreen({ onBack }: { onBack: () => void }) {
     setTransferNotice("");
     setBusy(true);
     try {
-      const next = await generateLocalAiDraft(tool, topic, difficulty, count, subject);
+      setTool(parsedRequest.tool);
+      setDifficulty(parsedRequest.level);
+      setCount(parsedRequest.count);
+      if (parsedRequest.subject) setSubject(parsedRequest.subject);
+      setTopic(parsedRequest.topic);
+      const next = await generateLocalAiDraft(parsedRequest.tool, topic, parsedRequest.level, parsedRequest.count, parsedRequest.subject);
       recordLocalAiGeneration();
       setUsage(getAiUsage());
       setDraft(next);
@@ -89,7 +94,7 @@ export default function AiStudioScreen({ onBack }: { onBack: () => void }) {
           </select>
         </label>
         <label><span>Тема или запрос</span><input value={topic} onChange={e => setTopic(e.target.value)} placeholder={aiTopicPlaceholder(subject)} />
-          {topic.trim() && <small className="ai-request-reading">Распознано: {parsedRequest.subject || "выберите предмет"}{parsedRequest.topic ? ` · ${parsedRequest.topic}` : ""} · {parsedRequest.count} заданий{parsedRequest.count !== count ? " · количество из запроса" : ""}</small>}
+          {topic.trim() && <small className="ai-request-reading">Распознано: {parsedRequest.subject || "выберите предмет"}{parsedRequest.topic ? ` · ${parsedRequest.topic}` : ""} · {parsedRequest.count} · {parsedRequest.tool === "quiz" ? "тест" : parsedRequest.tool === "flashcards" ? "карточки" : "задание"} · {parsedRequest.level === "easy" ? "базовый" : parsedRequest.level === "hard" ? "углублённый" : "средний"}{parsedRequest.grade ? ` · ${parsedRequest.grade} класс` : ""}</small>}
         </label>
         <div className="ai-options">
           <label><span>Уровень</span><select value={difficulty} onChange={e => setDifficulty(e.target.value as AiDifficulty)}>

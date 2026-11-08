@@ -15,9 +15,21 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
   const basic = level === "easy";
 
   if (subject === "Физика") {
-    if (/ом|сопротивлен|напряжен|ток/.test(t)) {
+    if (/ньютон|равнодейств|второй закон/.test(t)) {
+      const mass = 2 + (index % 8), acceleration = 2 + ((index * 2) % 7);
+      return { prompt: `На тело массой ${mass} кг действует постоянная сила, сообщающая ускорение ${acceleration} м/с². Найди равнодействующую силу.`, answer: `По второму закону Ньютона F = m · a = ${mass} · ${acceleration} = ${mass * acceleration} Н.` };
+    }
+    if (/закон ом|сопротивлен|напряжен|электрическ.*ток|сила тока/.test(t)) {
       const r = 2 + (index % 7), i = 2 + ((index * 3) % 6), u = r * i;
       return { prompt: `По закону Ома для участка цепи сопротивление равно ${r} Ом, сила тока — ${i} А. Найди напряжение и запиши формулу.`, answer: `U = I · R = ${i} · ${r} = ${u} В.` };
+    }
+    if (/давлен/.test(t)) {
+      const area = 2 + (index % 7), pressure = 100 + (index % 8) * 50, force = area * pressure;
+      return { prompt: `Сила ${force} Н равномерно распределена по площади ${area} м². Найди давление на поверхность.`, answer: `p = F / S = ${force} / ${area} = ${pressure} Па.` };
+    }
+    if (/мощност|механическ.*работ|работа силы/.test(t)) {
+      const force = 10 + (index % 8) * 5, distance = 2 + (index % 6), time = 2 + (index % 5);
+      return { prompt: `Сила ${force} Н переместила тело на ${distance} м за ${time} с по направлению движения. Найди работу и среднюю мощность.`, answer: `A = F · s = ${force * distance} Дж; N = A / t = ${force * distance} / ${time} = ${(force * distance / time).toLocaleString("ru-RU")} Вт.` };
     }
     if (/скорост|путь|движен|временн/.test(t)) {
       const v = 3 + (index % 9), time = 2 + (index % 5);
@@ -48,6 +60,16 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
       ];
       return choose(tasks, index);
     }
+    if (/периодическ|химическ.*элемент|порядков.*номер/.test(t)) {
+      const elements = [["углерода", 6, "C"], ["кислорода", 8, "O"], ["натрия", 11, "Na"], ["магния", 12, "Mg"], ["хлора", 17, "Cl"], ["кальция", 20, "Ca"]] as const;
+      const [name, z, symbol] = choose([...elements], index);
+      return { prompt: `Используя периодическую таблицу, определи порядковый номер элемента ${name}. Сколько протонов в ядре его атома?`, answer: `${symbol}: порядковый номер ${z}; в ядре ${z} протонов.` };
+    }
+    if (/формул.*веществ|молекул|индекс.*формул/.test(t)) {
+      const compounds = [["H₂O", "два атома водорода и один атом кислорода"], ["CO₂", "один атом углерода и два атома кислорода"], ["NH₃", "один атом азота и три атома водорода"], ["CH₄", "один атом углерода и четыре атома водорода"]] as const;
+      const [formula, composition] = choose([...compounds], index);
+      return { prompt: `Прочитай формулу ${formula}: назови элементы и число атомов каждого элемента в одной молекуле.`, answer: `${formula}: ${composition}.` };
+    }
   }
 
   if (subject === "Биология") {
@@ -71,6 +93,18 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
       const [chain, key] = choose(chains, index);
       return { prompt: `Разбери цепь питания «${chain}»: определи производителя и объясни направление передачи вещества и энергии.`, answer: key };
     }
+    if (/кров|кровообращ|сердц/.test(t)) {
+      const tasks = [
+        { prompt: "Сравни артерии и вены по направлению движения крови относительно сердца. Укажи одно исключение, связанное с малым кругом кровообращения.", answer: "Артерии несут кровь от сердца, вены — к сердцу. В малом круге артерии несут венозную кровь, а вены — артериальную." },
+        { prompt: "Объясни путь крови от правого желудочка сердца к левому предсердию. Назови сосуды и место газообмена.", answer: "Правый желудочек → лёгочный ствол и лёгочные артерии → капилляры лёгких (газообмен) → лёгочные вены → левое предсердие." },
+      ];
+      return choose(tasks, index);
+    }
+    if (/пищевар/.test(t)) {
+      const stages = [["рот", "измельчение пищи и начало расщепления крахмала слюнной амилазой"], ["желудок", "перемешивание пищи и начало переваривания белков в кислой среде"], ["тонкая кишка", "основное завершение переваривания и всасывание питательных веществ"]] as const;
+      const [organ, role] = choose([...stages], index);
+      return { prompt: `Назови отдел пищеварительной системы по описанию: ${role}.`, answer: `${organ[0].toLocaleUpperCase("ru-RU")}${organ.slice(1)}: ${role}.` };
+    }
   }
 
   if (subject === "География") {
@@ -86,6 +120,15 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
       const pairs = [["Африка", "экватор пересекает материк почти посередине"], ["Южная Америка", "в западной части материка протянулись Анды"], ["Евразия", "это самый большой материк Земли"]];
       const [name, clue] = choose(pairs, index);
       return { prompt: `Определи материк по признаку: ${clue}. Назови ещё один объект, который можно показать на его карте.`, answer: `${name}. Второй объект выбери по карте и подпиши его местоположение.` };
+    }
+    if (/климат|природн зон|теплов.*пояс/.test(t)) {
+      const zones = [["экваториальный", "высокие температуры и обильные осадки в течение всего года"], ["тропический", "высокие температуры; во многих районах осадков мало"], ["умеренный", "выраженная сезонная смена температур и времён года"], ["полярный", "низкие температуры большую часть года"]] as const;
+      const [zone, feature] = choose([...zones], index);
+      return { prompt: `Назови климатический пояс по признаку: ${feature}. Объясни, как географическая широта влияет на поступление солнечной энергии.`, answer: `${zone[0].toLocaleUpperCase("ru-RU")}${zone.slice(1)} пояс. Чем выше широта, тем ниже угол падения солнечных лучей и в среднем меньше поступающая энергия.` };
+    }
+    if (/координат|географическ.*широт|географическ.*долгот/.test(t)) {
+      const latitude = 10 + (index % 7) * 10, longitude = 20 + (index % 8) * 10;
+      return { prompt: `Точка имеет координаты ${latitude}° с. ш. и ${longitude}° в. д. По глобусу или карте определи, в каком полушарии она находится относительно экватора и нулевого меридиана.`, answer: `Точка находится в Северном и Восточном полушариях.` };
     }
   }
 
@@ -107,11 +150,31 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
       const [word, reason] = choose(words, index);
       return { prompt: `Объясни написание слова «${word}»: выдели приставку и назови правило.`, answer: reason };
     }
+    if (/падеж/.test(t)) {
+      const examples = [["подошёл к школе", "дательный", "к чему? — к школе"], ["любуюсь морем", "творительный", "любуюсь чем? — морем"], ["нет тетради", "родительный", "нет чего? — тетради"], ["вижу площадь", "винительный", "вижу что? — площадь"]] as const;
+      const [phrase, caseName, question] = choose([...examples], index);
+      return { prompt: `Определи падеж существительного в сочетании «${phrase}». Подбери вопрос от главного слова.`, answer: `${caseName} падеж: ${question}.` };
+    }
+    if (/однородн|запят|обращен/.test(t)) {
+      const variants = [
+        { prompt: "Расставь знаки препинания: «На столе лежали тетради книги и карандаши». Объясни постановку запятых.", answer: "На столе лежали тетради, книги и карандаши. Запятая ставится между однородными членами без одиночного союза и." },
+        { prompt: "Расставь знаки препинания: «Ребята откройте учебники». Назови обращение.", answer: "Ребята, откройте учебники. «Ребята» — обращение, оно отделяется запятой." },
+      ];
+      return choose(variants, index);
+    }
   }
 
   if (subject === "Информатика" && /алгоритм|услови|ветвлен|если/.test(t)) {
     const x = 2 + (index % 9), limit = 5 + (index % 8), result = x < limit ? x * 2 : x + 3;
     return { prompt: `Выполни алгоритм при x = ${x}: если x < ${limit}, то x := 2·x, иначе x := x+3. Какое значение получится?`, answer: `${x} ${x < limit ? "меньше" : "не меньше"} ${limit}, поэтому выполняется ветвь «${x < limit ? `2·${x}` : `${x}+3`}». Результат: ${result}.` };
+  }
+  if (subject === "Информатика" && /двоичн|перевод.*систем счислен|систем.*счислен/.test(t)) {
+    const value = 5 + (index % 27), binary = value.toString(2);
+    return { prompt: `Переведи число ${value} из десятичной системы счисления в двоичную. Покажи разложение по степеням двойки.`, answer: `${value}₁₀ = ${binary}₂. Проверка: ${binary.split("").reverse().map((bit, power) => bit === "1" ? `2^${power}` : "").filter(Boolean).join(" + ")} = ${value}.` };
+  }
+  if (subject === "Информатика" && /цикл|повторен/.test(t)) {
+    const end = 3 + (index % 7), sum = end * (end + 1) / 2;
+    return { prompt: `Цикл прибавляет к переменной s числа от 1 до ${end} включительно, начиная с s = 0. Какое значение будет в s после завершения?`, answer: `s = 1 + 2 + … + ${end} = ${sum}.` };
   }
 
   if (subject === "Иностранный язык" && /past simple|прошедш|past/.test(t)) {
@@ -125,10 +188,23 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
     const [verb, past, phrase, translation] = choose(examples, index);
     return { prompt: `Поставь глагол в Past Simple: “Yesterday I ___ (${verb}) ${phrase}.” Затем переведи предложение.`, answer: `“Yesterday I ${past} ${phrase}.” — «Вчера я ${translation}».` };
   }
+  if (subject === "Иностранный язык" && /present simple|настоящее простое|do и does/.test(t)) {
+    const examples = [["she", "read", "reads"], ["he", "watch", "watches"], ["they", "play", "play"], ["Anna", "study", "studies"], ["we", "go", "go"]] as const;
+    const [person, verb, form] = choose([...examples], index);
+    return { prompt: `Поставь глагол в Present Simple: “${person} ___ (${verb}) English every day.” Объясни выбор формы.`, answer: `“${person} ${form} English every day.” Для he/she/it к глаголу обычно добавляется -s/-es; в остальных случаях используется базовая форма.` };
+  }
 
   if (subject === "Обществознание" && /бюджет|процент|скидк/.test(t)) {
     const income = 10_000 + (index % 5) * 2_000, percent = 10 + (index % 4) * 5;
     return { prompt: `Семья откладывает ${percent}% месячного дохода ${income.toLocaleString("ru-RU")} ₽. Сколько рублей будет отложено? Объясни расчёт.`, answer: `${income.toLocaleString("ru-RU")} · ${percent}/100 = ${(income * percent / 100).toLocaleString("ru-RU")} ₽.` };
+  }
+  if (subject === "Обществознание" && /спрос|предложен|рынок/.test(t)) {
+    const cases = [
+      { prompt: "Покупатели стали чаще выбирать один товар, а предложение не изменилось. Как при прочих равных может измениться равновесная цена? Объясни цепочку.", answer: "Спрос растёт при прежнем предложении; равновесная цена обычно повышается, пока рынок приспосабливается." },
+      { prompt: "Производители сократили предложение товара, а спрос не изменился. Как при прочих равных может измениться равновесная цена?", answer: "Предложение уменьшается при прежнем спросе; равновесная цена обычно повышается." },
+      { prompt: "Назови пример неценового фактора, который может увеличить спрос, и объясни, как он действует.", answer: "Например, рост доходов может увеличить спрос на нормальный товар; конкретный эффект зависит от вида товара и ситуации." },
+    ];
+    return choose(cases, index);
   }
 
   // Source-based exercises avoid making up facts about a specific book or event.
