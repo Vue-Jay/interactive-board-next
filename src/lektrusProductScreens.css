@@ -943,3 +943,18 @@ html body select:not([multiple]) option{background:var(--lt-surface,#fff);color:
  .lectris-workspace-stage .lektrus-feedback-fields label.wide{grid-column:auto!important}
  .lectris-workspace-stage .lektrus-feedback-fields textarea{min-height:145px!important}
 }
+
+/* Tool sheet actions share one quiet outlined button style. */
+body .workspace section.mobile-tools-sheet .mobile-tools-sheet-head-actions{display:flex!important;align-items:center!important;gap:6px!important}
+body .workspace section.mobile-tools-sheet .mobile-tools-sheet-head-actions>button,
+body .workspace section.mobile-tools-sheet .mobile-tools-sheet-head-actions>.mobile-command-search{
+ display:grid!important;place-items:center!important;box-sizing:border-box!important;width:36px!important;min-width:36px!important;height:36px!important;min-height:36px!important;
+ padding:0!important;border:1px solid var(--lt-line-strong,#d0dbea)!important;border-radius:10px!important;
+ background:var(--lt-surface,#fff)!important;color:var(--lt-secondary,#52657d)!important;box-shadow:none!important;
+ font:inherit!important;font-size:15px!important;font-weight:650!important;line-height:1!important;cursor:pointer!important;
+}
+body .workspace section.mobile-tools-sheet .mobile-tools-sheet-head-actions>button:hover,
+body .workspace section.mobile-tools-sheet .mobile-tools-sheet-head-actions>.mobile-command-search:hover{
+ background:var(--lt-hover,#edf3fb)!important;border-color:var(--lt-primary,#355fd0)!important;color:var(--lt-primary,#355fd0)!important;
+}
+body .workspace section.mobile-tools-sheet .mobile-tools-sheet-head-actions>button:focus-visible{outline:2px solid var(--lt-focus,#7ca5ee)!important;outline-offset:2px}

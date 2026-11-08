@@ -7,14 +7,16 @@ type Props={
   anchor:HTMLElement|null;
   subject:string;
   canChangeSubject:boolean;
+  canCreateBoard:boolean;
   subjects:string[];
   tools:SubjectToolOption[];
   onSubjectChange:(subject:string)=>void;
+  onCreateBoard:()=>void;
   onChoose:(id:string)=>void;
   onClose:()=>void;
 };
 
-/** Subject editors only. The universal worksheet lives in the main board toolbar. */
+/** Subject editors and the subject worksheet live together in this panel. */
 const subjectToolSections:Record<string,{title:string;ids:string[]}[]>={
   "математика":[{title:"Формулы и вычисления",ids:["math-formula","math-fractions"]},
     {title:"Построения",ids:["math-geometry","math-coordinate"]}],
@@ -52,7 +54,7 @@ function sectionsForSubject(subject:string,tools:SubjectToolOption[]){
   return sections;
 }
 
-export default function LektrusSubjectToolsPanel({anchor,subject,canChangeSubject,subjects,tools,onSubjectChange,onChoose,onClose}:Props){
+export default function LektrusSubjectToolsPanel({anchor,subject,canChangeSubject,canCreateBoard,subjects,tools,onSubjectChange,onCreateBoard,onChoose,onClose}:Props){
   const panelRef=useRef<HTMLElement>(null);
   const [position,setPosition]=useState<CSSProperties>({left:70,top:86});
   const sections=sectionsForSubject(subject,tools);
@@ -121,6 +123,7 @@ export default function LektrusSubjectToolsPanel({anchor,subject,canChangeSubjec
             {subject&&!subjects.includes(subject)&&<option value={subject}>{subject}</option>}
           </select>
           {!canChangeSubject&&<small>Предмет закреплён создателем доски</small>}
+          {canCreateBoard&&<button type="button" className="lektrus-subject-worksheet-button" onClick={onCreateBoard}>+ Предметная доска</button>}
         </label>
         {sections.length>0?
           <div className="lektrus-subject-tools-groups" role="group" aria-label={subject+" инструменты"}>
