@@ -728,7 +728,7 @@ html body select:not([multiple]) option{background:var(--lt-surface,#fff);color:
 .lectris-workspace-stage .profile-redesign-account>.profile-logout-button{border:1px solid var(--lt-line)!important;border-radius:10px!important;background:var(--lt-subtle)!important;color:var(--lt-secondary)!important;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
 .lectris-workspace-stage .profile-redesign-account>.profile-logout-button:hover{border-color:var(--lt-line-strong)!important;background:var(--lt-selected)!important;color:var(--lt-primary)!important}
 
-.lectris-workspace-stage .settings-compact-content{width:min(100% - 40px,1040px)!important;max-width:none!important;margin:16px auto 30px!important;padding:0!important}
+.lectris-workspace-stage .settings-compact-content{width:min(100% - 48px,1360px)!important;max-width:none!important;margin:16px auto 30px!important;padding:0!important}
 .lectris-workspace-stage .settings-compact-grid{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:9px!important}
 .lectris-workspace-stage .settings-row-card{min-width:0;min-height:68px;display:flex!important;align-items:center!important;justify-content:space-between;gap:16px!important;padding:14px 16px!important;border:1px solid var(--lt-line)!important;border-radius:14px!important;background:var(--lt-surface)!important;box-shadow:0 5px 18px #1c35500a}
 .lectris-workspace-stage .settings-row-card>div:first-child{display:grid!important;align-content:center;gap:4px!important;min-width:0;flex:1}
@@ -751,6 +751,13 @@ html body select:not([multiple]) option{background:var(--lt-surface,#fff);color:
 .lectris-workspace-stage .lektrus-palette-check{margin-left:auto;color:var(--lt-primary);font-weight:900}
 .lectris-workspace-stage .settings-row-card.lektrus-install-settings{align-items:flex-start!important}
 .lectris-workspace-stage .settings-row-card.lektrus-install-settings>div:first-child{align-content:start}
+.lectris-workspace-stage .settings-row-card.settings-developer-card{display:grid!important;grid-template-columns:minmax(0,1fr)!important;align-items:stretch!important;gap:12px!important}
+.lectris-workspace-stage .settings-developer-options{display:grid;grid-template-columns:minmax(0,1fr);gap:7px;min-width:0}
+.lectris-workspace-stage .settings-developer-options>label{display:flex;align-items:center;justify-content:space-between;gap:16px;min-width:0;min-height:53px;padding:9px 12px;border:1px solid var(--lt-line);border-radius:10px;background:var(--lt-subtle);cursor:pointer}
+.lectris-workspace-stage .settings-developer-options>label>span{display:grid;gap:3px;min-width:0}
+.lectris-workspace-stage .settings-developer-options>label b{font-size:11px;line-height:1.35;color:var(--lt-text)}
+.lectris-workspace-stage .settings-developer-options>label small{font-size:10px;line-height:1.4;color:var(--lt-muted)!important}
+.lectris-workspace-stage .settings-developer-options input[type="checkbox"]{flex:0 0 18px;width:18px;height:18px;margin:0;accent-color:var(--lt-primary)}
 
 .lectris-workspace-stage :is(.students-content,.assignments-content,.progress-content,.schedule-content,.materials-content,.templates-content,.notifications-content) .boards-empty{min-height:150px!important;display:grid!important;align-content:center!important;justify-items:center!important;gap:8px!important;padding:24px!important;text-align:center;line-height:1.5}
 .lectris-workspace-stage :is(.students-content,.assignments-content,.progress-content,.schedule-content,.materials-content,.templates-content,.notifications-content) .boards-empty>:is(strong,span){display:block!important;max-width:62ch;line-height:1.5}
@@ -798,4 +805,141 @@ html body select:not([multiple]) option{background:var(--lt-surface,#fff);color:
  .lectris-workspace-stage .lectris-palette-options{grid-template-columns:repeat(2,minmax(0,1fr))!important}
  .lectris-workspace-stage .settings-account-footer{align-items:stretch!important;flex-direction:column}
  .lectris-workspace-stage .settings-account-footer button{width:100%}
+}
+
+/* Full admin layouts: this entry point does not load the legacy App.css grids. */
+.lectris-workspace-stage .admin-users-shell .students-content{width:min(100% - 48px,1560px)!important;max-width:none!important;margin:0 auto!important;padding:18px 0 30px!important}
+.lectris-workspace-stage .admin-role-preview{display:grid!important;grid-template-columns:minmax(190px,1fr) auto auto;align-items:center;gap:14px;margin:0 0 12px;padding:12px 14px;border:1px solid var(--lt-line)!important;border-radius:13px!important}
+.lectris-workspace-stage .admin-role-preview-copy{display:grid;gap:3px;min-width:0}
+.lectris-workspace-stage .admin-role-preview-copy strong{font-size:12px}
+.lectris-workspace-stage .admin-role-preview-copy small{font-size:10px;line-height:1.4}
+.lectris-workspace-stage .admin-role-preview-options{display:flex;align-items:center;gap:4px;padding:4px;border:1px solid var(--lt-line);border-radius:10px}
+.lectris-workspace-stage .admin-role-preview-options button{min-height:32px;padding:6px 10px;border:1px solid transparent;border-radius:7px;background:transparent;font:inherit;font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer}
+.lectris-workspace-stage .admin-role-preview-registration{min-height:34px;padding:7px 11px;border:1px solid var(--lt-line);border-radius:9px;background:var(--lt-raised);font:inherit;font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer}
+.lectris-workspace-stage .admin-top-controls{display:flex!important;align-items:center!important;gap:10px!important;margin:0 0 16px!important;flex-wrap:wrap}
+.lectris-workspace-stage .admin-top-controls .admin-tabs{display:flex;align-items:center;gap:4px;margin:0;padding:4px;border:1px solid var(--lt-line);border-radius:12px;background:var(--lt-surface);width:max-content;max-width:100%;overflow:auto}
+.lectris-workspace-stage .admin-tabs button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:36px;padding:7px 11px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--lt-secondary);font:inherit;font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer}
+.lectris-workspace-stage .admin-tabs button.active{background:var(--lt-selected)!important;border-color:var(--lt-line)!important;color:var(--lt-primary)!important}
+.lectris-workspace-stage .admin-tabs button span{display:inline-grid;min-width:18px;height:18px;place-items:center;padding:0 4px;border-radius:999px;background:var(--lt-subtle);color:var(--lt-muted);font-size:10px}
+.lectris-workspace-stage .admin-top-controls>.admin-invisible-toggle{min-width:205px;min-height:48px;display:flex;align-items:center;gap:9px;margin:0;padding:7px 10px;border:1px solid var(--lt-line);border-radius:11px;background:var(--lt-surface);cursor:pointer}
+.lectris-workspace-stage .admin-top-controls>.admin-invisible-toggle>span:last-child{display:grid;gap:2px;min-width:0}
+.lectris-workspace-stage .admin-top-controls>.admin-invisible-toggle strong{font-size:11px}
+.lectris-workspace-stage .admin-top-controls>.admin-invisible-toggle small{font-size:9px;line-height:1.3}
+.lectris-workspace-stage .admin-users-toolbar{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:0 0 10px}
+.lectris-workspace-stage .admin-users-toolbar>div{display:grid;gap:4px;min-width:0}
+.lectris-workspace-stage .admin-users-toolbar h2,.lectris-workspace-stage .admin-approval-head h2{margin:0;font-size:18px;line-height:1.25}
+.lectris-workspace-stage .admin-users-toolbar span{max-width:76ch;font-size:11px;line-height:1.45}
+.lectris-workspace-stage .admin-users-toolbar input{width:min(320px,35vw);min-width:220px;min-height:38px;padding:8px 11px;border:1px solid var(--lt-line);border-radius:10px;background:var(--lt-raised);color:var(--lt-text);font:inherit;font-size:12px}
+.lectris-workspace-stage .admin-users-list,.lectris-workspace-stage .admin-board-list,.lectris-workspace-stage .admin-request-list,.lectris-workspace-stage .admin-feedback-list{display:grid;gap:9px;min-width:0}
+.lectris-workspace-stage .admin-user-card{display:grid!important;grid-template-columns:minmax(220px,1fr) minmax(145px,.58fr) minmax(390px,1.7fr)!important;align-items:center;gap:12px!important;min-width:0;padding:12px!important;border:1px solid var(--lt-line)!important;border-radius:14px!important;background:var(--lt-surface)!important;box-shadow:0 5px 18px #1c35500a}
+.lectris-workspace-stage .admin-user-main{display:flex;align-items:center;gap:9px;min-width:0}
+.lectris-workspace-stage .admin-user-avatar{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border-radius:11px;background:var(--lt-selected);color:var(--lt-primary)}
+.lectris-workspace-stage .admin-user-identity{display:grid;gap:3px;min-width:0;flex:1}
+.lectris-workspace-stage .admin-user-identity :is(strong,span,small){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lectris-workspace-stage .admin-user-identity strong{font-size:12px}
+.lectris-workspace-stage .admin-user-identity :is(span,small){font-size:10px}
+.lectris-workspace-stage .admin-user-main>.boards-secondary{flex:0 0 auto;min-height:34px;padding:6px 9px;font-size:10px}
+.lectris-workspace-stage .admin-user-current{display:grid;align-content:center;gap:4px;min-width:0;padding:8px 11px;border:1px solid var(--lt-line);border-radius:10px;background:var(--lt-subtle)}
+.lectris-workspace-stage .admin-user-current>span,.lectris-workspace-stage .admin-user-current small{font-size:9px;line-height:1.3}
+.lectris-workspace-stage .admin-user-current .admin-plan{width:max-content;max-width:100%;padding:3px 8px;border-radius:7px;font-size:10px}
+.lectris-workspace-stage .admin-user-grant{display:grid!important;grid-template-columns:minmax(110px,1fr) minmax(130px,1fr) auto auto auto auto;align-items:end;gap:6px!important;min-width:0;padding:0!important;border:0!important}
+.lectris-workspace-stage .admin-user-grant>label{display:grid;gap:4px;min-width:0;font-size:9px;font-weight:700}
+.lectris-workspace-stage .admin-user-grant :is(select,input[type="date"]){width:100%;min-width:0;min-height:34px;padding:6px 8px!important;font-size:10px!important}
+.lectris-workspace-stage .admin-duration-buttons{display:flex;align-items:center;gap:4px}
+.lectris-workspace-stage .admin-duration-buttons button{min-height:34px;padding:5px 7px;border:1px solid var(--lt-line);border-radius:8px;background:var(--lt-subtle);color:var(--lt-secondary);font:inherit;font-size:9px;white-space:nowrap;cursor:pointer}
+.lectris-workspace-stage .admin-duration-buttons button:disabled{opacity:.5;cursor:default}
+.lectris-workspace-stage .admin-user-grant>.admin-grant-button{min-height:36px;padding:6px 11px;border-radius:9px;font-size:10px;white-space:nowrap}
+.lectris-workspace-stage .admin-board-card{display:flex;align-items:center;justify-content:space-between;gap:14px;min-width:0;padding:12px 14px;border:1px solid var(--lt-line);border-radius:13px;background:var(--lt-surface)}
+.lectris-workspace-stage .admin-board-main{display:flex;align-items:center;gap:11px;min-width:0}
+.lectris-workspace-stage .admin-board-icon{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;border-radius:11px;background:var(--lt-selected);color:var(--lt-primary)}
+.lectris-workspace-stage .admin-board-main>div:last-child{display:grid;gap:3px;min-width:0}
+.lectris-workspace-stage .admin-board-main :is(strong,span,small){overflow-wrap:anywhere}
+.lectris-workspace-stage .admin-board-main strong{font-size:12px}
+.lectris-workspace-stage .admin-board-main :is(span,small){font-size:10px}
+.lectris-workspace-stage .admin-approval-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 9px}
+.lectris-workspace-stage .admin-approval-head>span{font-size:10px}
+.lectris-workspace-stage .admin-request-list>article{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;min-width:0;padding:14px;border:1px solid var(--lt-line);border-radius:14px;background:var(--lt-surface)}
+.lectris-workspace-stage .admin-request-list>article>div:first-child{display:grid;gap:4px;min-width:0}
+.lectris-workspace-stage .admin-request-list>article>div:first-child :is(strong,span,small){overflow-wrap:anywhere}
+.lectris-workspace-stage .admin-request-list>article>div:first-child strong{font-size:12px}
+.lectris-workspace-stage .admin-request-list>article>div:first-child :is(span,small){font-size:10px}
+.lectris-workspace-stage .admin-teacher-request-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:7px}
+.lectris-workspace-stage .admin-teacher-request-actions button,.lectris-workspace-stage .admin-request-list>article>button{min-height:36px;padding:7px 11px;border:1px solid var(--lt-line);border-radius:9px;background:var(--lt-subtle);color:var(--lt-secondary);font:inherit;font-size:10px;font-weight:700;cursor:pointer}
+.lectris-workspace-stage .admin-teacher-request-actions .students-primary{background:var(--lt-primary);border-color:var(--lt-primary);color:var(--lt-on-primary)}
+.lectris-workspace-stage .admin-teacher-application{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 14px;margin:8px 0 0;padding:12px;border:1px solid var(--lt-line);border-radius:11px;background:var(--lt-subtle)}
+.lectris-workspace-stage .admin-teacher-application>div{min-width:0}
+.lectris-workspace-stage .admin-teacher-application dt{margin:0 0 3px;color:var(--lt-muted);font-size:9px;font-weight:700}
+.lectris-workspace-stage .admin-teacher-application dd{margin:0;color:var(--lt-text);font-size:11px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.lectris-workspace-stage .admin-teacher-application-full{grid-column:1/-1}
+.lectris-workspace-stage .admin-preview-request-badge{display:inline-flex;margin-left:8px;padding:3px 7px;border-radius:999px;background:var(--lt-selected);color:var(--lt-primary);font-size:9px;font-style:normal}
+.lectris-workspace-stage .admin-feedback-card{display:grid;gap:10px;min-width:0;padding:15px;border:1px solid var(--lt-line);border-radius:14px;background:var(--lt-surface)}
+.lectris-workspace-stage .admin-feedback-card>header,.lectris-workspace-stage .admin-feedback-card>footer{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.lectris-workspace-stage .admin-feedback-card>header>div{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lectris-workspace-stage .admin-feedback-card>header strong{font-size:12px}
+.lectris-workspace-stage .admin-feedback-card time,.lectris-workspace-stage .admin-feedback-card footer>span{color:var(--lt-muted);font-size:10px}
+.lectris-workspace-stage .admin-feedback-card>p{margin:0;color:var(--lt-secondary);font-size:12px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.lectris-workspace-stage .admin-feedback-card>footer>div{display:flex;flex-wrap:wrap;gap:6px}
+.lectris-workspace-stage .admin-feedback-card>footer button{min-height:34px;padding:6px 10px;border:1px solid var(--lt-line);border-radius:9px;background:var(--lt-subtle);color:var(--lt-secondary);font:inherit;font-size:10px;font-weight:700;cursor:pointer}
+.lectris-workspace-stage .admin-feedback-card>footer button.students-primary{background:var(--lt-primary);border-color:var(--lt-primary);color:var(--lt-on-primary)}
+.lectris-workspace-stage .admin-feedback-status{padding:4px 8px;border-radius:999px;background:var(--lt-selected);color:var(--lt-primary);font-size:9px;font-weight:700}
+@media(max-width:1200px){
+ .lectris-workspace-stage .admin-user-card{grid-template-columns:minmax(0,1fr) minmax(130px,.55fr)!important}
+ .lectris-workspace-stage .admin-user-grant{grid-column:1/-1;grid-template-columns:minmax(120px,1fr) minmax(130px,1fr) auto auto auto auto}
+ .lectris-workspace-stage .admin-role-preview{grid-template-columns:minmax(0,1fr) auto}
+ .lectris-workspace-stage .admin-role-preview-registration{grid-column:2;justify-self:end}
+}
+@media(max-width:760px){
+ .lectris-workspace-stage .admin-users-shell .students-content{width:calc(100% - 22px)!important;padding:12px 0 24px!important}
+ .lectris-workspace-stage .admin-role-preview{grid-template-columns:minmax(0,1fr);gap:9px}
+ .lectris-workspace-stage .admin-role-preview-registration{grid-column:auto;justify-self:stretch}
+ .lectris-workspace-stage .admin-role-preview-options{width:100%;overflow:auto}
+ .lectris-workspace-stage .admin-role-preview-options button{flex:1 0 auto}
+ .lectris-workspace-stage .admin-top-controls{align-items:stretch!important;display:grid!important;grid-template-columns:minmax(0,1fr)!important}
+ .lectris-workspace-stage .admin-top-controls .admin-tabs{width:100%;box-sizing:border-box}
+ .lectris-workspace-stage .admin-top-controls .admin-tabs button{flex:0 0 auto}
+ .lectris-workspace-stage .admin-top-controls>.admin-invisible-toggle{width:100%;box-sizing:border-box}
+ .lectris-workspace-stage .admin-users-toolbar{align-items:stretch;flex-direction:column}
+ .lectris-workspace-stage .admin-users-toolbar input{width:100%;min-width:0;box-sizing:border-box}
+ .lectris-workspace-stage .admin-user-card{grid-template-columns:minmax(0,1fr)!important;gap:9px!important}
+ .lectris-workspace-stage .admin-user-grant{grid-column:auto;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .lectris-workspace-stage .admin-user-current{padding-left:12px}
+ .lectris-workspace-stage .admin-duration-buttons{grid-column:1/-1}
+ .lectris-workspace-stage .admin-grant-button{grid-column:1/-1;width:100%}
+ .lectris-workspace-stage .admin-request-list>article{grid-template-columns:minmax(0,1fr)}
+ .lectris-workspace-stage .admin-teacher-request-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .lectris-workspace-stage .admin-teacher-request-actions button:only-child{grid-column:1/-1}
+ .lectris-workspace-stage .admin-teacher-application{grid-template-columns:minmax(0,1fr)}
+ .lectris-workspace-stage .admin-teacher-application-full{grid-column:auto}
+ .lectris-workspace-stage .admin-board-card{align-items:flex-start}
+ .lectris-workspace-stage .admin-feedback-card>footer{align-items:flex-start;flex-direction:column}
+ .lectris-workspace-stage .admin-feedback-card>footer>div{width:100%}
+ .lectris-workspace-stage .admin-feedback-card>footer button{flex:1}
+}
+
+/* Feedback should use the workspace width and give the message form room. */
+.lectris-workspace-stage .lektrus-feedback-screen{width:min(calc(100% - 64px),1480px)!important;margin:0 auto!important;padding:30px 0 40px!important}
+.lectris-workspace-stage .lektrus-feedback-screen-head{margin:0 0 18px!important}
+.lectris-workspace-stage .lektrus-feedback-screen-head>span{font-size:10px!important}
+.lectris-workspace-stage .lektrus-feedback-screen-head h1{font-size:clamp(30px,3vw,42px)!important}
+.lectris-workspace-stage .lektrus-feedback-screen-head p{font-size:14px!important}
+.lectris-workspace-stage .lektrus-feedback-screen-grid{grid-template-columns:minmax(280px,.72fr) minmax(0,1.55fr)!important;align-items:stretch;gap:18px!important}
+.lectris-workspace-stage .lektrus-feedback-contact-card,.lectris-workspace-stage .lektrus-feedback-app-card{padding:clamp(22px,2.2vw,34px)!important;border-radius:18px!important}
+.lectris-workspace-stage .lektrus-feedback-contact-card h2{font-size:clamp(22px,2vw,29px)!important}
+.lectris-workspace-stage .lektrus-feedback-contact-card p{font-size:14px!important;line-height:1.7}
+.lectris-workspace-stage .lektrus-feedback-privacy{margin-top:30px!important;padding:13px!important;font-size:12px!important}
+.lectris-workspace-stage .lektrus-feedback-form{gap:18px!important}
+.lectris-workspace-stage .lektrus-feedback-form-heading h2{font-size:23px!important}
+.lectris-workspace-stage .lektrus-feedback-form-heading p{font-size:12px!important}
+.lectris-workspace-stage .lektrus-feedback-fields{gap:14px!important}
+.lectris-workspace-stage .lektrus-feedback-fields label{gap:6px!important;font-size:11px!important}
+.lectris-workspace-stage .lektrus-feedback-fields :is(input,select){min-height:46px!important;font-size:14px!important}
+.lectris-workspace-stage .lektrus-feedback-fields textarea{min-height:180px!important;font-size:14px!important}
+.lectris-workspace-stage .lektrus-feedback-submit-row button{min-height:46px!important;padding-inline:18px!important;font-size:13px!important}
+@media(max-width:800px){
+ .lectris-workspace-stage .lektrus-feedback-screen{width:calc(100% - 28px)!important;padding:18px 0 28px!important}
+ .lectris-workspace-stage .lektrus-feedback-screen-grid{grid-template-columns:minmax(0,1fr)!important;gap:12px!important}
+ .lectris-workspace-stage .lektrus-feedback-contact-card,.lectris-workspace-stage .lektrus-feedback-app-card{padding:18px!important}
+ .lectris-workspace-stage .lektrus-feedback-fields{grid-template-columns:minmax(0,1fr)!important}
+ .lectris-workspace-stage .lektrus-feedback-fields label.wide{grid-column:auto!important}
+ .lectris-workspace-stage .lektrus-feedback-fields textarea{min-height:145px!important}
 }
