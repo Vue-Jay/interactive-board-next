@@ -186,7 +186,7 @@ export default function App() {
       }catch(error){const message=error instanceof Error?error.message:"Не удалось подтвердить email";console.warn("Lektrus email confirmation could not be completed",error);if(alive)setAuthCallbackError(message);return false}
     };
     const initialize=async()=>{
-      if(route.kind==="site"){
+      if(route.kind==="site"||route.kind==="demo"){
         if(alive)setAuthReady(true);
         return;
       }
@@ -359,6 +359,7 @@ export default function App() {
     setSharePasswordRequired(false);
     if (route.kind === "site") { setBoardLoading(false); return; }
     if (route.kind === "tool") { setBoardLoading(false); return; }
+    if (route.kind === "demo") { setBoardLoading(false); return; }
     if (route.kind === "home") { setBoardLoading(false); return; }
     setBoardLoading(true);
     void (async () => {
@@ -433,6 +434,15 @@ export default function App() {
   if(route.kind==="site")return <Suspense fallback={<div className="lektrus-site-loading"/>}><LektrusPublicSite/></Suspense>;
 
   if(route.kind==="tool")return <Suspense fallback={<BoardLoadingScreen/>}><PublicToolScreen tool={route.tool} onBack={()=>navigate("/")}/></Suspense>;
+
+  if(route.kind==="demo"){
+    const demoId="00000000-0000-4000-8000-0000000000a0";
+    const demoBoard:BoardSummary={id:demoId,title:"Попробуйте доску",ownerId:"lektrus-public-demo",role:"owner",createdAt:"2026-01-01T00:00:00.000Z",updatedAt:"2026-01-01T00:00:00.000Z"};
+    const key=boardStorageKey(demoId);
+    if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify({version:1,title:demoBoard.title,view:{x:0,y:0,zoom:1},items:[]} satisfies DocumentData));
+    const returnToSite=()=>window.location.assign("/");
+    return <Suspense fallback={<BoardLoadingScreen/>}><BoardApp authUser={{id:"lektrus-public-demo",name:"Гость",email:"",createdAt:"2026-01-01T00:00:00.000Z",isGuest:true}} boardSummary={demoBoard} accountRole="student" demoMode onBackToBoards={returnToSite} onLogout={returnToSite} onBoardChanged={()=>{}}/></Suspense>;
+  }
 
   if (!authReady) {
     return <main className="auth-shell"><section className="auth-card"><div className="auth-brand-row"><div className="auth-logo">B</div><div><div className="auth-brand">Учебная доска</div><div className="auth-subtitle">Проверяем сессию…</div></div></div></section></main>;
