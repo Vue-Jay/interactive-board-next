@@ -4,7 +4,6 @@ export type PlanLimits={
   boards:number|null;
   collaboratorsPerBoard:number|null;
   storageMb:number|null;
-  aiCreditsPerMonth:number;
 };
 export type PlanDefinition={
   id:PlanId;
@@ -25,9 +24,9 @@ export type LocalSubscription={
 const KEY="onlinerepetitor.billing.local.v187";
 
 export const plans:PlanDefinition[]=[
-  {id:"free",name:"Free",description:"Для знакомства и личной работы",priceLabel:"Бесплатно",limits:{boards:3,collaboratorsPerBoard:2,storageMb:100,aiCreditsPerMonth:0},features:["До 3 досок","До 2 участников на доске","100 МБ материалов"]},
-  {id:"teacher",name:"Teacher",description:"Для регулярных индивидуальных занятий",priceLabel:"Тестовый тариф",limits:{boards:50,collaboratorsPerBoard:10,storageMb:2048,aiCreditsPerMonth:100},features:["До 50 досок","До 10 участников","2 ГБ материалов","100 AI-запросов в месяц"]},
-  {id:"pro",name:"Pro",description:"Для активной практики и групп",priceLabel:"Тестовый тариф",limits:{boards:null,collaboratorsPerBoard:null,storageMb:10240,aiCreditsPerMonth:500},features:["Без лимита досок","Без лимита участников","10 ГБ материалов","500 AI-запросов в месяц"]},
+  {id:"free",name:"Free",description:"Для знакомства и личной работы",priceLabel:"Бесплатно",limits:{boards:3,collaboratorsPerBoard:2,storageMb:100},features:["До 3 досок","До 2 участников на доске","100 МБ материалов","Локальный помощник по заданиям без оплаты за генерации"]},
+  {id:"teacher",name:"Teacher",description:"Для регулярных индивидуальных занятий",priceLabel:"Тестовый тариф",limits:{boards:50,collaboratorsPerBoard:10,storageMb:2048},features:["До 50 досок","До 10 участников","2 ГБ материалов","Локальный помощник по заданиям без оплаты за генерации"]},
+  {id:"pro",name:"Pro",description:"Для активной практики и групп",priceLabel:"Тестовый тариф",limits:{boards:null,collaboratorsPerBoard:null,storageMb:10240},features:["Без лимита досок","Без лимита участников","10 ГБ материалов","Локальный помощник по заданиям без оплаты за генерации"]},
 ];
 
 const defaultSubscription=():LocalSubscription=>({planId:"free",status:"active",trialEndsAt:null,periodEndsAt:null,updatedAt:new Date().toISOString()});

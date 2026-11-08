@@ -13,7 +13,7 @@ export default function BillingScreen({onBack}:{onBack:()=>void}){
     <section className="billing-grid">{plans.map(plan=><article className={`billing-card ${access.subscriptionPlan===plan.id?"current":""}`} key={plan.id}>
       <div><h2>{plan.name}</h2><p>{plan.description}</p></div><strong>{plan.priceLabel}</strong>
       <ul>{plan.features.map(x=><li key={x}>✓ {x}</li>)}</ul>
-      <div className="billing-limit-strip"><span>Доски: <b>{limitLabel(plan.limits.boards)}</b></span><span>Участники: <b>{limitLabel(plan.limits.collaboratorsPerBoard)}</b></span><span>AI: <b>{plan.limits.aiCreditsPerMonth}/мес.</b></span></div>
+      <div className="billing-limit-strip"><span>Доски: <b>{limitLabel(plan.limits.boards)}</b></span><span>Участники: <b>{limitLabel(plan.limits.collaboratorsPerBoard)}</b></span></div>
       <button disabled>{access.subscriptionPlan===plan.id?"Текущий тариф":"Недоступно"}</button>
     </article>)}</section>
   </main>

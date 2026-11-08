@@ -1,6 +1,6 @@
 export type AiTool="assignment"|"quiz"|"flashcards";
 export type AiDifficulty="easy"|"medium"|"hard";
-export type AiDraft={id:string;tool:AiTool;topic:string;subject?:string;title:string;body:string;createdAt:string};
+export type AiDraft={id:string;tool:AiTool;topic:string;subject?:string;title:string;body:string;answers?:string[];createdAt:string};
 import { generateCurriculumAi } from "./aiCurriculumGenerator";
 
 const KEY="onlinerepetitor.ai.local-history.v189";
@@ -16,22 +16,14 @@ export function getAiUsage():AiUsage{
   return x.month===currentMonth()?{month:x.month,used:Math.max(0,Number(x.used)||0)}:{month:currentMonth(),used:0};
  }catch{return {month:currentMonth(),used:0}}
 }
-export function remainingAiCredits(limit:number){
- return Math.max(0,limit-getAiUsage().used);
-}
-export function consumeAiCredit(limit:number){
+/** Records local generation for the user's history without enforcing paid API quotas. */
+export function recordLocalAiGeneration(){
  const usage=getAiUsage();
- if(usage.used>=limit)throw new Error("Лимит AI-запросов на этот месяц исчерпан.");
  const next={month:currentMonth(),used:usage.used+1};
  localStorage.setItem(USAGE_KEY,JSON.stringify(next));
  window.dispatchEvent(new Event("onlinerepetitor:ai-usage"));
  return next;
 }
-export function resetAiUsage(){
- localStorage.removeItem(USAGE_KEY);
- window.dispatchEvent(new Event("onlinerepetitor:ai-usage"));
-}
-
 export function listAiDrafts():AiDraft[]{
  try{return JSON.parse(localStorage.getItem(KEY)||"[]") as AiDraft[]}catch{return[]}
 }
@@ -47,7 +39,7 @@ export async function generateLocalAiDraft(tool:AiTool,topic:string,difficulty:A
  if(clean.length<2)throw new Error("Укажите тему.");
  await new Promise(r=>setTimeout(r,450));
  const generated=generateCurriculumAi(tool,clean,difficulty,count,subject);
- const draft={id:uid(),tool,topic:clean,subject:generated.subject,title:generated.title,body:generated.items.join(tool==="assignment"?"\n":"\n\n"),createdAt:new Date().toISOString()};
+ const draft={id:uid(),tool,topic:clean,subject:generated.subject,title:generated.title,body:generated.items.join(tool==="assignment"?"\n":"\n\n"),answers:generated.answers,createdAt:new Date().toISOString()};
  remember(draft);return draft;
 }
 

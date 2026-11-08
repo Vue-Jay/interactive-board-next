@@ -49,7 +49,8 @@ function linear(level:MathAiLevel){
 function arithmetic(level:MathAiLevel){
  const a=rnd(12,120),b=rnd(2,40);
  if(level==="primary"){const op=pick(["+","−","×"]);if(op==="+")return{q:`${a} + ${b} =`,a:String(a+b)};if(op==="−")return{q:`${a} − ${b} =`,a:String(a-b)};const x=rnd(2,12),y=rnd(2,12);return{q:`${x} × ${y} =`,a:String(x*y)}}
- const m=rnd(2,12),n=rnd(2,15),c=rnd(2,25);return{q:`${m} · (${n} + ${c}) − ${rnd(2,30)} =`,a:String(m*(n+c)-Number(RegExp.$1||0))};
+ const m=rnd(2,12),n=rnd(2,15),c=rnd(2,25),subtract=rnd(2,30);
+ return{q:`${m} · (${n} + ${c}) − ${subtract} =`,a:String(m*(n+c)-subtract)};
 }
 function fraction(){
  const b=pick([3,4,5,6,8,10,12]),a=rnd(1,b-1),d=pick([3,4,5,6,8,10,12]),c=rnd(1,d-1),op=pick(["+","−"]);
