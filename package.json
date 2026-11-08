@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "train:ai-subject-model": "python scripts/train-ai-subject-model.py",
     "lint": "oxlint",
     "preview": "vite preview",
     "test:github-agent-guard": "node scripts/test-github-agent-guard.mjs",

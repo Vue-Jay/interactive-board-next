@@ -1,0 +1,1 @@
+export const AI_SUBJECT_MODEL_VERSION = "5f4b82c1ff34b538";

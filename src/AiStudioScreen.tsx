@@ -11,6 +11,7 @@ import {
   type AiTool,
 } from "./aiLocalStore";
 import { aiTopicPlaceholder, parseCurriculumRequest } from "./aiCurriculumGenerator";
+import { loadCurriculumSubjectModel } from "./aiSubjectIntentClassifier";
 import { LEKTRUS_SCHOOL_SUBJECTS } from "./lektrusSchoolSubjects";
 import "./AiStudioScreen.css";
 
@@ -26,7 +27,16 @@ export default function AiStudioScreen({ onBack }: { onBack: () => void }) {
   const [error, setError] = useState("");
   const [usage, setUsage] = useState(() => getAiUsage());
   const [transferNotice, setTransferNotice] = useState("");
+  const [, setSubjectModelReady] = useState(false);
   const parsedRequest = parseCurriculumRequest(topic, subject, count, difficulty, tool);
+
+  useEffect(() => {
+    let active = true;
+    void loadCurriculumSubjectModel().then(() => {
+      if (active) setSubjectModelReady(true);
+    });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     const sync = () => setHistory(listAiDrafts());
@@ -44,12 +54,14 @@ export default function AiStudioScreen({ onBack }: { onBack: () => void }) {
     setTransferNotice("");
     setBusy(true);
     try {
-      setTool(parsedRequest.tool);
-      setDifficulty(parsedRequest.level);
-      setCount(parsedRequest.count);
-      if (parsedRequest.subject) setSubject(parsedRequest.subject);
-      setTopic(parsedRequest.topic);
-      const next = await generateLocalAiDraft(parsedRequest.tool, topic, parsedRequest.level, parsedRequest.count, parsedRequest.subject);
+      await loadCurriculumSubjectModel();
+      const request = parseCurriculumRequest(topic, subject, count, difficulty, tool);
+      setTool(request.tool);
+      setDifficulty(request.level);
+      setCount(request.count);
+      if (request.subject) setSubject(request.subject);
+      setTopic(request.topic);
+      const next = await generateLocalAiDraft(request.tool, topic, request.level, request.count, request.subject);
       recordLocalAiGeneration();
       setUsage(getAiUsage());
       setDraft(next);
