@@ -208,12 +208,17 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
     {id:"groups",icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="7" cy="8" r="2.5"/><circle cx="17" cy="8" r="2.5"/><path d="M2 20v-2a5 5 0 0 1 10 0v2M12 20v-2a5 5 0 0 1 10 0v2"/></svg>,eyebrow:"ОРГАНИЗАЦИЯ",title:"Группы и классы",description:"Классы и учебные группы",count:null,theme:"blue"},
     {id:"assignments",icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="m8 11 2.5 2.5L16 8M8 17h8"/></svg>,eyebrow:"УЧЕБНЫЙ ПРОЦЕСС",title:"Задания",description:"Проверка и выполнение",count:null,theme:"coral"},
   ];
-  const syncIndicator=<div className="lectris-hub-sync" role="status" title={syncStatus==="local"?"Изменения сохранены в этом браузере. Общая синхронизация пока не подключена.":undefined}>
+  const syncText=syncStatus==="synced"?"Предметы и группы синхронизированы":syncStatus==="saving"?"Сохраняем предметы и группы…":syncStatus==="error"?"Не удалось синхронизировать предметы и группы":"Изменения сохранены на устройстве";
+  const syncTitle=syncStatus==="local"?"Изменения сохранены в этом браузере. Общая синхронизация пока не подключена.":undefined;
+  const syncIndicator=<div className="lectris-hub-sync" role="status" title={syncTitle}>
     <span className={`lectris-hub-sync-dot status-${syncStatus}`}/>
-    {syncStatus==="synced"?"Предметы и группы синхронизированы":syncStatus==="saving"?"Сохраняем предметы и группы…":syncStatus==="error"?"Не удалось синхронизировать предметы и группы":"Изменения сохранены на устройстве"}
+    {syncText}
     {lectrisOrganizationSyncEnabled()&&teacher&&<button type="button" disabled={syncStatus==="saving"} onClick={importLocalOrganization}>Перенести локальные метки</button>}
     {lectrisOrganizationSyncEnabled()&&<button type="button" disabled={syncStatus==="saving"} onClick={()=>void sendOrganization()}>Повторить синхронизацию</button>}
   </div>;
+  const homeSyncIndicator=<span className="lectris-hub-home-sync" role="status" title={syncTitle}>
+    <i className={`lectris-hub-sync-dot status-${syncStatus}`}/>{syncText}
+  </span>;
   void setCollectionSearch; void collectionMode; void changeCollectionMode; void upcoming; void collectionBoards;
   return <section className="lectris-hub" aria-label="Рабочее пространство Lektrus">
     {view!=="home"&&syncIndicator}
@@ -223,10 +228,11 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
           <div className="lectris-hub-hero-topline">
             <span className="lectris-hub-hero-chip">{teacher?"ПРОСТРАНСТВО ПРЕПОДАВАТЕЛЯ":"УЧЕБНОЕ ПРОСТРАНСТВО"}</span>
             <span className="lectris-hub-hero-metric">{teacher?`Доски: ${boards.length} · Ученики: ${students.length}`:`Доступные доски: ${boards.length}`}</span>
+            <span className="lectris-hub-hero-separator" aria-hidden="true">|</span>
+            {homeSyncIndicator}
           </div>
           <h1>{teacher?"Всё для ваших занятий":"Ваше учебное пространство"}</h1>
           <p>{teacher?"Создавайте доски, готовьте уроки и продолжайте с того места, где остановились.":"Доски, задания и занятия собраны в одном месте."}</p>
-          {syncIndicator}
         </div>
         <div className="lectris-hub-hero-actions">
           {teacher&&<button type="button" className="lectris-hub-primary" onClick={()=>onCreateBoard()} disabled={creating}>+ Новая доска</button>}
@@ -257,14 +263,16 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
         </section>
         <div className="lectris-hub-aside">
           <section className="lectris-hub-section lektrus-calendar-panel">
-            <div className="lectris-hub-section-head"><div><small>ПЛАНИРОВАНИЕ</small><h2>Календарь занятий</h2></div><button type="button" onClick={()=>navigate("schedule")}>Все занятия →</button></div>
+            <div className="lectris-hub-section-head lektrus-calendar-head"><div><h2>Календарь занятий</h2></div><button type="button" onClick={()=>navigate("schedule")}>Все занятия <span aria-hidden="true">↗</span></button></div>
             <div className="lektrus-calendar-toolbar"><strong>{new Intl.DateTimeFormat("ru-RU",{month:"long",year:"numeric"}).format(calendarMonth)}</strong><div><button type="button" aria-label="Предыдущий месяц" onClick={()=>shiftMonth(-1)}>‹</button><button type="button" aria-label="Текущий месяц" onClick={()=>{const d=new Date();setCalendarMonth(new Date(d.getFullYear(),d.getMonth(),1));setCalendarDay(dayKey(d))}}>Сегодня</button><button type="button" aria-label="Следующий месяц" onClick={()=>shiftMonth(1)}>›</button></div></div>
+            <div className="lektrus-calendar-selected-day">
+              <div className="lektrus-calendar-day-heading"><strong>{new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"long"}).format(new Date(calendarDay+"T12:00:00"))}</strong><span>{selectedLessons.length?`${selectedLessons.length} ${selectedLessons.length===1?"занятие":"занятия"}`:"Свободный день"}</span></div>
+              {dataLoading?<p className="lectris-hub-placeholder">Загружаем расписание…</p>:selectedLessons.length?selectedLessons.map(lesson=><div className="lectris-hub-lesson" key={lesson.id}><div><strong>{lesson.title}</strong><small>{new Intl.DateTimeFormat("ru-RU",{hour:"2-digit",minute:"2-digit"}).format(new Date(lesson.startsAt))} · {lesson.durationMinutes} мин</small>{teacher&&<small>{lesson.studentName}</small>}</div>{boardById.has(lesson.boardId)&&<button type="button" onClick={()=>onOpenBoard(boardById.get(lesson.boardId)!)}>Доска ↗</button>}</div>):null}
+            </div>
             <div className="lektrus-calendar-grid" role="group" aria-label="Выбор даты">
               {["Пн","Вт","Ср","Чт","Пт","Сб","Вс"].map(x=><span key={x} className="lektrus-calendar-weekday">{x}</span>)}
               {calendarCells.map(cell=><button type="button" key={cell.key} className={[!cell.current?"is-other-month":"",calendarDay===cell.key?"is-selected":"",dayKey(new Date())===cell.key?"is-today":"",lessonsByDay.has(cell.key)?"has-lesson":""].join(" ")} aria-label={cell.key+(lessonsByDay.has(cell.key)?", есть занятия":"")} aria-pressed={calendarDay===cell.key} onClick={()=>{setCalendarDay(cell.key);if(!cell.current){const date=new Date(cell.key+"T12:00:00");setCalendarMonth(new Date(date.getFullYear(),date.getMonth(),1))}}}>{cell.day}{lessonsByDay.has(cell.key)&&<i aria-hidden="true"/>}</button>)}
             </div>
-            <div className="lektrus-calendar-day-heading"><strong>{new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"long"}).format(new Date(calendarDay+"T12:00:00"))}</strong><span>{selectedLessons.length?selectedLessons.length+" зан.":"Нет занятий"}</span></div>
-            {dataLoading?<p className="lectris-hub-placeholder">Загружаем расписание…</p>:selectedLessons.length?selectedLessons.map(lesson=><div className="lectris-hub-lesson" key={lesson.id}><div><strong>{lesson.title}</strong><small>{new Intl.DateTimeFormat("ru-RU",{hour:"2-digit",minute:"2-digit"}).format(new Date(lesson.startsAt))} · {lesson.durationMinutes} мин</small>{teacher&&<small>{lesson.studentName}</small>}</div>{boardById.has(lesson.boardId)&&<button type="button" onClick={()=>onOpenBoard(boardById.get(lesson.boardId)!)}>Доска ↗</button>}</div>):<p className="lectris-hub-placeholder">На выбранный день занятий нет.</p>}
           </section>
 
         </div>

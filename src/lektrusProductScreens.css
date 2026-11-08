@@ -329,6 +329,17 @@ html body .topbar .topbar-right .topbar-menu-section .topbar-menu-danger{color:#
 .lectris-workspace-stage .lektrus-template-preview-tag{background:var(--lt-raised)!important;color:var(--lt-secondary)!important;border:1px solid var(--lt-line)}
 .lectris-workspace-stage .template-card:focus-within{outline:2px solid var(--lt-focus);outline-offset:2px}
 
+.lectris-hub-hero-separator{color:#a9bce8;font-size:13px;font-weight:500;line-height:1}
+.lectris-hub-home-sync{display:inline-flex;align-items:center;gap:7px;min-width:0;color:#d8e3ff;font-size:10px;font-weight:550;line-height:1.3}
+.lectris-hub-home-sync .lectris-hub-sync-dot{width:7px;height:7px;flex:0 0 7px}
+@media(min-width:851px){
+ .lectris-hub .lectris-hub-hero-topline{align-items:center;gap:7px 10px}
+ .lectris-hub .lectris-hub-hero-topline .lectris-hub-hero-chip,
+ .lectris-hub .lectris-hub-hero-topline .lectris-hub-hero-metric,
+ .lectris-hub .lectris-hub-hero-topline .lectris-hub-hero-separator{flex:0 0 auto}
+ .lectris-hub-home-sync{white-space:nowrap}
+}
+
 @media(max-width:700px){
   .lectris-workspace-stage .students-header{background:var(--lt-surface)!important}
   .lectris-layout-menu{width:min(280px,calc(100vw - 20px));right:-4px}
@@ -367,16 +378,16 @@ html body .topbar .topbar-right .topbar-menu-section .topbar-menu-danger{color:#
  .lectris-workspace-stage .lectris-hub .lectris-hub-tile-copy strong{font-size:20px!important;line-height:1.2!important}
  .lectris-workspace-stage .lectris-hub .lectris-hub-tile-copy>span{font-size:12px!important;line-height:1.35!important}
  .lectris-workspace-stage .lectris-hub .lectris-hub-section-label-secondary{margin-top:12px!important}
- .lectris-workspace-stage .lectris-hub .lectris-hub-columns{grid-template-columns:minmax(0,1.5fr) minmax(280px,.85fr)!important;gap:12px!important}
+ .lectris-workspace-stage .lectris-hub .lectris-hub-columns{grid-template-columns:minmax(0,1.5fr) minmax(280px,.85fr)!important;gap:12px!important;align-items:stretch!important}
  .lectris-workspace-stage .lectris-hub .lectris-hub-aside{max-width:none!important}
  .lectris-workspace-stage .lectris-hub .lectris-hub-section{padding:14px!important;border-radius:14px!important}
  .lectris-workspace-stage .lectris-hub .lectris-hub-section-head{margin-bottom:8px!important;gap:8px!important}
  .lectris-workspace-stage .lectris-hub .lectris-hub-section-head h2{font-size:17px!important;margin-top:2px!important}
  .lectris-workspace-stage .lectris-hub .lectris-hub-board-search input{height:38px!important}
  .lectris-workspace-stage .lectris-hub .lectris-hub-board-list{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important}
- .lectris-workspace-stage .lectris-hub .lectris-hub-board{min-height:164px!important;flex-direction:column!important;overflow:hidden}
+ .lectris-workspace-stage .lectris-hub .lectris-hub-board{min-height:188px!important;flex-direction:column!important;overflow:hidden}
  .lectris-workspace-stage .lectris-hub .lectris-hub-board-main{flex-direction:column!important;gap:0!important;padding:0 0 8px!important}
- .lectris-workspace-stage .lectris-hub .lectris-hub-board-cover{height:76px!important;flex-basis:76px!important}
+ .lectris-workspace-stage .lectris-hub .lectris-hub-board-cover{height:96px!important;flex-basis:96px!important}
  .lectris-workspace-stage .lectris-hub .lectris-hub-board-info{padding:7px 9px 0!important;gap:3px!important}
  .lectris-workspace-stage .lectris-hub .lectris-hub-board-info .lectris-hub-board-kind{font-size:9px!important}
  .lectris-workspace-stage .lectris-hub .lectris-hub-board-info strong{font-size:13px!important}
@@ -423,10 +434,127 @@ html body .topbar .topbar-right .topbar-menu-section .topbar-menu-danger{color:#
  .lectris-workspace-stage .lectris-hub .lectris-hub-tile{min-height:110px!important}
  .lectris-workspace-stage .lectris-hub .lectris-hub-tile-head{height:32px!important}
  .lectris-workspace-stage .lectris-hub .lectris-hub-section{padding-block:8px!important}
- .lectris-workspace-stage .lectris-hub .lectris-hub-board{min-height:136px!important}
- .lectris-workspace-stage .lectris-hub .lectris-hub-board-cover{height:56px!important;flex-basis:56px!important}
- .lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-grid button{height:23px!important}
- .lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-day-heading{margin:3px 0 2px!important;padding-top:4px!important}
+ .lectris-workspace-stage .lectris-hub .lectris-hub-board{min-height:150px!important}
+ .lectris-workspace-stage .lectris-hub .lectris-hub-board-cover{height:72px!important;flex-basis:72px!important}
+}
+
+/* Home calendar: clear hierarchy, compact month controls and a distinct day summary. */
+.lectris-workspace-stage .lectris-hub .lectris-hub-columns{align-items:stretch!important}
+.lectris-workspace-stage .lectris-hub .lectris-hub-columns>.lectris-hub-section,
+.lectris-workspace-stage .lectris-hub .lectris-hub-aside{height:100%;min-height:0}
+.lectris-workspace-stage .lectris-hub .lektrus-calendar-panel{height:100%;box-sizing:border-box;padding:12px!important}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-head{display:flex!important;flex-wrap:nowrap!important;align-items:center!important;gap:8px!important;margin:0 0 3px!important}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-head>div{flex:1 1 auto!important;min-width:0!important}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-head h2{margin:0!important;font-size:17px!important;line-height:1.25!important;white-space:nowrap}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-head>button{display:inline-flex!important;align-items:center;gap:5px;flex:0 0 auto!important;padding:6px 0!important;font-size:11px!important;white-space:nowrap}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-head>button span{font-size:13px}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-toolbar{min-height:29px;margin:4px 0 4px!important}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-toolbar>strong{font-size:13px!important;font-weight:760}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-toolbar>div{gap:4px!important}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-toolbar button{min-height:29px!important;border-radius:9px!important;padding:0 9px!important;font-size:11px!important}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-toolbar button[aria-label="Текущий месяц"]{padding-inline:11px!important;font-weight:700}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-grid{gap:2px!important}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-weekday{padding:2px 0!important;font-size:10px!important;font-weight:700}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-grid button{height:28px!important;border-radius:9px!important;font-size:11px!important;font-weight:600}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-grid button.is-selected{box-shadow:0 3px 8px #3154c733}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-grid button.has-lesson:not(.is-selected){background:#edf5ff}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-grid button i{bottom:3px;width:4px;height:4px}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-selected-day{min-height:27px;display:flex;align-items:center;gap:8px;margin:0 0 3px;padding:3px 8px;border:1px solid var(--lt-line,#d4dce8);border-radius:9px;background:linear-gradient(100deg,var(--lt-selected,#edf2ff),var(--lt-subtle,#f7f9fd))}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-day-heading{flex:1;min-width:0;margin:0!important;padding:0!important;border:0!important;font-size:12px!important;line-height:1.3}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-day-heading strong{font-size:12px}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-day-heading span{font-size:10px}
+.lectris-workspace-stage .lektrus-calendar-panel .lektris-hub-placeholder,
+.lectris-workspace-stage .lektrus-calendar-panel .lectris-hub-placeholder{margin:5px 0 0!important;color:var(--lt-muted,#718096);font-size:11px!important;line-height:1.4}
+.lectris-workspace-stage .lektrus-calendar-panel .lectris-hub-lesson{margin-top:7px!important;padding-top:7px!important;border-top:1px solid var(--lt-line,#d4dce8)}
+
+/* Shared surface language for the content of each application section. */
+.lectris-workspace-stage :is(.boards-shell,.students-shell,.assignments-shell,.progress-shell,.schedule-shell,.materials-shell,.templates-shell,.notifications-shell,.profile-shell,.admin-users-shell){
+ min-height:calc(100dvh - 73px)!important;background:var(--lt-bg)!important;color:var(--lt-text)!important
+}
+.lectris-workspace-stage :is(.students-content,.assignments-content,.progress-content,.schedule-content,.materials-content,.templates-content,.notifications-content,.profile-content){
+ padding-top:22px!important;padding-bottom:28px!important
+}
+.lectris-workspace-stage .students-header{min-height:72px!important;padding:13px clamp(20px,3vw,38px)!important;border-bottom:1px solid var(--lt-line)!important;background:linear-gradient(110deg,var(--lt-surface),var(--lt-raised))!important;box-shadow:0 3px 14px #1c35500a}
+.lectris-workspace-stage .students-header>div:first-child{min-width:0}
+.lectris-workspace-stage .students-header>div:first-child>div{min-width:0;gap:3px}
+.lectris-workspace-stage .students-header strong{font-size:21px!important;line-height:1.2;letter-spacing:-.035em}
+.lectris-workspace-stage .students-header span{font-size:11px!important;line-height:1.4}
+.lectris-workspace-stage .students-header :is(.boards-create,.boards-secondary){min-height:38px;padding:8px 13px;border-radius:10px}
+.lectris-workspace-stage :is(.students-content,.assignments-content,.progress-content,.schedule-content,.materials-content,.templates-content,.notifications-content,.profile-content) :is(.boards-empty,.student-history-empty,.lektrus-category-panel,.lektrus-group-list-panel,.lektrus-group-details){border-color:var(--lt-line)!important;border-radius:15px!important;background:var(--lt-surface)!important;color:var(--lt-text)!important;box-shadow:0 5px 18px #1c35500a}
+.lectris-workspace-stage :is(.students-content,.assignments-content,.progress-content,.schedule-content,.materials-content,.templates-content,.notifications-content) :is(.student-card,.assignment-card,.progress-panel,.schedule-side,.schedule-layout,.material-card,.template-card,.notification-card,.admin-feedback-card){border-color:var(--lt-line)!important;border-radius:14px!important;box-shadow:0 5px 18px #1c35500a}
+.lectris-workspace-stage :is(.students-content,.assignments-content,.progress-content,.schedule-content,.materials-content,.templates-content,.notifications-content) :is(.students-toolbar,.materials-toolbar,.templates-toolbar,.progress-toolbar,.assignment-controls,.notification-filters,.notification-kind-filter){gap:8px}
+.lectris-workspace-stage .students-layout{display:grid!important;grid-template-columns:minmax(280px,.82fr) minmax(0,1.3fr)!important;align-items:stretch!important;gap:14px!important}
+.lectris-workspace-stage .students-list{display:grid!important;align-content:start;gap:6px!important;min-width:0;min-height:250px;max-height:calc(100dvh - 240px);padding:10px!important;overflow:auto}
+.lectris-workspace-stage .students-list>.boards-empty{min-height:220px!important;display:grid!important;align-content:center!important;justify-items:center!important;gap:8px!important;padding:24px 18px!important;text-align:center;line-height:1.45}
+.lectris-workspace-stage .students-list>.boards-empty>:is(strong,span){display:block!important;max-width:34ch;line-height:1.45}
+.lectris-workspace-stage .students-list>.boards-empty strong{font-size:14px!important;font-weight:760;color:var(--lt-text)!important}
+.lectris-workspace-stage .students-list>.boards-empty span{font-size:12px!important;color:var(--lt-muted)!important}
+.lectris-workspace-stage .student-card{min-width:0;min-height:250px;padding:18px!important}
+.lectris-workspace-stage .student-placeholder{min-height:212px!important;display:grid!important;align-content:center!important;justify-items:center!important;gap:8px!important;padding:26px!important;text-align:center;line-height:1.5;color:var(--lt-muted)!important;background:linear-gradient(145deg,var(--lt-surface),var(--lt-subtle))!important;border:1px dashed var(--lt-line-strong,var(--lt-line));border-radius:12px}
+.lectris-workspace-stage .student-placeholder>:is(strong,span){display:block!important;max-width:34ch;line-height:1.5}
+.lectris-workspace-stage .student-placeholder strong{font-size:15px;color:var(--lt-text)!important}
+.lectris-workspace-stage .student-placeholder span{font-size:12px;color:var(--lt-muted)!important}
+.lectris-workspace-stage :is(.boards-content,.students-content,.assignments-content,.progress-content,.schedule-content,.materials-content,.templates-content,.notifications-content,.profile-content) :is(input[type="search"],input[type="text"],input[type="date"],input[type="datetime-local"],input[type="number"],input[type="email"],input[type="password"],textarea,select){
+ border-color:var(--lt-line-strong,var(--lt-line))!important;border-radius:10px!important;background-color:var(--lt-raised)!important;color:var(--lt-text)!important;box-shadow:inset 0 1px 1px #21385d08
+}
+html body select:not([multiple]){
+ border:1px solid var(--lt-line-strong,var(--lt-line,#ccd8e8))!important;
+ border-radius:9px!important;background-color:var(--lt-subtle,#f3f6fc)!important;color:var(--lt-text,#243651)!important;
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235c6f88' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E")!important;
+ background-repeat:no-repeat!important;background-position:right 10px center!important;background-size:14px!important;
+ padding-right:30px;appearance:none;-webkit-appearance:none;cursor:pointer
+}
+html body select:not([multiple]) option{background:var(--lt-surface,#fff);color:var(--lt-text,#243651)}
+.lectris-workspace-stage select{
+ min-height:38px;padding:7px 36px 7px 11px!important;appearance:none;-webkit-appearance:none;
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235c6f88' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 11px center!important;background-size:14px!important;cursor:pointer
+}
+.lectris-workspace-stage select option{background:var(--lt-surface);color:var(--lt-text)}
+.lectris-workspace-stage select,
+:root :is(.lectris-workspace,.workspace) select{
+ border-color:var(--lt-line-strong,var(--lt-line))!important;border-radius:9px!important;
+ background-color:var(--lt-subtle)!important;color:var(--lt-text)!important;
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235c6f88' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E")!important;
+ background-repeat:no-repeat!important;background-position:right 10px center!important;background-size:14px!important;
+ appearance:none;-webkit-appearance:none
+}
+:root .lectris-workspace .lectris-workspace-stage select,
+:root .workspace select,
+:root :is(.lektrus-showcase,.lektrus-public-tool,.lektrus-lab-editor) select{
+ background-color:var(--lt-subtle)!important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235c6f88' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E")!important;
+ background-repeat:no-repeat!important;background-position:right 10px center!important;background-size:14px!important;
+ border:1px solid var(--lt-line-strong,var(--lt-line))!important;border-radius:9px!important;color:var(--lt-text)!important;
+ padding-right:30px!important;appearance:none;-webkit-appearance:none
+}
+ :root :is(.lectris-workspace,.workspace) select option{background:var(--lt-surface);color:var(--lt-text)}
+.lectris-workspace-stage .lectris-hub .lectris-hub-board{min-height:188px!important}
+.lectris-workspace-stage .lectris-hub .lectris-hub-board-cover{height:96px!important;flex-basis:96px!important}
+@media (min-width:851px) and (max-height:840px){
+ .lectris-workspace-stage .lectris-hub .lectris-hub-board{min-height:150px!important}
+ .lectris-workspace-stage .lectris-hub .lectris-hub-board-cover{height:72px!important;flex-basis:72px!important}
+ .lectris-workspace-stage :is(.students-content,.assignments-content,.progress-content,.schedule-content,.materials-content,.templates-content,.notifications-content,.profile-content){padding-top:12px!important;padding-bottom:16px!important}
+}
+@media(max-width:700px){
+ .lectris-workspace-stage .students-layout{grid-template-columns:minmax(0,1fr)!important;gap:10px!important}
+ .lectris-workspace-stage .students-list{min-height:160px;max-height:32dvh}
+ .lectris-workspace-stage .students-list>.boards-empty{min-height:140px!important}
+ .lectris-workspace-stage .student-card{min-height:170px}
+ .lectris-workspace-stage .student-placeholder{min-height:132px!important}
+ .lectris-workspace-stage .students-header{min-height:58px!important;padding:9px 12px!important}
+ .lectris-workspace-stage .students-header strong{font-size:16px!important}
+ .lectris-workspace-stage .students-header span{font-size:10px!important}
+}
+@media (min-width:851px) and (max-height:840px){
+ .lectris-workspace-stage .lectris-hub .lektrus-calendar-panel{padding:8px 11px!important}
+ .lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-head h2{font-size:15px!important}
+ .lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-head>button{font-size:10px!important}
+ .lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-toolbar{min-height:25px;margin:2px 0!important}
+ .lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-toolbar button{min-height:25px!important;padding-inline:7px!important}
+ .lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-grid{gap:1px!important}
+ .lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-weekday{padding:1px 0!important;font-size:9px!important}
+ .lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-grid button{height:22px!important;font-size:10px!important}
+ .lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-selected-day{min-height:23px;margin-bottom:2px;padding:2px 7px}
+ .lectris-workspace-stage .lektrus-calendar-panel .lectris-hub-placeholder{margin-top:3px!important;font-size:10px!important}
 }
 @media (min-width:851px) and (max-width:1100px){
  .lectris-workspace-stage .lectris-hub .lectris-hub-board-list{grid-template-columns:repeat(2,minmax(0,1fr))!important}
