@@ -744,14 +744,10 @@ html body select:not([multiple]) option{background:var(--lt-surface,#fff);color:
 .lectris-workspace-stage .settings-account-footer button{min-height:38px;padding:7px 12px;border:1px solid var(--lt-line)!important;border-radius:9px!important;background:var(--lt-subtle)!important;color:var(--lt-secondary)!important;font:inherit;font-size:12px;font-weight:650;cursor:pointer}
 .lectris-workspace-stage .lectris-palette-setting{display:grid!important;grid-template-columns:minmax(190px,.75fr) minmax(0,1.5fr)!important;align-items:center}
 .lectris-workspace-stage .lectris-palette-options{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:8px!important;min-width:0}
-.lectris-workspace-stage .lectris-palette-options>button{display:grid!important;gap:7px;min-width:0;padding:8px!important;border:1px solid var(--lt-line)!important;border-radius:11px!important;background:var(--lt-subtle)!important;color:var(--lt-secondary)!important;text-align:left;font:inherit;cursor:pointer}
+.lectris-workspace-stage .lectris-palette-options>button{display:flex!important;align-items:center;min-width:0;min-height:46px;padding:8px 12px!important;border:1px solid var(--lt-line)!important;border-radius:11px!important;background:var(--lt-subtle)!important;color:var(--lt-secondary)!important;text-align:left;font:inherit;cursor:pointer}
 .lectris-workspace-stage .lectris-palette-options>button.selected{border-color:var(--lt-primary)!important;background:var(--lt-selected)!important;box-shadow:0 0 0 1px var(--lt-primary)}
-.lectris-workspace-stage .lektrus-palette-preview{height:35px;display:flex;align-items:center;gap:5px;padding:5px;border:1px solid var(--lt-line)!important;border-radius:7px;background:var(--lt-raised)!important}
-.lectris-workspace-stage .lektrus-palette-preview i{height:100%;flex:1;border-radius:4px;background:var(--lt-primary)}
-.lectris-workspace-stage .lektrus-palette-preview i:nth-child(2){background:var(--lt-selected)}
-.lectris-workspace-stage .lektrus-palette-preview i:nth-child(3){background:var(--lt-line-strong)}
-.lectris-workspace-stage .lektrus-palette-label{display:flex!important;align-items:center;gap:6px;min-width:0;font-size:10px;font-weight:700}
-.lectris-workspace-stage .lectris-palette-swatch{width:12px;height:12px;flex:0 0 12px;border-radius:4px;background:var(--lt-primary)}
+.lectris-workspace-stage .lektrus-palette-label{display:flex!important;align-items:center;gap:8px;min-width:0;width:100%;font-size:11px;font-weight:700}
+.lectris-workspace-stage .lectris-palette-swatch{width:18px;height:18px;flex:0 0 18px;border-radius:7px;background:var(--lt-primary)}
 .lectris-workspace-stage .lektrus-palette-check{margin-left:auto;color:var(--lt-primary);font-weight:900}
 .lectris-workspace-stage .settings-row-card.lektrus-install-settings{align-items:flex-start!important}
 .lectris-workspace-stage .settings-row-card.lektrus-install-settings>div:first-child{align-content:start}

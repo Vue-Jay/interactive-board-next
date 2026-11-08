@@ -67,8 +67,7 @@ export default function SettingsScreen({user,onBack,onLogout,installAvailable,is
         {([["sapphire","Синий"],["jade","Бирюзовый"],["violet","Фиолетовый"],["sunset","Коралловый"]] as const).map(([key,label])=>
           <button type="button" key={key} className={palette===key?"selected":""} aria-pressed={palette===key}
             onClick={()=>changePalette(key)}>
-            <span className="lektrus-palette-preview" aria-hidden="true"><i/><i/><i/></span>
-            <span className="lektrus-palette-label"><span className={`lectris-palette-swatch is-${key}`}/>{label}<span className="lektrus-palette-check" aria-hidden="true">{palette===key?"✓":""}</span></span>
+            <span className="lektrus-palette-label"><span className={`lectris-palette-swatch is-${key}`} aria-hidden="true"/>{label}<span className="lektrus-palette-check" aria-hidden="true">{palette===key?"✓":""}</span></span>
           </button>)}
       </div>
     </section>
