@@ -26,7 +26,7 @@ export function aiTopicPlaceholder(subject = "") {
 }
 
 const subjectAliases: Record<string, RegExp> = {
-  "Математика": /математ|алгебр|геометр|уравнен|дроб|процент|пифагор|функци|вычислен|арифмет|числ|корень|степен/i,
+  "Математика": /математ|алгебр|геометр|треуголь|окружност|площад|периметр|угол|уравнен|дроб|процент|пифагор|функци|вычислен|арифмет|числ|корень|степен/i,
   "Физика": /физик|скорост|ускорен|сила|энерги|электр|давлен|теплот|оптик|звук|плотност|ома/i,
   "Химия": /хими|атом|молекул|реакци|раствор|кислот|основан|валент|периодическ/i,
   "Биология": /биолог|клетк|организм|экосистем|генет|растен|животн|кров|орган|фотосинтез/i,
@@ -45,11 +45,33 @@ export function detectCurriculumSubject(topic: string, selected = ""): string {
   return "";
 }
 
+export type ParsedCurriculumRequest = { subject: string; topic: string; count: number };
+
+/** Understands short requests such as "10 задач на треугольники". */
+export function parseCurriculumRequest(input: string, selectedSubject = "", selectedCount = 5): ParsedCurriculumRequest {
+  const countMatch = input.match(/(^|\s)(\d{1,2})\s*(?:шт\.?|задач[а-яё]*|задани[а-яё]*|вопрос[а-яё]*|пример[а-яё]*|упражнен[а-яё]*|карточ[а-яё]*)/i);
+  const requestedCount = countMatch ? Number(countMatch[2]) : selectedCount;
+  let topic = input.replace(/(^|\s)\d{1,2}\s*(?:шт\.?|задач[а-яё]*|задани[а-яё]*|вопрос[а-яё]*|пример[а-яё]*|упражнен[а-яё]*|карточ[а-яё]*)/i, " ");
+  topic = topic
+    .replace(/[,:;.!?]+/g, " ")
+    .replace(/^\s*(?:(?:пожалуйста|мне|нужно|создай|составь|подготовь|сгенерируй|сделай|дай|хочу)\s+)+/i, "")
+    .replace(/^\s*(?:(?:на|по|про|тема|теме)\s+)+/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return {
+    subject: detectCurriculumSubject(topic, selectedSubject),
+    topic,
+    count: Math.max(1, Math.min(15, Math.round(Number(requestedCount) || selectedCount || 5))),
+  };
+}
+
 export function generateCurriculumAi(tool: CurriculumAiTool, topic: string, level: CurriculumAiLevel, count: number, selectedSubject = ""): CurriculumAiResult {
-  const subject = detectCurriculumSubject(topic, selectedSubject);
-  const clean = topic.trim();
+  const request = parseCurriculumRequest(topic, selectedSubject, count);
+  const subject = request.subject;
+  const clean = request.topic;
+  const safeCount = request.count;
+  if (!clean) throw new Error("Укажите тему задания.");
   if (!subject) throw new Error("Не удалось определить предмет. Выберите его в списке.");
-  const safeCount = Math.max(1, Math.min(15, Math.round(count)));
   if (subject === "Математика") {
     const mathLevel: MathAiLevel = level === "easy" ? "primary" : level === "hard" ? "advanced" : "basic";
     const math = generateMathAi("auto" as MathAiMode, mathLevel, safeCount, clean, true);

@@ -10,7 +10,7 @@ import {
   type AiDraft,
   type AiTool,
 } from "./aiLocalStore";
-import { aiTopicPlaceholder } from "./aiCurriculumGenerator";
+import { aiTopicPlaceholder, parseCurriculumRequest } from "./aiCurriculumGenerator";
 import { LEKTRUS_SCHOOL_SUBJECTS } from "./lektrusSchoolSubjects";
 import "./AiStudioScreen.css";
 
@@ -26,6 +26,7 @@ export default function AiStudioScreen({ onBack }: { onBack: () => void }) {
   const [error, setError] = useState("");
   const [usage, setUsage] = useState(() => getAiUsage());
   const [transferNotice, setTransferNotice] = useState("");
+  const parsedRequest = parseCurriculumRequest(topic, subject, count);
 
   useEffect(() => {
     const sync = () => setHistory(listAiDrafts());
@@ -87,7 +88,9 @@ export default function AiStudioScreen({ onBack }: { onBack: () => void }) {
             {LEKTRUS_SCHOOL_SUBJECTS.map(name => <option key={name} value={name}>{name}</option>)}
           </select>
         </label>
-        <label><span>Тема</span><input value={topic} onChange={e => setTopic(e.target.value)} placeholder={aiTopicPlaceholder(subject)} /></label>
+        <label><span>Тема или запрос</span><input value={topic} onChange={e => setTopic(e.target.value)} placeholder={aiTopicPlaceholder(subject)} />
+          {topic.trim() && <small className="ai-request-reading">Распознано: {parsedRequest.subject || "выберите предмет"}{parsedRequest.topic ? ` · ${parsedRequest.topic}` : ""} · {parsedRequest.count} заданий{parsedRequest.count !== count ? " · количество из запроса" : ""}</small>}
+        </label>
         <div className="ai-options">
           <label><span>Уровень</span><select value={difficulty} onChange={e => setDifficulty(e.target.value as AiDifficulty)}>
             <option value="easy">Базовый</option><option value="medium">Средний</option><option value="hard">Углублённый</option>

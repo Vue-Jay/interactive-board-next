@@ -48,4 +48,5 @@
 .ai-answer-key{margin-top:10px;padding:10px 12px;border:1px solid var(--lt-line);border-radius:10px;background:var(--lt-subtle);color:var(--lt-text)}
 .ai-answer-key summary{cursor:pointer;font-weight:650;color:var(--lt-secondary)}
 .ai-answer-key ol{margin:10px 0 0;padding-left:22px;display:grid;gap:7px;line-height:1.45}
+.ai-request-reading{color:var(--lt-muted);line-height:1.4}
 :root[data-theme="dark"] .ai-studio .ai-error{color:#ffb4aa}

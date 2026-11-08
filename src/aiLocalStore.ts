@@ -1,7 +1,7 @@
 export type AiTool="assignment"|"quiz"|"flashcards";
 export type AiDifficulty="easy"|"medium"|"hard";
 export type AiDraft={id:string;tool:AiTool;topic:string;subject?:string;title:string;body:string;answers?:string[];createdAt:string};
-import { generateCurriculumAi } from "./aiCurriculumGenerator";
+import { generateCurriculumAi, parseCurriculumRequest } from "./aiCurriculumGenerator";
 
 const KEY="onlinerepetitor.ai.local-history.v189";
 const USAGE_KEY="onlinerepetitor.ai.local-usage.v190";
@@ -35,10 +35,11 @@ function remember(draft:AiDraft){
 export function clearAiDrafts(){localStorage.removeItem(KEY);window.dispatchEvent(new Event("onlinerepetitor:ai-history"))}
 
 export async function generateLocalAiDraft(tool:AiTool,topic:string,difficulty:AiDifficulty,count:number,subject=""):Promise<AiDraft>{
- const clean=topic.trim();
+ const request=parseCurriculumRequest(topic,subject,count);
+ const clean=request.topic;
  if(clean.length<2)throw new Error("Укажите тему.");
  await new Promise(r=>setTimeout(r,450));
- const generated=generateCurriculumAi(tool,clean,difficulty,count,subject);
+ const generated=generateCurriculumAi(tool,clean,difficulty,request.count,request.subject);
  const draft={id:uid(),tool,topic:clean,subject:generated.subject,title:generated.title,body:generated.items.join(tool==="assignment"?"\n":"\n\n"),answers:generated.answers,createdAt:new Date().toISOString()};
  remember(draft);return draft;
 }
