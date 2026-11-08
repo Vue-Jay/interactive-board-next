@@ -6,7 +6,7 @@ import type { BoardSummary } from "./boardStore";
 import { getStudentsForTeacher, type StudentRecord } from "./studentsStore";
 import { listScheduledLessons, type ScheduledLesson } from "./scheduleStore";
 import { readGroupMembership, setGroupMembership } from "./lektrusGroupMembers";
-import { flushLectrisOrganization, lectrisOrganizationSyncEnabled, loadLectrisOrganization, pendingLectrisOrganizationCount, queueLectrisBoardOrganization, queueLectrisCategory, queueLectrisLocalImport, readLectrisLocalCatalog, readLectrisLocalOrganization, type LectrisOrganization, type LectrisCategoryCatalog } from "./lectrisOrganizationStore";
+import { flushLectrisOrganization, lectrisOrganizationSyncEnabled, loadLectrisOrganization, queueLectrisBoardOrganization, queueLectrisCategory, queueLectrisLocalImport, readLectrisLocalCatalog, readLectrisLocalOrganization, type LectrisOrganization, type LectrisCategoryCatalog } from "./lectrisOrganizationStore";
 
 type View = "home" | "subjects" | "groups";
 type Organization=LectrisOrganization;
@@ -42,7 +42,6 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
   const [categoryEntryOpen,setCategoryEntryOpen]=useState(false);
   const [categoryDraft,setCategoryDraft]=useState("");
   const [syncStatus,setSyncStatus]=useState<"local"|"synced"|"error"|"saving">("local");
-  const [pendingCount,setPendingCount]=useState(()=>pendingLectrisOrganizationCount(user.id));
 
   const [students,setStudents]=useState<StudentRecord[]>([]);
   const [lessons,setLessons]=useState<ScheduledLesson[]>([]);
@@ -62,7 +61,6 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
   useEffect(()=>{
     setOrganization(readLectrisLocalOrganization(user.id));
     setCategoryCatalog(readLectrisLocalCatalog(user.id));
-    setPendingCount(pendingLectrisOrganizationCount(user.id));
     setScope(null);setEditing(null);setCategoryEntryOpen(false);
   },[user.id]);
   const boardIds=useMemo(()=>boards.map(board=>board.id),[boards]);
@@ -70,7 +68,6 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
     const result=await loadLectrisOrganization(user.id,boardIds);
     setOrganization(result.organization);
     setCategoryCatalog(result.catalog);
-    setPendingCount(result.pending);
     setSyncStatus(result.status);
   };
   useEffect(()=>{
@@ -79,7 +76,6 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
       if(!alive)return;
       setOrganization(result.organization);
       setCategoryCatalog(result.catalog);
-      setPendingCount(result.pending);
       setSyncStatus(result.status);
     });
     return()=>{alive=false};
@@ -95,14 +91,13 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
     if(!window.confirm("Перенести местные предметы, группы и привязки собственных досок в Lektrus? Существующие связи на сервере не будут перезаписаны."))return;
     const count=queueLectrisLocalImport(user.id,owned);
     if(!count){window.alert("Новых локальных данных для переноса нет.");return}
-    setPendingCount(pendingLectrisOrganizationCount(user.id));
     void sendOrganization();
   };
   const sendOrganization=async()=>{
     if(!lectrisOrganizationSyncEnabled()){setSyncStatus("local");return}
     setSyncStatus("saving");
     try{await flushLectrisOrganization(user.id);await reloadOrganization()}
-    catch{setSyncStatus("error");setPendingCount(pendingLectrisOrganizationCount(user.id))}
+    catch{setSyncStatus("error")}
   };
 
   useEffect(()=>{
@@ -160,7 +155,6 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
       queueLectrisBoardOrganization(user.id,editing,value);
       setOrganization(readLectrisLocalOrganization(user.id));
       setEditing(null);
-      setPendingCount(pendingLectrisOrganizationCount(user.id));
       void sendOrganization();
     }catch{window.alert("Не удалось сохранить организацию доски в браузере.")}
   };
@@ -176,7 +170,6 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
       queueLectrisCategory(user.id,key==="subjects"?"subject":"group",name);
       setCategoryCatalog(readLectrisLocalCatalog(user.id));
       setScope(name);setCategoryDraft("");setCategoryEntryOpen(false);
-      setPendingCount(pendingLectrisOrganizationCount(user.id));
       void sendOrganization();
     }catch{window.alert("Браузер не разрешил сохранить новый раздел.")}
   };
@@ -215,10 +208,9 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
     {id:"groups",icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="7" cy="8" r="2.5"/><circle cx="17" cy="8" r="2.5"/><path d="M2 20v-2a5 5 0 0 1 10 0v2M12 20v-2a5 5 0 0 1 10 0v2"/></svg>,eyebrow:"ОРГАНИЗАЦИЯ",title:"Группы и классы",description:"Классы и учебные группы",count:null,theme:"blue"},
     {id:"assignments",icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="m8 11 2.5 2.5L16 8M8 17h8"/></svg>,eyebrow:"УЧЕБНЫЙ ПРОЦЕСС",title:"Задания",description:"Проверка и выполнение",count:null,theme:"coral"},
   ];
-  const syncIndicator=<div className="lectris-hub-sync" role="status">
+  const syncIndicator=<div className="lectris-hub-sync" role="status" title={syncStatus==="local"?"Изменения сохранены в этом браузере. Общая синхронизация пока не подключена.":undefined}>
     <span className={`lectris-hub-sync-dot status-${syncStatus}`}/>
-    {syncStatus==="synced"?"Структура синхронизирована":syncStatus==="saving"?"Сохраняем структуру…":syncStatus==="error"?"Не удалось синхронизировать":"Предметы и группы сохраняются на этом устройстве"}
-    {pendingCount>0&&<span> · ожидает отправки: {pendingCount}</span>}
+    {syncStatus==="synced"?"Предметы и группы синхронизированы":syncStatus==="saving"?"Сохраняем предметы и группы…":syncStatus==="error"?"Не удалось синхронизировать предметы и группы":"Изменения сохранены на устройстве"}
     {lectrisOrganizationSyncEnabled()&&teacher&&<button type="button" disabled={syncStatus==="saving"} onClick={importLocalOrganization}>Перенести локальные метки</button>}
     {lectrisOrganizationSyncEnabled()&&<button type="button" disabled={syncStatus==="saving"} onClick={()=>void sendOrganization()}>Повторить синхронизацию</button>}
   </div>;

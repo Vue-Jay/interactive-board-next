@@ -1,13 +1,15 @@
 import {useMemo} from "react";
 import BoardApp from "./BoardApp";
 import {defaultLabBench,addLabVessel} from "./lektrusChemistryBenchModel";
+import {circuitTemplate} from "./lektrusCircuitModel";
+import {makeSchoolDiagram} from "./lektrusSchoolDiagramModel";
 import type {DocumentData,Item} from "./boardModel";
 import type {BoardSummary} from "./boardStore";
 import type {AuthUser} from "./authStore";
 
-type Scene="math"|"chemistry"|"geometry";
-const sceneIds:Record<Scene,string>={math:"00000000-0000-4000-8000-0000000000a0",chemistry:"00000000-0000-4000-8000-0000000000a1",geometry:"00000000-0000-4000-8000-0000000000a2"};
-const sceneNames:Record<Scene,string>={math:"Функция и её график",chemistry:"Химическая лаборатория",geometry:"Геометрическое исследование"};
+type Scene="math"|"chemistry"|"geometry"|"physics"|"russian"|"contour"|"history";
+const sceneIds:Record<Scene,string>={math:"00000000-0000-4000-8000-0000000000a0",chemistry:"00000000-0000-4000-8000-0000000000a1",geometry:"00000000-0000-4000-8000-0000000000a2",physics:"00000000-0000-4000-8000-0000000000a3",contour:"00000000-0000-4000-8000-0000000000a4",russian:"00000000-0000-4000-8000-0000000000a5",history:"00000000-0000-4000-8000-0000000000a6"};
+const sceneNames:Record<Scene,string>={math:"Функция и её график",chemistry:"Химическая лаборатория",geometry:"Геометрическое исследование",physics:"Электрическая цепь",contour:"Контурная карта Европы",russian:"Фонетический разбор",history:"Европа в 1914 году"};
 const txt=(id:string,x:number,y:number,width:number,height:number,text:string,size:number,color="#1b334c",weight:"normal"|"bold"="normal"):Item=>({id,kind:"text",x,y,width,height,text,fontSize:size,color,fontWeight:weight,lineHeight:1.25});
 const card=(id:string,x:number,y:number,width:number,height:number,text:string,color:string,size=20):Item=>({id,kind:"sticky",x,y,width,height,text,color,fontSize:size,lineHeight:1.4});
 const graph=(id:string,x:number,y:number,width:number,height:number,text:string,values:Partial<Item>):Item=>({id,kind:"graph",x,y,width,height,text,color:"#315bd4",graphGrid:true,graphShowCurve:true,graphAxisMode:"both",graphAxisLabels:true,...values});
@@ -42,6 +44,79 @@ function documentFor(scene:Scene):DocumentData{
   ];
   return {version:1,title:sceneNames[scene],subject:"Химия",view:{x:0,y:0,zoom:1},items,background:{mode:"dots",color:"#fbfcfe",opacity:100}};
  }
+ if(scene==="physics"){
+  const items:Item[]=[...common,
+   txt("physics-title",90,80,1120,76,"Почему загорается лампа?",34,"#172d47","bold"),
+   txt("physics-subtitle",94,164,1120,52,"Соберите цепь и проследите, как выключатель управляет током",17,"#597189"),
+   graph("physics-circuit",90,230,900,560,"Последовательная электрическая цепь",{graphFigureId:"physics-circuit-series",graphPurpose:"geometry",graphAxisMode:"none",scienceCircuit:circuitTemplate("physics-circuit-series")}),
+   card("physics-question",1030,230,410,185,"Проверьте понимание\nЧто произойдёт, если разомкнуть ключ?","#fff2df",19),
+   {id:"physics-quiz",kind:"quiz",x:1030,y:455,width:410,height:250,text:"Выберите верный ответ",fontSize:18,color:"#315bd4",quizOptions:["Лампа станет ярче","Цепь прервётся, лампа погаснет","Ничего не изменится"],quizCorrect:1,quizExplanation:"Разомкнутый ключ разрывает цепь, поэтому ток перестаёт течь."},
+   card("physics-note",1030,740,410,100,"Источник · ключ · лампа · амперметр","#e7f6ef",17)
+  ];
+  return {version:1,title:sceneNames[scene],subject:"Физика",view:{x:0,y:0,zoom:1},items,background:{mode:"dots",color:"#fbfcfe",opacity:100}};
+ }
+ if(scene==="contour"){
+  const map=makeSchoolDiagram("contour-atlas");
+  if(map.kind==="atlas"){
+   map.title="Контурная карта Европы";
+   map.mode="contour";
+   map.regionId="europe";
+   map.showLabels=false;
+   map.contourTask="Подпишите страны и отметьте столицы Центральной Европы.";
+   map.contourAssignment={showBorders:true,showRegions:false,showCoastline:true,showRivers:false,showLakes:false,showGrid:false,showCapitals:false,showMajorCities:false,allowLabels:true,allowPoints:true,allowDrawing:true,allowFill:true};
+  }
+  const items:Item[]=[...common,
+   txt("contour-title",90,80,1120,76,"Откройте Европу на контурной карте",33,"#172d47","bold"),
+   txt("contour-subtitle",94,164,1120,52,"Подписывайте страны, отмечайте города и рисуйте прямо на карте",17,"#597189"),
+   graph("contour-map",90,230,900,560,"Контурная карта Европы",{graphFigureId:"contour-atlas",graphPurpose:"geometry",graphAxisMode:"none",schoolDiagram:map}),
+   card("contour-task",1030,230,410,160,"Задание\nПодпишите страны и отметьте столицы Центральной Европы.","#e7f6ef",18),
+   {id:"contour-quiz",kind:"quiz",x:1030,y:430,width:410,height:250,text:"Какая река протекает через Будапешт?",fontSize:18,color:"#315bd4",quizOptions:["Дунай","Рейн","Сена"],quizCorrect:0,quizExplanation:"Будапешт расположен на обоих берегах Дуная."},
+   card("contour-tools",1030,720,410,110,"Подписи · метки · заливка · рисунок","#eaf1ff",17)
+  ];
+  return {version:1,title:sceneNames[scene],subject:"География",view:{x:0,y:0,zoom:1},items,background:{mode:"dots",color:"#fbfcfe",opacity:100}};
+ }
+ if(scene==="history"){
+  const map=makeSchoolDiagram("history-atlas");
+  if(map.kind==="atlas"){
+   map.title="Европа в 1914 году";
+   map.year=1914;
+   map.regionId="europe";
+   map.mode="historical";
+   map.showLabels=true;
+   map.showEvents=true;
+  }
+  const items:Item[]=[...common,
+   txt("history-title",90,80,1120,76,"Историческая карта: Европа в 1914 году",33,"#172d47","bold"),
+   txt("history-subtitle",94,164,1120,52,"Сравнивайте эпохи, территории и события на одной доске",17,"#597189"),
+   graph("history-map",90,230,900,560,"Исторический атлас",{graphFigureId:"history-atlas",graphPurpose:"geometry",graphAxisMode:"none",schoolDiagram:map}),
+   card("history-question",1030,230,410,160,"Рассмотрите карту\nГраницы государств перед Первой мировой войной","#eaf1ff",18),
+   {id:"history-quiz",kind:"quiz",x:1030,y:430,width:410,height:250,text:"Какая империя распалась после Первой мировой войны?",fontSize:17,color:"#315bd4",quizOptions:["Австро-Венгерская","Римская","Монгольская"],quizCorrect:0,quizExplanation:"Австро-Венгрия распалась в 1918 году."},
+   card("history-note",1030,720,410,110,"Меняйте год и сравнивайте карты эпох","#e7f6ef",17)
+  ];
+  return {version:1,title:sceneNames[scene],subject:"История",view:{x:0,y:0,zoom:1},items,background:{mode:"dots",color:"#fbfcfe",opacity:100}};
+ }
+ if(scene==="russian"){
+  const diagram=makeSchoolDiagram("ru-phonetics");
+  if(diagram.kind==="phonetics"){
+   diagram.word="дом";
+   diagram.showSounds=true;
+   diagram.showCharacteristics=true;
+   diagram.letters=[
+    {id:"ru-d",letter:"д",sounds:["д"],characteristic:"согласный, звонкий, твёрдый",stressed:false},
+    {id:"ru-o",letter:"о",sounds:["о"],characteristic:"гласный, ударный",stressed:true},
+    {id:"ru-m",letter:"м",sounds:["м"],characteristic:"согласный, звонкий, твёрдый",stressed:false}
+   ];
+  }
+  const items:Item[]=[...common,
+   txt("russian-title",90,80,1120,76,"Слово, буква и звук",34,"#172d47","bold"),
+   txt("russian-subtitle",94,164,1120,52,"Разберите слово по звукам и проверьте себя",17,"#597189"),
+   graph("russian-phonetics",85,230,760,500,"Фонетический разбор",{graphFigureId:"ru-phonetics",graphPurpose:"geometry",graphAxisMode:"none",schoolDiagram:diagram}),
+   card("russian-rule",900,230,470,145,"Слушайте слово\nВ нём 3 буквы, 3 звука и один слог","#eaf1ff",19),
+   {id:"russian-quiz",kind:"quiz",x:900,y:415,width:470,height:250,text:"Сколько звуков в слове «дом»?",fontSize:18,color:"#315bd4",quizOptions:["2","3","4"],quizCorrect:1,quizExplanation:"Каждая из трёх букв обозначает один звук."},
+   card("russian-note",900,705,470,110,"Отмечайте ударение и характеристики звуков","#e7f6ef",17)
+  ];
+  return {version:1,title:sceneNames[scene],subject:"Русский язык",view:{x:0,y:0,zoom:1},items,background:{mode:"dots",color:"#fbfcfe",opacity:100}};
+ }
  const items:Item[]=[...common,
   txt("geo-title",90,80,1120,76,"Постройте фигуру и проверьте гипотезу",33,"#172d47","bold"),
   txt("geo-subtitle",94,164,1120,52,"Измерьте стороны, изучите углы и проверьте ответ на задаче",16,"#597189"),
@@ -56,7 +131,7 @@ function documentFor(scene:Scene):DocumentData{
 export default function PublicDemoBoard(){
  const params=useMemo(()=>new URLSearchParams(window.location.search),[]);
  const raw=params.get("scene");
- const scene:Scene=raw==="chemistry"||raw==="geometry"?raw:"math";
+ const scene:Scene=raw&&raw in sceneIds?raw as Scene:"math";
  const id=sceneIds[scene];
  const board:BoardSummary={id,title:sceneNames[scene],ownerId:"lektrus-public-demo",role:"owner",createdAt:"2026-01-01T00:00:00.000Z",updatedAt:"2026-01-01T00:00:00.000Z"};
  const user:AuthUser={id:"lektrus-public-demo",name:"Гость",email:"",createdAt:"2026-01-01T00:00:00.000Z",isGuest:true};

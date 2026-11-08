@@ -973,6 +973,55 @@
   .lectris-hub .lectris-hub-board-cover{height:105px;flex-basis:106px}
   .lectris-hub .lectris-hub-board{min-height:105px}
 }
+
+/* Comfortable one-screen dashboard: recover legible type and tile size while
+   keeping the same single-screen composition on standard desktop displays. */
+@media(min-width:1101px){
+  .lectris-hub:has(.lectris-hub-hero-compact){width:min(1580px,calc(100% - 64px));padding-top:16px;padding-bottom:18px}
+  .lectris-hub .lectris-hub-hero.lectris-hub-hero-compact{padding:17px 25px;gap:22px}
+  .lectris-hub .lectris-hub-hero-compact h1{font-size:clamp(27px,2.2vw,32px);margin:7px 0 4px}
+  .lectris-hub .lectris-hub-hero-compact p{font-size:13px;line-height:1.42}
+  .lectris-hub .lectris-hub-hero-compact .lectris-hub-sync{margin-top:8px!important;font-size:11px;gap:6px 9px}
+  .lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-chip{font-size:11px}
+  .lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-metric{font-size:12px}
+  .lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-actions button{min-height:43px;padding:9px 15px;font-size:13px}
+  .lectris-hub .lectris-hub-section-label{margin:14px 0 10px}
+  .lectris-hub .lectris-hub-section-label h2{font-size:21px}
+  .lectris-hub .lectris-hub-section-label .lectris-hub-overline{font-size:10px}
+  .lectris-hub .lectris-hub-section-label-secondary{margin-top:15px}
+  .lectris-hub-tiles{gap:12px}
+  .lectris-hub .lectris-hub-tile{min-height:145px;padding:15px 17px;gap:9px;border-radius:17px}
+  .lectris-hub .lectris-hub-tile-head{height:40px}
+  .lectris-hub .lectris-hub-tile-icon{width:40px;height:40px;font-size:22px;border-radius:12px}
+  .lectris-hub .lectris-hub-tile-copy{gap:4px}
+  .lectris-hub .lectris-hub-tile-copy strong{font-size:21px}
+  .lectris-hub .lectris-hub-tile-copy small{font-size:9px;letter-spacing:.09em}
+  .lectris-hub .lectris-hub-tile-copy>span{font-size:12px}
+  .lectris-hub .lectris-hub-section{padding:16px 18px}
+  .lectris-hub .lectris-hub-section-head h2{font-size:18px}
+  .lectris-hub .lectris-hub-section-head small{font-size:10px}
+  .lectris-hub .lectris-hub-section-head>button{font-size:11px}
+  .lectris-hub .lectris-hub-board-search input{height:39px;font-size:12px}
+  .lectris-hub-board-list{gap:10px}
+  .lectris-hub .lectris-hub-board{min-height:178px}
+  .lectris-hub .lectris-hub-board-cover{height:96px;flex-basis:96px}
+  .lectris-hub .lectris-hub-board-info strong{font-size:14px}
+  .lectris-hub .lectris-hub-board-info small{font-size:10px}
+  .lectris-hub .lectris-hub-board-info .lectris-hub-board-kind{font-size:10px}
+  .lectris-hub .lectris-hub-lesson strong{font-size:13px}
+  .lectris-hub .lectris-hub-lesson small{font-size:11px}
+  .lectris-hub .lectris-hub-shortcuts button{min-height:54px;font-size:11px}
+}
+@media (min-width:1101px) and (max-height:840px){
+  .lectris-hub:has(.lectris-hub-hero-compact){padding-top:10px;padding-bottom:12px}
+  .lectris-hub .lectris-hub-hero.lectris-hub-hero-compact{padding-block:12px}
+  .lectris-hub .lectris-hub-section-label{margin-top:9px;margin-bottom:7px}
+  .lectris-hub .lectris-hub-section-label-secondary{margin-top:10px}
+  .lectris-hub .lectris-hub-tile{min-height:132px}
+  .lectris-hub .lectris-hub-section{padding-block:12px}
+  .lectris-hub .lectris-hub-board{min-height:162px}
+  .lectris-hub .lectris-hub-board-cover{height:83px;flex-basis:83px}
+}
 /* Thumbnail is an image of the actual occupied board area, not a template drawing. */
 .lectris-library-preview,
 .lectris-hub-board-cover{
