@@ -1,6 +1,7 @@
 export type AiTool="assignment"|"quiz"|"flashcards";
 export type AiDifficulty="easy"|"medium"|"hard";
-export type AiDraft={id:string;tool:AiTool;topic:string;title:string;body:string;createdAt:string};
+export type AiDraft={id:string;tool:AiTool;topic:string;subject?:string;title:string;body:string;createdAt:string};
+import { generateCurriculumAi } from "./aiCurriculumGenerator";
 
 const KEY="onlinerepetitor.ai.local-history.v189";
 const USAGE_KEY="onlinerepetitor.ai.local-usage.v190";
@@ -41,23 +42,12 @@ function remember(draft:AiDraft){
 }
 export function clearAiDrafts(){localStorage.removeItem(KEY);window.dispatchEvent(new Event("onlinerepetitor:ai-history"))}
 
-export async function generateLocalAiDraft(tool:AiTool,topic:string,difficulty:AiDifficulty,count:number):Promise<AiDraft>{
+export async function generateLocalAiDraft(tool:AiTool,topic:string,difficulty:AiDifficulty,count:number,subject=""):Promise<AiDraft>{
  const clean=topic.trim();
  if(clean.length<2)throw new Error("Укажите тему.");
  await new Promise(r=>setTimeout(r,450));
- const level=difficulty==="easy"?"базовый":difficulty==="hard"?"углублённый":"средний";
- let title="",body="";
- if(tool==="assignment"){
-  title=`Задание: ${clean}`;
-  body=Array.from({length:count},(_,i)=>`${i+1}. ${i===0?`Сформулируйте ключевую идею темы «${clean}».`:i===1?`Приведите пример по теме «${clean}» и объясните его.`:i===2?`Найдите типичную ошибку при работе с темой «${clean}» и исправьте её.`:`Выполните задание ${i+1} по теме «${clean}» (${level} уровень).`}`).join("\n");
- }else if(tool==="quiz"){
-  title=`Тест: ${clean}`;
-  body=Array.from({length:count},(_,i)=>`${i+1}. Вопрос ${i+1} по теме «${clean}»?\nA) Вариант A\nB) Вариант B\nC) Вариант C\nD) Вариант D\nОтвет: A`).join("\n\n");
- }else{
-  title=`Карточки: ${clean}`;
-  body=Array.from({length:count},(_,i)=>`Карточка ${i+1}\nВопрос: Что важно знать о «${clean}» в пункте ${i+1}?\nОтвет: Краткий ответ для повторения (${level} уровень).`).join("\n\n");
- }
- const draft={id:uid(),tool,topic:clean,title,body,createdAt:new Date().toISOString()};
+ const generated=generateCurriculumAi(tool,clean,difficulty,count,subject);
+ const draft={id:uid(),tool,topic:clean,subject:generated.subject,title:generated.title,body:generated.items.join(tool==="assignment"?"\n":"\n\n"),createdAt:new Date().toISOString()};
  remember(draft);return draft;
 }
 

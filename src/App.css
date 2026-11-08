@@ -7548,7 +7548,7 @@ option{background:#fff;color:#343741}
 .board-ai-panel{width:min(560px,calc(100vw - 24px));max-height:min(720px,calc(100dvh - 24px));overflow:auto;background:#fff;border:1px solid #e0e2e8;border-radius:18px;box-shadow:0 20px 70px rgba(30,34,50,.2);padding:16px;color:#242733}
 .board-ai-panel>header{display:flex;align-items:flex-start;gap:12px}.board-ai-panel>header>button{margin-left:auto;border:0;background:#f1f2f6;width:32px;height:32px;border-radius:9px;font-size:20px;cursor:pointer}.board-ai-title{display:flex;align-items:center;gap:10px}.board-ai-title>div{display:grid;gap:2px}.board-ai-title span{font-size:12px;color:#7b808d}
 .board-ai-types{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:16px 0}.board-ai-types button{height:36px;border:1px solid #e0e2e8;background:#f7f8fb;border-radius:9px;cursor:pointer}.board-ai-types button.active{background:#5355c9;color:#fff;border-color:#5355c9}
-.board-ai-field,.board-ai-options label{display:grid;gap:5px}.board-ai-field>span,.board-ai-options span{font-size:12px;font-weight:650}.board-ai-field small{font-weight:400;color:#8a8f99}.board-ai-field input,.board-ai-options select{height:39px;border:1px solid #d9dce5;border-radius:9px;padding:0 10px;background:#fff}
+.board-ai-field,.board-ai-options label{display:grid;gap:5px}.board-ai-field>span,.board-ai-options span{font-size:12px;font-weight:650}.board-ai-field small{font-weight:400;color:#8a8f99}.board-ai-field :is(input,select),.board-ai-options select{height:39px;min-width:0;border:1px solid var(--lt-line,#d9dce5);border-radius:9px;padding:0 10px;background:var(--lt-raised,#fff);color:var(--lt-text,#242733)}
 .board-ai-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.board-ai-empty{min-height:180px;margin-top:12px;display:grid;place-content:center;justify-items:center;gap:5px;border:1px dashed #d7dae3;border-radius:12px;color:#858a96}.board-ai-empty b{color:#444854}.board-ai-preview{margin-top:12px;padding:12px;background:#f8f9fc;border-radius:12px}.board-ai-preview ol{margin:8px 0 0;padding-left:24px;display:grid;gap:7px;line-height:1.35}.board-ai-panel>footer{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.board-ai-panel>footer button{height:38px;padding:0 14px;border-radius:9px;cursor:pointer}.board-ai-panel>footer .secondary{border:1px solid #d9dce5;background:#fff}.board-ai-panel>footer .primary{border:0;background:#5355c9;color:#fff}.board-ai-panel>footer .primary:disabled{opacity:.45}
 @media(max-width:620px){.board-ai-overlay{padding:8px;align-items:end}.board-ai-panel{width:100%;max-height:82dvh;border-radius:18px 18px 12px 12px}.board-ai-types{grid-template-columns:1fr 1fr}.board-ai-options{grid-template-columns:1fr 1fr}}
 
@@ -7559,6 +7559,14 @@ option{background:#fff;color:#343741}
 
 /* v197 · prompt is an instruction, not a decorative title */
 .board-ai-prompt-help{margin-top:5px;color:#858a96;font-size:11px;line-height:1.35}
+
+.board-ai-panel{background:var(--lt-surface,#fff);border-color:var(--lt-line,#e0e2e8);color:var(--lt-text,#242733)}
+.board-ai-panel>header>button,.board-ai-panel>footer .secondary{background:var(--lt-subtle,#f1f2f6);border-color:var(--lt-line,#d9dce5);color:var(--lt-secondary,#536176)}
+.board-ai-panel>footer .primary{background:var(--lt-primary,#3658c8);color:var(--lt-on-primary,#fff)}
+.board-ai-title span,.board-ai-prompt-help{color:var(--lt-muted,#7b808d)}
+.board-ai-preview{background:var(--lt-subtle,#f8f9fc);color:var(--lt-text,#242733)}
+.board-ai-empty{border-color:var(--lt-line,#d7dae3);color:var(--lt-muted,#858a96)}
+.board-ai-panel :is(button,input,select):focus-visible{outline:2px solid var(--lt-focus,#6582ed);outline-offset:2px}
 
 /* v198 · student permissions and teacher media approval */
 .student-board-mode,.teacher-approval-badge{position:fixed;top:58px;right:12px;z-index:1150;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.94);border:1px solid #dfe2ea;box-shadow:0 3px 14px rgba(30,34,50,.08);font-size:11px;color:#666b78}.teacher-approval-badge{color:#4547a8;font-weight:650}

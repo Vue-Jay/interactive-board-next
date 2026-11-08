@@ -83,7 +83,7 @@ import LectrisToolbarSettings from "./LectrisToolbarSettings";
 import LectrisPanelSettings from "./LectrisPanelSettings";
 import { defaultLectrisPanelLayout, normalizeLectrisPanelLayout, readLectrisPanelLayout, type LectrisPanelLayout } from "./lectrisPanelLayout";
 import { clearAiBoardTransfer, peekAiBoardTransfer } from "./aiLocalStore";
-import { generateMathAi, type MathAiLevel, type MathAiMode } from "./aiMathGenerator";
+import { generateCurriculumAi, type CurriculumAiLevel } from "./aiCurriculumGenerator";
 import { type AccountRole } from "./accountRoleStore";
 import { materialBlob, markMaterialUsed, type Material } from "./materialsStore";
 import ShareDialog from "./ShareDialog";
@@ -2117,8 +2117,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const [boardAiOpen,setBoardAiOpen]=useState(false);
-  const [boardAiMode,setBoardAiMode]=useState<MathAiMode>("auto");
-  const [boardAiLevel,setBoardAiLevel]=useState<MathAiLevel>("basic");
+  const [boardAiSubject,setBoardAiSubject]=useState("");
+  const [boardAiLevel,setBoardAiLevel]=useState<CurriculumAiLevel>("medium");
   const [boardAiCount,setBoardAiCount]=useState(6);
   const [boardAiTopic,setBoardAiTopic]=useState("");
   const [boardAiWithAnswers,setBoardAiWithAnswers]=useState(false);
@@ -3729,9 +3729,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   });
   const generateBoardAi=()=>{
     if(!canCreateAssignments){setNotice("Создавать задания может только преподаватель с правом редактирования");return}
-    const result=generateMathAi(boardAiMode,boardAiLevel,boardAiCount,boardAiTopic,boardAiWithAnswers);
+    const result=generateCurriculumAi("assignment",boardAiTopic,boardAiLevel,boardAiCount,boardAiSubject);
     setBoardAiDetected(result.detected);
-    setBoardAiPreview(boardAiWithAnswers?result.items.map((x,i)=>`${x}  •  Ответ: ${result.answers[i]}`):result.items);
+    setBoardAiPreview(boardAiWithAnswers&&result.answers.length?result.items.map((x,i)=>`${x}  •  Ответ: ${result.answers[i]}`):result.items);
   };
   const insertBoardAi=()=>{
     if(!canCreateAssignments){setNotice("Создавать задания может только преподаватель с правом редактирования");return}
@@ -3760,7 +3760,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const center=world({x:rect.width/2,y:rect.height/2});
     const draft=transfer.draft;
     const created:Item[]=[];
-    if(draft.tool==="assignment"){
+    if(draft.tool==="assignment"||(draft.tool==="quiz"&&draft.subject!=="Математика")){
       const rows=draft.body.split(/\n+/).map(x=>x.replace(/^\s*\d+\.\s*/,"").trim()).filter(Boolean).slice(0,12);
       created.push({
         id:createId(),kind:"checklist",x:center.x-190,y:center.y-155,width:380,height:310,
@@ -9089,7 +9089,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <button type="button" className={`mobile-tools-more ${mobileToolsOpen?"active":""}`} aria-label="Все инструменты" title="Все инструменты" aria-expanded={mobileToolsOpen} onClick={()=>setMobileToolsOpen(v=>!v)}><Icon name={mobileToolsOpen?"chevron-left":"plus"} size={20}/></button>
         </nav>
         {mobileToolsOpen&&<section className="mobile-tools-sheet" aria-label="Все инструменты">
-          <div className="mobile-tools-sheet-head"><strong>Инструменты</strong><div className="mobile-tools-sheet-head-actions"><button type="button" title="Настроить основные инструменты" aria-label="Настроить основные инструменты" onClick={()=>{setMobileToolsOpen(false);setLectrisCustomizeOpen(true)}}><Icon name="settings" size={18}/></button>{!isStudent&&<button type="button" onClick={()=>{setMobileToolsOpen(false);setBoardAiOpen(true);setBoardAiPreview([])}} aria-label="AI-помощник" title="AI-помощник"><Icon name="robot" size={18}/></button>}<button type="button" className="mobile-command-search" onClick={()=>{setMobileToolsOpen(false);setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}} aria-label="Найти инструмент" title="Найти инструмент"><Icon name="search" size={18}/></button><button type="button" onClick={()=>setMobileToolsOpen(false)} aria-label="Закрыть">×</button></div></div>
+          <div className="mobile-tools-sheet-head"><strong>Инструменты</strong><div className="mobile-tools-sheet-head-actions"><button type="button" title="Настроить основные инструменты" aria-label="Настроить основные инструменты" onClick={()=>{setMobileToolsOpen(false);setLectrisCustomizeOpen(true)}}><Icon name="settings" size={18}/></button>{!isStudent&&<button type="button" onClick={()=>{setMobileToolsOpen(false);setBoardAiSubject(lectrisBoardOrganization.subject);setBoardAiOpen(true);setBoardAiPreview([]);setBoardAiDetected("")}} aria-label="AI-помощник" title="AI-помощник"><Icon name="robot" size={18}/></button>}<button type="button" className="mobile-command-search" onClick={()=>{setMobileToolsOpen(false);setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}} aria-label="Найти инструмент" title="Найти инструмент"><Icon name="search" size={18}/></button><button type="button" onClick={()=>setMobileToolsOpen(false)} aria-label="Закрыть">×</button></div></div>
           <div className="mobile-tools-groups">
             {mobileToolGroups.map(group=>({...group,tools:group.tools.filter(id=>id!=="formula"&&toolAllowedForRole(id))})).filter(group=>group.tools.length>0).map(group=><div className="mobile-tools-group" key={group.label}><span>{group.label}</span>{["Текст","Фигуры","Таблицы и диаграммы"].includes(group.label)?<div className="lektrus-mobile-elements-catalogue"><LektrusElementsCatalogue {...elementCatalogueProps} mode={group.label==="Текст"?"text":group.label==="Фигуры"?"shapes":"data"}/></div>:<div>{group.tools.map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""} title={id==="linkmedia"?"Видео прикрепляется по ссылке":t.label} aria-label={id==="linkmedia"?"Видео":t.label} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}</div>}</div>)}
           </div>
@@ -9114,7 +9114,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <button type="button" className="toolbar-more" aria-label={desktopToolsExpanded?"Закрыть меню инструментов":"Открыть все инструменты"} title={desktopToolsExpanded?"Закрыть меню инструментов":"Ещё инструменты"} aria-controls="lektrus-tool-overflow" aria-haspopup="dialog" onClick={()=>setDesktopToolsExpanded(v=>!v)} aria-expanded={desktopToolsExpanded}>
             <Icon name={desktopToolsExpanded?"chevron-left":"plus"} size={16}/><span className="tool-tooltip">{desktopToolsExpanded?"Свернуть":"Ещё инструменты"}</span>
           </button>
-          {canCreateAssignments&&<button type="button" className="toolbar-ai-button" title="AI-помощник" aria-label="AI-помощник" onClick={()=>{finishEdit();setBoardAiOpen(true);setBoardAiPreview([])}}>
+          {canCreateAssignments&&<button type="button" className="toolbar-ai-button" title="AI-помощник" aria-label="AI-помощник" onClick={()=>{finishEdit();setBoardAiSubject(lectrisBoardOrganization.subject);setBoardAiOpen(true);setBoardAiPreview([]);setBoardAiDetected("")}}>
             <Icon name="robot" size={18}/><span className="tool-tooltip">AI-помощник</span>
           </button>}
           <button type="button" className="toolbar-command-search" title="Найти инструмент · Ctrl+K" aria-label="Найти инструмент" onClick={()=>{setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}}>
@@ -9243,16 +9243,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         </aside>}
         {boardAiOpen&&canCreateAssignments&&<div className="board-ai-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)setBoardAiOpen(false)}}>
           <section className="board-ai-panel" role="dialog" aria-modal="true" aria-label="AI-помощник">
-            <header><div className="board-ai-title"><Icon name="robot" size={22}/><div><strong>AI-помощник</strong><span>Создать материал прямо на доске</span></div></div><button onClick={()=>setBoardAiOpen(false)} aria-label="Закрыть">×</button></header>
-            <div className="board-ai-types">
-              {([["auto","По запросу"],["arithmetic","Примеры"],["equations","Уравнения"],["fractions","Дроби"],["geometry","Геометрия"],["functions","Функции"],["percent","Проценты"],["word","Текстовые задачи"],["mixed","Смешанное"]] as [MathAiMode,string][]).map(([id,label])=><button key={id} className={boardAiMode===id?"active":""} onClick={()=>{setBoardAiMode(id);setBoardAiPreview([]);setBoardAiDetected("")}}>{label}</button>)}
-            </div>
-            <label className="board-ai-field"><span>Что нужно создать? <small>ИИ учитывает этот запрос</small></span><input value={boardAiTopic} onChange={e=>setBoardAiTopic(e.target.value)} placeholder="Например: создай кубические уравнения с целыми корнями"/></label><div className="board-ai-prompt-help">Запрос задаёт содержание: например «кубические уравнения», «задачи по теореме Пифагора», «дроби на сложение». Кнопки выше задают только общий раздел.</div>
-            <div className="board-ai-options"><label><span>Уровень</span><select value={boardAiLevel} onChange={e=>{setBoardAiLevel(e.target.value as MathAiLevel);setBoardAiPreview([])}}><option value="primary">Начальный</option><option value="basic">Средний</option><option value="advanced">Повышенный</option></select></label><label><span>Количество</span><select value={boardAiCount} onChange={e=>{setBoardAiCount(Number(e.target.value));setBoardAiPreview([])}}><option value={3}>3</option><option value={5}>5</option><option value={6}>6</option><option value={8}>8</option><option value={10}>10</option><option value={15}>15</option></select></label></div>
-            <label className="board-ai-answer-toggle"><input type="checkbox" checked={boardAiWithAnswers} onChange={e=>{setBoardAiWithAnswers(e.target.checked);setBoardAiPreview([])}}/><span>Показывать ответы</span></label>
+            <header><div className="board-ai-title"><Icon name="robot" size={22}/><div><strong>AI-помощник</strong><span>Подготовить задание для этой доски</span></div></div><button onClick={()=>setBoardAiOpen(false)} aria-label="Закрыть">×</button></header>
+            <label className="board-ai-field"><span>Предмет</span><select value={boardAiSubject} onChange={e=>{setBoardAiSubject(e.target.value);setBoardAiPreview([]);setBoardAiDetected("")}}><option value="">Определить по теме</option>{LEKTRUS_SCHOOL_SUBJECTS.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
+            <label className="board-ai-field"><span>Тема</span><input value={boardAiTopic} onChange={e=>{setBoardAiTopic(e.target.value);setBoardAiPreview([]);setBoardAiDetected("")}} placeholder={boardAiSubject==="Математика"?"Например: квадратные уравнения":"Например: причины реформ Петра I"}/></label>
+            <div className="board-ai-options"><label><span>Уровень</span><select value={boardAiLevel} onChange={e=>{setBoardAiLevel(e.target.value as CurriculumAiLevel);setBoardAiPreview([])}}><option value="easy">Базовый</option><option value="medium">Средний</option><option value="hard">Углублённый</option></select></label><label><span>Количество</span><select value={boardAiCount} onChange={e=>{setBoardAiCount(Number(e.target.value));setBoardAiPreview([])}}><option value={3}>3</option><option value={5}>5</option><option value={6}>6</option><option value={8}>8</option><option value={10}>10</option><option value={15}>15</option></select></label></div>
+            {(boardAiSubject===""||boardAiSubject==="Математика")&&<label className="board-ai-answer-toggle"><input type="checkbox" checked={boardAiWithAnswers} onChange={e=>{setBoardAiWithAnswers(e.target.checked);setBoardAiPreview([])}}/><span>Показывать ответы</span></label>}
             {boardAiDetected&&<div className="board-ai-detected">Распознано: <b>{boardAiDetected}</b></div>}
             {!boardAiPreview.length?<div className="board-ai-empty"><Icon name="robot" size={30}/><b>Что подготовить?</b><span>Выберите тип материала и нажмите «Сгенерировать».</span></div>:<div className="board-ai-preview"><strong>Предпросмотр</strong><ol>{boardAiPreview.map((x,i)=><li key={`${i}-${x}`}>{x}</li>)}</ol></div>}
-            <footer><button className="secondary" onClick={generateBoardAi}>{boardAiPreview.length?"Сгенерировать заново":"Сгенерировать"}</button><button className="primary" disabled={!boardAiPreview.length||!canEdit} onClick={insertBoardAi}>Добавить на доску</button></footer>
+            <footer><button className="secondary" disabled={boardAiTopic.trim().length<2} onClick={generateBoardAi}>{boardAiPreview.length?"Сгенерировать заново":"Сгенерировать"}</button><button className="primary" disabled={!boardAiPreview.length||!canEdit} onClick={insertBoardAi}>Добавить на доску</button></footer>
           </section>
         </div>}
         <section

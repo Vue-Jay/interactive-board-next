@@ -1,21 +1,23 @@
 import {useEffect,useState} from "react";
 import {clearAiDrafts,consumeAiCredit,generateLocalAiDraft,getAiUsage,listAiDrafts,remainingAiCredits,queueAiDraftForBoard,type AiDifficulty,type AiDraft,type AiTool} from "./aiLocalStore";
+import { LEKTRUS_SCHOOL_SUBJECTS } from "./lektrusSchoolSubjects";
 import {effectivePlan,getLocalSubscription} from "./billingStore";
 import "./AiStudioScreen.css";
 
 export default function AiStudioScreen({onBack,onTariffs}:{onBack:()=>void;onTariffs:()=>void}){
- const [tool,setTool]=useState<AiTool>("assignment"),[topic,setTopic]=useState(""),[difficulty,setDifficulty]=useState<AiDifficulty>("medium"),[count,setCount]=useState(5);
+ const [tool,setTool]=useState<AiTool>("assignment"),[topic,setTopic]=useState(""),[subject,setSubject]=useState(""),[difficulty,setDifficulty]=useState<AiDifficulty>("medium"),[count,setCount]=useState(5);
  const [draft,setDraft]=useState<AiDraft|null>(null),[history,setHistory]=useState<AiDraft[]>(()=>listAiDrafts()),[busy,setBusy]=useState(false),[error,setError]=useState("");
  const [usage,setUsage]=useState(()=>getAiUsage());
  const [transferNotice,setTransferNotice]=useState("");
  const plan=effectivePlan(),sub=getLocalSubscription(),available=plan.limits.aiCreditsPerMonth>0;
  useEffect(()=>{const sync=()=>setHistory(listAiDrafts());window.addEventListener("onlinerepetitor:ai-history",sync);const usageSync=()=>setUsage(getAiUsage());window.addEventListener("onlinerepetitor:ai-usage",usageSync);return()=>{window.removeEventListener("onlinerepetitor:ai-history",sync);window.removeEventListener("onlinerepetitor:ai-usage",usageSync)}},[]);
- const generate=async()=>{setError("");setBusy(true);try{consumeAiCredit(plan.limits.aiCreditsPerMonth);setUsage(getAiUsage());setDraft(await generateLocalAiDraft(tool,topic,difficulty,count))}catch(e){setError(e instanceof Error?e.message:"Не удалось создать черновик")}finally{setBusy(false)}};
+ const generate=async()=>{setError("");setTransferNotice("");setBusy(true);try{consumeAiCredit(plan.limits.aiCreditsPerMonth);setUsage(getAiUsage());setDraft(await generateLocalAiDraft(tool,topic,difficulty,count,subject))}catch(e){setError(e instanceof Error?e.message:"Не удалось создать черновик")}finally{setBusy(false)}};
  return <main className="ai-studio">
-  <header className="ai-head"><button onClick={onBack}>← Настройки</button><div><h1>AI-студия</h1><p>Создавайте задания, тесты и карточки. Результат остаётся черновиком до подтверждения преподавателем.</p></div><span>{plan.name} · осталось {remainingAiCredits(plan.limits.aiCreditsPerMonth)} из {plan.limits.aiCreditsPerMonth}</span></header>
+  <header className="ai-head"><button onClick={onBack}>← Настройки</button><div><h1>AI-помощник</h1><p>Подготовьте задание, тест или карточки по предмету и теме. Перед выдачей можно отредактировать результат.</p></div><span>{plan.name} · осталось {remainingAiCredits(plan.limits.aiCreditsPerMonth)} из {plan.limits.aiCreditsPerMonth}</span></header>
   {!available?<section className="ai-locked"><b>AI недоступен на текущем тарифе</b><p>{sub.planId!=="free"?"Подписка сейчас не активна, поэтому применяются возможности Free.":"AI включён в Teacher и Pro."}</p><button onClick={onTariffs}>Открыть тарифы</button></section>:
   <section className="ai-layout"><div className="ai-compose"><div className="ai-tool-tabs"><button className={tool==="assignment"?"active":""} onClick={()=>setTool("assignment")}>Задание</button><button className={tool==="quiz"?"active":""} onClick={()=>setTool("quiz")}>Тест</button><button className={tool==="flashcards"?"active":""} onClick={()=>setTool("flashcards")}>Карточки</button></div>
-   <label><span>Тема</span><input value={topic} onChange={e=>setTopic(e.target.value)} placeholder="Например: квадратные уравнения"/></label>
+   <label><span>Предмет</span><select value={subject} onChange={e=>setSubject(e.target.value)}><option value="">Определить по теме</option>{LEKTRUS_SCHOOL_SUBJECTS.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
+   <label><span>Тема</span><input value={topic} onChange={e=>setTopic(e.target.value)} placeholder={subject==="Математика"?"Например: квадратные уравнения":subject?`Например: ${subject.toLocaleLowerCase("ru-RU")} — ключевые понятия`:"Например: причины реформ Петра I"}/></label>
    <div className="ai-options"><label><span>Уровень</span><select value={difficulty} onChange={e=>setDifficulty(e.target.value as AiDifficulty)}><option value="easy">Базовый</option><option value="medium">Средний</option><option value="hard">Углублённый</option></select></label><label><span>Количество</span><select value={count} onChange={e=>setCount(Number(e.target.value))}><option>3</option><option>5</option><option>7</option><option>10</option></select></label></div>
    {error&&<div className="ai-error">{error}</div>}<button className="ai-generate" disabled={busy||topic.trim().length<2||remainingAiCredits(plan.limits.aiCreditsPerMonth)<=0} onClick={()=>void generate()}>{busy?"Создаём…":"Создать черновик"}</button>
    <div className="ai-usage-meter"><span style={{width:`${plan.limits.aiCreditsPerMonth?Math.min(100,usage.used/plan.limits.aiCreditsPerMonth*100):0}%`}}/></div>
