@@ -1,4 +1,5 @@
 import LektrusChemistryCollectionAction from "./LektrusChemistryCollectionAction";
+import UserAvatar from "./UserAvatar";
 import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useLayoutEffect, useState, type PointerEvent as PE, type CSSProperties } from "react";
 import { boardWorldTransform, boardOverlayTransform } from "./boardPanTransform";
 import { planCompositeBoardDrag, connectorDragEndpoints, paintBoardDeformedConnector, canCompositeBoardRotation, translatedBoardDragItems, paintBoardDragTranslation, clearBoardDragTranslation, paintBoardRotationPreview, clearBoardRotationPreview, type ConnectorDragTarget } from "./boardDragCompositor";
@@ -8047,7 +8048,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               </div>
               {canManageBoard&&<button type="button" className="presence-visit-link" onClick={()=>{visitPresenceMenuRef.current?.removeAttribute("open");setVisitHistoryOpen(true);void loadVisitHistory()}}>История посещений <span>↗</span></button>}
               {visiblePresenceUsers.length ? visiblePresenceUsers.map((user) => <div className="presence-person" key={user.userId}>
-                <span className="presence-avatar" aria-hidden="true">{user.name.trim().charAt(0).toUpperCase() || "U"}</span>
+                <span className="presence-avatar" aria-hidden="true"><UserAvatar/></span>
                 <span className="presence-person-copy">
                   <b>{user.name}{user.userId === authUser.id ? " · Вы" : ""}</b>
                   <small>{BOARD_ROLE_LABELS[user.role]}{remoteWork[user.userId]?.editingId ? " · редактирует объект" : remoteWork[user.userId]?.selectedIds.length ? ` · выбрано: ${remoteWork[user.userId].selectedIds.length}` : ""}</small>
@@ -8067,7 +8068,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   Ко мне
                 </button>}
               </div>) : adminHidden ? <div className="presence-person presence-person-empty"><span className="presence-person-copy"><b>Других участников нет</b><small>Невидимка включена · вы не отображаетесь другим</small></span></div> : <div className="presence-person">
-                <span className="presence-avatar" aria-hidden="true">{authUser.name.trim().charAt(0).toUpperCase() || "U"}</span>
+                <span className="presence-avatar" aria-hidden="true"><UserAvatar/></span>
                 <span className="presence-person-copy">
                   <b>{authUser.name} · Вы</b>
                   <small>{BOARD_ROLE_LABELS[boardSummary.role]}</small>
@@ -8086,7 +8087,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             <div className="topbar-more-popover">
               <button type="button" className="lektrus-controls-menu-entry" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setControlSettingsOpen(true)}}><Icon name="settings" size={17}/><span>Управление доской</span></button>
               <div className="topbar-menu-account">
-                <span className="account-avatar" aria-hidden="true">{authUser.name.trim().charAt(0).toUpperCase() || "U"}</span>
+                <span className="account-avatar" aria-hidden="true"><UserAvatar/></span>
                 <span><strong>{authUser.name}</strong><small>{BOARD_ROLE_LABELS[boardSummary.role]}{authUser.email?` · ${authUser.email}`:""}</small></span>
               </div>
               <div className="topbar-menu-section">

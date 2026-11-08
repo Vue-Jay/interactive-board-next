@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import UserAvatar from "./UserAvatar";
 import type { AuthUser } from "./authStore";
 import type { BoardSummary } from "./boardStore";
 import { getUserBoards } from "./boardStore";
@@ -68,10 +69,10 @@ export default function StudentsScreen({user,onBack,onOpenBoard}:Props){
    <div className="students-toolbar"><input type="search" placeholder="Поиск по имени, email или тегу" value={query} onChange={e=>setQuery(e.target.value)}/><button onClick={()=>void load()}>Обновить</button></div>
    {notice&&<div className="access-notice">{notice}</div>}
    <div className="students-layout">
-    <div className="students-list">{!loading&&visible.length===0&&<div className="boards-empty"><strong>Учеников пока нет</strong><span>Они появятся после добавления на ваши доски.</span></div>}{visible.map(s=>{const sa=assignments.filter(a=>a.studentId===s.userId);const alert=sa.filter(overdue).length+sa.filter(a=>a.status==="submitted").length;return <button key={s.userId} className={`student-row ${selected===s.userId?"active":""}`} onClick={()=>setSelected(s.userId)}><span className="student-avatar">{s.name.charAt(0).toUpperCase()}</span><span><b>{s.name}</b><small>{s.email||"Email не указан"}</small><em>{s.boardIds.length} досок · {s.sessions.length} занятий{alert?` · требует внимания: ${alert}`:""}</em></span></button>})}</div>
+    <div className="students-list">{!loading&&visible.length===0&&<div className="boards-empty"><strong>Учеников пока нет</strong><span>Они появятся после добавления на ваши доски.</span></div>}{visible.map(s=>{const sa=assignments.filter(a=>a.studentId===s.userId);const alert=sa.filter(overdue).length+sa.filter(a=>a.status==="submitted").length;return <button key={s.userId} className={`student-row ${selected===s.userId?"active":""}`} onClick={()=>setSelected(s.userId)}><span className="student-avatar"><UserAvatar/></span><span><b>{s.name}</b><small>{s.email||"Email не указан"}</small><em>{s.boardIds.length} досок · {s.sessions.length} занятий{alert?` · требует внимания: ${alert}`:""}</em></span></button>})}</div>
     <aside className="student-card">
      {!student?<div className="student-placeholder"><strong>Выберите ученика</strong><span>Здесь появится единая карточка ученика.</span></div>:<>
-      <div className="student-card-head"><span className="student-avatar large">{student.name.charAt(0).toUpperCase()}</span><div><h2>{student.name}</h2><p>{student.email}</p></div></div>
+      <div className="student-card-head"><span className="student-avatar large"><UserAvatar/></span><div><h2>{student.name}</h2><p>{student.email}</p></div></div>
       <div className="student-stat-grid student-stat-grid-4"><div><b>{student.boardIds.length}</b><span>досок</span></div><div><b>{student.sessions.length}</b><span>занятий</span></div><div><b>{Math.round(totalMinutes/60*10)/10} ч</b><span>в истории</span></div><div><b>{fmt(student.lastBoardAt)}</b><span>активность</span></div></div>
       <div className="student-stat-grid student-stat-grid-4"><div><b>{studentAssignments.length}</b><span>заданий</span></div><div><b>{average==null?"—":`${average}%`}</b><span>средний балл</span></div><div><b>{pendingReview}</b><span>на проверке</span></div><div><b>{late}</b><span>просрочено</span></div></div>
       <div className="student-history-empty">{nextLesson?<><b>Следующее занятие:</b> {fmtDateTime(nextLesson.startsAt)} · {nextLesson.title} · {nextLesson.durationMinutes} мин</>:<>Следующих занятий в расписании нет.</>}</div>

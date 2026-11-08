@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import UserAvatar from "./UserAvatar";
 import type { AccountRole } from "./accountRoleStore";
 import { listNotifications } from "./notificationsStore";
 
@@ -97,7 +98,7 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
           <NavGlyph name="search"/><span>Поиск по разделам</span><kbd>Ctrl K</kbd>
         </button>
         <button type="button" className="lectris-header-icon" title="Уведомления" aria-label="Уведомления" onClick={()=>move("notifications")}><NavGlyph name="notification"/>{unreadCount>0&&<span className="lectris-unread-dot" aria-label={"Непрочитанных уведомлений: "+unreadCount}/>}</button>
-        <button type="button" className="lectris-header-account" onClick={()=>move("profile")} title="Открыть профиль"><span className="lectris-avatar">{name.trim().slice(0,1).toUpperCase()||"?"}</span><span className="lectris-account-name">{name}</span></button>
+        <button type="button" className="lectris-header-account" onClick={()=>move("profile")} title="Открыть профиль"><span className="lectris-avatar"><UserAvatar/></span><span className="lectris-account-name">{name}</span></button>
       </div>
     </header>
     <div className="lectris-workspace-body">

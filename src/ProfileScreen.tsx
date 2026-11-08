@@ -1,4 +1,5 @@
 import {useEffect,useState} from "react";
+import UserAvatar from "./UserAvatar";
 import type {AuthUser} from "./authStore";
 import {applyProfileAppearance,getProfileSettings,saveProfileSettings,type ProfileSettings} from "./profileStore";
 import {emptyProfileDetails,getProfileDetails,saveProfileDetails,type ProfileDetails,validateProfileDetails} from "./profileDetailsStore";
@@ -46,7 +47,7 @@ export default function ProfileScreen({user,accountRole,isAppAdmin,previewMode=f
   <header className="students-header"><div><button className="boards-secondary" onClick={onBack}>← Доски</button><div><strong>Профиль</strong><span>Личные данные и информация аккаунта</span></div></div></header>
   <div className="profile-redesign-wrap">
    <section className="profile-identity-card profile-identity-wide">
-    <div className="profile-big-avatar">{(details.firstName||profile.displayName||user.name).trim().charAt(0).toUpperCase()||"?"}</div>
+    <div className="profile-big-avatar"><UserAvatar/></div>
     <div className="profile-identity-copy"><p className="profile-eyebrow">МОЙ ПРОФИЛЬ</p><h1>{profile.displayName||user.name}</h1><p>{user.email}</p><div className="profile-role-pills"><span>{isTeacher?"Преподаватель":"Ученик"}</span>{isAppAdmin&&<span>Администратор</span>}</div></div>
     {joined&&<div className="profile-member-since"><span>В Lektrus с</span><strong>{joined}</strong></div>}
    </section>
@@ -68,7 +69,7 @@ export default function ProfileScreen({user,accountRole,isAppAdmin,previewMode=f
     </div>
     <div className="profile-redesign-actions"><span>Обновите сведения о себе и предметах преподавания.</span><button className="boards-create" type="button" disabled={!loaded||busy} onClick={()=>void save()}>{busy?"Сохраняем…":"Сохранить изменения"}</button></div>
    </section>}
-   <section className="profile-redesign-card profile-redesign-account"><div className="profile-account-identity"><span className="profile-account-icon" aria-hidden="true">{user.email.charAt(0).toUpperCase()||"@"}</span><div><h2>Учётная запись</h2><p>Вы вошли как <strong>{user.email}</strong></p></div></div><button type="button" className="profile-logout-button" onClick={onLogout}><span aria-hidden="true">↪</span> {previewMode?"Завершить проверку роли":"Выйти из аккаунта"}</button></section>
+   <section className="profile-redesign-card profile-redesign-account"><div className="profile-account-identity"><span className="profile-account-icon" aria-hidden="true"><UserAvatar/></span><div><h2>Учётная запись</h2><p>Вы вошли как <strong>{user.email}</strong></p></div></div><button type="button" className="profile-logout-button" onClick={onLogout}><span aria-hidden="true">↪</span> {previewMode?"Завершить проверку роли":"Выйти из аккаунта"}</button></section>
   </div>
  </main>
 }

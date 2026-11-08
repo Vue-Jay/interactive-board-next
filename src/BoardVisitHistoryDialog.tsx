@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useRef,useState} from "react";
 import {createPortal} from "react-dom";
 import {formatVisitDuration,type BoardVisit} from "./boardVisits";
+import UserAvatar from "./UserAvatar";
 import "./boardVisitHistoryDialog.css";
 
 type Props={
@@ -131,7 +132,7 @@ export default function BoardVisitHistoryDialog({boardTitle,visits,loading,error
       </div>}
      {!loading&&!error&&shown.map(visit=>
       <article key={visit.visit_id} className="bv-visit">
-       <div className="bv-avatar" aria-hidden="true">{visit.user_name.trim().charAt(0).toUpperCase()||"У"}</div>
+       <div className="bv-avatar"><UserAvatar/></div>
        <div className="bv-visit-main">
         <div className="bv-visit-name">{visit.user_name}</div>
         <time dateTime={visit.started_at}>{dateTime.format(new Date(visit.started_at))}</time>
