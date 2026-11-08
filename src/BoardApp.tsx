@@ -2045,7 +2045,7 @@ const itemIconName = (item: Item): IconName => {
   return "marker";
 };
 
-export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adminMaintenance = false, adminInvisible = false, globalRolePreview="actual", onGlobalRolePreviewChange, onBackToBoards, onLogout, onBoardChanged, initialRemoteVersion = null }: {
+export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adminMaintenance = false, adminInvisible = false, globalRolePreview="actual", onGlobalRolePreviewChange, onBackToBoards, onLogout, onBoardChanged, initialRemoteVersion = null, demoMode = false }: {
   authUser: AuthUser;
   boardSummary: BoardSummary;
   accountRole: AccountRole;
@@ -2058,7 +2058,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   onLogout: () => void;
   onBoardChanged: (board: BoardSummary) => void;
   initialRemoteVersion?: number | null;
+  demoMode?: boolean;
 }) {
+  const remoteEnabled=!demoMode&&isRemoteBackendEnabled();
   const layoutEditing=new URLSearchParams(window.location.search).get("layout-editor")==="1";
   const [rolePreview,setRolePreview]=useState<BoardRolePreview>(globalRolePreview);
   useEffect(()=>setRolePreview(globalRolePreview),[boardSummary.id,globalRolePreview]);
@@ -2899,7 +2901,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   }, []);
   // Read recent server revisions once on entry, without blocking board rendering.
   useEffect(()=>{
-    if(layoutEditing||!isRemoteBackendEnabled())return;
+    if(layoutEditing||!remoteEnabled)return;
     let active=true;
     let previousVersion:number|null=null;
     try{
@@ -2992,7 +2994,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   }, [presentation, presentationTimerRunning, presentationTimerMode]);
 
   const pushRemoteSnapshot = useCallback(async (data: DocumentData, knownFingerprint?: string) => {
-    if (layoutEditing || !isRemoteBackendEnabled() || !canEdit || !boardMounted.current || pendingRemote.current) return;
+    if (layoutEditing || !remoteEnabled || !canEdit || !boardMounted.current || pendingRemote.current) return;
     const fingerprint = knownFingerprint ?? documentFingerprint(data);
     if (fingerprint === acknowledgedDocument.current ||
         fingerprint === acknowledgedSharedContent.current) return;
@@ -3098,7 +3100,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           localStorage.setItem(storageKey,serialized);
           lastLocalSerialized.current=serialized;
           localBackupValid.current=true;
-          if(isRemoteBackendEnabled()){
+          if(remoteEnabled){
             try{localStorage.setItem(storageKey+".pending-sync","1")}catch{}
           }
         } catch(error) {
@@ -3110,8 +3112,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }
       if (!boardMounted.current) return;
       const fingerprint = documentFingerprint(data);
-      if (isRemoteBackendEnabled() && pendingRemote.current) return;
-      if(isRemoteBackendEnabled() && (
+      if (remoteEnabled && pendingRemote.current) return;
+      if(remoteEnabled && (
         fingerprint === acknowledgedDocument.current ||
         fingerprint === acknowledgedSharedContent.current
       )){
@@ -3125,14 +3127,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       // the hot autosave path while still keeping recent boards ordered correctly.
       const now = Date.now();
       const titleChanged = lastBoardTouchTitle.current !== data.title;
-      if (titleChanged || now - lastBoardTouchAt.current >= 15_000) {
+      if (!demoMode && (titleChanged || now - lastBoardTouchAt.current >= 15_000)) {
         lastBoardTouchAt.current = now;
         lastBoardTouchTitle.current = data.title;
         void touchBoard(authUser.id, boardSummary.id, data.title, boardSummary.role).then((updatedBoard) => {
           if (updatedBoard && boardMounted.current) onBoardChanged(updatedBoard);
         }).catch(() => {});
       }
-      if (isRemoteBackendEnabled()) {
+      if (remoteEnabled) {
         saveStep.current="подготовка";
         setSaveStatus("Сохранение на сервер…");
         const pending=pushRemoteSnapshot(data,fingerprint);
@@ -3203,12 +3205,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const refreshDiscussions=useCallback(async()=>{setDiscussionRows(await listBoardComments(boardSummary.id))},[boardSummary.id]);
   const refreshDiscussionParticipants=useCallback(async()=>{setDiscussionParticipants(await listBoardCommentParticipants(boardSummary.id))},[boardSummary.id]);
   const openDiscussions=async(focusId:string|null=null)=>{
-    if(!isRemoteBackendEnabled()){setNotice("Чат доступен при серверной синхронизации");return}
+    if(!remoteEnabled){setNotice("Чат доступен при серверной синхронизации");return}
     setChatOpen(true);setChatUnread(0);setDiscussionOpen(true);setDiscussionBusy(true);setDiscussionError("");if(focusId)setDiscussionFocusId(focusId);
     try{await Promise.all([refreshDiscussions(),refreshDiscussionParticipants()])}catch(error){setDiscussionError(error instanceof Error?error.message:"Не удалось загрузить обсуждения")}finally{setDiscussionBusy(false)}
   };
   useEffect(()=>{
-    if(layoutEditing||!isRemoteBackendEnabled())return;
+    if(layoutEditing||!remoteEnabled)return;
     return subscribeBoardComments(boardSummary.id,()=>{
       if(!chatOpen)setChatUnread(value=>Math.min(99,value+1));
       void refreshDiscussions().catch(()=>{});
@@ -3254,7 +3256,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       snapshot.current=latest;
       flushSave();
       const expected=sharedBoardFingerprint(latest);
-      if(canEdit&&isRemoteBackendEnabled()&&expected!==acknowledgedSharedContent.current){
+      if(canEdit&&remoteEnabled&&expected!==acknowledgedSharedContent.current){
         const until=Date.now()+8000;
         while(boardMounted.current&&Date.now()<until&&
               acknowledgedSharedContent.current!==expected){
@@ -3291,7 +3293,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const openHistory=async()=>{
-    if(!isRemoteBackendEnabled()){setNotice("История версий доступна при серверной синхронизации");return}
+    if(!remoteEnabled){setNotice("История версий доступна при серверной синхронизации");return}
     setHistoryOpen(true);setHistoryBusy(true);setHistoryError("");
     try{setHistoryRows(await listBoardHistory(boardSummary.id,40))}
     catch(error){setHistoryError(error instanceof Error?error.message:"Не удалось загрузить историю")}
@@ -3601,7 +3603,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           importedIds.set(asset.id, id);
         } catch (error) {
           // Preserve v19 local imports even when one attachment is damaged.
-          if (isRemoteBackendEnabled()) throw error;
+          if (remoteEnabled) throw error;
         }
       }
       data.items = data.items.map(item => item.assetId && importedIds.has(item.assetId)
@@ -7517,7 +7519,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   useEffect(() => layoutEditing?()=>{}:subscribeBoardDocument(boardSummary.id, row => receiveRemote.current(row), setRealtimeStatus), [boardSummary.id,layoutEditing]);
 
-  useEffect(() => layoutEditing||!isRemoteBackendEnabled()?()=>{}:trackBoardVisit(boardSummary.id),[boardSummary.id,layoutEditing]);
+  useEffect(() => layoutEditing||!remoteEnabled?()=>{}:trackBoardVisit(boardSummary.id),[boardSummary.id,layoutEditing]);
 
   useEffect(() => layoutEditing?()=>{}:subscribeBoardPresence(
     boardSummary.id,
@@ -8013,7 +8015,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               <button type="button" className="lectris-interface-settings-entry" onClick={e=>{setControlSettingsOpen(true);e.currentTarget.closest("details")?.removeAttribute("open")}}><Icon name="settings" size={16}/>Управление и интерфейс<span aria-hidden="true">→</span></button>
             </div>
           </details>{!Capacitor.isNativePlatform()&&installPrompt&&!isStandalone&&<button type="button" className="install-app-button" onClick={()=>void installApp()} title="Установить Lektrus на устройство">{isCoarsePointer?"Установить приложение":"Установить"}</button>}
-          {isRemoteBackendEnabled() && <details className="presence-menu" ref={visitPresenceMenuRef}>
+          {remoteEnabled && <details className="presence-menu" ref={visitPresenceMenuRef}>
             <summary title={realtimeStatus === "online" ? "Подключено · пользователи на доске" : realtimeStatus === "reconnecting" ? "Подключение к доске..." : "Нет подключения"}>
               <span className={`presence-live-dot connection-${realtimeStatus}`} aria-hidden="true"/>
               <span className="presence-count">{visiblePresenceUsers.length}</span>
@@ -8077,7 +8079,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             ✎ {remoteEditingCount}
           </span>}
           {canManageBoard && <button className="lesson-button board-invite-button compact-top-action" aria-label="Добавить участника" title="Добавить участника" onClick={() => setSharing(true)}><svg className="top-action-svg add-person-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 18c.5-3.2 2.5-5 5.5-5s5 1.8 5.5 5"/><path d="M18 7v6M15 10h6"/></svg></button>}
-          {isRemoteBackendEnabled() && <button type="button" className={`lesson-button board-chat-button ${chatOpen ? "active" : ""}`} onClick={()=>void openDiscussions()} title="Чат этой доски" aria-label={`Чат этой доски${chatUnread?` · новых сообщений ${chatUnread}`:""}`}><Icon name="comments" size={16}/><span>Чат</span>{chatUnread>0&&<b className="top-badge">{chatUnread>99?"99+":chatUnread}</b>}</button>}
+          {remoteEnabled && <button type="button" className={`lesson-button board-chat-button ${chatOpen ? "active" : ""}`} onClick={()=>void openDiscussions()} title="Чат этой доски" aria-label={`Чат этой доски${chatUnread?` · новых сообщений ${chatUnread}`:""}`}><Icon name="comments" size={16}/><span>Чат</span>{chatUnread>0&&<b className="top-badge">{chatUnread>99?"99+":chatUnread}</b>}</button>}
           <details className="topbar-more-menu">
             <summary className="top-button topbar-more-trigger" title="Дополнительные действия" aria-label="Дополнительные действия"><Icon name="more" /></summary>
             <div className="topbar-more-popover">
