@@ -958,3 +958,46 @@ body .workspace section.mobile-tools-sheet .mobile-tools-sheet-head-actions>.mob
  background:var(--lt-hover,#edf3fb)!important;border-color:var(--lt-primary,#355fd0)!important;color:var(--lt-primary,#355fd0)!important;
 }
 body .workspace section.mobile-tools-sheet .mobile-tools-sheet-head-actions>button:focus-visible{outline:2px solid var(--lt-focus,#7ca5ee)!important;outline-offset:2px}
+
+/* Keep the catalogue beside the rail in landscape and tablet layouts. */
+@media screen and (max-width:1100px) and (orientation:landscape),
+       screen and (min-width:701px) and (max-width:1100px) and (orientation:portrait){
+ body .workspace section.mobile-tools-sheet{
+  display:flex!important;flex-direction:column!important;box-sizing:border-box!important;
+  position:fixed!important;left:calc(64px + env(safe-area-inset-left,0px))!important;right:auto!important;
+  top:calc(58px + env(safe-area-inset-top,0px))!important;bottom:auto!important;
+  width:min(560px,calc(100vw - 76px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)))!important;
+  min-width:0!important;max-width:calc(100vw - 76px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px))!important;
+  height:auto!important;max-height:calc(100dvh - 72px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;
+  margin:0!important;transform:none!important;overflow:hidden!important;border-radius:15px!important;z-index:950!important;
+ }
+ body .workspace section.mobile-tools-sheet .mobile-tools-sheet-head{flex:0 0 auto!important;min-height:42px!important}
+ body .workspace section.mobile-tools-sheet .mobile-tools-groups{
+  display:grid!important;grid-template-columns:minmax(0,1fr)!important;flex:1 1 auto!important;
+  min-height:0!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain!important;
+  -webkit-overflow-scrolling:touch!important;
+ }
+ body .workspace section.mobile-tools-sheet .mobile-tools-group>div{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
+/* In portrait phones, the catalogue floats above the fixed bottom dock. */
+@media screen and (max-width:700px) and (orientation:portrait){
+ body .workspace section.mobile-tools-sheet{
+  display:flex!important;flex-direction:column!important;box-sizing:border-box!important;
+  position:fixed!important;left:50%!important;right:auto!important;top:auto!important;
+  bottom:calc(74px + env(safe-area-inset-bottom,0px))!important;transform:translateX(-50%)!important;
+  width:min(520px,calc(100vw - 20px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)))!important;
+  min-width:0!important;max-width:calc(100vw - 20px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px))!important;
+  height:auto!important;max-height:min(65dvh,calc(100dvh - 132px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)))!important;
+  margin:0!important;overflow:hidden!important;border-radius:15px!important;z-index:950!important;
+ }
+ body .workspace section.mobile-tools-sheet .mobile-tools-sheet-head{flex:0 0 auto!important;min-height:42px!important}
+ body .workspace section.mobile-tools-sheet .mobile-tools-groups{
+  display:grid!important;grid-template-columns:minmax(0,1fr)!important;flex:1 1 auto!important;
+  min-height:0!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain!important;
+  -webkit-overflow-scrolling:touch!important;
+ }
+ body .workspace section.mobile-tools-sheet .mobile-tools-group>div{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
+@media screen and (max-width:350px) and (orientation:portrait){
+ body .workspace section.mobile-tools-sheet .mobile-tools-group>div{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
