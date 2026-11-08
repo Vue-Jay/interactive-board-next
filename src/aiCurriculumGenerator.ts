@@ -1,5 +1,5 @@
 import { generateMathAi, type MathAiLevel, type MathAiMode } from "./aiMathGenerator";
-import { generateSubjectExercise } from "./aiSubjectExerciseBank";
+import { generateSubjectExercise, generateSubjectExerciseVariant } from "./aiSubjectExerciseBank";
 import { classifyCurriculumSubject } from "./aiSubjectIntentClassifier";
 import { LEKTRUS_SCHOOL_SUBJECTS } from "./lektrusSchoolSubjects";
 
@@ -82,7 +82,7 @@ const numberWords: Record<string, number> = {
   тринадцать: 13, четырнадцать: 14, пятнадцать: 15, шестнадцать: 16, семнадцать: 17,
   восемнадцать: 18, девятнадцать: 19, двадцать: 20,
 };
-const countUnits = "шт\\.?|задач[а-яё]*|задани[а-яё]*|вопрос[а-яё]*|пример[а-яё]*|упражнен[а-яё]*|карточ[а-яё]*";
+const countUnits = "шт\\.?|задач[а-яё]*|задани[а-яё]*|вопрос[а-яё]*|пример[а-яё]*|упражнен[а-яё]*|флеш[- ]?карточ[а-яё]*|карточ[а-яё]*";
 const gradeWords: Record<string, number> = {
   первый: 1, первого: 1, первом: 1, второй: 2, второго: 2, втором: 2, третий: 3, третьего: 3, третьем: 3,
   четвертый: 4, четвертого: 4, четвертом: 4, пятый: 5, пятого: 5, пятом: 5, шестой: 6, шестого: 6, шестом: 6,
@@ -118,8 +118,9 @@ export function parseCurriculumRequest(
   for (let pass = 0; pass < 3; pass += 1) {
     topic = topic
       .replace(/^\s*(?:(?:пожалуйста|мне|мне нужно|мне нужна|мне нужны|нужно|нужна|нужны|хочу|можно|создай|составь|подготовь|подготовить|сгенерируй|сделай|дай|придумай|напиши|подбери|сформируй|сгенерировать|реши|решить|вычисли|найди|объясни|изучи|разбери|расскажи|покажи|хотелось бы|давай)\s+)+/i, "")
-      .replace(/^\s*(?:(?:что-нибудь|что нибудь|попроще|полегче|посложнее|сложнее|прост(?:ую|ые|ых|ое)|л[её]гк(?:ую|ие|их|ое)|сложн(?:ую|ые|ых|ое)|углублённ[а-яё]*|олимпиадн[а-яё]*|базов[а-яё]*|продвинут[а-яё]*)\s+)+/i, "")
-      .replace(/^\s*(?:(?:задач[а-яё]*|задани[а-яё]*|упражнен[а-яё]*|тест[а-яё]*|викторин[а-яё]*|проверочн[а-яё]*|контрольн[а-яё]*|самостоятельн[а-яё]*|карточ[а-яё]*|вопрос[а-яё]*|пример[а-яё]*|практическ\w*)\s+)+/i, "")
+      .replace(/^\s*(?:(?:что-нибудь|что нибудь|попроще|полегче|посложнее|сложнее|л[её]гк(?:ую|ие|их|ое)|сложн(?:ую|ые|ых|ое)|углублённ[а-яё]*|олимпиадн[а-яё]*|базов[а-яё]*|продвинут[а-яё]*)\s+)+/i, "")
+      .replace(/^\s*прост(?:ую|ые|ых|ое)\s+(?=(?:задач|задан|упражнен|тест|пример))/i, "")
+      .replace(/^\s*(?:(?:задач[а-яё]*|задани[а-яё]*|упражнен[а-яё]*|тест[а-яё]*|викторин[а-яё]*|проверочн[а-яё]*|контрольн[а-яё]*|самостоятельн[а-яё]*|флеш[- ]?карточ[а-яё]*|карточ[а-яё]*|вопрос[а-яё]*|пример[а-яё]*|практическ\w*)\s+)+/i, "")
       .replace(/^\s*(?:(?:по теме|на тему|по|на|про|тема|теме|для|о)\s+)+/i, "");
     const subjectLead: Partial<Record<string, RegExp>> = {
       "Математика": /^(?:математик[а-яё]*|алгебр[а-яё]*|геометр[а-яё]*)\s+/i,
@@ -141,7 +142,7 @@ export function parseCurriculumRequest(
   topic = topic.replace(/^\s*(?:(?:по теме|на тему|по|на|про|тема|теме|для|о)\s+)+/i, "")
     .replace(/\s+(?:для|учени(?:к|ца|кам|кам)?|учащимс[яи])\s*$/i, "")
     .replace(/\s+/g, " ").trim();
-  const toolMatch = /карточк|флеш.?карточ|flash.?card/i.test(input)
+  const toolMatch = /карточ[а-яё]*|флеш.?карточ|flash.?card/i.test(input)
     ? "flashcards"
     : /тест|проверочн|контрольн|викторин|quiz|самостоятельн|вопрос[а-яё]*/i.test(input)
       ? "quiz"
@@ -187,8 +188,16 @@ export function generateCurriculumAi(tool: CurriculumAiTool, topic: string, leve
     };
   }
 
+  const seenPrompts = new Set<string>();
+  let fallbackVariant = 0;
   const exercises = Array.from({ length: safeCount }, (_, i) => {
-    const exercise = generateSubjectExercise(subject, clean, effectiveLevel, i);
+    let exercise = generateSubjectExercise(subject, clean, effectiveLevel, i);
+    let normalizedPrompt = exercise.prompt.toLocaleLowerCase("ru-RU").replace(/\s+/g, " ").trim();
+    while (seenPrompts.has(normalizedPrompt) && fallbackVariant < 30) {
+      exercise = generateSubjectExerciseVariant(subject, clean, fallbackVariant++);
+      normalizedPrompt = exercise.prompt.toLocaleLowerCase("ru-RU").replace(/\s+/g, " ").trim();
+    }
+    seenPrompts.add(normalizedPrompt);
     if (effectiveLevel === "easy") return { ...exercise, prompt: `${exercise.prompt} Работай по шагам; при необходимости пользуйся конспектом.` };
     if (effectiveLevel === "hard") return {
       ...exercise,
