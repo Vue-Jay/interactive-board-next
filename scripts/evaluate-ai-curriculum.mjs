@@ -30,12 +30,19 @@ try {
     topicsWithSpecificExercise: 0,
     topicsUsingSourceSafeRubric: 0,
     exerciseCoverageBySubject: {},
+    specificTopicsBySubject: {},
+    rubricTopicsBySubject: {},
+    mathTopicsByGenerator: {},
     parserCases: 0,
     parserFailures: [],
     generatedParserCases: 0,
     generatedParserFailures: [],
     generatedParserCasesBySubject: {},
     generatedParserCasesByGrade: {},
+    mathFocusedChecks: 0,
+    mathFocusedFailures: [],
+    physicsFocusedChecks: 0,
+    physicsFocusedFailures: [],
     gradeMapTopicsBySubject: {},
     gradeMapMissingTopicsBySubject: {},
     gradeMapErrors: [],
@@ -63,15 +70,24 @@ try {
 
       const firstSet = curriculum.generateCurriculumAi("assignment", topic, "medium", 1, subject);
       const firstAnswer = firstSet.answers[0]?.replace(/^\d+\.\s*/, "") ?? "";
+      if (subject === "Математика") {
+        const routedTopics = report.mathTopicsByGenerator[firstSet.detected] ?? [];
+        routedTopics.push(topic);
+        report.mathTopicsByGenerator[firstSet.detected] = routedTopics;
+      }
       const hasSpecificExercise = !firstAnswer.startsWith("Ключ проверки:");
       const coverage = report.exerciseCoverageBySubject[subject] ?? { total: 0, specific: 0, sourceSafeRubric: 0 };
       coverage.total += 1;
       if (hasSpecificExercise) {
         coverage.specific += 1;
         report.topicsWithSpecificExercise += 1;
+        report.specificTopicsBySubject[subject] ??= [];
+        report.specificTopicsBySubject[subject].push(topic);
       } else {
         coverage.sourceSafeRubric += 1;
         report.topicsUsingSourceSafeRubric += 1;
+        report.rubricTopicsBySubject[subject] ??= [];
+        report.rubricTopicsBySubject[subject].push(topic);
       }
       report.exerciseCoverageBySubject[subject] = coverage;
 
@@ -86,6 +102,189 @@ try {
         report.repeatedTopics.push({ subject, topic });
       }
     }
+  }
+
+  const mathAlignmentCases = [
+    { topic: "округление чисел и оценка результата", prompt: /оцени сумму/i, answer: /Оценка:.*Точная сумма:/i, verify: (prompt, answer) => {
+      const [left, right] = prompt.match(/\d+/g).map(Number);
+      const values = answer.match(/\d+/g).map(Number);
+      return values[0] === Math.round(left / 100) * 100 && values[1] === Math.round(right / 10) * 10
+        && values[2] === values[0] + values[1] && values[3] === left + right;
+    } },
+    { topic: "сравнение десятичных дробей", prompt: /сравни десятичные дроби/i, answer: /сравниваем сотые:/i, verify: (prompt, answer) => {
+      const [, leftText, rightText] = prompt.match(/дроби ([\d,]+) и ([\d,]+)/i) ?? [];
+      const left = Number(leftText?.replace(",", ".")), right = Number(rightText?.replace(",", "."));
+      const symbol = answer.match(/сотые: [\d,]+ ([<>=]) [\d,]+/i)?.[1];
+      return Number.isFinite(left) && Number.isFinite(right) && symbol === (left === right ? "=" : left > right ? ">" : "<");
+    } },
+    { topic: "график квадратичной функции", prompt: /графика y = x².*нули функции/i, answer: /нули:.*вершин/i, verify: (prompt, answer) => {
+      const equation = prompt.match(/y = x²\s*([+−-])\s*(\d+)x\s*([+−-])\s*(\d+)/i);
+      const roots = answer.match(/нули: x₁ = (-?\d+), x₂ = (-?\d+)/i)?.slice(1).map(Number);
+      const vertex = answer.match(/Вершина: x₀ = .*?= (-?\d+), y₀ = (-?\d+)/i)?.slice(1).map(Number);
+      if (!equation || !roots || !vertex) return false;
+      const b = (equation[1] === "−" || equation[1] === "-" ? -1 : 1) * Number(equation[2]);
+      const c = (equation[3] === "−" || equation[3] === "-" ? -1 : 1) * Number(equation[4]);
+      return roots[0] * roots[1] === c && -(roots[0] + roots[1]) === b
+        && vertex[0] === (roots[0] + roots[1]) / 2 && vertex[1] === vertex[0] ** 2 + b * vertex[0] + c;
+    } },
+    { topic: "векторы и координаты", prompt: /координаты вектора AB/i, answer: /AB = .*\|AB\|/i, verify: (prompt, answer) => {
+      const points = prompt.match(/A\((-?\d+); (-?\d+)\).*B\((-?\d+); (-?\d+)\)/i)?.slice(1).map(Number);
+      const vector = answer.match(/= \((-?\d+); (-?\d+)\); \|AB\|/i)?.slice(1).map(Number);
+      if (!points || !vector) return false;
+      const dx = points[2] - points[0], dy = points[3] - points[1];
+      return vector[0] === dx && vector[1] === dy && answer.includes(`√(${dx}² + ${dy}²)`)
+        && (dx * dx + dy * dy === 25 ? / = 5\./.test(answer) : /4√2 ≈ 5,66/.test(answer));
+    } },
+    { topic: "скалярное произведение векторов", prompt: /скалярное произведение/i, answer: /u · v =/i, verify: (prompt, answer) => {
+      const values = prompt.match(/u = \((-?\d+); (-?\d+)\) и v = \((-?\d+); (-?\d+)\)/i)?.slice(1).map(Number);
+      const result = Number(answer.match(/= (-?\d+)\.$/)?.[1]);
+      return Boolean(values) && result === values[0] * values[2] + values[1] * values[3];
+    } },
+    { topic: "теорема синусов", prompt: /по теореме синусов/i, answer: /b\/sin .* = a\/sin/i, verify: (prompt, answer) => {
+      const values = prompt.match(/угол A = (\d+)°, угол B = (\d+)°, сторона a = (\d+) см/i)?.slice(1).map(Number);
+      const exact = answer.match(/= ([\d√/]+) см\.$/)?.[1];
+      if (!values || !exact) return false;
+      const [angleA, angleB, sideA] = values;
+      const exactParts = exact.split("/");
+      const coefficient = Number(exactParts[0].replace("√3", "")) * (exactParts[0].includes("√3") ? Math.sqrt(3) : 1);
+      const exactValue = coefficient / Number(exactParts[1] ?? 1);
+      return Math.abs(exactValue - sideA * Math.sin(angleB * Math.PI / 180) / Math.sin(angleA * Math.PI / 180)) < 0.0001;
+    } },
+    { topic: "теорема косинусов", prompt: /по теореме косинусов/i, answer: /c² = .*cos/i, verify: (prompt, answer) => {
+      const values = prompt.match(/равны (\d+) см и (\d+) см, угол между ними — (\d+)°/i)?.slice(1).map(Number);
+      const radicand = Number(answer.match(/= (\d+); c = √(\d+)/i)?.[1]);
+      if (!values || !Number.isFinite(radicand)) return false;
+      const [a, b, angle] = values;
+      const expected = a * a + b * b - 2 * a * b * Math.cos(angle * Math.PI / 180);
+      return radicand === Number(answer.match(/; c = √(\d+)/i)?.[1]) && Math.abs(radicand - expected) < 0.0001;
+    } },
+    { topic: "окружность и касательная", prompt: /касательная PT.*радиус OT.*расстояние OP/i, answer: /PT² = OP² − OT² = \d+² − \d+² = \d+; PT = \d+ см/i, verify: (prompt, answer) => {
+      const values = prompt.match(/OT = (\d+) см, расстояние OP = (\d+) см/i)?.slice(1).map(Number);
+      const result = answer.match(/= (\d+); PT = (\d+) см/i)?.slice(1).map(Number);
+      return Boolean(values && result) && result[0] === values[1] ** 2 - values[0] ** 2 && result[1] ** 2 === result[0];
+    } },
+    { topic: "сложение и вычитание многозначных чисел", prompt: /Вычисли \d+ [−+] \d+\./i, answer: /\d+ [−+] \d+ = \d+\./i, verify: (_prompt, answer) => {
+      const values = answer.match(/(\d+) ([−+]) (\d+) = (\d+)\./)?.slice(1);
+      if (!values) return false;
+      const [left, operator, right, result] = values;
+      return Number(result) === (operator === "+" ? Number(left) + Number(right) : Number(left) - Number(right));
+    } },
+    { topic: "умножение и деление натуральных чисел", prompt: /обратным действием/i, answer: /\d+ · \d+ = \d+; \d+ \/ \d+ = \d+/i, verify: (_prompt, answer) => {
+      const values = answer.match(/(\d+) · (\d+) = (\d+); (\d+) \/ (\d+) = (\d+)/)?.slice(1).map(Number);
+      return Boolean(values) && values[0] * values[1] === values[2] && values[2] / values[4] === values[5] && values[1] === values[4] && values[0] === values[5];
+    } },
+  ];
+  for (const check of mathAlignmentCases) {
+    const generated = curriculum.generateCurriculumAi("assignment", check.topic, "medium", 15, "Математика");
+    report.mathFocusedChecks += 1;
+    const prompts = generated.items.map((item) => item.replace(/^\d+\.\s*/, ""));
+    const answers = generated.answers.map((answer) => answer.replace(/^\d+\.\s*/, "").replace(/[\u00a0\u202f]/g, " "));
+    const failures = [];
+    if (generated.subject !== "Математика") failures.push(`предмет: ${generated.subject}`);
+    if (prompts.length !== 15 || answers.length !== 15) failures.push(`ожидалось 15 задач и ответов, получено ${prompts.length}/${answers.length}`);
+    if (prompts.some((prompt) => !check.prompt.test(prompt))) failures.push("формулировка не соответствует теме");
+    if (answers.some((answer) => !check.answer.test(answer))) failures.push("ответ не содержит ожидаемого решения");
+    if (check.verify && prompts.some((prompt, index) => !check.verify(prompt, answers[index]))) failures.push("расчёт ответа не сошёлся с условием");
+    if (new Set(prompts).size !== prompts.length) failures.push("есть повторяющиеся задачи");
+    if (failures.length) report.mathFocusedFailures.push({ topic: check.topic, detected: generated.detected, firstPrompt: prompts[0], firstAnswer: answers[0], failures });
+  }
+
+  const physicsAlignmentCases = [
+    { topic: "удельная теплота плавления", prompt: /расплавить лёд/i, answer: /удельная теплота плавления/i, verify: (prompt, answer) => {
+      const mass = Number(prompt.match(/для (\d+) кг/)?.[1]);
+      const values = answer.match(/Q = λm = ([\d ]+) · (\d+) = ([\d ]+) Дж/);
+      return Boolean(values) && Number(values[1].replaceAll(" ", "")) === 334000 && Number(values[2]) === mass && Number(values[3].replaceAll(" ", "")) === mass * 334000;
+    } },
+    { topic: "удельная теплота парообразования", prompt: /воду .* в пар/i, answer: /удельная теплота парообразования/i, verify: (prompt, answer) => {
+      const mass = Number(prompt.match(/для (\d+) кг/)?.[1]);
+      const values = answer.match(/Q = λm = ([\d ]+) · (\d+) = ([\d ]+) Дж/);
+      return Boolean(values) && Number(values[1].replaceAll(" ", "")) === 2260000 && Number(values[2]) === mass && Number(values[3].replaceAll(" ", "")) === mass * 2260000;
+    } },
+    { topic: "закон Джоуля — Ленца", prompt: /по проводнику|проводником/i, answer: /Q = I²Rt/i, verify: (prompt, answer) => {
+      const [, resistance, time, current] = prompt.match(/сопротивлением (\d+) Ом в течение (\d+) с проходит ток (\d+) А/) ?? [];
+      const values = answer.match(/Q = I²Rt = (\d+)² · (\d+) · (\d+) = (\d+) Дж/);
+      return Boolean(values && resistance) && Number(values[1]) === Number(current) && Number(values[2]) === Number(resistance) && Number(values[3]) === Number(time) && Number(values[4]) === Number(current) ** 2 * Number(resistance) * Number(time);
+    } },
+    { topic: "средняя скорость на всём пути", prompt: /среднюю скорость на всём пути/i, answer: /vср = sобщ \/ tобщ/i, verify: (prompt, answer) => {
+      const values = prompt.match(/прошло (\d+) км за (\d+) ч, затем ещё (\d+) км за (\d+) ч/)?.slice(1).map(Number);
+      const average = Number(answer.match(/= (\d+) \/ (\d+) = ([\d,]+) км\/ч/)?.slice(1)[2]?.replace(",", "."));
+      return Boolean(values) && Math.abs(average - (values[0] + values[2]) / (values[1] + values[3])) < 0.011;
+    } },
+    { topic: "ускорение тела", prompt: /скорость тела изменилась/i, answer: /a = \(v − v₀\) \/ t/i, verify: (prompt, answer) => {
+      const values = prompt.match(/с (\d+) м\/с до (\d+) м\/с за (\d+) с/)?.slice(1).map(Number);
+      const acceleration = Number(answer.match(/= \((\d+) − (\d+)\) \/ (\d+) = (\d+) м\/с²/)?.[4]);
+      return Boolean(values) && acceleration === (values[1] - values[0]) / values[2];
+    } },
+    { topic: "сила трения", prompt: /коэффициент трения скольжения/i, answer: /Fтр = μN/i, verify: (prompt, answer) => {
+      const [, mass, coefficientText] = prompt.match(/массой (\d+) кг.*μ = ([\d,]+)/) ?? [];
+      const result = Number(answer.match(/= ([\d,]+) Н\.$/)?.[1]?.replace(",", "."));
+      return Boolean(mass && coefficientText) && Math.abs(result - Number(mass) * 10 * Number(coefficientText.replace(",", "."))) < 0.001;
+    } },
+    { topic: "давление жидкости", prompt: /гидростатическое давление воды/i, answer: /p = ρgh/i, verify: (prompt, answer) => {
+      const depth = Number(prompt.match(/глубине (\d+) м/)?.[1]);
+      const result = Number(answer.match(/= 1000 · 10 · \d+ = ([\d ]+) Па/)?.[1]?.replaceAll(" ", ""));
+      return result === 10000 * depth;
+    } },
+    { topic: "электрическое сопротивление проводника", prompt: /Найди сопротивление/i, answer: /R = U \/ I/i, verify: (prompt, answer) => {
+      const [, voltage, current] = prompt.match(/напряжение (\d+) В, сила тока (\d+) А/) ?? [];
+      const values = answer.match(/R = U \/ I = (\d+) \/ (\d+) = (\d+) Ом/);
+      return Boolean(values && voltage) && Number(values[1]) === Number(voltage) && Number(values[2]) === Number(current) && Number(values[3]) === Number(voltage) / Number(current);
+    } },
+    { topic: "плавание тел и условие плавания", prompt: /плотность тела .* плотность жидкости/i, answer: /поэтому тело/i, verify: (prompt, answer) => {
+      const [, bodyDensity, liquidDensity] = prompt.match(/тела (\d+) кг\/м³, плотность жидкости (\d+) кг\/м³/) ?? [];
+      if (!bodyDensity) return false;
+      return Number(bodyDensity) < Number(liquidDensity) ? /всплывёт и будет плавать/.test(answer)
+        : Number(bodyDensity) > Number(liquidDensity) ? /опустится на дно/.test(answer) : /будет плавать в толще жидкости/.test(answer);
+    } },
+    { topic: "последовательное соединение резисторов", prompt: /соединены последовательно/i, answer: /Rобщ = R₁ \+ R₂/i, verify: (prompt, answer) => {
+      const values = prompt.match(/сопротивлением (\d+) Ом и (\d+) Ом/)?.slice(1).map(Number);
+      const total = Number(answer.match(/= (\d+) \+ (\d+) = (\d+) Ом/)?.[3]);
+      return Boolean(values) && total === values[0] + values[1];
+    } },
+    { topic: "параллельное соединение резисторов", prompt: /соединены параллельно/i, answer: /Rобщ = R₁R₂\/\(R₁ \+ R₂\)/i, verify: (prompt, answer) => {
+      const values = prompt.match(/резистора (\d+) Ом и (\d+) Ом/)?.slice(1).map(Number);
+      const equivalent = Number(answer.match(/= (\d+) Ом\.$/)?.[1]);
+      return Boolean(values) && Math.abs(equivalent - values[0] * values[1] / (values[0] + values[1])) < 0.001;
+    } },
+    { topic: "последовательное соединение конденсаторов", prompt: /соединены последовательно/i, answer: /Cобщ = C₁C₂\/\(C₁ \+ C₂\)/i, verify: (prompt, answer) => {
+      const values = prompt.match(/ёмкостью (\d+) мкФ и (\d+) мкФ/)?.slice(1).map(Number);
+      const equivalent = Number(answer.match(/= (\d+) мкФ\.$/)?.[1]);
+      return Boolean(values) && equivalent === values[0] * values[1] / (values[0] + values[1]);
+    } },
+    { topic: "потенциальная энергия пружины", prompt: /пружину жёсткостью/i, answer: /Eупр = kx²\/2/i, verify: (prompt, answer) => {
+      const [, stiffness, stretchCm] = prompt.match(/жёсткостью (\d+) Н\/м растянули на (\d+) см/) ?? [];
+      const energy = Number(answer.match(/= ([\d,]+) Дж\.$/)?.[1]?.replace(",", "."));
+      return Boolean(stiffness) && Math.abs(energy - Number(stiffness) * (Number(stretchCm) / 100) ** 2 / 2) < 0.0006;
+    } },
+    { topic: "закон сохранения механической энергии", prompt: /сохранения механической энергии/i, answer: /mgh = mv²\/2/i, verify: (prompt, answer) => {
+      const height = Number(prompt.match(/высоты (\d+) м/)?.[1]);
+      const speed = Number(answer.match(/= (\d+) м\/с\.$/)?.[1]);
+      return speed ** 2 === 2 * 10 * height;
+    } },
+    { topic: "равномерное и неравномерное движение", prompt: /сравни скорости на участках/i, answer: /v₁ = .* м\/с; v₂ = .* м\/с/i, verify: (prompt, answer) => {
+      const values = prompt.match(/прошло (\d+) м за (\d+) с, на втором — (\d+) м за (\d+) с/)?.slice(1).map(Number);
+      const speeds = answer.match(/v₁ = (\d+)\/(\d+) = (\d+) м\/с; v₂ = (\d+)\/(\d+) = (\d+) м\/с/)?.slice(1).map(Number);
+      return Boolean(values && speeds) && speeds[0] === values[0] && speeds[1] === values[1] && speeds[2] === values[0] / values[1] && speeds[3] === values[2] && speeds[4] === values[3] && speeds[5] === values[2] / values[3];
+    } },
+    { topic: "графики зависимости координаты от времени", prompt: /графике зависимости координаты x от времени/i, answer: /v = Δx\/Δt/i, verify: (prompt, answer) => {
+      const values = prompt.match(/точки \(0 с; 0 м\) и \((\d+) с; (\d+) м\)/)?.slice(1).map(Number);
+      const calculated = Number(answer.match(/v = Δx\/Δt = (\d+)\/(\d+) = (\d+) м\/с/)?.[3]);
+      return Boolean(values) && calculated === values[1] / values[0];
+    } },
+  ];
+  for (const check of physicsAlignmentCases) {
+    const generated = curriculum.generateCurriculumAi("assignment", check.topic, "medium", 15, "Физика");
+    report.physicsFocusedChecks += 1;
+    const prompts = generated.items.map((item) => item.replace(/^\d+\.\s*/, ""));
+    const answers = generated.answers.map((answer) => answer.replace(/^\d+\.\s*/, "").replace(/[\u00a0\u202f]/g, " "));
+    const failures = [];
+    if (generated.subject !== "Физика") failures.push(`предмет: ${generated.subject}`);
+    if (prompts.length !== 15 || answers.length !== 15) failures.push(`ожидалось 15 задач и ответов, получено ${prompts.length}/${answers.length}`);
+    if (prompts.some((prompt) => !check.prompt.test(prompt))) failures.push("формулировка не соответствует теме");
+    if (answers.some((answer) => !check.answer.test(answer))) failures.push("ответ не содержит ожидаемого решения");
+    if (check.verify && prompts.some((prompt, index) => !check.verify(prompt, answers[index]))) failures.push("расчёт ответа не сошёлся с условием");
+    if (new Set(prompts).size !== prompts.length) failures.push("есть повторяющиеся задачи");
+    if (failures.length) report.physicsFocusedFailures.push({ topic: check.topic, detected: generated.detected, firstPrompt: prompts[0], firstAnswer: answers[0], offTopicPrompts: prompts.filter((prompt) => !check.prompt.test(prompt)), failures });
   }
 
   const cases = [
@@ -203,7 +402,8 @@ try {
     || report.repeatedSets > 0
     || report.gradeMapErrors.length > 0
     || report.parserFailures.length > 0
-    || report.generatedParserFailures.length > 0;
+    || report.generatedParserFailures.length > 0
+    || report.mathFocusedFailures.length > 0;
   if (failures) process.exitCode = 1;
 } finally {
   await server.close();

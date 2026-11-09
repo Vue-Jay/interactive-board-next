@@ -1,4 +1,4 @@
-export type MathAiMode="auto"|"arithmetic"|"equations"|"fractions"|"decimals"|"geometry"|"functions"|"percent"|"word"|"powers"|"prime"|"divisibility"|"probability"|"statistics"|"proportion"|"trigonometry"|"logarithms"|"sequence"|"combinatorics"|"division"|"algebra"|"absolute"|"domain"|"derivative"|"mixed";
+export type MathAiMode="auto"|"arithmetic"|"equations"|"fractions"|"decimals"|"rounding"|"geometry"|"functions"|"vectors"|"percent"|"word"|"powers"|"prime"|"divisibility"|"probability"|"statistics"|"proportion"|"trigonometry"|"logarithms"|"sequence"|"combinatorics"|"division"|"algebra"|"absolute"|"domain"|"derivative"|"mixed";
 export type MathAiLevel="primary"|"basic"|"advanced";
 export type MathAiResult={title:string;items:string[];answers:string[];detected:string};
 
@@ -11,11 +11,17 @@ const signed=(n:number)=>n>=0?`+ ${n}`:`− ${Math.abs(n)}`;
 function detect(topic:string,mode:MathAiMode):MathAiMode{
  if(mode!=="auto")return mode;
  const t=topic.toLowerCase();
+ if(/график.*(?:квадрат|парабол)|квадрат.*функц|парабол.*функц/.test(t))return"functions";
+ if(/округлен|оценк.*результат/.test(t))return"rounding";
+ if(/скалярн.*произвед|вектор.*координат|координат.*вектор/.test(t))return"vectors";
+ if(/касател.*(?:окруж|круг)|(?:окруж|круг).*касател/.test(t))return"geometry";
  if(/тригонометр|синус|косинус|тангенс|sin\b|cos\b/.test(t))return"trigonometry";
  if(/биномиальн|вероятност|шанс|монет|кубик|игральн кост/.test(t))return"probability";
  if(/делимост|признак делим/.test(t))return"divisibility";
  if(/десятичн.*дроб/.test(t))return"decimals";
  if(/арифметическ.*прогресс|прогресси/.test(t))return"sequence";
+ if(/многозначн.*числ|сложен.*вычитан.*многознач/.test(t))return"arithmetic";
+ if(/умножен.*делен.*натуральн|натуральн.*числ.*умножен.*делен/.test(t))return"arithmetic";
  if(/комбинатор|размещен|перестанов|сочетан/.test(t))return"combinatorics";
  if(/делени.*остат|остатк.*делени/.test(t))return"division";
  if(/формул.*сокращ.*умнож|разложени.*многочлен.*множител|многочлен.*множител/.test(t))return"algebra";
@@ -123,11 +129,36 @@ function statistics(index:number){
  const values=Array.from({length:5},(_,i)=>2+((index*3+i*7)%19)),sum=values.reduce((a,b)=>a+b,0),mean=sum/values.length;
  return{q:`Найди среднее арифметическое чисел: ${values.join(", ")}. Покажи сумму и количество чисел.`,a:`Сумма ${sum}; чисел ${values.length}; среднее арифметическое ${fmt(mean)}.`};
 }
+function rounding(index:number,topic:string){
+ if(/оценк.*результат/.test(topic)){
+  const a=198+(index%17)*37,b=41+(index%9)*13,exact=a+b,estimate=Math.round(a/100)*100+Math.round(b/10)*10;
+  return{q:`Оцени сумму ${a} + ${b}, округлив первое слагаемое до сотен, а второе — до десятков. Затем вычисли точную сумму и сравни результаты.`,a:`Оценка: ${Math.round(a/100)*100} + ${Math.round(b/10)*10} = ${estimate}. Точная сумма: ${exact}.`};
+ }
+ const number=1243+(index*137)%8756,place=index%2===0?10:100,result=Math.round(number/place)*place;
+ return{q:`Округли число ${number} до ближайших ${place===10?"десятков":"сотен"}.`,a:`${number} ≈ ${result} при округлении до ${place===10?"десятков":"сотен"}.`};
+}
+function vectors(index:number,topic:string){
+ if(/скалярн.*произвед/.test(topic)){
+  const a=1+(index%7),b=-3+(index%9),c=2+((index*3)%8),d=-4+((index*5)%9),dot=a*c+b*d;
+  return{q:`Даны векторы u = (${a}; ${b}) и v = (${c}; ${d}). Найди их скалярное произведение.`,a:`u · v = ${a} · ${c} + (${b}) · ${d} = ${a*c} + ${b*d} = ${dot}.`};
+ }
+ const ax=-4+(index%9),ay=-3+((index*2)%7),dx=3+(index%2),dy=4,length=dx===3?"5":`4√2 ≈ ${fmt(Math.sqrt(dx*dx+dy*dy))}`;
+ return{q:`Даны точки A(${ax}; ${ay}) и B(${ax+dx}; ${ay+dy}). Найди координаты вектора AB и его длину.`,a:`AB = (${ax+dx} − ${ax}; ${ay+dy} − ${ay}) = (${dx}; ${dy}); |AB| = √(${dx}² + ${dy}²) = ${length}.`};
+}
 function proportion(index:number){
  const unit=12+(index*7)%79,first=2+(index%7),second=first+1+(index%5);
  return{q:`${first} одинаковых тетради стоят ${first*unit} ₽. Сколько будут стоить ${second} таких тетрадей? Составь пропорцию.`,a:`Цена одной тетради ${unit} ₽; ${second} · ${unit} = ${second*unit} ₽.`};
 }
-function trigonometry(index:number){
+function trigonometry(index:number,topic=""){
+ if(/теорем.*косинус|косинус.*теорем/.test(topic)){
+  const first=5+index,second=7+(index*3)%11,angle=[60,90,120][index%3],cosine=angle===60?"1/2":angle===90?"0":"−1/2",radicand=first*first+second*second-(2*first*second*(angle===60?1:angle===90?0:-1))/2;
+  return{q:`Две стороны треугольника равны ${first} см и ${second} см, угол между ними — ${angle}°. Найди третью сторону по теореме косинусов.`,a:`c² = ${first}² + ${second}² − 2 · ${first} · ${second} · cos ${angle}° = ${radicand}; c = √${radicand} см (cos ${angle}° = ${cosine}).`};
+ }
+ if(/теорем.*синус|синус.*теорем/.test(topic)){
+  const rows=[[30,60,6,"6√3"],[45,45,8,"8"],[60,30,10,"10√3/3"]] as const;
+  const [a,b,baseSideA,baseSideB]=rows[index%rows.length],scale=1+Math.floor(index/rows.length),sideA=baseSideA*scale,sideB=baseSideB.includes("√")?`${Number(baseSideB.match(/^\d+/)?.[0] ?? 1)*scale}${baseSideB.replace(/^\d+/,"")}`:String(Number(baseSideB)*scale);
+  return{q:`В треугольнике угол A = ${a}°, угол B = ${b}°, сторона a = ${sideA} см. Найди сторону b по теореме синусов.`,a:`По теореме синусов b/sin ${b}° = a/sin ${a}°. Поэтому b = ${sideA} · sin ${b}° / sin ${a}° = ${sideB} см.`};
+ }
  const rows=[[30,"1/2","√3/2","1/√3"],[45,"√2/2","√2/2","1"],[60,"√3/2","1/2","√3"]] as const;
  const [angle,sin,cos,tan]=rows[Math.floor(index/5)%rows.length];
  const task=index%5;
@@ -184,6 +215,10 @@ function derivative(index:number,topic:string){
  const coefficient=2+(index%7),power=2+(index%4),linear=1+(index%6);
  return{q:`Найди производную многочлена f(x) = ${coefficient}x^${power} + ${linear}x² − 5.`,a:`f′(x) = ${coefficient*power}x^${power-1} + ${2*linear}x.`};
 }
+function quadraticFunction(index:number){
+ const first=-4+(index%7),gap=2+2*(index%4),second=first+gap,b=-(first+second),c=first*second,vertexX=(first+second)/2,vertexY=-(gap*gap)/4;
+ return{q:`Построй эскиз графика y = x² ${signed(b)}x ${signed(c)}. Найди нули функции и координаты вершины параболы.`,a:`y = (x − (${first}))(x − (${second})); нули: x₁ = ${first}, x₂ = ${second}. Вершина: x₀ = (${first} + ${second})/2 = ${vertexX}, y₀ = ${vertexY}; вершина (${vertexX}; ${vertexY}).`};
+}
 
 export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,topic:string,withAnswers=true):MathAiResult{
  const actual=detect(topic,mode),safe=Math.max(1,Math.min(20,count)),t=topic.toLowerCase();
@@ -204,11 +239,22 @@ export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,to
   }
   if(actual==="fractions")return fraction(index);
   if(actual==="decimals"){
+   if(/сравнен/.test(t)){
+    const left=12+(index*17)%87,right=13+(index*23)%86,symbol=left===right?"=":left>right?">":"<";
+    const explanation=left===right?`${fmt(left/100)} и ${fmt(right/100)} равны.`:left>right?`${fmt(left/100)} больше ${fmt(right/100)}.`:`${fmt(right/100)} больше ${fmt(left/100)}.`;
+    return{q:`Сравни десятичные дроби ${fmt(left/100)} и ${fmt(right/100)}. Поставь знак >, < или = и объясни выбор.`,a:`${explanation} Сравниваем сотые: ${fmt(left/100)} ${symbol} ${fmt(right/100)}.`};
+   }
    const left=12+(index*17)%87,right=13+(index*23)%86,subtract=index%2===1;
    const larger=Math.max(left,right),smaller=Math.min(left,right),value=subtract?(larger-smaller)/10:(left+right)/10;
    return{q:`Вычисли ${subtract?`${fmt(larger/10)} − ${fmt(smaller/10)}`:`${fmt(left/10)} + ${fmt(right/10)}`}.`,a:`${fmt(value)}.`};
   }
+  if(actual==="rounding")return rounding(index,t);
+  if(actual==="vectors")return vectors(index,t);
   if(actual==="geometry"){
+   if(/окруж|круг/.test(t)&&/касател/.test(t)){
+    const triples=[[5,12,13],[8,15,17],[7,24,25]] as const,[radius,tangent,distance]=triples[Math.floor(index/5)%triples.length],scale=1+index%5;
+    return{q:`Из точки P проведена касательная PT к окружности с центром O. Радиус OT = ${radius*scale} см, расстояние OP = ${distance*scale} см. Найди длину касательной PT.`,a:`OT ⟂ PT, поэтому по теореме Пифагора PT² = OP² − OT² = ${distance*scale}² − ${radius*scale}² = ${(tangent*scale)**2}; PT = ${tangent*scale} см.`};
+   }
    if(/периметр.*многоугольник/.test(t)){
     const sides=3+(index%12),side=2+(index%17),perimeter=sides*side;
     return{q:`Правильный ${sides}-угольник имеет сторону ${side} см. Найди его периметр.`,a:`P = ${sides} · ${side} = ${perimeter} см.`};
@@ -263,9 +309,17 @@ export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,to
    return geometry(level);
   }
   if(actual==="percent")return percent();
-  if(actual==="functions")return func(index);
+  if(actual==="functions")return /квадрат.*функц|парабол/.test(t)?quadraticFunction(index):func(index);
   if(actual==="word")return word(index);
   if(actual==="arithmetic"){
+   if(/многозначн.*числ|сложен.*вычитан.*многознач/.test(t)){
+    const left=12_458+(index*1_307)%37_000,right=2_167+(index*719)%9_000,subtract=index%2===1,larger=Math.max(left,right),smaller=Math.min(left,right),result=subtract?larger-smaller:left+right;
+    return{q:`Вычисли ${larger} ${subtract?"−":"+"} ${smaller}.`,a:`${larger} ${subtract?"−":"+"} ${smaller} = ${result}.`};
+   }
+   if(/умножен.*делен.*натуральн|натуральн.*числ.*умножен.*делен/.test(t)){
+    const factor=12+(index%18),divisor=3+(index%10),product=factor*divisor;
+    return{q:`Вычисли ${factor} · ${divisor}, затем проверь результат обратным действием: раздели произведение на ${divisor}.`,a:`${factor} · ${divisor} = ${product}; ${product} / ${divisor} = ${factor}.`};
+   }
    if(/координатн.*плоск/.test(t)){const x=-8+(index%17),y=1+((index*3)%12);return{q:`Точка A(${x}; ${y}) задана на координатной плоскости. Укажи четверть и отрази точку относительно оси Ox.`,a:`x < 0 и y > 0, поэтому точка во II четверти. При отражении относительно Ox получаем A′(${x}; ${-y}).`};}
    if(/отрицательн/.test(t)){const a=-1-(index%15),b=2+((index*3)%12);return{q:`Расположи числа ${a}, 0 и ${b} на координатной прямой по возрастанию. Найди сумму крайних чисел.`,a:`${a} < 0 < ${b}; сумма крайних чисел ${a} + ${b} = ${a+b}.`};}
    if(/порядок действий|скобк/.test(t)){const a=2+(index%9),b=3+(index%8),c=1+(index%7),d=2+(index%6),value=a*(b+c)-d;return{q:`Вычисли выражение ${a} · (${b} + ${c}) − ${d}, соблюдая порядок действий.`,a:`Сначала скобки: ${b}+${c}=${b+c}; затем умножение и вычитание: ${a}·${b+c}−${d}=${value}.`};}
@@ -280,7 +334,7 @@ export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,to
   if(actual==="probability")return probability(index,t);
   if(actual==="statistics")return statistics(index);
   if(actual==="proportion")return proportion(index);
-  if(actual==="trigonometry")return trigonometry(index);
+  if(actual==="trigonometry")return trigonometry(index,t);
   if(actual==="logarithms")return logarithms(index);
   if(actual==="sequence")return sequence(index);
   if(actual==="combinatorics")return combinatorics(index);
@@ -293,7 +347,7 @@ export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,to
   return pick([()=>linear(level),()=>fraction(index),()=>geometry(level),()=>percent(),()=>func(index),()=>word(index),()=>arithmetic(level),()=>powers(index,t),()=>prime(index),()=>proportion(index)])();
  };
  const rows=Array.from({length:safe},(_,index)=>make(index));
- const names:Record<string,string>={arithmetic:"Примеры",equations:"Уравнения",fractions:"Дроби",decimals:"Десятичные дроби",geometry:"Геометрия",functions:"Функции",percent:"Проценты",word:"Текстовые задачи",powers:"Степени и корни",prime:"Простые множители",divisibility:"Делимость",probability:"Вероятность",statistics:"Статистика",proportion:"Пропорции",trigonometry:"Тригонометрия",logarithms:"Логарифмы",sequence:"Прогрессии",combinatorics:"Комбинаторика",division:"Деление с остатком",algebra:"Алгебраические выражения",absolute:"Модуль числа",domain:"Область определения",derivative:"Производная и касательная",mixed:"Смешанная работа"};
+ const names:Record<string,string>={arithmetic:"Примеры",equations:"Уравнения",fractions:"Дроби",decimals:"Десятичные дроби",rounding:"Округление и оценка",geometry:"Геометрия",functions:"Функции",vectors:"Векторы",percent:"Проценты",word:"Текстовые задачи",powers:"Степени и корни",prime:"Простые множители",divisibility:"Делимость",probability:"Вероятность",statistics:"Статистика",proportion:"Пропорции",trigonometry:"Тригонометрия",logarithms:"Логарифмы",sequence:"Прогрессии",combinatorics:"Комбинаторика",division:"Деление с остатком",algebra:"Алгебраические выражения",absolute:"Модуль числа",domain:"Область определения",derivative:"Производная и касательная",mixed:"Смешанная работа"};
  const promptTitle=topic.trim();
  const detected=actual==="equations"&&/неравен/.test(t)?"Неравенства":actual==="prime"&&/прост.*чис/.test(t)?"Простые числа":actual==="arithmetic"&&/координатн.*плоск/.test(t)?"Координатная плоскость":names[actual]||"Задания";
  const title=promptTitle?`${detected} · по запросу`:detected;

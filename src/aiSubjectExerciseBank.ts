@@ -53,6 +53,66 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
   const basic = level === "easy";
 
   if (subject === "Физика") {
+    if (/последовательн.*соединен.*конденсатор/.test(t)) {
+      const scale = index + 1, first = 6 * scale, second = 3 * scale, equivalent = 2 * scale;
+      return { prompt: `Конденсаторы ёмкостью ${first} мкФ и ${second} мкФ соединены последовательно. Найди общую ёмкость батареи.`, answer: `Для последовательного соединения 1/Cобщ = 1/C₁ + 1/C₂; Cобщ = C₁C₂/(C₁ + C₂) = ${first} · ${second}/(${first} + ${second}) = ${equivalent} мкФ.` };
+    }
+    if (/потенциальн.*энерг.*пружин/.test(t)) {
+      const stiffness = 50 + 10 * index, stretchCm = 10 + index, stretchM = stretchCm / 100, energy = stiffness * stretchM * stretchM / 2;
+      return { prompt: `Пружину жёсткостью ${stiffness} Н/м растянули на ${stretchCm} см. Найди энергию упругой деформации.`, answer: `Eупр = kx²/2 = ${stiffness} · ${stretchCm / 100}² / 2 = ${energy.toLocaleString("ru-RU", { maximumFractionDigits: 3 })} Дж.` };
+    }
+    if (/сохранени.*механическ.*энерг/.test(t)) {
+      const multiple = index + 1, height = 5 * multiple * multiple, speed = 10 * multiple;
+      return { prompt: `Тело падает без начальной скорости с высоты ${height} м. Сопротивлением воздуха пренебречь, g = 10 м/с². Найди скорость у земли по закону сохранения механической энергии.`, answer: `mgh = mv²/2; v = √(2gh) = √(2 · 10 · ${height}) = ${speed} м/с.` };
+    }
+    if (/равномерн.*неравномерн/.test(t)) {
+      const firstSpeed = 2 + index, secondSpeed = index % 2 === 0 ? firstSpeed : firstSpeed + 2, firstTime = 2, secondTime = 3, firstDistance = firstSpeed * firstTime, secondDistance = secondSpeed * secondTime;
+      return { prompt: `На первом участке тело прошло ${firstDistance} м за ${firstTime} с, на втором — ${secondDistance} м за ${secondTime} с. Сравни скорости на участках и определи, было ли движение равномерным.`, answer: `v₁ = ${firstDistance}/${firstTime} = ${firstSpeed} м/с; v₂ = ${secondDistance}/${secondTime} = ${secondSpeed} м/с. ${firstSpeed === secondSpeed ? "Скорости равны, движение на этих участках равномерное." : "Скорости различны, движение неравномерное."}` };
+    }
+    if (/график.*(?:пути|зависимост.*координат)|(?:путь|координат).*график/.test(t)) {
+      const speed = 2 + index, time = 2 + (index % 5), coordinate = speed * time;
+      return { prompt: `На графике зависимости координаты x от времени прямая проходит через точки (0 с; 0 м) и (${time} с; ${coordinate} м). Найди скорость тела по графику.`, answer: `Скорость равна угловому коэффициенту графика: v = Δx/Δt = ${coordinate}/${time} = ${speed} м/с.` };
+    }
+    if (/удельн.*теплот.*плавлен|удельн.*теплот.*парообраз/.test(t)) {
+      const vaporization = /парообраз/.test(t), mass = 1 + index, latent = vaporization ? 2_260_000 : 334_000, process = vaporization ? "парообразования" : "плавления", heat = mass * latent;
+      return { prompt: `Чтобы ${vaporization ? "превратить воду при температуре кипения в пар" : "расплавить лёд при 0 °C"}, требуется ${latent.toLocaleString("ru-RU")} Дж на каждый килограмм. Сколько теплоты нужно для ${mass} кг?`, answer: `Q = λm = ${latent.toLocaleString("ru-RU")} · ${mass} = ${heat.toLocaleString("ru-RU")} Дж (удельная теплота ${process}).` };
+    }
+    if (/закон джоуля|джоуля.?ленца/.test(t)) {
+      const current = 2 + (index % 5), resistance = 3 + (index % 7), time = 2 + (index % 6), heat = current * current * resistance * time;
+      return { prompt: `По проводнику сопротивлением ${resistance} Ом в течение ${time} с проходит ток ${current} А. Найди количество теплоты по закону Джоуля — Ленца.`, answer: `Q = I²Rt = ${current}² · ${resistance} · ${time} = ${heat} Дж.` };
+    }
+    if (/средн.*скорост.*(?:вс[её]м пути|пути)|вс[её]м пути.*средн.*скорост/.test(t)) {
+      const firstDistance = 2 + (index % 7), firstTime = 1 + (index % 4), secondDistance = 3 + (index % 8), secondTime = 2 + ((index * 2) % 5), distance = firstDistance + secondDistance, time = firstTime + secondTime;
+      return { prompt: `Тело прошло ${firstDistance} км за ${firstTime} ч, затем ещё ${secondDistance} км за ${secondTime} ч. Найди среднюю скорость на всём пути.`, answer: `vср = sобщ / tобщ = (${firstDistance} + ${secondDistance}) / (${firstTime} + ${secondTime}) = ${distance} / ${time} = ${(distance / time).toLocaleString("ru-RU", { maximumFractionDigits: 2 })} км/ч.` };
+    }
+    if (/ускорени/.test(t) && !/равномерн.*неравномерн/.test(t)) {
+      const initial = index % 3 === 0 ? 0 : 2 + (index % 6), acceleration = 2 + (index % 5), time = 2 + (index % 4), final = initial + acceleration * time;
+      return { prompt: `Скорость тела изменилась с ${initial} м/с до ${final} м/с за ${time} с. Найди ускорение.`, answer: `a = (v − v₀) / t = (${final} − ${initial}) / ${time} = ${acceleration} м/с².` };
+    }
+    if (/сила трени/.test(t)) {
+      const mass = 2 + (index % 8), coefficient = 0.1 * (1 + (index % 6)), force = mass * 10 * coefficient;
+      return { prompt: `Брусок массой ${mass} кг скользит по горизонтальной поверхности. Коэффициент трения скольжения μ = ${coefficient.toLocaleString("ru-RU")}. Прими g = 10 Н/кг. Найди силу трения.`, answer: `На горизонтали N = mg = ${mass} · 10 = ${mass * 10} Н; Fтр = μN = ${coefficient.toLocaleString("ru-RU")} · ${mass * 10} = ${force.toLocaleString("ru-RU")} Н.` };
+    }
+    if (/давлен.*жидк|гидростатическ.*давлен/.test(t)) {
+      const depth = 2 + index, pressure = 1000 * 10 * depth;
+      return { prompt: `Найди гидростатическое давление воды на глубине ${depth} м. Прими плотность воды 1000 кг/м³ и g = 10 Н/кг.`, answer: `p = ρgh = 1000 · 10 · ${depth} = ${pressure.toLocaleString("ru-RU")} Па.` };
+    }
+    if (/электрическ.*сопротивлен|сопротивлен.*проводник/.test(t)) {
+      const current = 2 + (index % 7), resistance = 3 + (index % 8), voltage = current * resistance;
+      return { prompt: `На участке проводника напряжение ${voltage} В, сила тока ${current} А. Найди сопротивление.`, answer: `По закону Ома R = U / I = ${voltage} / ${current} = ${resistance} Ом.` };
+    }
+    if (/плавани.*тел|услови.*плаван/.test(t)) {
+      const bodyDensity = 450 + index * 25, liquidDensity = 1000, state = "всплывёт и будет плавать";
+      return { prompt: `Плотность тела ${bodyDensity} кг/м³, плотность жидкости ${liquidDensity} кг/м³. Определи, что произойдёт с телом после погружения.`, answer: bodyDensity < liquidDensity ? `ρтела < ρжидкости (${bodyDensity} < ${liquidDensity}), поэтому тело ${state}.` : bodyDensity > liquidDensity ? `ρтела > ρжидкости (${bodyDensity} > ${liquidDensity}), поэтому тело ${state}.` : `ρтела = ρжидкости (${bodyDensity} = ${liquidDensity}), поэтому тело ${state}.` };
+    }
+    if (/последовательн.*соединен/.test(t)) {
+      const first = 2 + (index % 7), second = 3 + ((index * 2) % 8), equivalent = first + second;
+      return { prompt: `Два резистора сопротивлением ${first} Ом и ${second} Ом соединены последовательно. Найди общее сопротивление участка.`, answer: `При последовательном соединении Rобщ = R₁ + R₂ = ${first} + ${second} = ${equivalent} Ом.` };
+    }
+    if (/параллельн.*соединен/.test(t)) {
+      const first = (index + 1) * 3, second = (index + 1) * 6, equivalent = first * second / (first + second);
+      return { prompt: `Два резистора ${first} Ом и ${second} Ом соединены параллельно. Найди их эквивалентное сопротивление.`, answer: `1/Rобщ = 1/R₁ + 1/R₂; Rобщ = R₁R₂/(R₁ + R₂) = ${first} · ${second}/(${first} + ${second}) = ${equivalent} Ом.` };
+    }
     if (/ускорени|средн.*скорост|равномерн.*неравномерн/.test(t)) {
       const initial = index % 3 === 0 ? 0 : 2 + (index % 6), acceleration = 2 + (index % 5), time = 2 + (index % 4);
       const final = initial + acceleration * time, distance = initial * time + acceleration * time * time / 2;
@@ -303,18 +363,7 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
       { prompt: `Подготовь карточку по теме «${topic}»: историческое понятие, объяснение своими словами и пример из конкретного периода.`, answer: "Ключ проверки: определение соответствует учебному смыслу; пример относится к нужному времени и подтверждается источником." },
       { prompt: `Выбери карту или схему, связанную с темой «${topic}». Отметь на ней ключевой объект и объясни, какую историческую информацию даёт его расположение.`, answer: "Ключ проверки: объект отмечен верно; объяснение опирается на карту и не подменяет пространственный факт догадкой." },
     ];
-    const exercise = choose(tasks, index);
-    if (/п[её]тр|петр/i.test(topic)) {
-      const peterTasks = [
-        { prompt: "Северная война между Россией и Швецией длилась с 1700 по 1721 год. Укажи её итог по Ништадтскому миру и объясни, почему выход к Балтийскому морю был важен для России.", answer: "По Ништадтскому миру 1721 года Россия получила территории у Балтийского моря и закрепилась на его побережье. Это расширило возможности морской торговли и связей с Европой." },
-        { prompt: "Санкт-Петербург был основан в 1703 году, а в 1712 году стал столицей России. Расположи эти события по времени и объясни, почему город строили на Балтийском побережье.", answer: "Сначала, в 1703 году, основан Санкт-Петербург; в 1712 году столица перенесена туда. Положение на Балтике связывало страну с морскими путями и европейской торговлей." },
-        { prompt: "Сопоставь две реформы Петра I: учреждение Правительствующего сената в 1711 году и введение Табели о рангах в 1722 году. Для каждой назови сферу управления, которую она затрагивала.", answer: "Сенат стал центральным органом управления; Табель о рангах упорядочила государственную и военную службу по классам и продвижению." },
-        { prompt: "Объясни, почему Северную войну при Петре I называют важным поворотом внешней политики России. Используй даты 1700–1721 и не смешивай причину войны с её итогом.", answer: "Война шла в 1700–1721 годах; её итог по Ништадтскому миру закрепил выход России к Балтийскому морю. Причины и отдельные этапы следует подтверждать учебным источником." },
-        { prompt: "Выбери одно преобразование Петра I в управлении или службе. По учебному источнику запиши, какую задачу оно решало и какое последствие имело.", answer: "Ключ проверки: реформа названа точно; цель отделена от результата; оба утверждения подтверждаются учебным источником." },
-      ];
-      return choose(peterTasks, index);
-    }
-    return exercise;
+    return choose(tasks, index);
   }
   if (subject === "Литература") {
     const tasks = [
