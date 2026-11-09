@@ -5,11 +5,12 @@ type Model = {
   priors: Record<string, number>;
   likelihoods: Record<string, Record<string, number>>;
   topicIndex?: Record<string, string>;
+  confidenceThreshold?: number;
 };
 
 let model: Model | null = null;
 let modelLoad: Promise<void> | null = null;
-const MIN_CONFIDENCE_MARGIN = 1.5;
+const MIN_CONFIDENCE_MARGIN = 4;
 const tokenPattern = /[а-яёa-z0-9]+/giu;
 
 /** Loads the compact model only when the assistant is opened. */
@@ -74,7 +75,10 @@ export function classifyCurriculumSubject(text: string): string {
 
   const margin = scored[0].score - scored[1].score;
   const normalizedMargin = margin / Math.max(1, Math.sqrt(features.size));
-  return normalizedMargin >= MIN_CONFIDENCE_MARGIN ? scored[0].subject : "";
+  const confidenceThreshold = Number.isFinite(activeModel.confidenceThreshold)
+    ? activeModel.confidenceThreshold!
+    : MIN_CONFIDENCE_MARGIN;
+  return normalizedMargin >= confidenceThreshold ? scored[0].subject : "";
 }
 
 /** Returns a subject only for an exact normalized curriculum topic. */

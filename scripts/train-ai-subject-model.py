@@ -35,6 +35,7 @@ SUBJECTS = [
 ]
 MAX_FEATURES = 5000
 MIN_DOCUMENT_FREQUENCY = 3
+CONFIDENCE_THRESHOLD = 4.0
 
 
 def features(text: str) -> set[str]:
@@ -141,6 +142,7 @@ def main() -> None:
         raise SystemExit(f"В корпусе отсутствуют предметы: {', '.join(sorted(missing))}")
     train, wording_validation, topic_validation = make_examples(corpus)
     model = fit(train)
+    model["confidenceThreshold"] = CONFIDENCE_THRESHOLD
     topic_labels: dict[str, str] = {}
     ambiguous_topics: set[str] = set()
     for subject in SUBJECTS:
@@ -163,7 +165,7 @@ def main() -> None:
             predicted, _, confidence = predict(model, text)
             totals[expected] += 1
             correct[expected] += predicted == expected
-            if confidence >= 1.5:
+            if confidence >= CONFIDENCE_THRESHOLD:
                 accepted[expected] += 1
                 accepted_correct[expected] += predicted == expected
         accuracy = sum(correct.values()) / max(1, sum(totals.values()))
@@ -181,8 +183,8 @@ def main() -> None:
     VERSION_PATH.write_text(f'export const AI_SUBJECT_MODEL_VERSION = "{version}";\n', encoding="utf-8")
     print(f"Обучено на примерах: {len(train)}; отложенные формулировки: {len(wording_validation)}; отложенные темы: {len(topic_validation)}")
     print(f"Словарь признаков: {model['vocabularySize']}; размер модели: {OUTPUT_PATH.stat().st_size / 1024:.1f} КБ; версия {version}")
-    print(f"Знакомые темы в новых формулировках: {wording_accuracy:.1%}; уверенных ответов {wording_coverage:.1%}, точность уверенных {wording_confident_accuracy:.1%}")
-    print(f"Новые темы целиком отложены: {topic_accuracy:.1%}; уверенных ответов {topic_coverage:.1%}, точность уверенных {topic_confident_accuracy:.1%}")
+    print(f"Знакомые темы в новых формулировках: {wording_accuracy:.1%}; при пороге {CONFIDENCE_THRESHOLD:g} уверенных ответов {wording_coverage:.1%}, точность уверенных {wording_confident_accuracy:.1%}")
+    print(f"Новые темы целиком отложены: {topic_accuracy:.1%}; при пороге {CONFIDENCE_THRESHOLD:g} уверенных ответов {topic_coverage:.1%}, точность уверенных {topic_confident_accuracy:.1%}")
     for subject in SUBJECTS:
         print(f"  {subject}: {correct[subject]}/{totals[subject]}")
 
