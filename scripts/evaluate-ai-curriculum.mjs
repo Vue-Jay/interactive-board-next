@@ -41,6 +41,8 @@ try {
     generatedParserCasesByGrade: {},
     independentParserCases: 0,
     independentParserFailures: [],
+    gradeGenerationCases: 0,
+    gradeGenerationFailures: [],
     mathFocusedChecks: 0,
     mathFocusedFailures: [],
     physicsFocusedChecks: 0,
@@ -435,6 +437,30 @@ try {
     if (mismatches.length) report.independentParserFailures.push({ input, mismatches: mismatches.map(([key, value]) => ({ key, expected: value, actual: actual[key] })) });
   }
 
+  const gradeGenerationGuidance = {
+    3: { easy: "Реши один короткий пример; при необходимости нарисуй схему.", medium: "Разбей решение на два коротких шага и запиши ответ.", hard: "Реши задачу в несколько действий знакомыми способами; объясни ход простыми словами." },
+    6: { easy: "Примени одно изученное правило или понятие к примеру.", medium: "Покажи ход рассуждения и кратко объясни результат.", hard: "Сопоставь два случая, найди общее правило и объясни различие." },
+    8: { easy: "Примени изученное правило или понятие к одному случаю и укажи основание ответа.", medium: "Свяжи несколько шагов, обоснуй выбор правила и поясни результат.", hard: "Соедини несколько понятий, проверь вывод на другом случае и объясни ограничения." },
+    10: { easy: "Примени ключевое понятие к ситуации и укажи основание ответа.", medium: "Обоснуй ход решения, подкрепив вывод расчётом или аргументом.", hard: "Сравни подходы, назови допущения и оцени ограничения вывода." },
+  };
+  for (const [subject, topics] of Object.entries(corpus)) {
+    const topic = topics[0];
+    for (const grade of [3, 6, 8, 10]) {
+      for (const level of ["easy", "medium", "hard"]) {
+        for (const tool of ["assignment", "quiz", "flashcards"]) {
+          const generated = curriculum.generateCurriculumAi(tool, `${topic} для ${grade} класса`, level, 1, subject);
+          report.gradeGenerationCases += 1;
+          const expectedInstruction = `Для ${grade} класса: ${gradeGenerationGuidance[grade][level]}`;
+          const failures = [];
+          if (generated.subject !== subject) failures.push(`неверный предмет: ${generated.subject}`);
+          if (!generated.title.includes(`${grade} класс`)) failures.push("класс отсутствует в заголовке");
+          if (!generated.items.length || generated.items.some((item) => !item.includes(expectedInstruction))) failures.push("классно-уровневая инструкция отсутствует или не соответствует выбранным параметрам");
+          if (failures.length) report.gradeGenerationFailures.push({ subject, topic, grade, level, tool, title: generated.title, firstItem: generated.items[0], failures });
+        }
+      }
+    }
+  }
+
   const subjectPhrases = {
     "Математика": "математике",
     "Физика": "физике",
@@ -490,6 +516,7 @@ try {
     || report.parserFailures.length > 0
     || report.independentParserFailures.length > 0
     || report.generatedParserFailures.length > 0
+    || report.gradeGenerationFailures.length > 0
     || report.mathFocusedFailures.length > 0
     || report.physicsFocusedFailures.length > 0
     || report.socialStudiesFocusedFailures.length > 0;

@@ -5,6 +5,35 @@ import { LEKTRUS_SCHOOL_SUBJECTS } from "./lektrusSchoolSubjects";
 
 export type CurriculumAiTool = "assignment" | "quiz" | "flashcards";
 export type CurriculumAiLevel = "easy" | "medium" | "hard";
+
+const gradeTaskGuidance: Record<"primary" | "middle" | "upper" | "senior", Record<CurriculumAiLevel, string>> = {
+  primary: {
+    easy: "Реши один короткий пример; при необходимости нарисуй схему.",
+    medium: "Разбей решение на два коротких шага и запиши ответ.",
+    hard: "Реши задачу в несколько действий знакомыми способами; объясни ход простыми словами.",
+  },
+  middle: {
+    easy: "Примени одно изученное правило или понятие к примеру.",
+    medium: "Покажи ход рассуждения и кратко объясни результат.",
+    hard: "Сопоставь два случая, найди общее правило и объясни различие.",
+  },
+  upper: {
+    easy: "Примени изученное правило или понятие к одному случаю и укажи основание ответа.",
+    medium: "Свяжи несколько шагов, обоснуй выбор правила и поясни результат.",
+    hard: "Соедини несколько понятий, проверь вывод на другом случае и объясни ограничения.",
+  },
+  senior: {
+    easy: "Примени ключевое понятие к ситуации и укажи основание ответа.",
+    medium: "Обоснуй ход решения, подкрепив вывод расчётом или аргументом.",
+    hard: "Сравни подходы, назови допущения и оцени ограничения вывода.",
+  },
+};
+
+function getGradeTaskInstruction(grade: number | null, level: CurriculumAiLevel): string {
+  if (!grade) return "";
+  const band = grade <= 4 ? "primary" : grade <= 6 ? "middle" : grade <= 9 ? "upper" : "senior";
+  return `Для ${grade} класса: ${gradeTaskGuidance[band][level]}`;
+}
 export type CurriculumAiResult = { title: string; items: string[]; answers: string[]; subject: string; detected: string };
 
 const topicExamples: Record<string, string> = {
@@ -158,14 +187,13 @@ export function parseCurriculumRequest(
       : /задач|упражнен|домашн|практик|задани/i.test(input)
         ? "assignment"
         : null;
-  const gradeLevel: CurriculumAiLevel = grade && grade <= 4 ? "easy" : selectedLevel;
   return {
     subject: explicitSubject || detectCurriculumSubject(topic) || subjectForCleanup,
     topic,
     count: Math.max(1, Math.min(15, Math.round(Number(requestedCount) || selectedCount || 5))),
     grade,
     tool: toolMatch ?? selectedTool,
-    level: hasLevel ? inferredLevel : grade ? gradeLevel : selectedLevel,
+    level: hasLevel ? inferredLevel : selectedLevel,
     hasCount,
     hasTool: Boolean(toolMatch),
     hasLevel,
@@ -184,15 +212,17 @@ export function generateCurriculumAi(tool: CurriculumAiTool, topic: string, leve
     const mathLevel: MathAiLevel = effectiveLevel === "easy" ? "primary" : effectiveLevel === "hard" ? "advanced" : "basic";
     const math = generateMathAi("auto" as MathAiMode, mathLevel, safeCount, clean, true);
     const gradeLabel = request.grade ? ` · ${request.grade} класс` : "";
-    if (tool === "assignment") return { title: `${math.detected} · ${clean}${gradeLabel}`, items: math.items, answers: math.answers, subject, detected: math.detected };
+    const gradeInstruction = getGradeTaskInstruction(request.grade, effectiveLevel);
+    const addGradeInstruction = (item: string) => gradeInstruction ? `${item}\n${gradeInstruction}` : item;
+    if (tool === "assignment") return { title: `${math.detected} · ${clean}${gradeLabel}`, items: math.items.map(addGradeInstruction), answers: math.answers, subject, detected: math.detected };
     if (tool === "quiz") return {
       title: `Проверочная работа · Математика · ${clean}${gradeLabel}`,
-      items: math.items.map((q, i) => `${i + 1}. ${q.replace(/\s*=\s*$/, " = ?")}`),
+      items: math.items.map((q, i) => addGradeInstruction(`${i + 1}. ${q.replace(/\s*=\s*$/, " = ?")}`)),
       answers: math.answers, subject, detected: math.detected,
     };
     return {
       title: `Карточки по математике · ${clean}${gradeLabel}`,
-      items: math.items.map((q, i) => `Карточка ${i + 1}\nВопрос: ${q.replace(/\s*=\s*$/, " — чему равно выражение?")}\nОтвет: ${math.answers[i]}`),
+      items: math.items.map((q, i) => `Карточка ${i + 1}\nВопрос: ${q.replace(/\s*=\s*$/, " — чему равно выражение?")}${gradeInstruction ? `\n${gradeInstruction}` : ""}\nОтвет: ${math.answers[i]}`),
       answers: math.answers, subject, detected: math.detected,
     };
   }
@@ -217,17 +247,19 @@ export function generateCurriculumAi(tool: CurriculumAiTool, topic: string, leve
   });
   const answers = exercises.map((exercise, i) => `${i + 1}. ${exercise.answer}`);
   const gradeLabel = request.grade ? ` · ${request.grade} класс` : "";
+  const gradeInstruction = getGradeTaskInstruction(request.grade, effectiveLevel);
+  const addGradeInstruction = (prompt: string) => gradeInstruction ? `${prompt}\n${gradeInstruction}` : prompt;
   if (tool === "assignment") return {
     title: `Практика · ${subject} · ${clean}${gradeLabel}`,
-    items: exercises.map((exercise, i) => `${i + 1}. ${exercise.prompt}`), answers, subject, detected: subject,
+    items: exercises.map((exercise, i) => `${i + 1}. ${addGradeInstruction(exercise.prompt)}`), answers, subject, detected: subject,
   };
   if (tool === "quiz") return {
     title: `Проверочная работа · ${subject} · ${clean}${gradeLabel}`,
-    items: exercises.map((exercise, i) => `${i + 1}. ${exercise.prompt}`), answers, subject, detected: subject,
+    items: exercises.map((exercise, i) => `${i + 1}. ${addGradeInstruction(exercise.prompt)}`), answers, subject, detected: subject,
   };
   return {
     title: `Карточки · ${subject} · ${clean}${gradeLabel}`,
-    items: exercises.map((exercise, i) => `Карточка ${i + 1}\nВопрос: ${exercise.prompt}\nОтвет: ${exercise.answer}`),
+    items: exercises.map((exercise, i) => `Карточка ${i + 1}\nВопрос: ${addGradeInstruction(exercise.prompt)}\nОтвет: ${exercise.answer}`),
     answers, subject, detected: subject,
   };
 }
