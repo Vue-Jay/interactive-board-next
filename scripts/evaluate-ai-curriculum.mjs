@@ -39,6 +39,8 @@ try {
     generatedParserFailures: [],
     generatedParserCasesBySubject: {},
     generatedParserCasesByGrade: {},
+    independentParserCases: 0,
+    independentParserFailures: [],
     mathFocusedChecks: 0,
     mathFocusedFailures: [],
     physicsFocusedChecks: 0,
@@ -363,6 +365,29 @@ try {
     if (mismatches.length) report.parserFailures.push({ input, mismatches: mismatches.map(([key, value]) => ({ key, expected: value, actual: actual[key] })) });
   }
 
+  // Handwritten teacher-style requests, not generated from the topic/template matrix above.
+  const independentCases = [
+    { input: "Составь десять задач на треугольники для 7 класса", expected: { subject: "Математика", count: 10, grade: 7, tool: "assignment" } },
+    { input: "Нужно 5 упражнений про силу трения в 7 классе", expected: { subject: "Физика", count: 5, grade: 7, tool: "assignment" } },
+    { input: "Подготовь 3 задания: реакция нейтрализации, 8 класс", expected: { subject: "Химия", count: 3, grade: 8, tool: "assignment" } },
+    { input: "Сделай четыре карточки по фотосинтезу для шестого класса", expected: { subject: "Биология", count: 4, grade: 6, tool: "flashcards" } },
+    { input: "Дай 6 вопросов про климатические пояса для 7 класса", expected: { subject: "География", count: 6, grade: 7, tool: "quiz" } },
+    { input: "Составь 8 упражнений на Н и НН в причастиях", expected: { subject: "Русский язык", count: 8, tool: "assignment" } },
+    { input: "Придумай 5 вопросов по Евгению Онегину", expected: { subject: "Литература", count: 5, tool: "quiz" } },
+    { input: "Сделай 6 заданий про реформы Петра Первого для 8 класса", expected: { subject: "История", count: 6, grade: 8, tool: "assignment" } },
+    { input: "Подготовь 4 задания про семейный бюджет", expected: { subject: "Обществознание", count: 4, tool: "assignment" } },
+    { input: "Дай 7 заданий на алгоритмы с ветвлением", expected: { subject: "Информатика", count: 7, tool: "assignment" } },
+    { input: "Сделай 10 карточек по Past Simple для шестого класса", expected: { subject: "Иностранный язык", count: 10, grade: 6, tool: "flashcards" } },
+  ];
+  for (const { input, expected } of independentCases) {
+    report.independentParserCases += 1;
+    const actual = curriculum.parseCurriculumRequest(input);
+    const mismatches = Object.entries({ ...expected, hasTopic: true }).filter(([key, value]) =>
+      key === "hasTopic" ? Boolean(actual.topic.trim()) !== value : actual[key] !== value,
+    );
+    if (mismatches.length) report.independentParserFailures.push({ input, mismatches: mismatches.map(([key, value]) => ({ key, expected: value, actual: actual[key] })) });
+  }
+
   const subjectPhrases = {
     "Математика": "математике",
     "Физика": "физике",
@@ -416,6 +441,7 @@ try {
     || report.repeatedSets > 0
     || report.gradeMapErrors.length > 0
     || report.parserFailures.length > 0
+    || report.independentParserFailures.length > 0
     || report.generatedParserFailures.length > 0
     || report.mathFocusedFailures.length > 0;
   if (failures) process.exitCode = 1;
