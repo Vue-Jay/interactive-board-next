@@ -11,6 +11,8 @@ const signed=(n:number)=>n>=0?`+ ${n}`:`− ${Math.abs(n)}`;
 function detect(topic:string,mode:MathAiMode):MathAiMode{
  if(mode!=="auto")return mode;
  const t=topic.toLowerCase();
+ if(/числа и цифры от 0 до 20|состав числа в пределах 10|сложение и вычитание в пределах 20|простые текстовые задачи в одно действие|измерение длины отрезка в сантиметрах|таблицы и числовые закономерности|положение предметов и пространственные отношения|верные и неверные математические утверждения|двухшаговые инструкции с вычислениями и построением/.test(t))return"arithmetic";
+ if(/геометрические фигуры начальной школы/.test(t))return"geometry";
  if(/график.*(?:квадрат|парабол)|квадрат.*функц|парабол.*функц/.test(t))return"functions";
  if(/округлен|оценк.*результат/.test(t))return"rounding";
  if(/скалярн.*произвед|вектор.*координат|координат.*вектор/.test(t))return"vectors";
@@ -251,6 +253,10 @@ export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,to
   if(actual==="rounding")return rounding(index,t);
   if(actual==="vectors")return vectors(index,t);
   if(actual==="geometry"){
+   if(/геометрические фигуры начальной школы/.test(t)){
+    const shapes=["круг","треугольник","квадрат","прямоугольник"],shape=shapes[index%shapes.length];
+    return{q:`На карточке №${index+1} нарисована фигура с ${shape==="круг"?"одной круглой границей и без углов":shape==="треугольник"?"тремя сторонами и тремя углами":shape==="квадрат"?"четырьмя равными сторонами и четырьмя углами":"четырьмя сторонами, причём противоположные стороны равны"}. Назови фигуру.`,a:`${shape[0].toLocaleUpperCase("ru-RU")}${shape.slice(1)}.`};
+   }
    if(/окруж|круг/.test(t)&&/касател/.test(t)){
     const triples=[[5,12,13],[8,15,17],[7,24,25]] as const,[radius,tangent,distance]=triples[Math.floor(index/5)%triples.length],scale=1+index%5;
     return{q:`Из точки P проведена касательная PT к окружности с центром O. Радиус OT = ${radius*scale} см, расстояние OP = ${distance*scale} см. Найди длину касательной PT.`,a:`OT ⟂ PT, поэтому по теореме Пифагора PT² = OP² − OT² = ${distance*scale}² − ${radius*scale}² = ${(tangent*scale)**2}; PT = ${tangent*scale} см.`};
@@ -312,6 +318,48 @@ export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,to
   if(actual==="functions")return /квадрат.*функц|парабол/.test(t)?quadraticFunction(index):func(index);
   if(actual==="word")return word(index);
   if(actual==="arithmetic"){
+   if(/числа и цифры от 0 до 20/.test(t)){
+    const n=1+(index*7)%19,kind=index%3;
+    if(kind===0)return{q:`Запиши число ${n} словами и укажи, сколько в нём десятков и единиц.`,a:`${n} — «${n===1?"один":n===2?"два":n===3?"три":n===4?"четыре":n===5?"пять":n===6?"шесть":n===7?"семь":n===8?"восемь":n===9?"девять":n===10?"десять":n===11?"одиннадцать":n===12?"двенадцать":n===13?"тринадцать":n===14?"четырнадцать":n===15?"пятнадцать":n===16?"шестнадцать":n===17?"семнадцать":n===18?"восемнадцать":n===19?"девятнадцать":"двадцать"}»; ${Math.floor(n/10)} десятков и ${n%10} единиц.`};
+    if(kind===1)return{q:`Запиши предыдущее и следующее числа для ${n}.`,a:`${n-1}, ${n}, ${n+1}.`};
+    const other=n===20?19:n+1;return{q:`Сравни числа ${n} и ${other}. Поставь знак >, < или =.`,a:`${n} < ${other}.`};
+   }
+   if(/состав числа в пределах 10/.test(t)){
+    const total=2+(index%9),right=total-1,left=1,blankFirst=index>=9;
+    return blankFirst
+     ?{q:`Разложи число ${total} на два слагаемых. Заполни: □ + ${left} = ${total}.`,a:`В окошке ${right}: ${right} + ${left} = ${total}.`}
+     :{q:`Разложи число ${total} на два слагаемых. Заполни: ${left} + □ = ${total}.`,a:`В окошке ${right}: ${left} + ${right} = ${total}.`};
+   }
+   if(/сложение и вычитание в пределах 20/.test(t)){
+    if(index%2===0){const slot=Math.floor(index/2),a=1+(slot%4),b=1+Math.floor(slot/4);return{q:`Вычисли ${a} + ${b}.`,a:`${a} + ${b} = ${a+b}.`};}
+    const slot=Math.floor(index/2),top=11+slot,bottom=1+(slot%3);return{q:`Вычисли ${top} − ${bottom}.`,a:`${top} − ${bottom} = ${top-bottom}.`};
+   }
+   if(/простые текстовые задачи в одно действие/.test(t)){
+    const a=3+(index%8),b=1+(index%7),sum=a+b;
+    if(index%2===0)return{q:`У Маши было ${a} карандаш${a%10===1?"":"а"}. Ей дали ещё ${b}. Сколько карандашей стало?`,a:`Одно действие: ${a} + ${b} = ${sum}. Ответ: ${sum} карандашей.`};
+    const total=sum;return{q:`На тарелке лежало ${total} яблок. ${b} яблок съели. Сколько осталось?`,a:`Одно действие: ${total} − ${b} = ${a}. Ответ: ${a} яблок.`};
+   }
+   if(/измерение длины отрезка в сантиметрах/.test(t)){
+    const start=2+(index%5),length=3+(index%8),end=start+length;
+    return{q:`Отметь на числовой линейке отрезок от ${start} см до ${end} см. Найди его длину.`,a:`Длина отрезка: ${end} − ${start} = ${length} см.`};
+   }
+   if(/положение предметов и пространственные отношения/.test(t)){
+    const objects=["мяч","кубик","книга","карандаш","игрушка"],directions=["слева","справа","выше","ниже"],object=objects[index%objects.length],other=objects[(index+1+Math.floor(index/objects.length))%objects.length],direction=directions[Math.floor(index/objects.length)];
+    return{q:`На рисунке ${object} находится ${direction} ${other}. Где расположен ${object} относительно ${other}?`,a:`${object[0].toLocaleUpperCase("ru-RU")}${object.slice(1)} находится ${direction}.`};
+   }
+   if(/таблицы и числовые закономерности/.test(t)){
+    const first=1+(index%5),step=1+(index%3),second=first+step,third=second+step,next=third+step;
+    if(index%2===0)return{q:`Продолжи закономерность: ${first}, ${second}, ${third}, __.`,a:`Каждый раз прибавляем ${step}; следующее число — ${next}.`};
+    return{q:`В таблице записано: красных кружков — ${first}, синих — ${second}. Сколько кружков всего?`,a:`${first} + ${second} = ${first+second}. Всего ${first+second} кружков.`};
+   }
+   if(/верные и неверные математические утверждения/.test(t)){
+    const left=1+(index%10),right=1+Math.floor(index/10),actual=left+right,claim=actual+(index%2===0?0:1),isTrue=claim===actual;
+    return{q:`Проверь утверждение: ${left} + ${right} = ${claim}. Оно верное?`,a:isTrue?`Верное: ${left} + ${right} = ${actual}.`:`Неверное: ${left} + ${right} = ${actual}, а не ${claim}.`};
+   }
+   if(/двухшаговые инструкции с вычислениями и построением/.test(t)){
+    const firstLength=4+(index%7),shorterBy=1+(index%3),secondLength=firstLength-shorterBy;
+    return{q:`Выполни по порядку: 1) начерти отрезок AB длиной ${firstLength} см; 2) начерти рядом отрезок CD на ${shorterBy} см короче. Какова длина CD?`,a:`Сначала вычисляем: ${firstLength} − ${shorterBy} = ${secondLength}. Затем чертим CD длиной ${secondLength} см.`};
+   }
    if(/многозначн.*числ|сложен.*вычитан.*многознач/.test(t)){
     const left=12_458+(index*1_307)%37_000,right=2_167+(index*719)%9_000,subtract=index%2===1,larger=Math.max(left,right),smaller=Math.min(left,right),result=subtract?larger-smaller:left+right;
     return{q:`Вычисли ${larger} ${subtract?"−":"+"} ${smaller}.`,a:`${larger} ${subtract?"−":"+"} ${smaller} = ${result}.`};

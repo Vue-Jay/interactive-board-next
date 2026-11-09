@@ -10,17 +10,28 @@ Math.random = () => {
   return seed / 0x7fffffff;
 };
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
-globalThis.fetch = async () => new Response(modelBytes, { status: 200, headers: { "content-type": "application/json" } });
+let modelFetchRequests = 0;
+let offlineFetchAttempts = 0;
+globalThis.fetch = async () => {
+  modelFetchRequests += 1;
+  return new Response(modelBytes, { status: 200, headers: { "content-type": "application/json" } });
+};
 
 const server = await createServer({ configFile: "./vite.config.ts", server: { middlewareMode: true }, appType: "custom" });
 try {
   const curriculum = await server.ssrLoadModule("/src/aiCurriculumGenerator.ts");
   const intent = await server.ssrLoadModule("/src/aiSubjectIntentClassifier.ts");
   await intent.loadCurriculumSubjectModel();
+  const modelFetchesOnWarmup = modelFetchRequests;
+  globalThis.fetch = async () => {
+    offlineFetchAttempts += 1;
+    throw new Error("offline acceptance: network is unavailable after the model is loaded");
+  };
 
   const report = {
     topics: 0,
     exactTopicRecognition: 0,
+    exactTopicRecognitionFailures: [],
     generatedSets: 0,
     wrongSubjectSets: 0,
     incompleteSets: 0,
@@ -43,10 +54,17 @@ try {
     independentParserFailures: [],
     gradeGenerationCases: 0,
     gradeGenerationFailures: [],
+    gradeOneMathChecks: 0,
+    gradeOneMathFailures: [],
     runtimeGradeMapChecks: 0,
     runtimeGradeMapFailures: [],
     gradeMismatchChecks: 0,
     gradeMismatchFailures: [],
+    officialCoverageBySubject: {},
+    officialCoverageFailures: [],
+    modelFetchesOnWarmup,
+    offlineGenerationCases: 0,
+    offlineFetchAttempts: 0,
     mathFocusedChecks: 0,
     mathFocusedFailures: [],
     physicsFocusedChecks: 0,
@@ -95,12 +113,88 @@ try {
       const actualBand = intent.matchCanonicalCurriculumGrade(topic, subject);
       if (actualBand) report.runtimeGradeMapFailures.push({ subject, topic, expected: "", actual: actualBand });
     }
+    for (const [grade, audit] of Object.entries(mapping.officialCoverage?.grades ?? {})) {
+      const codes = audit.contentCodes ?? [];
+      const covered = new Set(Object.values(audit.topicCodes ?? {}).flat());
+      const gradeTopics = new Set((mapping.topicsByGradeBand ?? mapping.topicsByGrade ?? {})[grade] ?? []);
+      const absentCodes = codes.filter((code) => !covered.has(code));
+      const unknownTopics = Object.keys(audit.topicCodes ?? {}).filter((topic) => !sourceTopics.has(topic) || !gradeTopics.has(topic));
+      const rate = codes.length ? Number(((codes.length - absentCodes.length) / codes.length).toFixed(4)) : 0;
+      report.officialCoverageBySubject[subject] ??= {};
+      report.officialCoverageBySubject[subject][grade] = { codes: codes.length, covered: codes.length - absentCodes.length, rate, source: audit.source };
+      if (rate < 0.95 || unknownTopics.length) report.officialCoverageFailures.push({ subject, grade, absentCodes, unknownTopics, rate });
+    }
+  }
+
+  const gradeOneMathTopics = [
+    "числа и цифры от 0 до 20",
+    "состав числа в пределах 10",
+    "сложение и вычитание в пределах 20",
+    "простые текстовые задачи в одно действие",
+    "измерение длины отрезка в сантиметрах",
+    "геометрические фигуры начальной школы",
+    "положение предметов и пространственные отношения",
+    "таблицы и числовые закономерности",
+    "верные и неверные математические утверждения",
+    "двухшаговые инструкции с вычислениями и построением",
+  ];
+  for (const topic of gradeOneMathTopics) {
+    const generated = curriculum.generateCurriculumAi("assignment", `${topic} для 1 класса`, "medium", 15, "Математика");
+    for (let index = 0; index < generated.items.length; index += 1) {
+      report.gradeOneMathChecks += 1;
+      const prompt = generated.items[index].split("\nДля 1 класса:")[0];
+      const answer = generated.answers[index] ?? "";
+      const failures = [];
+      if (!generated.items[index].includes("Для 1 класса:")) failures.push("нет инструкции для 1 класса");
+      if (!answer.trim() || answer.startsWith("Ключ проверки:")) failures.push("нет конкретного проверяемого ответа");
+      if (topic === "сложение и вычитание в пределах 20") {
+        const match = prompt.match(/Вычисли (\d+) ([+−]) (\d+)\./);
+        if (!match) failures.push("не распознано простое арифметическое условие");
+        else {
+          const left = Number(match[1]), right = Number(match[3]);
+          const result = match[2] === "+" ? left + right : left - right;
+          if (left > 20 || right > 20 || result < 0 || result > 20 || (match[2] === "+" && left % 10 + right % 10 > 9) || (match[2] === "−" && left % 10 < right)) failures.push("пример выходит за изученный диапазон или требует перехода через десяток");
+          if (!answer.includes(`${left} ${match[2]} ${right} = ${result}`)) failures.push("ответ не совпадает с независимым вычислением");
+        }
+      } else if (topic === "состав числа в пределах 10") {
+        const match = prompt.match(/Заполни: (?:(\d+) \+ □ = (\d+)|□ \+ (\d+) = (\d+))/);
+        if (!match) failures.push("не распознано задание на состав числа");
+        else {
+          const left = Number(match[1] ?? match[3]), total = Number(match[2] ?? match[4]);
+          const missing = total - left;
+          if (total > 10 || missing < 1 || !answer.includes(`${left} + ${missing} = ${total}`) && !answer.includes(`${missing} + ${left} = ${total}`)) failures.push("ответ не совпадает с независимым вычислением");
+        }
+      } else if (topic === "измерение длины отрезка в сантиметрах") {
+        const match = prompt.match(/от (\d+) см до (\d+) см/);
+        if (!match) failures.push("не распознаны границы отрезка");
+        else if (!answer.includes(`${Number(match[2])} − ${Number(match[1])} = ${Number(match[2]) - Number(match[1])} см`)) failures.push("ответ не совпадает с вычисленной длиной");
+      } else if (topic === "верные и неверные математические утверждения") {
+        const match = prompt.match(/утверждение: (\d+) \+ (\d+) = (\d+)\. Оно верное\?/);
+        if (!match) failures.push("не распознано задание на проверку утверждения");
+        else {
+          const sum = Number(match[1]) + Number(match[2]);
+          const claimed = Number(match[3]);
+          const expected = sum === claimed ? `Верное: ${match[1]} + ${match[2]} = ${sum}.` : `Неверное: ${match[1]} + ${match[2]} = ${sum}, а не ${claimed}.`;
+          if (answer !== expected) failures.push("верность утверждения или ответ вычислены неправильно");
+        }
+      } else if (topic === "двухшаговые инструкции с вычислениями и построением") {
+        const match = prompt.match(/отрезок AB длиной (\d+) см; 2\) начерти рядом отрезок CD на (\d+) см короче/);
+        if (!match) failures.push("не распознаны два шага задания на построение");
+        else {
+          const length = Number(match[1]) - Number(match[2]);
+          if (length < 1 || !answer.includes(`${match[1]} − ${match[2]} = ${length}`) || !answer.includes(`CD длиной ${length} см`)) failures.push("вычисленная длина или инструкция построения неверны");
+        }
+      }
+      if (failures.length) report.gradeOneMathFailures.push({ topic, index, prompt, answer, failures });
+    }
   }
 
   for (const [subject, topics] of Object.entries(corpus)) {
     for (const topic of topics) {
       report.topics += 1;
-      if (curriculum.detectCurriculumSubject(topic) === subject) report.exactTopicRecognition += 1;
+      const detectedTopicSubject = curriculum.detectCurriculumSubject(topic);
+      if (detectedTopicSubject === subject) report.exactTopicRecognition += 1;
+      else report.exactTopicRecognitionFailures.push({ topic, expected: subject, actual: detectedTopicSubject });
 
       const firstSet = curriculum.generateCurriculumAi("assignment", topic, "medium", 1, subject);
       const firstAnswer = firstSet.answers[0]?.replace(/^\d+\.\s*/, "") ?? "";
@@ -127,6 +221,7 @@ try {
 
       const result = curriculum.generateCurriculumAi("assignment", topic, "medium", 15, subject);
       report.generatedSets += 1;
+      report.offlineGenerationCases += 1;
       if (result.subject !== subject) report.wrongSubjectSets += 1;
       if (result.items.length !== 15 || result.answers.length !== 15) report.incompleteSets += 1;
       if (result.answers.some((answer) => !answer.trim())) report.emptyAnswers += 1;
@@ -441,6 +536,50 @@ try {
     { input: "Подготовь 4 задания про семейный бюджет", expected: { subject: "Обществознание", count: 4, tool: "assignment" } },
     { input: "Дай 7 заданий на алгоритмы с ветвлением", expected: { subject: "Информатика", count: 7, tool: "assignment" } },
     { input: "Сделай 10 карточек по Past Simple для шестого класса", expected: { subject: "Иностранный язык", count: 10, grade: 6, tool: "flashcards" } },
+    { input: "Накидай семь примеров на деление дробей пятиклассникам", expected: { subject: "Математика", count: 7, tool: "assignment" } },
+    { input: "Короткую проверочную по площади круга, 9 класс, шесть вопросов", expected: { subject: "Математика", count: 6, grade: 9, tool: "quiz" } },
+    { input: "Нужны 12 карточек: пропорции, математика, 6 класс", expected: { subject: "Математика", count: 12, grade: 6, tool: "flashcards" } },
+    { input: "Подготовь три несложные задачи на проценты для 4 класса", expected: { subject: "Математика", count: 3, grade: 4, tool: "assignment", level: "easy" } },
+    { input: "Сделай 9 вопросов для теста по закону Ома, физика, 8 класс", expected: { subject: "Физика", count: 9, grade: 8, tool: "quiz" } },
+    { input: "Для урока в седьмом классе — пять упражнений на давление газа", expected: { subject: "Физика", count: 5, grade: 7, tool: "assignment" } },
+    { input: "Подбери 4 карточки про отражение света для 8 класса", expected: { subject: "Физика", count: 4, grade: 8, tool: "flashcards" } },
+    { input: "Двенадцать задач повышенной сложности по механической работе, 7 класс", expected: { subject: "Физика", count: 12, grade: 7, tool: "assignment", level: "hard" } },
+    { input: "Подготовь 6 вопросов для викторины по таблице Менделеева", expected: { subject: "Химия", count: 6, tool: "quiz" } },
+    { input: "Нужно четыре карточки на валентность для восьмого класса", expected: { subject: "Химия", count: 4, grade: 8, tool: "flashcards" } },
+    { input: "Сделай 8 упражнений по химии на расстановку коэффициентов", expected: { subject: "Химия", count: 8, tool: "assignment" } },
+    { input: "Для 9 класса составь 5 вопросов о кислотах и основаниях", expected: { subject: "Химия", count: 5, grade: 9, tool: "quiz" } },
+    { input: "Шесть заданий про пищевые цепи, биология", expected: { subject: "Биология", count: 6, tool: "assignment" } },
+    { input: "Сделай 5 карточек по строению листа для шестого класса", expected: { subject: "Биология", count: 5, grade: 6, tool: "flashcards" } },
+    { input: "Десять вопросов для теста по наследственности в 9 классе", expected: { subject: "Биология", count: 10, grade: 9, tool: "quiz" } },
+    { input: "Подготовь три упражнения на дыхательную систему человека", expected: { subject: "Биология", count: 3, tool: "assignment" } },
+    { input: "Составь 7 карточек для работы с координатами на карте", expected: { subject: "География", count: 7, tool: "flashcards" } },
+    { input: "Восемь вопросов по природным зонам России для 8 класса", expected: { subject: "География", count: 8, grade: 8, tool: "quiz" } },
+    { input: "Нужно 4 задания на круговорот воды", expected: { subject: "География", count: 4, tool: "assignment" } },
+    { input: "Для девятого класса сделай пять тестовых вопросов про отрасли хозяйства", expected: { subject: "География", count: 5, grade: 9, tool: "quiz" } },
+    { input: "Сделай 6 упражнений на разбор слова по составу для 3 класса", expected: { subject: "Русский язык", count: 6, grade: 3, tool: "assignment" } },
+    { input: "Пять карточек на правописание НЕ с глаголами", expected: { subject: "Русский язык", count: 5, tool: "flashcards" } },
+    { input: "Подготовь 9 вопросов по однородным членам предложения, 8 класс", expected: { subject: "Русский язык", count: 9, grade: 8, tool: "quiz" } },
+    { input: "Нужно три несложных задания на склонение существительных", expected: { subject: "Русский язык", count: 3, tool: "assignment", level: "easy" } },
+    { input: "Составь 5 вопросов для обсуждения по Капитанской дочке", expected: { subject: "Литература", count: 5, tool: "quiz" } },
+    { input: "Четыре карточки по басням Крылова для 5 класса", expected: { subject: "Литература", count: 4, grade: 5, tool: "flashcards" } },
+    { input: "Подготовь 7 заданий на характеристику героя романа", expected: { subject: "Литература", count: 7, tool: "assignment" } },
+    { input: "Десять вопросов для викторины по поэзии Серебряного века", expected: { subject: "Литература", count: 10, tool: "quiz" } },
+    { input: "Сделай 8 заданий о Смутном времени, 7 класс", expected: { subject: "История", count: 8, grade: 7, tool: "assignment" } },
+    { input: "Три карточки про Древний Египет для пятого класса", expected: { subject: "История", count: 3, grade: 5, tool: "flashcards" } },
+    { input: "Подготовь 6 вопросов по причинам Первой мировой войны", expected: { subject: "История", count: 6, tool: "quiz" } },
+    { input: "Нужно двенадцать тестовых вопросов про реформы Александра II для 8 класса", expected: { subject: "История", count: 12, grade: 8, tool: "quiz" } },
+    { input: "Составь 5 заданий на права ребёнка", expected: { subject: "Обществознание", count: 5, tool: "assignment" } },
+    { input: "Семь карточек по налогам и семейному бюджету для 8 класса", expected: { subject: "Обществознание", count: 7, grade: 8, tool: "flashcards" } },
+    { input: "Сделай 4 вопроса для викторины о разделении властей", expected: { subject: "Обществознание", count: 4, tool: "quiz" } },
+    { input: "Для девятого класса нужны 9 заданий про спрос и предложение", expected: { subject: "Обществознание", count: 9, grade: 9, tool: "assignment" } },
+    { input: "Подготовь 6 упражнений на циклы со счётчиком", expected: { subject: "Информатика", count: 6, tool: "assignment" } },
+    { input: "Пять карточек по двоичной системе счисления для 8 класса", expected: { subject: "Информатика", count: 5, grade: 8, tool: "flashcards" } },
+    { input: "Сделай тест из 10 вопросов на логические выражения", expected: { subject: "Информатика", count: 10, tool: "quiz" } },
+    { input: "Нужны 3 задания для 7 класса по электронным таблицам", expected: { subject: "Информатика", count: 3, grade: 7, tool: "assignment" } },
+    { input: "Подготовь восемь карточек на неправильные глаголы английского языка", expected: { subject: "Иностранный язык", count: 8, tool: "flashcards" } },
+    { input: "Сделай 5 упражнений на артикли для 6 класса", expected: { subject: "Иностранный язык", count: 5, grade: 6, tool: "assignment" } },
+    { input: "Десять вопросов для теста по немецким модальным глаголам", expected: { subject: "Иностранный язык", count: 10, tool: "quiz" } },
+    { input: "Нужно 4 карточки по французской лексике на тему путешествий", expected: { subject: "Иностранный язык", count: 4, tool: "flashcards" } },
   ];
   for (const { input, expected } of independentCases) {
     report.independentParserCases += 1;
@@ -523,7 +662,7 @@ try {
         { input: `Создай ${count} флеш-карточек по ${subjectPhrase} на тему «${topic}» для ${grade} класса`, expected: { tool: "flashcards", hasLevel: false } },
       ];
       const sample = forms[variant];
-      const normalizedTopic = topic.replace(/[,:;.!?«»“”]+/g, " ").replace(/\s+/g, " ").trim();
+      const normalizedTopic = topic.replace(/[«»“”]+/g, "").replace(/\s+/g, " ").trim();
       const expected = { subject, topic: normalizedTopic, count, grade, ...sample.expected, hasCount: true, hasTool: true };
       const actual = curriculum.parseCurriculumRequest(sample.input);
       report.generatedParserCases += 1;
@@ -536,6 +675,7 @@ try {
 
   report.exactTopicRecognitionRate = Number((report.exactTopicRecognition / report.topics).toFixed(4));
   report.specificExerciseCoverageRate = Number((report.topicsWithSpecificExercise / report.topics).toFixed(4));
+  report.offlineFetchAttempts = offlineFetchAttempts;
   for (const coverage of Object.values(report.exerciseCoverageBySubject)) {
     coverage.rate = Number((coverage.specific / coverage.total).toFixed(4));
   }
@@ -553,6 +693,11 @@ try {
     || report.gradeGenerationFailures.length > 0
     || report.runtimeGradeMapFailures.length > 0
     || report.gradeMismatchFailures.length > 0
+    || report.officialCoverageFailures.length > 0
+    || report.gradeOneMathFailures.length > 0
+    || report.modelFetchesOnWarmup !== 1
+    || report.offlineFetchAttempts !== 0
+    || report.offlineGenerationCases !== report.topics
     || report.mathFocusedFailures.length > 0
     || report.physicsFocusedFailures.length > 0
     || report.socialStudiesFocusedFailures.length > 0;

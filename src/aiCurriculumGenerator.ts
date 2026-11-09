@@ -79,6 +79,14 @@ const subjectAliases: Record<string, RegExp> = {
 };
 
 const specificSubjectAliases: [string, RegExp][] = [
+  ["Химия", /таблиц[а-яё]*\s+менделеев[а-яё]*/i],
+  ["География", /координат[а-яё]*\s+на\s+карт[а-яё]*|отрасл[а-яё]*\s+хозяйств[а-яё]*/i],
+  ["Литература", /капитанск[а-яё]*\s+дочк[а-яё]*/i],
+  ["История", /смутн[а-яё]*\s+времен[а-яё]*/i],
+  ["Обществознание", /разделен[а-яё]*\s+власт[а-яё]*|спрос[а-яё]*\s+и\s+предложени[ея]/i],
+  ["Информатика", /логическ[а-яё]*\s+выражени[яй]|электронн[а-яё]*\s+таблиц[а-яё]*/i],
+  ["Иностранный язык", /немецк[а-яё]*\s+модальн[а-яё]*\s+глагол[а-яё]*/i],
+  ["Физика", /механическ[а-яё]*\s+работ[а-яё]*/i],
   ["Биология", /строени[ея].*днк|днк.*комплементарност|строени[ея].*цветк|опылени[ея]|рефлекторн[а-яё]* дуг/i],
   ["Химия", /количеств[оа].*веществ|количеств[оа].*мол[ья]|водород.*свойств|глюкоз[аые].*углевод/i],
   ["География", /почв[а-яё]*.*(?:фактор|образован)|почвообразован/i],
@@ -97,9 +105,10 @@ const specificSubjectAliases: [string, RegExp][] = [
 
 export function detectCurriculumSubject(topic: string, selected = ""): string {
   if (LEKTRUS_SCHOOL_SUBJECTS.includes(selected as typeof LEKTRUS_SCHOOL_SUBJECTS[number])) return selected;
+  // Specific phrases take precedence over broad aliases/corpus labels where words overlap.
+  for (const [subject, pattern] of specificSubjectAliases) if (pattern.test(topic)) return subject;
   const canonical = matchCanonicalCurriculumTopic(topic);
   if (canonical) return canonical;
-  for (const [subject, pattern] of specificSubjectAliases) if (pattern.test(topic)) return subject;
   for (const [subject, pattern] of Object.entries(subjectAliases)) if (pattern.test(topic)) return subject;
   return classifyCurriculumSubject(topic);
 }
@@ -141,8 +150,8 @@ export function parseCurriculumRequest(
   const countMatch = input.match(qty);
   const requestedCount = countMatch ? (numberWords[countMatch[2].toLocaleLowerCase("ru-RU")] ?? Number(countMatch[2])) : selectedCount;
   const hasCount = Boolean(countMatch);
-  const hardRequest = /посложнее|сложнее|сложн(?:ые?|ых)\s+(?:задач|задан|упражнен|тест|пример)|сложный уровень|повышенн\w* сложност|углубл|олимпиад|продвинут|высокого уровня/i.test(input);
-  const easyRequest = /попроще|полегче|прост(?:ые?|ых|ую)\s+(?:задач|задан|упражнен|тест|пример)|простой уровень|базов\w* уровень|начинающ|для новичк|начальн\w* уровень/i.test(input);
+  const hardRequest = /посложнее|сложнее|(?<!не)сложн(?:ые?|ых)\s+(?:задач|задан|упражнен|тест|пример)|сложный уровень|повышенн[а-яё]*\s+сложност[а-яё]*|углубл|олимпиад|продвинут|высокого уровня/i.test(input);
+  const easyRequest = /попроще|полегче|несложн[а-яё]*|прост(?:ые?|ых|ую)\s+(?:задач|задан|упражнен|тест|пример)|простой уровень|базов\w* уровень|начинающ|для новичк|начальн\w* уровень/i.test(input);
   const hasLevel = hardRequest || easyRequest;
   const inferredLevel: CurriculumAiLevel = hardRequest ? "hard" : "easy";
   let topic = countMatch ? input.replace(qty, " ") : input;
@@ -175,20 +184,28 @@ export function parseCurriculumRequest(
       }
     }
   }
-  const subjectForCleanup = explicitSubject || detectCurriculumSubject(topic);
-  topic = topic.replace(/[,:;.!?«»“”]+/g, " ");
-  for (let pass = 0; pass < 3; pass += 1) {
-    topic = topic
-      .replace(/^\s*(?:(?:пожалуйста|мне|мне нужно|мне нужна|мне нужны|нужно|нужна|нужны|хочу|можно|создай|составь|подготовь|подготовить|сгенерируй|сделай|дай|придумай|напиши|подбери|сформируй|сгенерировать|реши|решить|вычисли|найди|объясни|изучи|разбери|расскажи|покажи|хотелось бы|давай)\s+)+/i, "")
-      .replace(/^\s*(?:(?:что-нибудь|что нибудь|попроще|полегче|посложнее|сложнее|л[её]гк(?:ую|ие|их|ое)|сложн(?:ую|ые|ых|ое)|углублённ[а-яё]*|олимпиадн[а-яё]*|базов[а-яё]*|продвинут[а-яё]*)\s+)+/i, "")
-      .replace(/^\s*прост(?:ую|ые|ых|ое)\s+(?=(?:задач|задан|упражнен|тест|пример))/i, "")
-      .replace(/^\s*(?:(?:задач[а-яё]*|задани[а-яё]*|упражнен[а-яё]*|тест[а-яё]*|викторин[а-яё]*|проверочн[а-яё]*|контрольн[а-яё]*|самостоятельн[а-яё]*|флеш[- ]?карточ[а-яё]*|карточ[а-яё]*|вопрос[а-яё]*|пример[а-яё]*|практическ\w*)\s+)+/i, "")
-      .replace(/^\s*(?:(?:по теме|на тему|по|на|про|тема|теме|для|о)\s+)+/i, "");
+  const quotedCanonicalTopic = input.match(/[«“"]([^»”"]+)[»”"]/u)?.[1]?.trim();
+  const preserveQuotedCanonicalTopic = Boolean(quotedCanonicalTopic && matchCanonicalCurriculumTopic(quotedCanonicalTopic));
+  if (preserveQuotedCanonicalTopic && quotedCanonicalTopic) {
+    topic = quotedCanonicalTopic;
+    explicitSubject ||= matchCanonicalCurriculumTopic(quotedCanonicalTopic);
   }
-  topic = topic.replace(/^\s*(?:(?:по теме|на тему|по|на|про|тема|теме|для|о)\s+)+/i, "")
-    .replace(/\s+(?:для|учени(?:к|ца|кам|кам)?|учащимс[яи])\s*$/i, "")
-    .replace(/\s+(?:для\s+)?(?:начинающ[а-яё]*|новичк[а-яё]*|посложнее|полегче|попроще)\s*$/i, "")
-    .replace(/\s+/g, " ").trim();
+  const subjectForCleanup = explicitSubject || detectCurriculumSubject(topic);
+  if (!preserveQuotedCanonicalTopic) {
+    topic = topic.replace(/[,:;.!?«»“”]+/g, " ");
+    for (let pass = 0; pass < 3; pass += 1) {
+      topic = topic
+        .replace(/^\s*(?:(?:пожалуйста|мне|мне нужно|мне нужна|мне нужны|нужно|нужна|нужны|хочу|можно|создай|составь|подготовь|подготовить|сгенерируй|сделай|дай|придумай|напиши|подбери|сформируй|сгенерировать|реши|решить|вычисли|найди|объясни|изучи|разбери|расскажи|покажи|хотелось бы|давай)\s+)+/i, "")
+        .replace(/^\s*(?:(?:что-нибудь|что нибудь|попроще|полегче|посложнее|сложнее|л[её]гк(?:ую|ие|их|ое)|сложн(?:ую|ые|ых|ое)|углублённ[а-яё]*|олимпиадн[а-яё]*|базов[а-яё]*|продвинут[а-яё]*)\s+)+/i, "")
+        .replace(/^\s*прост(?:ую|ые|ых|ое)\s+(?=(?:задач|задан|упражнен|тест|пример))/i, "")
+        .replace(/^\s*(?:(?:задач[а-яё]*|задани[а-яё]*|упражнен[а-яё]*|тест[а-яё]*|викторин[а-яё]*|проверочн[а-яё]*|контрольн[а-яё]*|самостоятельн[а-яё]*|флеш[- ]?карточ[а-яё]*|карточ[а-яё]*|вопрос[а-яё]*|пример[а-яё]*|практическ\w*)\s+)+/i, "")
+        .replace(/^\s*(?:(?:по теме|на тему|по|на|про|тема|теме|для|о)\s+)+/i, "");
+    }
+    topic = topic.replace(/^\s*(?:(?:по теме|на тему|по|на|про|тема|теме|для|о)\s+)+/i, "")
+      .replace(/\s+(?:для|учени(?:к|ца|кам|кам)?|учащимс[яи])\s*$/i, "")
+      .replace(/\s+(?:для\s+)?(?:начинающ[а-яё]*|новичк[а-яё]*|посложнее|полегче|попроще)\s*$/i, "")
+      .replace(/\s+/g, " ").trim();
+  }
   const toolMatch = /карточ[а-яё]*|флеш.?карточ|flash.?card/i.test(input)
     ? "flashcards"
     : /тест|проверочн|контрольн|викторин|quiz|самостоятельн|вопрос[а-яё]*/i.test(input)
