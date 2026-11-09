@@ -16,7 +16,6 @@ const server = await createServer({ configFile: "./vite.config.ts", server: { mi
 try {
   const curriculum = await server.ssrLoadModule("/src/aiCurriculumGenerator.ts");
   const intent = await server.ssrLoadModule("/src/aiSubjectIntentClassifier.ts");
-  const { generateSubjectExercise } = await server.ssrLoadModule("/src/aiSubjectExerciseBank.ts");
   await intent.loadCurriculumSubjectModel();
 
   const report = {
@@ -30,6 +29,7 @@ try {
     repeatedTopics: [],
     topicsWithSpecificExercise: 0,
     topicsUsingSourceSafeRubric: 0,
+    exerciseCoverageBySubject: {},
     parserCases: 0,
     parserFailures: [],
     generatedParserCases: 0,
@@ -61,9 +61,19 @@ try {
       report.topics += 1;
       if (curriculum.detectCurriculumSubject(topic) === subject) report.exactTopicRecognition += 1;
 
-      const firstExercise = generateSubjectExercise(subject, topic, "medium", 0);
-      if (firstExercise.answer.startsWith("Ключ проверки:")) report.topicsUsingSourceSafeRubric += 1;
-      else report.topicsWithSpecificExercise += 1;
+      const firstSet = curriculum.generateCurriculumAi("assignment", topic, "medium", 1, subject);
+      const firstAnswer = firstSet.answers[0]?.replace(/^\d+\.\s*/, "") ?? "";
+      const hasSpecificExercise = !firstAnswer.startsWith("Ключ проверки:");
+      const coverage = report.exerciseCoverageBySubject[subject] ?? { total: 0, specific: 0, sourceSafeRubric: 0 };
+      coverage.total += 1;
+      if (hasSpecificExercise) {
+        coverage.specific += 1;
+        report.topicsWithSpecificExercise += 1;
+      } else {
+        coverage.sourceSafeRubric += 1;
+        report.topicsUsingSourceSafeRubric += 1;
+      }
+      report.exerciseCoverageBySubject[subject] = coverage;
 
       const result = curriculum.generateCurriculumAi("assignment", topic, "medium", 15, subject);
       report.generatedSets += 1;
@@ -181,6 +191,9 @@ try {
 
   report.exactTopicRecognitionRate = Number((report.exactTopicRecognition / report.topics).toFixed(4));
   report.specificExerciseCoverageRate = Number((report.topicsWithSpecificExercise / report.topics).toFixed(4));
+  for (const coverage of Object.values(report.exerciseCoverageBySubject)) {
+    coverage.rate = Number((coverage.specific / coverage.total).toFixed(4));
+  }
   console.log(JSON.stringify(report, null, 2));
 
   const failures = report.exactTopicRecognition !== report.topics
