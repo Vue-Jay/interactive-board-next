@@ -32,6 +32,10 @@ try {
     topicsUsingSourceSafeRubric: 0,
     parserCases: 0,
     parserFailures: [],
+    generatedParserCases: 0,
+    generatedParserFailures: [],
+    generatedParserCasesBySubject: {},
+    generatedParserCasesByGrade: {},
     gradeMapTopicsBySubject: {},
     gradeMapMissingTopicsBySubject: {},
     gradeMapErrors: [],
@@ -136,6 +140,45 @@ try {
     if (mismatches.length) report.parserFailures.push({ input, mismatches: mismatches.map(([key, value]) => ({ key, expected: value, actual: actual[key] })) });
   }
 
+  const subjectPhrases = {
+    "Математика": "математике",
+    "Физика": "физике",
+    "Химия": "химии",
+    "Биология": "биологии",
+    "География": "географии",
+    "Русский язык": "русскому языку",
+    "Литература": "литературе",
+    "История": "истории",
+    "Обществознание": "обществознанию",
+    "Информатика": "информатике",
+    "Иностранный язык": "иностранному языку",
+  };
+  const counts = [2, 5, 10, 15];
+  for (const [subject, topics] of Object.entries(corpus)) {
+    const subjectPhrase = subjectPhrases[subject];
+    for (let index = 0; index < 22; index += 1) {
+      const topic = topics[(index * 3) % topics.length];
+      const grade = (index % 11) + 1;
+      const count = counts[index % counts.length];
+      const variant = index % 4;
+      const forms = [
+        { input: `Сделай ${count} простых задач по ${subjectPhrase} на тему «${topic}» для ${grade} класса`, expected: { tool: "assignment", level: "easy", hasLevel: true } },
+        { input: `Составь ${count} сложных упражнений по ${subjectPhrase} на тему «${topic}» для ${grade} класса`, expected: { tool: "assignment", level: "hard", hasLevel: true } },
+        { input: `Подготовь ${count} вопросов по ${subjectPhrase} на тему «${topic}» для ${grade} класса`, expected: { tool: "quiz", hasLevel: false } },
+        { input: `Создай ${count} флеш-карточек по ${subjectPhrase} на тему «${topic}» для ${grade} класса`, expected: { tool: "flashcards", hasLevel: false } },
+      ];
+      const sample = forms[variant];
+      const normalizedTopic = topic.replace(/[,:;.!?«»“”]+/g, " ").replace(/\s+/g, " ").trim();
+      const expected = { subject, topic: normalizedTopic, count, grade, ...sample.expected, hasCount: true, hasTool: true };
+      const actual = curriculum.parseCurriculumRequest(sample.input);
+      report.generatedParserCases += 1;
+      report.generatedParserCasesBySubject[subject] = (report.generatedParserCasesBySubject[subject] ?? 0) + 1;
+      report.generatedParserCasesByGrade[grade] = (report.generatedParserCasesByGrade[grade] ?? 0) + 1;
+      const mismatches = Object.entries(expected).filter(([key, value]) => actual[key] !== value);
+      if (mismatches.length) report.generatedParserFailures.push({ input: sample.input, mismatches: mismatches.map(([key, value]) => ({ key, expected: value, actual: actual[key] })) });
+    }
+  }
+
   report.exactTopicRecognitionRate = Number((report.exactTopicRecognition / report.topics).toFixed(4));
   report.specificExerciseCoverageRate = Number((report.topicsWithSpecificExercise / report.topics).toFixed(4));
   console.log(JSON.stringify(report, null, 2));
@@ -146,7 +189,8 @@ try {
     || report.emptyAnswers > 0
     || report.repeatedSets > 0
     || report.gradeMapErrors.length > 0
-    || report.parserFailures.length > 0;
+    || report.parserFailures.length > 0
+    || report.generatedParserFailures.length > 0;
   if (failures) process.exitCode = 1;
 } finally {
   await server.close();

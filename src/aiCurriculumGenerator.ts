@@ -114,8 +114,30 @@ export function parseCurriculumRequest(
     : wordGrade ? gradeWords[wordGrade[1].toLocaleLowerCase("ru-RU")] ?? null : null;
   const gradePhrase = numericGrade?.[0] ?? wordGrade?.[0]?.trim();
   if (gradePhrase) topic = topic.replace(gradePhrase, " ");
-  const subjectForCleanup = detectCurriculumSubject(topic, selectedSubject);
-  let explicitSubjectPrefixRemoved = false;
+  const explicitSubjectPhrases: [string, RegExp][] = [
+    ["Математика", /(?:^|\s)по\s+(?:математик[а-яё]*|алгебр[а-яё]*|геометр[а-яё]*)(?=\s|$)/iu],
+    ["Физика", /(?:^|\s)по\s+физик[а-яё]*(?=\s|$)/iu],
+    ["Химия", /(?:^|\s)по\s+хими[а-яё]*(?=\s|$)/iu],
+    ["Биология", /(?:^|\s)по\s+биолог[а-яё]*(?=\s|$)/iu],
+    ["География", /(?:^|\s)по\s+географ[а-яё]*(?=\s|$)/iu],
+    ["Русский язык", /(?:^|\s)по\s+русск[а-яё]*\s+язык[а-яё]*(?=\s|$)/iu],
+    ["Литература", /(?:^|\s)по\s+литератур[а-яё]*(?=\s|$)/iu],
+    ["История", /(?:^|\s)по\s+истор[а-яё]*(?=\s|$)/iu],
+    ["Обществознание", /(?:^|\s)по\s+обществознани[а-яё]*(?=\s|$)/iu],
+    ["Информатика", /(?:^|\s)по\s+информатик[а-яё]*(?=\s|$)/iu],
+    ["Иностранный язык", /(?:^|\s)по\s+(?:иностранн[а-яё]*\s+язык[а-яё]*|английск[а-яё]*(?:\s+язык[а-яё]*)?|english)(?=\s|$)/iu],
+  ];
+  let explicitSubject = selectedSubject;
+  if (!explicitSubject) {
+    for (const [subject, pattern] of explicitSubjectPhrases) {
+      if (pattern.test(topic)) {
+        explicitSubject = subject;
+        topic = topic.replace(pattern, " ");
+        break;
+      }
+    }
+  }
+  const subjectForCleanup = explicitSubject || detectCurriculumSubject(topic);
   topic = topic.replace(/[,:;.!?«»“”]+/g, " ");
   for (let pass = 0; pass < 3; pass += 1) {
     topic = topic
@@ -124,22 +146,6 @@ export function parseCurriculumRequest(
       .replace(/^\s*прост(?:ую|ые|ых|ое)\s+(?=(?:задач|задан|упражнен|тест|пример))/i, "")
       .replace(/^\s*(?:(?:задач[а-яё]*|задани[а-яё]*|упражнен[а-яё]*|тест[а-яё]*|викторин[а-яё]*|проверочн[а-яё]*|контрольн[а-яё]*|самостоятельн[а-яё]*|флеш[- ]?карточ[а-яё]*|карточ[а-яё]*|вопрос[а-яё]*|пример[а-яё]*|практическ\w*)\s+)+/i, "")
       .replace(/^\s*(?:(?:по теме|на тему|по|на|про|тема|теме|для|о)\s+)+/i, "");
-    const subjectLead: Partial<Record<string, RegExp>> = {
-      "Математика": /^(?:математик[а-яё]*|алгебр[а-яё]*|геометр[а-яё]*)\s+/i,
-      "Физика": /^физик[а-яё]*\s+/i,
-      "Химия": /^хими[а-яё]*\s+/i,
-      "Биология": /^биолог[а-яё]*\s+/i,
-      "География": /^географ[а-яё]*\s+/i,
-      "Русский язык": /^(?:русск[а-яё]*\s+язык[а-яё]*|русск[а-яё]*)\s+/i,
-      "Литература": /^литератур[а-яё]*\s+/i,
-      "История": /^истор[а-яё]*\s+/i,
-      "Обществознание": /^обществозн[а-яё]*\s+/i,
-      "Информатика": /^информатик[а-яё]*\s+/i,
-      "Иностранный язык": /^(?:английск[а-яё]*\s+язык[а-яё]*|иностран[а-яё]*\s+язык[а-яё]*|английск[а-яё]*|english)\s+/i,
-    };
-    const subjectPattern = subjectLead[subjectForCleanup];
-    if (subjectPattern?.test(topic)) explicitSubjectPrefixRemoved = true;
-    if (subjectPattern) topic = topic.replace(subjectPattern, "");
   }
   topic = topic.replace(/^\s*(?:(?:по теме|на тему|по|на|про|тема|теме|для|о)\s+)+/i, "")
     .replace(/\s+(?:для|учени(?:к|ца|кам|кам)?|учащимс[яи])\s*$/i, "")
@@ -154,7 +160,7 @@ export function parseCurriculumRequest(
         : null;
   const gradeLevel: CurriculumAiLevel = grade && grade <= 4 ? "easy" : selectedLevel;
   return {
-    subject: selectedSubject || (explicitSubjectPrefixRemoved ? subjectForCleanup : detectCurriculumSubject(topic) || subjectForCleanup),
+    subject: explicitSubject || detectCurriculumSubject(topic) || subjectForCleanup,
     topic,
     count: Math.max(1, Math.min(15, Math.round(Number(requestedCount) || selectedCount || 5))),
     grade,
