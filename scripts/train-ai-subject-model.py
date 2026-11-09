@@ -42,7 +42,8 @@ SUBJECTS = [
     "Математика", "Физика", "Химия", "Биология", "География", "Русский язык",
     "Литература", "История", "Обществознание", "Информатика", "Иностранный язык",
 ]
-MAX_FEATURES = 5700
+MAX_FEATURES = 5790
+MAX_MODEL_BYTES = 1_500_000
 MIN_DOCUMENT_FREQUENCY = 3
 CONFIDENCE_TARGET_ACCURACY = 0.99
 
@@ -226,6 +227,12 @@ def main() -> None:
     topic_accuracy, topic_coverage, topic_confident_accuracy, _, _ = evaluate(topic_validation)
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     serialized = json.dumps(model, ensure_ascii=False, separators=(",", ":")) + "\n"
+    serialized_bytes = serialized.encode("utf-8")
+    if len(serialized_bytes) > MAX_MODEL_BYTES:
+        raise SystemExit(
+            f"Модель весит {len(serialized_bytes):,} байт; лимит — {MAX_MODEL_BYTES:,}. "
+            "Уменьшите MAX_FEATURES, прежде чем обновлять артефакт."
+        )
     OUTPUT_PATH.write_text(serialized, encoding="utf-8")
     version = hashlib.sha256(serialized.encode("utf-8")).hexdigest()[:16]
     VERSION_PATH.write_text(f'export const AI_SUBJECT_MODEL_VERSION = "{version}";\n', encoding="utf-8")
