@@ -175,6 +175,127 @@ function logarithms(index:number){
  return{q:`Вычисли log₍${base}₎ ${value}. Запиши равенство в показательной форме для проверки.`,a:`log₍${base}₎ ${value} = ${exponent}, так как ${base}^${exponent} = ${value}.`};
 }
 
+function supportsGradeTwoTopic(topic:string){
+ return /числа до 100|увеличение и уменьшение чисел до 100|единицы массы, времени и длины|цена[\s,]+количество и стоимость|сложение и вычитание до 100|свойства сложения и проверка вычислений|смысл умножения и деления|табличное умножение и деление до 50|уравнения на нахождение неизвестного компонента|порядок действий со скобками|однородные величины|двухшаговые текстовые задачи|практические задачи на действия и величины|доли величины(?:[:\s]|$)|построение и разбиение геометрических фигур|периметр многоугольника|сравнение площадей фигур|классификация математических объектов по двум признакам|верные и неверные математические утверждения|логические утверждения о числах и величинах|чтение таблиц и столбчатых диаграмм|внесение данных в таблицу|последовательность шагов и схемы действий|алгоритмы решения математических заданий на компьютере|правила работы с электронными учебными средствами/i.test(topic);
+}
+
+function gradeTwo(index:number,topic:string){
+ const i=index, t=topic;
+ if(/числа до 100|увеличение и уменьшение чисел до 100/i.test(t)){
+  const delta=1+(i*7)%9, n=20+i*3, bigger=i%2===0, result=bigger?n+delta:n-delta;
+  if(/разрядный состав/.test(t)) return {q:`Разложи число ${n} на десятки и единицы, затем сравни его с ${n+1}.`,a:`${n} = ${Math.floor(n/10)} десят. + ${n%10} ед.; ${n} < ${n+1}.`};
+  return bigger?{q:`Увеличь число ${n} на ${delta} и запиши равенство.`,a:`${n} + ${delta} = ${result}.`}:{q:`Уменьши число ${n} на ${delta} и запиши равенство.`,a:`${n} − ${delta} = ${result}.`};
+ }
+ if(/единицы массы, времени и длины/i.test(t)){
+  const kind=i%4;
+  if(kind===0){const dm=1+i%9;return {q:`Переведи ${dm} дм в сантиметры.`,a:`1 дм = 10 см, поэтому ${dm} дм = ${dm*10} см.`};}
+  if(kind===1){const cm=1+i%9;return {q:`Переведи ${cm} см в миллиметры.`,a:`1 см = 10 мм, поэтому ${cm} см = ${cm*10} мм.`};}
+  if(kind===2){const mins=1+i%5;return {q:`Сколько минут составляют ${mins} ч ${mins*7} мин?`,a:`${mins} ч = ${mins*60} мин; ${mins*60} + ${mins*7} = ${mins*67} мин.`};}
+  const a=2+i%8,b=1+(i*3)%8;return {q:`На сколько килограммов ${Math.max(a,b)} кг тяжелее ${Math.min(a,b)} кг?`,a:`${Math.max(a,b)} − ${Math.min(a,b)} = ${Math.abs(a-b)} кг.`};
+ }
+ if(/цена[\s,]+количество и стоимость/i.test(t)){
+  const price=5+i%16, quantity=2+i%5, total=price*quantity;
+  return {q:`Один карандаш стоит ${price} ₽. Сколько стоят ${quantity} таких карандашей?`,a:`Стоимость = цена · количество = ${price} · ${quantity} = ${total} ₽.`};
+ }
+ if(/практические задачи на действия и величины/i.test(t)){
+  const startHour=8+i%3,startMinute=i%2===0?20:40,duration=30+(i%4)*10,totalMinutes=startHour*60+startMinute+duration,endHour=Math.floor(totalMinutes/60),endMinute=totalMinutes%60;
+  const days=["в понедельник","во вторник","в среду","в четверг","в пятницу","в субботу","в воскресенье"];
+  return {q:`${days[i%days.length]} занятие началось в ${String(startHour).padStart(2,"0")}:${String(startMinute).padStart(2,"0")} и длилось ${duration} минут. Когда оно закончилось?`,a:`${String(startHour).padStart(2,"0")}:${String(startMinute).padStart(2,"0")} + ${duration} мин = ${String(endHour).padStart(2,"0")}:${String(endMinute).padStart(2,"0")}.`};
+ }
+ if(/сложение и вычитание до 100/i.test(t)){
+  const a=12+(i*13)%75,b=1+(i*7)% (100-a),sum=a+b;
+  if(i%2===0)return {q:`Вычисли ${a} + ${b}.`,a:`${a} + ${b} = ${sum}.`};
+  const top=Math.max(a,b),bottom=Math.min(a,b);return {q:`Вычисли ${top} − ${bottom}.`,a:`${top} − ${bottom} = ${top-bottom}.`};
+ }
+ if(/свойства сложения и проверка вычислений/i.test(t)){
+  const a=12+i%39,b=10+(i*3)%39,c=5+(i*7)%20;
+  if(i%2===0)return {q:`Вычисли удобным способом: ${a} + ${b} + ${c}.`,a:`По переместительному и сочетательному свойствам: ${a} + ${c} + ${b} = ${a+c} + ${b} = ${a+b+c}.`};
+  return {q:`Проверь сложение обратным действием: ${a} + ${b} = ${a+b}.`,a:`Проверка: ${a+b} − ${b} = ${a}. Равенство верное.`};
+ }
+ if(/смысл умножения и деления|табличное умножение и деление до 50/i.test(t)){
+  const a=2+i%15,maxFactor=Math.max(2,Math.floor(50/a)),b=2+(i*3)%(maxFactor-1);
+  if(i%2===0)return {q:`В ${a} коробках лежит по ${b} фишек. Сколько фишек всего?`,a:`${a} · ${b} = ${a*b} фишек.`};
+  return {q:`${a*b} фишек поровну разложили в ${a} коробок. Сколько фишек в каждой?`,a:`${a*b} : ${a} = ${b} фишек.`};
+ }
+ if(/уравнения на нахождение неизвестного компонента/i.test(t)){
+  const x=2+i%39,known=1+(i*7)%30;
+  return i%2===0?{q:`Найди неизвестное слагаемое: □ + ${known} = ${x+known}.`,a:`□ = ${x+known} − ${known} = ${x}.`}:{q:`Найди неизвестное уменьшаемое: □ − ${known} = ${x}.`,a:`□ = ${x} + ${known} = ${x+known}.`};
+ }
+ if(/порядок действий со скобками/i.test(t)){
+  const a=12+i%30,b=2+i%20,c=1+i%12,result=a+b-c;
+  return {q:`Вычисли по порядку: (${a} + ${b}) − ${c}.`,a:`Сначала скобки: ${a} + ${b} = ${a+b}; затем ${a+b} − ${c} = ${result}.`};
+ }
+ if(/однородные величины/i.test(t)){
+  const a=1+i%8,b=1+(i*3)%8,cm1=20+i%70,cm2=10+(i*5)%80,cmTotal=cm1+cm2,totalMetres=a+b+Math.floor(cmTotal/100),totalCm=cmTotal%100;
+  return {q:`Вычисли: ${a} м ${cm1} см + ${b} м ${cm2} см.`,a:`Сантиметры: ${cm1} + ${cm2} = ${cmTotal} см = ${Math.floor(cmTotal/100)} м ${totalCm} см. Всего ${totalMetres} м ${totalCm} см.`};
+ }
+ if(/двухшаговые текстовые задачи/i.test(t)){
+  const boxes=2+i%6,each=3+(i*2)%8,used=1+i%Math.min(8,boxes*each-1),remaining=boxes*each-used;
+  return {q:`В ${boxes} коробках было по ${each} карандашей. ${used} карандашей раздали. Сколько осталось?`,a:`1) ${boxes} · ${each} = ${boxes*each} карандашей. 2) ${boxes*each} − ${used} = ${remaining}. Ответ: ${remaining} карандашей.`};
+ }
+ if(/доли величины(?:[:\s]|$)/i.test(t)){
+  const denominators=[2,3,4,5,10],d=denominators[i%5],whole=d*(2+i%10);
+  return {q:`Найди ${d===2?"половину":d===3?"треть":d===4?"четверть":d===5?"пятую часть":"десятую часть"} числа ${whole}.`,a:`${whole} : ${d} = ${whole/d}.`};
+ }
+ if(/построение и разбиение геометрических фигур/i.test(t)){
+  const a=2+i,b=2+(i*3)%12;
+  if(i%2===0)return {q:`Начерти прямоугольник со сторонами ${a} см и ${b} см. Найди его периметр.`,a:`P = ${a} + ${b} + ${a} + ${b} = ${2*(a+b)} см.`};
+  return {q:`Ломаная состоит из звеньев длиной ${a} см, ${b} см и ${a+1} см. Найди её длину.`,a:`${a} + ${b} + ${a+1} = ${2*a+b+1} см.`};
+ }
+ if(/периметр многоугольника/i.test(t)){
+  const side=2+i;
+  return {q:`Сторона квадрата равна ${side} см. Найди периметр квадрата.`,a:`P = ${side} + ${side} + ${side} + ${side} = ${4*side} см.`};
+ }
+ if(/сравнение площадей фигур/i.test(t)){
+  const a=2+i,b=2+(i*3)%12,c=2+(i*5)%12,d=2+(i*7)%12,area1=a*b,area2=c*d;
+  return {q:`На клетчатой бумаге изображены прямоугольники A (${a} × ${b} клеток) и B (${c} × ${d} клеток). Сравни их площади, считая клетки.`,a:`A: ${a} · ${b} = ${area1} клеток; B: ${c} · ${d} = ${area2} клеток. ${area1===area2?"Площади равны.":area1>area2?"Площадь A больше.":"Площадь B больше."}`};
+ }
+ if(/классификация математических объектов по двум признакам/i.test(t)){
+  const n=10+i%20, parity=n%2===0?"чётное":"нечётное", size=n<20?"меньше 20":n===20?"равно 20":"больше 20";
+  return {q:`Число ${n}: укажи, чётное оно или нечётное, и сравни его с 20. К какой группе по двум признакам оно относится?`,a:`Число ${n} — ${parity}, ${size}.`};
+ }
+ if(/верные и неверные математические утверждения|логические утверждения о числах и величинах/i.test(t)){
+  const a=2+i%30,b=2+(i*5)%30,claimed=a+b+(i%2);
+  return {q:`Проверь утверждение: ${a} + ${b} = ${claimed}. Оно верное?`,a:claimed===a+b?`Верное: ${a} + ${b} = ${a+b}.`:`Неверное: ${a} + ${b} = ${a+b}, а не ${claimed}.`};
+ }
+ if(/чтение таблиц и столбчатых диаграмм|внесение данных в таблицу/i.test(t)){
+  const a=2+i,b=3+(i*3)%12,c=1+(i*5)%12;
+  return {q:`В таблице указано: в понедельник прочитали ${a} страниц, во вторник ${b}, в среду ${c}. Сколько страниц прочитали за три дня?`,a:`По данным таблицы: ${a} + ${b} + ${c} = ${a+b+c} страниц.`};
+ }
+ if(/последовательность шагов и схемы действий/i.test(t)){
+  const a=10+i%20,b=2+i%8,c=1+i%7;
+  return {q:`Восстанови порядок алгоритма для выражения (${a} + ${b}) − ${c}: сначала выполнить действие в скобках, затем вычитание. Чему равен результат?`,a:`1) ${a} + ${b} = ${a+b}. 2) ${a+b} − ${c} = ${a+b-c}.`};
+ }
+ if(/алгоритмы решения математических заданий на компьютере/i.test(t)){
+  const a=12+i*2,b=3+i%9,c=1+i%7;
+  return {q:`В тренажёре нужно вычислить ${a} + ${b} − ${c}. Какой порядок действий выполнить и какой ответ ввести?`,a:`Сложение и вычитание выполняются слева направо: ${a} + ${b} = ${a+b}; ${a+b} − ${c} = ${a+b-c}. Ввести ${a+b-c}.`};
+ }
+ if(/правила работы с электронными учебными средствами/i.test(t)){
+  const steps=["прочитай инструкцию", "выполни задание", "проверь результат", "заверши работу по указанию учителя"];
+  const shift=index%steps.length, shuffled=[...steps.slice(shift),...steps.slice(0,shift)].reverse();
+  return {q:`В электронном учебном тренажёре №${i+1} перепутан порядок действий: ${shuffled.join("; ")}. Расставь их по порядку.`,a:`1) ${steps[0]}; 2) ${steps[1]}; 3) ${steps[2]}; 4) ${steps[3]}.`};
+ }
+ return null;
+}
+
+function supportsGradeThreeTopic(topic:string){
+ return /доли величины|доли и дроби в начальной школе|площади фигур|сравнение площадей фигур/i.test(topic);
+}
+
+function gradeThree(index:number,topic:string){
+ const i=index,t=topic;
+ if(/доли величины|доли и дроби в начальной школе/i.test(t)){
+  const divisors=[2,3,4,5,10],d=divisors[i%divisors.length],whole=d*(2+i);
+  return {q:`Найди ${d===2?"половину":d===3?"треть":d===4?"четверть":d===5?"пятую часть":"десятую часть"} числа ${whole}.`,a:`${whole} : ${d} = ${whole/d}.`};
+ }
+ if(/сравнение площадей фигур/i.test(t)){
+  const a=2+i,b=2+(i*3)%12,c=2+(i*5)%12,d=2+(i*7)%12,areaA=a*b,areaB=c*d;
+  return {q:`На клетчатой бумаге изображены прямоугольники A (${a} × ${b} клеток) и B (${c} × ${d} клеток). Сравни их площади, считая клетки.`,a:`A: ${a} · ${b} = ${areaA} клеток; B: ${c} · ${d} = ${areaB} клеток. ${areaA===areaB?"Площади равны.":areaA>areaB?"Площадь A больше.":"Площадь B больше."}`};
+ }
+ const a=2+i,b=3+(i*3)%12,area=a*b;
+ return {q:`Прямоугольник имеет стороны ${a} см и ${b} см. Найди его площадь, считая квадратные сантиметры.`,a:`S = ${a} · ${b} = ${area} см².`};
+}
+
 function factorial(n:number):number{return n<=1?1:n*factorial(n-1);}
 function sequence(index:number){
  const first=2+(index%17),difference=1+(index%8),n=5+(index%12),last=first+(n-1)*difference,sum=n*(first+last)/2;
@@ -222,9 +343,11 @@ function quadraticFunction(index:number){
  return{q:`Построй эскиз графика y = x² ${signed(b)}x ${signed(c)}. Найди нули функции и координаты вершины параболы.`,a:`y = (x − (${first}))(x − (${second})); нули: x₁ = ${first}, x₂ = ${second}. Вершина: x₀ = (${first} + ${second})/2 = ${vertexX}, y₀ = ${vertexY}; вершина (${vertexX}; ${vertexY}).`};
 }
 
-export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,topic:string,withAnswers=true):MathAiResult{
+export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,topic:string,withAnswers=true,grade?:number):MathAiResult{
  const actual=detect(topic,mode),safe=Math.max(1,Math.min(20,count)),t=topic.toLowerCase();
  const make=(index:number)=>{
+  if(grade===2&&supportsGradeTwoTopic(t)){const generated=gradeTwo(index,t);if(generated)return generated;}
+  if(grade===3&&supportsGradeThreeTopic(t)){const generated=gradeThree(index,t);if(generated)return generated;}
   if(actual==="equations"){
   if(/неравен/.test(t)){
     if(/с параметр/.test(t)){

@@ -21,6 +21,7 @@ const server = await createServer({ configFile: "./vite.config.ts", server: { mi
 try {
   const curriculum = await server.ssrLoadModule("/src/aiCurriculumGenerator.ts");
   const intent = await server.ssrLoadModule("/src/aiSubjectIntentClassifier.ts");
+  const boardTransfer = await server.ssrLoadModule("/src/aiBoardTransfer.ts");
   await intent.loadCurriculumSubjectModel();
   const modelFetchesOnWarmup = modelFetchRequests;
   globalThis.fetch = async () => {
@@ -50,12 +51,20 @@ try {
     generatedParserFailures: [],
     generatedParserCasesBySubject: {},
     generatedParserCasesByGrade: {},
+    boardTransferCases: 0,
+    boardTransferFailures: [],
+    boardTransferCasesByTool: {},
+    boardTransferCasesBySubject: {},
     independentParserCases: 0,
     independentParserFailures: [],
     gradeGenerationCases: 0,
     gradeGenerationFailures: [],
     gradeOneMathChecks: 0,
     gradeOneMathFailures: [],
+    gradeTwoMathChecks: 0,
+    gradeTwoMathFailures: [],
+    gradeThreeMathChecks: 0,
+    gradeThreeMathFailures: [],
     runtimeGradeMapChecks: 0,
     runtimeGradeMapFailures: [],
     gradeMismatchChecks: 0,
@@ -191,6 +200,98 @@ try {
     }
   }
 
+  const gradeTwoMathTopics = Object.keys(gradeMap.subjects?.["Математика"]?.officialCoverage?.grades?.["2"]?.topicCodes ?? {});
+  for (const topic of gradeTwoMathTopics) {
+    const generated = curriculum.generateCurriculumAi("assignment", `${topic} для 2 класса`, "medium", 15, "Математика");
+    for (let index = 0; index < generated.items.length; index += 1) {
+      report.gradeTwoMathChecks += 1;
+      const prompt = generated.items[index].split("\nДля 2 класса:")[0];
+      const answer = generated.answers[index] ?? "";
+      const failures = [];
+      if (!generated.items[index].includes("Для 2 класса:")) failures.push("нет инструкции для 2 класса");
+      if (!answer.trim() || answer.startsWith("Ключ проверки:")) failures.push("нет конкретного проверяемого ответа");
+      if (topic === "сложение и вычитание до 100") {
+        const match = prompt.match(/Вычисли (\d+) ([+−]) (\d+)\./);
+        if (!match) failures.push("не распознано сложение или вычитание");
+        else {
+          const left = Number(match[1]), right = Number(match[3]);
+          const result = match[2] === "+" ? left + right : left - right;
+          if (left > 100 || right > 100 || result < 0 || result > 100 || !answer.includes(`${left} ${match[2]} ${right} = ${result}`)) failures.push("вычисление выходит за диапазон или ответ неверен");
+        }
+      } else if (topic === "цена, количество и стоимость") {
+        const match = prompt.match(/стоит (\d+) ₽\. Сколько стоят (\d+)/);
+        if (!match || !answer.includes(`${Number(match?.[1]) * Number(match?.[2])} ₽`)) failures.push("стоимость не совпадает с ценой и количеством");
+      } else if (topic === "табличное умножение и деление до 50" || topic === "смысл умножения и деления") {
+        const match = prompt.match(/В (\d+) коробках лежит по (\d+) фишек/);
+        if (match && (!answer.includes(`${Number(match[1]) * Number(match[2])} фишек`) || Number(match[1]) * Number(match[2]) > 50)) failures.push("произведение или ответ не соответствуют условию");
+        else if (!match) {
+          const division = prompt.match(/(\d+) фишек поровну разложили в (\d+) коробок/);
+          if (!division || Number(division[1]) % Number(division[2]) !== 0 || !answer.includes(`${Number(division[1]) / Number(division[2])} фишек`)) failures.push("деление не проверяется по таблице или ответ неверен");
+        }
+      } else if (topic === "доли величины: половина, треть, четверть, пятая и десятая часть") {
+        const match = prompt.match(/числа (\d+)/);
+        const divisor = [2, 3, 4, 5, 10][index % 5];
+        if (!match || Number(match[1]) % divisor !== 0 || !answer.includes(String(Number(match[1]) / divisor))) failures.push("доля не вычисляется целым результатом или ответ неверен");
+      } else if (topic === "порядок действий со скобками") {
+        const match = prompt.match(/\((\d+) \+ (\d+)\) − (\d+)/);
+        if (!match || !answer.includes(String(Number(match[1]) + Number(match[2]) - Number(match[3])))) failures.push("порядок действий или результат неверен");
+      } else if (topic === "двухшаговые текстовые задачи") {
+        const match = prompt.match(/В (\d+) коробках было по (\d+) карандашей\. (\d+) карандашей раздали/);
+        if (!match || Number(match[1]) * Number(match[2]) <= Number(match[3]) || !answer.includes(String(Number(match[1]) * Number(match[2]) - Number(match[3])))) failures.push("решение в два действия неверно");
+      } else if (topic === "периметр многоугольника") {
+        const match = prompt.match(/Сторона квадрата равна (\d+) см/);
+        if (!match || !answer.includes(`${Number(match[1]) * 4} см`)) failures.push("периметр квадрата вычислен неверно");
+      } else if (topic === "сравнение площадей фигур") {
+        const match = prompt.match(/A \((\d+) × (\d+) клеток\) и B \((\d+) × (\d+) клеток\)/);
+        if (!match) failures.push("не найдены размеры фигур на сетке");
+        else {
+          const areaA = Number(match[1]) * Number(match[2]), areaB = Number(match[3]) * Number(match[4]);
+          const expected = areaA === areaB ? "Площади равны." : areaA > areaB ? "Площадь A больше." : "Площадь B больше.";
+          if (!answer.includes(`${areaA} клеток`) || !answer.includes(`${areaB} клеток`) || !answer.includes(expected)) failures.push("площадь или сравнение фигур неверно");
+        }
+      } else if (topic === "логические утверждения о числах и величинах") {
+        const match = prompt.match(/утверждение: (\d+) \+ (\d+) = (\d+)/);
+        if (!match) failures.push("не распознано проверяемое утверждение");
+        else {
+          const sum = Number(match[1]) + Number(match[2]), claimed = Number(match[3]);
+          if (claimed === sum ? answer !== `Верное: ${match[1]} + ${match[2]} = ${sum}.` : answer !== `Неверное: ${match[1]} + ${match[2]} = ${sum}, а не ${claimed}.`) failures.push("проверка истинности утверждения неверна");
+        }
+      }
+      if (failures.length) report.gradeTwoMathFailures.push({ topic, index, prompt, answer, failures });
+    }
+  }
+
+  const gradeThreeMathTopics = ["доли и дроби в начальной школе", "доли величины: половина, треть, четверть, пятая и десятая часть", "площади фигур", "сравнение площадей фигур"];
+  for (const topic of gradeThreeMathTopics) {
+    const generated = curriculum.generateCurriculumAi("assignment", `${topic} для 3 класса`, "medium", 15, "Математика");
+    for (let index = 0; index < generated.items.length; index += 1) {
+      report.gradeThreeMathChecks += 1;
+      const prompt = generated.items[index].split("\nДля 3 класса:")[0];
+      const answer = generated.answers[index] ?? "";
+      const failures = [];
+      if (!generated.items[index].includes("Для 3 класса:")) failures.push("нет инструкции для 3 класса");
+      if (!answer.trim() || answer.startsWith("Ключ проверки:")) failures.push("нет конкретного проверяемого ответа");
+      if (/доли величины|доли и дроби/.test(topic)) {
+        const match = prompt.match(/числа (\d+)/);
+        const denominator = [2, 3, 4, 5, 10][index % 5];
+        if (!match || Number(match[1]) % denominator !== 0 || !answer.includes(String(Number(match[1]) / denominator))) failures.push("доля вычислена неверно");
+      } else if (topic === "сравнение площадей фигур") {
+        const match = prompt.match(/A \((\d+) × (\d+) клеток\) и B \((\d+) × (\d+) клеток\)/);
+        if (!match) failures.push("не распознаны размеры прямоугольников на сетке");
+        else {
+          const areaA = Number(match[1]) * Number(match[2]), areaB = Number(match[3]) * Number(match[4]);
+          const expected = areaA === areaB ? "Площади равны." : areaA > areaB ? "Площадь A больше." : "Площадь B больше.";
+          if (!answer.includes(`${areaA} клеток`) || !answer.includes(`${areaB} клеток`) || !answer.includes(expected)) failures.push("сравнение площадей неверно");
+        }
+      } else {
+        const match = prompt.match(/стороны (\d+) см и (\d+) см/);
+        if (!match || !answer.includes(String(Number(match[1]) * Number(match[2])))) failures.push("площадь прямоугольника вычислена неверно");
+      }
+      if (failures.length) report.gradeThreeMathFailures.push({ topic, index, prompt, answer, failures });
+    }
+  }
+
+  let transferItemId = 0;
   for (const [subject, topics] of Object.entries(corpus)) {
     for (const topic of topics) {
       report.topics += 1;
@@ -231,6 +332,28 @@ try {
       if (new Set(prompts).size !== prompts.length) {
         report.repeatedSets += 1;
         report.repeatedTopics.push({ subject, topic });
+      }
+
+      for (const tool of ["assignment", "quiz", "flashcards"]) {
+        const draftResult = curriculum.generateCurriculumAi(tool, topic, "medium", 10, subject);
+        const transferred = boardTransfer.createAiBoardItems({
+          id: `evaluation-${report.topics}-${tool}`, tool, topic, subject: draftResult.subject,
+          title: draftResult.title,
+          body: draftResult.items.join("\n\n"),
+          answers: draftResult.answers, createdAt: "2026-11-10T00:00:00.000Z",
+        }, { x: 500, y: 300 }, () => `evaluation-item-${++transferItemId}`);
+        report.boardTransferCases += 1;
+        report.boardTransferCasesByTool[tool] = (report.boardTransferCasesByTool[tool] ?? 0) + 1;
+        report.boardTransferCasesBySubject[subject] = (report.boardTransferCasesBySubject[subject] ?? 0) + 1;
+
+        const transferredCount = tool === "flashcards"
+          ? transferred.filter(item => item.kind === "flashcard").length
+          : transferred.length === 1 && transferred[0].kind === "checklist"
+            ? transferred[0].checklistItems?.length ?? 0
+            : transferred.filter(item => item.kind === "quiz").length;
+        if (draftResult.items.length !== 10 || transferredCount !== 10) {
+          report.boardTransferFailures.push({ subject, topic, tool, generated: draftResult.items.length, transferred: transferredCount });
+        }
       }
     }
   }
@@ -704,6 +827,10 @@ try {
 
   report.exactTopicRecognitionRate = Number((report.exactTopicRecognition / report.topics).toFixed(4));
   report.specificExerciseCoverageRate = Number((report.topicsWithSpecificExercise / report.topics).toFixed(4));
+  report.boardTransferTargetCases = report.topics * 3;
+  report.boardTransferRate = report.boardTransferTargetCases
+    ? Number(((report.boardTransferCases - report.boardTransferFailures.length) / report.boardTransferTargetCases).toFixed(4))
+    : 0;
   report.offlineFetchAttempts = offlineFetchAttempts;
   for (const coverage of Object.values(report.exerciseCoverageBySubject)) {
     coverage.rate = Number((coverage.specific / coverage.total).toFixed(4));
@@ -724,6 +851,8 @@ try {
     || report.gradeMismatchFailures.length > 0
     || report.officialCoverageFailures.length > 0
     || report.gradeOneMathFailures.length > 0
+    || report.gradeTwoMathFailures.length > 0
+    || report.gradeThreeMathFailures.length > 0
     || report.modelFetchesOnWarmup !== 1
     || report.offlineFetchAttempts !== 0
     || report.offlineGenerationCases !== report.topics
@@ -731,6 +860,9 @@ try {
     || report.physicsFocusedFailures.length > 0
     || report.socialStudiesFocusedFailures.length > 0
     || report.literatureFactFailures.length > 0;
+  const boardTransferTargetsMet = report.boardTransferCases === report.topics * 3
+    && report.boardTransferFailures.length === 0;
+  if (!boardTransferTargetsMet) process.exitCode = 1;
   if (failures) process.exitCode = 1;
 } finally {
   await server.close();

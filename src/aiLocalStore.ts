@@ -40,7 +40,7 @@ export async function generateLocalAiDraft(tool:AiTool,topic:string,difficulty:A
  if(clean.length<2)throw new Error("Укажите тему.");
  await new Promise(r=>setTimeout(r,450));
  const generated=generateCurriculumAi(request.tool,topic,request.level,request.count,request.subject);
- const draft={id:uid(),tool:request.tool,topic:clean,subject:generated.subject,title:generated.title,body:generated.items.join(request.tool==="assignment"?"\n":"\n\n"),answers:generated.answers,createdAt:new Date().toISOString()};
+ const draft={id:uid(),tool:request.tool,topic:clean,subject:generated.subject,title:generated.title,body:generated.items.join("\n\n"),answers:generated.answers,createdAt:new Date().toISOString()};
  remember(draft);return draft;
 }
 

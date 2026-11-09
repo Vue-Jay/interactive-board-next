@@ -82,8 +82,10 @@ import LektrusColorPicker from "./LektrusColorPicker";
 import LectrisToolbarSettings from "./LectrisToolbarSettings";
 import LectrisPanelSettings from "./LectrisPanelSettings";
 import { defaultLectrisPanelLayout, normalizeLectrisPanelLayout, readLectrisPanelLayout, type LectrisPanelLayout } from "./lectrisPanelLayout";
-import { clearAiBoardTransfer, peekAiBoardTransfer } from "./aiLocalStore";
-import { aiTopicPlaceholder, generateCurriculumAi, type CurriculumAiLevel } from "./aiCurriculumGenerator";
+import { clearAiBoardTransfer, peekAiBoardTransfer, recordLocalAiGeneration } from "./aiLocalStore";
+import { createAiBoardItems, measureAiChecklist } from "./aiBoardTransfer";
+import { boardItemBounds, createBoardAssistantObject, findBoardItems, parseBoardAssistantCommand, summarizeBoard, summarizeBoardActivity } from "./aiBoardAssistant";
+import { aiTopicPlaceholder, generateCurriculumAi, parseCurriculumRequest, type CurriculumAiLevel } from "./aiCurriculumGenerator";
 import { loadCurriculumSubjectModel } from "./aiSubjectIntentClassifier";
 import { type AccountRole } from "./accountRoleStore";
 import { materialBlob, markMaterialUsed, type Material } from "./materialsStore";
@@ -119,7 +121,7 @@ import { ensureBoardAssets, getAsset, getDisplayAsset, putAsset } from "./assetS
 import { readInkPreferences, writeInkPreferences, withInkSetting } from "./inkPreferences";
 import { readBoardSessionTool, writeBoardSessionTool } from "./boardToolSession";
 import { cachedBoardPreview, scheduleBackgroundBoardPreview } from "./boardPreview";
-import { getBoardHistoryVersion, listBoardHistory, type BoardHistoryEntry } from "./historyStore";
+import { getBoardHistoryVersion, listBoardActivity, listBoardHistory, type BoardHistoryEntry } from "./historyStore";
 import { changesSinceLastVisit, recentBoardHistory } from "./boardHistoryUtils";
 import { createBoardComment, listBoardComments, listBoardCommentParticipants, setBoardCommentResolved, type BoardCommentParticipant, type BoardCommentThread } from "./commentThreadsStore";
 import { subscribeBoardComments } from "./commentRealtime";
@@ -2118,6 +2120,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const [boardAiOpen,setBoardAiOpen]=useState(false);
+  const [boardAiMode,setBoardAiMode]=useState<"assistant"|"assignment">("assistant");
+  const [boardAssistantInput,setBoardAssistantInput]=useState("");
+  const [boardAssistantBusy,setBoardAssistantBusy]=useState(false);
+  const [boardAssistantMessages,setBoardAssistantMessages]=useState<{id:string;role:"user"|"assistant";text:string}[]>([]);
   const [boardAiSubject,setBoardAiSubject]=useState("");
   const [boardAiLevel,setBoardAiLevel]=useState<CurriculumAiLevel>("medium");
   const [boardAiCount,setBoardAiCount]=useState(6);
@@ -3747,12 +3753,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const rect=board.current?.getBoundingClientRect();if(!rect)return;
     const center=world({x:rect.width/2,y:rect.height/2});
     const title=boardAiDetected||"Задания";
+    const size=measureAiChecklist(title,boardAiPreview,16);
     const item:Item={
-      id:createId(),kind:"checklist",x:center.x-210,y:center.y-190,width:420,height:380,
+      id:createId(),kind:"checklist",x:center.x-size.width/2,y:center.y-size.height/2,...size,
       text:title,checklistItems:boardAiPreview,checklistDone:Array(boardAiPreview.length).fill(false),
       fontSize:16,color:"#5355c9"
     };
     commit([...itemsRef.current,item]);
+    fitToBounds(boardItemBounds([item]),120);
     setSelected([item.id]);setTool("select");setBoardAiOpen(false);setBoardAiPreview([]);
     setNotice(`AI добавил задания на доску · ${boardAiPreview.length}`);
   };
@@ -3766,44 +3774,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(!rect)return;
     aiTransferHandledRef.current=transfer.queuedAt;
     const center=world({x:rect.width/2,y:rect.height/2});
-    const draft=transfer.draft;
-    const created:Item[]=[];
-    if(draft.tool==="assignment"||(draft.tool==="quiz"&&draft.subject!=="Математика")){
-      const rows=draft.body.split(/\n+/).map(x=>x.replace(/^\s*\d+\.\s*/,"").trim()).filter(Boolean).slice(0,12);
-      created.push({
-        id:createId(),kind:"checklist",x:center.x-190,y:center.y-155,width:380,height:310,
-        text:draft.title,checklistItems:rows.length?rows:["Задание"],checklistDone:Array(Math.max(1,rows.length)).fill(false),
-        fontSize:15,color:"#5355c9"
-      });
-    }else if(draft.tool==="quiz"){
-      const blocks=draft.body.split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean).slice(0,8);
-      blocks.forEach((block,indexValue)=>{
-        const lines=block.split("\n").map(x=>x.trim()).filter(Boolean);
-        const question=(lines[0]||`Вопрос ${indexValue+1}`).replace(/^\d+\.\s*/,"");
-        const options=lines.filter(x=>/^[A-DА-Г]\)/i.test(x)).map(x=>x.replace(/^[A-DА-Г]\)\s*/i,"")).slice(0,4);
-        const answerLine=lines.find(x=>/^Ответ:/i.test(x))||"Ответ: A";
-        const letter=(answerLine.split(":")[1]||"A").trim().toUpperCase();
-        const correct=Math.max(0,["A","B","C","D","А","Б","В","Г"].indexOf(letter)%4);
-        created.push({
-          id:createId(),kind:"quiz",
-          x:center.x-400+(indexValue%2)*420,y:center.y-170+Math.floor(indexValue/2)*340,width:390,height:310,
-          text:question,quizOptions:options.length>=2?options:["Вариант A","Вариант B","Вариант C","Вариант D"],
-          quizCorrect:correct,quizRevealed:false,fontSize:15,color:"#5355c9"
-        });
-      });
-    }else{
-      const blocks=draft.body.split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean).slice(0,12);
-      blocks.forEach((block,indexValue)=>{
-        const q=block.match(/Вопрос:\s*(.+)/i)?.[1]?.trim()||`Вопрос ${indexValue+1}`;
-        const a=block.match(/Ответ:\s*(.+)/i)?.[1]?.trim()||"Ответ";
-        const col=indexValue%3,row=Math.floor(indexValue/3);
-        created.push({
-          id:createId(),kind:"flashcard",
-          x:center.x-420+col*290,y:center.y-150+row*220,width:260,height:190,
-          text:q,flashcardBack:a,flashcardFlipped:false,fontSize:17,color:"#5355c9"
-        });
-      });
-    }
+    const created=createAiBoardItems(transfer.draft,center,createId);
     if(!created.length){aiTransferHandledRef.current=null;setNotice("Не удалось разобрать AI-черновик");return}
     commit([...itemsRef.current,...created]);
     setSelected(created.map(x=>x.id));
@@ -3838,6 +3809,115 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       x: rect.width / 2 - (bounds.x + bounds.width / 2) * z,
       y: rect.height / 2 - (bounds.y + bounds.height / 2) * z,
     });
+  };
+
+  const runBoardAssistant = async (rawPrompt: string) => {
+    const prompt=rawPrompt.trim();
+    if(!prompt||boardAssistantBusy)return;
+    setBoardAssistantInput("");
+    setBoardAssistantMessages(current=>[...current,{id:createId(),role:"user" as const,text:prompt}].slice(-30));
+    setBoardAssistantBusy(true);
+    const respond=(text:string)=>setBoardAssistantMessages(current=>[...current,{id:createId(),role:"assistant" as const,text}].slice(-30));
+    try{
+      const command=parseBoardAssistantCommand(prompt);
+      const assistantItems=itemsRef.current.filter(item=>!item.hidden);
+      if(command.kind==="help"){
+        respond("Я могу: искать объекты и их текст; анализировать содержимое и историю; создавать заметки, текст, списки и фигуры; переименовывать, перемещать и удалять найденные объекты; отменять или повторять действие; готовить задания, тесты и карточки. Примеры: «найди формулу плотности», «переименуй геометрию в План урока», «перемести заметку про Пифагора вправо», «создай список: прочитать тему; решить примеры», «10 задач на треугольники».");
+      }else if(command.kind==="analyze"){
+        respond(summarizeBoard(assistantItems));
+      }else if(command.kind==="find"){
+        const matches=findBoardItems(assistantItems,command.query);
+        if(!matches.length)respond(`Не нашёл «${command.query}». Попробуйте другое слово или часть фразы.`);
+        else{
+          setSelected(matches.map(item=>item.id));
+          fitToBounds(boardItemBounds(matches),110);
+          const descriptions=matches.slice(0,8).map(item=>`${item.kind}: ${(item.text||item.name||item.checklistItems?.[0]||"без подписи").split(/\r?\n/)[0].slice(0,90)}`);
+          respond(`Нашёл ${matches.length} ${matches.length===1?"элемент":"элементов"} и выделил на доске:\n${descriptions.join("\n")}${matches.length>8?"\n…": ""}`);
+        }
+      }else if(command.kind==="rename"){
+        const matches=findBoardItems(assistantItems,command.query);
+        if(!matches.length)respond(`Не нашёл объект «${command.query}».`);
+        else{
+          const ids=new Set(matches.map(item=>item.id));
+          commit(itemsRef.current.map(item=>ids.has(item.id)?{...item,text:command.text}:item));
+          setSelected([...ids]);respond(`Обновил название или текст у ${matches.length} ${matches.length===1?"объекта":"объектов"}.`);
+        }
+      }else if(command.kind==="move"){
+        const matches=findBoardItems(assistantItems,command.query);
+        if(!matches.length)respond(`Не нашёл объект «${command.query}».`);
+        else{
+          let dx=0,dy=0;
+          if(command.direction==="left")dx=-160;
+          if(command.direction==="right")dx=160;
+          if(command.direction==="up")dy=-160;
+          if(command.direction==="down")dy=160;
+          if(command.direction==="center"){
+            const bounds=boardItemBounds(matches);const rect=board.current?.getBoundingClientRect();
+            if(bounds&&rect){const target=world({x:rect.width/2,y:rect.height/2});dx=target.x-(bounds.x+bounds.width/2);dy=target.y-(bounds.y+bounds.height/2)}
+          }
+          const ids=new Set(matches.map(item=>item.id));
+          const moved=itemsRef.current.map(item=>ids.has(item.id)?{...item,x:item.x+dx,y:item.y+dy}:item);
+          commit(moved);setSelected([...ids]);fitToBounds(boardItemBounds(moved.filter(item=>ids.has(item.id))),110);
+          respond(`Переместил ${matches.length} ${matches.length===1?"объект":"объекта"} ${command.direction==="left"?"влево":command.direction==="right"?"вправо":command.direction==="up"?"вверх":command.direction==="down"?"вниз":"в центр доски"}.`);
+        }
+      }else if(command.kind==="delete"){
+        const matches=findBoardItems(assistantItems,command.query);
+        if(!matches.length)respond(`Не нашёл объект «${command.query}».`);
+        else if(!window.confirm(`Удалить найденные элементы (${matches.length})? Их можно будет восстановить через отмену, пока история этого сеанса доступна.`))respond("Удаление отменено.");
+        else{
+          const ids=new Set(matches.map(item=>item.id));
+          commit(itemsRef.current.filter(item=>!ids.has(item.id)));setSelected([]);
+          respond(`Удалил ${matches.length} ${matches.length===1?"элемент":"элементов"}.`);
+        }
+      }else if(command.kind==="history"){
+        if(remoteEnabled){
+          try{respond(summarizeBoardActivity(await listBoardActivity(boardSummary.id,40)))}
+          catch{respond("Не удалось получить серверную историю изменений. Проверьте соединение или откройте историю доски вручную.")}
+        }else{
+          const localSteps=Math.max(0,history.current.length-1);
+          const previous=history.current[Math.max(0,index.current-1)]??[];
+          const current=history.current[index.current]??itemsRef.current;
+          const previousById=new Map(previous.map(item=>[item.id,item]));
+          const currentById=new Map(current.map(item=>[item.id,item]));
+          const added=[...currentById.keys()].filter(id=>!previousById.has(id)).length;
+          const removed=[...previousById.keys()].filter(id=>!currentById.has(id)).length;
+          const changed=[...currentById].filter(([id,item])=>previousById.has(id)&&JSON.stringify(previousById.get(id))!==JSON.stringify(item)).length;
+          respond(`Серверная история недоступна офлайн. В локальной истории отмены ${localSteps} шагов. Последний шаг: добавлено ${added}, изменено ${changed}, удалено ${removed}; сейчас на доске ${current.length} элементов.`);
+        }
+      }else if(command.kind==="undo"||command.kind==="redo"){
+        const before=index.current;
+        undo(command.kind==="undo"?-1:1);
+        respond(index.current===before?"Дальше в этом направлении действий нет.":command.kind==="undo"?"Последнее действие отменено.":"Действие повторено.");
+      }else if(command.kind==="create-sticky"||command.kind==="create-text"||command.kind==="create-checklist"||command.kind==="create-shape"){
+        const rect=board.current?.getBoundingClientRect();
+        if(!rect)throw new Error("Не удалось определить область доски");
+        const center=world({x:rect.width/2,y:rect.height/2});
+        const created=createBoardAssistantObject(command,center,createId);
+        if(!created)respond("Напишите содержание нового объекта после двоеточия. Например: «создай заметку: повторить урок».");
+        else{
+          commit([...itemsRef.current,created]);setSelected([created.id]);setTool("select");
+          respond(`Создал ${created.kind==="sticky"?"заметку":created.kind==="shape"?"фигуру":created.kind==="checklist"?"список":"текстовый объект"} и выделил его.`);
+        }
+      }else if(/задач|упражнен|задани|тест|карточ/i.test(prompt)){
+        if(!canCreateAssignments){respond("Генерировать учебные материалы может только преподаватель с правом создавать задания.");return}
+        const request=parseCurriculumRequest(prompt,boardAiSubject,boardAiCount,boardAiLevel,"assignment");
+        if(!request.subject){respond("Не понял, по какому предмету создать материал. Уточните предмет или назовите тему точнее.");return}
+        setBoardAssistantBusy(true);
+        await loadCurriculumSubjectModel();
+        const generated=generateCurriculumAi(request.tool,prompt,request.level,request.count,request.subject);
+        const rect=board.current?.getBoundingClientRect();
+        if(!rect)throw new Error("Не удалось определить область доски");
+        const center=world({x:rect.width/2,y:rect.height/2});
+        const created=createAiBoardItems({id:createId(),tool:request.tool,topic:request.topic,subject:generated.subject,title:generated.title,body:generated.items.join("\n\n"),answers:generated.answers,createdAt:new Date().toISOString()},center,createId);
+        if(!created.length)throw new Error("Не удалось перенести материал на доску");
+        recordLocalAiGeneration();commit([...itemsRef.current,...created]);setSelected(created.map(item=>item.id));setTool("select");
+        fitToBounds(boardItemBounds(created),120);
+        respond(`Создал на доске ${request.count} ${request.tool==="flashcards"?"карточек":request.tool==="quiz"?"заданий для теста":"заданий"} по теме «${request.topic}» (${generated.subject}).`);
+      }else{
+        respond("Пока не распознал запрос. Напишите «помощь», чтобы увидеть примеры команд. Я работаю локально и выполняю поддерживаемые действия на доске без внешнего ИИ-сервиса.");
+      }
+    }catch(error){respond(error instanceof Error?error.message:"Не удалось выполнить команду")}
+    finally{setBoardAssistantBusy(false)}
   };
 
   const familyIdsFor = (item: Item): string[] =>
@@ -9097,7 +9177,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <button type="button" className={`mobile-tools-more ${mobileToolsOpen?"active":""}`} aria-label="Все инструменты" title="Все инструменты" aria-expanded={mobileToolsOpen} onClick={()=>setMobileToolsOpen(v=>!v)}><Icon name={mobileToolsOpen?"chevron-left":"plus"} size={20}/></button>
         </nav>
         {mobileToolsOpen&&<section className="mobile-tools-sheet" aria-label="Все инструменты">
-          <div className="mobile-tools-sheet-head"><strong>Инструменты</strong><div className="mobile-tools-sheet-head-actions"><button type="button" title="Настроить основные инструменты" aria-label="Настроить основные инструменты" onClick={()=>{setMobileToolsOpen(false);setLectrisCustomizeOpen(true)}}><Icon name="settings" size={18}/></button>{!isStudent&&<button type="button" onClick={()=>{setMobileToolsOpen(false);setBoardAiSubject(lectrisBoardOrganization.subject);setBoardAiOpen(true);setBoardAiPreview([]);setBoardAiDetected("")}} aria-label="AI-помощник" title="AI-помощник"><Icon name="robot" size={18}/></button>}<button type="button" className="mobile-command-search" onClick={()=>{setMobileToolsOpen(false);setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}} aria-label="Найти инструмент" title="Найти инструмент"><Icon name="search" size={18}/></button><button type="button" onClick={()=>setMobileToolsOpen(false)} aria-label="Закрыть">×</button></div></div>
+          <div className="mobile-tools-sheet-head"><strong>Инструменты</strong><div className="mobile-tools-sheet-head-actions"><button type="button" title="Настроить основные инструменты" aria-label="Настроить основные инструменты" onClick={()=>{setMobileToolsOpen(false);setLectrisCustomizeOpen(true)}}><Icon name="settings" size={18}/></button>{canEdit&&<button type="button" onClick={()=>{setMobileToolsOpen(false);setBoardAiSubject(lectrisBoardOrganization.subject);setBoardAiMode("assistant");setBoardAiOpen(true);setBoardAiPreview([]);setBoardAiDetected("")}} aria-label="AI-помощник" title="AI-помощник"><Icon name="robot" size={18}/></button>}<button type="button" className="mobile-command-search" onClick={()=>{setMobileToolsOpen(false);setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}} aria-label="Найти инструмент" title="Найти инструмент"><Icon name="search" size={18}/></button><button type="button" onClick={()=>setMobileToolsOpen(false)} aria-label="Закрыть">×</button></div></div>
           <div className="mobile-tools-groups">
             {mobileToolGroups.map(group=>({...group,tools:group.tools.filter(id=>id!=="formula"&&toolAllowedForRole(id))})).filter(group=>group.tools.length>0).map(group=><div className="mobile-tools-group" key={group.label}><span>{group.label}</span>{["Текст","Фигуры","Таблицы и диаграммы"].includes(group.label)?<div className="lektrus-mobile-elements-catalogue"><LektrusElementsCatalogue {...elementCatalogueProps} mode={group.label==="Текст"?"text":group.label==="Фигуры"?"shapes":"data"}/></div>:<div>{group.tools.map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""} title={id==="linkmedia"?"Видео прикрепляется по ссылке":t.label} aria-label={id==="linkmedia"?"Видео":t.label} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}</div>}</div>)}
           </div>
@@ -9122,7 +9202,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <button type="button" className="toolbar-more" aria-label={desktopToolsExpanded?"Закрыть меню инструментов":"Открыть все инструменты"} title={desktopToolsExpanded?"Закрыть меню инструментов":"Ещё инструменты"} aria-controls="lektrus-tool-overflow" aria-haspopup="dialog" onClick={()=>setDesktopToolsExpanded(v=>!v)} aria-expanded={desktopToolsExpanded}>
             <Icon name={desktopToolsExpanded?"chevron-left":"plus"} size={16}/><span className="tool-tooltip">{desktopToolsExpanded?"Свернуть":"Ещё инструменты"}</span>
           </button>
-          {canCreateAssignments&&<button type="button" className="toolbar-ai-button" title="AI-помощник" aria-label="AI-помощник" onClick={()=>{finishEdit();setBoardAiSubject(lectrisBoardOrganization.subject);setBoardAiOpen(true);setBoardAiPreview([]);setBoardAiDetected("")}}>
+          {canEdit&&<button type="button" className="toolbar-ai-button" title="AI-помощник по доске" aria-label="AI-помощник по доске" onClick={()=>{finishEdit();setBoardAiSubject(lectrisBoardOrganization.subject);setBoardAiMode("assistant");setBoardAiOpen(true);setBoardAiPreview([]);setBoardAiDetected("")}}>
             <Icon name="robot" size={18}/><span className="tool-tooltip">AI-помощник</span>
           </button>}
           <button type="button" className="toolbar-command-search" title="Найти инструмент · Ctrl+K" aria-label="Найти инструмент" onClick={()=>{setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}}>
@@ -9249,9 +9329,29 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <div><Icon name="media" size={17}/><span><b>На согласовании</b><small>{pendingAttachmentRequests.length===1?pendingAttachmentRequests[0].name:`Вложений: ${pendingAttachmentRequests.length}`}</small></span></div>
           <button onClick={()=>{for(const request of pendingAttachmentRequests)sendAttachmentRequest(request);setNotice("Запрос повторно отправлен преподавателю")}}>Отправить снова</button>
         </aside>}
-        {boardAiOpen&&canCreateAssignments&&<div className="board-ai-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)setBoardAiOpen(false)}}>
-          <section className="board-ai-panel" role="dialog" aria-modal="true" aria-label="AI-помощник">
-            <header><div className="board-ai-title"><Icon name="robot" size={22}/><div><strong>AI-помощник</strong><span>Подготовить задание для этой доски</span></div></div><button onClick={()=>setBoardAiOpen(false)} aria-label="Закрыть">×</button></header>
+        {boardAiOpen&&canEdit&&<div className="board-ai-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)setBoardAiOpen(false)}}>
+          <section className={`board-ai-panel ${boardAiMode==="assistant"?"has-assistant":""}`} role="dialog" aria-modal="true" aria-label="AI-помощник по доске">
+            <header><div className="board-ai-title"><Icon name="robot" size={22}/><div><strong>AI-помощник по доске</strong><span>Команды, поиск, анализ и учебные материалы</span></div></div><button type="button" onClick={()=>setBoardAiOpen(false)} aria-label="Закрыть">×</button></header>
+            <nav className="board-ai-mode-tabs" aria-label="Режим помощника">
+              <button type="button" className={boardAiMode==="assistant"?"active":""} onClick={()=>setBoardAiMode("assistant")}>Работа с доской</button>
+              <button type="button" className={boardAiMode==="assignment"?"active":""} disabled={!canCreateAssignments} onClick={()=>setBoardAiMode("assignment")}>Подготовить задание</button>
+            </nav>
+            {boardAiMode==="assistant"?<div className="board-ai-assistant">
+              <div className="board-ai-chat-log" role="log" aria-live="polite">
+                {!boardAssistantMessages.length&&<div className="board-ai-chat-intro"><b>Что сделать на доске?</b><span>Найдите объект, попросите сводку или анализ изменений, создайте заметку, текст, фигуру либо учебный материал.</span></div>}
+                {boardAssistantMessages.map(message=><div key={message.id} className={`board-ai-chat-message ${message.role}`}><small>{message.role==="user"?"Вы":"Помощник"}</small><p>{message.text}</p></div>)}
+                {boardAssistantBusy&&<div className="board-ai-chat-pending" role="status">Помощник выполняет запрос…</div>}
+              </div>
+              {!boardAssistantMessages.length&&<div className="board-ai-suggestions">
+                {["Сводка доски","Покажи историю изменений","Найди формулу на доске","Создай заметку: повторить тему"].map(prompt=><button type="button" key={prompt} onClick={()=>void runBoardAssistant(prompt)}>{prompt}</button>)}
+              </div>}
+              <form className="board-ai-chat-compose" onSubmit={event=>{event.preventDefault();void runBoardAssistant(boardAssistantInput)}}>
+                <input value={boardAssistantInput} onChange={event=>setBoardAssistantInput(event.target.value)} placeholder="Напишите, что сделать или найти…" aria-label="Команда для помощника"/>
+                <button type="submit" className="primary" disabled={!boardAssistantInput.trim()||boardAssistantBusy}>{boardAssistantBusy?"…":"Отправить"}</button>
+              </form>
+              <small className="board-ai-local-note">Работает локально. Изменения можно отменить; помощник пока понимает поддерживаемые команды, а не произвольный разговор.</small>
+            </div>:<>
+            {canCreateAssignments&&<>
             <label className="board-ai-field"><span>Предмет</span><select value={boardAiSubject} onChange={e=>{setBoardAiSubject(e.target.value);setBoardAiPreview([]);setBoardAiDetected("")}}><option value="">Определить по теме</option>{LEKTRUS_SCHOOL_SUBJECTS.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
             <label className="board-ai-field"><span>Тема</span><input value={boardAiTopic} onChange={e=>{setBoardAiTopic(e.target.value);setBoardAiPreview([]);setBoardAiDetected("")}} placeholder={aiTopicPlaceholder(boardAiSubject)}/></label>
             <div className="board-ai-options"><label><span>Уровень</span><select value={boardAiLevel} onChange={e=>{setBoardAiLevel(e.target.value as CurriculumAiLevel);setBoardAiPreview([])}}><option value="easy">Базовый</option><option value="medium">Средний</option><option value="hard">Углублённый</option></select></label><label><span>Количество</span><select value={boardAiCount} onChange={e=>{setBoardAiCount(Number(e.target.value));setBoardAiPreview([])}}><option value={3}>3</option><option value={5}>5</option><option value={6}>6</option><option value={8}>8</option><option value={10}>10</option><option value={15}>15</option></select></label></div>
@@ -9259,6 +9359,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             {boardAiDetected&&<div className="board-ai-detected">Распознано: <b>{boardAiDetected}</b></div>}
             {!boardAiPreview.length?<div className="board-ai-empty"><Icon name="robot" size={30}/><b>Что подготовить?</b><span>Выберите тип материала и нажмите «Сгенерировать».</span></div>:<div className="board-ai-preview"><strong>Предпросмотр</strong><ol>{boardAiPreview.map((x,i)=><li key={`${i}-${x}`}>{x}</li>)}</ol></div>}
             <footer><button className="secondary" disabled={boardAiTopic.trim().length<2||boardAiGenerating} onClick={generateBoardAi}>{boardAiGenerating?"Проверяем…":boardAiPreview.length?"Сгенерировать заново":"Сгенерировать"}</button><button className="primary" disabled={!boardAiPreview.length||!canEdit||boardAiGenerating} onClick={insertBoardAi}>Добавить на доску</button></footer>
+            </>}
+            </>}
           </section>
         </div>}
         <section
@@ -10263,7 +10365,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               onClosePolygon={()=>updateBoardGeometry(singleSelected,{item:closeFreeSketchBoard(singleSelected)})}
               onToggle={field=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,[field]:item[field]===false}:item))}
             />}
-          {selectionScreenBounds && selectedItems.length > 0 && !objectEditorOpen && (
+          {selectionScreenBounds && selectedItems.length > 0 && !objectEditorOpen && !boardAiOpen && (
             <div
               className={`selection-toolbar-screen ${singleSelected?.kind==="graph"?"lektrus-graph-selection-toolbar":""}`}
               data-more-direction={selectionToolbarTop<440?"down":"up"}

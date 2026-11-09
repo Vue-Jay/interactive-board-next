@@ -165,6 +165,26 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
   }
 
   if (subject === "Химия") {
+    if (/молярн.*масс|масс.*молярн/.test(t)) {
+      const compounds = [
+        ["H₂O", "воды", 18, "2·1 + 16 = 18"], ["CO₂", "углекислого газа", 44, "12 + 2·16 = 44"],
+        ["NH₃", "аммиака", 17, "14 + 3·1 = 17"], ["CH₄", "метана", 16, "12 + 4·1 = 16"],
+        ["NaCl", "хлорида натрия", 58.5, "23 + 35,5 = 58,5"], ["CaCO₃", "карбоната кальция", 100, "40 + 12 + 3·16 = 100"],
+        ["H₂SO₄", "серной кислоты", 98, "2·1 + 32 + 4·16 = 98"], ["MgO", "оксида магния", 40, "24 + 16 = 40"],
+        ["KCl", "хлорида калия", 74.5, "39 + 35,5 = 74,5"], ["O₂", "кислорода", 32, "2·16 = 32"],
+        ["N₂", "азота", 28, "2·14 = 28"], ["HCl", "хлороводорода", 36.5, "1 + 35,5 = 36,5"],
+        ["C₆H₁₂O₆", "глюкозы", 180, "6·12 + 12·1 + 6·16 = 180"], ["NaOH", "гидроксида натрия", 40, "23 + 16 + 1 = 40"],
+        ["CaO", "оксида кальция", 56, "40 + 16 = 56"],
+      ] as const;
+      const [formula, name, molarMass, calculation] = choose([...compounds], index);
+      const amount = 1 + (index % 3);
+      const mass = molarMass * amount;
+      const formatMass = (value: number) => value.toLocaleString("ru-RU", { maximumFractionDigits: 1 });
+      return {
+        prompt: `Вычисли молярную массу ${name} (${formula}). Затем найди массу ${amount} моль этого вещества. Используй относительные атомные массы: H = 1, C = 12, N = 14, O = 16, Na = 23, Mg = 24, S = 32, Cl = 35,5, K = 39, Ca = 40.`,
+        answer: `M(${formula}) = ${calculation} = ${formatMass(molarMass)} г/моль; m = n·M = ${amount}·${formatMass(molarMass)} = ${formatMass(mass)} г.`,
+      };
+    }
     if (/массов.*дол.*раствор|раствор.*массов.*дол/.test(t)) {
       const solute = 10 + (index % 5) * 5, solvent = 90 + (index % 4) * 10, total = solute + solvent;
       return { prompt: `В ${solvent} г воды растворили ${solute} г соли. Найди массовую долю соли в растворе в процентах.`, answer: `m(раствора) = ${total} г; ω = ${solute}/${total}·100% ≈ ${(solute / total * 100).toLocaleString("ru-RU", { maximumFractionDigits: 2 })}%.` };

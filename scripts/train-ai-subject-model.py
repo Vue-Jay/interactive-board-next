@@ -27,6 +27,14 @@ TEMPLATES = (
     "Сгенерируй тренировочный тест: {topic}",
     "Нужны карточки для повторения: {topic}",
     "Дай примеры и упражнения по теме {topic}",
+    "Сделай карточки на урок по теме {topic}",
+    "Составь небольшой тест по теме {topic}",
+    "Мне нужна проверочная работа на тему {topic}",
+    "Подготовь карточки для занятия по теме {topic}",
+    "Создай тренировочные задания по теме: {topic}",
+    "Сгенерируй упражнения для закрепления темы {topic}",
+    "Сделай викторину по теме {topic}",
+    "Подготовь набор примеров и вопросов по теме {topic}",
     "Помоги провести проверку знаний по теме {topic}",
 )
 TOKEN_RE = re.compile(r"[а-яёa-z0-9]+", re.IGNORECASE)
@@ -34,9 +42,9 @@ SUBJECTS = [
     "Математика", "Физика", "Химия", "Биология", "География", "Русский язык",
     "Литература", "История", "Обществознание", "Информатика", "Иностранный язык",
 ]
-MAX_FEATURES = 5000
+MAX_FEATURES = 5800
 MIN_DOCUMENT_FREQUENCY = 3
-CONFIDENCE_THRESHOLD = 7.0
+CONFIDENCE_TARGET_ACCURACY = 0.99
 
 
 def features(text: str) -> set[str]:
@@ -53,20 +61,26 @@ def normalize_topic(text: str) -> str:
     return " ".join(re.findall(r"[а-яёa-z0-9]+", text.lower().replace("ё", "е")))
 
 
-def make_examples(corpus: dict[str, list[str]]) -> tuple[list[tuple[str, str]], list[tuple[str, str]], list[tuple[str, str]]]:
+def make_examples(corpus: dict[str, list[str]]) -> tuple[list[tuple[str, str]], list[tuple[str, str]], list[tuple[str, str]], list[tuple[str, str]], list[tuple[str, str]]]:
     train: list[tuple[str, str]] = []
+    wording_calibration: list[tuple[str, str]] = []
     wording_validation: list[tuple[str, str]] = []
+    topic_calibration: list[tuple[str, str]] = []
     topic_validation: list[tuple[str, str]] = []
     for subject in SUBJECTS:
         topics = corpus[subject]
         for topic_index, topic in enumerate(topics):
             if topic_index % 5 == 0:
-                topic_validation.extend((template.format(topic=topic), subject) for template in TEMPLATES)
+                destination = topic_calibration if topic_index % 10 == 0 else topic_validation
+                destination.extend((template.format(topic=topic), subject) for template in TEMPLATES)
                 continue
             for template_index, template in enumerate(TEMPLATES):
-                destination = wording_validation if template_index in (3, 8) else train
+                if template_index in (3, 8):
+                    destination = wording_calibration if topic_index % 10 == 1 else wording_validation
+                else:
+                    destination = train
                 destination.append((template.format(topic=topic), subject))
-    return train, wording_validation, topic_validation
+    return train, wording_calibration, wording_validation, topic_calibration, topic_validation
 
 
 def fit(examples: list[tuple[str, str]]) -> dict:
@@ -142,9 +156,30 @@ def main() -> None:
     missing = set(SUBJECTS) - corpus.keys()
     if missing:
         raise SystemExit(f"В корпусе отсутствуют предметы: {', '.join(sorted(missing))}")
-    train, wording_validation, topic_validation = make_examples(corpus)
+    train, wording_calibration, wording_validation, topic_calibration, topic_validation = make_examples(corpus)
     model = fit(train)
-    model["confidenceThreshold"] = CONFIDENCE_THRESHOLD
+
+    def predictions(examples: list[tuple[str, str]]) -> list[tuple[bool, float]]:
+        result = []
+        for text, expected in examples:
+            predicted, _, confidence = predict(model, text)
+            result.append((predicted == expected, confidence))
+        return result
+
+    wording_calibration_scores = predictions(wording_calibration)
+    topic_calibration_scores = predictions(topic_calibration)
+    candidate_thresholds = sorted({confidence for _, confidence in wording_calibration_scores + topic_calibration_scores})
+
+    def meets_calibration_target(scores: list[tuple[bool, float]], threshold: float) -> bool:
+        accepted = [correct for correct, confidence in scores if confidence >= threshold]
+        return bool(accepted) and sum(accepted) / len(accepted) >= CONFIDENCE_TARGET_ACCURACY
+
+    confidence_threshold = next((
+        threshold for threshold in candidate_thresholds
+        if meets_calibration_target(wording_calibration_scores, threshold)
+        and meets_calibration_target(topic_calibration_scores, threshold)
+    ), max(candidate_thresholds, default=0) + 1)
+    model["confidenceThreshold"] = round(confidence_threshold, 6)
     topic_labels: dict[str, str] = {}
     ambiguous_topics: set[str] = set()
     for subject in SUBJECTS:
@@ -178,7 +213,7 @@ def main() -> None:
             predicted, _, confidence = predict(model, text)
             totals[expected] += 1
             correct[expected] += predicted == expected
-            if confidence >= CONFIDENCE_THRESHOLD:
+            if confidence >= confidence_threshold:
                 accepted[expected] += 1
                 accepted_correct[expected] += predicted == expected
         accuracy = sum(correct.values()) / max(1, sum(totals.values()))
@@ -194,10 +229,11 @@ def main() -> None:
     OUTPUT_PATH.write_text(serialized, encoding="utf-8")
     version = hashlib.sha256(serialized.encode("utf-8")).hexdigest()[:16]
     VERSION_PATH.write_text(f'export const AI_SUBJECT_MODEL_VERSION = "{version}";\n', encoding="utf-8")
-    print(f"Обучено на примерах: {len(train)}; отложенные формулировки: {len(wording_validation)}; отложенные темы: {len(topic_validation)}")
+    print(f"Обучено на примерах: {len(train)}; калибровка: {len(wording_calibration)} формулировок и {len(topic_calibration)} примеров новых тем; финальная проверка: {len(wording_validation)} формулировок и {len(topic_validation)} примеров новых тем")
     print(f"Словарь признаков: {model['vocabularySize']}; размер модели: {OUTPUT_PATH.stat().st_size / 1024:.1f} КБ; версия {version}")
-    print(f"Знакомые темы в новых формулировках: {wording_accuracy:.1%}; при пороге {CONFIDENCE_THRESHOLD:g} уверенных ответов {wording_coverage:.1%}, точность уверенных {wording_confident_accuracy:.1%}")
-    print(f"Новые темы целиком отложены: {topic_accuracy:.1%}; при пороге {CONFIDENCE_THRESHOLD:g} уверенных ответов {topic_coverage:.1%}, точность уверенных {topic_confident_accuracy:.1%}")
+    print(f"Калибровочный целевой уровень точности уверенного ответа: {CONFIDENCE_TARGET_ACCURACY:.0%}; выбран порог {confidence_threshold:.3f}")
+    print(f"Знакомые темы в новых формулировках: {wording_accuracy:.1%}; покрытие уверенных ответов {wording_coverage:.1%}, точность уверенных {wording_confident_accuracy:.1%}")
+    print(f"Новые темы, целиком отложенные от обучения и калибровки: {topic_accuracy:.1%}; покрытие уверенных ответов {topic_coverage:.1%}, точность уверенных {topic_confident_accuracy:.1%}")
     for subject in SUBJECTS:
         print(f"  {subject}: {correct[subject]}/{totals[subject]}")
 

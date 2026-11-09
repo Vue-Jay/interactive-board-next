@@ -3166,9 +3166,9 @@ button {
 .checklist-title { display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:9px;border-bottom:1px solid #eceef2; }
 .checklist-title strong { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:1.05em;line-height:1.2; }
 .checklist-title span { flex:0 0 auto;padding:2px 7px;border-radius:999px;background:#f0f1ff;color:#5355c9;font-size:.72em;font-weight:750; }
-.checklist-rows { flex:1;overflow:hidden;padding-top:8px; }
+.checklist-rows { flex:1;overflow:auto;padding-top:8px; }
 .checklist-row { display:flex;align-items:flex-start;gap:8px;min-height:1.75em;padding:3px 0;line-height:1.35; }
-.checklist-row > span:last-child { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.checklist-row > span:last-child { min-width:0;overflow-wrap:anywhere;white-space:normal; }
 .checklist-row.done > span:last-child { color:#9aa0aa;text-decoration:line-through;text-decoration-thickness:1px; }
 .checklist-box { width:1.15em;height:1.15em;flex:0 0 1.15em;display:grid;place-items:center;margin-top:.05em;border:1.6px solid #5355c9;border-radius:4px;color:#fff;background:#fff;font-size:.78em;font-weight:900;line-height:1; }
 .checklist-row.done .checklist-box { background:#5355c9; }
@@ -7544,7 +7544,7 @@ option{background:#fff;color:#343741}
 .toolbar-ai-button,.mobile-ai-tool{position:relative;display:grid;place-items:center;border:0;background:transparent;color:inherit;cursor:pointer}
 .toolbar-ai-button{width:34px;height:34px;border-radius:9px}.toolbar-ai-button:hover,.mobile-ai-tool:hover{background:rgba(83,85,201,.09)}
 .mobile-ai-tool{width:38px;height:38px;border-radius:10px;flex:0 0 auto}
-.board-ai-overlay{position:fixed;inset:0;z-index:1800;display:grid;place-items:center;padding:16px;background:rgba(25,28,38,.28);backdrop-filter:blur(3px)}
+.board-ai-overlay{position:fixed;inset:0;z-index:2400;display:grid;place-items:center;padding:16px;background:rgba(25,28,38,.28);backdrop-filter:blur(3px)}
 .board-ai-panel{width:min(560px,calc(100vw - 24px));max-height:min(720px,calc(100dvh - 24px));overflow:auto;background:#fff;border:1px solid #e0e2e8;border-radius:18px;box-shadow:0 20px 70px rgba(30,34,50,.2);padding:16px;color:#242733}
 .board-ai-panel>header{display:flex;align-items:flex-start;gap:12px}.board-ai-panel>header>button{margin-left:auto;border:0;background:#f1f2f6;width:32px;height:32px;border-radius:9px;font-size:20px;cursor:pointer}.board-ai-title{display:flex;align-items:center;gap:10px}.board-ai-title>div{display:grid;gap:2px}.board-ai-title span{font-size:12px;color:#7b808d}
 .board-ai-types{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:16px 0}.board-ai-types button{height:36px;border:1px solid #e0e2e8;background:#f7f8fb;border-radius:9px;cursor:pointer}.board-ai-types button.active{background:#5355c9;color:#fff;border-color:#5355c9}
@@ -7567,6 +7567,29 @@ option{background:#fff;color:#343741}
 .board-ai-preview{background:var(--lt-subtle,#f8f9fc);color:var(--lt-text,#242733)}
 .board-ai-empty{border-color:var(--lt-line,#d7dae3);color:var(--lt-muted,#858a96)}
 .board-ai-panel :is(button,input,select):focus-visible{outline:2px solid var(--lt-focus,#6582ed);outline-offset:2px}
+
+.board-ai-panel.has-assistant{width:min(760px,calc(100vw - 24px));display:flex;flex-direction:column;overflow:hidden;}
+.board-ai-mode-tabs{display:flex;gap:6px;margin:15px 0 10px;padding:4px;background:var(--lt-subtle,#f1f5fb);border:1px solid var(--lt-line,#dce5f2);border-radius:12px}
+.board-ai-mode-tabs button{flex:1;min-height:36px;border:0;border-radius:8px;background:transparent;color:var(--lt-secondary,#536176);font-weight:650;cursor:pointer}
+.board-ai-mode-tabs button.active{background:var(--lt-raised,#fff);color:var(--lt-primary,#3658c8);box-shadow:0 1px 4px rgba(24,49,88,.12)}
+.board-ai-mode-tabs button:disabled{opacity:.45;cursor:not-allowed}
+.board-ai-assistant{display:grid;gap:10px;min-height:320px}
+.board-ai-chat-log{display:flex;flex-direction:column;gap:8px;min-height:210px;max-height:min(48dvh,420px);overflow:auto;padding:10px;border:1px solid var(--lt-line,#dce5f2);border-radius:12px;background:var(--lt-canvas,#f7f9fd)}
+.board-ai-chat-intro{display:grid;align-content:center;justify-items:start;gap:6px;flex:1;padding:16px;color:var(--lt-muted,#66758b);font-size:13px;line-height:1.5}
+.board-ai-chat-intro b{color:var(--lt-text,#172b49);font-size:16px}
+.board-ai-chat-message{max-width:92%;padding:9px 11px;border:1px solid var(--lt-line,#dce5f2);border-radius:12px;background:var(--lt-raised,#fff);align-self:flex-start}
+.board-ai-chat-message.user{background:var(--lt-primary-soft,#eaf0ff);align-self:flex-end}
+.board-ai-chat-message small{display:block;margin-bottom:3px;color:var(--lt-muted,#72819a);font-size:10px;font-weight:700}
+.board-ai-chat-message p{margin:0;white-space:pre-wrap;font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+.board-ai-chat-pending{color:var(--lt-muted,#72819a);font-size:12px;padding:4px 8px}
+.board-ai-suggestions{display:flex;gap:6px;flex-wrap:wrap}
+.board-ai-suggestions button{min-height:30px;padding:5px 9px;border:1px solid var(--lt-line,#dce5f2);border-radius:999px;background:var(--lt-raised,#fff);color:var(--lt-secondary,#536176);font-size:11px;cursor:pointer}
+.board-ai-chat-compose{display:flex;gap:7px}
+.board-ai-chat-compose input{flex:1;min-width:0;height:40px;padding:0 11px;border:1px solid var(--lt-line,#dce5f2);border-radius:10px;background:var(--lt-raised,#fff);color:var(--lt-text,#172b49)}
+.board-ai-chat-compose button{padding:0 13px;border:0;border-radius:10px;background:var(--lt-primary,#3658c8);color:var(--lt-on-primary,#fff);font-weight:650;cursor:pointer}
+.board-ai-chat-compose button:disabled{opacity:.5;cursor:not-allowed}
+.board-ai-local-note{color:var(--lt-muted,#72819a);font-size:10px;line-height:1.4}
+@media(max-width:620px){.board-ai-panel.has-assistant{max-height:84dvh}.board-ai-assistant{min-height:280px}.board-ai-chat-log{min-height:180px;max-height:42dvh}.board-ai-chat-compose button{padding:0 10px}}
 
 /* v198 · student permissions and teacher media approval */
 .student-board-mode,.teacher-approval-badge{position:fixed;top:58px;right:12px;z-index:1150;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.94);border:1px solid #dfe2ea;box-shadow:0 3px 14px rgba(30,34,50,.08);font-size:11px;color:#666b78}.teacher-approval-badge{color:#4547a8;font-weight:650}
