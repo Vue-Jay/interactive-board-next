@@ -43,6 +43,10 @@ try {
     independentParserFailures: [],
     gradeGenerationCases: 0,
     gradeGenerationFailures: [],
+    runtimeGradeMapChecks: 0,
+    runtimeGradeMapFailures: [],
+    gradeMismatchChecks: 0,
+    gradeMismatchFailures: [],
     mathFocusedChecks: 0,
     mathFocusedFailures: [],
     physicsFocusedChecks: 0,
@@ -80,6 +84,16 @@ try {
     for (const band of gradeKeys) {
       const pattern = exactGradeMap ? /^([1-9]|1[01])$/ : /^([1-9]|1[01])(-([1-9]|1[01]))?$/;
       if (!pattern.test(band)) report.gradeMapErrors.push(`${subject}: некорректный класс или диапазон классов ${band}`);
+      for (const topic of (mapping.topicsByGradeBand ?? mapping.topicsByGrade ?? {})[band] ?? []) {
+        report.runtimeGradeMapChecks += 1;
+        const actualBand = intent.matchCanonicalCurriculumGrade(topic, subject);
+        if (actualBand !== band) report.runtimeGradeMapFailures.push({ subject, topic, expected: band, actual: actualBand });
+      }
+    }
+    for (const topic of excludedTopics) {
+      report.runtimeGradeMapChecks += 1;
+      const actualBand = intent.matchCanonicalCurriculumGrade(topic, subject);
+      if (actualBand) report.runtimeGradeMapFailures.push({ subject, topic, expected: "", actual: actualBand });
     }
   }
 
@@ -438,24 +452,44 @@ try {
   }
 
   const gradeGenerationGuidance = {
-    3: { easy: "Реши один короткий пример; при необходимости нарисуй схему.", medium: "Разбей решение на два коротких шага и запиши ответ.", hard: "Реши задачу в несколько действий знакомыми способами; объясни ход простыми словами." },
-    6: { easy: "Примени одно изученное правило или понятие к примеру.", medium: "Покажи ход рассуждения и кратко объясни результат.", hard: "Сопоставь два случая, найди общее правило и объясни различие." },
-    8: { easy: "Примени изученное правило или понятие к одному случаю и укажи основание ответа.", medium: "Свяжи несколько шагов, обоснуй выбор правила и поясни результат.", hard: "Соедини несколько понятий, проверь вывод на другом случае и объясни ограничения." },
-    10: { easy: "Примени ключевое понятие к ситуации и укажи основание ответа.", medium: "Обоснуй ход решения, подкрепив вывод расчётом или аргументом.", hard: "Сравни подходы, назови допущения и оцени ограничения вывода." },
+    primary: { easy: "Реши один короткий пример; при необходимости нарисуй схему.", medium: "Разбей решение на два коротких шага и запиши ответ.", hard: "Реши задачу в несколько действий знакомыми способами; объясни ход простыми словами." },
+    middle: { easy: "Примени одно изученное правило или понятие к примеру.", medium: "Покажи ход рассуждения и кратко объясни результат.", hard: "Сопоставь два случая, найди общее правило и объясни различие." },
+    upper: { easy: "Примени изученное правило или понятие к одному случаю и укажи основание ответа.", medium: "Свяжи несколько шагов, обоснуй выбор правила и поясни результат.", hard: "Соедини несколько понятий, проверь вывод на другом случае и объясни ограничения." },
+    senior: { easy: "Примени ключевое понятие к ситуации и укажи основание ответа.", medium: "Обоснуй ход решения, подкрепив вывод расчётом или аргументом.", hard: "Сравни подходы, назови допущения и оцени ограничения вывода." },
   };
-  for (const [subject, topics] of Object.entries(corpus)) {
-    const topic = topics[0];
-    for (const grade of [3, 6, 8, 10]) {
+  const representativeGrade = (band) => Number(band.match(/^\d+/)?.[0] ?? 0);
+  const instructionBand = (grade) => grade <= 4 ? "primary" : grade <= 6 ? "middle" : grade <= 9 ? "upper" : "senior";
+  for (const [subject, mapping] of Object.entries(gradeMap.subjects ?? {})) {
+    const topicsByGrade = mapping.topicsByGradeBand ?? mapping.topicsByGrade ?? {};
+    for (const [mappedBand, topics] of Object.entries(topicsByGrade)) {
+      const topic = topics[0];
+      if (!topic) continue;
+      const grade = representativeGrade(mappedBand);
       for (const level of ["easy", "medium", "hard"]) {
         for (const tool of ["assignment", "quiz", "flashcards"]) {
           const generated = curriculum.generateCurriculumAi(tool, `${topic} для ${grade} класса`, level, 1, subject);
           report.gradeGenerationCases += 1;
-          const expectedInstruction = `Для ${grade} класса: ${gradeGenerationGuidance[grade][level]}`;
+          const expectedInstruction = `Для ${grade} класса: ${gradeGenerationGuidance[instructionBand(grade)][level]}`;
           const failures = [];
           if (generated.subject !== subject) failures.push(`неверный предмет: ${generated.subject}`);
           if (!generated.title.includes(`${grade} класс`)) failures.push("класс отсутствует в заголовке");
           if (!generated.items.length || generated.items.some((item) => !item.includes(expectedInstruction))) failures.push("классно-уровневая инструкция отсутствует или не соответствует выбранным параметрам");
           if (failures.length) report.gradeGenerationFailures.push({ subject, topic, grade, level, tool, title: generated.title, firstItem: generated.items[0], failures });
+        }
+      }
+      const first = representativeGrade(mappedBand);
+      const lastMatch = mappedBand.match(/-(\d+)$/);
+      const last = Number(lastMatch?.[1] ?? first);
+      const mismatchedGrade = first > 1 ? first - 1 : (last < 11 ? last + 1 : 0);
+      if (mismatchedGrade) {
+        report.gradeMismatchChecks += 1;
+        try {
+          curriculum.generateCurriculumAi("assignment", `${topic} для ${mismatchedGrade} класса`, "medium", 1, subject);
+          report.gradeMismatchFailures.push({ subject, topic, mappedBand, mismatchedGrade, reason: "запрос с неподходящим классом не был остановлен" });
+        } catch (error) {
+          if (!String(error?.message ?? error).includes("предварительной карте Lectrus")) {
+            report.gradeMismatchFailures.push({ subject, topic, mappedBand, mismatchedGrade, reason: String(error?.message ?? error) });
+          }
         }
       }
     }
@@ -517,6 +551,8 @@ try {
     || report.independentParserFailures.length > 0
     || report.generatedParserFailures.length > 0
     || report.gradeGenerationFailures.length > 0
+    || report.runtimeGradeMapFailures.length > 0
+    || report.gradeMismatchFailures.length > 0
     || report.mathFocusedFailures.length > 0
     || report.physicsFocusedFailures.length > 0
     || report.socialStudiesFocusedFailures.length > 0;

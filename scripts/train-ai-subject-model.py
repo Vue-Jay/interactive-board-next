@@ -12,6 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CORPUS_PATH = ROOT / "ai-training" / "subject_topics.json"
+GRADE_MAP_PATH = ROOT / "ai-training" / "curriculum_grade_map.json"
 OUTPUT_PATH = ROOT / "public" / "models" / "aiSubjectIntentModel.json"
 VERSION_PATH = ROOT / "src" / "aiSubjectIntentModelVersion.ts"
 TEMPLATES = (
@@ -137,6 +138,7 @@ def main() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     corpus = json.loads(CORPUS_PATH.read_text(encoding="utf-8"))
+    grade_map = json.loads(GRADE_MAP_PATH.read_text(encoding="utf-8"))
     missing = set(SUBJECTS) - corpus.keys()
     if missing:
         raise SystemExit(f"В корпусе отсутствуют предметы: {', '.join(sorted(missing))}")
@@ -155,6 +157,17 @@ def main() -> None:
     for topic in ambiguous_topics:
         topic_labels.pop(topic, None)
     model["topicIndex"] = topic_labels
+
+    topic_grades: dict[str, dict[str, str]] = defaultdict(dict)
+    for subject, mapping in grade_map.get("subjects", {}).items():
+        topics_by_grade = mapping.get("topicsByGradeBand", mapping.get("topicsByGrade", {}))
+        for grade, topics in topics_by_grade.items():
+            for topic in topics:
+                normalized = normalize_topic(topic)
+                if normalized in topic_grades[subject]:
+                    raise SystemExit(f"Тема {topic!r} по предмету {subject!r} указана более чем для одного класса")
+                topic_grades[subject][normalized] = grade
+    model["topicGradeIndex"] = dict(topic_grades)
 
     def evaluate(examples: list[tuple[str, str]]) -> tuple[float, float, float, Counter, Counter]:
         totals = Counter()

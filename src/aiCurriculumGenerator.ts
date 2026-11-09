@@ -1,6 +1,6 @@
 import { generateMathAi, type MathAiLevel, type MathAiMode } from "./aiMathGenerator";
 import { generateSubjectExercise, generateSubjectExerciseVariant } from "./aiSubjectExerciseBank";
-import { classifyCurriculumSubject, matchCanonicalCurriculumTopic } from "./aiSubjectIntentClassifier";
+import { classifyCurriculumSubject, matchCanonicalCurriculumGrade, matchCanonicalCurriculumTopic } from "./aiSubjectIntentClassifier";
 import { LEKTRUS_SCHOOL_SUBJECTS } from "./lektrusSchoolSubjects";
 
 export type CurriculumAiTool = "assignment" | "quiz" | "flashcards";
@@ -34,6 +34,15 @@ function getGradeTaskInstruction(grade: number | null, level: CurriculumAiLevel)
   const band = grade <= 4 ? "primary" : grade <= 6 ? "middle" : grade <= 9 ? "upper" : "senior";
   return `Для ${grade} класса: ${gradeTaskGuidance[band][level]}`;
 }
+
+function gradeMatchesMappedBand(grade: number, band: string): boolean {
+  const match = band.match(/^(\d{1,2})(?:-(\d{1,2}))?$/);
+  if (!match) return false;
+  const first = Number(match[1]);
+  const last = Number(match[2] ?? match[1]);
+  return grade >= first && grade <= last;
+}
+
 export type CurriculumAiResult = { title: string; items: string[]; answers: string[]; subject: string; detected: string };
 
 const topicExamples: Record<string, string> = {
@@ -208,6 +217,12 @@ export function generateCurriculumAi(tool: CurriculumAiTool, topic: string, leve
   const effectiveLevel = request.level;
   if (!clean) throw new Error("Укажите тему задания.");
   if (!subject) throw new Error("Не удалось определить предмет. Выберите его в списке.");
+  if (request.grade) {
+    const mappedGrade = matchCanonicalCurriculumGrade(clean, subject);
+    if (mappedGrade && !gradeMatchesMappedBand(request.grade, mappedGrade)) {
+      throw new Error(`По предварительной карте Lectrus тема «${clean}» отнесена к ${mappedGrade} классу. В запросе указан ${request.grade} класс. Уточните тему или класс.`);
+    }
+  }
   if (subject === "Математика") {
     const mathLevel: MathAiLevel = effectiveLevel === "easy" ? "primary" : effectiveLevel === "hard" ? "advanced" : "basic";
     const math = generateMathAi("auto" as MathAiMode, mathLevel, safeCount, clean, true);

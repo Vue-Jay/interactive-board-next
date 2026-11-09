@@ -5,6 +5,7 @@ type Model = {
   priors: Record<string, number>;
   likelihoods: Record<string, Record<string, number>>;
   topicIndex?: Record<string, string>;
+  topicGradeIndex?: Record<string, Record<string, string>>;
   confidenceThreshold?: number;
 };
 
@@ -87,4 +88,16 @@ export function matchCanonicalCurriculumTopic(text: string): string {
   if (!activeModel?.topicIndex) return "";
   const normalizedTopic = text.toLocaleLowerCase("ru-RU").replace(/ё/g, "е").match(tokenPattern)?.join(" ") ?? "";
   return activeModel.topicIndex[normalizedTopic] ?? "";
+}
+
+/** Returns the mapped grade or grade band for an exact topic in a selected subject. */
+export function matchCanonicalCurriculumGrade(text: string, subject: string): string {
+  const activeModel = model;
+  if (!activeModel?.topicGradeIndex || !subject) return "";
+  const normalizedTopic = text.toLocaleLowerCase("ru-RU").replace(/ё/g, "е").match(tokenPattern)?.join(" ") ?? "";
+  const subjectGrades = activeModel.topicGradeIndex[subject];
+  return subjectGrades?.[normalizedTopic]
+    ?? subjectGrades?.[`тема ${normalizedTopic}`]
+    ?? subjectGrades?.[`теме ${normalizedTopic}`]
+    ?? "";
 }

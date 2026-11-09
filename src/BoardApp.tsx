@@ -84,6 +84,7 @@ import LectrisPanelSettings from "./LectrisPanelSettings";
 import { defaultLectrisPanelLayout, normalizeLectrisPanelLayout, readLectrisPanelLayout, type LectrisPanelLayout } from "./lectrisPanelLayout";
 import { clearAiBoardTransfer, peekAiBoardTransfer } from "./aiLocalStore";
 import { aiTopicPlaceholder, generateCurriculumAi, type CurriculumAiLevel } from "./aiCurriculumGenerator";
+import { loadCurriculumSubjectModel } from "./aiSubjectIntentClassifier";
 import { type AccountRole } from "./accountRoleStore";
 import { materialBlob, markMaterialUsed, type Material } from "./materialsStore";
 import ShareDialog from "./ShareDialog";
@@ -2124,6 +2125,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [boardAiWithAnswers,setBoardAiWithAnswers]=useState(false);
   const [boardAiDetected,setBoardAiDetected]=useState("");
   const [boardAiPreview,setBoardAiPreview]=useState<string[]>([]);
+  const [boardAiGenerating,setBoardAiGenerating]=useState(false);
 
   const publicPresentation = !canEdit && new URLSearchParams(window.location.search).get("present")==="1";
   const [sharing, setSharing] = useState(false);
@@ -3727,11 +3729,17 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     x: (p.x - view.x) / view.zoom,
     y: (p.y - view.y) / view.zoom,
   });
-  const generateBoardAi=()=>{
+  const generateBoardAi=async()=>{
     if(!canCreateAssignments){setNotice("Создавать задания может только преподаватель с правом редактирования");return}
-    const result=generateCurriculumAi("assignment",boardAiTopic,boardAiLevel,boardAiCount,boardAiSubject);
-    setBoardAiDetected(result.detected);
-    setBoardAiPreview(boardAiWithAnswers&&result.answers.length?result.items.map((x,i)=>`${x}  •  Ответ: ${result.answers[i]}`):result.items);
+    setBoardAiGenerating(true);
+    try{
+      await loadCurriculumSubjectModel();
+      const result=generateCurriculumAi("assignment",boardAiTopic,boardAiLevel,boardAiCount,boardAiSubject);
+      setBoardAiDetected(result.detected);
+      setBoardAiPreview(boardAiWithAnswers&&result.answers.length?result.items.map((x,i)=>`${x}  •  Ответ: ${result.answers[i]}`):result.items);
+    }catch(error){
+      setNotice(error instanceof Error?error.message:"Не удалось создать задания");
+    }finally{setBoardAiGenerating(false)}
   };
   const insertBoardAi=()=>{
     if(!canCreateAssignments){setNotice("Создавать задания может только преподаватель с правом редактирования");return}
@@ -9250,7 +9258,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             {(boardAiSubject===""||boardAiSubject==="Математика")&&<label className="board-ai-answer-toggle"><input type="checkbox" checked={boardAiWithAnswers} onChange={e=>{setBoardAiWithAnswers(e.target.checked);setBoardAiPreview([])}}/><span>Показывать ответы</span></label>}
             {boardAiDetected&&<div className="board-ai-detected">Распознано: <b>{boardAiDetected}</b></div>}
             {!boardAiPreview.length?<div className="board-ai-empty"><Icon name="robot" size={30}/><b>Что подготовить?</b><span>Выберите тип материала и нажмите «Сгенерировать».</span></div>:<div className="board-ai-preview"><strong>Предпросмотр</strong><ol>{boardAiPreview.map((x,i)=><li key={`${i}-${x}`}>{x}</li>)}</ol></div>}
-            <footer><button className="secondary" disabled={boardAiTopic.trim().length<2} onClick={generateBoardAi}>{boardAiPreview.length?"Сгенерировать заново":"Сгенерировать"}</button><button className="primary" disabled={!boardAiPreview.length||!canEdit} onClick={insertBoardAi}>Добавить на доску</button></footer>
+            <footer><button className="secondary" disabled={boardAiTopic.trim().length<2||boardAiGenerating} onClick={generateBoardAi}>{boardAiGenerating?"Проверяем…":boardAiPreview.length?"Сгенерировать заново":"Сгенерировать"}</button><button className="primary" disabled={!boardAiPreview.length||!canEdit||boardAiGenerating} onClick={insertBoardAi}>Добавить на доску</button></footer>
           </section>
         </div>}
         <section
