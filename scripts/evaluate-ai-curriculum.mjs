@@ -65,6 +65,12 @@ try {
     gradeTwoMathFailures: [],
     gradeThreeMathChecks: 0,
     gradeThreeMathFailures: [],
+    gradeFourMathChecks: 0,
+    gradeFourMathFailures: [],
+    primaryMathAnswerChecks: 0,
+    primaryMathAnswerFailures: [],
+    olympiadMathChecks: 0,
+    olympiadMathFailures: [],
     runtimeGradeMapChecks: 0,
     runtimeGradeMapFailures: [],
     gradeMismatchChecks: 0,
@@ -261,8 +267,87 @@ try {
     }
   }
 
-  const gradeThreeMathTopics = ["доли и дроби в начальной школе", "доли величины: половина, треть, четверть, пятая и десятая часть", "площади фигур", "сравнение площадей фигур"];
+  const gradeThreeMathTopics = Object.keys(gradeMap.subjects?.["Математика"]?.officialCoverage?.grades?.["3"]?.topicCodes ?? {});
+  const verifyPrimaryAnswer = (grade, topic, prompt, answer) => {
+    const unitFactor = { "кг→г": 1000, "м→см": 100, "ч→мин": 60, "км→м": 1000, "руб.→коп.": 100, "л→мл": 1000 };
+    let match;
+    if (grade === 3 && topic === "числа в пределах 1000 и разрядный состав") {
+      match = prompt.match(/число (\d+)/); const parts = answer.match(/= ([\d +]+)\./)?.[1].split("+").map(Number);
+      return Boolean(match && parts) && parts.reduce((sum, value) => sum + value, 0) === Number(match[1]);
+    }
+    if (grade === 3 && topic === "сложение вычитание умножение и деление до 1000") {
+      match = prompt.match(/Вычисли (\d+) ([+−·:]) (\d+)\./); const result = Number(answer.match(/= (\d+)\./)?.[1]);
+      if (!match) return false;
+      const [, a, op, b] = match.map((value) => value); const expected = op === "+" ? Number(a) + Number(b) : op === "−" ? Number(a) - Number(b) : op === "·" ? Number(a) * Number(b) : Number(a) / Number(b);
+      return result === expected;
+    }
+    if (grade === 3 && topic === "единицы величин и их сравнение в задачах 3 класса") {
+      match = prompt.match(/Переведи (\d+) (кг|м|ч|км|руб\.) в (г|см|мин|м|коп\.)/); const result = Number(answer.match(/= (\d+) (?:г|см|мин|м|коп\.)\./)?.[1]);
+      return Boolean(match) && result === Number(match[1]) * unitFactor[`${match[2]}→${match[3]}`];
+    }
+    if (grade === 3 && topic === "порядок действий и неизвестный компонент до 1000") {
+      match = prompt.match(/\((\d+) \+ (\d+)\) · (\d+)/);
+      if (match) return answer.includes(String((Number(match[1]) + Number(match[2])) * Number(match[3])));
+      match = prompt.match(/□ \+ (\d+) = (\d+)/); return Boolean(match) && Number(match[2]) - Number(match[1]) === Number(answer.match(/= (\d+)\./)?.[1]);
+    }
+    if (grade === 3 && topic === "сложение и вычитание однородных величин") {
+      match = prompt.match(/(\d+) г и (\d+) г/); return Boolean(match) && Number(answer.match(/= (\d+) г\./)?.[1]) === Number(match[1]) + Number(match[2]);
+    }
+    if (grade === 3 && topic === "двухшаговые задачи на сравнение и величины") {
+      match = prompt.match(/В (\d+) коробках лежало по (\d+) карандашей, затем добавили ещё (\d+)/); return Boolean(match) && Number(answer.match(/= (\d+)\. Ответ:/)?.[1]) === Number(match[1]) * Number(match[2]) + Number(match[3]);
+    }
+    if (grade === 3 && topic === "периметр и площадь прямоугольника в 3 классе") {
+      match = prompt.match(/стороны (\d+) см и (\d+) см/); return Boolean(match) && answer.includes(`= ${Number(match[1]) * Number(match[2])} см²`) && answer.includes(`P = 2 · (${match[1]} + ${match[2]}) = ${2 * (Number(match[1]) + Number(match[2]))} см`);
+    }
+    if (grade === 3 && topic === "таблицы диаграммы и логика по математическим данным 3 класса") {
+      match = prompt.match(/понедельник — (\d+), вторник — (\d+), среда — (\d+)/); return Boolean(match) && answer.includes(`${Number(match[1]) + Number(match[2]) + Number(match[3])} страниц`) && answer.includes(`${Number(match[2]) - Number(match[3])} страниц`);
+    }
+    if (grade === 4 && topic === "числа до миллиона и многозначное сравнение") {
+      match = prompt.match(/число (\d+)/); const parts = answer.match(/= ([\d +]+)\./)?.[1].split("+").map(Number);
+      return Boolean(match && parts) && parts.reduce((sum, value) => sum + value, 0) === Number(match[1]);
+    }
+    if (grade === 4 && topic === "единицы величин и преобразования 4 класса") {
+      match = prompt.match(/Переведи (\d+) (кг|м|ч|л|км) в (г|см|мин|мл|м)/); const result = Number(answer.match(/= (\d+) (?:г|см|мин|мл|м)\./)?.[1]);
+      return Boolean(match) && result === Number(match[1]) * unitFactor[`${match[2]}→${match[3]}`];
+    }
+    if (grade === 4 && topic === "письменные действия с многозначными числами") {
+      match = prompt.match(/Вычисли письменно (\d+) ([+−]) (\d+)\./); const values = answer.match(/(\d+) ([+−]) (\d+) = (\d+)\./);
+      if (!match || !values) return false;
+      const expected = values[2] === "+" ? Number(values[1]) + Number(values[3]) : Number(values[1]) - Number(values[3]);
+      return values[1] === match[1] && values[2] === match[2] && values[3] === match[3] && Number(values[4]) === expected;
+    }
+    if (grade === 4 && topic === "выражения и свойства арифметических действий") {
+      match = prompt.match(/Вычисли (\d+) \+ (\d+) · (\d+)/); return Boolean(match) && Number(answer.match(/затем .* = (\d+)\./)?.[1]) === Number(match[1]) + Number(match[2]) * Number(match[3]);
+    }
+    if (grade === 4 && topic === "доли величин и нахождение целого по доле") {
+      match = prompt.match(/числа равна (\d+)\. Найди число/);
+      if (match) { const values = answer.match(/(\d+) · (\d+) = (\d+)\./)?.slice(1).map(Number); return Boolean(values) && values[0] === Number(match[1]) && values[0] * values[1] === values[2]; }
+      match = prompt.match(/числа (\d+)\./); const values = answer.match(/(\d+) : (\d+) = (\d+)\./)?.slice(1).map(Number);
+      return Boolean(match && values) && values[0] === Number(match[1]) && values[0] / values[1] === values[2];
+    }
+    if (grade === 4 && topic === "практические задачи на движение работу и покупки") {
+      match = prompt.match(/скоростью (\d+) км\/ч (\d+) ч/); return Boolean(match) && Number(answer.match(/= (\d+) км\./)?.[1]) === Number(match[1]) * Number(match[2]);
+    }
+    if (grade === 4 && topic === "геометрические построения окружность и пространственные тела") {
+      match = prompt.match(/радиус (\d+) см/); return match ? Number(answer.match(/= (\d+) см\./)?.[1]) === 2 * Number(match[1]) : /Это (?:куб|цилиндр|конус|шар|пирамида|прямоугольный параллелепипед|призма)\./.test(answer);
+    }
+    if (grade === 4 && topic === "площадь и периметр составных фигур") {
+      match = prompt.match(/прямоугольника (\d+) × (\d+) см вырезали в углу прямоугольник (\d+) × (\d+) см/);
+      return Boolean(match) && answer.includes(`${Number(match[1]) * Number(match[2]) - Number(match[3]) * Number(match[4])} см²`) && answer.includes(`${2 * (Number(match[1]) + Number(match[2]))} см.`);
+    }
+    if (grade === 4 && topic === "таблицы логические утверждения и алгоритмы 4 класса") {
+      match = prompt.match(/последовательность по правилу «прибавляй (\d+)»: (\d+), (\d+), (\d+), __/); return Boolean(match) && Number(answer.match(/Следующее число: .* = (\d+)\./)?.[1]) === Number(match[2]) + 3 * Number(match[1]);
+    }
+    if (grade === 4 && topic === "уравнения с неизвестным компонентом в 4 классе") {
+      match = prompt.match(/□ \+ (\d+) = (\d+)/); return Boolean(match) && Number(answer.match(/= (\d+)\./)?.[1]) === Number(match[2]) - Number(match[1]);
+    }
+    if (grade === 4 && topic === "умножение и деление величин на число") {
+      match = prompt.match(/содержит (\d+) г продукта\. Сколько граммов продукта в (\d+)/); return Boolean(match) && Number(answer.match(/= (\d+) г\./)?.[1]) === Number(match[1]) * Number(match[2]);
+    }
+    return true;
+  };
   for (const topic of gradeThreeMathTopics) {
+    const gradeThreePrompts = new Set();
     const generated = curriculum.generateCurriculumAi("assignment", `${topic} для 3 класса`, "medium", 15, "Математика");
     for (let index = 0; index < generated.items.length; index += 1) {
       report.gradeThreeMathChecks += 1;
@@ -271,7 +356,31 @@ try {
       const failures = [];
       if (!generated.items[index].includes("Для 3 класса:")) failures.push("нет инструкции для 3 класса");
       if (!answer.trim() || answer.startsWith("Ключ проверки:")) failures.push("нет конкретного проверяемого ответа");
-      if (/доли величины|доли и дроби/.test(topic)) {
+      report.primaryMathAnswerChecks += 1;
+      if (!verifyPrimaryAnswer(3, topic, prompt, answer)) {
+        failures.push("ответ не сошёлся с независимой проверкой по условию");
+        report.primaryMathAnswerFailures.push({ grade: 3, topic, index, prompt, answer });
+      }
+      if (/Составь понятную схему|Подготовь таблицу по теме|Ключ проверки:/i.test(prompt)) failures.push("вместо предметного задания выдан общий шаблон");
+      const normalizedPrompt = prompt.toLocaleLowerCase("ru-RU").replace(/\s+/g, " ").trim();
+      if (gradeThreePrompts.has(normalizedPrompt)) failures.push("повторяется формулировка в наборе тем 3 класса");
+      gradeThreePrompts.add(normalizedPrompt);
+      if (topic === "деление с остатком") {
+        const match = prompt.match(/Раздели (\d+) на (\d+) с остатком/);
+        if (!match) failures.push("не распознано деление с остатком");
+        else {
+          const dividend = Number(match[1]), divisor = Number(match[2]);
+          const quotient = Math.floor(dividend / divisor), remainder = dividend % divisor;
+          if (remainder >= divisor || !answer.includes(`частное ${quotient}, остаток ${remainder}`)) failures.push("частное или остаток неверны");
+        }
+      } else if (topic === "доли и дроби в начальной школе") {
+        const match = prompt.match(/наборе (\d+) фишек/);
+        if (!match) failures.push("не распознано условие сравнения долей");
+        else {
+          const whole = Number(match[1]), third = whole / 3, quarter = whole / 4, difference = third - quarter;
+          if (whole % 12 !== 0 || !answer.includes(`Треть: ${whole} : 3 = ${third}`) || !answer.includes(`Четверть: ${whole} : 4 = ${quarter}`) || !answer.includes(`Разница: ${third} − ${quarter} = ${difference}`)) failures.push("сравнение долей вычислено неверно");
+        }
+      } else if (/доли величины|доли и дроби/.test(topic)) {
         const match = prompt.match(/числа (\d+)/);
         const denominator = [2, 3, 4, 5, 10][index % 5];
         if (!match || Number(match[1]) % denominator !== 0 || !answer.includes(String(Number(match[1]) / denominator))) failures.push("доля вычислена неверно");
@@ -283,13 +392,57 @@ try {
           const expected = areaA === areaB ? "Площади равны." : areaA > areaB ? "Площадь A больше." : "Площадь B больше.";
           if (!answer.includes(`${areaA} клеток`) || !answer.includes(`${areaB} клеток`) || !answer.includes(expected)) failures.push("сравнение площадей неверно");
         }
-      } else {
+      } else if (topic === "площади фигур") {
         const match = prompt.match(/стороны (\d+) см и (\d+) см/);
         if (!match || !answer.includes(String(Number(match[1]) * Number(match[2])))) failures.push("площадь прямоугольника вычислена неверно");
       }
       if (failures.length) report.gradeThreeMathFailures.push({ topic, index, prompt, answer, failures });
     }
   }
+
+  const gradeFourMathTopics = Object.keys(gradeMap.subjects?.["Математика"]?.officialCoverage?.grades?.["4"]?.topicCodes ?? {});
+  for (const topic of gradeFourMathTopics) {
+    const gradeFourPrompts = new Set();
+    const generated = curriculum.generateCurriculumAi("assignment", `${topic} для 4 класса`, "medium", 15, "Математика");
+    for (let index = 0; index < generated.items.length; index += 1) {
+      report.gradeFourMathChecks += 1;
+      const prompt = generated.items[index].split("\nДля 4 класса:")[0];
+      const answer = generated.answers[index] ?? "";
+      const failures = [];
+      if (!generated.items[index].includes("Для 4 класса:")) failures.push("нет инструкции для 4 класса");
+      if (!answer.trim() || answer.startsWith("Ключ проверки:")) failures.push("нет конкретного проверяемого ответа");
+      report.primaryMathAnswerChecks += 1;
+      if (!verifyPrimaryAnswer(4, topic, prompt, answer)) {
+        failures.push("ответ не сошёлся с независимой проверкой по условию");
+        report.primaryMathAnswerFailures.push({ grade: 4, topic, index, prompt, answer });
+      }
+      if (/Составь понятную схему|Подготовь таблицу по теме|Ключ проверки:/i.test(prompt)) failures.push("вместо предметного задания выдан общий шаблон");
+      const normalizedPrompt = prompt.toLocaleLowerCase("ru-RU").replace(/\s+/g, " ").trim();
+      if (gradeFourPrompts.has(normalizedPrompt)) failures.push("повторяется формулировка в наборе тем 4 класса");
+      gradeFourPrompts.add(normalizedPrompt);
+      if (failures.length) report.gradeFourMathFailures.push({ topic, index, prompt, answer, failures });
+    }
+  }
+
+  const olympiadMath = curriculum.generateCurriculumAi("assignment", "Составь 15 олимпиадных задач на числа до миллиона для 4 класса", "hard", 15, "Математика");
+  const olympiadPrompts = olympiadMath.items.map((item) => item.split("\nДля 4 класса:")[0]);
+  const olympiadAnswers = olympiadMath.answers;
+  for (let index = 0; index < olympiadPrompts.length; index += 1) {
+    report.olympiadMathChecks += 1;
+    const prompt = olympiadPrompts[index], answer = olympiadAnswers[index] ?? "";
+    const failures = [];
+    const difference = Number(prompt.match(/больше числа с переставленными цифрами на (\d+)/)?.[1]);
+    const sum = Number(prompt.match(/сумма его цифр равна (\d+)/)?.[1]);
+    const number = Number(answer.match(/Искомое число (\d+)/)?.[1]);
+    if (!olympiadMath.items[index].includes("Для 4 класса:")) failures.push("не сохранён класс");
+    if (!Number.isInteger(difference) || !Number.isInteger(sum) || !Number.isInteger(number)) failures.push("не распознана задача на восстановление числа");
+    else {
+      const tens = Math.floor(number / 10), ones = number % 10;
+      if (tens + ones !== sum || number - (10 * ones + tens) !== difference) failures.push("условие и найденное число не согласуются");
+    }
+    if (failures.length) report.olympiadMathFailures.push({ index, prompt, answer, failures });
+  }
+  if (new Set(olympiadPrompts).size !== 15) report.olympiadMathFailures.push({ topic: "числа до миллиона", failures: ["олимпиадный набор содержит повторы"] });
 
   let transferItemId = 0;
   for (const [subject, topics] of Object.entries(corpus)) {
@@ -619,6 +772,10 @@ try {
       expected: { subject: "Математика", topic: "простые числа", count: 10, grade: 7, tool: "assignment", level: "easy", hasCount: true, hasTool: true, hasLevel: true },
     },
     {
+      input: "Подготовь 5 олимпиадных задач на числа до миллиона для 4 класса",
+      expected: { subject: "Математика", count: 5, grade: 4, tool: "assignment", level: "hard", olympiad: true, hasCount: true, hasTool: true, hasLevel: true },
+    },
+    {
       input: "10 задач на треугольники для 7 класса",
       expected: { subject: "Математика", topic: "треугольники", count: 10, grade: 7, tool: "assignment", hasCount: true, hasTool: true },
     },
@@ -678,6 +835,8 @@ try {
   // Handwritten teacher-style requests, not generated from the topic/template matrix above.
   const independentCases = [
     { input: "Составь десять задач на треугольники для 7 класса", expected: { subject: "Математика", count: 10, grade: 7, tool: "assignment" } },
+    { input: "Составь 10 нестандартных задач на треугольники для 7 класса", expected: { subject: "Математика", count: 10, grade: 7, tool: "assignment", level: "hard", olympiad: true } },
+    { input: "Придумай 5 задач на сообразительность про дроби для 5 класса", expected: { subject: "Математика", count: 5, grade: 5, tool: "assignment", olympiad: true } },
     { input: "Нужно 5 упражнений про силу трения в 7 классе", expected: { subject: "Физика", count: 5, grade: 7, tool: "assignment" } },
     { input: "Подготовь 3 задания: реакция нейтрализации, 8 класс", expected: { subject: "Химия", count: 3, grade: 8, tool: "assignment" } },
     { input: "Сделай четыре карточки по фотосинтезу для шестого класса", expected: { subject: "Биология", count: 4, grade: 6, tool: "flashcards" } },

@@ -124,6 +124,7 @@ export type ParsedCurriculumRequest = {
   hasCount: boolean;
   hasTool: boolean;
   hasLevel: boolean;
+  olympiad: boolean;
 };
 
 const numberWords: Record<string, number> = {
@@ -151,7 +152,8 @@ export function parseCurriculumRequest(
   const countMatch = input.match(qty);
   const requestedCount = countMatch ? (numberWords[countMatch[2].toLocaleLowerCase("ru-RU")] ?? Number(countMatch[2])) : selectedCount;
   const hasCount = Boolean(countMatch);
-  const hardRequest = /посложнее|сложнее|(?<!не)сложн(?:ые?|ых)\s+(?:задач|задан|упражнен|тест|пример)|сложный уровень|повышенн[а-яё]*\s+сложност[а-яё]*|углубл|олимпиад|продвинут|высокого уровня/i.test(input);
+  const hardRequest = /посложнее|сложнее|нестандартн|(?<!не)сложн(?:ые?|ых)\s+(?:задач|задан|упражнен|тест|пример)|сложный уровень|повышенн[а-яё]*\s+сложност[а-яё]*|углубл|олимпиад|продвинут|высокого уровня/i.test(input);
+  const olympiadRequest = /олимпиад|нестандартн|задач[а-яё]*\s+на\s+сообразительность|необычн[а-яё]*\s+(?:задач|задан)/i.test(input);
   const easyRequest = /попроще|полегче|несложн[а-яё]*|прост(?:ые?|ых|ую)\s+(?:задач|задан|упражнен|тест|пример)|простой уровень|базов\w* уровень|начинающ|для новичк|начальн\w* уровень/i.test(input);
   const hasLevel = hardRequest || easyRequest;
   const inferredLevel: CurriculumAiLevel = hardRequest ? "hard" : "easy";
@@ -224,6 +226,7 @@ export function parseCurriculumRequest(
     hasCount,
     hasTool: Boolean(toolMatch),
     hasLevel,
+    olympiad: olympiadRequest,
   };
 }
 
@@ -244,7 +247,7 @@ export function generateCurriculumAi(tool: CurriculumAiTool, topic: string, leve
   if (subject === "Математика") {
     const mathLevel: MathAiLevel = effectiveLevel === "easy" ? "primary" : effectiveLevel === "hard" ? "advanced" : "basic";
     const generationGrade = request.grade ?? (/^\d{1,2}$/.test(mappedGrade) ? Number(mappedGrade) : undefined);
-    const math = generateMathAi("auto" as MathAiMode, mathLevel, safeCount, clean, true, generationGrade);
+    const math = generateMathAi("auto" as MathAiMode, mathLevel, safeCount, clean, true, generationGrade, request.olympiad);
     const gradeLabel = request.grade ? ` · ${request.grade} класс` : "";
     const gradeInstruction = getGradeTaskInstruction(request.grade, effectiveLevel);
     const addGradeInstruction = (item: string) => gradeInstruction ? `${item}\n${gradeInstruction}` : item;

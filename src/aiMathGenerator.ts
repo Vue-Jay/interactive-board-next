@@ -23,6 +23,7 @@ function detect(topic:string,mode:MathAiMode):MathAiMode{
  if(/десятичн.*дроб/.test(t))return"decimals";
  if(/арифметическ.*прогресс|прогресси/.test(t))return"sequence";
  if(/многозначн.*числ|сложен.*вычитан.*многознач/.test(t))return"arithmetic";
+ if(/единиц.*величин|однородн.*величин|числ.*миллион|числ.*1000|величин.*преобраз|неизвестн.*компонент/.test(t))return"arithmetic";
  if(/умножен.*делен.*натуральн|натуральн.*числ.*умножен.*делен/.test(t))return"arithmetic";
  if(/комбинатор|размещен|перестанов|сочетан/.test(t))return"combinatorics";
  if(/делени.*остат|остатк.*делени/.test(t))return"division";
@@ -279,11 +280,47 @@ function gradeTwo(index:number,topic:string){
 }
 
 function supportsGradeThreeTopic(topic:string){
- return /доли величины|доли и дроби в начальной школе|площади фигур|сравнение площадей фигур/i.test(topic);
+ return /доли величины|доли и дроби в начальной школе|площади фигур|сравнение площадей фигур|числа в пределах 1000|сложение вычитание умножение и деление до 1000|единицы величин и их сравнение|порядок действий и неизвестный компонент до 1000|сложение и вычитание однородных величин|двухшаговые задачи на сравнение и величины|периметр и площадь прямоугольника|таблицы диаграммы и логика по математическим данным/i.test(topic);
 }
 
 function gradeThree(index:number,topic:string){
  const i=index,t=topic;
+ if(/числа в пределах 1000/.test(t)){
+  const n=100+((i*137+23)%900),hundreds=Math.floor(n/100)*100,tens=Math.floor(n%100/10)*10,ones=n%10;
+  return {q:`Представь число ${n} в виде суммы разрядных слагаемых.`,a:`${n} = ${hundreds} + ${tens}${ones?` + ${ones}`:""}.`};
+ }
+ if(/сложение вычитание умножение и деление до 1000/.test(t)){
+  const a=120+i*17,b=35+(i*11)%80;
+  if(i%4===0)return {q:`Вычисли ${a} + ${b}.`,a:`${a} + ${b} = ${a+b}.`};
+  if(i%4===1)return {q:`Вычисли ${a+b} − ${b}.`,a:`${a+b} − ${b} = ${a}.`};
+  if(i%4===2){const x=3+i%8,y=4+(i*3)%9;return {q:`Вычисли ${x} · ${y}.`,a:`${x} · ${y} = ${x*y}.`};}
+  const divisor=2+i%8,quotient=12+i;return {q:`Вычисли ${divisor*quotient} : ${divisor}.`,a:`${divisor*quotient} : ${divisor} = ${quotient}.`};
+ }
+ if(/единицы величин и их сравнение/.test(t)){
+  const units:Array<[number,string,string,number]>=[[2+i%8,"кг","г",1000],[3+i%7,"м","см",100],[4+i%6,"ч","мин",60],[2+i%9,"км","м",1000],[3+i%7,"руб.","коп.",100]],values=units[i%units.length],value=values[0]*values[3];
+  return {q:`Переведи ${values[0]} ${values[1]} в ${values[2]}.`,a:`${values[0]} ${values[1]} = ${value} ${values[2]}.`};
+ }
+ if(/порядок действий и неизвестный компонент/.test(t)){
+  if(i%2===0){const a=30+i*7,b=12+i%9,c=3+i%7,result=(a+b)*c;return {q:`Вычисли выражение (${a} + ${b}) · ${c}.`,a:`Сначала ${a} + ${b} = ${a+b}; затем ${a+b} · ${c} = ${result}.`};}
+  const x=24+i,a=11+i%20,b=x+a;return {q:`Найди неизвестное слагаемое: □ + ${a} = ${b}.`,a:`□ = ${b} − ${a} = ${x}.`};
+ }
+ if(/сложение и вычитание однородных величин/.test(t)){
+  const a=125+5*i,b=75+10*(i%7);return {q:`В двух коробках ${a} г и ${b} г крупы. Сколько это вместе?`,a:`${a} г + ${b} г = ${a+b} г.`};
+ }
+ if(/двухшаговые задачи на сравнение и величины/.test(t)){
+  const boxes=3+i%6,each=7+i%9,given=4+i%8,total=boxes*each,answer=total+given;return {q:`В ${boxes} коробках лежало по ${each} карандашей, затем добавили ещё ${given}. Сколько карандашей стало?`,a:`1) ${boxes} · ${each} = ${total}. 2) ${total} + ${given} = ${answer}. Ответ: ${answer} карандашей.`};
+ }
+ if(/периметр и площадь прямоугольника/.test(t)){
+  const a=3+i%14,b=4+(i*3)%12;return {q:`Прямоугольник имеет стороны ${a} см и ${b} см. Найди площадь и периметр.`,a:`S = ${a} · ${b} = ${a*b} см²; P = 2 · (${a} + ${b}) = ${2*(a+b)} см.`};
+ }
+ if(/таблицы диаграммы и логика по математическим данным/.test(t)){
+  const mon=8+i,tue=mon+2+i%6,wed=5+i%9;
+  return {q:`В таблице указано число прочитанных страниц: понедельник — ${mon}, вторник — ${tue}, среда — ${wed}. Сколько страниц прочитали всего и на сколько больше во вторник, чем в среду?`,a:`Всего: ${mon} + ${tue} + ${wed} = ${mon+tue+wed} страниц. Разница: ${tue} − ${wed} = ${tue-wed} страниц.`};
+ }
+ if(/доли и дроби в начальной школе/i.test(t)&&!/доли величины/.test(t)){
+  const whole=36+12*i,third=whole/3,quarter=whole/4;
+  return {q:`В одном наборе ${whole} фишек. Сравни треть набора и четверть набора: на сколько фишек одна доля больше другой?`,a:`Треть: ${whole} : 3 = ${third}. Четверть: ${whole} : 4 = ${quarter}. Разница: ${third} − ${quarter} = ${third-quarter} фишек.`};
+ }
  if(/доли величины|доли и дроби в начальной школе/i.test(t)){
   const divisors=[2,3,4,5,10],d=divisors[i%divisors.length],whole=d*(2+i);
   return {q:`Найди ${d===2?"половину":d===3?"треть":d===4?"четверть":d===5?"пятую часть":"десятую часть"} числа ${whole}.`,a:`${whole} : ${d} = ${whole/d}.`};
@@ -294,6 +331,40 @@ function gradeThree(index:number,topic:string){
  }
  const a=2+i,b=3+(i*3)%12,area=a*b;
  return {q:`Прямоугольник имеет стороны ${a} см и ${b} см. Найди его площадь, считая квадратные сантиметры.`,a:`S = ${a} · ${b} = ${area} см².`};
+}
+
+function supportsGradeFourTopic(topic:string){
+ return /числа до миллиона|единицы величин и преобразования|письменные действия с многозначными числами|выражения и свойства арифметических действий|доли величин и нахождение целого по доле|практические задачи на движение работу и покупки|геометрические построения окружность и пространственные тела|площадь и периметр составных фигур|таблицы логические утверждения и алгоритмы|уравнения с неизвестным компонентом|умножение и деление величин на число/i.test(topic);
+}
+
+function gradeFour(index:number,topic:string){
+ const i=index,t=topic;
+ if(/числа до миллиона/.test(t)){const n=100000+i*17321,h=Math.floor(n/100000)*100000,ten=Math.floor(n%100000/10000)*10000,th=Math.floor(n%10000/1000)*1000,rest=n%1000;return {q:`Запиши число ${n} в виде суммы разрядных слагаемых.`,a:`${n} = ${h} + ${ten} + ${th} + ${rest}.`};}
+ if(/единицы величин и преобразования/.test(t)){const list:Array<[number,string,string,number]>=[[2+i%8,"кг","г",1000],[3+i%7,"м","см",100],[2+i%8,"ч","мин",60],[4+i%6,"л","мл",1000],[2+i%7,"км","м",1000]],x=list[i%list.length];return {q:`Переведи ${x[0]} ${x[1]} в ${x[2]}.`,a:`${x[0]} ${x[1]} = ${x[0]*x[3]} ${x[2]}.`};}
+ if(/письменные действия с многозначными числами/.test(t)){const a=12543+i*137,b=2311+i*29;return i%2===0?{q:`Вычисли письменно ${a} + ${b}.`,a:`${a} + ${b} = ${a+b}.`}:{q:`Вычисли письменно ${a+b} − ${b}.`,a:`${a+b} − ${b} = ${a}.`};}
+ if(/выражения и свойства/.test(t)){const a=120+i*9,b=15+i%14,c=2+i%8;return {q:`Вычисли ${a} + ${b} · ${c}.`,a:`Сначала ${b} · ${c} = ${b*c}; затем ${a} + ${b*c} = ${a+b*c}.`};}
+ if(/доли величин и нахождение целого/.test(t)){const d=[2,3,4,5,10][i%5],part=3+i*2,whole=part*d;return i%2===0?{q:`Найди ${d===2?"половину":d===3?"треть":d===4?"четверть":d===5?"пятую часть":"десятую часть"} числа ${whole}.`,a:`${whole} : ${d} = ${part}.`}:{q:`${d===2?"Половина":d===3?"Треть":d===4?"Четверть":d===5?"Пятая часть":"Десятая часть"} числа равна ${part}. Найди число.`,a:`${part} · ${d} = ${whole}.`};}
+ if(/практические задачи на движение/.test(t)){const speed=4+i%9,time=2+i%8,distance=speed*time;return {q:`Велосипедист ехал со скоростью ${speed} км/ч ${time} ч. Какой путь он проехал?`,a:`s = v · t = ${speed} · ${time} = ${distance} км.`};}
+ if(/геометрические построения/.test(t)){
+  const r=3+i%9;
+  if(i%2===0)return {q:`Окружность имеет радиус ${r} см. Чему равен её диаметр?`,a:`d = 2 · ${r} = ${2*r} см.`};
+  const solids=[
+   ["шестью равными квадратными гранями","куб"],
+   ["одной круглой гранью и одной кривой боковой поверхностью","цилиндр"],
+   ["одной вершиной и круглым основанием","конус"],
+   ["всеми точками поверхности на одинаковом расстоянии от центра","шар"],
+   ["многоугольным основанием и треугольными боковыми гранями","пирамида"],
+   ["шестью прямоугольными гранями, противоположные из которых равны","прямоугольный параллелепипед"],
+   ["двумя равными многоугольными основаниями и боковыми прямоугольными гранями","призма"],
+  ] as const;
+  const [description,name]=solids[Math.floor(i/2)%solids.length];
+  return {q:`Назови пространственную фигуру с ${description}.`,a:`Это ${name}.`};
+ }
+ if(/площадь и периметр составных фигур/.test(t)){const w=8+i%9,h=7+(i*2)%8,a=2+i%4,b=2+(i*3)%4,area=w*h-a*b,perimeter=2*(w+h);return {q:`Из прямоугольника ${w} × ${h} см вырезали в углу прямоугольник ${a} × ${b} см. Найди площадь оставшейся фигуры и её периметр.`,a:`S = ${w} · ${h} − ${a} · ${b} = ${w*h} − ${a*b} = ${area} см². Периметр остаётся ${perimeter} см.`};}
+ if(/таблицы логические утверждения/.test(t)){const first=12+i,step=3+i%7,last=first+step*3;return {q:`Продолжи последовательность по правилу «прибавляй ${step}»: ${first}, ${first+step}, ${first+2*step}, __.`,a:`Следующее число: ${first+2*step} + ${step} = ${last}.`};}
+ if(/уравнения с неизвестным компонентом/.test(t)){const x=27+i*3,a=12+i%19;return {q:`Найди неизвестное слагаемое: □ + ${a} = ${x+a}.`,a:`□ = ${x+a} − ${a} = ${x}.`};}
+ if(/умножение и деление величин/.test(t)){const n=125+25*i,k=2+i%8;return {q:`Одна упаковка содержит ${n} г продукта. Сколько граммов продукта в ${k} одинаковых упаковках?`,a:`${n} г · ${k} = ${n*k} г.`};}
+ return null;
 }
 
 function factorial(n:number):number{return n<=1?1:n*factorial(n-1);}
@@ -343,11 +414,34 @@ function quadraticFunction(index:number){
  return{q:`Построй эскиз графика y = x² ${signed(b)}x ${signed(c)}. Найди нули функции и координаты вершины параболы.`,a:`y = (x − (${first}))(x − (${second})); нули: x₁ = ${first}, x₂ = ${second}. Вершина: x₀ = (${first} + ${second})/2 = ${vertexX}, y₀ = ${vertexY}; вершина (${vertexX}; ${vertexY}).`};
 }
 
-export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,topic:string,withAnswers=true,grade?:number):MathAiResult{
+function olympiadMath(topic:string,index:number){
+ const t=topic.toLocaleLowerCase("ru-RU"),i=index;
+ if(/геометр|треуг|круг|окруж|прямоуг|квадрат|площад|периметр|угол/.test(t)){
+  const perimeter=20+2*(i%13),half=perimeter/2,pairs:Array<[number,number]>=[];
+  for(let a=1;a<=half/2;a++){const b=half-a;if(a<=b)pairs.push([a,b]);}
+  const areas=pairs.map(([a,b])=>a*b),maximum=Math.max(...areas),best=pairs.filter((_,n)=>areas[n]===maximum);
+  const possibilities=pairs.map(([a,b])=>`${a} × ${b}`).join(", ");
+  return {q:`Периметр прямоугольника равен ${perimeter} см, а длины его сторон — целые числа сантиметров. Перечисли все возможные пары сторон и найди максимальную площадь.`,a:`Пусть a ≤ b, тогда a + b = ${half}. Возможные пары: ${possibilities}. Максимальная площадь ${maximum} см² достигается при ${best.map(([a,b])=>`${a} × ${b}`).join(" или ")} см.`};
+ }
+ if(/дол|дроб/.test(t)){
+  const difference=2+i,whole=12*difference,third=whole/3,quarter=whole/4;
+  return {q:`Разность трети некоторого числа и его четверти равна ${difference}. Найди это число.`,a:`1/3 − 1/4 = 1/12 числа. Значит, число равно ${difference} · 12 = ${whole}. Проверка: ${whole} : 3 = ${third}, ${whole} : 4 = ${quarter}, ${third} − ${quarter} = ${difference}.`};
+ }
+ if(/числ|арифмет|вычисл|делим|кратн|разряд|уравнен/.test(t)){
+  const digits=[[7,4],[8,3],[9,2],[6,1],[8,5],[9,6],[7,2],[5,3],[9,4],[6,2],[8,1],[7,5],[9,3],[6,4],[5,2]][i%15],a=digits[0],b=digits[1],sum=a+b,difference=a-b,number=10*a+b,reversed=10*b+a;
+  return {q:`Двузначное число больше числа с переставленными цифрами на ${number-reversed}, а сумма его цифр равна ${sum}. Найди исходное число.`,a:`Разность цифр равна ${difference}, потому что ${number-reversed} : 9 = ${difference}. Тогда цифры: (${sum} + ${difference}) : 2 = ${a} и ${sum} − ${a} = ${b}. Искомое число ${number}.`};
+ }
+ const width=4+i%7,height=3+(i*3)%6,total=width+height,ways=Number(factorial(total)/(factorial(width)*factorial(height)));
+ return {q:`На клетчатом поле нужно пройти из левого нижнего угла в правый верхний, перемещаясь только вправо или вверх. Ширина поля — ${width} клетки, высота — ${height}. Сколько существует кратчайших маршрутов?`,a:`В каждом маршруте ${width} шагов вправо и ${height} вверх. Выбираем места для ${width} шагов среди ${total}: C(${total}, ${width}) = ${ways}. Кратчайших маршрутов ${ways}.`};
+}
+
+export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,topic:string,withAnswers=true,grade?:number,olympiad=false):MathAiResult{
  const actual=detect(topic,mode),safe=Math.max(1,Math.min(20,count)),t=topic.toLowerCase();
  const make=(index:number)=>{
+  if(olympiad)return olympiadMath(t,index);
   if(grade===2&&supportsGradeTwoTopic(t)){const generated=gradeTwo(index,t);if(generated)return generated;}
   if(grade===3&&supportsGradeThreeTopic(t)){const generated=gradeThree(index,t);if(generated)return generated;}
+  if(grade===4&&supportsGradeFourTopic(t)){const generated=gradeFour(index,t);if(generated)return generated;}
   if(actual==="equations"){
   if(/неравен/.test(t)){
     if(/с параметр/.test(t)){
