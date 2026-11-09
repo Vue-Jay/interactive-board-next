@@ -44,22 +44,36 @@ try {
     physicsFocusedChecks: 0,
     physicsFocusedFailures: [],
     gradeMapTopicsBySubject: {},
+    gradeMapTopicsByGrade: {},
     gradeMapMissingTopicsBySubject: {},
+    gradeMapExcludedTopicsBySubject: {},
     gradeMapErrors: [],
   };
 
   for (const [subject, mapping] of Object.entries(gradeMap.subjects ?? {})) {
     const sourceTopics = new Set(corpus[subject] ?? []);
-    const mappedTopics = Object.values(mapping.topicsByGradeBand ?? {}).flat();
+    const mappedTopics = Object.values(mapping.topicsByGradeBand ?? mapping.topicsByGrade ?? {}).flat();
+    report.gradeMapTopicsByGrade[subject] = Object.fromEntries(Object.entries(mapping.topicsByGradeBand ?? mapping.topicsByGrade ?? {}).map(([grade, topics]) => [grade, topics.length]));
+    const excludedTopics = mapping.outOfBasicCourse ?? [];
     report.gradeMapTopicsBySubject[subject] = mappedTopics.length;
     for (const topic of mappedTopics) if (!sourceTopics.has(topic)) report.gradeMapErrors.push(`${subject}: тема отсутствует в корпусе: ${topic}`);
     if (new Set(mappedTopics).size !== mappedTopics.length) report.gradeMapErrors.push(`${subject}: тема размечена более чем в одной полосе классов`);
+    for (const topic of excludedTopics) {
+      if (!sourceTopics.has(topic)) report.gradeMapErrors.push(`${subject}: тема в списке расширения отсутствует в корпусе: ${topic}`);
+      if (mappedTopics.includes(topic)) report.gradeMapErrors.push(`${subject}: тема одновременно размечена в программе и в списке расширения: ${topic}`);
+    }
+    if (new Set(excludedTopics).size !== excludedTopics.length) report.gradeMapErrors.push(`${subject}: тема повторяется в списке расширения`);
+    report.gradeMapExcludedTopicsBySubject[subject] = excludedTopics.length;
     const mappedSet = new Set(mappedTopics);
-    const missingTopics = [...sourceTopics].filter((topic) => !mappedSet.has(topic));
+    const excludedSet = new Set(excludedTopics);
+    const missingTopics = [...sourceTopics].filter((topic) => !mappedSet.has(topic) && !excludedSet.has(topic));
     report.gradeMapMissingTopicsBySubject[subject] = missingTopics.length;
     if (missingTopics.length) report.gradeMapErrors.push(`${subject}: не распределены темы корпуса (${missingTopics.length})`);
-    for (const band of Object.keys(mapping.topicsByGradeBand ?? {})) {
-      if (!/^([1-9]|1[01])(-([1-9]|1[01]))?$/.test(band)) report.gradeMapErrors.push(`${subject}: некорректный диапазон классов ${band}`);
+    const gradeKeys = Object.keys(mapping.topicsByGradeBand ?? mapping.topicsByGrade ?? {});
+    const exactGradeMap = Boolean(mapping.topicsByGrade);
+    for (const band of gradeKeys) {
+      const pattern = exactGradeMap ? /^([1-9]|1[01])$/ : /^([1-9]|1[01])(-([1-9]|1[01]))?$/;
+      if (!pattern.test(band)) report.gradeMapErrors.push(`${subject}: некорректный класс или диапазон классов ${band}`);
     }
   }
 
