@@ -580,6 +580,16 @@ try {
       const values = answer.match(/(\d+) · (\d+) = (\d+); (\d+) \/ (\d+) = (\d+)/)?.slice(1).map(Number);
       return Boolean(values) && values[0] * values[1] === values[2] && values[2] / values[4] === values[5] && values[1] === values[4] && values[0] === values[5];
     } },
+    { topic: "геометрические построения и симметрия в 6 классе", prompt: /отрази её относительно оси|отражена центральной симметрией/i, answer: /[ABC]′\([−-]?\d+; [−-]?\d+\)/i, verify: (_prompt, answer, index) => {
+      const x = 2 + (index % 11), y = 3 + ((index * 2) % 9), kind = index % 3;
+      const expected = kind === 0 ? `A′(−${x}; ${y})` : kind === 1 ? `B′(−${x}; −${y})` : `C′(−${x}; ${y})`;
+      return answer.includes(expected);
+    } },
+    { topic: "периметр и длины в 6 классе", prompt: /начерти прямоугольник со сторонами/i, answer: /P = 2 · \(\d+ \+ \d+\) = \d+ см/i, verify: (prompt, answer) => {
+      const [a, b] = prompt.match(/со сторонами (\d+) см и (\d+) см/)?.slice(1).map(Number) ?? [];
+      const perimeter = 2 * (a + b);
+      return Number.isFinite(perimeter) && answer.includes(`P = 2 · (${a} + ${b}) = ${perimeter} см`);
+    } },
   ];
   for (const check of mathAlignmentCases) {
     const generated = curriculum.generateCurriculumAi("assignment", check.topic, "medium", 15, "Математика");
@@ -591,7 +601,7 @@ try {
     if (prompts.length !== 15 || answers.length !== 15) failures.push(`ожидалось 15 задач и ответов, получено ${prompts.length}/${answers.length}`);
     if (prompts.some((prompt) => !check.prompt.test(prompt))) failures.push("формулировка не соответствует теме");
     if (answers.some((answer) => !check.answer.test(answer))) failures.push("ответ не содержит ожидаемого решения");
-    if (check.verify && prompts.some((prompt, index) => !check.verify(prompt, answers[index]))) failures.push("расчёт ответа не сошёлся с условием");
+    if (check.verify && prompts.some((prompt, index) => !check.verify(prompt, answers[index], index))) failures.push("расчёт ответа не сошёлся с условием");
     if (new Set(prompts).size !== prompts.length) failures.push("есть повторяющиеся задачи");
     if (failures.length) report.mathFocusedFailures.push({ topic: check.topic, detected: generated.detected, firstPrompt: prompts[0], firstAnswer: answers[0], failures });
   }
