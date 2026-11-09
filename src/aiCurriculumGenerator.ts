@@ -1,6 +1,6 @@
 import { generateMathAi, type MathAiLevel, type MathAiMode } from "./aiMathGenerator";
 import { generateSubjectExercise, generateSubjectExerciseVariant } from "./aiSubjectExerciseBank";
-import { classifyCurriculumSubject } from "./aiSubjectIntentClassifier";
+import { classifyCurriculumSubject, matchCanonicalCurriculumTopic } from "./aiSubjectIntentClassifier";
 import { LEKTRUS_SCHOOL_SUBJECTS } from "./lektrusSchoolSubjects";
 
 export type CurriculumAiTool = "assignment" | "quiz" | "flashcards";
@@ -59,6 +59,8 @@ const specificSubjectAliases: [string, RegExp][] = [
 
 export function detectCurriculumSubject(topic: string, selected = ""): string {
   if (LEKTRUS_SCHOOL_SUBJECTS.includes(selected as typeof LEKTRUS_SCHOOL_SUBJECTS[number])) return selected;
+  const canonical = matchCanonicalCurriculumTopic(topic);
+  if (canonical) return canonical;
   for (const [subject, pattern] of specificSubjectAliases) if (pattern.test(topic)) return subject;
   for (const [subject, pattern] of Object.entries(subjectAliases)) if (pattern.test(topic)) return subject;
   return classifyCurriculumSubject(topic);

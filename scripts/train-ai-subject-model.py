@@ -33,8 +33,8 @@ SUBJECTS = [
     "Математика", "Физика", "Химия", "Биология", "География", "Русский язык",
     "Литература", "История", "Обществознание", "Информатика", "Иностранный язык",
 ]
-MAX_FEATURES = 2400
-MIN_DOCUMENT_FREQUENCY = 12
+MAX_FEATURES = 5000
+MIN_DOCUMENT_FREQUENCY = 3
 
 
 def features(text: str) -> set[str]:
@@ -45,6 +45,10 @@ def features(text: str) -> set[str]:
         for size in (3, 4, 5):
             result.update(f"c:{bounded[i:i + size]}" for i in range(max(0, len(bounded) - size + 1)))
     return result
+
+
+def normalize_topic(text: str) -> str:
+    return " ".join(re.findall(r"[а-яёa-z0-9]+", text.lower().replace("ё", "е")))
 
 
 def make_examples(corpus: dict[str, list[str]]) -> tuple[list[tuple[str, str]], list[tuple[str, str]], list[tuple[str, str]]]:
@@ -137,6 +141,18 @@ def main() -> None:
         raise SystemExit(f"В корпусе отсутствуют предметы: {', '.join(sorted(missing))}")
     train, wording_validation, topic_validation = make_examples(corpus)
     model = fit(train)
+    topic_labels: dict[str, str] = {}
+    ambiguous_topics: set[str] = set()
+    for subject in SUBJECTS:
+        for topic in corpus[subject]:
+            normalized = normalize_topic(topic)
+            if normalized in topic_labels and topic_labels[normalized] != subject:
+                ambiguous_topics.add(normalized)
+            else:
+                topic_labels[normalized] = subject
+    for topic in ambiguous_topics:
+        topic_labels.pop(topic, None)
+    model["topicIndex"] = topic_labels
 
     def evaluate(examples: list[tuple[str, str]]) -> tuple[float, float, float, Counter, Counter]:
         totals = Counter()
@@ -147,7 +163,7 @@ def main() -> None:
             predicted, _, confidence = predict(model, text)
             totals[expected] += 1
             correct[expected] += predicted == expected
-            if confidence >= 0.5:
+            if confidence >= 1.5:
                 accepted[expected] += 1
                 accepted_correct[expected] += predicted == expected
         accuracy = sum(correct.values()) / max(1, sum(totals.values()))

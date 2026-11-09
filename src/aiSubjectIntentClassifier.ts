@@ -4,11 +4,12 @@ type Model = {
   subjects: string[];
   priors: Record<string, number>;
   likelihoods: Record<string, Record<string, number>>;
+  topicIndex?: Record<string, string>;
 };
 
 let model: Model | null = null;
 let modelLoad: Promise<void> | null = null;
-const MIN_CONFIDENCE_MARGIN = 0.5;
+const MIN_CONFIDENCE_MARGIN = 1.5;
 const tokenPattern = /[а-яёa-z0-9]+/giu;
 
 /** Loads the compact model only when the assistant is opened. */
@@ -57,6 +58,9 @@ function extractFeatures(text: string): Set<string> {
 export function classifyCurriculumSubject(text: string): string {
   const activeModel = model;
   if (!activeModel) return "";
+  const normalizedTopic = text.toLocaleLowerCase("ru-RU").replace(/ё/g, "е").match(tokenPattern)?.join(" ") ?? "";
+  const canonicalSubject = activeModel.topicIndex?.[normalizedTopic];
+  if (canonicalSubject) return canonicalSubject;
   const features = extractFeatures(text);
   const scored = activeModel.subjects.map((subject) => {
     const likelihoods = activeModel.likelihoods[subject];
@@ -71,4 +75,12 @@ export function classifyCurriculumSubject(text: string): string {
   const margin = scored[0].score - scored[1].score;
   const normalizedMargin = margin / Math.max(1, Math.sqrt(features.size));
   return normalizedMargin >= MIN_CONFIDENCE_MARGIN ? scored[0].subject : "";
+}
+
+/** Returns a subject only for an exact normalized curriculum topic. */
+export function matchCanonicalCurriculumTopic(text: string): string {
+  const activeModel = model;
+  if (!activeModel?.topicIndex) return "";
+  const normalizedTopic = text.toLocaleLowerCase("ru-RU").replace(/ё/g, "е").match(tokenPattern)?.join(" ") ?? "";
+  return activeModel.topicIndex[normalizedTopic] ?? "";
 }

@@ -68,7 +68,7 @@ function linear(level:MathAiLevel){
 }
 function arithmetic(level:MathAiLevel){
  const a=rnd(12,120),b=rnd(2,40);
- if(level==="primary"){const op=pick(["+","−","×"]);if(op==="+")return{q:`${a} + ${b} =`,a:String(a+b)};if(op==="−")return{q:`${a} − ${b} =`,a:String(a-b)};const x=rnd(2,12),y=rnd(2,12);return{q:`${x} × ${y} =`,a:String(x*y)}}
+ if(level==="primary"){const op=pick(["+","−","×"]);if(op==="+")return{q:`${a} + ${b} =`,a:String(a+b)};if(op==="−"){const minuend=Math.max(a,b),subtrahend=Math.min(a,b);return{q:`${minuend} − ${subtrahend} =`,a:String(minuend-subtrahend)}}const x=rnd(2,12),y=rnd(2,12);return{q:`${x} × ${y} =`,a:String(x*y)}}
  const m=rnd(2,12),n=rnd(2,15),c=rnd(2,25),subtract=rnd(2,30);
  return{q:`${m} · (${n} + ${c}) − ${subtract} =`,a:String(m*(n+c)-subtract)};
 }

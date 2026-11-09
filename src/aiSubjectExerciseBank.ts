@@ -53,6 +53,31 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
   const basic = level === "easy";
 
   if (subject === "Физика") {
+    if (/ускорени|средн.*скорост|равномерн.*неравномерн/.test(t)) {
+      const initial = index % 3 === 0 ? 0 : 2 + (index % 6), acceleration = 2 + (index % 5), time = 2 + (index % 4);
+      const final = initial + acceleration * time, distance = initial * time + acceleration * time * time / 2;
+      return { prompt: `Тело двигалось с начальной скоростью ${initial} м/с и постоянным ускорением ${acceleration} м/с² в течение ${time} с. Найди конечную скорость и путь.`, answer: `v = v₀ + at = ${initial} + ${acceleration}·${time} = ${final} м/с; s = v₀t + at²/2 = ${initial}·${time} + ${acceleration}·${time}²/2 = ${distance} м.` };
+    }
+    if (/архимед|плавани.*тел/.test(t)) {
+      const volume = 2 + (index % 8), density = 1000, g = 10, buoyant = density * g * volume / 1000;
+      return { prompt: `Тело полностью погружено в воду (ρ = 1000 кг/м³), его объём ${volume / 1000} м³. Прими g = 10 Н/кг. Найди выталкивающую силу.`, answer: `Fₐ = ρgV = 1000·10·${volume / 1000} = ${buoyant} Н.` };
+    }
+    if (/кинетическ.*энерг/.test(t)) {
+      const mass = 2 + (index % 7), speed = 2 + (index % 6), energy = mass * speed * speed / 2;
+      return { prompt: `Тело массой ${mass} кг движется со скоростью ${speed} м/с. Найди его кинетическую энергию.`, answer: `Eₖ = mv²/2 = ${mass}·${speed}²/2 = ${energy} Дж.` };
+    }
+    if (/потенциальн.*энерг|сохранени.*механическ.*энерг/.test(t)) {
+      const mass = 2 + (index % 7), height = 2 + (index % 6), energy = mass * 10 * height;
+      return { prompt: `Тело массой ${mass} кг подняли на высоту ${height} м. Прими g = 10 Н/кг. Найди его потенциальную энергию относительно выбранного нулевого уровня.`, answer: `Eₚ = mgh = ${mass}·10·${height} = ${energy} Дж.` };
+    }
+    if (/теплот|удельн.*тепло|парообразован|плавлени|кристаллизац/.test(t)) {
+      const mass = 2 + (index % 8), capacity = 4200, delta = 5 + (index % 16), heat = mass * capacity * delta;
+      return { prompt: `Нагревают ${mass} кг воды (c = 4200 Дж/(кг·°C)) на ${delta}°C. Найди количество теплоты.`, answer: `Q = cmΔt = 4200·${mass}·${delta} = ${heat.toLocaleString("ru-RU")} Дж.` };
+    }
+    if (/электрическ.*мощност|мощност.*электрическ|работа электрическ.*ток|джоуля/.test(t)) {
+      const voltage = 6 + (index % 5) * 3, current = 2 + (index % 4), time = 5 + (index % 8), power = voltage * current;
+      return { prompt: `При напряжении ${voltage} В через прибор идёт ток ${current} А в течение ${time} с. Найди мощность прибора и работу тока.`, answer: `P = UI = ${voltage}·${current} = ${power} Вт; A = Pt = ${power}·${time} = ${power * time} Дж.` };
+    }
     if (/ньютон|равнодейств|второй закон/.test(t)) {
       const mass = 2 + (index % 8), acceleration = 2 + ((index * 2) % 7);
       return { prompt: `На тело массой ${mass} кг действует постоянная сила, сообщающая ускорение ${acceleration} м/с². Найди равнодействующую силу.`, answer: `По второму закону Ньютона F = m · a = ${mass} · ${acceleration} = ${mass * acceleration} Н.` };
@@ -80,6 +105,18 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
   }
 
   if (subject === "Химия") {
+    if (/массов.*дол.*раствор|раствор.*массов.*дол/.test(t)) {
+      const solute = 10 + (index % 5) * 5, solvent = 90 + (index % 4) * 10, total = solute + solvent;
+      return { prompt: `В ${solvent} г воды растворили ${solute} г соли. Найди массовую долю соли в растворе в процентах.`, answer: `m(раствора) = ${total} г; ω = ${solute}/${total}·100% ≈ ${(solute / total * 100).toLocaleString("ru-RU", { maximumFractionDigits: 2 })}%.` };
+    }
+    if (/количеств.*веществ|моль|авогадро/.test(t)) {
+      const amount = 1 + (index % 5);
+      return { prompt: `Сколько структурных частиц содержится в ${amount} моль вещества? Используй Nₐ = 6,02·10²³ моль⁻¹.`, answer: `N = nNₐ = ${amount}·6,02·10²³ = ${amount === 1 ? "6,02" : (6.02 * amount).toFixed(2).replace(".", ",")}·10²³ частиц.` };
+    }
+    if (/выход.*продукт|расчёт.*уравнен|расчет.*уравнен/.test(t)) {
+      const theoretical = 20 + (index % 8) * 5, percent = 60 + (index % 5) * 5, actual = theoretical * percent / 100;
+      return { prompt: `По уравнению реакции теоретически можно получить ${theoretical} г продукта. Практический выход составляет ${percent}%. Найди массу реально полученного продукта.`, answer: `m(практ.) = m(теор.)·η/100% = ${theoretical}·${percent}/100 = ${actual} г.` };
+    }
     if (/атом|протон|электрон|заряд/.test(t)) {
       const z = 6 + (index % 12);
       return { prompt: `У нейтрального атома порядковый номер ${z}. Сколько в ядре протонов и сколько электронов в атоме?`, answer: `Протонов ${z}; в нейтральном атоме электронов тоже ${z}. Число нейтронов без массового числа определить нельзя.` };
@@ -111,6 +148,13 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
   }
 
   if (subject === "Биология") {
+    if (/моногибрид|законы мендел|генотип|фенотип|дигибрид|сцеплен.*пол/.test(t)) {
+      const parent = index % 2 === 0 ? "Aa × Aa" : "AA × aa";
+      const answer = parent === "Aa × Aa"
+        ? "Гаметы каждого родителя: A и a. Генотипы потомства: 1 AA : 2 Aa : 1 aa; при полном доминировании фенотипы: 3 с доминантным признаком : 1 с рецессивным."
+        : "Гаметы: первый родитель передаёт A, второй — a. Всё потомство имеет генотип Aa и проявляет доминантный признак при полном доминировании.";
+      return { prompt: `У гороха аллель A полностью доминирует над a. Скрести родителей ${parent}. Запиши возможные генотипы потомства и соотношение фенотипов.`, answer };
+    }
     if (/клетк|органоид/.test(t)) {
       const pairs = [
         ["ядро", "хранит наследственную информацию и управляет работой клетки"],
@@ -150,6 +194,11 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
       const cm = 2 + (index % 7), scale = choose([100_000, 200_000, 500_000], index);
       const km = cm * scale / 100_000;
       return { prompt: `На карте масштаба 1:${scale.toLocaleString("ru-RU")} расстояние между объектами ${cm} см. Найди расстояние на местности в километрах.`, answer: `${cm} · ${scale.toLocaleString("ru-RU")} см = ${km.toLocaleString("ru-RU")} см = ${km} км.` };
+    }
+    if (/ориентирован.*местност|сторон.*горизонт|азимут/.test(t)) {
+      const azimuth = [0, 45, 90, 135, 180, 225, 270, 315][index % 8];
+      const direction = ["север", "северо-восток", "восток", "юго-восток", "юг", "юго-запад", "запад", "северо-запад"][index % 8];
+      return { prompt: `Компас показывает азимут ${azimuth}°. В каком направлении от наблюдателя расположен объект?`, answer: `Азимут отсчитывается по часовой стрелке от севера: ${azimuth}° — ${direction}.` };
     }
     if (/часов.*пояс|часов.*разниц|времен.*пояс/.test(t)) {
       return { prompt: "В пункте А 12:00, а пункт Б расположен на 3 часовых пояса восточнее. Определи местное время в пункте Б и объясни ход решения.", answer: "В пункте Б 15:00: при перемещении к востоку местное время увеличивается." };
