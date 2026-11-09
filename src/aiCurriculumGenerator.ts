@@ -106,10 +106,11 @@ const specificSubjectAliases: [string, RegExp][] = [
 
 export function detectCurriculumSubject(topic: string, selected = ""): string {
   if (LEKTRUS_SCHOOL_SUBJECTS.includes(selected as typeof LEKTRUS_SCHOOL_SUBJECTS[number])) return selected;
-  // Specific phrases take precedence over broad aliases/corpus labels where words overlap.
-  for (const [subject, pattern] of specificSubjectAliases) if (pattern.test(topic)) return subject;
+  // Exact catalog labels carry an authoritative subject; only free-form requests
+  // should fall through to phrase aliases that can overlap across subjects.
   const canonical = matchCanonicalCurriculumTopic(topic);
   if (canonical) return canonical;
+  for (const [subject, pattern] of specificSubjectAliases) if (pattern.test(topic)) return subject;
   for (const [subject, pattern] of Object.entries(subjectAliases)) if (pattern.test(topic)) return subject;
   return classifyCurriculumSubject(topic);
 }
