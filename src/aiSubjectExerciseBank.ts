@@ -416,6 +416,36 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
     return choose(tasks, index);
   }
   if (subject === "Литература") {
+    // Author and genre pairs are taken from the official 2025 federal literature program:
+    // https://edsoo.ru/wp-content/uploads/2025/07/frp_literatura_5-9-klassy_2025.pdf
+    // https://edsoo.ru/wp-content/uploads/2025/07/2025_soo_frp_literatura_10_11_baz.pdf
+    const verifiedWorks: { pattern: RegExp; title: string; author: string; genre: string }[] = [
+      { pattern: /евгени[а-яё]*\s+онегин[а-яё]*/i, title: "Евгений Онегин", author: "А.С. Пушкин", genre: "роман в стихах" },
+      { pattern: /капитанск[а-яё]*\s+дочк[а-яё]*/i, title: "Капитанская дочка", author: "А.С. Пушкин", genre: "роман" },
+      { pattern: /м[её]ртв[а-яё]*\s+душ[а-яё]*/i, title: "Мёртвые души", author: "Н.В. Гоголь", genre: "поэма" },
+      { pattern: /ревизор/i, title: "Ревизор", author: "Н.В. Гоголь", genre: "комедия" },
+      { pattern: /горе\s+от\s+ума/i, title: "Горе от ума", author: "А.С. Грибоедов", genre: "комедия" },
+      { pattern: /герой\s+нашего\s+времени/i, title: "Герой нашего времени", author: "М.Ю. Лермонтов", genre: "роман" },
+      { pattern: /мцыри/i, title: "Мцыри", author: "М.Ю. Лермонтов", genre: "поэма" },
+      { pattern: /отц[ыа]\s+и\s+дет[ие]/i, title: "Отцы и дети", author: "И.С. Тургенев", genre: "роман" },
+      { pattern: /война\s+и\s+мир/i, title: "Война и мир", author: "Л.Н. Толстой", genre: "роман-эпопея" },
+      { pattern: /преступлени[ея]\s+и\s+наказани[ея]/i, title: "Преступление и наказание", author: "Ф.М. Достоевский", genre: "роман" },
+      { pattern: /мастер\s+и\s+маргарита/i, title: "Мастер и Маргарита", author: "М.А. Булгаков", genre: "роман" },
+    ];
+    const verifiedWork = verifiedWorks.find((work) => work.pattern.test(topic));
+    if (verifiedWork) {
+      const prompts = [
+        `Кто автор произведения «${verifiedWork.title}» и каков его жанр?`,
+        `Заполни карточку произведения «${verifiedWork.title}»: укажи автора и жанр.`,
+        `Назови автора «${verifiedWork.title}» и определи жанр произведения.`,
+        `Проведи библиографическую проверку: найди в учебной программе автора и жанр произведения «${verifiedWork.title}».`,
+        `Сопоставь «${verifiedWork.title}» с автором и жанром: запиши обе характеристики.`,
+      ];
+      return {
+        prompt: choose(prompts, index),
+        answer: `Автор — ${verifiedWork.author}; жанр — ${verifiedWork.genre}.`,
+      };
+    }
     const tasks = [
       { prompt: `По теме «${topic}» сформулируй тезис о произведении или герое и подбери два эпизода, которые его подтверждают. Не придумывай цитаты: укажи главы или сцены для проверки по тексту.`, answer: "Ключ проверки: тезис отвечает на вопрос темы; оба эпизода действительно есть в произведении; после каждого объяснена связь с тезисом." },
       { prompt: `Опиши героя по теме «${topic}» через его поступок, слова и отношение к другим персонажам. Подкрепи вывод двумя эпизодами из текста.`, answer: "Ключ проверки: черты характера выводятся из поступков и речи; эпизоды реально присутствуют в произведении и поясняют вывод." },

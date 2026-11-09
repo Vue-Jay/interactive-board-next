@@ -71,6 +71,8 @@ try {
     physicsFocusedFailures: [],
     socialStudiesFocusedChecks: 0,
     socialStudiesFocusedFailures: [],
+    literatureFactChecks: 0,
+    literatureFactFailures: [],
     gradeMapTopicsBySubject: {},
     gradeMapTopicsByGrade: {},
     gradeMapMissingTopicsBySubject: {},
@@ -461,6 +463,33 @@ try {
     if (failures.length) report.socialStudiesFocusedFailures.push({ topic: check.topic, detected: generated.detected, firstPrompt: prompts[0], firstAnswer: answers[0], verificationExamples: mismatchedAnswers.slice(0, 2), failures });
   }
 
+  const literatureFactCases = [
+    { topic: "Евгений Онегин и образ Татьяны Лариной", title: "Евгений Онегин", answer: "Автор — А.С. Пушкин; жанр — роман в стихах." },
+    { topic: "Капитанская дочка и тема чести", title: "Капитанская дочка", answer: "Автор — А.С. Пушкин; жанр — роман." },
+    { topic: "Мёртвые души и образ помещиков", title: "Мёртвые души", answer: "Автор — Н.В. Гоголь; жанр — поэма." },
+    { topic: "Ревизор и комическое в пьесе", title: "Ревизор", answer: "Автор — Н.В. Гоголь; жанр — комедия." },
+    { topic: "Горе от ума и конфликт поколений", title: "Горе от ума", answer: "Автор — А.С. Грибоедов; жанр — комедия." },
+    { topic: "Герой нашего времени и композиция романа", title: "Герой нашего времени", answer: "Автор — М.Ю. Лермонтов; жанр — роман." },
+    { topic: "поэма Мцыри и романтический герой", title: "Мцыри", answer: "Автор — М.Ю. Лермонтов; жанр — поэма." },
+    { topic: "проблематика романа Отцы и дети", title: "Отцы и дети", answer: "Автор — И.С. Тургенев; жанр — роман." },
+    { topic: "Отцы и дети и спор поколений", title: "Отцы и дети", answer: "Автор — И.С. Тургенев; жанр — роман." },
+    { topic: "Война и мир и нравственный выбор героев", title: "Война и мир", answer: "Автор — Л.Н. Толстой; жанр — роман-эпопея." },
+    { topic: "Преступление и наказание и теория Раскольникова", title: "Преступление и наказание", answer: "Автор — Ф.М. Достоевский; жанр — роман." },
+    { topic: "Мастер и Маргарита и нравственная проблематика", title: "Мастер и Маргарита", answer: "Автор — М.А. Булгаков; жанр — роман." },
+  ];
+  for (const check of literatureFactCases) {
+    const generated = curriculum.generateCurriculumAi("assignment", check.topic, "medium", 15, "Литература");
+    report.literatureFactChecks += 1;
+    const firstPrompt = generated.items[0]?.replace(/^\d+\.\s*/, "") ?? "";
+    const firstAnswer = generated.answers[0]?.replace(/^\d+\.\s*/, "") ?? "";
+    const failures = [];
+    if (generated.subject !== "Литература") failures.push(`предмет определён как ${generated.subject}`);
+    if (!firstPrompt.includes(check.title)) failures.push("задание не относится к проверяемому произведению");
+    if (firstAnswer !== check.answer) failures.push(`неверный ключ: ${firstAnswer}`);
+    if (firstAnswer.startsWith("Ключ проверки:")) failures.push("вместо конкретного ответа выдан общий критерий");
+    if (failures.length) report.literatureFactFailures.push({ topic: check.topic, firstPrompt, firstAnswer, failures });
+  }
+
   const cases = [
     {
       input: "Сделай 10 простых задач по математике на простые числа для 7 класса",
@@ -700,7 +729,8 @@ try {
     || report.offlineGenerationCases !== report.topics
     || report.mathFocusedFailures.length > 0
     || report.physicsFocusedFailures.length > 0
-    || report.socialStudiesFocusedFailures.length > 0;
+    || report.socialStudiesFocusedFailures.length > 0
+    || report.literatureFactFailures.length > 0;
   if (failures) process.exitCode = 1;
 } finally {
   await server.close();
