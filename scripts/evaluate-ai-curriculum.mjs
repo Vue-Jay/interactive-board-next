@@ -854,6 +854,8 @@ try {
   const independentCases = [
     { input: "Составь десять задач на треугольники для 7 класса", expected: { subject: "Математика", count: 10, grade: 7, tool: "assignment" } },
     { input: "Составь 10 нестандартных задач на треугольники для 7 класса", expected: { subject: "Математика", count: 10, grade: 7, tool: "assignment", level: "hard", olympiad: true } },
+    { input: "Составь 5 нестандартных задач по математике на треугольники для 8 класса", expected: { subject: "Математика", topic: "треугольники", count: 5, grade: 8, tool: "assignment", level: "hard", olympiad: true } },
+    { input: "Подготовь 4 нестандартных задания по физике на рычаги для 7 класса", expected: { subject: "Физика", topic: "рычаги", count: 4, grade: 7, tool: "assignment", level: "hard", olympiad: true } },
     { input: "Придумай 5 задач на сообразительность про дроби для 5 класса", expected: { subject: "Математика", count: 5, grade: 5, tool: "assignment", olympiad: true } },
     { input: "Нужно 5 упражнений про силу трения в 7 классе", expected: { subject: "Физика", count: 5, grade: 7, tool: "assignment" } },
     { input: "Подготовь 3 задания: реакция нейтрализации, 8 класс", expected: { subject: "Химия", count: 3, grade: 8, tool: "assignment" } },
