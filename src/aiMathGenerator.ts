@@ -420,13 +420,39 @@ function derivative(index:number,topic:string){
  const coefficient=2+(index%7),power=2+(index%4),linear=1+(index%6);
  return{q:`Найди производную многочлена f(x) = ${coefficient}x^${power} + ${linear}x² − 5.`,a:`f′(x) = ${coefficient*power}x^${power-1} + ${2*linear}x.`};
 }
+function integral(index:number){
+ const power=2+index,coefficient=power+1,value=2**power;
+ return{q:`Найди первообразную для f(x) = ${coefficient}x^${power-1}, затем вычисли определённый интеграл от 0 до 2 этой функции.`,a:`F(x) = x^${power} + C, так как F′(x) = ${coefficient}x^${power-1}. По формуле Ньютона — Лейбница: ∫₀² ${coefficient}x^${power-1} dx = F(2) − F(0) = 2^${power} = ${value}.`};
+}
 function quadraticFunction(index:number){
  const first=-4+(index%7),gap=2+2*(index%4),second=first+gap,b=-(first+second),c=first*second,vertexX=(first+second)/2,vertexY=-(gap*gap)/4;
  return{q:`Построй эскиз графика y = x² ${signed(b)}x ${signed(c)}. Найди нули функции и координаты вершины параболы.`,a:`y = (x − (${first}))(x − (${second})); нули: x₁ = ${first}, x₂ = ${second}. Вершина: x₀ = (${first} + ${second})/2 = ${vertexX}, y₀ = ${vertexY}; вершина (${vertexX}; ${vertexY}).`};
 }
 
+function spatialSymmetryTask(index:number){
+ const i=index,size=2+(i%9),solid=i%5;
+  if(solid===0)return{q:`Куб имеет ребро ${size} см. Сколько плоскостей симметрии у куба? Назови, где они проходят.`,a:`У куба 9 плоскостей симметрии: 3 проходят через пары противоположных граней, ещё 6 — через диагонали противоположных рёбер.`};
+  if(solid===1)return{q:`Правильный тетраэдр имеет ребро ${size} см. Сколько плоскостей симметрии у него?`,a:`У правильного тетраэдра 6 плоскостей симметрии: каждая проходит через одно ребро и середину противоположного ребра.`};
+  if(solid===2){const height=size*2;return{q:`Правильная четырёхугольная призма имеет квадратное основание со стороной ${size} см и высоту ${height} см. Сколько плоскостей симметрии у призмы?`,a:`У призмы 5 плоскостей симметрии: 4 вертикальные плоскости симметрии квадратного основания и 1 горизонтальная плоскость посередине высоты.`};}
+  if(solid===3){const a=size,b=size+2,c=size+5;return{q:`Прямоугольный параллелепипед имеет попарно разные размеры ${a} × ${b} × ${c} см. Сколько плоскостей симметрии у него?`,a:`У такого параллелепипеда 3 плоскости симметрии: срединные плоскости, параллельные каждой паре противоположных граней.`};}
+  return{q:`Правильный октаэдр имеет ребро ${size} см. Сколько плоскостей симметрии у него?`,a:`У правильного октаэдра 9 плоскостей симметрии.`};
+}
+
 function olympiadMath(topic:string,index:number){
  const t=topic.toLocaleLowerCase("ru-RU"),i=index;
+ if(/принцип дирихле|ящик|голубин|принципа ящиков/.test(t)){
+  const objects=5+i,boxes=objects-1;
+  return{q:`В ${boxes} ящиках распределили ${objects} предметов. Докажи, что в каком-то ящике лежат как минимум два предмета, и покажи распределение, при котором нельзя гарантировать наличие трёх предметов в одном ящике.`,a:`Если бы в каждом ящике лежал не более чем один предмет, всего поместилось бы не более ${boxes} предметов. Но их ${objects}, поэтому по принципу Дирихле хотя бы в одном ящике лежат не менее двух. Чтобы показать, что гарантировать три нельзя, положим по одному предмету в каждый ящик, а оставшийся — в первый: там будет ровно два, в остальных — по одному.`};
+ }
+ if(/инвариант/.test(t)){
+  const size=4+2*i;
+  return{q:`На шахматной доске ${size} × ${size} удалили два противоположных угловых поля. Можно ли покрыть оставшуюся часть костяшками домино 1 × 2 без наложений и пропусков? Обоснуй ответ с помощью раскраски.`,a:`Нет. Противоположные угловые поля доски чётного размера одного цвета. После их удаления клеток этого цвета на две меньше, чем клеток другого цвета. Каждая костяшка домино закрывает ровно одно поле каждого цвета, поэтому разность цветов сохранить нельзя.`};
+ }
+ if(/граф/.test(t)){
+  const vertices=5+i,edges=vertices-1;
+  return{q:`В простом графе ${vertices} вершин. Докажи, что если в нём ровно ${edges} ребра и граф связный, то он является деревом.`,a:`Связный граф на ${vertices} вершинах содержит не менее ${vertices-1} рёбер. При ровно ${edges} рёбрах цикл невозможен: удаление любого ребра цикла оставило бы граф связным, но рёбер стало бы меньше ${vertices-1}. Значит, граф связный и ациклический, то есть дерево.`};
+ }
+ if(/симметри.*пространств|пространств.*симметри/.test(t))return spatialSymmetryTask(i);
  if(/геометр|треуг|круг|окруж|прямоуг|квадрат|площад|периметр|угол/.test(t)){
   const perimeter=20+2*(i%13),half=perimeter/2,pairs:Array<[number,number]>=[];
   for(let a=1;a<=half/2;a++){const b=half-a;if(a<=b)pairs.push([a,b]);}
@@ -442,14 +468,20 @@ function olympiadMath(topic:string,index:number){
   const digits=[[7,4],[8,3],[9,2],[6,1],[8,5],[9,6],[7,2],[5,3],[9,4],[6,2],[8,1],[7,5],[9,3],[6,4],[5,2]][i%15],a=digits[0],b=digits[1],sum=a+b,difference=a-b,number=10*a+b,reversed=10*b+a;
   return {q:`Двузначное число больше числа с переставленными цифрами на ${number-reversed}, а сумма его цифр равна ${sum}. Найди исходное число.`,a:`Разность цифр равна ${difference}, потому что ${number-reversed} : 9 = ${difference}. Тогда цифры: (${sum} + ${difference}) : 2 = ${a} и ${sum} − ${a} = ${b}. Искомое число ${number}.`};
  }
- const width=4+i%7,height=3+(i*3)%6,total=width+height,ways=Number(factorial(total)/(factorial(width)*factorial(height)));
- return {q:`На клетчатом поле нужно пройти из левого нижнего угла в правый верхний, перемещаясь только вправо или вверх. Ширина поля — ${width} клетки, высота — ${height}. Сколько существует кратчайших маршрутов?`,a:`В каждом маршруте ${width} шагов вправо и ${height} вверх. Выбираем места для ${width} шагов среди ${total}: C(${total}, ${width}) = ${ways}. Кратчайших маршрутов ${ways}.`};
+ const prompts=[
+  `Сформулируй для темы «${topic}» утверждение, которое можно проверить на примерах. Приведи пример и контрпример, затем обоснуй вывод.`,
+  `Составь собственную задачу на тему «${topic}» с двумя способами решения. Запиши условие, оба решения и сравни рассуждения.`,
+  `Исследуй тему «${topic}»: измени одно условие подходящей задачи, предскажи результат и проверь его решением.`,
+  `Придумай задачу на тему «${topic}», где нужно заметить закономерность. Покажи первые случаи, сформулируй правило и докажи его.`,
+ ];
+ return {q:`Задача ${i+1}. ${prompts[i%prompts.length]}`,a:`Критерии проверки: составленная задача относится к теме «${topic}», имеет достаточно данных и однозначно сформулированный вопрос; решение логически следует из условия; приведённая проверка подтверждает ответ.`};
 }
 
 export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,topic:string,withAnswers=true,grade?:number,olympiad=false):MathAiResult{
  const actual=detect(topic,mode),safe=Math.max(1,Math.min(20,count)),t=topic.toLowerCase();
  const make=(index:number)=>{
   if(olympiad)return olympiadMath(t,index);
+  if(/первообразн|интеграл/.test(t))return integral(index);
   if(grade===2&&supportsGradeTwoTopic(t)){const generated=gradeTwo(index,t);if(generated)return generated;}
   if(grade===3&&supportsGradeThreeTopic(t)){const generated=gradeThree(index,t);if(generated)return generated;}
   if(grade===4&&supportsGradeFourTopic(t)){const generated=gradeFour(index,t);if(generated)return generated;}
@@ -494,6 +526,7 @@ export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,to
   if(actual==="rounding")return rounding(index,t);
   if(actual==="vectors")return vectors(index,t);
   if(actual==="geometry"){
+   if(/симметри.*пространств|пространств.*симметри/.test(t))return spatialSymmetryTask(index);
    if(/треугольники и четырёхугольники/.test(t)){
     const a=4+(index%13),b=6+((index*3)%11);
     if(index%2===0){const perimeter=2*(a+b);return{q:`Прямоугольник имеет стороны ${a} см и ${b} см. Найди его периметр и объясни, почему достаточно сложить длины двух соседних сторон и умножить сумму на 2.`,a:`P = 2 · (${a} + ${b}) = ${perimeter} см: у прямоугольника противоположные стороны равны.`};}

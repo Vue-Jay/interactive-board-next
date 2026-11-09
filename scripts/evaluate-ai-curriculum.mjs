@@ -444,6 +444,26 @@ try {
   }
   if (new Set(olympiadPrompts).size !== 15) report.olympiadMathFailures.push({ topic: "числа до миллиона", failures: ["олимпиадный набор содержит повторы"] });
 
+  for (const [request, topicPattern] of [
+    ["Составь 5 олимпиадных задач по математике на принцип Дирихле для 8 класса", /принцип|ящик|предмет/iu],
+    ["Придумай 5 нестандартных задач по математике на инварианты для 8 класса", /инвариант|шахматн|домино/iu],
+    ["Составь 5 олимпиадных задач по математике на комбинаторику для 8 класса", /комбинаторик/iu],
+  ]) {
+    const generated = curriculum.generateCurriculumAi("assignment", request, "hard", 5, "Математика");
+    const prompts = generated.items.map((item) => item.split("\nДля 8 класса:")[0]);
+    const topic = generated.title;
+    for (let index = 0; index < prompts.length; index += 1) {
+      report.olympiadMathChecks += 1;
+      const failures = [];
+      if (!topicPattern.test(prompts[index]) && !topicPattern.test(generated.answers[index] ?? "")) failures.push("задание не связано с запрошенной нестандартной темой");
+      if (!generated.answers[index]?.trim()) failures.push("нет ответа или критериев проверки");
+      if (/клетчатом поле|кратчайших маршрутов/iu.test(prompts[index]) && !/путь|маршрут/iu.test(topic)) failures.push("вместо запрошенной темы подставлен посторонний шаблон маршрутов");
+      if (!generated.items[index].includes("Для 8 класса:")) failures.push("не сохранён класс");
+      if (failures.length) report.olympiadMathFailures.push({ request, index, prompt: prompts[index], answer: generated.answers[index], failures });
+    }
+    if (new Set(prompts).size !== 5) report.olympiadMathFailures.push({ request, failures: ["набор содержит повторы"] });
+  }
+
   let transferItemId = 0;
   for (const [subject, topics] of Object.entries(corpus)) {
     for (const topic of topics) {
