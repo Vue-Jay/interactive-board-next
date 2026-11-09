@@ -42,7 +42,7 @@ SUBJECTS = [
     "Математика", "Физика", "Химия", "Биология", "География", "Русский язык",
     "Литература", "История", "Обществознание", "Информатика", "Иностранный язык",
 ]
-MAX_FEATURES = 5790
+MAX_FEATURES = 8000
 MAX_MODEL_BYTES = 1_500_000
 MIN_DOCUMENT_FREQUENCY = 3
 CONFIDENCE_TARGET_ACCURACY = 0.99
@@ -51,6 +51,7 @@ CONFIDENCE_TARGET_ACCURACY = 0.99
 def features(text: str) -> set[str]:
     words = TOKEN_RE.findall(text.lower().replace("ё", "е"))
     result = {f"w:{word}" for word in words if len(word) > 1}
+    result.update(f"b:{left}_{right}" for left, right in zip(words, words[1:]))
     for word in words:
         bounded = f"^{word}$"
         for size in (3, 4, 5):
@@ -112,7 +113,10 @@ def fit(examples: list[tuple[str, str]]) -> dict:
         return score
 
     ranked_features = sorted(
-        ((mutual_information(feature), feature) for feature in candidates),
+        (
+            (mutual_information(feature) * (0.5 if feature.startswith("b:") else 1), feature)
+            for feature in candidates
+        ),
         key=lambda item: (-item[0], item[1]),
     )
     vocabulary_list = [feature for _, feature in ranked_features[:MAX_FEATURES]]
@@ -126,22 +130,34 @@ def fit(examples: list[tuple[str, str]]) -> dict:
     total_docs = sum(doc_counts.values())
     feature_count = len(vocabulary)
     priors = {subject: math.log(doc_counts[subject] / total_docs) for subject in SUBJECTS}
-    likelihoods: dict[str, dict[str, float]] = {}
+    feature_index = {feature: index for index, feature in enumerate(vocabulary_list)}
+    weights: dict[str, list[float]] = {}
     for subject in SUBJECTS:
         denominator = token_totals[subject] + feature_count
-        likelihoods[subject] = {
-            feature: round(math.log((token_counts[subject][feature] + 1) / denominator), 3)
+        weights[subject] = [
+            round(math.log((token_counts[subject][feature] + 1) / denominator), 3)
             for feature in vocabulary_list
-        }
-    return {"subjects": SUBJECTS, "priors": priors, "likelihoods": likelihoods, "vocabularySize": feature_count}
+        ]
+    return {
+        "subjects": SUBJECTS,
+        "priors": priors,
+        "features": vocabulary_list,
+        "featureIndex": feature_index,
+        "featureWeights": weights,
+        "vocabularySize": feature_count,
+    }
 
 
 def predict(model: dict, text: str) -> tuple[str, float, float]:
     present = features(text)
     scores = []
     for subject in model["subjects"]:
-        likelihood = model["likelihoods"][subject]
-        score = model["priors"][subject] + sum(likelihood[feature] for feature in present if feature in likelihood)
+        weights = model["featureWeights"][subject]
+        score = model["priors"][subject] + sum(
+            weights[model["featureIndex"][feature]]
+            for feature in present
+            if feature in model["featureIndex"]
+        )
         scores.append((score, subject))
     scores.sort(reverse=True)
     margin = scores[0][0] - scores[1][0]
@@ -226,7 +242,8 @@ def main() -> None:
     wording_accuracy, wording_coverage, wording_confident_accuracy, correct, totals = evaluate(wording_validation)
     topic_accuracy, topic_coverage, topic_confident_accuracy, _, _ = evaluate(topic_validation)
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    serialized = json.dumps(model, ensure_ascii=False, separators=(",", ":")) + "\n"
+    serialized_model = {key: value for key, value in model.items() if key != "featureIndex"}
+    serialized = json.dumps(serialized_model, ensure_ascii=False, separators=(",", ":")) + "\n"
     serialized_bytes = serialized.encode("utf-8")
     if len(serialized_bytes) > MAX_MODEL_BYTES:
         raise SystemExit(

@@ -11,7 +11,7 @@ const output = ts.transpileModule(source, {
   fileName: file,
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
 }).outputText;
-const createLoader = () => new Function(`${output}\nreturn { loadCurriculumSubjectModel, matchCanonicalCurriculumTopic };`)();
+const createLoader = () => new Function(`${output}\nreturn { loadCurriculumSubjectModel, matchCanonicalCurriculumTopic, classifyCurriculumSubject };`)();
 const values = new Map();
 globalThis.localStorage = {
   getItem: key => values.get(key) ?? null,
@@ -20,8 +20,10 @@ globalThis.localStorage = {
 };
 
 const knownModel = {
-  subjects: ["Математика"], priors: { "Математика": 0 },
-  likelihoods: { "Математика": {} }, topicIndex: { "теорема пифагора": "Математика" },
+  subjects: ["Математика", "Физика"], priors: { "Математика": 0, "Физика": -5 },
+  features: ["w:треугольник", "b:состав_числа"],
+  featureWeights: { "Математика": [-1, 1], "Физика": [-10, -10] },
+  topicIndex: { "теорема пифагора": "Математика" }, confidenceThreshold: 0,
 };
 let networkRequests = 0;
 globalThis.fetch = async url => {
@@ -44,5 +46,7 @@ const restartedApp = createLoader();
 await restartedApp.loadCurriculumSubjectModel();
 assert.equal(networkRequests, 1, "A fresh app instance must load the cached model without network access");
 assert.equal(restartedApp.matchCanonicalCurriculumTopic("Теорема Пифагора"), "Математика");
+assert.equal(restartedApp.classifyCurriculumSubject("треугольник"), "Математика", "The cached compact model must classify with its shared feature index");
+assert.equal(restartedApp.classifyCurriculumSubject("состав числа"), "Математика", "The classifier must match neighboring-word features after an offline restart");
 
 console.log("AI offline cache: lazy first download and fresh offline restart from local model cache OK");

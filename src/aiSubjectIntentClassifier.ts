@@ -3,7 +3,9 @@ import { AI_SUBJECT_MODEL_VERSION } from "./aiSubjectIntentModelVersion";
 type Model = {
   subjects: string[];
   priors: Record<string, number>;
-  likelihoods: Record<string, Record<string, number>>;
+  features?: string[];
+  featureWeights?: Record<string, number[]>;
+  likelihoods?: Record<string, Record<string, number>>;
   topicIndex?: Record<string, string>;
   topicGradeIndex?: Record<string, Record<string, string>>;
   confidenceThreshold?: number;
@@ -11,6 +13,7 @@ type Model = {
 
 let model: Model | null = null;
 let modelLoad: Promise<void> | null = null;
+let modelFeatureIndex: Map<string, number> | null = null;
 const MIN_CONFIDENCE_MARGIN = 4;
 const tokenPattern = /[а-яёa-z0-9]+/giu;
 
@@ -22,8 +25,8 @@ export function loadCurriculumSubjectModel(): Promise<void> {
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
         const data = JSON.parse(cached) as Model;
-        if (Array.isArray(data.subjects) && data.likelihoods && data.priors) {
-          model = data;
+        if (isUsableModel(data)) {
+          setModel(data);
           return;
         }
         localStorage.removeItem(cacheKey);
@@ -34,7 +37,7 @@ export function loadCurriculumSubjectModel(): Promise<void> {
     const response = await fetch(`${import.meta.env.BASE_URL}models/aiSubjectIntentModel.json?v=${AI_SUBJECT_MODEL_VERSION}`);
     if (!response.ok) return;
     const data = await response.json() as Model;
-    model = data;
+    if (isUsableModel(data)) setModel(data);
     try {
       localStorage.setItem(cacheKey, JSON.stringify(data));
     } catch {
@@ -44,9 +47,24 @@ export function loadCurriculumSubjectModel(): Promise<void> {
   return modelLoad;
 }
 
+function isUsableModel(data: Model): boolean {
+  return Array.isArray(data.subjects) && Boolean(data.priors)
+    && (Boolean(data.likelihoods) || (Array.isArray(data.features) && Boolean(data.featureWeights)));
+}
+
+function setModel(data: Model): void {
+  model = data;
+  modelFeatureIndex = Array.isArray(data.features)
+    ? new Map(data.features.map((feature, index) => [feature, index]))
+    : null;
+}
+
 function extractFeatures(text: string): Set<string> {
   const words = text.toLocaleLowerCase("ru-RU").replace(/ё/g, "е").match(tokenPattern) ?? [];
   const result = new Set(words.filter((word) => word.length > 1).map((word) => `w:${word}`));
+  for (let index = 0; index < words.length - 1; index += 1) {
+    result.add(`b:${words[index]}_${words[index + 1]}`);
+  }
   for (const word of words) {
     const bounded = `^${word}$`;
     for (const size of [3, 4, 5]) {
@@ -65,11 +83,19 @@ export function classifyCurriculumSubject(text: string): string {
   if (canonicalSubject) return canonicalSubject;
   const features = extractFeatures(text);
   const scored = activeModel.subjects.map((subject) => {
-    const likelihoods = activeModel.likelihoods[subject];
     let score = activeModel.priors[subject];
-    for (const feature of features) {
-      const value = likelihoods[feature];
-      if (value !== undefined) score += value;
+    const denseWeights = activeModel.featureWeights?.[subject];
+    if (denseWeights && modelFeatureIndex) {
+      for (const feature of features) {
+        const index = modelFeatureIndex.get(feature);
+        if (index !== undefined) score += denseWeights[index] ?? 0;
+      }
+    } else {
+      const likelihoods = activeModel.likelihoods?.[subject] ?? {};
+      for (const feature of features) {
+        const value = likelihoods[feature];
+        if (value !== undefined) score += value;
+      }
     }
     return { subject, score };
   }).sort((left, right) => right.score - left.score);
