@@ -143,6 +143,7 @@ export function parseCurriculumRequest(
   }
   topic = topic.replace(/^\s*(?:(?:по теме|на тему|по|на|про|тема|теме|для|о)\s+)+/i, "")
     .replace(/\s+(?:для|учени(?:к|ца|кам|кам)?|учащимс[яи])\s*$/i, "")
+    .replace(/\s+(?:для\s+)?(?:начинающ[а-яё]*|новичк[а-яё]*|посложнее|полегче|попроще)\s*$/i, "")
     .replace(/\s+/g, " ").trim();
   const toolMatch = /карточ[а-яё]*|флеш.?карточ|flash.?card/i.test(input)
     ? "flashcards"
