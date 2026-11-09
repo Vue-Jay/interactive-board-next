@@ -1,4 +1,4 @@
-export type MathAiMode="auto"|"arithmetic"|"equations"|"fractions"|"decimals"|"rounding"|"geometry"|"functions"|"vectors"|"percent"|"word"|"powers"|"prime"|"divisibility"|"probability"|"statistics"|"proportion"|"trigonometry"|"logarithms"|"sequence"|"combinatorics"|"division"|"algebra"|"absolute"|"domain"|"derivative"|"mixed";
+export type MathAiMode="auto"|"arithmetic"|"equations"|"fractions"|"decimals"|"rounding"|"geometry"|"functions"|"vectors"|"percent"|"word"|"powers"|"prime"|"divisibility"|"probability"|"statistics"|"proportion"|"trigonometry"|"logarithms"|"sequence"|"combinatorics"|"division"|"algebra"|"absolute"|"domain"|"derivative"|"graphTheory"|"mixed";
 export type MathAiLevel="primary"|"basic"|"advanced";
 export type MathAiResult={title:string;items:string[];answers:string[];detected:string};
 
@@ -16,9 +16,11 @@ function detect(topic:string,mode:MathAiMode):MathAiMode{
  if(/график.*(?:квадрат|парабол)|квадрат.*функц|парабол.*функц/.test(t))return"functions";
  if(/округлен|оценк.*результат/.test(t))return"rounding";
  if(/скалярн.*произвед|вектор.*координат|координат.*вектор/.test(t))return"vectors";
+ if(/граф[а-яё]*.*вершин|эйлеров.*путь|путь.*граф|графы/.test(t))return"graphTheory";
  if(/касател.*(?:окруж|круг)|(?:окруж|круг).*касател/.test(t))return"geometry";
+ if(/симметр|геометрическ.*место точек|биссектрис|серединн.*перпендикул|построен.*(?:циркул|треугольник)|(?:циркул.*линейк)/.test(t))return"geometry";
  if(/тригонометр|синус|косинус|тангенс|sin\b|cos\b/.test(t))return"trigonometry";
- if(/биномиальн|вероятност|шанс|монет|кубик|игральн кост/.test(t))return"probability";
+ if(/биномиальн|вероятн|шанс|монет|кубик|игральн кост/.test(t))return"probability";
  if(/делимост|признак делим/.test(t))return"divisibility";
  if(/десятичн.*дроб/.test(t))return"decimals";
  if(/арифметическ.*прогресс|прогресси/.test(t))return"sequence";
@@ -29,15 +31,16 @@ function detect(topic:string,mode:MathAiMode):MathAiMode{
  if(/делени.*остат|остатк.*делени/.test(t))return"division";
  if(/формул.*сокращ.*умнож|разложени.*многочлен.*множител|многочлен.*множител/.test(t))return"algebra";
  if(/модул/.test(t))return"absolute";
- if(/област.*определени/.test(t))return"domain";
+ if(/област.*определени|допустим.*значен/.test(t))return"domain";
  if(/производн|касательн/.test(t))return"derivative";
  if(/координатн.*плоск|отрицательн.*числ/.test(t))return"arithmetic";
  if(/логарифм/.test(t))return"logarithms";
- if(/средн.*арифмет|медиан|мода|статистик|размах/.test(t))return"statistics";
+ if(/средн.*арифмет|медиан|мода|статистик|размах|таблиц.*диаграмм|диаграмм.*таблиц/.test(t))return"statistics";
  if(/прост.*чис|делител|разлож.*множител/.test(t))return"prime";
+ if(/переменн.*допустим|буквен.*выражен|тождествен|одночлен|многочлен|вычислен.*формул|формул.*величин|формул.*вычислен/.test(t))return"algebra";
  if(/степен|корен|квадрат.*числ|куб.*числ/.test(t))return"powers";
  if(/пропорц|отношен|масштаб/.test(t))return"proportion";
- if(/об[ъь]?[её]м.*(?:цилиндр|призм)|цилиндр|призм.*об[ъь]?[её]м/.test(t))return"geometry";
+ if(/об[ъь]?[её]м.*(?:цилиндр|призм|параллелепипед)|(?:цилиндр|призм|параллелепипед).*об[ъь]?[её]м|параллелепипед.*куб/.test(t))return"geometry";
  if(/вписанн.*окруж/.test(t))return"geometry";
  if(/неравен|квадратн|дискриминант|уравнен|систем/.test(t))return"equations";
  if(/геометр|треуг|круг|окруж|прямоуг|квадрат|площад|периметр|угол|теорем.*пифагор/.test(t))return"geometry";
@@ -128,8 +131,12 @@ function probability(index:number,topic:string){
  if(index%3===1){const flips=sample+1,success=2**flips-1,denominator=2**flips;return{q:`Монету подбрасывают ${flips} раз. Какова вероятность получить хотя бы один орёл?`,a:`Противоположное событие — ни одного орла: P = 1 − (1/2)^${flips} = ${success}/${denominator}.`};}
  const red=2+sample,blue=5+sample,total=red+blue,g=gcd(red,total);return{q:`В мешке ${red} красных и ${blue} синих одинаковых жетонов. Наугад вытаскивают один. Какова вероятность достать красный жетон?`,a:`Благоприятных исходов ${red} из ${total}: P = ${red}/${total}${g>1?` = ${red/g}/${total/g}`:""}.`};
 }
-function statistics(index:number){
+function statistics(index:number,topic=""){
  const values=Array.from({length:5},(_,i)=>2+((index*3+i*7)%19)),sum=values.reduce((a,b)=>a+b,0),mean=sum/values.length;
+ if(/медиан|размах/.test(topic)){
+  const ordered=[...values].sort((a,b)=>a-b),median=ordered[2],range=ordered[4]-ordered[0];
+  return{q:`Для набора данных ${values.join(", ")} найди среднее арифметическое, медиану и размах.`,a:`Упорядоченный ряд: ${ordered.join(", ")}. Среднее: ${sum} : 5 = ${fmt(mean)}; медиана: ${median}; размах: ${ordered[4]} − ${ordered[0]} = ${range}.`};
+ }
  return{q:`Найди среднее арифметическое чисел: ${values.join(", ")}. Покажи сумму и количество чисел.`,a:`Сумма ${sum}; чисел ${values.length}; среднее арифметическое ${fmt(mean)}.`};
 }
 function rounding(index:number,topic:string){
@@ -386,6 +393,10 @@ function divisibility(index:number){
 }
 function algebra(index:number,topic:string){
  const a=2+index,b=1+(index%7),sum=a+b,product=a*b;
+ if(/формул.*вычислен|вычислен.*формул|формул.*величин/.test(topic)){
+  const speed=4+(index%13),time=2+(index%11),distance=speed*time;
+  return{q:`Расстояние вычисляют по формуле s = v · t. Велосипедист ехал со скоростью ${speed} км/ч ${time} ч. Найди путь и укажи единицы измерения.`,a:`s = ${speed} · ${time} = ${distance} км.`};
+ }
  if(/сокращ.*умнож/.test(topic)){
   if(index%2===0)return{q:`Раскрой скобки по формуле сокращённого умножения: (x + ${a})².`,a:`(x + ${a})² = x² + ${2*a}x + ${a*a}.`};
   return{q:`Разложи на множители по формуле разности квадратов: x² − ${a*a}.`,a:`x² − ${a*a} = (x − ${a})(x + ${a}).`};
@@ -443,6 +454,19 @@ export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,to
   if(grade===3&&supportsGradeThreeTopic(t)){const generated=gradeThree(index,t);if(generated)return generated;}
   if(grade===4&&supportsGradeFourTopic(t)){const generated=gradeFour(index,t);if(generated)return generated;}
   if(actual==="equations"){
+  if(/текстовые задачи на уравнения/.test(t)){
+    const smaller=12+index,larger=smaller+3,total=smaller+larger;
+    return{q:`Сумма двух чисел равна ${total}, причём большее на 3 больше меньшего. Составь уравнение и найди оба числа.`,a:`Пусть меньшее число x. Тогда x + (x + 3) = ${total}; 2x = ${total-3}; x = ${smaller}. Числа: ${smaller} и ${larger}.`};
+   }
+  if(/линейное уравнение с двумя переменными и график/.test(t)){
+    const a=2+(index%7),intercept=4+(index%11),xValues=[0,1,2],points=xValues.map(x=>`(${x}; ${intercept-a*x})`).join(", ");
+    return{q:`Рассмотри уравнение ${a}x + y = ${intercept}. Найди три его решения для x = 0, 1 и 2 и подготовь точки для построения графика.`,a:`Выразим y: y = ${intercept} − ${a}x. Решения: ${points}.`};
+   }
+   if(/графическое решение уравнений и систем/.test(t)){
+    const x=-3+(index%13),y=2+(index%11),a=1+(index%5),c=2+(index%4),b=1+((index*3)%5),d=1+((index*2+1)%5);
+    const first=a*x+b*y,second=c*x-d*y;
+    return{q:`Реши графически систему: ${a}x + ${b}y = ${first}; ${c}x − ${d}y = ${second}. Построй обе прямые и укажи координаты точки их пересечения.`,a:`Точка пересечения прямых — (${x}; ${y}), поскольку подстановка даёт ${a}·${x} + ${b}·${y} = ${first} и ${c}·${x} − ${d}·${y} = ${second}.`};
+   }
   if(/неравен/.test(t)){
     if(/с параметр/.test(t)){
      const bound=2+(index%15);
@@ -470,6 +494,44 @@ export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,to
   if(actual==="rounding")return rounding(index,t);
   if(actual==="vectors")return vectors(index,t);
   if(actual==="geometry"){
+   if(/треугольники и четырёхугольники/.test(t)){
+    const a=4+(index%13),b=6+((index*3)%11);
+    if(index%2===0){const perimeter=2*(a+b);return{q:`Прямоугольник имеет стороны ${a} см и ${b} см. Найди его периметр и объясни, почему достаточно сложить длины двух соседних сторон и умножить сумму на 2.`,a:`P = 2 · (${a} + ${b}) = ${perimeter} см: у прямоугольника противоположные стороны равны.`};}
+    const first=31+(index%19),second=42+((index*5)%31),third=180-first-second;
+    return{q:`Два угла треугольника равны ${first}° и ${second}°. Найди третий угол и проверь, может ли такой треугольник существовать.`,a:third>0?`Третий угол: 180° − ${first}° − ${second}° = ${third}°. Он положителен, значит такой треугольник возможен.`:`Сумма двух углов ${first+second}° не меньше 180°, поэтому положительного третьего угла нет: такого треугольника не существует.`};
+   }
+   if(/осевая симметрия/.test(t)){
+    const x=2+(index%15),y=3+((index*7)%17);
+    if(index%2===0)return{q:`Точка A(${x}; ${y}) отражена относительно оси Oy. Найди координаты A′ и назови координату, которая не изменилась.`,a:`При отражении относительно Oy меняется знак x: A′(−${x}; ${y}); ордината y=${y} не меняется.`};
+    return{q:`Точка B(−${x}; ${y}) отражена относительно оси Ox. Найди координаты B′ и назови координату, которая не изменилась.`,a:`При отражении относительно Ox меняется знак y: B′(−${x}; −${y}); абсцисса x=−${x} не меняется.`};
+   }
+   if(/геометрические построения и линии треугольника/.test(t)){
+    const base=10+2*index,median=base/2;
+    return{q:`В треугольнике ABC сторона BC равна ${base} см. Построена медиана AM, где M — середина BC. Найди BM и MC и сформулируй шаг построения точки M.`,a:`M — середина BC, поэтому BM = MC = ${base} : 2 = ${median} см. Построение: циркулем и линейкой разделить BC пополам и соединить M с A.`};
+   }
+   if(/основные геометрические понятия и углы/.test(t)){
+    const first=28+(index%13)*3,second=37+(index%11)*4;
+    if(index%2===0){
+     const vertical=first;
+     return{q:`Два угла образованы пересечением прямых. Один из вертикальных углов равен ${vertical}°. Найди второй вертикальный угол и оба смежных угла.`,a:`Вертикальный угол равен ${vertical}°. Каждый смежный угол равен 180° − ${vertical}° = ${180-vertical}°.`};
+    }
+    const smaller=Math.min(first,second),larger=Math.max(first,second),sum=smaller+larger;
+    return{q:`Два смежных угла относятся как ${smaller}:${larger}. Найди величину каждого угла.`,a:`Пусть углы равны ${smaller}k и ${larger}k. Тогда ${sum}k = 180°, k = ${fmt(180/sum)}; углы равны ${fmt(180*smaller/sum)}° и ${fmt(180*larger/sum)}°.`};
+   }
+   if(/геометрическое место точек и биссектриса/.test(t)){
+    const distance=3+(index%13);
+    if(index%2===0)return{q:`Точка M лежит на серединном перпендикуляре к отрезку AB. Известно, что MA = ${distance} см. Найди MB и объясни почему.`,a:`Любая точка серединного перпендикуляра равноудалена от концов отрезка, поэтому MB = MA = ${distance} см.`};
+    return{q:`Точка P лежит на биссектрисе угла. Расстояние от P до одной стороны угла равно ${distance} см. Чему равно расстояние от P до другой стороны?`,a:`Точка биссектрисы равноудалена от сторон угла, поэтому расстояние тоже ${distance} см.`};
+   }
+   if(/вписанная и описанная окружности треугольника/.test(t)){
+    const scale=1+index,side=6*scale;
+    if(index%2===0)return{q:`В равностороннем треугольнике со стороной ${side} см найди радиус вписанной окружности.`,a:`Высота h = ${side}√3 / 2 см. Радиус вписанной окружности равен трети высоты: r = ${scale}√3 см.`};
+    return{q:`В равностороннем треугольнике со стороной ${side} см найди радиус описанной окружности.`,a:`Высота h = ${side}√3 / 2 см. Радиус описанной окружности равен двум третям высоты: R = ${2*scale}√3 см.`};
+   }
+   if(/об[ъь]?[её]м параллелепипеда и куба/.test(t)){
+    if(index%2===0){const side=2+Math.floor(index/2);return{q:`Найди объём куба с ребром ${side} см.`,a:`V = ${side}³ = ${side**3} см³.`};}
+    const a=2+index,b=3+(index%7),c=4+(index%5);return{q:`Найди объём прямоугольного параллелепипеда размером ${a} × ${b} × ${c} см.`,a:`V = ${a} · ${b} · ${c} = ${a*b*c} см³.`};
+   }
    if(/геометрические построения и симметрия/.test(t)){
     const x=2+(index%11),y=3+((index*2)%9),kind=index%3;
     if(kind===0)return{q:`На координатной плоскости построй точку A(${x}; ${y}) и отрази её относительно оси Oy. Запиши координаты образа.`,a:`При отражении относительно Oy меняется знак абсциссы: A′(−${x}; ${y}).`};
@@ -607,7 +669,11 @@ export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,to
    return prime(index);
   }
   if(actual==="probability")return probability(index,t);
-  if(actual==="statistics")return statistics(index);
+  if(actual==="statistics")return statistics(index,t);
+  if(actual==="graphTheory"){
+   const vertices=3+index,edges=vertices-1,degreeSum=2*edges;
+   return{q:`Граф-цепь содержит ${vertices} вершин, соединённых последовательно. Найди число рёбер и сумму степеней всех вершин. Есть ли в графе эйлеров путь?`,a:`В цепи из ${vertices} вершин ${edges} ребра: у двух концов степень 1, у ${vertices-2} внутренних вершин степень 2. Сумма степеней ${degreeSum} = 2 · ${edges}. Эйлеров путь есть: можно пройти по каждому ребру ровно один раз.`};
+  }
   if(actual==="proportion")return proportion(index);
   if(actual==="trigonometry")return trigonometry(index,t);
   if(actual==="logarithms")return logarithms(index);
