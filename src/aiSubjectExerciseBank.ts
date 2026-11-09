@@ -341,7 +341,57 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
     return { prompt: `Поставь глагол в Present Simple: “${person} ___ (${verb}) English every day.” Объясни выбор формы.`, answer: `“${person} ${form} English every day.” Для he/she/it к глаголу обычно добавляется -s/-es; в остальных случаях используется базовая форма.` };
   }
 
-  if (subject === "Обществознание" && /бюджет|процент|скидк/.test(t)) {
+  if (subject === "Обществознание" && /инфляц|покупательск/.test(t)) {
+    const amount = 1_000 + (index % 5) * 500, inflation = 10 + (index % 4) * 5;
+    const equivalent = amount / (1 + inflation / 100);
+    return {
+      prompt: `Доход не изменился и составляет ${amount.toLocaleString("ru-RU")} ₽. Если цены выросли на ${inflation}%, какую сумму нужно иметь теперь, чтобы купить тот же набор товаров? Округли до копеек.`,
+      answer: `Новая сумма = ${amount.toLocaleString("ru-RU")} · (1 + ${inflation}/100) = ${(amount * (1 + inflation / 100)).toLocaleString("ru-RU")} ₽. Прежний доход теперь покрывает около ${equivalent.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽ прежней покупательной способности.`,
+    };
+  }
+  if (subject === "Обществознание" && /вклад|сложн.*процент/.test(t)) {
+    const principal = 10_000 + (index % 5) * 2_000, rate = 5 + (index % 3) * 5, years = 2;
+    const total = principal * (1 + rate / 100) ** years;
+    return {
+      prompt: `В учебной модели вклад ${principal.toLocaleString("ru-RU")} ₽ приносит ${rate}% годовых с ежегодной капитализацией. Пополнений и снятий нет. Сколько будет на счёте через ${years} года?`,
+      answer: `S = ${principal.toLocaleString("ru-RU")} · (1 + ${rate}/100)^${years} = ${total.toLocaleString("ru-RU")} ₽. Каждый год проценты начисляются на сумму вклада вместе с уже начисленными процентами.`,
+    };
+  }
+  if (subject === "Обществознание" && /полная стоимость/.test(t)) {
+    const principal = 10_000 + (index % 5) * 5_000, rate = 5 + (index % 4) * 5;
+    const fee = 300 + (index % 3) * 100, insurance = 500 + (index % 4) * 100;
+    const interest = principal * rate / 100, additionalCosts = interest + fee + insurance;
+    return {
+      prompt: `В учебном примере заём ${principal.toLocaleString("ru-RU")} ₽ выдан на один год под простой процент ${rate}% годовых. Отдельно указаны комиссия ${fee} ₽ и страхование ${insurance} ₽. Найди все дополнительные расходы и сумму платежей вместе с основным долгом. Это учебный расчёт, не установленный законом показатель ПСК.`,
+      answer: `Проценты = ${principal.toLocaleString("ru-RU")} · ${rate}/100 = ${interest.toLocaleString("ru-RU")} ₽. Дополнительные расходы = ${interest.toLocaleString("ru-RU")} + ${fee} + ${insurance} = ${additionalCosts.toLocaleString("ru-RU")} ₽. Все платежи с возвратом долга: ${principal.toLocaleString("ru-RU")} + ${additionalCosts.toLocaleString("ru-RU")} = ${(principal + additionalCosts).toLocaleString("ru-RU")} ₽.`,
+    };
+  }
+  if (subject === "Обществознание" && /за[её]м|кредит/.test(t)) {
+    const principal = 10_000 + (index % 5) * 5_000, rate = 5 + (index % 4) * 5, years = 2;
+    const interest = principal * rate / 100 * years;
+    return {
+      prompt: `В учебной задаче ${principal.toLocaleString("ru-RU")} ₽ выданы на ${years} года под простой процент ${rate}% годовых без комиссий. Рассчитай проценты и итоговую сумму возврата.`,
+      answer: `Проценты = ${principal.toLocaleString("ru-RU")} · ${rate}/100 · ${years} = ${interest.toLocaleString("ru-RU")} ₽. Всего к возврату: ${principal.toLocaleString("ru-RU")} + ${interest.toLocaleString("ru-RU")} = ${(principal + interest).toLocaleString("ru-RU")} ₽. Это упрощённая модель простых процентов, а не расчёт условий реального кредита.`,
+    };
+  }
+  if (subject === "Обществознание" && /эластичност.*спрос|спрос.*эластичност/.test(t)) {
+    const priceChange = 10 + (index % 5) * 5, quantityChange = priceChange * (2 + Math.floor(index / 5));
+    const coefficient = quantityChange / priceChange;
+    return {
+      prompt: `В учебной модели цена товара выросла на ${priceChange}%, а величина спроса снизилась на ${quantityChange}% относительно исходного периода. Найди модуль ценовой эластичности спроса и определи, эластичен ли спрос.`,
+      answer: `|E| = |−${quantityChange}% / ${priceChange}%| = ${coefficient}. Так как |E| > 1, спрос эластичный. Расчёт использует указанные в условии процентные изменения относительно исходных значений.`,
+    };
+  }
+  if (subject === "Обществознание" && /валовой внутренний продукт|\bввп\b/.test(t)) {
+    const consumption = 100 + (index % 5) * 20, investment = 20 + (index % 4) * 10;
+    const government = 30 + (index % 3) * 10, exports = 40 + (index % 4) * 10, imports = 30 + (index % 5) * 10;
+    const gdp = consumption + investment + government + exports - imports;
+    return {
+      prompt: `В условной экономике за год потребление составило ${consumption}, инвестиции — ${investment}, государственные расходы — ${government}, экспорт — ${exports}, импорт — ${imports} млрд ₽. Найди ВВП по расходному подходу.`,
+      answer: `ВВП = C + I + G + (X − M) = ${consumption} + ${investment} + ${government} + (${exports} − ${imports}) = ${gdp} млрд ₽.`,
+    };
+  }
+  if (subject === "Обществознание" && /бюджет|скидк|личный финансовый план|финансов.*грамотност/.test(t)) {
     const income = 10_000 + (index % 5) * 2_000, percent = 10 + (index % 4) * 5;
     return { prompt: `Семья откладывает ${percent}% месячного дохода ${income.toLocaleString("ru-RU")} ₽. Сколько рублей будет отложено? Объясни расчёт.`, answer: `${income.toLocaleString("ru-RU")} · ${percent}/100 = ${(income * percent / 100).toLocaleString("ru-RU")} ₽.` };
   }

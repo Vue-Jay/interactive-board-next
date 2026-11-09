@@ -45,6 +45,8 @@ try {
     mathFocusedFailures: [],
     physicsFocusedChecks: 0,
     physicsFocusedFailures: [],
+    socialStudiesFocusedChecks: 0,
+    socialStudiesFocusedFailures: [],
     gradeMapTopicsBySubject: {},
     gradeMapTopicsByGrade: {},
     gradeMapMissingTopicsBySubject: {},
@@ -303,6 +305,51 @@ try {
     if (failures.length) report.physicsFocusedFailures.push({ topic: check.topic, detected: generated.detected, firstPrompt: prompts[0], firstAnswer: answers[0], offTopicPrompts: prompts.filter((prompt) => !check.prompt.test(prompt)), failures });
   }
 
+  const socialStudiesAlignmentCases = [
+    { topic: "инфляция и покупательная способность", prompt: /цены выросли на \d+%/i, answer: /прежней покупательной способности/i, verify: (prompt, answer) => {
+      const values = prompt.match(/доход не изменился и составляет ([\d\s\u00a0\u202f]+) ₽.*?выросли на (\d+)%/i)?.slice(1).map((value) => Number(value.replace(/[\s\u00a0\u202f]/g, "")));
+      const result = Number(answer.match(/покрывает около ([\d\s\u00a0\u202f,]+) ₽/i)?.[1]?.replace(/[\s\u00a0\u202f]/g, "").replace(",", "."));
+      return Boolean(values) && Math.abs(result - values[0] / (1 + values[1] / 100)) < 0.011;
+    } },
+    { topic: "банковский вклад и сложный процент", prompt: /вклад .* ежегодной капитализацией/i, answer: /каждый год проценты начисляются/i, verify: (prompt, answer) => {
+      const values = prompt.match(/вклад ([\d\s\u00a0\u202f]+) ₽ приносит (\d+)% годовых.*?через (\d+) года/i)?.slice(1).map((value) => Number(value.replace(/[\s\u00a0\u202f]/g, "")));
+      const result = Number(answer.match(/\^\d+ = ([\d\s\u00a0\u202f]+) ₽/i)?.[1]?.replace(/[\s\u00a0\u202f]/g, ""));
+      return Boolean(values) && Math.abs(result - values[0] * (1 + values[1] / 100) ** values[2]) < 0.011;
+    } },
+    { topic: "заём и полная стоимость кредита", prompt: /заём .* простой процент .* отдельно указаны комиссия .* страхование/i, answer: /дополнительные расходы = .* все платежи с возвратом долга/i, verify: (prompt, answer) => {
+      const values = prompt.match(/заём ([\d\s\u00a0\u202f]+) ₽ выдан на один год под простой процент (\d+)% годовых\. Отдельно указаны комиссия (\d+) ₽ и страхование (\d+) ₽/i)?.slice(1).map((value) => Number(value.replace(/[\s\u00a0\u202f]/g, "")));
+      const results = answer.match(/Дополнительные расходы = .* = ([\d\s\u00a0\u202f]+) ₽\. Все платежи с возвратом долга: .* = ([\d\s\u00a0\u202f]+) ₽/i)?.slice(1).map((value) => Number(value.replace(/[\s\u00a0\u202f]/g, "")));
+      const interest = values?.[0] * values?.[1] / 100;
+      return Boolean(values && results) && results[0] === interest + values[2] + values[3] && results[1] === values[0] + results[0];
+    } },
+    { topic: "эластичность спроса и предложения", prompt: /цена товара выросла на \d+%, а величина спроса снизилась на \d+%/i, answer: /спрос эластичный/i, verify: (prompt, answer) => {
+      const values = prompt.match(/выросла на (\d+)%, а величина спроса снизилась на (\d+)%/i)?.slice(1).map(Number);
+      const result = Number(answer.match(/= ([\d.]+)\. Так как/i)?.[1]);
+      return Boolean(values) && result === values[1] / values[0] && result > 1;
+    } },
+    { topic: "валовой внутренний продукт", prompt: /потребление составило \d+, инвестиции — \d+, государственные расходы — \d+, экспорт — \d+, импорт — \d+/i, answer: /ВВП = C \+ I \+ G \+ \(X − M\)/i, verify: (prompt, answer) => {
+      const values = prompt.match(/потребление составило (\d+), инвестиции — (\d+), государственные расходы — (\d+), экспорт — (\d+), импорт — (\d+)/i)?.slice(1).map(Number);
+      const result = Number(answer.match(/= (\d+) млрд ₽\.$/i)?.[1]);
+      return Boolean(values) && result === values[0] + values[1] + values[2] + values[3] - values[4];
+    } },
+  ];
+  for (const check of socialStudiesAlignmentCases) {
+    const generated = curriculum.generateCurriculumAi("assignment", check.topic, "medium", 15, "Обществознание");
+    report.socialStudiesFocusedChecks += 1;
+    const prompts = generated.items.map((item) => item.replace(/^\d+\.\s*/, ""));
+    const answers = generated.answers.map((answer) => answer.replace(/^\d+\.\s*/, "").replace(/[\u00a0\u202f]/g, " "));
+    const failures = [];
+    if (generated.subject !== "Обществознание") failures.push(`предмет: ${generated.subject}`);
+    if (prompts.length !== 15 || answers.length !== 15) failures.push(`ожидалось 15 задач и ответов, получено ${prompts.length}/${answers.length}`);
+    if (prompts.some((prompt) => !check.prompt.test(prompt))) failures.push("формулировка не соответствует теме");
+    if (answers.some((answer) => !check.answer.test(answer))) failures.push("ответ не содержит ожидаемое объяснение");
+    const mismatchedAnswers = check.verify ? prompts.map((prompt, index) => ({ index, prompt, answer: answers[index] })).filter(({ prompt, answer }) => !check.verify(prompt, answer)) : [];
+    if (mismatchedAnswers.length) failures.push("расчёт ответа не сошёлся с условием");
+    if (new Set(prompts).size !== prompts.length) failures.push("есть повторяющиеся задачи");
+    if (answers.some((answer) => answer.startsWith("Ключ проверки:"))) failures.push("вместо конкретного ответа выдан общий критерий");
+    if (failures.length) report.socialStudiesFocusedFailures.push({ topic: check.topic, detected: generated.detected, firstPrompt: prompts[0], firstAnswer: answers[0], verificationExamples: mismatchedAnswers.slice(0, 2), failures });
+  }
+
   const cases = [
     {
       input: "Сделай 10 простых задач по математике на простые числа для 7 класса",
@@ -443,7 +490,9 @@ try {
     || report.parserFailures.length > 0
     || report.independentParserFailures.length > 0
     || report.generatedParserFailures.length > 0
-    || report.mathFocusedFailures.length > 0;
+    || report.mathFocusedFailures.length > 0
+    || report.physicsFocusedFailures.length > 0
+    || report.socialStudiesFocusedFailures.length > 0;
   if (failures) process.exitCode = 1;
 } finally {
   await server.close();
