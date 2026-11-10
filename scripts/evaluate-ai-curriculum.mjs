@@ -71,6 +71,8 @@ try {
     primaryMathAnswerFailures: [],
     olympiadMathChecks: 0,
     olympiadMathFailures: [],
+    openChallengeChecks: 0,
+    openChallengeFailures: [],
     runtimeGradeMapChecks: 0,
     runtimeGradeMapFailures: [],
     gradeMismatchChecks: 0,
@@ -462,6 +464,33 @@ try {
       if (failures.length) report.olympiadMathFailures.push({ request, index, prompt: prompts[index], answer: generated.answers[index], failures });
     }
     if (new Set(prompts).size !== 5) report.olympiadMathFailures.push({ request, failures: ["набор содержит повторы"] });
+  }
+
+  for (const [subject, topic] of [
+    ["Физика", "движение с сопротивлением"],
+    ["Химия", "исследование растворов"],
+    ["Биология", "адаптация организмов"],
+    ["География", "климат острова"],
+    ["История", "причины реформ"],
+    ["Литература", "интерпретация образа героя"],
+    ["Русский язык", "разбор спорного примера"],
+    ["Обществознание", "выбор потребителя"],
+    ["Информатика", "граничные данные"],
+    ["Иностранный язык", "диалог с неоднозначностью"],
+  ]) {
+    const request = `Составь 8 нестандартных заданий по теме «${topic}»`;
+    const generated = curriculum.generateCurriculumAi("assignment", request, "hard", 8, subject);
+    const prompts = generated.items.map((item) => item.replace(/^\d+\.\s*/, ""));
+    for (let index = 0; index < prompts.length; index += 1) {
+      report.openChallengeChecks += 1;
+      const failures = [];
+      if (!prompts[index].toLocaleLowerCase("ru-RU").includes(topic.toLocaleLowerCase("ru-RU"))) failures.push("пользовательская тема потеряна");
+      if (!generated.answers[index]?.includes("Критерии проверки:")) failures.push("нет критериев проверки");
+      if (/олимпиад|нестандартн/i.test(generated.title)) failures.push("сложность вынесена в отдельное название задания");
+      if (/Составь понятную схему|Подготовь таблицу по теме|Ключ проверки:/i.test(prompts[index])) failures.push("вместо задания выдан общий шаблон");
+      if (failures.length) report.openChallengeFailures.push({ subject, topic, index, prompt: prompts[index], failures });
+    }
+    if (new Set(prompts).size !== 8) report.openChallengeFailures.push({ subject, topic, failures: ["набор содержит повторы"] });
   }
 
   let transferItemId = 0;
@@ -1052,6 +1081,8 @@ try {
     || report.gradeOneMathFailures.length > 0
     || report.gradeTwoMathFailures.length > 0
     || report.gradeThreeMathFailures.length > 0
+    || report.olympiadMathFailures.length > 0
+    || report.openChallengeFailures.length > 0
     || report.modelFetchesOnWarmup !== 1
     || report.offlineFetchAttempts !== 0
     || report.offlineGenerationCases !== report.topics

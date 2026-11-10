@@ -1,5 +1,5 @@
 import { generateMathAi, type MathAiLevel, type MathAiMode } from "./aiMathGenerator";
-import { generateSubjectExercise, generateSubjectExerciseVariant } from "./aiSubjectExerciseBank";
+import { generateSubjectChallengeExercise, generateSubjectExercise, generateSubjectExerciseVariant } from "./aiSubjectExerciseBank";
 import { classifyCurriculumSubject, matchCanonicalCurriculumGrade, matchCanonicalCurriculumTopic } from "./aiSubjectIntentClassifier";
 import { LEKTRUS_SCHOOL_SUBJECTS } from "./lektrusSchoolSubjects";
 
@@ -268,7 +268,9 @@ export function generateCurriculumAi(tool: CurriculumAiTool, topic: string, leve
   const seenPrompts = new Set<string>();
   let fallbackVariant = 0;
   const exercises = Array.from({ length: safeCount }, (_, i) => {
-    let exercise = generateSubjectExercise(subject, clean, effectiveLevel, i);
+    let exercise = request.olympiad
+      ? generateSubjectChallengeExercise(subject, clean, i)
+      : generateSubjectExercise(subject, clean, effectiveLevel, i);
     let normalizedPrompt = exercise.prompt.toLocaleLowerCase("ru-RU").replace(/\s+/g, " ").trim();
     while (seenPrompts.has(normalizedPrompt) && fallbackVariant < 30) {
       exercise = generateSubjectExerciseVariant(subject, clean, fallbackVariant++);
@@ -276,10 +278,10 @@ export function generateCurriculumAi(tool: CurriculumAiTool, topic: string, leve
     }
     seenPrompts.add(normalizedPrompt);
     if (effectiveLevel === "easy") return { ...exercise, prompt: `${exercise.prompt} Работай по шагам; при необходимости пользуйся конспектом.` };
-    if (effectiveLevel === "hard") return {
+    if (effectiveLevel === "hard" && !request.olympiad) return {
       ...exercise,
       prompt: `${exercise.prompt} Дополнительно объясни выбор способа решения и проверь вывод на другом примере.`,
-      answer: `${exercise.answer} Для углублённого уровня: обоснование должно объяснять ход решения, а проверочный пример — подтверждать общий вывод.`,
+      answer: `${exercise.answer} В ответе объясни ход рассуждения и проверь вывод на другом примере.`,
     };
     return exercise;
   });
