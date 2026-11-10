@@ -11,7 +11,7 @@ const api={};
 new Function("exports","require",compiled)(api,()=>({}));
 const {
  boardRoleCapabilities,restrictStudentDiagramChange,canUseBoardCreationTool,
- isStudentProtectedBoardObject,STUDENT_BLOCKED_CREATE_TOOLS,
+ isStudentProtectedBoardObject,canTransformStudentBoardObject,STUDENT_BLOCKED_CREATE_TOOLS,
  STUDENT_PROTECTED_OBJECT_KINDS
 }=api;
 
@@ -21,8 +21,7 @@ const previews=["actual","teacher","student","guest"];
 const creations=["select","hand","lasso","pen","marker","eraser","text","sticky","shape",
  "connector","comment","image","pdf","frame","table","formula","graph","checklist",
  "quiz","flashcard","cover","linkmedia"];
-const protectedKinds=["frame","table","formula","graph","checklist","quiz",
- "flashcard","cover","linkmedia"];
+const protectedKinds=["frame","checklist","quiz","flashcard","cover","linkmedia"];
 let cases=0;
 for(const boardRole of boardRoles){
  for(const accountRole of accountRoles){
@@ -62,8 +61,10 @@ for(const boardRole of boardRoles){
   }
  }
 }
-assert.deepEqual(STUDENT_BLOCKED_CREATE_TOOLS,STUDENT_PROTECTED_OBJECT_KINDS,
- "teacher-only creation and protected structure use one matrix");
+assert.ok(STUDENT_PROTECTED_OBJECT_KINDS.every(kind=>STUDENT_BLOCKED_CREATE_TOOLS.includes(kind)),
+ "protected objects must also be unavailable to pupil creation");
+assert.ok(["table","formula","graph"].every(kind=>STUDENT_BLOCKED_CREATE_TOOLS.includes(kind)&&!STUDENT_PROTECTED_OBJECT_KINDS.includes(kind)),
+ "pupils cannot create structural objects but may reposition existing lesson content");
 
 // Real board ownership outranks the signup category and grants full tools.
 for(const accountRole of ["teacher","student"])for(const isGuest of [false,true]){
@@ -189,13 +190,16 @@ for(const [path,code] of [["src/BoardApp.tsx",app],["src/lektrusBoardRolePreview
   path.endsWith(".tsx")?ts.ScriptKind.TSX:ts.ScriptKind.TS);
  assert.equal(parsed.parseDiagnostics.length,0,path+" syntax parses");
 }
-assert.match(app,/isAppAdmin && developerSettingsOpen/,"developer dialog is admin-only");
+assert.match(app,/showAdminControls && developerSettingsOpen/,"developer dialog is admin-only and hidden while simulating another role");
 assert.match(app,/id="lektrus-developer-role-preview"/,"developer role buttons are on the board");
-assert.match(app,/(["teacher","student","guest"] as const).map/,"quick switching among three roles");
-assert.match(app,/aria-pressed={rolePreview===role}/,"active role is accessible");
-assert.match(app,/changeRolePreview("actual")/,"real-role reset is accessible");
-assert.match(app,/const \[rolePreview,setRolePreview\]=useState<BoardRolePreview>\("actual"\)/,
- "role preview is not persisted");
+assert.match(app,/\(\["teacher","student","guest"\] as const\)\.map/,"quick switching among three roles");
+assert.ok(app.includes("aria-pressed={(rolePreview as BoardRolePreview)===role}"),"active role is accessible");
+assert.ok(app.includes('changeRolePreview("actual")'),"real-role reset is accessible");
+assert.ok(app.includes("useState<BoardRolePreview>(globalRolePreview)")&&
+ app.includes("useEffect(()=>setRolePreview(globalRolePreview),[boardSummary.id,globalRolePreview])"),
+ "board role follows app-scoped preview state and is not saved to the board");
+assert.ok(read("src/App.tsx").includes('useState<"actual"|AccountRole>("actual")'),
+ "role preview is transient for the current app session");
 assert.doesNotMatch(read("src/developerPreferences.ts"),/rolePreview/,
  "simulation never enters persisted developer preferences");
 assert.match(app,/isGuest:authUser\.isGuest===true/,"real guest identity maps to student");
@@ -247,14 +251,20 @@ assert.match(app,/onGridChange=\{!item.locked&&canEdit&&!structurallyLockedForSt
  "students cannot edit protected graph structure");
 assert.match(app,/if\(tool!=="select"&&tool!=="hand"&&tool!=="lasso"&&!toolAllowedForRole\(tool\)\)/,
  "role switch invalidates disallowed drawing tools at pointer event boundary");
-assert.match(app,/connector && canEdit && !connector.locked && !structurallyLockedForStudent\(connector\)/,
- "viewer cannot drag connector endpoints, and students cannot change teacher-protected connections");
+assert.match(app,/connector && canEdit && !connector.locked && canTransformBoardObject\(connector\)/,
+ "viewer cannot drag connector endpoints, while editable pupils can manipulate unlocked lesson connections");
+assert.equal(canTransformStudentBoardObject("connector",boardRoleCapabilities({
+ preview:"student",boardRole:"owner",accountRole:"student",isAppAdmin:true,adminMaintenance:false
+})),true,"students can reposition unlocked lesson connections");
+assert.equal(canTransformStudentBoardObject("connector",boardRoleCapabilities({
+ preview:"actual",boardRole:"viewer",accountRole:"teacher",isAppAdmin:false,adminMaintenance:false
+})),false,"viewers cannot manipulate lesson connections");
 assert.match(app,/transformHandle && hit && canEdit && !hit.locked/,
  "viewer cannot resize objects even while holding a stale transform handle");
 assert.match(app,/const movableIds = canEdit\?/,
  "viewer cannot move board objects using the hand tool");
-assert.match(app,/if \(!canEdit \|\| structurallyLockedForStudent\(hit\)\) return;/,
- "viewer selection never starts an object drag");
+assert.match(app,/if \(!canTransformBoardObject\(hit\)\) return;/,
+ "viewer selection never starts an object drag and student transforms use the shared policy");
 assert.match(app,/&& !space && canEdit && !hit.locked/,
  "viewer cannot open crop editor on a touch double tap");
 assert.match(app,/notes: isStudent \? `student-media-request:/,

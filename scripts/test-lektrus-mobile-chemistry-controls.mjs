@@ -26,7 +26,7 @@ assert.match(app,/INK_WIDTHS\.marker/);
 assert.match(app,/INK_WIDTHS\.pen/);
 assert.match(quick,/pen:\[1,3,6,12,22\]/);
 assert.match(quick,/marker:\[2,7,14,28,48\]/);
-assert.match(quick,/eraser:\[6,16,32,55,90\]/);
+assert.match(quick,/eraser:\[6,16,32,55,92\]/);
 assert.match(responsive,/\.lectris-quick-properties\.is-ink-properties\{display:none!important\}/,
  "mobile should not have a duplicate collapsed brush toolbar");
 assert.match(organic,/onPointerCancel=\{e=>/, "cancelled touch must not insert a bond");

@@ -142,6 +142,14 @@ const createId = (): string => {
   return `${hex.slice(0,4).join("")}-${hex.slice(4,6).join("")}-${hex.slice(6,8).join("")}-${hex.slice(8,10).join("")}-${hex.slice(10).join("")}`;
 };
 
+const russianCountWord = (count: number, one: string, few: string, many: string) => {
+  const lastTwo = count % 100;
+  const last = count % 10;
+  if (last === 1 && lastTwo !== 11) return one;
+  if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) return few;
+  return many;
+};
+
 type Tool =
   | "select"
   | "hand"
@@ -3822,7 +3830,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       const command=parseBoardAssistantCommand(prompt);
       const assistantItems=itemsRef.current.filter(item=>!item.hidden);
       if(command.kind==="help"){
-        respond("Я могу: искать объекты и их текст; анализировать содержимое и историю; создавать заметки, текст, списки и фигуры; переименовывать, перемещать и удалять найденные объекты; отменять или повторять действие; готовить задания, тесты и карточки. Примеры: «найди формулу плотности», «переименуй геометрию в План урока», «перемести заметку про Пифагора вправо», «создай список: прочитать тему; решить примеры», «10 задач на треугольники».");
+        respond("Я могу: искать и анализировать объекты и историю; создавать заметки, текст, списки, формулы, дробные модели, таблицы, диаграммы, графики функций, викторины, карточки для повторения, комментарии, медиа-ссылки, фреймы, фигуры, стрелки, шторки и измерительные инструменты; загружать изображения и PDF с вашего устройства; рисовать линии карандашом или маркером; переименовывать, копировать, перемещать и удалять найденное; отменять и повторять действия; готовить задания. Примеры: «создай график функции: y = x^2 - 4x + 3», «добавь транспортир», «создай стрелку: причина → следствие», «нарисуй линию маркером», «добавь изображение», «прикрепи PDF», «найди формулу плотности», «создай викторину: Сколько будет 2 + 2?; 3; 4; ответ: 2», «создай дробь: 3/4», «добавь видео: https://example.com/урок», «10 задач на треугольники».");
       }else if(command.kind==="analyze"){
         respond(summarizeBoard(assistantItems));
       }else if(command.kind==="find"){
@@ -3832,7 +3840,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           setSelected(matches.map(item=>item.id));
           fitToBounds(boardItemBounds(matches),110);
           const descriptions=matches.slice(0,8).map(item=>`${item.kind}: ${(item.text||item.name||item.checklistItems?.[0]||"без подписи").split(/\r?\n/)[0].slice(0,90)}`);
-          respond(`Нашёл ${matches.length} ${matches.length===1?"элемент":"элементов"} и выделил на доске:\n${descriptions.join("\n")}${matches.length>8?"\n…": ""}`);
+          respond(`Нашёл ${matches.length} ${russianCountWord(matches.length,"элемент","элемента","элементов")} и выделил на доске:\n${descriptions.join("\n")}${matches.length>8?"\n…": ""}`);
         }
       }else if(command.kind==="rename"){
         const mutation=applyBoardAssistantMutation(itemsRef.current,command);
@@ -3840,6 +3848,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         else{
           commit(mutation.items);
           setSelected(mutation.selectedIds);respond(`Обновил название или текст у ${mutation.matches.length} ${mutation.matches.length===1?"объекта":"объектов"}.`);
+        }
+      }else if(command.kind==="duplicate"){
+        const mutation=applyBoardAssistantMutation(itemsRef.current,command,{createId});
+        if(mutation.status==="not-found")respond(`Не нашёл объект «${command.query}».`);
+        else{
+          commit(mutation.items);setSelected(mutation.selectedIds);fitToBounds(mutation.bounds,110);
+          respond(`Создал ${mutation.selectedIds.length} ${russianCountWord(mutation.selectedIds.length,"копию","копии","копий")} найденных объектов и выделил их. Исходное содержимое и тип объектов сохранены.`);
         }
       }else if(command.kind==="move"){
         const rect=board.current?.getBoundingClientRect();
@@ -3879,15 +3894,24 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         const before=index.current;
         undo(command.kind==="undo"?-1:1);
         respond(index.current===before?"Дальше в этом направлении действий нет.":command.kind==="undo"?"Последнее действие отменено.":"Действие повторено.");
-      }else if(command.kind==="create-sticky"||command.kind==="create-text"||command.kind==="create-checklist"||command.kind==="create-shape"){
+      }else if(command.kind==="pick-media"){
+        const input=mediaInput.current;
+        if(!input)respond("Не удалось открыть выбор файла. Используйте кнопку загрузки фото или PDF на панели инструментов.");
+        else{
+          setTool("select");
+          respond(command.mediaType==="image"?"Выберите изображение на устройстве — после выбора я добавлю его на доску.":"Выберите PDF на устройстве — после выбора я добавлю его на доску.");
+          input.click();
+        }
+      }else if(command.kind==="create-sticky"||command.kind==="create-text"||command.kind==="create-checklist"||command.kind==="create-formula"||command.kind==="create-table"||command.kind==="create-chart"||command.kind==="create-quiz"||command.kind==="create-flashcard"||command.kind==="create-comment"||command.kind==="create-fraction"||command.kind==="create-linkmedia"||command.kind==="create-frame"||command.kind==="create-shape"||command.kind==="create-graph"||command.kind==="create-instrument"||command.kind==="create-cover"||command.kind==="create-connector"||command.kind==="create-ink"){
         const rect=board.current?.getBoundingClientRect();
         if(!rect)throw new Error("Не удалось определить область доски");
         const center=world({x:rect.width/2,y:rect.height/2});
         const created=createBoardAssistantObject(command,center,createId);
-        if(!created)respond("Напишите содержание нового объекта после двоеточия. Например: «создай заметку: повторить урок».");
+        if(!created)respond(command.kind==="create-chart"?"Не получилось разобрать данные диаграммы. Запишите пары через точку с запятой: «создай столбчатую диаграмму Продажи: Январь | 12; Февраль | 18».":command.kind==="create-quiz"?"Не получилось собрать викторину. Укажите вопрос, от двух до шести вариантов и правильный ответ, например: «создай викторину: Сколько будет 2 + 2?; 3; 4; ответ: 2».":command.kind==="create-flashcard"?"Укажите обе стороны карточки через вертикальную черту: «создай карточку для повторения: Вопрос | Ответ».":command.kind==="create-fraction"?"Укажите дробь с числителем не больше знаменателя, например: «создай дробь: 3/4».":command.kind==="create-linkmedia"?"Нужна корректная ссылка http/https. Например: «добавь видео: Название | https://example.com/урок».":"Напишите содержание нового объекта после двоеточия. Например: «создай заметку: повторить урок».");
         else{
+          if(created.kind==="frame")created.presentationOrder=Math.max(-1,...itemsRef.current.filter(item=>item.kind==="frame").map((item,indexValue)=>item.presentationOrder??indexValue))+1;
           commit([...itemsRef.current,created]);setSelected([created.id]);setTool("select");
-          respond(`Создал ${created.kind==="sticky"?"заметку":created.kind==="shape"?"фигуру":created.kind==="checklist"?"список":"текстовый объект"} и выделил его.`);
+          respond(`Создал ${created.graphFigureId==="lektrus-chart"?"диаграмму":created.kind==="sticky"?"заметку":created.kind==="shape"?"фигуру":created.kind==="checklist"?"список":created.kind==="formula"?"формулу":created.kind==="table"?"таблицу":created.kind==="quiz"?"викторину":created.kind==="flashcard"?"карточку для повторения":created.kind==="comment"?"комментарий":created.kind==="fraction"?"дробную модель":created.kind==="linkmedia"?"медиа-ссылку":created.kind==="frame"?"фрейм":created.kind==="graph"?"график функции":created.kind==="instrument"?"измерительный инструмент":created.kind==="cover"?"шторку":created.kind==="connector"?"стрелку":created.kind==="pen"?"линию карандашом":created.kind==="marker"?"линию маркером":"текстовый объект"} и выделил его.`);
         }
       }else if(/задач|упражнен|задани|тест|карточ/i.test(prompt)){
         if(!canCreateAssignments){respond("Генерировать учебные материалы может только преподаватель с правом создавать задания.");return}
@@ -3969,7 +3993,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
 
     const id = createId();
-    await putAsset(id, isPdf ? file.slice(0, file.size, "application/pdf") : file, boardSummary.id);
+    await putAsset(id, isPdf ? file.slice(0, file.size, "application/pdf") : file, boardSummary.id, !remoteEnabled);
     const rect = board.current?.getBoundingClientRect();
     const center = position ?? world({ x: (rect?.width ?? 800) / 2, y: (rect?.height ?? 600) / 2 });
     const item: Item = {
@@ -9329,12 +9353,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             </nav>
             {boardAiMode==="assistant"?<div className="board-ai-assistant">
               <div className="board-ai-chat-log" role="log" aria-live="polite">
-                {!boardAssistantMessages.length&&<div className="board-ai-chat-intro"><b>Что сделать на доске?</b><span>Найдите объект, попросите сводку или анализ изменений, создайте заметку, текст, фигуру либо учебный материал.</span></div>}
+                {!boardAssistantMessages.length&&<div className="board-ai-chat-intro"><b>Что сделать на доске?</b><span>Найдите или переместите объект, попросите сводку, создайте заметку, формулу, таблицу, фрейм, фигуру или учебный материал.</span></div>}
                 {boardAssistantMessages.map(message=><div key={message.id} className={`board-ai-chat-message ${message.role}`}><small>{message.role==="user"?"Вы":"Помощник"}</small><p>{message.text}</p></div>)}
                 {boardAssistantBusy&&<div className="board-ai-chat-pending" role="status">Помощник выполняет запрос…</div>}
               </div>
               {!boardAssistantMessages.length&&<div className="board-ai-suggestions">
-                {["Сводка доски","Покажи историю изменений","Найди формулу на доске","Создай заметку: повторить тему"].map(prompt=><button type="button" key={prompt} onClick={()=>void runBoardAssistant(prompt)}>{prompt}</button>)}
+                {["Сводка доски","Покажи историю изменений","Найди формулу на доске","Создай формулу: F = ma","Создай таблицу: Величина | Обозначение; Сила | F","Создай фрейм: План урока"].map(prompt=><button type="button" key={prompt} onClick={()=>void runBoardAssistant(prompt)}>{prompt}</button>)}
               </div>}
               <form className="board-ai-chat-compose" onSubmit={event=>{event.preventDefault();void runBoardAssistant(boardAssistantInput)}}>
                 <input value={boardAssistantInput} onChange={event=>setBoardAssistantInput(event.target.value)} placeholder="Напишите, что сделать или найти…" aria-label="Команда для помощника"/>

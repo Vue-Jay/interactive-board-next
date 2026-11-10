@@ -253,11 +253,24 @@ def main() -> None:
                 ambiguous_topics.add(normalized)
             else:
                 topic_labels[normalized] = subject
+    for subject, mapping in grade_map.get("subjects", {}).items():
+        for rows in mapping.get("officialAnnualPlanByGrade", {}).get("grades", {}).values():
+            for row in rows:
+                normalized = normalize_topic(row.get("title", ""))
+                if not normalized:
+                    continue
+                if re.match(r"^(?:повторение|обобщение|систематизация|контроль)(?: |$)", normalized):
+                    continue
+                if normalized in topic_labels and topic_labels[normalized] != subject:
+                    ambiguous_topics.add(normalized)
+                else:
+                    topic_labels[normalized] = subject
     for topic in ambiguous_topics:
         topic_labels.pop(topic, None)
     model["topicIndex"] = topic_labels
 
     topic_grades: dict[str, dict[str, str]] = defaultdict(dict)
+    subject_grade_bands: dict[str, list[str]] = {}
 
     def merge_grade_bands(previous: str, current: str) -> str:
         def bounds(value: str) -> tuple[int, int]:
@@ -278,12 +291,38 @@ def main() -> None:
 
     for subject, mapping in grade_map.get("subjects", {}).items():
         topics_by_grade = mapping.get("topicsByGradeBand", mapping.get("topicsByGrade", {}))
+        subject_grade_bands[subject] = sorted(
+            (str(grade) for grade in topics_by_grade if re.fullmatch(r"\d{1,2}(?:-\d{1,2})?", str(grade))),
+            key=lambda value: (int(value.split("-")[0]), int(value.split("-")[-1])),
+        )
         for grade, topics in topics_by_grade.items():
             for topic in topics:
                 normalized = normalize_topic(topic)
                 previous = topic_grades[subject].get(normalized)
                 topic_grades[subject][normalized] = merge_grade_bands(previous, grade) if previous else grade
+        # Exact wording from the official annual thematic plan is also a
+        # supported curriculum topic. Keep the existing grade assignment when
+        # one already exists; otherwise use the grades where the plan lists it.
+        annual_topic_grades: dict[str, list[int]] = defaultdict(list)
+        for grade, rows in mapping.get("officialAnnualPlanByGrade", {}).get("grades", {}).items():
+            for row in rows:
+                normalized = normalize_topic(row.get("title", ""))
+                if normalized:
+                    annual_topic_grades[normalized].append(int(grade))
+        for normalized, grades in annual_topic_grades.items():
+            annual_start, annual_end = min(grades), max(grades)
+            previous = topic_grades[subject].get(normalized)
+            if previous:
+                match = re.fullmatch(r"(\d{1,2})(?:-(\d{1,2}))?", previous)
+                if match:
+                    annual_start = min(annual_start, int(match[1]))
+                    annual_end = max(annual_end, int(match[2] or match[1]))
+            topic_grades[subject][normalized] = str(annual_start) if annual_start == annual_end else f"{annual_start}-{annual_end}"
+    # «Паронимы» встречаются в программе 5–9 классов и в старшей школе;
+    # короткий запрос без уточнения разновидности должен допускать оба уровня.
+    topic_grades["Русский язык"][normalize_topic("паронимы")] = "5-10"
     model["topicGradeIndex"] = dict(topic_grades)
+    model["subjectGradeBands"] = subject_grade_bands
 
     def evaluate(examples: list[tuple[str, str]]) -> tuple[float, float, float, Counter, Counter]:
         totals = Counter()
@@ -323,6 +362,29 @@ def main() -> None:
     print("  " + "; ".join(f"{subject}: {threshold:.3f}" for subject, threshold in subject_thresholds.items()))
     print(f"Знакомые темы в новых формулировках: {wording_accuracy:.1%}; покрытие уверенных ответов {wording_coverage:.1%}, точность уверенных {wording_confident_accuracy:.1%}")
     print(f"Новые темы, целиком отложенные от обучения и калибровки: {topic_accuracy:.1%}; покрытие уверенных ответов {topic_coverage:.1%}, точность уверенных {topic_confident_accuracy:.1%}")
+    for subject in ("Математика", "Физика", "Химия", "Русский язык"):
+        rows = []
+        for text, expected in topic_validation:
+            if expected != subject:
+                continue
+            predicted, _, confidence = predict(model, text)
+            rows.append((predicted == expected, confidence >= confidence_threshold, confidence, predicted, text))
+        accepted_rows = [correct for correct, accepted, _, _, _ in rows if accepted]
+        print(
+            f"  Новые темы {subject}: {sum(correct for correct, _, _, _, _ in rows)}/{len(rows)} "
+            f"сырых; уверенный охват {len(accepted_rows)}/{len(rows)}; "
+            f"точность уверенных {sum(accepted_rows)}/{len(accepted_rows) if accepted_rows else 0}"
+        )
+        for _, accepted, confidence, predicted, text in rows:
+            if accepted and predicted != subject:
+                print(f"    Уверенная ошибка {subject} ({confidence:.3f}): {text!r}; получено {predicted}")
+    topic_confident_errors = []
+    for text, expected in topic_validation:
+        predicted, _, confidence = predict(model, text)
+        if confidence >= confidence_threshold and predicted != expected:
+            topic_confident_errors.append((confidence, expected, predicted, text))
+    for confidence, expected, predicted, text in sorted(topic_confident_errors, reverse=True)[:20]:
+        print(f"  Уверенная ошибка новой темы ({confidence:.3f}): {text!r}; ожидалось {expected}, получено {predicted}")
     for subject in SUBJECTS:
         print(f"  {subject}: {correct[subject]}/{totals[subject]}")
 

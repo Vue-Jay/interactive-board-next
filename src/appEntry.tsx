@@ -167,7 +167,7 @@ if (import.meta.env.PROD && !Capacitor.isNativePlatform() && "serviceWorker" in 
     // Never reload an active lesson merely because a new version was downloaded.
     if (reloadAfterConfirmedUpdate) window.location.reload();
   });
-  window.addEventListener("load", () => {
+  const registerServiceWorker = () => {
     if (!window.isSecureContext) return; // Production PWA requires HTTPS.
     void navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" })
       .then(registration => {
@@ -189,5 +189,7 @@ if (import.meta.env.PROD && !Capacitor.isNativePlatform() && "serviceWorker" in 
         document.addEventListener("visibilitychange", refresh);
       })
       .catch(error => console.warn("Lektrus PWA registration failed", error));
-  }, { once: true });
+  };
+  if (document.readyState === "complete") registerServiceWorker();
+  else window.addEventListener("load", registerServiceWorker, { once: true });
 }

@@ -8,6 +8,7 @@ type Model = {
   likelihoods?: Record<string, Record<string, number>>;
   topicIndex?: Record<string, string>;
   topicGradeIndex?: Record<string, Record<string, string>>;
+  subjectGradeBands?: Record<string, string[]>;
   confidenceThreshold?: number;
 };
 
@@ -88,6 +89,21 @@ function extractFeatures(text: string): Set<string> {
 export function classifyCurriculumSubject(text: string): string {
   const activeModel = model;
   if (!activeModel) return "";
+  const explicitSubject = ([
+    ["Математика", /(?:^|\s)по\s+(?:математик[а-яё]*|алгебр[а-яё]*|геометр[а-яё]*)(?=\s|$)/iu],
+    ["Физика", /(?:^|\s)по\s+физик[а-яё]*(?=\s|$)/iu],
+    ["Химия", /(?:^|\s)по\s+хими[а-яё]*(?=\s|$)/iu],
+    ["Русский язык", /(?:^|\s)по\s+русск[а-яё]*\s+язык[а-яё]*(?=\s|$)/iu],
+  ] as [string, RegExp][]).find(([, pattern]) => pattern.test(text));
+  if (explicitSubject) return explicitSubject[0];
+  if (/аксиом[а-яё]*.{0,24}стереометр|стереометр[а-яё]*/iu.test(text)) return "Математика";
+  if (/(?:показател[ья].{0,18}преломлен|преломлен[а-яё]*.{0,18}показател|индекс[а-яё]*.{0,18}преломлен)/iu.test(text)) return "Физика";
+  if (/(?:обращен[а-яё]*.{0,20}запят|запят[а-яё]*.{0,20}обращен)/iu.test(text)) return "Русский язык";
+  if (/молярн[а-яё]*\s+масс[а-яё]*/iu.test(text)) return "Химия";
+  if (/(?:физическ[а-яё]*\s+величин[а-яё]*.{0,24}измерени[яе]|измерени[яе].{0,24}физическ[а-яё]*\s+величин[а-яё]*)/iu.test(text)) return "Физика";
+  if (/(?:спряжен[а-яё]*.{0,20}глагол[а-яё]*|глагол[а-яё]*.{0,20}спряжен[а-яё]*)/iu.test(text)) return "Русский язык";
+  if (/(?:количеств[а-яё]*\s+теплот[а-яё]*|конвекци[а-яё]*|атомн[а-яё]*\s+ядр[а-яё]*|математическ[а-яё]*\s+маятник[а-яё]*|плавлени[а-яё]*.{0,30}кристаллизаци[а-яё]*|кристаллизаци[а-яё]*.{0,30}плавлени[а-яё]*)/iu.test(text)) return "Физика";
+  if (/плотност[а-яё]*.{0,24}(?:тел[а-яё]*|веществ[а-яё]*|жидкост[а-яё]*|газ[а-яё]*|8\s+класс[а-яё]*)|(?:тел[а-яё]*|веществ[а-яё]*).{0,24}плотност[а-яё]*/iu.test(text)) return "Физика";
   const normalizedTopic = text.toLocaleLowerCase("ru-RU").replace(/ё/g, "е").match(tokenPattern)?.join(" ") ?? "";
   const canonicalSubject = activeModel.topicIndex?.[normalizedTopic];
   if (canonicalSubject) return canonicalSubject;
@@ -136,4 +152,9 @@ export function matchCanonicalCurriculumGrade(text: string, subject: string): st
     ?? subjectGrades?.[`тема ${normalizedTopic}`]
     ?? subjectGrades?.[`теме ${normalizedTopic}`]
     ?? "";
+}
+
+/** Returns source-mapped grade bands in which the selected subject is taught. */
+export function getCanonicalCurriculumSubjectGradeBands(subject: string): string[] {
+  return model?.subjectGradeBands?.[subject] ?? [];
 }

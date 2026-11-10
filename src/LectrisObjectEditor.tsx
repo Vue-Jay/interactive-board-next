@@ -7,7 +7,7 @@ import {boardObjectTypeName} from "./boardObjectNames";
 export const INK_WIDTHS={
  pen:[1,3,6,12,22],
  marker:[2,7,14,28,48],
- eraser:[6,16,32,55,90]
+ eraser:[6,16,32,55,92]
 } as const;
 export type InkTool="pen"|"marker"|"eraser";
 /** Scale wider tools uniformly so the whole five-sample set fits, and always

@@ -8,6 +8,21 @@ const bandBounds = (value) => {
   const match = String(value).match(/^(\d{1,2})(?:-(\d{1,2}))?$/);
   return match ? [Number(match[1]), Number(match[2] ?? match[1])] : null;
 };
+const normalizePlanTitle = (value) => String(value).toLowerCase().replaceAll("ё", "е").match(/[а-яa-z0-9]+/g)?.join(" ") ?? "";
+const curriculumTitleSubjects = new Map();
+for (const [subject, mapping] of Object.entries(gradeMap.subjects ?? {})) {
+  const addTitle = (title) => {
+    const key = normalizePlanTitle(title);
+    if (!key) return;
+    const owners = curriculumTitleSubjects.get(key) ?? new Set();
+    owners.add(subject);
+    curriculumTitleSubjects.set(key, owners);
+  };
+  for (const title of corpus[subject] ?? []) addTitle(title);
+  for (const rows of Object.values(mapping.officialAnnualPlanByGrade?.grades ?? {})) {
+    for (const row of rows) addTitle(row.title);
+  }
+}
 const gradeBandCovers = (actual, expected) => {
   const actualBounds = bandBounds(actual);
   const expectedBounds = bandBounds(expected);
@@ -88,6 +103,7 @@ try {
     gradeMismatchFailures: [],
     officialCoverageBySubject: {},
     officialCoverageFailures: [],
+    officialCoverageDataFailures: [],
     modelFetchesOnWarmup,
     offlineGenerationCases: 0,
     offlineFetchAttempts: 0,
@@ -101,6 +117,10 @@ try {
     literatureFactFailures: [],
     gradeMapTopicsBySubject: {},
     gradeMapTopicsByGrade: {},
+    officialAnnualPlanBySubject: {},
+    officialAnnualPlanFailures: [],
+    officialAnnualPlanTopicRecognitionBySubject: {},
+    officialAnnualPlanTopicRecognitionFailures: [],
     gradeMapMissingTopicsBySubject: {},
     gradeMapExcludedTopicsBySubject: {},
     gradeMapErrors: [],
@@ -108,7 +128,79 @@ try {
 
   for (const [subject, mapping] of Object.entries(gradeMap.subjects ?? {})) {
     const sourceTopics = new Set(corpus[subject] ?? []);
-    const mappedTopics = Object.values(mapping.topicsByGradeBand ?? mapping.topicsByGrade ?? {}).flat();
+    const annualPlan = mapping.officialAnnualPlanByGrade;
+    const annualRowsByNormalizedTitle = new Map();
+    const isGenericAnnualPlanTitle = (value) => /^(?:повторение|обобщение|систематизация|контроль)(?: |$)/.test(normalizePlanTitle(value));
+    const sourceTopicKeys = new Set([...sourceTopics].map(normalizePlanTitle));
+    if (annualPlan) {
+      const grades = Object.entries(annualPlan.grades ?? {});
+      const seenCodes = new Map();
+      const recognizedAnnualTitles = new Set();
+      const planGrades = Object.keys(annualPlan.grades ?? {}).sort((left, right) => Number(left) - Number(right));
+      for (const grade of planGrades) {
+        const rows = annualPlan.grades?.[grade] ?? [];
+        const codes = new Set();
+        const rowKeys = new Set();
+        for (const row of rows) {
+          const titleKey = normalizePlanTitle(row.title);
+          const code = String(row.code ?? "");
+          const codedRow = Boolean(code);
+          const hasValidTableMetadata = Number.isInteger(row.hours) && row.hours > 0
+            && Number.isInteger(row.page) && row.page > 0
+            && typeof row.course === "string" && row.course.trim().length > 0;
+          if (!titleKey || !row.title || (codedRow ? !/^\d+(?:\.\d+)?$/.test(code) : !hasValidTableMetadata)) {
+            report.officialAnnualPlanFailures.push({ subject, grade, issue: "invalid row", code, title: row.title ?? "" });
+            continue;
+          }
+          if (!isGenericAnnualPlanTitle(row.title)) {
+            const recognizedSubject = intent.matchCanonicalCurriculumTopic(row.title);
+            const sharedCurriculumTitle = curriculumTitleSubjects.get(titleKey)?.size > 1
+              && curriculumTitleSubjects.get(titleKey)?.has(subject);
+            if (recognizedSubject !== subject && !sharedCurriculumTitle) {
+              report.officialAnnualPlanTopicRecognitionFailures.push({ subject, grade, title: row.title, recognizedSubject });
+            }
+            recognizedAnnualTitles.add(titleKey);
+          }
+          const rowKey = codedRow ? `code:${code}` : `table:${row.course}:${titleKey}`;
+          // Federal thematic plans may repeat the generic recap heading in
+          // multiple grading periods. Preserve those source rows; only report
+          // a duplicate when an actual topic is duplicated within a course.
+          if (rowKeys.has(rowKey) && (codedRow || !isGenericAnnualPlanTitle(row.title))) {
+            report.officialAnnualPlanFailures.push({ subject, grade, issue: codedRow ? "duplicate code" : "duplicate annual-plan row", code, title: row.title });
+          }
+          rowKeys.add(rowKey);
+          if (codedRow) {
+            if (codes.has(code)) report.officialAnnualPlanFailures.push({ subject, grade, issue: "duplicate code", code });
+            codes.add(code);
+            const previousGrade = seenCodes.get(`${grade}:${code}`);
+            if (previousGrade) report.officialAnnualPlanFailures.push({ subject, grade, issue: "duplicate grade code", code });
+            seenCodes.set(`${grade}:${code}`, true);
+            if (!sourceTopicKeys.has(titleKey)) report.officialAnnualPlanFailures.push({ subject, grade, issue: "title missing from corpus", code, title: row.title });
+          }
+          const entry = annualRowsByNormalizedTitle.get(titleKey) ?? { title: row.title, minGrade: Number(grade), maxGrade: Number(grade), occurrences: 0 };
+          entry.minGrade = Math.min(entry.minGrade, Number(grade));
+          entry.maxGrade = Math.max(entry.maxGrade, Number(grade));
+          entry.occurrences += 1;
+          annualRowsByNormalizedTitle.set(titleKey, entry);
+        }
+        if (!rows.length) report.officialAnnualPlanFailures.push({ subject, grade, issue: "missing grade rows" });
+      }
+      report.officialAnnualPlanBySubject[subject] = Object.fromEntries(grades.map(([grade, rows]) => [grade, rows.length]));
+      report.officialAnnualPlanTopicRecognitionBySubject[subject] = recognizedAnnualTitles.size;
+      for (const row of annualRowsByNormalizedTitle.values()) {
+        const expected = row.minGrade === row.maxGrade ? String(row.minGrade) : `${row.minGrade}-${row.maxGrade}`;
+        const actual = intent.matchCanonicalCurriculumGrade(row.title, subject);
+        report.runtimeGradeMapChecks += 1;
+        if (!gradeBandCovers(actual, expected)) {
+          report.runtimeGradeMapFailures.push({ subject, topic: row.title, expected, actual, source: "official annual plan" });
+        }
+      }
+    }
+    const mappedTopics = [...Object.values(mapping.topicsByGradeBand ?? mapping.topicsByGrade ?? {}).flat()];
+    for (const row of annualRowsByNormalizedTitle.values()) {
+      if (sourceTopicKeys.has(normalizePlanTitle(row.title))
+        && !mappedTopics.some((topic) => normalizePlanTitle(topic) === normalizePlanTitle(row.title))) mappedTopics.push(row.title);
+    }
     report.gradeMapTopicsByGrade[subject] = Object.fromEntries(Object.entries(mapping.topicsByGradeBand ?? mapping.topicsByGrade ?? {}).map(([grade, topics]) => [grade, topics.length]));
     const excludedTopics = mapping.outOfBasicCourse ?? [];
     report.gradeMapTopicsBySubject[subject] = mappedTopics.length;
@@ -142,13 +234,18 @@ try {
     }
     for (const [grade, audit] of Object.entries(mapping.officialCoverage?.grades ?? {})) {
       const codes = audit.contentCodes ?? [];
-      const covered = new Set(Object.values(audit.topicCodes ?? {}).flat());
+      const uniqueCodes = [...new Set(codes)];
+      const duplicateCodes = codes.filter((code, index) => codes.indexOf(code) !== index);
+      const mappedCodes = new Set(Object.values(audit.topicCodes ?? {}).flat());
+      const covered = mappedCodes;
       const absentCodes = codes.filter((code) => !covered.has(code));
+      const unlistedCodes = [...mappedCodes].filter((code) => !uniqueCodes.includes(code));
       const unknownTopics = Object.keys(audit.topicCodes ?? {}).filter((topic) => !sourceTopics.has(topic) || !mappedSet.has(topic));
-      const rate = codes.length ? Number(((codes.length - absentCodes.length) / codes.length).toFixed(4)) : 0;
+      const rate = uniqueCodes.length ? Number(((uniqueCodes.length - new Set(absentCodes).size) / uniqueCodes.length).toFixed(4)) : 0;
       report.officialCoverageBySubject[subject] ??= {};
-      report.officialCoverageBySubject[subject][grade] = { codes: codes.length, covered: codes.length - absentCodes.length, rate, source: audit.source };
-      if (rate < 0.95 || unknownTopics.length) report.officialCoverageFailures.push({ subject, grade, absentCodes, unknownTopics, rate });
+      report.officialCoverageBySubject[subject][grade] = { codes: uniqueCodes.length, covered: uniqueCodes.length - new Set(absentCodes).size, rate, source: audit.source };
+      if (duplicateCodes.length || unlistedCodes.length) report.officialCoverageDataFailures.push({ subject, grade, duplicateCodes, unlistedCodes });
+      if (rate < 0.95 || unknownTopics.length) report.officialCoverageFailures.push({ subject, grade, absentCodes: [...new Set(absentCodes)], unknownTopics, rate });
     }
   }
 
@@ -1089,6 +1186,9 @@ try {
     || report.runtimeGradeMapFailures.length > 0
     || report.gradeMismatchFailures.length > 0
     || report.officialCoverageFailures.length > 0
+    || report.officialCoverageDataFailures.length > 0
+    || report.officialAnnualPlanFailures.length > 0
+    || report.officialAnnualPlanTopicRecognitionFailures.length > 0
     || report.gradeOneMathFailures.length > 0
     || report.gradeTwoMathFailures.length > 0
     || report.gradeThreeMathFailures.length > 0
