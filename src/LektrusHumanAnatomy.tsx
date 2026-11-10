@@ -315,9 +315,10 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
      <button type="button" aria-label="Отдалить" onClick={()=>zoom(1/1.22)}>−</button>
     </div>
     <span className="lek-anatomy-stage-hint">{system==="integumentary"?
+     displayCamera.scale>=155?"Эпидермис · учебная реконструкция, не микрофото":
      displayCamera.scale<=10?"Кожа · цельная модель конечностей":
      displayCamera.scale<26?"Кожа · плавное раскрытие бокового разреза":
-     "Кожа в разрезе вдоль боковых контуров":
+     "Кожа в разрезе вдоль боковых контуров · масштаб условный":
      "Одна точка обзора для всех систем"}</span>
    </div>
    <div className="lek-anatomy-footnote">
