@@ -1,9 +1,20 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { createServer } from "vite";
 
 const server = await createServer({ configFile: "./vite.config.ts", server: { middlewareMode: true }, appType: "custom" });
 try {
   const curriculum = await server.ssrLoadModule("/src/aiCurriculumGenerator.ts");
+  const classifier = await server.ssrLoadModule("/src/aiSubjectIntentClassifier.ts");
+  const modelJson = await readFile("public/models/aiSubjectIntentModel.json", "utf8");
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(modelJson, { status: 200, headers: { "Content-Type": "application/json" } });
+  try {
+    await classifier.loadCurriculumSubjectModel();
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
   for (const prompt of ["5 задач на молярную массу", "Сделай 5 задач на молярную массу", "Подготовь пять заданий по химии: молярная масса"]) {
     const request = curriculum.parseCurriculumRequest(prompt, "", 6, "medium", "assignment");
     assert.equal(request.subject, "Химия", `Wrong subject for: ${prompt}`);
@@ -25,6 +36,18 @@ try {
   assert.match(geographyResult.title, /^Практика · География ·/u, "The result remains a regular assignment, not a separately labeled mode");
   assert.doesNotMatch(geographyResult.title, /олимпиад/i);
   assert.ok(geographyResult.items.every((item) => /почв|почвообраз/i.test(item)), "Generated tasks must keep the user's requested topic");
+
+  for (const [prompt, expectedSubject] of [
+    ["Составь 2 задания на древнейшие люди и переход к земледелию", "История"],
+    ["Составь 2 задания на валютный курс и внешняя торговля", "Обществознание"],
+    ["Составь 2 задания на потребности человека и ограниченность ресурсов", "Обществознание"],
+  ]) {
+    const request = curriculum.parseCurriculumRequest(prompt, "", 5, "medium", "assignment");
+    assert.equal(request.subject, expectedSubject, `Canonical topic index must disambiguate: ${prompt}`);
+    const generated = curriculum.generateCurriculumAi("assignment", prompt, "medium", 2);
+    assert.equal(generated.subject, expectedSubject, `Wrong generated subject for: ${prompt}`);
+    assert.equal(generated.items.length, 2);
+  }
 
   const result = curriculum.generateCurriculumAi("assignment", "молярную массу", "medium", 15);
   assert.equal(result.subject, "Химия");
@@ -48,4 +71,4 @@ try {
   await server.close();
 }
 
-console.log("AI board request: chemistry requests and an olympiad geography request preserve subject, topic, count and grade in the ordinary assignment flow; 15 molar-mass answers are arithmetically consistent");
+console.log("AI board request: chemistry, olympiad geography, and cross-subject ambiguous topics preserve subject, topic, count and grade in the ordinary assignment flow; 15 molar-mass answers are arithmetically consistent");
