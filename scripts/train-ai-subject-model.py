@@ -38,6 +38,13 @@ TEMPLATES = (
     "Помоги провести проверку знаний по теме {topic}",
 )
 TOKEN_RE = re.compile(r"[а-яёa-z0-9]+", re.IGNORECASE)
+RUSSIAN_SUFFIXES = tuple(sorted((
+    "иями", "ями", "ами", "иях", "ого", "ему", "ому", "ыми", "ими",
+    "ая", "яя", "ое", "ее", "ые", "ие", "ый", "ий", "ой", "ей", "ую", "юю",
+    "его", "ах", "ях", "ов", "ев",
+    "ом", "ем", "ам", "ям", "ою", "ею", "ью", "ия", "ья", "а", "я", "ы", "и",
+    "о", "е", "у", "ю", "ь", "й", "м",
+), key=len, reverse=True))
 SUBJECTS = [
     "Математика", "Физика", "Химия", "Биология", "География", "Русский язык",
     "Литература", "История", "Обществознание", "Информатика", "Иностранный язык",
@@ -53,6 +60,14 @@ def features(text: str) -> set[str]:
     result = {f"w:{word}" for word in words if len(word) > 1}
     result.update(f"b:{left}_{right}" for left, right in zip(words, words[1:]))
     for word in words:
+        stem = word
+        if re.fullmatch(r"[а-я]+", word):
+            for suffix in RUSSIAN_SUFFIXES:
+                if len(word) - len(suffix) >= 3 and word.endswith(suffix):
+                    stem = word[:-len(suffix)]
+                    break
+        if len(stem) > 1:
+            result.add(f"s:{stem}")
         bounded = f"^{word}$"
         for size in (3, 4, 5):
             result.update(f"c:{bounded[i:i + size]}" for i in range(max(0, len(bounded) - size + 1)))

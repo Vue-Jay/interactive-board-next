@@ -15,6 +15,17 @@ try {
     globalThis.fetch = originalFetch;
   }
 
+  for (const [prompt, expectedSubject] of [
+    ["Составь 5 заданий по физике на движение тел с ускорением", "Физика"],
+    ["Составь 5 упражнений по химии на валентность элементов", "Химия"],
+    ["Подготовь 5 заданий по русскому языку на деепричастные обороты", "Русский язык"],
+    ["Сделай 5 задач по математике на площади треугольников", "Математика"],
+  ]) {
+    const request = curriculum.parseCurriculumRequest(prompt, "", 6, "medium", "assignment");
+    assert.equal(request.subject, expectedSubject, `Subject was not preserved from a natural request: ${prompt}`);
+    assert.match(request.topic, /движени|валентност|деепричаст|площад/i, `Inflected topic was not preserved: ${prompt}`);
+  }
+
   for (const prompt of ["5 задач на молярную массу", "Сделай 5 задач на молярную массу", "Подготовь пять заданий по химии: молярная масса"]) {
     const request = curriculum.parseCurriculumRequest(prompt, "", 6, "medium", "assignment");
     assert.equal(request.subject, "Химия", `Wrong subject for: ${prompt}`);

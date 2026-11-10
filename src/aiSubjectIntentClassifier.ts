@@ -16,6 +16,11 @@ let modelLoad: Promise<void> | null = null;
 let modelFeatureIndex: Map<string, number> | null = null;
 const MIN_CONFIDENCE_MARGIN = 4;
 const tokenPattern = /[а-яёa-z0-9]+/giu;
+const russianSuffixes = [
+  "иями", "ями", "ами", "иях", "ого", "ему", "ому", "ыми", "ими", "ая", "яя", "ое", "ее",
+  "ые", "ие", "ый", "ий", "ой", "ей", "ую", "юю", "ах", "ях", "ов", "ев", "ом", "ем",
+  "ам", "ям", "ою", "ею", "ью", "ия", "ья", "а", "я", "ы", "и", "о", "е", "у", "ю", "ь", "й", "м",
+];
 
 /** Loads the compact model only when the assistant is opened. */
 export function loadCurriculumSubjectModel(): Promise<void> {
@@ -66,6 +71,11 @@ function extractFeatures(text: string): Set<string> {
     result.add(`b:${words[index]}_${words[index + 1]}`);
   }
   for (const word of words) {
+    if (/^[а-я]+$/u.test(word)) {
+      const suffix = russianSuffixes.find((candidate) => word.length - candidate.length >= 3 && word.endsWith(candidate));
+      const stem = suffix ? word.slice(0, -suffix.length) : word;
+      if (stem.length > 1) result.add(`s:${stem}`);
+    }
     const bounded = `^${word}$`;
     for (const size of [3, 4, 5]) {
       for (let index = 0; index <= bounded.length - size; index += 1) result.add(`c:${bounded.slice(index, index + size)}`);
