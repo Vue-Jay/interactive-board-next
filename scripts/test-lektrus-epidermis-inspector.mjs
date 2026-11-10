@@ -230,6 +230,8 @@ assert.match(human,/between\(from,target\)<=8/);
 assert.match(human,/setEpidermisSelection\(hit\)/);
 assert.match(human,/aria-pressed=\{epidermisSelection===id\}/);
 assert.match(human,/EPIDERMIS_RECORDS\[epidermisSelection\]\.source/);
+assert.match(human,/учебная реконструкция, не микрофото/i,
+ "The deep epidermis view must disclose that its cell shapes are a teaching reconstruction, not an observed micrograph");
 assert.match(viewport,/drawThickEpidermisSample\(/);
 assert.match(viewport,/resolveThickSkinSample\(contours,"palm"\)/);
 assert.match(human,/EPIDERMIS_THICK_STRATA_ORDER/);
