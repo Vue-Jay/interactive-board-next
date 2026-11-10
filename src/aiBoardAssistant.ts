@@ -148,7 +148,13 @@ export function applyBoardAssistantMutation(
   if (command.kind === "delete") {
     nextItems = items.filter(item => !ids.has(item.id));
   } else if (command.kind === "rename") {
-    nextItems = items.map(item => ids.has(item.id) ? { ...item, text: command.text } : item);
+    nextItems = items.map(item => {
+      if (!ids.has(item.id)) return item;
+      if (item.kind === "image" || item.kind === "pdf") return { ...item, name: command.text };
+      if (item.kind === "linkmedia") return { ...item, mediaTitle: command.text };
+      if (item.kind === "table") return { ...item, name: command.text };
+      return { ...item, text: command.text };
+    });
   } else {
     let dx = 0, dy = 0;
     if (command.direction === "left") dx = -160;

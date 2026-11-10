@@ -1993,7 +1993,7 @@ const itemLabel = (item: Item) => {
   if (item.kind === "connector") return item.text.trim() || (item.connectorStyle === "line" ? "Линия" : item.connectorStyle === "double" ? "Двусторонняя стрелка" : "Стрелка");
   if (item.kind === "frame") return item.text.trim() || "Фрейм";
   if (item.kind === "comment") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Комментарий";
-  if (item.kind === "table") return `Таблица ${item.tableRows ?? 3}×${item.tableCols ?? 3}`;
+  if (item.kind === "table") return item.name?.trim() || `Таблица ${item.tableRows ?? 3}×${item.tableCols ?? 3}`;
   if (item.kind === "formula") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Формула";
   if (item.kind === "fraction") return item.text.trim().slice(0,44) || "Дробная модель";
   if (item.kind === "graph") return item.text.trim().slice(0,44) || boardObjectTypeName(item);

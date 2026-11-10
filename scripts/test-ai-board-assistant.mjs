@@ -27,6 +27,19 @@ const items = [
   { id: "b", kind: "checklist", x: 140, y: 40, width: 160, height: 120, text: "Геометрия", checklistItems: ["Построить треугольник", "Найти площадь"], checklistDone: [true, false] },
   { id: "c", kind: "table", x: -30, y: 0, width: 30, height: 30, text: "", tableCells: ["формула", "ответ"] },
 ];
+const mediaRename = api.applyBoardAssistantMutation([
+  { id: "photo", kind: "image", x: 0, y: 0, width: 80, height: 60, text: "", name: "old.png", assetId: "asset" },
+  { id: "video", kind: "linkmedia", x: 0, y: 0, width: 80, height: 60, text: "", mediaTitle: "old video", mediaUrl: "https://example.test/video" },
+  { id: "named-table", kind: "table", x: 0, y: 0, width: 80, height: 60, text: "", tableRows: 2, tableCols: 2, tableCells: [] },
+], { kind: "rename", query: "old", text: "New label" });
+assert.equal(mediaRename.items[0].name, "New label", "Renaming an image should change its visible media name");
+assert.equal(mediaRename.items[0].text, "", "Renaming an image should not write an invisible text field");
+assert.equal(mediaRename.items[1].mediaTitle, "New label", "Renaming linked media should change its visible title");
+assert.equal(mediaRename.items[2].name, undefined, "A table must not match unrelated media rename queries");
+const tableRename = api.applyBoardAssistantMutation([
+  { id: "named-table", kind: "table", x: 0, y: 0, width: 80, height: 60, text: "", tableRows: 2, tableCols: 2, tableCells: ["Баланс", "Сила"] },
+], { kind: "rename", query: "Баланс", text: "Физика · таблица величин" });
+assert.equal(tableRename.items[0].name, "Физика · таблица величин", "Renaming a table should set a visible board-item label");
 assert.deepEqual(api.findBoardItems(items, "заметку про Пифагора"), [items[0]]);
 assert.deepEqual(api.findBoardItems(items, "формула"), [items[2]], "Search must index structured text inside objects");
 const nestedItem = {
