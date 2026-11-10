@@ -13,6 +13,7 @@ export type BoardAssistantCommand =
   | { kind: "delete"; query: string }
   | { kind: "duplicate"; query: string }
   | { kind: "move"; query: string; direction: "left" | "right" | "up" | "down" | "center" }
+  | { kind: "resize"; query: string; direction: "larger" | "smaller" | "wider" | "narrower" | "taller" | "shorter"; percent: number }
   | { kind: "create-sticky"; text: string }
   | { kind: "create-text"; text: string }
   | { kind: "create-checklist"; text: string }
@@ -63,6 +64,20 @@ export function parseBoardAssistantCommand(input: string): BoardAssistantCommand
   if (rename) return { kind: "rename", query: rename[1].trim(), text: rename[2].trim() };
   const duplicate = value.match(/^(?:дублируй|дублировать|скопируй|сделай копию(?: объекта)?)\s+(.+)$/i);
   if (duplicate) return { kind: "duplicate", query: duplicate[1].trim() };
+  const resizeVerb = value.match(/^(увеличь|уменьши|расширь|сузь)\s+(.+?)(?:\s+на\s+(\d{1,3})\s*%?)?$/iu);
+  if (resizeVerb) return {
+    kind: "resize",
+    query: resizeVerb[2].trim().replace(/^(?:заметк[а-яё]*|стикер[а-яё]*|записк[а-яё]*|формул[а-яё]*|таблиц[а-яё]*|диаграмм[а-яё]*|график[а-яё]*|текст[а-яё]*|надпис[а-яё]*|фигур[а-яё]*|спис[а-яё]*|карточ[а-яё]*|тест[а-яё]*|вопрос[а-яё]*|задан[а-яё]*|задач[а-яё]*|упражнен[а-яё]*|материал[а-яё]*)(?:\s+|$)/iu, ""),
+    direction: /увеличь/iu.test(resizeVerb[1]) ? "larger" : /уменьши/iu.test(resizeVerb[1]) ? "smaller" : /расширь/iu.test(resizeVerb[1]) ? "wider" : "narrower",
+    percent: Math.max(5, Math.min(300, Number(resizeVerb[3] ?? 25))),
+  };
+  const resizePhrase = value.match(/^сделай\s+(.+?)\s+(шире|уже|выше|ниже|больше|меньше)(?:\s+на\s+(\d{1,3})\s*%?)?$/iu);
+  if (resizePhrase) return {
+    kind: "resize",
+    query: resizePhrase[1].trim().replace(/^(?:заметк[а-яё]*|стикер[а-яё]*|записк[а-яё]*|формул[а-яё]*|таблиц[а-яё]*|диаграмм[а-яё]*|график[а-яё]*|текст[а-яё]*|надпис[а-яё]*|фигур[а-яё]*|спис[а-яё]*|карточ[а-яё]*|тест[а-яё]*|вопрос[а-яё]*|задан[а-яё]*|задач[а-яё]*|упражнен[а-яё]*|материал[а-яё]*)(?:\s+|$)/iu, ""),
+    direction: ({ "шире": "wider", "уже": "narrower", "выше": "taller", "ниже": "shorter", "больше": "larger", "меньше": "smaller" } as const)[resizePhrase[2].toLocaleLowerCase("ru-RU") as "шире" | "уже" | "выше" | "ниже" | "больше" | "меньше"],
+    percent: Math.max(5, Math.min(300, Number(resizePhrase[3] ?? 25))),
+  };
   const move = value.match(/^(?:перемести|сдвинь)\s+(.+?)\s+(влево|вправо|вверх|вниз|в центр|по центру)$/i);
   if (move) {
     const direction = /влево/i.test(move[2]) ? "left" : /вправо/i.test(move[2]) ? "right" : /вверх/i.test(move[2]) ? "up" : /вниз/i.test(move[2]) ? "down" : "center";
@@ -225,7 +240,7 @@ export function findBoardItems(items: Item[], query: string): Item[] {
   });
 }
 
-export type BoardAssistantMutationCommand = Extract<BoardAssistantCommand, { kind: "rename" | "move" | "delete" | "duplicate" }>;
+export type BoardAssistantMutationCommand = Extract<BoardAssistantCommand, { kind: "rename" | "move" | "resize" | "delete" | "duplicate" }>;
 export type BoardAssistantMutationResult = {
   status: "not-found" | "confirmation-required" | "changed";
   items: Item[];
@@ -263,6 +278,37 @@ export function applyBoardAssistantMutation(
     nextItems = [...items, ...clones];
     const bounds = boardItemBounds(clones);
     return { status: "changed", items: nextItems, matches, selectedIds: clones.map(item => item.id), bounds };
+  } else if (command.kind === "resize") {
+    const factor = command.direction === "larger" || command.direction === "wider" || command.direction === "taller"
+      ? 1 + command.percent / 100
+      : Math.max(0.1, 1 - command.percent / 100);
+    nextItems = items.map(item => {
+      if (!ids.has(item.id)) return item;
+      const widthFactor = command.direction === "wider" || command.direction === "narrower" ? factor : command.direction === "larger" || command.direction === "smaller" ? factor : 1;
+      const heightFactor = command.direction === "taller" || command.direction === "shorter" ? factor : command.direction === "larger" || command.direction === "smaller" ? factor : 1;
+      const width = Math.max(24, Math.min(4000, item.width * widthFactor));
+      const height = Math.max(24, Math.min(4000, item.height * heightFactor));
+      const actualWidthFactor = width / item.width;
+      const actualHeightFactor = height / item.height;
+      const centerX = item.x + item.width / 2;
+      const centerY = item.y + item.height / 2;
+      return {
+        ...item,
+        width,
+        height,
+        x: centerX - width / 2,
+        y: centerY - height / 2,
+        ...((item.kind === "pen" || item.kind === "marker") && item.points
+          ? { points: item.points.map(point => ({ x: point.x * actualWidthFactor, y: point.y * actualHeightFactor })) }
+          : {}),
+        ...(item.kind === "connector" && item.connectorStart && item.connectorEnd
+          ? {
+              connectorStart: { x: item.connectorStart.x * actualWidthFactor, y: item.connectorStart.y * actualHeightFactor },
+              connectorEnd: { x: item.connectorEnd.x * actualWidthFactor, y: item.connectorEnd.y * actualHeightFactor },
+            }
+          : {}),
+      };
+    });
   } else if (command.kind === "rename") {
     nextItems = items.map(item => {
       if (!ids.has(item.id)) return item;

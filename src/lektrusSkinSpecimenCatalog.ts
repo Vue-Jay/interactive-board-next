@@ -4,10 +4,11 @@
  * remain unknown unless the published specimen explicitly identifies them.
  */
 import humanSkinUrl from "./assets/bio-atlas/specimens/skin-human-cdc-phil14586.jpg";
+import humanConnectiveSkinUrl from "./assets/bio-atlas/specimens/skin-human-wellcome-connective-1200.jpg";
 import thinSkinUrl from "./assets/bio-atlas/specimens/skin-thin-bhavya-akula-cc-by-sa4.jpg";
 import thickSkinUrl from "./assets/bio-atlas/specimens/skin-thick-bhavya-akula-cc-by-sa4.jpg";
 
-export type SkinReferenceType="human"|"thin"|"thick";
+export type SkinReferenceType="human"|"thin"|"thick"|"connective";
 export type SkinReferenceSpecimen={
  id:SkinReferenceType;title:string;imageUrl:string;originalUrl:string;
  author:string;licenseName:string;licenseUrl:string;fileSha1:string|null;
@@ -39,6 +40,21 @@ export const SKIN_REFERENCE_SPECIMENS:readonly SkinReferenceSpecimen[]=[
  hairFolliclesExpected:null,stratumLucidumExpected:null,
  speciesVerified:"human",skinType:null,siteVerified:null,
  stainVerified:null,sourcePhotoMagnification:50,micronsPerPixel:null},
+ {id:"connective",title:"Волокна дермы · человеческий препарат",
+ imageUrl:humanConnectiveSkinUrl,
+ originalUrl:"https://wellcomecollection.org/works/pbfv4uhw",
+ author:"Kevin Mackenzie, University of Aberdeen",
+ licenseName:"CC BY 4.0",
+ licenseUrl:"https://creativecommons.org/licenses/by/4.0/",
+ fileSha1:null,
+ fileSha256:"d39601a389d598adfbc683cbc3bbbb714f97ffb6eb353cb5e4e9de26cdf41a83",
+ sampleOrigin:"Срез кожи человека. Окраска альдегид-фуксином, Orange G и Light Green выделяет эластические волокна и коллаген. Ширина исходного кадра — 400 мкм; локализация участка и увеличение не указаны.",
+ kind:"independent-reference-specimen",
+ notes:"Отдельный препарат для наблюдения соединительной ткани дермы. Это не тот же участок, который выбран на модели тела. Локальный просмотр уменьшен до 1200 пикселей по ширине; калибровка этого файла — около 0,333 мкм/пиксель и не относится к виртуальному зуму Lektrus.",
+ hairFolliclesExpected:null,stratumLucidumExpected:null,
+ speciesVerified:"human",skinType:null,siteVerified:null,
+ stainVerified:"Альдегид-фуксин, Orange G, Light Green",
+ sourcePhotoMagnification:null,micronsPerPixel:400/1200},
  {id:"thin",title:"Тонкая кожа · демонстрационный препарат",
  imageUrl:thinSkinUrl,originalUrl:commons+"Histology_of_thin_skin.jpg",
  author:"Bhavya akula",licenseName:"CC BY-SA 4.0",

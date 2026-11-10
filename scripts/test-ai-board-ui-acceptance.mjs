@@ -177,7 +177,31 @@ try {
 
   const noteLabels = ["ALPHA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT", "GOLF", "HOTEL", "INDIA", "JULIET", "KILO", "LIMA", "MIKE", "NOVEMBER", "OSCAR", "PAPA", "QUEBEC", "ROMEO", "SIERRA", "TANGO", "UNIFORM", "VICTOR", "WHISKEY", "XRAY", "YANKEE", "ZULU", "APRICOT", "BIRCH", "COBALT", "DENIM"];
   const noteNames = noteLabels.map(label => `E2E_NOTE_${label}`);
-  for (const name of noteNames) await send(`создай заметку: ${name}`, /Создал заметку и выделил/i);
+  for (const [index, name] of noteNames.entries()) {
+    await send(`создай заметку: ${name}`, /Создал заметку и выделил/i);
+    if (index === 0) {
+      const overlayState = await devtools.evaluate(`(() => {
+        const workspace = document.querySelector('.workspace.board-ai-open');
+        const visible = selector => {
+          const element = workspace?.querySelector(selector);
+          return Boolean(element && getComputedStyle(element).display !== 'none' && getComputedStyle(element).visibility !== 'hidden');
+        };
+        return JSON.stringify({
+          workspaceHasAssistantState: Boolean(workspace),
+          selectionToolbarVisible: visible('.selection-toolbar-screen'),
+          quickPropertiesVisible: visible('.lectris-quick-properties'),
+          objectInspectorVisible: visible('.lectris-object-inspector'),
+          assistantVisible: Boolean(workspace?.querySelector('.board-ai-panel')),
+        });
+      })()`);
+      const state = JSON.parse(overlayState);
+      assert.equal(state.workspaceHasAssistantState, true, 'Opening the AI assistant should mark the board workspace as modal');
+      assert.equal(state.assistantVisible, true, 'The assistant must stay visible while its chat is active');
+      assert.equal(state.selectionToolbarVisible, false, 'Object selection toolbar must not cover assistant chat');
+      assert.equal(state.quickPropertiesVisible, false, 'Quick object properties must not cover assistant chat');
+      assert.equal(state.objectInspectorVisible, false, 'Object inspector must not cover assistant chat');
+    }
+  }
   for (let index = 1; index <= 10; index += 1) await send(`создай текст: E2E_TEXT_${String(index).padStart(2, "0")}`, /Создал текстовый объект и выделил/i);
   for (let index = 1; index <= 10; index += 1) await send(`создай список: E2E_TASK_${String(index).padStart(2, "0")}; повторить тему`, /Создал список и выделил/i);
   for (let index = 1; index <= 10; index += 1) await send(`создай фигуру треугольник: E2E_SHAPE_${String(index).padStart(2, "0")}`, /Создал фигуру и выделил/i);
@@ -217,6 +241,7 @@ try {
     const matched = Number(found.match(/Нашёл (\d+)/i)?.[1]);
     assert.ok(matched > 0, `Search should return at least one ${label} object`);
     await send(`переименуй ${query} в ${renamed}`, new RegExp(`Обновил название или текст у ${matched} объект`, "i"));
+    await send(`сделай ${renamed} шире на 10%`, new RegExp(`Изменил размер у ${matched} ${matched === 1 ? "объекта" : "объектов"}: шире на 10%`, "i"));
     await send(`перемести ${renamed} вправо`, new RegExp(`Переместил ${matched} объект`, "i"));
     await send(`скопируй ${renamed}`, new RegExp(`Создал ${matched} копи.*найденных объектов`, "i"));
     await send(`найди ${renamed}`, new RegExp(`Нашёл ${matched * 2} элемент.*выделил`, "i"));
@@ -245,8 +270,8 @@ try {
   for (let index = 20; index < 25; index += 1) await send(`удали ${noteNames[index]}`, /Удаление отменено/i, { confirm: false });
   for (let index = 25; index < 30; index += 1) await send(`удали ${noteNames[index]}`, /Удалил 1 элемент/i, { confirm: true });
 
-  assert.equal(sent, 363, "Должно быть выполнено ровно 363 сквозные команды через UI");
-  console.log("AI board UI acceptance: 363 реальные команды выполнены через локальный /demo/board; 20 базовых генераций (по 5 на каждый приоритетный предмет) и 3 нестандартных задачи по математике, физике и химии, 21 вид создания объектов/элементов, включая загрузку изображения/PDF, функцию-график, измерительный инструмент, шторку, стрелку, штрихи пера и маркера; поиск, переименование, копирование и оба исхода подтверждения удаления проверены на всех 20 Item.kind, перемещение проверено по всем объектам и пяти направлениям, дополнительно проверены анализ, локальная история и отмена/повтор.");
+  assert.equal(sent, 383, "Должно быть выполнено ровно 383 сквозные команды через UI");
+  console.log("AI board UI acceptance: 383 реальные команды выполнены через локальный /demo/board; 20 базовых генераций (по 5 на каждый приоритетный предмет) и 3 нестандартных задачи по математике, физике и химии, 21 вид создания объектов/элементов, включая загрузку изображения/PDF, функцию-график, измерительный инструмент, шторку, стрелку, штрихи пера и маркера; поиск, переименование, изменение размера, копирование и оба исхода подтверждения удаления проверены на всех 20 Item.kind, перемещение проверено по всем объектам и пяти направлениям, дополнительно проверены анализ, локальная история и отмена/повтор.");
 } finally {
   devtools?.close();
   if (process.platform === "win32" && chrome.pid) {

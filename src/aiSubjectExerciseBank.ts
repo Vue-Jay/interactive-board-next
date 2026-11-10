@@ -353,6 +353,13 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
     }
     if (/закон ом|сопротивлен|напряжен|электрическ.*ток|сила тока/.test(t)) {
       const r = 2 + (index % 7), i = 2 + ((index * 3) % 6), u = r * i;
+      const taskType = index % 3;
+      if (taskType === 1) {
+        return { prompt: `К резистору сопротивлением ${r} Ом приложено напряжение ${u} В. Найди силу тока и запиши закон Ома для расчёта.`, answer: `По закону Ома I = U / R = ${u} / ${r} = ${i} А.` };
+      }
+      if (taskType === 2) {
+        return { prompt: `При напряжении ${u} В сила тока в проводнике равна ${i} А. Найди сопротивление проводника.`, answer: `По закону Ома R = U / I = ${u} / ${i} = ${r} Ом.` };
+      }
       return { prompt: `По закону Ома для участка цепи сопротивление равно ${r} Ом, сила тока — ${i} А. Найди напряжение и запиши формулу.`, answer: `U = I · R = ${i} · ${r} = ${u} В.` };
     }
     if (/давлен/.test(t)) {
@@ -369,7 +376,15 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
     }
     if (/плотност/.test(t)) {
       const volume = 2 + (index % 8), density = 2 + ((index * 2) % 7);
-      return { prompt: `Тело имеет массу ${volume * density} г и объём ${volume} см³. Найди плотность вещества.`, answer: `ρ = m / V = ${volume * density} / ${volume} = ${density} г/см³.` };
+      const mass = volume * density;
+      const taskType = index % 3;
+      if (taskType === 1) {
+        return { prompt: `Плотность вещества равна ${density} г/см³, объём тела — ${volume} см³. Найди массу тела.`, answer: `m = ρV = ${density} · ${volume} = ${mass} г.` };
+      }
+      if (taskType === 2) {
+        return { prompt: `Масса однородного тела ${mass} г, а его плотность ${density} г/см³. Найди объём тела.`, answer: `V = m / ρ = ${mass} / ${density} = ${volume} см³.` };
+      }
+      return { prompt: `Тело имеет массу ${mass} г и объём ${volume} см³. Найди плотность вещества.`, answer: `ρ = m / V = ${mass} / ${volume} = ${density} г/см³.` };
     }
     if (/период.*полураспад|радиоактив.*распад/.test(t)) {
       const halfLife = 2 + (index % 4), halves = 1 + (index % 4), initial = 80 * 2 ** (halves - 1), remaining = initial / 2 ** halves;

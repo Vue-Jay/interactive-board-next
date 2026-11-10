@@ -26,7 +26,8 @@ model = json.loads(MODEL_PATH.read_text(encoding="utf-8"))
 model["featureIndex"] = {feature: index for index, feature in enumerate(model["features"])}
 cases_doc = json.loads(CASES_PATH.read_text(encoding="utf-8"))
 cases = cases_doc["cases"]
-threshold = model["confidenceThreshold"]
+thresholds = model.get("subjectConfidenceThresholds", {})
+fallback_threshold = model["confidenceThreshold"]
 
 exact_topics = {
     trainer.normalize_topic(topic)
@@ -48,6 +49,7 @@ scored_cases: list[tuple[str, str, str, float]] = []
 for case in cases:
     expected = case["subject"]
     predicted, _, confidence = trainer.predict(model, case["text"])
+    threshold = thresholds.get(predicted, fallback_threshold)
     result = predicted if confidence >= threshold else ""
     scored_cases.append((expected, predicted, result, confidence))
     totals[expected] += 1
@@ -66,7 +68,8 @@ unknown_total = totals[""]
 unknown_accepted = accepted[""]
 all_correct = sum(correct.values())
 
-print(f"Разработческий набор: {len(cases)} запросов, точное совпадение с каталогом: 0, порог: {threshold:.3f}")
+print(f"Разработческий набор: {len(cases)} запросов, точное совпадение с каталогом: 0, пороги по предметам: "
+      + ", ".join(f"{subject}={thresholds.get(subject, fallback_threshold):.3f}" for subject in trainer.SUBJECTS))
 print(f"Темы с указанным ожидаемым предметом: принято {subject_accepted}/{subject_cases} ({subject_accepted / subject_cases:.1%}); точность принятых {subject_correct}/{subject_accepted} ({subject_correct / max(1, subject_accepted):.1%})")
 print(f"Предмет модели до порога: {sum(raw_correct[s] for s in trainer.SUBJECTS)}/{subject_cases} ({sum(raw_correct[s] for s in trainer.SUBJECTS) / subject_cases:.1%})")
 print(f"Запросы без предметной подсказки: ошибочный уверенный ответ {unknown_accepted}/{unknown_total} ({unknown_accepted / unknown_total:.1%})")

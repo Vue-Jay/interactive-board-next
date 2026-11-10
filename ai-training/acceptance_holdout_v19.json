@@ -1,0 +1,45 @@
+{
+  "version": 19,
+  "frozenAt": "2026-11-10",
+  "purpose": "Diagnostic only: results were inspected and used to add a missing thermal-expansion subject alias. Do not use this set as independent acceptance evidence or add it to training.",
+  "cases": [
+    {"text":"Сделай четыре задания на уравнения с модулем для 8 класса","subject":"Математика","count":4,"grade":8,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь тест из пяти вопросов на вписанные углы","subject":"Математика","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужно три карточки для повторения смешанных чисел","subject":"Математика","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Придумай две сложные олимпиадные задачи по математике на принцип Дирихле","subject":"Математика","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Сделай три задания на площадь боковой поверхности конуса для 11 класса","subject":"Математика","count":3,"grade":11,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь пять задач на касательную к окружности по математике","subject":"Математика","count":5,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Дай четыре задачи на удельную теплоту плавления для 8 класса","subject":"Физика","count":4,"grade":8,"tool":"assignment","level":"medium"},
+    {"text":"Сделай тест из пяти вопросов о линейном расширении тел","subject":"Физика","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Дай три карточки для повторения дифракции света","subject":"Физика","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Нужны две сложные задачи по физике на силу Лоренца","subject":"Физика","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Подготовь шесть упражнений на сохранение импульса для 9 класса","subject":"Физика","count":6,"grade":9,"tool":"assignment","level":"medium"},
+    {"text":"Составь три олимпиадные задачи по физике на плавание тел","subject":"Физика","count":3,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+
+    {"text":"Составь три задания на электронный баланс в окислительно-восстановительных реакциях","subject":"Химия","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь четыре карточки по гидролизу солей","subject":"Химия","count":4,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Сделай тест из пяти вопросов на гидроксид-ионы и индикаторы","subject":"Химия","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужны две сложные задачи на объёмные отношения газов по химии","subject":"Химия","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Подбери шесть карточек для изучения названий алкенов","subject":"Химия","count":6,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Придумай три нестандартные олимпиадные задачи по химии на изомерию","subject":"Химия","count":3,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+
+    {"text":"Сделай пять упражнений на слитное и раздельное написание наречий","subject":"Русский язык","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Проверочная на четыре вопроса о вводных и вставных конструкциях","subject":"Русский язык","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужны шесть карточек на ударение в трудных словах","subject":"Русский язык","count":6,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Подготовь три задания на Н и НН в суффиксах прилагательных","subject":"Русский язык","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Составь две олимпиадные задачи по русскому языку на лексические ошибки","subject":"Русский язык","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Сделай тест из пяти заданий на способы словообразования по русскому языку","subject":"Русский язык","count":5,"grade":null,"tool":"quiz","level":"medium"},
+
+    {"text":"Составь задания по тому, что объясняли на прошлом уроке"},
+    {"text":"Подготовь карточки к следующему разделу"},
+    {"text":"Проверь знания по последней теме"},
+    {"text":"Сделай тренировку по приложенному материалу"},
+    {"text":"Нужны задачи для повторения пройденного"},
+    {"text":"Собери тест к уроку"},
+    {"text":"Дай задания по текущему разделу курса"},
+    {"text":"Хочу проверить, всё ли ученик понял"},
+
+    {"text":"Подготовь три задачи на скорость для 4 класса по физике","subject":"Физика","count":3,"grade":4,"tool":"assignment","level":"medium","expectClarification":true}
+  ]
+}

@@ -25,16 +25,19 @@ export default function LektrusSkinSpecimens({defaultOpen=false,defaultSelection
     aria-pressed={selectedId===sample.id}
     onClick={()=>setSelectedId(sample.id)}>
     {sample.id==="human"?"Человек · CDC":
+     sample.id==="connective"?"Волокна дермы":
      sample.id==="thin"?"Тонкая":"Толстая"}
    </button>)}
   </div>
   <figure className="lek-anatomy-source-plate">
    <a href={item.imageUrl} target="_blank" rel="noopener noreferrer"
-    title="Открыть исходное изображение в полном размере, доступно офлайн">
+    title="Открыть локальную копию микрофотографии">
     <img src={item.imageUrl} loading="lazy" key={item.id}
      alt={item.id==="human"?
       "Реальная микрофотография нормальной кожи человека, CDC PHIL 14586":
-      item.id==="thin"?
+     item.id==="connective"?
+      "Реальный препарат кожи человека с волокнами дермы; окраска альдегид-фуксином, Orange G и Light Green":
+     item.id==="thin"?
       "Микрофотография ткани, обозначенная автором как тонкая кожа":
       "Микрофотография ткани, обозначенная автором как толстая кожа"}/>
    </a>

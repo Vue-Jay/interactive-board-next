@@ -1,0 +1,52 @@
+{
+  "version": 3,
+  "frozenAt": "2026-11-10",
+  "purpose": "Development diagnostic set. The first run exposed misses that were used to improve parsing. Not independent final evidence and not consumed by the trainer.",
+  "cases": [
+    {"text":"Сгенерируй 4 тренировки на приведение подобных слагаемых","subject":"Математика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Для 8 класса нужно 5 упражнений на решение квадратных уравнений","subject":"Математика","count":5,"grade":8,"tool":"assignment","level":"medium"},
+    {"text":"Подбери три задачи, чтобы находить площадь трапеции","subject":"Математика","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Тест по математике: 7 вопросов про признаки делимости","subject":"Математика","count":7,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужны 2 задания с доказательством по геометрии, для олимпиады","subject":"Математика","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Сделай шесть карточек на свойства степеней","subject":"Математика","count":6,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Подготовь 5 простых заданий на пропорции","subject":"Математика","count":5,"grade":null,"tool":"assignment","level":"easy"},
+    {"text":"Придумай 3 задания на вычисление среднего арифметического","subject":"Математика","count":3,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Накидай 4 задачки, где надо применить закон Архимеда","subject":"Физика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь 6 вопросов для блиц-опроса про электрический ток","subject":"Физика","count":6,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Сделай для семиклассников 3 упражнения по расчёту давления жидкости","subject":"Физика","count":3,"grade":7,"tool":"assignment","level":"medium"},
+    {"text":"Нужны 5 карточек по физике на закон отражения света","subject":"Физика","count":5,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Составь 2 непростые задачи про мощность электрического тока","subject":"Физика","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Придумай четыре упражнения на расчёт частоты и периода колебаний","subject":"Физика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужно 3 задания для повторения явления электромагнитной индукции","subject":"Физика","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Создай пять задач по физике на количество теплоты при нагревании","subject":"Физика","count":5,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Составь 4 задания на расчёт молярного объёма газа","subject":"Химия","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужен тест по химии на 5 вопросов о строении атома","subject":"Химия","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Придумай 3 упражнения на получение оснований и их свойства","subject":"Химия","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай шесть карточек по химическим формулам оксидов","subject":"Химия","count":6,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Для 9 класса подготовь 4 задачи по химии на выход продукта реакции","subject":"Химия","count":4,"grade":9,"tool":"assignment","level":"medium"},
+    {"text":"Дай 2 олимпиадные задачи на растворимость солей","subject":"Химия","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Составь 5 заданий про генетическую связь между классами неорганических соединений","subject":"Химия","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Надо 3 упражнения на электронное строение атомов","subject":"Химия","count":3,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Сделай 4 упражнения на непроизносимые согласные","subject":"Русский язык","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь 5 заданий по русскому языку на вводные слова","subject":"Русский язык","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужна викторина из 6 вопросов про виды односоставных предложений","subject":"Русский язык","count":6,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Составь три карточки для повторения правописания приставок пре- и при-","subject":"Русский язык","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Дай 2 сложных упражнения по теме обособленных обстоятельств","subject":"Русский язык","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Придумай 7 заданий на виды придаточных в сложноподчинённом предложении","subject":"Русский язык","count":7,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай 4 задания для 6 класса на склонение имён прилагательных","subject":"Русский язык","count":4,"grade":6,"tool":"assignment","level":"medium","expectClarification":true},
+    {"text":"Нужно пять упражнений по русскому на деепричастия","subject":"Русский язык","count":5,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Сделай 5 заданий на корень","subject":""},
+    {"text":"Подготовь 4 примера на деление","subject":""},
+    {"text":"Составь 3 задачи на силу","subject":""},
+    {"text":"Нужно 6 упражнений на части","subject":""},
+    {"text":"Дай 2 вопроса по теме таблица","subject":""},
+    {"text":"Придумай 4 задания на состав","subject":""},
+    {"text":"Сделай 3 упражнения на предложение","subject":""},
+    {"text":"Подготовь 5 заданий на работу","subject":""},
+    {"text":"Нужно 4 задания по плотности для 8 класса по физике","subject":"Физика","count":4,"grade":8,"tool":"assignment","level":"medium","expectClarification":true}
+  ]
+}

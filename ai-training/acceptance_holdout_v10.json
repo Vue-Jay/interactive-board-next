@@ -1,0 +1,52 @@
+{
+  "version": 10,
+  "frozenAt": "2026-11-10",
+  "purpose": "Diagnostic set. Its results informed subsequent rule/model fixes; do not use it as an independent final acceptance result.",
+  "cases": [
+    {"text":"Подскажи 4 задачки для тренировки теоремы Пифагора","subject":"Математика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Алгебра: сделай 5 примеров с одночленами и многочленами","subject":"Математика","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужны 3 задания на скидки и проценты в магазине","subject":"Математика","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Составь 2 нестандартные задачи на доказательство делимости","subject":"Математика","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Подготовь 6 карточек на свойства ромба","subject":"Математика","count":6,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Проверь знания тестом из 4 вопросов про логарифмы","subject":"Математика","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Дай 5 упражнений на сложение и вычитание смешанных чисел","subject":"Математика","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай три задания на равносильные преобразования уравнений","subject":"Математика","count":3,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Физика: нужно 4 задачки на кинетическую энергию","subject":"Физика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Составь 5 карточек для повторения закона Архимеда","subject":"Физика","count":5,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Дай тест на 3 вопроса о силе трения","subject":"Физика","count":3,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Подготовь 6 заданий, чтобы потренировать расчёт электрической мощности","subject":"Физика","count":6,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужны 2 трудные задачи про равноускоренное движение","subject":"Физика","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Сделай 4 вопроса по теме звуковые колебания","subject":"Физика","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Для повторения подготовь 3 карточки о преломлении света","subject":"Физика","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Составь пять заданий на движение спутника по орбите","subject":"Физика","count":5,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Сделай 4 задания на расстановку коэффициентов в химических уравнениях","subject":"Химия","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Химия: подготовь 5 вопросов о галогенах","subject":"Химия","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Составь 3 карточки по теме химические свойства солей","subject":"Химия","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Нужно 2 олимпиадные задачи на растворы и концентрацию","subject":"Химия","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Придумай 6 упражнений на названия органических веществ","subject":"Химия","count":6,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Дай четыре вопроса для проверки темы химическая связь","subject":"Химия","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Подготовь 5 задач на расчёт массовой доли элемента","subject":"Химия","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай три карточки о химическом равновесии","subject":"Химия","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+
+    {"text":"Сделай 5 упражнений на непроизносимые согласные","subject":"Русский язык","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Составь проверочную из 4 вопросов по теме односоставные предложения","subject":"Русский язык","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужно 3 карточки на написание частицы НЕ с глаголами","subject":"Русский язык","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Подготовь 6 заданий про чередование гласных в корнях","subject":"Русский язык","count":6,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Придумай 2 непростых упражнения на знаки препинания при обращении","subject":"Русский язык","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Дай пять вопросов на тему прямой и косвенной речи","subject":"Русский язык","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Сделай 4 задания на склонение числительных","subject":"Русский язык","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужны 3 карточки для повторения суффиксов причастий","subject":"Русский язык","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+
+    {"text":"Подготовь 4 задания на характеристику","subject":""},
+    {"text":"Нужно 3 упражнения на размер","subject":""},
+    {"text":"Сделай 5 карточек на особенности","subject":""},
+    {"text":"Придумай 2 задачи на принцип","subject":""},
+    {"text":"Дай 6 заданий про объект","subject":""},
+    {"text":"Составь 3 вопроса на положение","subject":""},
+    {"text":"Подготовь 4 примера на форму","subject":""},
+    {"text":"Нужно 5 упражнений про движение","subject":""},
+    {"text":"Подготовь 3 задания по физике на плотность для 8 класса","subject":"Физика","count":3,"grade":8,"tool":"assignment","level":"medium","expectClarification":true}
+  ]
+}

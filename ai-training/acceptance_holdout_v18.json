@@ -1,0 +1,45 @@
+{
+  "version": 18,
+  "frozenAt": "2026-11-10",
+  "purpose": "Frozen independent acceptance sample for the four priority subjects and ambiguous-topic clarification. Excluded from all training and tuning inputs; preserve unchanged after the first evaluation.",
+  "cases": [
+    {"text":"В 7 классе проходят пропорции — подготовь пять тренировочных задач по математике","subject":"Математика","count":5,"grade":7,"tool":"assignment","level":"medium"},
+    {"text":"Проверочная по математике на 4 вопроса: арифметический квадратный корень и его свойства, 8 класс","subject":"Математика","count":4,"grade":8,"tool":"quiz","level":"medium"},
+    {"text":"Нужно шесть карточек по математике о системах линейных уравнений","subject":"Математика","count":6,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Составь две сложные задачи по математике на касательную к окружности","subject":"Математика","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Сгенерируй три задания по математике на площадь боковой поверхности конуса для 11 класса","subject":"Математика","count":3,"grade":11,"tool":"assignment","level":"medium"},
+    {"text":"Придумай две нестандартные олимпиадные задачи по математике на принцип Дирихле для 9 класса","subject":"Математика","count":2,"grade":9,"tool":"assignment","level":"hard","olympiad":true},
+
+    {"text":"Подготовь четыре задачки по физике на удельную теплоту плавления для 8 класса","subject":"Физика","count":4,"grade":8,"tool":"assignment","level":"medium"},
+    {"text":"Сделай тест из пяти вопросов по физике о линейном расширении тел","subject":"Физика","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Подбери три карточки по физике на дифракцию света для старшеклассников","subject":"Физика","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Дай две непростые задачи по физике на силу Лоренца","subject":"Физика","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Для 9 класса нужно шесть упражнений по физике на закон сохранения импульса","subject":"Физика","count":6,"grade":9,"tool":"assignment","level":"medium"},
+    {"text":"Составь три олимпиадные задачи по физике на плавание тел","subject":"Физика","count":3,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+
+    {"text":"Для 8 класса сделай четыре задания по химии на состав атомного ядра","subject":"Химия","count":4,"grade":8,"tool":"assignment","level":"medium"},
+    {"text":"Нужны три задачи по химии на объёмные отношения газов","subject":"Химия","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Подбери пять карточек по химии на номенклатуру предельных углеводородов","subject":"Химия","count":5,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Составь тест из шести вопросов по химии о водородной связи","subject":"Химия","count":6,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Дай две задачи повышенной сложности по химии на массовую концентрацию раствора","subject":"Химия","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Придумай три нестандартных задания по химии на изомеры","subject":"Химия","count":3,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+
+    {"text":"Пять упражнений по русскому языку на слитное и раздельное написание наречий для 7 класса","subject":"Русский язык","count":5,"grade":7,"tool":"assignment","level":"medium"},
+    {"text":"Для 9 класса сделай тест из четырёх вопросов по русскому языку на вводные и вставные конструкции","subject":"Русский язык","count":4,"grade":9,"tool":"quiz","level":"medium"},
+    {"text":"Мне нужны шесть карточек по русскому языку по нормам постановки ударения","subject":"Русский язык","count":6,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Составь две олимпиадные задачи по русскому языку на поиск лексических ошибок","subject":"Русский язык","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Подготовь три непростых упражнения по русскому на виды сложных предложений","subject":"Русский язык","count":3,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Сделай проверочную по русскому языку из пяти заданий на способы словообразования","subject":"Русский язык","count":5,"grade":null,"tool":"quiz","level":"medium"},
+
+    {"text":"Составь задания по тому, что объясняли на прошлом уроке"},
+    {"text":"Подготовь карточки к следующей теме курса"},
+    {"text":"Проверь знания ученика по последнему разделу"},
+    {"text":"Сделай тренировку по материалу, который я прикрепил"},
+    {"text":"Нужны несколько задач, чтобы повторить пройденное"},
+    {"text":"Собери тест к уроку без дополнительных материалов"},
+    {"text":"Дай практические задания по текущей теме"},
+    {"text":"Хочу повторить всё, что изучали в этом месяце"},
+
+    {"text":"Подготовь три задачи на скорость для 4 класса по физике","subject":"Физика","count":3,"grade":4,"tool":"assignment","level":"medium","expectClarification":true}
+  ]
+}

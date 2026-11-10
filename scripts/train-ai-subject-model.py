@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CORPUS_PATH = ROOT / "ai-training" / "subject_topics.json"
 GRADE_MAP_PATH = ROOT / "ai-training" / "curriculum_grade_map.json"
 INTENT_EXAMPLES_PATH = ROOT / "ai-training" / "subject_intent_examples.json"
+AMBIGUITY_CALIBRATION_PATH = ROOT / "ai-training" / "subject_intent_diagnostic.json"
 OUTPUT_PATH = ROOT / "public" / "models" / "aiSubjectIntentModel.json"
 VERSION_PATH = ROOT / "src" / "aiSubjectIntentModelVersion.ts"
 TEMPLATES = (
@@ -46,6 +47,19 @@ RUSSIAN_SUFFIXES = tuple(sorted((
     "ом", "ем", "ам", "ям", "ою", "ею", "ью", "ия", "ья", "а", "я", "ы", "и",
     "о", "е", "у", "ю", "ь", "й", "м",
 ), key=len, reverse=True))
+REQUEST_STOP_WORDS = {
+    "составь", "подготовь", "подготовить", "сделай", "создай", "сгенерируй", "придумай",
+    "дай", "помоги", "подбери", "сформируй", "напиши", "реши", "найди", "объясни",
+    "изучи", "разбери", "расскажи", "покажи", "хочу", "нужны", "нужна", "нужно", "мне",
+    "можно", "пожалуйста", "задания", "задание", "задачи", "задачу", "вопросы", "вопрос",
+    "упражнения", "упражнение", "тест", "теста", "тесты", "викторину", "карточки", "карточку",
+    "флешкарточки", "проверочную", "контрольную", "самостоятельную", "практическую", "примеры",
+    "пример", "набор", "подборку", "ученику", "ученикам", "учащимся", "тренировочный", "небольшой",
+    "по", "на", "про", "тему", "тема", "теме", "класс", "класса", "классе", "кл",
+    "для", "чтобы", "разобраться", "проверить", "провести", "знания", "урок", "занятие",
+    "как", "что", "много", "несколько", "пару", "парочку", "сложные", "сложных", "сложную",
+    "сложное", "нестандартные", "нестандартных", "олимпиадные", "олимпиадных", "простые", "простых",
+}
 SUBJECTS = [
     "Математика", "Физика", "Химия", "Биология", "География", "Русский язык",
     "Литература", "История", "Обществознание", "Информатика", "Иностранный язык",
@@ -57,7 +71,10 @@ CONFIDENCE_TARGET_ACCURACY = 1.0
 
 
 def features(text: str) -> set[str]:
-    words = TOKEN_RE.findall(text.lower().replace("ё", "е"))
+    words = [
+        word for word in TOKEN_RE.findall(text.lower().replace("ё", "е"))
+        if not word.isdigit() and word not in REQUEST_STOP_WORDS
+    ]
     result = {f"w:{word}" for word in words if len(word) > 1}
     result.update(f"b:{left}_{right}" for left, right in zip(words, words[1:]))
     for word in words:
@@ -197,6 +214,8 @@ def main() -> None:
     if missing:
         raise SystemExit(f"В корпусе отсутствуют предметы: {', '.join(sorted(missing))}")
     train, wording_calibration, wording_validation, topic_calibration, topic_validation = make_examples(corpus)
+    ambiguity_document = json.loads(AMBIGUITY_CALIBRATION_PATH.read_text(encoding="utf-8"))
+    ambiguous_calibration_texts = [case["text"] for case in ambiguity_document["cases"] if not case.get("subject")]
     intent_examples = json.loads(INTENT_EXAMPLES_PATH.read_text(encoding="utf-8"))["subjects"]
     if set(intent_examples) != set(SUBJECTS):
         raise SystemExit("Дополнительные примеры классификатора должны содержать ровно 11 поддерживаемых предметов")
@@ -218,6 +237,7 @@ def main() -> None:
 
     wording_calibration_scores = predictions(wording_calibration)
     topic_calibration_scores = predictions(topic_calibration)
+    ambiguity_calibration_scores = [predict(model, text) for text in ambiguous_calibration_texts]
     def threshold_for_predicted_subject(subject: str) -> float:
         calibration = [
             row for row in wording_calibration_scores + topic_calibration_scores
@@ -230,18 +250,29 @@ def main() -> None:
                         if predicted == subject and confidence >= threshold]
             return bool(accepted) and sum(accepted) / len(accepted) >= CONFIDENCE_TARGET_ACCURACY
 
+        # The classifier must abstain on generic or ambiguous requests as
+        # well as stay precise on named-subject examples. Calibrate this class
+        # boundary on the reviewed ambiguity set, never on final holdouts.
+        highest_ambiguous_margin = max(
+            (confidence for predicted, _, confidence in ambiguity_calibration_scores if predicted == subject),
+            default=-1,
+        )
+
         for threshold in candidates:
-            if meets_calibration_target(wording_calibration_scores, threshold) \
+            if threshold > highest_ambiguous_margin \
+                    and meets_calibration_target(wording_calibration_scores, threshold) \
                     and meets_calibration_target(topic_calibration_scores, threshold):
                 return threshold
-        return max(candidates, default=0) + 1
+        return max(max(candidates, default=0), highest_ambiguous_margin) + 0.001
 
     subject_thresholds = {
         subject: round(threshold_for_predicted_subject(subject), 6)
         for subject in SUBJECTS
     }
-    # Keep one runtime threshold and use the strictest subject-specific
-    # calibration value, so a weak class cannot lower the acceptance bar.
+    # Preserve each class's independently calibrated threshold at runtime.
+    # A single maximum threshold is over-conservative because score margins
+    # differ by class even when calibration precision is the same.
+    model["subjectConfidenceThresholds"] = subject_thresholds
     confidence_threshold = max(subject_thresholds.values(), default=0)
     model["confidenceThreshold"] = confidence_threshold
     topic_labels: dict[str, str] = {}
@@ -333,7 +364,7 @@ def main() -> None:
             predicted, _, confidence = predict(model, text)
             totals[expected] += 1
             correct[expected] += predicted == expected
-            if confidence >= confidence_threshold:
+            if confidence >= subject_thresholds.get(predicted, confidence_threshold):
                 accepted[expected] += 1
                 accepted_correct[expected] += predicted == expected
         accuracy = sum(correct.values()) / max(1, sum(totals.values()))
@@ -358,7 +389,7 @@ def main() -> None:
     VERSION_PATH.write_text(f'export const AI_SUBJECT_MODEL_VERSION = "{version}";\n', encoding="utf-8")
     print(f"Обучено на примерах: {len(train)} (в том числе {len(extra_training)} дополнительных предметных формулировок); калибровка: {len(wording_calibration)} формулировок и {len(topic_calibration)} примеров новых тем; финальная проверка: {len(wording_validation)} и {len(topic_validation)} примеров")
     print(f"Словарь признаков: {model['vocabularySize']}; размер модели: {OUTPUT_PATH.stat().st_size / 1024:.1f} КБ; версия {version}")
-    print(f"Калибровка: цель {CONFIDENCE_TARGET_ACCURACY:.0%} по каждому предмету; в браузере применяется единый строгий порог {confidence_threshold:.3f}")
+    print(f"Калибровка: цель {CONFIDENCE_TARGET_ACCURACY:.0%} по предметам и отказ от {len(ambiguous_calibration_texts)} общих/неоднозначных запросов; в браузере используется отдельный порог для предсказанного предмета")
     print("  " + "; ".join(f"{subject}: {threshold:.3f}" for subject, threshold in subject_thresholds.items()))
     print(f"Знакомые темы в новых формулировках: {wording_accuracy:.1%}; покрытие уверенных ответов {wording_coverage:.1%}, точность уверенных {wording_confident_accuracy:.1%}")
     print(f"Новые темы, целиком отложенные от обучения и калибровки: {topic_accuracy:.1%}; покрытие уверенных ответов {topic_coverage:.1%}, точность уверенных {topic_confident_accuracy:.1%}")
@@ -368,7 +399,7 @@ def main() -> None:
             if expected != subject:
                 continue
             predicted, _, confidence = predict(model, text)
-            rows.append((predicted == expected, confidence >= confidence_threshold, confidence, predicted, text))
+            rows.append((predicted == expected, confidence >= subject_thresholds.get(predicted, confidence_threshold), confidence, predicted, text))
         accepted_rows = [correct for correct, accepted, _, _, _ in rows if accepted]
         print(
             f"  Новые темы {subject}: {sum(correct for correct, _, _, _, _ in rows)}/{len(rows)} "
@@ -381,7 +412,7 @@ def main() -> None:
     topic_confident_errors = []
     for text, expected in topic_validation:
         predicted, _, confidence = predict(model, text)
-        if confidence >= confidence_threshold and predicted != expected:
+        if confidence >= subject_thresholds.get(predicted, confidence_threshold) and predicted != expected:
             topic_confident_errors.append((confidence, expected, predicted, text))
     for confidence, expected, predicted, text in sorted(topic_confident_errors, reverse=True)[:20]:
         print(f"  Уверенная ошибка новой темы ({confidence:.3f}): {text!r}; ожидалось {expected}, получено {predicted}")

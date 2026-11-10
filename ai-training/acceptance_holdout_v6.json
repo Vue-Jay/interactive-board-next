@@ -1,0 +1,52 @@
+{
+  "version": 6,
+  "frozenAt": "2026-11-10",
+  "purpose": "Development diagnostic set. Inspected and used to tune request routing after the first run; not independent final evidence and not consumed by the trainer.",
+  "cases": [
+    {"text":"Для математики придумай 5 задач на признаки равенства треугольников","subject":"Математика","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Дай 4 упражнения на вычисление периметра квадрата","subject":"Математика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай тест из 6 вопросов по алгебре о степенных функциях","subject":"Математика","count":6,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Подготовь три карточки для деления обыкновенных дробей","subject":"Математика","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Нужны 2 олимпиадные задачи на принцип инварианта","subject":"Математика","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Придумай 7 примеров на умножение в столбик","subject":"Математика","count":7,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай пять упражнений по математике на простые проценты","subject":"Математика","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Для повторения нужно 4 задания на координаты в пространстве","subject":"Математика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Подготовь 5 задач по физике на расчёт плотности","subject":"Физика","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Составь три вопроса про конвекцию","subject":"Физика","count":3,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужно 6 карточек на колебания математического маятника","subject":"Физика","count":6,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Придумай 4 задания по физике о законе Паскаля","subject":"Физика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай 2 трудные задачи на взаимодействие тел при столкновении","subject":"Физика","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Дай 5 упражнений на расчёт количества теплоты","subject":"Физика","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Для урока физики подготовь 3 задачи про сопротивление проводника","subject":"Физика","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Составь 4 карточки для повторения атомного ядра","subject":"Физика","count":4,"grade":null,"tool":"flashcards","level":"medium"},
+
+    {"text":"Составь 4 задачи на массовую долю элемента в соединении","subject":"Химия","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужен тест из 5 вопросов о химических свойствах металлов","subject":"Химия","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Сделай 3 карточки на гомологический ряд алканов","subject":"Химия","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Подготовь 2 задания на расчёт количества вещества","subject":"Химия","count":2,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Химия: нужно 6 упражнений на реакцию нейтрализации","subject":"Химия","count":6,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Дай 3 сложные задачи на смеси и сплавы","subject":"Химия","count":3,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Придумай 5 вопросов для повторения типов химической связи","subject":"Химия","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Сделай четыре задания на гидролиз солей","subject":"Химия","count":4,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Подготовь 5 упражнений на проверяемые гласные в корне","subject":"Русский язык","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай 4 задания на знаки препинания в бессоюзном сложном предложении","subject":"Русский язык","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужны 3 карточки для повторения правописания суффиксов существительных","subject":"Русский язык","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Подготовь проверочную из 6 вопросов на грамматическую основу","subject":"Русский язык","count":6,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Придумай 2 сложных упражнения на образование деепричастий","subject":"Русский язык","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Составь семь заданий по русскому на постановку ударения","subject":"Русский язык","count":7,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Для 5 класса сделай 4 упражнения на падежные окончания существительных","subject":"Русский язык","count":4,"grade":5,"tool":"assignment","level":"medium"},
+    {"text":"Дай 3 вопроса о способах связи слов в словосочетании","subject":"Русский язык","count":3,"grade":null,"tool":"quiz","level":"medium"},
+
+    {"text":"Составь 3 задания на свойства","subject":""},
+    {"text":"Нужно 5 упражнений про изменение","subject":""},
+    {"text":"Дай 2 задания на структуру","subject":""},
+    {"text":"Подготовь 4 примера на действия","subject":""},
+    {"text":"Придумай 6 вопросов про систему","subject":""},
+    {"text":"Сделай 3 карточки по теме правило","subject":""},
+    {"text":"Нужно 5 задач про точку","subject":""},
+    {"text":"Дай 4 задания на величину","subject":""},
+    {"text":"Составь 3 задания на плотность для 8 класса по физике","subject":"Физика","count":3,"grade":8,"tool":"assignment","level":"medium","expectClarification":true}
+  ]
+}

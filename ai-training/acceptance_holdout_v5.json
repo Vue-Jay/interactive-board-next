@@ -1,0 +1,52 @@
+{
+  "version": 5,
+  "frozenAt": "2026-11-10",
+  "purpose": "Development diagnostic set. Inspected and used to tune parsing after the first run; not independent final evidence and not consumed by the trainer.",
+  "cases": [
+    {"text":"Набор из 4 коротких задач на сумму углов треугольника","subject":"Математика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай для алгебры контрольный мини-тест на 6 вопросов про неравенства","subject":"Математика","count":6,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Подготовь 3 примера с уравнением, содержащим модуль","subject":"Математика","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Дай 5 заданий для тренировки действий с десятичными дробями","subject":"Математика","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Составь 2 сложные олимпиадные задачи на раскраску клеток доски","subject":"Математика","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Сделай 4 карточки на формулы площади и периметра","subject":"Математика","count":4,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Придумай 7 упражнений на чтение координат точек","subject":"Математика","count":7,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Для 6 класса составь три задачи на нахождение неизвестного компонента","subject":"Математика","count":3,"grade":6,"tool":"assignment","level":"medium"},
+
+    {"text":"Подбери 4 задачи, в которых надо использовать формулу пути","subject":"Физика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай опрос из 5 вопросов о третьем законе Ньютона","subject":"Физика","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужно 3 упражнения на расчёт КПД простого механизма","subject":"Физика","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Составь 6 карточек для повторения электрического сопротивления","subject":"Физика","count":6,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Придумай две задачи на изменение импульса тела","subject":"Физика","count":2,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь 4 задания по физике на построение изображения в линзе","subject":"Физика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Дай 5 сложных задач на количество теплоты при плавлении","subject":"Физика","count":5,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Для 7 класса нужно 3 карточки по физике на атмосферное давление","subject":"Физика","count":3,"grade":7,"tool":"flashcards","level":"medium"},
+
+    {"text":"Создай 5 заданий на формулы бинарных соединений","subject":"Химия","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужен мини-тест по химии из 4 вопросов о растворимости веществ","subject":"Химия","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Составь три задачи на количество вещества и число частиц","subject":"Химия","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь 6 карточек на классификацию оксидов","subject":"Химия","count":6,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Дай 2 сложных задания на окислительно-восстановительные реакции","subject":"Химия","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Придумай 4 упражнения на взаимодействие металлов с кислотами","subject":"Химия","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай пять заданий про химические свойства углекислого газа","subject":"Химия","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужно 3 карточки по органической химии на функциональные группы","subject":"Химия","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+
+    {"text":"Сделай 4 задания на правописание парных согласных в конце слова","subject":"Русский язык","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Составь тест из 5 вопросов по пунктуации в прямой речи","subject":"Русский язык","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Подготовь 3 карточки на спряжение глаголов","subject":"Русский язык","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Нужны 6 упражнений на морфемный разбор слов","subject":"Русский язык","count":6,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Дай 2 трудных задания на обособление приложений","subject":"Русский язык","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Сделай семь заданий про правописание наречий","subject":"Русский язык","count":7,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Для 8 класса придумай 4 упражнения на уточняющие члены предложения","subject":"Русский язык","count":4,"grade":8,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь 5 вопросов о лексическом значении фразеологизмов","subject":"Русский язык","count":5,"grade":null,"tool":"quiz","level":"medium"},
+
+    {"text":"Сделай 4 задания по теме свойство","subject":""},
+    {"text":"Дай 3 упражнения на состояние","subject":""},
+    {"text":"Нужно 5 примеров про систему","subject":""},
+    {"text":"Подготовь 2 задания на точку","subject":""},
+    {"text":"Составь 6 карточек по теме модель","subject":""},
+    {"text":"Придумай 3 задачи на массу","subject":""},
+    {"text":"Дай 4 задания про закон","subject":""},
+    {"text":"Нужно 5 упражнений на изменение","subject":""},
+    {"text":"Сделай 4 задания по физике для 8 класса на плотность вещества","subject":"Физика","count":4,"grade":8,"tool":"assignment","level":"medium","expectClarification":true}
+  ]
+}

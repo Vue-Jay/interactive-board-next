@@ -1,0 +1,45 @@
+{
+  "version": 20,
+  "frozenAt": "2026-11-10",
+  "purpose": "Diagnostic only: results were inspected and used to add subject-inference rules for refraction, stereometry, and punctuation around direct address. Do not use this set as independent acceptance evidence or add it to training.",
+  "cases": [
+    {"text":"Составь пять задач на координатную плоскость и чтение графиков для 6 класса","subject":"Математика","count":5,"grade":6,"tool":"assignment","level":"medium"},
+    {"text":"Проверочная на четыре вопроса об аксиомах стереометрии","subject":"Математика","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужно три карточки для повторения арифметической прогрессии","subject":"Математика","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Придумай две сложные задачи на неравенство треугольника","subject":"Математика","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Подготовь шесть заданий на свойства степени с рациональным показателем","subject":"Математика","count":6,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай тест по математике из пяти вопросов о центральных и вписанных углах","subject":"Математика","count":5,"grade":null,"tool":"quiz","level":"medium"},
+
+    {"text":"Дай четыре задачи на показатель преломления стекла","subject":"Физика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай карточки о запасённой энергии конденсатора, пять штук","subject":"Физика","count":5,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Нужно три сложные задачи на период колебаний математического маятника","subject":"Физика","count":3,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Составь тест из шести вопросов о последовательном соединении проводников","subject":"Физика","count":6,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Придумай две олимпиадные задачи по физике на сохранение импульса","subject":"Физика","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Подготовь три упражнения на работу электрического тока в цепи","subject":"Физика","count":3,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Подготовь четыре задания на электролитическую диссоциацию","subject":"Химия","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай тест из пяти вопросов на степени окисления","subject":"Химия","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Дай три карточки о количестве вещества и постоянной Авогадро","subject":"Химия","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Нужно шесть упражнений по периодической системе элементов","subject":"Химия","count":6,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Придумай две олимпиадные задачи по химии на буферные растворы","subject":"Химия","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Подготовь три сложные задачи на расчёты по уравнениям реакций","subject":"Химия","count":3,"grade":null,"tool":"assignment","level":"hard"},
+
+    {"text":"Составь пять упражнений на деепричастный оборот","subject":"Русский язык","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Проверочная из четырёх вопросов на обращение и запятые","subject":"Русский язык","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Дай шесть карточек на выбор между тся и ться","subject":"Русский язык","count":6,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Нужно три задания на придаточные причины в сложноподчинённых предложениях","subject":"Русский язык","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай олимпиадные задания по русскому на выразительные средства языка, две штуки","subject":"Русский язык","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Подготовь пять упражнений на склонение составных порядковых числительных по русскому языку","subject":"Русский язык","count":5,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Составь задания по тому, что объясняли на прошлом уроке"},
+    {"text":"Подготовь карточки к следующему разделу"},
+    {"text":"Проверь знания по последней теме"},
+    {"text":"Сделай тренировку по приложенному материалу"},
+    {"text":"Нужны задачи для повторения пройденного"},
+    {"text":"Собери тест к уроку"},
+    {"text":"Дай задания по текущему разделу курса"},
+    {"text":"Хочу проверить, всё ли ученик понял"},
+
+    {"text":"Подготовь три задачи на скорость для 4 класса по физике","subject":"Физика","count":3,"grade":4,"tool":"assignment","level":"medium","expectClarification":true}
+  ]
+}

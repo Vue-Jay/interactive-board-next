@@ -16,6 +16,9 @@ assert.deepEqual(api.parseBoardAssistantCommand("Повтори действие
 assert.deepEqual(api.parseBoardAssistantCommand("Переименуй геометрию в План урока"), { kind: "rename", query: "геометрию", text: "План урока" });
 assert.deepEqual(api.parseBoardAssistantCommand("Скопируй формулу плотности"), { kind: "duplicate", query: "формулу плотности" });
 assert.deepEqual(api.parseBoardAssistantCommand("Перемести заметку вправо"), { kind: "move", query: "заметку", direction: "right" });
+assert.deepEqual(api.parseBoardAssistantCommand("Увеличь заметку про Пифагора на 30%"), { kind: "resize", query: "про Пифагора", direction: "larger", percent: 30 });
+assert.deepEqual(api.parseBoardAssistantCommand("Сделай таблицу с плотностью шире"), { kind: "resize", query: "с плотностью", direction: "wider", percent: 25 });
+assert.deepEqual(api.parseBoardAssistantCommand("Сузь формулу на 500%"), { kind: "resize", query: "", direction: "narrower", percent: 300 }, "Resize requests must be clamped to a safe maximum");
 assert.deepEqual(api.parseBoardAssistantCommand("Удали старую заметку"), { kind: "delete", query: "старую заметку" });
 assert.deepEqual(api.parseBoardAssistantCommand("Проанализируй все элементы"), { kind: "analyze" });
 assert.deepEqual(api.parseBoardAssistantCommand("Найди заметку про Пифагора"), { kind: "find", query: "про Пифагора" });
@@ -77,6 +80,28 @@ const tableRename = api.applyBoardAssistantMutation([
   { id: "named-table", kind: "table", x: 0, y: 0, width: 80, height: 60, text: "", tableRows: 2, tableCols: 2, tableCells: ["Баланс", "Сила"] },
 ], { kind: "rename", query: "Баланс", text: "Физика · таблица величин" });
 assert.equal(tableRename.items[0].name, "Физика · таблица величин", "Renaming a table should set a visible board-item label");
+const resizeItems = [
+  { id: "resize-note", kind: "sticky", x: 100, y: 200, width: 200, height: 100, text: "Повторить теорему Пифагора" },
+  { id: "untouched-note", kind: "sticky", x: 400, y: 500, width: 120, height: 80, text: "Оставить без изменений" },
+];
+const resizeResult = api.applyBoardAssistantMutation(resizeItems, api.parseBoardAssistantCommand("Увеличь заметку про Пифагора на 30%"));
+assert.equal(resizeResult.status, "changed");
+assert.equal(resizeResult.items[0].width, 260, "The assistant should enlarge the requested object by the parsed percentage");
+assert.equal(resizeResult.items[0].height, 130);
+assert.equal(resizeResult.items[0].x, 70, "Resizing should keep the object centered in place");
+assert.equal(resizeResult.items[0].y, 185);
+assert.deepEqual(resizeResult.items[1], resizeItems[1], "Resize must leave unrelated objects unchanged");
+const narrowResult = api.applyBoardAssistantMutation(resizeItems, api.parseBoardAssistantCommand("Сделай заметку про Пифагора уже на 50%"));
+assert.equal(narrowResult.items[0].width, 100, "Directional resize should change only the named dimension");
+assert.equal(narrowResult.items[0].height, 100);
+const scalableItems = [
+  { id: "resize-ink", kind: "pen", x: 0, y: 0, width: 100, height: 20, text: "E2E resize ink", points: [{ x: 0, y: 10 }, { x: 100, y: 10 }] },
+  { id: "resize-connector", kind: "connector", x: 200, y: 0, width: 100, height: 20, text: "E2E resize connector", connectorStart: { x: 0, y: 10 }, connectorEnd: { x: 100, y: 10 } },
+];
+const scalableResult = api.applyBoardAssistantMutation(scalableItems, { kind: "resize", query: "E2E resize", direction: "larger", percent: 100 });
+assert.deepEqual(scalableResult.items[0].points, [{ x: 0, y: 20 }, { x: 200, y: 20 }], "Ink geometry should scale with its object bounds");
+assert.deepEqual(scalableResult.items[1].connectorStart, { x: 0, y: 20 }, "Connector endpoints should scale with their object bounds");
+assert.deepEqual(scalableResult.items[1].connectorEnd, { x: 200, y: 20 });
 const allBoardKinds = ["sticky", "text", "shape", "pen", "marker", "image", "pdf", "frame", "connector", "comment", "table", "formula", "graph", "fraction", "checklist", "quiz", "flashcard", "cover", "linkmedia", "instrument"];
 for (const kind of allBoardKinds) {
   const label = `AI_KIND_${kind}`;

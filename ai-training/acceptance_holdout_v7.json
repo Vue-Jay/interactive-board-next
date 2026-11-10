@@ -1,0 +1,52 @@
+{
+  "version": 7,
+  "frozenAt": "2026-11-10",
+  "purpose": "Development diagnostic set. Inspected and used to tune request routing after the first run; not independent final evidence and not consumed by the trainer.",
+  "cases": [
+    {"text":"Нужны 3 примера на округление десятичных дробей","subject":"Математика","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Для 7 класса сформируй 5 задач на пропорциональное деление","subject":"Математика","count":5,"grade":7,"tool":"assignment","level":"medium"},
+    {"text":"Проведи короткий опрос: 4 вопроса по алгебре о линейной функции","subject":"Математика","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Сделай 2 олимпиадные задачи на принцип Дирихле","subject":"Математика","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Подготовь 6 карточек на свойства векторов","subject":"Математика","count":6,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Составь 4 задания для вычисления объёма прямоугольного параллелепипеда","subject":"Математика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Дай пять упражнений на нахождение площади круга","subject":"Математика","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужно 3 тестовых вопроса про медиану треугольника","subject":"Математика","count":3,"grade":null,"tool":"quiz","level":"medium"},
+
+    {"text":"Сделай 4 задачи на ускорение тела под действием силы","subject":"Физика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Пять вопросов для опроса по преломлению света","subject":"Физика","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Подготовь 3 карточки по физике на расчёт силы Архимеда","subject":"Физика","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Составь 2 олимпиадные задачи на работу и мощность","subject":"Физика","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Для урока нужно 6 упражнений на соединение резисторов","subject":"Физика","count":6,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Дай четыре задания на период колебаний","subject":"Физика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Физика: придумай 5 простых задач на давление твёрдого тела","subject":"Физика","count":5,"grade":null,"tool":"assignment","level":"easy"},
+    {"text":"Сделай три карточки для повторения закона сохранения энергии","subject":"Физика","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+
+    {"text":"Сделай 4 задания по химии на валентность элементов","subject":"Химия","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь тест на 5 вопросов про массовую долю примеси","subject":"Химия","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужны 3 карточки по теме строения атома","subject":"Химия","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Придумай 6 упражнений на уравнения химических реакций","subject":"Химия","count":6,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Дай 2 сложные задачи на молярную массу газа","subject":"Химия","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Для закрепления сделай 4 вопроса по химии об основаниях","subject":"Химия","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Составь пять заданий про химические свойства углеводородов","subject":"Химия","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь 3 карточки на распознавание кислот и солей","subject":"Химия","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+
+    {"text":"Составь 4 упражнения на разделительный мягкий знак","subject":"Русский язык","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Проверочная по русскому языку: 6 вопросов о подлежащем и сказуемом","subject":"Русский язык","count":6,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Сделай три карточки для разбора сложносочинённых предложений","subject":"Русский язык","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Подготовь 5 заданий на правописание окончаний глаголов","subject":"Русский язык","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Дай 2 сложных упражнения по теме чередования согласных в корне","subject":"Русский язык","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Нужно 4 вопроса о стилях речи","subject":"Русский язык","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Придумай 7 заданий на образование форм сравнительной степени прилагательных","subject":"Русский язык","count":7,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь 3 упражнения на написание НЕ с глаголами","subject":"Русский язык","count":3,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Сделай 5 заданий на основание","subject":""},
+    {"text":"Нужно 4 упражнения на форму","subject":""},
+    {"text":"Придумай 3 задания про движение","subject":""},
+    {"text":"Подготовь 6 вопросов на значение","subject":""},
+    {"text":"Составь 2 карточки на определение","subject":""},
+    {"text":"Дай 5 задач на массу","subject":""},
+    {"text":"Сделай 4 упражнения про выражение","subject":""},
+    {"text":"Нужно 3 примера на систему","subject":""},
+    {"text":"Составь 4 задачи по физике на плотность для 8 класса","subject":"Физика","count":4,"grade":8,"tool":"assignment","level":"medium","expectClarification":true}
+  ]
+}

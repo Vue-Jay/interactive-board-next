@@ -15,11 +15,38 @@ try {
   } finally {
     globalThis.fetch = originalFetch;
   }
+
+  const ohmExercises = Array.from({ length: 6 }, (_, index) => exerciseBank.generateSubjectExercise("Физика", "закон Ома", "medium", index));
+  assert.equal(new Set(ohmExercises.slice(0, 3).map(({ prompt }) => prompt)).size, 3, "Ohm's law exercises should rotate between finding voltage, current, and resistance");
+  for (const exercise of ohmExercises) {
+    const values = [...exercise.prompt.matchAll(/\d+ (?:Ом|В|А)/gu)];
+    assert.ok(values.length >= 2, `Ohm's law exercise must supply enough values: ${exercise.prompt}`);
+    assert.match(exercise.answer, /закон Ома|U = I|R = U|I = U/u, "Every Ohm's law answer must show a checkable relationship");
+  }
+
+  const densityExercises = Array.from({ length: 6 }, (_, index) => exerciseBank.generateSubjectExercise("Физика", "плотность", "medium", index));
+  assert.equal(new Set(densityExercises.slice(0, 3).map(({ prompt }) => prompt)).size, 3, "Density exercises should rotate between finding density, mass, and volume");
+  assert.ok(densityExercises.some(({ prompt }) => /Найди плотность/u.test(prompt)));
+  assert.ok(densityExercises.some(({ prompt }) => /Найди массу/u.test(prompt)));
+  assert.ok(densityExercises.some(({ prompt }) => /Найди объём/u.test(prompt)));
+  for (const exercise of densityExercises) assert.match(exercise.answer, /ρ = m \/ V|m = ρV|V = m \/ ρ/u, "Density answers must show the correct formula");
   assert.equal(classifier.classifyCurriculumSubject("Составь 4 задачи на молярную массу в 8 классе"), "Химия", "A high-specificity chemical term must outrank generic math-like task wording");
   assert.equal(classifier.classifyCurriculumSubject("Хочу вопросы на тему физические величины и измерения"), "Физика");
   assert.equal(curriculum.parseCurriculumRequest("Сделай тест из пяти вопросов о линейном расширении тел").subject, "Физика", "Thermal expansion must resolve to physics even when the subject is omitted");
   assert.equal(classifier.classifyCurriculumSubject("Подготовь 3 карточки на спряжение глаголов"), "Русский язык");
   assert.equal(classifier.classifyCurriculumSubject("Дай четыре задачи на показатель преломления стекла"), "Физика");
+  assert.equal(curriculum.parseCurriculumRequest("Придумай задания про гигантское магнитосопротивление").subject, "Физика", "An established advanced physics phenomenon should resolve without an explicit subject label");
+  assert.equal(classifier.classifyCurriculumSubject("Придумай задания про гигантское магнитосопротивление"), "Физика", "The local classifier must recognize an uncommon but unambiguous physics topic");
+  for (const ambiguous of [
+    "Придумай задачи про силу, с числами",
+    "Подготовь задачу на давление, но не помню контекст",
+    "Подготовь вопросы о реакции и её видах",
+    "Сделай карточки о степени, без дополнительных деталей",
+    "Хочу разобрать язык и его функции",
+    "Нужны вопросы по частям речи и героям рассказа",
+  ]) {
+    assert.equal(curriculum.parseCurriculumRequest(ambiguous).subject, "", `Ambiguous cross-subject request must ask for context: ${ambiguous}`);
+  }
   assert.equal(curriculum.parseCurriculumRequest("Проверочная на четыре вопроса об аксиомах стереометрии").subject, "Математика");
   assert.equal(curriculum.parseCurriculumRequest("Проверочная из четырёх вопросов на обращение и запятые").subject, "Русский язык");
   assert.equal(classifier.classifyCurriculumSubject("Составь 4 задачи по физике на плотность для 8 класса"), "Физика");
@@ -48,6 +75,11 @@ try {
   assert.equal(new Set(participialSet.items).size, 3, "A participial-phrase card set must contain unique tasks");
   assert.ok(participialSet.items.every((item) => /причастн.*оборот/u.test(item)), "Every card must remain on the requested participial-phrase topic");
   assert.ok(participialSet.answers.every((answer) => /причастн.*оборот/iu.test(answer)), "Every card must have a topic-specific answer key");
+
+  const promptSelectedCards = curriculum.generateCurriculumAi("assignment", "Сделай 3 карточки по русскому языку на причастный оборот для 7 класса", "medium", 3, "Русский язык");
+  assert.ok(promptSelectedCards.items.every((item, index) => item.startsWith(`Карточка ${index + 1}`)), "An explicitly requested card format in the prompt must override the preselected assignment mode");
+  const promptSelectedQuiz = curriculum.generateCurriculumAi("assignment", "Сделай тест из 3 вопросов по русскому языку на причастный оборот для 7 класса", "medium", 3, "Русский язык");
+  assert.match(promptSelectedQuiz.title, /Проверочная работа/u, "An explicitly requested quiz format in the prompt must override the preselected assignment mode");
 
   const olympiadDivisibilitySet = curriculum.generateCurriculumAi("assignment", "Составь 3 олимпиадные задачи по математике на делимость чисел", "hard", 3, "Математика");
   assert.equal(olympiadDivisibilitySet.items.length, 3, "An olympiad divisibility request must preserve the requested task count");

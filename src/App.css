@@ -7591,6 +7591,9 @@ option{background:#fff;color:#343741}
 .board-ai-local-note{color:var(--lt-muted,#72819a);font-size:10px;line-height:1.4}
 @media(max-width:620px){.board-ai-panel.has-assistant{max-height:84dvh}.board-ai-assistant{min-height:280px}.board-ai-chat-log{min-height:180px;max-height:42dvh}.board-ai-chat-compose button{padding:0 10px}}
 
+/* Keep selection controls out of the assistant's modal chat while it is active. */
+.workspace.board-ai-open :is(.selection-toolbar-screen,.lectris-quick-properties,.lectris-object-inspector){display:none!important}
+
 /* v198 · student permissions and teacher media approval */
 .student-board-mode,.teacher-approval-badge{position:fixed;top:58px;right:12px;z-index:1150;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.94);border:1px solid #dfe2ea;box-shadow:0 3px 14px rgba(30,34,50,.08);font-size:11px;color:#666b78}.teacher-approval-badge{color:#4547a8;font-weight:650}
 .student-media-pending{position:absolute;inset:0;z-index:8;display:flex;flex-direction:column;justify-content:space-between;gap:8px;padding:10px;background:rgba(249,249,253,.82);backdrop-filter:blur(2px);border:2px dashed #7c7ee2;border-radius:inherit;pointer-events:auto}.student-media-pending>div:first-child{display:grid;gap:2px}.student-media-pending b{color:#4547a8}.student-media-pending span{font-size:11px;color:#6f7480;overflow:hidden;text-overflow:ellipsis}.student-media-review-actions{display:flex;gap:5px;flex-wrap:wrap}.student-media-review-actions button{border:1px solid #d9dce5;background:#fff;border-radius:7px;padding:5px 7px;font-size:11px;cursor:pointer}.student-media-review-actions .approve{background:#eaf7ee;border-color:#b9dfc3;color:#176b32}.student-media-review-actions .reject{background:#fff0f0;border-color:#efc5c5;color:#a52a2a}

@@ -104,6 +104,8 @@ try {
     officialCoverageBySubject: {},
     officialCoverageFailures: [],
     officialCoverageDataFailures: [],
+    officialOutcomeAmendmentChecks: 0,
+    officialOutcomeAmendmentFailures: [],
     modelFetchesOnWarmup,
     offlineGenerationCases: 0,
     offlineFetchAttempts: 0,
@@ -246,6 +248,16 @@ try {
       report.officialCoverageBySubject[subject][grade] = { codes: uniqueCodes.length, covered: uniqueCodes.length - new Set(absentCodes).size, rate, source: audit.source };
       if (duplicateCodes.length || unlistedCodes.length) report.officialCoverageDataFailures.push({ subject, grade, duplicateCodes, unlistedCodes });
       if (rate < 0.95 || unknownTopics.length) report.officialCoverageFailures.push({ subject, grade, absentCodes: [...new Set(absentCodes)], unknownTopics, rate });
+    }
+    for (const [grade, audit] of Object.entries(mapping.officialOutcomeAmendments?.grades ?? {})) {
+      const plannedTopics = new Set((annualPlan?.grades?.[grade] ?? []).map((row) => normalizePlanTitle(row.title)));
+      for (const outcome of audit.outcomes ?? []) {
+        report.officialOutcomeAmendmentChecks += 1;
+        const missingTopics = (outcome.annualPlanTopics ?? []).filter((title) => !plannedTopics.has(normalizePlanTitle(title)));
+        if (!outcome.id || !outcome.expectedOutcome || !outcome.annualPlanTopics?.length || missingTopics.length) {
+          report.officialOutcomeAmendmentFailures.push({ subject, grade, outcome: outcome.id ?? "без идентификатора", missingTopics });
+        }
+      }
     }
   }
 
@@ -1187,6 +1199,8 @@ try {
     || report.gradeMismatchFailures.length > 0
     || report.officialCoverageFailures.length > 0
     || report.officialCoverageDataFailures.length > 0
+    || report.officialOutcomeAmendmentChecks === 0
+    || report.officialOutcomeAmendmentFailures.length > 0
     || report.officialAnnualPlanFailures.length > 0
     || report.officialAnnualPlanTopicRecognitionFailures.length > 0
     || report.gradeOneMathFailures.length > 0

@@ -1,0 +1,11 @@
+Title: Human skin section, histology
+Creator/credit: Kevin Mackenzie, University of Aberdeen
+Source: Wellcome Collection, https://wellcomecollection.org/works/pbfv4uhw
+IIIF original: https://iiif.wellcomecollection.org/image/B0009427/full/full/0/default.jpg
+Bundled derivative: https://iiif.wellcomecollection.org/image/B0009427/full/1200,/0/default.jpg
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+License URL: https://creativecommons.org/licenses/by/4.0/
+Description: Human skin section stained with aldehyde fuchsin, Orange G, and Light Green; elastic fibres and collagen are highlighted. The source states a horizontal image width of 400 microns.
+The anatomical site and optical magnification are not specified. The bundled 1200px-wide derivative corresponds to approximately 0.333 microns per pixel. This reference is not registered to the body's continuous camera or any selected body region.
+Bundled file SHA-256: D39601A389D598ADFBC683CBC3BBBB714F97FFB6EB353CB5E4E9DE26CDF41A83
+Bundled file: 1200 x 846 pixels, JPEG, 320914 bytes

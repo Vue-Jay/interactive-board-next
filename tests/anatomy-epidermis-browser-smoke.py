@@ -74,6 +74,23 @@ with sync_playwright() as p:
     }""")
     assert reset_target["clickable"],(
         "Returning to skin must not overlay the real reset button",reset_target)
+    reference_panel=page.locator("details.lek-anatomy-source-plates")
+    reference_panel.locator("summary").click()
+    reference_panel.get_by_role("button",name="Волокна дермы").click()
+    reference_image=reference_panel.locator("figure img")
+    reference_image.wait_for(state="visible",timeout=5000)
+    assert "кожи человека" in reference_image.get_attribute("alt"),(
+        "The added Wellcome slide must be identified as a real human skin specimen",
+        reference_image.get_attribute("alt"))
+    assert page.locator(".lek-anatomy-source-note").inner_text().find(
+        "не кадры увеличения выбранного тела")>=0
+    image_dimensions=reference_image.evaluate(
+        "image => ({width:image.naturalWidth,height:image.naturalHeight,complete:image.complete})")
+    assert image_dimensions=={"width":1200,"height":846,"complete":True},image_dimensions
+    assert "локализация участка и увеличение не указаны" in reference_panel.inner_text().lower(),(
+        "Keep unknown body site explicit in specimen metadata")
+    page.screenshot(path=str(OUT/"human-dermal-fibres-reference.png"))
+    print("PASS: real Wellcome human dermis micrograph displays separately with attribution and no invented body site")
     page.get_by_role("button",name="Весь организм").click()
     page.wait_for_timeout(300)
     stage=page.locator(".lek-anatomy-stage")

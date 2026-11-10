@@ -1,0 +1,52 @@
+{
+  "version": 9,
+  "frozenAt": "2026-11-10",
+  "purpose": "Development diagnostic set. Inspected and used to tune request routing after the first run; not independent final evidence and not consumed by the trainer.",
+  "cases": [
+    {"text":"Сделай 5 задачек на квадратные уравнения","subject":"Математика","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Для геометрии придумай 3 вопроса про вписанные углы","subject":"Математика","count":3,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужны 4 примера на сравнение десятичных дробей","subject":"Математика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь 6 карточек для повторения производной","subject":"Математика","count":6,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Составь 2 задачи на доказательство делимости для олимпиады","subject":"Математика","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Дай 5 упражнений на раскрытие скобок","subject":"Математика","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Проверка по математике: тест на 7 вопросов о вероятности","subject":"Математика","count":7,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Придумай 4 упражнения на среднее арифметическое и медиану","subject":"Математика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Составь 5 карточек по физике на закон Ома","subject":"Физика","count":5,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Нужно 3 задачи на ускорение свободного падения","subject":"Физика","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь контрольную из 6 вопросов о работе электрического тока","subject":"Физика","count":6,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Сделай 2 сложные задачи на импульс при неупругом столкновении","subject":"Физика","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Дай четыре задания на отражение звука","subject":"Физика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Придумай 5 карточек о плавлении и кристаллизации","subject":"Физика","count":5,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Составь 3 упражнения по физике на силу тяжести","subject":"Физика","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Для повторения закона сохранения энергии подготовь 4 задачи","subject":"Физика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Сделай 4 задания на валентность и формулы веществ","subject":"Химия","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужны 5 тестовых вопросов по теме растворов","subject":"Химия","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Подготовь 3 карточки про оксиды и их свойства","subject":"Химия","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Придумай 2 сложные задачи на молярный объём","subject":"Химия","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Составь 6 упражнений на балансировку окислительно-восстановительных реакций","subject":"Химия","count":6,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Дай 4 вопроса по химии на периодический закон","subject":"Химия","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Сделай пять задач на массовую долю растворённого вещества","subject":"Химия","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужно 3 карточки о свойствах кислот","subject":"Химия","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+
+    {"text":"Подготовь 4 упражнения на безударные гласные в корне слова","subject":"Русский язык","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай тест по русскому языку из 5 вопросов про причастный оборот","subject":"Русский язык","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужны 3 карточки на правописание -тся и -ться","subject":"Русский язык","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Придумай 6 заданий про однородные члены предложения","subject":"Русский язык","count":6,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Дай 2 сложных упражнения на обособленные определения","subject":"Русский язык","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Составь 4 вопроса о спряжении глаголов","subject":"Русский язык","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Подготовь пять упражнений на постановку запятых в сложном предложении","subject":"Русский язык","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужно 3 задания по русскому на падежи имён существительных","subject":"Русский язык","count":3,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Сделай 4 задания на понятие","subject":""},
+    {"text":"Подготовь 5 упражнений на признак","subject":""},
+    {"text":"Нужно 3 карточки про объект","subject":""},
+    {"text":"Дай 6 задач на величину","subject":""},
+    {"text":"Составь 2 теста по теме элемент","subject":""},
+    {"text":"Придумай 4 задания на характеристику","subject":""},
+    {"text":"Сделай 3 примера на часть","subject":""},
+    {"text":"Подготовь 5 заданий про систему","subject":""},
+    {"text":"Составь 4 задания по физике на плотность для 8 класса","subject":"Физика","count":4,"grade":8,"tool":"assignment","level":"medium","expectClarification":true}
+  ]
+}

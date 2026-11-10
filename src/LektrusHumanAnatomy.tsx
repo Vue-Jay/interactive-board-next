@@ -430,7 +430,7 @@ export default function LektrusHumanAnatomy({diagram,onChange,editorMode=false}:
       относительная ширина разреза увеличена. Клеточные изображения
       не являются микрофотографией конкретной точки тела.</small>
     </section>
-    <LektrusSkinSpecimens/>
+    <LektrusSkinSpecimens defaultOpen={displayCamera.scale>=250}/>
     {displayCamera.scale>=22&&<p>В настоящей дерме встречаются
      фолликулы, потовые и сальные железы, сосуды и нервные окончания.
      Их расположение в этом учебном разрезе не воспроизведено

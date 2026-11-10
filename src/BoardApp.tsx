@@ -3830,7 +3830,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       const command=parseBoardAssistantCommand(prompt);
       const assistantItems=itemsRef.current.filter(item=>!item.hidden);
       if(command.kind==="help"){
-        respond("Я могу: искать и анализировать объекты и историю; создавать заметки, текст, списки, формулы, дробные модели, таблицы, диаграммы, графики функций, викторины, карточки для повторения, комментарии, медиа-ссылки, фреймы, фигуры, стрелки, шторки и измерительные инструменты; загружать изображения и PDF с вашего устройства; рисовать линии карандашом или маркером; переименовывать, копировать, перемещать и удалять найденное; отменять и повторять действия; готовить задания. Примеры: «создай график функции: y = x^2 - 4x + 3», «добавь транспортир», «создай стрелку: причина → следствие», «нарисуй линию маркером», «добавь изображение», «прикрепи PDF», «найди формулу плотности», «создай викторину: Сколько будет 2 + 2?; 3; 4; ответ: 2», «создай дробь: 3/4», «добавь видео: https://example.com/урок», «10 задач на треугольники».");
+        respond("Я могу: искать и анализировать объекты и историю; создавать заметки, текст, списки, формулы, дробные модели, таблицы, диаграммы, графики функций, викторины, карточки для повторения, комментарии, медиа-ссылки, фреймы, фигуры, стрелки, шторки и измерительные инструменты; загружать изображения и PDF с вашего устройства; рисовать линии карандашом или маркером; переименовывать, копировать, перемещать, менять размер и удалять найденное; отменять и повторять действия; готовить задания. Примеры: «создай график функции: y = x^2 - 4x + 3», «добавь транспортир», «создай стрелку: причина → следствие», «нарисуй линию маркером», «добавь изображение», «прикрепи PDF», «найди формулу плотности», «увеличь заметку про Пифагора на 20%», «создай викторину: Сколько будет 2 + 2?; 3; 4; ответ: 2», «создай дробь: 3/4», «добавь видео: https://example.com/урок», «10 задач на треугольники».");
       }else if(command.kind==="analyze"){
         respond(summarizeBoard(assistantItems));
       }else if(command.kind==="find"){
@@ -3855,6 +3855,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         else{
           commit(mutation.items);setSelected(mutation.selectedIds);fitToBounds(mutation.bounds,110);
           respond(`Создал ${mutation.selectedIds.length} ${russianCountWord(mutation.selectedIds.length,"копию","копии","копий")} найденных объектов и выделил их. Исходное содержимое и тип объектов сохранены.`);
+        }
+      }else if(command.kind==="resize"){
+        const mutation=applyBoardAssistantMutation(itemsRef.current,command);
+        if(mutation.status==="not-found")respond(`Не нашёл объект «${command.query}».`);
+        else{
+          commit(mutation.items);setSelected(mutation.selectedIds);fitToBounds(mutation.bounds,110);
+          const label={larger:"больше",smaller:"меньше",wider:"шире",narrower:"уже",taller:"выше",shorter:"ниже"}[command.direction];
+          respond(`Изменил размер у ${mutation.matches.length} ${mutation.matches.length===1?"объекта":"объектов"}: ${label} на ${command.percent}%. Центр объекта сохранён.`);
         }
       }else if(command.kind==="move"){
         const rect=board.current?.getBoundingClientRect();
@@ -8252,7 +8260,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           />
         </div>
       </header>
-      <main className={`workspace lectris-layout-${lectrisLayout} lectris-tools-${lectrisPanelLayout.toolbarSide} lectris-quick-${lectrisPanelLayout.quickPosition} lectris-inspector-${lectrisPanelLayout.inspectorSide} lectris-editor-${lectrisPanelLayout.editorPosition}`} style={{"--lectris-inspector-width":`${lectrisPanelLayout.inspectorWidth}px`} as CSSProperties}>
+      <main className={`workspace lectris-layout-${lectrisLayout} lectris-tools-${lectrisPanelLayout.toolbarSide} lectris-quick-${lectrisPanelLayout.quickPosition} lectris-inspector-${lectrisPanelLayout.inspectorSide} lectris-editor-${lectrisPanelLayout.editorPosition}${boardAiOpen?" board-ai-open":""}`} style={{"--lectris-inspector-width":`${lectrisPanelLayout.inspectorWidth}px`} as CSSProperties}>
         {controlSettingsOpen&&<div className="access-backdrop"
          onPointerDown={e=>{if(e.target===e.currentTarget)setControlSettingsOpen(false)}}>
          <section className="access-modal lektrus-control-settings" role="dialog" aria-modal="true"

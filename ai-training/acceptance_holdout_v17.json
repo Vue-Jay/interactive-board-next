@@ -1,0 +1,45 @@
+{
+  "version": 17,
+  "frozenAt": "2026-11-10",
+  "purpose": "Diagnostic only: results were inspected and used to correct class validation. Do not use this set as independent acceptance evidence or add it to training.",
+  "cases": [
+    {"text":"Для 8 класса дай четыре задания по математике на уравнения с модулем","subject":"Математика","count":4,"grade":8,"tool":"assignment","level":"medium"},
+    {"text":"Составь тест из шести вопросов по математике о вписанных углах","subject":"Математика","count":6,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужны три непростых упражнения по математике на графики квадратной функции","subject":"Математика","count":3,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Подбери пять карточек по математике для сложения смешанных чисел","subject":"Математика","count":5,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Придумай две олимпиадные задачи по математике на раскраски и инварианты","subject":"Математика","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Подготовь четыре вопроса по математике на логарифмические неравенства для 10 класса","subject":"Математика","count":4,"grade":10,"tool":"quiz","level":"medium"},
+
+    {"text":"Сделай три задачи по физике на фокусное расстояние линзы для 9 класса","subject":"Физика","count":3,"grade":9,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь пять карточек по физике на мощность электрического тока","subject":"Физика","count":5,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Составь тест на семь вопросов по физике о магнитном поле катушки","subject":"Физика","count":7,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужны две сложные задачи по физике на эффект Доплера","subject":"Физика","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Дай четыре упражнения по физике на конвекцию тепла","subject":"Физика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Для 11 класса составь три задачи по физике на ядерные превращения","subject":"Физика","count":3,"grade":11,"tool":"assignment","level":"medium"},
+
+    {"text":"Дай пять задач по химии на расчёт выхода продукта реакции для 9 класса","subject":"Химия","count":5,"grade":9,"tool":"assignment","level":"medium"},
+    {"text":"Составь проверочную из четырёх вопросов по химии о гидролизе солей","subject":"Химия","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужно три сложные задачи по химии на электронный баланс в ОВР","subject":"Химия","count":3,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Подготовь шесть карточек по химии про алкены","subject":"Химия","count":6,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Придумай две олимпиадные задачи по химии на буферные растворы","subject":"Химия","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Сделай пять упражнений по химии на качественные реакции катионов","subject":"Химия","count":5,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Подготовь четыре упражнения по русскому языку на обособленные определения для 8 класса","subject":"Русский язык","count":4,"grade":8,"tool":"assignment","level":"medium"},
+    {"text":"Составь тест из пяти вопросов по русскому языку о средствах связи предложений в тексте","subject":"Русский язык","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужно три сложных задания по русскому на Н и НН в суффиксах прилагательных","subject":"Русский язык","count":3,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Дай шесть карточек по русскому языку на тире между подлежащим и сказуемым","subject":"Русский язык","count":6,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Сделай три олимпиадных упражнения по словообразованию русского языка","subject":"Русский язык","count":3,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Для 10 класса подготовь четыре задания по русскому языку на паронимы","subject":"Русский язык","count":4,"grade":10,"tool":"assignment","level":"medium"},
+
+    {"text":"Составь упражнения по теме, которую мы сегодня обсуждали"},
+    {"text":"Подготовь карточки по последнему разделу учебника"},
+    {"text":"Повтори с учеником материал за прошлую неделю"},
+    {"text":"Сделай проверочную по тому, что уже прошли"},
+    {"text":"Собери вопросы к конспекту, который я загрузил"},
+    {"text":"Придумай практические задания для следующего занятия"},
+    {"text":"Сделай несколько задач по этому материалу"},
+    {"text":"Помоги закрепить тему и проверь, всё ли ученик понял"},
+
+    {"text":"Подготовь три задачи на скорость для 4 класса по физике","subject":"Физика","count":3,"grade":4,"tool":"assignment","level":"medium","expectClarification":true}
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "version": 4,
+  "frozenAt": "2026-11-10",
+  "purpose": "Frozen one-pass acceptance holdout. Hand-authored after v3 fixes, not read by the model trainer, and not used to tune rules before scoring. Any failed case moves this version to diagnostic status; fixes require a new version.",
+  "cases": [
+    {"text":"Мне нужны 4 примера на раскрытие скобок и приведение подобных","subject":"Математика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Для 9 класса составь 3 задания на систему двух линейных уравнений","subject":"Математика","count":3,"grade":9,"tool":"assignment","level":"medium"},
+    {"text":"Сделай тест из 5 вопросов по геометрии на свойства параллелограмма","subject":"Математика","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Подготовь 6 упражнений на сложение отрицательных чисел","subject":"Математика","count":6,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"На олимпиаду нужно 2 непростые задачи про делимость натуральных чисел","subject":"Математика","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Сделай 4 карточки на свойства квадратных корней","subject":"Математика","count":4,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Придумай 3 задания на нахождение вероятности","subject":"Математика","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Для повторения подготовь пять упражнений на преобразование выражений со степенями","subject":"Математика","count":5,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Составь 4 задачи на равнодействующую нескольких сил","subject":"Физика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь 5 вопросов по физике про звуковые волны","subject":"Физика","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужно три задания на механическую работу и её единицы","subject":"Физика","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Создай 6 карточек по теме изображений в собирающей линзе","subject":"Физика","count":6,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Придумай 2 сложные задачи на импульс и закон его сохранения","subject":"Физика","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Сделай четыре упражнения на напряжённость электрического поля","subject":"Физика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь 3 задания для урока физики по теме внутренней энергии","subject":"Физика","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Дай 5 простых задач на применение правила рычага","subject":"Физика","count":5,"grade":null,"tool":"assignment","level":"easy"},
+
+    {"text":"Составь 3 упражнения по химии на составление формул солей","subject":"Химия","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужна проверочная на 6 вопросов о степенях окисления","subject":"Химия","count":6,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Подготовь четыре карточки с номенклатурой алканов","subject":"Химия","count":4,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Придумай 5 задач на вычисление концентрации раствора","subject":"Химия","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Для 8 класса составь 3 задания про генетическую связь между оксидами и основаниями","subject":"Химия","count":3,"grade":8,"tool":"assignment","level":"medium"},
+    {"text":"Дай две непростые задачи на изомерию углеводородов","subject":"Химия","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Сделай 7 заданий на определение продуктов реакций обмена","subject":"Химия","count":7,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужно 4 карточки на химические свойства серной кислоты","subject":"Химия","count":4,"grade":null,"tool":"flashcards","level":"medium"},
+
+    {"text":"Подготовь 5 упражнений на постановку запятых при деепричастном обороте","subject":"Русский язык","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужен тест по русскому на 4 вопроса о чередующихся гласных в корне","subject":"Русский язык","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Сделай 3 карточки про правописание производных предлогов","subject":"Русский язык","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Придумай 6 заданий на способы образования слов","subject":"Русский язык","count":6,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Для 7 класса сделай 2 упражнения на суффиксы причастий","subject":"Русский язык","count":2,"grade":7,"tool":"assignment","level":"medium"},
+    {"text":"Нужно пять заданий на лексические нормы современного русского языка","subject":"Русский язык","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Составь 4 сложных вопроса про бессоюзное сложное предложение","subject":"Русский язык","count":4,"grade":null,"tool":"quiz","level":"hard"},
+    {"text":"Подготовь 3 упражнения на правописание суффиксов наречий","subject":"Русский язык","count":3,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Составь 3 задания на число","subject":""},
+    {"text":"Нужно 4 упражнения на правила","subject":""},
+    {"text":"Дай 5 примеров на части","subject":""},
+    {"text":"Подготовь 2 задания на функцию","subject":""},
+    {"text":"Придумай 6 задач на силу","subject":""},
+    {"text":"Сделай 3 задания про формулу","subject":""},
+    {"text":"Нужно 4 карточки про клетки","subject":""},
+    {"text":"Дай 5 заданий на признаки","subject":""},
+    {"text":"Подготовь 3 задания на плотность для 8 класса по физике","subject":"Физика","count":3,"grade":8,"tool":"assignment","level":"medium","expectClarification":true}
+  ]
+}

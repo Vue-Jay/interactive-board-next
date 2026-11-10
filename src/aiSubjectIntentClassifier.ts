@@ -9,6 +9,7 @@ type Model = {
   topicIndex?: Record<string, string>;
   topicGradeIndex?: Record<string, Record<string, string>>;
   subjectGradeBands?: Record<string, string[]>;
+  subjectConfidenceThresholds?: Record<string, number>;
   confidenceThreshold?: number;
 };
 
@@ -22,6 +23,19 @@ const russianSuffixes = [
   "ые", "ие", "ый", "ий", "ой", "ей", "ую", "юю", "ах", "ях", "ов", "ев", "ом", "ем",
   "ам", "ям", "ою", "ею", "ью", "ия", "ья", "а", "я", "ы", "и", "о", "е", "у", "ю", "ь", "й", "м",
 ];
+const requestStopWords = new Set([
+  "составь", "подготовь", "подготовить", "сделай", "создай", "сгенерируй", "придумай",
+  "дай", "помоги", "подбери", "сформируй", "напиши", "реши", "найди", "объясни",
+  "изучи", "разбери", "расскажи", "покажи", "хочу", "нужны", "нужна", "нужно", "мне",
+  "можно", "пожалуйста", "задания", "задание", "задачи", "задачу", "вопросы", "вопрос",
+  "упражнения", "упражнение", "тест", "теста", "тесты", "викторину", "карточки", "карточку",
+  "флешкарточки", "проверочную", "контрольную", "самостоятельную", "практическую", "примеры",
+  "пример", "набор", "подборку", "ученику", "ученикам", "учащимся", "тренировочный", "небольшой",
+  "по", "на", "про", "тему", "тема", "теме", "класс", "класса", "классе", "кл",
+  "для", "чтобы", "разобраться", "проверить", "провести", "знания", "урок", "занятие",
+  "как", "что", "много", "несколько", "пару", "парочку", "сложные", "сложных", "сложную",
+  "сложное", "нестандартные", "нестандартных", "олимпиадные", "олимпиадных", "простые", "простых",
+]);
 
 /** Loads the compact model only when the assistant is opened. */
 export function loadCurriculumSubjectModel(): Promise<void> {
@@ -66,7 +80,8 @@ function setModel(data: Model): void {
 }
 
 function extractFeatures(text: string): Set<string> {
-  const words = text.toLocaleLowerCase("ru-RU").replace(/ё/g, "е").match(tokenPattern) ?? [];
+  const words = (text.toLocaleLowerCase("ru-RU").replace(/ё/g, "е").match(tokenPattern) ?? [])
+    .filter((word) => !/^\d+$/u.test(word) && !requestStopWords.has(word));
   const result = new Set(words.filter((word) => word.length > 1).map((word) => `w:${word}`));
   for (let index = 0; index < words.length - 1; index += 1) {
     result.add(`b:${words[index]}_${words[index + 1]}`);
@@ -97,6 +112,7 @@ export function classifyCurriculumSubject(text: string): string {
   ] as [string, RegExp][]).find(([, pattern]) => pattern.test(text));
   if (explicitSubject) return explicitSubject[0];
   if (/аксиом[а-яё]*.{0,24}стереометр|стереометр[а-яё]*/iu.test(text)) return "Математика";
+  if (/гигантск[а-яё]*\s+магнитосопротивлен[а-яё]*|магнитосопротивлен[а-яё]*/iu.test(text)) return "Физика";
   if (/(?:показател[ья].{0,18}преломлен|преломлен[а-яё]*.{0,18}показател|индекс[а-яё]*.{0,18}преломлен)/iu.test(text)) return "Физика";
   if (/(?:обращен[а-яё]*.{0,20}запят|запят[а-яё]*.{0,20}обращен)/iu.test(text)) return "Русский язык";
   if (/молярн[а-яё]*\s+масс[а-яё]*/iu.test(text)) return "Химия";
@@ -128,8 +144,11 @@ export function classifyCurriculumSubject(text: string): string {
 
   const margin = scored[0].score - scored[1].score;
   const normalizedMargin = margin / Math.max(1, Math.sqrt(features.size));
-  const confidenceThreshold = Number.isFinite(activeModel.confidenceThreshold)
-    ? activeModel.confidenceThreshold!
+  const subjectThreshold = activeModel.subjectConfidenceThresholds?.[scored[0].subject];
+  const confidenceThreshold = Number.isFinite(subjectThreshold)
+    ? subjectThreshold!
+    : Number.isFinite(activeModel.confidenceThreshold)
+      ? activeModel.confidenceThreshold!
     : MIN_CONFIDENCE_MARGIN;
   return normalizedMargin >= confidenceThreshold ? scored[0].subject : "";
 }

@@ -1,0 +1,52 @@
+{
+  "version": 11,
+  "frozenAt": "2026-11-10",
+  "purpose": "Frozen one-pass acceptance set, kept outside training and diagnostics before evaluation. If any result is used to tune rules or data, relabel this set diagnostic and create a new version.",
+  "cases": [
+    {"text":"Сочини 3 примера, где нужно найти неизвестный множитель","subject":"Математика","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужна викторина из 5 пунктов про координатную плоскость","subject":"Математика","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Сделай четыре карточки по признакам равенства треугольников","subject":"Математика","count":4,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Придумай 2 олимпиадные задачи с принципом Дирихле","subject":"Математика","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Подготовь 6 упражнений на перевод обыкновенных дробей в десятичные","subject":"Математика","count":6,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Проведи мини-тест из трех вопросов по графику квадратичной функции","subject":"Математика","count":3,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Дай 5 задач на объём и площадь поверхности прямоугольного параллелепипеда","subject":"Математика","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Хочу 4 непростых задания на вероятность независимых событий","subject":"Математика","count":4,"grade":null,"tool":"assignment","level":"hard"},
+
+    {"text":"Подготовь 5 задач по второму закону Ньютона","subject":"Физика","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Пять карточек для повторения последовательного соединения проводников","subject":"Физика","count":5,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Сделай тест на 4 вопроса о плавании тел","subject":"Физика","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужны 3 упражнения на вычисление потенциальной энергии","subject":"Физика","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Составь две задачи повышенной сложности на закон сохранения импульса","subject":"Физика","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Подбери 6 вопросов по электромагнитным волнам","subject":"Физика","count":6,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Сделай четыре карточки о линзах и построении изображений","subject":"Физика","count":4,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Дай 3 задания на удельную теплоёмкость вещества","subject":"Физика","count":3,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Составь 4 упражнения на формулы оксидов и их названия","subject":"Химия","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Проверь знания тестом из 5 вопросов о щелочных металлах","subject":"Химия","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Подготовь три карточки по электролитической диссоциации кислот","subject":"Химия","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Две сложные задачи на вычисление выхода реакции","subject":"Химия","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Нужно 6 заданий на изомерию алканов","subject":"Химия","count":6,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай проверочный тест на 4 вопроса про скорость химической реакции","subject":"Химия","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Дай 5 задач на молярный объём газа","subject":"Химия","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Придумай 3 карточки для повторения аминокислот и белков","subject":"Химия","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+
+    {"text":"Составь 5 упражнений на проверяемые безударные гласные","subject":"Русский язык","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь 4 вопроса о видах сказуемого","subject":"Русский язык","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужно три карточки про написание Н и НН в прилагательных","subject":"Русский язык","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Дай 6 заданий на постановку запятых в сложносочинённом предложении","subject":"Русский язык","count":6,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Придумай 2 непростых упражнения на морфологический разбор причастия","subject":"Русский язык","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Сделай викторину из пяти вопросов о вводных словах","subject":"Русский язык","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Подготовь четыре задания по теме приставки на З и С","subject":"Русский язык","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужны 3 карточки для повторения бессоюзных сложных предложений","subject":"Русский язык","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+
+    {"text":"Подготовь 4 задания про значение","subject":""},
+    {"text":"Нужно 3 упражнения на признаки","subject":""},
+    {"text":"Сделай 5 карточек о свойствах","subject":""},
+    {"text":"Придумай 2 задачи на систему","subject":""},
+    {"text":"Дай 6 заданий про элементы","subject":""},
+    {"text":"Составь 3 вопроса на образование","subject":""},
+    {"text":"Подготовь 4 примера на изменение","subject":""},
+    {"text":"Нужно 5 упражнений на движение","subject":""},
+    {"text":"Составь 3 задания на нахождение плотности в 8 классе","subject":"Физика","count":3,"grade":8,"tool":"assignment","level":"medium","expectClarification":true}
+  ]
+}

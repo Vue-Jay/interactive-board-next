@@ -1,0 +1,45 @@
+{
+  "version": 21,
+  "frozenAt": "2026-11-10",
+  "purpose": "Frozen independent acceptance sample after targeted subject-inference fixes. Clear requests use new wording; most omit the subject name. Excluded from training and tuning inputs; preserve unchanged after evaluation.",
+  "cases": [
+    {"text":"Составь пять заданий на координаты вершин трапеции","subject":"Математика","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай проверочную из четырёх вопросов о свойствах корней квадратичной функции","subject":"Математика","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Подготовь три карточки для повторения делителей натуральных чисел","subject":"Математика","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Нужны две сложные задачи на диагонали ромба","subject":"Математика","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Придумай три нестандартные олимпиадные задачи по математике на инварианты","subject":"Математика","count":3,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Дай шесть упражнений по математике на преобразование периодической десятичной дроби","subject":"Математика","count":6,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Подготовь четыре задачи про уровень звука и его интенсивность","subject":"Физика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Составь тест из пяти вопросов на силу тяжести у поверхности планеты","subject":"Физика","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Дай три карточки по фокусному расстоянию собирающей линзы","subject":"Физика","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Нужно две сложные задачи на мощность электрического прибора","subject":"Физика","count":2,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Придумай три олимпиадные задачи по физике на сохранение энергии","subject":"Физика","count":3,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Подготовь шесть упражнений на изменение скорости тела при равномерном ускорении","subject":"Физика","count":6,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Составь четыре задачи на определение степени окисления атомов","subject":"Химия","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай тест из пяти вопросов о молярной массе неизвестного вещества","subject":"Химия","count":5,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужно три карточки по гомологическому ряду алканов","subject":"Химия","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Подготовь шесть упражнений на ионы и электролитическую диссоциацию","subject":"Химия","count":6,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Придумай две нестандартные олимпиадные задачи по химии на кислотность растворов","subject":"Химия","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Дай четыре сложных задания на расчёт количества вещества","subject":"Химия","count":4,"grade":null,"tool":"assignment","level":"hard"},
+
+    {"text":"Подготовь пять упражнений на правописание деепричастий","subject":"Русский язык","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай проверочную из четырёх вопросов про суффиксы причастий","subject":"Русский язык","count":4,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Дай шесть карточек на чередование гласных в корнях слов","subject":"Русский язык","count":6,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Нужны три задания на согласование подлежащего со сказуемым","subject":"Русский язык","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Составь две олимпиадные задачи по русскому на пунктуацию при цитировании","subject":"Русский язык","count":2,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Подготовь пять карточек по орфоэпическим нормам современного языка","subject":"Русский язык","count":5,"grade":null,"tool":"flashcards","level":"medium"},
+
+    {"text":"Составь задания по тому, что объясняли на прошлом уроке"},
+    {"text":"Подготовь карточки к следующему разделу"},
+    {"text":"Проверь знания по последней теме"},
+    {"text":"Сделай тренировку по приложенному материалу"},
+    {"text":"Нужны задачи для повторения пройденного"},
+    {"text":"Собери тест к уроку"},
+    {"text":"Дай задания по текущему разделу курса"},
+    {"text":"Хочу проверить, всё ли ученик понял"},
+
+    {"text":"Подготовь три задачи на скорость для 4 класса по физике","subject":"Физика","count":3,"grade":4,"tool":"assignment","level":"medium","expectClarification":true}
+  ]
+}
