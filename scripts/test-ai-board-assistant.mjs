@@ -8,7 +8,7 @@ const output = ts.transpileModule(source, {
   fileName: file,
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
 }).outputText.replace(/^export\s*\{\s*\};?\s*$/gm, "");
-const api = new Function(`${output}\nreturn { parseBoardAssistantCommand, findBoardItems, summarizeBoard, summarizeBoardActivity, createBoardAssistantObject, boardItemBounds };`)();
+const api = new Function(`${output}\nreturn { parseBoardAssistantCommand, findBoardItems, applyBoardAssistantMutation, summarizeBoard, summarizeBoardActivity, createBoardAssistantObject, boardItemBounds };`)();
 
 assert.deepEqual(api.parseBoardAssistantCommand("Что менялось на доске?"), { kind: "history" });
 assert.deepEqual(api.parseBoardAssistantCommand("Отмени последнее действие"), { kind: "undo" });
@@ -41,6 +41,56 @@ assert.equal(api.summarizeBoard(items).includes("На доске 3 элемен�
 assert.equal(api.summarizeBoard(items).includes("отмечено 1 из 2 пунктов"), true);
 assert.deepEqual(api.boardItemBounds([items[0], items[1]]), { x: 10, y: 20, width: 290, height: 140 });
 
+const objectForMutation = (id, text, x = 0, hidden = false) => ({ id, kind: "sticky", x, y: 20, width: 100, height: 80, text, hidden });
+let mutationScenarios = 0;
+const directions = ["left", "right", "up", "down", "center"];
+for (let index = 0; index < 50; index += 1) {
+  const target = objectForMutation(`rename-${index}`, `Уникальная заметка ${index}`);
+  const hidden = objectForMutation(`hidden-${index}`, `Уникальная заметка ${index}`, 400, true);
+  const unrelated = objectForMutation(`other-${index}`, `Другая заметка ${index}`, 800);
+  const renamed = api.applyBoardAssistantMutation([target, hidden, unrelated], {
+    kind: "rename", query: `Уникальная заметка ${index}`, text: `Новое название ${index}`,
+  });
+  assert.equal(renamed.status, "changed");
+  assert.equal(renamed.matches.length, 1, "Hidden objects must not match assistant commands");
+  assert.equal(renamed.items[0].text, `Новое название ${index}`);
+  assert.equal(renamed.items[1].text, hidden.text, "Hidden objects must remain untouched");
+  assert.equal(renamed.items[2].text, unrelated.text, "Unmatched objects must remain untouched");
+  mutationScenarios += 1;
+
+  const direction = directions[index % directions.length];
+  const targetCenter = { x: 1200 + index, y: 900 - index };
+  const moved = api.applyBoardAssistantMutation([target, hidden, unrelated], {
+    kind: "move", query: `Уникальная заметка ${index}`, direction,
+  }, { center: targetCenter });
+  assert.equal(moved.status, "changed");
+  assert.equal(moved.matches.length, 1);
+  if (direction === "left") assert.equal(moved.items[0].x, target.x - 160);
+  if (direction === "right") assert.equal(moved.items[0].x, target.x + 160);
+  if (direction === "up") assert.equal(moved.items[0].y, target.y - 160);
+  if (direction === "down") assert.equal(moved.items[0].y, target.y + 160);
+  if (direction === "center") {
+    assert.equal(moved.bounds.x + moved.bounds.width / 2, targetCenter.x);
+    assert.equal(moved.bounds.y + moved.bounds.height / 2, targetCenter.y);
+  }
+  assert.deepEqual(moved.items[1], hidden, "Hidden objects must not move");
+  assert.deepEqual(moved.items[2], unrelated, "Unmatched objects must not move");
+  mutationScenarios += 1;
+
+  const deletionTarget = objectForMutation(`delete-${index}`, `Удаляемая заметка ${index}`);
+  const hiddenDeletionTarget = objectForMutation(`hidden-delete-${index}`, `Удаляемая заметка ${index}`, 400, true);
+  const beforeDelete = [deletionTarget, hiddenDeletionTarget, unrelated];
+  const confirmation = api.applyBoardAssistantMutation(beforeDelete, { kind: "delete", query: `Удаляемая заметка ${index}` });
+  assert.equal(confirmation.status, "confirmation-required");
+  assert.deepEqual(confirmation.items, beforeDelete, "Deletion must not alter the board before confirmation");
+  mutationScenarios += 1;
+  const deleted = api.applyBoardAssistantMutation(beforeDelete, { kind: "delete", query: `Удаляемая заметка ${index}` }, { confirmed: true });
+  assert.equal(deleted.status, "changed");
+  assert.deepEqual(deleted.items.map(item => item.id), [hiddenDeletionTarget.id, unrelated.id]);
+  mutationScenarios += 1;
+}
+assert.equal(mutationScenarios, 200, "The mutation regression set must retain all 200 scenarios");
+
 const created = api.createBoardAssistantObject({ kind: "create-sticky", text: "Проверить решение" }, { x: 500, y: 300 }, () => "created");
 assert.equal(created.kind, "sticky");
 assert.equal(created.text, "Проверить решение");
@@ -60,4 +110,4 @@ const history = api.summarizeBoardActivity([{
 assert.ok(history.includes("добавлено 2, изменено 1, удалено 0"));
 assert.ok(history.includes("Анна: Добавлены задания"));
 
-console.log("AI board assistant: intent parsing, structured search, board summary, object creation and history analysis OK");
+console.log(`AI board assistant: parsing, structured search, object creation and history OK; ${mutationScenarios} board mutations passed with hidden-item protection and delete confirmation.`);

@@ -84,7 +84,7 @@ import LectrisPanelSettings from "./LectrisPanelSettings";
 import { defaultLectrisPanelLayout, normalizeLectrisPanelLayout, readLectrisPanelLayout, type LectrisPanelLayout } from "./lectrisPanelLayout";
 import { clearAiBoardTransfer, peekAiBoardTransfer, recordLocalAiGeneration } from "./aiLocalStore";
 import { createAiBoardItems, measureAiChecklist } from "./aiBoardTransfer";
-import { boardItemBounds, createBoardAssistantObject, findBoardItems, parseBoardAssistantCommand, summarizeBoard, summarizeBoardActivity } from "./aiBoardAssistant";
+import { applyBoardAssistantMutation, boardItemBounds, createBoardAssistantObject, findBoardItems, parseBoardAssistantCommand, summarizeBoard, summarizeBoardActivity } from "./aiBoardAssistant";
 import { aiTopicPlaceholder, generateCurriculumAi, parseCurriculumRequest, type CurriculumAiLevel } from "./aiCurriculumGenerator";
 import { loadCurriculumSubjectModel } from "./aiSubjectIntentClassifier";
 import { type AccountRole } from "./accountRoleStore";
@@ -3835,39 +3835,30 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           respond(`Нашёл ${matches.length} ${matches.length===1?"элемент":"элементов"} и выделил на доске:\n${descriptions.join("\n")}${matches.length>8?"\n…": ""}`);
         }
       }else if(command.kind==="rename"){
-        const matches=findBoardItems(assistantItems,command.query);
-        if(!matches.length)respond(`Не нашёл объект «${command.query}».`);
+        const mutation=applyBoardAssistantMutation(itemsRef.current,command);
+        if(mutation.status==="not-found")respond(`Не нашёл объект «${command.query}».`);
         else{
-          const ids=new Set(matches.map(item=>item.id));
-          commit(itemsRef.current.map(item=>ids.has(item.id)?{...item,text:command.text}:item));
-          setSelected([...ids]);respond(`Обновил название или текст у ${matches.length} ${matches.length===1?"объекта":"объектов"}.`);
+          commit(mutation.items);
+          setSelected(mutation.selectedIds);respond(`Обновил название или текст у ${mutation.matches.length} ${mutation.matches.length===1?"объекта":"объектов"}.`);
         }
       }else if(command.kind==="move"){
-        const matches=findBoardItems(assistantItems,command.query);
-        if(!matches.length)respond(`Не нашёл объект «${command.query}».`);
+        const rect=board.current?.getBoundingClientRect();
+        if(command.direction==="center"&&!rect)throw new Error("Не удалось определить область доски");
+        const center=command.direction==="center"&&rect?world({x:rect.width/2,y:rect.height/2}):undefined;
+        const mutation=applyBoardAssistantMutation(itemsRef.current,command,{center});
+        if(mutation.status==="not-found")respond(`Не нашёл объект «${command.query}».`);
         else{
-          let dx=0,dy=0;
-          if(command.direction==="left")dx=-160;
-          if(command.direction==="right")dx=160;
-          if(command.direction==="up")dy=-160;
-          if(command.direction==="down")dy=160;
-          if(command.direction==="center"){
-            const bounds=boardItemBounds(matches);const rect=board.current?.getBoundingClientRect();
-            if(bounds&&rect){const target=world({x:rect.width/2,y:rect.height/2});dx=target.x-(bounds.x+bounds.width/2);dy=target.y-(bounds.y+bounds.height/2)}
-          }
-          const ids=new Set(matches.map(item=>item.id));
-          const moved=itemsRef.current.map(item=>ids.has(item.id)?{...item,x:item.x+dx,y:item.y+dy}:item);
-          commit(moved);setSelected([...ids]);fitToBounds(boardItemBounds(moved.filter(item=>ids.has(item.id))),110);
-          respond(`Переместил ${matches.length} ${matches.length===1?"объект":"объекта"} ${command.direction==="left"?"влево":command.direction==="right"?"вправо":command.direction==="up"?"вверх":command.direction==="down"?"вниз":"в центр доски"}.`);
+          commit(mutation.items);setSelected(mutation.selectedIds);fitToBounds(mutation.bounds,110);
+          respond(`Переместил ${mutation.matches.length} ${mutation.matches.length===1?"объект":"объекта"} ${command.direction==="left"?"влево":command.direction==="right"?"вправо":command.direction==="up"?"вверх":command.direction==="down"?"вниз":"в центр доски"}.`);
         }
       }else if(command.kind==="delete"){
-        const matches=findBoardItems(assistantItems,command.query);
-        if(!matches.length)respond(`Не нашёл объект «${command.query}».`);
-        else if(!window.confirm(`Удалить найденные элементы (${matches.length})? Их можно будет восстановить через отмену, пока история этого сеанса доступна.`))respond("Удаление отменено.");
+        const requested=applyBoardAssistantMutation(itemsRef.current,command);
+        if(requested.status==="not-found")respond(`Не нашёл объект «${command.query}».`);
+        else if(!window.confirm(`Удалить найденные элементы (${requested.matches.length})? Их можно будет восстановить через отмену, пока история этого сеанса доступна.`))respond("Удаление отменено.");
         else{
-          const ids=new Set(matches.map(item=>item.id));
-          commit(itemsRef.current.filter(item=>!ids.has(item.id)));setSelected([]);
-          respond(`Удалил ${matches.length} ${matches.length===1?"элемент":"элементов"}.`);
+          const mutation=applyBoardAssistantMutation(itemsRef.current,command,{confirmed:true});
+          commit(mutation.items);setSelected([]);
+          respond(`Удалил ${mutation.matches.length} ${mutation.matches.length===1?"элемент":"элементов"}.`);
         }
       }else if(command.kind==="history"){
         if(remoteEnabled){

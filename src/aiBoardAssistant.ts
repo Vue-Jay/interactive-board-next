@@ -121,6 +121,52 @@ export function findBoardItems(items: Item[], query: string): Item[] {
   });
 }
 
+export type BoardAssistantMutationCommand = Extract<BoardAssistantCommand, { kind: "rename" | "move" | "delete" }>;
+export type BoardAssistantMutationResult = {
+  status: "not-found" | "confirmation-required" | "changed";
+  items: Item[];
+  matches: Item[];
+  selectedIds: string[];
+  bounds: ReturnType<typeof boardItemBounds>;
+};
+
+/** Applies a board-item command as one immutable update; destructive deletes require explicit confirmation. */
+export function applyBoardAssistantMutation(
+  items: Item[],
+  command: BoardAssistantMutationCommand,
+  options: { confirmed?: boolean; center?: Point } = {},
+): BoardAssistantMutationResult {
+  const matches = findBoardItems(items.filter(item => !item.hidden), command.query);
+  const selectedIds = matches.map(item => item.id);
+  if (!matches.length) return { status: "not-found", items, matches, selectedIds: [], bounds: null };
+  if (command.kind === "delete" && !options.confirmed) {
+    return { status: "confirmation-required", items, matches, selectedIds, bounds: boardItemBounds(matches) };
+  }
+
+  const ids = new Set(selectedIds);
+  let nextItems: Item[];
+  if (command.kind === "delete") {
+    nextItems = items.filter(item => !ids.has(item.id));
+  } else if (command.kind === "rename") {
+    nextItems = items.map(item => ids.has(item.id) ? { ...item, text: command.text } : item);
+  } else {
+    let dx = 0, dy = 0;
+    if (command.direction === "left") dx = -160;
+    if (command.direction === "right") dx = 160;
+    if (command.direction === "up") dy = -160;
+    if (command.direction === "down") dy = 160;
+    if (command.direction === "center") {
+      const bounds = boardItemBounds(matches);
+      if (!bounds || !options.center) return { status: "not-found", items, matches: [], selectedIds: [], bounds: null };
+      dx = options.center.x - (bounds.x + bounds.width / 2);
+      dy = options.center.y - (bounds.y + bounds.height / 2);
+    }
+    nextItems = items.map(item => ids.has(item.id) ? { ...item, x: item.x + dx, y: item.y + dy } : item);
+  }
+  const changedItems = nextItems.filter(item => ids.has(item.id));
+  return { status: "changed", items: nextItems, matches, selectedIds, bounds: boardItemBounds(changedItems) };
+}
+
 const kindNames: Record<string, string> = {
   sticky: "заметки", text: "текст", shape: "фигуры", pen: "рисунки", marker: "выделения",
   image: "изображения", pdf: "документы", frame: "фреймы", connector: "связи", comment: "комментарии",
