@@ -11,6 +11,21 @@ try {
     assert.match(request.topic, /молярн/i, `Lost requested topic for: ${prompt}`);
   }
 
+  const geographyPrompt = "Составь 3 олимпиадных задания на почвы и факторы почвообразования для 6 класса";
+  const geographyRequest = curriculum.parseCurriculumRequest(geographyPrompt, "", 5, "medium", "assignment");
+  assert.equal(geographyRequest.subject, "География", "A known cross-subject term must use its topic-specific subject");
+  assert.equal(geographyRequest.count, 3, "Olympiad wording must not hide the requested count");
+  assert.equal(geographyRequest.grade, 6, "Olympiad wording must preserve the requested grade");
+  assert.equal(geographyRequest.olympiad, true, "The natural-language request must affect task generation");
+  assert.match(geographyRequest.topic, /почв.*фактор.*почвообраз/i, "The request topic must be retained");
+
+  const geographyResult = curriculum.generateCurriculumAi("assignment", geographyPrompt, "medium", 3);
+  assert.equal(geographyResult.subject, "География");
+  assert.equal(geographyResult.items.length, 3);
+  assert.match(geographyResult.title, /^Практика · География ·/u, "The result remains a regular assignment, not a separately labeled mode");
+  assert.doesNotMatch(geographyResult.title, /олимпиад/i);
+  assert.ok(geographyResult.items.every((item) => /почв|почвообраз/i.test(item)), "Generated tasks must keep the user's requested topic");
+
   const result = curriculum.generateCurriculumAi("assignment", "молярную массу", "medium", 15);
   assert.equal(result.subject, "Химия");
   assert.equal(result.items.length, 15);
@@ -33,4 +48,4 @@ try {
   await server.close();
 }
 
-console.log("AI board request: molar-mass requests preserve chemistry, count and topic; 15 generated answers are arithmetically consistent");
+console.log("AI board request: chemistry requests and an olympiad geography request preserve subject, topic, count and grade in the ordinary assignment flow; 15 molar-mass answers are arithmetically consistent");
