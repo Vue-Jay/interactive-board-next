@@ -90,19 +90,22 @@ def fit(examples: list[tuple[str, str]]) -> dict:
     token_counts: dict[str, Counter[str]] = defaultdict(Counter)
     token_totals = Counter()
     document_frequency: Counter[str] = Counter()
+    feature_class_counts: dict[str, Counter[str]] = defaultdict(Counter)
     documents: list[tuple[str, set[str]]] = []
     for text, subject in examples:
         doc_counts[subject] += 1
         present = features(text)
         document_frequency.update(present)
+        for feature in present:
+            feature_class_counts[feature][subject] += 1
         documents.append((subject, present))
     candidates = {feature for feature, count in document_frequency.items() if count >= MIN_DOCUMENT_FREQUENCY}
     class_docs = Counter(subject for _, subject in examples)
     total_docs = len(examples)
 
     def mutual_information(feature: str) -> float:
-        present_by_class = Counter(subject for subject, present in documents if feature in present)
-        feature_docs = sum(present_by_class.values())
+        present_by_class = feature_class_counts[feature]
+        feature_docs = document_frequency[feature]
         score = 0.0
         for subject in SUBJECTS:
             for present_count, joint in ((feature_docs, present_by_class[subject]), (total_docs - feature_docs, class_docs[subject] - present_by_class[subject])):
@@ -129,7 +132,11 @@ def fit(examples: list[tuple[str, str]]) -> dict:
             token_totals[subject] += 1
     total_docs = sum(doc_counts.values())
     feature_count = len(vocabulary)
-    priors = {subject: math.log(doc_counts[subject] / total_docs) for subject in SUBJECTS}
+    # The catalogue deliberately has very different topic counts per subject.
+    # A request is not more likely to be History just because the corpus has
+    # more History entries, so keep the class prior uniform and let topic
+    # evidence determine the prediction.
+    priors = {subject: math.log(1 / len(SUBJECTS)) for subject in SUBJECTS}
     feature_index = {feature: index for index, feature in enumerate(vocabulary_list)}
     weights: dict[str, list[float]] = {}
     for subject in SUBJECTS:
