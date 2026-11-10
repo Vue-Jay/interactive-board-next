@@ -67,8 +67,53 @@ try {
     assert.equal(Number(computed[1]), Number(amount[1]), `Mole count changed in task ${index + 1}`);
     assert.equal(finalMass, molarMass * Number(amount[1]), `Incorrect mass in task ${index + 1}`);
   }
+
+  const focusedCases = [
+    ["Физика", "эффект Доплера", /доплер|высокий тон/i],
+    ["Физика", "резонанс и вынужденные колебания", /резонанс/i],
+    ["Физика", "тепловой баланс", /теплопотерь|температур|тепло/i],
+    ["Физика", "первый закон термодинамики", /термодинамик|внутренн/i],
+    ["Физика", "свободное падение тел", /падени|время падения/i],
+    ["Физика", "закон всемирного тяготения", /тяготен|гравитац/i],
+    ["Химия", "изотопы", /изотоп|нейтрон/i],
+    ["Химия", "молярная концентрация", /моль|концентрац/i],
+    ["Химия", "валентность элементов", /валентност|формул/i],
+    ["Химия", "химическое равновесие", /равновес|катализатор/i],
+    ["Химия", "лабораторное разделение смеси", /фильтр|смес/i],
+    ["Химия", "гомологический ряд алканов", /углеводород|алкан|этан/i],
+    ["Русский язык", "обособленные обстоятельства с деепричастием", /деепричастн/i],
+    ["Русский язык", "правописание Н и НН", /нн|зависимым словом/i],
+    ["Русский язык", "сложноподчинённые предложения с придаточным причины", /придаточн.*причин|потому что/i],
+    ["Русский язык", "виды подчинительной связи", /управлен|согласован|примыкан/i],
+  ];
+  for (const [subject, topic, expected] of focusedCases) {
+    const generated = curriculum.generateCurriculumAi("assignment", topic, "medium", 1, subject);
+    assert.equal(generated.subject, subject, `Wrong focused subject for ${topic}`);
+    assert.match(generated.items[0], expected, `Generated task does not match ${topic}`);
+    assert.match(generated.answers[0], expected, `Answer does not explain ${topic}`);
+  }
+
+  const concentration = curriculum.generateCurriculumAi("assignment", "молярная концентрация", "medium", 8, "Химия");
+  for (const [index, answer] of concentration.answers.entries()) {
+    const match = answer.match(/C = n\/V = (\d+)\/([\d,]+) = ([\d,]+) моль\/л/u);
+    assert.ok(match, `Missing concentration calculation in item ${index + 1}`);
+    const amount = Number(match[1]);
+    const volume = Number(match[2].replace(",", "."));
+    const computed = Number(match[3].replace(",", "."));
+    assert.ok(Math.abs(computed - amount / volume) < 0.01, `Incorrect concentration answer in item ${index + 1}`);
+  }
+
+  const lens = curriculum.generateCurriculumAi("assignment", "линзы и фокусное расстояние", "medium", 4, "Физика");
+  for (const [index, answer] of lens.answers.entries()) {
+    const match = answer.match(/1\/(\d+) − 1\/(\d+) = 1\/(\d+)/u);
+    assert.ok(match, `Missing thin-lens equation in item ${index + 1}`);
+    const focal = Number(match[1]);
+    const object = Number(match[2]);
+    const image = Number(match[3]);
+    assert.ok(Math.abs(1 / focal - 1 / object - 1 / image) < 1e-9, `Incorrect thin-lens answer in item ${index + 1}`);
+  }
 } finally {
   await server.close();
 }
 
-console.log("AI board request: chemistry, olympiad geography, and cross-subject ambiguous topics preserve subject, topic, count and grade in the ordinary assignment flow; 15 molar-mass answers are arithmetically consistent");
+console.log("AI board request: subject and grade parsing, advanced prompts, physics/chemistry/Russian topic tasks, board flow and checked calculation families OK");

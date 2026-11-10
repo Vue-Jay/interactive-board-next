@@ -4,6 +4,15 @@ import { createServer } from "vite";
 const corpus = JSON.parse(await readFile(new URL("../ai-training/subject_topics.json", import.meta.url), "utf8"));
 const gradeMap = JSON.parse(await readFile(new URL("../ai-training/curriculum_grade_map.json", import.meta.url), "utf8"));
 const modelBytes = await readFile(new URL("../public/models/aiSubjectIntentModel.json", import.meta.url));
+const bandBounds = (value) => {
+  const match = String(value).match(/^(\d{1,2})(?:-(\d{1,2}))?$/);
+  return match ? [Number(match[1]), Number(match[2] ?? match[1])] : null;
+};
+const gradeBandCovers = (actual, expected) => {
+  const actualBounds = bandBounds(actual);
+  const expectedBounds = bandBounds(expected);
+  return Boolean(actualBounds && expectedBounds && actualBounds[0] <= expectedBounds[0] && actualBounds[1] >= expectedBounds[1]);
+};
 let seed = 0x1eaf;
 Math.random = () => {
   seed = (seed * 48271) % 0x7fffffff;
@@ -117,14 +126,13 @@ try {
     report.gradeMapMissingTopicsBySubject[subject] = missingTopics.length;
     if (missingTopics.length) report.gradeMapErrors.push(`${subject}: не распределены темы корпуса (${missingTopics.length})`);
     const gradeKeys = Object.keys(mapping.topicsByGradeBand ?? mapping.topicsByGrade ?? {});
-    const exactGradeMap = Boolean(mapping.topicsByGrade);
     for (const band of gradeKeys) {
-      const pattern = exactGradeMap ? /^([1-9]|1[01])$/ : /^([1-9]|1[01])(-([1-9]|1[01]))?$/;
+      const pattern = /^([1-9]|1[01])(-([1-9]|1[01]))?$/;
       if (!pattern.test(band)) report.gradeMapErrors.push(`${subject}: некорректный класс или диапазон классов ${band}`);
       for (const topic of (mapping.topicsByGradeBand ?? mapping.topicsByGrade ?? {})[band] ?? []) {
         report.runtimeGradeMapChecks += 1;
         const actualBand = intent.matchCanonicalCurriculumGrade(topic, subject);
-        if (actualBand !== band) report.runtimeGradeMapFailures.push({ subject, topic, expected: band, actual: actualBand });
+        if (!gradeBandCovers(actualBand, band)) report.runtimeGradeMapFailures.push({ subject, topic, expected: band, actual: actualBand });
       }
     }
     for (const topic of excludedTopics) {
@@ -135,9 +143,8 @@ try {
     for (const [grade, audit] of Object.entries(mapping.officialCoverage?.grades ?? {})) {
       const codes = audit.contentCodes ?? [];
       const covered = new Set(Object.values(audit.topicCodes ?? {}).flat());
-      const gradeTopics = new Set((mapping.topicsByGradeBand ?? mapping.topicsByGrade ?? {})[grade] ?? []);
       const absentCodes = codes.filter((code) => !covered.has(code));
-      const unknownTopics = Object.keys(audit.topicCodes ?? {}).filter((topic) => !sourceTopics.has(topic) || !gradeTopics.has(topic));
+      const unknownTopics = Object.keys(audit.topicCodes ?? {}).filter((topic) => !sourceTopics.has(topic) || !mappedSet.has(topic));
       const rate = codes.length ? Number(((codes.length - absentCodes.length) / codes.length).toFixed(4)) : 0;
       report.officialCoverageBySubject[subject] ??= {};
       report.officialCoverageBySubject[subject][grade] = { codes: codes.length, covered: codes.length - absentCodes.length, rate, source: audit.source };

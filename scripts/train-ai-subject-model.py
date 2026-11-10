@@ -45,7 +45,7 @@ SUBJECTS = [
 MAX_FEATURES = 8000
 MAX_MODEL_BYTES = 1_500_000
 MIN_DOCUMENT_FREQUENCY = 3
-CONFIDENCE_TARGET_ACCURACY = 0.99
+CONFIDENCE_TARGET_ACCURACY = 1.0
 
 
 def features(text: str) -> set[str]:
@@ -183,27 +183,41 @@ def main() -> None:
     train, wording_calibration, wording_validation, topic_calibration, topic_validation = make_examples(corpus)
     model = fit(train)
 
-    def predictions(examples: list[tuple[str, str]]) -> list[tuple[bool, float]]:
+    def predictions(examples: list[tuple[str, str]]) -> list[tuple[str, str, float]]:
         result = []
         for text, expected in examples:
             predicted, _, confidence = predict(model, text)
-            result.append((predicted == expected, confidence))
+            result.append((expected, predicted, confidence))
         return result
 
     wording_calibration_scores = predictions(wording_calibration)
     topic_calibration_scores = predictions(topic_calibration)
-    candidate_thresholds = sorted({confidence for _, confidence in wording_calibration_scores + topic_calibration_scores})
+    def threshold_for_predicted_subject(subject: str) -> float:
+        calibration = [
+            row for row in wording_calibration_scores + topic_calibration_scores
+            if row[1] == subject
+        ]
+        candidates = sorted({confidence for _, _, confidence in calibration})
 
-    def meets_calibration_target(scores: list[tuple[bool, float]], threshold: float) -> bool:
-        accepted = [correct for correct, confidence in scores if confidence >= threshold]
-        return bool(accepted) and sum(accepted) / len(accepted) >= CONFIDENCE_TARGET_ACCURACY
+        def meets_calibration_target(scores: list[tuple[str, str, float]], threshold: float) -> bool:
+            accepted = [expected == predicted for expected, predicted, confidence in scores
+                        if predicted == subject and confidence >= threshold]
+            return bool(accepted) and sum(accepted) / len(accepted) >= CONFIDENCE_TARGET_ACCURACY
 
-    confidence_threshold = next((
-        threshold for threshold in candidate_thresholds
-        if meets_calibration_target(wording_calibration_scores, threshold)
-        and meets_calibration_target(topic_calibration_scores, threshold)
-    ), max(candidate_thresholds, default=0) + 1)
-    model["confidenceThreshold"] = round(confidence_threshold, 6)
+        for threshold in candidates:
+            if meets_calibration_target(wording_calibration_scores, threshold) \
+                    and meets_calibration_target(topic_calibration_scores, threshold):
+                return threshold
+        return max(candidates, default=0) + 1
+
+    subject_thresholds = {
+        subject: round(threshold_for_predicted_subject(subject), 6)
+        for subject in SUBJECTS
+    }
+    # Keep one runtime threshold and use the strictest subject-specific
+    # calibration value, so a weak class cannot lower the acceptance bar.
+    confidence_threshold = max(subject_thresholds.values(), default=0)
+    model["confidenceThreshold"] = confidence_threshold
     topic_labels: dict[str, str] = {}
     ambiguous_topics: set[str] = set()
     for subject in SUBJECTS:
@@ -218,14 +232,31 @@ def main() -> None:
     model["topicIndex"] = topic_labels
 
     topic_grades: dict[str, dict[str, str]] = defaultdict(dict)
+
+    def merge_grade_bands(previous: str, current: str) -> str:
+        def bounds(value: str) -> tuple[int, int]:
+            match = re.fullmatch(r"(\d{1,2})(?:-(\d{1,2}))?", value)
+            if not match:
+                raise SystemExit(f"Некорректный диапазон классов: {value!r}")
+            start = int(match[1])
+            return start, int(match[2] or start)
+
+        left_start, left_end = bounds(previous)
+        right_start, right_end = bounds(current)
+        if right_start > left_end + 1 or left_start > right_end + 1:
+            raise SystemExit(
+                f"Тема {previous!r} и {current!r} назначена разным несмежным диапазонам"
+            )
+        start, end = min(left_start, right_start), max(left_end, right_end)
+        return str(start) if start == end else f"{start}-{end}"
+
     for subject, mapping in grade_map.get("subjects", {}).items():
         topics_by_grade = mapping.get("topicsByGradeBand", mapping.get("topicsByGrade", {}))
         for grade, topics in topics_by_grade.items():
             for topic in topics:
                 normalized = normalize_topic(topic)
-                if normalized in topic_grades[subject]:
-                    raise SystemExit(f"Тема {topic!r} по предмету {subject!r} указана более чем для одного класса")
-                topic_grades[subject][normalized] = grade
+                previous = topic_grades[subject].get(normalized)
+                topic_grades[subject][normalized] = merge_grade_bands(previous, grade) if previous else grade
     model["topicGradeIndex"] = dict(topic_grades)
 
     def evaluate(examples: list[tuple[str, str]]) -> tuple[float, float, float, Counter, Counter]:
@@ -262,7 +293,8 @@ def main() -> None:
     VERSION_PATH.write_text(f'export const AI_SUBJECT_MODEL_VERSION = "{version}";\n', encoding="utf-8")
     print(f"Обучено на примерах: {len(train)}; калибровка: {len(wording_calibration)} формулировок и {len(topic_calibration)} примеров новых тем; финальная проверка: {len(wording_validation)} формулировок и {len(topic_validation)} примеров новых тем")
     print(f"Словарь признаков: {model['vocabularySize']}; размер модели: {OUTPUT_PATH.stat().st_size / 1024:.1f} КБ; версия {version}")
-    print(f"Калибровочный целевой уровень точности уверенного ответа: {CONFIDENCE_TARGET_ACCURACY:.0%}; выбран порог {confidence_threshold:.3f}")
+    print(f"Калибровка: цель {CONFIDENCE_TARGET_ACCURACY:.0%} по каждому предмету; в браузере применяется единый строгий порог {confidence_threshold:.3f}")
+    print("  " + "; ".join(f"{subject}: {threshold:.3f}" for subject, threshold in subject_thresholds.items()))
     print(f"Знакомые темы в новых формулировках: {wording_accuracy:.1%}; покрытие уверенных ответов {wording_coverage:.1%}, точность уверенных {wording_confident_accuracy:.1%}")
     print(f"Новые темы, целиком отложенные от обучения и калибровки: {topic_accuracy:.1%}; покрытие уверенных ответов {topic_coverage:.1%}, точность уверенных {topic_confident_accuracy:.1%}")
     for subject in SUBJECTS:

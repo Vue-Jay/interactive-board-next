@@ -1,1 +1,1 @@
-export const AI_SUBJECT_MODEL_VERSION = "9e8de2182b4c6308";
+export const AI_SUBJECT_MODEL_VERSION = "8776e43f5f5ceb08";
