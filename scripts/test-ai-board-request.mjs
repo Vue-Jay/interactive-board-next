@@ -5,6 +5,7 @@ import { createServer } from "vite";
 const server = await createServer({ configFile: "./vite.config.ts", server: { middlewareMode: true }, appType: "custom" });
 try {
   const curriculum = await server.ssrLoadModule("/src/aiCurriculumGenerator.ts");
+  const exerciseBank = await server.ssrLoadModule("/src/aiSubjectExerciseBank.ts");
   const classifier = await server.ssrLoadModule("/src/aiSubjectIntentClassifier.ts");
   const modelJson = await readFile("public/models/aiSubjectIntentModel.json", "utf8");
   const originalFetch = globalThis.fetch;
@@ -199,6 +200,84 @@ try {
     const volume = Number(match[2].replace(",", "."));
     const computed = Number(match[3].replace(",", "."));
     assert.ok(Math.abs(computed - amount / volume) < 0.01, `Incorrect concentration answer in item ${index + 1}`);
+  }
+
+  const localizedNumber = (value) => Number(value.replace(/\s/gu, "").replace(",", "."));
+  const chemistryCalculationCases = [
+    {
+      topic: "массовая доля вещества в растворе",
+      prompt: /В (\d+) г воды растворили (\d+) г соли/u,
+      answer: /m\(раствора\) = (\d+) г; ω = (\d+)\/(\d+)·100% ≈ ([\d,]+)%/u,
+      calculate: (p, a) => {
+        const solvent = Number(p[1]), solute = Number(p[2]);
+        assert.equal(Number(a[1]), solvent + solute, "Solution mass must include solute and solvent");
+        assert.equal(Number(a[2]), solute, "Mass-fraction numerator must be the solute mass");
+        assert.equal(Number(a[3]), solvent + solute, "Mass-fraction denominator must be the solution mass");
+        assert.ok(Math.abs(localizedNumber(a[4]) - solute / (solvent + solute) * 100) < 0.02, "Incorrect solution mass fraction");
+      },
+    },
+    {
+      topic: "выход продукта реакции",
+      prompt: /теоретически можно получить (\d+) г продукта\. Практический выход составляет (\d+)%/u,
+      answer: /m\(практ\.\) = m\(теор\.\)·η\/100% = (\d+)·(\d+)\/100 = ([\d,.]+) г/u,
+      calculate: (p, a) => {
+        assert.equal(Number(a[1]), Number(p[1]), "Theoretical product mass changed in the key");
+        assert.equal(Number(a[2]), Number(p[2]), "Yield percent changed in the key");
+        assert.equal(localizedNumber(a[3]), Number(p[1]) * Number(p[2]) / 100, "Incorrect actual product mass");
+      },
+    },
+    {
+      topic: "растворы и растворимость",
+      prompt: /растворимость соли равна (\d+) г на 100 г воды\. Сколько соли можно растворить в (\d+) г воды/u,
+      answer: /m\(соли\) = (\d+) · (\d+) \/ 100 = ([\d,]+) г/u,
+      calculate: (p, a) => {
+        assert.equal(Number(a[1]), Number(p[1]), "Solubility value changed in the key");
+        assert.equal(Number(a[2]), Number(p[2]), "Water mass changed in the key");
+        assert.equal(localizedNumber(a[3]), Number(p[1]) * Number(p[2]) / 100, "Incorrect dissolved mass");
+      },
+    },
+  ];
+  for (const testCase of chemistryCalculationCases) {
+    for (let index = 0; index < 12; index += 1) {
+      const exercise = exerciseBank.generateSubjectExercise("Химия", testCase.topic, "medium", index);
+      const promptMatch = exercise.prompt.match(testCase.prompt);
+      const answerMatch = exercise.answer.match(testCase.answer);
+      const prompt = exercise.prompt;
+      const answer = exercise.answer;
+      assert.ok(promptMatch && answerMatch, `Missing independently checkable ${testCase.topic} data: ${prompt} / ${answer}`);
+      testCase.calculate(promptMatch, answerMatch);
+    }
+  }
+
+  for (let index = 0; index < 12; index += 1) {
+    const spring = exerciseBank.generateSubjectExercise("Физика", "потенциальная энергия пружины", "medium", index);
+    const answer = spring.answer;
+    const prompt = spring.prompt;
+    const promptMatch = prompt.match(/жёсткостью (\d+) Н\/м растянули на (\d+) см/u);
+    const answerMatch = answer.match(/Eупр = kx²\/2 = (\d+) · ([\d,.]+)² \/ 2 = ([\d,.]+) Дж/u);
+    assert.ok(promptMatch && answerMatch, `Missing spring-energy calculation in item ${index + 1}: ${prompt} / ${answer}`);
+    const stiffness = Number(promptMatch[1]);
+    const extensionMetres = Number(promptMatch[2]) / 100;
+    assert.equal(Number(answerMatch[1]), stiffness, `Spring stiffness changed in item ${index + 1}`);
+    assert.equal(localizedNumber(answerMatch[2]), extensionMetres, `Centimetres were not converted to metres in item ${index + 1}`);
+    assert.ok(Math.abs(localizedNumber(answerMatch[3]) - stiffness * extensionMetres ** 2 / 2) < 0.001, `Incorrect spring energy in item ${index + 1}`);
+  }
+
+  for (let index = 0; index < 12; index += 1) {
+    const expansion = exerciseBank.generateSubjectExercise("Физика", "тепловое расширение", "medium", index);
+    const answer = expansion.answer;
+    const prompt = expansion.prompt;
+    const promptMatch = prompt.match(/длиной ([\d,]+) м нагрели на (\d+) °C/u);
+    const answerMatch = answer.match(/ΔL = αL₀ΔT = ([\d,]+) · ([\d,]+) · (\d+) = ([\d,]+) м = ([\d,]+) мм/u);
+    assert.ok(promptMatch && answerMatch, `Missing thermal-expansion calculation in item ${index + 1}`);
+    const length = localizedNumber(promptMatch[1]);
+    const temperatureChange = Number(promptMatch[2]);
+    const alpha = localizedNumber(answerMatch[1]);
+    assert.equal(localizedNumber(answerMatch[2]), length, `Rod length changed in item ${index + 1}`);
+    assert.equal(Number(answerMatch[3]), temperatureChange, `Temperature change changed in item ${index + 1}`);
+    const expectedMetres = alpha * length * temperatureChange;
+    assert.ok(Math.abs(localizedNumber(answerMatch[4]) - expectedMetres) < 0.000001, `Incorrect expansion in metres in item ${index + 1}`);
+    assert.ok(Math.abs(localizedNumber(answerMatch[5]) - expectedMetres * 1000) < 0.001, `Incorrect expansion in millimetres in item ${index + 1}`);
   }
 
   const lens = curriculum.generateCurriculumAi("assignment", "линзы и фокусное расстояние", "medium", 4, "Физика");
