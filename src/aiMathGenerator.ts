@@ -96,9 +96,9 @@ function geometry(level:MathAiLevel){
  if(kind==="circle"){const r=rnd(2,12);return{q:`Радиус круга ${r} см. Найдите длину окружности и площадь круга. π ≈ 3,14.`,a:`L ≈ ${fmt(2*3.14*r)} см; S ≈ ${fmt(3.14*r*r)} см²`}}
  const triples=pick([[3,4,5],[5,12,13],[6,8,10],[8,15,17]]);return{q:`Катеты прямоугольного треугольника равны ${triples[0]} см и ${triples[1]} см. Найдите гипотенузу.`,a:`${triples[2]} см`};
 }
-function percent(){
- const price=rnd(10,200)*10,p=pick([5,10,15,20,25,30,40]);
- return{q:`Товар стоит ${price} руб. Цена ${Math.random()>.5?"уменьшилась":"увеличилась"} на ${p}%. На сколько рублей изменится цена?`,a:`${price*p/100} руб.`};
+function percent(index:number){
+ const price=(10+(index*37)%199)*10,p=[5,10,15,20,25,30,40][index%7],direction=index%2===0?"уменьшилась":"увеличилась";
+ return{q:`Товар стоит ${price} руб. Цена ${direction} на ${p}%. На сколько рублей изменится цена?`,a:`${price*p/100} руб.`};
 }
 function func(index:number){
  const k=[-4,-3,-2,2,3,4][index%6],b=-8+((index*3)%17),x=-5+(index%11);
@@ -527,11 +527,61 @@ export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,to
   if(actual==="vectors")return vectors(index,t);
   if(actual==="geometry"){
    if(/симметри.*пространств|пространств.*симметри/.test(t))return spatialSymmetryTask(index);
+   if(/(?:геометрические понятия.*фигур.*угл|фигур.*(?:виды?|классификац).*угл)/.test(t)){
+    const variant=Math.floor(index/6),kind=index%6;
+    if(kind===0){
+     const measure=24+((index*11)%60),name=["AOB","MON","KLM"][variant%3];
+     return{q:`Угол ${name} равен ${measure}°. Определи, острый он, прямой или тупой.`,a:`${measure}° меньше 90°, поэтому угол ${name} острый.`};
+    }
+    if(kind===1){
+     const name=["ABC","MNP","XYZ"][variant%3];
+     return{q:`Начерти угол ${name} величиной 90°. Как называется такой угол и сколько градусов составляет его половина?`,a:`Это прямой угол. Половина: 90° : 2 = 45°.`};
+    }
+    if(kind===2){
+     const measure=98+((index*13)%78),name=["COD","RST","EFG"][variant%3];
+     return{q:`Угол ${name} равен ${measure}°. Определи, острый он, прямой или тупой.`,a:`${measure}° больше 90° и меньше 180°, поэтому угол ${name} тупой.`};
+    }
+    if(kind===3){
+     const part=27+((index*7)%62),name=["AOC","BOD","KOM"][variant%3];
+     return{q:`Угол ${name} и смежный с ним угол образуют развёрнутый угол. Первый равен ${part}°. Найди второй.`,a:`Смежные углы в сумме дают 180°: 180° − ${part}° = ${180-part}°.`};
+    }
+    if(kind===4){
+     const sides=3+variant,figure=["треугольник","четырёхугольник","пятиугольник"][variant%3];
+     const sideWord=sides===3?"3 стороны":sides===4?"4 стороны":"5 сторон";
+     const vertexWord=sides===5?"5 вершин":`${sides} вершины`;
+     const angleWord=sides===5?"5 углов":`${sides} угла`;
+     return{q:`У многоугольника ${sideWord}. Назови его и укажи, сколько у него вершин и углов.`,a:`Это ${figure}: у него ${sideWord}, ${vertexWord} и ${angleWord}.`};
+    }
+    const terms=[
+     ["отрезок","Как называется часть прямой, ограниченная двумя точками?"],
+     ["луч","Как называется часть прямой, которая имеет начало, но не имеет конца?"],
+     ["прямая","Как называется линия, которая не имеет ни начала, ни конца?"],
+    ] as const;
+    const [term,question]=terms[variant%terms.length];
+    return{q:question,a:`Это ${term}.`};
+   }
    if(/треугольники и четырёхугольники/.test(t)){
     const a=4+(index%13),b=6+((index*3)%11);
     if(index%2===0){const perimeter=2*(a+b);return{q:`Прямоугольник имеет стороны ${a} см и ${b} см. Найди его периметр и объясни, почему достаточно сложить длины двух соседних сторон и умножить сумму на 2.`,a:`P = 2 · (${a} + ${b}) = ${perimeter} см: у прямоугольника противоположные стороны равны.`};}
     const first=31+(index%19),second=42+((index*5)%31),third=180-first-second;
     return{q:`Два угла треугольника равны ${first}° и ${second}°. Найди третий угол и проверь, может ли такой треугольник существовать.`,a:third>0?`Третий угол: 180° − ${first}° − ${second}° = ${third}°. Он положителен, значит такой треугольник возможен.`:`Сумма двух углов ${first+second}° не меньше 180°, поэтому положительного третьего угла нет: такого треугольника не существует.`};
+   }
+   if(/параллелограмм.*(?:свойств|четыр[её]хугольник)|четыр[её]хугольник.*параллелограмм/.test(t)){
+    const kind=index%4,variant=Math.floor(index/4);
+    if(kind===0){
+     const a=6+variant,b=4+(variant%9),perimeter=2*(a+b);
+     return{q:`В параллелограмме ABCD стороны AB = ${a} см и BC = ${b} см. Найди периметр и объясни, какие стороны равны.`,a:`Противоположные стороны равны: P = 2 · (${a} + ${b}) = ${perimeter} см.`};
+    }
+    if(kind===1){
+     const angle=54+variant*3;
+     return{q:`В параллелограмме угол A равен ${angle}°. Найди углы B и C.`,a:`Соседние углы в сумме дают 180°, а противоположные равны: ∠B = 180° − ${angle}° = ${180-angle}°, ∠C = ${angle}°.`};
+    }
+    if(kind===2){
+     const first=3+variant,second=5+(variant%8);
+     return{q:`Диагонали параллелограмма ABCD пересекаются в точке O. Если AO = ${first} см и BO = ${second} см, найди длины AC и BD.`,a:`Диагонали параллелограмма делятся точкой пересечения пополам: AC = 2 · ${first} = ${2*first} см, BD = 2 · ${second} = ${2*second} см.`};
+    }
+    const side=7+variant*2;
+    return{q:`В параллелограмме ABCD сторона AB равна ${side} см. Чему равна сторона CD? Обоснуй ответ свойством параллелограмма.`,a:`AB и CD — противоположные стороны параллелограмма, поэтому CD = AB = ${side} см.`};
    }
    if(/осевая симметрия/.test(t)){
     const x=2+(index%15),y=3+((index*7)%17);
@@ -652,7 +702,7 @@ export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,to
    }
    return geometry(level);
   }
-  if(actual==="percent")return percent();
+  if(actual==="percent")return percent(index);
   if(actual==="functions")return /квадрат.*функц|парабол/.test(t)?quadraticFunction(index):func(index);
   if(actual==="word")return word(index);
   if(actual==="arithmetic"){
@@ -734,7 +784,7 @@ export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,to
   if(actual==="absolute")return absolute(index);
   if(actual==="domain")return domain(index);
   if(actual==="derivative")return derivative(index,t);
-  return pick([()=>linear(level),()=>fraction(index),()=>geometry(level),()=>percent(),()=>func(index),()=>word(index),()=>arithmetic(level),()=>powers(index,t),()=>prime(index),()=>proportion(index)])();
+  return pick([()=>linear(level),()=>fraction(index),()=>geometry(level),()=>percent(index),()=>func(index),()=>word(index),()=>arithmetic(level),()=>powers(index,t),()=>prime(index),()=>proportion(index)])();
  };
  const rows=Array.from({length:safe},(_,index)=>make(index));
  const names:Record<string,string>={arithmetic:"Примеры",equations:"Уравнения",fractions:"Дроби",decimals:"Десятичные дроби",rounding:"Округление и оценка",geometry:"Геометрия",functions:"Функции",vectors:"Векторы",percent:"Проценты",word:"Текстовые задачи",powers:"Степени и корни",prime:"Простые множители",divisibility:"Делимость",probability:"Вероятность",statistics:"Статистика",proportion:"Пропорции",trigonometry:"Тригонометрия",logarithms:"Логарифмы",sequence:"Прогрессии",combinatorics:"Комбинаторика",division:"Деление с остатком",algebra:"Алгебраические выражения",absolute:"Модуль числа",domain:"Область определения",derivative:"Производная и касательная",mixed:"Смешанная работа"};

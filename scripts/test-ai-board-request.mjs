@@ -34,6 +34,46 @@ try {
     assert.match(request.topic, /молярн/i, `Lost requested topic for: ${prompt}`);
   }
 
+  const geometryBasics = curriculum.generateCurriculumAi(
+    "assignment", "геометрические понятия, фигуры и виды углов", "medium", 15, "Математика",
+  );
+  assert.equal(geometryBasics.items.length, 15);
+  assert.equal(new Set(geometryBasics.items).size, 15, `Basic geometry must not repeat prompts in a 15-item set: ${JSON.stringify(geometryBasics.items)}`);
+  assert.ok(geometryBasics.items.every((item) => /уг[о]?л|многоугольник|часть прямой|отрезок|луч|линия/iu.test(item)), "Basic geometry tasks must stay within the requested topic");
+  for (const [index, answer] of geometryBasics.answers.entries()) {
+    assert.ok(answer.trim().length > 0, `Basic geometry task ${index + 1} needs an answer`);
+    const angle = geometryBasics.items[index].match(/равен (\d+)°/u);
+    if (angle) {
+      const value = Number(angle[1]);
+      if (/острый/u.test(answer)) assert.ok(value > 0 && value < 90, `Incorrect acute-angle key at task ${index + 1}`);
+      if (/тупой/u.test(answer)) assert.ok(value > 90 && value < 180, `Incorrect obtuse-angle key at task ${index + 1}`);
+    }
+  }
+  const practicalPercents = curriculum.generateCurriculumAi(
+    "assignment", "проценты и практические задачи на проценты в 7 классе", "medium", 15, "Математика",
+  );
+  assert.equal(new Set(practicalPercents.items).size, 15, "Practical percentage tasks must not repeat in a 15-item set");
+  for (const [index, answer] of practicalPercents.answers.entries()) {
+    const prompt = practicalPercents.items[index];
+    const price = prompt.match(/Товар стоит (\d+) руб/u);
+    const rate = prompt.match(/на (\d+)%/u);
+    const change = answer.match(/^([\d.,]+) руб\.$/u);
+    assert.ok(price && rate && change, `Missing explicit percentage calculation in item ${index + 1}: ${prompt} => ${answer}`);
+    assert.equal(Number(change[1].replace(",", ".")), Number(price[1]) * Number(rate[1]) / 100, `Incorrect price change in item ${index + 1}`);
+  }
+  const parallelograms = curriculum.generateCurriculumAi(
+    "assignment", "четырёхугольники параллелограмм и их свойства в 8 классе", "medium", 15, "Математика",
+  );
+  assert.equal(new Set(parallelograms.items).size, 15, "Parallelogram tasks must not repeat in a 15-item set");
+  assert.ok(parallelograms.items.every((item) => /параллелограмм/u.test(item)), "Parallelogram generation must keep the requested topic");
+  for (const [index, answer] of parallelograms.answers.entries()) {
+    assert.ok(answer.trim().length > 0, `Parallelogram task ${index + 1} needs an answer`);
+    const sum = answer.match(/P = 2 · \((\d+) \+ (\d+)\) = (\d+) см/u);
+    if (sum) assert.equal(Number(sum[3]), 2 * (Number(sum[1]) + Number(sum[2])), `Incorrect parallelogram perimeter at item ${index + 1}`);
+    const adjacent = answer.match(/∠B = 180° − (\d+)° = (\d+)°/u);
+    if (adjacent) assert.equal(Number(adjacent[1]) + Number(adjacent[2]), 180, `Incorrect adjacent angles at item ${index + 1}`);
+  }
+
   const geographyPrompt = "Составь 3 олимпиадных задания на почвы и факторы почвообразования для 6 класса";
   const geographyRequest = curriculum.parseCurriculumRequest(geographyPrompt, "", 5, "medium", "assignment");
   assert.equal(geographyRequest.subject, "География", "A known cross-subject term must use its topic-specific subject");
