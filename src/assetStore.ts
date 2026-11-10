@@ -126,8 +126,9 @@ async function optimizeImage(blob: Blob): Promise<Blob> {
   }
 }
 
-export async function putAsset(id: string, blob: Blob, boardId: string) {
+export async function putAsset(id: string, blob: Blob, boardId: string, localOnly = false) {
   blob = await optimizeImage(blob);
+  if (localOnly) return putLocalAsset(assetPath(boardId, id), blob);
   if (!isRemoteBackendEnabled()) return putLocalAsset(id, blob);
   if (blob.size > 50 * 1024 * 1024 || !(blob.type.startsWith("image/") || blob.type === "application/pdf")) {
     throw new Error("Нужно изображение или PDF размером до 50 МБ");

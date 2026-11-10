@@ -9,7 +9,7 @@ export default function LektrusProgrammingControls({diagram:d,onChange}:{
   const preset=programmingPresets.find(p=>p.language===lang)!;
   onChange({...d,language:lang,code:preset.code,stdin:preset.stdin,tests:[]});
  };
- const usePreset=(id:string)=>{
+ const loadPreset=(id:string)=>{
   const preset=programmingPresets.find(p=>p.id===id);
   if(!preset)return;
   onChange({...d,language:preset.language,code:preset.code,stdin:preset.stdin,tests:[]});
@@ -25,7 +25,7 @@ export default function LektrusProgrammingControls({diagram:d,onChange}:{
    </select>
   </label>
   <label className="lektrus-school-field">Учебный пример
-   <select value="" onChange={e=>usePreset(e.target.value)}>
+   <select value="" onChange={e=>loadPreset(e.target.value)}>
     <option value="">Выберите для загрузки примера…</option>
     {programmingPresets.filter(p=>p.language===d.language).map(p=>
      <option key={p.id} value={p.id}>{p.label}</option>)}

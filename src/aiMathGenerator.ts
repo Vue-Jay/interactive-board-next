@@ -107,6 +107,19 @@ function func(index:number){
 function word(index:number){
  const v=35+(index*7)%56,t=2+(index%7);return{q:`Автомобиль ехал ${t} ч со скоростью ${v} км/ч. Какое расстояние он проехал?`,a:`${v*t} км`};
 }
+function pythagorasChallenge(index:number){
+ const scale=1+Math.floor(index/3),variant=index%3;
+ if(variant===0){
+  const width=9*scale,length=12*scale,diagonal=15*scale,cable=16*scale;
+  return{q:`Прямоугольный участок имеет размеры ${width} м × ${length} м. Нужно проложить кабель по диагонали, а в наличии есть ${cable} м. Найди длину диагонали и определи, сколько кабеля останется. Обоснуй, почему здесь применима теорема Пифагора.`,a:`Диагональ — гипотенуза прямоугольного треугольника: d = √(${width}² + ${length}²) = √(${width*width} + ${length*length}) = ${diagonal} м. Останется ${cable} − ${diagonal} = ${cable-diagonal} м.`};
+ }
+ if(variant===1){
+  const hypotenuse=25*scale,leg=7*scale,otherLeg=24*scale,area=84*scale*scale,perimeter=56*scale;
+  return{q:`В прямоугольном треугольнике гипотенуза равна ${hypotenuse} см, один катет — ${leg} см. Найди второй катет, площадь и периметр треугольника.`,a:`Второй катет: b = √(${hypotenuse}² − ${leg}²) = √(${hypotenuse*hypotenuse} − ${leg*leg}) = ${otherLeg} см. Площадь S = ${leg}·${otherLeg}/2 = ${area} см². Периметр P = ${leg} + ${otherLeg} + ${hypotenuse} = ${perimeter} см.`};
+ }
+ const equalSide=13*scale,base=10*scale,halfBase=5*scale,height=12*scale,area=60*scale*scale,perimeter=36*scale;
+ return{q:`Равнобедренный треугольник имеет боковую сторону ${equalSide} см и основание ${base} см. Проведи высоту к основанию и найди её длину, площадь и периметр. Объясни, почему высота делит основание пополам.`,a:`В равнобедренном треугольнике высота к основанию является также медианой, поэтому половина основания равна ${halfBase} см. По теореме Пифагора h = √(${equalSide}² − ${halfBase}²) = √(${equalSide*equalSide} − ${halfBase*halfBase}) = ${height} см. Площадь S = ${base}·${height}/2 = ${area} см²; периметр P = 2·${equalSide} + ${base} = ${perimeter} см.`};
+}
 function powers(index:number,topic:string){
  if(/корен/.test(topic)){
   const roots=[2,3,4,5,6,7,8,9,10,11,12],root=roots[index%roots.length],power=[2,3,2,3][Math.floor(index/roots.length)%4];
@@ -440,6 +453,7 @@ function spatialSymmetryTask(index:number){
 
 function olympiadMath(topic:string,index:number){
  const t=topic.toLocaleLowerCase("ru-RU"),i=index;
+ if(/пифагор|гипотенуз|катет/.test(t))return pythagorasChallenge(i);
  if(/принцип дирихле|ящик|голубин|принципа ящиков/.test(t)){
   const objects=5+i,boxes=objects-1;
   return{q:`В ${boxes} ящиках распределили ${objects} предметов. Докажи, что в каком-то ящике лежат как минимум два предмета, и покажи распределение, при котором нельзя гарантировать наличие трёх предметов в одном ящике.`,a:`Если бы в каждом ящике лежал не более чем один предмет, всего поместилось бы не более ${boxes} предметов. Но их ${objects}, поэтому по принципу Дирихле хотя бы в одном ящике лежат не менее двух. Чтобы показать, что гарантировать три нельзя, положим по одному предмету в каждый ящик, а оставшийся — в первый: там будет ровно два, в остальных — по одному.`};
@@ -453,6 +467,20 @@ function olympiadMath(topic:string,index:number){
   return{q:`В простом графе ${vertices} вершин. Докажи, что если в нём ровно ${edges} ребра и граф связный, то он является деревом.`,a:`Связный граф на ${vertices} вершинах содержит не менее ${vertices-1} рёбер. При ровно ${edges} рёбрах цикл невозможен: удаление любого ребра цикла оставило бы граф связным, но рёбер стало бы меньше ${vertices-1}. Значит, граф связный и ациклический, то есть дерево.`};
  }
  if(/симметри.*пространств|пространств.*симметри/.test(t))return spatialSymmetryTask(i);
+ if(/делим|кратн/.test(t)){
+  const variant=i%3;
+  if(variant===0){
+   const target=9;
+   const solutions=Array.from({length:9},(_,n)=>10*(n+1)+(target-(n+1))).filter((value)=>value>=10&&value<=99&&value%6===0);
+   return{q:`Найди все двузначные числа, сумма цифр которых равна ${target} и которые делятся на 6. Объясни, почему других чисел нет.`,a:`Число делится на 6, если оно чётное и делится на 3. Сумма цифр ${target} уже гарантирует делимость на 3; перебираем цифры десятков и оставляем чётную последнюю цифру. Подходящие числа: ${solutions.join(", ")}.`};
+  }
+  if(variant===1){
+   const target=10;
+   const solutions=Array.from({length:9},(_,n)=>10*(n+1)+(target-(n+1))).filter((value)=>value>=10&&value<=99&&value%4===0);
+   return{q:`Найди все двузначные числа с суммой цифр ${target}, которые делятся на 4. Проверь признак делимости и докажи, что список полный.`,a:`Перебираем пары цифр с суммой ${target}. Число делится на 4, когда число из двух последних цифр делится на 4. Подходящие числа: ${solutions.join(", ")}.`};
+  }
+  return{q:`Двузначное число делится на 9. Если переставить его цифры, получится число на 27 больше. Найди исходное число и обоснуй ответ.`,a:`Пусть цифры числа — a и b. Тогда a + b делится на 9, а разность перевёрнутого и исходного чисел равна 9(b − a) = 27, значит b − a = 3. При сумме цифр, кратной 9, получаем a + b = 9 и цифры 3 и 6. Исходное число 36: оно делится на 9, а 63 − 36 = 27.`};
+ }
  if(/геометр|треуг|круг|окруж|прямоуг|квадрат|площад|периметр|угол/.test(t)){
   const perimeter=20+2*(i%13),half=perimeter/2,pairs:Array<[number,number]>=[];
   for(let a=1;a<=half/2;a++){const b=half-a;if(a<=b)pairs.push([a,b]);}
@@ -687,8 +715,7 @@ export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,to
     return{q:`В квадрат со стороной ${side} см вписана окружность. Найди её радиус и длину окружности (π ≈ 3,14).`,a:`Диаметр равен стороне квадрата: d = ${side} см, r = ${radius} см; L ≈ 2 · 3,14 · ${radius} = ${fmt(2*3.14*radius)} см.`};
    }
    if(/пифагор|гипотенуз|катет/.test(t)){
-    const triples=[3,4,5],factor=1+index,scaled=triples.map(value=>value*factor);
-    return{q:`Катеты прямоугольного треугольника равны ${scaled[0]} см и ${scaled[1]} см. Найдите гипотенузу.`,a:`${scaled[2]} см`};
+    return pythagorasChallenge(index);
    }
    if(/окруж|круг|радиус|диаметр/.test(t)){
     const r=2+(index%19);return{q:`Радиус круга ${r} см. Найдите длину окружности и площадь круга. π ≈ 3,14.`,a:`L ≈ ${fmt(2*3.14*r)} см; S ≈ ${fmt(3.14*r*r)} см²`};

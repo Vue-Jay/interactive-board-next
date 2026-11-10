@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "frozenAt": "2026-11-10",
+  "purpose": "Fresh acceptance snapshot for natural-language routing and clarification. This file is not read by the model trainer.",
+  "cases": [
+    {"text":"Нужны 4 задачи на теорему Пифагора для 8 класса","subject":"Математика","count":4,"grade":8,"tool":"assignment","level":"medium"},
+    {"text":"Сделай 5 олимпиадных задач по алгебре на делимость чисел","subject":"Математика","count":5,"grade":null,"tool":"assignment","level":"hard","olympiad":true},
+    {"text":"Три карточки на сложение дробей в 6 классе","subject":"Математика","count":3,"grade":6,"tool":"flashcards","level":"medium"},
+    {"text":"Подготовь 6 упражнений на порядок действий со скобками","subject":"Математика","count":6,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Дай 2 задания на площадь треугольника для 7 класса","subject":"Математика","count":2,"grade":7,"tool":"assignment","level":"medium"},
+    {"text":"Нужно 7 вопросов на вероятность события","subject":"Математика","count":7,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Составь 3 примера на синус и косинус","subject":"Математика","count":3,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай 4 задачи на производную функции в 10 классе","subject":"Математика","count":4,"grade":10,"tool":"assignment","level":"medium"},
+
+    {"text":"Дай 5 задач на закон Ома","subject":"Физика","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь 4 задания по физике на скорость и ускорение","subject":"Физика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужно 3 карточки про теплопередачу","subject":"Физика","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Составь 6 вопросов про отражение света и линзы","subject":"Физика","count":6,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"2 задачи на импульс при столкновении тел","subject":"Физика","count":2,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Дай 5 сложных задач на работу и мощность","subject":"Физика","count":5,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Подготовь 3 задания для 8 класса на плотность вещества","subject":"Физика","count":3,"grade":8,"tool":"assignment","level":"medium","expectClarification":true},
+    {"text":"Сделай 4 задачи на колебания маятника","subject":"Физика","count":4,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Составь 4 задачи на молярную массу в 8 классе","subject":"Химия","count":4,"grade":8,"tool":"assignment","level":"medium"},
+    {"text":"Создай 5 упражнений по химии на балансировку окислительно-восстановительных реакций","subject":"Химия","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Составь 3 вопроса на периодический закон Менделеева","subject":"Химия","count":3,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Нужно 6 карточек на электролитическую диссоциацию","subject":"Химия","count":6,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Дай 2 задачи на массовую долю растворённого вещества","subject":"Химия","count":2,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь 5 сложных заданий на скорость химической реакции","subject":"Химия","count":5,"grade":null,"tool":"assignment","level":"hard"},
+    {"text":"Сделай 4 задания по органической химии на алканы","subject":"Химия","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужно 3 практических задания на получение солей из кислот и оснований","subject":"Химия","count":3,"grade":null,"tool":"assignment","level":"medium"},
+
+    {"text":"Подготовь 4 упражнения по русскому языку на причастный оборот","subject":"Русский язык","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужно 5 заданий на безударные гласные в корне слова","subject":"Русский язык","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Составь 3 карточки на правописание -тся и -ться","subject":"Русский язык","count":3,"grade":null,"tool":"flashcards","level":"medium"},
+    {"text":"Дай 6 вопросов по теме однородных членов предложения","subject":"Русский язык","count":6,"grade":null,"tool":"quiz","level":"medium"},
+    {"text":"Сделай 4 упражнения на обособленные определения","subject":"Русский язык","count":4,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Подготовь 2 задания на различение деепричастия и причастия","subject":"Русский язык","count":2,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Нужно 5 заданий на сложноподчинённые предложения с придаточным условия","subject":"Русский язык","count":5,"grade":null,"tool":"assignment","level":"medium"},
+    {"text":"Сделай 3 задания для 7 класса по пунктуации при вводных словах","subject":"Русский язык","count":3,"grade":7,"tool":"assignment","level":"medium"},
+
+    {"text":"Сделай 5 задач на корень","subject":""},
+    {"text":"Составь 4 задания на состав","subject":""},
+    {"text":"Подготовь 3 задания на движение","subject":""},
+    {"text":"Дай 5 заданий про работу","subject":""},
+    {"text":"Нужно 4 упражнения на предложение","subject":""},
+    {"text":"Сделай 5 заданий про части","subject":""},
+    {"text":"Дай 3 задачки на таблицу","subject":""},
+    {"text":"Подготовь 6 заданий по теме","subject":""}
+  ]
+}

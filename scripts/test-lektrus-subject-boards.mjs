@@ -87,7 +87,7 @@ assert.match(read("src/lektrusSubjectEditorThemes.css"),/\.lektrus-subject-board
 
 assert.match(registry,/subjectBoardEntries:\[\]/);
 assert.doesNotMatch(panel,/subject-board-[a-z]+/,"No individual worksheet in subject catalogue");
-assert.ok(app.includes('aria-label="Предметная доска"'),"One universal main toolbar entry");
+assert.ok(panel.includes('className="lektrus-subject-worksheet-button"'),"Create the universal subject worksheet from the subject-tools panel");
 assert.ok(app.includes('createUniversalSubjectBoard'),"Universal tool creates worksheet");
 assert.ok(app.includes('subjectToneForSubject(lectrisBoardOrganization.subject)'),
  "Worksheet inherits the classroom subject");

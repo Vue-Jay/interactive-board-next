@@ -59,7 +59,7 @@ assert.ok(!app.includes("await putAsset(assetId,blob,boardSummary.id)"),
 assert.ok(app.includes("previous.item.imageCrop?.width === next.item.imageCrop?.width"),
  "Image renderer must rerender when crop changes");
 const widthsSource=fs.readFileSync(new URL("../src/LectrisObjectEditor.tsx",import.meta.url),"utf8");
-for(const [tool,sizes] of [["pen",[1,3,6,12,22]],["marker",[2,7,14,28,48]],["eraser",[6,16,32,55,90]]]){
+for(const [tool,sizes] of [["pen",[1,3,6,12,22]],["marker",[2,7,14,28,48]],["eraser",[6,16,32,55,92]]]){
  assert.ok(widthsSource.includes(tool+":["+sizes.join(",")+"]"));
  assert.ok(sizes.every((n,i)=>i===0||n>sizes[i-1]*1.65),
   "Visually distinct presets for "+tool);
