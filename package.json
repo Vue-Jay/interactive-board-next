@@ -12,6 +12,7 @@
     "test:ai-offline-cache": "node scripts/test-ai-offline-model-cache.mjs",
     "test:ai-board-assistant": "node scripts/test-ai-board-assistant.mjs",
     "test:ai-board-request": "node scripts/test-ai-board-request.mjs",
+    "test:ai-request-acceptance": "node scripts/test-ai-request-acceptance.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
     "test:github-agent-guard": "node scripts/test-github-agent-guard.mjs",
