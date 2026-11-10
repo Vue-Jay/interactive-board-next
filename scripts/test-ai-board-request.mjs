@@ -21,10 +21,12 @@ try {
     ["Составь 5 упражнений по химии на валентность элементов", "Химия"],
     ["Подготовь 5 заданий по русскому языку на деепричастные обороты", "Русский язык"],
     ["Сделай 5 задач по математике на площади треугольников", "Математика"],
+    ["Составь примеры на установление коэффициентов методом электронного баланса", "Химия"],
+    ["Сделай задания на определение вида придаточного в сложноподчинённом предложении", "Русский язык"],
   ]) {
     const request = curriculum.parseCurriculumRequest(prompt, "", 6, "medium", "assignment");
     assert.equal(request.subject, expectedSubject, `Subject was not preserved from a natural request: ${prompt}`);
-    assert.match(request.topic, /движени|валентност|деепричаст|площад/i, `Inflected topic was not preserved: ${prompt}`);
+    assert.match(request.topic, /движени|валентност|деепричаст|площад|электрон|баланс|придаточ/i, `Inflected topic was not preserved: ${prompt}`);
   }
 
   for (const prompt of ["5 задач на молярную массу", "Сделай 5 задач на молярную массу", "Подготовь пять заданий по химии: молярная масса"]) {
