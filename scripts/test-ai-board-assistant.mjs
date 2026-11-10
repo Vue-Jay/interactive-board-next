@@ -40,6 +40,19 @@ assert.deepEqual(api.findBoardItems([nestedItem], "искать это поле"
 assert.equal(api.summarizeBoard(items).includes("На доске 3 элементов."), true);
 assert.equal(api.summarizeBoard(items).includes("отмечено 1 из 2 пунктов"), true);
 assert.deepEqual(api.boardItemBounds([items[0], items[1]]), { x: 10, y: 20, width: 290, height: 140 });
+const contentSummary = api.summarizeBoard([
+  { id: "formula", kind: "formula", x: 0, y: 0, width: 100, height: 40, text: "F = ma" },
+  { id: "table", kind: "table", x: 0, y: 0, width: 100, height: 40, text: "", tableCells: ["Вещество", "Плотность", "Вода", "1000 кг/м³"] },
+  { id: "quiz", kind: "quiz", x: 0, y: 0, width: 100, height: 40, text: "Как найти скорость?", quizOptions: ["Путь разделить на время", "Время разделить на путь"] },
+  { id: "media", kind: "image", x: 0, y: 0, width: 100, height: 40, text: "", name: "Карта Европы.png", assetId: "68a2aa73-42d2-45f1-b3a8-2151901c7b0c" },
+  ...Array.from({ length: 7 }, (_, index) => ({ id: `extra-${index}`, kind: "sticky", x: 0, y: 0, width: 100, height: 40, text: `Дополнительная заметка ${index}` })),
+]);
+assert.ok(contentSummary.includes("Содержание 8 из 11"), "Board analysis should bound output and disclose omitted items");
+assert.ok(contentSummary.includes("F = ma"), "Board analysis should include formula content");
+assert.ok(contentSummary.includes("Плотность"), "Board analysis should include structured table cells");
+assert.ok(contentSummary.includes("Как найти скорость?"), "Board analysis should include quiz prompts");
+assert.ok(contentSummary.includes("Карта Европы.png"), "Board analysis should include media names");
+assert.ok(!contentSummary.includes("68a2aa73-42d2-45f1-b3a8-2151901c7b0c"), "Board analysis must not expose internal media IDs");
 
 const objectForMutation = (id, text, x = 0, hidden = false) => ({ id, kind: "sticky", x, y: 20, width: 100, height: 80, text, hidden });
 let mutationScenarios = 0;

@@ -184,11 +184,37 @@ export function summarizeBoard(items: Item[]): string {
   const doneTasks = checklists.reduce((sum, item) => sum + (item.checklistDone?.filter(Boolean).length ?? 0), 0);
   const emptyItems = items.filter(item => !item.text?.trim() && !item.name?.trim() && !(item.checklistItems?.length)
     && !(item.tableCells?.some(cell => cell.trim())) && item.kind !== "pen" && item.kind !== "marker").length;
+  const contentFor = (item: Item): string[] => {
+    const values: unknown[] = [item.name, item.text, item.mediaTitle, item.notes, item.flashcardBack,
+      item.quizExplanation, item.graphExpression, item.scienceReactionConditions, item.scienceReagents,
+      item.checklistItems, item.tableCells, item.quizOptions,
+      item.chartEntries?.map(entry => `${entry.label}: ${entry.value}`),
+      item.graphSegments?.map(segment => segment.label), item.graphAngles?.map(angle => angle.label),
+      item.graphCircles?.map(circle => circle.label), item.graphPolygons?.map(polygon => polygon.label),
+      item.scienceReactionSteps, item.subjectBoardEntries, item.schoolDiagram, item.scienceCircuit,
+      item.scienceOptics, item.scienceMechanics, item.scienceAtomModel, item.scienceLabBench];
+    const candidates: string[] = [];
+    for (const value of values) flattenStrings(value, candidates, new Set(), { chars: 0 });
+    const unique = new Set<string>();
+    for (const candidate of candidates) {
+      const text = candidate.replace(/\s+/g, " ").trim();
+      if (!text || text.length < 2 || /^[0-9a-f]{8}-[0-9a-f-]{20,}$/i.test(text) || /^#[0-9a-f]{6}$/i.test(text)) continue;
+      unique.add(text.length > 150 ? `${text.slice(0, 147)}…` : text);
+      if (unique.size >= 3) break;
+    }
+    return [...unique];
+  };
+  const contentLines = items.slice(0, 8).map((item, index) => {
+    const content = contentFor(item);
+    const label = content.join(" · ") || (item.kind === "image" || item.kind === "pdf" ? item.name : "") || "без текстового содержания";
+    return `${index + 1}. ${kindNames[item.kind] ?? item.kind}: ${label}`;
+  });
   return [
     `На доске ${items.length} элементов.`,
     kinds.join(" · "),
     totalTasks ? `В списках отмечено ${doneTasks} из ${totalTasks} пунктов.` : "",
     emptyItems ? `${emptyItems} элементов пока без текстового содержимого.` : "",
+    `Содержание ${Math.min(items.length, contentLines.length)}${items.length > contentLines.length ? ` из ${items.length}` : ""}:\n${contentLines.join("\n")}`,
   ].filter(Boolean).join("\n");
 }
 
