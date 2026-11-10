@@ -47,12 +47,17 @@ const contentSummary = api.summarizeBoard([
   { id: "media", kind: "image", x: 0, y: 0, width: 100, height: 40, text: "", name: "Карта Европы.png", assetId: "68a2aa73-42d2-45f1-b3a8-2151901c7b0c" },
   ...Array.from({ length: 7 }, (_, index) => ({ id: `extra-${index}`, kind: "sticky", x: 0, y: 0, width: 100, height: 40, text: `Дополнительная заметка ${index}` })),
 ]);
-assert.ok(contentSummary.includes("Содержание 8 из 11"), "Board analysis should bound output and disclose omitted items");
+assert.ok(contentSummary.includes("первые 8 объектов с содержимым"), "Board analysis should bound output and disclose that it is a sample");
 assert.ok(contentSummary.includes("F = ma"), "Board analysis should include formula content");
 assert.ok(contentSummary.includes("Плотность"), "Board analysis should include structured table cells");
 assert.ok(contentSummary.includes("Как найти скорость?"), "Board analysis should include quiz prompts");
 assert.ok(contentSummary.includes("Карта Европы.png"), "Board analysis should include media names");
 assert.ok(!contentSummary.includes("68a2aa73-42d2-45f1-b3a8-2151901c7b0c"), "Board analysis must not expose internal media IDs");
+const laterContentSummary = api.summarizeBoard([
+  ...Array.from({ length: 9 }, (_, index) => ({ id: `blank-${index}`, kind: "shape", x: 0, y: 0, width: 20, height: 20, text: "" })),
+  { id: "late-note", kind: "sticky", x: 0, y: 0, width: 100, height: 50, text: "Сохранить вывод эксперимента" },
+]);
+assert.ok(laterContentSummary.includes("Сохранить вывод эксперимента"), "Board analysis should search beyond leading empty objects");
 
 const objectForMutation = (id, text, x = 0, hidden = false) => ({ id, kind: "sticky", x, y: 20, width: 100, height: 80, text, hidden });
 let mutationScenarios = 0;

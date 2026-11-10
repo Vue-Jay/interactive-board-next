@@ -204,17 +204,20 @@ export function summarizeBoard(items: Item[]): string {
     }
     return [...unique];
   };
-  const contentLines = items.slice(0, 8).map((item, index) => {
+  const contentLines: string[] = [];
+  for (const item of items) {
+    if (contentLines.length >= 8) break;
     const content = contentFor(item);
-    const label = content.join(" · ") || (item.kind === "image" || item.kind === "pdf" ? item.name : "") || "без текстового содержания";
-    return `${index + 1}. ${kindNames[item.kind] ?? item.kind}: ${label}`;
-  });
+    if (!content.length) continue;
+    contentLines.push(`${kindNames[item.kind] ?? item.kind}: ${content.join(" · ")}`);
+  }
+  const contentCountLabel = contentLines.length === 8 ? "первые 8 объектов с содержимым" : `${contentLines.length} объектов с содержимым`;
   return [
     `На доске ${items.length} элементов.`,
     kinds.join(" · "),
     totalTasks ? `В списках отмечено ${doneTasks} из ${totalTasks} пунктов.` : "",
     emptyItems ? `${emptyItems} элементов пока без текстового содержимого.` : "",
-    `Содержание ${Math.min(items.length, contentLines.length)}${items.length > contentLines.length ? ` из ${items.length}` : ""}:\n${contentLines.join("\n")}`,
+    `Примеры содержания (${contentCountLabel}):\n${contentLines.length ? contentLines.join("\n") : "Текстовых данных нет."}`,
   ].filter(Boolean).join("\n");
 }
 
