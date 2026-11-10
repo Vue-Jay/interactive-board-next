@@ -39,8 +39,8 @@ assert.ok(!registryBlock.includes('label:palette.label+" · учебная до�
  "Subject worksheets must not appear as eleven separate subject tools");
 assert.ok(registry.includes('id.startsWith("subject-board-")'),
  "Existing worksheets must stay available through the shared item factory");
-assert.ok(app.includes('aria-label="Предметная доска"'),
- "The universal worksheet must be accessible from the main toolbar");
+assert.ok(panel.includes('className="lektrus-subject-worksheet-button"'),
+ "The universal worksheet must be accessible from the subject-tools panel");
 assert.ok(icons.includes('if(id.startsWith("subject-board-")||id.startsWith("subject-task-")||id==="chem-assignments")'),
  "New worksheet and task tools must render dedicated vector symbols");
 assert.equal(scienceIds.length,7,"Registry scanner must cover four physics and three chemistry editors");

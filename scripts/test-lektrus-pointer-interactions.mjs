@@ -61,7 +61,7 @@ const widths=read("src/LectrisObjectEditor.tsx");
 const mobile=read("src/lektrusSubjectPolish2026.css");
 assert.match(widths,/pen:\[1,3,6,12,22\]/);
 assert.match(widths,/marker:\[2,7,14,28,48\]/);
-assert.match(widths,/eraser:\[6,16,32,55,90\]/);
+assert.match(widths,/eraser:\[6,16,32,55,92\]/);
 assert.match(widths,/lektrus-ink-five-widths/);
 assert.match(widths,/!\(drawing\|\|erasing\)&&<button/,"Pen settings cannot require pressing a settings button");
 assert.match(mobile,/\.lectris-quick-properties\.is-ink-properties/);
