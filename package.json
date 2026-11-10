@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "train:ai-subject-model": "python scripts/train-ai-subject-model.py",
     "eval:ai-curriculum": "node scripts/evaluate-ai-curriculum.mjs",
+    "eval:ai-diagnostic-prompts": "node scripts/evaluate-ai-diagnostic-prompts.mjs",
     "test:ai-board-transfer": "node scripts/test-lektrus-ai-board-transfer.mjs",
     "test:ai-offline-cache": "node scripts/test-ai-offline-model-cache.mjs",
     "test:ai-board-assistant": "node scripts/test-ai-board-assistant.mjs",
