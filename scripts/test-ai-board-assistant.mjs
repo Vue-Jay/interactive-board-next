@@ -17,7 +17,8 @@ assert.deepEqual(api.parseBoardAssistantCommand("Переименуй геоме
 assert.deepEqual(api.parseBoardAssistantCommand("Перемести заметку вправо"), { kind: "move", query: "заметку", direction: "right" });
 assert.deepEqual(api.parseBoardAssistantCommand("Удали старую заметку"), { kind: "delete", query: "старую заметку" });
 assert.deepEqual(api.parseBoardAssistantCommand("Проанализируй все элементы"), { kind: "analyze" });
-assert.deepEqual(api.parseBoardAssistantCommand("Найди заметку про Пифагора"), { kind: "find", query: "заметку про Пифагора" });
+assert.deepEqual(api.parseBoardAssistantCommand("Найди заметку про Пифагора"), { kind: "find", query: "про Пифагора" });
+assert.deepEqual(api.parseBoardAssistantCommand("Найди задание про молярную массу"), { kind: "find", query: "про молярную массу" });
 assert.deepEqual(api.parseBoardAssistantCommand("Создай заметку: повторить теорему Пифагора"), { kind: "create-sticky", text: "повторить теорему Пифагора" });
 assert.deepEqual(api.parseBoardAssistantCommand("Создай список: прочитать параграф; решить задачи"), { kind: "create-checklist", text: "прочитать параграф; решить задачи" });
 assert.deepEqual(api.parseBoardAssistantCommand("Создай круг: центр фигуры"), { kind: "create-shape", shape: "circle", text: "центр фигуры" });
@@ -41,6 +42,9 @@ const tableRename = api.applyBoardAssistantMutation([
 ], { kind: "rename", query: "Баланс", text: "Физика · таблица величин" });
 assert.equal(tableRename.items[0].name, "Физика · таблица величин", "Renaming a table should set a visible board-item label");
 assert.deepEqual(api.findBoardItems(items, "заметку про Пифагора"), [items[0]]);
+assert.deepEqual(api.findBoardItems(items, api.parseBoardAssistantCommand("Найди задание про молярную массу").query), [], "Generic object words must not turn a semantic search into an impossible exact-term filter");
+const generatedChemistryItems = [{ id: "chemistry-task", kind: "checklist", text: "Практика · Химия · молярную массу", checklistItems: ["Вычисли молярную массу воды (H₂O)"] }];
+assert.deepEqual(api.findBoardItems(generatedChemistryItems, api.parseBoardAssistantCommand("Найди задание про молярную массу").query), generatedChemistryItems, "Natural search must find a generated assignment by its topic");
 assert.deepEqual(api.findBoardItems(items, "формула"), [items[2]], "Search must index structured text inside objects");
 const nestedItem = {
   id: "nested", kind: "instrument", x: 0, y: 0, width: 100, height: 100,

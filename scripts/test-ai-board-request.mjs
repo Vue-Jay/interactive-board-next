@@ -29,6 +29,20 @@ try {
     assert.match(request.topic, /движени|валентност|деепричаст|площад|электрон|баланс|придаточ/i, `Inflected topic was not preserved: ${prompt}`);
   }
 
+  // A board's current subject is a default, not a lock: an explicit subject
+  // in a natural command must determine both parsing and generated material.
+  for (const [prompt, expectedSubject] of [
+    ["Сделай 3 задания по физике на закон Ома", "Физика"],
+    ["Подготовь 3 задачи по химии на молярную массу", "Химия"],
+    ["Составь 3 упражнения по русскому языку на причастные обороты", "Русский язык"],
+  ]) {
+    const request = curriculum.parseCurriculumRequest(prompt, "Математика", 5, "medium", "assignment");
+    assert.equal(request.subject, expectedSubject, `An explicit subject must override the selected board subject: ${prompt}`);
+    const generated = curriculum.generateCurriculumAi(request.tool, prompt, request.level, request.count, request.subject);
+    assert.equal(generated.subject, expectedSubject, `Generation must follow the explicit subject: ${prompt}`);
+    assert.equal(generated.items.length, 3, `Requested count was lost: ${prompt}`);
+  }
+
   for (const prompt of ["5 задач на молярную массу", "Сделай 5 задач на молярную массу", "Подготовь пять заданий по химии: молярная масса"]) {
     const request = curriculum.parseCurriculumRequest(prompt, "", 6, "medium", "assignment");
     assert.equal(request.subject, "Химия", `Wrong subject for: ${prompt}`);

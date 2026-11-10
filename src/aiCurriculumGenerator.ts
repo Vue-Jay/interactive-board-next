@@ -219,16 +219,18 @@ export function parseCurriculumRequest(
     ["Информатика", /(?:^|\s)по\s+информатик[а-яё]*(?=\s|$)/iu],
     ["Иностранный язык", /(?:^|\s)(?:по|на)\s+(?:иностранн[а-яё]*\s+язык[а-яё]*|английск[а-яё]*(?:\s+язык[а-яё]*)?|english)(?=\s|$)/iu],
   ];
-  let explicitSubject = selectedSubject;
-  if (!explicitSubject) {
-    for (const [subject, pattern] of explicitSubjectPhrases) {
-      if (pattern.test(topic)) {
-        explicitSubject = subject;
-        topic = topic.replace(pattern, " ");
-        break;
-      }
+  // The currently selected board subject is only a fallback. A subject named
+  // directly in the user's request must win, otherwise a math board would
+  // silently turn "задания по химии" into math exercises.
+  let explicitSubject = "";
+  for (const [subject, pattern] of explicitSubjectPhrases) {
+    if (pattern.test(topic)) {
+      explicitSubject = subject;
+      topic = topic.replace(pattern, " ");
+      break;
     }
   }
+  explicitSubject ||= selectedSubject;
   const quotedCanonicalTopic = input.match(/[«“"]([^»”"]+)[»”"]/u)?.[1]?.trim();
   const preserveQuotedCanonicalTopic = Boolean(quotedCanonicalTopic && matchCanonicalCurriculumTopic(quotedCanonicalTopic));
   if (preserveQuotedCanonicalTopic && quotedCanonicalTopic) {
