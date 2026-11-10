@@ -13,6 +13,7 @@
     "test:ai-board-assistant": "node scripts/test-ai-board-assistant.mjs",
     "test:ai-board-request": "node scripts/test-ai-board-request.mjs",
     "test:ai-request-acceptance": "node scripts/test-ai-request-acceptance.mjs",
+    "eval:ai-subject-supplemental": "python scripts/evaluate-ai-subject-supplemental.py && node scripts/evaluate-ai-request-supplemental.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
     "test:github-agent-guard": "node scripts/test-github-agent-guard.mjs",

@@ -13,6 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CORPUS_PATH = ROOT / "ai-training" / "subject_topics.json"
 GRADE_MAP_PATH = ROOT / "ai-training" / "curriculum_grade_map.json"
+INTENT_EXAMPLES_PATH = ROOT / "ai-training" / "subject_intent_examples.json"
 OUTPUT_PATH = ROOT / "public" / "models" / "aiSubjectIntentModel.json"
 VERSION_PATH = ROOT / "src" / "aiSubjectIntentModelVersion.ts"
 TEMPLATES = (
@@ -196,6 +197,16 @@ def main() -> None:
     if missing:
         raise SystemExit(f"В корпусе отсутствуют предметы: {', '.join(sorted(missing))}")
     train, wording_calibration, wording_validation, topic_calibration, topic_validation = make_examples(corpus)
+    intent_examples = json.loads(INTENT_EXAMPLES_PATH.read_text(encoding="utf-8"))["subjects"]
+    if set(intent_examples) != set(SUBJECTS):
+        raise SystemExit("Дополнительные примеры классификатора должны содержать ровно 11 поддерживаемых предметов")
+    extra_training = [
+        (template.format(topic=topic), subject)
+        for subject in SUBJECTS
+        for topic in intent_examples[subject]
+        for template in TEMPLATES
+    ]
+    train.extend(extra_training)
     model = fit(train)
 
     def predictions(examples: list[tuple[str, str]]) -> list[tuple[str, str, float]]:
@@ -306,7 +317,7 @@ def main() -> None:
     OUTPUT_PATH.write_text(serialized, encoding="utf-8")
     version = hashlib.sha256(serialized.encode("utf-8")).hexdigest()[:16]
     VERSION_PATH.write_text(f'export const AI_SUBJECT_MODEL_VERSION = "{version}";\n', encoding="utf-8")
-    print(f"Обучено на примерах: {len(train)}; калибровка: {len(wording_calibration)} формулировок и {len(topic_calibration)} примеров новых тем; финальная проверка: {len(wording_validation)} формулировок и {len(topic_validation)} примеров новых тем")
+    print(f"Обучено на примерах: {len(train)} (в том числе {len(extra_training)} дополнительных предметных формулировок); калибровка: {len(wording_calibration)} формулировок и {len(topic_calibration)} примеров новых тем; финальная проверка: {len(wording_validation)} и {len(topic_validation)} примеров")
     print(f"Словарь признаков: {model['vocabularySize']}; размер модели: {OUTPUT_PATH.stat().st_size / 1024:.1f} КБ; версия {version}")
     print(f"Калибровка: цель {CONFIDENCE_TARGET_ACCURACY:.0%} по каждому предмету; в браузере применяется единый строгий порог {confidence_threshold:.3f}")
     print("  " + "; ".join(f"{subject}: {threshold:.3f}" for subject, threshold in subject_thresholds.items()))
