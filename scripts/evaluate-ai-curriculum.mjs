@@ -711,11 +711,11 @@ try {
       const values = answer.match(/R = U \/ I = (\d+) \/ (\d+) = (\d+) Ом/);
       return Boolean(values && voltage) && Number(values[1]) === Number(voltage) && Number(values[2]) === Number(current) && Number(values[3]) === Number(voltage) / Number(current);
     } },
-    { topic: "плавание тел и условие плавания", prompt: /плотность тела .* плотность жидкости/i, answer: /поэтому тело/i, verify: (prompt, answer) => {
+    { topic: "плавание тел и условие плавания", prompt: /плотность тела .* плотность жидкости/i, answer: /сравним плотности/i, verify: (prompt, answer) => {
       const [, bodyDensity, liquidDensity] = prompt.match(/тела (\d+) кг\/м³, плотность жидкости (\d+) кг\/м³/) ?? [];
       if (!bodyDensity) return false;
-      return Number(bodyDensity) < Number(liquidDensity) ? /всплывёт и будет плавать/.test(answer)
-        : Number(bodyDensity) > Number(liquidDensity) ? /опустится на дно/.test(answer) : /будет плавать в толще жидкости/.test(answer);
+      return Number(bodyDensity) < Number(liquidDensity) ? /всплывёт.*будет плавать у поверхности/.test(answer)
+        : Number(bodyDensity) > Number(liquidDensity) ? /опустится на дно/.test(answer) : /взвешенном состоянии внутри жидкости/.test(answer);
     } },
     { topic: "последовательное соединение резисторов", prompt: /соединены последовательно/i, answer: /Rобщ = R₁ \+ R₂/i, verify: (prompt, answer) => {
       const values = prompt.match(/сопротивлением (\d+) Ом и (\d+) Ом/)?.slice(1).map(Number);

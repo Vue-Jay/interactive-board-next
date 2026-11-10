@@ -177,8 +177,13 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
       return { prompt: `На участке проводника напряжение ${voltage} В, сила тока ${current} А. Найди сопротивление.`, answer: `По закону Ома R = U / I = ${voltage} / ${current} = ${resistance} Ом.` };
     }
     if (/плавани.*тел|услови.*плаван/.test(t)) {
-      const bodyDensity = 450 + index * 25, liquidDensity = 1000, state = "всплывёт и будет плавать";
-      return { prompt: `Плотность тела ${bodyDensity} кг/м³, плотность жидкости ${liquidDensity} кг/м³. Определи, что произойдёт с телом после погружения.`, answer: bodyDensity < liquidDensity ? `ρтела < ρжидкости (${bodyDensity} < ${liquidDensity}), поэтому тело ${state}.` : bodyDensity > liquidDensity ? `ρтела > ρжидкости (${bodyDensity} > ${liquidDensity}), поэтому тело ${state}.` : `ρтела = ρжидкости (${bodyDensity} = ${liquidDensity}), поэтому тело ${state}.` };
+      const bodyDensity = 450 + index * 25, liquidDensity = 1000;
+      const state = bodyDensity < liquidDensity
+        ? "всплывёт, а затем будет плавать у поверхности"
+        : bodyDensity > liquidDensity
+          ? "опустится на дно"
+          : "будет находиться во взвешенном состоянии внутри жидкости";
+      return { prompt: `Плотность тела ${bodyDensity} кг/м³, плотность жидкости ${liquidDensity} кг/м³. Определи, что произойдёт с телом после погружения.`, answer: `Сравним плотности: ρтела = ${bodyDensity} кг/м³, ρжидкости = ${liquidDensity} кг/м³. ${bodyDensity < liquidDensity ? "Так как плотность тела меньше плотности жидкости, оно " : bodyDensity > liquidDensity ? "Так как плотность тела больше плотности жидкости, оно " : "Так как плотности равны, тело "}${state}.` };
     }
     if (/последовательн.*соединен/.test(t)) {
       const first = 2 + (index % 7), second = 3 + ((index * 2) % 8), equivalent = first + second;

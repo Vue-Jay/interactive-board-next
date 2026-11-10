@@ -263,6 +263,21 @@ try {
     assert.ok(Math.abs(localizedNumber(answerMatch[3]) - stiffness * extensionMetres ** 2 / 2) < 0.001, `Incorrect spring energy in item ${index + 1}`);
   }
 
+  for (let index = 0; index <= 30; index += 1) {
+    const exercise = exerciseBank.generateSubjectExercise("Физика", "условие плавания тел", "medium", index);
+    const match = exercise.prompt.match(/Плотность тела (\d+) кг\/м³, плотность жидкости (\d+) кг\/м³/u);
+    assert.ok(match, `Missing density values in buoyancy exercise ${index + 1}`);
+    const bodyDensity = Number(match[1]);
+    const liquidDensity = Number(match[2]);
+    if (bodyDensity < liquidDensity) {
+      assert.match(exercise.answer, /плотность тела меньше плотности жидкости.*всплывёт/u, `Incorrect floating answer for ${bodyDensity} kg/m³`);
+    } else if (bodyDensity > liquidDensity) {
+      assert.match(exercise.answer, /плотность тела больше плотности жидкости.*опустится на дно/u, `Incorrect sinking answer for ${bodyDensity} kg/m³`);
+    } else {
+      assert.match(exercise.answer, /плотности равны.*взвешенном состоянии/u, `Incorrect neutral-buoyancy answer for ${bodyDensity} kg/m³`);
+    }
+  }
+
   for (let index = 0; index < 12; index += 1) {
     const expansion = exerciseBank.generateSubjectExercise("Физика", "тепловое расширение", "medium", index);
     const answer = expansion.answer;
