@@ -41,7 +41,7 @@ export default function LektrusPublicSite(){
    <div className={`showcase-content showcase-${section}`}>
     {section==="overview"&&<div className="showcase-overview">
      <div className="showcase-overview-copy"><div className="showcase-kicker"><i/> ОДНА ДОСКА ДЛЯ УРОКА, ИССЛЕДОВАНИЯ И ПРАКТИКИ</div><h1>Объясняйте.<br/><em>Исследуйте.</em><br/>Создавайте вместе.</h1><p>Lektrus соединяет общую интерактивную доску, предметные модели и задания, с которыми можно работать вместе.</p><div className="showcase-actions"><button className="showcase-primary" onClick={goDemo}>Попробовать доску <span>↗</span></button><button className="showcase-quiet" onClick={()=>setSection("tools")}>Отдельные инструменты <span>→</span></button></div><div className="showcase-facts"><span><b>01</b> Объясняйте наглядно</span><span><b>02</b> Давайте практику</span><span><b>03</b> Исследуйте вместе</span></div></div>
-     <div className={`showcase-carousel showcase-carousel-${boardShots[activeShot].scene}`} aria-label="Снимки приложения и досок Lektrus">
+     <div className={`showcase-carousel showcase-carousel-${boardShots[activeShot].scene}`} aria-label="Рекламные иллюстрации возможностей Lektrus">
       <div className="showcase-board-shot">
        <PromoArtwork scene={boardShots[activeShot].scene}/>
       </div>
