@@ -46,8 +46,6 @@ export default function LektrusPublicSite(){
        <PromoArtwork scene={boardShots[activeShot].scene}/>
       </div>
       <div className="promo-caption"><small>{boardShots[activeShot].label}</small><b>{boardShots[activeShot].title}</b><span>{boardShots[activeShot].hint}</span></div>
-      <div className="showcase-carousel-controls" aria-live="polite">
-      </div>
       <div className="showcase-carousel-controls" aria-live="polite"><div className="showcase-carousel-progress" aria-hidden="true"><i style={{width:`${((activeShot+1)/boardShots.length)*100}%`}}/></div><div className="showcase-carousel-actions"><span>{String(activeShot+1).padStart(2,"0")} / {String(boardShots.length).padStart(2,"0")}</span><button className="showcase-carousel-pause" type="button" aria-label={shotPaused?"Продолжить прокрутку досок":"Остановить прокрутку досок"} title={shotPaused?"Продолжить":"Пауза"} onClick={()=>setShotPaused(value=>!value)}>{shotPaused?"▶":"Ⅱ"}</button><button className="showcase-carousel-next" type="button" aria-label="Следующий снимок" onClick={()=>setActiveShot(value=>(value+1)%boardShots.length)}>→</button></div></div>
      </div>
     </div>}
