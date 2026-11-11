@@ -347,30 +347,6 @@ const Ink = memo(function Ink({ item }: { item: Item }) {
   );
 }, (previous, next) => previous.item === next.item);
 
-function liveStroke(id: string, kind: "pen" | "marker", path: Point[], colorValue: string, weight: number): Item {
-  /*
-   * Keep the live ink preview in one immutable world coordinate system.
-   * Recomputing a stroke item's bounding box while the pointer is moving makes
-   * its containing DOM element change origin and is visible as the line
-   * "jumping" up/down or left/right.  The preview SVG already has
-   * overflow:visible, so it can stay anchored at world (0, 0) and draw the
-   * collected world points directly.  The final item is normalized only once
-   * on pointer-up by boardModel.stroke().
-   */
-  return {
-    id,
-    kind,
-    x: 0,
-    y: 0,
-    width: 1,
-    height: 1,
-    text: "",
-    color: colorValue,
-    weight,
-    points: path.map((point) => ({ x: point.x, y: point.y })),
-  };
-}
-
 type Bounds = { x: number; y: number; width: number; height: number };
 type GuideState = { x?: number; y?: number };
 type ContextMenuState = { x: number; y: number } | null;
@@ -2693,6 +2669,72 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const eraserPreviewCanvas=useRef<HTMLCanvasElement>(null);
   const eraserPreviewRatio=useRef(1);
   const eraserCursorElement = useRef<HTMLDivElement>(null);
+  const inkPreviewCanvas=useRef<HTMLCanvasElement>(null);
+  const inkPreviewRatio=useRef(1);
+  const inkPreviewFrame=useRef<number|null>(null);
+  const pendingInkPreviewPoints=useRef<Point[]>([]);
+  const lastInkPreviewPoint=useRef<Point|null>(null);
+  const beginInkPreview=(g:Gesture,point:Point)=>{
+    const canvas=inkPreviewCanvas.current,host=board.current,ink=g.ink;
+    if(!canvas||!host||!ink)return;
+    const rect=host.getBoundingClientRect();
+    if(rect.width<=0||rect.height<=0)return;
+    const ratio=Math.min(2,window.devicePixelRatio||1);
+    inkPreviewRatio.current=ratio;
+    canvas.width=Math.max(1,Math.round(rect.width*ratio));
+    canvas.height=Math.max(1,Math.round(rect.height*ratio));
+    canvas.style.display="block";
+    const ctx=canvas.getContext("2d");
+    if(!ctx)return;
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.setTransform(ratio*g.view.zoom,0,0,ratio*g.view.zoom,ratio*g.view.x,ratio*g.view.y);
+    ctx.globalAlpha=ink.kind==="marker"?.32:1;
+    ctx.fillStyle=ink.color;
+    ctx.beginPath();ctx.arc(point.x,point.y,ink.weight/2,0,Math.PI*2);ctx.fill();
+    lastInkPreviewPoint.current=point;
+    pendingInkPreviewPoints.current=[];
+  };
+  const paintInkPreviewPoints=(g:Gesture,points:Point[])=>{
+    const canvas=inkPreviewCanvas.current,ink=g.ink;
+    if(!canvas||!ink||canvas.style.display!=="block"||!points.length)return;
+    const ctx=canvas.getContext("2d");
+    if(!ctx)return;
+    const ratio=inkPreviewRatio.current;
+    ctx.setTransform(ratio*g.view.zoom,0,0,ratio*g.view.zoom,ratio*g.view.x,ratio*g.view.y);
+    ctx.globalAlpha=ink.kind==="marker"?.32:1;
+    ctx.strokeStyle=ink.color;ctx.fillStyle=ink.color;
+    ctx.lineWidth=ink.weight;ctx.lineCap="round";ctx.lineJoin="round";
+    const previous=lastInkPreviewPoint.current??points[0];
+    if(!lastInkPreviewPoint.current){
+      ctx.beginPath();ctx.arc(points[0].x,points[0].y,ink.weight/2,0,Math.PI*2);ctx.fill();
+    }
+    ctx.beginPath();ctx.moveTo(previous.x,previous.y);
+    for(const point of points)ctx.lineTo(point.x,point.y);
+    ctx.stroke();
+    lastInkPreviewPoint.current=points[points.length-1];
+  };
+  const scheduleInkPreviewPaint=(point:Point)=>{
+    pendingInkPreviewPoints.current.push(point);
+    if(inkPreviewFrame.current!==null)return;
+    inkPreviewFrame.current=requestAnimationFrame(()=>{
+      inkPreviewFrame.current=null;
+      const active=gesture.current;
+      const points=pendingInkPreviewPoints.current.splice(0);
+      if(active?.mode==="draw"&&active.ink)paintInkPreviewPoints(active,points);
+    });
+  };
+  const flushInkPreviewPaint=(g:Gesture)=>{
+    if(inkPreviewFrame.current!==null){cancelAnimationFrame(inkPreviewFrame.current);inkPreviewFrame.current=null;}
+    const points=pendingInkPreviewPoints.current.splice(0);
+    if(points.length)paintInkPreviewPoints(g,points);
+  };
+  const stopInkPreview=()=>{
+    if(inkPreviewFrame.current!==null){cancelAnimationFrame(inkPreviewFrame.current);inkPreviewFrame.current=null;}
+    pendingInkPreviewPoints.current=[];
+    lastInkPreviewPoint.current=null;
+    if(inkPreviewCanvas.current)inkPreviewCanvas.current.style.display="none";
+  };
   const setLiveEraserCursor=(x:number,y:number,pointerType:string,pressed=false)=>{
     const el=eraserCursorElement.current;
     if(!el)return;
@@ -2920,6 +2962,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if (remoteRetryTimer.current) clearTimeout(remoteRetryTimer.current);
       if (displayFrame.current != null) cancelAnimationFrame(displayFrame.current);
       if (gesturePaintFrame.current != null) cancelAnimationFrame(gesturePaintFrame.current);
+      if (inkPreviewFrame.current != null) cancelAnimationFrame(inkPreviewFrame.current);
       displayFrame.current = null;
       gesturePaintFrame.current = null;
       pendingDisplayItems.current = null;
@@ -4326,6 +4369,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         itemsRef.current=g.before.map(item=>latest.get(item.id)??item);
       }
     }
+    if(!cancel&&g.mode==="draw"&&g.ink)flushInkPreviewPaint(g);
     gesture.current = null;
     // The last pointer sample is applied synchronously before end(). Send it
     // immediately, even if the throttle currently holds an older preview.
@@ -4364,10 +4408,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       else commit(itemsRef.current);
     }
     else if (g.mode === "draw" && g.ink)
-      commit([
+      flushSync(()=>commit([
         ...g.before,
-        stroke(g.ink.id, g.ink.kind, g.path, g.ink.color, g.ink.weight, g.view.zoom),
-      ]);
+        stroke(g.ink!.id, g.ink!.kind, g.path, g.ink!.color, g.ink!.weight, g.view.zoom),
+      ],{immediatePaint:true}));
     else if (g.mode === "connector") {
       const startPoint = g.path[0];
       const endPoint = g.path[g.path.length - 1] ?? startPoint;
@@ -4447,6 +4491,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setPath([]);
     setMarqueeRect(null);
     setPreview(null);
+    stopInkPreview();
     setPanning(false);
     clearGuides();
     if (board.current?.hasPointerCapture(g.pointer))
@@ -4922,7 +4967,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     };
     if (mode === "draw") {
       const ink = gesture.current.ink!;
-      setPreview(liveStroke(ink.id, ink.kind, [p], ink.color, ink.weight));
+      beginInkPreview(gesture.current,p);
       cursorChannel.current?.sendInk({id:ink.id,kind:ink.kind,color:ink.color,weight:ink.weight,points:[p],finished:false});
     }
     if (mode === "connector") {
@@ -4939,10 +4984,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       gesturePaintFrame.current = null;
       const active = gesture.current;
       if (!active) return;
-      if (active.mode === "draw" && active.ink) {
-        setPreview(liveStroke(active.ink.id, active.ink.kind, active.path, active.ink.color, active.ink.weight));
-        // Network ink is sent directly in pointer-move, not as a side effect of painting.
-      } else if (active.mode === "lasso") {
+      if (active.mode === "lasso") {
         setPath([...active.path]);
       } else if (active.mode === "connector") {
         const startPoint = active.path[0];
@@ -5277,7 +5319,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     } else {
       const point = world(p),
         last = g.path[g.path.length - 1];
-      if (Math.hypot(point.x - last.x, point.y - last.y) * view.zoom < 3)
+      // Keep sub-pixel samples for smooth strokes; the canvas preview only
+      // paints newly arrived points, so this no longer drives React renders.
+      const minSampleDistance=g.mode==="draw"?0.8:3;
+      if (Math.hypot(point.x - last.x, point.y - last.y) * g.view.zoom < minSampleDistance)
         return;
       g.path.push(point);
       // Publish directly from the pointer stream, independently of cursor visibility
@@ -5288,8 +5333,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           weight: g.ink.weight, points: g.path.slice(-500),
           offset: Math.max(0,g.path.length-500), finished: false,
         });
+        scheduleInkPreviewPaint(point);
       }
-      scheduleGesturePaint();
+      if(g.mode!=="draw")scheduleGesturePaint();
     }
   };
   const moveObjectFrame=(e:PE<HTMLElement>)=>{
@@ -10259,6 +10305,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               </div>
             )}
           </div>
+          <canvas ref={inkPreviewCanvas} aria-hidden="true" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:49,display:"none"}} />
           <canvas ref={eraserPreviewCanvas} aria-hidden="true" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:50,display:"none"}} />
           {presentation && presentationLaser && presentationLaserPos && !presentationBlackout && <div className="presentation-laser-dot" style={{ left: presentationLaserPos.x, top: presentationLaserPos.y }} aria-hidden="true" />}
           {presentation && presentationSpotlight && presentationSpotlightPos && !presentationBlackout && (
