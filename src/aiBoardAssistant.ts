@@ -14,6 +14,13 @@ export type BoardAssistantCommand =
   | { kind: "duplicate"; query: string }
   | { kind: "move"; query: string; direction: "left" | "right" | "up" | "down" | "center" }
   | { kind: "resize"; query: string; direction: "larger" | "smaller" | "wider" | "narrower" | "taller" | "shorter"; percent: number }
+  | { kind: "rotate"; query: string; degrees: number }
+  | { kind: "reset-rotation"; query: string }
+  | { kind: "layer"; query: string; direction: "front" | "back" | "forward" | "backward" }
+  | { kind: "lock" | "unlock" | "hide" | "show" | "group" | "ungroup"; query: string }
+  | { kind: "align"; query: string; direction: "left" | "center-x" | "right" | "top" | "center-y" | "bottom" }
+  | { kind: "distribute"; query: string; axis: "x" | "y" }
+  | { kind: "equalize"; query: string; axis: "width" | "height" | "both" }
   | { kind: "create-sticky"; text: string }
   | { kind: "create-text"; text: string }
   | { kind: "create-checklist"; text: string }
@@ -60,6 +67,35 @@ export function parseBoardAssistantCommand(input: string): BoardAssistantCommand
   if (/(?:отмени|отменить|шаг назад|undo)/i.test(value)) return { kind: "undo" };
   if (/(?:повтори действие|верни последнее действие|шаг вперед|шаг впер[её]д|redo)/i.test(value)) return { kind: "redo" };
   if (/истори|последн(?:ие|их) изменения|что менялось|кто менял|журнал изменений/i.test(value)) return { kind: "history" };
+  const showHidden = value.match(/^(?:покажи|восстанови|отобрази)\s+(?:скрыт(?:ый|ую|ое|ые)\s+)?(.+)$/iu);
+  if (showHidden && /скрыт|восстанови|отобрази/i.test(value)) return { kind: "show", query: showHidden[1].trim() };
+  const hide = value.match(/^(?:скрой|спрячь)\s+(.+)$/iu);
+  if (hide) return { kind: "hide", query: hide[1].trim() };
+  const lock = value.match(/^(заблокируй|разблокируй)\s+(.+)$/iu);
+  if (lock) return { kind: lock[1].toLocaleLowerCase("ru-RU") === "заблокируй" ? "lock" : "unlock", query: lock[2].trim() };
+  const resetRotation = value.match(/^(?:сбрось|обнули)\s+поворот\s+(?:у\s+)?(.+)$/iu);
+  if (resetRotation) return { kind: "reset-rotation", query: resetRotation[1].trim() };
+  const rotate = value.match(/^поверни\s+(.+?)\s+(?:(?:на\s+)?(\d{1,3})\s*(?:градус(?:а|ов)?|°)?\s*)?(вправо|по\s+часовой|влево|против\s+часовой)?$/iu);
+  if (rotate) return { kind: "rotate", query: rotate[1].trim(), degrees: Math.max(1, Math.min(360, Number(rotate[2] ?? 90))) * (/влево|против\s+часовой/iu.test(rotate[3] ?? "") ? -1 : 1) };
+  const layer = value.match(/^(?:перемести|подними|опусти)\s+(.+?)\s+(?:на\s+)?(передний|задний|слой\s+впер[её]д|слой\s+назад)\s+план(?:\s|$)|^(?:перемести|подними|опусти)\s+(.+?)\s+на\s+слой\s+(впер[её]д|назад)$/iu);
+  if (layer) {
+    const query = (layer[1] ?? layer[3]).trim();
+    const direction = /передний/iu.test(layer[2] ?? "") ? "front" : /задний/iu.test(layer[2] ?? "") ? "back" : /впер[её]д/iu.test(layer[2] ?? layer[4] ?? "") ? "forward" : "backward";
+    return { kind: "layer", query, direction };
+  }
+  const align = value.match(/^выровняй\s+(.+?)\s+(?:по\s+)?(левому\s+краю|правому\s+краю|верхнему\s+краю|нижнему\s+краю|центру\s+по\s+горизонтали|центрам\s+по\s+горизонтали|центру\s+по\s+вертикали|центрам\s+по\s+вертикали)$/iu);
+  if (align) {
+    const edge = align[2].toLocaleLowerCase("ru-RU");
+    return { kind: "align", query: align[1].trim(), direction: /левому/iu.test(edge) ? "left" : /правому/iu.test(edge) ? "right" : /верхнему/iu.test(edge) ? "top" : /нижнему/iu.test(edge) ? "bottom" : /горизонтали/iu.test(edge) ? "center-x" : "center-y" };
+  }
+  const distribute = value.match(/^распредели\s+(.+?)\s+(?:равномерно\s+)?по\s+(горизонтали|вертикали)$/iu);
+  if (distribute) return { kind: "distribute", query: distribute[1].trim(), axis: /горизонтали/iu.test(distribute[2]) ? "x" : "y" };
+  const equalize = value.match(/^сделай\s+(?:одинаков(?:ую|ый)\s+)?(ширину|высоту|размер)\s+(?:у\s+)?(.+)$/iu);
+  if (equalize) return { kind: "equalize", query: equalize[2].trim(), axis: equalize[1] === "ширину" ? "width" : equalize[1] === "высоту" ? "height" : "both" };
+  const ungroup = value.match(/^(?:разгруппируй|разъедини\s+группу)\s+(.+)$/iu);
+  if (ungroup) return { kind: "ungroup", query: ungroup[1].trim() };
+  const group = value.match(/^(?:сгруппируй|объедини\s+в\s+группу)\s+(.+)$/iu);
+  if (group) return { kind: "group", query: group[1].trim() };
   const rename = value.match(/^(?:переименуй|измени название|измени текст(?: объекта)?)\s+(.+?)\s+(?:в|на)\s+[«"']?(.+?)[»"']?$/i);
   if (rename) return { kind: "rename", query: rename[1].trim(), text: rename[2].trim() };
   const duplicate = value.match(/^(?:дублируй|дублировать|скопируй|сделай копию(?: объекта)?)\s+(.+)$/i);
@@ -207,8 +243,11 @@ function normalizeSearch(value: string): string {
   return value.toLocaleLowerCase("ru-RU").replace(/ё/g, "е");
 }
 
-const ignoredQueryWords = new Set(["найди", "найти", "покажи", "пожалуйста", "объект", "объекты", "заметку", "заметка", "стикер", "записку", "текст", "карточку", "доска", "доске", "этой", "на", "в", "и", "или", "по", "про"]);
+const ignoredQueryWords = new Set(["найди", "найти", "покажи", "пожалуйста", "объект", "объекты", "элемент", "элементы", "все", "всё", "весь", "всех", "вся", "заметку", "заметка", "стикер", "стикеры", "записку", "текст", "карточку", "доска", "доске", "этой", "на", "в", "и", "или", "по", "про", "скрытый", "скрытая", "скрытое", "скрытые"]);
 const itemKindSearchAliases: Partial<Record<Item["kind"], string>> = {
+  sticky: "заметка заметки стикер стикеры записка записки",
+  text: "текст надпись надписи",
+  shape: "фигура фигуры",
   pen: "карандаш линия штрих рисунок",
   marker: "маркер линия штрих выделение",
   cover: "шторка занавеска",
@@ -240,9 +279,12 @@ export function findBoardItems(items: Item[], query: string): Item[] {
   });
 }
 
-export type BoardAssistantMutationCommand = Extract<BoardAssistantCommand, { kind: "rename" | "move" | "resize" | "delete" | "duplicate" }>;
+export type BoardAssistantMutationCommand = Extract<BoardAssistantCommand, { kind:
+  | "rename" | "move" | "resize" | "delete" | "duplicate" | "rotate" | "reset-rotation" | "layer"
+  | "lock" | "unlock" | "hide" | "show" | "group" | "ungroup" | "align" | "distribute" | "equalize"
+}>;
 export type BoardAssistantMutationResult = {
-  status: "not-found" | "confirmation-required" | "changed";
+  status: "not-found" | "confirmation-required" | "changed" | "needs-more" | "unsupported";
   items: Item[];
   matches: Item[];
   selectedIds: string[];
@@ -255,16 +297,89 @@ export function applyBoardAssistantMutation(
   command: BoardAssistantMutationCommand,
   options: { confirmed?: boolean; center?: Point; createId?: () => string } = {},
 ): BoardAssistantMutationResult {
-  const matches = findBoardItems(items.filter(item => !item.hidden), command.query);
+  const foundMatches = findBoardItems(items.filter(item => command.kind === "show" ? item.hidden : !item.hidden), command.query);
+  const matches = foundMatches.filter(item =>
+    (command.kind === "unlock" || !item.locked)
+    && (!(command.kind === "rotate" || command.kind === "reset-rotation") || item.kind !== "connector"),
+  );
   const selectedIds = matches.map(item => item.id);
-  if (!matches.length) return { status: "not-found", items, matches, selectedIds: [], bounds: null };
+  if (!matches.length) return { status: foundMatches.length ? "unsupported" : "not-found", items, matches: foundMatches, selectedIds: [], bounds: boardItemBounds(foundMatches) };
   if (command.kind === "delete" && !options.confirmed) {
     return { status: "confirmation-required", items, matches, selectedIds, bounds: boardItemBounds(matches) };
   }
 
   const ids = new Set(selectedIds);
   let nextItems: Item[];
-  if (command.kind === "delete") {
+  if (command.kind === "hide" || command.kind === "show") {
+    nextItems = items.map(item => ids.has(item.id) ? { ...item, hidden: command.kind === "hide" } : item);
+  } else if (command.kind === "lock" || command.kind === "unlock") {
+    const lockable = matches.filter(item => item.kind !== "pen" && item.kind !== "marker");
+    if (!lockable.length) return { status: "unsupported", items, matches, selectedIds, bounds: boardItemBounds(matches) };
+    const lockIds = new Set(lockable.map(item => item.id));
+    nextItems = items.map(item => lockIds.has(item.id) ? { ...item, locked: command.kind === "lock" } : item);
+  } else if (command.kind === "group") {
+    if (matches.length < 2) return { status: "needs-more", items, matches, selectedIds, bounds: boardItemBounds(matches) };
+    const groupId = globalThis.crypto?.randomUUID?.() ?? `ai-group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    nextItems = items.map(item => ids.has(item.id) ? { ...item, groupId } : item);
+  } else if (command.kind === "ungroup") {
+    const groupIds = new Set(matches.map(item => item.groupId).filter((id): id is string => !!id));
+    if (!groupIds.size) return { status: "unsupported", items, matches, selectedIds, bounds: boardItemBounds(matches) };
+    const affected = new Set(items.filter(item => item.groupId && groupIds.has(item.groupId)).map(item => item.id));
+    nextItems = items.map(item => affected.has(item.id) ? { ...item, groupId: undefined } : item);
+  } else if (command.kind === "align" || command.kind === "distribute" || command.kind === "equalize") {
+    const minimum = command.kind === "distribute" ? 3 : 2;
+    if (matches.length < minimum) return { status: "needs-more", items, matches, selectedIds, bounds: boardItemBounds(matches) };
+    if (command.kind === "align") {
+      const bounds = boardItemBounds(matches)!;
+      nextItems = items.map(item => {
+        if (!ids.has(item.id)) return item;
+        if (command.direction === "left") return { ...item, x: bounds.x };
+        if (command.direction === "center-x") return { ...item, x: bounds.x + (bounds.width - item.width) / 2 };
+        if (command.direction === "right") return { ...item, x: bounds.x + bounds.width - item.width };
+        if (command.direction === "top") return { ...item, y: bounds.y };
+        if (command.direction === "center-y") return { ...item, y: bounds.y + (bounds.height - item.height) / 2 };
+        return { ...item, y: bounds.y + bounds.height - item.height };
+      });
+    } else if (command.kind === "equalize") {
+      const reference = matches[0];
+      nextItems = items.map(item => !ids.has(item.id) ? item : {
+        ...item,
+        ...(command.axis === "width" || command.axis === "both" ? { width: reference.width } : {}),
+        ...(command.axis === "height" || command.axis === "both" ? { height: reference.height } : {}),
+      });
+    } else {
+      const sorted = [...matches].sort((a, b) => command.axis === "x" ? a.x - b.x : a.y - b.y);
+      const first = sorted[0], last = sorted[sorted.length - 1];
+      const totalSize = sorted.reduce((sum, item) => sum + (command.axis === "x" ? item.width : item.height), 0);
+      const span = command.axis === "x" ? last.x + last.width - first.x : last.y + last.height - first.y;
+      const gap = (span - totalSize) / (sorted.length - 1);
+      let cursor = command.axis === "x" ? first.x : first.y;
+      const positions = new Map<string, number>();
+      for (const item of sorted) {
+        positions.set(item.id, cursor);
+        cursor += (command.axis === "x" ? item.width : item.height) + gap;
+      }
+      nextItems = items.map(item => {
+        const position = positions.get(item.id);
+        if (position == null) return item;
+        return command.axis === "x" ? { ...item, x: position } : { ...item, y: position };
+      });
+    }
+  } else if (command.kind === "layer") {
+    const chosen = items.filter(item => ids.has(item.id));
+    const rest = items.filter(item => !ids.has(item.id));
+    if (command.direction === "front") nextItems = [...rest, ...chosen];
+    else if (command.direction === "back") nextItems = [...chosen, ...rest];
+    else {
+      nextItems = [...items];
+      const forward = command.direction === "forward";
+      if (forward) {
+        for (let i = nextItems.length - 2; i >= 0; i--) if (ids.has(nextItems[i].id) && !ids.has(nextItems[i + 1].id)) [nextItems[i], nextItems[i + 1]] = [nextItems[i + 1], nextItems[i]];
+      } else {
+        for (let i = 1; i < nextItems.length; i++) if (ids.has(nextItems[i].id) && !ids.has(nextItems[i - 1].id)) [nextItems[i], nextItems[i - 1]] = [nextItems[i - 1], nextItems[i]];
+      }
+    }
+  } else if (command.kind === "delete") {
     nextItems = items.filter(item => !ids.has(item.id));
   } else if (command.kind === "duplicate") {
     const createId = options.createId ?? (() => globalThis.crypto?.randomUUID?.()
@@ -309,6 +424,20 @@ export function applyBoardAssistantMutation(
           : {}),
       };
     });
+  } else if (command.kind === "rotate" || command.kind === "reset-rotation") {
+    const degrees = command.kind === "rotate" ? command.degrees : 0;
+    const bounds = boardItemBounds(matches)!;
+    const cx = bounds.x + bounds.width / 2, cy = bounds.y + bounds.height / 2;
+    const rad = degrees * Math.PI / 180, cos = Math.cos(rad), sin = Math.sin(rad);
+    nextItems = items.map(item => {
+      if (!ids.has(item.id)) return item;
+      if (command.kind === "reset-rotation") return { ...item, rotation: 0 };
+      if (item.kind === "connector") return item;
+      if (matches.length === 1) return { ...item, rotation: (((item.rotation ?? 0) + degrees) % 360 + 360) % 360 };
+      const ox = item.x + item.width / 2 - cx, oy = item.y + item.height / 2 - cy;
+      const ncx = cx + ox * cos - oy * sin, ncy = cy + ox * sin + oy * cos;
+      return { ...item, x: ncx - item.width / 2, y: ncy - item.height / 2, rotation: (((item.rotation ?? 0) + degrees) % 360 + 360) % 360 };
+    });
   } else if (command.kind === "rename") {
     nextItems = items.map(item => {
       if (!ids.has(item.id)) return item;
@@ -317,7 +446,7 @@ export function applyBoardAssistantMutation(
       if (item.kind === "table") return { ...item, name: command.text };
       return { ...item, text: command.text };
     });
-  } else {
+  } else if (command.kind === "move") {
     let dx = 0, dy = 0;
     if (command.direction === "left") dx = -160;
     if (command.direction === "right") dx = 160;
@@ -330,9 +459,10 @@ export function applyBoardAssistantMutation(
       dy = options.center.y - (bounds.y + bounds.height / 2);
     }
     nextItems = items.map(item => ids.has(item.id) ? { ...item, x: item.x + dx, y: item.y + dy } : item);
-  }
+  } else return { status: "unsupported", items, matches, selectedIds, bounds: boardItemBounds(matches) };
   const changedItems = nextItems.filter(item => ids.has(item.id));
-  return { status: "changed", items: nextItems, matches, selectedIds, bounds: boardItemBounds(changedItems) };
+  const hiddenResult = command.kind === "hide";
+  return { status: "changed", items: nextItems, matches, selectedIds: hiddenResult ? [] : selectedIds, bounds: boardItemBounds(changedItems) };
 }
 
 const kindNames: Record<string, string> = {

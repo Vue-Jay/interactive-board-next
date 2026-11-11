@@ -3830,7 +3830,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       const command=parseBoardAssistantCommand(prompt);
       const assistantItems=itemsRef.current.filter(item=>!item.hidden);
       if(command.kind==="help"){
-        respond("Я могу: искать и анализировать объекты и историю; создавать заметки, текст, списки, формулы, дробные модели, таблицы, диаграммы, графики функций, викторины, карточки для повторения, комментарии, медиа-ссылки, фреймы, фигуры, стрелки, шторки и измерительные инструменты; загружать изображения и PDF с вашего устройства; рисовать линии карандашом или маркером; переименовывать, копировать, перемещать, менять размер и удалять найденное; отменять и повторять действия; готовить задания. Примеры: «создай график функции: y = x^2 - 4x + 3», «добавь транспортир», «создай стрелку: причина → следствие», «нарисуй линию маркером», «добавь изображение», «прикрепи PDF», «найди формулу плотности», «увеличь заметку про Пифагора на 20%», «создай викторину: Сколько будет 2 + 2?; 3; 4; ответ: 2», «создай дробь: 3/4», «добавь видео: https://example.com/урок», «10 задач на треугольники».");
+        respond("Я могу искать и анализировать элементы и историю; создавать все основные типы объектов; загружать изображения и PDF; редактировать найденные элементы: переименовывать, двигать, менять размер, поворачивать, блокировать, скрывать, копировать, удалять с подтверждением, менять порядок слоёв, группировать, выравнивать и распределять. Также можно отменять и повторять действия и готовить задания. Примеры: «создай график функции: y = x^2 - 4x + 3», «найди формулу плотности», «поверни треугольник на 45° вправо», «сгруппируй все заметки про Пифагора», «выровняй заметки по левому краю», «скрой старую схему», «покажи скрытую схему», «перемести формулу на передний план», «добавь изображение», «создай дробь: 3/4».");
       }else if(command.kind==="analyze"){
         respond(summarizeBoard(assistantItems));
       }else if(command.kind==="find"){
@@ -3842,9 +3842,33 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           const descriptions=matches.slice(0,8).map(item=>`${item.kind}: ${(item.text||item.name||item.checklistItems?.[0]||"без подписи").split(/\r?\n/)[0].slice(0,90)}`);
           respond(`Нашёл ${matches.length} ${russianCountWord(matches.length,"элемент","элемента","элементов")} и выделил на доске:\n${descriptions.join("\n")}${matches.length>8?"\n…": ""}`);
         }
+      }else if(command.kind==="rotate"||command.kind==="reset-rotation"||command.kind==="layer"||command.kind==="lock"||command.kind==="unlock"||command.kind==="hide"||command.kind==="show"||command.kind==="group"||command.kind==="ungroup"||command.kind==="align"||command.kind==="distribute"||command.kind==="equalize"){
+        const mutation=applyBoardAssistantMutation(itemsRef.current,command,{createId});
+        if(mutation.status==="not-found")respond(command.kind==="show"?`Не нашёл скрытый объект «${command.query}».`:`Не нашёл объект «${command.query}».`);
+        else if(mutation.status==="needs-more")respond(command.kind==="distribute"?"Для равномерного распределения нужно найти не менее трёх элементов.":"Для этой операции нужно найти не менее двух элементов.");
+        else if(mutation.status==="unsupported")respond(mutation.matches.length?"Эти объекты нельзя изменить: они заблокированы или для них это действие недоступно.":"Для этих элементов действие недоступно.");
+        else if(!canEdit)respond("У вас доступ только для просмотра.");
+        else if(isStudent&&mutation.matches.some(item=>structurallyLockedForStudent(item)))respond("Ученик может выполнять задание, но не изменять его конструкцию.");
+        else{
+          commit(mutation.items);
+          setSelected(mutation.selectedIds);
+          if(command.kind!=="hide")fitToBounds(mutation.bounds,110);
+          const messages:Partial<Record<typeof command.kind,string>>={
+            rotate:`Повернул ${mutation.matches.length} ${russianCountWord(mutation.matches.length,"объект","объекта","объектов")} на ${Math.abs(command.kind==="rotate"?command.degrees:0)}°${command.kind==="rotate"&&command.degrees<0?" влево":" вправо"}.`,
+            "reset-rotation":"Сбросил поворот элементов.",
+            lock:"Заблокировал найденные объекты.",unlock:"Разблокировал найденные объекты.",hide:"Скрыл найденные объекты.",show:"Показал найденные объекты.",
+            group:"Сгруппировал найденные объекты.",ungroup:"Разгруппировал найденные объекты.",
+            align:"Выровнял найденные объекты.",distribute:"Равномерно распределил найденные объекты.",equalize:"Уравнял размеры найденных объектов.",
+          };
+          const layerMessage=command.kind==="layer"
+            ? ({front:"Переместил элементы на передний план.",back:"Переместил элементы на задний план.",forward:"Поднял элементы на слой вперёд.",backward:"Опустил элементы на слой назад."} as const)[command.direction]
+            : undefined;
+          respond(layerMessage??messages[command.kind]??"Готово.");
+        }
       }else if(command.kind==="rename"){
         const mutation=applyBoardAssistantMutation(itemsRef.current,command);
         if(mutation.status==="not-found")respond(`Не нашёл объект «${command.query}».`);
+        else if(mutation.status==="unsupported")respond("Объект заблокирован или не поддерживает это изменение. Сначала разблокируйте его.");
         else{
           commit(mutation.items);
           setSelected(mutation.selectedIds);respond(`Обновил название или текст у ${mutation.matches.length} ${mutation.matches.length===1?"объекта":"объектов"}.`);
@@ -3852,6 +3876,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }else if(command.kind==="duplicate"){
         const mutation=applyBoardAssistantMutation(itemsRef.current,command,{createId});
         if(mutation.status==="not-found")respond(`Не нашёл объект «${command.query}».`);
+        else if(mutation.status==="unsupported")respond("Объект заблокирован и не может быть скопирован. Сначала разблокируйте его.");
         else{
           commit(mutation.items);setSelected(mutation.selectedIds);fitToBounds(mutation.bounds,110);
           respond(`Создал ${mutation.selectedIds.length} ${russianCountWord(mutation.selectedIds.length,"копию","копии","копий")} найденных объектов и выделил их. Исходное содержимое и тип объектов сохранены.`);
@@ -3859,6 +3884,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }else if(command.kind==="resize"){
         const mutation=applyBoardAssistantMutation(itemsRef.current,command);
         if(mutation.status==="not-found")respond(`Не нашёл объект «${command.query}».`);
+        else if(mutation.status==="unsupported")respond("Объект заблокирован и не может изменить размер. Сначала разблокируйте его.");
         else{
           commit(mutation.items);setSelected(mutation.selectedIds);fitToBounds(mutation.bounds,110);
           const label={larger:"больше",smaller:"меньше",wider:"шире",narrower:"уже",taller:"выше",shorter:"ниже"}[command.direction];
@@ -3870,6 +3896,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         const center=command.direction==="center"&&rect?world({x:rect.width/2,y:rect.height/2}):undefined;
         const mutation=applyBoardAssistantMutation(itemsRef.current,command,{center});
         if(mutation.status==="not-found")respond(`Не нашёл объект «${command.query}».`);
+        else if(mutation.status==="unsupported")respond("Объект заблокирован и не может быть перемещён. Сначала разблокируйте его.");
         else{
           commit(mutation.items);setSelected(mutation.selectedIds);fitToBounds(mutation.bounds,110);
           respond(`Переместил ${mutation.matches.length} ${mutation.matches.length===1?"объект":"объекта"} ${command.direction==="left"?"влево":command.direction==="right"?"вправо":command.direction==="up"?"вверх":command.direction==="down"?"вниз":"в центр доски"}.`);
@@ -3877,11 +3904,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }else if(command.kind==="delete"){
         const requested=applyBoardAssistantMutation(itemsRef.current,command);
         if(requested.status==="not-found")respond(`Не нашёл объект «${command.query}».`);
+        else if(requested.status==="unsupported")respond("Объект заблокирован и не может быть удалён. Сначала разблокируйте его.");
         else if(!window.confirm(`Удалить найденные элементы (${requested.matches.length})? Их можно будет восстановить через отмену, пока история этого сеанса доступна.`))respond("Удаление отменено.");
         else{
           const mutation=applyBoardAssistantMutation(itemsRef.current,command,{confirmed:true});
-          commit(mutation.items);setSelected([]);
-          respond(`Удалил ${mutation.matches.length} ${mutation.matches.length===1?"элемент":"элементов"}.`);
+          if(mutation.status==="unsupported")respond("Объект заблокирован и не может быть удалён. Сначала разблокируйте его.");
+          else{commit(mutation.items);setSelected([]);respond(`Удалил ${mutation.matches.length} ${mutation.matches.length===1?"элемент":"элементов"}.`);}
         }
       }else if(command.kind==="history"){
         if(remoteEnabled){

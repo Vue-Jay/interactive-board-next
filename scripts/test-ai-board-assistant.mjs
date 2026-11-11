@@ -18,6 +18,17 @@ assert.deepEqual(api.parseBoardAssistantCommand("Скопируй формулу
 assert.deepEqual(api.parseBoardAssistantCommand("Перемести заметку вправо"), { kind: "move", query: "заметку", direction: "right" });
 assert.deepEqual(api.parseBoardAssistantCommand("Увеличь заметку про Пифагора на 30%"), { kind: "resize", query: "про Пифагора", direction: "larger", percent: 30 });
 assert.deepEqual(api.parseBoardAssistantCommand("Сделай таблицу с плотностью шире"), { kind: "resize", query: "с плотностью", direction: "wider", percent: 25 });
+assert.deepEqual(api.parseBoardAssistantCommand("Поверни треугольник на 45 градусов влево"), { kind: "rotate", query: "треугольник", degrees: -45 });
+assert.deepEqual(api.parseBoardAssistantCommand("Сбрось поворот у треугольника"), { kind: "reset-rotation", query: "треугольника" });
+assert.deepEqual(api.parseBoardAssistantCommand("Заблокируй заметку про урок"), { kind: "lock", query: "заметку про урок" });
+assert.deepEqual(api.parseBoardAssistantCommand("Разблокируй заметку про урок"), { kind: "unlock", query: "заметку про урок" });
+assert.deepEqual(api.parseBoardAssistantCommand("Скрой старую схему"), { kind: "hide", query: "старую схему" });
+assert.deepEqual(api.parseBoardAssistantCommand("Покажи скрытую схему"), { kind: "show", query: "схему" });
+assert.deepEqual(api.parseBoardAssistantCommand("Перемести формулу на передний план"), { kind: "layer", query: "формулу", direction: "front" });
+assert.deepEqual(api.parseBoardAssistantCommand("Сгруппируй все заметки про урок"), { kind: "group", query: "все заметки про урок" });
+assert.deepEqual(api.parseBoardAssistantCommand("Выровняй заметки по левому краю"), { kind: "align", query: "заметки", direction: "left" });
+assert.deepEqual(api.parseBoardAssistantCommand("Распредели карточки по горизонтали"), { kind: "distribute", query: "карточки", axis: "x" });
+assert.deepEqual(api.parseBoardAssistantCommand("Сделай одинаковую ширину у заметок"), { kind: "equalize", query: "заметок", axis: "width" });
 assert.deepEqual(api.parseBoardAssistantCommand("Сузь формулу на 500%"), { kind: "resize", query: "", direction: "narrower", percent: 300 }, "Resize requests must be clamped to a safe maximum");
 assert.deepEqual(api.parseBoardAssistantCommand("Удали старую заметку"), { kind: "delete", query: "старую заметку" });
 assert.deepEqual(api.parseBoardAssistantCommand("Проанализируй все элементы"), { kind: "analyze" });
@@ -94,6 +105,38 @@ assert.deepEqual(resizeResult.items[1], resizeItems[1], "Resize must leave unrel
 const narrowResult = api.applyBoardAssistantMutation(resizeItems, api.parseBoardAssistantCommand("Сделай заметку про Пифагора уже на 50%"));
 assert.equal(narrowResult.items[0].width, 100, "Directional resize should change only the named dimension");
 assert.equal(narrowResult.items[0].height, 100);
+const arrangeItems = [
+  { id: "arr-a", kind: "sticky", x: 10, y: 20, width: 100, height: 60, text: "Заметка про урок Альфа" },
+  { id: "arr-b", kind: "sticky", x: 180, y: 70, width: 120, height: 80, text: "Заметка про урок B" },
+  { id: "arr-c", kind: "sticky", x: 420, y: 40, width: 80, height: 100, text: "Заметка про урок C" },
+];
+const rotated = api.applyBoardAssistantMutation(arrangeItems, api.parseBoardAssistantCommand("Поверни заметку про урок Альфа на 45 градусов влево"));
+assert.equal(rotated.items[0].rotation, 315, "Rotation should wrap negative angles into the board's 0–359 range");
+assert.equal(api.applyBoardAssistantMutation(rotated.items, api.parseBoardAssistantCommand("Сбрось поворот у заметку про урок Альфа")).items[0].rotation, 0);
+const hiddenMutation = api.applyBoardAssistantMutation(arrangeItems, api.parseBoardAssistantCommand("Скрой заметку про урок Альфа"));
+assert.equal(hiddenMutation.items[0].hidden, true);
+assert.deepEqual(api.findBoardItems(hiddenMutation.items.filter(item => !item.hidden), "урок Альфа"), [], "Hidden objects should not appear in ordinary board search");
+const revealedMutation = api.applyBoardAssistantMutation(hiddenMutation.items, api.parseBoardAssistantCommand("Покажи скрытую заметку про урок Альфа"));
+assert.equal(revealedMutation.items[0].hidden, false, "An explicitly requested hidden object should be restored");
+const lockedMutation = api.applyBoardAssistantMutation(arrangeItems, api.parseBoardAssistantCommand("Заблокируй заметку про урок Альфа"));
+assert.equal(lockedMutation.items[0].locked, true);
+assert.equal(api.applyBoardAssistantMutation(lockedMutation.items, api.parseBoardAssistantCommand("Сдвинь заметку про урок Альфа вправо")).status, "unsupported", "Locked elements must not be modified implicitly");
+assert.equal(api.applyBoardAssistantMutation([{ ...arrangeItems[0], kind: "pen", text: "Штрих" }], { kind: "lock", query: "Штрих" }).status, "unsupported", "Ink strokes are not lockable on the board");
+const groupedMutation = api.applyBoardAssistantMutation(arrangeItems, api.parseBoardAssistantCommand("Сгруппируй все заметки про урок"));
+assert.equal(new Set(groupedMutation.items.map(item => item.groupId)).size, 1, "Group should assign one group ID to all matching notes");
+assert.ok(groupedMutation.items[0].groupId);
+const ungroupedMutation = api.applyBoardAssistantMutation(groupedMutation.items, api.parseBoardAssistantCommand("Разгруппируй заметку про урок Альфа"));
+assert.ok(ungroupedMutation.items.every(item => !item.groupId), "Ungrouping one member should release its entire group");
+const alignedMutation = api.applyBoardAssistantMutation(arrangeItems, api.parseBoardAssistantCommand("Выровняй все заметки про урок по левому краю"));
+assert.deepEqual(alignedMutation.items.map(item => item.x), [10, 10, 10]);
+const distributedMutation = api.applyBoardAssistantMutation(arrangeItems, api.parseBoardAssistantCommand("Распредели все заметки про урок по горизонтали"));
+const distributedGaps = distributedMutation.items.slice(1).map((item, index) => item.x - (distributedMutation.items[index].x + distributedMutation.items[index].width));
+assert.ok(Math.abs(distributedGaps[0] - distributedGaps[1]) < 1e-8, "Distribution should use an equal gap between all selected objects");
+const equalizedMutation = api.applyBoardAssistantMutation(arrangeItems, api.parseBoardAssistantCommand("Сделай одинаковый размер у всех заметок про урок"));
+assert.ok(equalizedMutation.items.every(item => item.width === 100 && item.height === 60), "Equalize should match each selected item to the first item's size");
+const frontItems = [arrangeItems[0], { id: "middle", kind: "shape", x: 0, y: 0, width: 10, height: 10, text: "Середина" }, arrangeItems[1]];
+const frontMutation = api.applyBoardAssistantMutation(frontItems, api.parseBoardAssistantCommand("Перемести заметку про урок Альфа на передний план"));
+assert.equal(frontMutation.items.at(-1).id, "arr-a", "Layer changes should move the selected element to the front");
 const scalableItems = [
   { id: "resize-ink", kind: "pen", x: 0, y: 0, width: 100, height: 20, text: "E2E resize ink", points: [{ x: 0, y: 10 }, { x: 100, y: 10 }] },
   { id: "resize-connector", kind: "connector", x: 200, y: 0, width: 100, height: 20, text: "E2E resize connector", connectorStart: { x: 0, y: 10 }, connectorEnd: { x: 100, y: 10 } },

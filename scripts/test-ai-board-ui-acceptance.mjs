@@ -202,6 +202,20 @@ try {
       assert.equal(state.objectInspectorVisible, false, 'Object inspector must not cover assistant chat');
     }
   }
+  for (const suffix of ["ALPHA", "BRAVO", "CHARLIE"]) await send(`создай заметку: E2E_BOARD_CONTROL_${suffix}`, /Создал заметку и выделил/i);
+  await send("сгруппируй все заметки E2E_BOARD_CONTROL", /Сгруппировал найденные объекты/i);
+  await send("выровняй E2E_BOARD_CONTROL по левому краю", /Выровнял найденные объекты/i);
+  await send("распредели E2E_BOARD_CONTROL по горизонтали", /Равномерно распределил найденные объекты/i);
+  await send("сделай одинаковый размер у E2E_BOARD_CONTROL", /Уравнял размеры найденных объектов/i);
+  await send("перемести E2E_BOARD_CONTROL_ALPHA на передний план", /Переместил элементы на передний план/i);
+  await send("поверни E2E_BOARD_CONTROL_ALPHA на 45 градусов вправо", /Повернул 1 объект на 45° вправо/i);
+  await send("сбрось поворот у E2E_BOARD_CONTROL_ALPHA", /Сбросил поворот элементов/i);
+  await send("заблокируй E2E_BOARD_CONTROL_ALPHA", /Заблокировал найденные объекты/i);
+  await send("перемести E2E_BOARD_CONTROL_ALPHA вправо", /заблокирован|действие недоступно/i);
+  await send("разблокируй E2E_BOARD_CONTROL_ALPHA", /Разблокировал найденные объекты/i);
+  await send("скрой E2E_BOARD_CONTROL_BRAVO", /Скрыл найденные объекты/i);
+  await send("покажи скрытый E2E_BOARD_CONTROL_BRAVO", /Показал найденные объекты/i);
+  await send("разгруппируй E2E_BOARD_CONTROL_ALPHA", /Разгруппировал найденные объекты/i);
   for (let index = 1; index <= 10; index += 1) await send(`создай текст: E2E_TEXT_${String(index).padStart(2, "0")}`, /Создал текстовый объект и выделил/i);
   for (let index = 1; index <= 10; index += 1) await send(`создай список: E2E_TASK_${String(index).padStart(2, "0")}; повторить тему`, /Создал список и выделил/i);
   for (let index = 1; index <= 10; index += 1) await send(`создай фигуру треугольник: E2E_SHAPE_${String(index).padStart(2, "0")}`, /Создал фигуру и выделил/i);
@@ -270,8 +284,8 @@ try {
   for (let index = 20; index < 25; index += 1) await send(`удали ${noteNames[index]}`, /Удаление отменено/i, { confirm: false });
   for (let index = 25; index < 30; index += 1) await send(`удали ${noteNames[index]}`, /Удалил 1 элемент/i, { confirm: true });
 
-  assert.equal(sent, 383, "Должно быть выполнено ровно 383 сквозные команды через UI");
-  console.log("AI board UI acceptance: 383 реальные команды выполнены через локальный /demo/board; 20 базовых генераций (по 5 на каждый приоритетный предмет) и 3 нестандартных задачи по математике, физике и химии, 21 вид создания объектов/элементов, включая загрузку изображения/PDF, функцию-график, измерительный инструмент, шторку, стрелку, штрихи пера и маркера; поиск, переименование, изменение размера, копирование и оба исхода подтверждения удаления проверены на всех 20 Item.kind, перемещение проверено по всем объектам и пяти направлениям, дополнительно проверены анализ, локальная история и отмена/повтор.");
+  assert.equal(sent, 399, "Должно быть выполнено ровно 399 сквозных команд через UI");
+  console.log("AI board UI acceptance: 399 реальные команды выполнены через локальный /demo/board; проверены создание всех 20 Item.kind, загрузка изображения/PDF, поиск, анализ, история, отмена/повтор, переименование, изменение размера, копирование, перемещение, удаление с подтверждением, поворот, блокировка, скрытие/восстановление, порядок слоёв, группировка, выравнивание, распределение и одинаковый размер.");
 } finally {
   devtools?.close();
   if (process.platform === "win32" && chrome.pid) {
