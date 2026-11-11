@@ -1,0 +1,84 @@
+.promo-art {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  place-items: center;
+  background:
+    radial-gradient(ellipse at 18% 16%, color-mix(in srgb, var(--promo-accent, #6f83dc) 13%, transparent), transparent 38%),
+    radial-gradient(ellipse at 84% 87%, color-mix(in srgb, var(--promo-accent, #48a998) 10%, transparent), transparent 36%),
+    linear-gradient(145deg, #edf2f5, #f9fbfc 58%, #e9f1f2);
+}
+.promo-art::before,
+.promo-art::after {
+  content: "";
+  position: absolute;
+  border: 1px solid color-mix(in srgb, var(--promo-accent, #6f83dc) 14%, transparent);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.promo-art::before { width: 68%; aspect-ratio: 1; left: -35%; top: -37%; }
+.promo-art::after { width: 48%; aspect-ratio: 1; right: -24%; bottom: -29%; }
+.promo-art > svg {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: min(100%, 760px);
+  height: 100%;
+}
+.showcase-carousel .showcase-board-shot {
+  position: relative;
+  overflow: hidden;
+}
+.showcase-carousel .showcase-board-shot > .promo-art {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.showcase-carousel .showcase-board-shot::before { z-index: 2; pointer-events: none; }
+.promo-caption {
+  display: grid;
+  gap: 5px;
+  padding: 2px 3px 1px;
+}
+.promo-caption > small {
+  color: #36877d;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: .12em;
+}
+.promo-caption > b {
+  color: #1c354a;
+  font-size: clamp(13px, 1.05vw, 16px);
+  font-weight: 790;
+  line-height: 1.3;
+  letter-spacing: -.025em;
+}
+.promo-caption > span {
+  color: #738595;
+  font-size: 10px;
+  line-height: 1.55;
+}
+.showcase-board-card-image {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+}
+.showcase-board-card-image > .promo-art { aspect-ratio: 16 / 10; }
+.showcase-board-card-image > .promo-art > svg { width: 100%; height: 100%; }
+.showcase-board-card:hover .promo-art > svg { transform: scale(1.018); transition: transform .35s ease; }
+.showcase-board-card .promo-art > svg { transition: transform .35s ease; }
+@media (max-width: 1000px) {
+  .promo-caption > span { font-size: 9px; }
+}
+@media (max-width: 680px) {
+  .promo-caption { padding-inline: 1px; }
+  .promo-caption > small { font-size: 7px; }
+  .promo-caption > span { font-size: 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .showcase-board-card .promo-art > svg,
+  .showcase-board-card:hover .promo-art > svg { transition: none; }
+}
