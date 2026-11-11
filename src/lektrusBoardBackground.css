@@ -1,9 +1,9 @@
 /* Drawing cursors are visual-only overlays. Actual stroke diameter is kept
    separate from the 18px sight used to locate the tip of a fine pen. */
 @media (any-pointer:fine) {
-  .workspace .board:is(.board-tool-pen,.board-tool-marker,.board-tool-eraser):not(.board-right-hand):not(.board-panning):not(.board-hand-active),
-  .workspace .board:is(.board-tool-pen,.board-tool-marker,.board-tool-eraser):not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
-  .workspace .board:is(.board-tool-pen,.board-tool-marker,.board-tool-eraser):not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world * {
+  .workspace .board:is(.board-tool-pen,.board-tool-marker):not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+  .workspace .board:is(.board-tool-pen,.board-tool-marker):not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
+  .workspace .board:is(.board-tool-pen,.board-tool-marker):not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world * {
     cursor:crosshair!important;
   }
   /* Keep a native fallback until the custom brush reticle is actually visible. */
@@ -12,12 +12,17 @@
   .workspace .board.board-ink-cursor-visible:is(.board-tool-pen,.board-tool-marker):not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world * {
     cursor:none!important;
   }
+  .workspace .board.board-tool-eraser:not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+  .workspace .board.board-tool-eraser:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
+  .workspace .board.board-tool-eraser:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world * {
+    cursor:none!important;
+  }
 }
 /* A zero-sized anchor keeps the tip exactly at the pointer hotspot.
    Pointer-move updates only left/top, never React state or the canvas. */
 .workspace .lektrus-ink-cursor {
   position:absolute;
-  left:-1000px;top:-1000px;
+  left:0;top:0;
   z-index:1100;
   width:0;height:0;
   pointer-events:none!important;
