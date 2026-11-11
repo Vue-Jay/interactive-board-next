@@ -2452,16 +2452,22 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const moveInkCursor=(clientX:number,clientY:number,pointerType:string,target:EventTarget|null)=>{
     const indicator=inkCursorElement.current;
     if(!indicator)return;
+    const clearInkReticle=()=>{
+      indicator.style.visibility="hidden";
+      board.current?.classList.remove("board-ink-cursor-visible");
+    };
     // Board UI remains ordinary UI. The ink reticle belongs to the drawing
     // surface, not to text fields or embedded buttons.
     if((pointerType!=="mouse"&&pointerType!=="pen")||
+       presentation||space||rightPointerActive||panning||
        (target instanceof Element&&target.closest("button,input,select,textarea,[role='button'],[role='slider'],[contenteditable='true'],[data-board-interactive]"))){
-      indicator.style.visibility="hidden";return;
+      clearInkReticle();return;
     }
     const rect=board.current?.getBoundingClientRect();
     if(!rect)return;
     indicator.style.transform=`translate3d(${clientX-rect.left}px,${clientY-rect.top}px,0)`;
     indicator.style.visibility="visible";
+    board.current?.classList.add("board-ink-cursor-visible");
   };
   const [marqueeRect,setMarqueeRect] = useState<SelectionRect|null>(null);
   const [rightPointerActive,setRightPointerActive] = useState(false);
@@ -2851,6 +2857,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     applyBoardSelectionCursor(board.current,state??selectionCursorForTarget(target instanceof Element?target:null));
   };
   useEffect(()=>{
+    board.current?.classList.remove("board-ink-cursor-visible");
+    if(inkCursorElement.current)inkCursorElement.current.style.visibility="hidden";
     if(tool==="select")applyBoardSelectionCursor(board.current,"idle");
     else clearBoardSelectionCursor(board.current);
     return()=>clearBoardSelectionCursor(board.current);
@@ -9808,7 +9816,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             }
           }}
           onPointerEnter={(e) => { if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType,e.target); if (tool === "eraser") { const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y,e.pointerType); } if(tool==="select")syncSelectionCursor(e.target,e.pointerType); }}
-          onPointerLeave={() => { if(inkCursorElement.current)inkCursorElement.current.style.visibility="hidden"; if(!eraserSession.current && eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden"; if(tool==="select")applyBoardSelectionCursor(board.current,"idle"); }}
+          onPointerLeave={() => { if(inkCursorElement.current)inkCursorElement.current.style.visibility="hidden"; board.current?.classList.remove("board-ink-cursor-visible"); if(!eraserSession.current && eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden"; if(tool==="select")applyBoardSelectionCursor(board.current,"idle"); }}
           onPointerUp={(e) => {
             if(e.pointerType==="touch"&&touchEnd(e))return;
             if (e.pointerId === gesture.current?.pointer) {

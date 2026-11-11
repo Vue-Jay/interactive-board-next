@@ -4,6 +4,12 @@
   .workspace .board:is(.board-tool-pen,.board-tool-marker,.board-tool-eraser):not(.board-right-hand):not(.board-panning):not(.board-hand-active),
   .workspace .board:is(.board-tool-pen,.board-tool-marker,.board-tool-eraser):not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
   .workspace .board:is(.board-tool-pen,.board-tool-marker,.board-tool-eraser):not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world * {
+    cursor:crosshair!important;
+  }
+  /* Keep a native fallback until the custom brush reticle is actually visible. */
+  .workspace .board.board-ink-cursor-visible:is(.board-tool-pen,.board-tool-marker):not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+  .workspace .board.board-ink-cursor-visible:is(.board-tool-pen,.board-tool-marker):not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
+  .workspace .board.board-ink-cursor-visible:is(.board-tool-pen,.board-tool-marker):not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world * {
     cursor:none!important;
   }
 }
