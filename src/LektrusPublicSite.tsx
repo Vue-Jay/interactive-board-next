@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState,type MouseEvent} from "react";
+import {useEffect,useRef,useState,type MouseEvent,type ReactNode} from "react";
 import LektrusFeedbackForm from "./LektrusFeedbackForm";
 import {plans,limitLabel} from "./billingStore";
 import "./lektrusMarketing.css";
@@ -65,7 +65,7 @@ function readPage():Page{
  const hash=window.location.hash.replace(/^#/,"");
  return navigation.some(item=>item.id===hash)?hash as Page:"home";
 }
-function DemoLink({scene="math",children,className=""}:{scene?:string;children:React.ReactNode;className?:string}){
+function DemoLink({scene="math",children,className=""}:{scene?:string;children:ReactNode;className?:string}){
  return <a className={className} href={"/demo/board?scene="+encodeURIComponent(scene)}>{children}</a>;
 }
 
@@ -161,7 +161,7 @@ export default function LektrusPublicSite(){
    </>}
    {page==="help"&&<>
     <section className="marketing-page-hero marketing-container"><span className="marketing-eyebrow">Поддержка, инструкции и обратная связь</span><h1>Найдите решение <span>или свяжитесь с нами</span></h1><p>Ознакомьтесь с частыми вопросами или расскажите нам о своей идее, замечании или проблеме.</p></section>
-    <section className="marketing-section marketing-container"><div className="marketing-section-head"><div><h2>Частые вопросы</h2><p>Короткие ответы о возможностях и работе Lektrus.</p></div></div><div className="marketing-faq">{questions.map((item,i)=><details key={item.q} open={undefined}><summary><span>{item.q}</span><span aria-hidden="true">+</span></summary><p>{item.a}</p></details>)}</div></section>
+    <section className="marketing-section marketing-container"><div className="marketing-section-head"><div><h2>Частые вопросы</h2><p>Короткие ответы о возможностях и работе Lektrus.</p></div></div><div className="marketing-faq">{questions.map(item=><details key={item.q} open={undefined}><summary><span>{item.q}</span><span aria-hidden="true">+</span></summary><p>{item.a}</p></details>)}</div></section>
     <section className="marketing-section marketing-container marketing-contact"><div><span className="marketing-eyebrow">Обратная связь</span><h2>Расскажите, что можно улучшить</h2><p>Ваши вопросы помогают делать Lektrus удобнее. Выберите тему обращения, опишите ситуацию и при необходимости оставьте адрес для ответа.</p>{import.meta.env.VITE_TELEGRAM_URL&&<a className="marketing-secondary" href={import.meta.env.VITE_TELEGRAM_URL} target="_blank" rel="noreferrer">Написать в Telegram ↗</a>}<div className="marketing-contact-help"><strong>Поддержка, инструкции и обратная связь</strong><span>Для знакомства с доской можно открыть гостевую демонстрацию.</span><DemoLink>Открыть демонстрацию ↗</DemoLink></div></div><div className="marketing-form-card"><LektrusFeedbackForm compact source="site"/></div></section>
    </>}
   </main>
