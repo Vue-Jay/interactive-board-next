@@ -1,58 +1,170 @@
-import {useEffect,useState} from "react";
+import {useEffect,useRef,useState,type MouseEvent} from "react";
 import LektrusFeedbackForm from "./LektrusFeedbackForm";
-import "./lektrusShowcaseRefresh.css";
+import {plans,limitLabel} from "./billingStore";
+import "./lektrusMarketing.css";
 
-type Section="overview"|"board"|"tools"|"about"|"feedback";
-const sections:[Section,string,string][]=[["overview","Обзор","⌂"],["board","Интерактивная доска","▧"],["tools","Инструменты","✣"],["about","О проекте","◉"],["feedback","Связаться","↗"]];
-const toolData=[
- {href:"/tools/atlas",index:"01",label:"ГЕОГРАФИЯ И ИСТОРИЯ",name:"Интерактивный атлас",description:"Изучайте страны, рельеф и исторические карты в отдельном полноэкранном пространстве.",symbol:"◎"},
- {href:"/tools/laboratory",index:"02",label:"ХИМИЯ",name:"Химическая лаборатория",description:"Собирайте установки и исследуйте вещества на виртуальном лабораторном столе.",symbol:"⚗"}
+type Page="home"|"features"|"teachers"|"students"|"how"|"pricing"|"about"|"help";
+const navigation:{id:Page;title:string}[]=[
+ {id:"home",title:"Главная"},
+ {id:"features",title:"Возможности"},
+ {id:"teachers",title:"Учителям"},
+ {id:"students",title:"Ученикам"},
+ {id:"how",title:"Как это работает"},
+ {id:"pricing",title:"Тарифы"},
+ {id:"about",title:"О Lektrus"},
+ {id:"help",title:"Помощь и контакты"}
 ];
 const boardShots=[
- {scene:"home",subject:"Главная приложения",src:"/site/app-home.png",label:"РАБОЧИЙ СТОЛ",title:"Всё нужное для занятий — на одном экране",hint:"Разделы, недавние доски и расписание собраны в рабочем пространстве."},
- {scene:"math",subject:"Математика",src:"/site/board-math.png",label:"ГРАФИК И ТАБЛИЦА",title:"Функция оживает на общей доске",hint:"Формула, график, таблица и вопрос для проверки понимания."},
- {scene:"chemistry",subject:"Химия",src:"/site/board-chemistry.png",label:"ЛАБОРАТОРИЯ",title:"От таблицы элементов — к опыту",hint:"Периодическая система и лабораторный стол на одном полотне."},
- {scene:"geometry",subject:"Геометрия",src:"/site/board-geometry.png",label:"ПОСТРОЕНИЕ И ИЗМЕРЕНИЕ",title:"Стройте и проверяйте гипотезы",hint:"Фигура, измерительный инструмент и интерактивное задание."},
- {scene:"physics",subject:"Физика",src:"/site/board-physics.png",label:"ЭЛЕКТРИЧЕСКАЯ ЦЕПЬ",title:"Разберите цепь по элементам",hint:"Настоящая схема, знакомые обозначения и вопрос по теме."},
- {scene:"contour",subject:"Контурная карта",src:"/site/board-contour.png",label:"ГЕОГРАФИЯ",title:"Подписывайте и исследуйте карту",hint:"Контурная карта, задания, подписи и отметки на общем поле."},
- {scene:"history",subject:"История",src:"/site/board-history.png",label:"ИСТОРИЧЕСКИЙ АТЛАС",title:"Сравнивайте карты разных эпох",hint:"Историческая карта соединена с вопросами и обсуждением."},
- {scene:"russian",subject:"Русский язык",src:"/site/board-russian.png",label:"ФОНЕТИЧЕСКИЙ РАЗБОР",title:"Исследуйте слово, звук за звуком",hint:"Интерактивная схема помогает работать с буквами и звуками."}
+ {scene:"math",subject:"Математика",src:"/site/board-math.png",title:"Графики и функции",description:"Исследуйте функции, таблицы и графики на одном холсте."},
+ {scene:"chemistry",subject:"Химия",src:"/site/board-chemistry.png",title:"Химические опыты",description:"Работайте с периодической системой и виртуальной лабораторией."},
+ {scene:"geometry",subject:"Геометрия",src:"/site/board-geometry.png",title:"Построения",description:"Создавайте фигуры и проверяйте геометрические свойства."},
+ {scene:"physics",subject:"Физика",src:"/site/board-physics.png",title:"Электрические цепи",description:"Изучайте схемы с привычными обозначениями."},
+ {scene:"contour",subject:"География",src:"/site/board-contour.png",title:"Контурные карты",description:"Отмечайте объекты, работайте с картами и заданиями."},
+ {scene:"history",subject:"История",src:"/site/board-history.png",title:"Исторический атлас",description:"Сравнивайте территории и события разных эпох."},
+ {scene:"russian",subject:"Русский язык",src:"/site/board-russian.png",title:"Фонетический разбор",description:"Разбирайте буквы и звуки в интерактивной схеме."}
 ];
+const featureCards=[
+ {index:"01",title:"Свободная доска",text:"Пишите, рисуйте, размещайте текст, изображения, фигуры и документы.",scene:"geometry"},
+ {index:"02",title:"Совместная работа",text:"Объясняйте материал и работайте с участниками на общем холсте.",scene:"math"},
+ {index:"03",title:"Предметные модели",text:"Изучайте графики, электрические цепи, карты и другие учебные объекты.",scene:"physics"},
+ {index:"04",title:"Виртуальные лаборатории",text:"Исследуйте вещества и оборудование в химической лаборатории.",scene:"chemistry"},
+ {index:"05",title:"Задания и практика",text:"Объединяйте объяснение, вопросы и практическую работу на доске.",scene:"russian"},
+ {index:"06",title:"Материалы урока",text:"Подготавливайте содержимое занятия и возвращайтесь к сохранённым доскам.",scene:"math"}
+];
+const toolData=[
+ {href:"/tools/atlas",name:"Интерактивный атлас",subject:"География и история",text:"Исследуйте карты и пространственные объекты в отдельном полноэкранном инструменте.",image:"/site/board-history.png"},
+ {href:"/tools/laboratory",name:"Химическая лаборатория",subject:"Химия",text:"Собирайте установки и исследуйте вещества на виртуальном лабораторном столе.",image:"/site/board-chemistry.png"}
+];
+const teacherStories=[
+ {number:"01",title:"Подготовка объяснения",text:"Соберите материалы, схемы и изображения для предстоящего урока."},
+ {number:"02",title:"Наглядный разбор",text:"Показывайте ход решения и разбирайте сложные темы прямо на доске."},
+ {number:"03",title:"Совместная практика",text:"Предлагайте ученикам задания и обсуждайте результат вместе."},
+ {number:"04",title:"Возвращение к материалу",text:"Открывайте сохранённые доски, чтобы продолжить занятие или повторить тему."}
+];
+const steps=[
+ {number:"01",title:"Создайте доску",text:"Начните с чистого пространства или подготовленного учебного материала.",image:"/site/app-home.png",alt:"Главная страница приложения Lektrus"},
+ {number:"02",title:"Добавьте необходимое",text:"Размещайте текст, изображения, фигуры и предметные инструменты в одном месте.",image:"/site/board-geometry.png",alt:"Геометрические объекты на доске Lektrus"},
+ {number:"03",title:"Работайте вместе",text:"Обсуждайте учебный материал и выполняйте задания с участниками занятия.",image:"/site/board-math.png",alt:"Математическая доска с заданием"},
+ {number:"04",title:"Сохраните результат",text:"Возвращайтесь к подготовленным доскам и продолжайте работу в удобное время.",image:"/site/board-russian.png",alt:"Сохранённый пример фонетического разбора"}
+];
+const advantages=[
+ {number:"01",title:"Единое пространство",text:"Интерактивная доска, учебные материалы и инструменты работают вместе."},
+ {number:"02",title:"Наглядное объяснение",text:"От рукописной заметки до предметной модели, которая помогает увидеть связи."},
+ {number:"03",title:"Совместная работа",text:"Преподаватель и ученики могут взаимодействовать в общем учебном пространстве."},
+ {number:"04",title:"Практика по предметам",text:"Графики, карты, схемы, лабораторные опыты и другие учебные объекты."},
+ {number:"05",title:"Гибкий формат",text:"Используйте Lektrus для объяснения, закрепления и самостоятельного изучения."}
+];
+const questions=[
+ {q:"Что такое Lektrus?",a:"Это образовательная платформа с интерактивной доской, предметными инструментами и возможностями совместной работы."},
+ {q:"Можно ли попробовать доску без аккаунта?",a:"Да. На сайте есть отдельная гостевая демонстрация. Изменения в ней не затрагивают рабочие доски других пользователей."},
+ {q:"Какие инструменты доступны отдельно?",a:"Интерактивный атлас и химическую лабораторию можно открыть напрямую, без создания доски."},
+ {q:"Какие тарифы есть в Lektrus?",a:"В приложении определены Free, Teacher и Pro. Free бесплатный, а условия платных тарифов пока имеют тестовый статус."},
+ {q:"Куда отправить предложение или сообщение об ошибке?",a:"Используйте форму обратной связи ниже. Можно указать тему обращения и адрес для ответа."}
+];
+function readPage():Page{
+ const hash=window.location.hash.replace(/^#/,"");
+ return navigation.some(item=>item.id===hash)?hash as Page:"home";
+}
+function DemoLink({scene="math",children,className=""}:{scene?:string;children:React.ReactNode;className?:string}){
+ return <a className={className} href={"/demo/board?scene="+encodeURIComponent(scene)}>{children}</a>;
+}
 
 export default function LektrusPublicSite(){
- const [section,setSection]=useState<Section>("overview");
- const [activeShot,setActiveShot]=useState(0),[shotPaused,setShotPaused]=useState(false);
- useEffect(()=>{if(shotPaused)return;const timer=window.setInterval(()=>setActiveShot(value=>(value+1)%boardShots.length),7200);return()=>window.clearInterval(timer)},[shotPaused]);
- const goDemo=()=>{
-  const id="00000000-0000-4000-8000-0000000000a0",key=`lesson-board.document.v1.board.${id}`;
-  try{if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify({version:1,title:"Попробуйте доску",view:{x:0,y:0,zoom:1},items:[]}))}catch{/* The demo can still open without persistent storage. */}
-  window.location.assign("/demo/board");
+ const [page,setPage]=useState<Page>(readPage);
+ const [menuOpen,setMenuOpen]=useState(false);
+ const [studentScene,setStudentScene]=useState("math");
+ const galleryRef=useRef<HTMLDivElement>(null);
+ const selectedStudent=boardShots.find(item=>item.scene===studentScene)??boardShots[0];
+ useEffect(()=>{
+  const sync=()=>{setPage(readPage());setMenuOpen(false);window.scrollTo({top:0,behavior:"instant"})};
+  window.addEventListener("hashchange",sync);window.addEventListener("popstate",sync);
+  return ()=>{window.removeEventListener("hashchange",sync);window.removeEventListener("popstate",sync)};
+ },[]);
+ useEffect(()=>{document.title=(navigation.find(item=>item.id===page)?.title??"Главная")+" | Lektrus"},[page]);
+ const navigate=(target:Page,event?:MouseEvent<HTMLAnchorElement>)=>{
+  event?.preventDefault();
+  if(target!==page){
+   window.history.pushState(null,"","#"+target);
+   setPage(target);
+   window.scrollTo({top:0,behavior:"instant"});
+  }else window.scrollTo({top:0,behavior:"smooth"});
+  setMenuOpen(false);
  };
- return <main className="lektrus-showcase">
-  <aside className="showcase-rail">
-   <a className="showcase-brand" href="/" aria-label="Lektrus, главная"><img src="/lektrus-icon-192.png" alt=""/><span><b>Lektrus</b><small>Пространство для обучения</small></span></a>
-   <div className="showcase-rail-caption">ЗНАКОМСТВО С LEKTRUS</div>
-   <nav className="showcase-nav" aria-label="Разделы сайта">{sections.map(([id,label,icon])=><button key={id} type="button" className={section===id?"active":""} onClick={()=>setSection(id)} aria-current={section===id?"page":undefined}><span aria-hidden="true">{icon}</span><b>{label}</b>{id==="board"&&<i>ДЕМО</i>}</button>)}</nav>
-   <div className="showcase-rail-bottom"><span className="showcase-status"><i/> Доска доступна для знакомства</span><a className="showcase-login" href="/app">Войти в аккаунт <span>↗</span></a><small>Обучение, в котором можно действовать</small></div>
-  </aside>
-  <section className="showcase-workspace">
-   <header className="showcase-topbar"><div><span>LEKTRUS</span><i>/</i><b>{sections.find(item=>item[0]===section)?.[1]}</b></div><a href="/app">Перейти в приложение <span>↗</span></a></header>
-   <div className={`showcase-content showcase-${section}`}>
-    {section==="overview"&&<div className="showcase-overview">
-     <div className="showcase-overview-copy"><div className="showcase-kicker"><i/> ОДНА ДОСКА ДЛЯ УРОКА, ИССЛЕДОВАНИЯ И ПРАКТИКИ</div><h1>Объясняйте.<br/><em>Исследуйте.</em><br/>Создавайте вместе.</h1><p>Lektrus соединяет общую интерактивную доску, предметные модели и задания, с которыми можно работать вместе.</p><div className="showcase-actions"><button className="showcase-primary" onClick={goDemo}>Попробовать доску <span>↗</span></button><button className="showcase-quiet" onClick={()=>setSection("tools")}>Отдельные инструменты <span>→</span></button></div><div className="showcase-facts"><span><b>01</b> Объясняйте наглядно</span><span><b>02</b> Давайте практику</span><span><b>03</b> Исследуйте вместе</span></div></div>
-     <div className={`showcase-carousel showcase-carousel-${boardShots[activeShot].scene}`} aria-label="Снимки приложения и досок Lektrus">
-      <div className="showcase-board-shot" aria-label={boardShots[activeShot].scene==="home"?"Главная страница приложения Lektrus":`Доска по предмету: ${boardShots[activeShot].subject}`}>
-       <img key={boardShots[activeShot].src} src={boardShots[activeShot].src} alt={boardShots[activeShot].scene==="home"?"Главная страница приложения Lektrus":`Доска Lektrus по предмету: ${boardShots[activeShot].subject}`}/>
-      </div>
-      <div className="showcase-carousel-controls" aria-live="polite"><div className="showcase-carousel-progress" aria-hidden="true"><i style={{width:`${((activeShot+1)/boardShots.length)*100}%`}}/></div><div className="showcase-carousel-actions"><span>{String(activeShot+1).padStart(2,"0")} / {String(boardShots.length).padStart(2,"0")}</span><button className="showcase-carousel-pause" type="button" aria-label={shotPaused?"Продолжить прокрутку досок":"Остановить прокрутку досок"} title={shotPaused?"Продолжить":"Пауза"} onClick={()=>setShotPaused(value=>!value)}>{shotPaused?"▶":"Ⅱ"}</button><button className="showcase-carousel-next" type="button" aria-label="Следующий снимок" onClick={()=>setActiveShot(value=>(value+1)%boardShots.length)}>→</button></div></div>
-     </div>
-    </div>}
-    {section==="board"&&<div className="showcase-board-page"><div className="showcase-page-heading"><div><div className="showcase-kicker"><i/> ПРИМЕРЫ ПРИЛОЖЕНИЯ И ПРЕДМЕТНЫХ ДОСОК</div><h1>Один урок.<br/><em>Много способов показать.</em></h1><p>На доске можно соединить объяснение, наглядную модель, задание и совместную работу.</p><button className="showcase-primary" onClick={goDemo}>Запустить интерактивную доску <span>↗</span></button></div><div className="showcase-steps"><span><b>1</b><strong>Выберите инструмент</strong><small>Перо, текст, фигура или модель</small></span><span><b>2</b><strong>Создайте на доске</strong><small>Добавьте материалы и задания</small></span><span><b>3</b><strong>Работайте вместе</strong><small>Обсуждайте и исследуйте</small></span></div></div><div className="showcase-board-gallery" aria-label="Примеры предметных досок">{boardShots.filter(shot=>shot.scene!=="home").map(shot=><article className="showcase-board-card" key={shot.scene}><div className="showcase-board-card-image"><img src={shot.src} alt={`Доска Lektrus по предмету: ${shot.subject}`}/></div><div className="showcase-board-card-copy"><small>{shot.subject} · {shot.label}</small><b>{shot.title}</b><span>{shot.hint}</span></div></article>)}</div><div className="showcase-board-footer"><span>Попробуйте инструменты и создайте свой урок.</span><button onClick={goDemo}>Открыть доску <span>↗</span></button></div></div>}
-    {section==="tools"&&<div className="showcase-tools-page"><div className="showcase-kicker"><i/> ПРЕДМЕТНЫЕ ПРОСТРАНСТВА</div><h1>Инструменты для<br/><em>открытий и практики.</em></h1><p>Каждый инструмент запускается отдельно на весь экран. Доска для этого не нужна.</p><div className="showcase-tool-grid">{toolData.map(tool=><a className="showcase-tool-card" href={tool.href} key={tool.index}><div className="showcase-tool-top"><span>{tool.symbol}</span><small>{tool.label}</small><b>{tool.index}</b></div><h2>{tool.name}</h2><p>{tool.description}</p><strong>Открыть инструмент <i>↗</i></strong><div className="showcase-tool-lines" aria-hidden="true"/></a>)}</div><div className="showcase-tools-foot"><span>Открываются отдельно, без привязки к доске</span><button onClick={goDemo}>Или открыть общую доску <b>↗</b></button></div></div>}
-    {section==="about"&&<div className="showcase-about-page"><div className="showcase-kicker"><i/> ПРОЕКТ LEKTRUS</div><div className="showcase-about-grid"><div><h1>Понятные идеи<br/><em>начинаются с наглядности.</em></h1><p>Lektrus объединяет совместную интерактивную доску и самостоятельные предметные инструменты. На доске можно объяснять и создавать вместе, а инструменты позволяют исследовать тему в собственном темпе.</p><button className="showcase-primary" onClick={goDemo}>Познакомиться с доской <span>↗</span></button></div><div className="showcase-about-list"><span><b>01</b><strong>Объяснять</strong><small>Показывайте ход мысли прямо на общем поле.</small></span><span><b>02</b><strong>Исследовать</strong><small>Открывайте карты, модели и лабораторные опыты.</small></span><span><b>03</b><strong>Работать вместе</strong><small>Делитесь пространством урока и материалами.</small></span></div></div><div className="showcase-about-visual"><img src="/lektrus-icon-192.png" alt=""/><span>LEKTRUS</span><b>Пространство для обучения</b></div></div>}
-    {section==="feedback"&&<div className="showcase-feedback-page"><div className="showcase-feedback-copy"><div className="showcase-kicker"><i/> ОБРАТНАЯ СВЯЗЬ</div><h1>Помогите сделать<br/><em>Lektrus лучше.</em></h1><p>Идеи, отзывы и сообщения о проблемах помогают нам развивать сервис. Напишите команде или отправьте сообщение через форму.</p>{import.meta.env.VITE_TELEGRAM_URL&&<a className="showcase-telegram" href={import.meta.env.VITE_TELEGRAM_URL} target="_blank" rel="noreferrer">Написать в Telegram <span>↗</span></a>}</div><div className="showcase-feedback-form"><LektrusFeedbackForm compact source="site"/></div></div>}
+ const NavLink=({id,title}:{id:Page;title:string})=><a href={"#"+id} aria-current={page===id?"page":undefined} className={page===id?"is-current":""} onClick={event=>navigate(id,event)}>{title}</a>;
+ return <div className="marketing-site">
+  <a className="marketing-skip" href="#marketing-main">Перейти к содержимому</a>
+  <header className="marketing-header">
+   <div className="marketing-header-inner">
+    <a className="marketing-brand" href="#home" onClick={event=>navigate("home",event)} aria-label="Lektrus, на главную"><img src="/lektrus-icon-192.png" width="38" height="38" alt=""/><span><strong>Lektrus</strong><small>Пространство для обучения</small></span></a>
+    <button type="button" className="marketing-menu-toggle" aria-label={menuOpen?"Закрыть меню":"Открыть меню"} aria-expanded={menuOpen} aria-controls="marketing-nav" onClick={()=>setMenuOpen(v=>!v)}>{menuOpen?"Закрыть":"Меню"}<span aria-hidden="true">{menuOpen?"×":"☰"}</span></button>
+    <nav id="marketing-nav" className={"marketing-nav"+(menuOpen?" is-open":"")} aria-label="Разделы сайта">
+     {navigation.filter(item=>item.id!=="home").map(item=><NavLink key={item.id} {...item}/>)}
+    </nav>
+    <a className="marketing-app-entry" href="/app">Войти <span aria-hidden="true">↗</span></a>
    </div>
-   <footer className="showcase-footer"><span>© Lektrus · Пространство для обучения</span><button onClick={()=>setSection("feedback")}>Отзывы и предложения <span>↗</span></button><a href="/app">Войти <span>↗</span></a></footer>
-  </section>
- </main>;
+  </header>
+  <main id="marketing-main" tabIndex={-1}>
+   {page==="home"&&<>
+    <section className="marketing-hero marketing-container" aria-labelledby="marketing-title">
+     <span className="marketing-eyebrow">Интерактивное пространство Lektrus</span>
+     <h1 id="marketing-title">Одна платформа <span>для преподавания и обучения</span></h1>
+     <p className="marketing-hero-lead">Создавайте наглядные уроки, работайте вместе с учениками и используйте учебные инструменты на единой интерактивной доске.</p>
+     <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Попробовать доску <span aria-hidden="true">→</span></DemoLink></div>
+     <div className="marketing-hero-visual"><img src="/site/board-showcase.png" alt="Реальный пример интерактивной учебной доски Lektrus" fetchPriority="high"/><div className="marketing-hero-visual-label"><span>Настоящий интерфейс Lektrus</span><DemoLink>Открыть демо ↗</DemoLink></div></div>
+     <p className="marketing-hero-footnote">Доска · Учебные инструменты · Совместная работа</p>
+    </section>
+    <section className="marketing-section marketing-container">
+     <div className="marketing-section-head"><div><span className="marketing-eyebrow">Возможности</span><h2>Все инструменты для наглядного урока</h2><p>Объединяйте материалы и учебные модели на одном холсте.</p></div><NavLink id="features" title="Смотреть возможности ↗"/></div>
+     <div className="marketing-preview-grid">{featureCards.slice(0,3).map(card=><article className="marketing-feature-card" key={card.index}><span className="marketing-number">{card.index}</span><h3>{card.title}</h3><p>{card.text}</p><DemoLink scene={card.scene}>Посмотреть пример ↗</DemoLink></article>)}</div>
+    </section>
+    <section className="marketing-section marketing-container">
+     <div className="marketing-audience-grid">
+      <article className="marketing-audience-card"><span className="marketing-eyebrow">Преподавателям</span><h2>Преподавайте так, как удобно именно вам</h2><p>Подготовка, объяснение и практическая работа в одном пространстве.</p><NavLink id="teachers" title="Для учителей ↗"/></article>
+      <article className="marketing-audience-card marketing-audience-student"><span className="marketing-eyebrow">Ученикам</span><h2>Учиться легче, когда всё видно</h2><p>Разбирайте сложные темы на наглядных примерах и участвуйте в работе.</p><NavLink id="students" title="Для учеников ↗"/></article>
+     </div>
+    </section>
+    <section className="marketing-section marketing-container marketing-home-steps"><div><span className="marketing-eyebrow">Как это работает</span><h2>От идеи до занятия за несколько шагов</h2><p>Создайте доску, добавьте материалы и пригласите участников.</p><NavLink id="how" title="Посмотреть все этапы ↗"/></div><img src="/site/app-home.png" loading="lazy" alt="Главная страница приложения Lektrus"/></section>
+    <section className="marketing-last-cta marketing-container"><h2>Готовы провести урок по-новому?</h2><p>Откройте Lektrus и создайте своё учебное пространство.</p><a className="marketing-primary" href="/app">Открыть Lektrus ↗</a></section>
+   </>}
+   {page==="features"&&<>
+    <section className="marketing-page-hero marketing-container"><span className="marketing-eyebrow">Знакомьтесь с возможностями Lektrus</span><h1>Один холст. <span>Множество способов преподавать</span></h1><p>От простых записей до учебных моделей и совместной работы. Собирайте на доске всё, что нужно для вашего занятия.</p><DemoLink className="marketing-primary">Попробовать инструменты ↗</DemoLink></section>
+    <section className="marketing-section marketing-container"><div className="marketing-section-head"><div><h2>Посмотрите на Lektrus в действии</h2><p>Настоящие примеры из предметных досок приложения.</p></div><div className="marketing-gallery-arrows"><button type="button" onClick={()=>galleryRef.current?.scrollBy({left:-460,behavior:"smooth"})} aria-label="Предыдущие примеры">←</button><button type="button" onClick={()=>galleryRef.current?.scrollBy({left:460,behavior:"smooth"})} aria-label="Следующие примеры">→</button></div></div>
+     <div className="marketing-gallery-track" ref={galleryRef} tabIndex={0} aria-label="Галерея возможностей">{boardShots.map(shot=><article className="marketing-gallery-card" key={shot.scene}><DemoLink scene={shot.scene}><img loading="lazy" src={shot.src} alt={"Пример доски: "+shot.subject}/><span className="marketing-gallery-label">{shot.subject}</span><h3>{shot.title}</h3><p>{shot.description}</p><span className="marketing-inline-action">Открыть живую демонстрацию ↗</span></DemoLink></article>)}</div>
+    </section>
+    <section className="marketing-section marketing-container"><div className="marketing-section-head"><div><span className="marketing-eyebrow">Что внутри</span><h2>Инструменты для разных задач</h2></div></div><div className="marketing-feature-grid">{featureCards.map(card=><article className="marketing-feature-card" key={card.index}><span className="marketing-number">{card.index}</span><h3>{card.title}</h3><p>{card.text}</p><DemoLink scene={card.scene}>Посмотреть пример ↗</DemoLink></article>)}</div></section>
+    <section className="marketing-section marketing-container"><div className="marketing-section-head"><div><span className="marketing-eyebrow">Отдельные инструменты</span><h2>Исследуйте без создания доски</h2><p>Открываются отдельно, без привязки к доске.</p></div></div><div className="marketing-tool-grid">{toolData.map(tool=><a href={tool.href} className="marketing-tool-card" key={tool.href}><img loading="lazy" src={tool.image} alt={"Пример инструмента: "+tool.name}/><div><span className="marketing-eyebrow">{tool.subject}</span><h3>{tool.name}</h3><p>{tool.text}</p><strong>Открыть инструмент ↗</strong></div></a>)}</div></section>
+   </>}
+   {page==="teachers"&&<>
+    <section className="marketing-page-hero marketing-container marketing-split-hero"><div><span className="marketing-eyebrow">Для преподавателей</span><h1>Преподавайте так, <span>как удобно именно вам</span></h1><p>Каждый урок требует своего подхода. Создавайте объяснения, показывайте наглядные модели и работайте с учениками на интерактивной доске.</p><DemoLink className="marketing-primary">Открыть демонстрацию ↗</DemoLink></div><figure className="marketing-image-panel"><img src="/site/app-home.png" alt="Рабочее пространство преподавателя в Lektrus"/><figcaption>Рабочее пространство преподавателя</figcaption></figure></section>
+    <section className="marketing-section marketing-container"><div className="marketing-section-head"><div><span className="marketing-eyebrow">Подготовка урока</span><h2>Подготовьте урок и сохраните всё в одном месте</h2><p>Работайте с учебными материалами, схемами и предметными инструментами, а затем возвращайтесь к ним на следующих занятиях.</p></div></div><div className="marketing-story-grid">{teacherStories.map(item=><article key={item.number} className="marketing-story-card"><span className="marketing-number">{item.number}</span><h3>{item.title}</h3><p>{item.text}</p></article>)}</div></section>
+    <section className="marketing-section marketing-container marketing-feature-spotlight"><img src="/site/board-physics.png" loading="lazy" alt="Учебная доска с электрической цепью"/><div><span className="marketing-eyebrow">Наглядность в действии</span><h2>Сделайте сложное понятным</h2><p>Показывайте не только результат, но и ход решения. Объединяйте записи, схемы и задания на общем поле.</p><DemoLink scene="physics" className="marketing-secondary">Посмотреть урок ↗</DemoLink></div></section>
+   </>}
+   {page==="students"&&<>
+    <section className="marketing-page-hero marketing-container"><span className="marketing-eyebrow">Для учеников</span><h1>Учиться легче, <span>когда всё видно</span></h1><p>Смотрите наглядные объяснения, разбирайте задания и пробуйте учебные инструменты самостоятельно. Выберите пример и откройте настоящую демонстрационную доску.</p></section>
+    <section className="marketing-section marketing-container"><div className="marketing-section-head"><div><h2>Попробуйте разные учебные темы</h2><p>Выбранный пример можно открыть и исследовать на доске Lektrus.</p></div></div><div className="marketing-student-tabs" role="tablist" aria-label="Выбор предмета">{boardShots.map(shot=><button type="button" key={shot.scene} role="tab" id={"student-tab-"+shot.scene} aria-controls="marketing-student-panel" aria-selected={studentScene===shot.scene} className={studentScene===shot.scene?"is-active":""} onClick={()=>setStudentScene(shot.scene)}>{shot.subject}</button>)}</div><div className="marketing-student-demo" role="tabpanel" id="marketing-student-panel" aria-labelledby={"student-tab-"+selectedStudent.scene}><img src={selectedStudent.src} alt={"Пример доски Lektrus: "+selectedStudent.subject}/><div><span className="marketing-eyebrow">{selectedStudent.subject}</span><h3>{selectedStudent.title}</h3><p>{selectedStudent.description}</p><DemoLink scene={selectedStudent.scene} className="marketing-primary">Открыть интерактивный пример ↗</DemoLink></div></div></section>
+    <section className="marketing-section marketing-container"><div className="marketing-student-benefits">{["Смотри, как устроена тема","Пробуй инструменты на практике","Разбирайся в своём темпе"].map((title,i)=><div key={title}><span className="marketing-number">0{i+1}</span><h3>{title}</h3></div>)}</div></section>
+   </>}
+   {page==="how"&&<>
+    <section className="marketing-page-hero marketing-container"><span className="marketing-eyebrow">Посмотрите, как устроена работа в Lektrus</span><h1>Привычные действия <span>в удобном пространстве</span></h1><p>От подготовки урока до работы вместе с учениками. Пройдите четыре наглядных этапа.</p></section>
+    <div className="marketing-steps">{steps.map((step,i)=><section className="marketing-step" key={step.number} aria-labelledby={"marketing-step-"+i}><div className="marketing-container marketing-step-grid"><div><span className="marketing-step-index">Шаг {step.number} / 04</span><h2 id={"marketing-step-"+i}>{step.title}</h2><p>{step.text}</p>{i===2?<DemoLink className="marketing-primary">Попробовать на доске ↗</DemoLink>:null}</div><img src={step.image} alt={step.alt} loading={i===0?"eager":"lazy"}/></div></section>)}</div>
+   </>}
+   {page==="pricing"&&<>
+    <section className="marketing-page-hero marketing-container"><span className="marketing-eyebrow">Тарифы Lektrus</span><h1>Выберите формат работы <span>под свои задачи</span></h1><p>Ниже указаны тарифы и ограничения, которые сейчас определены в приложении. Платные тарифы находятся в тестовом состоянии, оформление подписки пока недоступно.</p></section>
+    <section className="marketing-container marketing-pricing-grid" aria-label="Сравнение тарифов">{plans.map((plan,i)=><article className={"marketing-plan"+(i===1?" marketing-plan-highlight":"")} key={plan.id}><div className="marketing-plan-top"><span className="marketing-eyebrow">{i===0?"Для знакомства":i===1?"Для занятий":"Для групп"}</span><h2>{plan.name}</h2><p>{plan.description}</p></div><strong className="marketing-price">{plan.priceLabel}</strong><dl><div><dt>Доски</dt><dd>{limitLabel(plan.limits.boards)}</dd></div><div><dt>Участники на доске</dt><dd>{limitLabel(plan.limits.collaboratorsPerBoard)}</dd></div><div><dt>Материалы</dt><dd>{plan.limits.storageMb===100?"100 МБ":plan.limits.storageMb===2048?"2 ГБ":plan.limits.storageMb===10240?"10 ГБ":limitLabel(plan.limits.storageMb," МБ")}</dd></div></dl><ul>{plan.features.map(feature=><li key={feature}>{feature}</li>)}</ul><div className="marketing-plan-foot">{i===0?<a href="/app" className="marketing-primary">Начать бесплатно ↗</a>:<span>Тестовый тариф · оформление недоступно</span>}</div></article>)}</section>
+    <p className="marketing-container marketing-pricing-note">Это текущие технические ограничения тарифов из проекта Lektrus, а не опубликованное коммерческое предложение. Условия платной подписки будут объявлены отдельно.</p>
+   </>}
+   {page==="about"&&<>
+    <section className="marketing-page-hero marketing-container"><span className="marketing-eyebrow">О Lektrus</span><h1>Больше возможностей <span>для современного обучения</span></h1><p>Lektrus объединяет интерактивную доску, учебные инструменты и совместную работу. Вместо разрозненных материалов вы получаете единое пространство, где можно объяснять, исследовать и заниматься вместе.</p><DemoLink className="marketing-primary">Посмотреть Lektrus в деле ↗</DemoLink></section>
+    <section className="marketing-section marketing-container marketing-feature-spotlight"><img src="/site/board-showcase.png" alt="Учебный холст Lektrus с интерактивными объектами"/><div><span className="marketing-eyebrow">Один продукт, разные задачи</span><h2>Не только показывайте. Действуйте</h2><p>Рисуйте схемы, работайте с документами, используйте предметные модели и возвращайтесь к подготовленным материалам. Возможности платформы помогают проводить объяснения и практические занятия на одном поле.</p><NavLink id="features" title="Изучить возможности ↗"/></div></section>
+    <section className="marketing-section marketing-container"><div className="marketing-section-head"><div><h2>Преимущества Lektrus</h2><p>То, что помогает перейти от объяснения к пониманию.</p></div></div><div className="marketing-advantage-grid">{advantages.map(a=><article className="marketing-feature-card" key={a.number}><span className="marketing-number">{a.number}</span><h3>{a.title}</h3><p>{a.text}</p></article>)}</div></section>
+    <section className="marketing-last-cta marketing-container"><h2>Посмотрите, как всё устроено</h2><p>Откройте живую демонстрационную доску без регистрации.</p><DemoLink className="marketing-primary">Попробовать Lektrus ↗</DemoLink></section>
+   </>}
+   {page==="help"&&<>
+    <section className="marketing-page-hero marketing-container"><span className="marketing-eyebrow">Поддержка, инструкции и обратная связь</span><h1>Найдите решение <span>или свяжитесь с нами</span></h1><p>Ознакомьтесь с частыми вопросами или расскажите нам о своей идее, замечании или проблеме.</p></section>
+    <section className="marketing-section marketing-container"><div className="marketing-section-head"><div><h2>Частые вопросы</h2><p>Короткие ответы о возможностях и работе Lektrus.</p></div></div><div className="marketing-faq">{questions.map((item,i)=><details key={item.q} open={undefined}><summary><span>{item.q}</span><span aria-hidden="true">+</span></summary><p>{item.a}</p></details>)}</div></section>
+    <section className="marketing-section marketing-container marketing-contact"><div><span className="marketing-eyebrow">Обратная связь</span><h2>Расскажите, что можно улучшить</h2><p>Ваши вопросы помогают делать Lektrus удобнее. Выберите тему обращения, опишите ситуацию и при необходимости оставьте адрес для ответа.</p>{import.meta.env.VITE_TELEGRAM_URL&&<a className="marketing-secondary" href={import.meta.env.VITE_TELEGRAM_URL} target="_blank" rel="noreferrer">Написать в Telegram ↗</a>}<div className="marketing-contact-help"><strong>Поддержка, инструкции и обратная связь</strong><span>Для знакомства с доской можно открыть гостевую демонстрацию.</span><DemoLink>Открыть демонстрацию ↗</DemoLink></div></div><div className="marketing-form-card"><LektrusFeedbackForm compact source="site"/></div></section>
+   </>}
+  </main>
+  <footer className="marketing-footer"><div className="marketing-container"><div className="marketing-footer-brand"><img src="/lektrus-icon-192.png" width="32" height="32" alt=""/><span><strong>Lektrus</strong><small>Пространство для обучения</small></span></div><nav aria-label="Разделы внизу страницы">{navigation.filter(item=>item.id!=="home").map(item=><NavLink key={item.id} {...item}/>)}</nav><div className="marketing-footer-end"><span>© {new Date().getFullYear()} Lektrus</span><a href="/app">Перейти в приложение ↗</a></div></div></footer>
+ </div>;
 }
