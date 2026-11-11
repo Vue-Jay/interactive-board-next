@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import "./lektrusPromoArtwork.css";
 
 export type PromoSceneName = "home" | "math" | "chemistry" | "geometry" | "physics" | "contour" | "history" | "russian";
@@ -16,7 +17,7 @@ const sceneInfo: Record<PromoSceneName, { title: string; eyebrow: string; accent
 export default function LektrusPromoArtwork({ scene, compact = false }: { scene: PromoSceneName; compact?: boolean }) {
   const info = sceneInfo[scene];
   return (
-    <div className={"promo-art promo-art-" + scene + (compact ? " promo-art-compact" : "")} style={{ "--promo-accent": info.accent } as React.CSSProperties}>
+    <div className={"promo-art promo-art-" + scene + (compact ? " promo-art-compact" : "")} style={{ "--promo-accent": info.accent } as CSSProperties}>
       <svg viewBox="0 0 760 500" role="img" aria-label={info.title + " — иллюстрация возможностей Lektrus"} preserveAspectRatio="xMidYMid meet">
         <defs>
           <linearGradient id={"promo-paper-" + scene} x1="0" y1="0" x2="1" y2="1">
