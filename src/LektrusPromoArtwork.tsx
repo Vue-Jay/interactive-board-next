@@ -17,7 +17,7 @@ const sceneInfo: Record<PromoSceneName, { title: string; eyebrow: string; accent
 export default function LektrusPromoArtwork({ scene, compact = false }: { scene: PromoSceneName; compact?: boolean }) {
   const info = sceneInfo[scene];
   return (
-    <div className={"promo-art promo-art-" + scene + (compact ? " promo-art-compact" : "")} style={{ "--promo-accent": info.accent } as CSSProperties}>
+    <div className={"promo-art promo-art-" + scene + (compact ? " promo-art-compact" : "")} style={{ "--promo-accent": info.accent } as CSSProperties & { "--promo-accent": string }}>
       <svg viewBox="0 0 760 500" role="img" aria-label={info.title + " — иллюстрация возможностей Lektrus"} preserveAspectRatio="xMidYMid meet">
         <defs>
           <linearGradient id={"promo-paper-" + scene} x1="0" y1="0" x2="1" y2="1">
