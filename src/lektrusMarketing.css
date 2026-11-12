@@ -599,3 +599,16 @@ body:has(.marketing-site:not(.site-preview)) .site-editable-block:hover{outline:
 @media(max-width:800px){.site-block-video{grid-template-columns:1fr}.site-block-logos{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:570px){.site-block-comparison,.site-block-checklist{grid-template-columns:1fr}.site-block-timeline li{grid-template-columns:45px 1fr;gap:15px}.site-block-timeline li>span{width:42px;height:42px;font-size:15px}.site-block-timeline li:before{left:20px}.site-block-comparison article{padding:23px}.site-block-logos img{height:75px;padding:10px}}
 @media(prefers-reduced-motion:reduce){.site-preview .site-canvas-drop-zone,.site-preview .site-canvas-drop-zone span{transition:none}}
+
+
+/* Editor-only selection toolbar inside the preview iframe. It never appears on the published site. */
+.site-preview .site-canvas-selection-actions{position:fixed;z-index:2100;top:72px;right:14px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;max-width:calc(100vw - 28px);padding:9px;border:1px solid #bed4f4;border-radius:14px;background:#ffffffee;box-shadow:0 13px 38px #12335f36;backdrop-filter:blur(16px);font-family:Inter,system-ui,sans-serif}
+.site-preview .site-canvas-selection-actions>span{font-size:10px;font-weight:850;color:#37669b;margin:0 8px 0 3px}
+.site-preview .site-canvas-selection-actions button{border:1px solid #cddcf0;background:#f7faff;color:#244c7c;border-radius:9px;cursor:pointer;padding:8px 10px;font-size:11px;font-weight:800;line-height:1.2;white-space:nowrap}
+.site-preview .site-canvas-selection-actions button:hover{background:#e7f2ff;border-color:#85b1eb}
+.site-preview .site-canvas-selection-actions button:focus-visible{outline:3px solid #669ff2;outline-offset:2px}
+.site-preview .site-canvas-selection-actions .site-canvas-delete-button{background:#fff0f2;border-color:#ecb3c0;color:#b03950}
+.site-preview .site-canvas-selection-actions .site-canvas-delete-button:hover{background:#ffdee5}
+.site-preview .site-canvas-selection-actions .site-canvas-restore-button{background:#e8faf0;border-color:#a6dcc4;color:#1c7352}
+.site-preview .site-canvas-selection-actions kbd{font:750 9px ui-monospace,monospace;border:1px solid #e4b2bd;border-radius:4px;padding:1px 4px;margin-left:3px}
+@media(max-width:600px){.site-preview .site-canvas-selection-actions{top:54px;right:5px;gap:4px;padding:6px;max-width:calc(100vw - 10px)}.site-preview .site-canvas-selection-actions>span{display:none}.site-preview .site-canvas-selection-actions button{font-size:10px;padding:7px}}
