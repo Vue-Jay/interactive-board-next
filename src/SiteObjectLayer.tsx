@@ -84,7 +84,7 @@ function collect(root:Element,scope:string):Array<{element:Element;info:SiteObje
   }
   Array.from(node.children).forEach((child,index)=>{
    if(child!==node&&child.hasAttribute("data-site-block-id")&&child!==root)return;
-   if(child.hasAttribute("data-site-dropzone"))return;
+   if(child.hasAttribute("data-site-dropzone")||child.hasAttribute("data-site-editor-control"))return;
    visit(child,path+"/"+index);
   });
  };
@@ -145,7 +145,7 @@ export function SiteObjectLayer({siteDocument,page,preview,selected,interactive}
     return;
    }
    const target=event.target;
-   if(!(target instanceof Element)||target.closest(".site-canvas-drop-zone"))return;
+   if(!(target instanceof Element)||target.closest(".site-canvas-drop-zone,[data-site-editor-control]"))return;
    const element=target.closest("[data-site-object-id]");
    if(!element)return;
    const id=element.getAttribute("data-site-object-id");
