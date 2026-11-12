@@ -58,6 +58,10 @@ assert.doesNotMatch(site,/marketing-showcase-(controls|subjects|toolbar|player|c
 assert.ok(site.includes('window.matchMedia("(prefers-reduced-motion: reduce)")'),"automatic screenshots must respect reduced motion");
 assert.ok(css.includes(".marketing-showcase-screen")&&css.includes("@keyframes marketing-unified-crossfade")&&!css.includes(".marketing-showcase-controls"),"one integrated animated screenshot area must replace the old player UI");
 assert.ok(site.includes("marketing-project-audiences")&&site.includes("marketing-project-summary"),"project information for teachers and students must appear directly on Home");
+assert.ok(site.includes('className="marketing-hero-brand-name"')&&css.includes("h1 .marketing-hero-brand-name"),"the hero must enlarge the wordmark without enlarging the entire tagline");
+assert.ok(site.includes('>Демо-версия доски <')&&!site.includes('>Демо доски <'),"the demo button needs its full approved label");
+assert.ok(site.includes('className="marketing-project-detail"')&&site.includes("Проект помогает изучать темы на практике"),"the project story must explain how the teaching tools and collaboration fit together");
+assert.ok(css.includes(".marketing-project-body .marketing-project-detail")&&css.includes("@media(max-width:700px)"),"expanded project copy and wordmark need mobile styles");
 assert.ok(site.includes("currentShot.src")&&site.includes("previousShot.src")&&site.includes("marketing-showcase"),"one homepage animation must use existing real captures");
 assert.ok(css.includes(".marketing-features-list")&&css.includes(".marketing-project-summary")&&css.includes(".marketing-help-intro"),"live public pages must have compact responsive layouts");
 assert.match(css, /prefers-reduced-motion:reduce/,"reduced-motion users need a non-animated alternative");
