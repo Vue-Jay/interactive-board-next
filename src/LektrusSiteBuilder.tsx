@@ -146,12 +146,18 @@ export default function LektrusSiteBuilder(){
  };
  const duplicatePage=()=>{
   if(doc.customPages.length>=18){setNotice("Достигнут лимит: 18 дополнительных страниц.");return}
-  const id="page-"+crypto.randomUUID().slice(0,8),title=(activePage.title+" · копия").slice(0,54);
+  const id="page-"+crypto.randomUUID().slice(0,8);
+  const title=(activePage.title+" · копия").slice(0,54);
+  const originalBuiltin=builtin.has(active)&&!activePage.replaceDefault;
+  const sourceBlocks=activePage.blocks.length?activePage.blocks:originalBuiltin?SITE_SECTION_PRESETS[0].create():[];
   change(next=>{
-   next.customPages.push({...structuredClone(activePage),id,title,replaceDefault:false,blocks:activePage.blocks.map(block=>({...structuredClone(block),id:crypto.randomUUID()}))});
+   next.customPages.push({...structuredClone(activePage),id,title,heading:activePage.heading||title,
+    lead:activePage.lead||"Настройте описание этого раздела.",replaceDefault:false,
+    blocks:sourceBlocks.map(block=>({...structuredClone(block),id:crypto.randomUUID()}))});
    next.navigation.push({id,title,hidden:false});
   });
   setActive(id);setSelected(null);setInspector("page");setPanelOpen(true);
+  if(originalBuiltin)setNotice("Создана независимая страница с редактируемыми блоками. Уникальный исходный макет этой вкладки остался без изменений.");
  };
  const removePage=()=>{
   if(builtin.has(active)||!window.confirm("Удалить страницу и все её блоки?"))return;
