@@ -13,7 +13,7 @@ for(const id of ["home","features","tools","how","pricing","about","help"]){
 }
 assert.doesNotMatch(site,/\{id:"(?:teachers|students)",title:/,"former teacher/student tabs must be absent from navigation");
 for(const text of [
- "Lektrus","для наглядных уроков",
+ "Lektrus","платформа для обучения",
  "Возможности ","доски Lektrus",
  "Инструменты ","без доски",
  "Преподавателям","Готовьте материалы",
@@ -30,6 +30,8 @@ for(const text of [
 // Desktop sidebar follows the approved composition: permanent left nav, central
 // text, real screenshot slideshow on the right, with tool shortcuts in the rail.
 assert.ok(site.includes("marketing-sidebar-content")&&site.includes("marketing-sidebar-tools"),"navigation must be a separate left sidebar with standalone tools");
+assert.ok(site.includes('icon=false')&&site.includes('{icon&&<SiteMenuIcon name={id}/>}'),"body links should be text-only while sidebar links have icons");
+assert.ok(site.includes('" is-first":"")')&&css.includes(".marketing-showcase-current.is-first{animation:none}"),"the initial real screenshot must not be invisible during entrance animation");
 assert.ok(site.includes('siteNavigation.map(item=><NavLink')&&site.includes('<SiteMenuIcon name={id}/>'),"all seven pages, including Home, must have visible branded navigation icons");
 assert.ok(site.includes('href="/tools/atlas"')&&site.includes('href="/tools/laboratory"'),"sidebar must link to both real standalone tools");
 assert.ok(site.includes("marketing-hero-split")&&site.includes("marketing-hero-copy"),"homepage must position text and real captures as sibling columns");
