@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {readFileSync,existsSync} from "node:fs";
+import ts from "typescript";
 
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 const site=read("src/LektrusPublicSite.tsx");
@@ -85,5 +86,59 @@ assert.ok(siteHardening.includes("security invoker")&&siteHardening.includes("ma
 assert.ok(config.includes('headers:{apikey:key,Accept:"application/json"}'),"public site must use apikey, not put a publishable key in Authorization");
 
 assert.ok(assetSql.includes("bucket_id='marketing-site'"),"media policies must be bucket-scoped");
+
+
+// Studio v2: independently styled sections, curated presets, reversible editing and keyboard access.
+const kits=read("src/siteStudioPresets.ts");
+const studioCss=read("src/lektrusSiteBuilder.css");
+assert.ok(config.includes('|"faq"|"stats"|"quote"')&&config.includes("DEFAULT_SITE_BLOCK_STYLE"),"v2 content blocks need a normalized, backwards compatible model");
+assert.ok(config.includes("buttonLabel:clean(v.buttonLabel")&&config.includes("const style:SiteBlockStyle"),"imported v1 sites need safe defaults for new section controls");
+for(const name of ["site-block-faq-list","site-block-stats","site-block-quote","site-block-tone-"]){
+ assert.ok(blocks.includes(name)||css.includes(name),"v2 custom block rendering/style missing: "+name);
+}
+assert.ok(blocks.includes("<details key={i}>")&&blocks.includes("<summary>"),"FAQ uses accessible native accordion");
+assert.ok(kits.includes("SITE_SECTION_PRESETS")&&kits.includes("SITE_THEME_PRESETS")&&kits.includes("make(\"gallery\""),"ready-to-use section kits and theme palettes missing");
+assert.ok(builder.includes("addSectionKit")&&builder.includes("duplicatePage")&&builder.includes("site-builder-theme-presets"),"section insertion, page cloning and themes must be wired");
+assert.ok(builder.includes('event.key.toLowerCase()==="z"')&&builder.includes('event.key.toLowerCase()==="s"'),"keyboard undo and local draft save missing");
+assert.ok(builder.includes("focusMode")&&studioCss.includes(".site-builder.is-focus"),"distraction-free preview must hide the editor sidebars");
+assert.ok(builder.includes("site-builder-page-search")&&builder.includes("site-builder-appearance"),"page search and block appearance controls required");
+assert.ok(site.includes("previewSelection")&&site.includes("lektrus:site-select-page"),"preview must expose selected block and page headline click-to-edit");
+assert.ok(css.includes("body:has(.marketing-site:not(.site-preview)) .site-editable-block:hover"),"public visitor pages must not display editor hover outlines");
+
+
+// Execute the real normalizer with a minimal test backend to prevent regressions
+// when old published v1 documents are opened by the new studio.
+const isolatedSource=config.replace(/^import \{isRemoteBackendEnabled,remoteRequest\} from "\.\/backend";/m,
+ "const isRemoteBackendEnabled=()=>false; const remoteRequest=()=>Promise.resolve();")
+ .replaceAll("import.meta.env","({})");
+const js=ts.transpileModule(isolatedSource,{
+ compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext},
+ fileName:"marketingSiteConfig.ts"
+}).outputText;
+const model=await import("data:text/javascript;base64,"+Buffer.from(js).toString("base64"));
+const oldDocument=model.defaultSiteDocument();
+oldDocument.pages.home={id:"home",title:"Главная",eyebrow:"",heading:"",lead:"",blocks:[
+ {id:"legacy-block",kind:"cards",title:"Old design",text:"",image:"/site/board-math.png",href:"/app",items:["A","B"]}
+]};
+const upgraded=model.normalizeSiteDocument(oldDocument);
+assert.equal(upgraded.pages.home.blocks[0].style.tone,"plain","existing blocks should default to their original plain look");
+assert.equal(upgraded.pages.home.blocks[0].buttonLabel,"Перейти","legacy buttons need a safe label");
+const legacyImage=model.normalizeSiteDocument({...oldDocument,pages:{home:{...oldDocument.pages.home,blocks:[
+ {id:"old-photo",kind:"image",title:"Photo",text:"",image:"/site/app-home.png",href:"/app",items:[]}
+]}}});
+assert.equal(legacyImage.pages.home.blocks[0].buttonLabel,"Подробнее","existing image blocks must retain their original button copy");
+assert.equal(upgraded.pages.home.blocks[0].style.columns,3,"old cards need a readable grid");
+const newFaq=model.newSiteBlock("faq");
+assert.ok(newFaq.items.every(row=>row.includes(" | ")),"FAQ starter questions and answers should be editable");
+const copyWithStyles=model.normalizeSiteDocument({...oldDocument,pages:{
+ home:{...oldDocument.pages.home,blocks:[{...newFaq,style:{tone:"dark",align:"center",spacing:"airy",columns:4,imageSide:"right"}}]}
+}});
+assert.equal(copyWithStyles.pages.home.blocks[0].style.tone,"dark","styles must round-trip through the published document");
+assert.equal(copyWithStyles.pages.home.blocks[0].style.columns,4,"per-section grid settings must persist");
+const unsafe=model.normalizeSiteDocument({...oldDocument,pages:{
+ home:{...oldDocument.pages.home,blocks:[{...model.newSiteBlock("image"),image:"javascript:alert(1)",href:"javascript:alert(1)"}]}
+}});
+assert.equal(unsafe.pages.home.blocks[0].image,"#","untrusted image URLs must remain blocked");
+assert.equal(unsafe.pages.home.blocks[0].href,"#","untrusted button URLs must remain blocked");
 
 console.log("Lektrus marketing site: selected copy, 8 sections, real screenshots, demo links, pricing, accessibility and responsive styling verified.");

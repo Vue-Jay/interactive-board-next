@@ -3,8 +3,10 @@ import {isRemoteBackendEnabled,remoteRequest} from "./backend";
 export const SITE_DRAFT_KEY="lektrus.marketing-site.draft.v1";
 export const SITE_PREVIEW_MESSAGE="lektrus:marketing-site-preview";
 export const BUILTIN_SITE_PAGES=["home","features","teachers","students","how","pricing","about","help"] as const;
-export type SiteBlockKind="text"|"image"|"cards"|"gallery"|"cta"|"divider";
-export type SiteBlock={id:string;kind:SiteBlockKind;title:string;text:string;image:string;href:string;items:string[]};
+export type SiteBlockKind="text"|"image"|"cards"|"gallery"|"cta"|"divider"|"faq"|"stats"|"quote";
+export type SiteBlockStyle={tone:"plain"|"soft"|"accent"|"dark";align:"left"|"center";spacing:"compact"|"normal"|"airy";columns:2|3|4;imageSide:"left"|"right"};
+export const DEFAULT_SITE_BLOCK_STYLE:SiteBlockStyle={tone:"plain",align:"left",spacing:"normal",columns:3,imageSide:"left"};
+export type SiteBlock={id:string;kind:SiteBlockKind;title:string;text:string;image:string;href:string;items:string[];buttonLabel:string;style:SiteBlockStyle};
 export type SitePage={id:string;title:string;eyebrow:string;heading:string;lead:string;replaceDefault?:boolean;blocks:SiteBlock[]};
 export type SiteNavItem={id:string;title:string;hidden:boolean};
 export type SiteTheme={accent:string;background:string;surface:string;ink:string;radius:number;maxWidth:number};
@@ -27,9 +29,14 @@ const int=(v:unknown,min:number,max:number,fallback:number)=>typeof v==="number"
 const slug=(v:unknown)=>typeof v==="string"&&/^[a-z][a-z0-9-]{0,39}$/.test(v)?v:"";
 export const newSiteBlock=(kind:SiteBlockKind="text"):SiteBlock=>({
  id:crypto.randomUUID(),kind,
- title:kind==="cta"?"Попробуйте Lektrus":kind==="gallery"?"Учебные инструменты":kind==="image"?"Снимок приложения":"Новый блок",
- text:kind==="text"?"Здесь можно написать свой текст.":kind==="cta"?"Начните работу с интерактивной доской.":"",
- image:"/site/board-math.png",href:"/app",items:kind==="cards"?["Первое преимущество","Вторая возможность","Третий шаг"]:["/site/board-math.png","/site/board-chemistry.png","/site/board-geometry.png"]
+ title:kind==="cta"?"Попробуйте Lektrus":kind==="gallery"?"Учебные инструменты":kind==="image"?"Снимок приложения":kind==="faq"?"Частые вопросы":kind==="stats"?"Цифры и факты":kind==="quote"?"Слова наших пользователей":"Новый блок",
+ text:kind==="text"?"Здесь можно написать свой текст.":kind==="cta"?"Начните работу с интерактивной доской.":kind==="quote"?"Добавьте здесь реальную цитату пользователя или ваш ключевой тезис.":"",
+ image:"/site/board-math.png",href:"/app",
+ items:kind==="cards"?["Первое преимущество","Вторая возможность","Третий шаг"]:
+ kind==="faq"?["Как начать работу? | Откройте Lektrus и создайте доску.","Что можно настроить? | Страницы, разделы, оформление и изображения."]:
+ kind==="stats"?["01 | Ваш показатель","02 | Ещё один показатель","03 | Третий показатель"]:
+ ["/site/board-math.png","/site/board-chemistry.png","/site/board-geometry.png"],
+ buttonLabel:kind==="image"?"Подробнее":"Перейти",style:{...DEFAULT_SITE_BLOCK_STYLE}
 });
 export const newSitePage=(id:string,title="Новая страница"):SitePage=>({id,title,eyebrow:"LEKTRUS",heading:title,lead:"Расскажите посетителям об этом разделе.",blocks:[newSiteBlock("text")]});
 export const defaultSiteDocument=():SiteDocument=>({
@@ -40,7 +47,7 @@ export const safeSiteUrl=(value:string):string=>{
  if(value.startsWith("#")&&/^#[a-z][a-z0-9-]{0,39}$/.test(value))return value;
  try{const url=new URL(value);return url.protocol==="https:"||url.protocol==="http:"?url.toString():"#"}catch{return "#"}
 };
-const kinds:SiteBlockKind[]=["text","image","cards","gallery","cta","divider"];
+const kinds:SiteBlockKind[]=["text","image","cards","gallery","cta","divider","faq","stats","quote"];
 export function normalizeSiteDocument(raw:unknown):SiteDocument{
  const data=object(raw),result=defaultSiteDocument(),t=object(data.theme);
  result.theme={
@@ -51,10 +58,21 @@ export function normalizeSiteDocument(raw:unknown):SiteDocument{
  const parseBlock=(value:unknown):SiteBlock|null=>{
   const v=object(value),kind=kinds.includes(v.kind as SiteBlockKind)?v.kind as SiteBlockKind:null;
   if(!kind)return null;
-  const original=clean(v.id,100);
+  const original=clean(v.id,100),appearance=object(v.style);
+  const tone=appearance.tone;
+  const align=appearance.align;
+  const spacing=appearance.spacing;
+  const imageSide=appearance.imageSide;
+  const style:SiteBlockStyle={
+   tone:tone==="soft"||tone==="accent"||tone==="dark"?tone:"plain",
+   align:align==="center"?"center":"left",
+   spacing:spacing==="compact"||spacing==="airy"?spacing:"normal",
+   columns:int(appearance.columns,2,4,3) as 2|3|4,
+   imageSide:imageSide==="right"?"right":"left"
+  };
   return {id:original||crypto.randomUUID(),kind,title:clean(v.title,160),text:clean(v.text,4000),
-   image:safeSiteUrl(clean(v.image,900)),href:safeSiteUrl(clean(v.href,900)),
-   items:Array.isArray(v.items)?v.items.slice(0,12).map(x=>kind==="cards"?clean(x,180):safeSiteUrl(clean(x,900))).filter(x=>Boolean(x)&&x!=="#"):[]};
+   image:safeSiteUrl(clean(v.image,900)),href:safeSiteUrl(clean(v.href,900)),buttonLabel:clean(v.buttonLabel,45)||(kind==="image"?"Подробнее":"Перейти"),style,
+   items:Array.isArray(v.items)?v.items.slice(0,12).map(x=>kind==="cards"||kind==="faq"||kind==="stats"?clean(x,420):safeSiteUrl(clean(x,900))).filter(x=>Boolean(x)&&x!=="#"):[]};
  };
  const parsePage=(value:unknown,id:string,defaultTitle=""):SitePage=>{
   const v=object(value);

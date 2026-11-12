@@ -507,3 +507,55 @@
 body:has(.marketing-site) .site-editable-block{min-width:0}
 @media(hover:hover){body:has(.marketing-site) .site-editable-block:hover{outline:1px dashed color-mix(in srgb,var(--marketing-blue) 40%,transparent);outline-offset:-2px}}
 @media(max-width:700px){.site-block{padding:35px 0}.site-block-image{grid-template-columns:1fr;gap:25px}.site-block-cta{padding:35px 20px}.marketing-site .marketing-container{width:calc(100% - 32px)}}
+
+
+/* Per-section design studio settings. Old published v1 blocks normalize to plain layout. */
+.site-block-tone-soft{background:color-mix(in srgb,var(--marketing-blue) 5%,var(--marketing-bg))}
+.site-block-tone-accent{background:color-mix(in srgb,var(--marketing-blue) 12%,var(--marketing-white))}
+.site-block-tone-dark{background:#102239;color:#f2f7ff}
+.site-block-tone-dark :is(h2,h3,p,figcaption,blockquote){color:#f2f7ff}
+.site-block-tone-dark .marketing-secondary{background:#ffffff1b;border-color:#ffffff40;color:#fff}
+.site-block-tone-dark .site-block-cards article{background:#24374d;border-color:#ffffff2b;color:#fff}
+.site-block-tone-dark .marketing-number{color:#9fc7ff}
+.site-block-tone-dark .site-block-stats article{background:#ffffff0c;border-color:#ffffff2c}
+.site-block-tone-dark .site-block-faq-list details{background:#ffffff0d;border-color:#ffffff2d;color:#fff}
+.site-block-tone-dark .site-block-faq-list summary{color:#fff}
+.site-block-tone-dark .site-block-faq-list summary::after{color:#a6d0ff}
+.site-block-tone-dark .site-block-cta{background:transparent}
+.site-block-align-center{text-align:center}
+.site-block-align-center .marketing-container>p,.site-block-align-center .site-block-image p{margin-left:auto;margin-right:auto}
+.site-block-spacing-compact{padding-top:24px;padding-bottom:24px}
+.site-block-spacing-normal{padding-top:62px;padding-bottom:62px}
+.site-block-spacing-airy{padding-top:94px;padding-bottom:94px}
+.site-block-image-right img{order:2}
+.site-block-image-right>div{order:1}
+.site-block-gallery,.site-block-cards{grid-template-columns:repeat(var(--site-block-columns,3),minmax(0,1fr))}
+.site-block-stats{display:grid;grid-template-columns:repeat(var(--site-block-columns,3),minmax(0,1fr));gap:16px}
+.site-block-stats article{display:grid;gap:9px;padding:30px 25px;border:1px solid color-mix(in srgb,var(--marketing-blue) 17%,var(--marketing-line));border-radius:var(--site-custom-radius,18px);background:color-mix(in srgb,var(--marketing-white) 88%,transparent)}
+.site-block-stats strong{font-size:clamp(34px,4vw,62px);font-weight:850;line-height:1.05;letter-spacing:-.05em;color:var(--marketing-blue);overflow-wrap:anywhere}
+.site-block-tone-dark .site-block-stats strong{color:#b2daff}
+.site-block-stats span{font-size:14px;line-height:1.5;color:inherit;opacity:.82}
+.site-block-faq{max-width:980px}
+.site-block-faq-list{display:grid;gap:10px;text-align:left}
+.site-block-faq-list details{border:1px solid var(--marketing-line);border-radius:var(--site-custom-radius,18px);background:var(--marketing-white);overflow:hidden}
+.site-block-faq-list summary{list-style:none;cursor:pointer;padding:21px 25px;font-size:16px;font-weight:750;color:var(--marketing-ink);display:flex;gap:15px;align-items:center;justify-content:space-between}
+.site-block-faq-list summary::-webkit-details-marker{display:none}
+.site-block-faq-list summary::after{content:"+";font-size:24px;color:var(--marketing-blue);font-weight:400;line-height:1}
+.site-block-faq-list details[open] summary::after{content:"−"}
+.site-block-faq-list details p{max-width:none;margin:0;padding:0 25px 22px;font-size:14px;line-height:1.7;opacity:.85}
+.site-block-faq-list summary:hover{background:color-mix(in srgb,var(--marketing-blue) 5%,transparent)}
+.site-block-quote{max-width:960px;display:grid;gap:20px}
+.site-block-quote-icon{font-size:110px;line-height:.62;font-family:Georgia,serif;color:var(--marketing-blue)}
+.site-block-quote blockquote{font-size:clamp(23px,3.5vw,43px);font-weight:650;line-height:1.3;letter-spacing:-.035em;margin:0;white-space:pre-line}
+.site-block-quote figcaption{font-size:13px;letter-spacing:.04em;opacity:.7}
+.site-block-tone-dark .site-block-quote-icon{color:#82c5ff}
+.site-preview .site-editable-block{cursor:pointer}
+.site-preview .site-editable-block:hover{outline:2px solid #3d8fff!important;outline-offset:-2px}
+.site-preview .site-editable-block[data-site-selected="true"]{outline:3px solid #2563eb!important;outline-offset:-3px}
+.site-preview .site-editable-block[data-site-selected="true"]::after{content:"✎  Выбранный блок";position:absolute;z-index:4;right:16px;top:4px;padding:6px 11px;background:#2563eb;border-radius:7px;color:#fff;font-size:11px;font-family:Inter,system-ui,sans-serif;font-weight:800;pointer-events:none;box-shadow:0 5px 16px #143b9240}
+.site-preview [data-site-page-hero]{cursor:pointer;outline-offset:5px}
+.site-preview [data-site-page-hero]:hover{outline:2px dashed #3d8fff}
+body:has(.marketing-site:not(.site-preview)) .site-editable-block:hover{outline:none}
+@media(max-width:900px){.site-block-gallery,.site-block-cards,.site-block-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.site-block-spacing-airy{padding-top:52px;padding-bottom:52px}.site-block-spacing-normal{padding-top:35px;padding-bottom:35px}.site-block-spacing-compact{padding-top:20px;padding-bottom:20px}.site-block-image-right img,.site-block-image-right>div{order:initial}.site-block-stats article{padding:20px 14px}.site-block-faq-list summary{font-size:14px;padding:18px}.site-block-faq-list details p{padding:0 18px 18px}.site-block-quote-icon{font-size:75px}}
+@media(max-width:540px){.site-block-gallery,.site-block-cards,.site-block-stats{grid-template-columns:1fr}}
