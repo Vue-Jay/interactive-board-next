@@ -61,6 +61,8 @@ export default function LektrusSiteBuilder(){
  const activePage=basePage(doc,active);
  const activeBlock=activePage.blocks.find(x=>x.id===selected);
  const activeObjectPatch=selectedObject?doc.objects[selectedObject]:undefined;
+ const anchorRank=(value?:string)=>value?.startsWith("before-")?Number(value.slice(7)):99;
+ const orderedBlocks=activePage.blocks.slice().sort((a,b)=>anchorRank(a.anchor)-anchorRank(b.anchor));
  useEffect(()=>{
   let alive=true;
   void Promise.all([getCurrentUser(),getAccountAccess()]).then(([user,role])=>{
@@ -173,9 +175,11 @@ export default function LektrusSiteBuilder(){
   });
   setSelected(block.id);setInspector("block");
  };
- const moveBlock=(index:number,offset:number)=>{
-  const newIndex=index+offset;if(newIndex<0||newIndex>=activePage.blocks.length)return;
-  const blocks=activePage.blocks.slice();[blocks[index],blocks[newIndex]]=[blocks[newIndex],blocks[index]];
+ const moveBlock=(id:string,offset:number)=>{
+  const index=orderedBlocks.findIndex(block=>block.id===id),target=orderedBlocks[index+offset],block=orderedBlocks[index];
+  if(!block||!target||(block.anchor||"end")!==(target.anchor||"end"))return;
+  const blocks=activePage.blocks.slice(),i=blocks.findIndex(x=>x.id===id),j=blocks.findIndex(x=>x.id===target.id);
+  [blocks[i],blocks[j]]=[blocks[j],blocks[i]];
   patchPage({blocks});
  };
  const moveBlockTo=(source:string,target:string)=>{
@@ -183,7 +187,8 @@ export default function LektrusSiteBuilder(){
   const blocks=activePage.blocks.slice(),i=blocks.findIndex(x=>x.id===source),j=blocks.findIndex(x=>x.id===target);
   if(i<0||j<0)return;
   const [item]=blocks.splice(i,1);
-  blocks.splice(j,0,item);patchPage({blocks});
+  const anchor=activePage.blocks.find(x=>x.id===target)?.anchor||"end";
+  blocks.splice(j,0,{...item,anchor});patchPage({blocks});
  };
  const addSectionKit=(id:string)=>{
   const kit=SITE_SECTION_PRESETS.find(item=>item.id===id);
@@ -311,14 +316,14 @@ export default function LektrusSiteBuilder(){
      <form className="site-builder-add-page" onSubmit={e=>{e.preventDefault();addPage()}}><input aria-label="Название новой страницы" placeholder="Новая страница…" value={newTitle} onChange={e=>setNewTitle(e.target.value)}/><button type="submit" disabled={doc.customPages.length>=18}>+</button></form>
     </section>
     <section><h2>Блоки страницы <span>{activePage.blocks.length}</span></h2><p>Зажми блок или готовую секцию и перетащи на сайт, в подсвеченное место. Обычный клик добавляет в конец.</p>
-     <div className="site-builder-block-list">{activePage.blocks.map((block,i)=><div key={block.id} className={selected===block.id?"selected":""} draggable
+     <div className="site-builder-block-list">{orderedBlocks.map((block,i)=><div key={block.id} className={selected===block.id?"selected":""} draggable
        onDragStart={event=>{blockDrag.current=block.id;putSiteCanvasTransfer(event,{type:"move",id:block.id})}}
        onDragOver={e=>e.preventDefault()}
        onDrop={e=>{e.preventDefault();if(blockDrag.current)moveBlockTo(blockDrag.current,block.id);blockDrag.current=null}}
        onDragEnd={()=>{blockDrag.current=null}}>
-      <button type="button" onClick={()=>{setSelected(block.id);setSelectedObject(null);setInspector("block")}}>{labelFor(block.kind)} <small>{block.title}</small></button>
-      <button type="button" disabled={i===0} title="Выше" onClick={()=>moveBlock(i,-1)}>↑</button>
-      <button type="button" disabled={i===activePage.blocks.length-1} title="Ниже" onClick={()=>moveBlock(i,1)}>↓</button>
+      <button type="button" onClick={()=>{setSelected(block.id);setSelectedObject(null);setInspector("block")}}>{labelFor(block.kind)} <small>{block.title}</small><small>{block.anchor&&block.anchor!=="end"?"Перед разделом "+(Number(block.anchor.slice(7))+1):"В конце страницы"}</small></button>
+      <button type="button" disabled={i===0||(orderedBlocks[i-1]?.anchor||"end")!==(block.anchor||"end")} title="Выше внутри секции" onClick={()=>moveBlock(block.id,-1)}>↑</button>
+      <button type="button" disabled={i===orderedBlocks.length-1||(orderedBlocks[i+1]?.anchor||"end")!==(block.anchor||"end")} title="Ниже внутри секции" onClick={()=>moveBlock(block.id,1)}>↓</button>
      </div>)}</div>
      <div className="site-builder-library-switch" role="group" aria-label="Библиотека секций">
       <button type="button" aria-pressed={libraryMode==="kits"} className={libraryMode==="kits"?"active":""} onClick={()=>setLibraryMode("kits")}>Готовые секции</button>
