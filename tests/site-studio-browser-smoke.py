@@ -129,99 +129,90 @@ with sync_playwright() as p:
     page.locator("#site").evaluate("(node) => {node.style.width='390px';node.style.height='844px'}")
     frame.locator(".marketing-site").wait_for()
     page.screenshot(path=str(root / "05-phone.png"), full_page=True)
-    # Verify the actual visitor website as well as the admin iframe contract.
+    # Validate actual visitor pages, native frame animation, sidebar and
+    # responsive layouts without relying on the Site Studio-only preview.
     visitor = browser.new_page(viewport={"width": 1440, "height": 900}, device_scale_factor=1)
     visitor.goto("http://127.0.0.1:5173/#home", wait_until="domcontentloaded")
     showcase = visitor.locator(".marketing-showcase")
     showcase.wait_for()
     nav = visitor.locator("#marketing-nav a").all_inner_texts()
-    assert len(nav) == 7, f"Expected all seven menu links in the left column including Home and Tools, got {nav}"
-    assert nav[0] == "Главная", "The sidebar must start with Home"
-    assert "Инструменты" in nav, "Separate Tools tab missing from public navigation"
-    assert not any("Учителям" in item or "Ученикам" in item for item in nav), "Retired audience tabs leaked into public navigation"
-    # Screenshot-inspired layout: a persistent left column, text on the left and
-    # one original Lektrus screenshot field on the right. No desktop top-nav.
-    rail = visitor.locator(".marketing-header")
-    sidebar_bounds = rail.bounding_box()
-    intro_bounds = visitor.locator(".marketing-hero-copy").bounding_box()
-    capture_bounds = showcase.bounding_box()
-    assert sidebar_bounds and intro_bounds and capture_bounds
-    assert sidebar_bounds["x"] < 2 and 220 <= sidebar_bounds["width"] <= 280
-    assert sidebar_bounds["height"] >= 850, "Desktop sidebar should fill the viewport"
-    assert intro_bounds["x"] >= sidebar_bounds["width"] + 18, "Main copy must not overlap the sidebar"
-    assert capture_bounds["x"] > intro_bounds["x"] + intro_bounds["width"], "Real screenshots belong to the right of the text"
-    assert abs(intro_bounds["y"] - capture_bounds["y"]) < 220, "Hero columns must align vertically"
-    assert visitor.locator(".marketing-brand img").get_attribute("src") == "/lektrus-icon-192.png", "Use the existing Lektrus brand logo"
+    assert nav == ["Главная", "Возможности", "Тарифы", "Помощь и контакты"], f"Site must have four public tabs: {nav}"
+    assert visitor.locator(".marketing-sidebar-caption").all_inner_texts()[-1] == "Инструменты"
+    assert visitor.locator(".marketing-sidebar-tools a").count() == 2
     shortcuts = visitor.locator(".marketing-sidebar-tools a")
-    assert shortcuts.count() == 2, "Both independent learning tools must be in the left sidebar"
     assert shortcuts.nth(0).get_attribute("href") == "/tools/atlas"
     assert shortcuts.nth(1).get_attribute("href") == "/tools/laboratory"
-    assert shortcuts.nth(0).is_visible() and shortcuts.nth(1).is_visible()
-    assert showcase.locator(".marketing-showcase-screen").count() == 1, "All captures must use one common frame"
-    assert showcase.locator("button").count() == 0, "Homepage reel must have no transport controls or subject switcher"
-    assert visitor.locator(".marketing-home-summary").count() == 1
-    assert visitor.locator(".marketing-audience-grid, .marketing-home-flow, .marketing-last-cta").count() == 0, "Removed duplicate home content returned"
-    assert visitor.locator(".marketing-feature-art, .marketing-gallery-card img").count() == 0, "Do not scatter subject screenshots across the marketing pages"
+
+    rail = visitor.locator(".marketing-header").bounding_box()
+    intro = visitor.locator(".marketing-hero-copy").bounding_box()
+    screen = showcase.bounding_box()
+    assert rail and intro and screen
+    assert rail["x"] < 2 and 220 <= rail["width"] <= 280 and rail["height"] >= 850
+    assert intro["x"] >= rail["width"] + 18 and screen["x"] > intro["x"] + intro["width"]
+    assert abs(intro["y"] - screen["y"]) < 220
+    assert showcase.locator(".marketing-showcase-screen").count() == 1
+    assert showcase.locator("button").count() == 0, "No slideshow player controls"
+    assert visitor.locator(".marketing-project-summary").is_visible(), "Project section must follow Home hero"
+    assert visitor.locator(".marketing-project-audiences p").count() == 2, "Both teacher and student benefits belong on Home"
+    assert visitor.locator(".marketing-project-heading").is_visible()
+    assert visitor.locator(".marketing-home-summary, .marketing-audience-grid, .marketing-last-cta").count() == 0
     first = showcase.locator(".marketing-showcase-current").get_attribute("src")
-    assert first and first.startswith("/site/"), f"Carousel must start from real Lektrus screenshot: {first}"
+    assert first and first.startswith("/site/")
     visitor.wait_for_function(
         "(initial) => document.querySelector('.marketing-showcase-current')?.getAttribute('src') !== initial",
-        arg=first, timeout=12500
+        arg=first, timeout=7200
     )
-    updated = showcase.locator(".marketing-showcase-current").get_attribute("src")
-    assert updated and updated != first, "Screenshots must change automatically without user interaction"
-    visitor.screenshot(path=str(root / "06-home-unified-reel.png"), full_page=True)
-    visitor.goto("http://127.0.0.1:5173/#about", wait_until="domcontentloaded")
-    visitor.locator(".marketing-about-audience-teachers").wait_for()
-    visitor.locator(".marketing-about-audience-students").wait_for()
-    assert visitor.locator(".marketing-about-teacher-journey article").count() == 4
-    assert visitor.locator(".marketing-about-student-steps>div").count() == 3
-    assert visitor.locator(".marketing-about-subject-links a").count() == 7, "All seven subject demos must survive removal of the Students tab"
-    assert visitor.locator(".marketing-showcase").count() == 0, "Homepage reel must not repeat in About"
-    visitor.screenshot(path=str(root / "07-about-consolidated.png"), full_page=True)
-    visitor.goto("http://127.0.0.1:5173/#tools", wait_until="domcontentloaded")
-    links = visitor.locator(".marketing-standalone-tools a")
-    assert links.count() == 2, "The Tools page must list two actual independent modules"
-    assert links.nth(0).get_attribute("href") == "/tools/atlas"
-    assert links.nth(1).get_attribute("href") == "/tools/laboratory"
-    assert visitor.locator(".marketing-showcase").count() == 0, "The screenshot showcase belongs only on Home"
-    assert visitor.locator(".marketing-standalone-tool").first.is_visible()
-    visitor.screenshot(path=str(root / "07b-tools-catalog.png"), full_page=True)
+    assert showcase.locator(".marketing-showcase-current").get_attribute("src") != first
+    assert showcase.locator(".marketing-showcase-previous").count() <= 1
+    visitor.screenshot(path=str(root / "06-home-dynamic-reel.png"), full_page=True)
+
     visitor.goto("http://127.0.0.1:5173/#features", wait_until="domcontentloaded")
-    assert visitor.locator(".marketing-feature-row").count() == 6
-    assert visitor.locator(".marketing-workflow-diagram, .marketing-feature-grid").count() == 0
-    visitor.screenshot(path=str(root / "07c-compact-features.png"), full_page=True)
-    visitor.goto("http://127.0.0.1:5173/#teachers", wait_until="domcontentloaded")
-    visitor.locator(".marketing-about-audience-teachers").wait_for()
-    visitor.goto("http://127.0.0.1:5173/#students", wait_until="domcontentloaded")
-    visitor.locator(".marketing-about-audience-students").wait_for()
+    rows = visitor.locator(".marketing-features-list article")
+    assert rows.count() == 6
+    assert visitor.locator(".marketing-features-section a, .marketing-features-section button").count() == 0, "Feature descriptions must not link to board creation"
+    assert visitor.locator(".marketing-showcase").count() == 0, "Real screenshot reel only belongs on Home"
+    visitor.screenshot(path=str(root / "07-features-prose.png"), full_page=True)
+
+    visitor.goto("http://127.0.0.1:5173/#pricing", wait_until="domcontentloaded")
+    assert visitor.locator(".marketing-plan").count() == 3
+    assert visitor.locator(".marketing-pricing-note").is_visible()
+    visitor.screenshot(path=str(root / "08-pricing-compact.png"), full_page=True)
+    visitor.goto("http://127.0.0.1:5173/#help", wait_until="domcontentloaded")
+    assert visitor.locator(".marketing-faq details").count() >= 4
+    assert visitor.locator(".marketing-form-card").is_visible()
+    visitor.screenshot(path=str(root / "09-help-compact.png"), full_page=True)
+
+    for old_route in ("about", "how", "tools", "teachers", "students"):
+        visitor.goto("http://127.0.0.1:5173/#" + old_route, wait_until="domcontentloaded")
+        visitor.locator(".marketing-project-summary").wait_for()
+        assert visitor.locator(".marketing-about-practical, .marketing-standalone-tools, .marketing-how-list").count() == 0, f"Old {old_route} layout unexpectedly rendered"
+
     visitor.set_viewport_size({"width": 390, "height": 844})
+    for page_name, marker in (
+        ("home", ".marketing-project-summary"),
+        ("features", ".marketing-features-list"),
+        ("pricing", ".marketing-pricing-grid"),
+        ("help", ".marketing-form-card")
+    ):
+        visitor.goto("http://127.0.0.1:5173/#" + page_name, wait_until="domcontentloaded")
+        visitor.locator(marker).wait_for()
+        assert visitor.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), f"Mobile {page_name} overflows horizontally"
+        visitor.screenshot(path=str(root / ("10-phone-" + page_name + ".png")), full_page=True)
+
     visitor.goto("http://127.0.0.1:5173/#home", wait_until="domcontentloaded")
-    visitor.locator(".marketing-showcase-screen").wait_for()
-    assert visitor.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), "Mobile home overflows horizontally"
-    assert visitor.locator(".marketing-hero-copy").is_visible()
     assert visitor.locator(".marketing-menu-toggle").is_visible()
-    assert not visitor.locator(".marketing-sidebar-tools a").first.is_visible(), "Tool shortcuts must be inside the closed drawer"
+    assert not shortcuts.first.is_visible(), "Closed mobile menu must fully hide tools"
     visitor.locator(".marketing-menu-toggle").click()
     assert visitor.locator(".marketing-menu-toggle").get_attribute("aria-expanded") == "true"
-    assert visitor.locator(".marketing-sidebar-tools a").first.is_visible(), "Atlas must be visible when the mobile sidebar opens"
-    assert visitor.locator(".marketing-sidebar-tools a").nth(1).is_visible(), "Laboratory must be visible when the mobile sidebar opens"
+    assert shortcuts.first.is_visible() and shortcuts.nth(1).is_visible()
+    assert visitor.locator("#marketing-nav a").count() == 4
     visitor.keyboard.press("Escape")
-    assert visitor.locator(".marketing-menu-toggle").get_attribute("aria-expanded") == "false", "Escape should close sidebar"
+    assert visitor.locator(".marketing-menu-toggle").get_attribute("aria-expanded") == "false"
     visitor.locator(".marketing-menu-toggle").click()
     visitor.locator(".marketing-sidebar-backdrop").click(position={"x": 370, "y": 200})
-    assert visitor.locator(".marketing-menu-toggle").get_attribute("aria-expanded") == "false", "Clicking outside should close sidebar"
-    assert visitor.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), "Drawer interaction created horizontal overflow"
-    visitor.screenshot(path=str(root / "08-home-phone.png"), full_page=True)
-    visitor.goto("http://127.0.0.1:5173/#about", wait_until="domcontentloaded")
-    visitor.locator(".marketing-about-audience-students").wait_for()
-    assert visitor.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), "Mobile About overflows horizontally"
-    visitor.screenshot(path=str(root / "09-about-phone.png"), full_page=True)
-    visitor.goto("http://127.0.0.1:5173/#tools", wait_until="domcontentloaded")
-    visitor.locator(".marketing-standalone-tool").first.wait_for()
-    assert visitor.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), "Mobile Tools page overflows horizontally"
-    visitor.screenshot(path=str(root / "10-tools-phone.png"), full_page=True)
+    assert visitor.locator(".marketing-menu-toggle").get_attribute("aria-expanded") == "false"
+    assert visitor.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
     visitor.close()
     browser.close()
 
-print("Site studio browser PASS: fixed branded sidebar, desktop text-left/showcase-right, mobile drawer with Escape/backdrop, real tool shortcuts, and existing Site Studio editing.")
+print("Site studio browser PASS: four compact public tabs, faster genuine capture animation, project story on Home, prose-only Features, old URLs redirected, responsive desktop/mobile, and existing Site Studio editing.")
