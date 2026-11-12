@@ -206,29 +206,15 @@ export default function LektrusPublicSite(){
      <h1 id="marketing-title">{copy?.heading||<>Одна платформа <span>для преподавания и обучения</span></>}</h1>
      <p className="marketing-hero-lead">{copy?.lead||"Создавайте наглядные уроки, работайте вместе с учениками и используйте учебные инструменты на единой интерактивной доске."}</p>
      <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Попробовать доску <span aria-hidden="true">→</span></DemoLink></div>
-     <div className="marketing-showcase" aria-label="Реальные снимки Lektrus">
-      <div className="marketing-showcase-screen">
-       <img key={currentShot.src} src={currentShot.src} alt={"Снимок Lektrus: "+currentShot.subject} fetchPriority={showcaseSlide===0?"high":"auto"}/>
+     <div className="marketing-showcase" aria-label="Автоматическая презентация настоящих экранов Lektrus" data-site-showcase>
+      <div className="marketing-showcase-window" aria-hidden="true">
+       <span className="marketing-showcase-window-dots"><i/><i/><i/></span>
+       <span className="marketing-showcase-window-title">Lektrus · Пространство для обучения</span>
+       <span className="marketing-showcase-window-live"><span/> Продукт в действии</span>
       </div>
-      <div className="marketing-showcase-toolbar">
-       <div className="marketing-showcase-caption" aria-live={showcasePaused?"polite":"off"}>
-        <span className="marketing-eyebrow">{currentShot.subject}</span>
-        <strong>{currentShot.title}</strong>
-        <p>{currentShot.description}</p>
-        {currentShot.scene==="home"?<a href="/app">Открыть рабочее пространство ↗</a>:<DemoLink scene={currentShot.scene}>Открыть этот пример на доске ↗</DemoLink>}
-       </div>
-       <div className="marketing-showcase-player">
-        <div className="marketing-showcase-counter"><b>{String(showcaseSlide+1).padStart(2,"0")}</b><span> / {String(showcaseShots.length).padStart(2,"0")}</span></div>
-        <div className="marketing-showcase-controls">
-         <button type="button" onClick={()=>setShowcaseSlide(index=>(index-1+showcaseShots.length)%showcaseShots.length)} aria-label="Предыдущий снимок" title="Предыдущий снимок">←</button>
-         <button type="button" onClick={()=>setShowcasePaused(paused=>!paused)} aria-label={showcasePaused?"Возобновить смену снимков":"Остановить смену снимков"} aria-pressed={showcasePaused} title={showcasePaused?"Воспроизвести":"Пауза"}>{showcasePaused?"▶":"Ⅱ"}</button>
-         <button type="button" onClick={()=>setShowcaseSlide(index=>(index+1)%showcaseShots.length)} aria-label="Следующий снимок" title="Следующий снимок">→</button>
-        </div>
-       </div>
-      </div>
-      <div className="marketing-showcase-progress" aria-hidden="true"><span style={{width:`${((showcaseSlide+1)/showcaseShots.length)*100}%`}}/></div>
-      <div className="marketing-showcase-subjects" aria-label="Выберите снимок">
-       {showcaseShots.map((shot,index)=><button type="button" key={shot.scene} onClick={()=>{setShowcaseSlide(index);setShowcasePaused(true)}} className={index===showcaseSlide?"is-active":""} aria-pressed={index===showcaseSlide}>{shot.subject}</button>)}
+      <div className="marketing-showcase-screen" role="img" aria-label="Примеры реальных экранов приложения Lektrus">
+       {previousShot&&<img className="marketing-showcase-previous" src={previousShot.src} alt="" aria-hidden="true"/>}
+       <img key={currentShot.src} className="marketing-showcase-current" src={currentShot.src} alt="" fetchPriority={showcaseSlide===0?"high":"auto"}/>
       </div>
      </div>
      <p className="marketing-hero-footnote">Доска · Учебные инструменты · Совместная работа</p>
