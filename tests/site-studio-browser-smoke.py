@@ -137,7 +137,7 @@ with sync_playwright() as p:
     showcase.wait_for()
     nav = visitor.locator("#marketing-nav a").all_inner_texts()
     assert nav == ["Главная", "Возможности", "Тарифы", "Помощь и контакты"], f"Site must have four public tabs: {nav}"
-    assert visitor.locator(".marketing-sidebar-caption").all_inner_texts()[-1] == "Инструменты"
+    assert visitor.locator(".marketing-sidebar-caption").last.text_content().strip() == "Инструменты"
     assert visitor.locator(".marketing-sidebar-tools a").count() == 2
     shortcuts = visitor.locator(".marketing-sidebar-tools a")
     assert shortcuts.nth(0).get_attribute("href") == "/tools/atlas"
