@@ -129,6 +129,48 @@ with sync_playwright() as p:
     page.locator("#site").evaluate("(node) => {node.style.width='390px';node.style.height='844px'}")
     frame.locator(".marketing-site").wait_for()
     page.screenshot(path=str(root / "05-phone.png"), full_page=True)
+    # Verify the actual visitor website as well as the admin iframe contract.
+    visitor = browser.new_page(viewport={"width": 1440, "height": 900}, device_scale_factor=1)
+    visitor.goto("http://127.0.0.1:5173/#home", wait_until="domcontentloaded")
+    showcase = visitor.locator(".marketing-showcase")
+    showcase.wait_for()
+    nav = visitor.locator("#marketing-nav a").all_inner_texts()
+    assert len(nav) == 5, f"Expected only five menu links besides Home, got {nav}"
+    assert not any("Учителям" in item or "Ученикам" in item for item in nav), "Retired audience tabs leaked into public navigation"
+    assert showcase.locator(".marketing-showcase-screen").count() == 1, "All captures must use one common frame"
+    assert showcase.locator("button").count() == 0, "Homepage reel must have no transport controls or subject switcher"
+    assert visitor.locator(".marketing-feature-art, .marketing-gallery-card img").count() == 0, "Do not scatter subject screenshots across the marketing pages"
+    first = showcase.locator(".marketing-showcase-current").get_attribute("src")
+    assert first and first.startswith("/site/"), f"Carousel must start from real Lektrus screenshot: {first}"
+    visitor.wait_for_function(
+        "(initial) => document.querySelector('.marketing-showcase-current')?.getAttribute('src') !== initial",
+        arg=first, timeout=12500
+    )
+    updated = showcase.locator(".marketing-showcase-current").get_attribute("src")
+    assert updated and updated != first, "Screenshots must change automatically without user interaction"
+    visitor.screenshot(path=str(root / "06-home-unified-reel.png"), full_page=True)
+    visitor.goto("http://127.0.0.1:5173/#about", wait_until="domcontentloaded")
+    visitor.locator(".marketing-about-audience-teachers").wait_for()
+    visitor.locator(".marketing-about-audience-students").wait_for()
+    assert visitor.locator(".marketing-about-teacher-journey article").count() == 4
+    assert visitor.locator(".marketing-about-student-steps>div").count() == 3
+    assert visitor.locator(".marketing-about-subject-links a").count() >= 4
+    assert visitor.locator(".marketing-showcase").count() == 0, "Homepage reel must not repeat in About"
+    visitor.screenshot(path=str(root / "07-about-consolidated.png"), full_page=True)
+    visitor.goto("http://127.0.0.1:5173/#teachers", wait_until="domcontentloaded")
+    visitor.locator(".marketing-about-audience-teachers").wait_for()
+    visitor.goto("http://127.0.0.1:5173/#students", wait_until="domcontentloaded")
+    visitor.locator(".marketing-about-audience-students").wait_for()
+    visitor.set_viewport_size({"width": 390, "height": 844})
+    visitor.goto("http://127.0.0.1:5173/#home", wait_until="domcontentloaded")
+    visitor.locator(".marketing-showcase-screen").wait_for()
+    assert visitor.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), "Mobile home overflows horizontally"
+    visitor.screenshot(path=str(root / "08-home-phone.png"), full_page=True)
+    visitor.goto("http://127.0.0.1:5173/#about", wait_until="domcontentloaded")
+    visitor.locator(".marketing-about-audience-students").wait_for()
+    assert visitor.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), "Mobile About overflows horizontally"
+    visitor.screenshot(path=str(root / "09-about-phone.png"), full_page=True)
+    visitor.close()
     browser.close()
 
-print("Site studio browser PASS: native sections, real carousel, cross-frame DnD, object selection/editing, keyboard delete undo/redo, toolbar restore, pointer width/height resize, kit gallery and phone viewport.")
+print("Site studio browser PASS: six pages, automatic single homepage reel with real captures and no controls, legacy links redirected to consolidated About, phone layouts, editor DnD, undo/redo and resizable blocks.")
