@@ -8,16 +8,16 @@ const css=read("src/lektrusMarketing.css");
 const entry=read("src/LektrusSiteEntry.tsx");
 const billing=read("src/billingStore.ts");
 
-for(const id of ["home","features","teachers","students","how","pricing","about","help"]){
- assert.ok(site.includes('id:"'+id+'"'),"missing marketing page: "+id);
+for(const id of ["home","features","how","pricing","about","help"]){
+ assert.ok(site.includes('id:"'+id+'"'),"missing public marketing page: "+id);
 }
+assert.doesNotMatch(site,/\{id:"(?:teachers|students)",title:/,"former teacher/student tabs must be absent from navigation");
 for(const text of [
  "Одна платформа","для преподавания и обучения",
  "Один холст.","Множество способов преподавать",
  "Знакомьтесь с возможностями Lektrus",
- "Преподавайте так,","как удобно именно вам",
- "Подготовьте урок и сохраните всё в одном месте",
- "Учиться легче,","когда всё видно",
+ "Для преподавателей","Удобно готовить. Понятно объяснять.",
+ "Для учеников","Увидеть. Разобраться. Попробовать.",
  "Привычные действия","в удобном пространстве",
  "Посмотрите, как устроена работа в Lektrus",
  "Расскажите, что можно улучшить",
@@ -36,22 +36,23 @@ assert.ok(!site.includes("Купить подписку"),"test subscriptions mu
 for(const shot of ["board-showcase.png","app-home.png","board-math.png","board-chemistry.png","board-geometry.png","board-physics.png","board-contour.png","board-history.png","board-russian.png"]){
  assert.ok(existsSync(new URL("../public/site/"+shot,import.meta.url)),"missing actual screenshot: "+shot);
 }
-assert.ok(site.includes("marketing-feature-art")&&css.includes(".marketing-feature-art"),"feature cards should include genuine image previews");
+assert.ok(site.includes("marketing-feature-mark")&&css.includes(".marketing-feature-mark"),"feature cards must use lightweight editorial icons rather than duplicate subject screenshots");
 assert.doesNotMatch(entry,/lektrusShowcase\.css/,"the public entry must not load obsolete showcase styling");
 assert.match(css,/@media\(max-width:700px\)/,"the site needs small-screen layouts");
-assert.ok(site.includes("const showcaseShots=")&&site.includes('scene:"home"'),"homepage must present real app-home and subject screenshots");
+assert.ok(site.includes("const showcaseShots=config.showcase")&&read("src/marketingSiteConfig.ts").includes("DEFAULT_SITE_SHOWCASE"),"homepage must use document-managed original screenshots");
 assert.ok(site.includes("marketing-showcase-screen")&&site.includes("currentShot.src"),"home must rotate actual screenshots instead of freezing one image");
-assert.ok(site.includes("setShowcasePaused")&&site.includes('aria-label="Следующий снимок"')&&site.includes('aria-label="Предыдущий снимок"'),"screenshot presentation must support play/pause and manual navigation");
+assert.ok(site.includes("setPreviousSlide")&&site.includes("window.setInterval")&&site.includes("marketing-showcase-previous"),"one automatic screenshot field must crossfade between frames");
+assert.doesNotMatch(site,/marketing-showcase-(controls|subjects|toolbar|player|counter|progress)/,"homepage must never display a player control bar");
 assert.ok(site.includes('window.matchMedia("(prefers-reduced-motion: reduce)")'),"automatic screenshots must respect reduced motion");
-assert.ok(css.includes(".marketing-showcase-controls")&&css.includes(".marketing-showcase-caption")&&css.includes(".marketing-showcase-subjects"),"restore screenshot caption, counter and navigation styles");
-assert.ok(site.includes("marketing-teacher-scene")&&site.includes("marketing-student-demo")&&site.includes("marketing-about-list")&&site.includes("marketing-steps"),"teacher, student, about and walkthrough pages need distinct content layouts");
-assert.ok(site.includes('src="/site/app-home.png"')&&site.includes('src="/site/board-math.png"'),"real instructor screen and lesson capture must be present");
-assert.ok(css.includes(".marketing-teacher-window")&&css.includes(".marketing-students-intro")&&css.includes(".marketing-about-advantages"),"distinct presentation styles must be implemented");
+assert.ok(css.includes(".marketing-showcase-screen")&&css.includes("@keyframes marketing-unified-crossfade")&&!css.includes(".marketing-showcase-controls"),"one integrated animated screenshot area must replace the old player UI");
+assert.ok(site.includes("marketing-about-audience-teachers")&&site.includes("marketing-about-audience-students")&&site.includes("marketing-about-list")&&site.includes("marketing-steps"),"About page must contain both audiences and own editorial layout");
+assert.ok(site.includes("currentShot.src")&&site.includes("previousShot.src")&&site.includes("marketing-showcase"),"one homepage animation must use existing real captures");
+assert.ok(css.includes(".marketing-workflow-diagram")&&css.includes(".marketing-about-audience")&&css.includes(".marketing-step-visual"),"remaining site pages must have distinct product storytelling and responsive styles");
 assert.match(css, /prefers-reduced-motion:reduce/,"reduced-motion users need a non-animated alternative");
 assert.match(site,/aria-expanded=\{menuOpen\}/,"mobile navigation must expose its state");
 assert.match(site,/<details key=\{item\.q\}/,"FAQ answers must be expandable");
 
-// The builder must extend, not replace, the eight distinctive editorial pages.
+// The builder must preserve editable public pages and retire the legacy audience tabs without losing their content.
 const config=read("src/marketingSiteConfig.ts");
 const builder=read("src/LektrusSiteBuilder.tsx");
 const blocks=read("src/SiteEditableSections.tsx");
@@ -68,7 +69,7 @@ assert.ok(builder.includes("history(")&&builder.includes("site-builder-page-list
 assert.ok(sql.includes("is_app_admin(auth.uid())")&&sql.includes("marketing_site_public_read"),"database must authorize publication server-side");
 assert.ok(config.includes("normalizeSiteDocument")&&config.includes("safeSiteUrl"),"untrusted published design must be normalized");
 assert.ok((blocks.includes("data-site-block-id")||blocks.includes("SiteResizableBlock")&&read("src/SiteResizableBlock.tsx").includes("data-site-block-id"))&&site.includes("SITE_PREVIEW_MESSAGE"),"preview needs editable block selection");
-assert.ok(site.includes("marketing-teacher-scene")&&site.includes("marketing-student-demo"),"builder must keep distinct original page templates");
+assert.ok(site.includes("marketing-about-audience-teachers")&&site.includes("marketing-about-audience-students"),"migrated teaching and learning content must live in About");
 
 
 // Website builder media and per-page redesign safety.
@@ -150,9 +151,10 @@ assert.ok(builder.includes('putSiteCanvasTransfer(event,{type:"block"')&&builder
 assert.ok(builder.includes("insertCanvasTransfer(")&&builder.includes('event.data?.type==="lektrus:site-canvas-drop"'),"cross-iframe drop must update the document");
 assert.ok(canvas.includes("event.dataTransfer.getData(SITE_CANVAS_MIME)")&&canvas.includes("SiteDropZone"),"canvas drop zones must actually read HTML5 drag payloads");
 assert.ok(site.includes('placed("before-0")')&&site.includes('placed("end")')&&site.includes("SiteAnchorSlot"),"native sections and page end must accept new blocks");
-for(const id of ["home","features","teachers","students","how","pricing","about","help"]){
- assert.ok(site.includes('page==="'+id+'"'),"no dropped content page should disappear: "+id);
+for(const id of ["home","features","how","pricing","about","help"]){
+ assert.ok(site.includes('page==="'+id+'"'),"required page must keep native editable sections: "+id);
 }
+assert.doesNotMatch(site,/page==="(?:teachers|students)"/,"audience pages must be consolidated into About");
 assert.ok(objectLayer.includes("data-site-object-id")&&objectLayer.includes("applyObjectPatch")&&objectLayer.includes("site-select-object"),"DOM object inspector must connect clicks to persisted overrides");
 assert.ok(builder.includes("resetObject")&&builder.includes("patchObject")&&builder.includes('inspector==="object"'),"object fields and reset control must exist");
 for(const kind of ["video","timeline","comparison","logos","spacer","checklist","button-row"]){
@@ -243,4 +245,29 @@ dims=model.normalizeSiteDocument(dimensionsDoc).pages.home.blocks[0].style;
 assert.equal(dims.width,100);
 assert.equal(dims.minHeight,0);
 
-console.log("Lektrus marketing site: selected copy, 8 sections, real screenshots, demo links, pricing, accessibility and responsive styling verified.");
+
+// 2026 marketing IA: role-specific pages are retired even in previously published configs.
+const defaultMarketing=model.defaultSiteDocument();
+assert.equal(defaultMarketing.showcase.length,8,"all original home + seven subject captures belong in one homepage field");
+assert.ok(defaultMarketing.showcase.every(frame=>frame.src.startsWith("/site/")),"default reel must only use existing product screenshots");
+assert.equal(defaultMarketing.navigation.find(item=>item.id==="teachers").hidden,true);
+assert.equal(defaultMarketing.navigation.find(item=>item.id==="students").hidden,true);
+const publishedLegacy=model.normalizeSiteDocument({...defaultMarketing,navigation:defaultMarketing.navigation.map(x=>({...x,hidden:false}))});
+assert.equal(publishedLegacy.navigation.find(item=>item.id==="teachers").hidden,true,"old published configs cannot resurrect teachers tab");
+assert.equal(publishedLegacy.navigation.find(item=>item.id==="students").hidden,true,"old published configs cannot resurrect students tab");
+const exportedOld={...oldDocument};delete exportedOld.showcase;
+assert.equal(model.normalizeSiteDocument(exportedOld).showcase.length,8,"legacy published docs without reel metadata must retain all screenshots");
+const reel=model.normalizeSiteDocument({...defaultMarketing,showcase:[
+ {scene:"chemistry",subject:"Химия",src:"/site/board-chemistry.png"},
+ {scene:"chemistry",subject:"Duplicate",src:"/site/board-chemistry.png"},
+ {scene:"math",subject:"Blocked",src:"javascript:alert(1)"},
+ {scene:"math",subject:"Математика",src:"/site/board-math.png"}
+]}).showcase;
+assert.deepEqual(reel.map(frame=>frame.src),["/site/board-chemistry.png","/site/board-math.png"],"ordered reel should deduplicate and reject unsafe URLs");
+assert.ok(builder.includes("site-builder-home-showcase")&&builder.includes("next.showcase.push("),"admin must be able to choose and rearrange unified screenshot frames");
+assert.ok(builder.includes('!retiredSitePages.has(item.id)'),"admin list must not offer removed audience tabs");
+assert.ok(site.includes('if(hash==="teachers"||hash==="students")return "about"'),"old audience bookmarks must lead to About");
+const pageSections=site.slice(site.indexOf('page==="features"&&!copy?.replaceDefault'),site.indexOf('page==="help"&&!copy?.replaceDefault'));
+assert.doesNotMatch(pageSections,/<img\b[^>]*src="\/site\//,"other pages must not scatter in-app screenshot files across all sections");
+
+console.log("Lektrus marketing site: six public pages, one editable automatic screenshot field, migrated audience content, demos, accessibility and responsive layouts verified.");

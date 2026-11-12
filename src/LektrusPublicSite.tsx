@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState,type CSSProperties,type MouseEvent,type ReactNode} from "react";
+import {useEffect,useState,type CSSProperties,type MouseEvent,type ReactNode} from "react";
 import {defaultSiteDocument,loadPublishedSiteDocument,normalizeSiteDocument,SITE_PREVIEW_MESSAGE,type SiteDocument} from "./marketingSiteConfig";
 import {SiteCustomPage,SiteAnchorSlot} from "./SiteEditableSections";
 import {SiteObjectLayer} from "./SiteObjectLayer";
@@ -11,8 +11,6 @@ type Page=string;
 const navigation:{id:Page;title:string}[]=[
  {id:"home",title:"Главная"},
  {id:"features",title:"Возможности"},
- {id:"teachers",title:"Учителям"},
- {id:"students",title:"Ученикам"},
  {id:"how",title:"Как это работает"},
  {id:"pricing",title:"Тарифы"},
  {id:"about",title:"О Lektrus"},
@@ -27,10 +25,8 @@ const boardShots=[
  {scene:"history",subject:"История",src:"/site/board-history.png",title:"Исторический атлас",description:"Сравнивайте территории и события разных эпох."},
  {scene:"russian",subject:"Русский язык",src:"/site/board-russian.png",title:"Фонетический разбор",description:"Разбирайте буквы и звуки в интерактивной схеме."}
 ];
-const showcaseShots=[
- {scene:"home",subject:"Рабочее пространство",src:"/site/app-home.png",title:"Подготовьте урок на рабочем столе",description:"Ваши доски, материалы и расписание собраны в одном месте."},
- ...boardShots
-];
+
+const featureSymbols=["✎","◎","∑","⚗","✓","▣"];
 const featureCards=[
  {index:"01",title:"Свободная доска",text:"Пишите, рисуйте, размещайте текст, изображения, фигуры и документы.",scene:"geometry"},
  {index:"02",title:"Совместная работа",text:"Объясняйте материал и работайте с участниками на общем холсте.",scene:"math"},
@@ -71,6 +67,7 @@ const questions=[
 ];
 function readPage():Page{
  const hash=window.location.hash.replace(/^#/,"");
+ if(hash==="teachers"||hash==="students")return "about";
  return /^[a-z][a-z0-9-]{0,39}$/.test(hash)?hash:"home";
 }
 function DemoLink({scene="math",children,className=""}:{scene?:string;children:ReactNode;className?:string}){
@@ -84,16 +81,15 @@ export default function LektrusPublicSite(){
  const [previewObject,setPreviewObject]=useState<string|null>(null);
  const [previewInteractive,setPreviewInteractive]=useState(false);
  const [page,setPage]=useState<Page>(readPage);
- const siteNavigation=config.navigation.length?config.navigation.filter(item=>!item.hidden||item.id==="home"):navigation;
+ const siteNavigation=(config.navigation.length?config.navigation:navigation.map(item=>({...item,hidden:false}))).filter(item=>(!item.hidden||item.id==="home")&&item.id!=="teachers"&&item.id!=="students");
  const customPage=config.customPages.find(item=>item.id===page)??(config.pages[page]?.replaceDefault?config.pages[page]:undefined);
  const copy=config.pages[page];
  const [menuOpen,setMenuOpen]=useState(false);
- const [studentScene,setStudentScene]=useState("math");
  const [showcaseSlide,setShowcaseSlide]=useState(0);
- const [showcasePaused,setShowcasePaused]=useState(false);
- const galleryRef=useRef<HTMLDivElement>(null);
- const selectedStudent=boardShots.find(item=>item.scene===studentScene)??boardShots[0];
- const currentShot=showcaseShots[showcaseSlide];
+ const [previousSlide,setPreviousSlide]=useState<number|null>(null);
+ const showcaseShots=config.showcase;
+ const currentShot=showcaseShots[showcaseSlide%showcaseShots.length];
+ const previousShot=previousSlide!==null?showcaseShots[previousSlide%showcaseShots.length]:null;
  useEffect(()=>{
   if(!isPreview)return;
   const handle=(event:Event)=>{
@@ -156,15 +152,30 @@ export default function LektrusPublicSite(){
   return ()=>{window.removeEventListener("hashchange",sync);window.removeEventListener("popstate",sync)};
  },[]);
  useEffect(()=>{document.title=(siteNavigation.find(item=>item.id===page)?.title??"Главная")+" | Lektrus"},[page,config]);
- // The original presentation used a real screenshot carousel with a pause control.
- // Respect reduced-motion preferences and never keep the carousel running on other pages.
+ // The single homepage frame automatically crossfades through existing screenshots.
+ // No controls or subject pickers: the rest of the site keeps its own editorial content.
  useEffect(()=>{
-  if(page!=="home"||showcasePaused||window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
-  const id=window.setInterval(()=>{if(!document.hidden)setShowcaseSlide(index=>(index+1)%showcaseShots.length)},7800);
+  if(page!=="home"||showcaseShots.length<2||window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  const id=window.setInterval(()=>{
+   if(document.hidden)return;
+   setPreviousSlide(showcaseSlide);
+   setShowcaseSlide((showcaseSlide+1)%showcaseShots.length);
+  },6800);
   return ()=>window.clearInterval(id);
- },[page,showcasePaused]);
+ },[page,showcaseSlide,showcaseShots.length]);
+ useEffect(()=>{
+  if(previousSlide===null)return;
+  const id=window.setTimeout(()=>setPreviousSlide(null),850);
+  return ()=>window.clearTimeout(id);
+ },[previousSlide]);
+ useEffect(()=>{
+  if(page!=="home"||showcaseShots.length<2)return;
+  const next=showcaseShots[(showcaseSlide+1)%showcaseShots.length];
+  const image=new Image();image.src=next.src;
+ },[page,showcaseSlide,showcaseShots]);
  const navigate=(target:Page,event?:MouseEvent<HTMLAnchorElement>)=>{
   event?.preventDefault();
+  if(target==="teachers"||target==="students")target="about";
   if(target!==page){
    window.history.pushState(null,"","#"+target);
    setPage(target);
@@ -196,29 +207,15 @@ export default function LektrusPublicSite(){
      <h1 id="marketing-title">{copy?.heading||<>Одна платформа <span>для преподавания и обучения</span></>}</h1>
      <p className="marketing-hero-lead">{copy?.lead||"Создавайте наглядные уроки, работайте вместе с учениками и используйте учебные инструменты на единой интерактивной доске."}</p>
      <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Попробовать доску <span aria-hidden="true">→</span></DemoLink></div>
-     <div className="marketing-showcase" aria-label="Реальные снимки Lektrus">
-      <div className="marketing-showcase-screen">
-       <img key={currentShot.src} src={currentShot.src} alt={"Снимок Lektrus: "+currentShot.subject} fetchPriority={showcaseSlide===0?"high":"auto"}/>
+     <div className="marketing-showcase" aria-label="Автоматическая презентация настоящих экранов Lektrus" data-site-showcase>
+      <div className="marketing-showcase-window" aria-hidden="true">
+       <span className="marketing-showcase-window-dots"><i/><i/><i/></span>
+       <span className="marketing-showcase-window-title">Lektrus · Пространство для обучения</span>
+       <span className="marketing-showcase-window-live"><span/> Продукт в действии</span>
       </div>
-      <div className="marketing-showcase-toolbar">
-       <div className="marketing-showcase-caption" aria-live={showcasePaused?"polite":"off"}>
-        <span className="marketing-eyebrow">{currentShot.subject}</span>
-        <strong>{currentShot.title}</strong>
-        <p>{currentShot.description}</p>
-        {currentShot.scene==="home"?<a href="/app">Открыть рабочее пространство ↗</a>:<DemoLink scene={currentShot.scene}>Открыть этот пример на доске ↗</DemoLink>}
-       </div>
-       <div className="marketing-showcase-player">
-        <div className="marketing-showcase-counter"><b>{String(showcaseSlide+1).padStart(2,"0")}</b><span> / {String(showcaseShots.length).padStart(2,"0")}</span></div>
-        <div className="marketing-showcase-controls">
-         <button type="button" onClick={()=>setShowcaseSlide(index=>(index-1+showcaseShots.length)%showcaseShots.length)} aria-label="Предыдущий снимок" title="Предыдущий снимок">←</button>
-         <button type="button" onClick={()=>setShowcasePaused(paused=>!paused)} aria-label={showcasePaused?"Возобновить смену снимков":"Остановить смену снимков"} aria-pressed={showcasePaused} title={showcasePaused?"Воспроизвести":"Пауза"}>{showcasePaused?"▶":"Ⅱ"}</button>
-         <button type="button" onClick={()=>setShowcaseSlide(index=>(index+1)%showcaseShots.length)} aria-label="Следующий снимок" title="Следующий снимок">→</button>
-        </div>
-       </div>
-      </div>
-      <div className="marketing-showcase-progress" aria-hidden="true"><span style={{width:`${((showcaseSlide+1)/showcaseShots.length)*100}%`}}/></div>
-      <div className="marketing-showcase-subjects" aria-label="Выберите снимок">
-       {showcaseShots.map((shot,index)=><button type="button" key={shot.scene} onClick={()=>{setShowcaseSlide(index);setShowcasePaused(true)}} className={index===showcaseSlide?"is-active":""} aria-pressed={index===showcaseSlide}>{shot.subject}</button>)}
+      <div className="marketing-showcase-screen" role="img" aria-label="Примеры реальных экранов приложения Lektrus">
+       {previousShot&&<img className="marketing-showcase-previous" src={previousShot.src} alt="" aria-hidden="true"/>}
+       <img key={currentShot.src} className="marketing-showcase-current" src={currentShot.src} alt="" fetchPriority={showcaseSlide===0?"high":"auto"}/>
       </div>
      </div>
      <p className="marketing-hero-footnote">Доска · Учебные инструменты · Совместная работа</p>
@@ -226,17 +223,22 @@ export default function LektrusPublicSite(){
     {placed("before-1")}
     <section data-site-section-id="native-1" className="marketing-section marketing-container">
      <div className="marketing-section-head"><div><span className="marketing-eyebrow">Возможности</span><h2>Все инструменты для наглядного урока</h2><p>Объединяйте материалы и учебные модели на одном холсте.</p></div><NavLink id="features" title="Смотреть возможности ↗"/></div>
-     <div className="marketing-preview-grid">{featureCards.slice(0,3).map(card=><article className="marketing-feature-card" key={card.index}><img className="marketing-feature-art" src={boardShots.find(shot=>shot.scene===card.scene)?.src??"/site/board-showcase.png"} alt="" loading="lazy"/><span className="marketing-number">{card.index}</span><h3>{card.title}</h3><p>{card.text}</p><DemoLink scene={card.scene}>Посмотреть пример ↗</DemoLink></article>)}</div>
+     <div className="marketing-preview-grid">{featureCards.slice(0,3).map(card=><article className="marketing-feature-card" key={card.index}><span className="marketing-feature-mark" aria-hidden="true">{featureSymbols[Number(card.index)-1]}</span><span className="marketing-number">{card.index}</span><h3>{card.title}</h3><p>{card.text}</p><DemoLink scene={card.scene}>Посмотреть пример ↗</DemoLink></article>)}</div>
     </section>
     {placed("before-2")}
     <section data-site-section-id="native-2" className="marketing-section marketing-container">
      <div className="marketing-audience-grid">
-      <article className="marketing-audience-card"><span className="marketing-eyebrow">Преподавателям</span><h2>Преподавайте так, как удобно именно вам</h2><p>Подготовка, объяснение и практическая работа в одном пространстве.</p><NavLink id="teachers" title="Для учителей ↗"/></article>
-      <article className="marketing-audience-card marketing-audience-student"><span className="marketing-eyebrow">Ученикам</span><h2>Учиться легче, когда всё видно</h2><p>Разбирайте сложные темы на наглядных примерах и участвуйте в работе.</p><NavLink id="students" title="Для учеников ↗"/></article>
+      <article className="marketing-audience-card"><span className="marketing-eyebrow">Преподавателям</span><h2>Преподавайте так, как удобно именно вам</h2><p>Подготовка, объяснение и практическая работа в одном пространстве.</p><NavLink id="about" title="Подробнее в разделе «О Lektrus» ↗"/></article>
+      <article className="marketing-audience-card marketing-audience-student"><span className="marketing-eyebrow">Ученикам</span><h2>Учиться легче, когда всё видно</h2><p>Разбирайте сложные темы на наглядных примерах и участвуйте в работе.</p><NavLink id="about" title="Узнать больше о Lektrus ↗"/></article>
      </div>
     </section>
     {placed("before-3")}
-    <section data-site-section-id="native-3" className="marketing-section marketing-container marketing-home-steps"><div><span className="marketing-eyebrow">Как это работает</span><h2>От идеи до занятия за несколько шагов</h2><p>Создайте доску, добавьте материалы и пригласите участников.</p><NavLink id="how" title="Посмотреть все этапы ↗"/></div><img src="/site/app-home.png" loading="lazy" alt="Главная страница приложения Lektrus"/></section>
+    <section data-site-section-id="native-3" className="marketing-section marketing-container marketing-home-steps"><div><span className="marketing-eyebrow">Как это работает</span><h2>От идеи до занятия за несколько шагов</h2><p>Создайте доску, добавьте материалы и пригласите участников.</p><NavLink id="how" title="Посмотреть все этапы ↗"/></div>
+     <div className="marketing-home-flow" aria-label="Три шага работы">
+      <div><span>01</span><strong>Создайте доску</strong><small>Чистый холст для любой идеи</small></div>
+      <div><span>02</span><strong>Добавьте содержание</strong><small>Задания, объяснения и модели</small></div>
+      <div><span>03</span><strong>Работайте вместе</strong><small>Учитель и ученики на одном поле</small></div>
+     </div></section>
     {placed("before-4")}
     <section data-site-section-id="native-4" className="marketing-last-cta marketing-container"><h2>Готовы провести урок по-новому?</h2><p>Откройте Lektrus и создайте своё учебное пространство.</p><a className="marketing-primary" href="/app">Открыть Lektrus ↗</a></section>
    </>}
@@ -244,45 +246,25 @@ export default function LektrusPublicSite(){
     {placed("before-0")}
     <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container marketing-features-intro"><span className="marketing-eyebrow">{copy?.eyebrow||"Знакомьтесь с возможностями Lektrus"}</span><h1>{copy?.heading||<>Один холст. <span>Множество способов преподавать</span></>}</h1><p>{copy?.lead||"От простых записей до учебных моделей и совместной работы. Собирайте на доске всё, что нужно для вашего занятия."}</p><DemoLink className="marketing-primary">Попробовать инструменты ↗</DemoLink></section>
     {placed("before-1")}
-    <section data-site-section-id="native-1" className="marketing-section marketing-container"><div className="marketing-section-head"><div><h2>Посмотрите на Lektrus в действии</h2><p>Настоящие примеры из предметных досок приложения.</p></div><div className="marketing-gallery-arrows"><button type="button" onClick={()=>galleryRef.current?.scrollBy({left:-460,behavior:"smooth"})} aria-label="Предыдущие примеры">←</button><button type="button" onClick={()=>galleryRef.current?.scrollBy({left:460,behavior:"smooth"})} aria-label="Следующие примеры">→</button></div></div>
-     <div className="marketing-gallery-track" ref={galleryRef} tabIndex={0} aria-label="Галерея возможностей">{boardShots.map(shot=><article className="marketing-gallery-card" key={shot.scene}><DemoLink scene={shot.scene}><img loading="lazy" src={shot.src} alt={"Пример доски: "+shot.subject}/><span className="marketing-gallery-label">{shot.subject}</span><h3>{shot.title}</h3><p>{shot.description}</p><span className="marketing-inline-action">Открыть живую демонстрацию ↗</span></DemoLink></article>)}</div>
+    <section data-site-section-id="native-1" className="marketing-section marketing-container marketing-feature-story">
+     <div className="marketing-section-head"><div><span className="marketing-eyebrow">Один общий холст</span><h2>Любая идея начинается здесь</h2><p>Собирайте материалы, объясняйте и исследуйте без переключения между десятком разных инструментов.</p></div><DemoLink className="marketing-secondary">Открыть живую демонстрацию ↗</DemoLink></div>
+     <div className="marketing-workflow-diagram" aria-label="Возможности одного учебного холста">
+      <div className="marketing-workflow-core"><span>LEKTRUS</span><strong>Ваш учебный холст</strong><small>Одно пространство для занятия</small></div>
+      {["Текст и формулы","Рисунки и фигуры","Задания и материалы","Совместная работа"].map((name,i)=><div key={name} className={"marketing-workflow-node marketing-workflow-node-"+i}><span>0{i+1}</span><strong>{name}</strong></div>)}
+     </div>
     </section>
     {placed("before-2")}
-    <section data-site-section-id="native-2" className="marketing-section marketing-container"><div className="marketing-section-head"><div><span className="marketing-eyebrow">Что внутри</span><h2>Инструменты для разных задач</h2></div></div><div className="marketing-feature-grid">{featureCards.map(card=><article className="marketing-feature-card" key={card.index}><img className="marketing-feature-art" src={boardShots.find(shot=>shot.scene===card.scene)?.src??"/site/board-showcase.png"} alt="" loading="lazy"/><span className="marketing-number">{card.index}</span><h3>{card.title}</h3><p>{card.text}</p><DemoLink scene={card.scene}>Посмотреть пример ↗</DemoLink></article>)}</div></section>
+    <section data-site-section-id="native-2" className="marketing-section marketing-container"><div className="marketing-section-head"><div><span className="marketing-eyebrow">Что внутри</span><h2>Инструменты для разных задач</h2></div></div><div className="marketing-feature-grid">{featureCards.map(card=><article className="marketing-feature-card" key={card.index}><span className="marketing-feature-mark" aria-hidden="true">{featureSymbols[Number(card.index)-1]}</span><span className="marketing-number">{card.index}</span><h3>{card.title}</h3><p>{card.text}</p><DemoLink scene={card.scene}>Посмотреть пример ↗</DemoLink></article>)}</div></section>
     {placed("before-3")}
-    <section data-site-section-id="native-3" className="marketing-section marketing-container"><div className="marketing-section-head"><div><span className="marketing-eyebrow">Отдельные инструменты</span><h2>Исследуйте без создания доски</h2><p>Открываются отдельно, без привязки к доске.</p></div></div><div className="marketing-tool-grid">{toolData.map(tool=><a href={tool.href} className="marketing-tool-card" key={tool.href}><img loading="lazy" src={tool.image} alt={"Пример инструмента: "+tool.name}/><div><span className="marketing-eyebrow">{tool.subject}</span><h3>{tool.name}</h3><p>{tool.text}</p><strong>Открыть инструмент ↗</strong></div></a>)}</div></section>
-   </>}
-   {page==="teachers"&&!copy?.replaceDefault&&<>
-    {placed("before-0")}
-    <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container marketing-split-hero"><div><span className="marketing-eyebrow">{copy?.eyebrow||"Для преподавателей"}</span><h1>{copy?.heading||<>Преподавайте так, <span>как удобно именно вам</span></>}</h1><p>{copy?.lead||"Каждый урок требует своего подхода. Создавайте объяснения, показывайте наглядные модели и работайте с учениками на интерактивной доске."}</p><DemoLink className="marketing-primary">Открыть демонстрацию ↗</DemoLink></div><figure className="marketing-teacher-scene">
-      <div className="marketing-teacher-window">
-       <div className="marketing-teacher-window-head"><span>Рабочее пространство Lektrus</span><span>01 / Подготовка</span></div>
-       <img src="/site/app-home.png" alt="Настоящий снимок рабочего стола преподавателя в Lektrus"/>
-      </div>
-      <div className="marketing-teacher-board-preview">
-       <img src="/site/board-math.png" alt="Подготовленный учебный материал по математике"/>
-       <div><small>Пример урока</small><strong>Объяснение и практика на одной доске</strong></div>
-      </div>
-      <figcaption>Настоящие экраны приложения: рабочий стол и подготовленный урок.</figcaption>
-     </figure></section>
-    {placed("before-1")}
-    <section data-site-section-id="native-1" className="marketing-section marketing-container"><div className="marketing-section-head"><div><span className="marketing-eyebrow">Подготовка урока</span><h2>Подготовьте урок и сохраните всё в одном месте</h2><p>Работайте с учебными материалами, схемами и предметными инструментами, а затем возвращайтесь к ним на следующих занятиях.</p></div></div><div className="marketing-story-grid">{teacherStories.map(item=><article key={item.number} className="marketing-story-card"><span className="marketing-number">{item.number}</span><h3>{item.title}</h3><p>{item.text}</p></article>)}</div></section>
-    {placed("before-2")}
-    <section data-site-section-id="native-2" className="marketing-section marketing-container marketing-feature-spotlight"><img src="/site/board-physics.png" loading="lazy" alt="Учебная доска с электрической цепью"/><div><span className="marketing-eyebrow">Наглядность в действии</span><h2>Сделайте сложное понятным</h2><p>Показывайте не только результат, но и ход решения. Объединяйте записи, схемы и задания на общем поле.</p><DemoLink scene="physics" className="marketing-secondary">Посмотреть урок ↗</DemoLink></div></section>
-   </>}
-   {page==="students"&&!copy?.replaceDefault&&<>
-    {placed("before-0")}
-    <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container marketing-students-intro"><span className="marketing-eyebrow">{copy?.eyebrow||"Для учеников"}</span><h1>{copy?.heading||<>Учиться легче, <span>когда всё видно</span></>}</h1><p>{copy?.lead||"Смотрите наглядные объяснения, разбирайте задания и пробуйте учебные инструменты самостоятельно. Выберите пример и откройте настоящую демонстрационную доску."}</p></section>
-    {placed("before-1")}
-    <section data-site-section-id="native-1" className="marketing-section marketing-container"><div className="marketing-section-head"><div><h2>Попробуйте разные учебные темы</h2><p>Выбранный пример можно открыть и исследовать на доске Lektrus.</p></div></div><div className="marketing-student-tabs" role="tablist" aria-label="Выбор предмета">{boardShots.map(shot=><button type="button" key={shot.scene} role="tab" id={"student-tab-"+shot.scene} aria-controls="marketing-student-panel" aria-selected={studentScene===shot.scene} className={studentScene===shot.scene?"is-active":""} onClick={()=>setStudentScene(shot.scene)}>{shot.subject}</button>)}</div><div className="marketing-student-demo" role="tabpanel" id="marketing-student-panel" aria-labelledby={"student-tab-"+selectedStudent.scene}><img src={selectedStudent.src} alt={"Пример доски Lektrus: "+selectedStudent.subject}/><div><span className="marketing-eyebrow">{selectedStudent.subject}</span><h3>{selectedStudent.title}</h3><p>{selectedStudent.description}</p><DemoLink scene={selectedStudent.scene} className="marketing-primary">Открыть интерактивный пример ↗</DemoLink></div></div></section>
-    {placed("before-2")}
-    <section data-site-section-id="native-2" className="marketing-section marketing-container"><div className="marketing-student-benefits">{["Смотри, как устроена тема","Пробуй инструменты на практике","Разбирайся в своём темпе"].map((title,i)=><div key={title}><span className="marketing-number">0{i+1}</span><h3>{title}</h3></div>)}</div></section>
+    <section data-site-section-id="native-3" className="marketing-section marketing-container"><div className="marketing-section-head"><div><span className="marketing-eyebrow">Отдельные инструменты</span><h2>Исследуйте без создания доски</h2><p>Открываются отдельно, без привязки к доске.</p></div></div><div className="marketing-tool-grid">{toolData.map((tool,i)=><a href={tool.href} className="marketing-tool-card" key={tool.href}><span className="marketing-tool-symbol" aria-hidden="true">{i===0?"◈":"⚗"}</span><div><span className="marketing-eyebrow">{tool.subject}</span><h3>{tool.name}</h3><p>{tool.text}</p><strong>Открыть инструмент ↗</strong></div></a>)}</div></section>
    </>}
    {page==="how"&&!copy?.replaceDefault&&<>
     {placed("before-0")}
     <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container"><span className="marketing-eyebrow">{copy?.eyebrow||"Посмотрите, как устроена работа в Lektrus"}</span><h1>{copy?.heading||<>Привычные действия <span>в удобном пространстве</span></>}</h1><p>{copy?.lead||"От подготовки урока до работы вместе с учениками. Пройдите четыре наглядных этапа."}</p></section>
     {placed("before-1")}
-    <div data-site-section-id="native-1" className="marketing-steps">{steps.map((step,i)=><section className="marketing-step" key={step.number} aria-labelledby={"marketing-step-"+i}><div className="marketing-container marketing-step-grid"><div><span className="marketing-step-index">Шаг {step.number} / 04</span><h2 id={"marketing-step-"+i}>{step.title}</h2><p>{step.text}</p>{i===2?<DemoLink className="marketing-primary">Попробовать на доске ↗</DemoLink>:null}</div><img src={step.image} alt={step.alt} loading={i===0?"eager":"lazy"}/></div></section>)}</div>
+    <div data-site-section-id="native-1" className="marketing-steps">{steps.map((step,i)=><section className="marketing-step" key={step.number} aria-labelledby={"marketing-step-"+i}><div className="marketing-container marketing-step-grid"><div><span className="marketing-step-index">Шаг {step.number} / 04</span><h2 id={"marketing-step-"+i}>{step.title}</h2><p>{step.text}</p>{i===2?<DemoLink className="marketing-primary">Попробовать на доске ↗</DemoLink>:null}</div>
+       <div className={"marketing-step-visual marketing-step-visual-"+i} aria-hidden="true"><span className="marketing-step-visual-index">{step.number}</span><div className="marketing-step-visual-card"><strong>{["Чистая доска","Материалы урока","Общий холст","Сохранённый результат"][i]}</strong><span>{["Идея → структура","Текст + схемы + инструменты","Объяснение + практика","Доска готова к продолжению"][i]}</span><div className="marketing-step-visual-track"><i/><i/><i/></div></div></div>
+      </div></section>)}</div>
    </>}
    {page==="pricing"&&!copy?.replaceDefault&&<>
     {placed("before-0")}
@@ -295,18 +277,30 @@ export default function LektrusPublicSite(){
     {placed("before-0")}
     <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container marketing-about-intro"><span className="marketing-eyebrow">{copy?.eyebrow||"О Lektrus"}</span><h1>{copy?.heading||<>Больше возможностей <span>для современного обучения</span></>}</h1><p>{copy?.lead||"Lektrus объединяет интерактивную доску, учебные инструменты и совместную работу. Вместо разрозненных материалов вы получаете единое пространство, где можно объяснять, исследовать и заниматься вместе."}</p><DemoLink className="marketing-primary">Посмотреть Lektrus в деле ↗</DemoLink></section>
     {placed("before-1")}
-    <section data-site-section-id="native-1" className="marketing-section marketing-container marketing-feature-spotlight"><img src="/site/board-showcase.png" alt="Учебный холст Lektrus с интерактивными объектами"/><div><span className="marketing-eyebrow">Один продукт, разные задачи</span><h2>Не только показывайте. Действуйте</h2><p>Рисуйте схемы, работайте с документами, используйте предметные модели и возвращайтесь к подготовленным материалам. Возможности платформы помогают проводить объяснения и практические занятия на одном поле.</p><NavLink id="features" title="Изучить возможности ↗"/></div></section>
+    <section data-site-section-id="native-1" className="marketing-section marketing-container marketing-feature-spotlight marketing-about-spotlight"><div className="marketing-about-statement"><span>Идея Lektrus</span><strong>Объяснять.<br/>Исследовать.<br/><em>Создавать.</em></strong><small>В одном учебном пространстве.</small></div><div><span className="marketing-eyebrow">Один продукт, разные задачи</span><h2>Не только показывайте. Действуйте</h2><p>Рисуйте схемы, работайте с документами, используйте предметные модели и возвращайтесь к подготовленным материалам. Возможности платформы помогают проводить объяснения и практические занятия на одном поле.</p><NavLink id="features" title="Изучить возможности ↗"/></div></section>
     {placed("before-2")}
     <section data-site-section-id="native-2" className="marketing-section marketing-container marketing-about-advantages">
       <div className="marketing-about-aside">
        <span className="marketing-eyebrow">Преимущества проекта</span>
        <h2>Больше, чем цифровая доска</h2>
        <p>От подготовки урока до самостоятельного исследования: разные задачи решаются в одной учебной среде.</p>
-       <img src="/site/board-chemistry.png" alt="Пример предметного инструмента Lektrus" loading="lazy"/>
+       <div className="marketing-about-aside-note"><span>LEKTRUS / МИССИЯ</span><strong>Делать знания наглядными и доступными.</strong></div>
       </div>
       <div className="marketing-about-list">{advantages.map(a=><article key={a.number}>
        <span className="marketing-number">{a.number}</span><div><h3>{a.title}</h3><p>{a.text}</p></div>
       </article>)}</div>
+      <div className="marketing-about-audience marketing-about-audience-teachers">
+       <div className="marketing-about-audience-head"><span className="marketing-eyebrow">Для преподавателей</span><h2>Удобно готовить. Понятно объяснять.</h2><p>Создавайте уроки в собственном темпе, сохраняйте материалы и возвращайтесь к ним на следующих занятиях.</p></div>
+       <div className="marketing-about-teacher-journey">{teacherStories.map(story=><article key={story.number}><span className="marketing-number">{story.number}</span><h3>{story.title}</h3><p>{story.text}</p></article>)}</div>
+       <DemoLink scene="physics" className="marketing-secondary">Посмотреть пример занятия ↗</DemoLink>
+      </div>
+      <div className="marketing-about-audience marketing-about-audience-students">
+       <div className="marketing-about-audience-head"><span className="marketing-eyebrow">Для учеников</span><h2>Увидеть. Разобраться. Попробовать.</h2><p>Наглядные объяснения, самостоятельная практика и совместная работа. Можно выбрать тему и сразу открыть интерактивный пример.</p></div>
+       <div className="marketing-about-student-steps">
+        {["Смотри, как устроена тема","Пробуй инструменты на практике","Разбирайся в своём темпе"].map((title,i)=><div key={title}><span>0{i+1}</span><strong>{title}</strong></div>)}
+       </div>
+       <div className="marketing-about-subject-links" aria-label="Открыть учебный пример">{boardShots.map(shot=><DemoLink key={shot.scene} scene={shot.scene}>{shot.subject} ↗</DemoLink>)}</div>
+      </div>
      </section>
     {placed("before-3")}
     <section data-site-section-id="native-3" className="marketing-last-cta marketing-container"><h2>Посмотрите, как всё устроено</h2><p>Откройте живую демонстрационную доску без регистрации.</p><DemoLink className="marketing-primary">Попробовать Lektrus ↗</DemoLink></section>

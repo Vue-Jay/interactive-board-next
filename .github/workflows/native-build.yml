@@ -95,7 +95,9 @@ jobs:
 
   ios:
     name: Compile iOS simulator application
-    runs-on: macos-26
+    # The standard macOS 26 ARM pool can remain unallocated during runner-capacity incidents.
+    # Intel still runs the actual iOS Simulator Xcode build, without skipping validation.
+    runs-on: macos-26-intel
     timeout-minutes: 45
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
