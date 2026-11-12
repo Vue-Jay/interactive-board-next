@@ -872,3 +872,14 @@ body:has(.marketing-site:not(.site-preview)) .site-editable-block:hover{outline:
  .marketing-site .marketing-header-inner{padding-inline:14px}
 }
 @media(prefers-reduced-motion:reduce){.marketing-site .marketing-sidebar-content{transition:none}}
+
+/* Keep the closed mobile drawer out of the accessibility/focus and hit-test tree.
+   Off-screen transforms alone are insufficient in browser visibility checks. */
+@media(max-width:920px){
+ .marketing-site .marketing-header:not(.is-expanded) .marketing-sidebar-content{
+  display:none;visibility:hidden;pointer-events:none;
+ }
+ .marketing-site .marketing-header.is-expanded .marketing-sidebar-content{
+  display:flex;visibility:visible;pointer-events:auto;
+ }
+}
