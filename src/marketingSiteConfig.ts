@@ -27,8 +27,8 @@ export type SiteDocument={version:1;theme:SiteTheme;navigation:SiteNavItem[];pag
 const defaults:SiteNavItem[]=[
  {id:"home",title:"Главная",hidden:false},
  {id:"features",title:"Возможности",hidden:false},
- {id:"teachers",title:"Учителям",hidden:false},
- {id:"students",title:"Ученикам",hidden:false},
+ {id:"teachers",title:"Учителям",hidden:true},
+ {id:"students",title:"Ученикам",hidden:true},
  {id:"how",title:"Как это работает",hidden:false},
  {id:"pricing",title:"Тарифы",hidden:false},
  {id:"about",title:"О Lektrus",hidden:false},
@@ -132,7 +132,7 @@ export function normalizeSiteDocument(raw:unknown):SiteDocument{
   const item=object(rawItem),id=slug(item.id),base=byId.get(id);
   if(!base||used.has(id))continue;
   used.add(id);
-  nav.push({id,title:clean(item.title,54)||base.title,hidden:id==="home"?false:item.hidden===true});
+  nav.push({id,title:clean(item.title,54)||base.title,hidden:id==="home"?false:id==="teachers"||id==="students"?true:item.hidden===true});
  }
  for(const [id,base] of byId)if(!used.has(id))nav.push({...base});
  result.navigation=nav;
