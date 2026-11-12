@@ -13,7 +13,7 @@ for(const id of ["home","features","tools","how","pricing","about","help"]){
 }
 assert.doesNotMatch(site,/\{id:"(?:teachers|students)",title:/,"former teacher/student tabs must be absent from navigation");
 for(const text of [
- "Одна платформа","для преподавания и обучения",
+ "Lektrus","для наглядных уроков",
  "Возможности ","доски Lektrus",
  "Инструменты ","без доски",
  "Преподавателям","Готовьте материалы",
@@ -26,6 +26,18 @@ for(const text of [
 ]){
  assert.ok(site.includes(text),"missing approved headline: "+text);
 }
+
+// Desktop sidebar follows the approved composition: permanent left nav, central
+// text, real screenshot slideshow on the right, with tool shortcuts in the rail.
+assert.ok(site.includes("marketing-sidebar-content")&&site.includes("marketing-sidebar-tools"),"navigation must be a separate left sidebar with standalone tools");
+assert.ok(site.includes('siteNavigation.map(item=><NavLink')&&site.includes('<SiteMenuIcon name={id}/>'),"all seven pages, including Home, must have visible branded navigation icons");
+assert.ok(site.includes('href="/tools/atlas"')&&site.includes('href="/tools/laboratory"'),"sidebar must link to both real standalone tools");
+assert.ok(site.includes("marketing-hero-split")&&site.includes("marketing-hero-copy"),"homepage must position text and real captures as sibling columns");
+assert.ok(css.includes(".marketing-site .marketing-hero-split")&&css.includes("--marketing-sidebar-width")&&css.includes(".marketing-sidebar-content"),"full-width desktop sidebar and split layout styles must exist");
+assert.ok(site.includes("marketing-sidebar-backdrop")&&css.includes(".marketing-header.is-expanded .marketing-sidebar-content"),"small screens must open and close the same nav using an accessible drawer");
+assert.ok(site.includes('event.key==="Escape"')&&site.includes('aria-controls="marketing-sidebar-content"'),"drawer must support Escape and accessible controls");
+assert.doesNotMatch(site,/marketing-showcase-window|marketing-showcase-caption|marketing-showcase-controls/,"the automatic capture field must stay label-free and control-free");
+
 assert.doesNotMatch(site,/id:"subjects"/,"the marketing menu must not add a subjects page");
 assert.ok(site.includes('href:"/tools/atlas"')&&site.includes('href:"/tools/laboratory"'),"standalone public tools must remain accessible");
 assert.ok(site.includes('"/demo/board?scene="'),"example links must lead to the actual demo board");
