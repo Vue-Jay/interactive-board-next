@@ -72,9 +72,15 @@ export default function LektrusSiteBuilder(){
     setSelected(event.data.id);setInspector("block");setPanelOpen(true);
    }
    if(event.data?.type==="lektrus:site-select-page"){setSelected(null);setInspector("page");setPanelOpen(true)}
+   if(event.data?.type==="lektrus:site-navigate"&&typeof event.data.page==="string"&&doc.navigation.some(item=>item.id===event.data.page)){
+    setActive(event.data.page);setSelected(null);setInspector("page");
+   }
+   if(event.data?.type==="lektrus:site-preview-link"&&typeof event.data.href==="string"){
+    setNotice("Это ссылка на другую страницу: "+event.data.href.slice(0,120)+". Переход отключён в предпросмотре.");
+   }
   };
   window.addEventListener("message",choose);return()=>window.removeEventListener("message",choose);
- },[]);
+ },[doc.navigation]);
  const change=(edit:(next:SiteDocument)=>void)=>{
   undo.current.push(clone(doc));if(undo.current.length>60)undo.current.shift();
   redo.current=[];const next=clone(doc);edit(next);setDoc(normalizeSiteDocument(next));setSaved("draft");setNotice("");
