@@ -219,4 +219,28 @@ assert.ok(builder.includes("setSelected(value.block)")&&builder.includes("setSel
 assert.ok(site.includes('lektrus:site-editor-command')&&site.includes("commandFromKeyboard(event)"),"the preview iframe must forward actual keyboard events");
 assert.ok(site.includes("site-canvas-selection-actions"),"the iframe needs visible delete, restore, undo and redo controls");
 
+
+// Persistent dimension controls: responsive 35–100% width; non-clipping min height.
+const resizeComponent=read("src/SiteResizableBlock.tsx");
+assert.ok(resizeComponent.includes("setPointerCapture")&&resizeComponent.includes("onPointerMove={move}")&&resizeComponent.includes("lektrus:site-resize-block"),"canvas must support live pointer resize across the iframe");
+assert.ok(builder.includes('site-builder-dimensions')&&builder.includes('event.data?.type==="lektrus:site-resize-block"'),"width/height inspector and parent resize handler are required");
+const dimensionsDoc=model.defaultSiteDocument();
+const resized=model.newSiteBlock("text");
+resized.style.width=72;
+resized.style.minHeight=360;
+dimensionsDoc.pages.home={...oldDocument.pages.home,blocks:[resized]};
+let dims=model.normalizeSiteDocument(dimensionsDoc).pages.home.blocks[0].style;
+assert.equal(dims.width,72,"published block width must persist");
+assert.equal(dims.minHeight,360,"published block minimum height must persist");
+resized.style.width=2;
+resized.style.minHeight=9999;
+dims=model.normalizeSiteDocument(dimensionsDoc).pages.home.blocks[0].style;
+assert.equal(dims.width,35,"unreasonably narrow block width must be clamped");
+assert.equal(dims.minHeight,1200,"unreasonably tall block size must be clamped");
+resized.style.width=100;
+resized.style.minHeight=0;
+dims=model.normalizeSiteDocument(dimensionsDoc).pages.home.blocks[0].style;
+assert.equal(dims.width,100);
+assert.equal(dims.minHeight,0);
+
 console.log("Lektrus marketing site: selected copy, 8 sections, real screenshots, demo links, pricing, accessibility and responsive styling verified.");
