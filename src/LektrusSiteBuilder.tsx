@@ -245,6 +245,7 @@ export default function LektrusSiteBuilder(){
  const runCommand=(command:StudioCommand):boolean=>{
   if(access!=="allowed"||busy)return false;
   if(command==="delete")return removeSelection();
+  if(command==="restore"){if(!selectedObject||!doc.objects[selectedObject]?.hidden)return false;restoreSelectedObject();return true}
   if(command==="undo"){if(!undo.current.length)return false;history("undo");return true}
   if(command==="redo"){if(!redo.current.length)return false;history("redo");return true}
   if(command==="save"){
