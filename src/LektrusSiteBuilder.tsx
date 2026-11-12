@@ -213,7 +213,7 @@ export default function LektrusSiteBuilder(){
    next.customPages.push({id,title,eyebrow:"LEKTRUS",heading:title,lead:"Расскажите о вашем разделе.",blocks:[]});
    next.navigation.push({id,title,hidden:false});
   });
-  setNewTitle("");setActive(id);setSelected(null);setInspector("page");
+  setNewTitle("");setActive(id);setSelected(null);setSelectedObject(null);setInspector("page");
  };
  const duplicatePage=()=>{
   if(doc.customPages.length>=18){setNotice("Достигнут лимит: 18 дополнительных страниц.");return}
@@ -227,7 +227,7 @@ export default function LektrusSiteBuilder(){
     blocks:sourceBlocks.map(block=>({...structuredClone(block),id:crypto.randomUUID()}))});
    next.navigation.push({id,title,hidden:false});
   });
-  setActive(id);setSelected(null);setInspector("page");setPanelOpen(true);
+  setActive(id);setSelected(null);setSelectedObject(null);setInspector("page");setPanelOpen(true);
   if(originalBuiltin)setNotice("Создана независимая страница с редактируемыми блоками. Уникальный исходный макет этой вкладки остался без изменений.");
  };
  const removePage=()=>{
@@ -235,7 +235,7 @@ export default function LektrusSiteBuilder(){
   const id=active;change(next=>{
    next.customPages=next.customPages.filter(p=>p.id!==id);
    next.navigation=next.navigation.filter(x=>x.id!==id);
-  });setActive("home");setSelected(null);
+  });setActive("home");setSelected(null);setSelectedObject(null);
  };
  const renameNav=(title:string)=>change(next=>{
   next.navigation=next.navigation.map(item=>item.id===active?{...item,title:title.slice(0,54)}:item);
@@ -334,7 +334,7 @@ export default function LektrusSiteBuilder(){
     </section>
    </aside>
    <main className="site-builder-center"><div className="site-builder-previewbar"><span><b className="site-builder-live-dot"/> Живой предпросмотр <span className="site-builder-preview-separator">/</span> {size[device].label} <span className="site-builder-preview-separator">/</span> {activePage.title}</span>
-     <div className="site-builder-preview-actions"><button type="button" className={interactive?"is-active":""} aria-pressed={interactive} onClick={()=>setInteractive(v=>!v)}>{interactive?"◉ Проверить клики":"✥ Выбирать объекты"}</button><button type="button" onClick={()=>{setFocusMode(v=>!v);setPanelOpen(false)}}>{focusMode?"⊟ Вернуться в редактор":"⛶ Фокус на сайте"}</button><button type="button" onClick={()=>{setPanelOpen(v=>!v);setFocusMode(false)}} aria-expanded={panelOpen} title="Показать свойства">⚙ Свойства</button></div>
+     <div className="site-builder-preview-actions"><button type="button" className={interactive?"is-active":""} aria-pressed={interactive} onClick={()=>setInteractive(v=>!v)}>{interactive?"✥ Редактировать объекты":"▶ Проверять клики"}</button><button type="button" onClick={()=>{setFocusMode(v=>!v);setPanelOpen(false)}}>{focusMode?"⊟ Вернуться в редактор":"⛶ Фокус на сайте"}</button><button type="button" onClick={()=>{setPanelOpen(v=>!v);setFocusMode(false)}} aria-expanded={panelOpen} title="Показать свойства">⚙ Свойства</button></div>
     </div>
     <div className="site-builder-stage"><iframe key={active} ref={frame} title="Предпросмотр сайта Lektrus" src={previewSrc} style={{width:size[device].width}} onLoad={()=>frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc,selectedId:selected,objectId:selectedObject,interactive},window.location.origin)}/></div>
    </main>
