@@ -69,6 +69,8 @@ with sync_playwright() as p:
     page.wait_for_function("document.body.dataset.lastCommand === 'delete'")
     assert not heading.is_visible()
     page.keyboard.press("Control+z")
+    page.wait_for_function("document.body.dataset.lastCommand === 'undo'", timeout=10000)
+    heading.wait_for(state="visible", timeout=10000)
     assert heading.is_visible(), "Undo after toolbar deletion should restore original content"
 
     # Select the inserted block via its dedicated affordance and stretch it.
