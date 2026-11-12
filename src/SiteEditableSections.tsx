@@ -18,7 +18,7 @@ function SiteBlockView({block}:{block:SiteBlock}){
  return <section className="site-block"><div className="marketing-container site-block-cta"><h2>{block.title}</h2><p>{block.text}</p>
   {href!=="#"&&<a className="marketing-primary" href={href}>Перейти ↗</a>}</div></section>;
 }
-export function SiteEditableBlocks({blocks}:{blocks:SiteBlock[]}){return <>{blocks.map(block=><SiteBlockView key={block.id} block={block}/>)}</>}
+export function SiteEditableBlocks({blocks}:{blocks:SiteBlock[]}){return <>{blocks.map(block=><div className="site-editable-block" data-site-block-id={block.id} key={block.id}><SiteBlockView block={block}/></div>)}</>}
 export function SiteCustomPage({page}:{page:SitePage}){return <>
  <section className="marketing-page-hero marketing-container site-custom-hero"><span className="marketing-eyebrow">{page.eyebrow||"LEKTRUS"}</span><h1>{page.heading||page.title}</h1>{page.lead&&<p>{page.lead}</p>}</section>
  <SiteEditableBlocks blocks={page.blocks}/>
