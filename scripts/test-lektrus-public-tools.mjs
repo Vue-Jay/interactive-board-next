@@ -23,8 +23,8 @@ assert.match(app,/if \(route\.kind === "tool"\) \{ setBoardLoading\(false\); ret
  "opening a standalone tool must not trigger board loading");
 assert.match(tools,/lazy\(\(\)=>import\("\.\/LektrusMapAtlas"\)\)/);
 assert.match(tools,/lazy\(\(\)=>import\("\.\/LektrusChemistryBenchEditor"\)\)/);
-assert.match(site,/href:"\/tools\/atlas"/);
-assert.match(site,/href:"\/tools\/laboratory"/);
+assert.match(site,/href="\/tools\/atlas"/);
+assert.match(site,/href="\/tools\/laboratory"/);
 assert.doesNotMatch(site,/page==="tools"&&!copy\?\.replaceDefault/,"standalone tools should not have a redundant public tab");
 assert.match(site,/marketing-sidebar-tools/,"standalone tools belong in the persistent sidebar");
 assert.match(site,/Инструменты<\/span>/,"sidebar tool group should use the short title without additional labels");
