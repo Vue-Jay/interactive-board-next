@@ -5,7 +5,7 @@ export const SITE_PREVIEW_MESSAGE="lektrus:marketing-site-preview";
 export const BUILTIN_SITE_PAGES=["home","features","teachers","students","how","pricing","about","help"] as const;
 export type SiteBlockKind="text"|"image"|"cards"|"gallery"|"cta"|"divider";
 export type SiteBlock={id:string;kind:SiteBlockKind;title:string;text:string;image:string;href:string;items:string[]};
-export type SitePage={id:string;title:string;eyebrow:string;heading:string;lead:string;blocks:SiteBlock[]};
+export type SitePage={id:string;title:string;eyebrow:string;heading:string;lead:string;replaceDefault?:boolean;blocks:SiteBlock[]};
 export type SiteNavItem={id:string;title:string;hidden:boolean};
 export type SiteTheme={accent:string;background:string;surface:string;ink:string;radius:number;maxWidth:number};
 export type SiteDocument={version:1;theme:SiteTheme;navigation:SiteNavItem[];pages:Record<string,SitePage>;customPages:SitePage[]};
@@ -29,7 +29,7 @@ export const newSiteBlock=(kind:SiteBlockKind="text"):SiteBlock=>({
  id:crypto.randomUUID(),kind,
  title:kind==="cta"?"Попробуйте Lektrus":kind==="gallery"?"Учебные инструменты":kind==="image"?"Снимок приложения":"Новый блок",
  text:kind==="text"?"Здесь можно написать свой текст.":kind==="cta"?"Начните работу с интерактивной доской.":"",
- image:"/site/board-math.png",href:"/app",items:["/site/board-math.png","/site/board-chemistry.png","/site/board-geometry.png"]
+ image:"/site/board-math.png",href:"/app",items:kind==="cards"?["Первое преимущество","Вторая возможность","Третий шаг"]:["/site/board-math.png","/site/board-chemistry.png","/site/board-geometry.png"]
 });
 export const newSitePage=(id:string,title="Новая страница"):SitePage=>({id,title,eyebrow:"LEKTRUS",heading:title,lead:"Расскажите посетителям об этом разделе.",blocks:[newSiteBlock("text")]});
 export const defaultSiteDocument=():SiteDocument=>({
@@ -59,7 +59,7 @@ export function normalizeSiteDocument(raw:unknown):SiteDocument{
  const parsePage=(value:unknown,id:string,defaultTitle=""):SitePage=>{
   const v=object(value);
   return {id,title:clean(v.title,64)||defaultTitle,eyebrow:clean(v.eyebrow,70),
-   heading:clean(v.heading,180),lead:clean(v.lead,1300),
+   heading:clean(v.heading,180),lead:clean(v.lead,1300),replaceDefault:v.replaceDefault===true,
    blocks:Array.isArray(v.blocks)?v.blocks.slice(0,40).map(parseBlock).filter((x):x is SiteBlock=>Boolean(x)):[]};
  };
  const rawPages=object(data.pages);
