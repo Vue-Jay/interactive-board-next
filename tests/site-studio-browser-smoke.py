@@ -48,10 +48,63 @@ with sync_playwright() as p:
     assert document["pages"]["home"]["blocks"][1]["anchor"] == "before-2"
     assert document["objects"], "Object override was not serialized into the draft"
 
+    # Keyboard commands travel out of the iframe to the shared site editor.
+    heading.click()
+    page.keyboard.press("Delete")
+    page.wait_for_function("document.body.dataset.lastCommand === 'delete'")
+    assert not heading.is_visible(), "Delete should hide the selected native site element"
+    assert page.evaluate("window.getSiteDraft().objects[window.lastObjectId].hidden") is True
+
+    page.keyboard.press("Control+z")
+    page.wait_for_function("document.body.dataset.lastCommand === 'undo'")
+    assert heading.is_visible(), "Ctrl+Z should bring the hidden object back"
+    page.keyboard.press("Control+Shift+z")
+    page.wait_for_function("document.body.dataset.lastCommand === 'redo'")
+    assert not heading.is_visible(), "Ctrl+Shift+Z should reapply deletion"
+    frame.locator(".site-canvas-selection-actions .site-canvas-restore-button").click()
+    page.wait_for_function("document.body.dataset.lastCommand === 'restore'")
+    assert heading.is_visible(), "Floating toolbar must restore hidden objects"
+
+    frame.locator(".site-canvas-selection-actions .site-canvas-delete-button").click()
+    page.wait_for_function("document.body.dataset.lastCommand === 'delete'")
+    assert not heading.is_visible()
+    page.keyboard.press("Control+z")
+    assert heading.is_visible(), "Undo after toolbar deletion should restore original content"
+
+    # Select the inserted block via its dedicated affordance and stretch it.
+    inserted_block = frame.locator(".site-editable-block").filter(has_text="Перенесённый блок")
+    inserted_block.locator(".site-block-select-button").click()
+    frame.locator(".site-editable-block[data-site-selected=true] .site-block-resize-both").wait_for()
+    grip = frame.locator(".site-editable-block[data-site-selected=true] .site-block-resize-both")
+    handle = grip.bounding_box()
+    assert handle
+    page.mouse.move(handle["x"]+handle["width"]/2,handle["y"]+handle["height"]/2)
+    page.mouse.down()
+    page.mouse.move(handle["x"]-115,handle["y"]+95,steps=8)
+    page.mouse.up()
+    page.wait_for_function("Boolean(document.body.dataset.lastResize)", timeout=10000)
+    dimensions = page.evaluate("""() => {
+      const b=window.getSiteDraft().pages.home.blocks.find(b=>b.title==="Перенесённый блок");
+      return [b.style.width,b.style.minHeight]
+    }""")
+    assert 35 <= dimensions[0] < 100, f"Width handle did not reduce block width: {dimensions}"
+    assert 0 < dimensions[1] <= 1200, f"Height handle did not increase block height: {dimensions}"
+    page.screenshot(path=str(root / "04-resized-block.png"), full_page=True)
+    page.keyboard.press("Control+z")
+    page.wait_for_function("""() => {
+      const b=window.getSiteDraft().pages.home.blocks.find(b=>b.title==="Перенесённый блок");
+      return b && b.style.width === undefined
+    }""",timeout=10000)
+    page.keyboard.press("Control+y")
+    page.wait_for_function("""() => {
+      const b=window.getSiteDraft().pages.home.blocks.find(b=>b.title==="Перенесённый блок");
+      return b && typeof b.style.width === "number" && b.style.width < 100
+    }""",timeout=10000)
+
     frame.locator('[data-site-section-id="native-0"]').scroll_into_view_if_needed()
     page.locator("#site").evaluate("(node) => {node.style.width='390px';node.style.height='844px'}")
     frame.locator(".marketing-site").wait_for()
-    page.screenshot(path=str(root / "04-phone.png"), full_page=True)
+    page.screenshot(path=str(root / "05-phone.png"), full_page=True)
     browser.close()
 
-print("Site studio browser PASS: native sections, real carousel, cross-frame DnD, object selection/editing/style, kit gallery and phone viewport.")
+print("Site studio browser PASS: native sections, real carousel, cross-frame DnD, object selection/editing, keyboard delete undo/redo, toolbar restore, pointer width/height resize, kit gallery and phone viewport.")
