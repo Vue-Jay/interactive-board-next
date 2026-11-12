@@ -2,7 +2,7 @@ import {isRemoteBackendEnabled,remoteRequest} from "./backend";
 
 export const SITE_DRAFT_KEY="lektrus.marketing-site.draft.v1";
 export const SITE_PREVIEW_MESSAGE="lektrus:marketing-site-preview";
-export const BUILTIN_SITE_PAGES=["home","features","teachers","students","how","pricing","about","help"] as const;
+export const BUILTIN_SITE_PAGES=["home","features","tools","teachers","students","how","pricing","about","help"] as const;
 export type SiteBlockKind="text"|"image"|"cards"|"gallery"|"cta"|"divider"|"faq"|"stats"|"quote"|"video"|"timeline"|"comparison"|"logos"|"spacer"|"checklist"|"button-row";
 export type SiteBlockStyle={tone:"plain"|"soft"|"accent"|"dark";align:"left"|"center";spacing:"compact"|"normal"|"airy";columns:2|3|4;imageSide:"left"|"right";width?:number;minHeight?:number};
 export const DEFAULT_SITE_BLOCK_STYLE:SiteBlockStyle={tone:"plain",align:"left",spacing:"normal",columns:3,imageSide:"left"};
@@ -27,6 +27,7 @@ export type SiteDocument={version:1;theme:SiteTheme;navigation:SiteNavItem[];pag
 const defaults:SiteNavItem[]=[
  {id:"home",title:"Главная",hidden:false},
  {id:"features",title:"Возможности",hidden:false},
+ {id:"tools",title:"Инструменты",hidden:false},
  {id:"teachers",title:"Учителям",hidden:true},
  {id:"students",title:"Ученикам",hidden:true},
  {id:"how",title:"Как это работает",hidden:false},
@@ -134,7 +135,14 @@ export function normalizeSiteDocument(raw:unknown):SiteDocument{
   used.add(id);
   nav.push({id,title:clean(item.title,54)||base.title,hidden:id==="home"?false:id==="teachers"||id==="students"?true:item.hidden===true});
  }
- for(const [id,base] of byId)if(!used.has(id))nav.push({...base});
+ for(const [id,base] of byId)if(!used.has(id)){
+  if(id==="tools"){
+   // Add the newly introduced tab next to Features in existing published documents
+   // without disturbing a deliberately customized navigation order.
+   const index=nav.findIndex(item=>item.id==="features");
+   nav.splice(index>=0?index+1:nav.length,0,{...base});
+  }else nav.push({...base});
+ }
  result.navigation=nav;
  const rawObjects=object(data.objects),keys=Object.keys(rawObjects).slice(0,1000);
  for(const key of keys){
