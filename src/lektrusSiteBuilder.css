@@ -242,3 +242,14 @@
 @media(max-width:1100px){.site-builder .site-builder-selection-label{max-width:175px}.site-builder .site-builder-selection-toolbar button{padding:8px 9px;font-size:10px}}
 @media(max-width:600px){.site-builder .site-builder-selection-toolbar{gap:6px;padding:9px}.site-builder .site-builder-selection-label{min-width:100px;max-width:100%;flex-basis:100%}.site-builder .site-builder-selection-toolbar button{flex:1;padding:8px 4px;font-size:9px}.site-builder .site-builder-shortcuts-panel{padding:10px 8px}}
 @media(prefers-reduced-motion:reduce){.site-builder .site-builder-selection-toolbar button{transition:none}}
+
+
+/* Dimension controls share the same inspector as each editable site block. */
+.site-builder-dimensions{display:grid;gap:12px;padding:16px;border:1px solid #c5d9f4;border-radius:14px;background:linear-gradient(140deg,#f1f7ff,#fff);margin-top:7px}
+.site-builder-dimensions h3{margin:0;color:#285383;font-size:12px;font-weight:850}
+.site-builder-dimensions p{font-size:10px;line-height:1.6;color:#7186a0;margin:0}
+.site-builder-size-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.site-builder-dimensions input[type=number]{min-width:0;width:100%;padding:9px;border:1px solid #cbdced;border-radius:9px}
+.site-builder-dimensions input[type=range]{width:100%;min-width:0;accent-color:#2469d8;cursor:ew-resize}
+.site-builder-dimensions .site-builder-neutral{border:1px solid #c1d7f0;background:#fff;color:#38679f;border-radius:9px;padding:10px}
+@media(max-width:520px){.site-builder-size-grid{grid-template-columns:1fr}}
