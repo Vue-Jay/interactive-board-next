@@ -173,6 +173,23 @@ export default function LektrusSiteBuilder(){
    if(event.data?.type==="lektrus:site-navigate"&&typeof event.data.page==="string"&&doc.navigation.some(item=>item.id===event.data.page)){
     setActive(event.data.page);setSelected(null);setSelectedObject(null);setInspector("page");
    }
+   if(event.data?.type==="lektrus:site-resize-block"&&typeof event.data.id==="string"){
+    const item=activePage.blocks.find(block=>block.id===event.data.id);
+    const width=event.data.width,height=event.data.minHeight;
+    if(item&&typeof width==="number"&&Number.isFinite(width)&&width>=35&&width<=100&&
+      typeof height==="number"&&Number.isFinite(height)&&height>=0&&height<=1200){
+     const w=Math.round(width),h=Math.round(height);
+     if(w!==(item.style.width??100)||h!==(item.style.minHeight??0)){
+      change(next=>{
+       const current=basePage(next,active);
+       const blocks=current.blocks.map(block=>block.id===item.id?{...block,style:{...block.style,width:w,minHeight:h}}:block);
+       if(builtin.has(active))next.pages[active]={...current,blocks};
+       else next.customPages=next.customPages.map(page=>page.id===active?{...current,blocks}:page);
+      });
+      setSelected(item.id);setSelectedObject(null);setInspector("block");setPanelOpen(true);
+     }
+    }
+   }
    if(event.data?.type==="lektrus:site-editor-command"&&typeof event.data.command==="string"&&["undo","redo","delete","restore","escape","save"].includes(event.data.command))runCommand(event.data.command as StudioCommand);
    if(event.data?.type==="lektrus:site-preview-link"&&typeof event.data.href==="string"){
     setNotice("Это ссылка на другую страницу: "+event.data.href.slice(0,120)+". Переход отключён в предпросмотре.");
@@ -439,6 +456,17 @@ export default function LektrusSiteBuilder(){
         activeBlock.kind==="checklist"?"Пункты списка (по одному на строку)":"Карточки (каждая с новой строки)"
       }<textarea rows={8} value={activeBlock.items.join("\n")} onChange={e=>patchBlock({items:e.target.value.split("\n").slice(0,12)})}/></label>}
       {["image","cta"].includes(activeBlock.kind)&&<label>Текст кнопки<input value={activeBlock.buttonLabel} maxLength={45} onChange={e=>patchBlock({buttonLabel:e.target.value})}/></label>}
+      <div className="site-builder-dimensions">
+        <h3>Размер блока</h3>
+        <p>Растягивай синие маркеры выделенного блока прямо на странице. Высота минимальная, содержимое не обрежется.</p>
+        <div className="site-builder-size-grid">
+         <label>Ширина, %<input type="number" min={35} max={100} step={1} value={activeBlock.style.width??100} onChange={e=>{const value=Number(e.target.value);if(Number.isFinite(value))patchBlock({style:{...activeBlock.style,width:Math.max(35,Math.min(100,value))}})}}/></label>
+         <label>Мин. высота, px<input type="number" min={0} max={1200} step={10} value={activeBlock.style.minHeight??0} onChange={e=>{const value=Number(e.target.value);if(Number.isFinite(value))patchBlock({style:{...activeBlock.style,minHeight:Math.max(0,Math.min(1200,value))}})}}/></label>
+        </div>
+        <label>Ширина <input type="range" min={35} max={100} step={1} value={activeBlock.style.width??100} onChange={e=>patchBlock({style:{...activeBlock.style,width:Number(e.target.value)}})}/></label>
+        <label>Минимальная высота <input type="range" min={0} max={1200} step={10} value={activeBlock.style.minHeight??0} onChange={e=>patchBlock({style:{...activeBlock.style,minHeight:Number(e.target.value)}})}/></label>
+        <button type="button" className="site-builder-neutral" onClick={()=>{const style={...activeBlock.style};delete style.width;delete style.minHeight;patchBlock({style})}}>Сбросить размеры (авто)</button>
+       </div>
       <div className="site-builder-appearance"><h3>Оформление блока</h3>
        <label>Стиль фона<select value={activeBlock.style?.tone??DEFAULT_SITE_BLOCK_STYLE.tone} onChange={e=>patchBlock({style:{...activeBlock.style,tone:e.target.value as SiteBlockStyle["tone"]}})}><option value="plain">Прозрачный</option><option value="soft">Мягкий</option><option value="accent">Акцентный</option><option value="dark">Тёмный</option></select></label>
        <label>Выравнивание<select value={activeBlock.style?.align??"left"} onChange={e=>patchBlock({style:{...activeBlock.style,align:e.target.value as SiteBlockStyle["align"]}})}><option value="left">По левому краю</option><option value="center">По центру</option></select></label>
