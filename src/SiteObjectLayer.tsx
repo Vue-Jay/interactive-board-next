@@ -4,8 +4,10 @@ import type {SiteDocument,SiteObjectPatch} from "./marketingSiteConfig";
 export type SiteObjectInfo={id:string;tag:string;label:string;text:string;src:string;alt:string;href:string;canText:boolean};
 const tags=new Set(["H1","H2","H3","H4","H5","P","SPAN","SMALL","STRONG","B","A","BUTTON","IMG","SECTION","ARTICLE","FIGURE","BLOCKQUOTE","SUMMARY","LI","DT","DD","DIV","NAV","FOOTER","HEADER"]);
 const friendly:Record<string,string>={H1:"Главный заголовок",H2:"Заголовок",H3:"Подзаголовок",P:"Текст",SPAN:"Фрагмент текста",SMALL:"Подпись",A:"Ссылка",BUTTON:"Кнопка",IMG:"Изображение",SECTION:"Секция",ARTICLE:"Карточка",FIGURE:"Иллюстрация",DIV:"Контейнер",NAV:"Навигация",LI:"Пункт списка",STRONG:"Выделенный текст",SUMMARY:"Вопрос",BLOCKQUOTE:"Цитата",FOOTER:"Подвал",HEADER:"Шапка"};
-const directText=(element:Element):Text|null=>
- Array.from(element.childNodes).find((node):node is Text=>node.nodeType===Node.TEXT_NODE&&Boolean(node.textContent?.trim()))??null;
+const directText=(element:Element):Text|null=>{
+ const nodes=Array.from(element.childNodes).filter((node):node is Text=>node.nodeType===Node.TEXT_NODE);
+ return nodes.find(node=>Boolean(node.textContent?.trim()))??nodes[0]??null;
+};
 const stateFields=["color","background","font-size","font-weight","text-align","padding","border-radius","opacity","width","display"] as const;
 type Saved={initialText:string|null;initialSrc:string|null;initialAlt:string|null;initialHref:string|null;styles:Record<string,string>;previous:string};
 const originals=new WeakMap<Element,Saved>();
@@ -28,7 +30,15 @@ function applyObjectPatch(element:Element,patch:SiteObjectPatch|undefined){
   originals.set(element,saved);
  }
  const serialized=JSON.stringify(patch||{});
- if(saved.previous===serialized)return;
+ const isCurrent=()=>{
+  if(!patch)return true;
+  if(patch.text!==undefined&&directText(element)?.textContent!==patch.text)return false;
+  if(patch.src&&element instanceof HTMLImageElement&&element.getAttribute("src")!==patch.src)return false;
+  if(patch.href&&element instanceof HTMLAnchorElement&&element.getAttribute("href")!==patch.href)return false;
+  if(patch.hidden===true&&element.style.display!=="none")return false;
+  return true;
+ };
+ if(saved.previous===serialized&&isCurrent())return;
  // Restore the original values before applying the new patch, including when reset.
  const text=directText(element);
  if(text&&saved.initialText!==null&&text.textContent!==saved.initialText)text.textContent=saved.initialText;
@@ -121,7 +131,7 @@ export function SiteObjectLayer({siteDocument,page,preview,selected,interactive}
   run();
   const root=document.getElementById("marketing-main");
   const observer=new MutationObserver(schedule);
-  if(root)observer.observe(root,{childList:true,subtree:true});
+  if(root)observer.observe(root,{childList:true,characterData:true,attributes:true,attributeFilter:["src","href"],subtree:true});
   const click=(event:MouseEvent)=>{
    if(!preview)return;
    if(interactive){
