@@ -1006,3 +1006,12 @@ body:has(.marketing-site:not(.site-preview)) .site-editable-block:hover{outline:
 @media(prefers-reduced-motion:reduce){
  .marketing-site .marketing-showcase-current,.marketing-site .marketing-showcase-previous{animation:none!important;clip-path:none!important;transform:none!important}
 }
+
+/* Editorial features list: six readable rows use the available width naturally. */
+@media(min-width:921px){
+ .marketing-site .marketing-features-section{padding-top:8px;padding-bottom:39px}
+ .marketing-site .marketing-features-list{grid-template-columns:1fr;gap:0;max-width:1120px}
+ .marketing-site .marketing-feature-row{display:grid;grid-template-columns:38px minmax(0,1fr);gap:17px;align-items:center;padding:19px 4px}
+ .marketing-site .marketing-feature-row-copy{display:grid;grid-template-columns:minmax(180px,.62fr) minmax(0,1fr);column-gap:32px;align-items:center}
+ .marketing-site .marketing-feature-row-copy p{max-width:690px}
+}
