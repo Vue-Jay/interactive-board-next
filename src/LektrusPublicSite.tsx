@@ -11,10 +11,7 @@ type Page=string;
 const navigation:{id:Page;title:string}[]=[
  {id:"home",title:"Главная"},
  {id:"features",title:"Возможности"},
- {id:"tools",title:"Инструменты"},
- {id:"how",title:"Как это работает"},
  {id:"pricing",title:"Тарифы"},
- {id:"about",title:"О Lektrus"},
  {id:"help",title:"Помощь и контакты"}
 ];
 const boardShots=[
@@ -61,7 +58,7 @@ const questions=[
 ];
 function readPage():Page{
  const hash=window.location.hash.replace(/^#/,"");
- if(hash==="teachers"||hash==="students")return "about";
+ if(["teachers","students","tools","how","about"].includes(hash))return "home";
  return /^[a-z][a-z0-9-]{0,39}$/.test(hash)?hash:"home";
 }
 function DemoLink({scene="math",children,className=""}:{scene?:string;children:ReactNode;className?:string}){
@@ -90,7 +87,7 @@ export default function LektrusPublicSite(){
  const [previewObject,setPreviewObject]=useState<string|null>(null);
  const [previewInteractive,setPreviewInteractive]=useState(false);
  const [page,setPage]=useState<Page>(readPage);
- const siteNavigation=(config.navigation.length?config.navigation:navigation.map(item=>({...item,hidden:false}))).filter(item=>(!item.hidden||item.id==="home")&&item.id!=="teachers"&&item.id!=="students");
+ const siteNavigation=(config.navigation.length?config.navigation:navigation.map(item=>({...item,hidden:false}))).filter(item=>(!item.hidden||item.id==="home")&&!["teachers","students","tools","how","about"].includes(item.id));
  const customPage=config.customPages.find(item=>item.id===page)??(config.pages[page]?.replaceDefault?config.pages[page]:undefined);
  const copy=config.pages[page];
  const [menuOpen,setMenuOpen]=useState(false);
@@ -161,7 +158,7 @@ export default function LektrusPublicSite(){
   return ()=>{window.removeEventListener("hashchange",sync);window.removeEventListener("popstate",sync)};
  },[]);
  useEffect(()=>{document.title=(siteNavigation.find(item=>item.id===page)?.title??"Главная")+" | Lektrus"},[page,config]);
- // The single homepage frame automatically crossfades through existing screenshots.
+ // The single homepage frame switches more dynamically between genuine Lektrus screenshots.
  // No controls or subject pickers: the rest of the site keeps its own editorial content.
  useEffect(()=>{
   if(page!=="home"||showcaseShots.length<2||window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
@@ -169,12 +166,12 @@ export default function LektrusPublicSite(){
    if(document.hidden)return;
    setPreviousSlide(showcaseSlide);
    setShowcaseSlide((showcaseSlide+1)%showcaseShots.length);
-  },6800);
+  },3600);
   return ()=>window.clearInterval(id);
  },[page,showcaseSlide,showcaseShots.length]);
  useEffect(()=>{
   if(previousSlide===null)return;
-  const id=window.setTimeout(()=>setPreviousSlide(null),850);
+  const id=window.setTimeout(()=>setPreviousSlide(null),650);
   return ()=>window.clearTimeout(id);
  },[previousSlide]);
  useEffect(()=>{
@@ -190,7 +187,7 @@ export default function LektrusPublicSite(){
  },[menuOpen]);
  const navigate=(target:Page,event?:MouseEvent<HTMLAnchorElement>)=>{
   event?.preventDefault();
-  if(target==="teachers"||target==="students")target="about";
+  if(["teachers","students","tools","how","about"].includes(target))target="home";
   if(target!==page){
    window.history.pushState(null,"","#"+target);
    setPage(target);
@@ -221,7 +218,7 @@ export default function LektrusPublicSite(){
       </nav>
      </div>
      <div className="marketing-sidebar-group marketing-sidebar-tools">
-      <span className="marketing-sidebar-caption">Без создания доски</span>
+      <span className="marketing-sidebar-caption">Инструменты</span>
       <a href="/tools/atlas"><SiteMenuIcon name="atlas"/><span>Интерактивный атлас</span><span className="marketing-sidebar-external" aria-hidden="true">↗</span></a>
       <a href="/tools/laboratory"><SiteMenuIcon name="laboratory"/><span>Химическая лаборатория</span><span className="marketing-sidebar-external" aria-hidden="true">↗</span></a>
      </div>
@@ -354,7 +351,7 @@ export default function LektrusPublicSite(){
   </main>
   <footer className="marketing-footer"><div className="marketing-container">
    <span>© {new Date().getFullYear()} Lektrus</span>
-   <div className="marketing-footer-end"><NavLink id="about" title="О Lektrus"/><NavLink id="help" title="Помощь"/><a href="/app">Открыть приложение ↗</a></div>
+   <div className="marketing-footer-end"><NavLink id="features" title="Возможности"/><NavLink id="help" title="Помощь"/><a href="/app">Открыть приложение ↗</a></div>
   </div></footer>
   {isPreview&&(previewSelection||previewObject)&&<div className="site-canvas-selection-actions" role="toolbar" aria-label="Действия над выделенным элементом">
    <span>{previewSelection?"Выделен блок":config.objects[previewObject||""]?.hidden?"Элемент скрыт":"Выделен объект"}</span>
