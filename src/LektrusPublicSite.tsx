@@ -211,7 +211,7 @@ export default function LektrusPublicSite(){
       {copy?.eyebrow&&<span className="marketing-eyebrow">{copy.eyebrow}</span>}
       <h1 id="marketing-title">{copy?.heading||<>Lektrus <span>платформа для обучения</span></>}</h1>
       <p className="marketing-hero-lead">{copy?.lead||"Интерактивная доска, совместная работа и учебные инструменты в одном пространстве."}</p>
-      <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Попробовать доску <span aria-hidden="true">→</span></DemoLink></div>
+      <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Демо доски <span aria-hidden="true">→</span></DemoLink></div>
      </div>
      <div className="marketing-showcase" aria-label="Автоматическая презентация настоящих экранов Lektrus" data-site-showcase>
       <div className="marketing-showcase-screen" role="img" aria-label="Примеры реальных экранов приложения Lektrus">
