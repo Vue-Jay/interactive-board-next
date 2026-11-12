@@ -209,9 +209,9 @@ export default function LektrusPublicSite(){
     <section data-site-section-id="native-0" data-site-page-hero className="marketing-hero marketing-container marketing-hero-split" aria-labelledby="marketing-title">
      <div className="marketing-hero-copy">
       {copy?.eyebrow&&<span className="marketing-eyebrow">{copy.eyebrow}</span>}
-      <h1 id="marketing-title">{copy?.heading||<>Lektrus <span>платформа для обучения</span></>}</h1>
+      <h1 id="marketing-title">{copy?.heading||<><span className="marketing-hero-brand-name">Lektrus</span><span>платформа для обучения</span></>}</h1>
       <p className="marketing-hero-lead">{copy?.lead||"Интерактивная доска, совместная работа и учебные инструменты в одном пространстве."}</p>
-      <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Демо доски <span aria-hidden="true">→</span></DemoLink></div>
+      <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Демо-версия доски <span aria-hidden="true">→</span></DemoLink></div>
      </div>
      <div className="marketing-showcase" aria-label="Автоматическая презентация настоящих экранов Lektrus" data-site-showcase>
       <div className="marketing-showcase-screen" role="img" aria-label="Примеры реальных экранов приложения Lektrus">
@@ -227,7 +227,8 @@ export default function LektrusPublicSite(){
       <h2>Учиться и объяснять проще, когда всё под рукой</h2>
      </div>
      <div className="marketing-project-body">
-      <p>Lektrus объединяет интерактивную доску, учебные модели и совместную работу в одном пространстве. Здесь можно подготовить материал, объяснить новую тему и продолжить занятие с того же места.</p>
+      <p>Lektrus объединяет подготовку, проведение и продолжение занятий в одном пространстве. На интерактивной доске можно писать, рисовать, создавать схемы, добавлять изображения, документы и задания, а готовые материалы сохранять для следующих уроков.</p>
+      <p className="marketing-project-detail">Проект помогает изучать темы на практике: здесь есть графики, геометрические инструменты, предметные модели и виртуальные опыты. Участники могут работать вместе на одной доске, а интерактивный атлас и химическая лаборатория доступны и отдельно от неё.</p>
       <div className="marketing-project-audiences">
        <p><strong>Преподавателям</strong> Создавайте наглядные объяснения, собирайте задания и сохраняйте материалы уроков.</p>
        <p><strong>Ученикам</strong> Исследуйте темы, участвуйте в общей работе и разбирайтесь в сложном на практике.</p>
