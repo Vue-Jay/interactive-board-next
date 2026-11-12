@@ -1,4 +1,4 @@
-import {useRef,type CSSProperties,type PointerEvent,type ReactNode} from "react";
+import {useRef,type CSSProperties,type DragEvent,type PointerEvent,type ReactNode} from "react";
 import type {SiteBlock} from "./marketingSiteConfig";
 import {putSiteCanvasTransfer} from "./SiteCanvasDnD";
 
@@ -61,7 +61,7 @@ export function SiteResizableBlock({block,selected,preview,children}:{block:Site
    type:"lektrus:site-resize-block",id:block.id,width:widthNext,minHeight:heightNext
   },window.location.origin);
  };
- const stopDrag=(event:React.DragEvent<HTMLDivElement>)=>{
+ const stopDrag=(event:DragEvent<HTMLDivElement>)=>{
   if((event.target as Element).closest("[data-site-editor-control]")){event.preventDefault();return}
   if(preview)putSiteCanvasTransfer(event,{type:"move",id:block.id});
  };
