@@ -313,4 +313,5 @@ assert.ok(site.includes("),650);"),"transition previous frame must be cleaned up
 assert.ok(css.includes("@keyframes marketing-crisp-wipe")&&css.includes("@keyframes marketing-crisp-exit"),"transitions must reveal crisp captures instead of fading both images over white");
 assert.ok(css.includes("min-height:0")&&css.includes(".marketing-project-summary")&&css.includes("margin-top:auto"),"project section and bottom-pinned footer must eliminate awkward whitespace");
 
+assert.doesNotMatch(site,/Это текущие технические ограничения тарифов/,"remove the old pricing disclaimer beneath plans");
 console.log("Lektrus marketing site: four compact pages, project information on Home, prose-only Features, retired routes, dynamic authentic screenshots and legacy migration verified.");
