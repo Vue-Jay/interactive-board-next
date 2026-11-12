@@ -38,6 +38,14 @@ for(const shot of ["board-showcase.png","app-home.png","board-math.png","board-c
 assert.ok(site.includes("marketing-feature-art")&&css.includes(".marketing-feature-art"),"feature cards should include genuine image previews");
 assert.doesNotMatch(entry,/lektrusShowcase\.css/,"the public entry must not load obsolete showcase styling");
 assert.match(css,/@media\(max-width:700px\)/,"the site needs small-screen layouts");
+assert.ok(site.includes("const showcaseShots=")&&site.includes('scene:"home"'),"homepage must present real app-home and subject screenshots");
+assert.ok(site.includes("marketing-showcase-screen")&&site.includes("currentShot.src"),"home must rotate actual screenshots instead of freezing one image");
+assert.ok(site.includes("setShowcasePaused")&&site.includes('aria-label="Следующий снимок"')&&site.includes('aria-label="Предыдущий снимок"'),"screenshot presentation must support play/pause and manual navigation");
+assert.ok(site.includes('window.matchMedia("(prefers-reduced-motion: reduce)")'),"automatic screenshots must respect reduced motion");
+assert.ok(css.includes(".marketing-showcase-controls")&&css.includes(".marketing-showcase-caption")&&css.includes(".marketing-showcase-subjects"),"restore screenshot caption, counter and navigation styles");
+assert.ok(site.includes("marketing-teacher-scene")&&site.includes("marketing-student-demo")&&site.includes("marketing-about-list")&&site.includes("marketing-steps"),"teacher, student, about and walkthrough pages need distinct content layouts");
+assert.ok(site.includes('src="/site/app-home.png"')&&site.includes('src="/site/board-math.png"'),"real instructor screen and lesson capture must be present");
+assert.ok(css.includes(".marketing-teacher-window")&&css.includes(".marketing-students-intro")&&css.includes(".marketing-about-advantages"),"distinct presentation styles must be implemented");
 assert.match(css, /prefers-reduced-motion:reduce/,"reduced-motion users need a non-animated alternative");
 assert.match(site,/aria-expanded=\{menuOpen\}/,"mobile navigation must expose its state");
 assert.match(site,/<details key=\{item\.q\}/,"FAQ answers must be expandable");
