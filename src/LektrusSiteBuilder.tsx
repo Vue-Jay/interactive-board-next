@@ -69,8 +69,9 @@ export default function LektrusSiteBuilder(){
   const choose=(event:MessageEvent)=>{
    if(event.origin!==window.location.origin||event.source!==frame.current?.contentWindow)return;
    if(event.data?.type==="lektrus:site-select-block"&&typeof event.data.id==="string"){
-    setSelected(event.data.id);setInspector("block");
+    setSelected(event.data.id);setInspector("block");setPanelOpen(true);
    }
+   if(event.data?.type==="lektrus:site-select-page"){setSelected(null);setInspector("page");setPanelOpen(true)}
   };
   window.addEventListener("message",choose);return()=>window.removeEventListener("message",choose);
  },[]);
