@@ -2,6 +2,7 @@ import {useEffect,useRef,useState,type ChangeEvent} from "react";
 import {getCurrentUser} from "./authStore";
 import {getAccountAccess} from "./accountRoleStore";
 import {isRemoteBackendEnabled} from "./backend";
+import SiteImageChooser from "./SiteImageChooser";
 import {BUILTIN_SITE_PAGES,defaultSiteDocument,loadPublishedSiteDocument,newSiteBlock,normalizeSiteDocument,publishSiteDocument,saveSiteDraft,siteDraft,SITE_DRAFT_KEY,SITE_PREVIEW_MESSAGE,type SiteBlockKind,type SiteDocument,type SitePage,type SiteTheme} from "./marketingSiteConfig";
 
 type Inspector="page"|"block"|"design";
@@ -36,6 +37,7 @@ export default function LektrusSiteBuilder(){
  const undo=useRef<SiteDocument[]>([]);
  const redo=useRef<SiteDocument[]>([]);
  const drag=useRef<string|null>(null);
+ const blockDrag=useRef<string|null>(null);
  const activePage=basePage(doc,active);
  const activeBlock=activePage.blocks.find(x=>x.id===selected);
  useEffect(()=>{
@@ -99,6 +101,20 @@ export default function LektrusSiteBuilder(){
   const newIndex=index+offset;if(newIndex<0||newIndex>=activePage.blocks.length)return;
   const blocks=activePage.blocks.slice();[blocks[index],blocks[newIndex]]=[blocks[newIndex],blocks[index]];
   patchPage({blocks});
+ };
+ const moveBlockTo=(source:string,target:string)=>{
+  if(source===target)return;
+  const blocks=activePage.blocks.slice(),i=blocks.findIndex(x=>x.id===source),j=blocks.findIndex(x=>x.id===target);
+  if(i<0||j<0)return;
+  const [item]=blocks.splice(i,1);
+  blocks.splice(j,0,item);patchPage({blocks});
+ };
+ const duplicateBlock=()=>{
+  if(!activeBlock||activePage.blocks.length>=40)return;
+  const copy={...structuredClone(activeBlock),id:crypto.randomUUID()};
+  const blocks=activePage.blocks.slice();
+  blocks.splice(blocks.findIndex(x=>x.id===selected)+1,0,copy);
+  patchPage({blocks});setSelected(copy.id);
  };
  const deleteBlock=()=>{if(!activeBlock)return;patchPage({blocks:activePage.blocks.filter(b=>b.id!==selected)});setSelected(null);setInspector("page")};
  const addPage=()=>{
@@ -180,7 +196,11 @@ export default function LektrusSiteBuilder(){
      <form className="site-builder-add-page" onSubmit={e=>{e.preventDefault();addPage()}}><input aria-label="Название новой страницы" placeholder="Новая страница…" value={newTitle} onChange={e=>setNewTitle(e.target.value)}/><button type="submit" disabled={doc.customPages.length>=18}>+</button></form>
     </section>
     <section><h2>Блоки страницы <span>{activePage.blocks.length}</span></h2>
-     <div className="site-builder-block-list">{activePage.blocks.map((block,i)=><div key={block.id} className={selected===block.id?"selected":""}>
+     <div className="site-builder-block-list">{activePage.blocks.map((block,i)=><div key={block.id} className={selected===block.id?"selected":""} draggable
+       onDragStart={()=>{blockDrag.current=block.id}}
+       onDragOver={e=>e.preventDefault()}
+       onDrop={e=>{e.preventDefault();if(blockDrag.current)moveBlockTo(blockDrag.current,block.id);blockDrag.current=null}}
+       onDragEnd={()=>{blockDrag.current=null}}>
       <button type="button" onClick={()=>{setSelected(block.id);setInspector("block")}}>{labelFor(block.kind)} <small>{block.title}</small></button>
       <button type="button" disabled={i===0} title="Выше" onClick={()=>moveBlock(i,-1)}>↑</button>
       <button type="button" disabled={i===activePage.blocks.length-1} title="Ниже" onClick={()=>moveBlock(i,1)}>↓</button>
@@ -209,8 +229,15 @@ export default function LektrusSiteBuilder(){
      {activeBlock&&<><label>Заголовок<input value={activeBlock.title} onChange={e=>patchBlock({title:e.target.value})}/></label>
       {activeBlock.kind!=="divider"&&<label>Текст<textarea rows={5} value={activeBlock.text} onChange={e=>patchBlock({text:e.target.value})}/></label>}
       {activeBlock.kind==="image"&&<label>Адрес изображения<input value={activeBlock.image} placeholder="/site/board-math.png" onChange={e=>patchBlock({image:e.target.value})}/></label>}
+      {activeBlock.kind==="image"&&<SiteImageChooser onChoose={url=>patchBlock({image:url})}/>}
+      {activeBlock.kind==="gallery"&&<SiteImageChooser onChoose={url=>{
+       if(activeBlock.items.length>=12){setNotice("В одной галерее максимум 12 изображений");return}
+       patchBlock({items:[...activeBlock.items,url]});
+      }}/>}
+      
       {["image","cta"].includes(activeBlock.kind)&&<label>Адрес ссылки<input value={activeBlock.href} placeholder="/app" onChange={e=>patchBlock({href:e.target.value})}/></label>}
       {["gallery","cards"].includes(activeBlock.kind)&&<label>{activeBlock.kind==="gallery"?"Изображения (по одному URL на строку)":"Карточки (по одной на строку)"}<textarea rows={8} value={activeBlock.items.join("\n")} onChange={e=>patchBlock({items:e.target.value.split("\n").slice(0,12)})}/></label>}
+      <button type="button" className="site-builder-neutral" disabled={activePage.blocks.length>=40} onClick={duplicateBlock}>Дублировать блок</button>
       <button type="button" className="site-builder-danger" onClick={deleteBlock}>Удалить блок</button></>}
     </div>}
     {inspector==="design"&&<div className="site-builder-fields"><h2>Оформление сайта</h2><p>Цвета и размеры действуют на все вкладки. Их содержимое остаётся самостоятельным.</p>
