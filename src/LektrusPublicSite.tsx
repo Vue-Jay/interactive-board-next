@@ -262,11 +262,19 @@ export default function LektrusPublicSite(){
    </>}
    {page==="how"&&!copy?.replaceDefault&&<>
     {placed("before-0")}
-    <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container"><span className="marketing-eyebrow">{copy?.eyebrow||"Посмотрите, как устроена работа в Lektrus"}</span><h1>{copy?.heading||<>Привычные действия <span>в удобном пространстве</span></>}</h1><p>{copy?.lead||"От подготовки урока до работы вместе с учениками. Пройдите четыре наглядных этапа."}</p></section>
+    <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container">
+     {copy?.eyebrow&&<span className="marketing-eyebrow">{copy.eyebrow}</span>}
+     <h1>{copy?.heading||<>Как начать <span>работу</span></>}</h1>
+     <p>{copy?.lead||"Четыре шага от создания доски до сохранения занятия."}</p>
+    </section>
     {placed("before-1")}
-    <div data-site-section-id="native-1" className="marketing-steps">{steps.map((step,i)=><section className="marketing-step" key={step.number} aria-labelledby={"marketing-step-"+i}><div className="marketing-container marketing-step-grid"><div><span className="marketing-step-index">Шаг {step.number} / 04</span><h2 id={"marketing-step-"+i}>{step.title}</h2><p>{step.text}</p>{i===2?<DemoLink className="marketing-primary">Попробовать на доске ↗</DemoLink>:null}</div>
-       <div className={"marketing-step-visual marketing-step-visual-"+i} aria-hidden="true"><span className="marketing-step-visual-index">{step.number}</span><div className="marketing-step-visual-card"><strong>{["Чистая доска","Материалы урока","Общий холст","Сохранённый результат"][i]}</strong><span>{["Идея → структура","Текст + схемы + инструменты","Объяснение + практика","Доска готова к продолжению"][i]}</span><div className="marketing-step-visual-track"><i/><i/><i/></div></div></div>
-      </div></section>)}</div>
+    <section data-site-section-id="native-1" className="marketing-section marketing-container marketing-steps">
+     <div className="marketing-how-list">{steps.map(step=><article key={step.number} className="marketing-how-step">
+      <span className="marketing-step-index">{step.number}</span>
+      <div><h2>{step.title}</h2><p>{step.text}</p></div>
+     </article>)}</div>
+     <DemoLink className="marketing-primary">Попробовать на доске ↗</DemoLink>
+    </section>
    </>}
    {page==="pricing"&&!copy?.replaceDefault&&<>
     {placed("before-0")}
@@ -277,35 +285,27 @@ export default function LektrusPublicSite(){
    </>}
    {page==="about"&&!copy?.replaceDefault&&<>
     {placed("before-0")}
-    <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container marketing-about-intro"><span className="marketing-eyebrow">{copy?.eyebrow||"О Lektrus"}</span><h1>{copy?.heading||<>Больше возможностей <span>для современного обучения</span></>}</h1><p>{copy?.lead||"Lektrus объединяет интерактивную доску, учебные инструменты и совместную работу. Вместо разрозненных материалов вы получаете единое пространство, где можно объяснять, исследовать и заниматься вместе."}</p><DemoLink className="marketing-primary">Посмотреть Lektrus в деле ↗</DemoLink></section>
+    <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container marketing-about-intro">
+     {copy?.eyebrow&&<span className="marketing-eyebrow">{copy.eyebrow}</span>}
+     <h1>{copy?.heading||<>О <span>Lektrus</span></>}</h1>
+     <p>{copy?.lead||"Интерактивная доска и учебные инструменты для преподавания, совместных занятий и самостоятельной практики."}</p>
+    </section>
     {placed("before-1")}
-    <section data-site-section-id="native-1" className="marketing-section marketing-container marketing-feature-spotlight marketing-about-spotlight"><div className="marketing-about-statement"><span>Идея Lektrus</span><strong>Объяснять.<br/>Исследовать.<br/><em>Создавать.</em></strong><small>В одном учебном пространстве.</small></div><div><span className="marketing-eyebrow">Один продукт, разные задачи</span><h2>Не только показывайте. Действуйте</h2><p>Рисуйте схемы, работайте с документами, используйте предметные модели и возвращайтесь к подготовленным материалам. Возможности платформы помогают проводить объяснения и практические занятия на одном поле.</p><NavLink id="features" title="Изучить возможности ↗"/></div></section>
     {placed("before-2")}
-    <section data-site-section-id="native-2" className="marketing-section marketing-container marketing-about-advantages">
-      <div className="marketing-about-aside">
-       <span className="marketing-eyebrow">Преимущества проекта</span>
-       <h2>Больше, чем цифровая доска</h2>
-       <p>От подготовки урока до самостоятельного исследования: разные задачи решаются в одной учебной среде.</p>
-       <div className="marketing-about-aside-note"><span>LEKTRUS / МИССИЯ</span><strong>Делать знания наглядными и доступными.</strong></div>
-      </div>
-      <div className="marketing-about-list">{advantages.map(a=><article key={a.number}>
-       <span className="marketing-number">{a.number}</span><div><h3>{a.title}</h3><p>{a.text}</p></div>
-      </article>)}</div>
-      <div className="marketing-about-audience marketing-about-audience-teachers">
-       <div className="marketing-about-audience-head"><span className="marketing-eyebrow">Для преподавателей</span><h2>Удобно готовить. Понятно объяснять.</h2><p>Создавайте уроки в собственном темпе, сохраняйте материалы и возвращайтесь к ним на следующих занятиях.</p></div>
-       <div className="marketing-about-teacher-journey">{teacherStories.map(story=><article key={story.number}><span className="marketing-number">{story.number}</span><h3>{story.title}</h3><p>{story.text}</p></article>)}</div>
-       <DemoLink scene="physics" className="marketing-secondary">Посмотреть пример занятия ↗</DemoLink>
-      </div>
-      <div className="marketing-about-audience marketing-about-audience-students">
-       <div className="marketing-about-audience-head"><span className="marketing-eyebrow">Для учеников</span><h2>Увидеть. Разобраться. Попробовать.</h2><p>Наглядные объяснения, самостоятельная практика и совместная работа. Можно выбрать тему и сразу открыть интерактивный пример.</p></div>
-       <div className="marketing-about-student-steps">
-        {["Смотри, как устроена тема","Пробуй инструменты на практике","Разбирайся в своём темпе"].map((title,i)=><div key={title}><span>0{i+1}</span><strong>{title}</strong></div>)}
-       </div>
-       <div className="marketing-about-subject-links" aria-label="Открыть учебный пример">{boardShots.map(shot=><DemoLink key={shot.scene} scene={shot.scene}>{shot.subject} ↗</DemoLink>)}</div>
-      </div>
-     </section>
+    <section data-site-section-id="native-2" className="marketing-section marketing-container marketing-about-practical">
+     <div className="marketing-about-audience marketing-about-audience-teachers">
+      <h2>Преподавателям</h2>
+      <p>Готовьте материалы, объясняйте темы и сохраняйте результаты занятий.</p>
+      <div className="marketing-about-teacher-journey">{teacherStories.map(story=><article key={story.number}><strong>{story.title}</strong><p>{story.text}</p></article>)}</div>
+     </div>
+     <div className="marketing-about-audience marketing-about-audience-students">
+      <h2>Ученикам</h2>
+      <p>Исследуйте темы, выполняйте задания и возвращайтесь к объяснениям.</p>
+      <div className="marketing-about-student-steps">{["Смотри наглядные объяснения","Пробуй инструменты на практике","Изучай материал в своём темпе"].map((title,i)=><div key={title}><span>0{i+1}</span><strong>{title}</strong></div>)}</div>
+      <div className="marketing-about-subject-links" aria-label="Открыть учебный пример">{boardShots.map(shot=><DemoLink key={shot.scene} scene={shot.scene}>{shot.subject} ↗</DemoLink>)}</div>
+     </div>
+    </section>
     {placed("before-3")}
-    <section data-site-section-id="native-3" className="marketing-last-cta marketing-container"><h2>Посмотрите, как всё устроено</h2><p>Откройте живую демонстрационную доску без регистрации.</p><DemoLink className="marketing-primary">Попробовать Lektrus ↗</DemoLink></section>
    </>}
    {page==="help"&&!copy?.replaceDefault&&<>
     {placed("before-0")}
@@ -313,7 +313,7 @@ export default function LektrusPublicSite(){
     {placed("before-1")}
     <section data-site-section-id="native-1" className="marketing-section marketing-container"><div className="marketing-section-head"><div><h2>Частые вопросы</h2><p>Короткие ответы о возможностях и работе Lektrus.</p></div></div><div className="marketing-faq">{questions.map(item=><details key={item.q} open={undefined}><summary><span>{item.q}</span><span aria-hidden="true">+</span></summary><p>{item.a}</p></details>)}</div></section>
     {placed("before-2")}
-    <section data-site-section-id="native-2" className="marketing-section marketing-container marketing-contact"><div><span className="marketing-eyebrow">Обратная связь</span><h2>Расскажите, что можно улучшить</h2><p>Ваши вопросы помогают делать Lektrus удобнее. Выберите тему обращения, опишите ситуацию и при необходимости оставьте адрес для ответа.</p>{import.meta.env.VITE_TELEGRAM_URL&&<a className="marketing-secondary" href={import.meta.env.VITE_TELEGRAM_URL} target="_blank" rel="noreferrer">Написать в Telegram ↗</a>}<div className="marketing-contact-help"><strong>Поддержка, инструкции и обратная связь</strong><span>Для знакомства с доской можно открыть гостевую демонстрацию.</span><DemoLink>Открыть демонстрацию ↗</DemoLink></div></div><div className="marketing-form-card"><LektrusFeedbackForm compact source="site"/></div></section>
+    <section data-site-section-id="native-2" className="marketing-section marketing-container marketing-contact"><div><span className="marketing-eyebrow">Обратная связь</span><h2>Расскажите, что можно улучшить</h2><p>Ваши вопросы помогают делать Lektrus удобнее. Выберите тему обращения, опишите ситуацию и при необходимости оставьте адрес для ответа.</p>{import.meta.env.VITE_TELEGRAM_URL&&<a className="marketing-secondary" href={import.meta.env.VITE_TELEGRAM_URL} target="_blank" rel="noreferrer">Написать в Telegram ↗</a>}</div><div className="marketing-form-card"><LektrusFeedbackForm compact source="site"/></div></section>
    </>}
    {customPage&&<SiteCustomPage page={customPage} selectedId={previewSelection} preview={isPreview}/>}
    {!customPage&&placed("end")}
