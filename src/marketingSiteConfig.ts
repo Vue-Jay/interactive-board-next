@@ -4,7 +4,7 @@ export const SITE_DRAFT_KEY="lektrus.marketing-site.draft.v1";
 export const SITE_PREVIEW_MESSAGE="lektrus:marketing-site-preview";
 export const BUILTIN_SITE_PAGES=["home","features","teachers","students","how","pricing","about","help"] as const;
 export type SiteBlockKind="text"|"image"|"cards"|"gallery"|"cta"|"divider"|"faq"|"stats"|"quote"|"video"|"timeline"|"comparison"|"logos"|"spacer"|"checklist"|"button-row";
-export type SiteBlockStyle={tone:"plain"|"soft"|"accent"|"dark";align:"left"|"center";spacing:"compact"|"normal"|"airy";columns:2|3|4;imageSide:"left"|"right"};
+export type SiteBlockStyle={tone:"plain"|"soft"|"accent"|"dark";align:"left"|"center";spacing:"compact"|"normal"|"airy";columns:2|3|4;imageSide:"left"|"right";width?:number;minHeight?:number};
 export const DEFAULT_SITE_BLOCK_STYLE:SiteBlockStyle={tone:"plain",align:"left",spacing:"normal",columns:3,imageSide:"left"};
 export type SiteBlock={id:string;kind:SiteBlockKind;title:string;text:string;image:string;href:string;items:string[];buttonLabel:string;style:SiteBlockStyle;anchor?:string};
 export type SiteObjectStyle={color?:string;background?:string;fontSize?:number;fontWeight?:"normal"|"medium"|"bold";textAlign?:"left"|"center"|"right";padding?:number;radius?:number;opacity?:number;width?:number};
@@ -75,7 +75,9 @@ export function normalizeSiteDocument(raw:unknown):SiteDocument{
    align:align==="center"?"center":"left",
    spacing:spacing==="compact"||spacing==="airy"?spacing:"normal",
    columns:int(appearance.columns,2,4,3) as 2|3|4,
-   imageSide:imageSide==="right"?"right":"left"
+   imageSide:imageSide==="right"?"right":"left",
+   ...(typeof appearance.width==="number"&&Number.isFinite(appearance.width)?{width:int(appearance.width,35,100,100)}:{}),
+   ...(typeof appearance.minHeight==="number"&&Number.isFinite(appearance.minHeight)?{minHeight:int(appearance.minHeight,0,1200,0)}:{})
   };
   return {id:original||crypto.randomUUID(),kind,title:clean(v.title,160),text:clean(v.text,4000),
    image:safeSiteUrl(clean(v.image,900)),href:safeSiteUrl(clean(v.href,900)),buttonLabel:clean(v.buttonLabel,45)||(kind==="image"?"Подробнее":"Перейти"),style,

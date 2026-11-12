@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState,type ChangeEvent} from "react";
 import {decodeSiteCanvasTransfer,putSiteCanvasTransfer,type SiteCanvasTransfer} from "./SiteCanvasDnD";
+import {commandFromKeyboard,deleteStudioSelection,restoreStudioObject,type StudioCommand} from "./siteStudioCommands";
 import type {SiteObjectInfo} from "./SiteObjectLayer";
 import {getCurrentUser} from "./authStore";
 import {getAccountAccess} from "./accountRoleStore";
@@ -10,6 +11,7 @@ import {DEFAULT_SITE_BLOCK_STYLE,type SiteBlockStyle} from "./marketingSiteConfi
 import {BUILTIN_SITE_PAGES,defaultSiteDocument,loadPublishedSiteDocument,newSiteBlock,normalizeSiteDocument,publishSiteDocument,saveSiteDraft,siteDraft,SITE_DRAFT_KEY,SITE_PREVIEW_MESSAGE,type SiteBlockKind,type SiteDocument,type SitePage,type SiteTheme} from "./marketingSiteConfig";
 
 type Inspector="page"|"block"|"object"|"design";
+type StudioHistoryEntry={doc:SiteDocument;page:string;block:string|null;object:string|null;inspector:Inspector};
 type LibraryMode="blocks"|"kits";
 type Device="desktop"|"tablet"|"phone";
 const builtin=new Set<string>(BUILTIN_SITE_PAGES);
@@ -46,6 +48,7 @@ export default function LektrusSiteBuilder(){
  const [libraryMode,setLibraryMode]=useState<LibraryMode>("kits");
  const [pageSearch,setPageSearch]=useState("");
  const [focusMode,setFocusMode]=useState(false);
+ const [showShortcuts,setShowShortcuts]=useState(false);
  const [panelOpen,setPanelOpen]=useState(false);
  const [newTitle,setNewTitle]=useState("");
  const [notice,setNotice]=useState("");
@@ -54,8 +57,9 @@ export default function LektrusSiteBuilder(){
  const frame=useRef<HTMLIFrameElement>(null);
  const file=useRef<HTMLInputElement>(null);
  const hadInitialDraft=useRef(Boolean(localStorage.getItem(SITE_DRAFT_KEY)));
- const undo=useRef<SiteDocument[]>([]);
- const redo=useRef<SiteDocument[]>([]);
+ const undo=useRef<StudioHistoryEntry[]>([]);
+ const redo=useRef<StudioHistoryEntry[]>([]);
+ const lastEdit=useRef<{group:string;at:number}|null>(null);
  const drag=useRef<string|null>(null);
  const blockDrag=useRef<string|null>(null);
  const activePage=basePage(doc,active);
@@ -80,15 +84,22 @@ export default function LektrusSiteBuilder(){
  },[access]);
  useEffect(()=>{if(access!=="allowed")return;saveSiteDraft(doc);frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc,selectedId:selected,objectId:selectedObject,interactive},window.location.origin)},[doc,access,selected,selectedObject,interactive]);
 
- const change=(edit:(next:SiteDocument)=>void)=>{
-  undo.current.push(clone(doc));if(undo.current.length>60)undo.current.shift();
-  redo.current=[];const next=clone(doc);edit(next);setDoc(normalizeSiteDocument(next));setSaved("draft");setNotice("");
+ const snapshot=():StudioHistoryEntry=>({doc:clone(doc),page:active,block:selected,object:selectedObject,inspector});
+ const change=(edit:(next:SiteDocument)=>void,group?:string)=>{
+  const now=Date.now();
+  const coalesce=Boolean(group&&lastEdit.current?.group===group&&now-lastEdit.current.at<900);
+  if(!coalesce){undo.current.push(snapshot());if(undo.current.length>60)undo.current.shift()}
+  redo.current=[];lastEdit.current=group?{group,at:now}:null;
+  const next=clone(doc);edit(next);setDoc(normalizeSiteDocument(next));setSaved("draft");setNotice("");
  };
  const history=(direction:"undo"|"redo")=>{
   const from=direction==="undo"?undo.current:redo.current;
   const to=direction==="undo"?redo.current:undo.current;
   const value=from.pop();if(!value)return;
-  to.push(clone(doc));setDoc(value);setSaved("draft");setSelected(null);
+  to.push(snapshot());lastEdit.current=null;
+  setDoc(value.doc);setSaved("draft");setActive(value.page);
+  setSelected(value.block);setSelectedObject(value.object);setInspector(value.inspector);
+  setNotice(direction==="undo"?"Последнее действие отменено.":"Действие повторено.");
  };
  const patchPage=(patch:Partial<SitePage>)=>change(next=>{
   if(builtin.has(active))next.pages[active]={...basePage(next,active),...patch};
@@ -96,19 +107,23 @@ export default function LektrusSiteBuilder(){
  });
  const patchBlock=(patch:Record<string,unknown>)=>{
   if(!activeBlock)return;
+  const field=Object.keys(patch);
+  const group=field.length===1&&["title","text","image","href","buttonLabel","items","style"].includes(field[0])?"block:"+active+":"+selected+":"+field[0]:undefined;
   change(next=>{
    const p=basePage(next,active);
    const update={...p,blocks:p.blocks.map(b=>b.id===selected?{...b,...patch}:b)};
    if(builtin.has(active))next.pages[active]=update;
    else next.customPages=next.customPages.map(x=>x.id===active?update:x);
-  });
+  },group);
  };
  const patchObject=(patch:Record<string,unknown>)=>{
   if(!selectedObject)return;
+  const fields=Object.keys(patch);
+  const group=fields.length===1&&["text","src","alt","href","style"].includes(fields[0])?"object:"+selectedObject+":"+fields[0]:undefined;
   change(next=>{
    const old=next.objects[selectedObject]??{};
    next.objects[selectedObject]={...old,...patch,style:{...old.style,...(patch.style as Record<string,unknown>||{})}};
-  });
+  },group);
  };
  const resetObject=()=>{
   if(!selectedObject)return;
@@ -158,13 +173,31 @@ export default function LektrusSiteBuilder(){
    if(event.data?.type==="lektrus:site-navigate"&&typeof event.data.page==="string"&&doc.navigation.some(item=>item.id===event.data.page)){
     setActive(event.data.page);setSelected(null);setSelectedObject(null);setInspector("page");
    }
+   if(event.data?.type==="lektrus:site-resize-block"&&typeof event.data.id==="string"){
+    const item=activePage.blocks.find(block=>block.id===event.data.id);
+    const width=event.data.width,height=event.data.minHeight;
+    if(item&&typeof width==="number"&&Number.isFinite(width)&&width>=35&&width<=100&&
+      typeof height==="number"&&Number.isFinite(height)&&height>=0&&height<=1200){
+     const w=Math.round(width),h=Math.round(height);
+     if(w!==(item.style.width??100)||h!==(item.style.minHeight??0)){
+      change(next=>{
+       const current=basePage(next,active);
+       const blocks=current.blocks.map(block=>block.id===item.id?{...block,style:{...block.style,width:w,minHeight:h}}:block);
+       if(builtin.has(active))next.pages[active]={...current,blocks};
+       else next.customPages=next.customPages.map(page=>page.id===active?{...current,blocks}:page);
+      });
+      setSelected(item.id);setSelectedObject(null);setInspector("block");setPanelOpen(true);
+     }
+    }
+   }
+   if(event.data?.type==="lektrus:site-editor-command"&&typeof event.data.command==="string"&&["undo","redo","delete","restore","escape","save"].includes(event.data.command))runCommand(event.data.command as StudioCommand);
    if(event.data?.type==="lektrus:site-preview-link"&&typeof event.data.href==="string"){
     setNotice("Это ссылка на другую страницу: "+event.data.href.slice(0,120)+". Переход отключён в предпросмотре.");
    }
   };
   window.addEventListener("message",choose);
   return ()=>window.removeEventListener("message",choose);
- },[doc,active]);
+ },[doc,active,selected,selectedObject,access,busy,focusMode,panelOpen]);
 
  const addBlock=(kind:SiteBlockKind)=>{
   const block=newSiteBlock(kind);
@@ -205,7 +238,45 @@ export default function LektrusSiteBuilder(){
   blocks.splice(blocks.findIndex(x=>x.id===selected)+1,0,copy);
   patchPage({blocks});setSelected(copy.id);
  };
- const deleteBlock=()=>{if(!activeBlock)return;patchPage({blocks:activePage.blocks.filter(b=>b.id!==selected)});setSelected(null);setInspector("page")};
+ const removeSelection=():boolean=>{
+  if(selectedObject){
+   if(doc.objects[selectedObject]?.hidden===true){setNotice("Объект уже скрыт. Его можно восстановить в панели свойств.");return true}
+   change(next=>{deleteStudioSelection(next,active,null,selectedObject)});
+   setNotice("Объект скрыт. Нажми Ctrl+Z для отмены или «Восстановить» в свойствах.");
+   return true;
+  }
+  if(activeBlock){
+   change(next=>{deleteStudioSelection(next,active,activeBlock.id,null)});
+   setSelected(null);setInspector("page");
+   setNotice("Блок удалён из черновика. Ctrl+Z вернёт его на место.");
+   return true;
+  }
+  return false;
+ };
+ const deleteBlock=()=>{if(activeBlock)removeSelection()};
+ const restoreSelectedObject=()=>{
+  if(!selectedObject||!doc.objects[selectedObject]?.hidden)return;
+  change(next=>{restoreStudioObject(next,selectedObject)});
+  setNotice("Объект восстановлен.");
+ };
+ const runCommand=(command:StudioCommand):boolean=>{
+  if(access!=="allowed"||busy)return false;
+  if(command==="delete")return removeSelection();
+  if(command==="restore"){if(!selectedObject||!doc.objects[selectedObject]?.hidden)return false;restoreSelectedObject();return true}
+  if(command==="undo"){if(!undo.current.length)return false;history("undo");return true}
+  if(command==="redo"){if(!redo.current.length)return false;history("redo");return true}
+  if(command==="save"){
+   try{saveSiteDraft(doc);setNotice("Черновик сохранён в этом браузере.")}
+   catch(error){setNotice("Не удалось сохранить черновик: "+report(error))}
+   return true;
+  }
+  if(command==="escape"){
+   if(!selected&&!selectedObject&&!showShortcuts&&!focusMode&&!panelOpen)return false;
+   setSelected(null);setSelectedObject(null);setShowShortcuts(false);setFocusMode(false);setPanelOpen(false);
+   return true;
+  }
+  return false;
+ };
  const addPage=()=>{
   const title=newTitle.trim().slice(0,64)||"Новая страница";
   const id="page-"+crypto.randomUUID().slice(0,8);
@@ -252,19 +323,13 @@ export default function LektrusSiteBuilder(){
  const previewSrc="/?site-preview=1#"+active;
  useEffect(()=>{
   const onKey=(event:KeyboardEvent)=>{
-   if(access!=="allowed")return;
-   const tag=event.target instanceof HTMLElement?event.target:null;
-   if(event.key==="Escape"){setFocusMode(false);setPanelOpen(false);return}
-   const cmd=event.ctrlKey||event.metaKey;
-   if(!cmd)return;
-   if(event.key.toLowerCase()==="s"){event.preventDefault();saveSiteDraft(doc);setNotice("Черновик сохранён в этом браузере.");return}
-   if(tag?.closest("input,textarea,select,[contenteditable=true]"))return;
-   if(event.key.toLowerCase()==="z"){event.preventDefault();history(event.shiftKey?"redo":"undo")}
-   if(event.key.toLowerCase()==="y"){event.preventDefault();history("redo")}
+   if(event.defaultPrevented)return;
+   const command=commandFromKeyboard(event);
+   if(command&&runCommand(command)){event.preventDefault();event.stopPropagation()}
   };
   window.addEventListener("keydown",onKey);
   return ()=>window.removeEventListener("keydown",onKey);
- },[doc,access]);
+ },[doc,access,active,selected,selectedObject,busy,showShortcuts,focusMode,panelOpen]);
  const publish=async()=>{setBusy(true);setNotice("");
   try{await publishSiteDocument(doc);setSaved("published");setNotice("Сайт опубликован. Изменения будут видны посетителям после обновления страницы.")}
   catch(e){setNotice(report(e)+". Черновик сохранён локально, опубликованный сайт не изменился.")}
@@ -296,7 +361,7 @@ export default function LektrusSiteBuilder(){
   <header className="site-builder-top">
    <a className="site-builder-back" href="/app">← Lektrus</a>
    <div className="site-builder-heading"><span className="site-builder-studio-label">LEKTRUS / DESIGN STUDIO</span><strong>Конструктор сайта</strong><small><span className={"site-builder-status-dot"+(saved==="published"?" published":"")}/>{saved==="published"?"Опубликовано":"Черновик сохраняется автоматически"}</small></div>
-   <div className="site-builder-history"><button type="button" disabled={!undo.current.length} onClick={()=>history("undo")} title="Отменить">↶</button><button type="button" disabled={!redo.current.length} onClick={()=>history("redo")} title="Повторить">↷</button></div>
+   <div className="site-builder-history" role="toolbar" aria-label="История изменений"><button type="button" aria-label="Отменить действие" aria-keyshortcuts="Control+Z Meta+Z" disabled={!undo.current.length} onClick={()=>history("undo")} title="Отменить (Ctrl+Z)">↶</button><button type="button" aria-label="Повторить действие" aria-keyshortcuts="Control+Y Control+Shift+Z Meta+Shift+Z" disabled={!redo.current.length} onClick={()=>history("redo")} title="Повторить (Ctrl+Y / Ctrl+Shift+Z)">↷</button></div>
    <div className="site-builder-device">{(["desktop","tablet","phone"] as Device[]).map(value=><button key={value} type="button" aria-pressed={device===value} className={device===value?"active":""} onClick={()=>setDevice(value)}>{size[value].label}</button>)}</div>
    <button type="button" className="site-builder-neutral" onClick={exportJson}>Экспорт</button>
    <button type="button" className="site-builder-neutral" onClick={()=>file.current?.click()}>Импорт</button>
@@ -334,9 +399,25 @@ export default function LektrusSiteBuilder(){
     </section>
    </aside>
    <main className="site-builder-center"><div className="site-builder-previewbar"><span><b className="site-builder-live-dot"/> Живой предпросмотр <span className="site-builder-preview-separator">/</span> {size[device].label} <span className="site-builder-preview-separator">/</span> {activePage.title}</span>
-     <div className="site-builder-preview-actions"><button type="button" className={interactive?"is-active":""} aria-pressed={interactive} onClick={()=>setInteractive(v=>!v)}>{interactive?"✥ Редактировать объекты":"▶ Проверять клики"}</button><button type="button" onClick={()=>{setFocusMode(v=>!v);setPanelOpen(false)}}>{focusMode?"⊟ Вернуться в редактор":"⛶ Фокус на сайте"}</button><button type="button" onClick={()=>{setPanelOpen(v=>!v);setFocusMode(false)}} aria-expanded={panelOpen} title="Показать свойства">⚙ Свойства</button></div>
+     <div className="site-builder-preview-actions"><button type="button" className={showShortcuts?"is-active":""} aria-expanded={showShortcuts} onClick={()=>setShowShortcuts(v=>!v)} title="Горячие клавиши">⌨ Клавиши</button><button type="button" className={interactive?"is-active":""} aria-pressed={interactive} onClick={()=>setInteractive(v=>!v)}>{interactive?"✥ Редактировать объекты":"▶ Проверять клики"}</button><button type="button" onClick={()=>{setFocusMode(v=>!v);setPanelOpen(false)}}>{focusMode?"⊟ Вернуться в редактор":"⛶ Фокус на сайте"}</button><button type="button" onClick={()=>{setPanelOpen(v=>!v);setFocusMode(false)}} aria-expanded={panelOpen} title="Показать свойства">⚙ Свойства</button></div>
     </div>
-    <div className="site-builder-stage"><iframe key={active} ref={frame} title="Предпросмотр сайта Lektrus" src={previewSrc} style={{width:size[device].width}} onLoad={()=>frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc,selectedId:selected,objectId:selectedObject,interactive},window.location.origin)}/></div>
+    {showShortcuts&&<div className="site-builder-shortcuts-panel" role="region" aria-label="Горячие клавиши">
+      <span><kbd>Delete</kbd> / <kbd>Backspace</kbd> Удалить выделенное</span>
+      <span><kbd>Ctrl</kbd> + <kbd>Z</kbd> Отменить</span>
+      <span><kbd>Ctrl</kbd> + <kbd>Y</kbd> / <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> Повторить</span>
+      <span><kbd>Esc</kbd> Снять выделение</span>
+      <span>На Mac используй ⌘ вместо Ctrl. В полях ввода сочетания остаются системными.</span>
+     </div>}
+     {(activeBlock||selectedObject)&&<div className="site-builder-selection-toolbar" role="toolbar" aria-label="Действия с выделенным элементом">
+      <span className="site-builder-selection-label"><strong>{activeBlock?labelFor(activeBlock.kind):objectMeta?.label??"Элемент"}</strong><small>{activeBlock?activeBlock.title:selectedObject&&activeObjectPatch?.hidden?"Элемент скрыт":objectMeta?.text||"Выбранный объект"}</small></span>
+      <button type="button" disabled={!undo.current.length} onClick={()=>history("undo")} title="Отменить (Ctrl+Z)">↶ Отменить</button>
+      <button type="button" disabled={!redo.current.length} onClick={()=>history("redo")} title="Повторить (Ctrl+Y)">↷ Повторить</button>
+      {activeBlock&&<button type="button" disabled={activePage.blocks.length>=40} onClick={duplicateBlock} title="Создать копию блока">⧉ Копировать</button>}
+      {selectedObject&&activeObjectPatch?.hidden?<button type="button" className="site-builder-restore-action" onClick={restoreSelectedObject}>↺ Восстановить</button>:
+       <button type="button" className="site-builder-delete-action" aria-keyshortcuts="Delete Backspace" onClick={removeSelection}>{activeBlock?"⌫ Удалить блок":"⌫ Скрыть объект"}</button>}
+      <button type="button" onClick={()=>{setSelected(null);setSelectedObject(null)}} title="Снять выделение (Esc)" aria-label="Снять выделение">×</button>
+     </div>}
+     <div className="site-builder-stage"><iframe key={active} ref={frame} title="Предпросмотр сайта Lektrus" src={previewSrc} style={{width:size[device].width}} onLoad={()=>frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc,selectedId:selected,objectId:selectedObject,interactive},window.location.origin)}/></div>
    </main>
    <aside className={"site-builder-right"+(panelOpen?" is-open":" is-collapsed")} aria-label="Настройки">
     <div className="site-builder-inspect-tabs">{(["page","block","object","design"] as Inspector[]).map((tab,i)=><button key={tab} type="button" className={inspector===tab?"active":""} onClick={()=>setInspector(tab)}>{["Страница","Блок","Объект","Дизайн"][i]}</button>)}</div>
@@ -375,6 +456,17 @@ export default function LektrusSiteBuilder(){
         activeBlock.kind==="checklist"?"Пункты списка (по одному на строку)":"Карточки (каждая с новой строки)"
       }<textarea rows={8} value={activeBlock.items.join("\n")} onChange={e=>patchBlock({items:e.target.value.split("\n").slice(0,12)})}/></label>}
       {["image","cta"].includes(activeBlock.kind)&&<label>Текст кнопки<input value={activeBlock.buttonLabel} maxLength={45} onChange={e=>patchBlock({buttonLabel:e.target.value})}/></label>}
+      <div className="site-builder-dimensions">
+        <h3>Размер блока</h3>
+        <p>Растягивай синие маркеры выделенного блока прямо на странице. Высота минимальная, содержимое не обрежется.</p>
+        <div className="site-builder-size-grid">
+         <label>Ширина, %<input type="number" min={35} max={100} step={1} value={activeBlock.style.width??100} onChange={e=>{const value=Number(e.target.value);if(Number.isFinite(value))patchBlock({style:{...activeBlock.style,width:Math.max(35,Math.min(100,value))}})}}/></label>
+         <label>Мин. высота, px<input type="number" min={0} max={1200} step={10} value={activeBlock.style.minHeight??0} onChange={e=>{const value=Number(e.target.value);if(Number.isFinite(value))patchBlock({style:{...activeBlock.style,minHeight:Math.max(0,Math.min(1200,value))}})}}/></label>
+        </div>
+        <label>Ширина <input type="range" min={35} max={100} step={1} value={activeBlock.style.width??100} onChange={e=>patchBlock({style:{...activeBlock.style,width:Number(e.target.value)}})}/></label>
+        <label>Минимальная высота <input type="range" min={0} max={1200} step={10} value={activeBlock.style.minHeight??0} onChange={e=>patchBlock({style:{...activeBlock.style,minHeight:Number(e.target.value)}})}/></label>
+        <button type="button" className="site-builder-neutral" onClick={()=>{const style={...activeBlock.style};delete style.width;delete style.minHeight;patchBlock({style})}}>Сбросить размеры (авто)</button>
+       </div>
       <div className="site-builder-appearance"><h3>Оформление блока</h3>
        <label>Стиль фона<select value={activeBlock.style?.tone??DEFAULT_SITE_BLOCK_STYLE.tone} onChange={e=>patchBlock({style:{...activeBlock.style,tone:e.target.value as SiteBlockStyle["tone"]}})}><option value="plain">Прозрачный</option><option value="soft">Мягкий</option><option value="accent">Акцентный</option><option value="dark">Тёмный</option></select></label>
        <label>Выравнивание<select value={activeBlock.style?.align??"left"} onChange={e=>patchBlock({style:{...activeBlock.style,align:e.target.value as SiteBlockStyle["align"]}})}><option value="left">По левому краю</option><option value="center">По центру</option></select></label>
@@ -383,7 +475,7 @@ export default function LektrusSiteBuilder(){
        {activeBlock.kind==="image"&&<label>Положение изображения<select value={activeBlock.style?.imageSide??"left"} onChange={e=>patchBlock({style:{...activeBlock.style,imageSide:e.target.value as SiteBlockStyle["imageSide"]}})}><option value="left">Слева</option><option value="right">Справа</option></select></label>}
       </div>
       <button type="button" className="site-builder-neutral" disabled={activePage.blocks.length>=40} onClick={duplicateBlock}>Дублировать блок</button>
-      <button type="button" className="site-builder-danger" onClick={deleteBlock}>Удалить блок</button></>}
+      <button type="button" className="site-builder-danger" aria-keyshortcuts="Delete Backspace" onClick={deleteBlock}>Удалить блок <kbd>Del</kbd></button></>}
     </div>}
     {inspector==="object"&&<div className="site-builder-fields site-builder-object-fields">
      <h2>Элементы сайта <span>{objectList.length}</span></h2>
@@ -409,6 +501,9 @@ export default function LektrusSiteBuilder(){
       <label>Ширина: {activeObjectPatch?.style?.width??100}%<input type="range" min="20" max="100" value={activeObjectPatch?.style?.width??100} onChange={e=>patchObject({style:{width:Number(e.target.value)}})}/></label>
       <label>Непрозрачность: {Math.round((activeObjectPatch?.style?.opacity??1)*100)}%<input type="range" min="10" max="100" value={Math.round((activeObjectPatch?.style?.opacity??1)*100)} onChange={e=>patchObject({style:{opacity:Number(e.target.value)/100}})}/></label>
       <button type="button" className="site-builder-neutral" onClick={resetObject}>Вернуть исходный вид объекта</button>
+       {activeObjectPatch?.hidden?<button type="button" className="site-builder-restore-action" onClick={restoreSelectedObject}>↺ Восстановить скрытый объект</button>:
+        <button type="button" className="site-builder-danger" aria-keyshortcuts="Delete Backspace" onClick={removeSelection}>Скрыть объект <kbd>Del</kbd></button>}
+       <p className="site-builder-object-hint">Стандартный объект не стирается из кода сайта: он скрывается, а отмена или восстановление вернут его. Добавленные блоки удаляются из черновика полностью.</p>
      </>}
      <details className="site-builder-object-tree" open={!selectedObject}>
       <summary>Список объектов страницы</summary>

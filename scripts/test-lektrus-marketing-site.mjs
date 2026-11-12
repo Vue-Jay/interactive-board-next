@@ -67,7 +67,7 @@ assert.ok(builder.includes("moveNav(")&&builder.includes("moveBlock(")&&builder.
 assert.ok(builder.includes("history(")&&builder.includes("site-builder-page-list"),"editing must include undo/redo and navigation");
 assert.ok(sql.includes("is_app_admin(auth.uid())")&&sql.includes("marketing_site_public_read"),"database must authorize publication server-side");
 assert.ok(config.includes("normalizeSiteDocument")&&config.includes("safeSiteUrl"),"untrusted published design must be normalized");
-assert.ok(blocks.includes("data-site-block-id")&&site.includes("SITE_PREVIEW_MESSAGE"),"preview needs editable block selection");
+assert.ok((blocks.includes("data-site-block-id")||blocks.includes("SiteResizableBlock")&&read("src/SiteResizableBlock.tsx").includes("data-site-block-id"))&&site.includes("SITE_PREVIEW_MESSAGE"),"preview needs editable block selection");
 assert.ok(site.includes("marketing-teacher-scene")&&site.includes("marketing-student-demo"),"builder must keep distinct original page templates");
 
 
@@ -99,7 +99,7 @@ for(const name of ["site-block-faq-list","site-block-stats","site-block-quote","
 assert.ok(blocks.includes("<details key={i}>")&&blocks.includes("<summary>"),"FAQ uses accessible native accordion");
 assert.ok(kits.includes("SITE_SECTION_PRESETS")&&kits.includes("SITE_THEME_PRESETS")&&kits.includes("make(\"gallery\""),"ready-to-use section kits and theme palettes missing");
 assert.ok(builder.includes("addSectionKit")&&builder.includes("duplicatePage")&&builder.includes("site-builder-theme-presets"),"section insertion, page cloning and themes must be wired");
-assert.ok(builder.includes('event.key.toLowerCase()==="z"')&&builder.includes('event.key.toLowerCase()==="s"'),"keyboard undo and local draft save missing");
+assert.ok(builder.includes("commandFromKeyboard(event)")&&builder.includes("saveSiteDraft(doc)")&&read("src/siteStudioCommands.ts").includes("getStudioCommand"),"keyboard undo and local draft save missing");
 assert.ok(builder.includes("focusMode")&&studioCss.includes(".site-builder.is-focus"),"distraction-free preview must hide the editor sidebars");
 assert.ok(builder.includes("site-builder-page-search")&&builder.includes("site-builder-appearance"),"page search and block appearance controls required");
 assert.ok(site.includes("previewSelection")&&site.includes("lektrus:site-select-page"),"preview must expose selected block and page headline click-to-edit");
@@ -176,5 +176,71 @@ assert.equal(obj.objects["home:native-1/root"].src,"#","JS scheme in image must 
 assert.equal(obj.objects["home:native-1/root"].href,"#","JS scheme in link must be rejected");
 assert.equal(obj.objects["home:native-1/root"].style.fontSize,120,"oversized style input must be clamped");
 assert.equal(obj.objects["home:native-1/root"].style.opacity,.1,"invalid opacity must be clamped");
+
+
+// Site Studio keyboard operations: verify the real shared model, not only source strings.
+const shortcutSource=read("src/siteStudioCommands.ts");
+const shortcutJs=ts.transpileModule(shortcutSource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext},fileName:"siteStudioCommands.ts"}).outputText;
+const studioCommands=await import("data:text/javascript;base64,"+Buffer.from(shortcutJs).toString("base64"));
+const shortcut=(key,overrides={})=>studioCommands.getStudioCommand({
+ key,ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,editable:false,...overrides
+});
+assert.equal(shortcut("Delete"),"delete","Delete must remove the selected site object");
+assert.equal(shortcut("Backspace"),"delete","Backspace must remove the selected site object");
+assert.equal(shortcut("z",{ctrlKey:true}),"undo","Ctrl+Z must undo");
+assert.equal(shortcut("z",{ctrlKey:true,shiftKey:true}),"redo","Ctrl+Shift+Z must redo");
+assert.equal(shortcut("z",{metaKey:true,shiftKey:true}),"redo","Cmd+Shift+Z must redo on macOS");
+assert.equal(shortcut("y",{ctrlKey:true}),"redo","Ctrl+Y must redo");
+assert.equal(shortcut("s",{ctrlKey:true}),"save","Ctrl+S must explicitly save a local draft");
+assert.equal(shortcut("Escape"),"escape","Esc must clear selection");
+for(const key of ["Delete","Backspace","z","y","s"]){
+ assert.equal(shortcut(key,{ctrlKey:key==="z"||key==="y"||key==="s",editable:true}),null,"editing a text input must never trigger a site command: "+key);
+}
+assert.equal(shortcut("Delete",{isComposing:true}),null,"IME composition must never delete a block");
+assert.equal(shortcut("Backspace",{altKey:true}),null,"Alt+Backspace is not a canvas delete");
+assert.equal(shortcut("Backspace",{ctrlKey:true}),null,"Ctrl+Backspace must not accidentally delete blocks");
+const staged=model.defaultSiteDocument();
+const userBlock=model.newSiteBlock("text");
+staged.pages.home={id:"home",title:"Главная",eyebrow:"",heading:"",lead:"",blocks:[userBlock]};
+const nodeKey="home:native-0/root/0",blockKey="home:"+userBlock.id+"/root";
+staged.objects[nodeKey]={style:{fontSize:24}};
+staged.objects[blockKey]={text:"Текст блока"};
+assert.equal(studioCommands.deleteStudioSelection(staged,"home",null,nodeKey),"object");
+assert.equal(staged.objects[nodeKey].hidden,true,"native object must be reversibly hidden");
+assert.equal(studioCommands.restoreStudioObject(staged,nodeKey),true);
+assert.equal(staged.objects[nodeKey].hidden,undefined,"restoring must preserve other object styles");
+assert.equal(staged.objects[nodeKey].style.fontSize,24);
+assert.equal(studioCommands.deleteStudioSelection(staged,"home",userBlock.id,null),"block");
+assert.equal(staged.pages.home.blocks.length,0,"custom block must be removed from its own page");
+assert.equal(staged.objects[blockKey],undefined,"removed block's object overrides must be pruned");
+assert.equal(studioCommands.deleteStudioSelection(staged,"home",null,null),"none","keyboard Delete without selection must be harmless");
+assert.ok(builder.includes("site-builder-selection-toolbar")&&builder.includes("site-builder-shortcuts-panel"),"visible keyboard help and selection toolbar are required");
+assert.ok(builder.includes("setSelected(value.block)")&&builder.includes("setSelectedObject(value.object)"),"undo must restore selection, not only document");
+assert.ok(site.includes('lektrus:site-editor-command')&&site.includes("commandFromKeyboard(event)"),"the preview iframe must forward actual keyboard events");
+assert.ok(site.includes("site-canvas-selection-actions"),"the iframe needs visible delete, restore, undo and redo controls");
+
+
+// Persistent dimension controls: responsive 35–100% width; non-clipping min height.
+const resizeComponent=read("src/SiteResizableBlock.tsx");
+assert.ok(resizeComponent.includes("setPointerCapture")&&resizeComponent.includes("onPointerMove={move}")&&resizeComponent.includes("lektrus:site-resize-block"),"canvas must support live pointer resize across the iframe");
+assert.ok(builder.includes('site-builder-dimensions')&&builder.includes('event.data?.type==="lektrus:site-resize-block"'),"width/height inspector and parent resize handler are required");
+const dimensionsDoc=model.defaultSiteDocument();
+const resized=model.newSiteBlock("text");
+resized.style.width=72;
+resized.style.minHeight=360;
+dimensionsDoc.pages.home={...oldDocument.pages.home,blocks:[resized]};
+let dims=model.normalizeSiteDocument(dimensionsDoc).pages.home.blocks[0].style;
+assert.equal(dims.width,72,"published block width must persist");
+assert.equal(dims.minHeight,360,"published block minimum height must persist");
+resized.style.width=2;
+resized.style.minHeight=9999;
+dims=model.normalizeSiteDocument(dimensionsDoc).pages.home.blocks[0].style;
+assert.equal(dims.width,35,"unreasonably narrow block width must be clamped");
+assert.equal(dims.minHeight,1200,"unreasonably tall block size must be clamped");
+resized.style.width=100;
+resized.style.minHeight=0;
+dims=model.normalizeSiteDocument(dimensionsDoc).pages.home.blocks[0].style;
+assert.equal(dims.width,100);
+assert.equal(dims.minHeight,0);
 
 console.log("Lektrus marketing site: selected copy, 8 sections, real screenshots, demo links, pricing, accessibility and responsive styling verified.");
