@@ -1,4 +1,4 @@
-import type {CSSProperties} from "react";
+import {Fragment,type CSSProperties} from "react";
 import type {SiteBlock,SitePage} from "./marketingSiteConfig";
 import {DEFAULT_SITE_BLOCK_STYLE,safeSiteUrl} from "./marketingSiteConfig";
 import {SiteDropZone,putSiteCanvasTransfer} from "./SiteCanvasDnD";
@@ -87,11 +87,11 @@ function SiteBlockView({block}:{block:SiteBlock}){
 }
 export function SiteEditableBlocks({blocks,selectedId,page,anchor="end",preview=false}:{blocks:SiteBlock[];selectedId?:string|null;page?:string;anchor?:string;preview?:boolean}){
  return <>{page&&<SiteDropZone page={page} anchor={anchor} index={0} preview={preview}/>}
-  {blocks.map((block,index)=><div className="site-editable-block" data-site-block-id={block.id} data-site-selected={selectedId===block.id?"true":undefined} key={block.id}
+  {blocks.map((block,index)=><Fragment key={block.id}><div className="site-editable-block" data-site-block-id={block.id} data-site-selected={selectedId===block.id?"true":undefined}
    draggable={preview} onDragStart={event=>{if(preview)putSiteCanvasTransfer(event,{type:"move",id:block.id})}}>
    <SiteBlockView block={block}/>
-   </div>)}
-  {page&&blocks.map((block,index)=><SiteDropZone key={block.id+"-after"} page={page} anchor={anchor} index={index+1} preview={preview}/>)}
+   </div>
+   {page&&<SiteDropZone page={page} anchor={anchor} index={index+1} preview={preview}/>}</Fragment>)}
  </>;
 }
 export function SiteAnchorSlot({page,anchor,blocks,selectedId,preview}:{page:string;anchor:string;blocks:SiteBlock[];selectedId?:string|null;preview:boolean}){
