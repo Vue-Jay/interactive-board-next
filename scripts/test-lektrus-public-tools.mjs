@@ -23,11 +23,11 @@ assert.match(app,/if \(route\.kind === "tool"\) \{ setBoardLoading\(false\); ret
  "opening a standalone tool must not trigger board loading");
 assert.match(tools,/lazy\(\(\)=>import\("\.\/LektrusMapAtlas"\)\)/);
 assert.match(tools,/lazy\(\(\)=>import\("\.\/LektrusChemistryBenchEditor"\)\)/);
-assert.match(site,/href:"\/tools\/atlas"/);
-assert.match(site,/href:"\/tools\/laboratory"/);
-assert.match(site,/page==="tools"&&!copy\?\.replaceDefault/,"standalone tools require their own public site tab");
-assert.match(site,/Создавать доску не требуется/,"standalone tools should be clearly explained as board-free");
-assert.match(site,/marketing-standalone-tool/,"standalone catalog should offer direct links without screenshot galleries");
+assert.match(site,/href="\/tools\/atlas"/);
+assert.match(site,/href="\/tools\/laboratory"/);
+assert.doesNotMatch(site,/page==="tools"&&!copy\?\.replaceDefault/,"standalone tools should not have a redundant public tab");
+assert.match(site,/marketing-sidebar-tools/,"standalone tools belong in the persistent sidebar");
+assert.match(site,/Инструменты<\/span>/,"sidebar tool group should use the short title without additional labels");
 assert.doesNotMatch(site,/lektrus-ad-scene|lektrus-ad-draw-path|CSS animation/i,
  "the site must not advertise fabricated board activity");
-console.log("Lektrus public tools: direct routes, lazy tools, standalone board-free use and no fabricated animation verified.");
+console.log("Lektrus public tools: independent atlas/laboratory routes linked from sidebar, no duplicate tools page, lazy loading and no fabricated animation verified.");

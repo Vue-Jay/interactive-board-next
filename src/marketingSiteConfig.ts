@@ -2,7 +2,9 @@ import {isRemoteBackendEnabled,remoteRequest} from "./backend";
 
 export const SITE_DRAFT_KEY="lektrus.marketing-site.draft.v1";
 export const SITE_PREVIEW_MESSAGE="lektrus:marketing-site-preview";
-export const BUILTIN_SITE_PAGES=["home","features","tools","teachers","students","how","pricing","about","help"] as const;
+export const BUILTIN_SITE_PAGES=["home","features","pricing","help"] as const;
+export const RETIRED_SITE_PAGES=["tools","how","about","teachers","students"] as const;
+const retiredSitePages=new Set<string>(RETIRED_SITE_PAGES);
 export type SiteBlockKind="text"|"image"|"cards"|"gallery"|"cta"|"divider"|"faq"|"stats"|"quote"|"video"|"timeline"|"comparison"|"logos"|"spacer"|"checklist"|"button-row";
 export type SiteBlockStyle={tone:"plain"|"soft"|"accent"|"dark";align:"left"|"center";spacing:"compact"|"normal"|"airy";columns:2|3|4;imageSide:"left"|"right";width?:number;minHeight?:number};
 export const DEFAULT_SITE_BLOCK_STYLE:SiteBlockStyle={tone:"plain",align:"left",spacing:"normal",columns:3,imageSide:"left"};
@@ -27,12 +29,7 @@ export type SiteDocument={version:1;theme:SiteTheme;navigation:SiteNavItem[];pag
 const defaults:SiteNavItem[]=[
  {id:"home",title:"Главная",hidden:false},
  {id:"features",title:"Возможности",hidden:false},
- {id:"tools",title:"Инструменты",hidden:false},
- {id:"teachers",title:"Учителям",hidden:true},
- {id:"students",title:"Ученикам",hidden:true},
- {id:"how",title:"Как это работает",hidden:false},
  {id:"pricing",title:"Тарифы",hidden:false},
- {id:"about",title:"О Lektrus",hidden:false},
  {id:"help",title:"Помощь и контакты",hidden:false}
 ];
 const baseTheme:SiteTheme={accent:"#2563eb",background:"#f8fafc",surface:"#ffffff",ink:"#122238",radius:18,maxWidth:1200};
@@ -118,7 +115,7 @@ export function normalizeSiteDocument(raw:unknown):SiteDocument{
  }
  const rawPages=object(data.pages);
  for(const entry of defaults)if(rawPages[entry.id])result.pages[entry.id]=parsePage(rawPages[entry.id],entry.id,entry.title);
- const known=new Set<string>(defaults.map(item=>item.id));
+ const known=new Set<string>([...defaults.map(item=>item.id),...RETIRED_SITE_PAGES]);
  if(Array.isArray(data.customPages))for(const value of data.customPages.slice(0,18)){
   const id=slug(object(value).id);
   if(!id||known.has(id))continue;
@@ -133,16 +130,9 @@ export function normalizeSiteDocument(raw:unknown):SiteDocument{
   const item=object(rawItem),id=slug(item.id),base=byId.get(id);
   if(!base||used.has(id))continue;
   used.add(id);
-  nav.push({id,title:clean(item.title,54)||base.title,hidden:id==="home"?false:id==="teachers"||id==="students"?true:item.hidden===true});
+  nav.push({id,title:clean(item.title,54)||base.title,hidden:id==="home"?false:item.hidden===true});
  }
- for(const [id,base] of byId)if(!used.has(id)){
-  if(id==="tools"){
-   // Add the newly introduced tab next to Features in existing published documents
-   // without disturbing a deliberately customized navigation order.
-   const index=nav.findIndex(item=>item.id==="features");
-   nav.splice(index>=0?index+1:nav.length,0,{...base});
-  }else nav.push({...base});
- }
+ for(const [id,base] of byId)if(!used.has(id)&&!retiredSitePages.has(id))nav.push({...base});
  result.navigation=nav;
  const rawObjects=object(data.objects),keys=Object.keys(rawObjects).slice(0,1000);
  for(const key of keys){
