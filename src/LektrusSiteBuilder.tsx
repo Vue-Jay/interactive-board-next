@@ -305,18 +305,18 @@ export default function LektrusSiteBuilder(){
      <p>Перетаскивай страницы, чтобы менять порядок вкладок.</p>
      <input className="site-builder-page-search" aria-label="Найти страницу" placeholder="⌕  Найти страницу..." value={pageSearch} onChange={e=>setPageSearch(e.target.value)}/>
      <nav className="site-builder-page-list" aria-label="Страницы сайта">{doc.navigation.filter(item=>item.title.toLowerCase().includes(pageSearch.trim().toLowerCase())).map(item=><div key={item.id} draggable onDragStart={()=>{drag.current=item.id}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(drag.current)moveNav(drag.current,item.id);drag.current=null}}>
-      <button type="button" className={active===item.id?"selected":""} onClick={()=>{setActive(item.id);setSelected(null);setInspector("page")}}><span className="site-builder-handle">⠿</span><span>{item.title}</span>{item.hidden&&<span title="Скрыта">◌</span>}</button>
+      <button type="button" className={active===item.id?"selected":""} onClick={()=>{setActive(item.id);setSelected(null);setSelectedObject(null);setInspector("page")}}><span className="site-builder-handle">⠿</span><span>{item.title}</span>{item.hidden&&<span title="Скрыта">◌</span>}</button>
       <button type="button" title={item.hidden?"Показать вкладку":"Скрыть вкладку"} disabled={item.id==="home"} onClick={()=>change(next=>{next.navigation=next.navigation.map(x=>x.id===item.id?{...x,hidden:!x.hidden}:x)})}>{item.hidden?"◉":"◌"}</button>
      </div>)}</nav>
      <form className="site-builder-add-page" onSubmit={e=>{e.preventDefault();addPage()}}><input aria-label="Название новой страницы" placeholder="Новая страница…" value={newTitle} onChange={e=>setNewTitle(e.target.value)}/><button type="submit" disabled={doc.customPages.length>=18}>+</button></form>
     </section>
-    <section><h2>Блоки страницы <span>{activePage.blocks.length}</span></h2>
+    <section><h2>Блоки страницы <span>{activePage.blocks.length}</span></h2><p>Зажми блок или готовую секцию и перетащи на сайт, в подсвеченное место. Обычный клик добавляет в конец.</p>
      <div className="site-builder-block-list">{activePage.blocks.map((block,i)=><div key={block.id} className={selected===block.id?"selected":""} draggable
-       onDragStart={()=>{blockDrag.current=block.id}}
+       onDragStart={event=>{blockDrag.current=block.id;putSiteCanvasTransfer(event,{type:"move",id:block.id})}}
        onDragOver={e=>e.preventDefault()}
        onDrop={e=>{e.preventDefault();if(blockDrag.current)moveBlockTo(blockDrag.current,block.id);blockDrag.current=null}}
        onDragEnd={()=>{blockDrag.current=null}}>
-      <button type="button" onClick={()=>{setSelected(block.id);setInspector("block")}}>{labelFor(block.kind)} <small>{block.title}</small></button>
+      <button type="button" onClick={()=>{setSelected(block.id);setSelectedObject(null);setInspector("block")}}>{labelFor(block.kind)} <small>{block.title}</small></button>
       <button type="button" disabled={i===0} title="Выше" onClick={()=>moveBlock(i,-1)}>↑</button>
       <button type="button" disabled={i===activePage.blocks.length-1} title="Ниже" onClick={()=>moveBlock(i,1)}>↓</button>
      </div>)}</div>
@@ -324,17 +324,17 @@ export default function LektrusSiteBuilder(){
       <button type="button" aria-pressed={libraryMode==="kits"} className={libraryMode==="kits"?"active":""} onClick={()=>setLibraryMode("kits")}>Готовые секции</button>
       <button type="button" aria-pressed={libraryMode==="blocks"} className={libraryMode==="blocks"?"active":""} onClick={()=>setLibraryMode("blocks")}>Все блоки</button>
      </div>
-     {libraryMode==="blocks"?<div className="site-builder-library">{kinds.map(item=><button type="button" key={item.kind} disabled={activePage.blocks.length>=40} onClick={()=>addBlock(item.kind)}><b>{item.icon}</b>{item.label}</button>)}</div>:
-      <div className="site-builder-kits">{SITE_SECTION_PRESETS.map(kit=><button type="button" key={kit.id} disabled={activePage.blocks.length>=40} onClick={()=>addSectionKit(kit.id)}><span className="site-builder-kit-icon">{kit.symbol}</span><span><strong>{kit.title}</strong><small>{kit.description}</small></span><span aria-hidden="true">＋</span></button>)}</div>}
+     {libraryMode==="blocks"?<div className="site-builder-library">{kinds.map(item=><button type="button" key={item.kind} draggable disabled={activePage.blocks.length>=40} onDragStart={event=>putSiteCanvasTransfer(event,{type:"block",kind:item.kind})} title="Перетащи в нужное место сайта или нажми для добавления в конец" onClick={()=>addBlock(item.kind)}><b>{item.icon}</b>{item.label}</button>)}</div>:
+      <div className="site-builder-kits">{SITE_SECTION_PRESETS.map(kit=><button type="button" key={kit.id} draggable disabled={activePage.blocks.length>=40} onDragStart={event=>putSiteCanvasTransfer(event,{type:"kit",id:kit.id})} title="Перетащи на страницу или нажми для добавления" onClick={()=>addSectionKit(kit.id)}><span className="site-builder-kit-icon">{kit.symbol}</span><span><strong>{kit.title}</strong><small>{kit.description}</small></span><span aria-hidden="true">＋</span></button>)}</div>}
     </section>
    </aside>
    <main className="site-builder-center"><div className="site-builder-previewbar"><span><b className="site-builder-live-dot"/> Живой предпросмотр <span className="site-builder-preview-separator">/</span> {size[device].label} <span className="site-builder-preview-separator">/</span> {activePage.title}</span>
-     <div className="site-builder-preview-actions"><button type="button" onClick={()=>{setFocusMode(v=>!v);setPanelOpen(false)}}>{focusMode?"⊟ Вернуться в редактор":"⛶ Фокус на сайте"}</button><button type="button" onClick={()=>{setPanelOpen(v=>!v);setFocusMode(false)}} aria-expanded={panelOpen} title="Показать свойства">⚙ Свойства</button></div>
+     <div className="site-builder-preview-actions"><button type="button" className={interactive?"is-active":""} aria-pressed={interactive} onClick={()=>setInteractive(v=>!v)}>{interactive?"◉ Проверить клики":"✥ Выбирать объекты"}</button><button type="button" onClick={()=>{setFocusMode(v=>!v);setPanelOpen(false)}}>{focusMode?"⊟ Вернуться в редактор":"⛶ Фокус на сайте"}</button><button type="button" onClick={()=>{setPanelOpen(v=>!v);setFocusMode(false)}} aria-expanded={panelOpen} title="Показать свойства">⚙ Свойства</button></div>
     </div>
-    <div className="site-builder-stage"><iframe key={active} ref={frame} title="Предпросмотр сайта Lektrus" src={previewSrc} style={{width:size[device].width}} onLoad={()=>frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc,selectedId:selected},window.location.origin)}/></div>
+    <div className="site-builder-stage"><iframe key={active} ref={frame} title="Предпросмотр сайта Lektrus" src={previewSrc} style={{width:size[device].width}} onLoad={()=>frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc,selectedId:selected,objectId:selectedObject,interactive},window.location.origin)}/></div>
    </main>
    <aside className={"site-builder-right"+(panelOpen?" is-open":" is-collapsed")} aria-label="Настройки">
-    <div className="site-builder-inspect-tabs">{(["page","block","design"] as Inspector[]).map((tab,i)=><button key={tab} type="button" className={inspector===tab?"active":""} onClick={()=>setInspector(tab)}>{["Страница","Блок","Дизайн"][i]}</button>)}</div>
+    <div className="site-builder-inspect-tabs">{(["page","block","object","design"] as Inspector[]).map((tab,i)=><button key={tab} type="button" className={inspector===tab?"active":""} onClick={()=>setInspector(tab)}>{["Страница","Блок","Объект","Дизайн"][i]}</button>)}</div>
     {inspector==="page"&&<div className="site-builder-fields"><h2>Настройка страницы</h2>
      <label>Название вкладки<input value={doc.navigation.find(x=>x.id===active)?.title??""} onChange={e=>renameNav(e.target.value)}/></label>
      <label>Надпись над заголовком<input value={activePage.eyebrow} placeholder="Используется исходная" onChange={e=>patchPage({eyebrow:e.target.value})}/></label>
@@ -353,29 +353,65 @@ export default function LektrusSiteBuilder(){
       {activeBlock.kind!=="divider"&&<label>Текст<textarea rows={5} value={activeBlock.text} onChange={e=>patchBlock({text:e.target.value})}/></label>}
       {activeBlock.kind==="image"&&<label>Адрес изображения<input value={activeBlock.image} placeholder="/site/board-math.png" onChange={e=>patchBlock({image:e.target.value})}/></label>}
       {activeBlock.kind==="image"&&<SiteImageChooser onChoose={url=>patchBlock({image:url})}/>}
-      {activeBlock.kind==="gallery"&&<SiteImageChooser onChoose={url=>{
+      {["gallery","logos"].includes(activeBlock.kind)&&<SiteImageChooser onChoose={url=>{
        if(activeBlock.items.length>=12){setNotice("В одной галерее максимум 12 изображений");return}
        patchBlock({items:[...activeBlock.items,url]});
       }}/>}
       
-      {["image","cta"].includes(activeBlock.kind)&&<label>Адрес ссылки<input value={activeBlock.href} placeholder="/app" onChange={e=>patchBlock({href:e.target.value})}/></label>}
-      {["gallery","cards","faq","stats"].includes(activeBlock.kind)&&<label>{
+      {["image","cta","video"].includes(activeBlock.kind)&&<label>{activeBlock.kind==="video"?"Ссылка YouTube или Vimeo":"Адрес ссылки"}<input value={activeBlock.href} placeholder={activeBlock.kind==="video"?"https://www.youtube.com/watch?v=...":"/app"} onChange={e=>patchBlock({href:e.target.value})}/></label>}
+      {["gallery","cards","faq","stats","timeline","comparison","logos","checklist","button-row"].includes(activeBlock.kind)&&<label>{
        activeBlock.kind==="gallery"?"Изображения (один URL на строку)":
        activeBlock.kind==="faq"?"Вопрос | Ответ (каждая пара с новой строки)":
-       activeBlock.kind==="stats"?"Число | Подпись (каждая пара с новой строки)":"Карточки (каждая с новой строки)"
+       activeBlock.kind==="stats"?"Число | Подпись (каждая пара с новой строки)":
+        activeBlock.kind==="timeline"?"Этап | Описание (по строке)":
+        activeBlock.kind==="comparison"?"Вариант | Описание (по строке)":
+        activeBlock.kind==="button-row"?"Текст кнопки | Адрес ссылки":
+        activeBlock.kind==="logos"?"Ссылки на логотипы (по одной на строку)":
+        activeBlock.kind==="checklist"?"Пункты списка (по одному на строку)":"Карточки (каждая с новой строки)"
       }<textarea rows={8} value={activeBlock.items.join("\n")} onChange={e=>patchBlock({items:e.target.value.split("\n").slice(0,12)})}/></label>}
       {["image","cta"].includes(activeBlock.kind)&&<label>Текст кнопки<input value={activeBlock.buttonLabel} maxLength={45} onChange={e=>patchBlock({buttonLabel:e.target.value})}/></label>}
       <div className="site-builder-appearance"><h3>Оформление блока</h3>
        <label>Стиль фона<select value={activeBlock.style?.tone??DEFAULT_SITE_BLOCK_STYLE.tone} onChange={e=>patchBlock({style:{...activeBlock.style,tone:e.target.value as SiteBlockStyle["tone"]}})}><option value="plain">Прозрачный</option><option value="soft">Мягкий</option><option value="accent">Акцентный</option><option value="dark">Тёмный</option></select></label>
        <label>Выравнивание<select value={activeBlock.style?.align??"left"} onChange={e=>patchBlock({style:{...activeBlock.style,align:e.target.value as SiteBlockStyle["align"]}})}><option value="left">По левому краю</option><option value="center">По центру</option></select></label>
        <label>Отступы<select value={activeBlock.style?.spacing??"normal"} onChange={e=>patchBlock({style:{...activeBlock.style,spacing:e.target.value as SiteBlockStyle["spacing"]}})}><option value="compact">Компактные</option><option value="normal">Обычные</option><option value="airy">Просторные</option></select></label>
-       {["cards","gallery","stats"].includes(activeBlock.kind)&&<label>Колонки<select value={activeBlock.style?.columns??3} onChange={e=>patchBlock({style:{...activeBlock.style,columns:Number(e.target.value)}})}><option value={2}>2 колонки</option><option value={3}>3 колонки</option><option value={4}>4 колонки</option></select></label>}
+       {["cards","gallery","stats","logos"].includes(activeBlock.kind)&&<label>Колонки<select value={activeBlock.style?.columns??3} onChange={e=>patchBlock({style:{...activeBlock.style,columns:Number(e.target.value)}})}><option value={2}>2 колонки</option><option value={3}>3 колонки</option><option value={4}>4 колонки</option></select></label>}
        {activeBlock.kind==="image"&&<label>Положение изображения<select value={activeBlock.style?.imageSide??"left"} onChange={e=>patchBlock({style:{...activeBlock.style,imageSide:e.target.value as SiteBlockStyle["imageSide"]}})}><option value="left">Слева</option><option value="right">Справа</option></select></label>}
       </div>
       <button type="button" className="site-builder-neutral" disabled={activePage.blocks.length>=40} onClick={duplicateBlock}>Дублировать блок</button>
       <button type="button" className="site-builder-danger" onClick={deleteBlock}>Удалить блок</button></>}
     </div>}
-    {inspector==="design"&&<div className="site-builder-fields"><h2>Оформление сайта</h2><p>Цвета и размеры действуют на все вкладки. Их содержимое остаётся самостоятельным.</p>
+    {inspector==="object"&&<div className="site-builder-fields site-builder-object-fields">
+     <h2>Элементы сайта <span>{objectList.length}</span></h2>
+     <p>Выбери любой заголовок, текст, изображение, кнопку, ссылку, карточку или секцию прямо на странице. Это работает и в стандартных макетах.</p>
+     {selectedObject&&objectMeta&&<>
+      <div className="site-builder-object-heading"><strong>{objectMeta.label}</strong><small>{objectMeta.id}</small></div>
+      {objectMeta.canText&&<label>Текст элемента<textarea rows={4} value={activeObjectPatch?.text??objectMeta.text} onChange={e=>patchObject({text:e.target.value})}/></label>}
+      {objectMeta.tag==="IMG"&&<><label>Адрес изображения<input value={activeObjectPatch?.src??objectMeta.src} onChange={e=>patchObject({src:e.target.value})}/></label>
+       <label>Описание для доступности<input value={activeObjectPatch?.alt??objectMeta.alt} onChange={e=>patchObject({alt:e.target.value})}/></label>
+       <SiteImageChooser onChoose={url=>patchObject({src:url})}/></>}
+      {objectMeta.tag==="A"&&<label>Адрес ссылки<input value={activeObjectPatch?.href??objectMeta.href} onChange={e=>patchObject({href:e.target.value})}/></label>}
+      <label className="site-builder-object-switch"><input type="checkbox" checked={activeObjectPatch?.hidden===true} onChange={e=>patchObject({hidden:e.target.checked})}/> Скрыть этот элемент</label>
+      <h3 className="site-builder-subtitle">Внешний вид элемента</h3>
+      <div className="site-builder-object-colors">
+       <label>Текст<input aria-label="Цвет текста" type="color" value={activeObjectPatch?.style?.color??"#122238"} onChange={e=>patchObject({style:{color:e.target.value}})}/></label>
+       <label>Фон<input aria-label="Цвет фона" type="color" value={activeObjectPatch?.style?.background??"#ffffff"} onChange={e=>patchObject({style:{background:e.target.value}})}/></label>
+      </div>
+      <label>Размер шрифта (пиксели)<input type="number" min="8" max="120" value={activeObjectPatch?.style?.fontSize??16} onChange={e=>patchObject({style:{fontSize:Number(e.target.value)}})}/></label>
+      <label>Насыщенность<select value={activeObjectPatch?.style?.fontWeight??"normal"} onChange={e=>patchObject({style:{fontWeight:e.target.value}})}><option value="normal">Обычная</option><option value="medium">Средняя</option><option value="bold">Жирная</option></select></label>
+      <label>Выравнивание<select value={activeObjectPatch?.style?.textAlign??"left"} onChange={e=>patchObject({style:{textAlign:e.target.value}})}><option value="left">Слева</option><option value="center">По центру</option><option value="right">Справа</option></select></label>
+      <label>Внутренние отступы: {activeObjectPatch?.style?.padding??0} px<input type="range" min="0" max="100" value={activeObjectPatch?.style?.padding??0} onChange={e=>patchObject({style:{padding:Number(e.target.value)}})}/></label>
+      <label>Скругление: {activeObjectPatch?.style?.radius??0} px<input type="range" min="0" max="80" value={activeObjectPatch?.style?.radius??0} onChange={e=>patchObject({style:{radius:Number(e.target.value)}})}/></label>
+      <label>Ширина: {activeObjectPatch?.style?.width??100}%<input type="range" min="20" max="100" value={activeObjectPatch?.style?.width??100} onChange={e=>patchObject({style:{width:Number(e.target.value)}})}/></label>
+      <label>Непрозрачность: {Math.round((activeObjectPatch?.style?.opacity??1)*100)}%<input type="range" min="10" max="100" value={Math.round((activeObjectPatch?.style?.opacity??1)*100)} onChange={e=>patchObject({style:{opacity:Number(e.target.value)/100}})}/></label>
+      <button type="button" className="site-builder-neutral" onClick={resetObject}>Вернуть исходный вид объекта</button>
+     </>}
+     <details className="site-builder-object-tree" open={!selectedObject}>
+      <summary>Список объектов страницы</summary>
+      <input placeholder="Поиск объектов..." value={objectSearch} onChange={e=>setObjectSearch(e.target.value)}/>
+      <div>{objectList.filter(info=>!objectSearch||[info.label,info.text,info.id].some(value=>value.toLowerCase().includes(objectSearch.toLowerCase()))).slice(0,180).map(info=><button type="button" key={info.id} className={selectedObject===info.id?"active":""} onClick={()=>{setSelectedObject(info.id);setObjectMeta(info);setSelected(null);setInspector("object");frame.current?.contentWindow?.postMessage({type:"lektrus:site-focus-object",id:info.id},window.location.origin)}}><strong>{info.label}</strong><small>{info.text||info.alt||info.id}</small>{doc.objects[info.id]?.hidden&&<span title="Скрыт">◌</span>}</button>)}</div>
+     </details>
+    </div>}
+   {inspector==="design"&&<div className="site-builder-fields"><h2>Оформление сайта</h2><p>Цвета и размеры действуют на все вкладки. Их содержимое остаётся самостоятельным.</p>
      <h3 className="site-builder-subtitle">Готовые палитры</h3>
      <div className="site-builder-theme-presets">{SITE_THEME_PRESETS.map(preset=><button type="button" key={preset.id} onClick={()=>change(next=>{next.theme={...preset.theme}})} title={preset.note}><span className="site-builder-theme-swatches"><i style={{background:preset.theme.accent}}/><i style={{background:preset.theme.background}}/><i style={{background:preset.theme.ink}}/></span><strong>{preset.title}</strong><small>{preset.note}</small></button>)}</div>
      {([["accent","Акцентный цвет"],["background","Фон страницы"],["surface","Поверхность карточек"],["ink","Основной текст"]] as [keyof SiteTheme,string][]).map(([key,label])=><label key={key}>{label}<span className="site-builder-color"><input type="color" value={String(doc.theme[key])} onChange={e=>change(next=>{(next.theme as unknown as Record<string,unknown>)[key]=e.target.value})}/><code>{doc.theme[key]}</code></span></label>)}
