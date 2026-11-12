@@ -221,7 +221,44 @@ export default function LektrusSiteBuilder(){
   blocks.splice(blocks.findIndex(x=>x.id===selected)+1,0,copy);
   patchPage({blocks});setSelected(copy.id);
  };
- const deleteBlock=()=>{if(!activeBlock)return;patchPage({blocks:activePage.blocks.filter(b=>b.id!==selected)});setSelected(null);setInspector("page")};
+ const removeSelection=():boolean=>{
+  if(selectedObject){
+   if(doc.objects[selectedObject]?.hidden===true){setNotice("Объект уже скрыт. Его можно восстановить в панели свойств.");return true}
+   change(next=>{deleteStudioSelection(next,active,null,selectedObject)});
+   setNotice("Объект скрыт. Нажми Ctrl+Z для отмены или «Восстановить» в свойствах.");
+   return true;
+  }
+  if(activeBlock){
+   change(next=>{deleteStudioSelection(next,active,activeBlock.id,null)});
+   setSelected(null);setInspector("page");
+   setNotice("Блок удалён из черновика. Ctrl+Z вернёт его на место.");
+   return true;
+  }
+  return false;
+ };
+ const deleteBlock=()=>{if(activeBlock)removeSelection()};
+ const restoreSelectedObject=()=>{
+  if(!selectedObject||!doc.objects[selectedObject]?.hidden)return;
+  change(next=>{restoreStudioObject(next,selectedObject)});
+  setNotice("Объект восстановлен.");
+ };
+ const runCommand=(command:StudioCommand):boolean=>{
+  if(access!=="allowed"||busy)return false;
+  if(command==="delete")return removeSelection();
+  if(command==="undo"){if(!undo.current.length)return false;history("undo");return true}
+  if(command==="redo"){if(!redo.current.length)return false;history("redo");return true}
+  if(command==="save"){
+   try{saveSiteDraft(doc);setNotice("Черновик сохранён в этом браузере.")}
+   catch(error){setNotice("Не удалось сохранить черновик: "+report(error))}
+   return true;
+  }
+  if(command==="escape"){
+   if(!selected&&!selectedObject&&!showShortcuts&&!focusMode&&!panelOpen)return false;
+   setSelected(null);setSelectedObject(null);setShowShortcuts(false);setFocusMode(false);setPanelOpen(false);
+   return true;
+  }
+  return false;
+ };
  const addPage=()=>{
   const title=newTitle.trim().slice(0,64)||"Новая страница";
   const id="page-"+crypto.randomUUID().slice(0,8);
@@ -268,19 +305,13 @@ export default function LektrusSiteBuilder(){
  const previewSrc="/?site-preview=1#"+active;
  useEffect(()=>{
   const onKey=(event:KeyboardEvent)=>{
-   if(access!=="allowed")return;
-   const tag=event.target instanceof HTMLElement?event.target:null;
-   if(event.key==="Escape"){setFocusMode(false);setPanelOpen(false);return}
-   const cmd=event.ctrlKey||event.metaKey;
-   if(!cmd)return;
-   if(event.key.toLowerCase()==="s"){event.preventDefault();saveSiteDraft(doc);setNotice("Черновик сохранён в этом браузере.");return}
-   if(tag?.closest("input,textarea,select,[contenteditable=true]"))return;
-   if(event.key.toLowerCase()==="z"){event.preventDefault();history(event.shiftKey?"redo":"undo")}
-   if(event.key.toLowerCase()==="y"){event.preventDefault();history("redo")}
+   if(event.defaultPrevented)return;
+   const command=commandFromKeyboard(event);
+   if(command&&runCommand(command)){event.preventDefault();event.stopPropagation()}
   };
   window.addEventListener("keydown",onKey);
   return ()=>window.removeEventListener("keydown",onKey);
- },[doc,access]);
+ },[doc,access,active,selected,selectedObject,busy,showShortcuts,focusMode,panelOpen]);
  const publish=async()=>{setBusy(true);setNotice("");
   try{await publishSiteDocument(doc);setSaved("published");setNotice("Сайт опубликован. Изменения будут видны посетителям после обновления страницы.")}
   catch(e){setNotice(report(e)+". Черновик сохранён локально, опубликованный сайт не изменился.")}
