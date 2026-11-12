@@ -478,3 +478,32 @@
  .marketing-showcase-progress span{transition:none}
  .marketing-showcase-controls button{transition:none}
 }
+
+
+/* Website builder: theme variables and extra content blocks. Existing authored
+   teacher/student/help layouts and screenshot carousel are deliberately retained. */
+.marketing-site .marketing-container{width:min(var(--site-custom-width,1200px),calc(100% - 64px))}
+.marketing-site .marketing-header{background:var(--marketing-white)}
+.marketing-site .marketing-site-logo,.marketing-site h1 span{color:var(--marketing-blue)}
+.marketing-site .marketing-primary{background:var(--marketing-blue);box-shadow:none}
+.marketing-site .marketing-nav a.is-current{color:var(--marketing-blue)}
+.marketing-site :is(.marketing-feature-card,.marketing-story-card,.marketing-plan,.marketing-form-card){border-radius:var(--site-custom-radius,18px)}
+.marketing-site .marketing-last-cta{border-radius:var(--site-custom-radius,18px)}
+.site-block{padding:62px 0}
+.site-block h2{margin:0 0 16px}
+.site-block p{max-width:800px;white-space:pre-line;margin:0 0 22px}
+.site-block-image{display:grid;grid-template-columns:1.15fr 1fr;align-items:center;gap:45px}
+.site-block-image img{width:100%;border-radius:var(--site-custom-radius,18px);object-fit:cover;box-shadow:0 10px 45px #102d5216}
+.site-block-gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:15px}
+.site-block-gallery img{width:100%;aspect-ratio:1.6;object-fit:cover;border:1px solid #d9e5f1;border-radius:var(--site-custom-radius,18px)}
+.site-block-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+.site-block-cards article{border:1px solid var(--marketing-line);border-radius:var(--site-custom-radius,18px);padding:26px;background:var(--marketing-white)}
+.site-block-cards article h3{margin-top:16px}
+.site-block-cta{padding:50px;border-radius:var(--site-custom-radius,18px);text-align:center;background:color-mix(in srgb,var(--marketing-blue) 8%,var(--marketing-white))}
+.site-block-cta h2,.site-block-cta p{margin-left:auto;margin-right:auto}
+.site-block-divider{height:1px;margin:18px auto;width:min(var(--site-custom-width,1200px),calc(100% - 64px));background:var(--marketing-line)}
+.site-custom-hero{padding-bottom:32px}
+.site-editable-block{position:relative}
+body:has(.marketing-site) .site-editable-block{min-width:0}
+@media(hover:hover){body:has(.marketing-site) .site-editable-block:hover{outline:1px dashed color-mix(in srgb,var(--marketing-blue) 40%,transparent);outline-offset:-2px}}
+@media(max-width:700px){.site-block{padding:35px 0}.site-block-image{grid-template-columns:1fr;gap:25px}.site-block-cta{padding:35px 20px}.marketing-site .marketing-container{width:calc(100% - 32px)}}
