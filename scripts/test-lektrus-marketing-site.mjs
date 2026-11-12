@@ -99,7 +99,7 @@ for(const name of ["site-block-faq-list","site-block-stats","site-block-quote","
 assert.ok(blocks.includes("<details key={i}>")&&blocks.includes("<summary>"),"FAQ uses accessible native accordion");
 assert.ok(kits.includes("SITE_SECTION_PRESETS")&&kits.includes("SITE_THEME_PRESETS")&&kits.includes("make(\"gallery\""),"ready-to-use section kits and theme palettes missing");
 assert.ok(builder.includes("addSectionKit")&&builder.includes("duplicatePage")&&builder.includes("site-builder-theme-presets"),"section insertion, page cloning and themes must be wired");
-assert.ok(builder.includes('event.key.toLowerCase()==="z"')&&builder.includes('event.key.toLowerCase()==="s"'),"keyboard undo and local draft save missing");
+assert.ok(builder.includes("commandFromKeyboard(event)")&&builder.includes("saveSiteDraft(doc)")&&read("src/siteStudioCommands.ts").includes("getStudioCommand"),"keyboard undo and local draft save missing");
 assert.ok(builder.includes("focusMode")&&studioCss.includes(".site-builder.is-focus"),"distraction-free preview must hide the editor sidebars");
 assert.ok(builder.includes("site-builder-page-search")&&builder.includes("site-builder-appearance"),"page search and block appearance controls required");
 assert.ok(site.includes("previewSelection")&&site.includes("lektrus:site-select-page"),"preview must expose selected block and page headline click-to-edit");
