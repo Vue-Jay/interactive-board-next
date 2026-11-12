@@ -235,11 +235,13 @@ export default function LektrusPublicSite(){
   <main id="marketing-main" tabIndex={-1}>
    {page==="home"&&!copy?.replaceDefault&&<>
     {placed("before-0")}
-    <section data-site-section-id="native-0" data-site-page-hero className="marketing-hero marketing-container" aria-labelledby="marketing-title">
-     {copy?.eyebrow&&<span className="marketing-eyebrow">{copy.eyebrow}</span>}
-     <h1 id="marketing-title">{copy?.heading||<>Одна платформа <span>для преподавания и обучения</span></>}</h1>
-     <p className="marketing-hero-lead">{copy?.lead||"Создавайте наглядные уроки, работайте вместе с учениками и используйте учебные инструменты на единой интерактивной доске."}</p>
-     <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Попробовать доску <span aria-hidden="true">→</span></DemoLink></div>
+    <section data-site-section-id="native-0" data-site-page-hero className="marketing-hero marketing-container marketing-hero-split" aria-labelledby="marketing-title">
+     <div className="marketing-hero-copy">
+      {copy?.eyebrow&&<span className="marketing-eyebrow">{copy.eyebrow}</span>}
+      <h1 id="marketing-title">{copy?.heading||<>Lektrus <span>для наглядных уроков</span></>}</h1>
+      <p className="marketing-hero-lead">{copy?.lead||"Интерактивная доска, совместная работа и учебные инструменты в одном пространстве."}</p>
+      <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Попробовать доску <span aria-hidden="true">→</span></DemoLink></div>
+     </div>
      <div className="marketing-showcase" aria-label="Автоматическая презентация настоящих экранов Lektrus" data-site-showcase>
       <div className="marketing-showcase-screen" role="img" aria-label="Примеры реальных экранов приложения Lektrus">
        {previousShot&&<img className="marketing-showcase-previous" src={previousShot.src} alt="" aria-hidden="true"/>}
@@ -350,7 +352,10 @@ export default function LektrusPublicSite(){
    {customPage&&<SiteCustomPage page={customPage} selectedId={previewSelection} preview={isPreview}/>}
    {!customPage&&placed("end")}
   </main>
-  <footer className="marketing-footer"><div className="marketing-container"><div className="marketing-footer-brand"><img src="/lektrus-icon-192.png" width="32" height="32" alt=""/><span><strong>Lektrus</strong><small>Пространство для обучения</small></span></div><nav aria-label="Разделы внизу страницы">{siteNavigation.filter(item=>item.id!=="home").map(item=><NavLink key={item.id} {...item}/>)}</nav><div className="marketing-footer-end"><span>© {new Date().getFullYear()} Lektrus</span><a href="/app">Перейти в приложение ↗</a></div></div></footer>
+  <footer className="marketing-footer"><div className="marketing-container">
+   <span>© {new Date().getFullYear()} Lektrus</span>
+   <div className="marketing-footer-end"><NavLink id="about" title="О Lektrus"/><NavLink id="help" title="Помощь"/><a href="/app">Открыть приложение ↗</a></div>
+  </div></footer>
   {isPreview&&(previewSelection||previewObject)&&<div className="site-canvas-selection-actions" role="toolbar" aria-label="Действия над выделенным элементом">
    <span>{previewSelection?"Выделен блок":config.objects[previewObject||""]?.hidden?"Элемент скрыт":"Выделен объект"}</span>
    <button type="button" onClick={()=>editorCommand("undo")} title="Отменить, Ctrl+Z" aria-label="Отменить действие">↶</button>
