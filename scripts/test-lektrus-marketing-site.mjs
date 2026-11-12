@@ -49,4 +49,24 @@ assert.ok(css.includes(".marketing-teacher-window")&&css.includes(".marketing-st
 assert.match(css, /prefers-reduced-motion:reduce/,"reduced-motion users need a non-animated alternative");
 assert.match(site,/aria-expanded=\{menuOpen\}/,"mobile navigation must expose its state");
 assert.match(site,/<details key=\{item\.q\}/,"FAQ answers must be expandable");
+
+// The builder must extend, not replace, the eight distinctive editorial pages.
+const config=read("src/marketingSiteConfig.ts");
+const builder=read("src/LektrusSiteBuilder.tsx");
+const blocks=read("src/SiteEditableSections.tsx");
+const appRouter=read("src/main.tsx");
+const admin=read("src/AdminScreen.tsx");
+const sql=read("supabase/v257_marketing_site_builder.sql");
+assert.ok(appRouter.includes('window.location.pathname==="/site-builder"'),"website builder route is missing");
+assert.ok(admin.includes("Конструктор сайта"),"admin navigation must link to site builder");
+assert.ok(builder.includes("getAccountAccess()")&&builder.includes("role.isAdmin"),"editor must require admin role");
+assert.ok(builder.includes("publishSiteDocument(doc)")&&builder.includes("saveSiteDraft(doc)"),"draft and publication must be separate");
+assert.ok(builder.includes("site-builder-device")&&builder.includes('["desktop","tablet","phone"]'),"builder needs responsive previews");
+assert.ok(builder.includes("moveNav(")&&builder.includes("moveBlock(")&&builder.includes("importJson")&&builder.includes("exportJson"),"reorder and portable designs are required");
+assert.ok(builder.includes("history(")&&builder.includes("site-builder-page-list"),"editing must include undo/redo and navigation");
+assert.ok(sql.includes("is_app_admin(auth.uid())")&&sql.includes("marketing_site_public_read"),"database must authorize publication server-side");
+assert.ok(config.includes("normalizeSiteDocument")&&config.includes("safeSiteUrl"),"untrusted published design must be normalized");
+assert.ok(blocks.includes("data-site-block-id")&&site.includes("SITE_PREVIEW_MESSAGE"),"preview needs editable block selection");
+assert.ok(site.includes("marketing-teacher-scene")&&site.includes("marketing-student-demo"),"builder must keep distinct original page templates");
+
 console.log("Lektrus marketing site: selected copy, 8 sections, real screenshots, demo links, pricing, accessibility and responsive styling verified.");
