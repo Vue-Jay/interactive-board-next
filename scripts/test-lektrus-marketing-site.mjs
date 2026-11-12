@@ -163,7 +163,7 @@ assert.ok(builder.includes('putSiteCanvasTransfer(event,{type:"block"')&&builder
 assert.ok(builder.includes("insertCanvasTransfer(")&&builder.includes('event.data?.type==="lektrus:site-canvas-drop"'),"cross-iframe drop must update the document");
 assert.ok(canvas.includes("event.dataTransfer.getData(SITE_CANVAS_MIME)")&&canvas.includes("SiteDropZone"),"canvas drop zones must actually read HTML5 drag payloads");
 assert.ok(site.includes('placed("before-0")')&&site.includes('placed("end")')&&site.includes("SiteAnchorSlot"),"native sections and page end must accept new blocks");
-for(const id of ["home","features","tools","how","pricing","about","help"]){
+for(const id of ["home","features","pricing","help"]){
  assert.ok(site.includes('page==="'+id+'"'),"required page must keep native editable sections: "+id);
 }
 assert.doesNotMatch(site,/page==="(?:teachers|students|tools|how|about)"/,"retired pages must not render their old layouts");
