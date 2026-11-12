@@ -80,6 +80,10 @@ assert.ok(media.includes("SITE_LIBRARY_SHOTS")&&media.includes("uploadMarketingI
 assert.ok(images.includes("image/jpeg")&&images.includes("image/png")&&images.includes("image/webp"),"media upload must allow only safe image MIME types");
 assert.ok(images.includes("5*1024*1024")&&images.includes("getRemoteSession()"),"media upload requires file size limit and user auth");
 assert.ok(assetSql.includes("public.is_app_admin(auth.uid())"),"bucket writes must enforce admin rights");
+const siteHardening=read("supabase/v259_marketing_site_invoker_rls.sql");
+assert.ok(siteHardening.includes("security invoker")&&siteHardening.includes("marketing_site_admin_insert")&&siteHardening.includes("marketing_site_admin_update"),"site publication must use caller privileges and admin RLS");
+assert.ok(config.includes('headers:{apikey:key,Accept:"application/json"}'),"public site must use apikey, not put a publishable key in Authorization");
+
 assert.ok(assetSql.includes("bucket_id='marketing-site'"),"media policies must be bucket-scoped");
 
 console.log("Lektrus marketing site: selected copy, 8 sections, real screenshots, demo links, pricing, accessibility and responsive styling verified.");
