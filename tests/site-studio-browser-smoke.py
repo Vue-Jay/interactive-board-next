@@ -78,6 +78,7 @@ with sync_playwright() as p:
     inserted_block.locator(".site-block-select-button").click()
     frame.locator(".site-editable-block[data-site-selected=true] .site-block-resize-both").wait_for()
     grip = frame.locator(".site-editable-block[data-site-selected=true] .site-block-resize-both")
+    grip.scroll_into_view_if_needed(timeout=10000)
     handle = grip.bounding_box()
     assert handle
     page.mouse.move(handle["x"]+handle["width"]/2,handle["y"]+handle["height"]/2)
