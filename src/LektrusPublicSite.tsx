@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState,type CSSProperties,type MouseEvent,type ReactNode} from "react";
-import {defaultSiteDocument,loadPublishedSiteDocument,normalizeSiteDocument,siteDraft,SITE_PREVIEW_MESSAGE,type SiteDocument} from "./marketingSiteConfig";
+import {defaultSiteDocument,loadPublishedSiteDocument,normalizeSiteDocument,SITE_PREVIEW_MESSAGE,type SiteDocument} from "./marketingSiteConfig";
 import {SiteCustomPage,SiteEditableBlocks} from "./SiteEditableSections";
 import LektrusFeedbackForm from "./LektrusFeedbackForm";
 import {plans,limitLabel} from "./billingStore";
@@ -77,7 +77,7 @@ function DemoLink({scene="math",children,className=""}:{scene?:string;children:R
 
 export default function LektrusPublicSite(){
  const isPreview=new URLSearchParams(window.location.search).has("site-preview");
- const [config,setConfig]=useState<SiteDocument>(()=>isPreview?siteDraft():defaultSiteDocument());
+ const [config,setConfig]=useState<SiteDocument>(defaultSiteDocument);
  const [page,setPage]=useState<Page>(readPage);
  const siteNavigation=config.navigation.length?config.navigation.filter(item=>!item.hidden||item.id==="home"):navigation;
  const customPage=config.customPages.find(item=>item.id===page)??(config.pages[page]?.replaceDefault?config.pages[page]:undefined);
