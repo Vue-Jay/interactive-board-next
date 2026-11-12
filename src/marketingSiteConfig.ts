@@ -12,7 +12,18 @@ export type SiteObjectPatch={text?:string;src?:string;alt?:string;href?:string;h
 export type SitePage={id:string;title:string;eyebrow:string;heading:string;lead:string;replaceDefault?:boolean;blocks:SiteBlock[]};
 export type SiteNavItem={id:string;title:string;hidden:boolean};
 export type SiteTheme={accent:string;background:string;surface:string;ink:string;radius:number;maxWidth:number};
-export type SiteDocument={version:1;theme:SiteTheme;navigation:SiteNavItem[];pages:Record<string,SitePage>;customPages:SitePage[];objects:Record<string,SiteObjectPatch>};
+export type SiteShowcaseShot={scene:string;subject:string;src:string};
+export const DEFAULT_SITE_SHOWCASE:SiteShowcaseShot[]=[
+ {scene:"home",subject:"Рабочее пространство",src:"/site/app-home.png"},
+ {scene:"math",subject:"Математика",src:"/site/board-math.png"},
+ {scene:"chemistry",subject:"Химия",src:"/site/board-chemistry.png"},
+ {scene:"geometry",subject:"Геометрия",src:"/site/board-geometry.png"},
+ {scene:"physics",subject:"Физика",src:"/site/board-physics.png"},
+ {scene:"contour",subject:"География",src:"/site/board-contour.png"},
+ {scene:"history",subject:"История",src:"/site/board-history.png"},
+ {scene:"russian",subject:"Русский язык",src:"/site/board-russian.png"}
+];
+export type SiteDocument={version:1;theme:SiteTheme;navigation:SiteNavItem[];pages:Record<string,SitePage>;customPages:SitePage[];objects:Record<string,SiteObjectPatch>;showcase:SiteShowcaseShot[]};
 const defaults:SiteNavItem[]=[
  {id:"home",title:"Главная",hidden:false},
  {id:"features",title:"Возможности",hidden:false},
@@ -47,7 +58,7 @@ export const newSiteBlock=(kind:SiteBlockKind="text"):SiteBlock=>({
 });
 export const newSitePage=(id:string,title="Новая страница"):SitePage=>({id,title,eyebrow:"LEKTRUS",heading:title,lead:"Расскажите посетителям об этом разделе.",blocks:[newSiteBlock("text")]});
 export const defaultSiteDocument=():SiteDocument=>({
- version:1,theme:{...baseTheme},navigation:defaults.map(x=>({...x})),pages:{},customPages:[],objects:{}
+ version:1,theme:{...baseTheme},navigation:defaults.map(x=>({...x})),pages:{},customPages:[],objects:{},showcase:DEFAULT_SITE_SHOWCASE.map(x=>({...x}))
 });
 export const safeSiteUrl=(value:string):string=>{
  if(value.startsWith("/")&&!value.startsWith("//")&&!value.includes("\\"))return value;
@@ -90,6 +101,20 @@ export function normalizeSiteDocument(raw:unknown):SiteDocument{
    heading:clean(v.heading,180),lead:clean(v.lead,1300),replaceDefault:v.replaceDefault===true,
    blocks:Array.isArray(v.blocks)?v.blocks.slice(0,40).map(parseBlock).filter((x):x is SiteBlock=>Boolean(x)):[]};
  };
+ // Legacy published sites automatically receive the original eight real captures.
+ // All screenshots live in one homepage showcase, with admin-editable source/order.
+ if(Array.isArray(data.showcase)){
+  const chosen:SiteShowcaseShot[]=[];
+  const seen=new Set<string>();
+  for(const candidate of data.showcase.slice(0,12)){
+   const entry=object(candidate);
+   const src=safeSiteUrl(clean(entry.src,900));
+   if(src==="#"||seen.has(src))continue;
+   seen.add(src);
+   chosen.push({scene:slug(entry.scene)||"home",subject:clean(entry.subject,70)||"Lektrus",src});
+  }
+  if(chosen.length)result.showcase=chosen;
+ }
  const rawPages=object(data.pages);
  for(const entry of defaults)if(rawPages[entry.id])result.pages[entry.id]=parsePage(rawPages[entry.id],entry.id,entry.title);
  const known=new Set<string>(defaults.map(item=>item.id));
