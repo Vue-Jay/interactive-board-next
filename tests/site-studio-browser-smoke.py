@@ -164,6 +164,7 @@ with sync_playwright() as p:
     )
     assert showcase.locator(".marketing-showcase-current").get_attribute("src") != first
     assert showcase.locator(".marketing-showcase-previous").count() <= 1
+    assert float(showcase.locator(".marketing-showcase-current").evaluate("(el) => getComputedStyle(el).opacity")) == 1.0, "Next genuine frame must not wash out during the transition"
     visitor.screenshot(path=str(root / "06-home-dynamic-reel.png"), full_page=True)
 
     visitor.goto("http://127.0.0.1:5173/#features", wait_until="domcontentloaded")
@@ -171,6 +172,8 @@ with sync_playwright() as p:
     assert rows.count() == 6
     assert visitor.locator(".marketing-features-section a, .marketing-features-section button").count() == 0, "Feature descriptions must not link to board creation"
     assert visitor.locator(".marketing-showcase").count() == 0, "Real screenshot reel only belongs on Home"
+    footer = visitor.locator(".marketing-footer").bounding_box()
+    assert footer and footer["y"] + footer["height"] >= 885, "Short Features page should anchor footer to the bottom of the viewport"
     visitor.screenshot(path=str(root / "07-features-prose.png"), full_page=True)
 
     visitor.goto("http://127.0.0.1:5173/#pricing", wait_until="domcontentloaded")
