@@ -883,3 +883,107 @@ body:has(.marketing-site:not(.site-preview)) .site-editable-block:hover{outline:
   display:flex;visibility:visible;pointer-events:auto;
  }
 }
+
+/* Compact Lektrus public site: four page links, independent tools in the rail,
+   one kinetic screenshot stage and one readable About-project section on Home. */
+.marketing-site .marketing-sidebar-content{gap:19px;padding-top:20px}
+.marketing-site .marketing-sidebar-tools{padding-top:16px}
+.marketing-site .marketing-sidebar-caption{padding-bottom:8px}
+.marketing-site .marketing-nav a,.marketing-site .marketing-sidebar-tools a{min-height:42px}
+.marketing-site > main{min-height:0}
+.marketing-site .marketing-hero-split{min-height:0;padding-top:clamp(36px,5vh,62px);padding-bottom:clamp(35px,5vh,60px);gap:clamp(24px,3vw,46px)}
+.marketing-site .marketing-hero-split h1{font-size:clamp(34px,3.5vw,51px);margin-bottom:17px}
+.marketing-site .marketing-hero-split .marketing-hero-lead{font-size:14px!important;line-height:1.65!important;margin-bottom:20px!important}
+.marketing-site .marketing-hero-split .marketing-showcase{border-radius:14px;padding:4px;box-shadow:0 16px 38px #153c7020}
+.marketing-site .marketing-hero-split .marketing-showcase-screen{border-radius:10px}
+.marketing-site .marketing-showcase-current:not(.is-first){animation:marketing-fast-slide-in .62s cubic-bezier(.18,.65,.28,1) both}
+.marketing-site .marketing-showcase-previous{animation:marketing-fast-slide-out .62s ease-in both}
+@keyframes marketing-fast-slide-in{
+ from{opacity:0;transform:translate3d(17px,0,0) scale(1.018)}
+ to{opacity:1;transform:translate3d(0,0,0) scale(1)}
+}
+@keyframes marketing-fast-slide-out{
+ from{opacity:1;transform:translate3d(0,0,0) scale(1)}
+ to{opacity:.52;transform:translate3d(-11px,0,0) scale(.987)}
+}
+.marketing-site .marketing-project-summary{
+ display:grid;grid-template-columns:minmax(0,.88fr) minmax(0,1.12fr);
+ align-items:start;column-gap:clamp(24px,5vw,70px);padding-top:38px;padding-bottom:58px;
+ border-top:1px solid var(--marketing-line);
+}
+.marketing-project-heading{display:grid;gap:12px}
+.marketing-site .marketing-project-heading h2{max-width:430px;font-size:clamp(23px,2.45vw,31px);line-height:1.25}
+.marketing-project-body{min-width:0}
+.marketing-project-body>p{font-size:14px;line-height:1.75;color:#4f657f}
+.marketing-project-audiences{display:grid;gap:11px;margin-top:18px;padding-top:18px;border-top:1px solid #dce7f4}
+.marketing-project-audiences p{font-size:12.5px;line-height:1.65;color:#60748a}
+.marketing-project-audiences strong{display:inline-block;color:#255b9d;font-size:12px;font-weight:850;margin-right:8px}
+.marketing-site .marketing-page-hero{padding-top:clamp(38px,5vw,57px);padding-bottom:17px}
+.marketing-site .marketing-page-hero h1{font-size:clamp(34px,4vw,49px);margin-bottom:12px}
+.marketing-site .marketing-page-hero>p{font-size:14px;max-width:690px;line-height:1.68}
+.marketing-site .marketing-features-intro{padding-top:clamp(38px,5vw,57px);padding-bottom:14px}
+.marketing-site .marketing-features-section{padding-top:2px;padding-bottom:58px}
+.marketing-site .marketing-features-list{column-gap:30px}
+.marketing-site .marketing-feature-row{align-items:flex-start;min-height:0;padding:19px 4px 18px;gap:13px}
+.marketing-site .marketing-feature-row-mark{width:34px;height:34px;margin-top:1px;font-size:18px;border-radius:10px}
+.marketing-site .marketing-feature-row-copy{gap:5px}
+.marketing-site .marketing-feature-row-copy h2{font-size:15px;line-height:1.4;letter-spacing:-.012em;color:#193e67;font-weight:840}
+.marketing-site .marketing-feature-row-copy p{font-size:12px;line-height:1.62;color:#63778b}
+.marketing-site .marketing-pricing-intro{padding-top:clamp(38px,5vw,57px);padding-bottom:14px}
+.marketing-site .marketing-pricing-grid{margin-top:8px;gap:12px}
+.marketing-site .marketing-plan{padding:20px;min-height:0}
+.marketing-site .marketing-plan-top h2{font-size:23px;margin:8px 0}
+.marketing-site .marketing-plan-top p{font-size:12px;min-height:0;line-height:1.55}
+.marketing-site .marketing-plan dl{margin-bottom:12px}
+.marketing-site .marketing-plan dl>div{padding:7px 0}
+.marketing-site .marketing-plan ul{line-height:1.55}
+.marketing-site .marketing-plan ul li{margin-bottom:5px}
+.marketing-site .marketing-price{margin:14px 0 10px}
+.marketing-site .marketing-plan-foot{padding-top:12px}
+.marketing-site .marketing-plan-foot span{font-size:11px;padding:8px 0}
+.marketing-site .marketing-pricing-note{margin-top:15px!important;margin-bottom:30px!important;line-height:1.65}
+.marketing-site .marketing-help-intro{display:grid;grid-template-columns:1fr;gap:11px;align-items:start;padding-top:clamp(36px,5vw,54px);padding-bottom:17px}
+.marketing-site .marketing-help-intro .marketing-eyebrow{grid-column:auto}
+.marketing-site .marketing-help-intro h1{font-size:clamp(33px,4vw,49px);max-width:800px}
+.marketing-site .marketing-help-intro>p{max-width:680px}
+.marketing-site .marketing-section:has(.marketing-faq){padding-top:8px;padding-bottom:31px}
+.marketing-site .marketing-section-head{margin-bottom:18px}
+.marketing-site .marketing-section-head h2{font-size:23px}
+.marketing-site .marketing-section-head p{font-size:12px;margin-top:7px}
+.marketing-site .marketing-faq{max-width:none;gap:7px}
+.marketing-site .marketing-faq summary{padding:13px 17px;font-size:12px}
+.marketing-site .marketing-faq details p{padding:0 17px 13px;font-size:12px}
+.marketing-site .marketing-contact{padding-top:34px;padding-bottom:55px;gap:30px}
+.marketing-site .marketing-contact h2{margin:10px 0;font-size:25px}
+.marketing-site .marketing-contact p{font-size:13px}
+.marketing-site .marketing-form-card{padding:22px}
+.marketing-site .marketing-footer{padding-top:19px;padding-bottom:19px}
+@media(min-width:921px) and (max-width:1350px){
+ .marketing-site .marketing-pricing-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:920px){
+ .marketing-site .marketing-hero-split{gap:23px;padding-top:40px;padding-bottom:38px}
+ .marketing-site .marketing-hero-split .marketing-showcase{max-width:740px}
+ .marketing-site .marketing-project-summary{gap:24px;padding-top:30px;padding-bottom:44px}
+ .marketing-site .marketing-pricing-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:700px){
+ .marketing-site .marketing-hero-split{padding-top:28px;padding-bottom:28px;gap:24px}
+ .marketing-site .marketing-hero-split h1{font-size:clamp(32px,8.4vw,42px)}
+ .marketing-site .marketing-project-summary{display:grid;grid-template-columns:1fr;gap:15px;padding-top:27px;padding-bottom:36px}
+ .marketing-site .marketing-project-heading h2{font-size:24px}
+ .marketing-project-body>p{font-size:13px}
+ .marketing-project-audiences{margin-top:14px;padding-top:14px;gap:9px}
+ .marketing-site .marketing-pricing-grid{grid-template-columns:1fr}
+ .marketing-site .marketing-page-hero,.marketing-site .marketing-features-intro,.marketing-site .marketing-pricing-intro{padding-top:30px;padding-bottom:11px}
+ .marketing-site .marketing-page-hero h1{font-size:clamp(31px,8vw,39px)}
+ .marketing-site .marketing-features-section{padding-top:0;padding-bottom:36px}
+ .marketing-site .marketing-features-list{grid-template-columns:1fr}
+ .marketing-site .marketing-feature-row{padding:15px 0}
+ .marketing-site .marketing-contact{padding-top:25px;padding-bottom:38px;gap:22px}
+ .marketing-site .marketing-form-card{padding:16px}
+ .marketing-site .marketing-footer{padding-top:17px;padding-bottom:17px}
+}
+@media(prefers-reduced-motion:reduce){
+ .marketing-site .marketing-showcase-current,.marketing-site .marketing-showcase-previous{animation:none!important}
+}
