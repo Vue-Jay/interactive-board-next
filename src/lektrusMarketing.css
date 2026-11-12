@@ -400,15 +400,6 @@
 @media(max-width:700px){
  .marketing-showcase{margin-top:35px;border-radius:17px;padding:6px 6px 0}
  .marketing-showcase-screen{border-radius:11px;aspect-ratio:16/10}
- .marketing-showcase-toolbar{align-items:flex-start;flex-direction:column;gap:16px;padding:15px 10px}
- .marketing-showcase-caption{gap:5px}
- .marketing-showcase-caption strong{font-size:15px}
- .marketing-showcase-caption p{font-size:12px}
- .marketing-showcase-player{align-self:flex-end;gap:12px}
- .marketing-showcase-controls button{width:34px;height:34px;font-size:15px}
- .marketing-showcase-progress{margin-inline:10px}
- .marketing-showcase-subjects{padding:11px 8px}
- .marketing-showcase-subjects button{padding:8px 12px;font-size:10px}
  .marketing-features-intro{padding:40px 23px;margin-top:18px}
  .marketing-gallery-card{flex-basis:90%}
  .marketing-gallery-card img{height:220px}
@@ -429,13 +420,11 @@
 }
 @media(prefers-reduced-motion:reduce){
  .marketing-showcase-screen img{animation:none}
- .marketing-showcase-progress span{transition:none}
- .marketing-showcase-controls button{transition:none}
 }
 
 
-/* Website builder: theme variables and extra content blocks. Existing authored
-   teacher/student/help layouts and screenshot carousel are deliberately retained. */
+/* Website builder: theme variables and custom blocks. Public pages have six
+   distinct layouts, and only Home displays the autonomous real-screenshot reel. */
 .marketing-site .marketing-container{width:min(var(--site-custom-width,1200px),calc(100% - 64px))}
 .marketing-site .marketing-header{background:var(--marketing-white)}
 .marketing-site .marketing-site-logo,.marketing-site h1 span{color:var(--marketing-blue)}
