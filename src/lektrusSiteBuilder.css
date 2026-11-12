@@ -178,3 +178,7 @@
 @media(max-width:820px){.site-builder-columns{grid-template-columns:188px minmax(0,1fr)}.site-builder-right{top:78px;width:min(340px,85vw);transition:transform .2s ease;box-shadow:-12px 0 35px #0c2c4a26}.site-builder-right.is-collapsed{transform:translateX(110%);pointer-events:none}.site-builder-right.is-open{transform:translateX(0)}.site-builder-stage{padding:13px}.site-builder-previewbar{padding:8px 12px}}
 @media(max-width:520px){.site-builder-columns{grid-template-columns:138px minmax(0,1fr)}.site-builder-left{padding:11px 8px}.site-builder-kits button{padding:8px 5px;gap:6px}.site-builder-kit-icon{width:27px;height:27px;font-size:15px}.site-builder-kits small{display:none}.site-builder-preview-actions button{padding:7px;font-size:10px}.site-builder-previewbar>span{font-size:10px}.site-builder-theme-presets{grid-template-columns:1fr}.site-builder-stage{padding:9px}.site-builder-previewbar .site-builder-preview-separator{display:none}}
 @media(prefers-reduced-motion:reduce){.site-builder *{transition:none!important;animation:none!important}}
+
+/* Property drawer is an overlay only on narrow viewports; desktop inspector is always visible. */
+.site-builder-preview-actions button:last-child{display:none}
+@media(max-width:820px){.site-builder-preview-actions button:last-child{display:inline-flex}}
