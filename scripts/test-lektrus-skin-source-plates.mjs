@@ -68,7 +68,7 @@ assert.match(catalog,/siteVerified:true/);
 assert.match(component,/item\.licenseUrl/);
 assert.match(component,/item\.originalUrl/);
 const main=fs.readFileSync("src/LektrusHumanAnatomy.tsx","utf8");
-assert.match(main,/\<LektrusSkinSpecimens\//);
+assert.match(main,/\<LektrusSkinSpecimens(?:\s|\/>)/,\n "Human anatomy must actually mount the specimen viewer, including optional JSX props");
 assert.match(main,/system==="integumentary"/);
 const ci=fs.readFileSync(".github/workflows/lectris-check.yml","utf8");
 assert.match(ci,/test-lektrus-skin-source-plates\.mjs/);
