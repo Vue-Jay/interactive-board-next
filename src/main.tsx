@@ -4,4 +4,4 @@ const query=new URLSearchParams(window.location.search);
 const appRoute=query.has("section")||query.has("email_confirmation")||query.get("source")==="pwa";
 const isPublicSite=window.location.pathname==="/"&&!appRoute&&!Capacitor.isNativePlatform();
 
-void (isPublicSite?import("./LektrusSiteEntry"):import("./appEntry"));
+void (window.location.pathname==="/site-builder"&&!Capacitor.isNativePlatform()?import("./LektrusSiteBuilderEntry"):isPublicSite?import("./LektrusSiteEntry"):import("./appEntry"));
