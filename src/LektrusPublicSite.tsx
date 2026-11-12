@@ -2,6 +2,7 @@ import {useEffect,useRef,useState,type CSSProperties,type MouseEvent,type ReactN
 import {defaultSiteDocument,loadPublishedSiteDocument,normalizeSiteDocument,SITE_PREVIEW_MESSAGE,type SiteDocument} from "./marketingSiteConfig";
 import {SiteCustomPage,SiteAnchorSlot} from "./SiteEditableSections";
 import {SiteObjectLayer} from "./SiteObjectLayer";
+import {commandFromKeyboard,type StudioCommand} from "./siteStudioCommands";
 import LektrusFeedbackForm from "./LektrusFeedbackForm";
 import {plans,limitLabel} from "./billingStore";
 import "./lektrusMarketing.css";
@@ -117,6 +118,19 @@ export default function LektrusPublicSite(){
   return ()=>document.removeEventListener("click",handle,true);
  },[isPreview]);
  useEffect(()=>{
+  if(!isPreview)return;
+  const onKey=(event:KeyboardEvent)=>{
+   if(event.defaultPrevented)return;
+   const command=commandFromKeyboard(event);
+   if(!command)return;
+   if((command==="delete"||command==="escape")&&!previewSelection&&!previewObject)return;
+   event.preventDefault();event.stopPropagation();
+   window.parent.postMessage({type:"lektrus:site-editor-command",command},window.location.origin);
+  };
+  window.addEventListener("keydown",onKey);
+  return ()=>window.removeEventListener("keydown",onKey);
+ },[isPreview,previewSelection,previewObject]);
+ useEffect(()=>{
   if(isPreview){
    const sync=(event:MessageEvent)=>{
     if(event.origin!==window.location.origin||event.source!==window.parent)return;
@@ -159,6 +173,7 @@ export default function LektrusPublicSite(){
   if(isPreview)window.parent.postMessage({type:"lektrus:site-navigate",page:target},window.location.origin);
  };
  const placed=(anchor:string)=><SiteAnchorSlot page={page} anchor={anchor} blocks={copy?.blocks??[]} selectedId={previewSelection} preview={isPreview}/>;
+ const editorCommand=(command:StudioCommand)=>window.parent.postMessage({type:"lektrus:site-editor-command",command},window.location.origin);
  const NavLink=({id,title}:{id:Page;title:string})=><a href={"#"+id} aria-current={page===id?"page":undefined} className={page===id?"is-current":""} onClick={event=>navigate(id,event)}>{title}</a>;
  return <div className={isPreview?"marketing-site site-preview"+(previewInteractive?" site-preview-interactive":""):"marketing-site"} style={{"--marketing-blue":config.theme.accent,"--marketing-bg":config.theme.background,"--marketing-white":config.theme.surface,"--marketing-ink":config.theme.ink,"--site-custom-radius":config.theme.radius+"px","--site-custom-width":config.theme.maxWidth+"px"} as CSSProperties}>
   <a className="marketing-skip" href="#marketing-main">Перейти к содержимому</a>
@@ -307,6 +322,15 @@ export default function LektrusPublicSite(){
    {!customPage&&placed("end")}
   </main>
   <footer className="marketing-footer"><div className="marketing-container"><div className="marketing-footer-brand"><img src="/lektrus-icon-192.png" width="32" height="32" alt=""/><span><strong>Lektrus</strong><small>Пространство для обучения</small></span></div><nav aria-label="Разделы внизу страницы">{siteNavigation.filter(item=>item.id!=="home").map(item=><NavLink key={item.id} {...item}/>)}</nav><div className="marketing-footer-end"><span>© {new Date().getFullYear()} Lektrus</span><a href="/app">Перейти в приложение ↗</a></div></div></footer>
+  {isPreview&&(previewSelection||previewObject)&&<div className="site-canvas-selection-actions" role="toolbar" aria-label="Действия над выделенным элементом">
+   <span>{previewSelection?"Выделен блок":config.objects[previewObject||""]?.hidden?"Элемент скрыт":"Выделен объект"}</span>
+   <button type="button" onClick={()=>editorCommand("undo")} title="Отменить, Ctrl+Z" aria-label="Отменить действие">↶</button>
+   <button type="button" onClick={()=>editorCommand("redo")} title="Повторить, Ctrl+Y" aria-label="Повторить действие">↷</button>
+   {previewObject&&config.objects[previewObject]?.hidden?
+    <button type="button" className="site-canvas-restore-button" onClick={()=>editorCommand("restore")}>↺ Восстановить</button>:
+    <button type="button" className="site-canvas-delete-button" onClick={()=>editorCommand("delete")}>⌫ Удалить <kbd>Del</kbd></button>}
+   <button type="button" onClick={()=>editorCommand("escape")} title="Снять выделение, Esc" aria-label="Снять выделение">×</button>
+  </div>}
   <SiteObjectLayer siteDocument={config} page={page} preview={isPreview} selected={previewObject} interactive={previewInteractive}/>
  </div>;
 }
