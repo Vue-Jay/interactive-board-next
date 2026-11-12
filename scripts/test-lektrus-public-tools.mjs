@@ -25,7 +25,9 @@ assert.match(tools,/lazy\(\(\)=>import\("\.\/LektrusMapAtlas"\)\)/);
 assert.match(tools,/lazy\(\(\)=>import\("\.\/LektrusChemistryBenchEditor"\)\)/);
 assert.match(site,/href:"\/tools\/atlas"/);
 assert.match(site,/href:"\/tools\/laboratory"/);
-assert.match(site,/Открываются отдельно, без привязки к доске/);
+assert.match(site,/page==="tools"&&!copy\?\.replaceDefault/,"standalone tools require their own public site tab");
+assert.match(site,/Создавать доску не требуется/,"standalone tools should be clearly explained as board-free");
+assert.match(site,/marketing-standalone-tool/,"standalone catalog should offer direct links without screenshot galleries");
 assert.doesNotMatch(site,/lektrus-ad-scene|lektrus-ad-draw-path|CSS animation/i,
  "the site must not advertise fabricated board activity");
 console.log("Lektrus public tools: direct routes, lazy tools, standalone board-free use and no fabricated animation verified.");

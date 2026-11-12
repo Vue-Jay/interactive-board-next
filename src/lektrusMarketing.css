@@ -664,3 +664,90 @@ body:has(.marketing-site:not(.site-preview)) .site-editable-block:hover{outline:
 @media(max-width:920px){.marketing-workflow-diagram{min-height:330px}.marketing-workflow-node{min-width:145px;padding:14px;font-size:12px}.marketing-workflow-node-0,.marketing-workflow-node-2{left:2%}.marketing-workflow-node-1,.marketing-workflow-node-3{right:2%}.marketing-workflow-core{width:235px;min-height:135px}.marketing-workflow-core strong{font-size:22px}}
 @media(max-width:700px){.marketing-site .marketing-feature-card{min-height:220px;padding:25px}.marketing-site .marketing-feature-card .marketing-number{top:30px;right:24px}.marketing-home-flow{padding:10px}.marketing-home-flow>div{padding:16px}.marketing-workflow-diagram{display:grid;gap:10px;min-height:0;padding:16px}.marketing-workflow-core,.marketing-workflow-node{position:static;transform:none;width:100%;min-width:0;min-height:0}.marketing-workflow-core{order:0;padding:22px}.marketing-workflow-node{order:1}.marketing-workflow-node-0,.marketing-workflow-node-1,.marketing-workflow-node-2,.marketing-workflow-node-3{inset:auto}.marketing-tool-card{grid-template-columns:65px 1fr;gap:16px}.marketing-tool-symbol{width:65px;height:65px;font-size:37px;border-radius:16px}.marketing-about-statement{min-height:260px;padding:25px}.marketing-about-statement strong{font-size:37px}.marketing-step-visual{min-height:230px}.marketing-step-visual-card{padding:23px}.marketing-about-teacher-journey{grid-template-columns:1fr}.marketing-about-teacher-journey article{min-height:0;padding:19px}.marketing-about-student-steps{grid-template-columns:1fr}.marketing-about-student-steps>div{min-height:90px;padding:16px}.marketing-about-audience{padding-top:35px}.marketing-about-audience-head{margin-bottom:22px}}
 @media(max-width:420px){.marketing-home-flow>div{grid-template-columns:39px 1fr;padding:13px}.marketing-home-flow>div span{font-size:20px}.marketing-tool-card{grid-template-columns:1fr}.marketing-about-statement strong{font-size:33px}.marketing-about-subject-links a{flex:1;text-align:center;min-width:42%}}
+
+/* Minimal public layout: fewer oversized panels and no duplicate marketing captions.
+   Only the homepage has the real screenshot slideshow. Site Studio controls are unchanged. */
+.marketing-site .marketing-header,.marketing-site .marketing-header-inner{min-height:66px}
+.marketing-site .marketing-brand strong{font-size:21px}
+.marketing-site .marketing-brand small{display:none}
+.marketing-site .marketing-nav a{padding:9px 9px;font-size:12px}
+.marketing-site .marketing-section{padding-top:42px;padding-bottom:42px}
+.marketing-site .marketing-page-hero{padding-top:55px;padding-bottom:22px}
+.marketing-site .marketing-page-hero h1{font-size:clamp(35px,4.6vw,55px);line-height:1.1;letter-spacing:-.057em;margin:0 0 16px;max-width:760px}
+.marketing-site .marketing-page-hero>p{font-size:15px;max-width:650px;line-height:1.65}
+.marketing-site h2{font-size:clamp(23px,2.8vw,33px);letter-spacing:-.045em}
+.marketing-site .marketing-hero{padding-top:67px;padding-bottom:37px}
+.marketing-site .marketing-hero::before{background:linear-gradient(180deg,#f3f8ff 0%,transparent 100%);height:calc(100% - 50px)}
+.marketing-site .marketing-hero h1{font-size:clamp(38px,5.15vw,64px);max-width:900px;margin-bottom:16px;line-height:1.09}
+.marketing-site .marketing-hero-lead{max-width:620px;margin-bottom:22px!important;font-size:16px!important;line-height:1.6!important}
+.marketing-site .marketing-primary,.marketing-site .marketing-secondary{min-height:42px;padding:9px 15px;font-size:12px;border-radius:9px;box-shadow:none}
+.marketing-site .marketing-showcase{max-width:980px;margin-top:38px;padding:4px;border:1px solid #d5e2f1;border-radius:14px;background:#fff;box-shadow:0 12px 35px #173e6612}
+.marketing-site .marketing-showcase::before{border-radius:inherit}
+.marketing-site .marketing-showcase-screen{aspect-ratio:16/8.7;border:0;border-radius:10px;background:#f5f8fd}
+.marketing-site .marketing-showcase-screen img{background:#f5f8fd}
+.marketing-site .marketing-home-summary{display:flex;align-items:center;justify-content:space-between;gap:28px;padding-top:30px;padding-bottom:55px;border-top:1px solid var(--marketing-line)}
+.marketing-site .marketing-home-summary h2{font-size:23px;margin-bottom:5px}
+.marketing-site .marketing-home-summary p{font-size:13px;max-width:560px}
+.marketing-site .marketing-home-summary a,.marketing-site .marketing-features-footer a{white-space:nowrap;color:var(--marketing-blue);font-size:12px;font-weight:800}
+.marketing-site .marketing-features-intro{margin-top:0;padding:55px 0 19px;border:0;border-radius:0;background:none}
+.marketing-site .marketing-features-section{padding-top:15px}
+.marketing-features-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 30px}
+.marketing-feature-row{display:flex;align-items:center;gap:14px;min-height:95px;padding:14px 4px;border-bottom:1px solid #dbe5f0}
+.marketing-feature-row:hover .marketing-feature-row-arrow,.marketing-standalone-tool:hover .marketing-standalone-tool-arrow{transform:translate(3px,-3px);color:var(--marketing-blue)}
+.marketing-feature-row-mark{display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:10px;background:#eaf2fc;color:#316bba;font-size:19px}
+.marketing-feature-row-copy{display:grid;gap:5px;min-width:0}
+.marketing-feature-row-copy strong{font-size:15px;color:var(--marketing-ink);line-height:1.35}
+.marketing-feature-row-copy small{font-size:12px;color:#687e97;line-height:1.5}
+.marketing-feature-row-arrow{margin-left:auto;color:#7598c6;font-size:18px;transition:transform .15s,color .15s}
+.marketing-features-footer{display:flex;gap:16px;align-items:center;margin-top:25px;font-size:13px;color:#697e94}
+.marketing-site .marketing-tools-intro{padding-bottom:15px}
+.marketing-site .marketing-standalone-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding-top:12px;padding-bottom:80px}
+.marketing-standalone-tool{display:flex;align-items:center;gap:16px;min-height:124px;padding:22px;border:1px solid var(--marketing-line);border-radius:13px;background:var(--marketing-white);transition:border-color .15s}
+.marketing-standalone-tool:hover{border-color:#aac5e8}
+.marketing-standalone-tool-symbol{display:grid;place-items:center;flex:none;width:50px;height:50px;border-radius:11px;background:#eaf2fc;color:#2a69bc;font-size:26px}
+.marketing-standalone-tool-copy{display:grid;gap:7px;min-width:0}
+.marketing-standalone-tool-copy strong{color:var(--marketing-ink);font-size:17px}
+.marketing-standalone-tool-copy small{font-size:12px;color:#688098;line-height:1.55}
+.marketing-standalone-tool-arrow{margin-left:auto;align-self:flex-start;color:#7799c4;font-size:19px;transition:transform .15s,color .15s}
+.marketing-site .marketing-steps{min-height:0;display:block;padding-top:17px;padding-bottom:73px}
+.marketing-how-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 36px;margin-bottom:28px}
+.marketing-how-step{display:flex;align-items:flex-start;gap:17px;padding:20px 0;border-bottom:1px solid #dce6f0}
+.marketing-how-step .marketing-step-index{flex:none;margin:0;color:#3471c9;font-size:12px;font-weight:850}
+.marketing-how-step h2{font-size:20px;margin:0 0 7px}
+.marketing-how-step p{font-size:13px;line-height:1.6}
+.marketing-site .marketing-about-intro{border-bottom:none;padding-top:55px;padding-bottom:15px}
+.marketing-site .marketing-about-practical{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:34px;padding-top:20px;padding-bottom:75px}
+.marketing-site .marketing-about-practical .marketing-about-audience{grid-column:auto;padding:0;border:0;min-width:0}
+.marketing-about-practical .marketing-about-audience h2{font-size:24px;margin-bottom:9px}
+.marketing-about-practical .marketing-about-audience>p{font-size:13px;line-height:1.65;min-height:46px;margin-bottom:15px}
+.marketing-site .marketing-about-practical .marketing-about-teacher-journey{display:grid;grid-template-columns:1fr;gap:0;margin:0}
+.marketing-site .marketing-about-practical .marketing-about-teacher-journey article{min-height:0;display:block;padding:12px 0;background:none;border:0;border-bottom:1px solid #dce6f0;border-radius:0}
+.marketing-about-teacher-journey article strong{font-size:13px;color:#284e7f}
+.marketing-about-teacher-journey article p{margin-top:3px;font-size:12px;line-height:1.55}
+.marketing-site .marketing-about-practical .marketing-about-student-steps{display:grid;grid-template-columns:1fr;gap:0}
+.marketing-site .marketing-about-practical .marketing-about-student-steps>div{min-height:0;display:flex;align-items:center;flex-direction:row;gap:12px;border:0;border-bottom:1px solid #dce6f0;border-radius:0;padding:14px 0;background:none}
+.marketing-about-student-steps>div span{font-size:13px;min-width:20px;color:#348570}
+.marketing-about-student-steps>div strong{font-size:13px;color:#284d43}
+.marketing-site .marketing-about-practical .marketing-about-subject-links{gap:7px;margin-top:19px}
+.marketing-site .marketing-about-practical .marketing-about-subject-links a{font-size:11px;padding:8px 11px;border-radius:8px}
+.marketing-site .marketing-pricing-intro{padding-top:55px;padding-bottom:18px;text-align:left}
+.marketing-site .marketing-pricing-intro h1{margin-inline:0}
+.marketing-site .marketing-pricing-intro>p{margin-inline:0}
+.marketing-site .marketing-pricing-grid{gap:12px;margin-top:15px}
+.marketing-site .marketing-plan{min-height:0;padding:22px;border-radius:14px;box-shadow:none}
+.marketing-site .marketing-plan-top h2{font-size:25px}
+.marketing-site .marketing-plan-top p{font-size:12px;min-height:0}
+.marketing-site .marketing-price{margin:16px 0 12px;font-size:19px}
+.marketing-site .marketing-plan ul{font-size:12px}
+.marketing-site .marketing-plan ul li{margin-bottom:6px}
+.marketing-site .marketing-plan-foot{padding-top:14px}
+.marketing-site .marketing-pricing-note{margin-top:15px!important;margin-bottom:45px!important}
+.marketing-site .marketing-faq summary{padding:16px 19px}
+.marketing-site .marketing-faq details p{padding:0 19px 17px}
+.marketing-site .marketing-contact{gap:38px}
+.marketing-site .marketing-contact-help{display:none}
+.marketing-site .marketing-footer{padding-top:33px}
+@media(max-width:920px){.marketing-site .marketing-header,.marketing-site .marketing-header-inner{min-height:68px}.marketing-site .marketing-standalone-tools{grid-template-columns:1fr}.marketing-site .marketing-pricing-grid{grid-template-columns:1fr}.marketing-site .marketing-plan{min-height:0}}
+@media(max-width:700px){.marketing-site .marketing-section{padding-top:30px;padding-bottom:30px}.marketing-site .marketing-hero{padding-top:43px;padding-bottom:28px}.marketing-site .marketing-hero h1{font-size:clamp(34px,9vw,45px);margin-bottom:12px}.marketing-site .marketing-hero-lead{font-size:14px!important}.marketing-site .marketing-showcase{margin-top:27px;border-radius:12px}.marketing-site .marketing-showcase-screen{aspect-ratio:16/10;border-radius:8px}.marketing-site .marketing-home-summary{display:block;padding-top:26px;padding-bottom:35px}.marketing-site .marketing-home-summary a{display:inline-flex;margin-top:13px}.marketing-site .marketing-page-hero,.marketing-site .marketing-features-intro,.marketing-site .marketing-about-intro,.marketing-site .marketing-pricing-intro{margin-top:0;padding:43px 0 12px}.marketing-site .marketing-page-hero h1{font-size:clamp(33px,8vw,43px)}.marketing-features-list,.marketing-how-list,.marketing-site .marketing-about-practical{grid-template-columns:1fr;gap:0}.marketing-site .marketing-about-practical{gap:27px;padding-top:16px;padding-bottom:45px}.marketing-site .marketing-about-practical .marketing-about-audience>p{min-height:0}.marketing-site .marketing-standalone-tools{gap:9px;padding-top:15px;padding-bottom:45px}.marketing-standalone-tool{padding:17px;min-height:105px}.marketing-features-footer{align-items:flex-start;flex-direction:column;gap:7px}.marketing-site .marketing-pricing-grid{margin-top:15px}.marketing-site .marketing-footer{padding-top:27px}}
+@media(max-width:370px){.marketing-feature-row{gap:10px}.marketing-feature-row-mark{width:32px;height:32px}.marketing-standalone-tool-symbol{width:42px;height:42px}.marketing-site .marketing-standalone-tool-copy strong{font-size:15px}}
+@media(prefers-reduced-motion:reduce){.marketing-feature-row-arrow,.marketing-standalone-tool-arrow{transition:none}}
