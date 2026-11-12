@@ -154,7 +154,7 @@ with sync_playwright() as p:
     visitor.locator(".marketing-about-audience-students").wait_for()
     assert visitor.locator(".marketing-about-teacher-journey article").count() == 4
     assert visitor.locator(".marketing-about-student-steps>div").count() == 3
-    assert visitor.locator(".marketing-about-subject-links a").count() >= 4
+    assert visitor.locator(".marketing-about-subject-links a").count() == 7, "All seven subject demos must survive removal of the Students tab"
     assert visitor.locator(".marketing-showcase").count() == 0, "Homepage reel must not repeat in About"
     visitor.screenshot(path=str(root / "07-about-consolidated.png"), full_page=True)
     visitor.goto("http://127.0.0.1:5173/#teachers", wait_until="domcontentloaded")
