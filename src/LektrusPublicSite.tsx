@@ -93,7 +93,16 @@ export default function LektrusPublicSite(){
  useEffect(()=>{
   if(!isPreview)return;
   const handle=(event:Event)=>{
-   if(event.target instanceof Element&&event.target.closest("button,a,input,select,textarea,[role=button]"))return;
+   const anchor=event.target instanceof Element?event.target.closest("a[href]"):null;
+   if(anchor){
+    const target=anchor.getAttribute("href")||"";
+    if(!target.startsWith("#")){
+     event.preventDefault();event.stopPropagation();
+     window.parent.postMessage({type:"lektrus:site-preview-link",href:target},window.location.origin);
+    }
+    return;
+   }
+   if(event.target instanceof Element&&event.target.closest("button,summary,input,select,textarea,[role=button]"))return;
    const element=event.target instanceof Element?event.target.closest("[data-site-block-id],[data-site-page-hero]"):null;
    if(!element)return;
    event.preventDefault();event.stopPropagation();
@@ -141,6 +150,7 @@ export default function LektrusPublicSite(){
    window.scrollTo({top:0,behavior:"instant"});
   }else window.scrollTo({top:0,behavior:"smooth"});
   setMenuOpen(false);
+  if(isPreview)window.parent.postMessage({type:"lektrus:site-navigate",page:target},window.location.origin);
  };
  const NavLink=({id,title}:{id:Page;title:string})=><a href={"#"+id} aria-current={page===id?"page":undefined} className={page===id?"is-current":""} onClick={event=>navigate(id,event)}>{title}</a>;
  return <div className={isPreview?"marketing-site site-preview":"marketing-site"} style={{"--marketing-blue":config.theme.accent,"--marketing-bg":config.theme.background,"--marketing-white":config.theme.surface,"--marketing-ink":config.theme.ink,"--site-custom-radius":config.theme.radius+"px","--site-custom-width":config.theme.maxWidth+"px"} as CSSProperties}>
