@@ -178,7 +178,7 @@ with sync_playwright() as p:
 
     visitor.goto("http://127.0.0.1:5173/#pricing", wait_until="domcontentloaded")
     assert visitor.locator(".marketing-plan").count() == 3
-    assert visitor.locator(".marketing-pricing-note").is_visible()
+    assert visitor.locator(".marketing-pricing-note").count() == 0, "Pricing disclaimer must not be shown"
     visitor.screenshot(path=str(root / "08-pricing-compact.png"), full_page=True)
     visitor.goto("http://127.0.0.1:5173/#help", wait_until="domcontentloaded")
     assert visitor.locator(".marketing-faq details").count() >= 4
