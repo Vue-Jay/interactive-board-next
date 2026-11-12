@@ -7,8 +7,9 @@
 <body>
 <header><b>Тест предпросмотра Lektrus</b><button id="drag-new" draggable="true">Перетащить блок</button><button id="drag-kit" draggable="true">Перетащить секцию</button><span id="status">Страница загружается…</span></header>
 <iframe id="site" title="Тестовая страница" src="/?site-preview=1#home"></iframe>
-<script>
-const doc={
+<script type="module">
+import {deleteStudioSelection,restoreStudioObject} from "/src/siteStudioCommands.ts";
+let doc={
  version:1,
  theme:{accent:"#2563eb",background:"#f8fafc",surface:"#ffffff",ink:"#122238",radius:18,maxWidth:1200},
  navigation:[{id:"home",title:"Главная",hidden:false}],
@@ -16,7 +17,9 @@ const doc={
  customPages:[],objects:{}
 };
 const frame=document.getElementById("site"),status=document.getElementById("status");
-const send=()=>frame.contentWindow.postMessage({type:"lektrus:marketing-site-preview",document:doc,selectedId:null,objectId:window.lastObjectId||null},location.origin);
+const undoStack=[],redoStack=[];
+const checkpoint=()=>{undoStack.push(structuredClone(doc));redoStack.length=0};
+const send=()=>frame.contentWindow.postMessage({type:"lektrus:marketing-site-preview",document:doc,selectedId:window.lastBlockId||null,objectId:window.lastObjectId||null},location.origin);
 frame.addEventListener("load",()=>{send();status.textContent="Предпросмотр готов"});
 document.querySelectorAll("[draggable=true]").forEach(button=>button.addEventListener("dragstart",event=>{
  const transfer=button.id==="drag-kit"?{type:"kit",id:"gallery"}:{type:"block",kind:"text"};
@@ -28,6 +31,7 @@ window.addEventListener("message",event=>{
  if(event.origin!==location.origin||event.source!==frame.contentWindow)return;
  const message=event.data||{};
  if(message.type==="lektrus:site-canvas-drop"){
+  checkpoint();
   const item=message.transfer||{};
   const itemId="dragged-"+Date.now();
   if(item.type==="block"&&item.kind==="text")doc.pages.home.blocks.push({
@@ -43,14 +47,35 @@ window.addEventListener("message",event=>{
   status.textContent="Блок вставлен: "+message.anchor;
   send();
  }
+ if(message.type==="lektrus:site-select-block"&&typeof message.id==="string"){
+  window.lastBlockId=message.id;window.lastObjectId=null;send();
+ }
  if(message.type==="lektrus:site-select-object"&&message.info?.id){
-  window.lastObjectId=message.info.id;
+  checkpoint();
+  window.lastBlockId=null;window.lastObjectId=message.info.id;
   document.body.dataset.objectSelected=message.info.id;
   doc.objects[message.info.id]={text:"Отредактировано прямо на странице",style:{color:"#db3928",fontSize:33}};
   status.textContent="Объект изменён";
   send();
  }
+ if(message.type==="lektrus:site-editor-command"){
+  const command=message.command;
+  (window.commandHistory??=[]).push(command);
+  document.body.dataset.lastCommand=command;
+  if(command==="delete"){
+   checkpoint();
+   const action=deleteStudioSelection(doc,"home",window.lastBlockId||null,window.lastObjectId||null);
+   if(action==="block")window.lastBlockId=null;
+  }
+  if(command==="restore"&&window.lastObjectId){checkpoint();restoreStudioObject(doc,window.lastObjectId)}
+  if(command==="undo"&&undoStack.length){redoStack.push(structuredClone(doc));doc=undoStack.pop()}
+  if(command==="redo"&&redoStack.length){undoStack.push(structuredClone(doc));doc=redoStack.pop()}
+  if(command==="escape"){window.lastObjectId=null;window.lastBlockId=null}
+  status.textContent="Команда: "+command;
+  send();
+ }
 });
+window.getCommandHistory=()=>window.commandHistory||[];
 window.getSiteDraft=()=>doc;
 </script>
 </body>
