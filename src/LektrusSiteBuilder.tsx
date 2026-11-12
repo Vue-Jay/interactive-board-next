@@ -15,6 +15,7 @@ type StudioHistoryEntry={doc:SiteDocument;page:string;block:string|null;object:s
 type LibraryMode="blocks"|"kits";
 type Device="desktop"|"tablet"|"phone";
 const builtin=new Set<string>(BUILTIN_SITE_PAGES);
+const retiredSitePages=new Set(["teachers","students"]);
 const kinds:{kind:SiteBlockKind;label:string;icon:string}[]=[
  {kind:"text",label:"Текст",icon:"T"},{kind:"image",label:"Изображение",icon:"▧"},
  {kind:"gallery",label:"Галерея",icon:"▦"},{kind:"cards",label:"Карточки",icon:"▤"},
@@ -371,10 +372,10 @@ export default function LektrusSiteBuilder(){
   </header>
   <div className="site-builder-columns">
    <aside className="site-builder-left" aria-label="Страницы и блоки">
-    <section><h2>Страницы <span>{doc.navigation.length}</span></h2>
+    <section><h2>Страницы <span>{doc.navigation.filter(item=>!retiredSitePages.has(item.id)).length}</span></h2>
      <p>Перетаскивай страницы, чтобы менять порядок вкладок.</p>
      <input className="site-builder-page-search" aria-label="Найти страницу" placeholder="⌕  Найти страницу..." value={pageSearch} onChange={e=>setPageSearch(e.target.value)}/>
-     <nav className="site-builder-page-list" aria-label="Страницы сайта">{doc.navigation.filter(item=>item.title.toLowerCase().includes(pageSearch.trim().toLowerCase())).map(item=><div key={item.id} draggable onDragStart={()=>{drag.current=item.id}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(drag.current)moveNav(drag.current,item.id);drag.current=null}}>
+     <nav className="site-builder-page-list" aria-label="Страницы сайта">{doc.navigation.filter(item=>!retiredSitePages.has(item.id)&&item.title.toLowerCase().includes(pageSearch.trim().toLowerCase())).map(item=><div key={item.id} draggable onDragStart={()=>{drag.current=item.id}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(drag.current)moveNav(drag.current,item.id);drag.current=null}}>
       <button type="button" className={active===item.id?"selected":""} onClick={()=>{setActive(item.id);setSelected(null);setSelectedObject(null);setInspector("page")}}><span className="site-builder-handle">⠿</span><span>{item.title}</span>{item.hidden&&<span title="Скрыта">◌</span>}</button>
       <button type="button" title={item.hidden?"Показать вкладку":"Скрыть вкладку"} disabled={item.id==="home"} onClick={()=>change(next=>{next.navigation=next.navigation.map(x=>x.id===item.id?{...x,hidden:!x.hidden}:x)})}>{item.hidden?"◉":"◌"}</button>
      </div>)}</nav>
@@ -426,6 +427,24 @@ export default function LektrusSiteBuilder(){
      <label>Надпись над заголовком<input value={activePage.eyebrow} placeholder="Используется исходная" onChange={e=>patchPage({eyebrow:e.target.value})}/></label>
      <label>Заголовок<input value={activePage.heading} placeholder={builtin.has(active)?"Используется исходный заголовок":""} onChange={e=>patchPage({heading:e.target.value})}/></label>
      <label>Описание<textarea rows={5} value={activePage.lead} placeholder="Используется исходный текст" onChange={e=>patchPage({lead:e.target.value})}/></label>
+     {active==="home"&&<div className="site-builder-home-showcase">
+      <h3>Единая витрина главной страницы</h3>
+      <p>Все реальные экраны Lektrus показываются в одной области. На сайте они плавно сменяют друг друга автоматически, без кнопок плеера.</p>
+      <div className="site-builder-showcase-shots">{doc.showcase.map((shot,index)=><div className="site-builder-showcase-item" key={shot.src+"-"+index}>
+       <img src={shot.src} loading="lazy" alt={shot.subject}/>
+       <div><strong>{shot.subject}</strong><small>{shot.src}</small><input aria-label={"Подпись кадра "+(index+1)} maxLength={70} value={shot.subject} onChange={e=>change(next=>{next.showcase[index].subject=e.target.value},"showcase:"+index+":subject")}/></div>
+       <div className="site-builder-showcase-actions">
+        <button type="button" title="Выше" aria-label={"Переместить кадр "+(index+1)+" выше"} disabled={index===0} onClick={()=>change(next=>{[next.showcase[index-1],next.showcase[index]]=[next.showcase[index],next.showcase[index-1]]})}>↑</button>
+        <button type="button" title="Ниже" aria-label={"Переместить кадр "+(index+1)+" ниже"} disabled={index===doc.showcase.length-1} onClick={()=>change(next=>{[next.showcase[index+1],next.showcase[index]]=[next.showcase[index],next.showcase[index+1]]})}>↓</button>
+        <button type="button" className="site-builder-showcase-remove" title="Исключить из показа" aria-label={"Удалить кадр "+(index+1)} disabled={doc.showcase.length<=1} onClick={()=>change(next=>{next.showcase.splice(index,1)})}>×</button>
+       </div>
+      </div>)}</div>
+      <SiteImageChooser onChoose={url=>{
+       if(doc.showcase.some(shot=>shot.src===url)){setNotice("Это изображение уже есть в презентации.");return}
+       if(doc.showcase.length>=12){setNotice("В единой презентации максимум 12 кадров.");return}
+       change(next=>{next.showcase.push({scene:"home",subject:"Снимок Lektrus",src:url})});
+      }}/>
+     </div>}
      {builtin.has(active)?<>
       <label className="site-builder-replace"><input type="checkbox" checked={activePage.replaceDefault===true} onChange={e=>patchPage({replaceDefault:e.target.checked})}/>
        <span><strong>Свой макет страницы</strong><small>{activePage.replaceDefault?"Показаны только выбранные тобой блоки. Можно вернуть стандартный дизайн.":"Стандартный макет и настоящие снимки остаются. Новые блоки добавятся ниже."}</small></span>
