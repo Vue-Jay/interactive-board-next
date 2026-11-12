@@ -97,6 +97,7 @@ export default function LektrusPublicSite(){
  useEffect(()=>{
   if(!isPreview)return;
   const handle=(event:Event)=>{
+   if(event.target instanceof Element&&event.target.closest("[data-site-editor-control]"))return;
    if(event.target instanceof Element&&event.target.closest("[data-site-object-id]"))return;
    const anchor=event.target instanceof Element?event.target.closest("a[href]"):null;
    if(anchor){
