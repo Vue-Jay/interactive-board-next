@@ -95,7 +95,7 @@ const key=String(import.meta.env.VITE_SUPABASE_ANON_KEY||"");
 export async function loadPublishedSiteDocument():Promise<SiteDocument|null>{
  if(!endpoint||!key)return null;
  const response=await fetch(endpoint+"/rest/v1/marketing_site_settings?setting_key=eq.default&select=document&limit=1",{
-  headers:{apikey:key,Authorization:"Bearer "+key,Accept:"application/json"}
+  headers:{apikey:key,Accept:"application/json"} // anonymous site reads use the public API key, never a fake user JWT
  });
  if(!response.ok)throw new Error("Не удалось получить опубликованный дизайн сайта ("+response.status+").");
  const rows=await response.json() as Array<{document:unknown}>;
