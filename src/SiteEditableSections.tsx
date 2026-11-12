@@ -81,7 +81,6 @@ function SiteBlockView({block}:{block:SiteBlock}){
    const [title,url]=splitPair(item),destination=safeSiteUrl(url);
    return destination!=="#"?<a key={i} href={destination} className={i===0?"marketing-primary":"marketing-secondary"}>{title} ↗</a>:null;
   })}</div></div></section>;
- }
  return <section className={classes.join(" ")}><div className="marketing-container site-block-cta"><h2>{block.title}</h2><p>{block.text}</p>
   {href!=="#"&&<a className="marketing-primary" href={href}>{label} ↗</a>}</div></section>;
 }
