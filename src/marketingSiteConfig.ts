@@ -71,7 +71,7 @@ export function normalizeSiteDocument(raw:unknown):SiteDocument{
    imageSide:imageSide==="right"?"right":"left"
   };
   return {id:original||crypto.randomUUID(),kind,title:clean(v.title,160),text:clean(v.text,4000),
-   image:safeSiteUrl(clean(v.image,900)),href:safeSiteUrl(clean(v.href,900)),buttonLabel:clean(v.buttonLabel,45)||"Перейти",style,
+   image:safeSiteUrl(clean(v.image,900)),href:safeSiteUrl(clean(v.href,900)),buttonLabel:clean(v.buttonLabel,45)||(kind==="image"?"Подробнее":"Перейти"),style,
    items:Array.isArray(v.items)?v.items.slice(0,12).map(x=>kind==="cards"||kind==="faq"||kind==="stats"?clean(x,420):safeSiteUrl(clean(x,900))).filter(x=>Boolean(x)&&x!=="#"):[]};
  };
  const parsePage=(value:unknown,id:string,defaultTitle=""):SitePage=>{
