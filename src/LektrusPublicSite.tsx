@@ -299,7 +299,7 @@ export default function LektrusPublicSite(){
        <div className="marketing-about-student-steps">
         {["Смотри, как устроена тема","Пробуй инструменты на практике","Разбирайся в своём темпе"].map((title,i)=><div key={title}><span>0{i+1}</span><strong>{title}</strong></div>)}
        </div>
-       <div className="marketing-about-subject-links" aria-label="Открыть учебный пример">{boardShots.slice(0,4).map(shot=><DemoLink key={shot.scene} scene={shot.scene}>{shot.subject} ↗</DemoLink>)}</div>
+       <div className="marketing-about-subject-links" aria-label="Открыть учебный пример">{boardShots.map(shot=><DemoLink key={shot.scene} scene={shot.scene}>{shot.subject} ↗</DemoLink>)}</div>
       </div>
      </section>
     {placed("before-3")}
