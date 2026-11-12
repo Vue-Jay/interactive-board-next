@@ -123,7 +123,16 @@ export function SiteObjectLayer({siteDocument,page,preview,selected,interactive}
   const observer=new MutationObserver(schedule);
   if(root)observer.observe(root,{childList:true,subtree:true});
   const click=(event:MouseEvent)=>{
-   if(!preview||interactive)return;
+   if(!preview)return;
+   if(interactive){
+    const link=event.target instanceof Element?event.target.closest("a[href]"):null;
+    const href=link?.getAttribute("href")||"";
+    if(link&&href&&!href.startsWith("#")){
+     event.preventDefault();event.stopPropagation();
+     window.parent.postMessage({type:"lektrus:site-preview-link",href},window.location.origin);
+    }
+    return;
+   }
    const target=event.target;
    if(!(target instanceof Element)||target.closest(".site-canvas-drop-zone"))return;
    const element=target.closest("[data-site-object-id]");
@@ -133,8 +142,15 @@ export function SiteObjectLayer({siteDocument,page,preview,selected,interactive}
    event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
    window.parent.postMessage({type:"lektrus:site-select-object",info:objectDetails(element,id)},window.location.origin);
   };
+  const focus=(event:MessageEvent)=>{
+   if(!preview||event.origin!==window.location.origin||event.source!==window.parent)return;
+   if(event.data?.type!=="lektrus:site-focus-object"||typeof event.data.id!=="string")return;
+   const target=Array.from(document.querySelectorAll("[data-site-object-id]")).find(el=>el.getAttribute("data-site-object-id")===event.data.id);
+   target?.scrollIntoView({behavior:"smooth",block:"center"});
+  };
   document.addEventListener("click",click,true);
-  return ()=>{observer.disconnect();document.removeEventListener("click",click,true);if(raf)cancelAnimationFrame(raf)};
+  window.addEventListener("message",focus);
+  return ()=>{observer.disconnect();document.removeEventListener("click",click,true);window.removeEventListener("message",focus);if(raf)cancelAnimationFrame(raf)};
  },[siteDocument,page,preview,selected,interactive]);
  return null;
 }
