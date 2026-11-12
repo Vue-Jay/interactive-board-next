@@ -198,7 +198,12 @@ export default function LektrusSiteBuilder(){
      <label>Надпись над заголовком<input value={activePage.eyebrow} placeholder="Используется исходная" onChange={e=>patchPage({eyebrow:e.target.value})}/></label>
      <label>Заголовок<input value={activePage.heading} placeholder={builtin.has(active)?"Используется исходный заголовок":""} onChange={e=>patchPage({heading:e.target.value})}/></label>
      <label>Описание<textarea rows={5} value={activePage.lead} placeholder="Используется исходный текст" onChange={e=>patchPage({lead:e.target.value})}/></label>
-     {builtin.has(active)?<p className="site-builder-tip">Исходная композиция этой страницы, включая снимки и рабочие ссылки, останется на месте. Новые блоки появятся после неё.</p>:<button type="button" className="site-builder-danger" onClick={removePage}>Удалить страницу</button>}
+     {builtin.has(active)?<>
+      <label className="site-builder-replace"><input type="checkbox" checked={activePage.replaceDefault===true} onChange={e=>patchPage({replaceDefault:e.target.checked})}/>
+       <span><strong>Свой макет страницы</strong><small>{activePage.replaceDefault?"Показаны только выбранные тобой блоки. Можно вернуть стандартный дизайн.":"Стандартный макет и настоящие снимки остаются. Новые блоки добавятся ниже."}</small></span>
+      </label>
+      <p className="site-builder-tip">Переключатель действует только на эту страницу. Исходная версия не удаляется и вернётся при отключении.</p>
+     </>:<button type="button" className="site-builder-danger" onClick={removePage}>Удалить страницу</button>}
     </div>}
     {inspector==="block"&&<div className="site-builder-fields"><h2>{activeBlock?labelFor(activeBlock.kind):"Выбери блок слева"}</h2>
      {activeBlock&&<><label>Заголовок<input value={activeBlock.title} onChange={e=>patchBlock({title:e.target.value})}/></label>
