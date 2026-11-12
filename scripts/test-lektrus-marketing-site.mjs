@@ -4,6 +4,7 @@ import {readFileSync,existsSync} from "node:fs";
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 const site=read("src/LektrusPublicSite.tsx");
 const css=read("src/lektrusMarketing.css");
+const entry=read("src/LektrusSiteEntry.tsx");
 const billing=read("src/billingStore.ts");
 
 for(const id of ["home","features","teachers","students","how","pricing","about","help"]){
@@ -34,6 +35,8 @@ assert.ok(!site.includes("Купить подписку"),"test subscriptions mu
 for(const shot of ["board-showcase.png","app-home.png","board-math.png","board-chemistry.png","board-geometry.png","board-physics.png","board-contour.png","board-history.png","board-russian.png"]){
  assert.ok(existsSync(new URL("../public/site/"+shot,import.meta.url)),"missing actual screenshot: "+shot);
 }
+assert.ok(site.includes("marketing-feature-art")&&css.includes(".marketing-feature-art"),"feature cards should include genuine image previews");
+assert.doesNotMatch(entry,/lektrusShowcase\.css/,"the public entry must not load obsolete showcase styling");
 assert.match(css,/@media\(max-width:700px\)/,"the site needs small-screen layouts");
 assert.match(css, /prefers-reduced-motion:reduce/,"reduced-motion users need a non-animated alternative");
 assert.match(site,/aria-expanded=\{menuOpen\}/,"mobile navigation must expose its state");
