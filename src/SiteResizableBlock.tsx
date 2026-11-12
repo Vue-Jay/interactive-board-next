@@ -28,6 +28,7 @@ export function SiteResizableBlock({block,selected,preview,children}:{block:Site
   const containerWidth=Math.max(1,container?.width||window.innerWidth);
   resize.current={pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,startWidth:width,
    startHeight:height||Math.ceil(bounds.height),containerWidth,direction};
+  wrapper.current.draggable=false; // Do not let native HTML drag steal pointer capture during a resize.
   event.currentTarget.setPointerCapture(event.pointerId);
   wrapper.current.classList.add("site-block-is-resizing");
  };
@@ -52,6 +53,7 @@ export function SiteResizableBlock({block,selected,preview,children}:{block:Site
   event.preventDefault();event.stopPropagation();
   resize.current=null;
   element.classList.remove("site-block-is-resizing");
+  element.draggable=preview;
   const widthNext=clampSiteBlockWidth(Number(element.dataset.resizeWidth??width));
   const heightNext=clampSiteBlockHeight(Number(element.dataset.resizeHeight??height));
   delete element.dataset.resizeWidth;
