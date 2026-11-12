@@ -1,4 +1,6 @@
 import {useEffect,useRef,useState,type ChangeEvent} from "react";
+import {decodeSiteCanvasTransfer,putSiteCanvasTransfer,type SiteCanvasTransfer} from "./SiteCanvasDnD";
+import type {SiteObjectInfo} from "./SiteObjectLayer";
 import {getCurrentUser} from "./authStore";
 import {getAccountAccess} from "./accountRoleStore";
 import {isRemoteBackendEnabled} from "./backend";
@@ -7,7 +9,7 @@ import {SITE_SECTION_PRESETS,SITE_THEME_PRESETS} from "./siteStudioPresets";
 import {DEFAULT_SITE_BLOCK_STYLE,type SiteBlockStyle} from "./marketingSiteConfig";
 import {BUILTIN_SITE_PAGES,defaultSiteDocument,loadPublishedSiteDocument,newSiteBlock,normalizeSiteDocument,publishSiteDocument,saveSiteDraft,siteDraft,SITE_DRAFT_KEY,SITE_PREVIEW_MESSAGE,type SiteBlockKind,type SiteDocument,type SitePage,type SiteTheme} from "./marketingSiteConfig";
 
-type Inspector="page"|"block"|"design";
+type Inspector="page"|"block"|"object"|"design";
 type LibraryMode="blocks"|"kits";
 type Device="desktop"|"tablet"|"phone";
 const builtin=new Set<string>(BUILTIN_SITE_PAGES);
@@ -16,7 +18,11 @@ const kinds:{kind:SiteBlockKind;label:string;icon:string}[]=[
  {kind:"gallery",label:"Галерея",icon:"▦"},{kind:"cards",label:"Карточки",icon:"▤"},
  {kind:"cta",label:"Кнопка и призыв",icon:"↗"},{kind:"divider",label:"Разделитель",icon:"─"},
  {kind:"faq",label:"Вопросы и ответы",icon:"?"},{kind:"stats",label:"Цифры",icon:"№"},
- {kind:"quote",label:"Цитата",icon:"❞"}
+ {kind:"quote",label:"Цитата",icon:"❞"},
+ {kind:"video",label:"Видео",icon:"▶"},{kind:"timeline",label:"Этапы и история",icon:"≡"},
+ {kind:"comparison",label:"Сравнение",icon:"◫"},{kind:"logos",label:"Логотипы",icon:"◈"},
+ {kind:"spacer",label:"Пустое пространство",icon:"↕"},{kind:"checklist",label:"Список плюсов",icon:"✓"},
+ {kind:"button-row",label:"Несколько кнопок",icon:"▤"}
 ];
 const labelFor=(kind:SiteBlockKind)=>kinds.find(x=>x.kind===kind)?.label??kind;
 const basePage=(doc:SiteDocument,id:string):SitePage=>doc.customPages.find(x=>x.id===id)??doc.pages[id]??{
@@ -30,6 +36,11 @@ export default function LektrusSiteBuilder(){
  const [doc,setDoc]=useState<SiteDocument>(siteDraft);
  const [active,setActive]=useState("home");
  const [selected,setSelected]=useState<string|null>(null);
+ const [selectedObject,setSelectedObject]=useState<string|null>(null);
+ const [objectMeta,setObjectMeta]=useState<SiteObjectInfo|null>(null);
+ const [objectList,setObjectList]=useState<SiteObjectInfo[]>([]);
+ const [objectSearch,setObjectSearch]=useState("");
+ const [interactive,setInteractive]=useState(false);
  const [inspector,setInspector]=useState<Inspector>("page");
  const [device,setDevice]=useState<Device>("desktop");
  const [libraryMode,setLibraryMode]=useState<LibraryMode>("kits");
@@ -49,6 +60,7 @@ export default function LektrusSiteBuilder(){
  const blockDrag=useRef<string|null>(null);
  const activePage=basePage(doc,active);
  const activeBlock=activePage.blocks.find(x=>x.id===selected);
+ const activeObjectPatch=selectedObject?doc.objects[selectedObject]:undefined;
  useEffect(()=>{
   let alive=true;
   void Promise.all([getCurrentUser(),getAccountAccess()]).then(([user,role])=>{
@@ -64,16 +76,16 @@ export default function LektrusSiteBuilder(){
   }).catch(()=>{if(alive)setNotice("Опубликованная версия пока недоступна. Черновик сохраняется только в этом браузере.")});
   return ()=>{alive=false};
  },[access]);
- useEffect(()=>{if(access!=="allowed")return;saveSiteDraft(doc);frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc,selectedId:selected},window.location.origin)},[doc,access,selected]);
+ useEffect(()=>{if(access!=="allowed")return;saveSiteDraft(doc);frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc,selectedId:selected,objectId:selectedObject,interactive},window.location.origin)},[doc,access,selected,selectedObject,interactive]);
  useEffect(()=>{
   const choose=(event:MessageEvent)=>{
    if(event.origin!==window.location.origin||event.source!==frame.current?.contentWindow)return;
    if(event.data?.type==="lektrus:site-select-block"&&typeof event.data.id==="string"){
-    setSelected(event.data.id);setInspector("block");setPanelOpen(true);
+    setSelected(event.data.id);setSelectedObject(null);setInspector("block");setPanelOpen(true);
    }
-   if(event.data?.type==="lektrus:site-select-page"){setSelected(null);setInspector("page");setPanelOpen(true)}
+   if(event.data?.type==="lektrus:site-select-page"){setSelected(null);setSelectedObject(null);setInspector("page");setPanelOpen(true)}
    if(event.data?.type==="lektrus:site-navigate"&&typeof event.data.page==="string"&&doc.navigation.some(item=>item.id===event.data.page)){
-    setActive(event.data.page);setSelected(null);setInspector("page");
+    setActive(event.data.page);setSelected(null);setSelectedObject(null);setInspector("page");
    }
    if(event.data?.type==="lektrus:site-preview-link"&&typeof event.data.href==="string"){
     setNotice("Это ссылка на другую страницу: "+event.data.href.slice(0,120)+". Переход отключён в предпросмотре.");
