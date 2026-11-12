@@ -135,10 +135,13 @@ with sync_playwright() as p:
     showcase = visitor.locator(".marketing-showcase")
     showcase.wait_for()
     nav = visitor.locator("#marketing-nav a").all_inner_texts()
-    assert len(nav) == 5, f"Expected only five menu links besides Home, got {nav}"
+    assert len(nav) == 6, f"Expected six menu links besides Home including Tools, got {nav}"
+    assert "Инструменты" in nav, "Separate Tools tab missing from public navigation"
     assert not any("Учителям" in item or "Ученикам" in item for item in nav), "Retired audience tabs leaked into public navigation"
     assert showcase.locator(".marketing-showcase-screen").count() == 1, "All captures must use one common frame"
     assert showcase.locator("button").count() == 0, "Homepage reel must have no transport controls or subject switcher"
+    assert visitor.locator(".marketing-home-summary").count() == 1
+    assert visitor.locator(".marketing-audience-grid, .marketing-home-flow, .marketing-last-cta").count() == 0, "Removed duplicate home content returned"
     assert visitor.locator(".marketing-feature-art, .marketing-gallery-card img").count() == 0, "Do not scatter subject screenshots across the marketing pages"
     first = showcase.locator(".marketing-showcase-current").get_attribute("src")
     assert first and first.startswith("/site/"), f"Carousel must start from real Lektrus screenshot: {first}"
@@ -157,6 +160,18 @@ with sync_playwright() as p:
     assert visitor.locator(".marketing-about-subject-links a").count() == 7, "All seven subject demos must survive removal of the Students tab"
     assert visitor.locator(".marketing-showcase").count() == 0, "Homepage reel must not repeat in About"
     visitor.screenshot(path=str(root / "07-about-consolidated.png"), full_page=True)
+    visitor.goto("http://127.0.0.1:5173/#tools", wait_until="domcontentloaded")
+    links = visitor.locator(".marketing-standalone-tools a")
+    assert links.count() == 2, "The Tools page must list two actual independent modules"
+    assert links.nth(0).get_attribute("href") == "/tools/atlas"
+    assert links.nth(1).get_attribute("href") == "/tools/laboratory"
+    assert visitor.locator(".marketing-showcase").count() == 0, "The screenshot showcase belongs only on Home"
+    assert visitor.locator(".marketing-standalone-tool").first.is_visible()
+    visitor.screenshot(path=str(root / "07b-tools-catalog.png"), full_page=True)
+    visitor.goto("http://127.0.0.1:5173/#features", wait_until="domcontentloaded")
+    assert visitor.locator(".marketing-feature-row").count() == 6
+    assert visitor.locator(".marketing-workflow-diagram, .marketing-feature-grid").count() == 0
+    visitor.screenshot(path=str(root / "07c-compact-features.png"), full_page=True)
     visitor.goto("http://127.0.0.1:5173/#teachers", wait_until="domcontentloaded")
     visitor.locator(".marketing-about-audience-teachers").wait_for()
     visitor.goto("http://127.0.0.1:5173/#students", wait_until="domcontentloaded")
@@ -170,7 +185,11 @@ with sync_playwright() as p:
     visitor.locator(".marketing-about-audience-students").wait_for()
     assert visitor.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), "Mobile About overflows horizontally"
     visitor.screenshot(path=str(root / "09-about-phone.png"), full_page=True)
+    visitor.goto("http://127.0.0.1:5173/#tools", wait_until="domcontentloaded")
+    visitor.locator(".marketing-standalone-tool").first.wait_for()
+    assert visitor.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), "Mobile Tools page overflows horizontally"
+    visitor.screenshot(path=str(root / "10-tools-phone.png"), full_page=True)
     visitor.close()
     browser.close()
 
-print("Site studio browser PASS: six pages, automatic single homepage reel with real captures and no controls, legacy links redirected to consolidated About, phone layouts, editor DnD, undo/redo and resizable blocks.")
+print("Site studio browser PASS: seven compact pages, standalone Tools, automatic home reel without controls, responsive layouts, existing editor DnD/undo/redo and resize.")
