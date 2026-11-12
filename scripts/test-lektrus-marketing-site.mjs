@@ -123,6 +123,10 @@ oldDocument.pages.home={id:"home",title:"Главная",eyebrow:"",heading:"",l
 const upgraded=model.normalizeSiteDocument(oldDocument);
 assert.equal(upgraded.pages.home.blocks[0].style.tone,"plain","existing blocks should default to their original plain look");
 assert.equal(upgraded.pages.home.blocks[0].buttonLabel,"Перейти","legacy buttons need a safe label");
+const legacyImage=model.normalizeSiteDocument({...oldDocument,pages:{home:{...oldDocument.pages.home,blocks:[
+ {id:"old-photo",kind:"image",title:"Photo",text:"",image:"/site/app-home.png",href:"/app",items:[]}
+]}}});
+assert.equal(legacyImage.pages.home.blocks[0].buttonLabel,"Подробнее","existing image blocks must retain their original button copy");
 assert.equal(upgraded.pages.home.blocks[0].style.columns,3,"old cards need a readable grid");
 const newFaq=model.newSiteBlock("faq");
 assert.ok(newFaq.items.every(row=>row.includes(" | ")),"FAQ starter questions and answers should be editable");
