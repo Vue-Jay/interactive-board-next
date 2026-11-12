@@ -343,7 +343,7 @@ export default function LektrusSiteBuilder(){
   <header className="site-builder-top">
    <a className="site-builder-back" href="/app">← Lektrus</a>
    <div className="site-builder-heading"><span className="site-builder-studio-label">LEKTRUS / DESIGN STUDIO</span><strong>Конструктор сайта</strong><small><span className={"site-builder-status-dot"+(saved==="published"?" published":"")}/>{saved==="published"?"Опубликовано":"Черновик сохраняется автоматически"}</small></div>
-   <div className="site-builder-history"><button type="button" disabled={!undo.current.length} onClick={()=>history("undo")} title="Отменить">↶</button><button type="button" disabled={!redo.current.length} onClick={()=>history("redo")} title="Повторить">↷</button></div>
+   <div className="site-builder-history" role="toolbar" aria-label="История изменений"><button type="button" aria-label="Отменить действие" aria-keyshortcuts="Control+Z Meta+Z" disabled={!undo.current.length} onClick={()=>history("undo")} title="Отменить (Ctrl+Z)">↶</button><button type="button" aria-label="Повторить действие" aria-keyshortcuts="Control+Y Control+Shift+Z Meta+Shift+Z" disabled={!redo.current.length} onClick={()=>history("redo")} title="Повторить (Ctrl+Y / Ctrl+Shift+Z)">↷</button></div>
    <div className="site-builder-device">{(["desktop","tablet","phone"] as Device[]).map(value=><button key={value} type="button" aria-pressed={device===value} className={device===value?"active":""} onClick={()=>setDevice(value)}>{size[value].label}</button>)}</div>
    <button type="button" className="site-builder-neutral" onClick={exportJson}>Экспорт</button>
    <button type="button" className="site-builder-neutral" onClick={()=>file.current?.click()}>Импорт</button>
@@ -381,9 +381,25 @@ export default function LektrusSiteBuilder(){
     </section>
    </aside>
    <main className="site-builder-center"><div className="site-builder-previewbar"><span><b className="site-builder-live-dot"/> Живой предпросмотр <span className="site-builder-preview-separator">/</span> {size[device].label} <span className="site-builder-preview-separator">/</span> {activePage.title}</span>
-     <div className="site-builder-preview-actions"><button type="button" className={interactive?"is-active":""} aria-pressed={interactive} onClick={()=>setInteractive(v=>!v)}>{interactive?"✥ Редактировать объекты":"▶ Проверять клики"}</button><button type="button" onClick={()=>{setFocusMode(v=>!v);setPanelOpen(false)}}>{focusMode?"⊟ Вернуться в редактор":"⛶ Фокус на сайте"}</button><button type="button" onClick={()=>{setPanelOpen(v=>!v);setFocusMode(false)}} aria-expanded={panelOpen} title="Показать свойства">⚙ Свойства</button></div>
+     <div className="site-builder-preview-actions"><button type="button" className={showShortcuts?"is-active":""} aria-expanded={showShortcuts} onClick={()=>setShowShortcuts(v=>!v)} title="Горячие клавиши">⌨ Клавиши</button><button type="button" className={interactive?"is-active":""} aria-pressed={interactive} onClick={()=>setInteractive(v=>!v)}>{interactive?"✥ Редактировать объекты":"▶ Проверять клики"}</button><button type="button" onClick={()=>{setFocusMode(v=>!v);setPanelOpen(false)}}>{focusMode?"⊟ Вернуться в редактор":"⛶ Фокус на сайте"}</button><button type="button" onClick={()=>{setPanelOpen(v=>!v);setFocusMode(false)}} aria-expanded={panelOpen} title="Показать свойства">⚙ Свойства</button></div>
     </div>
-    <div className="site-builder-stage"><iframe key={active} ref={frame} title="Предпросмотр сайта Lektrus" src={previewSrc} style={{width:size[device].width}} onLoad={()=>frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc,selectedId:selected,objectId:selectedObject,interactive},window.location.origin)}/></div>
+    {showShortcuts&&<div className="site-builder-shortcuts-panel" role="region" aria-label="Горячие клавиши">
+      <span><kbd>Delete</kbd> / <kbd>Backspace</kbd> Удалить выделенное</span>
+      <span><kbd>Ctrl</kbd> + <kbd>Z</kbd> Отменить</span>
+      <span><kbd>Ctrl</kbd> + <kbd>Y</kbd> / <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> Повторить</span>
+      <span><kbd>Esc</kbd> Снять выделение</span>
+      <span>На Mac используй ⌘ вместо Ctrl. В полях ввода сочетания остаются системными.</span>
+     </div>}
+     {(activeBlock||selectedObject)&&<div className="site-builder-selection-toolbar" role="toolbar" aria-label="Действия с выделенным элементом">
+      <span className="site-builder-selection-label"><strong>{activeBlock?labelFor(activeBlock.kind):objectMeta?.label??"Элемент"}</strong><small>{activeBlock?activeBlock.title:selectedObject&&activeObjectPatch?.hidden?"Элемент скрыт":objectMeta?.text||"Выбранный объект"}</small></span>
+      <button type="button" disabled={!undo.current.length} onClick={()=>history("undo")} title="Отменить (Ctrl+Z)">↶ Отменить</button>
+      <button type="button" disabled={!redo.current.length} onClick={()=>history("redo")} title="Повторить (Ctrl+Y)">↷ Повторить</button>
+      {activeBlock&&<button type="button" disabled={activePage.blocks.length>=40} onClick={duplicateBlock} title="Создать копию блока">⧉ Копировать</button>}
+      {selectedObject&&activeObjectPatch?.hidden?<button type="button" className="site-builder-restore-action" onClick={restoreSelectedObject}>↺ Восстановить</button>:
+       <button type="button" className="site-builder-delete-action" aria-keyshortcuts="Delete Backspace" onClick={removeSelection}>{activeBlock?"⌫ Удалить блок":"⌫ Скрыть объект"}</button>}
+      <button type="button" onClick={()=>{setSelected(null);setSelectedObject(null)}} title="Снять выделение (Esc)" aria-label="Снять выделение">×</button>
+     </div>}
+     <div className="site-builder-stage"><iframe key={active} ref={frame} title="Предпросмотр сайта Lektrus" src={previewSrc} style={{width:size[device].width}} onLoad={()=>frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc,selectedId:selected,objectId:selectedObject,interactive},window.location.origin)}/></div>
    </main>
    <aside className={"site-builder-right"+(panelOpen?" is-open":" is-collapsed")} aria-label="Настройки">
     <div className="site-builder-inspect-tabs">{(["page","block","object","design"] as Inspector[]).map((tab,i)=><button key={tab} type="button" className={inspector===tab?"active":""} onClick={()=>setInspector(tab)}>{["Страница","Блок","Объект","Дизайн"][i]}</button>)}</div>
@@ -430,7 +446,7 @@ export default function LektrusSiteBuilder(){
        {activeBlock.kind==="image"&&<label>Положение изображения<select value={activeBlock.style?.imageSide??"left"} onChange={e=>patchBlock({style:{...activeBlock.style,imageSide:e.target.value as SiteBlockStyle["imageSide"]}})}><option value="left">Слева</option><option value="right">Справа</option></select></label>}
       </div>
       <button type="button" className="site-builder-neutral" disabled={activePage.blocks.length>=40} onClick={duplicateBlock}>Дублировать блок</button>
-      <button type="button" className="site-builder-danger" onClick={deleteBlock}>Удалить блок</button></>}
+      <button type="button" className="site-builder-danger" aria-keyshortcuts="Delete Backspace" onClick={deleteBlock}>Удалить блок <kbd>Del</kbd></button></>}
     </div>}
     {inspector==="object"&&<div className="site-builder-fields site-builder-object-fields">
      <h2>Элементы сайта <span>{objectList.length}</span></h2>
@@ -456,6 +472,9 @@ export default function LektrusSiteBuilder(){
       <label>Ширина: {activeObjectPatch?.style?.width??100}%<input type="range" min="20" max="100" value={activeObjectPatch?.style?.width??100} onChange={e=>patchObject({style:{width:Number(e.target.value)}})}/></label>
       <label>Непрозрачность: {Math.round((activeObjectPatch?.style?.opacity??1)*100)}%<input type="range" min="10" max="100" value={Math.round((activeObjectPatch?.style?.opacity??1)*100)} onChange={e=>patchObject({style:{opacity:Number(e.target.value)/100}})}/></label>
       <button type="button" className="site-builder-neutral" onClick={resetObject}>Вернуть исходный вид объекта</button>
+       {activeObjectPatch?.hidden?<button type="button" className="site-builder-restore-action" onClick={restoreSelectedObject}>↺ Восстановить скрытый объект</button>:
+        <button type="button" className="site-builder-danger" aria-keyshortcuts="Delete Backspace" onClick={removeSelection}>Скрыть объект <kbd>Del</kbd></button>}
+       <p className="site-builder-object-hint">Стандартный объект не стирается из кода сайта: он скрывается, а отмена или восстановление вернут его. Добавленные блоки удаляются из черновика полностью.</p>
      </>}
      <details className="site-builder-object-tree" open={!selectedObject}>
       <summary>Список объектов страницы</summary>
