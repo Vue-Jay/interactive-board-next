@@ -300,7 +300,9 @@ export default function LektrusPublicSite(){
     {placed("before-0")}
     <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container"><span className="marketing-eyebrow">{copy?.eyebrow||"Посмотрите, как устроена работа в Lektrus"}</span><h1>{copy?.heading||<>Привычные действия <span>в удобном пространстве</span></>}</h1><p>{copy?.lead||"От подготовки урока до работы вместе с учениками. Пройдите четыре наглядных этапа."}</p></section>
     {placed("before-1")}
-    <div data-site-section-id="native-1" className="marketing-steps">{steps.map((step,i)=><section className="marketing-step" key={step.number} aria-labelledby={"marketing-step-"+i}><div className="marketing-container marketing-step-grid"><div><span className="marketing-step-index">Шаг {step.number} / 04</span><h2 id={"marketing-step-"+i}>{step.title}</h2><p>{step.text}</p>{i===2?<DemoLink className="marketing-primary">Попробовать на доске ↗</DemoLink>:null}</div><img src={step.image} alt={step.alt} loading={i===0?"eager":"lazy"}/></div></section>)}</div>
+    <div data-site-section-id="native-1" className="marketing-steps">{steps.map((step,i)=><section className="marketing-step" key={step.number} aria-labelledby={"marketing-step-"+i}><div className="marketing-container marketing-step-grid"><div><span className="marketing-step-index">Шаг {step.number} / 04</span><h2 id={"marketing-step-"+i}>{step.title}</h2><p>{step.text}</p>{i===2?<DemoLink className="marketing-primary">Попробовать на доске ↗</DemoLink>:null}</div>
+       <div className={"marketing-step-visual marketing-step-visual-"+i} aria-hidden="true"><span className="marketing-step-visual-index">{step.number}</span><div className="marketing-step-visual-card"><strong>{["Чистая доска","Материалы урока","Общий холст","Сохранённый результат"][i]}</strong><span>{["Идея → структура","Текст + схемы + инструменты","Объяснение + практика","Доска готова к продолжению"][i]}</span><div className="marketing-step-visual-track"><i/><i/><i/></div></div></div>
+      </div></section>)}</div>
    </>}
    {page==="pricing"&&!copy?.replaceDefault&&<>
     {placed("before-0")}
@@ -313,14 +315,14 @@ export default function LektrusPublicSite(){
     {placed("before-0")}
     <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container marketing-about-intro"><span className="marketing-eyebrow">{copy?.eyebrow||"О Lektrus"}</span><h1>{copy?.heading||<>Больше возможностей <span>для современного обучения</span></>}</h1><p>{copy?.lead||"Lektrus объединяет интерактивную доску, учебные инструменты и совместную работу. Вместо разрозненных материалов вы получаете единое пространство, где можно объяснять, исследовать и заниматься вместе."}</p><DemoLink className="marketing-primary">Посмотреть Lektrus в деле ↗</DemoLink></section>
     {placed("before-1")}
-    <section data-site-section-id="native-1" className="marketing-section marketing-container marketing-feature-spotlight"><img src="/site/board-showcase.png" alt="Учебный холст Lektrus с интерактивными объектами"/><div><span className="marketing-eyebrow">Один продукт, разные задачи</span><h2>Не только показывайте. Действуйте</h2><p>Рисуйте схемы, работайте с документами, используйте предметные модели и возвращайтесь к подготовленным материалам. Возможности платформы помогают проводить объяснения и практические занятия на одном поле.</p><NavLink id="features" title="Изучить возможности ↗"/></div></section>
+    <section data-site-section-id="native-1" className="marketing-section marketing-container marketing-feature-spotlight marketing-about-spotlight"><div className="marketing-about-statement"><span>Идея Lektrus</span><strong>Объяснять.<br/>Исследовать.<br/><em>Создавать.</em></strong><small>В одном учебном пространстве.</small></div><div><span className="marketing-eyebrow">Один продукт, разные задачи</span><h2>Не только показывайте. Действуйте</h2><p>Рисуйте схемы, работайте с документами, используйте предметные модели и возвращайтесь к подготовленным материалам. Возможности платформы помогают проводить объяснения и практические занятия на одном поле.</p><NavLink id="features" title="Изучить возможности ↗"/></div></section>
     {placed("before-2")}
     <section data-site-section-id="native-2" className="marketing-section marketing-container marketing-about-advantages">
       <div className="marketing-about-aside">
        <span className="marketing-eyebrow">Преимущества проекта</span>
        <h2>Больше, чем цифровая доска</h2>
        <p>От подготовки урока до самостоятельного исследования: разные задачи решаются в одной учебной среде.</p>
-       <img src="/site/board-chemistry.png" alt="Пример предметного инструмента Lektrus" loading="lazy"/>
+       <div className="marketing-about-aside-note"><span>LEKTRUS / МИССИЯ</span><strong>Делать знания наглядными и доступными.</strong></div>
       </div>
       <div className="marketing-about-list">{advantages.map(a=><article key={a.number}>
        <span className="marketing-number">{a.number}</span><div><h3>{a.title}</h3><p>{a.text}</p></div>
