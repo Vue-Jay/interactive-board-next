@@ -78,6 +78,7 @@ function DemoLink({scene="math",children,className=""}:{scene?:string;children:R
 export default function LektrusPublicSite(){
  const isPreview=new URLSearchParams(window.location.search).has("site-preview");
  const [config,setConfig]=useState<SiteDocument>(defaultSiteDocument);
+ const [previewSelection,setPreviewSelection]=useState<string|null>(null);
  const [page,setPage]=useState<Page>(readPage);
  const siteNavigation=config.navigation.length?config.navigation.filter(item=>!item.hidden||item.id==="home"):navigation;
  const customPage=config.customPages.find(item=>item.id===page)??(config.pages[page]?.replaceDefault?config.pages[page]:undefined);
@@ -92,10 +93,11 @@ export default function LektrusPublicSite(){
  useEffect(()=>{
   if(!isPreview)return;
   const handle=(event:Event)=>{
-   const element=event.target instanceof Element?event.target.closest("[data-site-block-id]"):null;
+   const element=event.target instanceof Element?event.target.closest("[data-site-block-id],[data-site-page-hero]"):null;
    if(!element)return;
    event.preventDefault();event.stopPropagation();
-   window.parent.postMessage({type:"lektrus:site-select-block",id:element.getAttribute("data-site-block-id")},window.location.origin);
+   const blockId=element.getAttribute("data-site-block-id");
+   window.parent.postMessage(blockId?{type:"lektrus:site-select-block",id:blockId}:{type:"lektrus:site-select-page"},window.location.origin);
   };
   document.addEventListener("click",handle,true);
   return ()=>document.removeEventListener("click",handle,true);
@@ -104,7 +106,10 @@ export default function LektrusPublicSite(){
   if(isPreview){
    const sync=(event:MessageEvent)=>{
     if(event.origin!==window.location.origin||event.source!==window.parent)return;
-    if(event.data?.type===SITE_PREVIEW_MESSAGE)setConfig(normalizeSiteDocument(event.data.document));
+    if(event.data?.type===SITE_PREVIEW_MESSAGE){
+     setConfig(normalizeSiteDocument(event.data.document));
+     setPreviewSelection(typeof event.data.selectedId==="string"?event.data.selectedId:null);
+    }
    };
    window.addEventListener("message",sync);
    return ()=>window.removeEventListener("message",sync);
@@ -137,7 +142,7 @@ export default function LektrusPublicSite(){
   setMenuOpen(false);
  };
  const NavLink=({id,title}:{id:Page;title:string})=><a href={"#"+id} aria-current={page===id?"page":undefined} className={page===id?"is-current":""} onClick={event=>navigate(id,event)}>{title}</a>;
- return <div className="marketing-site" style={{"--marketing-blue":config.theme.accent,"--marketing-bg":config.theme.background,"--marketing-white":config.theme.surface,"--marketing-ink":config.theme.ink,"--site-custom-radius":config.theme.radius+"px","--site-custom-width":config.theme.maxWidth+"px"} as CSSProperties}>
+ return <div className={isPreview?"marketing-site site-preview":"marketing-site"} style={{"--marketing-blue":config.theme.accent,"--marketing-bg":config.theme.background,"--marketing-white":config.theme.surface,"--marketing-ink":config.theme.ink,"--site-custom-radius":config.theme.radius+"px","--site-custom-width":config.theme.maxWidth+"px"} as CSSProperties}>
   <a className="marketing-skip" href="#marketing-main">Перейти к содержимому</a>
   <header className="marketing-header">
    <div className="marketing-header-inner">
@@ -254,8 +259,8 @@ export default function LektrusPublicSite(){
     <section className="marketing-section marketing-container"><div className="marketing-section-head"><div><h2>Частые вопросы</h2><p>Короткие ответы о возможностях и работе Lektrus.</p></div></div><div className="marketing-faq">{questions.map(item=><details key={item.q} open={undefined}><summary><span>{item.q}</span><span aria-hidden="true">+</span></summary><p>{item.a}</p></details>)}</div></section>
     <section className="marketing-section marketing-container marketing-contact"><div><span className="marketing-eyebrow">Обратная связь</span><h2>Расскажите, что можно улучшить</h2><p>Ваши вопросы помогают делать Lektrus удобнее. Выберите тему обращения, опишите ситуацию и при необходимости оставьте адрес для ответа.</p>{import.meta.env.VITE_TELEGRAM_URL&&<a className="marketing-secondary" href={import.meta.env.VITE_TELEGRAM_URL} target="_blank" rel="noreferrer">Написать в Telegram ↗</a>}<div className="marketing-contact-help"><strong>Поддержка, инструкции и обратная связь</strong><span>Для знакомства с доской можно открыть гостевую демонстрацию.</span><DemoLink>Открыть демонстрацию ↗</DemoLink></div></div><div className="marketing-form-card"><LektrusFeedbackForm compact source="site"/></div></section>
    </>}
-   {customPage&&<SiteCustomPage page={customPage}/>}
-   {!customPage&&copy?.blocks&&<SiteEditableBlocks blocks={copy.blocks}/>}
+   {customPage&&<SiteCustomPage page={customPage} selectedId={previewSelection}/>}
+   {!customPage&&copy?.blocks&&<SiteEditableBlocks blocks={copy.blocks} selectedId={previewSelection}/>}
   </main>
   <footer className="marketing-footer"><div className="marketing-container"><div className="marketing-footer-brand"><img src="/lektrus-icon-192.png" width="32" height="32" alt=""/><span><strong>Lektrus</strong><small>Пространство для обучения</small></span></div><nav aria-label="Разделы внизу страницы">{siteNavigation.filter(item=>item.id!=="home").map(item=><NavLink key={item.id} {...item}/>)}</nav><div className="marketing-footer-end"><span>© {new Date().getFullYear()} Lektrus</span><a href="/app">Перейти в приложение ↗</a></div></div></footer>
  </div>;
