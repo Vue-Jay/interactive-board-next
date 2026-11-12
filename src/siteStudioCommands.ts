@@ -1,6 +1,6 @@
 import type {SiteDocument,SitePage} from "./marketingSiteConfig";
 
-export type StudioCommand="undo"|"redo"|"delete"|"escape"|"save";
+export type StudioCommand="undo"|"redo"|"delete"|"restore"|"escape"|"save";
 export type StudioKeyEvent={key:string;ctrlKey:boolean;metaKey:boolean;shiftKey:boolean;altKey:boolean;isComposing?:boolean;editable:boolean};
 
 export function getStudioCommand(event:StudioKeyEvent):StudioCommand|null{
