@@ -83,10 +83,29 @@ with sync_playwright() as p:
     page.wait_for_timeout(100)
     handle = grip.bounding_box()
     assert handle
+    debug = grip.evaluate("""el => {
+      const r = el.getBoundingClientRect();
+      const target = document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
+      window.__resizeEvents=[];
+      ["pointerdown","pointermove","pointerup","pointercancel","lostpointercapture","dragstart"].forEach(type =>
+        document.addEventListener(type,e=>{
+          if((e.target instanceof Element)&&e.target.closest(".site-block-resize-handle"))
+           window.__resizeEvents.push(type+":"+e.clientX+","+e.clientY);
+        },true)
+      );
+      return {x:r.x,y:r.y,w:r.width,h:r.height,
+        hit:target?.outerHTML.slice(0,250),viewport:[innerWidth,innerHeight],draggable:el.closest(".site-editable-block")?.draggable};
+    }""")
+    print("RESIZE BEFORE",debug,flush=True)
     page.mouse.move(handle["x"]+handle["width"]/2,handle["y"]+handle["height"]/2)
     page.mouse.down()
     page.mouse.move(handle["x"]-115,handle["y"]+95,steps=8)
     page.mouse.up()
+    print("RESIZE AFTER",grip.evaluate("""el => ({
+      events:window.__resizeEvents,
+      width:el.closest(".site-editable-block")?.style.width,
+      height:el.closest(".site-editable-block")?.style.minHeight
+    })"""),flush=True)
     page.wait_for_function("Boolean(document.body.dataset.lastResize)", timeout=10000)
     dimensions = page.evaluate("""() => {
       const b=window.getSiteDraft().pages.home.blocks.find(b=>b.title==="Перенесённый блок");
