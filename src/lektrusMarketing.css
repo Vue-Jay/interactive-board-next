@@ -987,3 +987,22 @@ body:has(.marketing-site:not(.site-preview)) .site-editable-block:hover{outline:
 @media(prefers-reduced-motion:reduce){
  .marketing-site .marketing-showcase-current,.marketing-site .marketing-showcase-previous{animation:none!important}
 }
+
+/* Final visual pass: the short text pages keep their footer at viewport bottom,
+   while screenshot changes reveal the next real frame with no washed-out image. */
+.marketing-site{display:flex;flex-direction:column}
+.marketing-site > main{flex:1 0 auto}
+.marketing-site > .marketing-footer{flex:none;margin-top:auto}
+.marketing-site .marketing-showcase-current:not(.is-first){animation:marketing-crisp-wipe .58s cubic-bezier(.2,.69,.25,1) both}
+.marketing-site .marketing-showcase-previous{animation:marketing-crisp-exit .58s cubic-bezier(.3,.6,.35,1) both}
+@keyframes marketing-crisp-wipe{
+ from{opacity:1;clip-path:inset(0 100% 0 0);transform:translate3d(12px,0,0) scale(1.006)}
+ to{opacity:1;clip-path:inset(0 0 0 0);transform:translate3d(0,0,0) scale(1)}
+}
+@keyframes marketing-crisp-exit{
+ from{opacity:1;transform:translate3d(0,0,0) scale(1)}
+ to{opacity:1;transform:translate3d(-9px,0,0) scale(.992)}
+}
+@media(prefers-reduced-motion:reduce){
+ .marketing-site .marketing-showcase-current,.marketing-site .marketing-showcase-previous{animation:none!important;clip-path:none!important;transform:none!important}
+}
