@@ -11,8 +11,6 @@ type Page=string;
 const navigation:{id:Page;title:string}[]=[
  {id:"home",title:"Главная"},
  {id:"features",title:"Возможности"},
- {id:"teachers",title:"Учителям"},
- {id:"students",title:"Ученикам"},
  {id:"how",title:"Как это работает"},
  {id:"pricing",title:"Тарифы"},
  {id:"about",title:"О Lektrus"},
@@ -69,6 +67,7 @@ const questions=[
 ];
 function readPage():Page{
  const hash=window.location.hash.replace(/^#/,"");
+ if(hash==="teachers"||hash==="students")return "about";
  return /^[a-z][a-z0-9-]{0,39}$/.test(hash)?hash:"home";
 }
 function DemoLink({scene="math",children,className=""}:{scene?:string;children:ReactNode;className?:string}){
@@ -82,7 +81,7 @@ export default function LektrusPublicSite(){
  const [previewObject,setPreviewObject]=useState<string|null>(null);
  const [previewInteractive,setPreviewInteractive]=useState(false);
  const [page,setPage]=useState<Page>(readPage);
- const siteNavigation=config.navigation.length?config.navigation.filter(item=>!item.hidden||item.id==="home"):navigation;
+ const siteNavigation=(config.navigation.length?config.navigation:navigation.map(item=>({...item,hidden:false}))).filter(item=>(!item.hidden||item.id==="home")&&item.id!=="teachers"&&item.id!=="students");
  const customPage=config.customPages.find(item=>item.id===page)??(config.pages[page]?.replaceDefault?config.pages[page]:undefined);
  const copy=config.pages[page];
  const [menuOpen,setMenuOpen]=useState(false);
@@ -176,6 +175,7 @@ export default function LektrusPublicSite(){
  },[page,showcaseSlide,showcaseShots]);
  const navigate=(target:Page,event?:MouseEvent<HTMLAnchorElement>)=>{
   event?.preventDefault();
+  if(target==="teachers"||target==="students")target="about";
   if(target!==page){
    window.history.pushState(null,"","#"+target);
    setPage(target);
@@ -228,8 +228,8 @@ export default function LektrusPublicSite(){
     {placed("before-2")}
     <section data-site-section-id="native-2" className="marketing-section marketing-container">
      <div className="marketing-audience-grid">
-      <article className="marketing-audience-card"><span className="marketing-eyebrow">Преподавателям</span><h2>Преподавайте так, как удобно именно вам</h2><p>Подготовка, объяснение и практическая работа в одном пространстве.</p><NavLink id="teachers" title="Для учителей ↗"/></article>
-      <article className="marketing-audience-card marketing-audience-student"><span className="marketing-eyebrow">Ученикам</span><h2>Учиться легче, когда всё видно</h2><p>Разбирайте сложные темы на наглядных примерах и участвуйте в работе.</p><NavLink id="students" title="Для учеников ↗"/></article>
+      <article className="marketing-audience-card"><span className="marketing-eyebrow">Преподавателям</span><h2>Преподавайте так, как удобно именно вам</h2><p>Подготовка, объяснение и практическая работа в одном пространстве.</p><NavLink id="about" title="Подробнее в разделе «О Lektrus» ↗"/></article>
+      <article className="marketing-audience-card marketing-audience-student"><span className="marketing-eyebrow">Ученикам</span><h2>Учиться легче, когда всё видно</h2><p>Разбирайте сложные темы на наглядных примерах и участвуйте в работе.</p><NavLink id="about" title="Узнать больше о Lektrus ↗"/></article>
      </div>
     </section>
     {placed("before-3")}
@@ -257,44 +257,6 @@ export default function LektrusPublicSite(){
     <section data-site-section-id="native-2" className="marketing-section marketing-container"><div className="marketing-section-head"><div><span className="marketing-eyebrow">Что внутри</span><h2>Инструменты для разных задач</h2></div></div><div className="marketing-feature-grid">{featureCards.map(card=><article className="marketing-feature-card" key={card.index}><span className="marketing-feature-mark" aria-hidden="true">{featureSymbols[Number(card.index)-1]}</span><span className="marketing-number">{card.index}</span><h3>{card.title}</h3><p>{card.text}</p><DemoLink scene={card.scene}>Посмотреть пример ↗</DemoLink></article>)}</div></section>
     {placed("before-3")}
     <section data-site-section-id="native-3" className="marketing-section marketing-container"><div className="marketing-section-head"><div><span className="marketing-eyebrow">Отдельные инструменты</span><h2>Исследуйте без создания доски</h2><p>Открываются отдельно, без привязки к доске.</p></div></div><div className="marketing-tool-grid">{toolData.map((tool,i)=><a href={tool.href} className="marketing-tool-card" key={tool.href}><span className="marketing-tool-symbol" aria-hidden="true">{i===0?"◈":"⚗"}</span><div><span className="marketing-eyebrow">{tool.subject}</span><h3>{tool.name}</h3><p>{tool.text}</p><strong>Открыть инструмент ↗</strong></div></a>)}</div></section>
-   </>}
-   {page==="teachers"&&!copy?.replaceDefault&&<>
-    {placed("before-0")}
-    <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container marketing-split-hero"><div><span className="marketing-eyebrow">{copy?.eyebrow||"Для преподавателей"}</span><h1>{copy?.heading||<>Преподавайте так, <span>как удобно именно вам</span></>}</h1><p>{copy?.lead||"Каждый урок требует своего подхода. Создавайте объяснения, показывайте наглядные модели и работайте с учениками на интерактивной доске."}</p><DemoLink className="marketing-primary">Открыть демонстрацию ↗</DemoLink></div><figure className="marketing-teacher-scene">
-      <div className="marketing-teacher-window">
-       <div className="marketing-teacher-window-head"><span>План занятия</span><span>Подготовка / Проведение</span></div>
-       <div className="marketing-teacher-plan">
-        <span className="marketing-eyebrow">Урок в Lektrus</span>
-        <strong>От замысла до понятного объяснения</strong>
-        <div className="marketing-teacher-plan-items">
-         <div><span>01</span><strong>Материалы</strong><small>Тексты, изображения, задания</small></div>
-         <div><span>02</span><strong>Объяснение</strong><small>Записи и наглядные схемы</small></div>
-         <div><span>03</span><strong>Практика</strong><small>Совместная работа на доске</small></div>
-        </div>
-       </div>
-      </div>
-      <div className="marketing-teacher-board-preview"><span>Всё в одном месте</span><strong>Подготовили → объяснили → сохранили</strong></div>
-      <figcaption>Понятная структура урока вместо набора разрозненных приложений.</figcaption>
-     </figure></section>
-    {placed("before-1")}
-    <section data-site-section-id="native-1" className="marketing-section marketing-container"><div className="marketing-section-head"><div><span className="marketing-eyebrow">Подготовка урока</span><h2>Подготовьте урок и сохраните всё в одном месте</h2><p>Работайте с учебными материалами, схемами и предметными инструментами, а затем возвращайтесь к ним на следующих занятиях.</p></div></div><div className="marketing-story-grid">{teacherStories.map(item=><article key={item.number} className="marketing-story-card"><span className="marketing-number">{item.number}</span><h3>{item.title}</h3><p>{item.text}</p></article>)}</div></section>
-    {placed("before-2")}
-    <section data-site-section-id="native-2" className="marketing-section marketing-container marketing-feature-spotlight marketing-teacher-spotlight"><div className="marketing-classroom-map" aria-label="Этапы совместного занятия">
-      <div><span>Задача</span><strong>Что исследуем?</strong></div>
-      <div><span>Объяснение</span><strong>Как это работает?</strong></div>
-      <div><span>Практика</span><strong>Попробуем вместе.</strong></div>
-     </div><div><span className="marketing-eyebrow">Наглядность в действии</span><h2>Сделайте сложное понятным</h2><p>Показывайте не только результат, но и ход решения. Объединяйте записи, схемы и задания на общем поле.</p><DemoLink scene="physics" className="marketing-secondary">Открыть пример урока ↗</DemoLink></div></section>
-   </>}
-   {page==="students"&&!copy?.replaceDefault&&<>
-    {placed("before-0")}
-    <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container marketing-students-intro"><span className="marketing-eyebrow">{copy?.eyebrow||"Для учеников"}</span><h1>{copy?.heading||<>Учиться легче, <span>когда всё видно</span></>}</h1><p>{copy?.lead||"Смотрите наглядные объяснения, разбирайте задания и пробуйте учебные инструменты самостоятельно. Выберите пример и откройте настоящую демонстрационную доску."}</p></section>
-    {placed("before-1")}
-    <section data-site-section-id="native-1" className="marketing-section marketing-container marketing-student-explore"><div className="marketing-section-head"><div><span className="marketing-eyebrow">Учёба через действие</span><h2>Не просто смотри. Пробуй сам.</h2><p>Каждая тема открывается как настоящая интерактивная демонстрация, а не отдельный снимок экрана.</p></div></div>
-     <div className="marketing-student-demo"><div className="marketing-student-demo-intro"><span className="marketing-eyebrow">Выбирай интересное</span><h3>Начни с любого предмета</h3><p>Графики, схемы, карты и задания доступны для самостоятельного исследования.</p><DemoLink className="marketing-primary">Открыть учебную доску ↗</DemoLink></div>
-      <div className="marketing-student-topics">{boardShots.map((shot,i)=><DemoLink key={shot.scene} scene={shot.scene} className="marketing-student-topic"><span className="marketing-student-topic-number">0{i+1}</span><span><strong>{shot.subject}</strong><small>{shot.title}</small></span><span aria-hidden="true">↗</span></DemoLink>)}</div>
-     </div></section>
-    {placed("before-2")}
-    <section data-site-section-id="native-2" className="marketing-section marketing-container"><div className="marketing-student-benefits">{["Смотри, как устроена тема","Пробуй инструменты на практике","Разбирайся в своём темпе"].map((title,i)=><div key={title}><span className="marketing-number">0{i+1}</span><h3>{title}</h3></div>)}</div></section>
    </>}
    {page==="how"&&!copy?.replaceDefault&&<>
     {placed("before-0")}
@@ -327,6 +289,18 @@ export default function LektrusPublicSite(){
       <div className="marketing-about-list">{advantages.map(a=><article key={a.number}>
        <span className="marketing-number">{a.number}</span><div><h3>{a.title}</h3><p>{a.text}</p></div>
       </article>)}</div>
+      <div className="marketing-about-audience marketing-about-audience-teachers">
+       <div className="marketing-about-audience-head"><span className="marketing-eyebrow">Для преподавателей</span><h2>Удобно готовить. Понятно объяснять.</h2><p>Создавайте уроки в собственном темпе, сохраняйте материалы и возвращайтесь к ним на следующих занятиях.</p></div>
+       <div className="marketing-about-teacher-journey">{teacherStories.map(story=><article key={story.number}><span className="marketing-number">{story.number}</span><h3>{story.title}</h3><p>{story.text}</p></article>)}</div>
+       <DemoLink scene="physics" className="marketing-secondary">Посмотреть пример занятия ↗</DemoLink>
+      </div>
+      <div className="marketing-about-audience marketing-about-audience-students">
+       <div className="marketing-about-audience-head"><span className="marketing-eyebrow">Для учеников</span><h2>Увидеть. Разобраться. Попробовать.</h2><p>Наглядные объяснения, самостоятельная практика и совместная работа. Можно выбрать тему и сразу открыть интерактивный пример.</p></div>
+       <div className="marketing-about-student-steps">
+        {["Смотри, как устроена тема","Пробуй инструменты на практике","Разбирайся в своём темпе"].map((title,i)=><div key={title}><span>0{i+1}</span><strong>{title}</strong></div>)}
+       </div>
+       <div className="marketing-about-subject-links" aria-label="Открыть учебный пример">{boardShots.slice(0,4).map(shot=><DemoLink key={shot.scene} scene={shot.scene}>{shot.subject} ↗</DemoLink>)}</div>
+      </div>
      </section>
     {placed("before-3")}
     <section data-site-section-id="native-3" className="marketing-last-cta marketing-container"><h2>Посмотрите, как всё устроено</h2><p>Откройте живую демонстрационную доску без регистрации.</p><DemoLink className="marketing-primary">Попробовать Lektrus ↗</DemoLink></section>
