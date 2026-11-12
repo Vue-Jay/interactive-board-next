@@ -1,4 +1,4 @@
-import {useLayoutEffect,useRef} from "react";
+import {useLayoutEffect} from "react";
 import type {SiteDocument,SiteObjectPatch} from "./marketingSiteConfig";
 
 export type SiteObjectInfo={id:string;tag:string;label:string;text:string;src:string;alt:string;href:string;canText:boolean};
@@ -67,7 +67,7 @@ function collect(root:Element,scope:string):Array<{element:Element;info:SiteObje
  const result:Array<{element:Element;info:SiteObjectInfo}>=[];
  const visit=(node:Element,path:string)=>{
   if(tags.has(node.tagName)&&!node.closest(".site-canvas-drop-zone")){
-   const id=scope+":"+path;
+   const id=scope+"/"+path;
    node.setAttribute("data-site-object-id",id);
    result.push({element:node,info:objectDetails(node,id)});
   }
@@ -85,13 +85,13 @@ function scanSiteObjects(page:string,doc:SiteDocument,selected:string|null,previ
  if(!site||!main)return [];
  const items:Array<{element:Element;info:SiteObjectInfo}>=[];
  const header=site.querySelector(":scope > header"),footer=site.querySelector(":scope > footer");
- if(header)items.push(...collect(header,"global:header".replace(":","/")));
- if(footer)items.push(...collect(footer,"global:footer".replace(":","/")));
+ if(header)items.push(...collect(header,"global:header"));
+ if(footer)items.push(...collect(footer,"global:footer"));
  const segments=main.querySelectorAll("[data-site-section-id],[data-site-block-id],[data-site-page-hero]");
  segments.forEach(section=>{
   if(section.closest("[data-site-section-id],[data-site-block-id],[data-site-page-hero]")!==section)return;
   const sectionId=section.getAttribute("data-site-section-id")||section.getAttribute("data-site-block-id")||"custom-hero";
-  items.push(...collect(section,page+"/"+sectionId));
+  items.push(...collect(section,page+":"+sectionId));
  });
  for(const {element,info} of items){
   const patch=doc.objects?.[info.id];
@@ -102,14 +102,13 @@ function scanSiteObjects(page:string,doc:SiteDocument,selected:string|null,previ
  }
  return items.map(x=>x.info);
 }
-export function SiteObjectLayer({document,page,preview,selected,interactive}:{document:SiteDocument;page:string;preview:boolean;selected:string|null;interactive:boolean}){
- const revision=useRef("");
+export function SiteObjectLayer({siteDocument,page,preview,selected,interactive}:{siteDocument:SiteDocument;page:string;preview:boolean;selected:string|null;interactive:boolean}){
  useLayoutEffect(()=>{
-  if(!preview&&!Object.keys(document.objects||{}).length)return;
+  if(!preview&&!Object.keys(siteDocument.objects||{}).length)return;
   let raf=0,report="";
   const run=()=>{
    raf=0;
-   const infos=scanSiteObjects(page,document,selected,preview);
+   const infos=scanSiteObjects(page,siteDocument,selected,preview);
    if(!preview)return;
    const summary=infos.map(info=>[info.id,info.label,info.text.slice(0,70),info.src.slice(0,70)]);
    const next=JSON.stringify(summary);
@@ -136,7 +135,6 @@ export function SiteObjectLayer({document,page,preview,selected,interactive}:{do
   };
   document.addEventListener("click",click,true);
   return ()=>{observer.disconnect();document.removeEventListener("click",click,true);if(raf)cancelAnimationFrame(raf)};
- },[document,page,preview,selected,interactive]);
- revision.current=page;
+ },[siteDocument,page,preview,selected,interactive]);
  return null;
 }
