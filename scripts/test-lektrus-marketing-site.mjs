@@ -8,18 +8,17 @@ const css=read("src/lektrusMarketing.css");
 const entry=read("src/LektrusSiteEntry.tsx");
 const billing=read("src/billingStore.ts");
 
-for(const id of ["home","features","how","pricing","about","help"]){
+for(const id of ["home","features","tools","how","pricing","about","help"]){
  assert.ok(site.includes('id:"'+id+'"'),"missing public marketing page: "+id);
 }
 assert.doesNotMatch(site,/\{id:"(?:teachers|students)",title:/,"former teacher/student tabs must be absent from navigation");
 for(const text of [
  "Одна платформа","для преподавания и обучения",
- "Один холст.","Множество способов преподавать",
- "Знакомьтесь с возможностями Lektrus",
- "Для преподавателей","Удобно готовить. Понятно объяснять.",
- "Для учеников","Увидеть. Разобраться. Попробовать.",
- "Привычные действия","в удобном пространстве",
- "Посмотрите, как устроена работа в Lektrus",
+ "Возможности ","доски Lektrus",
+ "Инструменты ","без доски",
+ "Преподавателям","Готовьте материалы",
+ "Ученикам","Исследуйте темы",
+ "Как начать ","работу",
  "Расскажите, что можно улучшить",
  "Найдите решение","или свяжитесь с нами",
  "Ваши вопросы помогают делать Lektrus удобнее",
@@ -36,7 +35,7 @@ assert.ok(!site.includes("Купить подписку"),"test subscriptions mu
 for(const shot of ["board-showcase.png","app-home.png","board-math.png","board-chemistry.png","board-geometry.png","board-physics.png","board-contour.png","board-history.png","board-russian.png"]){
  assert.ok(existsSync(new URL("../public/site/"+shot,import.meta.url)),"missing actual screenshot: "+shot);
 }
-assert.ok(site.includes("marketing-feature-mark")&&css.includes(".marketing-feature-mark"),"feature cards must use lightweight editorial icons rather than duplicate subject screenshots");
+assert.ok(site.includes("marketing-feature-row")&&css.includes(".marketing-feature-row"),"features should be compact rows, not repeated giant cards");
 assert.doesNotMatch(entry,/lektrusShowcase\.css/,"the public entry must not load obsolete showcase styling");
 assert.match(css,/@media\(max-width:700px\)/,"the site needs small-screen layouts");
 assert.ok(site.includes("const showcaseShots=config.showcase")&&read("src/marketingSiteConfig.ts").includes("DEFAULT_SITE_SHOWCASE"),"homepage must use document-managed original screenshots");
@@ -45,9 +44,9 @@ assert.ok(site.includes("setPreviousSlide")&&site.includes("window.setInterval")
 assert.doesNotMatch(site,/marketing-showcase-(controls|subjects|toolbar|player|counter|progress)/,"homepage must never display a player control bar");
 assert.ok(site.includes('window.matchMedia("(prefers-reduced-motion: reduce)")'),"automatic screenshots must respect reduced motion");
 assert.ok(css.includes(".marketing-showcase-screen")&&css.includes("@keyframes marketing-unified-crossfade")&&!css.includes(".marketing-showcase-controls"),"one integrated animated screenshot area must replace the old player UI");
-assert.ok(site.includes("marketing-about-audience-teachers")&&site.includes("marketing-about-audience-students")&&site.includes("marketing-about-list")&&site.includes("marketing-steps"),"About page must contain both audiences and own editorial layout");
+assert.ok(site.includes("marketing-about-audience-teachers")&&site.includes("marketing-about-audience-students")&&site.includes("marketing-about-practical")&&site.includes("marketing-steps"),"About must contain both audiences and a concise walkthrough");
 assert.ok(site.includes("currentShot.src")&&site.includes("previousShot.src")&&site.includes("marketing-showcase"),"one homepage animation must use existing real captures");
-assert.ok(css.includes(".marketing-workflow-diagram")&&css.includes(".marketing-about-audience")&&css.includes(".marketing-step-visual"),"remaining site pages must have distinct product storytelling and responsive styles");
+assert.ok(css.includes(".marketing-features-list")&&css.includes(".marketing-standalone-tools")&&css.includes(".marketing-how-list"),"minimal features, tools and steps must have distinct responsive styles");
 assert.match(css, /prefers-reduced-motion:reduce/,"reduced-motion users need a non-animated alternative");
 assert.match(site,/aria-expanded=\{menuOpen\}/,"mobile navigation must expose its state");
 assert.match(site,/<details key=\{item\.q\}/,"FAQ answers must be expandable");
@@ -151,7 +150,7 @@ assert.ok(builder.includes('putSiteCanvasTransfer(event,{type:"block"')&&builder
 assert.ok(builder.includes("insertCanvasTransfer(")&&builder.includes('event.data?.type==="lektrus:site-canvas-drop"'),"cross-iframe drop must update the document");
 assert.ok(canvas.includes("event.dataTransfer.getData(SITE_CANVAS_MIME)")&&canvas.includes("SiteDropZone"),"canvas drop zones must actually read HTML5 drag payloads");
 assert.ok(site.includes('placed("before-0")')&&site.includes('placed("end")')&&site.includes("SiteAnchorSlot"),"native sections and page end must accept new blocks");
-for(const id of ["home","features","how","pricing","about","help"]){
+for(const id of ["home","features","tools","how","pricing","about","help"]){
  assert.ok(site.includes('page==="'+id+'"'),"required page must keep native editable sections: "+id);
 }
 assert.doesNotMatch(site,/page==="(?:teachers|students)"/,"audience pages must be consolidated into About");
@@ -270,4 +269,26 @@ assert.ok(site.includes('if(hash==="teachers"||hash==="students")return "about"'
 const pageSections=site.slice(site.indexOf('page==="features"&&!copy?.replaceDefault'),site.indexOf('page==="help"&&!copy?.replaceDefault'));
 assert.doesNotMatch(pageSections,/<img\b[^>]*src="\/site\//,"other pages must not scatter in-app screenshot files across all sections");
 
-console.log("Lektrus marketing site: six public pages, one editable automatic screenshot field, migrated audience content, demos, accessibility and responsive layouts verified.");
+
+// Minimal redesign should not repeat the same content blocks or the screenshot player.
+const homepage=site.slice(site.indexOf('page==="home"&&!copy?.replaceDefault'),site.indexOf('page==="features"&&!copy?.replaceDefault'));
+const featuresPage=site.slice(site.indexOf('page==="features"&&!copy?.replaceDefault'),site.indexOf('page==="tools"&&!copy?.replaceDefault'));
+const toolsPage=site.slice(site.indexOf('page==="tools"&&!copy?.replaceDefault'),site.indexOf('page==="how"&&!copy?.replaceDefault'));
+assert.equal((homepage.match(/data-site-section-id=/g)||[]).length,2,"home should contain only the hero and one compact overview, while preserving empty block anchors");
+assert.ok(homepage.includes('placed("before-4")'),"home page drag/drop anchors for existing user-created blocks must survive layout removal");
+assert.doesNotMatch(homepage,/marketing-audience-grid|marketing-home-flow|marketing-last-cta/,"remove oversized and duplicate home sections");
+assert.doesNotMatch(homepage,/marketing-showcase-window|marketing-hero-footnote/,"remove player chrome and needless captions");
+assert.ok(featuresPage.includes("marketing-features-list")&&featuresPage.includes("marketing-features-footer"),"features should become one concise link list");
+assert.doesNotMatch(featuresPage,/marketing-workflow-diagram|marketing-feature-grid|marketing-tool-grid/,"remove redundant feature diagrams, repeated cards and standalone tools in the wrong tab");
+assert.ok(toolsPage.includes("marketing-standalone-tools")&&toolsPage.includes("toolData.map"),"dedicated page should show real board-free tools");
+assert.ok(toolsPage.includes('href={tool.href}')&&toolsPage.includes("marketing-standalone-tool"),"each tool card must link directly to its real route");
+assert.doesNotMatch(site,/marketing-step-visual|marketing-about-statement|marketing-about-list/,"giant infographic panels should be removed from public markup");
+assert.ok(builder.includes("BUILTIN_SITE_PAGES"),"the Site Studio editor should inherit the new built-in Tools page");
+const compactNav=model.defaultSiteDocument().navigation;
+assert.deepEqual(compactNav.filter(x=>!x.hidden).map(x=>x.id),["home","features","tools","how","pricing","about","help"],"the default public nav should show exactly seven pages");
+const oldNav=compactNav.filter(x=>x.id!=="tools");
+const migratedTools=model.normalizeSiteDocument({...model.defaultSiteDocument(),navigation:oldNav}).navigation;
+assert.equal(migratedTools.findIndex(x=>x.id==="tools"),migratedTools.findIndex(x=>x.id==="features")+1,"existing published websites should gain Tools immediately after Features");
+assert.equal(migratedTools.find(x=>x.id==="tools").hidden,false,"newly migrated Tools page must be visible");
+
+console.log("Lektrus marketing site: seven focused pages, compact sections, independent tools tab, old document migration and single screenshot showcase verified.");
