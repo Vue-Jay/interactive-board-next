@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState,type CSSProperties,type MouseEvent,type ReactNode} from "react";
+import {useEffect,useState,type CSSProperties,type MouseEvent,type ReactNode} from "react";
 import {defaultSiteDocument,loadPublishedSiteDocument,normalizeSiteDocument,SITE_PREVIEW_MESSAGE,type SiteDocument} from "./marketingSiteConfig";
 import {SiteCustomPage,SiteAnchorSlot} from "./SiteEditableSections";
 import {SiteObjectLayer} from "./SiteObjectLayer";
@@ -27,10 +27,7 @@ const boardShots=[
  {scene:"history",subject:"История",src:"/site/board-history.png",title:"Исторический атлас",description:"Сравнивайте территории и события разных эпох."},
  {scene:"russian",subject:"Русский язык",src:"/site/board-russian.png",title:"Фонетический разбор",description:"Разбирайте буквы и звуки в интерактивной схеме."}
 ];
-const showcaseShots=[
- {scene:"home",subject:"Рабочее пространство",src:"/site/app-home.png",title:"Подготовьте урок на рабочем столе",description:"Ваши доски, материалы и расписание собраны в одном месте."},
- ...boardShots
-];
+
 const featureCards=[
  {index:"01",title:"Свободная доска",text:"Пишите, рисуйте, размещайте текст, изображения, фигуры и документы.",scene:"geometry"},
  {index:"02",title:"Совместная работа",text:"Объясняйте материал и работайте с участниками на общем холсте.",scene:"math"},
@@ -88,12 +85,11 @@ export default function LektrusPublicSite(){
  const customPage=config.customPages.find(item=>item.id===page)??(config.pages[page]?.replaceDefault?config.pages[page]:undefined);
  const copy=config.pages[page];
  const [menuOpen,setMenuOpen]=useState(false);
- const [studentScene,setStudentScene]=useState("math");
  const [showcaseSlide,setShowcaseSlide]=useState(0);
- const [showcasePaused,setShowcasePaused]=useState(false);
- const galleryRef=useRef<HTMLDivElement>(null);
- const selectedStudent=boardShots.find(item=>item.scene===studentScene)??boardShots[0];
- const currentShot=showcaseShots[showcaseSlide];
+ const [previousSlide,setPreviousSlide]=useState<number|null>(null);
+ const showcaseShots=config.showcase;
+ const currentShot=showcaseShots[showcaseSlide%showcaseShots.length];
+ const previousShot=previousSlide!==null?showcaseShots[previousSlide%showcaseShots.length]:null;
  useEffect(()=>{
   if(!isPreview)return;
   const handle=(event:Event)=>{
@@ -156,13 +152,27 @@ export default function LektrusPublicSite(){
   return ()=>{window.removeEventListener("hashchange",sync);window.removeEventListener("popstate",sync)};
  },[]);
  useEffect(()=>{document.title=(siteNavigation.find(item=>item.id===page)?.title??"Главная")+" | Lektrus"},[page,config]);
- // The original presentation used a real screenshot carousel with a pause control.
- // Respect reduced-motion preferences and never keep the carousel running on other pages.
+ // The single homepage frame automatically crossfades through existing screenshots.
+ // No controls or subject pickers: the rest of the site keeps its own editorial content.
  useEffect(()=>{
-  if(page!=="home"||showcasePaused||window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
-  const id=window.setInterval(()=>{if(!document.hidden)setShowcaseSlide(index=>(index+1)%showcaseShots.length)},7800);
+  if(page!=="home"||showcaseShots.length<2||window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  const id=window.setInterval(()=>{
+   if(document.hidden)return;
+   setPreviousSlide(showcaseSlide);
+   setShowcaseSlide((showcaseSlide+1)%showcaseShots.length);
+  },6800);
   return ()=>window.clearInterval(id);
- },[page,showcasePaused]);
+ },[page,showcaseSlide,showcaseShots.length]);
+ useEffect(()=>{
+  if(previousSlide===null)return;
+  const id=window.setTimeout(()=>setPreviousSlide(null),850);
+  return ()=>window.clearTimeout(id);
+ },[previousSlide]);
+ useEffect(()=>{
+  if(page!=="home"||showcaseShots.length<2)return;
+  const next=showcaseShots[(showcaseSlide+1)%showcaseShots.length];
+  const image=new Image();image.src=next.src;
+ },[page,showcaseSlide,showcaseShots]);
  const navigate=(target:Page,event?:MouseEvent<HTMLAnchorElement>)=>{
   event?.preventDefault();
   if(target!==page){
