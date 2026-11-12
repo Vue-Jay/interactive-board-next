@@ -201,7 +201,7 @@ export default function LektrusPublicSite(){
  };
  const placed=(anchor:string)=><SiteAnchorSlot page={page} anchor={anchor} blocks={copy?.blocks??[]} selectedId={previewSelection} preview={isPreview}/>;
  const editorCommand=(command:StudioCommand)=>window.parent.postMessage({type:"lektrus:site-editor-command",command},window.location.origin);
- const NavLink=({id,title}:{id:Page;title:string})=><a href={"#"+id} aria-current={page===id?"page":undefined} className={page===id?"is-current":""} onClick={event=>navigate(id,event)}><SiteMenuIcon name={id}/><span>{title}</span></a>;
+ const NavLink=({id,title,icon=false}:{id:Page;title:string;icon?:boolean})=><a href={"#"+id} aria-current={page===id?"page":undefined} className={page===id?"is-current":""} onClick={event=>navigate(id,event)}>{icon&&<SiteMenuIcon name={id}/>}<span>{title}</span></a>;
  return <div className={isPreview?"marketing-site site-preview"+(previewInteractive?" site-preview-interactive":""):"marketing-site"} style={{"--marketing-blue":config.theme.accent,"--marketing-bg":config.theme.background,"--marketing-white":config.theme.surface,"--marketing-ink":config.theme.ink,"--site-custom-radius":config.theme.radius+"px","--site-custom-width":config.theme.maxWidth+"px"} as CSSProperties}>
   <a className="marketing-skip" href="#marketing-main">Перейти к содержимому</a>
   <header className={"marketing-header"+(menuOpen?" is-expanded":"")}>
@@ -217,7 +217,7 @@ export default function LektrusPublicSite(){
      <div className="marketing-sidebar-group">
       <span className="marketing-sidebar-caption">Разделы сайта</span>
       <nav id="marketing-nav" className="marketing-nav" aria-label="Разделы сайта">
-       {siteNavigation.map(item=><NavLink key={item.id} {...item}/>)}
+       {siteNavigation.map(item=><NavLink key={item.id} {...item} icon/>)}
       </nav>
      </div>
      <div className="marketing-sidebar-group marketing-sidebar-tools">
@@ -238,14 +238,14 @@ export default function LektrusPublicSite(){
     <section data-site-section-id="native-0" data-site-page-hero className="marketing-hero marketing-container marketing-hero-split" aria-labelledby="marketing-title">
      <div className="marketing-hero-copy">
       {copy?.eyebrow&&<span className="marketing-eyebrow">{copy.eyebrow}</span>}
-      <h1 id="marketing-title">{copy?.heading||<>Lektrus <span>для наглядных уроков</span></>}</h1>
+      <h1 id="marketing-title">{copy?.heading||<>Lektrus <span>платформа для обучения</span></>}</h1>
       <p className="marketing-hero-lead">{copy?.lead||"Интерактивная доска, совместная работа и учебные инструменты в одном пространстве."}</p>
       <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Попробовать доску <span aria-hidden="true">→</span></DemoLink></div>
      </div>
      <div className="marketing-showcase" aria-label="Автоматическая презентация настоящих экранов Lektrus" data-site-showcase>
       <div className="marketing-showcase-screen" role="img" aria-label="Примеры реальных экранов приложения Lektrus">
        {previousShot&&<img className="marketing-showcase-previous" src={previousShot.src} alt="" aria-hidden="true"/>}
-       <img key={currentShot.src} className="marketing-showcase-current" src={currentShot.src} alt="" fetchPriority={showcaseSlide===0?"high":"auto"}/>
+       <img key={currentShot.src} className={"marketing-showcase-current"+(showcaseSlide===0&&previousSlide===null?" is-first":"")} src={currentShot.src} alt="" fetchPriority={showcaseSlide===0?"high":"auto"}/>
       </div>
      </div>
     </section>
