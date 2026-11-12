@@ -23,6 +23,10 @@ const boardShots=[
  {scene:"history",subject:"История",src:"/site/board-history.png",title:"Исторический атлас",description:"Сравнивайте территории и события разных эпох."},
  {scene:"russian",subject:"Русский язык",src:"/site/board-russian.png",title:"Фонетический разбор",description:"Разбирайте буквы и звуки в интерактивной схеме."}
 ];
+const showcaseShots=[
+ {scene:"home",subject:"Рабочее пространство",src:"/site/app-home.png",title:"Подготовьте урок на рабочем столе",description:"Ваши доски, материалы и расписание собраны в одном месте."},
+ ...boardShots
+];
 const featureCards=[
  {index:"01",title:"Свободная доска",text:"Пишите, рисуйте, размещайте текст, изображения, фигуры и документы.",scene:"geometry"},
  {index:"02",title:"Совместная работа",text:"Объясняйте материал и работайте с участниками на общем холсте.",scene:"math"},
@@ -73,14 +77,24 @@ export default function LektrusPublicSite(){
  const [page,setPage]=useState<Page>(readPage);
  const [menuOpen,setMenuOpen]=useState(false);
  const [studentScene,setStudentScene]=useState("math");
+ const [showcaseSlide,setShowcaseSlide]=useState(0);
+ const [showcasePaused,setShowcasePaused]=useState(false);
  const galleryRef=useRef<HTMLDivElement>(null);
  const selectedStudent=boardShots.find(item=>item.scene===studentScene)??boardShots[0];
+ const currentShot=showcaseShots[showcaseSlide];
  useEffect(()=>{
   const sync=()=>{setPage(readPage());setMenuOpen(false);window.scrollTo({top:0,behavior:"instant"})};
   window.addEventListener("hashchange",sync);window.addEventListener("popstate",sync);
   return ()=>{window.removeEventListener("hashchange",sync);window.removeEventListener("popstate",sync)};
  },[]);
  useEffect(()=>{document.title=(navigation.find(item=>item.id===page)?.title??"Главная")+" | Lektrus"},[page]);
+ // The original presentation used a real screenshot carousel with a pause control.
+ // Respect reduced-motion preferences and never keep the carousel running on other pages.
+ useEffect(()=>{
+  if(page!=="home"||showcasePaused||window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  const id=window.setInterval(()=>{if(!document.hidden)setShowcaseSlide(index=>(index+1)%showcaseShots.length)},7800);
+  return ()=>window.clearInterval(id);
+ },[page,showcasePaused]);
  const navigate=(target:Page,event?:MouseEvent<HTMLAnchorElement>)=>{
   event?.preventDefault();
   if(target!==page){
@@ -110,7 +124,31 @@ export default function LektrusPublicSite(){
      <h1 id="marketing-title">Одна платформа <span>для преподавания и обучения</span></h1>
      <p className="marketing-hero-lead">Создавайте наглядные уроки, работайте вместе с учениками и используйте учебные инструменты на единой интерактивной доске.</p>
      <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Попробовать доску <span aria-hidden="true">→</span></DemoLink></div>
-     <div className="marketing-hero-visual"><img src="/site/board-showcase.png" alt="Реальный пример интерактивной учебной доски Lektrus" fetchPriority="high"/><div className="marketing-hero-visual-label"><span>Настоящий интерфейс Lektrus</span><DemoLink>Открыть демо ↗</DemoLink></div></div>
+     <div className="marketing-showcase" aria-label="Реальные снимки Lektrus">
+      <div className="marketing-showcase-screen">
+       <img key={currentShot.src} src={currentShot.src} alt={"Снимок Lektrus: "+currentShot.subject} fetchPriority={showcaseSlide===0?"high":"auto"}/>
+      </div>
+      <div className="marketing-showcase-toolbar">
+       <div className="marketing-showcase-caption" aria-live={showcasePaused?"polite":"off"}>
+        <span className="marketing-eyebrow">{currentShot.subject}</span>
+        <strong>{currentShot.title}</strong>
+        <p>{currentShot.description}</p>
+        {currentShot.scene==="home"?<a href="/app">Открыть рабочее пространство ↗</a>:<DemoLink scene={currentShot.scene}>Открыть этот пример на доске ↗</DemoLink>}
+       </div>
+       <div className="marketing-showcase-player">
+        <div className="marketing-showcase-counter"><b>{String(showcaseSlide+1).padStart(2,"0")}</b><span> / {String(showcaseShots.length).padStart(2,"0")}</span></div>
+        <div className="marketing-showcase-controls">
+         <button type="button" onClick={()=>setShowcaseSlide(index=>(index-1+showcaseShots.length)%showcaseShots.length)} aria-label="Предыдущий снимок" title="Предыдущий снимок">←</button>
+         <button type="button" onClick={()=>setShowcasePaused(paused=>!paused)} aria-label={showcasePaused?"Возобновить смену снимков":"Остановить смену снимков"} aria-pressed={showcasePaused} title={showcasePaused?"Воспроизвести":"Пауза"}>{showcasePaused?"▶":"Ⅱ"}</button>
+         <button type="button" onClick={()=>setShowcaseSlide(index=>(index+1)%showcaseShots.length)} aria-label="Следующий снимок" title="Следующий снимок">→</button>
+        </div>
+       </div>
+      </div>
+      <div className="marketing-showcase-progress" aria-hidden="true"><span style={{width:`${((showcaseSlide+1)/showcaseShots.length)*100}%`}}/></div>
+      <div className="marketing-showcase-subjects" aria-label="Выберите снимок">
+       {showcaseShots.map((shot,index)=><button type="button" key={shot.scene} onClick={()=>{setShowcaseSlide(index);setShowcasePaused(true)}} className={index===showcaseSlide?"is-active":""} aria-pressed={index===showcaseSlide}>{shot.subject}</button>)}
+      </div>
+     </div>
      <p className="marketing-hero-footnote">Доска · Учебные инструменты · Совместная работа</p>
     </section>
     <section className="marketing-section marketing-container">
