@@ -75,7 +75,7 @@ const media=read("src/SiteImageChooser.tsx");
 const images=read("src/marketingSiteImages.ts");
 const assetSql=read("supabase/v258_marketing_site_assets.sql");
 assert.ok(builder.includes("replaceDefault")&&site.includes("!copy?.replaceDefault"),"built-in layouts must be replaceable per page without deleting the original");
-assert.ok(builder.includes("moveBlockTo(")&&builder.includes("duplicateBlock("),"blocks should support drag sorting and duplication");
+assert.ok(builder.includes("moveBlockTo(")&&builder.includes("const duplicateBlock=")&&builder.includes("onClick={duplicateBlock}"),"blocks should support drag sorting and duplication");
 assert.ok(media.includes("SITE_LIBRARY_SHOTS")&&media.includes("uploadMarketingImage"),"image chooser must offer local snapshots and custom upload");
 assert.ok(images.includes("image/jpeg")&&images.includes("image/png")&&images.includes("image/webp"),"media upload must allow only safe image MIME types");
 assert.ok(images.includes("5*1024*1024")&&images.includes("getRemoteSession()"),"media upload requires file size limit and user auth");
