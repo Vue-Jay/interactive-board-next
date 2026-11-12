@@ -77,22 +77,7 @@ export default function LektrusSiteBuilder(){
   return ()=>{alive=false};
  },[access]);
  useEffect(()=>{if(access!=="allowed")return;saveSiteDraft(doc);frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc,selectedId:selected,objectId:selectedObject,interactive},window.location.origin)},[doc,access,selected,selectedObject,interactive]);
- useEffect(()=>{
-  const choose=(event:MessageEvent)=>{
-   if(event.origin!==window.location.origin||event.source!==frame.current?.contentWindow)return;
-   if(event.data?.type==="lektrus:site-select-block"&&typeof event.data.id==="string"){
-    setSelected(event.data.id);setSelectedObject(null);setInspector("block");setPanelOpen(true);
-   }
-   if(event.data?.type==="lektrus:site-select-page"){setSelected(null);setSelectedObject(null);setInspector("page");setPanelOpen(true)}
-   if(event.data?.type==="lektrus:site-navigate"&&typeof event.data.page==="string"&&doc.navigation.some(item=>item.id===event.data.page)){
-    setActive(event.data.page);setSelected(null);setSelectedObject(null);setInspector("page");
-   }
-   if(event.data?.type==="lektrus:site-preview-link"&&typeof event.data.href==="string"){
-    setNotice("Это ссылка на другую страницу: "+event.data.href.slice(0,120)+". Переход отключён в предпросмотре.");
-   }
-  };
-  window.addEventListener("message",choose);return()=>window.removeEventListener("message",choose);
- },[doc.navigation]);
+
  const change=(edit:(next:SiteDocument)=>void)=>{
   undo.current.push(clone(doc));if(undo.current.length>60)undo.current.shift();
   redo.current=[];const next=clone(doc);edit(next);setDoc(normalizeSiteDocument(next));setSaved("draft");setNotice("");
@@ -116,6 +101,69 @@ export default function LektrusSiteBuilder(){
    else next.customPages=next.customPages.map(x=>x.id===active?update:x);
   });
  };
+ const patchObject=(patch:Record<string,unknown>)=>{
+  if(!selectedObject)return;
+  change(next=>{
+   const old=next.objects[selectedObject]??{};
+   next.objects[selectedObject]={...old,...patch,style:{...old.style,...(patch.style as Record<string,unknown>||{})}};
+  });
+ };
+ const resetObject=()=>{
+  if(!selectedObject)return;
+  change(next=>{delete next.objects[selectedObject]});
+ };
+ const insertCanvasTransfer=(transfer:SiteCanvasTransfer,anchor:string,index:number)=>{
+  if(!/^(?:end|before-(?:[0-9]|[12][0-9]))$/.test(anchor))return;
+  const kit=transfer.type==="kit"?SITE_SECTION_PRESETS.find(item=>item.id===transfer.id):undefined;
+  if(transfer.type==="kit"&&!kit)return;
+  if(transfer.type==="block"&&!kinds.some(item=>item.kind===transfer.kind))return;
+  const moving=transfer.type==="move"?activePage.blocks.find(b=>b.id===transfer.id):undefined;
+  if(transfer.type==="move"&&!moving)return;
+  const added=transfer.type==="block"?[newSiteBlock(transfer.kind)]:transfer.type==="kit"?kit?.create()??[]:moving?[moving]:[];
+  if(!added.length||activePage.blocks.length+(moving?0:added.length)>40){setNotice("На странице не может быть больше 40 блоков.");return}
+  const items=activePage.blocks.filter(block=>block.id!==moving?.id);
+  const oldAnchor=moving?.anchor||"end";
+  const oldIndex=activePage.blocks.filter(x=>(x.anchor||"end")===oldAnchor).findIndex(x=>x.id===moving?.id);
+  const targetIndex=moving&&oldAnchor===anchor&&oldIndex>=0&&oldIndex<index?index-1:index;
+  const matching=items.map((block,i)=>(block.anchor||"end")===anchor?i:-1).filter(i=>i>=0);
+  const insertion=matching.length?targetIndex>=matching.length?matching[matching.length-1]+1:matching[Math.max(0,targetIndex)]:items.length;
+  const positioned=added.map(block=>({...block,anchor}));
+  items.splice(insertion,0,...positioned);
+  patchPage({blocks:items});
+  setSelected(positioned[0].id);setSelectedObject(null);setInspector("block");setPanelOpen(true);
+ };
+ useEffect(()=>{
+  const choose=(event:MessageEvent)=>{
+   if(event.origin!==window.location.origin||event.source!==frame.current?.contentWindow)return;
+   if(event.data?.type==="lektrus:site-select-block"&&typeof event.data.id==="string"){
+    setSelected(event.data.id);setSelectedObject(null);setInspector("block");setPanelOpen(true);
+   }
+   if(event.data?.type==="lektrus:site-select-page"){setSelected(null);setSelectedObject(null);setInspector("page");setPanelOpen(true)}
+   if(event.data?.type==="lektrus:site-select-object"){
+    const info=event.data.info as SiteObjectInfo|undefined;
+    if(info&&typeof info.id==="string"&&/^(?:global|[a-z][a-z0-9-]{0,39}):[a-z0-9_/.-]{1,180}$/.test(info.id)){
+     setSelectedObject(info.id);setObjectMeta(info);setSelected(null);setInspector("object");setPanelOpen(true);
+    }
+   }
+   if(event.data?.type==="lektrus:site-object-list"&&event.data.page===active&&Array.isArray(event.data.objects)){
+    setObjectList((event.data.objects as SiteObjectInfo[]).filter(item=>item&&typeof item.id==="string").slice(0,700));
+   }
+   if(event.data?.type==="lektrus:site-canvas-drop"&&event.data.page===active){
+    const transfer=decodeSiteCanvasTransfer(JSON.stringify(event.data.transfer));
+    const anchor=event.data.anchor,index=event.data.index;
+    if(transfer&&typeof anchor==="string"&&Number.isInteger(index)&&index>=0&&index<=40)insertCanvasTransfer(transfer,anchor,index);
+   }
+   if(event.data?.type==="lektrus:site-navigate"&&typeof event.data.page==="string"&&doc.navigation.some(item=>item.id===event.data.page)){
+    setActive(event.data.page);setSelected(null);setSelectedObject(null);setInspector("page");
+   }
+   if(event.data?.type==="lektrus:site-preview-link"&&typeof event.data.href==="string"){
+    setNotice("Это ссылка на другую страницу: "+event.data.href.slice(0,120)+". Переход отключён в предпросмотре.");
+   }
+  };
+  window.addEventListener("message",choose);
+  return ()=>window.removeEventListener("message",choose);
+ },[doc,active]);
+
  const addBlock=(kind:SiteBlockKind)=>{
   const block=newSiteBlock(kind);
   change(next=>{
