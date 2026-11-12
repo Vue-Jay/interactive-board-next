@@ -173,7 +173,7 @@ export default function LektrusSiteBuilder(){
    if(event.data?.type==="lektrus:site-navigate"&&typeof event.data.page==="string"&&doc.navigation.some(item=>item.id===event.data.page)){
     setActive(event.data.page);setSelected(null);setSelectedObject(null);setInspector("page");
    }
-   if(event.data?.type==="lektrus:site-editor-command"&&typeof event.data.command==="string"&&["undo","redo","delete","escape","save"].includes(event.data.command))runCommand(event.data.command as StudioCommand);
+   if(event.data?.type==="lektrus:site-editor-command"&&typeof event.data.command==="string"&&["undo","redo","delete","restore","escape","save"].includes(event.data.command))runCommand(event.data.command as StudioCommand);
    if(event.data?.type==="lektrus:site-preview-link"&&typeof event.data.href==="string"){
     setNotice("Это ссылка на другую страницу: "+event.data.href.slice(0,120)+". Переход отключён в предпросмотре.");
    }
