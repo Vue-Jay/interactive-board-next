@@ -32,6 +32,7 @@ export default function LektrusSiteBuilder(){
  const [saved,setSaved]=useState<"draft"|"published">("draft");
  const frame=useRef<HTMLIFrameElement>(null);
  const file=useRef<HTMLInputElement>(null);
+ const hadInitialDraft=useRef(Boolean(localStorage.getItem(SITE_DRAFT_KEY)));
  const undo=useRef<SiteDocument[]>([]);
  const redo=useRef<SiteDocument[]>([]);
  const drag=useRef<string|null>(null);
@@ -48,7 +49,7 @@ export default function LektrusSiteBuilder(){
   if(access!=="allowed")return;
   let alive=true;
   void loadPublishedSiteDocument().then(published=>{
-   if(alive&&published&&!localStorage.getItem(SITE_DRAFT_KEY))setDoc(published);
+   if(alive&&published&&!hadInitialDraft.current)setDoc(published);
   }).catch(()=>{if(alive)setNotice("Опубликованная версия пока недоступна. Черновик сохраняется только в этом браузере.")});
   return ()=>{alive=false};
  },[access]);
