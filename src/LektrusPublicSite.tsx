@@ -68,6 +68,21 @@ function DemoLink({scene="math",children,className=""}:{scene?:string;children:R
  return <a className={className} href={"/demo/board?scene="+encodeURIComponent(scene)}>{children}</a>;
 }
 
+function SiteMenuIcon({name}:{name:string}){
+ const shapes:Record<string,ReactNode>={
+  home:<><path d="m3 10 9-7 9 7"/><path d="M5 9v11h14V9"/><path d="M9 20v-7h6v7"/></>,
+  features:<><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></>,
+  tools:<><path d="M9 3v7l-5 8.2A2 2 0 0 0 5.7 21h12.6a2 2 0 0 0 1.7-2.8L15 10V3"/><path d="M8 3h8M6.5 15h11"/></>,
+  how:<><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/></>,
+  pricing:<><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></>,
+  about:<><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></>,
+  help:<><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.6 2.6 0 0 1 5 1c0 1.8-2.5 2.1-2.5 3.8M12 17h.01"/></>,
+  atlas:<><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></>,
+  laboratory:<><path d="M9 3h6M10 3v7l-5.5 8.2A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-2.8L14 10V3M7.5 15h9"/></>
+ };
+ return <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="19" height="19" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" fill="none">{shapes[name]??shapes.features}</svg>;
+}
+
 export default function LektrusPublicSite(){
  const isPreview=new URLSearchParams(window.location.search).has("site-preview");
  const [config,setConfig]=useState<SiteDocument>(defaultSiteDocument);
@@ -167,6 +182,12 @@ export default function LektrusPublicSite(){
   const next=showcaseShots[(showcaseSlide+1)%showcaseShots.length];
   const image=new Image();image.src=next.src;
  },[page,showcaseSlide,showcaseShots]);
+ useEffect(()=>{
+  if(!menuOpen)return;
+  const close=(event:KeyboardEvent)=>{if(event.key==="Escape")setMenuOpen(false)};
+  window.addEventListener("keydown",close);
+  return ()=>window.removeEventListener("keydown",close);
+ },[menuOpen]);
  const navigate=(target:Page,event?:MouseEvent<HTMLAnchorElement>)=>{
   event?.preventDefault();
   if(target==="teachers"||target==="students")target="about";
@@ -180,31 +201,51 @@ export default function LektrusPublicSite(){
  };
  const placed=(anchor:string)=><SiteAnchorSlot page={page} anchor={anchor} blocks={copy?.blocks??[]} selectedId={previewSelection} preview={isPreview}/>;
  const editorCommand=(command:StudioCommand)=>window.parent.postMessage({type:"lektrus:site-editor-command",command},window.location.origin);
- const NavLink=({id,title}:{id:Page;title:string})=><a href={"#"+id} aria-current={page===id?"page":undefined} className={page===id?"is-current":""} onClick={event=>navigate(id,event)}>{title}</a>;
+ const NavLink=({id,title,icon=false}:{id:Page;title:string;icon?:boolean})=><a href={"#"+id} aria-current={page===id?"page":undefined} className={page===id?"is-current":""} onClick={event=>navigate(id,event)}>{icon&&<SiteMenuIcon name={id}/>}<span>{title}</span></a>;
  return <div className={isPreview?"marketing-site site-preview"+(previewInteractive?" site-preview-interactive":""):"marketing-site"} style={{"--marketing-blue":config.theme.accent,"--marketing-bg":config.theme.background,"--marketing-white":config.theme.surface,"--marketing-ink":config.theme.ink,"--site-custom-radius":config.theme.radius+"px","--site-custom-width":config.theme.maxWidth+"px"} as CSSProperties}>
   <a className="marketing-skip" href="#marketing-main">Перейти к содержимому</a>
-  <header className="marketing-header">
+  <header className={"marketing-header"+(menuOpen?" is-expanded":"")}>
    <div className="marketing-header-inner">
-    <a className="marketing-brand" href="#home" onClick={event=>navigate("home",event)} aria-label="Lektrus, на главную"><img src="/lektrus-icon-192.png" width="38" height="38" alt=""/><span><strong>Lektrus</strong><small>Пространство для обучения</small></span></a>
-    <button type="button" className="marketing-menu-toggle" aria-label={menuOpen?"Закрыть меню":"Открыть меню"} aria-expanded={menuOpen} aria-controls="marketing-nav" onClick={()=>setMenuOpen(v=>!v)}>{menuOpen?"Закрыть":"Меню"}<span aria-hidden="true">{menuOpen?"×":"☰"}</span></button>
-    <nav id="marketing-nav" className={"marketing-nav"+(menuOpen?" is-open":"")} aria-label="Разделы сайта">
-     {siteNavigation.filter(item=>item.id!=="home").map(item=><NavLink key={item.id} {...item}/>)}
-    </nav>
-    <a className="marketing-app-entry" href="/app">Войти <span aria-hidden="true">↗</span></a>
+    <a className="marketing-brand" href="#home" onClick={event=>navigate("home",event)} aria-label="Lektrus, на главную">
+     <span className="marketing-brand-icon"><img src="/lektrus-icon-192.png" width="40" height="40" alt=""/></span>
+     <span><strong>Lektrus</strong><small>Пространство для обучения</small></span>
+    </a>
+    <button type="button" className="marketing-menu-toggle" aria-label={menuOpen?"Закрыть меню":"Открыть меню"} aria-expanded={menuOpen} aria-controls="marketing-sidebar-content" onClick={()=>setMenuOpen(v=>!v)}>
+     <SiteMenuIcon name="features"/><span>{menuOpen?"Закрыть":"Меню"}</span>
+    </button>
+    <div id="marketing-sidebar-content" className="marketing-sidebar-content">
+     <div className="marketing-sidebar-group">
+      <span className="marketing-sidebar-caption">Разделы сайта</span>
+      <nav id="marketing-nav" className="marketing-nav" aria-label="Разделы сайта">
+       {siteNavigation.map(item=><NavLink key={item.id} {...item} icon/>)}
+      </nav>
+     </div>
+     <div className="marketing-sidebar-group marketing-sidebar-tools">
+      <span className="marketing-sidebar-caption">Без создания доски</span>
+      <a href="/tools/atlas"><SiteMenuIcon name="atlas"/><span>Интерактивный атлас</span><span className="marketing-sidebar-external" aria-hidden="true">↗</span></a>
+      <a href="/tools/laboratory"><SiteMenuIcon name="laboratory"/><span>Химическая лаборатория</span><span className="marketing-sidebar-external" aria-hidden="true">↗</span></a>
+     </div>
+     <div className="marketing-sidebar-bottom">
+      <a className="marketing-app-entry" href="/app"><span className="marketing-app-entry-symbol"><SiteMenuIcon name="home"/></span><span>Войти в Lektrus</span><span aria-hidden="true">↗</span></a>
+     </div>
+    </div>
    </div>
   </header>
+  {menuOpen&&<button type="button" className="marketing-sidebar-backdrop" onClick={()=>setMenuOpen(false)} aria-label="Закрыть боковое меню"/>}
   <main id="marketing-main" tabIndex={-1}>
    {page==="home"&&!copy?.replaceDefault&&<>
     {placed("before-0")}
-    <section data-site-section-id="native-0" data-site-page-hero className="marketing-hero marketing-container" aria-labelledby="marketing-title">
-     {copy?.eyebrow&&<span className="marketing-eyebrow">{copy.eyebrow}</span>}
-     <h1 id="marketing-title">{copy?.heading||<>Одна платформа <span>для преподавания и обучения</span></>}</h1>
-     <p className="marketing-hero-lead">{copy?.lead||"Создавайте наглядные уроки, работайте вместе с учениками и используйте учебные инструменты на единой интерактивной доске."}</p>
-     <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Попробовать доску <span aria-hidden="true">→</span></DemoLink></div>
+    <section data-site-section-id="native-0" data-site-page-hero className="marketing-hero marketing-container marketing-hero-split" aria-labelledby="marketing-title">
+     <div className="marketing-hero-copy">
+      {copy?.eyebrow&&<span className="marketing-eyebrow">{copy.eyebrow}</span>}
+      <h1 id="marketing-title">{copy?.heading||<>Lektrus <span>платформа для обучения</span></>}</h1>
+      <p className="marketing-hero-lead">{copy?.lead||"Интерактивная доска, совместная работа и учебные инструменты в одном пространстве."}</p>
+      <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Попробовать доску <span aria-hidden="true">→</span></DemoLink></div>
+     </div>
      <div className="marketing-showcase" aria-label="Автоматическая презентация настоящих экранов Lektrus" data-site-showcase>
       <div className="marketing-showcase-screen" role="img" aria-label="Примеры реальных экранов приложения Lektrus">
        {previousShot&&<img className="marketing-showcase-previous" src={previousShot.src} alt="" aria-hidden="true"/>}
-       <img key={currentShot.src} className="marketing-showcase-current" src={currentShot.src} alt="" fetchPriority={showcaseSlide===0?"high":"auto"}/>
+       <img key={currentShot.src} className={"marketing-showcase-current"+(showcaseSlide===0&&previousSlide===null?" is-first":"")} src={currentShot.src} alt="" fetchPriority={showcaseSlide===0?"high":"auto"}/>
       </div>
      </div>
     </section>
@@ -311,7 +352,10 @@ export default function LektrusPublicSite(){
    {customPage&&<SiteCustomPage page={customPage} selectedId={previewSelection} preview={isPreview}/>}
    {!customPage&&placed("end")}
   </main>
-  <footer className="marketing-footer"><div className="marketing-container"><div className="marketing-footer-brand"><img src="/lektrus-icon-192.png" width="32" height="32" alt=""/><span><strong>Lektrus</strong><small>Пространство для обучения</small></span></div><nav aria-label="Разделы внизу страницы">{siteNavigation.filter(item=>item.id!=="home").map(item=><NavLink key={item.id} {...item}/>)}</nav><div className="marketing-footer-end"><span>© {new Date().getFullYear()} Lektrus</span><a href="/app">Перейти в приложение ↗</a></div></div></footer>
+  <footer className="marketing-footer"><div className="marketing-container">
+   <span>© {new Date().getFullYear()} Lektrus</span>
+   <div className="marketing-footer-end"><NavLink id="about" title="О Lektrus"/><NavLink id="help" title="Помощь"/><a href="/app">Открыть приложение ↗</a></div>
+  </div></footer>
   {isPreview&&(previewSelection||previewObject)&&<div className="site-canvas-selection-actions" role="toolbar" aria-label="Действия над выделенным элементом">
    <span>{previewSelection?"Выделен блок":config.objects[previewObject||""]?.hidden?"Элемент скрыт":"Выделен объект"}</span>
    <button type="button" onClick={()=>editorCommand("undo")} title="Отменить, Ctrl+Z" aria-label="Отменить действие">↶</button>

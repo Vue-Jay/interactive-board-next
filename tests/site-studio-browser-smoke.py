@@ -135,9 +135,28 @@ with sync_playwright() as p:
     showcase = visitor.locator(".marketing-showcase")
     showcase.wait_for()
     nav = visitor.locator("#marketing-nav a").all_inner_texts()
-    assert len(nav) == 6, f"Expected six menu links besides Home including Tools, got {nav}"
+    assert len(nav) == 7, f"Expected all seven menu links in the left column including Home and Tools, got {nav}"
+    assert nav[0] == "Главная", "The sidebar must start with Home"
     assert "Инструменты" in nav, "Separate Tools tab missing from public navigation"
     assert not any("Учителям" in item or "Ученикам" in item for item in nav), "Retired audience tabs leaked into public navigation"
+    # Screenshot-inspired layout: a persistent left column, text on the left and
+    # one original Lektrus screenshot field on the right. No desktop top-nav.
+    rail = visitor.locator(".marketing-header")
+    sidebar_bounds = rail.bounding_box()
+    intro_bounds = visitor.locator(".marketing-hero-copy").bounding_box()
+    capture_bounds = showcase.bounding_box()
+    assert sidebar_bounds and intro_bounds and capture_bounds
+    assert sidebar_bounds["x"] < 2 and 220 <= sidebar_bounds["width"] <= 280
+    assert sidebar_bounds["height"] >= 850, "Desktop sidebar should fill the viewport"
+    assert intro_bounds["x"] >= sidebar_bounds["width"] + 18, "Main copy must not overlap the sidebar"
+    assert capture_bounds["x"] > intro_bounds["x"] + intro_bounds["width"], "Real screenshots belong to the right of the text"
+    assert abs(intro_bounds["y"] - capture_bounds["y"]) < 220, "Hero columns must align vertically"
+    assert visitor.locator(".marketing-brand img").get_attribute("src") == "/lektrus-icon-192.png", "Use the existing Lektrus brand logo"
+    shortcuts = visitor.locator(".marketing-sidebar-tools a")
+    assert shortcuts.count() == 2, "Both independent learning tools must be in the left sidebar"
+    assert shortcuts.nth(0).get_attribute("href") == "/tools/atlas"
+    assert shortcuts.nth(1).get_attribute("href") == "/tools/laboratory"
+    assert shortcuts.nth(0).is_visible() and shortcuts.nth(1).is_visible()
     assert showcase.locator(".marketing-showcase-screen").count() == 1, "All captures must use one common frame"
     assert showcase.locator("button").count() == 0, "Homepage reel must have no transport controls or subject switcher"
     assert visitor.locator(".marketing-home-summary").count() == 1
@@ -180,6 +199,19 @@ with sync_playwright() as p:
     visitor.goto("http://127.0.0.1:5173/#home", wait_until="domcontentloaded")
     visitor.locator(".marketing-showcase-screen").wait_for()
     assert visitor.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), "Mobile home overflows horizontally"
+    assert visitor.locator(".marketing-hero-copy").is_visible()
+    assert visitor.locator(".marketing-menu-toggle").is_visible()
+    assert not visitor.locator(".marketing-sidebar-tools a").first.is_visible(), "Tool shortcuts must be inside the closed drawer"
+    visitor.locator(".marketing-menu-toggle").click()
+    assert visitor.locator(".marketing-menu-toggle").get_attribute("aria-expanded") == "true"
+    assert visitor.locator(".marketing-sidebar-tools a").first.is_visible(), "Atlas must be visible when the mobile sidebar opens"
+    assert visitor.locator(".marketing-sidebar-tools a").nth(1).is_visible(), "Laboratory must be visible when the mobile sidebar opens"
+    visitor.keyboard.press("Escape")
+    assert visitor.locator(".marketing-menu-toggle").get_attribute("aria-expanded") == "false", "Escape should close sidebar"
+    visitor.locator(".marketing-menu-toggle").click()
+    visitor.locator(".marketing-sidebar-backdrop").click(position={"x": 370, "y": 200})
+    assert visitor.locator(".marketing-menu-toggle").get_attribute("aria-expanded") == "false", "Clicking outside should close sidebar"
+    assert visitor.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), "Drawer interaction created horizontal overflow"
     visitor.screenshot(path=str(root / "08-home-phone.png"), full_page=True)
     visitor.goto("http://127.0.0.1:5173/#about", wait_until="domcontentloaded")
     visitor.locator(".marketing-about-audience-students").wait_for()
@@ -192,4 +224,4 @@ with sync_playwright() as p:
     visitor.close()
     browser.close()
 
-print("Site studio browser PASS: seven compact pages, standalone Tools, automatic home reel without controls, responsive layouts, existing editor DnD/undo/redo and resize.")
+print("Site studio browser PASS: fixed branded sidebar, desktop text-left/showcase-right, mobile drawer with Escape/backdrop, real tool shortcuts, and existing Site Studio editing.")
