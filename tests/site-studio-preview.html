@@ -47,6 +47,16 @@ window.addEventListener("message",event=>{
   status.textContent="Блок вставлен: "+message.anchor;
   send();
  }
+ if(message.type==="lektrus:site-resize-block"&&typeof message.id==="string"){
+  const block=doc.pages.home.blocks.find(value=>value.id===message.id);
+  if(block){
+   checkpoint();
+   block.style={...block.style,width:message.width,minHeight:message.minHeight};
+   document.body.dataset.lastResize=String(message.id);
+   status.textContent="Размер блока сохранён";
+   send();
+  }
+ }
  if(message.type==="lektrus:site-select-block"&&typeof message.id==="string"){
   window.lastBlockId=message.id;window.lastObjectId=null;send();
  }
