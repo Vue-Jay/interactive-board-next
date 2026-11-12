@@ -79,7 +79,7 @@ export default function LektrusPublicSite(){
  const isPreview=new URLSearchParams(window.location.search).has("site-preview");
  const [config,setConfig]=useState<SiteDocument>(()=>isPreview?siteDraft():defaultSiteDocument());
  const [page,setPage]=useState<Page>(readPage);
- const siteNavigation=config.navigation.filter(item=>!item.hidden||item.id==="home");
+ const siteNavigation=config.navigation.length?config.navigation.filter(item=>!item.hidden||item.id==="home"):navigation;
  const customPage=config.customPages.find(item=>item.id===page);
  const copy=config.pages[page];
  const [menuOpen,setMenuOpen]=useState(false);
@@ -89,6 +89,17 @@ export default function LektrusPublicSite(){
  const galleryRef=useRef<HTMLDivElement>(null);
  const selectedStudent=boardShots.find(item=>item.scene===studentScene)??boardShots[0];
  const currentShot=showcaseShots[showcaseSlide];
+ useEffect(()=>{
+  if(!isPreview)return;
+  const handle=(event:Event)=>{
+   const element=event.target instanceof Element?event.target.closest("[data-site-block-id]"):null;
+   if(!element)return;
+   event.preventDefault();event.stopPropagation();
+   window.parent.postMessage({type:"lektrus:site-select-block",id:element.getAttribute("data-site-block-id")},window.location.origin);
+  };
+  document.addEventListener("click",handle,true);
+  return ()=>document.removeEventListener("click",handle,true);
+ },[isPreview]);
  useEffect(()=>{
   if(isPreview){
    const sync=(event:MessageEvent)=>{
