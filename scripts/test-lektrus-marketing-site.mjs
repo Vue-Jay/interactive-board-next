@@ -8,17 +8,16 @@ const css=read("src/lektrusMarketing.css");
 const entry=read("src/LektrusSiteEntry.tsx");
 const billing=read("src/billingStore.ts");
 
-for(const id of ["home","features","tools","how","pricing","about","help"]){
+for(const id of ["home","features","pricing","help"]){
  assert.ok(site.includes('id:"'+id+'"'),"missing public marketing page: "+id);
 }
 assert.doesNotMatch(site,/\{id:"(?:teachers|students)",title:/,"former teacher/student tabs must be absent from navigation");
 for(const text of [
  "Lektrus","платформа для обучения",
- "Возможности ","доски Lektrus",
- "Инструменты ","без доски",
- "Преподавателям","Готовьте материалы",
+ "Что умеет ","Lektrus",
+ "О проекте","Учиться и объяснять проще",
+ "Преподавателям","Создавайте наглядные объяснения",
  "Ученикам","Исследуйте темы",
- "Как начать ","работу",
  "Расскажите, что можно улучшить",
  "Найдите решение","или свяжитесь с нами",
  "Ваши вопросы помогают делать Lektrus удобнее",
@@ -32,7 +31,7 @@ for(const text of [
 assert.ok(site.includes("marketing-sidebar-content")&&site.includes("marketing-sidebar-tools"),"navigation must be a separate left sidebar with standalone tools");
 assert.ok(site.includes('icon=false')&&site.includes('{icon&&<SiteMenuIcon name={id}/>}'),"body links should be text-only while sidebar links have icons");
 assert.ok(site.includes('" is-first":"")')&&css.includes(".marketing-showcase-current.is-first{animation:none}"),"the initial real screenshot must not be invisible during entrance animation");
-assert.ok(site.includes('siteNavigation.map(item=><NavLink')&&site.includes('<SiteMenuIcon name={id}/>'),"all seven pages, including Home, must have visible branded navigation icons");
+assert.ok(site.includes('siteNavigation.map(item=><NavLink')&&site.includes('<SiteMenuIcon name={id}/>'),"the remaining four site pages, including Home, must have branded navigation icons");
 assert.ok(site.includes('href="/tools/atlas"')&&site.includes('href="/tools/laboratory"'),"sidebar must link to both real standalone tools");
 assert.ok(site.includes("marketing-hero-split")&&site.includes("marketing-hero-copy"),"homepage must position text and real captures as sibling columns");
 assert.ok(css.includes(".marketing-site .marketing-hero-split")&&css.includes("--marketing-sidebar-width")&&css.includes(".marketing-sidebar-content"),"full-width desktop sidebar and split layout styles must exist");
@@ -41,7 +40,7 @@ assert.ok(site.includes('event.key==="Escape"')&&site.includes('aria-controls="m
 assert.doesNotMatch(site,/marketing-showcase-window|marketing-showcase-caption|marketing-showcase-controls/,"the automatic capture field must stay label-free and control-free");
 
 assert.doesNotMatch(site,/id:"subjects"/,"the marketing menu must not add a subjects page");
-assert.ok(site.includes('href:"/tools/atlas"')&&site.includes('href:"/tools/laboratory"'),"standalone public tools must remain accessible");
+assert.ok(site.includes('href="/tools/atlas"')&&site.includes('href="/tools/laboratory"'),"both standalone public tools must remain directly in the sidebar");
 assert.ok(site.includes('"/demo/board?scene="'),"example links must lead to the actual demo board");
 assert.ok(site.includes('<LektrusFeedbackForm compact source="site"/>'),"feedback must use the existing submission service");
 assert.ok(site.includes("plans.map(")&&billing.includes('id:"free"')&&billing.includes('id:"teacher"')&&billing.includes('id:"pro"'),"marketing pricing should derive current app plan definitions");
@@ -58,9 +57,9 @@ assert.ok(site.includes("setPreviousSlide")&&site.includes("window.setInterval")
 assert.doesNotMatch(site,/marketing-showcase-(controls|subjects|toolbar|player|counter|progress)/,"homepage must never display a player control bar");
 assert.ok(site.includes('window.matchMedia("(prefers-reduced-motion: reduce)")'),"automatic screenshots must respect reduced motion");
 assert.ok(css.includes(".marketing-showcase-screen")&&css.includes("@keyframes marketing-unified-crossfade")&&!css.includes(".marketing-showcase-controls"),"one integrated animated screenshot area must replace the old player UI");
-assert.ok(site.includes("marketing-about-audience-teachers")&&site.includes("marketing-about-audience-students")&&site.includes("marketing-about-practical")&&site.includes("marketing-steps"),"About must contain both audiences and a concise walkthrough");
+assert.ok(site.includes("marketing-project-audiences")&&site.includes("marketing-project-summary"),"project information for teachers and students must appear directly on Home");
 assert.ok(site.includes("currentShot.src")&&site.includes("previousShot.src")&&site.includes("marketing-showcase"),"one homepage animation must use existing real captures");
-assert.ok(css.includes(".marketing-features-list")&&css.includes(".marketing-standalone-tools")&&css.includes(".marketing-how-list"),"minimal features, tools and steps must have distinct responsive styles");
+assert.ok(css.includes(".marketing-features-list")&&css.includes(".marketing-project-summary")&&css.includes(".marketing-help-intro"),"live public pages must have compact responsive layouts");
 assert.match(css, /prefers-reduced-motion:reduce/,"reduced-motion users need a non-animated alternative");
 assert.match(site,/aria-expanded=\{menuOpen\}/,"mobile navigation must expose its state");
 assert.match(site,/<details key=\{item\.q\}/,"FAQ answers must be expandable");
@@ -82,7 +81,7 @@ assert.ok(builder.includes("history(")&&builder.includes("site-builder-page-list
 assert.ok(sql.includes("is_app_admin(auth.uid())")&&sql.includes("marketing_site_public_read"),"database must authorize publication server-side");
 assert.ok(config.includes("normalizeSiteDocument")&&config.includes("safeSiteUrl"),"untrusted published design must be normalized");
 assert.ok((blocks.includes("data-site-block-id")||blocks.includes("SiteResizableBlock")&&read("src/SiteResizableBlock.tsx").includes("data-site-block-id"))&&site.includes("SITE_PREVIEW_MESSAGE"),"preview needs editable block selection");
-assert.ok(site.includes("marketing-about-audience-teachers")&&site.includes("marketing-about-audience-students"),"migrated teaching and learning content must live in About");
+assert.ok(site.includes("marketing-project-audiences")&&site.includes("marketing-project-body"),"teaching and learning information must live below the Home hero");
 
 
 // Website builder media and per-page redesign safety.
@@ -167,7 +166,7 @@ assert.ok(site.includes('placed("before-0")')&&site.includes('placed("end")')&&s
 for(const id of ["home","features","tools","how","pricing","about","help"]){
  assert.ok(site.includes('page==="'+id+'"'),"required page must keep native editable sections: "+id);
 }
-assert.doesNotMatch(site,/page==="(?:teachers|students)"/,"audience pages must be consolidated into About");
+assert.doesNotMatch(site,/page==="(?:teachers|students|tools|how|about)"/,"retired pages must not render their old layouts");
 assert.ok(objectLayer.includes("data-site-object-id")&&objectLayer.includes("applyObjectPatch")&&objectLayer.includes("site-select-object"),"DOM object inspector must connect clicks to persisted overrides");
 assert.ok(builder.includes("resetObject")&&builder.includes("patchObject")&&builder.includes('inspector==="object"'),"object fields and reset control must exist");
 for(const kind of ["video","timeline","comparison","logos","spacer","checklist","button-row"]){
@@ -263,11 +262,11 @@ assert.equal(dims.minHeight,0);
 const defaultMarketing=model.defaultSiteDocument();
 assert.equal(defaultMarketing.showcase.length,8,"all original home + seven subject captures belong in one homepage field");
 assert.ok(defaultMarketing.showcase.every(frame=>frame.src.startsWith("/site/")),"default reel must only use existing product screenshots");
-assert.equal(defaultMarketing.navigation.find(item=>item.id==="teachers").hidden,true);
-assert.equal(defaultMarketing.navigation.find(item=>item.id==="students").hidden,true);
+assert.equal(defaultMarketing.navigation.some(item=>item.id==="teachers"),false);
+assert.equal(defaultMarketing.navigation.some(item=>item.id==="students"),false);
 const publishedLegacy=model.normalizeSiteDocument({...defaultMarketing,navigation:defaultMarketing.navigation.map(x=>({...x,hidden:false}))});
-assert.equal(publishedLegacy.navigation.find(item=>item.id==="teachers").hidden,true,"old published configs cannot resurrect teachers tab");
-assert.equal(publishedLegacy.navigation.find(item=>item.id==="students").hidden,true,"old published configs cannot resurrect students tab");
+assert.equal(publishedLegacy.navigation.some(item=>item.id==="teachers"),false,"old published configs cannot resurrect teacher tab");
+assert.equal(publishedLegacy.navigation.some(item=>item.id==="students"),false,"old published configs cannot resurrect student tab");
 const exportedOld={...oldDocument};delete exportedOld.showcase;
 assert.equal(model.normalizeSiteDocument(exportedOld).showcase.length,8,"legacy published docs without reel metadata must retain all screenshots");
 const reel=model.normalizeSiteDocument({...defaultMarketing,showcase:[
@@ -279,30 +278,39 @@ const reel=model.normalizeSiteDocument({...defaultMarketing,showcase:[
 assert.deepEqual(reel.map(frame=>frame.src),["/site/board-chemistry.png","/site/board-math.png"],"ordered reel should deduplicate and reject unsafe URLs");
 assert.ok(builder.includes("site-builder-home-showcase")&&builder.includes("next.showcase.push("),"admin must be able to choose and rearrange unified screenshot frames");
 assert.ok(builder.includes('!retiredSitePages.has(item.id)'),"admin list must not offer removed audience tabs");
-assert.ok(site.includes('if(hash==="teachers"||hash==="students")return "about"'),"old audience bookmarks must lead to About");
+assert.ok(site.includes('["teachers","students","tools","how","about"].includes(hash)'),"legacy bookmarks must redirect to Home");
 const pageSections=site.slice(site.indexOf('page==="features"&&!copy?.replaceDefault'),site.indexOf('page==="help"&&!copy?.replaceDefault'));
 assert.doesNotMatch(pageSections,/<img\b[^>]*src="\/site\//,"other pages must not scatter in-app screenshot files across all sections");
 
 
-// Minimal redesign should not repeat the same content blocks or the screenshot player.
+// Simplified information architecture and faster real capture transitions.
 const homepage=site.slice(site.indexOf('page==="home"&&!copy?.replaceDefault'),site.indexOf('page==="features"&&!copy?.replaceDefault'));
-const featuresPage=site.slice(site.indexOf('page==="features"&&!copy?.replaceDefault'),site.indexOf('page==="tools"&&!copy?.replaceDefault'));
-const toolsPage=site.slice(site.indexOf('page==="tools"&&!copy?.replaceDefault'),site.indexOf('page==="how"&&!copy?.replaceDefault'));
-assert.equal((homepage.match(/data-site-section-id=/g)||[]).length,2,"home should contain only the hero and one compact overview, while preserving empty block anchors");
-assert.ok(homepage.includes('placed("before-4")'),"home page drag/drop anchors for existing user-created blocks must survive layout removal");
-assert.doesNotMatch(homepage,/marketing-audience-grid|marketing-home-flow|marketing-last-cta/,"remove oversized and duplicate home sections");
-assert.doesNotMatch(homepage,/marketing-showcase-window|marketing-hero-footnote/,"remove player chrome and needless captions");
-assert.ok(featuresPage.includes("marketing-features-list")&&featuresPage.includes("marketing-features-footer"),"features should become one concise link list");
-assert.doesNotMatch(featuresPage,/marketing-workflow-diagram|marketing-feature-grid|marketing-tool-grid/,"remove redundant feature diagrams, repeated cards and standalone tools in the wrong tab");
-assert.ok(toolsPage.includes("marketing-standalone-tools")&&toolsPage.includes("toolData.map"),"dedicated page should show real board-free tools");
-assert.ok(toolsPage.includes('href={tool.href}')&&toolsPage.includes("marketing-standalone-tool"),"each tool card must link directly to its real route");
-assert.doesNotMatch(site,/marketing-step-visual|marketing-about-statement|marketing-about-list/,"giant infographic panels should be removed from public markup");
-assert.ok(builder.includes("BUILTIN_SITE_PAGES"),"the Site Studio editor should inherit the new built-in Tools page");
-const compactNav=model.defaultSiteDocument().navigation;
-assert.deepEqual(compactNav.filter(x=>!x.hidden).map(x=>x.id),["home","features","tools","how","pricing","about","help"],"the default public nav should show exactly seven pages");
-const oldNav=compactNav.filter(x=>x.id!=="tools");
-const migratedTools=model.normalizeSiteDocument({...model.defaultSiteDocument(),navigation:oldNav}).navigation;
-assert.equal(migratedTools.findIndex(x=>x.id==="tools"),migratedTools.findIndex(x=>x.id==="features")+1,"existing published websites should gain Tools immediately after Features");
-assert.equal(migratedTools.find(x=>x.id==="tools").hidden,false,"newly migrated Tools page must be visible");
+const featuresPage=site.slice(site.indexOf('page==="features"&&!copy?.replaceDefault'),site.indexOf('page==="pricing"&&!copy?.replaceDefault'));
+assert.equal((homepage.match(/data-site-section-id=/g)||[]).length,2,"Home contains one split hero and one project story");
+assert.ok(homepage.includes('placed("before-4")'),"the editor must keep old homepage insertion anchors");
+assert.ok(homepage.includes('marketing-project-summary')&&homepage.includes('marketing-project-audiences'),"project information is present below the screenshot hero");
+assert.doesNotMatch(homepage,/marketing-home-summary|marketing-audience-grid|marketing-home-flow|marketing-last-cta/,"old redundant home sections must stay removed");
+assert.ok(featuresPage.includes("marketing-features-list")&&featuresPage.includes("featureCards.map"),"all six capabilities need clear prose descriptions");
+assert.ok(featuresPage.includes('<article className="marketing-feature-row"')&&featuresPage.includes("<p>{card.text}</p>"),"features should be non-clickable articles with text");
+assert.doesNotMatch(featuresPage,/<DemoLink|<NavLink|<a\b/,"Features must contain no navigation to board creation or demos");
+assert.doesNotMatch(site,/page==="(?:about|how|tools|teachers|students)"/,"retired tabs must not render");
+assert.ok(builder.includes("BUILTIN_SITE_PAGES"),"editor must adopt the new four built-in pages");
+assert.deepEqual(model.defaultSiteDocument().navigation.map(x=>x.id),["home","features","pricing","help"]);
+const legacyNav=[
+ {id:"home",title:"Главная",hidden:false},{id:"features",title:"Возможности",hidden:false},
+ {id:"tools",title:"Инструменты",hidden:false},{id:"how",title:"Как это работает",hidden:false},
+ {id:"about",title:"О Lektrus",hidden:false},{id:"pricing",title:"Тарифы",hidden:false},
+ {id:"teachers",title:"Учителям",hidden:false},{id:"students",title:"Ученикам",hidden:false},
+ {id:"help",title:"Помощь",hidden:false}
+];
+const normalizedLegacy=model.normalizeSiteDocument({...defaultMarketing,navigation:legacyNav});
+assert.deepEqual(normalizedLegacy.navigation.map(x=>x.id),["home","features","pricing","help"],"published legacy menus cannot bring deleted tabs back");
+const retiredAsCustom=model.normalizeSiteDocument({...defaultMarketing,customPages:[{id:"about",title:"Reintroduced About",blocks:[]},{id:"new-page",title:"New",blocks:[]}]});
+assert.ok(!retiredAsCustom.customPages.some(x=>x.id==="about"),"deleted page names stay reserved");
+assert.ok(retiredAsCustom.customPages.some(x=>x.id==="new-page"),"ordinary custom pages continue working");
+assert.ok(site.includes("},3600);"),"showcase must change at the new faster interval");
+assert.ok(site.includes("),650);"),"transition previous frame must be cleaned up promptly");
+assert.ok(css.includes("@keyframes marketing-fast-slide-in")&&css.includes("@keyframes marketing-fast-slide-out"),"transitions should animate both entering and leaving genuine screenshots");
+assert.ok(css.includes("min-height:0")&&css.includes(".marketing-project-summary"),"remove giant viewport forcing and provide compact project section");
 
-console.log("Lektrus marketing site: seven focused pages, compact sections, independent tools tab, old document migration and single screenshot showcase verified.");
+console.log("Lektrus marketing site: four compact pages, project information on Home, prose-only Features, retired routes, dynamic authentic screenshots and legacy migration verified.");
