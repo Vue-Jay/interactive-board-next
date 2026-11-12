@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState,type ChangeEvent} from "react";
 import {decodeSiteCanvasTransfer,putSiteCanvasTransfer,type SiteCanvasTransfer} from "./SiteCanvasDnD";
+import {commandFromKeyboard,deleteStudioSelection,restoreStudioObject,type StudioCommand} from "./siteStudioCommands";
 import type {SiteObjectInfo} from "./SiteObjectLayer";
 import {getCurrentUser} from "./authStore";
 import {getAccountAccess} from "./accountRoleStore";
@@ -10,6 +11,7 @@ import {DEFAULT_SITE_BLOCK_STYLE,type SiteBlockStyle} from "./marketingSiteConfi
 import {BUILTIN_SITE_PAGES,defaultSiteDocument,loadPublishedSiteDocument,newSiteBlock,normalizeSiteDocument,publishSiteDocument,saveSiteDraft,siteDraft,SITE_DRAFT_KEY,SITE_PREVIEW_MESSAGE,type SiteBlockKind,type SiteDocument,type SitePage,type SiteTheme} from "./marketingSiteConfig";
 
 type Inspector="page"|"block"|"object"|"design";
+type StudioHistoryEntry={doc:SiteDocument;page:string;block:string|null;object:string|null;inspector:Inspector};
 type LibraryMode="blocks"|"kits";
 type Device="desktop"|"tablet"|"phone";
 const builtin=new Set<string>(BUILTIN_SITE_PAGES);
@@ -46,6 +48,7 @@ export default function LektrusSiteBuilder(){
  const [libraryMode,setLibraryMode]=useState<LibraryMode>("kits");
  const [pageSearch,setPageSearch]=useState("");
  const [focusMode,setFocusMode]=useState(false);
+ const [showShortcuts,setShowShortcuts]=useState(false);
  const [panelOpen,setPanelOpen]=useState(false);
  const [newTitle,setNewTitle]=useState("");
  const [notice,setNotice]=useState("");
@@ -54,8 +57,9 @@ export default function LektrusSiteBuilder(){
  const frame=useRef<HTMLIFrameElement>(null);
  const file=useRef<HTMLInputElement>(null);
  const hadInitialDraft=useRef(Boolean(localStorage.getItem(SITE_DRAFT_KEY)));
- const undo=useRef<SiteDocument[]>([]);
- const redo=useRef<SiteDocument[]>([]);
+ const undo=useRef<StudioHistoryEntry[]>([]);
+ const redo=useRef<StudioHistoryEntry[]>([]);
+ const lastEdit=useRef<{group:string;at:number}|null>(null);
  const drag=useRef<string|null>(null);
  const blockDrag=useRef<string|null>(null);
  const activePage=basePage(doc,active);
@@ -80,15 +84,22 @@ export default function LektrusSiteBuilder(){
  },[access]);
  useEffect(()=>{if(access!=="allowed")return;saveSiteDraft(doc);frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc,selectedId:selected,objectId:selectedObject,interactive},window.location.origin)},[doc,access,selected,selectedObject,interactive]);
 
- const change=(edit:(next:SiteDocument)=>void)=>{
-  undo.current.push(clone(doc));if(undo.current.length>60)undo.current.shift();
-  redo.current=[];const next=clone(doc);edit(next);setDoc(normalizeSiteDocument(next));setSaved("draft");setNotice("");
+ const snapshot=():StudioHistoryEntry=>({doc:clone(doc),page:active,block:selected,object:selectedObject,inspector});
+ const change=(edit:(next:SiteDocument)=>void,group?:string)=>{
+  const now=Date.now();
+  const coalesce=Boolean(group&&lastEdit.current?.group===group&&now-lastEdit.current.at<900);
+  if(!coalesce){undo.current.push(snapshot());if(undo.current.length>60)undo.current.shift()}
+  redo.current=[];lastEdit.current=group?{group,at:now}:null;
+  const next=clone(doc);edit(next);setDoc(normalizeSiteDocument(next));setSaved("draft");setNotice("");
  };
  const history=(direction:"undo"|"redo")=>{
   const from=direction==="undo"?undo.current:redo.current;
   const to=direction==="undo"?redo.current:undo.current;
   const value=from.pop();if(!value)return;
-  to.push(clone(doc));setDoc(value);setSaved("draft");setSelected(null);
+  to.push(snapshot());lastEdit.current=null;
+  setDoc(value.doc);setSaved("draft");setActive(value.page);
+  setSelected(value.block);setSelectedObject(value.object);setInspector(value.inspector);
+  setNotice(direction==="undo"?"Последнее действие отменено.":"Действие повторено.");
  };
  const patchPage=(patch:Partial<SitePage>)=>change(next=>{
   if(builtin.has(active))next.pages[active]={...basePage(next,active),...patch};
@@ -96,19 +107,23 @@ export default function LektrusSiteBuilder(){
  });
  const patchBlock=(patch:Record<string,unknown>)=>{
   if(!activeBlock)return;
+  const field=Object.keys(patch);
+  const group=field.length===1&&["title","text","image","href","buttonLabel","items","style"].includes(field[0])?"block:"+active+":"+selected+":"+field[0]:undefined;
   change(next=>{
    const p=basePage(next,active);
    const update={...p,blocks:p.blocks.map(b=>b.id===selected?{...b,...patch}:b)};
    if(builtin.has(active))next.pages[active]=update;
    else next.customPages=next.customPages.map(x=>x.id===active?update:x);
-  });
+  },group);
  };
  const patchObject=(patch:Record<string,unknown>)=>{
   if(!selectedObject)return;
+  const fields=Object.keys(patch);
+  const group=fields.length===1&&["text","src","alt","href","style"].includes(fields[0])?"object:"+selectedObject+":"+fields[0]:undefined;
   change(next=>{
    const old=next.objects[selectedObject]??{};
    next.objects[selectedObject]={...old,...patch,style:{...old.style,...(patch.style as Record<string,unknown>||{})}};
-  });
+  },group);
  };
  const resetObject=()=>{
   if(!selectedObject)return;
@@ -158,13 +173,14 @@ export default function LektrusSiteBuilder(){
    if(event.data?.type==="lektrus:site-navigate"&&typeof event.data.page==="string"&&doc.navigation.some(item=>item.id===event.data.page)){
     setActive(event.data.page);setSelected(null);setSelectedObject(null);setInspector("page");
    }
+   if(event.data?.type==="lektrus:site-editor-command"&&typeof event.data.command==="string"&&["undo","redo","delete","escape","save"].includes(event.data.command))runCommand(event.data.command as StudioCommand);
    if(event.data?.type==="lektrus:site-preview-link"&&typeof event.data.href==="string"){
     setNotice("Это ссылка на другую страницу: "+event.data.href.slice(0,120)+". Переход отключён в предпросмотре.");
    }
   };
   window.addEventListener("message",choose);
   return ()=>window.removeEventListener("message",choose);
- },[doc,active]);
+ },[doc,active,selected,selectedObject,access,busy,focusMode,panelOpen]);
 
  const addBlock=(kind:SiteBlockKind)=>{
   const block=newSiteBlock(kind);
