@@ -53,7 +53,7 @@ export function SiteResizableBlock({block,selected,preview,children}:{block:Site
   event.preventDefault();event.stopPropagation();
   resize.current=null;
   element.classList.remove("site-block-is-resizing");
-  element.draggable=preview;
+  element.draggable=preview&&!selected;
   const widthNext=clampSiteBlockWidth(Number(element.dataset.resizeWidth??width));
   const heightNext=clampSiteBlockHeight(Number(element.dataset.resizeHeight??height));
   delete element.dataset.resizeWidth;
@@ -68,9 +68,10 @@ export function SiteResizableBlock({block,selected,preview,children}:{block:Site
   if(preview)putSiteCanvasTransfer(event,{type:"move",id:block.id});
  };
  return <div ref={wrapper} className="site-editable-block" style={style} data-site-block-id={block.id}
-  data-site-selected={selected?"true":undefined} draggable={preview} onDragStart={stopDrag}>
+  data-site-selected={selected?"true":undefined} draggable={preview&&!selected} onDragStart={stopDrag}>
   {children}
   {preview&&<div className="site-block-editor-tools" data-site-editor-control>
+   {selected&&<button type="button" draggable data-site-editor-control className="site-block-move-button" title="Перетащить блок в другое место" aria-label="Перетащить блок" onDragStart={event=>{event.stopPropagation();putSiteCanvasTransfer(event,{type:"move",id:block.id})}}>⠿</button>}
    <button type="button" className="site-block-select-button" data-site-editor-control
     onClick={event=>{event.preventDefault();event.stopPropagation();select()}}
     title="Выбрать и изменить размер этого блока">▣ Блок</button>
@@ -83,6 +84,7 @@ export function SiteResizableBlock({block,selected,preview,children}:{block:Site
    title={direction==="x"?"Ширина":direction==="y"?"Высота":"Ширина и высота"}
    onPointerDown={event=>start(event,direction)}
    onPointerMove={move} onPointerUp={end} onPointerCancel={end}
+   onLostPointerCapture={event=>{if(resize.current?.pointerId===event.pointerId)end(event)}}
    onClick={event=>{event.preventDefault();event.stopPropagation()}}>
    <span aria-hidden="true">{direction==="x"?"↔":direction==="y"?"↕":"⤡"}</span>
   </button>)}
