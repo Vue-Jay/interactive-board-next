@@ -1,4 +1,6 @@
 import {useEffect,useRef,useState,type ChangeEvent} from "react";
+import {decodeSiteCanvasTransfer,putSiteCanvasTransfer,type SiteCanvasTransfer} from "./SiteCanvasDnD";
+import type {SiteObjectInfo} from "./SiteObjectLayer";
 import {getCurrentUser} from "./authStore";
 import {getAccountAccess} from "./accountRoleStore";
 import {isRemoteBackendEnabled} from "./backend";
@@ -7,7 +9,7 @@ import {SITE_SECTION_PRESETS,SITE_THEME_PRESETS} from "./siteStudioPresets";
 import {DEFAULT_SITE_BLOCK_STYLE,type SiteBlockStyle} from "./marketingSiteConfig";
 import {BUILTIN_SITE_PAGES,defaultSiteDocument,loadPublishedSiteDocument,newSiteBlock,normalizeSiteDocument,publishSiteDocument,saveSiteDraft,siteDraft,SITE_DRAFT_KEY,SITE_PREVIEW_MESSAGE,type SiteBlockKind,type SiteDocument,type SitePage,type SiteTheme} from "./marketingSiteConfig";
 
-type Inspector="page"|"block"|"design";
+type Inspector="page"|"block"|"object"|"design";
 type LibraryMode="blocks"|"kits";
 type Device="desktop"|"tablet"|"phone";
 const builtin=new Set<string>(BUILTIN_SITE_PAGES);
@@ -16,7 +18,11 @@ const kinds:{kind:SiteBlockKind;label:string;icon:string}[]=[
  {kind:"gallery",label:"Галерея",icon:"▦"},{kind:"cards",label:"Карточки",icon:"▤"},
  {kind:"cta",label:"Кнопка и призыв",icon:"↗"},{kind:"divider",label:"Разделитель",icon:"─"},
  {kind:"faq",label:"Вопросы и ответы",icon:"?"},{kind:"stats",label:"Цифры",icon:"№"},
- {kind:"quote",label:"Цитата",icon:"❞"}
+ {kind:"quote",label:"Цитата",icon:"❞"},
+ {kind:"video",label:"Видео",icon:"▶"},{kind:"timeline",label:"Этапы и история",icon:"≡"},
+ {kind:"comparison",label:"Сравнение",icon:"◫"},{kind:"logos",label:"Логотипы",icon:"◈"},
+ {kind:"spacer",label:"Пустое пространство",icon:"↕"},{kind:"checklist",label:"Список плюсов",icon:"✓"},
+ {kind:"button-row",label:"Несколько кнопок",icon:"▤"}
 ];
 const labelFor=(kind:SiteBlockKind)=>kinds.find(x=>x.kind===kind)?.label??kind;
 const basePage=(doc:SiteDocument,id:string):SitePage=>doc.customPages.find(x=>x.id===id)??doc.pages[id]??{
@@ -30,6 +36,11 @@ export default function LektrusSiteBuilder(){
  const [doc,setDoc]=useState<SiteDocument>(siteDraft);
  const [active,setActive]=useState("home");
  const [selected,setSelected]=useState<string|null>(null);
+ const [selectedObject,setSelectedObject]=useState<string|null>(null);
+ const [objectMeta,setObjectMeta]=useState<SiteObjectInfo|null>(null);
+ const [objectList,setObjectList]=useState<SiteObjectInfo[]>([]);
+ const [objectSearch,setObjectSearch]=useState("");
+ const [interactive,setInteractive]=useState(false);
  const [inspector,setInspector]=useState<Inspector>("page");
  const [device,setDevice]=useState<Device>("desktop");
  const [libraryMode,setLibraryMode]=useState<LibraryMode>("kits");
@@ -49,6 +60,9 @@ export default function LektrusSiteBuilder(){
  const blockDrag=useRef<string|null>(null);
  const activePage=basePage(doc,active);
  const activeBlock=activePage.blocks.find(x=>x.id===selected);
+ const activeObjectPatch=selectedObject?doc.objects[selectedObject]:undefined;
+ const anchorRank=(value?:string)=>value?.startsWith("before-")?Number(value.slice(7)):99;
+ const orderedBlocks=activePage.blocks.slice().sort((a,b)=>anchorRank(a.anchor)-anchorRank(b.anchor));
  useEffect(()=>{
   let alive=true;
   void Promise.all([getCurrentUser(),getAccountAccess()]).then(([user,role])=>{
@@ -64,23 +78,8 @@ export default function LektrusSiteBuilder(){
   }).catch(()=>{if(alive)setNotice("Опубликованная версия пока недоступна. Черновик сохраняется только в этом браузере.")});
   return ()=>{alive=false};
  },[access]);
- useEffect(()=>{if(access!=="allowed")return;saveSiteDraft(doc);frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc,selectedId:selected},window.location.origin)},[doc,access,selected]);
- useEffect(()=>{
-  const choose=(event:MessageEvent)=>{
-   if(event.origin!==window.location.origin||event.source!==frame.current?.contentWindow)return;
-   if(event.data?.type==="lektrus:site-select-block"&&typeof event.data.id==="string"){
-    setSelected(event.data.id);setInspector("block");setPanelOpen(true);
-   }
-   if(event.data?.type==="lektrus:site-select-page"){setSelected(null);setInspector("page");setPanelOpen(true)}
-   if(event.data?.type==="lektrus:site-navigate"&&typeof event.data.page==="string"&&doc.navigation.some(item=>item.id===event.data.page)){
-    setActive(event.data.page);setSelected(null);setInspector("page");
-   }
-   if(event.data?.type==="lektrus:site-preview-link"&&typeof event.data.href==="string"){
-    setNotice("Это ссылка на другую страницу: "+event.data.href.slice(0,120)+". Переход отключён в предпросмотре.");
-   }
-  };
-  window.addEventListener("message",choose);return()=>window.removeEventListener("message",choose);
- },[doc.navigation]);
+ useEffect(()=>{if(access!=="allowed")return;saveSiteDraft(doc);frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc,selectedId:selected,objectId:selectedObject,interactive},window.location.origin)},[doc,access,selected,selectedObject,interactive]);
+
  const change=(edit:(next:SiteDocument)=>void)=>{
   undo.current.push(clone(doc));if(undo.current.length>60)undo.current.shift();
   redo.current=[];const next=clone(doc);edit(next);setDoc(normalizeSiteDocument(next));setSaved("draft");setNotice("");
@@ -104,6 +103,69 @@ export default function LektrusSiteBuilder(){
    else next.customPages=next.customPages.map(x=>x.id===active?update:x);
   });
  };
+ const patchObject=(patch:Record<string,unknown>)=>{
+  if(!selectedObject)return;
+  change(next=>{
+   const old=next.objects[selectedObject]??{};
+   next.objects[selectedObject]={...old,...patch,style:{...old.style,...(patch.style as Record<string,unknown>||{})}};
+  });
+ };
+ const resetObject=()=>{
+  if(!selectedObject)return;
+  change(next=>{delete next.objects[selectedObject]});
+ };
+ const insertCanvasTransfer=(transfer:SiteCanvasTransfer,anchor:string,index:number)=>{
+  if(!/^(?:end|before-(?:[0-9]|[12][0-9]))$/.test(anchor))return;
+  const kit=transfer.type==="kit"?SITE_SECTION_PRESETS.find(item=>item.id===transfer.id):undefined;
+  if(transfer.type==="kit"&&!kit)return;
+  if(transfer.type==="block"&&!kinds.some(item=>item.kind===transfer.kind))return;
+  const moving=transfer.type==="move"?activePage.blocks.find(b=>b.id===transfer.id):undefined;
+  if(transfer.type==="move"&&!moving)return;
+  const added=transfer.type==="block"?[newSiteBlock(transfer.kind)]:transfer.type==="kit"?kit?.create()??[]:moving?[moving]:[];
+  if(!added.length||activePage.blocks.length+(moving?0:added.length)>40){setNotice("На странице не может быть больше 40 блоков.");return}
+  const items=activePage.blocks.filter(block=>block.id!==moving?.id);
+  const oldAnchor=moving?.anchor||"end";
+  const oldIndex=activePage.blocks.filter(x=>(x.anchor||"end")===oldAnchor).findIndex(x=>x.id===moving?.id);
+  const targetIndex=moving&&oldAnchor===anchor&&oldIndex>=0&&oldIndex<index?index-1:index;
+  const matching=items.map((block,i)=>(block.anchor||"end")===anchor?i:-1).filter(i=>i>=0);
+  const insertion=matching.length?targetIndex>=matching.length?matching[matching.length-1]+1:matching[Math.max(0,targetIndex)]:items.length;
+  const positioned=added.map(block=>({...block,anchor}));
+  items.splice(insertion,0,...positioned);
+  patchPage({blocks:items});
+  setSelected(positioned[0].id);setSelectedObject(null);setInspector("block");setPanelOpen(true);
+ };
+ useEffect(()=>{
+  const choose=(event:MessageEvent)=>{
+   if(event.origin!==window.location.origin||event.source!==frame.current?.contentWindow)return;
+   if(event.data?.type==="lektrus:site-select-block"&&typeof event.data.id==="string"){
+    setSelected(event.data.id);setSelectedObject(null);setInspector("block");setPanelOpen(true);
+   }
+   if(event.data?.type==="lektrus:site-select-page"){setSelected(null);setSelectedObject(null);setInspector("page");setPanelOpen(true)}
+   if(event.data?.type==="lektrus:site-select-object"){
+    const info=event.data.info as SiteObjectInfo|undefined;
+    if(info&&typeof info.id==="string"&&/^(?:global|[a-z][a-z0-9-]{0,39}):[a-z0-9_/.-]{1,180}$/.test(info.id)){
+     setSelectedObject(info.id);setObjectMeta(info);setSelected(null);setInspector("object");setPanelOpen(true);
+    }
+   }
+   if(event.data?.type==="lektrus:site-object-list"&&event.data.page===active&&Array.isArray(event.data.objects)){
+    setObjectList((event.data.objects as SiteObjectInfo[]).filter(item=>item&&typeof item.id==="string").slice(0,700));
+   }
+   if(event.data?.type==="lektrus:site-canvas-drop"&&event.data.page===active){
+    const transfer=decodeSiteCanvasTransfer(JSON.stringify(event.data.transfer));
+    const anchor=event.data.anchor,index=event.data.index;
+    if(transfer&&typeof anchor==="string"&&Number.isInteger(index)&&index>=0&&index<=40)insertCanvasTransfer(transfer,anchor,index);
+   }
+   if(event.data?.type==="lektrus:site-navigate"&&typeof event.data.page==="string"&&doc.navigation.some(item=>item.id===event.data.page)){
+    setActive(event.data.page);setSelected(null);setSelectedObject(null);setInspector("page");
+   }
+   if(event.data?.type==="lektrus:site-preview-link"&&typeof event.data.href==="string"){
+    setNotice("Это ссылка на другую страницу: "+event.data.href.slice(0,120)+". Переход отключён в предпросмотре.");
+   }
+  };
+  window.addEventListener("message",choose);
+  return ()=>window.removeEventListener("message",choose);
+ },[doc,active]);
+
  const addBlock=(kind:SiteBlockKind)=>{
   const block=newSiteBlock(kind);
   change(next=>{
@@ -113,9 +175,11 @@ export default function LektrusSiteBuilder(){
   });
   setSelected(block.id);setInspector("block");
  };
- const moveBlock=(index:number,offset:number)=>{
-  const newIndex=index+offset;if(newIndex<0||newIndex>=activePage.blocks.length)return;
-  const blocks=activePage.blocks.slice();[blocks[index],blocks[newIndex]]=[blocks[newIndex],blocks[index]];
+ const moveBlock=(id:string,offset:number)=>{
+  const index=orderedBlocks.findIndex(block=>block.id===id),target=orderedBlocks[index+offset],block=orderedBlocks[index];
+  if(!block||!target||(block.anchor||"end")!==(target.anchor||"end"))return;
+  const blocks=activePage.blocks.slice(),i=blocks.findIndex(x=>x.id===id),j=blocks.findIndex(x=>x.id===target.id);
+  [blocks[i],blocks[j]]=[blocks[j],blocks[i]];
   patchPage({blocks});
  };
  const moveBlockTo=(source:string,target:string)=>{
@@ -123,7 +187,8 @@ export default function LektrusSiteBuilder(){
   const blocks=activePage.blocks.slice(),i=blocks.findIndex(x=>x.id===source),j=blocks.findIndex(x=>x.id===target);
   if(i<0||j<0)return;
   const [item]=blocks.splice(i,1);
-  blocks.splice(j,0,item);patchPage({blocks});
+  const anchor=activePage.blocks.find(x=>x.id===target)?.anchor||"end";
+  blocks.splice(j,0,{...item,anchor});patchPage({blocks});
  };
  const addSectionKit=(id:string)=>{
   const kit=SITE_SECTION_PRESETS.find(item=>item.id===id);
@@ -148,7 +213,7 @@ export default function LektrusSiteBuilder(){
    next.customPages.push({id,title,eyebrow:"LEKTRUS",heading:title,lead:"Расскажите о вашем разделе.",blocks:[]});
    next.navigation.push({id,title,hidden:false});
   });
-  setNewTitle("");setActive(id);setSelected(null);setInspector("page");
+  setNewTitle("");setActive(id);setSelected(null);setSelectedObject(null);setInspector("page");
  };
  const duplicatePage=()=>{
   if(doc.customPages.length>=18){setNotice("Достигнут лимит: 18 дополнительных страниц.");return}
@@ -162,7 +227,7 @@ export default function LektrusSiteBuilder(){
     blocks:sourceBlocks.map(block=>({...structuredClone(block),id:crypto.randomUUID()}))});
    next.navigation.push({id,title,hidden:false});
   });
-  setActive(id);setSelected(null);setInspector("page");setPanelOpen(true);
+  setActive(id);setSelected(null);setSelectedObject(null);setInspector("page");setPanelOpen(true);
   if(originalBuiltin)setNotice("Создана независимая страница с редактируемыми блоками. Уникальный исходный макет этой вкладки остался без изменений.");
  };
  const removePage=()=>{
@@ -170,7 +235,7 @@ export default function LektrusSiteBuilder(){
   const id=active;change(next=>{
    next.customPages=next.customPages.filter(p=>p.id!==id);
    next.navigation=next.navigation.filter(x=>x.id!==id);
-  });setActive("home");setSelected(null);
+  });setActive("home");setSelected(null);setSelectedObject(null);
  };
  const renameNav=(title:string)=>change(next=>{
   next.navigation=next.navigation.map(item=>item.id===active?{...item,title:title.slice(0,54)}:item);
@@ -245,36 +310,36 @@ export default function LektrusSiteBuilder(){
      <p>Перетаскивай страницы, чтобы менять порядок вкладок.</p>
      <input className="site-builder-page-search" aria-label="Найти страницу" placeholder="⌕  Найти страницу..." value={pageSearch} onChange={e=>setPageSearch(e.target.value)}/>
      <nav className="site-builder-page-list" aria-label="Страницы сайта">{doc.navigation.filter(item=>item.title.toLowerCase().includes(pageSearch.trim().toLowerCase())).map(item=><div key={item.id} draggable onDragStart={()=>{drag.current=item.id}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(drag.current)moveNav(drag.current,item.id);drag.current=null}}>
-      <button type="button" className={active===item.id?"selected":""} onClick={()=>{setActive(item.id);setSelected(null);setInspector("page")}}><span className="site-builder-handle">⠿</span><span>{item.title}</span>{item.hidden&&<span title="Скрыта">◌</span>}</button>
+      <button type="button" className={active===item.id?"selected":""} onClick={()=>{setActive(item.id);setSelected(null);setSelectedObject(null);setInspector("page")}}><span className="site-builder-handle">⠿</span><span>{item.title}</span>{item.hidden&&<span title="Скрыта">◌</span>}</button>
       <button type="button" title={item.hidden?"Показать вкладку":"Скрыть вкладку"} disabled={item.id==="home"} onClick={()=>change(next=>{next.navigation=next.navigation.map(x=>x.id===item.id?{...x,hidden:!x.hidden}:x)})}>{item.hidden?"◉":"◌"}</button>
      </div>)}</nav>
      <form className="site-builder-add-page" onSubmit={e=>{e.preventDefault();addPage()}}><input aria-label="Название новой страницы" placeholder="Новая страница…" value={newTitle} onChange={e=>setNewTitle(e.target.value)}/><button type="submit" disabled={doc.customPages.length>=18}>+</button></form>
     </section>
-    <section><h2>Блоки страницы <span>{activePage.blocks.length}</span></h2>
-     <div className="site-builder-block-list">{activePage.blocks.map((block,i)=><div key={block.id} className={selected===block.id?"selected":""} draggable
-       onDragStart={()=>{blockDrag.current=block.id}}
+    <section><h2>Блоки страницы <span>{activePage.blocks.length}</span></h2><p>Зажми блок или готовую секцию и перетащи на сайт, в подсвеченное место. Обычный клик добавляет в конец.</p>
+     <div className="site-builder-block-list">{orderedBlocks.map((block,i)=><div key={block.id} className={selected===block.id?"selected":""} draggable
+       onDragStart={event=>{blockDrag.current=block.id;putSiteCanvasTransfer(event,{type:"move",id:block.id})}}
        onDragOver={e=>e.preventDefault()}
        onDrop={e=>{e.preventDefault();if(blockDrag.current)moveBlockTo(blockDrag.current,block.id);blockDrag.current=null}}
        onDragEnd={()=>{blockDrag.current=null}}>
-      <button type="button" onClick={()=>{setSelected(block.id);setInspector("block")}}>{labelFor(block.kind)} <small>{block.title}</small></button>
-      <button type="button" disabled={i===0} title="Выше" onClick={()=>moveBlock(i,-1)}>↑</button>
-      <button type="button" disabled={i===activePage.blocks.length-1} title="Ниже" onClick={()=>moveBlock(i,1)}>↓</button>
+      <button type="button" onClick={()=>{setSelected(block.id);setSelectedObject(null);setInspector("block")}}>{labelFor(block.kind)} <small>{block.title}</small><small>{block.anchor&&block.anchor!=="end"?"Перед разделом "+(Number(block.anchor.slice(7))+1):"В конце страницы"}</small></button>
+      <button type="button" disabled={i===0||(orderedBlocks[i-1]?.anchor||"end")!==(block.anchor||"end")} title="Выше внутри секции" onClick={()=>moveBlock(block.id,-1)}>↑</button>
+      <button type="button" disabled={i===orderedBlocks.length-1||(orderedBlocks[i+1]?.anchor||"end")!==(block.anchor||"end")} title="Ниже внутри секции" onClick={()=>moveBlock(block.id,1)}>↓</button>
      </div>)}</div>
      <div className="site-builder-library-switch" role="group" aria-label="Библиотека секций">
       <button type="button" aria-pressed={libraryMode==="kits"} className={libraryMode==="kits"?"active":""} onClick={()=>setLibraryMode("kits")}>Готовые секции</button>
       <button type="button" aria-pressed={libraryMode==="blocks"} className={libraryMode==="blocks"?"active":""} onClick={()=>setLibraryMode("blocks")}>Все блоки</button>
      </div>
-     {libraryMode==="blocks"?<div className="site-builder-library">{kinds.map(item=><button type="button" key={item.kind} disabled={activePage.blocks.length>=40} onClick={()=>addBlock(item.kind)}><b>{item.icon}</b>{item.label}</button>)}</div>:
-      <div className="site-builder-kits">{SITE_SECTION_PRESETS.map(kit=><button type="button" key={kit.id} disabled={activePage.blocks.length>=40} onClick={()=>addSectionKit(kit.id)}><span className="site-builder-kit-icon">{kit.symbol}</span><span><strong>{kit.title}</strong><small>{kit.description}</small></span><span aria-hidden="true">＋</span></button>)}</div>}
+     {libraryMode==="blocks"?<div className="site-builder-library">{kinds.map(item=><button type="button" key={item.kind} draggable disabled={activePage.blocks.length>=40} onDragStart={event=>putSiteCanvasTransfer(event,{type:"block",kind:item.kind})} title="Перетащи в нужное место сайта или нажми для добавления в конец" onClick={()=>addBlock(item.kind)}><b>{item.icon}</b>{item.label}</button>)}</div>:
+      <div className="site-builder-kits">{SITE_SECTION_PRESETS.map(kit=><button type="button" key={kit.id} draggable disabled={activePage.blocks.length>=40} onDragStart={event=>putSiteCanvasTransfer(event,{type:"kit",id:kit.id})} title="Перетащи на страницу или нажми для добавления" onClick={()=>addSectionKit(kit.id)}><span className="site-builder-kit-icon">{kit.symbol}</span><span><strong>{kit.title}</strong><small>{kit.description}</small></span><span aria-hidden="true">＋</span></button>)}</div>}
     </section>
    </aside>
    <main className="site-builder-center"><div className="site-builder-previewbar"><span><b className="site-builder-live-dot"/> Живой предпросмотр <span className="site-builder-preview-separator">/</span> {size[device].label} <span className="site-builder-preview-separator">/</span> {activePage.title}</span>
-     <div className="site-builder-preview-actions"><button type="button" onClick={()=>{setFocusMode(v=>!v);setPanelOpen(false)}}>{focusMode?"⊟ Вернуться в редактор":"⛶ Фокус на сайте"}</button><button type="button" onClick={()=>{setPanelOpen(v=>!v);setFocusMode(false)}} aria-expanded={panelOpen} title="Показать свойства">⚙ Свойства</button></div>
+     <div className="site-builder-preview-actions"><button type="button" className={interactive?"is-active":""} aria-pressed={interactive} onClick={()=>setInteractive(v=>!v)}>{interactive?"✥ Редактировать объекты":"▶ Проверять клики"}</button><button type="button" onClick={()=>{setFocusMode(v=>!v);setPanelOpen(false)}}>{focusMode?"⊟ Вернуться в редактор":"⛶ Фокус на сайте"}</button><button type="button" onClick={()=>{setPanelOpen(v=>!v);setFocusMode(false)}} aria-expanded={panelOpen} title="Показать свойства">⚙ Свойства</button></div>
     </div>
-    <div className="site-builder-stage"><iframe key={active} ref={frame} title="Предпросмотр сайта Lektrus" src={previewSrc} style={{width:size[device].width}} onLoad={()=>frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc,selectedId:selected},window.location.origin)}/></div>
+    <div className="site-builder-stage"><iframe key={active} ref={frame} title="Предпросмотр сайта Lektrus" src={previewSrc} style={{width:size[device].width}} onLoad={()=>frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc,selectedId:selected,objectId:selectedObject,interactive},window.location.origin)}/></div>
    </main>
    <aside className={"site-builder-right"+(panelOpen?" is-open":" is-collapsed")} aria-label="Настройки">
-    <div className="site-builder-inspect-tabs">{(["page","block","design"] as Inspector[]).map((tab,i)=><button key={tab} type="button" className={inspector===tab?"active":""} onClick={()=>setInspector(tab)}>{["Страница","Блок","Дизайн"][i]}</button>)}</div>
+    <div className="site-builder-inspect-tabs">{(["page","block","object","design"] as Inspector[]).map((tab,i)=><button key={tab} type="button" className={inspector===tab?"active":""} onClick={()=>setInspector(tab)}>{["Страница","Блок","Объект","Дизайн"][i]}</button>)}</div>
     {inspector==="page"&&<div className="site-builder-fields"><h2>Настройка страницы</h2>
      <label>Название вкладки<input value={doc.navigation.find(x=>x.id===active)?.title??""} onChange={e=>renameNav(e.target.value)}/></label>
      <label>Надпись над заголовком<input value={activePage.eyebrow} placeholder="Используется исходная" onChange={e=>patchPage({eyebrow:e.target.value})}/></label>
@@ -293,29 +358,65 @@ export default function LektrusSiteBuilder(){
       {activeBlock.kind!=="divider"&&<label>Текст<textarea rows={5} value={activeBlock.text} onChange={e=>patchBlock({text:e.target.value})}/></label>}
       {activeBlock.kind==="image"&&<label>Адрес изображения<input value={activeBlock.image} placeholder="/site/board-math.png" onChange={e=>patchBlock({image:e.target.value})}/></label>}
       {activeBlock.kind==="image"&&<SiteImageChooser onChoose={url=>patchBlock({image:url})}/>}
-      {activeBlock.kind==="gallery"&&<SiteImageChooser onChoose={url=>{
+      {["gallery","logos"].includes(activeBlock.kind)&&<SiteImageChooser onChoose={url=>{
        if(activeBlock.items.length>=12){setNotice("В одной галерее максимум 12 изображений");return}
        patchBlock({items:[...activeBlock.items,url]});
       }}/>}
       
-      {["image","cta"].includes(activeBlock.kind)&&<label>Адрес ссылки<input value={activeBlock.href} placeholder="/app" onChange={e=>patchBlock({href:e.target.value})}/></label>}
-      {["gallery","cards","faq","stats"].includes(activeBlock.kind)&&<label>{
+      {["image","cta","video"].includes(activeBlock.kind)&&<label>{activeBlock.kind==="video"?"Ссылка YouTube или Vimeo":"Адрес ссылки"}<input value={activeBlock.href} placeholder={activeBlock.kind==="video"?"https://www.youtube.com/watch?v=...":"/app"} onChange={e=>patchBlock({href:e.target.value})}/></label>}
+      {["gallery","cards","faq","stats","timeline","comparison","logos","checklist","button-row"].includes(activeBlock.kind)&&<label>{
        activeBlock.kind==="gallery"?"Изображения (один URL на строку)":
        activeBlock.kind==="faq"?"Вопрос | Ответ (каждая пара с новой строки)":
-       activeBlock.kind==="stats"?"Число | Подпись (каждая пара с новой строки)":"Карточки (каждая с новой строки)"
+       activeBlock.kind==="stats"?"Число | Подпись (каждая пара с новой строки)":
+        activeBlock.kind==="timeline"?"Этап | Описание (по строке)":
+        activeBlock.kind==="comparison"?"Вариант | Описание (по строке)":
+        activeBlock.kind==="button-row"?"Текст кнопки | Адрес ссылки":
+        activeBlock.kind==="logos"?"Ссылки на логотипы (по одной на строку)":
+        activeBlock.kind==="checklist"?"Пункты списка (по одному на строку)":"Карточки (каждая с новой строки)"
       }<textarea rows={8} value={activeBlock.items.join("\n")} onChange={e=>patchBlock({items:e.target.value.split("\n").slice(0,12)})}/></label>}
       {["image","cta"].includes(activeBlock.kind)&&<label>Текст кнопки<input value={activeBlock.buttonLabel} maxLength={45} onChange={e=>patchBlock({buttonLabel:e.target.value})}/></label>}
       <div className="site-builder-appearance"><h3>Оформление блока</h3>
        <label>Стиль фона<select value={activeBlock.style?.tone??DEFAULT_SITE_BLOCK_STYLE.tone} onChange={e=>patchBlock({style:{...activeBlock.style,tone:e.target.value as SiteBlockStyle["tone"]}})}><option value="plain">Прозрачный</option><option value="soft">Мягкий</option><option value="accent">Акцентный</option><option value="dark">Тёмный</option></select></label>
        <label>Выравнивание<select value={activeBlock.style?.align??"left"} onChange={e=>patchBlock({style:{...activeBlock.style,align:e.target.value as SiteBlockStyle["align"]}})}><option value="left">По левому краю</option><option value="center">По центру</option></select></label>
        <label>Отступы<select value={activeBlock.style?.spacing??"normal"} onChange={e=>patchBlock({style:{...activeBlock.style,spacing:e.target.value as SiteBlockStyle["spacing"]}})}><option value="compact">Компактные</option><option value="normal">Обычные</option><option value="airy">Просторные</option></select></label>
-       {["cards","gallery","stats"].includes(activeBlock.kind)&&<label>Колонки<select value={activeBlock.style?.columns??3} onChange={e=>patchBlock({style:{...activeBlock.style,columns:Number(e.target.value)}})}><option value={2}>2 колонки</option><option value={3}>3 колонки</option><option value={4}>4 колонки</option></select></label>}
+       {["cards","gallery","stats","logos"].includes(activeBlock.kind)&&<label>Колонки<select value={activeBlock.style?.columns??3} onChange={e=>patchBlock({style:{...activeBlock.style,columns:Number(e.target.value)}})}><option value={2}>2 колонки</option><option value={3}>3 колонки</option><option value={4}>4 колонки</option></select></label>}
        {activeBlock.kind==="image"&&<label>Положение изображения<select value={activeBlock.style?.imageSide??"left"} onChange={e=>patchBlock({style:{...activeBlock.style,imageSide:e.target.value as SiteBlockStyle["imageSide"]}})}><option value="left">Слева</option><option value="right">Справа</option></select></label>}
       </div>
       <button type="button" className="site-builder-neutral" disabled={activePage.blocks.length>=40} onClick={duplicateBlock}>Дублировать блок</button>
       <button type="button" className="site-builder-danger" onClick={deleteBlock}>Удалить блок</button></>}
     </div>}
-    {inspector==="design"&&<div className="site-builder-fields"><h2>Оформление сайта</h2><p>Цвета и размеры действуют на все вкладки. Их содержимое остаётся самостоятельным.</p>
+    {inspector==="object"&&<div className="site-builder-fields site-builder-object-fields">
+     <h2>Элементы сайта <span>{objectList.length}</span></h2>
+     <p>Выбери любой заголовок, текст, изображение, кнопку, ссылку, карточку или секцию прямо на странице. Это работает и в стандартных макетах.</p>
+     {selectedObject&&objectMeta&&<>
+      <div className="site-builder-object-heading"><strong>{objectMeta.label}</strong><small>{objectMeta.id}</small></div>
+      {objectMeta.canText&&<label>Текст элемента<textarea rows={4} value={activeObjectPatch?.text??objectMeta.text} onChange={e=>patchObject({text:e.target.value})}/></label>}
+      {objectMeta.tag==="IMG"&&<><label>Адрес изображения<input value={activeObjectPatch?.src??objectMeta.src} onChange={e=>patchObject({src:e.target.value})}/></label>
+       <label>Описание для доступности<input value={activeObjectPatch?.alt??objectMeta.alt} onChange={e=>patchObject({alt:e.target.value})}/></label>
+       <SiteImageChooser onChoose={url=>patchObject({src:url})}/></>}
+      {objectMeta.tag==="A"&&<label>Адрес ссылки<input value={activeObjectPatch?.href??objectMeta.href} onChange={e=>patchObject({href:e.target.value})}/></label>}
+      <label className="site-builder-object-switch"><input type="checkbox" checked={activeObjectPatch?.hidden===true} onChange={e=>patchObject({hidden:e.target.checked})}/> Скрыть этот элемент</label>
+      <h3 className="site-builder-subtitle">Внешний вид элемента</h3>
+      <div className="site-builder-object-colors">
+       <label>Текст<input aria-label="Цвет текста" type="color" value={activeObjectPatch?.style?.color??"#122238"} onChange={e=>patchObject({style:{color:e.target.value}})}/></label>
+       <label>Фон<input aria-label="Цвет фона" type="color" value={activeObjectPatch?.style?.background??"#ffffff"} onChange={e=>patchObject({style:{background:e.target.value}})}/></label>
+      </div>
+      <label>Размер шрифта (пиксели)<input type="number" min="8" max="120" value={activeObjectPatch?.style?.fontSize??16} onChange={e=>patchObject({style:{fontSize:Number(e.target.value)}})}/></label>
+      <label>Насыщенность<select value={activeObjectPatch?.style?.fontWeight??"normal"} onChange={e=>patchObject({style:{fontWeight:e.target.value}})}><option value="normal">Обычная</option><option value="medium">Средняя</option><option value="bold">Жирная</option></select></label>
+      <label>Выравнивание<select value={activeObjectPatch?.style?.textAlign??"left"} onChange={e=>patchObject({style:{textAlign:e.target.value}})}><option value="left">Слева</option><option value="center">По центру</option><option value="right">Справа</option></select></label>
+      <label>Внутренние отступы: {activeObjectPatch?.style?.padding??0} px<input type="range" min="0" max="100" value={activeObjectPatch?.style?.padding??0} onChange={e=>patchObject({style:{padding:Number(e.target.value)}})}/></label>
+      <label>Скругление: {activeObjectPatch?.style?.radius??0} px<input type="range" min="0" max="80" value={activeObjectPatch?.style?.radius??0} onChange={e=>patchObject({style:{radius:Number(e.target.value)}})}/></label>
+      <label>Ширина: {activeObjectPatch?.style?.width??100}%<input type="range" min="20" max="100" value={activeObjectPatch?.style?.width??100} onChange={e=>patchObject({style:{width:Number(e.target.value)}})}/></label>
+      <label>Непрозрачность: {Math.round((activeObjectPatch?.style?.opacity??1)*100)}%<input type="range" min="10" max="100" value={Math.round((activeObjectPatch?.style?.opacity??1)*100)} onChange={e=>patchObject({style:{opacity:Number(e.target.value)/100}})}/></label>
+      <button type="button" className="site-builder-neutral" onClick={resetObject}>Вернуть исходный вид объекта</button>
+     </>}
+     <details className="site-builder-object-tree" open={!selectedObject}>
+      <summary>Список объектов страницы</summary>
+      <input placeholder="Поиск объектов..." value={objectSearch} onChange={e=>setObjectSearch(e.target.value)}/>
+      <div>{objectList.filter(info=>!objectSearch||[info.label,info.text,info.id].some(value=>value.toLowerCase().includes(objectSearch.toLowerCase()))).slice(0,180).map(info=><button type="button" key={info.id} className={selectedObject===info.id?"active":""} onClick={()=>{setSelectedObject(info.id);setObjectMeta(info);setSelected(null);setInspector("object");frame.current?.contentWindow?.postMessage({type:"lektrus:site-focus-object",id:info.id},window.location.origin)}}><strong>{info.label}</strong><small>{info.text||info.alt||info.id}</small>{doc.objects[info.id]?.hidden&&<span title="Скрыт">◌</span>}</button>)}</div>
+     </details>
+    </div>}
+   {inspector==="design"&&<div className="site-builder-fields"><h2>Оформление сайта</h2><p>Цвета и размеры действуют на все вкладки. Их содержимое остаётся самостоятельным.</p>
      <h3 className="site-builder-subtitle">Готовые палитры</h3>
      <div className="site-builder-theme-presets">{SITE_THEME_PRESETS.map(preset=><button type="button" key={preset.id} onClick={()=>change(next=>{next.theme={...preset.theme}})} title={preset.note}><span className="site-builder-theme-swatches"><i style={{background:preset.theme.accent}}/><i style={{background:preset.theme.background}}/><i style={{background:preset.theme.ink}}/></span><strong>{preset.title}</strong><small>{preset.note}</small></button>)}</div>
      {([["accent","Акцентный цвет"],["background","Фон страницы"],["surface","Поверхность карточек"],["ink","Основной текст"]] as [keyof SiteTheme,string][]).map(([key,label])=><label key={key}>{label}<span className="site-builder-color"><input type="color" value={String(doc.theme[key])} onChange={e=>change(next=>{(next.theme as unknown as Record<string,unknown>)[key]=e.target.value})}/><code>{doc.theme[key]}</code></span></label>)}

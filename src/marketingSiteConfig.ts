@@ -3,14 +3,16 @@ import {isRemoteBackendEnabled,remoteRequest} from "./backend";
 export const SITE_DRAFT_KEY="lektrus.marketing-site.draft.v1";
 export const SITE_PREVIEW_MESSAGE="lektrus:marketing-site-preview";
 export const BUILTIN_SITE_PAGES=["home","features","teachers","students","how","pricing","about","help"] as const;
-export type SiteBlockKind="text"|"image"|"cards"|"gallery"|"cta"|"divider"|"faq"|"stats"|"quote";
+export type SiteBlockKind="text"|"image"|"cards"|"gallery"|"cta"|"divider"|"faq"|"stats"|"quote"|"video"|"timeline"|"comparison"|"logos"|"spacer"|"checklist"|"button-row";
 export type SiteBlockStyle={tone:"plain"|"soft"|"accent"|"dark";align:"left"|"center";spacing:"compact"|"normal"|"airy";columns:2|3|4;imageSide:"left"|"right"};
 export const DEFAULT_SITE_BLOCK_STYLE:SiteBlockStyle={tone:"plain",align:"left",spacing:"normal",columns:3,imageSide:"left"};
-export type SiteBlock={id:string;kind:SiteBlockKind;title:string;text:string;image:string;href:string;items:string[];buttonLabel:string;style:SiteBlockStyle};
+export type SiteBlock={id:string;kind:SiteBlockKind;title:string;text:string;image:string;href:string;items:string[];buttonLabel:string;style:SiteBlockStyle;anchor?:string};
+export type SiteObjectStyle={color?:string;background?:string;fontSize?:number;fontWeight?:"normal"|"medium"|"bold";textAlign?:"left"|"center"|"right";padding?:number;radius?:number;opacity?:number;width?:number};
+export type SiteObjectPatch={text?:string;src?:string;alt?:string;href?:string;hidden?:boolean;style?:SiteObjectStyle};
 export type SitePage={id:string;title:string;eyebrow:string;heading:string;lead:string;replaceDefault?:boolean;blocks:SiteBlock[]};
 export type SiteNavItem={id:string;title:string;hidden:boolean};
 export type SiteTheme={accent:string;background:string;surface:string;ink:string;radius:number;maxWidth:number};
-export type SiteDocument={version:1;theme:SiteTheme;navigation:SiteNavItem[];pages:Record<string,SitePage>;customPages:SitePage[]};
+export type SiteDocument={version:1;theme:SiteTheme;navigation:SiteNavItem[];pages:Record<string,SitePage>;customPages:SitePage[];objects:Record<string,SiteObjectPatch>};
 const defaults:SiteNavItem[]=[
  {id:"home",title:"Главная",hidden:false},
  {id:"features",title:"Возможности",hidden:false},
@@ -29,25 +31,30 @@ const int=(v:unknown,min:number,max:number,fallback:number)=>typeof v==="number"
 const slug=(v:unknown)=>typeof v==="string"&&/^[a-z][a-z0-9-]{0,39}$/.test(v)?v:"";
 export const newSiteBlock=(kind:SiteBlockKind="text"):SiteBlock=>({
  id:crypto.randomUUID(),kind,
- title:kind==="cta"?"Попробуйте Lektrus":kind==="gallery"?"Учебные инструменты":kind==="image"?"Снимок приложения":kind==="faq"?"Частые вопросы":kind==="stats"?"Цифры и факты":kind==="quote"?"Слова наших пользователей":"Новый блок",
+ title:kind==="cta"?"Попробуйте Lektrus":kind==="gallery"?"Учебные инструменты":kind==="image"?"Снимок приложения":kind==="faq"?"Частые вопросы":kind==="stats"?"Цифры и факты":kind==="quote"?"Слова наших пользователей":kind==="video"?"Видео о проекте":kind==="timeline"?"Наш путь":kind==="comparison"?"Сравните возможности":kind==="logos"?"Нам доверяют":kind==="checklist"?"Что вы получаете":kind==="button-row"?"Полезные ссылки":"Новый блок",
  text:kind==="text"?"Здесь можно написать свой текст.":kind==="cta"?"Начните работу с интерактивной доской.":kind==="quote"?"Добавьте здесь реальную цитату пользователя или ваш ключевой тезис.":"",
  image:"/site/board-math.png",href:"/app",
  items:kind==="cards"?["Первое преимущество","Вторая возможность","Третий шаг"]:
  kind==="faq"?["Как начать работу? | Откройте Lektrus и создайте доску.","Что можно настроить? | Страницы, разделы, оформление и изображения."]:
  kind==="stats"?["01 | Ваш показатель","02 | Ещё один показатель","03 | Третий показатель"]:
+ kind==="timeline"?["Первый этап | Расскажите, с чего всё началось","Следующий шаг | Что изменилось","Сегодня | К чему вы пришли"]:
+ kind==="comparison"?["Первый вариант | Главное преимущество","Второй вариант | Другой подход"]:
+ kind==="checklist"?["Простой старт","Удобная настройка","Гибкая работа"]:
+ kind==="button-row"?["Открыть Lektrus | /app","Попробовать доску | /demo/board?scene=math"]:
+ kind==="logos"?["/lektrus-icon-192.png"]:
  ["/site/board-math.png","/site/board-chemistry.png","/site/board-geometry.png"],
- buttonLabel:kind==="image"?"Подробнее":"Перейти",style:{...DEFAULT_SITE_BLOCK_STYLE}
+ buttonLabel:kind==="image"?"Подробнее":"Перейти",style:{...DEFAULT_SITE_BLOCK_STYLE},anchor:"end"
 });
 export const newSitePage=(id:string,title="Новая страница"):SitePage=>({id,title,eyebrow:"LEKTRUS",heading:title,lead:"Расскажите посетителям об этом разделе.",blocks:[newSiteBlock("text")]});
 export const defaultSiteDocument=():SiteDocument=>({
- version:1,theme:{...baseTheme},navigation:defaults.map(x=>({...x})),pages:{},customPages:[]
+ version:1,theme:{...baseTheme},navigation:defaults.map(x=>({...x})),pages:{},customPages:[],objects:{}
 });
 export const safeSiteUrl=(value:string):string=>{
  if(value.startsWith("/")&&!value.startsWith("//")&&!value.includes("\\"))return value;
  if(value.startsWith("#")&&/^#[a-z][a-z0-9-]{0,39}$/.test(value))return value;
  try{const url=new URL(value);return url.protocol==="https:"||url.protocol==="http:"?url.toString():"#"}catch{return "#"}
 };
-const kinds:SiteBlockKind[]=["text","image","cards","gallery","cta","divider","faq","stats","quote"];
+const kinds:SiteBlockKind[]=["text","image","cards","gallery","cta","divider","faq","stats","quote","video","timeline","comparison","logos","spacer","checklist","button-row"];
 export function normalizeSiteDocument(raw:unknown):SiteDocument{
  const data=object(raw),result=defaultSiteDocument(),t=object(data.theme);
  result.theme={
@@ -72,7 +79,8 @@ export function normalizeSiteDocument(raw:unknown):SiteDocument{
   };
   return {id:original||crypto.randomUUID(),kind,title:clean(v.title,160),text:clean(v.text,4000),
    image:safeSiteUrl(clean(v.image,900)),href:safeSiteUrl(clean(v.href,900)),buttonLabel:clean(v.buttonLabel,45)||(kind==="image"?"Подробнее":"Перейти"),style,
-   items:Array.isArray(v.items)?v.items.slice(0,12).map(x=>kind==="cards"||kind==="faq"||kind==="stats"?clean(x,420):safeSiteUrl(clean(x,900))).filter(x=>Boolean(x)&&x!=="#"):[]};
+   anchor:typeof v.anchor==="string"&&/^(?:end|before-(?:[0-9]|[12][0-9]))$/.test(v.anchor)?v.anchor:"end",
+   items:Array.isArray(v.items)?v.items.slice(0,12).map(x=>kind==="cards"||kind==="faq"||kind==="stats"||kind==="timeline"||kind==="comparison"||kind==="checklist"||kind==="button-row"?clean(x,420):safeSiteUrl(clean(x,900))).filter(x=>Boolean(x)&&x!=="#"):[]};
  };
  const parsePage=(value:unknown,id:string,defaultTitle=""):SitePage=>{
   const v=object(value);
@@ -101,6 +109,29 @@ export function normalizeSiteDocument(raw:unknown):SiteDocument{
  }
  for(const [id,base] of byId)if(!used.has(id))nav.push({...base});
  result.navigation=nav;
+ const rawObjects=object(data.objects),keys=Object.keys(rawObjects).slice(0,1000);
+ for(const key of keys){
+  if(!/^(?:global|[a-z][a-z0-9-]{0,39}):[a-z0-9_/.-]{1,180}$/.test(key))continue;
+  const patch=object(rawObjects[key]),appearance=object(patch.style);
+  const normalized:SiteObjectPatch={};
+  if("text" in patch)normalized.text=clean(patch.text,2000);
+  if("src" in patch)normalized.src=safeSiteUrl(clean(patch.src,900));
+  if("alt" in patch)normalized.alt=clean(patch.alt,200);
+  if("href" in patch)normalized.href=safeSiteUrl(clean(patch.href,900));
+  if(patch.hidden===true)normalized.hidden=true;
+  const st:SiteObjectStyle={};
+  if(appearance.color)st.color=color(appearance.color,"#122238");
+  if(appearance.background)st.background=color(appearance.background,"#ffffff");
+  if(appearance.fontSize!==undefined)st.fontSize=int(appearance.fontSize,8,120,16);
+  if(appearance.padding!==undefined)st.padding=int(appearance.padding,0,100,0);
+  if(appearance.radius!==undefined)st.radius=int(appearance.radius,0,80,0);
+  if(appearance.opacity!==undefined&&typeof appearance.opacity==="number"&&Number.isFinite(appearance.opacity))st.opacity=Math.max(0.1,Math.min(1,appearance.opacity));
+  if(appearance.width!==undefined)st.width=int(appearance.width,20,100,100);
+  if(["normal","medium","bold"].includes(String(appearance.fontWeight)))st.fontWeight=appearance.fontWeight as SiteObjectStyle["fontWeight"];
+  if(["left","center","right"].includes(String(appearance.textAlign)))st.textAlign=appearance.textAlign as SiteObjectStyle["textAlign"];
+  if(Object.keys(st).length)normalized.style=st;
+  if(Object.keys(normalized).length)result.objects[key]=normalized;
+ }
  return result;
 }
 export const siteDraft=():SiteDocument=>{

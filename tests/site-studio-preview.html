@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Lektrus Site Studio browser smoke (test only)</title>
+<style>body{margin:0;font:14px system-ui;background:#e6edf7;color:#183453}header{height:54px;background:#142640;color:white;display:flex;align-items:center;gap:14px;padding:0 20px}button{padding:11px 20px;border:1px solid #8fc0ff;background:#fff;color:#16458f;border-radius:9px;cursor:grab}iframe{display:block;width:calc(100% - 50px);height:720px;margin:20px 25px;border:1px solid #aabfdc;border-radius:12px;background:white}</style>
+</head>
+<body>
+<header><b>Тест предпросмотра Lektrus</b><button id="drag-new" draggable="true">Перетащить блок</button><button id="drag-kit" draggable="true">Перетащить секцию</button><span id="status">Страница загружается…</span></header>
+<iframe id="site" title="Тестовая страница" src="/?site-preview=1#home"></iframe>
+<script>
+const doc={
+ version:1,
+ theme:{accent:"#2563eb",background:"#f8fafc",surface:"#ffffff",ink:"#122238",radius:18,maxWidth:1200},
+ navigation:[{id:"home",title:"Главная",hidden:false}],
+ pages:{home:{id:"home",title:"Главная",eyebrow:"",heading:"",lead:"",blocks:[]}},
+ customPages:[],objects:{}
+};
+const frame=document.getElementById("site"),status=document.getElementById("status");
+const send=()=>frame.contentWindow.postMessage({type:"lektrus:marketing-site-preview",document:doc,selectedId:null,objectId:window.lastObjectId||null},location.origin);
+frame.addEventListener("load",()=>{send();status.textContent="Предпросмотр готов"});
+document.querySelectorAll("[draggable=true]").forEach(button=>button.addEventListener("dragstart",event=>{
+ const transfer=button.id==="drag-kit"?{type:"kit",id:"gallery"}:{type:"block",kind:"text"};
+ event.dataTransfer.setData("application/x-lektrus-site-block",JSON.stringify(transfer));
+ event.dataTransfer.setData("text/plain",JSON.stringify(transfer));
+ event.dataTransfer.effectAllowed="copy";
+}));
+window.addEventListener("message",event=>{
+ if(event.origin!==location.origin||event.source!==frame.contentWindow)return;
+ const message=event.data||{};
+ if(message.type==="lektrus:site-canvas-drop"){
+  const item=message.transfer||{};
+  const itemId="dragged-"+Date.now();
+  if(item.type==="block"&&item.kind==="text")doc.pages.home.blocks.push({
+   id:itemId,kind:"text",title:"Перенесённый блок",text:"Перетаскивание сработало",image:"",href:"",
+   buttonLabel:"Перейти",style:{tone:"plain",align:"left",spacing:"normal",columns:3,imageSide:"left"},anchor:message.anchor,items:[]
+  });
+  if(item.type==="kit"&&item.id==="gallery")doc.pages.home.blocks.push({
+   id:itemId,kind:"gallery",title:"Галерея из библиотеки",text:"Настоящие снимки",image:"",href:"",
+   buttonLabel:"Перейти",style:{tone:"soft",align:"left",spacing:"normal",columns:2,imageSide:"left"},anchor:message.anchor,
+   items:["/site/board-math.png","/site/board-chemistry.png"]
+  });
+  document.body.dataset.lastDrop=String(message.anchor);
+  status.textContent="Блок вставлен: "+message.anchor;
+  send();
+ }
+ if(message.type==="lektrus:site-select-object"&&message.info?.id){
+  window.lastObjectId=message.info.id;
+  document.body.dataset.objectSelected=message.info.id;
+  doc.objects[message.info.id]={text:"Отредактировано прямо на странице",style:{color:"#db3928",fontSize:33}};
+  status.textContent="Объект изменён";
+  send();
+ }
+});
+window.getSiteDraft=()=>doc;
+</script>
+</body>
+</html>

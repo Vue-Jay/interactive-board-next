@@ -1,0 +1,58 @@
+name: Site Studio browser acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/LektrusSiteBuilder*'
+      - 'src/LektrusPublicSite.tsx'
+      - 'src/SiteEditableSections.tsx'
+      - 'src/SiteCanvasDnD.tsx'
+      - 'src/SiteObjectLayer.tsx'
+      - 'src/marketingSiteConfig.ts'
+      - 'src/lektrusMarketing.css'
+      - 'src/siteStudioPresets.ts'
+      - 'scripts/test-lektrus-marketing-site.mjs'
+      - 'tests/site-studio-*'
+      - '.github/workflows/site-studio-browser.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install frontend dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Build editor and check marketing design regression
+        run: |
+          npm run build
+          npm run test:product-screens
+      - name: Install browser
+        run: |
+          python3 -m venv /tmp/lektrus-site-playwright
+          /tmp/lektrus-site-playwright/bin/pip -q install playwright==1.64.1
+          /tmp/lektrus-site-playwright/bin/python -m playwright install --with-deps chromium
+      - name: Drag sections and edit objects in actual Chromium
+        run: |
+          npm run dev -- --host 127.0.0.1 > /tmp/lektrus-site-vite.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173/tests/site-studio-preview.html > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5173/tests/site-studio-preview.html > /dev/null
+          /tmp/lektrus-site-playwright/bin/python tests/site-studio-browser-smoke.py
+      - name: Upload actual screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-studio-browser-proof
+          path: artifacts/site-studio/*.png
+          if-no-files-found: warn

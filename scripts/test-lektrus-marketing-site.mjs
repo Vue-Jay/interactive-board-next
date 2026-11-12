@@ -141,4 +141,40 @@ const unsafe=model.normalizeSiteDocument({...oldDocument,pages:{
 assert.equal(unsafe.pages.home.blocks[0].image,"#","untrusted image URLs must remain blocked");
 assert.equal(unsafe.pages.home.blocks[0].href,"#","untrusted button URLs must remain blocked");
 
+
+// Canvas editor v3: exact drop targets, per-element editing, legacy defaults and safe embeds.
+const canvas=read("src/SiteCanvasDnD.tsx");
+const objectLayer=read("src/SiteObjectLayer.tsx");
+const presets=read("src/siteStudioPresets.ts");
+assert.ok(builder.includes('putSiteCanvasTransfer(event,{type:"block"')&&builder.includes('putSiteCanvasTransfer(event,{type:"kit"'),"palette and presets must be draggable");
+assert.ok(builder.includes("insertCanvasTransfer(")&&builder.includes('event.data?.type==="lektrus:site-canvas-drop"'),"cross-iframe drop must update the document");
+assert.ok(canvas.includes("event.dataTransfer.getData(SITE_CANVAS_MIME)")&&canvas.includes("SiteDropZone"),"canvas drop zones must actually read HTML5 drag payloads");
+assert.ok(site.includes('placed("before-0")')&&site.includes('placed("end")')&&site.includes("SiteAnchorSlot"),"native sections and page end must accept new blocks");
+for(const id of ["home","features","teachers","students","how","pricing","about","help"]){
+ assert.ok(site.includes('page==="'+id+'"'),"no dropped content page should disappear: "+id);
+}
+assert.ok(objectLayer.includes("data-site-object-id")&&objectLayer.includes("applyObjectPatch")&&objectLayer.includes("site-select-object"),"DOM object inspector must connect clicks to persisted overrides");
+assert.ok(builder.includes("resetObject")&&builder.includes("patchObject")&&builder.includes('inspector==="object"'),"object fields and reset control must exist");
+for(const kind of ["video","timeline","comparison","logos","spacer","checklist","button-row"]){
+ assert.ok(config.includes('"'+kind+'"')&&blocks.includes('block.kind==="'+kind+'"'),"missing added section kind: "+kind);
+}
+assert.ok(blocks.includes("youtube-nocookie.com/embed")&&blocks.includes("player.vimeo.com/video"),"video embeds must only use trusted providers");
+assert.ok(presets.includes("how-it-works")&&presets.includes("media")&&presets.includes("partners"),"curated new kits must be available");
+const movedBlock=model.newSiteBlock("timeline");
+movedBlock.anchor="before-2";
+const obj=model.normalizeSiteDocument({...oldDocument,pages:{home:{...oldDocument.pages.home,blocks:[movedBlock]}},objects:{
+ "home:native-0/root/0":{text:"Новый заголовок",style:{fontSize:34,color:"#2864ee",padding:18,width:75}},
+ "global:footer/root/0":{hidden:true},
+ "home:native-1/root":{src:"javascript:alert(1)",href:"javascript:alert(2)",style:{fontSize:900,opacity:-2}}
+}});
+assert.equal(obj.pages.home.blocks[0].anchor,"before-2","dropped position must survive publication normalization");
+assert.equal(obj.pages.home.blocks[0].kind,"timeline","new block kind must survive a published document");
+assert.equal(obj.objects["home:native-0/root/0"].text,"Новый заголовок","object text must persist");
+assert.equal(obj.objects["home:native-0/root/0"].style.fontSize,34,"object font size must persist");
+assert.equal(obj.objects["global:footer/root/0"].hidden,true,"global objects must have persisted visibility");
+assert.equal(obj.objects["home:native-1/root"].src,"#","JS scheme in image must be rejected");
+assert.equal(obj.objects["home:native-1/root"].href,"#","JS scheme in link must be rejected");
+assert.equal(obj.objects["home:native-1/root"].style.fontSize,120,"oversized style input must be clamped");
+assert.equal(obj.objects["home:native-1/root"].style.opacity,.1,"invalid opacity must be clamped");
+
 console.log("Lektrus marketing site: selected copy, 8 sections, real screenshots, demo links, pricing, accessibility and responsive styling verified.");
