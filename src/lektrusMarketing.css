@@ -633,3 +633,10 @@ body:has(.marketing-site:not(.site-preview)) .site-editable-block:hover{outline:
 .site-preview.site-preview-interactive .site-block-editor-tools,.site-preview.site-preview-interactive .site-block-resize-handle{display:none}
 @media(max-width:580px){.site-preview .site-block-resize-handle{width:29px;height:29px}.site-preview .site-block-editor-tools{top:4px;left:4px}.site-preview .site-block-select-button{padding:5px 7px}}
 @media(prefers-reduced-motion:reduce){.site-preview .site-block-select-button{transition:none}}
+
+/* Selected blocks resize without accidentally starting an HTML5 drag.
+   Use the dedicated grip to reposition a selected block. */
+.site-preview .site-block-move-button{display:grid;place-items:center;pointer-events:auto;cursor:grab;border:1px solid #82a9e7;border-radius:7px;background:#e7f2ff;color:#145cb8;width:29px;height:29px;font-size:19px;box-shadow:0 5px 14px #244e8e30}
+.site-preview .site-block-move-button:active{cursor:grabbing}
+.site-preview .site-block-move-button:hover{background:#d4e8ff}
+.site-preview .site-block-move-button:focus-visible{outline:3px solid #91c6ff;outline-offset:2px}
