@@ -69,4 +69,17 @@ assert.ok(config.includes("normalizeSiteDocument")&&config.includes("safeSiteUrl
 assert.ok(blocks.includes("data-site-block-id")&&site.includes("SITE_PREVIEW_MESSAGE"),"preview needs editable block selection");
 assert.ok(site.includes("marketing-teacher-scene")&&site.includes("marketing-student-demo"),"builder must keep distinct original page templates");
 
+
+// Website builder media and per-page redesign safety.
+const media=read("src/SiteImageChooser.tsx");
+const images=read("src/marketingSiteImages.ts");
+const assetSql=read("supabase/v258_marketing_site_assets.sql");
+assert.ok(builder.includes("replaceDefault")&&site.includes("!copy?.replaceDefault"),"built-in layouts must be replaceable per page without deleting the original");
+assert.ok(builder.includes("moveBlockTo(")&&builder.includes("duplicateBlock("),"blocks should support drag sorting and duplication");
+assert.ok(media.includes("SITE_LIBRARY_SHOTS")&&media.includes("uploadMarketingImage"),"image chooser must offer local snapshots and custom upload");
+assert.ok(images.includes("image/jpeg")&&images.includes("image/png")&&images.includes("image/webp"),"media upload must allow only safe image MIME types");
+assert.ok(images.includes("5*1024*1024")&&images.includes("getRemoteSession()"),"media upload requires file size limit and user auth");
+assert.ok(assetSql.includes("public.is_app_admin(auth.uid())"),"bucket writes must enforce admin rights");
+assert.ok(assetSql.includes("bucket_id='marketing-site'"),"media policies must be bucket-scoped");
+
 console.log("Lektrus marketing site: selected copy, 8 sections, real screenshots, demo links, pricing, accessibility and responsive styling verified.");
