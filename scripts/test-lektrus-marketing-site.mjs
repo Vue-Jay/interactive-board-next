@@ -177,4 +177,46 @@ assert.equal(obj.objects["home:native-1/root"].href,"#","JS scheme in link must 
 assert.equal(obj.objects["home:native-1/root"].style.fontSize,120,"oversized style input must be clamped");
 assert.equal(obj.objects["home:native-1/root"].style.opacity,.1,"invalid opacity must be clamped");
 
+
+// Site Studio keyboard operations: verify the real shared model, not only source strings.
+const shortcutSource=read("src/siteStudioCommands.ts");
+const shortcutJs=ts.transpileModule(shortcutSource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext},fileName:"siteStudioCommands.ts"}).outputText;
+const studioCommands=await import("data:text/javascript;base64,"+Buffer.from(shortcutJs).toString("base64"));
+const shortcut=(key,overrides={})=>studioCommands.getStudioCommand({
+ key,ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,editable:false,...overrides
+});
+assert.equal(shortcut("Delete"),"delete","Delete must remove the selected site object");
+assert.equal(shortcut("Backspace"),"delete","Backspace must remove the selected site object");
+assert.equal(shortcut("z",{ctrlKey:true}),"undo","Ctrl+Z must undo");
+assert.equal(shortcut("z",{ctrlKey:true,shiftKey:true}),"redo","Ctrl+Shift+Z must redo");
+assert.equal(shortcut("z",{metaKey:true,shiftKey:true}),"redo","Cmd+Shift+Z must redo on macOS");
+assert.equal(shortcut("y",{ctrlKey:true}),"redo","Ctrl+Y must redo");
+assert.equal(shortcut("s",{ctrlKey:true}),"save","Ctrl+S must explicitly save a local draft");
+assert.equal(shortcut("Escape"),"escape","Esc must clear selection");
+for(const key of ["Delete","Backspace","z","y","s"]){
+ assert.equal(shortcut(key,{ctrlKey:key==="z"||key==="y"||key==="s",editable:true}),null,"editing a text input must never trigger a site command: "+key);
+}
+assert.equal(shortcut("Delete",{isComposing:true}),null,"IME composition must never delete a block");
+assert.equal(shortcut("Backspace",{altKey:true}),null,"Alt+Backspace is not a canvas delete");
+assert.equal(shortcut("Backspace",{ctrlKey:true}),null,"Ctrl+Backspace must not accidentally delete blocks");
+const staged=model.defaultSiteDocument();
+const userBlock=model.newSiteBlock("text");
+staged.pages.home={id:"home",title:"Главная",eyebrow:"",heading:"",lead:"",blocks:[userBlock]};
+const nodeKey="home:native-0/root/0",blockKey="home:"+userBlock.id+"/root";
+staged.objects[nodeKey]={style:{fontSize:24}};
+staged.objects[blockKey]={text:"Текст блока"};
+assert.equal(studioCommands.deleteStudioSelection(staged,"home",null,nodeKey),"object");
+assert.equal(staged.objects[nodeKey].hidden,true,"native object must be reversibly hidden");
+assert.equal(studioCommands.restoreStudioObject(staged,nodeKey),true);
+assert.equal(staged.objects[nodeKey].hidden,undefined,"restoring must preserve other object styles");
+assert.equal(staged.objects[nodeKey].style.fontSize,24);
+assert.equal(studioCommands.deleteStudioSelection(staged,"home",userBlock.id,null),"block");
+assert.equal(staged.pages.home.blocks.length,0,"custom block must be removed from its own page");
+assert.equal(staged.objects[blockKey],undefined,"removed block's object overrides must be pruned");
+assert.equal(studioCommands.deleteStudioSelection(staged,"home",null,null),"none","keyboard Delete without selection must be harmless");
+assert.ok(builder.includes("site-builder-selection-toolbar")&&builder.includes("site-builder-shortcuts-panel"),"visible keyboard help and selection toolbar are required");
+assert.ok(builder.includes("setSelected(value.block)")&&builder.includes("setSelectedObject(value.object)"),"undo must restore selection, not only document");
+assert.ok(site.includes('lektrus:site-editor-command')&&site.includes("commandFromKeyboard(event)"),"the preview iframe must forward actual keyboard events");
+assert.ok(site.includes("site-canvas-selection-actions"),"the iframe needs visible delete, restore, undo and redo controls");
+
 console.log("Lektrus marketing site: selected copy, 8 sections, real screenshots, demo links, pricing, accessibility and responsive styling verified.");
