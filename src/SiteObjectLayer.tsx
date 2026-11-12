@@ -23,6 +23,7 @@ function objectDetails(element:Element,id:string):SiteObjectInfo{
 function applyObjectPatch(element:Element,patch:SiteObjectPatch|undefined){
  if(!(element instanceof HTMLElement||element instanceof SVGElement))return;
  let saved=originals.get(element);
+ if(!saved&&!patch)return; // never touch public DOM styles unless this object is actually customized
  if(!saved){
   const styles:Record<string,string>={};
   for(const field of stateFields)styles[field]=element.style.getPropertyValue(field);
