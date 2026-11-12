@@ -262,19 +262,28 @@ export default function LektrusPublicSite(){
     {placed("before-0")}
     <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container marketing-split-hero"><div><span className="marketing-eyebrow">{copy?.eyebrow||"Для преподавателей"}</span><h1>{copy?.heading||<>Преподавайте так, <span>как удобно именно вам</span></>}</h1><p>{copy?.lead||"Каждый урок требует своего подхода. Создавайте объяснения, показывайте наглядные модели и работайте с учениками на интерактивной доске."}</p><DemoLink className="marketing-primary">Открыть демонстрацию ↗</DemoLink></div><figure className="marketing-teacher-scene">
       <div className="marketing-teacher-window">
-       <div className="marketing-teacher-window-head"><span>Рабочее пространство Lektrus</span><span>01 / Подготовка</span></div>
-       <img src="/site/app-home.png" alt="Настоящий снимок рабочего стола преподавателя в Lektrus"/>
+       <div className="marketing-teacher-window-head"><span>План занятия</span><span>Подготовка / Проведение</span></div>
+       <div className="marketing-teacher-plan">
+        <span className="marketing-eyebrow">Урок в Lektrus</span>
+        <strong>От замысла до понятного объяснения</strong>
+        <div className="marketing-teacher-plan-items">
+         <div><span>01</span><strong>Материалы</strong><small>Тексты, изображения, задания</small></div>
+         <div><span>02</span><strong>Объяснение</strong><small>Записи и наглядные схемы</small></div>
+         <div><span>03</span><strong>Практика</strong><small>Совместная работа на доске</small></div>
+        </div>
+       </div>
       </div>
-      <div className="marketing-teacher-board-preview">
-       <img src="/site/board-math.png" alt="Подготовленный учебный материал по математике"/>
-       <div><small>Пример урока</small><strong>Объяснение и практика на одной доске</strong></div>
-      </div>
-      <figcaption>Настоящие экраны приложения: рабочий стол и подготовленный урок.</figcaption>
+      <div className="marketing-teacher-board-preview"><span>Всё в одном месте</span><strong>Подготовили → объяснили → сохранили</strong></div>
+      <figcaption>Понятная структура урока вместо набора разрозненных приложений.</figcaption>
      </figure></section>
     {placed("before-1")}
     <section data-site-section-id="native-1" className="marketing-section marketing-container"><div className="marketing-section-head"><div><span className="marketing-eyebrow">Подготовка урока</span><h2>Подготовьте урок и сохраните всё в одном месте</h2><p>Работайте с учебными материалами, схемами и предметными инструментами, а затем возвращайтесь к ним на следующих занятиях.</p></div></div><div className="marketing-story-grid">{teacherStories.map(item=><article key={item.number} className="marketing-story-card"><span className="marketing-number">{item.number}</span><h3>{item.title}</h3><p>{item.text}</p></article>)}</div></section>
     {placed("before-2")}
-    <section data-site-section-id="native-2" className="marketing-section marketing-container marketing-feature-spotlight"><img src="/site/board-physics.png" loading="lazy" alt="Учебная доска с электрической цепью"/><div><span className="marketing-eyebrow">Наглядность в действии</span><h2>Сделайте сложное понятным</h2><p>Показывайте не только результат, но и ход решения. Объединяйте записи, схемы и задания на общем поле.</p><DemoLink scene="physics" className="marketing-secondary">Посмотреть урок ↗</DemoLink></div></section>
+    <section data-site-section-id="native-2" className="marketing-section marketing-container marketing-feature-spotlight marketing-teacher-spotlight"><div className="marketing-classroom-map" aria-label="Этапы совместного занятия">
+      <div><span>Задача</span><strong>Что исследуем?</strong></div>
+      <div><span>Объяснение</span><strong>Как это работает?</strong></div>
+      <div><span>Практика</span><strong>Попробуем вместе.</strong></div>
+     </div><div><span className="marketing-eyebrow">Наглядность в действии</span><h2>Сделайте сложное понятным</h2><p>Показывайте не только результат, но и ход решения. Объединяйте записи, схемы и задания на общем поле.</p><DemoLink scene="physics" className="marketing-secondary">Открыть пример урока ↗</DemoLink></div></section>
    </>}
    {page==="students"&&!copy?.replaceDefault&&<>
     {placed("before-0")}
