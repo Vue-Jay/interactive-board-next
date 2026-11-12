@@ -25,6 +25,21 @@ export const SITE_SECTION_PRESETS:SiteSectionPreset[]=[
  {id:"story",title:"Цитата",description:"Большой выразительный отзыв",symbol:"❞",create:()=>[
   make("quote",{title:"Имя и роль автора",text:"Добавьте сюда настоящую цитату пользователя. Не публикуйте выдуманные отзывы."},{tone:"dark",align:"center",spacing:"airy"})
  ]},
+ {id:"how-it-works",title:"Пошаговый процесс",description:"Вертикальная лента шагов",symbol:"⇢",create:()=>[
+  make("timeline",{title:"Как всё устроено",text:"Три простых шага к результату.",items:["Начните | Подготовьте рабочее пространство.","Добавьте детали | Соберите нужные материалы.","Поделитесь | Работайте вместе."]},{tone:"soft",spacing:"airy"})
+ ]},
+ {id:"plans",title:"Сравнение",description:"Наглядные колонки для вариантов",symbol:"◫",create:()=>[
+  make("comparison",{title:"Найдите свой формат",text:"Сравните два или больше сценариев.",items:["Первый сценарий | Для индивидуальной работы.","Второй сценарий | Для команды и занятий."]},{spacing:"airy"})
+ ]},
+ {id:"why",title:"Список преимуществ",description:"Аккуратный список с галочками",symbol:"✓",create:()=>[
+  make("checklist",{title:"Всё под рукой",text:"Понятные причины выбрать именно ваш сервис.",items:["Настраиваемые страницы","Простое создание материалов","Совместная работа","Понятный интерфейс"]},{tone:"soft",spacing:"normal"})
+ ]},
+ {id:"media",title:"Видеообзор",description:"Видео рядом с описанием",symbol:"▶",create:()=>[
+  make("video",{title:"Посмотрите своими глазами",text:"Вставьте ссылку на своё видео YouTube или Vimeo. Пока ссылка не добавлена, блок показывает подсказку.",href:""},{spacing:"airy"})
+ ]},
+ {id:"partners",title:"Логотипы",description:"Стена партнёров и проектов",symbol:"◈",create:()=>[
+  make("logos",{title:"Наши проекты",text:"Замените пример на логотипы своих партнёров.",items:["/lektrus-icon-192.png"]},{align:"center",columns:3,spacing:"normal"})
+ ]},
  {id:"finish",title:"Финальный экран",description:"Заметный призыв к действию",symbol:"↗",create:()=>[
   make("cta",{title:"Попробуйте Lektrus",text:"Ваше пространство для живого обучения уже готово.",href:"/app",buttonLabel:"Начать работу"},{tone:"accent",align:"center",spacing:"airy"})
  ]}
