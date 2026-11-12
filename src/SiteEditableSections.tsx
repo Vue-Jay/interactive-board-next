@@ -1,7 +1,8 @@
 import {Fragment,type CSSProperties} from "react";
+import {SiteResizableBlock} from "./SiteResizableBlock";
 import type {SiteBlock,SitePage} from "./marketingSiteConfig";
 import {DEFAULT_SITE_BLOCK_STYLE,safeSiteUrl} from "./marketingSiteConfig";
-import {SiteDropZone,putSiteCanvasTransfer} from "./SiteCanvasDnD";
+import {SiteDropZone} from "./SiteCanvasDnD";
 
 const splitPair=(value:string):[string,string]=>{
  const at=value.indexOf(" | ");
@@ -86,10 +87,9 @@ function SiteBlockView({block}:{block:SiteBlock}){
 }
 export function SiteEditableBlocks({blocks,selectedId,page,anchor="end",preview=false}:{blocks:SiteBlock[];selectedId?:string|null;page?:string;anchor?:string;preview?:boolean}){
  return <>{page&&<SiteDropZone page={page} anchor={anchor} index={0} preview={preview}/>}
-  {blocks.map((block,index)=><Fragment key={block.id}><div className="site-editable-block" data-site-block-id={block.id} data-site-selected={selectedId===block.id?"true":undefined}
-   draggable={preview} onDragStart={event=>{if(preview)putSiteCanvasTransfer(event,{type:"move",id:block.id})}}>
+  {blocks.map((block,index)=><Fragment key={block.id}><SiteResizableBlock block={block} selected={selectedId===block.id} preview={preview}>
    <SiteBlockView block={block}/>
-   </div>
+   </SiteResizableBlock>
    {page&&<SiteDropZone page={page} anchor={anchor} index={index+1} preview={preview}/>}</Fragment>)}
  </>;
 }
