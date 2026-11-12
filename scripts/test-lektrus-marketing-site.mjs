@@ -86,4 +86,22 @@ assert.ok(config.includes('headers:{apikey:key,Accept:"application/json"}'),"pub
 
 assert.ok(assetSql.includes("bucket_id='marketing-site'"),"media policies must be bucket-scoped");
 
+
+// Studio v2: independently styled sections, curated presets, reversible editing and keyboard access.
+const kits=read("src/siteStudioPresets.ts");
+const studioCss=read("src/lektrusSiteBuilder.css");
+assert.ok(config.includes('|"faq"|"stats"|"quote"')&&config.includes("DEFAULT_SITE_BLOCK_STYLE"),"v2 content blocks need a normalized, backwards compatible model");
+assert.ok(config.includes("buttonLabel:clean(v.buttonLabel")&&config.includes("const style:SiteBlockStyle"),"imported v1 sites need safe defaults for new section controls");
+for(const name of ["site-block-faq-list","site-block-stats","site-block-quote","site-block-tone-"]){
+ assert.ok(blocks.includes(name)||css.includes(name),"v2 custom block rendering/style missing: "+name);
+}
+assert.ok(blocks.includes("<details key={i}>")&&blocks.includes("<summary>"),"FAQ uses accessible native accordion");
+assert.ok(kits.includes("SITE_SECTION_PRESETS")&&kits.includes("SITE_THEME_PRESETS")&&kits.includes("make(\"gallery\""),"ready-to-use section kits and theme palettes missing");
+assert.ok(builder.includes("addSectionKit")&&builder.includes("duplicatePage")&&builder.includes("site-builder-theme-presets"),"section insertion, page cloning and themes must be wired");
+assert.ok(builder.includes('event.key.toLowerCase()==="z"')&&builder.includes('event.key.toLowerCase()==="s"'),"keyboard undo and local draft save missing");
+assert.ok(builder.includes("focusMode")&&studioCss.includes(".site-builder.is-focus"),"distraction-free preview must hide the editor sidebars");
+assert.ok(builder.includes("site-builder-page-search")&&builder.includes("site-builder-appearance"),"page search and block appearance controls required");
+assert.ok(site.includes("previewSelection")&&site.includes("lektrus:site-select-page"),"preview must expose selected block and page headline click-to-edit");
+assert.ok(css.includes("body:has(.marketing-site:not(.site-preview)) .site-editable-block:hover"),"public visitor pages must not display editor hover outlines");
+
 console.log("Lektrus marketing site: selected copy, 8 sections, real screenshots, demo links, pricing, accessibility and responsive styling verified.");
