@@ -182,3 +182,34 @@
 /* Property drawer is an overlay only on narrow viewports; desktop inspector is always visible. */
 .site-builder-preview-actions button:last-child{display:none}
 @media(max-width:820px){.site-builder-preview-actions button:last-child{display:inline-flex}}
+
+
+/* Studio v3: drag-first palette and fine-grained object inspector. */
+.site-builder-library button[draggable=true],.site-builder-kits button[draggable=true],.site-builder-block-list [draggable=true]{cursor:grab}
+.site-builder-library button[draggable=true]:active,.site-builder-kits button[draggable=true]:active,.site-builder-block-list [draggable=true]:active{cursor:grabbing}
+.site-builder-library button[draggable=true]:hover,.site-builder-kits button[draggable=true]:hover{outline:2px solid #8cb7f3;outline-offset:1px}
+.site-builder-preview-actions button.is-active{color:#096b77;border-color:#8dcfc7;background:#e6fcf7}
+.site-builder-object-fields>p{margin-top:-7px}
+.site-builder-object-heading{display:grid;gap:7px;border-radius:13px;padding:15px;border:1px solid #bbd3f5;background:linear-gradient(110deg,#edf5ff,#f9fbff)}
+.site-builder-object-heading strong{font-size:14px;font-weight:850;color:#164a97}
+.site-builder-object-heading small{font-size:10px;line-height:1.6;color:#7286a1;overflow-wrap:anywhere}
+.site-builder-object-fields h2 span{font-size:11px;color:#627c9e;padding:4px 8px;background:#f0f5fd;border-radius:8px}
+.site-builder-object-switch{display:flex!important;flex-direction:row;align-items:center;gap:10px;padding:14px;border:1px solid #ead8ba;background:#fffaf1;border-radius:11px;cursor:pointer}
+.site-builder-object-switch input[type=checkbox]{width:18px;height:18px;accent-color:#e79b37}
+.site-builder-object-colors{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.site-builder-object-colors label{padding:10px;border:1px solid #dbe5f1;border-radius:10px;display:flex;align-items:center;justify-content:space-between}
+.site-builder-object-colors input[type=color]{width:45px;height:32px;cursor:pointer;border:0;padding:0;background:transparent}
+.site-builder-object-tree{border:1px solid #d9e4f2;background:#f9fbff;padding:12px;border-radius:13px}
+.site-builder-object-tree summary{cursor:pointer;font-size:12px;font-weight:800;color:#42658a;padding:5px 0 11px}
+.site-builder-object-tree>input{width:100%;border:1px solid #d2deef;background:white;border-radius:9px;padding:10px;font-size:12px;margin-bottom:10px}
+.site-builder-object-tree>div{display:grid;gap:4px;max-height:330px;overflow:auto}
+.site-builder-object-tree button{border:1px solid transparent;background:transparent;display:flex;gap:5px;align-items:center;text-align:left;border-radius:9px;padding:8px;font-size:11px;color:#3b5572}
+.site-builder-object-tree button strong{flex:none;min-width:60px;font-size:10px}
+.site-builder-object-tree button small{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;color:#8396ae}
+.site-builder-object-tree button:hover,.site-builder-object-tree button.active{border-color:#b1cefb;background:#eaf3ff;color:#145ac6}
+.site-builder-object-tree button span{color:#d18e20}
+.site-builder-inspect-tabs{gap:3px}
+.site-builder-inspect-tabs button{padding:11px 2px;min-width:0}
+.site-builder-previewbar{flex-wrap:wrap}
+.site-builder-preview-actions{flex-wrap:wrap}
+@media(max-width:580px){.site-builder-object-colors{grid-template-columns:1fr}.site-builder-previewbar{gap:5px}.site-builder-preview-actions button{font-size:9px}}
