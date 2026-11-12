@@ -3,15 +3,20 @@ import {getCurrentUser} from "./authStore";
 import {getAccountAccess} from "./accountRoleStore";
 import {isRemoteBackendEnabled} from "./backend";
 import SiteImageChooser from "./SiteImageChooser";
+import {SITE_SECTION_PRESETS,SITE_THEME_PRESETS} from "./siteStudioPresets";
+import {DEFAULT_SITE_BLOCK_STYLE,type SiteBlockStyle} from "./marketingSiteConfig";
 import {BUILTIN_SITE_PAGES,defaultSiteDocument,loadPublishedSiteDocument,newSiteBlock,normalizeSiteDocument,publishSiteDocument,saveSiteDraft,siteDraft,SITE_DRAFT_KEY,SITE_PREVIEW_MESSAGE,type SiteBlockKind,type SiteDocument,type SitePage,type SiteTheme} from "./marketingSiteConfig";
 
 type Inspector="page"|"block"|"design";
+type LibraryMode="blocks"|"kits";
 type Device="desktop"|"tablet"|"phone";
 const builtin=new Set<string>(BUILTIN_SITE_PAGES);
 const kinds:{kind:SiteBlockKind;label:string;icon:string}[]=[
  {kind:"text",label:"Текст",icon:"T"},{kind:"image",label:"Изображение",icon:"▧"},
  {kind:"gallery",label:"Галерея",icon:"▦"},{kind:"cards",label:"Карточки",icon:"▤"},
- {kind:"cta",label:"Кнопка и призыв",icon:"↗"},{kind:"divider",label:"Разделитель",icon:"─"}
+ {kind:"cta",label:"Кнопка и призыв",icon:"↗"},{kind:"divider",label:"Разделитель",icon:"─"},
+ {kind:"faq",label:"Вопросы и ответы",icon:"?"},{kind:"stats",label:"Цифры",icon:"№"},
+ {kind:"quote",label:"Цитата",icon:"❞"}
 ];
 const labelFor=(kind:SiteBlockKind)=>kinds.find(x=>x.kind===kind)?.label??kind;
 const basePage=(doc:SiteDocument,id:string):SitePage=>doc.customPages.find(x=>x.id===id)??doc.pages[id]??{
@@ -27,6 +32,10 @@ export default function LektrusSiteBuilder(){
  const [selected,setSelected]=useState<string|null>(null);
  const [inspector,setInspector]=useState<Inspector>("page");
  const [device,setDevice]=useState<Device>("desktop");
+ const [libraryMode,setLibraryMode]=useState<LibraryMode>("kits");
+ const [pageSearch,setPageSearch]=useState("");
+ const [focusMode,setFocusMode]=useState(false);
+ const [panelOpen,setPanelOpen]=useState(false);
  const [newTitle,setNewTitle]=useState("");
  const [notice,setNotice]=useState("");
  const [busy,setBusy]=useState(false);
@@ -55,7 +64,7 @@ export default function LektrusSiteBuilder(){
   }).catch(()=>{if(alive)setNotice("Опубликованная версия пока недоступна. Черновик сохраняется только в этом браузере.")});
   return ()=>{alive=false};
  },[access]);
- useEffect(()=>{if(access!=="allowed")return;saveSiteDraft(doc);frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc},window.location.origin)},[doc,access]);
+ useEffect(()=>{if(access!=="allowed")return;saveSiteDraft(doc);frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc,selectedId:selected},window.location.origin)},[doc,access,selected]);
  useEffect(()=>{
   const choose=(event:MessageEvent)=>{
    if(event.origin!==window.location.origin||event.source!==frame.current?.contentWindow)return;
@@ -109,6 +118,14 @@ export default function LektrusSiteBuilder(){
   const [item]=blocks.splice(i,1);
   blocks.splice(j,0,item);patchPage({blocks});
  };
+ const addSectionKit=(id:string)=>{
+  const kit=SITE_SECTION_PRESETS.find(item=>item.id===id);
+  if(!kit)return;
+  const blocks=kit.create();
+  if(activePage.blocks.length+blocks.length>40){setNotice("На одной странице максимум 40 блоков.");return}
+  patchPage({blocks:[...activePage.blocks,...blocks]});
+  setSelected(blocks[0].id);setInspector("block");setPanelOpen(true);
+ };
  const duplicateBlock=()=>{
   if(!activeBlock||activePage.blocks.length>=40)return;
   const copy={...structuredClone(activeBlock),id:crypto.randomUUID()};
@@ -125,6 +142,15 @@ export default function LektrusSiteBuilder(){
    next.navigation.push({id,title,hidden:false});
   });
   setNewTitle("");setActive(id);setSelected(null);setInspector("page");
+ };
+ const duplicatePage=()=>{
+  if(doc.customPages.length>=18){setNotice("Достигнут лимит: 18 дополнительных страниц.");return}
+  const id="page-"+crypto.randomUUID().slice(0,8),title=(activePage.title+" · копия").slice(0,54);
+  change(next=>{
+   next.customPages.push({...structuredClone(activePage),id,title,replaceDefault:false,blocks:activePage.blocks.map(block=>({...structuredClone(block),id:crypto.randomUUID()}))});
+   next.navigation.push({id,title,hidden:false});
+  });
+  setActive(id);setSelected(null);setInspector("page");setPanelOpen(true);
  };
  const removePage=()=>{
   if(builtin.has(active)||!window.confirm("Удалить страницу и все её блоки?"))return;
@@ -146,6 +172,21 @@ export default function LektrusSiteBuilder(){
   });
  };
  const previewSrc="/?site-preview=1#"+active;
+ useEffect(()=>{
+  const onKey=(event:KeyboardEvent)=>{
+   if(access!=="allowed")return;
+   const tag=event.target instanceof HTMLElement?event.target:null;
+   if(event.key==="Escape"){setFocusMode(false);setPanelOpen(false);return}
+   const cmd=event.ctrlKey||event.metaKey;
+   if(!cmd)return;
+   if(event.key.toLowerCase()==="s"){event.preventDefault();saveSiteDraft(doc);setNotice("Черновик сохранён в этом браузере.");return}
+   if(tag?.closest("input,textarea,select,[contenteditable=true]"))return;
+   if(event.key.toLowerCase()==="z"){event.preventDefault();history(event.shiftKey?"redo":"undo")}
+   if(event.key.toLowerCase()==="y"){event.preventDefault();history("redo")}
+  };
+  window.addEventListener("keydown",onKey);
+  return ()=>window.removeEventListener("keydown",onKey);
+ },[doc,access]);
  const publish=async()=>{setBusy(true);setNotice("");
   try{await publishSiteDocument(doc);setSaved("published");setNotice("Сайт опубликован. Изменения будут видны посетителям после обновления страницы.")}
   catch(e){setNotice(report(e)+". Черновик сохранён локально, опубликованный сайт не изменился.")}
@@ -173,10 +214,10 @@ export default function LektrusSiteBuilder(){
   }catch(e){setNotice("Ошибка импорта: "+report(e))}
  };
  if(access!=="allowed")return <main className="site-builder-guard"><h1>Конструктор сайта Lektrus</h1><p>{access==="checking"?"Проверка прав администратора…":"Доступен только администратору Lektrus после входа в приложение."}</p><a href="/app">Перейти в приложение</a></main>;
- return <div className="site-builder">
+ return <div className={"site-builder"+(focusMode?" is-focus":"")}>
   <header className="site-builder-top">
    <a className="site-builder-back" href="/app">← Lektrus</a>
-   <div className="site-builder-heading"><strong>Конструктор сайта</strong><small>{saved==="published"?"Опубликовано":"Черновик сохраняется автоматически"}</small></div>
+   <div className="site-builder-heading"><span className="site-builder-studio-label">LEKTRUS / DESIGN STUDIO</span><strong>Конструктор сайта</strong><small><span className={"site-builder-status-dot"+(saved==="published"?" published":"")}/>{saved==="published"?"Опубликовано":"Черновик сохраняется автоматически"}</small></div>
    <div className="site-builder-history"><button type="button" disabled={!undo.current.length} onClick={()=>history("undo")} title="Отменить">↶</button><button type="button" disabled={!redo.current.length} onClick={()=>history("redo")} title="Повторить">↷</button></div>
    <div className="site-builder-device">{(["desktop","tablet","phone"] as Device[]).map(value=><button key={value} type="button" aria-pressed={device===value} className={device===value?"active":""} onClick={()=>setDevice(value)}>{size[value].label}</button>)}</div>
    <button type="button" className="site-builder-neutral" onClick={exportJson}>Экспорт</button>
@@ -189,7 +230,8 @@ export default function LektrusSiteBuilder(){
    <aside className="site-builder-left" aria-label="Страницы и блоки">
     <section><h2>Страницы <span>{doc.navigation.length}</span></h2>
      <p>Перетаскивай страницы, чтобы менять порядок вкладок.</p>
-     <nav className="site-builder-page-list" aria-label="Страницы сайта">{doc.navigation.map(item=><div key={item.id} draggable onDragStart={()=>{drag.current=item.id}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(drag.current)moveNav(drag.current,item.id);drag.current=null}}>
+     <input className="site-builder-page-search" aria-label="Найти страницу" placeholder="⌕  Найти страницу..." value={pageSearch} onChange={e=>setPageSearch(e.target.value)}/>
+     <nav className="site-builder-page-list" aria-label="Страницы сайта">{doc.navigation.filter(item=>item.title.toLowerCase().includes(pageSearch.trim().toLowerCase())).map(item=><div key={item.id} draggable onDragStart={()=>{drag.current=item.id}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(drag.current)moveNav(drag.current,item.id);drag.current=null}}>
       <button type="button" className={active===item.id?"selected":""} onClick={()=>{setActive(item.id);setSelected(null);setInspector("page")}}><span className="site-builder-handle">⠿</span><span>{item.title}</span>{item.hidden&&<span title="Скрыта">◌</span>}</button>
       <button type="button" title={item.hidden?"Показать вкладку":"Скрыть вкладку"} disabled={item.id==="home"} onClick={()=>change(next=>{next.navigation=next.navigation.map(x=>x.id===item.id?{...x,hidden:!x.hidden}:x)})}>{item.hidden?"◉":"◌"}</button>
      </div>)}</nav>
@@ -205,13 +247,20 @@ export default function LektrusSiteBuilder(){
       <button type="button" disabled={i===0} title="Выше" onClick={()=>moveBlock(i,-1)}>↑</button>
       <button type="button" disabled={i===activePage.blocks.length-1} title="Ниже" onClick={()=>moveBlock(i,1)}>↓</button>
      </div>)}</div>
-     <h3>Добавить блок</h3><div className="site-builder-library">{kinds.map(item=><button type="button" key={item.kind} disabled={activePage.blocks.length>=40} onClick={()=>addBlock(item.kind)}><b>{item.icon}</b>{item.label}</button>)}</div>
+     <div className="site-builder-library-switch" role="group" aria-label="Библиотека секций">
+      <button type="button" aria-pressed={libraryMode==="kits"} className={libraryMode==="kits"?"active":""} onClick={()=>setLibraryMode("kits")}>Готовые секции</button>
+      <button type="button" aria-pressed={libraryMode==="blocks"} className={libraryMode==="blocks"?"active":""} onClick={()=>setLibraryMode("blocks")}>Все блоки</button>
+     </div>
+     {libraryMode==="blocks"?<div className="site-builder-library">{kinds.map(item=><button type="button" key={item.kind} disabled={activePage.blocks.length>=40} onClick={()=>addBlock(item.kind)}><b>{item.icon}</b>{item.label}</button>)}</div>:
+      <div className="site-builder-kits">{SITE_SECTION_PRESETS.map(kit=><button type="button" key={kit.id} disabled={activePage.blocks.length>=40} onClick={()=>addSectionKit(kit.id)}><span className="site-builder-kit-icon">{kit.symbol}</span><span><strong>{kit.title}</strong><small>{kit.description}</small></span><span aria-hidden="true">＋</span></button>)}</div>}
     </section>
    </aside>
-   <main className="site-builder-center"><div className="site-builder-previewbar"><span>Предпросмотр • {size[device].label} • {activePage.title}</span><a href={"/?site-preview=1#"+active} target="_blank" rel="noreferrer">Открыть отдельно ↗</a></div>
-    <div className="site-builder-stage"><iframe key={active} ref={frame} title="Предпросмотр сайта Lektrus" src={previewSrc} style={{width:size[device].width}} onLoad={()=>frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc},window.location.origin)}/></div>
+   <main className="site-builder-center"><div className="site-builder-previewbar"><span><b className="site-builder-live-dot"/> Живой предпросмотр <span className="site-builder-preview-separator">/</span> {size[device].label} <span className="site-builder-preview-separator">/</span> {activePage.title}</span>
+     <div className="site-builder-preview-actions"><button type="button" onClick={()=>{setFocusMode(v=>!v);setPanelOpen(false)}}>{focusMode?"⊟ Вернуться в редактор":"⛶ Фокус на сайте"}</button><button type="button" onClick={()=>{setPanelOpen(v=>!v);setFocusMode(false)}} aria-expanded={panelOpen} title="Показать свойства">⚙ Свойства</button></div>
+    </div>
+    <div className="site-builder-stage"><iframe key={active} ref={frame} title="Предпросмотр сайта Lektrus" src={previewSrc} style={{width:size[device].width}} onLoad={()=>frame.current?.contentWindow?.postMessage({type:SITE_PREVIEW_MESSAGE,document:doc,selectedId:selected},window.location.origin)}/></div>
    </main>
-   <aside className="site-builder-right" aria-label="Настройки">
+   <aside className={"site-builder-right"+(panelOpen?" is-open":" is-collapsed")} aria-label="Настройки">
     <div className="site-builder-inspect-tabs">{(["page","block","design"] as Inspector[]).map((tab,i)=><button key={tab} type="button" className={inspector===tab?"active":""} onClick={()=>setInspector(tab)}>{["Страница","Блок","Дизайн"][i]}</button>)}</div>
     {inspector==="page"&&<div className="site-builder-fields"><h2>Настройка страницы</h2>
      <label>Название вкладки<input value={doc.navigation.find(x=>x.id===active)?.title??""} onChange={e=>renameNav(e.target.value)}/></label>
@@ -223,7 +272,8 @@ export default function LektrusSiteBuilder(){
        <span><strong>Свой макет страницы</strong><small>{activePage.replaceDefault?"Показаны только выбранные тобой блоки. Можно вернуть стандартный дизайн.":"Стандартный макет и настоящие снимки остаются. Новые блоки добавятся ниже."}</small></span>
       </label>
       <p className="site-builder-tip">Переключатель действует только на эту страницу. Исходная версия не удаляется и вернётся при отключении.</p>
-     </>:<button type="button" className="site-builder-danger" onClick={removePage}>Удалить страницу</button>}
+      <button type="button" className="site-builder-neutral" onClick={duplicatePage}>Создать копию страницы</button>
+     </>:<><button type="button" className="site-builder-neutral" onClick={duplicatePage}>Создать копию страницы</button><button type="button" className="site-builder-danger" onClick={removePage}>Удалить страницу</button></>}
     </div>}
     {inspector==="block"&&<div className="site-builder-fields"><h2>{activeBlock?labelFor(activeBlock.kind):"Выбери блок слева"}</h2>
      {activeBlock&&<><label>Заголовок<input value={activeBlock.title} onChange={e=>patchBlock({title:e.target.value})}/></label>
@@ -236,11 +286,25 @@ export default function LektrusSiteBuilder(){
       }}/>}
       
       {["image","cta"].includes(activeBlock.kind)&&<label>Адрес ссылки<input value={activeBlock.href} placeholder="/app" onChange={e=>patchBlock({href:e.target.value})}/></label>}
-      {["gallery","cards"].includes(activeBlock.kind)&&<label>{activeBlock.kind==="gallery"?"Изображения (по одному URL на строку)":"Карточки (по одной на строку)"}<textarea rows={8} value={activeBlock.items.join("\n")} onChange={e=>patchBlock({items:e.target.value.split("\n").slice(0,12)})}/></label>}
+      {["gallery","cards","faq","stats"].includes(activeBlock.kind)&&<label>{
+       activeBlock.kind==="gallery"?"Изображения (один URL на строку)":
+       activeBlock.kind==="faq"?"Вопрос | Ответ (каждая пара с новой строки)":
+       activeBlock.kind==="stats"?"Число | Подпись (каждая пара с новой строки)":"Карточки (каждая с новой строки)"
+      }<textarea rows={8} value={activeBlock.items.join("\n")} onChange={e=>patchBlock({items:e.target.value.split("\n").slice(0,12)})}/></label>}
+      {["image","cta"].includes(activeBlock.kind)&&<label>Текст кнопки<input value={activeBlock.buttonLabel} maxLength={45} onChange={e=>patchBlock({buttonLabel:e.target.value})}/></label>}
+      <div className="site-builder-appearance"><h3>Оформление блока</h3>
+       <label>Стиль фона<select value={activeBlock.style?.tone??DEFAULT_SITE_BLOCK_STYLE.tone} onChange={e=>patchBlock({style:{...activeBlock.style,tone:e.target.value as SiteBlockStyle["tone"]}})}><option value="plain">Прозрачный</option><option value="soft">Мягкий</option><option value="accent">Акцентный</option><option value="dark">Тёмный</option></select></label>
+       <label>Выравнивание<select value={activeBlock.style?.align??"left"} onChange={e=>patchBlock({style:{...activeBlock.style,align:e.target.value as SiteBlockStyle["align"]}})}><option value="left">По левому краю</option><option value="center">По центру</option></select></label>
+       <label>Отступы<select value={activeBlock.style?.spacing??"normal"} onChange={e=>patchBlock({style:{...activeBlock.style,spacing:e.target.value as SiteBlockStyle["spacing"]}})}><option value="compact">Компактные</option><option value="normal">Обычные</option><option value="airy">Просторные</option></select></label>
+       {["cards","gallery","stats"].includes(activeBlock.kind)&&<label>Колонки<select value={activeBlock.style?.columns??3} onChange={e=>patchBlock({style:{...activeBlock.style,columns:Number(e.target.value)}})}><option value={2}>2 колонки</option><option value={3}>3 колонки</option><option value={4}>4 колонки</option></select></label>}
+       {activeBlock.kind==="image"&&<label>Положение изображения<select value={activeBlock.style?.imageSide??"left"} onChange={e=>patchBlock({style:{...activeBlock.style,imageSide:e.target.value as SiteBlockStyle["imageSide"]}})}><option value="left">Слева</option><option value="right">Справа</option></select></label>}
+      </div>
       <button type="button" className="site-builder-neutral" disabled={activePage.blocks.length>=40} onClick={duplicateBlock}>Дублировать блок</button>
       <button type="button" className="site-builder-danger" onClick={deleteBlock}>Удалить блок</button></>}
     </div>}
     {inspector==="design"&&<div className="site-builder-fields"><h2>Оформление сайта</h2><p>Цвета и размеры действуют на все вкладки. Их содержимое остаётся самостоятельным.</p>
+     <h3 className="site-builder-subtitle">Готовые палитры</h3>
+     <div className="site-builder-theme-presets">{SITE_THEME_PRESETS.map(preset=><button type="button" key={preset.id} onClick={()=>change(next=>{next.theme={...preset.theme}})} title={preset.note}><span className="site-builder-theme-swatches"><i style={{background:preset.theme.accent}}/><i style={{background:preset.theme.background}}/><i style={{background:preset.theme.ink}}/></span><strong>{preset.title}</strong><small>{preset.note}</small></button>)}</div>
      {([["accent","Акцентный цвет"],["background","Фон страницы"],["surface","Поверхность карточек"],["ink","Основной текст"]] as [keyof SiteTheme,string][]).map(([key,label])=><label key={key}>{label}<span className="site-builder-color"><input type="color" value={String(doc.theme[key])} onChange={e=>change(next=>{(next.theme as unknown as Record<string,unknown>)[key]=e.target.value})}/><code>{doc.theme[key]}</code></span></label>)}
      <label>Скругление карточек: {doc.theme.radius}px<input type="range" min="0" max="40" value={doc.theme.radius} onChange={e=>change(next=>{next.theme.radius=Number(e.target.value)})}/></label>
      <label>Ширина контента: {doc.theme.maxWidth}px<input type="range" min="850" max="1500" step="25" value={doc.theme.maxWidth} onChange={e=>change(next=>{next.theme.maxWidth=Number(e.target.value)})}/></label>
