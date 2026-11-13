@@ -111,6 +111,38 @@ test('canonical and legacy join routes survive a reload and are cleared only aft
   assert.equal(load('routes', { window: invalid.window, sessionStorage: storage }).initialRoute().kind, 'invalid');
 });
 
+test('pending invitation survives confirmation in a second tab and expires cleanly', () => {
+  const persistent = new Map();
+  const localStorage = {
+    getItem: key => persistent.get(key) ?? null,
+    setItem: (key, value) => persistent.set(key, value),
+    removeItem: key => persistent.delete(key),
+  };
+  const firstTabStorage = new Map();
+  const firstTab = load('routes', {
+    window: browser('https://lektrus.example/join/' + token).window,
+    sessionStorage: {
+      getItem: key => firstTabStorage.get(key) ?? null,
+      setItem: (key, value) => firstTabStorage.set(key, value),
+      removeItem: key => firstTabStorage.delete(key),
+    },
+    localStorage,
+  });
+  assert.equal(firstTab.initialRoute().kind, 'join');
+  const secondTab = load('routes', {
+    window: browser('https://lektrus.example/app?email_confirmation=1').window,
+    sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+    localStorage,
+  });
+  assert.equal(secondTab.pendingSharePath(), '/join/' + token);
+  assert.equal(secondTab.initialRoute().kind, 'join');
+  secondTab.clearPendingShare();
+  assert.equal(secondTab.pendingSharePath(), null);
+  firstTab.rememberShareToken(token);
+  persistent.set('lesson-board.pending-share.v2', JSON.stringify({ token, until: Date.now() - 1000 }));
+  assert.equal(secondTab.pendingSharePath(), null, 'expired cross-tab token must not be reused');
+});
+
 test('email confirmation keeps the invite; legacy query starts the app, not the public site', () => {
   const app = read('src/App.tsx');
   const entry = read('src/main.tsx');
@@ -130,6 +162,7 @@ test('link management hides revoked, expired or exhausted invitations and does n
   assert.match(dialog, /link\.max_uses===null\|\|link\.use_count<link\.max_uses/);
   assert.match(dialog, /createdIsActive&&created/);
   assert.match(dialog, /boardDirectUrl\(board\.id\)/);
+  assert.match(dialog, /setLinks\(rows=>\[link,/);
   assert.doesNotMatch(dialog, /presentationUrl|present=1/);
 });
 
@@ -181,8 +214,8 @@ test('links remain gated by server mode and database enforces expiry, password a
   for (const guard of ['p_max_uses', 'password_hash', 'for update', 'v_effective_role', 'auth.uid()']) {
     assert.ok(sql.includes(guard), 'share RPC missing: ' + guard);
   }
-  const vercel = JSON.parse(read('vercel.json'));
-  assert.deepEqual(vercel.rewrites, [{ source: '/(.*)', destination: '/index.html' }]);
-  assert.ok(vercel.headers.some(row => row.headers.some(h => h.key === 'Referrer-Policy' && h.value === 'no-referrer')));
-  assert.match(read('deploy/nginx.conf'), /try_files \$uri \$uri\/ \/index\.html/);
+  // This deployment uses Nginx, not the historical Vercel configuration.
+  const nginx = read('deploy/nginx.conf');
+  assert.match(nginx, /try_files \$uri \$uri\/ \/index\.html/);
+  assert.match(nginx, /Referrer-Policy "no-referrer"/);
 });
