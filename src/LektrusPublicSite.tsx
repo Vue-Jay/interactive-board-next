@@ -222,18 +222,40 @@ export default function LektrusPublicSite(){
     </section>
     {placed("before-1")}
     <section data-site-section-id="native-1" className="marketing-section marketing-container marketing-project-summary" aria-label="О проекте Lektrus">
-     <div className="marketing-project-heading">
-      <span className="marketing-eyebrow">О проекте</span>
-      <h2>От объяснения к практике в одном пространстве</h2>
-      <p className="marketing-project-caption">Для преподавателей и учеников, которым важно не просто показать материал, а действительно разобраться в нём.</p>
-     </div>
-     <div className="marketing-project-body">
-      <p><strong>Lektrus — образовательная платформа с общей интерактивной доской и предметными инструментами.</strong> Она помогает преподавателю подготовить и провести наглядный урок, а ученикам — участвовать в работе, задавать вопросы и вместе находить решения.</p>
-      <p className="marketing-project-detail">Собирайте на одной доске рисунки, схемы, документы и задания, исследуйте графики и учебные модели, проводите виртуальные опыты. Готовые материалы сохраняются, а интерактивный атлас и химическая лаборатория доступны также без создания доски.</p>
-      <div className="marketing-project-audiences">
-       <p><strong>Преподавателям</strong> Объясняйте сложное наглядно, вовлекайте класс в работу и возвращайтесь к готовым урокам.</p>
-       <p><strong>Ученикам</strong> Не просто слушайте: разбирайте задачи, дополняйте решения и пробуйте на практике.</p>
+     <div className="marketing-project-intro">
+      <div className="marketing-project-heading">
+       <span className="marketing-eyebrow">О проекте</span>
+       <h2>Не просто объясняйте. <span>Помогайте понять.</span></h2>
+       <p className="marketing-project-caption">Современный урок начинается с интереса, а продолжается действием.</p>
       </div>
+      <div className="marketing-project-body">
+       <p className="marketing-project-lead"><strong>Lektrus — образовательная платформа с общей интерактивной доской и предметными инструментами.</strong> Здесь преподаватель может показать материал, а ученики — не только смотреть, но и участвовать, исследовать и пробовать сами.</p>
+       <p className="marketing-project-detail">Вместо разрозненных файлов, рисунков и сервисов — единое пространство для объяснений, заданий и совместной работы. В нём удобно готовить урок, разбирать сложную тему и возвращаться к сохранённым материалам.</p>
+      </div>
+     </div>
+     <div className="marketing-project-experience">
+      <div className="marketing-project-experience-intro">
+       <span className="marketing-eyebrow">Как устроен урок</span>
+       <h3>От идеи до понимания. Всё связано.</h3>
+       <p>Одно пространство помогает пройти весь путь от подготовки материала до самостоятельной практики.</p>
+      </div>
+      <ol className="marketing-project-steps">
+       <li><span className="marketing-project-step-number">01 / Подготовка</span><strong>Соберите материал</strong><p>Разместите на доске документы, схемы, изображения и задания для занятия.</p></li>
+       <li><span className="marketing-project-step-number">02 / Объяснение</span><strong>Покажите наглядно</strong><p>Рисуйте, стройте графики, используйте предметные модели и виртуальные опыты.</p></li>
+       <li><span className="marketing-project-step-number">03 / Практика</span><strong>Работайте вместе</strong><p>Приглашайте участников, разбирайте решения и сохраняйте результат урока.</p></li>
+      </ol>
+     </div>
+     <div className="marketing-project-value" aria-label="Преимущества платформы">
+      <article><span className="marketing-project-value-symbol" aria-hidden="true">✦</span><div><h3>Наглядно, а не только на словах</h3><p>Сложные темы проще обсуждать, когда можно показать процесс и поработать с ним.</p></div></article>
+      <article><span className="marketing-project-value-symbol" aria-hidden="true">◎</span><div><h3>Урок, в котором участвуют</h3><p>Ученики могут дополнять общую доску, предлагать решения и сразу получать обратную связь.</p></div></article>
+      <article><span className="marketing-project-value-symbol" aria-hidden="true">↗</span><div><h3>Материалы остаются с вами</h3><p>К подготовленным доскам можно вернуться, чтобы продолжить занятие или повторить тему.</p></div></article>
+     </div>
+     <div className="marketing-project-bottom">
+      <div className="marketing-project-audiences" aria-label="Для кого создан Lektrus">
+       <article><span className="marketing-project-audience-label">Преподавателям</span><h3>Больше времени на объяснение</h3><p>Готовьте материалы в одном месте, вовлекайте класс в работу и возвращайтесь к уже созданным урокам.</p></article>
+       <article><span className="marketing-project-audience-label">Ученикам</span><h3>Больше возможностей разобраться</h3><p>Пробуйте, исследуйте модели, обсуждайте задачи и участвуйте в решении, а не просто наблюдайте.</p></article>
+      </div>
+      <aside className="marketing-project-standalone"><span className="marketing-project-standalone-mark" aria-hidden="true">↗</span><div><strong>Инструменты доступны и отдельно</strong><p>Интерактивный атлас и химическая лаборатория работают без создания доски: можно сразу перейти к исследованию и экспериментам.</p></div></aside>
      </div>
     </section>
     {placed("before-2")}
