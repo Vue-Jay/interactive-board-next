@@ -88,10 +88,10 @@ test('App performs both board and invitation restoration and checks returned boa
   assert.match(app,/clearPendingBoardRoute\(\)/);
 });
 
-test('deep links get SPA fallback, and invite tokens stay out of referrers',()=>{
-  const config=JSON.parse(read('vercel.json'));
-  assert.deepEqual(config.rewrites,[{source:'/(.*)',destination:'/index.html'}]);
-  assert.ok(config.headers.some(entry=>entry.headers.some(h=>h.key==='Referrer-Policy'&&h.value==='no-referrer')));
+test('production nginx serves deep links through the SPA and hides invite tokens from referrers',()=>{
+  const nginx=read('deploy/nginx.conf');
+  assert.match(nginx,/location \/ \{ try_files \$uri \$uri\/ \/index\.html;/);
+  assert.match(nginx,/Referrer-Policy "no-referrer"/);
 });
 
 test('server SQL defines the current password-protected redemption contract',()=>{
