@@ -361,6 +361,12 @@ export default function LektrusPublicSite(){
        <h2 id="marketing-help-contact-title">Напишите нам</h2>
        <p>Есть вопрос, предложение или замечание? Отправьте сообщение команде Lektrus.</p>
       </div>
+      <a className="marketing-telegram-contact" href="https://t.me/lektrus" target="_blank" rel="noopener noreferrer" aria-label="Написать команде Lektrus в Telegram, откроется новая вкладка">
+       <span className="marketing-telegram-contact-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round"><path d="M21 3 3 10.5l7.3 2.6L13 21l3-5.5L21 3Z"/><path d="m10.3 13.1 5.1-4.6M13 21l-2.7-7.9"/></svg></span>
+       <span className="marketing-telegram-contact-copy"><strong>Быстрее в Telegram</strong><span>Напишите напрямую: @lektrus</span></span>
+       <span className="marketing-telegram-contact-arrow" aria-hidden="true">↗</span>
+      </a>
+      <div className="marketing-contact-divider"><span>или отправьте сообщение через форму</span></div>
       <div className="marketing-form-card"><LektrusFeedbackForm compact source="site"/></div>
      </section>
     </div>
