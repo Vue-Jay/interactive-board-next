@@ -149,6 +149,9 @@ test('email confirmation keeps the invite; legacy query starts the app, not the 
   const auth = read('src/AuthScreen.tsx');
   const boards = read('src/BoardsScreen.tsx');
   assert.match(app, /navigate\(pendingSharePath\(\)\?\?"\/",true\)/);
+  assert.match(app, /setSubmittedSharePassword\(\{token:route\.token,value:sharePassword\}\)/);
+  assert.match(app, /submittedSharePassword\?\.token===route\.token/);
+  assert.doesNotMatch(app, /openBoard, sharePassword\]/);
   assert.doesNotMatch(app, /callback\.pathname\+callback\.search/);
   assert.match(app, /navigate\(\x60\/board\/\$\{redeemed\.board_id\}\x60, true\)/);
   assert.match(entry, /query\.has\("join"\)/);
