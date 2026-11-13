@@ -7,7 +7,7 @@ import LectrisWorkspaceShell from "./LectrisWorkspaceShell";
 import { clearNotificationCache } from "./notificationsStore";
 import { clearAiBoardTransfer } from "./aiLocalStore";
 import { clearAccountAccessCache, getAccountAccess, getCachedAccountAccess, type AccountRole } from "./accountRoleStore";
-import { clearPendingShare, initialRoute, parseRoute, rememberShareToken, type AppRoute } from "./routes";
+import { clearPendingBoardRoute, clearPendingShare, initialRoute, parseRoute, pendingAuthenticatedRoute, rememberBoardRoute, rememberShareToken, type AppRoute } from "./routes";
 import { redeemShareLink } from "./shareLinks";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
@@ -113,6 +113,8 @@ export default function App() {
     window.history[replace ? "replaceState" : "pushState"](null, "", appPath);
     const url = new URL(appPath, window.location.href);
     const next=parseRoute(url.pathname);
+    if(next.kind==="board")rememberBoardRoute(next.boardId);
+    if(next.kind==="join")rememberShareToken(next.token);
     setRoute(Capacitor.isNativePlatform()&&next.kind==="site"?{kind:"home"}:next);
   }, []);
   useEffect(() => {
@@ -120,6 +122,7 @@ export default function App() {
       const parsed = parseRoute(window.location.pathname);
       const next=Capacitor.isNativePlatform()&&parsed.kind==="site"?{kind:"home" as const}:parsed;
       if (next.kind === "join") rememberShareToken(next.token);
+      if (next.kind === "board") rememberBoardRoute(next.boardId);
       setRoute(next);
     };
     window.addEventListener("popstate", changed);
@@ -184,6 +187,9 @@ export default function App() {
           callback.searchParams.delete("email_confirmation");
           window.history.replaceState({},"",callback.pathname+callback.search);
         }
+        const target=pendingAuthenticatedRoute();
+        if(target?.kind==="join")navigate(`/join/${target.token}`,true);
+        else if(target?.kind==="board")navigate(`/board/${target.boardId}`,true);
         return true;
       }catch(error){const message=error instanceof Error?error.message:"Не удалось подтвердить email";console.warn("Lektrus email confirmation could not be completed",error);if(alive)setAuthCallbackError(message);return false}
     };
@@ -231,11 +237,13 @@ export default function App() {
     // without deleting the isolated demo identity or asking for a server.
     if (LEKTRUS_LOCAL_TEST_MODE) {
       clearPendingShare();
+      clearPendingBoardRoute();
       setActiveBoard(null);
       navigate("/", true);
       return;
     }
     clearPendingShare();
+    clearPendingBoardRoute();
     clearAccountAccessCache();
     clearNotificationCache();
     clearAiBoardTransfer();
@@ -345,6 +353,7 @@ export default function App() {
       }
       if (!isCurrent()) return;
       setActiveBoard(board);
+      clearPendingBoardRoute();
       setBoardMountKey((value) => value + 1);
     } catch (error) {
       if (isCurrent()) setBoardLoadError(error instanceof Error ? error.message : "Не удалось загрузить доску с сервера");
@@ -372,7 +381,9 @@ export default function App() {
           const redeemed = await redeemShareLink(route.token, sharePassword || undefined);
           if (!alive) return;
           clearPendingShare();
-          navigate(`/board/${redeemed.board_id}`, true);
+          const boardId=redeemed.board_id||redeemed.id;
+          if(parseRoute(`/board/${boardId}`).kind!=="board")throw new Error("Сервер вернул некорректный адрес доски.");
+          navigate(`/board/${boardId}`, true);
           return;
         }
         setAdminInspecting(false);
