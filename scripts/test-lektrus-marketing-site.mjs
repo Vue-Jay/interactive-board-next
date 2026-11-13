@@ -64,12 +64,12 @@ const approvedBeforeSiteStudio={
 };
 for(const [shot,sha] of Object.entries(approvedBeforeSiteStudio)){
  const bytes=readFileSync(new URL("../public/site/"+shot,import.meta.url));
- const actual=createHash("sha1").update("blob "+bytes.length+"\\0").update(bytes).digest("hex");
+ const actual=createHash("sha1").update("blob "+bytes.length+"\0").update(bytes).digest("hex");
  assert.equal(actual,sha,"approved pre-Site-Studio screenshot must remain unchanged: "+shot);
 }
 const showcaseDefinition=read("src/marketingSiteConfig.ts");
 const shotList=showcaseDefinition.split("export const DEFAULT_SITE_SHOWCASE:SiteShowcaseShot[]=[")[1]?.split("];")[0]??"";
-const showcaseFiles=[...shotList.matchAll(/src:"\\/site\\/([^"]+)"/g)].map(m=>m[1]);
+const showcaseFiles=[...shotList.matchAll(/src:"\/site\/([^"]+)"/g)].map(m=>m[1]);
 assert.deepEqual(showcaseFiles,Object.keys(approvedBeforeSiteStudio),"approved eight-shot reel must use the pre-builder images in their original order");
 assert.ok(site.includes("marketing-feature-row")&&css.includes(".marketing-feature-row"),"features should be compact rows, not repeated giant cards");
 assert.equal((site.slice(site.indexOf("const featureCards=["),site.indexOf("const questions=[")).match(/benefit:/g)||[]).length,6,"each feature must explain a concrete user benefit");
