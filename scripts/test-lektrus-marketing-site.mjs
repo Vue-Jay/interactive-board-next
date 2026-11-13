@@ -105,13 +105,23 @@ assert.ok(typography.includes('font-size:16px;')&&typography.includes("font-size
 const localFont=readFileSync(new URL("../public/fonts/manrope/Manrope-Variable.ttf",import.meta.url));
 assert.ok(localFont.length>50000,"missing local Manrope font");
 assert.ok(css.includes("/fonts/manrope/Manrope-Variable.ttf")&&css.includes("@keyframes marketing-showcase-zoom"),"original local typography and motion must be restored");
-assert.ok(site.includes("marketing-feature-row")&&css.includes(".marketing-feature-row"),"features should be compact rows, not repeated giant cards");
-assert.equal((site.slice(site.indexOf("const featureCards=["),site.indexOf("const questions=[")).match(/benefit:/g)||[]).length,6,"each feature must explain a concrete user benefit");
-for(const benefit of ["Объясняйте так, как удобно вам.","Превратите зрителей в участников.","Покажите то, что трудно объяснить словами.","От теории переходите к эксперименту.","Закрепляйте тему прямо во время объяснения.","Продолжайте, а не начинайте заново."]){
- assert.ok(site.includes(benefit),"missing promotional benefit: "+benefit);
+const capabilities=site.slice(site.indexOf("const featureGroups=["),site.indexOf("const questions=["));
+assert.ok(capabilities.startsWith("const featureGroups=["),"task-first capability data must exist");
+assert.equal((capabilities.match(/id:"(?:prepare|explore|result)"/g)||[]).length,3,"Features must have three meaningful work stages");
+assert.equal((capabilities.match(/icon:"/g)||[]).length,7,"Features must explain seven concrete capabilities");
+assert.equal((capabilities.match(/layout:"cards"/g)||[]).length,2,"preparation and results must have paired compact cards");
+assert.equal((capabilities.match(/layout:"rows"/g)||[]).length,1,"working and exploration must use editorial rows");
+for(const title of [
+ "Собирайте материалы в одном месте","Организуйте учебную работу",
+ "Объясняйте на интерактивной доске","Работайте вместе в реальном времени",
+ "Исследуйте сложные темы на практике","Создавайте и разбирайте задания",
+ "Сохраняйте результаты"
+]){
+ assert.ok(capabilities.includes(title),"missing approved concrete capability: "+title);
 }
-assert.ok(site.includes("marketing-feature-row-description")&&site.includes("marketing-features-outro"),"feature descriptions need benefits and a concise product advantage");
-assert.ok(css.includes(".marketing-project-caption")&&css.includes(".marketing-feature-row-description")&&css.includes("@media(max-width:700px)"),"marketing narrative must remain readable on narrow viewports");
+assert.ok(site.includes("MarketingFeatureIcon")&&site.includes('viewBox="0 0 24 24"'),"Features must use consistent line SVG icons");
+assert.ok(typography.includes(".marketing-site .marketing-feature-items-cards")&&typography.includes(".marketing-site .marketing-feature-items-rows"),"Features must style pairs and rows separately");
+assert.ok(css.includes(".marketing-project-caption")&&typography.includes(".marketing-site .marketing-feature-item-copy p")&&typography.includes("@media(max-width:700px)"),"task-first features and marketing copy must remain readable on narrow viewports");
 assert.doesNotMatch(entry,/lektrusShowcase\.css/,"the public entry must not load obsolete showcase styling");
 assert.match(css,/@media\(max-width:700px\)/,"the site needs small-screen layouts");
 assert.ok(site.includes("const showcaseShots=config.showcase")&&read("src/marketingSiteConfig.ts").includes("DEFAULT_SITE_SHOWCASE"),"homepage must use document-managed original screenshots");
@@ -381,8 +391,11 @@ assert.equal((homepage.match(/data-site-section-id=/g)||[]).length,2,"Home conta
 assert.ok(homepage.includes('placed("before-4")'),"the editor must keep old homepage insertion anchors");
 assert.ok(homepage.includes('marketing-project-summary')&&homepage.includes('marketing-project-audiences'),"project information is present below the screenshot hero");
 assert.doesNotMatch(homepage,/marketing-home-summary|marketing-audience-grid|marketing-home-flow|marketing-last-cta/,"old redundant home sections must stay removed");
-assert.ok(featuresPage.includes("marketing-features-list")&&featuresPage.includes("featureCards.map"),"all six capabilities need clear prose descriptions");
-assert.ok(featuresPage.includes('<article className="marketing-feature-row"')&&featuresPage.includes("<p>{card.text}</p>"),"features should be non-clickable articles with text");
+assert.ok(featuresPage.includes("marketing-feature-groups")&&featuresPage.includes("featureGroups.map"),"Features page must present the seven capabilities in three stages");
+assert.ok(featuresPage.includes('<article className="marketing-feature-item"')&&featuresPage.includes("<p>{item.text}</p>"),"Features must use non-clickable text articles with icons");
+assert.ok(featuresPage.includes('data-site-section-id="native-1"')&&featuresPage.includes('placed("before-3")'),"Site Studio feature section and insertion anchors must remain");
+assert.doesNotMatch(featuresPage,/<img\b|marketing-showcase/, "Features must not include screenshots");
+assert.doesNotMatch(featuresPage,/Для преподавателей|Для учеников|Главное преимущество:/,"Features should not repeat homepage selling points or role divisions");
 assert.doesNotMatch(featuresPage,/<DemoLink|<NavLink|<a\b/,"Features must contain no navigation to board creation or demos");
 assert.doesNotMatch(site,/page==="(?:about|how|tools|teachers|students)"/,"retired tabs must not render");
 assert.ok(builder.includes("BUILTIN_SITE_PAGES"),"editor must adopt the new four built-in pages");
