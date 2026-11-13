@@ -46,8 +46,20 @@ assert.ok(site.includes('<LektrusFeedbackForm compact source="site"/>'),"feedbac
 assert.ok(site.includes("plans.map(")&&billing.includes('id:"free"')&&billing.includes('id:"teacher"')&&billing.includes('id:"pro"'),"marketing pricing should derive current app plan definitions");
 assert.ok(!site.includes("Купить подписку"),"test subscriptions must not be advertised as purchasable");
 for(const shot of ["board-showcase.png","app-home.png","board-math.png","board-chemistry.png","board-geometry.png","board-physics.png","board-contour.png","board-history.png","board-russian.png"]){
- assert.ok(existsSync(new URL("../public/site/"+shot,import.meta.url)),"missing actual screenshot: "+shot);
+ const file=new URL("../public/site/"+shot,import.meta.url);
+ assert.ok(existsSync(file),"missing actual screenshot: "+shot);
+ if(shot==="board-showcase.png")continue; // historical fallback is not in the approved reel
+ const png=readFileSync(file);
+ assert.ok(png.subarray(0,8).equals(Buffer.from("89504e470d0a1a0a","hex")),"not a real PNG screenshot: "+shot);
+ assert.equal(png.readUInt32BE(16),1600,"showcase screen width should be consistent: "+shot);
+ assert.equal(png.readUInt32BE(20),1000,"showcase screen height should be consistent: "+shot);
+ assert.ok(png.length>90000,"empty/incomplete Lektrus screen capture: "+shot);
 }
+const captures=read("scripts/capture-lektrus-marketing-shots.py");
+for(const scene of ["math","chemistry","geometry","physics","contour","history","russian"]){
+ assert.ok(captures.includes('("'+scene+'", "board-'+scene+'.png"'),"approved subject missing from browser capture: "+scene);
+}
+assert.ok(captures.includes('save(page,"app-home.png")'),"dashboard screenshot must come from an isolated authentic teaching workspace");
 assert.ok(site.includes("marketing-feature-row")&&css.includes(".marketing-feature-row"),"features should be compact rows, not repeated giant cards");
 assert.equal((site.slice(site.indexOf("const featureCards=["),site.indexOf("const questions=[")).match(/benefit:/g)||[]).length,6,"each feature must explain a concrete user benefit");
 for(const benefit of ["Объясняйте так, как удобно вам.","Превратите зрителей в участников.","Покажите то, что трудно объяснить словами.","От теории переходите к эксперименту.","Закрепляйте тему прямо во время объяснения.","Продолжайте, а не начинайте заново."]){
