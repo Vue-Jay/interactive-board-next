@@ -298,7 +298,7 @@ with sync_playwright() as p:
             assert faq_mobile and contact_mobile and contact_mobile["y"] >= faq_mobile["y"] + faq_mobile["height"] - 2, "Help sections must stack on mobile"
             assert visitor.locator(".marketing-faq details").count() == 5
             assert visitor.locator(".marketing-help-contact form.lektrus-feedback-form").count() == 1
-            assert visitor.locator(".marketing-help-layout").evaluate("(el) => getComputedStyle(el).gridTemplateColumns").split().__len__() == 1, "Mobile help layout must be single-column"
+            assert len(visitor.locator(".marketing-help-layout").evaluate("(el) => getComputedStyle(el).gridTemplateColumns").split()) == 1, "Mobile help layout must be single-column"
         visitor.screenshot(path=str(root / ("10-phone-" + page_name + ".png")), full_page=True)
 
     visitor.goto("http://127.0.0.1:5173/#home", wait_until="domcontentloaded")
