@@ -1,6 +1,8 @@
 export type AppRoute = { kind: "site" } | { kind: "tool"; tool: "atlas" | "laboratory" } | { kind: "demo" } | { kind: "home" } | { kind: "board"; boardId: string } | { kind: "join"; token: string } | { kind: "invalid" };
 const PENDING_KEY = "lesson-board.pending-share.v1";
 const PENDING_CROSS_TAB_KEY = "lesson-board.pending-share.v2";
+const PENDING_BOARD_KEY = "lektrus.pending-board-route.v1";
+const PENDING_BOARD_CROSS_TAB_KEY = "lektrus.pending-board-route.v2";
 const PENDING_TTL_MS = 2 * 60 * 60 * 1000;
 const TOKEN = /^[a-f0-9]{64}$/;
 export function parseRoute(path: string): AppRoute {
@@ -35,6 +37,31 @@ export function pendingSharePath(): string | null {
   } catch { /* corrupted or unavailable storage */ }
   return null;
 }
+/** Remember a direct board route until email confirmation completes, including in a new tab. */
+export function rememberBoardPath(boardId: string) {
+  const path="/board/"+boardId;
+  if (parseRoute(path).kind !== "board") return;
+  try { sessionStorage.setItem(PENDING_BOARD_KEY,path); } catch { /* storage unavailable */ }
+  try { localStorage.setItem(PENDING_BOARD_CROSS_TAB_KEY,JSON.stringify({path,until:Date.now()+PENDING_TTL_MS})); }
+  catch { /* local navigation remains valid */ }
+}
+export function pendingBoardPath(): string | null {
+  try {
+    const path=sessionStorage.getItem(PENDING_BOARD_KEY);
+    if(path && parseRoute(path).kind==="board") return path;
+  } catch { /* storage unavailable */ }
+  try {
+    const record=JSON.parse(localStorage.getItem(PENDING_BOARD_CROSS_TAB_KEY)||"null");
+    if(record && typeof record.path==="string" && parseRoute(record.path).kind==="board" &&
+       Number.isFinite(record.until) && record.until>Date.now()) return record.path;
+    localStorage.removeItem(PENDING_BOARD_CROSS_TAB_KEY);
+  } catch { /* malformed or inaccessible storage */ }
+  return null;
+}
+export function clearPendingBoardPath() {
+  try { sessionStorage.removeItem(PENDING_BOARD_KEY); } catch { /* storage unavailable */ }
+  try { localStorage.removeItem(PENDING_BOARD_CROSS_TAB_KEY); } catch { /* storage unavailable */ }
+}
 export function clearPendingShare() {
   try { sessionStorage.removeItem(PENDING_KEY); } catch { /* storage unavailable */ }
   try { localStorage.removeItem(PENDING_CROSS_TAB_KEY); } catch { /* storage unavailable */ }
@@ -55,6 +82,7 @@ export function initialRoute(): AppRoute {
     route = { kind: "home" };
   }
   if (route.kind === "join") rememberShareToken(route.token);
+  if (route.kind === "board") rememberBoardPath(route.boardId);
   if (route.kind === "site" || route.kind === "home") {
     const pending = pendingSharePath();
     if (pending) return { kind: "join", token: pending.slice("/join/".length) };
