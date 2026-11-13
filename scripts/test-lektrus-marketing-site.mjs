@@ -14,7 +14,7 @@ for(const id of ["home","features","pricing","help"]){
 assert.doesNotMatch(site,/\{id:"(?:teachers|students)",title:/,"former teacher/student tabs must be absent from navigation");
 for(const text of [
  "Lektrus","платформа для обучения",
- "Показывайте, объясняйте, ","Lektrus",
+ "Всё, что нужно для учебной работы","Lektrus",
  "О проекте","не только смотреть, но и действовать",
  "Преподавателям","Меньше переключений. Больше наглядности.",
  "Ученикам","Не просто слушать. Пробовать и понимать.",
@@ -84,7 +84,7 @@ for(const rule of [
  "--marketing-font-display:","--marketing-font-body:",
  ".marketing-site .marketing-nav a",".marketing-site .marketing-sidebar-tools a",
  ".marketing-site .marketing-hero-split h1",".marketing-site .marketing-project-body",
- ".marketing-site .marketing-feature-row-description p",".marketing-site .marketing-plan ul",
+ ".marketing-site .marketing-feature-item-copy p",".marketing-site .marketing-plan ul",
  ".marketing-site .marketing-faq summary",".marketing-site .marketing-form-card",
  ".marketing-site .site-block :is(p,li)","@media(max-width:700px)","@media(max-width:370px)"
 ]){
