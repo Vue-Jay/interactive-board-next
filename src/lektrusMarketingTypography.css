@@ -155,10 +155,16 @@
   font-size:14.5px;
   line-height:1.75;
 }
-.marketing-site .marketing-project-journey-heading h3 {
-  font-size:23px;
-  font-weight:770;
-  letter-spacing:-.035em;
+/* Both labels above the three stages use one restrained, legible caption style. */
+.marketing-site .marketing-project-journey-heading :is(.marketing-eyebrow,h3) {
+  font-family:var(--marketing-font-body);
+  font-size:12px;
+  font-weight:750;
+  line-height:1.45;
+  letter-spacing:.085em;
+  text-transform:uppercase;
+  color:#2965bf;
+  margin:0;
 }
 .marketing-site .marketing-project-stage h4 {
   font-size:16px;
@@ -280,7 +286,6 @@
   .marketing-site .marketing-project-caption {font-size:14px}
   .marketing-site .marketing-project-body>p:first-child {font-size:14.5px}
   .marketing-site .marketing-project-body .marketing-project-detail {font-size:14px}
-  .marketing-site .marketing-project-journey-heading h3 {font-size:21px}
   .marketing-site .marketing-project-stage p,
   .marketing-site .marketing-project-audience p,
   .marketing-site .marketing-project-outro p {font-size:13.5px}
