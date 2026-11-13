@@ -37,10 +37,15 @@ export default function ShareDialog({ board, user, onClose }: { board: BoardSumm
     const expiresAt=expiry==="never"?null:new Date(Date.now()+({"1d":1,"7d":7,"30d":30}[expiry])*86400000).toISOString();
     const link = await createShareLink(board.id, linkRole,{expiresAt,maxUses:maxUses>0?maxUses:null,password:linkPassword.trim()||null});
     const saved={ id: link.id, url:boardShareUrl(link.token) };
-    setLinksReady(false);setCreated(saved);
+    // The RPC has already succeeded. Keep the new link available even if
+    // reloading the separate access/member list fails temporarily.
+    setLinks(rows=>[link,...rows.filter(row=>row.id!==link.id)]);
+    setLinksReady(true);
+    setCreated(saved);
     try{localStorage.setItem(shareCacheKey,JSON.stringify(saved))}catch{/* private browsing */}
     setNotice("Ссылка создана. Скопируйте её и отправьте участнику.");
-    setSection("link"); await reload();
+    setSection("link");
+    try{await reload()}catch{setNotice("Ссылка создана, но обновить список участников пока не удалось.");}
   });
   if (board.role !== "owner") return null;
   return <div className="access-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
