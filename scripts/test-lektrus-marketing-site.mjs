@@ -67,6 +67,8 @@ assert.ok(site.includes("marketing-project-audiences")&&site.includes("marketing
 const homeSection=site.slice(site.indexOf('page==="home"&&!copy?.replaceDefault'),site.indexOf('page==="features"&&!copy?.replaceDefault'));
 assert.equal((homeSection.match(/data-site-section-id=/g)||[]).length,2,"homepage must retain the original two native sections for the site builder");
 assert.ok(homeSection.includes('aria-labelledby="marketing-project-title"')&&homeSection.includes("не только смотреть, но и действовать"),"the product story needs a prominent, accessible title");
+assert.ok(homeSection.includes('<h2 id="marketing-project-title">Урок, в котором можно не только смотреть, но и действовать</h2>'),"the title must stay a single editable native object for Site Studio");
+assert.ok(css.includes(".marketing-site .marketing-project-heading h2::after"),"project emphasis must be decorative, not an editable nested span");
 assert.equal((homeSection.match(/className="marketing-project-stage"/g)||[]).length,3,"the story must show a clear three-stage teaching journey");
 for(const copy of ["Подготовьте материал","Исследуйте вместе","Продолжайте с результата","Меньше переключений. Больше наглядности.","Не просто слушать. Пробовать и понимать.","Интерактивный атлас и химическая лаборатория доступны также без создания доски"]){
  assert.ok(homeSection.includes(copy),"project presentation is missing a concrete benefit: "+copy);
