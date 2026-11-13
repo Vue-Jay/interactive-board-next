@@ -338,11 +338,29 @@ export default function LektrusPublicSite(){
    </>}
    {page==="help"&&!copy?.replaceDefault&&<>
     {placed("before-0")}
-    <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container marketing-help-intro"><span className="marketing-eyebrow">{copy?.eyebrow||"Поддержка, инструкции и обратная связь"}</span><h1>{copy?.heading||<>Найдите решение <span>или свяжитесь с нами</span></>}</h1><p>{copy?.lead||"Ознакомьтесь с частыми вопросами или расскажите нам о своей идее, замечании или проблеме."}</p></section>
+    <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container marketing-help-intro">
+     <span className="marketing-eyebrow">{copy?.eyebrow||"Помощь и контакты"}</span>
+     <h1>{copy?.heading||"Чем можем помочь?"}</h1>
+     <p>{copy?.lead||"Найдите ответ на частый вопрос или напишите команде Lektrus. Всё в одном месте, без лишних шагов."}</p>
+    </section>
     {placed("before-1")}
-    <section data-site-section-id="native-1" className="marketing-section marketing-container"><div className="marketing-section-head"><div><h2>Частые вопросы</h2><p>Короткие ответы о возможностях и работе Lektrus.</p></div></div><div className="marketing-faq">{questions.map(item=><details key={item.q} open={undefined}><summary><span>{item.q}</span><span aria-hidden="true">+</span></summary><p>{item.a}</p></details>)}</div></section>
-    {placed("before-2")}
-    <section data-site-section-id="native-2" className="marketing-section marketing-container marketing-contact"><div><span className="marketing-eyebrow">Обратная связь</span><h2>Расскажите, что можно улучшить</h2><p>Ваши вопросы помогают делать Lektrus удобнее. Выберите тему обращения, опишите ситуацию и при необходимости оставьте адрес для ответа.</p>{import.meta.env.VITE_TELEGRAM_URL&&<a className="marketing-secondary" href={import.meta.env.VITE_TELEGRAM_URL} target="_blank" rel="noreferrer">Написать в Telegram ↗</a>}</div><div className="marketing-form-card"><LektrusFeedbackForm compact source="site"/></div></section>
+    <div className="marketing-container marketing-help-layout">
+     <section data-site-section-id="native-1" className="marketing-section marketing-help-questions" aria-labelledby="marketing-help-questions-title">
+      <div className="marketing-help-panel-heading">
+       <h2 id="marketing-help-questions-title">Частые вопросы</h2>
+       <p>Самое важное о работе с Lektrus.</p>
+      </div>
+      <div className="marketing-faq">{questions.map(item=><details key={item.q}><summary><span>{item.q}</span><span className="marketing-faq-toggle" aria-hidden="true">+</span></summary><p>{item.a}</p></details>)}</div>
+     </section>
+     {placed("before-2")}
+     <section data-site-section-id="native-2" className="marketing-section marketing-contact marketing-help-contact" aria-labelledby="marketing-help-contact-title">
+      <div className="marketing-help-panel-heading">
+       <h2 id="marketing-help-contact-title">Напишите нам</h2>
+       <p>Есть вопрос, предложение или замечание? Отправьте сообщение команде Lektrus.</p>
+      </div>
+      <div className="marketing-form-card"><LektrusFeedbackForm compact source="site"/></div>
+     </section>
+    </div>
    </>}
    {customPage&&<SiteCustomPage page={customPage} selectedId={previewSelection} preview={isPreview}/>}
    {!customPage&&placed("end")}
