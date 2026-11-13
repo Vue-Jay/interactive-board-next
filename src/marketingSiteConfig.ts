@@ -15,17 +15,18 @@ export type SitePage={id:string;title:string;eyebrow:string;heading:string;lead:
 export type SiteNavItem={id:string;title:string;hidden:boolean};
 export type SiteTheme={accent:string;background:string;surface:string;ink:string;radius:number;maxWidth:number};
 export type SiteShowcaseShot={scene:string;subject:string;src:string};
-// Default illustrations. Editors can select the actual approved showcase shots.
+// Preserve the eight original Lektrus marketing screenshots from PR #293,
+// before Site Studio was introduced. Do not replace with regenerated demos.
 export const DEFAULT_SITE_SHOWCASE:SiteShowcaseShot[]=[
- {scene:"home",subject:"Рабочее пространство",src:"/site/app-home.png"},
- {scene:"math",subject:"Математика",src:"/site/board-math.png"},
- {scene:"chemistry",subject:"Химия",src:"/site/board-chemistry.png"},
- {scene:"geometry",subject:"Геометрия",src:"/site/board-geometry.png"},
- {scene:"physics",subject:"Физика",src:"/site/board-physics.png"},
- {scene:"contour",subject:"География",src:"/site/board-contour.png"},
- {scene:"history",subject:"История",src:"/site/board-history.png"},
- {scene:"russian",subject:"Русский язык",src:"/site/board-russian.png"}
+ {scene:"home",subject:"Рабочее пространство",src:"/site/showcase-workspace.png"},
+ {scene:"geometry",subject:"Геометрия",src:"/site/showcase-geometry.png"},
+ {scene:"physics",subject:"Физика",src:"/site/showcase-physics.png"},
+ {scene:"chemistry",subject:"Химия",src:"/site/showcase-chemistry.png"},
+ {scene:"contour",subject:"География",src:"/site/showcase-contour.png"},
+ {scene:"russian",subject:"Русский язык",src:"/site/showcase-russian.png"},
+ {scene:"ai",subject:"ИИ-помощник",src:"/site/showcase-ai.png"}
 ];
+const legacyShowcaseSources = ["/site/app-home.png","/site/board-math.png","/site/board-chemistry.png","/site/board-geometry.png","/site/board-physics.png","/site/board-contour.png","/site/board-history.png","/site/board-russian.png"];
 export type SiteDocument={version:1;theme:SiteTheme;navigation:SiteNavItem[];pages:Record<string,SitePage>;customPages:SitePage[];objects:Record<string,SiteObjectPatch>;showcase:SiteShowcaseShot[]};
 const defaults:SiteNavItem[]=[
  {id:"home",title:"Главная",hidden:false},
@@ -100,7 +101,7 @@ export function normalizeSiteDocument(raw:unknown):SiteDocument{
    heading:clean(v.heading,180),lead:clean(v.lead,1300),replaceDefault:v.replaceDefault===true,
    blocks:Array.isArray(v.blocks)?v.blocks.slice(0,40).map(parseBlock).filter((x):x is SiteBlock=>Boolean(x)):[]};
  };
- // Legacy published sites automatically receive the original eight real captures.
+ // Replace the old built-in sequence while preserving customized galleries.
  // All screenshots live in one homepage showcase, with admin-editable source/order.
  if(Array.isArray(data.showcase)){
   const chosen:SiteShowcaseShot[]=[];
@@ -112,7 +113,8 @@ export function normalizeSiteDocument(raw:unknown):SiteDocument{
    seen.add(src);
    chosen.push({scene:slug(entry.scene)||"home",subject:clean(entry.subject,70)||"Lektrus",src});
   }
-  if(chosen.length)result.showcase=chosen;
+  const isLegacyDefault = chosen.length === legacyShowcaseSources.length && chosen.every((shot, index) => shot.src === legacyShowcaseSources[index]);
+  if(chosen.length && !isLegacyDefault)result.showcase=chosen;
  }
  const rawPages=object(data.pages);
  for(const entry of defaults)if(rawPages[entry.id])result.pages[entry.id]=parsePage(rawPages[entry.id],entry.id,entry.title);
