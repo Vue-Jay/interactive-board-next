@@ -154,8 +154,8 @@ assert.equal((homeSection.match(/data-site-section-id=/g)||[]).length,2,"homepag
 assert.equal((homeSection.match(/className="marketing-hero-logo"/g)||[]).length,1,"Home must show one official logo in the hero");
 assert.ok(homeSection.includes('className="marketing-hero-identity"')&&homeSection.includes('src="/lektrus-icon-192.png"')&&homeSection.includes('alt="" aria-hidden="true"'),"Home identity must pair the existing transparent branded image with the wordmark without duplicating its spoken name");
 assert.ok(homeSection.includes('<h1 id="marketing-title">')&&homeSection.includes('marketing-hero-brand-name'),"Keep the editable single h1 and approved Lektrus wordmark");
-assert.ok(homeSection.includes('<span className="marketing-hero-tagline">Онлайн-платформа для обучения</span>'),"Home must use approved online-platform descriptor");
-assert.ok(typography.includes(".marketing-site .marketing-hero-split .marketing-hero-identity h1 .marketing-hero-tagline")&&typography.includes("text-align:left;"),"Tagline must be left-aligned beneath the Lektrus wordmark, not the logo");
+assert.ok(homeSection.includes('!copy?.heading&&<span className="marketing-hero-tagline">Онлайн-платформа для обучения</span>'),"Approved subtitle must be a full-width sibling beneath icon and h1");
+assert.ok(typography.includes(".marketing-site .marketing-hero-split .marketing-hero-identity > .marketing-hero-tagline")&&typography.includes("grid-column:1 / -1;")&&typography.includes("text-align:left;"),"Tagline must begin under the icon, at the left edge of the entire brand composition");
 assert.ok(typography.includes("font-size:clamp(19px,5vw,25px)")&&typography.includes("@media(max-width:370px)"),"Tagline needs safe mobile font scale");
 const heroMark=readFileSync(new URL("../public/lektrus-icon-192.png",import.meta.url));
 assert.ok(heroMark.length>4000&&heroMark.subarray(1,4).toString()==="PNG","Hero must load the shipped official transparent Lektrus image, not a placeholder");
