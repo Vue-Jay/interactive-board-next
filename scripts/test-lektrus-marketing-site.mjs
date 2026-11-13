@@ -354,9 +354,9 @@ assert.deepEqual(normalizedLegacy.navigation.map(x=>x.id),["home","features","pr
 const retiredAsCustom=model.normalizeSiteDocument({...defaultMarketing,customPages:[{id:"about",title:"Reintroduced About",blocks:[]},{id:"new-page",title:"New",blocks:[]}]});
 assert.ok(!retiredAsCustom.customPages.some(x=>x.id==="about"),"deleted page names stay reserved");
 assert.ok(retiredAsCustom.customPages.some(x=>x.id==="new-page"),"ordinary custom pages continue working");
-assert.ok(site.includes("},3600);"),"showcase must change at the new faster interval");
-assert.ok(site.includes("),650);"),"transition previous frame must be cleaned up promptly");
-assert.ok(css.includes("@keyframes marketing-crisp-wipe")&&css.includes("@keyframes marketing-crisp-exit"),"transitions must reveal crisp captures instead of fading both images over white");
+assert.ok(site.includes("},7500);"),"approved local slideshow must use its original 7.5-second cadence");
+assert.ok(site.includes("),900);"),"outgoing screenshot must disappear after the full .9-second fade");
+assert.ok(css.includes("@keyframes marketing-showcase-zoom")&&css.includes("@keyframes marketing-showcase-appear"),"approved local reel must animate its capture without white flash");
 assert.ok(css.includes("min-height:0")&&css.includes(".marketing-project-summary")&&css.includes("margin-top:auto"),"project section and bottom-pinned footer must eliminate awkward whitespace");
 
 assert.doesNotMatch(site,/Это текущие технические ограничения тарифов/,"remove the old pricing disclaimer beneath plans");
