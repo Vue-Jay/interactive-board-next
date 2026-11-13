@@ -7,7 +7,7 @@ import LectrisWorkspaceShell from "./LectrisWorkspaceShell";
 import { clearNotificationCache } from "./notificationsStore";
 import { clearAiBoardTransfer } from "./aiLocalStore";
 import { clearAccountAccessCache, getAccountAccess, getCachedAccountAccess, type AccountRole } from "./accountRoleStore";
-import { clearPendingShare, initialRoute, parseRoute, rememberShareToken, type AppRoute } from "./routes";
+import { clearPendingShare, initialRoute, parseRoute, pendingSharePath, rememberShareToken, type AppRoute } from "./routes";
 import { redeemShareLink } from "./shareLinks";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
@@ -178,12 +178,10 @@ export default function App() {
         if(!alive||!confirmedUser)return false;
         setAuthUser(confirmedUser);
         setActiveBoard(null);
-        navigate("/",true);
-        const callback=new URL(callbackUrl);
-        if((callback.protocol==="https:"||callback.protocol==="http:")&&callback.origin===window.location.origin){
-          callback.searchParams.delete("email_confirmation");
-          window.history.replaceState({},"",callback.pathname+callback.search);
-        }
+        // The confirmation callback must not reset an invitation to /app.
+        // Keep the pending /join/:token until redemption, then the token is
+        // replaced with /board/:id. Never put auth fragments back in history.
+        navigate(pendingSharePath()??"/",true);
         return true;
       }catch(error){const message=error instanceof Error?error.message:"Не удалось подтвердить email";console.warn("Lektrus email confirmation could not be completed",error);if(alive)setAuthCallbackError(message);return false}
     };
