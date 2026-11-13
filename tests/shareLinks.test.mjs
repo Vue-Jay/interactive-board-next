@@ -72,6 +72,26 @@ test('invitation URL grants an entry route; direct board URL requires membership
   assert.throws(() => api.boardDirectUrl('../other'), /идентификатор/);
 });
 
+test('invitation copying works on HTTP LAN even without navigator.clipboard', async () => {
+  let selected = false, removed = false;
+  const field = { style: {}, value: '', readOnly: false,
+    focus: () => {}, select: () => { selected = true; },
+    remove: () => { removed = true; } };
+  const document = {
+    activeElement: null,
+    body: { appendChild: element => { assert.equal(element, field); } },
+    createElement: tag => { assert.equal(tag, 'textarea'); return field; },
+    execCommand: command => { assert.equal(command, 'copy'); return selected; },
+  };
+  const api = load('shareLinks', {
+    require: () => ({}), navigator: {}, document, HTMLElement: class {},
+  });
+  const address = 'http://192.168.0.10:5173/join/' + token;
+  assert.equal(await api.copyBoardLink(address), true);
+  assert.equal(field.value, address);
+  assert.equal(removed, true);
+});
+
 test('legacy query links preserve /app and unrelated query/hash when cleared', () => {
   const browserSession = browser('https://lektrus.example/app?section=boards&join=' + token + '#saved');
   const api = load('shareLinks', { window: browserSession.window, require: () => ({}) });
@@ -158,6 +178,7 @@ test('email confirmation keeps the invite; legacy query starts the app, not the 
   assert.match(auth, /onAuthenticated\(await loginGuest\(guestName\)\)/);
   assert.match(boards, /window\.dispatchEvent\(new PopStateEvent\("popstate"\)\)/);
   assert.match(boards, /boardDirectUrl\(manage\.id\)/);
+  assert.match(boards, /copyBoardLink\(createdUrl\)/);
   assert.doesNotMatch(boards, /await redeemBoardShareLink\(token\)/);
 });
 
@@ -167,6 +188,7 @@ test('link management hides revoked, expired or exhausted invitations and does n
   assert.match(dialog, /createdIsActive&&created/);
   assert.match(dialog, /boardDirectUrl\(board\.id\)/);
   assert.match(dialog, /setLinks\(rows=>\[link,/);
+  assert.match(dialog, /copyBoardLink\(created\.url\)/);
   assert.doesNotMatch(dialog, /presentationUrl|present=1/);
 });
 
