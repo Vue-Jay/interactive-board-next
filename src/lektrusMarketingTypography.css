@@ -723,3 +723,39 @@
   .marketing-site .marketing-help-layout .marketing-faq-toggle,
   .marketing-site .marketing-help-layout .lektrus-feedback-submit-row button {transition:none}
 }
+
+/* Official Lektrus mark belongs to the home identity, not to a separate hero card. */
+.marketing-site .marketing-hero-split .marketing-hero-identity {
+  display:grid;
+  grid-template-columns:clamp(65px,6vw,84px) minmax(0,1fr);
+  align-items:start;
+  gap:clamp(12px,1.35vw,18px);
+  max-width:100%;
+  margin-bottom:18px;
+}
+.marketing-site .marketing-hero-split .marketing-hero-logo {
+  display:block;
+  width:100%;
+  height:auto;
+  aspect-ratio:1;
+  object-fit:contain;
+  filter:drop-shadow(0 8px 14px #1d63b51a);
+}
+.marketing-site .marketing-hero-split .marketing-hero-identity h1 {
+  min-width:0;
+  max-width:100%;
+  margin:0;
+}
+@media(max-width:700px) {
+  .marketing-site .marketing-hero-split .marketing-hero-identity {
+    grid-template-columns:clamp(52px,15vw,66px) minmax(0,1fr);
+    gap:11px;
+    margin-bottom:16px;
+  }
+}
+@media(max-width:370px) {
+  .marketing-site .marketing-hero-split .marketing-hero-identity {
+    grid-template-columns:50px minmax(0,1fr);
+    gap:10px;
+  }
+}
