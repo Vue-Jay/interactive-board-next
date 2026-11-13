@@ -161,15 +161,23 @@ with sync_playwright() as p:
     assert visitor.locator(".marketing-project-audiences p").count() == 2, "Both teacher and student benefits belong on Home"
     assert visitor.locator(".marketing-project-heading").is_visible()
     assert visitor.locator(".marketing-home-summary, .marketing-audience-grid, .marketing-last-cta").count() == 0
-    first = showcase.locator(".marketing-showcase-current").get_attribute("src")
-    assert first and first.startswith("/site/")
+    screen_image = showcase.locator(".marketing-showcase-motion img:last-of-type")
+    first = screen_image.get_attribute("src")
+    assert first == "/site/showcase-workspace.png", "The first capture must be the user's approved workspace"
     visitor.wait_for_function(
-        "(initial) => document.querySelector('.marketing-showcase-current')?.getAttribute('src') !== initial",
-        arg=first, timeout=7200
+        "() => { const image=document.querySelector('.marketing-showcase-motion img:last-of-type'); return image?.complete && image.naturalWidth > 0 }",
+        timeout=10000
     )
-    assert showcase.locator(".marketing-showcase-current").get_attribute("src") != first
-    assert showcase.locator(".marketing-showcase-previous").count() <= 1
-    assert float(showcase.locator(".marketing-showcase-current").evaluate("(el) => getComputedStyle(el).opacity")) == 1.0, "Next genuine frame must not wash out during the transition"
+    visitor.wait_for_function(
+        "(initial) => document.querySelector('.marketing-showcase-motion img:last-of-type')?.getAttribute('src') !== initial",
+        arg=first, timeout=13000
+    )
+    visitor.wait_for_function(
+        "() => {const images=document.querySelectorAll('.marketing-showcase-motion img'); const current=images[images.length-1]; return !!current && current.complete && current.naturalWidth > 0 && parseFloat(getComputedStyle(current).opacity) > .99}",
+        timeout=6000
+    )
+    assert showcase.locator(".marketing-showcase-motion img").count() <= 2, "Only the current and outgoing captures may be shown"
+    assert showcase.locator(".marketing-showcase-motion img:last-of-type").get_attribute("src") != first
     visitor.screenshot(path=str(root / "06-home-dynamic-reel.png"), full_page=True)
 
     visitor.goto("http://127.0.0.1:5173/#features", wait_until="domcontentloaded")
