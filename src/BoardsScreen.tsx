@@ -7,7 +7,7 @@ import { flushLectrisOrganization, queueLectrisBoardOrganization } from "./lectr
 import { cachedBoardPreview, loadBoardPreviews, backfillCachedBoardPreviews } from "./boardPreview";
 import { BOARD_ROLE_LABELS, isRemoteBackendEnabled, type AuthUser, type BoardRole } from "./authStore";
 import { boardStorageKey, createBoard, deleteBoard, deleteBoardForever, ensureUserBoards, getCachedUserBoards, getTrashedBoards, getUserBoards, restoreBoard, renameBoard, getBoardAccess, changeMemberRole, removeMember, type BoardAccessMember, type BoardInvitation, type BoardSummary } from "./boardStore";
-import { boardShareUrl, clearPendingShareToken, createBoardShareLink, listBoardShareLinks, pendingShareToken, revokeBoardShareLink, type BoardShareLink, type ShareRole } from "./shareLinks";
+import { boardDirectUrl, boardShareUrl, clearPendingShareToken, createBoardShareLink, listBoardShareLinks, pendingShareToken, revokeBoardShareLink, type BoardShareLink, type ShareRole } from "./shareLinks";
 
 type Props={user:AuthUser;accountRole:AccountRole;isAppAdmin:boolean;onOpenBoard:(b:BoardSummary)=>void;onLogout:()=>void};
 type BoardFilter="all"|"mine"|"shared";
@@ -238,6 +238,11 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
    <div className="board-invite-role-grid"><button className="editor" disabled={busy||!isRemoteBackendEnabled()} onClick={()=>void createLink("editor")}><span>✎</span><b>Редактирование</b><small>Можно менять содержимое доски</small></button><button className="viewer" disabled={busy||!isRemoteBackendEnabled()} onClick={()=>void createLink("viewer")}><span>👁</span><b>Только просмотр</b><small>Без возможности редактирования</small></button></div>
    {!isRemoteBackendEnabled()&&<div className="access-notice">Для ссылок доступа нужна серверная синхронизация.</div>}
    {createdUrl&&<div className="board-invite-created"><div><span>✓</span><strong>Ссылка готова</strong></div><div><input readOnly value={createdUrl} onFocus={e=>e.currentTarget.select()}/><button onClick={()=>void copyCreated()}>⧉ Копировать</button></div></div>}
+   {isRemoteBackendEnabled()&&<details className="board-direct-link">
+     <summary>Прямая ссылка на доску для участников</summary>
+     <div className="board-invite-created"><div><input readOnly value={boardDirectUrl(manage.id)} onFocus={e=>e.currentTarget.select()} aria-label="Прямая ссылка на доску"/><button type="button" onClick={()=>void (async()=>{try{await navigator.clipboard.writeText(boardDirectUrl(manage.id));setNotice("Адрес доски скопирован")}catch{setNotice("Не удалось скопировать адрес. Выделите ссылку вручную.")}})()}>⧉ Копировать</button></div></div>
+     <small>Ссылка не выдаёт права доступа. Сначала пригласите участника.</small>
+   </details>}
  </div>
 
  {notice&&<div className="access-notice">{notice}</div>}
