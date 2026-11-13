@@ -1084,7 +1084,7 @@ body:has(.marketing-site:not(.site-preview)) .site-editable-block:hover{outline:
 .marketing-site .marketing-project-intro{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:clamp(30px,5vw,75px);align-items:start}
 .marketing-site .marketing-project-heading{gap:14px}
 .marketing-site .marketing-project-heading h2{max-width:530px;font-size:clamp(31px,3.05vw,43px);line-height:1.16;letter-spacing:-.06em}
-.marketing-site .marketing-project-heading h2 span{color:var(--marketing-blue)}
+.marketing-site .marketing-project-heading h2::after{content:"";display:block;width:72px;height:4px;margin-top:17px;border-radius:99px;background:var(--marketing-blue)}
 .marketing-site .marketing-project-caption{max-width:435px;font-size:14px;line-height:1.72}
 .marketing-site .marketing-project-body{padding-top:30px}
 .marketing-site .marketing-project-body>p:first-child{font-size:15px;line-height:1.8}
