@@ -7,7 +7,7 @@ import { flushLectrisOrganization, queueLectrisBoardOrganization } from "./lectr
 import { cachedBoardPreview, loadBoardPreviews, backfillCachedBoardPreviews } from "./boardPreview";
 import { BOARD_ROLE_LABELS, isRemoteBackendEnabled, type AuthUser, type BoardRole } from "./authStore";
 import { boardStorageKey, createBoard, deleteBoard, deleteBoardForever, ensureUserBoards, getCachedUserBoards, getTrashedBoards, getUserBoards, restoreBoard, renameBoard, getBoardAccess, changeMemberRole, removeMember, type BoardAccessMember, type BoardInvitation, type BoardSummary } from "./boardStore";
-import { boardShareUrl, clearPendingShareToken, createBoardShareLink, listBoardShareLinks, pendingShareToken, redeemBoardShareLink, revokeBoardShareLink, type BoardShareLink, type ShareRole } from "./shareLinks";
+import { boardShareUrl, clearPendingShareToken, createBoardShareLink, listBoardShareLinks, pendingShareToken, revokeBoardShareLink, type BoardShareLink, type ShareRole } from "./shareLinks";
 
 type Props={user:AuthUser;accountRole:AccountRole;isAppAdmin:boolean;onOpenBoard:(b:BoardSummary)=>void;onLogout:()=>void};
 type BoardFilter="all"|"mine"|"shared";
@@ -82,20 +82,11 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
  useEffect(()=>{let alive=true;(async()=>{
    const token=pendingShareToken();
    if(token&&isRemoteBackendEnabled()){
-     try{
-       const joined=await redeemBoardShareLink(token);
-       clearPendingShareToken();
-       const list=await getUserBoards(user);
-       if(!alive)return;
-       setBoards(list);
-       setNotice(`Доступ к доске «${joined.title}» получен`);
-       onOpenBoard(joined);
-       setLoading(false);
-       return;
-     }catch(e){
-       clearPendingShareToken();
-       if(alive)setNotice(e instanceof Error?e.message:"Ссылка доступа недействительна");
-     }
+     // Legacy ?join= links must use App's canonical flow. Redeeming here
+     // bypassed the protected-link password prompt and could consume a use.
+     window.history.replaceState({}, "", `/join/${token}`);
+     window.dispatchEvent(new PopStateEvent("popstate"));
+     return;
    }else if(token&&!isRemoteBackendEnabled()){
      clearPendingShareToken();
      if(alive)setNotice("Эта ссылка требует серверной версии приложения.");
