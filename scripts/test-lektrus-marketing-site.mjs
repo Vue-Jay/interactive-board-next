@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
 import {readFileSync,existsSync} from "node:fs";
 import ts from "typescript";
 
@@ -48,6 +49,28 @@ assert.ok(!site.includes("Купить подписку"),"test subscriptions mu
 for(const shot of ["board-showcase.png","app-home.png","board-math.png","board-chemistry.png","board-geometry.png","board-physics.png","board-contour.png","board-history.png","board-russian.png"]){
  assert.ok(existsSync(new URL("../public/site/"+shot,import.meta.url)),"missing actual screenshot: "+shot);
 }
+// The user approved these original images BEFORE Site Studio existed (PR #293,
+// commit f0eb1f3545d4). Their Git blob SHA values must not silently change
+// during marketing redesigns or automatic screenshot generation.
+const approvedBeforeSiteStudio={
+ "app-home.png":"8a889d486c2dddd7399dcfab86ebf64081736840",
+ "board-math.png":"518a3365f62c263c984d0011b57c573064a0186f",
+ "board-chemistry.png":"174b9cdb45f47dab3215bbadf2d630b67372b988",
+ "board-geometry.png":"4d0f904d444ff741d46ffb716d80e73efaf2c638",
+ "board-physics.png":"7707e0674ae1cbceb602c9d2711f44360f6faf57",
+ "board-contour.png":"0ba8d7980ff1cb5cfa934a28912fb9dfc4061d79",
+ "board-history.png":"309ecba4193835ce62ee625693ecb9a92f9092f7",
+ "board-russian.png":"632bcec02916ed1e44c812f6e95ca82df5e546d2"
+};
+for(const [shot,sha] of Object.entries(approvedBeforeSiteStudio)){
+ const bytes=readFileSync(new URL("../public/site/"+shot,import.meta.url));
+ const actual=createHash("sha1").update("blob "+bytes.length+"\0").update(bytes).digest("hex");
+ assert.equal(actual,sha,"approved pre-Site-Studio screenshot must remain unchanged: "+shot);
+}
+const showcaseDefinition=read("src/marketingSiteConfig.ts");
+const shotList=showcaseDefinition.split("export const DEFAULT_SITE_SHOWCASE:SiteShowcaseShot[]=[")[1]?.split("];")[0]??"";
+const showcaseFiles=[...shotList.matchAll(/src:"\/site\/([^"]+)"/g)].map(m=>m[1]);
+assert.deepEqual(showcaseFiles,Object.keys(approvedBeforeSiteStudio),"approved eight-shot reel must use the pre-builder images in their original order");
 assert.ok(site.includes("marketing-feature-row")&&css.includes(".marketing-feature-row"),"features should be compact rows, not repeated giant cards");
 assert.equal((site.slice(site.indexOf("const featureCards=["),site.indexOf("const questions=[")).match(/benefit:/g)||[]).length,6,"each feature must explain a concrete user benefit");
 for(const benefit of ["Объясняйте так, как удобно вам.","Превратите зрителей в участников.","Покажите то, что трудно объяснить словами.","От теории переходите к эксперименту.","Закрепляйте тему прямо во время объяснения.","Продолжайте, а не начинайте заново."]){
