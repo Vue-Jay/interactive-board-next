@@ -4,7 +4,6 @@
 Run only against an isolated local Vite server. Never connect a production
 account or read user boards; all subjects are deterministic /demo/board scenes.
 """
-import re
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
@@ -28,7 +27,7 @@ def save(page, filename):
     path=OUT/filename
     page.screenshot(path=str(path), animations="disabled", full_page=False)
     data=path.read_bytes()
-    assert data.startswith(b"\\x89PNG\\r\\n\\x1a\\n") and len(data)>30_000, f"Invalid capture: {filename}"
+    assert data.startswith(bytes.fromhex("89504e470d0a1a0a")) and len(data)>30_000, f"Invalid capture: {filename}"
     print(f"CAPTURE {filename} ({len(data)} bytes)", flush=True)
 
 with sync_playwright() as p:
@@ -40,7 +39,7 @@ with sync_playwright() as p:
     for scene,filename,label in SCENES:
         page.goto(BASE+"/demo/board?scene="+scene+"&capture=1",wait_until="domcontentloaded",timeout=45000)
         page.locator(".board-title").wait_for(timeout=45000)
-        page.get_by_text(label,exact=True).first.wait_for(timeout=30000)
+        page.wait_for_function("(expected) => document.querySelector('input.board-title')?.value === expected", arg=label, timeout=30000)
         settle(page)
         save(page,filename)
 
