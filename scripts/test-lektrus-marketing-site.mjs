@@ -30,7 +30,7 @@ for(const text of [
 // text, real screenshot slideshow on the right, with tool shortcuts in the rail.
 assert.ok(site.includes("marketing-sidebar-content")&&site.includes("marketing-sidebar-tools"),"navigation must be a separate left sidebar with standalone tools");
 assert.ok(site.includes('icon=false')&&site.includes('{icon&&<SiteMenuIcon name={id}/>}'),"body links should be text-only while sidebar links have icons");
-assert.ok(site.includes('" is-first":"")')&&css.includes(".marketing-showcase-current.is-first{animation:none}"),"the initial real screenshot must not be invisible during entrance animation");
+assert.ok(site.includes('className={previousShot?"marketing-showcase-fade":"marketing-showcase-base"}')&&css.includes(".marketing-showcase-motion"),"the first approved screenshot must appear immediately without waiting for an entrance animation");
 assert.ok(site.includes('siteNavigation.map(item=><NavLink')&&site.includes('<SiteMenuIcon name={id}/>'),"the remaining four site pages, including Home, must have branded navigation icons");
 assert.ok(site.includes('href="/tools/atlas"')&&site.includes('href="/tools/laboratory"'),"sidebar must link to both real standalone tools");
 assert.ok(site.includes("marketing-hero-split")&&site.includes("marketing-hero-copy"),"homepage must position text and real captures as sibling columns");
@@ -48,6 +48,24 @@ assert.ok(!site.includes("Купить подписку"),"test subscriptions mu
 for(const shot of ["board-showcase.png","app-home.png","board-math.png","board-chemistry.png","board-geometry.png","board-physics.png","board-contour.png","board-history.png","board-russian.png"]){
  assert.ok(existsSync(new URL("../public/site/"+shot,import.meta.url)),"missing actual screenshot: "+shot);
 }
+// Regression: the original local screenshots are actual checked-in assets, not missing URLs.
+const approvedLocalShots=[
+ "showcase-workspace.png","showcase-geometry.png","showcase-physics.png",
+ "showcase-chemistry.png","showcase-contour.png","showcase-russian.png","showcase-ai.png"
+];
+const source=read("src/marketingSiteConfig.ts");
+const showcaseConfig=source.split("export const DEFAULT_SITE_SHOWCASE:SiteShowcaseShot[]=[")[1]?.split("];")[0]??"";
+const selected=[...showcaseConfig.matchAll(/src:"\\/site\\/([^"]+)"/g)].map(m=>m[1]);
+assert.deepEqual(selected,approvedLocalShots,"Home must show the seven source captures from the user's local site in order");
+assert.ok(source.includes("legacyShowcaseSources")&&source.includes("isLegacyDefault"),"published default galleries must migrate to the user's real screenshots");
+for(const shot of [...approvedLocalShots,"showcase-atlas.png","showcase-lab.png","showcase-workspace-mobile.png"]){
+ const binary=readFileSync(new URL("../public/site/"+shot,import.meta.url));
+ assert.ok(binary.length>40000,"missing or incomplete local image: "+shot);
+ assert.ok(binary.subarray(0,8).equals(Buffer.from("89504e470d0a1a0a","hex")),"expected real PNG capture: "+shot);
+}
+const localFont=readFileSync(new URL("../public/fonts/manrope/Manrope-Variable.ttf",import.meta.url));
+assert.ok(localFont.length>50000,"missing local Manrope font");
+assert.ok(css.includes("/fonts/manrope/Manrope-Variable.ttf")&&css.includes("@keyframes marketing-showcase-zoom"),"original local typography and motion must be restored");
 assert.ok(site.includes("marketing-feature-row")&&css.includes(".marketing-feature-row"),"features should be compact rows, not repeated giant cards");
 assert.equal((site.slice(site.indexOf("const featureCards=["),site.indexOf("const questions=[")).match(/benefit:/g)||[]).length,6,"each feature must explain a concrete user benefit");
 for(const benefit of ["Объясняйте так, как удобно вам.","Превратите зрителей в участников.","Покажите то, что трудно объяснить словами.","От теории переходите к эксперименту.","Закрепляйте тему прямо во время объяснения.","Продолжайте, а не начинайте заново."]){
@@ -59,7 +77,7 @@ assert.doesNotMatch(entry,/lektrusShowcase\.css/,"the public entry must not load
 assert.match(css,/@media\(max-width:700px\)/,"the site needs small-screen layouts");
 assert.ok(site.includes("const showcaseShots=config.showcase")&&read("src/marketingSiteConfig.ts").includes("DEFAULT_SITE_SHOWCASE"),"homepage must use document-managed original screenshots");
 assert.ok(site.includes("marketing-showcase-screen")&&site.includes("currentShot.src"),"home must rotate actual screenshots instead of freezing one image");
-assert.ok(site.includes("setPreviousSlide")&&site.includes("window.setInterval")&&site.includes("marketing-showcase-previous"),"one automatic screenshot field must crossfade between frames");
+assert.ok(site.includes("setPreviousSlide")&&site.includes("window.setInterval")&&site.includes("marketing-showcase-fade")&&site.includes("marketing-showcase-base"),"one automatic screenshot field must crossfade between approved local captures");
 assert.doesNotMatch(site,/marketing-showcase-(controls|subjects|toolbar|player|counter|progress)/,"homepage must never display a player control bar");
 assert.ok(site.includes('window.matchMedia("(prefers-reduced-motion: reduce)")'),"automatic screenshots must respect reduced motion");
 assert.ok(css.includes(".marketing-showcase-screen")&&css.includes("@keyframes marketing-unified-crossfade")&&!css.includes(".marketing-showcase-controls"),"one integrated animated screenshot area must replace the old player UI");
@@ -77,7 +95,7 @@ for(const selector of [".marketing-project-intro",".marketing-project-stages",".
  assert.ok(css.includes(selector),"project presentation is missing its visual style: "+selector);
 }
 assert.ok(css.includes("@media(max-width:700px)")&&css.includes(".marketing-project-stages{grid-template-columns:1fr"),"project narrative must stack cleanly on mobile");
-assert.ok(homeSection.includes("marketing-showcase-previous")&&homeSection.includes("marketing-showcase-current"),"the rotating product captures must remain untouched");
+assert.ok(homeSection.includes("marketing-showcase-motion")&&homeSection.includes("marketing-showcase-fade"),"the Home reel must use the locally approved smooth image transition");
 
 assert.ok(site.includes('className="marketing-hero-brand-name"')&&css.includes("h1 .marketing-hero-brand-name"),"the hero must enlarge the wordmark without enlarging the entire tagline");
 assert.ok(site.includes('>Демо-версия доски <')&&!site.includes('>Демо доски <'),"the demo button needs its full approved label");
