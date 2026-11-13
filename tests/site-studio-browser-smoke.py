@@ -222,10 +222,17 @@ with sync_playwright() as p:
     visitor.screenshot(path=str(root / "06-home-dynamic-reel.png"), full_page=True)
 
     visitor.goto("http://127.0.0.1:5173/#features", wait_until="domcontentloaded")
-    rows = visitor.locator(".marketing-features-list article")
-    assert rows.count() == 6
+    groups = visitor.locator(".marketing-feature-group")
+    assert groups.count() == 3, "Features must follow three work stages"
+    assert [group.locator(".marketing-feature-item").count() for group in groups.all()] == [2, 3, 2], "Feature groups must contain 2 / 3 / 2 practical capabilities"
+    assert visitor.locator(".marketing-feature-item").count() == 7
+    assert visitor.locator(".marketing-feature-icon svg").count() == 7, "All capabilities need consistent line icons"
     assert visitor.locator(".marketing-features-section a, .marketing-features-section button").count() == 0, "Feature descriptions must not link to board creation"
-    assert visitor.locator(".marketing-showcase").count() == 0, "Real screenshot reel only belongs on Home"
+    assert visitor.locator(".marketing-features-section img, .marketing-showcase").count() == 0, "Features must use text and icons, not screenshots"
+    card_grid = visitor.locator(".marketing-feature-items-cards").first.evaluate("(el) => getComputedStyle(el).gridTemplateColumns")
+    assert len(card_grid.split()) == 2, f"Desktop preparation cards should display as two columns: {card_grid}"
+    assert visitor.locator(".marketing-feature-group-heading h2").count() == 3
+    assert visitor.locator(".marketing-feature-item-copy h3").count() == 7
     footer = visitor.locator(".marketing-footer").bounding_box()
     assert footer and footer["y"] + footer["height"] >= 885, "Short Features page should anchor footer to the bottom of the viewport"
     visitor.screenshot(path=str(root / "07-features-prose.png"), full_page=True)
@@ -247,7 +254,7 @@ with sync_playwright() as p:
     visitor.set_viewport_size({"width": 390, "height": 844})
     for page_name, marker in (
         ("home", ".marketing-project-summary"),
-        ("features", ".marketing-features-list"),
+        ("features", ".marketing-feature-groups"),
         ("pricing", ".marketing-pricing-grid"),
         ("help", ".marketing-form-card")
     ):
@@ -260,6 +267,12 @@ with sync_playwright() as p:
             assert visitor.locator(".marketing-footer-home-main").is_visible(), "Mobile home footer must remain visible"
             assert visitor.locator(".marketing-footer-home-links").count() == 2, "Mobile footer must retain both navigation groups"
             assert visitor.locator(".marketing-project-outro-icon").count() == 0, "Decorative star must stay removed on mobile"
+        if page_name == "features":
+            assert visitor.locator(".marketing-feature-item").count() == 7, "All seven mobile feature descriptions must remain"
+            for grid in visitor.locator(".marketing-feature-items-cards").all():
+                columns = grid.evaluate("(el) => getComputedStyle(el).gridTemplateColumns")
+                assert len(columns.split()) == 1, f"Mobile features must use one column, got {columns}"
+            assert visitor.locator(".marketing-feature-item-copy p").first.evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)") >= 14, "Mobile feature descriptions must stay readable"
         if page_name == "help":
             form_size = visitor.locator(".marketing-form-card input").first.evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)")
             assert form_size >= 16, f"Mobile form triggers iOS zoom: {form_size}"
