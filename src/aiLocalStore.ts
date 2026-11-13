@@ -1,7 +1,7 @@
 export type AiTool="assignment"|"quiz"|"flashcards";
 export type AiDifficulty="easy"|"medium"|"hard";
 export type AiDraft={id:string;tool:AiTool;topic:string;subject?:string;title:string;body:string;answers?:string[];createdAt:string};
-import { generateCurriculumAi, parseCurriculumRequest } from "./aiCurriculumGenerator";
+import { createCurriculumGenerationSeed, generateCurriculumAi, parseCurriculumRequest } from "./aiCurriculumGenerator";
 
 const KEY="onlinerepetitor.ai.local-history.v189";
 const USAGE_KEY="onlinerepetitor.ai.local-usage.v190";
@@ -39,7 +39,7 @@ export async function generateLocalAiDraft(tool:AiTool,topic:string,difficulty:A
  const clean=request.topic;
  if(clean.length<2)throw new Error("Укажите тему.");
  await new Promise(r=>setTimeout(r,450));
- const generated=generateCurriculumAi(request.tool,topic,request.level,request.count,request.subject);
+ const generated=generateCurriculumAi(request.tool,topic,request.level,request.count,request.subject,createCurriculumGenerationSeed());
  const draft={id:uid(),tool:request.tool,topic:clean,subject:generated.subject,title:generated.title,body:generated.items.join("\n\n"),answers:generated.answers,createdAt:new Date().toISOString()};
  remember(draft);return draft;
 }

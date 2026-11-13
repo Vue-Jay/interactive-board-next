@@ -205,7 +205,6 @@
 .lectris-workspace-stage .materials-stats>article{min-width:0}
 
 /* Dialogs fit the visible browser viewport and scroll their own content. */
-.lectris-command-dialog,
 .lectris-panel-settings-dialog,
 .lectris-tools-customize-dialog,
 .lectris-advanced-modal,

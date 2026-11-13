@@ -19,8 +19,11 @@ try {
   const perSubject = Object.fromEntries([...new Set(clear.map(item => item.subject))].map(subject => [subject, { total: 0, correct: 0, generated: 0, expectedClarifications: 0 }]));
   const mistakes = [];
   const falseAssignments = [];
+  const directClassifierAmbiguousAssignments = [];
   const classifierErrors = [];
-  let correct = 0, generated = 0, expectedClarifications = 0, parameterErrors = 0, classifierAccepted = 0, classifierCorrect = 0, clarified = 0;
+  const parameterErrors = [];
+  const topicPatternFailures = [];
+  let correct = 0, generated = 0, expectedClarifications = 0, classifierAccepted = 0, classifierCorrect = 0, clarified = 0;
 
   for (const item of clear) {
     const parsed = curriculum.parseCurriculumRequest(item.text);
@@ -35,14 +38,21 @@ try {
       else classifierErrors.push({ text: item.text, expected: item.subject, actual: modelSubject });
     }
     if (parsed.count !== item.count || parsed.grade !== item.grade || parsed.tool !== item.tool || parsed.level !== item.level || (item.olympiad !== undefined && parsed.olympiad !== item.olympiad)) {
-      parameterErrors += 1;
-      mistakes.push({ text: item.text, expectedParameters: item, actualParameters: parsed });
+      const error = { text: item.text, expectedParameters: item, actualParameters: parsed };
+      parameterErrors.push(error);
+      mistakes.push(error);
+    }
+    const normalizedTopic = parsed.topic.replace(/ё/giu, "е");
+    if (item.topicPattern && !new RegExp(item.topicPattern.replace(/ё/giu, "е"), "iu").test(normalizedTopic)) {
+      const error = { text: item.text, expectedTopicPattern: item.topicPattern, actualTopic: parsed.topic };
+      topicPatternFailures.push(error);
+      mistakes.push(error);
     }
     if (!matches) continue;
     if (item.expectClarification) {
       try {
         curriculum.generateCurriculumAi(parsed.tool, item.text, parsed.level, parsed.count, parsed.subject);
-        mistakes.push({ text: item.text, expected: "clarification due to topic/grade conflict", actual: "generated without clarification" });
+        mistakes.push({ text: item.text, expected: "clarification due to topic/grade conflict", actual: "generated without clarification", parsed: { subject: parsed.subject, topic: parsed.topic, grade: parsed.grade, count: parsed.count } });
       } catch (error) {
         if (/Уточните (?:тему или класс|класс или предмет)/u.test(String(error?.message ?? error))) {
           expectedClarifications += 1;
@@ -66,25 +76,40 @@ try {
     const modelSubject = classifier.classifyCurriculumSubject(item.text);
     if (!parsed.subject) clarified += 1;
     else falseAssignments.push({ text: item.text, integrated: parsed.subject, classifier: modelSubject || "<уточнить>" });
+    if (modelSubject) directClassifierAmbiguousAssignments.push({ text: item.text, classifier: modelSubject });
   }
 
   const summary = {
     holdoutVersion: dataset.version,
     clearRequests: clear.length,
     integratedSubjectAccuracy: `${correct}/${clear.length}`,
-    parametersPreserved: `${clear.length - parameterErrors}/${clear.length}`,
+    parametersPreserved: `${clear.length - parameterErrors.length}/${clear.length}`,
+    topicPatternsPreserved: `${clear.filter(item => item.topicPattern).length - topicPatternFailures.length}/${clear.filter(item => item.topicPattern).length}`,
     generatedWithExpectedSubjectAndAnswerCount: `${generated}/${clear.filter(item => !item.expectClarification).length}`,
     expectedTopicGradeConflictsClarified: `${expectedClarifications}/${clear.filter(item => item.expectClarification).length}`,
     ambiguousRequests: ambiguous.length,
     correctlyClarifiedAmbiguous: `${clarified}/${ambiguous.length}`,
     directClassifierAccepted: `${classifierAccepted}/${clear.length}`,
     directClassifierAcceptedPrecision: `${classifierAccepted ? (100 * classifierCorrect / classifierAccepted).toFixed(1) : "0.0"}% (${classifierCorrect}/${classifierAccepted})`,
+    integratedFalseAssignmentRate: `${(100 * falseAssignments.length / Math.max(1, clear.length + ambiguous.length)).toFixed(2)}%`,
+    directClassifierAmbiguousAssignments: directClassifierAmbiguousAssignments.length,
+    directClassifierFalseAssignmentRate: `${(100 * (classifierErrors.length + directClassifierAmbiguousAssignments.length) / Math.max(1, clear.length + ambiguous.length)).toFixed(2)}%`,
     perSubject,
     classifierErrors,
     mistakes,
     falseAssignments,
+    directClassifierAmbiguousAssignments,
   };
-  console.log(JSON.stringify(summary, null, 2));
   const expectedGenerated = clear.filter(item => !item.expectClarification).length;
-  if (correct / Math.max(1, clear.length) < 0.97 || parameterErrors || generated !== expectedGenerated || expectedClarifications !== clear.filter(item => item.expectClarification).length || clarified !== ambiguous.length) process.exitCode = 1;
+  const directClassifierFalseAssignmentRate = (classifierErrors.length + directClassifierAmbiguousAssignments.length)
+    / Math.max(1, clear.length + ambiguous.length);
+  console.log(JSON.stringify(summary, null, 2));
+  if (correct / Math.max(1, clear.length) < 0.97
+    || parameterErrors.length
+    || topicPatternFailures.length
+    || generated !== expectedGenerated
+    || expectedClarifications !== clear.filter(item => item.expectClarification).length
+    || clarified !== ambiguous.length
+    || falseAssignments.length / Math.max(1, clear.length + ambiguous.length) > 0.01
+    || directClassifierFalseAssignmentRate > 0.01) process.exitCode = 1;
 } finally { await server.close(); }

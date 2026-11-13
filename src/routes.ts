@@ -89,3 +89,8 @@ export function initialRoute(): AppRoute {
   }
   return route;
 }
+export function navigateWorkspaceSection(section: string) {
+  const path = section ? `/app?section=${encodeURIComponent(section)}` : "/app";
+  window.history.pushState({}, "", path);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}

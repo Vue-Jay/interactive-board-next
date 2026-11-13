@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import UserAvatar from "./UserAvatar";
 import type { AccountRole } from "./accountRoleStore";
 import { listNotifications } from "./notificationsStore";
+import { navigateWorkspaceSection } from "./routes";
 
 
 type NavIcon = "search" | "home" | "subjects" | "groups" | "boards" | "users" | "assignments" | "schedule" | "progress" | "materials" | "templates" | "notification" | "feedback" | "profile" | "settings" | "admin" | "menu" | "chevron";
@@ -82,8 +83,7 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
     setMenuQuery("");
     setCommandOpen(false);
     setCommandQuery("");
-    window.history.pushState({}, "",target?"/app?section="+encodeURIComponent(target):"/app");
-    window.dispatchEvent(new PopStateEvent("popstate"));
+    navigateWorkspaceSection(target);
   };
   const toggle=()=>setCollapsed(prev=>{const next=!prev;try{localStorage.setItem("lectris.shell.collapsed",next?"1":"0")}catch{}return next});
   const moreItems=available.filter(x=>!["","boards","assignments","schedule"].includes(x.id));

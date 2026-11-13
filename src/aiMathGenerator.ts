@@ -469,17 +469,32 @@ function olympiadMath(topic:string,index:number){
  if(/симметри.*пространств|пространств.*симметри/.test(t))return spatialSymmetryTask(i);
  if(/делим|кратн/.test(t)){
   const variant=i%3;
+  const cycle=Math.floor(i/3);
   if(variant===0){
-   const target=9;
-   const solutions=Array.from({length:9},(_,n)=>10*(n+1)+(target-(n+1))).filter((value)=>value>=10&&value<=99&&value%6===0);
-   return{q:`Найди все двузначные числа, сумма цифр которых равна ${target} и которые делятся на 6. Объясни, почему других чисел нет.`,a:`Число делится на 6, если оно чётное и делится на 3. Сумма цифр ${target} уже гарантирует делимость на 3; перебираем цифры десятков и оставляем чётную последнюю цифру. Подходящие числа: ${solutions.join(", ")}.`};
+   const prime=[7,11,13,17,19][cycle%5];
+   let multiplier=1;
+   while((60*multiplier+1)%prime!==0)multiplier+=1;
+   const number=60*multiplier+1;
+   let inverse=1;
+   while((60*inverse)%prime!==1)inverse+=1;
+   const leastMultiplier=((prime-(inverse%prime))%prime)||prime;
+   return{q:`Найди наименьшее натуральное число, которое при делении на 2, 3, 4 и 5 даёт остаток 1 и делится на простое число p = ${prime}. Обоснуй, почему число наименьшее.`,a:`Числа с остатком 1 при делении на 2, 3, 4 и 5 имеют вид 60k + 1. Решаем сравнение 60k + 1 ≡ 0 (mod ${prime}): обратный к 60 остаток равен ${inverse}, поэтому k ≡ ${leastMultiplier} (mod ${prime}). Наименьшее положительное k = ${multiplier}; получаем n = 60·${multiplier} + 1 = ${number}. Проверка: ${number} даёт остаток 1 при делении на 2, 3, 4 и 5 и делится на ${prime}.`};
   }
   if(variant===1){
-   const target=10;
-   const solutions=Array.from({length:9},(_,n)=>10*(n+1)+(target-(n+1))).filter((value)=>value>=10&&value<=99&&value%4===0);
-   return{q:`Найди все двузначные числа с суммой цифр ${target}, которые делятся на 4. Проверь признак делимости и докажи, что список полный.`,a:`Перебираем пары цифр с суммой ${target}. Число делится на 4, когда число из двух последних цифр делится на 4. Подходящие числа: ${solutions.join(", ")}.`};
+   const prime=[3,5,7,11,13][cycle%5];
+   const modulus=8*prime;
+   const solutions=Array.from({length:modulus},(_,n)=>n).filter((n)=>n*(n+1)%(4*prime)===0&&n*(n+1)%(8*prime)!==0);
+   return{q:`Для простого p = ${prime} найди все остатки n по модулю ${modulus}, при которых произведение двух последовательных чисел n(n + 1) делится на ${4*prime}, но не делится на ${8*prime}. Докажи, что список полный.`,a:`Чтобы n(n + 1) делилось на 4, но не на 8, чётный множитель должен содержать ровно два множителя 2; это происходит при n ≡ 3 или 4 (mod 8). Для делимости на ${prime} нужно n ≡ 0 или −1 (mod ${prime}). Объединяем эти сравнения по китайской теореме об остатках; все подходящие остатки по модулю ${modulus}: ${solutions.join(", ")}. Для каждого произведение делится на ${4*prime}, но не на ${8*prime}.`};
   }
-  return{q:`Двузначное число делится на 9. Если переставить его цифры, получится число на 27 больше. Найди исходное число и обоснуй ответ.`,a:`Пусть цифры числа — a и b. Тогда a + b делится на 9, а разность перевёрнутого и исходного чисел равна 9(b − a) = 27, значит b − a = 3. При сумме цифр, кратной 9, получаем a + b = 9 и цифры 3 и 6. Исходное число 36: оно делится на 9, а 63 − 36 = 27.`};
+  const digitDifference=[2,1,3,4,5][cycle%5];
+  const increase=99*digitDifference;
+  const solutions=[];
+  for(let hundreds=1;hundreds<=9-digitDifference;hundreds++){
+   const units=hundreds+digitDifference;
+   const tens=9-hundreds-units;
+   if(tens>=0&&tens<=9)solutions.push(100*hundreds+10*tens+units);
+  }
+  return{q:`Найди все трёхзначные числа, которые делятся на 9 и сумма цифр которых равна 9, если перестановка цифр в обратном порядке увеличивает число на ${increase}. Докажи, что других чисел нет.`,a:`Пусть цифры числа — a, b, c. Тогда сумма цифр a + b + c = 9, а разность обратного числа и исходного равна 99(c − a) = ${increase}, поэтому c − a = ${digitDifference}. Следовательно, b = 9 − 2a − ${digitDifference}. Перебирая допустимые цифры сотен и оставляя цифры десятков от 0 до 9, получаем все числа: ${solutions.join(", ")}. Их сумма цифр равна 9, поэтому каждое делится на 9; при перевороте каждое увеличивается ровно на ${increase}.`};
  }
  if(/геометр|треуг|круг|окруж|прямоуг|квадрат|площад|периметр|угол/.test(t)){
   const perimeter=20+2*(i%13),half=perimeter/2,pairs:Array<[number,number]>=[];
@@ -505,7 +520,7 @@ function olympiadMath(topic:string,index:number){
  return {q:`Задача ${i+1}. ${prompts[i%prompts.length]}`,a:`Критерии проверки: составленная задача относится к теме «${topic}», имеет достаточно данных и однозначно сформулированный вопрос; решение логически следует из условия; приведённая проверка подтверждает ответ.`};
 }
 
-export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,topic:string,withAnswers=true,grade?:number,olympiad=false):MathAiResult{
+export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,topic:string,withAnswers=true,grade?:number,olympiad=false,generationSeed=0):MathAiResult{
  const actual=detect(topic,mode),safe=Math.max(1,Math.min(20,count)),t=topic.toLowerCase();
  const make=(index:number)=>{
   if(olympiad)return olympiadMath(t,index);
@@ -813,7 +828,7 @@ export function generateMathAi(mode:MathAiMode,level:MathAiLevel,count:number,to
   if(actual==="derivative")return derivative(index,t);
   return pick([()=>linear(level),()=>fraction(index),()=>geometry(level),()=>percent(index),()=>func(index),()=>word(index),()=>arithmetic(level),()=>powers(index,t),()=>prime(index),()=>proportion(index)])();
  };
- const rows=Array.from({length:safe},(_,index)=>make(index));
+ const rows=Array.from({length:safe},(_,index)=>make(index + generationSeed));
  const names:Record<string,string>={arithmetic:"Примеры",equations:"Уравнения",fractions:"Дроби",decimals:"Десятичные дроби",rounding:"Округление и оценка",geometry:"Геометрия",functions:"Функции",vectors:"Векторы",percent:"Проценты",word:"Текстовые задачи",powers:"Степени и корни",prime:"Простые множители",divisibility:"Делимость",probability:"Вероятность",statistics:"Статистика",proportion:"Пропорции",trigonometry:"Тригонометрия",logarithms:"Логарифмы",sequence:"Прогрессии",combinatorics:"Комбинаторика",division:"Деление с остатком",algebra:"Алгебраические выражения",absolute:"Модуль числа",domain:"Область определения",derivative:"Производная и касательная",mixed:"Смешанная работа"};
  const promptTitle=topic.trim();
  const detected=actual==="equations"&&/неравен/.test(t)?"Неравенства":actual==="prime"&&/прост.*чис/.test(t)?"Простые числа":actual==="arithmetic"&&/координатн.*плоск/.test(t)?"Координатная плоскость":names[actual]||"Задания";

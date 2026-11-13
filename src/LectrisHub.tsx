@@ -4,6 +4,7 @@ import UserAvatar from "./UserAvatar";
 import type { AccountRole } from "./accountRoleStore";
 import type { AuthUser } from "./authStore";
 import type { BoardSummary } from "./boardStore";
+import { navigateWorkspaceSection as navigate } from "./routes";
 import { getStudentsForTeacher, type StudentRecord } from "./studentsStore";
 import { listScheduledLessons, type ScheduledLesson } from "./scheduleStore";
 import { readGroupMembership, setGroupMembership } from "./lektrusGroupMembers";
@@ -26,7 +27,6 @@ type Props = {
 const commonSubjects=[...LEKTRUS_SCHOOL_SUBJECTS];
 const dayKey=(date:Date)=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
 const shortDate=(iso:string)=>new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
-const navigate=(section:string)=>{window.history.pushState({},"",section?"/?section="+encodeURIComponent(section):"/");window.dispatchEvent(new PopStateEvent("popstate"))};
 
 export default function LectrisHub({user,role,view,boards,previews,loading,creating,onOpenBoard,onCreateBoard,onDeleteBoard}:Props){
   const teacher=role==="teacher";

@@ -1614,7 +1614,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
           }
           const rayControl=rayFigure&&seg.kind==="ray"&&i===0;
           const dimension=purpose==="geometry"&&seg.kind==="segment"&&seg.measure?
-            formatGeometryMetric(geometryDistance(a,b))+" ед.":"";
+            formatGeometryMetric(geometryDistance(a,b))+(seg.showUnit===false?"":" ед."):"";
           const segmentText=dimension||seg.label;
           return <g key={`segment-${i}`}>
             {Array.from({length:seg.bondOrder??1},(_,bondIndex)=>{
@@ -1689,7 +1689,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
             })}
           </g>;
         })()}
-        {(item.graphAngles??[]).map((angle,i)=>{const a=point(angle.a),v=point(angle.vertex),b=point(angle.b);if(!a||!v||!b)return null;const start=Math.atan2(sy(a.y)-sy(v.y),sx(a.x)-sx(v.x)),end=Math.atan2(sy(b.y)-sy(v.y),sx(b.x)-sx(v.x));let diff=end-start;if(purpose==="unit-circle"){while(diff>0)diff-=2*Math.PI;while(diff<=-2*Math.PI)diff+=2*Math.PI;}else{while(diff>Math.PI)diff-=2*Math.PI;while(diff< -Math.PI)diff+=2*Math.PI;}const radius=26;const p1={x:sx(v.x)+radius*Math.cos(start),y:sy(v.y)+radius*Math.sin(start)},p2={x:sx(v.x)+radius*Math.cos(start+diff),y:sy(v.y)+radius*Math.sin(start+diff)};const isRight=purpose!=="unit-circle"&&Math.abs(Math.abs(diff)-Math.PI/2)<.015;const corner={x:p1.x+radius*Math.cos(start+diff),y:p1.y+radius*Math.sin(start+diff)};const arcPath=isRight?`M ${p1.x} ${p1.y} L ${corner.x} ${corner.y} L ${p2.x} ${p2.y}`:`M ${p1.x} ${p1.y} A ${radius} ${radius} 0 ${Math.abs(diff)>Math.PI?1:0} ${diff>0?1:0} ${p2.x} ${p2.y}`;return <g key={`angle-${i}`}><path className="graph-angle" d={arcPath}/>{<text className="graph-figure-label" x={sx(v.x)+(radius+13)*Math.cos(start+diff/2)} y={sy(v.y)+(radius+13)*Math.sin(start+diff/2)}>{purpose==="unit-circle"?formatPiRadians(Math.abs(diff)):angle.autoMeasure?formatGeometryMetric(geometryAngle(a,v,b)??NaN)+"°":angle.label ? (/°$/.test(angle.label)?angle.label:/^\d+(?:[.,]\d+)?$/.test(angle.label)?angle.label+"°":angle.label) : ""}</text>}</g>})}
+        {(item.graphAngles??[]).map((angle,i)=>{const a=point(angle.a),v=point(angle.vertex),b=point(angle.b);if(!a||!v||!b)return null;const start=Math.atan2(sy(a.y)-sy(v.y),sx(a.x)-sx(v.x)),end=Math.atan2(sy(b.y)-sy(v.y),sx(b.x)-sx(v.x));let diff=end-start;if(purpose==="unit-circle"){while(diff>0)diff-=2*Math.PI;while(diff<=-2*Math.PI)diff+=2*Math.PI;}else{while(diff>Math.PI)diff-=2*Math.PI;while(diff< -Math.PI)diff+=2*Math.PI;}const radius=26;const p1={x:sx(v.x)+radius*Math.cos(start),y:sy(v.y)+radius*Math.sin(start)},p2={x:sx(v.x)+radius*Math.cos(start+diff),y:sy(v.y)+radius*Math.sin(start+diff)};const isRight=purpose!=="unit-circle"&&Math.abs(Math.abs(diff)-Math.PI/2)<.015;const corner={x:p1.x+radius*Math.cos(start+diff),y:p1.y+radius*Math.sin(start+diff)};const arcPath=isRight?`M ${p1.x} ${p1.y} L ${corner.x} ${corner.y} L ${p2.x} ${p2.y}`:`M ${p1.x} ${p1.y} A ${radius} ${radius} 0 ${Math.abs(diff)>Math.PI?1:0} ${diff>0?1:0} ${p2.x} ${p2.y}`;return <g key={`angle-${i}`}><path className="graph-angle" d={arcPath}/>{<text className="graph-figure-label" textAnchor={purpose==="geometry"&&angle.autoMeasure?"middle":undefined} x={sx(v.x)+(radius+13)*Math.cos(start+diff/2)} y={sy(v.y)+(radius+13)*Math.sin(start+diff/2)}>{purpose==="unit-circle"?formatPiRadians(Math.abs(diff)):angle.autoMeasure?formatGeometryMetric(geometryAngle(a,v,b)??NaN)+"°":angle.label ? (/°$/.test(angle.label)?angle.label:/^\d+(?:[.,]\d+)?$/.test(angle.label)?angle.label+"°":angle.label) : ""}</text>}</g>})}
         {purpose==="geometry"&&["cylinder","cone"].includes(item.graphFigureId??"")&&(()=>{
           const radius=(item.graphGivenSides??[])[0]?.trim(),height=(item.graphGivenSides??[])[1]?.trim();
           const base=point(0),side=point(8),top=point(item.graphFigureId==="cylinder"?17:17);
@@ -9931,7 +9931,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               transform: boardWorldTransform(view),
             }}
           >
-            {!items.length && (
+            {!items.length && !boardAiOpen && (
               <div className="welcome-card">
                 <div className="welcome-badge">Пустая доска</div>
                 <h1>С чего начнём?</h1>

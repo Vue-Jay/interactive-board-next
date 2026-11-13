@@ -139,13 +139,13 @@ export default function LektrusPublicSite(){
   const id=window.setInterval(()=>{
    if(document.hidden)return;
    setPreviousSlide(showcaseSlide);
-   setShowcaseSlide((showcaseSlide+1)%showcaseShots.length);
-  },3600);
+   setShowcaseSlide(showcaseSlide+1);
+  },7500);
   return ()=>window.clearInterval(id);
  },[page,showcaseSlide,showcaseShots.length]);
  useEffect(()=>{
   if(previousSlide===null)return;
-  const id=window.setTimeout(()=>setPreviousSlide(null),650);
+  const id=window.setTimeout(()=>setPreviousSlide(null),900);
   return ()=>window.clearTimeout(id);
  },[previousSlide]);
  useEffect(()=>{
@@ -215,8 +215,10 @@ export default function LektrusPublicSite(){
      </div>
      <div className="marketing-showcase" aria-label="Автоматическая презентация настоящих экранов Lektrus" data-site-showcase>
       <div className="marketing-showcase-screen" role="img" aria-label="Примеры реальных экранов приложения Lektrus">
-       {previousShot&&<img className="marketing-showcase-previous" src={previousShot.src} alt="" aria-hidden="true"/>}
-       <img key={currentShot.src} className={"marketing-showcase-current"+(showcaseSlide===0&&previousSlide===null?" is-first":"")} src={currentShot.src} alt="" fetchPriority={showcaseSlide===0?"high":"auto"}/>
+       <div className="marketing-showcase-motion">
+        {previousShot&&<img className="marketing-showcase-base" src={previousShot.src} alt="" aria-hidden="true"/>}
+        <img key={showcaseSlide} className={previousShot?"marketing-showcase-fade":"marketing-showcase-base"} src={currentShot.src} alt="" fetchPriority={showcaseSlide===0?"high":"auto"}/>
+       </div>
       </div>
      </div>
     </section>

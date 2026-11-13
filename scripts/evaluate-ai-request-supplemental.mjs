@@ -18,10 +18,30 @@ try {
   const subjects = new Map();
   const unknowns = { total: 0, correctlyAsked: 0, falseSubjects: new Map() };
   const wrong = [];
+  const directBySubject = new Map();
+  let directAccepted = 0;
+  let directCorrect = 0;
+  let directFalseAssignments = 0;
   let correct = 0;
   let generated = 0;
   const generationFailures = [];
   for (const item of cases) {
+    const directSubject = classifier.classifyCurriculumSubject(item.text);
+    if (item.subject && ["Математика", "Физика", "Химия", "Русский язык"].includes(item.subject)) {
+      const row = directBySubject.get(item.subject) ?? { total: 0, accepted: 0, correct: 0 };
+      row.total += 1;
+      if (directSubject) {
+        directAccepted += 1;
+        row.accepted += 1;
+        if (directSubject === item.subject) {
+          directCorrect += 1;
+          row.correct += 1;
+        }
+      }
+      directBySubject.set(item.subject, row);
+    } else if (!item.subject && directSubject) {
+      directFalseAssignments += 1;
+    }
     const parsed = curriculum.parseCurriculumRequest(item.text);
     const actual = parsed.subject;
     correct += actual === item.subject ? 1 : 0;
@@ -61,6 +81,9 @@ try {
   console.log(`Сквозной разбор разработческого набора: ${correct}/${cases.length} (${(100 * correct / cases.length).toFixed(1)}%)`);
   console.log(`Генерация с сохранением предмета, темы и ключей: ${generated}/${cases.length - unknowns.total}; запросы без предмета остановлены до генерации: ${unknowns.correctlyAsked}/${unknowns.total}`);
   console.log(`Предметные запросы: ${cases.length - unknowns.total}; запросы без указания предмета: корректно уточнены ${unknowns.correctlyAsked}/${unknowns.total}`);
+  const directTotal = [...directBySubject.values()].reduce((sum, row) => sum + row.total, 0);
+  console.log(`Прямое распознавание четырёх приоритетных предметов: принято ${directAccepted}/${directTotal}, верно ${directCorrect}/${directAccepted || 1}; ложных ответов на неоднозначные запросы ${directFalseAssignments}/${unknowns.total}`);
+  for (const [subject, row] of directBySubject) console.log(`  Классификатор ${subject}: принято ${row.accepted}/${row.total}, верно ${row.correct}/${row.accepted || 1}`);
   for (const [subject, row] of subjects) console.log(`  ${subject}: ${row.correct}/${row.total} (${(100 * row.correct / row.total).toFixed(1)}%)`);
   if (unknowns.falseSubjects.size) console.log("Неоднозначные ошибочно отнесены: " + [...unknowns.falseSubjects].map(([subject, n]) => `${subject}=${n}`).join(", "));
   for (const row of wrong) console.log(`  Ошибка: ${JSON.stringify(row)}`);

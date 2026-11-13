@@ -3,6 +3,8 @@ import BoardApp from "./BoardApp";
 import {defaultLabBench,addLabVessel} from "./lektrusChemistryBenchModel";
 import {circuitTemplate} from "./lektrusCircuitModel";
 import {makeSchoolDiagram} from "./lektrusSchoolDiagramModel";
+import {makeSubjectToolItem} from "./lektrusSubjectToolRegistry";
+import {newSubjectBoardEntry} from "./LektrusSubjectBoard";
 import type {DocumentData,Item} from "./boardModel";
 import type {BoardSummary} from "./boardStore";
 import type {AuthUser} from "./authStore";
@@ -128,18 +130,140 @@ function documentFor(scene:Scene):DocumentData{
  ];
  return {version:1,title:sceneNames[scene],subject:"Математика",view:{x:0,y:0,zoom:1},items,background:{mode:"dots",color:"#fbfcfe",opacity:100}};
 }
+const presentationScenes = {
+  physics: {
+    id: "00000000-0000-4000-8000-0000000000b3",
+    title: "Ток в цепи",
+    model: "physics-circuit",
+  },
+  chemistry: {
+    id: "00000000-0000-4000-8000-0000000000b4",
+    title: "Расставьте коэффициенты в уравнении",
+    model: "chem-presentation-board",
+  },
+  geometry: {
+    id: "00000000-0000-4000-8000-0000000000b5",
+    title: "Найдите гипотенузу треугольника",
+    model: "geo-triangle",
+  },
+  math: {
+    id: "00000000-0000-4000-8000-0000000000b0",
+    title: "Парабола и её вершина",
+    model: "math-graph",
+  },
+  contour: {
+    id: "00000000-0000-4000-8000-0000000000b1",
+    title: "Найдите Польшу и двух её соседей",
+    model: "contour-map",
+  },
+  russian: {
+    id: "00000000-0000-4000-8000-0000000000b7",
+    title: "Сколько звуков в слове «ёлка»?",
+    model: "russian-phonetics",
+  },
+  history: {
+    id: "00000000-0000-4000-8000-0000000000b2",
+    title: "Европа после Первой мировой",
+    model: "history-map",
+  },
+};
+
+function presentationDocument(document: DocumentData, scene: keyof typeof presentationScenes): DocumentData {
+  const { title, model } = presentationScenes[scene];
+  const sourceItems = scene === "chemistry" ? [{
+    ...makeSubjectToolItem("subject-board-chemistry", 0, 0, () => model),
+    subjectBoardEntries: [{
+      ...newSubjectBoardEntry("chem-presentation-equation", "equation", "chemistry"),
+      steps: [{ expression: "Mg + O2 → MgO", conditions: "" }],
+    }],
+  }] : document.items;
+  const items = [
+    txt(`${scene}-presentation-title`, 100, 33, 950, 72, title, 38, "#172d47", "bold"),
+    ...sourceItems
+      .filter(item => item.id === model)
+      .map(item => {
+        const positioned = { ...item, x: 100, y: 120, width: 955, height: 478 };
+        if (scene === "physics") return { ...positioned, width: 660, height: 424 };
+        if (scene === "geometry") {
+          const labelOffsets = [
+            { labelDx: -.45, labelDy: -.62 },
+            { labelDx: .35, labelDy: .32 },
+            { labelDx: -.68, labelDy: .1 },
+          ];
+          return {
+            ...positioned,
+            graphXMin: -6,
+            graphXMax: 6,
+            graphYMin: -4,
+            graphYMax: 6,
+            graphPoints: positioned.graphPoints?.map(point => {
+              if (point.label === "A") return { ...point, labelDx: -.65, labelDy: -.35 };
+              if (point.label === "C") return { ...point, x: -4, y: 4, labelDx: -.65 };
+              return point;
+            }),
+            graphSegments: positioned.graphSegments?.map((segment, index) => ({
+              ...segment, ...labelOffsets[index], showUnit: false,
+              ...(index === 1 ? { measure: false, label: "?" } : {}),
+            })),
+            graphAngles: [
+              { a: 1, vertex: 0, b: 2, label: "", autoMeasure: true },
+            ],
+          };
+        }
+        if (scene === "russian" && positioned.schoolDiagram?.kind === "phonetics") {
+          return { ...positioned, schoolDiagram: {
+            ...positioned.schoolDiagram, word: "ёлка", showSounds: false, showCharacteristics: false,
+            letters: [
+              { id: "yo", letter: "ё", sounds: ["й", "о"], characteristic: "", stressed: true },
+              { id: "l", letter: "л", sounds: ["л"], characteristic: "", stressed: false },
+              { id: "k", letter: "к", sounds: ["к"], characteristic: "", stressed: false },
+              { id: "a", letter: "а", sounds: ["а"], characteristic: "", stressed: false },
+            ],
+          } };
+        }
+        if (scene === "history" && positioned.schoolDiagram?.kind === "atlas") {
+          return { ...positioned, schoolDiagram: { ...positioned.schoolDiagram, year: 1920, title: "Европа по эпохам" } };
+        }
+        if (scene === "contour" && positioned.schoolDiagram?.kind === "atlas") {
+          return { ...positioned, schoolDiagram: {
+            ...positioned.schoolDiagram, contourTask: "Отметьте Польшу и подпишите две страны, с которыми она граничит.",
+          } };
+        }
+        return positioned;
+      }),
+    ...(scene === "physics" ? [
+      txt("physics-presentation-voltage", 107, 310, 115, 56, "U = 12 В", 21, "#243d65", "bold"),
+      txt("physics-presentation-resistance", 336, 298, 228, 56, "Вся цепь: R = 6 Ом", 20, "#243d65", "bold"),
+      txt("physics-presentation-current", 395, 452, 100, 56, "I = ?", 21, "#243d65", "bold"),
+      {
+        id: "physics-presentation-question", kind: "quiz" as const,
+        x: 784, y: 120, width: 420, height: 272,
+        text: "Что покажет амперметр после замыкания ключа?",
+        color: "#315bd4", fontSize: 20, quizOptions: ["0,5 А", "2 А", "6 А"],
+        quizCorrect: 1, quizExplanation: "По закону Ома I = U / R = 12 В / 6 Ом = 2 А.",
+      },
+    ] : []),
+  ];
+  return { ...document, title, items };
+}
+
 export default function PublicDemoBoard(){
  const params=useMemo(()=>new URLSearchParams(window.location.search),[]);
  const raw=params.get("scene");
- const scene:Scene=raw&&raw in sceneIds?raw as Scene:"math";
- const id=sceneIds[scene];
- const board:BoardSummary={id,title:sceneNames[scene],ownerId:"lektrus-public-demo",role:"owner",createdAt:"2026-01-01T00:00:00.000Z",updatedAt:"2026-01-01T00:00:00.000Z"};
+ const scene:Scene=raw&&Object.hasOwn(sceneIds,raw)?raw as Scene:"math";
+ const presentation=params.get("presentation")==="1"&&Object.hasOwn(presentationScenes,scene)?scene as keyof typeof presentationScenes:null;
+ const id=presentation?presentationScenes[presentation].id:sceneIds[scene];
+ const document=useMemo(()=>{
+  const source=documentFor(scene);
+  return presentation?presentationDocument(source,presentation):source;
+ },[scene,presentation]);
+ const board:BoardSummary={id,title:document.title,ownerId:"lektrus-public-demo",role:"owner",createdAt:"2026-01-01T00:00:00.000Z",updatedAt:"2026-01-01T00:00:00.000Z"};
  const user:AuthUser={id:"lektrus-public-demo",name:"Гость",email:"",createdAt:"2026-01-01T00:00:00.000Z",isGuest:true};
  const capture=params.get("capture")==="1";
  const key=`lesson-board.document.v1.board.${id}`;
  try{
   const existing=localStorage.getItem(key);
-  if(capture||!existing)localStorage.setItem(key,JSON.stringify(documentFor(scene)));
+  if(capture||!existing)localStorage.setItem(key,JSON.stringify(document));
  }catch{/* A private browser session still renders the in-memory initial seed below. */}
- return <BoardApp key={scene} authUser={user} boardSummary={board} accountRole="student" demoMode demoInitialDocument={documentFor(scene)} onBackToBoards={()=>window.location.assign("/")} onLogout={()=>window.location.assign("/")} onBoardChanged={()=>{}}/>;
+ return <BoardApp key={id} authUser={user} boardSummary={board} accountRole="student" demoMode demoInitialDocument={document} onBackToBoards={()=>window.location.assign("/")} onLogout={()=>window.location.assign("/")} onBoardChanged={()=>{}}/>;
 }

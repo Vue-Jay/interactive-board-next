@@ -2,23 +2,36 @@ import type { CurriculumAiLevel } from "./aiCurriculumGenerator";
 
 export type SubjectExercise = { prompt: string; answer: string };
 
-const fallbackTaskForms = [
-  "Составь понятную схему по теме «{topic}»: покажи основные части/понятия и подпиши связь между ними.",
-  "Придумай учебную ситуацию по теме «{topic}» и пошагово объясни, как применить изученное правило или понятие.",
-  "Подготовь таблицу по теме «{topic}» с тремя важными признаками, примерами и коротким выводом.",
-  "Составь мини-викторину по теме «{topic}» из трёх разных вопросов и приложи краткий ключ проверки.",
-  "Найди типичную ошибку по теме «{topic}», объясни, почему она возникает, и покажи способ её исправить.",
-  "Объясни тему «{topic}» ученику младшего класса: используй точные термины и один проверяемый пример.",
-  "Сравни два понятия или процесса по теме «{topic}» по трём критериям; в конце укажи главное различие.",
-  "Составь пошаговый алгоритм или план ответа по теме «{topic}» и проверь его на одном примере.",
-  "Подготовь карточку для повторения по теме «{topic}»: вопрос, краткий ответ и пример применения.",
-  "Разбери утверждение по теме «{topic}»: укажи, какие сведения подтверждают его, а какие требуют проверки.",
-  "Сделай краткий конспект по теме «{topic}» из пяти тезисов и выдели один вывод, связывающий их.",
-  "Подготовь практическое задание по теме «{topic}» с условием, ожидаемым результатом и способом самопроверки.",
-  "Сформулируй два вопроса разного уровня по теме «{topic}» и объясни, какие знания нужны для ответа.",
-  "Покажи тему «{topic}» на примере из жизни или учебного материала и объясни, где именно проявляется изучаемое правило.",
-  "Подготовь краткое устное объяснение по теме «{topic}» и заверши его вопросом для самопроверки.",
+type FallbackTaskPlan = {
+  action: string;
+  deliverable: string;
+  check: string;
+};
+
+const fallbackTaskPlans: FallbackTaskPlan[] = [
+  { action: "разбери учебный пример", deliverable: "покажи этапы разбора и сформулируй вывод", check: "каждый этап опирается на условие, а вывод следует из разбора" },
+  { action: "сравни два случая", deliverable: "заполни таблицу по трём признакам и назови различие", check: "признаки выбраны по теме, а случаи различаются по указанному основанию" },
+  { action: "проверь утверждение", deliverable: "приведи подтверждающий пример и контрпример, затем уточни формулировку", check: "пример действительно проверяет утверждение, а контрпример показывает границы правила" },
+  { action: "найди и исправь ошибку в решении", deliverable: "отметь неверный шаг, объясни причину и запиши исправленный ход", check: "ошибка локализована, исправление сохраняет условие задачи" },
+  { action: "исследуй ситуацию", deliverable: "сформулируй гипотезу, назови нужные данные и обоснуй вывод", check: "вывод не выходит за пределы условия и перечисленных данных" },
+  { action: "объясни правило на новом примере", deliverable: "приведи пример, выдели признак и поясни ход рассуждения", check: "пример соответствует теме, а признак действительно обосновывает ответ" },
+  { action: "составь последовательность решения", deliverable: "запиши алгоритм и проверь каждый шаг на выбранном примере", check: "шаги выполнимы по порядку и приводят к проверяемому результату" },
+  { action: "разбери пограничный случай", deliverable: "укажи, какое условие меняет ответ, и сравни результат по обе стороны границы", check: "изменяется ровно названное условие, а оба вывода согласуются с правилом" },
 ];
+
+const fallbackContexts: Record<string, string[]> = {
+  "Математика": ["при проверке вычисления", "в задаче с несколькими способами решения", "при изменении одного исходного значения", "в практической ситуации"],
+  "Физика": ["в описании опыта", "при сравнении двух моделей явления", "для системы с заданными условиями", "при анализе измерений"],
+  "Химия": ["при анализе состава вещества", "в описании превращения", "при сравнении результатов наблюдений", "в учебной лабораторной ситуации"],
+  "Русский язык": ["в предложении из учебного текста", "при сравнении двух языковых конструкций", "в примере с возможной ошибкой", "при разборе пограничного случая"],
+  "Биология": ["при разборе наблюдения", "при сравнении двух организмов или процессов", "в описании признака", "при проверке гипотезы"],
+  "География": ["при работе с картой или данными", "при сравнении двух территорий", "в описании природного процесса", "при анализе хозяйственной ситуации"],
+  "История": ["при сопоставлении источников", "в описании исторической ситуации", "при проверке причинной связи", "при сравнении двух интерпретаций"],
+  "Литература": ["при анализе эпизода произведения", "при сопоставлении поступков героев", "при проверке интерпретации по тексту", "при обсуждении авторского приёма"],
+  "Обществознание": ["при разборе общественной ситуации", "при сравнении вариантов решения", "при оценке аргумента", "при анализе прав и обязанностей участников"],
+  "Информатика": ["при проверке алгоритма", "на граничном наборе входных данных", "при сравнении двух способов решения", "при поиске ошибки в последовательности команд"],
+  "Иностранный язык": ["в коротком диалоге", "при выборе формы по контексту", "при сравнении двух реплик", "в ситуации общения"],
+};
 
 const fallbackAnswerKeys: Record<string, string> = {
   "Физика": "Проверь, что закон применим к условию, величины записаны в согласованных единицах, а вывод подтверждён расчётом или наблюдением.",
@@ -33,49 +46,272 @@ const fallbackAnswerKeys: Record<string, string> = {
   "Иностранный язык": "Проверь грамматику, лексику и соответствие ответа теме; выдели целевую конструкцию и её функцию.",
 };
 
-/** Adds a distinct, source-safe task when a narrow topic generator would repeat an item. */
+/** Synthesizes an open-ended task plan for topics without a verified subject-specific solver. */
 export function generateSubjectExerciseVariant(subject: string, topic: string, variant: number): SubjectExercise {
-  const prompt = fallbackTaskForms[variant % fallbackTaskForms.length].replace("{topic}", topic);
+  const plan = fallbackTaskPlans[variant % fallbackTaskPlans.length];
+  const contexts = fallbackContexts[subject] ?? ["в учебной ситуации", "при сравнении примеров", "при проверке вывода", "на новом примере"];
+  const context = contexts[Math.floor(variant / fallbackTaskPlans.length) % contexts.length];
+  const prompt = `Тема: «${topic}». ${plan.action[0].toLocaleUpperCase("ru-RU")}${plan.action.slice(1)} ${context}. ${plan.deliverable}.`;
   const subjectCheck = fallbackAnswerKeys[subject] ?? "Критерий проверки: понятия и примеры соответствуют теме, вывод подтверждён изученным материалом.";
-  return { prompt, answer: `Ключ проверки: ${subjectCheck}` };
+  return { prompt, answer: `Критерии проверки: ${plan.check}. ${subjectCheck}` };
 }
 
 /** Challenge tasks use the ordinary assignment flow and keep open or unfamiliar topics source-safe. */
 export function generateSubjectChallengeExercise(subject: string, topic: string, index: number): SubjectExercise {
   const normalizedTopic = topic.toLocaleLowerCase("ru-RU");
+  const number = (value: number, digits = 2) => Number(value.toFixed(digits)).toLocaleString("ru-RU", { maximumFractionDigits: digits });
+  const calculate = (turn: number) => turn % 2 === 0 ? "Найди" : "Вычисли";
+  if (subject === "Физика") {
+    const turn = Math.floor(index / 3);
+    const kind = index % 3;
+    if (/соединени[а-яё]* проводник|цеп[а-яё]*|закон ома/.test(normalizedTopic)) {
+      if (kind === 0) {
+        const r1 = 4 + 2 * (turn % 8), r2 = r1 / 2, voltage = 6 + 3 * ((turn * 2 + 2) % 9);
+        const i1 = voltage / r1, i2 = voltage / r2, total = i1 + i2, equivalent = voltage / total;
+        return {
+          prompt: `Резисторы ${r1} Ом и ${number(r2)} Ом соединены параллельно и подключены к источнику ${voltage} В. ${calculate(turn)} общее сопротивление и токи в ветвях; проверь, что сумма токов равна общему току.`,
+          answer: `Rобщ = ${number(equivalent)} Ом; I₁ = U/R₁ = ${voltage}/${r1} ≈ ${number(i1)} А, I₂ = U/R₂ = ${voltage}/${number(r2)} ≈ ${number(i2)} А. Iобщ = I₁ + I₂ ≈ ${number(total)} А.`,
+        };
+      }
+      if (kind === 1) {
+        const r1 = 3 + turn % 7, r2 = 4 + (turn * 3) % 8, voltage = 12 + 3 * ((turn + 1) % 8);
+        const totalResistance = r1 + r2, current = voltage / totalResistance, u1 = current * r1, u2 = current * r2;
+        return {
+          prompt: `К источнику ${voltage} В последовательно подключили резисторы ${r1} Ом и ${r2} Ом. ${calculate(turn)} общий ток и напряжение на каждом резисторе; проверь сумму падений напряжения.`,
+          answer: `Rобщ = ${r1} + ${r2} = ${totalResistance} Ом; I = U/Rобщ ≈ ${number(current)} А. U₁ = IR₁ ≈ ${number(u1)} В, U₂ = IR₂ ≈ ${number(u2)} В; сумма падений равна напряжению источника ${voltage} В (значения округлены).`,
+        };
+      }
+      const r1 = 6 + 2 * (turn % 8), r2 = 12 + 4 * (turn % 8), voltage = 6 + 3 * ((turn + 3) % 9);
+      const i1 = voltage / r1, i2 = voltage / r2, total = i1 + i2, power = voltage * total;
+      return {
+        prompt: `Параллельно соединённые резисторы ${r1} Ом и ${r2} Ом подключили к источнику ${voltage} В. ${calculate(turn)} ток в каждой ветви, общий ток и мощность всей цепи.`,
+        answer: `I₁ = ${voltage}/${r1} ≈ ${number(i1)} А, I₂ = ${voltage}/${r2} ≈ ${number(i2)} А, Iобщ ≈ ${number(total)} А. P = UIобщ ≈ ${voltage}·${number(total)} = ${number(power)} Вт.`,
+      };
+    }
+    if (/архимед|выталкивающ[а-яё]* сил/.test(normalizedTopic)) {
+      if (kind === 0) {
+        const volume = 0.001 + (turn % 8) * 0.0005, mass = 3 + turn % 6, buoyancy = 1000 * 10 * volume, weight = mass * 10;
+        return {
+          prompt: `Тело массой ${mass} кг и объёмом ${number(volume, 4)} м³ полностью погружено в воду и удерживается динамометром. Прими ρводы = 1000 кг/м³ и g = 10 Н/кг. ${calculate(turn)} выталкивающую силу и показание динамометра.`,
+          answer: `Fₐ = ρgV = 1000·10·${number(volume, 4)} = ${number(buoyancy)} Н. Вес тела mg = ${mass}·10 = ${weight} Н. Динамометр показывает ${weight} − ${number(buoyancy)} = ${number(weight - buoyancy)} Н.`,
+        };
+      }
+      if (kind === 1) {
+        const volume = 0.003 + (turn % 8) * 0.0005, density = 400 + (turn % 6) * 100;
+        const submerged = volume * density / 1000, above = volume - submerged, percent = density / 10;
+        return {
+          prompt: `Брусок объёмом ${number(volume, 4)} м³ свободно плавает в воде. Плотность бруска ${density} кг/м³, плотность воды 1000 кг/м³. Найди объём погружённой части и процент объёма над водой.`,
+          answer: `Для плавающего тела Vпогр/V = ρтела/ρводы = ${density}/1000 = ${number(percent / 100)}. Vпогр = ${number(volume, 4)}·${number(percent / 100)} = ${number(submerged, 4)} м³; над водой ${number(above, 4)} м³, то есть ${100 - percent}%.`,
+        };
+      }
+      const volume = (500 + (turn % 8) * 100) / 1e6, liquidDensity = 800 + (turn % 5) * 50, mass = 1.2 + (turn % 6) * 0.2;
+      const buoyancy = liquidDensity * 10 * volume, tension = mass * 10 - buoyancy;
+      return {
+        prompt: `Тело объёмом ${number(volume * 1e6, 0)} см³ и массой ${number(mass)} кг полностью погружено в жидкость плотностью ${liquidDensity} кг/м³. Найди выталкивающую силу и натяжение подвеса. Прими g = 10 Н/кг.`,
+        answer: `V = ${number(volume, 5)} м³. Fₐ = ρжgV = ${liquidDensity}·10·${number(volume, 5)} = ${number(buoyancy)} Н. Натяжение подвеса T = mg − Fₐ = ${number(mass)}·10 − ${number(buoyancy)} = ${number(tension)} Н.`,
+      };
+    }
+    if (/плотност[а-яё]* вещества/.test(normalizedTopic)) {
+      if (kind === 0) {
+        const mass = 300 + 40 * (turn % 10), volume = 250 + 25 * (turn % 8), density = mass / volume;
+        return {
+          prompt: `Образец массой ${mass} г имеет объём ${volume} см³. ${calculate(turn)} плотность в г/см³ и кг/м³. Покажи перевод единиц.`,
+          answer: `ρ = m/V = ${mass}/${volume} = ${number(density)} г/см³. Поскольку 1 г/см³ = 1000 кг/м³, плотность равна ${number(density * 1000, 0)} кг/м³.`,
+        };
+      }
+      if (kind === 1) {
+        const density = 500 + 100 * (turn % 5), volume = 0.004 + 0.002 * (turn % 5), mass = density * volume, fraction = density / 1000;
+        return {
+          prompt: `Брусок плотностью ${density} кг/м³ имеет объём ${number(volume, 4)} м³ и плавает в воде. Найди массу бруска и объём его части над водой. Прими ρводы = 1000 кг/м³.`,
+          answer: `m = ρV = ${density}·${number(volume, 4)} = ${number(mass, 2)} кг. Доля погружения равна ρбруска/ρводы = ${number(fraction)}; над водой остаётся доля ${number(1 - fraction)}. Vнад = ${number(volume, 4)}·${number(1 - fraction)} = ${number(volume * (1 - fraction), 4)} м³.`,
+        };
+      }
+      const volume = 0.001 + (turn % 8) * 0.00025, density = 800 + (turn % 6) * 100, mass = density * volume;
+      return {
+        prompt: `Твёрдое тело объёмом ${number(volume, 5)} м³ полностью погрузили в жидкость плотностью ${density} кг/м³. Какую массу жидкости оно вытеснило? Затем найди плотность тела, если его масса ${number(mass, 2)} кг.`,
+        answer: `Масса вытесненной жидкости mж = ρжV = ${density}·${number(volume, 5)} = ${number(density * volume, 3)} кг. Плотность тела ρт = mт/V = ${number(mass, 3)}/${number(volume, 5)} = ${number(mass / volume, 0)} кг/м³.`,
+      };
+    }
+    if (/теплов[а-яё]* баланс/.test(normalizedTopic)) {
+      const hotMass = 0.1 + 0.05 * (turn % 8), coldMass = 0.2 + 0.05 * ((turn * 3) % 7);
+      const hotTemp = 70 + 5 * (turn % 6), coldTemp = 10 + 5 * ((turn * 2) % 6);
+      const finalTemp = (hotMass * hotTemp + coldMass * coldTemp) / (hotMass + coldMass);
+      const hotHeatFactor = hotMass * (hotTemp - finalTemp), coldHeatFactor = coldMass * (finalTemp - coldTemp);
+      return {
+        prompt: index % 2 === 0
+          ? `В теплоизолированном сосуде смешали ${number(hotMass)} кг воды при ${hotTemp} °C и ${number(coldMass)} кг воды при ${coldTemp} °C. Найди конечную температуру и проверь равенство отданного и полученного количества теплоты.`
+          : `Смешали ${number(coldMass)} кг воды при ${coldTemp} °C с ${number(hotMass)} кг воды при ${hotTemp} °C. Потерями теплоты пренебречь. Определи температуру смеси и обоснуй ответ тепловым балансом.`,
+        answer: `Для одной жидкости c сокращается: T = (m₁T₁ + m₂T₂)/(m₁ + m₂) = (${number(hotMass)}·${hotTemp} + ${number(coldMass)}·${coldTemp})/(${number(hotMass)} + ${number(coldMass)}) ≈ ${number(finalTemp, 3)} °C. Проверка: mгор(Tгор − T) ≈ ${number(hotHeatFactor, 3)} кг·°C и mхол(T − Tхол) ≈ ${number(coldHeatFactor, 3)} кг·°C; совпадение — с учётом округления.`,
+      };
+    }
+  }
   if (subject === "Физика" && /сохранени[яе]\s+энерги/.test(normalizedTopic)) {
-    const variant = index % 3;
-    if (variant === 0) return {
-      prompt: "Санки съезжают без трения с горки высотой 3 м, имея у вершины скорость 4 м/с. Найди скорость у подножия. Прими g = 10 м/с² и покажи, как меняются кинетическая и потенциальная энергии.",
-      answer: "По закону сохранения механической энергии: v₂² = v₁² + 2gh = 4² + 2·10·3 = 76, поэтому v₂ = √76 = 2√19 ≈ 8,72 м/с. Потерями и вращением пренебрегаем.",
-    };
-    if (variant === 1) return {
-      prompt: "Мяч бросили вертикально вверх со скоростью 20 м/с. Сопротивлением воздуха пренебречь, g = 10 м/с². Найди наибольшую высоту подъёма и скорость мяча на высоте 15 м.",
-      answer: "В верхней точке вся начальная кинетическая энергия перешла в потенциальную: hmax = v₀²/(2g) = 20²/20 = 20 м. На высоте 15 м: v² = v₀² − 2gh = 400 − 300 = 100, значит скорость по модулю 10 м/с (при подъёме вверх, при спуске вниз).",
-    };
+    const turn = Math.floor(index / 3), kind = index % 3;
+    if (kind === 0) {
+      const height = 2 + turn % 9, initialSpeed = 2 + turn % 6;
+      const finalSpeed = Math.sqrt(initialSpeed ** 2 + 2 * 10 * height);
+      return {
+        prompt: `Санки без трения съезжают с горки высотой ${height} м; у вершины их скорость ${initialSpeed} м/с. Найди скорость у подножия и проверь сохранение механической энергии. Прими g = 10 м/с².`,
+        answer: `v₂² = v₁² + 2gh = ${initialSpeed}² + 2·10·${height} = ${initialSpeed ** 2 + 20 * height}. Поэтому v₂ = √${initialSpeed ** 2 + 20 * height} ≈ ${number(finalSpeed)} м/с. Потерями энергии пренебрегаем.`,
+      };
+    }
+    if (kind === 1) {
+      const initialSpeed = 10 + 2 * (turn % 8), height = initialSpeed ** 2 / 40;
+      const maxHeight = initialSpeed ** 2 / 20, speedAtHeight = Math.sqrt(initialSpeed ** 2 - 20 * height);
+      return {
+        prompt: `Мяч бросили вертикально вверх со скоростью ${initialSpeed} м/с. Сопротивлением воздуха пренебречь, g = 10 м/с². Найди максимальную высоту подъёма и скорость мяча на высоте ${number(height)} м.`,
+        answer: `На вершине v = 0, поэтому hmax = v₀²/(2g) = ${initialSpeed}²/20 = ${number(maxHeight)} м. На заданной высоте v² = v₀² − 2gh = ${initialSpeed}² − 20·${number(height)} = ${number(speedAtHeight ** 2)}; скорость по модулю ≈ ${number(speedAtHeight)} м/с.`,
+      };
+    }
+    const stiffness = 100 + 50 * (turn % 10), compression = 0.04 + 0.01 * (turn % 8), mass = 0.5 + 0.25 * (turn % 8);
+    const speed = compression * Math.sqrt(stiffness / mass);
     return {
-      prompt: "Пружина жёсткостью 200 Н/м сжата на 10 см и разгоняет тележку массой 1 кг по горизонтали. Потерями энергии пренебречь. Найди скорость тележки после распрямления пружины.",
-      answer: "Энергия пружины перешла в кинетическую: kx²/2 = mv²/2. При x = 0,10 м: v = x√(k/m) = 0,10√200 ≈ 1,41 м/с.",
+      prompt: `Пружина жёсткостью ${stiffness} Н/м сжата на ${number(compression * 100)} см и разгоняет тележку массой ${number(mass)} кг по горизонтали. Потерями энергии пренебречь. Найди скорость тележки после распрямления пружины.`,
+      answer: `Энергия пружины переходит в кинетическую: kx²/2 = mv²/2. v = x√(k/m) = ${number(compression, 2)}√(${stiffness}/${number(mass)}) ≈ ${number(speed)} м/с.`,
     };
   }
   if (subject === "Химия" && /окислительно.?восстанов|электронн.*баланс/.test(normalizedTopic)) {
     const variants: SubjectExercise[] = [
       {
-        prompt: "В реакции Fe₂O₃ + CO → Fe + CO₂ расставь коэффициенты методом электронного баланса. Укажи, какой элемент окисляется, какой восстанавливается, а также окислитель и восстановитель.",
-        answer: "Fe₂O₃ + 3CO → 2Fe + 3CO₂. Два атома Fe: +3 → 0, принимают 6 e⁻ суммарно. Три атома C: +2 → +4, отдают 6 e⁻. Fe₂O₃ — окислитель, CO — восстановитель.",
+        prompt: "В кислой среде уравняй ионную реакцию MnO₄⁻ + Fe²⁺ → Mn²⁺ + Fe³⁺. Составь электронный баланс и полуреакции, проверь баланс атомов и заряда; назови окислитель и восстановитель.",
+        answer: "MnO₄⁻ + 5Fe²⁺ + 8H⁺ → Mn²⁺ + 5Fe³⁺ + 4H₂O. Восстановление: Mn(+7) + 5e⁻ → Mn(+2). Окисление: 5Fe(+2) → 5Fe(+3) + 5e⁻. Заряд обеих частей равен +17; атомы Mn, Fe, O и H сбалансированы. MnO₄⁻ — окислитель, Fe²⁺ — восстановитель.",
       },
       {
-        prompt: "Для реакции CuO + H₂ → Cu + H₂O составь электронный баланс, расставь коэффициенты и назови окислитель и восстановитель.",
-        answer: "Уравнение уже сбалансировано: CuO + H₂ → Cu + H₂O. Cu: +2 → 0, принимает 2 e⁻; H: 0 → +1, молекула H₂ отдаёт 2 e⁻. CuO — окислитель, H₂ — восстановитель.",
+        prompt: "В кислой среде уравняй реакцию Cr₂O₇²⁻ + I⁻ → Cr³⁺ + I₂. Покажи электронный баланс, проверь заряд и определи роли окислителя и восстановителя.",
+        answer: "Cr₂O₇²⁻ + 6I⁻ + 14H⁺ → 2Cr³⁺ + 3I₂ + 7H₂O. Восстановление: 2Cr(+6) + 6e⁻ → 2Cr(+3). Окисление: 6I(−1) → 3I₂ + 6e⁻. Заряд обеих частей равен +6; атомы Cr, I, O и H сбалансированы. Cr₂O₇²⁻ — окислитель, I⁻ — восстановитель.",
       },
       {
-        prompt: "В реакции Cl₂ + KI → KCl + I₂ расставь коэффициенты и составь электронный баланс. Определи окислитель и восстановитель.",
-        answer: "Cl₂ + 2KI → 2KCl + I₂. Два атома Cl: 0 → −1, принимают 2 e⁻ суммарно; два иона I⁻: −1 → 0, отдают 2 e⁻. Cl₂ — окислитель, KI (ионы I⁻) — восстановитель.",
+        prompt: "В кислой среде уравняй реакцию ClO₃⁻ + I⁻ → Cl⁻ + I₂. Составь электронный баланс и полуреакции, докажи, что переданные и принятые электроны совпадают, назови окислитель и восстановитель.",
+        answer: "ClO₃⁻ + 6I⁻ + 6H⁺ → Cl⁻ + 3I₂ + 3H₂O. Восстановление: Cl(+5) + 6e⁻ → Cl(−1). Окисление: 6I(−1) → 3I₂ + 6e⁻. Заряд обеих частей равен −1; атомы Cl, I, O и H сбалансированы. ClO₃⁻ — окислитель, I⁻ — восстановитель.",
       },
     ];
     return variants[index % variants.length];
   }
-  const challengeForms: Record<string, string[]> = {
+  if (subject === "Химия") {
+    const turn = Math.floor(index / 4);
+    const kind = index % 4;
+    if (/массов[а-яё]* дол[яи].{0,24}(?:раствор|веществ)|расч[её]т массов[а-яё]* дол[яи]/.test(normalizedTopic)) {
+      if (kind === 0) {
+        const solute = 10 + 5 * (turn % 10), water = 90 + 10 * ((turn * 3) % 8), fraction = solute / (solute + water) * 100;
+        return {
+          prompt: turn % 2 === 0
+            ? `Растворили ${solute} г соли в ${water} г воды. ${calculate(turn)} массовую долю соли. Затем определи, что изменится, если испарить ${10 + 5 * (turn % 4)} г воды без потери соли.`
+            : `В ${water} г воды внесли ${solute} г соли. Какова массовая доля соли? Рассчитай также её значение после испарения ${10 + 5 * (turn % 4)} г воды.`,
+          answer: `mраствора = ${solute} + ${water} = ${solute + water} г; ω = ${solute}/${solute + water}·100% = ${number(fraction)}%. При испарении вода уменьшается, масса соли неизменна: новая ω = ${solute}/${solute + water - (10 + 5 * (turn % 4))}·100% = ${number(solute / (solute + water - (10 + 5 * (turn % 4))) * 100)}%.`,
+        };
+      }
+      if (kind === 1) {
+        const total = 100 + 50 * (turn % 10), percent = 10 + 5 * (turn % 10), solute = total * percent / 100;
+        return {
+          prompt: `Приготовь ${total} г раствора с массовой долей растворённого вещества ${percent}%. Рассчитай массу вещества и массу воды; проверь итоговые доли.`,
+          answer: `mвещества = ${total}·${percent}/100 = ${number(solute)} г; mводы = ${total} − ${number(solute)} = ${number(total - solute)} г. Доли компонентов ${percent}% и ${100 - percent}% дают 100%.`,
+        };
+      }
+      if (kind === 2) {
+        const initialMass = 100 + 50 * (turn % 8), percent = 10 + 5 * (turn % 8), solute = initialMass * percent / 100;
+        const evaporated = 10 + 5 * ((turn * 2) % 6), finalMass = initialMass - evaporated;
+        return {
+          prompt: `Из ${initialMass} г раствора с массовой долей ${percent}% испарили ${evaporated} г воды. Растворённое вещество не терялось. Найди новую массовую долю.`,
+          answer: `Масса вещества равна ${initialMass}·${percent}/100 = ${number(solute)} г и не меняется. Новая масса раствора ${initialMass} − ${evaporated} = ${finalMass} г. ω₂ = ${number(solute)}/${finalMass}·100% = ${number(solute / finalMass * 100)}%.`,
+        };
+      }
+      const initialMass = 200 + 50 * (turn % 8), percent = 20 + 5 * (turn % 5), addedWater = 50 + 25 * (turn % 5);
+      const solute = initialMass * percent / 100, finalMass = initialMass + addedWater;
+      return {
+        prompt: `К ${initialMass} г раствора с массовой долей вещества ${percent}% добавили ${addedWater} г воды. Найди новую массовую долю и объясни, почему масса вещества не меняется.`,
+        answer: `mвещества = ${initialMass}·${percent}/100 = ${number(solute)} г. Новая масса раствора ${initialMass} + ${addedWater} = ${finalMass} г. ω₂ = ${number(solute)}/${finalMass}·100% = ${number(solute / finalMass * 100)}%.`,
+      };
+    }
+    if (/молярн[а-яё]* концентраци/.test(normalizedTopic)) {
+      if (kind === 0) {
+        const moles = 0.1 * (1 + turn % 10), volume = 0.25 + 0.25 * ((turn * 3) % 8), concentration = moles / volume;
+        return {
+          prompt: `В ${number(volume * 1000, 0)} мл раствора содержится ${number(moles)} моль вещества. ${calculate(turn)} молярную концентрацию; явно переведи объём в литры.`,
+          answer: `V = ${number(volume * 1000, 0)} мл = ${number(volume, 3)} л. C = n/V = ${number(moles)}/${number(volume, 3)} = ${number(concentration)} моль/л.`,
+        };
+      }
+      if (kind === 1) {
+        const mass = 4.9 * (1 + turn % 10), volume = 0.25 + 0.25 * (turn % 5), moles = mass / 98, concentration = moles / volume;
+        return {
+          prompt: `Растворили ${number(mass)} г H₂SO₄ и довели объём раствора до ${number(volume * 1000, 0)} мл. Найди молярную концентрацию, если M(H₂SO₄) = 98 г/моль.`,
+          answer: `n = m/M = ${number(mass)}/98 = ${number(moles)} моль; V = ${number(volume, 3)} л. C = n/V = ${number(moles)}/${number(volume, 3)} = ${number(concentration)} моль/л.`,
+        };
+      }
+      if (kind === 2) {
+        const initialConcentration = 0.5 + 0.25 * (turn % 10), initialVolume = 0.1 + 0.05 * ((turn * 3) % 8);
+        const finalVolume = initialVolume + 0.2 + 0.1 * (turn % 5), moles = initialConcentration * initialVolume;
+        const finalConcentration = moles / finalVolume;
+        return {
+          prompt: `К ${number(initialVolume * 1000, 0)} мл раствора концентрацией ${number(initialConcentration)} моль/л добавили воду до общего объёма ${number(finalVolume * 1000, 0)} мл. Найди новую концентрацию при условии, что растворённое вещество не теряется.`,
+          answer: `Количество вещества сохраняется: n = C₁V₁ = ${number(initialConcentration)}·${number(initialVolume, 3)} = ${number(moles)} моль. C₂ = n/V₂ = ${number(moles)}/${number(finalVolume, 3)} = ${number(finalConcentration)} моль/л.`,
+        };
+      }
+      const concentration = 0.2 + 0.1 * (turn % 10), volume = 0.25 + 0.25 * ((turn * 2) % 6), moles = concentration * volume;
+      return {
+        prompt: `В растворе объёмом ${number(volume, 2)} л концентрация вещества ${number(concentration)} моль/л. Сколько вещества содержится в растворе? Покажи проверку размерностей.`,
+        answer: `n = CV = ${number(concentration)} моль/л·${number(volume, 2)} л = ${number(moles)} моль. Литры сокращаются, остаётся количество вещества в молях.`,
+      };
+    }
+    if (/выход продукт[а-яё]* химическ[а-яё]* реакци/.test(normalizedTopic)) {
+      const yieldPercent = [60, 70, 80, 90][turn % 4];
+      if (kind === 0) {
+        const mass = 10 + 5 * (turn % 10), theoretical = mass * 56 / 100, actual = theoretical * yieldPercent / 100;
+        return {
+          prompt: `При разложении CaCO₃ → CaO + CO₂ использовали ${mass} г CaCO₃ и получили ${number(actual)} г CaO. ${calculate(turn)} теоретическую массу CaO и выход продукта. M(CaCO₃) = 100 г/моль, M(CaO) = 56 г/моль.`,
+          answer: `n(CaCO₃) = ${mass}/100 = ${number(mass / 100)} моль; соотношение CaCO₃:CaO равно 1:1. mтеор(CaO) = ${number(mass / 100)}·56 = ${number(theoretical)} г. Выход = ${number(actual)}/${number(theoretical)}·100% = ${yieldPercent}%.`,
+        };
+      }
+      if (kind === 1) {
+        const mass = 8 + 4 * (turn % 10), theoretical = mass * 64 / 80, actual = theoretical * yieldPercent / 100;
+        return {
+          prompt: `Водородом восстановили ${mass} г CuO по уравнению CuO + H₂ → Cu + H₂O и получили ${number(actual)} г меди. Определи выход продукта. M(CuO) = 80 г/моль, M(Cu) = 64 г/моль.`,
+          answer: `n(CuO) = ${mass}/80 = ${number(mass / 80)} моль; соотношение CuO:Cu равно 1:1. mтеор(Cu) = ${number(mass / 80)}·64 = ${number(theoretical)} г. Выход = ${number(actual)}/${number(theoretical)}·100% = ${yieldPercent}%.`,
+        };
+      }
+      if (kind === 2) {
+        const mass = 6.5 * (1 + turn % 10), theoretical = mass / 65 * 22.4, actual = theoretical * yieldPercent / 100;
+        return {
+          prompt: `Цинк массой ${number(mass)} г реагирует с избытком HCl: Zn + 2HCl → ZnCl₂ + H₂. При н.у. собрано ${number(actual, 3)} л H₂. Найди выход газа; M(Zn) = 65 г/моль, Vₘ = 22,4 л/моль.`,
+          answer: `n(Zn) = ${number(mass)}/65 = ${number(mass / 65)} моль; по уравнению n(H₂) такое же. Vтеор = ${number(mass / 65)}·22,4 = ${number(theoretical, 3)} л. Выход = ${number(actual, 3)}/${number(theoretical, 3)}·100% = ${yieldPercent}%.`,
+        };
+      }
+      const mass = 16 + 8 * (turn % 10), theoretical = mass * 64 / 80, actual = theoretical * yieldPercent / 100;
+      return {
+        prompt: `При восстановлении ${mass} г CuO получили ${number(actual)} г Cu. Проверь выход продукта по уравнению CuO + H₂ → Cu + H₂O и молярным массам M(CuO) = 80 г/моль, M(Cu) = 64 г/моль.`,
+        answer: `Из ${mass}/80 = ${number(mass / 80)} моль CuO теоретически образуется ${number(mass / 80)} моль Cu, то есть ${number(theoretical)} г. Выход = ${number(actual)}/${number(theoretical)}·100% = ${yieldPercent}%.`,
+      };
+    }
+    if (/молярн[а-яё]* объ[её]м газ/.test(normalizedTopic)) {
+      if (kind === 0) {
+        const mass = 3.2 * (1 + turn % 10), moles = mass / 32, volume = moles * 22.4;
+        return {
+          prompt: turn % 2 === 0
+            ? `Какой объём при н.у. займут ${number(mass)} г кислорода O₂? Используй M(O₂) = 32 г/моль и Vₘ = 22,4 л/моль.`
+            : `Рассчитай объём порции O₂ массой ${number(mass)} г при н.у. Прими M(O₂) = 32 г/моль, Vₘ = 22,4 л/моль.`,
+          answer: `n(O₂) = m/M = ${number(mass)}/32 = ${number(moles)} моль. V = nVₘ = ${number(moles)}·22,4 = ${number(volume, 3)} л.`,
+        };
+      }
+      if (kind === 1) {
+        const volume = 2.24 * (1 + turn % 10), moles = volume / 22.4, mass = moles * 44;
+        return {
+          prompt: `Объём CO₂ при н.у. равен ${number(volume, 3)} л. Найди количество вещества и массу газа; M(CO₂) = 44 г/моль, Vₘ = 22,4 л/моль.`,
+          answer: `n = V/Vₘ = ${number(volume, 3)}/22,4 = ${number(moles)} моль. m = nM = ${number(moles)}·44 = ${number(mass)} г.`,
+        };
+      }
+      if (kind === 2) {
+        const moles = 0.25 * (1 + turn % 10), volume = moles * 22.4, mass = moles * 2;
+        return {
+          prompt: `Найди объём при н.у. и массу ${number(moles)} моль водорода H₂. Используй Vₘ = 22,4 л/моль и M(H₂) = 2 г/моль.`,
+          answer: `V = nVₘ = ${number(moles)}·22,4 = ${number(volume, 3)} л; m = nM = ${number(moles)}·2 = ${number(mass)} г.`,
+        };
+      }
+      const mass = 8.8 * (1 + turn % 10), moles = mass / 44, volume = moles * 22.4;
+      return {
+        prompt: `Какой объём при н.у. занимает ${number(mass)} г углекислого газа CO₂? M(CO₂) = 44 г/моль, Vₘ = 22,4 л/моль.`,
+        answer: `n(CO₂) = ${number(mass)}/44 = ${number(moles)} моль. V = nVₘ = ${number(moles)}·22,4 = ${number(volume, 3)} л.`,
+      };
+    }
+  }  const challengeForms: Record<string, string[]> = {
     "Физика": [
       `Для темы «{topic}» предложи физическую модель незнакомой ситуации. Укажи допущения, выведи проверяемый прогноз и назови наблюдение, которое его опровергнет.`,
       `Разбери исследовательскую задачу по теме «{topic}»: сформулируй гипотезу, выбери изменяемую и измеряемую величины, затем предложи способ отделить влияние побочных факторов.`,
@@ -596,6 +832,42 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
       const z = 6 + (index % 12);
       return { prompt: `У нейтрального атома порядковый номер ${z}. Сколько в ядре протонов и сколько электронов в атоме?`, answer: `Протонов ${z}; в нейтральном атоме электронов тоже ${z}. Число нейтронов без массового числа определить нельзя.` };
     }
+    if (/нейтрализ/.test(t)) {
+      const reactions = [
+        ["HCl + NaOH", "NaCl + H₂O", "хлорид натрия"],
+        ["HCl + KOH", "KCl + H₂O", "хлорид калия"],
+        ["2HCl + Ca(OH)₂", "CaCl₂ + 2H₂O", "хлорид кальция"],
+        ["2HCl + Mg(OH)₂", "MgCl₂ + 2H₂O", "хлорид магния"],
+        ["2HCl + Ba(OH)₂", "BaCl₂ + 2H₂O", "хлорид бария"],
+        ["HNO₃ + NaOH", "NaNO₃ + H₂O", "нитрат натрия"],
+        ["HNO₃ + KOH", "KNO₃ + H₂O", "нитрат калия"],
+        ["2HNO₃ + Ca(OH)₂", "Ca(NO₃)₂ + 2H₂O", "нитрат кальция"],
+        ["2HNO₃ + Mg(OH)₂", "Mg(NO₃)₂ + 2H₂O", "нитрат магния"],
+        ["2HNO₃ + Ba(OH)₂", "Ba(NO₃)₂ + 2H₂O", "нитрат бария"],
+        ["H₂SO₄ + 2NaOH", "Na₂SO₄ + 2H₂O", "сульфат натрия"],
+        ["H₂SO₄ + 2KOH", "K₂SO₄ + 2H₂O", "сульфат калия"],
+        ["H₂SO₄ + Ca(OH)₂", "CaSO₄ + 2H₂O", "сульфат кальция"],
+        ["H₂SO₄ + Mg(OH)₂", "MgSO₄ + 2H₂O", "сульфат магния"],
+        ["H₂SO₄ + Ba(OH)₂", "BaSO₄ + 2H₂O", "сульфат бария"],
+      ] as const;
+      const [reactants, products, salt] = choose([...reactions], index);
+      const mode = Math.floor(index / reactions.length) % 3;
+      if (mode === 2) {
+        const acid = reactants.split(" + ")[0].replace(/^2(?=H)/, "");
+        const base = index % 2 === 0 ? "NaOH" : "KOH";
+        return {
+          prompt: `Для реакции нейтрализации кислоты ${acid} основанием ${base} запиши сокращённое ионное уравнение. Назови ионы, которые образуют воду.`,
+          answer: `Сокращённое ионное уравнение: H⁺ + OH⁻ → H₂O. Ионы H⁺ кислоты и OH⁻ основания образуют воду; остальные ионы являются ионами-наблюдателями.`,
+        };
+      }
+      const equation = `${reactants} → ${products}`;
+      return {
+        prompt: mode === 0
+          ? `Допиши продукты реакции нейтрализации ${reactants} → …, расставь коэффициенты и назови соль.`
+          : `Составь и уравняй реакцию нейтрализации между кислотой ${reactants.split(" + ")[0]} и основанием ${reactants.split(" + ")[1]}. Укажи формулу соли и воды.`,
+        answer: `${equation}. Соль — ${salt}; вода — H₂O. Уравнение сбалансировано: число атомов каждого элемента слева и справа одинаково.`,
+      };
+    }
     if (/кислот|основан|индикатор/.test(t)) {
       const tasks = [
         { prompt: "Лакмус в растворе стал красным. Какую среду это указывает и какие меры безопасности нужны при работе с растворами?", answer: "Красный лакмус указывает на кислую среду. Нельзя пробовать вещества; нужно соблюдать инструкцию и использовать защитные очки." },
@@ -891,21 +1163,58 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
       return { prompt: `Разбери выразительные средства в предложении «${sentence}»: найди переносное значение и объясни, какой образ оно создаёт.`, answer };
     }
     if (/простое двусоставн.*предложен/.test(t)) {
-      const examples = [
-        ["Вечером тихо светились окна.", "Грамматическая основа — окна светились: подлежащее «окна» и сказуемое «светились». Предложение простое, двусоставное; «вечером» и «тихо» — обстоятельства."],
-        ["Юный исследователь записал наблюдение.", "Основа — исследователь записал. Подлежащее выражено существительным, сказуемое — глаголом; предложение простое и двусоставное."],
-      ] as const;
-      const [sentence, answer] = choose([...examples], index);
-      return { prompt: `Найди грамматическую основу в предложении «${sentence}», определи, простое ли оно и двусоставное ли.`, answer };
+      const subjects = ["ученики", "исследователи", "лаборанты", "наблюдатели", "команды", "читатели", "туристы", "участники"];
+      const predicates = ["сравнили", "проверили", "записали", "обсудили", "подготовили", "построили", "исправили", "изучили"];
+      const objects = ["результаты опыта", "условие задачи", "новые данные", "план работы", "график движения", "ошибки в тексте", "итоги проекта", "правило написания"];
+      const subject = subjects[index % subjects.length];
+      const predicate = predicates[Math.floor(index / subjects.length) % predicates.length];
+      const object = objects[(index * 5 + Math.floor(index / subjects.length)) % objects.length];
+      const place = ["На занятии", "В лаборатории", "После обсуждения", "Перед уроком"][Math.floor(index / 2) % 4];
+      const sentence = `${place} ${subject} ${predicate} ${object}.`;
+      const answer = `Грамматическая основа: «${subject} ${predicate}». Подлежащее «${subject}» выражено существительным во множественном числе; сказуемое «${predicate}» — глаголом прошедшего времени во множественном числе. Предложение простое, двусоставное. «${place.toLocaleLowerCase("ru-RU")}» — обстоятельство времени или места; «${object}» — дополнение.`;
+      return { prompt: index % 2 === 0
+        ? `Разбери предложение «${sentence}»: выдели основу и докажи, что оно простое и двусоставное.`
+        : `Определи подлежащее и сказуемое в предложении «${sentence}». Назови тип предложения и разберись с второстепенными членами.`, answer };
     }
     if (/сложное предложен/.test(t)) {
-      const examples = [
-        ["Солнце скрылось за тучами, и начался дождь.", "Две грамматические основы: солнце скрылось; дождь начался. Это сложносочинённое предложение, части соединены союзом «и». Запятая разделяет части."],
-        ["Мы вернулись домой, потому что началась гроза.", "Основы: мы вернулись; гроза началась. Это сложноподчинённое предложение с придаточной частью причины, присоединённой союзом «потому что»."],
-        ["Солнце село — на улице стало прохладно.", "Основы: солнце село; стало прохладно. Это бессоюзное сложное предложение; тире показывает следствие."],
+      const clauses = [
+        ["занятие", "закончилось"], ["обсуждение", "продолжалось"], ["эксперимент", "завершился"],
+        ["сигнал", "прозвучал"], ["исследование", "началось"], ["перемена", "закончилась"],
+        ["команда", "вернулась"], ["наблюдение", "подтвердилось"], ["погода", "изменилась"],
       ] as const;
-      const [sentence, answer] = choose([...examples], index);
-      return { prompt: `Определи тип связи между частями сложного предложения «${sentence}». Найди основы и объясни знак препинания.`, answer };
+      const actors = ["ученики", "исследователи", "наблюдатели", "участники", "лаборанты", "команды"];
+      const actions = ["записали результат", "обсудили вывод", "проверили расчёт", "подготовили отчёт", "сравнили данные", "продолжили работу"];
+      const mode = index % 3;
+      let sentence: string;
+      let answer: string;
+      if (mode === 0) {
+        const [leftSubject, leftVerb] = clauses[Math.floor(index / 3) % clauses.length];
+        const rightSubject = actors[Math.floor(index / 3) % actors.length];
+        const rightPredicate = actions[(index * 5 + Math.floor(index / 3)) % actions.length];
+        sentence = `${leftSubject[0].toLocaleUpperCase("ru-RU")}${leftSubject.slice(1)} ${leftVerb}, и ${rightSubject} ${rightPredicate}.`;
+        answer = `Основы: «${leftSubject} ${leftVerb}» и «${rightSubject} ${rightPredicate}». Это сложносочинённое предложение: части равноправны и соединены союзом «и», поэтому между ними ставится запятая.`;
+      } else if (mode === 1) {
+        const [rightSubject, rightVerb] = clauses[Math.floor(index / 3) % clauses.length];
+        const leftSubject = actors[Math.floor(index / 3) % actors.length];
+        const leftPredicate = actions[(index * 5 + Math.floor(index / 3) + 2) % actions.length];
+        sentence = `${leftSubject[0].toLocaleUpperCase("ru-RU")}${leftSubject.slice(1)} ${leftPredicate}, потому что ${rightSubject} ${rightVerb}.`;
+        answer = `Основы: «${leftSubject} ${leftPredicate}» и «${rightSubject} ${rightVerb}». Это сложноподчинённое предложение с придаточной частью причины, присоединённой союзом «потому что»; перед союзом ставится запятая.`;
+      } else {
+        const transitions = [
+          ["звонок", "прозвучал", "урок", "закончился"],
+          ["дождь", "начался", "туристы", "свернули маршрут"],
+          ["ветер", "усилился", "путники", "поменяли направление"],
+          ["сигнал", "прозвучал", "участники", "начали работу"],
+          ["свет", "погас", "исследователи", "прервали опыт"],
+          ["туман", "сгустился", "корабль", "снизил скорость"],
+        ] as const;
+        const [leftSubject, leftVerb, rightSubject, rightVerb] = transitions[Math.floor(index / 3) % transitions.length];
+        sentence = `${leftSubject[0].toLocaleUpperCase("ru-RU")}${leftSubject.slice(1)} ${leftVerb} — ${rightSubject} ${rightVerb}.`;
+        answer = `Основы: «${leftSubject} ${leftVerb}» и «${rightSubject} ${rightVerb}». Это бессоюзное сложное предложение; вторая часть обозначает быстрое следствие первой, поэтому тире передаёт переход от причины к результату.`;
+      }
+      return { prompt: index % 2 === 0
+        ? `Определи тип сложного предложения «${sentence}»: найди грамматические основы и обоснуй знак препинания.`
+        : `Разбери предложение «${sentence}»: установи вид связи между частями, выдели основы и объясни пунктуацию.`, answer };
     }
     if (/^имя существительн/.test(t)) {
       const examples = [["к смелости", "«смелости» — имя существительное, нарицательное, неодушевлённое, женского рода, 3-го склонения; дательный падеж, единственное число"], ["о времени", "«времени» — имя существительное, нарицательное, неодушевлённое, средний род; разносклоняемое, предложный падеж, единственное число"], ["пятью тетрадями", "«тетрадями» — имя существительное, нарицательное, неодушевлённое, женский род, 3-е склонение; творительный падеж, множественное число"]] as const;
@@ -1355,9 +1664,33 @@ export function generateSubjectExercise(subject: string, topic: string, level: C
       return { prompt: "Разбери предложение по членам: «Утром заботливый садовник полил молодые яблони». Найди грамматическую основу и второстепенные члены.", answer: "Основа: садовник (подлежащее) полил (сказуемое). «Утром» — обстоятельство времени; «заботливый» и «молодые» — определения; «яблони» — дополнение." };
     }
     if (/виды односоставн.*предлож/.test(t)) {
-      const examples = [["Люблю грозу в начале мая.", "определённо-личное: действие выполняет говорящий, сказуемое в форме 1-го лица"], ["В дверь постучали.", "неопределённо-личное: действующее лицо не названо, сказуемое в форме 3-го лица множественного числа"], ["Смеркается.", "безличное: действие или состояние происходит без действующего лица"], ["Тихий вечер.", "назывное: главный член называет предмет или явление"]] as const;
-      const [sentence, kind] = choose([...examples], index);
-      return { prompt: `Определи вид односоставного предложения «${sentence}» и назови его грамматический признак.`, answer: `Это ${kind}.` };
+      const kind = index % 4;
+      let sentence: string;
+      let explanation: string;
+      if (kind === 0) {
+        const predicates = [["Рассматриваю", "условие задачи"], ["Проверим", "результат вычисления"], ["Сравни", "два примера"]] as const;
+        const [predicate, complement] = choose([...predicates], Math.floor(index / 4));
+        sentence = `${predicate} ${complement}.`;
+        explanation = `сказуемое «${predicate.toLocaleLowerCase("ru-RU")}» выражено формой 1-го лица или повелительного наклонения; действующее лицо можно восстановить по форме глагола`;
+      } else if (kind === 1) {
+        const predicates = [["обсудили", "результаты опыта"], ["проверили", "ход решения"], ["записали", "наблюдения"], ["сравнили", "два варианта"]] as const;
+        const [predicate, complement] = choose([...predicates], Math.floor(index / 4));
+        sentence = `На занятии ${predicate} ${complement}.`;
+        explanation = `сказуемое «${predicate}» стоит во множественном числе, а действующее лицо не названо и несущественно; это неопределённо-личная конструкция`;
+      } else if (kind === 2) {
+        const forms = ["К вечеру похолодало", "На улице смеркается", "Мне сегодня не спится", "В кабинете быстро стемнело"] as const;
+        sentence = `${choose([...forms], Math.floor(index / 4))}.`;
+        explanation = `главный член «${sentence.slice(0, -1).split(" ").at(-1)}» обозначает состояние или процесс без действующего лица; это безличное предложение`;
+      } else {
+        const nounPhrases = [["Тихий", "вечер"], ["Ранняя", "весна"], ["Зимнее", "утро"], ["Пустые", "улицы"]] as const;
+        const [adjective, noun] = choose([...nounPhrases], Math.floor(index / 4));
+        sentence = `${adjective} ${noun}.`;
+        explanation = `главный член «${adjective.toLocaleLowerCase("ru-RU")} ${noun}» называет предмет или явление; это назывное предложение`;
+      }
+      const prompt = index % 2 === 0
+        ? `Определи вид односоставного предложения «${sentence}» и докажи ответ формой главного члена.`
+        : `Разбери предложение «${sentence}»: назови его тип и объясни, как выражен главный член.`;
+      return { prompt, answer: explanation };
     }
     if (/обособленн.*приложен|уточняющ.*член/.test(t)) {
       const examples = [["Мой брат, опытный врач, работает в районной больнице.", "«опытный врач» — приложение, поясняет существительное «брат» и обособляется"], ["Внизу, у самой реки, росли ивы.", "«у самой реки» уточняет обстоятельство места «внизу» и выделяется запятыми"]] as const;

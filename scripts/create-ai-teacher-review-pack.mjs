@@ -60,11 +60,17 @@ try {
       `**Запрос:** ${sample.text}`,
       `**Разобрано:** тема «${parsed.topic}»; класс ${parsed.grade ?? "не указан"}; ${parsed.count} шт.; ${sample.tool}; сложность ${parsed.level}${sample.olympiad ? "; нестандартная/олимпиадная формулировка" : ""}.`,
       "",
-      ...result.items.flatMap((item, index) => [
-        item.startsWith("Карточка ") ? item : `**Задание ${index + 1}:** ${item}`,
-        `**Проверка ${sample.id}.${index + 1}:** решаемость ___ · ключ ___ · класс ___ · ясность ___${sample.olympiad ? " · нестандартность ___" : ""} · исправление/пояснение: ______________________________`,
-        "",
-      ]),
+      ...result.items.flatMap((item, index) => {
+        const displayItem = item.startsWith("Карточка ")
+          ? item
+          : `**Задание ${index + 1}:** ${item.replace(/^(?:\d+\.\s*)+/u, "")}`;
+        assert.doesNotMatch(displayItem, /^\*\*Задание \d+:\*\*\s+\d+\.\s+\d+\./u, `${sample.id}.${index + 1}: duplicate task numbering`);
+        return [
+          displayItem,
+          `**Проверка ${sample.id}.${index + 1}:** решаемость ___ · ключ ___ · класс ___ · ясность ___${sample.olympiad ? " · нестандартность ___" : ""} · исправление/пояснение: ______________________________`,
+          "",
+        ];
+      }),
       "",
       "**Комментарий к набору:** __________________________________________________________________",
       "",

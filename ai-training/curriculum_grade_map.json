@@ -7708,6 +7708,12 @@
         "5-9": "https://edsoo.ru/wp-content/uploads/2025/07/2025_ooo_frp_russkij-yazyk_5-9.pdf",
         "10-11": "https://edsoo.ru/wp-content/uploads/2025/07/2025_soo_frp_russkij-yazyk_10_11.pdf"
       },
+      "topicGradeOverrides": {
+        "чередование гласных в корне": "5-6"
+      },
+      "topicGradeOverrideSources": {
+        "чередование гласных в корне": "Федеральная рабочая программа по русскому языку для 5–9 классов, редакция 2025, содержание 6 класса, пункт 6.2: правописание чередующихся гласных в корнях слов."
+      },
       "topicsByGrade": {
         "1": [
           "алфавитный и звуковой разбор слова"

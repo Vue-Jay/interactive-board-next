@@ -331,6 +331,16 @@ def main() -> None:
                 normalized = normalize_topic(topic)
                 previous = topic_grades[subject].get(normalized)
                 topic_grades[subject][normalized] = merge_grade_bands(previous, grade) if previous else grade
+        # A few broad curriculum labels recur in adjacent grades with different
+        # subskills. Keep an explicit source-backed band override rather than
+        # forcing a valid request for the later grade to fail on the broad label.
+        for topic, band in mapping.get("topicGradeOverrides", {}).items():
+            normalized = normalize_topic(topic)
+            if normalized not in topic_grades[subject]:
+                raise SystemExit(f"Override references unmapped topic: {subject}: {topic}")
+            if not re.fullmatch(r"([1-9]|1[01])(-([1-9]|1[01]))?", str(band)):
+                raise SystemExit(f"Invalid topic grade override: {subject}: {topic}: {band}")
+            topic_grades[subject][normalized] = str(band)
         # Exact wording from the official annual thematic plan is also a
         # supported curriculum topic. Keep the existing grade assignment when
         # one already exists; otherwise use the grades where the plan lists it.

@@ -122,7 +122,7 @@
       .quiz-editor-footer,.flashcard-editor-footer) button {
     max-width:100%;white-space:normal;overflow-wrap:anywhere;
   }
-  .lectris-command-dialog{box-sizing:border-box;width:min(460px,calc(100vw - 16px));max-height:calc(100dvh - 20px);overflow-y:auto}
+  .lectris-command-dialog{box-sizing:border-box;width:min(460px,100%)}
   .lectris-command-input-row{min-width:0}
   .lectris-command-input-row input{min-width:0;width:100%}
   .lectris-mobile-more-panel,.lectris-mobile-more-menu,

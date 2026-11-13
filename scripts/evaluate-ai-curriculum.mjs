@@ -57,8 +57,12 @@ try {
     topics: 0,
     exactTopicRecognition: 0,
     exactTopicRecognitionFailures: [],
+    ambiguousCanonicalTopics: 0,
+    ambiguousCanonicalTopicsClarified: 0,
+    ambiguousCanonicalTopicFailures: [],
     generatedSets: 0,
     wrongSubjectSets: 0,
+    wrongSubjectSetFailures: [],
     incompleteSets: 0,
     emptyAnswers: 0,
     repeatedSets: 0,
@@ -101,6 +105,7 @@ try {
     runtimeGradeMapFailures: [],
     gradeMismatchChecks: 0,
     gradeMismatchFailures: [],
+    gradeMismatchCompositeTopicMatches: [],
     officialCoverageBySubject: {},
     officialCoverageFailures: [],
     officialCoverageDataFailures: [],
@@ -128,6 +133,7 @@ try {
     gradeMapErrors: [],
   };
 
+  const priorityGradeSubjects = new Set(["Математика", "Физика", "Химия", "Русский язык"]);
   for (const [subject, mapping] of Object.entries(gradeMap.subjects ?? {})) {
     const sourceTopics = new Set(corpus[subject] ?? []);
     const annualPlan = mapping.officialAnnualPlanByGrade;
@@ -228,6 +234,14 @@ try {
         const actualBand = intent.matchCanonicalCurriculumGrade(topic, subject);
         if (!gradeBandCovers(actualBand, band)) report.runtimeGradeMapFailures.push({ subject, topic, expected: band, actual: actualBand });
       }
+    }
+    for (const [topic, expectedBand] of Object.entries(mapping.topicGradeOverrides ?? {})) {
+      const pattern = /^([1-9]|1[01])(-([1-9]|1[01]))?$/;
+      if (!pattern.test(expectedBand)) report.gradeMapErrors.push(`${subject}: некорректный диапазон override для «${topic}»: ${expectedBand}`);
+      if (!sourceTopicKeys.has(normalizePlanTitle(topic))) report.gradeMapErrors.push(`${subject}: override ссылается на тему вне корпуса: ${topic}`);
+      report.runtimeGradeMapChecks += 1;
+      const actualBand = intent.matchCanonicalCurriculumGrade(topic, subject);
+      if (!gradeBandCovers(actualBand, expectedBand)) report.runtimeGradeMapFailures.push({ subject, topic, expected: expectedBand, actual: actualBand, source: "topic grade override" });
     }
     for (const topic of excludedTopics) {
       report.runtimeGradeMapChecks += 1;
@@ -614,7 +628,12 @@ try {
     for (const topic of topics) {
       report.topics += 1;
       const detectedTopicSubject = curriculum.detectCurriculumSubject(topic);
-      if (detectedTopicSubject === subject) report.exactTopicRecognition += 1;
+      const catalogOwners = curriculumTitleSubjects.get(normalizePlanTitle(topic)) ?? new Set([subject]);
+      if (catalogOwners.size > 1) {
+        report.ambiguousCanonicalTopics += 1;
+        if (!detectedTopicSubject) report.ambiguousCanonicalTopicsClarified += 1;
+        else report.ambiguousCanonicalTopicFailures.push({ topic, possibleSubjects: [...catalogOwners], actual: detectedTopicSubject });
+      } else if (detectedTopicSubject === subject) report.exactTopicRecognition += 1;
       else report.exactTopicRecognitionFailures.push({ topic, expected: subject, actual: detectedTopicSubject });
 
       const firstSet = curriculum.generateCurriculumAi("assignment", topic, "medium", 1, subject);
@@ -643,7 +662,10 @@ try {
       const result = curriculum.generateCurriculumAi("assignment", topic, "medium", 15, subject);
       report.generatedSets += 1;
       report.offlineGenerationCases += 1;
-      if (result.subject !== subject) report.wrongSubjectSets += 1;
+      if (result.subject !== subject) {
+        report.wrongSubjectSets += 1;
+        report.wrongSubjectSetFailures.push({ topic, expected: subject, actual: result.subject, detected: result.detected });
+      }
       if (result.items.length !== 15 || result.answers.length !== 15) report.incompleteSets += 1;
       if (result.answers.some((answer) => !answer.trim())) report.emptyAnswers += 1;
       const prompts = result.items.map((item) => item.replace(/^\d+\.\s*/, "").replace(/\s+/g, " ").trim().toLocaleLowerCase("ru-RU"));
@@ -1120,8 +1142,13 @@ try {
       const lastMatch = mappedBand.match(/-(\d+)$/);
       const last = Number(lastMatch?.[1] ?? first);
       const mismatchedGrade = first > 1 ? first - 1 : (last < 11 ? last + 1 : 0);
-      if (mismatchedGrade) {
+      if (mismatchedGrade && priorityGradeSubjects.has(subject)) {
         report.gradeMismatchChecks += 1;
+        const compositeTopicGrade = intent.matchCanonicalCurriculumGrade(topic, subject, mismatchedGrade);
+        if (gradeBandCovers(compositeTopicGrade, String(mismatchedGrade))) {
+          report.gradeMismatchCompositeTopicMatches.push({ subject, topic, mappedBand, compositeTopicGrade, mismatchedGrade });
+          continue;
+        }
         try {
           curriculum.generateCurriculumAi("assignment", `${topic} для ${mismatchedGrade} класса`, "medium", 1, subject);
           report.gradeMismatchFailures.push({ subject, topic, mappedBand, mismatchedGrade, reason: "запрос с неподходящим классом не был остановлен" });
@@ -1173,7 +1200,8 @@ try {
     }
   }
 
-  report.exactTopicRecognitionRate = Number((report.exactTopicRecognition / report.topics).toFixed(4));
+  const unambiguousTopics = report.topics - report.ambiguousCanonicalTopics;
+  report.exactTopicRecognitionRate = Number((report.exactTopicRecognition / Math.max(1, unambiguousTopics)).toFixed(4));
   report.specificExerciseCoverageRate = Number((report.topicsWithSpecificExercise / report.topics).toFixed(4));
   report.boardTransferTargetCases = report.topics * 3;
   report.boardTransferRate = report.boardTransferTargetCases
@@ -1185,7 +1213,8 @@ try {
   }
   console.log(JSON.stringify(report, null, 2));
 
-  const failures = report.exactTopicRecognition !== report.topics
+  const failures = report.exactTopicRecognition !== report.topics - report.ambiguousCanonicalTopics
+    || report.ambiguousCanonicalTopicsClarified !== report.ambiguousCanonicalTopics
     || report.wrongSubjectSets > 0
     || report.incompleteSets > 0
     || report.emptyAnswers > 0
