@@ -50,7 +50,7 @@ jobs:
             if curl --fail --silent --output /dev/null http://127.0.0.1:5173/demo/board; then break; fi
             sleep 0.25
           done
-          CHROME_PATH="$CHROME_BIN" node scripts/test-ai-board-ui-acceptance.mjs
+          CHROME_PATH="$CHROME_BIN" AI_BOARD_UI_SMOKE=1 node scripts/test-ai-board-ui-acceptance.mjs
       - name: Chemistry experiment acceptance, synchronization and persistence
         run: |
           npm run test:lab-acceptance
