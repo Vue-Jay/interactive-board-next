@@ -40,6 +40,17 @@ jobs:
           npm run test:ai-board-request
           npm run test:ai-request-acceptance
           npm run test:ai-board-transfer
+      - name: Browser smoke for real AI board assistant UI
+        run: |
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          npm run dev -- --host 127.0.0.1 >/tmp/lektrus-release-vite.log 2>&1 &
+          VITE_PID=$!
+          trap 'kill "$VITE_PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 40); do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:5173/demo/board; then break; fi
+            sleep 0.25
+          done
+          CHROME_PATH="$CHROME_BIN" node scripts/test-ai-board-ui-acceptance.mjs
       - name: Chemistry experiment acceptance, synchronization and persistence
         run: |
           npm run test:lab-acceptance
