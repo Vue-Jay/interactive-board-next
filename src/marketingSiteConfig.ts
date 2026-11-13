@@ -15,6 +15,8 @@ export type SitePage={id:string;title:string;eyebrow:string;heading:string;lead:
 export type SiteNavItem={id:string;title:string;hidden:boolean};
 export type SiteTheme={accent:string;background:string;surface:string;ink:string;radius:number;maxWidth:number};
 export type SiteShowcaseShot={scene:string;subject:string;src:string};
+// Preserve the eight original Lektrus marketing screenshots from PR #293,
+// before Site Studio was introduced. Do not replace with regenerated demos.
 export const DEFAULT_SITE_SHOWCASE:SiteShowcaseShot[]=[
  {scene:"home",subject:"Рабочее пространство",src:"/site/app-home.png"},
  {scene:"math",subject:"Математика",src:"/site/board-math.png"},
