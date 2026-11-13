@@ -761,8 +761,8 @@
 }
 
 
-/* Brand title: the blue descriptor sits under the wordmark, right-aligned
-   within its column instead of appearing as a second oversized headline. */
+/* The blue subtitle begins at the same left edge as the Lektrus wordmark,
+   not at the left edge of the logo or flush against the right of its column. */
 .marketing-site .marketing-hero-split .marketing-hero-identity h1 .marketing-hero-tagline {
   display:block;
   max-width:100%;
@@ -773,7 +773,7 @@
   font-weight:760;
   line-height:1.22;
   letter-spacing:-.018em;
-  text-align:right;
+  text-align:left;
   text-wrap:balance;
   overflow-wrap:normal;
 }
@@ -789,26 +789,100 @@
     font-size:19px;
   }
 }
-/* Contact Telegram link is a calm alternative to sending the form. */
-.marketing-site .marketing-help-layout .lektrus-feedback-telegram {
-  display:inline-flex;
+
+/* Prominent contact route above the feedback form; not an orphaned bottom link. */
+.marketing-site .marketing-help-layout .marketing-telegram-contact {
+  display:grid;
+  grid-template-columns:40px minmax(0,1fr) 18px;
   align-items:center;
-  gap:8px;
-  margin-top:17px;
-  padding:3px 0;
-  color:#2464ba;
-  font-size:14px;
-  font-weight:690;
-  line-height:1.5;
+  gap:12px;
+  min-height:76px;
+  margin:18px 0 0;
+  padding:13px 14px;
+  border:1px solid #bcd5f5;
+  border-radius:13px;
+  background:#e5f0ff;
+  color:#1d58ab;
   text-decoration:none;
-  text-underline-offset:4px;
+  transition:background-color .15s ease,border-color .15s ease,transform .15s ease;
 }
-.marketing-site .marketing-help-layout .lektrus-feedback-telegram:hover {
-  color:#174c93;
-  text-decoration:underline;
+.marketing-site .marketing-help-layout .marketing-telegram-contact:hover {
+  background:#d8e9ff;
+  border-color:#8cb9f3;
+  transform:translateY(-1px);
 }
-.marketing-site .marketing-help-layout .lektrus-feedback-telegram:focus-visible {
-  outline:2px solid #7dafff;
-  outline-offset:4px;
-  border-radius:3px;
+.marketing-site .marketing-help-layout .marketing-telegram-contact:focus-visible {
+  outline:2px solid #346fd1;
+  outline-offset:3px;
+}
+.marketing-site .marketing-telegram-contact-icon {
+  display:grid;
+  place-items:center;
+  width:40px;
+  height:40px;
+  border-radius:11px;
+  background:#fff;
+  color:#276bca;
+}
+.marketing-site .marketing-telegram-contact-icon svg {
+  display:block;
+  width:24px;
+  height:24px;
+}
+.marketing-site .marketing-telegram-contact-copy {
+  display:flex;
+  min-width:0;
+  flex-direction:column;
+  gap:2px;
+}
+.marketing-site .marketing-telegram-contact-copy strong {
+  color:#194c94;
+  font-family:var(--marketing-font-body);
+  font-size:14px;
+  font-weight:760;
+  line-height:1.35;
+}
+.marketing-site .marketing-telegram-contact-copy > span {
+  color:#42668f;
+  font-size:12.5px;
+  font-weight:480;
+  line-height:1.4;
+}
+.marketing-site .marketing-telegram-contact-arrow {
+  font-size:19px;
+  font-weight:700;
+  line-height:1;
+}
+.marketing-site .marketing-contact-divider {
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:20px 0 17px;
+  color:#7c91a8;
+  font-size:11.5px;
+  line-height:1.4;
+  text-align:center;
+}
+.marketing-site .marketing-contact-divider::before,
+.marketing-site .marketing-contact-divider::after {
+  content:"";
+  flex:1;
+  min-width:9px;
+  height:1px;
+  background:#cfdef0;
+}
+@media(max-width:700px) {
+  .marketing-site .marketing-help-layout .marketing-telegram-contact {
+    grid-template-columns:36px minmax(0,1fr) 15px;
+    gap:10px;
+    margin-top:14px;
+    padding:12px;
+    min-height:69px;
+  }
+  .marketing-site .marketing-telegram-contact-icon {width:36px;height:36px}
+  .marketing-site .marketing-contact-divider {font-size:11px;margin:17px 0 14px}
+}
+@media(prefers-reduced-motion:reduce) {
+  .marketing-site .marketing-help-layout .marketing-telegram-contact {transition:none}
 }
