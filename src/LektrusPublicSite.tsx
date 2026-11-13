@@ -15,15 +15,42 @@ const navigation:{id:Page;title:string}[]=[
  {id:"pricing",title:"Тарифы"},
  {id:"help",title:"Помощь и контакты"}
 ];
-const featureSymbols=["✎","◎","∑","⚗","✓","▣"];
-const featureCards=[
- {index:"01",title:"Интерактивная доска",benefit:"Объясняйте так, как удобно вам.",text:"Пишите от руки, рисуйте схемы, размещайте текст, изображения, фигуры и PDF на одном холсте. Показывайте ход решения шаг за шагом, не переключаясь между файлами.",scene:"geometry"},
- {index:"02",title:"Совместная работа",benefit:"Превратите зрителей в участников.",text:"Приглашайте учеников на общую доску, обсуждайте решения и дополняйте материал вместе. У каждого появляется возможность не только наблюдать, но и участвовать в уроке.",scene:"math"},
- {index:"03",title:"Учебные модели",benefit:"Покажите то, что трудно объяснить словами.",text:"Работайте с графиками, геометрическими инструментами, электрическими цепями, картами и другими предметными объектами. Сложные идеи становятся наглядными.",scene:"physics"},
- {index:"04",title:"Виртуальная лаборатория",benefit:"От теории переходите к эксперименту.",text:"Смешивайте растворы, используйте лабораторную посуду и наблюдайте химические процессы. Разбирайте результаты опытов без необходимости собирать настоящую лабораторию.",scene:"chemistry"},
- {index:"05",title:"Задания и практика",benefit:"Закрепляйте тему прямо во время объяснения.",text:"Размещайте задания, вопросы, таблицы и карточки рядом со схемами и заметками. Можно сразу перейти от примера к самостоятельному решению и общему разбору.",scene:"russian"},
- {index:"06",title:"Сохранённые материалы",benefit:"Продолжайте, а не начинайте заново.",text:"Сохраняйте готовые доски и возвращайтесь к схемам, материалам и выполненным заданиям. Подготовка, занятие и повторение остаются связаны между собой.",scene:"math"}
-];
+const featureGroups=[
+ {
+  id:"prepare",
+  number:"01",
+  label:"Подготовка",
+  title:"Подготовьте всё необходимое",
+  layout:"cards",
+  items:[
+   {icon:"files",title:"Собирайте материалы в одном месте",text:"Добавляйте изображения, документы PDF, текст, таблицы, схемы и задания прямо на доску. Всё необходимое для объяснения будет под рукой."},
+   {icon:"calendar",title:"Организуйте учебную работу",text:"Упорядочивайте доски и материалы по предметам, планируйте занятия и пользуйтесь расписанием. Нужное легко найти и продолжить."}
+  ]
+ },
+ {
+  id:"explore",
+  number:"02",
+  label:"Работа и исследование",
+  title:"Объясняйте, взаимодействуйте, исследуйте",
+  layout:"rows",
+  items:[
+   {icon:"pen",title:"Объясняйте на интерактивной доске",text:"Пишите, рисуйте, выделяйте главное, стройте схемы и графики, добавляйте формулы и геометрические построения. Используйте подходящий инструмент для каждой задачи."},
+   {icon:"users",title:"Работайте вместе в реальном времени",text:"Несколько участников могут работать на общей доске, дополнять записи, предлагать решения и обсуждать их. Объяснение превращается в совместную работу."},
+   {icon:"flask",title:"Исследуйте сложные темы на практике",text:"Изучайте учебные модели, работайте с интерактивным атласом, проводите виртуальные опыты в химической лаборатории и используйте предметные инструменты."}
+  ]
+ },
+ {
+  id:"result",
+  number:"03",
+  label:"Закрепление и результат",
+  title:"Закрепляйте знания и продолжайте работу",
+  layout:"cards",
+  items:[
+   {icon:"tasks",title:"Создавайте и разбирайте задания",text:"Дополняйте материалы упражнениями и интерактивными заданиями, разбирайте решения и исправляйте ошибки прямо по ходу работы."},
+   {icon:"save",title:"Сохраняйте результаты",text:"Возвращайтесь к созданным доскам, сохраняйте материалы и продолжайте с того места, где остановились. Проделанная работа не пропадает."}
+  ]
+ }
+] as const;
 const questions=[
  {q:"Что такое Lektrus?",a:"Это образовательная платформа с интерактивной доской, предметными инструментами и возможностями совместной работы."},
  {q:"Можно ли попробовать доску без аккаунта?",a:"Да. На сайте есть отдельная гостевая демонстрация. Изменения в ней не затрагивают рабочие доски других пользователей."},
@@ -53,6 +80,19 @@ function SiteMenuIcon({name}:{name:string}){
   laboratory:<><path d="M9 3h6M10 3v7l-5.5 8.2A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-2.8L14 10V3M7.5 15h9"/></>
  };
  return <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="19" height="19" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" fill="none">{shapes[name]??shapes.features}</svg>;
+}
+
+function MarketingFeatureIcon({name}:{name:string}){
+ const shapes:Record<string,ReactNode>={
+  files:<><rect x="7" y="3" width="13" height="17" rx="2"/><path d="M4 7v13a2 2 0 0 0 2 2h11M10 8h7M10 12h7M10 16h4"/></>,
+  calendar:<><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 14h3M8 17h3M15 14h2"/></>,
+  pen:<><path d="m4 20 4.5-1.1L20 7.4a2 2 0 0 0-3.4-3.4L5.1 15.5 4 20Z"/><path d="m14.5 6.5 3 3M3 22h18"/></>,
+  users:<><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2H3ZM17 5a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 5v1h-3"/></>,
+  flask:<><path d="M9 3h6M10 3v7l-5.5 8.2A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-2.8L14 10V3M7 16h10"/></>,
+  tasks:<><rect x="4" y="3" width="16" height="18" rx="2"/><path d="m7 9 1.5 1.5L11 8M13 9h4m-10 7 1.5 1.5L11 15m2 1h4"/></>,
+  save:<><path d="M4 3h13l3 3v15H4V3Z"/><path d="M7 3v7h10V3M8 21v-8h8v8"/></>,
+ };
+ return <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" fill="none">{shapes[name]??shapes.files}</svg>;
 }
 
 export default function LektrusPublicSite(){
@@ -262,21 +302,30 @@ export default function LektrusPublicSite(){
    </>}
    {page==="features"&&!copy?.replaceDefault&&<>
     {placed("before-0")}
-    <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container marketing-features-intro">
+    <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container marketing-features-intro marketing-features-task-intro">
      <span className="marketing-eyebrow">{copy?.eyebrow||"Возможности Lektrus"}</span>
-     <h1>{copy?.heading||<>Показывайте, объясняйте, <span>вовлекайте</span></>}</h1>
-     <p>{copy?.lead||"Готовьте материал, показывайте сложное наглядно и вовлекайте учеников в работу. В Lektrus инструменты связаны между собой, поэтому от объяснения легко перейти к исследованию и практике."}</p>
+     <h1>{copy?.heading||"Всё, что нужно для учебной работы"}</h1>
+     <p>{copy?.lead||"От подготовки материалов до совместного решения задач и исследования сложных тем. Узнайте, как Lektrus помогает на каждом этапе."}</p>
     </section>
     {placed("before-1")}
-    <section data-site-section-id="native-1" className="marketing-section marketing-container marketing-features-section" aria-label="Описание возможностей Lektrus">
-     <div className="marketing-features-list">{featureCards.map((card,i)=><article className="marketing-feature-row" key={card.index}>
-      <span className="marketing-feature-row-mark" aria-hidden="true">{featureSymbols[i]}</span>
-      <div className="marketing-feature-row-copy">
-       <h2>{card.title}</h2>
-       <div className="marketing-feature-row-description"><strong>{card.benefit}</strong><p>{card.text}</p></div>
-      </div>
-     </article>)}</div>
-     <p className="marketing-features-outro"><strong>Главное преимущество:</strong> все инструменты работают в одной учебной среде. Объяснение, совместная работа и практика становятся частью одного занятия, а не набором отдельных сервисов.</p>
+    <section data-site-section-id="native-1" className="marketing-section marketing-container marketing-features-section marketing-feature-flow" aria-label="Возможности Lektrus по этапам работы">
+     <div className="marketing-feature-groups">
+      {featureGroups.map(group=><section className={"marketing-feature-group marketing-feature-group-"+group.layout} key={group.id} aria-labelledby={"marketing-feature-group-"+group.id}>
+       <div className="marketing-feature-group-heading">
+        <span className="marketing-feature-group-label"><span aria-hidden="true">{group.number} / </span>{group.label}</span>
+        <h2 id={"marketing-feature-group-"+group.id}>{group.title}</h2>
+       </div>
+       <div className={"marketing-feature-items marketing-feature-items-"+group.layout}>
+        {group.items.map(item=><article className="marketing-feature-item" key={item.icon}>
+         <span className="marketing-feature-icon"><MarketingFeatureIcon name={item.icon}/></span>
+         <div className="marketing-feature-item-copy">
+          <h3>{item.title}</h3>
+          <p>{item.text}</p>
+         </div>
+        </article>)}
+       </div>
+      </section>)}
+     </div>
     </section>
     {placed("before-2")}
     {placed("before-3")}
