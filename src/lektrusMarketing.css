@@ -1023,3 +1023,58 @@ body:has(.marketing-site:not(.site-preview)) .site-editable-block:hover{outline:
  .marketing-site .marketing-hero-split h1 .marketing-hero-brand-name{font-size:clamp(45px,12vw,60px);margin-bottom:5px}
  .marketing-site .marketing-project-body .marketing-project-detail{font-size:13px;margin-top:10px}
 }
+
+/* Public-site storytelling: selling the benefits without oversized cards. */
+.marketing-site .marketing-hero-split .marketing-hero-lead{max-width:485px;font-size:15px!important;line-height:1.7!important;color:#48617c}
+.marketing-site .marketing-project-heading{align-content:start;gap:13px}
+.marketing-site .marketing-project-heading h2{max-width:460px;font-size:clamp(26px,2.55vw,33px);line-height:1.22;letter-spacing:-.052em}
+.marketing-site .marketing-project-caption{max-width:405px;font-size:13.5px;line-height:1.65;color:#5d728a}
+.marketing-site .marketing-project-body>p:first-child{font-size:14px;line-height:1.8;color:#4e647f}
+.marketing-site .marketing-project-body>p:first-child strong{color:#203b60;font-weight:850}
+.marketing-site .marketing-project-body .marketing-project-detail{font-size:13.5px;line-height:1.76}
+.marketing-site .marketing-project-audiences{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin-top:19px;padding-top:19px}
+.marketing-site .marketing-project-audiences p{font-size:12.5px;line-height:1.66}
+.marketing-site .marketing-project-audiences strong{display:block;margin:0 0 5px;font-size:12px}
+.marketing-site .marketing-features-intro{padding-bottom:20px}
+.marketing-site .marketing-features-intro .marketing-eyebrow{margin-bottom:11px}
+.marketing-site .marketing-features-intro>p{max-width:770px;font-size:14px;line-height:1.75}
+.marketing-site .marketing-features-section{padding-top:6px;padding-bottom:55px}
+.marketing-site .marketing-feature-row{position:relative;min-height:0;padding:23px 12px;transition:background .18s ease}
+.marketing-site .marketing-feature-row::before{content:"";position:absolute;top:15px;bottom:15px;left:0;width:3px;border-radius:3px;background:var(--marketing-blue);opacity:0;transition:opacity .18s ease}
+.marketing-site .marketing-feature-row:hover{background:linear-gradient(90deg,#eaf3ff99,transparent 86%)}
+.marketing-site .marketing-feature-row:hover::before{opacity:1}
+.marketing-site .marketing-feature-row-mark{width:40px;height:40px;font-size:20px;border:1px solid #d4e4f7;border-radius:11px;background:#ebf4ff}
+.marketing-site .marketing-feature-row-copy{min-width:0;gap:18px}
+.marketing-site .marketing-feature-row-copy h2{font-size:18px;line-height:1.4;letter-spacing:-.026em;color:#183656}
+.marketing-site .marketing-feature-row-description{display:grid;gap:6px;min-width:0}
+.marketing-site .marketing-feature-row-description strong{font-size:14px;line-height:1.45;font-weight:850;color:#255fb0}
+.marketing-site .marketing-feature-row-description p{max-width:720px;font-size:13px;line-height:1.72;color:#5d7189}
+.marketing-site .marketing-features-outro{max-width:900px;margin:26px 0 0;padding:17px 20px;border-left:3px solid #3777d7;border-radius:0 10px 10px 0;background:linear-gradient(90deg,#eaf3ff80,#eaf3ff12);font-size:13px;line-height:1.72;color:#516880}
+.marketing-site .marketing-features-outro strong{color:#1d4f91}
+@media(min-width:921px){
+ .marketing-site .marketing-feature-row{grid-template-columns:44px minmax(0,1fr);gap:20px;align-items:start}
+ .marketing-site .marketing-feature-row-copy{grid-template-columns:minmax(185px,.65fr) minmax(0,1.35fr);column-gap:30px;align-items:start}
+}
+@media(max-width:1100px){
+ .marketing-site .marketing-project-summary{grid-template-columns:1fr;gap:19px}
+ .marketing-site .marketing-project-heading h2{max-width:680px}
+ .marketing-site .marketing-project-caption{max-width:660px}
+}
+@media(max-width:920px){
+ .marketing-site .marketing-feature-row{align-items:start}
+ .marketing-site .marketing-feature-row-copy{display:grid;grid-template-columns:1fr;gap:6px}
+}
+@media(max-width:700px){
+ .marketing-site .marketing-hero-split .marketing-hero-lead{font-size:14px!important;line-height:1.65!important}
+ .marketing-site .marketing-project-heading h2{font-size:26px}
+ .marketing-site .marketing-project-caption{font-size:12.5px}
+ .marketing-site .marketing-project-body>p:first-child,.marketing-site .marketing-project-body .marketing-project-detail{font-size:13px}
+ .marketing-site .marketing-project-audiences{grid-template-columns:1fr;gap:13px;margin-top:15px;padding-top:15px}
+ .marketing-site .marketing-feature-row{gap:11px;padding:19px 4px}
+ .marketing-site .marketing-feature-row-mark{width:36px;height:36px;font-size:18px}
+ .marketing-site .marketing-feature-row-copy h2{font-size:16px}
+ .marketing-site .marketing-feature-row-description strong{font-size:13px}
+ .marketing-site .marketing-feature-row-description p{font-size:12.5px}
+ .marketing-site .marketing-features-outro{margin-top:19px;padding:13px 15px;font-size:12px}
+}
+@media(prefers-reduced-motion:reduce){.marketing-site .marketing-feature-row,.marketing-site .marketing-feature-row::before{transition:none}}
