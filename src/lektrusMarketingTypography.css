@@ -761,11 +761,14 @@
 }
 
 
-/* The blue descriptor starts at the same left edge as the Lektrus wordmark. */
-.marketing-site .marketing-hero-split .marketing-hero-identity h1 .marketing-hero-tagline {
+/* Descriptor spans the entire hero, starting directly below the logo. */
+.marketing-site .marketing-hero-split .marketing-hero-identity {
+  margin-bottom:0;
+}
+.marketing-site .marketing-hero-split .marketing-hero-copy > .marketing-hero-tagline {
   display:block;
   max-width:100%;
-  margin:3px 0 0;
+  margin:6px 0 18px;
   color:var(--marketing-blue);
   font-family:var(--marketing-font-display);
   font-size:clamp(21px,2.1vw,29px);
@@ -777,14 +780,17 @@
   overflow-wrap:normal;
 }
 @media(max-width:700px) {
-  .marketing-site .marketing-hero-split .marketing-hero-identity h1 .marketing-hero-tagline {
+  .marketing-site .marketing-hero-split .marketing-hero-identity {
+    margin-bottom:0;
+  }
+  .marketing-site .marketing-hero-split .marketing-hero-copy > .marketing-hero-tagline {
     font-size:clamp(19px,5vw,25px);
     line-height:1.23;
-    margin-top:2px;
+    margin:5px 0 16px;
   }
 }
 @media(max-width:370px) {
-  .marketing-site .marketing-hero-split .marketing-hero-identity h1 .marketing-hero-tagline {
+  .marketing-site .marketing-hero-split .marketing-hero-copy > .marketing-hero-tagline {
     font-size:19px;
   }
 }
