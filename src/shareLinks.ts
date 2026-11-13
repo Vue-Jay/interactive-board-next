@@ -181,3 +181,29 @@ export function clearPendingShareToken() {
   const path = url.pathname.startsWith(JOIN_PREFIX) ? "/app" : url.pathname;
   window.history.replaceState({}, "", `${path}${url.search}${url.hash}`);
 }
+/** Copy also on a local HTTP network origin where Clipboard API is unavailable. */
+export async function copyBoardLink(value: string): Promise<boolean> {
+  if (navigator.clipboard?.writeText) {
+    try { await navigator.clipboard.writeText(value); return true; }
+    catch { /* Fallback for blocked clipboard permissions. */ }
+  }
+  const previous=document.activeElement instanceof HTMLElement?document.activeElement:null;
+  const field=document.createElement("textarea");
+  field.value=value;
+  field.readOnly=true;
+  field.style.position="fixed";
+  field.style.top="0";
+  field.style.opacity="0";
+  field.style.pointerEvents="none";
+  document.body.appendChild(field);
+  try {
+    field.focus({preventScroll:true});
+    field.select();
+    return document.execCommand("copy");
+  } catch { return false; }
+  finally {
+    field.remove();
+    previous?.focus({preventScroll:true});
+  }
+}
+
