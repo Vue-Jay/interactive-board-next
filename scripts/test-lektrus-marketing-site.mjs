@@ -90,6 +90,15 @@ for(const rule of [
 ]){
  assert.ok(typography.includes(rule),"missing consistent responsive marketing type rule: "+rule);
 }
+// Keep the Lektrus name readable: never force adjacent letters to overlap.
+for(const selector of [
+ ".marketing-site .marketing-brand strong",
+ ".marketing-site .marketing-footer-brand strong",
+ ".marketing-site .marketing-hero-split h1 .marketing-hero-brand-name"
+]){
+ const rule=typography.split(selector+" {")[1]?.split("}")[0]||"";
+ assert.match(rule,/letter-spacing:\s*0\s*;/,"Lektrus wordmark must use natural character spacing: "+selector);
+}
 assert.ok(typography.includes("font-display:swap"),"fonts must not block first text paint");
 assert.ok(typography.includes('font-size:16px;')&&typography.includes("font-size:14px"),"form and navigation copy must not be tiny");
 
