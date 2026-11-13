@@ -134,6 +134,15 @@ try {
     return result;
   };
 
+  // A fast real-browser smoke is used on every release branch commit.
+  // The default mode below retains all 399 acceptance commands unchanged.
+  if (process.env.AI_BOARD_UI_SMOKE === "1") {
+    await send("создай текст: LEKTRUS_RELEASE_SMOKE", /Создал текстовый объект и выделил/i);
+    await send("найди LEKTRUS_RELEASE_SMOKE", /Нашёл 1 элемент и выделил/i);
+    assert.equal(await devtools.evaluate(`document.querySelectorAll('.board-object.object-text').length >= 1`),true,
+      "Assistant-created text must be present on the board");
+    console.log("AI board browser release smoke: panel, real commands and created board object verified.");
+  } else {
   const assignmentPrompts = [
     ["Математика", "теорема Пифагора"], ["Математика", "сокращение дробей"], ["Математика", "площадь круга"],
     ["Математика", "квадратные уравнения"], ["Математика", "вероятность события"],
@@ -286,6 +295,7 @@ try {
 
   assert.equal(sent, 399, "Должно быть выполнено ровно 399 сквозных команд через UI");
   console.log("AI board UI acceptance: 399 реальные команды выполнены через локальный /demo/board; проверены создание всех 20 Item.kind, загрузка изображения/PDF, поиск, анализ, история, отмена/повтор, переименование, изменение размера, копирование, перемещение, удаление с подтверждением, поворот, блокировка, скрытие/восстановление, порядок слоёв, группировка, выравнивание, распределение и одинаковый размер.");
+  }
 } finally {
   devtools?.close();
   if (process.platform === "win32" && chrome.pid) {
