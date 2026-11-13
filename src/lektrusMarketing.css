@@ -1078,3 +1078,66 @@ body:has(.marketing-site:not(.site-preview)) .site-editable-block:hover{outline:
  .marketing-site .marketing-features-outro{margin-top:19px;padding:13px 15px;font-size:12px}
 }
 @media(prefers-reduced-motion:reduce){.marketing-site .marketing-feature-row,.marketing-site .marketing-feature-row::before{transition:none}}
+
+/* Home: editorial presentation of the product, not a two-paragraph summary. */
+.marketing-site .marketing-project-summary{display:block;padding-top:48px;padding-bottom:68px}
+.marketing-site .marketing-project-intro{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:clamp(30px,5vw,75px);align-items:start}
+.marketing-site .marketing-project-heading{gap:14px}
+.marketing-site .marketing-project-heading h2{max-width:530px;font-size:clamp(31px,3.05vw,43px);line-height:1.16;letter-spacing:-.06em}
+.marketing-site .marketing-project-heading h2 span{color:var(--marketing-blue)}
+.marketing-site .marketing-project-caption{max-width:435px;font-size:14px;line-height:1.72}
+.marketing-site .marketing-project-body{padding-top:30px}
+.marketing-site .marketing-project-body>p:first-child{font-size:15px;line-height:1.8}
+.marketing-site .marketing-project-body>p:first-child strong{color:#183d69}
+.marketing-site .marketing-project-body .marketing-project-detail{margin-top:17px;font-size:13.5px;line-height:1.82}
+.marketing-site .marketing-project-journey{margin-top:45px}
+.marketing-site .marketing-project-journey-heading{display:flex;align-items:baseline;justify-content:space-between;gap:20px;padding-bottom:17px}
+.marketing-site .marketing-project-journey-heading .marketing-eyebrow{font-size:10px;letter-spacing:.09em}
+.marketing-site .marketing-project-journey-heading h3{color:#153963;font-size:22px;font-weight:850;line-height:1.3;letter-spacing:-.045em}
+.marketing-site .marketing-project-stages{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:25px}
+.marketing-site .marketing-project-stage{display:flex;gap:14px;min-width:0;border-top:2px solid #c8daf3;padding:21px 6px 0 0}
+.marketing-site .marketing-project-stage:nth-child(2){border-top-color:#8fb7ee}
+.marketing-site .marketing-project-stage:nth-child(3){border-top-color:#4585e6}
+.marketing-site .marketing-project-stage-number{flex:none;color:#2c6ccc;font-size:24px;font-weight:850;line-height:1.2;letter-spacing:-.07em}
+.marketing-site .marketing-project-stage h4{margin:1px 0 8px;font-size:15px;color:#183d69;line-height:1.4;font-weight:850}
+.marketing-site .marketing-project-stage p{font-size:12.5px;line-height:1.7;color:#5d738b}
+.marketing-site .marketing-project-audiences{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin-top:39px;padding:0;border:0}
+.marketing-site .marketing-project-audience{padding:22px 24px 24px;border:1px solid #d9e6f6;border-radius:15px;background:linear-gradient(125deg,#edf5ff,#f8fbff)}
+.marketing-site .marketing-project-audience:nth-child(2){background:linear-gradient(125deg,#f4f8ff,#fff)}
+.marketing-site .marketing-project-audience-label{display:block;margin-bottom:9px;font-size:11px;letter-spacing:.055em;text-transform:uppercase;font-weight:850;color:#2968c4}
+.marketing-site .marketing-project-audience h3{font-size:18px;line-height:1.33;letter-spacing:-.03em;color:#153b67;margin:0 0 10px}
+.marketing-site .marketing-project-audience p{font-size:13px;line-height:1.76;color:#546d88}
+.marketing-site .marketing-project-outro{display:flex;align-items:flex-start;gap:17px;margin-top:20px;padding:19px 23px;border-left:3px solid var(--marketing-blue);background:linear-gradient(90deg,#e7f1ff99,#f8fbff33);border-radius:0 12px 12px 0}
+.marketing-site .marketing-project-outro-icon{flex:none;color:var(--marketing-blue);font-size:26px;line-height:1}
+.marketing-site .marketing-project-outro strong{display:block;margin-bottom:5px;font-size:14px;color:#1b4c86;font-weight:850}
+.marketing-site .marketing-project-outro p{font-size:12.5px;line-height:1.72;color:#526d88}
+@media(max-width:1100px){
+ .marketing-site .marketing-project-intro{grid-template-columns:1fr;gap:9px}
+ .marketing-site .marketing-project-heading h2{max-width:800px}
+ .marketing-site .marketing-project-caption{max-width:680px}
+ .marketing-site .marketing-project-body{padding-top:10px}
+ .marketing-site .marketing-project-journey{margin-top:33px}
+}
+@media(max-width:700px){
+ .marketing-site .marketing-project-summary{padding-top:32px;padding-bottom:44px}
+ .marketing-site .marketing-project-heading h2{font-size:clamp(28px,7vw,35px);line-height:1.18}
+ .marketing-site .marketing-project-caption{font-size:13px}
+ .marketing-site .marketing-project-body{padding-top:7px}
+ .marketing-site .marketing-project-body>p:first-child{font-size:13.5px;line-height:1.76}
+ .marketing-site .marketing-project-body .marketing-project-detail{font-size:13px;margin-top:12px}
+ .marketing-site .marketing-project-journey{margin-top:27px}
+ .marketing-site .marketing-project-journey-heading{display:grid;gap:6px;padding-bottom:13px}
+ .marketing-site .marketing-project-journey-heading h3{font-size:20px}
+ .marketing-site .marketing-project-stages{grid-template-columns:1fr;gap:0}
+ .marketing-site .marketing-project-stage{padding:17px 0 18px;gap:14px}
+ .marketing-site .marketing-project-stage h4{font-size:14px;margin-bottom:5px}
+ .marketing-site .marketing-project-stage p{font-size:12.5px}
+ .marketing-site .marketing-project-audiences{grid-template-columns:1fr;gap:10px;margin-top:17px;padding-top:0}
+ .marketing-site .marketing-project-audience{padding:18px 19px}
+ .marketing-site .marketing-project-audience h3{font-size:16px}
+ .marketing-site .marketing-project-audience p{font-size:12.5px}
+ .marketing-site .marketing-project-outro{padding:17px 16px;gap:10px;margin-top:12px}
+ .marketing-site .marketing-project-outro-icon{font-size:20px}
+ .marketing-site .marketing-project-outro strong{font-size:13.5px}
+ .marketing-site .marketing-project-outro p{font-size:12.5px}
+}
