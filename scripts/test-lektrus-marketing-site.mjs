@@ -47,7 +47,6 @@ const feedbackComponent=read("src/LektrusFeedbackForm.tsx");
 assert.ok(feedbackComponent.includes('"https://t.me/lektrus"')&&feedbackComponent.includes('source==="site"'),"Public contact form must always show official Telegram address");
 assert.ok(feedbackComponent.includes('href={source==="site"?"https://t.me/lektrus":import.meta.env.VITE_TELEGRAM_URL}'),"Site Telegram contact must not depend on environment variables");
 assert.ok(feedbackComponent.includes('rel="noopener noreferrer"'),"External Telegram link must be opened safely");
-assert.ok(typography.includes(".marketing-site .marketing-help-layout .lektrus-feedback-telegram"),"Telegram contact needs visible, accessible styling");
 // Help uses a single calm split layout, not two oversized stacked marketing sections.
 const helpPage=site.slice(site.indexOf('page==="help"&&!copy?.replaceDefault'),site.indexOf('{customPage&&<SiteCustomPage'));
 assert.ok(helpPage.includes("marketing-help-layout")&&helpPage.includes("marketing-help-questions")&&helpPage.includes("marketing-help-contact"),"Help must present FAQ and contact together");
@@ -84,6 +83,7 @@ for(const shot of [...approvedLocalShots,"showcase-atlas.png","showcase-lab.png"
 // Typography regression: all public-page text uses local Cyrillic-capable fonts,
 // while headings, navigation, help text and mobile typography stay legible.
 const typography=read("src/lektrusMarketingTypography.css");
+assert.ok(typography.includes(".marketing-site .marketing-help-layout .lektrus-feedback-telegram"),"Telegram contact needs visible, accessible styling");
 assert.ok(site.includes('import "./lektrusMarketingTypography.css";'),"public typography must load after base marketing layout");
 for(const [path,cssPath] of [
  ["public/fonts/onest/Onest-Variable.ttf","/fonts/onest/Onest-Variable.ttf"],
