@@ -127,6 +127,12 @@ assert.ok(homeSection.includes('aria-labelledby="marketing-project-title"')&&hom
 assert.ok(homeSection.includes('<h2 id="marketing-project-title">Урок, в котором можно не только смотреть, но и действовать</h2>'),"the title must stay a single editable native object for Site Studio");
 assert.ok(css.includes(".marketing-site .marketing-project-heading h2::after"),"project emphasis must be decorative, not an editable nested span");
 assert.equal((homeSection.match(/className="marketing-project-stage"/g)||[]).length,3,"the story must show a clear three-stage teaching journey");
+assert.ok(homeSection.includes('<div className="marketing-project-outro">')&&homeSection.includes("Больше, чем интерактивная доска.")&&!homeSection.includes("marketing-project-outro-icon"),"project outro copy must remain but the decorative star must be removed");
+assert.ok(typography.includes(".marketing-site .marketing-project-journey-heading :is(.marketing-eyebrow,h3)")&&typography.includes("text-transform:uppercase;"),"both process headings must use the same small uppercase type");
+assert.ok(site.includes('page==="home"?" marketing-footer-home":"')&&site.includes('className="marketing-footer-home-main"')&&site.includes('className="marketing-footer-home-bottom"'),"home must render a distinct but single site footer");
+assert.ok(site.includes('aria-label="Разделы сайта"')&&site.includes('aria-label="Учебные инструменты"'),"footer navigation must have named accessible groups");
+assert.ok(site.includes('href="/tools/atlas"')&&site.includes('href="/tools/laboratory"'),"home footer must link to standalone subject tools");
+assert.ok(css.includes(".marketing-site .marketing-footer-home-main")&&css.includes(".marketing-site .marketing-footer-home-bottom")&&css.includes("@media(max-width:700px)"),"branded footer must have responsive layout");
 for(const copy of ["Подготовьте материал","Исследуйте вместе","Продолжайте с результата","Меньше переключений. Больше наглядности.","Не просто слушать. Пробовать и понимать.","Интерактивный атлас и химическая лаборатория доступны также без создания доски"]){
  assert.ok(homeSection.includes(copy),"project presentation is missing a concrete benefit: "+copy);
 }

@@ -252,7 +252,7 @@ export default function LektrusPublicSite(){
       <article className="marketing-project-audience"><span className="marketing-project-audience-label">Ученикам</span><h3>Не просто слушать. Пробовать и понимать.</h3><p>Разбирайтесь в задачах шаг за шагом, дополняйте общие решения и исследуйте процессы на практике. Ошибки становятся частью изучения, а не концом попытки.</p></article>
      </div>
      <div className="marketing-project-outro">
-      <span className="marketing-project-outro-icon" aria-hidden="true">✳</span>
+      
       <div><strong>Больше, чем интерактивная доска.</strong><p>Интерактивный атлас и химическая лаборатория доступны также без создания доски. Можно открыть инструмент отдельно и сразу приступить к исследованию темы.</p></div>
      </div>
     </section>
@@ -298,10 +298,40 @@ export default function LektrusPublicSite(){
    {customPage&&<SiteCustomPage page={customPage} selectedId={previewSelection} preview={isPreview}/>}
    {!customPage&&placed("end")}
   </main>
-  <footer className="marketing-footer"><div className="marketing-container">
-   <span>© {new Date().getFullYear()} Lektrus</span>
-   <div className="marketing-footer-end"><NavLink id="features" title="Возможности"/><NavLink id="help" title="Помощь"/><a href="/app">Открыть приложение ↗</a></div>
-  </div></footer>
+  <footer className={"marketing-footer"+(page==="home"?" marketing-footer-home":"")}>
+   {page==="home"?
+    <div className="marketing-container marketing-footer-home-inner">
+     <div className="marketing-footer-home-main">
+      <div className="marketing-footer-home-brand">
+       <div className="marketing-footer-home-wordmark">
+        <img src="/lektrus-icon-192.png" width="38" height="38" alt=""/>
+        <strong>Lektrus</strong>
+       </div>
+       <p>Уроки, в которых можно исследовать и создавать вместе.</p>
+       <a className="marketing-footer-home-app" href="/app">Открыть приложение <span aria-hidden="true">↗</span></a>
+      </div>
+      <nav className="marketing-footer-home-links" aria-label="Разделы сайта">
+       <span className="marketing-footer-home-label">На сайте</span>
+       <NavLink id="features" title="Возможности"/>
+       <NavLink id="pricing" title="Тарифы"/>
+       <NavLink id="help" title="Помощь и контакты"/>
+      </nav>
+      <nav className="marketing-footer-home-links" aria-label="Учебные инструменты">
+       <span className="marketing-footer-home-label">Инструменты</span>
+       <a href="/tools/atlas">Интерактивный атлас</a>
+       <a href="/tools/laboratory">Химическая лаборатория</a>
+      </nav>
+     </div>
+     <div className="marketing-footer-home-bottom">
+      <span>© {new Date().getFullYear()} Lektrus</span>
+      <span>Пространство для обучения</span>
+     </div>
+    </div>:
+    <div className="marketing-container">
+     <span>© {new Date().getFullYear()} Lektrus</span>
+     <div className="marketing-footer-end"><NavLink id="features" title="Возможности"/><NavLink id="help" title="Помощь"/><a href="/app">Открыть приложение ↗</a></div>
+    </div>}
+  </footer>
   {isPreview&&(previewSelection||previewObject)&&<div className="site-canvas-selection-actions" role="toolbar" aria-label="Действия над выделенным элементом">
    <span>{previewSelection?"Выделен блок":config.objects[previewObject||""]?.hidden?"Элемент скрыт":"Выделен объект"}</span>
    <button type="button" onClick={()=>editorCommand("undo")} title="Отменить, Ctrl+Z" aria-label="Отменить действие">↶</button>
