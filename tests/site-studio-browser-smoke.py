@@ -311,10 +311,10 @@ with sync_playwright() as p:
         if page_name == "home":
             assert visitor.locator(".marketing-hero-lead").evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)") >= 15, "Mobile hero lead must remain readable"
             assert visitor.locator(".marketing-hero-tagline").evaluate("(el) => getComputedStyle(el).textAlign") == "left", "Mobile tagline must align to the left of the emblem"
+            mobile_logo = visitor.locator(".marketing-hero-logo").bounding_box()
             mobile_tagline = visitor.locator(".marketing-hero-tagline").bounding_box()
             assert mobile_tagline and abs(mobile_tagline["x"] - mobile_logo["x"]) <= 2, "Mobile tagline must begin below the emblem"
             assert visitor.locator(".marketing-hero-tagline").evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)") >= 19, "Mobile blue tagline must remain legible"
-            mobile_logo = visitor.locator(".marketing-hero-logo").bounding_box()
             mobile_title = visitor.locator(".marketing-hero-identity h1").bounding_box()
             assert mobile_logo and mobile_title and mobile_logo["width"] >= 50, "Mobile logo must remain clearly visible"
             assert mobile_title["x"] >= mobile_logo["x"] + mobile_logo["width"] + 8, "Mobile logo must not overlap heading"
