@@ -761,12 +761,17 @@
 }
 
 
-/* The blue subtitle begins at the same left edge as the Lektrus wordmark,
-   not at the left edge of the logo or flush against the right of its column. */
-.marketing-site .marketing-hero-split .marketing-hero-identity h1 .marketing-hero-tagline {
+/* Tagline starts directly below the emblem, at the LEFT edge of the
+   whole brand composition. Name and emblem remain on the first row. */
+.marketing-site .marketing-hero-split .marketing-hero-identity {
+  row-gap:6px;
+}
+.marketing-site .marketing-hero-split .marketing-hero-identity > .marketing-hero-tagline {
+  grid-column:1 / -1;
   display:block;
+  min-width:0;
   max-width:100%;
-  margin:3px 0 0;
+  margin:0;
   color:var(--marketing-blue);
   font-family:var(--marketing-font-display);
   font-size:clamp(21px,2.1vw,29px);
@@ -778,14 +783,16 @@
   overflow-wrap:normal;
 }
 @media(max-width:700px) {
-  .marketing-site .marketing-hero-split .marketing-hero-identity h1 .marketing-hero-tagline {
+  .marketing-site .marketing-hero-split .marketing-hero-identity {
+    row-gap:5px;
+  }
+  .marketing-site .marketing-hero-split .marketing-hero-identity > .marketing-hero-tagline {
     font-size:clamp(19px,5vw,25px);
     line-height:1.23;
-    margin-top:2px;
   }
 }
 @media(max-width:370px) {
-  .marketing-site .marketing-hero-split .marketing-hero-identity h1 .marketing-hero-tagline {
+  .marketing-site .marketing-hero-split .marketing-hero-identity > .marketing-hero-tagline {
     font-size:19px;
   }
 }
