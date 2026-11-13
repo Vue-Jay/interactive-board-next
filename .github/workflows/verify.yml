@@ -20,6 +20,8 @@ jobs:
         run: npm ci
       - name: Typecheck and build
         run: npm run build
+      - name: Check board links, invitations and auth callback routing
+        run: npm run test:board-links
       - name: Check geometry names, closure and touch gestures
         run: npm run test:math-gesture
       - name: Check school geometry constructions

@@ -7,7 +7,7 @@ import LectrisWorkspaceShell from "./LectrisWorkspaceShell";
 import { clearNotificationCache } from "./notificationsStore";
 import { clearAiBoardTransfer } from "./aiLocalStore";
 import { clearAccountAccessCache, getAccountAccess, getCachedAccountAccess, type AccountRole } from "./accountRoleStore";
-import { clearPendingShare, initialRoute, parseRoute, rememberShareToken, type AppRoute } from "./routes";
+import { clearPendingShare, initialRoute, parseRoute, pendingSharePath, rememberShareToken, type AppRoute } from "./routes";
 import { redeemShareLink } from "./shareLinks";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
@@ -144,6 +144,7 @@ export default function App() {
   const [boardLoading, setBoardLoading] = useState(false);
   const [boardLoadError, setBoardLoadError] = useState("");
   const [sharePassword, setSharePassword] = useState("");
+  const [submittedSharePassword, setSubmittedSharePassword] = useState<{token:string;value:string}|null>(null);
   const [sharePasswordRequired, setSharePasswordRequired] = useState(false);
   const [remoteVersion, setRemoteVersion] = useState<number | null>(null);
   const [boardMountKey, setBoardMountKey] = useState(0);
@@ -178,12 +179,10 @@ export default function App() {
         if(!alive||!confirmedUser)return false;
         setAuthUser(confirmedUser);
         setActiveBoard(null);
-        navigate("/",true);
-        const callback=new URL(callbackUrl);
-        if((callback.protocol==="https:"||callback.protocol==="http:")&&callback.origin===window.location.origin){
-          callback.searchParams.delete("email_confirmation");
-          window.history.replaceState({},"",callback.pathname+callback.search);
-        }
+        // The confirmation callback must not reset an invitation to /app.
+        // Keep the pending /join/:token until redemption, then the token is
+        // replaced with /board/:id. Never put auth fragments back in history.
+        navigate(pendingSharePath()??"/",true);
         return true;
       }catch(error){const message=error instanceof Error?error.message:"Не удалось подтвердить email";console.warn("Lektrus email confirmation could not be completed",error);if(alive)setAuthCallbackError(message);return false}
     };
@@ -369,7 +368,7 @@ export default function App() {
         if (route.kind === "invalid") throw new Error("Ссылка недействительна");
         if (route.kind === "join") {
           rememberShareToken(route.token);
-          const redeemed = await redeemShareLink(route.token, sharePassword || undefined);
+          const redeemed = await redeemShareLink(route.token, submittedSharePassword?.token===route.token?submittedSharePassword.value:undefined);
           if (!alive) return;
           clearPendingShare();
           navigate(`/board/${redeemed.board_id}`, true);
@@ -405,7 +404,7 @@ export default function App() {
       }
     })();
     return () => { alive = false; };
-  }, [route, authReady, authUser, navigate, openBoard, sharePassword]);
+  }, [route, authReady, authUser, navigate, openBoard, submittedSharePassword]);
 
   useEffect(()=>{
     if(!authUser)return;
@@ -485,7 +484,7 @@ export default function App() {
           ? <TemplatesScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/app");window.dispatchEvent(new PopStateEvent("popstate"))}} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
           : <BoardsScreen user={authUser} accountRole={effectiveAccountRole} isAppAdmin={isAppAdmin&&appRolePreview==="actual"} onOpenBoard={(board) => navigate(`/board/${board.id}`)} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} />})()}</LectrisWorkspaceShell>}
         </Suspense>
-        {sharePasswordRequired && route.kind==="join" && <div className="board-server-overlay"><form className="board-server-card share-password-card" onSubmit={e=>{e.preventDefault();if(!sharePassword.trim())return;setSharePasswordRequired(false);setRoute({...route});}}><strong>Ссылка защищена паролем</strong><span>Введите пароль, который сообщил владелец доски.</span><input type="password" value={sharePassword} onChange={e=>setSharePassword(e.target.value)} placeholder="Пароль ссылки" autoComplete="off"/><div className="share-password-actions"><button className="primary" type="submit" disabled={!sharePassword.trim()}>Открыть доску</button><button type="button" onClick={()=>{setSharePassword("");clearPendingShare();navigate("/",true)}}>Отмена</button></div></form></div>}
+        {sharePasswordRequired && route.kind==="join" && <div className="board-server-overlay"><form className="board-server-card share-password-card" onSubmit={e=>{e.preventDefault();if(!sharePassword.trim())return;setSharePasswordRequired(false);setSubmittedSharePassword({token:route.token,value:sharePassword});}}><strong>Ссылка защищена паролем</strong><span>Введите пароль, который сообщил владелец доски.</span><input type="password" value={sharePassword} onChange={e=>setSharePassword(e.target.value)} placeholder="Пароль ссылки" autoComplete="off"/><div className="share-password-actions"><button className="primary" type="submit" disabled={!sharePassword.trim()}>Открыть доску</button><button type="button" onClick={()=>{setSharePassword("");clearPendingShare();navigate("/",true)}}>Отмена</button></div></form></div>}
         {boardLoading && <BoardLoadingScreen/>}
         {boardLoadError && <div className="board-server-overlay"><div className="board-server-card"><strong>Не удалось открыть доску</strong><span>{boardLoadError}</span><button className="primary" onClick={() => setRoute({ ...route })}>Повторить</button><button onClick={() => { clearPendingShare(); navigate("/", true); }}>К моим доскам</button></div></div>}
       </>

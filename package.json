@@ -34,6 +34,7 @@
     "native:check": "node scripts/test-native-mobile.mjs",
     "test:lab-acceptance": "node scripts/test-lektrus-lab-acceptance.mjs && node scripts/test-lektrus-lab-freezing-solids-tablet.mjs",
     "test:realtime": "node --test tests/realtime.test.mjs tests/live-ink.test.mjs",
+    "test:board-links": "node --test tests/shareLinks.test.mjs",
     "test:brush-crop": "node scripts/test-lektrus-brush-crop.mjs",
     "test:math-gesture": "node scripts/test-lektrus-math-gesture.mjs"
   },
