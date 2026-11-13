@@ -44,9 +44,8 @@ assert.ok(site.includes('href="/tools/atlas"')&&site.includes('href="/tools/labo
 assert.ok(site.includes('"/demo/board?scene="'),"example links must lead to the actual demo board");
 assert.ok(site.includes('<LektrusFeedbackForm compact source="site"/>'),"feedback must use the existing submission service");
 const feedbackComponent=read("src/LektrusFeedbackForm.tsx");
-assert.ok(feedbackComponent.includes('"https://t.me/lektrus"')&&feedbackComponent.includes('source==="site"'),"Public contact form must always show official Telegram address");
-assert.ok(feedbackComponent.includes('href={source==="site"?"https://t.me/lektrus":import.meta.env.VITE_TELEGRAM_URL}'),"Site Telegram contact must not depend on environment variables");
-assert.ok(feedbackComponent.includes('rel="noopener noreferrer"'),"External Telegram link must be opened safely");
+assert.ok(feedbackComponent.includes('source!=="site"&&import.meta.env.VITE_TELEGRAM_URL'),"App feedback may keep its configured Telegram link without duplicating the public contact action");
+assert.ok(feedbackComponent.includes('rel="noopener noreferrer"'),"External Telegram links must open safely");
 // Help uses a single calm split layout, not two oversized stacked marketing sections.
 const helpPage=site.slice(site.indexOf('page==="help"&&!copy?.replaceDefault'),site.indexOf('{customPage&&<SiteCustomPage'));
 assert.ok(helpPage.includes("marketing-help-layout")&&helpPage.includes("marketing-help-questions")&&helpPage.includes("marketing-help-contact"),"Help must present FAQ and contact together");
@@ -55,7 +54,9 @@ assert.ok(helpPage.includes('placed("before-0")')&&helpPage.includes('placed("be
 assert.ok(helpPage.includes('aria-labelledby="marketing-help-questions-title"')&&helpPage.includes('aria-labelledby="marketing-help-contact-title"'),"Both help sections need accessible titles");
 assert.ok(helpPage.includes("questions.map(")&&helpPage.includes("<details key={item.q}>"),"Help answers should expand on demand");
 assert.equal((helpPage.match(/<LektrusFeedbackForm compact source="site"\/>/g)||[]).length,1,"Help must have exactly one working feedback form");
-assert.ok(!helpPage.includes("VITE_TELEGRAM_URL")&&helpPage.includes("marketing-faq-toggle"),"Avoid duplicate Telegram actions and keep clear FAQ controls");
+assert.ok(helpPage.includes('className="marketing-telegram-contact" href="https://t.me/lektrus"')&&helpPage.includes("Быстрее в Telegram")&&helpPage.includes("Напишите напрямую: @lektrus"),"Prominent official Telegram link must be shown above the public feedback form");
+assert.ok(helpPage.indexOf("marketing-telegram-contact") < helpPage.indexOf("<LektrusFeedbackForm compact"),"Telegram contact must precede the feedback form");
+assert.ok(helpPage.includes("marketing-contact-divider")&&helpPage.includes("marketing-faq-toggle"),"Help must separate two clear contact options without duplicating links");
 const helpStyles=read("src/lektrusMarketingTypography.css");
 assert.ok(helpStyles.includes(".marketing-site .marketing-help-layout:has(> .site-canvas-slot)")&&helpStyles.includes("grid-template-columns:minmax(0,1fr)"),"Site Studio inserted content must preserve correct help section order");
 assert.ok(helpStyles.includes(".marketing-site .marketing-help-layout .marketing-faq details")&&helpStyles.includes(".marketing-site .marketing-help-layout .marketing-form-card"),"Help needs restrained FAQ and form styles");
@@ -83,7 +84,7 @@ for(const shot of [...approvedLocalShots,"showcase-atlas.png","showcase-lab.png"
 // Typography regression: all public-page text uses local Cyrillic-capable fonts,
 // while headings, navigation, help text and mobile typography stay legible.
 const typography=read("src/lektrusMarketingTypography.css");
-assert.ok(typography.includes(".marketing-site .marketing-help-layout .lektrus-feedback-telegram"),"Telegram contact needs visible, accessible styling");
+assert.ok(typography.includes(".marketing-site .marketing-help-layout .marketing-telegram-contact")&&typography.includes(".marketing-site .marketing-contact-divider"),"Telegram contact card and form divider need styling");
 assert.ok(site.includes('import "./lektrusMarketingTypography.css";'),"public typography must load after base marketing layout");
 for(const [path,cssPath] of [
  ["public/fonts/onest/Onest-Variable.ttf","/fonts/onest/Onest-Variable.ttf"],
@@ -154,7 +155,7 @@ assert.equal((homeSection.match(/className="marketing-hero-logo"/g)||[]).length,
 assert.ok(homeSection.includes('className="marketing-hero-identity"')&&homeSection.includes('src="/lektrus-icon-192.png"')&&homeSection.includes('alt="" aria-hidden="true"'),"Home identity must pair the existing transparent branded image with the wordmark without duplicating its spoken name");
 assert.ok(homeSection.includes('<h1 id="marketing-title">')&&homeSection.includes('marketing-hero-brand-name'),"Keep the editable single h1 and approved Lektrus wordmark");
 assert.ok(homeSection.includes('<span className="marketing-hero-tagline">Онлайн-платформа для обучения</span>'),"Home must use approved online-platform descriptor");
-assert.ok(typography.includes(".marketing-site .marketing-hero-split .marketing-hero-identity h1 .marketing-hero-tagline")&&typography.includes("text-align:right;"),"Tagline must be right-aligned within the title column");
+assert.ok(typography.includes(".marketing-site .marketing-hero-split .marketing-hero-identity h1 .marketing-hero-tagline")&&typography.includes("text-align:left;"),"Tagline must be left-aligned beneath the Lektrus wordmark, not the logo");
 assert.ok(typography.includes("font-size:clamp(19px,5vw,25px)")&&typography.includes("@media(max-width:370px)"),"Tagline needs safe mobile font scale");
 const heroMark=readFileSync(new URL("../public/lektrus-icon-192.png",import.meta.url));
 assert.ok(heroMark.length>4000&&heroMark.subarray(1,4).toString()==="PNG","Hero must load the shipped official transparent Lektrus image, not a placeholder");
