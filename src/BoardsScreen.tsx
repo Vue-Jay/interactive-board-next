@@ -7,7 +7,7 @@ import { flushLectrisOrganization, queueLectrisBoardOrganization } from "./lectr
 import { cachedBoardPreview, loadBoardPreviews, backfillCachedBoardPreviews } from "./boardPreview";
 import { BOARD_ROLE_LABELS, isRemoteBackendEnabled, type AuthUser, type BoardRole } from "./authStore";
 import { boardStorageKey, createBoard, deleteBoard, deleteBoardForever, ensureUserBoards, getCachedUserBoards, getTrashedBoards, getUserBoards, restoreBoard, renameBoard, getBoardAccess, changeMemberRole, removeMember, type BoardAccessMember, type BoardInvitation, type BoardSummary } from "./boardStore";
-import { boardDirectUrl, boardShareUrl, clearPendingShareToken, createBoardShareLink, listBoardShareLinks, pendingShareToken, revokeBoardShareLink, type BoardShareLink, type ShareRole } from "./shareLinks";
+import { boardDirectUrl, boardShareUrl, clearPendingShareToken, copyBoardLink, createBoardShareLink, listBoardShareLinks, pendingShareToken, revokeBoardShareLink, type BoardShareLink, type ShareRole } from "./shareLinks";
 
 type Props={user:AuthUser;accountRole:AccountRole;isAppAdmin:boolean;onOpenBoard:(b:BoardSummary)=>void;onLogout:()=>void};
 type BoardFilter="all"|"mine"|"shared";
@@ -154,12 +154,12 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
      const url=boardShareUrl(link.token);
      setCreatedUrl(url);
      setNotice(role==="editor"?"Создана ссылка для редактирования":"Создана ссылка только для просмотра");
-     try{await navigator.clipboard.writeText(url);setNotice("Ссылка создана и скопирована")}catch{/* поле ниже всё равно доступно */}
+     if(await copyBoardLink(url))setNotice("Ссылка создана и скопирована")
      await loadLinks(manage);
    }catch(e){setNotice(e instanceof Error?e.message:"Не удалось создать ссылку")}finally{setBusy(false)}
  };
 
- const copyCreated=async()=>{if(!createdUrl)return;try{await navigator.clipboard.writeText(createdUrl);setNotice("Ссылка скопирована")}catch{setNotice("Не удалось скопировать автоматически. Выделите ссылку вручную.")}};
+ const copyCreated=async()=>{if(!createdUrl)return;setNotice(await copyBoardLink(createdUrl)?"Ссылка скопирована":"Не удалось скопировать автоматически. Выделите ссылку вручную.")};
 
  return <main className="boards-shell">
  {createOpen&&<LektrusCreateBoardDialog user={user} initial={createAssociation} busy={busy} onClose={()=>setCreateOpen(false)} onCreate={options=>void confirmCreate(options)}/>}
@@ -240,7 +240,7 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
    {createdUrl&&<div className="board-invite-created"><div><span>✓</span><strong>Ссылка готова</strong></div><div><input readOnly value={createdUrl} onFocus={e=>e.currentTarget.select()}/><button onClick={()=>void copyCreated()}>⧉ Копировать</button></div></div>}
    {isRemoteBackendEnabled()&&<details className="board-direct-link">
      <summary>Прямая ссылка на доску для участников</summary>
-     <div className="board-invite-created"><div><input readOnly value={boardDirectUrl(manage.id)} onFocus={e=>e.currentTarget.select()} aria-label="Прямая ссылка на доску"/><button type="button" onClick={()=>void (async()=>{try{await navigator.clipboard.writeText(boardDirectUrl(manage.id));setNotice("Адрес доски скопирован")}catch{setNotice("Не удалось скопировать адрес. Выделите ссылку вручную.")}})()}>⧉ Копировать</button></div></div>
+     <div className="board-invite-created"><div><input readOnly value={boardDirectUrl(manage.id)} onFocus={e=>e.currentTarget.select()} aria-label="Прямая ссылка на доску"/><button type="button" onClick={()=>void (async()=>{setNotice(await copyBoardLink(boardDirectUrl(manage.id))?"Адрес доски скопирован":"Не удалось скопировать адрес. Выделите ссылку вручную.")})()}>⧉ Копировать</button></div></div>
      <small>Ссылка не выдаёт права доступа. Сначала пригласите участника.</small>
    </details>}
  </div>
