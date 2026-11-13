@@ -6,7 +6,7 @@ import { createShareLink, listShareLinks, revokeShareLink, type ShareLink } from
 
 export default function ShareDialog({ board, user, onClose }: { board: BoardSummary; user: AuthUser; onClose: () => void }) {
   const [links, setLinks] = useState<ShareLink[]>([]);
-  const [created, setCreated] = useState<{ id: string; url: string; presentationUrl?: string } | null>(()=>{
+  const [created, setCreated] = useState<{ id: string; url: string } | null>(()=>{
     try { const value=localStorage.getItem("lektrus.share-link."+user.id+"."+board.id);return value?JSON.parse(value):null; } catch {return null;}
   });
   const [access, setAccess] = useState<Awaited<ReturnType<typeof getBoardAccess>>>({ members: [], invites: [] });
@@ -27,7 +27,7 @@ export default function ShareDialog({ board, user, onClose }: { board: BoardSumm
   const create = (linkRole: ShareLink["role"]) => run(async () => {
     const expiresAt=expiry==="never"?null:new Date(Date.now()+({"1d":1,"7d":7,"30d":30}[expiry])*86400000).toISOString();
     const link = await createShareLink(board.id, linkRole,{expiresAt,maxUses:maxUses>0?maxUses:null,password:linkPassword.trim()||null});
-    const url=`${window.location.origin}/join/${link.token}`; const saved={ id: link.id, url, ...(linkRole==="viewer"?{presentationUrl:`${url}?present=1`}:{}) };setCreated(saved);try{localStorage.setItem("lektrus.share-link."+user.id+"."+board.id,JSON.stringify(saved));}catch{/* private browsing */} setNotice("Ссылка создана. Скопируйте её и отправьте участнику."); setSection("link"); await reload();
+    const url=`${window.location.origin}/join/${link.token}`; const saved={ id: link.id, url };setCreated(saved);try{localStorage.setItem("lektrus.share-link."+user.id+"."+board.id,JSON.stringify(saved));}catch{/* private browsing */} setNotice("Ссылка создана. Скопируйте её и отправьте участнику."); setSection("link"); await reload();
   });
   if (board.role !== "owner") return null;
   return <div className="access-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -59,7 +59,6 @@ export default function ShareDialog({ board, user, onClose }: { board: BoardSumm
         {created&&<div className="lektrus-share-result" role="group" aria-label="Созданная ссылка">
           <strong>✓ Ссылка готова</strong>
           <div className="lektrus-share-copy"><input readOnly value={created.url} onFocus={e=>e.target.select()} aria-label="Новая ссылка"/><button type="button" onClick={()=>void run(async()=>{await navigator.clipboard.writeText(created.url);setNotice("Ссылка скопирована")})}>Копировать</button></div>
-          {created.presentationUrl&&<details><summary>Отдельная ссылка для показа</summary><div className="lektrus-share-copy"><input readOnly value={created.presentationUrl} onFocus={e=>e.target.select()} aria-label="Ссылка презентации"/><button type="button" onClick={()=>void run(async()=>{await navigator.clipboard.writeText(created.presentationUrl!);setNotice("Ссылка для показа скопирована")})}>Копировать</button></div></details>}
           <small>Ссылка видна здесь только после создания. Для остальных приглашений используйте управление ссылками.</small>
         </div>}
         {!remote&&<p className="share-note">Локальный режим: пригласить можно только существующий аккаунт этого браузера. Для ссылок требуется Supabase.</p>}
