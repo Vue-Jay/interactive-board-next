@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FocusEvent, type FormEvent } from "react";
+import { pendingSharePath } from "./routes";
 import UserAvatar from "./UserAvatar";
 import { isRemoteBackendEnabled } from "./backend";
 import {saveProfileDetails} from "./profileDetailsStore";
@@ -6,7 +7,7 @@ import { forgetRememberedAccount, getRememberedAccount, loginUser, loginGuest, r
 
 type Mode = "login" | "register";
 type Props = { onAuthenticated: (user: AuthUser) => void; previewMode?:boolean; onPreviewClose?:()=>void; initialError?:string };
-const hasJoinLink = () => window.location.pathname.startsWith("/join/") || new URL(window.location.href).searchParams.has("join");
+const hasJoinLink = () => window.location.pathname.startsWith("/join/") || new URL(window.location.href).searchParams.has("join") || Boolean(pendingSharePath());
 
 export default function AuthScreen({ onAuthenticated,previewMode=false,onPreviewClose,initialError="" }: Props) {
   const [mode, setMode] = useState<Mode>(previewMode?"register":"login");
