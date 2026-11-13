@@ -29,6 +29,6 @@ export default function LektrusFeedbackForm({compact=false,source}:Props){
   </div>
   <div className="lektrus-feedback-submit-row"><button type="submit" disabled={sending||message.trim().length<8}>{sending?"Отправляем…":"Отправить сообщение"} <span aria-hidden="true">↗</span></button><small>Email нужен только если хотите получить ответ.</small></div>
   {notice&&<p className="lektrus-feedback-notice" role="status">{notice}</p>}{error&&<p className="lektrus-feedback-error" role="alert">{error}</p>}
-  {(source==="site"||import.meta.env.VITE_TELEGRAM_URL)&&<a className="lektrus-feedback-telegram" href={source==="site"?"https://t.me/lektrus":import.meta.env.VITE_TELEGRAM_URL} target="_blank" rel="noopener noreferrer">Написать в Telegram: @lektrus <span aria-hidden="true">↗</span></a>}
+  {source!=="site"&&import.meta.env.VITE_TELEGRAM_URL&&<a className="lektrus-feedback-telegram" href={import.meta.env.VITE_TELEGRAM_URL} target="_blank" rel="noopener noreferrer">Написать в Telegram <span aria-hidden="true">↗</span></a>}
  </form>;
 }
