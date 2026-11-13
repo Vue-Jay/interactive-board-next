@@ -6,6 +6,7 @@ import {commandFromKeyboard,type StudioCommand} from "./siteStudioCommands";
 import LektrusFeedbackForm from "./LektrusFeedbackForm";
 import {plans,limitLabel} from "./billingStore";
 import "./lektrusMarketing.css";
+import "./lektrusMarketingTypography.css";
 
 type Page=string;
 const navigation:{id:Page;title:string}[]=[

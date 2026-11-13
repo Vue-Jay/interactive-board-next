@@ -138,6 +138,22 @@ with sync_playwright() as p:
     # responsive layouts without relying on the Site Studio-only preview.
     visitor = browser.new_page(viewport={"width": 1440, "height": 900}, device_scale_factor=1)
     visitor.goto("http://127.0.0.1:5173/#home", wait_until="domcontentloaded")
+    # Typography acceptance: actual self-hosted Cyrillic fonts render in Chromium.
+    visitor.wait_for_function("""() =>
+      document.fonts.check('700 24px "Lektrus Onest"') &&
+      document.fonts.check('400 16px "Lektrus Golos Text"')
+    """, timeout=12000)
+    brand_face = visitor.locator(".marketing-hero-brand-name").evaluate("(el) => getComputedStyle(el).fontFamily")
+    copy = visitor.locator(".marketing-hero-lead").evaluate("""el => ({
+      family:getComputedStyle(el).fontFamily,
+      size:parseFloat(getComputedStyle(el).fontSize),
+      line:parseFloat(getComputedStyle(el).lineHeight)
+    })""")
+    menu_size = visitor.locator(".marketing-nav a").first.evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)")
+    assert "Lektrus Onest" in brand_face, f"Brand heading must use Onest: {brand_face}"
+    assert "Lektrus Golos Text" in copy["family"] and copy["size"] >= 15 and copy["line"] >= copy["size"] * 1.6, f"Body text is too cramped: {copy}"
+    assert menu_size >= 14, f"Desktop navigation is too small: {menu_size}"
+
     showcase = visitor.locator(".marketing-showcase")
     showcase.wait_for()
     nav = visitor.locator("#marketing-nav a").all_inner_texts()
@@ -213,6 +229,12 @@ with sync_playwright() as p:
         visitor.goto("http://127.0.0.1:5173/#" + page_name, wait_until="domcontentloaded")
         visitor.locator(marker).wait_for()
         assert visitor.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), f"Mobile {page_name} overflows horizontally"
+        assert visitor.locator("h1").first.evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)") >= 29, f"Mobile {page_name} heading is too small"
+        if page_name == "home":
+            assert visitor.locator(".marketing-hero-lead").evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)") >= 15, "Mobile hero lead must remain readable"
+        if page_name == "help":
+            form_size = visitor.locator(".marketing-form-card input").first.evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)")
+            assert form_size >= 16, f"Mobile form triggers iOS zoom: {form_size}"
         visitor.screenshot(path=str(root / ("10-phone-" + page_name + ".png")), full_page=True)
 
     visitor.goto("http://127.0.0.1:5173/#home", wait_until="domcontentloaded")

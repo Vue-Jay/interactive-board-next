@@ -63,6 +63,36 @@ for(const shot of [...approvedLocalShots,"showcase-atlas.png","showcase-lab.png"
  assert.ok(binary.length>40000,"missing or incomplete local image: "+shot);
  assert.ok(binary.subarray(0,8).equals(Buffer.from("89504e470d0a1a0a","hex")),"expected real PNG capture: "+shot);
 }
+
+// Typography regression: all public-page text uses local Cyrillic-capable fonts,
+// while headings, navigation, help text and mobile typography stay legible.
+const typography=read("src/lektrusMarketingTypography.css");
+assert.ok(site.includes('import "./lektrusMarketingTypography.css";'),"public typography must load after base marketing layout");
+for(const [path,cssPath] of [
+ ["public/fonts/onest/Onest-Variable.ttf","/fonts/onest/Onest-Variable.ttf"],
+ ["public/fonts/golos-text/GolosText-Variable.ttf","/fonts/golos-text/GolosText-Variable.ttf"]
+]){
+ const font=readFileSync(new URL("../"+path,import.meta.url));
+ assert.ok(font.length>100000,"missing self-hosted readable marketing font: "+path);
+ assert.ok(font.subarray(0,4).equals(Buffer.from("00010000","hex")),"expected a valid variable TrueType font: "+path);
+ assert.ok(typography.includes(cssPath),"marketing typography must load local font: "+cssPath);
+}
+for(const name of ["onest","golos-text"]){
+ assert.ok(existsSync(new URL("../public/fonts/"+name+"/OFL.txt",import.meta.url)),"font license must ship: "+name);
+}
+for(const rule of [
+ "--marketing-font-display:","--marketing-font-body:",
+ ".marketing-site .marketing-nav a",".marketing-site .marketing-sidebar-tools a",
+ ".marketing-site .marketing-hero-split h1",".marketing-site .marketing-project-body",
+ ".marketing-site .marketing-feature-row-description p",".marketing-site .marketing-plan ul",
+ ".marketing-site .marketing-faq summary",".marketing-site .marketing-form-card",
+ ".marketing-site .site-block :is(p,li)","@media(max-width:700px)","@media(max-width:370px)"
+]){
+ assert.ok(typography.includes(rule),"missing consistent responsive marketing type rule: "+rule);
+}
+assert.ok(typography.includes("font-display:swap"),"fonts must not block first text paint");
+assert.ok(typography.includes('font-size:16px;')&&typography.includes("font-size:14px"),"form and navigation copy must not be tiny");
+
 const localFont=readFileSync(new URL("../public/fonts/manrope/Manrope-Variable.ttf",import.meta.url));
 assert.ok(localFont.length>50000,"missing local Manrope font");
 assert.ok(css.includes("/fonts/manrope/Manrope-Variable.ttf")&&css.includes("@keyframes marketing-showcase-zoom"),"original local typography and motion must be restored");
