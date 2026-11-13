@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { type AuthUser, type BoardRole, BOARD_ROLE_LABELS } from "./authStore";
 import { isRemoteBackendEnabled } from "./backend";
 import { getBoardAccess, inviteToBoard, changeMemberRole, removeMember, revokeInvitation, type BoardSummary } from "./boardStore";
-import { boardDirectUrl, boardShareUrl, createShareLink, listShareLinks, revokeShareLink, type ShareLink } from "./shareLinks";
+import { boardDirectUrl, boardShareUrl, copyBoardLink, createShareLink, listShareLinks, revokeShareLink, type ShareLink } from "./shareLinks";
 
 export default function ShareDialog({ board, user, onClose }: { board: BoardSummary; user: AuthUser; onClose: () => void }) {
   const [links, setLinks] = useState<ShareLink[]>([]);
@@ -76,12 +76,12 @@ export default function ShareDialog({ board, user, onClose }: { board: BoardSumm
         </div>}
         {createdIsActive&&created&&<div className="lektrus-share-result" role="group" aria-label="Созданная ссылка">
           <strong>✓ Ссылка готова</strong>
-          <div className="lektrus-share-copy"><input readOnly value={created.url} onFocus={e=>e.target.select()} aria-label="Новая ссылка"/><button type="button" onClick={()=>void run(async()=>{await navigator.clipboard.writeText(created.url);setNotice("Ссылка скопирована")})}>Копировать</button></div>
+          <div className="lektrus-share-copy"><input readOnly value={created.url} onFocus={e=>e.target.select()} aria-label="Новая ссылка"/><button type="button" onClick={()=>void run(async()=>{if(!await copyBoardLink(created.url))throw new Error("Не удалось скопировать ссылку. Выделите текст вручную.");setNotice("Ссылка скопирована")})}>Копировать</button></div>
           <small>Ссылка видна здесь только после создания. Для остальных приглашений используйте управление ссылками.</small>
         </div>}
         {remote&&<details className="lektrus-share-advanced">
           <summary>Прямая ссылка на доску для существующих участников</summary>
-          <div className="lektrus-share-copy"><input readOnly value={boardDirectUrl(board.id)} onFocus={e=>e.target.select()} aria-label="Адрес доски"/><button type="button" onClick={()=>void run(async()=>{await navigator.clipboard.writeText(boardDirectUrl(board.id));setNotice("Адрес доски скопирован")})}>Копировать</button></div>
+          <div className="lektrus-share-copy"><input readOnly value={boardDirectUrl(board.id)} onFocus={e=>e.target.select()} aria-label="Адрес доски"/><button type="button" onClick={()=>void run(async()=>{if(!await copyBoardLink(boardDirectUrl(board.id)))throw new Error("Не удалось скопировать адрес. Выделите текст вручную.");setNotice("Адрес доски скопирован")})}>Копировать</button></div>
           <small>Это не приглашение. Без уже выданного доступа доска не откроется.</small>
         </details>}
         {!remote&&<p className="share-note">Локальный режим: пригласить можно только существующий аккаунт этого браузера. Для ссылок требуется Supabase.</p>}
