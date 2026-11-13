@@ -145,6 +145,12 @@ assert.ok(css.includes(".marketing-showcase-screen")&&css.includes("@keyframes m
 assert.ok(site.includes("marketing-project-audiences")&&site.includes("marketing-project-summary"),"project information for teachers and students must appear directly on Home");
 const homeSection=site.slice(site.indexOf('page==="home"&&!copy?.replaceDefault'),site.indexOf('page==="features"&&!copy?.replaceDefault'));
 assert.equal((homeSection.match(/data-site-section-id=/g)||[]).length,2,"homepage must retain the original two native sections for the site builder");
+assert.equal((homeSection.match(/className="marketing-hero-logo"/g)||[]).length,1,"Home must show one official logo in the hero");
+assert.ok(homeSection.includes('className="marketing-hero-identity"')&&homeSection.includes('src="/lektrus-icon-192.png"')&&homeSection.includes('alt="" aria-hidden="true"'),"Home identity must pair the existing transparent branded image with the wordmark without duplicating its spoken name");
+assert.ok(homeSection.includes('<h1 id="marketing-title">')&&homeSection.includes('marketing-hero-brand-name'),"Keep the editable single h1 and approved Lektrus wordmark");
+const heroMark=readFileSync(new URL("../public/lektrus-icon-192.png",import.meta.url));
+assert.ok(heroMark.length>4000&&heroMark.subarray(1,4).toString()==="PNG","Hero must load the shipped official transparent Lektrus image, not a placeholder");
+assert.ok(typography.includes(".marketing-site .marketing-hero-split .marketing-hero-identity")&&typography.includes(".marketing-site .marketing-hero-split .marketing-hero-logo")&&typography.includes("@media(max-width:370px)"),"Home logo must have proportional responsive sizing for desktop and narrow phones");
 assert.ok(homeSection.includes('aria-labelledby="marketing-project-title"')&&homeSection.includes("не только смотреть, но и действовать"),"the product story needs a prominent, accessible title");
 assert.ok(homeSection.includes('<h2 id="marketing-project-title">Урок, в котором можно не только смотреть, но и действовать</h2>'),"the title must stay a single editable native object for Site Studio");
 assert.ok(css.includes(".marketing-site .marketing-project-heading h2::after"),"project emphasis must be decorative, not an editable nested span");
