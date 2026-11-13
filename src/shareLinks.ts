@@ -94,6 +94,7 @@ export async function redeemShareLink(token: string, password?: string): Promise
   updated_at: string;
 }> {
   requireRemote();
+  if(!/^[a-f0-9]{64}$/.test(token))throw new Error("Некорректная ссылка-приглашение.");
   return remoteRequest("/rest/v1/rpc/redeem_board_share_link", {
     method: "POST",
     body: JSON.stringify({ p_token: token, p_password: password || null }),
