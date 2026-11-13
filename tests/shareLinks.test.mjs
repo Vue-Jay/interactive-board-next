@@ -88,6 +88,12 @@ test('App performs both board and invitation restoration and checks returned boa
   assert.match(app,/clearPendingBoardRoute\(\)/);
 });
 
+test('sharing dialog only offers real viewer or editor invitations',()=>{
+  const dialog=read('src/ShareDialog.tsx');
+  assert.match(dialog,/createShareLink\(board\.id, linkRole/);
+  assert.doesNotMatch(dialog,/presentationUrl|present=1|Отдельная ссылка для показа/);
+});
+
 test('production nginx serves deep links through the SPA and hides invite tokens from referrers',()=>{
   const nginx=read('deploy/nginx.conf');
   assert.match(nginx,/location \/ \{ try_files \$uri \$uri\/ \/index\.html;/);
