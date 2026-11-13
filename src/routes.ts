@@ -1,5 +1,6 @@
 export type AppRoute = { kind: "site" } | { kind: "tool"; tool: "atlas" | "laboratory" } | { kind: "demo" } | { kind: "home" } | { kind: "board"; boardId: string } | { kind: "join"; token: string } | { kind: "invalid" };
 const PENDING_KEY = "lesson-board.pending-share.v1";
+const PENDING_BOARD_KEY = "lektrus.pending-board-route.v1";
 const TOKEN = /^[a-f0-9]{64}$/;
 export function parseRoute(path: string): AppRoute {
   if (path === "/") return { kind: "site" };
@@ -19,6 +20,26 @@ export function rememberShareToken(token: string) {
 export function clearPendingShare() {
   try { sessionStorage.removeItem(PENDING_KEY); } catch { /* storage unavailable */ }
 }
+export function rememberBoardRoute(boardId: string) {
+  if (parseRoute("/board/"+boardId).kind !== "board") return;
+  try { sessionStorage.setItem(PENDING_BOARD_KEY, "/board/"+boardId); } catch { /* storage unavailable */ }
+}
+export function clearPendingBoardRoute() {
+  try { sessionStorage.removeItem(PENDING_BOARD_KEY); } catch { /* storage unavailable */ }
+}
+/** Restore a validated deep link after email confirmation. Invitations take priority. */
+export function pendingAuthenticatedRoute(): AppRoute | null {
+  try {
+    const token=sessionStorage.getItem(PENDING_KEY);
+    if (token && TOKEN.test(token)) return {kind:"join",token};
+    const path=sessionStorage.getItem(PENDING_BOARD_KEY);
+    if (path) {
+      const route=parseRoute(path);
+      if (route.kind==="board") return route;
+    }
+  } catch { /* storage unavailable */ }
+  return null;
+}
 export function initialRoute(): AppRoute {
   let route = parseRoute(window.location.pathname);
   if(route.kind==="site"){
@@ -29,6 +50,7 @@ export function initialRoute(): AppRoute {
     }
   }
   if (route.kind === "join") rememberShareToken(route.token);
+  if (route.kind === "board") rememberBoardRoute(route.boardId);
   if(route.kind==="site"){
     try{
       const token=sessionStorage.getItem(PENDING_KEY);
