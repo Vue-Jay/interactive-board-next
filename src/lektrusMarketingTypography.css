@@ -43,11 +43,16 @@
   line-height:1.45;
   letter-spacing:.085em;
 }
+/* Brand lettering stays distinct at both sidebar and hero sizes. */
 .marketing-site .marketing-brand strong {
   font-size:24px;
-  font-weight:800;
+  font-weight:770;
   line-height:1.05;
-  letter-spacing:-.05em;
+  letter-spacing:0;
+}
+.marketing-site .marketing-footer-brand strong {
+  font-weight:770;
+  letter-spacing:0;
 }
 .marketing-site .marketing-brand small {font-size:11px;line-height:1.4}
 .marketing-site .marketing-sidebar-caption {
@@ -101,9 +106,9 @@
 .marketing-site .marketing-hero-split h1 .marketing-hero-brand-name {
   font-family:var(--marketing-font-display);
   font-size:clamp(48px,4.55vw,68px);
-  font-weight:840;
-  line-height:1.04;
-  letter-spacing:-.067em;
+  font-weight:790;
+  line-height:1.08;
+  letter-spacing:0;
   margin-bottom:11px;
 }
 .marketing-site .marketing-hero-split .marketing-hero-lead {

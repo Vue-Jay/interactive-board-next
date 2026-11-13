@@ -151,6 +151,10 @@ with sync_playwright() as p:
     })""")
     menu_size = visitor.locator(".marketing-nav a").first.evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)")
     assert "Lektrus Onest" in brand_face, f"Brand heading must use Onest: {brand_face}"
+    # The brand name must not visually collapse into touching glyphs.
+    for selector in [".marketing-hero-brand-name", ".marketing-brand strong"]:
+        spacing = visitor.locator(selector).first.evaluate("(el) => getComputedStyle(el).letterSpacing")
+        assert spacing == "normal" or float(spacing.replace("px", "")) >= 0, f"Overtight Lektrus wordmark: {selector}={spacing}"
     assert "Lektrus Golos Text" in copy["family"] and copy["size"] >= 15 and copy["line"] >= copy["size"] * 1.6, f"Body text is too cramped: {copy}"
     assert menu_size >= 14, f"Desktop navigation is too small: {menu_size}"
 
