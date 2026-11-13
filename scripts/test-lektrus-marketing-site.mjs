@@ -13,7 +13,7 @@ for(const id of ["home","features","pricing","help"]){
 }
 assert.doesNotMatch(site,/\{id:"(?:teachers|students)",title:/,"former teacher/student tabs must be absent from navigation");
 for(const text of [
- "Lektrus","платформа для обучения",
+ "Lektrus","Онлайн-платформа для обучения",
  "Всё, что нужно для учебной работы","Lektrus",
  "О проекте","не только смотреть, но и действовать",
  "Преподавателям","Меньше переключений. Больше наглядности.",
@@ -43,6 +43,10 @@ assert.doesNotMatch(site,/id:"subjects"/,"the marketing menu must not add a subj
 assert.ok(site.includes('href="/tools/atlas"')&&site.includes('href="/tools/laboratory"'),"both standalone public tools must remain directly in the sidebar");
 assert.ok(site.includes('"/demo/board?scene="'),"example links must lead to the actual demo board");
 assert.ok(site.includes('<LektrusFeedbackForm compact source="site"/>'),"feedback must use the existing submission service");
+const feedbackComponent=read("src/LektrusFeedbackForm.tsx");
+assert.ok(feedbackComponent.includes('"https://t.me/lektrus"')&&feedbackComponent.includes('source==="site"'),"Public contact form must always show official Telegram address");
+assert.ok(feedbackComponent.includes('href={source==="site"?"https://t.me/lektrus":import.meta.env.VITE_TELEGRAM_URL}'),"Site Telegram contact must not depend on environment variables");
+assert.ok(feedbackComponent.includes('rel="noopener noreferrer"'),"External Telegram link must be opened safely");
 // Help uses a single calm split layout, not two oversized stacked marketing sections.
 const helpPage=site.slice(site.indexOf('page==="help"&&!copy?.replaceDefault'),site.indexOf('{customPage&&<SiteCustomPage'));
 assert.ok(helpPage.includes("marketing-help-layout")&&helpPage.includes("marketing-help-questions")&&helpPage.includes("marketing-help-contact"),"Help must present FAQ and contact together");
@@ -79,6 +83,7 @@ for(const shot of [...approvedLocalShots,"showcase-atlas.png","showcase-lab.png"
 // Typography regression: all public-page text uses local Cyrillic-capable fonts,
 // while headings, navigation, help text and mobile typography stay legible.
 const typography=read("src/lektrusMarketingTypography.css");
+assert.ok(typography.includes(".marketing-site .marketing-help-layout .lektrus-feedback-telegram"),"Telegram contact needs visible, accessible styling");
 assert.ok(site.includes('import "./lektrusMarketingTypography.css";'),"public typography must load after base marketing layout");
 for(const [path,cssPath] of [
  ["public/fonts/onest/Onest-Variable.ttf","/fonts/onest/Onest-Variable.ttf"],
@@ -148,6 +153,9 @@ assert.equal((homeSection.match(/data-site-section-id=/g)||[]).length,2,"homepag
 assert.equal((homeSection.match(/className="marketing-hero-logo"/g)||[]).length,1,"Home must show one official logo in the hero");
 assert.ok(homeSection.includes('className="marketing-hero-identity"')&&homeSection.includes('src="/lektrus-icon-192.png"')&&homeSection.includes('alt="" aria-hidden="true"'),"Home identity must pair the existing transparent branded image with the wordmark without duplicating its spoken name");
 assert.ok(homeSection.includes('<h1 id="marketing-title">')&&homeSection.includes('marketing-hero-brand-name'),"Keep the editable single h1 and approved Lektrus wordmark");
+assert.ok(homeSection.includes('<span className="marketing-hero-tagline">Онлайн-платформа для обучения</span>'),"Home must use approved online-platform descriptor");
+assert.ok(typography.includes(".marketing-site .marketing-hero-split .marketing-hero-identity h1 .marketing-hero-tagline")&&typography.includes("text-align:right;"),"Tagline must be right-aligned within the title column");
+assert.ok(typography.includes("font-size:clamp(19px,5vw,25px)")&&typography.includes("@media(max-width:370px)"),"Tagline needs safe mobile font scale");
 const heroMark=readFileSync(new URL("../public/lektrus-icon-192.png",import.meta.url));
 assert.ok(heroMark.length>4000&&heroMark.subarray(1,4).toString()==="PNG","Hero must load the shipped official transparent Lektrus image, not a placeholder");
 assert.ok(typography.includes(".marketing-site .marketing-hero-split .marketing-hero-identity")&&typography.includes(".marketing-site .marketing-hero-split .marketing-hero-logo")&&typography.includes("@media(max-width:370px)"),"Home logo must have proportional responsive sizing for desktop and narrow phones");

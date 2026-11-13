@@ -252,7 +252,7 @@ export default function LektrusPublicSite(){
       {copy?.eyebrow&&<span className="marketing-eyebrow">{copy.eyebrow}</span>}
       <div className="marketing-hero-identity">
        <img className="marketing-hero-logo" src="/lektrus-icon-192.png" alt="" aria-hidden="true" width="84" height="84" decoding="async"/>
-       <h1 id="marketing-title">{copy?.heading||<><span className="marketing-hero-brand-name">Lektrus</span><span>платформа для обучения</span></>}</h1>
+       <h1 id="marketing-title">{copy?.heading||<><span className="marketing-hero-brand-name">Lektrus</span><span className="marketing-hero-tagline">Онлайн-платформа для обучения</span></>}</h1>
       </div>
       <p className="marketing-hero-lead">{copy?.lead||"Lektrus — интерактивное пространство для уроков в классе и онлайн. Объясняйте на общей доске, исследуйте учебные модели, решайте задачи вместе и сохраняйте результаты в одном месте."}</p>
       <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Демо-версия доски <span aria-hidden="true">→</span></DemoLink></div>
