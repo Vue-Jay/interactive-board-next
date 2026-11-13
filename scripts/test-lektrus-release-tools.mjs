@@ -49,6 +49,19 @@ try{
       id+" must retain the original tool type");
   }
 
+  // Do not widen document parsing to accept corrupt legacy payloads.
+  for(const [id,damage] of [
+    ["bio-anatomy",model=>({...model,system:"unknown-system"})],
+    ["bio-microscope",model=>({...model,assignmentPath:["wrong-root","bad"]})],
+    ["info-programming",model=>({...model,language:"html",code:"x".repeat(25000)})]
+  ]){
+    const item=makeSubjectToolItem(id,600,400,()=>id+"-corrupted");
+    const damaged={...item,schoolDiagram:damage(item.schoolDiagram)};
+    assert.throws(()=>parseDocument(JSON.stringify({
+      version:1,title:"Rejected invalid document",view:{x:0,y:0,zoom:1},items:[damaged]
+    })),/Повреждена предметная учебная схема/,id+" invalid legacy data must be rejected");
+  }
+
   const boardApp=readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
   assert.ok(boardApp.includes("subjectToolsFor(lectrisBoardOrganization.subject)"),
     "Visible tool list must flow through the release-aware registry");
