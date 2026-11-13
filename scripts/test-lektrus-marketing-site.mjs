@@ -15,9 +15,9 @@ assert.doesNotMatch(site,/\{id:"(?:teachers|students)",title:/,"former teacher/s
 for(const text of [
  "Lektrus","платформа для обучения",
  "Показывайте, объясняйте, ","Lektrus",
- "О проекте","От объяснения к практике",
- "Преподавателям","Объясняйте сложное наглядно",
- "Ученикам","Не просто слушайте",
+ "О проекте","не только смотреть, но и действовать",
+ "Преподавателям","Меньше переключений. Больше наглядности.",
+ "Ученикам","Не просто слушать. Пробовать и понимать.",
  "Расскажите, что можно улучшить",
  "Найдите решение","или свяжитесь с нами",
  "Ваши вопросы помогают делать Lektrus удобнее",
@@ -64,6 +64,21 @@ assert.doesNotMatch(site,/marketing-showcase-(controls|subjects|toolbar|player|c
 assert.ok(site.includes('window.matchMedia("(prefers-reduced-motion: reduce)")'),"automatic screenshots must respect reduced motion");
 assert.ok(css.includes(".marketing-showcase-screen")&&css.includes("@keyframes marketing-unified-crossfade")&&!css.includes(".marketing-showcase-controls"),"one integrated animated screenshot area must replace the old player UI");
 assert.ok(site.includes("marketing-project-audiences")&&site.includes("marketing-project-summary"),"project information for teachers and students must appear directly on Home");
+const homeSection=site.slice(site.indexOf('page==="home"&&!copy?.replaceDefault'),site.indexOf('page==="features"&&!copy?.replaceDefault'));
+assert.equal((homeSection.match(/data-site-section-id=/g)||[]).length,2,"homepage must retain the original two native sections for the site builder");
+assert.ok(homeSection.includes('aria-labelledby="marketing-project-title"')&&homeSection.includes("не только смотреть, но и действовать"),"the product story needs a prominent, accessible title");
+assert.ok(homeSection.includes('<h2 id="marketing-project-title">Урок, в котором можно не только смотреть, но и действовать</h2>'),"the title must stay a single editable native object for Site Studio");
+assert.ok(css.includes(".marketing-site .marketing-project-heading h2::after"),"project emphasis must be decorative, not an editable nested span");
+assert.equal((homeSection.match(/className="marketing-project-stage"/g)||[]).length,3,"the story must show a clear three-stage teaching journey");
+for(const copy of ["Подготовьте материал","Исследуйте вместе","Продолжайте с результата","Меньше переключений. Больше наглядности.","Не просто слушать. Пробовать и понимать.","Интерактивный атлас и химическая лаборатория доступны также без создания доски"]){
+ assert.ok(homeSection.includes(copy),"project presentation is missing a concrete benefit: "+copy);
+}
+for(const selector of [".marketing-project-intro",".marketing-project-stages",".marketing-project-audience",".marketing-project-outro"]){
+ assert.ok(css.includes(selector),"project presentation is missing its visual style: "+selector);
+}
+assert.ok(css.includes("@media(max-width:700px)")&&css.includes(".marketing-project-stages{grid-template-columns:1fr"),"project narrative must stack cleanly on mobile");
+assert.ok(homeSection.includes("marketing-showcase-previous")&&homeSection.includes("marketing-showcase-current"),"the rotating product captures must remain untouched");
+
 assert.ok(site.includes('className="marketing-hero-brand-name"')&&css.includes("h1 .marketing-hero-brand-name"),"the hero must enlarge the wordmark without enlarging the entire tagline");
 assert.ok(site.includes('>Демо-версия доски <')&&!site.includes('>Демо доски <'),"the demo button needs its full approved label");
 assert.ok(site.includes('className="marketing-project-detail"')&&site.includes("Lektrus — образовательная платформа с общей интерактивной доской")&&site.includes("доступны также без создания доски"),"the project story must explain what Lektrus is, who uses it and why");
