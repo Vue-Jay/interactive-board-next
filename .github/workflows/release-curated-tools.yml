@@ -1,0 +1,54 @@
+name: Lektrus 1.0 curated tools release gate
+on:
+  push:
+    branches:
+      - 'release/lektrus-1.0-curated-tools-*'
+  workflow_dispatch:
+
+concurrency:
+  group: lektrus-release-tools-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  curated-tools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: TypeScript and Vite production build
+        run: npm run build
+      - name: Release visibility, creation and legacy document compatibility
+        run: node scripts/test-lektrus-release-tools.mjs
+      - name: Geography matching and inert-area dragging
+        run: |
+          node scripts/test-lektrus-geography-training.mjs
+          node scripts/test-lektrus-object-drag-surfaces.mjs
+      - name: Historical atlas, geography layers and labels
+        run: |
+          npm run test:atlas
+          node scripts/test-lektrus-atlas-global-layers.mjs
+          node scripts/test-lektrus-atlas-labels.mjs
+      - name: AI assistant command processing and generated tasks
+        run: |
+          npm run test:ai-board-assistant
+          npm run test:ai-board-request
+          npm run test:ai-request-acceptance
+          npm run test:ai-board-transfer
+      - name: Chemistry experiment acceptance, synchronization and persistence
+        run: |
+          npm run test:lab-acceptance
+          node scripts/test-lektrus-lab-live-sync.mjs
+          node scripts/test-lektrus-lab-persistence.mjs
+      - name: Board realtime, object and subject routing regression
+        run: |
+          npm run test:realtime
+          npm run test:board-links
+          node scripts/test-lektrus-subject-routing.mjs
+          node scripts/test-lektrus-subject-catalogue-ui.mjs
+          node scripts/test-lektrus-subject-persistence.mjs
