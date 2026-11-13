@@ -35,8 +35,15 @@ try{
     const item=makeSubjectToolItem(id,600,400,()=>id+"-saved");
     assert.equal(item.id,id+"-saved");
     assert.ok(item.schoolDiagram||item.scienceLabBench,id+" must have saved model state");
-    const doc={version:1,title:"Release compatibility",view:{x:0,y:0,zoom:1},items:[item]};
-    const recovered=parseDocument(JSON.stringify(doc));
+    // Matching starts as an intentionally UNSAVED draft until the teacher picks countries.
+    // A persisted classroom exercise must have at least two distinct countries.
+    const savedItem=id==="geo-matching"?{
+      ...item,schoolDiagram:{...item.schoolDiagram,countryCodes:["RU","FR"]}
+    }:item;
+    const doc={version:1,title:"Release compatibility",view:{x:0,y:0,zoom:1},items:[savedItem]};
+    let recovered;
+    try{recovered=parseDocument(JSON.stringify(doc));}
+    catch(error){throw new Error(id+" saved document failed validation",{cause:error});}
     assert.equal(recovered.items.length,1,id+" document must remain readable");
     assert.equal(recovered.items[0].graphFigureId,item.graphFigureId,
       id+" must retain the original tool type");
