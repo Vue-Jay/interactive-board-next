@@ -1,5 +1,12 @@
+@font-face {
+ font-family:"Lektrus Manrope";
+ src:url("/fonts/manrope/Manrope-Variable.ttf") format("truetype");
+ font-style:normal;
+ font-weight:200 800;
+ font-display:swap;
+}
 :root{font-family:Manrope,Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#101d32;background:#f8fafc}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0}
-.marketing-site{--marketing-ink:#122238;--marketing-muted:#62748a;--marketing-blue:#2563eb;--marketing-soft:#edf4ff;--marketing-line:#e0e8f2;--marketing-bg:#f8fafc;--marketing-white:#fff;min-height:100dvh;background:var(--marketing-bg);color:var(--marketing-ink);font-family:Manrope,Inter,ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.marketing-site{--marketing-ink:#122238;--marketing-muted:#62748a;--marketing-blue:#2563eb;--marketing-soft:#edf4ff;--marketing-line:#e0e8f2;--marketing-bg:#f8fafc;--marketing-white:#fff;min-height:100dvh;background:var(--marketing-bg);color:var(--marketing-ink);font-family:"Lektrus Manrope",Arial,sans-serif;-webkit-font-smoothing:antialiased}
 .marketing-site :is(a,button,input,select,textarea,summary){font-family:inherit}
 .marketing-site a{color:inherit;text-decoration:none}.marketing-site button{cursor:pointer}
 .marketing-site :is(a,button,input,select,textarea,summary):focus-visible{outline:3px solid #76a5ff;outline-offset:3px}
@@ -682,7 +689,7 @@ body:has(.marketing-site:not(.site-preview)) .site-editable-block:hover{outline:
 .marketing-site .marketing-hero-lead{max-width:620px;margin-bottom:22px!important;font-size:16px!important;line-height:1.6!important}
 .marketing-site .marketing-primary,.marketing-site .marketing-secondary{min-height:42px;padding:9px 15px;font-size:12px;border-radius:9px;box-shadow:none}
 .marketing-site .marketing-showcase{max-width:980px;margin-top:38px;padding:4px;border:1px solid #d5e2f1;border-radius:14px;background:#fff;box-shadow:0 12px 35px #173e6612}
-.marketing-site .marketing-showcase::before{border-radius:inherit}
+.marketing-site .marketing-showcase::before{content:none}
 .marketing-site .marketing-showcase-screen{aspect-ratio:16/8.7;border:0;border-radius:10px;background:#f5f8fd}
 .marketing-site .marketing-showcase-screen img{background:#f5f8fd}
 .marketing-site .marketing-home-summary{display:flex;align-items:center;justify-content:space-between;gap:28px;padding-top:30px;padding-bottom:55px;border-top:1px solid var(--marketing-line)}
@@ -1141,3 +1148,139 @@ body:has(.marketing-site:not(.site-preview)) .site-editable-block:hover{outline:
  .marketing-site .marketing-project-outro strong{font-size:13.5px}
  .marketing-site .marketing-project-outro p{font-size:12.5px}
 }
+.marketing-site .marketing-hero-split .marketing-showcase {
+ padding: 0;
+ border: 0;
+ border-radius: 0;
+ background: transparent;
+ box-shadow: none;
+}
+.marketing-site .marketing-hero-split .marketing-showcase-screen {
+ aspect-ratio: 8 / 5;
+ border-radius: 0;
+ background: transparent;
+}
+.marketing-site .marketing-hero-split .marketing-showcase-screen img {
+ background: transparent;
+}
+/* Rasterize at twice the display size, then only downscale the composited layer.
+   Keep layout fixed: animating width/height rounds pixels and repaints every frame. */
+.marketing-showcase-motion {
+ position:absolute;
+ left:-50%;
+ top:-50%;
+ width:200%;
+ height:200%;
+ box-sizing:border-box;
+ overflow:hidden;
+ border:2px solid #cbd8e9;
+ border-radius:20px;
+ background:#f2f7fe;
+ transform:scale(.5);
+ transform-origin:center;
+ will-change:transform;
+ animation:marketing-showcase-zoom 7.5s ease-in-out infinite alternate;
+}
+.marketing-showcase-motion .marketing-showcase-fade {
+ animation:marketing-showcase-appear .9s ease-in-out both;
+}
+@keyframes marketing-showcase-zoom {
+ from {transform:scale(.485)}
+ to {transform:scale(.5)}
+}
+@media(prefers-reduced-motion:reduce) {
+ .marketing-showcase-motion,.marketing-showcase-motion .marketing-showcase-fade {animation:none}
+}
+@keyframes marketing-showcase-appear {
+ from {opacity:0}
+ to {opacity:1}
+}
+/* A shared type scale and tighter composition for the homepage. */
+.marketing-site .marketing-hero-split {
+ grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);
+ gap:clamp(24px,2.5vw,40px);
+ align-items:center;
+ padding-block:clamp(36px,5vw,64px);
+}
+.marketing-site .marketing-hero-copy {
+ font-family:inherit;
+ max-width:480px;
+}
+.marketing-site .marketing-hero-split h1 {
+ font-family:inherit;
+ font-size:clamp(30px,2.65vw,42px);
+ font-weight:650;
+ line-height:1.18;
+ letter-spacing:-.025em;
+ margin-bottom:18px;
+ text-wrap:balance;
+}
+.marketing-site .marketing-hero-split h1 .marketing-hero-brand-name {
+ font-family:inherit;
+ font-size:clamp(46px,4vw,62px);
+ font-weight:600;
+ letter-spacing:.005em;
+ line-height:1.12;
+ margin-bottom:12px;
+}
+.marketing-site .marketing-brand strong {
+ font-family:inherit;
+ font-weight:600;
+ letter-spacing:.005em;
+ line-height:1.15;
+}
+.marketing-site .marketing-hero-split .marketing-hero-lead {
+ max-width:46ch;
+ font-size:16px!important;
+ line-height:1.65!important;
+ margin-bottom:24px!important;
+ color:#4e627a;
+ text-wrap:pretty;
+}
+.marketing-site .marketing-hero-split .marketing-actions {
+ gap:10px;
+ margin-top:0;
+}
+.marketing-site .marketing-hero-split .marketing-actions a {
+ min-height:46px;
+ padding:11px 17px;
+ font-size:14px;
+ font-weight:600;
+ letter-spacing:0;
+ border-radius:10px;
+}
+.marketing-site .marketing-project-summary {
+ font-family:inherit;
+}
+.marketing-site .marketing-project-heading h2 {
+ font-weight:650;
+ letter-spacing:-.025em;
+ line-height:1.25;
+}
+@media(max-width:1220px) {
+ .marketing-site .marketing-hero-split {
+  grid-template-columns:1fr;
+  max-width:800px;
+  gap:28px;
+ }
+ .marketing-site .marketing-hero-copy {max-width:640px}
+ .marketing-site .marketing-hero-split h1 {max-width:580px;font-size:36px}
+ .marketing-site .marketing-hero-split .marketing-hero-lead {max-width:60ch}
+ .marketing-site .marketing-hero-split .marketing-showcase {max-width:none}
+}
+@media(max-width:700px) {
+ .marketing-site .marketing-hero-split {padding-block:30px;gap:24px}
+ .marketing-site .marketing-hero-split h1 {font-size:clamp(28px,7vw,36px);margin-bottom:16px}
+ .marketing-site .marketing-hero-split h1 .marketing-hero-brand-name {font-size:46px;margin-bottom:10px}
+ .marketing-site .marketing-hero-split .marketing-hero-lead {font-size:15px!important;margin-bottom:20px!important}
+ .marketing-site .marketing-hero-split .marketing-actions a {font-size:13px;padding:11px 14px}
+}
+
+/* One locally hosted family throughout the public site, with three weight levels. */
+.marketing-site :is(h1,h2,h3,h4,strong,b) {font-family:inherit;font-weight:700;letter-spacing:-.015em}
+.marketing-site :is(a,button,summary) {font-family:inherit;font-weight:600}
+.marketing-site .marketing-hero-split h1 {font-weight:700;letter-spacing:-.015em}
+.marketing-site .marketing-hero-split h1 .marketing-hero-brand-name,
+.marketing-site .marketing-brand strong {font-family:inherit;font-weight:700;letter-spacing:.015em}
+.marketing-site .marketing-project-heading h2 {font-weight:700;letter-spacing:-.015em}
+.marketing-site :is(.marketing-hero-lead,.marketing-project-body p,.marketing-project-caption) {font-weight:400}
