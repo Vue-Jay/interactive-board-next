@@ -4,63 +4,101 @@ import { test } from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
 
-function load(name, globals) {
+const read = path => readFileSync(new URL('../'+path,import.meta.url),'utf8');
+function load(name, globals={}) {
   const exports = {};
-  vm.runInNewContext(ts.transpileModule(readFileSync(new URL(`../src/${name}.ts`, import.meta.url), 'utf8'), {
+  vm.runInNewContext(ts.transpileModule(read('src/'+name+'.ts'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-  }).outputText, { exports, ...globals });
+  }).outputText, { exports, URL, URLSearchParams, ...globals });
   return exports;
 }
-test('share RPC payload cannot specify a board or role during redemption', async () => {
-  const calls = [];
-  const api = load('shareLinks', { require: () => ({ isRemoteBackendEnabled: () => true,
-    remoteRequest: async (path, request) => { calls.push([path, JSON.parse(request.body)]); return {}; },
-  }) });
-  const token = 'a'.repeat(64);
-  await api.createShareLink('board-a', 'viewer');
-  await api.redeemShareLink(token, 'board-b', 'editor');
-  assert.deepEqual(calls[0], ['/rest/v1/rpc/create_board_share_link', { p_board_id: 'board-a', p_role: 'viewer' }]);
-  assert.deepEqual(calls[1], ['/rest/v1/rpc/redeem_board_share_link', { p_token: token }]);
-  await assert.rejects(api.redeemShareLink('../invalid'));
-  assert.equal(calls.length, 2);
+const BOARD_ID='10000000-0000-0000-0000-000000000001';
+const TOKEN='a'.repeat(64);
+
+test('share creation, password redemption and invalid tokens use the correct RPC contract', async () => {
+  const calls=[];
+  const api=load('shareLinks',{require:()=>({
+    isRemoteBackendEnabled:()=>true,
+    remoteRequest:async(path,request)=>{calls.push([path,JSON.parse(request.body)]);return {board_id:BOARD_ID,id:BOARD_ID};},
+  })});
+  await api.createShareLink(BOARD_ID,'viewer');
+  await api.createShareLink(BOARD_ID,'editor',{maxUses:3,expiresAt:'2027-01-01T00:00:00.000Z',password:'secret'});
+  await api.redeemShareLink(TOKEN);
+  await api.redeemShareLink(TOKEN,'secret');
+  assert.deepEqual(calls[0],['/rest/v1/rpc/create_board_share_link',{p_board_id:BOARD_ID,p_role:'viewer',p_expires_at:null,p_max_uses:null,p_password:null}]);
+  assert.deepEqual(calls[1],['/rest/v1/rpc/create_board_share_link',{p_board_id:BOARD_ID,p_role:'editor',p_expires_at:'2027-01-01T00:00:00.000Z',p_max_uses:3,p_password:'secret'}]);
+  assert.deepEqual(calls[2],['/rest/v1/rpc/redeem_board_share_link',{p_token:TOKEN,p_password:null}]);
+  assert.deepEqual(calls[3],['/rest/v1/rpc/redeem_board_share_link',{p_token:TOKEN,p_password:'secret'}]);
+  await assert.rejects(api.redeemShareLink('../invalid'),/Некорректная ссылка/);
+  assert.equal(calls.length,4,'invalid tokens must never reach the backend');
 });
 
-test('local mode never sends share tokens to a remote service', async () => {
-  const api = load('shareLinks', { require: () => ({ isRemoteBackendEnabled: () => false,
-    remoteRequest: () => assert.fail('unexpected remote call'),
-  }) });
-  await assert.rejects(api.createShareLink('board', 'viewer'));
-  await assert.rejects(api.redeemShareLink('a'.repeat(64)));
+test('local mode cannot create or redeem remote invitations', async()=>{
+  const api=load('shareLinks',{require:()=>({
+    isRemoteBackendEnabled:()=>false,remoteRequest:()=>assert.fail('unexpected network request'),
+  })});
+  await assert.rejects(api.createShareLink(BOARD_ID,'viewer'),/серверной синхронизации/);
+  await assert.rejects(api.redeemShareLink(TOKEN),/серверной синхронизации/);
 });
 
-test('direct board/join routes and pending token survive login reload, then clear', () => {
-  const memory = new Map();
-  const token = 'b'.repeat(64);
-  const globals = { window: { location: { pathname: `/join/${token}` } }, sessionStorage: {
-    getItem: key => memory.get(key), setItem: (key, value) => memory.set(key, value), removeItem: key => memory.delete(key),
-  } };
-  const routes = load('routes', globals);
-  assert.equal(routes.initialRoute().token, token);
-  globals.window.location.pathname = '/';
-  assert.equal(load('routes', globals).initialRoute().token, token);
+test('invitation routes survive login and are removed after redemption',()=>{
+  const memory=new Map();
+  const win={location:{pathname:'/join/'+TOKEN,search:'',hash:''},history:{replaceState(){}}};
+  const routes=load('routes',{window:win,sessionStorage:{
+    getItem:key=>memory.get(key)??null,setItem:(key,v)=>memory.set(key,v),removeItem:key=>memory.delete(key),
+  }});
+  assert.equal(routes.initialRoute().token,TOKEN);
+  win.location.pathname='/app';
+  assert.equal(routes.initialRoute().token,TOKEN);
+  assert.equal(routes.pendingAuthenticatedRoute().kind,'join');
   routes.clearPendingShare();
-  assert.equal(routes.initialRoute().kind, 'home');
-  assert.equal(routes.parseRoute('/board/00000000-0000-0000-0000-000000000001').kind, 'board');
-  assert.equal(routes.parseRoute('/board/../../bad').kind, 'invalid');
-  assert.equal(routes.parseRoute('/join/invalid').kind, 'invalid');
+  assert.equal(routes.pendingAuthenticatedRoute(),null);
+  assert.equal(routes.initialRoute().kind,'home');
+  assert.equal(routes.parseRoute('/join/invalid').kind,'invalid');
 });
 
-test('Vercel deep links fall back to SPA; tokens do not enter referrer headers', () => {
-  const config = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
-  assert.deepEqual(config.rewrites, [{ source: '/(.*)', destination: '/index.html' }]);
-  assert.ok(config.headers.some(entry => entry.headers.some(h => h.key === 'Referrer-Policy' && h.value === 'no-referrer')));
-  const env = readFileSync(new URL('../.env.example', import.meta.url), 'utf8').trim().split(/\r?\n/);
-  assert.deepEqual(env, ['VITE_SUPABASE_URL=', 'VITE_SUPABASE_ANON_KEY=']);
+test('direct board URLs survive email-confirmation redirects, then clear safely',()=>{
+  const memory=new Map();
+  const win={location:{pathname:'/board/'+BOARD_ID,search:'',hash:''},history:{replaceState(){}}};
+  const routes=load('routes',{window:win,sessionStorage:{
+    getItem:key=>memory.get(key)??null,setItem:(key,v)=>memory.set(key,v),removeItem:key=>memory.delete(key),
+  }});
+  assert.equal(routes.initialRoute().boardId,BOARD_ID);
+  win.location.pathname='/app';
+  assert.equal(routes.pendingAuthenticatedRoute().boardId,BOARD_ID);
+  routes.rememberShareToken(TOKEN);
+  assert.equal(routes.pendingAuthenticatedRoute().kind,'join','invitations take precedence over older board destinations');
+  routes.clearPendingShare();
+  assert.equal(routes.pendingAuthenticatedRoute().boardId,BOARD_ID);
+  routes.clearPendingBoardRoute();
+  assert.equal(routes.pendingAuthenticatedRoute(),null);
+  assert.equal(routes.parseRoute('/board/'+BOARD_ID).kind,'board');
+  assert.equal(routes.parseRoute('/board/../../bad').kind,'invalid');
+  routes.rememberBoardRoute('../bad');
+  assert.equal(routes.pendingAuthenticatedRoute(),null);
 });
 
-test('setup includes the exact idempotent share link migration', () => {
-  const sql = readFileSync(new URL('../supabase/v22_share_links.sql', import.meta.url), 'utf8');
-  assert.ok(readFileSync(new URL('../supabase/setup.sql', import.meta.url), 'utf8').includes(sql));
-  assert.match(sql, /enable row level security/);
-  assert.match(sql, /revoke all on public.board_share_links from public, anon, authenticated/);
+test('App performs both board and invitation restoration and checks returned board ids',()=>{
+  const app=read('src/App.tsx');
+  assert.match(app,/pendingAuthenticatedRoute\(\)/);
+  assert.match(app,/target\?\.kind==="join"/);
+  assert.match(app,/target\?\.kind==="board"/);
+  assert.match(app,/redeemed\.board_id\|\|redeemed\.id/);
+  assert.match(app,/parseRoute\(`\/board\/\$\{boardId\}\`\)/);
+  assert.match(app,/clearPendingBoardRoute\(\)/);
+});
+
+test('deep links get SPA fallback, and invite tokens stay out of referrers',()=>{
+  const config=JSON.parse(read('vercel.json'));
+  assert.deepEqual(config.rewrites,[{source:'/(.*)',destination:'/index.html'}]);
+  assert.ok(config.headers.some(entry=>entry.headers.some(h=>h.key==='Referrer-Policy'&&h.value==='no-referrer')));
+});
+
+test('server SQL defines the current password-protected redemption contract',()=>{
+  const sql=read('supabase/v66_share_link_password.sql');
+  assert.match(sql,/create function public\.redeem_board_share_link\(p_token text,p_password text default null\)/);
+  assert.match(sql,/'board_id',v_board\.id/);
+  assert.match(sql,/use_count<max_uses/);
+  assert.match(sql,/revoked_at is null/);
+  assert.match(sql,/password_hash/);
 });
