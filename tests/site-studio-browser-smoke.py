@@ -242,8 +242,25 @@ with sync_playwright() as p:
     assert visitor.locator(".marketing-pricing-note").count() == 0, "Pricing disclaimer must not be shown"
     visitor.screenshot(path=str(root / "08-pricing-compact.png"), full_page=True)
     visitor.goto("http://127.0.0.1:5173/#help", wait_until="domcontentloaded")
-    assert visitor.locator(".marketing-faq details").count() >= 4
-    assert visitor.locator(".marketing-form-card").is_visible()
+    assert visitor.locator(".marketing-help-intro h1").inner_text() == "Чем можем помочь?"
+    assert visitor.locator(".marketing-faq details").count() == 5
+    assert visitor.locator(".marketing-help-contact .marketing-form-card").is_visible()
+    assert visitor.locator('.marketing-help-contact form.lektrus-feedback-form').count() == 1
+    faq_box = visitor.locator(".marketing-help-questions").bounding_box()
+    contact_box = visitor.locator(".marketing-help-contact").bounding_box()
+    assert faq_box and contact_box and contact_box["x"] >= faq_box["x"] + faq_box["width"] - 5, "Desktop FAQ and contact form should be side by side"
+    assert abs(contact_box["y"] - faq_box["y"]) < 45, "Two help columns must start together"
+    first_question = visitor.locator(".marketing-faq details").first
+    assert not first_question.evaluate("(el) => el.open"), "FAQ answers should start collapsed"
+    first_question.locator("summary").click()
+    assert first_question.evaluate("(el) => el.open"), "FAQ answer must expand on click"
+    assert first_question.locator("p").is_visible()
+    first_question.locator("summary").press("Enter")
+    assert not first_question.evaluate("(el) => el.open"), "FAQ answer must close from the keyboard"
+    assert visitor.locator(".marketing-help-contact input[type='email']").count() == 1
+    assert visitor.locator(".marketing-help-contact select").count() == 1
+    assert visitor.locator(".marketing-help-contact textarea[required]").count() == 1
+    assert visitor.locator(".marketing-help-contact button[type='submit']").is_disabled(), "Empty feedback must not be submitted"
     visitor.screenshot(path=str(root / "09-help-compact.png"), full_page=True)
 
     for old_route in ("about", "how", "tools", "teachers", "students"):
@@ -276,6 +293,12 @@ with sync_playwright() as p:
         if page_name == "help":
             form_size = visitor.locator(".marketing-form-card input").first.evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)")
             assert form_size >= 16, f"Mobile form triggers iOS zoom: {form_size}"
+            faq_mobile = visitor.locator(".marketing-help-questions").bounding_box()
+            contact_mobile = visitor.locator(".marketing-help-contact").bounding_box()
+            assert faq_mobile and contact_mobile and contact_mobile["y"] >= faq_mobile["y"] + faq_mobile["height"] - 2, "Help sections must stack on mobile"
+            assert visitor.locator(".marketing-faq details").count() == 5
+            assert visitor.locator(".marketing-help-contact form.lektrus-feedback-form").count() == 1
+            assert len(visitor.locator(".marketing-help-layout").evaluate("(el) => getComputedStyle(el).gridTemplateColumns").split()) == 1, "Mobile help layout must be single-column"
         visitor.screenshot(path=str(root / ("10-phone-" + page_name + ".png")), full_page=True)
 
     visitor.goto("http://127.0.0.1:5173/#home", wait_until="domcontentloaded")

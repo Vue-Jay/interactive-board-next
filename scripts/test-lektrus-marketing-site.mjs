@@ -18,10 +18,10 @@ for(const text of [
  "О проекте","не только смотреть, но и действовать",
  "Преподавателям","Меньше переключений. Больше наглядности.",
  "Ученикам","Не просто слушать. Пробовать и понимать.",
- "Расскажите, что можно улучшить",
- "Найдите решение","или свяжитесь с нами",
- "Ваши вопросы помогают делать Lektrus удобнее",
- "Поддержка, инструкции и обратная связь"
+ "Чем можем помочь?",
+ "Частые вопросы","Самое важное о работе с Lektrus.",
+ "Напишите нам","Есть вопрос, предложение или замечание?",
+ "Помощь и контакты"
 ]){
  assert.ok(site.includes(text),"missing approved headline: "+text);
 }
@@ -43,6 +43,18 @@ assert.doesNotMatch(site,/id:"subjects"/,"the marketing menu must not add a subj
 assert.ok(site.includes('href="/tools/atlas"')&&site.includes('href="/tools/laboratory"'),"both standalone public tools must remain directly in the sidebar");
 assert.ok(site.includes('"/demo/board?scene="'),"example links must lead to the actual demo board");
 assert.ok(site.includes('<LektrusFeedbackForm compact source="site"/>'),"feedback must use the existing submission service");
+// Help uses a single calm split layout, not two oversized stacked marketing sections.
+const helpPage=site.slice(site.indexOf('page==="help"&&!copy?.replaceDefault'),site.indexOf('{customPage&&<SiteCustomPage'));
+assert.ok(helpPage.includes("marketing-help-layout")&&helpPage.includes("marketing-help-questions")&&helpPage.includes("marketing-help-contact"),"Help must present FAQ and contact together");
+assert.equal((helpPage.match(/data-site-section-id="native-/g)||[]).length,3,"Help must preserve three Site Studio native sections");
+assert.ok(helpPage.includes('placed("before-0")')&&helpPage.includes('placed("before-1")')&&helpPage.includes('placed("before-2")'),"Help must preserve existing Site Studio insertion anchors");
+assert.ok(helpPage.includes('aria-labelledby="marketing-help-questions-title"')&&helpPage.includes('aria-labelledby="marketing-help-contact-title"'),"Both help sections need accessible titles");
+assert.ok(helpPage.includes("questions.map(")&&helpPage.includes("<details key={item.q}>"),"Help answers should expand on demand");
+assert.equal((helpPage.match(/<LektrusFeedbackForm compact source="site"\/>/g)||[]).length,1,"Help must have exactly one working feedback form");
+assert.ok(!helpPage.includes("VITE_TELEGRAM_URL")&&helpPage.includes("marketing-faq-toggle"),"Avoid duplicate Telegram actions and keep clear FAQ controls");
+const helpStyles=read("src/lektrusMarketingTypography.css");
+assert.ok(helpStyles.includes(".marketing-site .marketing-help-layout:has(> .site-canvas-slot)")&&helpStyles.includes("grid-template-columns:minmax(0,1fr)"),"Site Studio inserted content must preserve correct help section order");
+assert.ok(helpStyles.includes(".marketing-site .marketing-help-layout .marketing-faq details")&&helpStyles.includes(".marketing-site .marketing-help-layout .marketing-form-card"),"Help needs restrained FAQ and form styles");
 assert.ok(site.includes("plans.map(")&&billing.includes('id:"free"')&&billing.includes('id:"teacher"')&&billing.includes('id:"pro"'),"marketing pricing should derive current app plan definitions");
 assert.ok(!site.includes("Купить подписку"),"test subscriptions must not be advertised as purchasable");
 for(const shot of ["board-showcase.png","app-home.png","board-math.png","board-chemistry.png","board-geometry.png","board-physics.png","board-contour.png","board-history.png","board-russian.png"]){
