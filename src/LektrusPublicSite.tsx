@@ -16,12 +16,12 @@ const navigation:{id:Page;title:string}[]=[
 ];
 const featureSymbols=["✎","◎","∑","⚗","✓","▣"];
 const featureCards=[
- {index:"01",title:"Свободная доска",text:"Пишите, рисуйте, размещайте текст, изображения, фигуры и документы.",scene:"geometry"},
- {index:"02",title:"Совместная работа",text:"Объясняйте материал и работайте с участниками на общем холсте.",scene:"math"},
- {index:"03",title:"Предметные модели",text:"Изучайте графики, электрические цепи, карты и другие учебные объекты.",scene:"physics"},
- {index:"04",title:"Виртуальные лаборатории",text:"Исследуйте вещества и оборудование в химической лаборатории.",scene:"chemistry"},
- {index:"05",title:"Задания и практика",text:"Объединяйте объяснение, вопросы и практическую работу на доске.",scene:"russian"},
- {index:"06",title:"Материалы урока",text:"Подготавливайте содержимое занятия и возвращайтесь к сохранённым доскам.",scene:"math"}
+ {index:"01",title:"Интерактивная доска",benefit:"Объясняйте так, как удобно вам.",text:"Пишите от руки, рисуйте схемы, размещайте текст, изображения, фигуры и PDF на одном холсте. Показывайте ход решения шаг за шагом, не переключаясь между файлами.",scene:"geometry"},
+ {index:"02",title:"Совместная работа",benefit:"Превратите зрителей в участников.",text:"Приглашайте учеников на общую доску, обсуждайте решения и дополняйте материал вместе. У каждого появляется возможность не только наблюдать, но и участвовать в уроке.",scene:"math"},
+ {index:"03",title:"Учебные модели",benefit:"Покажите то, что трудно объяснить словами.",text:"Работайте с графиками, геометрическими инструментами, электрическими цепями, картами и другими предметными объектами. Сложные идеи становятся наглядными.",scene:"physics"},
+ {index:"04",title:"Виртуальная лаборатория",benefit:"От теории переходите к эксперименту.",text:"Смешивайте растворы, используйте лабораторную посуду и наблюдайте химические процессы. Разбирайте результаты опытов без необходимости собирать настоящую лабораторию.",scene:"chemistry"},
+ {index:"05",title:"Задания и практика",benefit:"Закрепляйте тему прямо во время объяснения.",text:"Размещайте задания, вопросы, таблицы и карточки рядом со схемами и заметками. Можно сразу перейти от примера к самостоятельному решению и общему разбору.",scene:"russian"},
+ {index:"06",title:"Сохранённые материалы",benefit:"Продолжайте, а не начинайте заново.",text:"Сохраняйте готовые доски и возвращайтесь к схемам, материалам и выполненным заданиям. Подготовка, занятие и повторение остаются связаны между собой.",scene:"math"}
 ];
 const questions=[
  {q:"Что такое Lektrus?",a:"Это образовательная платформа с интерактивной доской, предметными инструментами и возможностями совместной работы."},
@@ -210,7 +210,7 @@ export default function LektrusPublicSite(){
      <div className="marketing-hero-copy">
       {copy?.eyebrow&&<span className="marketing-eyebrow">{copy.eyebrow}</span>}
       <h1 id="marketing-title">{copy?.heading||<><span className="marketing-hero-brand-name">Lektrus</span><span>платформа для обучения</span></>}</h1>
-      <p className="marketing-hero-lead">{copy?.lead||"Интерактивная доска, совместная работа и учебные инструменты в одном пространстве."}</p>
+      <p className="marketing-hero-lead">{copy?.lead||"Lektrus — интерактивное пространство для уроков в классе и онлайн. Объясняйте на общей доске, исследуйте учебные модели, решайте задачи вместе и сохраняйте результаты в одном месте."}</p>
       <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Демо-версия доски <span aria-hidden="true">→</span></DemoLink></div>
      </div>
      <div className="marketing-showcase" aria-label="Автоматическая презентация настоящих экранов Lektrus" data-site-showcase>
@@ -224,14 +224,15 @@ export default function LektrusPublicSite(){
     <section data-site-section-id="native-1" className="marketing-section marketing-container marketing-project-summary" aria-label="О проекте Lektrus">
      <div className="marketing-project-heading">
       <span className="marketing-eyebrow">О проекте</span>
-      <h2>Учиться и объяснять проще, когда всё под рукой</h2>
+      <h2>От объяснения к практике в одном пространстве</h2>
+      <p className="marketing-project-caption">Для преподавателей и учеников, которым важно не просто показать материал, а действительно разобраться в нём.</p>
      </div>
      <div className="marketing-project-body">
-      <p>Lektrus объединяет подготовку, проведение и продолжение занятий в одном пространстве. На интерактивной доске можно писать, рисовать, создавать схемы, добавлять изображения, документы и задания, а готовые материалы сохранять для следующих уроков.</p>
-      <p className="marketing-project-detail">Проект помогает изучать темы на практике: здесь есть графики, геометрические инструменты, предметные модели и виртуальные опыты. Участники могут работать вместе на одной доске, а интерактивный атлас и химическая лаборатория доступны и отдельно от неё.</p>
+      <p><strong>Lektrus — образовательная платформа с общей интерактивной доской и предметными инструментами.</strong> Она помогает преподавателю подготовить и провести наглядный урок, а ученикам — участвовать в работе, задавать вопросы и вместе находить решения.</p>
+      <p className="marketing-project-detail">Собирайте на одной доске рисунки, схемы, документы и задания, исследуйте графики и учебные модели, проводите виртуальные опыты. Готовые материалы сохраняются, а интерактивный атлас и химическая лаборатория доступны также без создания доски.</p>
       <div className="marketing-project-audiences">
-       <p><strong>Преподавателям</strong> Создавайте наглядные объяснения, собирайте задания и сохраняйте материалы уроков.</p>
-       <p><strong>Ученикам</strong> Исследуйте темы, участвуйте в общей работе и разбирайтесь в сложном на практике.</p>
+       <p><strong>Преподавателям</strong> Объясняйте сложное наглядно, вовлекайте класс в работу и возвращайтесь к готовым урокам.</p>
+       <p><strong>Ученикам</strong> Не просто слушайте: разбирайте задачи, дополняйте решения и пробуйте на практике.</p>
       </div>
      </div>
     </section>
@@ -242,16 +243,20 @@ export default function LektrusPublicSite(){
    {page==="features"&&!copy?.replaceDefault&&<>
     {placed("before-0")}
     <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container marketing-features-intro">
-     {copy?.eyebrow&&<span className="marketing-eyebrow">{copy.eyebrow}</span>}
-     <h1>{copy?.heading||<>Что умеет <span>Lektrus</span></>}</h1>
-     <p>{copy?.lead||"Функции, которые помогают делать урок наглядным, совместным и удобным для всех участников."}</p>
+     <span className="marketing-eyebrow">{copy?.eyebrow||"Возможности Lektrus"}</span>
+     <h1>{copy?.heading||<>Показывайте, объясняйте, <span>вовлекайте</span></>}</h1>
+     <p>{copy?.lead||"Готовьте материал, показывайте сложное наглядно и вовлекайте учеников в работу. В Lektrus инструменты связаны между собой, поэтому от объяснения легко перейти к исследованию и практике."}</p>
     </section>
     {placed("before-1")}
     <section data-site-section-id="native-1" className="marketing-section marketing-container marketing-features-section" aria-label="Описание возможностей Lektrus">
      <div className="marketing-features-list">{featureCards.map((card,i)=><article className="marketing-feature-row" key={card.index}>
       <span className="marketing-feature-row-mark" aria-hidden="true">{featureSymbols[i]}</span>
-      <span className="marketing-feature-row-copy"><h2>{card.title}</h2><p>{card.text}</p></span>
+      <div className="marketing-feature-row-copy">
+       <h2>{card.title}</h2>
+       <div className="marketing-feature-row-description"><strong>{card.benefit}</strong><p>{card.text}</p></div>
+      </div>
      </article>)}</div>
+     <p className="marketing-features-outro"><strong>Главное преимущество:</strong> все инструменты работают в одной учебной среде. Объяснение, совместная работа и практика становятся частью одного занятия, а не набором отдельных сервисов.</p>
     </section>
     {placed("before-2")}
     {placed("before-3")}
