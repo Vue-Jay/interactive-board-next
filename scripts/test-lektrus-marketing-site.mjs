@@ -55,7 +55,7 @@ const approvedLocalShots=[
 ];
 const source=read("src/marketingSiteConfig.ts");
 const showcaseConfig=source.split("export const DEFAULT_SITE_SHOWCASE:SiteShowcaseShot[]=[")[1]?.split("];")[0]??"";
-const selected=[...showcaseConfig.matchAll(/src:"\\/site\\/([^"]+)"/g)].map(m=>m[1]);
+const selected=[...showcaseConfig.matchAll(/src:"\/site\/([^"]+)"/g)].map(m=>m[1]);
 assert.deepEqual(selected,approvedLocalShots,"Home must show the seven source captures from the user's local site in order");
 assert.ok(source.includes("legacyShowcaseSources")&&source.includes("isLegacyDefault"),"published default galleries must migrate to the user's real screenshots");
 for(const shot of [...approvedLocalShots,"showcase-atlas.png","showcase-lab.png","showcase-workspace-mobile.png"]){
