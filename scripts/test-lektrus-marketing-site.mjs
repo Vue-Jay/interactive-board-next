@@ -73,7 +73,7 @@ assert.equal((projectSection.match(/<li><span className="marketing-project-step-
 assert.equal((projectSection.match(/<article><span className="marketing-project-value-symbol"/g)||[]).length,3,"Home must explain three distinct benefits, not only list functionality");
 assert.equal((projectSection.match(/<article><span className="marketing-project-audience-label"/g)||[]).length,2,"teachers and students need their own clear audience propositions");
 assert.ok(projectSection.includes("marketing-project-standalone")&&projectSection.includes("Интерактивный атлас и химическая лаборатория"),"independent science tools must be explained without duplicating the Features page");
-assert.doesNotMatch(projectSection,/<img\\b|<DemoLink|<NavLink/,"the project story must not duplicate the rotating screenshots or the primary hero CTAs");
+assert.doesNotMatch(projectSection,/<img\b|<DemoLink|<NavLink/,"the project story must not duplicate the rotating screenshots or the primary hero CTAs");
 for(const selector of [".marketing-project-intro",".marketing-project-experience",".marketing-project-steps",".marketing-project-value",".marketing-project-audiences",".marketing-project-standalone"]){
  assert.ok(css.includes(selector),"project presentation styling missing: "+selector);
 }
