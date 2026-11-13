@@ -225,7 +225,7 @@ export default function LektrusPublicSite(){
      <div className="marketing-project-intro">
       <div className="marketing-project-heading">
        <span className="marketing-eyebrow">О проекте</span>
-       <h2 id="marketing-project-title">Урок, в котором можно <span>не только смотреть, но и действовать</span></h2>
+       <h2 id="marketing-project-title">Урок, в котором можно не только смотреть, но и действовать</h2>
        <p className="marketing-project-caption">Для тех, кто хочет объяснять понятно, учиться с интересом и исследовать новое вместе.</p>
       </div>
       <div className="marketing-project-body">
