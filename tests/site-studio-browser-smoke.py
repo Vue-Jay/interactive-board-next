@@ -60,13 +60,16 @@ with sync_playwright() as p:
     assert heading.is_visible(), "Ctrl+Z should bring the hidden object back"
     page.keyboard.press("Control+Shift+z")
     page.wait_for_function("document.body.dataset.lastCommand === 'redo'")
+    heading.wait_for(state="hidden", timeout=10000)
     assert not heading.is_visible(), "Ctrl+Shift+Z should reapply deletion"
     frame.locator(".site-canvas-selection-actions .site-canvas-restore-button").click()
     page.wait_for_function("document.body.dataset.lastCommand === 'restore'")
+    heading.wait_for(state="visible", timeout=10000)
     assert heading.is_visible(), "Floating toolbar must restore hidden objects"
 
     frame.locator(".site-canvas-selection-actions .site-canvas-delete-button").click()
     page.wait_for_function("document.body.dataset.lastCommand === 'delete'")
+    heading.wait_for(state="hidden", timeout=10000)
     assert not heading.is_visible()
     page.keyboard.press("Control+z")
     page.wait_for_function("document.body.dataset.lastCommand === 'undo'", timeout=10000)
