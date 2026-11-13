@@ -7,7 +7,7 @@ import LectrisWorkspaceShell from "./LectrisWorkspaceShell";
 import { clearNotificationCache } from "./notificationsStore";
 import { clearAiBoardTransfer } from "./aiLocalStore";
 import { clearAccountAccessCache, getAccountAccess, getCachedAccountAccess, type AccountRole } from "./accountRoleStore";
-import { clearPendingShare, initialRoute, parseRoute, pendingSharePath, rememberShareToken, type AppRoute } from "./routes";
+import { clearPendingBoardPath, clearPendingShare, initialRoute, parseRoute, pendingBoardPath, pendingSharePath, rememberBoardPath, rememberShareToken, type AppRoute } from "./routes";
 import { redeemShareLink } from "./shareLinks";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
@@ -113,6 +113,7 @@ export default function App() {
     window.history[replace ? "replaceState" : "pushState"](null, "", appPath);
     const url = new URL(appPath, window.location.href);
     const next=parseRoute(url.pathname);
+    if(next.kind==="board")rememberBoardPath(next.boardId);
     setRoute(Capacitor.isNativePlatform()&&next.kind==="site"?{kind:"home"}:next);
   }, []);
   useEffect(() => {
@@ -120,6 +121,7 @@ export default function App() {
       const parsed = parseRoute(window.location.pathname);
       const next=Capacitor.isNativePlatform()&&parsed.kind==="site"?{kind:"home" as const}:parsed;
       if (next.kind === "join") rememberShareToken(next.token);
+      if (next.kind === "board") rememberBoardPath(next.boardId);
       setRoute(next);
     };
     window.addEventListener("popstate", changed);
@@ -182,7 +184,7 @@ export default function App() {
         // The confirmation callback must not reset an invitation to /app.
         // Keep the pending /join/:token until redemption, then the token is
         // replaced with /board/:id. Never put auth fragments back in history.
-        navigate(pendingSharePath()??"/",true);
+        navigate(pendingSharePath()??pendingBoardPath()??"/",true);
         return true;
       }catch(error){const message=error instanceof Error?error.message:"Не удалось подтвердить email";console.warn("Lektrus email confirmation could not be completed",error);if(alive)setAuthCallbackError(message);return false}
     };
@@ -230,11 +232,13 @@ export default function App() {
     // without deleting the isolated demo identity or asking for a server.
     if (LEKTRUS_LOCAL_TEST_MODE) {
       clearPendingShare();
+      clearPendingBoardPath();
       setActiveBoard(null);
       navigate("/", true);
       return;
     }
     clearPendingShare();
+    clearPendingBoardPath();
     clearAccountAccessCache();
     clearNotificationCache();
     clearAiBoardTransfer();
@@ -344,6 +348,7 @@ export default function App() {
       }
       if (!isCurrent()) return;
       setActiveBoard(board);
+      clearPendingBoardPath();
       setBoardMountKey((value) => value + 1);
     } catch (error) {
       if (isCurrent()) setBoardLoadError(error instanceof Error ? error.message : "Не удалось загрузить доску с сервера");

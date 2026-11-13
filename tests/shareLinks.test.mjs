@@ -163,12 +163,45 @@ test('pending invitation survives confirmation in a second tab and expires clean
   assert.equal(secondTab.pendingSharePath(), null, 'expired cross-tab token must not be reused');
 });
 
+test('direct board URL survives email confirmation in a new tab without granting access', () => {
+  const persistent=new Map(),firstSession=new Map();
+  const localStorage={
+    getItem:key=>persistent.get(key)??null,
+    setItem:(key,value)=>persistent.set(key,value),
+    removeItem:key=>persistent.delete(key),
+  };
+  const fromLink=load('routes',{
+    window:browser('https://lektrus.example/board/'+boardId).window,
+    sessionStorage:{
+      getItem:key=>firstSession.get(key)??null,
+      setItem:(key,value)=>firstSession.set(key,value),
+      removeItem:key=>firstSession.delete(key),
+    },localStorage,
+  });
+  assert.equal(fromLink.initialRoute().kind,'board');
+  assert.equal(fromLink.pendingBoardPath(),'/board/'+boardId);
+  const confirmed=load('routes',{
+    window:browser('https://lektrus.example/app?email_confirmation=1').window,
+    sessionStorage:{getItem:()=>null,setItem:()=>{},removeItem:()=>{}},
+    localStorage,
+  });
+  assert.equal(confirmed.pendingBoardPath(),'/board/'+boardId);
+  confirmed.clearPendingBoardPath();
+  assert.equal(confirmed.pendingBoardPath(),null);
+  fromLink.rememberBoardPath(boardId);
+  persistent.set('lektrus.pending-board-route.v2',JSON.stringify({path:'/board/'+boardId,until:Date.now()-1000}));
+  assert.equal(confirmed.pendingBoardPath(),null,'expired cross-tab path must be discarded');
+  fromLink.rememberBoardPath('../invalid');
+  assert.equal(confirmed.pendingBoardPath(),null,'invalid board paths must never be stored');
+});
+
 test('email confirmation keeps the invite; legacy query starts the app, not the public site', () => {
   const app = read('src/App.tsx');
   const entry = read('src/main.tsx');
   const auth = read('src/AuthScreen.tsx');
   const boards = read('src/BoardsScreen.tsx');
-  assert.match(app, /navigate\(pendingSharePath\(\)\?\?"\/",true\)/);
+  assert.match(app, /navigate\(pendingSharePath\(\)\?\?pendingBoardPath\(\)\?\?"\/",true\)/);
+  assert.match(app, /clearPendingBoardPath\(\)/);
   assert.match(app, /setSubmittedSharePassword\(\{token:route\.token,value:sharePassword\}\)/);
   assert.match(app, /submittedSharePassword\?\.token===route\.token/);
   assert.doesNotMatch(app, /openBoard, sharePassword\]/);
