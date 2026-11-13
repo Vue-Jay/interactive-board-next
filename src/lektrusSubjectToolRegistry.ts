@@ -62,9 +62,14 @@ export const subjectToolRegistry:SubjectToolDefinition[]=[
     group:group.group,subjects:[group.subject==="physics"?"физика":"химия"]}))
 ];
 
+/** Release 1.0: postpone unfinished editors without removing legacy document support. */
+export const releaseHiddenSubjectToolIds:ReadonlySet<SubjectToolId>=new Set([
+  "bio-anatomy","bio-microscope","info-programming"
+]);
+
 export function subjectToolsFor(subject:string):SubjectToolDefinition[]{
   const key=normalizeLektrusSubject(subject).toLocaleLowerCase("ru-RU");
-  return subjectToolRegistry.filter(tool=>tool.subjects.includes(key));
+  return subjectToolRegistry.filter(tool=>tool.subjects.includes(key)&&!releaseHiddenSubjectToolIds.has(tool.id));
 }
 
 export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:()=>string):Item{
