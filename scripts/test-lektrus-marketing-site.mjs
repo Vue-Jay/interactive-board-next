@@ -303,7 +303,7 @@ assert.equal(dims.minHeight,0);
 
 // 2026 marketing IA: role-specific pages are retired even in previously published configs.
 const defaultMarketing=model.defaultSiteDocument();
-assert.equal(defaultMarketing.showcase.length,8,"all original home + seven subject captures belong in one homepage field");
+assert.equal(defaultMarketing.showcase.length,7,"all seven locally approved screenshots belong in one homepage field");
 assert.ok(defaultMarketing.showcase.every(frame=>frame.src.startsWith("/site/")),"default reel must only use existing product screenshots");
 assert.equal(defaultMarketing.navigation.some(item=>item.id==="teachers"),false);
 assert.equal(defaultMarketing.navigation.some(item=>item.id==="students"),false);
@@ -311,7 +311,7 @@ const publishedLegacy=model.normalizeSiteDocument({...defaultMarketing,navigatio
 assert.equal(publishedLegacy.navigation.some(item=>item.id==="teachers"),false,"old published configs cannot resurrect teacher tab");
 assert.equal(publishedLegacy.navigation.some(item=>item.id==="students"),false,"old published configs cannot resurrect student tab");
 const exportedOld={...oldDocument};delete exportedOld.showcase;
-assert.equal(model.normalizeSiteDocument(exportedOld).showcase.length,8,"legacy published docs without reel metadata must retain all screenshots");
+assert.equal(model.normalizeSiteDocument(exportedOld).showcase.length,7,"legacy published docs without reel metadata must display the approved local captures");
 const reel=model.normalizeSiteDocument({...defaultMarketing,showcase:[
  {scene:"chemistry",subject:"Химия",src:"/site/board-chemistry.png"},
  {scene:"chemistry",subject:"Duplicate",src:"/site/board-chemistry.png"},
@@ -319,6 +319,9 @@ const reel=model.normalizeSiteDocument({...defaultMarketing,showcase:[
  {scene:"math",subject:"Математика",src:"/site/board-math.png"}
 ]}).showcase;
 assert.deepEqual(reel.map(frame=>frame.src),["/site/board-chemistry.png","/site/board-math.png"],"ordered reel should deduplicate and reject unsafe URLs");
+const legacyGallery=["app-home.png","board-math.png","board-chemistry.png","board-geometry.png","board-physics.png","board-contour.png","board-history.png","board-russian.png"].map(name=>({scene:name,subject:name,src:"/site/"+name}));
+const updatedPublished=model.normalizeSiteDocument({...defaultMarketing,showcase:legacyGallery}).showcase;
+assert.deepEqual(updatedPublished.map(shot=>shot.src),defaultMarketing.showcase.map(shot=>shot.src),"previously published default galleries must show restored approved local screenshots");
 assert.ok(builder.includes("site-builder-home-showcase")&&builder.includes("next.showcase.push("),"admin must be able to choose and rearrange unified screenshot frames");
 assert.ok(builder.includes('!retiredSitePages.has(item.id)'),"admin list must not offer removed audience tabs");
 assert.ok(site.includes('["teachers","students","tools","how","about"].includes(hash)'),"legacy bookmarks must redirect to Home");
