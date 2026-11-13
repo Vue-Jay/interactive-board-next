@@ -180,6 +180,27 @@ with sync_playwright() as p:
     assert visitor.locator(".marketing-project-summary").is_visible(), "Project section must follow Home hero"
     assert visitor.locator(".marketing-project-audiences p").count() == 2, "Both teacher and student benefits belong on Home"
     assert visitor.locator(".marketing-project-heading").is_visible()
+    assert visitor.locator(".marketing-project-outro").is_visible(), "Project summary must remain visible"
+    assert visitor.locator(".marketing-project-outro-icon").count() == 0, "Remove only the decorative star"
+    caption = visitor.locator(".marketing-project-journey-heading .marketing-eyebrow")
+    heading = visitor.locator(".marketing-project-journey-heading h3")
+    caption_style = caption.evaluate("""el => ({
+        size:getComputedStyle(el).fontSize, weight:getComputedStyle(el).fontWeight,
+        family:getComputedStyle(el).fontFamily, color:getComputedStyle(el).color,
+        spacing:getComputedStyle(el).letterSpacing, transform:getComputedStyle(el).textTransform
+    })""")
+    heading_style = heading.evaluate("""el => ({
+        size:getComputedStyle(el).fontSize, weight:getComputedStyle(el).fontWeight,
+        family:getComputedStyle(el).fontFamily, color:getComputedStyle(el).color,
+        spacing:getComputedStyle(el).letterSpacing, transform:getComputedStyle(el).textTransform
+    })""")
+    assert caption_style == heading_style, f"Both stage captions must match: {caption_style} != {heading_style}"
+    assert visitor.locator(".marketing-footer-home").count() == 1, "Home must have one branded footer"
+    assert visitor.locator(".marketing-footer-home-brand").is_visible()
+    assert visitor.locator(".marketing-footer-home-links").count() == 2
+    assert visitor.locator(".marketing-footer-home-links a[href='/tools/atlas']").count() == 1
+    assert visitor.locator(".marketing-footer-home-links a[href='/tools/laboratory']").count() == 1
+    assert visitor.locator(".marketing-footer-home-app[href='/app']").count() == 1
     assert visitor.locator(".marketing-home-summary, .marketing-audience-grid, .marketing-last-cta").count() == 0
     screen_image = showcase.locator(".marketing-showcase-motion img:last-of-type")
     first = screen_image.get_attribute("src")
@@ -236,6 +257,9 @@ with sync_playwright() as p:
         assert visitor.locator("h1").first.evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)") >= 29, f"Mobile {page_name} heading is too small"
         if page_name == "home":
             assert visitor.locator(".marketing-hero-lead").evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)") >= 15, "Mobile hero lead must remain readable"
+            assert visitor.locator(".marketing-footer-home-main").is_visible(), "Mobile home footer must remain visible"
+            assert visitor.locator(".marketing-footer-home-links").count() == 2, "Mobile footer must retain both navigation groups"
+            assert visitor.locator(".marketing-project-outro-icon").count() == 0, "Decorative star must stay removed on mobile"
         if page_name == "help":
             form_size = visitor.locator(".marketing-form-card input").first.evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)")
             assert form_size >= 16, f"Mobile form triggers iOS zoom: {form_size}"
