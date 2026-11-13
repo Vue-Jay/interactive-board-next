@@ -254,7 +254,7 @@ with sync_playwright() as p:
     visitor.set_viewport_size({"width": 390, "height": 844})
     for page_name, marker in (
         ("home", ".marketing-project-summary"),
-        ("features", ".marketing-features-list"),
+        ("features", ".marketing-feature-groups"),
         ("pricing", ".marketing-pricing-grid"),
         ("help", ".marketing-form-card")
     ):
