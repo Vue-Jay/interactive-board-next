@@ -78,6 +78,42 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
  if(typeof d.title!=="string"||d.title.length>120)return false;
  const finiteIn=(x:unknown,lo:number,hi:number)=>typeof x==="number"&&Number.isFinite(x)&&x>=lo&&x<=hi;
  const field=(x:unknown,n:number)=>typeof x==="string"&&x.length<=n&&x.trim().length>0;
+ // Release 1.0 hides new creation of these editors, but existing boards MUST load.
+ // These bounded checks mirror their model validators without importing heavy editors.
+ if(d.kind==="bio-anatomy"){
+  return field(d.title,120)&&[
+   "nervous","respiratory","circulatory","digestive","urinary","musculoskeletal","integumentary"
+  ].includes(d.system as string)&&typeof d.showDescriptions==="boolean";
+ }
+ if(d.kind==="bio-microscope"){
+  const organisms=[
+   "human","cat","sunflower","oak","sparrow","perch","frog","bee","snail","pine",
+   "fern","wheat","earthworm","seastar","crayfish","horsetail","lizard","spider","clubmoss","magnolia"
+  ];
+  if(!field(d.title,120)||!organisms.includes(d.organism as string)||
+     !["explore","label","assemble"].includes(d.activity as string)||
+     typeof d.showDescriptions!=="boolean"||
+     !Array.isArray(d.assignmentPath)||d.assignmentPath.length!==5)return false;
+  return d.assignmentPath.every((id:unknown,index:number)=>
+   typeof id==="string"&&id.length<=320&&
+   (index===0?id===d.organism:
+    id.startsWith((d.assignmentPath as string[])[index-1]+"/"))&&
+   id.split("/").length===index+1);
+ }
+ if(d.kind==="programming"){
+  if(!field(d.title,120)||!["python","javascript","typescript"].includes(d.language as string)||
+   typeof d.code!=="string"||d.code.length>20000||
+   typeof d.stdin!=="string"||d.stdin.length>2000||
+   typeof d.showCode!=="boolean"||
+   (d.showExpected!==undefined&&typeof d.showExpected!=="boolean"))return false;
+  if(d.tests===undefined)return true;
+  if(!Array.isArray(d.tests)||d.tests.length>8)return false;
+  const tests=d.tests as Record<string,unknown>[];
+  return tests.every(t=>t&&typeof t==="object"&&field(t.id,64)&&field(t.name,60)&&
+    typeof t.stdin==="string"&&t.stdin.length<=2000&&
+    typeof t.expected==="string"&&t.expected.length<=4000)&&
+    new Set(tests.map(t=>t.id)).size===tests.length;
+ }
  if(d.kind==="geo-training"){
   return (d.exercise==="matching"||d.exercise==="cards")&&
    (d.relation==="flag-country"||d.relation==="country-capital"||d.relation==="outline-country")&&
