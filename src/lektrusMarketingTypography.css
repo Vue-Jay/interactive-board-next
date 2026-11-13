@@ -759,3 +759,56 @@
     gap:10px;
   }
 }
+
+
+/* Brand title: the blue descriptor sits under the wordmark, right-aligned
+   within its column instead of appearing as a second oversized headline. */
+.marketing-site .marketing-hero-split .marketing-hero-identity h1 .marketing-hero-tagline {
+  display:block;
+  max-width:100%;
+  margin:3px 0 0;
+  color:var(--marketing-blue);
+  font-family:var(--marketing-font-display);
+  font-size:clamp(21px,2.1vw,29px);
+  font-weight:760;
+  line-height:1.22;
+  letter-spacing:-.018em;
+  text-align:right;
+  text-wrap:balance;
+  overflow-wrap:normal;
+}
+@media(max-width:700px) {
+  .marketing-site .marketing-hero-split .marketing-hero-identity h1 .marketing-hero-tagline {
+    font-size:clamp(19px,5vw,25px);
+    line-height:1.23;
+    margin-top:2px;
+  }
+}
+@media(max-width:370px) {
+  .marketing-site .marketing-hero-split .marketing-hero-identity h1 .marketing-hero-tagline {
+    font-size:19px;
+  }
+}
+/* Contact Telegram link is a calm alternative to sending the form. */
+.marketing-site .marketing-help-layout .lektrus-feedback-telegram {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  margin-top:17px;
+  padding:3px 0;
+  color:#2464ba;
+  font-size:14px;
+  font-weight:690;
+  line-height:1.5;
+  text-decoration:none;
+  text-underline-offset:4px;
+}
+.marketing-site .marketing-help-layout .lektrus-feedback-telegram:hover {
+  color:#174c93;
+  text-decoration:underline;
+}
+.marketing-site .marketing-help-layout .lektrus-feedback-telegram:focus-visible {
+  outline:2px solid #7dafff;
+  outline-offset:4px;
+  border-radius:3px;
+}
