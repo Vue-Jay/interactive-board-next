@@ -16,30 +16,34 @@ export function rememberShareToken(token: string) {
   if (!TOKEN.test(token)) return;
   try { sessionStorage.setItem(PENDING_KEY, token); } catch { /* route still contains it */ }
 }
+export function pendingSharePath(): string | null {
+  try {
+    const token = sessionStorage.getItem(PENDING_KEY);
+    return token && TOKEN.test(token) ? `/join/${token}` : null;
+  } catch { return null; }
+}
 export function clearPendingShare() {
   try { sessionStorage.removeItem(PENDING_KEY); } catch { /* storage unavailable */ }
 }
 export function initialRoute(): AppRoute {
   let route = parseRoute(window.location.pathname);
-  if(route.kind==="site"){
-    const query=new URLSearchParams(window.location.search);
-    if(query.has("section")||query.has("email_confirmation")||query.get("source")==="pwa"){
-      window.history.replaceState({},"","/app"+window.location.search+window.location.hash);
-      route={kind:"home"};
-    }
+  const query = new URLSearchParams(window.location.search);
+  // Older invitations used ?join=TOKEN. Route them through the same password
+  // prompt and authorization checks as the canonical /join/TOKEN links.
+  if ((route.kind === "site" || route.kind === "home") && query.has("join")) {
+    const token = query.get("join")?.trim() ?? "";
+    if (!TOKEN.test(token)) return { kind: "invalid" };
+    window.history.replaceState({}, "", `/join/${token}`);
+    route = { kind: "join", token };
+  }
+  if (route.kind === "site" && (query.has("section") || query.has("email_confirmation") || query.get("source") === "pwa")) {
+    window.history.replaceState({}, "", "/app" + window.location.search + window.location.hash);
+    route = { kind: "home" };
   }
   if (route.kind === "join") rememberShareToken(route.token);
-  if(route.kind==="site"){
-    try{
-      const token=sessionStorage.getItem(PENDING_KEY);
-      if(token&&TOKEN.test(token))return {kind:"join",token};
-    }catch{/* no pending token */}
-  }
-  if (route.kind === "home") {
-    try {
-      const token = sessionStorage.getItem(PENDING_KEY);
-      if (token && TOKEN.test(token)) return { kind: "join", token };
-    } catch { /* no pending token */ }
+  if (route.kind === "site" || route.kind === "home") {
+    const pending = pendingSharePath();
+    if (pending) return { kind: "join", token: pending.slice("/join/".length) };
   }
   return route;
 }
