@@ -153,11 +153,13 @@ with sync_playwright() as p:
     assert "Lektrus Onest" in brand_face, f"Brand heading must use Onest: {brand_face}"
     hero_tagline = visitor.locator(".marketing-hero-tagline")
     assert hero_tagline.inner_text() == "Онлайн-платформа для обучения"
-    assert hero_tagline.evaluate("(el) => getComputedStyle(el).textAlign") == "right", "Tagline should sit on the right below the wordmark"
+    assert hero_tagline.evaluate("(el) => getComputedStyle(el).textAlign") == "left", "Tagline must be left-aligned below the emblem"
     brand_box = visitor.locator(".marketing-hero-brand-name").bounding_box()
     tagline_box = hero_tagline.bounding_box()
-    assert brand_box and tagline_box and tagline_box["y"] >= brand_box["y"] + brand_box["height"] - 2, "Tagline must appear below Lektrus, not beside the logo"
-    assert tagline_box["width"] <= visitor.locator("#marketing-title").bounding_box()["width"] + 1, "Tagline must stay within the wordmark column"
+    emblem_box = visitor.locator(".marketing-hero-logo").bounding_box()
+    assert brand_box and tagline_box and emblem_box
+    assert tagline_box["y"] >= max(brand_box["y"] + brand_box["height"], emblem_box["y"] + emblem_box["height"]) - 3, "Tagline must sit below both brand name and emblem"
+    assert abs(tagline_box["x"] - emblem_box["x"]) <= 2, f"Tagline must start below the logo's left edge: {tagline_box} / {emblem_box}"
     hero_logo = visitor.locator(".marketing-hero-logo")
     assert hero_logo.count() == 1, "Home hero must contain one official brand symbol"
     assert hero_logo.get_attribute("src") == "/lektrus-icon-192.png"
@@ -278,10 +280,16 @@ with sync_playwright() as p:
     assert visitor.locator(".marketing-help-contact select").count() == 1
     assert visitor.locator(".marketing-help-contact textarea[required]").count() == 1
     assert visitor.locator(".marketing-help-contact button[type='submit']").is_disabled(), "Empty feedback must not be submitted"
-    tg = visitor.locator(".marketing-help-contact .lektrus-feedback-telegram")
-    assert tg.count() == 1 and tg.is_visible(), "Contact page must show the official Telegram link"
+    tg = visitor.locator(".marketing-help-contact .marketing-telegram-contact")
+    assert tg.count() == 1 and tg.is_visible(), "Contact page must show Telegram as a distinct contact card"
     assert tg.get_attribute("href") == "https://t.me/lektrus"
     assert tg.get_attribute("target") == "_blank" and "noopener" in (tg.get_attribute("rel") or ""), "Telegram contact must open securely"
+    assert "Быстрее в Telegram" in tg.inner_text() and "@lektrus" in tg.inner_text()
+    assert visitor.locator(".marketing-contact-divider").is_visible()
+    assert visitor.locator(".marketing-help-contact .lektrus-feedback-telegram").count() == 0, "The old bottom Telegram link must not be duplicated"
+    tg_box = tg.bounding_box()
+    form_box = visitor.locator(".marketing-help-contact .marketing-form-card").bounding_box()
+    assert tg_box and form_box and tg_box["y"] + tg_box["height"] < form_box["y"], "Telegram card should be visible above the feedback form"
     visitor.screenshot(path=str(root / "09-help-compact.png"), full_page=True)
 
     for old_route in ("about", "how", "tools", "teachers", "students"):
@@ -302,7 +310,9 @@ with sync_playwright() as p:
         assert visitor.locator("h1").first.evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)") >= 29, f"Mobile {page_name} heading is too small"
         if page_name == "home":
             assert visitor.locator(".marketing-hero-lead").evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)") >= 15, "Mobile hero lead must remain readable"
-            assert visitor.locator(".marketing-hero-tagline").evaluate("(el) => getComputedStyle(el).textAlign") == "right", "Mobile tagline must remain right-aligned"
+            assert visitor.locator(".marketing-hero-tagline").evaluate("(el) => getComputedStyle(el).textAlign") == "left", "Mobile tagline must align to the left of the emblem"
+            mobile_tagline = visitor.locator(".marketing-hero-tagline").bounding_box()
+            assert mobile_tagline and abs(mobile_tagline["x"] - mobile_logo["x"]) <= 2, "Mobile tagline must begin below the emblem"
             assert visitor.locator(".marketing-hero-tagline").evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)") >= 19, "Mobile blue tagline must remain legible"
             mobile_logo = visitor.locator(".marketing-hero-logo").bounding_box()
             mobile_title = visitor.locator(".marketing-hero-identity h1").bounding_box()
@@ -350,7 +360,9 @@ with sync_playwright() as p:
     assert tiny_logo and tiny_title and tiny_logo["width"] >= 48, "Logo disappears on 320px phone"
     assert tiny_title["x"] >= tiny_logo["x"] + tiny_logo["width"] + 7, "Logo overlaps text at 320px"
     assert visitor.locator(".marketing-hero-tagline").is_visible()
-    assert visitor.locator(".marketing-hero-tagline").evaluate("(el) => getComputedStyle(el).textAlign") == "right"
+    assert visitor.locator(".marketing-hero-tagline").evaluate("(el) => getComputedStyle(el).textAlign") == "left"
+    narrow_tagline = visitor.locator(".marketing-hero-tagline").bounding_box()
+    assert narrow_tagline and abs(narrow_tagline["x"] - tiny_logo["x"]) <= 2, "320px tagline must begin below the logo"
     assert visitor.locator(".marketing-hero-tagline").evaluate("(el) => el.scrollWidth <= el.clientWidth + 1"), "Blue tagline must not overflow on 320px phones"
     visitor.screenshot(path=str(root / "11-phone-320-logo.png"), full_page=True)
     visitor.close()
