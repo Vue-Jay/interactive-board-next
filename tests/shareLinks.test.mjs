@@ -154,6 +154,7 @@ test('email confirmation keeps the invite; legacy query starts the app, not the 
   assert.match(entry, /query\.has\("join"\)/);
   assert.match(auth, /onAuthenticated\(await loginGuest\(guestName\)\)/);
   assert.match(boards, /window\.dispatchEvent\(new PopStateEvent\("popstate"\)\)/);
+  assert.match(boards, /boardDirectUrl\(manage\.id\)/);
   assert.doesNotMatch(boards, /await redeemBoardShareLink\(token\)/);
 });
 
