@@ -66,7 +66,18 @@ assert.ok(css.includes(".marketing-showcase-screen")&&css.includes("@keyframes m
 assert.ok(site.includes("marketing-project-audiences")&&site.includes("marketing-project-summary"),"project information for teachers and students must appear directly on Home");
 assert.ok(site.includes('className="marketing-hero-brand-name"')&&css.includes("h1 .marketing-hero-brand-name"),"the hero must enlarge the wordmark without enlarging the entire tagline");
 assert.ok(site.includes('>Демо-версия доски <')&&!site.includes('>Демо доски <'),"the demo button needs its full approved label");
-assert.ok(site.includes('className="marketing-project-detail"')&&site.includes("Lektrus — образовательная платформа с общей интерактивной доской")&&site.includes("доступны также без создания доски"),"the project story must explain what Lektrus is, who uses it and why");
+assert.ok(site.includes('className="marketing-project-detail"')&&site.includes("Lektrus — образовательная платформа с общей интерактивной доской")&&site.includes("работают без создания доски"),"the Home presentation must explain the product, collaboration and standalone tools");
+const projectSection=site.slice(site.indexOf('className="marketing-section marketing-container marketing-project-summary"'),site.indexOf('{placed("before-2")}',site.indexOf('className="marketing-section marketing-container marketing-project-summary"')));
+assert.ok(projectSection.includes("Не просто объясняйте.")&&projectSection.includes("Как устроен урок"),"Home must have a compelling explanation and an illustrative teaching journey");
+assert.equal((projectSection.match(/<li><span className="marketing-project-step-number">/g)||[]).length,3,"preparation, explanation and practice must be illustrated in three ordered steps");
+assert.equal((projectSection.match(/<article><span className="marketing-project-value-symbol"/g)||[]).length,3,"Home must explain three distinct benefits, not only list functionality");
+assert.equal((projectSection.match(/<article><span className="marketing-project-audience-label"/g)||[]).length,2,"teachers and students need their own clear audience propositions");
+assert.ok(projectSection.includes("marketing-project-standalone")&&projectSection.includes("Интерактивный атлас и химическая лаборатория"),"independent science tools must be explained without duplicating the Features page");
+assert.doesNotMatch(projectSection,/<img\\b|<DemoLink|<NavLink/,"the project story must not duplicate the rotating screenshots or the primary hero CTAs");
+for(const selector of [".marketing-project-intro",".marketing-project-experience",".marketing-project-steps",".marketing-project-value",".marketing-project-audiences",".marketing-project-standalone"]){
+ assert.ok(css.includes(selector),"project presentation styling missing: "+selector);
+}
+assert.ok(css.includes("@media(max-width:1120px)")&&css.includes("@media(max-width:700px)"),"project presentation must reflow for tablets and narrow phones");
 assert.ok(css.includes(".marketing-project-body .marketing-project-detail")&&css.includes("@media(max-width:700px)"),"expanded project copy and wordmark need mobile styles");
 assert.ok(site.includes("currentShot.src")&&site.includes("previousShot.src")&&site.includes("marketing-showcase"),"one homepage animation must use existing real captures");
 assert.ok(css.includes(".marketing-features-list")&&css.includes(".marketing-project-summary")&&css.includes(".marketing-help-intro"),"live public pages must have compact responsive layouts");
