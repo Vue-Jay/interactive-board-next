@@ -151,6 +151,16 @@ with sync_playwright() as p:
     })""")
     menu_size = visitor.locator(".marketing-nav a").first.evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)")
     assert "Lektrus Onest" in brand_face, f"Brand heading must use Onest: {brand_face}"
+    hero_logo = visitor.locator(".marketing-hero-logo")
+    assert hero_logo.count() == 1, "Home hero must contain one official brand symbol"
+    assert hero_logo.get_attribute("src") == "/lektrus-icon-192.png"
+    assert hero_logo.get_attribute("alt") == "", "Wordmark already supplies the logo's accessible name"
+    visitor.wait_for_function("() => { const img=document.querySelector('.marketing-hero-logo'); return !!img && img.complete && img.naturalWidth === 192 }")
+    logo_bounds = hero_logo.bounding_box()
+    title_bounds = visitor.locator(".marketing-hero-identity h1").bounding_box()
+    assert logo_bounds and title_bounds and logo_bounds["width"] >= 65, "Logo must be legible at desktop size"
+    assert title_bounds["x"] > logo_bounds["x"] + logo_bounds["width"] + 6, "Logo must sit beside, not over, the title"
+    assert abs(logo_bounds["y"] - title_bounds["y"]) < 22, "Logo and headline should share a top alignment"
     # The brand name must not visually collapse into touching glyphs.
     for selector in [".marketing-hero-brand-name", ".marketing-brand strong"]:
         spacing = visitor.locator(selector).first.evaluate("(el) => getComputedStyle(el).letterSpacing")
@@ -281,6 +291,10 @@ with sync_playwright() as p:
         assert visitor.locator("h1").first.evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)") >= 29, f"Mobile {page_name} heading is too small"
         if page_name == "home":
             assert visitor.locator(".marketing-hero-lead").evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)") >= 15, "Mobile hero lead must remain readable"
+            mobile_logo = visitor.locator(".marketing-hero-logo").bounding_box()
+            mobile_title = visitor.locator(".marketing-hero-identity h1").bounding_box()
+            assert mobile_logo and mobile_title and mobile_logo["width"] >= 50, "Mobile logo must remain clearly visible"
+            assert mobile_title["x"] >= mobile_logo["x"] + mobile_logo["width"] + 8, "Mobile logo must not overlap heading"
             assert visitor.locator(".marketing-footer-home-main").is_visible(), "Mobile home footer must remain visible"
             assert visitor.locator(".marketing-footer-home-links").count() == 2, "Mobile footer must retain both navigation groups"
             assert visitor.locator(".marketing-project-outro-icon").count() == 0, "Decorative star must stay removed on mobile"
@@ -314,6 +328,15 @@ with sync_playwright() as p:
     visitor.locator(".marketing-sidebar-backdrop").click(position={"x": 370, "y": 200})
     assert visitor.locator(".marketing-menu-toggle").get_attribute("aria-expanded") == "false"
     assert visitor.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
+    visitor.set_viewport_size({"width": 320, "height": 568})
+    visitor.goto("http://127.0.0.1:5173/#home", wait_until="domcontentloaded")
+    visitor.locator(".marketing-hero-identity").wait_for()
+    assert visitor.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), "Smallest supported phone must not scroll horizontally"
+    tiny_logo = visitor.locator(".marketing-hero-logo").bounding_box()
+    tiny_title = visitor.locator("#marketing-title").bounding_box()
+    assert tiny_logo and tiny_title and tiny_logo["width"] >= 48, "Logo disappears on 320px phone"
+    assert tiny_title["x"] >= tiny_logo["x"] + tiny_logo["width"] + 7, "Logo overlaps text at 320px"
+    visitor.screenshot(path=str(root / "11-phone-320-logo.png"), full_page=True)
     visitor.close()
     browser.close()
 
