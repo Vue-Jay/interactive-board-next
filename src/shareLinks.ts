@@ -150,22 +150,34 @@ export async function redeemBoardShareLink(token: string): Promise<BoardSummary>
 }
 
 const JOIN_PREFIX = "/join/";
+const SHARE_TOKEN = /^[a-f0-9]{64}$/;
+const BOARD_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function boardShareUrl(token: string) {
-  return `${window.location.origin}${JOIN_PREFIX}${encodeURIComponent(token)}`;
+  if (!SHARE_TOKEN.test(token)) throw new Error("Некорректный токен приглашения");
+  return `${window.location.origin}${JOIN_PREFIX}${token}`;
 }
 
-export function pendingShareToken() {
+/** A direct board URL does not grant permissions; a member or owner must sign in. */
+export function boardDirectUrl(boardId: string) {
+  if (!BOARD_ID.test(boardId)) throw new Error("Некорректный идентификатор доски");
+  return `${window.location.origin}/board/${boardId}`;
+}
+
+export function pendingShareToken(): string | null {
   const path = window.location.pathname;
   if (path.startsWith(JOIN_PREFIX)) {
-    const raw = path.slice(JOIN_PREFIX.length).split("/")[0];
-    try { return decodeURIComponent(raw).trim() || null; } catch { return null; }
+    const token = path.slice(JOIN_PREFIX.length).split("/")[0];
+    return SHARE_TOKEN.test(token) ? token : null;
   }
-  return new URL(window.location.href).searchParams.get("join")?.trim() || null;
+  const token = new URL(window.location.href).searchParams.get("join")?.trim() || "";
+  return SHARE_TOKEN.test(token) ? token : null;
 }
 
 export function clearPendingShareToken() {
   const url = new URL(window.location.href);
   url.searchParams.delete("join");
-  window.history.replaceState({}, "", `/${url.search}${url.hash}`);
+  // Do not turn /app into /: that would make a reload show the public site.
+  const path = url.pathname.startsWith(JOIN_PREFIX) ? "/app" : url.pathname;
+  window.history.replaceState({}, "", `${path}${url.search}${url.hash}`);
 }
