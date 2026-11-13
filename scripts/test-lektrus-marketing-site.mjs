@@ -14,10 +14,10 @@ for(const id of ["home","features","pricing","help"]){
 assert.doesNotMatch(site,/\{id:"(?:teachers|students)",title:/,"former teacher/student tabs must be absent from navigation");
 for(const text of [
  "Lektrus","платформа для обучения",
- "Что умеет ","Lektrus",
- "О проекте","Учиться и объяснять проще",
- "Преподавателям","Создавайте наглядные объяснения",
- "Ученикам","Исследуйте темы",
+ "Показывайте, объясняйте, ","Lektrus",
+ "О проекте","От объяснения к практике",
+ "Преподавателям","Объясняйте сложное наглядно",
+ "Ученикам","Не просто слушайте",
  "Расскажите, что можно улучшить",
  "Найдите решение","или свяжитесь с нами",
  "Ваши вопросы помогают делать Lektrus удобнее",
@@ -49,6 +49,12 @@ for(const shot of ["board-showcase.png","app-home.png","board-math.png","board-c
  assert.ok(existsSync(new URL("../public/site/"+shot,import.meta.url)),"missing actual screenshot: "+shot);
 }
 assert.ok(site.includes("marketing-feature-row")&&css.includes(".marketing-feature-row"),"features should be compact rows, not repeated giant cards");
+assert.equal((site.slice(site.indexOf("const featureCards=["),site.indexOf("const questions=[")).match(/benefit:/g)||[]).length,6,"each feature must explain a concrete user benefit");
+for(const benefit of ["Объясняйте так, как удобно вам.","Превратите зрителей в участников.","Покажите то, что трудно объяснить словами.","От теории переходите к эксперименту.","Закрепляйте тему прямо во время объяснения.","Продолжайте, а не начинайте заново."]){
+ assert.ok(site.includes(benefit),"missing promotional benefit: "+benefit);
+}
+assert.ok(site.includes("marketing-feature-row-description")&&site.includes("marketing-features-outro"),"feature descriptions need benefits and a concise product advantage");
+assert.ok(css.includes(".marketing-project-caption")&&css.includes(".marketing-feature-row-description")&&css.includes("@media(max-width:700px)"),"marketing narrative must remain readable on narrow viewports");
 assert.doesNotMatch(entry,/lektrusShowcase\.css/,"the public entry must not load obsolete showcase styling");
 assert.match(css,/@media\(max-width:700px\)/,"the site needs small-screen layouts");
 assert.ok(site.includes("const showcaseShots=config.showcase")&&read("src/marketingSiteConfig.ts").includes("DEFAULT_SITE_SHOWCASE"),"homepage must use document-managed original screenshots");
@@ -60,7 +66,7 @@ assert.ok(css.includes(".marketing-showcase-screen")&&css.includes("@keyframes m
 assert.ok(site.includes("marketing-project-audiences")&&site.includes("marketing-project-summary"),"project information for teachers and students must appear directly on Home");
 assert.ok(site.includes('className="marketing-hero-brand-name"')&&css.includes("h1 .marketing-hero-brand-name"),"the hero must enlarge the wordmark without enlarging the entire tagline");
 assert.ok(site.includes('>Демо-версия доски <')&&!site.includes('>Демо доски <'),"the demo button needs its full approved label");
-assert.ok(site.includes('className="marketing-project-detail"')&&site.includes("Проект помогает изучать темы на практике"),"the project story must explain how the teaching tools and collaboration fit together");
+assert.ok(site.includes('className="marketing-project-detail"')&&site.includes("Lektrus — образовательная платформа с общей интерактивной доской")&&site.includes("доступны также без создания доски"),"the project story must explain what Lektrus is, who uses it and why");
 assert.ok(css.includes(".marketing-project-body .marketing-project-detail")&&css.includes("@media(max-width:700px)"),"expanded project copy and wordmark need mobile styles");
 assert.ok(site.includes("currentShot.src")&&site.includes("previousShot.src")&&site.includes("marketing-showcase"),"one homepage animation must use existing real captures");
 assert.ok(css.includes(".marketing-features-list")&&css.includes(".marketing-project-summary")&&css.includes(".marketing-help-intro"),"live public pages must have compact responsive layouts");
