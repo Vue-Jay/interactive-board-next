@@ -37,11 +37,11 @@ The specific high-egress endpoint has not yet been confirmed.
 
 ## Not yet implemented; do not cut over
 
-- Public signup, email confirmation, password reset, anonymous guest sessions.
+- Production registration UI, configured SMTP delivery, robust rate limits, password reset and anonymous guest sessions. The server-side registration API is implemented but OFF by default.
 - **Actual copying** of the 59 production Storage objects and final integrity
   verification after a VPS is provisioned. Only a simulated import was tested.
-- Supabase RPC compatibility for sharing, invites, templates, assignments,
-  schedules, notifications, chat, history, trash, billing and school features.
+- Supabase RPC compatibility for sharing links, templates, assignments,
+  schedules, notifications, chat, history, trash, billing and school features. Email invites and board-member roles now have their own API endpoints, but the existing frontend still uses Supabase RPC.
 - Supabase Realtime presence/broadcast protocol, multi-instance fan-out, and
   complete live two-client synchronization (pilot sends revision notices only).
 - Remaining database tables and their histories, cron jobs, server policies,
@@ -127,3 +127,11 @@ database backup and test restoring it to an isolated copy.
    withdraw production use of Supabase. Never delete the source first.
 
 No paid infrastructure has been purchased or modified by this branch.
+
+## Registration and invitations (migration pilot)
+
+- Verified teacher/student signup now exists on the self-hosted API. Account role is server-side and teacher selection becomes `teacher`/`approved` without adding any administrative or paid privileges.
+- Email verification stores only SHA-256 of a random single-use token, expires after 24 hours, and blocks login until confirmation. Tests use a mock SMTP sender.
+- `LEKTRUS_ENABLE_REGISTRATION=false` by default. Before enabling, integrate a working `/confirm-email` frontend page, set up reliable SMTP and external abuse/rate protection. The existing frontend has NOT been switched to this API.
+- Owner-only invitation and member management allows existing users immediately, or preserves an email invite until a verified user claims it. The import script preserves invitations and UUIDs.
+- No production email messages have been sent; no existing Supabase accounts or boards were changed by these tests.
