@@ -195,6 +195,17 @@ async def test_board_access_and_conflict_free_save(client):
     assert listed.status_code == 200
     assert [b["id"] for b in listed.json()] == [board_id]
 
+    renamed = await client.patch(url,headers=teacher,json={"title":"Урок химии: итог"})
+    assert renamed.status_code == 200, renamed.text
+    assert renamed.json()["title"] == "Урок химии: итог"
+    assert (await client.patch(url,headers=student,
+                               json={"title":"Чужое название"})).status_code == 403
+    assert (await client.delete(url,headers=student)).status_code == 403
+    trashed = await client.delete(url,headers=teacher)
+    assert trashed.status_code == 200 and trashed.json()["ok"] is True
+    assert (await client.get(url,headers=teacher)).status_code == 404
+    assert (await client.get("/api/v1/boards",headers=teacher)).json() == []
+
 @pytest.mark.asyncio
 async def test_payload_limits_and_unconfirmed_accounts(client, monkeypatch):
     _, teacher = await sign_in(client, "teacher@example.test")
