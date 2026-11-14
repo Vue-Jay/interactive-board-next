@@ -67,9 +67,20 @@ export const releaseHiddenSubjectToolIds:ReadonlySet<SubjectToolId>=new Set([
   "bio-anatomy","bio-microscope","info-programming"
 ]);
 
+/** Subjects with a standalone subject board only in the public release.
+ * The original models and factories stay intact for existing saved lessons. */
+export const releaseBoardOnlySubjects:ReadonlySet<string>=new Set([
+  "биология","информатика","обществознание"
+]);
+
 export function subjectToolsFor(subject:string):SubjectToolDefinition[]{
   const key=normalizeLektrusSubject(subject).toLocaleLowerCase("ru-RU");
-  return subjectToolRegistry.filter(tool=>tool.subjects.includes(key)&&!releaseHiddenSubjectToolIds.has(tool.id));
+  if(releaseBoardOnlySubjects.has(key))return [];
+  const visible=subjectToolRegistry.filter(tool=>
+    tool.subjects.includes(key)&&!releaseHiddenSubjectToolIds.has(tool.id));
+  // History retains its subject board (created via the panel's dedicated
+  // action) and the standalone historical atlas, but not other editors.
+  return key==="история"?visible.filter(tool=>tool.id==="history-atlas"):visible;
 }
 
 export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:()=>string):Item{
