@@ -1,5 +1,5 @@
 import { isRemoteBackendEnabled, remoteAssetExists, remoteAssetRequest } from "./backend";
-import { pilotAssetExists, pilotDownloadAsset, pilotUploadAsset } from "./selfhostPilotApi";
+import { selfhostAssetExists, selfhostDownloadAsset, selfhostUploadAsset } from "./selfhostApi";
 import type { DocumentData } from "./boardModel";
 
 const DB_NAME = "lesson-board.assets.v1";
@@ -142,7 +142,7 @@ export async function putAsset(id: string, blob: Blob, boardId: string, localOnl
     throw new Error("Нужно изображение или PDF размером до 50 МБ");
   }
   const path = assetPath(boardId, id);
-  if (usesSelfhostAssets(boardId)) await pilotUploadAsset(boardId,id,blob);
+  if (usesSelfhostAssets(boardId)) await selfhostUploadAsset(boardId,id,blob);
   else if (isRemoteBackendEnabled()) await remoteAssetRequest(path, blob);
   else return putLocalAsset(id, blob);
   synchronized.add(assetSyncKey(boardId,id));
@@ -168,7 +168,7 @@ export async function getAsset(id: string, boardId: string): Promise<Blob | null
   const pending = (async () => {
     try {
       const blob = usesSelfhostAssets(boardId)
-        ? await pilotDownloadAsset(boardId,id)
+        ? await selfhostDownloadAsset(boardId,id)
         : await remoteAssetRequest(path);
       if (blob) {
         synchronized.add(assetSyncKey(boardId,id));
@@ -206,7 +206,7 @@ export async function ensureBoardAssets(boardId: string, document: DocumentData)
     // In particular, re-uploading a 50-MB legacy PDF after a transient HEAD
     // failure wastes traffic and can turn a recoverable save into a 409.
     const exists = selfhost
-      ? await pilotAssetExists(boardId,id)
+      ? await selfhostAssetExists(boardId,id)
       : await remoteAssetExists(path);
     if (exists) {
       synchronized.add(assetSyncKey(boardId,id));
