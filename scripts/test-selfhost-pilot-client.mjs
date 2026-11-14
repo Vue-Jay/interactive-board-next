@@ -122,8 +122,10 @@ assert.equal((await api.pilotSession()).access_token,"token-refreshed");
 assert.equal(env.refreshCount(),1);
 const revisions=[];
 const statuses=[];
+const liveEvents=[];
 const unsubscribe=api.pilotSubscribeBoard("board-1",
-  version=>revisions.push(version),status=>statuses.push(status));
+  version=>revisions.push(version),status=>statuses.push(status),
+  frame=>liveEvents.push(frame));
 await new Promise(resolve=>setTimeout(resolve,0));
 assert.equal(sockets.length,1);
 assert.ok(sockets[0].url.startsWith("wss://pilot.lektrus.example/api/v1/boards/board-1/events"));
@@ -131,6 +133,27 @@ sockets[0].open();
 assert.equal(sockets[0].sent[0].type,"auth");
 assert.equal(sockets[0].sent[0].token,"token-refreshed");
 sockets[0].emit({type:"ready",version:3});
+assert.equal(unsubscribe.sendCursor("pilot_client",10,20),true);
+await new Promise(resolve=>setTimeout(resolve,70));
+assert.ok(sockets[0].sent.some(x=>x.type==="cursor"&&x.x===10&&x.y===20));
+const stroke={
+  type:"live_ink",client_id:"pilot_client",stroke_id:"stroke_1",
+  kind:"pen",color:"#275ec7",weight:3,offset:0,
+  points:[{x:10,y:20},{x:12,y:22}],finished:true,
+};
+assert.equal(unsubscribe.sendInk(stroke),true);
+assert.ok(sockets[0].sent.some(x=>x.type==="live_ink"&&x.finished&&x.stroke_id==="stroke_1"));
+sockets[0].emit({type:"ink_ack",client_id:"pilot_client",stroke_id:"stroke_1",offset:0,finished:true});
+sockets[0].emit({
+  type:"cursor",client_id:"other",user_id:"user_2",name:"Ученик",
+  role:"viewer",x:100,y:200,sent_at:Date.now()
+});
+sockets[0].emit({
+  ...stroke,client_id:"other",stroke_id:"remote_1",
+  user_id:"user_2",name:"Ученик",role:"editor",sent_at:Date.now()
+});
+assert.equal(liveEvents.length,2);
+assert.deepEqual(liveEvents.map(x=>x.type),["cursor","live_ink"]);
 sockets[0].emit({type:"document_changed",version:4});
 sockets[0].emit({type:"document_changed",version:4});
 sockets[0].emit({type:"document_changed",version:2});
@@ -143,4 +166,4 @@ await api.pilotLogout();
 assert.equal(api.cachedPilotSession(),null);
 assert.equal(storage.get("lesson-board.supabase.session.v1"),"production-must-remain");
 assert.ok(records.some(x=>x.path==="/api/v1/auth/logout"&&x.bearer==="Bearer token-refreshed"));
-console.log("Self-hosted pilot: gated route, isolated token, login, refresh, boards, conflicts, invitations, WS and logout OK.");
+console.log("Self-hosted pilot: isolated API, WS revisions, cursors, ink acks, role-safe login and logout OK.");
