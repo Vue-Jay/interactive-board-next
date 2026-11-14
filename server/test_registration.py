@@ -39,6 +39,60 @@ def signup_data(email="newteacher@example.test", role="teacher", password="passw
 
 
 @pytest.mark.asyncio
+async def test_confirmation_and_reset_emails_have_clear_transactional_headers(monkeypatch):
+    """MIME formatting is testable without any real SMTP traffic."""
+    sent = []
+    for key, value in {
+        "LEKTRUS_SMTP_HOST": "smtp.example.test",
+        "LEKTRUS_SMTP_PORT": "465",
+        "LEKTRUS_SMTP_USERNAME": "system@example.test",
+        "LEKTRUS_SMTP_PASSWORD": "ci-only",
+        "LEKTRUS_SMTP_FROM": "system@example.test",
+        "LEKTRUS_PUBLIC_ORIGIN": "https://lektrus.example",
+    }.items():
+        monkeypatch.setenv(key, value)
+
+    class DummySMTP:
+        def __init__(self, host, port, *, timeout, context):
+            assert (host, port, timeout) == ("smtp.example.test", 465, 10)
+            assert context is not None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def login(self, username, password):
+            assert (username, password) == ("system@example.test", "ci-only")
+
+        def send_message(self, msg):
+            sent.append(msg)
+
+    monkeypatch.setattr(registration.smtplib, "SMTP_SSL", DummySMTP)
+    await registration.send_confirmation_email(
+        "new@example.test", "https://lektrus.example/confirm-email?token=test-token"
+    )
+    await registration.send_password_reset_email(
+        "new@example.test", "https://lektrus.example/app?password-reset=reset-token"
+    )
+    assert len(sent) == 2
+    for msg in sent:
+        assert "Lektrus" in str(msg["From"])
+        assert "system@example.test" in str(msg["From"])
+        assert msg["To"] == "new@example.test"
+        assert msg["Date"] and msg["Message-ID"]
+        assert msg["Auto-Submitted"] == "auto-generated"
+        assert msg.get_body(preferencelist=("plain",)).get_content()
+        assert msg.get_body(preferencelist=("html",)).get_content()
+        assert "dkim-signature" not in msg  # DKIM belongs to the SMTP provider.
+    assert "24 часа" in sent[0].get_body(preferencelist=("plain",)).get_content()
+    assert "30 минут" in sent[1].get_body(preferencelist=("plain",)).get_content()
+    assert "token=test-token" in sent[0].get_body(preferencelist=("html",)).get_content()
+    assert "password-reset=reset-token" in sent[1].get_body(preferencelist=("html",)).get_content()
+
+
+@pytest.mark.asyncio
 async def test_verified_teacher_signup_without_admin_privileges(client,monkeypatch):
     sent=[]
     enable_staging_mail(monkeypatch,sent)
