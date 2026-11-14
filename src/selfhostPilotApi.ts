@@ -177,9 +177,49 @@ export async function pilotRequest<T>(path:string,init:RequestInit={}):Promise<T
   return await response.json() as T;
 }
 export const pilotBoards=()=>pilotRequest<PilotBoard[]>("/api/v1/boards");
-export const pilotCreateBoard=(title:string)=>pilotRequest<PilotBoard>("/api/v1/boards",{
-  method:"POST",body:JSON.stringify({title,is_pilot:true}),
+export const pilotCreateBoard=(title:string,isPilot=true)=>pilotRequest<PilotBoard>("/api/v1/boards",{
+  method:"POST",body:JSON.stringify({title,is_pilot:isPilot}),
 });
+
+function assetEndpoint(boardId:string,assetId:string):string{
+  if(!/^[0-9a-f-]{36}$/i.test(boardId)||!/^[A-Za-z0-9_-]{1,160}$/.test(assetId))
+    throw new Error("Некорректный идентификатор вложения.");
+  return "/api/v1/boards/"+encodeURIComponent(boardId)+"/assets/"+encodeURIComponent(assetId);
+}
+async function pilotAssetRequest(path:string,init:RequestInit):Promise<Response>{
+  let session=await pilotSession();
+  if(!session)throw new PilotHttpError(401,"Войдите в тестовый аккаунт заново.");
+  let response=await rawRequest(path,init,session.access_token);
+  if(response.status===401){
+    const snapshot=loadSession();
+    if(!snapshot||snapshot.user.id!==session.user.id)
+      throw new PilotHttpError(401,"Аккаунт изменился.");
+    if(!refreshInFlight)refreshInFlight=refreshSession(snapshot).finally(()=>{refreshInFlight=null});
+    session=await refreshInFlight;
+    if(!session)throw new PilotHttpError(401,"Сессия завершена. Войдите снова.");
+    response=await rawRequest(path,init,session.access_token);
+  }
+  return response;
+}
+export async function pilotAssetExists(boardId:string,assetId:string):Promise<boolean>{
+  const response=await pilotAssetRequest(assetEndpoint(boardId,assetId),{method:"HEAD"});
+  if(response.status===404)return false;
+  if(!response.ok)throw await responseError(response);
+  return true;
+}
+export async function pilotUploadAsset(boardId:string,assetId:string,blob:Blob):Promise<void>{
+  const response=await pilotAssetRequest(assetEndpoint(boardId,assetId),{
+    method:"POST",headers:{"Content-Type":blob.type||"application/octet-stream"},body:blob,
+  });
+  if(response.status===409&&await pilotAssetExists(boardId,assetId))return;
+  if(!response.ok)throw await responseError(response);
+}
+export async function pilotDownloadAsset(boardId:string,assetId:string):Promise<Blob|null>{
+  const response=await pilotAssetRequest(assetEndpoint(boardId,assetId),{method:"GET"});
+  if(response.status===404)return null;
+  if(!response.ok)throw await responseError(response);
+  return response.blob();
+}
 export const pilotReadDocument=(boardId:string)=>pilotRequest<PilotDocument>(
   "/api/v1/boards/"+encodeURIComponent(boardId)+"/document"
 );
