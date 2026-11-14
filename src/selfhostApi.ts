@@ -361,9 +361,11 @@ export async function selfhostSignup(input:{
   email:string;password:string;name:string;first_name:string;last_name:string;
   role:"teacher"|"student";
 }):Promise<{ok:boolean;message:string}>{
+  // Signup waits for SMTP delivery on the server; keep the default timeout
+  // for ordinary API traffic, but allow the mail handshake to finish.
   const response=await rawRequest("/api/v1/auth/signup",{
     method:"POST",body:JSON.stringify(input),
-  });
+  },undefined,45000);
   if(!response.ok)throw await responseError(response);
   return response.json();
 }
@@ -380,7 +382,7 @@ export async function selfhostVerifyEmail(token:string):Promise<SelfhostSession>
 export async function selfhostRequestPasswordReset(email:string):Promise<void>{
   const response=await rawRequest("/api/v1/auth/password-reset/request",{
     method:"POST",body:JSON.stringify({email:email.trim().toLowerCase()}),
-  });
+  },undefined,45000);
   if(!response.ok)throw await responseError(response);
 }
 export async function selfhostCompletePasswordReset(token:string,password:string):Promise<void>{
