@@ -23,6 +23,7 @@ services:
       - ../../server/sql/011_board_comments.sql:/docker-entrypoint-initdb.d/011_board_comments.sql:ro
       - ../../server/sql/012_materials.sql:/docker-entrypoint-initdb.d/012_materials.sql:ro
       - ../../server/sql/013_notifications.sql:/docker-entrypoint-initdb.d/013_notifications.sql:ro
+      - ../../server/sql/014_board_organization.sql:/docker-entrypoint-initdb.d/014_board_organization.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U lektrus -d lektrus"]
       interval: 10s

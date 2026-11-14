@@ -195,6 +195,9 @@ export async function selfhostRequest<T>(path:string,init:RequestInit={}):Promis
 }
 export const selfhostBoards=()=>selfhostRequest<SelfhostBoard[]>("/api/v1/boards");
 export const selfhostNotifications=()=>selfhostRequest<any[]>("/api/v1/notifications");
+export const selfhostOrganization=()=>selfhostRequest<{categories:Array<{kind:"subject"|"group";name:string}>;boards:Array<{board_id:string;subject:string;group_name:string}>}>("/api/v1/organization");
+export const selfhostSaveBoardOrganization=(board_id:string,subject:string,group_name:string)=>selfhostRequest<{ok:boolean}>("/api/v1/organization/board",{method:"PUT",body:JSON.stringify({board_id,subject,group_name})});
+export const selfhostSaveCategory=(kind:"subject"|"group",name:string)=>selfhostRequest<{ok:boolean}>("/api/v1/organization/category",{method:"POST",body:JSON.stringify({kind,name})});
 export const selfhostReadNotification=(id:string)=>selfhostRequest<{ok:boolean}>("/api/v1/notifications/"+encodeURIComponent(id)+"/read",{method:"POST",body:"{}"});
 export const selfhostReadAllNotifications=()=>selfhostRequest<{ok:boolean}>("/api/v1/notifications/read-all",{method:"POST",body:"{}"});
 export const selfhostNotificationSettings=()=>selfhostRequest<any>("/api/v1/notification-settings");

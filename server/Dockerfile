@@ -6,7 +6,7 @@ RUN pip install --no-cache-dir -r requirements.txt \
     && useradd --create-home --uid 10001 lektrus \
     && mkdir -p /srv/lektrus-assets \
     && chown lektrus:lektrus /srv/lektrus-assets
-COPY --chown=lektrus:lektrus app.py assets.py invitations.py registration.py realtime_events.py education.py admin.py comments.py materials.py notifications.py pilot_operations.py pilot_objects.py ./
+COPY --chown=lektrus:lektrus app.py assets.py invitations.py registration.py realtime_events.py education.py admin.py comments.py materials.py notifications.py organization.py pilot_operations.py pilot_objects.py ./
 USER lektrus
 EXPOSE 8000
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

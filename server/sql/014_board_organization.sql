@@ -1,0 +1,2 @@
+create table if not exists board_organization(board_id uuid primary key references boards(id) on delete cascade,subject text not null default '',group_name text not null default '',updated_at timestamptz not null default now());
+create table if not exists teacher_categories(user_id uuid not null references account_users(id) on delete cascade,kind text not null check(kind in ('subject','group')),name text not null,primary key(user_id,kind,name));
