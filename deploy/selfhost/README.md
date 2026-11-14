@@ -84,6 +84,36 @@ in `.github/workflows/selfhost-frontend.yml`. The backend CI separately
 checks the real PostgreSQL/API and live socket permission-revocation tests.
 Run the complete pilot only on a dedicated staging domain and database.
 
+## Durable pilot ink: append, undo and history
+
+The pilot now saves completed strokes independently of document snapshots:
+
+- `POST /api/v1/boards/{board_id}/pilot/ink`: authenticated, bounded,
+  **atomic** append of up to 200 points. Two editors can append concurrently
+  without replacing one another's strokes. Each client operation has a UUID,
+  and an exact retry is returned as a duplicate without a second write.
+- `POST /api/v1/boards/{board_id}/pilot/ink/undo`: removes only the
+  authenticated author's last remaining stroke, not another user's work.
+  Retries with the same operation UUID are idempotent.
+- `GET /api/v1/boards/{board_id}/pilot/history`: returns the 100 most
+  recent operation summaries (no document payloads). The audit journal stores
+  append and undo metadata for staging diagnostics.
+- Every accepted operation increments the board's PostgreSQL document
+  version and emits a small WebSocket revision notice. Other clients reload
+  the authoritative document and can still see strokes after refreshing.
+  Transient previews are hidden when they have been saved or undone.
+- The `boards.is_pilot` server-side flag defaults to false; **imported and
+  ordinary boards are not eligible** even if an editor adds
+  `pilot_schema: 1` to the document JSON. The test UI creates only
+  explicitly flagged pilot boards.
+
+**Still incomplete:** this is a lightweight staging drawing schema, not the
+native Lektrus stroke model. The full editor's undo stack, selection/group
+operations, rich object formats, history rollback and transport are still
+supabase-dependent. Every saved stroke currently rewrites a small JSONB
+pilot document under a PostgreSQL lock; limits are 500 strokes/board and
+2 MB/document. Do not treat the pilot as a production drawing engine.
+
 ## Live collaboration pilot (cursor + ink)
 
 The same authenticated board WebSocket now carries cursor positions and
