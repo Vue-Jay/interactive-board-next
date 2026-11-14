@@ -24,6 +24,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request, WebSocket,
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from realtime_events import EventRateLimit, InvalidLiveEvent, MAX_EVENT_BYTES, validate_live_event
+from schema import apply_schema
 
 ISSUER = "lektrus-selfhost"
 AUDIENCE = "lektrus"
@@ -56,7 +57,10 @@ async def lifespan(app: FastAPI):
     )
     try:
         async with app.state.pool.acquire() as conn:
-            await conn.fetchval("SELECT 1")
+            if os.getenv("LEKTRUS_APPLY_SCHEMA") == "true":
+                await apply_schema(conn)
+            else:
+                await conn.fetchval("SELECT 1")
         yield
     finally:
         await app.state.pool.close()

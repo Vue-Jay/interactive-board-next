@@ -10,22 +10,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a strong PostgreSQL password}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ../../server/sql/001_initial.sql:/docker-entrypoint-initdb.d/001_initial.sql:ro
-      - ../../server/sql/002_board_assets.sql:/docker-entrypoint-initdb.d/002_board_assets.sql:ro
-      - ../../server/sql/003_board_invites.sql:/docker-entrypoint-initdb.d/003_board_invites.sql:ro
-      - ../../server/sql/004_account_verification.sql:/docker-entrypoint-initdb.d/004_account_verification.sql:ro
-      - ../../server/sql/005_pilot_operations.sql:/docker-entrypoint-initdb.d/005_pilot_operations.sql:ro
-      - ../../server/sql/006_pilot_board_flag.sql:/docker-entrypoint-initdb.d/006_pilot_board_flag.sql:ro
-      - ../../server/sql/007_pilot_object_operations.sql:/docker-entrypoint-initdb.d/007_pilot_object_operations.sql:ro
-      - ../../server/sql/008_education_core.sql:/docker-entrypoint-initdb.d/008_education_core.sql:ro
-      - ../../server/sql/009_admin_core.sql:/docker-entrypoint-initdb.d/009_admin_core.sql:ro
-      - ../../server/sql/010_password_recovery.sql:/docker-entrypoint-initdb.d/010_password_recovery.sql:ro
-      - ../../server/sql/011_board_comments.sql:/docker-entrypoint-initdb.d/011_board_comments.sql:ro
-      - ../../server/sql/012_materials.sql:/docker-entrypoint-initdb.d/012_materials.sql:ro
-      - ../../server/sql/013_notifications.sql:/docker-entrypoint-initdb.d/013_notifications.sql:ro
-      - ../../server/sql/014_board_organization.sql:/docker-entrypoint-initdb.d/014_board_organization.sql:ro
-      - ../../server/sql/015_direct_chats.sql:/docker-entrypoint-initdb.d/015_direct_chats.sql:ro
-      - ../../server/sql/016_board_share_links.sql:/docker-entrypoint-initdb.d/016_board_share_links.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U lektrus -d lektrus"]
       interval: 10s
@@ -37,6 +21,7 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://lektrus:${POSTGRES_PASSWORD:?Set password}@db:5432/lektrus
+      LEKTRUS_APPLY_SCHEMA: "true"
       LEKTRUS_JWT_SECRET: ${LEKTRUS_JWT_SECRET:?Set a random 32+ byte secret}
       LEKTRUS_ALLOWED_ORIGINS: ${LEKTRUS_SITE_ORIGIN:?Set the HTTPS site origin}
       LEKTRUS_ASSETS_DIR: /srv/lektrus-assets
@@ -50,21 +35,29 @@ services:
       LEKTRUS_SMTP_FROM: ${LEKTRUS_SMTP_FROM:-}
     depends_on:
       db: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3).close()"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     volumes:
       - assetsdata:/srv/lektrus-assets
     networks: [internal]
   web:
-    image: caddy:2.10.2-alpine
+    build:
+      context: ../..
+      dockerfile: deploy/selfhost/web.Dockerfile
+      args:
+        LEKTRUS_SITE_ORIGIN: ${LEKTRUS_SITE_ORIGIN:?Set the HTTPS site origin}
     restart: unless-stopped
     environment:
       LEKTRUS_DOMAIN: ${LEKTRUS_DOMAIN:?Set a valid domain}
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ../../dist:/srv/web:ro
       - caddy_data:/data
       - caddy_config:/config
     ports: ["80:80", "443:443"]
-    depends_on: [api]
+    depends_on:
+      api: {condition: service_healthy}
     networks: [internal]
 networks:
   internal:

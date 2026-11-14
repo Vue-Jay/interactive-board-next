@@ -5,7 +5,6 @@ No connection to real Lectrus/Supabase data is used by these tests.
 import asyncio
 import json
 import os
-from pathlib import Path
 from uuid import UUID
 
 import asyncpg
@@ -15,6 +14,7 @@ import pytest
 import pytest_asyncio
 
 from app import app, _login_attempts
+from schema import apply_schema
 
 TEACHER = UUID("00000000-0000-4000-8000-000000000001")
 STUDENT = UUID("00000000-0000-4000-8000-000000000002")
@@ -27,23 +27,7 @@ async def client():
     # Production rate limiting remains enabled and unchanged.
     _login_attempts.clear()
     connection = await asyncpg.connect(os.environ["DATABASE_URL"])
-    sql_dir = Path(__file__).with_name("sql")
-    await connection.execute(sql_dir.joinpath("001_initial.sql").read_text())
-    await connection.execute(sql_dir.joinpath("002_board_assets.sql").read_text())
-    await connection.execute(sql_dir.joinpath("003_board_invites.sql").read_text())
-    await connection.execute(sql_dir.joinpath("004_account_verification.sql").read_text())
-    await connection.execute(sql_dir.joinpath("005_pilot_operations.sql").read_text())
-    await connection.execute(sql_dir.joinpath("006_pilot_board_flag.sql").read_text())
-    await connection.execute(sql_dir.joinpath("007_pilot_object_operations.sql").read_text())
-    await connection.execute(sql_dir.joinpath("008_education_core.sql").read_text())
-    await connection.execute(sql_dir.joinpath("009_admin_core.sql").read_text())
-    await connection.execute(sql_dir.joinpath("010_password_recovery.sql").read_text())
-    await connection.execute(sql_dir.joinpath("011_board_comments.sql").read_text())
-    await connection.execute(sql_dir.joinpath("012_materials.sql").read_text())
-    await connection.execute(sql_dir.joinpath("013_notifications.sql").read_text())
-    await connection.execute(sql_dir.joinpath("014_board_organization.sql").read_text())
-    await connection.execute(sql_dir.joinpath("015_direct_chats.sql").read_text())
-    await connection.execute(sql_dir.joinpath("016_board_share_links.sql").read_text())
+    await apply_schema(connection)
     await connection.execute(
         "TRUNCATE account_sessions,board_documents,board_members,boards,account_users CASCADE"
     )

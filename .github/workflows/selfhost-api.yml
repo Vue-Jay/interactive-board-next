@@ -63,14 +63,19 @@ jobs:
           done
           curl -fsS http://127.0.0.1:8000/api/v1/health | grep -q '"ok":true'
           docker exec lektrus-selfhost-smoke python -c 'from pathlib import Path; p=Path("/srv/lektrus-assets/.probe"); p.write_bytes(b"ok"); assert p.read_bytes()==b"ok"; p.unlink()'
-      - name: Validate VPS Compose and Caddy configuration
+      - name: Build and boot the complete VPS stack with an empty database
         env:
-          LEKTRUS_DOMAIN: lektrus.example
+          LEKTRUS_DOMAIN: http://lektrus.example
           LEKTRUS_SITE_ORIGIN: https://lektrus.example
           POSTGRES_PASSWORD: ci-only-password
           LEKTRUS_JWT_SECRET: ci-only-secret-not-for-production-1234567890
         run: |
-          docker compose -f deploy/selfhost/compose.yaml config -q
-          docker run --rm -e LEKTRUS_DOMAIN=lektrus.example \
-            -v "$PWD/deploy/selfhost/Caddyfile:/etc/caddy/Caddyfile:ro" \
-            caddy:2.10.2-alpine caddy validate --config /etc/caddy/Caddyfile
+          set -euo pipefail
+          compose=(docker compose -f deploy/selfhost/compose.yaml)
+          trap '"${compose[@]}" logs; "${compose[@]}" down -v' EXIT
+          "${compose[@]}" config -q
+          "${compose[@]}" up --build --wait --wait-timeout 120
+          curl --retry 10 --retry-connrefused --retry-delay 1 -fsS -H 'Host: lektrus.example' http://127.0.0.1/app | grep -q '/assets/'
+          curl -fsS -H 'Host: lektrus.example' http://127.0.0.1/api/v1/health | grep -q '"ok":true'
+          "${compose[@]}" exec -T db psql -U lektrus -d lektrus -Atc \
+            "SELECT filename FROM lektrus_schema_versions ORDER BY filename DESC LIMIT 1;" | grep -q '^016_board_share_links.sql$'
