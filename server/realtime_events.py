@@ -288,7 +288,7 @@ def validate_live_event(frame: Any, *, role: str, user_id: str,
                 not 1 <= width <= 10000 or not 1 <= height <= 10000):
             raise InvalidLiveEvent("invalid_attachment_dimensions")
         return {"type": kind, **identity, "request_id": request_id,
-                "asset_id": asset_id, "name": name, "mime": mime,
+                "asset_id": asset_id, "attachment_name": name, "mime": mime,
                 "kind": attachment_kind, "width": width, "height": height,
                 "sent_at": int(time.time() * 1000)}
 
@@ -305,7 +305,7 @@ def validate_live_event(frame: Any, *, role: str, user_id: str,
             raise InvalidLiveEvent("invalid_attachment_result")
         return {"type": kind, **identity, "request_id": request_id,
                 "target_user_id": target, "approved": approved,
-                "name": attachment_name, "sent_at": int(time.time() * 1000)}
+                "attachment_name": attachment_name, "sent_at": int(time.time() * 1000)}
 
     raise InvalidLiveEvent("unsupported_event")
 
