@@ -28,6 +28,13 @@ services:
       LEKTRUS_JWT_SECRET: ${LEKTRUS_JWT_SECRET:?Set a random 32+ byte secret}
       LEKTRUS_ALLOWED_ORIGINS: ${LEKTRUS_SITE_ORIGIN:?Set the HTTPS site origin}
       LEKTRUS_ASSETS_DIR: /srv/lektrus-assets
+      LEKTRUS_ENABLE_REGISTRATION: ${LEKTRUS_ENABLE_REGISTRATION:-false}
+      LEKTRUS_PUBLIC_ORIGIN: ${LEKTRUS_SITE_ORIGIN:?Set site origin}
+      LEKTRUS_SMTP_HOST: ${LEKTRUS_SMTP_HOST:-}
+      LEKTRUS_SMTP_PORT: ${LEKTRUS_SMTP_PORT:-465}
+      LEKTRUS_SMTP_USERNAME: ${LEKTRUS_SMTP_USERNAME:-}
+      LEKTRUS_SMTP_PASSWORD: ${LEKTRUS_SMTP_PASSWORD:-}
+      LEKTRUS_SMTP_FROM: ${LEKTRUS_SMTP_FROM:-}
     depends_on:
       db: {condition: service_healthy}
     volumes:
