@@ -6958,25 +6958,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     commit([...itemsRef.current,item]);setSelected([item.id]);setTool("select");
     closeElementsMenu();
   };
-  const createUniversalSubjectBoard=()=>{
-    if(!canEdit||!toolAllowedForRole("graph")){
-      setNotice("Недостаточно прав для создания учебной доски");return;
-    }
-    const tone=subjectToneForSubject(lectrisBoardOrganization.subject);
-    if(!tone){
-      setNotice("Сначала выберите предмет доски в предметных инструментах");
-      setDesktopToolsExpanded(false);setMobileToolsOpen(false);
-      return;
-    }
-    finishEdit();
-    const rect=board.current?.getBoundingClientRect();
-    const x=((rect?.width||boardViewportSize.width||1000)/2-view.x)/view.zoom;
-    const y=((rect?.height||boardViewportSize.height||700)/2-view.y)/view.zoom;
-    const item=makeSubjectToolItem(("subject-board-"+tone) as SubjectToolId,x,y,createId);
-    commit([...itemsRef.current,item]);setSelected([item.id]);setTool("select");
-    setDesktopToolsExpanded(false);setMobileToolsOpen(false);setSubjectToolsOpen(false);
-    setNotice(subjectAccentPalette[tone].label+": доска добавлена");
-  };
   const elementCatalogueProps={
     onTool:(id:"text"|"sticky"|"table"|"frame")=>{
       if(!canEdit||!toolAllowedForRole(id)){setNotice("Недостаточно прав для добавления объекта");return}
@@ -9343,7 +9324,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             </div>)}
           </div>
         </LektrusToolOverflow>}
-        {subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} canChangeSubject={canManageBoard&&boardSummary.ownerId===authUser.id} canCreateBoard={canEdit&&toolAllowedForRole("graph")} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.filter(entry=>canEdit&&toolAllowedForRole(entry.id==="math-formula"?"formula":"graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,group:entry.group,icon:<LektrusSubjectToolIcon id={entry.id} size={24}/>}))} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onCreateBoard={createUniversalSubjectBoard} onChoose={id=>{
+        {subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} canChangeSubject={canManageBoard&&boardSummary.ownerId===authUser.id} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.filter(entry=>canEdit&&toolAllowedForRole(entry.id==="math-formula"?"formula":"graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,group:entry.group,icon:<LektrusSubjectToolIcon id={entry.id} size={24}/>}))} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
           finishEdit();
           if(mathematicalSubjectTools.some(entry=>entry.id===id)){
             if(!canEdit||!toolAllowedForRole(id==="math-formula"?"formula":"graph")){setNotice("Недостаточно прав для создания предметного инструмента");return}
