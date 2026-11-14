@@ -3706,7 +3706,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           importedIds.set(asset.id, id);
         } catch (error) {
           // Preserve v19 local imports even when one attachment is damaged.
-          if (remoteEnabled) throw error;
+          if (documentSyncEnabled) throw error;
         }
       }
       data.items = data.items.map(item => item.assetId && importedIds.has(item.assetId)
