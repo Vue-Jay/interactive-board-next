@@ -1,0 +1,48 @@
+# Run only after a dedicated VPS, domain, backups, and isolated data import exist.
+# No port for PostgreSQL or the API is exposed to the public Internet.
+services:
+  db:
+    image: postgres:17.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lektrus
+      POSTGRES_DB: lektrus
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a strong PostgreSQL password}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../../server/sql/001_initial.sql:/docker-entrypoint-initdb.d/001_initial.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lektrus -d lektrus"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks: [internal]
+  api:
+    build: ../../server
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://lektrus:${POSTGRES_PASSWORD:?Set password}@db:5432/lektrus
+      LEKTRUS_JWT_SECRET: ${LEKTRUS_JWT_SECRET:?Set a random 32+ byte secret}
+      LEKTRUS_ALLOWED_ORIGINS: ${LEKTRUS_SITE_ORIGIN:?Set the HTTPS site origin}
+    depends_on:
+      db: {condition: service_healthy}
+    networks: [internal]
+  web:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    environment:
+      LEKTRUS_DOMAIN: ${LEKTRUS_DOMAIN:?Set a valid domain}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../../dist:/srv/web:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    ports: ["80:80", "443:443"]
+    depends_on: [api]
+    networks: [internal]
+networks:
+  internal:
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
