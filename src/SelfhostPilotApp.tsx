@@ -201,7 +201,7 @@ export default function SelfhostPilotApp(){
     setBusy(true);savingRef.current=true;setError("");
     try{
       const result=await pilotSaveDocument(board,base.version,{
-        ...base.document,pilot_schema:1,note,items:base.document?.items||[],ink:base.document?.ink||[],
+        ...(base.document||{}),pilot_schema:1,note,items:base.document?.items||[],ink:base.document?.ink||[],
       });
       if(boardId===board){applyDocument(result);setNotice("Сохранено, версия "+result.version);}
     }catch(failure){
