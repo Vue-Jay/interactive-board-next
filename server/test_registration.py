@@ -218,6 +218,64 @@ async def test_pending_signup_retry_and_expired_link(client,monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_password_recovery_is_private_single_use_and_revokes_sessions(client,monkeypatch):
+    sent=[]
+    enable_staging_mail(monkeypatch,sent)
+    login,headers=await sign_in(client,"teacher@example.test")
+
+    unknown=await client.post("/api/v1/auth/password-reset/request",json={
+        "email":"unknown@example.test"
+    })
+    known=await client.post("/api/v1/auth/password-reset/request",json={
+        "email":"TEACHER@example.test"
+    })
+    assert unknown.status_code==known.status_code==202
+    assert unknown.json()==known.json()
+    assert len(sent)==1 and sent[0][0]=="teacher@example.test"
+    link=sent[0][1]
+    assert "/app?password-reset=" in link
+    token=parse_qs(urlsplit(link).query)["password-reset"][0]
+    async with app.state.pool.acquire() as conn:
+        stored=await conn.fetchrow(
+            "SELECT token_sha256,expires_at FROM account_password_resets WHERE user_id=$1",
+            UUID(login["user"]["id"]),
+        )
+        assert stored["token_sha256"]!=token
+        assert stored["expires_at"]>datetime.now(timezone.utc)
+
+    completed=await client.post("/api/v1/auth/password-reset/complete",json={
+        "token":token,"password":"new-safe-password-456"
+    })
+    assert completed.status_code==200,completed.text
+    assert (await client.get("/api/v1/auth/me",headers=headers)).status_code==401
+    assert (await client.post("/api/v1/auth/password-reset/complete",json={
+        "token":token,"password":"another-safe-password-789"
+    })).status_code==400
+    assert (await client.post("/api/v1/auth/login",json={
+        "email":"teacher@example.test","password":"new-safe-password-456"
+    })).status_code==200
+    assert (await client.post("/api/v1/auth/login",json={
+        "email":"teacher@example.test","password":"integration-test-password"
+    })).status_code==401
+
+
+@pytest.mark.asyncio
+async def test_password_recovery_rejects_expired_link(client,monkeypatch):
+    sent=[]
+    enable_staging_mail(monkeypatch,sent)
+    await client.post("/api/v1/auth/password-reset/request",json={"email":"teacher@example.test"})
+    token=parse_qs(urlsplit(sent[0][1]).query)["password-reset"][0]
+    async with app.state.pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE account_password_resets SET expires_at=now()-interval '1 second'"
+        )
+    response=await client.post("/api/v1/auth/password-reset/complete",json={
+        "token":token,"password":"new-safe-password-456"
+    })
+    assert response.status_code==400
+
+
+@pytest.mark.asyncio
 async def test_registration_disabled_or_no_mail_fails_closed(client,monkeypatch):
     registration._attempts.clear()
     data=signup_data(email="offline@example.test")

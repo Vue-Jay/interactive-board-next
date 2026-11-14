@@ -1,7 +1,7 @@
 import { LEKTRUS_LOCAL_TEST_MODE, LEKTRUS_LOCAL_TEST_USER } from "./lektrusLocalTestMode";
 import { setLocalAccountRole, type AccountRole } from "./accountRoleStore";
 import { claimRemoteInvitations, completeEmailConfirmationRemote, getCachedRemoteSession, getRemoteSession, isRemoteBackendEnabled, signInRemote, signInAnonymousRemote, signOutRemote, signUpRemote, resendSignupOtpRemote, getRememberedRemoteAccount, resumeRememberedRemoteAccount, leaveRemoteAccountRemembered, clearRememberedRemoteAccount } from "./backend";
-import { getCachedSelfhostSession, getSelfhostSession, isSelfhostBackendEnabled, selfhostClaimInvitations, selfhostLogin, selfhostLogout, selfhostSignup, selfhostVerifyEmail, type SelfhostSession } from "./selfhostApi";
+import { clearSelfhostSession, getCachedSelfhostSession, getSelfhostSession, isSelfhostBackendEnabled, selfhostClaimInvitations, selfhostLogin, selfhostLogout, selfhostSignup, selfhostVerifyEmail, selfhostRequestPasswordReset, selfhostCompletePasswordReset, type SelfhostSession } from "./selfhostApi";
 
 export type BoardRole = "owner" | "editor" | "viewer";
 export const BOARD_ROLE_LABELS: Record<BoardRole, string> = { owner:"Владелец", editor:"Редактор", viewer:"Просмотр" };
@@ -92,6 +92,18 @@ export const resendRegistrationCode=async(email:string):Promise<void>=>{
  }
  if(!isRemoteBackendEnabled())throw new Error("Подтверждение почты доступно после подключения сервера.");
  await resendSignupOtpRemote(email);
+};
+
+export const requestPasswordReset=async(email:string):Promise<void>=>{
+ if(!isSelfhostBackendEnabled())throw new Error("Восстановление пароля доступно после подключения нового сервера.");
+ await selfhostRequestPasswordReset(normalizeEmail(email));
+};
+export const completePasswordReset=async(token:string,password:string):Promise<void>=>{
+ if(!isSelfhostBackendEnabled())throw new Error("Восстановление пароля доступно после подключения нового сервера.");
+ if(password.length<6)throw new Error("Пароль должен содержать минимум 6 символов");
+ if(new TextEncoder().encode(password).length>72)throw new Error("Пароль слишком длинный");
+ await selfhostCompletePasswordReset(token,password);
+ clearSelfhostSession();
 };
 
 export const loginUser=async(input:{email:string;password:string}):Promise<AuthUser>=>{

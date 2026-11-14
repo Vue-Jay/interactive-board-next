@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import logging
 import os
 import secrets
 import smtplib
@@ -38,6 +39,15 @@ class SignupInput(BaseModel):
 
 class VerifyEmailInput(BaseModel):
     token: str = Field(min_length=32, max_length=200)
+
+
+class PasswordResetRequestInput(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+
+
+class PasswordResetInput(BaseModel):
+    token: str = Field(min_length=32, max_length=200)
+    password: str = Field(min_length=6, max_length=72)
 
 
 _attempts: dict[str, deque[float]] = defaultdict(deque)
@@ -91,6 +101,35 @@ async def send_confirmation_email(email: str, link: str) -> None:
             "Для подтверждения адреса электронной почты Lektrus откройте ссылку:\n"
             + link + "\n\nСсылка действует 24 часа. Если вы не регистрировались, "
             "не открывайте её.\n"
+        )
+        context = ssl.create_default_context()
+        if port == 465:
+            with smtplib.SMTP_SSL(host, port, timeout=10, context=context) as smtp:
+                smtp.login(username, password)
+                smtp.send_message(msg)
+        else:
+            with smtplib.SMTP(host, port, timeout=10) as smtp:
+                smtp.ehlo()
+                smtp.starttls(context=context)
+                smtp.ehlo()
+                smtp.login(username, password)
+                smtp.send_message(msg)
+
+    await asyncio.to_thread(send)
+
+
+async def send_password_reset_email(email: str, link: str) -> None:
+    host, port, username, password, sender, _ = server_mail_config()
+
+    def send() -> None:
+        msg = EmailMessage()
+        msg["From"] = sender
+        msg["To"] = email
+        msg["Subject"] = "Восстановление пароля Lektrus"
+        msg.set_content(
+            "Чтобы задать новый пароль Lektrus, откройте ссылку:\n"
+            + link + "\n\nСсылка действует 30 минут. Если вы не запрашивали "
+            "смену пароля, просто проигнорируйте это письмо.\n"
         )
         context = ssl.create_default_context()
         if port == 465:
@@ -231,5 +270,66 @@ def make_registration_router() -> APIRouter:
                 # same rotated session format as the login endpoint.
                 session = await issue_tokens(conn, user)
         return session
+
+    @router.post("/api/v1/auth/password-reset/request", status_code=202)
+    async def request_password_reset(data: PasswordResetRequestInput, request: Request):
+        _, _, _, _, _, origin = server_mail_config()
+        email = normalize_email(data.email)
+        throttle("password-reset:" + email)
+        token = secrets.token_urlsafe(48)
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        async with request.app.state.pool.acquire() as conn:
+            user = await conn.fetchrow(
+                "SELECT id,email FROM account_users WHERE email=$1 AND email_confirmed_at IS NOT NULL",
+                email,
+            )
+            if user is not None:
+                await conn.execute(
+                    """INSERT INTO account_password_resets(user_id,token_sha256,expires_at)
+                       VALUES($1,$2,now()+interval '30 minutes')
+                       ON CONFLICT(user_id) DO UPDATE SET
+                         token_sha256=excluded.token_sha256,expires_at=excluded.expires_at,
+                         created_at=now()""",
+                    user["id"], token_hash,
+                )
+        if user is not None:
+            link = origin + "/app?password-reset=" + quote(token, safe="")
+            try:
+                await send_password_reset_email(email, link)
+            except Exception:
+                # Keep unknown, known and delivery-failure responses identical.
+                logging.getLogger(__name__).warning("Password reset email delivery failed")
+        return {"ok": True, "message": "Если аккаунт существует, письмо для восстановления отправлено."}
+
+    @router.post("/api/v1/auth/password-reset/complete")
+    async def complete_password_reset(data: PasswordResetInput, request: Request):
+        if len(data.password.encode("utf-8")) > 72:
+            raise HTTPException(422, "Пароль слишком длинный.")
+        new_hash = await asyncio.to_thread(
+            bcrypt.hashpw, data.password.encode("utf-8"), bcrypt.gensalt()
+        )
+        token_hash = hashlib.sha256(data.token.encode()).hexdigest()
+        async with request.app.state.pool.acquire() as conn:
+            async with conn.transaction():
+                row = await conn.fetchrow(
+                    """SELECT user_id FROM account_password_resets
+                       WHERE token_sha256=$1 AND expires_at>now() FOR UPDATE""",
+                    token_hash,
+                )
+                if row is None:
+                    raise HTTPException(400, "Ссылка восстановления недействительна или истекла.")
+                changed = await conn.fetchval(
+                    """UPDATE account_users SET password_hash=$2
+                       WHERE id=$1 AND email_confirmed_at IS NOT NULL RETURNING id""",
+                    row["user_id"], new_hash.decode(),
+                )
+                if changed is None:
+                    raise HTTPException(400, "Ссылка восстановления недействительна или истекла.")
+                await conn.execute("DELETE FROM account_password_resets WHERE user_id=$1", row["user_id"])
+                await conn.execute(
+                    "UPDATE account_sessions SET revoked_at=now() WHERE user_id=$1 AND revoked_at IS NULL",
+                    row["user_id"],
+                )
+        return {"ok": True}
 
     return router

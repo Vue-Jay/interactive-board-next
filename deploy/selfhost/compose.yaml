@@ -19,6 +19,7 @@ services:
       - ../../server/sql/007_pilot_object_operations.sql:/docker-entrypoint-initdb.d/007_pilot_object_operations.sql:ro
       - ../../server/sql/008_education_core.sql:/docker-entrypoint-initdb.d/008_education_core.sql:ro
       - ../../server/sql/009_admin_core.sql:/docker-entrypoint-initdb.d/009_admin_core.sql:ro
+      - ../../server/sql/010_password_recovery.sql:/docker-entrypoint-initdb.d/010_password_recovery.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U lektrus -d lektrus"]
       interval: 10s

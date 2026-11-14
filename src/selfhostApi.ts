@@ -347,6 +347,19 @@ export async function selfhostVerifyEmail(token:string):Promise<SelfhostSession>
   return session;
 }
 
+export async function selfhostRequestPasswordReset(email:string):Promise<void>{
+  const response=await rawRequest("/api/v1/auth/password-reset/request",{
+    method:"POST",body:JSON.stringify({email:email.trim().toLowerCase()}),
+  });
+  if(!response.ok)throw await responseError(response);
+}
+export async function selfhostCompletePasswordReset(token:string,password:string):Promise<void>{
+  const response=await rawRequest("/api/v1/auth/password-reset/complete",{
+    method:"POST",body:JSON.stringify({token,password}),
+  });
+  if(!response.ok)throw await responseError(response);
+}
+
 
 /** Version notices only: actual board document is fetched once after a new revision. */
 export function selfhostSubscribeBoard(
