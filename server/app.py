@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
 import os
 import secrets
 import time
@@ -79,6 +80,50 @@ app.add_middleware(
     allow_methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+
+
+class SlowRequestLogger:
+    """Measure completed HTTP requests using route patterns, never request URLs.
+
+    ASGI wrapping does not read request bodies, alter responses, or wrap the
+    long-lived WebSocket connections. Non-HTTP traffic is passed through.
+    """
+
+    def __init__(self, app, threshold_ms: int = 1000):
+        self.app = app
+        self.threshold_ms = threshold_ms
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        started = time.perf_counter()
+        status = 500
+
+        async def capture_status(message):
+            nonlocal status
+            if message["type"] == "http.response.start":
+                status = int(message["status"])
+            await send(message)
+
+        try:
+            await self.app(scope, receive, capture_status)
+        finally:
+            duration_ms = round((time.perf_counter() - started) * 1000)
+            if duration_ms >= self.threshold_ms:
+                # FastAPI/Starlette populate "route" with the template; never
+                # log scope["path"], query strings, headers or response bodies.
+                route = scope.get("route")
+                pattern = getattr(route, "path", "unmatched")
+                logging.getLogger("lektrus.slow_http").warning(
+                    "Slow HTTP %s %s status=%d duration_ms=%d",
+                    scope.get("method", "?"), pattern, status, duration_ms
+                )
+
+
+app.add_middleware(SlowRequestLogger)
 
 def error(status: int, message: str):
     raise HTTPException(status_code=status, detail=message)
