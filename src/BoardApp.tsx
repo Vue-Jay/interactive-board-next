@@ -3185,7 +3185,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if (queued && !deferred)
         void pushRemoteSnapshot(snapshot.current??queued);
     }
-  }, [boardSummary.id, canEdit, layoutEditing]);
+  }, [boardSummary.id, canEdit, layoutEditing, documentSyncEnabled, selfhostMode, adminMaintenance]);
 
   const flushSave = useCallback(() => {
     if (!canEdit || layoutEditing) return;
@@ -3253,7 +3253,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       saveFailure.current={step:"подготовка документа",message:error instanceof Error?error.message:String(error)};
       setSaveStatus("Не удалось подготовить документ к сохранению");
     }
-  }, [authUser.id, boardSummary.id, onBoardChanged, storageKey, canEdit, layoutEditing, pushRemoteSnapshot]);
+  }, [authUser.id, boardSummary.id, onBoardChanged, storageKey, canEdit, layoutEditing, pushRemoteSnapshot, documentSyncEnabled, selfhostMode, demoMode]);
 
   // A gesture is saved only when completed; in-progress text is saved too.
   useEffect(() => {
