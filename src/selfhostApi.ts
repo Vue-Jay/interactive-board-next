@@ -12,6 +12,10 @@ export type SelfhostUser = {
   account_role: SelfhostRole;
   teacher_status: "none" | "pending" | "approved" | "rejected";
   is_admin: boolean;
+  requested_at?: string | null;
+  reviewed_at?: string | null;
+  subscription_plan?: "free" | "teacher" | "pro";
+  subscription_until?: string | null;
 };
 export type SelfhostSession = {access_token:string;refresh_token:string;expires_at:number;user:SelfhostUser};
 export type SelfhostBoard = {
@@ -258,6 +262,71 @@ export const selfhostInvite=(boardId:string,email:string,role:"editor"|"viewer")
 export const selfhostClaimInvitations=()=>selfhostRequest<{claimed:number}>(
   "/api/v1/invitations/claim",{method:"POST"}
 );
+
+export async function selfhostMe():Promise<SelfhostUser>{
+  const user=await selfhostRequest<SelfhostUser>("/api/v1/auth/me");
+  const current=loadSession();
+  if(current)saveSession({...current,user});
+  return user;
+}
+export const selfhostRequestTeacherAccess=(application:{
+  phone:string;city:string;organization:string;focusArea:string;experience:string;motivation:string;
+})=>selfhostRequest<SelfhostUser>("/api/v1/account/teacher-request",{
+  method:"POST",body:JSON.stringify(application),
+});
+export const selfhostSetStudentRole=()=>selfhostRequest<SelfhostUser>(
+  "/api/v1/account/role/student",{method:"POST"}
+);
+export type SelfhostAdminUser={
+  user_id:string;name:string;email:string;role:"teacher"|"student";
+  teacher_status:"none"|"pending"|"approved"|"rejected";is_admin:boolean;
+  subscription_plan:"free"|"teacher"|"pro";subscription_until:string|null;created_at:string;
+};
+export type SelfhostTeacherRequest={
+  user_id:string;name:string;email:string;status:"pending"|"approved"|"rejected";
+  requested_at:string|null;reviewed_at:string|null;
+  application:{phone?:string;city?:string;organization?:string;focusArea?:string;experience?:string;motivation?:string}|null;
+};
+export type SelfhostAdminBoard={
+  id:string;owner_id:string;title:string;owner_name:string;owner_email:string;
+  member_count:number;created_at:string;updated_at:string;deleted_at:string|null;
+};
+export type SelfhostProductFeedback={
+  id:string;user_id:string|null;name:string;email:string;
+  topic:"Предложение"|"Отзыв о сервисе"|"Сообщить о проблеме"|"Другое";
+  message:string;source:"site"|"app";status:"new"|"reviewed"|"closed";created_at:string;
+};
+export const selfhostAdminUsers=()=>selfhostRequest<SelfhostAdminUser[]>("/api/v1/admin/users");
+export const selfhostAdminTeacherRequests=()=>selfhostRequest<SelfhostTeacherRequest[]>("/api/v1/admin/teacher-requests");
+export const selfhostReviewTeacherRequest=(userId:string,approve:boolean)=>selfhostRequest<{ok:boolean;status:string}>(
+  "/api/v1/admin/teacher-requests/"+encodeURIComponent(userId)+"/review",{
+    method:"POST",body:JSON.stringify({approve}),
+  }
+);
+export const selfhostAdminSetSubscription=(userId:string,plan:"free"|"teacher"|"pro",until:string|null)=>
+  selfhostRequest<{ok:boolean}>("/api/v1/admin/users/"+encodeURIComponent(userId)+"/subscription",{
+    method:"PATCH",body:JSON.stringify({plan,until}),
+  });
+export const selfhostAdminBoards=()=>selfhostRequest<SelfhostAdminBoard[]>("/api/v1/admin/boards");
+export const selfhostAdminUserWorkspace=(userId:string)=>selfhostRequest<SelfhostAdminBoard[]>(
+  "/api/v1/admin/users/"+encodeURIComponent(userId)+"/boards"
+);
+export async function selfhostSubmitProductFeedback(input:{
+  name:string;email:string;topic:"Предложение"|"Отзыв о сервисе"|"Сообщить о проблеме"|"Другое";
+  message:string;source:"site"|"app";
+}):Promise<SelfhostProductFeedback>{
+  const response=await rawRequest("/api/v1/feedback",{
+    method:"POST",body:JSON.stringify(input),
+  });
+  if(!response.ok)throw await responseError(response);
+  return response.json();
+}
+export const selfhostAdminFeedback=()=>selfhostRequest<SelfhostProductFeedback[]>("/api/v1/admin/feedback");
+export const selfhostUpdateProductFeedbackStatus=(id:string,status:"new"|"reviewed"|"closed")=>
+  selfhostRequest<SelfhostProductFeedback>("/api/v1/admin/feedback/"+encodeURIComponent(id),{
+    method:"PATCH",body:JSON.stringify({status}),
+  });
+
 export async function selfhostSignup(input:{
   email:string;password:string;name:string;first_name:string;last_name:string;
   role:"teacher"|"student";
