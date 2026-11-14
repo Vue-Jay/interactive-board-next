@@ -538,3 +538,5 @@ from registration import make_registration_router
 app.include_router(make_registration_router())
 from pilot_operations import make_pilot_operations_router
 app.include_router(make_pilot_operations_router(current_user, board_access, announce))
+from pilot_objects import make_pilot_objects_router
+app.include_router(make_pilot_objects_router(current_user, board_access, announce))
