@@ -5,6 +5,7 @@ No connection to real Lectrus/Supabase data is used by these tests.
 import asyncio
 import json
 import os
+from types import SimpleNamespace
 from uuid import UUID
 
 import asyncpg
@@ -15,6 +16,61 @@ import pytest_asyncio
 
 from app import app, _login_attempts
 from schema import apply_schema
+
+@pytest.mark.asyncio
+async def test_slow_http_logging_uses_route_pattern_not_private_request_path(caplog):
+    from app import SlowRequestLogger
+
+    async def fake_api(scope, _receive, send):
+        scope["route"] = SimpleNamespace(
+            path="/api/v1/boards/{board_id}/document"
+        )
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"ok"})
+
+    path = "/api/v1/boards/123-private-id/document"
+    scope = {
+        "type": "http",
+        "method": "PUT",
+        "path": path,
+        "query_string": b"token=private-token",
+        "headers": [(b"authorization", b"Bearer private-token")],
+    }
+    captured = []
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message):
+        captured.append(message)
+
+    with caplog.at_level("WARNING", logger="lektrus.slow_http"):
+        await SlowRequestLogger(fake_api, threshold_ms=0)(
+            scope, receive, send
+        )
+    assert captured[0]["status"] == 200
+    assert captured[1]["body"] == b"ok"
+    assert "Slow HTTP PUT /api/v1/boards/{board_id}/document status=200" in caplog.text
+    assert path not in caplog.text
+    assert "private-token" not in caplog.text
+
+    caplog.clear()
+    with caplog.at_level("WARNING", logger="lektrus.slow_http"):
+        await SlowRequestLogger(fake_api, threshold_ms=9999999)(
+            dict(scope), receive, send
+        )
+    assert "Slow HTTP" not in caplog.text
+
+    # WebSocket events must bypass HTTP instrumentation entirely.
+    async def fake_ws(scope, _receive, _send):
+        assert scope["type"] == "websocket"
+
+    caplog.clear()
+    await SlowRequestLogger(fake_ws, threshold_ms=0)(
+        {"type": "websocket"}, receive, send
+    )
+    assert "Slow HTTP" not in caplog.text
+
 
 TEACHER = UUID("00000000-0000-4000-8000-000000000001")
 STUDENT = UUID("00000000-0000-4000-8000-000000000002")
