@@ -280,6 +280,38 @@ async def test_password_recovery_rejects_expired_link(client,monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_signup_smtp_timeout_is_retryable(client, monkeypatch):
+    """Mail failure must not confirm an account or prevent a safe retry."""
+    sent = []
+    enable_staging_mail(monkeypatch, sent)
+
+    async def simulated_timeout(_email, _link):
+        raise TimeoutError()
+
+    monkeypatch.setattr(registration, "send_confirmation_email", simulated_timeout)
+    data = signup_data(email="mail-timeout@example.test")
+    failed = await client.post("/api/v1/auth/signup", json=data)
+    assert failed.status_code == 503
+    assert "отправить письмо" in failed.json()["detail"].lower()
+    assert not sent
+
+    async with app.state.pool.acquire() as conn:
+        pending = await conn.fetchrow(
+            "SELECT id, email_confirmed_at FROM account_users WHERE email=$1",
+            data["email"],
+        )
+    assert pending and pending["email_confirmed_at"] is None
+
+    async def simulated_success(_email, link):
+        sent.append(link)
+
+    monkeypatch.setattr(registration, "send_confirmation_email", simulated_success)
+    retry = await client.post("/api/v1/auth/signup", json=data)
+    assert retry.status_code == 202
+    assert len(sent) == 1
+
+
+@pytest.mark.asyncio
 async def test_registration_disabled_or_no_mail_fails_closed(client,monkeypatch):
     registration._attempts.clear()
     data=signup_data(email="offline@example.test")
