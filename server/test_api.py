@@ -2,6 +2,7 @@
 
 No connection to real Lectrus/Supabase data is used by these tests.
 """
+import asyncio
 import json
 import os
 from pathlib import Path
@@ -42,6 +43,7 @@ async def client():
     await connection.execute(sql_dir.joinpath("013_notifications.sql").read_text())
     await connection.execute(sql_dir.joinpath("014_board_organization.sql").read_text())
     await connection.execute(sql_dir.joinpath("015_direct_chats.sql").read_text())
+    await connection.execute(sql_dir.joinpath("016_board_share_links.sql").read_text())
     await connection.execute(
         "TRUNCATE account_sessions,board_documents,board_members,boards,account_users CASCADE"
     )
@@ -73,6 +75,46 @@ async def sign_in(client: httpx.AsyncClient, email: str):
     assert response.status_code == 200, response.text
     body = response.json()
     return body, {"Authorization": "Bearer " + body["access_token"]}
+
+
+@pytest.mark.asyncio
+async def test_share_link_access_and_atomic_use_limit(client):
+    _, owner = await sign_in(client, "teacher@example.test")
+    _, student = await sign_in(client, "student@example.test")
+    _, outsider = await sign_in(client, "outsider@example.test")
+    board = await client.post("/api/v1/boards", headers=owner, json={"title": "Share test"})
+    board_id = board.json()["id"]
+    links = f"/api/v1/boards/{board_id}/share-links"
+    redeem = "/api/v1/share-links/redeem"
+    created = await client.post(links, headers=owner, json={
+        "role": "editor", "max_uses": 1, "password": "test-code",
+    })
+    assert created.status_code == 201, created.text
+    link = created.json()
+    assert link["protected"] and link["use_count"] == 0
+    assert (await client.get(links, headers=outsider)).status_code == 404
+    assert (await client.post(redeem, json={"token": link["token"]})).status_code == 401
+    bad = await client.post(redeem, headers=student, json={"token": link["token"], "password": "wrong"})
+    assert bad.status_code == 403
+    visible = (await client.get(links, headers=owner)).json()[0]
+    assert visible["use_count"] == 0 and "token" not in visible and "password_hash" not in visible
+    payload = {"token": link["token"], "password": "test-code"}
+    attempts = await asyncio.gather(*(
+        client.post(redeem, headers=headers, json=payload) for headers in (student, outsider)
+    ))
+    assert sorted(response.status_code for response in attempts) == [200, 404]
+    winning_headers = student if attempts[0].status_code == 200 else outsider
+    assert (await client.get(f"/api/v1/boards/{board_id}", headers=winning_headers)).json()["role"] == "editor"
+    assert (await client.post(links, headers=winning_headers, json={"role": "viewer"})).status_code == 403
+    assert (await client.get(links, headers=owner)).json() == []
+
+    second = (await client.post(links, headers=owner, json={"role": "viewer"})).json()
+    accepted = await client.post(redeem, headers=winning_headers, json={"token": second["token"]})
+    assert accepted.json()["role"] == "editor"
+    revoke = f"/api/v1/share-links/{second['id']}"
+    assert (await client.delete(revoke, headers=winning_headers)).status_code == 403
+    assert (await client.delete(revoke, headers=owner)).status_code == 204
+    assert (await client.post(redeem, headers=student, json={"token": second["token"]})).status_code == 404
 
 @pytest.mark.asyncio
 async def test_health_and_login_session_rotation(client):

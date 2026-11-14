@@ -7,9 +7,15 @@ import ts from 'typescript';
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 function load(name, globals) {
   const exports = {};
+  const requireModule = globals.require;
   vm.runInNewContext(ts.transpileModule(read('src/' + name + '.ts'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-  }).outputText, { exports, URL, URLSearchParams, ...globals });
+  }).outputText, {
+    exports, URL, URLSearchParams, ...globals,
+    require: path => path === './selfhostApi'
+      ? { isSelfhostBackendEnabled: () => false, ...globals.selfhost }
+      : requireModule?.(path),
+  });
   return exports;
 }
 function browser(href) {
@@ -31,6 +37,33 @@ function browser(href) {
 }
 const token = 'a'.repeat(64);
 const boardId = 'a1000000-1234-4567-89ab-1234567890ab';
+
+test('Timeweb share links use the native API even when a legacy backend is configured', async () => {
+  const calls = [];
+  const api = load('shareLinks', {
+    require: () => ({
+      isRemoteBackendEnabled: () => true,
+      remoteRequest: () => assert.fail('Timeweb must not call Supabase'),
+    }),
+    selfhost: {
+      isSelfhostBackendEnabled: () => true,
+      selfhostRequest: async (path, request = {}) => {
+        calls.push([path, request.method || 'GET', request.body && JSON.parse(request.body)]);
+        return {};
+      },
+    },
+  });
+  await api.createShareLink(boardId, 'viewer', { maxUses: 1, password: 'code' });
+  await api.listShareLinks(boardId);
+  await api.redeemShareLink(token, 'code');
+  await api.revokeShareLink(boardId);
+  assert.deepEqual(calls, [
+    [`/api/v1/boards/${boardId}/share-links`, 'POST', { role: 'viewer', max_uses: 1, password: 'code' }],
+    [`/api/v1/boards/${boardId}/share-links`, 'GET', undefined],
+    ['/api/v1/share-links/redeem', 'POST', { token, password: 'code' }],
+    [`/api/v1/share-links/${boardId}`, 'DELETE', undefined],
+  ]);
+});
 
 test('share creation, redemption and password use exactly the deployed RPC arguments', async () => {
   const calls = [];
