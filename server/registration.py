@@ -113,7 +113,9 @@ async def send_confirmation_email(email: str, link: str) -> None:
                 smtp.login(username, password)
                 smtp.send_message(msg)
 
-    await asyncio.to_thread(send)
+    # Bound total SMTP time; per-socket timeout alone does not bound a sequence
+    # of handshake, auth and send calls before the HTTP request deadline.
+    await asyncio.wait_for(asyncio.to_thread(send), timeout=20)
 
 
 async def send_password_reset_email(email: str, link: str) -> None:
@@ -142,7 +144,9 @@ async def send_password_reset_email(email: str, link: str) -> None:
                 smtp.login(username, password)
                 smtp.send_message(msg)
 
-    await asyncio.to_thread(send)
+    # Bound total SMTP time; per-socket timeout alone does not bound a sequence
+    # of handshake, auth and send calls before the HTTP request deadline.
+    await asyncio.wait_for(asyncio.to_thread(send), timeout=20)
 
 
 def make_registration_router() -> APIRouter:
