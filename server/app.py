@@ -378,6 +378,7 @@ async def get_document(board_id: UUID, request: Request, user=Depends(current_us
 
 _subscribers: dict[UUID, dict[WebSocket, str]] = defaultdict(dict)
 _subscriber_users: dict[UUID, dict[WebSocket, dict[str, str]]] = defaultdict(dict)
+_presence_watchers: dict[UUID, set[WebSocket]] = defaultdict(set)
 
 
 def _unique_presence(board_id: UUID) -> list[dict[str, str]]:
@@ -397,8 +398,11 @@ async def announce_presence(board_id: UUID, *, joins: list[dict[str, str]] | Non
         "joins": joins or [],
         "leaves": leaves or [],
     }
-    for client, token in list(_subscribers.get(board_id, {}).items()):
+    for client in list(_presence_watchers.get(board_id, set())):
         if client is exclude:
+            continue
+        token = _subscribers.get(board_id, {}).get(client)
+        if not token:
             continue
         try:
             recipient = await lookup_session(pool, token)
@@ -520,6 +524,11 @@ async def board_events(websocket: WebSocket, board_id: UUID):
             await websocket.close(code=4401)
             return
         token = initial.get("token", "")
+        presence_enabled = initial.get("presence", False)
+        presence_visible = initial.get("visible", True)
+        if type(presence_enabled) is not bool or type(presence_visible) is not bool:
+            await websocket.close(code=4401)
+            return
         claims = jwt_claims(token)
         user = await lookup_session(websocket.app.state.pool, token)
         async with websocket.app.state.pool.acquire() as conn:
@@ -540,12 +549,16 @@ async def board_events(websocket: WebSocket, board_id: UUID):
             for meta in _subscriber_users.get(board_id, {}).values()
         )
         _subscribers[board_id][websocket] = token
-        _subscriber_users[board_id][websocket] = user_meta
+        if presence_enabled:
+            _presence_watchers[board_id].add(websocket)
+            if presence_visible:
+                _subscriber_users[board_id][websocket] = user_meta
         await websocket.send_json({"type": "ready", "version": current_version})
-        await websocket.send_json({"type": "presence_state", "users": _unique_presence(board_id)})
-        if not already_present:
-            await announce_presence(board_id, joins=[user_meta],
-                                    pool=websocket.app.state.pool, exclude=websocket)
+        if presence_enabled:
+            await websocket.send_json({"type": "presence_state", "users": _unique_presence(board_id)})
+            if presence_visible and not already_present:
+                await announce_presence(board_id, joins=[user_meta],
+                                        pool=websocket.app.state.pool, exclude=websocket)
         limiter = EventRateLimit()
         while True:
             remaining = float(claims["exp"]) - time.time()
@@ -663,6 +676,11 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         clients = _subscribers.get(board_id)
         users = _subscriber_users.get(board_id)
         departed = users.pop(websocket, None) if users is not None else None
+        watchers = _presence_watchers.get(board_id)
+        if watchers is not None:
+            watchers.discard(websocket)
+            if not watchers:
+                _presence_watchers.pop(board_id, None)
         if clients is not None:
             clients.pop(websocket, None)
             if not clients:
@@ -677,6 +695,7 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                                     pool=websocket.app.state.pool)
         if not _subscribers.get(board_id):
             _subscriber_users.pop(board_id, None)
+            _presence_watchers.pop(board_id, None)
 
 # Asset endpoints reuse the same server-authoritative session and board access
 # checks; nothing under the private upload directory is served by Caddy.
