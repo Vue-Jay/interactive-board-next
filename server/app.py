@@ -164,6 +164,9 @@ class NewBoardInput(BaseModel):
     title: str = Field(default="Новая доска", min_length=1, max_length=160)
     is_pilot: bool = False
 
+class UpdateBoardInput(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+
 class SaveDocumentInput(BaseModel):
     expected_version: int = Field(ge=0)
     document: dict[str, Any]
@@ -314,6 +317,42 @@ async def get_board(board_id: UUID, request: Request, user=Depends(current_user)
     async with request.app.state.pool.acquire() as conn:
         board, role = await board_access(conn, board_id, user["id"])
         return board_view(board, role)
+
+
+@app.patch("/api/v1/boards/{board_id}")
+async def update_board(board_id: UUID, data: UpdateBoardInput,
+                       request: Request, user=Depends(current_user)):
+    title = data.title.strip()
+    if not title:
+        error(422, "Укажите название доски.")
+    async with request.app.state.pool.acquire() as conn:
+        async with conn.transaction():
+            _, role = await board_access(conn, board_id, user["id"], lock=True)
+            if role != "owner":
+                error(403, "Только владелец может переименовать доску.")
+            row = await conn.fetchrow(
+                """UPDATE boards SET title=$2,updated_at=now()
+                    WHERE id=$1
+                    RETURNING id,owner_id,title,created_at,updated_at,deleted_at""",
+                board_id, title,
+            )
+    return board_view(row, "owner")
+
+
+@app.delete("/api/v1/boards/{board_id}")
+async def trash_board(board_id: UUID, request: Request,
+                      user=Depends(current_user)):
+    async with request.app.state.pool.acquire() as conn:
+        async with conn.transaction():
+            _, role = await board_access(conn, board_id, user["id"], lock=True)
+            if role != "owner":
+                error(403, "Только владелец может переместить доску в корзину.")
+            await conn.execute(
+                "UPDATE boards SET deleted_at=now(),updated_at=now() WHERE id=$1",
+                board_id,
+            )
+    return {"ok": True}
+
 
 def document_view(row, board_id: UUID):
     if row is None:
