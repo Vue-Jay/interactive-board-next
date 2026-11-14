@@ -437,3 +437,8 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         _subscribers[board_id].discard(websocket)
         if not _subscribers[board_id]:
             _subscribers.pop(board_id, None)
+
+# Asset endpoints reuse the same server-authoritative session and board access
+# checks; nothing under the private upload directory is served by Caddy.
+from assets import make_asset_router
+app.include_router(make_asset_router(current_user, board_access))
