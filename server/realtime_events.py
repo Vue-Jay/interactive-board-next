@@ -224,7 +224,8 @@ def validate_live_event(frame: Any, *, role: str, user_id: str,
                        "connectorStart", "connectorEnd"}
             if set(item) - allowed or not {"id", "x", "y", "width", "height", "rotation", "origin"}.issubset(item):
                 raise InvalidLiveEvent("invalid_transform_item_fields")
-            if not _identifier(item["id"]) or not _identifier(item["origin"]) or item["id"] in seen:
+            if (not _identifier(item["id"]) or not isinstance(item["origin"], str) or
+                    not 1 <= len(item["origin"]) <= 128 or item["id"] in seen):
                 raise InvalidLiveEvent("invalid_transform_item_identity")
             seen.add(item["id"])
             for key in ("x", "y", "width", "height", "rotation"):
