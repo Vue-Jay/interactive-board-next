@@ -46,7 +46,7 @@ async function loadPilot(enabled) {
     }
     if(u.pathname==="/api/v1/auth/logout")return new Response(null,{status:200});
     if(u.pathname==="/api/v1/boards"&&options.method==="POST"){
-      assert.equal(options.body,JSON.stringify({title:"Тест"}));
+      assert.equal(options.body,JSON.stringify({title:"Тест",is_pilot:true}));
       return ok({id:"board-1",role:"owner",title:"Тест"});
     }
     if(u.pathname==="/api/v1/boards")return ok([{id:"board-1",title:"Тест",role:"owner"}]);
@@ -57,6 +57,18 @@ async function loadPilot(enabled) {
     }
     if(u.pathname==="/api/v1/boards/board-1/document")
       return ok({board_id:"board-1",version:3,document:{pilot_schema:1,items:[],ink:[],note:"hi"}});
+    if(u.pathname==="/api/v1/boards/board-1/pilot/ink"&&options.method==="POST"){
+      assert.equal(options.body!==undefined,true);
+      assert.equal(JSON.parse(options.body).stroke_id,"stroke_test");
+      return ok({operation_id:"00000000-0000-4000-8000-000000000501",
+        stroke_id:"stroke_test",version:5,duplicate:false},201);
+    }
+    if(u.pathname==="/api/v1/boards/board-1/pilot/ink/undo"&&options.method==="POST")
+      return ok({operation_id:"00000000-0000-4000-8000-000000000502",
+        stroke_id:"stroke_test",version:6,duplicate:false});
+    if(u.pathname==="/api/v1/boards/board-1/pilot/history")
+      return ok([{operation_id:"00000000-0000-4000-8000-000000000501",
+        actor_id:user.id,type:"ink_append",stroke_id:"stroke_test",version:5}]);
     if(u.pathname==="/api/v1/boards/board-1/invitations")return ok({kind:"invite"});
     if(u.pathname==="/api/v1/invitations/claim")return ok({claimed:1});
     if(u.pathname==="/api/v1/auth/signup")return ok({ok:true,message:"email sent"},202);
@@ -107,6 +119,17 @@ assert.equal((await api.pilotReadDocument("board-1")).version,3);
 const saved=await api.pilotSaveDocument("board-1",3,{pilot_schema:1,items:[],ink:[],note:"hello"});
 assert.equal(saved.version,4);
 await assert.rejects(api.pilotSaveDocument("board-1",2,{items:[],ink:[]}),e=>e.status===409);
+const stored=await api.pilotAppendStroke(
+  "board-1","00000000-0000-4000-8000-000000000501",{
+    type:"live_ink",client_id:"test_client",stroke_id:"stroke_test",
+    kind:"pen",color:"#275ec7",weight:3,offset:0,
+    points:[{x:20,y:30}],finished:true,
+  });
+assert.equal(stored.version,5);
+assert.equal((await api.pilotUndoStroke(
+  "board-1","00000000-0000-4000-8000-000000000502"
+)).stroke_id,"stroke_test");
+assert.equal((await api.pilotInkHistory("board-1")).length,1);
 assert.equal((await api.pilotInvite("board-1","future@example.test","viewer")).kind,"invite");
 assert.equal((await api.pilotClaimInvitations()).claimed,1);
 assert.equal((await api.pilotSignup({
