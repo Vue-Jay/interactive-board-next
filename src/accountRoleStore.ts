@@ -13,7 +13,22 @@ const PERSISTENT_CACHE_PREFIX="onlinerepetitor.account-access.v244.";
 let cache:{at:number;value:AccountAccess}|null=null;
 let inFlight:Promise<AccountAccess>|null=null;
 const plan=(x:any):SubscriptionPlan=>x==="pro"?"pro":x==="teacher"||x==="basic"?"teacher":"free";
-const localAccess=():AccountAccess=>({role:LEKTRUS_LOCAL_TEST_MODE?"teacher":localStorage.getItem(KEY)==="student"?"student":"teacher",teacherStatus:"approved",isAdmin:false,requestedAt:null,reviewedAt:null,subscriptionPlan:"free",subscriptionUntil:null});
+const LOCAL_ROLE_PREFIX="lektrus.local-account-role.v1.";
+const currentLocalUserId=():string=>{
+ try { return String(JSON.parse(localStorage.getItem("lesson-board.auth.session.v1")||"{}")?.userId||""); }
+ catch { return ""; }
+};
+const localAccess=():AccountAccess=>{
+ const id=currentLocalUserId();
+ const stored=id?localStorage.getItem(LOCAL_ROLE_PREFIX+id):null;
+ const role:AccountRole=LEKTRUS_LOCAL_TEST_MODE?"teacher":stored==="teacher"||stored==="student"?stored:localStorage.getItem(KEY)==="student"?"student":"teacher";
+ return {role,teacherStatus:role==="teacher"?"approved":"none",isAdmin:false,requestedAt:null,reviewedAt:null,subscriptionPlan:"free",subscriptionUntil:null};
+};
+export const setLocalAccountRole=(userId:string,role:AccountRole):void=>{
+ if(!userId||!["teacher","student"].includes(role))throw new Error("Некорректная роль пользователя");
+ localStorage.setItem(LOCAL_ROLE_PREFIX+userId,role);
+ clearAccountAccessCache();
+};
 const mapAccess=(x:any):AccountAccess=>({role:x?.role==="teacher"?"teacher":"student",teacherStatus:["pending","approved","rejected"].includes(x?.teacher_status)?x.teacher_status:"none",isAdmin:!!x?.is_admin,requestedAt:x?.requested_at??null,reviewedAt:x?.reviewed_at??null,subscriptionPlan:plan(x?.subscription_plan),subscriptionUntil:x?.subscription_until??null});
 const currentRemoteUserId=()=>getCachedRemoteSession()?.user?.id||"";
 const cacheKey=()=>`${PERSISTENT_CACHE_PREFIX}${currentRemoteUserId()}`;
@@ -45,7 +60,18 @@ export async function requestTeacherAccess(application:TeacherApplication):Promi
  if(!isRemoteBackendEnabled()){localStorage.setItem("onlinerepetitor.teacher-application.v1",JSON.stringify(application));localStorage.setItem(KEY,"teacher");return localAccess()}
  clearAccountAccessCache();return remember(mapAccess(await remoteRequest("/rest/v1/rpc/request_teacher_access",{method:"POST",body:JSON.stringify({p_application:application})})))
 }
-export async function setStudentRole():Promise<AccountAccess>{localStorage.setItem(KEY,"student");clearAccountAccessCache();if(!isRemoteBackendEnabled())return localAccess();await remoteRequest("/rest/v1/rpc/set_my_account_role",{method:"POST",body:JSON.stringify({p_role:"student"})});return getAccountAccess()}
+export async function setStudentRole():Promise<AccountAccess>{
+ localStorage.setItem(KEY,"student");
+ if(!isRemoteBackendEnabled()){
+  const id=currentLocalUserId();
+  if(id)setLocalAccountRole(id,"student");
+  clearAccountAccessCache();
+  return localAccess();
+ }
+ clearAccountAccessCache();
+ await remoteRequest("/rest/v1/rpc/set_my_account_role",{method:"POST",body:JSON.stringify({p_role:"student"})});
+ return getAccountAccess();
+}
 export async function listTeacherRequests():Promise<TeacherRequest[]>{const x=await remoteRequest<any[]>("/rest/v1/rpc/list_teacher_requests",{method:"POST",body:"{}"});return(Array.isArray(x)?x:[]).map(v=>({userId:v.user_id,name:v.name||"Пользователь",email:v.email||"",status:v.status,requestedAt:v.requested_at??null,reviewedAt:v.reviewed_at??null,application:v.application&&typeof v.application==="object"?{phone:String(v.application.phone||""),city:String(v.application.city||""),organization:String(v.application.organization||""),focusArea:String(v.application.focusArea||""),experience:String(v.application.experience||""),motivation:String(v.application.motivation||"")}:null}))}
 export async function reviewTeacherRequest(userId:string,approve:boolean){const result=await remoteRequest("/rest/v1/rpc/review_teacher_request",{method:"POST",body:JSON.stringify({p_user_id:userId,p_approve:approve})});clearAccountAccessCache();return result}
 export async function listAdminUsers():Promise<AdminUser[]>{const x=await remoteRequest<any[]>("/rest/v1/rpc/admin_list_users",{method:"POST",body:"{}"});return(Array.isArray(x)?x:[]).filter(v=>!!String(v.email||"").trim()).map(v=>({userId:v.user_id,name:v.name||"Пользователь",email:v.email||"",role:v.role==="teacher"?"teacher":"student",teacherStatus:["pending","approved","rejected"].includes(v.teacher_status)?v.teacher_status:"none",isAdmin:!!v.is_admin,subscriptionPlan:plan(v.subscription_plan),subscriptionUntil:v.subscription_until??null,createdAt:v.created_at??null}))}
