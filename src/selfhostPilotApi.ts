@@ -556,3 +556,22 @@ export const selfhostUploadAsset = pilotUploadAsset;
 export const selfhostDownloadAsset = pilotDownloadAsset;
 export const selfhostAccess = pilotAccess;
 export const selfhostInvite = pilotInvite;
+export const selfhostRenameBoard = (boardId:string,title:string) =>
+  pilotRequest<PilotBoard>("/api/v1/boards/"+encodeURIComponent(boardId),{
+    method:"PATCH",body:JSON.stringify({title}),
+  });
+export const selfhostDeleteBoard = (boardId:string) =>
+  pilotRequest<{ok:boolean}>("/api/v1/boards/"+encodeURIComponent(boardId),{method:"DELETE"});
+export const selfhostChangeMemberRole = (boardId:string,memberId:string,role:"editor"|"viewer") =>
+  pilotRequest<{ok:boolean;role:string}>(
+    "/api/v1/boards/"+encodeURIComponent(boardId)+"/members/"+encodeURIComponent(memberId),{
+      method:"PATCH",body:JSON.stringify({role}),
+    });
+export const selfhostRemoveMember = (boardId:string,memberId:string) =>
+  pilotRequest<void>(
+    "/api/v1/boards/"+encodeURIComponent(boardId)+"/members/"+encodeURIComponent(memberId),
+    {method:"DELETE"});
+export const selfhostRevokeInvitation = (boardId:string,inviteId:string) =>
+  pilotRequest<void>(
+    "/api/v1/boards/"+encodeURIComponent(boardId)+"/invitations/"+encodeURIComponent(inviteId),
+    {method:"DELETE"});
