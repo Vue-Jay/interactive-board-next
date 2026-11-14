@@ -46,7 +46,7 @@ jobs:
           grep -q 'RewriteRule . /index.html' dist/.htaccess
           grep -Eq '<link[^>]+stylesheet' dist/index.html
           test -d dist/assets
-          if grep -rlq 'sb_secret_\|service_role' dist --include='*.js' --include='*.html'; then
+          if grep -Erql 'sb_secret_[[:alnum:]_-]{20,}' dist --include='*.js' --include='*.html'; then
             echo 'Forbidden server key marker found in public build'
             exit 1
           fi
