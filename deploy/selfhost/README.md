@@ -1,276 +1,94 @@
-# Lektrus on one VPS: migration in progress
+# Lektrus на Timeweb Cloud
 
-**Status:** pilot API and PostgreSQL validated by GitHub Actions, **NOT production-ready**.
-This is not a drop-in replacement for Supabase. Never change the current Timeweb
-frontend's Supabase URL until the full parity checklist is complete.
+**Статус:** перенос основного приложения начат. Собственный backend и подключение штатного интерфейса проверяются в отдельной миграционной ветке. Это ещё не production-развёртывание.
 
-## What exists
+Текущий сайт Timeweb и рабочий проект Supabase не переключались. Пользователи, доски и файлы из Supabase пока не переносились. Не запускайте конфигурацию ниже на рабочей базе.
 
-- PostgreSQL 17 with tables for users, sessions, boards, memberships and documents.
-- Password verification using bcrypt (compatible with the currently observed Lectrus
-  Supabase Auth password hash format), 15-minute access JWT, single-use rotated refresh
-  tokens, explicit logout revocation and server-side board access checks.
-- New board creation, listing, native document reads/writes with optimistic
-  version checks and WebSocket revision notifications (no full JSON document
-  pushed over WS). The general Lektrus document API accepts up to 24 MiB, matching
-  the browser parser's import ceiling; the isolated ink pilot keeps its own 2 MiB cap.
-- Docker Compose with PostgreSQL and API on an internal-only Docker network, Caddy
-  reverse proxy for HTTPS and static frontend hosting.
-- An importer from Supabase Postgres to **a separate empty database**, read-only by
-  default. Preserves user IDs, bcrypt password hashes, selected profile details and
-  subscriptions, board IDs, ownership, memberships, document JSON and versions.
-- Private Storage API for board files: authorized upload/read/HEAD/delete/list,
-  streamed uploads up to 50 MB, SHA-256 metadata, conditional ETag reads,
-  range downloads and protected SVG headers. The files live on a dedicated
-  Docker volume, not in the website directory.
-- Separate Storage importer: read-only manifest check by default, verified
-  HTTP streaming from Supabase into private staging, one SQL transaction,
-  SHA-256/byte-count checks, and refusal to overwrite target assets.
-  The actual 59 source files have **not** been copied to a VPS yet.
-- Integration tests with temporary PostgreSQL databases, synthetic private
-  images, simulated HTTPS downloads and container build in CI.
+## Единая архитектура
 
-## Current measurements (2026-11-14)
+После завершения миграции должен остаться один Lektrus:
 
-Supabase Lectrus contained: roughly 56 MB database, 9 boards, 7 stored board
-documents, 2 accounts, 2 editor membership links, 59 Storage files totalling
-22.55 MB. These are *storage sizes*, not the monthly egress measurement.
-The specific high-egress endpoint has not yet been confirmed.
+- обычное приложение и редактор доски из `src/appEntry.tsx`;
+- FastAPI для авторизации, прав доступа и серверных операций;
+- PostgreSQL для аккаунтов, досок, участников и документов;
+- приватный Docker volume для вложений;
+- WebSocket для уведомлений о версиях документов и совместной работы;
+- Caddy для HTTPS, раздачи фронтенда и проксирования API.
 
-## Not yet implemented; do not cut over
+Отдельная страница `/selfhost-pilot` удалена. Новый backend подключается к штатному интерфейсу через настройки сборки:
 
-- Production registration UI, configured SMTP delivery, robust rate limits, password reset and anonymous guest sessions. The server-side registration API is implemented but OFF by default.
-- **Actual copying** of the 59 production Storage objects and final integrity
-  verification after a VPS is provisioned. Only a simulated import was tested.
-- Supabase RPC compatibility for sharing links, templates, assignments,
-  schedules, notifications, chat, history, trash, billing and school features. Email invites and board-member roles now have their own API endpoints, but the existing frontend still uses Supabase RPC.
-- Supabase Realtime presence/broadcast protocol, multi-instance fan-out, and
-  complete full-editor synchronization (the isolated pilot sends revisions,
-  cursors and transient ink, and persists only its simple test strokes).
-- Remaining database tables and their histories, cron jobs, server policies,
-  and any remote functions used by the existing Lektrus frontend.
-- Full feature parity, security/penetration checks, account-to-account and
-  mobile acceptance, backup and restore drills, load/traffic measurement.
-- Domain provisioning and paid VPS rental.
+```dotenv
+VITE_LEKTRUS_BACKEND=selfhost
+VITE_LEKTRUS_API_ORIGIN=https://ваш-домен
+```
 
-## Browser pilot, not the production editor
+Если переменная `VITE_LEKTRUS_BACKEND` не задана, существующий Supabase-режим не меняется.
 
-The migration branch includes an **isolated opt-in browser screen** under
-`/selfhost-pilot`. It is selected only when the frontend build has
-`VITE_LEKTRUS_SELFHOST_PILOT=true`. Optionally use
-`VITE_LEKTRUS_SELFHOST_API_ORIGIN=https://your-test-domain` (HTTPS only);
-otherwise requests stay on the site's origin. When the flag is omitted,
-the original marketing, `/app` and Android flows remain unchanged.
+## Уже подключено в основном приложении
 
-The pilot browser client:
+- Вход, регистрация с выбором «Я учитель» / «Я ученик», подтверждение email и обновление JWT-сессии.
+- Роли и статус учётной записи из PostgreSQL.
+- Список досок, создание, переименование, перемещение в корзину.
+- Получение доступа к доске, приглашения по email и управление участниками.
+- Штатный редактор Lektrus: чтение и сохранение родного формата документа, контроль версии и обработка конфликта сохранения.
+- Загрузка и чтение вложений через приватное хранилище backend.
 
-- Uses separate, tab-scoped test tokens instead of the production Supabase
-  keys, sessions or local storage.
-- Supports login, signed-out registration (if server SMTP is enabled),
-  `/confirm-email` activation, refresh, logout, teacher/student roles,
-  board creation, and owner-only invitations.
-- The lightweight ink/object pilot still creates only boards flagged
-  `is_pilot=true` server-side with documents marked `pilot_schema=1`.
-  Existing native Lektrus documents are not passed through those pilot-only
-  mutation endpoints.
-- A separate action creates an ordinary `is_pilot=false` board and opens the
-  real `BoardApp` editor against the self-hosted document API. It uses the
-  native Lektrus document schema and optimistic version writes; the production
-  Supabase route and its credentials remain untouched.
-- Native editor attachments are uploaded/read through the authenticated private
-  asset API, not Supabase Storage. Existing local IndexedDB attachments are
-  uploaded before the document starts referencing them.
-- Saves a shared note with optimistic versions and a visible 409 conflict
-  state that keeps the unsaved local draft rather than overwriting it.
-- Connects one authenticated WebSocket per selected board for version
-  notices, transient cursors and ink previews. It fetches the full document
-  only when a new revision arrives and no local edits are pending.
+## Backend и инфраструктура
 
-The opt-in `/selfhost-pilot` staging entry can now launch the **real Lektrus
-editor** on an ordinary self-hosted board. Native document autosave, optimistic
-conflict recovery, WebSocket revision notices and private attachment upload/read
-use the new API. The lightweight pilot drawing schema remains separate.
+- PostgreSQL 17.
+- FastAPI с проверкой JWT и ротацией refresh-токенов.
+- Проверка прав владельца, редактора и наблюдателя на сервере.
+- Версионирование документов с optimistic concurrency control.
+- Приватное файловое API: авторизованные GET/HEAD/POST, потоковая передача, SHA-256, ETag и Range.
+- Docker Compose: PostgreSQL и API находятся во внутренней сети; наружу опубликованы только HTTP/HTTPS порты Caddy.
+- Импортёры данных Supabase Postgres и Storage с dry-run по умолчанию и проверкой целостности.
 
-**Still incomplete:** smooth live object transforms, live cursors/presence,
-collaborative ink previews, board chat, activity/history APIs, invitation and
-account-management parity, background workers and multi-instance WebSocket
-fanout are not yet ported from Supabase Realtime. The full editor's local
-selection, tools and undo stack work in the browser, but other users receive
-document revisions after a save rather than the old low-latency transform stream.
-No existing production traffic is reduced yet; the normal Timeweb route and
-`main` remain unchanged.
+## Что ещё нужно перенести
 
-Both the mock browser protocol test and the opt-in TypeScript/Vite build run
-in `.github/workflows/selfhost-frontend.yml`. The backend CI separately
-checks the real PostgreSQL/API and live socket permission-revocation tests.
-Run the complete pilot only on a dedicated staging domain and database.
+До переключения пользователей обязательны:
 
-## Durable pilot ink: append, undo and history
+- Студенты, классы, задания, расписание, учебные материалы и остальные предметные данные.
+- История действий, комментарии, чат, уведомления и ссылки общего доступа.
+- Администрирование аккаунтов, восстановление пароля и гостевой доступ.
+- Полная синхронизация редактора: присутствие участников, курсоры, совместные штрихи, перемещение и трансформации объектов в реальном времени.
+- Все используемые таблицы, RPC, фоновые задачи и политики доступа, которые сейчас завязаны на Supabase.
+- Импорт существующих аккаунтов, досок, связей, документов и всех файлов Storage.
+- Проверка восстановления из резервной копии, безопасности, нагрузки и работы с двух и более устройств.
 
-The pilot now saves completed strokes independently of document snapshots:
+Сейчас основной редактор сохраняет документы на собственный backend и получает уведомления о новых версиях. Полная низколатентная совместная работа ещё не подключена.
 
-- `POST /api/v1/boards/{board_id}/pilot/ink`: authenticated, bounded,
-  **atomic** append of up to 200 points. Two editors can append concurrently
-  without replacing one another's strokes. Each client operation has a UUID,
-  and an exact retry is returned as a duplicate without a second write.
-- `POST /api/v1/boards/{board_id}/pilot/ink/undo`: removes only the
-  authenticated author's last remaining stroke, not another user's work.
-  Retries with the same operation UUID are idempotent.
-- `GET /api/v1/boards/{board_id}/pilot/history`: returns the 100 most
-  recent operation summaries (no document payloads). The audit journal stores
-  append and undo metadata for staging diagnostics.
-- Every accepted operation increments the board's PostgreSQL document
-  version and emits a small WebSocket revision notice. Other clients reload
-  the authoritative document and can still see strokes after refreshing.
-  Transient previews are hidden when they have been saved or undone.
-- The `boards.is_pilot` server-side flag defaults to false; **imported and
-  ordinary boards are not eligible** even if an editor adds
-  `pilot_schema: 1` to the document JSON. The test UI creates only
-  explicitly flagged pilot boards.
+## Где размещать
 
-**Still incomplete:** this is a lightweight staging drawing schema, not the
-native Lektrus stroke model. The full editor's undo stack, selection/group
-operations, rich object formats, history rollback and transport are still
-supabase-dependent. Every saved stroke currently rewrites a small JSONB
-pilot document under a PostgreSQL lock; limits are 500 strokes/board and
-2 MB/document. Do not treat the pilot as a production drawing engine.
+Обычный виртуальный хостинг Timeweb Optimo подходит для статической части сайта, но не для постоянно работающего FastAPI/ASGI backend. Для этой конфигурации нужен **Timeweb Cloud VPS**.
 
-## Live collaboration pilot (cursor + ink)
+VPS пока не создан и не оплачен. Перед развёртыванием нужны:
 
-The same authenticated board WebSocket now carries cursor positions and
-**transient** pen/marker previews alongside document revision notices. This is
-not a Supabase Phoenix protocol bridge and does **not** make the production
-canvas compatible with the new server. The separate /selfhost-pilot UI includes
-a small touch-friendly test surface, not the full editor.
+1. VPS с Docker Engine и Docker Compose.
+2. Домен и DNS A-запись на публичный IP VPS.
+3. Доступность входящих портов 80 и 443.
+4. Уникальные секреты PostgreSQL и JWT.
+5. SMTP для подтверждения email и приглашений.
+6. Резервная копия исходной базы и Storage.
 
-- Frame schema is allowlisted. Clients cannot set the authoritative user ID,
-  display name or membership role; the server derives them from PostgreSQL.
-- View-only members can transmit their cursor but cannot transmit ink.
-- Cursors are limited to 20 updates/second per socket; ink to 30 frames/second.
-  The wire payload is capped at 24,000 bytes with at most 200 points per
-  ink frame. This pilot surface stops collecting beyond 200 points per stroke.
-- Completed strokes are acknowledged as received for **relay only**, not as
-  saved to the board. The browser retries unacknowledged final frames a
-  bounded number of times; duplicate live previews are safe to coalesce.
-- The browser shares one board socket for revisions, cursors and ink rather
-  than opening a new socket per instrument. Incoming events never carry a
-  full document and never trigger a document write.
-- Before *each* relay, sender session and role are rechecked, and each
-  recipient's board access is checked again. Recipients without permissions
-  are removed; out-of-bounds or spoofed frames are rejected.
+## Развёртывание после подготовки VPS
 
-**Limits:** no native Lektrus stroke history or full-editor undo, multi-worker
-fanout, native editor object transforms, cursors outside the pilot page,
-active-room access cache, or latency benchmark yet. Every live frame incurs
-permission DB reads; this must be optimized and remeasured before a production
-cutover. Drawing previews expire after 30 seconds and must never be mistaken
-for saved work.
+1. Собрать фронтенд с `VITE_LEKTRUS_BACKEND=selfhost` и `VITE_LEKTRUS_API_ORIGIN=https://ваш-домен`.
+2. Подготовить `.env` по образцу `.env.example`. Не помещать секреты в Git.
+3. Проверить конфигурацию Compose и Caddy.
+4. Запустить сервисы на отдельной пустой базе.
+5. Проверить health endpoint, регистрацию, вход, создание доски, сохранение документа и загрузку вложений.
+6. Выполнить dry-run импорта Supabase, сверить отчёты, затем отдельно выполнить перенос базы и Storage.
+7. Проверить количество записей, UUID, права, размеры и SHA-256 файлов.
+8. Провести двухпользовательскую и мобильную проверку, проверить backup/restore.
+9. Только после успешной приёмки переключить основной домен.
 
-## Pilot infrastructure
+## Команды проверки
 
-The prototype is intentionally single-worker, single-host and not public yet.
+Из корня репозитория:
 
-- `compose.yaml`: uses a pinned PostgreSQL image, builds the Python API and
-  serves the site through Caddy. DB and API have no public port bindings.
-- `compose.yaml` also mounts a private persistent `assetsdata` volume into
-  `/srv/lektrus-assets`. Back it up **alongside PostgreSQL**: DB-only backups
-  cannot restore images and PDFs.
-- `Caddyfile`: HTTPS reverse proxy and SPA fallback. The `dist` directory
-  must come from the production frontend build.
-- `.env.example`: documentation only. Real secrets must live on the VPS outside
-  GitHub and outside the public website directory.
+```bash
+docker compose -f deploy/selfhost/compose.yaml config
+python -m compileall -q server
+```
 
-Create independent, random 32+ byte JWT secret and a strong DB password.
-Use a new HTTPS domain and HTTPS origin. Do **not** reuse an old Supabase
-JWT signing secret or place any privileged key in `index.html`.
-
-## Import gates
-
-The importer requires `LEKTRUS_SOURCE_DATABASE_URL` and `DATABASE_URL`.
-The source connection uses TLS and a repeatable-read, read-only snapshot.
-Without `--apply`, it only preflights the data and prints aggregate counts.
-With `--apply`, it refuses to use the same database for source/target and
-refuses an already populated target. It inserts in one transaction and
-verifies counts plus a canonical SHA-256 digest of every document.
-
-The core importer does **not** copy binary files. Once it succeeds on a
-staging PostgreSQL, `server/import_supabase_assets.py` validates the
-`storage.objects` manifest. Without `--apply` it does not download or
-write files. With `--apply` it additionally needs:
-
-- `DATABASE_URL`: isolated self-hosted database containing imported accounts
-  and boards; its `board_assets` table must be empty.
-- `LEKTRUS_ASSETS_DIR`: **absolute** private asset-volume path.
-- `LEKTRUS_SOURCE_STORAGE_URL`: canonical HTTPS origin of the source project.
-- `LEKTRUS_SOURCE_STORAGE_API_KEY` and
-  `LEKTRUS_SOURCE_STORAGE_ACCESS_TOKEN`: server-side, short-lived migration
-  credentials with sufficient Storage read rights. **Never** put these in
-  frontend env variables, GitHub, logs, or chat. If using a privileged key,
-  revoke it after migration and never leave it on the public host.
-- `LEKTRUS_SOURCE_PROJECT_REF` if source PostgreSQL uses a pooler host.
-
-The separate importer verifies paths, file sizes and SHA-256, then stores
-metadata in a single transaction on the isolated target. It does not modify
-Supabase. It is not a continuously running bidirectional sync; a final
-write freeze and delta import are still necessary.
-
-History, comments, schedules, materials, and the rest of the platform are
-**not** migrated yet; the source must remain intact and online.
-
-Do not expose database credentials or password hashes in chat, files,
-GitHub, browser JavaScript or logs. Before any real import, secure a verified
-database backup and test restoring it to an isolated copy.
-
-## Sequence to production
-
-1. Check current Supabase monthly egress breakdown and measure network
-   requests on the same scenarios with the browser. Budget target:
-   <=250 GB/month, backed by measurements rather than assumption.
-2. Provision a separate test VPS with a domain, trusted TLS, firewall and
-   daily encrypted off-server backups; validate resource usage before
-   deciding if 2 vCPU / 4 GB RAM is sufficient.
-3. Complete the storage, authentication and existing RPC surfaces, history,
-   roles and full WebSocket collaboration. Add server-side object permission
-   parity (not just UI restrictions).
-4. Import into a staging database, compare all counts/hashes, and test
-   teacher and student login using unchanged passwords. Check every
-   attachment, existing URL and activity history.
-5. Test two simultaneous browsers, guest access, invitations, sharing,
-   create/save/reload, conflicts, offline restore and multiple screen sizes.
-6. Freeze writes for the final delta import, validate counts again, then
-   update frontend configuration and DNS. Keep a tested rollback route.
-7. Only when the self-hosted deployment passes all checks and is stable,
-   withdraw production use of Supabase. Never delete the source first.
-
-No paid infrastructure has been purchased or modified by this branch.
-
-## Pilot object creation and drag
-
-The isolated pilot canvas now exercises the typed object API as well as ink:
-
-- Editors can add a simple rectangle. Its ID, geometry, color and author are
-  validated and committed atomically to the pilot document.
-- Dragging is previewed to other connected participants at a coalesced rate
-  of up to 20 frames/second. The preview contains only object ID, revision,
-  gesture sequence and coordinates, never a client-supplied user identity.
-- On pointer release, the browser sends one idempotent REST commit with the
-  expected object revision. Concurrent moves of different objects can commit;
-  simultaneous moves of the same object produce a visible conflict rather
-  than silently overwriting one another.
-- A failed commit reloads the authoritative server version. Readers can see
-  the preview but cannot create or move objects.
-- Preview frames are checked against the current pilot object and revision;
-  persisted coordinates are checked against object bounds. The feature is
-  still restricted to boards marked `is_pilot=true`.
-
-This is a small rectangular test object, not the native Lektrus object model.
-Resize, rotate, grouping, connectors, rich object types and the production
-editor transport remain migration work.
-
-## Registration and invitations (migration pilot)
-
-- Verified teacher/student signup now exists on the self-hosted API. Account role is server-side and teacher selection becomes `teacher`/`approved` without adding any administrative or paid privileges.
-- Email verification stores only SHA-256 of a random single-use token, expires after 24 hours, and blocks login until confirmation. Tests use a mock SMTP sender.
-- `LEKTRUS_ENABLE_REGISTRATION=false` by default. Before enabling, integrate a working `/confirm-email` frontend page, set up reliable SMTP and external abuse/rate protection. The existing frontend has NOT been switched to this API.
-- Owner-only invitation and member management allows existing users immediately, or preserves an email invite until a verified user claims it. The import script preserves invitations and UUIDs.
-- No production email messages have been sent; no existing Supabase accounts or boards were changed by these tests.
+Полные API, PostgreSQL, WebSocket и frontend-проверки выполняются GitHub Actions. Успешная CI-сборка сама по себе не означает, что backend уже развёрнут на Timeweb или что данные Supabase перенесены.
