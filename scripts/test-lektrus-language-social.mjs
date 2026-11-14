@@ -59,7 +59,14 @@ assert.equal(validateLanguageSocialDiagram(newLanguageSocialDiagram("ru-sentence
 assert.equal(validateLanguageSocialDiagram(newLanguageSocialDiagram("literature-analysis")),true);
 assert.equal(validateLanguageSocialDiagram(newLanguageSocialDiagram("language-sentence-builder")),true);
 const view=fs.readFileSync(new URL("../src/LektrusLanguageSocialView.tsx",import.meta.url),"utf8");
-assert.match(view,/picked|chosen/);
+assert.match(view,/onPointerDown=\{event=>beginDrag\(event,id\)\}/,
+ "Sentence construction must start a real drag gesture");
+assert.match(view,/onPointerMove=\{dragWord\}/,
+ "Sentence words must follow the pointer");
+assert.match(view,/onKeyDown=\{event=>reorderWithKeyboard\(event,id\)\}/,
+ "Word ordering remains accessible from the keyboard");
+assert.doesNotMatch(view,/onClick=\{\(\)=>swap\(id\)\}/,
+ "The old two-click swap must not return");
 assert.match(view,/onPointerDown=\{stop\}/);
 assert.match(view,/Правильно!/);
 console.log("Lektrus sentence builder and civics: curriculum patterns, deterministic word shuffle, strict graph validation and interactive checking passed.");
