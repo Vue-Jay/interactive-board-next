@@ -105,6 +105,48 @@ async def test_verified_teacher_signup_without_admin_privileges(client,monkeypat
 
 
 @pytest.mark.asyncio
+async def test_configured_first_admin_is_granted_only_after_verified_signup(client,monkeypatch):
+    sent=[]
+    enable_staging_mail(monkeypatch,sent)
+    monkeypatch.setenv("LEKTRUS_BOOTSTRAP_ADMIN_EMAIL","OWNER@example.test")
+
+    # The configured owner is an administrator even if the form submits
+    # the student role. The bootstrap address is always a teacher account.
+    data=signup_data(email="owner@example.test",role="student")
+    created=await client.post("/api/v1/auth/signup",json=data)
+    assert created.status_code==202,created.text
+    token=parse_qs(urlsplit(sent[0][1]).query)["token"][0]
+    async with app.state.pool.acquire() as conn:
+        pending=await conn.fetchrow(
+            "SELECT account_role,teacher_status,is_admin,email_confirmed_at FROM account_users WHERE email=$1",
+            data["email"],
+        )
+    assert pending["account_role"]=="teacher"
+    assert pending["teacher_status"]=="approved"
+    assert pending["is_admin"] is True
+    assert pending["email_confirmed_at"] is None
+    assert (await client.post("/api/v1/auth/login",json={
+        "email":data["email"],"password":data["password"]
+    })).status_code==401
+
+    verified=await client.post("/api/v1/auth/verify-email",json={"token":token})
+    assert verified.status_code==200,verified.text
+    assert verified.json()["user"]["email"]=="owner@example.test"
+    assert verified.json()["user"]["account_role"]=="teacher"
+    assert verified.json()["user"]["is_admin"] is True
+
+    # The configured address is a one-time bootstrap, not an admin signup
+    # mode that can be reused for every later account.
+    other=signup_data(email="another@example.test",role="teacher")
+    assert (await client.post("/api/v1/auth/signup",json=other)).status_code==202
+    async with app.state.pool.acquire() as conn:
+        row=await conn.fetchrow(
+            "SELECT is_admin FROM account_users WHERE email=$1",other["email"]
+        )
+    assert row["is_admin"] is False
+
+
+@pytest.mark.asyncio
 async def test_student_verification_then_claims_invitation(client,monkeypatch):
     sent=[]
     enable_staging_mail(monkeypatch,sent)
