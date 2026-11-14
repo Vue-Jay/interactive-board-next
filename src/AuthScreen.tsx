@@ -201,7 +201,7 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
         </button>}
         <button className="auth-text-action" type="button" disabled={busy} onClick={leaveRecovery}>Вернуться ко входу</button>
       </>:<>
-      <div><h1 id="auth-title">{awaitingConfirmation?"Проверьте почту":mode==="register"?"Создать аккаунт":"С возвращением"}</h1><p>{awaitingConfirmation?previewMode?`Предпросмотр ссылки подтверждения для ${email}.`: `Мы отправили ссылку на ${email}. Откройте её, чтобы подтвердить адрес и автоматически войти в Lektrus.`:joining?"После входа откроется доска, которой с вами поделились.":mode==="register"?previewMode?"Заполните форму и проверьте собственный экран подтверждения Lektrus.":"Заполните данные, чтобы создать пространство для учёбы.":"Войдите, чтобы продолжить занятие или открыть свои доски."}</p></div>
+      <div><h1 id="auth-title">{awaitingConfirmation?"Проверьте почту":mode==="register"?"Создать аккаунт":"С возвращением"}</h1><p>{awaitingConfirmation?previewMode?`Предпросмотр ссылки подтверждения для ${email}.`: `Мы отправили ссылку на ${email}. Откройте её, чтобы подтвердить адрес и автоматически войти в Lektrus. Если письма нет во входящих, проверьте папку «Спам».`:joining?"После входа откроется доска, которой с вами поделились.":mode==="register"?previewMode?"Заполните форму и проверьте собственный экран подтверждения Lektrus.":"Заполните данные, чтобы создать пространство для учёбы.":"Войдите, чтобы продолжить занятие или открыть свои доски."}</p></div>
       {mode==="register"&&!awaitingConfirmation&&<fieldset className="auth-role-choice">
         <legend>Кем вы регистрируетесь?</legend>
         <div className="auth-role-grid">
