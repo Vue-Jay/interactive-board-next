@@ -169,7 +169,7 @@ async def test_pilot_ops_fail_closed_on_ordinary_board_and_viewer(client):
     board = await new_pilot_board(client,teacher)
     url = f"/api/v1/boards/{board}/pilot/ink"
     for input in [
-        {**append("invalid"),"points":[{"x":float("inf"),"y":10}]},
+        {**append("invalid"),"points":[{"x":10_000_001,"y":10}]},
         {**append("invalid"),"points":[{"x":True,"y":10}]},
         {**append("invalid"),"points":[{"x":1,"y":10,"role":"admin"}]},
         {**append("invalid"),"points":[{"x":1,"y":10}]*201},
