@@ -34,4 +34,4 @@ jobs:
           test -d dist/assets
           find dist/assets -name 'appEntry-*.js' -size +100c | grep -q .
           find dist/assets -name 'BoardApp-*.js' -size +100c | grep -q .
-          find dist/assets -name 'selfhostApi-*.js' -size +100c | grep -q .
+          grep -l 'lektrus.selfhost.session.v1' dist/assets/*.js | grep -q .
