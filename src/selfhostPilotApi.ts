@@ -1,8 +1,11 @@
 /**
- * Migration-only browser client. Keeps its tokens away from Supabase.
- * Never enabled in an ordinary Lektrus production build.
+ * Primary Lektrus self-hosted API client.
+ * The legacy pilot flag remains accepted only for isolated migration checks.
  */
-export const SELFHOST_PILOT_ENABLED = import.meta.env.VITE_LEKTRUS_SELFHOST_PILOT === "true";
+const backendMode = String(import.meta.env.VITE_LEKTRUS_BACKEND || "").trim().toLowerCase();
+export const SELFHOST_BACKEND_ENABLED = backendMode === "selfhost" ||
+  import.meta.env.VITE_LEKTRUS_SELFHOST_PILOT === "true";
+export const SELFHOST_PILOT_ENABLED = SELFHOST_BACKEND_ENABLED;
 export type PilotRole = "teacher" | "student";
 export type PilotBoardRole = "owner" | "editor" | "viewer";
 export type PilotUser = {
@@ -41,7 +44,7 @@ export type PilotBoardChannel=(()=>void)&{
     sendInk:(ink:PilotLiveInkPacket)=>boolean;
     sendObjectPreview:(preview:PilotObjectPreview)=>boolean};
 
-const SESSION_KEY="lektrus.selfhost.pilot.session.v1";
+const SESSION_KEY="lektrus.selfhost.session.v1";
 const TIMEOUT_MS=15000;
 let refreshInFlight:Promise<PilotSession|null>|null=null;
 
@@ -52,21 +55,21 @@ export class PilotHttpError extends Error {
   }
 }
 export function pilotOrigin():string{
-  if(!SELFHOST_PILOT_ENABLED)throw new Error("Тестовый режим собственного сервера выключен.");
-  const configured=(import.meta.env.VITE_LEKTRUS_SELFHOST_API_ORIGIN as string|undefined)?.trim();
+  if(!SELFHOST_BACKEND_ENABLED)throw new Error("Собственный сервер Lektrus не подключён.");
+  const configured=((import.meta.env.VITE_LEKTRUS_API_ORIGIN as string|undefined)?.trim() || (import.meta.env.VITE_LEKTRUS_SELFHOST_API_ORIGIN as string|undefined)?.trim());
   const origin=new URL(configured||window.location.origin);
   const devLocal=import.meta.env.DEV&&["localhost","127.0.0.1"].includes(origin.hostname);
   if((origin.protocol!=="https:"&&!(devLocal&&origin.protocol==="http:"))||
      origin.username||origin.password||origin.search||origin.hash||
      origin.pathname!=="/"||(origin.port&&!devLocal)||
      origin.hostname.endsWith(".supabase.co")){
-     throw new Error("Для тестового API нужен HTTPS-домен без пути и параметров.");
+     throw new Error("Для API Lektrus нужен HTTPS-домен без пути и параметров.");
   }
   return origin.origin;
 }
 function loadSession():PilotSession|null{
   try{
-    const raw=sessionStorage.getItem(SESSION_KEY);
+    const raw=localStorage.getItem(SESSION_KEY);
     if(!raw)return null;
     const v=JSON.parse(raw) as PilotSession;
     if(typeof v?.access_token!=="string"||typeof v?.refresh_token!=="string"||
@@ -75,8 +78,8 @@ function loadSession():PilotSession|null{
   }catch{return null}
 }
 function saveSession(session:PilotSession|null){
-  if(!session)sessionStorage.removeItem(SESSION_KEY);
-  else sessionStorage.setItem(SESSION_KEY,JSON.stringify(session));
+  if(!session)localStorage.removeItem(SESSION_KEY);
+  else localStorage.setItem(SESSION_KEY,JSON.stringify(session));
 }
 export const cachedPilotSession=()=>loadSession();
 export function clearPilotSession(){refreshInFlight=null;saveSession(null);}
@@ -90,7 +93,7 @@ async function responseError(response:Response):Promise<PilotHttpError>{
   return new PilotHttpError(response.status,detail||("Ошибка сервера: HTTP "+response.status));
 }
 async function rawRequest(path:string,init:RequestInit={},token?:string,timeoutMs=TIMEOUT_MS):Promise<Response>{
-  if(!path.startsWith("/api/v1/"))throw new Error("Неправильный путь тестового API.");
+  if(!path.startsWith("/api/v1/"))throw new Error("Неправильный путь API Lektrus.");
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),timeoutMs);
   const upstream=init.signal;
@@ -161,7 +164,7 @@ export async function pilotLogout():Promise<void>{
 }
 export async function pilotRequest<T>(path:string,init:RequestInit={}):Promise<T>{
   let session=await pilotSession();
-  if(!session)throw new PilotHttpError(401,"Войдите в тестовый аккаунт заново.");
+  if(!session)throw new PilotHttpError(401,"Сессия завершена. Войдите в Lektrus заново.");
   let response=await rawRequest(path,init,session.access_token);
   if(response.status===401){
     const snapshot=loadSession();
@@ -188,7 +191,7 @@ function assetEndpoint(boardId:string,assetId:string):string{
 }
 async function pilotAssetRequest(path:string,init:RequestInit,timeoutMs=TIMEOUT_MS):Promise<Response>{
   let session=await pilotSession();
-  if(!session)throw new PilotHttpError(401,"Войдите в тестовый аккаунт заново.");
+  if(!session)throw new PilotHttpError(401,"Сессия завершена. Войдите в Lektrus заново.");
   let response=await rawRequest(path,init,session.access_token,timeoutMs);
   if(response.status===401){
     const snapshot=loadSession();
@@ -320,12 +323,14 @@ export async function pilotSignup(input:{
   if(!response.ok)throw await responseError(response);
   return response.json();
 }
-export async function pilotVerifyEmail(token:string):Promise<{ok:boolean;message:string}>{
+export async function pilotVerifyEmail(token:string):Promise<PilotSession>{
   const response=await rawRequest("/api/v1/auth/verify-email",{
     method:"POST",body:JSON.stringify({token}),
   });
   if(!response.ok)throw await responseError(response);
-  return response.json();
+  const session=normalizeSession(await response.json());
+  saveSession(session);
+  return session;
 }
 
 
@@ -529,3 +534,25 @@ export function pilotSubscribeBoard(
   };
   return Object.assign(stop,{sendCursor,sendInk,sendObjectPreview});
 }
+
+
+// Stable names used by the primary Lektrus application. The pilot-only ink/object
+// operations remain separate and are not called by the native editor.
+export const isSelfhostBackendEnabled = () => SELFHOST_BACKEND_ENABLED;
+export const getCachedSelfhostSession = cachedPilotSession;
+export const getSelfhostSession = pilotSession;
+export const selfhostLogin = pilotLogin;
+export const selfhostLogout = pilotLogout;
+export const selfhostSignup = pilotSignup;
+export const selfhostVerifyEmail = pilotVerifyEmail;
+export const selfhostClaimInvitations = pilotClaimInvitations;
+export const selfhostBoards = pilotBoards;
+export const selfhostCreateBoard = (title:string) => pilotCreateBoard(title,false);
+export const selfhostReadDocument = pilotReadDocument;
+export const selfhostSaveDocument = pilotSaveDocument;
+export const selfhostSubscribeBoard = pilotSubscribeBoard;
+export const selfhostAssetExists = pilotAssetExists;
+export const selfhostUploadAsset = pilotUploadAsset;
+export const selfhostDownloadAsset = pilotDownloadAsset;
+export const selfhostAccess = pilotAccess;
+export const selfhostInvite = pilotInvite;
