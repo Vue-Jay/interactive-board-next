@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:tatnet-free": "node scripts/tatnet-free-preflight.mjs && npm run build",
     "train:ai-subject-model": "python scripts/train-ai-subject-model.py",
     "eval:ai-curriculum": "node scripts/evaluate-ai-curriculum.mjs",
     "eval:ai-diagnostic-prompts": "node scripts/evaluate-ai-diagnostic-prompts.mjs",
