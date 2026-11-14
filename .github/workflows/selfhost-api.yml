@@ -44,6 +44,25 @@ jobs:
         run: python -m pytest -q server/test_api.py server/test_assets.py server/test_importer.py server/test_asset_import.py
       - name: Build minimal production image
         run: docker build -f server/Dockerfile -t lektrus-selfhost-api:ci server
+      - name: Boot actual API container and test private disk permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm -d --name lektrus-selfhost-smoke --network host \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e LEKTRUS_ALLOWED_ORIGINS="$LEKTRUS_ALLOWED_ORIGINS" \
+            -e LEKTRUS_JWT_SECRET="$LEKTRUS_JWT_SECRET" \
+            -e LEKTRUS_ASSETS_DIR=/srv/lektrus-assets \
+            lektrus-selfhost-api:ci
+          trap 'docker rm -f lektrus-selfhost-smoke >/dev/null 2>&1 || true' EXIT
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8000/api/v1/health | grep -q '"ok":true'; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8000/api/v1/health | grep -q '"ok":true'
+          docker exec lektrus-selfhost-smoke python -c 'from pathlib import Path; p=Path("/srv/lektrus-assets/.probe"); p.write_bytes(b"ok"); assert p.read_bytes()==b"ok"; p.unlink()'
       - name: Validate VPS Compose and Caddy configuration
         env:
           LEKTRUS_DOMAIN: lektrus.example
