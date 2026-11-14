@@ -10,6 +10,11 @@ const registrationForm=readFileSync(new URL("../src/AuthScreen.tsx",import.meta.
 assert.match(registrationForm,/Повторите пароль/);
 assert.match(registrationForm,/password!==passwordConfirmation/);
 assert.match(registrationForm,/mode==="register"&&!awaitingConfirmation&&password!==passwordConfirmation/);
+assert.match(registrationForm,/auth-shell-register/);
+const registrationStyles=readFileSync(new URL("../src/lektrusAuthLayout.css",import.meta.url),"utf8");
+assert.match(registrationStyles,/\.auth-shell-register \.auth-card/);
+assert.match(registrationStyles,/grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+assert.match(registrationStyles,/@media \(min-width: 760px\)/);
 
 async function loadSelfhost(enabled) {
   let source=readFileSync(new URL("../src/selfhostApi.ts",import.meta.url),"utf8");
