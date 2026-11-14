@@ -180,13 +180,13 @@ jobs:
       - name: Push production branch to Amvera via Git
         if: steps.freshness.outputs.current == 'true'
         env:
-          AMVERA_USERNAME: ${{ secrets.AMVERA_USERNAME }}
+          AMVERA_USERNAME: vuejay
           AMVERA_PASSWORD: ${{ secrets.AMVERA_PASSWORD }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "$AMVERA_USERNAME" || -z "$AMVERA_PASSWORD" ]]; then
-            echo "::error::Set repository Actions secrets AMVERA_USERNAME and AMVERA_PASSWORD first"
+          if [[ -z "$AMVERA_PASSWORD" ]]; then
+            echo "::error::Set repository Actions secret AMVERA_PASSWORD first"
             exit 1
           fi
           # The secret is never embedded in the URL, arguments, code or logs.
