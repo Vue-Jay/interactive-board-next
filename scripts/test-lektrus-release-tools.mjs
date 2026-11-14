@@ -18,11 +18,18 @@ try{
     for(const id of hidden)assert.ok(!list.some(tool=>tool.id===id),subject+" must not offer "+id);
   }
 
+  // A subject-board-only discipline has zero additional catalogue tiles:
+  // its dedicated "+ Предметная доска" action remains on the panel.
+  for(const subject of ["Биология","Информатика","Обществознание"]){
+    assert.deepEqual(subjectToolsFor(subject),[],subject+" must offer only a subject board");
+  }
+  assert.deepEqual(subjectToolsFor("История").map(tool=>tool.id),["history-atlas"],
+    "History offers its subject board and only the historical atlas");
+
   const kept={
     "География":["geo-matching","maps-atlas","contour-atlas"],
-    "История":["history-atlas","history-timeline"],
     "Химия":["chem-experiments","chem-formulas","chem-periodic-table"],
-    "Информатика":["info-encoding","info-flowchart","info-circuit"]
+    "Иностранный язык":["language-sentence-builder","language-flashcards"]
   };
   for(const [subject,ids] of Object.entries(kept)){
     const actual=new Set(subjectToolsFor(subject).map(tool=>tool.id));
