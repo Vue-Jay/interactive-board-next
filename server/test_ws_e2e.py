@@ -305,6 +305,9 @@ async def test_two_live_sockets_receive_revision_then_revoke():
                     assert saved.status_code==200,saved.text
                     second=json.loads(await asyncio.wait_for(ws_owner.recv(),3))
                     assert second=={"type":"document_changed","version":3}
+                    departed=json.loads(await asyncio.wait_for(ws_owner.recv(),3))
+                    assert departed["type"]=="presence_diff"
+                    assert [u["user_id"] for u in departed["leaves"]]==[str(STUDENT)]
                     with pytest.raises(ConnectionClosed) as closed:
                         await asyncio.wait_for(ws_student.recv(),3)
                     assert closed.value.code==4403
