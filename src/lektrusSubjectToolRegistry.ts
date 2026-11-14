@@ -67,20 +67,24 @@ export const releaseHiddenSubjectToolIds:ReadonlySet<SubjectToolId>=new Set([
   "bio-anatomy","bio-microscope","info-programming"
 ]);
 
-/** Subjects with a standalone subject board only in the public release.
- * The original models and factories stay intact for existing saved lessons. */
+/** Keep the regular "Задания на доске" workflow for these subjects.
+ * Previous standalone diagrams remain readable on already saved boards. */
 export const releaseBoardOnlySubjects:ReadonlySet<string>=new Set([
   "биология","информатика","обществознание"
 ]);
 
 export function subjectToolsFor(subject:string):SubjectToolDefinition[]{
   const key=normalizeLektrusSubject(subject).toLocaleLowerCase("ru-RU");
-  if(releaseBoardOnlySubjects.has(key))return [];
   const visible=subjectToolRegistry.filter(tool=>
     tool.subjects.includes(key)&&!releaseHiddenSubjectToolIds.has(tool.id));
-  // History retains its subject board (created via the panel's dedicated
-  // action) and the standalone historical atlas, but not other editors.
-  return key==="история"?visible.filter(tool=>tool.id==="history-atlas"):visible;
+  if(releaseBoardOnlySubjects.has(key))
+    return visible.filter(tool=>tool.id.startsWith("subject-task-"));
+  // History keeps "Задания на доске" and the historical atlas only.
+  if(key==="история")return visible.filter(tool=>
+    tool.id.startsWith("subject-task-")||tool.id==="history-atlas");
+  // Literature has only board assignments; don't create new analysis diagrams.
+  if(key==="литература")return visible.filter(tool=>tool.id!=="literature-analysis");
+  return visible;
 }
 
 export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:()=>string):Item{
