@@ -26,6 +26,7 @@ jobs:
       - name: Build production frontend
         run: |
           npm ci --no-audit --no-fund
+          node scripts/test-lektrus-registration-roles.mjs
           npm run build
       - name: Prepare Timeweb static hosting
         run: |
