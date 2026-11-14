@@ -1,7 +1,7 @@
 """Migration is tested between two disposable PostgreSQL databases."""
 import os
 from urllib.parse import urlsplit, urlunsplit
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import asyncpg
 import bcrypt
@@ -51,6 +51,10 @@ async def test_lossless_core_import_to_empty_database(monkeypatch):
             board_id uuid,document jsonb,version bigint,
             updated_at timestamptz not null default now(),updated_by uuid
         );
+        CREATE TABLE public.board_invites (
+            id uuid primary key,board_id uuid,email text,role text,
+            created_at timestamptz not null default now()
+        );
     """)
     password = bcrypt.hashpw(b"migrated-password", bcrypt.gensalt(rounds=4)).decode()
     for uid,email,role in [(OWNER,"teacher@test.invalid","teacher"),
@@ -78,6 +82,11 @@ async def test_lossless_core_import_to_empty_database(monkeypatch):
         """INSERT INTO public.board_documents(board_id,document,version,updated_by)
            VALUES($1,$2::jsonb,5,$3)""",BOARD,DOCUMENT,STUDENT
     )
+    invite_id = uuid4()
+    await source.execute(
+        """INSERT INTO public.board_invites(id,board_id,email,role)
+           VALUES($1,$2,'future@test.invalid','viewer')""",invite_id,BOARD
+    )
     await source.close()
 
     target = await asyncpg.connect(target_dsn)
@@ -103,6 +112,13 @@ async def test_lossless_core_import_to_empty_database(monkeypatch):
         assert {r["account_role"] for r in rows}=={"teacher","student"}
         assert {r["id"] for r in rows}=={OWNER,STUDENT}
         assert await target.fetchval("SELECT count(*) FROM board_members")==1
+        invite = await target.fetchrow(
+            "SELECT id,board_id,email,role FROM board_invites"
+        )
+        assert invite["id"] == invite_id
+        assert invite["board_id"] == BOARD
+        assert invite["email"] == "future@test.invalid"
+        assert invite["role"] == "viewer"
         doc = await target.fetchrow(
             "SELECT version,updated_by,document::text AS document FROM board_documents"
         )
