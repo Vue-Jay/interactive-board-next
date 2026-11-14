@@ -35,9 +35,8 @@ export type PilotLiveEvent=
   | {type:"cursor";client_id:string;user_id:string;name:string;role:PilotBoardRole;x:number;y:number;sent_at:number}
   | (PilotLiveInkPacket&{user_id:string;name:string;role:PilotBoardRole;sent_at:number})
   | {type:"event_error";reason:string};
-export type PilotBoardChannel=(()=>{
-  void;
-})&{sendCursor:(clientId:string,x:number,y:number)=>boolean;
+export type PilotBoardChannel=(()=>void)&{
+  sendCursor:(clientId:string,x:number,y:number)=>boolean;
     sendInk:(ink:PilotLiveInkPacket)=>boolean};
 
 const SESSION_KEY="lektrus.selfhost.pilot.session.v1";
