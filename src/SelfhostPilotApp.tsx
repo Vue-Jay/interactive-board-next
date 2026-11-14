@@ -132,6 +132,10 @@ export default function SelfhostPilotApp(){
         // A delayed GET must not replace a newer result already applied.
         if(docRef.current&&row.version<revisionRef.current)return;
         applyDocument(row);
+        void pilotInkHistory(boardId).then(rows=>{
+          if(!disposed&&localGeneration===generationRef.current)
+            setInkHistory(rows);
+        }).catch(()=>{});
       }catch(failure){
         if(!disposed)setError(issueText(failure));
       }finally{
@@ -385,6 +389,7 @@ export default function SelfhostPilotApp(){
                     <SelfhostPilotCanvas key={boardId} boardId={boardId||""}
                       canDraw={selected.role!=="viewer"} incoming={liveFrame}
                       savedStrokes={Array.isArray(document.document?.ink)?document.document.ink:[]}
+                      undoneStrokeIds={inkHistory.filter(x=>x.type==="ink_undo").map(x=>x.stroke_id)}
                       sendCursor={(id,x,y)=>liveChannelRef.current?.sendCursor(id,x,y)??false}
                       sendInk={(packet:PilotLiveInkPacket)=>liveChannelRef.current?.sendInk(packet)??false}
                       onPersist={persistInk} onUndo={undoInk}/>
