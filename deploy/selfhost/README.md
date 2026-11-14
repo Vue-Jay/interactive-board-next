@@ -141,10 +141,11 @@ a small touch-friendly test surface, not the full editor.
   are removed; out-of-bounds or spoofed frames are rejected.
 
 **Limits:** no native Lektrus stroke history or full-editor undo, multi-worker
-fanout, object motion, cursors outside the pilot page, active-room access
-cache, or latency benchmark yet. Every live frame incurs permission DB reads;
-this must be optimized and remeasured before a production cutover. Drawing
-previews expire after 30 seconds and must never be mistaken for saved work.
+fanout, native editor object transforms, cursors outside the pilot page,
+active-room access cache, or latency benchmark yet. Every live frame incurs
+permission DB reads; this must be optimized and remeasured before a production
+cutover. Drawing previews expire after 30 seconds and must never be mistaken
+for saved work.
 
 ## Pilot infrastructure
 
@@ -223,6 +224,29 @@ database backup and test restoring it to an isolated copy.
    withdraw production use of Supabase. Never delete the source first.
 
 No paid infrastructure has been purchased or modified by this branch.
+
+## Pilot object creation and drag
+
+The isolated pilot canvas now exercises the typed object API as well as ink:
+
+- Editors can add a simple rectangle. Its ID, geometry, color and author are
+  validated and committed atomically to the pilot document.
+- Dragging is previewed to other connected participants at a coalesced rate
+  of up to 20 frames/second. The preview contains only object ID, revision,
+  gesture sequence and coordinates, never a client-supplied user identity.
+- On pointer release, the browser sends one idempotent REST commit with the
+  expected object revision. Concurrent moves of different objects can commit;
+  simultaneous moves of the same object produce a visible conflict rather
+  than silently overwriting one another.
+- A failed commit reloads the authoritative server version. Readers can see
+  the preview but cannot create or move objects.
+- Preview frames are checked against the current pilot object and revision;
+  persisted coordinates are checked against object bounds. The feature is
+  still restricted to boards marked `is_pilot=true`.
+
+This is a small rectangular test object, not the native Lektrus object model.
+Resize, rotate, grouping, connectors, rich object types and the production
+editor transport remain migration work.
 
 ## Registration and invitations (migration pilot)
 
