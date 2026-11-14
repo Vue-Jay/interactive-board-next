@@ -89,10 +89,10 @@ async function responseError(response:Response):Promise<PilotHttpError>{
   }catch{/* Do not display unsafe arbitrary response bodies. */}
   return new PilotHttpError(response.status,detail||("Ошибка сервера: HTTP "+response.status));
 }
-async function rawRequest(path:string,init:RequestInit={},token?:string):Promise<Response>{
+async function rawRequest(path:string,init:RequestInit={},token?:string,timeoutMs=TIMEOUT_MS):Promise<Response>{
   if(!path.startsWith("/api/v1/"))throw new Error("Неправильный путь тестового API.");
   const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),TIMEOUT_MS);
+  const timer=setTimeout(()=>controller.abort(),timeoutMs);
   const upstream=init.signal;
   const onAbort=()=>controller.abort();
   if(upstream?.aborted)controller.abort();
@@ -162,7 +162,7 @@ export async function pilotLogout():Promise<void>{
 export async function pilotRequest<T>(path:string,init:RequestInit={}):Promise<T>{
   let session=await pilotSession();
   if(!session)throw new PilotHttpError(401,"Войдите в тестовый аккаунт заново.");
-  let response=await rawRequest(path,init,session.access_token);
+  let response=await rawRequest(path,init,session.access_token,timeoutMs);
   if(response.status===401){
     const snapshot=loadSession();
     if(!snapshot||snapshot.user.id!==session.user.id)
@@ -170,7 +170,7 @@ export async function pilotRequest<T>(path:string,init:RequestInit={}):Promise<T
     if(!refreshInFlight)refreshInFlight=refreshSession(snapshot).finally(()=>{refreshInFlight=null});
     session=await refreshInFlight;
     if(!session)throw new PilotHttpError(401,"Сессия завершена. Войдите снова.");
-    response=await rawRequest(path,init,session.access_token);
+    response=await rawRequest(path,init,session.access_token,timeoutMs);
   }
   if(!response.ok)throw await responseError(response);
   if(response.status===204)return undefined as T;
@@ -186,7 +186,7 @@ function assetEndpoint(boardId:string,assetId:string):string{
     throw new Error("Некорректный идентификатор вложения.");
   return "/api/v1/boards/"+encodeURIComponent(boardId)+"/assets/"+encodeURIComponent(assetId);
 }
-async function pilotAssetRequest(path:string,init:RequestInit):Promise<Response>{
+async function pilotAssetRequest(path:string,init:RequestInit,timeoutMs=TIMEOUT_MS):Promise<Response>{
   let session=await pilotSession();
   if(!session)throw new PilotHttpError(401,"Войдите в тестовый аккаунт заново.");
   let response=await rawRequest(path,init,session.access_token);
@@ -210,12 +210,12 @@ export async function pilotAssetExists(boardId:string,assetId:string):Promise<bo
 export async function pilotUploadAsset(boardId:string,assetId:string,blob:Blob):Promise<void>{
   const response=await pilotAssetRequest(assetEndpoint(boardId,assetId),{
     method:"POST",headers:{"Content-Type":blob.type||"application/octet-stream"},body:blob,
-  });
+  },120000);
   if(response.status===409&&await pilotAssetExists(boardId,assetId))return;
   if(!response.ok)throw await responseError(response);
 }
 export async function pilotDownloadAsset(boardId:string,assetId:string):Promise<Blob|null>{
-  const response=await pilotAssetRequest(assetEndpoint(boardId,assetId),{method:"GET"});
+  const response=await pilotAssetRequest(assetEndpoint(boardId,assetId),{method:"GET"},120000);
   if(response.status===404)return null;
   if(!response.ok)throw await responseError(response);
   return response.blob();
