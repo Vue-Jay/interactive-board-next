@@ -224,7 +224,11 @@ def make_registration_router() -> APIRouter:
             link = origin + "/confirm-email?token=" + quote(token, safe="")
             try:
                 await send_confirmation_email(email, link)
-            except Exception:
+            except Exception as exc:
+                # Log only the failure class, never the mailbox, password or link.
+                logging.getLogger(__name__).warning(
+                    "Signup SMTP delivery failed (%s)", type(exc).__name__
+                )
                 # No verification token is leaked in an error or response.
                 # Pending account can retry with its ORIGINAL password.
                 raise HTTPException(503, "Не удалось отправить письмо. Повторите позже.") from None
@@ -296,9 +300,12 @@ def make_registration_router() -> APIRouter:
             link = origin + "/app?password-reset=" + quote(token, safe="")
             try:
                 await send_password_reset_email(email, link)
-            except Exception:
+            except Exception as exc:
                 # Keep unknown, known and delivery-failure responses identical.
-                logging.getLogger(__name__).warning("Password reset email delivery failed")
+                # Do not log the address or secret reset link.
+                logging.getLogger(__name__).warning(
+                    "Password reset SMTP delivery failed (%s)", type(exc).__name__
+                )
         return {"ok": True, "message": "Если аккаунт существует, письмо для восстановления отправлено."}
 
     @router.post("/api/v1/auth/password-reset/complete")
