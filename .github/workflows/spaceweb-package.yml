@@ -24,11 +24,14 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      - name: Verify public backend configuration exists
+      - name: Identify testing mode
         shell: bash
         run: |
-          test -n "$VITE_SUPABASE_URL" || { echo "Missing VITE_SUPABASE_URL GitHub secret"; exit 1; }
-          test -n "$VITE_SUPABASE_ANON_KEY" || { echo "Missing VITE_SUPABASE_ANON_KEY GitHub secret"; exit 1; }
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "::warning::Preview-only build. GitHub public Supabase secrets are not configured: login, remote persistence and realtime are not validated by this artifact."
+          else
+            echo "Public Supabase build configuration is available."
+          fi
       - name: Install and build
         run: |
           npm ci --no-audit --no-fund
