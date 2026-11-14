@@ -185,6 +185,39 @@ export const pilotSaveDocument=(boardId:string,expectedVersion:number,document:R
   pilotRequest<PilotDocument>("/api/v1/boards/"+encodeURIComponent(boardId)+"/document",{
     method:"PUT",body:JSON.stringify({expected_version:expectedVersion,document}),
   });
+export type PilotStoredStroke={
+  id:string;client_id:string;created_by:string;kind:"pen"|"marker";
+  color:string;weight:number;points:PilotPoint[];
+};
+export type PilotInkOperationResult={
+  operation_id:string;stroke_id:string;version:number;duplicate:boolean;
+};
+export type PilotInkHistoryRow={
+  operation_id:string;actor_id:string;type:"ink_append"|"ink_undo";
+  stroke_id:string;version:number;created_at:string;
+};
+export function pilotAppendStroke(
+  boardId:string,operationId:string,ink:PilotLiveInkPacket,
+):Promise<PilotInkOperationResult>{
+  return pilotRequest<PilotInkOperationResult>(
+    "/api/v1/boards/"+encodeURIComponent(boardId)+"/pilot/ink",{
+      method:"POST",body:JSON.stringify({
+        operation_id:operationId,client_id:ink.client_id,
+        stroke_id:ink.stroke_id,kind:ink.kind,color:ink.color,
+        weight:ink.weight,points:ink.points,
+      }),
+    });
+}
+export function pilotUndoStroke(boardId:string,operationId:string){
+  return pilotRequest<PilotInkOperationResult>(
+    "/api/v1/boards/"+encodeURIComponent(boardId)+"/pilot/ink/undo",{
+      method:"POST",body:JSON.stringify({operation_id:operationId}),
+    });
+}
+export const pilotInkHistory=(boardId:string)=>
+  pilotRequest<PilotInkHistoryRow[]>(
+    "/api/v1/boards/"+encodeURIComponent(boardId)+"/pilot/history"
+  );
 export const pilotAccess=(boardId:string)=>pilotRequest<PilotAccess>(
   "/api/v1/boards/"+encodeURIComponent(boardId)+"/access"
 );
