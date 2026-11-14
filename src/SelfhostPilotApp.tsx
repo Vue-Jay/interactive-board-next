@@ -5,7 +5,7 @@ import {
   pilotCreateBoard, pilotReadDocument, pilotSaveDocument,
   pilotSubscribeBoard, pilotClaimInvitations, pilotInvite, pilotAccess,
   pilotSignup, pilotVerifyEmail, pilotAppendStroke, pilotUndoStroke,
-  pilotInkHistory, PilotHttpError,
+  pilotCreateObject, pilotMoveObject, pilotInkHistory, PilotHttpError,
   type PilotSession, type PilotBoard, type PilotDocument, type PilotRealtimeStatus,
   type PilotAccess, type PilotBoardChannel, type PilotLiveEvent, type PilotLiveInkPacket,
   type PilotInkHistoryRow,
@@ -264,6 +264,28 @@ export default function SelfhostPilotApp(){
     await pilotAppendStroke(target,operationId,packet);
     await refreshAfterInk(target,localGeneration);
   };
+  const createPilotObject=async()=>{
+    const target=boardId,localGeneration=generationRef.current;
+    if(!target||selected?.role==="viewer")throw new Error("Нет права добавлять объекты.");
+    const objectId="rect_"+crypto.randomUUID().replaceAll("-","").slice(0,24);
+    await pilotCreateObject(target,objectId,crypto.randomUUID(),
+      140,160,190,120,"#dbeafe");
+    await refreshAfterInk(target,localGeneration);
+  };
+  const movePilotObject=async(
+    objectId:string,operationId:string,expectedRevision:number,x:number,y:number,
+  )=>{
+    const target=boardId,localGeneration=generationRef.current;
+    if(!target||selected?.role==="viewer")throw new Error("Нет права перемещать объекты.");
+    try{
+      await pilotMoveObject(target,objectId,operationId,expectedRevision,x,y);
+    }catch(failure){
+      if(failure instanceof PilotHttpError&&failure.status===409)
+        await refreshAfterInk(target,localGeneration);
+      throw failure;
+    }
+    await refreshAfterInk(target,localGeneration);
+  };
   const undoInk=async()=>{
     const target=boardId,localGeneration=generationRef.current;
     if(!target||selected?.role==="viewer")throw new Error("Нет права отменять штрих.");
@@ -389,10 +411,13 @@ export default function SelfhostPilotApp(){
                     <SelfhostPilotCanvas key={boardId} boardId={boardId||""}
                       canDraw={selected.role!=="viewer"} incoming={liveFrame}
                       savedStrokes={Array.isArray(document.document?.ink)?document.document.ink:[]}
+                      savedObjects={Array.isArray(document.document?.items)?document.document.items:[]}
                       undoneStrokeIds={inkHistory.filter(x=>x.type==="ink_undo").map(x=>x.stroke_id)}
                       sendCursor={(id,x,y)=>liveChannelRef.current?.sendCursor(id,x,y)??false}
                       sendInk={(packet:PilotLiveInkPacket)=>liveChannelRef.current?.sendInk(packet)??false}
-                      onPersist={persistInk} onUndo={undoInk}/>
+                      sendObjectPreview={(preview)=>liveChannelRef.current?.sendObjectPreview(preview)??false}
+                      onPersist={persistInk} onUndo={undoInk}
+                      onCreateObject={createPilotObject} onMoveObject={movePilotObject}/>
                     <div className="pilot-history">
                       <h3>Последние операции</h3>
                       {inkHistory.length===0?<p className="pilot-muted">Пока нет сохранённых штрихов.</p>:
