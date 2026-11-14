@@ -43,7 +43,8 @@ The specific high-egress endpoint has not yet been confirmed.
 - Supabase RPC compatibility for sharing links, templates, assignments,
   schedules, notifications, chat, history, trash, billing and school features. Email invites and board-member roles now have their own API endpoints, but the existing frontend still uses Supabase RPC.
 - Supabase Realtime presence/broadcast protocol, multi-instance fan-out, and
-  complete live two-client synchronization (pilot sends revision notices only).
+  complete full-editor synchronization (the isolated pilot sends revisions,
+  cursors and transient ink, and persists only its simple test strokes).
 - Remaining database tables and their histories, cron jobs, server policies,
   and any remote functions used by the existing Lektrus frontend.
 - Full feature parity, security/penetration checks, account-to-account and
@@ -66,8 +67,9 @@ The pilot browser client:
 - Supports login, signed-out registration (if server SMTP is enabled),
   `/confirm-email` activation, refresh, logout, teacher/student roles,
   board creation, and owner-only invitations.
-- Creates only documents with `pilot_schema=1`. All existing full Lektrus
-  board documents are deliberately **read-only** in this pilot.
+- Creates only boards flagged `is_pilot=true` server-side with documents
+  marked `pilot_schema=1`. All existing full Lektrus board documents are
+  deliberately **read-only** in this pilot.
 - Saves a shared note with optimistic versions and a visible 409 conflict
   state that keeps the unsaved local draft rather than overwriting it.
 - Connects one authenticated WebSocket per selected board for version
@@ -138,7 +140,7 @@ a small touch-friendly test surface, not the full editor.
   recipient's board access is checked again. Recipients without permissions
   are removed; out-of-bounds or spoofed frames are rejected.
 
-**Limits:** no durable stroke storage, deletion/undo history, multi-worker
+**Limits:** no native Lektrus stroke history or full-editor undo, multi-worker
 fanout, object motion, cursors outside the pilot page, active-room access
 cache, or latency benchmark yet. Every live frame incurs permission DB reads;
 this must be optimized and remeasured before a production cutover. Drawing
