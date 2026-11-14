@@ -2,6 +2,7 @@ import { STORAGE_KEY } from "./boardModel";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import { getUserByEmail, getUserById, type AuthUser, type BoardRole } from "./authStore";
 import { claimRemoteInvitations, deleteRemoteStorageObjects, isRemoteBackendEnabled, listRemoteStorageObjects, remoteRequest } from "./backend";
+import { isSelfhostBackendEnabled, selfhostBoards, selfhostCreateBoard, selfhostRenameBoard, selfhostDeleteBoard, selfhostAccess, selfhostInvite, selfhostChangeMemberRole, selfhostRemoveMember, selfhostRevokeInvitation } from "./selfhostPilotApi";
 
 export type BoardSummary={id:string;title:string;ownerId:string;role:BoardRole;createdAt:string;updatedAt:string;deletedAt?:string|null;purgeAfter?:string|null;purgeQueued?:boolean;purgeAssetCount?:number};
 export type BoardMember={boardId:string;userId:string;role:Exclude<BoardRole,"owner">;addedAt:string};
@@ -23,14 +24,23 @@ const claimLocal=(user:AuthUser)=>{const matched=invites().filter(i=>norm(i.emai
 
 const rowToBoard=(row:any,role:BoardRole):BoardSummary=>({id:row.id,title:row.title,ownerId:row.owner_id,role,createdAt:row.created_at,updatedAt:row.updated_at,deletedAt:row.deleted_at??null,purgeAfter:row.purge_after??null,purgeQueued:!!row.purge_queued,purgeAssetCount:Number(row.purge_asset_count??0)});
 
-const remoteBoardCacheKey=(userId:string)=>`${REMOTE_BOARD_CACHE_PREFIX}${userId}`;
+const remoteBoardCacheKey=(userId:string)=>isSelfhostBackendEnabled()
+ ? `${REMOTE_BOARD_CACHE_PREFIX}selfhost.${userId}`
+ : `${REMOTE_BOARD_CACHE_PREFIX}${userId}`;
 export const getCachedUserBoards=(user:AuthUser):BoardSummary[]=>{
- if(!isRemoteBackendEnabled())return[];
+ if(!isRemoteBackendEnabled()&&!isSelfhostBackendEnabled())return[];
  try{const parsed=JSON.parse(localStorage.getItem(remoteBoardCacheKey(user.id))||"[]");return Array.isArray(parsed)?parsed.filter(x=>x&&typeof x.id==="string"&&typeof x.title==="string"&&["owner","editor","viewer"].includes(x.role)):[]}catch{return[]}
 };
 const rememberUserBoards=(user:AuthUser,value:BoardSummary[])=>{try{localStorage.setItem(remoteBoardCacheKey(user.id),JSON.stringify(value))}catch{/* Ignore storage quota/private mode errors. */}return value};
 
 export const getUserBoards=async(user:AuthUser):Promise<BoardSummary[]>=>{
+ if(isSelfhostBackendEnabled()){
+  const stale=getCachedUserBoards(user);
+  try{
+   const result=(await selfhostBoards()).map(row=>rowToBoard(row,row.role));
+   return rememberUserBoards(user,result);
+  }catch(error){if(stale.length)return stale;throw error}
+ }
  if(isRemoteBackendEnabled()){
    const stale=getCachedUserBoards(user);
    // Claiming old email invitations is useful, but it must never block the dashboard
@@ -82,7 +92,7 @@ export const listAdminUserWorkspace=async(userId:string):Promise<AdminBoardSumma
 
 // Resolve deep links through RLS, never fall back to a cached inaccessible board.
 export const getBoardForUser=async(user:AuthUser,id:string):Promise<BoardSummary|null>=>{
- if(!isRemoteBackendEnabled())return (await getUserBoards(user)).find(b=>b.id===id)??null;
+ if(isSelfhostBackendEnabled()||!isRemoteBackendEnabled())return (await getUserBoards(user)).find(b=>b.id===id)??null;
  const rows=await remoteRequest<any[]>(`/rest/v1/boards?id=eq.${encodeURIComponent(id)}&deleted_at=is.null&select=id,title,owner_id,created_at,updated_at,deleted_at&limit=1`);
  if(!rows[0])return null;
  if(rows[0].owner_id===user.id)return rowToBoard(rows[0],"owner");
@@ -91,28 +101,36 @@ export const getBoardForUser=async(user:AuthUser,id:string):Promise<BoardSummary
 };
 export const createBoard=async(user:AuthUser,title="Новая доска",migrateLegacy=false):Promise<BoardSummary>=>{
  const clean=title.trim()||"Новая доска";
+ if(isSelfhostBackendEnabled()){
+  const row=await selfhostCreateBoard(clean);
+  const b=rowToBoard(row,"owner");
+  if(migrateLegacy){const legacy=localStorage.getItem(STORAGE_KEY);if(legacy)localStorage.setItem(boardStorageKey(b.id),legacy)}
+  return b;
+ }
  if(isRemoteBackendEnabled()){
    const row=await remoteRequest<any>("/rest/v1/rpc/create_board",{method:"POST",body:JSON.stringify({p_title:clean})});
    const b=rowToBoard(row,"owner"); if(migrateLegacy){const legacy=localStorage.getItem(STORAGE_KEY);if(legacy)localStorage.setItem(boardStorageKey(b.id),legacy)} return b;
  }
  const now=new Date().toISOString();const b:BoardSummary={id:crypto.randomUUID(),title:clean,ownerId:user.id,role:"owner",createdAt:now,updatedAt:now};write(BOARDS_KEY,[...boards(),b]);if(migrateLegacy){const legacy=localStorage.getItem(STORAGE_KEY);if(legacy)localStorage.setItem(boardStorageKey(b.id),legacy)}return b;
 };
-export const renameBoard=async(u:string,id:string,title:string)=>{const clean=title.trim();if(!clean)return null;if(isRemoteBackendEnabled()){const rows=await remoteRequest<any[]>(`/rest/v1/boards?id=eq.${encodeURIComponent(id)}&select=id,title,owner_id,created_at,updated_at`,{method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify({title:clean})});return rows[0]?rowToBoard(rows[0],"owner"):null}if(localRole(u,id)!=="owner")return null;let out:BoardSummary|null=null;write(BOARDS_KEY,boards().map(b=>b.id===id?(out={...b,title:clean,updatedAt:new Date().toISOString()}):b));return out};
-export const touchBoard=async(u:string,id:string,title?:string,knownRole?:BoardRole)=>{if(isRemoteBackendEnabled()){const body: Record<string, unknown> = { updated_at: new Date().toISOString() };if(title?.trim())body.title=title.trim();const rows=await remoteRequest<any[]>(`/rest/v1/boards?id=eq.${encodeURIComponent(id)}&select=id,title,owner_id,created_at,updated_at`,{method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify(body)});if(!rows[0])return null;const role=rows[0].owner_id===u?"owner":knownRole??((await remoteRequest<any[]>(`/rest/v1/board_members?select=role&board_id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(u)}&limit=1`))[0]?.role||"viewer");return rowToBoard(rows[0],role)}const r=knownRole??localRole(u,id);if(r!=="owner"&&r!=="editor")return null;write(BOARDS_KEY,boards().map(b=>b.id===id?({...b,title:title?.trim()||b.title,updatedAt:new Date().toISOString()}):b));const updated = boards().find(b=>b.id===id);return updated?{...updated,role:r}:null};
-export const deleteBoard=async(u:string,id:string)=>{if(isRemoteBackendEnabled()){await remoteRequest("/rest/v1/rpc/trash_board",{method:"POST",body:JSON.stringify({p_board_id:id})});return true}if(localRole(u,id)!=="owner")return false;write(BOARDS_KEY,boards().filter(b=>b.id!==id));write(MEMBERS_KEY,members().filter(m=>m.boardId!==id));write(INVITES_KEY,invites().filter(i=>i.boardId!==id));[boardStorageKey(id),`${boardStorageKey(id)}.before-import`,`${boardStorageKey(id)}.damaged-backup`].forEach(k=>localStorage.removeItem(k));return true};
+export const renameBoard=async(u:string,id:string,title:string)=>{const clean=title.trim();if(!clean)return null;if(isSelfhostBackendEnabled()){const row=await selfhostRenameBoard(id,clean);return rowToBoard(row,row.role)}if(isRemoteBackendEnabled()){const rows=await remoteRequest<any[]>(`/rest/v1/boards?id=eq.${encodeURIComponent(id)}&select=id,title,owner_id,created_at,updated_at`,{method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify({title:clean})});return rows[0]?rowToBoard(rows[0],"owner"):null}if(localRole(u,id)!=="owner")return null;let out:BoardSummary|null=null;write(BOARDS_KEY,boards().map(b=>b.id===id?(out={...b,title:clean,updatedAt:new Date().toISOString()}):b));return out};
+export const touchBoard=async(u:string,id:string,title?:string,knownRole?:BoardRole)=>{if(isSelfhostBackendEnabled()){const rows=await selfhostBoards();const row=rows.find(x=>x.id===id);if(!row)return null;if(title?.trim()&&title.trim()!==row.title)return rowToBoard(await selfhostRenameBoard(id,title.trim()),row.role);return rowToBoard(row,row.role)}if(isRemoteBackendEnabled()){const body: Record<string, unknown> = { updated_at: new Date().toISOString() };if(title?.trim())body.title=title.trim();const rows=await remoteRequest<any[]>(`/rest/v1/boards?id=eq.${encodeURIComponent(id)}&select=id,title,owner_id,created_at,updated_at`,{method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify(body)});if(!rows[0])return null;const role=rows[0].owner_id===u?"owner":knownRole??((await remoteRequest<any[]>(`/rest/v1/board_members?select=role&board_id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(u)}&limit=1`))[0]?.role||"viewer");return rowToBoard(rows[0],role)}const r=knownRole??localRole(u,id);if(r!=="owner"&&r!=="editor")return null;write(BOARDS_KEY,boards().map(b=>b.id===id?({...b,title:title?.trim()||b.title,updatedAt:new Date().toISOString()}):b));const updated = boards().find(b=>b.id===id);return updated?{...updated,role:r}:null};
+export const deleteBoard=async(u:string,id:string)=>{if(isSelfhostBackendEnabled()){await selfhostDeleteBoard(id);return true}if(isRemoteBackendEnabled()){await remoteRequest("/rest/v1/rpc/trash_board",{method:"POST",body:JSON.stringify({p_board_id:id})});return true}if(localRole(u,id)!=="owner")return false;write(BOARDS_KEY,boards().filter(b=>b.id!==id));write(MEMBERS_KEY,members().filter(m=>m.boardId!==id));write(INVITES_KEY,invites().filter(i=>i.boardId!==id));[boardStorageKey(id),`${boardStorageKey(id)}.before-import`,`${boardStorageKey(id)}.damaged-backup`].forEach(k=>localStorage.removeItem(k));return true};
 
 export const inviteToBoard=async(ownerId:string,boardId:string,email:string,role:Exclude<BoardRole,"owner">)=>{
  const e=norm(email);if(!/^\S+@\S+\.\S+$/.test(e))throw new Error("Введите корректный email");
+ if(isSelfhostBackendEnabled()){const result=await selfhostInvite(boardId,e,role);return result.kind}
  if(isRemoteBackendEnabled()){const result=await remoteRequest<any>("/rest/v1/rpc/invite_board_member",{method:"POST",body:JSON.stringify({p_board_id:boardId,p_email:e,p_role:role})});return result?.kind==="member"?"member" as const:"invite" as const}
  if(localRole(ownerId,boardId)!=="owner")throw new Error("Недостаточно прав");const existing=getUserByEmail(e);if(existing){if(existing.id===ownerId)throw new Error("Вы уже владелец этой доски");const ms=members().filter(m=>!(m.boardId===boardId&&m.userId===existing.id));ms.push({boardId,userId:existing.id,role,addedAt:new Date().toISOString()});write(MEMBERS_KEY,ms);return"member" as const}const inv=invites().filter(i=>!(i.boardId===boardId&&norm(i.email)===e));inv.push({id:crypto.randomUUID(),boardId,email:e,role,createdAt:new Date().toISOString()});write(INVITES_KEY,inv);return"invite" as const;
 };
 export const getBoardAccess=async(ownerId:string,boardId:string):Promise<{members:BoardAccessMember[];invites:BoardInvitation[]} >=>{
+ if(isSelfhostBackendEnabled()){const data=await selfhostAccess(boardId);return {members:(data.members||[]).map(m=>({boardId,userId:m.user_id,role:m.role,addedAt:m.added_at,user:{id:m.user_id,name:m.name||"Пользователь",email:m.email||"",createdAt:m.added_at}})),invites:(data.invites||[]).map(i=>({id:i.id,boardId,email:i.email,role:i.role,createdAt:i.created_at}))}}
  if(isRemoteBackendEnabled()){const data=await remoteRequest<any>("/rest/v1/rpc/get_board_access",{method:"POST",body:JSON.stringify({p_board_id:boardId})});return {members:(data?.members||[]).map((m:any)=>({boardId,userId:m.user_id,role:m.role,addedAt:m.added_at,user:{id:m.user_id,name:m.name||"Пользователь",email:m.email||"",createdAt:m.created_at||m.added_at}})),invites:(data?.invites||[]).map((i:any)=>({id:i.id,boardId,email:i.email,role:i.role,createdAt:i.created_at}))}}
  if(localRole(ownerId,boardId)!=="owner")return{members:[],invites:[]};return{members:members().filter(m=>m.boardId===boardId).map(m=>({...m,user:getUserById(m.userId)})),invites:invites().filter(i=>i.boardId===boardId)};
 };
-export const changeMemberRole=async(o:string,b:string,u:string,role:Exclude<BoardRole,"owner">)=>{if(isRemoteBackendEnabled()){await remoteRequest(`/rest/v1/board_members?board_id=eq.${encodeURIComponent(b)}&user_id=eq.${encodeURIComponent(u)}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({role})});return true}if(localRole(o,b)!=="owner")return false;write(MEMBERS_KEY,members().map(m=>m.boardId===b&&m.userId===u?{...m,role}:m));return true};
-export const removeMember=async(o:string,b:string,u:string)=>{if(isRemoteBackendEnabled()){await remoteRequest(`/rest/v1/board_members?board_id=eq.${encodeURIComponent(b)}&user_id=eq.${encodeURIComponent(u)}`,{method:"DELETE",headers:{Prefer:"return=minimal"}});return true}if(localRole(o,b)!=="owner")return false;write(MEMBERS_KEY,members().filter(m=>!(m.boardId===b&&m.userId===u)));return true};
-export const revokeInvitation=async(o:string,b:string,id:string)=>{if(isRemoteBackendEnabled()){await remoteRequest(`/rest/v1/board_invites?id=eq.${encodeURIComponent(id)}&board_id=eq.${encodeURIComponent(b)}`,{method:"DELETE",headers:{Prefer:"return=minimal"}});return true}if(localRole(o,b)!=="owner")return false;write(INVITES_KEY,invites().filter(i=>!(i.boardId===b&&i.id===id)));return true};
+export const changeMemberRole=async(o:string,b:string,u:string,role:Exclude<BoardRole,"owner">)=>{if(isSelfhostBackendEnabled()){await selfhostChangeMemberRole(b,u,role);return true}if(isRemoteBackendEnabled()){await remoteRequest(`/rest/v1/board_members?board_id=eq.${encodeURIComponent(b)}&user_id=eq.${encodeURIComponent(u)}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({role})});return true}if(localRole(o,b)!=="owner")return false;write(MEMBERS_KEY,members().map(m=>m.boardId===b&&m.userId===u?{...m,role}:m));return true};
+export const removeMember=async(o:string,b:string,u:string)=>{if(isSelfhostBackendEnabled()){await selfhostRemoveMember(b,u);return true}if(isRemoteBackendEnabled()){await remoteRequest(`/rest/v1/board_members?board_id=eq.${encodeURIComponent(b)}&user_id=eq.${encodeURIComponent(u)}`,{method:"DELETE",headers:{Prefer:"return=minimal"}});return true}if(localRole(o,b)!=="owner")return false;write(MEMBERS_KEY,members().filter(m=>!(m.boardId===b&&m.userId===u)));return true};
+export const revokeInvitation=async(o:string,b:string,id:string)=>{if(isSelfhostBackendEnabled()){await selfhostRevokeInvitation(b,id);return true}if(isRemoteBackendEnabled()){await remoteRequest(`/rest/v1/board_invites?id=eq.${encodeURIComponent(id)}&board_id=eq.${encodeURIComponent(b)}`,{method:"DELETE",headers:{Prefer:"return=minimal"}});return true}if(localRole(o,b)!=="owner")return false;write(INVITES_KEY,invites().filter(i=>!(i.boardId===b&&i.id===id)));return true};
 
 export const getTrashedBoards=async(_user:AuthUser):Promise<BoardSummary[]>=>{
  if(!isRemoteBackendEnabled())return[];
