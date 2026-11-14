@@ -46,6 +46,15 @@ class FeedbackStatusInput(BaseModel):
     status: Literal["new", "reviewed", "closed"]
 
 
+def json_object(value):
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except (TypeError, ValueError):
+            return {}
+    return value if isinstance(value, dict) else {}
+
+
 def access_view(row):
     role = "teacher" if (
         bool(row["is_admin"]) or
@@ -173,7 +182,7 @@ def make_admin_router(current_user) -> APIRouter:
             "status": row["teacher_status"],
             "requested_at": row["teacher_requested_at"].isoformat() if row["teacher_requested_at"] else None,
             "reviewed_at": row["teacher_reviewed_at"].isoformat() if row["teacher_reviewed_at"] else None,
-            "application": row["teacher_application"] or {},
+            "application": json_object(row["teacher_application"]),
         } for row in rows]
 
     @router.post("/api/v1/admin/teacher-requests/{user_id}/review")
