@@ -358,8 +358,7 @@ export function selfhostSubscribeBoard(
     try{serialized=JSON.stringify(event)}catch{return false}
     if(serialized.length>120_000)return false;
     if(!ready||!socket||socket.readyState!==WebSocket.OPEN)return false;
-    socket.send(serialized);
-    return true;
+    try{socket.send(serialized);return true}catch{return false}
   };
   const sendObjectPreview=(next:SelfhostObjectPreview):boolean=>{
     if(!ready||next.type!=="object_preview"||
