@@ -24,7 +24,8 @@ async def test_two_live_sockets_receive_revision_then_revoke():
     try:
         sql_dir=Path(__file__).with_name("sql")
         for script in ("001_initial.sql","002_board_assets.sql",
-                       "003_board_invites.sql","004_account_verification.sql"):
+                       "003_board_invites.sql","004_account_verification.sql",
+                       "005_pilot_operations.sql"):
             await conn.execute(sql_dir.joinpath(script).read_text())
         await conn.execute(
             "TRUNCATE account_sessions,board_documents,board_members,boards,account_users CASCADE"
