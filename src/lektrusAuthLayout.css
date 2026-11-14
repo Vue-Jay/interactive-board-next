@@ -102,3 +102,45 @@
   .auth-role-grid { grid-template-columns: minmax(0,1fr); gap: 8px; }
   .auth-role-option { padding: 10px 12px; }
 }
+
+
+/* On wider screens registration uses two columns instead of a tall narrow
+   card. Sign-in and password recovery keep their existing compact layout. */
+@media (min-width: 760px) {
+  .auth-shell-register {
+    padding: 18px 24px;
+    min-height: 100dvh;
+  }
+  .auth-shell-register .auth-card {
+    width: min(100%, 780px);
+    max-width: 780px;
+    padding: 22px 28px;
+  }
+  .auth-shell-register .auth-brand-row { margin-bottom: 12px; }
+  .auth-shell-register .auth-tabs { margin-bottom: 12px; }
+  .auth-shell-register .auth-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 14px;
+  }
+  .auth-shell-register .auth-form > div:first-child,
+  .auth-shell-register .auth-role-choice,
+  .auth-shell-register .auth-register-name-grid,
+  .auth-shell-register .auth-form > .auth-error,
+  .auth-shell-register .auth-form > .auth-notice,
+  .auth-shell-register .auth-confirm-actions {
+    grid-column: 1 / -1;
+  }
+  .auth-shell-register .auth-register-name-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .auth-shell-register .auth-register-display-name { grid-column: auto; }
+  .auth-shell-register .auth-role-choice legend { padding-bottom: 6px; }
+  .auth-shell-register .auth-role-option { padding: 9px 12px; }
+  .auth-shell-register .auth-field { min-width: 0; gap: 5px; }
+  .auth-shell-register .auth-field input { min-width: 0; min-height: 41px; padding: 9px 12px; }
+  .auth-shell-register .auth-form .auth-submit { min-height: 41px; align-self: end; }
+  .auth-shell-register .auth-role-note { display: none; }
+}
