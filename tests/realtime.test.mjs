@@ -115,7 +115,7 @@ function harness(options = {}) {
       removeEventListener: name => listeners.delete(name),
     },
   });
-  const stop = subscribeBoardDocument('board-id', row => documents.push(row), status => statuses.push(status));
+  const stop = subscribeBoardDocument('board-id', row => documents.push(row), status => statuses.push(status), options.localVersion);
   const tick = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
   const fire = ms => {
     const entry = [...timers].find(([, timer]) => timer.ms === ms);
@@ -136,6 +136,7 @@ test('subscription uses current-board filters and JWT; ready and events fetch la
   for (const filter of join.payload.config.postgres_changes) {
     assert.equal(filter.table, 'board_documents');
     assert.equal(filter.filter, 'board_id=eq.board-id');
+    assert.deepEqual(filter.select, ['board_id', 'version']);
   }
   ws.ready(); await h.tick();
   assert.equal(h.statuses.at(-1), 'online');
@@ -145,6 +146,31 @@ test('subscription uses current-board filters and JWT; ready and events fetch la
   ws.message('postgres_changes', {}, 'realtime:board:other'); await h.tick();
   assert.equal(h.documents.length, 2);
   h.stop();
+});
+
+test('own saves skip the download and a burst of peer versions reads one latest board', async () => {
+  let localVersion = 1, persistedVersion = 1;
+  const h = harness({
+    localVersion: () => localVersion,
+    probeVersion: () => persistedVersion,
+    read: () => ({ board_id: 'board-id', version: persistedVersion, document }),
+  });
+  await h.tick();
+  const ws = h.sockets[0];
+  ws.open(); ws.ready(); await h.tick();
+  const notice = version => ws.message('postgres_changes', { record: { board_id: 'board-id', version } });
+  notice(2);
+  localVersion = persistedVersion = 2;
+  h.fire(250); await h.tick();
+  assert.equal(h.reads(), 0, 'the saving client already has the document');
+  persistedVersion = 4;
+  notice(3); notice(4);
+  h.fire(250); await h.tick();
+  assert.equal(h.reads(), 1);
+  assert.deepEqual(h.documents.map(row => row.version), [4]);
+  notice(5);
+  h.stop();
+  assert.equal(h.timers.size, 0);
 });
 
 test('unmount/board switch/logout cleanup closes socket and removes all timers/listeners', async () => {
@@ -333,6 +359,7 @@ test('key-only WAL with an acknowledged revision skips even the version probe',a
   assert.equal(h.probes(),0,'Duplicate version metadata should require zero REST calls');
   serverVersion=2;
   ws.message('postgres_changes',{data:{record:{board_id:'board-id',version:2}}});
+  h.fire(250);
   await h.tick();
   assert.equal(h.probes(),1);
   assert.equal(h.reads(),2,'New version metadata still fetches the full board');
