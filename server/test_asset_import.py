@@ -10,6 +10,7 @@ import pytest
 
 import import_supabase_assets as importer
 from test_importer import OWNER, STUDENT, BOARD
+from check_assets import audit
 
 IMAGE_A = b"\x89PNG\r\n\x1a\n" + b"test-png" * 33
 IMAGE_B = b"\xff\xd8" + b"test-jpeg" * 29 + b"\xff\xd9"
@@ -170,3 +171,27 @@ async def test_source_assets_copy_in_one_transaction_without_overwriting(
     with pytest.raises(RuntimeError,match="empty"):
         await importer.run(apply=True)
     assert len(requests)==2,"A repeated import must not fetch or replace files"
+
+    # Verify already-written files independently from the importing process.
+    root = tmp_path / "private"
+    pool = await asyncpg.create_pool(target_dsn,min_size=1,max_size=2)
+    try:
+        healthy = await audit(pool,root)
+        assert healthy.ok and healthy.records == 2 and healthy.valid == 2
+
+        first_path = next((root/str(BOARD)).iterdir())
+        original = first_path.read_bytes()
+        first_path.write_bytes(b"!" + original[1:])
+        corrupt = await audit(pool,root)
+        assert not corrupt.ok and corrupt.wrong_hash == 1
+        first_path.write_bytes(original)
+
+        orphan = root/".incoming-crash-artifact"
+        orphan.write_bytes(b"orphan data")
+        leaked = await audit(pool,root)
+        assert not leaked.ok and leaked.orphan_files == 1
+        orphan.unlink()
+
+        assert (await audit(pool,root)).ok
+    finally:
+        await pool.close()
