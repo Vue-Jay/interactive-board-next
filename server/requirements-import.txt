@@ -1,3 +1,0 @@
-# Run the offline importers in an isolated migration environment, never in the public web worker.
--r requirements.txt
-httpx==0.28.1
