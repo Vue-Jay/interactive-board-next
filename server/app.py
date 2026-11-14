@@ -377,12 +377,49 @@ async def get_document(board_id: UUID, request: Request, user=Depends(current_us
         return document_view(row, board_id)
 
 _subscribers: dict[UUID, dict[WebSocket, str]] = defaultdict(dict)
+_subscriber_users: dict[UUID, dict[WebSocket, dict[str, str]]] = defaultdict(dict)
+
+
+def _unique_presence(board_id: UUID) -> list[dict[str, str]]:
+    users: dict[str, dict[str, str]] = {}
+    for meta in _subscriber_users.get(board_id, {}).values():
+        user_id = meta.get("user_id", "")
+        if user_id and user_id not in users:
+            users[user_id] = dict(meta)
+    return sorted(users.values(), key=lambda item: (item["role"] != "owner", item["name"].casefold()))
+
+
+async def announce_presence(board_id: UUID, *, joins: list[dict[str, str]] | None = None,
+                            leaves: list[dict[str, str]] | None = None,
+                            pool: asyncpg.Pool, exclude: WebSocket | None = None):
+    message = {
+        "type": "presence_diff",
+        "joins": joins or [],
+        "leaves": leaves or [],
+    }
+    for client, token in list(_subscribers.get(board_id, {}).items()):
+        if client is exclude:
+            continue
+        try:
+            recipient = await lookup_session(pool, token)
+            async with pool.acquire() as conn:
+                await board_access(conn, board_id, recipient["id"])
+            await asyncio.wait_for(client.send_json(message), timeout=1)
+        except HTTPException:
+            _subscribers.get(board_id, {}).pop(client, None)
+            _subscriber_users.get(board_id, {}).pop(client, None)
+            try:
+                await client.close(code=4403)
+            except Exception:
+                pass
+        except Exception:
+            _subscribers.get(board_id, {}).pop(client, None)
+            _subscriber_users.get(board_id, {}).pop(client, None)
+
 
 async def announce(board_id: UUID, version: int, pool: asyncpg.Pool):
     # Permission and session membership are checked at SEND TIME. A user who
     # was removed from a board or logged out must not receive future notices.
-    # This pilot is intentionally one API worker; cross-instance fanout is a
-    # separate production gate.
     for client, token in list(_subscribers.get(board_id, {}).items()):
         try:
             user = await lookup_session(pool, token)
@@ -391,18 +428,20 @@ async def announce(board_id: UUID, version: int, pool: asyncpg.Pool):
             await client.send_json({"type": "document_changed", "version": version})
         except HTTPException:
             _subscribers[board_id].pop(client, None)
+            _subscriber_users.get(board_id, {}).pop(client, None)
             try:
                 await client.close(code=4403)
             except Exception:
                 pass
         except Exception:
             _subscribers[board_id].pop(client, None)
+            _subscriber_users.get(board_id, {}).pop(client, None)
+
 
 async def relay_live_event(board_id: UUID, sender: WebSocket,
                            event: dict[str, Any], pool: asyncpg.Pool):
-    # Even a connected socket can lose membership or have its session revoked.
-    # Verify every recipient before forwarding data, not just at subscription.
-    # Zero file/document bytes are broadcast in these transient frames.
+    # Transient events never contain durable document or file bytes. Every
+    # recipient's current session and board membership are rechecked.
     for peer, token in list(_subscribers.get(board_id, {}).items()):
         if peer is sender:
             continue
@@ -413,12 +452,14 @@ async def relay_live_event(board_id: UUID, sender: WebSocket,
             await asyncio.wait_for(peer.send_json(event), timeout=1)
         except HTTPException:
             _subscribers.get(board_id, {}).pop(peer, None)
+            _subscriber_users.get(board_id, {}).pop(peer, None)
             try:
                 await peer.close(code=4403)
             except Exception:
                 pass
         except Exception:
             _subscribers.get(board_id, {}).pop(peer, None)
+            _subscriber_users.get(board_id, {}).pop(peer, None)
 
 
 @app.put("/api/v1/boards/{board_id}/document")
@@ -482,15 +523,29 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         claims = jwt_claims(token)
         user = await lookup_session(websocket.app.state.pool, token)
         async with websocket.app.state.pool.acquire() as conn:
-            await board_access(conn, board_id, user["id"])
+            _, current_role = await board_access(conn, board_id, user["id"])
             current_version = await conn.fetchval(
                 "SELECT version FROM board_documents WHERE board_id=$1", board_id
             ) or 0
         if len(_subscribers[board_id]) >= 100:
             await websocket.close(code=4429)
             return
+        user_meta = {
+            "user_id": str(user["id"]),
+            "name": str(user["display_name"] or "Участник")[:100],
+            "role": current_role,
+        }
+        already_present = any(
+            meta.get("user_id") == user_meta["user_id"]
+            for meta in _subscriber_users.get(board_id, {}).values()
+        )
         _subscribers[board_id][websocket] = token
+        _subscriber_users[board_id][websocket] = user_meta
         await websocket.send_json({"type": "ready", "version": current_version})
+        await websocket.send_json({"type": "presence_state", "users": _unique_presence(board_id)})
+        if not already_present:
+            await announce_presence(board_id, joins=[user_meta],
+                                    pool=websocket.app.state.pool, exclude=websocket)
         limiter = EventRateLimit()
         while True:
             remaining = float(claims["exp"]) - time.time()
@@ -539,6 +594,22 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                         await websocket.close(code=4429)
                         return
                     continue
+                if event["type"] in ("focus_view", "attachment_result"):
+                    target_id = event.get("target_user_id")
+                    try:
+                        target_uuid = UUID(str(target_id))
+                        async with websocket.app.state.pool.acquire() as conn:
+                            await board_access(conn, board_id, target_uuid)
+                    except (ValueError, HTTPException):
+                        await websocket.send_json({
+                            "type": "event_error", "reason": "invalid_target"
+                        })
+                        continue
+                    if target_uuid == refreshed_user["id"]:
+                        await websocket.send_json({
+                            "type": "event_error", "reason": "invalid_target"
+                        })
+                        continue
                 if event["type"] == "object_preview":
                     if not current_board["is_pilot"]:
                         await websocket.send_json({
@@ -590,10 +661,22 @@ async def board_events(websocket: WebSocket, board_id: UUID):
             pass
     finally:
         clients = _subscribers.get(board_id)
+        users = _subscriber_users.get(board_id)
+        departed = users.pop(websocket, None) if users is not None else None
         if clients is not None:
             clients.pop(websocket, None)
             if not clients:
                 _subscribers.pop(board_id, None)
+        if users is not None and not users:
+            _subscriber_users.pop(board_id, None)
+        if departed and not any(
+            meta.get("user_id") == departed.get("user_id")
+            for meta in _subscriber_users.get(board_id, {}).values()
+        ):
+            await announce_presence(board_id, leaves=[departed],
+                                    pool=websocket.app.state.pool)
+        if not _subscribers.get(board_id):
+            _subscriber_users.pop(board_id, None)
 
 # Asset endpoints reuse the same server-authoritative session and board access
 # checks; nothing under the private upload directory is served by Caddy.
