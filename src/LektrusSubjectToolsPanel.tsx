@@ -7,11 +7,9 @@ type Props={
   anchor:HTMLElement|null;
   subject:string;
   canChangeSubject:boolean;
-  canCreateBoard:boolean;
   subjects:string[];
   tools:SubjectToolOption[];
   onSubjectChange:(subject:string)=>void;
-  onCreateBoard:()=>void;
   onChoose:(id:string)=>void;
   onClose:()=>void;
 };
@@ -25,18 +23,15 @@ const subjectToolSections:Record<string,{title:string;ids:string[]}[]>={
   "химия":[{title:"Уравнения и задания",ids:["chem-formulas","chem-assignments"]},
     {title:"Вещества и органика",ids:["chem-periodic-table","chem-organic"]},
     {title:"Реакции и опыты",ids:["chem-experiments"]}],
-  "биология":[{title:"Анатомия человека",ids:["bio-anatomy"]}],
+  "биология":[],
   "география":[{title:"Карты",ids:["maps-atlas","contour-atlas"]},
     {title:"Учебные задания",ids:["geo-matching","geo-question-cards"]}],
-  "история":[{title:"Карты и хронология",ids:["history-atlas","history-timeline"]},
-    {title:"Родословные",ids:["history-family-tree"]}],
-  "информатика":[{title:"Информация",ids:["info-encoding","info-place-value"]},
-    {title:"Программирование и алгоритмы",ids:["info-programming","info-flowchart"]},
-    {title:"Логика",ids:["info-circuit","info-logic"]}],
+  "история":[{title:"Исторические карты",ids:["history-atlas"]}],
+  "информатика":[],
   "русский язык":[],
   "иностранный язык":[{title:"Грамматика и лексика",ids:["language-sentence-builder","language-flashcards"]}],
-  "литература":[{title:"Анализ",ids:["literature-analysis"]}],
-  "обществознание":[{title:"Учебные схемы",ids:["civics-structure"]}]
+  "литература":[],
+  "обществознание":[]
 };
 
 function sectionsForSubject(subject:string,tools:SubjectToolOption[]){
@@ -54,7 +49,7 @@ function sectionsForSubject(subject:string,tools:SubjectToolOption[]){
   return sections;
 }
 
-export default function LektrusSubjectToolsPanel({anchor,subject,canChangeSubject,canCreateBoard,subjects,tools,onSubjectChange,onCreateBoard,onChoose,onClose}:Props){
+export default function LektrusSubjectToolsPanel({anchor,subject,canChangeSubject,subjects,tools,onSubjectChange,onChoose,onClose}:Props){
   const panelRef=useRef<HTMLElement>(null);
   const [position,setPosition]=useState<CSSProperties>({left:70,top:86});
   const sections=sectionsForSubject(subject,tools);
@@ -123,7 +118,6 @@ export default function LektrusSubjectToolsPanel({anchor,subject,canChangeSubjec
             {subject&&!subjects.includes(subject)&&<option value={subject}>{subject}</option>}
           </select>
           {!canChangeSubject&&<small>Предмет закреплён создателем доски</small>}
-          {canCreateBoard&&<button type="button" className="lektrus-subject-worksheet-button" onClick={onCreateBoard}>+ Предметная доска</button>}
         </label>
         {sections.length>0?
           <div className="lektrus-subject-tools-groups" role="group" aria-label={subject+" инструменты"}>
@@ -146,12 +140,10 @@ export default function LektrusSubjectToolsPanel({anchor,subject,canChangeSubjec
                 </div>
               </section>)}
           </div>:
-          (canCreateBoard&&["биология","информатика","обществознание"].includes(subject.trim().toLocaleLowerCase("ru-RU"))?
-            null:
-            <div className="lektrus-subject-tools-empty">
-              <strong>{subject?"Нет предметных инструментов":"Выберите учебный предмет"}</strong>
-              <p>Универсальные инструменты доступны в основной панели доски.</p>
-            </div>)}
+          <div className="lektrus-subject-tools-empty">
+            <strong>{subject?"Нет предметных инструментов":"Выберите учебный предмет"}</strong>
+            <p>Универсальные инструменты доступны в основной панели доски.</p>
+          </div>}
       </div>
     </section>,document.body
   );
