@@ -213,8 +213,9 @@ export async function ensureBoardAssets(boardId: string, document: DocumentData)
       return;
     }
     // Only an explicit Storage "not found" response permits migration.
-    const legacy = await getLocalAsset(id).catch(() => null);
-    if (!legacy) throw new Error("Вложение не найдено в облаке");
+    const legacy = (await getLocalAsset(path).catch(() => null)) ??
+      await getLocalAsset(id).catch(() => null);
+    if (!legacy) throw new Error("Вложение не найдено в локальном хранилище или на сервере");
     const item = document.items.find(item => item.assetId === id);
     const mime = item?.kind === "pdf" ? "application/pdf" : legacy.type || item?.mime;
     await putAsset(id, mime && mime !== legacy.type ? legacy.slice(0, legacy.size, mime) : legacy, boardId);
