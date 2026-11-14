@@ -15,7 +15,7 @@ import { ScreenOrientation } from "@capacitor/screen-orientation";
 import { completeEmailConfirmation, getCachedCurrentUser, getCurrentUser, logoutUser, type AuthUser } from "./authStore";
 import { boardStorageKey, getBoardForUser, type BoardSummary } from "./boardStore";
 import { getRemoteBoardDocument, isRemoteBackendEnabled, saveRemoteBoardDocument } from "./backend";
-import { isSelfhostBackendEnabled, selfhostReadDocument, selfhostSaveDocument, PilotHttpError } from "./selfhostPilotApi";
+import { isSelfhostBackendEnabled, selfhostReadDocument, selfhostSaveDocument, SelfhostHttpError } from "./selfhostApi";
 import { documentFingerprint } from "./boardSync";
 import { parseDocument, type DocumentData } from "./boardModel";
 import { ensureBoardAssets } from "./assetStore";
@@ -270,7 +270,7 @@ export default function App() {
             const saved=await selfhostSaveDocument(board.id,expectedVersion??0,document as unknown as Record<string,unknown>);
             return {ok:true,conflict:false,version:saved.version};
           }catch(error){
-            if(error instanceof PilotHttpError&&error.status===409)
+            if(error instanceof SelfhostHttpError&&error.status===409)
               return {ok:false,conflict:true,version:null};
             throw error;
           }
