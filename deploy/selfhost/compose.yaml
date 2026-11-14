@@ -12,6 +12,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ../../server/sql/001_initial.sql:/docker-entrypoint-initdb.d/001_initial.sql:ro
       - ../../server/sql/002_board_assets.sql:/docker-entrypoint-initdb.d/002_board_assets.sql:ro
+      - ../../server/sql/003_board_invites.sql:/docker-entrypoint-initdb.d/003_board_invites.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U lektrus -d lektrus"]
       interval: 10s
