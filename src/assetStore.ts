@@ -1,4 +1,5 @@
 import { isRemoteBackendEnabled, remoteAssetExists, remoteAssetRequest } from "./backend";
+import { pilotAssetExists, pilotDownloadAsset, pilotUploadAsset } from "./selfhostPilotApi";
 import type { DocumentData } from "./boardModel";
 
 const DB_NAME = "lesson-board.assets.v1";
@@ -52,6 +53,12 @@ async function getLocalAsset(id: string): Promise<Blob | null> {
 
 const synchronized = new Set<string>();
 const downloads = new Map<string, Promise<Blob | null>>();
+const selfhostBoards = new Set<string>();
+export const setSelfhostBoardMode = (boardId:string,enabled:boolean) => {
+  if(enabled)selfhostBoards.add(boardId);
+  else selfhostBoards.delete(boardId);
+};
+const usesSelfhostAssets = (boardId:string) => selfhostBoards.has(boardId);
 
 const MEMORY_CACHE_LIMIT = 64 * 1024 * 1024;
 const MEMORY_ITEM_LIMIT = 16 * 1024 * 1024;
@@ -129,12 +136,13 @@ async function optimizeImage(blob: Blob): Promise<Blob> {
 export async function putAsset(id: string, blob: Blob, boardId: string, localOnly = false) {
   blob = await optimizeImage(blob);
   if (localOnly) return putLocalAsset(assetPath(boardId, id), blob);
-  if (!isRemoteBackendEnabled()) return putLocalAsset(id, blob);
   if (blob.size > 50 * 1024 * 1024 || !(blob.type.startsWith("image/") || blob.type === "application/pdf")) {
     throw new Error("Нужно изображение или PDF размером до 50 МБ");
   }
   const path = assetPath(boardId, id);
-  await remoteAssetRequest(path, blob);
+  if (usesSelfhostAssets(boardId)) await pilotUploadAsset(boardId,id,blob);
+  else if (isRemoteBackendEnabled()) await remoteAssetRequest(path, blob);
+  else return putLocalAsset(id, blob);
   synchronized.add(path);
   rememberAsset(path, blob);
   // A full browser cache must not turn a successful upload into an error.
@@ -148,7 +156,7 @@ export async function getAsset(id: string, boardId: string): Promise<Blob | null
     rememberAsset(path, inMemory);
     return inMemory;
   }
-  if (!isRemoteBackendEnabled()) {
+  if (!isRemoteBackendEnabled() && !usesSelfhostAssets(boardId)) {
     const local = (await getLocalAsset(path)) ?? await getLocalAsset(id);
     return local ? rememberAsset(path, local) : null;
   }
@@ -157,7 +165,9 @@ export async function getAsset(id: string, boardId: string): Promise<Blob | null
   if (downloads.has(path)) return downloads.get(path)!;
   const pending = (async () => {
     try {
-      const blob = await remoteAssetRequest(path);
+      const blob = usesSelfhostAssets(boardId)
+        ? await pilotDownloadAsset(boardId,id)
+        : await remoteAssetRequest(path);
       if (blob) {
         synchronized.add(path);
         rememberAsset(path, blob);
@@ -176,7 +186,8 @@ export async function getAsset(id: string, boardId: string): Promise<Blob | null
 
 // Upload legacy local attachments before publishing a document referencing them.
 export async function ensureBoardAssets(boardId: string, document: DocumentData) {
-  if (!isRemoteBackendEnabled()) return;
+  const selfhost=usesSelfhostAssets(boardId);
+  if (!isRemoteBackendEnabled()&&!selfhost) return;
   const ids = [...new Set(
     document.items
       .filter(item => item.kind === "image" || item.kind === "pdf")
@@ -192,7 +203,9 @@ export async function ensureBoardAssets(boardId: string, document: DocumentData)
     // remote object is missing. Never attempt a duplicate upload in that case.
     // In particular, re-uploading a 50-MB legacy PDF after a transient HEAD
     // failure wastes traffic and can turn a recoverable save into a 409.
-    const exists = await remoteAssetExists(path);
+    const exists = selfhost
+      ? await pilotAssetExists(boardId,id)
+      : await remoteAssetExists(path);
     if (exists) {
       synchronized.add(path);
       return;
