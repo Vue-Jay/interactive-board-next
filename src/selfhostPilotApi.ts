@@ -176,7 +176,7 @@ export async function pilotRequest<T>(path:string,init:RequestInit={}):Promise<T
 }
 export const pilotBoards=()=>pilotRequest<PilotBoard[]>("/api/v1/boards");
 export const pilotCreateBoard=(title:string)=>pilotRequest<PilotBoard>("/api/v1/boards",{
-  method:"POST",body:JSON.stringify({title}),
+  method:"POST",body:JSON.stringify({title,is_pilot:true}),
 });
 export const pilotReadDocument=(boardId:string)=>pilotRequest<PilotDocument>(
   "/api/v1/boards/"+encodeURIComponent(boardId)+"/document"
