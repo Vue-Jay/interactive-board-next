@@ -20,6 +20,10 @@ jobs:
         run: npm ci
       - name: Typecheck and build
         run: npm run build
+      - name: Check curated subject catalogue, saved objects and sentence dragging
+        run: |
+          node scripts/test-lektrus-release-tools.mjs
+          node scripts/test-lektrus-sentence-drag.mjs
       - name: Check board links, invitations and auth callback routing
         run: npm run test:board-links
       - name: Check geometry names, closure and touch gestures
