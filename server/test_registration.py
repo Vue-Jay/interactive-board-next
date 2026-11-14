@@ -77,7 +77,11 @@ async def test_verified_teacher_signup_without_admin_privileges(client,monkeypat
     assert verified.status_code==200,verified.text
     assert (await client.post("/api/v1/auth/verify-email",
                               json={"token":token})).status_code==400
-    session,_=await sign_in(client,email)
+    logged=await client.post("/api/v1/auth/login",json={
+        "email":email,"password":data["password"]
+    })
+    assert logged.status_code==200,logged.text
+    session=logged.json()
     assert session["user"]["account_role"]=="teacher"
     assert session["user"]["teacher_status"]=="approved"
     assert session["user"]["is_admin"] is False
@@ -115,7 +119,12 @@ async def test_student_verification_then_claims_invitation(client,monkeypatch):
     token=parse_qs(urlsplit(sent[0][1]).query)["token"][0]
     confirmed=await client.post("/api/v1/auth/verify-email",json={"token":token})
     assert confirmed.status_code==200
-    session,student=await sign_in(client,data["email"])
+    logged=await client.post("/api/v1/auth/login",json={
+        "email":data["email"],"password":data["password"]
+    })
+    assert logged.status_code==200,logged.text
+    session=logged.json()
+    student={"Authorization":"Bearer "+session["access_token"]}
     assert session["user"]["account_role"]=="student"
     assert session["user"]["teacher_status"]=="none"
     assert session["user"]["is_admin"] is False
