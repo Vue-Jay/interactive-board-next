@@ -98,7 +98,7 @@ async function loadSelfhost(enabled) {
       assert.equal(JSON.parse(options.body).duration_minutes,45);return ok({ok:true});
     }
     if(u.pathname==="/api/v1/student-sessions/session-1"&&options.method==="DELETE")return new Response(null,{status:204});
-    if(u.pathname==="/api/v1/assignments"&&options.method==="GET")return ok([]);
+    if(u.pathname==="/api/v1/assignments"&&(options.method||"GET")==="GET")return ok([]);
     if(u.pathname==="/api/v1/assignments"&&options.method==="POST"){
       assert.equal(JSON.parse(options.body).student_id,"student-1");return ok({ok:true,id:"assignment-1"},201);
     }
@@ -109,7 +109,7 @@ async function loadSelfhost(enabled) {
     if(u.pathname==="/api/v1/assignments/assignment-1/review"){
       assert.equal(JSON.parse(options.body).score,9);return ok({ok:true});
     }
-    if(u.pathname==="/api/v1/schedule"&&options.method==="GET")return ok([]);
+    if(u.pathname==="/api/v1/schedule"&&(options.method||"GET")==="GET")return ok([]);
     if(u.pathname==="/api/v1/schedule"&&options.method==="POST"){
       assert.equal(JSON.parse(options.body).items.length,1);return ok({ok:true,created:1},201);
     }
