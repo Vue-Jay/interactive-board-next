@@ -2,18 +2,18 @@
 // The production Supabase session and main routes are deliberately untouched.
 import assert from "node:assert/strict";
 import vm from "node:vm";
-import { build } from "esbuild";
+import ts from "typescript";
+import { readFileSync } from "node:fs";
 
 async function loadPilot(enabled) {
-  const output=await build({
-    entryPoints:["src/selfhostPilotApi.ts"],bundle:true,write:false,
-    format:"iife",globalName:"Pilot",platform:"browser",
-    logLevel:"silent",define:{
-      "import.meta.env.VITE_LEKTRUS_SELFHOST_PILOT":JSON.stringify(enabled?"true":"false"),
-      "import.meta.env.VITE_LEKTRUS_SELFHOST_API_ORIGIN":JSON.stringify("https://pilot.lektrus.example"),
-      "import.meta.env.DEV":"false",
-    },
-  });
+  let source=readFileSync(new URL("../src/selfhostPilotApi.ts",import.meta.url),"utf8");
+  source=source
+    .replaceAll("import.meta.env.VITE_LEKTRUS_SELFHOST_PILOT",JSON.stringify(enabled?"true":"false"))
+    .replaceAll("import.meta.env.VITE_LEKTRUS_SELFHOST_API_ORIGIN",JSON.stringify("https://pilot.lektrus.example"))
+    .replaceAll("import.meta.env.DEV","false");
+  const compiled=ts.transpileModule(source,{
+    compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS},
+  }).outputText;
   const data=new Map([["lesson-board.supabase.session.v1","production-must-remain"]]);
   const record=[];
   let expires=900,refreshes=0;
@@ -76,15 +76,15 @@ async function loadPilot(enabled) {
   }
   const listeners=new Map();
   const context=vm.createContext({
-    fetch,URL,Headers,Response,AbortController,FormData,
+    exports:{},fetch,URL,Headers,Response,AbortController,FormData,
     navigator:{onLine:true},WebSocket:Socket,
     sessionStorage,setTimeout,clearTimeout,setInterval,clearInterval,Date,
     window:{location:{origin:"https://pilot.lektrus.example"},
       addEventListener(name,fn){listeners.set(name,fn)},
       removeEventListener(name){listeners.delete(name)}},
   });
-  vm.runInContext(output.outputFiles[0].text,context);
-  return {api:context.Pilot,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,sessionStorage,changeExpires:v=>{expires=v}};
+  vm.runInContext(compiled,context);
+  return {api:context.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,sessionStorage,changeExpires:v=>{expires=v}};
 }
 
 const disabled=await loadPilot(false);
