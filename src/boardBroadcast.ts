@@ -1,5 +1,6 @@
 import { getRealtimeSocketUrl, getRemoteSession, isRemoteBackendEnabled } from "./backend";
 import type { BoardRole } from "./authStore";
+import { isSelfhostBackendEnabled, selfhostSubscribeBoard } from "./selfhostApi";
 
 export type RemoteCursor = {
   userId: string;
@@ -30,6 +31,62 @@ export function connectBoardCursorChannel(
   onDiagnostics?: (status: string) => void,
   publishInkSelf = true,
 ): BoardCursorChannel {
+  if (isSelfhostBackendEnabled()) {
+    const clientId = (() => {
+      if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID().replaceAll("-", "_");
+      return Math.random().toString(36).slice(2) + Date.now().toString(36);
+    })();
+    let attempted = 0, sent = 0, received = 0, acknowledged = 0;
+    const reportSelfhost = (status: string) =>
+      onDiagnostics?.(`${status} · вызов ${attempted} · отправлено ${sent} · сервер ${acknowledged} · получено ${received}`);
+    const channel = selfhostSubscribeBoard(boardId, () => {},
+      status => reportSelfhost(status === "online" ? "подключено" : status === "offline" ? "отключено" : "подключается"),
+      event => {
+        if (event.type === "cursor" && event.user_id !== me.userId) {
+          onCursor({
+            userId: event.user_id, name: event.name, role: event.role,
+            x: event.x, y: event.y, updatedAt: event.sent_at || Date.now(),
+          });
+        } else if (event.type === "live_ink" && event.user_id !== me.userId) {
+          received++;
+          onInk?.({
+            clientId: event.client_id, userId: event.user_id,
+            id: event.stroke_id, kind: event.kind, color: event.color,
+            weight: event.weight, points: event.points,
+            finished: event.finished, offset: event.offset,
+          });
+        } else if (event.type === "event_error") {
+          reportSelfhost(event.reason);
+        }
+      });
+    return {
+      sendCursor: (x, y) => {
+        if (publishSelf) channel.sendCursor(clientId, x, y);
+      },
+      sendInk: ink => {
+        attempted++;
+        if (!publishInkSelf || !ink.points.length) return;
+        const dropped = Math.max(0, ink.points.length - 600);
+        const points = ink.points.slice(dropped);
+        let sentAll = true;
+        for (let start = 0; start < points.length; start += 200) {
+          const chunk = points.slice(start, start + 200);
+          const finalChunk = start + chunk.length >= points.length;
+          const ok = channel.sendInk({
+            type: "live_ink", client_id: clientId, stroke_id: ink.id,
+            kind: ink.kind, color: ink.color, weight: ink.weight,
+            offset: (ink.offset ?? 0) + dropped + start,
+            points: chunk, finished: ink.finished && finalChunk,
+          });
+          if (ok) sent++;
+          else sentAll = false;
+        }
+        if (sentAll) acknowledged++;
+        reportSelfhost(sentAll ? "подключено" : "ожидание подписки");
+      },
+      close: () => channel(),
+    };
+  }
   if (!isRemoteBackendEnabled()) {
     return { sendCursor: () => {}, sendInk: () => {}, close: () => {} };
   }
