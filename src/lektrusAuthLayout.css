@@ -131,6 +131,11 @@
   .auth-shell-register .auth-confirm-actions {
     grid-column: 1 / -1;
   }
+  /* Email, password, confirmation and submit button each get their own full row. */
+  .auth-shell-register .auth-form > .auth-field,
+  .auth-shell-register .auth-form > .auth-submit {
+    grid-column: 1 / -1;
+  }
   .auth-shell-register .auth-register-name-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
