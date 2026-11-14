@@ -171,6 +171,48 @@ try{
  })()`,"Redo did not restore object movement");
  console.log("✓ Object interactions: mouse drag, undo, redo");
 
+ // Verify durable content, not simply a loaded demo seed.
+ await wait(`(() => {
+  const records=Object.keys(localStorage).filter(k=>k.startsWith("lesson-board.document.v1.board."))
+   .map(k=>{try{return JSON.parse(localStorage.getItem(k))}catch{return null}});
+  return records.some(d=>d?.items?.find(item=>item.id==="math-note"&&item.x>130));
+ })()`,"Dragged sticky did not persist in local storage",9000);
+ // A reload without capture=1 must retain the student's changes.
+ await call("Page.navigate",{url:url.replace("&capture=1","")});
+ await wait('!!document.querySelector(\'[data-object="math-note"]\')',
+  "Reloaded board did not restore its objects");
+ await wait(`(() => {
+  const r=document.querySelector('[data-object="math-note"]')?.getBoundingClientRect();
+  return r&&r.left>${before.left+30};
+ })()`,"Reload lost the sticky position");
+ console.log("✓ Persistence: moved object restored after page reload");
+
+ // Real pencil gesture. Its points must reach the persistent document.
+ await click('.toolbar-pinned button[aria-label^="Карандаш"]');
+ const canvasPoint=await evaluate(`(() => {
+  const b=document.querySelector("section.board")?.getBoundingClientRect();
+  if(!b)return null;
+  return {x:b.left+Math.min(60,b.width*0.1),y:b.top+Math.min(50,b.height*0.08)};
+ })()`);
+ assert.ok(canvasPoint&&canvasPoint.x>0&&canvasPoint.y>0,
+  "Cannot locate board drawing surface");
+ await mouse("mouseMoved",canvasPoint.x,canvasPoint.y);
+ await mouse("mousePressed",canvasPoint.x,canvasPoint.y,{pressed:true});
+ for(let dx=12;dx<=100;dx+=12)
+  await mouse("mouseMoved",canvasPoint.x+dx,canvasPoint.y+Math.sin(dx/30)*12,{pressed:true});
+ await mouse("mouseReleased",canvasPoint.x+100,canvasPoint.y);
+ await wait('!!document.querySelector(".viewer-ink-canvas")',
+  "Pencil gesture did not render an ink canvas");
+ await wait(`(() => {
+  const records=Object.keys(localStorage).filter(k=>k.startsWith("lesson-board.document.v1.board."))
+   .map(k=>{try{return JSON.parse(localStorage.getItem(k))}catch{return null}});
+  return records.some(d=>d?.items?.some(item=>item.kind==="pen"&&item.points?.length>1));
+ })()`,"Pencil stroke did not persist in the local board document",9000);
+ await click('.toolbar-pinned button[aria-label^="Ластик"]');
+ await wait('document.querySelector("section.board")?.classList.contains("board-tool-eraser")',
+  "Eraser could not be activated");
+ console.log("✓ Ink: real pencil stroke rendered and saved; eraser activates");
+
  // The release catalogue must show the real 'Задания на доске' option.
  // Existing subject diagrams are never deleted by this menu filter.
  await click(".lektrus-desktop-subject-trigger");
