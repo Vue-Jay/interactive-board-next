@@ -151,7 +151,7 @@ async def test_board_asset_validation_and_quota(client, tmp_path, monkeypatch):
         content=b"x" * 65,
     )
     assert over_limit.status_code == 413
-    assert (await client.get(base, headers=teacher)).json() == []
+    assert (await client.get(base.rstrip("/"), headers=teacher)).json() == []
 
     svg = await client.post(
         base+"vector", headers={**teacher, "Content-Type": "image/svg+xml"},
