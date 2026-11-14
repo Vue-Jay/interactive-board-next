@@ -1,6 +1,10 @@
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import { getCachedRemoteSession, isRemoteBackendEnabled,remoteRequest } from "./backend";
-import { getCachedSelfhostSession, isSelfhostBackendEnabled } from "./selfhostApi";
+import {
+ getCachedSelfhostSession,isSelfhostBackendEnabled,selfhostMe,
+ selfhostRequestTeacherAccess,selfhostSetStudentRole,selfhostAdminUsers,
+ selfhostAdminTeacherRequests,selfhostReviewTeacherRequest,selfhostAdminSetSubscription,
+} from "./selfhostApi";
 export type AccountRole="teacher"|"student";
 export type TeacherStatus="none"|"pending"|"approved"|"rejected";
 export type SubscriptionPlan="free"|"teacher"|"pro";
@@ -40,7 +44,9 @@ const currentRemoteUserId=()=>isSelfhostBackendEnabled()
 const selfhostAccess=():AccountAccess|null=>{
  const user=getCachedSelfhostSession()?.user;
  if(!user)return null;
- return mapAccess({role:user.account_role,teacher_status:user.teacher_status,is_admin:user.is_admin});
+ return mapAccess({role:user.account_role,teacher_status:user.teacher_status,is_admin:user.is_admin,
+  requested_at:user.requested_at,reviewed_at:user.reviewed_at,
+  subscription_plan:user.subscription_plan,subscription_until:user.subscription_until});
 };
 const cacheKey=(id:string)=>`${PERSISTENT_CACHE_PREFIX}${id}`;
 const savePersistent=(id:string,value:AccountAccess,at:number)=>{
@@ -85,9 +91,10 @@ export function clearAccountAccessCache(){
 }
 export async function getAccountAccess():Promise<AccountAccess>{
  if(isSelfhostBackendEnabled()){
-  const value=selfhostAccess();
-  if(!value)throw new Error("Для получения роли требуется авторизация.");
-  return value;
+  const user=await selfhostMe();
+  return mapAccess({role:user.account_role,teacher_status:user.teacher_status,is_admin:user.is_admin,
+   requested_at:user.requested_at,reviewed_at:user.reviewed_at,
+   subscription_plan:user.subscription_plan,subscription_until:user.subscription_until});
  }
  if(!isRemoteBackendEnabled())return localAccess();
  const userId=currentRemoteUserId();
@@ -115,7 +122,8 @@ export async function getAccountAccess():Promise<AccountAccess>{
 export async function getAccountRole():Promise<AccountRole>{return (await getAccountAccess()).role}
 export async function requestTeacherAccess(application:TeacherApplication):Promise<AccountAccess>{
  if(isSelfhostBackendEnabled()){
-  throw new Error("На новом сервере роль учителя назначается при регистрации. Изменение роли будет перенесено отдельно.");
+  clearAccountAccessCache();
+  return mapAccess(await selfhostRequestTeacherAccess(application));
  }
  if(!isRemoteBackendEnabled()){
   localStorage.setItem("onlinerepetitor.teacher-application.v1",JSON.stringify(application));
@@ -135,7 +143,8 @@ export async function requestTeacherAccess(application:TeacherApplication):Promi
 }
 export async function setStudentRole():Promise<AccountAccess>{
  if(isSelfhostBackendEnabled()){
-  throw new Error("Изменение роли на новом сервере пока недоступно.");
+  clearAccountAccessCache();
+  return mapAccess(await selfhostSetStudentRole());
  }
  localStorage.setItem(KEY,"student");
  if(!isRemoteBackendEnabled()){
@@ -148,7 +157,7 @@ export async function setStudentRole():Promise<AccountAccess>{
  await remoteRequest("/rest/v1/rpc/set_my_account_role",{method:"POST",body:JSON.stringify({p_role:"student"})});
  return getAccountAccess();
 }
-export async function listTeacherRequests():Promise<TeacherRequest[]>{if(isSelfhostBackendEnabled())throw new Error("Администрирование аккаунтов ещё не перенесено на новый сервер.");const x=await remoteRequest<any[]>("/rest/v1/rpc/list_teacher_requests",{method:"POST",body:"{}"});return(Array.isArray(x)?x:[]).map(v=>({userId:v.user_id,name:v.name||"Пользователь",email:v.email||"",status:v.status,requestedAt:v.requested_at??null,reviewedAt:v.reviewed_at??null,application:v.application&&typeof v.application==="object"?{phone:String(v.application.phone||""),city:String(v.application.city||""),organization:String(v.application.organization||""),focusArea:String(v.application.focusArea||""),experience:String(v.application.experience||""),motivation:String(v.application.motivation||"")}:null}))}
-export async function reviewTeacherRequest(userId:string,approve:boolean){if(isSelfhostBackendEnabled())throw new Error("Администрирование аккаунтов ещё не перенесено на новый сервер.");const result=await remoteRequest("/rest/v1/rpc/review_teacher_request",{method:"POST",body:JSON.stringify({p_user_id:userId,p_approve:approve})});clearAccountAccessCache();return result}
-export async function listAdminUsers():Promise<AdminUser[]>{if(isSelfhostBackendEnabled())throw new Error("Администрирование аккаунтов ещё не перенесено на новый сервер.");const x=await remoteRequest<any[]>("/rest/v1/rpc/admin_list_users",{method:"POST",body:"{}"});return(Array.isArray(x)?x:[]).filter(v=>!!String(v.email||"").trim()).map(v=>({userId:v.user_id,name:v.name||"Пользователь",email:v.email||"",role:v.role==="teacher"?"teacher":"student",teacherStatus:["pending","approved","rejected"].includes(v.teacher_status)?v.teacher_status:"none",isAdmin:!!v.is_admin,subscriptionPlan:plan(v.subscription_plan),subscriptionUntil:v.subscription_until??null,createdAt:v.created_at??null}))}
-export async function adminSetSubscription(userId:string,subscriptionPlan:SubscriptionPlan,until:string|null):Promise<void>{if(isSelfhostBackendEnabled())throw new Error("Администрирование аккаунтов ещё не перенесено на новый сервер.");await remoteRequest("/rest/v1/rpc/admin_set_subscription",{method:"POST",body:JSON.stringify({p_user_id:userId,p_plan:subscriptionPlan,p_until:until})});clearAccountAccessCache()}
+export async function listTeacherRequests():Promise<TeacherRequest[]>{if(isSelfhostBackendEnabled()){const x=await selfhostAdminTeacherRequests();return x.map(v=>({userId:v.user_id,name:v.name||"Пользователь",email:v.email||"",status:v.status,requestedAt:v.requested_at??null,reviewedAt:v.reviewed_at??null,application:v.application?{phone:String(v.application.phone||""),city:String(v.application.city||""),organization:String(v.application.organization||""),focusArea:String(v.application.focusArea||""),experience:String(v.application.experience||""),motivation:String(v.application.motivation||"")}:null}))}const x=await remoteRequest<any[]>("/rest/v1/rpc/list_teacher_requests",{method:"POST",body:"{}"});return(Array.isArray(x)?x:[]).map(v=>({userId:v.user_id,name:v.name||"Пользователь",email:v.email||"",status:v.status,requestedAt:v.requested_at??null,reviewedAt:v.reviewed_at??null,application:v.application&&typeof v.application==="object"?{phone:String(v.application.phone||""),city:String(v.application.city||""),organization:String(v.application.organization||""),focusArea:String(v.application.focusArea||""),experience:String(v.application.experience||""),motivation:String(v.application.motivation||"")}:null}))}
+export async function reviewTeacherRequest(userId:string,approve:boolean){if(isSelfhostBackendEnabled()){const result=await selfhostReviewTeacherRequest(userId,approve);clearAccountAccessCache();return result}const result=await remoteRequest("/rest/v1/rpc/review_teacher_request",{method:"POST",body:JSON.stringify({p_user_id:userId,p_approve:approve})});clearAccountAccessCache();return result}
+export async function listAdminUsers():Promise<AdminUser[]>{if(isSelfhostBackendEnabled()){const x=await selfhostAdminUsers();return x.filter(v=>!!String(v.email||"").trim()).map(v=>({userId:v.user_id,name:v.name||"Пользователь",email:v.email||"",role:v.role==="teacher"?"teacher":"student",teacherStatus:["pending","approved","rejected"].includes(v.teacher_status)?v.teacher_status:"none",isAdmin:!!v.is_admin,subscriptionPlan:plan(v.subscription_plan),subscriptionUntil:v.subscription_until??null,createdAt:v.created_at??null}))}const x=await remoteRequest<any[]>("/rest/v1/rpc/admin_list_users",{method:"POST",body:"{}"});return(Array.isArray(x)?x:[]).filter(v=>!!String(v.email||"").trim()).map(v=>({userId:v.user_id,name:v.name||"Пользователь",email:v.email||"",role:v.role==="teacher"?"teacher":"student",teacherStatus:["pending","approved","rejected"].includes(v.teacher_status)?v.teacher_status:"none",isAdmin:!!v.is_admin,subscriptionPlan:plan(v.subscription_plan),subscriptionUntil:v.subscription_until??null,createdAt:v.created_at??null}))}
+export async function adminSetSubscription(userId:string,subscriptionPlan:SubscriptionPlan,until:string|null):Promise<void>{if(isSelfhostBackendEnabled()){await selfhostAdminSetSubscription(userId,subscriptionPlan,until);return}await remoteRequest("/rest/v1/rpc/admin_set_subscription",{method:"POST",body:JSON.stringify({p_user_id:userId,p_plan:subscriptionPlan,p_until:until})});clearAccountAccessCache()}
