@@ -23,8 +23,9 @@ PASSWORD = "integration-test-password"
 @pytest_asyncio.fixture
 async def client():
     connection = await asyncpg.connect(os.environ["DATABASE_URL"])
-    schema = Path(__file__).with_name("sql").joinpath("001_initial.sql").read_text()
-    await connection.execute(schema)
+    sql_dir = Path(__file__).with_name("sql")
+    await connection.execute(sql_dir.joinpath("001_initial.sql").read_text())
+    await connection.execute(sql_dir.joinpath("002_board_assets.sql").read_text())
     await connection.execute(
         "TRUNCATE account_sessions,board_documents,board_members,boards,account_users CASCADE"
     )
