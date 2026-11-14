@@ -224,6 +224,7 @@ async def test_pending_signup_retry_and_expired_link(client,monkeypatch):
 async def test_password_recovery_is_private_single_use_and_revokes_sessions(client,monkeypatch):
     sent=[]
     enable_staging_mail(monkeypatch,sent)
+    monkeypatch.setenv("LEKTRUS_ENABLE_REGISTRATION","false")
     login,headers=await sign_in(client,"teacher@example.test")
 
     unknown=await client.post("/api/v1/auth/password-reset/request",json={

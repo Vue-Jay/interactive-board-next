@@ -69,8 +69,6 @@ def throttle(email: str):
 
 
 def server_mail_config() -> tuple[str, int, str, str, str, str]:
-    if os.environ.get("LEKTRUS_ENABLE_REGISTRATION", "").lower() != "true":
-        raise HTTPException(503, "Регистрация на новом сервере ещё не включена.")
     host = os.environ.get("LEKTRUS_SMTP_HOST", "").strip()
     user = os.environ.get("LEKTRUS_SMTP_USERNAME", "").strip()
     password = os.environ.get("LEKTRUS_SMTP_PASSWORD", "").strip()
@@ -85,7 +83,7 @@ def server_mail_config() -> tuple[str, int, str, str, str, str]:
         port not in (465, 587) or parsed.scheme != "https" or
         not parsed.hostname or parsed.username or parsed.password or
         parsed.path not in ("", "/") or parsed.query or parsed.fragment):
-        raise HTTPException(503, "Почта или HTTPS-домен регистрации не настроены.")
+        raise HTTPException(503, "Отправка писем сейчас недоступна. Попробуйте позже или обратитесь к администратору.")
     return host, port, user, password, sender, origin
 
 
@@ -152,6 +150,8 @@ def make_registration_router() -> APIRouter:
 
     @router.post("/api/v1/auth/signup", status_code=202)
     async def signup(data: SignupInput, request: Request):
+        if os.environ.get("LEKTRUS_ENABLE_REGISTRATION", "").lower() != "true":
+            raise HTTPException(503, "Регистрация на новом сервере ещё не включена.")
         _, _, _, _, _, origin = server_mail_config()
         email = normalize_email(data.email)
         # The first administrator is bootstrapped only for this exact,
