@@ -2,10 +2,13 @@ import { getRealtimeSocketUrl, getRemoteBoardDocument, getRemoteBoardDocumentVer
 
 export type RealtimeStatus = "online" | "reconnecting" | "offline";
 
+const BOARD_CHANGE_COLUMNS = ["board_id", "version"];
+const DOCUMENT_READ_DELAY_MS = 250;
+
 // One socket per mounted board. Protocol 1.0.0 uses JSON Phoenix envelopes.
 // https://supabase.com/docs/guides/realtime/protocol
 export function subscribeBoardDocument(boardId: string, onDocument: (row: RemoteBoardDocument) => void,
-  onStatus: (status: RealtimeStatus) => void): () => void {
+  onStatus: (status: RealtimeStatus) => void, getLocalVersion?: () => number | null): () => void {
   if (!isRemoteBackendEnabled()) return () => {};
   let stopped = false;
   let generation = 0;
@@ -14,6 +17,7 @@ export function subscribeBoardDocument(boardId: string, onDocument: (row: Remote
   let deadline: ReturnType<typeof setTimeout> | undefined;
   let heartbeat: ReturnType<typeof setInterval> | undefined;
   let refresh: ReturnType<typeof setInterval> | undefined;
+  let revisionRead: ReturnType<typeof setTimeout> | undefined;
   let attempt = 0;
   let sequence = 0;
   let pendingHeartbeat: string | null = null;
@@ -21,6 +25,8 @@ export function subscribeBoardDocument(boardId: string, onDocument: (row: Remote
   let readAgain = false;
   let scheduledRead = false;
   let newestVersion = -1;
+  let pendingVersion = -1;
+  const knownVersion = () => Math.max(newestVersion, getLocalVersion?.() ?? -1);
   const topic = `realtime:board:${boardId}`;
 
   // Supabase change notifications are already RLS-filtered. A complete
@@ -29,7 +35,7 @@ export function subscribeBoardDocument(boardId: string, onDocument: (row: Remote
   const deliver = (row: RemoteBoardDocument) => {
     if (stopped || row.board_id !== boardId ||
         !Number.isSafeInteger(row.version) || row.version < 0 ||
-        row.version <= newestVersion) return;
+        row.version <= knownVersion()) return;
     newestVersion = row.version;
     onDocument(row);
   };
@@ -45,7 +51,7 @@ export function subscribeBoardDocument(boardId: string, onDocument: (row: Remote
         // can emit key-only UPDATE notifications when a background thumbnail
         // PATCH changed JSONB without incrementing the board version. Fetching
         // full JSON for those events wasted bandwidth for every participant.
-        if (newestVersion >= 0) {
+        if (knownVersion() >= 0) {
           let serverVersion: number | null = null;
           try {
             serverVersion = await getRemoteBoardDocumentVersion(boardId);
@@ -54,7 +60,7 @@ export function subscribeBoardDocument(boardId: string, onDocument: (row: Remote
             // authenticated full GET. A probe failure is not proof of equality.
           }
           if (stopped) break;
-          if (serverVersion !== null && serverVersion <= newestVersion) continue;
+          if (serverVersion !== null && serverVersion <= knownVersion()) continue;
         }
         const row = await getRemoteBoardDocument(boardId);
         if (!stopped && row) deliver(row);
@@ -74,10 +80,24 @@ export function subscribeBoardDocument(boardId: string, onDocument: (row: Remote
       if (!stopped) void readLatest();
     });
   };
+  const scheduleRevisionRead = (version: number) => {
+    pendingVersion = Math.max(pendingVersion, version);
+    if (revisionRead !== undefined) return;
+    revisionRead = setTimeout(() => {
+      revisionRead = undefined;
+      const versionToRead = pendingVersion;
+      pendingVersion = -1;
+      // Let the save response settle and combine nearby revisions before fetching.
+      if (versionToRead > knownVersion()) void readLatest();
+    }, DOCUMENT_READ_DELAY_MS);
+  };
   const closeSocket = () => {
     clearTimeout(deadline);
     clearInterval(heartbeat);
     clearInterval(refresh);
+    clearTimeout(revisionRead);
+    revisionRead = undefined;
+    pendingVersion = -1;
     pendingHeartbeat = null;
     if (socket) {
       socket.onopen = socket.onmessage = socket.onerror = socket.onclose = null;
@@ -119,7 +139,10 @@ export function subscribeBoardDocument(boardId: string, onDocument: (row: Remote
         try { send("phx_join", {
           access_token: token,
           config: { broadcast: { self: false, ack: false }, presence: { enabled: false },
-            postgres_changes: ["INSERT", "UPDATE"].map(event => ({ event, schema: "public", table: "board_documents", filter: `board_id=eq.${boardId}` })) },
+            postgres_changes: ["INSERT", "UPDATE"].map(event => ({
+              event, schema: "public", table: "board_documents", filter: `board_id=eq.${boardId}`,
+              select: BOARD_CHANGE_COLUMNS,
+            })) },
         }, topic, joinRef); } catch { reconnect(); return; }
         heartbeat = setInterval(() => {
           if (pendingHeartbeat) { reconnect(); return; }
@@ -163,12 +186,14 @@ export function subscribeBoardDocument(boardId: string, onDocument: (row: Remote
             // it cannot contain new shared content and needs no REST probe.
             if (record?.board_id === boardId &&
                 Number.isSafeInteger(record.version) &&
-                record.version >= 0 && record.version <= newestVersion) return;
+                record.version >= 0 && record.version <= knownVersion()) return;
             if (record && record.board_id === boardId &&
                 Number.isSafeInteger(record.version) && record.version >= 0 &&
                 record.document && typeof record.document === "object" &&
                 !Array.isArray(record.document)) {
               deliver(record as RemoteBoardDocument);
+            } else if (record?.board_id === boardId && Number.isSafeInteger(record.version) && record.version >= 0) {
+              scheduleRevisionRead(record.version);
             } else {
               scheduleRead();
             }

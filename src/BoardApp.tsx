@@ -7693,7 +7693,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       applyServerDocument(row, data);
     } catch { setNotice("Не удалось прочитать новую серверную версию. Ваши изменения сохранены на доске."); }
   };
-  useEffect(() => layoutEditing?()=>{}:subscribeBoardDocument(boardSummary.id, row => receiveRemote.current(row), setRealtimeStatus), [boardSummary.id,layoutEditing]);
+  useEffect(() => layoutEditing ? undefined : subscribeBoardDocument(
+    boardSummary.id, row => receiveRemote.current(row), setRealtimeStatus, () => remoteVersion.current,
+  ), [boardSummary.id, layoutEditing]);
 
   useEffect(() => layoutEditing||!remoteEnabled?()=>{}:trackBoardVisit(boardSummary.id),[boardSummary.id,layoutEditing]);
 
