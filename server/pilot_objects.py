@@ -78,7 +78,7 @@ async def earlier_operation(conn, board_id: UUID, operation_id: UUID,
 
 async def commit_object(conn, board_id: UUID, actor_id: UUID, doc: dict,
                         object_id: str, kind: str, request_hash: str,
-                        operation_id: UUID, object_revision: int):
+                        operation_id: UUID, object_revision: int, delta: dict):
     serialized = encode(doc)
     if len(serialized.encode("utf-8")) > MAX_PILOT_DOCUMENT_BYTES:
         raise HTTPException(413, "Тестовый документ превышает 2 МБ.")
@@ -97,7 +97,7 @@ async def commit_object(conn, board_id: UUID, actor_id: UUID, doc: dict,
             request_sha256,object_revision,resulting_version,payload)
            VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)""",
         board_id, operation_id, actor_id, kind, object_id,
-        request_hash, object_revision, version, serialized,
+        request_hash, object_revision, version, encode(delta),
     )
     return {
         "operation_id": str(operation_id), "object_id": object_id,
@@ -159,7 +159,7 @@ def make_pilot_objects_router(current_user, board_access, announce) -> APIRouter
                 doc["items"] = [*items, obj]
                 result = await commit_object(
                     conn, board_id, user["id"], doc, data.object_id,
-                    "object_create", request_hash, data.operation_id, 1,
+                    "object_create", request_hash, data.operation_id, 1, obj,
                 )
         await announce(board_id, result["version"], request.app.state.pool)
         return result
@@ -218,6 +218,8 @@ def make_pilot_objects_router(current_user, board_access, announce) -> APIRouter
                 result = await commit_object(
                     conn, board_id, user["id"], doc, object_id,
                     "object_move", request_hash, data.operation_id, revision,
+                    {"object_id": object_id, "x": data.x, "y": data.y,
+                     "expected_revision": data.expected_revision},
                 )
         await announce(board_id, result["version"], request.app.state.pool)
         return result
