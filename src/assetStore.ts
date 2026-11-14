@@ -59,6 +59,8 @@ export const setSelfhostBoardMode = (boardId:string,enabled:boolean) => {
   else selfhostBoards.delete(boardId);
 };
 const usesSelfhostAssets = (boardId:string) => selfhostBoards.has(boardId);
+const assetSyncKey=(boardId:string,id:string)=>
+  (usesSelfhostAssets(boardId)?"selfhost:":"supabase:")+assetPath(boardId,id);
 
 const MEMORY_CACHE_LIMIT = 64 * 1024 * 1024;
 const MEMORY_ITEM_LIMIT = 16 * 1024 * 1024;
@@ -143,7 +145,7 @@ export async function putAsset(id: string, blob: Blob, boardId: string, localOnl
   if (usesSelfhostAssets(boardId)) await pilotUploadAsset(boardId,id,blob);
   else if (isRemoteBackendEnabled()) await remoteAssetRequest(path, blob);
   else return putLocalAsset(id, blob);
-  synchronized.add(path);
+  synchronized.add(assetSyncKey(boardId,id));
   rememberAsset(path, blob);
   // A full browser cache must not turn a successful upload into an error.
   await putLocalAsset(path, blob).catch(() => {});
@@ -169,7 +171,7 @@ export async function getAsset(id: string, boardId: string): Promise<Blob | null
         ? await pilotDownloadAsset(boardId,id)
         : await remoteAssetRequest(path);
       if (blob) {
-        synchronized.add(path);
+        synchronized.add(assetSyncKey(boardId,id));
         rememberAsset(path, blob);
         await putLocalAsset(path, blob).catch(() => {});
       }
@@ -198,7 +200,7 @@ export async function ensureBoardAssets(boardId: string, document: DocumentData)
   // Storage probes (nor overwhelm a slower tablet/network on first save).
   const ensureOne = async (id: string) => {
     const path = assetPath(boardId, id);
-    if (synchronized.has(path)) return;
+    if (synchronized.has(assetSyncKey(boardId,id))) return;
     // A transport error, expired session or RLS denial is NOT proof that the
     // remote object is missing. Never attempt a duplicate upload in that case.
     // In particular, re-uploading a 50-MB legacy PDF after a transient HEAD
@@ -207,7 +209,7 @@ export async function ensureBoardAssets(boardId: string, document: DocumentData)
       ? await pilotAssetExists(boardId,id)
       : await remoteAssetExists(path);
     if (exists) {
-      synchronized.add(path);
+      synchronized.add(assetSyncKey(boardId,id));
       return;
     }
     // Only an explicit Storage "not found" response permits migration.
