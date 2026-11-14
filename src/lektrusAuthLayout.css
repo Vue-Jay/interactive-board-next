@@ -1,0 +1,74 @@
+/* Auth must be usable before the lazy BoardApp chunk (and its App.css) loads.
+   App.css still contains legacy auth selectors; keep only essential layout here
+   to avoid shipping the whole heavy board stylesheet on the sign-in screen. */
+.auth-shell {
+  display: grid;
+  place-items: center;
+}
+.auth-card { max-width: 100%; }
+.auth-brand-row { display: flex; align-items: center; }
+.auth-logo { display: grid; place-items: center; }
+.auth-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.auth-tabs button {
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+}
+.auth-tabs button.active { background: #fff; }
+.auth-form { display: grid; }
+.auth-form h1 { margin: 0; line-height: 1.15; }
+.auth-form p { margin: 7px 0 0; }
+.auth-field { display: grid; }
+.auth-field input { width: 100%; font: inherit; outline: none; }
+.auth-submit {
+  color: #fff;
+  cursor: pointer;
+  border: 0;
+  font: inherit;
+  font-weight: 800;
+  padding: 12px 16px;
+}
+.auth-submit:disabled { opacity: .62; cursor: wait; }
+.auth-or { display: flex; align-items: center; gap: 10px; }
+.auth-or::before, .auth-or::after {
+  content: "";
+  background: #e3e4e9;
+  flex: 1;
+  height: 1px;
+}
+.auth-guest {
+  cursor: pointer;
+  width: 100%;
+  min-height: 42px;
+  color: #3159a9;
+  border: 1px solid #cfdaf0;
+  border-radius: 10px;
+  background: #f4f7ff;
+  font-weight: 700;
+}
+.auth-guest:disabled { opacity: .55; cursor: default; }
+.auth-guest-note { text-align: center; }
+.auth-error {
+  color: #a63737;
+  background: #fff4f4;
+  border: 1px solid #f2c5c5;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.auth-remembered { display: grid; align-items: center; }
+.auth-remembered-avatar { display: grid; place-items: center; }
+.auth-remembered-copy { display: flex; flex-direction: column; min-width: 0; }
+.auth-remembered-copy strong, .auth-remembered-copy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.auth-remembered-login { cursor: pointer; border: 0; }
+.auth-remembered-forget { cursor: pointer; border: 0; }
