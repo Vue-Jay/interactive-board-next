@@ -202,9 +202,11 @@ def make_invitation_router(current_user, board_access) -> APIRouter:
         email = user["email"].lower()
         async with request.app.state.pool.acquire() as conn:
             async with conn.transaction():
+                # Always lock the board before its invite row. Owners change
+                # invitations under the same lock order, avoiding deadlocks.
                 invited = await conn.fetch(
-                    """SELECT id,board_id,role FROM board_invites WHERE email=$1
-                        ORDER BY board_id,id FOR UPDATE""",
+                    """SELECT id,board_id FROM board_invites WHERE email=$1
+                        ORDER BY board_id,id""",
                     email,
                 )
                 claimed = 0
@@ -214,17 +216,24 @@ def make_invitation_router(current_user, board_access) -> APIRouter:
                             WHERE id=$1 AND deleted_at IS NULL FOR UPDATE""",
                         invite["board_id"],
                     )
+                    current = await conn.fetchrow(
+                        """SELECT id,role FROM board_invites WHERE id=$1 AND email=$2
+                            FOR UPDATE""",
+                        invite["id"], email,
+                    )
+                    if current is None:
+                        continue
                     if board:
                         await conn.execute(
                             """INSERT INTO board_members(board_id,user_id,role)
                                VALUES($1,$2,$3)
                                ON CONFLICT(board_id,user_id) DO UPDATE
                                SET role=excluded.role""",
-                            invite["board_id"], user_id, invite["role"],
+                            invite["board_id"], user_id, current["role"],
                         )
                         claimed += 1
                     await conn.execute(
-                        "DELETE FROM board_invites WHERE id=$1", invite["id"]
+                        "DELETE FROM board_invites WHERE id=$1", current["id"]
                     )
         return {"claimed": claimed}
 
