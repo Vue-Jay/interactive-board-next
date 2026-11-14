@@ -91,6 +91,52 @@ async def test_two_live_sockets_receive_revision_then_revoke():
                     assert oready=={"type":"ready","version":0}
                     assert sready=={"type":"ready","version":0}
 
+                    # View-only participants can show their cursor but cannot
+                    # pretend to be the teacher or publish drawing strokes.
+                    await ws_student.send(json.dumps({
+                        "type":"cursor","client_id":"viewer_1","x":22.5,"y":-18.1
+                    }))
+                    cursor=json.loads(await asyncio.wait_for(ws_owner.recv(),3))
+                    assert cursor["type"]=="cursor"
+                    assert cursor["user_id"]==str(STUDENT)
+                    assert cursor["role"]=="viewer"
+                    assert cursor["client_id"]=="viewer_1"
+                    assert cursor["x"]==22.5
+
+                    stroke={
+                        "type":"live_ink","client_id":"owner_1",
+                        "stroke_id":"stroke_A","kind":"pen",
+                        "color":"#2477ee","weight":3,
+                        "offset":0,"points":[{"x":10,"y":20},{"x":11,"y":22}],
+                        "finished":True,
+                    }
+                    await ws_owner.send(json.dumps(stroke))
+                    ink=json.loads(await asyncio.wait_for(ws_student.recv(),3))
+                    ack=json.loads(await asyncio.wait_for(ws_owner.recv(),3))
+                    assert ink["type"]=="live_ink"
+                    assert ink["user_id"]==str(TEACHER)
+                    assert ink["role"]=="owner"
+                    assert ink["stroke_id"]=="stroke_A"
+                    assert ink["points"]==stroke["points"]
+                    assert ink["finished"] is True
+                    assert ack=={
+                        "type":"ink_ack","client_id":"owner_1",
+                        "stroke_id":"stroke_A","offset":0,"finished":True,
+                    }
+                    # Forged metadata or unexpected event keys never fan out.
+                    await ws_student.send(json.dumps({
+                        **stroke,"user_id":str(TEACHER)
+                    }))
+                    error=json.loads(await asyncio.wait_for(ws_student.recv(),3))
+                    assert error["type"]=="event_error"
+                    assert error["reason"]=="read_only"
+                    await ws_owner.send(json.dumps({
+                        **stroke,"user_id":str(STUDENT)
+                    }))
+                    error=json.loads(await asyncio.wait_for(ws_owner.recv(),3))
+                    assert error["type"]=="event_error"
+                    assert error["reason"]=="invalid_ink_fields"
+
                     saved=await http.put(
                         "/api/v1/boards/"+board+"/document",
                         headers=owner,
