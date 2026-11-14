@@ -17,7 +17,16 @@ frontend's Supabase URL until the full parity checklist is complete.
 - An importer from Supabase Postgres to **a separate empty database**, read-only by
   default. Preserves user IDs, bcrypt password hashes, selected profile details and
   subscriptions, board IDs, ownership, memberships, document JSON and versions.
-- Integration tests with temporary PostgreSQL databases, container build in CI.
+- Private Storage API for board files: authorized upload/read/HEAD/delete/list,
+  streamed uploads up to 50 MB, SHA-256 metadata, conditional ETag reads,
+  range downloads and protected SVG headers. The files live on a dedicated
+  Docker volume, not in the website directory.
+- Separate Storage importer: read-only manifest check by default, verified
+  HTTP streaming from Supabase into private staging, one SQL transaction,
+  SHA-256/byte-count checks, and refusal to overwrite target assets.
+  The actual 59 source files have **not** been copied to a VPS yet.
+- Integration tests with temporary PostgreSQL databases, synthetic private
+  images, simulated HTTPS downloads and container build in CI.
 
 ## Current measurements (2026-11-14)
 
@@ -29,7 +38,8 @@ The specific high-egress endpoint has not yet been confirmed.
 ## Not yet implemented; do not cut over
 
 - Public signup, email confirmation, password reset, anonymous guest sessions.
-- File Storage API, object-level permissions, copying the 59 binary objects.
+- **Actual copying** of the 59 production Storage objects and final integrity
+  verification after a VPS is provisioned. Only a simulated import was tested.
 - Supabase RPC compatibility for sharing, invites, templates, assignments,
   schedules, notifications, chat, history, trash, billing and school features.
 - Supabase Realtime presence/broadcast protocol, multi-instance fan-out, and
@@ -46,6 +56,9 @@ The prototype is intentionally single-worker, single-host and not public yet.
 
 - `compose.yaml`: uses a pinned PostgreSQL image, builds the Python API and
   serves the site through Caddy. DB and API have no public port bindings.
+- `compose.yaml` also mounts a private persistent `assetsdata` volume into
+  `/srv/lektrus-assets`. Back it up **alongside PostgreSQL**: DB-only backups
+  cannot restore images and PDFs.
 - `Caddyfile`: HTTPS reverse proxy and SPA fallback. The `dist` directory
   must come from the production frontend build.
 - `.env.example`: documentation only. Real secrets must live on the VPS outside
@@ -64,9 +77,29 @@ With `--apply`, it refuses to use the same database for source/target and
 refuses an already populated target. It inserts in one transaction and
 verifies counts plus a canonical SHA-256 digest of every document.
 
-**The import covers core data only.** It does NOT import binary files, board
-history, comments, schedules, material collections and the rest of the app;
-the existing source must remain intact and online.
+The core importer does **not** copy binary files. Once it succeeds on a
+staging PostgreSQL, `server/import_supabase_assets.py` validates the
+`storage.objects` manifest. Without `--apply` it does not download or
+write files. With `--apply` it additionally needs:
+
+- `DATABASE_URL`: isolated self-hosted database containing imported accounts
+  and boards; its `board_assets` table must be empty.
+- `LEKTRUS_ASSETS_DIR`: **absolute** private asset-volume path.
+- `LEKTRUS_SOURCE_STORAGE_URL`: canonical HTTPS origin of the source project.
+- `LEKTRUS_SOURCE_STORAGE_API_KEY` and
+  `LEKTRUS_SOURCE_STORAGE_ACCESS_TOKEN`: server-side, short-lived migration
+  credentials with sufficient Storage read rights. **Never** put these in
+  frontend env variables, GitHub, logs, or chat. If using a privileged key,
+  revoke it after migration and never leave it on the public host.
+- `LEKTRUS_SOURCE_PROJECT_REF` if source PostgreSQL uses a pooler host.
+
+The separate importer verifies paths, file sizes and SHA-256, then stores
+metadata in a single transaction on the isolated target. It does not modify
+Supabase. It is not a continuously running bidirectional sync; a final
+write freeze and delta import are still necessary.
+
+History, comments, schedules, materials, and the rest of the platform are
+**not** migrated yet; the source must remain intact and online.
 
 Do not expose database credentials or password hashes in chat, files,
 GitHub, browser JavaScript or logs. Before any real import, secure a verified
