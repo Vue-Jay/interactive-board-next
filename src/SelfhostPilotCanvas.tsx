@@ -8,6 +8,7 @@ type Props = {
   sendCursor:(clientId:string,x:number,y:number)=>boolean;
   sendInk:(packet:PilotLiveInkPacket)=>boolean;
   savedStrokes:unknown[];
+  undoneStrokeIds:string[];
   onPersist:(packet:PilotLiveInkPacket,operationId:string)=>Promise<void>;
   onUndo:()=>Promise<void>;
 };
@@ -28,7 +29,7 @@ const isStoredStroke=(input:unknown):input is PilotStoredStroke=>{
 };
 
 export default function SelfhostPilotCanvas({
-  boardId,canDraw,incoming,sendCursor,sendInk,savedStrokes,onPersist,onUndo,
+  boardId,canDraw,incoming,sendCursor,sendInk,savedStrokes,undoneStrokeIds,onPersist,onUndo,
 }:Props){
   const clientId=useRef(uid());
   const active=useRef<Stroke|null>(null);
@@ -42,6 +43,7 @@ export default function SelfhostPilotCanvas({
   const [failed,setFailed]=useState<{packet:PilotLiveInkPacket;operationId:string}|null>(null);
   const persisted=savedStrokes.filter(isStoredStroke).slice(-MAX_STROKES);
   const persistedIds=new Set(persisted.map(s=>s.id));
+  const undoneIds=new Set(undoneStrokeIds);
   const saveInk=async(packet:PilotLiveInkPacket,operationId:string)=>{
     setSaving(true);
     try{
@@ -195,11 +197,11 @@ export default function SelfhostPilotCanvas({
         d={svgPath(stroke.points)} stroke={stroke.color}
         strokeWidth={stroke.weight*3} strokeLinecap="round" strokeLinejoin="round"
         fill="none"/>)}
-      {remote.filter(s=>!persistedIds.has(s.id)).map(stroke=><path key={"remote:"+stroke.clientId+":"+stroke.id}
+      {remote.filter(s=>!persistedIds.has(s.id)&&!undoneIds.has(s.id)).map(stroke=><path key={"remote:"+stroke.clientId+":"+stroke.id}
         d={svgPath(stroke.points)} stroke={stroke.color}
         strokeWidth={stroke.weight*3} strokeLinecap="round" strokeLinejoin="round"
         fill="none" opacity={.65}/>)}
-      {local.filter(s=>!persistedIds.has(s.id)).map(stroke=><path key={"local:"+stroke.id}
+      {local.filter(s=>!persistedIds.has(s.id)&&!undoneIds.has(s.id)).map(stroke=><path key={"local:"+stroke.id}
         d={svgPath(stroke.points)} stroke={stroke.color}
         strokeWidth={stroke.weight*3} strokeLinecap="round" strokeLinejoin="round"
         fill="none"/>)}
