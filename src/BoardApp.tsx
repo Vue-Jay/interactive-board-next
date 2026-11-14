@@ -94,7 +94,7 @@ import { Capacitor } from "@capacitor/core";
 import { BOARD_ROLE_LABELS, type AuthUser } from "./authStore";
 import { boardStorageKey, touchBoard, type BoardSummary } from "./boardStore";
 import { isRemoteBackendEnabled, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
-import { pilotReadDocument, pilotSaveDocument, pilotSubscribeBoard, PilotHttpError } from "./selfhostPilotApi";
+import { selfhostReadDocument, selfhostSaveDocument, selfhostSubscribeBoard, SelfhostHttpError } from "./selfhostApi";
 import { setSelfhostBoardMode } from "./assetStore";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
 import { readDeveloperPreferences, writeDeveloperPreferences } from "./developerPreferences";
@@ -3108,13 +3108,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       let result:{conflict:boolean;version:number;document?:unknown;updated_at?:string};
       if(selfhostMode){
         try{
-          const saved=await pilotSaveDocument(
+          const saved=await selfhostSaveDocument(
             boardSummary.id,expectedVersion,payload as unknown as Record<string,unknown>
           );
           result={conflict:false,version:saved.version};
         }catch(error){
-          if(error instanceof PilotHttpError&&error.status===409){
-            const latest=await pilotReadDocument(boardSummary.id);
+          if(error instanceof SelfhostHttpError&&error.status===409){
+            const latest=await selfhostReadDocument(boardSummary.id);
             if(!boardMounted.current)return;
             if(latest.document&&latest.version>expectedVersion){
               deferredRemote.current={
@@ -7735,9 +7735,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   useEffect(()=>{
     if(layoutEditing)return;
     if(selfhostMode){
-      const stop=pilotSubscribeBoard(boardSummary.id,version=>{
+      const stop=selfhostSubscribeBoard(boardSummary.id,version=>{
         if(version<0||version<=(remoteVersion.current??-1))return;
-        void pilotReadDocument(boardSummary.id).then(latest=>{
+        void selfhostReadDocument(boardSummary.id).then(latest=>{
           if(!latest.document)return;
           receiveRemote.current({
             board_id:latest.board_id,version:latest.version,
