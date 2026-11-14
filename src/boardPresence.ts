@@ -1,4 +1,5 @@
 import { getRealtimeSocketUrl, getRemoteSession, isRemoteBackendEnabled } from "./backend";
+import { isSelfhostBackendEnabled, selfhostSubscribeBoard, type SelfhostPresenceUser } from "./selfhostApi";
 import type { BoardRole } from "./authStore";
 
 export type BoardPresenceUser = {
@@ -81,6 +82,44 @@ export function subscribeBoardPresence(
   onPresence: (users: BoardPresenceUser[]) => void,
   trackSelf = true,
 ): () => void {
+  if (isSelfhostBackendEnabled()) {
+    let users = new Map<string, BoardPresenceUser>();
+    const fromServer = (user: SelfhostPresenceUser): BoardPresenceUser => ({
+      userId: user.user_id,
+      name: user.name || "Пользователь",
+      role: validRole(user.role) ? user.role : "viewer",
+      onlineAt: user.online_at || "",
+    });
+    const emitSelfhost = () => {
+      const result = [...users.values()].sort((a, b) => {
+        if (a.role === "owner" && b.role !== "owner") return -1;
+        if (b.role === "owner" && a.role !== "owner") return 1;
+        return a.name.localeCompare(b.name, "ru", { sensitivity: "base" });
+      });
+      onPresence(result);
+    };
+    const channel = selfhostSubscribeBoard(boardId, () => {}, () => {}, event => {
+      if (event.type === "presence_state") {
+        users = new Map(event.users.map(user => {
+          const value = fromServer(user);
+          return [value.userId, value];
+        }));
+        emitSelfhost();
+      } else if (event.type === "presence_diff") {
+        for (const user of event.leaves) users.delete(user.user_id);
+        for (const user of event.joins) {
+          const value = fromServer(user);
+          users.set(value.userId, value);
+        }
+        emitSelfhost();
+      }
+    }, { visible: trackSelf });
+    return () => {
+      channel();
+      users.clear();
+      onPresence([]);
+    };
+  }
   if (!isRemoteBackendEnabled()) {
     onPresence([]);
     return () => {};

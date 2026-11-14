@@ -3,8 +3,9 @@ import { pendingSharePath } from "./routes";
 import UserAvatar from "./UserAvatar";
 import type { AccountRole } from "./accountRoleStore";
 import { isRemoteBackendEnabled } from "./backend";
+import { isSelfhostBackendEnabled } from "./selfhostApi";
 import {saveProfileDetails} from "./profileDetailsStore";
-import { forgetRememberedAccount, getRememberedAccount, loginUser, loginGuest, registerUser,resendRegistrationCode, resumeRememberedAccount, type AuthUser } from "./authStore";
+import { forgetRememberedAccount, getRememberedAccount, loginUser, loginGuest, registerUser,resendRegistrationCode, resumeRememberedAccount, requestPasswordReset, completePasswordReset, type AuthUser } from "./authStore";
 
 type Mode = "login" | "register";
 type Props = { onAuthenticated: (user: AuthUser) => void; previewMode?:boolean; onPreviewClose?:()=>void; initialError?:string };
@@ -26,6 +27,9 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
   const [notice,setNotice]=useState("");
   const [guestName, setGuestName] = useState("");
   const [remembered,setRemembered]=useState(()=>getRememberedAccount());
+  const [passwordResetToken,setPasswordResetToken]=useState(()=>new URLSearchParams(window.location.search).get("password-reset")||"");
+  const [passwordResetRequest,setPasswordResetRequest]=useState(false);
+  const [passwordConfirmation,setPasswordConfirmation]=useState("");
   useEffect(()=>{if(initialError)setError(initialError)},[initialError]);
   const joining = hasJoinLink();
   // Android WebView and iOS Safari sometimes blur a field while their virtual
@@ -90,6 +94,20 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
     fieldFocus.current.outsidePressAt=Date.now();
     setBusy(true);setError("");
     try {
+      if(passwordResetToken){
+        if(password.length<6)throw new Error("Пароль должен содержать минимум 6 символов");
+        if(password!==passwordConfirmation)throw new Error("Пароли не совпадают");
+        await completePasswordReset(passwordResetToken,password);
+        setPasswordResetToken("");setPassword("");setPasswordConfirmation("");
+        const cleanUrl=new URL(window.location.href);cleanUrl.searchParams.delete("password-reset");
+        window.history.replaceState(null,"",cleanUrl.pathname+cleanUrl.search+cleanUrl.hash);
+        setMode("login");setNotice("Пароль изменён. Войдите с новым паролем.");return;
+      }
+      if(passwordResetRequest){
+        await requestPasswordReset(email);
+        setPasswordResetRequest(false);
+        setNotice("Если аккаунт существует, письмо для восстановления отправлено.");return;
+      }
       if(awaitingConfirmation){
         if(previewMode){
           setPreviewComplete(true);setPassword("");setError("");setNotice("Регистрация и подтверждение пройдены. Тестовый аккаунт не создан.");return;
@@ -114,18 +132,18 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
     } catch (value) { setError(value instanceof Error ? value.message : "Не удалось выполнить вход"); }
     finally { setBusy(false); }
   };
-  const changeMode = (next: Mode) => { setMode(next);setError("");setNotice("");setPassword("");setAwaitingConfirmation(false);setPreviewComplete(false); };
+  const changeMode = (next: Mode) => { setMode(next);setError("");setNotice("");setPassword("");setPasswordConfirmation("");setPasswordResetRequest(false);setPasswordResetToken("");setAwaitingConfirmation(false);setPreviewComplete(false); };
 
   return <main className={`auth-shell${previewMode?" lektrus-registration-preview":""}`}><section className="auth-card" aria-labelledby="auth-title">
     <div className="auth-brand-row"><div className="auth-logo" aria-label="Lektrus"><img src="/lektrus-icon-192.png" width="52" height="52" alt="" /></div><div><div className="auth-brand">Lektrus</div><div className="auth-subtitle">Пространство для обучения</div></div>{previewMode&&<button type="button" className="boards-secondary auth-preview-close" onClick={onPreviewClose}>Вернуться к приложению</button>}</div>
-    {!previewMode&&!isRemoteBackendEnabled() && <div className="access-notice" role="alert">Сервер Supabase не подключён. Сейчас доступен только локальный вход с аккаунтами, созданными в этом браузере. Для входа под существующим аккаунтом добавьте VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY в файл .env.local и перезапустите npm run dev.</div>}
+    {!previewMode&&!isRemoteBackendEnabled()&&!isSelfhostBackendEnabled() && <div className="access-notice" role="alert">Сервер Lektrus не подключён. Сейчас доступен только локальный вход с аккаунтами, созданными в этом браузере.</div>}
     {joining && <div className="access-notice">Откройте доску по приглашению: войдите в аккаунт или продолжите без регистрации.</div>}
     {!previewMode&&mode==="login"&&remembered&&<div className="auth-remembered"><div className="auth-remembered-avatar"><UserAvatar/></div><div className="auth-remembered-copy"><strong>{remembered.name}</strong><span>{remembered.email}</span></div><button className="auth-remembered-login" type="button" disabled={busy} onClick={()=>void quickLogin()}>{busy?"Входим…":"Войти"}</button><button className="auth-remembered-forget" type="button" disabled={busy} onClick={()=>void forgetQuickLogin()} title="Забыть сохранённый аккаунт">×</button></div>}
     {!previewMode&&<div className="auth-tabs" role="tablist" aria-label="Вход или регистрация"><button type="button" className={mode==="login"?"active":""} onClick={()=>changeMode("login")}>Вход</button><button type="button" className={mode==="register"?"active":""} onClick={()=>changeMode("register")}>Регистрация</button></div>}
     <form className="auth-form" onSubmit={submit}>
       {previewMode&&previewComplete?<div className="auth-preview-success"><h1 id="auth-title">Регистрация подтверждена</h1><p>Экран подтверждения Lektrus работает. Демо не отправляет письма и не создаёт аккаунты.</p><button type="button" className="auth-submit" onClick={onPreviewClose}>Вернуться к приложению</button></div>:<>
-      <div><h1 id="auth-title">{awaitingConfirmation?"Проверьте почту":mode==="register"?"Создать аккаунт":"С возвращением"}</h1><p>{awaitingConfirmation?previewMode?`Предпросмотр ссылки подтверждения для ${email}.`: `Мы отправили ссылку на ${email}. Откройте её, чтобы подтвердить адрес и автоматически войти в Lektrus.`:joining?"После входа откроется доска, которой с вами поделились.":mode==="register"?previewMode?"Заполните форму и проверьте собственный экран подтверждения Lektrus.":"Заполните данные, чтобы создать пространство для учёбы.":"Войдите, чтобы продолжить занятие или открыть свои доски."}</p></div>
-      {mode==="register"&&!awaitingConfirmation&&<fieldset className="auth-role-choice">
+      <div><h1 id="auth-title">{passwordResetToken?"Новый пароль":passwordResetRequest?"Восстановление пароля":awaitingConfirmation?"Проверьте почту":mode==="register"?"Создать аккаунт":"С возвращением"}</h1><p>{passwordResetToken?"Задайте новый пароль для своего аккаунта Lektrus.":passwordResetRequest?"Укажите email аккаунта. Мы отправим ссылку, если аккаунт существует.":awaitingConfirmation?previewMode?`Предпросмотр ссылки подтверждения для ${email}.`: `Мы отправили ссылку на ${email}. Откройте её, чтобы подтвердить адрес и автоматически войти в Lektrus.`:joining?"После входа откроется доска, которой с вами поделились.":mode==="register"?previewMode?"Заполните форму и проверьте собственный экран подтверждения Lektrus.":"Заполните данные, чтобы создать пространство для учёбы.":"Войдите, чтобы продолжить занятие или открыть свои доски."}</p></div>
+      {mode==="register"&&!awaitingConfirmation&&!passwordResetToken&&!passwordResetRequest&&<fieldset className="auth-role-choice">
         <legend>Кем вы регистрируетесь?</legend>
         <div className="auth-role-grid">
           <label className={`auth-role-option${registrationRole==="teacher"?" is-selected":""}`}>
@@ -138,13 +156,16 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
           </label>
         </div>
       </fieldset>}
-      {mode==="register"&&!awaitingConfirmation&&<div className="auth-register-name-grid"><label className="auth-field"><span>Имя</span><input required value={firstName} onChange={e=>fieldEdited(e.target.value,setFirstName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="given-name" autoCapitalize="words" placeholder="Ваше имя" maxLength={80} /></label><label className="auth-field"><span>Фамилия</span><input required value={lastName} onChange={e=>fieldEdited(e.target.value,setLastName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="family-name" autoCapitalize="words" placeholder="Ваша фамилия" maxLength={80} /></label><label className="auth-field auth-register-display-name"><span>Как к вам обращаться</span><input value={name} onChange={e=>fieldEdited(e.target.value,setName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="nickname" autoCapitalize="words" placeholder="Имя для участников доски" maxLength={80}/></label></div>}
-      <label className="auth-field"><span>Email</span><input required type="email" value={email} readOnly={awaitingConfirmation&&!previewMode} onChange={e=>fieldEdited(e.target.value,setEmail)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="name@example.com" maxLength={180} /></label>
-      {!awaitingConfirmation&&<label className="auth-field"><span>Пароль</span><input required minLength={mode==="register"?6:undefined} type="password" value={password} onChange={e=>fieldEdited(e.target.value,setPassword)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete={mode==="register"?"new-password":"current-password"} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder={mode==="register"?"Минимум 6 символов":"Ваш пароль"} maxLength={200}/></label>}
+      {mode==="register"&&!awaitingConfirmation&&!passwordResetToken&&!passwordResetRequest&&<div className="auth-register-name-grid"><label className="auth-field"><span>Имя</span><input required value={firstName} onChange={e=>fieldEdited(e.target.value,setFirstName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="given-name" autoCapitalize="words" placeholder="Ваше имя" maxLength={80} /></label><label className="auth-field"><span>Фамилия</span><input required value={lastName} onChange={e=>fieldEdited(e.target.value,setLastName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="family-name" autoCapitalize="words" placeholder="Ваша фамилия" maxLength={80} /></label><label className="auth-field auth-register-display-name"><span>Как к вам обращаться</span><input value={name} onChange={e=>fieldEdited(e.target.value,setName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="nickname" autoCapitalize="words" placeholder="Имя для участников доски" maxLength={80}/></label></div>}
+      {!passwordResetToken&&<label className="auth-field"><span>Email</span><input required type="email" value={email} readOnly={awaitingConfirmation&&!previewMode} onChange={e=>fieldEdited(e.target.value,setEmail)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="name@example.com" maxLength={180} /></label>}
+      {!awaitingConfirmation&&!passwordResetRequest&&<label className="auth-field"><span>{passwordResetToken?"Новый пароль":"Пароль"}</span><input required minLength={6} type="password" value={password} onChange={e=>fieldEdited(e.target.value,setPassword)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="new-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder={mode==="register"?"Минимум 6 символов":"Ваш пароль"} maxLength={72}/></label>}
+      {passwordResetToken&&<label className="auth-field"><span>Повторите новый пароль</span><input required minLength={6} type="password" value={passwordConfirmation} onChange={e=>fieldEdited(e.target.value,setPasswordConfirmation)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="new-password" maxLength={72}/></label>}
       {awaitingConfirmation&&<div className="auth-confirm-actions">{previewMode?<button type="submit" className="auth-submit" disabled={busy}>Открыть ссылку подтверждения</button>:<><button type="button" disabled={busy||resendCooldown>0} onClick={async()=>{setBusy(true);setError("");setNotice("");try{await resendRegistrationCode(email);setResendCooldown(30);setNotice("Ссылка отправлена повторно.")}catch(value){setError(value instanceof Error?value.message:"Не удалось отправить письмо")}finally{setBusy(false)}}}>{resendCooldown>0?`Отправить ссылку через ${resendCooldown} с`:"Отправить ссылку повторно"}</button><button type="button" disabled={busy} onClick={()=>{setAwaitingConfirmation(false);setError("");setNotice("")}}>Изменить email</button></>}</div>}
       {error&&<div className="auth-error" role="alert">{error}</div>}
       {notice&&<div className="auth-notice" role="status">{notice}</div>}
-      {!awaitingConfirmation&&<button className="auth-submit" type="submit" disabled={busy}>{busy?"Подождите…":mode==="register"?"Создать аккаунт":"Войти"}</button>}
+      {!awaitingConfirmation&&<button className="auth-submit" type="submit" disabled={busy}>{busy?"Подождите…":passwordResetToken?"Сохранить новый пароль":passwordResetRequest?"Отправить ссылку":mode==="register"?"Создать аккаунт":"Войти"}</button>}
+      {!awaitingConfirmation&&mode==="login"&&isSelfhostBackendEnabled()&&!passwordResetToken&&!passwordResetRequest&&<button className="boards-secondary" type="button" onClick={()=>{setError("");setNotice("");setPasswordResetRequest(true)}}>Забыли пароль?</button>}
+      {(passwordResetRequest||passwordResetToken)&&<button className="boards-secondary" type="button" disabled={busy} onClick={()=>{setPasswordResetRequest(false);setPasswordResetToken("");setPassword("");setPasswordConfirmation("");const cleanUrl=new URL(window.location.href);cleanUrl.searchParams.delete("password-reset");window.history.replaceState(null,"",cleanUrl.pathname+cleanUrl.search+cleanUrl.hash);setError("");setNotice("")}}>Вернуться ко входу</button>}
       {joining&&<><div className="auth-or"><span>или</span></div><label className="auth-field"><span>Ваше имя на доске</span><input value={guestName} onChange={e=>fieldEdited(e.target.value,setGuestName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="nickname" placeholder="Например, Анна" maxLength={60}/></label><button className="auth-guest" type="button" disabled={busy||guestName.trim().length<2} onClick={async()=>{if(busy)return;setBusy(true);setError("");try{onAuthenticated(await loginGuest(guestName))}catch(value){setError(value instanceof Error?value.message:"Не удалось войти как гость")}finally{setBusy(false)}}}>Продолжить как гость</button><p className="auth-guest-note">Аккаунт создавать не нужно. Это имя увидят участники доски.</p></>}
       </>}
     </form>

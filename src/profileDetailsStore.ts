@@ -1,4 +1,5 @@
 import {isRemoteBackendEnabled,remoteRequest} from "./backend";
+import {isSelfhostBackendEnabled,selfhostRequest} from "./selfhostApi";
 
 export type ProfileDetails={
  firstName:string;
@@ -34,11 +35,14 @@ export function validateProfileDetails(value:ProfileDetails):string{
 }
 
 export async function getProfileDetails(userId:string):Promise<ProfileDetails>{
- if(!isRemoteBackendEnabled()){
+ const selfhost=isSelfhostBackendEnabled();
+ if(!selfhost&&!isRemoteBackendEnabled()){
   try{return normalizeProfileDetails(JSON.parse(localStorage.getItem(localKey(userId))||"{}"))}
   catch{return emptyDetails()}
  }
- const rows=await remoteRequest<Array<Record<string,unknown>>>(`/rest/v1/profiles?select=first_name,last_name,middle_name,phone,city,organization,focus_area&id=eq.${encodeURIComponent(userId)}`);
+ const rows=selfhost
+  ? [await selfhostRequest<Record<string,unknown>>("/api/v1/account/profile")]
+  : await remoteRequest<Array<Record<string,unknown>>>(`/rest/v1/profiles?select=first_name,last_name,middle_name,phone,city,organization,focus_area&id=eq.${encodeURIComponent(userId)}`);
  const row=rows[0];
  return normalizeProfileDetails(row?{
   firstName:String(row.first_name??""),lastName:String(row.last_name??""),middleName:String(row.middle_name??""),
@@ -50,18 +54,22 @@ export async function getProfileDetails(userId:string):Promise<ProfileDetails>{
 export async function saveProfileDetails(userId:string,value:ProfileDetails):Promise<void>{
  const details=normalizeProfileDetails(value),validation=validateProfileDetails(details);
  if(validation)throw new Error(validation);
- if(!isRemoteBackendEnabled()){
+ const selfhost=isSelfhostBackendEnabled();
+ if(!selfhost&&!isRemoteBackendEnabled()){
   localStorage.setItem(localKey(userId),JSON.stringify(details));
   return;
  }
- await remoteRequest(`/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,{
-  method:"PATCH",
-  headers:{Prefer:"return=minimal"},
-  body:JSON.stringify({
+ const body=JSON.stringify({
    first_name:details.firstName,last_name:details.lastName,middle_name:details.middleName,
    phone:details.phone,city:details.city,organization:details.organization,
    focus_area:details.focusArea,
-  }),
+ });
+ if(selfhost){
+  await selfhostRequest("/api/v1/account/profile/details",{method:"PUT",body});
+  return;
+ }
+ await remoteRequest(`/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,{
+  method:"PATCH",headers:{Prefer:"return=minimal"},body,
  });
 }
 

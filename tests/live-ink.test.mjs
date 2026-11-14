@@ -35,7 +35,11 @@ function harness(){
   vm.runInNewContext(ts.transpileModule(source,{
     compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
   }).outputText,{
-    exports,require:()=>backend,WebSocket:Socket,
+    exports,require:name=>{
+      if(name==="./selfhostApi")return {isSelfhostBackendEnabled:()=>false};
+      assert.equal(name,"./backend");
+      return backend;
+    },WebSocket:Socket,
     setTimeout:schedule,clearTimeout:id=>timers.delete(id),
     setInterval:schedule,clearInterval:id=>timers.delete(id),
     window:{addEventListener:(name,cb)=>listeners.set(name,cb),

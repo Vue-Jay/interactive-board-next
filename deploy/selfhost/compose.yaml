@@ -1,0 +1,68 @@
+# Run on the dedicated production VPS with a domain and backups. A fresh database is expected.
+# No port for PostgreSQL or the API is exposed to the public Internet.
+services:
+  db:
+    image: postgres:17.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lektrus
+      POSTGRES_DB: lektrus
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a strong PostgreSQL password}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lektrus -d lektrus"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks: [internal]
+  api:
+    build: ../../server
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://lektrus:${POSTGRES_PASSWORD:?Set password}@db:5432/lektrus
+      LEKTRUS_APPLY_SCHEMA: "true"
+      LEKTRUS_JWT_SECRET: ${LEKTRUS_JWT_SECRET:?Set a random 32+ byte secret}
+      LEKTRUS_ALLOWED_ORIGINS: ${LEKTRUS_SITE_ORIGIN:?Set the HTTPS site origin}
+      LEKTRUS_ASSETS_DIR: /srv/lektrus-assets
+      LEKTRUS_BOOTSTRAP_ADMIN_EMAIL: ${LEKTRUS_BOOTSTRAP_ADMIN_EMAIL:-}
+      LEKTRUS_ENABLE_REGISTRATION: ${LEKTRUS_ENABLE_REGISTRATION:-false}
+      LEKTRUS_PUBLIC_ORIGIN: ${LEKTRUS_SITE_ORIGIN:?Set site origin}
+      LEKTRUS_SMTP_HOST: ${LEKTRUS_SMTP_HOST:-}
+      LEKTRUS_SMTP_PORT: ${LEKTRUS_SMTP_PORT:-465}
+      LEKTRUS_SMTP_USERNAME: ${LEKTRUS_SMTP_USERNAME:-}
+      LEKTRUS_SMTP_PASSWORD: ${LEKTRUS_SMTP_PASSWORD:-}
+      LEKTRUS_SMTP_FROM: ${LEKTRUS_SMTP_FROM:-}
+    depends_on:
+      db: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3).close()"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - assetsdata:/srv/lektrus-assets
+    networks: [internal]
+  web:
+    build:
+      context: ../..
+      dockerfile: deploy/selfhost/web.Dockerfile
+      args:
+        LEKTRUS_SITE_ORIGIN: ${LEKTRUS_SITE_ORIGIN:?Set the HTTPS site origin}
+    restart: unless-stopped
+    environment:
+      LEKTRUS_DOMAIN: ${LEKTRUS_DOMAIN:?Set a valid domain}
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    ports: ["80:80", "443:443"]
+    depends_on:
+      api: {condition: service_healthy}
+    networks: [internal]
+networks:
+  internal:
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
+  assetsdata:

@@ -1,5 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
+import { SELFHOST_BACKEND_ENABLED } from "./selfhostApi";
 
 export type BackendSession = {
   access_token: string;
@@ -32,11 +33,12 @@ const readNativeBackendConfig = (): { url: string; anonKey: string } | null => {
     return { url: address, anonKey: publishable };
   } catch { return null; }
 };
-const nativeBackendConfig = LEKTRUS_LOCAL_TEST_MODE ? null : readNativeBackendConfig();
-const url = (LEKTRUS_LOCAL_TEST_MODE ? "" : (buildBackendUrl || nativeBackendConfig?.url || "")).replace(/\/$/, "");
-const anonKey = LEKTRUS_LOCAL_TEST_MODE ? "" : buildBackendKey || nativeBackendConfig?.anonKey || "";
+const legacyBackendDisabled = LEKTRUS_LOCAL_TEST_MODE || SELFHOST_BACKEND_ENABLED;
+const nativeBackendConfig = legacyBackendDisabled ? null : readNativeBackendConfig();
+const url = (legacyBackendDisabled ? "" : (buildBackendUrl || nativeBackendConfig?.url || "")).replace(/\/$/, "");
+const anonKey = legacyBackendDisabled ? "" : buildBackendKey || nativeBackendConfig?.anonKey || "";
 
-export const nativeBackendIsBundled = () => !LEKTRUS_LOCAL_TEST_MODE && Boolean(buildBackendUrl && buildBackendKey);
+export const nativeBackendIsBundled = () => !legacyBackendDisabled && Boolean(buildBackendUrl && buildBackendKey);
 export const clearNativeBackendConnection = (): void => {
   if (!LEKTRUS_LOCAL_TEST_MODE && Capacitor.isNativePlatform()) localStorage.removeItem(NATIVE_BACKEND_KEY);
 };
@@ -109,10 +111,10 @@ const fetchReadWithRetry = async (input: RequestInfo | URL, init: RequestInit = 
 
 export const isRemoteBackendEnabled = () => !LEKTRUS_LOCAL_TEST_MODE && Boolean(url && anonKey);
 
-export const getCachedRemoteSession = (): BackendSession | null => LEKTRUS_LOCAL_TEST_MODE ? null : loadSession();
+export const getCachedRemoteSession = (): BackendSession | null => legacyBackendDisabled ? null : loadSession();
 
 export const isCachedRemoteSessionUsable = () => {
-  if (LEKTRUS_LOCAL_TEST_MODE) return false;
+  if (legacyBackendDisabled) return false;
   const session = loadSession();
   return Boolean(session && session.expires_at > Math.floor(Date.now() / 1000) + 30);
 };
@@ -274,7 +276,7 @@ const refreshRemoteSession = async (session: BackendSession): Promise<BackendSes
 };
 
 export const getRemoteSession = async (): Promise<BackendSession | null> => {
-  if (LEKTRUS_LOCAL_TEST_MODE) return null;
+  if (legacyBackendDisabled) return null;
   const session = loadSession();
   if (!session) return null;
 
@@ -285,7 +287,7 @@ export const getRemoteSession = async (): Promise<BackendSession | null> => {
 };
 
 export const signOutRemote = async () => {
-  if (LEKTRUS_LOCAL_TEST_MODE) return;
+  if (legacyBackendDisabled) return;
   const session = loadSession();
   saveSession(null);
   refreshInFlight = null;

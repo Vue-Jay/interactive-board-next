@@ -1,0 +1,37 @@
+name: Lektrus self-hosted main application
+
+on:
+  push:
+    branches:
+      - migration/self-hosted-backend-20261114
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  main-app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Test the primary Lektrus self-hosted API client
+        run: node scripts/test-selfhost-client.mjs
+      - name: Build the standard Lektrus application against the self-hosted backend
+        env:
+          VITE_LEKTRUS_BACKEND: 'selfhost'
+          VITE_LEKTRUS_API_ORIGIN: https://lektrus.example
+        run: npm run build
+      - name: Validate the standard application bundle
+        run: |
+          test -s dist/index.html
+          test -d dist/assets
+          find dist/assets -name 'appEntry-*.js' -size +100c | grep -q .
+          find dist/assets -name 'BoardApp-*.js' -size +100c | grep -q .
+          grep -l 'lektrus.selfhost.session.v1' dist/assets/*.js | grep -q .

@@ -1,4 +1,5 @@
 import { isRemoteBackendEnabled, remoteRequest } from "./backend";
+import { isSelfhostBackendEnabled, selfhostRequest } from "./selfhostApi";
 import type { BoardSummary } from "./boardStore";
 import type { BoardRole } from "./authStore";
 
@@ -32,8 +33,10 @@ export type BoardShareLink = {
   protected: boolean;
 };
 
+export const shareLinksEnabled = () => isSelfhostBackendEnabled() || isRemoteBackendEnabled();
+
 const requireRemote = () => {
-  if (!isRemoteBackendEnabled()) {
+  if (!shareLinksEnabled()) {
     throw new Error("Ссылки доступа работают только при включённой серверной синхронизации.");
   }
 };
@@ -53,6 +56,12 @@ const normalizeServerLink = (row: any): ShareLink => ({
 /* API expected by the current Codex-created App.tsx / ShareDialog.tsx. */
 export async function createShareLink(boardId: string, role: ShareRole, options?: { expiresAt?: string | null; maxUses?: number | null; password?: string | null }): Promise<CreatedShareLink> {
   requireRemote();
+  if (isSelfhostBackendEnabled()) {
+    return selfhostRequest<CreatedShareLink>(`/api/v1/boards/${encodeURIComponent(boardId)}/share-links`, {
+      method: "POST",
+      body: JSON.stringify({ role, expires_at: options?.expiresAt, max_uses: options?.maxUses || null, password: options?.password }),
+    });
+  }
   const row = await remoteRequest<any>("/rest/v1/rpc/create_board_share_link", {
     method: "POST",
     body: JSON.stringify({ p_board_id: boardId, p_role: role, p_expires_at: options?.expiresAt || null, p_max_uses: options?.maxUses || null, p_password: options?.password?.trim() || null }),
@@ -65,6 +74,9 @@ export async function createShareLink(boardId: string, role: ShareRole, options?
 
 export async function listShareLinks(boardId: string): Promise<ShareLink[]> {
   requireRemote();
+  if (isSelfhostBackendEnabled()) {
+    return selfhostRequest<ShareLink[]>(`/api/v1/boards/${encodeURIComponent(boardId)}/share-links`);
+  }
   const rows = await remoteRequest<any[]>("/rest/v1/rpc/list_board_share_links", {
     method: "POST",
     body: JSON.stringify({ p_board_id: boardId }),
@@ -74,6 +86,9 @@ export async function listShareLinks(boardId: string): Promise<ShareLink[]> {
 
 export async function revokeShareLink(linkId: string): Promise<void> {
   requireRemote();
+  if (isSelfhostBackendEnabled()) {
+    return selfhostRequest<void>(`/api/v1/share-links/${encodeURIComponent(linkId)}`, { method: "DELETE" });
+  }
   await remoteRequest("/rest/v1/rpc/revoke_board_share_link", {
     method: "POST",
     body: JSON.stringify({ p_link_id: linkId }),
@@ -94,6 +109,12 @@ export async function redeemShareLink(token: string, password?: string): Promise
   updated_at: string;
 }> {
   requireRemote();
+  if (isSelfhostBackendEnabled()) {
+    return selfhostRequest("/api/v1/share-links/redeem", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    });
+  }
   return remoteRequest("/rest/v1/rpc/redeem_board_share_link", {
     method: "POST",
     body: JSON.stringify({ p_token: token, p_password: password || null }),

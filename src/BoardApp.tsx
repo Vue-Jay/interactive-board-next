@@ -94,6 +94,8 @@ import { Capacitor } from "@capacitor/core";
 import { BOARD_ROLE_LABELS, type AuthUser } from "./authStore";
 import { boardStorageKey, touchBoard, type BoardSummary } from "./boardStore";
 import { isRemoteBackendEnabled, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
+import { selfhostReadDocument, selfhostSaveDocument, selfhostWatchDocument, SelfhostHttpError } from "./selfhostApi";
+import { setSelfhostBoardMode } from "./assetStore";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
 import { readDeveloperPreferences, writeDeveloperPreferences } from "./developerPreferences";
 import { boardRoleCapabilities, canUseBoardCreationTool, isStudentProtectedBoardObject, canTransformStudentBoardObject, restrictStudentDiagramChange, BOARD_ROLE_PREVIEW_LABELS, type BoardRolePreview } from "./lektrusBoardRolePreview";
@@ -2033,7 +2035,7 @@ const itemIconName = (item: Item): IconName => {
   return "marker";
 };
 
-export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adminMaintenance = false, adminInvisible = false, globalRolePreview="actual", onGlobalRolePreviewChange, onBackToBoards, onLogout, onBoardChanged, initialRemoteVersion = null, demoMode = false, demoInitialDocument }: {
+export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adminMaintenance = false, adminInvisible = false, globalRolePreview="actual", onGlobalRolePreviewChange, onBackToBoards, onLogout, onBoardChanged, initialRemoteVersion = null, demoMode = false, demoInitialDocument, selfhostMode = false }: {
   authUser: AuthUser;
   boardSummary: BoardSummary;
   accountRole: AccountRole;
@@ -2048,8 +2050,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   initialRemoteVersion?: number | null;
   demoMode?: boolean;
   demoInitialDocument?:DocumentData;
+  selfhostMode?: boolean;
 }) {
   const remoteEnabled=!demoMode&&isRemoteBackendEnabled();
+  const discussionEnabled=!demoMode&&(remoteEnabled||selfhostMode);
+  const documentSyncEnabled=!demoMode&&(remoteEnabled||selfhostMode);
+  useEffect(()=>{
+    setSelfhostBoardMode(boardSummary.id,selfhostMode);
+    return()=>setSelfhostBoardMode(boardSummary.id,false);
+  },[boardSummary.id,selfhostMode]);
   const layoutEditing=new URLSearchParams(window.location.search).get("layout-editor")==="1";
   const [rolePreview,setRolePreview]=useState<BoardRolePreview>(globalRolePreview);
   useEffect(()=>setRolePreview(globalRolePreview),[boardSummary.id,globalRolePreview]);
@@ -2927,6 +2936,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const trustedAssetIds = useRef(new Set(initial.data.items
     .filter(item => item.kind === "image" || item.kind === "pdf")
     .map(item => item.assetId).filter((id): id is string => Boolean(id))));
+  useEffect(()=>{
+    // A document imported from Supabase may reference files that have not yet
+    // been copied to the self-hosted private volume. Verify each one there once.
+    if(selfhostMode)trustedAssetIds.current.clear();
+  },[boardSummary.id,selfhostMode]);
   const saveFailure = useRef<{step:string;message:string}|null>(null);
   const saveStep = useRef("ожидание");
   const lastBoardTouchAt = useRef(0);
@@ -3063,7 +3077,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   }, [presentation, presentationTimerRunning, presentationTimerMode]);
 
   const pushRemoteSnapshot = useCallback(async (data: DocumentData, knownFingerprint?: string) => {
-    if (layoutEditing || !remoteEnabled || !canEdit || !boardMounted.current || pendingRemote.current) return;
+    if (layoutEditing || !documentSyncEnabled || !canEdit || !boardMounted.current || pendingRemote.current) return;
     const fingerprint = knownFingerprint ?? documentFingerprint(data);
     if (fingerprint === acknowledgedDocument.current ||
         fingerprint === acknowledgedSharedContent.current) return;
@@ -3085,14 +3099,41 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         for(const item of unsyncedAssets)if(item.assetId)trustedAssetIds.current.add(item.assetId);
       }
       if (!boardMounted.current) return;
-      saveStep.current = "ответ Supabase";
+      saveStep.current = selfhostMode ? "ответ собственного сервера" : "ответ Supabase";
       const expectedVersion = remoteVersion.current ?? 0;
       // Do not block the real board save with canvas rendering or loading media.
       // Use the last prepared preview; refresh it separately after acknowledgement.
       const previousPreview = cachedBoardPreview(boardSummary.id);
       lastAttempt.current = { version: expectedVersion + 1, fingerprint };
       const payload = {...data, preview: previousPreview??""};
-      const result = await (adminMaintenance ? adminSaveRemoteBoardDocument : saveRemoteBoardDocument)(boardSummary.id, payload, expectedVersion);
+      let result:{conflict:boolean;version:number;document?:unknown;updated_at?:string};
+      if(selfhostMode){
+        try{
+          const saved=await selfhostSaveDocument(
+            boardSummary.id,expectedVersion,payload as unknown as Record<string,unknown>
+          );
+          result={conflict:false,version:saved.version};
+        }catch(error){
+          if(error instanceof SelfhostHttpError&&error.status===409){
+            const latest=await selfhostReadDocument(boardSummary.id);
+            if(!boardMounted.current)return;
+            if(latest.document&&latest.version>expectedVersion){
+              if(deferredRemote.current&&deferredRemote.current.version>=latest.version)return;
+              deferredRemote.current={
+                board_id:latest.board_id,version:latest.version,
+                document:latest.document,updated_at:latest.updated_at??"",
+                updated_by:latest.updated_by,
+              };
+              return;
+            }
+          }
+          throw error;
+        }
+      }else{
+        result=await (adminMaintenance ? adminSaveRemoteBoardDocument : saveRemoteBoardDocument)(
+          boardSummary.id,payload,expectedVersion
+        );
+      }
       if (!boardMounted.current) return;
       if (result.conflict) {
         const row = { board_id: boardSummary.id, version: result.version, document: result.document, updated_at: result.updated_at ?? "" };
@@ -3121,7 +3162,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       setSaveStatus("Сохранено на сервере");
       // The thumbnail is decorative metadata, not an autosave prerequisite.
       // It can finish even if the editor unmounts when returning to the dashboard.
-      scheduleBackgroundBoardPreview(boardSummary.id,data,result.version);
+      if(!selfhostMode)scheduleBackgroundBoardPreview(boardSummary.id,data,result.version);
     } catch (error) {
       const message=error instanceof Error?error.message:String(error);
       saveFailure.current={step:saveStep.current,message:message.slice(0,260)};
@@ -3151,7 +3192,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if (queued && !deferred)
         void pushRemoteSnapshot(snapshot.current??queued);
     }
-  }, [boardSummary.id, canEdit, layoutEditing]);
+  }, [boardSummary.id, canEdit, layoutEditing, documentSyncEnabled, selfhostMode, adminMaintenance]);
 
   const flushSave = useCallback(() => {
     if (!canEdit || layoutEditing) return;
@@ -3169,7 +3210,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           localStorage.setItem(storageKey,serialized);
           lastLocalSerialized.current=serialized;
           localBackupValid.current=true;
-          if(remoteEnabled){
+          if(documentSyncEnabled){
             try{localStorage.setItem(storageKey+".pending-sync","1")}catch{}
           }
         } catch(error) {
@@ -3181,8 +3222,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }
       if (!boardMounted.current) return;
       const fingerprint = documentFingerprint(data);
-      if (remoteEnabled && pendingRemote.current) return;
-      if(remoteEnabled && (
+      if (documentSyncEnabled && pendingRemote.current) return;
+      if(documentSyncEnabled && (
         fingerprint === acknowledgedDocument.current ||
         fingerprint === acknowledgedSharedContent.current
       )){
@@ -3196,14 +3237,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       // the hot autosave path while still keeping recent boards ordered correctly.
       const now = Date.now();
       const titleChanged = lastBoardTouchTitle.current !== data.title;
-      if (!demoMode && (titleChanged || now - lastBoardTouchAt.current >= 15_000)) {
+      if (!demoMode && !selfhostMode && (titleChanged || now - lastBoardTouchAt.current >= 15_000)) {
         lastBoardTouchAt.current = now;
         lastBoardTouchTitle.current = data.title;
         void touchBoard(authUser.id, boardSummary.id, data.title, boardSummary.role).then((updatedBoard) => {
           if (updatedBoard && boardMounted.current) onBoardChanged(updatedBoard);
         }).catch(() => {});
       }
-      if (remoteEnabled) {
+      if (documentSyncEnabled) {
         saveStep.current="подготовка";
         setSaveStatus("Сохранение на сервер…");
         const pending=pushRemoteSnapshot(data,fingerprint);
@@ -3219,7 +3260,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       saveFailure.current={step:"подготовка документа",message:error instanceof Error?error.message:String(error)};
       setSaveStatus("Не удалось подготовить документ к сохранению");
     }
-  }, [authUser.id, boardSummary.id, onBoardChanged, storageKey, canEdit, layoutEditing, pushRemoteSnapshot]);
+  }, [authUser.id, boardSummary.id, onBoardChanged, storageKey, canEdit, layoutEditing, pushRemoteSnapshot, documentSyncEnabled, selfhostMode, demoMode]);
 
   // A gesture is saved only when completed; in-progress text is saved too.
   useEffect(() => {
@@ -3274,17 +3315,20 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const refreshDiscussions=useCallback(async()=>{setDiscussionRows(await listBoardComments(boardSummary.id))},[boardSummary.id]);
   const refreshDiscussionParticipants=useCallback(async()=>{setDiscussionParticipants(await listBoardCommentParticipants(boardSummary.id))},[boardSummary.id]);
   const openDiscussions=async(focusId:string|null=null)=>{
-    if(!remoteEnabled){setNotice("Чат доступен при серверной синхронизации");return}
+    if(!discussionEnabled){setNotice("Обсуждения доступны при подключённом сервере");return}
     setChatOpen(true);setChatUnread(0);setDiscussionOpen(true);setDiscussionBusy(true);setDiscussionError("");if(focusId)setDiscussionFocusId(focusId);
     try{await Promise.all([refreshDiscussions(),refreshDiscussionParticipants()])}catch(error){setDiscussionError(error instanceof Error?error.message:"Не удалось загрузить обсуждения")}finally{setDiscussionBusy(false)}
   };
+  const chatOpenRef=useRef(chatOpen);
+  chatOpenRef.current=chatOpen;
   useEffect(()=>{
-    if(layoutEditing||!remoteEnabled)return;
+    if(layoutEditing||!discussionEnabled)return;
+    const refresh=()=>{void refreshDiscussions().catch(()=>{})};
     return subscribeBoardComments(boardSummary.id,()=>{
-      if(!chatOpen)setChatUnread(value=>Math.min(99,value+1));
-      void refreshDiscussions().catch(()=>{});
-    });
-  },[chatOpen,boardSummary.id,refreshDiscussions]);
+      if(!chatOpenRef.current)setChatUnread(value=>Math.min(99,value+1));
+      refresh();
+    },refresh);
+  },[boardSummary.id,discussionEnabled,layoutEditing,refreshDiscussions]);
   useEffect(()=>{
     const requested=new URLSearchParams(window.location.search).get("discussion");
     if(requested){setDiscussionFocusId(requested);void openDiscussions(requested)}
@@ -3325,7 +3369,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       snapshot.current=latest;
       flushSave();
       const expected=sharedBoardFingerprint(latest);
-      if(canEdit&&remoteEnabled&&expected!==acknowledgedSharedContent.current){
+      if(canEdit&&documentSyncEnabled&&expected!==acknowledgedSharedContent.current){
         const until=Date.now()+8000;
         while(boardMounted.current&&Date.now()<until&&
               acknowledgedSharedContent.current!==expected){
@@ -3672,7 +3716,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           importedIds.set(asset.id, id);
         } catch (error) {
           // Preserve v19 local imports even when one attachment is damaged.
-          if (remoteEnabled) throw error;
+          if (documentSyncEnabled) throw error;
         }
       }
       data.items = data.items.map(item => item.assetId && importedIds.has(item.assetId)
@@ -4080,7 +4124,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
 
     const id = createId();
-    await putAsset(id, isPdf ? file.slice(0, file.size, "application/pdf") : file, boardSummary.id, !remoteEnabled);
+    await putAsset(id, isPdf ? file.slice(0, file.size, "application/pdf") : file, boardSummary.id, !documentSyncEnabled);
     const rect = board.current?.getBoundingClientRect();
     const center = position ?? world({ x: (rect?.width ?? 800) / 2, y: (rect?.height ?? 600) / 2 });
     const item: Item = {
@@ -7693,7 +7737,22 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       applyServerDocument(row, data);
     } catch { setNotice("Не удалось прочитать новую серверную версию. Ваши изменения сохранены на доске."); }
   };
-  useEffect(() => layoutEditing?()=>{}:subscribeBoardDocument(boardSummary.id, row => receiveRemote.current(row), setRealtimeStatus), [boardSummary.id,layoutEditing]);
+  useEffect(()=>{
+    if(layoutEditing)return;
+    if(selfhostMode){
+      return selfhostWatchDocument(boardSummary.id,()=>remoteVersion.current??-1,latest=>{
+        if(!latest.document)return;
+        receiveRemote.current({
+          board_id:latest.board_id,version:latest.version,
+          document:latest.document,updated_at:latest.updated_at??"",
+          updated_by:latest.updated_by,
+        });
+      },setRealtimeStatus);
+    }
+    return subscribeBoardDocument(
+      boardSummary.id,row=>receiveRemote.current(row),setRealtimeStatus
+    );
+  },[boardSummary.id,layoutEditing,selfhostMode]);
 
   useEffect(() => layoutEditing||!remoteEnabled?()=>{}:trackBoardVisit(boardSummary.id),[boardSummary.id,layoutEditing]);
 
@@ -8255,7 +8314,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             ✎ {remoteEditingCount}
           </span>}
           {canManageBoard && <button className="lesson-button board-invite-button compact-top-action" aria-label="Добавить участника" title="Добавить участника" onClick={() => setSharing(true)}><svg className="top-action-svg add-person-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 18c.5-3.2 2.5-5 5.5-5s5 1.8 5.5 5"/><path d="M18 7v6M15 10h6"/></svg></button>}
-          {remoteEnabled && <button type="button" className={`lesson-button board-chat-button ${chatOpen ? "active" : ""}`} onClick={()=>void openDiscussions()} title="Чат этой доски" aria-label={`Чат этой доски${chatUnread?` · новых сообщений ${chatUnread}`:""}`}><Icon name="comments" size={16}/><span>Чат</span>{chatUnread>0&&<b className="top-badge">{chatUnread>99?"99+":chatUnread}</b>}</button>}
+          {discussionEnabled && <button type="button" className={`lesson-button board-chat-button ${chatOpen ? "active" : ""}`} onClick={()=>void openDiscussions()} title="Чат этой доски" aria-label={`Чат этой доски${chatUnread?` · новых сообщений ${chatUnread}`:""}`}><Icon name="comments" size={16}/><span>Чат</span>{chatUnread>0&&<b className="top-badge">{chatUnread>99?"99+":chatUnread}</b>}</button>}
           <details className="topbar-more-menu">
             <summary className="top-button topbar-more-trigger" title="Дополнительные действия" aria-label="Дополнительные действия"><Icon name="more" /></summary>
             <div className="topbar-more-popover">

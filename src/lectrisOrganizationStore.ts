@@ -1,4 +1,5 @@
 import { isRemoteBackendEnabled, remoteRequest } from "./backend";
+import { SELFHOST_BACKEND_ENABLED,selfhostOrganization,selfhostSaveBoardOrganization,selfhostSaveCategory } from "./selfhostApi";
 
 export type LectrisOrganization={subject:string;group:string};
 export type LectrisCategoryCatalog={subjects:string[];groups:string[]};
@@ -21,6 +22,7 @@ const unique=(values:unknown)=>Array.isArray(values)?
 const uuid=(id:string)=>/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(id);
 
 export function lectrisOrganizationSyncEnabled():boolean{
+  if(SELFHOST_BACKEND_ENABLED)return true;
   const ref=(import.meta.env.VITE_LECTRIS_ISOLATED_SUPABASE_REF as string|undefined)?.trim();
   const endpoint=(import.meta.env.VITE_SUPABASE_URL as string|undefined)?.trim();
   if(!isRemoteBackendEnabled()||!ref||!endpoint||import.meta.env.VITE_LECTRIS_ORG_SYNC!=="true")return false;
@@ -125,6 +127,7 @@ export function queueLectrisCategory(userId:string,kind:"subject"|"group",value:
 }
 
 async function uploadOperation(userId:string,op:PendingOperation){
+  if(SELFHOST_BACKEND_ENABLED){if(op.type==="board")await selfhostSaveBoardOrganization(op.boardId,op.subject,op.group);else await selfhostSaveCategory(op.kind,op.name);return}
   if(op.type==="board"){
     await remoteRequest<unknown>("/rest/v1/lectris_board_organization?on_conflict=board_id",{
       method:"POST",
@@ -167,12 +170,13 @@ export async function loadLectrisOrganization(userId:string,boardIds:string[]):P
   if(!lectrisOrganizationSyncEnabled())return {organization,catalog,status:"local",pending:pendingLectrisOrganizationCount(userId)};
   try{
     await flushLectrisOrganization(userId);
-    const categories=await remoteRequest<RemoteCategory[]>("/rest/v1/lectris_categories?select=kind,name&owner_id=eq."+encodeURIComponent(userId));
+    const selfhost=SELFHOST_BACKEND_ENABLED?await selfhostOrganization():null;
+    const categories=selfhost?selfhost.categories:await remoteRequest<RemoteCategory[]>("/rest/v1/lectris_categories?select=kind,name&owner_id=eq."+encodeURIComponent(userId));
     const ids=[...new Set(boardIds.filter(uuid))];
     const remoteBoards:RemoteBoardOrg[]=[];
     for(let i=0;i<ids.length;i+=50){
       const chunk=ids.slice(i,i+50);
-      const rows=await remoteRequest<RemoteBoardOrg[]>("/rest/v1/lectris_board_organization?select=board_id,subject,group_name&board_id=in.("+chunk.join(",")+")");
+      const rows=selfhost?selfhost.boards.filter(row=>chunk.includes(row.board_id)):await remoteRequest<RemoteBoardOrg[]>("/rest/v1/lectris_board_organization?select=board_id,subject,group_name&board_id=in.("+chunk.join(",")+")");
       remoteBoards.push(...rows);
     }
     const remaining=readQueue(userId);
