@@ -33,3 +33,5 @@ jobs:
           test -s dist/index.html
           test -d dist/assets
           find dist/assets -name 'selfhostPilotEntry-*.js' -size +100c | grep -q .
+          find dist/assets -name 'BoardApp-*.js' -size +100c | grep -q .
+          find dist/assets -name 'selfhostPilotApi-*.js' -size +100c | grep -q .
