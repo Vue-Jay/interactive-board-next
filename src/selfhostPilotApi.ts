@@ -31,7 +31,10 @@ const TIMEOUT_MS=15000;
 let refreshInFlight:Promise<PilotSession|null>|null=null;
 
 export class PilotHttpError extends Error {
-  constructor(public status:number,message:string){super(message);this.name="PilotHttpError";}
+  readonly status:number;
+  constructor(status:number,message:string){
+    super(message);this.name="PilotHttpError";this.status=status;
+  }
 }
 export function pilotOrigin():string{
   if(!SELFHOST_PILOT_ENABLED)throw new Error("Тестовый режим собственного сервера выключен.");
