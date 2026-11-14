@@ -115,6 +115,11 @@ def make_registration_router() -> APIRouter:
     async def signup(data: SignupInput, request: Request):
         _, _, _, _, _, origin = server_mail_config()
         email = normalize_email(data.email)
+        # The first administrator is bootstrapped only for this exact,
+        # operator-configured address. The normal mailbox verification flow
+        # still proves ownership before the account can sign in.
+        bootstrap_email = os.environ.get("LEKTRUS_BOOTSTRAP_ADMIN_EMAIL", "").strip().lower()
+        is_bootstrap_admin = bool(bootstrap_email and email == bootstrap_email)
         if len(data.password.encode("utf-8")) > 72:
             raise HTTPException(422, "Пароль слишком длинный.")
         name = data.name.strip()
@@ -139,15 +144,21 @@ def make_registration_router() -> APIRouter:
                     user_id = uuid4()
                     # An email raced with another signup: never modify the
                     # credentials or self-selected role of the winner.
+                    has_admin = await conn.fetchval(
+                        "SELECT EXISTS(SELECT 1 FROM account_users WHERE is_admin=true)"
+                    )
+                    grant_admin = is_bootstrap_admin and not has_admin
+                    account_role = "teacher" if grant_admin else data.role
+                    teacher_status = "approved" if grant_admin or data.role == "teacher" else "none"
                     inserted = await conn.fetchval(
                         """INSERT INTO account_users
                            (id,email,password_hash,display_name,first_name,
                             last_name,account_role,teacher_status,is_admin)
-                           VALUES($1,$2,$3,$4,$5,$6,$7,$8,false)
+                           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
                            ON CONFLICT(email) DO NOTHING RETURNING id""",
                         user_id, email, new_hash.decode(), name,
                         data.first_name.strip(), data.last_name.strip(),
-                        data.role, "approved" if data.role == "teacher" else "none",
+                        account_role, teacher_status, grant_admin,
                     )
                     if inserted is not None:
                         should_send = True
