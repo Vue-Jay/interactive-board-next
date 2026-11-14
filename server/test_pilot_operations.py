@@ -22,7 +22,7 @@ def append(stroke_id: str, operation_id=None):
 
 async def new_pilot_board(client, owner):
     created = await client.post("/api/v1/boards",
-                                json={"title": "Пилот: синхронизация"}, headers=owner)
+                                json={"title": "Пилот: синхронизация", "is_pilot": True}, headers=owner)
     assert created.status_code == 201, created.text
     board = created.json()["id"]
     saved = await client.put(
