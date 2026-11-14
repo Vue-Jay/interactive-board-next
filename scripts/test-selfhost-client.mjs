@@ -9,8 +9,6 @@ async function loadSelfhost(enabled) {
   let source=readFileSync(new URL("../src/selfhostApi.ts",import.meta.url),"utf8");
   source=source
     .replaceAll("import.meta.env.VITE_LEKTRUS_BACKEND",JSON.stringify(enabled?"selfhost":""))
-    .replaceAll("import.meta.env.VITE_LEKTRUS_BACKEND",JSON.stringify(enabled?"selfhost":""))
-    .replaceAll("import.meta.env.VITE_LEKTRUS_API_ORIGIN",JSON.stringify("https://pilot.lektrus.example"))
     .replaceAll("import.meta.env.VITE_LEKTRUS_API_ORIGIN",JSON.stringify("https://pilot.lektrus.example"))
     .replaceAll("import.meta.env.DEV","false");
   const compiled=ts.transpileModule(source,{
@@ -183,6 +181,11 @@ assert.equal(await nativeAsset.text(),"stored asset");
 const saved=await api.selfhostSaveDocument("board-1",3,{pilot_schema:1,items:[],ink:[],note:"hello"});
 assert.equal(saved.version,4);
 await assert.rejects(api.selfhostSaveDocument("board-1",2,{items:[],ink:[]}),e=>e.status===409);
+const expired=JSON.parse(storage.get("lektrus.selfhost.session.v1"));
+expired.expires_at=1;
+storage.set("lektrus.selfhost.session.v1",JSON.stringify(expired));
+assert.equal((await api.selfhostSession()).access_token,"token-refreshed");
+assert.equal(env.refreshCount(),1);
 const revisions=[];
 const statuses=[];
 const liveEvents=[];
