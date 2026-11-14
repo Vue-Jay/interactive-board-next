@@ -23,6 +23,7 @@ import jwt
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from realtime_events import EventRateLimit, InvalidLiveEvent, MAX_EVENT_BYTES, validate_live_event
 
 ISSUER = "lektrus-selfhost"
 AUDIENCE = "lektrus"
@@ -357,6 +358,29 @@ async def announce(board_id: UUID, version: int, pool: asyncpg.Pool):
         except Exception:
             _subscribers[board_id].pop(client, None)
 
+async def relay_live_event(board_id: UUID, sender: WebSocket,
+                           event: dict[str, Any], pool: asyncpg.Pool):
+    # Even a connected socket can lose membership or have its session revoked.
+    # Verify every recipient before forwarding data, not just at subscription.
+    # Zero file/document bytes are broadcast in these transient frames.
+    for peer, token in list(_subscribers.get(board_id, {}).items()):
+        if peer is sender:
+            continue
+        try:
+            recipient = await lookup_session(pool, token)
+            async with pool.acquire() as conn:
+                await board_access(conn, board_id, recipient["id"])
+            await asyncio.wait_for(peer.send_json(event), timeout=1)
+        except HTTPException:
+            _subscribers.get(board_id, {}).pop(peer, None)
+            try:
+                await peer.close(code=4403)
+            except Exception:
+                pass
+        except Exception:
+            _subscribers.get(board_id, {}).pop(peer, None)
+
+
 @app.put("/api/v1/boards/{board_id}/document")
 async def save_document(board_id: UUID, data: SaveDocumentInput, request: Request,
                         user=Depends(current_user)):
@@ -427,21 +451,65 @@ async def board_events(websocket: WebSocket, board_id: UUID):
             return
         _subscribers[board_id][websocket] = token
         await websocket.send_json({"type": "ready", "version": current_version})
+        limiter = EventRateLimit()
         while True:
             remaining = float(claims["exp"]) - time.time()
             if remaining <= 0:
                 await websocket.close(code=4401)
                 return
             try:
-                message = await asyncio.wait_for(
-                    websocket.receive_json(), timeout=min(30, remaining)
+                raw = await asyncio.wait_for(
+                    websocket.receive_text(), timeout=min(30, remaining)
                 )
-                if isinstance(message, dict) and message.get("type") == "ping":
-                    # Re-check the session so revoked permissions take effect.
-                    refreshed_user = await lookup_session(websocket.app.state.pool, token)
-                    async with websocket.app.state.pool.acquire() as conn:
-                        await board_access(conn, board_id, refreshed_user["id"])
+                if len(raw.encode("utf-8")) > MAX_EVENT_BYTES:
+                    await websocket.close(code=1009)
+                    return
+                try:
+                    message = json.loads(raw)
+                except (ValueError, TypeError):
+                    await websocket.send_json({"type": "event_error", "reason": "invalid_json"})
+                    continue
+                if not isinstance(message, dict):
+                    await websocket.send_json({"type": "event_error", "reason": "invalid_frame"})
+                    continue
+                refreshed_user = await lookup_session(websocket.app.state.pool, token)
+                async with websocket.app.state.pool.acquire() as conn:
+                    _, current_role = await board_access(
+                        conn, board_id, refreshed_user["id"]
+                    )
+                if message.get("type") == "ping":
                     await websocket.send_json({"type": "pong"})
+                    continue
+                try:
+                    event = validate_live_event(
+                        message, role=current_role,
+                        user_id=str(refreshed_user["id"]),
+                        name=str(refreshed_user["display_name"] or "Участник"),
+                    )
+                except InvalidLiveEvent as exc:
+                    await websocket.send_json({
+                        "type": "event_error", "reason": str(exc)
+                    })
+                    continue
+                if not limiter.check(event["type"]):
+                    await websocket.send_json({
+                        "type": "event_error", "reason": "rate_limited"
+                    })
+                    if limiter.violations >= 30:
+                        await websocket.close(code=4429)
+                        return
+                    continue
+                await relay_live_event(
+                    board_id, websocket, event, websocket.app.state.pool
+                )
+                if event["type"] == "live_ink":
+                    # An ack confirms delivery to the server's relay, not that
+                    # the stroke is saved in the durable board document.
+                    await websocket.send_json({
+                        "type": "ink_ack", "client_id": event["client_id"],
+                        "stroke_id": event["stroke_id"],
+                        "offset": event["offset"], "finished": event["finished"],
+                    })
             except asyncio.TimeoutError:
                 # Avoid stale sockets after logout/revocation, even without pings.
                 refreshed_user = await lookup_session(websocket.app.state.pool, token)
