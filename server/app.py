@@ -162,6 +162,7 @@ class RefreshInput(BaseModel):
 
 class NewBoardInput(BaseModel):
     title: str = Field(default="Новая доска", min_length=1, max_length=160)
+    is_pilot: bool = False
 
 class SaveDocumentInput(BaseModel):
     expected_version: int = Field(ge=0)
@@ -258,7 +259,7 @@ async def board_access(conn: asyncpg.Connection, board_id: UUID, user_id: UUID,
     # Board row lock serializes the initial save against concurrent clients.
     suffix = " FOR UPDATE" if lock else ""
     board = await conn.fetchrow(
-        """SELECT id,owner_id,title,created_at,updated_at,deleted_at
+        """SELECT id,owner_id,title,created_at,updated_at,deleted_at,is_pilot
              FROM boards WHERE id=$1""" + suffix, board_id,
     )
     if board is None or board["deleted_at"] is not None:
@@ -302,9 +303,9 @@ async def create_board(data: NewBoardInput, request: Request,
                        user=Depends(current_user)):
     async with request.app.state.pool.acquire() as conn:
         row = await conn.fetchrow(
-            """INSERT INTO boards(id,owner_id,title) VALUES($1,$2,$3)
+            """INSERT INTO boards(id,owner_id,title,is_pilot) VALUES($1,$2,$3,$4)
                RETURNING id,owner_id,title,created_at,updated_at,deleted_at""",
-            uuid4(), user["id"], data.title.strip(),
+            uuid4(), user["id"], data.title.strip(), data.is_pilot,
         )
     return board_view(row, "owner")
 
