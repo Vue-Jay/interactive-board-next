@@ -189,20 +189,45 @@ try{
 
  // Real pencil gesture. Its points must reach the persistent document.
  await click('.toolbar-pinned button[aria-label^="Карандаш"]');
+ await wait('document.querySelector("section.board")?.classList.contains("board-tool-pen")',
+  "Pencil did not become the active tool");
  const canvasPoint=await evaluate(`(() => {
   const b=document.querySelector("section.board")?.getBoundingClientRect();
   if(!b)return null;
-  return {x:b.left+Math.min(60,b.width*0.1),y:b.top+Math.min(50,b.height*0.08)};
+  const blocks=".board-object,button,input,select,textarea,[data-board-interactive],.toolbar,.board-controls,.selection-toolbar-screen";
+  for(const fy of [0.81,0.72,0.91,0.58,0.25,0.13]){
+   for(const fx of [0.38,0.55,0.78,0.21,0.67,0.89]){
+    const x=Math.round(b.left+b.width*fx),y=Math.round(b.top+b.height*fy);
+    const hit=document.elementFromPoint(x,y);
+    if(hit?.closest("section.board")&&!hit.closest(blocks))
+     return {x,y,tag:hit.tagName};
+   }
+  }
+  return {error:"No unobstructed board point",rect:{left:b.left,top:b.top,width:b.width,height:b.height}};
  })()`);
- assert.ok(canvasPoint&&canvasPoint.x>0&&canvasPoint.y>0,
-  "Cannot locate board drawing surface");
+ assert.ok(canvasPoint&&!canvasPoint.error,
+  "Cannot locate unobstructed board drawing surface: "+JSON.stringify(canvasPoint));
  await mouse("mouseMoved",canvasPoint.x,canvasPoint.y);
  await mouse("mousePressed",canvasPoint.x,canvasPoint.y,{pressed:true});
  for(let dx=12;dx<=100;dx+=12)
   await mouse("mouseMoved",canvasPoint.x+dx,canvasPoint.y+Math.sin(dx/30)*12,{pressed:true});
  await mouse("mouseReleased",canvasPoint.x+100,canvasPoint.y);
- await wait('!!document.querySelector(".viewer-ink-canvas")',
-  "Pencil gesture did not render an ink canvas");
+ try{
+  await wait('!!document.querySelector(".viewer-ink-canvas")',
+   "Pencil gesture did not render an ink canvas",5000);
+ }catch(error){
+  const state=await evaluate(`(() => {
+   const stored=Object.keys(localStorage).filter(k=>k.startsWith("lesson-board.document.v1.board."))
+    .map(k=>{try{return JSON.parse(localStorage.getItem(k))}catch{return null}});
+   const hit=document.elementFromPoint(${canvasPoint.x},${canvasPoint.y});
+   return {tool:document.querySelector("section.board")?.className,
+    hit:hit?.className?.baseVal??hit?.className,
+    target:hit?.tagName,penSaved:stored.some(d=>d?.items?.some(i=>i.kind==="pen")),
+    allCanvas:document.querySelectorAll("canvas").length,
+    objects:document.querySelectorAll(".board-object").length};
+  })()`);
+  throw new Error(error.message+"; "+JSON.stringify({state,canvasPoint}));
+ }
  await wait(`(() => {
   const records=Object.keys(localStorage).filter(k=>k.startsWith("lesson-board.document.v1.board."))
    .map(k=>{try{return JSON.parse(localStorage.getItem(k))}catch{return null}});
