@@ -1,5 +1,9 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from "react";
 import SelfhostPilotCanvas from "./SelfhostPilotCanvas";
+import { parseDocument, type DocumentData } from "./boardModel";
+import type { AuthUser } from "./authStore";
+import type { BoardSummary } from "./boardStore";
+const BoardApp = lazy(() => import("./BoardApp"));
 import {
   cachedPilotSession, pilotSession, pilotLogin, pilotLogout, pilotBoards,
   pilotCreateBoard, pilotReadDocument, pilotSaveDocument,
@@ -32,6 +36,8 @@ export default function SelfhostPilotApp(){
   const [boardId,setBoardId]=useState<string|null>(null);
   const [newTitle,setNewTitle]=useState("");
   const [document,setDocument]=useState<PilotDocument|null>(null);
+  const [nativeEditorOpen,setNativeEditorOpen]=useState(false);
+  const [nativeEditorDocument,setNativeEditorDocument]=useState<DocumentData|null>(null);
   const [note,setNote]=useState("");
   const [dirty,setDirty]=useState(false);
   const [serverChanged,setServerChanged]=useState(false);
@@ -208,6 +214,39 @@ export default function SelfhostPilotApp(){
     }catch(failure){setError(issueText(failure))}
     finally{setBusy(false)}
   };
+  const createNativeBoard=async()=>{
+    if(!session)return;
+    setBusy(true);setError("");setNotice("");
+    try{
+      const title=newTitle.trim()||"Новая доска Lektrus";
+      const board=await pilotCreateBoard(title,false);
+      const initial=parseDocument(JSON.stringify({
+        version:1,title:board.title,view:{x:0,y:0,zoom:1},items:[],
+      }));
+      const saved=await pilotSaveDocument(
+        board.id,0,initial as unknown as Record<string,unknown>
+      );
+      const next=await pilotBoards();
+      setBoards(next);setBoardId(board.id);setNewTitle("");
+      applyDocument(saved);
+      setNativeEditorDocument(initial);
+      setNativeEditorOpen(true);
+      setNotice("Создана обычная доска. Открываем штатный редактор Lektrus.");
+    }catch(failure){setError(issueText(failure))}
+    finally{setBusy(false)}
+  };
+  const openNativeEditor=()=>{
+    const row=docRef.current??document;
+    if(!row?.document){setError("На сервере пока нет документа этой доски.");return}
+    try{
+      const parsed=parseDocument(JSON.stringify(row.document));
+      setNativeEditorDocument(parsed);
+      setNativeEditorOpen(true);
+      setError("");
+    }catch(failure){
+      setError("Документ пока нельзя открыть в штатном редакторе: "+issueText(failure));
+    }
+  };
   const save=async()=>{
     const board=boardId;
     const base=docRef.current;
@@ -304,6 +343,37 @@ export default function SelfhostPilotApp(){
     finally{setBusy(false)}
   };
 
+  if(nativeEditorOpen&&session&&selected&&nativeEditorDocument){
+    const authUser:AuthUser={
+      id:session.user.id,
+      name:session.user.user_metadata?.display_name||session.user.email,
+      email:session.user.email,
+      createdAt:new Date().toISOString(),
+    };
+    const boardSummary:BoardSummary={
+      id:selected.id,title:selected.title,ownerId:selected.owner_id,
+      role:selected.role,createdAt:selected.created_at,updatedAt:selected.updated_at,
+    };
+    const closeNativeEditor=()=>{
+      setNativeEditorOpen(false);
+      setNativeEditorDocument(null);
+      void pilotReadDocument(selected.id).then(applyDocument)
+        .catch(failure=>setError(issueText(failure)));
+    };
+    return <Suspense fallback={<div className="board-server-overlay"><div className="board-server-card">Загружаем редактор Lektrus…</div></div>}>
+      <BoardApp key={"selfhost:"+selected.id}
+        authUser={authUser} boardSummary={boardSummary}
+        accountRole={session.user.account_role}
+        isAppAdmin={session.user.is_admin}
+        initialRemoteVersion={docRef.current?.version??document?.version??0}
+        demoInitialDocument={nativeEditorDocument}
+        selfhostMode
+        onBoardChanged={()=>{}}
+        onBackToBoards={closeNativeEditor}
+        onLogout={()=>void logout()}/>
+    </Suspense>;
+  }
+
   return <div className="selfhost-pilot">
     <header className="pilot-topbar">
       <div><strong>Lektrus</strong><span>Тест собственного сервера</span></div>
@@ -313,8 +383,8 @@ export default function SelfhostPilotApp(){
     <main className="pilot-main">
       <h1>Проверка миграции Lektrus</h1>
       <p className="pilot-muted">
-        Здесь проверяются вход, доски и обмен версиями между браузерами.
-        Это ещё не полноценная интерактивная доска с инструментами и общим рисованием.
+        Здесь проверяются вход, доски и синхронизация собственного сервера.
+        Для обычных досок доступен экспериментальный запуск штатного редактора Lektrus.
       </p>
       {error&&<div className="pilot-alert" role="alert">{error}</div>}
       {notice&&<div className="pilot-notice" role="status">{notice}</div>}
@@ -361,8 +431,11 @@ export default function SelfhostPilotApp(){
             <form onSubmit={event=>void create(event)} className="pilot-create">
               <input placeholder="Название новой тестовой доски" aria-label="Название доски"
                 value={newTitle} onChange={e=>setNewTitle(e.target.value)}/>
-              <button disabled={busy} type="submit">Создать</button>
+              <button disabled={busy} type="submit">Создать пилот</button>
             </form>
+            <button type="button" disabled={busy} onClick={()=>void createNativeBoard()}>
+              Создать обычную доску Lektrus
+            </button>
             <div className="pilot-board-list">
               {boards.map(board=><button key={board.id} type="button"
                 aria-current={boardId===board.id?"page":undefined}
@@ -384,7 +457,11 @@ export default function SelfhostPilotApp(){
               <p className="pilot-muted">Серверная версия: {document?.version??"загрузка"}</p>
               {!document?<p>Загрузка документа…</p>:
                 !isPilotDocument(document)?
-                  <p className="pilot-alert">Это существующий документ Lektrus. Во избежание повреждения он доступен здесь только для чтения.</p>:
+                  <div className="pilot-alert">
+                    <p>Это обычный документ Lektrus. Его можно открыть в штатном редакторе.</p>
+                    <button type="button" disabled={busy||!document.document}
+                      onClick={openNativeEditor}>Открыть в редакторе Lektrus</button>
+                  </div>:
                   <>
                     <label>Общая заметка для проверки синхронизации
                       <textarea rows={9} disabled={busy||selected.role==="viewer"}
