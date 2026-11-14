@@ -24,6 +24,10 @@ jobs:
         run: |
           node scripts/test-lektrus-release-tools.mjs
           node scripts/test-lektrus-sentence-drag.mjs
+      - name: Check sentence drag in real Chrome with mouse, touch and keyboard
+        run: |
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          CHROME_PATH="$CHROME_BIN" node scripts/test-lektrus-sentence-browser.mjs
       - name: Check board links, invitations and auth callback routing
         run: npm run test:board-links
       - name: Check geometry names, closure and touch gestures
