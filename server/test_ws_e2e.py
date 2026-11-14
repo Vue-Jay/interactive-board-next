@@ -148,6 +148,86 @@ async def test_two_live_sockets_receive_revision_then_revoke():
                         "type":"ink_ack","client_id":"owner_1",
                         "stroke_id":"stroke_A","offset":0,"finished":True,
                     }
+                    # Native editor presence, live edits, transforms and view control.
+                    await ws_owner.send(json.dumps({
+                        "type":"work_state","selected_ids":["rect_1"],"editing_id":"rect_1"
+                    }))
+                    work=json.loads(await asyncio.wait_for(ws_student.recv(),3))
+                    assert work["type"]=="work_state"
+                    assert work["user_id"]==str(TEACHER) and work["role"]=="owner"
+                    assert work["selected_ids"]==["rect_1"] and work["editing_id"]=="rect_1"
+
+                    mutation={
+                        "type":"editor_mutation","id":"client_1:1","item_id":"rect_1",
+                        "client_id":"client_1","ops":[
+                            {"path":["text"],"kind":"set","value":"Изменено"}
+                        ],
+                    }
+                    await ws_owner.send(json.dumps(mutation))
+                    edited=json.loads(await asyncio.wait_for(ws_student.recv(),3))
+                    assert edited["type"]=="editor_mutation"
+                    assert edited["user_id"]==str(TEACHER)
+                    assert edited["ops"]==mutation["ops"]
+
+                    transform={
+                        "type":"object_transform","client_id":"client_1","seq":1,
+                        "finished":False,"items":[{
+                            "id":"rect_1","x":130,"y":145,"width":120,"height":80,
+                            "rotation":0,"origin":"100,100,120,80,0",
+                        }],
+                    }
+                    await ws_owner.send(json.dumps(transform))
+                    transformed=json.loads(await asyncio.wait_for(ws_student.recv(),3))
+                    assert transformed["type"]=="object_transform"
+                    assert transformed["user_id"]==str(TEACHER)
+                    assert transformed["items"][0]["x"]==130
+
+                    await ws_owner.send(json.dumps({
+                        "type":"focus_view","target_user_id":str(STUDENT),
+                        "center_x":220,"center_y":160,"zoom":1.5,
+                    }))
+                    focus=json.loads(await asyncio.wait_for(ws_student.recv(),3))
+                    assert focus["type"]=="focus_view"
+                    assert focus["user_id"]==str(TEACHER)
+                    assert focus["target_user_id"]==str(STUDENT)
+                    await ws_owner.send(json.dumps({
+                        "type":"teacher_view","center_x":220,"center_y":160,"zoom":1.5
+                    }))
+                    teacher_view=json.loads(await asyncio.wait_for(ws_student.recv(),3))
+                    assert teacher_view["type"]=="teacher_view"
+                    await ws_owner.send(json.dumps({"type":"guided_follow","enabled":True}))
+                    guided=json.loads(await asyncio.wait_for(ws_student.recv(),3))
+                    assert guided["type"]=="guided_follow" and guided["enabled"] is True
+
+                    await ws_student.send(json.dumps({
+                        "type":"attachment_request","request_id":"request_1",
+                        "asset_id":"asset_1","name":"Фото опыта.png",
+                        "mime":"image/png","kind":"image","width":1200,"height":800,
+                    }))
+                    attachment_request=json.loads(await asyncio.wait_for(ws_owner.recv(),3))
+                    assert attachment_request["type"]=="attachment_request"
+                    assert attachment_request["user_id"]==str(STUDENT)
+                    assert attachment_request["name"]=="Тест"
+                    assert attachment_request["attachment_name"]=="Фото опыта.png"
+                    await ws_owner.send(json.dumps({
+                        "type":"attachment_result","request_id":"request_1",
+                        "target_user_id":str(STUDENT),"approved":True,
+                        "name":"Фото опыта.png",
+                    }))
+                    attachment_result=json.loads(await asyncio.wait_for(ws_student.recv(),3))
+                    assert attachment_result["type"]=="attachment_result"
+                    assert attachment_result["user_id"]==str(TEACHER)
+                    assert attachment_result["target_user_id"]==str(STUDENT)
+                    assert attachment_result["attachment_name"]=="Фото опыта.png"
+
+                    await ws_student.send(json.dumps({
+                        "type":"object_transform","client_id":"viewer_1","seq":1,
+                        "finished":False,"items":transform["items"],
+                    }))
+                    readonly_error=json.loads(await asyncio.wait_for(ws_student.recv(),3))
+                    assert readonly_error["type"]=="event_error"
+                    assert readonly_error["reason"]=="read_only"
+
                     # The pilot object preview is attributed by the server and
                     # relayed only when the object exists at the requested revision.
                     preview={
