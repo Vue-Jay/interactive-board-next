@@ -166,6 +166,23 @@ async def test_pilot_ops_fail_closed_on_ordinary_board_and_viewer(client):
                             headers=teacher)).json()
     assert row["document"] is None
 
+    # A malicious editor cannot make an imported/ordinary board eligible
+    # by adding the pilot_schema marker to the JSON document itself.
+    marker = await client.put(
+        f"/api/v1/boards/{full}/document", headers=teacher,
+        json={"expected_version": 0, "document": {
+            "pilot_schema": 1, "note": "untouchable", "items": [], "ink": [],
+        }},
+    )
+    assert marker.status_code == 200
+    blocked = await client.post(
+        base+"/ink", headers=teacher, json=append("not_allowed"),
+    )
+    assert blocked.status_code == 409
+    assert (await client.get(base+"/history",headers=teacher)).status_code == 409
+    assert (await client.get(f"/api/v1/boards/{full}/document",
+                             headers=teacher)).json()["document"]["ink"] == []
+
     board = await new_pilot_board(client,teacher)
     url = f"/api/v1/boards/{board}/pilot/ink"
     for input in [
