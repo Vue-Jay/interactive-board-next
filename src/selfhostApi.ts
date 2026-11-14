@@ -298,6 +298,7 @@ export function selfhostSubscribeBoard(
   let cursorTimer:ReturnType<typeof setTimeout>|undefined;
   let retryFinals:ReturnType<typeof setInterval>|undefined;
   const pendingFinals=new Map<string,{packet:SelfhostLiveInkPacket;lastSent:number;attempts:number}>();
+  const queuedInk:SelfhostLiveInkPacket[]=[];
   let lastObjectSent=0;
   let pendingObject:SelfhostObjectPreview|null=null;
   let objectTimer:ReturnType<typeof setTimeout>|undefined;
@@ -322,9 +323,7 @@ export function selfhostSubscribeBoard(
     if(!cursorTimer)cursorTimer=setTimeout(flushCursor,delay);
     return true;
   };
-  const sendInk=(ink:SelfhostLiveInkPacket):boolean=>{
-    if(!ready||ink.type!=="live_ink"||!Array.isArray(ink.points)||
-       !ink.points.length||ink.points.length>200)return false;
+  const sendInkNow=(ink:SelfhostLiveInkPacket):boolean=>{
     const sent=sendRaw(ink as unknown as Record<string,unknown>);
     if(sent&&ink.finished){
       pendingFinals.set(ink.stroke_id,{packet:ink,lastSent:Date.now(),attempts:1});
@@ -334,6 +333,16 @@ export function selfhostSubscribeBoard(
       }
     }
     return sent;
+  };
+  const sendInk=(ink:SelfhostLiveInkPacket):boolean=>{
+    if(ink.type!=="live_ink"||!Array.isArray(ink.points)||
+       !ink.points.length||ink.points.length>200)return false;
+    if(!ready){
+      if(queuedInk.length>=256)return false;
+      queuedInk.push(ink);
+      return true;
+    }
+    return sendInkNow(ink);
   };
   const flushObjectPreview=()=>{
     clearTimeout(objectTimer);objectTimer=undefined;
@@ -345,7 +354,12 @@ export function selfhostSubscribeBoard(
   };
   const sendEvent=(event:Record<string,unknown>):boolean=>{
     if(typeof event.type!=="string"||!event.type)return false;
-    return sendRaw(event);
+    let serialized="";
+    try{serialized=JSON.stringify(event)}catch{return false}
+    if(serialized.length>120_000)return false;
+    if(!ready||!socket||socket.readyState!==WebSocket.OPEN)return false;
+    socket.send(serialized);
+    return true;
   };
   const sendObjectPreview=(next:SelfhostObjectPreview):boolean=>{
     if(!ready||next.type!=="object_preview"||
@@ -424,6 +438,7 @@ export function selfhostSubscribeBoard(
                 item.lastSent=Date.now();item.attempts++;
               }
             }
+            for(const packet of queuedInk.splice(0))sendInkNow(packet);
             retryFinals=setInterval(()=>{
               if(!active()||!ready)return;
               for(const [id,item] of pendingFinals){
@@ -506,7 +521,7 @@ export function selfhostSubscribeBoard(
   void connect();
   const stop=()=>{
     stopped=true;generation++;clearTimers();closeSocket();
-    pendingFinals.clear();pendingCursor=null;
+    pendingFinals.clear();queuedInk.length=0;pendingCursor=null;
     window.removeEventListener("online",networkChanged);
     window.removeEventListener("offline",networkChanged);
   };
