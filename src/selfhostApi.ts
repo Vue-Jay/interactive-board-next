@@ -363,9 +363,19 @@ export async function selfhostSignup(input:{
 }):Promise<{ok:boolean;message:string}>{
   // Signup waits for SMTP delivery on the server; keep the default timeout
   // for ordinary API traffic, but allow the mail handshake to finish.
-  const response=await rawRequest("/api/v1/auth/signup",{
-    method:"POST",body:JSON.stringify(input),
-  },undefined,45000);
+  let response:Response;
+  try{
+    response=await rawRequest("/api/v1/auth/signup",{
+      method:"POST",body:JSON.stringify(input),
+    },undefined,45000);
+  }catch(error){
+    if(error instanceof TypeError){
+      // Do not automatically replay a registration: the original request may
+      // already have created a pending account or mailed a verification link.
+      throw new Error("Соединение с сервером прервалось. Проверьте почту. Если письма нет, посмотрите логи приложения Amvera и повторите регистрацию с прежним паролем.");
+    }
+    throw error;
+  }
   if(!response.ok)throw await responseError(response);
   return response.json();
 }
