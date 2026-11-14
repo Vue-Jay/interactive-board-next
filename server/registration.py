@@ -8,6 +8,9 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+from html import escape
+from datetime import datetime, timezone
+from email.utils import formataddr, format_datetime, make_msgid
 import logging
 import os
 import secrets
@@ -87,19 +90,68 @@ def server_mail_config() -> tuple[str, int, str, str, str, str]:
     return host, port, user, password, sender, origin
 
 
+def build_account_email(email: str, link: str, sender: str, *, reset: bool) -> EmailMessage:
+    """A clearly identified transactional email, with no trackers or remote assets.
+
+    Sender authentication (SPF, DKIM, DMARC) is handled by the configured mail
+    provider and its DNS records, not by headers generated in this application.
+    """
+    title = "Восстановление пароля" if reset else "Подтверждение регистрации"
+    greeting = (
+        "Чтобы установить новый пароль в Lektrus, перейдите по ссылке:"
+        if reset else
+        "Чтобы подтвердить адрес электронной почты и завершить регистрацию в Lektrus, перейдите по ссылке:"
+    )
+    expiration = "30 минут" if reset else "24 часа"
+    disclaimer = (
+        "Если вы не запрашивали смену пароля, просто проигнорируйте это письмо."
+        if reset else
+        "Если вы не регистрировались в Lektrus, просто проигнорируйте это письмо."
+    )
+    msg = EmailMessage()
+    msg["From"] = formataddr(("Lektrus", sender))
+    msg["To"] = email
+    msg["Subject"] = f"{title} | Lektrus"
+    msg["Date"] = format_datetime(datetime.now(timezone.utc))
+    msg["Message-ID"] = make_msgid(domain=sender.rsplit("@", 1)[-1])
+    msg["Auto-Submitted"] = "auto-generated"
+    msg.set_content(
+        "Здравствуйте!\n\n"
+        f"{greeting}\n{link}\n\n"
+        f"Ссылка действует {expiration}.\n"
+        f"{disclaimer}\n\n"
+        "С уважением,\nКоманда Lektrus\n"
+    )
+    safe_url = escape(link, quote=True)
+    safe_greeting = escape(greeting)
+    safe_expiration = escape(expiration)
+    safe_disclaimer = escape(disclaimer)
+    msg.add_alternative(
+        "<!doctype html><html lang=\"ru\"><head><meta charset=\"utf-8\"></head>"
+        "<body style=\"font-family:Arial,sans-serif;color:#243450;"
+        "line-height:1.6;background:#ffffff\">"
+        "<main style=\"max-width:540px;margin:24px auto;padding:20px\">"
+        "<h1 style=\"font-size:24px;margin:0 0 18px\">Lektrus</h1>"
+        "<p>Здравствуйте!</p>"
+        f"<p>{safe_greeting}</p>"
+        f"<p><a href=\"{safe_url}\" "
+        "style=\"display:inline-block;padding:12px 20px;border-radius:8px;"
+        "background:#345ec7;color:#ffffff;text-decoration:none\">"
+        "Перейти в Lektrus</a></p>"
+        f"<p style=\"font-size:14px;color:#63718b\">Ссылка действует {safe_expiration}.</p>"
+        f"<p style=\"font-size:14px;color:#63718b\">{safe_disclaimer}</p>"
+        "<p style=\"font-size:14px\">Команда Lektrus</p>"
+        "</main></body></html>",
+        subtype="html",
+    )
+    return msg
+
+
 async def send_confirmation_email(email: str, link: str) -> None:
     host, port, username, password, sender, _ = server_mail_config()
 
     def send() -> None:
-        msg = EmailMessage()
-        msg["From"] = sender
-        msg["To"] = email
-        msg["Subject"] = "Подтверждение регистрации Lektrus"
-        msg.set_content(
-            "Для подтверждения адреса электронной почты Lektrus откройте ссылку:\n"
-            + link + "\n\nСсылка действует 24 часа. Если вы не регистрировались, "
-            "не открывайте её.\n"
-        )
+        msg = build_account_email(email, link, sender, reset=False)
         context = ssl.create_default_context()
         if port == 465:
             with smtplib.SMTP_SSL(host, port, timeout=10, context=context) as smtp:
@@ -122,15 +174,7 @@ async def send_password_reset_email(email: str, link: str) -> None:
     host, port, username, password, sender, _ = server_mail_config()
 
     def send() -> None:
-        msg = EmailMessage()
-        msg["From"] = sender
-        msg["To"] = email
-        msg["Subject"] = "Восстановление пароля Lektrus"
-        msg.set_content(
-            "Чтобы задать новый пароль Lektrus, откройте ссылку:\n"
-            + link + "\n\nСсылка действует 30 минут. Если вы не запрашивали "
-            "смену пароля, просто проигнорируйте это письмо.\n"
-        )
+        msg = build_account_email(email, link, sender, reset=True)
         context = ssl.create_default_context()
         if port == 465:
             with smtplib.SMTP_SSL(host, port, timeout=10, context=context) as smtp:
