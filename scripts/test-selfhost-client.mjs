@@ -198,6 +198,8 @@ assert.ok(sockets[0].url.startsWith("wss://pilot.lektrus.example/api/v1/boards/b
 sockets[0].open();
 assert.equal(sockets[0].sent[0].type,"auth");
 assert.equal(sockets[0].sent[0].token,"token-refreshed");
+assert.equal(sockets[0].sent[0].presence,true);
+assert.equal(sockets[0].sent[0].visible,true);
 sockets[0].emit({type:"ready",version:3});
 assert.equal(unsubscribe.sendCursor("pilot_client",10,20),true);
 await new Promise(resolve=>setTimeout(resolve,70));
@@ -231,6 +233,27 @@ sockets[0].emit({
 });
 assert.equal(liveEvents.length,3);
 assert.deepEqual(liveEvents.map(x=>x.type),["cursor","live_ink","object_preview"]);
+const presenceUser={user_id:"user_2",name:"Ученик",role:"viewer",online_at:"123"};
+sockets[0].emit({type:"presence_state",users:[presenceUser]});
+sockets[0].emit({type:"presence_diff",joins:[presenceUser],leaves:[]});
+sockets[0].emit({
+  type:"work_state",user_id:"user_2",name:"Ученик",role:"viewer",
+  selected_ids:["item_1"],editing_id:null,sent_at:Date.now(),
+});
+sockets[0].emit({
+  type:"editor_mutation",user_id:"user_2",name:"Ученик",role:"editor",
+  id:"client_1:1",item_id:"graph_1",client_id:"client_1",ops:[],sent_at:Date.now(),
+});
+sockets[0].emit({
+  type:"object_transform",user_id:"user_2",name:"Ученик",role:"editor",
+  client_id:"client_1",seq:1,finished:false,items:[],sent_at:Date.now(),
+});
+assert.deepEqual(liveEvents.slice(3).map(x=>x.type),[
+  "presence_state","presence_diff","work_state","editor_mutation","object_transform"
+]);
+assert.equal(unsubscribe.sendEvent({type:"work_state",selected_ids:["item_1"],editing_id:null}),true);
+assert.ok(sockets[0].sent.some(x=>x.type==="work_state"&&x.selected_ids[0]==="item_1"));
+assert.equal(unsubscribe.sendEvent({type:"x",payload:"a".repeat(120_001)}),false);
 sockets[0].emit({type:"document_changed",version:4});
 sockets[0].emit({type:"document_changed",version:4});
 sockets[0].emit({type:"document_changed",version:2});
@@ -243,4 +266,4 @@ await api.selfhostLogout();
 assert.equal(api.cachedSelfhostSession(),null);
 assert.equal(storage.get("lesson-board.supabase.session.v1"),"production-must-remain");
 assert.ok(records.some(x=>x.path==="/api/v1/auth/logout"&&x.bearer==="Bearer token-refreshed"));
-console.log("Self-hosted Lektrus API: session persistence, native documents, private assets, WS revisions, cursors, ink and role-safe access OK.");
+console.log("Self-hosted Lektrus API: persistent sessions, native documents, private assets, presence, cursors, ink, editor mutations, transforms and bounded realtime events OK.");
