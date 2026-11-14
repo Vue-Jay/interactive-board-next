@@ -4,9 +4,11 @@ import {
   cachedPilotSession, pilotSession, pilotLogin, pilotLogout, pilotBoards,
   pilotCreateBoard, pilotReadDocument, pilotSaveDocument,
   pilotSubscribeBoard, pilotClaimInvitations, pilotInvite, pilotAccess,
-  pilotSignup, pilotVerifyEmail, PilotHttpError,
+  pilotSignup, pilotVerifyEmail, pilotAppendStroke, pilotUndoStroke,
+  pilotInkHistory, PilotHttpError,
   type PilotSession, type PilotBoard, type PilotDocument, type PilotRealtimeStatus,
   type PilotAccess, type PilotBoardChannel, type PilotLiveEvent, type PilotLiveInkPacket,
+  type PilotInkHistoryRow,
 } from "./selfhostPilotApi";
 
 const DEFAULT_PILOT_DOCUMENT:Record<string,unknown>={
@@ -35,6 +37,7 @@ export default function SelfhostPilotApp(){
   const [serverChanged,setServerChanged]=useState(false);
   const [realtime,setRealtime]=useState<PilotRealtimeStatus>("offline");
   const [liveFrame,setLiveFrame]=useState<PilotLiveEvent|null>(null);
+  const [inkHistory,setInkHistory]=useState<PilotInkHistoryRow[]>([]);
   const liveChannelRef=useRef<PilotBoardChannel|null>(null);
   const [inviteEmail,setInviteEmail]=useState("");
   const [inviteRole,setInviteRole]=useState<"viewer"|"editor">("viewer");
@@ -111,6 +114,7 @@ export default function SelfhostPilotApp(){
     revisionRef.current=0;
     setDocument(null);setAccess(null);setNote("");setDirty(false);
     setLiveFrame(null);
+    setInkHistory([]);
     setServerChanged(false);
     const read=async(force=false)=>{
       if(disposed||localGeneration!==generationRef.current)return;
@@ -148,6 +152,9 @@ export default function SelfhostPilotApp(){
       frame=>{if(!disposed)setLiveFrame(frame)});
     liveChannelRef.current=unsubscribe;
     void read();
+    void pilotInkHistory(boardId).then(value=>{
+      if(!disposed)setInkHistory(value);
+    }).catch(()=>{});
     if(selected?.role==="owner"){
       void pilotAccess(boardId).then(value=>{
         if(!disposed)setAccess(value);
@@ -228,6 +235,36 @@ export default function SelfhostPilotApp(){
       if(target===boardId)applyDocument(row);
     }catch(failure){setError(issueText(failure))}
     finally{setBusy(false)}
+  };
+  const refreshAfterInk=async(target:string,localGeneration:number)=>{
+    const row=await pilotReadDocument(target);
+    if(boardId!==target||generationRef.current!==localGeneration)return;
+    if(dirtyRef.current){
+      // Keep an unsaved note untouched; only rebase it if the server's note
+      // has not changed. A remote note conflict remains explicit.
+      if(!isPilotDocument(row)||row.document?.note!==savedNote.current)
+        setServerChanged(true);
+      docRef.current=row;revisionRef.current=row.version;
+      setDocument(row);
+    }else{
+      applyDocument(row);
+    }
+    void pilotInkHistory(target).then(value=>{
+      if(boardId===target&&generationRef.current===localGeneration)
+        setInkHistory(value);
+    }).catch(()=>{});
+  };
+  const persistInk=async(packet:PilotLiveInkPacket,operationId:string)=>{
+    const target=boardId,localGeneration=generationRef.current;
+    if(!target||selected?.role==="viewer")throw new Error("Нет права сохранять штрих.");
+    await pilotAppendStroke(target,operationId,packet);
+    await refreshAfterInk(target,localGeneration);
+  };
+  const undoInk=async()=>{
+    const target=boardId,localGeneration=generationRef.current;
+    if(!target||selected?.role==="viewer")throw new Error("Нет права отменять штрих.");
+    await pilotUndoStroke(target,crypto.randomUUID());
+    await refreshAfterInk(target,localGeneration);
   };
   const sendInvite=async(event:FormEvent)=>{
     event.preventDefault();if(!boardId||selected?.role!=="owner")return;
@@ -347,8 +384,18 @@ export default function SelfhostPilotApp(){
                     </div>
                     <SelfhostPilotCanvas key={boardId} boardId={boardId||""}
                       canDraw={selected.role!=="viewer"} incoming={liveFrame}
+                      savedStrokes={Array.isArray(document.document?.ink)?document.document.ink:[]}
                       sendCursor={(id,x,y)=>liveChannelRef.current?.sendCursor(id,x,y)??false}
-                      sendInk={(packet:PilotLiveInkPacket)=>liveChannelRef.current?.sendInk(packet)??false}/>
+                      sendInk={(packet:PilotLiveInkPacket)=>liveChannelRef.current?.sendInk(packet)??false}
+                      onPersist={persistInk} onUndo={undoInk}/>
+                    <div className="pilot-history">
+                      <h3>Последние операции</h3>
+                      {inkHistory.length===0?<p className="pilot-muted">Пока нет сохранённых штрихов.</p>:
+                        <ul>{inkHistory.slice(0,8).map(entry=><li key={entry.operation_id}>
+                          <span>{entry.type==="ink_append"?"Штрих добавлен":"Штрих отменён"}</span>
+                          <span>Версия {entry.version}</span>
+                        </li>)}</ul>}
+                    </div>
                   </>
               }
               {selected.role==="owner"&&<div className="pilot-invites">
