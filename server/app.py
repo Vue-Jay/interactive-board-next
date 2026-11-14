@@ -335,15 +335,27 @@ async def get_document(board_id: UUID, request: Request, user=Depends(current_us
         )
         return document_view(row, board_id)
 
-_subscribers: dict[UUID, set[WebSocket]] = defaultdict(set)
+_subscribers: dict[UUID, dict[WebSocket, str]] = defaultdict(dict)
 
-async def announce(board_id: UUID, version: int):
-    # No document payloads on WS: small revision notices minimize egress.
-    for client in list(_subscribers.get(board_id, ())):
+async def announce(board_id: UUID, version: int, pool: asyncpg.Pool):
+    # Permission and session membership are checked at SEND TIME. A user who
+    # was removed from a board or logged out must not receive future notices.
+    # This pilot is intentionally one API worker; cross-instance fanout is a
+    # separate production gate.
+    for client, token in list(_subscribers.get(board_id, {}).items()):
         try:
+            user = await lookup_session(pool, token)
+            async with pool.acquire() as conn:
+                await board_access(conn, board_id, user["id"])
             await client.send_json({"type": "document_changed", "version": version})
+        except HTTPException:
+            _subscribers[board_id].pop(client, None)
+            try:
+                await client.close(code=4403)
+            except Exception:
+                pass
         except Exception:
-            _subscribers[board_id].discard(client)
+            _subscribers[board_id].pop(client, None)
 
 @app.put("/api/v1/boards/{board_id}/document")
 async def save_document(board_id: UUID, data: SaveDocumentInput, request: Request,
@@ -387,7 +399,7 @@ async def save_document(board_id: UUID, data: SaveDocumentInput, request: Reques
             await conn.execute(
                 "UPDATE boards SET updated_at=now() WHERE id=$1", board_id,
             )
-    await announce(board_id, row["version"])
+    await announce(board_id, row["version"], request.app.state.pool)
     return document_view(row, board_id)
 
 @app.websocket("/api/v1/boards/{board_id}/events")
@@ -410,7 +422,10 @@ async def board_events(websocket: WebSocket, board_id: UUID):
             current_version = await conn.fetchval(
                 "SELECT version FROM board_documents WHERE board_id=$1", board_id
             ) or 0
-        _subscribers[board_id].add(websocket)
+        if len(_subscribers[board_id]) >= 100:
+            await websocket.close(code=4429)
+            return
+        _subscribers[board_id][websocket] = token
         await websocket.send_json({"type": "ready", "version": current_version})
         while True:
             remaining = float(claims["exp"]) - time.time()
@@ -423,20 +438,26 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                 )
                 if isinstance(message, dict) and message.get("type") == "ping":
                     # Re-check the session so revoked permissions take effect.
-                    await lookup_session(websocket.app.state.pool, token)
+                    refreshed_user = await lookup_session(websocket.app.state.pool, token)
+                    async with websocket.app.state.pool.acquire() as conn:
+                        await board_access(conn, board_id, refreshed_user["id"])
                     await websocket.send_json({"type": "pong"})
             except asyncio.TimeoutError:
                 # Avoid stale sockets after logout/revocation, even without pings.
-                await lookup_session(websocket.app.state.pool, token)
+                refreshed_user = await lookup_session(websocket.app.state.pool, token)
+                async with websocket.app.state.pool.acquire() as conn:
+                    await board_access(conn, board_id, refreshed_user["id"])
     except (WebSocketDisconnect, HTTPException, ValueError, TypeError, asyncio.TimeoutError):
         try:
             await websocket.close(code=4401)
         except Exception:
             pass
     finally:
-        _subscribers[board_id].discard(websocket)
-        if not _subscribers[board_id]:
-            _subscribers.pop(board_id, None)
+        clients = _subscribers.get(board_id)
+        if clients is not None:
+            clients.pop(websocket, None)
+            if not clients:
+                _subscribers.pop(board_id, None)
 
 # Asset endpoints reuse the same server-authoritative session and board access
 # checks; nothing under the private upload directory is served by Caddy.
