@@ -162,7 +162,7 @@ export async function pilotLogout():Promise<void>{
 export async function pilotRequest<T>(path:string,init:RequestInit={}):Promise<T>{
   let session=await pilotSession();
   if(!session)throw new PilotHttpError(401,"Войдите в тестовый аккаунт заново.");
-  let response=await rawRequest(path,init,session.access_token,timeoutMs);
+  let response=await rawRequest(path,init,session.access_token);
   if(response.status===401){
     const snapshot=loadSession();
     if(!snapshot||snapshot.user.id!==session.user.id)
@@ -170,7 +170,7 @@ export async function pilotRequest<T>(path:string,init:RequestInit={}):Promise<T
     if(!refreshInFlight)refreshInFlight=refreshSession(snapshot).finally(()=>{refreshInFlight=null});
     session=await refreshInFlight;
     if(!session)throw new PilotHttpError(401,"Сессия завершена. Войдите снова.");
-    response=await rawRequest(path,init,session.access_token,timeoutMs);
+    response=await rawRequest(path,init,session.access_token);
   }
   if(!response.ok)throw await responseError(response);
   if(response.status===204)return undefined as T;
@@ -189,7 +189,7 @@ function assetEndpoint(boardId:string,assetId:string):string{
 async function pilotAssetRequest(path:string,init:RequestInit,timeoutMs=TIMEOUT_MS):Promise<Response>{
   let session=await pilotSession();
   if(!session)throw new PilotHttpError(401,"Войдите в тестовый аккаунт заново.");
-  let response=await rawRequest(path,init,session.access_token);
+  let response=await rawRequest(path,init,session.access_token,timeoutMs);
   if(response.status===401){
     const snapshot=loadSession();
     if(!snapshot||snapshot.user.id!==session.user.id)
@@ -197,7 +197,7 @@ async function pilotAssetRequest(path:string,init:RequestInit,timeoutMs=TIMEOUT_
     if(!refreshInFlight)refreshInFlight=refreshSession(snapshot).finally(()=>{refreshInFlight=null});
     session=await refreshInFlight;
     if(!session)throw new PilotHttpError(401,"Сессия завершена. Войдите снова.");
-    response=await rawRequest(path,init,session.access_token);
+    response=await rawRequest(path,init,session.access_token,timeoutMs);
   }
   return response;
 }
