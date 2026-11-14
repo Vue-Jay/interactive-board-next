@@ -61,7 +61,7 @@ async def test_source_size_mismatch_leaves_no_private_tempfile(tmp_path):
         manifest_row(name,"image/png",len(IMAGE_A)+1,OWNER)
     ])[0]
     client = httpx.AsyncClient(
-        transport=httpx.MockTransport(lambda request: httpx.Response(200,content=IMAGE_A))
+        transport=httpx.MockTransport(lambda request: httpx.Response(200,stream=httpx.ByteStream(IMAGE_A)))
     )
     async with client:
         with pytest.raises(RuntimeError,match="bytes"):
@@ -135,7 +135,7 @@ async def test_source_assets_copy_in_one_transaction_without_overwriting(
         assert request.headers["apikey"]=="synthetic-key"
         name=request.url.path.partition("/board-assets/")[2]
         if name not in file_data:return httpx.Response(404)
-        return httpx.Response(200,content=file_data[name])
+        return httpx.Response(200,stream=httpx.ByteStream(file_data[name]))
 
     client_class = httpx.AsyncClient
     def mock_async_client(**kwargs):
