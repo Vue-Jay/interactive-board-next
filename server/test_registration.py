@@ -25,6 +25,7 @@ def enable_staging_mail(monkeypatch, sent):
     async def fake_mail(to, link):
         sent.append((to,link))
     monkeypatch.setattr(registration,"send_confirmation_email",fake_mail)
+    monkeypatch.setattr(registration,"send_password_reset_email",fake_mail)
 
 
 def signup_data(email="newteacher@example.test", role="teacher", password="password-safe-123"):
