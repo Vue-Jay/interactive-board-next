@@ -171,7 +171,7 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
   };
   const changeMode = (next: Mode) => { setMode(next);setError("");setNotice("");setPassword("");setPasswordConfirmation("");setPasswordResetRequest(false);setPasswordResetToken("");setAwaitingConfirmation(false);setPreviewComplete(false); };
 
-  return <main className={`auth-shell${previewMode?" lektrus-registration-preview":""}`}><section className="auth-card" aria-labelledby="auth-title">
+  return <main className={`auth-shell${previewMode?" lektrus-registration-preview":""}${mode==="register"&&!recovering&&!awaitingConfirmation?" auth-shell-register":""}`}><section className="auth-card" aria-labelledby="auth-title">
     <div className="auth-brand-row"><div className="auth-logo" aria-label="Lektrus"><img src="/lektrus-icon-192.png" width="52" height="52" alt="" /></div><div><div className="auth-brand">Lektrus</div><div className="auth-subtitle">Пространство для обучения</div></div>{previewMode&&<button type="button" className="boards-secondary auth-preview-close" onClick={onPreviewClose}>Вернуться к приложению</button>}</div>
     {!previewMode&&!isRemoteBackendEnabled()&&!isSelfhostBackendEnabled() && <div className="access-notice" role="alert">Сервер Lektrus не подключён. Сейчас доступен только локальный вход с аккаунтами, созданными в этом браузере.</div>}
     {joining && !recovering && <div className="access-notice">Откройте доску по приглашению: войдите в аккаунт или продолжите без регистрации.</div>}
