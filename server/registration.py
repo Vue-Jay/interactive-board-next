@@ -194,6 +194,12 @@ def make_registration_router() -> APIRouter:
                 )
                 if row is None:
                     raise HTTPException(400, "Ссылка подтверждения недействительна или истекла.")
+                user = await conn.fetchrow(
+                    """SELECT id,email,password_hash,display_name,first_name,last_name,
+                              account_role,teacher_status,is_admin
+                         FROM account_users WHERE id=$1""",
+                    row["user_id"],
+                )
                 changed = await conn.fetchval(
                     """UPDATE account_users SET email_confirmed_at=now()
                        WHERE id=$1 AND email_confirmed_at IS NULL RETURNING id""",
@@ -203,8 +209,12 @@ def make_registration_router() -> APIRouter:
                     "DELETE FROM account_email_verifications WHERE user_id=$1",
                     row["user_id"],
                 )
-                if changed is None:
+                if changed is None or user is None:
                     raise HTTPException(400, "Адрес уже подтверждён.")
-        return {"ok": True, "message": "Почта подтверждена. Теперь можно войти."}
+                # Complete the normal Lektrus signup flow in one step: the
+                # verified user is signed in immediately and receives the
+                # same rotated session format as the login endpoint.
+                session = await issue_tokens(conn, user)
+        return session
 
     return router
