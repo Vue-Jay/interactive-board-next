@@ -8,7 +8,9 @@ import { readFileSync } from "node:fs";
 async function loadPilot(enabled) {
   let source=readFileSync(new URL("../src/selfhostPilotApi.ts",import.meta.url),"utf8");
   source=source
+    .replaceAll("import.meta.env.VITE_LEKTRUS_BACKEND",JSON.stringify(enabled?"selfhost":""))
     .replaceAll("import.meta.env.VITE_LEKTRUS_SELFHOST_PILOT",JSON.stringify(enabled?"true":"false"))
+    .replaceAll("import.meta.env.VITE_LEKTRUS_API_ORIGIN",JSON.stringify("https://pilot.lektrus.example"))
     .replaceAll("import.meta.env.VITE_LEKTRUS_SELFHOST_API_ORIGIN",JSON.stringify("https://pilot.lektrus.example"))
     .replaceAll("import.meta.env.DEV","false");
   const compiled=ts.transpileModule(source,{
@@ -118,7 +120,7 @@ async function loadPilot(enabled) {
     if(u.pathname==="/api/v1/boards/board-1/invitations")return ok({kind:"invite"});
     if(u.pathname==="/api/v1/invitations/claim")return ok({claimed:1});
     if(u.pathname==="/api/v1/auth/signup")return ok({ok:true,message:"email sent"},202);
-    if(u.pathname==="/api/v1/auth/verify-email")return ok({ok:true,message:"confirmed"});
+    if(u.pathname==="/api/v1/auth/verify-email")return ok({access_token:"token-verified",refresh_token:"refresh-verified",expires_in:900,user});
     throw new Error("Unexpected pilot request "+u.pathname);
   };
   const sockets=[];
@@ -136,7 +138,7 @@ async function loadPilot(enabled) {
   const context=vm.createContext({
     exports:{},fetch,URL,Headers,Response,AbortController,FormData,
     navigator:{onLine:true},WebSocket:Socket,
-    sessionStorage,setTimeout,clearTimeout,setInterval,clearInterval,Date,
+    localStorage:sessionStorage,sessionStorage,setTimeout,clearTimeout,setInterval,clearInterval,Date,
     window:{location:{origin:"https://pilot.lektrus.example"},
       addEventListener(name,fn){listeners.set(name,fn)},
       removeEventListener(name){listeners.delete(name)}},
@@ -147,7 +149,7 @@ async function loadPilot(enabled) {
 
 const disabled=await loadPilot(false);
 assert.equal(disabled.api.SELFHOST_PILOT_ENABLED,false);
-assert.throws(()=>disabled.api.pilotOrigin(),/выключен/);
+assert.throws(()=>disabled.api.pilotOrigin(),/не подключён/);
 assert.equal(disabled.storage.get("lesson-board.supabase.session.v1"),"production-must-remain");
 
 const env=await loadPilot(true);
@@ -205,11 +207,11 @@ assert.equal((await api.pilotSignup({
   name:"Ученик",email:"new@example.test",password:"test-password",
   first_name:"",last_name:"",role:"student",
 })).ok,true);
-assert.equal((await api.pilotVerifyEmail("test-code")).ok,true);
+assert.equal((await api.pilotVerifyEmail("test-code")).user.account_role,"teacher");
 
-const old=JSON.parse(storage.get("lektrus.selfhost.pilot.session.v1"));
+const old=JSON.parse(storage.get("lektrus.selfhost.session.v1"));
 old.expires_at=1;
-storage.set("lektrus.selfhost.pilot.session.v1",JSON.stringify(old));
+storage.set("lektrus.selfhost.session.v1",JSON.stringify(old));
 assert.equal((await api.pilotSession()).access_token,"token-refreshed");
 assert.equal(env.refreshCount(),1);
 const revisions=[];
@@ -269,4 +271,4 @@ await api.pilotLogout();
 assert.equal(api.cachedPilotSession(),null);
 assert.equal(storage.get("lesson-board.supabase.session.v1"),"production-must-remain");
 assert.ok(records.some(x=>x.path==="/api/v1/auth/logout"&&x.bearer==="Bearer token-refreshed"));
-console.log("Self-hosted pilot: isolated API, WS revisions, cursors, ink acks, role-safe login and logout OK.");
+console.log("Self-hosted Lektrus API: session persistence, native documents, private assets, WS revisions, cursors, ink and role-safe access OK.");
