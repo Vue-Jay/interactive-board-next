@@ -13,7 +13,7 @@ import httpx
 import pytest
 import pytest_asyncio
 
-from app import app
+from app import app, _login_attempts
 
 TEACHER = UUID("00000000-0000-4000-8000-000000000001")
 STUDENT = UUID("00000000-0000-4000-8000-000000000002")
@@ -22,6 +22,9 @@ PASSWORD = "integration-test-password"
 
 @pytest_asyncio.fixture
 async def client():
+    # Each integration scenario starts with a clean login-rate-limit window.
+    # Production rate limiting remains enabled and unchanged.
+    _login_attempts.clear()
     connection = await asyncpg.connect(os.environ["DATABASE_URL"])
     sql_dir = Path(__file__).with_name("sql")
     await connection.execute(sql_dir.joinpath("001_initial.sql").read_text())
