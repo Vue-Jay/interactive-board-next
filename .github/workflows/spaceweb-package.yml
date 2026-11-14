@@ -1,0 +1,63 @@
+name: Lektrus SpaceWeb static hosting package
+
+on:
+  push:
+    branches:
+      - deploy/spaceweb-free-trial-20261114
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Build static hosting ZIP
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      VITE_LECTRIS_ORG_SYNC: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Verify public backend configuration exists
+        shell: bash
+        run: |
+          test -n "$VITE_SUPABASE_URL" || { echo "Missing VITE_SUPABASE_URL GitHub secret"; exit 1; }
+          test -n "$VITE_SUPABASE_ANON_KEY" || { echo "Missing VITE_SUPABASE_ANON_KEY GitHub secret"; exit 1; }
+      - name: Install and build
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Validate static hosting output
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s dist/index.html
+          test -s dist/.htaccess
+          test -s dist/manifest.webmanifest
+          grep -q 'RewriteRule . /index.html' dist/.htaccess
+          grep -Eq '<link[^>]+stylesheet' dist/index.html
+          test -d dist/assets
+          if grep -rlq 'sb_secret_\|service_role' dist --include='*.js' --include='*.html'; then
+            echo 'Forbidden server key marker found in public build'
+            exit 1
+          fi
+      - name: Create upload-ready ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd dist && zip -q -r "$GITHUB_WORKSPACE/lektrus-spaceweb.zip" .)
+          unzip -Z1 lektrus-spaceweb.zip | grep -qx 'index.html'
+          unzip -Z1 lektrus-spaceweb.zip | grep -qx '.htaccess'
+          sha256sum lektrus-spaceweb.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lektrus-SpaceWeb-public-html
+          path: lektrus-spaceweb.zip
+          if-no-files-found: error
+          retention-days: 14
