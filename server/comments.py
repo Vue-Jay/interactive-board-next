@@ -87,6 +87,12 @@ def make_comments_router(current_user, board_access) -> APIRouter:
                                  resolved,created_at,updated_at""",
                     uuid4(), board_id, user["id"], author_name, data.parent_id, body,
                 )
+                await conn.execute("""INSERT INTO user_notifications(id,user_id,kind,title,body,href)
+                    SELECT md5(random()::text||clock_timestamp()::text)::uuid,target.user_id,'comment','Новое сообщение в обсуждении',$2,
+                           '/app?board='||$1::text
+                      FROM (SELECT owner_id AS user_id FROM boards WHERE id=$1
+                            UNION SELECT user_id FROM board_members WHERE board_id=$1) target
+                     WHERE target.user_id<>$3""",board_id,body[:400],user["id"])
         return {
             "id": str(row["id"]), "board_id": str(row["board_id"]),
             "author_id": str(row["author_id"]), "author_name": row["author_name"],

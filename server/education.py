@@ -284,6 +284,7 @@ def make_education_router(current_user, board_access) -> APIRouter:
                 data.id,user["id"],data.student_id,data.board_id,title,
                 data.description.strip(),data.due_at,data.max_score,
             )
+            await conn.execute("INSERT INTO user_notifications(id,user_id,kind,title,body,href) VALUES($1,$2,'assignment',$3,$4,'/app?section=assignments')",uuid4(),data.student_id,title,data.description.strip()[:400])
         return {"ok": True, "id": str(data.id)}
 
     @router.delete("/api/v1/assignments/{assignment_id}", status_code=204)
@@ -323,6 +324,7 @@ def make_education_router(current_user, board_access) -> APIRouter:
                          feedback='',reviewed_at=NULL""",
                     assignment_id,user["id"],data.content,
                 )
+                await conn.execute("INSERT INTO user_notifications(id,user_id,kind,title,body,href) SELECT $1,teacher_id,'submission','Получено решение задания',$2,'/app?section=assignments' FROM assignments WHERE id=$3",uuid4(),data.content[:240],assignment_id)
         return {"ok": True}
 
     @router.post("/api/v1/assignments/{assignment_id}/review")
@@ -350,6 +352,7 @@ def make_education_router(current_user, board_access) -> APIRouter:
                 )
                 if updated is None:
                     raise HTTPException(404, "Ученик ещё не отправил это задание.")
+                await conn.execute("INSERT INTO user_notifications(id,user_id,kind,title,body,href) VALUES($1,$2,'review','Работа проверена',$3,'/app?section=assignments')",uuid4(),assignment["student_id"],data.feedback.strip()[:400])
         return {"ok": True}
 
     @router.get("/api/v1/schedule")
