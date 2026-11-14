@@ -535,3 +535,5 @@ from invitations import make_invitation_router
 app.include_router(make_invitation_router(current_user, board_access))
 from registration import make_registration_router
 app.include_router(make_registration_router())
+from pilot_operations import make_pilot_operations_router
+app.include_router(make_pilot_operations_router(current_user, board_access, announce))
