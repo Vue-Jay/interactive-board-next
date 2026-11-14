@@ -70,13 +70,13 @@ The pilot browser client:
   board documents are deliberately **read-only** in this pilot.
 - Saves a shared note with optimistic versions and a visible 409 conflict
   state that keeps the unsaved local draft rather than overwriting it.
-- Connects one authenticated WebSocket per selected board and receives
-  **version notices only**. It fetches the full document only when an unseen
-  revision arrives and no local unsaved edits are present.
+- Connects one authenticated WebSocket per selected board for version
+  notices, transient cursors and ink previews. It fetches the full document
+  only when a new revision arrives and no local edits are pending.
 
-This is NOT the full interactive canvas. The existing pen, live ink, object
-drag, cursor, presence, broadcast and multi-tool experience still depend on
-Supabase Realtime. The production frontend is intentionally not connected
+This is NOT the full interactive canvas. The existing full editor, persistent
+ink and undo history, object drag, presence, broadcast and subject tools
+still depend on Supabase Realtime. The production frontend is intentionally not connected
 to this pilot backend; no existing customer traffic is reduced yet.
 
 Both the mock browser protocol test and the opt-in TypeScript/Vite build run
