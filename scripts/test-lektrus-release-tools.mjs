@@ -59,6 +59,11 @@ try{
     // A persisted classroom exercise must have at least two distinct countries.
     const savedItem=id==="geo-matching"?{
       ...item,schoolDiagram:{...item.schoolDiagram,countryCodes:["RU","FR"]}
+    }:id==="history-timeline"?{
+      ...item,schoolDiagram:{...item.schoolDiagram,events:[
+        {id:"event-1",year:1914,label:"Начало события"},
+        {id:"event-2",year:1918,label:"Завершение события"}
+      ]}
     }:item;
     const doc={version:1,title:"Release compatibility",view:{x:0,y:0,zoom:1},items:[savedItem]};
     let recovered;
