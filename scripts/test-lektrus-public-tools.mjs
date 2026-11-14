@@ -21,6 +21,10 @@ assert.match(app,/if\(route\.kind==="tool"\)[\s\S]*?<PublicToolScreen/,
  "the standalone tool route must render before account authentication");
 assert.match(app,/if \(route\.kind === "tool"\) \{ setBoardLoading\(false\); return; \}/,
  "opening a standalone tool must not trigger board loading");
+assert.ok(app.includes('onBack={()=>window.location.assign("/")}'),
+ "closing a public tool must load the site entry point at /");
+assert.ok(tools.includes("onSave={onBack} onCancel={onBack}"));
+assert.match(tools,/lektrus-public-tool-back" onClick=\{onBack\}/);
 assert.match(tools,/lazy\(\(\)=>import\("\.\/LektrusMapAtlas"\)\)/);
 assert.match(tools,/lazy\(\(\)=>import\("\.\/LektrusChemistryBenchEditor"\)\)/);
 assert.match(site,/href="\/tools\/atlas"/);
