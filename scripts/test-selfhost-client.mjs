@@ -15,6 +15,8 @@ const registrationStyles=readFileSync(new URL("../src/lektrusAuthLayout.css",imp
 assert.match(registrationStyles,/\.auth-shell-register \.auth-card/);
 assert.match(registrationStyles,/grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
 assert.match(registrationStyles,/@media \(min-width: 760px\)/);
+assert.match(registrationStyles,/\.auth-shell-register \.auth-form > \.auth-field/);
+assert.match(registrationStyles,/\.auth-shell-register \.auth-form > \.auth-submit/);
 
 async function loadSelfhost(enabled) {
   let source=readFileSync(new URL("../src/selfhostApi.ts",import.meta.url),"utf8");
