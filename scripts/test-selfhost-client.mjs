@@ -5,6 +5,12 @@ import vm from "node:vm";
 import ts from "typescript";
 import { readFileSync } from "node:fs";
 
+// Registration must confirm the password before sending credentials to the API.
+const registrationForm=readFileSync(new URL("../src/AuthScreen.tsx",import.meta.url),"utf8");
+assert.match(registrationForm,/Повторите пароль/);
+assert.match(registrationForm,/password!==passwordConfirmation/);
+assert.match(registrationForm,/mode==="register"&&!awaitingConfirmation&&password!==passwordConfirmation/);
+
 async function loadSelfhost(enabled) {
   let source=readFileSync(new URL("../src/selfhostApi.ts",import.meta.url),"utf8");
   source=source
