@@ -11,6 +11,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ../../server/sql/001_initial.sql:/docker-entrypoint-initdb.d/001_initial.sql:ro
+      - ../../server/sql/002_board_assets.sql:/docker-entrypoint-initdb.d/002_board_assets.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U lektrus -d lektrus"]
       interval: 10s
@@ -24,8 +25,11 @@ services:
       DATABASE_URL: postgresql://lektrus:${POSTGRES_PASSWORD:?Set password}@db:5432/lektrus
       LEKTRUS_JWT_SECRET: ${LEKTRUS_JWT_SECRET:?Set a random 32+ byte secret}
       LEKTRUS_ALLOWED_ORIGINS: ${LEKTRUS_SITE_ORIGIN:?Set the HTTPS site origin}
+      LEKTRUS_ASSETS_DIR: /srv/lektrus-assets
     depends_on:
       db: {condition: service_healthy}
+    volumes:
+      - assetsdata:/srv/lektrus-assets
     networks: [internal]
   web:
     image: caddy:2.10.2-alpine
@@ -46,3 +50,4 @@ volumes:
   pgdata:
   caddy_data:
   caddy_config:
+  assetsdata:
