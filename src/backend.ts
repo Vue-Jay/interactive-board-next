@@ -13,9 +13,13 @@ export type BackendSession = {
   };
 };
 
+// Optional public hosting configuration. It is loaded by index.html before Vite modules.
+// Only anon/publishable client values may be supplied here, never a service_role key.
+declare global { interface Window { __LEKTRUS_PUBLIC_BACKEND__?: { url?:string; anonKey?:string } } }
+const runtimeBackendConfig=window.__LEKTRUS_PUBLIC_BACKEND__;
 const NATIVE_BACKEND_KEY = "lektrus.native.supabase.config.v1";
-const buildBackendUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() || "";
-const buildBackendKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim() || "";
+const buildBackendUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() || runtimeBackendConfig?.url?.trim() || "";
+const buildBackendKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim() || runtimeBackendConfig?.anonKey?.trim() || "";
 const readNativeBackendConfig = (): { url: string; anonKey: string } | null => {
   if (!Capacitor.isNativePlatform()) return null;
   try {
