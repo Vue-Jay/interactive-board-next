@@ -137,9 +137,19 @@ export default function PublicDemoBoard(){
  const user:AuthUser={id:"lektrus-public-demo",name:"Гость",email:"",createdAt:"2026-01-01T00:00:00.000Z",isGuest:true};
  const capture=params.get("capture")==="1";
  const key=`lesson-board.document.v1.board.${id}`;
+ const seed=documentFor(scene);
+ let useMemorySeed=false;
  try{
   const existing=localStorage.getItem(key);
-  if(capture||!existing)localStorage.setItem(key,JSON.stringify(documentFor(scene)));
- }catch{/* A private browser session still renders the in-memory initial seed below. */}
- return <BoardApp key={scene} authUser={user} boardSummary={board} accountRole="student" demoMode demoInitialDocument={documentFor(scene)} onBackToBoards={()=>window.location.assign("/")} onLogout={()=>window.location.assign("/")} onBoardChanged={()=>{}}/>;
+  // Preserve edits on ordinary reloads. The capture query still resets the
+  // demo intentionally for reproducible product screenshots.
+  if(capture||!existing){
+   localStorage.setItem(key,JSON.stringify(seed));
+   useMemorySeed=true;
+  }
+ }catch{
+  // Storage-blocked/private browsers can still explore an in-memory lesson.
+  useMemorySeed=true;
+ }
+ return <BoardApp key={scene} authUser={user} boardSummary={board} accountRole="student" demoMode demoInitialDocument={useMemorySeed?seed:undefined} onBackToBoards={()=>window.location.assign("/")} onLogout={()=>window.location.assign("/")} onBoardChanged={()=>{}}/>;
 }
