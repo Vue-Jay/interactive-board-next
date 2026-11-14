@@ -101,7 +101,9 @@ assert.match(editor,/onClick=\{finish\}/);
 assert.match(diagram,/case "bio-anatomy":return <LektrusHumanAnatomy/);
 assert.match(catalogue,/id:"bio-anatomy",label:"Анатомия человека"/);
 assert.match(catalogue,/id:"bio-microscope"[\s\S]*?subjects:\[\]/);
-assert.match(panel,/"биология":\[\{title:"Анатомия человека",ids:\["bio-anatomy"\]/);
+// Release catalogue keeps the normal board assignments; old anatomy diagrams still load.
+assert.match(panel,/"биология":\[\]/,
+ "Anatomy remains stored and editable on existing boards, but hidden from the new-tool menu");
 const css=read("src/lektrusHumanAnatomy.css");
 assert.ok(css.includes(".lek-anatomy-dialog-backdrop"));
 assert.ok(css.includes(".lek-anatomy-container{")&&
