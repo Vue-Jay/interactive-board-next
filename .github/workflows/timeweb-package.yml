@@ -27,6 +27,12 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           node scripts/test-lektrus-registration-roles.mjs
+          node scripts/test-lektrus-role-session-cache.mjs
+          node scripts/test-lektrus-board-role-preview.mjs
+          node scripts/test-lektrus-board-authorship.mjs
+          node scripts/test-lektrus-storage-rls.mjs
+          node scripts/test-preview-autosave.mjs
+          node --test tests/realtime.test.mjs tests/live-ink.test.mjs
           npm run build
       - name: Prepare Timeweb static hosting
         run: |
