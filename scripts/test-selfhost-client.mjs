@@ -81,6 +81,51 @@ async function loadSelfhost(enabled) {
       return new Response(new Blob(["stored asset"],{type:"image/png"}),{
         status:200,headers:{"Content-Type":"image/png"},
       });
+    if(u.pathname==="/api/v1/students")return ok([{
+      user_id:"student-1",name:"Ученик",email:"student@example.test",
+      board_ids:[nativeBoardId],board_titles:["Нативная доска"],last_board_at:"2026-11-14T10:00:00Z",
+      note:"Заметка",tags:["математика"],
+    }]);
+    if(u.pathname==="/api/v1/students/student-1/profile"&&options.method==="PUT"){
+      assert.equal(JSON.parse(options.body).note,"Новая заметка");return ok({ok:true});
+    }
+    if(u.pathname==="/api/v1/students/student-1/sessions")return ok([{
+      id:"session-1",student_id:"student-1",board_id:nativeBoardId,
+      board_title:"Нативная доска",date:"2026-11-14T10:00:00Z",
+      duration_minutes:45,topic:"Алгебра",homework:"№ 5",result:"Готово",
+    }]);
+    if(u.pathname==="/api/v1/student-sessions/session-1"&&options.method==="PUT"){
+      assert.equal(JSON.parse(options.body).duration_minutes,45);return ok({ok:true});
+    }
+    if(u.pathname==="/api/v1/student-sessions/session-1"&&options.method==="DELETE")return new Response(null,{status:204});
+    if(u.pathname==="/api/v1/assignments"&&options.method==="GET")return ok([]);
+    if(u.pathname==="/api/v1/assignments"&&options.method==="POST"){
+      assert.equal(JSON.parse(options.body).student_id,"student-1");return ok({ok:true,id:"assignment-1"},201);
+    }
+    if(u.pathname==="/api/v1/assignments/assignment-1"&&options.method==="DELETE")return new Response(null,{status:204});
+    if(u.pathname==="/api/v1/assignments/assignment-1/submit"){
+      assert.equal(JSON.parse(options.body).content,"Ответ");return ok({ok:true});
+    }
+    if(u.pathname==="/api/v1/assignments/assignment-1/review"){
+      assert.equal(JSON.parse(options.body).score,9);return ok({ok:true});
+    }
+    if(u.pathname==="/api/v1/schedule"&&options.method==="GET")return ok([]);
+    if(u.pathname==="/api/v1/schedule"&&options.method==="POST"){
+      assert.equal(JSON.parse(options.body).items.length,1);return ok({ok:true,created:1},201);
+    }
+    if(u.pathname==="/api/v1/schedule/schedule-1"&&options.method==="PATCH"){
+      assert.equal(JSON.parse(options.body).title,"Новое занятие");return ok({ok:true});
+    }
+    if(u.pathname==="/api/v1/schedule/schedule-1"&&options.method==="DELETE")return new Response(null,{status:204});
+    if(u.pathname==="/api/v1/schedule/schedule-1/start")return ok({ok:true});
+    if(u.pathname==="/api/v1/schedule/schedule-1/complete")return ok({ok:true});
+    if(u.pathname===`/api/v1/boards/${nativeBoardId}/lessons/active`)return ok(null);
+    if(u.pathname===`/api/v1/boards/${nativeBoardId}/lessons`&&options.method==="POST"){
+      assert.equal(JSON.parse(options.body).student_id,"student-1");
+      return ok({id:"lesson-1",board_id:nativeBoardId,student_id:"student-1",
+        student_name:"Ученик",topic:"Тема",started_at:"2026-11-14T10:00:00Z",ended_at:null});
+    }
+    if(u.pathname==="/api/v1/lessons/lesson-1/finish")return ok({ok:true,minutes:45});
     if(u.pathname==="/api/v1/boards")return ok([{id:"board-1",title:"Тест",role:"owner"}]);
     if(u.pathname==="/api/v1/boards/board-1/document"&&options.method==="PUT"){
       if(JSON.parse(options.body).expected_version!==3)
@@ -186,6 +231,35 @@ expired.expires_at=1;
 storage.set("lektrus.selfhost.session.v1",JSON.stringify(expired));
 assert.equal((await api.selfhostSession()).access_token,"token-refreshed");
 assert.equal(env.refreshCount(),1);
+assert.equal((await api.selfhostStudents())[0].user_id,"student-1");
+await api.selfhostSaveStudentProfile("student-1",{note:"Новая заметка"});
+assert.equal((await api.selfhostStudentSessions("student-1"))[0].topic,"Алгебра");
+await api.selfhostSaveStudentSession({
+  id:"session-1",studentId:"student-1",boardId:nativeBoard.id,
+  date:"2026-11-14T10:00:00Z",durationMinutes:45,topic:"Алгебра",homework:"№ 5",result:"Готово",
+});
+await api.selfhostDeleteStudentSession("session-1");
+assert.deepEqual(await api.selfhostAssignments(),[]);
+await api.selfhostCreateAssignment({
+  id:"assignment-1",studentId:"student-1",boardId:nativeBoard.id,
+  title:"Задание",description:"Описание",dueAt:null,maxScore:10,
+});
+await api.selfhostSubmitAssignment("assignment-1","Ответ");
+await api.selfhostReviewAssignment("assignment-1",9,"Хорошо");
+await api.selfhostDeleteAssignment("assignment-1");
+assert.deepEqual(await api.selfhostSchedule(),[]);
+await api.selfhostCreateSchedule([{
+  id:"schedule-1",studentId:"student-1",boardId:nativeBoard.id,title:"Занятие",
+  startsAt:"2026-11-16T10:00:00Z",durationMinutes:60,recurrence:"none",
+  recurrenceGroupId:null,note:"",
+}]);
+await api.selfhostUpdateSchedule("schedule-1",{title:"Новое занятие"});
+await api.selfhostMarkScheduleStarted("schedule-1");
+await api.selfhostCompleteSchedule("schedule-1");
+await api.selfhostDeleteSchedule("schedule-1");
+assert.equal(await api.selfhostActiveLesson(nativeBoard.id),null);
+assert.equal((await api.selfhostStartLesson(nativeBoard.id,"student-1","Тема")).id,"lesson-1");
+assert.equal((await api.selfhostFinishLesson("lesson-1","Итог","ДЗ")).minutes,45);
 const revisions=[];
 const statuses=[];
 const liveEvents=[];
@@ -266,4 +340,4 @@ await api.selfhostLogout();
 assert.equal(api.cachedSelfhostSession(),null);
 assert.equal(storage.get("lesson-board.supabase.session.v1"),"production-must-remain");
 assert.ok(records.some(x=>x.path==="/api/v1/auth/logout"&&x.bearer==="Bearer token-refreshed"));
-console.log("Self-hosted Lektrus API: persistent sessions, native documents, private assets, presence, cursors, ink, editor mutations, transforms and bounded realtime events OK.");
+console.log("Self-hosted Lektrus API: auth, native documents, private assets, students, assignments, schedule, lessons, presence and realtime events OK.");
