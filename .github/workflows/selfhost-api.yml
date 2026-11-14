@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   core-api:
@@ -121,3 +122,86 @@ jobs:
           start_app
           docker exec -u 10001 lektrus-amvera-ci cat /data/assets/probe | grep -qx persisted
           test "$(curl -so /dev/null -w '%{http_code}' http://127.0.0.1:8080/assets/probe)" = 404
+
+
+
+  # Runs only after the complete self-hosted API/Amvera image smoke test passes.
+  # The frontend workflow is also required to pass for the identical commit.
+  # Uses GitHub encrypted Actions secrets, never a token pasted into the repo.
+  deploy-amvera:
+    name: Deploy validated Lektrus to existing Amvera app
+    if: github.ref_name == 'deploy/amvera-lektrus'
+    needs: core-api
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: lektrus-amvera-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify frontend tests passed for the same commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(git rev-parse HEAD)"
+          for attempt in $(seq 1 48); do
+            result="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=deploy%2Famvera-lektrus&per_page=50" \
+              --jq '.workflow_runs[] | select(.head_sha == "'"$expected"'" and .name == "Lektrus self-hosted main application") | (.conclusion // "pending")' | head -n 1)"
+            case "$result" in
+              success) echo "Frontend CI passed for $expected"; exit 0 ;;
+              failure|cancelled|timed_out|action_required|skipped)
+                echo "::error::Frontend CI did not pass: $result"
+                exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "::error::Frontend workflow did not finish successfully for $expected"
+          exit 1
+
+      - name: Skip outdated commit before deployment
+        id: freshness
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(git rev-parse HEAD)"
+          current="$(git ls-remote origin refs/heads/deploy/amvera-lektrus | cut -f1)"
+          if [[ "$current" != "$expected" ]]; then
+            echo "A newer branch head exists. Skip superseded deploy $expected"
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push production branch to Amvera via Git
+        if: steps.freshness.outputs.current == 'true'
+        env:
+          AMVERA_USERNAME: ${{ secrets.AMVERA_USERNAME }}
+          AMVERA_PASSWORD: ${{ secrets.AMVERA_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$AMVERA_USERNAME" || -z "$AMVERA_PASSWORD" ]]; then
+            echo "::error::Set repository Actions secrets AMVERA_USERNAME and AMVERA_PASSWORD first"
+            exit 1
+          fi
+          # The secret is never embedded in the URL, arguments, code or logs.
+          askpass="$RUNNER_TEMP/amvera-git-askpass"
+          cat > "$askpass" <<'SCRIPT'
+          #!/usr/bin/env bash
+          case "$1" in
+            *Username*) printf '%s\n' "$AMVERA_USERNAME" ;;
+            *Password*) printf '%s\n' "$AMVERA_PASSWORD" ;;
+            *) exit 1 ;;
+          esac
+          SCRIPT
+          chmod 700 "$askpass"
+          trap 'rm -f "$askpass"' EXIT
+          export GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0
+          git -c credential.helper= push \
+            https://git.msk1.amvera.ru/vuejay/lektrus/ \
+            HEAD:refs/heads/master
