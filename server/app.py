@@ -475,7 +475,7 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                     continue
                 refreshed_user = await lookup_session(websocket.app.state.pool, token)
                 async with websocket.app.state.pool.acquire() as conn:
-                    _, current_role = await board_access(
+                    current_board, current_role = await board_access(
                         conn, board_id, refreshed_user["id"]
                     )
                 if message.get("type") == "ping":
@@ -500,6 +500,34 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                         await websocket.close(code=4429)
                         return
                     continue
+                if event["type"] == "object_preview":
+                    if not current_board["is_pilot"]:
+                        await websocket.send_json({
+                            "type": "event_error", "reason": "pilot_only"
+                        })
+                        continue
+                    # A client may only preview an existing pilot object at
+                    # its current committed revision, never a fabricated ID.
+                    async with websocket.app.state.pool.acquire() as conn:
+                        exists = await conn.fetchval(
+                            """SELECT EXISTS(
+                                SELECT 1 FROM board_documents d
+                                CROSS JOIN LATERAL jsonb_array_elements(
+                                  d.document->'items'
+                                ) AS obj
+                                WHERE d.board_id=$1
+                                AND obj->>'id'=$2
+                                AND obj->>'kind'='pilot_rect'
+                                AND obj->>'revision'=$3
+                            )""",
+                            board_id, event["object_id"],
+                            str(event["object_revision"]),
+                        )
+                    if not exists:
+                        await websocket.send_json({
+                            "type": "event_error", "reason": "stale_object"
+                        })
+                        continue
                 await relay_live_event(
                     board_id, websocket, event, websocket.app.state.pool
                 )
