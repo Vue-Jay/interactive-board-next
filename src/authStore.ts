@@ -1,4 +1,5 @@
 import { LEKTRUS_LOCAL_TEST_MODE, LEKTRUS_LOCAL_TEST_USER } from "./lektrusLocalTestMode";
+import { setLocalAccountRole, type AccountRole } from "./accountRoleStore";
 import { claimRemoteInvitations, completeEmailConfirmationRemote, getCachedRemoteSession, getRemoteSession, isRemoteBackendEnabled, signInRemote, signInAnonymousRemote, signOutRemote, signUpRemote, resendSignupOtpRemote, getRememberedRemoteAccount, resumeRememberedRemoteAccount, leaveRemoteAccountRemembered, clearRememberedRemoteAccount } from "./backend";
 
 export type BoardRole = "owner" | "editor" | "viewer";
@@ -33,17 +34,18 @@ export const getCurrentUser=async():Promise<AuthUser|null>=>{
  return null;
 };
 
-export const registerUser=async(input:{name:string;email:string;password:string;firstName?:string;lastName?:string}):Promise<AuthUser|null>=>{
+export const registerUser=async(input:{name:string;email:string;password:string;firstName?:string;lastName?:string;role:AccountRole}):Promise<AuthUser|null>=>{
  const name=input.name.trim(),email=normalizeEmail(input.email),password=input.password;
  if(name.length<2)throw new Error("Введите имя не короче 2 символов");
  if(!/^\S+@\S+\.\S+$/.test(email))throw new Error("Введите корректный email");
  if(password.length<6)throw new Error("Пароль должен содержать минимум 6 символов");
- if(isRemoteBackendEnabled()){const s=await signUpRemote(email,password,name,{firstName:input.firstName,lastName:input.lastName});if(!s)return null;await claimRemoteInvitations();return remoteUser(s)!}
+ if(input.role!=="teacher"&&input.role!=="student")throw new Error("Выберите роль: учитель или ученик");
+ if(isRemoteBackendEnabled()){const s=await signUpRemote(email,password,name,{firstName:input.firstName,lastName:input.lastName,role:input.role});if(!s)return null;await claimRemoteInvitations();return remoteUser(s)!}
  const users=loadUsers();
  if(users.some(u=>u.email===email))throw new Error("Пользователь с таким email уже зарегистрирован");
  const salt=randomSalt();
  const user:StoredUser={id:crypto.randomUUID(),name,email,createdAt:new Date().toISOString(),passwordHash:await hashPassword(password,salt),passwordSalt:salt};
- saveUsers([...users,user]);saveSession(user.id);return publicUser(user)
+ saveUsers([...users,user]);saveSession(user.id);setLocalAccountRole(user.id,input.role);return publicUser(user)
 };
 
 export const completeEmailConfirmation=async(callbackUrl:string):Promise<AuthUser|null>=>{
