@@ -569,7 +569,7 @@ def make_education_router(current_user, board_access) -> APIRouter:
                 if lesson is None:
                     raise HTTPException(404, "Активное занятие не найдено.")
                 ended_at = datetime.now(timezone.utc)
-                minutes = max(1, round((ended_at-lesson["started_at"]).total_seconds()/60))
+                minutes = min(1440, max(1, round((ended_at-lesson["started_at"]).total_seconds()/60)))
                 await conn.execute(
                     """UPDATE live_lessons SET ended_at=$2,result=$3,homework=$4
                         WHERE id=$1""",
