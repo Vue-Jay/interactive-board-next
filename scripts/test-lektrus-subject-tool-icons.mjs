@@ -39,8 +39,10 @@ assert.ok(!registryBlock.includes('label:palette.label+" · учебная до�
  "Subject worksheets must not appear as eleven separate subject tools");
 assert.ok(registry.includes('id.startsWith("subject-board-")'),
  "Existing worksheets must stay available through the shared item factory");
-assert.ok(panel.includes('className="lektrus-subject-worksheet-button"'),
- "The universal worksheet must be accessible from the subject-tools panel");
+assert.ok(!panel.includes('className="lektrus-subject-worksheet-button"'),
+ "The redundant standalone subject-board button is no longer present");
+assert.ok(panel.includes('const isTask=t.id.startsWith("subject-task-")'),
+ "The regular Задания на доске entry stays in the subject-tool menu");
 assert.ok(icons.includes('if(id.startsWith("subject-board-")||id.startsWith("subject-task-")||id==="chem-assignments")'),
  "New worksheet and task tools must render dedicated vector symbols");
 assert.equal(scienceIds.length,7,"Registry scanner must cover four physics and three chemistry editors");
@@ -65,9 +67,11 @@ assert.ok(!app.includes('entry.id==="math-coordinate"||entry.id==="physics-graph
 assert.ok(panel.includes('className="lektrus-subject-tools-icon"'));
 assert.ok(panel.includes("const subjectToolSections:Record<string,"),
  "Use a curated semantic layout for every classroom subject");
-for(const name of ["Карты и хронология","Информация","Программирование и алгоритмы","Логика"]){
- assert.ok(panel.includes(name),"Missing compact subject section: "+name);
+for(const name of ["Формулы и вычисления","Карты","Исторические карты","Грамматика и лексика"]){
+ assert.ok(panel.includes(name),"Missing retained subject section: "+name);
 }
+assert.ok(!panel.includes('"Информация",ids:["info-encoding"'),
+ "The informatics extras are hidden but their dedicated icons stay supported");
 assert.ok(panel.includes('section.items.map(t=>'),"Render tightly grouped subject tool cards");
 assert.ok(panel.includes('title={t.description??t.label}'),"Preserve tool details in hover tooltips");
 assert.ok(!panel.includes("lektrus-subject-tool-search")&&!panel.includes("searchTerm"),
