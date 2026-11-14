@@ -99,7 +99,10 @@ try{
   return result;
  };
  const mouse=async(type,x,y,{pressed=false}={})=>call("Input.dispatchMouseEvent",{
-  type,x,y,button:pressed?"left":"none",buttons:pressed?1:0,clickCount:pressed?1:0
+  type,x,y,
+  button:pressed||type==="mouseReleased"?"left":"none",
+  buttons:pressed?1:0,
+  clickCount:type==="mousePressed"||type==="mouseReleased"?1:0
  });
  await call("Runtime.enable");
  await call("Page.enable");
@@ -142,11 +145,25 @@ try{
  })()`,"Sticky object did not move in response to a pointer drag");
  const after=await rect('[data-object="math-note"]');
  assert.ok(after.left-before.left>30,"Dragged object position did not commit");
+ await wait('!!document.querySelector(\'button[aria-label="Отменить"]:not([disabled])\')',
+  "Undo was not available after dragging the object");
  await click('button[aria-label="Отменить"]');
- await wait(`(() => {
-  const r=document.querySelector('[data-object="math-note"]')?.getBoundingClientRect();
-  return r&&Math.abs(r.left-${before.left})<12;
- })()`,"Undo did not restore object position");
+ try{
+  await wait(`(() => {
+   const r=document.querySelector('[data-object="math-note"]')?.getBoundingClientRect();
+   return r&&Math.abs(r.left-${before.left})<12;
+  })()`,"Undo did not restore object position",4000);
+ }catch(error){
+  const current=await evaluate(`(() => {
+   const item=document.querySelector('[data-object="math-note"]');
+   const r=item?.getBoundingClientRect();
+   return {left:r?.left,top:r?.top,style:item?.getAttribute('style'),
+    undoDisabled:document.querySelector('button[aria-label="Отменить"]')?.disabled,
+    redoDisabled:document.querySelector('button[aria-label="Повторить"]')?.disabled,
+    selected:document.querySelectorAll('.board-object.selected').length};
+  })()`);
+  throw new Error(error.message+"; "+JSON.stringify({current,before,after}));
+ }
  await click('button[aria-label="Повторить"]');
  await wait(`(() => {
   const r=document.querySelector('[data-object="math-note"]')?.getBoundingClientRect();
