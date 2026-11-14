@@ -410,15 +410,13 @@ async def announce_presence(board_id: UUID, *, joins: list[dict[str, str]] | Non
                 await board_access(conn, board_id, recipient["id"])
             await asyncio.wait_for(client.send_json(message), timeout=1)
         except HTTPException:
-            _subscribers.get(board_id, {}).pop(client, None)
-            _subscriber_users.get(board_id, {}).pop(client, None)
+            await _drop_subscriber(board_id, client, pool, notify=False)
             try:
                 await client.close(code=4403)
             except Exception:
                 pass
         except Exception:
-            _subscribers.get(board_id, {}).pop(client, None)
-            _subscriber_users.get(board_id, {}).pop(client, None)
+            await _drop_subscriber(board_id, client, pool, notify=False)
 
 
 async def _drop_subscriber(board_id: UUID, client: WebSocket,
@@ -447,15 +445,13 @@ async def announce(board_id: UUID, version: int, pool: asyncpg.Pool):
                 await board_access(conn, board_id, user["id"])
             await client.send_json({"type": "document_changed", "version": version})
         except HTTPException:
-            _subscribers[board_id].pop(client, None)
-            _subscriber_users.get(board_id, {}).pop(client, None)
+            await _drop_subscriber(board_id, client, pool)
             try:
                 await client.close(code=4403)
             except Exception:
                 pass
         except Exception:
-            _subscribers[board_id].pop(client, None)
-            _subscriber_users.get(board_id, {}).pop(client, None)
+            await _drop_subscriber(board_id, client, pool)
 
 
 async def relay_live_event(board_id: UUID, sender: WebSocket,
