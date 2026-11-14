@@ -2,7 +2,7 @@ import { STORAGE_KEY } from "./boardModel";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import { getUserByEmail, getUserById, type AuthUser, type BoardRole } from "./authStore";
 import { claimRemoteInvitations, deleteRemoteStorageObjects, isRemoteBackendEnabled, listRemoteStorageObjects, remoteRequest } from "./backend";
-import { isSelfhostBackendEnabled, selfhostBoards, selfhostCreateBoard, selfhostRenameBoard, selfhostDeleteBoard, selfhostAccess, selfhostInvite, selfhostChangeMemberRole, selfhostRemoveMember, selfhostRevokeInvitation } from "./selfhostApi";
+import { isSelfhostBackendEnabled, selfhostBoards, selfhostCreateBoard, selfhostRenameBoard, selfhostDeleteBoard, selfhostAccess, selfhostInvite, selfhostChangeMemberRole, selfhostRemoveMember, selfhostRevokeInvitation, selfhostAdminBoards, selfhostAdminUserWorkspace } from "./selfhostApi";
 
 export type BoardSummary={id:string;title:string;ownerId:string;role:BoardRole;createdAt:string;updatedAt:string;deletedAt?:string|null;purgeAfter?:string|null;purgeQueued?:boolean;purgeAssetCount?:number};
 export type BoardMember={boardId:string;userId:string;role:Exclude<BoardRole,"owner">;addedAt:string};
@@ -68,6 +68,10 @@ export const getUserBoards=async(user:AuthUser):Promise<BoardSummary[]>=>{
 
 export const ensureUserBoards=async(user:AuthUser)=>{const list=await getUserBoards(user);if(list.length)return list;return [await createBoard(user,"Моя доска",true)]};
 export const listAdminBoards=async():Promise<AdminBoardSummary[]>=>{
+ if(isSelfhostBackendEnabled()){
+  const rows=await selfhostAdminBoards();
+  return rows.map(row=>({...rowToBoard(row,"viewer"),ownerName:row.owner_name||"Пользователь",ownerEmail:row.owner_email||"",memberCount:Number(row.member_count||0)}));
+ }
  if(isRemoteBackendEnabled()){
    const rows=await remoteRequest<any[]>("/rest/v1/rpc/admin_list_boards",{method:"POST",body:"{}"});
    return (rows||[]).map((row:any)=>({
@@ -80,6 +84,10 @@ export const listAdminBoards=async():Promise<AdminBoardSummary[]>=>{
 
 // Server-authorized workspace includes both owned boards and invitations.
 export const listAdminUserWorkspace=async(userId:string):Promise<AdminBoardSummary[]>=>{
+  if(isSelfhostBackendEnabled()){
+   const rows=await selfhostAdminUserWorkspace(userId);
+   return rows.map(row=>({...rowToBoard(row,"viewer"),ownerName:row.owner_name||"Пользователь",ownerEmail:row.owner_email||"",memberCount:Number(row.member_count||0)}));
+  }
   if(!isRemoteBackendEnabled())return (await listAdminBoards()).filter(x=>x.ownerId===userId);
   const rows=await remoteRequest<any[]>("/rest/v1/rpc/admin_list_user_workspace",{
     method:"POST",body:JSON.stringify({p_user_id:userId}),
