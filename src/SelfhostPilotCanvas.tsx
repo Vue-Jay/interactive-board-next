@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import type { PilotLiveEvent, PilotLiveInkPacket, PilotPoint } from "./selfhostPilotApi";
+import type { PilotLiveEvent, PilotLiveInkPacket, PilotPoint, PilotStoredStroke } from "./selfhostPilotApi";
 
 type Stroke = {id:string;clientId:string;color:string;weight:number;points:PilotPoint[];finished:boolean;seenAt:number};
 type Cursor = {clientId:string;name:string;x:number;y:number;seenAt:number};
@@ -7,6 +7,9 @@ type Props = {
   boardId:string;canDraw:boolean;incoming:PilotLiveEvent|null;
   sendCursor:(clientId:string,x:number,y:number)=>boolean;
   sendInk:(packet:PilotLiveInkPacket)=>boolean;
+  savedStrokes:unknown[];
+  onPersist:(packet:PilotLiveInkPacket,operationId:string)=>Promise<void>;
+  onUndo:()=>Promise<void>;
 };
 const boundedPoint=(n:number)=>Math.max(0,Math.min(1000,n));
 const uid=()=>typeof crypto!=="undefined"&&typeof crypto.randomUUID==="function"
@@ -15,7 +18,18 @@ const svgPath=(points:PilotPoint[])=>
   points.map((p,i)=>(i?"L":"M")+p.x.toFixed(1)+" "+p.y.toFixed(1)).join(" ");
 const MAX_STROKES=60;
 
-export default function SelfhostPilotCanvas({boardId,canDraw,incoming,sendCursor,sendInk}:Props){
+const isStoredStroke=(input:unknown):input is PilotStoredStroke=>{
+  if(!input||typeof input!=="object")return false;
+  const s=input as Partial<PilotStoredStroke>;
+  return typeof s.id==="string"&&typeof s.color==="string"&&
+    /^#[0-9a-fA-F]{6}$/.test(s.color)&&Number.isFinite(s.weight)&&
+    typeof s.created_by==="string"&&Array.isArray(s.points)&&s.points.length<=200&&
+    s.points.every(p=>Number.isFinite(p?.x)&&Number.isFinite(p?.y));
+};
+
+export default function SelfhostPilotCanvas({
+  boardId,canDraw,incoming,sendCursor,sendInk,savedStrokes,onPersist,onUndo,
+}:Props){
   const clientId=useRef(uid());
   const active=useRef<Stroke|null>(null);
   const lastSent=useRef(0);
@@ -23,6 +37,24 @@ export default function SelfhostPilotCanvas({boardId,canDraw,incoming,sendCursor
   const [remote,setRemote]=useState<Stroke[]>([]);
   const [cursors,setCursors]=useState<Cursor[]>([]);
   const [warning,setWarning]=useState("");
+  const [saving,setSaving]=useState(false);
+  const [undoing,setUndoing]=useState(false);
+  const [failed,setFailed]=useState<{packet:PilotLiveInkPacket;operationId:string}|null>(null);
+  const persisted=savedStrokes.filter(isStoredStroke).slice(-MAX_STROKES);
+  const persistedIds=new Set(persisted.map(s=>s.id));
+  const saveInk=async(packet:PilotLiveInkPacket,operationId:string)=>{
+    setSaving(true);
+    try{
+      await onPersist(packet,operationId);
+      setFailed(current=>current?.operationId===operationId?null:current);
+      setWarning("");
+    }catch(error){
+      setFailed({packet,operationId});
+      setWarning("Штрих не сохранён в PostgreSQL: "+
+        (error instanceof Error?error.message:"ошибка сети")+
+        ". Повторите сохранение тем же запросом.");
+    }finally{setSaving(false)}
+  };
 
   useEffect(()=>{
     if(!incoming)return;
@@ -135,11 +167,19 @@ export default function SelfhostPilotCanvas({boardId,canDraw,incoming,sendCursor
     const final:Stroke={...stroke,finished:true,seenAt:Date.now()};
     updateStroke(final);
     publish(final,true);
+    // This is a separate, idempotent durable REST operation. The WebSocket
+    // ack confirms the preview relay only; it is NOT a save confirmation.
+    const operationId=crypto.randomUUID();
+    void saveInk({
+      type:"live_ink",client_id:clientId.current,stroke_id:final.id,
+      kind:"pen",color:final.color,weight:final.weight,offset:0,
+      points:final.points,finished:true,
+    },operationId);
   };
   return <div className="pilot-live">
     <div className="pilot-doc-header">
       <h3>Живые курсоры и штрихи</h3>
-      <span className="pilot-ws">Предпросмотр · не сохраняется в доску</span>
+      <span className="pilot-ws">Завершённые штрихи сохраняются в PostgreSQL</span>
     </div>
     <p className="pilot-muted">
       {canDraw?"Рисуйте мышью или пальцем.":"Доступен просмотр чужих штрихов и ваш курсор."}
@@ -151,11 +191,15 @@ export default function SelfhostPilotCanvas({boardId,canDraw,incoming,sendCursor
       onPointerDown={onDown} onPointerMove={onMove}
       onPointerUp={finish} onPointerCancel={finish}>
       <rect width="1000" height="1000" fill="transparent"/>
-      {remote.map(stroke=><path key={"remote:"+stroke.clientId+":"+stroke.id}
+      {persisted.map(stroke=><path key={"saved:"+stroke.id}
+        d={svgPath(stroke.points)} stroke={stroke.color}
+        strokeWidth={stroke.weight*3} strokeLinecap="round" strokeLinejoin="round"
+        fill="none"/>)}
+      {remote.filter(s=>!persistedIds.has(s.id)).map(stroke=><path key={"remote:"+stroke.clientId+":"+stroke.id}
         d={svgPath(stroke.points)} stroke={stroke.color}
         strokeWidth={stroke.weight*3} strokeLinecap="round" strokeLinejoin="round"
         fill="none" opacity={.65}/>)}
-      {local.map(stroke=><path key={"local:"+stroke.id}
+      {local.filter(s=>!persistedIds.has(s.id)).map(stroke=><path key={"local:"+stroke.id}
         d={svgPath(stroke.points)} stroke={stroke.color}
         strokeWidth={stroke.weight*3} strokeLinecap="round" strokeLinejoin="round"
         fill="none"/>)}
@@ -169,9 +213,23 @@ export default function SelfhostPilotCanvas({boardId,canDraw,incoming,sendCursor
       </g>)}
     </svg>
     {warning&&<p role="status" className="pilot-muted">{warning}</p>}
+    {saving&&<p role="status" className="pilot-muted">Сохраняем штрих…</p>}
+    {failed&&<button type="button" disabled={saving}
+      onClick={()=>void saveInk(failed.packet,failed.operationId)}>
+      Повторить сохранение штриха
+    </button>}
+    {canDraw&&<button type="button" disabled={saving||undoing}
+      onClick={()=>void (async()=>{
+        setUndoing(true);
+        try{await onUndo();setWarning("");}
+        catch(error){setWarning(error instanceof Error?error.message:"Не удалось отменить штрих.");}
+        finally{setUndoing(false);}
+      })()}>
+      Отменить мой последний штрих
+    </button>}
     <button type="button" onClick={()=>{
       setLocal([]);setRemote([]);setCursors([]);setWarning("");
     }}>Очистить предпросмотр</button>
-    <p className="pilot-muted">Полноценное сохранение штрихов, история и синхронизация объектов появятся после переноса редактора.</p>
+    <p className="pilot-muted">Сохранённые штрихи переживают перезагрузку. Курсоры и незавершённые штрихи временные; перенос истории и объектов настоящего редактора ещё впереди.</p>
   </div>;
 }
