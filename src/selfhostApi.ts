@@ -32,7 +32,7 @@ export type SelfhostLiveInkPacket={
   type:"live_ink";client_id:string;stroke_id:string;kind:"pen"|"marker";
   color:string;weight:number;offset:number;points:SelfhostPoint[];finished:boolean;
 };
-export type SelfhostPresenceUser={user_id:string;name:string;role:SelfhostBoardRole};
+export type SelfhostPresenceUser={user_id:string;name:string;role:SelfhostBoardRole;online_at?:string};
 export type SelfhostLiveEvent=
   | {type:"cursor";client_id:string;user_id:string;name:string;role:SelfhostBoardRole;x:number;y:number;sent_at:number}
   | (SelfhostLiveInkPacket&{user_id:string;name:string;role:SelfhostBoardRole;sent_at:number})
@@ -45,8 +45,8 @@ export type SelfhostLiveEvent=
   | {type:"focus_view";user_id:string;name:string;role:SelfhostBoardRole;target_user_id:string;center_x:number;center_y:number;zoom:number;sent_at:number}
   | {type:"teacher_view";user_id:string;name:string;role:SelfhostBoardRole;center_x:number;center_y:number;zoom:number;sent_at:number}
   | {type:"guided_follow";user_id:string;name:string;role:SelfhostBoardRole;enabled:boolean;sent_at:number}
-  | {type:"attachment_request";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;asset_id:string;mime:string;kind:"image"|"pdf";width:number;height:number;sent_at:number}
-  | {type:"attachment_result";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;target_user_id:string;approved:boolean;name:string;sent_at:number}
+  | {type:"attachment_request";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;asset_id:string;attachment_name:string;mime:string;kind:"image"|"pdf";width:number;height:number;sent_at:number}
+  | {type:"attachment_result";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;target_user_id:string;approved:boolean;attachment_name:string;sent_at:number}
   | {type:"event_error";reason:string};
 export type SelfhostBoardChannel=(()=>void)&{
   sendCursor:(clientId:string,x:number,y:number)=>boolean;
