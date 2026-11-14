@@ -1,7 +1,7 @@
 import { LEKTRUS_LOCAL_TEST_MODE, LEKTRUS_LOCAL_TEST_USER } from "./lektrusLocalTestMode";
 import { setLocalAccountRole, type AccountRole } from "./accountRoleStore";
 import { claimRemoteInvitations, completeEmailConfirmationRemote, getCachedRemoteSession, getRemoteSession, isRemoteBackendEnabled, signInRemote, signInAnonymousRemote, signOutRemote, signUpRemote, resendSignupOtpRemote, getRememberedRemoteAccount, resumeRememberedRemoteAccount, leaveRemoteAccountRemembered, clearRememberedRemoteAccount } from "./backend";
-import { getCachedSelfhostSession, getSelfhostSession, isSelfhostBackendEnabled, selfhostClaimInvitations, selfhostLogin, selfhostLogout, selfhostSignup, selfhostVerifyEmail, type PilotSession } from "./selfhostPilotApi";
+import { getCachedSelfhostSession, getSelfhostSession, isSelfhostBackendEnabled, selfhostClaimInvitations, selfhostLogin, selfhostLogout, selfhostSignup, selfhostVerifyEmail, type SelfhostSession } from "./selfhostApi";
 
 export type BoardRole = "owner" | "editor" | "viewer";
 export const BOARD_ROLE_LABELS: Record<BoardRole, string> = { owner:"Владелец", editor:"Редактор", viewer:"Просмотр" };
@@ -21,7 +21,7 @@ const remoteUser=(s:Awaited<ReturnType<typeof getRemoteSession>>):AuthUser|null=
  if(!s)return null; const meta=s.user.user_metadata||{}; const name=String(meta.display_name||meta.full_name||s.user.email?.split("@")[0]||"Пользователь");
  return {id:s.user.id,name,email:s.user.email||"",createdAt:s.user.created_at||new Date().toISOString(),isGuest:Boolean(meta.is_guest)||!s.user.email};
 };
-const selfhostUser=(s:Awaited<ReturnType<typeof getSelfhostSession>>|PilotSession|null):AuthUser|null=>{
+const selfhostUser=(s:Awaited<ReturnType<typeof getSelfhostSession>>|SelfhostSession|null):AuthUser|null=>{
  if(!s)return null;
  const meta=s.user.user_metadata||{};
  const name=String(meta.display_name||[meta.first_name,meta.last_name].filter(Boolean).join(" ")||s.user.email?.split("@")[0]||"Пользователь");
