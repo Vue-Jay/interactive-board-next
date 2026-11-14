@@ -210,7 +210,8 @@ def make_registration_router() -> APIRouter:
                     raise HTTPException(400, "Ссылка подтверждения недействительна или истекла.")
                 user = await conn.fetchrow(
                     """SELECT id,email,password_hash,display_name,first_name,last_name,
-                              account_role,teacher_status,is_admin
+                              account_role,teacher_status,is_admin,teacher_requested_at,
+                              teacher_reviewed_at,subscription_plan,subscription_until
                          FROM account_users WHERE id=$1""",
                     row["user_id"],
                 )
