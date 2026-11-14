@@ -69,7 +69,7 @@ async def test_two_live_sockets_receive_revision_then_revoke():
             owner_session,owner=await login("teacher@example.test")
             student_session,student=await login("student@example.test")
             created=await http.post("/api/v1/boards",headers=owner,
-                                    json={"title":"Socket test"})
+                                    json={"title":"Socket test","is_pilot":True})
             assert created.status_code==201,created.text
             board=created.json()["id"]
             board_id=UUID(board)
@@ -77,6 +77,18 @@ async def test_two_live_sockets_receive_revision_then_revoke():
                 await db.execute(
                     "INSERT INTO board_members(board_id,user_id,role) VALUES($1,$2,'viewer')",
                     board_id,STUDENT,
+                )
+                await db.execute(
+                    """INSERT INTO board_documents(board_id,document,version,updated_by)
+                       VALUES($1,$2::jsonb,1,$3)""",
+                    board_id,json.dumps({
+                        "pilot_schema":1,"note":"","ink":[],
+                        "items":[{
+                            "id":"rect_1","kind":"pilot_rect","x":100,"y":100,
+                            "width":120,"height":80,"color":"#dbeafe",
+                            "revision":1,"created_by":str(TEACHER),
+                        }],
+                    }),TEACHER,
                 )
 
             uri="ws://127.0.0.1:18762/api/v1/boards/"+board+"/events"
@@ -90,8 +102,8 @@ async def test_two_live_sockets_receive_revision_then_revoke():
                     }))
                     oready=json.loads(await asyncio.wait_for(ws_owner.recv(),3))
                     sready=json.loads(await asyncio.wait_for(ws_student.recv(),3))
-                    assert oready=={"type":"ready","version":0}
-                    assert sready=={"type":"ready","version":0}
+                    assert oready=={"type":"ready","version":1}
+                    assert sready=={"type":"ready","version":1}
 
                     # View-only participants can show their cursor but cannot
                     # pretend to be the teacher or publish drawing strokes.
@@ -125,6 +137,33 @@ async def test_two_live_sockets_receive_revision_then_revoke():
                         "type":"ink_ack","client_id":"owner_1",
                         "stroke_id":"stroke_A","offset":0,"finished":True,
                     }
+                    # The pilot object preview is attributed by the server and
+                    # relayed only when the object exists at the requested revision.
+                    preview={
+                        "type":"object_preview","client_id":"owner_1",
+                        "object_id":"rect_1","gesture_id":"gesture_1",
+                        "seq":1,"object_revision":1,"x":140,"y":150,
+                    }
+                    await ws_owner.send(json.dumps(preview))
+                    moved=json.loads(await asyncio.wait_for(ws_student.recv(),3))
+                    assert moved["type"]=="object_preview"
+                    assert moved["user_id"]==str(TEACHER)
+                    assert moved["role"]=="owner"
+                    assert moved["object_id"]=="rect_1"
+                    assert moved["object_revision"]==1
+                    assert (moved["x"],moved["y"])==(140,150)
+                    # A reader cannot publish object motion.
+                    await ws_student.send(json.dumps({
+                        **preview,"client_id":"viewer_1","gesture_id":"viewer_gesture"
+                    }))
+                    error=json.loads(await asyncio.wait_for(ws_student.recv(),3))
+                    assert error["type"]=="event_error" and error["reason"]=="read_only"
+                    # A stale object revision is rejected before fan-out.
+                    await ws_owner.send(json.dumps({
+                        **preview,"object_revision":9,"seq":2
+                    }))
+                    error=json.loads(await asyncio.wait_for(ws_owner.recv(),3))
+                    assert error["type"]=="event_error" and error["reason"]=="stale_object"
                     # Forged metadata or unexpected event keys never fan out.
                     await ws_student.send(json.dumps({
                         **stroke,"user_id":str(TEACHER)
@@ -142,14 +181,18 @@ async def test_two_live_sockets_receive_revision_then_revoke():
                     saved=await http.put(
                         "/api/v1/boards/"+board+"/document",
                         headers=owner,
-                        json={"expected_version":0,"document":{
-                            "pilot_schema":1,"items":[],"ink":[],"note":"first"
+                        json={"expected_version":1,"document":{
+                            "pilot_schema":1,"items":[
+                                {"id":"rect_1","kind":"pilot_rect","x":100,"y":100,
+                                 "width":120,"height":80,"color":"#dbeafe",
+                                 "revision":1,"created_by":str(TEACHER)}
+                            ],"ink":[],"note":"first"
                         }},
                     )
                     assert saved.status_code==200,saved.text
                     for ws in (ws_owner,ws_student):
                         msg=json.loads(await asyncio.wait_for(ws.recv(),3))
-                        assert msg=={"type":"document_changed","version":1}
+                        assert msg=={"type":"document_changed","version":2}
                         assert "document" not in msg, "WS should not resend full board JSON"
 
                     async with app.state.pool.acquire() as db:
@@ -160,13 +203,17 @@ async def test_two_live_sockets_receive_revision_then_revoke():
                     saved=await http.put(
                         "/api/v1/boards/"+board+"/document",
                         headers=owner,
-                        json={"expected_version":1,"document":{
-                            "pilot_schema":1,"items":[],"ink":[],"note":"second"
+                        json={"expected_version":2,"document":{
+                            "pilot_schema":1,"items":[
+                                {"id":"rect_1","kind":"pilot_rect","x":100,"y":100,
+                                 "width":120,"height":80,"color":"#dbeafe",
+                                 "revision":1,"created_by":str(TEACHER)}
+                            ],"ink":[],"note":"second"
                         }},
                     )
                     assert saved.status_code==200,saved.text
                     second=json.loads(await asyncio.wait_for(ws_owner.recv(),3))
-                    assert second=={"type":"document_changed","version":2}
+                    assert second=={"type":"document_changed","version":3}
                     with pytest.raises(ConnectionClosed) as closed:
                         await asyncio.wait_for(ws_student.recv(),3)
                     assert closed.value.code==4403
