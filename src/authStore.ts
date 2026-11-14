@@ -69,7 +69,7 @@ export const completeEmailConfirmation=async(callbackUrl:string):Promise<AuthUse
  if(isSelfhostBackendEnabled()){
   const callback=new URL(callbackUrl);
   const token=callback.searchParams.get("token");
-  if(!token)throw new Error("В ссылке подтверждения отсутствует токен.");
+  if(!token)return null;
   const session=await selfhostVerifyEmail(token);
   pendingSelfhostRegistration=null;
   await selfhostClaimInvitations();
