@@ -1,4 +1,5 @@
 import { getRealtimeSocketUrl, getRemoteSession, isRemoteBackendEnabled } from "./backend";
+import { isSelfhostBackendEnabled, selfhostSubscribeBoard } from "./selfhostApi";
 
 export type ViewFocusCommand = {
   targetUserId: string;
@@ -37,6 +38,54 @@ export function connectBoardViewControl(
   onTeacherView: (update: TeacherViewUpdate) => void,
   onGuidedFollow: (update: GuidedFollowUpdate) => void,
 ): BoardViewControlChannel {
+  if (isSelfhostBackendEnabled()) {
+    const channel = selfhostSubscribeBoard(boardId, () => {}, () => {}, event => {
+      if (event.type === "focus_view") {
+        if (event.user_id === me.userId || event.target_user_id !== me.userId) return;
+        onFocus({
+          targetUserId: event.target_user_id, senderUserId: event.user_id,
+          senderName: event.name || "Преподаватель",
+          centerX: event.center_x, centerY: event.center_y,
+          zoom: Math.min(4, Math.max(0.1, event.zoom)),
+        });
+      } else if (event.type === "teacher_view") {
+        if (event.user_id === me.userId) return;
+        onTeacherView({
+          senderUserId: event.user_id, senderName: event.name || "Преподаватель",
+          centerX: event.center_x, centerY: event.center_y,
+          zoom: Math.min(4, Math.max(0.1, event.zoom)),
+        });
+      } else if (event.type === "guided_follow") {
+        if (event.user_id === me.userId) return;
+        onGuidedFollow({
+          senderUserId: event.user_id, senderName: event.name || "Преподаватель",
+          enabled: event.enabled,
+        });
+      }
+    });
+    return {
+      sendFocus: (targetUserId, centerX, centerY, zoom) => {
+        if (!targetUserId || targetUserId === me.userId ||
+            !Number.isFinite(centerX) || !Number.isFinite(centerY) || !Number.isFinite(zoom)) return;
+        channel.sendEvent({
+          type: "focus_view", target_user_id: targetUserId,
+          center_x: centerX, center_y: centerY,
+          zoom: Math.min(4, Math.max(0.1, zoom)),
+        });
+      },
+      sendTeacherView: (centerX, centerY, zoom) => {
+        if (!Number.isFinite(centerX) || !Number.isFinite(centerY) || !Number.isFinite(zoom)) return;
+        channel.sendEvent({
+          type: "teacher_view", center_x: centerX, center_y: centerY,
+          zoom: Math.min(4, Math.max(0.1, zoom)),
+        });
+      },
+      sendGuidedFollow: enabled => {
+        channel.sendEvent({ type: "guided_follow", enabled });
+      },
+      close: () => channel(),
+    };
+  }
   if (!isRemoteBackendEnabled()) {
     return { sendFocus: () => {}, sendTeacherView: () => {}, sendGuidedFollow: () => {}, close: () => {} };
   }
