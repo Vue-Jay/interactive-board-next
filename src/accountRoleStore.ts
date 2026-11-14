@@ -63,6 +63,13 @@ const remember=(userId:string,value:AccountAccess,generation=cacheGeneration)=>{
  return value;
 };
 export function clearAccountAccessCache(){
+ // A role change must invalidate both memory and the persisted snapshot.
+ // Otherwise the next lookup reads a fresh-looking but obsolete access level.
+ const userId=currentRemoteUserId();
+ if(userId){
+  try{localStorage.removeItem(cacheKey(userId))}
+  catch{/* Storage can be unavailable in private mode. */}
+ }
  cache=null;
  inFlight=null;
  cacheGeneration++;
