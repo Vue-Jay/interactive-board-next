@@ -170,8 +170,6 @@ async def test_board_access_and_conflict_free_save(client):
         "title": "Химия: нативная доска",
         "subject": "chemistry",
         "view": {"x": 12.5, "y": -8.25, "zoom": 1.2},
-        "background": {"kind": "grid", "color": "#ffffff"},
-        "backgroundShared": True,
         "items": [
             {"id": "native-text", "kind": "text", "x": 20, "y": 30,
              "width": 240, "height": 80, "text": "Закон сохранения массы",
