@@ -60,3 +60,7 @@
 .pilot-history ul{list-style:none;padding:0;margin:0;display:grid;gap:6px}
 .pilot-history li{display:flex;gap:12px;justify-content:space-between;font-size:12px;
   color:#3a557e;background:#f3f6fc;border-radius:8px;padding:8px 11px}
+
+.pilot-object-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.pilot-object-actions button{background:#edf4ff;border-color:#b8cce8;color:#234979;font-weight:650}
+.pilot-object-actions button:disabled{opacity:.55;cursor:not-allowed}
