@@ -196,6 +196,15 @@ export async function selfhostRequest<T>(path:string,init:RequestInit={}):Promis
 export const selfhostBoards=()=>selfhostRequest<SelfhostBoard[]>("/api/v1/boards");
 export const selfhostNotifications=()=>selfhostRequest<any[]>("/api/v1/notifications");
 export const selfhostOrganization=()=>selfhostRequest<{categories:Array<{kind:"subject"|"group";name:string}>;boards:Array<{board_id:string;subject:string;group_name:string}>}>("/api/v1/organization");
+export const selfhostDirectChats=()=>selfhostRequest<any[]>("/api/v1/direct-chats");
+export const selfhostDirectContacts=()=>selfhostRequest<any[]>("/api/v1/direct-chats/contacts");
+export const selfhostEnsureDirectChat=(user_id:string)=>selfhostRequest<{id:string}>("/api/v1/direct-chats",{method:"POST",body:JSON.stringify({user_id})});
+export const selfhostDirectMessages=(id:string)=>selfhostRequest<any[]>("/api/v1/direct-chats/"+encodeURIComponent(id)+"/messages");
+export const selfhostSendDirectMessage=(id:string,body:string)=>selfhostRequest<{ok:boolean}>("/api/v1/direct-chats/"+encodeURIComponent(id)+"/messages",{method:"POST",body:JSON.stringify({body})});
+export const selfhostMarkDirectChatRead=(id:string)=>selfhostRequest<{ok:boolean}>("/api/v1/direct-chats/"+encodeURIComponent(id)+"/read",{method:"POST",body:"{}"});
+export const selfhostDirectReadState=(id:string)=>selfhostRequest<{other_last_read_at:string|null}>("/api/v1/direct-chats/"+encodeURIComponent(id)+"/read-state");
+export const selfhostEditDirectMessage=(id:string,body:string)=>selfhostRequest<{ok:boolean}>("/api/v1/direct-messages/"+encodeURIComponent(id),{method:"PATCH",body:JSON.stringify({body})});
+export const selfhostDeleteDirectMessage=(id:string)=>selfhostRequest<{ok:boolean}>("/api/v1/direct-messages/"+encodeURIComponent(id),{method:"DELETE"});
 export const selfhostSaveBoardOrganization=(board_id:string,subject:string,group_name:string)=>selfhostRequest<{ok:boolean}>("/api/v1/organization/board",{method:"PUT",body:JSON.stringify({board_id,subject,group_name})});
 export const selfhostSaveCategory=(kind:"subject"|"group",name:string)=>selfhostRequest<{ok:boolean}>("/api/v1/organization/category",{method:"POST",body:JSON.stringify({kind,name})});
 export const selfhostReadNotification=(id:string)=>selfhostRequest<{ok:boolean}>("/api/v1/notifications/"+encodeURIComponent(id)+"/read",{method:"POST",body:"{}"});

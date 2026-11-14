@@ -746,3 +746,5 @@ from notifications import make_router as make_notifications_router
 app.include_router(make_notifications_router(current_user))
 from organization import make_router as make_organization_router
 app.include_router(make_organization_router(current_user,board_access))
+from direct_chats import make_router as make_direct_chats_router
+app.include_router(make_direct_chats_router(current_user))
