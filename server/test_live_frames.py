@@ -18,6 +18,14 @@ def ink():
     }
 
 
+def object_preview():
+    return {
+        "type":"object_preview","client_id":"client_01","object_id":"rect_001",
+        "gesture_id":"gesture_001","seq":1,"object_revision":2,
+        "x":120.5,"y":240.25,
+    }
+
+
 def accept(frame, role="editor"):
     return validate_live_event(
         frame,role=role,user_id="trusted-user",
@@ -68,12 +76,37 @@ def test_ink_requires_editor_and_validates_bounds():
             accept(bad)
 
 
+def test_object_preview_is_editor_only_and_server_attributed():
+    result=accept(object_preview(),role="editor")
+    assert result["type"]=="object_preview"
+    assert result["user_id"]=="trusted-user"
+    assert result["name"]=="Учитель базы данных"
+    assert result["object_id"]=="rect_001"
+    assert result["object_revision"]==2
+    with pytest.raises(InvalidLiveEvent,match="read_only"):
+        accept(object_preview(),role="viewer")
+    for frame in [
+        {**object_preview(),"user_id":"victim"},
+        {**object_preview(),"role":"owner"},
+        {**object_preview(),"object_id":"../private"},
+        {**object_preview(),"gesture_id":"gesture/other"},
+        {**object_preview(),"seq":True},
+        {**object_preview(),"object_revision":0},
+        {**object_preview(),"x":1001},
+        {**object_preview(),"y":float("inf")},
+    ]:
+        with pytest.raises(InvalidLiveEvent):
+            accept(frame)
+
+
 def test_unknown_event_and_rate_limits():
     with pytest.raises(InvalidLiveEvent,match="unsupported_event"):
         accept({"type":"remote_admin"})
     limiter=EventRateLimit()
     assert all(limiter.check("cursor") for _ in range(20))
     assert limiter.check("cursor") is False
+    assert all(limiter.check("object_preview") for _ in range(24))
+    assert limiter.check("object_preview") is False
     assert all(limiter.check("live_ink") for _ in range(30))
     assert limiter.check("live_ink") is False
-    assert limiter.violations==2
+    assert limiter.violations==3
