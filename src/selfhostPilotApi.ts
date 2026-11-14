@@ -34,10 +34,12 @@ export type PilotLiveInkPacket={
 export type PilotLiveEvent=
   | {type:"cursor";client_id:string;user_id:string;name:string;role:PilotBoardRole;x:number;y:number;sent_at:number}
   | (PilotLiveInkPacket&{user_id:string;name:string;role:PilotBoardRole;sent_at:number})
+  | PilotRemoteObjectPreview
   | {type:"event_error";reason:string};
 export type PilotBoardChannel=(()=>void)&{
   sendCursor:(clientId:string,x:number,y:number)=>boolean;
-    sendInk:(ink:PilotLiveInkPacket)=>boolean};
+    sendInk:(ink:PilotLiveInkPacket)=>boolean;
+    sendObjectPreview:(preview:PilotObjectPreview)=>boolean};
 
 const SESSION_KEY="lektrus.selfhost.pilot.session.v1";
 const TIMEOUT_MS=15000;
@@ -218,6 +220,45 @@ export const pilotInkHistory=(boardId:string)=>
   pilotRequest<PilotInkHistoryRow[]>(
     "/api/v1/boards/"+encodeURIComponent(boardId)+"/pilot/history"
   );
+export type PilotRectObject={
+  id:string;kind:"pilot_rect";x:number;y:number;width:number;height:number;
+  color:string;revision:number;created_by:string;
+};
+export type PilotObjectOperationResult={
+  operation_id:string;object_id:string;object_revision:number;
+  version:number;duplicate:boolean;
+};
+export type PilotObjectPreview={
+  type:"object_preview";client_id:string;object_id:string;gesture_id:string;
+  seq:number;object_revision:number;x:number;y:number;
+};
+export type PilotRemoteObjectPreview=PilotObjectPreview&{
+  user_id:string;name:string;role:PilotBoardRole;sent_at:number;
+};
+export function pilotCreateObject(
+  boardId:string,objectId:string,operationId:string,
+  x:number,y:number,width:number,height:number,color:string,
+):Promise<PilotObjectOperationResult>{
+  return pilotRequest<PilotObjectOperationResult>(
+    "/api/v1/boards/"+encodeURIComponent(boardId)+"/pilot/objects",{
+      method:"POST",body:JSON.stringify({
+        operation_id:operationId,object_id:objectId,kind:"pilot_rect",
+        x,y,width,height,color,
+      }),
+    });
+}
+export function pilotMoveObject(
+  boardId:string,objectId:string,operationId:string,
+  expectedRevision:number,x:number,y:number,
+):Promise<PilotObjectOperationResult>{
+  return pilotRequest<PilotObjectOperationResult>(
+    "/api/v1/boards/"+encodeURIComponent(boardId)+"/pilot/objects/"+
+      encodeURIComponent(objectId)+"/move",{
+      method:"POST",body:JSON.stringify({
+        operation_id:operationId,expected_revision:expectedRevision,x,y,
+      }),
+    });
+}
 export const pilotAccess=(boardId:string)=>pilotRequest<PilotAccess>(
   "/api/v1/boards/"+encodeURIComponent(boardId)+"/access"
 );
@@ -266,6 +307,9 @@ export function pilotSubscribeBoard(
   let cursorTimer:ReturnType<typeof setTimeout>|undefined;
   let retryFinals:ReturnType<typeof setInterval>|undefined;
   const pendingFinals=new Map<string,{packet:PilotLiveInkPacket;lastSent:number;attempts:number}>();
+  let lastObjectSent=0;
+  let pendingObject:PilotObjectPreview|null=null;
+  let objectTimer:ReturnType<typeof setTimeout>|undefined;
   const sendRaw=(frame:Record<string,unknown>):boolean=>{
     if(!ready||!socket||socket.readyState!==WebSocket.OPEN)return false;
     socket.send(JSON.stringify(frame));
@@ -300,10 +344,37 @@ export function pilotSubscribeBoard(
     }
     return sent;
   };
+  const flushObjectPreview=()=>{
+    clearTimeout(objectTimer);objectTimer=undefined;
+    const next=pendingObject;
+    if(!next)return;
+    if(sendRaw(next as unknown as Record<string,unknown>)){
+      lastObjectSent=Date.now();pendingObject=null;
+    }
+  };
+  const sendObjectPreview=(next:PilotObjectPreview):boolean=>{
+    if(!ready||next.type!=="object_preview"||
+       !/^[A-Za-z0-9_-]{1,128}$/.test(next.object_id)||
+       !/^[A-Za-z0-9_-]{1,128}$/.test(next.client_id)||
+       !/^[A-Za-z0-9_-]{1,128}$/.test(next.gesture_id)||
+       !Number.isSafeInteger(next.seq)||next.seq<0||
+       !Number.isSafeInteger(next.object_revision)||next.object_revision<1||
+       !Number.isFinite(next.x)||!Number.isFinite(next.y)||
+       next.x<0||next.y<0||next.x>1000||next.y>1000)return false;
+    // Only the latest cursor-like drag preview matters; older samples can be
+    // dropped. Do not send dozens of full board JSON objects per second.
+    pendingObject=next;
+    if(!objectTimer){
+      const delay=Math.max(0,50-(Date.now()-lastObjectSent));
+      objectTimer=setTimeout(flushObjectPreview,delay);
+    }
+    return true;
+  };
   const clearTimers=()=>{
     clearTimeout(retry);clearInterval(heartbeat);clearTimeout(expiry);
     retry=heartbeat=expiry=undefined;
     clearTimeout(cursorTimer);cursorTimer=undefined;
+    clearTimeout(objectTimer);objectTimer=undefined;pendingObject=null;
     clearInterval(retryFinals);retryFinals=undefined;
   };
   const closeSocket=()=>{
@@ -385,6 +456,13 @@ export function pilotSubscribeBoard(
              typeof message.user_id==="string"){
             onLive?.(message as PilotLiveEvent);
           }
+          if(message?.type==="object_preview"&&
+             typeof message.object_id==="string"&&typeof message.client_id==="string"&&
+             typeof message.gesture_id==="string"&&typeof message.user_id==="string"&&
+             Number.isSafeInteger(message.seq)&&Number.isSafeInteger(message.object_revision)&&
+             Number.isFinite(message.x)&&Number.isFinite(message.y)){
+            onLive?.(message as PilotRemoteObjectPreview);
+          }
           if(message?.type==="event_error"&&typeof message.reason==="string"){
             onLive?.(message as PilotLiveEvent);
           }
@@ -409,5 +487,5 @@ export function pilotSubscribeBoard(
     window.removeEventListener("online",networkChanged);
     window.removeEventListener("offline",networkChanged);
   };
-  return Object.assign(stop,{sendCursor,sendInk});
+  return Object.assign(stop,{sendCursor,sendInk,sendObjectPreview});
 }
