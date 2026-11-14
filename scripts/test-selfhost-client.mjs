@@ -191,7 +191,7 @@ const statuses=[];
 const liveEvents=[];
 const unsubscribe=api.selfhostSubscribeBoard("board-1",
   version=>revisions.push(version),status=>statuses.push(status),
-  frame=>liveEvents.push(frame));
+  frame=>liveEvents.push(frame),{visible:true});
 await new Promise(resolve=>setTimeout(resolve,0));
 assert.equal(sockets.length,1);
 assert.ok(sockets[0].url.startsWith("wss://pilot.lektrus.example/api/v1/boards/board-1/events"));
