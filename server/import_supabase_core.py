@@ -11,6 +11,7 @@ import asyncio
 import hashlib
 import json
 import os
+from urllib.parse import urlparse
 
 import asyncpg
 
@@ -71,7 +72,20 @@ def preflight(rows: dict[str, list[asyncpg.Record]]) -> None:
         raise RuntimeError("A document has an unknown owner or invalid payload")
 
 async def run(apply: bool) -> None:
-    source = await asyncpg.connect(source_uri(), ssl="require", timeout=20)
+    source_dsn = source_uri()
+    if apply:
+        target_dsn = target_uri()
+        a, b = urlparse(source_dsn), urlparse(target_dsn)
+        if (a.hostname, a.port, a.path) == (b.hostname, b.port, b.path):
+            raise RuntimeError("Source and target database must be different")
+    # No plaintext network connections to Supabase. Local disposable CI database
+    # may opt out explicitly; this switch is not for production migration.
+    local_ci = os.getenv("LEKTRUS_TEST_INSECURE_SOURCE") == "1" and (
+        urlparse(source_dsn).hostname in ("localhost", "127.0.0.1")
+    )
+    source = await asyncpg.connect(
+        source_dsn, ssl=False if local_ci else "require", timeout=20
+    )
     try:
         async with source.transaction(isolation="repeatable_read", readonly=True):
             rows = {name: await source.fetch(sql) for name,sql in SOURCE_SQL.items()}
