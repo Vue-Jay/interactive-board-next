@@ -50,6 +50,40 @@ The specific high-egress endpoint has not yet been confirmed.
   mobile acceptance, backup and restore drills, load/traffic measurement.
 - Domain provisioning and paid VPS rental.
 
+## Browser pilot, not the production editor
+
+The migration branch includes an **isolated opt-in browser screen** under
+`/selfhost-pilot`. It is selected only when the frontend build has
+`VITE_LEKTRUS_SELFHOST_PILOT=true`. Optionally use
+`VITE_LEKTRUS_SELFHOST_API_ORIGIN=https://your-test-domain` (HTTPS only);
+otherwise requests stay on the site's origin. When the flag is omitted,
+the original marketing, `/app` and Android flows remain unchanged.
+
+The pilot browser client:
+
+- Uses separate, tab-scoped test tokens instead of the production Supabase
+  keys, sessions or local storage.
+- Supports login, signed-out registration (if server SMTP is enabled),
+  `/confirm-email` activation, refresh, logout, teacher/student roles,
+  board creation, and owner-only invitations.
+- Creates only documents with `pilot_schema=1`. All existing full Lektrus
+  board documents are deliberately **read-only** in this pilot.
+- Saves a shared note with optimistic versions and a visible 409 conflict
+  state that keeps the unsaved local draft rather than overwriting it.
+- Connects one authenticated WebSocket per selected board and receives
+  **version notices only**. It fetches the full document only when an unseen
+  revision arrives and no local unsaved edits are present.
+
+This is NOT the full interactive canvas. The existing pen, live ink, object
+drag, cursor, presence, broadcast and multi-tool experience still depend on
+Supabase Realtime. The production frontend is intentionally not connected
+to this pilot backend; no existing customer traffic is reduced yet.
+
+Both the mock browser protocol test and the opt-in TypeScript/Vite build run
+in `.github/workflows/selfhost-frontend.yml`. The backend CI separately
+checks the real PostgreSQL/API and live socket permission-revocation tests.
+Run the complete pilot only on a dedicated staging domain and database.
+
 ## Pilot infrastructure
 
 The prototype is intentionally single-worker, single-host and not public yet.
