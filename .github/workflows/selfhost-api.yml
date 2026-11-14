@@ -44,3 +44,14 @@ jobs:
         run: python -m pytest -q server/test_api.py server/test_importer.py
       - name: Build minimal production image
         run: docker build -f server/Dockerfile -t lektrus-selfhost-api:ci server
+      - name: Validate VPS Compose and Caddy configuration
+        env:
+          LEKTRUS_DOMAIN: lektrus.example
+          LEKTRUS_SITE_ORIGIN: https://lektrus.example
+          POSTGRES_PASSWORD: ci-only-password
+          LEKTRUS_JWT_SECRET: ci-only-secret-not-for-production-1234567890
+        run: |
+          docker compose -f deploy/selfhost/compose.yaml config -q
+          docker run --rm -e LEKTRUS_DOMAIN=lektrus.example \
+            -v "$PWD/deploy/selfhost/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.10.2-alpine caddy validate --config /etc/caddy/Caddyfile
