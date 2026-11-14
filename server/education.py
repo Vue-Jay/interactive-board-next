@@ -408,6 +408,8 @@ def make_education_router(current_user, board_access) -> APIRouter:
         fields = data.model_dump(exclude_unset=True)
         if not fields:
             return {"ok": True}
+        if any(value is None for value in fields.values()):
+            raise HTTPException(422, "Для очистки поля передайте пустую строку, а не null.")
         columns = {
             "title":"title","starts_at":"starts_at",
             "duration_minutes":"duration_minutes","note":"note","status":"status",
@@ -519,7 +521,8 @@ def make_education_router(current_user, board_access) -> APIRouter:
                     scheduled = await conn.fetchval(
                         """SELECT id FROM scheduled_lessons
                             WHERE id=$1 AND teacher_id=$2 AND student_id=$3
-                              AND board_id=$4 AND status<>'cancelled'""",
+                              AND (board_id IS NULL OR board_id=$4)
+                              AND status<>'cancelled'""",
                         data.schedule_id,user["id"],data.student_id,board_id,
                     )
                     if scheduled is None:
@@ -535,13 +538,16 @@ def make_education_router(current_user, board_access) -> APIRouter:
                     )
                 except asyncpg.UniqueViolationError:
                     raise HTTPException(409, "На этой доске уже идёт занятие.") from None
+                lesson_started_at = await conn.fetchval(
+                    "SELECT started_at FROM live_lessons WHERE id=$1",lesson_id
+                )
                 student_name = await conn.fetchval(
                     "SELECT display_name FROM account_users WHERE id=$1",data.student_id
                 )
         return {
             "id":str(lesson_id),"board_id":str(board_id),
             "student_id":str(data.student_id),"student_name":student_name or "Ученик",
-            "topic":data.topic.strip(),"started_at":datetime.now(timezone.utc).isoformat(),
+            "topic":data.topic.strip(),"started_at":iso(lesson_started_at),
             "ended_at":None,"schedule_id":str(data.schedule_id) if data.schedule_id else None,
         }
 
@@ -577,7 +583,8 @@ def make_education_router(current_user, board_access) -> APIRouter:
                          FROM live_lessons WHERE id=$1
                        ON CONFLICT(id) DO UPDATE SET
                          date=excluded.date,duration_minutes=excluded.duration_minutes,
-                         homework=excluded.homework,result=excluded.result,updated_at=now()""",
+                         topic=excluded.topic,homework=excluded.homework,
+                         result=excluded.result,updated_at=now()""",
                     lesson_id,user["id"],lesson["student_id"],lesson["board_id"],
                     lesson["started_at"],minutes,data.homework.strip(),data.result.strip(),
                 )
