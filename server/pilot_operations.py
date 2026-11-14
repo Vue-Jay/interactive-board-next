@@ -113,9 +113,11 @@ def make_pilot_operations_router(current_user, board_access,
         request_hash = digest({"kind": "ink_append", "stroke": stroke})
         async with request.app.state.pool.acquire() as conn:
             async with conn.transaction():
-                _, role = await board_access(conn, board_id, user["id"], lock=True)
+                board, role = await board_access(conn, board_id, user["id"], lock=True)
                 if role not in ("owner", "editor"):
                     raise HTTPException(403, "Недостаточно прав для рисования.")
+                if not board["is_pilot"]:
+                    raise HTTPException(409, "Операции тестового рисования запрещены в обычной доске.")
                 previous = await previous_operation(
                     conn, board_id, payload.operation_id, user["id"],
                     request_hash, "ink_append",
@@ -173,9 +175,11 @@ def make_pilot_operations_router(current_user, board_access,
         request_hash = digest({"kind": "ink_undo", "actor": str(user["id"])})
         async with request.app.state.pool.acquire() as conn:
             async with conn.transaction():
-                _, role = await board_access(conn, board_id, user["id"], lock=True)
+                board, role = await board_access(conn, board_id, user["id"], lock=True)
                 if role not in ("owner", "editor"):
                     raise HTTPException(403, "Недостаточно прав для отмены.")
+                if not board["is_pilot"]:
+                    raise HTTPException(409, "Операции тестового рисования запрещены в обычной доске.")
                 previous = await previous_operation(
                     conn, board_id, payload.operation_id, user["id"],
                     request_hash, "ink_undo",
@@ -229,7 +233,9 @@ def make_pilot_operations_router(current_user, board_access,
         board_id: UUID, request: Request, user=Depends(current_user)
     ):
         async with request.app.state.pool.acquire() as conn:
-            await board_access(conn, board_id, user["id"])
+            board, _ = await board_access(conn, board_id, user["id"])
+            if not board["is_pilot"]:
+                raise HTTPException(409, "История пилота недоступна для обычной доски.")
             row = await conn.fetchrow(
                 "SELECT document FROM board_documents WHERE board_id=$1", board_id,
             )
