@@ -180,6 +180,24 @@ export const pilotInvite=(boardId:string,email:string,role:"editor"|"viewer")=>
 export const pilotClaimInvitations=()=>pilotRequest<{claimed:number}>(
   "/api/v1/invitations/claim",{method:"POST"}
 );
+export async function pilotSignup(input:{
+  email:string;password:string;name:string;first_name:string;last_name:string;
+  role:"teacher"|"student";
+}):Promise<{ok:boolean;message:string}>{
+  const response=await rawRequest("/api/v1/auth/signup",{
+    method:"POST",body:JSON.stringify(input),
+  });
+  if(!response.ok)throw await responseError(response);
+  return response.json();
+}
+export async function pilotVerifyEmail(token:string):Promise<{ok:boolean;message:string}>{
+  const response=await rawRequest("/api/v1/auth/verify-email",{
+    method:"POST",body:JSON.stringify({token}),
+  });
+  if(!response.ok)throw await responseError(response);
+  return response.json();
+}
+
 
 /** Version notices only: actual board document is fetched once after a new revision. */
 export function pilotSubscribeBoard(
