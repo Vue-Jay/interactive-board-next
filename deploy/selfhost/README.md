@@ -10,8 +10,10 @@ frontend's Supabase URL until the full parity checklist is complete.
 - Password verification using bcrypt (compatible with the currently observed Lectrus
   Supabase Auth password hash format), 15-minute access JWT, single-use rotated refresh
   tokens, explicit logout revocation and server-side board access checks.
-- New board creation, listing, document reads, document writes with optimistic version
-  checks and WebSocket revision notifications (no full JSON document pushed over WS).
+- New board creation, listing, native document reads/writes with optimistic
+  version checks and WebSocket revision notifications (no full JSON document
+  pushed over WS). The general Lektrus document API accepts up to 24 MiB, matching
+  the browser parser's import ceiling; the isolated ink pilot keeps its own 2 MiB cap.
 - Docker Compose with PostgreSQL and API on an internal-only Docker network, Caddy
   reverse proxy for HTTPS and static frontend hosting.
 - An importer from Supabase Postgres to **a separate empty database**, read-only by
@@ -67,19 +69,36 @@ The pilot browser client:
 - Supports login, signed-out registration (if server SMTP is enabled),
   `/confirm-email` activation, refresh, logout, teacher/student roles,
   board creation, and owner-only invitations.
-- Creates only boards flagged `is_pilot=true` server-side with documents
-  marked `pilot_schema=1`. All existing full Lektrus board documents are
-  deliberately **read-only** in this pilot.
+- The lightweight ink/object pilot still creates only boards flagged
+  `is_pilot=true` server-side with documents marked `pilot_schema=1`.
+  Existing native Lektrus documents are not passed through those pilot-only
+  mutation endpoints.
+- A separate action creates an ordinary `is_pilot=false` board and opens the
+  real `BoardApp` editor against the self-hosted document API. It uses the
+  native Lektrus document schema and optimistic version writes; the production
+  Supabase route and its credentials remain untouched.
+- Native editor attachments are uploaded/read through the authenticated private
+  asset API, not Supabase Storage. Existing local IndexedDB attachments are
+  uploaded before the document starts referencing them.
 - Saves a shared note with optimistic versions and a visible 409 conflict
   state that keeps the unsaved local draft rather than overwriting it.
 - Connects one authenticated WebSocket per selected board for version
   notices, transient cursors and ink previews. It fetches the full document
   only when a new revision arrives and no local edits are pending.
 
-This is NOT the full interactive canvas. The existing full editor, persistent
-ink and undo history, object drag, presence, broadcast and subject tools
-still depend on Supabase Realtime. The production frontend is intentionally not connected
-to this pilot backend; no existing customer traffic is reduced yet.
+The opt-in `/selfhost-pilot` staging entry can now launch the **real Lektrus
+editor** on an ordinary self-hosted board. Native document autosave, optimistic
+conflict recovery, WebSocket revision notices and private attachment upload/read
+use the new API. The lightweight pilot drawing schema remains separate.
+
+**Still incomplete:** smooth live object transforms, live cursors/presence,
+collaborative ink previews, board chat, activity/history APIs, invitation and
+account-management parity, background workers and multi-instance WebSocket
+fanout are not yet ported from Supabase Realtime. The full editor's local
+selection, tools and undo stack work in the browser, but other users receive
+document revisions after a save rather than the old low-latency transform stream.
+No existing production traffic is reduced yet; the normal Timeweb route and
+`main` remain unchanged.
 
 Both the mock browser protocol test and the opt-in TypeScript/Vite build run
 in `.github/workflows/selfhost-frontend.yml`. The backend CI separately
