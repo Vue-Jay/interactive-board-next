@@ -14,14 +14,14 @@ for(const [subject,ids] of Object.entries({
  "математика":["math-formula","math-fractions","math-geometry","math-coordinate"],
  "физика":["physics-mechanics","physics-graphs","physics-optics","physics-circuits"],
  "химия":["chem-periodic-table","chem-organic","chem-formulas","chem-experiments"],
- "биология":["bio-anatomy"],
+ "биология":[],
  "география":["maps-atlas","contour-atlas","geo-matching","geo-question-cards"],
- "история":["history-atlas","history-timeline","history-family-tree"],
- "информатика":["info-encoding","info-place-value","info-programming","info-flowchart","info-circuit","info-logic"],
+ "история":["history-atlas"],
+ "информатика":[],
  "русский язык":[],
  "иностранный язык":["language-sentence-builder","language-flashcards"],
- "литература":["literature-analysis"],
- "обществознание":["civics-structure"]
+ "литература":[],
+ "обществознание":[]
 })){
  const start=panel.indexOf('"'+subject+'":[');
  assert.ok(start>=0,"Missing subject grouping "+subject);
@@ -31,6 +31,13 @@ for(const [subject,ids] of Object.entries({
  assert.ok(end>start,"Missing subject group terminator "+subject);
  const section=panel.slice(start,end);
  for(const id of ids)assert.ok(section.includes('"'+id+'"'),"Missing "+id+" under "+subject);
+}
+assert.ok(!panel.includes("+ Предметная доска")&&!panel.includes("onCreateBoard"),
+ "No redundant standalone subject-board button in the catalogue");
+for(const id of ["bio-anatomy","history-timeline","history-family-tree",
+ "info-programming","info-flowchart","civics-structure","literature-analysis"]){
+ const section=panel.split("const subjectToolSections:")[1].split("function sectionsForSubject")[0];
+ assert.ok(!section.includes('"'+id+'"'),"Unfinished subject tool still appears in catalogue sections: "+id);
 }
 const russianSection=panel.split('"русский язык":[')[1].split('"иностранный язык":[')[0];
 for(const id of ["ru-syntax","ru-morphemes","ru-morphology","ru-phonetics","ru-orthography"]){
