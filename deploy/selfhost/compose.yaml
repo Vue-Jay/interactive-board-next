@@ -15,6 +15,7 @@ services:
       - ../../server/sql/003_board_invites.sql:/docker-entrypoint-initdb.d/003_board_invites.sql:ro
       - ../../server/sql/004_account_verification.sql:/docker-entrypoint-initdb.d/004_account_verification.sql:ro
       - ../../server/sql/005_pilot_operations.sql:/docker-entrypoint-initdb.d/005_pilot_operations.sql:ro
+      - ../../server/sql/006_pilot_board_flag.sql:/docker-entrypoint-initdb.d/006_pilot_board_flag.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U lektrus -d lektrus"]
       interval: 10s
