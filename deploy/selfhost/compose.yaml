@@ -1,4 +1,4 @@
-# Run only after a dedicated VPS, domain, backups, and isolated data import exist.
+# Run on the dedicated production VPS with a domain and backups. A fresh database is expected.
 # No port for PostgreSQL or the API is exposed to the public Internet.
 services:
   db:
@@ -32,6 +32,7 @@ services:
       LEKTRUS_JWT_SECRET: ${LEKTRUS_JWT_SECRET:?Set a random 32+ byte secret}
       LEKTRUS_ALLOWED_ORIGINS: ${LEKTRUS_SITE_ORIGIN:?Set the HTTPS site origin}
       LEKTRUS_ASSETS_DIR: /srv/lektrus-assets
+      LEKTRUS_BOOTSTRAP_ADMIN_EMAIL: ${LEKTRUS_BOOTSTRAP_ADMIN_EMAIL:-}
       LEKTRUS_ENABLE_REGISTRATION: ${LEKTRUS_ENABLE_REGISTRATION:-false}
       LEKTRUS_PUBLIC_ORIGIN: ${LEKTRUS_SITE_ORIGIN:?Set site origin}
       LEKTRUS_SMTP_HOST: ${LEKTRUS_SMTP_HOST:-}
