@@ -32,15 +32,27 @@ export type SelfhostLiveInkPacket={
   type:"live_ink";client_id:string;stroke_id:string;kind:"pen"|"marker";
   color:string;weight:number;offset:number;points:SelfhostPoint[];finished:boolean;
 };
+export type SelfhostPresenceUser={user_id:string;name:string;role:SelfhostBoardRole};
 export type SelfhostLiveEvent=
   | {type:"cursor";client_id:string;user_id:string;name:string;role:SelfhostBoardRole;x:number;y:number;sent_at:number}
   | (SelfhostLiveInkPacket&{user_id:string;name:string;role:SelfhostBoardRole;sent_at:number})
   | SelfhostRemoteObjectPreview
+  | {type:"presence_state";users:SelfhostPresenceUser[]}
+  | {type:"presence_diff";joins:SelfhostPresenceUser[];leaves:SelfhostPresenceUser[]}
+  | {type:"work_state";user_id:string;name:string;role:SelfhostBoardRole;selected_ids:string[];editing_id:string|null;sent_at:number}
+  | {type:"editor_mutation";user_id:string;name:string;role:SelfhostBoardRole;id:string;item_id:string;client_id:string;ops:Array<Record<string,unknown>>;sent_at:number}
+  | {type:"object_transform";user_id:string;name:string;role:SelfhostBoardRole;client_id:string;seq:number;finished:boolean;items:Array<Record<string,unknown>>;sent_at:number}
+  | {type:"focus_view";user_id:string;name:string;role:SelfhostBoardRole;target_user_id:string;center_x:number;center_y:number;zoom:number;sent_at:number}
+  | {type:"teacher_view";user_id:string;name:string;role:SelfhostBoardRole;center_x:number;center_y:number;zoom:number;sent_at:number}
+  | {type:"guided_follow";user_id:string;name:string;role:SelfhostBoardRole;enabled:boolean;sent_at:number}
+  | {type:"attachment_request";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;asset_id:string;mime:string;kind:"image"|"pdf";width:number;height:number;sent_at:number}
+  | {type:"attachment_result";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;target_user_id:string;approved:boolean;name:string;sent_at:number}
   | {type:"event_error";reason:string};
 export type SelfhostBoardChannel=(()=>void)&{
   sendCursor:(clientId:string,x:number,y:number)=>boolean;
-    sendInk:(ink:SelfhostLiveInkPacket)=>boolean;
-    sendObjectPreview:(preview:SelfhostObjectPreview)=>boolean};
+  sendInk:(ink:SelfhostLiveInkPacket)=>boolean;
+  sendObjectPreview:(preview:SelfhostObjectPreview)=>boolean;
+  sendEvent:(event:Record<string,unknown>)=>boolean};
 
 const SESSION_KEY="lektrus.selfhost.session.v1";
 const TIMEOUT_MS=15000;
@@ -272,6 +284,7 @@ export function selfhostSubscribeBoard(
   boardId:string,onRevision:(version:number)=>void,
   onStatus:(status:SelfhostRealtimeStatus)=>void,
   onLive?:(event:SelfhostLiveEvent)=>void,
+  presence?:{visible:boolean},
 ):SelfhostBoardChannel{
   let stopped=false,generation=0,attempt=0;
   let socket:WebSocket|null=null;
@@ -330,6 +343,10 @@ export function selfhostSubscribeBoard(
       lastObjectSent=Date.now();pendingObject=null;
     }
   };
+  const sendEvent=(event:Record<string,unknown>):boolean=>{
+    if(typeof event.type!=="string"||!event.type)return false;
+    return sendRaw(event);
+  };
   const sendObjectPreview=(next:SelfhostObjectPreview):boolean=>{
     if(!ready||next.type!=="object_preview"||
        !/^[A-Za-z0-9_-]{1,128}$/.test(next.object_id)||
@@ -384,7 +401,10 @@ export function selfhostSubscribeBoard(
       const active=()=>!stopped&&generation===current&&socket===ws;
       ws.onopen=()=>{
         if(!active())return;
-        ws.send(JSON.stringify({type:"auth",token:session.access_token}));
+        ws.send(JSON.stringify({
+          type:"auth",token:session.access_token,
+          ...(presence?{presence:true,visible:presence.visible}:{}),
+        }));
         heartbeat=setInterval(()=>{
           if(active()&&ws.readyState===WebSocket.OPEN)
             ws.send(JSON.stringify({type:"ping"}));
@@ -441,6 +461,31 @@ export function selfhostSubscribeBoard(
              Number.isFinite(message.x)&&Number.isFinite(message.y)){
             onLive?.(message as SelfhostRemoteObjectPreview);
           }
+          if(message?.type==="presence_state"&&Array.isArray(message.users)){
+            const users=message.users.filter((user:unknown)=>
+              !!user&&typeof user==="object"&&
+              typeof (user as Record<string,unknown>).user_id==="string"&&
+              typeof (user as Record<string,unknown>).name==="string"&&
+              ["owner","editor","viewer"].includes(String((user as Record<string,unknown>).role)));
+            onLive?.({type:"presence_state",users} as SelfhostLiveEvent);
+          }
+          if(message?.type==="presence_diff"&&Array.isArray(message.joins)&&Array.isArray(message.leaves)){
+            const valid=(user:unknown)=>!!user&&typeof user==="object"&&
+              typeof (user as Record<string,unknown>).user_id==="string"&&
+              typeof (user as Record<string,unknown>).name==="string"&&
+              ["owner","editor","viewer"].includes(String((user as Record<string,unknown>).role));
+            onLive?.({
+              type:"presence_diff",joins:message.joins.filter(valid),
+              leaves:message.leaves.filter(valid),
+            } as SelfhostLiveEvent);
+          }
+          const relayedTypes=["work_state","editor_mutation","object_transform","focus_view",
+            "teacher_view","guided_follow","attachment_request","attachment_result"];
+          if(relayedTypes.includes(String(message?.type))&&typeof message.user_id==="string"&&
+             typeof message.name==="string"&&
+             ["owner","editor","viewer"].includes(String(message.role))){
+            onLive?.(message as SelfhostLiveEvent);
+          }
           if(message?.type==="event_error"&&typeof message.reason==="string"){
             onLive?.(message as SelfhostLiveEvent);
           }
@@ -465,7 +510,7 @@ export function selfhostSubscribeBoard(
     window.removeEventListener("online",networkChanged);
     window.removeEventListener("offline",networkChanged);
   };
-  return Object.assign(stop,{sendCursor,sendInk,sendObjectPreview});
+  return Object.assign(stop,{sendCursor,sendInk,sendObjectPreview,sendEvent});
 }
 
 
