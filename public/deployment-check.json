@@ -1,6 +1,6 @@
 {
   "application": "lektrus",
-  "source": "github-webhook",
+  "source": "github-actions",
   "branch": "deploy/amvera-lektrus",
-  "marker": "lektrus-autodeploy-check-2026-11-15"
+  "marker": "lektrus-actions-deploy-check-2026-11-15"
 }
