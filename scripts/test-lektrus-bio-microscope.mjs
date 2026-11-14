@@ -33,7 +33,8 @@ assert.ok(bioNodes("sunflower").some(n=>n.name==="Соцветие-корзин�
 assert.ok(bioNodes("oak").some(n=>n.name==="Клетка ризодермы с корневым волоском"));
 assert.ok(bioNodes("oak").some(n=>n.name==="Сосудистый элемент"));
 const panel=fs.readFileSync("src/LektrusSubjectToolsPanel.tsx","utf8");
-assert.match(panel,/"биология":\[\{title:"Анатомия человека",ids:\["bio-anatomy"\]/);
+assert.match(panel,/"биология":\[\]/,
+ "Release catalogue must hide biology atlas creators while keeping saved microscope objects");
 assert.match(fs.readFileSync("src/lektrusSubjectToolRegistry.ts","utf8"),/id:"bio-microscope"[\s\S]*?subjects:\[\]/,
  "Legacy microscope remains loadable but hidden from new tool selection");
 const old=fs.readFileSync("src/lektrusSchoolDiagramModel.ts","utf8");
