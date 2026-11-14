@@ -39,9 +39,9 @@ jobs:
       - name: Install API dependencies
         run: python -m pip install --disable-pip-version-check -r server/requirements-test.txt
       - name: Compile source
-        run: python -m compileall -q server/app.py server/assets.py server/invitations.py server/registration.py server/test_registration.py server/test_api.py server/test_assets.py server/test_invitations.py server/test_realtime_permissions.py server/import_supabase_core.py server/test_importer.py server/import_supabase_assets.py server/check_assets.py server/test_asset_import.py
+        run: python -m compileall -q server/app.py server/assets.py server/invitations.py server/registration.py server/test_registration.py server/test_api.py server/test_assets.py server/test_invitations.py server/test_realtime_permissions.py server/test_ws_e2e.py server/import_supabase_core.py server/test_importer.py server/import_supabase_assets.py server/check_assets.py server/test_asset_import.py
       - name: Integration and migration tests against disposable PostgreSQL
-        run: python -m pytest -q server/test_api.py server/test_assets.py server/test_invitations.py server/test_registration.py server/test_realtime_permissions.py server/test_importer.py server/test_asset_import.py
+        run: python -m pytest -q server/test_api.py server/test_assets.py server/test_invitations.py server/test_registration.py server/test_realtime_permissions.py server/test_importer.py server/test_asset_import.py server/test_ws_e2e.py
       - name: Build minimal production image
         run: docker build -f server/Dockerfile -t lektrus-selfhost-api:ci server
       - name: Boot actual API container and test private disk permissions
