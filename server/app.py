@@ -393,7 +393,7 @@ async def save_document(board_id: UUID, data: SaveDocumentInput, request: Reques
         error(413, "Слишком много объектов на доске.")
     serialized = json.dumps(data.document, ensure_ascii=False, separators=(",", ":"))
     if len(serialized.encode("utf-8")) > MAX_DOCUMENT_BYTES:
-        error(413, "Документ превышает ограничение 2 МБ.")
+        error(413, "Документ превышает ограничение 24 МБ.")
     async with request.app.state.pool.acquire() as conn:
         async with conn.transaction():
             _, role = await board_access(conn, board_id, user["id"], lock=True)
