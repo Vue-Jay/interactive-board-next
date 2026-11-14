@@ -1,5 +1,7 @@
 """Synthetic email-confirmation tests: no real emails or user data."""
+from datetime import datetime, timezone
 from urllib.parse import parse_qs, urlsplit
+from uuid import UUID
 
 import asyncpg
 import pytest
