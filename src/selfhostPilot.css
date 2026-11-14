@@ -54,3 +54,9 @@
 .pilot-live-canvas{display:block;width:100%;height:min(42vh,400px);min-height:220px;border:1px solid #bfcfe4;background:#fdfefe;border-radius:12px;touch-action:none;user-select:none;margin:12px 0 14px;cursor:crosshair}
 .pilot-live .pilot-muted{margin:8px 0}
 @media(max-width:530px){.pilot-live-canvas{height:290px;min-height:220px}}
+
+.pilot-history{margin-top:20px;padding-top:14px;border-top:1px solid #e1e7f0}
+.pilot-history h3{font-size:14px;margin:0 0 10px}
+.pilot-history ul{list-style:none;padding:0;margin:0;display:grid;gap:6px}
+.pilot-history li{display:flex;gap:12px;justify-content:space-between;font-size:12px;
+  color:#3a557e;background:#f3f6fc;border-radius:8px;padding:8px 11px}
