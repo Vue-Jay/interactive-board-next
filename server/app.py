@@ -29,7 +29,7 @@ ISSUER = "lektrus-selfhost"
 AUDIENCE = "lektrus"
 ACCESS_SECONDS = 900
 REFRESH_DAYS = 30
-MAX_DOCUMENT_BYTES = 2_000_000
+MAX_DOCUMENT_BYTES = 24 * 1024 * 1024
 MAX_DOCUMENT_ITEMS = 10_000
 
 def setting(name: str) -> str:
