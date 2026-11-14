@@ -1,0 +1,35 @@
+name: Self-hosted Lektrus frontend pilot
+
+on:
+  push:
+    branches:
+      - migration/self-hosted-backend-20261114
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Exercise the isolated client against fake HTTPS and WebSocket
+        run: node scripts/test-selfhost-pilot-client.mjs
+      - name: Compile and build the opt-in test interface
+        env:
+          VITE_LEKTRUS_SELFHOST_PILOT: 'true'
+          VITE_LEKTRUS_SELFHOST_API_ORIGIN: https://lektrus.example
+        run: npm run build
+      - name: Validate bundled pilot
+        run: |
+          test -s dist/index.html
+          test -d dist/assets
+          find dist/assets -name 'selfhostPilotEntry-*.js' -size +100c | grep -q .

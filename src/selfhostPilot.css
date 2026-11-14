@@ -1,0 +1,66 @@
+/* Isolated visual smoke test for the self-hosted API, not production board UI. */
+.selfhost-pilot{min-height:100dvh;background:#f3f6fc;color:#1a2945;font:15px/1.5 system-ui,sans-serif}
+.selfhost-pilot *{box-sizing:border-box}
+.selfhost-pilot button,.selfhost-pilot input,.selfhost-pilot textarea,.selfhost-pilot select{font:inherit}
+.selfhost-pilot button{border:1px solid #cad8ec;border-radius:10px;background:#fff;color:#234979;padding:10px 13px;cursor:pointer}
+.selfhost-pilot button:hover:not(:disabled){background:#eaf2ff}
+.selfhost-pilot button:disabled{opacity:.55;cursor:not-allowed}
+.selfhost-pilot button:focus-visible,.selfhost-pilot input:focus-visible,
+.selfhost-pilot textarea:focus-visible,.selfhost-pilot select:focus-visible{outline:3px solid #7dabeb;outline-offset:2px}
+.pilot-topbar{display:flex;align-items:center;flex-wrap:wrap;gap:14px;justify-content:space-between;padding:14px clamp(16px,4vw,48px);background:#fff;border-bottom:1px solid #dce5f2}
+.pilot-topbar>div{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.pilot-topbar strong{font-size:23px;color:#255ab4;letter-spacing:-.6px}
+.pilot-topbar span{color:#647998;font-size:13px}
+.pilot-chip{background:#eaf1fd;padding:7px 11px;border-radius:99px}
+.pilot-main{max-width:1240px;margin:0 auto;padding:clamp(18px,3vw,38px)}
+.pilot-main h1{font-size:clamp(23px,3vw,34px);line-height:1.2;margin:0 0 10px}
+.pilot-main h2{font-size:18px;margin:0 0 16px}
+.pilot-main h3{font-size:15px;margin:0 0 10px}
+.pilot-muted{color:#64748b;font-size:13px;line-height:1.65}
+.pilot-main>p.pilot-muted{max-width:820px;margin:0 0 24px}
+.pilot-panel{background:#fff;border:1px solid #dfe6f1;box-shadow:0 5px 20px #23456b0c;border-radius:18px;padding:clamp(15px,2vw,24px);min-width:0}
+.pilot-grid{display:grid;grid-template-columns:minmax(260px,330px) minmax(0,1fr);gap:18px}
+.pilot-panel label{display:grid;gap:7px;color:#284062;font-weight:650;font-size:13px;margin-bottom:13px}
+.pilot-panel input:not([type=radio]),.pilot-panel select,.pilot-panel textarea{width:100%;border:1px solid #bfcfe4;border-radius:10px;padding:11px;color:#243959;background:#fff;font-weight:400;min-width:0}
+.pilot-panel textarea{resize:vertical;line-height:1.5}
+.pilot-auth{max-width:450px;margin:0 auto}
+.pilot-auth form{display:grid;gap:8px}
+.pilot-auth fieldset{border:1px solid #dce5f2;border-radius:12px;padding:11px 13px;margin:0 0 9px}
+.pilot-auth fieldset legend{padding:0 6px;font-weight:700;color:#334d70}
+.pilot-auth fieldset label{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:14px}
+.pilot-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:20px}
+.pilot-tabs button[aria-pressed=true]{background:#eaf2ff;border-color:#89b0ec;color:#1b52a7;font-weight:700}
+.selfhost-pilot .pilot-primary{background:#275ec7;color:#fff;border-color:#275ec7;font-weight:750}
+.selfhost-pilot .pilot-primary:hover:not(:disabled){background:#194fae}
+.pilot-alert,.pilot-notice{border-radius:12px;padding:12px 15px;margin:12px 0 20px;border:1px solid #efc8c8;background:#fff5f5;color:#923535;line-height:1.5;overflow-wrap:anywhere}
+.pilot-notice{border-color:#b8dbc8;background:#effaf4;color:#226447}
+.pilot-account{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:20px 0;padding:14px 18px;background:#eaf1fb;border-radius:12px;color:#324d74;font-size:13px}
+.pilot-create{display:grid;gap:8px;margin-bottom:18px}
+.pilot-board-list{display:grid;gap:8px;margin:12px 0 18px}
+.pilot-board-list button{width:100%;text-align:left;display:grid;gap:3px}
+.pilot-board-list button[aria-current=page]{background:#eaf2ff;border-color:#5a91de}
+.pilot-board-list small{color:#7185a3}
+.pilot-doc-header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.pilot-ws{font-size:12px;color:#376c5b}
+.pilot-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 20px}
+.pilot-invites{margin-top:23px;padding-top:22px;border-top:1px solid #e1e7f0}
+.pilot-invites form{display:grid;grid-template-columns:minmax(0,1fr) minmax(115px,auto) auto;gap:8px}
+.pilot-main footer{color:#8090a9;margin:25px 0;font-size:12px}
+@media(max-width:800px){.pilot-grid{grid-template-columns:1fr}.pilot-topbar{justify-content:flex-start}.pilot-account{gap:7px}}
+@media(max-width:530px){.pilot-invites form{grid-template-columns:1fr}.pilot-main{padding:15px}.pilot-panel{padding:16px}.pilot-topbar strong{font-size:20px}}
+
+/* Small transient canvas: no full-editor state or Supabase render path. */
+.pilot-live{margin-top:22px;padding-top:20px;border-top:1px solid #e1e7f0}
+.pilot-live-canvas{display:block;width:100%;height:min(42vh,400px);min-height:220px;border:1px solid #bfcfe4;background:#fdfefe;border-radius:12px;touch-action:none;user-select:none;margin:12px 0 14px;cursor:crosshair}
+.pilot-live .pilot-muted{margin:8px 0}
+@media(max-width:530px){.pilot-live-canvas{height:290px;min-height:220px}}
+
+.pilot-history{margin-top:20px;padding-top:14px;border-top:1px solid #e1e7f0}
+.pilot-history h3{font-size:14px;margin:0 0 10px}
+.pilot-history ul{list-style:none;padding:0;margin:0;display:grid;gap:6px}
+.pilot-history li{display:flex;gap:12px;justify-content:space-between;font-size:12px;
+  color:#3a557e;background:#f3f6fc;border-radius:8px;padding:8px 11px}
+
+.pilot-object-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.pilot-object-actions button{background:#edf4ff;border-color:#b8cce8;color:#234979;font-weight:650}
+.pilot-object-actions button:disabled{opacity:.55;cursor:not-allowed}

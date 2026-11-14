@@ -1,0 +1,76 @@
+name: Self-hosted Lektrus API
+
+on:
+  push:
+    branches:
+      - migration/self-hosted-backend-20261114
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_USER: lektrus
+          POSTGRES_PASSWORD: test-password-only
+          POSTGRES_DB: lektrus
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lektrus -d lektrus"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://lektrus:test-password-only@127.0.0.1:5432/lektrus
+      LEKTRUS_ALLOWED_ORIGINS: https://lektrus.example
+      LEKTRUS_JWT_SECRET: CI-only-not-for-production-random-string-1234567890
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: server/requirements-test.txt
+      - name: Install API dependencies
+        run: python -m pip install --disable-pip-version-check -r server/requirements-test.txt
+      - name: Compile source
+        run: python -m compileall -q server/app.py server/pilot_objects.py server/pilot_operations.py server/realtime_events.py server/assets.py server/invitations.py server/registration.py server/test_registration.py server/test_pilot_objects.py server/test_api.py server/test_assets.py server/test_invitations.py server/test_realtime_permissions.py server/test_live_frames.py server/test_ws_e2e.py server/import_supabase_core.py server/test_importer.py server/import_supabase_assets.py server/check_assets.py server/test_asset_import.py
+      - name: Integration and migration tests against disposable PostgreSQL
+        run: python -m pytest -q server/test_api.py server/test_assets.py server/test_invitations.py server/test_registration.py server/test_pilot_objects.py server/test_pilot_operations.py server/test_live_frames.py server/test_realtime_permissions.py server/test_importer.py server/test_asset_import.py server/test_ws_e2e.py
+      - name: Build minimal production image
+        run: docker build -f server/Dockerfile -t lektrus-selfhost-api:ci server
+      - name: Boot actual API container and test private disk permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm -d --name lektrus-selfhost-smoke --network host \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e LEKTRUS_ALLOWED_ORIGINS="$LEKTRUS_ALLOWED_ORIGINS" \
+            -e LEKTRUS_JWT_SECRET="$LEKTRUS_JWT_SECRET" \
+            -e LEKTRUS_ASSETS_DIR=/srv/lektrus-assets \
+            lektrus-selfhost-api:ci
+          trap 'docker rm -f lektrus-selfhost-smoke >/dev/null 2>&1 || true' EXIT
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8000/api/v1/health | grep -q '"ok":true'; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8000/api/v1/health | grep -q '"ok":true'
+          docker exec lektrus-selfhost-smoke python -c 'from pathlib import Path; p=Path("/srv/lektrus-assets/.probe"); p.write_bytes(b"ok"); assert p.read_bytes()==b"ok"; p.unlink()'
+      - name: Validate VPS Compose and Caddy configuration
+        env:
+          LEKTRUS_DOMAIN: lektrus.example
+          LEKTRUS_SITE_ORIGIN: https://lektrus.example
+          POSTGRES_PASSWORD: ci-only-password
+          LEKTRUS_JWT_SECRET: ci-only-secret-not-for-production-1234567890
+        run: |
+          docker compose -f deploy/selfhost/compose.yaml config -q
+          docker run --rm -e LEKTRUS_DOMAIN=lektrus.example \
+            -v "$PWD/deploy/selfhost/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.10.2-alpine caddy validate --config /etc/caddy/Caddyfile
