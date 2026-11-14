@@ -17,6 +17,7 @@ async function loadPilot(enabled) {
   const data=new Map([["lesson-board.supabase.session.v1","production-must-remain"]]);
   const record=[];
   let expires=900,refreshes=0;
+  const nativeBoardId="00000000-0000-4000-8000-000000000004";
   const user={
     id:"00000000-0000-4000-8000-000000000001",
     email:"teacher@example.test",user_metadata:{display_name:"Учитель"},
@@ -34,7 +35,9 @@ async function loadPilot(enabled) {
     assert.equal(options.credentials,"omit");
     const headers=new Headers(options.headers);
     record.push({path:u.pathname,method:options.method||"GET",
-      bearer:headers.get("Authorization"),body:options.body?JSON.parse(options.body):null});
+      bearer:headers.get("Authorization"),
+      body:typeof options.body==="string"?JSON.parse(options.body):
+        options.body instanceof Blob?{size:options.body.size,type:options.body.type}:null});
     const ok=(value,status=200)=>Response.json(value,{status});
     if(u.pathname==="/api/v1/auth/login"){
       assert.equal(headers.get("Authorization"),null);
@@ -46,9 +49,38 @@ async function loadPilot(enabled) {
     }
     if(u.pathname==="/api/v1/auth/logout")return new Response(null,{status:200});
     if(u.pathname==="/api/v1/boards"&&options.method==="POST"){
-      assert.equal(options.body,JSON.stringify({title:"Тест",is_pilot:true}));
+      const body=JSON.parse(options.body);
+      if(body.is_pilot===false){
+        assert.equal(body.title,"Нативная доска");
+        return ok({id:nativeBoardId,role:"owner",title:body.title});
+      }
+      assert.deepEqual(body,{title:"Тест",is_pilot:true});
       return ok({id:"board-1",role:"owner",title:"Тест"});
     }
+    if(u.pathname===`/api/v1/boards/${nativeBoardId}/document`&&options.method==="PUT"){
+      const body=JSON.parse(options.body);
+      assert.equal(body.expected_version,0);
+      return ok({board_id:nativeBoardId,version:1,document:body.document,
+        updated_by:user.id,updated_at:"2026-11-14T10:00:00Z"});
+    }
+    if(u.pathname===`/api/v1/boards/${nativeBoardId}/document`)
+      return ok({board_id:nativeBoardId,version:1,
+        document:{version:1,title:"Нативная доска",view:{x:0,y:0,zoom:1},items:[]},
+        updated_by:user.id,updated_at:"2026-11-14T10:00:00Z"});
+    const assetBase=`/api/v1/boards/${nativeBoardId}/assets/`;
+    if(u.pathname===assetBase+"asset_1"&&options.method==="HEAD")
+      return new Response(null,{status:200});
+    if(u.pathname===assetBase+"missing"&&options.method==="HEAD")
+      return new Response(null,{status:404});
+    if(u.pathname===assetBase+"asset_1"&&options.method==="POST"){
+      assert.equal(headers.get("Content-Type"),"image/png");
+      assert.equal(options.body instanceof Blob,true);
+      return ok({name:nativeBoardId+"/asset_1"},201);
+    }
+    if(u.pathname===assetBase+"asset_1"&&options.method==="GET")
+      return new Response(new Blob(["stored asset"],{type:"image/png"}),{
+        status:200,headers:{"Content-Type":"image/png"},
+      });
     if(u.pathname==="/api/v1/boards")return ok([{id:"board-1",title:"Тест",role:"owner"}]);
     if(u.pathname==="/api/v1/boards/board-1/document"&&options.method==="PUT"){
       if(JSON.parse(options.body).expected_version!==3)
@@ -130,6 +162,22 @@ assert.equal(records[0].body.email,"teacher@example.test");
 assert.equal((await api.pilotBoards()).length,1);
 assert.equal((await api.pilotCreateBoard("Тест")).id,"board-1");
 assert.equal((await api.pilotReadDocument("board-1")).version,3);
+const nativeBoard=await api.pilotCreateBoard("Нативная доска",false);
+assert.equal(nativeBoard.id,"00000000-0000-4000-8000-000000000004");
+const nativeDocument={version:1,title:"Нативная доска",
+  view:{x:0,y:0,zoom:1},items:[]};
+const nativeSaved=await api.pilotSaveDocument(
+  nativeBoard.id,0,nativeDocument
+);
+assert.equal(nativeSaved.version,1);
+assert.equal((await api.pilotReadDocument(nativeBoard.id)).document.title,"Нативная доска");
+assert.equal(await api.pilotAssetExists(nativeBoard.id,"asset_1"),true);
+assert.equal(await api.pilotAssetExists(nativeBoard.id,"missing"),false);
+await api.pilotUploadAsset(
+  nativeBoard.id,"asset_1",new Blob(["asset bytes"],{type:"image/png"})
+);
+const nativeAsset=await api.pilotDownloadAsset(nativeBoard.id,"asset_1");
+assert.equal(await nativeAsset.text(),"stored asset");
 const saved=await api.pilotSaveDocument("board-1",3,{pilot_schema:1,items:[],ink:[],note:"hello"});
 assert.equal(saved.version,4);
 await assert.rejects(api.pilotSaveDocument("board-1",2,{items:[],ink:[]}),e=>e.status===409);
