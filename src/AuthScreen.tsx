@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FocusEvent, type FormEvent } from "react";
 import { pendingSharePath } from "./routes";
 import UserAvatar from "./UserAvatar";
+import type { AccountRole } from "./accountRoleStore";
 import { isRemoteBackendEnabled } from "./backend";
 import {saveProfileDetails} from "./profileDetailsStore";
 import { forgetRememberedAccount, getRememberedAccount, loginUser, loginGuest, registerUser,resendRegistrationCode, resumeRememberedAccount, type AuthUser } from "./authStore";
@@ -19,6 +20,7 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
   const [resendCooldown,setResendCooldown]=useState(0);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [registrationRole,setRegistrationRole] = useState<AccountRole|null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice,setNotice]=useState("");
@@ -83,6 +85,7 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (busy) return;
+    if(mode==="register"&&!awaitingConfirmation&&!registrationRole){setError("Выберите, кем вы регистрируетесь: учителем или учеником.");return;}
     // An intentional form submission may blur the keyboard; don't reopen it.
     fieldFocus.current.outsidePressAt=Date.now();
     setBusy(true);setError("");
@@ -97,7 +100,7 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
           setAwaitingConfirmation(true);setResendCooldown(0);
           setNotice("Демо-ссылка подтверждения готова. Нажмите кнопку ниже, чтобы проверить переход в приложение.");return;
         }
-        const user = mode === "register" ? await registerUser({ name:mode==="register"?(name.trim()||[firstName,lastName].filter(Boolean).join(" ")):name,firstName:firstName.trim(),lastName:lastName.trim(),email,password }) : await loginUser({ email, password });
+        const user = mode === "register" ? await registerUser({ name:mode==="register"?(name.trim()||[firstName,lastName].filter(Boolean).join(" ")):name,firstName:firstName.trim(),lastName:lastName.trim(),email,password,role:registrationRole! }) : await loginUser({ email, password });
         if(!user&&mode==="register"){
           setAwaitingConfirmation(true);setResendCooldown(30);
           setNotice("Письмо со ссылкой отправлено. Откройте его на этом устройстве — Lektrus подтвердит адрес и войдёт в аккаунт автоматически.");
@@ -122,6 +125,19 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
     <form className="auth-form" onSubmit={submit}>
       {previewMode&&previewComplete?<div className="auth-preview-success"><h1 id="auth-title">Регистрация подтверждена</h1><p>Экран подтверждения Lektrus работает. Демо не отправляет письма и не создаёт аккаунты.</p><button type="button" className="auth-submit" onClick={onPreviewClose}>Вернуться к приложению</button></div>:<>
       <div><h1 id="auth-title">{awaitingConfirmation?"Проверьте почту":mode==="register"?"Создать аккаунт":"С возвращением"}</h1><p>{awaitingConfirmation?previewMode?`Предпросмотр ссылки подтверждения для ${email}.`: `Мы отправили ссылку на ${email}. Откройте её, чтобы подтвердить адрес и автоматически войти в Lektrus.`:joining?"После входа откроется доска, которой с вами поделились.":mode==="register"?previewMode?"Заполните форму и проверьте собственный экран подтверждения Lektrus.":"Заполните данные, чтобы создать пространство для учёбы.":"Войдите, чтобы продолжить занятие или открыть свои доски."}</p></div>
+      {mode==="register"&&!awaitingConfirmation&&<fieldset className="auth-role-choice">
+        <legend>Кем вы регистрируетесь?</legend>
+        <div className="auth-role-grid">
+          <label className={`auth-role-option${registrationRole==="teacher"?" is-selected":""}`}>
+            <input type="radio" name="registrationRole" value="teacher" required checked={registrationRole==="teacher"} onChange={()=>setRegistrationRole("teacher")}/>
+            <span><strong>Я учитель</strong><small>Создавать уроки и работать с учениками</small></span>
+          </label>
+          <label className={`auth-role-option${registrationRole==="student"?" is-selected":""}`}>
+            <input type="radio" name="registrationRole" value="student" required checked={registrationRole==="student"} onChange={()=>setRegistrationRole("student")}/>
+            <span><strong>Я ученик</strong><small>Участвовать в занятиях и выполнять задания</small></span>
+          </label>
+        </div>
+      </fieldset>}
       {mode==="register"&&!awaitingConfirmation&&<div className="auth-register-name-grid"><label className="auth-field"><span>Имя</span><input required value={firstName} onChange={e=>fieldEdited(e.target.value,setFirstName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="given-name" autoCapitalize="words" placeholder="Ваше имя" maxLength={80} /></label><label className="auth-field"><span>Фамилия</span><input required value={lastName} onChange={e=>fieldEdited(e.target.value,setLastName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="family-name" autoCapitalize="words" placeholder="Ваша фамилия" maxLength={80} /></label><label className="auth-field auth-register-display-name"><span>Как к вам обращаться</span><input value={name} onChange={e=>fieldEdited(e.target.value,setName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="nickname" autoCapitalize="words" placeholder="Имя для участников доски" maxLength={80}/></label></div>}
       <label className="auth-field"><span>Email</span><input required type="email" value={email} readOnly={awaitingConfirmation&&!previewMode} onChange={e=>fieldEdited(e.target.value,setEmail)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="name@example.com" maxLength={180} /></label>
       {!awaitingConfirmation&&<label className="auth-field"><span>Пароль</span><input required minLength={mode==="register"?6:undefined} type="password" value={password} onChange={e=>fieldEdited(e.target.value,setPassword)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete={mode==="register"?"new-password":"current-password"} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder={mode==="register"?"Минимум 6 символов":"Ваш пароль"} maxLength={200}/></label>}
