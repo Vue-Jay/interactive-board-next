@@ -162,6 +162,37 @@ async def test_board_access_and_conflict_free_save(client):
     assert editor_save.status_code == 200, editor_save.text
     assert editor_save.json()["version"] == 2
     assert editor_save.json()["updated_by"] == str(STUDENT)
+
+    # The ordinary document endpoint must preserve the full native Lektrus
+    # JSON shape, including subject-specific object payloads, not just pilot ink.
+    native_document = {
+        "version": 1,
+        "title": "Химия: нативная доска",
+        "subject": "chemistry",
+        "view": {"x": 12.5, "y": -8.25, "zoom": 1.2},
+        "background": {"kind": "grid", "color": "#ffffff"},
+        "backgroundShared": True,
+        "items": [
+            {"id": "native-text", "kind": "text", "x": 20, "y": 30,
+             "width": 240, "height": 80, "text": "Закон сохранения массы",
+             "fontSize": 22, "textAlign": "left"},
+            {"id": "native-chart", "kind": "graph", "x": 300, "y": 40,
+             "width": 420, "height": 260, "text": "",
+             "graphFigureId": "lektrus-chart", "chartStyle": "bar",
+             "chartEntries": [{"label": "Опыт 1", "value": 12.5},
+                              {"label": "Опыт 2", "value": 18}]},
+        ],
+    }
+    native_save = await client.put(
+        url+"/document", headers=teacher,
+        json={"expected_version": 2, "document": native_document},
+    )
+    assert native_save.status_code == 200, native_save.text
+    assert native_save.json()["version"] == 3
+    assert native_save.json()["document"] == native_document
+    native_reload = await client.get(url+"/document", headers=student)
+    assert native_reload.json()["document"] == native_document
+
     listed = await client.get("/api/v1/boards", headers=student)
     assert listed.status_code == 200
     assert [b["id"] for b in listed.json()] == [board_id]
