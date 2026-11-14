@@ -1,6 +1,6 @@
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import { getCachedRemoteSession, isRemoteBackendEnabled,remoteRequest } from "./backend";
-import { getCachedSelfhostSession, isSelfhostBackendEnabled } from "./selfhostPilotApi";
+import { getCachedSelfhostSession, isSelfhostBackendEnabled } from "./selfhostApi";
 export type AccountRole="teacher"|"student";
 export type TeacherStatus="none"|"pending"|"approved"|"rejected";
 export type SubscriptionPlan="free"|"teacher"|"pro";
