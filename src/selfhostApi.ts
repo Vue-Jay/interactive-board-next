@@ -194,6 +194,18 @@ export async function selfhostRequest<T>(path:string,init:RequestInit={}):Promis
   return await response.json() as T;
 }
 export const selfhostBoards=()=>selfhostRequest<SelfhostBoard[]>("/api/v1/boards");
+export const selfhostMaterials=()=>selfhostRequest<any[]>("/api/v1/materials");
+export const selfhostMaterialMeta=(id:string,title:string,folder:string)=>selfhostRequest<any>("/api/v1/materials/"+encodeURIComponent(id),{method:"PATCH",body:JSON.stringify({title,folder})});
+export const selfhostMaterialFavorite=(id:string,favorite:boolean)=>selfhostRequest<any>("/api/v1/materials/"+encodeURIComponent(id),{method:"PATCH",body:JSON.stringify({favorite})});
+export const selfhostMaterialUsed=(id:string)=>selfhostRequest<{ok:boolean}>("/api/v1/materials/"+encodeURIComponent(id)+"/used",{method:"POST",body:"{}"});
+export async function selfhostMaterialFile(id:string,file?:File,title?:string,folder?:string):Promise<any>{
+  const path="/api/v1/materials/"+encodeURIComponent(id)+(file?"":"/file");
+  let session=await selfhostSession(); if(!session)throw new SelfhostHttpError(401,"Сессия завершена. Войдите снова.");
+  const init:RequestInit=file?{method:"POST",headers:{"Content-Type":file.type||"application/octet-stream","X-File-Name":encodeURIComponent(file.name),"X-Material-Title":encodeURIComponent(title||file.name),"X-Material-Folder":encodeURIComponent(folder||"")},body:file}:{};
+  let response=await rawRequest(path,init,session.access_token,120000);
+  if(!response.ok)throw await responseError(response); return file?response.json():response.blob();
+}
+export const selfhostDeleteMaterial=(id:string)=>selfhostRequest<void>("/api/v1/materials/"+encodeURIComponent(id),{method:"DELETE"});
 export const selfhostCreateBoard=(title:string,isPilot=false)=>selfhostRequest<SelfhostBoard>("/api/v1/boards",{
   method:"POST",body:JSON.stringify({title,is_pilot:isPilot}),
 });
