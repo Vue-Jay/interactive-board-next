@@ -2053,6 +2053,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   selfhostMode?: boolean;
 }) {
   const remoteEnabled=!demoMode&&isRemoteBackendEnabled();
+  const discussionEnabled=!demoMode&&(remoteEnabled||selfhostMode);
   const documentSyncEnabled=!demoMode&&(remoteEnabled||selfhostMode);
   useEffect(()=>{
     setSelfhostBoardMode(boardSummary.id,selfhostMode);
@@ -3313,17 +3314,17 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const refreshDiscussions=useCallback(async()=>{setDiscussionRows(await listBoardComments(boardSummary.id))},[boardSummary.id]);
   const refreshDiscussionParticipants=useCallback(async()=>{setDiscussionParticipants(await listBoardCommentParticipants(boardSummary.id))},[boardSummary.id]);
   const openDiscussions=async(focusId:string|null=null)=>{
-    if(!remoteEnabled){setNotice("Чат доступен при серверной синхронизации");return}
+    if(!discussionEnabled){setNotice("Обсуждения доступны при подключённом сервере");return}
     setChatOpen(true);setChatUnread(0);setDiscussionOpen(true);setDiscussionBusy(true);setDiscussionError("");if(focusId)setDiscussionFocusId(focusId);
     try{await Promise.all([refreshDiscussions(),refreshDiscussionParticipants()])}catch(error){setDiscussionError(error instanceof Error?error.message:"Не удалось загрузить обсуждения")}finally{setDiscussionBusy(false)}
   };
   useEffect(()=>{
-    if(layoutEditing||!remoteEnabled)return;
+    if(layoutEditing||!discussionEnabled)return;
     return subscribeBoardComments(boardSummary.id,()=>{
       if(!chatOpen)setChatUnread(value=>Math.min(99,value+1));
       void refreshDiscussions().catch(()=>{});
     });
-  },[chatOpen,boardSummary.id,refreshDiscussions]);
+  },[chatOpen,boardSummary.id,discussionEnabled,layoutEditing,refreshDiscussions]);
   useEffect(()=>{
     const requested=new URLSearchParams(window.location.search).get("discussion");
     if(requested){setDiscussionFocusId(requested);void openDiscussions(requested)}
@@ -8313,7 +8314,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             ✎ {remoteEditingCount}
           </span>}
           {canManageBoard && <button className="lesson-button board-invite-button compact-top-action" aria-label="Добавить участника" title="Добавить участника" onClick={() => setSharing(true)}><svg className="top-action-svg add-person-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 18c.5-3.2 2.5-5 5.5-5s5 1.8 5.5 5"/><path d="M18 7v6M15 10h6"/></svg></button>}
-          {remoteEnabled && <button type="button" className={`lesson-button board-chat-button ${chatOpen ? "active" : ""}`} onClick={()=>void openDiscussions()} title="Чат этой доски" aria-label={`Чат этой доски${chatUnread?` · новых сообщений ${chatUnread}`:""}`}><Icon name="comments" size={16}/><span>Чат</span>{chatUnread>0&&<b className="top-badge">{chatUnread>99?"99+":chatUnread}</b>}</button>}
+          {discussionEnabled && <button type="button" className={`lesson-button board-chat-button ${chatOpen ? "active" : ""}`} onClick={()=>void openDiscussions()} title="Чат этой доски" aria-label={`Чат этой доски${chatUnread?` · новых сообщений ${chatUnread}`:""}`}><Icon name="comments" size={16}/><span>Чат</span>{chatUnread>0&&<b className="top-badge">{chatUnread>99?"99+":chatUnread}</b>}</button>}
           <details className="topbar-more-menu">
             <summary className="top-button topbar-more-trigger" title="Дополнительные действия" aria-label="Дополнительные действия"><Icon name="more" /></summary>
             <div className="topbar-more-popover">

@@ -18,6 +18,10 @@ async function loadSelfhost(enabled) {
   const record=[];
   let expires=900,refreshes=0;
   const nativeBoardId="00000000-0000-4000-8000-000000000004";
+  const nativeComment={id:"comment-root",board_id:nativeBoardId,
+    author_id:"00000000-0000-4000-8000-000000000001",author_name:"Учитель",
+    parent_id:null,body:"Проверьте решение",resolved:false,
+    created_at:"2026-11-14T10:00:00Z",updated_at:"2026-11-14T10:00:00Z"};
   const user={
     id:"00000000-0000-4000-8000-000000000001",
     email:"teacher@example.test",user_metadata:{display_name:"Учитель"},
@@ -126,6 +130,20 @@ async function loadSelfhost(enabled) {
         student_name:"Ученик",topic:"Тема",started_at:"2026-11-14T10:00:00Z",ended_at:null});
     }
     if(u.pathname==="/api/v1/lessons/lesson-1/finish")return ok({ok:true,minutes:45});
+    if(u.pathname===`/api/v1/boards/${nativeBoardId}/comments`){
+      if(options.method==="POST"){
+        const body=JSON.parse(options.body);
+        assert.deepEqual(body,{body:"Ответ ученика",parent_id:"comment-root"});
+        return ok({...nativeComment,id:"comment-reply",body:body.body,parent_id:body.parent_id},201);
+      }
+      return ok([nativeComment]);
+    }
+    if(u.pathname===`/api/v1/boards/${nativeBoardId}/comment-participants`)
+      return ok([{user_id:user.id,display_name:"Учитель"}]);
+    if(u.pathname==="/api/v1/comments/comment-root"&&options.method==="PATCH"){
+      assert.deepEqual(JSON.parse(options.body),{resolved:true});
+      return ok({...nativeComment,resolved:true});
+    }
     if(u.pathname==="/api/v1/boards")return ok([{id:"board-1",title:"Тест",role:"owner"}]);
     if(u.pathname==="/api/v1/boards/board-1/document"&&options.method==="PUT"){
       if(JSON.parse(options.body).expected_version!==3)
@@ -208,6 +226,10 @@ assert.equal((await api.selfhostBoards()).length,1);
 assert.equal((await api.selfhostCreateBoard("Тест",true)).id,"board-1");
 assert.equal((await api.selfhostReadDocument("board-1")).version,3);
 const nativeBoard=await api.selfhostCreateBoard("Нативная доска",false);
+const expectedComment={id:"comment-root",board_id:nativeBoard.id,
+  author_id:session.user.id,author_name:"Учитель",parent_id:null,
+  body:"Проверьте решение",resolved:false,
+  created_at:"2026-11-14T10:00:00Z",updated_at:"2026-11-14T10:00:00Z"};
 assert.equal(nativeBoard.id,"00000000-0000-4000-8000-000000000004");
 const nativeDocument={version:1,title:"Нативная доска",
   view:{x:0,y:0,zoom:1},items:[]};
@@ -260,6 +282,12 @@ await api.selfhostDeleteSchedule("schedule-1");
 assert.equal(await api.selfhostActiveLesson(nativeBoard.id),null);
 assert.equal((await api.selfhostStartLesson(nativeBoard.id,"student-1","Тема")).id,"lesson-1");
 assert.equal((await api.selfhostFinishLesson("lesson-1","Итог","ДЗ")).minutes,45);
+assert.deepEqual(await api.selfhostBoardComments(nativeBoard.id),[expectedComment]);
+assert.deepEqual(await api.selfhostBoardCommentParticipants(nativeBoard.id),[
+  {user_id:session.user.id,display_name:"Учитель"},
+]);
+assert.equal((await api.selfhostCreateBoardComment(nativeBoard.id,"Ответ ученика","comment-root")).parent_id,"comment-root");
+assert.equal((await api.selfhostResolveBoardComment("comment-root",true)).resolved,true);
 const revisions=[];
 const statuses=[];
 const liveEvents=[];
@@ -340,4 +368,4 @@ await api.selfhostLogout();
 assert.equal(api.cachedSelfhostSession(),null);
 assert.equal(storage.get("lesson-board.supabase.session.v1"),"production-must-remain");
 assert.ok(records.some(x=>x.path==="/api/v1/auth/logout"&&x.bearer==="Bearer token-refreshed"));
-console.log("Self-hosted Lektrus API: auth, native documents, private assets, students, assignments, schedule, lessons, presence and realtime events OK.");
+console.log("Self-hosted Lektrus API: auth, native documents, private assets, students, assignments, schedule, lessons, discussions, presence and realtime events OK.");

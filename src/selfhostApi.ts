@@ -360,6 +360,25 @@ export async function selfhostCompletePasswordReset(token:string,password:string
   if(!response.ok)throw await responseError(response);
 }
 
+export type SelfhostBoardComment={
+  id:string;board_id:string;author_id:string;author_name:string;parent_id:string|null;
+  body:string;resolved:boolean;created_at:string;updated_at:string;
+};
+export const selfhostBoardComments=(boardId:string)=>
+  selfhostRequest<SelfhostBoardComment[]>("/api/v1/boards/"+encodeURIComponent(boardId)+"/comments");
+export const selfhostBoardCommentParticipants=(boardId:string)=>
+  selfhostRequest<Array<{user_id:string;display_name:string}>>(
+    "/api/v1/boards/"+encodeURIComponent(boardId)+"/comment-participants"
+  );
+export const selfhostCreateBoardComment=(boardId:string,body:string,parentId:string|null=null)=>
+  selfhostRequest<SelfhostBoardComment>("/api/v1/boards/"+encodeURIComponent(boardId)+"/comments",{
+    method:"POST",body:JSON.stringify({body,parent_id:parentId}),
+  });
+export const selfhostResolveBoardComment=(commentId:string,resolved:boolean)=>
+  selfhostRequest<SelfhostBoardComment>("/api/v1/comments/"+encodeURIComponent(commentId),{
+    method:"PATCH",body:JSON.stringify({resolved}),
+  });
+
 
 /** Version notices only: actual board document is fetched once after a new revision. */
 export function selfhostSubscribeBoard(

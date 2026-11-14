@@ -1,6 +1,24 @@
 import { getRealtimeSocketUrl, getRemoteSession, isRemoteBackendEnabled } from "./backend";
+import { isSelfhostBackendEnabled } from "./selfhostApi";
+import { listBoardComments } from "./commentThreadsStore";
 
 export function subscribeBoardComments(boardId:string,onChange:()=>void):()=>void{
+ if(isSelfhostBackendEnabled()){
+  let stopped=false,checking=false,snapshot="";
+  const poll=async()=>{
+   if(stopped||checking)return;
+   checking=true;
+   try{
+    const next=JSON.stringify(await listBoardComments(boardId));
+    if(snapshot&&snapshot!==next)onChange();
+    snapshot=next;
+   }catch{/* A later poll retries after a brief API outage. */}
+   finally{checking=false}
+  };
+  void poll();
+  const timer=window.setInterval(()=>void poll(),2500);
+  return()=>{stopped=true;window.clearInterval(timer)};
+ }
  if(!isRemoteBackendEnabled())return()=>{};
  let stopped=false,socket:WebSocket|null=null,retry:ReturnType<typeof setTimeout>|undefined,notifyTimer:ReturnType<typeof setTimeout>|undefined,heartbeat:ReturnType<typeof setInterval>|undefined,seq=0,attempt=0;
  const topic=`realtime:comments:${boardId}`;

@@ -738,3 +738,5 @@ from education import make_education_router
 app.include_router(make_education_router(current_user, board_access))
 from admin import make_admin_router
 app.include_router(make_admin_router(current_user))
+from comments import make_comments_router
+app.include_router(make_comments_router(current_user, board_access))
