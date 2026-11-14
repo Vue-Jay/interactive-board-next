@@ -103,6 +103,10 @@ def account_view(row: asyncpg.Record) -> dict[str, Any]:
         "account_role": row["account_role"],
         "teacher_status": row["teacher_status"],
         "is_admin": row["is_admin"],
+        "requested_at": row["teacher_requested_at"].isoformat() if row.get("teacher_requested_at") else None,
+        "reviewed_at": row["teacher_reviewed_at"].isoformat() if row.get("teacher_reviewed_at") else None,
+        "subscription_plan": row["subscription_plan"],
+        "subscription_until": row["subscription_until"].isoformat() if row["subscription_until"] else None,
     }
 
 async def lookup_session(pool: asyncpg.Pool, token: str) -> asyncpg.Record:
@@ -110,7 +114,9 @@ async def lookup_session(pool: asyncpg.Pool, token: str) -> asyncpg.Record:
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """SELECT u.id,u.email,u.password_hash,u.display_name,u.first_name,
-                      u.last_name,u.account_role,u.teacher_status,u.is_admin
+                      u.last_name,u.account_role,u.teacher_status,u.is_admin,
+                      u.teacher_requested_at,u.teacher_reviewed_at,
+                      u.subscription_plan,u.subscription_until
                  FROM account_users u JOIN account_sessions s ON s.user_id=u.id
                 WHERE u.id=$1 AND s.id=$2
                   AND s.revoked_at IS NULL AND s.expires_at>now()
@@ -201,7 +207,8 @@ async def login(data: LoginInput, request: Request):
     async with pool.acquire() as conn:
         user = await conn.fetchrow(
             """SELECT id,email,password_hash,display_name,first_name,last_name,
-                      account_role,teacher_status,is_admin
+                      account_role,teacher_status,is_admin,teacher_requested_at,
+                      teacher_reviewed_at,subscription_plan,subscription_until
                  FROM account_users
                 WHERE email=$1 AND email_confirmed_at IS NOT NULL""", email
         )
@@ -227,7 +234,8 @@ async def refresh(data: RefreshInput, request: Request):
                 error(401, "Сессия истекла или уже обновлена.")
             user = await conn.fetchrow(
                 """SELECT id,email,password_hash,display_name,first_name,last_name,
-                          account_role,teacher_status,is_admin
+                          account_role,teacher_status,is_admin,teacher_requested_at,
+                          teacher_reviewed_at,subscription_plan,subscription_until
                    FROM account_users
                    WHERE id=$1 AND email_confirmed_at IS NOT NULL""",
                 session["user_id"],
@@ -269,6 +277,11 @@ async def board_access(conn: asyncpg.Connection, board_id: UUID, user_id: UUID,
         error(404, "Доска не найдена.")
     if board["owner_id"] == user_id:
         return board, "owner"
+    is_admin = await conn.fetchval(
+        "SELECT is_admin FROM account_users WHERE id=$1", user_id
+    )
+    if is_admin:
+        return board, "viewer"
     role = await conn.fetchval(
         "SELECT role FROM board_members WHERE board_id=$1 AND user_id=$2",
         board_id, user_id,
@@ -491,7 +504,7 @@ async def save_document(board_id: UUID, data: SaveDocumentInput, request: Reques
     async with request.app.state.pool.acquire() as conn:
         async with conn.transaction():
             _, role = await board_access(conn, board_id, user["id"], lock=True)
-            if role not in ("owner", "editor"):
+            if role not in ("owner", "editor") and not user["is_admin"]:
                 error(403, "Недостаточно прав для изменения доски.")
             previous = await conn.fetchrow(
                 "SELECT version FROM board_documents WHERE board_id=$1", board_id,
@@ -723,3 +736,5 @@ app.include_router(make_pilot_objects_router(current_user, board_access, announc
 
 from education import make_education_router
 app.include_router(make_education_router(current_user, board_access))
+from admin import make_admin_router
+app.include_router(make_admin_router(current_user))
