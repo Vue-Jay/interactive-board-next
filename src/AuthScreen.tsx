@@ -3,7 +3,7 @@ import { pendingSharePath } from "./routes";
 import UserAvatar from "./UserAvatar";
 import type { AccountRole } from "./accountRoleStore";
 import { isRemoteBackendEnabled } from "./backend";
-import { isSelfhostBackendEnabled } from "./selfhostPilotApi";
+import { isSelfhostBackendEnabled } from "./selfhostApi";
 import {saveProfileDetails} from "./profileDetailsStore";
 import { forgetRememberedAccount, getRememberedAccount, loginUser, loginGuest, registerUser,resendRegistrationCode, resumeRememberedAccount, type AuthUser } from "./authStore";
 
