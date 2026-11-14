@@ -94,6 +94,8 @@ import { Capacitor } from "@capacitor/core";
 import { BOARD_ROLE_LABELS, type AuthUser } from "./authStore";
 import { boardStorageKey, touchBoard, type BoardSummary } from "./boardStore";
 import { isRemoteBackendEnabled, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
+import { pilotReadDocument, pilotSaveDocument, pilotSubscribeBoard, PilotHttpError } from "./selfhostPilotApi";
+import { setSelfhostBoardMode } from "./assetStore";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
 import { readDeveloperPreferences, writeDeveloperPreferences } from "./developerPreferences";
 import { boardRoleCapabilities, canUseBoardCreationTool, isStudentProtectedBoardObject, canTransformStudentBoardObject, restrictStudentDiagramChange, BOARD_ROLE_PREVIEW_LABELS, type BoardRolePreview } from "./lektrusBoardRolePreview";
@@ -2033,7 +2035,7 @@ const itemIconName = (item: Item): IconName => {
   return "marker";
 };
 
-export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adminMaintenance = false, adminInvisible = false, globalRolePreview="actual", onGlobalRolePreviewChange, onBackToBoards, onLogout, onBoardChanged, initialRemoteVersion = null, demoMode = false, demoInitialDocument }: {
+export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adminMaintenance = false, adminInvisible = false, globalRolePreview="actual", onGlobalRolePreviewChange, onBackToBoards, onLogout, onBoardChanged, initialRemoteVersion = null, demoMode = false, demoInitialDocument, selfhostMode = false }: {
   authUser: AuthUser;
   boardSummary: BoardSummary;
   accountRole: AccountRole;
@@ -2048,8 +2050,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   initialRemoteVersion?: number | null;
   demoMode?: boolean;
   demoInitialDocument?:DocumentData;
+  selfhostMode?: boolean;
 }) {
   const remoteEnabled=!demoMode&&isRemoteBackendEnabled();
+  const documentSyncEnabled=!demoMode&&(remoteEnabled||selfhostMode);
+  useEffect(()=>{
+    setSelfhostBoardMode(boardSummary.id,selfhostMode);
+    return()=>setSelfhostBoardMode(boardSummary.id,false);
+  },[boardSummary.id,selfhostMode]);
   const layoutEditing=new URLSearchParams(window.location.search).get("layout-editor")==="1";
   const [rolePreview,setRolePreview]=useState<BoardRolePreview>(globalRolePreview);
   useEffect(()=>setRolePreview(globalRolePreview),[boardSummary.id,globalRolePreview]);
@@ -3063,7 +3071,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   }, [presentation, presentationTimerRunning, presentationTimerMode]);
 
   const pushRemoteSnapshot = useCallback(async (data: DocumentData, knownFingerprint?: string) => {
-    if (layoutEditing || !remoteEnabled || !canEdit || !boardMounted.current || pendingRemote.current) return;
+    if (layoutEditing || !documentSyncEnabled || !canEdit || !boardMounted.current || pendingRemote.current) return;
     const fingerprint = knownFingerprint ?? documentFingerprint(data);
     if (fingerprint === acknowledgedDocument.current ||
         fingerprint === acknowledgedSharedContent.current) return;
@@ -3085,14 +3093,40 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         for(const item of unsyncedAssets)if(item.assetId)trustedAssetIds.current.add(item.assetId);
       }
       if (!boardMounted.current) return;
-      saveStep.current = "ответ Supabase";
+      saveStep.current = selfhostMode ? "ответ собственного сервера" : "ответ Supabase";
       const expectedVersion = remoteVersion.current ?? 0;
       // Do not block the real board save with canvas rendering or loading media.
       // Use the last prepared preview; refresh it separately after acknowledgement.
       const previousPreview = cachedBoardPreview(boardSummary.id);
       lastAttempt.current = { version: expectedVersion + 1, fingerprint };
       const payload = {...data, preview: previousPreview??""};
-      const result = await (adminMaintenance ? adminSaveRemoteBoardDocument : saveRemoteBoardDocument)(boardSummary.id, payload, expectedVersion);
+      let result:{conflict:boolean;version:number;document?:unknown;updated_at?:string};
+      if(selfhostMode){
+        try{
+          const saved=await pilotSaveDocument(
+            boardSummary.id,expectedVersion,payload as unknown as Record<string,unknown>
+          );
+          result={conflict:false,version:saved.version};
+        }catch(error){
+          if(error instanceof PilotHttpError&&error.status===409){
+            const latest=await pilotReadDocument(boardSummary.id);
+            if(!boardMounted.current)return;
+            if(latest.document&&latest.version>expectedVersion){
+              deferredRemote.current={
+                board_id:latest.board_id,version:latest.version,
+                document:latest.document,updated_at:latest.updated_at??"",
+                updated_by:latest.updated_by,
+              };
+              return;
+            }
+          }
+          throw error;
+        }
+      }else{
+        result=await (adminMaintenance ? adminSaveRemoteBoardDocument : saveRemoteBoardDocument)(
+          boardSummary.id,payload,expectedVersion
+        );
+      }
       if (!boardMounted.current) return;
       if (result.conflict) {
         const row = { board_id: boardSummary.id, version: result.version, document: result.document, updated_at: result.updated_at ?? "" };
@@ -3121,7 +3155,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       setSaveStatus("Сохранено на сервере");
       // The thumbnail is decorative metadata, not an autosave prerequisite.
       // It can finish even if the editor unmounts when returning to the dashboard.
-      scheduleBackgroundBoardPreview(boardSummary.id,data,result.version);
+      if(!selfhostMode)scheduleBackgroundBoardPreview(boardSummary.id,data,result.version);
     } catch (error) {
       const message=error instanceof Error?error.message:String(error);
       saveFailure.current={step:saveStep.current,message:message.slice(0,260)};
@@ -3169,7 +3203,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           localStorage.setItem(storageKey,serialized);
           lastLocalSerialized.current=serialized;
           localBackupValid.current=true;
-          if(remoteEnabled){
+          if(documentSyncEnabled){
             try{localStorage.setItem(storageKey+".pending-sync","1")}catch{}
           }
         } catch(error) {
@@ -3181,8 +3215,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }
       if (!boardMounted.current) return;
       const fingerprint = documentFingerprint(data);
-      if (remoteEnabled && pendingRemote.current) return;
-      if(remoteEnabled && (
+      if (documentSyncEnabled && pendingRemote.current) return;
+      if(documentSyncEnabled && (
         fingerprint === acknowledgedDocument.current ||
         fingerprint === acknowledgedSharedContent.current
       )){
@@ -3196,14 +3230,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       // the hot autosave path while still keeping recent boards ordered correctly.
       const now = Date.now();
       const titleChanged = lastBoardTouchTitle.current !== data.title;
-      if (!demoMode && (titleChanged || now - lastBoardTouchAt.current >= 15_000)) {
+      if (!demoMode && !selfhostMode && (titleChanged || now - lastBoardTouchAt.current >= 15_000)) {
         lastBoardTouchAt.current = now;
         lastBoardTouchTitle.current = data.title;
         void touchBoard(authUser.id, boardSummary.id, data.title, boardSummary.role).then((updatedBoard) => {
           if (updatedBoard && boardMounted.current) onBoardChanged(updatedBoard);
         }).catch(() => {});
       }
-      if (remoteEnabled) {
+      if (documentSyncEnabled) {
         saveStep.current="подготовка";
         setSaveStatus("Сохранение на сервер…");
         const pending=pushRemoteSnapshot(data,fingerprint);
@@ -3325,7 +3359,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       snapshot.current=latest;
       flushSave();
       const expected=sharedBoardFingerprint(latest);
-      if(canEdit&&remoteEnabled&&expected!==acknowledgedSharedContent.current){
+      if(canEdit&&documentSyncEnabled&&expected!==acknowledgedSharedContent.current){
         const until=Date.now()+8000;
         while(boardMounted.current&&Date.now()<until&&
               acknowledgedSharedContent.current!==expected){
@@ -4080,7 +4114,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
 
     const id = createId();
-    await putAsset(id, isPdf ? file.slice(0, file.size, "application/pdf") : file, boardSummary.id, !remoteEnabled);
+    await putAsset(id, isPdf ? file.slice(0, file.size, "application/pdf") : file, boardSummary.id, !documentSyncEnabled);
     const rect = board.current?.getBoundingClientRect();
     const center = position ?? world({ x: (rect?.width ?? 800) / 2, y: (rect?.height ?? 600) / 2 });
     const item: Item = {
@@ -7693,7 +7727,26 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       applyServerDocument(row, data);
     } catch { setNotice("Не удалось прочитать новую серверную версию. Ваши изменения сохранены на доске."); }
   };
-  useEffect(() => layoutEditing?()=>{}:subscribeBoardDocument(boardSummary.id, row => receiveRemote.current(row), setRealtimeStatus), [boardSummary.id,layoutEditing]);
+  useEffect(()=>{
+    if(layoutEditing)return;
+    if(selfhostMode){
+      const stop=pilotSubscribeBoard(boardSummary.id,version=>{
+        if(version<0||version<=(remoteVersion.current??-1))return;
+        void pilotReadDocument(boardSummary.id).then(latest=>{
+          if(!latest.document)return;
+          receiveRemote.current({
+            board_id:latest.board_id,version:latest.version,
+            document:latest.document,updated_at:latest.updated_at??"",
+            updated_by:latest.updated_by,
+          });
+        }).catch(()=>setRealtimeStatus("reconnecting"));
+      },setRealtimeStatus);
+      return()=>stop();
+    }
+    return subscribeBoardDocument(
+      boardSummary.id,row=>receiveRemote.current(row),setRealtimeStatus
+    );
+  },[boardSummary.id,layoutEditing,selfhostMode]);
 
   useEffect(() => layoutEditing||!remoteEnabled?()=>{}:trackBoardVisit(boardSummary.id),[boardSummary.id,layoutEditing]);
 
