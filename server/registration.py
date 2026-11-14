@@ -184,6 +184,9 @@ def make_registration_router() -> APIRouter:
 
     @router.post("/api/v1/auth/verify-email")
     async def verify_email(data: VerifyEmailInput, request: Request):
+        # Imported at request time to avoid a module cycle: app registers this
+        # router after defining the shared session-issuance helper.
+        from app import issue_tokens
         token_hash = hashlib.sha256(data.token.encode()).hexdigest()
         async with request.app.state.pool.acquire() as conn:
             async with conn.transaction():
