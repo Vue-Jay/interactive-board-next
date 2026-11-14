@@ -40,6 +40,22 @@ SOURCE_SQL = {
                     FROM public.board_documents ORDER BY board_id""",
     "invites": """SELECT id,board_id,lower(email) AS email,role,created_at
                   FROM public.board_invites ORDER BY board_id,id""",
+    "student_profiles": """SELECT teacher_id,student_id,note,tags,updated_at
+                           FROM public.student_profiles ORDER BY teacher_id,student_id""",
+    "student_sessions": """SELECT id,teacher_id,student_id,board_id,date,duration_minutes,
+                                  topic,homework,result,created_at,updated_at
+                           FROM public.student_sessions ORDER BY id""",
+    "assignments": """SELECT id,teacher_id,student_id,board_id,title,description,due_at,
+                             max_score,created_at
+                      FROM public.assignments ORDER BY id""",
+    "submissions": """SELECT assignment_id,student_id,content,submitted_at,score,feedback,reviewed_at
+                      FROM public.submissions ORDER BY assignment_id,student_id""",
+    "scheduled_lessons": """SELECT id,teacher_id,student_id,board_id,title,starts_at,
+                                   duration_minutes,recurrence,recurrence_group_id,note,status,created_at
+                            FROM public.scheduled_lessons ORDER BY id""",
+    "live_lessons": """SELECT id,teacher_id,student_id,board_id,topic,started_at,ended_at,
+                              result,homework,created_at,schedule_id
+                       FROM public.live_lessons ORDER BY id""",
 }
 
 def source_uri() -> str:
@@ -77,6 +93,44 @@ def preflight(rows: dict[str, list[asyncpg.Record]]) -> None:
            for i in rows["invites"]):
         raise RuntimeError("A board invitation cannot be migrated")
 
+    assignment_ids = {r["id"] for r in rows["assignments"]}
+    schedule_ids = {r["id"] for r in rows["scheduled_lessons"]}
+    board_owners = {r["id"]: r["owner_id"] for r in rows["boards"]}
+    if any(r["teacher_id"] not in user_ids or r["student_id"] not in user_ids
+           or (r["board_id"] is not None and
+               (r["board_id"] not in board_ids or board_owners[r["board_id"]] != r["teacher_id"]))
+           for r in rows["student_profiles"]):
+        raise RuntimeError("A student profile references an unknown teacher or student")
+    if any(r["teacher_id"] not in user_ids or r["student_id"] not in user_ids
+           or (r["board_id"] is not None and
+               (r["board_id"] not in board_ids or board_owners[r["board_id"]] != r["teacher_id"]))
+           or not 0 <= r["duration_minutes"] <= 1440
+           for r in rows["student_sessions"]):
+        raise RuntimeError("A student session cannot be migrated")
+    if any(r["teacher_id"] not in user_ids or r["student_id"] not in user_ids
+           or (r["board_id"] is not None and
+               (r["board_id"] not in board_ids or board_owners[r["board_id"]] != r["teacher_id"]))
+           or not 1 <= r["max_score"] <= 10000
+           for r in rows["assignments"]):
+        raise RuntimeError("An assignment cannot be migrated")
+    assignment_students = {r["id"]: r["student_id"] for r in rows["assignments"]}
+    if any(r["assignment_id"] not in assignment_ids or
+           assignment_students[r["assignment_id"]] != r["student_id"]
+           for r in rows["submissions"]):
+        raise RuntimeError("A submission references an unknown assignment or student")
+    if any(r["teacher_id"] not in user_ids or r["student_id"] not in user_ids
+           or (r["board_id"] is not None and
+               (r["board_id"] not in board_ids or board_owners[r["board_id"]] != r["teacher_id"]))
+           or r["recurrence"] not in ("none","weekly")
+           or r["status"] not in ("planned","completed","cancelled")
+           for r in rows["scheduled_lessons"]):
+        raise RuntimeError("A scheduled lesson cannot be migrated")
+    if any(r["teacher_id"] not in user_ids or r["student_id"] not in user_ids
+           or r["board_id"] not in board_ids or board_owners[r["board_id"]] != r["teacher_id"]
+           or (r["schedule_id"] is not None and r["schedule_id"] not in schedule_ids)
+           for r in rows["live_lessons"]):
+        raise RuntimeError("A live lesson cannot be migrated")
+
 async def run(apply: bool) -> None:
     source_dsn = source_uri()
     if apply:
@@ -106,7 +160,9 @@ async def run(apply: bool) -> None:
             try:
                 async with target.transaction():
                     for table in ("account_users", "account_sessions", "boards",
-                                  "board_members", "board_documents", "board_invites"):
+                                  "board_members", "board_documents", "board_invites",
+                                  "student_profiles", "student_sessions", "assignments",
+                                  "submissions", "scheduled_lessons", "live_lessons"):
                         existing = await target.fetchval(f"SELECT count(*) FROM {table}")
                         if existing:
                             raise RuntimeError("Refusing import into a nonempty target")
@@ -151,12 +207,65 @@ async def run(apply: bool) -> None:
                             "id","board_id","email","role","created_at"
                         )) for r in rows["invites"]],
                     )
+                    await target.executemany(
+                        """INSERT INTO student_profiles(teacher_id,student_id,note,tags,updated_at)
+                           VALUES($1,$2,$3,$4,$5)""",
+                        [tuple(r[k] for k in ("teacher_id","student_id","note","tags","updated_at"))
+                         for r in rows["student_profiles"]],
+                    )
+                    await target.executemany(
+                        """INSERT INTO student_sessions
+                           (id,teacher_id,student_id,board_id,date,duration_minutes,topic,homework,result,created_at,updated_at)
+                           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)""",
+                        [tuple(r[k] for k in ("id","teacher_id","student_id","board_id","date",
+                          "duration_minutes","topic","homework","result","created_at","updated_at"))
+                         for r in rows["student_sessions"]],
+                    )
+                    await target.executemany(
+                        """INSERT INTO assignments
+                           (id,teacher_id,student_id,board_id,title,description,due_at,max_score,created_at)
+                           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)""",
+                        [tuple(r[k] for k in ("id","teacher_id","student_id","board_id","title",
+                          "description","due_at","max_score","created_at"))
+                         for r in rows["assignments"]],
+                    )
+                    await target.executemany(
+                        """INSERT INTO submissions
+                           (assignment_id,student_id,content,submitted_at,score,feedback,reviewed_at)
+                           VALUES($1,$2,$3,$4,$5,$6,$7)""",
+                        [tuple(r[k] for k in ("assignment_id","student_id","content","submitted_at",
+                          "score","feedback","reviewed_at")) for r in rows["submissions"]],
+                    )
+                    await target.executemany(
+                        """INSERT INTO scheduled_lessons
+                           (id,teacher_id,student_id,board_id,title,starts_at,duration_minutes,
+                            recurrence,recurrence_group_id,note,status,created_at)
+                           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)""",
+                        [tuple(r[k] for k in ("id","teacher_id","student_id","board_id","title",
+                          "starts_at","duration_minutes","recurrence","recurrence_group_id",
+                          "note","status","created_at")) for r in rows["scheduled_lessons"]],
+                    )
+                    await target.executemany(
+                        """INSERT INTO live_lessons
+                           (id,teacher_id,student_id,board_id,topic,started_at,ended_at,
+                            result,homework,created_at,schedule_id)
+                           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)""",
+                        [tuple(r[k] for k in ("id","teacher_id","student_id","board_id","topic",
+                          "started_at","ended_at","result","homework","created_at","schedule_id"))
+                         for r in rows["live_lessons"]],
+                    )
                     for table,name in (
                         ("account_users","users"),
                         ("boards","boards"),
                         ("board_members","members"),
                         ("board_documents","documents"),
                         ("board_invites","invites"),
+                        ("student_profiles","student_profiles"),
+                        ("student_sessions","student_sessions"),
+                        ("assignments","assignments"),
+                        ("submissions","submissions"),
+                        ("scheduled_lessons","scheduled_lessons"),
+                        ("live_lessons","live_lessons"),
                     ):
                         if await target.fetchval(f"SELECT count(*) FROM {table}") != counts[name]:
                             raise RuntimeError("Post-import record counts do not match")
@@ -176,7 +285,7 @@ async def run(apply: bool) -> None:
                         ).digest()
                         if source_hashes.get(row["board_id"]) != result:
                             raise RuntimeError("Document content validation failed")
-                print("Atomic core import verified. Binary assets and other features NOT migrated.")
+                print("Atomic account, board and education import verified. Binary assets and other features NOT migrated.")
             finally:
                 await target.close()
     finally:
