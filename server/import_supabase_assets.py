@@ -161,7 +161,12 @@ async def copy_binary(
 async def run(apply: bool):
     source_dsn = source_uri()
     # Even dry run is read-only on Supabase; no content or credentials printed.
-    source = await asyncpg.connect(source_dsn,ssl="require",timeout=20)
+    source_host = urlsplit(source_dsn).hostname
+    local_ci = (os.getenv("LEKTRUS_TEST_INSECURE_SOURCE") == "1"
+                and source_host in ("localhost", "127.0.0.1"))
+    source = await asyncpg.connect(
+        source_dsn,ssl=False if local_ci else "require",timeout=20
+    )
     try:
         async with source.transaction(isolation="repeatable_read",readonly=True):
             manifest = manifest_from_rows(await source.fetch(SOURCE_OBJECTS_SQL))
