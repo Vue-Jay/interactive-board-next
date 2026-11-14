@@ -453,6 +453,14 @@ async def _drop_subscriber(board_id: UUID, client: WebSocket,
 
 
 async def announce(board_id: UUID, version: int, pool: asyncpg.Pool):
+    await announce_board_event(board_id, {"type": "document_changed", "version": version}, pool)
+
+
+async def announce_comments(board_id: UUID, pool: asyncpg.Pool):
+    await announce_board_event(board_id, {"type": "comments_changed"}, pool)
+
+
+async def announce_board_event(board_id: UUID, event: dict[str, Any], pool: asyncpg.Pool):
     # Permission and session membership are checked at SEND TIME. A user who
     # was removed from a board or logged out must not receive future notices.
     for client, token in list(_subscribers.get(board_id, {}).items()):
@@ -460,7 +468,7 @@ async def announce(board_id: UUID, version: int, pool: asyncpg.Pool):
             user = await lookup_session(pool, token)
             async with pool.acquire() as conn:
                 await board_access(conn, board_id, user["id"])
-            await client.send_json({"type": "document_changed", "version": version})
+            await asyncio.wait_for(client.send_json(event), timeout=1)
         except HTTPException:
             await _drop_subscriber(board_id, client, pool)
             try:
@@ -495,7 +503,7 @@ async def relay_live_event(board_id: UUID, sender: WebSocket,
 
 @app.put("/api/v1/boards/{board_id}/document")
 async def save_document(board_id: UUID, data: SaveDocumentInput, request: Request,
-                        user=Depends(current_user)):
+                        version_only: bool = False, user=Depends(current_user)):
     items = data.document.get("items")
     ink = data.document.get("ink", [])
     if not isinstance(items, list) or not isinstance(ink, list):
@@ -517,26 +525,30 @@ async def save_document(board_id: UUID, data: SaveDocumentInput, request: Reques
             if current_version != data.expected_version:
                 error(409, f"Версия доски изменилась: {current_version}.")
             if previous:
-                row = await conn.fetchrow(
+                revision = await conn.fetchrow(
                     """UPDATE board_documents
                           SET document=$2::jsonb,version=version+1,
                               updated_by=$3,updated_at=now()
                         WHERE board_id=$1
-                        RETURNING document,version,updated_at,updated_by""",
+                        RETURNING version,updated_at""",
                     board_id, serialized, user["id"],
                 )
             else:
-                row = await conn.fetchrow(
+                revision = await conn.fetchrow(
                     """INSERT INTO board_documents(board_id,document,version,updated_by)
                        VALUES($1,$2::jsonb,1,$3)
-                       RETURNING document,version,updated_at,updated_by""",
+                       RETURNING version,updated_at""",
                     board_id, serialized, user["id"],
                 )
             await conn.execute(
                 "UPDATE boards SET updated_at=now() WHERE id=$1", board_id,
             )
-    await announce(board_id, row["version"], request.app.state.pool)
-    return document_view(row, board_id)
+    version = revision["version"]
+    await announce(board_id, version, request.app.state.pool)
+    if version_only:
+        return {"version": version}
+    return {"board_id": str(board_id), "document": data.document, "version": version,
+            "updated_at": revision["updated_at"].isoformat(), "updated_by": str(user["id"])}
 
 @app.websocket("/api/v1/boards/{board_id}/events")
 async def board_events(websocket: WebSocket, board_id: UUID):
@@ -613,8 +625,12 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                     current_board, current_role = await board_access(
                         conn, board_id, refreshed_user["id"]
                     )
+                    if message.get("type") == "ping":
+                        version = await conn.fetchval(
+                            "SELECT version FROM board_documents WHERE board_id=$1", board_id
+                        ) or 0
                 if message.get("type") == "ping":
-                    await websocket.send_json({"type": "pong"})
+                    await websocket.send_json({"type": "pong", "version": version})
                     continue
                 try:
                     event = validate_live_event(
@@ -743,7 +759,7 @@ app.include_router(make_education_router(current_user, board_access))
 from admin import make_admin_router
 app.include_router(make_admin_router(current_user))
 from comments import make_comments_router
-app.include_router(make_comments_router(current_user, board_access))
+app.include_router(make_comments_router(current_user, board_access, announce_comments))
 from materials import make_material_router
 app.include_router(make_material_router(current_user))
 from notifications import make_router as make_notifications_router

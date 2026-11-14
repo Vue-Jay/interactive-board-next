@@ -265,7 +265,7 @@ async def test_two_live_sockets_receive_revision_then_revoke():
                     assert error["reason"]=="invalid_ink_fields"
 
                     saved=await http.put(
-                        "/api/v1/boards/"+board+"/document",
+                        "/api/v1/boards/"+board+"/document?version_only=true",
                         headers=owner,
                         json={"expected_version":1,"document":{
                             "pilot_schema":1,"items":[
@@ -276,10 +276,31 @@ async def test_two_live_sockets_receive_revision_then_revoke():
                         }},
                     )
                     assert saved.status_code==200,saved.text
+                    assert saved.json()=={"version":2}
                     for ws in (ws_owner,ws_student):
                         msg=json.loads(await asyncio.wait_for(ws.recv(),3))
                         assert msg=={"type":"document_changed","version":2}
                         assert "document" not in msg, "WS should not resend full board JSON"
+
+                    await ws_student.send(json.dumps({"type":"ping"}))
+                    assert json.loads(await asyncio.wait_for(ws_student.recv(),3)) == {
+                        "type":"pong","version":2,
+                    }
+                    comment=await http.post(
+                        "/api/v1/boards/"+board+"/comments",headers=student,
+                        json={"body":"A question"},
+                    )
+                    assert comment.status_code==201,comment.text
+                    resolved=await http.patch(
+                        "/api/v1/comments/"+comment.json()["id"],headers=owner,
+                        json={"resolved":True},
+                    )
+                    assert resolved.status_code==200,resolved.text
+                    for ws in (ws_owner,ws_student):
+                        for _ in range(2):
+                            assert json.loads(await asyncio.wait_for(ws.recv(),3)) == {
+                                "type":"comments_changed",
+                            }
 
                     async with app.state.pool.acquire() as db:
                         await db.execute(

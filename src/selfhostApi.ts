@@ -51,6 +51,7 @@ export type SelfhostLiveEvent=
   | {type:"guided_follow";user_id:string;name:string;role:SelfhostBoardRole;enabled:boolean;sent_at:number}
   | {type:"attachment_request";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;asset_id:string;attachment_name:string;mime:string;kind:"image"|"pdf";width:number;height:number;sent_at:number}
   | {type:"attachment_result";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;target_user_id:string;approved:boolean;attachment_name:string;sent_at:number}
+  | {type:"comments_changed"}
   | {type:"event_error";reason:string};
 export type SelfhostBoardChannel=(()=>void)&{
   sendCursor:(clientId:string,x:number,y:number)=>boolean;
@@ -266,11 +267,11 @@ export async function selfhostDownloadAsset(boardId:string,assetId:string):Promi
   if(!response.ok)throw await responseError(response);
   return response.blob();
 }
-export const selfhostReadDocument=(boardId:string)=>selfhostRequest<SelfhostDocument>(
-  "/api/v1/boards/"+encodeURIComponent(boardId)+"/document"
+export const selfhostReadDocument=(boardId:string,signal?:AbortSignal)=>selfhostRequest<SelfhostDocument>(
+  "/api/v1/boards/"+encodeURIComponent(boardId)+"/document",{signal}
 );
 export const selfhostSaveDocument=(boardId:string,expectedVersion:number,document:Record<string,unknown>)=>
-  selfhostRequest<SelfhostDocument>("/api/v1/boards/"+encodeURIComponent(boardId)+"/document",{
+  selfhostRequest<{version:number}>("/api/v1/boards/"+encodeURIComponent(boardId)+"/document?version_only=true",{
     method:"PUT",body:JSON.stringify({expected_version:expectedVersion,document}),
   });
 export type SelfhostObjectPreview={
@@ -409,8 +410,7 @@ export const selfhostResolveBoardComment=(commentId:string,resolved:boolean)=>
   });
 
 
-/** Version notices only: actual board document is fetched once after a new revision. */
-export function selfhostSubscribeBoard(
+function connectSelfhostBoard(
   boardId:string,onRevision:(version:number)=>void,
   onStatus:(status:SelfhostRealtimeStatus)=>void,
   onLive?:(event:SelfhostLiveEvent)=>void,
@@ -421,6 +421,7 @@ export function selfhostSubscribeBoard(
   let retry:ReturnType<typeof setTimeout>|undefined;
   let heartbeat:ReturnType<typeof setInterval>|undefined;
   let expiry:ReturnType<typeof setTimeout>|undefined;
+  let responseDeadline:ReturnType<typeof setTimeout>|undefined;
   let lastVersion=-1;
   let ready=false;
   let lastCursorSent=0;
@@ -434,8 +435,8 @@ export function selfhostSubscribeBoard(
   let objectTimer:ReturnType<typeof setTimeout>|undefined;
   const sendRaw=(frame:Record<string,unknown>):boolean=>{
     if(!ready||!socket||socket.readyState!==WebSocket.OPEN)return false;
-    socket.send(JSON.stringify(frame));
-    return true;
+    try{socket.send(JSON.stringify(frame));return true}
+    catch{reconnect();return false}
   };
   const flushCursor=()=>{
     clearTimeout(cursorTimer);cursorTimer=undefined;
@@ -467,12 +468,10 @@ export function selfhostSubscribeBoard(
   const sendInk=(ink:SelfhostLiveInkPacket):boolean=>{
     if(ink.type!=="live_ink"||!Array.isArray(ink.points)||
        !ink.points.length||ink.points.length>200)return false;
-    if(!ready){
-      if(queuedInk.length>=256)return false;
-      queuedInk.push(ink);
-      return true;
-    }
-    return sendInkNow(ink);
+    if(ready&&sendInkNow(ink))return true;
+    if(queuedInk.length>=256)return false;
+    queuedInk.push(ink);
+    return true;
   };
   const flushObjectPreview=()=>{
     clearTimeout(objectTimer);objectTimer=undefined;
@@ -488,7 +487,7 @@ export function selfhostSubscribeBoard(
     try{serialized=JSON.stringify(event)}catch{return false}
     if(serialized.length>120_000)return false;
     if(!ready||!socket||socket.readyState!==WebSocket.OPEN)return false;
-    try{socket.send(serialized);return true}catch{return false}
+    try{socket.send(serialized);return true}catch{reconnect();return false}
   };
   const sendObjectPreview=(next:SelfhostObjectPreview):boolean=>{
     if(!ready||next.type!=="object_preview"||
@@ -509,8 +508,8 @@ export function selfhostSubscribeBoard(
     return true;
   };
   const clearTimers=()=>{
-    clearTimeout(retry);clearInterval(heartbeat);clearTimeout(expiry);
-    retry=heartbeat=expiry=undefined;
+    clearTimeout(retry);clearInterval(heartbeat);clearTimeout(expiry);clearTimeout(responseDeadline);
+    retry=heartbeat=expiry=responseDeadline=undefined;
     clearTimeout(cursorTimer);cursorTimer=undefined;
     clearTimeout(objectTimer);objectTimer=undefined;pendingObject=null;
     clearInterval(retryFinals);retryFinals=undefined;
@@ -529,28 +528,37 @@ export function selfhostSubscribeBoard(
     retry=setTimeout(()=>void connect(),Math.min(30000,1000*2**Math.min(attempt++,5)));
   };
   const connect=async()=>{
-    if(stopped)return;
+    if(stopped||!navigator.onLine)return;
     const current=++generation;
-    onStatus(navigator.onLine?"reconnecting":"offline");
+    onStatus("reconnecting");
     try{
       const session=await selfhostSession();
       if(stopped||current!==generation)return;
-      if(!session){onStatus("offline");return}
+      if(!session){
+        if(loadSession())reconnect();
+        else onStatus("offline");
+        return;
+      }
       const socketUrl=new URL(selfhostOrigin());
       socketUrl.protocol=socketUrl.protocol==="https:"?"wss:":"ws:";
       socketUrl.pathname="/api/v1/boards/"+encodeURIComponent(boardId)+"/events";
       const ws=new WebSocket(socketUrl.toString());
       socket=ws;
       const active=()=>!stopped&&generation===current&&socket===ws;
+      responseDeadline=setTimeout(reconnect,15000);
       ws.onopen=()=>{
         if(!active())return;
-        ws.send(JSON.stringify({
-          type:"auth",token:session.access_token,
-          ...(presence?{presence:true,visible:presence.visible}:{}),
-        }));
+        try{
+          ws.send(JSON.stringify({
+            type:"auth",token:session.access_token,
+            ...(presence?{presence:true,visible:presence.visible}:{}),
+          }));
+        }catch{reconnect();return}
         heartbeat=setInterval(()=>{
-          if(active()&&ws.readyState===WebSocket.OPEN)
-            ws.send(JSON.stringify({type:"ping"}));
+          if(active()&&sendRaw({type:"ping"})){
+            clearTimeout(responseDeadline);
+            responseDeadline=setTimeout(reconnect,8000);
+          }
         },20000);
         expiry=setTimeout(reconnect,Math.max(1000,(session.expires_at-Date.now()/1000-60)*1000));
       };
@@ -558,7 +566,11 @@ export function selfhostSubscribeBoard(
         if(!active())return;
         try{
           const message=JSON.parse(String(event.data));
-          if(message?.type==="ready"){
+          if(message?.type==="pong"){
+            clearTimeout(responseDeadline);responseDeadline=undefined;
+          }
+          if(message?.type==="ready"&&!ready){
+            clearTimeout(responseDeadline);responseDeadline=undefined;
             attempt=0;ready=true;onStatus("online");
             // Final packets contain the full <=200-point stroke window in the
             // selfhost. Replay them if the socket died before the ack arrived.
@@ -567,7 +579,8 @@ export function selfhostSubscribeBoard(
                 item.lastSent=Date.now();item.attempts++;
               }
             }
-            for(const packet of queuedInk.splice(0))sendInkNow(packet);
+            for(const packet of queuedInk.splice(0))sendInk(packet);
+            if(!active())return;
             retryFinals=setInterval(()=>{
               if(!active()||!ready)return;
               for(const [id,item] of pendingFinals){
@@ -633,7 +646,9 @@ export function selfhostSubscribeBoard(
           if(message?.type==="event_error"&&typeof message.reason==="string"){
             onLive?.(message as SelfhostLiveEvent);
           }
-          if(message?.type==="ready"||message?.type==="document_changed"){
+          if(!ready)return;
+          if(message?.type==="comments_changed")onLive?.({type:"comments_changed"});
+          if(message?.type==="ready"||message?.type==="document_changed"||message?.type==="pong"){
             const version=message.version;
             if(Number.isSafeInteger(version)&&version>=0&&version>lastVersion){
               lastVersion=version;onRevision(version);
@@ -657,6 +672,153 @@ export function selfhostSubscribeBoard(
   return Object.assign(stop,{sendCursor,sendInk,sendObjectPreview,sendEvent});
 }
 
+
+type BoardListener={
+  onRevision:(version:number)=>void;
+  onStatus:(status:SelfhostRealtimeStatus)=>void;
+  onLive?:(event:SelfhostLiveEvent)=>void;
+  presence?:{visible:boolean};
+};
+
+class SharedSelfhostBoard {
+  private listeners=new Set<BoardListener>();
+  private socket?:SelfhostBoardChannel;
+  private presence?:boolean;
+  private version=-1;
+  private status:SelfhostRealtimeStatus="reconnecting";
+  private reconcileQueued=false;
+
+  constructor(boardId:string,onEmpty:()=>void){
+    this.boardId=boardId;
+    this.onEmpty=onEmpty;
+  }
+
+  private readonly boardId:string;
+  private readonly onEmpty:()=>void;
+
+  private reconcile(){
+    if(this.reconcileQueued)return;
+    this.reconcileQueued=true;
+    queueMicrotask(()=>{
+      this.reconcileQueued=false;
+      if(!this.listeners.size){
+        this.socket?.();
+        this.socket=undefined;
+        this.onEmpty();
+        return;
+      }
+      const presence=[...this.listeners].find(listener=>listener.presence)?.presence;
+      if(this.socket&&this.presence===presence?.visible)return;
+      this.socket?.();
+      this.presence=presence?.visible;
+      this.socket=connectSelfhostBoard(this.boardId,version=>{
+        if(version<=this.version)return;
+        this.version=version;
+        for(const listener of this.listeners)listener.onRevision(version);
+      },status=>{
+        this.status=status;
+        for(const listener of this.listeners)listener.onStatus(status);
+      },event=>{
+        for(const listener of this.listeners)listener.onLive?.(event);
+      },presence);
+    });
+  }
+
+  subscribe(listener:BoardListener):SelfhostBoardChannel{
+    this.listeners.add(listener);
+    this.reconcile();
+    queueMicrotask(()=>{
+      if(!this.listeners.has(listener))return;
+      if(this.status==="online")listener.onStatus("online");
+      if(this.version>=0)listener.onRevision(this.version);
+    });
+    const stop=()=>{
+      this.listeners.delete(listener);
+      this.reconcile();
+    };
+    return Object.assign(stop,{
+      sendCursor:(id:string,x:number,y:number)=>this.listeners.has(listener)&&!!this.socket?.sendCursor(id,x,y),
+      sendInk:(ink:SelfhostLiveInkPacket)=>this.listeners.has(listener)&&!!this.socket?.sendInk(ink),
+      sendObjectPreview:(preview:SelfhostObjectPreview)=>this.listeners.has(listener)&&!!this.socket?.sendObjectPreview(preview),
+      sendEvent:(event:Record<string,unknown>)=>this.listeners.has(listener)&&!!this.socket?.sendEvent(event),
+    });
+  }
+}
+
+const selfhostBoardSockets=new Map<string,SharedSelfhostBoard>();
+
+export function selfhostSubscribeBoard(
+  boardId:string,onRevision:BoardListener["onRevision"],onStatus:BoardListener["onStatus"],
+  onLive?:BoardListener["onLive"],presence?:BoardListener["presence"],
+):SelfhostBoardChannel{
+  let shared=selfhostBoardSockets.get(boardId);
+  if(!shared){
+    shared=new SharedSelfhostBoard(boardId,()=>selfhostBoardSockets.delete(boardId));
+    selfhostBoardSockets.set(boardId,shared);
+  }
+  return shared.subscribe({onRevision,onStatus,onLive,presence});
+}
+
+/** Download only the latest announced revision and retry failed reads. */
+export function selfhostWatchDocument(
+  boardId:string,currentVersion:()=>number,onDocument:(row:SelfhostDocument)=>void,
+  onStatus:(status:SelfhostRealtimeStatus)=>void,
+):()=>void{
+  const controller=new AbortController();
+  let target=-1;
+  let delivered=-1;
+  let timer:ReturnType<typeof setTimeout>|undefined;
+  let reading=false;
+  let failures=0;
+  let status:SelfhostRealtimeStatus="reconnecting";
+  const schedule=()=>{
+    if(controller.signal.aborted||status!=="online"||reading||timer!==undefined||
+       target<=Math.max(currentVersion(),delivered))return;
+    timer=setTimeout(()=>{timer=undefined;void read()},failures?Math.min(8000,500*2**failures):120);
+  };
+  const read=async()=>{
+    if(controller.signal.aborted||status!=="online"||target<=Math.max(currentVersion(),delivered))return;
+    reading=true;
+    try{
+      const row=await selfhostReadDocument(boardId,controller.signal);
+      if(controller.signal.aborted)return;
+      if(row.document&&row.version>Math.max(currentVersion(),delivered))onDocument(row);
+      delivered=Math.max(delivered,row.version);
+      failures=row.version<target?Math.min(failures+1,5):0;
+      if(!failures)onStatus(status);
+    }catch(error){
+      if(controller.signal.aborted)return;
+      if(error instanceof SelfhostHttpError&&[401,403,404].includes(error.status)){
+        delivered=target;
+        onStatus("offline");
+        return;
+      }
+      failures=Math.min(failures+1,5);
+      if(status==="online")onStatus("reconnecting");
+    }finally{
+      reading=false;
+      schedule();
+    }
+  };
+  const socket=selfhostSubscribeBoard(boardId,version=>{
+    target=Math.max(target,version);
+    schedule();
+  },next=>{
+    const wasOnline=status==="online";
+    status=next;
+    if(!wasOnline&&next==="online"){
+      failures=0;
+      clearTimeout(timer);timer=undefined;
+      schedule();
+    }
+    onStatus(next);
+  });
+  return ()=>{
+    controller.abort();
+    clearTimeout(timer);
+    socket();
+  };
+}
 
 export const isSelfhostBackendEnabled = () => SELFHOST_BACKEND_ENABLED;
 export const getCachedSelfhostSession = cachedSelfhostSession;

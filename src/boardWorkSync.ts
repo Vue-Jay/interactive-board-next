@@ -76,6 +76,7 @@ export function connectBoardWorkChannel(
     };
     channel = selfhostSubscribeBoard(boardId, () => {}, status => {
       ready = status === "online";
+      lastFingerprint = "";
       if (ready) sendState();
     }, event => {
       if (event.type === "presence_diff") {
@@ -142,7 +143,7 @@ export function connectBoardWorkChannel(
           finished: event.finished, items: poses,
         });
       }
-    }, { visible: publishSelf });
+    });
     return {
       publish: (selectedIds, editingId) => {
         if (stopped || !publishSelf) return;

@@ -1,23 +1,20 @@
 import { getRealtimeSocketUrl, getRemoteSession, isRemoteBackendEnabled } from "./backend";
-import { isSelfhostBackendEnabled } from "./selfhostApi";
-import { listBoardComments } from "./commentThreadsStore";
+import { isSelfhostBackendEnabled, selfhostSubscribeBoard } from "./selfhostApi";
 
-export function subscribeBoardComments(boardId:string,onChange:()=>void):()=>void{
+export function subscribeBoardComments(boardId:string,onChange:()=>void,onReconnect=onChange):()=>void{
  if(isSelfhostBackendEnabled()){
-  let stopped=false,checking=false,snapshot="";
-  const poll=async()=>{
-   if(stopped||checking)return;
-   checking=true;
-   try{
-    const next=JSON.stringify(await listBoardComments(boardId));
-    if(snapshot&&snapshot!==next)onChange();
-    snapshot=next;
-   }catch{/* A later poll retries after a brief API outage. */}
-   finally{checking=false}
+  let connected=false;
+  let timer:ReturnType<typeof setTimeout>|undefined;
+  const notify=()=>{
+   clearTimeout(timer);
+   timer=setTimeout(onChange,120);
   };
-  void poll();
-  const timer=window.setInterval(()=>void poll(),2500);
-  return()=>{stopped=true;window.clearInterval(timer)};
+  const stop=selfhostSubscribeBoard(boardId,()=>{},status=>{
+   if(status!=="online")return;
+   if(connected)onReconnect();
+   connected=true;
+  },event=>{if(event.type==="comments_changed")notify()});
+  return()=>{clearTimeout(timer);stop()};
  }
  if(!isRemoteBackendEnabled())return()=>{};
  let stopped=false,socket:WebSocket|null=null,retry:ReturnType<typeof setTimeout>|undefined,notifyTimer:ReturnType<typeof setTimeout>|undefined,heartbeat:ReturnType<typeof setInterval>|undefined,seq=0,attempt=0;

@@ -94,7 +94,7 @@ import { Capacitor } from "@capacitor/core";
 import { BOARD_ROLE_LABELS, type AuthUser } from "./authStore";
 import { boardStorageKey, touchBoard, type BoardSummary } from "./boardStore";
 import { isRemoteBackendEnabled, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
-import { selfhostReadDocument, selfhostSaveDocument, selfhostSubscribeBoard, SelfhostHttpError } from "./selfhostApi";
+import { selfhostReadDocument, selfhostSaveDocument, selfhostWatchDocument, SelfhostHttpError } from "./selfhostApi";
 import { setSelfhostBoardMode } from "./assetStore";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
 import { readDeveloperPreferences, writeDeveloperPreferences } from "./developerPreferences";
@@ -3118,6 +3118,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             const latest=await selfhostReadDocument(boardSummary.id);
             if(!boardMounted.current)return;
             if(latest.document&&latest.version>expectedVersion){
+              if(deferredRemote.current&&deferredRemote.current.version>=latest.version)return;
               deferredRemote.current={
                 board_id:latest.board_id,version:latest.version,
                 document:latest.document,updated_at:latest.updated_at??"",
@@ -3318,13 +3319,16 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setChatOpen(true);setChatUnread(0);setDiscussionOpen(true);setDiscussionBusy(true);setDiscussionError("");if(focusId)setDiscussionFocusId(focusId);
     try{await Promise.all([refreshDiscussions(),refreshDiscussionParticipants()])}catch(error){setDiscussionError(error instanceof Error?error.message:"Не удалось загрузить обсуждения")}finally{setDiscussionBusy(false)}
   };
+  const chatOpenRef=useRef(chatOpen);
+  chatOpenRef.current=chatOpen;
   useEffect(()=>{
     if(layoutEditing||!discussionEnabled)return;
+    const refresh=()=>{void refreshDiscussions().catch(()=>{})};
     return subscribeBoardComments(boardSummary.id,()=>{
-      if(!chatOpen)setChatUnread(value=>Math.min(99,value+1));
-      void refreshDiscussions().catch(()=>{});
-    });
-  },[chatOpen,boardSummary.id,discussionEnabled,layoutEditing,refreshDiscussions]);
+      if(!chatOpenRef.current)setChatUnread(value=>Math.min(99,value+1));
+      refresh();
+    },refresh);
+  },[boardSummary.id,discussionEnabled,layoutEditing,refreshDiscussions]);
   useEffect(()=>{
     const requested=new URLSearchParams(window.location.search).get("discussion");
     if(requested){setDiscussionFocusId(requested);void openDiscussions(requested)}
@@ -7736,18 +7740,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   useEffect(()=>{
     if(layoutEditing)return;
     if(selfhostMode){
-      const stop=selfhostSubscribeBoard(boardSummary.id,version=>{
-        if(version<0||version<=(remoteVersion.current??-1))return;
-        void selfhostReadDocument(boardSummary.id).then(latest=>{
-          if(!latest.document)return;
-          receiveRemote.current({
-            board_id:latest.board_id,version:latest.version,
-            document:latest.document,updated_at:latest.updated_at??"",
-            updated_by:latest.updated_by,
-          });
-        }).catch(()=>setRealtimeStatus("reconnecting"));
+      return selfhostWatchDocument(boardSummary.id,()=>remoteVersion.current??-1,latest=>{
+        if(!latest.document)return;
+        receiveRemote.current({
+          board_id:latest.board_id,version:latest.version,
+          document:latest.document,updated_at:latest.updated_at??"",
+          updated_by:latest.updated_by,
+        });
       },setRealtimeStatus);
-      return()=>stop();
     }
     return subscribeBoardDocument(
       boardSummary.id,row=>receiveRemote.current(row),setRealtimeStatus

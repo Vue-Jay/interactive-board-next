@@ -21,7 +21,7 @@ def iso(value):
     return value.isoformat() if value is not None else None
 
 
-def make_comments_router(current_user, board_access) -> APIRouter:
+def make_comments_router(current_user, board_access, announce_comments) -> APIRouter:
     router = APIRouter()
 
     @router.get("/api/v1/boards/{board_id}/comments")
@@ -93,6 +93,7 @@ def make_comments_router(current_user, board_access) -> APIRouter:
                       FROM (SELECT owner_id AS user_id FROM boards WHERE id=$1
                             UNION SELECT user_id FROM board_members WHERE board_id=$1) target
                      WHERE target.user_id<>$3""",board_id,body[:400],user["id"])
+        await announce_comments(board_id, request.app.state.pool)
         return {
             "id": str(row["id"]), "board_id": str(row["board_id"]),
             "author_id": str(row["author_id"]), "author_name": row["author_name"],
@@ -121,6 +122,7 @@ def make_comments_router(current_user, board_access) -> APIRouter:
                                          body,resolved,created_at,updated_at""",
                     comment_id, data.resolved,
                 )
+        await announce_comments(updated["board_id"], request.app.state.pool)
         return {
             "id": str(updated["id"]), "board_id": str(updated["board_id"]),
             "author_id": str(updated["author_id"]), "author_name": updated["author_name"],

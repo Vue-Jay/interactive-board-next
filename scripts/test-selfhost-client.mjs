@@ -16,7 +16,7 @@ async function loadSelfhost(enabled) {
   }).outputText;
   const data=new Map([["lesson-board.supabase.session.v1","production-must-remain"]]);
   const record=[];
-  let expires=900,refreshes=0;
+  let expires=900,refreshes=0,documentVersion=3,documentFailures=0;
   const nativeBoardId="00000000-0000-4000-8000-000000000004";
   const nativeComment={id:"comment-root",board_id:nativeBoardId,
     author_id:"00000000-0000-4000-8000-000000000001",author_name:"Учитель",
@@ -146,12 +146,18 @@ async function loadSelfhost(enabled) {
     }
     if(u.pathname==="/api/v1/boards")return ok([{id:"board-1",title:"Тест",role:"owner"}]);
     if(u.pathname==="/api/v1/boards/board-1/document"&&options.method==="PUT"){
+      assert.equal(u.searchParams.get("version_only"),"true");
       if(JSON.parse(options.body).expected_version!==3)
         return ok({detail:"Версия изменилась."},409);
-      return ok({board_id:"board-1",version:4,document:{pilot_schema:1,note:"hello",items:[],ink:[]}});
+      return ok({version:4});
     }
-    if(u.pathname==="/api/v1/boards/board-1/document")
-      return ok({board_id:"board-1",version:3,document:{pilot_schema:1,items:[],ink:[],note:"hi"}});
+    if(u.pathname==="/api/v1/boards/board-1/document"){
+      if(documentFailures>0){
+        documentFailures--;
+        return ok({detail:"Temporary error"},503);
+      }
+      return ok({board_id:"board-1",version:documentVersion,document:{pilot_schema:1,items:[],ink:[],note:"hi"}});
+    }
     if(u.pathname==="/api/v1/boards/board-1/pilot/ink"&&options.method==="POST"){
       assert.equal(options.body!==undefined,true);
       assert.equal(JSON.parse(options.body).stroke_id,"stroke_test");
@@ -197,7 +203,7 @@ async function loadSelfhost(enabled) {
   }
   const listeners=new Map();
   const context=vm.createContext({
-    exports:{},fetch,URL,Headers,Response,AbortController,FormData,
+    exports:{},fetch,URL,Headers,Response,AbortController,FormData,queueMicrotask,
     navigator:{onLine:true},WebSocket:Socket,
     localStorage:sessionStorage,sessionStorage,setTimeout,clearTimeout,setInterval,clearInterval,Date,
     window:{location:{origin:"https://pilot.lektrus.example"},
@@ -205,7 +211,7 @@ async function loadSelfhost(enabled) {
       removeEventListener(name){listeners.delete(name)}},
   });
   vm.runInContext(compiled,context);
-  return {api:context.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,sessionStorage,changeExpires:v=>{expires=v}};
+  return {api:context.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,sessionStorage,changeExpires:v=>{expires=v},changeDocument:(v,failures=0)=>{documentVersion=v;documentFailures=failures}};
 }
 
 const disabled=await loadSelfhost(false);
@@ -294,6 +300,8 @@ const liveEvents=[];
 const unsubscribe=api.selfhostSubscribeBoard("board-1",
   version=>revisions.push(version),status=>statuses.push(status),
   frame=>liveEvents.push(frame),{visible:true});
+const commentEvents=[];
+const stopComments=api.selfhostSubscribeBoard("board-1",()=>{},()=>{},frame=>commentEvents.push(frame.type));
 await new Promise(resolve=>setTimeout(resolve,0));
 assert.equal(sockets.length,1);
 assert.ok(sockets[0].url.startsWith("wss://pilot.lektrus.example/api/v1/boards/board-1/events"));
@@ -361,9 +369,50 @@ sockets[0].emit({type:"document_changed",version:4});
 sockets[0].emit({type:"document_changed",version:2});
 assert.deepEqual(revisions,[3,4],"Repeated/old revisions must not re-fetch entire documents");
 assert.ok(statuses.includes("online"));
+sockets[0].emit({type:"comments_changed"});
+assert.equal(commentEvents.at(-1),"comments_changed");
+sockets[0].emit({type:"pong",version:5});
+assert.deepEqual(revisions,[3,4,5]);
+stopComments();
+await Promise.resolve();
+assert.equal(sockets[0].readyState,1,"Closing a feature must keep the board connection");
 unsubscribe();
+await Promise.resolve();
 assert.equal(sockets[0].readyState,3);
 assert.equal(env.listeners.size,0);
+const handleDocumentVersions=[];
+const documentStatuses=[];
+const openedBoard=api.selfhostWatchDocument("board-1",()=>3,
+  doc=>handleDocumentVersions.push(doc.version),status=>documentStatuses.push(status));
+await new Promise(resolve=>setTimeout(resolve,0));
+const boardSocket=sockets.at(-1);
+boardSocket.open();
+boardSocket.emit({type:"ready",version:3});
+const countReads=()=>records.filter(x=>x.path==="/api/v1/boards/board-1/document"&&x.method==="GET").length;
+const previousReads=countReads();
+env.changeDocument(6,1);
+for(const version of [4,5,6])boardSocket.emit({type:"document_changed",version});
+const waitFor=async predicate=>{
+  for(let attempt=0;attempt<80&&!predicate();attempt++)
+    await new Promise(resolve=>setTimeout(resolve,50));
+  assert.ok(predicate(),"Timed out waiting for board sync");
+};
+await waitFor(()=>handleDocumentVersions.length===1);
+assert.deepEqual(handleDocumentVersions,[6],"Only the newest saved revision should be applied");
+assert.equal(countReads()-previousReads,2,"Coalesced notices should require one request plus one retry");
+assert.ok(documentStatuses.includes("reconnecting"));
+assert.equal(documentStatuses.at(-1),"online");
+env.changeDocument(7);
+boardSocket.onclose();
+await waitFor(()=>sockets.at(-1)!==boardSocket);
+const reconnectedSocket=sockets.at(-1);
+reconnectedSocket.open();
+reconnectedSocket.emit({type:"ready",version:7});
+await waitFor(()=>handleDocumentVersions.length===2);
+assert.deepEqual(handleDocumentVersions,[6,7],"A reconnect should recover a revision missed while offline");
+openedBoard();
+await Promise.resolve();
+
 await api.selfhostLogout();
 assert.equal(api.cachedSelfhostSession(),null);
 assert.equal(storage.get("lesson-board.supabase.session.v1"),"production-must-remain");
