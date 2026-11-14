@@ -167,7 +167,7 @@ async def test_board_access_and_conflict_free_save(client):
     assert [b["id"] for b in listed.json()] == [board_id]
 
 @pytest.mark.asyncio
-async def test_payload_limits_and_unconfirmed_accounts(client):
+async def test_payload_limits_and_unconfirmed_accounts(client, monkeypatch):
     _, teacher = await sign_in(client, "teacher@example.test")
     created = await client.post(
         "/api/v1/boards", json={"title": "Тест ограничений"}, headers=teacher
@@ -178,10 +178,13 @@ async def test_payload_limits_and_unconfirmed_accounts(client):
         url, headers=teacher,
         json={"expected_version": 0, "document": {"ink": "not-an-array", "items": []}},
     )).status_code == 422
+    # Keep the test small while proving the server enforces its configured
+    # native-document byte ceiling (24 MiB in production).
+    monkeypatch.setattr("app.MAX_DOCUMENT_BYTES",256)
     assert (await client.put(
         url, headers=teacher,
         json={"expected_version": 0, "document": {"items": [{"id": "x"}],
-                                                    "ink": [], "title": "a" * 2_000_001}},
+                                                    "ink": [], "title": "a" * 300}},
     )).status_code == 413
 
     async with app.state.pool.acquire() as conn:
