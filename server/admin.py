@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
 from typing import Literal
 from uuid import UUID, uuid4
 
@@ -99,7 +100,7 @@ def make_admin_router(current_user) -> APIRouter:
                     RETURNING id,email,account_role,teacher_status,is_admin,
                               teacher_requested_at,teacher_reviewed_at,
                               subscription_plan,subscription_until""",
-                user["id"], __import__("json").dumps(application, ensure_ascii=False),
+                user["id"], json.dumps(application, ensure_ascii=False),
                 phone, application["city"], application["organization"],
                 application["focusArea"],
             )
@@ -201,7 +202,11 @@ def make_admin_router(current_user) -> APIRouter:
         until = data.until
         if data.plan == "free":
             until = None
-        elif until is None or until <= datetime.now(timezone.utc):
+        elif until is None:
+            raise HTTPException(422, "Укажите будущую дату окончания подписки.")
+        elif until.tzinfo is None:
+            until = until.replace(tzinfo=timezone.utc)
+        if data.plan != "free" and until <= datetime.now(timezone.utc):
             raise HTTPException(422, "Укажите будущую дату окончания подписки.")
         async with request.app.state.pool.acquire() as conn:
             changed = await conn.fetchval(
