@@ -7,6 +7,11 @@ const app=read("src/App.tsx")+"\n"+read("src/BoardApp.tsx");
 const shell=read("src/LectrisWorkspaceShell.tsx");
 const styles=read("src/lektrusProductScreens.css");
 const templates=read("src/TemplatesScreen.tsx");
+const demo=read("src/PublicDemoBoard.tsx");
+assert.ok(demo.includes("const existing=localStorage.getItem(key)")&&
+ demo.includes("if(capture||!existing)")&&
+ demo.includes("demoInitialDocument={useMemorySeed?seed:undefined}"),
+ "Reopening a demo must restore saved board changes unless the capture flag explicitly resets it");
 
 assert.ok(app.includes("Управление и интерфейс"),"the settings entry must show its full label");
 assert.ok(app.includes('const effectiveAccountRole=appRolePreview==="actual"?accountRole:appRolePreview')&&app.includes("changeAppRolePreview"),"administrator role preview must affect app-wide menus");
