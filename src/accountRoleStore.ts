@@ -10,8 +10,11 @@ export type AdminUser={userId:string;name:string;email:string;role:AccountRole;t
 
 const KEY="onlinerepetitor.account-role.v81",CACHE_MS=30_000;
 const PERSISTENT_CACHE_PREFIX="onlinerepetitor.account-access.v244.";
-let cache:{at:number;value:AccountAccess}|null=null;
-let inFlight:Promise<AccountAccess>|null=null;
+// Cache and active requests must belong to one remote user. Logout or a role
+// mutation invalidates pending responses, even if the same user signs in again.
+let cache:{userId:string;at:number;value:AccountAccess}|null=null;
+let inFlight:{userId:string;promise:Promise<AccountAccess>}|null=null;
+let cacheGeneration=0;
 const plan=(x:any):SubscriptionPlan=>x==="pro"?"pro":x==="teacher"||x==="basic"?"teacher":"free";
 const LOCAL_ROLE_PREFIX="lektrus.local-account-role.v1.";
 const currentLocalUserId=():string=>{
@@ -31,34 +34,80 @@ export const setLocalAccountRole=(userId:string,role:AccountRole):void=>{
 };
 const mapAccess=(x:any):AccountAccess=>({role:x?.role==="teacher"?"teacher":"student",teacherStatus:["pending","approved","rejected"].includes(x?.teacher_status)?x.teacher_status:"none",isAdmin:!!x?.is_admin,requestedAt:x?.requested_at??null,reviewedAt:x?.reviewed_at??null,subscriptionPlan:plan(x?.subscription_plan),subscriptionUntil:x?.subscription_until??null});
 const currentRemoteUserId=()=>getCachedRemoteSession()?.user?.id||"";
-const cacheKey=()=>`${PERSISTENT_CACHE_PREFIX}${currentRemoteUserId()}`;
-const savePersistent=(value:AccountAccess)=>{const id=currentRemoteUserId();if(!id)return;try{localStorage.setItem(cacheKey(),JSON.stringify({at:Date.now(),value}))}catch{/* Storage can be unavailable in private mode. */}};
+const cacheKey=(id:string)=>`${PERSISTENT_CACHE_PREFIX}${id}`;
+const savePersistent=(id:string,value:AccountAccess,at:number)=>{
+ if(!id)return;
+ try{localStorage.setItem(cacheKey(id),JSON.stringify({at,value}))}
+ catch{/* Storage can be unavailable in private mode. */}
+};
 export const getCachedAccountAccess=():AccountAccess|null=>{
  if(!isRemoteBackendEnabled())return localAccess();
- if(cache)return cache.value;
- const id=currentRemoteUserId();if(!id)return null;
+ const id=currentRemoteUserId();
+ if(!id)return null;
+ if(cache?.userId===id)return cache.value;
  try{
-  const raw=localStorage.getItem(cacheKey());if(!raw)return null;
+  const raw=localStorage.getItem(cacheKey(id));if(!raw)return null;
   const parsed=JSON.parse(raw);const value=parsed?.value;
   if(!value||!(value.role==="teacher"||value.role==="student"))return null;
   const normalized:AccountAccess={role:value.role,teacherStatus:["none","pending","approved","rejected"].includes(value.teacherStatus)?value.teacherStatus:"none",isAdmin:!!value.isAdmin,requestedAt:value.requestedAt??null,reviewedAt:value.reviewedAt??null,subscriptionPlan:plan(value.subscriptionPlan),subscriptionUntil:value.subscriptionUntil??null};
-  cache={at:Number(parsed?.at)||0,value:normalized};return normalized;
+  cache={userId:id,at:Number(parsed?.at)||0,value:normalized};
+  return normalized;
  }catch{return null}
 };
-const remember=(v:AccountAccess)=>{cache={at:Date.now(),value:v};savePersistent(v);return v};
-export function clearAccountAccessCache(){cache=null}
+const remember=(userId:string,value:AccountAccess,generation=cacheGeneration)=>{
+ // Never store a late response under the ID of a different logged-in account.
+ if(!userId||currentRemoteUserId()!==userId||generation!==cacheGeneration)return value;
+ const at=Date.now();
+ cache={userId,at,value};
+ savePersistent(userId,value,at);
+ return value;
+};
+export function clearAccountAccessCache(){
+ cache=null;
+ inFlight=null;
+ cacheGeneration++;
+}
 export async function getAccountAccess():Promise<AccountAccess>{
  if(!isRemoteBackendEnabled())return localAccess();
+ const userId=currentRemoteUserId();
+ if(!userId)throw new Error("Для получения роли требуется авторизация.");
  const stale=getCachedAccountAccess();
- if(cache&&Date.now()-cache.at<CACHE_MS)return cache.value;
- if(inFlight)return inFlight;
- inFlight=(async()=>remember(mapAccess(await remoteRequest("/rest/v1/rpc/get_my_account_access",{method:"POST",body:"{}"}))))().finally(()=>{inFlight=null});
- try{return await inFlight}catch(error){if(stale)return stale;throw error}
+ if(cache?.userId===userId&&Date.now()-cache.at<CACHE_MS)return cache.value;
+ if(inFlight?.userId===userId)return inFlight.promise;
+ const generation=cacheGeneration;
+ const pending=(async()=>{
+  const value=mapAccess(await remoteRequest("/rest/v1/rpc/get_my_account_access",{method:"POST",body:"{}"}));
+  if(currentRemoteUserId()!==userId||generation!==cacheGeneration){
+   throw new Error("Аккаунт изменился. Данные доступа нужно обновить.");
+  }
+  return remember(userId,value,generation);
+ })();
+ inFlight={userId,promise:pending};
+ try{return await pending}
+ catch(error){
+  if(stale&&currentRemoteUserId()===userId&&generation===cacheGeneration)return stale;
+  throw error;
+ }finally{
+  if(inFlight?.promise===pending)inFlight=null;
+ }
 }
 export async function getAccountRole():Promise<AccountRole>{return (await getAccountAccess()).role}
 export async function requestTeacherAccess(application:TeacherApplication):Promise<AccountAccess>{
- if(!isRemoteBackendEnabled()){localStorage.setItem("onlinerepetitor.teacher-application.v1",JSON.stringify(application));localStorage.setItem(KEY,"teacher");return localAccess()}
- clearAccountAccessCache();return remember(mapAccess(await remoteRequest("/rest/v1/rpc/request_teacher_access",{method:"POST",body:JSON.stringify({p_application:application})})))
+ if(!isRemoteBackendEnabled()){
+  localStorage.setItem("onlinerepetitor.teacher-application.v1",JSON.stringify(application));
+  localStorage.setItem(KEY,"teacher");
+  const id=currentLocalUserId();
+  if(id)setLocalAccountRole(id,"teacher");
+  return localAccess();
+ }
+ clearAccountAccessCache();
+ const userId=currentRemoteUserId();
+ const generation=cacheGeneration;
+ const result=mapAccess(await remoteRequest("/rest/v1/rpc/request_teacher_access",{method:"POST",body:JSON.stringify({p_application:application})}));
+ if(!userId||currentRemoteUserId()!==userId||generation!==cacheGeneration){
+  throw new Error("Аккаунт изменился. Данные доступа нужно обновить.");
+ }
+ return remember(userId,result,generation);
 }
 export async function setStudentRole():Promise<AccountAccess>{
  localStorage.setItem(KEY,"student");
