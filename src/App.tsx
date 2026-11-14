@@ -15,6 +15,7 @@ import { ScreenOrientation } from "@capacitor/screen-orientation";
 import { completeEmailConfirmation, getCachedCurrentUser, getCurrentUser, logoutUser, type AuthUser } from "./authStore";
 import { boardStorageKey, getBoardForUser, type BoardSummary } from "./boardStore";
 import { getRemoteBoardDocument, isRemoteBackendEnabled, saveRemoteBoardDocument } from "./backend";
+import { isSelfhostBackendEnabled, selfhostReadDocument, selfhostSaveDocument, PilotHttpError } from "./selfhostPilotApi";
 import { documentFingerprint } from "./boardSync";
 import { parseDocument, type DocumentData } from "./boardModel";
 import { ensureBoardAssets } from "./assetStore";
@@ -260,8 +261,20 @@ export default function App() {
     setBoardLoadError("");
     setBoardLoading(true);
     try {
-      if (isRemoteBackendEnabled()) {
-        const remote = await getRemoteBoardDocument(board.id);
+      if (isRemoteBackendEnabled() || isSelfhostBackendEnabled()) {
+        const selfhost=isSelfhostBackendEnabled();
+        const remote = selfhost ? await selfhostReadDocument(board.id) : await getRemoteBoardDocument(board.id);
+        const saveBoardDocument=async(document:DocumentData,expectedVersion:number|null)=>{
+          if(!selfhost)return saveRemoteBoardDocument(board.id,document,expectedVersion);
+          try{
+            const saved=await selfhostSaveDocument(board.id,expectedVersion??0,document as unknown as Record<string,unknown>);
+            return {ok:true,conflict:false,version:saved.version};
+          }catch(error){
+            if(error instanceof PilotHttpError&&error.status===409)
+              return {ok:false,conflict:true,version:null};
+            throw error;
+          }
+        };
         if (!isCurrent()) return;
         const key = boardStorageKey(board.id);
         // A newly created board can carry a template. Apply it BEFORE the normal
@@ -274,7 +287,7 @@ export default function App() {
             if (pending.boardId === board.id && pending.document) {
               const document = parseDocument(JSON.stringify({...pending.document,title:board.title}));
               localStorage.setItem(key,JSON.stringify(document));
-              const saved = await saveRemoteBoardDocument(board.id,document,remote?.version ?? 0);
+              const saved = await saveBoardDocument(document,remote?.version ?? 0);
               if (!isCurrent()) return;
               if (!saved.conflict) {
                 setRemoteVersion(saved.version);
@@ -330,7 +343,7 @@ export default function App() {
             const localDocument = parseDocument(raw);
             try {
               await ensureBoardAssets(board.id, localDocument);
-              const saved = await saveRemoteBoardDocument(board.id, localDocument, 0);
+              const saved = await saveBoardDocument(localDocument, 0);
               if (!isCurrent()) return;
               // Keep local data; the mounted subscription will offer conflict resolution.
               setRemoteVersion(saved.conflict ? null : saved.version);
@@ -508,6 +521,7 @@ export default function App() {
       adminMaintenance={adminInspecting && isAppAdmin && adminEdit}
       adminInvisible={adminInvisible}
       initialRemoteVersion={remoteVersion}
+      selfhostMode={isSelfhostBackendEnabled()}
       onBoardChanged={boardChanged}
       onBackToBoards={() => { setActiveBoard(null); if(adminInspecting||new URLSearchParams(window.location.search).get("layout-editor")==="1"){setAdminInspecting(false);navigate("/?section=admin");}else navigate("/"); }}
       onLogout={logout}
