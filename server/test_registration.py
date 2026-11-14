@@ -75,6 +75,10 @@ async def test_verified_teacher_signup_without_admin_privileges(client,monkeypat
     assert invalid.status_code==400
     verified=await client.post("/api/v1/auth/verify-email",json={"token":token})
     assert verified.status_code==200,verified.text
+    verified_session=verified.json()
+    assert verified_session["access_token"] and verified_session["refresh_token"]
+    assert verified_session["user"]["account_role"]=="teacher"
+    assert verified_session["user"]["teacher_status"]=="approved"
     assert (await client.post("/api/v1/auth/verify-email",
                               json={"token":token})).status_code==400
     logged=await client.post("/api/v1/auth/login",json={
