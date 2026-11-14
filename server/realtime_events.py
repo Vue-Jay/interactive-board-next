@@ -55,6 +55,34 @@ def validate_live_event(frame: Any, *, role: str, user_id: str,
             "name": name[:100], "role": role, "client_id": client_id,
             "x": x, "y": y, "sent_at": int(time.time() * 1000),
         }
+    if kind == "object_preview":
+        if role not in ("owner", "editor"):
+            raise InvalidLiveEvent("read_only")
+        required = {"type", "client_id", "object_id", "gesture_id",
+                    "seq", "object_revision", "x", "y"}
+        if set(frame) != required:
+            raise InvalidLiveEvent("invalid_object_fields")
+        client_id, object_id = frame["client_id"], frame["object_id"]
+        gesture_id = frame["gesture_id"]
+        if any(not isinstance(value, str) or not (1 <= len(value) <= 128) or
+               not ID_RE.fullmatch(value)
+               for value in (client_id, object_id, gesture_id)):
+            raise InvalidLiveEvent("invalid_object_identity")
+        seq, rev = frame["seq"], frame["object_revision"]
+        if (type(seq) is not int or not 0 <= seq <= 1_000_000 or
+            type(rev) is not int or not 1 <= rev <= 1_000_000):
+            raise InvalidLiveEvent("invalid_object_revision")
+        if (not finite_position(frame["x"]) or
+            not finite_position(frame["y"]) or
+            not 0 <= frame["x"] <= 1000 or not 0 <= frame["y"] <= 1000):
+            raise InvalidLiveEvent("invalid_coordinates")
+        return {
+            "type": "object_preview", "user_id": user_id, "name": name[:100],
+            "role": role, "client_id": client_id, "object_id": object_id,
+            "gesture_id": gesture_id, "seq": seq, "object_revision": rev,
+            "x": frame["x"], "y": frame["y"],
+            "sent_at": int(time.time() * 1000),
+        }
     if kind == "live_ink":
         if role not in ("owner", "editor"):
             raise InvalidLiveEvent("read_only")
@@ -104,12 +132,16 @@ class EventRateLimit:
     def __init__(self):
         self.cursors: deque[float] = deque()
         self.ink: deque[float] = deque()
+        self.objects: deque[float] = deque()
         self.violations = 0
 
     def check(self, event_type: str) -> bool:
         now = time.monotonic()
-        window = self.cursors if event_type == "cursor" else self.ink
-        limit = 20 if event_type == "cursor" else 30
+        window = (
+            self.cursors if event_type == "cursor" else
+            self.objects if event_type == "object_preview" else self.ink
+        )
+        limit = 20 if event_type == "cursor" else 24 if event_type == "object_preview" else 30
         while window and now - window[0] >= 1.0:
             window.popleft()
         if len(window) >= limit:
