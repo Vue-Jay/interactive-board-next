@@ -421,6 +421,22 @@ async def announce_presence(board_id: UUID, *, joins: list[dict[str, str]] | Non
             _subscriber_users.get(board_id, {}).pop(client, None)
 
 
+async def _drop_subscriber(board_id: UUID, client: WebSocket,
+                          pool: asyncpg.Pool, notify: bool = True):
+    _subscribers.get(board_id, {}).pop(client, None)
+    _presence_watchers.get(board_id, set()).discard(client)
+    departed = _subscriber_users.get(board_id, {}).pop(client, None)
+    if departed and notify and not any(
+        meta.get("user_id") == departed.get("user_id")
+        for meta in _subscriber_users.get(board_id, {}).values()
+    ):
+        await announce_presence(board_id, leaves=[departed], pool=pool)
+    if not _subscribers.get(board_id):
+        _subscribers.pop(board_id, None)
+        _subscriber_users.pop(board_id, None)
+        _presence_watchers.pop(board_id, None)
+
+
 async def announce(board_id: UUID, version: int, pool: asyncpg.Pool):
     # Permission and session membership are checked at SEND TIME. A user who
     # was removed from a board or logged out must not receive future notices.
@@ -455,15 +471,13 @@ async def relay_live_event(board_id: UUID, sender: WebSocket,
                 await board_access(conn, board_id, recipient["id"])
             await asyncio.wait_for(peer.send_json(event), timeout=1)
         except HTTPException:
-            _subscribers.get(board_id, {}).pop(peer, None)
-            _subscriber_users.get(board_id, {}).pop(peer, None)
+            await _drop_subscriber(board_id, peer, pool)
             try:
                 await peer.close(code=4403)
             except Exception:
                 pass
         except Exception:
-            _subscribers.get(board_id, {}).pop(peer, None)
-            _subscriber_users.get(board_id, {}).pop(peer, None)
+            await _drop_subscriber(board_id, peer, pool)
 
 
 @app.put("/api/v1/boards/{board_id}/document")
