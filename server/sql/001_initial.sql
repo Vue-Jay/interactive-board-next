@@ -10,6 +10,9 @@ create table if not exists account_users (
   account_role text not null default 'student' check(account_role in ('teacher','student')),
   teacher_status text not null default 'none' check(teacher_status in ('none','pending','approved','rejected')),
   is_admin boolean not null default false,
+  subscription_plan text not null default 'free',
+  subscription_until timestamptz,
+  profile_details jsonb not null default '{}'::jsonb,
   email_confirmed_at timestamptz,
   created_at timestamptz not null default now()
 );
