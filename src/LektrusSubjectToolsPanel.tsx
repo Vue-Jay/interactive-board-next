@@ -111,7 +111,7 @@ export default function LektrusSubjectToolsPanel({anchor,subject,canChangeSubjec
       aria-modal="false" aria-label="Предметные инструменты"
       style={{...position,...subjectEditorStyle(subjectToneForSubject(subject))}} onPointerDown={e=>e.stopPropagation()} onContextMenu={e=>e.stopPropagation()}>
       <header className="lektrus-subject-tools-head">
-        <div><strong>Предметные инструменты</strong><small>{subject?subject+" · "+tools.length:"Выберите предмет"}</small></div>
+        <div><strong>Предметные инструменты</strong><small>{subject?subject+(tools.length?" · "+tools.length:""):"Выберите предмет"}</small></div>
         <button type="button" aria-label="Закрыть предметные инструменты" onClick={onClose}>×</button>
       </header>
       <div className="lektrus-subject-tools-body">
@@ -146,10 +146,12 @@ export default function LektrusSubjectToolsPanel({anchor,subject,canChangeSubjec
                 </div>
               </section>)}
           </div>:
-          <div className="lektrus-subject-tools-empty">
-            <strong>{subject?"Нет предметных инструментов":"Выберите учебный предмет"}</strong>
-            <p>Универсальные инструменты доступны в основной панели доски.</p>
-          </div>}
+          (canCreateBoard&&["биология","информатика","обществознание"].includes(subject.trim().toLocaleLowerCase("ru-RU"))?
+            null:
+            <div className="lektrus-subject-tools-empty">
+              <strong>{subject?"Нет предметных инструментов":"Выберите учебный предмет"}</strong>
+              <p>Универсальные инструменты доступны в основной панели доски.</p>
+            </div>)}
       </div>
     </section>,document.body
   );
