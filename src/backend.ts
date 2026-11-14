@@ -174,11 +174,11 @@ const getEmailConfirmationRedirect = (): string | null => {
   return `${window.location.origin}/app?email_confirmation=1`;
 };
 
-export const signUpRemote = async (email: string, password: string, name: string, details:{firstName?:string;lastName?:string}={}) => {
+export const signUpRemote = async (email: string, password: string, name: string, details:{firstName?:string;lastName?:string;role:"teacher"|"student"} ) => {
   const response = await fetchWithTimeout(`${url}/auth/v1/signup${getEmailConfirmationRedirect() ? `?redirect_to=${encodeURIComponent(getEmailConfirmationRedirect()!)}` : ""}`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({ email, password, data: { display_name: name,full_name:name,first_name:details.firstName||"",last_name:details.lastName||"" } }),
+    body: JSON.stringify({ email, password, data: { display_name: name,full_name:name,first_name:details.firstName||"",last_name:details.lastName||"",registration_role:details.role } }),
   });
   if (!response.ok) throw new Error(await errorMessage(response));
   const data = await response.json();
