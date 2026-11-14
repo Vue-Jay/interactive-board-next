@@ -1,6 +1,7 @@
 import { getRealtimeSocketUrl, getRemoteSession, isRemoteBackendEnabled } from "./backend";
 import type { BoardRole } from "./authStore";
 import type {LiveEditorOp} from "./lektrusLiveEditorMerge";
+import { isSelfhostBackendEnabled, selfhostSubscribeBoard } from "./selfhostApi";
 export type BoardEditorMutation={
  id:string;itemId:string;userId:string;clientId:string;
  sentAt:number;ops:LiveEditorOp[];
@@ -40,6 +41,144 @@ export function connectBoardWorkChannel(
   onEdit?: (mutation:BoardEditorMutation)=>void,
   onTransform?: (mutation:BoardTransformMutation)=>void,
 ): BoardWorkChannel {
+  if (isSelfhostBackendEnabled()) {
+    let stopped = false, ready = false;
+    let latest = { selectedIds: [] as string[], editingId: null as string | null };
+    let lastFingerprint = "";
+    let publishTimer: ReturnType<typeof setTimeout> | undefined;
+    let transformTimer: ReturnType<typeof setTimeout> | undefined;
+    let pendingTransform: BoardObjectPose[] | null = null;
+    let lastTransformSent = 0, editSequence = 0, transformSeq = 0;
+    const clientId = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    const seenEdits = new Set<string>();
+    const receivedTransformSeq = new Map<string, number>();
+    let channel: ReturnType<typeof selfhostSubscribeBoard>;
+    const sendState = () => {
+      clearTimeout(publishTimer); publishTimer = undefined;
+      if (!publishSelf || !ready) return;
+      const fingerprint = JSON.stringify(latest);
+      if (fingerprint === lastFingerprint) return;
+      lastFingerprint = fingerprint;
+      channel.sendEvent({
+        type: "work_state", selected_ids: latest.selectedIds.slice(0, 100),
+        editing_id: latest.editingId,
+      });
+    };
+    const sendTransform = () => {
+      clearTimeout(transformTimer); transformTimer = undefined;
+      const items = pendingTransform; pendingTransform = null;
+      if (!items || !ready) return;
+      channel.sendEvent({
+        type: "object_transform", client_id: clientId, seq: ++transformSeq,
+        finished: false, items,
+      });
+      lastTransformSent = Date.now();
+    };
+    channel = selfhostSubscribeBoard(boardId, () => {}, status => {
+      ready = status === "online";
+      if (ready) sendState();
+    }, event => {
+      if (event.type === "presence_diff") {
+        for (const user of event.leaves) onLeave(user.user_id);
+        return;
+      }
+      if (event.type === "work_state") {
+        if (event.user_id === me.userId) return;
+        const role: BoardRole = event.role === "owner" || event.role === "editor" || event.role === "viewer" ? event.role : "viewer";
+        onState({
+          userId: event.user_id, name: event.name || "Участник", role,
+          selectedIds: Array.isArray(event.selected_ids) ? event.selected_ids.slice(0, 100) : [],
+          editingId: typeof event.editing_id === "string" ? event.editing_id : null,
+          updatedAt: event.sent_at || Date.now(),
+        });
+        return;
+      }
+      if (event.type === "editor_mutation") {
+        if (event.user_id === me.userId || !event.client_id || !event.item_id ||
+            !event.id || !Array.isArray(event.ops) || event.ops.length > 300) return;
+        if (seenEdits.has(event.id)) return;
+        seenEdits.add(event.id);
+        if (seenEdits.size > 3000) seenEdits.clear();
+        onEdit?.({
+          id: event.id, itemId: event.item_id, userId: event.user_id,
+          clientId: event.client_id, sentAt: event.sent_at || Date.now(),
+          ops: event.ops as unknown as LiveEditorOp[],
+        });
+        return;
+      }
+      if (event.type === "object_transform") {
+        if (event.user_id === me.userId || !event.client_id ||
+            !Number.isSafeInteger(event.seq) || !Array.isArray(event.items) ||
+            !event.items.length || event.items.length > 64) return;
+        const previous = receivedTransformSeq.get(event.client_id) ?? 0;
+        if (event.seq <= previous) return;
+        const poses: BoardObjectPose[] = [];
+        const seenIds = new Set<string>();
+        for (const raw of event.items) {
+          const item = raw as Partial<BoardObjectPose>;
+          if (!item || typeof item.id !== "string" || !item.id ||
+              typeof item.origin !== "string" || !item.origin ||
+              seenIds.has(item.id) ||
+              !["x", "y", "width", "height", "rotation"].every(key =>
+                typeof item[key as keyof BoardObjectPose] === "number" &&
+                Number.isFinite(item[key as keyof BoardObjectPose]) &&
+                Math.abs(item[key as keyof BoardObjectPose] as number) < 1e7) ||
+              item.width! < 0 || item.height! < 0 ||
+              ![item.connectorStart, item.connectorEnd].every(point => point === undefined ||
+                !!point && typeof point === "object" && !Array.isArray(point) &&
+                typeof point.x === "number" && Number.isFinite(point.x) && Math.abs(point.x) < 1e7 &&
+                typeof point.y === "number" && Number.isFinite(point.y) && Math.abs(point.y) < 1e7)) return;
+          seenIds.add(item.id); poses.push(item as BoardObjectPose);
+        }
+        receivedTransformSeq.delete(event.client_id);
+        receivedTransformSeq.set(event.client_id, event.seq);
+        if (receivedTransformSeq.size > 256) {
+          const oldest = receivedTransformSeq.keys().next().value;
+          if (oldest) receivedTransformSeq.delete(oldest);
+        }
+        onTransform?.({
+          clientId: event.client_id, userId: event.user_id,
+          seq: event.seq, sentAt: event.sent_at || Date.now(),
+          finished: event.finished, items: poses,
+        });
+      }
+    }, { visible: publishSelf });
+    return {
+      publish: (selectedIds, editingId) => {
+        if (stopped || !publishSelf) return;
+        latest = { selectedIds: [...new Set(selectedIds)].slice(0, 100), editingId };
+        clearTimeout(publishTimer);
+        publishTimer = setTimeout(sendState, 80);
+      },
+      publishEdit: (itemId, ops) => {
+        if (stopped || !publishSelf || !itemId || !ops.length || ops.length > 300) return;
+        channel.sendEvent({
+          type: "editor_mutation", id: clientId + ":" + (++editSequence),
+          item_id: itemId, client_id: clientId, ops,
+        });
+      },
+      publishTransform: (items, finished = false) => {
+        if (stopped || !publishSelf || !items.length || items.length > 64 || !ready) return;
+        pendingTransform = items;
+        if (finished) {
+          clearTimeout(transformTimer); transformTimer = undefined; pendingTransform = null;
+          channel.sendEvent({
+            type: "object_transform", client_id: clientId, seq: ++transformSeq,
+            finished: true, items,
+          });
+          lastTransformSent = Date.now();
+          return;
+        }
+        if (Date.now() - lastTransformSent >= 65) sendTransform();
+        else if (!transformTimer) transformTimer = setTimeout(sendTransform, Math.max(1, 65 - (Date.now() - lastTransformSent)));
+      },
+      close: () => {
+        stopped = true;
+        clearTimeout(publishTimer); clearTimeout(transformTimer);
+        channel(); onLeave(me.userId);
+      },
+    };
+  }
   if (!isRemoteBackendEnabled()) {
     return { publish: () => {}, publishEdit:()=>{}, publishTransform:()=>{}, close: () => {} };
   }
