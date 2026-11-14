@@ -550,3 +550,83 @@ export const selfhostRevokeInvitation = (boardId:string,inviteId:string) =>
   selfhostRequest<void>(
     "/api/v1/boards/"+encodeURIComponent(boardId)+"/invitations/"+encodeURIComponent(inviteId),
     {method:"DELETE"});
+
+
+// Native education workflows: these endpoints replace the corresponding
+// Supabase tables/RPCs in the standard application.
+export const selfhostStudents=()=>selfhostRequest<any[]>("/api/v1/students");
+export const selfhostSaveStudentProfile=(studentId:string,payload:{note?:string;tags?:string[]})=>
+  selfhostRequest<{ok:boolean}>("/api/v1/students/"+encodeURIComponent(studentId)+"/profile",{
+    method:"PUT",body:JSON.stringify(payload),
+  });
+export const selfhostStudentSessions=(studentId:string)=>
+  selfhostRequest<any[]>("/api/v1/students/"+encodeURIComponent(studentId)+"/sessions");
+export const selfhostSaveStudentSession=(session:{
+  id:string;studentId:string;boardId:string;date:string;durationMinutes:number;
+  topic:string;homework:string;result:string;
+})=>selfhostRequest<{ok:boolean}>("/api/v1/student-sessions/"+encodeURIComponent(session.id),{
+  method:"PUT",body:JSON.stringify({
+    id:session.id,student_id:session.studentId,board_id:session.boardId||null,
+    date:session.date,duration_minutes:session.durationMinutes,topic:session.topic,
+    homework:session.homework,result:session.result,
+  }),
+});
+export const selfhostDeleteStudentSession=(id:string)=>
+  selfhostRequest<void>("/api/v1/student-sessions/"+encodeURIComponent(id),{method:"DELETE"});
+
+export const selfhostAssignments=()=>selfhostRequest<any[]>("/api/v1/assignments");
+export const selfhostCreateAssignment=(assignment:{
+  id:string;studentId:string;boardId:string;title:string;description:string;
+  dueAt:string|null;maxScore:number;
+})=>selfhostRequest<{ok:boolean;id:string}>("/api/v1/assignments",{
+  method:"POST",body:JSON.stringify({
+    id:assignment.id,student_id:assignment.studentId,board_id:assignment.boardId||null,
+    title:assignment.title,description:assignment.description,due_at:assignment.dueAt,
+    max_score:assignment.maxScore,
+  }),
+});
+export const selfhostDeleteAssignment=(id:string)=>
+  selfhostRequest<void>("/api/v1/assignments/"+encodeURIComponent(id),{method:"DELETE"});
+export const selfhostSubmitAssignment=(id:string,content:string)=>
+  selfhostRequest<{ok:boolean}>("/api/v1/assignments/"+encodeURIComponent(id)+"/submit",{
+    method:"POST",body:JSON.stringify({content}),
+  });
+export const selfhostReviewAssignment=(id:string,score:number|null,feedback:string)=>
+  selfhostRequest<{ok:boolean}>("/api/v1/assignments/"+encodeURIComponent(id)+"/review",{
+    method:"POST",body:JSON.stringify({score,feedback}),
+  });
+
+export const selfhostSchedule=()=>selfhostRequest<any[]>("/api/v1/schedule");
+export const selfhostCreateSchedule=(items:Array<{
+  id:string;studentId:string;boardId:string;title:string;startsAt:string;
+  durationMinutes:number;recurrence:"none"|"weekly";recurrenceGroupId:string|null;note:string;
+}>)=>selfhostRequest<{ok:boolean;created:number}>("/api/v1/schedule",{
+  method:"POST",body:JSON.stringify({items:items.map(item=>({
+    id:item.id,student_id:item.studentId,board_id:item.boardId||null,
+    title:item.title,starts_at:item.startsAt,duration_minutes:item.durationMinutes,
+    recurrence:item.recurrence,recurrence_group_id:item.recurrenceGroupId,note:item.note,
+    status:"planned",
+  }))}),
+});
+export const selfhostUpdateSchedule=(id:string,patch:Record<string,unknown>)=>
+  selfhostRequest<{ok:boolean}>("/api/v1/schedule/"+encodeURIComponent(id),{
+    method:"PATCH",body:JSON.stringify(patch),
+  });
+export const selfhostDeleteSchedule=(id:string,series=false,groupId:string|null=null)=>
+  selfhostRequest<void>("/api/v1/schedule/"+encodeURIComponent(id)+
+    (series&&groupId?"?series=true&group_id="+encodeURIComponent(groupId):""),{method:"DELETE"});
+export const selfhostMarkScheduleStarted=(id:string)=>
+  selfhostRequest<{ok:boolean}>("/api/v1/schedule/"+encodeURIComponent(id)+"/start",{method:"POST",body:"{}"});
+export const selfhostCompleteSchedule=(id:string)=>
+  selfhostRequest<{ok:boolean}>("/api/v1/schedule/"+encodeURIComponent(id)+"/complete",{method:"POST",body:"{}"});
+
+export const selfhostActiveLesson=(boardId:string)=>
+  selfhostRequest<any|null>("/api/v1/boards/"+encodeURIComponent(boardId)+"/lessons/active");
+export const selfhostStartLesson=(boardId:string,studentId:string,topic:string,scheduleId?:string|null)=>
+  selfhostRequest<any>("/api/v1/boards/"+encodeURIComponent(boardId)+"/lessons",{
+    method:"POST",body:JSON.stringify({student_id:studentId,topic,schedule_id:scheduleId||null}),
+  });
+export const selfhostFinishLesson=(lessonId:string,result:string,homework:string)=>
+  selfhostRequest<{ok:boolean;minutes:number}>("/api/v1/lessons/"+encodeURIComponent(lessonId)+"/finish",{
+    method:"POST",body:JSON.stringify({result,homework}),
+  });
