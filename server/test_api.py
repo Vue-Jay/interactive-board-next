@@ -30,6 +30,7 @@ async def client():
     await connection.execute(sql_dir.joinpath("001_initial.sql").read_text())
     await connection.execute(sql_dir.joinpath("002_board_assets.sql").read_text())
     await connection.execute(sql_dir.joinpath("003_board_invites.sql").read_text())
+    await connection.execute(sql_dir.joinpath("004_account_verification.sql").read_text())
     await connection.execute(
         "TRUNCATE account_sessions,board_documents,board_members,boards,account_users CASCADE"
     )
