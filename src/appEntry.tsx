@@ -78,6 +78,7 @@ import "./lektrusSelectionCursor.css";
 import "./lektrusAuthLayout.css";
 import {installInterfaceLayout} from "./lektrusInterfaceLayout";
 import { isRemoteBackendEnabled, saveNativeBackendConnection } from "./backend";
+import { isSelfhostBackendEnabled } from "./selfhostApi";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import { initLectrisPalette } from "./lectrisPalette";
 import { initProfileAppearance } from "./profileStore";
@@ -156,7 +157,7 @@ if (!root) {
 }
 
 createRoot(root).render(
-  Capacitor.isNativePlatform() && !LEKTRUS_LOCAL_TEST_MODE && !isRemoteBackendEnabled()
+  Capacitor.isNativePlatform() && !LEKTRUS_LOCAL_TEST_MODE && !isSelfhostBackendEnabled() && !isRemoteBackendEnabled()
     ? <NativeConnectionSetup />
     : <ErrorBoundary><App /></ErrorBoundary>
 );

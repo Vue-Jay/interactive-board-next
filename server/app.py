@@ -752,3 +752,7 @@ app.include_router(make_direct_chats_router(current_user))
 from share_links import make_share_router
 
 app.include_router(make_share_router(current_user, board_access, board_view))
+
+from profiles import make_profile_router
+
+app.include_router(make_profile_router(current_user))

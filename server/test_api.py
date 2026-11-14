@@ -116,6 +116,27 @@ async def test_share_link_access_and_atomic_use_limit(client):
     assert (await client.delete(revoke, headers=owner)).status_code == 204
     assert (await client.post(redeem, headers=student, json={"token": second["token"]})).status_code == 404
 
+
+@pytest.mark.asyncio
+async def test_profile_changes_persist_for_current_account(client):
+    _, teacher = await sign_in(client, "teacher@example.test")
+    _, student = await sign_in(client, "student@example.test")
+    profile = "/api/v1/account/profile"
+    assert (await client.get(profile)).status_code == 401
+    settings = {"display_name": "Updated name", "theme": "light",
+                "compact_ui": True, "default_board_zoom": 125}
+    details = {"first_name": "Anna", "last_name": "Example", "middle_name": "",
+               "phone": "+7 900 000 00 00", "city": "Moscow",
+               "organization": "School", "focus_area": "Math"}
+    responses = await asyncio.gather(
+        client.put(profile + "/settings", headers=teacher, json=settings),
+        client.put(profile + "/details", headers=teacher, json=details),
+    )
+    assert [response.status_code for response in responses] == [204, 204]
+    assert (await client.get(profile, headers=teacher)).json() == {**settings, **details}
+    assert (await client.get(profile, headers=student)).json()["phone"] == ""
+    assert (await client.get("/api/v1/auth/me", headers=teacher)).json()["user_metadata"]["display_name"] == "Updated name"
+
 @pytest.mark.asyncio
 async def test_health_and_login_session_rotation(client):
     health = await client.get("/api/v1/health")
