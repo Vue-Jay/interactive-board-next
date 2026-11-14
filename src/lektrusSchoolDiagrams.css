@@ -293,9 +293,19 @@
  border:1px dashed #d0dfee;border-radius:10px;padding:12px;box-sizing:border-box;
  background:#fff}
 .lektrus-sentence-parts button{border:1px solid #b7cee9;background:#edf4ff;
- color:#315d97;border-radius:9px;padding:8px 11px;cursor:pointer;
- font:inherit;font-weight:700;font-size:clamp(12px,1.3vw,17px)}
-.lektrus-sentence-parts button.selected{background:#336dd0;color:#fff;border-color:#2556ac}
+ color:#315d97;border-radius:9px;padding:8px 11px;cursor:grab;
+ font:inherit;font-weight:700;font-size:clamp(12px,1.3vw,17px);
+ touch-action:none;user-select:none;-webkit-user-select:none;
+ transition:background-color .12s,border-color .12s,box-shadow .12s}
+.lektrus-sentence-parts button:hover{background:#e1edff;border-color:#8fb5e6}
+.lektrus-sentence-parts button:active{cursor:grabbing}
+.lektrus-sentence-parts button.is-dragging{opacity:.4;border:2px dashed #3d78d5;
+ background:#edf4ff}
+.lektrus-sentence-drag-preview{position:fixed;z-index:2147483000;pointer-events:none;
+ box-sizing:border-box;border:1px solid #2556ac;border-radius:9px;
+ background:#336dd0;color:#fff;box-shadow:0 9px 24px #254a8152;
+ padding:8px 11px;font:700 clamp(12px,1.3vw,17px) inherit;
+ text-align:center;white-space:nowrap;user-select:none}
 .lektrus-sentence-parts button:focus-visible,.lektrus-sentence-actions button:focus-visible{
  outline:2px solid #2b76d9;outline-offset:2px}
 .lektrus-sentence-status{color:#547699;font-size:clamp(10px,1.1vw,14px);text-align:center}
@@ -316,6 +326,7 @@
  .lektrus-sentence-on-board{padding:6px;gap:4px}
  .lektrus-sentence-parts{padding:6px;gap:4px}
  .lektrus-sentence-parts button{padding:5px 7px}
+ .lektrus-sentence-drag-preview{padding:5px 7px}
  .lektrus-sentence-actions button{min-width:74px;padding:6px}
  .lektrus-sentence-tip{padding:4px}
 }
