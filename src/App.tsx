@@ -128,7 +128,9 @@ export default function App() {
     window.addEventListener("popstate", changed);
     return () => window.removeEventListener("popstate", changed);
   }, []);
-  const [authUser, setAuthUser] = useState<AuthUser | null>(() => getCachedCurrentUser());
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() =>
+    new URLSearchParams(window.location.search).has("password-reset") ? null : getCachedCurrentUser()
+  );
   const [authCallbackError,setAuthCallbackError]=useState("");
   const [accountRole,setAccountRoleState]=useState<AccountRole>(()=>getCachedAccountAccess()?.role??"student");
   const [isAppAdmin,setIsAppAdmin]=useState(()=>getCachedAccountAccess()?.isAdmin??false);
@@ -139,7 +141,9 @@ export default function App() {
   const changeAdminEdit=useCallback((value:boolean)=>{setAdminEdit(value);try{localStorage.setItem("onlinerepetitor.adminEdit",value?"1":"0")}catch{}},[]);
   const [adminInvisible,setAdminInvisible]=useState(()=>{try{return localStorage.getItem("onlinerepetitor.adminInvisible")==="1"}catch{return false}});
   const changeAdminInvisible=useCallback((value:boolean)=>{setAdminInvisible(value);try{localStorage.setItem("onlinerepetitor.adminInvisible",value?"1":"0")}catch{}},[]);
-  const [authReady, setAuthReady] = useState(() => Boolean(getCachedCurrentUser()));
+  const [authReady, setAuthReady] = useState(() =>
+    !new URLSearchParams(window.location.search).has("password-reset") && Boolean(getCachedCurrentUser())
+  );
   const [activeBoard, setActiveBoard] = useState<BoardSummary | null>(null);
   const boardChanged = useCallback((updated: BoardSummary) => {
     setActiveBoard(current => current?.id === updated.id ? updated : current);
@@ -190,6 +194,11 @@ export default function App() {
       }catch(error){const message=error instanceof Error?error.message:"Не удалось подтвердить email";console.warn("Lektrus email confirmation could not be completed",error);if(alive)setAuthCallbackError(message);return false}
     };
     const initialize=async()=>{
+      if(new URLSearchParams(window.location.search).has("password-reset")){
+        await logoutUser();
+        if(alive){setAuthUser(null);setAuthReady(true)}
+        return;
+      }
       if(route.kind==="site"||route.kind==="demo"){
         if(alive)setAuthReady(true);
         return;
