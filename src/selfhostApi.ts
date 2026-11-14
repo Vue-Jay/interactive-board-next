@@ -1,6 +1,6 @@
 /**
  * Primary Lektrus self-hosted API client.
- * The legacy selfhost flag remains accepted only for isolated migration checks.
+ * The primary API client used by the regular Lektrus application.
  */
 const backendMode = String(import.meta.env.VITE_LEKTRUS_BACKEND || "").trim().toLowerCase();
 export const SELFHOST_BACKEND_ENABLED = backendMode === "selfhost";
@@ -179,7 +179,7 @@ export async function selfhostRequest<T>(path:string,init:RequestInit={}):Promis
 }
 export const selfhostBoards=()=>selfhostRequest<SelfhostBoard[]>("/api/v1/boards");
 export const selfhostCreateBoard=(title:string,isPilot=false)=>selfhostRequest<SelfhostBoard>("/api/v1/boards",{
-  method:"POST",body:JSON.stringify({title,is_selfhost:isPilot}),
+  method:"POST",body:JSON.stringify({title,is_pilot:isPilot}),
 });
 
 function assetEndpoint(boardId:string,assetId:string):string{
@@ -228,47 +228,6 @@ export const selfhostSaveDocument=(boardId:string,expectedVersion:number,documen
   selfhostRequest<SelfhostDocument>("/api/v1/boards/"+encodeURIComponent(boardId)+"/document",{
     method:"PUT",body:JSON.stringify({expected_version:expectedVersion,document}),
   });
-export type SelfhostStoredStroke={
-  id:string;client_id:string;created_by:string;kind:"pen"|"marker";
-  color:string;weight:number;points:SelfhostPoint[];
-};
-export type SelfhostInkOperationResult={
-  operation_id:string;stroke_id:string;version:number;duplicate:boolean;
-};
-export type SelfhostInkHistoryRow={
-  operation_id:string;actor_id:string;type:"ink_append"|"ink_undo";
-  stroke_id:string;version:number;created_at:string;
-};
-export function selfhostAppendStroke(
-  boardId:string,operationId:string,ink:SelfhostLiveInkPacket,
-):Promise<SelfhostInkOperationResult>{
-  return selfhostRequest<SelfhostInkOperationResult>(
-    "/api/v1/boards/"+encodeURIComponent(boardId)+"/selfhost/ink",{
-      method:"POST",body:JSON.stringify({
-        operation_id:operationId,client_id:ink.client_id,
-        stroke_id:ink.stroke_id,kind:ink.kind,color:ink.color,
-        weight:ink.weight,points:ink.points,
-      }),
-    });
-}
-export function selfhostUndoStroke(boardId:string,operationId:string){
-  return selfhostRequest<SelfhostInkOperationResult>(
-    "/api/v1/boards/"+encodeURIComponent(boardId)+"/selfhost/ink/undo",{
-      method:"POST",body:JSON.stringify({operation_id:operationId}),
-    });
-}
-export const selfhostInkHistory=(boardId:string)=>
-  selfhostRequest<SelfhostInkHistoryRow[]>(
-    "/api/v1/boards/"+encodeURIComponent(boardId)+"/selfhost/history"
-  );
-export type SelfhostRectObject={
-  id:string;kind:"selfhost_rect";x:number;y:number;width:number;height:number;
-  color:string;revision:number;created_by:string;
-};
-export type SelfhostObjectOperationResult={
-  operation_id:string;object_id:string;object_revision:number;
-  version:number;duplicate:boolean;
-};
 export type SelfhostObjectPreview={
   type:"object_preview";client_id:string;object_id:string;gesture_id:string;
   seq:number;object_revision:number;x:number;y:number;
@@ -276,30 +235,6 @@ export type SelfhostObjectPreview={
 export type SelfhostRemoteObjectPreview=SelfhostObjectPreview&{
   user_id:string;name:string;role:SelfhostBoardRole;sent_at:number;
 };
-export function selfhostCreateObject(
-  boardId:string,objectId:string,operationId:string,
-  x:number,y:number,width:number,height:number,color:string,
-):Promise<SelfhostObjectOperationResult>{
-  return selfhostRequest<SelfhostObjectOperationResult>(
-    "/api/v1/boards/"+encodeURIComponent(boardId)+"/selfhost/objects",{
-      method:"POST",body:JSON.stringify({
-        operation_id:operationId,object_id:objectId,kind:"selfhost_rect",
-        x,y,width,height,color,
-      }),
-    });
-}
-export function selfhostMoveObject(
-  boardId:string,objectId:string,operationId:string,
-  expectedRevision:number,x:number,y:number,
-):Promise<SelfhostObjectOperationResult>{
-  return selfhostRequest<SelfhostObjectOperationResult>(
-    "/api/v1/boards/"+encodeURIComponent(boardId)+"/selfhost/objects/"+
-      encodeURIComponent(objectId)+"/move",{
-      method:"POST",body:JSON.stringify({
-        operation_id:operationId,expected_revision:expectedRevision,x,y,
-      }),
-    });
-}
 export const selfhostAccess=(boardId:string)=>selfhostRequest<SelfhostAccess>(
   "/api/v1/boards/"+encodeURIComponent(boardId)+"/access"
 );
