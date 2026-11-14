@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {readFileSync} from "node:fs";
+import {readFileSync,existsSync,readdirSync} from "node:fs";
 import {checkTatnetFreeEnvironment} from "./tatnet-free-preflight.mjs";
 
 const key="sb_publishable_"+"t".repeat(34);
@@ -46,4 +46,14 @@ assert.ok(backend.includes("VITE_SUPABASE_URL")&&backend.includes("VITE_SUPABASE
  "The real board backend must read TatNet-injected build environment");
 assert.ok(backend.includes("getRealtimeSocketUrl"),
  "Realtime must use the chosen Supabase URL");
-console.log("TatNet Free: statically routed, publishable keys only, production Supabase isolated, typechecked build guarded.");
+const dist=new URL("dist/",repoRoot);
+assert.ok(existsSync(new URL("index.html",dist)),
+ "TatNet static deployment requires Vite dist/index.html; run npm run build first.");
+const countFiles=directory=>readdirSync(directory,{withFileTypes:true})
+ .reduce((total,entry)=>total+(entry.isDirectory()
+  ?countFiles(new URL(entry.name+"/",directory))
+  :entry.isFile()?1:0),0);
+const assetCount=countFiles(dist);
+assert.ok(assetCount<=2000,
+ "TatNet Apps Free currently permits at most 2,000 files per deployment, found "+assetCount);
+console.log("TatNet Free: statically routed, "+assetCount+" deploy files, publishable keys only, production Supabase isolated, typechecked build guarded.");
