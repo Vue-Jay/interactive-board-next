@@ -13,7 +13,7 @@ import uvicorn
 import websockets
 from websockets.exceptions import ConnectionClosed
 
-from app import app, announce, _login_attempts, _subscribers
+from app import app, announce, _login_attempts, _subscribers, _subscriber_users, _presence_watchers
 from test_api import TEACHER, STUDENT, PASSWORD
 
 
@@ -95,15 +95,26 @@ async def test_two_live_sockets_receive_revision_then_revoke():
             async with websockets.connect(uri,origin="https://lektrus.example") as ws_owner:
                 async with websockets.connect(uri,origin="https://lektrus.example") as ws_student:
                     await ws_owner.send(json.dumps({
-                        "type":"auth","token":owner_session["access_token"]
+                        "type":"auth","token":owner_session["access_token"],
+                        "presence":True,"visible":True,
                     }))
                     await ws_student.send(json.dumps({
-                        "type":"auth","token":student_session["access_token"]
+                        "type":"auth","token":student_session["access_token"],
+                        "presence":True,"visible":True,
                     }))
                     oready=json.loads(await asyncio.wait_for(ws_owner.recv(),3))
                     sready=json.loads(await asyncio.wait_for(ws_student.recv(),3))
                     assert oready=={"type":"ready","version":1}
                     assert sready=={"type":"ready","version":1}
+                    owner_presence=json.loads(await asyncio.wait_for(ws_owner.recv(),3))
+                    student_presence=json.loads(await asyncio.wait_for(ws_student.recv(),3))
+                    owner_join=json.loads(await asyncio.wait_for(ws_owner.recv(),3))
+                    assert owner_presence["type"]=="presence_state"
+                    assert [u["user_id"] for u in owner_presence["users"]]==[str(TEACHER)]
+                    assert student_presence["type"]=="presence_state"
+                    assert {u["user_id"] for u in student_presence["users"]}=={str(TEACHER),str(STUDENT)}
+                    assert owner_join["type"]=="presence_diff"
+                    assert [u["user_id"] for u in owner_join["joins"]]==[str(STUDENT)]
 
                     # View-only participants can show their cursor but cannot
                     # pretend to be the teacher or publish drawing strokes.
@@ -225,6 +236,8 @@ async def test_two_live_sockets_receive_revision_then_revoke():
                         await asyncio.wait_for(ws_owner.recv(),3)
                     assert closed.value.code==4403
             _subscribers.pop(board_id,None)
+            _subscriber_users.pop(board_id,None)
+            _presence_watchers.pop(board_id,None)
     finally:
         server.should_exit=True
         await asyncio.wait_for(task,timeout=8)
