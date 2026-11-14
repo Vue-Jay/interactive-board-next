@@ -25,6 +25,14 @@ async def test_board_assets_permissions_streaming_and_etag(client, tmp_path, mon
     body = b"\x89PNG\r\n\x1a\n" + b"image-content" * 30
 
     assert (await client.get(url)).status_code == 401
+    preflight = await client.options(url, headers={
+        "Origin": "https://lektrus.example",
+        "Access-Control-Request-Method": "HEAD",
+        "Access-Control-Request-Headers": "authorization",
+    })
+    assert preflight.status_code == 200, preflight.text
+    assert "HEAD" in preflight.headers.get("access-control-allow-methods", "")
+    assert preflight.headers.get("access-control-allow-origin") == "https://lektrus.example"
     assert (await client.get(url, headers=outsider)).status_code == 404
     assert (await client.head(url, headers=outsider)).status_code == 404
     assert (await client.post(
