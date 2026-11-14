@@ -84,6 +84,36 @@ in `.github/workflows/selfhost-frontend.yml`. The backend CI separately
 checks the real PostgreSQL/API and live socket permission-revocation tests.
 Run the complete pilot only on a dedicated staging domain and database.
 
+## Live collaboration pilot (cursor + ink)
+
+The same authenticated board WebSocket now carries cursor positions and
+**transient** pen/marker previews alongside document revision notices. This is
+not a Supabase Phoenix protocol bridge and does **not** make the production
+canvas compatible with the new server. The separate /selfhost-pilot UI includes
+a small touch-friendly test surface, not the full editor.
+
+- Frame schema is allowlisted. Clients cannot set the authoritative user ID,
+  display name or membership role; the server derives them from PostgreSQL.
+- View-only members can transmit their cursor but cannot transmit ink.
+- Cursors are limited to 20 updates/second per socket; ink to 30 frames/second.
+  The wire payload is capped at 24,000 bytes with at most 200 points per
+  ink frame. This pilot surface stops collecting beyond 200 points per stroke.
+- Completed strokes are acknowledged as received for **relay only**, not as
+  saved to the board. The browser retries unacknowledged final frames a
+  bounded number of times; duplicate live previews are safe to coalesce.
+- The browser shares one board socket for revisions, cursors and ink rather
+  than opening a new socket per instrument. Incoming events never carry a
+  full document and never trigger a document write.
+- Before *each* relay, sender session and role are rechecked, and each
+  recipient's board access is checked again. Recipients without permissions
+  are removed; out-of-bounds or spoofed frames are rejected.
+
+**Limits:** no durable stroke storage, deletion/undo history, multi-worker
+fanout, object motion, cursors outside the pilot page, active-room access
+cache, or latency benchmark yet. Every live frame incurs permission DB reads;
+this must be optimized and remeasured before a production cutover. Drawing
+previews expire after 30 seconds and must never be mistaken for saved work.
+
 ## Pilot infrastructure
 
 The prototype is intentionally single-worker, single-host and not public yet.
