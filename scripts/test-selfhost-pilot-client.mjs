@@ -69,6 +69,20 @@ async function loadPilot(enabled) {
     if(u.pathname==="/api/v1/boards/board-1/pilot/history")
       return ok([{operation_id:"00000000-0000-4000-8000-000000000501",
         actor_id:user.id,type:"ink_append",stroke_id:"stroke_test",version:5}]);
+    if(u.pathname==="/api/v1/boards/board-1/pilot/objects"&&options.method==="POST"){
+      const body=JSON.parse(options.body);
+      assert.equal(body.object_id,"rect_1");
+      assert.equal(body.kind,"pilot_rect");
+      return ok({operation_id:body.operation_id,object_id:body.object_id,
+        object_revision:1,version:7,duplicate:false},201);
+    }
+    if(u.pathname==="/api/v1/boards/board-1/pilot/objects/rect_1/move"&&options.method==="POST"){
+      const body=JSON.parse(options.body);
+      assert.equal(body.expected_revision,1);
+      assert.equal(body.x,240);
+      return ok({operation_id:body.operation_id,object_id:"rect_1",
+        object_revision:2,version:8,duplicate:false});
+    }
     if(u.pathname==="/api/v1/boards/board-1/invitations")return ok({kind:"invite"});
     if(u.pathname==="/api/v1/invitations/claim")return ok({claimed:1});
     if(u.pathname==="/api/v1/auth/signup")return ok({ok:true,message:"email sent"},202);
@@ -130,6 +144,13 @@ assert.equal((await api.pilotUndoStroke(
   "board-1","00000000-0000-4000-8000-000000000502"
 )).stroke_id,"stroke_test");
 assert.equal((await api.pilotInkHistory("board-1")).length,1);
+assert.equal((await api.pilotCreateObject(
+  "board-1","rect_1","00000000-0000-4000-8000-000000000601",
+  140,160,190,120,"#dbeafe"
+)).object_revision,1);
+assert.equal((await api.pilotMoveObject(
+  "board-1","rect_1","00000000-0000-4000-8000-000000000602",1,240,260
+)).object_revision,2);
 assert.equal((await api.pilotInvite("board-1","future@example.test","viewer")).kind,"invite");
 assert.equal((await api.pilotClaimInvitations()).claimed,1);
 assert.equal((await api.pilotSignup({
@@ -167,6 +188,12 @@ const stroke={
 assert.equal(unsubscribe.sendInk(stroke),true);
 assert.ok(sockets[0].sent.some(x=>x.type==="live_ink"&&x.finished&&x.stroke_id==="stroke_1"));
 sockets[0].emit({type:"ink_ack",client_id:"pilot_client",stroke_id:"stroke_1",offset:0,finished:true});
+assert.equal(unsubscribe.sendObjectPreview({
+  type:"object_preview",client_id:"pilot_client",object_id:"rect_1",
+  gesture_id:"gesture_1",seq:1,object_revision:1,x:240,y:260,
+}),true);
+await new Promise(resolve=>setTimeout(resolve,70));
+assert.ok(sockets[0].sent.some(x=>x.type==="object_preview"&&x.object_id==="rect_1"&&x.x===240));
 sockets[0].emit({
   type:"cursor",client_id:"other",user_id:"user_2",name:"Ученик",
   role:"viewer",x:100,y:200,sent_at:Date.now()
@@ -175,8 +202,13 @@ sockets[0].emit({
   ...stroke,client_id:"other",stroke_id:"remote_1",
   user_id:"user_2",name:"Ученик",role:"editor",sent_at:Date.now()
 });
-assert.equal(liveEvents.length,2);
-assert.deepEqual(liveEvents.map(x=>x.type),["cursor","live_ink"]);
+sockets[0].emit({
+  type:"object_preview",client_id:"other",user_id:"user_2",name:"Ученик",
+  role:"editor",object_id:"rect_1",gesture_id:"gesture_2",
+  seq:3,object_revision:1,x:260,y:280,sent_at:Date.now()
+});
+assert.equal(liveEvents.length,3);
+assert.deepEqual(liveEvents.map(x=>x.type),["cursor","live_ink","object_preview"]);
 sockets[0].emit({type:"document_changed",version:4});
 sockets[0].emit({type:"document_changed",version:4});
 sockets[0].emit({type:"document_changed",version:2});
