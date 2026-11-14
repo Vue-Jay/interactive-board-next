@@ -32,7 +32,7 @@ assert.ok(html.indexOf("__LEKTRUS_PUBLIC_BACKEND__")<html.indexOf('src="/src/mai
 assert.match(api,/runtimeBackendConfig\?\.anonKey/,"Built app must read public config at runtime");
 assert.match(migration,/after insert on auth\.users for each row/i,"Only registration may assign a new role");
 assert.match(migration,/new\.raw_user_meta_data->>'registration_role' = 'teacher'/);
-assert.match(migration,/selected_role := 'student'/,"Default role must be student");
+assert.match(migration,/selected_role\s+text\s*:=\s*'student'/,"Default role must be student");
 assert.match(migration,/case when selected_role='teacher' then 'approved' else 'none' end/);
 assert.match(migration,/on conflict \(id\) do update set/,"Migration must preserve existing account rows");
 assert.doesNotMatch(migration,/set\s+account_role\s*=/i,"Conflict must not rewrite existing role");
