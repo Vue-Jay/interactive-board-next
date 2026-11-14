@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import SelfhostPilotCanvas from "./SelfhostPilotCanvas";
 import {
   cachedPilotSession, pilotSession, pilotLogin, pilotLogout, pilotBoards,
   pilotCreateBoard, pilotReadDocument, pilotSaveDocument,
   pilotSubscribeBoard, pilotClaimInvitations, pilotInvite, pilotAccess,
   pilotSignup, pilotVerifyEmail, PilotHttpError,
   type PilotSession, type PilotBoard, type PilotDocument, type PilotRealtimeStatus,
-  type PilotAccess,
+  type PilotAccess, type PilotBoardChannel, type PilotLiveEvent, type PilotLiveInkPacket,
 } from "./selfhostPilotApi";
 
 const DEFAULT_PILOT_DOCUMENT:Record<string,unknown>={
@@ -33,6 +34,8 @@ export default function SelfhostPilotApp(){
   const [dirty,setDirty]=useState(false);
   const [serverChanged,setServerChanged]=useState(false);
   const [realtime,setRealtime]=useState<PilotRealtimeStatus>("offline");
+  const [liveFrame,setLiveFrame]=useState<PilotLiveEvent|null>(null);
+  const liveChannelRef=useRef<PilotBoardChannel|null>(null);
   const [inviteEmail,setInviteEmail]=useState("");
   const [inviteRole,setInviteRole]=useState<"viewer"|"editor">("viewer");
   const [access,setAccess]=useState<PilotAccess|null>(null);
@@ -107,6 +110,7 @@ export default function SelfhostPilotApp(){
     docRef.current=null;
     revisionRef.current=0;
     setDocument(null);setAccess(null);setNote("");setDirty(false);
+    setLiveFrame(null);
     setServerChanged(false);
     const read=async(force=false)=>{
       if(disposed||localGeneration!==generationRef.current)return;
@@ -140,7 +144,9 @@ export default function SelfhostPilotApp(){
       queuedRevision=Math.max(queuedRevision,version);
       if(dirtyRef.current||savingRef.current){setServerChanged(true);return;}
       void read();
-    },status=>{if(!disposed)setRealtime(status)});
+    },status=>{if(!disposed)setRealtime(status)},
+      frame=>{if(!disposed)setLiveFrame(frame)});
+    liveChannelRef.current=unsubscribe;
     void read();
     if(selected?.role==="owner"){
       void pilotAccess(boardId).then(value=>{
@@ -149,6 +155,7 @@ export default function SelfhostPilotApp(){
     }
     return()=>{
       disposed=true;generationRef.current++;
+      if(liveChannelRef.current===unsubscribe)liveChannelRef.current=null;
       unsubscribe();
     };
   },[boardId,session?.user.id]);
@@ -338,6 +345,10 @@ export default function SelfhostPilotApp(){
                         Скопировать черновик
                       </button>}
                     </div>
+                    <SelfhostPilotCanvas key={boardId} boardId={boardId||""}
+                      canDraw={selected.role!=="viewer"} incoming={liveFrame}
+                      sendCursor={(id,x,y)=>liveChannelRef.current?.sendCursor(id,x,y)??false}
+                      sendInk={(packet:PilotLiveInkPacket)=>liveChannelRef.current?.sendInk(packet)??false}/>
                   </>
               }
               {selected.role==="owner"&&<div className="pilot-invites">
