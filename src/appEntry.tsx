@@ -74,6 +74,8 @@ import "./lektrusProductScreens.css";
 import "./lektrusBoardLoading.css";
 // Import last so selection cursors win over legacy object/handle rules.
 import "./lektrusSelectionCursor.css";
+// Auth renders before lazy BoardApp, so its layout cannot depend on App.css.
+import "./lektrusAuthLayout.css";
 import {installInterfaceLayout} from "./lektrusInterfaceLayout";
 import { isRemoteBackendEnabled, saveNativeBackendConnection } from "./backend";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
