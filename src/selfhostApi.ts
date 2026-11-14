@@ -194,6 +194,11 @@ export async function selfhostRequest<T>(path:string,init:RequestInit={}):Promis
   return await response.json() as T;
 }
 export const selfhostBoards=()=>selfhostRequest<SelfhostBoard[]>("/api/v1/boards");
+export const selfhostNotifications=()=>selfhostRequest<any[]>("/api/v1/notifications");
+export const selfhostReadNotification=(id:string)=>selfhostRequest<{ok:boolean}>("/api/v1/notifications/"+encodeURIComponent(id)+"/read",{method:"POST",body:"{}"});
+export const selfhostReadAllNotifications=()=>selfhostRequest<{ok:boolean}>("/api/v1/notifications/read-all",{method:"POST",body:"{}"});
+export const selfhostNotificationSettings=()=>selfhostRequest<any>("/api/v1/notification-settings");
+export const selfhostSaveNotificationSettings=(value:Record<string,boolean>)=>selfhostRequest<{ok:boolean}>("/api/v1/notification-settings",{method:"PUT",body:JSON.stringify(value)});
 export const selfhostMaterials=()=>selfhostRequest<any[]>("/api/v1/materials");
 export const selfhostMaterialMeta=(id:string,title:string,folder:string)=>selfhostRequest<any>("/api/v1/materials/"+encodeURIComponent(id),{method:"PATCH",body:JSON.stringify({title,folder})});
 export const selfhostMaterialFavorite=(id:string,favorite:boolean)=>selfhostRequest<any>("/api/v1/materials/"+encodeURIComponent(id),{method:"PATCH",body:JSON.stringify({favorite})});

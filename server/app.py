@@ -742,3 +742,5 @@ from comments import make_comments_router
 app.include_router(make_comments_router(current_user, board_access))
 from materials import make_material_router
 app.include_router(make_material_router(current_user))
+from notifications import make_router as make_notifications_router
+app.include_router(make_notifications_router(current_user))
