@@ -96,18 +96,24 @@ def preflight(rows: dict[str, list[asyncpg.Record]]) -> None:
     assignment_ids = {r["id"] for r in rows["assignments"]}
     schedule_ids = {r["id"] for r in rows["scheduled_lessons"]}
     board_owners = {r["id"]: r["owner_id"] for r in rows["boards"]}
-    if any(r["teacher_id"] not in user_ids or r["student_id"] not in user_ids
-           or (r["board_id"] is not None and
-               (r["board_id"] not in board_ids or board_owners[r["board_id"]] != r["teacher_id"]))
+    member_pairs = {(r["board_id"],r["user_id"]) for r in rows["members"]}
+    user_roles = {r["id"]:r["account_role"] for r in users}
+    def linked_student(teacher_id, student_id, board_id=None):
+        return (user_roles.get(teacher_id)=="teacher" and
+                user_roles.get(student_id)=="student" and
+                any(owner==teacher_id and (board_id is None or board==board_id)
+                    and (board,student_id) in member_pairs
+                    for board,owner in board_owners.items()))
+    if any(not linked_student(r["teacher_id"],r["student_id"])
            for r in rows["student_profiles"]):
-        raise RuntimeError("A student profile references an unknown teacher or student")
-    if any(r["teacher_id"] not in user_ids or r["student_id"] not in user_ids
+        raise RuntimeError("A student profile references an unlinked teacher or student")
+    if any(not linked_student(r["teacher_id"],r["student_id"],r["board_id"])
            or (r["board_id"] is not None and
                (r["board_id"] not in board_ids or board_owners[r["board_id"]] != r["teacher_id"]))
            or not 0 <= r["duration_minutes"] <= 1440
            for r in rows["student_sessions"]):
         raise RuntimeError("A student session cannot be migrated")
-    if any(r["teacher_id"] not in user_ids or r["student_id"] not in user_ids
+    if any(not linked_student(r["teacher_id"],r["student_id"],r["board_id"])
            or (r["board_id"] is not None and
                (r["board_id"] not in board_ids or board_owners[r["board_id"]] != r["teacher_id"]))
            or not 1 <= r["max_score"] <= 10000
@@ -118,14 +124,14 @@ def preflight(rows: dict[str, list[asyncpg.Record]]) -> None:
            assignment_students[r["assignment_id"]] != r["student_id"]
            for r in rows["submissions"]):
         raise RuntimeError("A submission references an unknown assignment or student")
-    if any(r["teacher_id"] not in user_ids or r["student_id"] not in user_ids
+    if any(not linked_student(r["teacher_id"],r["student_id"],r["board_id"])
            or (r["board_id"] is not None and
                (r["board_id"] not in board_ids or board_owners[r["board_id"]] != r["teacher_id"]))
            or r["recurrence"] not in ("none","weekly")
            or r["status"] not in ("planned","completed","cancelled")
            for r in rows["scheduled_lessons"]):
         raise RuntimeError("A scheduled lesson cannot be migrated")
-    if any(r["teacher_id"] not in user_ids or r["student_id"] not in user_ids
+    if any(not linked_student(r["teacher_id"],r["student_id"],r["board_id"])
            or r["board_id"] not in board_ids or board_owners[r["board_id"]] != r["teacher_id"]
            or (r["schedule_id"] is not None and r["schedule_id"] not in schedule_ids)
            for r in rows["live_lessons"]):
