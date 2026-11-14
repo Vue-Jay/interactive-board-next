@@ -1,0 +1,52 @@
+name: Lektrus Timeweb static hosting package
+
+on:
+  push:
+    branches:
+      - deploy/timeweb-free-trial-20261114
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      VITE_LECTRIS_ORG_SYNC: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Build production frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Prepare Timeweb static hosting
+        run: |
+          node scripts/prepare-timeweb-package.mjs
+          test -s dist/index.html
+          test -s dist/.htaccess
+          test -s dist/lektrus-deploy-check.html
+      - name: Explain backend mode
+        shell: bash
+        run: |
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "::warning::Preview-only archive. Configure public VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in GitHub Actions secrets for full login."
+          fi
+      - name: Zip public_html contents
+        run: |
+          (cd dist && zip -q -r "$GITHUB_WORKSPACE/lektrus-timeweb.zip" .)
+          unzip -Z1 lektrus-timeweb.zip | grep -qx 'index.html'
+          unzip -Z1 lektrus-timeweb.zip | grep -qx '.htaccess'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lektrus-Timeweb-public-html
+          path: lektrus-timeweb.zip
+          if-no-files-found: error
+          retention-days: 14
