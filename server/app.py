@@ -543,6 +543,7 @@ async def board_events(websocket: WebSocket, board_id: UUID):
             "user_id": str(user["id"]),
             "name": str(user["display_name"] or "Участник")[:100],
             "role": current_role,
+            "online_at": str(int(time.time() * 1000)),
         }
         already_present = any(
             meta.get("user_id") == user_meta["user_id"]
