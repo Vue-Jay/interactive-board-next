@@ -185,7 +185,7 @@ export default function SelfhostPilotCanvas({
     });
   };
   const onDown=(event:PointerEvent<SVGSVGElement>)=>{
-    if(!canDraw||event.button!==0||activeObject.current)return;
+    if(!canDraw||event.button!==0||activeObject.current||objectBusy)return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     const stroke:Stroke={
@@ -198,7 +198,7 @@ export default function SelfhostPilotCanvas({
     publish(stroke,false);
   };
   const beginObjectDrag=(event:PointerEvent<SVGRectElement>,object:PilotRectObject)=>{
-    if(!canDraw||event.button!==0||active.current)return;
+    if(!canDraw||event.button!==0||active.current||objectBusy)return;
     const svg=event.currentTarget.ownerSVGElement;
     if(!svg)return;
     event.preventDefault();event.stopPropagation();
