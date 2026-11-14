@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - migration/self-hosted-backend-20261114
+      - deploy/amvera-lektrus
   workflow_dispatch:
 
 permissions:
