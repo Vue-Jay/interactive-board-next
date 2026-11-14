@@ -2935,6 +2935,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const trustedAssetIds = useRef(new Set(initial.data.items
     .filter(item => item.kind === "image" || item.kind === "pdf")
     .map(item => item.assetId).filter((id): id is string => Boolean(id))));
+  useEffect(()=>{
+    // A document imported from Supabase may reference files that have not yet
+    // been copied to the self-hosted private volume. Verify each one there once.
+    if(selfhostMode)trustedAssetIds.current.clear();
+  },[boardSummary.id,selfhostMode]);
   const saveFailure = useRef<{step:string;message:string}|null>(null);
   const saveStep = useRef("ожидание");
   const lastBoardTouchAt = useRef(0);
