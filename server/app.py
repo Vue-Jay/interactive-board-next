@@ -444,3 +444,5 @@ from assets import make_asset_router
 app.include_router(make_asset_router(current_user, board_access))
 from invitations import make_invitation_router
 app.include_router(make_invitation_router(current_user, board_access))
+from registration import make_registration_router
+app.include_router(make_registration_router())
