@@ -199,7 +199,8 @@ export default function SelfhostPilotApp(){
     setBusy(true);setError("");
     try{await pilotLogout()}finally{
       setSession(null);setBoards([]);setBoardId(null);
-      setDocument(null);setAccess(null);setBusy(false);
+      setDocument(null);setAccess(null);setNativeEditorOpen(false);
+      setNativeEditorDocument(null);setBusy(false);
     }
   };
   const create=async(event:FormEvent)=>{
@@ -439,7 +440,7 @@ export default function SelfhostPilotApp(){
             <div className="pilot-board-list">
               {boards.map(board=><button key={board.id} type="button"
                 aria-current={boardId===board.id?"page":undefined}
-                onClick={()=>{if(dirty&&!window.confirm("Черновик не сохранён. Переключить доску?"))return;setBoardId(board.id)}}>
+                onClick={()=>{if(dirty&&!window.confirm("Черновик не сохранён. Переключить доску?"))return;setNativeEditorOpen(false);setNativeEditorDocument(null);setBoardId(board.id)}}>
                 <strong>{board.title}</strong><small>{board.role==="owner"?"Владелец":board.role==="editor"?"Редактор":"Читатель"}</small>
               </button>)}
               {!boards.length&&<p className="pilot-muted">Досок ещё нет.</p>}
