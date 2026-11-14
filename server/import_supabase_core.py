@@ -38,6 +38,8 @@ SOURCE_SQL = {
     "documents": """SELECT board_id,document::text AS document,
                            version,updated_at,updated_by
                     FROM public.board_documents ORDER BY board_id""",
+    "invites": """SELECT id,board_id,lower(email) AS email,role,created_at
+                  FROM public.board_invites ORDER BY board_id,id""",
 }
 
 def source_uri() -> str:
@@ -70,6 +72,10 @@ def preflight(rows: dict[str, list[asyncpg.Record]]) -> None:
     if any(d["board_id"] not in board_ids or d["updated_by"] not in user_ids
            or not d["document"] for d in rows["documents"]):
         raise RuntimeError("A document has an unknown owner or invalid payload")
+    if any(i["board_id"] not in board_ids or i["role"] not in ("editor","viewer")
+           or not i["email"] or i["email"] != i["email"].lower()
+           for i in rows["invites"]):
+        raise RuntimeError("A board invitation cannot be migrated")
 
 async def run(apply: bool) -> None:
     source_dsn = source_uri()
@@ -100,7 +106,7 @@ async def run(apply: bool) -> None:
             try:
                 async with target.transaction():
                     for table in ("account_users", "account_sessions", "boards",
-                                  "board_members", "board_documents"):
+                                  "board_members", "board_documents", "board_invites"):
                         existing = await target.fetchval(f"SELECT count(*) FROM {table}")
                         if existing:
                             raise RuntimeError("Refusing import into a nonempty target")
@@ -138,11 +144,19 @@ async def run(apply: bool) -> None:
                             "board_id","document","version","updated_at","updated_by"
                         )) for r in rows["documents"]],
                     )
+                    await target.executemany(
+                        """INSERT INTO board_invites(id,board_id,email,role,created_at)
+                           VALUES($1,$2,$3,$4,$5)""",
+                        [tuple(r[k] for k in (
+                            "id","board_id","email","role","created_at"
+                        )) for r in rows["invites"]],
+                    )
                     for table,name in (
                         ("account_users","users"),
                         ("boards","boards"),
                         ("board_members","members"),
                         ("board_documents","documents"),
+                        ("board_invites","invites"),
                     ):
                         if await target.fetchval(f"SELECT count(*) FROM {table}") != counts[name]:
                             raise RuntimeError("Post-import record counts do not match")
