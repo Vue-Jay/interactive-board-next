@@ -38,9 +38,10 @@ export const getCachedCurrentUser=():AuthUser|null=>{
 };
 
 export const getCurrentUser=async():Promise<AuthUser|null>=>{
+ // Refresh an expired self-hosted session before trusting its cached identity.
+ if(isSelfhostBackendEnabled())return selfhostUser(await getSelfhostSession());
  const cached=getCachedCurrentUser();
  if(cached)return cached;
- if(isSelfhostBackendEnabled())return selfhostUser(await getSelfhostSession());
  if(isRemoteBackendEnabled())return remoteUser(await getRemoteSession());
  return null;
 };
