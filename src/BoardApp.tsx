@@ -107,12 +107,12 @@ import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState, t
 import { objectPoseOrigin, objectPoseMatches } from "./boardObjectMotion";
 import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest } from "./boardAttachmentApprovalSync";
 import { documentFingerprint, sharedBoardFingerprint, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
-import { mergeEditedValue, editorDiff, applyEditorOps } from "./lektrusLiveEditorMerge";
+import { mergeEditedValue, editorDiff, applyEditorOps, withMotionPointIds } from "./lektrusLiveEditorMerge";
 import { labLiveEditorDiff, applyLabLivePreview } from "./lektrusLabLiveSync";
 import { labSimulationCheckpointDelayMs } from "./lektrusLabPersistence";
 import { mergeBoardDocumentEdits, mergeBoardItems } from "./lektrusBoardThreeWayMerge";
 import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem } from "./lektrusBoardObjectAuth";
-import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, stroke, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
+import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, stroke, graphPointLimit, graphSegmentLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
 import { boardBackgroundAppearance } from "./boardBackground";
 import { eraseInkAlongPath } from "./inkEraser";
 import { inkIdsInLasso } from "./inkLasso";
@@ -4169,16 +4169,17 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const setPdfPage = (item: Item, page: number) => {
-    if (item.kind !== "pdf" || item.locked) return;
-    const nextPage = Math.max(1, Math.min(10000, Math.round(Number.isFinite(page) ? page : 1)));
-    if (nextPage === (item.pdfPage ?? 1)) return;
+    if (item.kind !== "pdf" || item.locked || !canEdit || !pdfPageCount) return;
+    const nextPage = Math.max(1, Math.min(pdfPageCount, Math.round(Number.isFinite(page) ? page : 1)));
+    if (nextPage === (item.pdfPage ?? 1)) return nextPage;
     commit(itemsRef.current.map((candidate) => candidate.id === item.id ? { ...candidate, pdfPage: nextPage } : candidate));
     setNotice(`PDF · страница ${nextPage}`);
+    return nextPage;
   };
 
   const changePdfPage = (item: Item, delta: number) => setPdfPage(item, (item.pdfPage ?? 1) + delta);
   const duplicateNextPdfPage = (item: Item) => {
-    if (item.kind !== "pdf" || item.locked) return;
+    if (item.kind !== "pdf" || item.locked || !canEdit || !pdfPageCount || (item.pdfPage??1)>=pdfPageCount) return;
     const copy: Item = {
       ...deepItem(item),
       id: createId(),
@@ -4194,16 +4195,17 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const spreadPdfPages = (item: Item, count: 3 | 5) => {
-    if (item.kind !== "pdf" || item.locked) return;
+    if (item.kind !== "pdf" || item.locked || !canEdit || !pdfPageCount) return;
     const gap = 28, cols = count <= 3 ? count : 3;
     const copies: Item[] = [];
-    for (let n = 1; n < count; n++) {
+    for (let n = 1; n < count && (item.pdfPage??1)+n<=pdfPageCount; n++) {
       const col = n % cols, row = Math.floor(n / cols);
       copies.push({ ...deepItem(item), id: createId(), x: item.x + col * (item.width + gap), y: item.y + row * (item.height + gap), pdfPage: Math.max(1, (item.pdfPage ?? 1) + n), groupId: undefined, locked: false });
     }
+    if(!copies.length)return;
     commit([...itemsRef.current, ...copies]);
     setSelected([item.id, ...copies.map((copy) => copy.id)]);
-    setNotice(`Разложено страниц PDF: ${count}`);
+    setNotice(`Разложено страниц PDF: ${copies.length+1}`);
   };
 
   // Native non-passive listener prevents browser zoom on Ctrl + wheel.
@@ -5623,6 +5625,23 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   },[graphPointEditId,selectedIds,tool,graphEditorId]);
   const selectedItems = useMemo(() => selected.map((id) => itemById.get(id)).filter((item): item is Item => Boolean(item)), [selected, itemById]);
   const singleSelected = selectedItems.length === 1 ? selectedItems[0] : null;
+  const selectedPdfAssetId=singleSelected?.kind==="pdf"?singleSelected.assetId:undefined;
+  const [pdfPageInfo,setPdfPageInfo]=useState<{assetId:string;count:number|null}|null>(null);
+  const pdfPageCount=selectedPdfAssetId&&pdfPageInfo?.assetId===selectedPdfAssetId?pdfPageInfo.count:null;
+  useEffect(()=>{
+    if(!selectedPdfAssetId)return;
+    let active=true;
+    void (async()=>{
+      try{
+        const blob=await getAsset(selectedPdfAssetId,boardSummary.id);
+        if(!blob)throw new Error("PDF недоступен");
+        const {getPdfPageCount}=await import("./pdfPagination");
+        const count=await getPdfPageCount(blob);
+        if(active)setPdfPageInfo({assetId:selectedPdfAssetId,count});
+      }catch{if(active)setPdfPageInfo({assetId:selectedPdfAssetId,count:null});}
+    })();
+    return()=>{active=false};
+  },[selectedPdfAssetId,boardSummary.id]);
   const selectionBounds = useMemo(() => boundsOf(selectedItems), [selectedItems]);
   const selectionLocked = useMemo(() => selectedItems.some((item) => isLockableBoardItem(item)&&item.locked), [selectedItems]);
   const selectionHasGroup = useMemo(() => selectedItems.some((item) => item.groupId), [selectedItems]);
@@ -5648,6 +5667,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (!canEdit || !singleSelected) return;
     if (isStudent && structurallyLockedForStudent(singleSelected)) return;
     if (singleSelected.locked && patch.locked !== false) return;
+    if(singleSelected.kind==="pdf"&&patch.pdfPage!==undefined){setPdfPage(singleSelected,patch.pdfPage);return;}
     commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,...patch}:item));
   };
   const lectrisEditSelected = () => {
@@ -6247,7 +6267,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const latest=itemsRef.current.find(item=>item.id===itemId);
     if(!latest||!isMotionGraph(latest.graphFigureId)||latest.locked||
       !canEdit||structurallyLockedForStudent(latest))return;
-    const updated=mergeEditedValue(before,next,latest);
+    const updated=mergeEditedValue(before,next,withMotionPointIds(latest));
+    if((updated.graphPoints?.length??0)>graphPointLimit(updated.graphFigureId))return;
     if(JSON.stringify(updated)===JSON.stringify(latest))return;
     if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
     commit(itemsRef.current.map(item=>item.id===latest.id?updated:item));
@@ -7857,8 +7878,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             (preview.scienceMechanics&&!mechanicsValid(preview.scienceMechanics))||
             (preview.scienceOptics&&!validOptics(preview.scienceOptics))||
             (preview.scienceCircuit&&!circuitIsDocument(preview.scienceCircuit))||
-            (preview.graphPoints?.length??0)>(isMotionGraph(preview.graphFigureId)?80:40)||
-            (preview.graphSegments?.length??0)>60||
+            (preview.graphPoints?.length??0)>graphPointLimit(preview.graphFigureId)||
+            (preview.graphSegments?.length??0)>graphSegmentLimit(preview.graphFigureId)||
             (preview.graphPolygons?.length??0)>30||
             preview.graphPoints?.some(p=>!Number.isFinite(p.x)||!Number.isFinite(p.y)))return current;
           return {...current,[mutation.itemId]:preview};
@@ -8411,6 +8432,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           onMarkerWeight={setMarkerWeight} onEraserSize={setEraserSize}/>}
         {lectrisInspectorOpen && singleSelected && !isInkItem(singleSelected) && !objectEditorOpen && !presentation &&
           <LectrisObjectInspector key={singleSelected.id} item={singleSelected} userId={authUser.id}
+            pdfPageCount={pdfPageCount}
             canModify={canEdit && !singleSelected.locked && !(isStudent && structurallyLockedForStudent(singleSelected) && singleSelected.graphFigureId!=="contour-atlas")}
             canToggleLock={canEdit && !(isStudent && structurallyLockedForStudent(singleSelected))}
             onClose={()=>setLectrisInspectorOpen(false)} onPatch={lectrisPatchSelected}
@@ -10587,12 +10609,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 <span className="media-selection-controls">
                   {singleSelected.kind === "pdf" && (
                     <span className="pdf-page-controls" title="Навигация по PDF">
-                      <button type="button" disabled={selectionLocked || (singleSelected.pdfPage ?? 1) <= 1} onClick={() => changePdfPage(singleSelected, -5)} aria-label="На 5 страниц назад">«</button>
-                      <button type="button" disabled={selectionLocked || (singleSelected.pdfPage ?? 1) <= 1} onClick={() => changePdfPage(singleSelected, -1)} aria-label="Предыдущая страница PDF">‹</button>
-                      <input key={`pdf-page-${singleSelected.id}-${singleSelected.pdfPage ?? 1}`} type="number" min="1" max="10000" defaultValue={singleSelected.pdfPage ?? 1} aria-label="Номер страницы PDF" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") e.currentTarget.blur(); }} onBlur={(e) => setPdfPage(singleSelected, Number(e.currentTarget.value))}/>
-                      <button type="button" disabled={selectionLocked} onClick={() => changePdfPage(singleSelected, 1)} aria-label="Следующая страница PDF">›</button>
-                      <button type="button" disabled={selectionLocked} onClick={() => changePdfPage(singleSelected, 5)} aria-label="На 5 страниц вперёд">»</button>
-                      <button type="button" disabled={selectionLocked} onClick={() => duplicateNextPdfPage(singleSelected)} aria-label="Добавить следующую страницу PDF рядом" title="Создать рядом копию с следующей страницей"><Icon name="duplicate" size={13}/></button>
+                      <button type="button" disabled={selectionLocked || !pdfPageCount || (singleSelected.pdfPage ?? 1) <= 1} onClick={() => changePdfPage(singleSelected, -5)} aria-label="На 5 страниц назад">«</button>
+                      <button type="button" disabled={selectionLocked || !pdfPageCount || (singleSelected.pdfPage ?? 1) <= 1} onClick={() => changePdfPage(singleSelected, -1)} aria-label="Предыдущая страница PDF">‹</button>
+                      <input key={`pdf-page-${singleSelected.id}-${singleSelected.pdfPage ?? 1}`} type="number" min="1" max={pdfPageCount??1} disabled={selectionLocked||!pdfPageCount} defaultValue={singleSelected.pdfPage ?? 1} title={pdfPageCount?`Всего страниц: ${pdfPageCount}`:"Определяется число страниц PDF"} aria-label="Номер страницы PDF" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") e.currentTarget.blur(); }} onBlur={(e) => {e.currentTarget.value=String(setPdfPage(singleSelected, Number(e.currentTarget.value))??singleSelected.pdfPage??1)}}/>
+                      <button type="button" disabled={selectionLocked||!pdfPageCount||(singleSelected.pdfPage??1)>=pdfPageCount} onClick={() => changePdfPage(singleSelected, 1)} aria-label="Следующая страница PDF">›</button>
+                      <button type="button" disabled={selectionLocked||!pdfPageCount||(singleSelected.pdfPage??1)>=pdfPageCount} onClick={() => changePdfPage(singleSelected, 5)} aria-label="На 5 страниц вперёд">»</button>
+                      <button type="button" disabled={selectionLocked||!pdfPageCount||(singleSelected.pdfPage??1)>=pdfPageCount} onClick={() => duplicateNextPdfPage(singleSelected)} aria-label="Добавить следующую страницу PDF рядом" title="Создать рядом копию с следующей страницей"><Icon name="duplicate" size={13}/></button>
                     </span>
                   )}
                   <button type="button" onClick={() => void openMediaAsset(singleSelected)} title={singleSelected.kind === "pdf" ? "Открыть PDF отдельно" : "Открыть изображение отдельно"}><Icon name="open" size={16} /></button>
@@ -10643,8 +10665,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                     </>
                   )}
                   {singleSelected?.kind === "pdf" && !selectionLocked && (<>
-                    <button onClick={() => spreadPdfPages(singleSelected, 3)}><Icon name="slides" size={16}/><span>Разложить 3 страницы</span></button>
-                    <button onClick={() => spreadPdfPages(singleSelected, 5)}><Icon name="slides" size={16}/><span>Разложить 5 страниц</span></button>
+                    <button disabled={!pdfPageCount||(singleSelected.pdfPage??1)>=pdfPageCount} onClick={() => spreadPdfPages(singleSelected, 3)}><Icon name="slides" size={16}/><span>Разложить до 3 страниц</span></button>
+                    <button disabled={!pdfPageCount||(singleSelected.pdfPage??1)>=pdfPageCount} onClick={() => spreadPdfPages(singleSelected, 5)}><Icon name="slides" size={16}/><span>Разложить до 5 страниц</span></button>
                   </>)}
                   {selectedItems.length >= 1 && selectedItems.every((item) => item.kind !== "frame") && (
                     <button onClick={createFrameAroundSelection}><Icon name="frame" size={16} /><span>Фрейм вокруг выделения</span></button>
@@ -10734,9 +10756,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                     <button onClick={() => { flipFlashcard(singleSelected); setContextMenu(null); }}>{singleSelected.flashcardFlipped ? "Показать вопрос" : "Показать ответ"}</button>
                   </>)}
                   {singleSelected?.kind === "pdf" && !selectionLocked && (<>
-                    <button onClick={() => { duplicateNextPdfPage(singleSelected); setContextMenu(null); }}>Следующая страница рядом</button>
-                    <button onClick={() => { spreadPdfPages(singleSelected, 3); setContextMenu(null); }}>Разложить 3 страницы</button>
-                    <button onClick={() => { spreadPdfPages(singleSelected, 5); setContextMenu(null); }}>Разложить 5 страниц</button>
+                    <button disabled={!pdfPageCount||(singleSelected.pdfPage??1)>=pdfPageCount} onClick={() => { duplicateNextPdfPage(singleSelected); setContextMenu(null); }}>Следующая страница рядом</button>
+                    <button disabled={!pdfPageCount||(singleSelected.pdfPage??1)>=pdfPageCount} onClick={() => { spreadPdfPages(singleSelected, 3); setContextMenu(null); }}>Разложить до 3 страниц</button>
+                    <button disabled={!pdfPageCount||(singleSelected.pdfPage??1)>=pdfPageCount} onClick={() => { spreadPdfPages(singleSelected, 5); setContextMenu(null); }}>Разложить до 5 страниц</button>
                   </>)}
                   {singleSelected?.kind === "comment" && !selectionLocked && (<>
                     <button onClick={() => { toggleSelectedCommentResolved(); setContextMenu(null); }}>{singleSelected.resolved ? "Открыть комментарий снова" : "Отметить решённым"}</button>

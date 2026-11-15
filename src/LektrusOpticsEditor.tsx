@@ -204,13 +204,7 @@ export default function LektrusOpticsEditor({item,onSave,onCancel,onClose,onLive
        <LektrusOpticsView doc={display??doc} selection={selected} tool={tool} cursor={cursor}
          onPlace={place} onSelect={setSelected} onElementDown={down}
          onRaySelect={id=>{setSelected({kind:"ray",id});setInspector(true)}}/>
-     </div>
-     <div className="lektrus-optics-note" role="status">{notice||(
-       !doc.elements.length?"1. Выберите «Источник» и поставьте его на лист. 2. Добавьте линзу или зеркало. 3. Нажмите «+ Луч».":
-       !source?"Добавьте источник света для построения лучей. Объекты можно перемещать прямо на листе.":
-       !doc.rays.length?"Нажмите «+ Луч» над чертежом. Направление можно изменить, выделив луч.":"Выделите луч на чертеже, чтобы изменить его угол и цвет в правой панели.")}</div>
-    </div>
-    {inspector&&selected&&<aside className="lektrus-optics-inspector" aria-label="Параметры оптического элемента">
+    {inspector&&selected&&<aside className="lektrus-optics-inspector" aria-label="Параметры оптического элемента" onPointerDown={e=>e.stopPropagation()} onPointerMove={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
      <div className="lektrus-optics-panel-head"><strong>Параметры</strong><button type="button" onClick={()=>setInspector(false)} aria-label="Скрыть параметры">×</button></div>
      {part&&<>
       <strong>{tools.find(t=>t.id===part.kind)?.name??"Оптический элемент"}</strong>
@@ -254,6 +248,12 @@ export default function LektrusOpticsEditor({item,onSave,onCancel,onClose,onLive
      </div>}
      <button type="button" className="lektrus-optics-danger" onClick={deleteSelected}>Удалить выбранное</button>
      </aside>}
+     </div>
+     <div className="lektrus-optics-note" role="status">{notice||(
+       !doc.elements.length?"1. Выберите «Источник» и поставьте его на лист. 2. Добавьте линзу или зеркало. 3. Нажмите «+ Луч».":
+       !source?"Добавьте источник света для построения лучей. Объекты можно перемещать прямо на листе.":
+       !doc.rays.length?"Нажмите «+ Луч» над чертежом. Направление можно изменить, выделив луч.":"Выделите луч на чертеже, чтобы изменить его угол и цвет в правой панели.")}</div>
+    </div>
    </div>
    <footer className="lektrus-optics-footer"><span>Лучи проходят через последовательные линзы и зеркала. Используются учебные приближения тонких линз и преломления.</span>
     <button type="button" onClick={shared?close:onCancel}>{shared?"Закрыть":"Отмена"}</button><button type="button" className="lektrus-optics-primary" onClick={()=>onSave(saveValue())}>{shared?"Готово":"Сохранить на доску"}</button>

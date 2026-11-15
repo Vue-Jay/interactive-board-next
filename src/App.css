@@ -187,6 +187,8 @@ button {
   border-bottom: 1px solid #e5e7eb;
   box-shadow: 0 1px 5px #0000000d;
 }
+/* An open top-bar menu belongs above board objects and floating panels. */
+.topbar:has(.topbar-right > details[open]) { z-index: 2500; }
 .topbar-left,
 .topbar-center,
 .topbar-right {

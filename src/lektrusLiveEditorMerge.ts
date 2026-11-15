@@ -6,11 +6,17 @@
  */
 const same=(a:unknown,b:unknown)=>a===b||JSON.stringify(a)===JSON.stringify(b);
 const record=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v);
+// Old saved motion graphs used positional points. Assign a stable identity
+// on both sides before merging, so the first live edit upgrades safely.
+export function withMotionPointIds<T extends {id:string;graphPoints?:{id?:string}[]}>(item:T):T{
+ if(!item.graphPoints?.some(point=>!point.id))return item;
+ return {...item,graphPoints:item.graphPoints.map((point,index)=>({...point,id:point.id??`legacy-${item.id}-${index}`}))};
+}
 const isIdCollection=(values:unknown[],key:string)=>(
  ["contourMarks","contourStrokes","bodies","supports","forces","components","junctions","wires","elements","rays",
   // Chemical glassware and appliances are addressed by persistent IDs.
   // Index-based array appends can duplicate a beaker on an evaporation tick.
-  "vessels","placedDevices"].includes(key)&&
+  "vessels","placedDevices","graphPoints","points"].includes(key)&&
  values.every(x=>record(x)&&typeof x.id==="string")
 );
 function mergeArray(base:unknown[],edit:unknown[],latest:unknown[],key:string):unknown[]{
@@ -45,6 +51,7 @@ function mergeArray(base:unknown[],edit:unknown[],latest:unknown[],key:string):u
 }
 export function mergeEditedValue<T>(base:T,edit:T,latest:T,key=""):T{
  if(same(base,edit))return latest;
+ if(same(edit,latest))return latest;
  if(same(base,latest))return edit;
  if(Array.isArray(base)&&Array.isArray(edit)&&Array.isArray(latest))
   return mergeArray(base,edit,latest,key) as T;
@@ -58,7 +65,9 @@ export function mergeEditedValue<T>(base:T,edit:T,latest:T,key=""):T{
   if(pointKey){
    const old=base[pointKey],changed=edit[pointKey],remote=latest[pointKey];
    if(Array.isArray(old)&&Array.isArray(changed)&&Array.isArray(remote)&&
-     changed.length>old.length&&remote.length>old.length){
+     changed.length>old.length&&remote.length>old.length&&
+     !same(changed,remote)&&
+     !(isIdCollection(old,pointKey)&&isIdCollection(changed,pointKey)&&isIdCollection(remote,pointKey))){
     const offset=remote.length-old.length;
     const remoteNames=new Set(remote.filter(record).map(p=>String(p.label??"")));
     const nameFor=(index:number)=>{
@@ -126,6 +135,10 @@ export function editorDiff(before:unknown,after:unknown):LiveEditorOp[]{
     for(const [id] of previous)if(!following.has(id))
       changes.push({path,kind:"remove-id",id});
     return;
+   }
+   // Upgrade existing motion graphs without appending the same legacy points.
+   if(key==="graphPoints"&&isIdCollection(b,key)&&b.length){
+    changes.push({path,kind:"set",value:b});return;
    }
    if(b.length>=a.length){
     for(let i=0;i<a.length;i++)walk(a[i],b[i],[...path,i],depth+1);
