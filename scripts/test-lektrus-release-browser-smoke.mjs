@@ -126,7 +126,7 @@ try{
  await wait(`document.querySelector('${noticeSelector}')?.textContent.includes('Скопировано объектов')`,"Copy notice did not appear");
  const compactNotice=await evaluate(`(() => {const el=document.querySelector('${noticeSelector}');const r=el.getBoundingClientRect();return {height:r.height,width:r.width,top:getComputedStyle(el).top,bottom:getComputedStyle(el).bottom}})()`);
  assert.ok(compactNotice.height<100&&compactNotice.width<=380,JSON.stringify(compactNotice));
- await evaluate(`window.firstNotice=document.querySelector('${noticeSelector}')`);
+ await evaluate(`(() => {window.firstNotice=document.querySelector('${noticeSelector}');return true})()`);
  await delay(1700);
  await key("KeyC",true);
  await wait(`document.querySelector('${noticeSelector}')!==window.firstNotice&&!!document.querySelector('${noticeSelector}')`,"Identical new notice did not restart its lifetime");
