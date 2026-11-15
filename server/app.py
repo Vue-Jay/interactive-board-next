@@ -30,6 +30,8 @@ from document_delta import (
     encoded_bytes, document_bytes_from_parts,
 )
 from schema import apply_schema
+from board_history import ensure_baseline, record_revision, make_history_router
+from board_visits import make_visit_router
 
 ISSUER = "lektrus-selfhost"
 AUDIENCE = "lektrus"
@@ -148,9 +150,11 @@ def jwt_claims(token: str) -> dict[str, Any]:
         error(401, "Сессия недействительна. Войдите снова.")
 
 def account_view(row: asyncpg.Record) -> dict[str, Any]:
+    guest_board = row.get("guest_board_id")
     return {
         "id": str(row["id"]),
-        "email": row["email"],
+        "email": "" if guest_board else row["email"],
+        "guest_board_id": str(guest_board) if guest_board else None,
         "user_metadata": {
             "display_name": row["display_name"],
             "first_name": row["first_name"],
@@ -172,11 +176,12 @@ async def lookup_session(pool: asyncpg.Pool, token: str) -> asyncpg.Record:
             """SELECT u.id,u.email,u.password_hash,u.display_name,u.first_name,
                       u.last_name,u.account_role,u.teacher_status,u.is_admin,
                       u.teacher_requested_at,u.teacher_reviewed_at,
-                      u.subscription_plan,u.subscription_until
+                      u.subscription_plan,u.subscription_until,u.guest_board_id,u.guest_expires_at
                  FROM account_users u JOIN account_sessions s ON s.user_id=u.id
                 WHERE u.id=$1 AND s.id=$2
                   AND s.revoked_at IS NULL AND s.expires_at>now()
-                  AND u.email_confirmed_at IS NOT NULL""",
+                  AND (u.email_confirmed_at IS NOT NULL OR u.guest_expires_at>now())
+                  AND (u.guest_board_id IS NULL OR u.guest_expires_at>now())""",
             UUID(claims["sub"]), UUID(claims["sid"]),
         )
     if row is None:
@@ -186,7 +191,23 @@ async def lookup_session(pool: asyncpg.Pool, token: str) -> asyncpg.Record:
 async def current_user(request: Request, authorization: str | None = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         error(401, "Требуется авторизация.")
-    return await lookup_session(request.app.state.pool, authorization[7:])
+    user = await lookup_session(request.app.state.pool, authorization[7:])
+    if user["guest_board_id"] is not None:
+        # Default deny: guest tokens cannot reach account, education, other
+        # board, share-link, admin or private-chat endpoints.
+        path = request.scope["route"].path
+        board_paths = {
+            "/api/v1/boards/{board_id}", "/api/v1/boards/{board_id}/document",
+            "/api/v1/boards/{board_id}/assets", "/api/v1/boards/{board_id}/assets/{asset_id}",
+            "/api/v1/boards/{board_id}/comments", "/api/v1/boards/{board_id}/comment-participants",
+            "/api/v1/boards/{board_id}/visits",
+        }
+        if path in board_paths:
+            if str(request.path_params.get("board_id")) != str(user["guest_board_id"]):
+                error(404, "Доска не найдена.")
+        elif path not in {"/api/v1/auth/me", "/api/v1/comments/{comment_id}"}:
+            error(403, "Гостевой доступ ограничен приглашённой доской.")
+    return user
 
 def access_token(user_id: UUID, session_id: UUID) -> str:
     now = datetime.now(timezone.utc)
@@ -204,8 +225,8 @@ async def issue_tokens(conn: asyncpg.Connection, user: asyncpg.Record) -> dict[s
     refresh = secrets.token_urlsafe(48)
     await conn.execute(
         """INSERT INTO account_sessions(id,user_id,refresh_sha256,expires_at)
-           VALUES($1,$2,$3,now()+interval '30 days')""",
-        session_id, user["id"], refresh_sha(refresh)
+           VALUES($1,$2,$3,LEAST(now()+interval '30 days',COALESCE($4::timestamptz,now()+interval '30 days')))""",
+        session_id, user["id"], refresh_sha(refresh), user.get("guest_expires_at")
     )
     return {
         "access_token": access_token(user["id"], session_id),
@@ -270,7 +291,7 @@ async def login(data: LoginInput, request: Request):
                       account_role,teacher_status,is_admin,teacher_requested_at,
                       teacher_reviewed_at,subscription_plan,subscription_until
                  FROM account_users
-                WHERE email=$1 AND email_confirmed_at IS NOT NULL""", email
+                WHERE email=$1 AND email_confirmed_at IS NOT NULL AND guest_board_id IS NULL""", email
         )
         valid = bool(user) and await asyncio.to_thread(
             bcrypt.checkpw, data.password.encode(), user["password_hash"].encode()
@@ -295,9 +316,10 @@ async def refresh(data: RefreshInput, request: Request):
             user = await conn.fetchrow(
                 """SELECT id,email,password_hash,display_name,first_name,last_name,
                           account_role,teacher_status,is_admin,teacher_requested_at,
-                          teacher_reviewed_at,subscription_plan,subscription_until
+                          teacher_reviewed_at,subscription_plan,subscription_until,guest_board_id,guest_expires_at
                    FROM account_users
-                   WHERE id=$1 AND email_confirmed_at IS NOT NULL""",
+                   WHERE id=$1 AND (email_confirmed_at IS NOT NULL OR guest_expires_at>now())
+                   AND (guest_board_id IS NULL OR guest_expires_at>now())""",
                 session["user_id"],
             )
             if user is None:
@@ -319,6 +341,9 @@ async def logout(request: Request, authorization: str | None = Header(None)):
             "UPDATE account_sessions SET revoked_at=now() WHERE id=$1 AND user_id=$2",
             UUID(claims["sid"]), UUID(claims["sub"]),
         )
+        await conn.execute("""UPDATE board_visits SET left_at=LEAST(now(),last_seen+interval '120 seconds')
+            WHERE user_id=$1 AND left_at IS NULL AND EXISTS
+            (SELECT 1 FROM account_users WHERE id=$1 AND guest_board_id IS NOT NULL)""", UUID(claims["sub"]))
     return {"ok": True}
 
 @app.get("/api/v1/auth/me")
@@ -337,10 +362,13 @@ async def board_access(conn: asyncpg.Connection, board_id: UUID, user_id: UUID,
         error(404, "Доска не найдена.")
     if board["owner_id"] == user_id:
         return board, "owner"
-    is_admin = await conn.fetchval(
-        "SELECT is_admin FROM account_users WHERE id=$1", user_id
+    account = await conn.fetchrow(
+        "SELECT is_admin,guest_board_id,guest_expires_at>now() AS guest_active FROM account_users WHERE id=$1", user_id
     )
-    if is_admin:
+    if account and account["guest_board_id"] is not None and (
+        account["guest_board_id"] != board_id or not account["guest_active"]):
+        error(404, "Доска не найдена.")
+    if account and account["is_admin"]:
         return board, "viewer"
     role = await conn.fetchval(
         "SELECT role FROM board_members WHERE board_id=$1 AND user_id=$2",
@@ -505,7 +533,8 @@ async def lookup_board_sessions(pool: asyncpg.Pool, board_id: UUID, tokens,
                  LEFT JOIN board_members m ON m.board_id = b.id AND m.user_id = u.id
                  LEFT JOIN board_documents d ON $4::boolean AND d.board_id = b.id
                 WHERE s.revoked_at IS NULL AND s.expires_at > now()
-                  AND u.email_confirmed_at IS NOT NULL""",
+                  AND (u.email_confirmed_at IS NOT NULL OR u.guest_expires_at>now())
+                  AND (u.guest_board_id IS NULL OR (u.guest_board_id=$1 AND u.guest_expires_at>now()))""",
             board_id, [pair[0] for pair in pairs], [pair[1] for pair in pairs], include_version,
         )
     by_identity = {(row["id"], row["session_id"]): row for row in rows}
@@ -805,7 +834,9 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
             current_version = previous["version"] if previous else 0
             if current_version != expected_version:
                 error(409, f"Версия доски изменилась: {current_version}.")
+            await ensure_baseline(conn, board_id, current_version)
             fast = False
+            base = None
             if delta is not None:
                 if previous is None:
                     error(409, "Документ не найден.")
@@ -816,6 +847,9 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
                 else:
                     base = decode_document(previous["document"])
                 document = patched_document(base, delta)
+            elif previous:
+                base = decode_document(await conn.fetchval(
+                    "SELECT lektrus_board_document(d) FROM board_documents d WHERE board_id=$1", board_id))
             normalized_delta = False
             if delta is not None and not board["is_pilot"]:
                 try:
@@ -861,6 +895,7 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
             await conn.execute(
                 "UPDATE boards SET updated_at=now() WHERE id=$1", board_id,
             )
+            await record_revision(conn,board_id,revision,user,base,document,delta)
     version = revision["version"]
     if delta is not None:
         request.app.state.document_deltas.remember(board_id, version, delta)
@@ -1082,6 +1117,8 @@ app.include_router(make_direct_chats_router(current_user))
 from share_links import make_share_router
 
 app.include_router(make_share_router(current_user, board_access, board_view))
+app.include_router(make_history_router(current_user, board_access))
+app.include_router(make_visit_router(current_user, board_access))
 
 from profiles import make_profile_router
 

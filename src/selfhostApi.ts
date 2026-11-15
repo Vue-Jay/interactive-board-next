@@ -8,6 +8,7 @@ export type SelfhostRole = "teacher" | "student";
 export type SelfhostBoardRole = "owner" | "editor" | "viewer";
 export type SelfhostUser = {
   id: string; email: string;
+  guest_board_id?: string | null;
   user_metadata: { display_name?: string; first_name?: string; last_name?: string };
   account_role: SelfhostRole;
   teacher_status: "none" | "pending" | "approved" | "rejected";
@@ -147,6 +148,16 @@ export async function selfhostLogin(email:string,password:string):Promise<Selfho
   });
   if(!response.ok)throw await responseError(response);
   const session=normalizeSession(await response.json());
+  saveSession(session);
+  return session;
+}
+export async function selfhostGuestLogin(name:string,token:string,password?:string):Promise<SelfhostSession>{
+  const response=await rawRequest("/api/v1/auth/guest",{
+    method:"POST",body:JSON.stringify({name,token,password}),
+  });
+  if(!response.ok)throw await responseError(response);
+  const session=normalizeSession(await response.json());
+  if(!session.user.guest_board_id)throw new Error("Сервер не вернул приглашённую доску.");
   saveSession(session);
   return session;
 }

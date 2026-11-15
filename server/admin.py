@@ -147,7 +147,7 @@ def make_admin_router(current_user) -> APIRouter:
             rows = await conn.fetch(
                 """SELECT id,display_name,email,account_role,teacher_status,is_admin,
                           subscription_plan,subscription_until,created_at
-                     FROM account_users ORDER BY created_at DESC LIMIT 5000"""
+                     FROM account_users WHERE guest_board_id IS NULL ORDER BY created_at DESC LIMIT 5000"""
             )
         now = datetime.now(timezone.utc)
         return [{
