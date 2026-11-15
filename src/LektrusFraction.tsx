@@ -1,6 +1,7 @@
 import {subjectEditorStyle} from "./lektrusSubjectAccent";
 import {useEffect,useState,type MouseEvent} from "react";
 import type {Item} from "./boardModel";
+import {fractionHitPart} from "./lektrusFractionHit";
 
 type FractionMode="circle"|"bar";
 type FractionData={title:string;mode:FractionMode;numerator:number;denominator:number};
@@ -28,27 +29,15 @@ export function LektrusFractionView({item,onSelect}:{item:Item;onSelect?:(value:
   const proportion=numerator/denominator;
   const arcEnd=-Math.PI/2+2*Math.PI*proportion;
   const endX=180+100*Math.cos(arcEnd),endY=125+100*Math.sin(arcEnd);
-  const onBarClick=(event:MouseEvent<SVGSVGElement>)=>{
+  const onShapeClick=(event:MouseEvent<SVGSVGElement>)=>{
     if(!onSelect)return;
-    const rect=event.currentTarget.getBoundingClientRect();
-    const px=(event.clientX-rect.left)/rect.width*360;
-    const part=Math.floor(Math.max(0,Math.min(.999999,(px-22)/316))*denominator);
-    onSelect(part<numerator?part:part+1);
-  };
-  const onCircleClick=(event:MouseEvent<SVGSVGElement>)=>{
-    if(!onSelect)return;
-    const rect=event.currentTarget.getBoundingClientRect();
-    const x=(event.clientX-rect.left)/rect.width*360-180;
-    const y=(event.clientY-rect.top)/rect.height*250-125;
-    if(Math.hypot(x,y)>100)return;
-    const angle=((Math.atan2(y,x)+Math.PI/2+2*Math.PI)%(2*Math.PI))/(2*Math.PI);
-    const part=Math.min(denominator-1,Math.floor(angle*denominator));
-    onSelect(part<numerator?part:part+1);
+    const part=fractionHitPart(mode,denominator,event.clientX,event.clientY,event.currentTarget.getBoundingClientRect());
+    if(part!==null)onSelect(part<numerator?part:part+1);
   };
   return <div className="lektrus-fraction-view">
     <div className="lektrus-fraction-heading"><strong>{title}</strong><span>{numerator} / {denominator} {summary!==`${numerator}/${denominator}`?`= ${summary}`:""}</span></div>
     <svg viewBox="0 0 360 250" role="img" aria-label={`Дробь ${numerator} из ${denominator}`}
-      onClick={mode==="circle"?onCircleClick:onBarClick} style={{cursor:onSelect?"pointer":undefined}}>
+      onClick={onShapeClick} style={{cursor:onSelect?"pointer":undefined}}>
       {mode==="circle"?<g>
         <circle cx="180" cy="125" r="100" fill="#f5f7fe"/>
         {numerator===denominator?<circle cx="180" cy="125" r="100" fill={color}/>:
