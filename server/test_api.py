@@ -118,6 +118,52 @@ async def sign_in(client: httpx.AsyncClient, email: str):
 
 
 @pytest.mark.asyncio
+async def test_native_document_deltas_preserve_concurrent_edits_and_fallback(client):
+    _, owner = await sign_in(client, "teacher@example.test")
+    _, editor = await sign_in(client, "student@example.test")
+    _, outsider = await sign_in(client, "outsider@example.test")
+    board_id = (await client.post("/api/v1/boards", headers=owner, json={"title": "Дельты"})).json()["id"]
+    url = f"/api/v1/boards/{board_id}/document"
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("INSERT INTO board_members(board_id,user_id,role) VALUES($1,$2,'viewer')", UUID(board_id), STUDENT)
+    old = {"version": 1, "title": "Дельты", "items": [{"id": "a", "kind": "text", "text": "x"*20000}, {"id": "b", "kind": "pen"}], "subject":"math"}
+    assert (await client.put(url, headers=owner, json={"expected_version": 0, "document": old})).status_code == 200
+    stroke = {"id":"c", "kind":"pen", "points":[{"x":1,"y":2}]}
+    patch1 = {"items":{"upsert":[stroke],"remove":["b"]}}
+    request1 = {"expected_version":1,"delta":patch1}
+    assert (await client.patch(url, headers=editor, json=request1)).status_code == 403
+    assert (await client.patch(url, headers=outsider, json=request1)).status_code == 404
+    assert (await client.get(url+"?since_version=1", headers=outsider)).status_code == 404
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE board_members SET role='editor' WHERE board_id=$1 AND user_id=$2", UUID(board_id), STUDENT)
+    # Simultaneous writes to the same revision: exactly one wins, one conflicts.
+    patch2 = {"items":{"upsert":[{"id":"d","kind":"text","text":"student"}]}}
+    request2 = {"expected_version":1,"delta":patch2}
+    results = await asyncio.gather(client.patch(url+"?version_only=true",headers=owner,json=request1),client.patch(url+"?version_only=true",headers=editor,json=request2))
+    assert sorted(r.status_code for r in results)==[200,409]
+    winner, loser = (patch1,patch2) if results[0].status_code==200 else (patch2,patch1)
+    first = (await client.get(url+"?since_version=1", headers=editor)).json()
+    assert first["patches"]==[winner] and first["base_version"]==1 and first["version"]==2
+    assert first["document"] is None
+    assert (await client.patch(url, headers=editor, json={"expected_version":2,"delta":loser})).status_code==200
+    reorder = {"remove":["subject"],"set":{"title":"Новый"},"items":{"order":["d","a","c"]}}
+    assert (await client.patch(url,headers=owner,json={"expected_version":3,"delta":reorder})).status_code==200
+    chain = await client.get(url+"?since_version=1",headers=editor)
+    assert chain.json()["patches"]==[winner,loser,reorder]
+    full = await client.get(url,headers=editor)
+    assert full.json()["document"]=={"version":1,"title":"Новый","items":[{"id":"d","kind":"text","text":"student"},old["items"][0],stroke]}
+    assert len(chain.content)<len(full.content)/10
+    for invalid in ({"items":{"order":["a"]}}, {"set":{"items":[]}}, {"items":{"remove":["unknown"]}}):
+        assert (await client.patch(url,headers=owner,json={"expected_version":4,"delta":invalid})).status_code==422
+    assert (await client.get(url+"?version_only=true",headers=owner)).json()["version"]==4
+    # A legacy/full save interrupts the chain; the old client still works.
+    assert (await client.put(url,headers=owner,json={"expected_version":4,"document":old})).status_code==200
+    fallback = (await client.get(url+"?since_version=4",headers=editor)).json()
+    assert fallback["document"]==old and "patches" not in fallback
+    assert fallback["version"]==5
+
+
+@pytest.mark.asyncio
 async def test_share_link_access_and_atomic_use_limit(client):
     _, owner = await sign_in(client, "teacher@example.test")
     _, student = await sign_in(client, "student@example.test")

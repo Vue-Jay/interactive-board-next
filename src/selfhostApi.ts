@@ -94,6 +94,7 @@ function loadSession():SelfhostSession|null{
   }catch{return null}
 }
 function saveSession(session:SelfhostSession|null){
+  if(!session||loadSession()?.user.id!==session.user.id)documentBase=null;
   if(!session)localStorage.removeItem(SESSION_KEY);
   else localStorage.setItem(SESSION_KEY,JSON.stringify(session));
 }
@@ -268,16 +269,124 @@ export async function selfhostDownloadAsset(boardId:string,assetId:string):Promi
   if(!response.ok)throw await responseError(response);
   return response.blob();
 }
-export const selfhostReadDocument=(boardId:string,signal?:AbortSignal)=>selfhostRequest<SelfhostDocument>(
-  "/api/v1/boards/"+encodeURIComponent(boardId)+"/document",{signal}
-);
+type JsonObject=Record<string,unknown>;
+type DocumentDelta={set?:JsonObject;remove?:string[];items?:{upsert?:JsonObject[];remove?:string[];order?:string[]}};
+type DeltaResponse=SelfhostDocument&{base_version?:number;patches?:DocumentDelta[]};
+const MAX_DELTA_BYTES=1024*1024;
+// The raw acknowledged document, not the normalized editor snapshot. Keep only
+// the currently used board to avoid retaining every board opened in a session.
+let documentBase:{userId:string;boardId:string;version:number;document:JsonObject}|null=null;
+let deltaSupported=true;
+const documentPath=(boardId:string)=>"/api/v1/boards/"+encodeURIComponent(boardId)+"/document";
+const jsonObject=(value:unknown):value is JsonObject=>!!value&&typeof value==="object"&&!Array.isArray(value);
+function equalJson(a:unknown,b:unknown):boolean{
+  if(a===b)return true;
+  if(Array.isArray(a))return Array.isArray(b)&&a.length===b.length&&a.every((v,i)=>equalJson(v,b[i]));
+  if(!jsonObject(a)||!jsonObject(b))return false;
+  const keys=Object.keys(a);
+  return keys.length===Object.keys(b).length&&keys.every(key=>Object.hasOwn(b,key)&&equalJson(a[key],b[key]));
+}
+function itemMap(items:unknown):Map<string,JsonObject>|null{
+  if(!Array.isArray(items))return null;
+  const result=new Map<string,JsonObject>();
+  for(const item of items){
+    if(!jsonObject(item)||typeof item.id!=="string"||!item.id||result.has(item.id))return null;
+    result.set(item.id,item);
+  }
+  return result;
+}
+const reservedField=(key:string)=>["items","version","pilot_schema","__proto__","constructor","prototype"].includes(key);
+export function diffSelfhostDocument(base:JsonObject,next:JsonObject):DocumentDelta|null{
+  if(base.version!==1||next.version!==1||base.pilot_schema!=null||next.pilot_schema!=null)return null;
+  const before=itemMap(base.items),after=itemMap(next.items);
+  if(!before||!after)return null;
+  const changed=Object.entries(next).filter(([key,value])=>key!=="items"&&(!Object.hasOwn(base,key)||!equalJson(base[key],value)));
+  const removed=Object.keys(base).filter(key=>key!=="items"&&!Object.hasOwn(next,key));
+  if(changed.some(([key])=>reservedField(key))||removed.some(reservedField))return null;
+  const upsert=[...after].filter(([id,item])=>!equalJson(before.get(id),item)).map(([,item])=>item);
+  const remove=[...before.keys()].filter(id=>!after.has(id));
+  const implicitOrder=[...before.keys()].filter(id=>after.has(id)).concat([...after.keys()].filter(id=>!before.has(id)));
+  const order=[...after.keys()];
+  const reorder=!equalJson(implicitOrder,order);
+  return {
+    ...(changed.length?{set:Object.fromEntries(changed)}:{}),
+    ...(removed.length?{remove:removed}:{}),
+    ...(upsert.length||remove.length||reorder?{items:{...(upsert.length?{upsert}:{}),...(remove.length?{remove}:{}),...(reorder?{order}:{})}}:{}),
+  };
+}
+export function applySelfhostDocumentDelta(base:JsonObject,delta:DocumentDelta):JsonObject{
+  if(!jsonObject(delta)||Object.keys(delta).some(key=>!["set","remove","items"].includes(key)))throw new Error("Invalid delta");
+  const fields=delta.set??{},removed=delta.remove??[];
+  if(!jsonObject(fields)||!Array.isArray(removed)||Object.keys(fields).some(reservedField)||removed.some(key=>typeof key!=="string"||reservedField(key)||Object.hasOwn(fields,key)))throw new Error("Invalid delta fields");
+  const result={...base,...fields};
+  for(const key of removed)delete result[key];
+  if(delta.items!==undefined){
+    const changes=delta.items;
+    if(!jsonObject(changes)||Object.keys(changes).some(key=>!["upsert","remove","order"].includes(key)))throw new Error("Invalid item delta");
+    const map=itemMap(base.items),upserts=itemMap(changes.upsert??[]),deletes=changes.remove??[];
+    if(!map||!upserts||!Array.isArray(deletes))throw new Error("Invalid items");
+    for(const id of deletes){if(typeof id!=="string"||upserts.has(id)||!map.delete(id))throw new Error("Invalid item removal")}
+    for(const [id,item] of upserts)map.set(id,item);
+    const order=changes.order??[...map.keys()];
+    if(!Array.isArray(order)||order.length!==map.size||new Set(order).size!==map.size||order.some(id=>!map.has(id)))throw new Error("Invalid item order");
+    result.items=order.map(id=>map.get(id));
+  }
+  return result;
+}
+function rememberDocument(boardId:string,userId:string|undefined,version:number,document:JsonObject|null){
+  if(!userId||loadSession()?.user.id!==userId||!document||!Number.isSafeInteger(version))return;
+  if(documentBase?.boardId===boardId&&documentBase.userId===userId&&documentBase.version>version)return;
+  documentBase={boardId,userId,version,document};
+}
+export async function selfhostReadDocument(boardId:string,signal?:AbortSignal,incremental=true):Promise<SelfhostDocument>{
+  const userId=loadSession()?.user.id;
+  const base=incremental&&documentBase?.boardId===boardId&&documentBase.userId===userId?documentBase:null;
+  const path=documentPath(boardId);
+  let row=await selfhostRequest<DeltaResponse>(path+(base?"?since_version="+base.version:""),{signal});
+  if(row.patches!==undefined){
+    try{
+      if(!base||row.board_id!==boardId||row.base_version!==base.version||!Array.isArray(row.patches)||row.patches.length!==row.version-base.version||!row.patches.length||row.patches.length>8)throw new Error("Invalid delta chain");
+      row={...row,document:row.patches.reduce(applySelfhostDocumentDelta,base.document)};
+    }catch{
+      // A missing/malformed chain must never replace an acknowledged snapshot.
+      row=await selfhostRequest<SelfhostDocument>(path,{signal});
+    }
+  }
+  rememberDocument(boardId,userId,row.version,row.document);
+  return row;
+}
 export const selfhostReadDocumentVersion=(boardId:string,signal?:AbortSignal)=>selfhostRequest<{version:number}>(
   "/api/v1/boards/"+encodeURIComponent(boardId)+"/document?version_only=true",{signal}
 );
-export const selfhostSaveDocument=(boardId:string,expectedVersion:number,document:Record<string,unknown>)=>
-  selfhostRequest<{version:number}>("/api/v1/boards/"+encodeURIComponent(boardId)+"/document?version_only=true",{
-    method:"PUT",body:JSON.stringify({expected_version:expectedVersion,document}),
-  });
+export async function selfhostSaveDocument(boardId:string,expectedVersion:number,document:JsonObject){
+  const userId=loadSession()?.user.id;
+  const base=documentBase?.boardId===boardId&&documentBase.userId===userId&&documentBase.version===expectedVersion?documentBase:null;
+  const fullBody=JSON.stringify({expected_version:expectedVersion,document});
+  // JSON normalization also preserves the exact wire representation of optional
+  // keys/numbers; the editor may mutate its own objects after the request starts.
+  const next=JSON.parse(fullBody).document as JsonObject;
+  const path=documentPath(boardId)+"?version_only=true";
+  let result:{version:number}|undefined;
+  if(base&&deltaSupported&&expectedVersion>0){
+    const delta=diffSelfhostDocument(base.document,next);
+    if(delta){
+      const body=JSON.stringify({expected_version:expectedVersion,delta});
+      const bytes=new TextEncoder().encode(body).byteLength;
+      if(bytes<MAX_DELTA_BYTES&&(bytes<fullBody.length||bytes<new TextEncoder().encode(fullBody).byteLength)){
+        try{result=await selfhostRequest<{version:number}>(path,{method:"PATCH",body})}
+        catch(error){
+          // Older servers still support the version-checked full PUT. Do not
+          // retry permissions/conflicts/unknown outcomes as a second write.
+          if(!(error instanceof SelfhostHttpError)||error.status!==405)throw error;
+          deltaSupported=false;
+        }
+      }
+    }
+  }
+  result??=await selfhostRequest<{version:number}>(path,{method:"PUT",body:fullBody});
+  rememberDocument(boardId,userId,result.version,next);
+  return result;
+}
 export type SelfhostObjectPreview={
   type:"object_preview";client_id:string;object_id:string;gesture_id:string;
   seq:number;object_revision:number;x:number;y:number;
@@ -804,7 +913,7 @@ export function selfhostWatchDocument(
     if(controller.signal.aborted||accessDenied||target<=Math.max(currentVersion(),delivered))return;
     reading=true;
     try{
-      const row=await selfhostReadDocument(boardId,controller.signal);
+      const row=await selfhostReadDocument(boardId,controller.signal,true);
       if(controller.signal.aborted)return;
       if(row.document&&row.version>Math.max(currentVersion(),delivered))onDocument(row);
       delivered=Math.max(delivered,row.version);

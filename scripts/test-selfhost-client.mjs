@@ -31,6 +31,7 @@ async function loadSelfhost(enabled) {
   const record=[];
   let expires=900,refreshes=0,documentVersion=3,documentFailures=0;
   const nativeBoardId="00000000-0000-4000-8000-000000000004";
+  let nativeDoc=null,nativeVersion=0,nativeDelta=null,brokenChain=false;
   const nativeComment={id:"comment-root",board_id:nativeBoardId,
     author_id:"00000000-0000-4000-8000-000000000001",author_name:"Учитель",
     parent_id:null,body:"Проверьте решение",resolved:false,
@@ -81,13 +82,23 @@ async function loadSelfhost(enabled) {
     }
     if(u.pathname===`/api/v1/boards/${nativeBoardId}/document`&&options.method==="PUT"){
       const body=JSON.parse(options.body);
-      assert.equal(body.expected_version,0);
-      return ok({board_id:nativeBoardId,version:1,document:body.document,
+      assert.equal(body.expected_version,nativeVersion);
+      nativeDoc=body.document;nativeVersion++;nativeDelta=null;
+      return ok({board_id:nativeBoardId,version:nativeVersion,document:body.document,
         updated_by:user.id,updated_at:"2026-11-14T10:00:00Z"});
     }
+    if(u.pathname===`/api/v1/boards/${nativeBoardId}/document`&&options.method==="PATCH"){
+      const body=JSON.parse(options.body);
+      assert.equal(body.expected_version,nativeVersion);
+      nativeDoc=JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(nativeDoc,body.delta)));
+      nativeDelta=body.delta;nativeVersion++;
+      return ok({version:nativeVersion});
+    }
+    if(u.pathname===`/api/v1/boards/${nativeBoardId}/document`&&u.searchParams.get("since_version")===String(nativeVersion-1)&&nativeDelta)
+      return ok({board_id:nativeBoardId,document:null,version:nativeVersion,base_version:nativeVersion-1,
+        patches:brokenChain?[{items:{order:[]}}]:[nativeDelta],updated_by:user.id,updated_at:"2026-11-14T10:00:00Z"});
     if(u.pathname===`/api/v1/boards/${nativeBoardId}/document`)
-      return ok({board_id:nativeBoardId,version:1,
-        document:{version:1,title:"Нативная доска",view:{x:0,y:0,zoom:1},items:[]},
+      return ok({board_id:nativeBoardId,version:nativeVersion,document:nativeDoc,
         updated_by:user.id,updated_at:"2026-11-14T10:00:00Z"});
     const assetBase=`/api/v1/boards/${nativeBoardId}/assets/`;
     if(u.pathname===assetBase+"asset_1"&&options.method==="HEAD")
@@ -222,7 +233,7 @@ async function loadSelfhost(enabled) {
   }
   const listeners=new Map();
   const context=vm.createContext({
-    exports:{},fetch,URL,Headers,Response,AbortController,FormData,queueMicrotask,
+    exports:{},fetch,URL,Headers,Response,AbortController,FormData,TextEncoder,queueMicrotask,
     navigator:{onLine:true},WebSocket:Socket,
     localStorage:sessionStorage,sessionStorage,setTimeout,clearTimeout,setInterval,clearInterval,Date,
     window:{location:{origin:"https://pilot.lektrus.example"},
@@ -234,7 +245,8 @@ async function loadSelfhost(enabled) {
   const broadcastSource=readFileSync(new URL("../src/boardBroadcast.ts",import.meta.url),"utf8");
   const broadcastContext=vm.createContext({exports:{},require:name=>name==="./selfhostApi"?api:{isRemoteBackendEnabled:()=>false},setTimeout,clearTimeout,Date,Math,Map,crypto:globalThis.crypto});
   vm.runInContext(ts.transpileModule(broadcastSource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,broadcastContext);
-  return {api,broadcast:broadcastContext.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,sessionStorage,changeExpires:v=>{expires=v},changeDocument:(v,failures=0)=>{documentVersion=v;documentFailures=failures}};
+  return {api,broadcast:broadcastContext.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,sessionStorage,changeExpires:v=>{expires=v},changeDocument:(v,failures=0)=>{documentVersion=v;documentFailures=failures},
+    remoteNativeEdit:(delta,broken=false)=>{nativeDoc=JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(nativeDoc,delta)));nativeVersion++;nativeDelta=delta;brokenChain=broken}};
 }
 
 const disabled=await loadSelfhost(false);
@@ -261,12 +273,31 @@ const expectedComment={id:"comment-root",board_id:nativeBoard.id,
   created_at:"2026-11-14T10:00:00Z",updated_at:"2026-11-14T10:00:00Z"};
 assert.equal(nativeBoard.id,"00000000-0000-4000-8000-000000000004");
 const nativeDocument={version:1,title:"Нативная доска",
-  view:{x:0,y:0,zoom:1},items:[]};
+  view:{x:0,y:0,zoom:1},items:Array.from({length:1000},(_,i)=>({id:"item-"+i,kind:"text",text:"Пример ".repeat(30),x:i,y:0}))};
 const nativeSaved=await api.selfhostSaveDocument(
   nativeBoard.id,0,nativeDocument
 );
 assert.equal(nativeSaved.version,1);
 assert.equal((await api.selfhostReadDocument(nativeBoard.id)).document.title,"Нативная доска");
+const nextDoc={...nativeDocument,items:[...nativeDocument.items,{id:"new-ink",kind:"pen",points:[{x:1,y:2}]}]};
+assert.equal((await api.selfhostSaveDocument(nativeBoard.id,1,nextDoc)).version,2);
+const patchRequest=records.at(-1);
+assert.equal(patchRequest.method,"PATCH");
+assert.deepEqual(patchRequest.body.delta,{items:{upsert:[nextDoc.items.at(-1)]}});
+const fullBytes=Buffer.byteLength(JSON.stringify({expected_version:1,document:nextDoc}));
+const deltaBytes=Buffer.byteLength(JSON.stringify(patchRequest.body));
+assert.ok(deltaBytes<fullBytes/100);
+console.log(`Board autosave: ${fullBytes} -> ${deltaBytes} bytes (${(100*(1-deltaBytes/fullBytes)).toFixed(2)}% less)`);
+const reordered={...nextDoc,title:"Сохранённая",items:[nextDoc.items.at(-1),...nextDoc.items.slice(1,-1)]};
+const remoteDelta=JSON.parse(JSON.stringify(api.diffSelfhostDocument(nextDoc,reordered)));
+assert.deepEqual(JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(nextDoc,remoteDelta))),reordered);
+env.remoteNativeEdit(remoteDelta);
+assert.deepEqual(JSON.parse(JSON.stringify((await api.selfhostReadDocument(nativeBoard.id,undefined,true)).document)),reordered);
+assert.equal(records.at(-1).query,"?since_version=2");
+env.remoteNativeEdit({set:{subject:"chemistry"}},true);
+assert.equal((await api.selfhostReadDocument(nativeBoard.id,undefined,true)).document.subject,"chemistry");
+assert.equal(records.at(-2).query,"?since_version=3");
+assert.equal(records.at(-1).query,"");
 assert.equal(await api.selfhostAssetExists(nativeBoard.id,"asset_1"),true);
 assert.equal(await api.selfhostAssetExists(nativeBoard.id,"missing"),false);
 await api.selfhostUploadAsset(
