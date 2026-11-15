@@ -1911,14 +1911,14 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        {SCHOOL_ATLAS_FUEL_MINERALS.some(name=>name===mineralFilter)&&
         <small>Текущие каталоги USGS не содержат координат этого вида сырья. Пустая карта не означает отсутствие месторождений.</small>}
        <small role="status">{!localMineralDetail?
-        worldMineralsLoading||mrdsWorldLoading?"Загрузка каталогов USGS и MRDS…":
-        mineralsAvailable&&(mineralLoading||mrdsRegionLoading)?"Загрузка месторождений региона…":
+        !worldMinerals&&!mrdsWorld&&(worldMineralsLoading||mrdsWorldLoading)?"Загрузка каталогов USGS и MRDS…":
+        mineralsAvailable&&!minerals&&!mrdsRegion&&(mineralLoading||mrdsRegionLoading)?"Загрузка месторождений региона…":
         worldMineralPoints.length===0&&(worldMineralError||mrdsWorldError)?
          [worldMineralError,mrdsWorldError].filter(Boolean).join(" "):
-         "Обзорная выборка: "+worldMineralPoints.length+" записей. Один знак может объединять несколько записей одного вида сырья.":
+         "Обзорная выборка: "+worldMineralPoints.length+" записей. Один знак может объединять несколько записей одного вида сырья."+(mrdsWorldLoading?" Дополнительный MRDS загружается…":""):
         "Подробные месторождения в выбранной области: "+visibleMinerals.length+(mrdsRegionLoading?" · обновление MRDS…":".")}</small>
        {(worldMineralError||mrdsWorldError||mineralError||mrdsRegionError)&&<>
-        <small>Часть данных из источников недоступна. Отсутствие значков не означает отсутствие месторождений.</small>
+        <small>{[worldMineralError,mrdsWorldError,mineralError,mrdsRegionError].filter(Boolean).join(" ")} Отсутствие значков не означает отсутствие месторождений.</small>
         <button type="button" onClick={()=>setRefresh(value=>value+1)}>Повторить загрузку каталогов</button>
        </>}
        {mineralTerrainEnabled&&terrainStatus.failed>0&&<small>Часть высотных плиток не загрузилась.</small>}
@@ -1936,8 +1936,8 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
          </div>)}
         </div>)}
        </div>
-       <small>Условные знаки показывают опубликованные координаты. Нажмите на группу для приближения. Каталоги USGS и MRDS исторические и неполные, особенно за пределами США. Нефть, газ и уголь в них не представлены. Обзорные группы построены по выборке, а не по полному кадастру. Наличие точки не означает действующую добычу или подтверждённые запасы.</small>
-       <a href="https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0" target="_blank" rel="noopener noreferrer">Исходная база USGS и метаданные ↗</a>
+       <small>Условные знаки показывают опубликованные координаты. Нажмите на группу для приближения. Основной каталог — архивная копия USGS OFR 2005-1294; MRDS — дополнительная онлайн-выборка. Каталоги исторические и неполные, особенно за пределами США. Нефть, газ и уголь в них не представлены. Наличие точки не означает действующую добычу или подтверждённые запасы.</small>
+       <a href="https://pubs.usgs.gov/of/2005/1294/" target="_blank" rel="noopener noreferrer">Исходная база USGS и метаданные ↗</a>
        <a href="https://special-edu.kz/TEXTBOOKS/1RAZDEL/book/pdf/geog9Methods.pdf" target="_blank" rel="noopener noreferrer">Примеры условных знаков из школьного учебного материала ↗</a>
       </div>
      </details>}
@@ -1980,7 +1980,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       target="_blank" rel="noopener noreferrer">Исходная карточка месторождения USGS ↗</a>}
      <a href={selectedMineral.properties?.ATLAS_DATASET==="MRDS"?
       "https://energy.usgs.gov/arcgis/rest/services/Hosted/Mineral_Resource_Data_System/FeatureServer/0":
-      "https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0"}
+      "https://pubs.usgs.gov/of/2005/1294/"}
       target="_blank" rel="noopener noreferrer">Открыть набор геологических данных USGS ↗</a>
     </div>:
     selected?<div className="lektrus-atlas-description">
@@ -2378,7 +2378,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       target="_blank" rel="noopener noreferrer">Исходная карточка месторождения USGS ↗</a>}
      <a href={selectedMineral.properties?.ATLAS_DATASET==="MRDS"?
       "https://energy.usgs.gov/arcgis/rest/services/Hosted/Mineral_Resource_Data_System/FeatureServer/0":
-      "https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0"}
+      "https://pubs.usgs.gov/of/2005/1294/"}
       target="_blank" rel="noopener noreferrer">Открыть набор геологических данных USGS ↗</a>
     </div>:
     selected?<div className="lektrus-atlas-description">

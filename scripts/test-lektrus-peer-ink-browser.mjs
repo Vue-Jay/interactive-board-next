@@ -29,9 +29,14 @@ try{
   });
   const origin=new URL(debuggerUrl).host;
   let target;
-  for(let i=0;i<100&&!target;i++){
-    const pages=await fetch(`http://${origin}/json/list`,{signal:AbortSignal.timeout(2000)}).then(r=>r.json());
-    target=pages.find(page=>page.type==='page'&&page.url===url);
+  const targetDeadline=Date.now()+15000;
+  while(!target&&Date.now()<targetDeadline){
+    try{
+      const pages=await fetch(`http://${origin}/json/list`,{signal:AbortSignal.timeout(2000)}).then(r=>r.json());
+      target=pages.find(page=>page.type==='page'&&page.url===url);
+    }catch(error){
+      if(error.name!=='TimeoutError'&&!(error instanceof TypeError))throw error;
+    }
     if(!target)await delay(100);
   }
   assert.ok(target,'Browser fixture not found');

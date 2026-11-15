@@ -31,6 +31,7 @@ assert.equal(clustered.clusterMineralMapPoints(example,1,"Медь").length,1);
 assert.equal(clustered.clusterMineralMapPoints(example,100,"Все виды").length,3);
 const network=[];
 const mockFetch=async(url)=>{
+ if(url==="/assets/atlas-usgs-major-v1.json")throw Error("Static archive unavailable");
  network.push(url);
  const params=new URL(url).searchParams;
  assert.equal(params.get("resultRecordCount"),"350");
@@ -53,6 +54,29 @@ assert.equal(world.features.length,6);
 assert.deepEqual(world.features.map(f=>f.geometry.type),Array(6).fill("Point"));
 assert.equal((await external.loadWorldMineralOverview()).features.length,6);
 assert.equal(network.length,6,"World overview must be cached");
+// The actual shipped archive must work without any external USGS access.
+const snapshot=JSON.parse(fs.readFileSync(new URL("../public/assets/atlas-usgs-major-v1.json",import.meta.url),"utf8"));
+assert.equal(snapshot.records.length,3161);
+assert.equal(new Set(snapshot.records.map(r=>r[0])).size,3161);
+const localExternal={},localRequests=[];
+new Function("exports","require","fetch","AbortController","setTimeout","clearTimeout",
+ "URLSearchParams",compile("lektrusAtlasExternal.ts"))(
+ localExternal,schoolRequire,async url=>{
+  localRequests.push(url);assert.equal(url,"/assets/atlas-usgs-major-v1.json");
+  return {ok:true,json:async()=>snapshot};
+ },AbortController,setTimeout,clearTimeout,URLSearchParams);
+const localWorld=await localExternal.loadWorldMineralOverview();
+assert.ok(localWorld.features.length>1000,"Published school-commodity points must survive filtering");
+assert.ok(localWorld.features.some(f=>f.properties.dep_name==="Obatu-Shela"&&f.geometry.coordinates[0]===66.2833));
+const bounds={west:60,east:80,south:25,north:40};
+const localRegion=await localExternal.loadMineralDeposits(bounds);
+assert.ok(localRegion.features.length>0);
+assert.ok(localRegion.features.every(f=>{
+ const [x,y]=f.geometry.coordinates;return x>=60&&x<=80&&y>=25&&y<=40;
+}));
+assert.ok(localRegion.features.some(f=>f.properties.dep_name==="Obatu-Shela"));
+assert.equal((await localExternal.loadWorldMineralOverview()).features.length,localWorld.features.length);
+assert.equal(localRequests.length,1,"World view and regional zoom share one bundled download");
 const map=fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8");
 const model=fs.readFileSync(new URL("../src/lektrusAtlasModel.ts",import.meta.url),"utf8");
 assert.match(map,/loadWorldMineralOverview\(/);
@@ -136,4 +160,4 @@ assert.ok(map.indexOf('className="lektrus-atlas-mineral-points"')>
 assert.ok(map.includes('const roadTiles=citiesOn?')&&map.includes('const cityTiles=citiesOn?'),
  "Mineral orientation landmarks must not trigger expensive OSM road/city-boundary fetching");
 
-console.log("Atlas overview: six-world-zone USGS sampling, genuine mineral groups and city-political merger passed.");
+console.log("Atlas overview: bundled USGS archive, local filtering, remote fallback, and MRDS sampling passed.");

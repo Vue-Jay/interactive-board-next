@@ -30,6 +30,7 @@ jobs:
       - name: Test the primary Lektrus self-hosted API client
         run: |
           node scripts/test-selfhost-client.mjs
+          node scripts/test-lektrus-visit-retry.mjs
           node --test tests/shareLinks.test.mjs
       - name: Check collaboration and attachment traffic regressions
         run: |

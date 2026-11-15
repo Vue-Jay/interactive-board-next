@@ -107,10 +107,37 @@ export function mineralCommodity(feature:GeoFeature):{name:string;color:string}|
  const found=mineralWords.find(x=>x[0].test(candidates));
  return found?{name:found[1],color:found[2]}:null;
 }
-/** USGS published data, global but known to have incomplete coverage outside the US.
- * Only a viewport-sized subset is downloaded; absent records are not fabricated. */
-export function loadMineralDeposits(b:ExternalBounds):Promise<GeoCollection>{
+/** Archive of the published USGS OFR 2005-1294 dataset. Loaded once on demand,
+ * with no cross-origin dependency; the live service is a fallback only. */
+let bundledMajorDeposits:Promise<GeoCollection>|undefined;
+function loadBundledMajorDeposits():Promise<GeoCollection>{
+ if(!bundledMajorDeposits)bundledMajorDeposits=safeFetch("/assets/atlas-usgs-major-v1.json").then(data=>{
+  if(data.source!=="USGS OFR 2005-1294"||!Array.isArray(data.records)||data.records.length<3000)
+   throw Error("Неполный архив USGS");
+  const features:GeoFeature[]=[];
+  for(const row of data.records){
+   if(!Array.isArray(row)||row.length!==10)continue;
+   const [gid,lon,lat,dep_name,country,state,commodity,dep_type,model_code,model_name]=row;
+   if(!Number.isInteger(gid)||!Number.isFinite(lon)||!Number.isFinite(lat)||Math.abs(lon)>180||Math.abs(lat)>90)continue;
+   const feature:GeoFeature={type:"Feature",geometry:{type:"Point",coordinates:[lon,lat]},
+    properties:{gid,dep_name,country,state,commodity,dep_type,model_code,model_name}};
+   if(mineralCommodity(feature))features.push(feature);
+  }
+  if(!features.length)throw Error("Пустой архив USGS");
+  return {type:"FeatureCollection" as const,features};
+ }).catch(error=>{bundledMajorDeposits=undefined;throw error});
+ return bundledMajorDeposits;
+}
+/** Published records within the exact current viewport, without extra traffic. */
+export async function loadMineralDeposits(b:ExternalBounds):Promise<GeoCollection>{
  if(!canLoadMinerals(b))return Promise.resolve({type:"FeatureCollection",features:[]});
+ try{
+  const snapshot=await loadBundledMajorDeposits();
+  return {type:"FeatureCollection",features:snapshot.features.filter(f=>{
+   const [lon,lat]=f.geometry!.coordinates as [number,number];
+   return lon>=b.west&&lon<=b.east&&lat>=b.south&&lat<=b.north;
+  })};
+ }catch{/* The original remote service remains a fallback. */}
  const params=new URLSearchParams({where:"1=1",geometry:[
   b.west,b.south,b.east,b.north].map(v=>v.toFixed(4)).join(","),
   geometryType:"esriGeometryEnvelope",inSR:"4326",outSR:"4326",
@@ -213,7 +240,8 @@ export function loadCityBoundaries(b:ExternalBounds):Promise<GeoCollection>{
  * from showing deposits only near a single region. Counts represent records in
  * this sample, not all deposits or reserves on Earth.
  */
-export function loadWorldMineralOverview():Promise<GeoCollection>{
+export async function loadWorldMineralOverview():Promise<GeoCollection>{
+ try{return await loadBundledMajorDeposits()}catch{/* Fall back to live samples. */}
  return memo("usgs:world-overview:v2",async()=>{
   const longitudes=[[-180,-60],[-60,60],[60,180]];
   const latitudes=[[-60,0],[0,85]];
