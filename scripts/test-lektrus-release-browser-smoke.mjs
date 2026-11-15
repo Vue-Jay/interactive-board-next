@@ -151,6 +151,50 @@ try{
    "Board lost "+type+" objects");
  console.log("✓ Demo board: math lessons and five object types rendered");
 
+ // A fresh profile zooms with the wheel; the alternate mode and reset must
+ // work immediately, and the selected mode is kept across reloads.
+ const openControls=async()=>{
+  await click('.lectris-layout-picker summary');
+  await click('.lectris-interface-settings-entry');
+  await wait('!!document.querySelector(".lektrus-control-settings")',"Control settings did not open");
+ };
+ const modes=()=>evaluate(`[...document.querySelectorAll('.lektrus-controls-modes button')].map(b=>({label:b.querySelector('b').textContent.slice(2),active:b.getAttribute('aria-pressed')==='true'}))`);
+ const closeControls=()=>click('.lektrus-control-settings footer button.primary');
+ const wheel=async(modifiers=0)=>{
+  const b=await rect('section.board');
+  await call('Input.dispatchMouseEvent',{type:'mouseWheel',x:b.x,y:b.y,deltaX:0,deltaY:-120,modifiers});
+  await delay(250);
+ };
+ const zoomLabel=()=>evaluate("document.querySelector('.zoom-value').textContent.trim()");
+ await openControls();
+ assert.deepEqual(await modes(),[{label:'Масштаб',active:true},{label:'Прокрутка',active:false}]);
+ await closeControls();
+ await click('.zoom-value');
+ await wheel();
+ assert.notEqual(await zoomLabel(),'100%','Default wheel must zoom');
+ await click('.zoom-value');
+ await wheel(2);
+ assert.equal(await zoomLabel(),'100%','Ctrl + wheel in zoom mode must pan');
+ await openControls();
+ await click('.lektrus-controls-modes button:nth-child(2)');
+ await closeControls();
+ await call('Page.reload');
+ await wait('document.querySelectorAll(".board-object[data-object]").length>=8','Board did not reload');
+ await openControls();
+ assert.equal((await modes())[1].active,true,'Explicit scroll preference must survive reload');
+ await closeControls();
+ await click('.zoom-value');
+ await wheel();
+ assert.equal(await zoomLabel(),'100%','Scroll mode must preserve zoom');
+ await wheel(2);
+ assert.notEqual(await zoomLabel(),'100%','Ctrl + wheel must zoom in scroll mode');
+ await openControls();
+ await click('.lektrus-control-settings footer button:first-child');
+ assert.equal((await modes())[0].active,true,'Reset must choose zoom mode');
+ await closeControls();
+ await click('.zoom-value');
+ console.log('✓ Wheel modes: zoom first/default, Ctrl reverses action, persistence and reset');
+
  // The narrow split-screen viewport used to stretch a notice from top to bottom.
  // Repeated messages must restart their own three-second lifetime.
  await call("Emulation.setDeviceMetricsOverride",{width:960,height:850,deviceScaleFactor:1,mobile:false});
