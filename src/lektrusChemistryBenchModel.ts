@@ -10,13 +10,14 @@ import {labBinarySaltEquilibrium,labAdvanceBinarySaltPhase,labVisibleBinarySaltS
 import {labIdealGasVolumeMl,labReactionGasProgress} from "./lektrusLabGasDynamics";
 import {labEvaporate,labCanStopper,labIdealBoilingC,labVaporPressureKPa} from "./lektrusLabEvaporation";
 import {LAB_CRYSTAL_DENSITY_G_ML,labSchoolSolidDensityGml,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
-import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,labDoseMoles,labGasProductFormulas,type LabReactionAmounts}
+import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,labDoseMoles,labIsGasDose,labGasDose,labGasProductFormulas,type LabReactionAmounts}
  from "./lektrusLabStoichiometry";
 import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint} from "./lektrusLabLayout";
 import {addTitrant,defaultTitration,resetTitration,validTitration,type TitrationModel}
  from "./lektrusLabTitration";
 import {identifyReaction,reviewedReactionCases,substances,type ReactionEnvironment,type ReactionStatus,type ReactionCase} from "./lektrusReactionDatabase";
 import {simulateLabInventory,labInventorySnapshot,type LabChemicalSnapshot} from "./lektrusLabReactionNetwork";
+import {reagentAppearance,labSedimentTint} from "./lektrusLabAppearance";
 
 export type LabGlassware="beaker"|"tube"|"flask"|"cylinder"|"dish"|
  "conical"|"volumetric"|"crucible"|"pipette"|"burette";
@@ -69,7 +70,7 @@ export const glasswareForLabMode=(bench:LabBench)=>
 export const devicesForLabMode=(bench:LabBench)=>
  labModeInfo(bench).devices.flatMap(id=>labDevices.filter(v=>v.id===id));
 
-export type LabDose={value:number;unit:"ml"|"g";concentrationM?:number};
+export type LabDose={value:number;unit:"ml"|"g";concentrationM?:number;phase?:"gas"};
 /** Preserved heat exchange from one verified reaction, not a predicted
  * experiment temperature. All clients advance the same progress. */
 export type LabReactionHeat={
@@ -252,7 +253,7 @@ export function applyPlacedLabDevice(bench:LabBench,id:string,vesselId:string,
  if(mount==="shelf")return setLabStandShelf(bench,id,vesselId);
  const device=placedLabDevices(bench).find(d=>d.id===id);
  const vessel=bench.vessels.find(v=>v.id===vesselId);
- if(!device||!vessel||!canMountLabVessel(device.kind,vessel.kind))return bench;
+  if(!device||!vessel||vessel.gasCollector||!canMountLabVessel(device.kind,vessel.kind))return bench;
  if(device.active&&device.linkedVesselId===vesselId)return bench;
  const companion=placedLabDevices(bench).find(d=>d.id!==id&&d.active&&
   d.linkedVesselId===vesselId&&mayShareLabVessel(device.kind,d.kind));
@@ -706,7 +707,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
    !phaseChanged&&!kineticChanged&&!mixedChanged)return v;
   const doses=updatedDoses,reagents=updatedReagents;
   const hasLiquid=Object.entries(doses??{}).some(([id,d])=>d.unit==="ml"&&
-   substances.find(s=>s.id===id)?.kind!=="газ");
+   !labIsGasDose(id,d));
   const vented=popped?labVentStopperedVessel(v):undefined;
   return {...v,temperatureC:next,
    ...(phaseChanged?{meltFraction,frozenFraction,phaseTransition}:{}),
@@ -747,16 +748,17 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
    state=startQuantifiedLabReaction(reaction.caseData,v.reagents,v.doses,nowMs)??undefined;
    if(!state)return v;
    // Gas reactions need a watchable 24-second school demonstration.
-   if(reaction.caseData.observation==="gas")state={...state,durationSeconds:24};
+   if(labGasProductFormulas(reaction.caseData.equation).size)state={...state,durationSeconds:24};
   }else if(state.complete)return v;
   // Increment by simulation time; subtracting wall-clock elapsed would stall
   // progress after the first accelerated reaction step.
-  const elapsed=profile.fastReactions&&!labReactionGasProgress(state)?
-   Math.max(seconds,30):seconds;
+  const elapsed=labReactionGasProgress(state)?seconds/settings.timeScale:
+   profile.fastReactions?Math.max(seconds,30):seconds;
   const next=v.reactionAmounts?advanceQuantifiedLabReaction(state,elapsed):state;
   if(next===v.reactionAmounts)return v;
   changed=true;
-  return {...v,reactionAmounts:next};
+  return {...v,reactionAmounts:next,
+   ...(!v.reactionAmounts?{gasCollectionProcessedMol:undefined}:{})};
  });
  result={...result,vessels};
  // In a previously reacted mixture, let NEW precipitate form across several
@@ -801,7 +803,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
    const durationSeconds=active?.durationSeconds??activeGas?.durationSeconds??
     (gas?24:6);
    const previousSeconds=active?.elapsedSeconds??activeGas?.elapsedSeconds??0;
-   const elapsedSeconds=Math.min(durationSeconds,previousSeconds+seconds);
+   const elapsedSeconds=Math.min(durationSeconds,previousSeconds+(gas?seconds/settings.timeScale:seconds));
    const complete=elapsedSeconds>=durationSeconds;
    if(complete)completedInventoryEntries.push({vesselId:v.id,equations:measured.steps.map(step=>step.equation)});
    const final=labInventorySnapshot(measured);
@@ -867,6 +869,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
     pendingInventoryReaction:complete?undefined:true,
     inventoryPrecipitation:gas?undefined:complete?undefined:
      {equation,initial,elapsedSeconds,durationSeconds},
+    ...(gas&&!activeGas?{gasCollectionProcessedMol:undefined}:{}),
     inventoryGasReaction:gas?
      {equation,initial,elapsedSeconds,durationSeconds}:undefined,
     completedReaction:complete?lastCase??v.completedReaction:v.completedReaction,
@@ -897,7 +900,13 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
   const receiver=result.vessels.find(v=>v.id===source.gasCollectionTargetId);
   const progress=labFollowUpGasProgress(source)??
    labReactionGasProgress(source.reactionAmounts);
-  if(!receiver||!progress||receiver.stoppered)continue;
+  if(!receiver||!progress)continue;
+  if(receiver.stoppered){
+   // Gas generated during a blocked interval is not stored in the tube.
+   result={...result,vessels:result.vessels.map(v=>v.id===source.id?
+    {...v,gasCollectionProcessedMol:{...progress.producedMol}}:v)};
+   changed=true;continue;
+  }
   const processed={...source.gasCollectionProcessedMol};
   const collected={...source.gasCollectedMol};
   let moved=result,wasUpdated=false;
@@ -907,15 +916,17 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
    const target=moved.vessels.find(v=>v.id===receiver.id)!;
    const room=labGasReceiverFreeMl(target);
    const ml=Math.floor(Math.min(delta*24465,room)*100)/100;
+   let accepted=false;
    if(ml>=.01){
-    const next=putLabReagent(moved,receiver.id,formula,{unit:"ml",value:ml});
+    const next=putLabReagent(moved,receiver.id,formula,labGasDose(formula,ml));
     if(next!==moved){
-     moved=next;wasUpdated=true;
+     moved=next;wasUpdated=true;accepted=true;
      collected[formula]=(collected[formula]??0)+ml/24465;
     }
    }
    // Retain traces below 0.01 ml, but vent when receiver is full.
-   processed[formula]=ml>=.01||room<.01?produced:processed[formula]??0;
+   processed[formula]=room<.01||delta*24465>room+1e-8||ml>=.01&&!accepted?
+    produced:(processed[formula]??0)+(accepted?ml/24465:0);
    wasUpdated=true;
   }
   if(!wasUpdated)continue;
@@ -1241,6 +1252,8 @@ export type LabVessel={pourFraction?:number;
  stopperedAtC?:number;
  /** Optional gas-outlet tube to a second vessel. */
  gasCollectionTargetId?:string;
+ /** Dedicated gas-only receiver with a two-way sampling valve. */
+ gasCollector?:boolean;
  /** Already accounted gas, preventing repeated collection across ticks. */
  gasCollectionProcessedMol?:Record<string,number>;
  /** Total collected measured gas moles. */
@@ -1618,7 +1631,7 @@ function calculateLabVesselContents(v:LabVessel){
      }
     }
    }
-   if(mol-solidMol>1e-12&&substances.find(s=>s.id===formula)?.kind!=="газ")
+   if(mol-solidMol>1e-12&&!labIsGasDose(formula,v.doses?.[formula]))
     solution.push({formula,mmol:formatMol(mol-solidMol)});
   }
   return {solutionMl:volumeMl,capacityMl,solution,solid,
@@ -1659,7 +1672,7 @@ function calculateLabVesselContents(v:LabVessel){
      if(density)precipitateVolumeMl=(precipitateVolumeMl??0)+solidMass/density;
     }
    }
-   if(mol-solidMol>1e-12&&substances.find(s=>s.id===formula)?.kind!=="газ")
+   if(mol-solidMol>1e-12&&!labIsGasDose(formula,v.doses?.[formula]))
     solution.push({formula,mmol:formatMol(mol-solidMol)});
   }
  }else if(quantities){
@@ -2015,7 +2028,7 @@ function labVentStopperedVessel(v:LabVessel,nowMs?:number):LabVessel{
 }
 export function setLabVesselStopper(bench:LabBench,id:string,stoppered:boolean):LabBench{
  return revise(bench,id,v=>{
-  if(!labCanStopper(v.kind)||!!v.stoppered===stoppered)return v;
+  if(v.gasCollector||!labCanStopper(v.kind)||!!v.stoppered===stoppered)return v;
   if(!stoppered)return labVentStopperedVessel(v);
   return {...v,stoppered:true,stopperedAtC:v.temperatureC??22,
    // Already present gas is the sealed baseline; only NEW gas increases
@@ -2037,12 +2050,12 @@ export function setLabVesselStopper(bench:LabBench,id:string,stoppered:boolean):
 export function labHeadspaceGasMoles(v:LabVessel){
  const baseline=v.stoppered?Math.max(0,v.sealedReactionGasBaselineMol??0):0;
  const sourceGas=Object.entries(v.doses??{}).reduce((sum,[id,d])=>
-  sum+(substances.find(x=>x.id===id)?.kind==="газ"?
+  sum+(labIsGasDose(id,d)?
    labDoseMoles(id,d)??0:0),0);
  const measured=labReactionGasProgress(v.reactionAmounts);
  if(measured){
   const remainingGas=Object.entries(v.doses??{}).reduce((sum,[id,d])=>
-   sum+(substances.find(x=>x.id===id)?.kind==="газ"?
+   sum+(labIsGasDose(id,d)?
     v.reactionAmounts?.remainingMol[id]??labDoseMoles(id,d)??0:0),0);
   return Math.max(0,measured.totalMol+remainingGas-baseline);
  }
@@ -2062,7 +2075,7 @@ export function labHeadspaceGasMoles(v:LabVessel){
   volumeMl:labVesselQuantity(v).volumeMl});
  const total=Object.values(inventory.retainedGasMol).reduce((sum,m)=>sum+m,0)+
   Object.entries(inventory.speciesMol).reduce((sum,[id,m])=>
-   sum+(substances.find(x=>x.id===id)?.kind==="газ"?m:0),0);
+   sum+(labIsGasDose(id,v.doses?.[id])?m:0),0);
  return Math.max(0,total-baseline);
 }
 /** Tube from reaction flask to a gas receiving vessel, without an
@@ -2080,8 +2093,7 @@ export function labFollowUpGasProgress(v:LabVessel){
   ...Object.keys(v.chemicalInventory.releasedGasMol??{}),
   ...Object.keys(v.chemicalInventory.retainedGasMol??{})
  ])){
-  const name=substances.find(s=>s.id===id);
-  if(name?.kind!=="газ")continue;
+
   const already=(progress.initial.releasedGasMol?.[id]??0)+
    (progress.initial.retainedGasMol?.[id]??0);
   const total=(v.chemicalInventory.releasedGasMol?.[id]??0)+
@@ -2107,12 +2119,26 @@ const LAB_GAS_RECEIVING_GLASSWARE:readonly LabGlassware[]=[
  "beaker","tube","flask","conical","volumetric"
 ];
 export function labGasStoredMl(v:LabVessel):number{
- return Object.entries(v.doses??{}).reduce((sum,[id,d])=>
-  sum+(substances.find(s=>s.id===id)?.kind==="газ"&&
-   d.unit==="ml"&&Number.isFinite(d.value)&&d.value>0?d.value:0),0);
+ return Object.values(labGasStoredSamples(v)).reduce((sum,ml)=>sum+ml,0);
+}
+/** Only unconsumed stock gas is available for reuse. The historical dose is
+ * not proof that a gas survived a subsequent chemical reaction. */
+export function labGasStoredSamples(v:LabVessel):Record<string,number>{
+ const result:Record<string,number>={};
+ for(const [id,d] of Object.entries(v.doses??{})){
+  if(!labIsGasDose(id,d)||d.unit!=="ml"||
+   !Number.isFinite(d.value)||d.value<=0)continue;
+  const measured=v.chemicalInventory?v.chemicalInventory.speciesMol[id]??0:
+   v.reactionAmounts?v.reactionAmounts.remainingMol[id]:undefined;
+  const ml=measured===undefined?d.value:Math.min(d.value,measured*24465);
+  const rounded=Math.floor(ml*100+1e-7)/100;
+  if(rounded>=.01)result[id]=rounded;
+ }
+ return result;
 }
 export function labGasReceiverFreeMl(v:LabVessel):number{
  if(v.stoppered||!LAB_GAS_RECEIVING_GLASSWARE.includes(v.kind)||
+  v.reactionAmounts&&!v.reactionAmounts.complete||
   v.inventoryPrecipitation||v.inventoryGasReaction&&v.pendingInventoryReaction)
   return 0;
  // Liquid/solid displacement and gas stock compete for the SAME capacity.
@@ -2133,7 +2159,7 @@ export function labGasTubeFlowActive(source:LabVessel,
 export function setLabGasCollection(bench:LabBench,sourceId:string,targetId?:string):LabBench{
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
- if(!source||source.stoppered||
+ if(!source||source.stoppered||source.gasCollector||
   targetId&&(!target||targetId===sourceId||
    !LAB_GAS_RECEIVING_GLASSWARE.includes(target.kind)||target.stoppered)||
   source.gasCollectionTargetId===targetId)return bench;
@@ -2142,6 +2168,20 @@ export function setLabGasCollection(bench:LabBench,sourceId:string,targetId?:str
  return revise(bench,sourceId,v=>({...v,gasCollectionTargetId:targetId,
   // Connecting a tube later cannot re-collect previously vented gas.
   gasCollectionProcessedMol:targetId?{...already}:undefined}));
+}
+/** Prepare a dedicated valved receiver with one action, while leaving the
+ * source selected so the pupil can watch both the reaction and collection. */
+export function attachLabGasCollector(bench:LabBench,sourceId:string):LabBench{
+ const source=bench.vessels.find(v=>v.id===sourceId);
+ if(!source||source.stoppered||source.gasCollector)return bench;
+ const existing=bench.vessels.find(v=>v.id===source.gasCollectionTargetId&&v.gasCollector);
+ if(existing)return bench;
+ const created=addLabVessel(bench,"flask");
+ if(created===bench)return bench;
+ const receiverId=created.selectedId;
+ const prepared=revise(created,receiverId,v=>({...v,gasCollector:true}));
+ const connected=setLabGasCollection(prepared,sourceId,receiverId);
+ return connected===prepared?bench:{...connected,selectedId:sourceId};
 }
 export type LabGasTransferPreview={
  storedMl:number;
@@ -2157,16 +2197,15 @@ export function labGasTransferPreview(bench:LabBench,sourceId:string,
  targetId:string,requestedMl=20):LabGasTransferPreview{
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
- const gases=Object.entries(source?.doses??{}).filter(([id,d])=>
-  substances.find(s=>s.id===id)?.kind==="газ"&&
-  d.unit==="ml"&&Number.isFinite(d.value)&&d.value>0);
- const stocks=gases.map(([formula,d])=>({
-  formula,units:Math.max(0,Math.round(d.value*100))
+ const gases=Object.entries(source?labGasStoredSamples(source):{});
+ const stocks=gases.map(([formula,ml])=>({
+  formula,units:Math.max(0,Math.round(ml*100))
  })).filter(g=>g.units>0);
  const totalUnits=stocks.reduce((sum,g)=>sum+g.units,0);
  const storedMl=totalUnits/100;
  const freeMl=target?labGasReceiverFreeMl(target):0;
  const valid=!!source&&!!target&&sourceId!==targetId&&!source.stoppered&&
+  !source.pendingInventoryReaction&&(!source.reactionAmounts||!!source.reactionAmounts.complete)&&
   LAB_GAS_RECEIVING_GLASSWARE.includes(target.kind)&&!target.stoppered&&
   Number.isFinite(requestedMl)&&requestedMl>0;
  const requestedUnits=valid?Math.max(0,Math.floor(
@@ -2203,32 +2242,34 @@ export function transferLabGasSample(bench:LabBench,sourceId:string,targetId:str
  if(preview.transferMl<.01)return bench;
  let placed=bench;
  for(const [formula,ml] of Object.entries(preview.portions)){
-  const next=putLabReagent(placed,targetId,formula,{unit:"ml",value:ml});
+  const next=putLabReagent(placed,targetId,formula,labGasDose(formula,ml));
   if(next===placed)return bench;
   placed=next;
  }
  const vessels=placed.vessels.map(v=>{
   if(v.id!==sourceId)return v;
   const doses={...v.doses};
-  const speciesMol={...v.chemicalInventory?.speciesMol};
+  const stock=labGasStoredSamples(v);
+  const previous=v.chemicalInventory??(v.reactionAmounts?.complete?
+   labInventorySnapshot(labInventoryAvailableForTransfer(v)):undefined);
+  const speciesMol={...previous?.speciesMol};
   for(const [formula,ml] of Object.entries(preview.portions)){
    const old=doses[formula];
    if(!old)continue;
-   const left=Math.round((old.value-ml)*100)/100;
+   const left=Math.round(((stock[formula]??0)-ml)*100)/100;
    if(left>=.01)doses[formula]={...old,value:left};
    else delete doses[formula];
    // A reacted donor may carry a persistent inventory as well as its
    // measured stock. The gas cannot remain duplicated in that ledger.
-   if(v.chemicalInventory&&speciesMol[formula]!==undefined){
-    const mol=labDoseMoles(formula,{unit:"ml",value:ml})??0;
+   if(previous&&speciesMol[formula]!==undefined){
+    const mol=labDoseMoles(formula,labGasDose(formula,ml))??0;
     speciesMol[formula]=Math.max(0,speciesMol[formula]-mol);
    }
   }
-  const reagents=v.reagents.filter(id=>doses[id]||
-   (v.chemicalInventory?.speciesMol[id]??0)>1e-12);
+  const reagents=previous?Object.keys(speciesMol).filter(id=>speciesMol[id]>1e-12):v.reagents.filter(id=>doses[id]);
   return {...v,doses:Object.keys(doses).length?doses:undefined,reagents,
-   chemicalInventory:v.chemicalInventory?
-    {...v.chemicalInventory,speciesMol}:v.chemicalInventory,
+   chemicalInventory:previous?{...previous,speciesMol,settled:true}:undefined,
+   reactionAmounts:previous?undefined:v.reactionAmounts,
    observed:reagents.length>1||v.observed};
  });
  return {...placed,vessels,event:placed.event+1};
@@ -2311,7 +2352,7 @@ export function labMixEnvironment(
  const all:Record<string,LabDose>=combinedDoses??Object.assign({},...inputs.map(x=>x.doses??{}));
  const measured=Object.entries(all);
  if(measured.some(([id,d])=>d.unit==="ml"&&!LAB_NEAT_LIQUIDS.has(id)&&
-  substances.find(s=>s.id===id)?.kind!=="газ"))return "aqueous";
+  !labIsGasDose(id,d)))return "aqueous";
  // Preserve explicitly requested dry experiments when every portion is solid.
  if(measured.length&&measured.every(([,d])=>d.unit==="g")&&
   inputs.some(x=>x.environment==="dry"))return "dry";
@@ -2332,19 +2373,22 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
  const stock=dose??labDefaultStockDose(reagent);
  if(!stock)return bench;
  const measured:LabDose=stock.unit==="ml"&&stock.concentrationM===undefined&&
-  labIsPreparedStock(reagent)?{...stock,concentrationM:LAB_STOCK_MOLARITY_M}:stock;
+  !labIsGasDose(reagent,stock)&&labIsPreparedStock(reagent)?{...stock,concentrationM:LAB_STOCK_MOLARITY_M}:stock;
  let completedInventoryEquations:string[]=[];
  const updated=revise(bench,id,v=>{
   const validDose=Number.isFinite(measured.value)&&measured.value>0&&
    measured.value<=10000&&(measured.unit==="ml"||measured.unit==="g")&&
+   (measured.phase===undefined||measured.phase==="gas"&&measured.unit==="ml"&&measured.concentrationM===undefined)&&
    (measured.concentrationM===undefined||
     (measured.unit==="ml"&&Number.isFinite(measured.concentrationM)&&
      measured.concentrationM>=.001&&measured.concentrationM<=2))?measured:undefined;
   if(!validDose)return v;
   // Graduated glassware has a real maximum capacity, not an unlimited beaker.
   const priorMl=labVesselQuantity(v).occupiedMl;
+  if(v.gasCollector&&!labIsGasDose(reagent,validDose))return v;
+  if(labIsGasDose(reagent,validDose)&&validDose.value>labVesselQuantity(v).availableMl-labGasStoredMl(v)+1e-8)return v;
   if(validDose?.unit==="ml"&&
-   priorMl+(substances.find(s=>s.id===reagent)?.kind==="газ"?0:validDose.value)>
+   priorMl+(labIsGasDose(reagent,validDose)?0:validDose.value)>
     labVesselQuantity(v).capacityMl+1e-7)return v;
   if((v.kind==="pipette"||v.kind==="burette")&&validDose?.unit==="g")return v;
   // Known crystalline solids occupy physical vessel volume too. Don't
@@ -2356,9 +2400,10 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
   if(!present&&v.reagents.length>=MAX_VESSEL_REAGENTS)return v;
   const previous=v.doses?.[reagent];
   if(present&&!validDose)return v;
-  if(previous&&validDose&&previous.unit!==validDose.unit)return v;
+  if(previous&&(previous.unit!==validDose.unit||labIsGasDose(reagent,previous)!==labIsGasDose(reagent,validDose)))return v;
   const combined=validDose?{value:Math.round(((previous?.value??0)+validDose.value)*100)/100,
    unit:validDose.unit,
+   ...(validDose.phase?{phase:validDose.phase}:{}),
    ...(validDose.unit==="ml"&&validDose.concentrationM!==undefined?
     {concentrationM:previous?.concentrationM!==undefined?
       ((previous.value*previous.concentrationM)+(validDose.value*validDose.concentrationM))/
@@ -2369,7 +2414,7 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
   const beforeReaction=labObservation(v);
   const nextDoses=combined?{...v.doses,[reagent]:combined}:v.doses;
   const environment=labMixEnvironment([{environment:v.environment,doses:v.doses},
-   {environment:validDose?.unit==="g"?"dry":"aqueous",
+   {environment:validDose.unit==="g"||labIsGasDose(reagent,validDose)?"dry":"aqueous",
     doses:validDose?{[reagent]:validDose}:undefined}],nextDoses);
   // Once a reviewed reaction has FINISHED, material is identified by
   // its balanced products and leftover reactants, not by historical stock
@@ -2393,7 +2438,7 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
     (environment!=="aqueous"||!LAB_WATER_SOLUTES.has(reagent)))
     solidMol[reagent]=(solidMol[reagent]??0)+addedMol;
    const currentVolume=labVesselQuantity(v).volumeMl+
-    (validDose.unit==="ml"&&substances.find(s=>s.id===reagent)?.kind!=="газ"?
+    (validDose.unit==="ml"&&!labIsGasDose(reagent,validDose)?
      validDose.value:0);
    const quantified=simulateLabInventory({
     reagents:Object.keys(speciesMol),environment,stoppered:v.stoppered,
@@ -2406,9 +2451,7 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
    });
    // Follow-up gas reactions also start progressively without needing an
    // explicit pause; ordinary existing non-gas additions are unchanged.
-   const gradualGas=quantified.steps.some(step=>
-    reviewedReactionCases.some(row=>row.equation===step.equation&&
-     row.observation==="gas"));
+   const gradualGas=quantified.steps.some(step=>labGasProductFormulas(step.equation).size>0);
    const defer=!!v.pendingInventoryReaction||!!bench.simulationPaused&&
     quantified.steps.length>0||gradualGas;
    if(!defer)completedInventoryEquations=quantified.steps.map(step=>step.equation);
@@ -2562,6 +2605,7 @@ export const labMeasuredCapacityMl=(kind:LabGlassware):number|undefined=>
  * In particular, a paused experiment must not transfer predicted products. */
 function labInventoryAvailableForTransfer(v:LabVessel){
  return simulateLabInventory({...v,
+  presentOnly:!!v.pendingInventoryReaction||!v.chemicalInventory&&!v.completedReaction&&!v.reactionAmounts&&labObservation(v).status==="reaction",
   chemicalInventory:v.pendingInventoryReaction&&v.chemicalInventory?
    {...v.chemicalInventory,settled:true}:v.chemicalInventory,
   volumeMl:labVesselQuantity(v).volumeMl});
@@ -2587,6 +2631,7 @@ function transferSnapshotSample(bench:LabBench,source:LabVessel,target:LabVessel
  const fromSpecies={...donor.speciesMol};
  const toSpecies={...receiver.speciesMol};
  for(const [id,total] of Object.entries(donor.speciesMol)){
+  if(labIsGasDose(id,source.doses?.[id]))continue;
   const dissolved=Math.max(0,total-(donor.solidMol[id]??0));
   const portion=dissolved*fraction;
   const remainder=total-portion;
@@ -2596,10 +2641,10 @@ function transferSnapshotSample(bench:LabBench,source:LabVessel,target:LabVessel
  }
  const fromDoses={...source.doses},toDoses={...target.doses};
  for(const [id,dose] of Object.entries(source.doses??{})){
-  if(dose.unit!=="ml")continue;
+  if(dose.unit!=="ml"||labIsGasDose(id,dose))continue;
   const portion=dose.value*fraction;
   const old=toDoses[id];
-  if(old&&(old.unit!=="ml"||old.value+portion>10000))return bench;
+  if(old&&(old.unit!=="ml"||labIsGasDose(id,old)||old.value+portion>10000))return bench;
   const value=(old?.value??0)+portion;
   const concentrationM=old?.concentrationM!==undefined&&
    dose.concentrationM!==undefined?
@@ -2631,7 +2676,8 @@ function transferSnapshotSample(bench:LabBench,source:LabVessel,target:LabVessel
   temperatureC:target.temperatureC,chemicalInventory:combinedSnapshot
  });
  const pending=!!source.pendingInventoryReaction||!!target.pendingInventoryReaction||
-  !!bench.simulationPaused&&targetInventory.steps.length>0;
+  !!bench.simulationPaused&&targetInventory.steps.length>0||
+  targetInventory.steps.some(step=>labGasProductFormulas(step.equation).size>0);
  if(targetInventory.limited||targetInventory.unmeasured.length||
   Object.keys(targetInventory.speciesMol).length>MAX_VESSEL_REAGENTS)return bench;
  const toSnapshot:LabChemicalSnapshot=pending?combinedSnapshot:{
@@ -2680,13 +2726,15 @@ export function transferLabMeasuredLiquid(
   Math.abs(volumeMl*100-Math.round(volumeMl*100))>1e-6)return bench;
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
- if(!source||!target||!source.reagents.length||source.stoppered||target.stoppered||
+ if(!source||!target||source.gasCollector||target.gasCollector||!source.reagents.length||source.stoppered||target.stoppered||
   source.inventoryPrecipitation||target.inventoryPrecipitation||
   source.inventoryGasReaction&&source.pendingInventoryReaction||
   target.inventoryGasReaction&&target.pendingInventoryReaction)return bench;
- if(source.chemicalInventory||target.chemicalInventory)
+ if(source.reactionAmounts&&!source.reactionAmounts.complete||target.reactionAmounts&&!target.reactionAmounts.complete)return bench;
+ if(source.chemicalInventory||target.chemicalInventory||source.reactionAmounts?.complete||target.reactionAmounts?.complete)
   return transferSnapshotSample(bench,source,target,volumeMl);
- const entries=source.reagents.map(id=>({id,dose:source.doses?.[id]}));
+ const entries=source.reagents.filter(id=>!labIsGasDose(id,source.doses?.[id])).map(id=>({id,dose:source.doses?.[id]}));
+ if(!entries.length)return bench;
  if(entries.some(e=>!e.dose||e.dose.unit!=="ml"||e.dose.value<=0))return bench;
  const amounts=entries.map(e=>Math.round(e.dose!.value*100));
  const totalCents=amounts.reduce((n,v)=>n+v,0);
@@ -2772,7 +2820,7 @@ export function filterLabPrecipitate(bench:LabBench,sourceId:string,targetId:str
  if(sourceId===targetId||!placedLabDevices(bench).some(d=>d.kind==="filter"))return bench;
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
- if(!source||!target||source.filteredResidue||source.uncertain||
+ if(!source||!target||source.gasCollector||target.gasCollector||labGasStoredMl(source)>0||source.filteredResidue||source.uncertain||
   source.stoppered||target.stoppered||target.reagents.length||
   target.filteredResidue||target.filteredSolution||
   !["beaker","tube","flask","conical","volumetric"].includes(target.kind)||
@@ -2796,7 +2844,7 @@ export function filterLabPrecipitate(bench:LabBench,sourceId:string,targetId:str
  const components=solidEntries.map(([formula,mol])=>{
   const molar=labMolarMass(formula);
   return molar!==undefined?{formula,massG:mol*molar,
-   color:reaction.afterColor??"#eef0ed"}:undefined;
+   color:reagentAppearance(formula,"dry").color}:undefined;
  });
  if(components.some(component=>!component))return bench;
  const retained=components as {formula:string;massG:number;color:string}[];
@@ -2815,7 +2863,7 @@ export function filterLabPrecipitate(bench:LabBench,sourceId:string,targetId:str
  const solutes=[...new Set([...productOrder,...Object.keys(soluble)])].
   filter(id=>id!=="H2O"&&(soluble[id]??0)>1e-12);
  if(solutes.length>MAX_VESSEL_REAGENTS)return bench;
- const color=reaction.afterColor??"#eef0ed";
+ const color=labSedimentTint(retained,.5);
  const mixed=retained.length>1;
  const solidMoles=Object.fromEntries(solidEntries);
  const filteredResidue:LabFilteredResidue={formula:solid,color,massG,
@@ -2852,10 +2900,9 @@ export function filterLabPrecipitate(bench:LabBench,sourceId:string,targetId:str
 export function pourLabIntoFilter(bench:LabBench,sourceId:string,filterId:string):LabBench{
  const device=placedLabDevices(bench).find(d=>d.id===filterId&&d.kind==="filter");
  const source=bench.vessels.find(v=>v.id===sourceId);
- if(!device||device.collectedResidue||!source)return bench;
- const pouringVolume=Object.values(source.doses??{}).reduce((sum,d)=>
-  sum+(d.unit==="ml"?d.value:0),0);
- const receiver=bench.vessels.filter(v=>v.id!==sourceId&&!v.reagents.length&&
+ if(!device||device.collectedResidue||!source||source.gasCollector)return bench;
+ const pouringVolume=labVesselQuantity(source).volumeMl;
+ const receiver=bench.vessels.filter(v=>v.id!==sourceId&&!v.gasCollector&&!v.reagents.length&&
   ["beaker","conical","flask","tube","volumetric"].includes(v.kind)&&
   (labMeasuredCapacityMl(v.kind)??(v.kind==="tube"?25:v.kind==="conical"||v.kind==="flask"?200:150))>=pouringVolume)
   .sort((a,b)=>Math.hypot(a.x-device.x,a.y-device.y)-
@@ -2893,7 +2940,7 @@ export function pourLabIntoFilter(bench:LabBench,sourceId:string,filterId:string
 export function labVesselSolidDisplacement(vessel:LabVessel){
  const liquidMl=(vessel.filteredSolution?.volumeMl??0)+
   Object.entries(vessel.doses??{}).reduce((total,[id,d])=>
-   total+(d.unit==="ml"&&substances.find(s=>s.id===id)?.kind!=="газ"?
+   total+(d.unit==="ml"&&!labIsGasDose(id,d)?
     d.value:0),0);
  // During paused preparation, volume displacement belongs to already
  // present solids, not a future precipitate predicted by equilibrium.
@@ -2918,7 +2965,7 @@ function calculateLabVesselQuantity(vessel:LabVessel){
  const doses=Object.values(vessel.doses??{});
  const volumeMl=Math.round(((vessel.filteredSolution?.volumeMl??0)+
   Object.entries(vessel.doses??{}).reduce((total,[id,d])=>
-  total+(d.unit==="ml"&&substances.find(s=>s.id===id)?.kind!=="газ"?d.value:0),0))*100)/100;
+  total+(d.unit==="ml"&&!labIsGasDose(id,d)?d.value:0),0))*100)/100;
  const massG=Math.round(doses.reduce((total,d)=>
   total+(d.unit==="g"?d.value:0),0)*100)/100;
  const capacityMl=labMeasuredCapacityMl(vessel.kind)??(
@@ -2981,7 +3028,7 @@ function labDoseHeatCapacity(doses:Record<string,LabDose>|undefined):number{
  let total=0;
  for(const [id,d] of Object.entries(doses??{})){
   if(d.value<=0||!Number.isFinite(d.value)||
-     d.unit==="ml"&&substances.find(s=>s.id===id)?.kind==="газ")continue;
+     labIsGasDose(id,d))continue;
   const reference=LAB_CALORIMETRY_REFERENCE[id];
   const density=d.unit==="ml"&&d.concentrationM===undefined&&
    reference?.phase==="liquid"?reference.densityGPerMl??1:1;
@@ -3008,7 +3055,7 @@ export function labMixedContentsTemperatureC(
 export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:string):LabBench{
  if(!id||sourceId===targetId||(b.pouring&&b.pouring.step<20))return b;
  const a=b.vessels.find(v=>v.id===sourceId),t=b.vessels.find(v=>v.id===targetId);
- if(!a||!t||!a.reagents.length||a.stoppered||t.stoppered||
+ if(!a||!t||a.gasCollector||t.gasCollector||!a.reagents.length||a.stoppered||t.stoppered||
   [...new Set([...a.reagents,...t.reagents])].length>MAX_VESSEL_REAGENTS)return b;
  // A measured mixture after reaction must be transferred using its CURRENT
  // molecular species ledger, not the historical stock names. The same applies
@@ -3023,7 +3070,8 @@ export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:strin
  if(a.chemicalInventory||t.chemicalInventory||a.reactionAmounts?.complete||
     t.reactionAmounts?.complete||a.completedReaction||t.completedReaction)
   return pourLabVessel(b,sourceId,targetId);
- const initialDoses={...a.doses};
+ const initialDoses=Object.fromEntries(Object.entries(a.doses??{}).filter(([formula,dose])=>!labIsGasDose(formula,dose)));
+ if(a.reagents.every(formula=>labIsGasDose(formula,a.doses?.[formula])))return b;
  const donorQuantity=labVesselQuantity(a),receiverQuantity=labVesselQuantity(t);
  // Fill ONLY the remaining capacity. The leftover liquid/solid quantities
  // remain in the donor, rather than rejecting the entire attempt.
@@ -3034,12 +3082,12 @@ export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:strin
  if(transferFraction<=0)return b;
  if(Object.entries(initialDoses).some(([name,d])=>{
   const old=t.doses?.[name];
-  return old&&(old.unit!==d.unit||
+  return old&&(old.unit!==d.unit||labIsGasDose(name,old)!==labIsGasDose(name,d)||
    old.value+d.value*transferFraction>10000+1e-8);
  }))return b;
  return {...b,pouring:{id,sourceId,targetId,step:0,totalSteps:20,initialDoses,
   transferFraction:Math.round(transferFraction*1e12)/1e12,
-  unmeasured:a.reagents.some(r=>!initialDoses[r])},event:b.event+1};
+  unmeasured:a.reagents.some(r=>!labIsGasDose(r,a.doses?.[r])&&!initialDoses[r])},event:b.event+1};
 }
 const portionRound=(x:number)=>Math.round(x*1000000)/1000000;
 export function advanceLabPour(b:LabBench,portions=1):LabBench{
@@ -3067,7 +3115,7 @@ export function advanceLabPour(b:LabBench,portions=1):LabBench{
    ...(concentrationM===undefined?{concentrationM:undefined}:{concentrationM})};
   left[reagent]={...original,value:portionRound(Math.max(0,remaining-amount))};
  }
- const combined=[...new Set([...target.reagents,...source.reagents])];
+ const combined=[...new Set([...target.reagents,...source.reagents.filter(formula=>!labIsGasDose(formula,source.doses?.[formula]))])];
  const targetWasEmpty=!target.reagents.length;
  const sourceReaction=source.completedReaction??labObservation(source).caseData;
  const targetReaction=target.completedReaction??labObservation(target).caseData;
@@ -3078,11 +3126,14 @@ export function advanceLabPour(b:LabBench,portions=1):LabBench{
  const uncertain=target.uncertain||source.uncertain||!!source.reactionAmounts||
   (!!target.reactionAmounts&&!sameReaction)||
   (p.step===0&&!targetWasEmpty&&Boolean(sourceReaction||targetReaction));
- const fullyEmptied=finish&&(p.transferFraction??1)>=1-1e-9;
+ const transferredAll=finish&&(p.transferFraction??1)>=1-1e-9;
+ const remainingReagents=transferredAll?source.reagents.filter(formula=>labIsGasDose(formula,source.doses?.[formula])):source.reagents;
+ if(transferredAll)for(const formula of Object.keys(left))if(!remainingReagents.includes(formula))delete left[formula];
+ const fullyEmptied=transferredAll&&!remainingReagents.length;
  const vessels=b.vessels.map(v=>{
   if(v.id===source.id)return {...v,reactionAmounts:undefined,
     reactionHeat:fullyEmptied?undefined:v.reactionHeat,
-    uncertain:!!source.reactionAmounts||v.uncertain,reagents:fullyEmptied?[]:v.reagents,
+    uncertain:!!source.reactionAmounts||v.uncertain,reagents:remainingReagents,
    doses:fullyEmptied?undefined:left,observed:fullyEmptied?false:v.observed,
    completedReaction:fullyEmptied?undefined:v.completedReaction,
    indicator:fullyEmptied?undefined:v.indicator,
@@ -3175,7 +3226,8 @@ function pourMeasuredFiltrate(bench:LabBench,source:LabVessel,target:LabVessel):
  if(reacted.unmeasured.length||reacted.limited||
   Object.keys(reacted.speciesMol).length>MAX_VESSEL_REAGENTS)return bench;
  const pending=!!source.pendingInventoryReaction||!!target.pendingInventoryReaction||
-  !!bench.simulationPaused&&reacted.steps.length>0;
+  !!bench.simulationPaused&&reacted.steps.length>0||
+  reacted.steps.some(step=>labGasProductFormulas(step.equation).size>0);
  const inventory:LabChemicalSnapshot=pending?chemicalInventory:{
   ...labInventorySnapshot(reacted),
   ...(chemicalInventory.settled?{settled:true}:{})};
@@ -3211,7 +3263,7 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
  if(sourceId===targetId)return bench;
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
- if(!source||!target||!source.reagents.length||source.stoppered||target.stoppered||
+ if(!source||!target||source.gasCollector||target.gasCollector||!source.reagents.length||source.stoppered||target.stoppered||
   source.inventoryPrecipitation||target.inventoryPrecipitation||
   source.inventoryGasReaction&&source.pendingInventoryReaction||
   target.inventoryGasReaction&&target.pendingInventoryReaction)return bench;
@@ -3219,6 +3271,15 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
  if((source.reactionAmounts&&!source.reactionAmounts.complete)||
     (target.reactionAmounts&&!target.reactionAmounts.complete))return bench;
  const donorQuantity=labVesselQuantity(source),receiverQuantity=labVesselQuantity(target);
+ if(labGasStoredMl(source)>0){
+  // A valve or gas transfer is required to move the headspace. Liquid
+  // handling never copies a measured gas sample to the receiver.
+  if(source.chemicalInventory||target.chemicalInventory||source.reactionAmounts?.complete||target.reactionAmounts?.complete||source.completedReaction||target.completedReaction){
+   const ml=Math.floor(Math.min(donorQuantity.volumeMl,receiverQuantity.availableMl)*100+1e-8)/100;
+   return ml>=.01?transferSnapshotSample(bench,source,target,ml):bench;
+  }
+  return source.reagents.some(id=>!labIsGasDose(id,source.doses?.[id]))?fastLabPour(bench,sourceId,targetId):bench;
+ }
  if(receiverQuantity.availableMl<.005)return bench;
  if(source.chemicalInventory||target.chemicalInventory||
     source.reactionAmounts?.complete||target.reactionAmounts?.complete||
@@ -3238,7 +3299,7 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
   return fastLabPour(bench,sourceId,targetId);
  const incompatible=Object.entries(source.doses??{}).some(([id,dose])=>{
   const previous=target.doses?.[id];
-  return previous&&(previous.unit!==dose.unit||previous.value+dose.value>10000);
+  return previous&&(previous.unit!==dose.unit||labIsGasDose(id,previous)!==labIsGasDose(id,dose)||previous.value+dose.value>10000);
  });
  if(incompatible)return bench;
  const targetWasEmpty=target.reagents.length===0;
@@ -3311,7 +3372,7 @@ const LAB_ATOMIC_MATERIAL_FIELDS:readonly (keyof LabVessel)[]=[
  "mixedSaltPhase","physicalProcess","physicalStartedAtMs","meltFraction",
  "phaseTransition","lastEvaporatedAtMs","ventedVaporMl","visualStartedAtMs",
  "stoppered","stopperedAtC","sealedReactionGasBaselineMol",
- "gasCollectionTargetId","gasCollectionProcessedMol","gasCollectedMol",
+ "gasCollector","gasCollectionTargetId","gasCollectionProcessedMol","gasCollectedMol",
  "buretteOpen","buretteTargetId","buretteRateMlS","buretteRemainderMl"
 ];
 const labMaterialChanged=(before:LabVessel,after:LabVessel)=>

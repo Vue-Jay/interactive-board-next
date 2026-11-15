@@ -3,7 +3,7 @@
  * never fabricated. Gases marked ↑ leave the open vessel; ↓ remain as solids.
  * Solutions are ideal at 25 °C for the limited Ksp cases listed below. */
 import {substances,reviewedReactionCases,type ReactionEnvironment,type ReactionCase} from "./lektrusReactionDatabase";
-import {labDoseMoles,labMolarMass,parseBalancedLabEquation,labGasProductFormulas,type LabReactionAmounts} from "./lektrusLabStoichiometry";
+import {labDoseMoles,labIsGasDose,labMolarMass,parseBalancedLabEquation,labGasProductFormulas,type LabReactionAmounts} from "./lektrusLabStoichiometry";
 import type {LabDose} from "./lektrusChemistryBenchModel";
 import {labEquilibrateSingleSaltCrystals,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 import {labSchoolMixedSaltEquilibrium} from "./lektrusLabDissolution";
@@ -80,7 +80,7 @@ export const LAB_DILUTE_WATER_SOLUBLE_STOCKS:ReadonlySet<string>=new Set([
 export const labIsTypicallyWaterSoluble=(formula:string):boolean=>
  LAB_DILUTE_WATER_SOLUBLE_STOCKS.has(formula);
 const EPS=1e-12;
-const gasStocks=new Set(substances.filter(s=>s.kind==="газ").map(s=>s.id));
+
 const knownRows=reviewedReactionCases.flatMap((row,index)=>{
  if(row.status!=="reaction")return [];
  const equation=parseBalancedLabEquation(row.equation);
@@ -329,18 +329,20 @@ export function simulateLabInventory(input:{
  volumeMl?:number;
  /** Optional single reviewed step for a running thermal experiment. */
  onlyEquation?:string;
+ /** Inspect measured starting material without forecasting a reaction. */
+ presentOnly?:boolean;
 },maxSteps=48):LabInventory{
  const doses=input.doses??{};
  const volumeMl=input.volumeMl??((input.filteredSolution?.volumeMl??0)+
   Object.entries(doses).reduce((n,[id,d])=>
-   n+(d.unit==="ml"&&!gasStocks.has(id)?d.value:0),0));
+   n+(d.unit==="ml"&&!labIsGasDose(id,d)?d.value:0),0));
  // The molecular snapshot can be unchanged while the MEASURED carrier water
  // evaporates or is replenished. Key solubility/Ksp predictions by the actual
  // solvent volume, not only the chemical ledger and optional caller override.
  // Otherwise a cached unsaturated filtrate masks newly formed crystals.
  const key=JSON.stringify([input.reagents,input.doses,input.environment,input.temperatureC??22,!!input.stoppered,
   input.chemicalInventory,input.reactionAmounts,input.binarySaltPhase,
-  input.mixedSaltPhase,volumeMl,maxSteps,input.onlyEquation]);
+  input.mixedSaltPhase,volumeMl,maxSteps,input.onlyEquation,input.presentOnly]);
  const cached=inventoryCache.get(key);
  if(cached)return cached;
  const inventory:LabInventory={speciesMol:{},solidMol:{},releasedGasMol:{},retainedGasMol:{},
@@ -372,7 +374,7 @@ export function simulateLabInventory(input:{
  }
  // Unknown quantities must not be treated as absent: suppress the entire
  // predictive stage rather than claiming a chemically complete result.
- if(inventory.unmeasured.length)return remember(key,inventory);
+ if(inventory.unmeasured.length||input.presentOnly)return remember(key,inventory);
  // A filtered and physically SEPARATED solution is not a fresh mixture of
  // the original molecular salts. Replaying its historical spectator stocks
  // can create imaginary precipitates via alternative, otherwise-valid

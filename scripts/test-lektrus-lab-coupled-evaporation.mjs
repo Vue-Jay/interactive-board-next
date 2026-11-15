@@ -479,6 +479,80 @@ assert.match(gasUI,/Свободно в приёмнике/);
 assert.match(gasUI,/Смесь переносится с сохранением пропорций/);
 console.log("Measured gas collection, reuse and slow gas release: OK");
 
+// A child can prepare the receiver in one click, even before adding any
+// chemicals. Fast classroom clocks cannot skip over the gas demonstration.
+let valve=lab.defaultLabBench();
+valve=lab.attachLabGasCollector(valve,"v1");
+assert.equal(valve.selectedId,"v1");
+assert.equal(valve.vessels[0].gasCollectionTargetId,"v2");
+assert.equal(valve.vessels[1].gasCollector,true);
+assert.equal(lab.attachLabGasCollector(valve,"v1"),valve);
+assert.equal(lab.putLabReagent(valve,"v2","H2O",{unit:"ml",value:1}),valve);
+assert.equal(lab.setLabVesselStopper(valve,"v2",true),valve);
+valve=lab.setLabBenchSettings(valve,{timeScale:10});
+valve=lab.setLabSimulationPaused(valve,true,1000);
+valve=lab.putLabReagent(valve,"v1","Na2CO3",{unit:"ml",value:10,concentrationM:.1});
+valve=lab.putLabReagent(valve,"v1","HCl",{unit:"ml",value:20,concentrationM:.1});
+valve=lab.setLabSimulationPaused(valve,false,2000);
+valve=lab.advanceLabSimulation(valve,3000);
+valve=lab.advanceLabSimulation(valve,4000);
+assert.ok(lab.labGasStoredMl(valve.vessels[1])>0&&lab.labGasStoredMl(valve.vessels[1])<5,
+ "Even at ×10 the gas is visible for real seconds, instead of instantly escaping");
+for(let t=5000;t<=31000;t+=1000)valve=lab.advanceLabSimulation(valve,t);
+const held=lab.labGasStoredMl(valve.vessels[1]);
+assert.ok(held>=24.44&&held<=24.47,`Collector received ${held} ml rather than the full measured yield`);
+valve=lab.setLabGasCollection(valve,"v1",undefined);
+valve=lab.positionLabVessel(valve,"v2",30,72);
+valve=lab.advanceLabSimulation(valve,91000);
+assert.equal(lab.labGasStoredMl(valve.vessels[1]),held,"Closed valve retains gas during storage and movement");
+valve=lab.addLabVessel(valve,"flask");
+assert.equal(lab.startLabPour(valve,"v2","v3","gas-is-not-liquid"),valve);
+assert.equal(lab.transferLabMeasuredLiquid(valve,"v2","v3",5),valve);
+valve=lab.transferLabGasSample(valve,"v2","v3",7.35);
+close(lab.labGasStoredMl(valve.vessels[1]),held-7.35,1e-6);
+close(lab.labGasStoredMl(valve.vessels[2]),7.35,1e-6);
+assert.equal(lab.putLabReagent(valve,"v2","CO2",{unit:"ml",value:200}),valve,
+ "The valved receiver cannot accept beyond its calibrated capacity");
+console.log("One-click valved collector, ×10 watchable gas, persistent sample and exact transfer: OK");
+
+// Measured headspace never masquerades as liquid during pipetting or a pour.
+let headspace=lab.addLabVessel(lab.defaultLabBench(),"flask");
+headspace=lab.putLabReagent(headspace,"v1","H2O",{unit:"ml",value:20});
+headspace=lab.putLabReagent(headspace,"v1","CO2",{unit:"ml",value:30});
+const headspaceBefore=headspace;
+headspace=lab.transferLabMeasuredLiquid(headspace,"v1","v2",10);
+close(lab.labVesselQuantity(headspace.vessels[1]).volumeMl,10);
+close(lab.labGasStoredMl(headspace.vessels[0]),30);
+close(lab.labGasStoredMl(headspace.vessels[1]),0);
+const poured=lab.pourLabVessel(headspaceBefore,"v1","v2");
+close(lab.labVesselQuantity(poured.vessels[1]).volumeMl,20);
+close(lab.labGasStoredMl(poured.vessels[0]),30);
+close(lab.labGasStoredMl(poured.vessels[1]),0);
+assert.equal(lab.transferLabMeasuredLiquid(poured,"v1","v2",5),poured);
+assert.equal(lab.startLabPour(poured,"v1","v2","gas-only"),poured);
+// Consumed gas cannot subsequently be withdrawn using its historic dose.
+let consumed=lab.addLabVessel(lab.defaultLabBench(),"flask");
+consumed=lab.putLabReagent(consumed,"v1","CO2",{unit:"ml",value:30});
+consumed=lab.putLabReagent(consumed,"v1","NaOH",{unit:"ml",value:20,concentrationM:1});
+consumed=lab.setLabSimulationPaused(consumed,false,1000);
+for(const t of [2000,12000,22000,32000])consumed=lab.advanceLabSimulation(consumed,t);
+assert.equal(lab.labGasStoredMl(consumed.vessels[0]),0);
+assert.equal(lab.transferLabGasSample(consumed,"v1","v2",10),consumed);
+// A plugged receiver loses only the gas produced while blocked; reopening
+// the line never creates a fictitious backlog from that escaped interval.
+let blocked=lab.addLabVessel(lab.defaultLabBench(),"flask");
+blocked=lab.putLabReagent(blocked,"v1","Na2CO3",{unit:"ml",value:10,concentrationM:.1});
+blocked=lab.putLabReagent(blocked,"v1","HCl",{unit:"ml",value:20,concentrationM:.1});
+blocked=lab.setLabGasCollection(blocked,"v1","v2");
+blocked=lab.setLabVesselStopper(blocked,"v2",true);
+blocked=lab.setLabSimulationPaused(blocked,false,1000);
+for(const t of [2000,3000,4000,5000,6000])blocked=lab.advanceLabSimulation(blocked,t);
+assert.equal(lab.labGasStoredMl(blocked.vessels[1]),0);
+blocked=lab.setLabVesselStopper(blocked,"v2",false);
+blocked=lab.advanceLabSimulation(blocked,7000);
+assert.ok(lab.labGasStoredMl(blocked.vessels[1])>0&&lab.labGasStoredMl(blocked.vessels[1])<2);
+console.log("Distinct liquid/gas transfer, consumed gas and blocked line without catch-up: OK");
+
 
 // Visual effects: no fictitious precipitate before a measured reaction,
 // no eternal salt-growth shimmer and no bubbles above the liquid surface.

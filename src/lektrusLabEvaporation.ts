@@ -12,7 +12,7 @@
  * https://www.rsc.org/suppdata/cc/c3/c3cc39116g/c3cc39116g.pdf (IPA)
  */
 /** Same structural dose shape as the bench, without a runtime cycle. */
-type LabDose={value:number;unit:"ml"|"g";concentrationM?:number};
+type LabDose={value:number;unit:"ml"|"g";concentrationM?:number;phase?:"gas"};
 export type EvaporatingLiquid="H2O"|"C2H5OH"|"CH3OH"|"C3H8O"|"Br2"|"CH3CHO";
 type Antoine={minK:number;maxK:number;A:number;B:number;C:number;molG:number;densityGml:number};
 const table:Record<EvaporatingLiquid,Antoine>={
@@ -116,7 +116,7 @@ function components(v:LabEvaporationState,tempC=v.temperatureC??25){
   !!v.chemicalInventory&&soluble.every(([id,mol])=>
    !!aqueousNonvolatile[id]&&Number.isFinite(mol)&&mol>=0);
  const liquid=entries.flatMap(([sourceId,d])=>{
-  if(d.unit!=="ml"||!Number.isFinite(d.value)||d.value<=0)return [];
+  if(d.unit!=="ml"||d.phase==="gas"||!Number.isFinite(d.value)||d.value<=0)return [];
   if(own(table,sourceId)&&d.concentrationM===undefined)
    return [{sourceId,id:sourceId,d,aqueous:false}];
   if(!own(table,sourceId)&&d.concentrationM!==undefined&&
@@ -126,7 +126,7 @@ function components(v:LabEvaporationState,tempC=v.temperatureC??25){
  });
  if(supportedFiltrate)liquid.push({sourceId:FILTRATE_WATER_ID,
   id:"H2O",d:{value:filtrateMl,unit:"ml"},aqueous:false});
- if(entries.some(([id,d])=>d.unit==="ml"&&d.value>0&&!gasIds.has(id)&&
+ if(entries.some(([id,d])=>d.unit==="ml"&&d.value>0&&!(d.concentrationM===undefined&&(d.phase==="gas"||gasIds.has(id)))&&
   !liquid.some(c=>c.sourceId===id))||!liquid.length)return [];
  const solids=entries.filter(([,d])=>d.unit==="g"&&d.value>0);
  let particleMoles=liquid.reduce((sum,c)=>sum+
@@ -256,7 +256,7 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
  const kelvin=temperatureC+273.15;
  const hasUnsupportedLiquid=Object.entries(v.doses??{}).some(([id,d])=>
   d.unit==="ml"&&d.value>0&&!items.some(c=>c.sourceId===id)&&
-  !["CO2","H2","O2","NH3","Cl2","NO2","SO2","CO","H2S","N2"].includes(id));
+  !(d.concentrationM===undefined&&(d.phase==="gas"||["CO2","H2","O2","NH3","Cl2","NO2","SO2","CO","H2S","N2"].includes(id))));
  const gasOnly=!items.length&&!hasUnsupportedLiquid;
  const vaporKnown=known||gasOnly;
  const vaporAtSeal=known?items.reduce((s,item)=>

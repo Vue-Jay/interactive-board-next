@@ -75,7 +75,9 @@ const freezing=load("src/lektrusLabFreezing.ts",key=>{
  if(key==="./lektrusLabStoichiometry")return chem;
  assert.equal(key,"./lektrusLabMaterialConstants");return constants;
 });
+const benchPalette=load("src/lektrusLabAppearance.ts",key=>{assert.equal(key,"./lektrusReactionDatabase");return reaction;});
 const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
+ if(key==="./lektrusLabAppearance")return benchPalette;
  if(key==="./lektrusLabTitration")return titration;
  if(key==="./lektrusLabFreezing")return freezing;
  if(key==="./lektrusLabLayout")return layout;

@@ -411,15 +411,15 @@ export function labThermalInfo(id:string,unit:"ml"|"g"):LabThermalRecord&{
    "Переходы указаны для чистого вещества при нормальном давлении.")};
 }
 export function labVesselThermal(reagents:readonly string[],doses?:Record<string,{
- value:number;unit:"g"|"ml";concentrationM?:number}>){
+ value:number;unit:"g"|"ml";concentrationM?:number;phase?:"gas"}>){
  if(reagents.length!==1)return null;
  const id=reagents[0],dose=doses?.[id];
- if(!dose||dose.value<=0||dose.concentrationM!==undefined)return null;
+ if(!dose||dose.value<=0||dose.phase==="gas"||dose.concentrationM!==undefined)return null;
  const info=labThermalInfo(id,dose.unit);
  return info.form==="pure"?{id,unit:dose.unit,info}:null;
 }
 export function labThermalState(
- reagents:readonly string[],doses:Record<string,{value:number;unit:"g"|"ml";concentrationM?:number}>|undefined,
+ reagents:readonly string[],doses:Record<string,{value:number;unit:"g"|"ml";concentrationM?:number;phase?:"gas"}>|undefined,
  temperatureC:number,meltFraction=0
 ){
  const pure=labVesselThermal(reagents,doses);

@@ -71,3 +71,33 @@ assert.equal(appearance.labGasTint({CO2:1,O2:1}),undefined);
 assert.equal(appearance.labGasTint({NO2:.001,O2:.001}),'#b56c42');
 assert.equal(appearance.labGasTint({Cl2:.001}),'#c5cc70');
 console.log(`Thermal gas phase and intermediate mass balance: ${checked} reviewed rows; gas tint OK`);
+
+// The actual collector is tested with every gas-producing reviewed row, at
+// three doses. The gas volume is derived from the measured reaction extent,
+// not from an independently hard-coded expected amount.
+const pipeline=[];let pipelineCases=0;
+for(const row of db.reviewedReactionCases.filter(r=>r.status==='reaction'&&st.labGasProductFormulas(r.equation).size)){
+ for(const factor of [.25,1,2]){
+  const doses=Object.fromEntries(row.reactants.map(id=>{const d=kits.labExperimentDose(row,id);return [id,{...d,value:d.value*factor}]}));
+  let b={...lab.defaultLabBench(),settings:{...lab.labBenchSettings(lab.defaultLabBench()),evaporationEnabled:false},vessels:[{...lab.defaultLabBench().vessels[0],
+   reagents:row.reactants,doses,observed:true,environment:row.environment,temperatureC:Math.max(22,row.minTemperatureC??22)}]};
+  b=lab.attachLabGasCollector(b,'v1');
+  b=lab.setLabSimulationPaused(b,false,1000);
+  for(let t=2000;t<=37000;t+=1000)b=lab.advanceLabSimulation(b,t);
+  const [source,receiver]=b.vessels;
+  const output=lab.labFollowUpGasProgress(source)??gas.labReactionGasProgress(source.reactionAmounts);
+  if(!output||output.rateMolPerSecond>1e-12){pipeline.push({equation:row.equation,factor,reason:'no completed gas output'});continue;}
+  const expected=Math.min(lab.labVesselQuantity(receiver).capacityMl,output.totalMol*24465);
+  const actual=lab.labGasStoredMl(receiver);
+  if(Math.abs(actual-expected)>.035)pipeline.push({equation:row.equation,factor,expected,actual,products:output.producedMol});
+  else if(actual>.1){
+   const before=actual;b=lab.addLabVessel(b,'flask');
+   b=lab.transferLabGasSample(b,'v2','v3',Math.min(5,actual));
+   const remaining=lab.labGasStoredMl(b.vessels[1]),moved=lab.labGasStoredMl(b.vessels[2]);
+   if(Math.abs(remaining+moved-before)>.011||moved<=0)pipeline.push({equation:row.equation,factor,reason:'sample transfer failed',before,remaining,moved});
+  }
+  pipelineCases++;
+ }
+}
+console.log(`Gas collector pipeline: ${pipelineCases} measured cases, ${pipeline.length} failures`);
+assert.deepEqual(pipeline,[]);

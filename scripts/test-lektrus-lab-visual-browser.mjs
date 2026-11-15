@@ -17,16 +17,17 @@ try{
  const portServer=net.createServer();await new Promise((r,j)=>portServer.once('error',j).listen(0,'127.0.0.1',r));
  const debugPort=portServer.address().port;await new Promise(r=>portServer.close(r));
  const log=[];
- chrome=spawn(chromium,['--headless=new','--no-sandbox','--disable-gpu','--disable-dev-shm-usage',`--remote-debugging-port=${debugPort}`,'--remote-allow-origins=*',`--user-data-dir=${profile}`,'--window-size=1440,1000',url],{stdio:['ignore','ignore','pipe']});
+ chrome=spawn(chromium,['--headless=new','--no-sandbox','--disable-gpu','--disable-dev-shm-usage','--no-first-run','--no-default-browser-check',`--remote-debugging-port=${debugPort}`,'--remote-allow-origins=*',`--user-data-dir=${profile}`,'--window-size=1440,1000','about:blank'],{stdio:['ignore','ignore','pipe']});
  chrome.stderr.on('data',b=>{if(log.length<8)log.push(String(b).slice(0,300));});
  let page;
- for(let i=0;i<150&&!page;i++){try{page=(await fetch(`http://127.0.0.1:${debugPort}/json/list`).then(r=>r.json())).find(t=>t.type==='page'&&t.url.startsWith(url));}catch{}if(!page)await delay(100);}
+ for(let i=0;i<450&&!page;i++){try{page=(await fetch(`http://127.0.0.1:${debugPort}/json/list`).then(r=>r.json())).find(t=>t.type==='page');}catch{}if(!page)await delay(100);}
  assert.ok(page,'Standalone laboratory did not load: '+log.join(' '));socket=new WebSocket(page.webSocketDebuggerUrl);
  await new Promise((r,j)=>{socket.addEventListener('open',r,{once:true});socket.addEventListener('error',j,{once:true});});
  let id=0;const pending=new Map();socket.addEventListener('message',e=>{const m=JSON.parse(e.data),p=pending.get(m.id);if(!p)return;pending.delete(m.id);m.error?p.reject(Error(m.error.message)):p.resolve(m.result);});
  const call=(method,params={})=>new Promise((resolve,reject)=>{pending.set(++id,{resolve,reject});socket.send(JSON.stringify({id,method,params}));});
  const evalPage=async expression=>{const r=await call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.text);return r.result.value;};
- const wait=async(expression,msg)=>{for(let i=0;i<180;i++){const r=await evalPage(expression);if(r)return r;await delay(100);}throw Error(msg);};
+ await call('Page.enable');await call('Page.navigate',{url});
+ const wait=async(expression,msg)=>{for(let i=0;i<300;i++){let r;try{r=await evalPage(expression);}catch{}if(r)return r;await delay(100);}throw Error(msg);};
  const click=async selector=>{assert.ok(await evalPage(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e||e.disabled)return false;e.click();return true})()`),selector);await delay(150);};
  const fluid=()=>evalPage(`document.querySelector('.lektrus-lab-vessel.selected .lektrus-lab-fluid')?.getAttribute('fill')`);
  const add=async formula=>{assert.ok(await evalPage(`(()=>{const e=[...document.querySelectorAll('.lektrus-lab-quick-bottle')].find(x=>x.querySelector('strong')?.textContent===${JSON.stringify(formula)});if(!e||e.disabled)return false;e.click();return true})()`),formula);await delay(150);};
@@ -48,11 +49,20 @@ try{
  // difference between prepared reagents and measured evolving gas.
  await click('button[aria-label="Очистить стол"]');await click('button[aria-label="Подтвердить очистку стола"]');
  await click('button[aria-label="Взять из шкафа Стакан"]');
+ const place=async(x,y)=>{await evalPage(`(()=>{const e=document.querySelector('.lektrus-lab-bench');const r=e.getBoundingClientRect();e.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,isPrimary:true,button:0,clientX:r.left+r.width*${x},clientY:r.top+r.height*${y}}));})()`);await delay(200);};
+ await place(.35,.72);
+ await wait('!!document.querySelector(".lektrus-lab-vessel.selected")','Glassware placement did not select its new vessel');
  await add('Na2CO3');await add('HCl');
  assert.equal(await evalPage('!!document.querySelector(".lektrus-lab-gas-bubbles")'),false,'Paused preparation must not show gas bubbles');
+ await click('.lektrus-lab-gas-stage .lektrus-lab-gas-connect');
+ await wait('!!document.querySelector(".lektrus-lab-gas-collector-valve")&&!!document.querySelector(".lektrus-lab-gas-tube")','One click must create the valved receiver and tube');
  await play();
- await wait('!!document.querySelector(".lektrus-lab-gas-bubbles circle")&&!!document.querySelector(".lektrus-lab-gas-vent")','Evolving aqueous gas must produce bubbles and outlet animation');
+ await wait('!!document.querySelector(".lektrus-lab-gas-bubbles circle")&&!!document.querySelector(".lektrus-lab-gas-tube-flow")','Evolving aqueous gas must produce bubbles and visible flow in the tube');
+ await wait('parseFloat(document.querySelector(".lektrus-lab-gas-collector-valve text:nth-of-type(2)")?.textContent)>0','Receiver volume must rise during collection');
  if(process.env.LAB_QA_GAS_SCREENSHOT){await call('Page.enable');const data=await call('Page.captureScreenshot',{format:'png'});await writeFile(process.env.LAB_QA_GAS_SCREENSHOT,Buffer.from(data.data,'base64'));}
  await pause();
+ await click('.lektrus-lab-gas-capacity .lektrus-lab-gas-connect');
+ await wait('!!document.querySelector(".lektrus-lab-vessel.selected .lektrus-lab-gas-collector-valve")','Receiver must be selectable from the producer panel');
+ await wait('!!document.querySelector(".lektrus-lab-gas-transfer input")','Measured gas transfer controls must be visible');
  console.log(JSON.stringify({clear,blue,diluted,solid}));
 }finally{socket?.close();chrome?.kill();await server.close();await delay(200);await rm(profile,{recursive:true,force:true});}

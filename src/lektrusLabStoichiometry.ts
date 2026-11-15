@@ -120,6 +120,12 @@ const NEAT_DENSITY_G_ML:Record<string,number>={
  H2O:.997,C2H5OH:.789,CH3OH:.792,C3H8O:.785,Br2:3.1055,CH3CHO:.7846
 };
 const REFERENCE_GAS_MOLAR_VOLUME_ML=24465;
+export function labIsGasDose(formula:string,dose?:LabDose):boolean{
+ return dose?dose.unit==="ml"&&dose.concentrationM===undefined&&(dose.phase==="gas"||permanentGasFormulas.has(formula)):permanentGasFormulas.has(formula);
+}
+export function labGasDose(formula:string,value:number):LabDose{
+ return {unit:"ml",value,...(permanentGasFormulas.has(formula)?{}:{phase:"gas"})};
+}
 export function labDoseMoles(formula:string,dose:LabDose):number|undefined{
  if(!Number.isFinite(dose.value)||dose.value<=0)return undefined;
  if(dose.unit==="ml"){
@@ -127,7 +133,7 @@ export function labDoseMoles(formula:string,dose:LabDose):number|undefined{
    return Number.isFinite(dose.concentrationM)&&dose.concentrationM>0?
     dose.value*dose.concentrationM/1000:undefined;
   const substance=substancesByFormula(formula);
-  if(substance?.kind==="газ")
+  if(labIsGasDose(formula,dose))
    return dose.value/REFERENCE_GAS_MOLAR_VOLUME_ML;
   const density=NEAT_DENSITY_G_ML[formula];
   const mass=density!==undefined?labMolarMass(formula):undefined;
