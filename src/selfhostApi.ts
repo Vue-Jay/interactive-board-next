@@ -553,6 +553,7 @@ function connectSelfhostBoard(
   let responseDeadline:ReturnType<typeof setTimeout>|undefined;
   let lastVersion=-1;
   let ready=false;
+  let compactInk=false;
   let lastCursorSent=0;
   let pendingCursor:{clientId:string;x:number;y:number}|null=null;
   let cursorTimer:ReturnType<typeof setTimeout>|undefined;
@@ -564,7 +565,11 @@ function connectSelfhostBoard(
   let objectTimer:ReturnType<typeof setTimeout>|undefined;
   const sendRaw=(frame:Record<string,unknown>):boolean=>{
     if(!ready||!socket||socket.readyState!==WebSocket.OPEN)return false;
-    try{socket.send(JSON.stringify(frame));return true}
+    try{
+      const wire=compactInk&&frame.type==="live_ink"&&Array.isArray(frame.points)
+        ?{...frame,points:frame.points.map((point:SelfhostPoint)=>[point.x,point.y])}:frame;
+      socket.send(JSON.stringify(wire));return true
+    }
     catch{reconnect();return false}
   };
   const flushCursor=()=>{
@@ -645,6 +650,7 @@ function connectSelfhostBoard(
   };
   const closeSocket=()=>{
     ready=false;
+    compactInk=false;
     const old=socket;socket=null;
     if(!old)return;
     old.onopen=old.onclose=old.onmessage=old.onerror=null;
@@ -679,7 +685,7 @@ function connectSelfhostBoard(
         if(!active())return;
         try{
           ws.send(JSON.stringify({
-            type:"auth",token:session.access_token,
+            type:"auth",token:session.access_token,compact_ink:true,
             ...(presence?{presence:true,visible:presence.visible}:{}),
           }));
         }catch{reconnect();return}
@@ -700,6 +706,7 @@ function connectSelfhostBoard(
           }
           if(message?.type==="ready"&&!ready){
             clearTimeout(responseDeadline);responseDeadline=undefined;
+            compactInk=message.compact_ink===true;
             attempt=0;ready=true;onStatus("online");
             // Final packets contain the full <=200-point stroke window in the
             // selfhost. Replay them if the socket died before the ack arrived.
@@ -740,7 +747,10 @@ function connectSelfhostBoard(
           if(message?.type==="live_ink"&&typeof message.stroke_id==="string"&&
              Array.isArray(message.points)&&message.points.length<=200&&
              typeof message.user_id==="string"){
-            onLive?.(message as SelfhostLiveEvent);
+            const points=message.points.map((point:unknown)=>Array.isArray(point)&&point.length===2
+              ?{x:point[0],y:point[1]}:point);
+            if(points.every((point:unknown)=>jsonObject(point)&&typeof point.x==="number"&&typeof point.y==="number"&&Number.isFinite(point.x)&&Number.isFinite(point.y)))
+              onLive?.({...message,points} as SelfhostLiveEvent);
           }
           if(message?.type==="object_preview"&&
              typeof message.object_id==="string"&&typeof message.client_id==="string"&&

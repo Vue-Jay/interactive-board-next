@@ -5,7 +5,7 @@ from uuid import UUID
 
 import pytest
 
-from app import app, _subscribers, announce, relay_live_event, lookup_board_sessions
+from app import app, _subscribers, _compact_ink_subscribers, announce, relay_live_event, lookup_board_sessions
 from test_api import TEACHER, STUDENT, client, sign_in
 
 
@@ -127,4 +127,24 @@ async def test_fanout_batches_query_and_does_not_block_fast_peers(client):
         await relay_live_event(board_id,sender,event,pool)
         assert all(ws.messages==[event] and ws.closed_codes==[4403] for ws in fast)
     finally:
+        _subscribers.pop(board_id,None)
+
+
+@pytest.mark.asyncio
+async def test_ink_fanout_preserves_old_clients_and_compacts_new_clients(client):
+    owner_session, owner = await sign_in(client, "teacher@example.test")
+    viewer_session, _ = await sign_in(client, "student@example.test")
+    board_id = UUID((await client.post("/api/v1/boards",headers=owner,json={"title":"Compact"})).json()["id"])
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("INSERT INTO board_members(board_id,user_id,role) VALUES($1,$2,'viewer')",board_id,STUDENT)
+    sender, legacy, compact = FakeWebSocket(), FakeWebSocket(), FakeWebSocket()
+    _subscribers[board_id].update({sender:owner_session["access_token"],legacy:viewer_session["access_token"],compact:viewer_session["access_token"]})
+    _compact_ink_subscribers.add(compact)
+    try:
+        event = {"type":"live_ink","points":[{"x":1.25,"y":-3.5},{"x":5,"y":7}],"offset":8,"finished":True}
+        await relay_live_event(board_id,sender,event,app.state.pool)
+        assert legacy.messages == [event]
+        assert compact.messages == [{**event,"points":[[1.25,-3.5],[5,7]]}]
+    finally:
+        _compact_ink_subscribers.discard(compact)
         _subscribers.pop(board_id,None)

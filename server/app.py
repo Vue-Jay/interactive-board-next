@@ -467,6 +467,7 @@ async def get_document(board_id: UUID, request: Request, version_only: bool = Fa
 _subscribers: dict[UUID, dict[WebSocket, str]] = defaultdict(dict)
 _subscriber_users: dict[UUID, dict[WebSocket, dict[str, str]]] = defaultdict(dict)
 _presence_watchers: dict[UUID, set[WebSocket]] = defaultdict(set)
+_compact_ink_subscribers: set[WebSocket] = set()
 
 
 async def lookup_board_sessions(pool: asyncpg.Pool, board_id: UUID, tokens,
@@ -531,6 +532,10 @@ async def broadcast_checked(board_id: UUID, event: dict[str, Any], pool: asyncpg
         return
     target = event.get("target_user_id") if event["type"] in ("focus_view", "attachment_result") else None
     payload = json.dumps(event, ensure_ascii=False, separators=(",", ":"))
+    compact_payload = (json.dumps({**event, "points": [[p["x"], p["y"]] for p in event["points"]]},
+                                  ensure_ascii=False, separators=(",", ":"))
+                       if event["type"] == "live_ink" and any(peer in _compact_ink_subscribers for peer in peers)
+                       else payload)
 
     async def send(client, token):
         row = authorized.get(token)
@@ -541,7 +546,7 @@ async def broadcast_checked(board_id: UUID, event: dict[str, Any], pool: asyncpg
         if _subscribers.get(board_id, {}).get(client) != token:
             return None
         try:
-            await asyncio.wait_for(client.send_text(payload), timeout=1)
+            await asyncio.wait_for(client.send_text(compact_payload if client in _compact_ink_subscribers else payload), timeout=1)
             return None
         except Exception:
             return client, 1011
@@ -589,6 +594,7 @@ async def announce_presence(board_id: UUID, *, joins: list[dict[str, str]] | Non
 async def _drop_subscriber(board_id: UUID, client: WebSocket,
                           pool: asyncpg.Pool, notify: bool = True):
     _subscribers.get(board_id, {}).pop(client, None)
+    _compact_ink_subscribers.discard(client)
     _presence_watchers.get(board_id, set()).discard(client)
     departed = _subscriber_users.get(board_id, {}).pop(client, None)
     if departed and notify and not any(
@@ -770,7 +776,8 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         token = initial.get("token", "")
         presence_enabled = initial.get("presence", False)
         presence_visible = initial.get("visible", True)
-        if type(presence_enabled) is not bool or type(presence_visible) is not bool:
+        compact_ink = initial.get("compact_ink", False)
+        if type(presence_enabled) is not bool or type(presence_visible) is not bool or type(compact_ink) is not bool:
             await websocket.close(code=4401)
             return
         claims = jwt_claims(token)
@@ -791,11 +798,14 @@ async def board_events(websocket: WebSocket, board_id: UUID):
             for meta in _subscriber_users.get(board_id, {}).values()
         )
         _subscribers[board_id][websocket] = token
+        if compact_ink:
+            _compact_ink_subscribers.add(websocket)
         if presence_enabled:
             _presence_watchers[board_id].add(websocket)
             if presence_visible:
                 _subscriber_users[board_id][websocket] = user_meta
-        await websocket.send_json({"type": "ready", "version": current_version})
+        await websocket.send_json({"type": "ready", "version": current_version,
+                                   **({"compact_ink": True} if compact_ink else {})})
         if presence_enabled:
             await websocket.send_json({"type": "presence_state", "users": _unique_presence(board_id)})
             if presence_visible and not already_present:
@@ -912,6 +922,7 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         except Exception:
             pass
     finally:
+        _compact_ink_subscribers.discard(websocket)
         clients = _subscribers.get(board_id)
         users = _subscriber_users.get(board_id)
         departed = users.pop(websocket, None) if users is not None else None

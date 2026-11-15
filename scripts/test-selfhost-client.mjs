@@ -366,6 +366,7 @@ assert.equal(sockets[0].sent[0].type,"auth");
 assert.equal(sockets[0].sent[0].token,"token-refreshed");
 assert.equal(sockets[0].sent[0].presence,true);
 assert.equal(sockets[0].sent[0].visible,true);
+assert.equal(sockets[0].sent[0].compact_ink,true);
 sockets[0].emit({type:"ready",version:3});
 assert.equal(unsubscribe.sendCursor("pilot_client",10,20),true);
 await new Promise(resolve=>setTimeout(resolve,70));
@@ -376,6 +377,7 @@ const stroke={
   points:[{x:10,y:20},{x:12,y:22}],finished:true,
 };
 assert.equal(unsubscribe.sendInk(stroke),true);
+assert.deepEqual(sockets[0].sent.find(x=>x.stroke_id==="stroke_1").points,stroke.points,"Old server keeps object-form points");
 assert.ok(sockets[0].sent.some(x=>x.type==="live_ink"&&x.finished&&x.stroke_id==="stroke_1"));
 sockets[0].emit({type:"ink_ack",client_id:"pilot_client",stroke_id:"stroke_1",offset:0,finished:true});
 assert.equal(unsubscribe.sendObjectPreview({
@@ -475,7 +477,7 @@ const channel=env.broadcast.connectBoardCursorChannel("board-1",{userId:"me",nam
 await new Promise(resolve=>setTimeout(resolve,0));
 const inkSocket=sockets.at(-1);
 inkSocket.open();
-inkSocket.emit({type:"ready",version:7});
+inkSocket.emit({type:"ready",version:7,compact_ink:true});
 const makeInk=(id,points,finished=false)=>({id,kind:"pen",color:"#112233",weight:3,offset:0,points,finished});
 const points=Array.from({length:300},(_,i)=>({x:i,y:i}));
 for(let i=1;i<=points.length;i++)channel.sendInk(makeInk("stroke_fast",points.slice(0,i)));
@@ -484,13 +486,17 @@ channel.sendInk(makeInk("stroke_next",[{x:400,y:400}],true));
 await waitFor(()=>inkSocket.sent.filter(x=>x.type==="live_ink"&&x.finished).length===2);
 const packets=inkSocket.sent.filter(x=>x.type==="live_ink");
 assert.equal(packets.length,3,"300 cumulative moves must become two chunks plus the next completed stroke");
-assert.deepEqual(packets.filter(x=>x.stroke_id==="stroke_fast").flatMap(x=>x.points),points);
+assert.deepEqual(packets.filter(x=>x.stroke_id==="stroke_fast").flatMap(x=>x.points),points.map(p=>[p.x,p.y]));
+const legacyPoints=JSON.stringify(points),compactPoints=JSON.stringify(points.map(p=>[p.x,p.y]));
+assert.ok(compactPoints.length<legacyPoints.length*.6);
+console.log(`Live ink coordinates: ${legacyPoints.length} -> ${compactPoints.length} bytes`);
 assert.deepEqual(packets.map(x=>x.offset),[0,200,0]);
 const final=packets.find(x=>x.stroke_id==="stroke_fast"&&x.finished);
 inkSocket.emit({type:"ink_ack",client_id:final.client_id,stroke_id:final.stroke_id,offset:final.offset,finished:true});
 assert.ok(adapterStatuses.at(-1).includes("сервер 1"));
 inkSocket.emit({...final,client_id:"other_tab",user_id:"me",name:"Me",role:"owner",sent_at:Date.now()});
 assert.equal(adapterInk.length,1,"A second browser tab must receive the stroke even for the same account");
+assert.deepEqual(JSON.parse(JSON.stringify(adapterInk[0].points)),points.slice(200));
 channel.close();
 await Promise.resolve();
 

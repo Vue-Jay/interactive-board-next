@@ -56,6 +56,7 @@ def test_ink_requires_editor_and_validates_bounds():
     assert good["points"]==ink()["points"]
     assert good["stroke_id"]=="pen_001"
     assert good["user_id"]=="trusted-user"
+    assert accept({**ink(),"points":[[0,10],[1.5,10.5]]})["points"]==good["points"]
     with pytest.raises(InvalidLiveEvent,match="read_only"):
         accept(ink(),role="viewer")
     for bad in [
@@ -71,6 +72,9 @@ def test_ink_requires_editor_and_validates_bounds():
         {**ink(),"points":[{"x":1,"y":2}]*201},
         {**ink(),"points":[{"x":True,"y":2}]},
         {**ink(),"points":[{"x":1,"y":2,"admin":True}]},
+        {**ink(),"points":[[1,2,3]]},
+        {**ink(),"points":[[True,2]]},
+        {**ink(),"points":[[float("inf"),2]]},
     ]:
         with pytest.raises(InvalidLiveEvent):
             accept(bad)

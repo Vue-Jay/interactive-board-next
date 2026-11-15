@@ -129,10 +129,15 @@ def validate_live_event(frame: Any, *, role: str, user_id: str,
             raise InvalidLiveEvent("invalid_points_count")
         validated = []
         for point in points:
-            if not isinstance(point, dict) or set(point) != {"x", "y"} or not (
-                    finite_position(point["x"]) and finite_position(point["y"])):
+            if isinstance(point, dict) and set(point) == {"x", "y"}:
+                x, y = point["x"], point["y"]
+            elif isinstance(point, list) and len(point) == 2:
+                x, y = point
+            else:
                 raise InvalidLiveEvent("invalid_points")
-            validated.append({"x": point["x"], "y": point["y"]})
+            if not finite_position(x) or not finite_position(y):
+                raise InvalidLiveEvent("invalid_points")
+            validated.append({"x": x, "y": y})
         if offset + len(points) > MAX_OFFSET:
             raise InvalidLiveEvent("invalid_points_offset")
         return {"type": kind, **identity, "client_id": client_id,
