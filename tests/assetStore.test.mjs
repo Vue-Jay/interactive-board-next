@@ -161,6 +161,8 @@ test('authenticated binary transport preserves MIME and propagates access denial
       ? { Capacitor: { isNativePlatform: () => false } }
       : id === './lektrusLocalTestMode'
         ? { LEKTRUS_LOCAL_TEST_MODE: false }
+        : id === './selfhostApi'
+          ? { SELFHOST_BACKEND_ENABLED: false }
         : (() => { throw new Error('Unexpected backend import ' + id); })(),
     window: { setTimeout, clearTimeout },
     document: { visibilityState: 'visible' },

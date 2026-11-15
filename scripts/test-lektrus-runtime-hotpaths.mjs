@@ -6,16 +6,22 @@ import ts from "typescript";
 
 const read=(path)=>readFileSync(new URL("../src/"+path,import.meta.url),"utf8");
 const app=read("BoardApp.tsx"),preview=read("boardPreview.ts"),sync=read("boardSync.ts");
+const inkOverlay=read("RemoteInkOverlay.tsx");
 
 assert.match(app,/const persistedItemIds=useMemo\(\(\)=>new Set\(items\.map\(item=>item\.id\)\),\[items\]\)/,
  "Build one persisted board ID index per items revision");
-assert.match(app,/const uncommittedRemoteInk=useMemo\(/);
-assert.match(app,/\!persistedItemIds\.has\(ink\.id\)/);
-assert.match(app,/\{uncommittedRemoteInk\.flatMap\(ink => remoteInkRuns\(ink\)\.map\(run => \(/);
-assert.doesNotMatch(app,/Object\.values\(remoteInk\)\.filter\(ink => !items\.some/,
+assert.match(app,/<RemoteInkOverlay store=\{remoteInkStore\}/);
+assert.match(inkOverlay,/useSyncExternalStore\(store\.subscribe,store\.getSnapshot/);
+assert.match(inkOverlay,/\!persistedItemIds\.has\(ink\.id\)/);
+assert.doesNotMatch(app,/setRemoteInk\(/,
  "Do not rescan the entire board once per live stroke");
-assert.match(app,/<polyline key=\{ink\.id\+":"\+run\.offset\}/);
-assert.match(app,/<circle key=\{ink\.id\+":"\+run\.offset\}/,
+assert.match(app,/<RemoteCursorOverlay store=\{remoteCursorStore\}/);
+assert.match(app,/<RemoteCursorCount store=\{remoteCursorStore\}/);
+assert.doesNotMatch(app,/setRemoteCursors\(/,"Cursor activity must not rerender the board");
+assert.match(app,/const storedById=getCurrentItemIndex\(itemsRef\.current\)/);
+assert.match(app,/const byId=itemById;/,"Do not rebuild the durable index on each peer transform");
+assert.match(inkOverlay,/<polyline key=\{ink\.id\+":"\+run\.offset\}/);
+assert.match(inkOverlay,/<circle key=\{ink\.id\+":"\+run\.offset\}/,
  "Every peer stroke must keep a stable unique SVG key");
 const sampleObjects=Array.from({length:10_000},(_,i)=>({id:"obj-"+i}));
 const sampleRemoteInk=Array.from({length:150},(_,i)=>({id:i%10===0?"obj-"+i:"new-"+i}));
@@ -38,16 +44,18 @@ assert.ok(receiver.indexOf('if (preliminary === "defer")')>=0);
 assert.ok(receiver.indexOf('if (preliminary === "ignore")')<
           receiver.indexOf("sharedBoardFingerprint(currentDocument())"),
  "Stale Realtime echoes must be discarded before hashing the local board");
-assert.match(receiver,/applyServerDocument\(row,\s*data\)/,
- "Pass the already parsed remote document to the apply path");
-assert.match(app,/const applyServerDocument = \(row: RemoteBoardDocument, prepared\?: DocumentData\) => \{/);
-assert.match(app,/const data = prepared \?\? parseDocument\(JSON\.stringify\(row\.document\)\)/);
+assert.match(receiver,/applyServerDocument\(row,\s*data,\s*remoteFingerprint\)/,
+ "Pass the already parsed and hashed remote document to the apply path");
+assert.match(app,/const applyServerDocument = \(row: RemoteBoardDocument, data: DocumentData, remoteFingerprint: string\) => \{/);
 
 const applyStart=app.indexOf("  const applyServerDocument = ");
 const applyEnd=app.indexOf("  receiveRemote.current = row => {",applyStart);
 assert.ok(applyStart>=0&&applyEnd>applyStart);
 const apply=app.slice(applyStart,applyEnd);
-assert.match(apply,/const incomingFingerprint=documentFingerprint\(data\);/);
+assert.doesNotMatch(apply,/parseDocument\(/);
+assert.match(apply,/const incomingFingerprint=data\.items===incomingItemsBeforeSync\?remoteFingerprint:documentFingerprint\(data\);/);
+assert.match(apply,/JSON\.stringify\(localDoc\.background\)!==JSON\.stringify\(data\.background\) &&\s*sharedBoardFingerprint/,
+ "Only hash the hypothetical background-only update when the background actually differs");
 assert.match(apply,/acknowledgedDocument\.current = incomingFingerprint;/);
 assert.match(apply,/acknowledgedSharedContent\.current = incomingFingerprint;/);
 assert.doesNotMatch(apply,/acknowledgedSharedContent\.current = sharedBoardFingerprint\(data\)/,
@@ -63,6 +71,31 @@ const compiledSync=ts.transpileModule(sync,{
 }).outputText;
 const syncAPI={};
 vm.runInNewContext(compiledSync,{exports:syncAPI,require:()=>({})});
+// Evaluate the actual apply path's fingerprint and background classification
+// with deterministic inputs. Unchanged connectors keep the receiver's hash.
+const classifySource=apply.slice(0,apply.indexOf("    remoteVersion.current = row.version;"))+
+ "return {incomingFingerprint,onlyBackgroundChanged}; };";
+const compiledClassify=ts.transpileModule(classifySource+"\nexports.classify=applyServerDocument;",{
+ compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+}).outputText;
+const classifyAPI={};
+let classHashes=0,localDoc,changedConnectors=false;
+const hash=value=>{classHashes++;return syncAPI.documentFingerprint(value)};
+vm.runInNewContext(compiledClassify,{exports:classifyAPI,currentDocument:()=>localDoc,
+ documentFingerprint:hash,sharedBoardFingerprint:hash,
+ syncBoundConnectors:items=>changedConnectors?items.map(item=>({...item,x:item.x+1})):items});
+localDoc={version:1,title:"Large board",background:{color:"white"},items:[{id:"a",x:0,text:"я".repeat(800_000)}]};
+const updated={...localDoc,items:[{...localDoc.items[0],x:2}]};
+const updatedHash=syncAPI.documentFingerprint(updated);
+assert.equal(classifyAPI.classify({},updated,updatedHash).incomingFingerprint,updatedHash);
+assert.equal(classHashes,0,"Unchanged connectors and background need zero extra full hashes");
+const recolored={...localDoc,background:{color:"black"}};
+assert.equal(classifyAPI.classify({},recolored,syncAPI.documentFingerprint(recolored)).onlyBackgroundChanged,true);
+assert.equal(classHashes,1,"A background-only change must still be identified");
+changedConnectors=true;
+const adjusted={...updated};
+assert.equal(classifyAPI.classify({},adjusted,updatedHash).incomingFingerprint,syncAPI.documentFingerprint(adjusted));
+assert.equal(classHashes,2,"Changed connector geometry must refresh the hash");
 let oldHashes=0,newHashes=0;
 const fakeHash=()=>{oldHashes++;return "same"};
 const fakeHashNew=()=>{newHashes++;return "same"};

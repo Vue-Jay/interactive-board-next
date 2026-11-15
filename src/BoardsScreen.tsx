@@ -6,8 +6,8 @@ import {markTemplateUsed} from "./templatesStore";
 import { flushLectrisOrganization, queueLectrisBoardOrganization } from "./lectrisOrganizationStore";
 import { cachedBoardPreview, loadBoardPreviews, backfillCachedBoardPreviews } from "./boardPreview";
 import { BOARD_ROLE_LABELS, isRemoteBackendEnabled, type AuthUser, type BoardRole } from "./authStore";
-import { boardStorageKey, createBoard, deleteBoard, deleteBoardForever, ensureUserBoards, getCachedUserBoards, getTrashedBoards, getUserBoards, restoreBoard, renameBoard, getBoardAccess, changeMemberRole, removeMember, type BoardAccessMember, type BoardInvitation, type BoardSummary } from "./boardStore";
-import { boardDirectUrl, boardShareUrl, clearPendingShareToken, copyBoardLink, createBoardShareLink, listBoardShareLinks, pendingShareToken, revokeBoardShareLink, type BoardShareLink, type ShareRole } from "./shareLinks";
+import { boardStorageKey, createBoard, deleteBoard, deleteBoardForever, getCachedUserBoards, getTrashedBoards, getUserBoards, restoreBoard, renameBoard, getBoardAccess, changeMemberRole, removeMember, type BoardAccessMember, type BoardInvitation, type BoardSummary } from "./boardStore";
+import { boardDirectUrl, boardShareUrl, clearPendingShareToken, copyBoardLink, createBoardShareLink, listBoardShareLinks, pendingShareToken, revokeBoardShareLink, shareLinksEnabled, type BoardShareLink, type ShareRole } from "./shareLinks";
 
 type Props={user:AuthUser;accountRole:AccountRole;isAppAdmin:boolean;onOpenBoard:(b:BoardSummary)=>void;onLogout:()=>void};
 type BoardFilter="all"|"mine"|"shared";
@@ -77,22 +77,22 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
  const refresh=async()=>setBoards(await getUserBoards(user));
  const loadTrash=async()=>{if(!isRemoteBackendEnabled()){setTrash([]);return}setTrash(await getTrashedBoards(user))};
  const loadAccess=async(board=manage)=>{if(!board)return;setAccess(await getBoardAccess(user.id,board.id))};
- const loadLinks=async(board=manage)=>{if(!board||!isRemoteBackendEnabled()){setShareLinks([]);return}setShareLinks(await listBoardShareLinks(board.id))};
+ const loadLinks=async(board=manage)=>{if(!board||!shareLinksEnabled()){setShareLinks([]);return}setShareLinks(await listBoardShareLinks(board.id))};
 
  useEffect(()=>{let alive=true;(async()=>{
    const token=pendingShareToken();
-   if(token&&isRemoteBackendEnabled()){
+   if(token&&shareLinksEnabled()){
      // Legacy ?join= links must use App's canonical flow. Redeeming here
      // bypassed the protected-link password prompt and could consume a use.
      window.history.replaceState({}, "", `/join/${token}`);
      window.dispatchEvent(new PopStateEvent("popstate"));
      return;
-   }else if(token&&!isRemoteBackendEnabled()){
+   }else if(token){
      clearPendingShareToken();
      if(alive)setNotice("Эта ссылка требует серверной версии приложения.");
    }
    try{
-     const list=accountRole==="teacher"?await ensureUserBoards(user):await getUserBoards(user);
+     const list=await getUserBoards(user);
      if(alive)setBoards(list);
    }catch(e){
      if(alive&&getCachedUserBoards(user).length===0)setNotice(e instanceof Error?e.message:"Не удалось загрузить доски");
@@ -200,7 +200,7 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
     </div>
     {notice&&<div className="access-notice" style={{marginBottom:12}}>{notice}</div>}
     {!loading&&visible.length===0
-      ?<div className="boards-empty"><strong>{boards.length?"Ничего не найдено":"Пока нет досок"}</strong><span>{boards.length?"Измените поиск или выберите другой фильтр.":"Создайте первую доску и начните занятие."}</span><button type="button" onClick={()=>{setQuery("");setFilter("all")}}>Показать все</button></div>
+      ?<div className="boards-empty"><strong>{boards.length?"Ничего не найдено":"Здесь будут находиться ваши доски"}</strong>{boards.length>0?<><span>Измените поиск или выберите другой фильтр.</span><button type="button" onClick={()=>{setQuery("");setFilter("all")}}>Показать все</button></>:<span>{accountRole==="teacher"?"Создайте свою первую доску, когда будете готовы.":"Откройте доску по приглашению преподавателя."}</span>}</div>
       :<div className="boards-grid lectris-library-grid">
         {accountRole==="teacher"&&filter!=="shared"&&!query&&<button type="button" className="lectris-library-create-tile" disabled={busy} onClick={()=>void add()}>
           <span className="lectris-library-create-icon">＋</span><strong>Новая доска</strong>
@@ -235,10 +235,10 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
  <div className="board-invite-link-panel">
    <div className="board-invite-link-title"><span>🔗</span><div><strong>Ссылка-приглашение</strong><small>Выберите, что сможет делать участник</small></div></div>
    <span style={{fontSize:13,opacity:.72}}>Создайте ссылку с нужными правами и отправьте её ученику, преподавателю или коллеге. После входа или регистрации доступ применится автоматически.</span>
-   <div className="board-invite-role-grid"><button className="editor" disabled={busy||!isRemoteBackendEnabled()} onClick={()=>void createLink("editor")}><span>✎</span><b>Редактирование</b><small>Можно менять содержимое доски</small></button><button className="viewer" disabled={busy||!isRemoteBackendEnabled()} onClick={()=>void createLink("viewer")}><span>👁</span><b>Только просмотр</b><small>Без возможности редактирования</small></button></div>
-   {!isRemoteBackendEnabled()&&<div className="access-notice">Для ссылок доступа нужна серверная синхронизация.</div>}
+   <div className="board-invite-role-grid"><button className="editor" disabled={busy||!shareLinksEnabled()} onClick={()=>void createLink("editor")}><span>✎</span><b>Редактирование</b><small>Можно менять содержимое доски</small></button><button className="viewer" disabled={busy||!shareLinksEnabled()} onClick={()=>void createLink("viewer")}><span>👁</span><b>Только просмотр</b><small>Без возможности редактирования</small></button></div>
+   {!shareLinksEnabled()&&<div className="access-notice">Для ссылок доступа нужна серверная синхронизация.</div>}
    {createdUrl&&<div className="board-invite-created"><div><span>✓</span><strong>Ссылка готова</strong></div><div><input readOnly value={createdUrl} onFocus={e=>e.currentTarget.select()}/><button onClick={()=>void copyCreated()}>⧉ Копировать</button></div></div>}
-   {isRemoteBackendEnabled()&&<details className="board-direct-link">
+   {shareLinksEnabled()&&<details className="board-direct-link">
      <summary>Прямая ссылка на доску для участников</summary>
      <div className="board-invite-created"><div><input readOnly value={boardDirectUrl(manage.id)} onFocus={e=>e.currentTarget.select()} aria-label="Прямая ссылка на доску"/><button type="button" onClick={()=>void (async()=>{setNotice(await copyBoardLink(boardDirectUrl(manage.id))?"Адрес доски скопирован":"Не удалось скопировать адрес. Выделите ссылку вручную.")})()}>⧉ Копировать</button></div></div>
      <small>Ссылка не выдаёт права доступа. Сначала пригласите участника.</small>

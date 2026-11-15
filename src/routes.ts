@@ -6,6 +6,7 @@ const PENDING_BOARD_CROSS_TAB_KEY = "lektrus.pending-board-route.v2";
 const PENDING_TTL_MS = 2 * 60 * 60 * 1000;
 const TOKEN = /^[a-f0-9]{64}$/;
 export function parseRoute(path: string): AppRoute {
+  if (path === "/confirm-email" || path === "/confirm-email/") return { kind: "home" };
   if (path === "/") return { kind: "site" };
   if (path === "/app" || path === "/app/") return { kind: "home" };
   if (path === "/tools/atlas" || path === "/tools/atlas/") return {kind:"tool",tool:"atlas"};

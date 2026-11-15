@@ -1,4 +1,5 @@
 import { getRealtimeSocketUrl, getRemoteSession, isRemoteBackendEnabled } from "./backend";
+import { isSelfhostBackendEnabled, selfhostSubscribeBoard } from "./selfhostApi";
 
 export type AttachmentApprovalRequest={
   requestId:string; studentId:string; studentName:string; assetId:string; name:string; mime:string;
@@ -18,6 +19,45 @@ export function connectAttachmentApprovalChannel(
  onRequest:(payload:AttachmentApprovalRequest)=>void,
  onResult:(payload:AttachmentApprovalResult)=>void,
 ):AttachmentApprovalChannel{
+ if(isSelfhostBackendEnabled()){
+  let ready=false,stopped=false;
+  const queue:Array<{type:"attachment_request"|"attachment_result";payload:Record<string,unknown>}>= [];
+  const channel=selfhostSubscribeBoard(boardId,()=>{},status=>{
+   ready=status==="online";
+   if(ready)while(queue.length){
+    const next=queue.shift()!;
+    channel.sendEvent({type:next.type,...next.payload});
+   }
+  },event=>{
+   if(event.type==="attachment_request"){
+    onRequest({
+     requestId:event.request_id,studentId:event.user_id,studentName:event.name,
+     assetId:event.asset_id,name:event.attachment_name,mime:event.mime,
+     kind:event.kind,width:event.width,height:event.height,sentAt:event.sent_at,
+    });
+   }else if(event.type==="attachment_result"&&event.target_user_id===me.userId){
+    onResult({
+     requestId:event.request_id,studentId:event.target_user_id,
+     approved:event.approved,name:event.attachment_name,
+    });
+   }
+  });
+  const send=(type:"attachment_request"|"attachment_result",payload:Record<string,unknown>)=>{
+   if(stopped)return;
+   if(!ready){queue.push({type,payload});if(queue.length>20)queue.shift();return}
+   channel.sendEvent({type,...payload});
+  };
+  return{
+   request:p=>send("attachment_request",{
+    request_id:p.requestId,asset_id:p.assetId,name:p.name,mime:p.mime,
+    kind:p.kind,width:p.width,height:p.height,
+   }),
+   result:p=>send("attachment_result",{
+    request_id:p.requestId,target_user_id:p.studentId,approved:p.approved,name:p.name,
+   }),
+   close:()=>{stopped=true;queue.length=0;channel()},
+  };
+ }
  if(!isRemoteBackendEnabled())return{request:()=>{},result:()=>{},close:()=>{}};
  const topic=`realtime:board-attachment-approval:${boardId}`;
  let socket:WebSocket|null=null,stopped=false,ready=false,seq=0,generation=0,attempt=0;

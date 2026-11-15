@@ -35,7 +35,11 @@ function harness(){
   vm.runInNewContext(ts.transpileModule(source,{
     compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
   }).outputText,{
-    exports,require:()=>backend,WebSocket:Socket,
+    exports,require:name=>{
+      if(name==="./selfhostApi")return {isSelfhostBackendEnabled:()=>false};
+      assert.equal(name,"./backend");
+      return backend;
+    },WebSocket:Socket,
     setTimeout:schedule,clearTimeout:id=>timers.delete(id),
     setInterval:schedule,clearInterval:id=>timers.delete(id),
     window:{addEventListener:(name,cb)=>listeners.set(name,cb),
@@ -183,6 +187,8 @@ test('incremental previews stitch into long strokes, reject stale packets and bo
   assert.equal(finished.points.length,620,
     'the final overlapping window must retain the early part of the stroke');
   assert.strictEqual(api.mergeRemoteLiveInk(finished,packet(400,510)),finished);
+  assert.strictEqual(api.mergeRemoteLiveInk(finished,packet(120,620,true)),finished,
+    'duplicate final packets must not invalidate the snapshot');
   const gap=api.mergeRemoteLiveInk(packet(0,50),packet(100,130));
   assert.equal(gap.offset,100,'a dropped packet cannot create a false diagonal stroke');
   assert.equal(gap.points[0].x,100);
@@ -195,7 +201,7 @@ test('incremental previews stitch into long strokes, reject stale packets and bo
   const old={...packet(0,3)};delete old.offset;
   assert.equal(api.mergeRemoteLiveInk(long,old),old,'legacy peers remain compatible');
   const app=readFileSync(new URL('../src/BoardApp.tsx',import.meta.url),'utf8');
-  assert.match(app,/mergeRemoteLiveInk\(current\[ink\.id\],ink\)/);
+  assert.match(app,/remoteInkStore\.push\(ink\)/);
   assert.match(app,/offset:Math\.max\(0,g\.path\.length-500\)/);
 });
 
@@ -266,8 +272,138 @@ test('disconnected peer-ink history remains bounded and renderable',()=>{
   assert.ok(runs.length>1,'network loss remains visible as separate fragments');
   assert.equal(runs.reduce((sum,run)=>sum+run.points.length,0),
     api.MAX_REMOTE_LIVE_INK_POINTS,'RAM is bounded across ALL disconnected runs');
-  const app=readFileSync(new URL('../src/BoardApp.tsx',import.meta.url),'utf8');
-  assert.match(app,/uncommittedRemoteInk\.flatMap\(ink => remoteInkRuns\(ink\)\.map\(run/);
-  assert.match(app,/key=\{ink\.id\+":"\+run\.offset\}/,
+  const overlay=readFileSync(new URL('../src/RemoteInkOverlay.tsx',import.meta.url),'utf8');
+  assert.match(overlay,/remoteInkRuns\(ink\)\.map\(run/);
+  assert.match(overlay,/key=\{ink\.id\+":"\+run\.offset\}/,
     'recovered fragments must keep independent SVG element identity');
+});
+
+function inkStoreHarness(){
+  const source=readFileSync(new URL('../src/boardLiveInk.ts',import.meta.url),'utf8');
+  const api={};
+  vm.runInNewContext(ts.transpileModule(source,{
+    compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+  }).outputText,{exports:api});
+  let now=0,sequence=0;
+  const frames=new Map(),timers=new Map();
+  const scheduler={now:()=>now,requestFrame:fn=>{frames.set(++sequence,fn);return sequence},
+    cancelFrame:id=>frames.delete(id),setTimer:(fn,delay)=>{timers.set(++sequence,{fn,at:now+delay});return sequence},
+    clearTimer:id=>timers.delete(id)};
+  const frame=()=>{for(const [id,fn] of [...frames]){if(frames.delete(id))fn()}};
+  const advance=ms=>{
+    const end=now+ms;
+    for(;;){
+      const next=[...timers].filter(([,timer])=>timer.at<=end).sort((a,b)=>a[1].at-b[1].at)[0];
+      if(!next)break;
+      now=next[1].at;timers.delete(next[0]);next[1].fn();
+    }
+    now=end;
+  };
+  const packet=(id,start,end,finished=false)=>({id,clientId:id,userId:id,kind:'pen',color:'#000',
+    weight:3,offset:start,points:Array.from({length:end-start},(_,i)=>({x:start+i,y:start+i})),finished});
+  return {api,store:api.createRemoteInkStore(scheduler),scheduler,frame,advance,frames,timers,packet};
+}
+
+test('30 simultaneous peers publish one snapshot per frame without dropping points or completions',()=>{
+  const h=inkStoreHarness(),expected=new Map();
+  let updates=0,packets=0;
+  const unsubscribe=h.store.subscribe(()=>updates++);
+  const old=h.store.getSnapshot();
+  const send=ink=>{packets++;expected.set(ink.id,h.api.mergeRemoteLiveInk(expected.get(ink.id),ink));h.store.push(ink)};
+  for(let f=0;f<20;f++){
+    for(let peer=0;peer<30;peer++){
+      const id=`peer-${peer}`,start=f*20;
+      send(h.packet(id,start,start+5));
+      send(h.packet(id,start+10,start+15)); // gap
+      send(h.packet(id,start+5,start+10)); // late repair
+      send(h.packet(id,start+15,start+20,f===19));
+    }
+    assert.equal(updates,f,'no React notification before frame');
+    assert.equal(h.frames.size,1);
+    assert.equal(h.timers.size,2,'one expiry and one fallback for all strokes');
+    h.frame();
+    assert.equal(updates,f+1);
+    assert.equal(h.timers.size,1);
+  }
+  assert.equal(old.size,0,'previous snapshots stay immutable');
+  assert.equal(JSON.stringify([...h.store.getSnapshot()]),JSON.stringify([...expected]));
+  const snapshot=h.store.getSnapshot();
+  h.store.push(h.packet('peer-0',395,400,true));h.frame();
+  assert.strictEqual(h.store.getSnapshot(),snapshot);
+  assert.equal(updates,20,'duplicate final does not repaint');
+  unsubscribe();h.store.reset();
+  assert.equal(h.timers.size,0);assert.equal(h.frames.size,0);
+  console.log(`Peer ink: ${packets} packets, ${updates} overlay publications (${packets/updates}x fewer), no lost points`);
+});
+
+test('hidden-tab fallback, expiry refresh, board cleanup and resubscription remain safe',()=>{
+  const h=inkStoreHarness();let updates=0;
+  h.store.subscribe(()=>updates++);
+  h.store.push(h.packet('early',0,10,true));h.store.push(h.packet('late',0,10));
+  h.advance(49);assert.equal(updates,0);
+  h.advance(1);assert.equal(updates,1);assert.equal(h.frames.size,0);
+  h.advance(100_000);h.store.push(h.packet('late',0,10));
+  h.advance(19_950);h.frame();
+  assert.equal(h.store.getSnapshot().has('early'),false);
+  assert.equal(h.store.getSnapshot().has('late'),true,'duplicates refresh TTL without rendering');
+  h.advance(100_050);h.frame();assert.equal(h.store.getSnapshot().size,0);
+  h.store.push(h.packet('old-board',0,2));h.store.reset();
+  assert.equal(h.frames.size,0);assert.equal(h.timers.size,0);
+  h.store.push(h.packet('new-board',0,3,true));h.frame();
+  assert.deepEqual([...h.store.getSnapshot().keys()],['new-board']);
+  h.store.reset();assert.equal(h.store.getSnapshot().size,0);
+});
+
+function loadMotionModule(path){
+  const source=readFileSync(new URL(`../src/${path}`,import.meta.url),'utf8'),api={};
+  vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:api});
+  return api;
+}
+test('cursor bursts retain the latest position per peer and never notify the board per packet',()=>{
+  const h=inkStoreHarness(),store=loadMotionModule('boardRemoteCursors.ts').createRemoteCursorStore(h.scheduler);
+  let updates=0;store.subscribe(()=>updates++);
+  const cursor=(peer,x)=>({userId:`peer-${peer}`,name:`Peer ${peer}`,role:'editor',x,y:x*2,updatedAt:999999999});
+  const empty=store.getSnapshot();
+  for(let f=0;f<20;f++){
+    for(let peer=0;peer<30;peer++)for(let n=0;n<4;n++)store.push(cursor(peer,f*4+n));
+    assert.equal(updates,f);
+    assert.equal(h.frames.size,1);assert.equal(h.timers.size,2);
+    h.frame();assert.equal(updates,f+1);assert.equal(store.getCount(),30);
+  }
+  assert.equal(empty.size,0);
+  for(const value of store.getSnapshot().values()){assert.equal(value.x,79);assert.equal(value.y,158)}
+  const old=store.getSnapshot();
+  store.push(cursor(0,79));h.frame();assert.strictEqual(store.getSnapshot(),old);
+  h.advance(10000);store.push(cursor(0,79)); // TTL refresh without repaint
+  store.push(cursor(31,1));store.retainOnline(new Set(['peer-0','peer-1']));
+  h.frame();assert.equal(store.getCount(),2);assert.equal(store.getSnapshot().has('peer-31'),false);
+  h.advance(2000);assert.equal(store.getCount(),1,'idle cursor expires even with skewed client clocks');
+  h.advance(10000);assert.equal(store.getCount(),0);assert.equal(h.timers.size,0,'no idle polling timer');
+  store.push(cursor(2,11));h.advance(50);assert.equal(store.getCount(),1,'hidden-tab fallback');
+  store.push(cursor(3,12));store.reset();assert.equal(h.timers.size,0);assert.equal(h.frames.size,0);
+  assert.equal(store.getCount(),0);
+  console.log('Cursor bursts: 2400 packets / 20 frame publications; duplicate moves, presence, TTL and cleanup passed');
+});
+
+test('remote transforms reuse the current item index across 600 packets on a 10000-object board',()=>{
+  const api=loadMotionModule('boardObjectMotion.ts');
+  const items=Array.from({length:10000},(_,i)=>({id:`obj-${i}`,x:i,y:0,width:10,height:10}));
+  const ids=Array.from({length:600},(_,i)=>`obj-${i*13}`);
+  let count=0;
+  const tracked=items;
+  Object.defineProperty(tracked,'map',{value(callback){count++;return Array.prototype.map.call(this,callback)}});
+  const start=performance.now();
+  const old=ids.map(id=>new Map(tracked.map(item=>[item.id,item])).get(id));
+  const oldMs=performance.now()-start;
+  assert.equal(count,600);
+  count=0;const index=api.createCurrentItemIndex();const fasterStart=performance.now();
+  const next=ids.map(id=>index(tracked).get(id));
+  const newMs=performance.now()-fasterStart;
+  assert.equal(count,1);assert.deepEqual(old,next);
+  const stored=index(tracked).get('obj-0');const origin=api.objectPoseOrigin(stored);
+  const latest=[{...stored,x:200},...items.slice(1)];
+  assert.notEqual(api.objectPoseOrigin(index(latest).get('obj-0')),origin,'old origin invalidated on authoritative revision');
+  assert.notEqual(index(latest),index(tracked),'local undo/gesture replacement must reindex too');
+  const deleted=items.slice(1);assert.equal(index(deleted).get('obj-0'),undefined,'deleted object cannot accept stale preview');
+  console.log(`Transform lookup (600 packets, 10000 objects): 600 index builds -> 1; ${oldMs.toFixed(2)} -> ${newMs.toFixed(2)} ms`);
 });

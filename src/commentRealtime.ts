@@ -1,6 +1,21 @@
 import { getRealtimeSocketUrl, getRemoteSession, isRemoteBackendEnabled } from "./backend";
+import { isSelfhostBackendEnabled, selfhostSubscribeBoard } from "./selfhostApi";
 
-export function subscribeBoardComments(boardId:string,onChange:()=>void):()=>void{
+export function subscribeBoardComments(boardId:string,onChange:()=>void,onReconnect=onChange):()=>void{
+ if(isSelfhostBackendEnabled()){
+  let connected=false;
+  let timer:ReturnType<typeof setTimeout>|undefined;
+  const notify=()=>{
+   clearTimeout(timer);
+   timer=setTimeout(onChange,120);
+  };
+  const stop=selfhostSubscribeBoard(boardId,()=>{},status=>{
+   if(status!=="online")return;
+   if(connected)onReconnect();
+   connected=true;
+  },event=>{if(event.type==="comments_changed")notify()});
+  return()=>{clearTimeout(timer);stop()};
+ }
  if(!isRemoteBackendEnabled())return()=>{};
  let stopped=false,socket:WebSocket|null=null,retry:ReturnType<typeof setTimeout>|undefined,notifyTimer:ReturnType<typeof setTimeout>|undefined,heartbeat:ReturnType<typeof setInterval>|undefined,seq=0,attempt=0;
  const topic=`realtime:comments:${boardId}`;

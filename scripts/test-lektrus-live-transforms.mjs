@@ -27,7 +27,7 @@ const backend={
 const exports={};
 new Function("exports","require","WebSocket","setTimeout","clearTimeout",
  "setInterval","clearInterval","window",code)(
- exports,()=>backend,Socket,
+ exports,name=>name==="./selfhostApi"?{isSelfhostBackendEnabled:()=>false}:backend,Socket,
  clock,id=>timers.delete(id),
  clock,id=>timers.delete(id),
  {addEventListener:(type,fn)=>listeners.set(type,fn),

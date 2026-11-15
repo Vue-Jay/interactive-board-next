@@ -1,12 +1,15 @@
 import type { AuthUser } from "./authStore";
 import { getUserBoards, getBoardAccess } from "./boardStore";
 import { isRemoteBackendEnabled, remoteRequest } from "./backend";
+import { isSelfhostBackendEnabled, selfhostDeleteStudentSession, selfhostSaveStudentProfile,
+ selfhostSaveStudentSession, selfhostStudentSessions, selfhostStudents } from "./selfhostApi";
 
 export type StudentSession={id:string;studentId:string;boardId:string;boardTitle:string;date:string;durationMinutes:number;topic:string;homework:string;result:string};
 export type StudentRecord={userId:string;name:string;email:string;boardIds:string[];boardTitles:string[];lastBoardAt:string;note:string;tags:string[];sessions:StudentSession[]};
 
 const NOTES_KEY="onlinerepetitor.student-notes.v1",TAGS_KEY="onlinerepetitor.student-tags.v1",SESSIONS_KEY="onlinerepetitor.student-sessions.v1";
 const MIGRATED_KEY="onlinerepetitor.student-data-migrated.v37";
+const SELFHOST_MIGRATED_KEY="lektrus.selfhost.student-data-migrated.v1";
 const readObject=<T,>(key:string,fallback:T):T=>{try{const value=JSON.parse(localStorage.getItem(key)||"");return value??fallback}catch{return fallback}};
 const write=(key:string,value:unknown)=>localStorage.setItem(key,JSON.stringify(value));
 const localSessions=()=>readObject<StudentSession[]>(SESSIONS_KEY,[]);
@@ -14,8 +17,21 @@ const localSessions=()=>readObject<StudentSession[]>(SESSIONS_KEY,[]);
 const profileRows=async()=>isRemoteBackendEnabled()?remoteRequest<any[]>("/rest/v1/student_profiles?select=student_id,note,tags"):[];
 
 export async function migrateLocalStudentData(){
- if(!isRemoteBackendEnabled()||localStorage.getItem(MIGRATED_KEY)==="1")return;
  const notes=readObject<Record<string,string>>(NOTES_KEY,{}),tags=readObject<Record<string,string[]>>(TAGS_KEY,{});
+ if(isSelfhostBackendEnabled()){
+  if(localStorage.getItem(SELFHOST_MIGRATED_KEY)==="1")return;
+  let failed=false;
+  for(const studentId of new Set([...Object.keys(notes),...Object.keys(tags)])){
+   try{await selfhostSaveStudentProfile(studentId,{note:notes[studentId]||"",tags:tags[studentId]||[]})}
+   catch{failed=true}
+  }
+  for(const s of localSessions()){
+   try{await selfhostSaveStudentSession(s)}catch{failed=true}
+  }
+  if(!failed)localStorage.setItem(SELFHOST_MIGRATED_KEY,"1");
+  return;
+ }
+ if(!isRemoteBackendEnabled()||localStorage.getItem(MIGRATED_KEY)==="1")return;
  try{
    for(const studentId of new Set([...Object.keys(notes),...Object.keys(tags)])){
      await remoteRequest("/rest/v1/student_profiles?on_conflict=teacher_id,student_id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify({student_id:studentId,note:notes[studentId]||"",tags:tags[studentId]||[]})});
@@ -28,14 +44,22 @@ export async function migrateLocalStudentData(){
 }
 
 export async function saveStudentNote(userId:string,note:string){
+ if(isSelfhostBackendEnabled()){await selfhostSaveStudentProfile(userId,{note});return}
  if(isRemoteBackendEnabled()){await remoteRequest("/rest/v1/student_profiles?on_conflict=teacher_id,student_id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify({student_id:userId,note})});return}
  const all=readObject<Record<string,string>>(NOTES_KEY,{});all[userId]=note;write(NOTES_KEY,all);
 }
 export async function saveStudentTags(userId:string,tags:string[]){
+ if(isSelfhostBackendEnabled()){await selfhostSaveStudentProfile(userId,{tags});return}
  if(isRemoteBackendEnabled()){await remoteRequest("/rest/v1/student_profiles?on_conflict=teacher_id,student_id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify({student_id:userId,tags})});return}
  const all=readObject<Record<string,string[]>>(TAGS_KEY,{});all[userId]=tags;write(TAGS_KEY,all);
 }
 export async function getStudentSessions(studentId:string):Promise<StudentSession[]>{
+ if(isSelfhostBackendEnabled()){
+  const rows=await selfhostStudentSessions(studentId);
+  return rows.map(r=>({id:r.id,studentId:r.student_id,boardId:r.board_id||"",
+   boardTitle:r.board_title||"Без доски",date:r.date,durationMinutes:r.duration_minutes||0,
+   topic:r.topic||"",homework:r.homework||"",result:r.result||""}));
+ }
  if(isRemoteBackendEnabled()){
    const rows=await remoteRequest<any[]>(`/rest/v1/student_sessions?student_id=eq.${encodeURIComponent(studentId)}&select=id,student_id,board_id,date,duration_minutes,topic,homework,result,boards(title)&order=date.desc`);
    return rows.map(r=>({id:r.id,studentId:r.student_id,boardId:r.board_id||"",boardTitle:r.boards?.title||"Без доски",date:r.date,durationMinutes:r.duration_minutes||0,topic:r.topic||"",homework:r.homework||"",result:r.result||""}));
@@ -43,16 +67,31 @@ export async function getStudentSessions(studentId:string):Promise<StudentSessio
  return localSessions().filter(s=>s.studentId===studentId).sort((a,b)=>b.date.localeCompare(a.date));
 }
 export async function saveStudentSession(s:StudentSession){
+ if(isSelfhostBackendEnabled()){await selfhostSaveStudentSession(s);return}
  if(isRemoteBackendEnabled()){await remoteRequest("/rest/v1/student_sessions?on_conflict=id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify({id:s.id,student_id:s.studentId,board_id:s.boardId||null,date:s.date,duration_minutes:s.durationMinutes,topic:s.topic,homework:s.homework,result:s.result})});return}
  const all=localSessions(),next=all.some(x=>x.id===s.id)?all.map(x=>x.id===s.id?s:x):[...all,s];write(SESSIONS_KEY,next);
 }
 export async function deleteStudentSession(id:string){
+ if(isSelfhostBackendEnabled()){await selfhostDeleteStudentSession(id);return}
  if(isRemoteBackendEnabled()){await remoteRequest(`/rest/v1/student_sessions?id=eq.${encodeURIComponent(id)}`,{method:"DELETE",headers:{Prefer:"return=minimal"}});return}
  write(SESSIONS_KEY,localSessions().filter(s=>s.id!==id));
 }
 
 export async function getStudentsForTeacher(user:AuthUser):Promise<StudentRecord[]>{
  await migrateLocalStudentData();
+ if(isSelfhostBackendEnabled()){
+  const rows=await selfhostStudents();
+  const records=await Promise.all(rows.map(async row=>{
+   const sessions=await getStudentSessions(row.user_id);
+   return {
+    userId:row.user_id,name:row.name||"Ученик",email:row.email||"",
+    boardIds:Array.isArray(row.board_ids)?row.board_ids:[],
+    boardTitles:Array.isArray(row.board_titles)?row.board_titles:[],
+    lastBoardAt:row.last_board_at||"",note:row.note||"",tags:row.tags||[],sessions,
+   } satisfies StudentRecord;
+  }));
+  return records.sort((a,b)=>a.name.localeCompare(b.name,"ru",{sensitivity:"base"}));
+ }
  const boards=(await getUserBoards(user)).filter(b=>b.role==="owner");
  const localNotes=readObject<Record<string,string>>(NOTES_KEY,{}),localTags=readObject<Record<string,string[]>>(TAGS_KEY,{});
  const profiles=isRemoteBackendEnabled()?await profileRows():[];
@@ -75,6 +114,7 @@ export async function saveStudentProfile(userId:string,note:string,tags:string[]
  allTags[userId]=tags;
  write(NOTES_KEY,notes);
  write(TAGS_KEY,allTags);
+ if(isSelfhostBackendEnabled()){await selfhostSaveStudentProfile(userId,{note,tags});return}
  if(!isRemoteBackendEnabled())return;
  await remoteRequest("/rest/v1/student_profiles?on_conflict=teacher_id,student_id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify({student_id:userId,note,tags})});
 }

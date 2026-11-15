@@ -32,7 +32,7 @@ for(const status of [200,204,404,400,403,405,501]){
   [405,501].includes(status)?1:0,"Full GET only for unsupported HEAD");
 }
 const source=read("assetStore.ts");
-assert.match(source,/const exists = await remoteAssetExists\(path\)/,
+assert.match(source,/const exists = selfhost\s*\? await selfhostAssetExists\(boardId,id\)\s*:\s*await remoteAssetExists\(path\)/,
  "Existing assets must be checked with HEAD instead of GET");
 const local=new Map(),server=new Map(),calls=[];
 const adapter={
@@ -48,6 +48,11 @@ const adapter={
   return server.get(path);
  }
 };
+const selfhostAdapter={
+ selfhostAssetExists:async(board,id)=>adapter.remoteAssetExists(`${board}/${id}`),
+ selfhostDownloadAsset:async(board,id)=>adapter.remoteAssetRequest(`${board}/${id}`),
+ selfhostUploadAsset:async(board,id,blob)=>adapter.remoteAssetRequest(`${board}/${id}`,blob),
+};
 const inject=source.replace(/const DB_NAME[\s\S]*?const synchronized/,
  `const getLocalAsset=async (id:string)=>local.get(id)??null;
  const putLocalAsset=async (id:string,blob:Blob)=>{local.set(id,blob);};
@@ -55,7 +60,7 @@ const inject=source.replace(/const DB_NAME[\s\S]*?const synchronized/,
 assert.notEqual(inject,source,"Test must isolate local IDB access");
 const api={};
 new Function("exports","require","Blob","local",ts.transpileModule(inject,{compilerOptions:target}).outputText)(
- api,()=>adapter,Blob,local
+ api,path=>path==="./selfhostApi"?selfhostAdapter:adapter,Blob,local
 );
 const pdf=new Blob(["A".repeat(1024)],{type:"application/pdf"});
 server.set("board/large-pdf",pdf);
@@ -101,5 +106,20 @@ await api.ensureBoardAssets("board",{items:many});
 assert.ok(peak>1&&peak<=6,`Storage HEAD concurrency must be bounded, got ${peak}`);
 assert.equal(calls.filter(([method,path])=>method==="download"&&path.startsWith("board/bulk-")).length,0);
 adapter.remoteAssetExists=originalHead;
+
+// Exercise the currently deployed backend as well: three views of the same
+// large PDF must share one transfer and subsequent reads use the local cache.
+api.setSelfhostBoardMode("native-board",true);
+server.set("native-board/pdf",pdf);
+const beforeNative=calls.length;
+await api.ensureBoardAssets("native-board",{items:[{kind:"pdf",assetId:"pdf"}]});
+assert.deepEqual(calls.slice(beforeNative),[["head","native-board/pdf"]]);
+await Promise.all(Array.from({length:3},()=>api.getAsset("pdf","native-board")));
+await api.getAsset("pdf","native-board");
+assert.deepEqual(calls.slice(beforeNative),[["head","native-board/pdf"],["download","native-board/pdf"]]);
+local.set("native-missing",pdf);
+adapter.remoteAssetExists=async()=>{throw new Error("HTTP 403")};
+await assert.rejects(api.ensureBoardAssets("native-board",{items:[{kind:"pdf",assetId:"native-missing"}]}),/HTTP 403/);
+assert.equal(server.has("native-board/native-missing"),false);
 
 console.log("Storage egress regression: HEAD, denied/missing/fallback and legacy migration passed.");

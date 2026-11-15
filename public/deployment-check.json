@@ -1,0 +1,6 @@
+{
+  "application": "lektrus",
+  "source": "github-actions",
+  "branch": "deploy/amvera-lektrus",
+  "marker": "lektrus-actions-deploy-check-2026-11-15"
+}

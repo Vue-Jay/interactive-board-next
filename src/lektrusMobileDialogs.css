@@ -46,6 +46,24 @@
 .auth-field input:focus{background:#fff;border-color:#6384d8;box-shadow:0 0 0 3px #5279d51e}
 .auth-submit{min-height:45px;background:#375dc1;border-radius:11px;box-shadow:none;font-size:14px}
 .auth-submit:hover{background:#2b50aa}
+.auth-text-action {
+  justify-self:center;
+  min-height:44px;
+  padding:8px 12px;
+  border:0;
+  border-radius:9px;
+  background:transparent;
+  color:#294fa4;
+  font:inherit;
+  font-size:13px;
+  font-weight:650;
+  cursor:pointer;
+}
+.auth-text-action:hover:not(:disabled){background:#eff4fe;text-decoration:underline}
+.auth-text-action:disabled{opacity:.55;cursor:default}
+.auth-forgot-password{margin-top:-7px}
+.auth-recovery-fields{display:grid;gap:13px}
+.auth-form h1[tabindex="-1"]:focus{outline:none}
 .auth-role-note {
   margin-top:16px;padding:10px 12px;border-radius:11px;
   border:1px solid #e6edf7;background:#f7f9fd;

@@ -1,5 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
+import { SELFHOST_BACKEND_ENABLED } from "./selfhostApi";
 
 export type BackendSession = {
   access_token: string;
@@ -13,9 +14,13 @@ export type BackendSession = {
   };
 };
 
+// Optional public hosting configuration. It is loaded by index.html before Vite modules.
+// Only anon/publishable client values may be supplied here, never a service_role key.
+declare global { interface Window { __LEKTRUS_PUBLIC_BACKEND__?: { url?:string; anonKey?:string } } }
+const runtimeBackendConfig=typeof window==="undefined"?undefined:window.__LEKTRUS_PUBLIC_BACKEND__;
 const NATIVE_BACKEND_KEY = "lektrus.native.supabase.config.v1";
-const buildBackendUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() || "";
-const buildBackendKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim() || "";
+const buildBackendUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() || runtimeBackendConfig?.url?.trim() || "";
+const buildBackendKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim() || runtimeBackendConfig?.anonKey?.trim() || "";
 const readNativeBackendConfig = (): { url: string; anonKey: string } | null => {
   if (!Capacitor.isNativePlatform()) return null;
   try {
@@ -28,11 +33,12 @@ const readNativeBackendConfig = (): { url: string; anonKey: string } | null => {
     return { url: address, anonKey: publishable };
   } catch { return null; }
 };
-const nativeBackendConfig = LEKTRUS_LOCAL_TEST_MODE ? null : readNativeBackendConfig();
-const url = (LEKTRUS_LOCAL_TEST_MODE ? "" : (buildBackendUrl || nativeBackendConfig?.url || "")).replace(/\/$/, "");
-const anonKey = LEKTRUS_LOCAL_TEST_MODE ? "" : buildBackendKey || nativeBackendConfig?.anonKey || "";
+const legacyBackendDisabled = LEKTRUS_LOCAL_TEST_MODE || SELFHOST_BACKEND_ENABLED;
+const nativeBackendConfig = legacyBackendDisabled ? null : readNativeBackendConfig();
+const url = (legacyBackendDisabled ? "" : (buildBackendUrl || nativeBackendConfig?.url || "")).replace(/\/$/, "");
+const anonKey = legacyBackendDisabled ? "" : buildBackendKey || nativeBackendConfig?.anonKey || "";
 
-export const nativeBackendIsBundled = () => !LEKTRUS_LOCAL_TEST_MODE && Boolean(buildBackendUrl && buildBackendKey);
+export const nativeBackendIsBundled = () => !legacyBackendDisabled && Boolean(buildBackendUrl && buildBackendKey);
 export const clearNativeBackendConnection = (): void => {
   if (!LEKTRUS_LOCAL_TEST_MODE && Capacitor.isNativePlatform()) localStorage.removeItem(NATIVE_BACKEND_KEY);
 };
@@ -105,10 +111,10 @@ const fetchReadWithRetry = async (input: RequestInfo | URL, init: RequestInit = 
 
 export const isRemoteBackendEnabled = () => !LEKTRUS_LOCAL_TEST_MODE && Boolean(url && anonKey);
 
-export const getCachedRemoteSession = (): BackendSession | null => LEKTRUS_LOCAL_TEST_MODE ? null : loadSession();
+export const getCachedRemoteSession = (): BackendSession | null => legacyBackendDisabled ? null : loadSession();
 
 export const isCachedRemoteSessionUsable = () => {
-  if (LEKTRUS_LOCAL_TEST_MODE) return false;
+  if (legacyBackendDisabled) return false;
   const session = loadSession();
   return Boolean(session && session.expires_at > Math.floor(Date.now() / 1000) + 30);
 };
@@ -174,11 +180,11 @@ const getEmailConfirmationRedirect = (): string | null => {
   return `${window.location.origin}/app?email_confirmation=1`;
 };
 
-export const signUpRemote = async (email: string, password: string, name: string, details:{firstName?:string;lastName?:string}={}) => {
+export const signUpRemote = async (email: string, password: string, name: string, details:{firstName?:string;lastName?:string;role:"teacher"|"student"} ) => {
   const response = await fetchWithTimeout(`${url}/auth/v1/signup${getEmailConfirmationRedirect() ? `?redirect_to=${encodeURIComponent(getEmailConfirmationRedirect()!)}` : ""}`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({ email, password, data: { display_name: name,full_name:name,first_name:details.firstName||"",last_name:details.lastName||"" } }),
+    body: JSON.stringify({ email, password, data: { display_name: name,full_name:name,first_name:details.firstName||"",last_name:details.lastName||"",registration_role:details.role } }),
   });
   if (!response.ok) throw new Error(await errorMessage(response));
   const data = await response.json();
@@ -270,7 +276,7 @@ const refreshRemoteSession = async (session: BackendSession): Promise<BackendSes
 };
 
 export const getRemoteSession = async (): Promise<BackendSession | null> => {
-  if (LEKTRUS_LOCAL_TEST_MODE) return null;
+  if (legacyBackendDisabled) return null;
   const session = loadSession();
   if (!session) return null;
 
@@ -281,7 +287,7 @@ export const getRemoteSession = async (): Promise<BackendSession | null> => {
 };
 
 export const signOutRemote = async () => {
-  if (LEKTRUS_LOCAL_TEST_MODE) return;
+  if (legacyBackendDisabled) return;
   const session = loadSession();
   saveSession(null);
   refreshInFlight = null;

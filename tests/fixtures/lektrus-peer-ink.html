@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Peer ink browser regression</title>
+<div id="root" style="width:1000px;height:700px;position:relative"></div>
+<script type="module">
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {flushSync} from 'react-dom';
+import {createRemoteInkStore} from '/src/boardLiveInk.ts';
+import {RemoteInkOverlay} from '/src/RemoteInkOverlay.tsx';
+import {createRemoteCursorStore} from '/src/boardRemoteCursors.ts';
+import {RemoteCursorOverlay,RemoteCursorCount} from '/src/RemoteCursorOverlay.tsx';
+
+const store=createRemoteInkStore();
+const cursorStore=createRemoteCursorStore();
+let cursorPublications=0;cursorStore.subscribe(()=>cursorPublications++);
+let parentRenders=0,publications=0;
+store.subscribe(()=>publications++);
+const root=createRoot(document.getElementById('root'));
+const empty=new Set();
+const parent=({x=30,y=40,zoom=2,persistedItemIds=empty})=>{
+  parentRenders++;
+  return React.createElement(React.Fragment,null,
+    React.createElement('div',{'data-board-content':true},'Board content'),
+    React.createElement(RemoteInkOverlay,{store,x,y,zoom,persistedItemIds}),
+    React.createElement(RemoteCursorOverlay,{store:cursorStore,x,y,zoom}),
+    React.createElement('div',{id:'cursor-count'},React.createElement(RemoteCursorCount,{store:cursorStore})));
+};
+const render=(props={})=>flushSync(()=>root.render(React.createElement(parent,props)));
+const nextFrame=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+const assert=(condition,message)=>{if(!condition)throw Error(message)};
+const packet=(id,offset,length,finished=false,kind='pen')=>({id,clientId:id,userId:id,kind,color:'#123456',weight:3,offset,finished,
+  points:Array.from({length},(_,i)=>({x:offset+i,y:offset+i}))});
+const paths=()=>[...document.querySelectorAll('.remote-live-ink-layer polyline')];
+
+try{
+  render();
+  const initialParentRenders=parentRenders;
+  let packets=0;
+  const start=performance.now();
+  for(let frame=0;frame<20;frame++){
+    for(let peer=0;peer<30;peer++){
+      const id=`peer-${peer}`,offset=frame*20;
+      for(const [start,final] of [[0,false],[10,false],[5,false],[15,frame===19]]){
+        store.push(packet(id,offset+start,5,final));packets++;
+      }
+    }
+    await nextFrame();
+    assert(paths().length===30,`Frame ${frame}: missing peer ink`);
+  }
+  const elapsedMs=performance.now()-start;
+  assert(parentRenders===initialParentRenders,'Live packets rerendered the parent board');
+  assert(publications===20,'Not exactly one publication per input frame');
+  assert(paths().every(path=>path.getAttribute('points').split(' ').length===400),'Stroke points lost');
+  assert([...store.getSnapshot().values()].every(ink=>ink.finished),'Completion lost');
+  const finalPath=paths()[0],coordinates=finalPath.getAttribute('points');
+  store.push(packet('peer-0',395,5,true));await nextFrame();
+  assert(publications===20,'Duplicate completion repainted');
+  store.push(packet('dot',0,1,true,'marker'));await nextFrame();
+  const dot=document.querySelector('.remote-live-ink-layer circle');
+  assert(dot.getAttribute('opacity')==='0.32','Marker transparency lost');
+  render({x:10,y:20,zoom:0.1});
+  assert(paths()[0]===finalPath&&finalPath.getAttribute('points')===coordinates,'Camera recreated stroke');
+  assert(Number(dot.getAttribute('r'))*0.1===0.5,'Single-point minimum screen radius lost');
+  assert(document.querySelector('.remote-live-ink-layer g').getAttribute('transform')==='translate(10 20) scale(0.1)','Camera transform incorrect');
+  render({persistedItemIds:new Set(['peer-0'])});
+  assert(paths().length===29&&!finalPath.isConnected,'Persisted stroke was drawn twice');
+  store.reset();await nextFrame();
+  assert(paths().length===0&&!dot.isConnected,'Board switch left preview geometry');
+  const cursorStart=parentRenders;
+  const cursor=(peer,x)=>({userId:`cursor-${peer}`,name:`Peer ${peer}`,role:'editor',x,y:x*2,updatedAt:0});
+  const cursors=()=>[...document.querySelectorAll('.remote-cursor')];
+  let cursorPackets=0;
+  for(let frame=0;frame<20;frame++){
+    for(let peer=0;peer<30;peer++)for(let n=0;n<4;n++){
+      cursorStore.push(cursor(peer,frame*4+n));cursorPackets++;
+    }
+    await nextFrame();
+    assert(cursors().length===30,'Missing remote cursor');
+  }
+  assert(parentRenders===cursorStart,'Cursor activity rerendered board');
+  assert(cursorPublications===20,'Cursor activity published more than once per frame');
+  assert(document.querySelector('#cursor-count').textContent==='30','Cursor diagnostics mismatch');
+  const firstCursor=cursors()[0];
+  assert(firstCursor.style.transform==='translate(188px, 356px)','Latest cursor position incorrect');
+  cursorStore.push(cursor(0,79));await nextFrame();
+  assert(cursorPublications===20,'Stationary cursor repainted');
+  render({x:10,y:20,zoom:1});
+  assert(cursors()[0]===firstCursor&&firstCursor.style.transform==='translate(89px, 178px)','Cursor camera position or identity incorrect');
+  cursorStore.retainOnline(new Set(['cursor-0']));await nextFrame();
+  assert(cursors().length===1&&document.querySelector('#cursor-count').textContent==='1','Offline cursor not retired');
+  cursorStore.reset();await nextFrame();assert(cursors().length===0,'Cursor remains after board reset');
+  root.unmount();
+  window.result={packets,publicationsBeforeChecks:20,parentRendersDuringInk:0,elapsedMs:Math.round(elapsedMs),pointsPerPeer:400,
+    cursorPackets,cursorFramePublications:20,parentRendersDuringCursors:0};
+}catch(error){window.result={error:String(error.stack||error)}}
+</script></html>

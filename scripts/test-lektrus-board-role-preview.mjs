@@ -241,6 +241,12 @@ assert.match(app,/if\(!canManageBoard\|\|boardSummary.ownerId!==authUser.id\)ret
  "only actual board owner can change the subject");
 assert.match(app,/if\(!canCreateAssignments\)\{setNotice\("Создавать задания может только преподаватель/,
  "students cannot generate assignments");
+for(const trigger of ["lektrus-mobile-subject-trigger","lektrus-desktop-subject-trigger"]){
+ assert.match(app,new RegExp('\\{canCreateAssignments&&<button[^\\n]*'+trigger),
+  "only editable teachers see the subject tools trigger: "+trigger);
+}
+assert.match(app,/\{canCreateAssignments&&subjectToolsOpen&&<LektrusSubjectToolsPanel/,
+ "a role change cannot leave the subject tools panel available to students");
 assert.match(app,/if \(!canEdit\) \{ setNotice\("У вас доступ только для просмотра"\); return; \}/,
  "write guard remains at board commit");
 assert.match(app,/end\(true\);setEditing\(null\);/,

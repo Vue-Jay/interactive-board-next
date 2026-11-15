@@ -1,0 +1,224 @@
+name: Self-hosted Lektrus API
+
+on:
+  push:
+    branches:
+      - main
+      - migration/self-hosted-backend-20261114
+      - deploy/amvera-lektrus
+  pull_request:
+    branches:
+      - main
+      - deploy/amvera-lektrus
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  core-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_USER: lektrus
+          POSTGRES_PASSWORD: test-password-only
+          POSTGRES_DB: lektrus
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lektrus -d lektrus"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://lektrus:test-password-only@127.0.0.1:5432/lektrus
+      LEKTRUS_ALLOWED_ORIGINS: https://lektrus.example
+      LEKTRUS_JWT_SECRET: CI-only-not-for-production-random-string-1234567890
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: server/requirements-test.txt
+      - name: Install API dependencies
+        run: python -m pip install --disable-pip-version-check -r server/requirements-test.txt
+      - name: Compile source
+        run: python -m compileall -q server/app.py server/materials.py server/notifications.py server/organization.py server/direct_chats.py server/share_links.py server/pilot_objects.py server/pilot_operations.py server/realtime_events.py server/assets.py server/invitations.py server/registration.py server/education.py server/admin.py server/comments.py server/test_admin.py server/test_registration.py server/test_comments.py server/test_pilot_objects.py server/test_api.py server/test_assets.py server/test_invitations.py server/test_education.py server/test_realtime_permissions.py server/test_live_frames.py server/test_ws_e2e.py
+      - name: Integration tests against disposable PostgreSQL
+        run: python -m pytest -q -rP server/test_document_delta.py server/test_api.py server/test_assets.py server/test_invitations.py server/test_registration.py server/test_admin.py server/test_comments.py server/test_education.py server/test_pilot_objects.py server/test_pilot_operations.py server/test_live_frames.py server/test_realtime_permissions.py server/test_ws_e2e.py server/test_guest_history_visits.py
+      - name: Build minimal production image
+        run: docker build -f server/Dockerfile -t lektrus-selfhost-api:ci server
+      - name: Boot actual API container and test private disk permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm -d --name lektrus-selfhost-smoke --network host \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e LEKTRUS_ALLOWED_ORIGINS="$LEKTRUS_ALLOWED_ORIGINS" \
+            -e LEKTRUS_JWT_SECRET="$LEKTRUS_JWT_SECRET" \
+            -e LEKTRUS_ASSETS_DIR=/srv/lektrus-assets \
+            lektrus-selfhost-api:ci
+          trap 'docker rm -f lektrus-selfhost-smoke >/dev/null 2>&1 || true' EXIT
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8000/api/v1/health | grep -q '"ok":true'; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8000/api/v1/health | grep -q '"ok":true'
+          docker exec lektrus-selfhost-smoke python -c 'from pathlib import Path; p=Path("/srv/lektrus-assets/.probe"); p.write_bytes(b"ok"); assert p.read_bytes()==b"ok"; p.unlink()'
+      - name: Build and boot the complete VPS stack with an empty database
+        env:
+          LEKTRUS_DOMAIN: http://lektrus.example
+          LEKTRUS_SITE_ORIGIN: https://lektrus.example
+          POSTGRES_PASSWORD: ci-only-password
+          LEKTRUS_JWT_SECRET: ci-only-secret-not-for-production-1234567890
+        run: |
+          set -euo pipefail
+          compose=(docker compose -f deploy/selfhost/compose.yaml)
+          trap '"${compose[@]}" logs; "${compose[@]}" down -v' EXIT
+          "${compose[@]}" config -q
+          "${compose[@]}" up --build --wait --wait-timeout 120
+          curl --retry 10 --retry-connrefused --retry-delay 1 -fsS -H 'Host: lektrus.example' http://127.0.0.1/app | grep -q '/assets/'
+          curl -fsS -H 'Host: lektrus.example' http://127.0.0.1/api/v1/health | grep -q '"ok":true'
+          "${compose[@]}" exec -T db psql -U lektrus -d lektrus -Atc \
+            "SELECT filename FROM lektrus_schema_versions ORDER BY filename DESC LIMIT 1;" | grep -q '^021_feedback_mail.sql$'
+
+      - name: Verify the Amvera image with PostgreSQL and a persisted disk
+        if: github.ref_name == 'main' || github.base_ref == 'main' || github.ref_name == 'deploy/amvera-lektrus' || github.base_ref == 'deploy/amvera-lektrus'
+        env:
+          LEKTRUS_APPLY_SCHEMA: 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build -f deploy/amvera/Dockerfile -t lektrus-amvera:ci .
+          docker volume create lektrus-amvera-ci
+          trap 'docker logs lektrus-amvera-ci || true; docker rm -f lektrus-amvera-ci || true; docker volume rm lektrus-amvera-ci' EXIT
+          start_app() {
+            docker run -d --name lektrus-amvera-ci --network host -v lektrus-amvera-ci:/data \
+              -e DATABASE_URL -e LEKTRUS_ALLOWED_ORIGINS -e LEKTRUS_JWT_SECRET \
+              -e LEKTRUS_APPLY_SCHEMA lektrus-amvera:ci
+            curl --retry 12 --retry-all-errors --retry-delay 1 -fsS \
+              http://127.0.0.1:8080/api/v1/health | grep -q '"ok":true'
+          }
+          start_app
+          curl -fsS http://127.0.0.1:8080/app | grep -q '/assets/'
+          # Amvera forwards the public Host to Caddy. Do not redirect the
+          # platform health probe, the canonical domain, or existing API clients.
+          curl -fsS -H 'Host: lektrus.ru' http://127.0.0.1:8080/app | grep -q '/assets/'
+          for host in www.lektrus.ru lectrus.ru www.lectrus.ru lektrus-vuejay.msk1.amvera.tech; do
+            for path in / /app '/join/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?source=invite' '/board/00000000-0000-4000-8000-000000000004?tab=1' '/confirm-email?token=example' '/tools/laboratory'; do
+              test "$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' -H "Host: $host" "http://127.0.0.1:8080$path")" = "308 https://lektrus.ru$path"
+            done
+            curl -fsS -H "Host: $host" http://127.0.0.1:8080/api/v1/health | grep -q '"ok":true'
+            curl -fsS -H "Host: $host" http://127.0.0.1:8080/sw.js | grep -q 'lektrus-shell-'
+          done
+          python - <<'PY'
+          import asyncio
+          import websockets
+
+          async def check_proxy():
+              async with websockets.connect(
+                  "ws://127.0.0.1:8080/api/v1/boards/00000000-0000-4000-8000-000000000004/events",
+                  origin="https://lektrus.example",
+              ) as connection:
+                  await connection.send('{"type":"auth","token":"invalid"}')
+                  await asyncio.wait_for(connection.wait_closed(), 5)
+                  assert connection.close_code == 4401
+
+          asyncio.run(check_proxy())
+          PY
+          docker exec -u 10001 lektrus-amvera-ci sh -c 'printf persisted >/data/assets/probe'
+          docker stop lektrus-amvera-ci
+          docker rm lektrus-amvera-ci
+          start_app
+          docker exec -u 10001 lektrus-amvera-ci cat /data/assets/probe | grep -qx persisted
+          test "$(curl -so /dev/null -w '%{http_code}' http://127.0.0.1:8080/assets/probe)" = 404
+
+
+
+  # The main branch webhook performs automatic deployment. This optional manual
+  # fallback must never race it or deploy from the former production branch.
+  # Runs only after the complete self-hosted API/Amvera image smoke test passes.
+  # The frontend workflow is also required to pass for the identical commit.
+  # Uses GitHub encrypted Actions secrets, never a token pasted into the repo.
+  deploy-amvera:
+    name: Deploy validated Lektrus to existing Amvera app
+    if: github.event_name == 'workflow_dispatch' && github.ref_name == 'main'
+    needs: core-api
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: lektrus-amvera-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify frontend tests passed for the same commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(git rev-parse HEAD)"
+          for attempt in $(seq 1 48); do
+            result="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=50" \
+              --jq '.workflow_runs[] | select(.head_sha == "'"$expected"'" and .name == "Lektrus self-hosted main application") | (.conclusion // "pending")' | head -n 1)"
+            case "$result" in
+              success) echo "Frontend CI passed for $expected"; exit 0 ;;
+              failure|cancelled|timed_out|action_required|skipped)
+                echo "::error::Frontend CI did not pass: $result"
+                exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "::error::Frontend workflow did not finish successfully for $expected"
+          exit 1
+
+      - name: Skip outdated commit before deployment
+        id: freshness
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(git rev-parse HEAD)"
+          current="$(git ls-remote origin refs/heads/main | cut -f1)"
+          if [[ "$current" != "$expected" ]]; then
+            echo "A newer branch head exists. Skip superseded deploy $expected"
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push production branch to Amvera via Git
+        if: steps.freshness.outputs.current == 'true'
+        env:
+          AMVERA_USERNAME: vuejay
+          AMVERA_PASSWORD: ${{ secrets.AMVERA_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$AMVERA_PASSWORD" ]]; then
+            echo "::error::Set repository Actions secret AMVERA_PASSWORD first"
+            exit 1
+          fi
+          # The secret is never embedded in the URL, arguments, code or logs.
+          askpass="$RUNNER_TEMP/amvera-git-askpass"
+          cat > "$askpass" <<'SCRIPT'
+          #!/usr/bin/env bash
+          case "$1" in
+            *Username*) printf '%s\n' "$AMVERA_USERNAME" ;;
+            *Password*) printf '%s\n' "$AMVERA_PASSWORD" ;;
+            *) exit 1 ;;
+          esac
+          SCRIPT
+          chmod 700 "$askpass"
+          trap 'rm -f "$askpass"' EXIT
+          export GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0
+          git -c credential.helper= push \
+            https://git.msk1.amvera.ru/vuejay/lektrus/ \
+            HEAD:refs/heads/master

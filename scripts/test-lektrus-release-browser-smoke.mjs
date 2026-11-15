@@ -16,6 +16,8 @@ const chromePath=process.env.CHROME_PATH||[
  "/usr/bin/google-chrome","/usr/bin/chromium","/usr/bin/chromium-browser"
 ].find(existsSync);
 assert.ok(chromePath,"Chrome required for integrated release browser smoke");
+const homeOnly=process.argv.includes("--home-only");
+if(homeOnly)process.env.VITE_LEKTRUS_LOCAL_TEST="true";
 const server=await createServer({configFile:"./vite.config.ts",
  server:{host:"127.0.0.1",port:0,strictPort:false}});
 let profile,chrome,socket;
@@ -23,7 +25,8 @@ const log=[];
 try{
  await server.listen();
  const port=server.httpServer.address().port;
- const url=`http://127.0.0.1:${port}/demo/board?scene=math&capture=1`;
+ const route=homeOnly?"/app":"/demo/board?scene=math&capture=1";
+ const url=`http://127.0.0.1:${port}${route}`;
  const portServer=net.createServer();
  await new Promise((resolve,reject)=>portServer.once("error",reject).listen(0,"127.0.0.1",resolve));
  const debugPort=portServer.address().port;
@@ -40,7 +43,7 @@ try{
  for(let i=0;i<280&&!page;i++){
   try{
    const targets=await fetch(`http://127.0.0.1:${debugPort}/json/list`).then(r=>r.json());
-   page=targets.find(target=>target.type==="page"&&target.url.includes("/demo/board"));
+   page=targets.find(target=>target.type==="page"&&target.url.startsWith(url));
   }catch{}
   if(!page)await delay(150);
  }
@@ -107,6 +110,39 @@ try{
  await call("Runtime.enable");
  await call("Page.enable");
 
+ if(homeOnly){
+  await wait('!!document.querySelector(".lektrus-calendar-grid")',"Home did not render",30000);
+  const snapshot=()=>evaluate(`(() => {
+   const box=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,right:r.right,bottom:r.bottom}};
+   const one=s=>document.querySelector(s), all=s=>[...document.querySelectorAll(s)];
+   const hub=one('.lectris-hub'),calendar=one('.lektrus-calendar-panel'),aside=one('.lectris-hub-aside');
+   const intersect=(a,b)=>Math.max(0,Math.min(a.right,b.right)-Math.max(a.x,b.x))*Math.max(0,Math.min(a.bottom,b.bottom)-Math.max(a.y,b.y));
+   const checks=['.lektrus-calendar-head h2','.lektrus-calendar-head>button','.lektrus-calendar-toolbar>strong','.lektrus-calendar-toolbar button','.lektrus-calendar-grid button','.lektrus-calendar-day-heading strong','.lektrus-calendar-day-heading span'];
+   const elements=checks.flatMap(s=>all(s));
+   const cb=box(calendar); const bounds=elements.map(box);
+   return {hub:box(hub),calendar:cb,aside:box(aside),tiles:all('.lectris-hub-tile').map(box),
+    outside:bounds.filter(b=>b.x<cb.x-1||b.right>cb.right+1||b.y<cb.y-1||b.bottom>cb.bottom+1),
+    overlap:bounds.flatMap((a,i)=>bounds.slice(i+1).filter(b=>intersect(a,b)>1)),
+    scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth,
+    columns: getComputedStyle(one('.lectris-hub-columns')).gridTemplateColumns};
+  })()`);
+  for(const [width,height] of [[1440,900],[1100,850],[960,900],[860,760],[740,850],[390,844],[320,640],[960,900]]){
+   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
+   await delay(220);
+   const s=await snapshot();
+   assert.ok(s.calendar.w>=s.aside.w-2,`Calendar uses only part of aside at ${width}: ${JSON.stringify(s)}`);
+   assert.ok(s.outside.length===0&&s.overlap.length===0,`Calendar controls collide at ${width}: ${JSON.stringify(s)}`);
+   assert.ok(s.scrollWidth<=s.viewport+1,`Horizontal page overflow at ${width}`);
+   if(s.hub.w<=740)assert.equal(s.columns.split(' ').length,1,`Narrow workspace must stack: ${width}`);
+   console.log(`✓ Home ${width}×${height}, content ${Math.round(s.hub.w)}px, calendar ${Math.round(s.calendar.w)}px: no overflow/overlap`);
+  }
+  await click('.lectris-collapse-button');
+  await delay(250);
+  const collapsed=await snapshot();
+  assert.ok(!collapsed.outside.length&&!collapsed.overlap.length,'Collapsed sidebar: calendar overlap');
+  console.log('✓ Home sidebar collapse: no overlap');
+ }else{
+
  // Initial lesson must actually render the board with math, text and table objects.
  await wait('document.querySelectorAll(".board-object[data-object]").length>=8',
   "Mathematics demo did not render its objects");
@@ -115,6 +151,105 @@ try{
    "Board lost "+type+" objects");
  console.log("✓ Demo board: math lessons and five object types rendered");
 
+ // A fresh profile zooms with the wheel; the alternate mode and reset must
+ // work immediately, and the selected mode is kept across reloads.
+ const openControls=async()=>{
+  await wait('!!document.querySelector(".lectris-layout-picker summary")',"Board settings menu not ready");
+  await click('.lectris-layout-picker summary');
+  await click('.lectris-interface-settings-entry');
+  await wait('!!document.querySelector(".lektrus-control-settings")',"Control settings did not open");
+ };
+ const modes=()=>evaluate(`[...document.querySelectorAll('.lektrus-controls-modes button')].map(b=>({label:b.querySelector('b').textContent.slice(2),active:b.getAttribute('aria-pressed')==='true'}))`);
+ const closeControls=()=>click('.lektrus-control-settings footer button.primary');
+ const wheel=async(modifiers=0)=>{
+  const b=await rect('section.board');
+  await call('Input.dispatchMouseEvent',{type:'mouseWheel',x:b.x,y:b.y,deltaX:0,deltaY:-120,modifiers});
+  await delay(250);
+ };
+ const zoomLabel=()=>evaluate("document.querySelector('.zoom-value').textContent.trim()");
+ await openControls();
+ assert.deepEqual(await modes(),[{label:'Масштаб',active:true},{label:'Прокрутка',active:false}]);
+ await closeControls();
+ await click('.zoom-value');
+ await wheel();
+ assert.notEqual(await zoomLabel(),'100%','Default wheel must zoom');
+ await click('.zoom-value');
+ await wheel(2);
+ assert.equal(await zoomLabel(),'100%','Ctrl + wheel in zoom mode must pan');
+ await openControls();
+ await click('.lektrus-controls-modes button:nth-child(2)');
+ await closeControls();
+ // Page.reload can resolve before the previous document is replaced. Do not
+ // accept its already-rendered objects as proof of a completed reload.
+ const reloaded=new Promise((resolve,reject)=>{
+  const listener=event=>{
+   if(JSON.parse(event.data).method!=="Page.loadEventFired")return;
+   clearTimeout(timer);socket.removeEventListener("message",listener);resolve();
+  };
+  const timer=setTimeout(()=>{socket.removeEventListener("message",listener);reject(new Error("Reload did not finish"))},30000);
+  socket.addEventListener("message",listener);
+ });
+ await call('Page.reload');
+ await reloaded;
+ await wait('document.querySelectorAll(".board-object[data-object]").length>=8','Board did not reload');
+ await openControls();
+ assert.equal((await modes())[1].active,true,'Explicit scroll preference must survive reload');
+ await closeControls();
+ await click('.zoom-value');
+ await wheel();
+ assert.equal(await zoomLabel(),'100%','Scroll mode must preserve zoom');
+ await wheel(2);
+ assert.notEqual(await zoomLabel(),'100%','Ctrl + wheel must zoom in scroll mode');
+ await openControls();
+ await click('.lektrus-control-settings footer button:first-child');
+ assert.equal((await modes())[0].active,true,'Reset must choose zoom mode');
+ await closeControls();
+ await click('.zoom-value');
+ console.log('✓ Wheel modes: zoom first/default, Ctrl reverses action, persistence and reset');
+
+ // The narrow split-screen viewport used to stretch a notice from top to bottom.
+ // Repeated messages must restart their own three-second lifetime.
+ await call("Emulation.setDeviceMetricsOverride",{width:960,height:850,deviceScaleFactor:1,mobile:false});
+ const key=async(code,ctrlKey=false)=>evaluate(`window.dispatchEvent(new KeyboardEvent("keydown",{code:${JSON.stringify(code)},ctrlKey:${ctrlKey},bubbles:true,cancelable:true}))`);
+ await key("KeyA",true);
+ await wait('document.querySelectorAll(".board-object.selected").length>0',"Select all for notice regression");
+ await key("KeyC",true);
+ const noticeSelector=".board-system-notice";
+ await wait(`document.querySelector('${noticeSelector}')?.textContent.includes('Скопировано объектов')`,"Copy notice did not appear");
+ const compactNotice=await evaluate(`(() => {const el=document.querySelector('${noticeSelector}');const r=el.getBoundingClientRect();return {height:r.height,width:r.width,top:getComputedStyle(el).top,bottom:getComputedStyle(el).bottom}})()`);
+ assert.ok(compactNotice.height<100&&compactNotice.width<=380,JSON.stringify(compactNotice));
+ await evaluate(`(() => {window.firstNotice=document.querySelector('${noticeSelector}');return true})()`);
+ await delay(1700);
+ await key("KeyC",true);
+ await wait(`document.querySelector('${noticeSelector}')!==window.firstNotice&&!!document.querySelector('${noticeSelector}')`,"Identical new notice did not restart its lifetime");
+ await delay(1500);
+ assert.ok(await evaluate(`!!document.querySelector('${noticeSelector}')`),"Previous timer removed the replacement notice");
+ await wait(`(() => {const e=document.querySelector('${noticeSelector}');return e&&Number(getComputedStyle(e).opacity)<1&&Number(getComputedStyle(e).opacity)>0})()`,"Notice did not fade",2000);
+ await wait(`!document.querySelector('${noticeSelector}')`,"Notice did not auto-dismiss",1000);
+ await key("KeyC",true);
+ await wait(`!!document.querySelector('${noticeSelector}')`,"Notice did not reappear");
+ await click(`${noticeSelector} button`);
+ await wait(`!document.querySelector('${noticeSelector}')`,"Manual close failed");
+ await key("Escape");
+ // Selection must stay in camera coordinates even after native focus tries
+ // to scroll a deeply positioned object into view. The open layer dock must
+ // remain above the canvas and be excluded from Fit Selection.
+ await click('.topbar-more-trigger');
+ await evaluate(`[...document.querySelectorAll('.topbar-more-menu button')].find(b=>b.textContent.includes('Слои и объекты'))?.click()`);
+ await wait('!!document.querySelector(".layers-panel")',"Layers panel did not open");
+ await click('.layer-main:has(.layer-kind-graph)');
+ await click('button[aria-label="Приблизить выделение"]');
+ await wait(`(() => {const e=document.querySelector('.screen-transform-overlay'),p=document.querySelector('.layers-panel'),b=document.querySelector('.board');if(!e||!p||!b)return false;const a=e.getBoundingClientRect(),d=p.getBoundingClientRect(),c=b.getBoundingClientRect();return a.right<d.left&&a.top>=c.top+57;})()`,"Selection overlaps the layers dock or upper toolbar");
+ const cameraScroll=await evaluate(`(() => {const b=document.querySelector('.board');b.scrollTop=94;b.scrollLeft=90;return {x:b.scrollLeft,y:b.scrollTop,isolated:getComputedStyle(b).isolation};})()`);
+ assert.deepEqual(cameraScroll,{x:0,y:0,isolated:'isolate'},"Native scroll must not shift board selection or cover application chrome");
+ await click('button[aria-label="Закрыть слои"]');
+ await key("Escape");
+ await click('.zoom-value');
+ console.log("✓ Board camera: selection fits visible dock area, native focus cannot scroll the canvas");
+ await call("Emulation.clearDeviceMetricsOverride");
+ console.log("✓ Board notice: compact at 960px, repeated timer restarts, fades after three seconds, manual close");
+
+ if(!process.argv.includes("--notice-only")){
  // The parser must inspect the document's real page tree, not merely allow
  // navigation up to an arbitrary maximum. Exercise the bundled worker.
  const pdfCounts=await evaluate(`(async()=>{
@@ -361,6 +496,8 @@ try{
  await wait('!!document.querySelector(\'.board-object .lektrus-data-chart[aria-label*="-10"]\')',"Negative chart data lost on save");
  console.log("✓ Chart: negative values preserved, pie validation and actual line chart save");
  console.log("Lektrus release smoke passed: actual browser interactions and curated subjects.");
+ }
+ }
 }finally{
  if(socket&&socket.readyState===WebSocket.OPEN)socket.close();
  if(chrome){chrome.kill();await delay(120)}
