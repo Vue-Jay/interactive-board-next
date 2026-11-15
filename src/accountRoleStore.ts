@@ -1,5 +1,10 @@
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import { getCachedRemoteSession, isRemoteBackendEnabled,remoteRequest } from "./backend";
+import {
+ getCachedSelfhostSession,isSelfhostBackendEnabled,selfhostMe,
+ selfhostRequestTeacherAccess,selfhostSetStudentRole,selfhostAdminUsers,
+ selfhostAdminTeacherRequests,selfhostReviewTeacherRequest,selfhostAdminSetSubscription,selfhostAdminDeleteUser,
+} from "./selfhostApi";
 export type AccountRole="teacher"|"student";
 export type TeacherStatus="none"|"pending"|"approved"|"rejected";
 export type SubscriptionPlan="free"|"teacher"|"pro";
@@ -10,43 +15,157 @@ export type AdminUser={userId:string;name:string;email:string;role:AccountRole;t
 
 const KEY="onlinerepetitor.account-role.v81",CACHE_MS=30_000;
 const PERSISTENT_CACHE_PREFIX="onlinerepetitor.account-access.v244.";
-let cache:{at:number;value:AccountAccess}|null=null;
-let inFlight:Promise<AccountAccess>|null=null;
+// Cache and active requests must belong to one remote user. Logout or a role
+// mutation invalidates pending responses, even if the same user signs in again.
+let cache:{userId:string;at:number;value:AccountAccess}|null=null;
+let inFlight:{userId:string;promise:Promise<AccountAccess>}|null=null;
+let cacheGeneration=0;
 const plan=(x:any):SubscriptionPlan=>x==="pro"?"pro":x==="teacher"||x==="basic"?"teacher":"free";
-const localAccess=():AccountAccess=>({role:LEKTRUS_LOCAL_TEST_MODE?"teacher":localStorage.getItem(KEY)==="student"?"student":"teacher",teacherStatus:"approved",isAdmin:false,requestedAt:null,reviewedAt:null,subscriptionPlan:"free",subscriptionUntil:null});
+const LOCAL_ROLE_PREFIX="lektrus.local-account-role.v1.";
+const currentLocalUserId=():string=>{
+ try { return String(JSON.parse(localStorage.getItem("lesson-board.auth.session.v1")||"{}")?.userId||""); }
+ catch { return ""; }
+};
+const localAccess=():AccountAccess=>{
+ const id=currentLocalUserId();
+ const stored=id?localStorage.getItem(LOCAL_ROLE_PREFIX+id):null;
+ const role:AccountRole=LEKTRUS_LOCAL_TEST_MODE?"teacher":stored==="teacher"||stored==="student"?stored:localStorage.getItem(KEY)==="student"?"student":"teacher";
+ return {role,teacherStatus:role==="teacher"?"approved":"none",isAdmin:false,requestedAt:null,reviewedAt:null,subscriptionPlan:"free",subscriptionUntil:null};
+};
+export const setLocalAccountRole=(userId:string,role:AccountRole):void=>{
+ if(!userId||!["teacher","student"].includes(role))throw new Error("Некорректная роль пользователя");
+ localStorage.setItem(LOCAL_ROLE_PREFIX+userId,role);
+ clearAccountAccessCache();
+};
 const mapAccess=(x:any):AccountAccess=>({role:x?.role==="teacher"?"teacher":"student",teacherStatus:["pending","approved","rejected"].includes(x?.teacher_status)?x.teacher_status:"none",isAdmin:!!x?.is_admin,requestedAt:x?.requested_at??null,reviewedAt:x?.reviewed_at??null,subscriptionPlan:plan(x?.subscription_plan),subscriptionUntil:x?.subscription_until??null});
-const currentRemoteUserId=()=>getCachedRemoteSession()?.user?.id||"";
-const cacheKey=()=>`${PERSISTENT_CACHE_PREFIX}${currentRemoteUserId()}`;
-const savePersistent=(value:AccountAccess)=>{const id=currentRemoteUserId();if(!id)return;try{localStorage.setItem(cacheKey(),JSON.stringify({at:Date.now(),value}))}catch{/* Storage can be unavailable in private mode. */}};
+const currentRemoteUserId=()=>isSelfhostBackendEnabled()
+ ? getCachedSelfhostSession()?.user?.id||""
+ : getCachedRemoteSession()?.user?.id||"";
+const selfhostAccess=():AccountAccess|null=>{
+ const user=getCachedSelfhostSession()?.user;
+ if(!user)return null;
+ return mapAccess({role:user.account_role,teacher_status:user.teacher_status,is_admin:user.is_admin,
+  requested_at:user.requested_at,reviewed_at:user.reviewed_at,
+  subscription_plan:user.subscription_plan,subscription_until:user.subscription_until});
+};
+const cacheKey=(id:string)=>`${PERSISTENT_CACHE_PREFIX}${id}`;
+const savePersistent=(id:string,value:AccountAccess,at:number)=>{
+ if(!id)return;
+ try{localStorage.setItem(cacheKey(id),JSON.stringify({at,value}))}
+ catch{/* Storage can be unavailable in private mode. */}
+};
 export const getCachedAccountAccess=():AccountAccess|null=>{
+ if(isSelfhostBackendEnabled())return selfhostAccess();
  if(!isRemoteBackendEnabled())return localAccess();
- if(cache)return cache.value;
- const id=currentRemoteUserId();if(!id)return null;
+ const id=currentRemoteUserId();
+ if(!id)return null;
+ if(cache?.userId===id)return cache.value;
  try{
-  const raw=localStorage.getItem(cacheKey());if(!raw)return null;
+  const raw=localStorage.getItem(cacheKey(id));if(!raw)return null;
   const parsed=JSON.parse(raw);const value=parsed?.value;
   if(!value||!(value.role==="teacher"||value.role==="student"))return null;
   const normalized:AccountAccess={role:value.role,teacherStatus:["none","pending","approved","rejected"].includes(value.teacherStatus)?value.teacherStatus:"none",isAdmin:!!value.isAdmin,requestedAt:value.requestedAt??null,reviewedAt:value.reviewedAt??null,subscriptionPlan:plan(value.subscriptionPlan),subscriptionUntil:value.subscriptionUntil??null};
-  cache={at:Number(parsed?.at)||0,value:normalized};return normalized;
+  cache={userId:id,at:Number(parsed?.at)||0,value:normalized};
+  return normalized;
  }catch{return null}
 };
-const remember=(v:AccountAccess)=>{cache={at:Date.now(),value:v};savePersistent(v);return v};
-export function clearAccountAccessCache(){cache=null}
+const remember=(userId:string,value:AccountAccess,generation=cacheGeneration)=>{
+ // Never store a late response under the ID of a different logged-in account.
+ if(!userId||currentRemoteUserId()!==userId||generation!==cacheGeneration)return value;
+ const at=Date.now();
+ cache={userId,at,value};
+ savePersistent(userId,value,at);
+ return value;
+};
+export function clearAccountAccessCache(){
+ // A role change must invalidate both memory and the persisted snapshot.
+ // Otherwise the next lookup reads a fresh-looking but obsolete access level.
+ const userId=currentRemoteUserId();
+ if(userId){
+  try{localStorage.removeItem(cacheKey(userId))}
+  catch{/* Storage can be unavailable in private mode. */}
+ }
+ cache=null;
+ inFlight=null;
+ cacheGeneration++;
+}
 export async function getAccountAccess():Promise<AccountAccess>{
+ if(isSelfhostBackendEnabled()){
+  const user=await selfhostMe();
+  return mapAccess({role:user.account_role,teacher_status:user.teacher_status,is_admin:user.is_admin,
+   requested_at:user.requested_at,reviewed_at:user.reviewed_at,
+   subscription_plan:user.subscription_plan,subscription_until:user.subscription_until});
+ }
  if(!isRemoteBackendEnabled())return localAccess();
+ const userId=currentRemoteUserId();
+ if(!userId)throw new Error("Для получения роли требуется авторизация.");
  const stale=getCachedAccountAccess();
- if(cache&&Date.now()-cache.at<CACHE_MS)return cache.value;
- if(inFlight)return inFlight;
- inFlight=(async()=>remember(mapAccess(await remoteRequest("/rest/v1/rpc/get_my_account_access",{method:"POST",body:"{}"}))))().finally(()=>{inFlight=null});
- try{return await inFlight}catch(error){if(stale)return stale;throw error}
+ if(cache?.userId===userId&&Date.now()-cache.at<CACHE_MS)return cache.value;
+ if(inFlight?.userId===userId)return inFlight.promise;
+ const generation=cacheGeneration;
+ const pending=(async()=>{
+  const value=mapAccess(await remoteRequest("/rest/v1/rpc/get_my_account_access",{method:"POST",body:"{}"}));
+  if(currentRemoteUserId()!==userId||generation!==cacheGeneration){
+   throw new Error("Аккаунт изменился. Данные доступа нужно обновить.");
+  }
+  return remember(userId,value,generation);
+ })();
+ inFlight={userId,promise:pending};
+ try{return await pending}
+ catch(error){
+  if(stale&&currentRemoteUserId()===userId&&generation===cacheGeneration)return stale;
+  throw error;
+ }finally{
+  if(inFlight?.promise===pending)inFlight=null;
+ }
 }
 export async function getAccountRole():Promise<AccountRole>{return (await getAccountAccess()).role}
 export async function requestTeacherAccess(application:TeacherApplication):Promise<AccountAccess>{
- if(!isRemoteBackendEnabled()){localStorage.setItem("onlinerepetitor.teacher-application.v1",JSON.stringify(application));localStorage.setItem(KEY,"teacher");return localAccess()}
- clearAccountAccessCache();return remember(mapAccess(await remoteRequest("/rest/v1/rpc/request_teacher_access",{method:"POST",body:JSON.stringify({p_application:application})})))
+ if(isSelfhostBackendEnabled()){
+  clearAccountAccessCache();
+  return mapAccess(await selfhostRequestTeacherAccess(application));
+ }
+ if(!isRemoteBackendEnabled()){
+  localStorage.setItem("onlinerepetitor.teacher-application.v1",JSON.stringify(application));
+  localStorage.setItem(KEY,"teacher");
+  const id=currentLocalUserId();
+  if(id)setLocalAccountRole(id,"teacher");
+  return localAccess();
+ }
+ clearAccountAccessCache();
+ const userId=currentRemoteUserId();
+ const generation=cacheGeneration;
+ const result=mapAccess(await remoteRequest("/rest/v1/rpc/request_teacher_access",{method:"POST",body:JSON.stringify({p_application:application})}));
+ if(!userId||currentRemoteUserId()!==userId||generation!==cacheGeneration){
+  throw new Error("Аккаунт изменился. Данные доступа нужно обновить.");
+ }
+ return remember(userId,result,generation);
 }
-export async function setStudentRole():Promise<AccountAccess>{localStorage.setItem(KEY,"student");clearAccountAccessCache();if(!isRemoteBackendEnabled())return localAccess();await remoteRequest("/rest/v1/rpc/set_my_account_role",{method:"POST",body:JSON.stringify({p_role:"student"})});return getAccountAccess()}
-export async function listTeacherRequests():Promise<TeacherRequest[]>{const x=await remoteRequest<any[]>("/rest/v1/rpc/list_teacher_requests",{method:"POST",body:"{}"});return(Array.isArray(x)?x:[]).map(v=>({userId:v.user_id,name:v.name||"Пользователь",email:v.email||"",status:v.status,requestedAt:v.requested_at??null,reviewedAt:v.reviewed_at??null,application:v.application&&typeof v.application==="object"?{phone:String(v.application.phone||""),city:String(v.application.city||""),organization:String(v.application.organization||""),focusArea:String(v.application.focusArea||""),experience:String(v.application.experience||""),motivation:String(v.application.motivation||"")}:null}))}
-export async function reviewTeacherRequest(userId:string,approve:boolean){const result=await remoteRequest("/rest/v1/rpc/review_teacher_request",{method:"POST",body:JSON.stringify({p_user_id:userId,p_approve:approve})});clearAccountAccessCache();return result}
-export async function listAdminUsers():Promise<AdminUser[]>{const x=await remoteRequest<any[]>("/rest/v1/rpc/admin_list_users",{method:"POST",body:"{}"});return(Array.isArray(x)?x:[]).filter(v=>!!String(v.email||"").trim()).map(v=>({userId:v.user_id,name:v.name||"Пользователь",email:v.email||"",role:v.role==="teacher"?"teacher":"student",teacherStatus:["pending","approved","rejected"].includes(v.teacher_status)?v.teacher_status:"none",isAdmin:!!v.is_admin,subscriptionPlan:plan(v.subscription_plan),subscriptionUntil:v.subscription_until??null,createdAt:v.created_at??null}))}
-export async function adminSetSubscription(userId:string,subscriptionPlan:SubscriptionPlan,until:string|null):Promise<void>{await remoteRequest("/rest/v1/rpc/admin_set_subscription",{method:"POST",body:JSON.stringify({p_user_id:userId,p_plan:subscriptionPlan,p_until:until})});clearAccountAccessCache()}
+export async function setStudentRole():Promise<AccountAccess>{
+ if(isSelfhostBackendEnabled()){
+  clearAccountAccessCache();
+  return mapAccess(await selfhostSetStudentRole());
+ }
+ localStorage.setItem(KEY,"student");
+ if(!isRemoteBackendEnabled()){
+  const id=currentLocalUserId();
+  if(id)setLocalAccountRole(id,"student");
+  clearAccountAccessCache();
+  return localAccess();
+ }
+ clearAccountAccessCache();
+ await remoteRequest("/rest/v1/rpc/set_my_account_role",{method:"POST",body:JSON.stringify({p_role:"student"})});
+ return getAccountAccess();
+}
+export async function listTeacherRequests():Promise<TeacherRequest[]>{if(isSelfhostBackendEnabled()){const x=await selfhostAdminTeacherRequests();return x.map(v=>({userId:v.user_id,name:v.name||"Пользователь",email:v.email||"",status:v.status,requestedAt:v.requested_at??null,reviewedAt:v.reviewed_at??null,application:v.application?{phone:String(v.application.phone||""),city:String(v.application.city||""),organization:String(v.application.organization||""),focusArea:String(v.application.focusArea||""),experience:String(v.application.experience||""),motivation:String(v.application.motivation||"")}:null}))}const x=await remoteRequest<any[]>("/rest/v1/rpc/list_teacher_requests",{method:"POST",body:"{}"});return(Array.isArray(x)?x:[]).map(v=>({userId:v.user_id,name:v.name||"Пользователь",email:v.email||"",status:v.status,requestedAt:v.requested_at??null,reviewedAt:v.reviewed_at??null,application:v.application&&typeof v.application==="object"?{phone:String(v.application.phone||""),city:String(v.application.city||""),organization:String(v.application.organization||""),focusArea:String(v.application.focusArea||""),experience:String(v.application.experience||""),motivation:String(v.application.motivation||"")}:null}))}
+export async function reviewTeacherRequest(userId:string,approve:boolean){if(isSelfhostBackendEnabled()){const result=await selfhostReviewTeacherRequest(userId,approve);clearAccountAccessCache();return result}const result=await remoteRequest("/rest/v1/rpc/review_teacher_request",{method:"POST",body:JSON.stringify({p_user_id:userId,p_approve:approve})});clearAccountAccessCache();return result}
+export async function listAdminUsers():Promise<AdminUser[]>{if(isSelfhostBackendEnabled()){const x=await selfhostAdminUsers();return x.filter(v=>!!String(v.email||"").trim()).map(v=>({userId:v.user_id,name:v.name||"Пользователь",email:v.email||"",role:v.role==="teacher"?"teacher":"student",teacherStatus:["pending","approved","rejected"].includes(v.teacher_status)?v.teacher_status:"none",isAdmin:!!v.is_admin,subscriptionPlan:plan(v.subscription_plan),subscriptionUntil:v.subscription_until??null,createdAt:v.created_at??null}))}const x=await remoteRequest<any[]>("/rest/v1/rpc/admin_list_users",{method:"POST",body:"{}"});return(Array.isArray(x)?x:[]).filter(v=>!!String(v.email||"").trim()).map(v=>({userId:v.user_id,name:v.name||"Пользователь",email:v.email||"",role:v.role==="teacher"?"teacher":"student",teacherStatus:["pending","approved","rejected"].includes(v.teacher_status)?v.teacher_status:"none",isAdmin:!!v.is_admin,subscriptionPlan:plan(v.subscription_plan),subscriptionUntil:v.subscription_until??null,createdAt:v.created_at??null}))}
+export async function adminSetSubscription(userId:string,subscriptionPlan:SubscriptionPlan,until:string|null):Promise<void>{if(isSelfhostBackendEnabled()){await selfhostAdminSetSubscription(userId,subscriptionPlan,until);return}await remoteRequest("/rest/v1/rpc/admin_set_subscription",{method:"POST",body:JSON.stringify({p_user_id:userId,p_plan:subscriptionPlan,p_until:until})});clearAccountAccessCache()}
+
+// Account deletion is available only on the native server. The legacy backend
+// has no equivalent administrator endpoint and must not receive this request.
+export const canAdminDeleteUsers=()=>isSelfhostBackendEnabled();
+export async function adminDeleteUser(userId:string,email:string){
+ if(!canAdminDeleteUsers())throw new Error("Удаление доступно только на собственном сервере Lektrus.");
+ return selfhostAdminDeleteUser(userId,email);
+}

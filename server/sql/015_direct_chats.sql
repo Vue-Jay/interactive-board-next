@@ -1,0 +1,4 @@
+create table if not exists direct_conversations(id uuid primary key,created_at timestamptz not null default now(),unique_id text not null unique);
+create table if not exists direct_conversation_members(conversation_id uuid not null references direct_conversations(id) on delete cascade,user_id uuid not null references account_users(id) on delete cascade,last_read_at timestamptz,primary key(conversation_id,user_id));
+create table if not exists direct_messages(id uuid primary key,conversation_id uuid not null references direct_conversations(id) on delete cascade,sender_id uuid not null references account_users(id),sender_name text not null,body text not null,created_at timestamptz not null default now(),edited_at timestamptz,deleted_at timestamptz);
+create index if not exists direct_messages_list_idx on direct_messages(conversation_id,created_at);

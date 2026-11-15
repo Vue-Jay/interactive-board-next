@@ -15,6 +15,7 @@ import { ScreenOrientation } from "@capacitor/screen-orientation";
 import { completeEmailConfirmation, getCachedCurrentUser, getCurrentUser, logoutUser, type AuthUser } from "./authStore";
 import { boardStorageKey, getBoardForUser, type BoardSummary } from "./boardStore";
 import { getRemoteBoardDocument, isRemoteBackendEnabled, saveRemoteBoardDocument } from "./backend";
+import { isSelfhostBackendEnabled, selfhostReadDocument, selfhostSaveDocument, SelfhostHttpError } from "./selfhostApi";
 import { documentFingerprint } from "./boardSync";
 import { parseDocument, type DocumentData } from "./boardModel";
 import { ensureBoardAssets } from "./assetStore";
@@ -127,7 +128,9 @@ export default function App() {
     window.addEventListener("popstate", changed);
     return () => window.removeEventListener("popstate", changed);
   }, []);
-  const [authUser, setAuthUser] = useState<AuthUser | null>(() => getCachedCurrentUser());
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() =>
+    new URLSearchParams(window.location.search).has("password-reset") ? null : getCachedCurrentUser()
+  );
   const [authCallbackError,setAuthCallbackError]=useState("");
   const [accountRole,setAccountRoleState]=useState<AccountRole>(()=>getCachedAccountAccess()?.role??"student");
   const [isAppAdmin,setIsAppAdmin]=useState(()=>getCachedAccountAccess()?.isAdmin??false);
@@ -138,7 +141,9 @@ export default function App() {
   const changeAdminEdit=useCallback((value:boolean)=>{setAdminEdit(value);try{localStorage.setItem("onlinerepetitor.adminEdit",value?"1":"0")}catch{}},[]);
   const [adminInvisible,setAdminInvisible]=useState(()=>{try{return localStorage.getItem("onlinerepetitor.adminInvisible")==="1"}catch{return false}});
   const changeAdminInvisible=useCallback((value:boolean)=>{setAdminInvisible(value);try{localStorage.setItem("onlinerepetitor.adminInvisible",value?"1":"0")}catch{}},[]);
-  const [authReady, setAuthReady] = useState(() => Boolean(getCachedCurrentUser()));
+  const [authReady, setAuthReady] = useState(() =>
+    !new URLSearchParams(window.location.search).has("password-reset") && Boolean(getCachedCurrentUser())
+  );
   const [activeBoard, setActiveBoard] = useState<BoardSummary | null>(null);
   const boardChanged = useCallback((updated: BoardSummary) => {
     setActiveBoard(current => current?.id === updated.id ? updated : current);
@@ -189,6 +194,11 @@ export default function App() {
       }catch(error){const message=error instanceof Error?error.message:"Не удалось подтвердить email";console.warn("Lektrus email confirmation could not be completed",error);if(alive)setAuthCallbackError(message);return false}
     };
     const initialize=async()=>{
+      if(new URLSearchParams(window.location.search).has("password-reset")){
+        await logoutUser();
+        if(alive){setAuthUser(null);setAuthReady(true)}
+        return;
+      }
       if(route.kind==="site"||route.kind==="demo"){
         if(alive)setAuthReady(true);
         return;
@@ -260,8 +270,20 @@ export default function App() {
     setBoardLoadError("");
     setBoardLoading(true);
     try {
-      if (isRemoteBackendEnabled()) {
-        const remote = await getRemoteBoardDocument(board.id);
+      if (isRemoteBackendEnabled() || isSelfhostBackendEnabled()) {
+        const selfhost=isSelfhostBackendEnabled();
+        const remote = selfhost ? await selfhostReadDocument(board.id) : await getRemoteBoardDocument(board.id);
+        const saveBoardDocument=async(document:DocumentData,expectedVersion:number|null)=>{
+          if(!selfhost)return saveRemoteBoardDocument(board.id,document,expectedVersion);
+          try{
+            const saved=await selfhostSaveDocument(board.id,expectedVersion??0,document as unknown as Record<string,unknown>);
+            return {ok:true,conflict:false,version:saved.version};
+          }catch(error){
+            if(error instanceof SelfhostHttpError&&error.status===409)
+              return {ok:false,conflict:true,version:null};
+            throw error;
+          }
+        };
         if (!isCurrent()) return;
         const key = boardStorageKey(board.id);
         // A newly created board can carry a template. Apply it BEFORE the normal
@@ -274,7 +296,7 @@ export default function App() {
             if (pending.boardId === board.id && pending.document) {
               const document = parseDocument(JSON.stringify({...pending.document,title:board.title}));
               localStorage.setItem(key,JSON.stringify(document));
-              const saved = await saveRemoteBoardDocument(board.id,document,remote?.version ?? 0);
+              const saved = await saveBoardDocument(document,remote?.version ?? 0);
               if (!isCurrent()) return;
               if (!saved.conflict) {
                 setRemoteVersion(saved.version);
@@ -333,7 +355,7 @@ export default function App() {
             const localDocument = parseDocument(raw);
             try {
               await ensureBoardAssets(board.id, localDocument);
-              const saved = await saveRemoteBoardDocument(board.id, localDocument, 0);
+              const saved = await saveBoardDocument(localDocument, 0);
               if (!isCurrent()) return;
               // Keep local data; the mounted subscription will offer conflict resolution.
               setRemoteVersion(saved.conflict ? null : saved.version);
@@ -369,6 +391,7 @@ export default function App() {
     if (route.kind === "site") { setBoardLoading(false); return; }
     if (route.kind === "tool") { setBoardLoading(false); return; }
     if (route.kind === "demo") { setBoardLoading(false); return; }
+    if (authUser.guestBoardId && route.kind === "home") { navigate(`/board/${authUser.guestBoardId}`,true);return; }
     if (route.kind === "home") { setBoardLoading(false); return; }
     setBoardLoading(true);
     void (async () => {
@@ -376,6 +399,7 @@ export default function App() {
         if (route.kind === "invalid") throw new Error("Ссылка недействительна");
         if (route.kind === "join") {
           rememberShareToken(route.token);
+          if(authUser.guestBoardId){await logoutUser();if(alive)setAuthUser(null);return;}
           const redeemed = await redeemShareLink(route.token, submittedSharePassword?.token===route.token?submittedSharePassword.value:undefined);
           if (!alive) return;
           clearPendingShare();
@@ -442,7 +466,7 @@ export default function App() {
 
   if(route.kind==="site")return <Suspense fallback={<div className="lektrus-site-loading"/>}><LektrusPublicSite/></Suspense>;
 
-  if(route.kind==="tool")return <Suspense fallback={<BoardLoadingScreen/>}><PublicToolScreen tool={route.tool} onBack={()=>navigate("/")}/></Suspense>;
+  if(route.kind==="tool")return <Suspense fallback={<BoardLoadingScreen/>}><PublicToolScreen tool={route.tool} onBack={()=>window.location.assign("/")}/></Suspense>;
 
   if(route.kind==="demo"){
     return <Suspense fallback={<BoardLoadingScreen/>}><PublicDemoBoard/></Suspense>;
@@ -455,7 +479,7 @@ export default function App() {
 
 
   if (!authUser) {
-    return <AuthScreen initialError={authCallbackError} onAuthenticated={(user) => { clearAccountAccessCache(); clearNotificationCache(); setAuthUser(user); setActiveBoard(null); }} />;
+    return <AuthScreen initialError={authCallbackError} onAuthenticated={(user) => { clearAccountAccessCache(); clearNotificationCache(); if(user.guestBoardId){clearPendingShare();navigate(`/board/${user.guestBoardId}`,true);}setAuthUser(user); setActiveBoard(null); }} />;
   }
 
   if (!activeBoard) {
@@ -511,8 +535,9 @@ export default function App() {
       adminMaintenance={adminInspecting && isAppAdmin && adminEdit}
       adminInvisible={adminInvisible}
       initialRemoteVersion={remoteVersion}
+      selfhostMode={isSelfhostBackendEnabled()}
       onBoardChanged={boardChanged}
-      onBackToBoards={() => { setActiveBoard(null); if(adminInspecting||new URLSearchParams(window.location.search).get("layout-editor")==="1"){setAdminInspecting(false);navigate("/?section=admin");}else navigate("/"); }}
+      onBackToBoards={() => { if(authUser.guestBoardId){logout();return;}setActiveBoard(null); if(adminInspecting||new URLSearchParams(window.location.search).get("layout-editor")==="1"){setAdminInspecting(false);navigate("/?section=admin");}else navigate("/"); }}
       onLogout={logout}
     /></Suspense>
   );

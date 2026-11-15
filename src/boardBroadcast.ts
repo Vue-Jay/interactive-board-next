@@ -1,5 +1,6 @@
 import { getRealtimeSocketUrl, getRemoteSession, isRemoteBackendEnabled } from "./backend";
 import type { BoardRole } from "./authStore";
+import { isSelfhostBackendEnabled, selfhostSubscribeBoard } from "./selfhostApi";
 
 export type RemoteCursor = {
   userId: string;
@@ -30,6 +31,111 @@ export function connectBoardCursorChannel(
   onDiagnostics?: (status: string) => void,
   publishInkSelf = true,
 ): BoardCursorChannel {
+  if (isSelfhostBackendEnabled()) {
+    const clientId = (() => {
+      if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID().replaceAll("-", "_");
+      return Math.random().toString(36).slice(2) + Date.now().toString(36);
+    })();
+    let attempted = 0, sent = 0, received = 0, acknowledged = 0;
+    let online = false, stopped = false, lastSentAt = 0;
+    let inkTimer: ReturnType<typeof setTimeout> | undefined;
+    type OutgoingInk = Omit<LiveInkMessage, "userId" | "clientId">;
+    // Pointer events contain an overlapping history window. Keep only the
+    // latest window per stroke, send new indices, and pace actual WS frames
+    // below the server's 30 frames/sec limit, including completed strokes.
+    const pending = new Map<string, OutgoingInk>();
+    const sentEnds = new Map<string, number>();
+    const reportSelfhost = (status: string) =>
+      onDiagnostics?.(`${status} · вызов ${attempted} · отправлено ${sent} · сервер ${acknowledged} · получено ${received}`);
+    const scheduleInk = () => {
+      if(stopped || !online || !pending.size || inkTimer!==undefined) return;
+      inkTimer=setTimeout(flushInk,Math.max(0,50-(Date.now()-lastSentAt)));
+    };
+    const flushInk = () => {
+      inkTimer=undefined;
+      if(stopped||!online)return;
+      const next=pending.entries().next().value;
+      if(!next)return;
+      const [id,ink]=next;
+      const start=ink.offset??0,end=start+ink.points.length;
+      const already=Math.max(start,sentEnds.get(id)??start);
+      if(already>=end&&!ink.finished){pending.delete(id);scheduleInk();return}
+      // A final point must still mark completion even if every point was
+      // already relayed. Send a single endpoint rather than the entire stroke.
+      const offset=Math.min(already,end-1);
+      const points=ink.points.slice(offset-start,offset-start+200);
+      const finished=ink.finished&&offset+points.length>=end;
+      const ok=channel.sendInk({
+        type:"live_ink",client_id:clientId,stroke_id:id,
+        kind:ink.kind,color:ink.color,weight:ink.weight,offset,points,finished,
+      });
+      lastSentAt=Date.now();
+      if(ok){
+        sent++;
+        if(finished){pending.delete(id);sentEnds.delete(id)}
+        else{
+          sentEnds.set(id,offset+points.length);
+          if(offset+points.length>=end)pending.delete(id);
+        }
+        if(sent===1||sent%20===0||finished)reportSelfhost("подключено");
+      }
+      scheduleInk();
+    };
+    const channel = selfhostSubscribeBoard(boardId, () => {}, status => {
+      online=status==="online";
+      if(!online){clearTimeout(inkTimer);inkTimer=undefined;sentEnds.clear()}
+      reportSelfhost(online?"подключено":status==="offline"?"отключено":"подключается");
+      scheduleInk();
+    }, event => {
+      if (event.type === "cursor" && event.user_id !== me.userId) {
+        onCursor({
+          userId: event.user_id, name: event.name, role: event.role,
+          x: event.x, y: event.y, updatedAt: event.sent_at || Date.now(),
+        });
+      } else if (event.type === "live_ink" && event.client_id !== clientId) {
+        received++;
+        onInk?.({
+          clientId: event.client_id, userId: event.user_id,
+          id: event.stroke_id, kind: event.kind, color: event.color,
+          weight: event.weight, points: event.points,
+          finished: event.finished, offset: event.offset,
+        });
+        if(received===1||received%20===0||event.finished)reportSelfhost("подключено");
+      } else if(event.type==="ink_ack"&&event.client_id===clientId){
+        acknowledged++;
+        if(acknowledged===1||acknowledged%20===0||event.finished)reportSelfhost("подключено");
+      } else if (event.type === "event_error") {
+        reportSelfhost(event.reason);
+      }
+    });
+    return {
+      sendCursor: (x, y) => {
+        if (publishSelf) channel.sendCursor(clientId, x, y);
+      },
+      sendInk: ink => {
+        attempted++;
+        if (stopped||!publishInkSelf||!ink.points.length) return;
+        const dropped=Math.max(0,ink.points.length-500);
+        const previous=pending.get(ink.id);
+        if(previous?.finished&&!ink.finished)return;
+        pending.set(ink.id,{...ink,offset:(ink.offset??0)+dropped,points:ink.points.slice(dropped)});
+        // A disconnected peer can recover the authoritative saved document.
+        // Keep bounded previews and preserve completed strokes first.
+        if(pending.size>64){
+          const oldest=[...pending.entries()].find(([,value])=>!value.finished)?.[0]??pending.keys().next().value;
+          if(oldest!==undefined){pending.delete(oldest);sentEnds.delete(oldest)}
+        }
+        if(sentEnds.size>64){
+          const oldest=sentEnds.keys().next().value;
+          if(oldest!==undefined)sentEnds.delete(oldest);
+        }
+        scheduleInk();
+      },
+      close: () => {
+        stopped=true;clearTimeout(inkTimer);pending.clear();sentEnds.clear();channel();
+      },
+    };
+  }
   if (!isRemoteBackendEnabled()) {
     return { sendCursor: () => {}, sendInk: () => {}, close: () => {} };
   }

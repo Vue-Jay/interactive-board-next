@@ -1,0 +1,43 @@
+{
+  admin off
+  auto_https off
+}
+
+:8080 {
+  encode zstd gzip
+  header {
+    X-Content-Type-Options nosniff
+    Referrer-Policy no-referrer
+    X-Frame-Options DENY
+  }
+
+  # Amvera terminates TLS before forwarding to this HTTP listener. Redirect
+  # public browser pages, retaining old API and static asset URLs for clients
+  # that are already connected (including WebSocket and service workers).
+  @legacy_page {
+    host www.lektrus.ru lectrus.ru www.lectrus.ru lektrus-vuejay.msk1.amvera.tech
+    method GET HEAD
+    not path /api/v1 /api/v1/* /assets/* /fonts/* /models/* /site/* /sw.js /manifest.webmanifest /icons.svg /lektrus-*.png /version.json /deployment-check.json
+  }
+  handle @legacy_page {
+    redir https://lektrus.ru{uri} 308
+  }
+
+  @api path /api/v1 /api/v1/*
+  handle @api {
+    reverse_proxy 127.0.0.1:8000
+  }
+
+  handle /assets/* {
+    root * /srv/web
+    header Cache-Control "public, max-age=31536000, immutable"
+    file_server
+  }
+
+  handle {
+    root * /srv/web
+    try_files {path} /index.html
+    header Cache-Control "no-cache"
+    file_server
+  }
+}

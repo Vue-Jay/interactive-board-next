@@ -7,9 +7,15 @@ import ts from 'typescript';
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 function load(name, globals) {
   const exports = {};
+  const requireModule = globals.require;
   vm.runInNewContext(ts.transpileModule(read('src/' + name + '.ts'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-  }).outputText, { exports, URL, URLSearchParams, ...globals });
+  }).outputText, {
+    exports, URL, URLSearchParams, ...globals,
+    require: path => path === './selfhostApi'
+      ? { isSelfhostBackendEnabled: () => false, ...globals.selfhost }
+      : requireModule?.(path),
+  });
   return exports;
 }
 function browser(href) {
@@ -31,6 +37,33 @@ function browser(href) {
 }
 const token = 'a'.repeat(64);
 const boardId = 'a1000000-1234-4567-89ab-1234567890ab';
+
+test('Timeweb share links use the native API even when a legacy backend is configured', async () => {
+  const calls = [];
+  const api = load('shareLinks', {
+    require: () => ({
+      isRemoteBackendEnabled: () => true,
+      remoteRequest: () => assert.fail('Timeweb must not call Supabase'),
+    }),
+    selfhost: {
+      isSelfhostBackendEnabled: () => true,
+      selfhostRequest: async (path, request = {}) => {
+        calls.push([path, request.method || 'GET', request.body && JSON.parse(request.body)]);
+        return {};
+      },
+    },
+  });
+  await api.createShareLink(boardId, 'viewer', { maxUses: 1, password: 'code' });
+  await api.listShareLinks(boardId);
+  await api.redeemShareLink(token, 'code');
+  await api.revokeShareLink(boardId);
+  assert.deepEqual(calls, [
+    [`/api/v1/boards/${boardId}/share-links`, 'POST', { role: 'viewer', max_uses: 1, password: 'code' }],
+    [`/api/v1/boards/${boardId}/share-links`, 'GET', undefined],
+    ['/api/v1/share-links/redeem', 'POST', { token, password: 'code' }],
+    [`/api/v1/share-links/${boardId}`, 'DELETE', undefined],
+  ]);
+});
 
 test('share creation, redemption and password use exactly the deployed RPC arguments', async () => {
   const calls = [];
@@ -70,6 +103,19 @@ test('invitation URL grants an entry route; direct board URL requires membership
   assert.equal(api.boardDirectUrl(boardId), 'https://lektrus.example/board/' + boardId);
   assert.throws(() => api.boardShareUrl('bad'), /токен/);
   assert.throws(() => api.boardDirectUrl('../other'), /идентификатор/);
+});
+
+test('production aliases always generate canonical HTTPS board and invitation URLs', () => {
+  for (const origin of ['https://lektrus.ru', 'http://lektrus.ru', 'https://www.lektrus.ru',
+    'https://lectrus.ru', 'https://www.lectrus.ru', 'https://lektrus-vuejay.msk1.amvera.tech']) {
+    const { window } = browser(origin + '/app');
+    const api = load('shareLinks', { window, require: () => ({}) });
+    assert.equal(api.boardShareUrl(token), 'https://lektrus.ru/join/' + token);
+    assert.equal(api.boardDirectUrl(boardId), 'https://lektrus.ru/board/' + boardId);
+  }
+  const { window } = browser('http://localhost:5173/app');
+  const api = load('shareLinks', { window, require: () => ({}) });
+  assert.equal(api.boardShareUrl(token), 'http://localhost:5173/join/' + token);
 });
 
 test('invitation copying works on HTTP LAN even without navigator.clipboard', async () => {
@@ -208,7 +254,9 @@ test('email confirmation keeps the invite; legacy query starts the app, not the 
   assert.doesNotMatch(app, /callback\.pathname\+callback\.search/);
   assert.match(app, /navigate\(\x60\/board\/\$\{redeemed\.board_id\}\x60, true\)/);
   assert.match(entry, /query\.has\("join"\)/);
-  assert.match(auth, /onAuthenticated\(await loginGuest\(guestName\)\)/);
+  assert.match(auth, /onAuthenticated\(await loginGuest\(guestName,token,guestLinkPassword\|\|undefined\)\)/);
+  assert.match(auth, /pendingSharePath\(\)\?\.slice\(6\)/);
+  assert.match(auth, /setGuestPasswordRequired\(true\)/);
   assert.match(boards, /window\.dispatchEvent\(new PopStateEvent\("popstate"\)\)/);
   assert.match(boards, /boardDirectUrl\(manage\.id\)/);
   assert.match(boards, /copyBoardLink\(createdUrl\)/);
@@ -260,6 +308,45 @@ test('ordinary board deep links read fresh RLS-authorized boards and member role
   assert.equal(await api.getBoardForUser(user, boardId), null, 'deleted/inaccessible board denied');
   assert.ok(requests.every(path => path.includes('board') && !path.includes('cache')));
   assert.ok(requests.some(path => path.includes('deleted_at=is.null')));
+});
+
+test('empty workspaces only read the board list and have the same empty state on both pages', async () => {
+  const user = { id: 'new-teacher', name: 'New teacher', email: 'new@example.test' };
+  const stored = new Map();
+  const rows = [];
+  let creations = 0;
+  const api = load('boardStore', {
+    localStorage: { getItem: key => stored.get(key), setItem: (key, value) => stored.set(key, value) },
+    require: name => name === './backend' ? { isRemoteBackendEnabled: () => false } : {},
+    selfhost: {
+      isSelfhostBackendEnabled: () => true,
+      selfhostBoards: async () => rows,
+      selfhostCreateBoard: async title => {
+        creations++;
+        const row = { id: boardId, owner_id: user.id, role: 'owner', title, created_at: '', updated_at: '' };
+        rows.push(row);
+        return row;
+      },
+    },
+  });
+  for (let i = 0; i < 3; i++) assert.equal((await api.getUserBoards(user)).length, 0);
+  assert.equal(creations, 0);
+  await api.createBoard(user, 'Создана вручную');
+  assert.equal(creations, 1);
+  assert.equal((await api.getUserBoards(user))[0].title, 'Создана вручную');
+  const boards = read('src/BoardsScreen.tsx');
+  assert.match(boards, /const list=await getUserBoards\(user\)/);
+  assert.doesNotMatch(boards, /ensureUserBoards/);
+  for (const file of ['src/BoardsScreen.tsx', 'src/LectrisHub.tsx']) {
+    assert.match(read(file), /boards\.length\?"Ничего не найдено":"Здесь будут находиться ваши доски"/);
+  }
+});
+
+test('in-app feedback links to the official Telegram and retains the private form', () => {
+  const screen = read('src/FeedbackScreen.tsx');
+  assert.match(screen, /href="https:\/\/t\.me\/lektrus" target="_blank" rel="noopener noreferrer"/);
+  assert.match(screen, /<LektrusFeedbackForm compact source="app"\/>/);
+  assert.match(read('src/lektrusProductScreens.css'), /\.lektrus-feedback-telegram-card:focus-visible/);
 });
 
 test('links remain gated by server mode and database enforces expiry, password and access', async () => {

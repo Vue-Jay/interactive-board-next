@@ -21,8 +21,8 @@
  padding:3px 8px!important;gap:8px!important;
  box-sizing:border-box!important;
  align-items:center!important;flex-wrap:nowrap!important;
- background:#e8f3e7f2!important;
- border:1px solid #9cbea9!important;border-radius:9px!important;
+ background:transparent!important;
+ border:0!important;border-radius:0!important;
  z-index:38!important;overflow:hidden!important;
 }
 .lektrus-lab-bench .lektrus-lab-scene-header>strong,

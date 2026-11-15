@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { type AuthUser, type BoardRole, BOARD_ROLE_LABELS } from "./authStore";
-import { isRemoteBackendEnabled } from "./backend";
 import { getBoardAccess, inviteToBoard, changeMemberRole, removeMember, revokeInvitation, type BoardSummary } from "./boardStore";
-import { boardDirectUrl, boardShareUrl, copyBoardLink, createShareLink, listShareLinks, revokeShareLink, type ShareLink } from "./shareLinks";
+import { boardDirectUrl, boardShareUrl, copyBoardLink, createShareLink, listShareLinks, revokeShareLink, shareLinksEnabled, type ShareLink } from "./shareLinks";
 
 export default function ShareDialog({ board, user, onClose }: { board: BoardSummary; user: AuthUser; onClose: () => void }) {
   const [links, setLinks] = useState<ShareLink[]>([]);
@@ -21,7 +20,7 @@ export default function ShareDialog({ board, user, onClose }: { board: BoardSumm
   const [section,setSection]=useState<"link"|"people"|"manage">("link");
   const [linkRole,setLinkRole]=useState<ShareLink["role"]>("viewer");
   const [showAdvanced,setShowAdvanced]=useState(false);
-  const remote = isRemoteBackendEnabled();
+  const remote = shareLinksEnabled();
   const shareCacheKey="lektrus.share-link."+user.id+"."+board.id;
   const isActive=(link:ShareLink)=>!link.revoked_at&&(!link.expires_at||Date.parse(link.expires_at)>Date.now())&&(link.max_uses===null||link.use_count<link.max_uses);
   const createdIsActive=Boolean(created&&linksReady&&links.some(link=>link.id===created.id&&isActive(link)));

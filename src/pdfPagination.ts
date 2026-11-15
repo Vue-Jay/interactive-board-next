@@ -14,4 +14,3 @@ export async function getPdfPageCount(blob: Blob): Promise<number> {
     await task.destroy();
   }
 }
-
