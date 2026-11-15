@@ -26,7 +26,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
       - name: Test the primary Lektrus self-hosted API client
-        run: node scripts/test-selfhost-client.mjs
+        run: |
+          node scripts/test-selfhost-client.mjs
+          node --test tests/shareLinks.test.mjs
       - name: Check collaboration and attachment traffic regressions
         run: |
           npm run test:realtime
