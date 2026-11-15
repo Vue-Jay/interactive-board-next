@@ -84,8 +84,11 @@ jobs:
           "${compose[@]}" up --build --wait --wait-timeout 120
           curl --retry 10 --retry-connrefused --retry-delay 1 -fsS -H 'Host: lektrus.example' http://127.0.0.1/app | grep -q '/assets/'
           curl -fsS -H 'Host: lektrus.example' http://127.0.0.1/api/v1/health | grep -q '"ok":true'
-          "${compose[@]}" exec -T db psql -U lektrus -d lektrus -Atc \
-            "SELECT filename FROM lektrus_schema_versions ORDER BY filename DESC LIMIT 1;" | grep -q '^021_feedback_mail.sql$'
+          expected_migrations=$(find server/sql -maxdepth 1 -type f -name '[0-9][0-9][0-9]_*.sql' -printf '%f\n' | LC_ALL=C sort)
+          applied_migrations=$("${compose[@]}" exec -T db psql -U lektrus -d lektrus -Atc \
+            "SELECT filename FROM lektrus_schema_versions ORDER BY filename;" | LC_ALL=C sort)
+          test -n "$expected_migrations"
+          test "$applied_migrations" = "$expected_migrations"
 
       - name: Verify the Amvera image with PostgreSQL and a persisted disk
         if: github.ref_name == 'main' || github.base_ref == 'main' || github.ref_name == 'deploy/amvera-lektrus' || github.base_ref == 'deploy/amvera-lektrus'

@@ -1,6 +1,9 @@
 """Personal, immutable board snapshots. Attachments are retained independently of source boards."""
+import asyncio
+import errno
 import json
 import os
+import shutil
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -40,6 +43,17 @@ def teacher(user):
 
 def template_path(root, ident, storage_name):
     return root / "templates" / str(ident) / storage_name.hex
+
+
+def retain_asset(source, destination):
+    try:
+        os.link(source, destination)
+    except OSError as error:
+        # Some managed volumes cannot create hard links. Keep an independent
+        # copy on those volumes rather than losing attachments.
+        if error.errno not in (errno.EXDEV, errno.EOPNOTSUPP, errno.EPERM, errno.ENOSYS):
+            raise
+        shutil.copyfile(source, destination)
 
 
 def clean(paths):
@@ -99,8 +113,8 @@ def make_template_router(current_user, board_access, serialize_document):
                             storage = uuid4()
                             destination = template_path(root, ident, storage)
                             destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-                            os.link(file_path(root, data.board_id, row["storage_name"]), destination)
                             paths.append(destination)
+                            await asyncio.to_thread(retain_asset, file_path(root, data.board_id, row["storage_name"]), destination)
                             manifest.append({"id": row["asset_id"], "storage": str(storage),
                                              "mime": row["content_type"], "size": row["size_bytes"], "sha": row["sha256"].strip()})
                     row = await c.fetchrow("""insert into board_templates(id,owner_id,title,description,category,document,assets)
@@ -135,8 +149,8 @@ def make_template_router(current_user, board_access, serialize_document):
                             storage = uuid4()
                             destination = file_path(root, data.board_id, storage)
                             destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-                            os.link(template_path(root, ident, UUID(asset["storage"])), destination)
                             paths.append(destination)
+                            await asyncio.to_thread(retain_asset, template_path(root, ident, UUID(asset["storage"])), destination)
                             await c.execute("""insert into board_assets(board_id,asset_id,storage_name,content_type,size_bytes,sha256,created_by)
                                 values($1,$2,$3,$4,$5,$6,$7)""", data.board_id, asset["id"], storage,
                                 asset["mime"], asset["size"], asset["sha"], user["id"])
