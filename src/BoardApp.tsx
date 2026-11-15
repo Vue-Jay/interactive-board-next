@@ -1700,7 +1700,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         })()}
         {(item.graphMidpoints??[]).map((m,i)=>{const a=point(m.a),b=point(m.b);if(!a||!b)return null;const x=(a.x+b.x)/2,y=(a.y+b.y)/2;return <g key={`mid-${i}`}><circle className="graph-midpoint" cx={sx(x)} cy={sy(y)} r="4"/>{m.label&&<text className="graph-figure-label" x={sx(x)+8} y={sy(y)-7}>{m.label}</text>}</g>})}
       </g>
-      {item.graphConnectPoints===true&&gp.length>1&&<polyline className="graph-point-line" points={(purpose==="number-line"?gp.slice(0,2):gp).map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}/>}
+      {item.graphConnectPoints===true&&gp.length>1&&<polyline className="graph-point-line" points={(purpose==="number-line"?gp.slice(0,2):motionAxes?[...gp].sort((a,b)=>a.x-b.x):gp).map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}/>}
       {pickedPoints&&pickedPoints.length>1&&
         <polyline className="lektrus-link-pending-path" pointerEvents="none"
           points={pickedPoints.map(i=>gp[i]).filter(Boolean).map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}/>}
