@@ -3,6 +3,11 @@ set -euo pipefail
 
 # Amvera mounts /data at runtime. It can initially be owned by root.
 install -d -m 0700 -o lektrus -g lektrus /data/assets
+# Only generated public build files are copied here, never user assets. An
+# unavailable/full cache must not prevent the new application from starting.
+if install -d -m 0700 -o lektrus -g lektrus /data/web-releases; then
+  gosu lektrus python /srv/lektrus/retain_web_assets.py || echo "Public chunk retention unavailable" >&2
+fi
 
 gosu lektrus uvicorn app:app --host 127.0.0.1 --port 8000 --workers 1 &
 api=$!

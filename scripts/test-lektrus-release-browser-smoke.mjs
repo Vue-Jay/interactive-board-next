@@ -171,14 +171,20 @@ try{
   await checkSection("billing",".billing-page");
   await click('.billing-head button');
   await checkSection("settings",".settings-shell");
-  await evaluate('[...document.querySelectorAll(".settings-row-card")].find(x=>x.textContent.includes("AI-студия")).querySelector("button").click()');
-  await checkSection("ai",".ai-studio");
-  for(let i=0;i<3;i++){
-   await click('.ai-tool-tabs button:nth-child('+(i+1)+')');
-   await wait(`document.querySelector(".ai-tool-tabs button:nth-child(${i+1})").classList.contains("active")`,"AI tab did not select");
-  }
-  await click('.ai-head button');
+  assert.ok(!await evaluate('document.querySelector(".settings-shell").textContent.includes("AI-студия")'),"AI assistant must be available only on the board");
+  await evaluate('history.pushState({},"","/app?section=ai");dispatchEvent(new PopStateEvent("popstate"))');
   await checkSection("settings",".settings-shell");
+  await click('.lectris-workspace-sidebar button[aria-label="Группы и классы"]');
+  await checkSection("groups",".lektrus-group-layout");
+  await click('.lektrus-category-create');
+  await evaluate(`(()=>{const input=document.querySelector('.lektrus-category-form input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'QA draft');input.dispatchEvent(new Event('input',{bubbles:true}))})()`);
+  await wait('!document.querySelector(".lektrus-category-form button[type=submit]").disabled',"Group name did not enable Add");
+  await click('.lektrus-category-form button[type=button]');
+  await click('.lectris-workspace-sidebar button[aria-label="Предметы"]');
+  await checkSection("subjects",".lektrus-category-panel");
+  await click('.lektrus-category-create');
+  await wait('document.querySelector(".lektrus-category-form input").value===""&&document.querySelector(".lektrus-category-form button[type=submit]").disabled',"Cancelled group draft leaked into subject form");
+  await click('.lektrus-category-form button[type=button]');
   await click('.lectris-brand');
   await wait('!!document.querySelector(".lektrus-calendar-grid")',"Home brand did not navigate");
   for(const [label,id,selector] of sections.filter(x=>["groups","students","subjects","assignments"].includes(x[1]))){
@@ -235,7 +241,7 @@ try{
   await wait('!!document.querySelector(".lektrus-more-page")',"Mobile More did not open");
   await evaluate('[...document.querySelectorAll(".lektrus-more-page-item")].find(b=>b.textContent.includes("Настройки")).click()');
   await checkSection("settings",".settings-shell");
-  console.log('✓ Desktop tiles, schedule controls, progress tabs, AI/billing, notifications dialog, command search and mobile More');
+  console.log('✓ Desktop tiles, schedule controls, progress tabs, board-only AI routing, billing, notifications dialog, command search and mobile More');
  }else{
 
  // Initial lesson must actually render the board with math, text and table objects.

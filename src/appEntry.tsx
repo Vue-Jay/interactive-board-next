@@ -82,6 +82,7 @@ import { isSelfhostBackendEnabled } from "./selfhostApi";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import { initLectrisPalette } from "./lectrisPalette";
 import { initProfileAppearance } from "./profileStore";
+import { isChunkLoadError, recoverOutdatedChunk } from "./chunkRecovery";
 
 installInterfaceLayout();
 
@@ -123,16 +124,23 @@ type ErrorBoundaryState = { error: Error | null };
 class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
   state: ErrorBoundaryState = { error: null };
   static getDerivedStateFromError(error: Error): ErrorBoundaryState { return { error }; }
-  componentDidCatch(error: Error, info: ErrorInfo) { console.error("InteractiveBoard render error", error, info); }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("InteractiveBoard render error", error, info);
+    // Never refresh an active lesson automatically. Workspace navigation is
+    // safe to restore at the exact same URL after a confirmed deployment.
+    const path=window.location.pathname;
+    void recoverOutdatedChunk(error, !Capacitor.isNativePlatform() && (path==="/app"||path==="/app/"||path==="/"));
+  }
   render() {
     if (this.state.error) {
+      const chunkError=isChunkLoadError(this.state.error);
       return (
         <div style={{ padding: 32, fontFamily: "system-ui, sans-serif", color: "#202331" }}>
-          <h1 style={{ marginTop: 0 }}>Не удалось запустить интерфейс</h1>
-          <p>Приложение поймало ошибку вместо пустого белого экрана.</p>
-          <pre style={{ whiteSpace: "pre-wrap", padding: 16, borderRadius: 12, background: "#f3f4f8" }}>
+          <h1 style={{ marginTop: 0 }}>{chunkError?"Не удалось загрузить раздел":"Не удалось запустить интерфейс"}</h1>
+          <p>{chunkError?"Возможно, Lektrus обновился или соединение прервалось. Проверьте подключение и обновите страницу.":"Приложение поймало ошибку вместо пустого белого экрана."}</p>
+          {!chunkError&&<pre style={{ whiteSpace: "pre-wrap", padding: 16, borderRadius: 12, background: "#f3f4f8" }}>
             {this.state.error.message || String(this.state.error)}
-          </pre>
+          </pre>}
           <button type="button" onClick={() => window.location.reload()} style={{ padding: "10px 14px", cursor: "pointer" }}>
             Перезагрузить страницу
           </button>

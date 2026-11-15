@@ -1,0 +1,40 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import ts from 'typescript';
+
+const exports={};
+new Function('exports',ts.transpileModule(readFileSync(new URL('../src/chunkRecovery.ts',import.meta.url),'utf8'),{
+ compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+}).outputText)(exports);
+const {recoverOutdatedChunk,isChunkLoadError}=exports;
+const stale=new Error('Failed to fetch dynamically imported module: https://lektrus.test/assets/SettingsScreen-AbCd1234.js');
+assert.equal(isChunkLoadError(stale),true);
+assert.equal(isChunkLoadError(new Error('undefined is not a function')),false);
+const origin='https://lektrus.test', old=origin+'/assets/index-12345678.js';
+let next='/assets/index-87654321.js', reloads=0, fetches=0;
+const storage=new Map();
+globalThis.window={location:{origin,reload(){reloads++;}}};
+globalThis.document={querySelector:()=>({src:old})};
+Object.defineProperty(globalThis,'navigator',{value:{onLine:true},configurable:true});
+globalThis.sessionStorage={getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)};
+globalThis.DOMParser=class{parseFromString(){return {querySelector:()=>({getAttribute:()=>next})};}};
+globalThis.fetch=async(url,options)=>{fetches++;assert.equal(url,'/index.html');assert.equal(options.cache,'no-store');return {ok:true,text:async()=>''};};
+assert.equal(await recoverOutdatedChunk(stale,false),false);
+assert.equal(await recoverOutdatedChunk(new Error('render bug'),true),false);
+assert.equal(fetches,0);
+next=old;
+assert.equal(await recoverOutdatedChunk(stale,true),false);
+next='https://untrusted.test/assets/index-87654321.js';
+assert.equal(await recoverOutdatedChunk(stale,true),false);
+next='/assets/index-87654321.js';
+navigator.onLine=false;
+assert.equal(await recoverOutdatedChunk(stale,true),false);
+navigator.onLine=true;
+assert.equal(await recoverOutdatedChunk(stale,true),true);
+assert.equal(await recoverOutdatedChunk(stale,true),false);
+assert.equal(reloads,1);
+storage.clear();
+const results=await Promise.all([recoverOutdatedChunk(stale,true),recoverOutdatedChunk(stale,true)]);
+assert.equal(results.filter(Boolean).length,1);
+assert.equal(reloads,2);
+console.log('Chunk recovery: confirmed version change, board safety, offline guard and one reload per outdated entry.');
