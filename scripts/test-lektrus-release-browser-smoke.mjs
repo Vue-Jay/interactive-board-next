@@ -115,6 +115,35 @@ try{
    "Board lost "+type+" objects");
  console.log("✓ Demo board: math lessons and five object types rendered");
 
+ // The narrow split-screen viewport used to stretch a notice from top to bottom.
+ // Repeated messages must restart their own three-second lifetime.
+ await call("Emulation.setDeviceMetricsOverride",{width:960,height:850,deviceScaleFactor:1,mobile:false});
+ const key=async(code,ctrlKey=false)=>evaluate(`window.dispatchEvent(new KeyboardEvent("keydown",{code:${JSON.stringify(code)},ctrlKey:${ctrlKey},bubbles:true,cancelable:true}))`);
+ await key("KeyA",true);
+ await wait('document.querySelectorAll(".board-object.selected").length>0',"Select all for notice regression");
+ await key("KeyC",true);
+ const noticeSelector=".board-system-notice";
+ await wait(`document.querySelector('${noticeSelector}')?.textContent.includes('Скопировано объектов')`,"Copy notice did not appear");
+ const compactNotice=await evaluate(`(() => {const el=document.querySelector('${noticeSelector}');const r=el.getBoundingClientRect();return {height:r.height,width:r.width,top:getComputedStyle(el).top,bottom:getComputedStyle(el).bottom}})()`);
+ assert.ok(compactNotice.height<100&&compactNotice.width<=380,JSON.stringify(compactNotice));
+ await evaluate(`(() => {window.firstNotice=document.querySelector('${noticeSelector}');return true})()`);
+ await delay(1700);
+ await key("KeyC",true);
+ await wait(`document.querySelector('${noticeSelector}')!==window.firstNotice&&!!document.querySelector('${noticeSelector}')`,"Identical new notice did not restart its lifetime");
+ await delay(1500);
+ assert.ok(await evaluate(`!!document.querySelector('${noticeSelector}')`),"Previous timer removed the replacement notice");
+ await wait(`(() => {const e=document.querySelector('${noticeSelector}');return e&&Number(getComputedStyle(e).opacity)<1&&Number(getComputedStyle(e).opacity)>0})()`,"Notice did not fade",2000);
+ await wait(`!document.querySelector('${noticeSelector}')`,"Notice did not auto-dismiss",1000);
+ await key("KeyC",true);
+ await wait(`!!document.querySelector('${noticeSelector}')`,"Notice did not reappear");
+ await click(`${noticeSelector} button`);
+ await wait(`!document.querySelector('${noticeSelector}')`,"Manual close failed");
+ await key("Escape");
+ await call("Emulation.clearDeviceMetricsOverride");
+ console.log("✓ Board notice: compact at 960px, repeated timer restarts, fades after three seconds, manual close");
+
+ if(!process.argv.includes("--notice-only")){
+
  // Zoom controls have to change the actual state and be resettable.
  await click('button[aria-label="Увеличить"]');
  await wait('document.querySelector(".zoom-value")?.textContent?.includes("125%")',
@@ -286,6 +315,7 @@ try{
  assert.ok(stored,"Demo lesson did not persist its document in local storage");
  console.log("✓ Persistence: local board document exists with lesson objects");
  console.log("Lektrus release smoke passed: actual browser interactions and curated subjects.");
+ }
 }finally{
  if(socket&&socket.readyState===WebSocket.OPEN)socket.close();
  if(chrome){chrome.kill();await delay(120)}

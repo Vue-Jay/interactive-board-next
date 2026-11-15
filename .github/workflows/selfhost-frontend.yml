@@ -42,6 +42,10 @@ jobs:
           node scripts/test-lektrus-subject-editors.mjs
       - name: Check peer ink and cursor rendering in real Chrome
         run: node scripts/test-lektrus-peer-ink-browser.mjs
+      - name: Check board notices and role-gated subject toolbar
+        run: |
+          node scripts/test-lektrus-board-role-preview.mjs
+          node scripts/test-lektrus-release-browser-smoke.mjs --notice-only
       - name: Build the standard Lektrus application against the self-hosted backend
         env:
           VITE_LEKTRUS_BACKEND: 'selfhost'
