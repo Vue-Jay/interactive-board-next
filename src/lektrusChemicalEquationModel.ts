@@ -29,7 +29,7 @@ export function splitEquationSide(text:string):string[]{
    const previous=current.trimEnd();
    // A plus sign inside an ion (Na+ + Cl−) is not a separator.
    const isSeparator=next.length===0?/\s$/.test(current):
-    /^(?:[0-9]{0,3}[A-Z([{])/.test(next) &&
+    /^(?:[0-9]{1,3}\s*)?(?:[A-Z([{]|e(?:\^?[⁻⁺−+-]|$))/.test(next) &&
     !(/[+⁺]\s*$/.test(previous)&&next.startsWith("+"));
    if(isSeparator){parts.push(current.trim());current="";continue;}
   }
@@ -40,7 +40,7 @@ export function splitEquationSide(text:string):string[]{
 }
 export function readSpecies(value:string):EquationSpecies{
  const raw=value.trim();
- const match=raw.match(/^([1-9][0-9]{0,2})\s*(?=[A-Z([{])([\s\S]*)$/);
+ const match=raw.match(/^([1-9][0-9]{0,2})\s*(?=[A-Z([{]|e(?:\^?[⁻⁺−+-]|$))([\s\S]*)$/);
  const coefficient=match?Number(match[1]):1;
  let formula=match?match[2].trim():raw;
  const indicator=(formula.match(/[↑↓]$/)?.[0]??"") as EquationSpecies["indicator"];

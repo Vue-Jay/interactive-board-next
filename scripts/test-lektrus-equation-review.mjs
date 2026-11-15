@@ -78,6 +78,11 @@ assert.equal(inspectChemicalSpecies([
  "Duplicate species highlighted separately");
 const step=(expression,conditions="")=>({expression,conditions});
 const inspect=(expression,domain="inorganic",conditions="")=>review.reviewEquationStep(step(expression,conditions),domain);
+for(const electron of ["e⁻","e-","e−","e^-"]){
+ assert.ok(inspect(`Fe³⁺ + ${electron} → Fe²⁺`).issues.some(v=>
+  v.kind==="substance"&&v.side==="left"&&v.index===1&&v.severity==="info"&&v.message.includes("Электроны")),
+  "Electron is an independent species recognised in half-reaction review: "+electron);
+}
 assert.equal(inspect("AgNO3 + NaCl → AgCl↓ + NaNO3").status,"correct");
 assert.equal(inspect("AgNO3 + NaCl2 → AgCl↓ + NaNO3").status,"incorrect",
  "Formula valence errors are reported even when reference matching fails");

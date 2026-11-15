@@ -924,6 +924,8 @@ assert.match(subjectInsertion,/commit\(\[\.\.\.itemsRef\.current,item\]\)/,
  "The new laboratory must be saved as a board object");
 assert.match(subjectInsertion,/setSelected\(\[item\.id\]\)/,
  "Newly created laboratory must be selected for resize and movement");
+assert.match(subjectInsertion,/if\(id==="chem-experiments"\)\{[\s\S]*?fitToBounds\(boardItemBounds\(\[item\]\),70\);\s*setNotice\("Химический стол добавлен/,
+ "A new laboratory must fit in the viewport with its controls visible");
 assert.match(subjectInsertion,/if\(item\.graphFigureId==="chem-experiment-free"\)/,
  "The object edit command opens the shared fullscreen laboratory");
 assert.match(read("src/LektrusScienceEditor.tsx"),/import LektrusChemistryBenchEditor/,

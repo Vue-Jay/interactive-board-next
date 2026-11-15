@@ -9434,6 +9434,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               // All further work is done in the tabletop; no modal editor.
               commit([...itemsRef.current,item]);
               setSelected([item.id]);
+              // Keep the entire tabletop, including controls, within the viewport on insertion.
+              fitToBounds(boardItemBounds([item]),70);
               setNotice("Химический стол добавлен. Перемещайте за верхнюю планку, изменяйте размер за углы.");
             }else if(id==="chem-atoms"){setAtomEditorItem(item);
             }else if(id==="physics-circuits"){
