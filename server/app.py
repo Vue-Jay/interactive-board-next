@@ -421,6 +421,60 @@ async def create_board(data: NewBoardInput, request: Request,
         )
     return board_view(row, "owner")
 
+@app.get("/api/v1/boards/trash")
+async def list_trashed_boards(request: Request, user=Depends(current_user)):
+    async with request.app.state.pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT id,owner_id,title,created_at,updated_at,deleted_at
+                 FROM boards WHERE owner_id=$1 AND deleted_at IS NOT NULL
+                ORDER BY deleted_at DESC LIMIT 500""", user["id"],
+        )
+    return [board_view(row, "owner") for row in rows]
+
+@app.post("/api/v1/boards/{board_id}/restore")
+async def restore_trashed_board(board_id: UUID, request: Request, user=Depends(current_user)):
+    async with request.app.state.pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """UPDATE boards SET deleted_at=NULL,updated_at=now()
+                WHERE id=$1 AND owner_id=$2 AND deleted_at IS NOT NULL
+                RETURNING id,owner_id,title,created_at,updated_at,deleted_at""",
+            board_id, user["id"],
+        )
+        if row is None:
+            error(404, "Доска в корзине не найдена.")
+    return board_view(row, "owner")
+
+class PermanentBoardDeleteInput(BaseModel):
+    confirmation: str = Field(min_length=1, max_length=160)
+
+@app.post("/api/v1/boards/{board_id}/permanent-delete")
+async def permanently_delete_board(board_id: UUID, data: PermanentBoardDeleteInput,
+                                   request: Request, user=Depends(current_user)):
+    from assets import assets_root, file_path
+    async with request.app.state.pool.acquire() as conn:
+        async with conn.transaction():
+            board = await conn.fetchrow(
+                "SELECT title FROM boards WHERE id=$1 AND owner_id=$2 AND deleted_at IS NOT NULL FOR UPDATE",
+                board_id, user["id"],
+            )
+            if board is None:
+                error(404, "Доска в корзине не найдена.")
+            if data.confirmation != board["title"]:
+                error(400, "Название доски не совпадает.")
+            files = await conn.fetch("SELECT storage_name FROM board_assets WHERE board_id=$1", board_id)
+            await conn.execute("DELETE FROM boards WHERE id=$1", board_id)
+    # Remove only server-generated paths after the SQL transaction commits.
+    # Personal templates own independent snapshots and are not affected.
+    deleted, pending = 0, 0
+    for row in files:
+        try:
+            await asyncio.to_thread(file_path(assets_root(), board_id, row["storage_name"]).unlink, missing_ok=True)
+            deleted += 1
+        except (OSError, RuntimeError):
+            pending += 1
+            logging.getLogger("lektrus.assets").warning("Private board asset cleanup pending for %s", board_id)
+    return {"deleted_assets": deleted, "files_pending": pending}
+
 @app.get("/api/v1/boards/{board_id}")
 async def get_board(board_id: UUID, request: Request, user=Depends(current_user)):
     async with request.app.state.pool.acquire() as conn:
