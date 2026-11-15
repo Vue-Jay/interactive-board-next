@@ -805,6 +805,9 @@ button {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  /* Keep the complete selection overlay above the board world but below
+     toolbars and popovers, even while the compositor applies a transform. */
+  z-index: 10;
   transform-origin: 0 0;
 }
 

@@ -57,6 +57,7 @@ import LektrusOrganicView from "./LektrusOrganicView";
 import LektrusChemistryIllustration, { isChemicalIllustration } from "./LektrusChemistryIllustration";
 import { analyzeOrganicStructure } from "./lektrusOrganicFormula";
 import { layoutScienceLabels } from "./lektrusScienceLabelLayout";
+import { geometryLabelLayout } from "./lektrusGeometryLabelLayout";
 import LektrusCircuitEditor from "./LektrusCircuitEditor";
 import LektrusCircuitView from "./LektrusCircuitView";
 import { circuitFromLegacyItem } from "./lektrusCircuitModel";
@@ -300,10 +301,10 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   );
 }
 
-function loadInitial(storageKey: string) {
+function loadInitial(storageKey: string, defaultTitle = "Новая доска") {
   const empty: DocumentData = {
     version: 1,
-    title: "Новая доска",
+    title: defaultTitle,
     view: { x: 0, y: 0, zoom: 1 },
     items: [],
   };
@@ -1253,6 +1254,15 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   </div>;
   const scienceCaptionLayout=item.graphFigureId?.startsWith("physics-")?
     layoutScienceLabels(item.graphPoints??[],item.graphSegments??[],p=>({x:sx(p.x),y:sy(p.y)}),W,H):null;
+  const screenPoint=(p:{x:number;y:number})=>({x:sx(p.x),y:sy(p.y)});
+  const solidSurfaces=solid?projectSolidSurfaces(item,orbitX,orbitY):[];
+  const geometryCaptions=purpose==="geometry"&&!scienceCaptionLayout&&item.graphShowLabels!==false?
+    geometryLabelLayout(gp.map(p=>({...screenPoint(p),label:p.label})),
+      solid?solidSurfaces.map(f=>f.points.map(screenPoint)):
+        (item.graphPolygons??[]).map(poly=>poly.points.map(i=>gp[i]).filter(Boolean).map(screenPoint)),
+      solid?solidEdges.map(e=>[screenPoint(e.start),screenPoint(e.end)]):
+        (item.graphSegments??[]).filter(e=>gp[e.a]&&gp[e.b]).map(e=>[screenPoint(gp[e.a]),screenPoint(gp[e.b])]),
+      W,H,[{left:510,right:590,top:7,bottom:solid?137:40}]):null;
   return <div className={`graph-view graph-purpose-${purpose} ${item.graphFigureId?.startsWith("physics-")||item.graphFigureId?.startsWith("chem-")?"science-graph":""} ${onPointMove?"graph-interactive":""}`}>
     {purpose!=="geometry"&&item.graphFigureId?.startsWith("physics-")&&onOpenEditor&&
       <LektrusPhysicsCanvasEditorAction onOpenEditor={onOpenEditor}/>}
@@ -1445,7 +1455,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         {solid&&item.graphFigureId!=="sphere"&&<g className="lektrus-solid-faces" pointerEvents="none">
           {/* Translucent fills preserve the 3D shape while leaving rear edges visible. */}
           <g className="lektrus-solid-translucent-fill">
-            {projectSolidSurfaces(item,orbitX,orbitY).map((face,index)=>
+            {solidSurfaces.map((face,index)=>
               <polygon key={index} points={face.points.map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}
                 fill={face.fill}
                 fillOpacity={item.graphFigureId==="cylinder"||item.graphFigureId==="cone"?.20:.32}
@@ -1492,9 +1502,13 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
           </g>
           {item.graphShowLabels!==false&&gp.map((p,i)=>{
             if(!p.label)return null;
-            return <text key={i} className="graph-figure-label"
-              x={sx(p.x)+7} y={sy(p.y)-8}
-              style={{fill:"#293c59",stroke:"#fff",strokeWidth:4,paintOrder:"stroke",fontWeight:650}}>{p.label}</text>;
+            const label=geometryCaptions?.[i];
+            return <g key={i} pointerEvents="none">
+              {label?.leader&&<line x1={sx(p.x)} y1={sy(p.y)} x2={label.x} y2={label.y} stroke="#788ba3" strokeWidth=".8" strokeDasharray="3 2"/>}
+              <text className="graph-figure-label" x={label?.x??sx(p.x)+7} y={label?.y??sy(p.y)-8}
+                textAnchor={label?"middle":undefined} dominantBaseline={label?"central":undefined}
+                style={{fill:"#293c59",stroke:"#fff",strokeWidth:4,paintOrder:"stroke",fontWeight:650}}>{p.label}</text>
+            </g>;
           })}
         </g>}
         {(()=>{const triangle=(item.graphPolygons??[]).find(poly=>poly.points.length===3);if(!triangle)return null;
@@ -1782,9 +1796,12 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
            r={(item.graphFigureId??"").startsWith("physics-")?2.5:movable?5:4}
            style={{fill:purpose==="number-line"&&i<2&&(p.x===intervalEnds?.[0].x?item.graphIntervalStartClosed===false:item.graphIntervalEndClosed===false)?"#ffffff":pointColor,stroke:pointColor}}/>}
         {item.graphShowLabels!==false&&(purpose==="number-line"||purpose==="unit-circle"&&i>0||p.label)&&
-          <text x={scienceCaptionLayout?.points[i]?.x??(sx(p.x+(item.graphPoints?.[i]?.labelDx??0))+8)}
-           y={scienceCaptionLayout?.points[i]?.y??(sy(p.y+(item.graphPoints?.[i]?.labelDy??0))-9)}
-           style={{fill:pointColor}}>{purpose==="number-line"?p.x:purpose==="unit-circle"&&i>0?formatPiRadians(Math.atan2(p.y,p.x)):p.label}</text>}
+          <g pointerEvents="none">
+          {geometryCaptions?.[i]?.leader&&<line x1={sx(p.x)} y1={sy(p.y)} x2={geometryCaptions[i]!.x} y2={geometryCaptions[i]!.y} stroke="#788ba3" strokeWidth=".8" strokeDasharray="3 2"/>}
+          <text x={scienceCaptionLayout?.points[i]?.x??geometryCaptions?.[i]?.x??(sx(p.x+(item.graphPoints?.[i]?.labelDx??0))+8)}
+           y={scienceCaptionLayout?.points[i]?.y??geometryCaptions?.[i]?.y??(sy(p.y+(item.graphPoints?.[i]?.labelDy??0))-9)}
+           textAnchor={geometryCaptions?.[i]?"middle":undefined} dominantBaseline={geometryCaptions?.[i]?"central":undefined}
+           style={{fill:pointColor}}>{purpose==="number-line"?p.x:purpose==="unit-circle"&&i>0?formatPiRadians(Math.atan2(p.y,p.x)):p.label}</text></g>}
       </g>})}
       {purpose==="geometry"&&onGridChange&&<g className="lektrus-diagram-grid-toggle" transform="translate(517 11)" data-board-interactive="true">
         <g role="button" tabIndex={0} className="lektrus-grid-control"
@@ -1819,7 +1836,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
           </g>
         </g>}
       </g>}
-      {solid&&<g className="lektrus-orbit-control" role="button" tabIndex={onRotate?0:-1}
+      {solid&&<g className="lektrus-orbit-control" transform="translate(0 48)" role="button" tabIndex={onRotate?0:-1}
         aria-label="Повернуть объёмную фигуру: перетащите манипулятор в углу"
         onPointerDown={beginOrbit}
         onDoubleClick={e=>{e.preventDefault();e.stopPropagation();onRotate?.(25,-35)}}
@@ -2156,8 +2173,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const controlSettingsKey="lektrus.controls.v1."+authUser.id;
   const [controlSettings,setControlSettings]=useState<ControlSettings>(()=>{
     try{const v=JSON.parse(localStorage.getItem(controlSettingsKey)||"null") as Partial<ControlSettings>|null;
-      return {wheel:v?.wheel==="zoom"?"zoom":"scroll",zoomSpeed:Math.max(.4,Math.min(3,Number(v?.zoomSpeed)||1)),panSpeed:Math.max(.4,Math.min(3,Number(v?.panSpeed)||1)),invertZoom:v?.invertZoom===true,horizontalShift:v?.horizontalShift!==false};
-    }catch{return {wheel:"scroll",zoomSpeed:1,panSpeed:1,invertZoom:false,horizontalShift:true}}
+      return {wheel:v?.wheel==="scroll"?"scroll":"zoom",zoomSpeed:Math.max(.4,Math.min(3,Number(v?.zoomSpeed)||1)),panSpeed:Math.max(.4,Math.min(3,Number(v?.panSpeed)||1)),invertZoom:v?.invertZoom===true,horizontalShift:v?.horizontalShift!==false};
+    }catch{return {wheel:"zoom",zoomSpeed:1,panSpeed:1,invertZoom:false,horizontalShift:true}}
   });
   useEffect(()=>{try{localStorage.setItem(controlSettingsKey,JSON.stringify(controlSettings))}catch{}},[controlSettingsKey,controlSettings]);
   const controlSettingsRef=useRef(controlSettings);
@@ -2230,7 +2247,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const viewStorageKey = `${storageKey}.view`;
   const [initial] = useState(() => layoutEditing?
     {data:{version:1 as const,title:"Новая доска",view:{x:0,y:0,zoom:1},items:[] as Item[]},error:""}:
-    demoInitialDocument?{data:demoInitialDocument,error:""}:loadInitial(storageKey));
+    demoInitialDocument?{data:demoInitialDocument,error:""}:loadInitial(storageKey,boardSummary.title));
   const [saveBlocked, setSaveBlocked] = useState(!!initial.error);
   const fileInput = useRef<HTMLInputElement>(null);
   const mediaInput = useRef<HTMLInputElement>(null);
@@ -8360,8 +8377,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
              <div><strong>Колесо мыши и тачпад</strong><small>Выберите привычный способ перемещения по доске.</small></div>
             </div>
             <div className="lektrus-controls-modes" role="group" aria-label="Основное действие колеса">
-             {([["scroll","Прокрутка","Колесо прокручивает доску. Ctrl + колесо изменяет масштаб."],
-               ["zoom","Масштаб","Колесо изменяет масштаб. Ctrl + колесо прокручивает доску."]] as const)
+             {([["zoom","Масштаб","Колесо изменяет масштаб. Ctrl + колесо прокручивает доску."],
+               ["scroll","Прокрутка","Колесо прокручивает доску. Ctrl + колесо изменяет масштаб."]] as const)
                .map(([value,label,description])=><button type="button" key={value}
                 aria-pressed={controlSettings.wheel===value}
                 className={controlSettings.wheel===value?"active":""}
@@ -8412,7 +8429,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
            <p className="lektrus-controls-note">На сенсорном экране жест двумя пальцами продолжает работать независимо. Настройки применяются сразу и сохраняются автоматически.</p>
           </div>
           <footer><button type="button" onClick={()=>setControlSettings({
-           wheel:"scroll",zoomSpeed:1,panSpeed:1,invertZoom:false,horizontalShift:true
+           wheel:"zoom",zoomSpeed:1,panSpeed:1,invertZoom:false,horizontalShift:true
           })}>По умолчанию</button><button type="button" className="primary"
            onClick={()=>setControlSettingsOpen(false)}>Готово</button></footer>
          </section></div>}

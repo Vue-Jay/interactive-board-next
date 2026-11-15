@@ -8,6 +8,28 @@ try{
   const {subjectToolsFor,releaseHiddenSubjectToolIds,makeSubjectToolItem}=
     await server.ssrLoadModule("/src/lektrusSubjectToolRegistry.ts");
   const {parseDocument}=await server.ssrLoadModule("/src/boardModel.ts");
+  const {ids,makeSchoolDiagram,isSchoolDiagram}=await server.ssrLoadModule("/src/lektrusSchoolDiagramModel.ts");
+  const {atlasModesFor,historicalSnapshots,legacyAtlasModes,createAtlasDocument}=await server.ssrLoadModule("/src/lektrusAtlasModel.ts");
+  const roundTrip=(id,schoolDiagram)=>{
+    assert.ok(isSchoolDiagram(schoolDiagram),id+" must be accepted by its editor");
+    const item={id,kind:"graph",text:schoolDiagram.title,x:0,y:0,width:600,height:360,graphFigureId:id,schoolDiagram};
+    const doc={version:1,title:"Round trip",view:{x:0,y:0,zoom:1},items:[item]};
+    assert.deepEqual(parseDocument(JSON.stringify(doc)).items[0].schoolDiagram,schoolDiagram,id+" lost or rejected data");
+  };
+  for(const id of ids){
+    let diagram=makeSchoolDiagram(id);
+    if(id==="geo-matching"||id==="geo-question-cards")diagram={...diagram,countryCodes:["RU","FR"]};
+    roundTrip(id,diagram);
+  }
+  for(const scope of ["geography","history"]){
+    const modes=[...atlasModesFor(scope).map(m=>m.id),...(scope==="geography"?legacyAtlasModes:[])];
+    for(const mode of modes)for(const {year} of historicalSnapshots)
+      roundTrip(scope==="history"?"history-atlas":"maps-atlas",{...createAtlasDocument(scope),mode,year});
+  }
+  const chart={id:"temperature",kind:"graph",graphFigureId:"lektrus-chart",text:"Temperature",x:0,y:0,width:560,height:325,chartStyle:"line",chartEntries:[{label:"January",value:-10},{label:"March",value:0},{label:"June",value:20}]};
+  const chartDoc={version:1,title:"Chart",view:{x:0,y:0,zoom:1},items:[chart]};
+  assert.deepEqual(parseDocument(JSON.stringify(chartDoc)).items[0].chartEntries,chart.chartEntries);
+  assert.throws(()=>parseDocument(JSON.stringify({...chartDoc,items:[{...chart,chartStyle:"pie"}]})),/диаграмм/i);
 
   const hidden=["bio-anatomy","bio-microscope","info-programming"];
   assert.deepEqual([...releaseHiddenSubjectToolIds].sort(),hidden.slice().sort(),

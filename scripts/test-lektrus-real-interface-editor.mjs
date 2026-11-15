@@ -14,7 +14,7 @@ assert.match(appShell,/navigate\(`\/board\/\$\{INTERFACE_STUDIO_BOARD_ID\}\?layo
 assert.match(app,/items:\[\] as Item\[\]/,"editor content is always empty");
 assert.match(app,/const storageKey = layoutEditing\?boardStorageKey\(INTERFACE_STUDIO_BOARD_ID\):boardStorageKey\(boardSummary\.id\)/,
  "interface editing uses an isolated storage key");
-assert.match(app,/const \[initial\] = useState\(\(\) => layoutEditing\?[\s\S]*?loadInitial\(storageKey\)\)/,
+assert.match(app,/const \[initial\] = useState\(\(\) => layoutEditing\?[\s\S]*?loadInitial\(storageKey,boardSummary.title\)\)/,
  "interface editor starts from an empty board without loading user content");
 assert.match(app,/layoutEditing&&isAppAdmin&&new URLSearchParams/,"preview must not recursively mount another editor");
 assert.match(app,/get\("layout-preview"\)!=="1"/);

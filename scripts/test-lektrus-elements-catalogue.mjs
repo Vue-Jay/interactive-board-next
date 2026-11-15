@@ -46,7 +46,10 @@ assert.ok(app.includes('chartEditorItem&&createPortal(<LektrusDataChartEditor'))
 assert.ok(app.includes('chartEditorItem ||'),"Diagram editor should pause canvas controls");
 assert.ok(chart.includes('type ChartStyle="bar"|"line"|"pie"'));
 assert.ok(chart.includes('export const validChartData='));
-assert.ok(chart.includes('Math.max(1,...entries.map(e=>e.value))'));
+assert.ok(chart.includes('Math.max(0,...entries.map(e=>e.value))'),"Positive domain must include zero");
+assert.ok(chart.includes('Math.min(0,...entries.map(e=>e.value))'),"Negative data must extend the plotted domain below zero");
+assert.ok(chart.includes('upper=max===min?1:max'),"All-zero data must still have a finite chart scale");
+assert.ok(chart.includes('Math.abs(zero-points[i].y)'),"Negative and positive bars must extend from the zero baseline");
 assert.ok(chart.includes('onSave({...item'));
 assert.ok(chart.includes('type="number"'));
 assert.ok(model.includes('chartStyle?: "bar" | "line" | "pie";'));

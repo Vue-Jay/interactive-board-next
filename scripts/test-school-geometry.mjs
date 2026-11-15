@@ -25,9 +25,36 @@ async function loadTs(file){
 await loadTs("src/lektrusGeometryPointNames.ts");
 
 const {mathPresets,makeMathPresetItem}=await loadTs("src/lektrusMathPresets.ts");
-const {isSolidFigure,solidWorldPoints,projectSolid}=await loadTs("src/lektrusSolid3d.ts");
+const {isSolidFigure,solidWorldPoints,projectSolid,projectSolidSurfaces,projectSolidEdges}=await loadTs("src/lektrusSolid3d.ts");
+const {geometryLabelLayout}=await loadTs("src/lektrusGeometryLabelLayout.ts");
 const app=read("src/BoardApp.tsx");
 const editor=read("src/LektrusGraphEditor.tsx");
+
+// A label's entire estimated text box must sit clear of edges, faces and other labels.
+for(const preset of mathPresets){
+ const item=makeMathPresetItem(preset.id,0,0,preset.id);
+ if(item.graphPurpose!=="geometry")continue;
+ const solid=isSolidFigure(preset.id);
+ for(const [rx,ry] of solid?[[25,-35],[30,70],[-40,155],[0,0]]:[[25,-35]]){
+  const xMin=item.graphXMin??-10,xMax=item.graphXMax??10,yMin=item.graphYMin??-10,yMax=item.graphYMax??10;
+  const scale=Math.min(600/(xMax-xMin),360/(yMax-yMin));
+  const screen=p=>({x:300+(p.x-(xMin+xMax)/2)*scale,y:180-(p.y-(yMin+yMax)/2)*scale});
+  const raw=solid?projectSolid(item,rx,ry):item.graphPoints??[];
+  const points=raw.map(p=>({...screen(p),label:p.label}));
+  const polygons=solid?projectSolidSurfaces(item,rx,ry).map(f=>f.points.map(screen)):
+   (item.graphPolygons??[]).map(p=>p.points.map(i=>screen(raw[i])));
+  const edges=solid?projectSolidEdges(item,rx,ry).map(e=>[screen(e.start),screen(e.end)]):
+   (item.graphSegments??[]).map(e=>[screen(raw[e.a]),screen(raw[e.b])]);
+  const labels=geometryLabelLayout(points,polygons,edges,600,360,[{left:510,right:590,top:7,bottom:solid?137:40}]);
+  for(let i=0;i<labels.length;i++){
+   const l=labels[i];if(!l)continue;
+   assert.ok(l.x>=7&&l.x<=593&&l.y>=10&&l.y<=350,preset.id+" label inside view");
+   assert.ok(Math.hypot(l.x-points[i].x,l.y-points[i].y)>=17,preset.id+" label clear of vertex");
+   for(let j=0;j<i;j++)if(labels[j])assert.ok(Math.abs(l.x-labels[j].x)>=14||Math.abs(l.y-labels[j].y)>=20,preset.id+" labels do not overlap");
+  }
+ }
+}
+assert.match(app,/lektrus-orbit-control" transform="translate\(0 48\)"/);
 
 assert.equal(mathPresets.some(p=>p.id==="triangle-obtuse"),false,"no obtuse triangle button");
 assert.equal(mathPresets.some(p=>p.id==="parallel"),true);
@@ -111,7 +138,6 @@ const circleWithRadius={...fullCircle,segments:[{a:0,b:1,kind:"segment",label:"r
 const withoutCircle=removeConstruction(circleWithRadius,"circle",0);
 assert.equal(withoutCircle.segments.length,0,"radius line belongs to deleted circle");
 assert.equal(withoutCircle.points.length,0,"circle deletion must not leave radius endpoints");
-const {projectSolidSurfaces}=await loadTs("src/lektrusSolid3d.ts");
 for(const id of ["cube","rectangular-prism","prism","pyramid","triangular-pyramid","cylinder","cone"]){
   const item=makeMathPresetItem(id,0,0,"mesh-"+id);
   for(const [x,y] of [[25,-35],[0,0],[45,65],[-75,170]]){
@@ -129,7 +155,6 @@ assert.doesNotMatch(editor,/pointOptions\(/,"no coordinate chooser in element ca
 
 
 // Semi-transparent shaded solids must expose both visible and hidden outlines.
-const {projectSolidEdges}=await loadTs("src/lektrusSolid3d.ts");
 for(const id of ["cube","rectangular-prism","prism","pyramid","triangular-pyramid","cylinder","cone"]){
   const item=makeMathPresetItem(id,0,0,"translucent-"+id);
   const edgeList=projectSolidEdges(item,25,-35);

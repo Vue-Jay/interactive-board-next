@@ -294,6 +294,9 @@ export default function App() {
           const preview=previewFromRemoteDocument(remote.document);
           if(preview)cacheBoardPreview(board.id,preview);
           let parsed = parseDocument(JSON.stringify(remote.document));
+          // Older server placeholders used a hard-coded title even for named boards.
+          if(parsed.title==="Новая доска"&&board.title!=="Новая доска"&&parsed.items.length===0&&remote.version<=1)
+            parsed={...parsed,title:board.title};
           // If the board was closed before its last upload finished, the local
           // snapshot is newer than the server revision. Recover it instead of
           // overwriting newly created subject tools with stale remote objects.
