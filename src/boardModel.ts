@@ -597,7 +597,7 @@ export type Item = {
   graphAxisMode?: "both" | "x" | "y" | "none";
   graphIntervalStartClosed?: boolean;
   graphIntervalEndClosed?: boolean;
-  graphType?: "linear" | "quadratic" | "sin" | "cos";
+  graphType?: "linear" | "quadratic" | "hyperbola" | "sin" | "cos";
   graphExpression?: string;
   graphConnectPoints?: boolean;
   graphA?: number; graphB?: number; graphC?: number;
@@ -833,7 +833,7 @@ export function parseDocument(raw: string): DocumentData {
       if (i.graphTriangleLines != null && (!Array.isArray(i.graphTriangleLines) || i.graphTriangleLines.length>3 || i.graphTriangleLines.some((v:unknown)=>typeof v!=="string"||!["median","altitude","bisector"].includes(v)))) throw new Error("Повреждены построения треугольника");
       if (i.graphPurpose != null && !["function","coordinates","geometry","unit-circle","number-line"].includes(i.graphPurpose)) throw new Error("Повреждён тип учебного объекта");
       if (i.graphAxisMode != null && !["both","x","y","none"].includes(i.graphAxisMode)) throw new Error("Повреждён режим осей");
-      if (i.graphType != null && !["linear","quadratic","sin","cos"].includes(i.graphType)) throw new Error("Повреждён тип графика");
+      if (i.graphType != null && !["linear","quadratic","hyperbola","sin","cos"].includes(i.graphType)) throw new Error("Повреждён тип графика");
       if (i.graphExpression != null && (typeof i.graphExpression !== "string" || i.graphExpression.length > 500)) throw new Error("Повреждена функция графика");
       if(i.scienceReactionDomain!=null&&!["inorganic","organic"].includes(i.scienceReactionDomain))throw new Error("Повреждён раздел химических реакций");
       if(i.scienceReactionSteps!=null&&(!Array.isArray(i.scienceReactionSteps)||i.scienceReactionSteps.length<1||i.scienceReactionSteps.length>8||

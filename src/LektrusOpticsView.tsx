@@ -2,6 +2,7 @@ import {useId,useMemo,type PointerEvent as ReactPointerEvent} from "react";
 import type {OpticsDocument,OpticalElement} from "./lektrusOpticsModel";
 import {OPTICS_WIDTH,OPTICS_HEIGHT,traceOptics} from "./lektrusOpticsModel";
 import {svgClientPoint,clampCanvasPoint} from "./lektrusSvgPointer";
+import {geometryLabelLayout,type LabelEdge} from "./lektrusGeometryLabelLayout";
 export type OpticsSelection={kind:"element"|"ray";id:string}|null;
 export type OpticsTool="select"|"source"|"mirror"|"converging-lens"|"diverging-lens"|"interface"|"screen"|"prism";
 type Props={doc:OpticsDocument;selection?:OpticsSelection;tool?:OpticsTool;
@@ -21,6 +22,21 @@ export default function LektrusOpticsView({doc,selection=null,tool="select",onPl
  const id=useId().replaceAll(":","");
  const interactive=Boolean(onPlace||onSelect||onElementDown);
  const paths=useMemo(()=>traceOptics(doc),[doc]);
+ const labelLayout=useMemo(()=>{
+  if(!doc.labels)return [];
+  const legacy=doc.legacy??[];
+  const avoid=doc.elements.map(p=>{
+   const halfWidth=p.kind==="prism"?78:p.kind==="source"?26:20;
+   const top=p.kind==="prism"?p.y-89:p.kind==="source"?p.y-26:p.y-p.length/2-4;
+   const bottom=p.kind==="prism"?p.y+69:p.kind==="source"?p.y+26:p.y+p.length/2+4;
+   return {left:p.x-halfWidth,right:p.x+halfWidth,top,bottom};
+  });
+  const edges:LabelEdge[]=[...paths.flatMap(p=>p.points.slice(1).map((b,i):LabelEdge=>[p.points[i],b])),...legacy.map(s=>[{x:s.x1,y:s.y1},{x:s.x2,y:s.y2}] as LabelEdge)];
+  return geometryLabelLayout([
+   ...doc.elements.map((p,i)=>({x:p.x,y:avoid[i].bottom,label:p.label.trim()||captions[p.kind],fontSize:13,preferredAngle:Math.PI/2})),
+   ...legacy.map(s=>({x:(s.x1+s.x2)/2,y:(s.y1+s.y2)/2,label:s.label,fontSize:12,preferredAngle:Math.atan2(s.y2-s.y1,s.x2-s.x1)-Math.PI/2}))
+  ],[],edges,OPTICS_WIDTH,OPTICS_HEIGHT,avoid);
+ },[doc,paths]);
  return <svg className={"lektrus-optics-svg optics-mode-"+tool} viewBox="0 0 960 560"
     preserveAspectRatio="xMidYMid meet" role="img" aria-label="Оптическая схема" style={{touchAction:interactive?"none":undefined}}>
   <defs>
@@ -35,12 +51,12 @@ export default function LektrusOpticsView({doc,selection=null,tool="select",onPl
   }}/>
   {doc.grid&&<rect width="960" height="560" fill={"url(#optics-dot-"+id+")"} pointerEvents="none"/>}
   {!!doc.legacy?.length&&<g pointerEvents="none" className="lektrus-optics-legacy">
-    {doc.legacy.map(stroke=><g key={stroke.id}>
+    {doc.legacy.map((stroke,i)=><g key={stroke.id}>
       <path d={`M${stroke.x1} ${stroke.y1}L${stroke.x2} ${stroke.y2}`}
         fill="none" stroke="#8397ae" strokeWidth="2" strokeLinecap="round"
         strokeDasharray={stroke.label==="Нормаль"?"6 5":undefined}/>
-      {stroke.label&&doc.labels&&<text x={(stroke.x1+stroke.x2)/2+6}
-        y={(stroke.y1+stroke.y2)/2-10} fontSize="12" fill="#637b98">{stroke.label}</text>}
+      {labelLayout[doc.elements.length+i]&&<text x={labelLayout[doc.elements.length+i]!.x}
+        y={labelLayout[doc.elements.length+i]!.y} textAnchor="middle" dominantBaseline="central" fontSize="12" fill="#637b98">{stroke.label}</text>}
     </g>)}
   </g>}
   <g pointerEvents="none" className="lektrus-optics-paths">
@@ -75,7 +91,7 @@ export default function LektrusOpticsView({doc,selection=null,tool="select",onPl
       onPointerDown={e=>{e.stopPropagation();onRaySelect(path.id)}}/>)}
   </g>}
   <g className="lektrus-optics-elements">
-   {doc.elements.map(part=>{
+   {doc.elements.map((part,i)=>{
      const picked=selection?.kind==="element"&&selection.id===part.id;
      const length=part.length,top=part.y-length/2,bottom=part.y+length/2;
      const label=part.label.trim()||captions[part.kind];
@@ -126,8 +142,9 @@ export default function LektrusOpticsView({doc,selection=null,tool="select",onPl
        </g>}
        {part.kind==="screen"&&<g><rect x={part.x-5} y={top} width="10" height={length} rx="3" fill="#7e99ad" stroke="#4d677b" strokeWidth="1.5"/></g>}
        {part.kind==="prism"&&<g><path d={`M${part.x} ${part.y-85}l-74 150h148Z`} fill="#c0e5ff" fillOpacity=".42" stroke="#3a90c5" strokeWidth="2.4"/></g>}
-       {doc.labels&&<text x={part.x} y={part.kind==="source"?part.y+38:Math.min(548,bottom+20)}
-          textAnchor="middle" className="lektrus-optics-caption" fontSize="13" fill="#456b91">{label}</text>}
+       {labelLayout[i]?.leader&&<line x1={part.x} y1={part.y} x2={labelLayout[i]!.x} y2={labelLayout[i]!.y} stroke="#7895bb" strokeDasharray="3 3" strokeWidth="1" pointerEvents="none"/>}
+       {labelLayout[i]&&<text x={labelLayout[i]!.x} y={labelLayout[i]!.y}
+          textAnchor="middle" dominantBaseline="central" pointerEvents="none" className="lektrus-optics-caption" fontSize="13" fill="#456b91">{label}</text>}
        {interactive&&<rect className="lektrus-optics-hit" {...hit}
          fill="transparent" pointerEvents="all"/>}
      </g>;

@@ -1,8 +1,9 @@
-import {useId,type PointerEvent as ReactPointerEvent} from "react";
+import {useId,useMemo,type PointerEvent as ReactPointerEvent} from "react";
 import type {CircuitAnchor,CircuitComponent,CircuitDocument,CircuitJunction,CircuitWire} from "./lektrusCircuitModel";
 import {circuitPolyline,circuitPolylineString,circuitTerminal} from "./lektrusCircuitModel";
 import ScienceCircuitGlyph from "./ScienceCircuitGlyph";
 import {svgClientPoint,clampCanvasPoint} from "./lektrusSvgPointer";
+import {geometryLabelLayout,type LabelEdge} from "./lektrusGeometryLabelLayout";
 
 export type CircuitSelection=
   |{kind:"component";id:string}|{kind:"wire";id:string}|{kind:"junction";id:string}|null;
@@ -36,6 +37,12 @@ export default function LektrusCircuitView({
   onSvgLeave,onDrop,view,onWheel,onBackgroundDown
 }:Props){
   const gridId="circuit-grid-"+useId().replaceAll(":","");
+  const captions=useMemo(()=>{
+    const edges:LabelEdge[]=doc.wires.flatMap(w=>{const p=circuitPolyline(doc,w);return p.slice(1).map((point,i):LabelEdge=>[p[i],point])});
+    const avoid=doc.components.map(c=>({left:c.x-43,right:c.x+43,top:c.y-44,bottom:c.y+45}));
+    for(const j of doc.junctions)avoid.push({left:j.x-5,right:j.x+5,top:j.y-5,bottom:j.y+5});
+    return geometryLabelLayout(doc.components.map(c=>({x:c.x,y:c.y+45,label:(c.label+" "+c.value).trim(),fontSize:11.5,preferredAngle:Math.PI/2})),[],edges,900,580,avoid);
+  },[doc]);
   const activeWire=mode==="wire";
   const resolve=(anchor:CircuitAnchor)=>anchor.kind==="terminal"?
     (()=>{const c=doc.components.find(c=>c.id===anchor.componentId);return c?circuitTerminal(c,anchor.side):null})():
@@ -87,7 +94,7 @@ export default function LektrusCircuitView({
       fill="none" stroke="#4176d5" strokeDasharray="6 6"
       strokeWidth="1.7" strokeLinecap="round" pointerEvents="none"/>}
     <g className="lektrus-circuit-components">
-      {doc.components.map((component:CircuitComponent)=>{
+      {doc.components.map((component:CircuitComponent,i)=>{
         const selected=selection?.kind==="component"&&selection.id===component.id;
         const a=circuitTerminal(component,"a"),b=circuitTerminal(component,"b");
         return <g key={component.id} className={"lektrus-circuit-part"+(selected?" selected":"")} data-board-interactive={onComponentDown?"true":undefined}
@@ -102,8 +109,9 @@ export default function LektrusCircuitView({
           <rect x={component.x-23} y={component.y-24} width="46" height="48"
             fill="transparent" pointerEvents="all"
             className="lektrus-circuit-component-body"/>
-          {(component.label||component.value)&&<text x={component.x} y={component.y+51}
-            fontSize="11.5" fill="#536784" textAnchor="middle"
+          {captions[i]?.leader&&<line x1={component.x} y1={component.y+45} x2={captions[i]!.x} y2={captions[i]!.y} stroke="#7895bb" strokeWidth="1" strokeDasharray="3 3" pointerEvents="none"/>}
+          {captions[i]&&<text x={captions[i]!.x} y={captions[i]!.y}
+            fontSize="11.5" fill="#536784" textAnchor="middle" dominantBaseline="central"
             pointerEvents="none">{(component.label+" "+component.value).trim()}</text>}
           {(["a","b"] as const).map(side=>{
             const anchor:CircuitAnchor={kind:"terminal",componentId:component.id,side};

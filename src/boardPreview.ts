@@ -2,6 +2,8 @@ import { getDisplayAsset } from "./assetStore";
 import { remoteRequest, isRemoteBackendEnabled } from "./backend";
 import { expandDocumentInk, parseDocument, type DocumentData, type Item } from "./boardModel";
 import { boardStorageKey } from "./boardStore";
+import { compileGraphExpression } from "./lektrusGraphExpression";
+import { graphCurvePath } from "./lektrusGraphCurve";
 
 // Lightweight board snapshots embedded in the existing board_documents JSONB.
 // A small JSONB projection lets the gallery load previews WITHOUT entire boards.
@@ -139,7 +141,11 @@ function draw(ctx:CanvasRenderingContext2D,item:Item){
     ctx.strokeStyle="#b9c9e1";ctx.lineWidth=2;ctx.beginPath();
     ctx.moveTo(w/2,0);ctx.lineTo(w/2,h);ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();
     ctx.strokeStyle="#3c63cc";ctx.lineWidth=3;ctx.beginPath();
-    for(let j=0;j<60;j++){
+    const evaluate=item.graphPurpose==="function"&&item.graphExpression?compileGraphExpression(item.graphExpression):null;
+    if(evaluate&&item.graphShowCurve!==false){
+      const xmin=item.graphXMin??-10,xmax=item.graphXMax??10,ymin=item.graphYMin??-6,ymax=item.graphYMax??6;
+      ctx.stroke(new Path2D(graphCurvePath(evaluate,xmin,xmax,ymin,ymax,x=>(x-xmin)*w/(xmax-xmin),y=>(ymax-y)*h/(ymax-ymin))));
+    }else for(let j=0;j<60;j++){
       const x=j/59*w,q=(j/59-.5)*5;
       const y=h*.5-(item.graphType==="quadratic"?(q*q-2)*h*.12:
         item.graphType==="sin"?Math.sin(q*2)*h*.3:q*h*.2);
