@@ -106,6 +106,12 @@ assert.ok((final.solidMol.AgCl??0)>precipMol*.99);
 assert.ok(network.labInventoryMassG(final)>beforeMass,
  "Added measured reagent mass must remain accounted for");
 const ui=fs.readFileSync("src/lektrusLabPH.ts","utf8");
-assert.match(ui,/!GAS_REAGENTS\.has\(id\)/);
+// A reaction product may be gaseous even if its catalogue entry describes
+// an aqueous stock. Exercise the actual phase instead of matching source text.
+assert.equal(ph.labVesselPH({reagents:["HCl"],environment:"aqueous",
+ doses:{HCl:{unit:"ml",value:200,phase:"gas"}}}),null);
+near(ph.labVesselPH({...acid,reagents:["HCl","SO3"],doses:{...acid.doses,
+ SO3:{unit:"ml",value:150,phase:"gas"}}}).pH,1,
+ "Explicit gas product volume cannot dilute an aqueous acid");
 assert.match(ui,/!v\.chemicalInventory&&v\.reagents\.length===1/);
 console.log("Lab pH: gas-headspace exclusion, pure water, historical ledgers, consecutive precipitate/acid/base reactions OK");
