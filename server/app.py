@@ -32,6 +32,7 @@ from document_delta import (
 from schema import apply_schema
 from board_history import ensure_baseline, record_revision, make_history_router
 from board_visits import make_visit_router
+from feedback_mail import run_feedback_mail
 
 ISSUER = "lektrus-selfhost"
 AUDIENCE = "lektrus"
@@ -65,14 +66,21 @@ async def lifespan(app: FastAPI):
         dsn=setting("DATABASE_URL"), min_size=1, max_size=5, command_timeout=20
     )
     app.state.document_deltas = DeltaHistory()
+    app.state.feedback_mail_wakeup = asyncio.Event()
+    mail_task = None
     try:
         async with app.state.pool.acquire() as conn:
             if os.getenv("LEKTRUS_APPLY_SCHEMA") == "true":
                 await apply_schema(conn)
             else:
                 await conn.fetchval("SELECT 1")
+        if os.getenv("LEKTRUS_SMTP_HOST", "").strip():
+            mail_task = asyncio.create_task(run_feedback_mail(app.state.pool, app.state.feedback_mail_wakeup))
         yield
     finally:
+        if mail_task:
+            mail_task.cancel()
+            await asyncio.gather(mail_task, return_exceptions=True)
         await app.state.pool.close()
 
 app = FastAPI(

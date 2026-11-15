@@ -919,6 +919,59 @@ html body select:not([multiple]) option{background:var(--lt-surface,#fff);color:
  .lectris-workspace-stage .admin-feedback-card>footer button{flex:1}
 }
 
+/* Compact administration and mailbox. */
+.lectris-workspace-stage :is(.admin-tools,.admin-teacher-requests){border:1px solid var(--lt-line);border-radius:12px;background:var(--lt-surface);padding:10px 14px;margin-bottom:16px}
+.lectris-workspace-stage :is(.admin-tools,.admin-teacher-requests,.admin-user-settings)>summary{cursor:pointer;color:var(--lt-text);font-weight:700;font-size:12px;padding:5px 0}
+.lectris-workspace-stage :is(.admin-tools,.admin-teacher-requests,.admin-user-settings)>summary:focus-visible{outline:2px solid var(--lt-primary);outline-offset:3px}
+.lectris-workspace-stage .admin-tools[open]>.admin-role-preview{margin-top:12px}
+.lectris-workspace-stage .admin-tools-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.lectris-workspace-stage .admin-teacher-requests>summary span{margin-left:8px;color:var(--lt-primary)}
+.lectris-workspace-stage .admin-user-filters,.lectris-workspace-stage .admin-mail-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.lectris-workspace-stage :is(.admin-user-filters,.admin-mail-toolbar) :is(input,select),.lectris-workspace-stage .admin-mail-compose textarea{min-width:0;min-height:38px;padding:9px 12px;border:1px solid var(--lt-line);border-radius:9px;background:var(--lt-raised);color:var(--lt-text);font:inherit;font-size:13px;box-sizing:border-box}
+.lectris-workspace-stage :is(.admin-user-filters,.admin-mail-toolbar) input{flex:1 1 240px}
+.lectris-workspace-stage .admin-user-card{grid-template-columns:minmax(0,1.5fr) minmax(135px,.5fr) minmax(120px,.5fr)!important}
+.lectris-workspace-stage .admin-user-settings{min-width:0}
+.lectris-workspace-stage .admin-user-settings[open]{grid-column:1/-1;border-top:1px solid var(--lt-line);padding-top:9px}
+.lectris-workspace-stage .admin-user-settings .admin-user-grant{grid-template-columns:minmax(120px,1fr) minmax(130px,1fr) auto auto;gap:10px!important}
+.lectris-workspace-stage .admin-mail-toolbar>.admin-tabs{display:flex;gap:4px;margin:0;padding:3px;border:1px solid var(--lt-line);border-radius:11px;background:var(--lt-surface)}
+.lectris-workspace-stage .admin-mail-layout{display:grid;grid-template-columns:minmax(250px,.8fr) minmax(0,1.65fr);gap:14px;align-items:start}
+.lectris-workspace-stage :is(.admin-mail-list,.admin-mail-detail){min-width:0;border:1px solid var(--lt-line);border-radius:15px;background:var(--lt-surface)}
+.lectris-workspace-stage .admin-mail-list{display:grid;gap:0;overflow:hidden;max-height:70vh;overflow-y:auto}
+.lectris-workspace-stage .admin-mail-row{display:grid;gap:6px;min-width:0;text-align:left;border:0;border-bottom:1px solid var(--lt-line);border-left:3px solid transparent;background:transparent;color:var(--lt-text);padding:13px 14px;font:inherit;cursor:pointer}
+.lectris-workspace-stage .admin-mail-row:last-child{border-bottom:0}
+.lectris-workspace-stage .admin-mail-row:hover,.lectris-workspace-stage .admin-mail-row.active{background:var(--lt-selected)}
+.lectris-workspace-stage .admin-mail-row.active{border-left-color:var(--lt-primary)}
+.lectris-workspace-stage .admin-mail-row:focus-visible{outline:2px solid var(--lt-primary);outline-offset:-3px}
+.lectris-workspace-stage .admin-mail-row-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.lectris-workspace-stage .admin-mail-row-top strong,.lectris-workspace-stage :is(.admin-mail-row-subject,.admin-mail-row-preview){min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:12px}
+.lectris-workspace-stage .admin-mail-row-subject{font-weight:700}
+.lectris-workspace-stage .admin-mail-row-preview{color:var(--lt-muted);font-size:11px}
+.lectris-workspace-stage .admin-mail :is(time,small){font-size:11px;color:var(--lt-muted)}
+.lectris-workspace-stage .admin-mail time{white-space:nowrap}
+.lectris-workspace-stage .admin-mail-detail{display:grid;gap:15px;padding:22px;min-height:280px}
+.lectris-workspace-stage .admin-mail-detail>header{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;border-bottom:1px solid var(--lt-line);padding-bottom:14px}
+.lectris-workspace-stage .admin-mail-detail h3{font-size:19px;margin:0 0 7px;overflow-wrap:anywhere}
+.lectris-workspace-stage .admin-mail-detail>header span{font-size:12px;color:var(--lt-muted);overflow-wrap:anywhere}
+.lectris-workspace-stage .admin-mail-badges,.lectris-workspace-stage .admin-mail-actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.lectris-workspace-stage .admin-mail-badge{display:inline-flex;align-items:center;border-radius:6px;padding:4px 7px;background:var(--lt-subtle);color:var(--lt-secondary);font-size:10px;font-weight:700}
+.lectris-workspace-stage .admin-mail-badge:is(.mail-new,.mail-pending,.mail-sending){background:var(--lt-selected);color:var(--lt-primary)}
+.lectris-workspace-stage .admin-mail-badge.mail-sent{background:#16854920;color:#18854d}
+.lectris-workspace-stage .admin-mail-badge.mail-failed,.lectris-workspace-stage .admin-mail-error{background:#d44b4b16;color:#cf4848}
+.lectris-workspace-stage .admin-mail-error{padding:10px;border-radius:8px;font-size:12px;margin:0}
+.lectris-workspace-stage :is(.admin-mail-body,.admin-mail-thread p){font-size:14px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.lectris-workspace-stage .admin-mail-compose,.lectris-workspace-stage .admin-mail-thread{display:grid;gap:10px;border-top:1px solid var(--lt-line);padding-top:15px}
+.lectris-workspace-stage .admin-mail-compose textarea{resize:vertical;width:100%;min-height:110px}
+.lectris-workspace-stage .admin-mail-compose>div,.lectris-workspace-stage .admin-mail-thread article>div{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.lectris-workspace-stage .admin-mail-thread article{display:grid;gap:7px;background:var(--lt-subtle);border:1px solid var(--lt-line);border-radius:10px;padding:11px}
+@media(max-width:760px){
+ .lectris-workspace-stage .admin-user-card{grid-template-columns:minmax(0,1fr)!important}
+ .lectris-workspace-stage .admin-user-settings .admin-user-grant{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .lectris-workspace-stage .admin-mail-layout{grid-template-columns:minmax(0,1fr)}
+ .lectris-workspace-stage .admin-mail-list{max-height:40vh}
+ .lectris-workspace-stage .admin-mail-detail{padding:15px}
+ .lectris-workspace-stage .admin-user-filters select{flex:1 1 130px}
+}
+
 /* Feedback should use the workspace width and give the message form room. */
 .lectris-workspace-stage .lektrus-feedback-screen{width:min(calc(100% - 64px),1480px)!important;margin:0 auto!important;padding:30px 0 40px!important}
 .lectris-workspace-stage .lektrus-feedback-screen-head{margin:0 0 18px!important}

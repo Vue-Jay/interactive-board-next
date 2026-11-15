@@ -7,6 +7,65 @@ import pytest
 
 from app import app
 from test_api import TEACHER, STUDENT, OUTSIDER, client, sign_in
+import feedback_mail
+
+
+@pytest.mark.asyncio
+async def test_feedback_mail_delivery_reply_permissions_and_retry(client, monkeypatch):
+    monkeypatch.setenv("LEKTRUS_FEEDBACK_TO", "admin@example.test")
+    sent = []
+    async def capture(row):
+        sent.append(dict(row))
+    monkeypatch.setattr(feedback_mail, "send_feedback_email", capture)
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET is_admin=true WHERE id=$1", TEACHER)
+    _, admin = await sign_in(client, "teacher@example.test")
+    _, student = await sign_in(client, "student@example.test")
+    payload = {"name":"Гость", "email":"visitor@example.test", "topic":"Предложение",
+               "message":"<script>alert(1)</script>\nТекст обращения", "source":"app"}
+    invalid = await client.post("/api/v1/feedback", json={**payload,"email":"visitor@example.test,other@example.test"})
+    assert invalid.status_code == 422
+    submitted = await client.post("/api/v1/feedback", json=payload)
+    assert submitted.status_code == 201, submitted.text
+    feedback_id = submitted.json()["id"]
+    url = f"/api/v1/admin/feedback/{feedback_id}/reply"
+    reply = {"request_id":str(uuid4()), "message":"Спасибо!\nУчтём предложение."}
+    assert (await client.post(url,json=reply)).status_code == 401
+    assert (await client.post(url,headers=student,json=reply)).status_code == 403
+    assert (await client.get("/api/v1/admin/feedback-mail",headers=student)).status_code == 403
+    assert await feedback_mail.deliver_one(app.state.pool)
+    assert sent[0]["recipient"] == "admin@example.test"
+    message = feedback_mail.build_feedback_email(sent[0],"support@example.test","https://lektrus.ru")
+    html = message.get_body(preferencelist=("html",)).get_content()
+    assert "Lektrus" in html and "role=\"presentation\"" in html and "border-radius" in html
+    assert "&lt;script&gt;" in html and "<script>" not in html
+    assert message.get_body(preferencelist=("plain",)).get_content()
+    inbox = (await client.get("/api/v1/admin/feedback",headers=admin)).json()
+    assert inbox[0]["notification_status"] == "sent"
+    for _ in range(2):
+        result = await client.post(url,headers=admin,json=reply)
+        assert result.status_code == 202, result.text
+    outbox = (await client.get("/api/v1/admin/feedback-mail",headers=admin)).json()
+    assert len(outbox) == 1 and outbox[0]["recipient"] == payload["email"]
+    assert outbox[0]["status"] == "pending"
+    async def fail(_row):
+        raise OSError("SMTP unavailable")
+    monkeypatch.setattr(feedback_mail,"send_feedback_email",fail)
+    for _ in range(3):
+        async with app.state.pool.acquire() as conn:
+            await conn.execute("UPDATE feedback_mail SET send_after=now() WHERE id=$1", UUID(reply["request_id"]))
+        assert await feedback_mail.deliver_one(app.state.pool)
+    outbox = (await client.get("/api/v1/admin/feedback-mail",headers=admin)).json()
+    assert outbox[0]["status"] == "failed" and outbox[0]["attempts"] == 3
+    retry = f"/api/v1/admin/feedback-mail/{reply['request_id']}/retry"
+    assert (await client.post(retry,headers=student)).status_code == 403
+    assert (await client.post(retry,headers=admin)).status_code == 202
+    monkeypatch.setattr(feedback_mail,"send_feedback_email",capture)
+    assert await feedback_mail.deliver_one(app.state.pool)
+    assert sent[-1]["recipient"] == payload["email"]
+    assert (await client.post(retry,headers=admin)).status_code == 409
+    outbox = (await client.get("/api/v1/admin/feedback-mail",headers=admin)).json()
+    assert outbox[0]["status"] == "sent"
 
 
 @pytest.mark.asyncio
