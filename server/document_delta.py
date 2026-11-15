@@ -13,6 +13,19 @@ def encode(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
 
 
+def encoded_bytes(value: Any) -> int:
+    return len(encode(value).encode("utf-8"))
+
+
+def document_bytes_from_parts(metadata: dict, item_bytes: int, count: int) -> int:
+    """Exact compact JSON size without serializing unchanged item bodies."""
+    if "items" in metadata or item_bytes < 0 or count < 0:
+        raise ValueError("Invalid document size summary")
+    # Replacing the closing brace with ,\"items\":[...]}; an empty
+    # metadata object has no preceding comma.
+    return encoded_bytes(metadata) + len('"items":[]') + bool(metadata) + item_bytes + max(0, count - 1)
+
+
 def item_map(items):
     if not isinstance(items, list) or any(
         not isinstance(item, dict) or not isinstance(item.get("id"), str) or not item["id"]

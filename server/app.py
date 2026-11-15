@@ -25,7 +25,10 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request, WebSocket,
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from realtime_events import EventRateLimit, InvalidLiveEvent, MAX_EVENT_BYTES, validate_live_event
-from document_delta import DeltaHistory, MAX_DELTA_BYTES, apply_delta, item_map, encode as encode_delta
+from document_delta import (
+    DeltaHistory, MAX_DELTA_BYTES, apply_delta, item_map, encode as encode_delta,
+    encoded_bytes, document_bytes_from_parts,
+)
 from schema import apply_schema
 
 ISSUER = "lektrus-selfhost"
@@ -631,13 +634,17 @@ async def relay_live_event(board_id: UUID, sender: WebSocket,
     })
 
 
-def serialize_document(document: dict) -> str:
+def validate_document_shape(document: dict):
     items = document.get("items")
     ink = document.get("ink", [])
     if not isinstance(items, list) or not isinstance(ink, list):
         error(422, "Документ должен содержать массивы items и ink.")
     if len(items) + len(ink) > MAX_DOCUMENT_ITEMS:
         error(413, "Слишком много объектов на доске.")
+
+
+def serialize_document(document: dict) -> str:
+    validate_document_shape(document)
     try:
         serialized = encode_delta(document)
     except (ValueError, OverflowError):
@@ -645,6 +652,85 @@ def serialize_document(document: dict) -> str:
     if len(serialized.encode("utf-8")) > MAX_DOCUMENT_BYTES:
         error(413, "Документ превышает ограничение 24 МБ.")
     return serialized
+
+
+def decode_document(value):
+    return json.loads(value) if isinstance(value, str) else value
+
+
+def patched_document(base, delta):
+    try:
+        return apply_delta(base, delta)
+    except ValueError:
+        error(422, "Некорректные изменения документа.")
+
+
+async def persist_normalized_items(conn, board_id, previous, base, document, delta, user_id, fast):
+    """Read only changed item sizes, not their previous JSON bodies.
+
+    The caller holds the board lock throughout validation and writing.
+    """
+    next_items = item_map(document["items"])
+    old_items = item_map(base["items"]) if previous["normalized"] else {}
+    deleted = list(old_items.keys() - next_items.keys())
+    prior_bytes = previous["item_bytes"]
+    # An older normalized board has no summary yet. Bootstrap it once from
+    # the full document, not from the placeholder IDs used by fast saves.
+    changed = [(item["id"], encode_delta(item)) for item in
+               (next_items.values() if prior_bytes is None else delta.get("items", {}).get("upsert", []))]
+    if prior_bytes is not None:
+        replaced = list((set(deleted) | {key for key, _ in changed}) & old_items.keys())
+        rows = await conn.fetch(
+            "SELECT item_id,byte_size FROM board_document_items WHERE board_id=$1 AND item_id=ANY($2::text[])",
+            board_id, replaced,
+        ) if replaced else []
+        if len(rows) != len(replaced) or any(row["byte_size"] is None for row in rows):
+            raise RuntimeError("Incomplete board document size summary")
+        remaining_bytes = prior_bytes - sum(row["byte_size"] for row in rows)
+    else:
+        remaining_bytes = 0
+    metadata = {key: value for key, value in document.items() if key != "items"}
+    if fast:
+        validate_document_shape(document)
+        try:
+            size = document_bytes_from_parts(
+                metadata, remaining_bytes + sum(len(value.encode("utf-8")) for _, value in changed), len(next_items),
+            )
+        except (ValueError, OverflowError):
+            error(422, "Недопустимые данные документа.")
+        if size > MAX_DOCUMENT_BYTES:
+            error(413, "Документ превышает ограничение 24 МБ.")
+    if deleted:
+        await conn.execute(
+            "DELETE FROM board_document_items WHERE board_id=$1 AND item_id=ANY($2::text[])", board_id, deleted,
+        )
+    if changed:
+        ids = [key for key, _ in changed]
+        encoded = [value for _, value in changed]
+        # JSONB can normalize numeric spellings (e.g. 1e20). Measure the
+        # persisted representation exactly as a later full read would.
+        canonical = await conn.fetch(
+            """SELECT entry.item_id,entry.item::jsonb AS item
+               FROM unnest($1::text[],$2::text[]) AS entry(item_id,item)""",
+            ids, encoded,
+        )
+        sizes = {row["item_id"]: encoded_bytes(decode_document(row["item"])) for row in canonical}
+        await conn.execute(
+            """INSERT INTO board_document_items(board_id,item_id,item,byte_size)
+               SELECT $1,entry.item_id,entry.item::jsonb,entry.byte_size
+               FROM unnest($2::text[],$3::text[],$4::integer[]) AS entry(item_id,item,byte_size)
+               ON CONFLICT(board_id,item_id) DO UPDATE SET item=EXCLUDED.item,byte_size=EXCLUDED.byte_size""",
+            board_id, ids, encoded, [sizes[key] for key in ids],
+        )
+        remaining_bytes += sum(sizes.values())
+    return await conn.fetchrow(
+        """UPDATE board_documents SET
+              document_metadata=CASE WHEN document_metadata IS DISTINCT FROM $2::jsonb THEN $2::jsonb ELSE document_metadata END,
+              item_order=CASE WHEN item_order IS DISTINCT FROM $3::text[] THEN $3::text[] ELSE item_order END,
+              item_bytes=$5,version=version+1,updated_by=$4,updated_at=now()
+            WHERE board_id=$1 RETURNING version,updated_at""",
+        board_id, encode_delta(metadata), list(next_items), user_id, remaining_bytes,
+    )
 
 
 async def persist_document(board_id: UUID, expected_version: int, request: Request,
@@ -667,68 +753,60 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
                 # An obsolete autosave needs only the current revision, not
                 # reconstruction/transfer of a potentially 24 MB board.
                 previous = await conn.fetchrow(
-                    """SELECT CASE WHEN version=$2 THEN lektrus_board_document(d) END AS document,
-                              version,document_metadata IS NOT NULL AS normalized
+                    """SELECT CASE WHEN version=$2 AND NOT ($3 AND item_bytes IS NOT NULL
+                                  AND document_metadata IS NOT NULL) THEN lektrus_board_document(d) END AS document,
+                              CASE WHEN version=$2 AND $3 AND item_bytes IS NOT NULL THEN document_metadata END AS metadata,
+                              CASE WHEN version=$2 AND $3 AND item_bytes IS NOT NULL THEN item_order END AS item_order,
+                              version,item_bytes,document_metadata IS NOT NULL AS normalized
                          FROM board_documents d WHERE board_id=$1""", board_id,
                     expected_version if expected_version <= 2**63-1 else -1,
+                    version_only and not board["is_pilot"],
                 )
             else:
                 previous = await conn.fetchrow("SELECT version FROM board_documents WHERE board_id=$1", board_id)
             current_version = previous["version"] if previous else 0
             if current_version != expected_version:
                 error(409, f"Версия доски изменилась: {current_version}.")
+            fast = False
             if delta is not None:
                 if previous is None:
                     error(409, "Документ не найден.")
-                base = previous["document"]
-                if isinstance(base, str):
-                    base = json.loads(base)
-                try:
-                    document = apply_delta(base, delta)
-                except ValueError:
-                    error(422, "Некорректные изменения документа.")
-                serialized = serialize_document(document)
+                fast = previous["metadata"] is not None
+                if fast:
+                    base = {**decode_document(previous["metadata"]),
+                            "items": [{"id": key} for key in previous["item_order"]]}
+                else:
+                    base = decode_document(previous["document"])
+                document = patched_document(base, delta)
             normalized_delta = False
             if delta is not None and not board["is_pilot"]:
                 try:
                     next_items = item_map(document["items"])
                     if any(len(key.encode("utf-8")) > 1024 for key in next_items):
                         raise ValueError("Item ID too large for indexed storage")
-                    old_items = item_map(base["items"]) if previous["normalized"] else {}
                     normalized_delta = True
                 except ValueError:
                     # Preserve compatibility with legacy documents whose item
                     # arrays have no stable unique IDs (metadata-only patches).
                     pass
+            if fast and not normalized_delta:
+                # Some legacy clients use arbitrarily long object IDs. Keep
+                # their full-save fallback without writing placeholder items.
+                base = decode_document(await conn.fetchval(
+                    "SELECT lektrus_board_document(d) FROM board_documents d WHERE board_id=$1", board_id,
+                ))
+                document = patched_document(base, delta)
+                fast = False
+            if delta is not None and not fast:
+                serialized = serialize_document(document)
             if normalized_delta:
-                deleted = list(old_items.keys() - next_items.keys())
-                if deleted:
-                    await conn.execute("DELETE FROM board_document_items WHERE board_id=$1 AND item_id=ANY($2::text[])", board_id, deleted)
-                # The validated delta already identifies explicit upserts. Do
-                # not compare arbitrary JSON with Python equality (true == 1).
-                changed = [(item["id"], encode_delta(item)) for item in
-                           (delta.get("items", {}).get("upsert", []) if previous["normalized"] else next_items.values())]
-                if changed:
-                    await conn.execute(
-                        """INSERT INTO board_document_items(board_id,item_id,item)
-                           SELECT $1,entry.item_id,entry.item::jsonb
-                           FROM unnest($2::text[],$3::text[]) AS entry(item_id,item)
-                           ON CONFLICT(board_id,item_id) DO UPDATE SET item=EXCLUDED.item""",
-                        board_id, [key for key, _ in changed], [value for _, value in changed],
-                    )
-                metadata = encode_delta({key: value for key, value in document.items() if key != "items"})
-                revision = await conn.fetchrow(
-                    """UPDATE board_documents SET
-                          document_metadata=CASE WHEN document_metadata IS DISTINCT FROM $2::jsonb THEN $2::jsonb ELSE document_metadata END,
-                          item_order=CASE WHEN item_order IS DISTINCT FROM $3::text[] THEN $3::text[] ELSE item_order END,
-                          version=version+1,updated_by=$4,updated_at=now()
-                        WHERE board_id=$1 RETURNING version,updated_at""",
-                    board_id, metadata, list(next_items), user["id"],
+                revision = await persist_normalized_items(
+                    conn, board_id, previous, base, document, delta, user["id"], fast,
                 )
             elif previous:
                 revision = await conn.fetchrow(
                     """UPDATE board_documents
-                          SET document=$2::jsonb,document_metadata=NULL,item_order=NULL,version=version+1,
+                          SET document=$2::jsonb,document_metadata=NULL,item_order=NULL,item_bytes=NULL,version=version+1,
                               updated_by=$3,updated_at=now()
                         WHERE board_id=$1
                         RETURNING version,updated_at""",

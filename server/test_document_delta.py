@@ -1,9 +1,18 @@
 import unittest
 
-from document_delta import DeltaHistory, MAX_HISTORY_BYTES, MAX_HISTORY_ENTRIES, apply_delta
+from document_delta import (
+    DeltaHistory, MAX_HISTORY_BYTES, MAX_HISTORY_ENTRIES, apply_delta,
+    document_bytes_from_parts, encoded_bytes,
+)
 
 
 class DocumentDeltaTests(unittest.TestCase):
+    def test_split_size_matches_exact_utf8_serialization(self):
+        for metadata in ({}, {"version": 1, "title": "Яков\\\n😀", "ink": [{"x": -0.00001}]}):
+            for items in ([], [{"id": "a"}], [{"id": "a", "value": 10**20}, {"id": "б", "v": True}]):
+                size = document_bytes_from_parts(metadata, sum(map(encoded_bytes, items)), len(items))
+                self.assertEqual(size, encoded_bytes({**metadata, "items": items}))
+
     def test_native_roundtrip(self):
         old = {"version": 1, "items": [{"id": "a", "text": "first"}, {"id": "b"}], "subject": "math"}
         patch = {"remove": ["subject"], "set": {"title": "Новая доска"}, "items": {
