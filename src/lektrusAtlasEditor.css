@@ -405,6 +405,10 @@
  font-size:clamp(15px,1.6vw,21px);margin:4px 0 0;font-weight:800;
  color:#294d72;overflow:hidden;text-overflow:ellipsis;white-space:nowrap
 }
+.lektrus-contour-editor-title .lektrus-contour-editor-task{
+ margin:4px 0 0;color:inherit;font-size:clamp(11px,1vw,14px);line-height:1.35;
+ white-space:pre-wrap;overflow-wrap:anywhere;max-height:min(112px,20dvh);overflow-y:auto;
+}
 .lektrus-contour-editor-header-actions{display:flex;gap:8px;align-items:center;flex:none}
 .lektrus-contour-editor-header-actions button{
  border:1px solid #ccdaeb;background:#f7faff;color:#345d83;

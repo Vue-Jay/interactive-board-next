@@ -126,11 +126,13 @@ export default function LektrusSchoolDiagramEditor({item,existing,studentMode=fa
   <div className="lektrus-school-backdrop lektrus-contour-editor-backdrop" role="presentation"
    onPointerDown={e=>e.stopPropagation()}>
    <section className="lektrus-school-editor lektrus-contour-editor-fullscreen"
-    role="dialog" aria-modal="true" aria-labelledby="lektrus-contour-editor-heading">
+    role="dialog" aria-modal="true" aria-labelledby="lektrus-contour-editor-heading"
+    aria-describedby={draft.contourTask?.trim()?"lektrus-contour-editor-task":undefined}>
     <header className="lektrus-contour-editor-header">
      <div className="lektrus-contour-editor-title">
       <span>КОНТУРНАЯ КАРТА</span>
       <h2 id="lektrus-contour-editor-heading">{studentMode?"Выполнение задания: "+(draft.title||"Контурная карта"):draft.title||"Контурная карта"}</h2>
+      {draft.contourTask?.trim()&&<p id="lektrus-contour-editor-task" className="lektrus-contour-editor-task" tabIndex={0}>{draft.contourTask}</p>}
      </div>
      <div className="lektrus-contour-editor-header-actions">
       {!studentMode&&<button type="button" className={contourSettingsOpen?"active":""}
