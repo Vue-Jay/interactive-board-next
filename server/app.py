@@ -25,6 +25,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request, WebSocket,
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from realtime_events import EventRateLimit, InvalidLiveEvent, MAX_EVENT_BYTES, validate_live_event
+from document_delta import DeltaHistory, MAX_DELTA_BYTES, apply_delta, encode as encode_delta
 from schema import apply_schema
 
 ISSUER = "lektrus-selfhost"
@@ -58,6 +59,7 @@ async def lifespan(app: FastAPI):
     app.state.pool = await asyncpg.create_pool(
         dsn=setting("DATABASE_URL"), min_size=1, max_size=5, command_timeout=20
     )
+    app.state.document_deltas = DeltaHistory()
     try:
         async with app.state.pool.acquire() as conn:
             if os.getenv("LEKTRUS_APPLY_SCHEMA") == "true":
@@ -227,6 +229,10 @@ class UpdateBoardInput(BaseModel):
 class SaveDocumentInput(BaseModel):
     expected_version: int = Field(ge=0)
     document: dict[str, Any]
+
+class PatchDocumentInput(BaseModel):
+    expected_version: int = Field(ge=1)
+    delta: dict[str, Any]
 
 _login_attempts: dict[str, deque[float]] = defaultdict(deque)
 
@@ -432,6 +438,7 @@ def document_view(row, board_id: UUID):
 
 @app.get("/api/v1/boards/{board_id}/document")
 async def get_document(board_id: UUID, request: Request, version_only: bool = False,
+                       since_version: int | None = None,
                        user=Depends(current_user)):
     async with request.app.state.pool.acquire() as conn:
         await board_access(conn, board_id, user["id"])
@@ -439,6 +446,18 @@ async def get_document(board_id: UUID, request: Request, version_only: bool = Fa
             return {"version": await conn.fetchval(
                 "SELECT version FROM board_documents WHERE board_id=$1", board_id
             ) or 0}
+        if since_version is not None and since_version >= 1:
+            revision = await conn.fetchrow(
+                "SELECT version,updated_at,updated_by FROM board_documents WHERE board_id=$1", board_id,
+            )
+            if revision:
+                patches = request.app.state.document_deltas.chain(board_id, since_version, revision["version"])
+                if patches is not None:
+                    return {"board_id": str(board_id), "document": None,
+                            "version": revision["version"], "base_version": since_version,
+                            "updated_at": revision["updated_at"].isoformat(),
+                            "updated_by": str(revision["updated_by"]) if revision["updated_by"] is not None else None,
+                            "patches": patches}
         row = await conn.fetchrow(
             "SELECT document,version,updated_at,updated_by FROM board_documents WHERE board_id=$1",
             board_id,
@@ -553,29 +572,56 @@ async def relay_live_event(board_id: UUID, sender: WebSocket,
             await _drop_subscriber(board_id, peer, pool)
 
 
-@app.put("/api/v1/boards/{board_id}/document")
-async def save_document(board_id: UUID, data: SaveDocumentInput, request: Request,
-                        version_only: bool = False, user=Depends(current_user)):
-    items = data.document.get("items")
-    ink = data.document.get("ink", [])
+def serialize_document(document: dict) -> str:
+    items = document.get("items")
+    ink = document.get("ink", [])
     if not isinstance(items, list) or not isinstance(ink, list):
         error(422, "Документ должен содержать массивы items и ink.")
     if len(items) + len(ink) > MAX_DOCUMENT_ITEMS:
         error(413, "Слишком много объектов на доске.")
-    serialized = json.dumps(data.document, ensure_ascii=False, separators=(",", ":"))
+    try:
+        serialized = encode_delta(document)
+    except (ValueError, OverflowError):
+        error(422, "Недопустимые данные документа.")
     if len(serialized.encode("utf-8")) > MAX_DOCUMENT_BYTES:
         error(413, "Документ превышает ограничение 24 МБ.")
+    return serialized
+
+
+async def persist_document(board_id: UUID, expected_version: int, request: Request,
+                           user, version_only: bool, document: dict | None = None,
+                           delta: dict | None = None):
+    # Full saves remain supported for older clients and initial/recovery saves.
+    serialized = serialize_document(document) if document is not None else None
+    if delta is not None:
+        try:
+            if len(encode_delta(delta).encode("utf-8")) > MAX_DELTA_BYTES:
+                error(413, "Изменения превышают ограничение 1 МБ.")
+        except (ValueError, OverflowError):
+            error(422, "Недопустимые данные изменений.")
     async with request.app.state.pool.acquire() as conn:
         async with conn.transaction():
             _, role = await board_access(conn, board_id, user["id"], lock=True)
             if role not in ("owner", "editor") and not user["is_admin"]:
                 error(403, "Недостаточно прав для изменения доски.")
             previous = await conn.fetchrow(
-                "SELECT version FROM board_documents WHERE board_id=$1", board_id,
+                ("SELECT document,version FROM board_documents WHERE board_id=$1" if delta is not None
+                 else "SELECT version FROM board_documents WHERE board_id=$1"), board_id,
             )
             current_version = previous["version"] if previous else 0
-            if current_version != data.expected_version:
+            if current_version != expected_version:
                 error(409, f"Версия доски изменилась: {current_version}.")
+            if delta is not None:
+                if previous is None:
+                    error(409, "Документ не найден.")
+                base = previous["document"]
+                if isinstance(base, str):
+                    base = json.loads(base)
+                try:
+                    document = apply_delta(base, delta)
+                except ValueError:
+                    error(422, "Некорректные изменения документа.")
+                serialized = serialize_document(document)
             if previous:
                 revision = await conn.fetchrow(
                     """UPDATE board_documents
@@ -596,11 +642,27 @@ async def save_document(board_id: UUID, data: SaveDocumentInput, request: Reques
                 "UPDATE boards SET updated_at=now() WHERE id=$1", board_id,
             )
     version = revision["version"]
+    if delta is not None:
+        request.app.state.document_deltas.remember(board_id, version, delta)
     await announce(board_id, version, request.app.state.pool)
     if version_only:
         return {"version": version}
-    return {"board_id": str(board_id), "document": data.document, "version": version,
+    return {"board_id": str(board_id), "document": document, "version": version,
             "updated_at": revision["updated_at"].isoformat(), "updated_by": str(user["id"])}
+
+
+@app.put("/api/v1/boards/{board_id}/document")
+async def save_document(board_id: UUID, data: SaveDocumentInput, request: Request,
+                        version_only: bool = False, user=Depends(current_user)):
+    return await persist_document(board_id, data.expected_version, request, user, version_only,
+                                  document=data.document)
+
+
+@app.patch("/api/v1/boards/{board_id}/document")
+async def patch_document(board_id: UUID, data: PatchDocumentInput, request: Request,
+                         version_only: bool = False, user=Depends(current_user)):
+    return await persist_document(board_id, data.expected_version, request, user, version_only,
+                                  delta=data.delta)
 
 @app.websocket("/api/v1/boards/{board_id}/events")
 async def board_events(websocket: WebSocket, board_id: UUID):
