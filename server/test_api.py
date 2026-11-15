@@ -151,6 +151,8 @@ async def test_native_document_deltas_preserve_concurrent_edits_and_fallback(cli
     chain = await client.get(url+"?since_version=1",headers=editor)
     assert chain.json()["patches"]==[winner,loser,reorder]
     full = await client.get(url,headers=editor)
+    unchanged = (await client.get(url+"?since_version=4",headers=editor)).json()
+    assert unchanged["document"] is None and unchanged["patches"]==[] and unchanged["version"]==4
     assert full.json()["document"]=={"version":1,"title":"Новый","items":[{"id":"d","kind":"text","text":"student"},old["items"][0],stroke]}
     assert len(chain.content)<len(full.content)/10
     for invalid in ({"items":{"order":["a"]}}, {"set":{"items":[]}}, {"items":{"remove":["unknown"]}}):

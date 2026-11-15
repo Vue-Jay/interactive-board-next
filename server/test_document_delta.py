@@ -23,6 +23,7 @@ class DocumentDeltaTests(unittest.TestCase):
         delta = {"set": {"title": "hello"}}
         history.remember("board", 2, delta)
         history.remember("board", 4, delta)
+        self.assertEqual(history.chain("board", 4, 4), [])
         self.assertIsNone(history.chain("board", 1, 4))
         history.remember("board", 3, delta)
         self.assertEqual(history.chain("board", 1, 4), [delta, delta, delta])

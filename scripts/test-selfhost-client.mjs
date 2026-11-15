@@ -94,6 +94,8 @@ async function loadSelfhost(enabled) {
       nativeDelta=body.delta;nativeVersion++;
       return ok({version:nativeVersion});
     }
+    if(u.pathname===`/api/v1/boards/${nativeBoardId}/document`&&u.searchParams.get("since_version")===String(nativeVersion))
+      return ok({board_id:nativeBoardId,version:nativeVersion,base_version:nativeVersion,document:null,patches:[],updated_by:user.id,updated_at:"2026-11-14T10:00:00Z"});
     if(u.pathname===`/api/v1/boards/${nativeBoardId}/document`&&u.searchParams.get("since_version")===String(nativeVersion-1)&&nativeDelta)
       return ok({board_id:nativeBoardId,document:null,version:nativeVersion,base_version:nativeVersion-1,
         patches:brokenChain?[{items:{order:[]}}]:[nativeDelta],updated_by:user.id,updated_at:"2026-11-14T10:00:00Z"});

@@ -86,6 +86,8 @@ class DeltaHistory:
             self.size -= size
 
     def chain(self, board_id, base: int, version: int):
+        if base == version:
+            return []
         if not 0 < version - base <= MAX_CHAIN:
             return None
         result, size = [], 0

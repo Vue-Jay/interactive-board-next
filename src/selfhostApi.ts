@@ -345,7 +345,7 @@ export async function selfhostReadDocument(boardId:string,signal?:AbortSignal,in
   let row=await selfhostRequest<DeltaResponse>(path+(base?"?since_version="+base.version:""),{signal});
   if(row.patches!==undefined){
     try{
-      if(!base||row.board_id!==boardId||row.base_version!==base.version||!Array.isArray(row.patches)||row.patches.length!==row.version-base.version||!row.patches.length||row.patches.length>8)throw new Error("Invalid delta chain");
+      if(!base||row.board_id!==boardId||row.base_version!==base.version||!Number.isSafeInteger(row.version)||!Array.isArray(row.patches)||row.patches.length!==row.version-base.version||row.patches.length>8)throw new Error("Invalid delta chain");
       row={...row,document:row.patches.reduce(applySelfhostDocumentDelta,base.document)};
     }catch{
       // A missing/malformed chain must never replace an acknowledged snapshot.

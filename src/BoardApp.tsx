@@ -32,21 +32,24 @@ import LektrusSubjectToolIcon from "./LektrusSubjectToolIcons";
 import LektrusSchoolDiagramView from "./LektrusSchoolDiagramView";
 import { fitGeoMatchingItem } from "./lektrusGeoMatchingLayout";
 import { boardObjectTypeName } from "./boardObjectNames";
-import LektrusSchoolDiagramEditor from "./LektrusSchoolDiagramEditor";
 import { isSchoolDiagramId, isSchoolDiagram } from "./lektrusSchoolDiagramModel";
 // Load heavy chemistry/physics editors only when a teacher opens one.
 // The board itself stays interactive while its optional tools download.
 const LektrusScienceEditor = lazy(() => import("./LektrusScienceEditor"));
+const LektrusSchoolDiagramEditor = lazy(() => import("./LektrusSchoolDiagramEditor"));
+const LektrusPhysicsGraphEditor = lazy(() => import("./LektrusPhysicsGraphEditor"));
+const LektrusOpticsEditor = lazy(() => import("./LektrusOpticsEditor"));
+const LektrusMechanicsEditor = lazy(() => import("./LektrusMechanicsEditor"));
+const LektrusCircuitEditor = lazy(() => import("./LektrusCircuitEditor"));
+const LektrusPeriodicTableEditor = lazy(() => import("./LektrusPeriodicTableEditor"));
+const LektrusAtomEditor = lazy(() => import("./LektrusAtomEditor"));
 import { mergeLabBench, readLabBench, type LabBench } from "./lektrusChemistryBenchModel";
 import LektrusChemicalEquationEditor from "./LektrusChemicalEquationEditor";
 import { LektrusSubjectBoardView, LektrusSubjectBoardTaskEditor, isSubjectBoard, boardTone, subjectBoardLocked, entryBelongsToSubject, newSubjectBoardEntry, subjectBoardEntryFilled } from "./LektrusSubjectBoard";
 import { LektrusSubjectBoardSolutionEditor } from "./LektrusSubjectBoardSolution";
 import { subjectTaskTypeAllowed } from "./lektrusSubjectTaskTemplates";
 import { subjectToneForItem, subjectToneForSubject, subjectAccentPalette, subjectEditorStyle } from "./lektrusSubjectAccent";
-import LektrusPhysicsGraphEditor from "./LektrusPhysicsGraphEditor";
 import { isPhysicsMotionGraph, motionAxisTicks } from "./lektrusPhysicsGraphTicks";
-import LektrusOpticsEditor from "./LektrusOpticsEditor";
-import LektrusMechanicsEditor from "./LektrusMechanicsEditor";
 import LektrusPhysicalBoardView from "./LektrusPhysicalBoardView";
 import LektrusPhysicsCanvasEditorAction from "./LektrusPhysicsCanvasEditorAction";
 import { movePhysicalPart, type PhysicalTarget } from "./lektrusPhysicalBoardMove";
@@ -57,12 +60,9 @@ import LektrusOrganicView from "./LektrusOrganicView";
 import LektrusChemistryIllustration, { isChemicalIllustration } from "./LektrusChemistryIllustration";
 import { analyzeOrganicStructure } from "./lektrusOrganicFormula";
 import { layoutScienceLabels } from "./lektrusScienceLabelLayout";
-import LektrusCircuitEditor from "./LektrusCircuitEditor";
 import LektrusCircuitView from "./LektrusCircuitView";
 import { circuitFromLegacyItem } from "./lektrusCircuitModel";
-import LektrusPeriodicTableEditor from "./LektrusPeriodicTableEditor";
 import LektrusPeriodicBoard from "./LektrusPeriodicBoard";
-import LektrusAtomEditor from "./LektrusAtomEditor";
 import LektrusAtomView from "./LektrusAtomView";
 import { defaultAtomModel } from "./lektrusAtomModel";
 import ScienceCircuitGlyph from "./ScienceCircuitGlyph";
@@ -8748,6 +8748,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               setFractionEditorId(null);setPendingMathItem(null);
             }}
           />,document.body)}
+        <Suspense fallback={<div className="board-server-overlay" role="status"><div className="board-server-card"><strong>Открываем предметный инструмент…</strong><span>Загружаем только необходимые модели.</span></div></div>}>
         {atomEditorItem&&<LektrusAtomEditor key={atomEditorItem.id} item={atomEditorItem}
           onCancel={()=>setAtomEditorItem(null)}
           onClose={next=>{
@@ -8916,6 +8917,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             }
             setScienceEditorItem(null);
           }}/></Suspense>}</>}
+        </Suspense>
         {chartEditorItem&&createPortal(<LektrusDataChartEditor key={chartEditorItem.id}
           item={chartEditorItem} onClose={()=>setChartEditorItem(null)}
           onSave={next=>{
