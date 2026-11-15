@@ -26,8 +26,9 @@ await loadTs("src/lektrusGeometryPointNames.ts");
 
 const {mathPresets,makeMathPresetItem}=await loadTs("src/lektrusMathPresets.ts");
 const {isSolidFigure,solidWorldPoints,projectSolid,projectSolidSurfaces,projectSolidEdges}=await loadTs("src/lektrusSolid3d.ts");
-const {geometryLabelLayout}=await loadTs("src/lektrusGeometryLabelLayout.ts");
+const {geometryLabelLayout,constructionLabelEdge,labelBox,edgeHits}=await loadTs("src/lektrusGeometryLabelLayout.ts");
 const {compileGraphExpression}=await loadTs("src/lektrusGraphExpression.ts");
+const {graphCurvePath}=await loadTs("src/lektrusGraphCurve.ts");
 const {fractionHitPart}=await loadTs("src/lektrusFractionHit.ts");
 const app=read("src/BoardApp.tsx");
 const editor=read("src/LektrusGraphEditor.tsx");
@@ -42,6 +43,14 @@ for(const [expression,x,expected] of [
 for(const expression of ["sin(","x+","1..2","x@+1","sinx","unknown(x)","2 3","", "x;"])
  assert.equal(compileGraphExpression(expression),null,expression+" must be rejected");
 assert.ok(!Number.isFinite(compileGraphExpression("1/x")(0)));
+const hyperbola=makeMathPresetItem("hyperbola",0,0,"hyperbola");
+assert.equal(hyperbola.graphType,"hyperbola");
+assert.equal(hyperbola.graphExpression,"1/x");
+for(const [formula,xMin,xMax] of [["1/x",-10,10],["1/(x-0.037)",-10,10],["1/x",-9.87,10.13]]){
+ const path=graphCurvePath(compileGraphExpression(formula),xMin,xMax,-6,6,x=>x*30,y=>-y*30);
+ assert.equal((path.match(/M/g)||[]).length,2,formula+" has two disjoint branches");
+}
+assert.equal((graphCurvePath(compileGraphExpression("100*x"),-1,1,-5,5,x=>x,y=>y).match(/M/g)||[]).length,1,"a steep continuous line must not be split");
 assert.ok(Number.isNaN(compileGraphExpression("sqrt(x)")(-1)),"domain error is not a syntax error");
 assert.match(app,/clipPath=\{`url\(#\$\{curveClipId\}\)`\}/,"curve must be clipped to the plot");
 assert.match(editor,/disabled=\{expressionInvalid\}/,"invalid graph cannot be saved");
@@ -77,14 +86,33 @@ for(const preset of mathPresets){
   const polygons=solid?projectSolidSurfaces(item,rx,ry).map(f=>f.points.map(screen)):
    (item.graphPolygons??[]).map(p=>p.points.map(i=>screen(raw[i])));
   const edges=solid?projectSolidEdges(item,rx,ry).map(e=>[screen(e.start),screen(e.end)]):
-   (item.graphSegments??[]).map(e=>[screen(raw[e.a]),screen(raw[e.b])]);
+   (item.graphSegments??[]).map(e=>constructionLabelEdge(screen(raw[e.a]),screen(raw[e.b]),e.kind));
   const labels=geometryLabelLayout(points,polygons,edges,600,360,[{left:510,right:590,top:7,bottom:solid?137:40}]);
   for(let i=0;i<labels.length;i++){
    const l=labels[i];if(!l)continue;
    assert.ok(l.x>=7&&l.x<=593&&l.y>=10&&l.y<=350,preset.id+" label inside view");
    assert.ok(Math.hypot(l.x-points[i].x,l.y-points[i].y)>=17,preset.id+" label clear of vertex");
+   const box=labelBox(l,points[i].label);
+   assert.ok(box.left>=3&&box.right<=597&&box.top>=3&&box.bottom<=357,preset.id+" entire label inside view");
+   assert.ok(!edges.some(edge=>edgeHits(box,edge)),preset.id+" label clear of actual edge "+points[i].label);
    for(let j=0;j<i;j++)if(labels[j])assert.ok(Math.abs(l.x-labels[j].x)>=14||Math.abs(l.y-labels[j].y)>=20,preset.id+" labels do not overlap");
   }
+ }
+}
+// The reported mg overlap: short attached force inside a block, neighbouring forces,
+// support and canvas bounds all compete for space as the body moves.
+await loadTs("src/lektrusMechanicsModel.ts");
+const {mechanicsLabels,mechanicsForceCaption}=await loadTs("src/lektrusMechanicsLabels.ts");
+for(const [x,y] of [[480,300],[70,58],[890,500],[480,410]]){
+ const body={id:"b",kind:"block",x,y,width:100,height:70,mass:1,label:"Тело"};
+ const force=(id,label,angle,length,magnitude)=>({id,bodyId:"b",x:0,y:0,angle,length,magnitude,label,showValue:true});
+ const document={version:1,bodies:[body],supports:[{id:"s",kind:"incline",x:480,y:445,width:240,angle:25,label:"Опора"}],forces:[force("mg","mg",-90,40,9.81),force("n","N",115,80,8.9),force("f","F",0,45,2)],grid:true,labels:true};
+ const layout=mechanicsLabels(document);
+ const labels=[...layout.forces.map((p,i)=>labelBox(p,mechanicsForceCaption(document.forces[i]),15)),labelBox(layout.bodies[0],body.label,15),labelBox(layout.supports[0],"Опора",14)];
+ for(const [i,r] of labels.entries()){
+  assert.ok(r.left>=3&&r.right<=957&&r.top>=3&&r.bottom<=557,"mechanics label inside view");
+  assert.ok(r.right<x-50||r.left>x+50||r.bottom<y-35||r.top>y+35,"mechanics label avoids body");
+  for(const other of labels.slice(0,i))assert.ok(r.right<=other.left||r.left>=other.right||r.bottom<=other.top||r.top>=other.bottom,"mechanics captions do not overlap");
  }
 }
 assert.match(app,/lektrus-orbit-control" transform="translate\(0 48\)"/);

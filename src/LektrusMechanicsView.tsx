@@ -1,6 +1,7 @@
-import {useId,type PointerEvent as ReactPointerEvent} from "react";
+import {useId,useMemo,type PointerEvent as ReactPointerEvent} from "react";
 import {MECH_WIDTH,MECH_HEIGHT,mechanicsForceOrigin,mechanicsForceTip,type MechanicsDocument,type MechanicsSelection,type MechanicsTool} from "./lektrusMechanicsModel";
 import {svgClientPoint,clampCanvasPoint} from "./lektrusSvgPointer";
+import {mechanicsLabels,mechanicsForceCaption} from "./lektrusMechanicsLabels";
 export const mechanicsSvgPoint=(x:number,y:number,svg:SVGSVGElement)=>{
   return clampCanvasPoint(svgClientPoint(svg,x,y),MECH_WIDTH,MECH_HEIGHT);
 };
@@ -11,6 +12,7 @@ type Props={doc:MechanicsDocument;selection?:MechanicsSelection;tool?:MechanicsT
  cursor?:{x:number;y:number}|null};
 export default function LektrusMechanicsView({doc,selection=null,tool="select",onPlace,onSelect,onPartDown,cursor=null}:Props){
  const id=useId().replaceAll(":","");
+ const labels=useMemo(()=>doc.labels?mechanicsLabels(doc):null,[doc]);
  const editable=Boolean(onPlace||onSelect||onPartDown);
  const selected=(type:string,objectId:string)=>selection?.type===type&&selection.id===objectId;
  const partPointerDown=(e:ReactPointerEvent<SVGGElement>,target:NonNullable<MechanicsSelection>)=>{
@@ -35,7 +37,7 @@ export default function LektrusMechanicsView({doc,selection=null,tool="select",o
    onPlace(p.x,p.y);
   }}/>
   {doc.grid&&<rect width="960" height="560" fill={"url(#mechanics-dot-"+id+")"} pointerEvents="none"/>}
-  {doc.supports.map(s=><g key={s.id} className={"lektrus-mechanics-part"+(selected("support",s.id)?" selected":"")} data-board-interactive={onPartDown?"true":undefined}
+  {doc.supports.map((s,i)=><g key={s.id} className={"lektrus-mechanics-part"+(selected("support",s.id)?" selected":"")} data-board-interactive={onPartDown?"true":undefined}
    onPointerDown={onPartDown||onPlace?e=>partPointerDown(e,{type:"support",id:s.id}):undefined}
 >
    <g transform={`translate(${s.x} ${s.y}) rotate(${-s.angle})`}>
@@ -45,9 +47,10 @@ export default function LektrusMechanicsView({doc,selection=null,tool="select",o
      {Array.from({length:Math.floor(s.width/24)+1},(_,i)=><path key={i} d={`M${-s.width/2+i*24} 3l-10 12`} stroke="#afbdd0" strokeWidth="1.5"/>)}
     </g>}
    </g>
-   {doc.labels&&s.label&&<text x={s.x} y={s.y+37} fill="#567493" fontSize="14" textAnchor="middle">{s.label}</text>}
+   {labels?.supports[i]?.leader&&<line x1={s.x} y1={s.y} x2={labels.supports[i]!.x} y2={labels.supports[i]!.y} stroke="#7895bb" strokeWidth="1" strokeDasharray="3 3" pointerEvents="none"/>}
+   {labels?.supports[i]&&<text x={labels.supports[i]!.x} y={labels.supports[i]!.y} fill="#567493" fontSize="14" textAnchor="middle" dominantBaseline="central" pointerEvents="none">{s.label}</text>}
   </g>)}
-  {doc.bodies.map(b=><g key={b.id} className={"lektrus-mechanics-part"+(selected("body",b.id)?" selected":"")} data-board-interactive={onPartDown?"true":undefined}
+  {doc.bodies.map((b,i)=><g key={b.id} className={"lektrus-mechanics-part"+(selected("body",b.id)?" selected":"")} data-board-interactive={onPartDown?"true":undefined}
    onPointerDown={onPartDown||onPlace?e=>partPointerDown(e,{type:"body",id:b.id}):undefined}
 >
    {selected("body",b.id)&&<rect x={b.x-b.width/2-7} y={b.y-b.height/2-7} width={b.width+14} height={b.height+14} rx="13"
@@ -56,14 +59,15 @@ export default function LektrusMechanicsView({doc,selection=null,tool="select",o
     fill="#e5efff" stroke="#4d7bb8" strokeWidth="2.5"/>:
     <ellipse cx={b.x} cy={b.y} rx={b.width/2} ry={b.height/2} fill="#e5efff" stroke="#4d7bb8" strokeWidth="2.5"/>}
    <circle cx={b.x} cy={b.y} r="3" fill="#3e6fb1"/>
-   {doc.labels&&<text x={b.x} y={b.y-b.height/2-16} fontSize="15" fontWeight="750" fill="#315587"
-    textAnchor="middle">{b.label||"Тело"}</text>}
+   {labels?.bodies[i]?.leader&&<line x1={b.x} y1={b.y-b.height/2} x2={labels.bodies[i]!.x} y2={labels.bodies[i]!.y} stroke="#7895bb" strokeWidth="1" strokeDasharray="3 3" pointerEvents="none"/>}
+   {labels?.bodies[i]&&<text x={labels.bodies[i]!.x} y={labels.bodies[i]!.y} fontSize="15" fontWeight="750" fill="#315587"
+    textAnchor="middle" dominantBaseline="central" pointerEvents="none">{b.label||"Тело"}</text>}
    {editable&&<rect className="mechanics-hit" x={b.x-b.width/2-8} y={b.y-b.height/2-8}
      width={b.width+16} height={b.height+16} fill="transparent" pointerEvents="all"/>}
   </g>)}
-  {doc.forces.map(f=>{
+  {doc.forces.map((f,i)=>{
     const a=mechanicsForceOrigin(f,doc),b=mechanicsForceTip(f,doc),picked=selected("force",f.id);
-    const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+    const caption=labels?.forces[i];
     return <g key={f.id} className={"lektrus-mechanics-force"+(picked?" selected":"")} data-board-interactive={onPartDown?"true":undefined}
       onPointerDown={onPartDown||onPlace?e=>partPointerDown(e,{type:"force",id:f.id}):undefined}
 >
@@ -72,9 +76,10 @@ export default function LektrusMechanicsView({doc,selection=null,tool="select",o
         markerEnd={"url(#mechanics-arrow-"+id+")"} pointerEvents="none"/>
       <circle cx={a.x} cy={a.y} r="4.5" fill="#fff" stroke="#2861b8" strokeWidth="2" pointerEvents="none"/>
       {picked&&<circle cx={b.x} cy={b.y} r="6" fill="#fff" stroke="#2861b8" strokeWidth="2" pointerEvents="none"/>}
-      {doc.labels&&<text x={mid.x+8} y={mid.y-12} fontSize="15" fontWeight="770"
+      {caption?.leader&&<line x1={(a.x+b.x)/2} y1={(a.y+b.y)/2} x2={caption.x} y2={caption.y} stroke="#7895bb" strokeWidth="1" strokeDasharray="3 3" pointerEvents="none"/>}
+      {caption&&<text x={caption.x} y={caption.y} fontSize="15" fontWeight="770" textAnchor="middle" dominantBaseline="central"
         fill="#2256af" stroke="#fff" strokeWidth="4" paintOrder="stroke" pointerEvents="none">
-         {f.label||"F"}{f.showValue?` = ${f.magnitude} Н`:""}</text>}
+         {mechanicsForceCaption(f)}</text>}
       {editable&&<line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent"
         strokeWidth="23" pointerEvents="stroke" className="mechanics-hit"/>}
     </g>;

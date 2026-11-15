@@ -1,7 +1,7 @@
 import type {Item} from "./boardModel";
 
 export type MathPresetId =
-  | "free" | "blank" | "linear" | "quadratic" | "sine" | "cosine"
+  | "free" | "blank" | "linear" | "quadratic" | "hyperbola" | "sine" | "cosine"
   | "number-line" | "triangle" | "quadrilateral" | "angle"
   | "circle" | "unit-circle" | "cube" | "prism" | "pyramid" | "cone" | "cylinder"
   | "triangle-right" | "triangle-equilateral" | "triangle-isosceles"
@@ -19,6 +19,7 @@ export const mathPresets:MathPreset[]=[
   {id:"number-line",title:"Числовая прямая",subtitle:"Числа и границы промежутка",group:"Числа и координаты"},
   {id:"linear",title:"Линейная функция",subtitle:"y = 2x + 1",group:"Функции"},
   {id:"quadratic",title:"Парабола",subtitle:"y = x² − 4x + 3",group:"Функции"},
+  {id:"hyperbola",title:"Гипербола",subtitle:"y = 1/x",group:"Функции"},
   {id:"sine",title:"Синусоида",subtitle:"y = sin(x)",group:"Функции"},
   {id:"cosine",title:"Косинусоида",subtitle:"y = cos(x)",group:"Функции"},
   {id:"triangle",title:"Треугольник",subtitle:"Подвижные вершины и заданные стороны",group:"Геометрия"},
@@ -152,6 +153,7 @@ export function makeMathPresetItem(id:MathPresetId,x:number,y:number,objectId:st
   if(id==="blank")return {...graph,text:"Координатная плоскость"};
   if(id==="linear")return {...graph,graphPurpose:"function",graphType:"linear",graphExpression:"2*x + 1",graphShowCurve:true};
   if(id==="quadratic")return {...graph,graphPurpose:"function",graphType:"quadratic",graphExpression:"x^2 - 4*x + 3",graphShowCurve:true};
+  if(id==="hyperbola")return {...graph,graphPurpose:"function",graphType:"hyperbola",graphExpression:"1/x",graphShowCurve:true};
   if(id==="sine"||id==="cosine")return {...graph,graphPurpose:"function",graphType:id==="sine"?"sin":"cos",graphExpression:id==="sine"?"sin(x)":"cos(x)",graphShowCurve:true,graphXMin:-7,graphXMax:7,graphYMin:-2,graphYMax:2};
   if(id==="number-line")return {
     ...graph,graphPurpose:"number-line",graphAxisMode:"x",graphGrid:false,

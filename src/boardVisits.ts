@@ -1,9 +1,10 @@
 import {isRemoteBackendEnabled,remoteRequest} from "./backend";
 import {isSelfhostBackendEnabled,selfhostRequest} from "./selfhostApi";
+import {retryVisitRequest} from "./lektrusVisitRetry";
 export type BoardVisit={visit_id:string;board_id:string;user_id:string;user_name:string;board_title:string;started_at:string;left_at:string|null;duration_seconds:number;active:boolean};
 const rpc=<T,>(name:string,body:unknown)=>remoteRequest<T>("/rest/v1/rpc/"+name,{method:"POST",body:JSON.stringify(body)});
-export const listBoardVisits=(boardId:string,studentId?:string)=>isSelfhostBackendEnabled()?selfhostRequest<BoardVisit[]>(`/api/v1/boards/${encodeURIComponent(boardId)}/visits${studentId?`?student_id=${encodeURIComponent(studentId)}`:""}`):rpc<BoardVisit[]>("list_board_visits",{p_board_id:boardId,p_student_id:studentId??null,p_limit:150});
-export const listStudentVisits=(studentId:string)=>isSelfhostBackendEnabled()?selfhostRequest<BoardVisit[]>(`/api/v1/students/${encodeURIComponent(studentId)}/visits`):rpc<BoardVisit[]>("list_student_board_visits",{p_student_id:studentId,p_limit:100});
+export const listBoardVisits=(boardId:string,studentId?:string)=>isSelfhostBackendEnabled()?retryVisitRequest(()=>selfhostRequest<BoardVisit[]>(`/api/v1/boards/${encodeURIComponent(boardId)}/visits${studentId?`?student_id=${encodeURIComponent(studentId)}`:""}`)):rpc<BoardVisit[]>("list_board_visits",{p_board_id:boardId,p_student_id:studentId??null,p_limit:150});
+export const listStudentVisits=(studentId:string)=>isSelfhostBackendEnabled()?retryVisitRequest(()=>selfhostRequest<BoardVisit[]>(`/api/v1/students/${encodeURIComponent(studentId)}/visits`)):rpc<BoardVisit[]>("list_student_board_visits",{p_student_id:studentId,p_limit:100});
 export function formatVisitDuration(seconds:number){
  const m=Math.max(0,Math.floor(seconds/60));
  return m>=60?`${Math.floor(m/60)} ч ${m%60} мин`:m>0?`${m} мин`:"менее минуты";
@@ -19,7 +20,7 @@ export function trackBoardVisit(boardId:string):()=>void{
   const session=id;
   chain=chain.then(async()=>{
    if(!selfhost){await rpc<void>("record_board_visit",{p_board_id:boardId,p_session_id:session,p_action:action});return;}
-   const send=(visitId:string)=>selfhostRequest<{ok:boolean;expired?:boolean}>(`/api/v1/boards/${encodeURIComponent(boardId)}/visits`,{method:"POST",body:JSON.stringify({visit_id:visitId,action}),keepalive:action==="leave"});
+   const send=(visitId:string)=>retryVisitRequest(()=>selfhostRequest<{ok:boolean;expired?:boolean}>(`/api/v1/boards/${encodeURIComponent(boardId)}/visits`,{method:"POST",body:JSON.stringify({visit_id:visitId,action}),keepalive:action==="leave"}));
    const result=await send(session);
    if(result.expired&&action==="ping"&&active&&!closed&&id===session){id=crypto.randomUUID();await send(id);}
   }).catch(error=>{if(action==="ping")console.warn("Не удалось отметить посещение доски",error)});

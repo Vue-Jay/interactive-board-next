@@ -213,7 +213,7 @@ type Props = {
 const finiteNumber=(text:string,fallback:number)=>{const value=Number(text);return Number.isFinite(value)?value:fallback};
 
 const formulas:Record<GraphDraft["type"],string>={
-  linear:"2*x + 1",quadratic:"x^2 - 4*x + 3",sin:"sin(x)",cos:"cos(x)"
+  linear:"2*x + 1",quadratic:"x^2 - 4*x + 3",hyperbola:"1/x",sin:"sin(x)",cos:"cos(x)"
 };
 
 export default function LektrusGraphEditor({draft,userId,preview,mode,collaborative=false,onChange:emitChange,onSave,onCancel,onClose}:Props) {
@@ -740,7 +740,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
               <label className="lektrus-graph-field"><span>Шаблон построения</span>
                 <select value={draft.type} onChange={e=>{const type=e.target.value as GraphDraft["type"];setExpressionInput(formulas[type]);patch({type,expression:formulas[type],showCurve:true})}}>
                   <option value="linear">Линейная</option><option value="quadratic">Квадратичная</option>
-                  <option value="sin">Синус</option><option value="cos">Косинус</option>
+                  <option value="hyperbola">Гипербола</option><option value="sin">Синус</option><option value="cos">Косинус</option>
                 </select>
               </label>
               <label className="lektrus-graph-field"><span>Формула y =</span><input value={expressionInput} maxLength={500} aria-invalid={expressionInvalid} onChange={e=>{const expression=e.target.value;setExpressionInput(expression);if(compileGraphExpression(expression))patch({expression})}} placeholder="Например: x^2 - 4*x + 3"/></label>

@@ -61,7 +61,8 @@ import LektrusOrganicView from "./LektrusOrganicView";
 import LektrusChemistryIllustration, { isChemicalIllustration } from "./LektrusChemistryIllustration";
 import { analyzeOrganicStructure } from "./lektrusOrganicFormula";
 import { layoutScienceLabels } from "./lektrusScienceLabelLayout";
-import { geometryLabelLayout } from "./lektrusGeometryLabelLayout";
+import { constructionLabelEdge, geometryLabelLayout } from "./lektrusGeometryLabelLayout";
+import { graphCurvePath } from "./lektrusGraphCurve";
 import LektrusCircuitView from "./LektrusCircuitView";
 import { circuitFromLegacyItem } from "./lektrusCircuitModel";
 import LektrusPeriodicBoard from "./LektrusPeriodicBoard";
@@ -1173,9 +1174,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   const hasX = axes === "both" || axes === "x", hasY = axes === "both" || axes === "y";
   const point = (index:number) => gp[index];
   const distance = (a:{x:number;y:number},b:{x:number;y:number}) => Math.hypot(a.x-b.x,a.y-b.y);
-  const curve = purpose === "function" && item.graphShowCurve !== false && evaluateCurve && xMax>xMin && yMax>yMin ? Array.from({length:401},(_,i)=>{const x=xMin+(xMax-xMin)*i/400,y=evaluateCurve(x);return {x:sx(x),y:sy(y),ok:Number.isFinite(y)&&y>=yMin-(yMax-yMin)*2&&y<=yMax+(yMax-yMin)*2};}) : [];
-  let curvePath="",drawing=false;
-  for(const p of curve){if(!p.ok){drawing=false;continue}curvePath+=`${drawing?"L":"M"}${p.x.toFixed(1)} ${p.y.toFixed(1)} `;drawing=true}
+  const curvePath=purpose==="function"&&item.graphShowCurve!==false&&evaluateCurve?graphCurvePath(evaluateCurve,xMin,xMax,yMin,yMax,sx,sy):"";
   const coord = (clientX:number,clientY:number,svg:SVGSVGElement,pointIndex=-1) => {
     const r=svg.getBoundingClientRect(),factor=Math.min(r.width/W,r.height/H)||1;
     const left=r.left+(r.width-W*factor)/2,top=r.top+(r.height-H*factor)/2;
@@ -1259,7 +1258,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
       solid?solidSurfaces.map(f=>f.points.map(screenPoint)):
         (item.graphPolygons??[]).map(poly=>poly.points.map(i=>gp[i]).filter(Boolean).map(screenPoint)),
       solid?solidEdges.map(e=>[screenPoint(e.start),screenPoint(e.end)]):
-        (item.graphSegments??[]).filter(e=>gp[e.a]&&gp[e.b]).map(e=>[screenPoint(gp[e.a]),screenPoint(gp[e.b])]),
+        (item.graphSegments??[]).filter(e=>gp[e.a]&&gp[e.b]).map(e=>constructionLabelEdge(screenPoint(gp[e.a]),screenPoint(gp[e.b]),e.kind,W,H)),
       W,H,[{left:510,right:590,top:7,bottom:solid?137:40}]):null;
   return <div className={`graph-view graph-purpose-${purpose} ${item.graphFigureId?.startsWith("physics-")||item.graphFigureId?.startsWith("chem-")?"science-graph":""} ${onPointMove?"graph-interactive":""}`}>
     {purpose!=="geometry"&&item.graphFigureId?.startsWith("physics-")&&onOpenEditor&&
