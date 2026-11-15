@@ -3,7 +3,7 @@ import { getCachedRemoteSession, isRemoteBackendEnabled,remoteRequest } from "./
 import {
  getCachedSelfhostSession,isSelfhostBackendEnabled,selfhostMe,
  selfhostRequestTeacherAccess,selfhostSetStudentRole,selfhostAdminUsers,
- selfhostAdminTeacherRequests,selfhostReviewTeacherRequest,selfhostAdminSetSubscription,
+ selfhostAdminTeacherRequests,selfhostReviewTeacherRequest,selfhostAdminSetSubscription,selfhostAdminDeleteUser,
 } from "./selfhostApi";
 export type AccountRole="teacher"|"student";
 export type TeacherStatus="none"|"pending"|"approved"|"rejected";
@@ -161,3 +161,11 @@ export async function listTeacherRequests():Promise<TeacherRequest[]>{if(isSelfh
 export async function reviewTeacherRequest(userId:string,approve:boolean){if(isSelfhostBackendEnabled()){const result=await selfhostReviewTeacherRequest(userId,approve);clearAccountAccessCache();return result}const result=await remoteRequest("/rest/v1/rpc/review_teacher_request",{method:"POST",body:JSON.stringify({p_user_id:userId,p_approve:approve})});clearAccountAccessCache();return result}
 export async function listAdminUsers():Promise<AdminUser[]>{if(isSelfhostBackendEnabled()){const x=await selfhostAdminUsers();return x.filter(v=>!!String(v.email||"").trim()).map(v=>({userId:v.user_id,name:v.name||"Пользователь",email:v.email||"",role:v.role==="teacher"?"teacher":"student",teacherStatus:["pending","approved","rejected"].includes(v.teacher_status)?v.teacher_status:"none",isAdmin:!!v.is_admin,subscriptionPlan:plan(v.subscription_plan),subscriptionUntil:v.subscription_until??null,createdAt:v.created_at??null}))}const x=await remoteRequest<any[]>("/rest/v1/rpc/admin_list_users",{method:"POST",body:"{}"});return(Array.isArray(x)?x:[]).filter(v=>!!String(v.email||"").trim()).map(v=>({userId:v.user_id,name:v.name||"Пользователь",email:v.email||"",role:v.role==="teacher"?"teacher":"student",teacherStatus:["pending","approved","rejected"].includes(v.teacher_status)?v.teacher_status:"none",isAdmin:!!v.is_admin,subscriptionPlan:plan(v.subscription_plan),subscriptionUntil:v.subscription_until??null,createdAt:v.created_at??null}))}
 export async function adminSetSubscription(userId:string,subscriptionPlan:SubscriptionPlan,until:string|null):Promise<void>{if(isSelfhostBackendEnabled()){await selfhostAdminSetSubscription(userId,subscriptionPlan,until);return}await remoteRequest("/rest/v1/rpc/admin_set_subscription",{method:"POST",body:JSON.stringify({p_user_id:userId,p_plan:subscriptionPlan,p_until:until})});clearAccountAccessCache()}
+
+// Account deletion is available only on the native server. The legacy backend
+// has no equivalent administrator endpoint and must not receive this request.
+export const canAdminDeleteUsers=()=>isSelfhostBackendEnabled();
+export async function adminDeleteUser(userId:string,email:string){
+ if(!canAdminDeleteUsers())throw new Error("Удаление доступно только на собственном сервере Lektrus.");
+ return selfhostAdminDeleteUser(userId,email);
+}

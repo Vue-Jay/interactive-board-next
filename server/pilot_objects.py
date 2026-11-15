@@ -241,7 +241,7 @@ def make_pilot_objects_router(current_user, board_access, announce) -> APIRouter
             )
         return [{
             "operation_id": str(row["operation_id"]),
-            "actor_id": str(row["actor_id"]),
+            "actor_id": str(row["actor_id"]) if row["actor_id"] is not None else None,
             "type": row["operation_type"], "object_id": row["object_id"],
             "object_revision": row["object_revision"],
             "version": row["resulting_version"],

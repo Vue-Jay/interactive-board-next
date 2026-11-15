@@ -327,6 +327,10 @@ export type SelfhostProductFeedback={
   message:string;source:"site"|"app";status:"new"|"reviewed"|"closed";created_at:string;
 };
 export const selfhostAdminUsers=()=>selfhostRequest<SelfhostAdminUser[]>("/api/v1/admin/users");
+export const selfhostAdminDeleteUser=(userId:string,email:string)=>
+  selfhostRequest<{ok:boolean;files_pending:number}>("/api/v1/admin/users/"+encodeURIComponent(userId),{
+    method:"DELETE",body:JSON.stringify({email}),
+  });
 export const selfhostAdminTeacherRequests=()=>selfhostRequest<SelfhostTeacherRequest[]>("/api/v1/admin/teacher-requests");
 export const selfhostReviewTeacherRequest=(userId:string,approve:boolean)=>selfhostRequest<{ok:boolean;status:string}>(
   "/api/v1/admin/teacher-requests/"+encodeURIComponent(userId)+"/review",{

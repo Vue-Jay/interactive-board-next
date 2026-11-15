@@ -64,6 +64,10 @@ async function loadSelfhost(enabled) {
       refreshes++;
       return ok({access_token:"token-refreshed",refresh_token:"refresh-refreshed",expires_in:900,user});
     }
+    if(u.pathname==="/api/v1/admin/users/student-1"&&options.method==="DELETE"){
+      assert.deepEqual(JSON.parse(options.body),{email:"student@example.test"});
+      return ok({ok:true,files_pending:0});
+    }
     if(u.pathname==="/api/v1/auth/logout")return new Response(null,{status:200});
     if(u.pathname==="/api/v1/boards"&&options.method==="POST"){
       const body=JSON.parse(options.body);
@@ -271,6 +275,8 @@ const expired=JSON.parse(storage.get("lektrus.selfhost.session.v1"));
 expired.expires_at=1;
 storage.set("lektrus.selfhost.session.v1",JSON.stringify(expired));
 assert.equal((await api.selfhostSession()).access_token,"token-refreshed");
+assert.equal((await api.selfhostAdminDeleteUser("student-1","student@example.test")).ok,true);
+assert.ok(records.some(x=>x.path==="/api/v1/admin/users/student-1"&&x.method==="DELETE"&&x.bearer==="Bearer token-refreshed"&&x.body.email==="student@example.test"));
 assert.equal(env.refreshCount(),1);
 assert.equal((await api.selfhostStudents())[0].user_id,"student-1");
 await api.selfhostSaveStudentProfile("student-1",{note:"Новая заметка"});

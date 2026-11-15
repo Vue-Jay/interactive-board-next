@@ -5,6 +5,9 @@ on:
     branches:
       - migration/self-hosted-backend-20261114
       - deploy/amvera-lektrus
+  pull_request:
+    branches:
+      - deploy/amvera-lektrus
   workflow_dispatch:
 
 permissions:
@@ -80,10 +83,10 @@ jobs:
           curl --retry 10 --retry-connrefused --retry-delay 1 -fsS -H 'Host: lektrus.example' http://127.0.0.1/app | grep -q '/assets/'
           curl -fsS -H 'Host: lektrus.example' http://127.0.0.1/api/v1/health | grep -q '"ok":true'
           "${compose[@]}" exec -T db psql -U lektrus -d lektrus -Atc \
-            "SELECT filename FROM lektrus_schema_versions ORDER BY filename DESC LIMIT 1;" | grep -q '^016_board_share_links.sql$'
+            "SELECT filename FROM lektrus_schema_versions ORDER BY filename DESC LIMIT 1;" | grep -q '^017_account_deletion.sql$'
 
       - name: Verify the Amvera image with PostgreSQL and a persisted disk
-        if: github.ref_name == 'deploy/amvera-lektrus'
+        if: github.ref_name == 'deploy/amvera-lektrus' || github.base_ref == 'deploy/amvera-lektrus'
         env:
           LEKTRUS_APPLY_SCHEMA: 'true'
         shell: bash

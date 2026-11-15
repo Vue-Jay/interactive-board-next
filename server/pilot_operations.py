@@ -250,7 +250,7 @@ def make_pilot_operations_router(current_user, board_access,
         return [
             {
                 "operation_id": str(event["operation_id"]),
-                "actor_id": str(event["actor_id"]),
+                "actor_id": str(event["actor_id"]) if event["actor_id"] is not None else None,
                 "type": event["operation_type"],
                 "stroke_id": event["stroke_id"],
                 "version": event["resulting_version"],

@@ -1,7 +1,7 @@
 import { useEffect,useMemo,useState } from "react";
 import UserAvatar from "./UserAvatar";
 import type { AuthUser } from "./authStore";
-import { adminSetSubscription,listAdminUsers,listTeacherRequests,reviewTeacherRequest,type AdminUser,type SubscriptionPlan,type TeacherRequest } from "./accountRoleStore";
+import { adminDeleteUser,canAdminDeleteUsers,adminSetSubscription,listAdminUsers,listTeacherRequests,reviewTeacherRequest,type AdminUser,type SubscriptionPlan,type TeacherRequest } from "./accountRoleStore";
 import { listAdminBoards,listAdminUserWorkspace,type AdminBoardSummary,type BoardSummary } from "./boardStore";
 import {listPreviewTeacherRequests,removePreviewTeacherRequest} from "./previewTeacherRequestsStore";
 import {listProductFeedback,updateProductFeedbackStatus,type ProductFeedback,type ProductFeedbackStatus} from "./productFeedbackStore";
@@ -32,6 +32,22 @@ export default function AdminScreen({user,onBack,onOpenBoard,onOpenLayout,invisi
  const review=async(id:string,approve:boolean)=>{setBusy(id);try{await reviewTeacherRequest(id,approve);setNotice(approve?"Преподаватель одобрен":"Доступ преподавателя отозван");await load()}catch(e){setNotice(e instanceof Error?e.message:"Не удалось изменить доступ")}finally{setBusy("")}};
  const updateFeedback=async(id:string,status:ProductFeedbackStatus)=>{setBusy(id);try{await updateProductFeedbackStatus(id,status);setFeedback(rows=>rows.map(row=>row.id===id?{...row,status}:row));setNotice(status==="closed"?"Сообщение закрыто":"Сообщение отмечено как просмотренное")}catch(e){setNotice(e instanceof Error?e.message:"Не удалось обновить сообщение")}finally{setBusy("")}};
  const grant=async(x:AdminUser)=>{const draft=drafts[x.userId]??{plan:x.subscriptionPlan,until:isoDate(30)};setBusy(x.userId);try{await adminSetSubscription(x.userId,draft.plan,draft.plan==="free"?null:new Date(`${draft.until}T23:59:59`).toISOString());setNotice(draft.plan==="free"?`Тариф ${x.name} сброшен на бесплатный`:`${PLAN_LABEL[draft.plan]} выдан пользователю ${x.name}`);await load()}catch(e){setNotice(e instanceof Error?e.message:"Не удалось изменить тариф")}finally{setBusy("")}};
+ const removeUser=async(x:AdminUser)=>{
+  if(!canAdminDeleteUsers()||x.isAdmin||x.userId===user.id||busy)return;
+  const email=window.prompt(`Удалить пользователя ${x.name} (\n${x.email})?\n\nАккаунт, его доски, личные данные и переписки будут удалены навсегда. Чужие доски останутся.\nДля подтверждения введи его email полностью:`);
+  if(email===null)return;
+  if(email.trim().toLowerCase()!==x.email.toLowerCase()){setNotice("Удаление отменено: email не совпадает.");return}
+  setBusy(x.userId);
+  try{
+   const result=await adminDeleteUser(x.userId,email.trim());
+   setUsers(rows=>rows.filter(row=>row.userId!==x.userId));
+   setRequests(rows=>rows.filter(row=>row.userId!==x.userId));
+   if(previewUserId===x.userId){setPreviewUserId(null);setWorkspaceBoards([])}
+   setNotice(result.files_pending?`Пользователь ${x.email} удалён. Некоторые закрытые файлы требуют очистки.`:`Пользователь ${x.email} удалён.`);
+   await load();
+  }catch(e){setNotice(e instanceof Error?e.message:"Не удалось удалить пользователя")}
+  finally{setBusy("")}
+ };
  const pending=requests.filter(x=>x.status==="pending"),history=requests.filter(x=>x.status!=="pending");
  return <main className="students-shell admin-users-shell">
   <header className="students-header"><div><button className="boards-secondary" onClick={onBack}>← Доски</button><div><strong>Администрирование</strong><span>{user.email}</span></div></div><button className="boards-secondary" onClick={()=>void load()}>Обновить</button></header>
@@ -42,7 +58,7 @@ export default function AdminScreen({user,onBack,onOpenBoard,onOpenLayout,invisi
    {tab==="users"?<>
     <div className="admin-users-toolbar"><div><h2>Пользователи</h2><span>Тариф можно выдать вручную. Открывай доски пользователей кнопкой «Доски». Режим доступа задаётся переключателем выше.</span></div><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Поиск по имени или email"/></div>
     <div className="admin-users-list">{filtered.map(x=>{const draft=drafts[x.userId]??{plan:x.subscriptionPlan,until:x.subscriptionUntil?.slice(0,10)??isoDate(30)};const active=x.subscriptionPlan!=="free"&&(!x.subscriptionUntil||new Date(x.subscriptionUntil)>new Date());return <article className="admin-user-card" key={x.userId}>
-      <div className="admin-user-main"><div className="admin-user-avatar"><UserAvatar/></div><div className="admin-user-identity"><strong>{x.name}</strong><span>{x.email}</span><small>{x.isAdmin?"Администратор":x.role==="teacher"?"Преподаватель":"Ученик"}{x.createdAt?` · с ${fmt(x.createdAt)}`:""}</small></div><button type="button" className="boards-secondary" disabled={busy===x.userId||x.isAdmin} onClick={()=>void openWorkspace(x.userId)}>Доски</button></div>
+      <div className="admin-user-main"><div className="admin-user-avatar"><UserAvatar/></div><div className="admin-user-identity"><strong>{x.name}</strong><span>{x.email}</span><small>{x.isAdmin?"Администратор":x.role==="teacher"?"Преподаватель":"Ученик"}{x.createdAt?` · с ${fmt(x.createdAt)}`:""}</small></div><div className="admin-user-actions"><button type="button" className="boards-secondary" disabled={!!busy||x.isAdmin} onClick={()=>void openWorkspace(x.userId)}>Доски</button>{canAdminDeleteUsers()&&!x.isAdmin&&x.userId!==user.id&&<button type="button" className="boards-secondary danger" aria-label={`Удалить пользователя ${x.email}`} disabled={!!busy} onClick={()=>void removeUser(x)}>Удалить</button>}</div></div>
       
       <div className="admin-user-current"><span>Текущий тариф</span><strong className={`admin-plan admin-plan-${x.subscriptionPlan}`}>{PLAN_LABEL[x.subscriptionPlan]}</strong><small>{x.subscriptionPlan==="free"?"Без подписки":active?`до ${fmt(x.subscriptionUntil)}`:`истёк ${fmt(x.subscriptionUntil)}`}</small></div>
       <div className="admin-user-grant"><label>Выдать тариф<select value={draft.plan} onChange={e=>setDrafts(v=>({...v,[x.userId]:{...draft,plan:e.target.value as SubscriptionPlan}}))}><option value="free">Бесплатный</option><option value="teacher">Teacher</option><option value="pro">PRO</option></select></label><label>До даты<input type="date" disabled={draft.plan==="free"} value={draft.until} min={new Date().toISOString().slice(0,10)} onChange={e=>setDrafts(v=>({...v,[x.userId]:{...draft,until:e.target.value}}))}/></label><div className="admin-duration-buttons"><button type="button" disabled={draft.plan==="free"} onClick={()=>setDrafts(v=>({...v,[x.userId]:{...draft,until:isoDate(30)}}))}>30 дн.</button><button type="button" disabled={draft.plan==="free"} onClick={()=>setDrafts(v=>({...v,[x.userId]:{...draft,until:isoDate(90)}}))}>90 дн.</button><button type="button" disabled={draft.plan==="free"} onClick={()=>setDrafts(v=>({...v,[x.userId]:{...draft,until:isoDate(365)}}))}>Год</button></div><button className="students-primary admin-grant-button" disabled={busy===x.userId||(!draft.until&&draft.plan!=="free")} onClick={()=>void grant(x)}>{busy===x.userId?"Сохраняем…":draft.plan==="free"?"Сбросить тариф":"Выдать"}</button></div>
