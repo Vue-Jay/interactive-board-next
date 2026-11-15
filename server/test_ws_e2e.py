@@ -111,10 +111,10 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                         assert json.loads(await asyncio.wait_for(ws.recv(),3))=={"type":"document_changed","version":1}
                     version=await http.get(f"/api/v1/boards/{native}/document?version_only=true",headers=student)
                     assert version.json()=={"version":1}
-            with pytest.raises(websockets.exceptions.InvalidStatus) as blocked:
+            with pytest.raises(websockets.exceptions.InvalidStatusCode) as blocked:
                 async with websockets.connect(native_uri,origin="https://untrusted.example"):
                     pass
-            assert blocked.value.response.status_code==403
+            assert blocked.value.status_code==403
 
             uri="ws://127.0.0.1:18762/api/v1/boards/"+board+"/events"
             async with websockets.connect(uri,origin="https://lektrus.ru") as ws_owner:
