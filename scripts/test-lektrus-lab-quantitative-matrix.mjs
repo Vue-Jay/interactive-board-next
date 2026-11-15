@@ -44,6 +44,21 @@ for(const row of db.reviewedReactionCases.filter(x=>x.status==='reaction')){
   const b0=lab.defaultLabBench();const b=run({...b0,vessels:[{...b0.vessels[0],reagents:row.reactants,doses:d,observed:true,temperatureC:Math.max(22,row.minTemperatureC??22),environment:row.environment}]});
   const vessel=b.vessels[0];const m=Object.entries(n).reduce((a,[f,x])=>a+x*st.labMolarMass(f),0);
   const {inv,c}=checkInventory(id,vessel,m);
+  // A balanced precipitation equation is not a promise of a visible reaction.
+  // Independently calculate the initial ionic product for sparingly soluble
+  // lead halides (25 C reference Ksp, dilute-solution classroom approximation).
+  const leadHalide=eq.products.find(t=>['PbCl2','PbBr2'].includes(t.formula));
+  const halideStock=leadHalide&&row.reactants.find(f=>new RegExp('^(Na|K|Li)'+leadHalide.formula.slice(2,-1)+'$').test(f));
+  if(leadHalide&&halideStock&&n['Pb(NO3)2']!==undefined&&row.reactants.every(f=>d[f].unit==='ml')){
+   const liters=Object.values(d).reduce((sum,dose)=>sum+dose.value,0)/1000;
+   const ionicProduct=(n['Pb(NO3)2']/liters)*(n[halideStock]/liters)**2;
+   const ksp=leadHalide.formula==='PbCl2'?1.6e-5:4.6e-6;
+   if(ionicProduct<=ksp){
+    bump('undersaturated lead halide');
+    if(c.solid.some(x=>x.formula===leadHalide.formula)||b.reactionLog?.includes(row.equation))fail('false precipitation',id,{ionicProduct,ksp,solid:c.solid,log:b.reactionLog});
+    continue;
+   }
+  }
   if(!vessel.reactionAmounts?.complete&&!vessel.completedReaction)fail('not completed',id,{observation:lab.labObservation(vessel).message});
   if(row.observation==='precipitate'&&!c.solid.length&&inv.steps.some(x=>x.equation===row.equation))fail('precipitate missing',id,{species:inv.speciesMol,solid:inv.solidMol});
   if(!b.reactionLog?.includes(row.equation))fail('equation absent',id,{log:b.reactionLog});

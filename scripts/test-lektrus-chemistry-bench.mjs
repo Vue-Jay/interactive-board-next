@@ -454,6 +454,15 @@ assert.equal(palette.reagentAppearance("CuSO4").color,"#61a9d3");
 assert.equal(palette.reagentAppearance("FeCl3").color,"#e1b66d");
 assert.equal(palette.reagentAppearance("NaCl").phase,"solution");
 assert.equal(palette.reagentAppearance("CuO").phase,"solid");
+const pureWaterColor=palette.labSolutionTint([{formula:"H2O",mmol:1000}],20);
+const copperColor=palette.labSolutionTint([{formula:"H2O",mmol:1000},{formula:"CuSO4",mmol:1}],20);
+assert.notEqual(copperColor,pureWaterColor,"Dissolved copper colors water regardless of stock order");
+assert.equal(copperColor,palette.labSolutionTint([{formula:"CuSO4",mmol:1},{formula:"H2O",mmol:1000}],20));
+assert.notEqual(copperColor,palette.labSolutionTint([{formula:"CuSO4",mmol:1}],40),"Dilution must change tint");
+assert.equal(palette.labSolutionTint([{formula:"Na2SO4",mmol:1}],20),pureWaterColor,"Consumed colored ions do not permanently dye the supernatant");
+assert.equal(palette.reagentAppearance("Ag3PO4","dry").color,"#e5ce36");
+assert.equal(palette.reagentAppearance("PbS","dry").color,"#222b32");
+assert.notEqual(palette.labSedimentTint([{formula:"PbS",massG:1},{formula:"Ag3PO4",massG:1}],.2),palette.labSedimentTint([{formula:"PbS",massG:1},{formula:"Ag3PO4",massG:1}],.8));
 for(const substance of reaction.substances)
  assert.ok(palette.reagentAppearance(substance.id).color,
   "Every catalogued reagent must have a representative appearance");

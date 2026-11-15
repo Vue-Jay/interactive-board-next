@@ -1,4 +1,4 @@
-import {substances,type ReactionEnvironment} from "./lektrusReactionDatabase";
+import {substances,schoolSolidColors,type ReactionEnvironment} from "./lektrusReactionDatabase";
 
 export type ReagentAppearance={color:string;phase:"solution"|"solid"|"metal"|"gas";label:string};
 /** Representative appearances for classroom visualisation, not concentration-specific
@@ -11,6 +11,15 @@ const vivid:Record<string,{solution?:string;solid?:string;label:string}>={
  "FeCl2":{solution:"#bfd9ad",solid:"#a9c49a",label:"Бледно-зелёный раствор"},
  "FeCl3":{solution:"#e1b66d",solid:"#9b794c",label:"Жёлто-бурый раствор"},
  "Fe2(SO4)3":{solution:"#e8c68c",solid:"#dbc08d",label:"Желтоватый раствор"},
+ // Dilute aqueous ions, representative hues (not spectrophotometric data):
+ // https://www.chem.purdue.edu/gchelp/cchem/aqua.html
+ "Fe(NO3)2":{solution:"#bfd9ad",label:"Бледно-зелёный раствор"},
+ "Fe(NO3)3":{solution:"#e1b66d",label:"Желтовато-бурый раствор"},
+ "NiSO4":{solution:"#62ac80",label:"Зелёный раствор никеля(II)"},
+ "NiCl2":{solution:"#62ac80",label:"Зелёный раствор никеля(II)"},
+ "CoCl2":{solution:"#d788ac",label:"Розовый разбавленный водный раствор кобальта(II)"},
+ "MnSO4":{solution:"#ebcdd6",label:"Очень бледно-розовый раствор"},
+ "K2MnO4":{solution:"#66945e",label:"Зелёный раствор манганата"},
  "KMnO4":{solution:"#9853bb",solid:"#633068",label:"Фиолетовый раствор, тёмные кристаллы"},
  "K2Cr2O7":{solution:"#e7a04c",solid:"#d7782b",label:"Оранжевый раствор и кристаллы"},
  "Fe(OH)2":{solid:"#92aa80",label:"Зеленоватый осадок"},
@@ -61,10 +70,40 @@ export function reagentAppearance(id:string,environment:ReactionEnvironment="aqu
   (kind==="простое вещество"&&id!=="Br2")||
   (dry&&!gas&&!liquid.has(id));
  const phase=gas?"gas":kind==="металл"?"metal":solid?"solid":"solution";
- const color=solid?(record?.solid??(kind==="оксид"?"#dededa":"#e9e7df")):
+ const color=solid?(record?.solid??schoolSolidColors[id]??(kind==="оксид"?"#dededa":"#e9e7df")):
   (record?.solution??(gas?"#e9f0e2":"#e4f1f2"));
  const label=record?.label??(gas?"Газ (условная окраска)":
   solid?"Светлое твёрдое вещество, схематично":"Бесцветный раствор при обычных условиях, схематично");
  return {color,phase,label};
 }
 export const reagentAppearanceCount=substances.length;
+
+/** Visual approximation of the CURRENT dissolved species, not the first
+ * stock or the most recently displayed reaction equation. Transparent
+ * diluents do not contribute pigment. Optical density increases smoothly
+ * with concentration; exact spectra / complexation are not simulated. */
+export function labSolutionTint(entries:readonly {formula:string;mmol?:number}[],volumeMl:number):string{
+ const base=[231,243,243];
+ const absorption=[0,0,0];
+ if(volumeMl<=0)return "#e7f3f3";
+ for(const {formula,mmol} of entries){
+  const color=vivid[formula]?.solution;
+  if(!color||!(mmol!==undefined&&mmol>0))continue;
+  const strength=Math.min(20,mmol/volumeMl/.1);
+  for(let i=0;i<3;i++){
+   const channel=parseInt(color.slice(1+i*2,3+i*2),16);
+   absorption[i]+=strength*Math.max(0,-Math.log(Math.max(1,channel)/base[i]));
+  }
+ }
+ return "#"+base.map((n,i)=>Math.round(n*Math.exp(-absorption[i])).toString(16).padStart(2,"0")).join("");
+}
+
+/** Multiple measured solids remain visually heterogeneous. Grain index
+ * samples the weight distribution; it does not imply physical layering. */
+export function labSedimentTint(entries:readonly {formula:string;massG?:number}[],fraction:number):string{
+ if(!entries.length)return "#e9e7df";
+ const total=entries.reduce((sum,e)=>sum+(e.massG??1),0);
+ let cursor=Math.max(0,Math.min(.999999,fraction))*total;
+ for(const e of entries){cursor-=(e.massG??1);if(cursor<0)return reagentAppearance(e.formula,"dry").color;}
+ return reagentAppearance(entries[entries.length-1].formula,"dry").color;
+}

@@ -116,3 +116,29 @@ for(const f of ["AgCl","AgI"]){
 }
 assert.ok(!state(crash).pendingInventoryReaction);
 console.log("Four-stock paused mixture, both precipitates and all completed equations OK");
+
+// An unlisted pair can still contain a specifically modeled unstable
+// species; paused preparation neither vents it nor loses its equation.
+let carbonic=lab.defaultLabBench();
+for(const id of ["H2CO3","NaCl"])carbonic=lab.putLabReagent(carbonic,"v1",id,dose());
+assert.ok(state(carbonic).pendingInventoryReaction);
+assert.ok(!carbonic.reactionLog?.length);
+carbonic=lab.setLabSimulationPaused(carbonic,false,1000);
+for(const t of [11000,21000,31000,41000,51000,61000])carbonic=lab.advanceLabSimulation(carbonic,t);
+assert.ok(carbonic.reactionLog?.includes("H2CO3 → H2O + CO2↑"));
+// Do not apply the accelerated pure-peroxide demonstration to an unrelated
+// diluted mixture; a separately modeled catalyst still works.
+const peroxide={reagents:["H2O2","NaCl"],doses:{H2O2:dose(),NaCl:dose()},environment:"aqueous",temperatureC:22};
+assert.equal(chemistry.simulateLabInventory(peroxide).steps.length,0);
+assert.ok(chemistry.simulateLabInventory({...peroxide,reagents:["H2O2","MnO2"],doses:{H2O2:dose(),MnO2:{unit:"g",value:.1}}}).steps.some(s=>s.equation.includes("O2↑")));
+console.log("Unlisted two-stock decomposition and catalyst-scoped peroxide OK");
+
+let dilute=lab.defaultLabBench();
+for(const id of ["Pb(NO3)2","NaCl"])dilute=lab.putLabReagent(dilute,"v1",id,dose(5,.01));
+assert.equal(lab.labReactionNeedsTick(state(dilute)),false);
+assert.equal(lab.labObservation(state(dilute)).status,"none");
+dilute=lab.setLabSimulationPaused(dilute,false,1000);
+for(const t of [11000,21000,31000])dilute=lab.advanceLabSimulation(dilute,t);
+assert.ok(!dilute.reactionLog?.length);
+assert.equal(lab.labVesselContents(state(dilute)).solid.length,0);
+console.log("Below-Ksp pair neither precipitates nor writes a false chalkboard equation");

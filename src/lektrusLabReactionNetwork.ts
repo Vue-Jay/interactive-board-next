@@ -464,6 +464,12 @@ export function simulateLabInventory(input:{
    const {row,equation}=entry;
    if(used.has(row.equation+"|"+row.environment))continue;
    if(row.environment!==input.environment)continue;
+   // The standalone peroxide decomposition demonstration is an explicitly
+   // accelerated classroom case, not a prediction that every arbitrary
+   // room-temperature peroxide mixture instantly releases all its oxygen.
+   // The separately reviewed MnO2-catalysed or redox pathways remain eligible.
+   if(row.environment==="aqueous"&&row.reactants.length===1&&row.reactants[0]==="H2O2"&&
+    input.reagents.some(id=>id!=="H2O2"&&id!=="H2O"))continue;
    // A persisted, partially saturated solid was already equilibrated
    // using a 25 °C Ksp. At a different temperature there is no vetted
    // Ksp(T) in this model: do not manufacture a complete precipitation
