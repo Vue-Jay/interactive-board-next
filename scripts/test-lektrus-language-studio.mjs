@@ -132,4 +132,31 @@ const punctuationEdited=preserveGapChoices(
 assert.equal(punctuationEdited.activity.blanks[0].rule,"Части сложного предложения");
 assert.equal(punctuationEdited.activity.blanks[1].rule,"Знак не требуется");
 assert.deepEqual(activityScore(punctuationEdited.activity,{values:[",","∅"]}),{correct:2,total:2});
+
+// Exercise the real board update handler without a frame tick between input
+// events. A worksheet editor renders from committed React state, not itemsRef.
+// A delayed paint would leave the next add-row or mark-punctuation click with
+// the previous entry and overwrite the latest controlled input.
+const app=read("src/BoardApp.tsx");
+const patchHandler=app.slice(app.indexOf("   const patchSubjectBoardEntry="),app.indexOf("   const growSubjectBoard="));
+const handlerJs=ts.transpileModule(patchHandler,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+const fixture=new Function(handlerJs+`
+ const initial={id:"worksheet",kind:"graph",subjectBoardEntries:[{id:"entry",kind:"task",subject:"russian",format:"text",details:{questions:"First question"}}]};
+ const itemsRef={current:[initial]};
+ let rendered=itemsRef.current;
+ const canEdit=true,roleCapabilities={canUseTeacherTools:true};
+ const isSubjectBoard=()=>true,boardTone=()=>"russian",entryBelongsToSubject=()=>true,subjectTaskTypeAllowed=()=>true;
+ const pendingEditorBases={current:new Map()},workChannel={current:null};
+ function commit(next,options){itemsRef.current=next;if(options?.immediatePaint)rendered=next;}
+ const get=()=>rendered[0].subjectBoardEntries[0];
+ const change=fields=>patchSubjectBoardEntry("worksheet","entry",{...get(),...fields},true);
+ return {get,change};
+`)();
+fixture.change({details:{questions:"Edited question"}});
+fixture.change({details:{questions:fixture.get().details.questions+"\n"}});
+assert.equal(fixture.get().details.questions,"Edited question\n","Adding a question immediately preserves the preceding edit");
+fixture.change({format:"punctuation",details:{markup:"Он знает, что делать."}});
+assert.equal(fixture.get().format,"punctuation","Switching the task type must update the editor before another action");
+fixture.change({details:{markup:fixture.get().details.markup.replace(",","[,]")}});
+assert.equal(fixture.get().details.markup,"Он знает[,] что делать.","Mark punctuation against the latest input rather than stale props");
 console.log("Language studio: Russian spelling/punctuation, English gaps, authoring, safe preview, archived exercises OK");
