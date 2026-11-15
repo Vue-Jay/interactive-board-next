@@ -134,6 +134,7 @@ async def test_native_document_deltas_preserve_concurrent_edits_and_fallback(cli
     assert (await client.patch(url, headers=editor, json=request1)).status_code == 403
     assert (await client.patch(url, headers=outsider, json=request1)).status_code == 404
     assert (await client.get(url+"?since_version=1", headers=outsider)).status_code == 404
+    assert (await client.patch(url,headers=owner,json={"expected_version":2**63,"delta":patch1})).status_code==409
     async with app.state.pool.acquire() as conn:
         await conn.execute("UPDATE board_members SET role='editor' WHERE board_id=$1 AND user_id=$2", UUID(board_id), STUDENT)
     # Simultaneous writes to the same revision: exactly one wins, one conflicts.

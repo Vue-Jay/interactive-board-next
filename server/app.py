@@ -663,10 +663,17 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
             board, role = await board_access(conn, board_id, user["id"], lock=True)
             if role not in ("owner", "editor") and not user["is_admin"]:
                 error(403, "Недостаточно прав для изменения доски.")
-            previous = await conn.fetchrow(
-                ("SELECT lektrus_board_document(d) AS document,version,document_metadata IS NOT NULL AS normalized FROM board_documents d WHERE board_id=$1" if delta is not None
-                 else "SELECT version FROM board_documents WHERE board_id=$1"), board_id,
-            )
+            if delta is not None:
+                # An obsolete autosave needs only the current revision, not
+                # reconstruction/transfer of a potentially 24 MB board.
+                previous = await conn.fetchrow(
+                    """SELECT CASE WHEN version=$2 THEN lektrus_board_document(d) END AS document,
+                              version,document_metadata IS NOT NULL AS normalized
+                         FROM board_documents d WHERE board_id=$1""", board_id,
+                    expected_version if expected_version <= 2**63-1 else -1,
+                )
+            else:
+                previous = await conn.fetchrow("SELECT version FROM board_documents WHERE board_id=$1", board_id)
             current_version = previous["version"] if previous else 0
             if current_version != expected_version:
                 error(409, f"Версия доски изменилась: {current_version}.")
