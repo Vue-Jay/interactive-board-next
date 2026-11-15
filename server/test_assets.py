@@ -47,6 +47,17 @@ async def test_personal_templates_keep_assets_and_isolate_owners(client, tmp_pat
     assert (await client.get(base, headers=owner)).json() == []
     # Deleting the template must not remove attachments in a board made from it.
     assert (await client.get(f"/api/v1/boards/{copied}/assets/photo", headers=owner)).content == content
+    saved_again = await client.post(base, json={**payload,"board_id":copied}, headers=owner)
+    assert saved_again.status_code == 201, saved_again.text
+    directory = assets.assets_root() / "templates" / saved_again.json()["id"]
+    assert len(list(directory.iterdir())) == 1
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("update account_users set is_admin=true where id=$1", OUTSIDER)
+    deleted = await client.request("DELETE", f"/api/v1/admin/users/{TEACHER}", headers=other,
+                                   json={"email":"teacher@example.test"})
+    assert deleted.status_code == 200, deleted.text
+    assert deleted.json()["files_pending"] == 0
+    assert not list(directory.iterdir())
 
 
 @pytest.mark.asyncio

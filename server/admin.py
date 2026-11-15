@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from assets import assets_root, file_path
 from materials import material_path
+from board_templates import template_path
 from feedback_mail import feedback_email_address, send_test_emails
 
 
@@ -238,6 +239,9 @@ def make_admin_router(current_user) -> APIRouter:
                 materials = await conn.fetch(
                     "SELECT storage_name FROM learning_materials WHERE owner_id=$1", user_id,
                 )
+                templates = await conn.fetch(
+                    "SELECT id,assets FROM board_templates WHERE owner_id=$1 FOR UPDATE", user_id,
+                )
                 # Keep other members' replies on a shared board rather than
                 # cascading them through the deleted author's comment.
                 await conn.execute(
@@ -273,6 +277,14 @@ def make_admin_router(current_user) -> APIRouter:
                 await asyncio.to_thread(material_path(row["storage_name"]).unlink, missing_ok=True)
             except (OSError, RuntimeError):
                 failed_files += 1
+        for row in templates:
+            manifest = json.loads(row["assets"]) if isinstance(row["assets"], str) else row["assets"]
+            for asset in manifest:
+                try:
+                    path = template_path(assets_root(), row["id"], UUID(asset["storage"]))
+                    await asyncio.to_thread(path.unlink, missing_ok=True)
+                except (OSError, RuntimeError):
+                    failed_files += 1
         if failed_files:
             logging.getLogger("lektrus.admin").warning(
                 "Account deleted; %d private files need cleanup", failed_files
