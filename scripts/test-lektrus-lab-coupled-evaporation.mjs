@@ -514,6 +514,13 @@ close(lab.labGasStoredMl(valve.vessels[2]),7.35,1e-6);
 assert.equal(lab.putLabReagent(valve,"v2","CO2",{unit:"ml",value:200}),valve,
  "The valved receiver cannot accept beyond its calibrated capacity");
 console.log("One-click valved collector, ×10 watchable gas, persistent sample and exact transfer: OK");
+let mixedPhase=lab.attachLabGasCollector(lab.defaultLabBench(),"v1");
+mixedPhase=lab.putLabReagent(mixedPhase,"v1","HCl",{unit:"ml",value:12,concentrationM:.1});
+mixedPhase=lab.putLabReagent(mixedPhase,"v2","HCl",{unit:"ml",value:5,phase:"gas"});
+const phasePlan=lab.labGasTransferPreview(mixedPhase,"v2","v1",5);
+assert.equal(phasePlan.transferMl,0);
+assert.equal(phasePlan.incompatiblePhase,true);
+assert.equal(lab.transferLabGasSample(mixedPhase,"v2","v1",5),mixedPhase);
 
 // Measured headspace never masquerades as liquid during pipetting or a pour.
 let headspace=lab.addLabVessel(lab.defaultLabBench(),"flask");

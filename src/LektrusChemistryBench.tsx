@@ -1,4 +1,4 @@
-import {memo,useEffect,useId,useMemo,useRef,useState,type PointerEvent} from "react";
+import {memo,useEffect,useLayoutEffect,useId,useMemo,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabBenchSettings,LabRealism,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labSimulationTickWaitMs,pourLabIntoFilter,
@@ -172,6 +172,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
      <path d="M46 25V10H54V25" fill="#d8efee" stroke="#39767a" strokeWidth="2"/>
      <rect x="40" y="5" width="20" height="9" rx="3" fill="#387e83" stroke="#24565c" strokeWidth="1.5"/>
      <path d="M50 6V2M44 2H56" stroke="#24565c" strokeWidth="3" strokeLinecap="round"/>
+     <circle data-lab-gas-port="true" cx="50" cy="2" r="1" fill="none"/>
      <rect x="28" y="24" width="44" height="79" rx="5" fill="#def4f033" stroke="#76a6a5" strokeWidth="2.3"/>
      {tint&&<rect x="30" y="27" width="40" height={65*fraction} fill={tint} opacity=".45"/>}
      {Array.from({length:9},(_,index)=><path key={index} d={`M${index%2?33:30} ${27+index*8.125}H40`} stroke="#719a98" strokeWidth=".8"/>)}
@@ -434,6 +435,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
     <rect x="36" y="6" width="28" height="8" rx="3" fill="#598c91" stroke="#346870"/>
     <path d="M50 12V3" stroke="#346870" strokeWidth="5" strokeLinecap="round"/>
    </g>}
+   <circle data-lab-gas-port="true" cx="50" cy={vessel.gasCollectionTargetId?3:10} r="1" fill="none"/>
    {vessel.stoppered&&labCanStopper(vessel.kind)&&<g className="lektrus-lab-physical-stopper">
     <ellipse cx="50" cy="7.5" rx={vessel.kind==="tube"?17:21} ry="4.5"
      fill="#ad8365" stroke="#665348" strokeWidth="1.6"/>
@@ -711,6 +713,7 @@ export function clearLabCabinetSession(sessionKey:string){
 export default function LektrusChemistryBenchSurface({bench,editable=false,compactFullscreen=false,fullscreenOwner=false,pouringId,
  onChange,onSelect,onPour,onDropReagent,cabinetSessionKey}:SurfaceProps){
  const host=useRef<HTMLDivElement>(null);
+ const [gasPorts,setGasPorts]=useState<Record<string,{x:number;y:number}>>({});
  const [stageSize,setStageSize]=useState({width:1600,height:1000});
  useEffect(()=>{
   const node=host.current;if(!node)return;
@@ -907,6 +910,24 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   }
   return labDisplayPoint(v);
  };
+ // The gas fittings are anchored to their actual SVG affordances, not to
+ // an arbitrary fraction of the scene. This also follows responsive sizes.
+ useLayoutEffect(()=>{
+  const root=host.current;
+  if(!root||!bench.vessels.some(v=>v.gasCollectionTargetId))return;
+  const bounds=root.getBoundingClientRect();
+  if(!bounds.width||!bounds.height)return;
+  const next:Record<string,{x:number;y:number}>={};
+  for(const vessel of root.querySelectorAll<HTMLElement>("[data-lab-vessel-id]")){
+   const marker=vessel.querySelector("[data-lab-gas-port]");
+   if(!marker||!vessel.dataset.labVesselId)continue;
+   const r=marker.getBoundingClientRect();
+   next[vessel.dataset.labVesselId]={x:100*(r.left+r.width/2-bounds.left)/bounds.width,
+    y:100*(r.top+r.height/2-bounds.top)/bounds.height};
+  }
+  setGasPorts(old=>Object.keys(old).length===Object.keys(next).length&&Object.entries(next).every(([id,p])=>
+   old[id]&&Math.abs(old[id].x-p.x)<.02&&Math.abs(old[id].y-p.y)<.02)?old:next);
+ },[bench.vessels,bench.selectedId,preview,devicePreview,stageSize,settings.showVesselLabels]);
  const benchRef=useRef(bench);
  const changeRef=useRef(onChange);
  const localPourRef=useRef<string|null>(null);
@@ -1310,7 +1331,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      const plan=labGasTransferPreview(bench,g.id,target,requested);
      const next=transferLabGasSample(bench,g.id,target,requested);
      if(next!==bench){onChange?.(next);setNotice("Через клапан перенесено "+labDisplayNumber(plan.transferMl,settings.realism)+" мл газа")}
-     else setNotice("Нет доступного газа или свободного объёма в приёмнике");
+     else setNotice(plan.incompatiblePhase?"В приёмнике уже есть то же вещество в другой фазе":"Нет доступного газа или свободного объёма в приёмнике");
     }
     else if(contacted){setLocalPourId(null);}
     else if(target){setNotice("Поднесите сосуд ближе к приёмнику");}
@@ -1654,9 +1675,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   {bench.vessels.filter(v=>!!v.gasCollectionTargetId).map(source=>{
    const receiver=bench.vessels.find(v=>v.id===source.gasCollectionTargetId);
    if(!receiver)return null;
-   const from=vesselPosition(source),to=vesselPosition(receiver);
-   const y=Math.max(31,Math.min(from.y,to.y)-21);
-   const path=`M ${from.x} ${from.y-9} Q ${(from.x+to.x)/2} ${y} ${to.x} ${to.y-9}`;
+   const from=gasPorts[source.id]??{...vesselPosition(source),y:vesselPosition(source).y-6};
+   const to=gasPorts[receiver.id]??{...vesselPosition(receiver),y:vesselPosition(receiver).y-6};
+   const y=Math.max(43,Math.min(from.y,to.y)-7);
+   const path=`M ${from.x} ${from.y} Q ${(from.x+to.x)/2} ${y} ${to.x} ${to.y}`;
    // Same kinetic ledger as the gas collector, including SECOND reactions.
    // Do not animate a blocked tube after pause, corking or receiver fill.
    const flowing=labGasTubeFlowActive(source,receiver,!!bench.simulationPaused);
@@ -1670,7 +1692,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     {flowing&&<path d={path} className="lektrus-lab-gas-tube-flow"
      stroke="#75e1e7" strokeWidth=".37" strokeDasharray="1 1.8"
      strokeLinecap="round" fill="none"/>}
-    <circle cx={to.x} cy={to.y-9} r="1.2" fill="#c6f7f9"
+    <circle cx={to.x} cy={to.y} r=".55" fill="#c6f7f9"
      stroke="#45858e" strokeWidth=".35"/>
    </svg>;
   })}
@@ -1774,8 +1796,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
        }else setNotice("Не удалось перенести газ: проверьте сосуд и состав")}}>
       {transfer.transferMl>=.01?
        "Перенести "+labDisplayNumber(transfer.transferMl,settings.realism)+" мл":
-       "Нет места для газа"}
+       transfer.incompatiblePhase?"Выберите другой приёмник":"Нет доступной порции газа"}
      </button>
+     {transfer.incompatiblePhase&&<small>В приёмнике уже есть то же вещество в другой фазе. Раздельный учёт этих фаз пока не поддерживается.</small>}
      {storedGas.length>1&&<small>Смесь переносится с сохранением пропорций газов.</small>}
     </div>}
     {!targets.length&&<small>Для сбора и переноса газа добавьте второй сосуд без пробки.</small>}
@@ -2301,7 +2324,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   {bench.vessels.map((v,i)=>{
    const p=preview?.id===v.id?preview:vesselPosition(v);
    const selectedVessel=bench.selectedId===v.id;
-   return <button type="button" key={v.id} data-board-interactive="true"
+   return <button type="button" key={v.id} data-board-interactive="true" data-lab-vessel-id={v.id}
     className={"lektrus-lab-vessel is-"+v.kind+(selectedVessel?" selected":"")+
     (effectivePouringId===v.id?" is-pouring":"")+
     (dropTarget===v.id?" is-drop-target":"")+(bench.stirringVesselId===v.id||

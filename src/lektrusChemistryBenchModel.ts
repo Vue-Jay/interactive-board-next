@@ -2176,7 +2176,17 @@ export function attachLabGasCollector(bench:LabBench,sourceId:string):LabBench{
  if(!source||source.stoppered||source.gasCollector)return bench;
  const existing=bench.vessels.find(v=>v.id===source.gasCollectionTargetId&&v.gasCollector);
  if(existing)return bench;
- const created=addLabVessel(bench,"flask");
+ // Keep the receiver beside its source, away from the sink. The normal
+ // farthest-free-position heuristic can place it at the opposite edge.
+ const candidates=[source.x+24,source.x-24,source.x+34,source.x-34]
+  .flatMap(x=>[source.y,source.y+18,source.y-18].map(y=>({x,y})))
+  .filter(p=>p.x>=12&&p.x<=72&&p.y>=28&&p.y<=86);
+ const occupied=[...bench.vessels,...placedLabDevices(bench)].map(p=>labDisplayPoint(p));
+ const near=candidates.find(p=>occupied.every(q=>{
+  const point=labDisplayPoint(p);
+  return Math.hypot((point.x-q.x)*1.4,point.y-q.y)>=18;
+ }));
+ const created=addLabVessel(bench,"flask",near??labFreeVesselPosition(bench));
  if(created===bench)return bench;
  const receiverId=created.selectedId;
  const prepared=revise(created,receiverId,v=>({...v,gasCollector:true}));
@@ -2188,6 +2198,7 @@ export type LabGasTransferPreview={
  freeMl:number;
  transferMl:number;
  remainingMl:number;
+ incompatiblePhase?:boolean;
  /** Real transferred volume for each gas. Mixtures retain their proportions. */
  portions:Record<string,number>;
 };
@@ -2204,7 +2215,12 @@ export function labGasTransferPreview(bench:LabBench,sourceId:string,
  const totalUnits=stocks.reduce((sum,g)=>sum+g.units,0);
  const storedMl=totalUnits/100;
  const freeMl=target?labGasReceiverFreeMl(target):0;
+ const incompatiblePhase=!!target&&stocks.some(({formula})=>{
+  const existing=target.doses?.[formula];
+  return !!existing&&!labIsGasDose(formula,existing);
+ });
  const valid=!!source&&!!target&&sourceId!==targetId&&!source.stoppered&&
+  !incompatiblePhase&&
   !source.pendingInventoryReaction&&(!source.reactionAmounts||!!source.reactionAmounts.complete)&&
   LAB_GAS_RECEIVING_GLASSWARE.includes(target.kind)&&!target.stoppered&&
   Number.isFinite(requestedMl)&&requestedMl>0;
@@ -2231,6 +2247,7 @@ export function labGasTransferPreview(bench:LabBench,sourceId:string,
  const transferMl=Object.values(portions).reduce((sum,n)=>sum+n,0);
  return {storedMl,freeMl,transferMl:Math.round(transferMl*100)/100,
   remainingMl:Math.max(0,Math.round((storedMl-transferMl)*100)/100),
+  ...(incompatiblePhase?{incompatiblePhase:true}:{}),
   portions};
 }
 /** Withdraw a real measured sample of gas, including mixed samples.

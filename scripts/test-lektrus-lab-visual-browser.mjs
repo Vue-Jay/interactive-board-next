@@ -56,6 +56,7 @@ try{
  assert.equal(await evalPage('!!document.querySelector(".lektrus-lab-gas-bubbles")'),false,'Paused preparation must not show gas bubbles');
  await click('.lektrus-lab-gas-stage .lektrus-lab-gas-connect');
  await wait('!!document.querySelector(".lektrus-lab-gas-collector-valve")&&!!document.querySelector(".lektrus-lab-gas-tube")','One click must create the valved receiver and tube');
+ await wait(`(()=>{const svg=document.querySelector('.lektrus-lab-gas-tube'),port=document.querySelector('.lektrus-lab-gas-collector-valve [data-lab-gas-port]'),p=svg?.querySelector('path');if(!p||!port)return false;const pt=p.getPointAtLength(p.getTotalLength()).matrixTransform(p.getScreenCTM()),r=port.getBoundingClientRect();return Math.hypot(pt.x-r.left-r.width/2,pt.y-r.top-r.height/2)<3})()`,'Tube must touch the actual valve rather than float above it');
  await play();
  await wait('!!document.querySelector(".lektrus-lab-gas-bubbles circle")&&!!document.querySelector(".lektrus-lab-gas-tube-flow")','Evolving aqueous gas must produce bubbles and visible flow in the tube');
  await wait('parseFloat(document.querySelector(".lektrus-lab-gas-collector-valve text:nth-of-type(2)")?.textContent)>0','Receiver volume must rise during collection');

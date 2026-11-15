@@ -2,7 +2,7 @@
  * reactions. Not a general Gibbs-energy minimizer: an unreviewed reaction is
  * never fabricated. Gases marked ↑ leave the open vessel; ↓ remain as solids.
  * Solutions are ideal at 25 °C for the limited Ksp cases listed below. */
-import {substances,reviewedReactionCases,type ReactionEnvironment,type ReactionCase} from "./lektrusReactionDatabase";
+import {reviewedReactionCases,type ReactionEnvironment,type ReactionCase} from "./lektrusReactionDatabase";
 import {labDoseMoles,labIsGasDose,labMolarMass,parseBalancedLabEquation,labGasProductFormulas,type LabReactionAmounts} from "./lektrusLabStoichiometry";
 import type {LabDose} from "./lektrusChemistryBenchModel";
 import {labEquilibrateSingleSaltCrystals,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";

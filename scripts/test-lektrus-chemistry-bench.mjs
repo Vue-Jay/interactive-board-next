@@ -2025,6 +2025,16 @@ const parseLab=bench=>docModel.parseDocument(JSON.stringify({...savedDocument,
  items:[{...persistedItem,scienceLabBench:bench},savedDocument.items[1]]}));
 const reopened=parseLab(persistedLab);
 assert.equal(reopened.items.length,2,"Opening a hot laboratory must preserve other board items");
+// Gas phase must survive the board serialization even when the catalogue
+// sells the same formula as a prepared liquid stock.
+let savedGas=lab.attachLabGasCollector(lab.defaultLabBench(),"v1");
+savedGas=lab.putLabReagent(savedGas,"v2","HCl",{unit:"ml",value:8.75,phase:"gas"});
+const reopenedGas=parseLab(savedGas).items[0].scienceLabBench;
+assert.equal(reopenedGas.vessels[1].gasCollector,true);
+assert.equal(reopenedGas.vessels[1].doses.HCl.phase,"gas");
+assert.equal(lab.labVesselQuantity(reopenedGas.vessels[1]).volumeMl,0);
+assert.equal(lab.labGasStoredMl(reopenedGas.vessels[1]),8.75);
+assert.equal(reopenedGas.vessels[0].gasCollectionTargetId,"v2");
 const deselectedBeforeSave=lab.selectLabVessel(persistedLab,"");
 assert.equal(deselectedBeforeSave.selectedId,"",
  "Clicking the bare worktop may leave no vessel selected");
