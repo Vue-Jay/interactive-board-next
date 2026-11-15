@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import LectrisHub from "./LectrisHub";
 import LektrusCreateBoardDialog, {type NewBoardOptions} from "./LektrusCreateBoardDialog";
 import {inviteToBoard} from "./boardStore";
-import {markTemplateUsed} from "./templatesStore";
+import {copyTemplateAssets,markTemplateUsed} from "./templatesStore";
 import { flushLectrisOrganization, queueLectrisBoardOrganization } from "./lectrisOrganizationStore";
 import { cachedBoardPreview, loadBoardPreviews, backfillCachedBoardPreviews } from "./boardPreview";
 import { BOARD_ROLE_LABELS, isRemoteBackendEnabled, type AuthUser, type BoardRole } from "./authStore";
@@ -125,6 +125,7 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
        void flushLectrisOrganization(user.id).catch(()=>{});
      }
      if(options.template){
+       await copyTemplateAssets(options.template,b.id);
        sessionStorage.setItem("onlinerepetitor.template.apply",JSON.stringify({boardId:b.id,templateId:options.template.id,document:options.template.document}));
        localStorage.setItem(boardStorageKey(b.id),JSON.stringify({...options.template.document,title:b.title}));
        void markTemplateUsed(options.template.id).catch(()=>{});

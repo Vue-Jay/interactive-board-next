@@ -10,6 +10,57 @@ from test_api import TEACHER, STUDENT, OUTSIDER, client, sign_in
 
 
 @pytest.mark.asyncio
+async def test_personal_templates_keep_assets_and_isolate_owners(client, tmp_path, monkeypatch):
+    monkeypatch.setenv("LEKTRUS_ASSETS_DIR", str(tmp_path / "private-files"))
+    _, owner = await sign_in(client, "teacher@example.test")
+    _, student = await sign_in(client, "student@example.test")
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("update account_users set account_role='teacher',teacher_status='approved' where id=$1", OUTSIDER)
+    _, other = await sign_in(client, "outsider@example.test")
+    base = "/api/v1/board-templates"
+    assert (await client.get(base, headers=owner)).json() == []
+    assert (await client.get(base, headers=student)).status_code == 403
+    source = (await client.post("/api/v1/boards", json={"title": "Мой урок"}, headers=owner)).json()["id"]
+    copied = (await client.post("/api/v1/boards", json={"title": "Копия"}, headers=owner)).json()["id"]
+    asset_url = f"/api/v1/boards/{source}/assets/photo"
+    content = b"\x89PNG\r\n\x1a\n" + b"template-photo"
+    assert (await client.post(asset_url, content=content, headers={**owner,"Content-Type":"image/png"})).status_code == 201
+    document = {"version":1,"title":"Мой урок","items":[{"id":"i","kind":"image","assetId":"photo"}]}
+    payload = {"board_id":source,"title":"Личный шаблон","document":document}
+    assert (await client.post(base, json=payload, headers=other)).status_code == 404
+    result = await client.post(base, json=payload, headers=owner)
+    assert result.status_code == 201, result.text
+    template = result.json()
+    path = f'{base}/{template["id"]}'
+    assert template["document"] == document
+    assert (await client.get(base, headers=other)).json() == []
+    assert (await client.delete(path, headers=other)).status_code == 404
+    assert (await client.post(path+"/copy-assets", json={"board_id":copied}, headers=other)).status_code == 404
+    # Source attachment deletion must not break the reusable snapshot.
+    assert (await client.delete(asset_url, headers=owner)).status_code == 204
+    for _ in range(2):
+        response = await client.post(path+"/copy-assets", json={"board_id":copied}, headers=owner)
+        assert response.status_code == 200, response.text
+    assert (await client.post(path+"/used", headers=owner)).status_code == 200
+    assert (await client.get(base, headers=owner)).json()[0]["use_count"] == 1
+    assert (await client.delete(path, headers=owner)).status_code == 204
+    assert (await client.get(base, headers=owner)).json() == []
+    # Deleting the template must not remove attachments in a board made from it.
+    assert (await client.get(f"/api/v1/boards/{copied}/assets/photo", headers=owner)).content == content
+    saved_again = await client.post(base, json={**payload,"board_id":copied}, headers=owner)
+    assert saved_again.status_code == 201, saved_again.text
+    directory = assets.assets_root() / "templates" / saved_again.json()["id"]
+    assert len(list(directory.iterdir())) == 1
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("update account_users set is_admin=true where id=$1", OUTSIDER)
+    deleted = await client.request("DELETE", f"/api/v1/admin/users/{TEACHER}", headers=other,
+                                   json={"email":"teacher@example.test"})
+    assert deleted.status_code == 200, deleted.text
+    assert deleted.json()["files_pending"] == 0
+    assert not list(directory.iterdir())
+
+
+@pytest.mark.asyncio
 async def test_board_assets_permissions_streaming_and_etag(client, tmp_path, monkeypatch):
     monkeypatch.setenv("LEKTRUS_ASSETS_DIR", str(tmp_path / "private-files"))
     _, teacher = await sign_in(client, "teacher@example.test")

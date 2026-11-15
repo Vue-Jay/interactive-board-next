@@ -27,7 +27,7 @@ const toolSheetPos=app.indexOf('className="mobile-tools-sheet"');
 assert.ok(newMobileActionMenu>=0 && newMobileActionMenu<toolSheetPos,
   "Board actions must be in a separate top bar menu");
 assert.equal(oldActionsSection,-1,"Board actions should not be in the tool catalogue");
-for(const text of ["Управление доской","История изменений","Презентация","Экспорт PNG","Шаблоны","Горячие клавиши","Комментарии","Поиск по доске","Слои и объекты"]){
+for(const text of ["Управление доской","История изменений","Презентация","Экспорт PNG","Сохранить как шаблон","Горячие клавиши","Комментарии","Поиск по доске","Слои и объекты"]){
   assert.ok(app.slice(newMobileActionMenu,newMobileActionMenu+3500).includes(text),
     "Missing board action "+text);
 }
