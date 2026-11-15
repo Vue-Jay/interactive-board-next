@@ -41,8 +41,6 @@ const SettingsScreen = lazy(() => import("./SettingsScreen"));
 
 const BillingScreen = lazy(() => import("./BillingScreen"));
 
-const AiStudioScreen = lazy(() => import("./AiStudioScreen"));
-
 const AdminScreen = lazy(() => import("./AdminScreen"));
 
 const TemplatesScreen = lazy(() => import("./TemplatesScreen"));
@@ -117,6 +115,11 @@ export default function App() {
     if(next.kind==="board")rememberBoardPath(next.boardId);
     setRoute(Capacitor.isNativePlatform()&&next.kind==="site"?{kind:"home"}:next);
   }, []);
+  useEffect(() => {
+    if (route.kind==="home" && new URLSearchParams(window.location.search).get("section")==="ai") {
+      navigate("/app?section=settings", true);
+    }
+  }, [route, navigate]);
   useEffect(() => {
     const changed = () => {
       const parsed = parseRoute(window.location.pathname);
@@ -535,8 +538,6 @@ export default function App() {
           ? <SettingsScreen user={authUser} previewRole={appRolePreview==="actual"?null:effectiveAccountRole} onPreviewRoleChange={changeAppRolePreview} onBack={()=>navigate("/app?section=boards")} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} installAvailable={Boolean(globalInstallPrompt)} isInstalled={globalStandalone} onInstall={()=>void installGlobalApp()} onBilling={()=>{window.history.pushState({}, "", "/app?section=billing");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="billing"
           ? <BillingScreen onBack={()=>{window.history.pushState({}, "", "/app?section=settings");window.dispatchEvent(new PopStateEvent("popstate"))}} />
-          : section==="ai"
-          ? <AiStudioScreen onBack={()=>{window.history.pushState({}, "", "/app?section=settings");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="templates" && effectiveAccountRole==="teacher"
           ? <TemplatesScreen user={authUser} onBack={()=>navigate("/app?section=boards")} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
           : <BoardsScreen user={authUser} accountRole={effectiveAccountRole} isAppAdmin={isAppAdmin&&appRolePreview==="actual"} onOpenBoard={(board) => navigate(`/board/${board.id}`)} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} />})()}</Suspense></LectrisWorkspaceShell>}

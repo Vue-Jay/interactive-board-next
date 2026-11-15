@@ -33,7 +33,7 @@ self.addEventListener("fetch", event => {
     // Do not persist route URLs: /join/:token may contain a secret.
     event.respondWith((async () => {
       try {
-        const response = await fetch(request);
+        const response = await fetch(request, { cache: "no-cache" });
         if (response.ok && url.pathname === "/") {
           const cache = await caches.open(CACHE);
           await cache.put("/", response.clone());

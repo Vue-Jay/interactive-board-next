@@ -31,6 +31,7 @@ jobs:
         run: |
           node scripts/test-selfhost-client.mjs
           node scripts/test-lektrus-visit-retry.mjs
+          node scripts/test-lektrus-chunk-recovery.mjs
           node --test tests/shareLinks.test.mjs
       - name: Check collaboration and attachment traffic regressions
         run: |
