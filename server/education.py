@@ -127,7 +127,7 @@ def make_education_router(current_user, board_access) -> APIRouter:
                      LEFT JOIN student_profiles sp
                        ON sp.teacher_id=$1 AND sp.student_id=u.id
                     WHERE b.owner_id=$1 AND b.deleted_at IS NULL
-                      AND u.account_role='student'
+                      AND u.account_role='student' AND u.guest_board_id IS NULL
                     GROUP BY u.id,u.display_name,u.email,sp.note,sp.tags
                     ORDER BY lower(u.display_name),u.id""",
                 user["id"],

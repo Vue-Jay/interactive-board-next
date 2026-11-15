@@ -202,6 +202,8 @@ def make_registration_router() -> APIRouter:
             raise HTTPException(503, "Регистрация на новом сервере ещё не включена.")
         _, _, _, _, _, origin = server_mail_config()
         email = normalize_email(data.email)
+        if email.endswith("@guest.invalid"):
+            raise HTTPException(422, "Укажите действующий адрес электронной почты.")
         # The first administrator is bootstrapped only for this exact,
         # operator-configured address. The normal mailbox verification flow
         # still proves ownership before the account can sign in.

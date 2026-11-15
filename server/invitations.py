@@ -55,10 +55,10 @@ def make_invitation_router(current_user, board_access) -> APIRouter:
             owner_only(board, role)
             members = await conn.fetch(
                 """SELECT m.user_id,m.role,m.added_at,
-                          a.display_name,a.email,a.created_at
+                          a.display_name,CASE WHEN a.guest_board_id IS NULL THEN a.email ELSE '' END AS email,a.created_at
                      FROM board_members m
                      JOIN account_users a ON a.id=m.user_id
-                    WHERE m.board_id=$1 ORDER BY m.added_at,m.user_id""",
+                    WHERE m.board_id=$1 AND (a.guest_board_id IS NULL OR a.guest_expires_at>now()) ORDER BY m.added_at,m.user_id""",
                 board_id,
             )
             invites = await conn.fetch(

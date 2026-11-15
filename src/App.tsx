@@ -388,6 +388,7 @@ export default function App() {
     if (route.kind === "site") { setBoardLoading(false); return; }
     if (route.kind === "tool") { setBoardLoading(false); return; }
     if (route.kind === "demo") { setBoardLoading(false); return; }
+    if (authUser.guestBoardId && route.kind === "home") { navigate(`/board/${authUser.guestBoardId}`,true);return; }
     if (route.kind === "home") { setBoardLoading(false); return; }
     setBoardLoading(true);
     void (async () => {
@@ -395,6 +396,7 @@ export default function App() {
         if (route.kind === "invalid") throw new Error("Ссылка недействительна");
         if (route.kind === "join") {
           rememberShareToken(route.token);
+          if(authUser.guestBoardId){await logoutUser();if(alive)setAuthUser(null);return;}
           const redeemed = await redeemShareLink(route.token, submittedSharePassword?.token===route.token?submittedSharePassword.value:undefined);
           if (!alive) return;
           clearPendingShare();
@@ -474,7 +476,7 @@ export default function App() {
 
 
   if (!authUser) {
-    return <AuthScreen initialError={authCallbackError} onAuthenticated={(user) => { clearAccountAccessCache(); clearNotificationCache(); setAuthUser(user); setActiveBoard(null); }} />;
+    return <AuthScreen initialError={authCallbackError} onAuthenticated={(user) => { clearAccountAccessCache(); clearNotificationCache(); if(user.guestBoardId){clearPendingShare();navigate(`/board/${user.guestBoardId}`,true);}setAuthUser(user); setActiveBoard(null); }} />;
   }
 
   if (!activeBoard) {
@@ -532,7 +534,7 @@ export default function App() {
       initialRemoteVersion={remoteVersion}
       selfhostMode={isSelfhostBackendEnabled()}
       onBoardChanged={boardChanged}
-      onBackToBoards={() => { setActiveBoard(null); if(adminInspecting||new URLSearchParams(window.location.search).get("layout-editor")==="1"){setAdminInspecting(false);navigate("/?section=admin");}else navigate("/"); }}
+      onBackToBoards={() => { if(authUser.guestBoardId){logout();return;}setActiveBoard(null); if(adminInspecting||new URLSearchParams(window.location.search).get("layout-editor")==="1"){setAdminInspecting(false);navigate("/?section=admin");}else navigate("/"); }}
       onLogout={logout}
     /></Suspense>
   );

@@ -1,7 +1,9 @@
-"""Access links for confirmed Lektrus accounts."""
+"""Access links for confirmed accounts and board-scoped guest sessions."""
 import asyncio
 import hashlib
 import secrets
+import time
+from collections import deque
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
@@ -21,6 +23,36 @@ class CreateLink(RoleInput):
 class RedeemLink(BaseModel):
     token: str = Field(pattern=r"^[a-f0-9]{64}$")
     password: str | None = Field(None, max_length=72)
+
+
+class GuestLink(RedeemLink):
+    name: str = Field(min_length=2, max_length=60)
+
+
+_guest_attempts: deque[float] = deque()
+
+
+async def consume_link(conn, data: RedeemLink):
+    digest = token_hash(data.token)
+    invalid = HTTPException(404, "Ссылка недействительна, истекла или исчерпала лимит входов.")
+    link = await conn.fetchrow(
+        f"SELECT board_id,password_hash FROM board_share_links WHERE token_hash=$1 AND {ACTIVE}", digest)
+    if link is None:
+        raise invalid
+    password = (data.password or "").encode()
+    if link["password_hash"] and (not password or len(password) > 72 or not await asyncio.to_thread(
+        bcrypt.checkpw, password, link["password_hash"].encode()
+    )):
+        raise HTTPException(403, "Неверный пароль ссылки.")
+    board = await conn.fetchrow(
+        "SELECT * FROM boards WHERE id=$1 AND deleted_at IS NULL FOR UPDATE", link["board_id"])
+    if board is None:
+        raise invalid
+    role = await conn.fetchval(
+        f"UPDATE board_share_links SET use_count=use_count+1 WHERE token_hash=$1 AND {ACTIVE} RETURNING role", digest)
+    if role is None:
+        raise invalid
+    return board, role
 
 
 LINK_COLUMNS = """id, board_id, role, created_at, expires_at, revoked_at,
@@ -86,34 +118,8 @@ def make_share_router(current_user, board_access, board_view) -> APIRouter:
 
     @router.post("/share-links/redeem")
     async def redeem(data: RedeemLink, request: Request, user=Depends(current_user)):
-        digest = token_hash(data.token)
         async with request.app.state.pool.acquire() as conn, conn.transaction():
-            link = await conn.fetchrow(
-                f"""SELECT board_id, password_hash FROM board_share_links
-                    WHERE token_hash=$1 AND {ACTIVE}""", digest,
-            )
-            invalid = HTTPException(404, "Ссылка недействительна, истекла или исчерпала лимит входов.")
-            if link is None:
-                raise invalid
-            password = (data.password or "").encode()
-            if link["password_hash"] and (
-                not password or len(password) > 72 or not await asyncio.to_thread(
-                    bcrypt.checkpw, password, link["password_hash"].encode()
-                )
-            ):
-                raise HTTPException(403, "Неверный пароль ссылки.")
-            # Mutations always lock the board before changing a link or membership.
-            board = await conn.fetchrow(
-                "SELECT * FROM boards WHERE id=$1 AND deleted_at IS NULL FOR UPDATE", link["board_id"],
-            )
-            if board is None:
-                raise invalid
-            role = await conn.fetchval(
-                f"""UPDATE board_share_links SET use_count=use_count+1
-                     WHERE token_hash=$1 AND {ACTIVE} RETURNING role""", digest,
-            )
-            if role is None:
-                raise invalid
+            board, role = await consume_link(conn, data)
             if board["owner_id"] == user["id"]:
                 role = "owner"
             else:
@@ -125,5 +131,31 @@ def make_share_router(current_user, board_access, board_view) -> APIRouter:
                     board["id"], user["id"], role,
                 )
         return {**board_view(board, role), "board_id": str(board["id"])}
+
+    @router.post("/auth/guest")
+    async def guest(data: GuestLink, request: Request):
+        from app import issue_tokens
+        name = data.name.strip()
+        if len(name) < 2 or any(ord(c) < 32 for c in name):
+            raise HTTPException(422, "Укажите имя гостя.")
+        now = time.monotonic()
+        while _guest_attempts and now - _guest_attempts[0] >= 60:
+            _guest_attempts.popleft()
+        if len(_guest_attempts) >= 120:
+            raise HTTPException(429, "Слишком много попыток входа. Попробуйте через минуту.")
+        _guest_attempts.append(now)
+        async with request.app.state.pool.acquire() as conn, conn.transaction():
+            board, role = await consume_link(conn, data)
+            user_id = uuid4()
+            await conn.execute("""DELETE FROM board_members m USING account_users u
+                WHERE m.board_id=$1 AND m.user_id=u.id AND u.guest_board_id=$1 AND u.guest_expires_at<=now()""", board["id"])
+            # A guest is not an email account; the placeholder can never sign in.
+            user = await conn.fetchrow(
+                """INSERT INTO account_users(id,email,password_hash,display_name,guest_board_id,guest_expires_at)
+                   VALUES($1,$2,'!guest',$3,$4,now()+interval '24 hours') RETURNING *""",
+                user_id, f"{user_id}@guest.invalid", name, board["id"])
+            await conn.execute("INSERT INTO board_members(board_id,user_id,role) VALUES($1,$2,$3)",
+                               board["id"], user_id, role)
+            return await issue_tokens(conn, user)
 
     return router

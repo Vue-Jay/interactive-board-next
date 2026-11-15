@@ -2,7 +2,7 @@ import { STORAGE_KEY } from "./boardModel";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import { getUserByEmail, getUserById, type AuthUser, type BoardRole } from "./authStore";
 import { claimRemoteInvitations, deleteRemoteStorageObjects, isRemoteBackendEnabled, listRemoteStorageObjects, remoteRequest } from "./backend";
-import { isSelfhostBackendEnabled, selfhostBoards, selfhostCreateBoard, selfhostRenameBoard, selfhostDeleteBoard, selfhostAccess, selfhostInvite, selfhostChangeMemberRole, selfhostRemoveMember, selfhostRevokeInvitation, selfhostAdminBoards, selfhostAdminUserWorkspace } from "./selfhostApi";
+import { isSelfhostBackendEnabled, selfhostRequest, SelfhostHttpError, type SelfhostBoard, selfhostBoards, selfhostCreateBoard, selfhostRenameBoard, selfhostDeleteBoard, selfhostAccess, selfhostInvite, selfhostChangeMemberRole, selfhostRemoveMember, selfhostRevokeInvitation, selfhostAdminBoards, selfhostAdminUserWorkspace } from "./selfhostApi";
 
 export type BoardSummary={id:string;title:string;ownerId:string;role:BoardRole;createdAt:string;updatedAt:string;deletedAt?:string|null;purgeAfter?:string|null;purgeQueued?:boolean;purgeAssetCount?:number};
 export type BoardMember={boardId:string;userId:string;role:Exclude<BoardRole,"owner">;addedAt:string};
@@ -100,7 +100,12 @@ export const listAdminUserWorkspace=async(userId:string):Promise<AdminBoardSumma
 
 // Resolve deep links through RLS, never fall back to a cached inaccessible board.
 export const getBoardForUser=async(user:AuthUser,id:string):Promise<BoardSummary|null>=>{
- if(isSelfhostBackendEnabled()||!isRemoteBackendEnabled())return (await getUserBoards(user)).find(b=>b.id===id)??null;
+ if(isSelfhostBackendEnabled()){
+  if(user.guestBoardId&&user.guestBoardId!==id)return null;
+  try{const row=await selfhostRequest<SelfhostBoard>(`/api/v1/boards/${encodeURIComponent(id)}`);return rowToBoard(row,row.role)}
+  catch(error){if(error instanceof SelfhostHttpError&&error.status===404)return null;throw error;}
+ }
+ if(!isRemoteBackendEnabled())return (await getUserBoards(user)).find(b=>b.id===id)??null;
  const rows=await remoteRequest<any[]>(`/rest/v1/boards?id=eq.${encodeURIComponent(id)}&deleted_at=is.null&select=id,title,owner_id,created_at,updated_at,deleted_at&limit=1`);
  if(!rows[0])return null;
  if(rows[0].owner_id===user.id)return rowToBoard(rows[0],"owner");

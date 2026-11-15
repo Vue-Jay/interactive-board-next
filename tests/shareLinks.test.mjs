@@ -254,7 +254,9 @@ test('email confirmation keeps the invite; legacy query starts the app, not the 
   assert.doesNotMatch(app, /callback\.pathname\+callback\.search/);
   assert.match(app, /navigate\(\x60\/board\/\$\{redeemed\.board_id\}\x60, true\)/);
   assert.match(entry, /query\.has\("join"\)/);
-  assert.match(auth, /onAuthenticated\(await loginGuest\(guestName\)\)/);
+  assert.match(auth, /onAuthenticated\(await loginGuest\(guestName,token,guestLinkPassword\|\|undefined\)\)/);
+  assert.match(auth, /pendingSharePath\(\)\?\.slice\(6\)/);
+  assert.match(auth, /setGuestPasswordRequired\(true\)/);
   assert.match(boards, /window\.dispatchEvent\(new PopStateEvent\("popstate"\)\)/);
   assert.match(boards, /boardDirectUrl\(manage\.id\)/);
   assert.match(boards, /copyBoardLink\(createdUrl\)/);

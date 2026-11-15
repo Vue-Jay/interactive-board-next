@@ -1,11 +1,11 @@
 import { LEKTRUS_LOCAL_TEST_MODE, LEKTRUS_LOCAL_TEST_USER } from "./lektrusLocalTestMode";
 import { setLocalAccountRole, type AccountRole } from "./accountRoleStore";
 import { claimRemoteInvitations, completeEmailConfirmationRemote, getCachedRemoteSession, getRemoteSession, isRemoteBackendEnabled, signInRemote, signInAnonymousRemote, signOutRemote, signUpRemote, resendSignupOtpRemote, getRememberedRemoteAccount, resumeRememberedRemoteAccount, leaveRemoteAccountRemembered, clearRememberedRemoteAccount } from "./backend";
-import { clearSelfhostSession, getCachedSelfhostSession, getSelfhostSession, isSelfhostBackendEnabled, selfhostClaimInvitations, selfhostLogin, selfhostLogout, selfhostSignup, selfhostVerifyEmail, selfhostRequestPasswordReset, selfhostCompletePasswordReset, type SelfhostSession } from "./selfhostApi";
+import { clearSelfhostSession, getCachedSelfhostSession, getSelfhostSession, isSelfhostBackendEnabled, selfhostClaimInvitations, selfhostLogin, selfhostGuestLogin, selfhostLogout, selfhostSignup, selfhostVerifyEmail, selfhostRequestPasswordReset, selfhostCompletePasswordReset, type SelfhostSession } from "./selfhostApi";
 
 export type BoardRole = "owner" | "editor" | "viewer";
 export const BOARD_ROLE_LABELS: Record<BoardRole, string> = { owner:"Владелец", editor:"Редактор", viewer:"Просмотр" };
-export type AuthUser = { id:string; name:string; email:string; createdAt:string; isGuest?:boolean; accountRole?:"teacher"|"student"; teacherStatus?:"none"|"pending"|"approved"|"rejected"; isAdmin?:boolean };
+export type AuthUser = { id:string; name:string; email:string; createdAt:string; isGuest?:boolean; guestBoardId?:string; accountRole?:"teacher"|"student"; teacherStatus?:"none"|"pending"|"approved"|"rejected"; isAdmin?:boolean };
 type StoredUser = AuthUser & { passwordHash:string; passwordSalt:string };
 type Session = { userId:string; createdAt:string };
 const USERS_KEY="lesson-board.auth.users.v1"; const SESSION_KEY="lesson-board.auth.session.v1";
@@ -26,6 +26,7 @@ const selfhostUser=(s:Awaited<ReturnType<typeof getSelfhostSession>>|SelfhostSes
  const meta=s.user.user_metadata||{};
  const name=String(meta.display_name||[meta.first_name,meta.last_name].filter(Boolean).join(" ")||s.user.email?.split("@")[0]||"Пользователь");
  return {id:s.user.id,name,email:s.user.email||"",createdAt:new Date().toISOString(),
+  isGuest:Boolean(s.user.guest_board_id),guestBoardId:s.user.guest_board_id??undefined,
   accountRole:s.user.account_role,teacherStatus:s.user.teacher_status,isAdmin:s.user.is_admin};
 };
 let pendingSelfhostRegistration:{email:string;password:string;name:string;first_name:string;last_name:string;role:"teacher"|"student"}|null=null;
@@ -115,11 +116,14 @@ export const loginUser=async(input:{email:string;password:string}):Promise<AuthU
  saveSession(u.id);return publicUser(u)
 };
 
-export const loginGuest=async(name:string):Promise<AuthUser>=>{
+export const loginGuest=async(name:string,token?:string,password?:string):Promise<AuthUser>=>{
  const guestName=name.trim();
  if(guestName.length<2)throw new Error("Введите имя гостя не короче 2 символов");
  if(guestName.length>60)throw new Error("Имя гостя слишком длинное");
- if(isSelfhostBackendEnabled())throw new Error("Гостевой вход ещё не перенесён на новый сервер. Войдите по email или зарегистрируйтесь.");
+ if(isSelfhostBackendEnabled()){
+  if(!token)throw new Error("Для гостевого входа нужна ссылка приглашения.");
+  return selfhostUser(await selfhostGuestLogin(guestName,token,password))!;
+ }
  if(!isRemoteBackendEnabled())throw new Error("Гостевой вход доступен только при серверной синхронизации.");
  const s=await signInAnonymousRemote(guestName);
  return remoteUser(s)!;
