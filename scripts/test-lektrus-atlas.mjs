@@ -1083,6 +1083,23 @@ assert.ok(map.includes('aria-label="Тип обозначения"'));
 assert.ok(map.includes('className="lektrus-atlas-territory-menu"'));
 assert.ok(map.includes('onClick={()=>{changeRegion(region.id);setTerritoryMenuOpen(false)}'));
 assert.ok(map.includes('lektrus-atlas-sidebar--selected-only'));
+// The geographic atlas has a separate selected-object sidebar. Do not put
+// geography-only settings inside the historical-only inspector again.
+const geoInspectorStart=map.indexOf('!isWorksheet&&!historical&&<aside');
+const historyInspectorStart=map.indexOf('!isWorksheet&&historical&&<aside',geoInspectorStart);
+const geoInspector=map.slice(geoInspectorStart,historyInspectorStart);
+assert.ok(geoInspector.includes('aria-label="Фильтр полезных ископаемых"'));
+assert.ok(geoInspector.includes('school-mineral-reference'));
+assert.ok(geoInspector.includes('role="status"'));
+assert.ok(geoInspector.includes('Повторить загрузку каталогов'));
+assert.ok(!map.slice(historyInspectorStart).includes('aria-label="Фильтр полезных ископаемых"'));
+assert.ok(map.includes('if(value==="minerals")setInspectorOpen(true)'));
+// A pupil cannot open teacher settings. Assignment text must be present in
+// the shared fullscreen editor header, independently of that settings gate.
+const contourEditorStart=schoolEditor.indexOf('if(isContour&&draft.kind==="atlas")return createPortal(');
+const contourHeader=schoolEditor.slice(contourEditorStart,schoolEditor.indexOf('</header>',contourEditorStart));
+assert.ok(contourHeader.includes('className="lektrus-contour-editor-task"'));
+assert.ok(contourHeader.indexOf('{draft.contourTask?.trim()&&')<contourHeader.indexOf('{!studentMode&&'));
 const atlasCss=fs.readFileSync(new URL("../src/lektrusAtlas.css",import.meta.url),"utf8");
 assert.ok(atlasCss.includes('.lektrus-contour-icon-button'));
 assert.ok(atlasCss.includes('.lektrus-atlas-territory-dropdown'));

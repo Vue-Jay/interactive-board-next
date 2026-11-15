@@ -291,6 +291,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const [mrdsWorldLoading,setMrdsWorldLoading]=useState(false);
  const [mrdsWorldError,setMrdsWorldError]=useState("");
  const [mrdsRegionLoading,setMrdsRegionLoading]=useState(false);
+ const [mrdsRegionError,setMrdsRegionError]=useState("");
  const [worldMineralError,setWorldMineralError]=useState("");
  const [worldMineralsLoading,setWorldMineralsLoading]=useState(false);
  const [mineralError,setMineralError]=useState("");
@@ -654,25 +655,25 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   }});
   return()=>{active=false};
  // eslint-disable-next-line react-hooks/exhaustive-deps
- },[mode,externalKey,mineralsAvailable]);
+ },[mode,externalKey,mineralsAvailable,refresh]);
  // Source-aware MRDS is complementary to the smaller major-deposits catalogue.
  // Debounce moving-camera queries so panning doesn't flood USGS requests.
  useEffect(()=>{
   let active=true;
   if(mode!=="minerals"||!mineralsAvailable){
-   setMrdsRegion(null);setMrdsRegionLoading(false);return()=>{active=false};
+   setMrdsRegion(null);setMrdsRegionLoading(false);setMrdsRegionError("");return()=>{active=false};
   }
   const timer=setTimeout(()=>{
    if(!active)return;
-   setMrdsRegionLoading(true);
+   setMrdsRegionLoading(true);setMrdsRegionError("");
    loadMRDSRegionalDeposits(externalBounds)
     .then(geo=>{if(active)setMrdsRegion(geo)})
-    .catch(()=>{if(active)setMrdsRegion(null)})
+    .catch(()=>{if(active){setMrdsRegion(null);setMrdsRegionError("Региональные данные MRDS недоступны.")}})
     .finally(()=>{if(active)setMrdsRegionLoading(false)});
   },260);
   return()=>{active=false;clearTimeout(timer)};
  // eslint-disable-next-line react-hooks/exhaustive-deps
- },[mode,externalKey,mineralsAvailable]);
+ },[mode,externalKey,mineralsAvailable,refresh]);
  const auxiliaryDetailZoom=Math.pow(2,Math.floor(Math.log2(scale)));
  const auxiliaryLines=useMemo(()=>infrastructure?.features.flatMap((feature,id)=>{
   const path=mapFeaturePath(feature,Math.max(.00003,.22/auxiliaryDetailZoom),viewport);
@@ -1411,6 +1412,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const onMode=(value:AtlasMode)=>{
   if(!availableModes.some(m=>m.id===value))return;
   setMode(value);setSelected(null);setSelectedMineral(null);setSearch("");setSelectedMarker(null);
+  if(value==="minerals")setInspectorOpen(true);
   onChange?.({...d,mode:value});
  };
  const pickCoordinates=(e:ReactMouseEvent<SVGSVGElement>)=>{
@@ -1894,6 +1896,51 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      <button type="button" aria-label="Скрыть сведения" onClick={()=>setInspectorOpen(false)}>×</button>
     </div>
     <div className="lektrus-atlas-info-content lektrus-atlas-info-object">
+     {mode==="minerals"&&<details className="lektrus-atlas-study-card lektrus-atlas-mineral-settings" open={!selectedMineral&&!selected}>
+      <summary>Условные знаки и фильтр месторождений</summary>
+      <div className="lektrus-atlas-natural-legend">
+       <label className="lektrus-atlas-city-filter">Группа сырья
+        <select aria-label="Фильтр полезных ископаемых" value={mineralFilter}
+         onChange={e=>{setMineralFilter(e.target.value);setSelectedMineral(null)}}>
+         <option>Все виды</option>
+         {SCHOOL_ATLAS_MINERALS.map(name=><option key={name}>{name}</option>)}
+        </select>
+       </label>
+       <label className="lektrus-atlas-compare"><input type="checkbox" checked={d.hypsometry!==false}
+        onChange={e=>onChange?.({...d,hypsometry:e.target.checked})}/> Показывать высотный рельеф</label>
+       {SCHOOL_ATLAS_FUEL_MINERALS.some(name=>name===mineralFilter)&&
+        <small>Текущие каталоги USGS не содержат координат этого вида сырья. Пустая карта не означает отсутствие месторождений.</small>}
+       <small role="status">{!localMineralDetail?
+        worldMineralsLoading||mrdsWorldLoading?"Загрузка каталогов USGS и MRDS…":
+        mineralsAvailable&&(mineralLoading||mrdsRegionLoading)?"Загрузка месторождений региона…":
+        worldMineralPoints.length===0&&(worldMineralError||mrdsWorldError)?
+         [worldMineralError,mrdsWorldError].filter(Boolean).join(" "):
+         "Обзорная выборка: "+worldMineralPoints.length+" записей. Один знак может объединять несколько записей одного вида сырья.":
+        "Подробные месторождения в выбранной области: "+visibleMinerals.length+(mrdsRegionLoading?" · обновление MRDS…":".")}</small>
+       {(worldMineralError||mrdsWorldError||mineralError||mrdsRegionError)&&<>
+        <small>Часть данных из источников недоступна. Отсутствие значков не означает отсутствие месторождений.</small>
+        <button type="button" onClick={()=>setRefresh(value=>value+1)}>Повторить загрузку каталогов</button>
+       </>}
+       {mineralTerrainEnabled&&terrainStatus.failed>0&&<small>Часть высотных плиток не загрузилась.</small>}
+       {mineralGuide(mineralFilter)&&<div className="lektrus-atlas-city-data">
+        <strong>Справка: {mineralFilter}</strong>
+        <p><b>Группа:</b> {mineralGuide(mineralFilter)!.className}</p>
+        <p><b>Состав сырья:</b> {mineralGuide(mineralFilter)!.composition}</p>
+        <p><b>Применение:</b> {mineralGuide(mineralFilter)!.uses}</p>
+       </div>}
+       <div className="lektrus-atlas-mineral-legend school-mineral-reference">
+        {SCHOOL_ATLAS_GROUPS.map(group=><div key={group.title} className="lektrus-mineral-reference-group">
+         <strong>{group.title}</strong>
+         {group.names.map(name=><div key={name} className="lektrus-mineral-reference-row">
+          <LektrusMineralSymbol name={name} size={22}/><span>{name}</span>
+         </div>)}
+        </div>)}
+       </div>
+       <small>Условные знаки показывают опубликованные координаты. Нажмите на группу для приближения. Каталоги USGS и MRDS исторические и неполные, особенно за пределами США. Нефть, газ и уголь в них не представлены. Обзорные группы построены по выборке, а не по полному кадастру. Наличие точки не означает действующую добычу или подтверждённые запасы.</small>
+       <a href="https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0" target="_blank" rel="noopener noreferrer">Исходная база USGS и метаданные ↗</a>
+       <a href="https://special-edu.kz/TEXTBOOKS/1RAZDEL/book/pdf/geog9Methods.pdf" target="_blank" rel="noopener noreferrer">Примеры условных знаков из школьного учебного материала ↗</a>
+      </div>
+     </details>}
      {markerDetails?<div className="lektrus-atlas-description">
      <strong>{markerDetails.title}</strong>
      <p>{markerDetails.description||"Маркер преподавателя"}</p>
@@ -2116,60 +2163,6 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      <a href="https://oagmis.oag.go.tz/portal/acts/52" target="_blank" rel="noopener noreferrer">Закон Танзании о столице ↗</a>
      <a href="https://www.guineaecuatorialpress.com/noticias/decreto_ley_por_el_que_se_declara_la_ciudad_de_la_paz_djibloho_capital_de_la_republica_de_guinea_ecuatorial"
       target="_blank" rel="noopener noreferrer">Декрет о столице Экваториальной Гвинеи, 2026 ↗</a>
-    </div>}
-    {mode==="minerals"&&<div className="lektrus-atlas-natural-legend">
-     <strong>Карта полезных ископаемых</strong>
-     <small>Географические ориентиры: крупные города (Natural Earth, {cityResolution}), реки и озёра ({hydroResolution}), высотная подложка и формы рельефа. Названия по-русски; при приближении появляется больше ориентиров.</small>
-     <label className="lektrus-atlas-compare">
-      <input type="checkbox" checked={d.hypsometry!==false}
-       onChange={e=>onChange?.({...d,hypsometry:e.target.checked})}/>
-      Показывать высотный рельеф
-     </label>
-     {mineralTerrainEnabled&&terrainStatus.failed>0&&
-      <small>Часть высотных плиток не загрузилась. Реки, города и месторождения доступны без них.</small>}
-      <small>Школьные картографические знаки из присланной легенды. Обозначения ставятся по опубликованным координатам USGS, а не по примерному размещению из рисунков.</small>
-     <label className="lektrus-atlas-city-filter">Группа сырья
-      <select aria-label="Фильтр полезных ископаемых" value={mineralFilter}
-       onChange={e=>{setMineralFilter(e.target.value);setSelectedMineral(null)}}>
-       <option>Все виды</option>
-       {SCHOOL_ATLAS_MINERALS.map(name=><option key={name}>{name}</option>)}
-      </select>
-     </label>
-     {SCHOOL_ATLAS_FUEL_MINERALS.some(name=>name===mineralFilter)&&
-      <small>Этот вид сырья присутствует в школьном атласе, но текущие подключённые каталоги USGS не содержат его координат. Пустая карта не означает отсутствие месторождений.</small>}
-     <small>{!localMineralDetail?
-      worldMineralsLoading||mrdsWorldLoading?"Загрузка каталогов USGS, обзорных и MRDS…":
-      mineralsAvailable&&mineralLoading?"Загрузка подробных месторождений выбранного региона…":
-      (worldMineralError&&mrdsWorldError?worldMineralError+" "+mrdsWorldError:"")||"Обзорная выборка: "+worldMineralPoints.length+
-       " записей, представленных "+mineralGroups.length+" знаками. Один знак соответствует одному виду сырья и может объединять несколько записей. Нажмите для приближения.":
-      mineralError||"Подробные месторождения в выбранной области: "+visibleMinerals.length+
-       (mrdsRegionLoading?" · обновление MRDS…":".")}</small>
-     {mineralGuide(mineralFilter)&&<div className="lektrus-atlas-city-data">
-      <strong>Справка: {mineralFilter}</strong>
-      <p><b>Группа:</b> {mineralGuide(mineralFilter)!.className}</p>
-      <p><b>Состав сырья:</b> {mineralGuide(mineralFilter)!.composition}</p>
-      <p><b>Применение:</b> {mineralGuide(mineralFilter)!.uses}</p>
-      <small>Общие школьные сведения о сырье, а не характеристика выбранного месторождения.</small>
-     </div>}
-     <div className="lektrus-atlas-mineral-legend school-mineral-reference">
-      {SCHOOL_ATLAS_GROUPS.map(group=><div key={group.title} className="lektrus-mineral-reference-group">
-       <strong>{group.title}</strong>
-       {group.names.map(name=><div key={name} className="lektrus-mineral-reference-row">
-        <LektrusMineralSymbol name={name} size={22}/><span>{name}</span>
-       </div>)}
-      </div>)}
-     </div>
-     <small>Условные знаки повторяют школьную легенду. Мировой обзор составлен из географических выборок двух каталогов USGS: «Крупные месторождения» и MRDS.
-      На далёком масштабе один знак может представлять несколько записей одного вида сырья. Нажмите на него для приближения.
-      База историческая и неполная, особенно за пределами США. Нефть, газ и уголь в этих каталогах не представлены.</small>
-     <a href="https://special-edu.kz/TEXTBOOKS/1RAZDEL/book/pdf/geog9Methods.pdf"
-      target="_blank" rel="noopener noreferrer">Примеры условных знаков из школьного учебного материала ↗</a>
-     <small>Используются условные обозначения из присланной школьной легенды, сгруппированные по типу полезного ископаемого.
-       Каталоги USGS: покрытие за пределами США неполное.
-      Обзорные группы построены по выборке, а не по полному кадастру месторождений. Наличие точки не означает действующую добычу или подтверждённые запасы. Топливные ресурсы (нефть, газ, уголь) этим набором не покрываются. Основа каталога USGS включает исторические сведения и не является актуальным кадастром на 2026 год.
-      Показываются только месторождения с распознаваемым типом сырья.</small>
-     <a href="https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0"
-      target="_blank" rel="noopener noreferrer">Исходная база USGS и метаданные ↗</a>
     </div>}
     {citiesOn&&scale>=2.5&&<div className="lektrus-atlas-natural-legend">
      <strong>Обозначения населённых пунктов</strong>
