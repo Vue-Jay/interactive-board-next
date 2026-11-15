@@ -1,8 +1,13 @@
 """Real Uvicorn + two WebSocket peers; synthetic accounts, disposable Postgres."""
 import asyncio
+from collections import Counter
+from contextlib import AsyncExitStack
+import gc
 import json
 import os
-from uuid import UUID
+from pathlib import Path
+from time import perf_counter
+from uuid import UUID, uuid4
 
 import asyncpg
 import bcrypt
@@ -12,7 +17,8 @@ import uvicorn
 import websockets
 from websockets.exceptions import ConnectionClosed
 
-from app import app, announce, _login_attempts, _subscribers, _subscriber_users, _presence_watchers
+import app as api
+from app import app, announce, _login_attempts, _subscribers, _subscriber_users, _presence_watchers, _compact_ink_subscribers
 from schema import apply_schema
 from test_api import TEACHER, STUDENT, PASSWORD
 
@@ -370,3 +376,196 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
     finally:
         server.should_exit=True
         await asyncio.wait_for(task,timeout=8)
+
+
+@pytest.mark.asyncio
+async def test_thirty_socket_sustained_classroom_load(monkeypatch):
+    """One minute of real sockets, distinct accounts, and disposable Postgres."""
+    count, active, rounds = 30, 3, 120
+    monkeypatch.setenv("LEKTRUS_DEPLOYMENT_ORIGINS", "https://lektrus.example")
+    board_id = uuid4()
+    identities = [(uuid4(), uuid4()) for _ in range(count)]
+    conn = await asyncpg.connect(os.environ["DATABASE_URL"])
+    try:
+        await apply_schema(conn)
+        await conn.execute("TRUNCATE account_sessions,board_documents,board_members,boards,account_users CASCADE")
+        await conn.executemany(
+            """INSERT INTO account_users(id,email,password_hash,display_name,email_confirmed_at)
+               VALUES($1,$2,'test-only-session',$3,now())""",
+            [(uid, f"load-{i}@example.test", f"Participant {i}") for i, (uid, _) in enumerate(identities)],
+        )
+        await conn.executemany(
+            "INSERT INTO account_sessions(id,user_id,refresh_sha256,expires_at) VALUES($1,$2,$3,now()+interval '1 hour')",
+            [(sid, uid, str(sid)) for uid, sid in identities],
+        )
+        await conn.execute("INSERT INTO boards(id,owner_id,title) VALUES($1,$2,'Load test')", board_id, identities[0][0])
+        await conn.executemany("INSERT INTO board_members(board_id,user_id,role) VALUES($1,$2,$3)",
+                               [(board_id, uid, "editor" if i < active else "viewer")
+                                for i, (uid, _) in enumerate(identities) if i])
+    finally:
+        await conn.close()
+
+    class CountingPool:
+        def __init__(self, pool):
+            self.pool, self.calls = pool, 0
+        def acquire(self, *args, **kwargs):
+            self.calls += 1
+            return self.pool.acquire(*args, **kwargs)
+        def __getattr__(self, name):
+            return getattr(self.pool, name)
+
+    def rss_bytes():
+        try:
+            return int(Path("/proc/self/statm").read_text().split()[1]) * os.sysconf("SC_PAGE_SIZE")
+        except (OSError, ValueError, IndexError, AttributeError):
+            return None
+
+    config = uvicorn.Config(app, host="127.0.0.1", port=18763, log_level="error", lifespan="on")
+    server = uvicorn.Server(config)
+    server.install_signal_handlers = lambda: None
+    task = asyncio.create_task(server.serve())
+    tokens = [api.access_token(uid, sid) for uid, sid in identities]
+    headers = [{"Authorization": "Bearer " + token} for token in tokens]
+    try:
+        for _ in range(100):
+            if server.started:
+                break
+            if task.done():
+                raise RuntimeError("Uvicorn stopped before load test startup")
+            await asyncio.sleep(.05)
+        assert server.started
+        pool = CountingPool(app.state.pool)
+        app.state.pool = pool
+        # Saves are spaced five seconds apart, exactly Uvicorn's idle HTTP
+        # keep-alive timeout. Avoid a transport reuse race at that boundary;
+        # the 30 real WebSocket connections remain open throughout the test.
+        async with httpx.AsyncClient(base_url="http://127.0.0.1:18763", timeout=8,
+                                     limits=httpx.Limits(max_keepalive_connections=0)) as http:
+            url = f"/api/v1/boards/{board_id}/document"
+            document = {"version": 1, "items": [{"id": f"existing-{i}", "text": "a" * 4000} for i in range(400)]}
+            response = await http.put(url, headers=headers[0], json={"expected_version": 0, "document": document})
+            assert response.status_code == 200, response.text
+            response = await http.patch(url+"?version_only=true", headers=headers[0],
+                                        json={"expected_version": 1, "delta": {"set": {"title": "Load test"}}})
+            assert response.json() == {"version": 2}, response.text
+            version = 2
+            async with AsyncExitStack() as sockets:
+                clients = []
+                for token in tokens:
+                    ws = await sockets.enter_async_context(websockets.connect(
+                        f"ws://127.0.0.1:18763/api/v1/boards/{board_id}/events",
+                        origin="https://lektrus.example", max_queue=64,
+                    ))
+                    await ws.send(json.dumps({"type": "auth", "token": token, "compact_ink": True}))
+                    ready = json.loads(await asyncio.wait_for(ws.recv(), 5))
+                    assert ready == {"type": "ready", "version": 2, "compact_ink": True}
+                    clients.append(ws)
+                assert len(_subscribers[board_id]) == count
+                server_sockets = set(_subscribers[board_id])
+
+                async def run_round(index, expected_queries):
+                    messages = [json.dumps({"type": "cursor", "client_id": f"p{i}", "x": index, "y": i}) for i in range(count)]
+                    ink = [json.dumps({"type": "live_ink", "client_id": f"p{i}", "stroke_id": f"stroke-{index}-{i}",
+                                       "kind": "pen", "color": "#112233", "weight": 3, "offset": 0,
+                                       "points": [[index+n/10, i+n/10] for n in range(20)], "finished": True})
+                           for i in range(active)]
+
+                    async def send(i):
+                        await clients[i].send(messages[i])
+                        if i < active:
+                            await clients[i].send(ink[i])
+
+                    async def receive(i):
+                        expected = Counter(("cursor", f"p{j}") for j in range(count) if j != i)
+                        expected.update(("live_ink", f"p{j}") for j in range(active) if j != i)
+                        if i < active:
+                            expected[("ink_ack", f"p{i}")] += 1
+                        actual, size = Counter(), 0
+                        for _ in range(sum(expected.values())):
+                            raw = await asyncio.wait_for(clients[i].recv(), 8)
+                            size += len(raw.encode("utf-8"))
+                            msg = json.loads(raw)
+                            actual[(msg["type"], msg["client_id"])] += 1
+                            if msg["type"] == "live_ink":
+                                assert msg["finished"] and len(msg["points"]) == 20 and isinstance(msg["points"][0], list)
+                                assert msg["stroke_id"].startswith(f"stroke-{index}-")
+                            elif msg["type"] == "cursor":
+                                assert msg["x"] == index
+                        assert actual == expected
+                        return size
+
+                    before, started = pool.calls, perf_counter()
+                    _, sizes = await asyncio.gather(
+                        asyncio.gather(*(send(i) for i in range(count))),
+                        asyncio.gather(*(receive(i) for i in range(count))),
+                    )
+                    assert pool.calls - before == expected_queries
+                    return perf_counter()-started, sum(map(lambda s: len(s.encode("utf-8")), messages+ink)), sum(sizes)
+
+                # A/B the exact same traffic pattern without any test-only change to SQL.
+                with monkeypatch.context() as scoped:
+                    scoped.setattr(api, "INLINE_RELAY_TYPES", ())
+                    baseline = [await run_round(-i-1, 2*(count+active)) for i in range(5)]
+                await asyncio.sleep(1.05)
+                optimized = [await run_round(-i-1, count+active) for i in range(5)]
+                await asyncio.sleep(1.05)
+                gc.collect()
+                rss_start = rss_bytes()
+                rss_peak = rss_start
+                times, inbound, outbound = [], 0, 0
+                started = perf_counter()
+                for i in range(rounds):
+                    tick = perf_counter()
+                    elapsed, sent, received = await run_round(i, count+active)
+                    times.append(elapsed)
+                    inbound += sent
+                    outbound += received
+                    if (i+1) % 10 == 0:
+                        editor = (i//10) % active
+                        response = await http.patch(url+"?version_only=true", headers=headers[editor], json={
+                            "expected_version": version, "delta": {"items": {"upsert": [{"id": f"saved-{i}", "text": "lesson"}]}},
+                        })
+                        version += 1
+                        assert response.json() == {"version": version}, response.text
+                        notices = await asyncio.gather(*(asyncio.wait_for(ws.recv(), 8) for ws in clients))
+                        assert all(json.loads(raw) == {"type": "document_changed", "version": version} for raw in notices)
+                        outbound += sum(len(raw.encode("utf-8")) for raw in notices)
+                        current_rss = rss_bytes()
+                        if rss_peak is not None and current_rss is not None:
+                            rss_peak = max(rss_peak, current_rss)
+                    await asyncio.sleep(max(0, .5-(perf_counter()-tick)))
+                duration = perf_counter()-started
+                gc.collect()
+                rss_end = rss_bytes()
+                result = await http.get(url, headers=headers[0])
+                assert result.json()["version"] == version
+                assert len(result.json()["document"]["items"]) == 400+rounds//10
+                assert {f"saved-{i}" for i in range(9, rounds, 10)} <= {item["id"] for item in result.json()["document"]["items"]}
+                # Revocation in the immediately following event: no TTL grace period.
+                async with pool.acquire() as db:
+                    await db.execute("DELETE FROM board_members WHERE board_id=$1 AND user_id=$2", board_id, identities[-1][0])
+                await clients[0].send(json.dumps({"type": "cursor", "client_id": "p0", "x": 1, "y": 1}))
+                with pytest.raises(ConnectionClosed) as closed:
+                    await asyncio.wait_for(clients[-1].recv(), 5)
+                assert closed.value.code == 4403
+                print("Classroom load:", json.dumps({
+                    "participants": count, "seconds": round(duration, 2), "client_events": rounds*(count+active),
+                    "delivered_messages": rounds*count*(count+active-1)+rounds//10*count,
+                    "inbound_text_bytes": inbound, "outbound_text_bytes": outbound,
+                    "database_checks_before_per_round": 2*(count+active), "database_checks_after_per_round": count+active,
+                    "baseline_round_ms_median": round(sorted(r[0] for r in baseline)[2]*1000, 2),
+                    "optimized_round_ms_median": round(sorted(r[0] for r in optimized)[2]*1000, 2),
+                    "steady_round_ms_p95": round(sorted(times)[int(.95*len(times))-1]*1000, 2),
+                    "combined_server_and_test_client_rss_bytes": [rss_start, rss_peak, rss_end],
+                    "durable_saves": rounds//10,
+                }))
+            for _ in range(100):
+                if not _subscribers.get(board_id):
+                    break
+                await asyncio.sleep(.02)
+            assert board_id not in _subscribers
+            assert board_id not in _subscriber_users and board_id not in _presence_watchers
+            assert server_sockets.isdisjoint(_compact_ink_subscribers)
+    finally:
+        server.should_exit = True
+        await asyncio.wait_for(task, timeout=8)

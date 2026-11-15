@@ -25,7 +25,10 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request, WebSocket,
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from realtime_events import EventRateLimit, InvalidLiveEvent, MAX_EVENT_BYTES, validate_live_event
-from document_delta import DeltaHistory, MAX_DELTA_BYTES, apply_delta, encode as encode_delta
+from document_delta import (
+    DeltaHistory, MAX_DELTA_BYTES, apply_delta, item_map, encode as encode_delta,
+    encoded_bytes, document_bytes_from_parts,
+)
 from schema import apply_schema
 
 ISSUER = "lektrus-selfhost"
@@ -459,7 +462,7 @@ async def get_document(board_id: UUID, request: Request, version_only: bool = Fa
                             "updated_by": str(revision["updated_by"]) if revision["updated_by"] is not None else None,
                             "patches": patches}
         row = await conn.fetchrow(
-            "SELECT document,version,updated_at,updated_by FROM board_documents WHERE board_id=$1",
+            "SELECT lektrus_board_document(d) AS document,version,updated_at,updated_by FROM board_documents d WHERE board_id=$1",
             board_id,
         )
         return document_view(row, board_id)
@@ -467,6 +470,122 @@ async def get_document(board_id: UUID, request: Request, version_only: bool = Fa
 _subscribers: dict[UUID, dict[WebSocket, str]] = defaultdict(dict)
 _subscriber_users: dict[UUID, dict[WebSocket, dict[str, str]]] = defaultdict(dict)
 _presence_watchers: dict[UUID, set[WebSocket]] = defaultdict(set)
+_compact_ink_subscribers: set[WebSocket] = set()
+
+
+async def lookup_board_sessions(pool: asyncpg.Pool, board_id: UUID, tokens,
+                                include_version: bool = False) -> dict[str, asyncpg.Record]:
+    """Fresh authorization for a whole fan-out, using one database round trip.
+
+    No TTL/permission cache: session revocation, board deletion, admin changes
+    and membership updates are still checked on every event.
+    """
+    identities = {}
+    for token in set(tokens):
+        try:
+            claims = jwt_claims(token)
+            identities[token] = (UUID(claims["sub"]), UUID(claims["sid"]))
+        except HTTPException:
+            continue
+    if not identities:
+        return {}
+    pairs = list(set(identities.values()))
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT u.id, s.id AS session_id, u.display_name,
+                      b.is_pilot, COALESCE(d.version, 0) AS version,
+                      CASE WHEN b.id IS NULL THEN NULL
+                           WHEN b.owner_id = u.id THEN 'owner'
+                           WHEN u.is_admin THEN 'viewer'
+                           ELSE m.role END AS role
+                 FROM unnest($2::uuid[], $3::uuid[]) AS requested(user_id, session_id)
+                 JOIN account_users u ON u.id = requested.user_id
+                 JOIN account_sessions s ON s.id = requested.session_id AND s.user_id = u.id
+                 LEFT JOIN boards b ON b.id = $1 AND b.deleted_at IS NULL
+                 LEFT JOIN board_members m ON m.board_id = b.id AND m.user_id = u.id
+                 LEFT JOIN board_documents d ON $4::boolean AND d.board_id = b.id
+                WHERE s.revoked_at IS NULL AND s.expires_at > now()
+                  AND u.email_confirmed_at IS NOT NULL""",
+            board_id, [pair[0] for pair in pairs], [pair[1] for pair in pairs], include_version,
+        )
+    by_identity = {(row["id"], row["session_id"]): row for row in rows}
+    return {token: by_identity[pair] for token, pair in identities.items() if pair in by_identity}
+
+
+async def lookup_board_session(pool: asyncpg.Pool, board_id: UUID, token: str,
+                               include_version: bool = False) -> asyncpg.Record:
+    return require_board_session(await lookup_board_sessions(pool, board_id, [token], include_version), token)
+
+
+def require_board_session(rows: dict[str, asyncpg.Record], token: str) -> asyncpg.Record:
+    row = rows.get(token)
+    if row is None:
+        error(401, "Сессия завершена. Войдите снова.")
+    if row["role"] not in ("owner", "editor", "viewer"):
+        error(404, "Доска не найдена.")
+    return row
+
+
+async def broadcast_checked(board_id: UUID, event: dict[str, Any], pool: asyncpg.Pool,
+                            peers: dict[WebSocket, str], *, notify: bool = True,
+                            authorized: dict[str, asyncpg.Record] | None = None):
+    if not peers:
+        return
+    try:
+        if authorized is None:
+            authorized = await lookup_board_sessions(pool, board_id, peers.values())
+    except Exception:
+        # Fail closed if the database is temporarily unavailable. Durable saves
+        # have already committed; reconnect/version polling recovers the notice.
+        logging.getLogger("lektrus.realtime").warning("Board fan-out authorization unavailable")
+        return
+    target = event.get("target_user_id") if event["type"] in ("focus_view", "attachment_result") else None
+    # Modern ink-only classrooms need only the compact representation. Use a
+    # fixed encoding choice for each socket throughout this fan-out.
+    compact_peers = ({peer for peer in peers if peer in _compact_ink_subscribers}
+                     if event["type"] == "live_ink" else set())
+    payload = (json.dumps(event, ensure_ascii=False, separators=(",", ":"))
+               if len(compact_peers) != len(peers) else "")
+    compact_payload = (json.dumps({**event, "points": [[p["x"], p["y"]] for p in event["points"]]},
+                                  ensure_ascii=False, separators=(",", ":"))
+                       if compact_peers else payload)
+
+    async def send(client, token):
+        row = authorized.get(token)
+        if row is None or row["role"] not in ("owner", "editor", "viewer"):
+            return client, 4403
+        if target is not None and str(row["id"]) != target:
+            return None
+        if _subscribers.get(board_id, {}).get(client) != token:
+            return None
+        try:
+            await asyncio.wait_for(client.send_text(compact_payload if client in compact_peers else payload), timeout=1)
+            return None
+        except Exception:
+            return client, 1011
+
+    # Serialize once and deliver concurrently. One stalled browser can no longer
+    # delay all of the other participants in the loop.
+    results = await asyncio.gather(*(send(client, token) for client, token in peers.items()))
+    failed = [(client, code) for result in results if result is not None
+              for client, code in (result,)
+              if _subscribers.get(board_id, {}).get(client) == peers[client]]
+    if not failed:
+        return
+    # Remove all failed peers before awaiting anything. A classroom reconnect
+    # must not do one presence fan-out and one 1s close timeout per old socket.
+    leaves = _detach_subscribers(board_id, [client for client, _ in failed])
+
+    async def close_failed(client, code):
+        try:
+            await asyncio.wait_for(client.close(code=code), timeout=1)
+        except Exception:
+            pass
+
+    closing = [close_failed(client, code) for client, code in failed]
+    if notify and leaves:
+        closing.append(announce_presence(board_id, leaves=leaves, pool=pool))
+    await asyncio.gather(*closing)
 
 
 def _unique_presence(board_id: UUID) -> list[dict[str, str]]:
@@ -486,41 +605,32 @@ async def announce_presence(board_id: UUID, *, joins: list[dict[str, str]] | Non
         "joins": joins or [],
         "leaves": leaves or [],
     }
-    for client in list(_presence_watchers.get(board_id, set())):
-        if client is exclude:
-            continue
-        token = _subscribers.get(board_id, {}).get(client)
-        if not token:
-            continue
-        try:
-            recipient = await lookup_session(pool, token)
-            async with pool.acquire() as conn:
-                await board_access(conn, board_id, recipient["id"])
-            await asyncio.wait_for(client.send_json(message), timeout=1)
-        except HTTPException:
-            await _drop_subscriber(board_id, client, pool, notify=False)
-            try:
-                await client.close(code=4403)
-            except Exception:
-                pass
-        except Exception:
-            await _drop_subscriber(board_id, client, pool, notify=False)
+    watchers = _presence_watchers.get(board_id, set())
+    await broadcast_checked(board_id, message, pool, {
+        client: token for client, token in _subscribers.get(board_id, {}).items()
+        if client is not exclude and client in watchers
+    }, notify=False)
 
 
-async def _drop_subscriber(board_id: UUID, client: WebSocket,
-                          pool: asyncpg.Pool, notify: bool = True):
-    _subscribers.get(board_id, {}).pop(client, None)
-    _presence_watchers.get(board_id, set()).discard(client)
-    departed = _subscriber_users.get(board_id, {}).pop(client, None)
-    if departed and notify and not any(
-        meta.get("user_id") == departed.get("user_id")
-        for meta in _subscriber_users.get(board_id, {}).values()
-    ):
-        await announce_presence(board_id, leaves=[departed], pool=pool)
+def _detach_subscribers(board_id: UUID, clients) -> list[dict[str, str]]:
+    departed = {}
+    for client in clients:
+        _subscribers.get(board_id, {}).pop(client, None)
+        _compact_ink_subscribers.discard(client)
+        _presence_watchers.get(board_id, set()).discard(client)
+        meta = _subscriber_users.get(board_id, {}).pop(client, None)
+        if meta:
+            departed[meta["user_id"]] = meta
+    remaining = {meta["user_id"] for meta in _subscriber_users.get(board_id, {}).values()}
     if not _subscribers.get(board_id):
         _subscribers.pop(board_id, None)
         _subscriber_users.pop(board_id, None)
         _presence_watchers.pop(board_id, None)
+    if not _presence_watchers.get(board_id):
+        _presence_watchers.pop(board_id, None)
+    if not _subscriber_users.get(board_id):
+        _subscriber_users.pop(board_id, None)
+    return [meta for user_id, meta in departed.items() if user_id not in remaining]
 
 
 async def announce(board_id: UUID, version: int, pool: asyncpg.Pool):
@@ -534,51 +644,45 @@ async def announce_comments(board_id: UUID, pool: asyncpg.Pool):
 async def announce_board_event(board_id: UUID, event: dict[str, Any], pool: asyncpg.Pool):
     # Permission and session membership are checked at SEND TIME. A user who
     # was removed from a board or logged out must not receive future notices.
-    for client, token in list(_subscribers.get(board_id, {}).items()):
-        try:
-            user = await lookup_session(pool, token)
-            async with pool.acquire() as conn:
-                await board_access(conn, board_id, user["id"])
-            await asyncio.wait_for(client.send_json(event), timeout=1)
-        except HTTPException:
-            await _drop_subscriber(board_id, client, pool)
-            try:
-                await client.close(code=4403)
-            except Exception:
-                pass
-        except Exception:
-            await _drop_subscriber(board_id, client, pool)
+    await broadcast_checked(board_id, event, pool, dict(_subscribers.get(board_id, {})))
 
 
 async def relay_live_event(board_id: UUID, sender: WebSocket,
                            event: dict[str, Any], pool: asyncpg.Pool):
     # Transient events never contain durable document or file bytes. Every
     # recipient's current session and board membership are rechecked.
-    for peer, token in list(_subscribers.get(board_id, {}).items()):
-        if peer is sender:
-            continue
-        try:
-            recipient = await lookup_session(pool, token)
-            async with pool.acquire() as conn:
-                await board_access(conn, board_id, recipient["id"])
-            await asyncio.wait_for(peer.send_json(event), timeout=1)
-        except HTTPException:
-            await _drop_subscriber(board_id, peer, pool)
-            try:
-                await peer.close(code=4403)
-            except Exception:
-                pass
-        except Exception:
-            await _drop_subscriber(board_id, peer, pool)
+    await broadcast_checked(board_id, event, pool, {
+        peer: token for peer, token in _subscribers.get(board_id, {}).items() if peer is not sender
+    })
 
 
-def serialize_document(document: dict) -> str:
+# These frames need no additional asynchronous validation between checking
+# permissions and starting peer delivery. Target/pilot events still perform
+# their separate database checks and use a fresh recipient lookup afterwards.
+INLINE_RELAY_TYPES = ("cursor", "live_ink", "work_state", "editor_mutation",
+                      "object_transform", "teacher_view", "guided_follow", "attachment_request")
+
+
+async def authorize_live_frame(pool, board_id, sender, token, kind):
+    if kind in INLINE_RELAY_TYPES:
+        peers = {peer: peer_token for peer, peer_token in _subscribers.get(board_id, {}).items()
+                 if peer is not sender}
+        rows = await lookup_board_sessions(pool, board_id, [token, *peers.values()])
+        return require_board_session(rows, token), peers, rows
+    return await lookup_board_session(pool, board_id, token, include_version=kind == "ping"), None, None
+
+
+def validate_document_shape(document: dict):
     items = document.get("items")
     ink = document.get("ink", [])
     if not isinstance(items, list) or not isinstance(ink, list):
         error(422, "Документ должен содержать массивы items и ink.")
     if len(items) + len(ink) > MAX_DOCUMENT_ITEMS:
         error(413, "Слишком много объектов на доске.")
+
+
+def serialize_document(document: dict) -> str:
+    validate_document_shape(document)
     try:
         serialized = encode_delta(document)
     except (ValueError, OverflowError):
@@ -586,6 +690,85 @@ def serialize_document(document: dict) -> str:
     if len(serialized.encode("utf-8")) > MAX_DOCUMENT_BYTES:
         error(413, "Документ превышает ограничение 24 МБ.")
     return serialized
+
+
+def decode_document(value):
+    return json.loads(value) if isinstance(value, str) else value
+
+
+def patched_document(base, delta):
+    try:
+        return apply_delta(base, delta)
+    except ValueError:
+        error(422, "Некорректные изменения документа.")
+
+
+async def persist_normalized_items(conn, board_id, previous, base, document, delta, user_id, fast):
+    """Read only changed item sizes, not their previous JSON bodies.
+
+    The caller holds the board lock throughout validation and writing.
+    """
+    next_items = item_map(document["items"])
+    old_items = item_map(base["items"]) if previous["normalized"] else {}
+    deleted = list(old_items.keys() - next_items.keys())
+    prior_bytes = previous["item_bytes"]
+    # An older normalized board has no summary yet. Bootstrap it once from
+    # the full document, not from the placeholder IDs used by fast saves.
+    changed = [(item["id"], encode_delta(item)) for item in
+               (next_items.values() if prior_bytes is None else delta.get("items", {}).get("upsert", []))]
+    if prior_bytes is not None:
+        replaced = list((set(deleted) | {key for key, _ in changed}) & old_items.keys())
+        rows = await conn.fetch(
+            "SELECT item_id,byte_size FROM board_document_items WHERE board_id=$1 AND item_id=ANY($2::text[])",
+            board_id, replaced,
+        ) if replaced else []
+        if len(rows) != len(replaced) or any(row["byte_size"] is None for row in rows):
+            raise RuntimeError("Incomplete board document size summary")
+        remaining_bytes = prior_bytes - sum(row["byte_size"] for row in rows)
+    else:
+        remaining_bytes = 0
+    metadata = {key: value for key, value in document.items() if key != "items"}
+    if fast:
+        validate_document_shape(document)
+        try:
+            size = document_bytes_from_parts(
+                metadata, remaining_bytes + sum(len(value.encode("utf-8")) for _, value in changed), len(next_items),
+            )
+        except (ValueError, OverflowError):
+            error(422, "Недопустимые данные документа.")
+        if size > MAX_DOCUMENT_BYTES:
+            error(413, "Документ превышает ограничение 24 МБ.")
+    if deleted:
+        await conn.execute(
+            "DELETE FROM board_document_items WHERE board_id=$1 AND item_id=ANY($2::text[])", board_id, deleted,
+        )
+    if changed:
+        ids = [key for key, _ in changed]
+        encoded = [value for _, value in changed]
+        # JSONB can normalize numeric spellings (e.g. 1e20). Measure the
+        # persisted representation exactly as a later full read would.
+        canonical = await conn.fetch(
+            """SELECT entry.item_id,entry.item::jsonb AS item
+               FROM unnest($1::text[],$2::text[]) AS entry(item_id,item)""",
+            ids, encoded,
+        )
+        sizes = {row["item_id"]: encoded_bytes(decode_document(row["item"])) for row in canonical}
+        await conn.execute(
+            """INSERT INTO board_document_items(board_id,item_id,item,byte_size)
+               SELECT $1,entry.item_id,entry.item::jsonb,entry.byte_size
+               FROM unnest($2::text[],$3::text[],$4::integer[]) AS entry(item_id,item,byte_size)
+               ON CONFLICT(board_id,item_id) DO UPDATE SET item=EXCLUDED.item,byte_size=EXCLUDED.byte_size""",
+            board_id, ids, encoded, [sizes[key] for key in ids],
+        )
+        remaining_bytes += sum(sizes.values())
+    return await conn.fetchrow(
+        """UPDATE board_documents SET
+              document_metadata=CASE WHEN document_metadata IS DISTINCT FROM $2::jsonb THEN $2::jsonb ELSE document_metadata END,
+              item_order=CASE WHEN item_order IS DISTINCT FROM $3::text[] THEN $3::text[] ELSE item_order END,
+              item_bytes=$5,version=version+1,updated_by=$4,updated_at=now()
+            WHERE board_id=$1 RETURNING version,updated_at""",
+        board_id, encode_delta(metadata), list(next_items), user_id, remaining_bytes,
+    )
 
 
 async def persist_document(board_id: UUID, expected_version: int, request: Request,
@@ -601,36 +784,73 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
             error(422, "Недопустимые данные изменений.")
     async with request.app.state.pool.acquire() as conn:
         async with conn.transaction():
-            _, role = await board_access(conn, board_id, user["id"], lock=True)
+            board, role = await board_access(conn, board_id, user["id"], lock=True)
             if role not in ("owner", "editor") and not user["is_admin"]:
                 error(403, "Недостаточно прав для изменения доски.")
-            previous = await conn.fetchrow(
-                ("SELECT document,version FROM board_documents WHERE board_id=$1" if delta is not None
-                 else "SELECT version FROM board_documents WHERE board_id=$1"), board_id,
-            )
+            if delta is not None:
+                # An obsolete autosave needs only the current revision, not
+                # reconstruction/transfer of a potentially 24 MB board.
+                previous = await conn.fetchrow(
+                    """SELECT CASE WHEN version=$2 AND NOT ($3 AND item_bytes IS NOT NULL
+                                  AND document_metadata IS NOT NULL) THEN lektrus_board_document(d) END AS document,
+                              CASE WHEN version=$2 AND $3 AND item_bytes IS NOT NULL THEN document_metadata END AS metadata,
+                              CASE WHEN version=$2 AND $3 AND item_bytes IS NOT NULL THEN item_order END AS item_order,
+                              version,item_bytes,document_metadata IS NOT NULL AS normalized
+                         FROM board_documents d WHERE board_id=$1""", board_id,
+                    expected_version if expected_version <= 2**63-1 else -1,
+                    version_only and not board["is_pilot"],
+                )
+            else:
+                previous = await conn.fetchrow("SELECT version FROM board_documents WHERE board_id=$1", board_id)
             current_version = previous["version"] if previous else 0
             if current_version != expected_version:
                 error(409, f"Версия доски изменилась: {current_version}.")
+            fast = False
             if delta is not None:
                 if previous is None:
                     error(409, "Документ не найден.")
-                base = previous["document"]
-                if isinstance(base, str):
-                    base = json.loads(base)
+                fast = previous["metadata"] is not None
+                if fast:
+                    base = {**decode_document(previous["metadata"]),
+                            "items": [{"id": key} for key in previous["item_order"]]}
+                else:
+                    base = decode_document(previous["document"])
+                document = patched_document(base, delta)
+            normalized_delta = False
+            if delta is not None and not board["is_pilot"]:
                 try:
-                    document = apply_delta(base, delta)
+                    next_items = item_map(document["items"])
+                    if any(len(key.encode("utf-8")) > 1024 for key in next_items):
+                        raise ValueError("Item ID too large for indexed storage")
+                    normalized_delta = True
                 except ValueError:
-                    error(422, "Некорректные изменения документа.")
+                    # Preserve compatibility with legacy documents whose item
+                    # arrays have no stable unique IDs (metadata-only patches).
+                    pass
+            if fast and not normalized_delta:
+                # Some legacy clients use arbitrarily long object IDs. Keep
+                # their full-save fallback without writing placeholder items.
+                base = decode_document(await conn.fetchval(
+                    "SELECT lektrus_board_document(d) FROM board_documents d WHERE board_id=$1", board_id,
+                ))
+                document = patched_document(base, delta)
+                fast = False
+            if delta is not None and not fast:
                 serialized = serialize_document(document)
-            if previous:
+            if normalized_delta:
+                revision = await persist_normalized_items(
+                    conn, board_id, previous, base, document, delta, user["id"], fast,
+                )
+            elif previous:
                 revision = await conn.fetchrow(
                     """UPDATE board_documents
-                          SET document=$2::jsonb,version=version+1,
+                          SET document=$2::jsonb,document_metadata=NULL,item_order=NULL,item_bytes=NULL,version=version+1,
                               updated_by=$3,updated_at=now()
                         WHERE board_id=$1
                         RETURNING version,updated_at""",
                     board_id, serialized, user["id"],
                 )
+                await conn.execute("DELETE FROM board_document_items WHERE board_id=$1", board_id)
             else:
                 revision = await conn.fetchrow(
                     """INSERT INTO board_documents(board_id,document,version,updated_by)
@@ -679,16 +899,14 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         token = initial.get("token", "")
         presence_enabled = initial.get("presence", False)
         presence_visible = initial.get("visible", True)
-        if type(presence_enabled) is not bool or type(presence_visible) is not bool:
+        compact_ink = initial.get("compact_ink", False)
+        if type(presence_enabled) is not bool or type(presence_visible) is not bool or type(compact_ink) is not bool:
             await websocket.close(code=4401)
             return
         claims = jwt_claims(token)
-        user = await lookup_session(websocket.app.state.pool, token)
-        async with websocket.app.state.pool.acquire() as conn:
-            _, current_role = await board_access(conn, board_id, user["id"])
-            current_version = await conn.fetchval(
-                "SELECT version FROM board_documents WHERE board_id=$1", board_id
-            ) or 0
+        user = await lookup_board_session(websocket.app.state.pool, board_id, token, include_version=True)
+        current_role = user["role"]
+        current_version = user["version"]
         if len(_subscribers[board_id]) >= 100:
             await websocket.close(code=4429)
             return
@@ -703,11 +921,14 @@ async def board_events(websocket: WebSocket, board_id: UUID):
             for meta in _subscriber_users.get(board_id, {}).values()
         )
         _subscribers[board_id][websocket] = token
+        if compact_ink:
+            _compact_ink_subscribers.add(websocket)
         if presence_enabled:
             _presence_watchers[board_id].add(websocket)
             if presence_visible:
                 _subscriber_users[board_id][websocket] = user_meta
-        await websocket.send_json({"type": "ready", "version": current_version})
+        await websocket.send_json({"type": "ready", "version": current_version,
+                                   **({"compact_ink": True} if compact_ink else {})})
         if presence_enabled:
             await websocket.send_json({"type": "presence_state", "users": _unique_presence(board_id)})
             if presence_visible and not already_present:
@@ -734,17 +955,12 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                 if not isinstance(message, dict):
                     await websocket.send_json({"type": "event_error", "reason": "invalid_frame"})
                     continue
-                refreshed_user = await lookup_session(websocket.app.state.pool, token)
-                async with websocket.app.state.pool.acquire() as conn:
-                    current_board, current_role = await board_access(
-                        conn, board_id, refreshed_user["id"]
-                    )
-                    if message.get("type") == "ping":
-                        version = await conn.fetchval(
-                            "SELECT version FROM board_documents WHERE board_id=$1", board_id
-                        ) or 0
+                refreshed_user, checked_peers, checked_rows = await authorize_live_frame(
+                    websocket.app.state.pool, board_id, websocket, token, message.get("type")
+                )
+                current_role = refreshed_user["role"]
                 if message.get("type") == "ping":
-                    await websocket.send_json({"type": "pong", "version": version})
+                    await websocket.send_json({"type": "pong", "version": refreshed_user["version"]})
                     continue
                 try:
                     event = validate_live_event(
@@ -782,7 +998,7 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                         })
                         continue
                 if event["type"] == "object_preview":
-                    if not current_board["is_pilot"]:
+                    if not refreshed_user["is_pilot"]:
                         await websocket.send_json({
                             "type": "event_error", "reason": "pilot_only"
                         })
@@ -809,9 +1025,11 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                             "type": "event_error", "reason": "stale_object"
                         })
                         continue
-                await relay_live_event(
-                    board_id, websocket, event, websocket.app.state.pool
-                )
+                if checked_peers is not None:
+                    await broadcast_checked(board_id, event, websocket.app.state.pool,
+                                            checked_peers, authorized=checked_rows)
+                else:
+                    await relay_live_event(board_id, websocket, event, websocket.app.state.pool)
                 if event["type"] == "live_ink":
                     # An ack confirms delivery to the server's relay, not that
                     # the stroke is saved in the durable board document.
@@ -822,38 +1040,16 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                     })
             except asyncio.TimeoutError:
                 # Avoid stale sockets after logout/revocation, even without pings.
-                refreshed_user = await lookup_session(websocket.app.state.pool, token)
-                async with websocket.app.state.pool.acquire() as conn:
-                    await board_access(conn, board_id, refreshed_user["id"])
+                await lookup_board_session(websocket.app.state.pool, board_id, token)
     except (WebSocketDisconnect, HTTPException, ValueError, TypeError, asyncio.TimeoutError):
         try:
             await websocket.close(code=4401)
         except Exception:
             pass
     finally:
-        clients = _subscribers.get(board_id)
-        users = _subscriber_users.get(board_id)
-        departed = users.pop(websocket, None) if users is not None else None
-        watchers = _presence_watchers.get(board_id)
-        if watchers is not None:
-            watchers.discard(websocket)
-            if not watchers:
-                _presence_watchers.pop(board_id, None)
-        if clients is not None:
-            clients.pop(websocket, None)
-            if not clients:
-                _subscribers.pop(board_id, None)
-        if users is not None and not users:
-            _subscriber_users.pop(board_id, None)
-        if departed and not any(
-            meta.get("user_id") == departed.get("user_id")
-            for meta in _subscriber_users.get(board_id, {}).values()
-        ):
-            await announce_presence(board_id, leaves=[departed],
-                                    pool=websocket.app.state.pool)
-        if not _subscribers.get(board_id):
-            _subscriber_users.pop(board_id, None)
-            _presence_watchers.pop(board_id, None)
+        leaves = _detach_subscribers(board_id, [websocket])
+        if leaves:
+            await announce_presence(board_id, leaves=leaves, pool=websocket.app.state.pool)
 
 # Asset endpoints reuse the same server-authoritative session and board access
 # checks; nothing under the private upload directory is served by Caddy.

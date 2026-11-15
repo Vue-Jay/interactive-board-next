@@ -27,6 +27,19 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Test the primary Lektrus self-hosted API client
         run: node scripts/test-selfhost-client.mjs
+      - name: Check collaboration and attachment traffic regressions
+        run: |
+          npm run test:realtime
+          node scripts/test-lektrus-storage-egress.mjs
+          node scripts/test-lektrus-runtime-hotpaths.mjs
+          node scripts/test-lektrus-live-transforms.mjs
+          node scripts/test-lektrus-board-background.mjs
+          node scripts/test-lektrus-physics-motion-editor.mjs
+          node scripts/test-lektrus-physics-collaboration.mjs
+          node scripts/test-lektrus-chemistry-ux.mjs
+          node scripts/test-lektrus-subject-editors.mjs
+      - name: Check peer ink and cursor rendering in real Chrome
+        run: node scripts/test-lektrus-peer-ink-browser.mjs
       - name: Build the standard Lektrus application against the self-hosted backend
         env:
           VITE_LEKTRUS_BACKEND: 'selfhost'
@@ -38,4 +51,7 @@ jobs:
           test -d dist/assets
           find dist/assets -name 'appEntry-*.js' -size +100c | grep -q .
           find dist/assets -name 'BoardApp-*.js' -size +100c | grep -q .
+          for editor in SchoolDiagram PhysicsGraph Optics Mechanics Circuit PeriodicTable Atom; do
+            find dist/assets -name "Lektrus${editor}Editor-*.js" -size +100c | grep -q .
+          done
           grep -l 'lektrus.selfhost.session.v1' dist/assets/*.js | grep -q .

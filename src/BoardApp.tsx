@@ -32,21 +32,24 @@ import LektrusSubjectToolIcon from "./LektrusSubjectToolIcons";
 import LektrusSchoolDiagramView from "./LektrusSchoolDiagramView";
 import { fitGeoMatchingItem } from "./lektrusGeoMatchingLayout";
 import { boardObjectTypeName } from "./boardObjectNames";
-import LektrusSchoolDiagramEditor from "./LektrusSchoolDiagramEditor";
 import { isSchoolDiagramId, isSchoolDiagram } from "./lektrusSchoolDiagramModel";
 // Load heavy chemistry/physics editors only when a teacher opens one.
 // The board itself stays interactive while its optional tools download.
 const LektrusScienceEditor = lazy(() => import("./LektrusScienceEditor"));
+const LektrusSchoolDiagramEditor = lazy(() => import("./LektrusSchoolDiagramEditor"));
+const LektrusPhysicsGraphEditor = lazy(() => import("./LektrusPhysicsGraphEditor"));
+const LektrusOpticsEditor = lazy(() => import("./LektrusOpticsEditor"));
+const LektrusMechanicsEditor = lazy(() => import("./LektrusMechanicsEditor"));
+const LektrusCircuitEditor = lazy(() => import("./LektrusCircuitEditor"));
+const LektrusPeriodicTableEditor = lazy(() => import("./LektrusPeriodicTableEditor"));
+const LektrusAtomEditor = lazy(() => import("./LektrusAtomEditor"));
 import { mergeLabBench, readLabBench, type LabBench } from "./lektrusChemistryBenchModel";
 import LektrusChemicalEquationEditor from "./LektrusChemicalEquationEditor";
 import { LektrusSubjectBoardView, LektrusSubjectBoardTaskEditor, isSubjectBoard, boardTone, subjectBoardLocked, entryBelongsToSubject, newSubjectBoardEntry, subjectBoardEntryFilled } from "./LektrusSubjectBoard";
 import { LektrusSubjectBoardSolutionEditor } from "./LektrusSubjectBoardSolution";
 import { subjectTaskTypeAllowed } from "./lektrusSubjectTaskTemplates";
 import { subjectToneForItem, subjectToneForSubject, subjectAccentPalette, subjectEditorStyle } from "./lektrusSubjectAccent";
-import LektrusPhysicsGraphEditor from "./LektrusPhysicsGraphEditor";
 import { isPhysicsMotionGraph, motionAxisTicks } from "./lektrusPhysicsGraphTicks";
-import LektrusOpticsEditor from "./LektrusOpticsEditor";
-import LektrusMechanicsEditor from "./LektrusMechanicsEditor";
 import LektrusPhysicalBoardView from "./LektrusPhysicalBoardView";
 import LektrusPhysicsCanvasEditorAction from "./LektrusPhysicsCanvasEditorAction";
 import { movePhysicalPart, type PhysicalTarget } from "./lektrusPhysicalBoardMove";
@@ -57,12 +60,9 @@ import LektrusOrganicView from "./LektrusOrganicView";
 import LektrusChemistryIllustration, { isChemicalIllustration } from "./LektrusChemistryIllustration";
 import { analyzeOrganicStructure } from "./lektrusOrganicFormula";
 import { layoutScienceLabels } from "./lektrusScienceLabelLayout";
-import LektrusCircuitEditor from "./LektrusCircuitEditor";
 import LektrusCircuitView from "./LektrusCircuitView";
 import { circuitFromLegacyItem } from "./lektrusCircuitModel";
-import LektrusPeriodicTableEditor from "./LektrusPeriodicTableEditor";
 import LektrusPeriodicBoard from "./LektrusPeriodicBoard";
-import LektrusAtomEditor from "./LektrusAtomEditor";
 import LektrusAtomView from "./LektrusAtomView";
 import { defaultAtomModel } from "./lektrusAtomModel";
 import ScienceCircuitGlyph from "./ScienceCircuitGlyph";
@@ -102,11 +102,14 @@ import { boardRoleCapabilities, canUseBoardCreationTool, isStudentProtectedBoard
 import { subscribeBoardPresence, type BoardPresenceUser } from "./boardPresence";
 import { trackBoardVisit, listBoardVisits, type BoardVisit } from "./boardVisits";
 import BoardVisitHistoryDialog from "./BoardVisitHistoryDialog";
-import { connectBoardCursorChannel, type BoardCursorChannel, type RemoteCursor } from "./boardBroadcast";
-import { mergeRemoteLiveInk, remoteInkRuns, type RemoteLiveInkPreview } from "./boardLiveInk";
+import { connectBoardCursorChannel, type BoardCursorChannel } from "./boardBroadcast";
+import { createRemoteCursorStore } from "./boardRemoteCursors";
+import { RemoteCursorOverlay, RemoteCursorCount } from "./RemoteCursorOverlay";
+import { createRemoteInkStore } from "./boardLiveInk";
+import { RemoteInkOverlay } from "./RemoteInkOverlay";
 import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState, type BoardObjectPose } from "./boardWorkSync";
-import { objectPoseOrigin, objectPoseMatches } from "./boardObjectMotion";
+import { objectPoseOrigin, objectPoseMatches, createCurrentItemIndex } from "./boardObjectMotion";
 import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest } from "./boardAttachmentApprovalSync";
 import { documentFingerprint, sharedBoardFingerprint, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
 import { mergeEditedValue, editorDiff, applyEditorOps } from "./lektrusLiveEditorMerge";
@@ -2155,10 +2158,24 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [visitError,setVisitError]=useState("");
   const loadVisitHistory=async()=>{setVisitLoading(true);setVisitError("");try{setVisitRows(await listBoardVisits(boardSummary.id))}catch(error){setVisitError(error instanceof Error?error.message:"Не удалось получить посещения")}finally{setVisitLoading(false)}};
   const visiblePresenceUsers = useMemo(() => adminHidden ? presenceUsers.filter((user) => user.userId !== authUser.id) : presenceUsers, [presenceUsers, adminHidden, authUser.id]);
-  const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
-  const [remoteInk, setRemoteInk] = useState<Record<string, RemoteLiveInkPreview>>({});
-  const remoteInkExpiryTimers = useRef(new Map<string,ReturnType<typeof setTimeout>>());
-  const [inkDiagnostics, setInkDiagnostics] = useState("подключается");
+  const [remoteCursorStore] = useState(createRemoteCursorStore);
+  const [remoteInkStore] = useState(createRemoteInkStore);
+  const inkDiagnostics=useRef("подключается");
+  const inkDiagnosticsElement=useRef<HTMLSpanElement|null>(null);
+  const settingsInkDiagnosticsElement=useRef<HTMLSpanElement|null>(null);
+  const setInkDiagnostics=useCallback((status:string)=>{
+    inkDiagnostics.current=status;
+    if(inkDiagnosticsElement.current)inkDiagnosticsElement.current.textContent=status;
+    if(settingsInkDiagnosticsElement.current)settingsInkDiagnosticsElement.current.textContent=status;
+  },[]);
+  const attachInkDiagnostics=useCallback((element:HTMLSpanElement|null)=>{
+    inkDiagnosticsElement.current=element;
+    if(element)element.textContent=inkDiagnostics.current;
+  },[]);
+  const attachSettingsInkDiagnostics=useCallback((element:HTMLSpanElement|null)=>{
+    settingsInkDiagnosticsElement.current=element;
+    if(element)element.textContent=inkDiagnostics.current;
+  },[]);
   const [developerSettingsOpen, setDeveloperSettingsOpen] = useState(false);
   const [controlSettingsOpen,setControlSettingsOpen]=useState(false);
   type ControlSettings={wheel:"scroll"|"zoom";zoomSpeed:number;panSpeed:number;invertZoom:boolean;horizontalShift:boolean};
@@ -2220,8 +2237,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     window.addEventListener("onlinerepetitor:developer-preferences",update);
     return()=>window.removeEventListener("onlinerepetitor:developer-preferences",update);
   },[]);
-  const pendingRemoteCursors = useRef<Record<string, RemoteCursor>>({});
-  const remoteCursorFrame = useRef<number | null>(null);
   const cursorChannel = useRef<BoardCursorChannel | null>(null);
   const viewControlChannel = useRef<BoardViewControlChannel | null>(null);
   const [followTeacher] = useState(false);
@@ -2652,10 +2667,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // scanning the entire board once per preview stroke (previously O(ink*items)
   // in JSX). Rebuild the ID index only when persisted items actually change.
   const persistedItemIds=useMemo(()=>new Set(items.map(item=>item.id)),[items]);
-  const uncommittedRemoteInk=useMemo(
-    ()=>Object.values(remoteInk).filter(ink=>!persistedItemIds.has(ink.id)),
-    [remoteInk,persistedItemIds],
-  );
   // Realtime broadcasts are untrusted display-only previews until the sender
   // persists the change through the board's RLS-protected server RPC.
   const [remoteLiveItems,setRemoteLiveItems]=useState<Record<string,Item>>({});
@@ -2674,6 +2685,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // Per-stroke expiry below bounds memory without assuming a server-save time.
 
   const itemsRef = useRef(items);
+  const [getCurrentItemIndex] = useState(()=>createCurrentItemIndex<Item>());
   const eraserSession = useRef<{pointer:number;last:Point;zoom:number;path:Point[]}|null>(null);
   const eraserPreviewCanvas=useRef<HTMLCanvasElement>(null);
   const eraserPreviewRatio=useRef(1);
@@ -7606,20 +7618,20 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setNotice("Интерактивные задания текущего слайда сброшены");
   };
 
-  const applyServerDocument = (row: RemoteBoardDocument, prepared?: DocumentData) => {
-    // Reuse the already validated incoming document. Parsing the same full
-    // Realtime record twice doubles JSON allocations and document validation.
-    const data = prepared ?? parseDocument(JSON.stringify(row.document));
+  const applyServerDocument = (row: RemoteBoardDocument, data: DocumentData, remoteFingerprint: string) => {
+    // The receiver already validated and hashed this revision. Recompute only
+    // if resolving bound connectors actually changes the incoming geometry.
     // Normalize connector positions before setting the clean baseline.
-    data.items = syncBoundConnectors(data.items);
+    const incomingItemsBeforeSync = data.items;
+    data.items = syncBoundConnectors(incomingItemsBeforeSync);
     // Background-only revisions must not reset the active pen, zoom, current
     // selection or object editor on a student device. They are shared document
     // data, but not drawing gestures.
     const localDoc=currentDocument();
-    const incomingFingerprint=documentFingerprint(data);
+    const incomingFingerprint=data.items===incomingItemsBeforeSync?remoteFingerprint:documentFingerprint(data);
     const onlyBackgroundChanged=
-      sharedBoardFingerprint({...localDoc,background:data.background})===incomingFingerprint &&
-      JSON.stringify(localDoc.background)!==JSON.stringify(data.background);
+      JSON.stringify(localDoc.background)!==JSON.stringify(data.background) &&
+      sharedBoardFingerprint({...localDoc,background:data.background})===incomingFingerprint;
     remoteVersion.current = row.version;
     acknowledgedDocument.current = incomingFingerprint;
     acknowledgedSharedContent.current = incomingFingerprint;
@@ -7734,7 +7746,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         window.setTimeout(()=>{if(boardMounted.current)void pushRemoteSnapshot(snapshot.current??merged)},0);
         return;
       }
-      applyServerDocument(row, data);
+      applyServerDocument(row, data, remoteFingerprint);
     } catch { setNotice("Не удалось прочитать новую серверную версию. Ваши изменения сохранены на доске."); }
   };
   useEffect(()=>{
@@ -7765,54 +7777,25 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   useEffect(() => {
     if(layoutEditing)return;
+    let active=true;
     const channel = connectBoardCursorChannel(
       boardSummary.id,
       { userId: authUser.id, name: authUser.name, role: boardSummary.role },
-      (cursor) => {
-        pendingRemoteCursors.current[cursor.userId] = cursor;
-        if (remoteCursorFrame.current != null) return;
-        remoteCursorFrame.current = requestAnimationFrame(() => {
-          remoteCursorFrame.current = null;
-          const pending = pendingRemoteCursors.current;
-          pendingRemoteCursors.current = {};
-          if (Object.keys(pending).length) setRemoteCursors((current) => ({ ...current, ...pending }));
-        });
-      },
+      cursor=>{if(active)remoteCursorStore.push(cursor)},
       true, // Keep the socket active independently of invisible mode; cursor emission is guarded at pointer-move.
-      (ink) => {
-        // Each stroke must retain its own preview until the persisted document contains it.
-        // Keying by clientId replaced the previous completed stroke as soon as a new one began.
-        setRemoteInk(current => ({...current,[ink.id]:mergeRemoteLiveInk(current[ink.id],ink)}));
-        const previous=remoteInkExpiryTimers.current.get(ink.id);
-        if(previous)clearTimeout(previous);
-        // Network delivery and document persistence are independent channels.
-        // Keep the hidden fallback long enough to survive server retries or
-        // version conflicts. Unlike the old 15s cutoff, no gap in normal saves.
-        const timer=window.setTimeout(()=>{
-          remoteInkExpiryTimers.current.delete(ink.id);
-          setRemoteInk(current=>{
-            if(!current[ink.id])return current;
-            const next={...current};delete next[ink.id];return next;
-          });
-        },120000);
-        remoteInkExpiryTimers.current.set(ink.id,timer);
-      },
-      setInkDiagnostics,
+      ink=>{if(active)remoteInkStore.push(ink)},
+      status=>{if(active)setInkDiagnostics(status)},
       true, // Drawings remain collaborative even when the admin hides their presence.
     );
     cursorChannel.current = channel;
     return () => {
+      active=false;
       cursorChannel.current = null;
       channel.close();
-      if (remoteCursorFrame.current != null) cancelAnimationFrame(remoteCursorFrame.current);
-      remoteCursorFrame.current = null;
-      pendingRemoteCursors.current = {};
-      setRemoteCursors({});
-      for(const timer of remoteInkExpiryTimers.current.values())clearTimeout(timer);
-      remoteInkExpiryTimers.current.clear();
-      setRemoteInk({});
+      remoteCursorStore.reset();
+      remoteInkStore.reset();
     };
-  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name]);
+  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, layoutEditing, remoteInkStore, remoteCursorStore, setInkDiagnostics]);
 
   useEffect(() => {
     if(layoutEditing)return;
@@ -7850,7 +7833,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   useEffect(()=>{
     const stale:string[]=[];
     for(const [id,baseline] of remoteLiveBases.current){
-      const stored=items.find(item=>item.id===id);
+      const stored=itemById.get(id);
       if(!stored||JSON.stringify(stored)!==baseline)stale.push(id);
     }
     if(!stale.length)return;
@@ -7865,7 +7848,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       for(const id of stale)delete updated[id];
       return updated;
     });
-  },[items]);
+  },[itemById]);
   useEffect(() => {
     if(layoutEditing)return;
     const channel = connectBoardWorkChannel(
@@ -7880,7 +7863,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }),
       !adminHidden,
       (mutation)=>{
-        const stored=itemsRef.current.find(item=>item.id===mutation.itemId);
+        const stored=getCurrentItemIndex(itemsRef.current).get(mutation.itemId);
         const liveLab=stored?.graphFigureId==="chem-experiment-free"&&!!stored.scienceLabBench;
         if(!stored||stored.kind!=="graph"||
           !(stored.graphPurpose==="geometry"||stored.graphFigureId==="contour-atlas"||
@@ -7936,7 +7919,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       (mutation)=>{
         // No broadcast may mutate board history, ownership, or saved content.
         // Unknown IDs and objects currently held by this user are ignored.
-        const storedById=new Map(itemsRef.current.map(item=>[item.id,item]));
+        const storedById=getCurrentItemIndex(itemsRef.current);
         const localIds=new Set(gesture.current?.ids??[]);
         const changed=mutation.items.filter(pose=>{
           const stored=storedById.get(pose.id);
@@ -8008,7 +7991,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // arrive before the last transient preview packet. Never let a dropped FINAL
   // packet pin an old intermediate pose over already-saved geometry.
   useEffect(()=>{
-    const byId=new Map(items.map(item=>[item.id,item]));
+    const byId=itemById;
     const stale=Object.entries(remoteObjectPoses).filter(([id,pose])=>{
       const stored=byId.get(id);
       return !stored || (
@@ -8043,7 +8026,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       });
     },160);
     return()=>window.clearTimeout(timer);
-  },[items,remoteObjectPoses]);
+  },[itemById,remoteObjectPoses]);
 
   const remoteWorkValues = useMemo(() => Object.values(remoteWork), [remoteWork]);
   const remoteWorkIndex = useMemo(() => {
@@ -8084,33 +8067,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   }, [adminHidden, canManageBoard, view.x, view.y, view.zoom]);
 
   useEffect(() => {
-    const online = new Set(presenceUsers.map((user) => user.userId));
-    setRemoteCursors((current) => {
-      let changed = false;
-      const next: Record<string, RemoteCursor> = {};
-      for (const [userId, cursor] of Object.entries(current)) {
-        if (online.has(userId)) next[userId] = cursor;
-        else changed = true;
-      }
-      return changed ? next : current;
-    });
-  }, [presenceUsers]);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      const cutoff = Date.now() - 12000;
-      setRemoteCursors((current) => {
-        let changed = false;
-        const next: Record<string, RemoteCursor> = {};
-        for (const [userId, cursor] of Object.entries(current)) {
-          if (cursor.updatedAt >= cutoff) next[userId] = cursor;
-          else changed = true;
-        }
-        return changed ? next : current;
-      });
-    }, 4000);
-    return () => window.clearInterval(timer);
-  }, []);
+    remoteCursorStore.retainOnline(new Set(presenceUsers.map(user=>user.userId)));
+  }, [presenceUsers,remoteCursorStore]);
 
   return (
     <div className={`app ${presentation ? "presentation-mode" : ""} ${!canEdit ? "viewer-mode" : ""} ${publicPresentation ? "public-presentation-mode" : ""}`}>
@@ -8157,8 +8115,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             <label style={{display:"flex",alignItems:"center",gap:10}}><input type="checkbox" checked={showInkDiagnostics} onChange={e=>changeDeveloperPref("showInkDiagnostics",e.target.checked)}/> Показывать отправку и получение штрихов</label>
             <label style={{display:"flex",alignItems:"center",gap:10}}><input type="checkbox" checked={showBoardDiagnostics} onChange={e=>changeDeveloperPref("showBoardDiagnostics",e.target.checked)}/> Показывать состояние доски и синхронизации</label>
             <label style={{display:"flex",alignItems:"center",gap:10}}><input type="checkbox" checked={showPerformanceDiagnostics} onChange={e=>changeDeveloperPref("showPerformanceDiagnostics",e.target.checked)}/> Показывать статистику объектов и масштаб</label>
-            <div style={{fontSize:12,lineHeight:1.8,overflowWrap:"anywhere"}}><strong>Состояние Realtime:</strong> {realtimeStatus}<div><strong>Канал штрихов:</strong> {inkDiagnostics}</div><div><strong>Объектов:</strong> {items.length}</div><div><strong>Активных участников:</strong> {visiblePresenceUsers.length}</div><div><strong>Версия документа:</strong> {remoteVersion.current ?? "неизвестна"}</div></div>
-            <button type="button" className="boards-secondary" onClick={()=>void navigator.clipboard.writeText([`Доска: ${boardSummary.id}`,`Realtime: ${realtimeStatus}`,`Штрихи: ${inkDiagnostics}`,`Объектов: ${items.length}`,`Участников: ${visiblePresenceUsers.length}`,`Версия: ${remoteVersion.current ?? "unknown"}`].join("\\n")).then(()=>setNotice("Диагностика скопирована")).catch(()=>setNotice("Не удалось скопировать диагностику"))}>Скопировать диагностику</button>
+            <div style={{fontSize:12,lineHeight:1.8,overflowWrap:"anywhere"}}><strong>Состояние Realtime:</strong> {realtimeStatus}<div><strong>Канал штрихов:</strong> <span ref={attachSettingsInkDiagnostics}/></div><div><strong>Объектов:</strong> {items.length}</div><div><strong>Активных участников:</strong> {visiblePresenceUsers.length}</div><div><strong>Версия документа:</strong> {remoteVersion.current ?? "неизвестна"}</div></div>
+            <button type="button" className="boards-secondary" onClick={()=>void navigator.clipboard.writeText([`Доска: ${boardSummary.id}`,`Realtime: ${realtimeStatus}`,`Штрихи: ${inkDiagnostics.current}`,`Объектов: ${items.length}`,`Участников: ${visiblePresenceUsers.length}`,`Версия: ${remoteVersion.current ?? "unknown"}`].join("\\n")).then(()=>setNotice("Диагностика скопирована")).catch(()=>setNotice("Не удалось скопировать диагностику"))}>Скопировать диагностику</button>
           </div>
         </section>
       </div>}
@@ -8748,6 +8706,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               setFractionEditorId(null);setPendingMathItem(null);
             }}
           />,document.body)}
+        <Suspense fallback={<div className="board-server-overlay" role="status"><div className="board-server-card"><strong>Открываем предметный инструмент…</strong><span>Загружаем только необходимые модели.</span></div></div>}>
         {atomEditorItem&&<LektrusAtomEditor key={atomEditorItem.id} item={atomEditorItem}
           onCancel={()=>setAtomEditorItem(null)}
           onClose={next=>{
@@ -8916,6 +8875,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             }
             setScienceEditorItem(null);
           }}/></Suspense>}</>}
+        </Suspense>
         {chartEditorItem&&createPortal(<LektrusDataChartEditor key={chartEditorItem.id}
           item={chartEditorItem} onClose={()=>setChartEditorItem(null)}
           onSave={next=>{
@@ -9925,8 +9885,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           }}
         >
           {showAdminControls && (showInkDiagnostics || showBoardDiagnostics || showPerformanceDiagnostics) && <div style={{position:"absolute",right:12,top:12,zIndex:2400,background:"rgba(20,23,33,.85)",color:"#fff",padding:"7px 10px",borderRadius:8,fontSize:11,pointerEvents:"none",maxWidth:"min(90vw,480px)"}}>
-            {showInkDiagnostics && <div>Штрихи: {inkDiagnostics}</div>}
-            {showBoardDiagnostics && <div>Соединение: {realtimeStatus} · курсоров: {Object.keys(remoteCursors).length} · участников: {visiblePresenceUsers.length} · версия: {remoteVersion.current ?? "нет"}</div>}
+            {showInkDiagnostics && <div>Штрихи: <span ref={attachInkDiagnostics}/></div>}
+            {showBoardDiagnostics && <div>Соединение: {realtimeStatus} · курсоров: <RemoteCursorCount store={remoteCursorStore}/> · участников: {visiblePresenceUsers.length} · версия: {remoteVersion.current ?? "нет"}</div>}
             {showPerformanceDiagnostics && <div>Объектов: {items.length} · штрихов: {drawingCount} · масштаб: {Math.round(view.zoom*100)}% · rAF FPS: <span ref={diagnosticFps}>…</span></div>}
           </div>}
           <div
@@ -9944,25 +9904,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <div ref={setInstrumentViewportHost}
             className="geometry-instrument-viewport-layer" aria-label="Измерительные инструменты" />
           <div ref={fastPanOverlay} className="remote-cursors-layer" aria-hidden="true" style={{transformOrigin:"0 0"}}>
-            <svg className="remote-live-ink-layer" width="100%" height="100%" style={{position:"absolute",inset:0,overflow:"hidden",pointerEvents:"none"}}>
-              {uncommittedRemoteInk.flatMap(ink => remoteInkRuns(ink).map(run => (
-                run.points.length === 1
-                  ? <circle key={ink.id+":"+run.offset} cx={run.points[0].x*view.zoom+view.x} cy={run.points[0].y*view.zoom+view.y} r={Math.max(0.5,ink.weight*view.zoom/2)} fill={ink.color} opacity={ink.kind==="marker"?0.32:1}/>
-                  : <polyline key={ink.id+":"+run.offset} points={run.points.map(point => `${point.x*view.zoom+view.x},${point.y*view.zoom+view.y}`).join(" ")} fill="none" stroke={ink.color} strokeWidth={ink.weight*view.zoom} strokeLinecap="round" strokeLinejoin="round" opacity={ink.kind==="marker"?0.32:1}/>
-              )))}
-            </svg>
-            {Object.values(remoteCursors).map((cursor) => <div
-              className="remote-cursor"
-              key={cursor.userId}
-              style={{
-                transform: `translate(${cursor.x * view.zoom + view.x}px,${cursor.y * view.zoom + view.y}px)`,
-              }}
-            >
-              <svg className="remote-cursor-pointer" viewBox="0 0 24 30">
-                <path d="M2 2 19 17l-8.2 1.5L7 27 2 2Z"/>
-              </svg>
-              <span>{cursor.name}</span>
-            </div>)}
+            <RemoteInkOverlay store={remoteInkStore} persistedItemIds={persistedItemIds} x={view.x} y={view.y} zoom={view.zoom}/>
+            <RemoteCursorOverlay store={remoteCursorStore} x={view.x} y={view.y} zoom={view.zoom}/>
           </div>
           <div
             ref={fastPanWorld}

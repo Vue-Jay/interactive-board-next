@@ -13,7 +13,7 @@ const parsed=ts.transpileModule(editor,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX
   reportDiagnostics:true,fileName:"LektrusPhysicsGraphEditor.tsx"});
 assert.equal(parsed.diagnostics?.filter(d=>d.category===ts.DiagnosticCategory.Error).length??0,0,
   "Physics graph editor TSX syntax");
-assert.match(app,/import LektrusPhysicsGraphEditor/);
+assert.match(app,/const LektrusPhysicsGraphEditor = lazy\(\(\) => import\("\.\/LektrusPhysicsGraphEditor"\)\)/);
 assert.match(app,/physics-motion","physics-speed","physics-accelerated-speed","physics-acceleration","physics-braking","physics-rest"/);
 assert.match(app,/<LektrusPhysicsGraphEditor key=\{scienceEditorItem.id\}/);
 assert.match(editor,/graphPurpose:"coordinates"/);

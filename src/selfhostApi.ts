@@ -295,6 +295,80 @@ function itemMap(items:unknown):Map<string,JsonObject>|null{
   }
   return result;
 }
+// Compare plain editor values against an already JSON-normalized snapshot.
+// Undefined properties are omitted by JSON.stringify. Exotic objects/toJSON
+// are never reused: those values take the normal serialization path.
+function plainWireObject(value:object):boolean{
+  const prototype=Object.getPrototypeOf(value);
+  return (prototype===null||Object.getPrototypeOf(prototype)===null)&&Object.prototype.toString.call(value)==="[object Object]";
+}
+function equalWireJson(raw:unknown,saved:unknown):boolean{
+  if(raw===null||typeof raw!=="object")return raw===saved||
+    (typeof raw==="number"&&!Number.isFinite(raw)&&saved===null);
+  if("toJSON" in raw)return false;
+  if(Array.isArray(raw)){
+    if(!Array.isArray(saved)||raw.length!==saved.length)return false;
+    for(let index=0;index<raw.length;index++)if(!equalWireJson(raw[index]??null,saved[index]))return false;
+    return true;
+  }
+  if(!jsonObject(saved)||!plainWireObject(raw))return false;
+  const record=raw as JsonObject;
+  let count=0;
+  for(const key of Object.keys(record)){
+    const value=record[key];
+    if(typeof value==="function"&&"toJSON" in value)return false;
+    if(value===undefined||typeof value==="function"||typeof value==="symbol")continue;
+    if(!Object.hasOwn(saved,key)||!equalWireJson(value,saved[key]))return false;
+    count++;
+  }
+  return count===Object.keys(saved).length;
+}
+function normalizedField(key:string,value:unknown):unknown{
+  const parsed=JSON.parse(JSON.stringify({[key]:value}));
+  return Object.hasOwn(parsed,key)?parsed[key]:undefined;
+}
+// For small edits on large native boards, reuse detached ACKed objects and
+// serialize only changed values. The conservative lower bound on full JSON
+// size guarantees that the PATCH is smaller without building the full body.
+export function prepareSmallDocumentDelta(base:JsonObject,raw:JsonObject,expectedVersion:number):{next:JsonObject;body:string}|null{
+  if(raw.version!==1||base.version!==1||raw.pilot_schema!=null||base.pilot_schema!=null||
+     "toJSON" in raw||!Array.isArray(raw.items)||"toJSON" in raw.items||raw.items.length<100||
+     !plainWireObject(raw))return null;
+  const previous=itemMap(base.items);
+  if(!previous)return null;
+  const entries:[string,unknown][]=[];
+  try{
+    for(const key of Object.keys(raw)){
+      if(key==="items")continue;
+      const value=raw[key];
+      const normalized=Object.hasOwn(base,key)&&equalWireJson(value,base[key])?base[key]:normalizedField(key,value);
+      if(normalized!==undefined)entries.push([key,normalized]);
+    }
+    const items:JsonObject[]=[];
+    let changedItems=0;
+    const changedLimit=Math.max(8,Math.ceil(raw.items.length*.05));
+    for(let index=0;index<raw.items.length;index++){
+      const item=raw.items[index];
+      if(!jsonObject(item)||typeof item.id!=="string")return null;
+      const saved=previous.get(item.id);
+      const unchanged=!!saved&&equalWireJson(item,saved);
+      // A bulk edit should immediately use the established full serializer
+      // instead of doing an extra complete object-by-object normalization.
+      if(!unchanged&&++changedItems>changedLimit)return null;
+      const normalized=unchanged?saved:normalizedField(String(index),item);
+      if(!jsonObject(normalized)||typeof normalized.id!=="string"||!normalized.id)return null;
+      items.push(normalized);
+    }
+    const next=Object.fromEntries([...entries,["items",items]]);
+    const delta=diffSelfhostDocument(base,next);
+    if(!delta)return null;
+    const body=JSON.stringify({expected_version:expectedVersion,delta});
+    const bytes=new TextEncoder().encode(body).byteLength;
+    // A JSON item with a nonempty id is at least 10 ASCII bytes; the actual
+    // full request is larger still (metadata, commas, wrapper, etc.).
+    return bytes<MAX_DELTA_BYTES&&bytes<items.length*10?{next,body}:null;
+  }catch{return null}
+}
 const reservedField=(key:string)=>["items","version","pilot_schema","__proto__","constructor","prototype"].includes(key);
 export function diffSelfhostDocument(base:JsonObject,next:JsonObject):DocumentDelta|null{
   if(base.version!==1||next.version!==1||base.pilot_schema!=null||next.pilot_schema!=null)return null;
@@ -345,7 +419,7 @@ export async function selfhostReadDocument(boardId:string,signal?:AbortSignal,in
   let row=await selfhostRequest<DeltaResponse>(path+(base?"?since_version="+base.version:""),{signal});
   if(row.patches!==undefined){
     try{
-      if(!base||row.board_id!==boardId||row.base_version!==base.version||!Array.isArray(row.patches)||row.patches.length!==row.version-base.version||!row.patches.length||row.patches.length>8)throw new Error("Invalid delta chain");
+      if(!base||row.board_id!==boardId||row.base_version!==base.version||!Number.isSafeInteger(row.version)||!Array.isArray(row.patches)||row.patches.length!==row.version-base.version||row.patches.length>8)throw new Error("Invalid delta chain");
       row={...row,document:row.patches.reduce(applySelfhostDocumentDelta,base.document)};
     }catch{
       // A missing/malformed chain must never replace an acknowledged snapshot.
@@ -361,18 +435,19 @@ export const selfhostReadDocumentVersion=(boardId:string,signal?:AbortSignal)=>s
 export async function selfhostSaveDocument(boardId:string,expectedVersion:number,document:JsonObject){
   const userId=loadSession()?.user.id;
   const base=documentBase?.boardId===boardId&&documentBase.userId===userId&&documentBase.version===expectedVersion?documentBase:null;
-  const fullBody=JSON.stringify({expected_version:expectedVersion,document});
-  // JSON normalization also preserves the exact wire representation of optional
-  // keys/numbers; the editor may mutate its own objects after the request starts.
-  const next=JSON.parse(fullBody).document as JsonObject;
+  const prepared=base&&deltaSupported&&expectedVersion>0?prepareSmallDocumentDelta(base.document,document,expectedVersion):null;
+  const fullBody=prepared?null:JSON.stringify({expected_version:expectedVersion,document});
+  // The fast path owns a detached snapshot, too. Changed fields are normalized
+  // before any network await; unchanged values come from the ACKed snapshot.
+  const next=prepared?.next??JSON.parse(fullBody!).document as JsonObject;
   const path=documentPath(boardId)+"?version_only=true";
   let result:{version:number}|undefined;
   if(base&&deltaSupported&&expectedVersion>0){
-    const delta=diffSelfhostDocument(base.document,next);
-    if(delta){
-      const body=JSON.stringify({expected_version:expectedVersion,delta});
+    const delta=prepared?null:diffSelfhostDocument(base.document,next);
+    if(prepared||delta){
+      const body=prepared?.body??JSON.stringify({expected_version:expectedVersion,delta});
       const bytes=new TextEncoder().encode(body).byteLength;
-      if(bytes<MAX_DELTA_BYTES&&(bytes<fullBody.length||bytes<new TextEncoder().encode(fullBody).byteLength)){
+      if(prepared||(fullBody&&bytes<MAX_DELTA_BYTES&&(bytes<fullBody.length||bytes<new TextEncoder().encode(fullBody).byteLength))){
         try{result=await selfhostRequest<{version:number}>(path,{method:"PATCH",body})}
         catch(error){
           // Older servers still support the version-checked full PUT. Do not
@@ -383,7 +458,7 @@ export async function selfhostSaveDocument(boardId:string,expectedVersion:number
       }
     }
   }
-  result??=await selfhostRequest<{version:number}>(path,{method:"PUT",body:fullBody});
+  result??=await selfhostRequest<{version:number}>(path,{method:"PUT",body:fullBody??JSON.stringify({expected_version:expectedVersion,document:next})});
   rememberDocument(boardId,userId,result.version,next);
   return result;
 }
@@ -553,6 +628,7 @@ function connectSelfhostBoard(
   let responseDeadline:ReturnType<typeof setTimeout>|undefined;
   let lastVersion=-1;
   let ready=false;
+  let compactInk=false;
   let lastCursorSent=0;
   let pendingCursor:{clientId:string;x:number;y:number}|null=null;
   let cursorTimer:ReturnType<typeof setTimeout>|undefined;
@@ -564,7 +640,11 @@ function connectSelfhostBoard(
   let objectTimer:ReturnType<typeof setTimeout>|undefined;
   const sendRaw=(frame:Record<string,unknown>):boolean=>{
     if(!ready||!socket||socket.readyState!==WebSocket.OPEN)return false;
-    try{socket.send(JSON.stringify(frame));return true}
+    try{
+      const wire=compactInk&&frame.type==="live_ink"&&Array.isArray(frame.points)
+        ?{...frame,points:frame.points.map((point:SelfhostPoint)=>[point.x,point.y])}:frame;
+      socket.send(JSON.stringify(wire));return true
+    }
     catch{reconnect();return false}
   };
   const flushCursor=()=>{
@@ -645,6 +725,7 @@ function connectSelfhostBoard(
   };
   const closeSocket=()=>{
     ready=false;
+    compactInk=false;
     const old=socket;socket=null;
     if(!old)return;
     old.onopen=old.onclose=old.onmessage=old.onerror=null;
@@ -679,7 +760,7 @@ function connectSelfhostBoard(
         if(!active())return;
         try{
           ws.send(JSON.stringify({
-            type:"auth",token:session.access_token,
+            type:"auth",token:session.access_token,compact_ink:true,
             ...(presence?{presence:true,visible:presence.visible}:{}),
           }));
         }catch{reconnect();return}
@@ -700,6 +781,7 @@ function connectSelfhostBoard(
           }
           if(message?.type==="ready"&&!ready){
             clearTimeout(responseDeadline);responseDeadline=undefined;
+            compactInk=message.compact_ink===true;
             attempt=0;ready=true;onStatus("online");
             // Final packets contain the full <=200-point stroke window in the
             // selfhost. Replay them if the socket died before the ack arrived.
@@ -740,7 +822,10 @@ function connectSelfhostBoard(
           if(message?.type==="live_ink"&&typeof message.stroke_id==="string"&&
              Array.isArray(message.points)&&message.points.length<=200&&
              typeof message.user_id==="string"){
-            onLive?.(message as SelfhostLiveEvent);
+            const points=message.points.map((point:unknown)=>Array.isArray(point)&&point.length===2
+              ?{x:point[0],y:point[1]}:point);
+            if(points.every((point:unknown)=>jsonObject(point)&&typeof point.x==="number"&&typeof point.y==="number"&&Number.isFinite(point.x)&&Number.isFinite(point.y)))
+              onLive?.({...message,points} as SelfhostLiveEvent);
           }
           if(message?.type==="object_preview"&&
              typeof message.object_id==="string"&&typeof message.client_id==="string"&&

@@ -5,6 +5,7 @@ No connection to real Lectrus/Supabase data is used by these tests.
 import asyncio
 import json
 import os
+from time import perf_counter
 from types import SimpleNamespace
 from uuid import UUID
 
@@ -15,6 +16,7 @@ import pytest
 import pytest_asyncio
 
 from app import app, _login_attempts
+from document_delta import apply_delta, encoded_bytes
 from schema import apply_schema
 
 @pytest.mark.asyncio
@@ -134,6 +136,7 @@ async def test_native_document_deltas_preserve_concurrent_edits_and_fallback(cli
     assert (await client.patch(url, headers=editor, json=request1)).status_code == 403
     assert (await client.patch(url, headers=outsider, json=request1)).status_code == 404
     assert (await client.get(url+"?since_version=1", headers=outsider)).status_code == 404
+    assert (await client.patch(url,headers=owner,json={"expected_version":2**63,"delta":patch1})).status_code==409
     async with app.state.pool.acquire() as conn:
         await conn.execute("UPDATE board_members SET role='editor' WHERE board_id=$1 AND user_id=$2", UUID(board_id), STUDENT)
     # Simultaneous writes to the same revision: exactly one wins, one conflicts.
@@ -151,16 +154,123 @@ async def test_native_document_deltas_preserve_concurrent_edits_and_fallback(cli
     chain = await client.get(url+"?since_version=1",headers=editor)
     assert chain.json()["patches"]==[winner,loser,reorder]
     full = await client.get(url,headers=editor)
+    unchanged = (await client.get(url+"?since_version=4",headers=editor)).json()
+    assert unchanged["document"] is None and unchanged["patches"]==[] and unchanged["version"]==4
     assert full.json()["document"]=={"version":1,"title":"Новый","items":[{"id":"d","kind":"text","text":"student"},old["items"][0],stroke]}
     assert len(chain.content)<len(full.content)/10
     for invalid in ({"items":{"order":["a"]}}, {"set":{"items":[]}}, {"items":{"remove":["unknown"]}}):
         assert (await client.patch(url,headers=owner,json={"expected_version":4,"delta":invalid})).status_code==422
     assert (await client.get(url+"?version_only=true",headers=owner)).json()["version"]==4
+    async with app.state.pool.acquire() as conn:
+        rows = await conn.fetch("SELECT item_id,xmin::text AS revision FROM board_document_items WHERE board_id=$1", UUID(board_id))
+        assert {r["item_id"] for r in rows} == {"a","c","d"}
+        old_rows = {r["item_id"]: r["revision"] for r in rows}
+        assert json.loads(await conn.fetchval("SELECT document FROM board_documents WHERE board_id=$1", UUID(board_id))) == old
+    # A second change to one item must not write any of the unchanged rows.
+    edited = {**stroke, "points":[{"x":5,"y":6}]}
+    assert (await client.patch(url,headers=owner,json={"expected_version":4,"delta":{"items":{"upsert":[edited]}}})).status_code==200
+    async with app.state.pool.acquire() as conn:
+        rows = await conn.fetch("SELECT item_id,xmin::text AS revision FROM board_document_items WHERE board_id=$1", UUID(board_id))
+        new_rows = {r["item_id"]: r["revision"] for r in rows}
+        assert new_rows["a"]==old_rows["a"] and new_rows["d"]==old_rows["d"]
+        assert new_rows["c"]!=old_rows["c"]
+        # Materializing for an older backend preserves the latest document and revision.
+        assert await conn.fetchval("SELECT lektrus_materialize_board_documents()") == 1
+        assert await conn.fetchval("SELECT count(*) FROM board_document_items") == 0
+        materialized = json.loads(await conn.fetchval("SELECT document FROM board_documents WHERE board_id=$1", UUID(board_id)))
+        assert materialized["items"][-1] == edited
+        assert materialized == (await client.get(url,headers=owner)).json()["document"]
+    # Normalize again, then exercise full-save compatibility/cleanup.
+    assert (await client.patch(url,headers=owner,json={"expected_version":5,"delta":{"set":{"title":"Final"}}})).status_code==200
     # A legacy/full save interrupts the chain; the old client still works.
-    assert (await client.put(url,headers=owner,json={"expected_version":4,"document":old})).status_code==200
-    fallback = (await client.get(url+"?since_version=4",headers=editor)).json()
+    assert (await client.put(url,headers=owner,json={"expected_version":6,"document":old})).status_code==200
+    fallback = (await client.get(url+"?since_version=6",headers=editor)).json()
     assert fallback["document"]==old and "patches" not in fallback
-    assert fallback["version"]==5
+    assert fallback["version"]==7
+    async with app.state.pool.acquire() as conn:
+        assert await conn.fetchval("SELECT count(*) FROM board_document_items") == 0
+        assert await conn.fetchval("SELECT item_bytes FROM board_documents WHERE board_id=$1", UUID(board_id)) is None
+
+
+@pytest.mark.asyncio
+async def test_large_normalized_board_fast_patch_and_concurrent_editors(client, monkeypatch):
+    _, owner = await sign_in(client, "teacher@example.test")
+    _, editor = await sign_in(client, "student@example.test")
+    _, second = await sign_in(client, "outsider@example.test")
+    board_id = (await client.post("/api/v1/boards", headers=owner, json={"title": "Large"})).json()["id"]
+    board_uuid = UUID(board_id)
+    url = f"/api/v1/boards/{board_id}/document"
+    fast_url = url + "?version_only=true"
+    async with app.state.pool.acquire() as conn:
+        await conn.executemany("INSERT INTO board_members(board_id,user_id,role) VALUES($1,$2,'editor')",
+                               [(board_uuid, STUDENT), (board_uuid, OUTSIDER)])
+    document = {"version": 1, "ink": [], "items": [
+        {"id": f"big-{i}", "text": "я" * 2048, "number": 1e20} for i in range(400)
+    ]}
+    assert (await client.put(url, headers=owner, json={"expected_version": 0, "document": document})).status_code == 200
+
+    async def save(headers, version, delta):
+        return await client.patch(fast_url, headers=headers, json={"expected_version": version, "delta": delta})
+
+    assert (await save(owner, 1, {"set": {"title": "Normalized"}})).status_code == 200
+    # Simulate a board normalized before migration 019; sizes initialize lazily.
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE board_documents SET item_bytes=NULL WHERE board_id=$1", board_uuid)
+        await conn.execute("UPDATE board_document_items SET byte_size=NULL WHERE board_id=$1", board_uuid)
+    assert (await save(owner, 2, {"set": {"title": "Initialized"}})).status_code == 200
+    base = (await client.get(url, headers=owner)).json()["document"]
+    async with app.state.pool.acquire() as conn:
+        summary = await conn.fetchval("SELECT item_bytes FROM board_documents WHERE board_id=$1", board_uuid)
+        assert summary == sum(encoded_bytes(item) for item in base["items"])
+        definition = await conn.fetchval("SELECT pg_get_functiondef('lektrus_board_document(board_documents)'::regprocedure)")
+        # Make accidental full reads fail instead of depending on timing measurements.
+        await conn.execute("""CREATE OR REPLACE FUNCTION lektrus_board_document(d board_documents)
+            RETURNS jsonb LANGUAGE plpgsql STABLE AS $$ BEGIN RAISE EXCEPTION 'Unexpected full document read'; END; $$""")
+    try:
+        patch = {"items": {"upsert": [{"id": "big-0", "text": "новое"}], "remove": ["big-1"]}, "set": {"title": "Updated"}}
+        updated = apply_delta(base, patch)
+        with monkeypatch.context() as scoped:
+            scoped.setattr("app.MAX_DOCUMENT_BYTES", encoded_bytes(updated))
+            assert (await save(owner, 3, patch)).json() == {"version": 4}
+            too_large = await save(owner, 4, {"set": {"title": "Updated!"}})
+            assert too_large.status_code == 413, too_large.text
+        assert (await save(owner, 3, patch)).status_code == 409
+        assert (await save(owner, 4, {"items": {"order": ["big-0"]}})).status_code == 422
+        assert (await save(owner, 4, {"items": {"order": [item["id"] for item in reversed(updated["items"])]}})).json() == {"version": 5}
+
+        async def edit_many(index, headers):
+            version = 5
+            conflicts = 0
+            for step in range(8):
+                delta = {"items": {"upsert": [{"id": f"editor-{index}-{step}", "text": "данные"}]}}
+                for _ in range(60):
+                    response = await save(headers, version, delta)
+                    if response.status_code == 200:
+                        version = response.json()["version"]
+                        break
+                    assert response.status_code == 409, response.text
+                    conflicts += 1
+                    version = (await client.get(fast_url, headers=headers)).json()["version"]
+                else:
+                    pytest.fail("Concurrent edit never succeeded")
+            return conflicts
+
+        start = perf_counter()
+        conflicts = await asyncio.gather(*(edit_many(i, headers) for i, headers in enumerate([owner, editor, second])))
+        print(f"Normalized board: {encoded_bytes(base):,} bytes, 24 concurrent saves, {sum(conflicts)} retries, {perf_counter()-start:.3f}s; zero full reads")
+    finally:
+        async with app.state.pool.acquire() as conn:
+            await conn.execute(definition)
+    full = (await client.get(url, headers=owner)).json()
+    assert full["version"] == 29
+    assert full["document"]["items"][:399] == list(reversed(updated["items"]))
+    assert {item["id"] for item in full["document"]["items"][399:]} == {
+        f"editor-{i}-{j}" for i in range(3) for j in range(8)
+    }
+    async with app.state.pool.acquire() as conn:
+        sizes = await conn.fetch("SELECT item_id,byte_size FROM board_document_items WHERE board_id=$1", board_uuid)
+        assert {row["item_id"]: row["byte_size"] for row in sizes} == {item["id"]: encoded_bytes(item) for item in full["document"]["items"]}
+        assert await conn.fetchval("SELECT item_bytes FROM board_documents WHERE board_id=$1", board_uuid) == sum(row["byte_size"] for row in sizes)
 
 
 @pytest.mark.asyncio

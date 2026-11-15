@@ -46,7 +46,7 @@ jobs:
       - name: Compile source
         run: python -m compileall -q server/app.py server/materials.py server/notifications.py server/organization.py server/direct_chats.py server/share_links.py server/pilot_objects.py server/pilot_operations.py server/realtime_events.py server/assets.py server/invitations.py server/registration.py server/education.py server/admin.py server/comments.py server/test_admin.py server/test_registration.py server/test_comments.py server/test_pilot_objects.py server/test_api.py server/test_assets.py server/test_invitations.py server/test_education.py server/test_realtime_permissions.py server/test_live_frames.py server/test_ws_e2e.py
       - name: Integration tests against disposable PostgreSQL
-        run: python -m pytest -q server/test_document_delta.py server/test_api.py server/test_assets.py server/test_invitations.py server/test_registration.py server/test_admin.py server/test_comments.py server/test_education.py server/test_pilot_objects.py server/test_pilot_operations.py server/test_live_frames.py server/test_realtime_permissions.py server/test_ws_e2e.py
+        run: python -m pytest -q -rP server/test_document_delta.py server/test_api.py server/test_assets.py server/test_invitations.py server/test_registration.py server/test_admin.py server/test_comments.py server/test_education.py server/test_pilot_objects.py server/test_pilot_operations.py server/test_live_frames.py server/test_realtime_permissions.py server/test_ws_e2e.py
       - name: Build minimal production image
         run: docker build -f server/Dockerfile -t lektrus-selfhost-api:ci server
       - name: Boot actual API container and test private disk permissions
@@ -83,7 +83,7 @@ jobs:
           curl --retry 10 --retry-connrefused --retry-delay 1 -fsS -H 'Host: lektrus.example' http://127.0.0.1/app | grep -q '/assets/'
           curl -fsS -H 'Host: lektrus.example' http://127.0.0.1/api/v1/health | grep -q '"ok":true'
           "${compose[@]}" exec -T db psql -U lektrus -d lektrus -Atc \
-            "SELECT filename FROM lektrus_schema_versions ORDER BY filename DESC LIMIT 1;" | grep -q '^017_account_deletion.sql$'
+            "SELECT filename FROM lektrus_schema_versions ORDER BY filename DESC LIMIT 1;" | grep -q '^019_board_document_sizes.sql$'
 
       - name: Verify the Amvera image with PostgreSQL and a persisted disk
         if: github.ref_name == 'deploy/amvera-lektrus' || github.base_ref == 'deploy/amvera-lektrus'

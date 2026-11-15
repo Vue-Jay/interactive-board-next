@@ -94,6 +94,8 @@ async function loadSelfhost(enabled) {
       nativeDelta=body.delta;nativeVersion++;
       return ok({version:nativeVersion});
     }
+    if(u.pathname===`/api/v1/boards/${nativeBoardId}/document`&&u.searchParams.get("since_version")===String(nativeVersion))
+      return ok({board_id:nativeBoardId,version:nativeVersion,base_version:nativeVersion,document:null,patches:[],updated_by:user.id,updated_at:"2026-11-14T10:00:00Z"});
     if(u.pathname===`/api/v1/boards/${nativeBoardId}/document`&&u.searchParams.get("since_version")===String(nativeVersion-1)&&nativeDelta)
       return ok({board_id:nativeBoardId,document:null,version:nativeVersion,base_version:nativeVersion-1,
         patches:brokenChain?[{items:{order:[]}}]:[nativeDelta],updated_by:user.id,updated_at:"2026-11-14T10:00:00Z"});
@@ -280,6 +282,27 @@ const nativeSaved=await api.selfhostSaveDocument(
 assert.equal(nativeSaved.version,1);
 assert.equal((await api.selfhostReadDocument(nativeBoard.id)).document.title,"Нативная доска");
 const nextDoc={...nativeDocument,items:[...nativeDocument.items,{id:"new-ink",kind:"pen",points:[{x:1,y:2}]}]};
+const normalizedBase=JSON.parse(JSON.stringify(nativeDocument));
+const prepared=api.prepareSmallDocumentDelta(normalizedBase,nextDoc,1);
+assert.ok(prepared,"Large boards with small deltas avoid full JSON serialization");
+assert.equal(prepared.next.items[0],normalizedBase.items[0],"Reuse an acknowledged detached item");
+assert.notEqual(prepared.next.items.at(-1),nextDoc.items.at(-1),"New object belongs to the isolated save snapshot");
+assert.deepEqual(JSON.parse(JSON.stringify(prepared.next)),nextDoc);
+const unusual={...nextDoc,subject:undefined,items:nextDoc.items.map((item,i)=>i===0?{...item,text:undefined,optional:[undefined,NaN],nested:{toJSON(key){return key}}}:item)};
+const normalizedUnusual=api.prepareSmallDocumentDelta(normalizedBase,unusual,1);
+assert.deepEqual(JSON.parse(JSON.stringify(normalizedUnusual.next)),JSON.parse(JSON.stringify(unusual)));
+assert.deepEqual(JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(normalizedBase,JSON.parse(normalizedUnusual.body).delta))),JSON.parse(JSON.stringify(unusual)));
+assert.equal(api.prepareSmallDocumentDelta(normalizedBase,{...nextDoc,items:nextDoc.items.slice(0,2)},1),null);
+assert.equal(api.prepareSmallDocumentDelta(normalizedBase,{...nextDoc,toJSON(){return nextDoc}},1),null);
+assert.equal(api.prepareSmallDocumentDelta(normalizedBase,{...nextDoc,title:"x".repeat(20_000)},1),null);
+const sampleTimings=fn=>{
+  const values=[];
+  for(let i=0;i<25;i++){const start=performance.now();fn();values.push(performance.now()-start);}
+  return values.sort((a,b)=>a-b)[Math.floor(values.length/2)];
+};
+const fullMedian=sampleTimings(()=>api.diffSelfhostDocument(normalizedBase,JSON.parse(JSON.stringify(nextDoc))));
+const preparedMedian=sampleTimings(()=>api.prepareSmallDocumentDelta(normalizedBase,nextDoc,1));
+console.log(`Large-board delta preparation median: ${fullMedian.toFixed(2)} -> ${preparedMedian.toFixed(2)} ms`);
 assert.equal((await api.selfhostSaveDocument(nativeBoard.id,1,nextDoc)).version,2);
 const patchRequest=records.at(-1);
 assert.equal(patchRequest.method,"PATCH");
@@ -366,6 +389,7 @@ assert.equal(sockets[0].sent[0].type,"auth");
 assert.equal(sockets[0].sent[0].token,"token-refreshed");
 assert.equal(sockets[0].sent[0].presence,true);
 assert.equal(sockets[0].sent[0].visible,true);
+assert.equal(sockets[0].sent[0].compact_ink,true);
 sockets[0].emit({type:"ready",version:3});
 assert.equal(unsubscribe.sendCursor("pilot_client",10,20),true);
 await new Promise(resolve=>setTimeout(resolve,70));
@@ -376,6 +400,7 @@ const stroke={
   points:[{x:10,y:20},{x:12,y:22}],finished:true,
 };
 assert.equal(unsubscribe.sendInk(stroke),true);
+assert.deepEqual(sockets[0].sent.find(x=>x.stroke_id==="stroke_1").points,stroke.points,"Old server keeps object-form points");
 assert.ok(sockets[0].sent.some(x=>x.type==="live_ink"&&x.finished&&x.stroke_id==="stroke_1"));
 sockets[0].emit({type:"ink_ack",client_id:"pilot_client",stroke_id:"stroke_1",offset:0,finished:true});
 assert.equal(unsubscribe.sendObjectPreview({
@@ -475,7 +500,7 @@ const channel=env.broadcast.connectBoardCursorChannel("board-1",{userId:"me",nam
 await new Promise(resolve=>setTimeout(resolve,0));
 const inkSocket=sockets.at(-1);
 inkSocket.open();
-inkSocket.emit({type:"ready",version:7});
+inkSocket.emit({type:"ready",version:7,compact_ink:true});
 const makeInk=(id,points,finished=false)=>({id,kind:"pen",color:"#112233",weight:3,offset:0,points,finished});
 const points=Array.from({length:300},(_,i)=>({x:i,y:i}));
 for(let i=1;i<=points.length;i++)channel.sendInk(makeInk("stroke_fast",points.slice(0,i)));
@@ -484,13 +509,17 @@ channel.sendInk(makeInk("stroke_next",[{x:400,y:400}],true));
 await waitFor(()=>inkSocket.sent.filter(x=>x.type==="live_ink"&&x.finished).length===2);
 const packets=inkSocket.sent.filter(x=>x.type==="live_ink");
 assert.equal(packets.length,3,"300 cumulative moves must become two chunks plus the next completed stroke");
-assert.deepEqual(packets.filter(x=>x.stroke_id==="stroke_fast").flatMap(x=>x.points),points);
+assert.deepEqual(packets.filter(x=>x.stroke_id==="stroke_fast").flatMap(x=>x.points),points.map(p=>[p.x,p.y]));
+const legacyPoints=JSON.stringify(points),compactPoints=JSON.stringify(points.map(p=>[p.x,p.y]));
+assert.ok(compactPoints.length<legacyPoints.length*.6);
+console.log(`Live ink coordinates: ${legacyPoints.length} -> ${compactPoints.length} bytes`);
 assert.deepEqual(packets.map(x=>x.offset),[0,200,0]);
 const final=packets.find(x=>x.stroke_id==="stroke_fast"&&x.finished);
 inkSocket.emit({type:"ink_ack",client_id:final.client_id,stroke_id:final.stroke_id,offset:final.offset,finished:true});
 assert.ok(adapterStatuses.at(-1).includes("сервер 1"));
 inkSocket.emit({...final,client_id:"other_tab",user_id:"me",name:"Me",role:"owner",sent_at:Date.now()});
 assert.equal(adapterInk.length,1,"A second browser tab must receive the stroke even for the same account");
+assert.deepEqual(JSON.parse(JSON.stringify(adapterInk[0].points)),points.slice(200));
 channel.close();
 await Promise.resolve();
 
