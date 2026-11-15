@@ -7606,20 +7606,20 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setNotice("Интерактивные задания текущего слайда сброшены");
   };
 
-  const applyServerDocument = (row: RemoteBoardDocument, prepared?: DocumentData) => {
-    // Reuse the already validated incoming document. Parsing the same full
-    // Realtime record twice doubles JSON allocations and document validation.
-    const data = prepared ?? parseDocument(JSON.stringify(row.document));
+  const applyServerDocument = (row: RemoteBoardDocument, data: DocumentData, remoteFingerprint: string) => {
+    // The receiver already validated and hashed this revision. Recompute only
+    // if resolving bound connectors actually changes the incoming geometry.
     // Normalize connector positions before setting the clean baseline.
-    data.items = syncBoundConnectors(data.items);
+    const incomingItemsBeforeSync = data.items;
+    data.items = syncBoundConnectors(incomingItemsBeforeSync);
     // Background-only revisions must not reset the active pen, zoom, current
     // selection or object editor on a student device. They are shared document
     // data, but not drawing gestures.
     const localDoc=currentDocument();
-    const incomingFingerprint=documentFingerprint(data);
+    const incomingFingerprint=data.items===incomingItemsBeforeSync?remoteFingerprint:documentFingerprint(data);
     const onlyBackgroundChanged=
-      sharedBoardFingerprint({...localDoc,background:data.background})===incomingFingerprint &&
-      JSON.stringify(localDoc.background)!==JSON.stringify(data.background);
+      JSON.stringify(localDoc.background)!==JSON.stringify(data.background) &&
+      sharedBoardFingerprint({...localDoc,background:data.background})===incomingFingerprint;
     remoteVersion.current = row.version;
     acknowledgedDocument.current = incomingFingerprint;
     acknowledgedSharedContent.current = incomingFingerprint;
@@ -7734,7 +7734,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         window.setTimeout(()=>{if(boardMounted.current)void pushRemoteSnapshot(snapshot.current??merged)},0);
         return;
       }
-      applyServerDocument(row, data);
+      applyServerDocument(row, data, remoteFingerprint);
     } catch { setNotice("Не удалось прочитать новую серверную версию. Ваши изменения сохранены на доске."); }
   };
   useEffect(()=>{

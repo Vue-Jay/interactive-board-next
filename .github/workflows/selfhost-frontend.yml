@@ -31,6 +31,8 @@ jobs:
         run: |
           npm run test:realtime
           node scripts/test-lektrus-storage-egress.mjs
+          node scripts/test-lektrus-runtime-hotpaths.mjs
+          node scripts/test-lektrus-board-background.mjs
           node scripts/test-lektrus-physics-motion-editor.mjs
           node scripts/test-lektrus-physics-collaboration.mjs
           node scripts/test-lektrus-chemistry-ux.mjs
