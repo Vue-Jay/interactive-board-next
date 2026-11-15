@@ -74,6 +74,22 @@ for(const [min,max,labels] of [[0,12,8],[-4,5,5],[0,9,7],[0,0.8,7],
   "Every label should sit on a visible grid line: "+min+".."+max);
 }
 const defaultTicks=motionAxisTicks(0,12,8);
+const motionJS=ts.transpileModule(read("src/lektrusMotionPoints.ts"),{compilerOptions:{module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2022}}).outputText;
+const {motionTimeAvailable,nextMotionPointTime,measureMotionPoints}=await import("data:text/javascript;base64,"+Buffer.from(motionJS).toString("base64"));
+const points=[{x:1.5,y:0},{x:3,y:8}];
+assert.equal(motionTimeAvailable(points,1.5),false);
+assert.equal(motionTimeAvailable(points,1.5,0),true);
+assert.equal(motionTimeAvailable(points,1.5,1),false);
+assert.equal(measureMotionPoints([{x:1.5,y:0},{x:1.5,y:8}]),null,"No numeric velocity for identical times");
+assert.deepEqual(measureMotionPoints(points),{dt:1.5,change:8,slope:8/1.5,area:6});
+const generated=[];
+for(let i=0;i<80;i++){
+ const time=nextMotionPointTime(generated,12);
+ assert.ok(time!==null&&time>=0&&time<=12&&motionTimeAvailable(generated,time));
+ generated.push({x:time,y:0});
+}
+assert.match(editor,/motionTimeAvailable\(draft.points,change.x,i\)/);
+assert.match(editor,/motionTimeAvailable\(draft.points,pos.x/);
 assert.deepEqual(defaultTicks.labels,[0,2,4,6,8,10,12]);
 assert.ok(defaultTicks.grid.includes(1)&&!defaultTicks.labels.includes(1),
  "Unlabelled intermediate subdivision should remain visible");

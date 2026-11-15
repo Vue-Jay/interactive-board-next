@@ -13,6 +13,12 @@ export const mechanicsForceOrigin=(force:MechanicsForce,doc:MechanicsDocument)=>
  const body=force.bodyId?doc.bodies.find(b=>b.id===force.bodyId):undefined;
  return body?{x:body.x+force.x,y:body.y+force.y}:{x:force.x,y:force.y};
 };
+/** Switching anchors preserves the on-sheet application point whenever possible. */
+export const mechanicsReattachForce=(force:MechanicsForce,doc:MechanicsDocument,body?:MechanicsBody)=>{
+ const origin=mechanicsForceOrigin(force,doc);
+ const x=mechClamp(origin.x,0,MECH_WIDTH),y=mechClamp(origin.y,0,MECH_HEIGHT);
+ return {bodyId:body?.id??null,x:body?x-body.x:x,y:body?y-body.y:y};
+};
 export const mechanicsForceTip=(force:MechanicsForce,doc:MechanicsDocument)=>{
  const p=mechanicsForceOrigin(force,doc),r=force.angle*Math.PI/180;
  return {x:p.x+Math.cos(r)*force.length,y:p.y-Math.sin(r)*force.length};
@@ -24,9 +30,9 @@ export function mechanicsValid(data:unknown):data is MechanicsDocument{
  d.bodies.length>60||d.supports.length>60||d.forces.length>180||
  typeof d.grid!=="boolean"||typeof d.labels!=="boolean")return false;
  const ids=new Set<string>(),bodyIds=new Set<string>();
- const common=(v:{id:string;x:number;y:number;label:string})=>
+ const common=(v:{id:string;x:number;y:number;label:string},relative=false)=>
   v&&typeof v.id==="string"&&v.id.length>0&&v.id.length<=64&&!ids.has(v.id)&&
-  Number.isFinite(v.x)&&Number.isFinite(v.y)&&v.x>=0&&v.x<=960&&v.y>=0&&v.y<=560&&
+  Number.isFinite(v.x)&&Number.isFinite(v.y)&&v.x>=(relative?-MECH_WIDTH:0)&&v.x<=MECH_WIDTH&&v.y>=(relative?-MECH_HEIGHT:0)&&v.y<=MECH_HEIGHT&&
   typeof v.label==="string"&&v.label.length<=75;
  for(const b of d.bodies){
   if(!common(b)||!["block","circle"].includes(b.kind)||![b.width,b.height,b.mass].every(Number.isFinite)||
@@ -40,7 +46,7 @@ export function mechanicsValid(data:unknown):data is MechanicsDocument{
   ids.add(s.id);
  }
  for(const f of d.forces){
-  if(!common(f)||!Number.isFinite(f.angle)||f.angle< -360||f.angle>360||
+  if(!f||!common(f,f.bodyId!==null)||!Number.isFinite(f.angle)||f.angle< -360||f.angle>360||
     !Number.isFinite(f.length)||f.length<15||f.length>400||
     !Number.isFinite(f.magnitude)||f.magnitude<0||f.magnitude>1e9||
     typeof f.showValue!=="boolean"||

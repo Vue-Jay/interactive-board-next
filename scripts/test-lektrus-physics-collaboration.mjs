@@ -9,7 +9,7 @@ async function load(...paths){
  }}).outputText;
  return import("data:text/javascript;base64,"+Buffer.from(js).toString("base64"));
 }
-const {movePhysicalPart,physicalPartPivot}=await load(
+const {movePhysicalPart,physicalPartPivot,mechanicsValid,mechanicsForceOrigin,mechanicsReattachForce}=await load(
  "src/lektrusMechanicsModel.ts","src/lektrusCircuitModel.ts","src/lektrusPhysicalBoardMove.ts");
 const {mergeEditedValue,editorDiff,applyEditorOps}=await load("src/lektrusLiveEditorMerge.ts");
 const body={id:"body-a",kind:"block",x:200,y:240,width:90,height:60,mass:2,label:"m"};
@@ -17,6 +17,23 @@ const bodyB={...body,id:"body-b",x:450};
 const force={id:"force-a",bodyId:"body-a",x:0,y:0,angle:0,length:100,magnitude:10,label:"F",showValue:true};
 const mechanism={version:1,bodies:[body,bodyB],supports:[],forces:[force],grid:true,labels:true};
 const shell={id:"physics",kind:"graph",x:0,y:0,width:840,height:530,scienceMechanics:mechanism};
+const attached={...force,x:-35,y:-20};
+const signed={...mechanism,forces:[attached]};
+assert.equal(mechanicsValid(signed),true,"Forces can start left/above the body center");
+assert.deepEqual(mechanicsForceOrigin(attached,signed),{x:165,y:220});
+const reanchored={...attached,...mechanicsReattachForce(attached,signed,bodyB)};
+assert.equal(mechanicsValid({...signed,forces:[reanchored]}),true);
+assert.deepEqual(mechanicsForceOrigin(reanchored,signed),{x:165,y:220});
+assert.equal(mechanicsValid({...signed,forces:[{...attached,bodyId:null}]}),false,"Free forces must remain on the sheet");
+assert.equal(mechanicsValid({...signed,forces:[{...attached,x:-961}]}),false);
+assert.equal(mechanicsValid({...signed,forces:[{...attached,bodyId:"missing"}]}),false);
+const edgeDoc={...signed,bodies:[{...body,x:0,y:0},bodyB]};
+assert.deepEqual(mechanicsReattachForce(attached,edgeDoc),{bodyId:null,x:0,y:0});
+const boardSource=read("src/boardModel.ts").replace(/\bexport\s+(?=(?:type|interface|const|let|function|class)\b)/g,"");
+const boardJS=ts.transpileModule(boardSource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None}}).outputText.replace(/^\s*export\s*\{.*\};?\s*$/gm,"");
+const persisted=new Function(boardJS+"\nreturn validMechanicsPayload;")();
+for(const doc of [signed,{...signed,forces:[reanchored]},{...signed,forces:[{...attached,bodyId:null}]},{...signed,forces:[{...attached,x:-961}]}])
+ assert.equal(persisted(doc),mechanicsValid(doc),"Board persistence must agree with editor validation");
 const moved=movePhysicalPart(shell,{kind:"body",id:"body-a"},250,270);
 assert.equal(moved.scienceMechanics.bodies[0].x,250);
 assert.equal(moved.scienceMechanics.bodies[1].x,450);
@@ -73,6 +90,8 @@ for(const source of ["src/LektrusMechanicsEditor.tsx","src/LektrusOpticsEditor.t
 }
 assert.ok(read("src/LektrusMechanicsEditor.tsx").includes("LektrusMechanicsToolIcon"),"Styled mechanics palette");
 assert.ok(read("src/LektrusMechanicsView.tsx").includes("data-board-interactive"));
+assert.match(read("src/LektrusMechanicsView.tsx"),/rotate\(\$\{-s.angle\}\)\`}\>\s*\{editable&&<rect className="mechanics-hit"/,
+ "The support hit area must share its rotation transform");
 assert.ok(read("src/LektrusOpticsView.tsx").includes("data-board-interactive"));
 assert.ok(read("src/LektrusCircuitView.tsx").includes("data-board-interactive"));
 console.log("Physics collaboration: direct component move, wires, attached forces, concurrent ID merges, live updates and read-only permissions OK.");

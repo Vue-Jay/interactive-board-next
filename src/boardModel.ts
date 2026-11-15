@@ -8,10 +8,10 @@ function validMechanicsPayload(input:unknown):boolean{
    d.bodies.length>60||d.supports.length>60||d.forces.length>180||
    typeof d.grid!=="boolean"||typeof d.labels!=="boolean")return false;
  const ids=new Set<string>(),bodyIds=new Set<string>();
- const coords=(v:Record<string,unknown>)=>typeof v.id==="string"&&!!v.id&&v.id.length<=64&&!ids.has(v.id)&&
+ const coords=(v:Record<string,unknown>,relative=false)=>typeof v.id==="string"&&!!v.id&&v.id.length<=64&&!ids.has(v.id)&&
   typeof v.label==="string"&&v.label.length<=75&&
-  typeof v.x==="number"&&Number.isFinite(v.x)&&v.x>=0&&v.x<=960&&
-  typeof v.y==="number"&&Number.isFinite(v.y)&&v.y>=0&&v.y<=560;
+  typeof v.x==="number"&&Number.isFinite(v.x)&&v.x>=(relative?-960:0)&&v.x<=960&&
+  typeof v.y==="number"&&Number.isFinite(v.y)&&v.y>=(relative?-560:0)&&v.y<=560;
  for(const raw of d.bodies){if(!raw||typeof raw!=="object")return false;const b=raw as Record<string,unknown>;
   if(!coords(b)||!["block","circle"].includes(b.kind as string)||
     !["width","height","mass"].every(k=>typeof b[k]==="number"&&Number.isFinite(b[k]))||
@@ -25,7 +25,7 @@ function validMechanicsPayload(input:unknown):boolean{
    typeof v.angle!=="number"||!Number.isFinite(v.angle)||(v.angle as number)<-75||(v.angle as number)>75)return false;
   ids.add(v.id as string);}
  for(const raw of d.forces){if(!raw||typeof raw!=="object")return false;const f=raw as Record<string,unknown>;
-  if(!coords(f)||!["angle","length","magnitude"].every(k=>typeof f[k]==="number"&&Number.isFinite(f[k]))||
+  if(!coords(f,f.bodyId!==null)||!["angle","length","magnitude"].every(k=>typeof f[k]==="number"&&Number.isFinite(f[k]))||
     (f.angle as number)<-360||(f.angle as number)>360||
     (f.length as number)<15||(f.length as number)>400||
     (f.magnitude as number)<0||(f.magnitude as number)>1e9||
