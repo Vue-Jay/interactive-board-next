@@ -66,5 +66,7 @@ try{
     chrome.kill();await exiting;
   }
   await server.close();
-  await rm(profile,{recursive:true,force:true});
+  // Chrome's renderer subprocesses may still finish writing profile files
+  // immediately after the browser process exits. Retry the isolated cleanup.
+  await rm(profile,{recursive:true,force:true,maxRetries:10,retryDelay:150});
 }
