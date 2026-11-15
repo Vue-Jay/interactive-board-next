@@ -29,6 +29,7 @@ const insolubleStock=new Set([
  "AgBr","AgI","SrSO4","SrCO3","Ni(OH)2","Co(OH)2","ZnS","Li2CO3",
  "Ag2CO3","Ag3PO4","Ba3(PO4)2","PbCl2","PbBr2","PbCO3","PbS","NiS","CoS",
  "Ca3(PO4)2","CaSO4","CaSO3","PbO","C2H5ONa","CH3ONa"
+ ,"Al(OH)3","Mg(OH)2","Zn(OH)2","FeS2"
 ]);
 export function labReagentForms(v:Substance):("ml"|"g")[]{
  const state=cabinetPhase(v);
@@ -65,7 +66,7 @@ export function labDefaultStockDose(id:string,unit?:"ml"|"g"){
 }
 export function labReagentPhaseLabel(v:Substance,unit:"ml"|"g"){
  return unit==="g"?"Твёрдое вещество":cabinetPhase(v)==="gas"?
-  "Газообразное вещество":"Раствор / жидкость";
+  "Газообразное вещество":LAB_NEAT_STOCK.has(v.id)?"Чистая жидкость":"Раствор";
 }
 export function cabinetColor(v:Substance){
  return reagentAppearance(v.id,cabinetPhase(v)==="solid"?"dry":"aqueous").color;
