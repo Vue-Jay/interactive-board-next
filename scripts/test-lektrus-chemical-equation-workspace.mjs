@@ -23,6 +23,13 @@ const balances=(text,coefficients)=>{
 assert.deepEqual(splitEquationSide("Fe + O2"),["Fe","O2"]);
 assert.deepEqual(splitEquationSide("Na+ + Cl-"),["Na+","Cl-"],
  "Ion charges must not be mistaken for substance delimiters");
+assert.deepEqual(splitEquationSide("Fe³⁺ + e⁻"),["Fe³⁺","e⁻"]);
+assert.deepEqual(splitEquationSide("Fe3+ + 2 e-"),["Fe3+","2 e-"]);
+assert.deepEqual(splitEquationSide("e⁻ + Na+"),["e⁻","Na+"]);
+assert.deepEqual(splitEquationSide("Fe + 3 O2"),["Fe","3 O2"]);
+assert.deepEqual(readSpecies("2 e⁻"),{formula:"e⁻",coefficient:2,indicator:""});
+assert.equal(writeEquationDraft(parse("Cu²⁺ + 2 e⁻ → Cu")),"Cu²⁺ + 2e⁻ → Cu");
+assert.equal(check("Fe³⁺ + e⁻ → Fe²⁺").status,"unsupported");
 assert.deepEqual(readSpecies("2H₂O↑"),{formula:"H₂O",coefficient:2,indicator:"↑"});
 const reaction=parse("Na2CO3 + 2HCl → 2NaCl + CO2↑ + H2O");
 assert.equal(reaction.left.length,2);

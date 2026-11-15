@@ -91,7 +91,7 @@ export function inspectChemicalSpecies(species:EquationSpecies[],domain:"inorgan
    add("error","Коэффициент должен быть целым положительным числом.");
   const typo=spellingErrors.get(formula);
   if(typo){add("error","Похоже на опечатку в формуле. Возможно, "+typo+".",typo);continue;}
-  if(formula==="e⁻"||formula==="e-"||formula==="e⁺"||formula==="e+"){
+  if(/^e\^?[⁻⁺−+-]$/.test(formula)){
    add("info","Электроны допустимы в полуреакциях; требуется отдельная проверка заряда.");continue;
   }
   const atoms=countFormulaAtoms(formula);
