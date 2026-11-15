@@ -436,7 +436,11 @@ async def test_thirty_socket_sustained_classroom_load(monkeypatch):
         assert server.started
         pool = CountingPool(app.state.pool)
         app.state.pool = pool
-        async with httpx.AsyncClient(base_url="http://127.0.0.1:18763", timeout=8) as http:
+        # Saves are spaced five seconds apart, exactly Uvicorn's idle HTTP
+        # keep-alive timeout. Avoid a transport reuse race at that boundary;
+        # the 30 real WebSocket connections remain open throughout the test.
+        async with httpx.AsyncClient(base_url="http://127.0.0.1:18763", timeout=8,
+                                     limits=httpx.Limits(max_keepalive_connections=0)) as http:
             url = f"/api/v1/boards/{board_id}/document"
             document = {"version": 1, "items": [{"id": f"existing-{i}", "text": "a" * 4000} for i in range(400)]}
             response = await http.put(url, headers=headers[0], json={"expected_version": 0, "document": document})
