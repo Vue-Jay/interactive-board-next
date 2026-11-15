@@ -84,7 +84,9 @@ async def test_confirmation_and_reset_emails_have_clear_transactional_headers(mo
         assert msg["Date"] and msg["Message-ID"]
         assert msg["Auto-Submitted"] == "auto-generated"
         assert msg.get_body(preferencelist=("plain",)).get_content()
-        assert msg.get_body(preferencelist=("html",)).get_content()
+        html = msg.get_body(preferencelist=("html",)).get_content()
+        assert 'role="presentation"' in html and 'border-radius' in html
+        assert 'bgcolor="#173961"' in html and "Telegram" in html
         assert "dkim-signature" not in msg  # DKIM belongs to the SMTP provider.
     assert "24 часа" in sent[0].get_body(preferencelist=("plain",)).get_content()
     assert "30 минут" in sent[1].get_body(preferencelist=("plain",)).get_content()

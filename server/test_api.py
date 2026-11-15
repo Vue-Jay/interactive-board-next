@@ -16,6 +16,7 @@ import pytest
 import pytest_asyncio
 
 from app import app, _login_attempts
+from admin import _feedback_attempts
 from document_delta import apply_delta, encoded_bytes
 from schema import apply_schema
 
@@ -84,6 +85,7 @@ async def client():
     # Each integration scenario starts with a clean login-rate-limit window.
     # Production rate limiting remains enabled and unchanged.
     _login_attempts.clear()
+    _feedback_attempts.clear()
     connection = await asyncpg.connect(os.environ["DATABASE_URL"])
     await apply_schema(connection)
     await connection.execute(

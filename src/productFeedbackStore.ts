@@ -1,10 +1,15 @@
 import {isRemoteBackendEnabled,remoteRequest} from "./backend";
-import {isSelfhostBackendEnabled,selfhostSubmitProductFeedback,selfhostAdminFeedback,selfhostUpdateProductFeedbackStatus} from "./selfhostApi";
+import {isSelfhostBackendEnabled,selfhostSubmitProductFeedback,selfhostAdminFeedback,selfhostUpdateProductFeedbackStatus,selfhostAdminFeedbackMail,selfhostReplyToFeedback,selfhostRetryFeedbackMail,type SelfhostMailStatus,type SelfhostFeedbackMail} from "./selfhostApi";
 
 export type ProductFeedbackStatus="new"|"reviewed"|"closed";
 export type ProductFeedbackTopic="Предложение"|"Отзыв о сервисе"|"Сообщить о проблеме"|"Другое";
 export type ProductFeedbackSource="site"|"app";
-export type ProductFeedback={id:string;user_id:string|null;name:string;email:string;topic:ProductFeedbackTopic;message:string;source:ProductFeedbackSource;status:ProductFeedbackStatus;created_at:string};
+export type ProductFeedback={id:string;user_id:string|null;name:string;email:string;topic:ProductFeedbackTopic;message:string;source:ProductFeedbackSource;status:ProductFeedbackStatus;created_at:string;notification_id?:string|null;notification_status?:SelfhostMailStatus|null;notification_error?:string|null;notification_sent_at?:string|null};
+export type ProductFeedbackMail=SelfhostFeedbackMail;
+export const feedbackMailEnabled=isSelfhostBackendEnabled;
+export const listFeedbackMail=()=>isSelfhostBackendEnabled()?selfhostAdminFeedbackMail():Promise.resolve([]);
+export const replyToFeedback=(id:string,requestId:string,message:string)=>selfhostReplyToFeedback(id,requestId,message);
+export const retryFeedbackMail=(id:string)=>selfhostRetryFeedbackMail(id);
 
 function requireServer(){if(!isRemoteBackendEnabled()&&!isSelfhostBackendEnabled())throw new Error("Отправка обратной связи станет доступна после подключения серверной базы Lektrus.")}
 

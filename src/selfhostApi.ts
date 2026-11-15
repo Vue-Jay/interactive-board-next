@@ -524,7 +524,10 @@ export type SelfhostProductFeedback={
   id:string;user_id:string|null;name:string;email:string;
   topic:"Предложение"|"Отзыв о сервисе"|"Сообщить о проблеме"|"Другое";
   message:string;source:"site"|"app";status:"new"|"reviewed"|"closed";created_at:string;
+  notification_id?:string|null;notification_status?:SelfhostMailStatus|null;notification_error?:string|null;notification_sent_at?:string|null;
 };
+export type SelfhostMailStatus="pending"|"sending"|"sent"|"failed";
+export type SelfhostFeedbackMail={id:string;feedback_id:string;recipient:string;recipient_name:string;subject:string;body:string;status:SelfhostMailStatus;attempts:number;last_error:string|null;created_at:string;sent_at:string|null};
 export const selfhostAdminUsers=()=>selfhostRequest<SelfhostAdminUser[]>("/api/v1/admin/users");
 export const selfhostAdminDeleteUser=(userId:string,email:string)=>
   selfhostRequest<{ok:boolean;files_pending:number}>("/api/v1/admin/users/"+encodeURIComponent(userId),{
@@ -559,6 +562,11 @@ export const selfhostUpdateProductFeedbackStatus=(id:string,status:"new"|"review
   selfhostRequest<SelfhostProductFeedback>("/api/v1/admin/feedback/"+encodeURIComponent(id),{
     method:"PATCH",body:JSON.stringify({status}),
   });
+export const selfhostAdminFeedbackMail=()=>selfhostRequest<SelfhostFeedbackMail[]>("/api/v1/admin/feedback-mail");
+export const selfhostReplyToFeedback=(id:string,requestId:string,message:string)=>selfhostRequest<{ok:boolean;id:string}>(
+  `/api/v1/admin/feedback/${encodeURIComponent(id)}/reply`,{method:"POST",body:JSON.stringify({request_id:requestId,message})});
+export const selfhostRetryFeedbackMail=(id:string)=>selfhostRequest<{ok:boolean}>(
+  `/api/v1/admin/feedback-mail/${encodeURIComponent(id)}/retry`,{method:"POST"});
 
 export async function selfhostSignup(input:{
   email:string;password:string;name:string;first_name:string;last_name:string;

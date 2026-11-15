@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 import asyncio
 import json
 import logging
+import time
+from collections import deque
 from typing import Literal
 from uuid import UUID, uuid4
 
@@ -14,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from assets import assets_root, file_path
 from materials import material_path
+from feedback_mail import feedback_email_address
 
 
 def require_admin(user):
@@ -53,6 +56,30 @@ class FeedbackInput(BaseModel):
 
 class FeedbackStatusInput(BaseModel):
     status: Literal["new", "reviewed", "closed"]
+
+
+class FeedbackReplyInput(BaseModel):
+    request_id: UUID
+    message: str = Field(min_length=1, max_length=8000)
+
+
+_feedback_attempts: dict[str, deque[float]] = {}
+
+
+def throttle_feedback(request: Request):
+    now = time.monotonic()
+    key = request.client.host if request.client else "unknown"
+    for old in list(_feedback_attempts):
+        if _feedback_attempts[old][-1] < now-600:
+            del _feedback_attempts[old]
+    if key not in _feedback_attempts and len(_feedback_attempts) >= 4096:
+        raise HTTPException(429, "Слишком много обращений. Повторите позже.")
+    attempts = _feedback_attempts.setdefault(key, deque())
+    while attempts and attempts[0] < now-600:
+        attempts.popleft()
+    if len(attempts) >= 8:
+        raise HTTPException(429, "Слишком много обращений. Повторите позже.")
+    attempts.append(now)
 
 
 def json_object(value):
@@ -357,12 +384,11 @@ def make_admin_router(current_user) -> APIRouter:
     @router.post("/api/v1/feedback", status_code=201)
     async def submit_feedback(data: FeedbackInput, request: Request):
         name, message = data.name.strip(), data.message.strip()
-        email = data.email.strip().lower()
+        email = feedback_email_address(data.email) if data.email.strip() else ""
         if not name or len(message) < 8:
             raise HTTPException(422, "Заполните имя и сообщение не короче 8 символов.")
-        if email and ("@" not in email or len(email) > 254):
-            raise HTTPException(422, "Проверьте email.")
-        async with request.app.state.pool.acquire() as conn:
+        throttle_feedback(request)
+        async with request.app.state.pool.acquire() as conn, conn.transaction():
             row = await conn.fetchrow(
                 """INSERT INTO product_feedback
                    (id,name,email,topic,message,source,status)
@@ -370,6 +396,11 @@ def make_admin_router(current_user) -> APIRouter:
                    RETURNING id,user_id,name,email,topic,message,source,status,created_at""",
                 uuid4(), name, email, data.topic, message, data.source,
             )
+            await conn.execute("""INSERT INTO feedback_mail(id,feedback_id,kind,subject,body)
+                VALUES($1,$2,'notification',$3,$4)""", uuid4(),row["id"],
+                f"Новое обращение: {data.topic}",
+                f"Имя: {name}\nEmail: {email or 'Не указан'}\nИсточник: {'сайт' if data.source=='site' else 'приложение'}\n\n{message}")
+        request.app.state.feedback_mail_wakeup.set()
         return dict(row)
 
     @router.get("/api/v1/admin/feedback")
@@ -377,8 +408,11 @@ def make_admin_router(current_user) -> APIRouter:
         require_admin(user)
         async with request.app.state.pool.acquire() as conn:
             rows = await conn.fetch(
-                """SELECT id,user_id,name,email,topic,message,source,status,created_at
-                     FROM product_feedback ORDER BY created_at DESC LIMIT 200"""
+                """SELECT f.id,f.user_id,f.name,f.email,f.topic,f.message,f.source,f.status,f.created_at,
+                    m.id AS notification_id,m.status AS notification_status,m.last_error AS notification_error,
+                    m.sent_at AS notification_sent_at
+                    FROM product_feedback f LEFT JOIN feedback_mail m ON m.feedback_id=f.id AND m.kind='notification'
+                    ORDER BY f.created_at DESC LIMIT 200"""
             )
         return [dict(row) for row in rows]
 
@@ -396,5 +430,50 @@ def make_admin_router(current_user) -> APIRouter:
         if row is None:
             raise HTTPException(404, "Сообщение не найдено.")
         return dict(row)
+
+    @router.get("/api/v1/admin/feedback-mail")
+    async def list_feedback_mail(request: Request, user=Depends(current_user)):
+        require_admin(user)
+        async with request.app.state.pool.acquire() as conn:
+            rows = await conn.fetch("""SELECT m.id,m.feedback_id,m.recipient,m.subject,m.body,m.status,
+                m.attempts,m.last_error,m.created_at,m.sent_at,f.name AS recipient_name
+                FROM feedback_mail m JOIN product_feedback f ON f.id=m.feedback_id
+                WHERE m.kind='reply' ORDER BY m.created_at DESC LIMIT 200""")
+        return [dict(row) for row in rows]
+
+    @router.post("/api/v1/admin/feedback/{feedback_id}/reply", status_code=202)
+    async def reply_feedback(feedback_id: UUID,data: FeedbackReplyInput,request: Request,user=Depends(current_user)):
+        require_admin(user)
+        body = data.message.strip()
+        if not body:
+            raise HTTPException(422,"Введите текст ответа.")
+        async with request.app.state.pool.acquire() as conn, conn.transaction():
+            feedback = await conn.fetchrow("SELECT email,topic FROM product_feedback WHERE id=$1",feedback_id)
+            if not feedback:
+                raise HTTPException(404,"Обращение не найдено.")
+            if not feedback["email"]:
+                raise HTTPException(422,"Пользователь не указал email для ответа.")
+            recipient = feedback_email_address(feedback["email"])
+            row = await conn.fetchrow("""INSERT INTO feedback_mail(id,feedback_id,kind,recipient,subject,body)
+                VALUES($1,$2,'reply',$3,$4,$5) ON CONFLICT(id) DO NOTHING RETURNING id""",
+                data.request_id,feedback_id,recipient,f"Ответ Lektrus: {feedback['topic']}",body)
+            if not row:
+                existing = await conn.fetchval("SELECT id FROM feedback_mail WHERE id=$1 AND feedback_id=$2 AND kind='reply' AND body=$3",data.request_id,feedback_id,body)
+                if not existing:
+                    raise HTTPException(409,"Запрос уже использован.")
+            await conn.execute("UPDATE product_feedback SET status='reviewed' WHERE id=$1 AND status='new'",feedback_id)
+        request.app.state.feedback_mail_wakeup.set()
+        return {"id":data.request_id,"ok":True}
+
+    @router.post("/api/v1/admin/feedback-mail/{mail_id}/retry", status_code=202)
+    async def retry_feedback_mail(mail_id: UUID,request: Request,user=Depends(current_user)):
+        require_admin(user)
+        async with request.app.state.pool.acquire() as conn:
+            result = await conn.fetchval("""UPDATE feedback_mail SET status='pending',attempts=0,last_error=NULL,
+                send_after=now() WHERE id=$1 AND status='failed' RETURNING id""",mail_id)
+        if not result:
+            raise HTTPException(409,"Повторить можно только неотправленное письмо.")
+        request.app.state.feedback_mail_wakeup.set()
+        return {"ok":True}
 
     return router

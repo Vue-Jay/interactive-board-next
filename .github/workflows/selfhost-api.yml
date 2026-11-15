@@ -83,7 +83,7 @@ jobs:
           curl --retry 10 --retry-connrefused --retry-delay 1 -fsS -H 'Host: lektrus.example' http://127.0.0.1/app | grep -q '/assets/'
           curl -fsS -H 'Host: lektrus.example' http://127.0.0.1/api/v1/health | grep -q '"ok":true'
           "${compose[@]}" exec -T db psql -U lektrus -d lektrus -Atc \
-            "SELECT filename FROM lektrus_schema_versions ORDER BY filename DESC LIMIT 1;" | grep -q '^020_guest_history_visits.sql$'
+            "SELECT filename FROM lektrus_schema_versions ORDER BY filename DESC LIMIT 1;" | grep -q '^021_feedback_mail.sql$'
 
       - name: Verify the Amvera image with PostgreSQL and a persisted disk
         if: github.ref_name == 'deploy/amvera-lektrus' || github.base_ref == 'deploy/amvera-lektrus'
