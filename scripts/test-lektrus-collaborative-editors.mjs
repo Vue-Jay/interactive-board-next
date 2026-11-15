@@ -11,6 +11,28 @@ const exports={};
 new Function("exports","require",compiled.outputText)(exports,()=>({}));
 const {mergeEditedValue,editorDiff,applyEditorOps}=exports;
 
+// A live edit may come back from the board while a second point is being
+// added. Same-coordinate points from different authors remain distinct.
+{
+const p1={id:"point-1",x:1,y:2,label:""};
+const p2={id:"point-2",x:1,y:2,label:""};
+const p3={id:"point-3",x:0,y:4,label:""};
+const blank={figureId:"physics-motion",points:[],title:"График"};
+const first={...blank,points:[p1]};
+assert.deepEqual(mergeEditedValue(blank,first,{...first,title:"Другой заголовок"}).points,[p1]);
+assert.deepEqual(mergeEditedValue(blank,{...first,points:[p3,p1]},first).points,[p1,p3]);
+const peers=mergeEditedValue(blank,first,{...blank,points:[p2]});
+assert.equal(peers.points.length,2);
+assert.deepEqual(mergeEditedValue(first,blank,peers).points,[p2]);
+const oldGraph={id:"graph",graphPoints:[{x:1,y:2,label:""}]};
+const upgraded=exports.withMotionPointIds(oldGraph);
+const nextGraph={...upgraded,graphPoints:[p3,...upgraded.graphPoints]};
+assert.deepEqual(applyEditorOps(oldGraph,editorDiff(oldGraph,nextGraph)),nextGraph);
+const update={...nextGraph,graphPoints:[...nextGraph.graphPoints,p2]};
+const packet=editorDiff(nextGraph,update);
+assert.deepEqual(applyEditorOps(applyEditorOps(nextGraph,packet),packet),update);
+}
+
 const graph={graphPurpose:"geometry",
  graphPoints:[{x:0,y:0,label:"A"},{x:3,y:4,label:"B"}],
  graphSegments:[],graphPolygons:[],graphGrid:true};

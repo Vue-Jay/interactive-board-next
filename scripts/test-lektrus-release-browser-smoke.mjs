@@ -250,6 +250,40 @@ try{
  console.log("✓ Board notice: compact at 960px, repeated timer restarts, fades after three seconds, manual close");
 
  if(!process.argv.includes("--notice-only")){
+ // The parser must inspect the document's real page tree, not merely allow
+ // navigation up to an arbitrary maximum. Exercise the bundled worker.
+ const pdfCounts=await evaluate(`(async()=>{
+   const {getPdfPageCount}=await import('/src/pdfPagination.ts');
+   const makePdf=count=>{
+     const objects=['<< /Type /Catalog /Pages 2 0 R >>',
+       '<< /Type /Pages /Kids ['+Array.from({length:count},(_,i)=>(i+3)+' 0 R').join(' ')+'] /Count '+count+' >>',
+       ...Array.from({length:count},()=> '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 200] >>')];
+     let pdf='%PDF-1.4\\n';const offsets=[0];
+     objects.forEach((body,i)=>{offsets.push(pdf.length);pdf+=(i+1)+' 0 obj\\n'+body+'\\nendobj\\n'});
+     const xref=pdf.length;
+     pdf+='xref\\n0 '+offsets.length+'\\n0000000000 65535 f \\n'+offsets.slice(1).map(v=>String(v).padStart(10,'0')+' 00000 n \\n').join('')+'trailer\\n<< /Size '+offsets.length+' /Root 1 0 R >>\\nstartxref\\n'+xref+'\\n%%EOF\\n';
+     return new Blob([pdf],{type:'application/pdf'});
+   };
+   return [await getPdfPageCount(makePdf(1)),await getPdfPageCount(makePdf(3))];
+ })()`);
+ assert.deepEqual(pdfCounts,[1,3],"Real PDF page count must be read by the worker");
+ console.log("✓ PDF: actual one- and three-page documents parsed");
+
+ // Clicking the top bar while the Layers dock is open must hit the actual menu.
+ await click('.topbar-more-trigger');
+ await evaluate(`[...document.querySelectorAll('.topbar-more-menu button')].find(b=>b.textContent.includes('Слои и объекты'))?.click()`);
+ await wait('!!document.querySelector(".layers-panel")',"Layers panel did not open");
+ await click('.topbar-more-trigger');
+ assert.ok(await evaluate(`(() => {
+ const menu=document.querySelector('.topbar-more-popover'),layers=document.querySelector('.layers-panel');
+ const m=menu.getBoundingClientRect(),l=layers.getBoundingClientRect();
+ const left=Math.max(m.left,l.left),right=Math.min(m.right,l.right),top=Math.max(m.top,l.top),bottom=Math.min(m.bottom,l.bottom);
+ return left<right&&top<bottom&&!!document.elementFromPoint((left+right)/2,(top+bottom)/2)?.closest('.topbar-more-popover');
+ })()`),"Open menu is occluded by the layer panel");
+ await click('.topbar-more-trigger');
+ await click('button[aria-label="Закрыть слои"]');
+ console.log("✓ Board menu appears above layer panel");
+
 
  // Zoom controls have to change the actual state and be resettable.
  await click('button[aria-label="Увеличить"]');
@@ -421,6 +455,46 @@ try{
  })()`);
  assert.ok(stored,"Demo lesson did not persist its document in local storage");
  console.log("✓ Persistence: local board document exists with lesson objects");
+
+ // Reproduce the reported triangle-label overlap in a real SVG, using actual
+ // rendered glyph bounds (not just the geometry model's estimated text size).
+ await call("Page.navigate",{url:url.replace("scene=math","scene=geometry")});
+ await wait('!!document.querySelector(\'[data-object="geo-triangle"] .graph-polygon\')',"Geometry demo did not render");
+ const labelLayout=await evaluate(`(() => {
+  const item=document.querySelector('[data-object="geo-triangle"]');
+  const polygon=item.querySelector('.graph-polygon');
+  const labels=[...item.querySelectorAll('.graph-point text')];
+  return {count:labels.length,overlaps:labels.filter(t=>{
+   const b=t.getBBox();
+   return [[b.x,b.y],[b.x+b.width,b.y],[b.x,b.y+b.height],[b.x+b.width,b.y+b.height],[b.x+b.width/2,b.y+b.height/2]]
+    .some(([x,y])=>polygon.isPointInFill(new DOMPoint(x,y)));
+  }).map(t=>t.textContent)};
+ })()`);
+ assert.deepEqual(labelLayout,{count:3,overlaps:[]},"Triangle vertex text overlaps the shape");
+ console.log("✓ Geometry: actual triangle vertex glyphs outside the figure");
+
+ await click('button[aria-label="Таблицы и диаграммы"]');
+ await wait('!![...document.querySelectorAll("button")].find(b=>b.textContent.includes("Диаграмма")&&b.textContent.includes("Столбцы"))',"Chart tool unavailable");
+ await evaluate('[...document.querySelectorAll("button")].find(b=>b.textContent.includes("Диаграмма")&&b.textContent.includes("Столбцы")).click()');
+ await wait('!!document.querySelector(".lektrus-data-chart-dialog")',"Chart editor unavailable");
+ await evaluate(`(() => {
+  const d=document.querySelector('.lektrus-data-chart-dialog');
+  const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
+  const set=(selector,value)=>{const input=d.querySelector(selector);setter.call(input,value);input.dispatchEvent(new Event('input',{bubbles:true}));};
+  set('input[placeholder="Название диаграммы"]','Температура');
+  set('input[aria-label="Категория 1"]','Январь');
+  set('input[aria-label="Значение 1"]','-10');
+  set('input[aria-label="Категория 2"]','Июнь');
+  set('input[aria-label="Значение 2"]','20');
+ })()`);
+ await wait('document.querySelector(\'.lektrus-data-chart-dialog input[aria-label="Значение 1"]\')?.value==="-10"',"Negative data was clamped");
+ await evaluate('[...document.querySelectorAll(".lektrus-data-chart-types button")].find(b=>b.textContent==="Круговая").click()');
+ await click('.lektrus-data-chart-dialog footer .primary');
+ await wait('!!document.querySelector(".lektrus-data-chart-error")',"Invalid negative pie chart accepted");
+ await evaluate('[...document.querySelectorAll(".lektrus-data-chart-types button")].find(b=>b.textContent==="Линия").click()');
+ await click('.lektrus-data-chart-dialog footer .primary');
+ await wait('!!document.querySelector(\'.board-object .lektrus-data-chart[aria-label*="-10"]\')',"Negative chart data lost on save");
+ console.log("✓ Chart: negative values preserved, pie validation and actual line chart save");
  console.log("Lektrus release smoke passed: actual browser interactions and curated subjects.");
  }
  }

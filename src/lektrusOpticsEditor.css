@@ -138,6 +138,8 @@
 
 /* Contextual properties must NEVER resize the drawing after a pointer tap. */
 .lektrus-optics-editor .lektrus-optics-layout{position:relative}
+.lektrus-optics-editor .lektrus-optics-stage{position:relative}
+.lektrus-optics-editor .lektrus-optics-work-top{flex-wrap:wrap}
 .lektrus-optics-editor.show-properties .lektrus-optics-layout{
   grid-template-columns:238px minmax(0,1fr);
 }

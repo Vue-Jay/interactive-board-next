@@ -20,5 +20,6 @@ assert.equal(findHistoricalReference("Римская империя",1300),undef
 assert.equal(findHistoricalReference("неизвестная империя",1914),undefined);
 const atlas=fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8");
 assert.match(atlas,/findHistoricalReference/);
-assert.match(atlas,/reference\.sourceUrl/);
+assert.match(atlas,/fallbackReference\.sourceUrl/);
+assert.match(atlas,/entry\.sourceUrl/);
 console.log("Historical reference: verified entries, exact name matching, period restrictions and links.");
