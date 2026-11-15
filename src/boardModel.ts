@@ -78,6 +78,24 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
  if(typeof d.title!=="string"||d.title.length>120)return false;
  const finiteIn=(x:unknown,lo:number,hi:number)=>typeof x==="number"&&Number.isFinite(x)&&x>=lo&&x<=hi;
  const field=(x:unknown,n:number)=>typeof x==="string"&&x.length<=n&&x.trim().length>0;
+ const optionalText=(x:unknown,n:number)=>typeof x==="string"&&x.length<=n;
+ if(d.kind==="division")return ["interphase","prophase","metaphase","anaphase","telophase"].includes(d.phase as string)&&typeof d.showLabels==="boolean";
+ if(d.kind==="encoding")return typeof d.message==="string"&&[...d.message].length<=12&&["unicode","utf8"].includes(d.mode as string)&&typeof d.showCodes==="boolean";
+ if(d.kind==="genetics")return typeof d.showAnswers==="boolean"&&typeof d.parentA==="string"&&typeof d.parentB==="string"&&/^[A-Za-z]{2}$/.test(d.parentA)&&/^[A-Za-z]{2}$/.test(d.parentB)&&d.parentA.toLowerCase()===d.parentB.toLowerCase()&&d.parentA[0].toLowerCase()===d.parentA[1].toLowerCase()&&d.parentB[0].toLowerCase()===d.parentB[1].toLowerCase();
+ if(d.kind==="logic")return typeof d.showAnswers==="boolean"&&["and","or","xor","implication","equivalence"].includes(d.operation as string)&&[undefined,0,1].includes(d.inputA as number)&&[undefined,0,1].includes(d.inputB as number);
+ if(d.kind==="logic-circuit"){
+  const gates=["and","or","xor","nand","nor","xnor"];
+  const signals=d.initialSignals as Record<string,unknown>|undefined;
+  return field(d.title,120)&&gates.includes(d.firstGate as string)&&[...gates,"none","not"].includes(d.secondGate as string)&&
+   typeof d.showTruthTable==="boolean"&&typeof d.showResults==="boolean"&&!!signals&&!Array.isArray(signals)&&typeof signals==="object"&&
+   ["a","b","c"].every(key=>signals[key]===0||signals[key]===1);
+ }
+ if(d.kind==="dna")return field(d.title,120)&&typeof d.sequence==="string"&&/^[ATGC]{1,24}$/.test(d.sequence)&&typeof d.showComplement==="boolean"&&typeof d.showDirection==="boolean";
+ if(d.kind==="taxonomy"){
+  const ranks=["kingdom","phylum","class","order","family","genus","species"];
+  return field(d.title,120)&&["animal","plant"].includes(d.group as string)&&typeof d.showRanks==="boolean"&&Array.isArray(d.rows)&&d.rows.length===ranks.length&&
+   d.rows.every((r,i)=>r&&typeof r==="object"&&r.rank===ranks[i]&&field(r.name,70));
+ }
  // Release 1.0 hides new creation of these editors, but existing boards MUST load.
  // These bounded checks mirror their model validators without importing heavy editors.
  if(d.kind==="bio-anatomy"){
@@ -143,7 +161,7 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
    new Set(points.map(p=>p.distance)).size===points.length;
  }
  if(d.kind==="syntax"){
-  if(typeof d.showMarks!=="boolean"||!Array.isArray(d.words)||d.words.length<1||d.words.length>14)return false;
+  if(typeof d.showMarks!=="boolean"||!Array.isArray(d.words)||d.words.length>14)return false;
   const roles=["subject","predicate","attribute","object","adverbial","none"];
   const words=d.words as Record<string,unknown>[];
   return words.every(w=>w&&typeof w==="object"&&field(w.id,64)&&field(w.text,28)&&
@@ -152,16 +170,17 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
  if(d.kind==="place-value"){
   const base=d.base as number,numberDigits=d.digits;
   return [2,8,10,16].includes(base)&&typeof d.showPowers==="boolean"&&
-   typeof numberDigits==="string"&&/^[0-9A-F]{1,10}$/.test(numberDigits)&&
+   typeof numberDigits==="string"&&/^[0-9A-F]{0,10}$/.test(numberDigits)&&
    [...numberDigits].every(ch=>parseInt(ch,16)<base);
  }
  if(d.kind==="flowchart"){
   if(typeof d.showEdgeLabels!=="boolean"||!Array.isArray(d.nodes)||!Array.isArray(d.edges)||
-   d.nodes.length<2||d.nodes.length>7||d.edges.length>18)return false;
+   d.nodes.length>7||d.edges.length>18)return false;
   const nodes=d.nodes as Record<string,unknown>[],edges=d.edges as Record<string,unknown>[];
   const kinds=["start","end","process","decision","input","output"],labels=["","да","нет"];
   if(!nodes.every(n=>n&&typeof n==="object"&&field(n.id,64)&&field(n.label,48)&&
    kinds.includes(n.kind as string)&&[-1,0,1].includes(n.lane as number)))return false;
+  if(nodes.length===0)return edges.length===0;
   if(new Set(nodes.map(n=>n.id)).size!==nodes.length||
    nodes.filter(n=>n.kind==="start").length!==1||nodes.filter(n=>n.kind==="end").length!==1)return false;
   const known=new Set(nodes.map(n=>n.id));
@@ -215,10 +234,10 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
    new Set(edges.map(e=>e.from+"|"+e.to+"|"+e.kind)).size===edges.length;
  }
  if(d.kind==="atlas"){
-  const modes=["political","contour","physical","hydrography","coordinates","historical","events"];
+  const modes=["political","contour","physical","hydrography","coordinates","relief","cities","minerals","historical","events"];
   const dates=[-123000,-10000,-8000,-5000,-4000,-3000,-2000,-1500,-1000,-700,-500,-400,-323,-300,-200,-100,-1,
    100,200,300,400,500,600,700,800,900,1000,1100,1200,1279,1300,1400,1492,1500,1530,1600,1650,1700,1715,
-   1783,1800,1815,1878,1880,1900,1914,1920,1930,1938,1945,1960,1994,2000,2010];
+   1783,1800,1815,1878,1880,1900,1914,1920,1930,1938,1945,1960,1994,2000,2010,2026];
   if(!modes.includes(d.mode as string)||!dates.includes(d.year as number)||
    (d.scope!==undefined&&((d.scope!=="geography"&&d.scope!=="history")||
     (d.scope==="geography"&&["historical","events"].includes(d.mode as string))||
@@ -233,21 +252,21 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
    new Set(markers.map(m=>m.id)).size===markers.length;
  }
  if(d.kind==="morphology"){
-  if(!field(d.word,65)||typeof d.sentence!=="string"||d.sentence.length>220||
+  if(!optionalText(d.word,65)||typeof d.sentence!=="string"||d.sentence.length>220||
    !["noun","adjective","verb","pronoun","numeral","adverb","participle","gerund","preposition",
     "conjunction","particle","interjection","other"].includes(d.partOfSpeech as string)||
    typeof d.showAnalysis!=="boolean"||!Array.isArray(d.rows)||
-   d.rows.length<1||d.rows.length>18)return false;
+   d.rows.length>18)return false;
   const rows=d.rows as Record<string,unknown>[];
   return rows.every(row=>row&&typeof row==="object"&&field(row.id,64)&&
    ["permanent","variable","syntax"].includes(row.group as string)&&
-   field(row.feature,52)&&field(row.value,90))&&
+   optionalText(row.feature,52)&&optionalText(row.value,90))&&
    new Set(rows.map(row=>row.id)).size===rows.length;
  }
  if(d.kind==="phonetics"){
-  if(!field(d.word,36)||typeof d.showSounds!=="boolean"||
+  if(!optionalText(d.word,36)||typeof d.showSounds!=="boolean"||
    typeof d.showCharacteristics!=="boolean"||!Array.isArray(d.letters)||
-   d.letters.length<1||d.letters.length>24)return false;
+   d.letters.length>24)return false;
   const letters=d.letters as Record<string,unknown>[];
   return letters.every(l=>l&&typeof l==="object"&&field(l.id,64)&&
    field(l.letter,4)&&Array.isArray(l.sounds)&&l.sounds.length<=2&&
@@ -260,13 +279,13 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
  }
  if(d.kind==="orthography"){
   if(typeof d.showExplanation!=="boolean"||!Array.isArray(d.questions)||
-   d.questions.length<1||d.questions.length>20)return false;
+   d.questions.length>20)return false;
   const questions=d.questions as Record<string,unknown>[];
   return questions.every(q=>q&&typeof q==="object"&&field(q.id,64)&&
    field(q.prompt,180)&&(q.prompt as string).split("□").length===2&&
    Array.isArray(q.options)&&q.options.length>=2&&q.options.length<=4&&
-   q.options.every((o:unknown)=>field(o,24))&&
-   new Set((q.options as string[]).map(o=>o.trim())).size===q.options.length&&
+   q.options.every((o:unknown)=>optionalText(o,24))&&
+   new Set((q.options as string[]).filter(o=>o.trim()).map(o=>o.trim())).size===q.options.filter(o=>typeof o==="string"&&o.trim()).length&&
    Number.isInteger(q.correct)&&(q.correct as number)>=0&&(q.correct as number)<q.options.length&&
    typeof q.explanation==="string"&&q.explanation.length<=250)&&
    new Set(questions.map(q=>q.id)).size===questions.length;
@@ -274,15 +293,15 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
  if(d.kind==="morphemes"){
   if(typeof d.showMarks!=="boolean"||typeof d.showBase!=="boolean"||
    typeof d.zeroEnding!=="boolean"||!Array.isArray(d.segments)||
-   d.segments.length<1||d.segments.length>10)return false;
+   d.segments.length>10)return false;
   const morphemes=d.segments as Record<string,unknown>[];
   const kinds=["prefix","root","suffix","ending","postfix"];
-  if(!morphemes.every(m=>m&&typeof m==="object"&&field(m.id,64)&&field(m.text,24)&&
+  if(!morphemes.every(m=>m&&typeof m==="object"&&field(m.id,64)&&optionalText(m.text,24)&&
    kinds.includes(m.role as string))||
    new Set(morphemes.map(m=>m.id)).size!==morphemes.length)return false;
   const roots=morphemes.filter(m=>m.role==="root").length;
   const ends=morphemes.filter(m=>m.role==="ending").length;
-  if(roots<1||roots>2||ends>1||ends>0&&d.zeroEnding||
+  if((morphemes.length>0&&roots<1)||roots>2||ends>1||ends>0&&d.zeroEnding||
    morphemes.filter(m=>m.role==="postfix").length>1)return false;
   const first=morphemes.findIndex(m=>m.role==="root"),last=morphemes.map(m=>m.role).lastIndexOf("root");
   if(morphemes.some((m,i)=>m.role==="prefix"&&i>first||
@@ -295,7 +314,7 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
  }
  if(d.kind==="family-tree"){
   if(typeof d.showGenerations!=="boolean"||!Array.isArray(d.people)||
-   d.people.length<1||d.people.length>12)return false;
+   d.people.length>12)return false;
   const people=d.people as Record<string,unknown>[];
   if(people.some(p=>!p||typeof p!=="object"||!field(p.id,64)||!field(p.name,35)||
    !Array.isArray(p.parents)||p.parents.length>2||
@@ -319,7 +338,7 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
  if(d.kind==="flashcards"){
   if(typeof d.showTranslation!=="boolean"||typeof d.showTranscription!=="boolean"||
    !["foreign-first","russian-first"].includes(d.direction as string)||
-   !Array.isArray(d.cards)||d.cards.length<1||d.cards.length>30)return false;
+   !Array.isArray(d.cards)||d.cards.length>30)return false;
   const cards=d.cards as Record<string,unknown>[];
   return cards.every(c=>c&&typeof c==="object"&&field(c.id,64)&&field(c.term,65)&&
    field(c.translation,80)&&typeof c.transcription==="string"&&c.transcription.length<=75)&&
@@ -346,7 +365,7 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
    return finiteIn(m.temperature,-70,60)&&finiteIn(m.precipitation,0,1000);
   });
  if(d.kind==="timeline")return typeof d.showEra==="boolean"&&Array.isArray(d.events)&&
-  d.events.length>=2&&d.events.length<=8&&d.events.every((v:unknown)=>{
+  d.events.length<=8&&d.events.every((v:unknown)=>{
    if(!v||typeof v!=="object")return false;
    const o=v as Record<string,unknown>;
    return field(o.id,64)&&field(o.label,90)&&Number.isInteger(o.year)&&finiteIn(o.year,-3000,2100)&&o.year!==0;
@@ -762,7 +781,7 @@ export function parseDocument(raw: string): DocumentData {
       if(i.graphFigureId==="lektrus-chart"&&(
         !["bar","line","pie"].includes(i.chartStyle)||
         !Array.isArray(i.chartEntries)||i.chartEntries.length<1||i.chartEntries.length>12||
-        i.chartEntries.some((entry:{label?:unknown;value?:unknown})=>!entry||typeof entry.label!=="string"||entry.label.length>80||typeof entry.value!=="number"||!Number.isFinite(entry.value)||entry.value<0||entry.value>1e9)
+        i.chartEntries.some((entry:{label?:unknown;value?:unknown})=>!entry||typeof entry.label!=="string"||entry.label.length>80||typeof entry.value!=="number"||!Number.isFinite(entry.value)||Math.abs(entry.value)>1e9||(i.chartStyle==="pie"&&entry.value<0))
       ))throw new Error("Некорректные данные диаграммы");
       if(i.graphFigureId!=null&&(typeof i.graphFigureId!=="string"||i.graphFigureId.length>64))throw new Error("Некорректный тип геометрической фигуры");
       for(const list of [i.graphPoints,i.graphSegments,i.graphCircles,i.graphPolygons,i.graphAngles,i.graphMidpoints]){

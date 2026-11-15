@@ -320,6 +320,46 @@ try{
  })()`);
  assert.ok(stored,"Demo lesson did not persist its document in local storage");
  console.log("✓ Persistence: local board document exists with lesson objects");
+
+ // Reproduce the reported triangle-label overlap in a real SVG, using actual
+ // rendered glyph bounds (not just the geometry model's estimated text size).
+ await call("Page.navigate",{url:url.replace("scene=math","scene=geometry")});
+ await wait('!!document.querySelector(\'[data-object="geo-triangle"] .graph-polygon\')',"Geometry demo did not render");
+ const labelLayout=await evaluate(`(() => {
+  const item=document.querySelector('[data-object="geo-triangle"]');
+  const polygon=item.querySelector('.graph-polygon');
+  const labels=[...item.querySelectorAll('.graph-point text')];
+  return {count:labels.length,overlaps:labels.filter(t=>{
+   const b=t.getBBox();
+   return [[b.x,b.y],[b.x+b.width,b.y],[b.x,b.y+b.height],[b.x+b.width,b.y+b.height],[b.x+b.width/2,b.y+b.height/2]]
+    .some(([x,y])=>polygon.isPointInFill(new DOMPoint(x,y)));
+  }).map(t=>t.textContent)};
+ })()`);
+ assert.deepEqual(labelLayout,{count:3,overlaps:[]},"Triangle vertex text overlaps the shape");
+ console.log("✓ Geometry: actual triangle vertex glyphs outside the figure");
+
+ await click('button[aria-label="Таблицы и диаграммы"]');
+ await wait('!![...document.querySelectorAll("button")].find(b=>b.textContent.includes("Диаграмма")&&b.textContent.includes("Столбцы"))',"Chart tool unavailable");
+ await evaluate('[...document.querySelectorAll("button")].find(b=>b.textContent.includes("Диаграмма")&&b.textContent.includes("Столбцы")).click()');
+ await wait('!!document.querySelector(".lektrus-data-chart-dialog")',"Chart editor unavailable");
+ await evaluate(`(() => {
+  const d=document.querySelector('.lektrus-data-chart-dialog');
+  const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
+  const set=(selector,value)=>{const input=d.querySelector(selector);setter.call(input,value);input.dispatchEvent(new Event('input',{bubbles:true}));};
+  set('input[placeholder="Название диаграммы"]','Температура');
+  set('input[aria-label="Категория 1"]','Январь');
+  set('input[aria-label="Значение 1"]','-10');
+  set('input[aria-label="Категория 2"]','Июнь');
+  set('input[aria-label="Значение 2"]','20');
+ })()`);
+ await wait('document.querySelector(\'.lektrus-data-chart-dialog input[aria-label="Значение 1"]\')?.value==="-10"',"Negative data was clamped");
+ await evaluate('[...document.querySelectorAll(".lektrus-data-chart-types button")].find(b=>b.textContent==="Круговая").click()');
+ await click('.lektrus-data-chart-dialog footer .primary');
+ await wait('!!document.querySelector(".lektrus-data-chart-error")',"Invalid negative pie chart accepted");
+ await evaluate('[...document.querySelectorAll(".lektrus-data-chart-types button")].find(b=>b.textContent==="Линия").click()');
+ await click('.lektrus-data-chart-dialog footer .primary');
+ await wait('!!document.querySelector(\'.board-object .lektrus-data-chart[aria-label*="-10"]\')',"Negative chart data lost on save");
+ console.log("✓ Chart: negative values preserved, pie validation and actual line chart save");
  console.log("Lektrus release smoke passed: actual browser interactions and curated subjects.");
 }finally{
  if(socket&&socket.readyState===WebSocket.OPEN)socket.close();
