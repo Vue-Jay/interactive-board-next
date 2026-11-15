@@ -7,7 +7,7 @@
  * No property is inferred from an unrelated ionic compound or formula class.
  */
 import {substances,reviewedReactionCases} from "./lektrusReactionDatabase";
-import {labMolarMass,parseBalancedLabEquation} from "./lektrusLabStoichiometry";
+import {labMolarMass,parseBalancedLabEquation,labGasProductFormulas} from "./lektrusLabStoichiometry";
 import {LAB_CRYSTAL_DENSITY_G_ML,labSchoolSolidDensityGml,labSchoolSolubilityGPer100gWater,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 import {LAB_GAS_FORMULAS,labThermalInfo} from "./lektrusLabPhysicalProperties";
 import {LAB_CALORIMETRY_REFERENCE,labSchoolSpecificHeatJPerGK} from "./lektrusLabCalorimetry";
@@ -27,13 +27,14 @@ for(const reaction of reviewedReactionCases){
  const balanced=parseBalancedLabEquation(reaction.equation);
  if(!balanced)continue;
  const rhs=(reaction.equation.split("→")[1]??"").split(/\s+\+\s+/);
+ const gases=labGasProductFormulas(reaction.equation);
  for(const term of balanced.products){
   const raw=rhs.find(t=>t.replace(/^\s*\d+\s*/,"").
    replace(/[↑↓]/g,"").trim()===term.formula)??"";
   reviewedProducts.set(term.formula,{
    formula:term.formula,name:registry.get(term.formula)?.name??term.formula,
    coeff:term.coefficient,
-   reactionPhase:raw.includes("↑")?"gas":
+   reactionPhase:gases.has(term.formula)?"gas":
     raw.includes("↓")?"precipitate":"other"
   });
  }
@@ -44,13 +45,14 @@ export function labProductIdentities(equation:string):LabProductIdentity[]{
  const balanced=parseBalancedLabEquation(equation);
  if(!balanced)return [];
  const rhs=(equation.split("→")[1]??"").split(/\s+\+\s+/);
+ const gases=labGasProductFormulas(equation);
  return balanced.products.map(term=>{
   const raw=rhs.find(t=>t.replace(/^\s*\d+\s*/,"").
    replace(/[↑↓]/g,"").trim()===term.formula)??"";
   return {formula:term.formula,
    name:registry.get(term.formula)?.name??term.formula,
    coeff:term.coefficient,
-   reactionPhase:raw.includes("↑")?"gas":
+   reactionPhase:gases.has(term.formula)?"gas":
     raw.includes("↓")?"precipitate":"other"};
  });
 }

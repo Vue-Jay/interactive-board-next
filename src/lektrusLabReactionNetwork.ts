@@ -2,8 +2,8 @@
  * reactions. Not a general Gibbs-energy minimizer: an unreviewed reaction is
  * never fabricated. Gases marked ↑ leave the open vessel; ↓ remain as solids.
  * Solutions are ideal at 25 °C for the limited Ksp cases listed below. */
-import {reviewedReactionCases,type ReactionEnvironment,type ReactionCase} from "./lektrusReactionDatabase";
-import {labDoseMoles,labMolarMass,parseBalancedLabEquation,type LabReactionAmounts} from "./lektrusLabStoichiometry";
+import {substances,reviewedReactionCases,type ReactionEnvironment,type ReactionCase} from "./lektrusReactionDatabase";
+import {labDoseMoles,labMolarMass,parseBalancedLabEquation,labGasProductFormulas,type LabReactionAmounts} from "./lektrusLabStoichiometry";
 import type {LabDose} from "./lektrusChemistryBenchModel";
 import {labEquilibrateSingleSaltCrystals,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 import {labSchoolMixedSaltEquilibrium} from "./lektrusLabDissolution";
@@ -80,6 +80,7 @@ export const LAB_DILUTE_WATER_SOLUBLE_STOCKS:ReadonlySet<string>=new Set([
 export const labIsTypicallyWaterSoluble=(formula:string):boolean=>
  LAB_DILUTE_WATER_SOLUBLE_STOCKS.has(formula);
 const EPS=1e-12;
+const gasStocks=new Set(substances.filter(s=>s.kind==="газ").map(s=>s.id));
 const knownRows=reviewedReactionCases.flatMap((row,index)=>{
  if(row.status!=="reaction")return [];
  const equation=parseBalancedLabEquation(row.equation);
@@ -326,18 +327,20 @@ export function simulateLabInventory(input:{
  mixedSaltPhase?:Record<string,number>;
  /** Measured total liquid volume, independent of solute molar amounts. */
  volumeMl?:number;
+ /** Optional single reviewed step for a running thermal experiment. */
+ onlyEquation?:string;
 },maxSteps=48):LabInventory{
  const doses=input.doses??{};
  const volumeMl=input.volumeMl??((input.filteredSolution?.volumeMl??0)+
   Object.entries(doses).reduce((n,[id,d])=>
-   n+(d.unit==="ml"&&!["CO2","H2","O2","NH3","Cl2","NO2","SO2"].includes(id)?d.value:0),0));
+   n+(d.unit==="ml"&&!gasStocks.has(id)?d.value:0),0));
  // The molecular snapshot can be unchanged while the MEASURED carrier water
  // evaporates or is replenished. Key solubility/Ksp predictions by the actual
  // solvent volume, not only the chemical ledger and optional caller override.
  // Otherwise a cached unsaturated filtrate masks newly formed crystals.
  const key=JSON.stringify([input.reagents,input.doses,input.environment,input.temperatureC??22,!!input.stoppered,
   input.chemicalInventory,input.reactionAmounts,input.binarySaltPhase,
-  input.mixedSaltPhase,volumeMl,maxSteps]);
+  input.mixedSaltPhase,volumeMl,maxSteps,input.onlyEquation]);
  const cached=inventoryCache.get(key);
  if(cached)return cached;
  const inventory:LabInventory={speciesMol:{},solidMol:{},releasedGasMol:{},retainedGasMol:{},
@@ -419,7 +422,7 @@ export function simulateLabInventory(input:{
   (input.environment!=="aqueous"||hasMeasuredLiquid)?
   knownRows.find(entry=>entry.row.equation===progress.equation&&
    entry.row.environment===input.environment&&
-   entry.row.observation==="gas"):undefined;
+   labGasProductFormulas(entry.row.equation).size>0):undefined;
  if(progressCase&&progress&&typeof progress.extentMol==="number"&&
   typeof progress.maxExtentMol==="number"&&Number.isFinite(progress.extentMol)&&
   Number.isFinite(progress.maxExtentMol)&&progress.extentMol>=0&&
@@ -436,15 +439,16 @@ export function simulateLabInventory(input:{
     if(solid>0)sum(inventory.solidMol,term.formula,-solid);
    }
    const rawProducts=(row.equation.split("→")[1]??"").split(/\s+\+\s+/);
+   const gases=labGasProductFormulas(row.equation);
    for(const term of equation.products){
     const gained=extentMol*term.coefficient;
     const marker=rawProducts.find(x=>x.replace(/^\s*\d+\s*/,"").
      replace(/[↓↑]/g,"").trim()===term.formula)??"";
-    if(marker.includes("↑"))sum(input.stoppered?
+    if(gases.has(term.formula))sum(input.stoppered?
      inventory.retainedGasMol:inventory.releasedGasMol,term.formula,gained);
     else{
      sum(inventory.speciesMol,term.formula,gained);
-     if(marker.includes("↓"))sum(inventory.solidMol,term.formula,gained);
+     if(marker.includes("↓")||row.environment!=="aqueous"&&term.formula!=="H2O")sum(inventory.solidMol,term.formula,gained);
     }
    }
    const heatKJ=row.enthalpyKJPerMol===undefined?undefined:
@@ -464,6 +468,7 @@ export function simulateLabInventory(input:{
    const {row,equation}=entry;
    if(used.has(row.equation+"|"+row.environment))continue;
    if(row.environment!==input.environment)continue;
+   if(input.onlyEquation&&row.equation!==input.onlyEquation)continue;
    // The standalone peroxide decomposition demonstration is an explicitly
    // accelerated classroom case, not a prediction that every arbitrary
    // room-temperature peroxide mixture instantly releases all its oxygen.
@@ -482,8 +487,8 @@ export function simulateLabInventory(input:{
    // verified heated/ignited dry reactions keep their own environment.
    if(row.environment==="aqueous"&&!hasMeasuredLiquid)continue;
    if((row.minTemperatureC??0)>(input.temperatureC??22))continue;
-   if(row.environment==="heated"&&(input.temperatureC??22)<90)continue;
-   if(row.environment==="ignited"&&(input.temperatureC??22)<135)continue;
+   if(row.environment==="heated"&&(input.temperatureC??22)<(row.minTemperatureC??90))continue;
+   if(row.environment==="ignited"&&(input.temperatureC??22)<(row.minTemperatureC??135))continue;
    if(!row.reactants.every(id=>available(inventory.speciesMol,id)>EPS))continue;
    const bound=Math.min(...equation.reactants.map(t=>
     available(inventory.speciesMol,t.formula)/t.coefficient));
@@ -508,11 +513,12 @@ export function simulateLabInventory(input:{
   }
   const rhs=row.equation.split("→")[1]??"";
   const rawProducts=rhs.split(/\s+\+\s+/);
+  const gases=labGasProductFormulas(row.equation);
   for(const term of equation.products){
    const gained=winningExtent*term.coefficient;
    const marker=rawProducts.find(s=>s.replace(/^\s*\d+\s*/,"").
     replace(/[↓↑]/g,"").trim()===term.formula)??"";
-   if(marker.includes("↑")){
+   if(gases.has(term.formula)){
     sum(input.stoppered?inventory.retainedGasMol:inventory.releasedGasMol,
      term.formula,gained);
    }else{

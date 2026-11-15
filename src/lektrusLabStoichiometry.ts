@@ -2,8 +2,19 @@
  * Only balanced equations and measured stock (g or mol/L) are supported.
  * The 4-second animation is instructional, NOT a kinetic-rate prediction. */
 import type {LabDose} from "./lektrusChemistryBenchModel";
-import {substances,type ReactionCase} from "./lektrusReactionDatabase";
+import {substances,reviewedReactionCases,type ReactionCase} from "./lektrusReactionDatabase";
 const substancesByFormula=(formula:string)=>substances.find(v=>v.id===formula);
+const thermalEquations=new Set(reviewedReactionCases.filter(row=>row.environment==="heated"||row.environment==="ignited").map(row=>row.equation));
+const permanentGasFormulas=new Set(substances.filter(s=>s.kind==="газ").map(s=>s.id));
+// Older equation records omit ↑ on some combustion/redox gases. Preserve
+// their saved equation identity but never classify CO2, SO2, or N2 as powder.
+export function labGasProductFormulas(equation:string):Set<string>{
+ const thermal=thermalEquations.has(equation);
+ return new Set((equation.split("→")[1]??"").split(/\s+\+\s+/).flatMap(term=>{
+  const formula=term.replace(/^\s*\d+\s*/,"").replace(/[↑↓]/g,"").trim();
+  return term.includes("↑")||thermal&&(permanentGasFormulas.has(formula)||formula==="HCl")?[formula]:[];
+ }));
+}
 
 const ATOMIC_MASS:Record<string,number>={
  H:1.008,C:12.011,N:14.007,O:15.999,Na:22.989769,K:39.0983,

@@ -44,5 +44,15 @@ try{
  await pause();const solid=await evalPage(`document.querySelector('.lektrus-lab-vessel.selected .lektrus-lab-added-solid path')?.getAttribute('fill')`);
  assert.ok(solid&&solid!=='#e9e7df','Copper hydroxide must not use an uncolored generic powder');
  if(process.env.LAB_QA_SCREENSHOT){await call('Page.enable');const data=await call('Page.captureScreenshot',{format:'png'});await writeFile(process.env.LAB_QA_SCREENSHOT,Buffer.from(data.data,'base64'));}
+ // Actual UI controls: clear, choose new glassware, and check the visual
+ // difference between prepared reagents and measured evolving gas.
+ await click('button[aria-label="Очистить стол"]');await click('button[aria-label="Подтвердить очистку стола"]');
+ await click('button[aria-label="Взять из шкафа Стакан"]');
+ await add('Na2CO3');await add('HCl');
+ assert.equal(await evalPage('!!document.querySelector(".lektrus-lab-gas-bubbles")'),false,'Paused preparation must not show gas bubbles');
+ await play();
+ await wait('!!document.querySelector(".lektrus-lab-gas-bubbles circle")&&!!document.querySelector(".lektrus-lab-gas-vent")','Evolving aqueous gas must produce bubbles and outlet animation');
+ if(process.env.LAB_QA_GAS_SCREENSHOT){await call('Page.enable');const data=await call('Page.captureScreenshot',{format:'png'});await writeFile(process.env.LAB_QA_GAS_SCREENSHOT,Buffer.from(data.data,'base64'));}
+ await pause();
  console.log(JSON.stringify({clear,blue,diluted,solid}));
 }finally{socket?.close();chrome?.kill();await server.close();await delay(200);await rm(profile,{recursive:true,force:true});}

@@ -6,7 +6,7 @@ import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBen
  setLabSimulationPaused,setLabGasCollection,labGasStoredMl,labGasReceiverFreeMl,labGasTransferPreview,transferLabGasSample,formatLabDose,labDisplayNumber,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
-import {reagentAppearance,labSolutionTint,labSedimentTint} from "./lektrusLabAppearance";
+import {reagentAppearance,labSolutionTint,labSedimentTint,labGasTint} from "./lektrusLabAppearance";
 import {labThermalInfo,labVesselThermal,labThermalState} from "./lektrusLabPhysicalProperties";
 import {labKnownHeatCapacityJPerK} from "./lektrusLabCalorimetry";
 import {labReactionGasProgress} from "./lektrusLabGasDynamics";
@@ -85,8 +85,8 @@ export const reactionFamilyLabels:Record<ReactionFamily,string>={
 };
 /** Ephemeral visual events share their clock through the board model.
  * Existing settled products stay visible, flames and flashes do not. */
-function LabReactionBurst({vessel,visual,formula,visualNow}:{
- vessel:LabVessel;visual?:ReactionVisual;formula:string;visualNow:number}){
+function LabReactionBurst({vessel,visual,formula,visualNow,gasTint}:{
+ vessel:LabVessel;visual?:ReactionVisual;formula:string;visualNow:number;gasTint?:string}){
  const started=vessel.visualStartedAtMs;
  if(!visual||!started)return null;
  const elapsed=Math.max(0,visualNow-started);
@@ -108,7 +108,8 @@ function LabReactionBurst({vessel,visual,formula,visualNow}:{
    <i key={i} className="lektrus-lab-reaction-mote"
     style={{"--lab-particle-x":(i*53%91-45)+"px",
      "--lab-particle-delay":-(elapsed/1000)+(i%7)*.11+"s",
-     "--lab-particle-angle":(i*61%130-65)+"deg"} as React.CSSProperties}/>)}
+     "--lab-particle-angle":(i*61%130-65)+"deg",
+     ...(visual==="smoke"&&gasTint?{backgroundColor:gasTint}:{})} as React.CSSProperties}/>)}
  </div>;
 }
 
@@ -130,6 +131,8 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
  const gasProgress=labFollowUpGasProgress(vessel)??
   labReactionGasProgress(vessel.reactionAmounts,
    temperatureC??vessel.temperatureC??22);
+ const evolvedGasTint=labGasTint(gasProgress?.producedMol);
+ const retainedGasTint=labGasTint(vessel.chemicalInventory?.retainedGasMol??gasProgress?.producedMol);
  const retainedGasTotal=vessel.stoppered?labHeadspaceGasMoles(vessel):0;
  const recentCase=mostRecentEquation?
   reviewedReactionCases.find(row=>row.equation===mostRecentEquation):undefined;
@@ -321,7 +324,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
      <g className="lektrus-lab-retained-gas" aria-label="Газ удерживается пробкой">
       {Array.from({length:8},(_,i)=><circle key={"retained"+i}
        cx={35+(i*11)%34} cy={29+(i*17)%36} r={1.5+i%3}
-       fill="#bbecf3" fillOpacity=".48" stroke="#7fbfc4" strokeWidth=".4"/>)}
+       fill={retainedGasTint??"#bbecf3"} fillOpacity=".48" stroke={retainedGasTint??"#7fbfc4"} strokeWidth=".4"/>)}
      </g>}
     {labels.length>0&&singlePhase==="gas"&&<>
      <path d={geo.inside} fill={color} opacity=".17"/>
@@ -341,7 +344,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
      aria-label="Кристаллы соли образуются при выпаривании воды">
      {Array.from({length:13},(_,i)=><path key={i}
       d={`M${25+i*13%48} ${113-i%4*2}l3 -4l3 4l-3 3Z`}
-      fill="#f7faf8" stroke="#a2b4c0" strokeWidth=".65"
+      fill={contents.solid.length?labSedimentTint(contents.solid,(i*.61803398875)%1):"#f7faf8"} stroke="#a2b4c0" strokeWidth=".65"
       style={{animationDelay:-(i%6)*.4+"s"}}/>)}
     </g>}
     {boiling&&<g className="lektrus-lab-boiling-particles"
@@ -377,7 +380,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
       r={1.1+i%3*.5} fill={appearance.solidColor||"#cddbe0"}
       style={{animationDelay:-(i%9)*.25+"s"}}/>)}
     </>}
-    {active&&observation==="gas"&&gasEventActive&&
+    {active&&(observation==="gas"||!!gasProgress)&&gasEventActive&&volumeMl>1e-9&&
      <g className="lektrus-lab-gas-bubbles" clipPath={"url(#"+id+"level)"}>
       {Array.from({length:gasBubbleCount},(_,i)=><circle key={i}
        className="lektrus-lab-bubble" cx={31+i*29%38} cy={98-i*17%45}
@@ -460,12 +463,13 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
    {Array.from({length:3},(_,i)=><span key={i}/>)}
   </div>}
   {gasEventActive&&!vessel.stoppered&&!vessel.gasCollectionTargetId&&
-   active&&observation==="gas"&&<div className="lektrus-lab-gas-vent"
+   active&&(observation==="gas"||!!gasProgress)&&(volumeMl>1e-9||!!evolvedGasTint)&&<div className="lektrus-lab-gas-vent"
     role="img" aria-label="Газ выходит из открытого сосуда">
-    {Array.from({length:5},(_,i)=><i key={i} style={{animationDelay:-(i*.36)+"s"}}/>)}
+    {Array.from({length:5},(_,i)=><i key={i} style={{animationDelay:-(i*.36)+"s",
+     ...(evolvedGasTint?{backgroundColor:evolvedGasTint,border:"none",width:12,height:12,filter:"blur(3px)"}:{})}}/>)}
    </div>}
-  <LabReactionBurst vessel={vessel} visual={visualCase?.visual}
-   formula={visualCase?.equation??""} visualNow={visualNow}/>
+  <LabReactionBurst vessel={vessel} visual={volumeMl<=1e-9&&visualCase?.visual==="fizz"?undefined:visualCase?.visual}
+   formula={visualCase?.equation??""} visualNow={visualNow} gasTint={evolvedGasTint}/>
   {vessel.reactionHeat&&(!vessel.reactionHeat.complete||
    !!vessel.visualStartedAtMs&&visualNow-vessel.visualStartedAtMs<8500)&&
    <span className={"lektrus-lab-reaction-heat is-"+vessel.reactionHeat.direction}

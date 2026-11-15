@@ -78,6 +78,14 @@ export function reagentAppearance(id:string,environment:ReactionEnvironment="aqu
 }
 export const reagentAppearanceCount=substances.length;
 
+/** Representative visible gas hues, not a quantitative gas absorption
+ * spectrum. Colorless gases have no pigment (CO2, H2, O2, etc.). */
+export function labGasTint(moles:Readonly<Record<string,number>>|undefined):string|undefined{
+ if((moles?.NO2??0)>1e-12)return "#b56c42"; // Purdue: NO2 is dark brown.
+ if((moles?.Cl2??0)>1e-12)return "#c5cc70";
+ return undefined;
+}
+
 /** Visual approximation of the CURRENT dissolved species, not the first
  * stock or the most recently displayed reaction equation. Transparent
  * diluents do not contribute pigment. Optical density increases smoothly

@@ -6,7 +6,7 @@
  * PV=nRT uses the ideal-gas approximation; gas solubility, foam stability,
  * surface area and gas escape kinetics are not quantified without data.
  */
-import {parseBalancedLabEquation,type LabReactionAmounts} from "./lektrusLabStoichiometry";
+import {parseBalancedLabEquation,labGasProductFormulas,type LabReactionAmounts} from "./lektrusLabStoichiometry";
 export type LabGasProgress={
  producedMol:Record<string,number>;
  totalMol:number;
@@ -31,9 +31,7 @@ export function labReactionGasProgress(
    !Number.isFinite(amounts.durationSeconds)||amounts.durationSeconds<=0)return;
  const balanced=parseBalancedLabEquation(amounts.equation);
  if(!balanced)return;
- const rhs=amounts.equation.split("→")[1]??"";
- const gasProducts=new Set(rhs.split(/\s*\+\s*/).filter(t=>t.includes("↑"))
-  .map(t=>t.replace(/^\s*\d+\s*/,"").replace(/[↑↓]/g,"").trim()));
+ const gasProducts=labGasProductFormulas(amounts.equation);
  if(!gasProducts.size)return;
  const producedMol:Record<string,number>={};
  let totalMol=0,completeYieldMol=0;

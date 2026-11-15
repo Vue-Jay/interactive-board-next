@@ -10,7 +10,7 @@ import {labBinarySaltEquilibrium,labAdvanceBinarySaltPhase,labVisibleBinarySaltS
 import {labIdealGasVolumeMl,labReactionGasProgress} from "./lektrusLabGasDynamics";
 import {labEvaporate,labCanStopper,labIdealBoilingC,labVaporPressureKPa} from "./lektrusLabEvaporation";
 import {LAB_CRYSTAL_DENSITY_G_ML,labSchoolSolidDensityGml,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
-import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,labDoseMoles,type LabReactionAmounts}
+import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,labDoseMoles,labGasProductFormulas,type LabReactionAmounts}
  from "./lektrusLabStoichiometry";
 import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint} from "./lektrusLabLayout";
 import {addTitrant,defaultTitration,resetTitration,validTitration,type TitrationModel}
@@ -696,7 +696,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
    v.physicalProcess==="crystallizing"||
    v.physicalProcess==="dissolving"&&
    v.physicalStartedAtMs!==undefined&&nowMs-v.physicalStartedAtMs>=4500/settings.timeScale;
-  const cooling=!device?.powered&&next<42&&v.temperatureC!==undefined&&
+  const cooling=!v.pendingInventoryReaction&&!device?.powered&&next<42&&v.temperatureC!==undefined&&
    ["heated","ignited"].includes(v.environment);
   const phaseChanged=meltFraction!==(v.meltFraction??0)||
    frozenFraction!==(v.frozenFraction??0)||phaseTransition!==v.phaseTransition;
@@ -767,23 +767,35 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
   if(!v.pendingInventoryReaction||!v.chemicalInventory)return v;
   const baseline=v.inventoryPrecipitation?.initial??
    v.inventoryGasReaction?.initial??v.chemicalInventory;
-  const measured=simulateLabInventory({
-   ...v,chemicalInventory:baseline,
-   volumeMl:labVesselQuantity(v).volumeMl
-  });
-  const nextStep=measured.steps[0];
-  const nextCase=nextStep?reviewedReactionCases.find(row=>
-   row.equation===nextStep.equation):undefined;
   const active=v.inventoryPrecipitation;
   const activeGas=v.inventoryGasReaction&&
    v.inventoryGasReaction.elapsedSeconds<v.inventoryGasReaction.durationSeconds?
    v.inventoryGasReaction:undefined;
+  const thermal=v.environment==="heated"||v.environment==="ignited";
+  const input={
+   ...v,chemicalInventory:baseline,
+   volumeMl:labVesselQuantity(v).volumeMl
+  };
+  const runningEquation=active?.equation??activeGas?.equation;
+  let measured=simulateLabInventory({...input,...(thermal&&runningEquation?{onlyEquation:runningEquation}:{})});
+  // Heating a mixed sample can cross several activation thresholds. Complete
+  // each measured step separately; do not add a newly eligible reaction to
+  // an already progressing gas yield. Cooling preserves actual progress.
+  if(thermal){
+   if(!measured.steps.length&&runningEquation)return v;
+   if(!runningEquation&&measured.steps.length>1)
+    measured=simulateLabInventory({...input,onlyEquation:measured.steps[0].equation});
+  }
+  const nextStep=measured.steps[0];
+  const nextCase=nextStep?reviewedReactionCases.find(row=>
+   row.equation===nextStep.equation):undefined;
+  const generatesGas=!!nextCase&&labGasProductFormulas(nextCase.equation).size>0;
   // Progress is purely instructional, not an invented reaction-rate constant.
   // Both gas and sediment are partitioned from the same balanced final ledger.
   if((active||activeGas||nextCase?.observation==="precipitate"||
-    nextCase?.observation==="gas")&&
+    generatesGas)&&
     !measured.unmeasured.length&&!measured.limited){
-   const gas=!!activeGas||!active&&nextCase?.observation==="gas";
+   const gas=!!activeGas||!active&&generatesGas;
    const initial=active?.initial??activeGas?.initial??baseline;
    const equation=active?.equation??activeGas?.equation??nextCase!.equation;
    const durationSeconds=active?.durationSeconds??activeGas?.durationSeconds??
@@ -928,6 +940,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
   if(v.temperatureC===undefined||v.temperatureC<60||!v.reagents.length)return v;
   const heater=heatingDeviceByVessel.get(v.id);
   if(!heater)return v;
+  if(v.pendingInventoryReaction||v.reactionAmounts&&!v.reactionAmounts.complete)return v;
   // Only a matching reviewed thermal or combustion case can start.
   // No ignition of an unrelated aqueous solution and no invented explosion.
   const ignition=heater.kind==="burner"?identifyReaction(v.reagents,"ignited"):null;
@@ -936,6 +949,27 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
    v.temperatureC>=(ignition.caseData?.minTemperatureC??135);
   const warmed=heating.status==="reaction"&&
    v.temperatureC>=(heating.caseData?.minTemperatureC??90);
+  // Exact cabinet recipes are not the only valid heated experiments. A
+  // measured dry mixture can contain an inert spectator or products of a
+  // previous reaction. Only schedule a balanced step the inventory already
+  // supports at the current temperature; keep all other species untouched.
+  if((!ignited&&!warmed||v.chemicalInventory||v.completedReaction||v.reactionAmounts?.complete)&&
+   labVesselQuantity(v).volumeMl<=1e-9&&(v.doses||v.chemicalInventory)){
+   const prior=v.chemicalInventory??(v.reactionAmounts?.complete||v.completedReaction?
+    labInventorySnapshot(simulateLabInventory({...v,volumeMl:0})):undefined);
+   for(const mode of (heater.kind==="burner"?["ignited","heated"]:["heated"]) as ReactionEnvironment[]){
+    const input={...v,environment:mode,volumeMl:0,reactionAmounts:undefined,
+     chemicalInventory:prior?{...prior,settled:undefined}:undefined};
+    const forecast=simulateLabInventory(input);
+    if(!forecast.steps.length||forecast.unmeasured.length||forecast.limited)continue;
+    const initial=prior?{...prior,settled:undefined}:labInventorySnapshot(simulateLabInventory(input,0));
+    changed=true;
+    return {...v,environment:mode,chemicalInventory:initial,
+     reagents:Object.keys(initial.speciesMol),pendingInventoryReaction:true,
+     inventoryPrecipitation:undefined,inventoryGasReaction:undefined,
+     reactionAmounts:undefined,reactionHeat:undefined,uncertain:false,observed:true};
+   }
+  }
   if(!ignited&&!warmed)return v;
   const mode=ignited?"ignited":"heated";
   if(v.environment===mode)return v;
@@ -1724,7 +1758,14 @@ export function labReactionNeedsTick(vessel:LabVessel):boolean{
  return needed;
 }
 function calculateLabReactionNeedsTick(vessel:LabVessel):boolean{
- if(vessel.pendingInventoryReaction)return true;
+ if(vessel.pendingInventoryReaction){
+  const running=vessel.inventoryGasReaction?.equation??vessel.inventoryPrecipitation?.equation;
+  if(running&&(vessel.environment==="heated"||vessel.environment==="ignited")){
+   const row=reviewedReactionCases.find(r=>r.equation===running&&r.environment===vessel.environment);
+   if(row&&(vessel.temperatureC??22)<(row.minTemperatureC??90))return false;
+  }
+  return true;
+ }
  if(vessel.uncertain)return false;
  if(vessel.reactionHeat&&!vessel.reactionHeat.complete)return true;
  if(vessel.reactionAmounts&&!vessel.reactionAmounts.complete)return true;
@@ -1999,12 +2040,17 @@ export function labHeadspaceGasMoles(v:LabVessel){
   sum+(substances.find(x=>x.id===id)?.kind==="газ"?
    labDoseMoles(id,d)??0:0),0);
  const measured=labReactionGasProgress(v.reactionAmounts);
- if(measured)return Math.max(0,measured.totalMol+sourceGas-baseline);
+ if(measured){
+  const remainingGas=Object.entries(v.doses??{}).reduce((sum,[id,d])=>
+   sum+(substances.find(x=>x.id===id)?.kind==="газ"?
+    v.reactionAmounts?.remainingMol[id]??labDoseMoles(id,d)??0:0),0);
+  return Math.max(0,measured.totalMol+remainingGas-baseline);
+ }
  // Before the first reaction tick the inventory solver predicts the final
  // equilibrium. Do not allow that FUTURE gas to enter a sealed headspace.
  if(!v.completedReaction&&!v.chemicalInventory){
   const row=identifyReaction(v.reagents,v.environment);
-  if(row.status==="reaction"&&row.caseData?.observation==="gas"&&
+  if(row.status==="reaction"&&row.caseData&&labGasProductFormulas(row.caseData.equation).size>0&&
    startQuantifiedLabReaction(row.caseData,v.reagents,v.doses))
    return Math.max(0,sourceGas-baseline);
  }
@@ -2048,8 +2094,11 @@ export function labFollowUpGasProgress(v:LabVessel){
  const volumeMl=labIdealGasVolumeMl(totalMol,v.temperatureC??22);
  if(volumeMl===undefined)return;
  const completeYieldMol=elapsedFraction>0?totalMol/elapsedFraction:0;
+ const thermalRow=(v.environment==="heated"||v.environment==="ignited")?
+  reviewedReactionCases.find(row=>row.equation===progress.equation&&row.environment===v.environment):undefined;
+ const belowActivation=!!thermalRow&&(v.temperatureC??22)<(thermalRow.minTemperatureC??90);
  return {producedMol,totalMol,completeYieldMol,volumeMl,
-  rateMolPerSecond:progress.elapsedSeconds>=progress.durationSeconds?0:
+  rateMolPerSecond:belowActivation||progress.elapsedSeconds>=progress.durationSeconds?0:
    completeYieldMol/progress.durationSeconds};
 }
 /** Only real receiving glassware can collect or reuse gas.
