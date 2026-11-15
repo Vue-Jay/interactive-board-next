@@ -2180,11 +2180,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [developerSettingsOpen, setDeveloperSettingsOpen] = useState(false);
   const [controlSettingsOpen,setControlSettingsOpen]=useState(false);
   type ControlSettings={wheel:"scroll"|"zoom";zoomSpeed:number;panSpeed:number;invertZoom:boolean;horizontalShift:boolean};
+  const defaultControlSettings:ControlSettings={wheel:"zoom",zoomSpeed:1,panSpeed:1,invertZoom:false,horizontalShift:true};
   const controlSettingsKey="lektrus.controls.v1."+authUser.id;
   const [controlSettings,setControlSettings]=useState<ControlSettings>(()=>{
     try{const v=JSON.parse(localStorage.getItem(controlSettingsKey)||"null") as Partial<ControlSettings>|null;
-      return {wheel:v?.wheel==="zoom"?"zoom":"scroll",zoomSpeed:Math.max(.4,Math.min(3,Number(v?.zoomSpeed)||1)),panSpeed:Math.max(.4,Math.min(3,Number(v?.panSpeed)||1)),invertZoom:v?.invertZoom===true,horizontalShift:v?.horizontalShift!==false};
-    }catch{return {wheel:"scroll",zoomSpeed:1,panSpeed:1,invertZoom:false,horizontalShift:true}}
+      return {wheel:v?.wheel==="scroll"?"scroll":defaultControlSettings.wheel,zoomSpeed:Math.max(.4,Math.min(3,Number(v?.zoomSpeed)||1)),panSpeed:Math.max(.4,Math.min(3,Number(v?.panSpeed)||1)),invertZoom:v?.invertZoom===true,horizontalShift:v?.horizontalShift!==false};
+    }catch{return {...defaultControlSettings}}
   });
   useEffect(()=>{try{localStorage.setItem(controlSettingsKey,JSON.stringify(controlSettings))}catch{}},[controlSettingsKey,controlSettings]);
   const controlSettingsRef=useRef(controlSettings);
@@ -8366,8 +8367,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
              <div><strong>Колесо мыши и тачпад</strong><small>Выберите привычный способ перемещения по доске.</small></div>
             </div>
             <div className="lektrus-controls-modes" role="group" aria-label="Основное действие колеса">
-             {([["scroll","Прокрутка","Колесо прокручивает доску. Ctrl + колесо изменяет масштаб."],
-               ["zoom","Масштаб","Колесо изменяет масштаб. Ctrl + колесо прокручивает доску."]] as const)
+             {([["zoom","Масштаб","Колесо изменяет масштаб. Ctrl + колесо прокручивает доску."],
+               ["scroll","Прокрутка","Колесо прокручивает доску. Ctrl + колесо изменяет масштаб."]] as const)
                .map(([value,label,description])=><button type="button" key={value}
                 aria-pressed={controlSettings.wheel===value}
                 className={controlSettings.wheel===value?"active":""}
@@ -8417,9 +8418,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
            </section>
            <p className="lektrus-controls-note">На сенсорном экране жест двумя пальцами продолжает работать независимо. Настройки применяются сразу и сохраняются автоматически.</p>
           </div>
-          <footer><button type="button" onClick={()=>setControlSettings({
-           wheel:"scroll",zoomSpeed:1,panSpeed:1,invertZoom:false,horizontalShift:true
-          })}>По умолчанию</button><button type="button" className="primary"
+          <footer><button type="button" onClick={()=>setControlSettings({...defaultControlSettings})}>По умолчанию</button><button type="button" className="primary"
            onClick={()=>setControlSettingsOpen(false)}>Готово</button></footer>
          </section></div>}
         {lectrisPanelSettingsOpen&&<LectrisPanelSettings value={lectrisPanelLayout} onChange={setLectrisPanelLayout} onClose={()=>setLectrisPanelSettingsOpen(false)}/>}
