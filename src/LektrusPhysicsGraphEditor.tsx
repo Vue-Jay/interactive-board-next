@@ -9,7 +9,7 @@ import {scienceToolGroupForId} from "./lektrusScienceCatalog";
 import type {SciencePresetId} from "./lektrusSciencePresets";
 
 type Props={item:Item;onSave:(next:Item)=>void;onCancel:()=>void;onClose?:(next:Item)=>void;onLiveChange?:(before:Item,next:Item)=>void;shared?:boolean};
-type Point={x:number;y:number;label:string;color?:string};
+type Point={x:number;y:number;label:string;color?:string;id?:string};
 type Draft={figureId:string;title:string;points:Point[];xMax:number;yMin:number;yMax:number;grid:boolean;snap:boolean;connect:boolean;showLabels:boolean};
 type History={past:Draft[];present:Draft;future:Draft[]};
 type Tool="select"|"point";
@@ -18,7 +18,7 @@ const defaultTitle="График движения";
 const initial=(item:Item):Draft=>({
   figureId:presetIds.has(item.graphFigureId??"")?item.graphFigureId!:"physics-motion",
   title:item.text?.trim()||defaultTitle,
-  points:(item.graphPoints??[]).map(point=>({x:point.x,y:point.y,label:point.label??"",color:point.color})),
+  points:(item.graphPoints??[]).map((point,index)=>({x:point.x,y:point.y,label:point.label??"",color:point.color,id:point.id??`legacy-${item.id}-${index}`})),
   xMax:Math.max(1,item.graphXMax??12),
   yMin:item.graphYMin??0,
   yMax:Math.max((item.graphYMin??0)+1,item.graphYMax??10),
@@ -66,14 +66,17 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose,
     });
   },[item]);
   const [tool,setTool]=useState<Tool>("select");
-  const [selected,setSelected]=useState<number|null>(null);
+  const [selectedId,setSelectedId]=useState<string|null>(null);
+  const selectedIndex=draft.points.findIndex(point=>point.id===selectedId);
+  const selected=selectedIndex<0?null:selectedIndex;
+  const setSelected=(index:number|null)=>setSelectedId(index===null?null:draft.points[index]?.id??null);
   const [settingsOpen,setSettingsOpen]=useState(()=>typeof window==="undefined"||!window.matchMedia("(max-width:760px)").matches);
   const [notice,setNotice]=useState("");
   const [measurementOpen,setMeasurementOpen]=useState(false);
   const [aim,setAim]=useState<Point|null>(null);
-  const [preview,setPreview]=useState<{index:number;point:Point}|null>(null);
-  const drag=useRef<{id:number;index:number;start:Point;last:Point}|null>(null);
-  const data=useMemo(()=>draft.points.map((point,i)=>preview?.index===i?preview.point:point),[draft.points,preview]);
+  const [preview,setPreview]=useState<{pointId:string;point:Point}|null>(null);
+  const drag=useRef<{id:number;pointId:string;start:Point;last:Point}|null>(null);
+  const data=useMemo(()=>draft.points.map(point=>preview&&preview.pointId===point.id?preview.point:point),[draft.points,preview]);
   const axis=axes(draft.figureId);
   const choices=scienceToolGroupForId("physics-motion")?.templates??[];
   const sx=(x:number)=>PLOT.left+x/draft.xMax*PLOT.width;
@@ -103,11 +106,11 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose,
   };
   const addPoint=(point?:Point)=>{
     if(draft.points.length>=80){setNotice("Не более 80 точек на одном графике");return}
-    const next=point??{x:Math.min(draft.xMax,(draft.points.at(-1)?.x??0)+draft.xMax/8),
-      y:clamp(draft.points.at(-1)?.y??0,draft.yMin,draft.yMax),label:""};
+    const next={...(point??{x:Math.min(draft.xMax,(draft.points.at(-1)?.x??0)+draft.xMax/8),
+      y:clamp(draft.points.at(-1)?.y??0,draft.yMin,draft.yMax),label:""}),id:crypto.randomUUID()};
     const sorted=[...draft.points,next].sort((a,b)=>a.x-b.x);
     commit({...draft,points:sorted});
-    setSelected(sorted.indexOf(next));setNotice("Точка добавлена");
+    setSelectedId(next.id);setNotice("Точка добавлена");
   };
   const removeSelected=()=>{
     if(selected===null)return;
@@ -124,24 +127,25 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose,
     event.preventDefault();event.stopPropagation();
     setSelected(i);
     const start=data[i];
-    drag.current={id:event.pointerId,index:i,start,last:start};
+    if(!start.id)return;
+    drag.current={id:event.pointerId,pointId:start.id,start,last:start};
     event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId);
   };
   const move=(event:ReactPointerEvent<SVGSVGElement>)=>{
     if(drag.current?.id!==event.pointerId)return;
     event.preventDefault();
-    const index=drag.current.index;
     const pos=fromScreen(event,event.currentTarget);
     drag.current.last={...drag.current.start,x:pos.x,y:pos.y};
-    setPreview({index,point:drag.current.last});
+    setPreview({pointId:drag.current.pointId,point:drag.current.last});
   };
   const finish=(event:ReactPointerEvent<SVGSVGElement>)=>{
     if(drag.current?.id!==event.pointerId)return;
     const dragging=drag.current;drag.current=null;
     if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);
     setPreview(null);
-    if(dragging.last.x!==dragging.start.x||dragging.last.y!==dragging.start.y)
-      patchPoint(dragging.index,{x:dragging.last.x,y:dragging.last.y});
+    const index=draft.points.findIndex(point=>point.id===dragging.pointId);
+    if(index>=0&&(dragging.last.x!==dragging.start.x||dragging.last.y!==dragging.start.y))
+      patchPoint(index,{x:dragging.last.x,y:dragging.last.y});
   };
   useEffect(()=>{
     const keyboard=(event:KeyboardEvent)=>{
@@ -214,7 +218,7 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose,
           <div className="lektrus-motion-section-title">Точки <span>{draft.points.length}</span></div>
           <div className="lektrus-motion-point-table">
             <div className="lektrus-motion-table-head"><span>№</span><span>t, с</span><span>{axis.variable}, {axis.unit}</span><span/></div>
-            {draft.points.map((point,i)=><div className={"lektrus-motion-point-row"+(selected===i?" selected":"")} key={i}>
+            {draft.points.map((point,i)=><div className={"lektrus-motion-point-row"+(selected===i?" selected":"")} key={point.id??i}>
               <button type="button" className="lektrus-motion-point-select" onClick={()=>setSelected(i)} aria-label={`Выбрать точку ${i+1}`}>{i+1}</button>
               <input aria-label={`Время точки ${i+1}`} type="number" step=".5" min={0} max={draft.xMax} value={point.x}
                 onChange={e=>{const n=Number(e.target.value);if(Number.isFinite(n))patchPoint(i,{x:clamp(n,0,draft.xMax)})}}/>
@@ -286,7 +290,7 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose,
                   <text x="9" y="19" fill="#2b5698" fontWeight="750" fontSize="12">{format(aim.x)} с · {format(aim.y)} {axis.unit}</text>
                 </g>
               </g>}
-              {data.map((point,i)=><g key={i}>
+              {data.map((point,i)=><g key={point.id??i}>
                 {selected===i&&<circle cx={sx(point.x)} cy={sy(point.y)} r="14" fill="#dce9ff" pointerEvents="none"/>}
                 <circle cx={sx(point.x)} cy={sy(point.y)} r={selected===i?6.2:5} fill={selected===i?"#194ba6":"#3878d5"}
                   stroke="#fff" strokeWidth="2" pointerEvents="none"/>

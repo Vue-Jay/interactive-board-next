@@ -110,6 +110,7 @@ export function LectrisQuickProperties(props: QuickProps) {
 
 type InspectorProps = {
   item: Item;
+  pdfPageCount?: number|null;
   canModify: boolean;
   userId: string;
   canToggleLock: boolean;
@@ -137,7 +138,7 @@ function NumberField({label,value,minimum=-100000,maximum=100000,disabled,onComm
   </label>;
 }
 
-export function LectrisObjectInspector({item,canModify,userId,canToggleLock,onClose,onPatch,onEdit,onDuplicate,onDelete}:InspectorProps) {
+export function LectrisObjectInspector({item,pdfPageCount,canModify,userId,canToggleLock,onClose,onPatch,onEdit,onDuplicate,onDelete}:InspectorProps) {
   const editable=advancedKinds.has(item.kind);
   const [advancedOpen,setAdvancedOpen]=useState(false);
   const [locationOpen,setLocationOpen]=useState(false);
@@ -227,8 +228,8 @@ export function LectrisObjectInspector({item,canModify,userId,canToggleLock,onCl
       </section>}
       {item.kind==="pdf"&&<section className="lectris-inspector-section">
         <h3>Документ PDF</h3>
-        <NumberField label="Страница" value={item.pdfPage??1} minimum={1} maximum={10000}
-          disabled={!canModify} onCommit={pdfPage=>onPatch({pdfPage:Math.round(pdfPage)})}/>
+        <NumberField label={pdfPageCount?`Страница (из ${pdfPageCount})`:"Страница"} value={item.pdfPage??1} minimum={1} maximum={pdfPageCount??1}
+          disabled={!canModify||!pdfPageCount} onCommit={pdfPage=>onPatch({pdfPage:Math.round(pdfPage)})}/>
       </section>}
       {textEditable && <section className="lectris-inspector-section">
         <h3>{item.kind==="frame"?"Название фрейма":"Содержимое"}</h3>

@@ -129,6 +129,16 @@ const docs=[
 const original={version:1,title:"Тест сохранения",subject:"Физика",
  view:{x:1,y:2,zoom:1},items:docs};
 const loaded=parseDocument(JSON.stringify(original));
+// Motion and organic editors accept 80 points. Saving/reopening must accept
+// the same limit, without widening the geometry editor's 40-point limit.
+const manyPoints=Array.from({length:80},(_,n)=>({x:n,y:n,label:"",id:`p-${n}`}));
+for(const graphFigureId of ["physics-motion","chem-organic-free"]){
+ const large=item("large","graph",{graphFigureId,graphPoints:manyPoints});
+ const parsed=parseDocument(JSON.stringify({...original,items:[large]}));
+ assert.deepEqual(parsed.items[0].graphPoints,manyPoints);
+ assert.throws(()=>parseDocument(JSON.stringify({...original,items:[{...large,graphPoints:[...manyPoints,{x:81,y:81,label:""}]}]})),/Повреждены точки графика/);
+}
+assert.throws(()=>parseDocument(JSON.stringify({...original,items:[item("large","graph",{graphFigureId:"free",graphPoints:manyPoints})]})),/Повреждены точки графика/);
 assert.equal(loaded.subject,"Физика","subject must survive reopen");
 assert.equal(loaded.items.length,docs.length);
 for(const expected of docs){

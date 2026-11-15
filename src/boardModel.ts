@@ -584,7 +584,7 @@ export type Item = {
   graphA?: number; graphB?: number; graphC?: number;
   graphXMin?: number; graphXMax?: number; graphYMin?: number; graphYMax?: number;
   graphGrid?: boolean;
-  graphPoints?: { x:number; y:number; label:string; color?: string; labelDx?:number;labelDy?:number; schoolGroupId?:string; schoolGroupLabel?:string }[];
+  graphPoints?: { x:number; y:number; label:string; id?:string; color?: string; labelDx?:number;labelDy?:number; schoolGroupId?:string; schoolGroupLabel?:string }[];
   graphShowLabels?: boolean;
   graphSegments?: { a:number; b:number; kind:"segment"|"line"|"ray"; label:string; measure:boolean; bondOrder?:1|2|3; scienceArrow?:boolean; color?:string; scienceCircuitSymbol?:import("./ScienceCircuitGlyph").CircuitSymbol; labelDx?:number; labelDy?:number; keepPointsOnDelete?:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
   graphAngles?: { a:number; vertex:number; b:number; label:string; autoMeasure?:boolean; keepPointsOnDelete?:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
@@ -685,6 +685,10 @@ function persistedGraphData(item:Item):Partial<Item>{
   }
   return result as Partial<Item>;
 }
+
+export const graphPointLimit=(figureId?:string)=>figureId?.startsWith("chem-organic-")||
+  ["physics-motion","physics-speed","physics-accelerated-speed","physics-acceleration","physics-braking","physics-rest"].includes(figureId??"")?80:40;
+export const graphSegmentLimit=(figureId?:string)=>figureId?.startsWith("chem-organic-")?160:60;
 
 export function parseDocument(raw: string): DocumentData {
   if (raw.length > 24 * 1024 * 1024) throw new Error("Файл слишком большой");
@@ -1352,14 +1356,14 @@ export function parseDocument(raw: string): DocumentData {
       if (i.graphConnectPoints != null && typeof i.graphConnectPoints !== "boolean") throw new Error("Повреждено соединение точек");
       for (const value of [i.graphA,i.graphB,i.graphC,i.graphXMin,i.graphXMax,i.graphYMin,i.graphYMax]) if (value != null && !finite(value)) throw new Error("Повреждены параметры графика");
       if (i.graphGrid != null && typeof i.graphGrid !== "boolean") throw new Error("Повреждена сетка графика");
-      if (i.graphPoints != null && (!Array.isArray(i.graphPoints) || i.graphPoints.length > 40 || !i.graphPoints.every((p: unknown) => !!p && typeof p === "object" && finite((p as {x:number}).x) && finite((p as {y:number}).y) && typeof (p as {label:string}).label === "string" && (p as {label:string}).label.length <= 24 && ((p as {color?:string}).color == null || color((p as {color?:string}).color))))) throw new Error("Повреждены точки графика");
+      if (i.graphPoints != null && (!Array.isArray(i.graphPoints) || i.graphPoints.length > graphPointLimit(i.graphFigureId) || !i.graphPoints.every((p: unknown) => !!p && typeof p === "object" && finite((p as {x:number}).x) && finite((p as {y:number}).y) && typeof (p as {label:string}).label === "string" && (p as {label:string}).label.length <= 24 && ((p as {id?:unknown}).id == null || (typeof (p as {id?:unknown}).id === "string" && (p as {id:string}).id.length <= 160)) && ((p as {color?:string}).color == null || color((p as {color?:string}).color))))) throw new Error("Повреждены точки графика");
       if (i.graphShowLabels != null && typeof i.graphShowLabels !== "boolean") throw new Error("Повреждены подписи графика");
       if (i.graphSnap != null && typeof i.graphSnap !== "boolean") throw new Error("Повреждена привязка графика");
       if (i.graphAxisLabels != null && typeof i.graphAxisLabels !== "boolean") throw new Error("Повреждены подписи осей графика");
       if (i.graphGridStep != null && (!finite(i.graphGridStep) || i.graphGridStep <= 0 || i.graphGridStep > 1000)) throw new Error("Повреждён шаг сетки графика");
       if (i.graphShowCurve != null && typeof i.graphShowCurve !== "boolean") throw new Error("Повреждена видимость функции графика");
       if (i.graphProjections != null && typeof i.graphProjections !== "boolean") throw new Error("Повреждены проекции точек графика");
-      if (i.graphSegments != null && (!Array.isArray(i.graphSegments) || i.graphSegments.length > 60 || !i.graphSegments.every((s: unknown) => !!s && typeof s === "object" && Number.isInteger((s as {a:number}).a) && Number.isInteger((s as {b:number}).b) && ["segment","line","ray"].includes((s as {kind:string}).kind) && typeof (s as {label:string}).label === "string" && typeof (s as {measure:boolean}).measure === "boolean"))) throw new Error("Повреждены геометрические связи графика");
+      if (i.graphSegments != null && (!Array.isArray(i.graphSegments) || i.graphSegments.length > graphSegmentLimit(i.graphFigureId) || !i.graphSegments.every((s: unknown) => !!s && typeof s === "object" && Number.isInteger((s as {a:number}).a) && Number.isInteger((s as {b:number}).b) && ["segment","line","ray"].includes((s as {kind:string}).kind) && typeof (s as {label:string}).label === "string" && typeof (s as {measure:boolean}).measure === "boolean"))) throw new Error("Повреждены геометрические связи графика");
       if (i.graphCircles != null && (!Array.isArray(i.graphCircles) || i.graphCircles.length > 30 || !i.graphCircles.every((g: unknown) => !!g && typeof g === "object" && Number.isInteger((g as {center:number}).center) && Number.isInteger((g as {edge:number}).edge) && typeof (g as {label:string}).label === "string" && typeof (g as {measure:boolean}).measure === "boolean"))) throw new Error("Повреждены окружности графика");
       if (i.graphPolygons != null && (!Array.isArray(i.graphPolygons) || i.graphPolygons.length > 30 || !i.graphPolygons.every((g: unknown) => !!g && typeof g === "object" && Array.isArray((g as {points:number[]}).points) && (g as {points:number[]}).points.length >= 3 && (g as {points:number[]}).points.length <= 20 && (g as {points:number[]}).points.every(Number.isInteger) && typeof (g as {label:string}).label === "string" && typeof (g as {measure:boolean}).measure === "boolean"))) throw new Error("Повреждены многоугольники графика");
       if (i.graphMidpoints != null && (!Array.isArray(i.graphMidpoints) || i.graphMidpoints.length > 40 || !i.graphMidpoints.every((g: unknown) => !!g && typeof g === "object" && Number.isInteger((g as {a:number}).a) && Number.isInteger((g as {b:number}).b) && typeof (g as {label:string}).label === "string"))) throw new Error("Повреждены середины отрезков графика");
