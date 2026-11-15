@@ -36,8 +36,11 @@ try{
  await click('.lektrus-lab-vessel');await add('H2O');const clear=await fluid();assert.ok(clear,'Water must have a visible liquid');
  await add('CuSO4');const blue=await fluid();assert.notEqual(blue,clear,'Copper solution added after water must visibly tint the liquid');
  await add('H2O');const diluted=await fluid();assert.notEqual(diluted,blue,'Dilution must lighten a measured colored solution');
+ const overlap=await evalPage(`(()=>{const hint=document.querySelector('.lektrus-lab-pour-hint'),sink=document.querySelector('.lektrus-lab-sink-caption');if(!hint||!sink)return null;const a=hint.getBoundingClientRect(),b=sink.getBoundingClientRect();return a.right>b.left&&a.left<b.right&&a.bottom>b.top&&a.top<b.bottom;})()`);
+ assert.equal(overlap,false,'Reaction status must not overlap sink label');
  await add('NaOH');await play();
  await wait('!!document.querySelector(".lektrus-lab-vessel.selected .lektrus-lab-added-solid")','Copper hydroxide must become a visible solid');
+ await wait('document.querySelector(".lektrus-lab-equation-history")?.textContent.includes("Cu(OH)2")','Completed precipitation must be recorded on the chalkboard');
  await pause();const solid=await evalPage(`document.querySelector('.lektrus-lab-vessel.selected .lektrus-lab-added-solid path')?.getAttribute('fill')`);
  assert.ok(solid&&solid!=='#e9e7df','Copper hydroxide must not use an uncolored generic powder');
  if(process.env.LAB_QA_SCREENSHOT){await call('Page.enable');const data=await call('Page.captureScreenshot',{format:'png'});await writeFile(process.env.LAB_QA_SCREENSHOT,Buffer.from(data.data,'base64'));}
