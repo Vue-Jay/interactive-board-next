@@ -39,13 +39,13 @@ export default function LektrusMechanicsView({doc,selection=null,tool="select",o
    onPointerDown={onPartDown||onPlace?e=>partPointerDown(e,{type:"support",id:s.id}):undefined}
 >
    <g transform={`translate(${s.x} ${s.y}) rotate(${-s.angle})`}>
+    {editable&&<rect className="mechanics-hit" x={s.kind==="pivot"?-43:-s.width/2-12} y="-28" width={s.kind==="pivot"?86:s.width+24} height="55" fill="transparent" pointerEvents="all"/>}
     {s.kind==="pivot"?<g><path d="M0 -20L-24 20H24Z" stroke="#657a95" fill="#e9f0f9" strokeWidth="2"/><path d="M-31 23h62" stroke="#72849e" strokeWidth="3"/></g>:<g>
      <path d={`M${-s.width/2} 0h${s.width}`} stroke={selected("support",s.id)?"#245dc1":"#627e9f"} strokeWidth="5" strokeLinecap="round"/>
      {Array.from({length:Math.floor(s.width/24)+1},(_,i)=><path key={i} d={`M${-s.width/2+i*24} 3l-10 12`} stroke="#afbdd0" strokeWidth="1.5"/>)}
     </g>}
    </g>
    {doc.labels&&s.label&&<text x={s.x} y={s.y+37} fill="#567493" fontSize="14" textAnchor="middle">{s.label}</text>}
-   {editable&&<rect className="mechanics-hit" x={s.x-s.width/2-12} y={s.y-28} width={s.width+24} height="55" fill="transparent" pointerEvents="all"/>}
   </g>)}
   {doc.bodies.map(b=><g key={b.id} className={"lektrus-mechanics-part"+(selected("body",b.id)?" selected":"")} data-board-interactive={onPartDown?"true":undefined}
    onPointerDown={onPartDown||onPlace?e=>partPointerDown(e,{type:"body",id:b.id}):undefined}

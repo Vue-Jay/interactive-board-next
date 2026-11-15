@@ -79,6 +79,9 @@ export default function LektrusOpticsView({doc,selection=null,tool="select",onPl
      const picked=selection?.kind==="element"&&selection.id===part.id;
      const length=part.length,top=part.y-length/2,bottom=part.y+length/2;
      const label=part.label.trim()||captions[part.kind];
+     const hit={x:part.x-(part.kind==="prism"?82:23),
+       y:part.kind==="source"?part.y-25:part.kind==="prism"?part.y-90:top-6,
+       width:part.kind==="prism"?164:46,height:part.kind==="source"?50:part.kind==="prism"?170:length+12};
      return <g key={part.id} className={"lektrus-optics-part"+(picked?" selected":"")} data-board-interactive={onElementDown?"true":undefined}
        onPointerDown={onElementDown||onPlace?e=>{
          e.stopPropagation();
@@ -91,7 +94,7 @@ export default function LektrusOpticsView({doc,selection=null,tool="select",onPl
          }
        }:undefined}
 >
-       {picked&&<rect x={part.x-23} y={part.y-Math.min(length/2,110)-15} width="46" height={Math.min(length,220)+30} rx="8"
+       {picked&&<rect {...hit} rx="8"
          fill="#cce0ff" fillOpacity=".35" stroke="#6e9bdf" strokeDasharray="5 5" strokeWidth="1" pointerEvents="none"/>}
        {part.kind==="source"&&<g>
          <circle cx={part.x} cy={part.y} r="13" fill="#fff9df" stroke="#e9a94c" strokeWidth="2"/>
@@ -110,24 +113,22 @@ export default function LektrusOpticsView({doc,selection=null,tool="select",onPl
            `M${part.x} ${top} Q${part.x-20} ${part.y} ${part.x} ${bottom} Q${part.x+20} ${part.y} ${part.x} ${top}Z`:
            `M${part.x-16} ${top} Q${part.x+12} ${part.y} ${part.x-16} ${bottom} L${part.x+16} ${bottom} Q${part.x-12} ${part.y} ${part.x+16} ${top}Z`}
            fill={"url(#optics-glass-"+id+")"} fillOpacity=".85" stroke="#3577b8" strokeWidth="2"/>
-         {doc.normals&&<g stroke="#9fbbe4" strokeDasharray="5 5" strokeWidth="1.1">
+         {doc.normals&&<g stroke="#9fbbe4" strokeDasharray="5 5" strokeWidth="1.1" pointerEvents="none">
            <path d={`M${part.x-145} ${part.y}h290`}/>
            <circle cx={part.x-part.focalLength} cy={part.y} r="3.2" fill="#497fb7"/>
            <circle cx={part.x+part.focalLength} cy={part.y} r="3.2" fill="#497fb7"/>
          </g>}
        </g>}
        {part.kind==="interface"&&<g>
-         <rect x={part.x} y={top} width={Math.max(0,960-part.x)} height={length} fill="#d1eeff" fillOpacity=".32"/>
+         <rect x={part.x} y={top} width={Math.max(0,960-part.x)} height={length} fill="#d1eeff" fillOpacity=".32" pointerEvents="none"/>
          <path d={`M${part.x} ${top}V${bottom}`} stroke="#5e96c9" strokeWidth="2.5"/>
-         {doc.normals&&<path d={`M${part.x-58} ${part.y}h116`} stroke="#87a9ca" strokeDasharray="5 4"/>}
+         {doc.normals&&<path d={`M${part.x-58} ${part.y}h116`} stroke="#87a9ca" strokeDasharray="5 4" pointerEvents="none"/>}
        </g>}
        {part.kind==="screen"&&<g><rect x={part.x-5} y={top} width="10" height={length} rx="3" fill="#7e99ad" stroke="#4d677b" strokeWidth="1.5"/></g>}
        {part.kind==="prism"&&<g><path d={`M${part.x} ${part.y-85}l-74 150h148Z`} fill="#c0e5ff" fillOpacity=".42" stroke="#3a90c5" strokeWidth="2.4"/></g>}
        {doc.labels&&<text x={part.x} y={part.kind==="source"?part.y+38:Math.min(548,bottom+20)}
           textAnchor="middle" className="lektrus-optics-caption" fontSize="13" fill="#456b91">{label}</text>}
-       {interactive&&<rect className="lektrus-optics-hit" x={part.x-(part.kind==="prism"?82:23)}
-         y={part.kind==="source"?part.y-25:part.kind==="prism"?part.y-90:top-6}
-         width={part.kind==="prism"?164:46} height={part.kind==="source"?50:part.kind==="prism"?170:length+12}
+       {interactive&&<rect className="lektrus-optics-hit" {...hit}
          fill="transparent" pointerEvents="all"/>}
      </g>;
    })}

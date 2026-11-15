@@ -5,7 +5,7 @@ import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import LektrusMechanicsView,{mechanicsSvgPoint} from "./LektrusMechanicsView";
 import LektrusMechanicsToolIcon from "./LektrusMechanicsToolIcon";
-import {emptyMechanics,mechClamp,mechanicsId,mechanicsForceOrigin,mechanicsValid,
+import {emptyMechanics,mechClamp,mechanicsId,mechanicsForceOrigin,mechanicsReattachForce,mechanicsValid,
  type MechanicsDocument,type MechanicsSelection,type MechanicsTool,type MechanicsBody,type MechanicsSupport,type MechanicsForce} from "./lektrusMechanicsModel";
 type Props={item:Item;onSave:(item:Item)=>void;onCancel:()=>void;onClose?:(item:Item)=>void;onLiveChange?:(before:MechanicsDocument,next:MechanicsDocument)=>void;shared?:boolean};
 type History={past:MechanicsDocument[];present:MechanicsDocument;future:MechanicsDocument[]};
@@ -271,9 +271,8 @@ export default function LektrusMechanicsEditor({item,onSave,onCancel,onClose,onL
          <label>Обозначение<input maxLength={75} value={selectedForce.label} onChange={e=>changeForce({label:e.target.value})}/></label>
          <label>К чему привязать?
            <select value={selectedForce.bodyId??""} onChange={e=>{
-             const origin=mechanicsForceOrigin(selectedForce,doc);
              const body=doc.bodies.find(b=>b.id===e.target.value);
-             changeForce({bodyId:body?.id??null,x:body?origin.x-body.x:origin.x,y:body?origin.y-body.y:origin.y});
+             changeForce(mechanicsReattachForce(selectedForce,doc,body));
            }}><option value="">К листу (свободный вектор)</option>{doc.bodies.map((b,i)=><option key={b.id} value={b.id}>{b.label||"Тело "+(i+1)}</option>)}</select>
          </label>
          <label>Угол направления

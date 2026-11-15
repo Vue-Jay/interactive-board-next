@@ -3,6 +3,7 @@ import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent
 import {createPortal} from "react-dom";
 import {svgClientPoint} from "./lektrusSvgPointer";
 import {motionAxisTicks} from "./lektrusPhysicsGraphTicks";
+import {motionTimeAvailable,nextMotionPointTime,measureMotionPoints} from "./lektrusMotionPoints";
 import {mergeEditedValue} from "./lektrusLiveEditorMerge";
 import type {Item} from "./boardModel";
 import {scienceToolGroupForId} from "./lektrusScienceCatalog";
@@ -102,11 +103,17 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose,
   const redo=()=>{setHistory(h=>h.future.length?{past:[...h.past.slice(-60),h.present],present:h.future[0],future:h.future.slice(1)}:h);setSelected(null)};
   const patchPoint=(i:number,change:Partial<Point>)=>{
     if(!draft.points[i])return;
+    if(change.x!==undefined&&!motionTimeAvailable(draft.points,change.x,i)){
+      setNotice("В этот момент времени уже есть точка. Выберите другое время.");return;
+    }
+    setNotice("");
     commit({...draft,points:draft.points.map((point,index)=>index===i?{...point,...change}:point)});
   };
   const addPoint=(point?:Point)=>{
     if(draft.points.length>=80){setNotice("Не более 80 точек на одном графике");return}
-    const next={...(point??{x:Math.min(draft.xMax,(draft.points.at(-1)?.x??0)+draft.xMax/8),
+    const time=point?.x??nextMotionPointTime(draft.points,draft.xMax);
+    if(time===null||!motionTimeAvailable(draft.points,time)){setNotice("В этот момент времени уже есть точка. Выберите другое время.");return}
+    const next={...(point??{x:time,
       y:clamp(draft.points.at(-1)?.y??0,draft.yMin,draft.yMax),label:""}),id:crypto.randomUUID()};
     const sorted=[...draft.points,next].sort((a,b)=>a.x-b.x);
     commit({...draft,points:sorted});
@@ -135,6 +142,9 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose,
     if(drag.current?.id!==event.pointerId)return;
     event.preventDefault();
     const pos=fromScreen(event,event.currentTarget);
+    if(!motionTimeAvailable(draft.points,pos.x,draft.points.findIndex(p=>p.id===drag.current?.pointId))){
+      setNotice("В этот момент времени уже есть точка.");return;
+    }
     drag.current.last={...drag.current.start,x:pos.x,y:pos.y};
     setPreview({pointId:drag.current.pointId,point:drag.current.last});
   };
@@ -168,14 +178,7 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose,
   const xTicks=motionAxisTicks(0,draft.xMax,8);
   const yTicks=motionAxisTicks(draft.yMin,draft.yMax,6);
   const majorX=new Set(xTicks.labels),majorY=new Set(yTicks.labels);
-  const measurement=useMemo(()=>{
-    const ordered=[...data].sort((a,b)=>a.x-b.x);
-    if(ordered.length<2)return null;
-    const first=ordered[0],last=ordered[ordered.length-1],dt=last.x-first.x;
-    const area=ordered.slice(1).reduce((sum,pt,i)=>
-      sum+(pt.y+ordered[i].y)/2*(pt.x-ordered[i].x),0);
-    return {dt,change:last.y-first.y,slope:dt>0?(last.y-first.y)/dt:0,area};
-  },[data]);
+  const measurement=useMemo(()=>measureMotionPoints(data),[data]);
   const slopeUnit=axis.variable==="s"?"м/с":axis.variable==="v"?"м/с²":"м/с³";
   const integralLabel=axis.variable==="v"?"Перемещение Δx, м":
     axis.variable==="a"?"Изменение скорости Δv, м/с":"Площадь под s(t)";
@@ -247,7 +250,7 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose,
               <span>Δ{axis.variable}: <b>{format(measurement.change)} {axis.unit}</b></span>
               <span>Δ{axis.variable}/Δt: <b>{format(measurement.slope)} {slopeUnit}</b></span>
               {axis.variable!=="s"&&<span>{integralLabel}: <b>{format(measurement.area)}</b></span>}
-            </>:<span>Для измерений необходимо не менее двух точек.</span>}
+            </>:<span>{data.length<2?"Для измерений необходимо не менее двух точек.":"Измерения невозможны: несколько точек имеют одинаковое время."}</span>}
           </div>}
           <div className="lektrus-motion-sheet">
             <svg viewBox="0 0 980 590" preserveAspectRatio="xMidYMid meet" className={"lektrus-motion-svg mode-"+tool} role="img"

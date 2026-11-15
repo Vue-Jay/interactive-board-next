@@ -117,6 +117,10 @@ assert.match(app,/<LektrusPhysicalBoardView item=\{item\}/,"optics renders insid
 assert.match(editor,/role="dialog" aria-modal="true" aria-label="Редактор оптики"/);
 assert.match(editor,/onSave\(saveValue\(\)\)/,"optics saves persisted schema");
 assert.match(view,/traceOptics\(doc\)/);
+assert.match(view,/picked&&<rect \{\.\.\.hit\}/,"Selection outline must match the actual element hit area");
+assert.match(view,/lektrus-optics-hit" \{\.\.\.hit\}/);
+assert.match(view,/stroke="#9fbbe4"[^>]*pointerEvents="none"/,"Lens axis and focal markers must not capture clicks");
+assert.match(view,/fill="#d1eeff"[^>]*pointerEvents="none"/,"Shaded medium must not capture blank canvas clicks");
 assert.match(icon,/"physics-optics":/);
 assert.doesNotMatch(editor,/makeSciencePresetItem|selectVariant|готовый шаблон/i,
  "optics must be its own blank-first workspace");
