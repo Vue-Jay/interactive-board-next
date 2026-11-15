@@ -18,7 +18,8 @@ from test_api import TEACHER, STUDENT, PASSWORD
 
 
 @pytest.mark.asyncio
-async def test_two_live_sockets_receive_revision_then_revoke():
+async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
+    monkeypatch.setenv("LEKTRUS_DEPLOYMENT_ORIGINS","https://lektrus.ru,https://lectrus.ru")
     _login_attempts.clear()
     conn=await asyncpg.connect(os.environ["DATABASE_URL"])
     try:
@@ -86,9 +87,38 @@ async def test_two_live_sockets_receive_revision_then_revoke():
                     }),TEACHER,
                 )
 
+            # Native board (not the pilot): actual two-user live relay on both aliases.
+            native=(await http.post("/api/v1/boards",headers=owner,json={"title":"Native","is_pilot":False})).json()["id"]
+            async with app.state.pool.acquire() as db:
+                await db.execute("INSERT INTO board_members(board_id,user_id,role) VALUES($1,$2,'editor')",UUID(native),STUDENT)
+            native_uri="ws://127.0.0.1:18762/api/v1/boards/"+native+"/events"
+            async with websockets.connect(native_uri,origin="https://lektrus.ru") as first:
+                async with websockets.connect(native_uri,origin="https://lectrus.ru") as second:
+                    for ws,session in ((first,owner_session),(second,student_session)):
+                        await ws.send(json.dumps({"type":"auth","token":session["access_token"]}))
+                        assert json.loads(await asyncio.wait_for(ws.recv(),3))=={"type":"ready","version":0}
+                    for sender,receiver in ((first,second),(second,first)):
+                        packet={"type":"live_ink","client_id":"native_1","stroke_id":"native_stroke","kind":"pen",
+                                "color":"#112233","weight":3,"offset":0,"points":[{"x":10,"y":20}],"finished":False}
+                        await sender.send(json.dumps(packet))
+                        received=json.loads(await asyncio.wait_for(receiver.recv(),3))
+                        assert received["type"]=="live_ink" and received["points"]==packet["points"]
+                        assert json.loads(await asyncio.wait_for(sender.recv(),3))["type"]=="ink_ack"
+                    saved=await http.put(f"/api/v1/boards/{native}/document?version_only=true",headers=owner,
+                        json={"expected_version":0,"document":{"items":[],"ink":[]}})
+                    assert saved.status_code==200,saved.text
+                    for ws in (first,second):
+                        assert json.loads(await asyncio.wait_for(ws.recv(),3))=={"type":"document_changed","version":1}
+                    version=await http.get(f"/api/v1/boards/{native}/document?version_only=true",headers=student)
+                    assert version.json()=={"version":1}
+            with pytest.raises(websockets.exceptions.InvalidStatus) as blocked:
+                async with websockets.connect(native_uri,origin="https://untrusted.example"):
+                    pass
+            assert blocked.value.response.status_code==403
+
             uri="ws://127.0.0.1:18762/api/v1/boards/"+board+"/events"
-            async with websockets.connect(uri,origin="https://lektrus.example") as ws_owner:
-                async with websockets.connect(uri,origin="https://lektrus.example") as ws_student:
+            async with websockets.connect(uri,origin="https://lektrus.ru") as ws_owner:
+                async with websockets.connect(uri,origin="https://lektrus.ru") as ws_student:
                     await ws_owner.send(json.dumps({
                         "type":"auth","token":owner_session["access_token"],
                         "presence":True,"visible":True,

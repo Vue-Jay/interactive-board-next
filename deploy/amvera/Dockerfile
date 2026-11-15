@@ -11,6 +11,7 @@ FROM caddy:2.10.2-alpine AS proxy
 
 FROM python:3.12.10-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 LEKTRUS_ASSETS_DIR=/data/assets HOME=/home/lektrus
+ENV LEKTRUS_DEPLOYMENT_ORIGINS=https://lektrus.ru,https://www.lektrus.ru,https://lectrus.ru,https://www.lectrus.ru,https://lektrus-vuejay.msk1.amvera.tech
 WORKDIR /srv/lektrus
 COPY server/requirements.txt .
 RUN apt-get update \

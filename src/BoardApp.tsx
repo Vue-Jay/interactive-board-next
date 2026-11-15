@@ -8250,7 +8250,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               <button type="button" className="lectris-interface-settings-entry" onClick={e=>{setControlSettingsOpen(true);e.currentTarget.closest("details")?.removeAttribute("open")}}><Icon name="settings" size={16}/>Управление и интерфейс<span aria-hidden="true">→</span></button>
             </div>
           </details>{!Capacitor.isNativePlatform()&&installPrompt&&!isStandalone&&<button type="button" className="install-app-button" onClick={()=>void installApp()} title="Установить Lektrus на устройство">{isCoarsePointer?"Установить приложение":"Установить"}</button>}
-          {remoteEnabled && <details className="presence-menu" ref={visitPresenceMenuRef}>
+          {documentSyncEnabled && <details className="presence-menu" ref={visitPresenceMenuRef}>
             <summary title={realtimeStatus === "online" ? "Подключено · пользователи на доске" : realtimeStatus === "reconnecting" ? "Подключение к доске..." : "Нет подключения"}>
               <span className={`presence-live-dot connection-${realtimeStatus}`} aria-hidden="true"/>
               <span className="presence-count">{visiblePresenceUsers.length}</span>
@@ -8279,7 +8279,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   Собрать всех
                 </button>}
               </div>
-              {canManageBoard&&<button type="button" className="presence-visit-link" onClick={()=>{visitPresenceMenuRef.current?.removeAttribute("open");setVisitHistoryOpen(true);void loadVisitHistory()}}>История посещений <span>↗</span></button>}
+              {remoteEnabled&&canManageBoard&&<button type="button" className="presence-visit-link" onClick={()=>{visitPresenceMenuRef.current?.removeAttribute("open");setVisitHistoryOpen(true);void loadVisitHistory()}}>История посещений <span>↗</span></button>}
               {visiblePresenceUsers.length ? visiblePresenceUsers.map((user) => <div className="presence-person" key={user.userId}>
                 <span className="presence-avatar" aria-hidden="true"><UserAvatar/></span>
                 <span className="presence-person-copy">

@@ -51,6 +51,7 @@ export type SelfhostLiveEvent=
   | {type:"guided_follow";user_id:string;name:string;role:SelfhostBoardRole;enabled:boolean;sent_at:number}
   | {type:"attachment_request";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;asset_id:string;attachment_name:string;mime:string;kind:"image"|"pdf";width:number;height:number;sent_at:number}
   | {type:"attachment_result";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;target_user_id:string;approved:boolean;attachment_name:string;sent_at:number}
+  | {type:"ink_ack";client_id:string;stroke_id:string;offset:number;finished:boolean}
   | {type:"comments_changed"}
   | {type:"event_error";reason:string};
 export type SelfhostBoardChannel=(()=>void)&{
@@ -269,6 +270,9 @@ export async function selfhostDownloadAsset(boardId:string,assetId:string):Promi
 }
 export const selfhostReadDocument=(boardId:string,signal?:AbortSignal)=>selfhostRequest<SelfhostDocument>(
   "/api/v1/boards/"+encodeURIComponent(boardId)+"/document",{signal}
+);
+export const selfhostReadDocumentVersion=(boardId:string,signal?:AbortSignal)=>selfhostRequest<{version:number}>(
+  "/api/v1/boards/"+encodeURIComponent(boardId)+"/document?version_only=true",{signal}
 );
 export const selfhostSaveDocument=(boardId:string,expectedVersion:number,document:Record<string,unknown>)=>
   selfhostRequest<{version:number}>("/api/v1/boards/"+encodeURIComponent(boardId)+"/document?version_only=true",{
@@ -616,6 +620,8 @@ function connectSelfhostBoard(
             if(pending&&pending.packet.client_id===message.client_id&&
               pending.packet.offset===message.offset)
               pendingFinals.delete(message.stroke_id);
+            if(typeof message.client_id==="string"&&Number.isSafeInteger(message.offset)&&typeof message.finished==="boolean")
+              onLive?.(message as SelfhostLiveEvent);
           }
           if(message?.type==="cursor"&&typeof message.client_id==="string"&&
              typeof message.user_id==="string"&&Number.isFinite(message.x)&&
@@ -787,13 +793,15 @@ export function selfhostWatchDocument(
   let reading=false;
   let failures=0;
   let status:SelfhostRealtimeStatus="reconnecting";
+  let pollTimer:ReturnType<typeof setTimeout>|undefined;
+  let accessDenied=false;
   const schedule=()=>{
-    if(controller.signal.aborted||status!=="online"||reading||timer!==undefined||
+    if(controller.signal.aborted||accessDenied||reading||timer!==undefined||
        target<=Math.max(currentVersion(),delivered))return;
     timer=setTimeout(()=>{timer=undefined;void read()},failures?Math.min(8000,500*2**failures):120);
   };
   const read=async()=>{
-    if(controller.signal.aborted||status!=="online"||target<=Math.max(currentVersion(),delivered))return;
+    if(controller.signal.aborted||accessDenied||target<=Math.max(currentVersion(),delivered))return;
     reading=true;
     try{
       const row=await selfhostReadDocument(boardId,controller.signal);
@@ -806,6 +814,7 @@ export function selfhostWatchDocument(
       if(controller.signal.aborted)return;
       if(error instanceof SelfhostHttpError&&[401,403,404].includes(error.status)){
         delivered=target;
+        accessDenied=true;
         onStatus("offline");
         return;
       }
@@ -816,22 +825,47 @@ export function selfhostWatchDocument(
       schedule();
     }
   };
+  // If a proxy/VPN drops WebSocket handshakes, saved work must still arrive.
+  // Poll only the small revision value, and only while WS is disconnected.
+  const schedulePoll=()=>{
+    clearTimeout(pollTimer);pollTimer=undefined;
+    if(controller.signal.aborted||accessDenied||status==="online")return;
+    pollTimer=setTimeout(async()=>{
+      pollTimer=undefined;
+      if(controller.signal.aborted||accessDenied||status==="online")return;
+      try{
+        const row=await selfhostReadDocumentVersion(boardId,controller.signal);
+        if(controller.signal.aborted)return;
+        if(Number.isSafeInteger(row.version)&&row.version>=0){
+          target=Math.max(target,row.version);schedule();
+        }
+      }catch(error){
+        if(error instanceof SelfhostHttpError&&[401,403,404].includes(error.status)){
+          accessDenied=true;onStatus("offline");
+        }
+      }finally{schedulePoll()}
+    },typeof document!=="undefined"&&document.hidden?10000:2500);
+  };
   const socket=selfhostSubscribeBoard(boardId,version=>{
     target=Math.max(target,version);
     schedule();
   },next=>{
     const wasOnline=status==="online";
     status=next;
+    if(next==="online")accessDenied=false;
     if(!wasOnline&&next==="online"){
       failures=0;
       clearTimeout(timer);timer=undefined;
       schedule();
     }
     onStatus(next);
+    if(next==="online"){clearTimeout(pollTimer);pollTimer=undefined}
+    else if(pollTimer===undefined)schedulePoll();
   });
+  schedulePoll();
   return ()=>{
     controller.abort();
-    clearTimeout(timer);
+    clearTimeout(timer);clearTimeout(pollTimer);
     socket();
   };
 }

@@ -98,7 +98,9 @@ export function subscribeBoardPresence(
       });
       onPresence(result);
     };
-    const channel = selfhostSubscribeBoard(boardId, () => {}, () => {}, event => {
+    const channel = selfhostSubscribeBoard(boardId, () => {}, status => {
+      if(status!=="online"){users.clear();emitSelfhost()}
+    }, event => {
       if (event.type === "presence_state") {
         users = new Map(event.users.map(user => {
           const value = fromServer(user);

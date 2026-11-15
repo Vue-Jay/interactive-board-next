@@ -53,6 +53,7 @@ async function loadSelfhost(enabled) {
     const headers=new Headers(options.headers);
     record.push({path:u.pathname,method:options.method||"GET",
       bearer:headers.get("Authorization"),
+      query:u.search,
       body:typeof options.body==="string"?JSON.parse(options.body):
         options.body instanceof Blob?{size:options.body.size,type:options.body.type}:null});
     const ok=(value,status=200)=>Response.json(value,{status});
@@ -169,6 +170,7 @@ async function loadSelfhost(enabled) {
       return ok({version:4});
     }
     if(u.pathname==="/api/v1/boards/board-1/document"){
+      if(u.searchParams.get("version_only")==="true")return ok({version:documentVersion});
       if(documentFailures>0){
         documentFailures--;
         return ok({detail:"Temporary error"},503);
@@ -228,7 +230,11 @@ async function loadSelfhost(enabled) {
       removeEventListener(name){listeners.delete(name)}},
   });
   vm.runInContext(compiled,context);
-  return {api:context.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,sessionStorage,changeExpires:v=>{expires=v},changeDocument:(v,failures=0)=>{documentVersion=v;documentFailures=failures}};
+  const api=context.exports;
+  const broadcastSource=readFileSync(new URL("../src/boardBroadcast.ts",import.meta.url),"utf8");
+  const broadcastContext=vm.createContext({exports:{},require:name=>name==="./selfhostApi"?api:{isRemoteBackendEnabled:()=>false},setTimeout,clearTimeout,Date,Math,Map,crypto:globalThis.crypto});
+  vm.runInContext(ts.transpileModule(broadcastSource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,broadcastContext);
+  return {api,broadcast:broadcastContext.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,sessionStorage,changeExpires:v=>{expires=v},changeDocument:(v,failures=0)=>{documentVersion=v;documentFailures=failures}};
 }
 
 const disabled=await loadSelfhost(false);
@@ -318,7 +324,7 @@ const statuses=[];
 const liveEvents=[];
 const unsubscribe=api.selfhostSubscribeBoard("board-1",
   version=>revisions.push(version),status=>statuses.push(status),
-  frame=>liveEvents.push(frame),{visible:true});
+  frame=>{if(frame.type!=="ink_ack")liveEvents.push(frame)},{visible:true});
 const commentEvents=[];
 const stopComments=api.selfhostSubscribeBoard("board-1",()=>{},()=>{},frame=>commentEvents.push(frame.type));
 await new Promise(resolve=>setTimeout(resolve,0));
@@ -430,6 +436,45 @@ reconnectedSocket.emit({type:"ready",version:7});
 await waitFor(()=>handleDocumentVersions.length===2);
 assert.deepEqual(handleDocumentVersions,[6,7],"A reconnect should recover a revision missed while offline");
 openedBoard();
+await Promise.resolve();
+
+// Production board adapter receives cumulative pointer windows, not pilot packets.
+const adapterInk=[],adapterStatuses=[];
+const channel=env.broadcast.connectBoardCursorChannel("board-1",{userId:"me",name:"Me",role:"owner"},()=>{},true,ink=>adapterInk.push(ink),status=>adapterStatuses.push(status));
+await new Promise(resolve=>setTimeout(resolve,0));
+const inkSocket=sockets.at(-1);
+inkSocket.open();
+inkSocket.emit({type:"ready",version:7});
+const makeInk=(id,points,finished=false)=>({id,kind:"pen",color:"#112233",weight:3,offset:0,points,finished});
+const points=Array.from({length:300},(_,i)=>({x:i,y:i}));
+for(let i=1;i<=points.length;i++)channel.sendInk(makeInk("stroke_fast",points.slice(0,i)));
+channel.sendInk(makeInk("stroke_fast",points,true));
+channel.sendInk(makeInk("stroke_next",[{x:400,y:400}],true));
+await waitFor(()=>inkSocket.sent.filter(x=>x.type==="live_ink"&&x.finished).length===2);
+const packets=inkSocket.sent.filter(x=>x.type==="live_ink");
+assert.equal(packets.length,3,"300 cumulative moves must become two chunks plus the next completed stroke");
+assert.deepEqual(packets.filter(x=>x.stroke_id==="stroke_fast").flatMap(x=>x.points),points);
+assert.deepEqual(packets.map(x=>x.offset),[0,200,0]);
+const final=packets.find(x=>x.stroke_id==="stroke_fast"&&x.finished);
+inkSocket.emit({type:"ink_ack",client_id:final.client_id,stroke_id:final.stroke_id,offset:final.offset,finished:true});
+assert.ok(adapterStatuses.at(-1).includes("сервер 1"));
+inkSocket.emit({...final,client_id:"other_tab",user_id:"me",name:"Me",role:"owner",sent_at:Date.now()});
+assert.equal(adapterInk.length,1,"A second browser tab must receive the stroke even for the same account");
+channel.close();
+await Promise.resolve();
+
+// With a blocked WebSocket, lightweight revision polling still catches saved work.
+const fallbackVersions=[];
+const fallback=api.selfhostWatchDocument("board-1",()=>7,doc=>fallbackVersions.push(doc.version),()=>{});
+await new Promise(resolve=>setTimeout(resolve,0));
+env.changeDocument(8);
+await waitFor(()=>fallbackVersions.length===1);
+assert.deepEqual(fallbackVersions,[8]);
+assert.ok(records.some(x=>x.query==="?version_only=true"&&x.method==="GET"));
+const fullReads=records.filter(x=>x.path==="/api/v1/boards/board-1/document"&&x.method==="GET"&&!x.query).length;
+await new Promise(resolve=>setTimeout(resolve,2700));
+assert.equal(records.filter(x=>x.path==="/api/v1/boards/board-1/document"&&x.method==="GET"&&!x.query).length,fullReads);
+fallback();
 await Promise.resolve();
 
 await api.selfhostLogout();
