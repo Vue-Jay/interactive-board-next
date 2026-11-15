@@ -174,15 +174,23 @@ const JOIN_PREFIX = "/join/";
 const SHARE_TOKEN = /^[a-f0-9]{64}$/;
 const BOARD_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Share public production links on the main HTTPS domain, even if an older
+// tab remains open on an alias. Preserve local/test and independent installs.
+function boardLinkOrigin() {
+  const origin = window.location.origin;
+  return /^https?:\/\/(?:lektrus\.ru|www\.lektrus\.ru|lectrus\.ru|www\.lectrus\.ru|lektrus-vuejay\.msk1\.amvera\.tech)$/i.test(origin)
+    ? "https://lektrus.ru" : origin;
+}
+
 export function boardShareUrl(token: string) {
   if (!SHARE_TOKEN.test(token)) throw new Error("Некорректный токен приглашения");
-  return `${window.location.origin}${JOIN_PREFIX}${token}`;
+  return `${boardLinkOrigin()}${JOIN_PREFIX}${token}`;
 }
 
 /** A direct board URL does not grant permissions; a member or owner must sign in. */
 export function boardDirectUrl(boardId: string) {
   if (!BOARD_ID.test(boardId)) throw new Error("Некорректный идентификатор доски");
-  return `${window.location.origin}/board/${boardId}`;
+  return `${boardLinkOrigin()}/board/${boardId}`;
 }
 
 export function pendingShareToken(): string | null {

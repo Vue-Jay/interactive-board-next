@@ -104,6 +104,16 @@ jobs:
           }
           start_app
           curl -fsS http://127.0.0.1:8080/app | grep -q '/assets/'
+          # Amvera forwards the public Host to Caddy. Do not redirect the
+          # platform health probe, the canonical domain, or existing API clients.
+          curl -fsS -H 'Host: lektrus.ru' http://127.0.0.1:8080/app | grep -q '/assets/'
+          for host in www.lektrus.ru lectrus.ru www.lectrus.ru lektrus-vuejay.msk1.amvera.tech; do
+            for path in / /app '/join/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?source=invite' '/board/00000000-0000-4000-8000-000000000004?tab=1' '/confirm-email?token=example' '/tools/laboratory'; do
+              test "$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' -H "Host: $host" "http://127.0.0.1:8080$path")" = "308 https://lektrus.ru$path"
+            done
+            curl -fsS -H "Host: $host" http://127.0.0.1:8080/api/v1/health | grep -q '"ok":true'
+            curl -fsS -H "Host: $host" http://127.0.0.1:8080/sw.js | grep -q 'lektrus-shell-'
+          done
           python - <<'PY'
           import asyncio
           import websockets

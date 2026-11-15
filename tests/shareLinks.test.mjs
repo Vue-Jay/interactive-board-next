@@ -105,6 +105,19 @@ test('invitation URL grants an entry route; direct board URL requires membership
   assert.throws(() => api.boardDirectUrl('../other'), /идентификатор/);
 });
 
+test('production aliases always generate canonical HTTPS board and invitation URLs', () => {
+  for (const origin of ['https://lektrus.ru', 'http://lektrus.ru', 'https://www.lektrus.ru',
+    'https://lectrus.ru', 'https://www.lectrus.ru', 'https://lektrus-vuejay.msk1.amvera.tech']) {
+    const { window } = browser(origin + '/app');
+    const api = load('shareLinks', { window, require: () => ({}) });
+    assert.equal(api.boardShareUrl(token), 'https://lektrus.ru/join/' + token);
+    assert.equal(api.boardDirectUrl(boardId), 'https://lektrus.ru/board/' + boardId);
+  }
+  const { window } = browser('http://localhost:5173/app');
+  const api = load('shareLinks', { window, require: () => ({}) });
+  assert.equal(api.boardShareUrl(token), 'http://localhost:5173/join/' + token);
+});
+
 test('invitation copying works on HTTP LAN even without navigator.clipboard', async () => {
   let selected = false, removed = false;
   const field = { style: {}, value: '', readOnly: false,
