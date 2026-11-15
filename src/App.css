@@ -1,21 +1,53 @@
-.notice {
+.board-system-notice {
   position: absolute;
   right: 16px;
-  top: 12px;
-  z-index: 30;
-  max-width: min(420px, calc(100% - 100px));
+  top: 68px;
+  bottom: auto;
+  z-index: 1200;
+  box-sizing: border-box;
+  width: max-content;
+  height: fit-content;
+  max-width: min(380px, calc(100% - 32px));
   padding: 12px;
-  border: 1px solid #d4d5f3;
+  border: 1px solid var(--lt-line, #d4d5f3);
   border-radius: 10px;
-  background: #f2f2ff;
+  background: var(--lt-raised, #f2f2ff);
+  color: var(--lt-text, #242733);
   display: flex;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 8px;
   font-size: 13px;
+  line-height: 1.45;
+  box-shadow: 0 4px 16px #142b491a;
+  animation: board-system-notice-dismiss 240ms ease-in 2760ms both;
 }
-.notice button {
+.board-system-notice > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.board-system-notice button {
   background: none;
+  color: inherit;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
   cursor: pointer;
   align-self: start;
+}
+@keyframes board-system-notice-dismiss {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-5px); visibility: hidden; }
+}
+@media (max-width: 700px), (max-width: 1100px) and (pointer: coarse) {
+  .board-system-notice { top: auto; bottom: 72px; right: 12px; max-width: calc(100% - 24px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .board-system-notice { animation-name: board-system-notice-fade; }
+  @keyframes board-system-notice-fade { from { opacity: 1; } to { opacity: 0; visibility: hidden; } }
 }
 .edit-selected {
   position: absolute;
@@ -4318,7 +4350,6 @@ button {
   .mobile-quick-tools button{width:42px;height:42px;display:grid;place-items:center;border-radius:11px;background:transparent;color:#555966}
   .mobile-quick-tools button.active{background:#ededff;color:#5052c8}
   .zoom-controls{bottom:64px}
-  .notice{top:auto;bottom:118px;right:8px;max-width:calc(100vw - 16px)}
   .workspace{padding-bottom:env(safe-area-inset-bottom)}
 }
 @media(max-width:620px){
@@ -4370,7 +4401,7 @@ button {
 /* v78 · public presentation finish */
 .public-presentation-mode .presentation-author-only,
 .public-presentation-mode .presentation-notes,
-.public-presentation-mode .notice { display:none !important; }
+.public-presentation-mode .board-system-notice { display:none !important; }
 .public-presentation-mode .presentation-controls{
   bottom:16px;
   min-height:46px;
@@ -4637,7 +4668,6 @@ button {
   .mobile-quick-tools button{width:40px!important;height:40px!important;min-height:40px!important}
   .mobile-tools-toggle{left:8px!important;bottom:max(8px,env(safe-area-inset-bottom))!important;height:40px!important;min-height:40px!important;font-size:11px!important}
   .zoom-controls{right:8px!important;bottom:max(8px,env(safe-area-inset-bottom))!important}
-  .notice{bottom:62px!important}
 }
 
 /* In a normal browser we cannot reliably rotate the physical device ourselves.
@@ -5077,7 +5107,6 @@ option{background:#fff;color:#343741}
   .board-controls{left:70px!important;bottom:max(12px,env(safe-area-inset-bottom))!important}
   .minimap{right:12px!important;bottom:max(12px,env(safe-area-inset-bottom))!important;width:150px!important}
   .coordinates{left:70px!important;bottom:58px!important}
-  .notice{right:12px!important;top:68px!important;max-width:min(380px,calc(100vw - 90px))!important}
   .selection-actions{transform:translateX(-50%) scale(1.06)!important;transform-origin:center bottom}
   .resize-handle{width:22px!important;height:22px!important}
   .resize-handle::after{width:8px!important;height:8px!important}
@@ -5216,11 +5245,6 @@ option{background:#fff;color:#343741}
   .shape-palette button{flex:0 0 58px!important;min-width:58px!important;width:58px!important;height:48px!important}
   .shape-palette button span:last-child{font-size:8px!important}
 
-  .notice{
-    position:absolute!important;left:7px!important;right:7px!important;top:auto!important;
-    bottom:64px!important;max-width:none!important;
-    padding:9px 10px!important;border-radius:11px!important;font-size:11px!important;
-  }
   .selection-actions{bottom:calc(100% + 42px)!important;height:34px!important;padding:3px!important}
   .selection-actions button{width:30px!important;height:28px!important}
   .selection-size{font-size:9px!important}
@@ -5321,7 +5345,6 @@ option{background:#fff;color:#343741}
   .board-controls{bottom:max(5px,env(safe-area-inset-bottom))!important}
   .board-controls button{width:36px!important;min-width:36px!important;height:36px!important}
   .ink-settings,.eraser-settings,.connector-settings,.shape-palette{top:5px!important;min-height:42px!important}
-  .notice{bottom:56px!important}
   .students-header{min-height:46px!important;padding:5px 8px!important}
   .boards-content,.students-content,.assignments-content,.progress-content,.schedule-content,.materials-content,.templates-content,.notifications-content,.profile-content{padding-top:7px!important}
   .boards-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
@@ -5612,7 +5635,6 @@ option{background:#fff;color:#343741}
     scrollbar-width:none!important;
   }
   .selection-toolbar-screen::-webkit-scrollbar{display:none}
-  .notice{left:5px!important;right:5px!important;bottom:52px!important;padding:7px 9px!important}
 }
 
 @media (max-width:390px){
@@ -5717,7 +5739,6 @@ option{background:#fff;color:#343741}
   }
   .mobile-tools-toggle{z-index:84!important}
   .board-controls{z-index:84!important}
-  .notice{z-index:85!important}
 }
 
 @media(max-width:430px){
@@ -5939,12 +5960,6 @@ option{background:#fff;color:#343741}
     bottom:64px!important;
     transform:translateX(-50%)!important;
     max-width:calc(100vw - 16px)!important;
-  }
-  .notice{
-    left:64px!important;
-    right:64px!important;
-    bottom:max(12px,env(safe-area-inset-bottom))!important;
-    width:auto!important;
   }
 }
 
@@ -6567,9 +6582,6 @@ option{background:#fff;color:#343741}
   .selection-toolbar-screen{
     bottom:72px!important;
     max-width:calc(100vw - 20px)!important;
-  }
-  .notice{
-    bottom:72px!important;
   }
 }
 
@@ -7533,9 +7545,6 @@ option{background:#fff;color:#343741}
   .follow-teacher-live-dot{width:6px!important;height:6px!important;right:2px!important;top:2px!important}
 }
 
-
-/* v193 · AI insertion feedback stays above board chrome */
-.notice{z-index:1200}
 
 /* v194 · final local-stage status */
 
