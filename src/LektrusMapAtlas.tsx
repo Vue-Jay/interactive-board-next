@@ -334,7 +334,9 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   if(cameraIdleRef.current!==null){clearTimeout(cameraIdleRef.current);cameraIdleRef.current=null}
   cameraRef.current=camera;paintCamera(camera);
   setScale(camera.scale);setPosition(camera.position);
-  if(worksheetEditor&&onChange){
+  // All atlas editors promise to save the prepared viewport, not just contour worksheets.
+  // Board-local panning remains independent, so learners do not overwrite the teacher's view.
+  if(editorMode&&onChange){
    const previous=d.contourCamera;
    if(!previous||previous.regionId!==regionId||
      Math.abs(previous.scale-camera.scale)>1e-6||
@@ -375,7 +377,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  useEffect(()=>{setCityCategory(d.cityCategory??"all")},[d.cityCategory]);
  useEffect(()=>{
   const stored=d.contourCamera;
-  const camera=isWorksheet&&stored?.regionId===regionId?
+  const camera=stored?.regionId===regionId?
    {scale:stored.scale,position:stored.position}:
    atlasRegionCamera(findAtlasRegion(regionId));
   // The teacher's saved camera is replayed on the board. Only the editor may
@@ -994,8 +996,10 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   x:450+(p.x-450-cameraRef.current.position.x)/cameraRef.current.scale,
   y:225+(p.y-225-cameraRef.current.position.y)/cameraRef.current.scale
  });
- const zoomAt=(next:number,point=lastPointer.current)=>{
-  scheduleCamera(zoomAtlasCamera(cameraRef.current,next,point));
+ const zoomAt=(next:number,point=lastPointer.current,discrete=false)=>{
+  // A click on +/- followed by Save must not lose the last zoom before the idle timer fires.
+  if(discrete&&editorMode)commitCamera(zoomAtlasCamera(cameraRef.current,next,point));
+  else scheduleCamera(zoomAtlasCamera(cameraRef.current,next,point));
  };
  // All annotation pointer positions use the SVG root, never the label's
  // small bounding box. This keeps dragging correct at any atlas zoom and on
@@ -1871,9 +1875,9 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
     </svg>
     {worksheetEditor&&<canvas ref={contourInkCanvasRef} className="lektrus-contour-ink-preview" aria-hidden="true"/>}
     {!objectMoveMode&&<div className="lektrus-atlas-zoom" role="group" aria-label="Масштаб">
-     <button type="button" title="Увеличить масштаб" onClick={()=>zoomAt(cameraRef.current.scale*1.5)}>+</button>
+     <button type="button" title="Увеличить масштаб" onClick={()=>zoomAt(cameraRef.current.scale*1.5,lastPointer.current,true)}>+</button>
      <button type="button" onClick={reset} title="Вписать выбранный регион">⌖</button>
-     <button type="button" title="Уменьшить масштаб" onClick={()=>zoomAt(cameraRef.current.scale/1.5)}>−</button>
+     <button type="button" title="Уменьшить масштаб" onClick={()=>zoomAt(cameraRef.current.scale/1.5,lastPointer.current,true)}>−</button>
      <button type="button" className={(isWorksheet?contourConfig.showGrid:d.showGrid)?"active":""}
       title="Меридианы и параллели поверх карты" aria-label="Меридианы и параллели"
       aria-pressed={isWorksheet?contourConfig.showGrid:d.showGrid}

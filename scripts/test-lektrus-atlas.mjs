@@ -1048,6 +1048,9 @@ assert.equal(validAtlasDocument({...validWork,contourCamera:{...savedCamera,scal
 assert.equal(validAtlasDocument({...validWork,contourCamera:{...savedCamera,position:{x:Infinity,y:0}}}),false);
 assert.ok(map.includes('const stored=d.contourCamera'));
 assert.ok(map.includes('stored?.regionId===regionId'));
+assert.ok(map.includes('const camera=stored?.regionId===regionId?'),"Every atlas restores its prepared viewport, not only contour worksheets");
+assert.ok(map.includes('if(editorMode&&onChange){\n   const previous=d.contourCamera'),"All atlas editors persist zoom; map gestures on the board do not overwrite it");
+assert.ok(map.includes('if(discrete&&editorMode)commitCamera(zoomAtlasCamera(cameraRef.current,next,point))'),"Save directly after a zoom button click must retain the last view");
 assert.ok(map.includes('onChange({...d,contourCamera:{regionId,scale:camera.scale,position:{...camera.position}}})'));
 assert.ok(map.includes('const worksheetEditor=isWorksheet&&editorMode'));
 assert.ok(map.includes('const worksheetOnBoard=isWorksheet&&!editorMode'));
