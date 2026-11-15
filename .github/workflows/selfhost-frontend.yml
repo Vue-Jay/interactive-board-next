@@ -46,6 +46,8 @@ jobs:
         run: |
           node scripts/test-lektrus-board-role-preview.mjs
           node scripts/test-lektrus-release-browser-smoke.mjs --notice-only
+      - name: Check split-screen home layout in real Chrome
+        run: node scripts/test-lektrus-release-browser-smoke.mjs --home-only
       - name: Build the standard Lektrus application against the self-hosted backend
         env:
           VITE_LEKTRUS_BACKEND: 'selfhost'

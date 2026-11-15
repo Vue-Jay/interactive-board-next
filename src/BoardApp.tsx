@@ -1,7 +1,7 @@
 import LektrusChemistryCollectionAction from "./LektrusChemistryCollectionAction";
 import UserAvatar from "./UserAvatar";
 import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useLayoutEffect, useState, type PointerEvent as PE, type CSSProperties } from "react";
-import { boardWorldTransform, boardOverlayTransform } from "./boardPanTransform";
+import { boardWorldTransform, boardOverlayTransform, fitBoardCamera } from "./boardPanTransform";
 import { planCompositeBoardDrag, connectorDragEndpoints, paintBoardDeformedConnector, canCompositeBoardRotation, translatedBoardDragItems, paintBoardDragTranslation, clearBoardDragTranslation, paintBoardRotationPreview, clearBoardRotationPreview, type ConnectorDragTarget } from "./boardDragCompositor";
 import { canCompositeGroupRotation, rotatedGroupItems, paintGroupRotationFrame, clearGroupRotationFrame, type GroupRotationTarget } from "./boardGroupRotationCompositor";
 import { canCompositeBoardResize, paintBoardResizePreview, type ResizePreviewTarget } from "./boardResizeCompositor";
@@ -3926,16 +3926,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const fitToBounds = (bounds: Bounds | null, padding = 90) => {
-    const rect = board.current?.getBoundingClientRect();
-    if (!rect || !bounds) return;
-    const availableW = Math.max(120, rect.width - padding * 2);
-    const availableH = Math.max(120, rect.height - padding * 2);
-    const z = Math.max(0.1, Math.min(4, Math.min(availableW / Math.max(1, bounds.width), availableH / Math.max(1, bounds.height))));
-    setView({
-      zoom: z,
-      x: rect.width / 2 - (bounds.x + bounds.width / 2) * z,
-      y: rect.height / 2 - (bounds.y + bounds.height / 2) * z,
-    });
+    const surface=board.current;
+    if (!surface || !bounds) return;
+    const rect=surface.getBoundingClientRect();
+    const sidePanels=Array.from(surface.closest(".workspace")?.querySelectorAll<HTMLElement>(
+      ".toolbar.compact-toolbar,.layers-panel,.search-panel,.lectris-object-inspector")??[])
+      .filter(panel=>getComputedStyle(panel).visibility!=="hidden")
+      .map(panel=>{const r=panel.getBoundingClientRect();return {x:r.left-rect.left,y:r.top-rect.top,width:r.width,height:r.height};});
+    setView(fitBoardCamera(bounds,rect,padding,sidePanels));
   };
 
   const runBoardAssistant = async (rawPrompt: string) => {
@@ -9432,7 +9430,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           pinned={lectrisPinned} defaults={lectrisDefaultPinned}
           onChange={next=>setLectrisPinned(next.filter((id):id is Tool=>id!=="formula"&&id!=="graph"&&tools.some(t=>t.id===id)))}
           onClose={()=>setLectrisCustomizeOpen(false)}/>}
-        {isStudent&&<div className="student-board-mode" title="Можно писать и решать задания. Создание заданий доступно преподавателю.">Режим ученика</div>}
+        {isStudent&&<div className="student-board-mode" title="Можно писать и решать задания. Создание заданий доступно преподавателю.">{roleCapabilities.isGuestPreview||authUser.isGuest?"Режим гостя":"Режим ученика"}</div>}
         {!isStudent&&attachmentRequests.length>0&&(()=>{
           const request=attachmentRequests[Math.min(attachmentRequestIndex,attachmentRequests.length-1)];
           return <aside className="teacher-media-request" onPointerDown={e=>e.stopPropagation()}>

@@ -418,6 +418,11 @@ button {
   position: absolute;
   inset: 0;
   overflow: hidden;
+  /* The infinite canvas is camera-driven, not a scroll container. Focus on
+     an off-screen object/control must never scroll its coordinate origin.
+     Contain canvas z-indices below the surrounding application chrome. */
+  overflow: clip;
+  isolation: isolate;
   touch-action: none;
   user-select: none;
   background-color: #f7f7f8;
