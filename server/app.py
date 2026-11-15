@@ -514,7 +514,11 @@ async def lookup_board_sessions(pool: asyncpg.Pool, board_id: UUID, tokens,
 
 async def lookup_board_session(pool: asyncpg.Pool, board_id: UUID, token: str,
                                include_version: bool = False) -> asyncpg.Record:
-    row = (await lookup_board_sessions(pool, board_id, [token], include_version)).get(token)
+    return require_board_session(await lookup_board_sessions(pool, board_id, [token], include_version), token)
+
+
+def require_board_session(rows: dict[str, asyncpg.Record], token: str) -> asyncpg.Record:
+    row = rows.get(token)
     if row is None:
         error(401, "Сессия завершена. Войдите снова.")
     if row["role"] not in ("owner", "editor", "viewer"):
@@ -523,22 +527,28 @@ async def lookup_board_session(pool: asyncpg.Pool, board_id: UUID, token: str,
 
 
 async def broadcast_checked(board_id: UUID, event: dict[str, Any], pool: asyncpg.Pool,
-                            peers: dict[WebSocket, str], *, notify: bool = True):
+                            peers: dict[WebSocket, str], *, notify: bool = True,
+                            authorized: dict[str, asyncpg.Record] | None = None):
     if not peers:
         return
     try:
-        authorized = await lookup_board_sessions(pool, board_id, peers.values())
+        if authorized is None:
+            authorized = await lookup_board_sessions(pool, board_id, peers.values())
     except Exception:
         # Fail closed if the database is temporarily unavailable. Durable saves
         # have already committed; reconnect/version polling recovers the notice.
         logging.getLogger("lektrus.realtime").warning("Board fan-out authorization unavailable")
         return
     target = event.get("target_user_id") if event["type"] in ("focus_view", "attachment_result") else None
-    payload = json.dumps(event, ensure_ascii=False, separators=(",", ":"))
+    # Modern ink-only classrooms need only the compact representation. Use a
+    # fixed encoding choice for each socket throughout this fan-out.
+    compact_peers = ({peer for peer in peers if peer in _compact_ink_subscribers}
+                     if event["type"] == "live_ink" else set())
+    payload = (json.dumps(event, ensure_ascii=False, separators=(",", ":"))
+               if len(compact_peers) != len(peers) else "")
     compact_payload = (json.dumps({**event, "points": [[p["x"], p["y"]] for p in event["points"]]},
                                   ensure_ascii=False, separators=(",", ":"))
-                       if event["type"] == "live_ink" and any(peer in _compact_ink_subscribers for peer in peers)
-                       else payload)
+                       if compact_peers else payload)
 
     async def send(client, token):
         row = authorized.get(token)
@@ -549,7 +559,7 @@ async def broadcast_checked(board_id: UUID, event: dict[str, Any], pool: asyncpg
         if _subscribers.get(board_id, {}).get(client) != token:
             return None
         try:
-            await asyncio.wait_for(client.send_text(compact_payload if client in _compact_ink_subscribers else payload), timeout=1)
+            await asyncio.wait_for(client.send_text(compact_payload if client in compact_peers else payload), timeout=1)
             return None
         except Exception:
             return client, 1011
@@ -557,17 +567,25 @@ async def broadcast_checked(board_id: UUID, event: dict[str, Any], pool: asyncpg
     # Serialize once and deliver concurrently. One stalled browser can no longer
     # delay all of the other participants in the loop.
     results = await asyncio.gather(*(send(client, token) for client, token in peers.items()))
-    for result in results:
-        if result is None:
-            continue
-        client, code = result
-        if client not in _subscribers.get(board_id, {}):
-            continue
-        await _drop_subscriber(board_id, client, pool, notify=notify)
+    failed = [(client, code) for result in results if result is not None
+              for client, code in (result,)
+              if _subscribers.get(board_id, {}).get(client) == peers[client]]
+    if not failed:
+        return
+    # Remove all failed peers before awaiting anything. A classroom reconnect
+    # must not do one presence fan-out and one 1s close timeout per old socket.
+    leaves = _detach_subscribers(board_id, [client for client, _ in failed])
+
+    async def close_failed(client, code):
         try:
             await asyncio.wait_for(client.close(code=code), timeout=1)
         except Exception:
             pass
+
+    closing = [close_failed(client, code) for client, code in failed]
+    if notify and leaves:
+        closing.append(announce_presence(board_id, leaves=leaves, pool=pool))
+    await asyncio.gather(*closing)
 
 
 def _unique_presence(board_id: UUID) -> list[dict[str, str]]:
@@ -594,21 +612,25 @@ async def announce_presence(board_id: UUID, *, joins: list[dict[str, str]] | Non
     }, notify=False)
 
 
-async def _drop_subscriber(board_id: UUID, client: WebSocket,
-                          pool: asyncpg.Pool, notify: bool = True):
-    _subscribers.get(board_id, {}).pop(client, None)
-    _compact_ink_subscribers.discard(client)
-    _presence_watchers.get(board_id, set()).discard(client)
-    departed = _subscriber_users.get(board_id, {}).pop(client, None)
-    if departed and notify and not any(
-        meta.get("user_id") == departed.get("user_id")
-        for meta in _subscriber_users.get(board_id, {}).values()
-    ):
-        await announce_presence(board_id, leaves=[departed], pool=pool)
+def _detach_subscribers(board_id: UUID, clients) -> list[dict[str, str]]:
+    departed = {}
+    for client in clients:
+        _subscribers.get(board_id, {}).pop(client, None)
+        _compact_ink_subscribers.discard(client)
+        _presence_watchers.get(board_id, set()).discard(client)
+        meta = _subscriber_users.get(board_id, {}).pop(client, None)
+        if meta:
+            departed[meta["user_id"]] = meta
+    remaining = {meta["user_id"] for meta in _subscriber_users.get(board_id, {}).values()}
     if not _subscribers.get(board_id):
         _subscribers.pop(board_id, None)
         _subscriber_users.pop(board_id, None)
         _presence_watchers.pop(board_id, None)
+    if not _presence_watchers.get(board_id):
+        _presence_watchers.pop(board_id, None)
+    if not _subscriber_users.get(board_id):
+        _subscriber_users.pop(board_id, None)
+    return [meta for user_id, meta in departed.items() if user_id not in remaining]
 
 
 async def announce(board_id: UUID, version: int, pool: asyncpg.Pool):
@@ -632,6 +654,22 @@ async def relay_live_event(board_id: UUID, sender: WebSocket,
     await broadcast_checked(board_id, event, pool, {
         peer: token for peer, token in _subscribers.get(board_id, {}).items() if peer is not sender
     })
+
+
+# These frames need no additional asynchronous validation between checking
+# permissions and starting peer delivery. Target/pilot events still perform
+# their separate database checks and use a fresh recipient lookup afterwards.
+INLINE_RELAY_TYPES = ("cursor", "live_ink", "work_state", "editor_mutation",
+                      "object_transform", "teacher_view", "guided_follow", "attachment_request")
+
+
+async def authorize_live_frame(pool, board_id, sender, token, kind):
+    if kind in INLINE_RELAY_TYPES:
+        peers = {peer: peer_token for peer, peer_token in _subscribers.get(board_id, {}).items()
+                 if peer is not sender}
+        rows = await lookup_board_sessions(pool, board_id, [token, *peers.values()])
+        return require_board_session(rows, token), peers, rows
+    return await lookup_board_session(pool, board_id, token, include_version=kind == "ping"), None, None
 
 
 def validate_document_shape(document: dict):
@@ -917,8 +955,8 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                 if not isinstance(message, dict):
                     await websocket.send_json({"type": "event_error", "reason": "invalid_frame"})
                     continue
-                refreshed_user = await lookup_board_session(
-                    websocket.app.state.pool, board_id, token, include_version=message.get("type") == "ping"
+                refreshed_user, checked_peers, checked_rows = await authorize_live_frame(
+                    websocket.app.state.pool, board_id, websocket, token, message.get("type")
                 )
                 current_role = refreshed_user["role"]
                 if message.get("type") == "ping":
@@ -987,9 +1025,11 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                             "type": "event_error", "reason": "stale_object"
                         })
                         continue
-                await relay_live_event(
-                    board_id, websocket, event, websocket.app.state.pool
-                )
+                if checked_peers is not None:
+                    await broadcast_checked(board_id, event, websocket.app.state.pool,
+                                            checked_peers, authorized=checked_rows)
+                else:
+                    await relay_live_event(board_id, websocket, event, websocket.app.state.pool)
                 if event["type"] == "live_ink":
                     # An ack confirms delivery to the server's relay, not that
                     # the stroke is saved in the durable board document.
@@ -1007,30 +1047,9 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         except Exception:
             pass
     finally:
-        _compact_ink_subscribers.discard(websocket)
-        clients = _subscribers.get(board_id)
-        users = _subscriber_users.get(board_id)
-        departed = users.pop(websocket, None) if users is not None else None
-        watchers = _presence_watchers.get(board_id)
-        if watchers is not None:
-            watchers.discard(websocket)
-            if not watchers:
-                _presence_watchers.pop(board_id, None)
-        if clients is not None:
-            clients.pop(websocket, None)
-            if not clients:
-                _subscribers.pop(board_id, None)
-        if users is not None and not users:
-            _subscriber_users.pop(board_id, None)
-        if departed and not any(
-            meta.get("user_id") == departed.get("user_id")
-            for meta in _subscriber_users.get(board_id, {}).values()
-        ):
-            await announce_presence(board_id, leaves=[departed],
-                                    pool=websocket.app.state.pool)
-        if not _subscribers.get(board_id):
-            _subscriber_users.pop(board_id, None)
-            _presence_watchers.pop(board_id, None)
+        leaves = _detach_subscribers(board_id, [websocket])
+        if leaves:
+            await announce_presence(board_id, leaves=leaves, pool=websocket.app.state.pool)
 
 # Asset endpoints reuse the same server-authoritative session and board access
 # checks; nothing under the private upload directory is served by Caddy.

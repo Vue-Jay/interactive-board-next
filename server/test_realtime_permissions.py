@@ -5,8 +5,9 @@ from uuid import UUID
 
 import pytest
 
-from app import app, _subscribers, _compact_ink_subscribers, announce, relay_live_event, lookup_board_sessions
-from test_api import TEACHER, STUDENT, client, sign_in
+from app import (app, _subscribers, _compact_ink_subscribers, _subscriber_users, _presence_watchers,
+                 announce, relay_live_event, lookup_board_sessions, authorize_live_frame)
+from test_api import TEACHER, STUDENT, OUTSIDER, client, sign_in
 
 
 class FakeWebSocket:
@@ -148,3 +149,64 @@ async def test_ink_fanout_preserves_old_clients_and_compacts_new_clients(client)
     finally:
         _compact_ink_subscribers.discard(compact)
         _subscribers.pop(board_id,None)
+
+
+@pytest.mark.asyncio
+async def test_revoked_classroom_sockets_close_concurrently_and_emit_one_presence_diff(client):
+    owner_session, owner = await sign_in(client, "teacher@example.test")
+    student_session, _ = await sign_in(client, "student@example.test")
+    outsider_session, _ = await sign_in(client, "outsider@example.test")
+    board_id = UUID((await client.post("/api/v1/boards",headers=owner,json={"title":"Reconnect"})).json()["id"])
+    async with app.state.pool.acquire() as conn:
+        await conn.executemany("INSERT INTO board_members(board_id,user_id,role) VALUES($1,$2,'viewer')",
+                               [(board_id, STUDENT), (board_id, OUTSIDER)])
+    gate = asyncio.Event()
+    started = set()
+
+    class DelayedClose(FakeWebSocket):
+        async def close(self, code=1000):
+            started.add(self)
+            await gate.wait()
+            await super().close(code)
+
+    keeper = FakeWebSocket()
+    removed = [DelayedClose() for _ in range(12)]
+    _subscribers[board_id][keeper] = owner_session["access_token"]
+    _subscriber_users[board_id][keeper] = {"user_id":str(TEACHER),"name":"Owner","role":"owner"}
+    _presence_watchers[board_id].add(keeper)
+    for i, ws in enumerate(removed):
+        token, uid = ((student_session["access_token"], STUDENT) if i < 8
+                      else (outsider_session["access_token"], OUTSIDER))
+        _subscribers[board_id][ws] = token
+        _subscriber_users[board_id][ws] = {"user_id":str(uid),"name":"Viewer","role":"viewer"}
+        _presence_watchers[board_id].add(ws)
+        _compact_ink_subscribers.add(ws)
+    try:
+        async with app.state.pool.acquire() as conn:
+            await conn.execute("DELETE FROM board_members WHERE board_id=$1",board_id)
+        from fastapi import HTTPException
+        with pytest.raises(HTTPException) as denied:
+            await authorize_live_frame(app.state.pool,board_id,removed[0],student_session["access_token"],"cursor")
+        assert denied.value.status_code == 404
+        task = asyncio.create_task(announce(board_id,2,app.state.pool))
+        try:
+            for _ in range(50):
+                if len(started) == len(removed):
+                    break
+                await asyncio.sleep(.01)
+            assert started == set(removed), "Socket close timeouts must overlap"
+            assert set(_subscribers[board_id]) == {keeper}
+            assert set(removed).isdisjoint(_compact_ink_subscribers)
+        finally:
+            gate.set()
+            await asyncio.wait_for(task,3)
+        assert all(ws.closed_codes == [4403] and not ws.messages for ws in removed)
+        assert keeper.messages[0] == {"type":"document_changed","version":2}
+        assert len(keeper.messages) == 2
+        assert {meta["user_id"] for meta in keeper.messages[1]["leaves"]} == {str(STUDENT),str(OUTSIDER)}
+        assert len(keeper.messages[1]["leaves"]) == 2
+    finally:
+        _subscribers.pop(board_id,None)
+        _subscriber_users.pop(board_id,None)
+        _presence_watchers.pop(board_id,None)
+        _compact_ink_subscribers.difference_update(removed)
