@@ -190,10 +190,10 @@ export async function selfhostLogout():Promise<void>{
   try{await rawRequest("/api/v1/auth/logout",{method:"POST"},session.access_token)}
   catch{/* Clearing the local session is unconditional. */}
 }
-export async function selfhostRequest<T>(path:string,init:RequestInit={}):Promise<T>{
+export async function selfhostRequest<T>(path:string,init:RequestInit={},timeoutMs=TIMEOUT_MS):Promise<T>{
   let session=await selfhostSession();
   if(!session)throw new SelfhostHttpError(401,"Сессия завершена. Войдите в Lektrus заново.");
-  let response=await rawRequest(path,init,session.access_token);
+  let response=await rawRequest(path,init,session.access_token,timeoutMs);
   if(response.status===401){
     const snapshot=loadSession();
     if(!snapshot||snapshot.user.id!==session.user.id)
@@ -201,7 +201,7 @@ export async function selfhostRequest<T>(path:string,init:RequestInit={}):Promis
     if(!refreshInFlight)refreshInFlight=refreshSession(snapshot).finally(()=>{refreshInFlight=null});
     session=await refreshInFlight;
     if(!session)throw new SelfhostHttpError(401,"Сессия завершена. Войдите снова.");
-    response=await rawRequest(path,init,session.access_token);
+    response=await rawRequest(path,init,session.access_token,timeoutMs);
   }
   if(!response.ok)throw await responseError(response);
   if(response.status===204)return undefined as T;
@@ -567,6 +567,10 @@ export const selfhostReplyToFeedback=(id:string,requestId:string,message:string)
   `/api/v1/admin/feedback/${encodeURIComponent(id)}/reply`,{method:"POST",body:JSON.stringify({request_id:requestId,message})});
 export const selfhostRetryFeedbackMail=(id:string)=>selfhostRequest<{ok:boolean}>(
   `/api/v1/admin/feedback-mail/${encodeURIComponent(id)}/retry`,{method:"POST"});
+export type SelfhostTestMailKind="confirmation"|"password_reset"|"notification"|"reply";
+export type SelfhostTestMailResult={email:string;results:Array<{kind:SelfhostTestMailKind;status:"sent"|"failed"}>};
+export const selfhostSendTestMail=(email:string,kinds:SelfhostTestMailKind[])=>selfhostRequest<SelfhostTestMailResult>(
+  "/api/v1/admin/feedback-mail/test",{method:"POST",body:JSON.stringify({email,kinds})},70000);
 
 export async function selfhostSignup(input:{
   email:string;password:string;name:string;first_name:string;last_name:string;

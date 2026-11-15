@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 
 from assets import assets_root, file_path
 from materials import material_path
-from feedback_mail import feedback_email_address
+from feedback_mail import feedback_email_address, send_test_emails
 
 
 def require_admin(user):
@@ -61,6 +61,17 @@ class FeedbackStatusInput(BaseModel):
 class FeedbackReplyInput(BaseModel):
     request_id: UUID
     message: str = Field(min_length=1, max_length=8000)
+
+
+class TestMailInput(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    kinds: list[Literal["confirmation", "password_reset", "notification", "reply"]] = Field(min_length=1, max_length=4)
+
+
+# Bound test traffic without preventing administrators from checking templates
+# individually. One batch at a time, at most twelve messages per minute.
+_test_mail_attempts: deque[float] = deque()
+_test_mail_active = False
 
 
 _feedback_attempts: dict[str, deque[float]] = {}
@@ -440,6 +451,26 @@ def make_admin_router(current_user) -> APIRouter:
                 FROM feedback_mail m JOIN product_feedback f ON f.id=m.feedback_id
                 WHERE m.kind='reply' ORDER BY m.created_at DESC LIMIT 200""")
         return [dict(row) for row in rows]
+
+    @router.post("/api/v1/admin/feedback-mail/test")
+    async def test_mail(data: TestMailInput, user=Depends(current_user)):
+        require_admin(user)
+        email = feedback_email_address(data.email)
+        global _test_mail_active
+        now = time.monotonic()
+        kinds = list(dict.fromkeys(data.kinds))
+        if _test_mail_active:
+            raise HTTPException(429, "Дождитесь завершения предыдущей отправки.")
+        while _test_mail_attempts and _test_mail_attempts[0] <= now - 60:
+            _test_mail_attempts.popleft()
+        if len(_test_mail_attempts) + len(kinds) > 12:
+            raise HTTPException(429, "Достигнут лимит тестовых писем. Повторите через минуту.")
+        _test_mail_attempts.extend([now] * len(kinds))
+        _test_mail_active = True
+        try:
+            return {"email": email, "results": await send_test_emails(email, kinds)}
+        finally:
+            _test_mail_active = False
 
     @router.post("/api/v1/admin/feedback/{feedback_id}/reply", status_code=202)
     async def reply_feedback(feedback_id: UUID,data: FeedbackReplyInput,request: Request,user=Depends(current_user)):

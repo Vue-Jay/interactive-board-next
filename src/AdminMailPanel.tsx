@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
 import {feedbackMailEnabled,listFeedbackMail,listProductFeedback,replyToFeedback,retryFeedbackMail,updateProductFeedbackStatus,type ProductFeedback,type ProductFeedbackMail,type ProductFeedbackStatus} from "./productFeedbackStore";
 import type {SelfhostMailStatus} from "./selfhostApi";
+import AdminTestMail from "./AdminTestMail";
 
 const formatDate=(date:string)=>new Date(date).toLocaleString("ru-RU",{dateStyle:"short",timeStyle:"short"});
 const statusLabels:Record<SelfhostMailStatus,string>={pending:"В очереди",sending:"Отправляется",sent:"Отправлено",failed:"Ошибка доставки"};
@@ -29,6 +30,7 @@ export default function AdminMailPanel({onUnread}:{onUnread:(count:number)=>void
  const unread=inbox.filter(x=>x.status==="new").length;
  return <section className="admin-mail" aria-label="Почта администратора">
   <div className="admin-users-toolbar"><div><h2>Почта</h2><span>Обращения с сайта и приложения, ответы пользователям и доставка писем.</span></div><button className="boards-secondary" disabled={busy} onClick={()=>void load()}>Обновить почту</button></div>
+  {enabled&&<AdminTestMail/>}
   <div className="admin-mail-toolbar"><nav className="admin-tabs" aria-label="Папки почты"><button className={incoming?"active":""} onClick={()=>switchFolder("inbox")}>Входящие <span>{unread||inbox.length}</span></button><button className={!incoming?"active":""} onClick={()=>switchFolder("outbox")}>Исходящие <span>{outbox.length}</span></button></nav><input type="search" aria-label="Поиск писем" placeholder="Поиск по письмам" value={query} onChange={e=>setQuery(e.target.value)}/><select aria-label="Статус писем" value={filter} onChange={e=>setFilter(e.target.value)}><option value="all">Все статусы</option>{Object.entries(incoming?feedbackLabels:statusLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></div>
   {notice&&<div className="access-notice" role="status">{notice}</div>}
   {!enabled&&<div className="access-notice">Отправка писем доступна на сервере Lektrus.</div>}

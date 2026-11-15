@@ -934,6 +934,28 @@ html body select:not([multiple]) option{background:var(--lt-surface,#fff);color:
 .lectris-workspace-stage .admin-user-settings[open]{grid-column:1/-1;border-top:1px solid var(--lt-line);padding-top:9px}
 .lectris-workspace-stage .admin-user-settings .admin-user-grant{grid-template-columns:minmax(120px,1fr) minmax(130px,1fr) auto auto;gap:10px!important}
 .lectris-workspace-stage .admin-mail-toolbar>.admin-tabs{display:flex;gap:4px;margin:0;padding:3px;border:1px solid var(--lt-line);border-radius:11px;background:var(--lt-surface)}
+.lectris-workspace-stage .admin-test-mail{border:1px solid var(--lt-line);border-radius:13px;background:var(--lt-surface);margin:0 0 14px;padding:13px 16px}
+.lectris-workspace-stage .admin-test-mail>summary{cursor:pointer;color:var(--lt-text);font-weight:700;font-size:14px}
+.lectris-workspace-stage .admin-test-mail>summary small{font-weight:400;margin-left:12px;color:var(--lt-muted);font-size:12px}
+.lectris-workspace-stage .admin-test-mail form{display:grid;gap:14px;margin-top:15px;padding-top:14px;border-top:1px solid var(--lt-line)}
+.lectris-workspace-stage .admin-test-mail form>p{margin:0;font-size:13px;color:var(--lt-muted);line-height:1.5}
+.lectris-workspace-stage .admin-test-mail-address{display:grid;gap:6px;font-size:13px;font-weight:650}
+.lectris-workspace-stage .admin-test-mail-address input{width:min(100%,440px);min-height:40px;box-sizing:border-box;border:1px solid var(--lt-line);border-radius:9px;padding:10px 12px;background:var(--lt-raised);color:var(--lt-text);font:inherit}
+.lectris-workspace-stage .admin-test-mail fieldset{padding:0;margin:0;border:0;min-width:0}
+.lectris-workspace-stage .admin-test-mail legend{font-size:13px;font-weight:700;margin-bottom:9px}
+.lectris-workspace-stage .admin-test-mail legend span{margin-left:9px;color:var(--lt-muted);font-weight:500}
+.lectris-workspace-stage .admin-test-mail-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.lectris-workspace-stage .admin-test-mail-options label{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--lt-line);border-radius:10px;cursor:pointer;background:var(--lt-surface)}
+.lectris-workspace-stage .admin-test-mail-options label.selected{background:var(--lt-selected);border-color:var(--lt-primary)}
+.lectris-workspace-stage .admin-test-mail-options input{width:17px;height:17px;flex-shrink:0;accent-color:var(--lt-primary)}
+.lectris-workspace-stage .admin-test-mail-options label>span{min-width:0;display:grid;gap:4px}
+.lectris-workspace-stage .admin-test-mail-options strong{font-size:13px;line-height:1.35}
+.lectris-workspace-stage .admin-test-mail-selection,.lectris-workspace-stage .admin-test-mail-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lectris-workspace-stage .admin-test-mail-selection{margin-top:9px}
+.lectris-workspace-stage .admin-test-mail-actions{justify-content:space-between}
+.lectris-workspace-stage .admin-test-mail-result{display:grid;gap:9px;background:var(--lt-subtle);border:1px solid var(--lt-line);border-radius:10px;padding:13px;font-size:13px;overflow-wrap:anywhere}
+.lectris-workspace-stage .admin-test-mail-result>div{display:flex;justify-content:space-between;align-items:center;gap:8px}
+@media(max-width:600px){.lectris-workspace-stage .admin-test-mail-options{grid-template-columns:minmax(0,1fr)}.lectris-workspace-stage .admin-test-mail>summary small{display:block;margin:5px 0 0 17px}.lectris-workspace-stage .admin-test-mail-actions>.students-primary{width:100%}}
 .lectris-workspace-stage .admin-mail-layout{display:grid;grid-template-columns:minmax(250px,.8fr) minmax(0,1.65fr);gap:14px;align-items:start}
 .lectris-workspace-stage :is(.admin-mail-list,.admin-mail-detail){min-width:0;border:1px solid var(--lt-line);border-radius:15px;background:var(--lt-surface)}
 .lectris-workspace-stage .admin-mail-list{display:grid;gap:0;overflow:hidden;max-height:70vh;overflow-y:auto}

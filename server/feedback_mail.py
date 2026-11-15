@@ -5,6 +5,7 @@ import asyncio
 from datetime import datetime, timezone
 from email.message import EmailMessage
 from email.utils import formataddr, format_datetime
+from uuid import uuid4
 import logging
 import os
 import smtplib
@@ -12,7 +13,7 @@ import ssl
 
 from invitations import normalize_email
 from mail_templates import branded_email
-from registration import server_mail_config
+from registration import build_account_email, server_mail_config
 from fastapi import HTTPException
 
 log = logging.getLogger(__name__)
@@ -67,6 +68,60 @@ async def send_feedback_email(row):
                 smtp.login(username, password)
                 smtp.send_message(message)
     await asyncio.wait_for(asyncio.to_thread(send), timeout=20)
+
+
+def build_test_emails(recipient: str, sender: str, origin: str):
+    """Use the exact production builders, with harmless sample data and links."""
+    recipient = feedback_email_address(recipient)
+    samples = [
+        ("confirmation", build_account_email(recipient, origin + "/app", sender, reset=False)),
+        ("password_reset", build_account_email(recipient, origin + "/app", sender, reset=True)),
+        ("notification", build_feedback_email({
+            "id": uuid4(), "kind": "notification", "recipient": recipient,
+            "subject": "Новое обращение: Предложение",
+            "body": "Имя: Тестовый пользователь\nEmail: example@example.test\nИсточник: приложение\n\nЗдравствуйте! Было бы удобно сохранять собственные шаблоны заданий для уроков.",
+        }, sender, origin)),
+        ("reply", build_feedback_email({
+            "id": uuid4(), "kind": "reply", "recipient": recipient,
+            "subject": "Ответ Lektrus: Предложение",
+            "body": "Здравствуйте!\n\nСпасибо за ваше предложение. Мы рассмотрим возможность добавления пользовательских шаблонов в будущих обновлениях.\n\nХорошего дня!",
+        }, sender, origin)),
+    ]
+    for _, message in samples:
+        message.replace_header("Subject", "[ТЕСТ] " + message["Subject"])
+    return samples
+
+
+async def send_test_emails(recipient: str, kinds: list[str]):
+    """Send selected samples in one SMTP session without creating accounts or feedback."""
+    host, port, username, password, sender, origin = server_mail_config()
+    messages = [(kind, msg) for kind, msg in build_test_emails(recipient, sender, origin) if kind in kinds]
+    def send():
+        context = ssl.create_default_context()
+        results = [{"kind": kind, "status": "failed"} for kind, _ in messages]
+        try:
+            connection = (smtplib.SMTP_SSL(host, port, timeout=10, context=context)
+                          if port == 465 else smtplib.SMTP(host, port, timeout=10))
+            with connection as smtp:
+                if port != 465:
+                    smtp.ehlo()
+                    smtp.starttls(context=context)
+                    smtp.ehlo()
+                smtp.login(username, password)
+                for index, (_, message) in enumerate(messages):
+                    try:
+                        refused = smtp.send_message(message)
+                        if not refused:
+                            results[index]["status"] = "sent"
+                    except Exception as exc:
+                        log.warning("Test mail submission failed (%s)", type(exc).__name__)
+        except Exception as exc:
+            log.warning("Test mail session failed (%s)", type(exc).__name__)
+        return results
+    try:
+        return await asyncio.wait_for(asyncio.to_thread(send), timeout=60)
+    except TimeoutError:
+        raise HTTPException(504, "Не удалось подтвердить результат отправки. Проверьте почту перед повторной попыткой.")
 
 
 async def deliver_one(pool) -> bool:
