@@ -8,6 +8,61 @@ import pytest
 from app import app
 from test_api import TEACHER, STUDENT, OUTSIDER, client, sign_in
 import feedback_mail
+import admin as admin_module
+
+
+@pytest.mark.asyncio
+async def test_admin_sends_only_selected_mail_templates(client, monkeypatch):
+    """Real builders and an SMTP stub: never create live accounts or send live mail."""
+    monkeypatch.setattr(admin_module, "_test_mail_attempts", admin_module.deque())
+    monkeypatch.setattr(admin_module, "_test_mail_active", False)
+    monkeypatch.setattr(feedback_mail, "server_mail_config", lambda: (
+        "smtp.example.test", 465, "system", "test-password", "system@example.test", "https://lektrus.example"))
+    sent = []
+    sessions = []
+    class DummySMTP:
+        def __init__(self, host, port, **kwargs):
+            assert (host,port)==("smtp.example.test",465)
+            sessions.append(self)
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def login(self, username, password): assert (username,password)==("system","test-password")
+        def send_message(self, msg):
+            sent.append(msg)
+            if "Ответ Lektrus" in msg["Subject"]:
+                raise OSError("test refusal")
+            return {}
+    monkeypatch.setattr(feedback_mail.smtplib, "SMTP_SSL", DummySMTP)
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET is_admin=true WHERE id=$1", TEACHER)
+    _, admin = await sign_in(client, "teacher@example.test")
+    _, student = await sign_in(client, "student@example.test")
+    url = "/api/v1/admin/feedback-mail/test"
+    payload = {"email":"recipient@example.test","kinds":["confirmation","reply"]}
+    assert (await client.post(url,json=payload)).status_code == 401
+    assert (await client.post(url,json=payload,headers=student)).status_code == 403
+    for invalid in ({"email":"invalid","kinds":["confirmation"]},{**payload,"kinds":[]},{**payload,"kinds":["unknown"]},{**payload,"email":"a@example.test,b@example.test"}):
+        assert (await client.post(url,json=invalid,headers=admin)).status_code == 422
+    response = await client.post(url,json=payload,headers=admin)
+    assert response.status_code == 200, response.text
+    assert response.json() == {"email":"recipient@example.test","results":[
+        {"kind":"confirmation","status":"sent"},{"kind":"reply","status":"failed"}]}
+    assert len(sessions)==1 and len(sent)==2
+    for message in sent:
+        assert message["To"]=="recipient@example.test"
+        assert str(message["Subject"]).startswith("[ТЕСТ] ")
+        html = message.get_body(preferencelist=("html",)).get_content()
+        assert 'bgcolor="#173961"' in html
+        assert "token=" not in html and "password-reset=" not in html
+    all_kinds = ["confirmation","password_reset","notification","reply"]
+    for _ in range(2):
+        result = await client.post(url,json={**payload,"kinds":all_kinds},headers=admin)
+        assert result.status_code == 200 and len(result.json()["results"])==4
+    assert (await client.post(url,json={**payload,"kinds":all_kinds},headers=admin)).status_code == 429
+    async with app.state.pool.acquire() as conn:
+        assert await conn.fetchval("SELECT count(*) FROM account_users WHERE email='recipient@example.test'")==0
+        assert await conn.fetchval("SELECT count(*) FROM product_feedback")==0
+        assert await conn.fetchval("SELECT count(*) FROM feedback_mail")==0
 
 
 @pytest.mark.asyncio

@@ -70,6 +70,11 @@ async function loadSelfhost(enabled) {
       assert.deepEqual(JSON.parse(options.body),{email:"student@example.test"});
       return ok({ok:true,files_pending:0});
     }
+    if(u.pathname==="/api/v1/admin/feedback-mail/test"&&options.method==="POST"){
+      const body=JSON.parse(options.body);
+      assert.deepEqual(body,{email:"recipient@example.test",kinds:["password_reset","reply"]});
+      return ok({email:body.email,results:[{kind:"password_reset",status:"sent"},{kind:"reply",status:"failed"}]});
+    }
     if(u.pathname==="/api/v1/auth/logout")return new Response(null,{status:200});
     if(u.pathname==="/api/v1/boards"&&options.method==="POST"){
       const body=JSON.parse(options.body);
@@ -337,6 +342,9 @@ storage.set("lektrus.selfhost.session.v1",JSON.stringify(expired));
 assert.equal((await api.selfhostSession()).access_token,"token-refreshed");
 assert.equal((await api.selfhostAdminDeleteUser("student-1","student@example.test")).ok,true);
 assert.ok(records.some(x=>x.path==="/api/v1/admin/users/student-1"&&x.method==="DELETE"&&x.bearer==="Bearer token-refreshed"&&x.body.email==="student@example.test"));
+const testMail=await api.selfhostSendTestMail("recipient@example.test",["password_reset","reply"]);
+assert.deepEqual(testMail.results.map(x=>x.status),["sent","failed"]);
+assert.ok(records.some(x=>x.path==="/api/v1/admin/feedback-mail/test"&&x.method==="POST"&&x.bearer==="Bearer token-refreshed"));
 assert.equal(env.refreshCount(),1);
 assert.equal((await api.selfhostStudents())[0].user_id,"student-1");
 await api.selfhostSaveStudentProfile("student-1",{note:"Новая заметка"});
