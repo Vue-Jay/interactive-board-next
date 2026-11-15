@@ -162,26 +162,68 @@ export async function selfhostGuestLogin(name:string,token:string,password?:stri
   return session;
 }
 async function refreshSession(snapshot:SelfhostSession):Promise<SelfhostSession|null>{
+  const current=loadSession();
+  if(!current||current.user.id!==snapshot.user.id)return null;
+  // Another tab may have rotated the token while this request was waiting.
+  if(current.refresh_token!==snapshot.refresh_token)return current;
   const response=await rawRequest("/api/v1/auth/refresh",{
     method:"POST",body:JSON.stringify({refresh_token:snapshot.refresh_token}),
   });
   if(!response.ok){
-    if([400,401].includes(response.status)){
-      if(loadSession()?.refresh_token===snapshot.refresh_token)saveSession(null);
+    if(response.status===401){
+      // Older clients and browsers without Web Locks may still race a rotation.
+      // Allow the winning tab to persist its token before clearing a rejected one.
+      await new Promise(resolve=>setTimeout(resolve,1000));
+      const latest=loadSession();
+      if(latest?.user.id!==snapshot.user.id)return null;
+      if(latest.refresh_token!==snapshot.refresh_token)return latest;
+      saveSession(null);
       return null;
     }
     throw await responseError(response);
   }
   const next=normalizeSession(await response.json());
-  if(loadSession()?.refresh_token!==snapshot.refresh_token)return null;
+  const latest=loadSession();
+  if(latest?.user.id!==snapshot.user.id)return null;
+  if(latest.refresh_token!==snapshot.refresh_token)return latest;
   saveSession(next);
   return next;
+}
+async function refreshAcrossTabs(snapshot:SelfhostSession):Promise<SelfhostSession|null>{
+  const locks=typeof navigator!=="undefined"?navigator.locks:undefined;
+  if(!locks)return refreshSession(snapshot);
+  let entered=false;
+  try{
+    return await locks.request("lektrus.selfhost.refresh.v1",()=>{
+      entered=true;
+      return refreshSession(snapshot);
+    });
+  }catch(error){
+    // Some native WebViews expose the API but deny locking. Never retry a
+    // refresh that actually ran, since valid refresh tokens are single-use.
+    if(entered)throw error;
+    return refreshSession(snapshot);
+  }
+}
+function sharedRefresh(snapshot:SelfhostSession):Promise<SelfhostSession|null>{
+  if(refreshInFlight)return refreshInFlight;
+  const request=refreshAcrossTabs(snapshot).finally(()=>{
+    if(refreshInFlight===request)refreshInFlight=null;
+  });
+  refreshInFlight=request;
+  return request;
+}
+function refreshAfterUnauthorized(session:SelfhostSession):Promise<SelfhostSession|null>{
+  const current=loadSession();
+  if(!current||current.user.id!==session.user.id)
+    throw new SelfhostHttpError(401,"Аккаунт изменился.");
+  // A delayed 401 for an old access token must not rotate a fresh token again.
+  return current.access_token!==session.access_token?Promise.resolve(current):sharedRefresh(current);
 }
 export async function selfhostSession():Promise<SelfhostSession|null>{
   const session=loadSession();if(!session)return null;
   if(session.expires_at>Math.floor(Date.now()/1000)+60)return session;
-  if(!refreshInFlight)refreshInFlight=refreshSession(session).finally(()=>{refreshInFlight=null});
-  return refreshInFlight;
+  return sharedRefresh(session);
 }
 export async function selfhostLogout():Promise<void>{
   const session=loadSession();
@@ -195,11 +237,7 @@ export async function selfhostRequest<T>(path:string,init:RequestInit={},timeout
   if(!session)throw new SelfhostHttpError(401,"Сессия завершена. Войдите в Lektrus заново.");
   let response=await rawRequest(path,init,session.access_token,timeoutMs);
   if(response.status===401){
-    const snapshot=loadSession();
-    if(!snapshot||snapshot.user.id!==session.user.id)
-      throw new SelfhostHttpError(401,"Аккаунт изменился.");
-    if(!refreshInFlight)refreshInFlight=refreshSession(snapshot).finally(()=>{refreshInFlight=null});
-    session=await refreshInFlight;
+    session=await refreshAfterUnauthorized(session);
     if(!session)throw new SelfhostHttpError(401,"Сессия завершена. Войдите снова.");
     response=await rawRequest(path,init,session.access_token,timeoutMs);
   }
@@ -251,11 +289,7 @@ async function selfhostAssetRequest(path:string,init:RequestInit,timeoutMs=TIMEO
   if(!session)throw new SelfhostHttpError(401,"Сессия завершена. Войдите в Lektrus заново.");
   let response=await rawRequest(path,init,session.access_token,timeoutMs);
   if(response.status===401){
-    const snapshot=loadSession();
-    if(!snapshot||snapshot.user.id!==session.user.id)
-      throw new SelfhostHttpError(401,"Аккаунт изменился.");
-    if(!refreshInFlight)refreshInFlight=refreshSession(snapshot).finally(()=>{refreshInFlight=null});
-    session=await refreshInFlight;
+    session=await refreshAfterUnauthorized(session);
     if(!session)throw new SelfhostHttpError(401,"Сессия завершена. Войдите снова.");
     response=await rawRequest(path,init,session.access_token,timeoutMs);
   }
@@ -495,7 +529,7 @@ export const selfhostClaimInvitations=()=>selfhostRequest<{claimed:number}>(
 export async function selfhostMe():Promise<SelfhostUser>{
   const user=await selfhostRequest<SelfhostUser>("/api/v1/auth/me");
   const current=loadSession();
-  if(current)saveSession({...current,user});
+  if(current?.user.id===user.id)saveSession({...current,user});
   return user;
 }
 export const selfhostRequestTeacherAccess=(application:{

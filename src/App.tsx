@@ -179,7 +179,25 @@ export default function App() {
 
   useEffect(() => {
     let alive = true;
+    let authRetryTimer:number|undefined;
     let confirmationListener:{remove:()=>Promise<void>}|null=null;
+    const retrySession=(userId:string,attempt=0)=>{
+      authRetryTimer=window.setTimeout(async()=>{
+        if(!alive)return;
+        const cached=getCachedCurrentUser();
+        if(cached?.id!==userId){
+          if(!cached)setAuthUser(current=>current?.id===userId?null:current);
+          return;
+        }
+        try{
+          const user=await getCurrentUser();
+          // Do not remount a board that may already have recovered meanwhile.
+          if(alive&&!user)setAuthUser(current=>current?.id===userId?null:current);
+        }catch{
+          if(alive&&attempt<4&&getCachedCurrentUser()?.id===userId)retrySession(userId,attempt+1);
+        }
+      },Math.min(1000*2**attempt,15000));
+    };
     const processConfirmation=async(callbackUrl:string)=>{
       try{
         const confirmedUser=await completeEmailConfirmation(callbackUrl);
@@ -213,8 +231,16 @@ export default function App() {
       if(alive)setAuthUser(user);
       if(alive)setAuthReady(true);
     };
-    void initialize().catch(error=>{console.warn("Lektrus authentication initialization failed",error);if(alive){setAuthUser(null);setAuthReady(true)}});
-    return () => {alive=false;void confirmationListener?.remove()};
+    void initialize().catch(error=>{
+      console.warn("Lektrus authentication initialization failed",error);
+      if(!alive)return;
+      // A network/5xx error is not the same as an expired or revoked session.
+      // Keep the existing identity; protected API calls still require a valid token.
+      const cached=isSelfhostBackendEnabled()?getCachedCurrentUser():null;
+      setAuthUser(cached);setAuthReady(true);
+      if(cached)retrySession(cached.id);
+    });
+    return () => {alive=false;if(authRetryTimer!==undefined)window.clearTimeout(authRetryTimer);void confirmationListener?.remove()};
   }, [navigate]);
 
   // Load the administrator-published interface design for every signed-in
