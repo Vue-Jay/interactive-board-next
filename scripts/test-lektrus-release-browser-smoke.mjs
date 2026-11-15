@@ -154,6 +154,7 @@ try{
  // A fresh profile zooms with the wheel; the alternate mode and reset must
  // work immediately, and the selected mode is kept across reloads.
  const openControls=async()=>{
+  await wait('!!document.querySelector(".lectris-layout-picker summary")',"Board settings menu not ready");
   await click('.lectris-layout-picker summary');
   await click('.lectris-interface-settings-entry');
   await wait('!!document.querySelector(".lektrus-control-settings")',"Control settings did not open");
@@ -178,7 +179,18 @@ try{
  await openControls();
  await click('.lektrus-controls-modes button:nth-child(2)');
  await closeControls();
+ // Page.reload can resolve before the previous document is replaced. Do not
+ // accept its already-rendered objects as proof of a completed reload.
+ const reloaded=new Promise((resolve,reject)=>{
+  const listener=event=>{
+   if(JSON.parse(event.data).method!=="Page.loadEventFired")return;
+   clearTimeout(timer);socket.removeEventListener("message",listener);resolve();
+  };
+  const timer=setTimeout(()=>{socket.removeEventListener("message",listener);reject(new Error("Reload did not finish"))},30000);
+  socket.addEventListener("message",listener);
+ });
  await call('Page.reload');
+ await reloaded;
  await wait('document.querySelectorAll(".board-object[data-object]").length>=8','Board did not reload');
  await openControls();
  assert.equal((await modes())[1].active,true,'Explicit scroll preference must survive reload');
