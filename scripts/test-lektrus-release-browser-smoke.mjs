@@ -174,6 +174,17 @@ try{
   assert.ok(!await evaluate('document.querySelector(".settings-shell").textContent.includes("AI-студия")'),"AI assistant must be available only on the board");
   await evaluate('history.pushState({},"","/app?section=ai");dispatchEvent(new PopStateEvent("popstate"))');
   await checkSection("settings",".settings-shell");
+  await click('.lectris-workspace-sidebar button[aria-label="Группы и классы"]');
+  await checkSection("groups",".lektrus-group-layout");
+  await click('.lektrus-category-create');
+  await evaluate(`(()=>{const input=document.querySelector('.lektrus-category-form input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'QA draft');input.dispatchEvent(new Event('input',{bubbles:true}))})()`);
+  await wait('!document.querySelector(".lektrus-category-form button[type=submit]").disabled',"Group name did not enable Add");
+  await click('.lektrus-category-form button[type=button]');
+  await click('.lectris-workspace-sidebar button[aria-label="Предметы"]');
+  await checkSection("subjects",".lektrus-category-panel");
+  await click('.lektrus-category-create');
+  await wait('document.querySelector(".lektrus-category-form input").value===""&&document.querySelector(".lektrus-category-form button[type=submit]").disabled',"Cancelled group draft leaked into subject form");
+  await click('.lektrus-category-form button[type=button]');
   await click('.lectris-brand');
   await wait('!!document.querySelector(".lektrus-calendar-grid")',"Home brand did not navigate");
   for(const [label,id,selector] of sections.filter(x=>["groups","students","subjects","assignments"].includes(x[1]))){
