@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { createServer } from "vite";
 
 const read=path=>readFileSync(new URL(`../${path}`,import.meta.url),"utf8");
 const app=read("src/App.tsx")+"\n"+read("src/BoardApp.tsx");
@@ -29,11 +28,13 @@ assert.match(styles,/\.admin-users-shell \.admin-user-grant\{background:transpar
 for(const selector of [".lectris-hub", ".lectris-hub-tile-icon", ".topbar-more-popover", ".notification-card", ".profile-identity-card", ".settings-row-card", ".admin-users-shell", ".template-card"]){
   assert.ok(styles.includes(selector),`${selector} must be covered by the shared product screen theme`);
 }
-for(const kind of ["kind:\"checklist\"","kind:\"quiz\"","kind:\"table\"","kind:\"graph\""]){
-  assert.ok(templates.includes(kind),`starter templates must include an interactive ${kind.slice(6,-1)} object`);
-}
-assert.ok((templates.match(/id:"[^\"]+",title:/g)||[]).length>=9,
-  "the starter library must include the expanded practical templates");
+const createDialog=read("src/LektrusCreateBoardDialog.tsx");
+assert.ok(shell.includes('id:"templates"')&&templates.includes("Шаблонов пока нет")&&templates.includes("Сохранить как шаблон"),
+ "The personal templates section and empty-state guidance must remain");
+assert.doesNotMatch(templates+createDialog,/starterTemplates|starterDocument|builtin:/);
+assert.doesNotMatch(app,/insertTemplate\(/);
+assert.ok(app.includes("savePersonalBoardTemplate(")&&app.includes("canSaveTemplate&&<button"));
+assert.ok(templates.includes("copyTemplateAssets(t,b.id)")&&read("src/BoardsScreen.tsx").includes("copyTemplateAssets(options.template,b.id)"));
 const layoutStore=read("src/lektrusInterfaceLayout.ts");
 const globalMigration=read("supabase/v249_global_interface_layout.sql");
 assert.ok(layoutStore.includes("admin_publish_interface_layout")&&layoutStore.includes("get_global_interface_layout"),"the interface design must publish and load from the shared server setting");
@@ -53,17 +54,4 @@ const signupEmail=read("supabase/email-templates/confirm-signup.html");
 assert.ok(authScreen.includes("Проверьте почту")&&signupEmail.includes("{{ .ConfirmationURL }}")&&!authScreen.includes("verifySignupOtpRemote"),"registration must use the branded email confirmation link");
 assert.ok(authScreen.includes("Демо-ссылка подтверждения готова")&&authScreen.includes("Открыть ссылку подтверждения")&&authScreen.includes("Демо не отправляет письма и не создаёт аккаунты")&&app.includes('previewMode onPreviewClose'),"administrators must be able to simulate confirming the local fake registration without creating an account");
 
-const vite=await createServer({configFile:false,server:{middlewareMode:true},appType:"custom"});
-try{
-  const [{starterTemplates,starterDocument},{parseDocument}]=await Promise.all([
-    vite.ssrLoadModule("/src/TemplatesScreen.tsx"),
-    vite.ssrLoadModule("/src/boardModel.ts"),
-  ]);
-  for(const template of starterTemplates){
-    const document=starterDocument(template);
-    assert.doesNotThrow(()=>parseDocument(JSON.stringify(document)),
-      `${template.title} must create a valid editable board document`);
-  }
-}finally{await vite.close()}
-
-console.log("Lektrus product screens: palette, controls, account pages and practical templates are connected.");
+console.log("Lektrus product screens: palette, controls, account pages and personal templates are connected.");

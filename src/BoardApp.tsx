@@ -99,6 +99,7 @@ import { boardStorageKey, touchBoard, type BoardSummary } from "./boardStore";
 import { isRemoteBackendEnabled, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
 import { selfhostReadDocument, selfhostSaveDocument, selfhostWatchDocument, SelfhostHttpError } from "./selfhostApi";
 import { setSelfhostBoardMode } from "./assetStore";
+import { savePersonalBoardTemplate } from "./templatesStore";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
 import { readDeveloperPreferences, writeDeveloperPreferences } from "./developerPreferences";
 import { boardRoleCapabilities, canUseBoardCreationTool, isStudentProtectedBoardObject, canTransformStudentBoardObject, restrictStudentDiagramChange, BOARD_ROLE_PREVIEW_LABELS, type BoardRolePreview } from "./lektrusBoardRolePreview";
@@ -2085,6 +2086,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const {canEdit,isStudent,canManageBoard,canCreateAssignments}=roleCapabilities;
   const showAdminControls=isAppAdmin&&rolePreview==="actual";
   const isBoardOwner=boardSummary.role==="owner"&&boardSummary.ownerId===authUser.id;
+  const canSaveTemplate=isBoardOwner && accountRole==="teacher" && !isStudent && !authUser.isGuest && !demoMode && !layoutEditing;
   const adminHidden = showAdminControls && adminInvisible;
   const toolAllowedForRole = (id:Tool) => canUseBoardCreationTool(id,roleCapabilities);
   const structurallyLockedForStudent = (item:Item|undefined|null) =>
@@ -2318,6 +2320,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [templateTitle,setTemplateTitle]=useState("");
+  const [templateDescription,setTemplateDescription]=useState("");
+  const [templateCategory,setTemplateCategory]=useState("");
+  const [templateBusy,setTemplateBusy]=useState(false);
+  const [templateError,setTemplateError]=useState("");
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [tableEditorId, setTableEditorId] = useState<string | null>(null);
   const [tableDraft, setTableDraft] = useState<{ rows: number; cols: number; cells: string[]; header: boolean; fontSize: number; align: "left" | "center" | "right"; stripe: boolean; compact: boolean } | null>(null);
@@ -7171,101 +7178,25 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     window.setTimeout(() => startEdit(item), 0);
   };
 
-  const viewportCenterWorld = () => {
-    const rect = board.current?.getBoundingClientRect();
-    if (!rect) return { x: 0, y: 0 };
-    return world({ x: rect.width / 2, y: rect.height / 2 });
-  };
-
   const nextPresentationOrder = () => Math.max(-1, ...itemsRef.current.filter((item) => item.kind === "frame").map((item, index) => item.presentationOrder ?? index)) + 1;
 
-  const insertTemplate = (template: "lesson" | "mindmap" | "compare" | "brainstorm" | "checklist" | "quiz" | "cards") => {
-    const center = viewportCenterWorld();
-    const frameId = createId();
-    const order = nextPresentationOrder();
-    const addSticky = (x: number, y: number, w: number, h: number, text: string, colorValue: string): Item => ({
-      id: createId(), kind: "sticky", x, y, width: w, height: h, text, color: colorValue, fontSize: 18,
-    });
-    const addText = (x: number, y: number, w: number, h: number, text: string, size = 28): Item => ({
-      id: createId(), kind: "text", x, y, width: w, height: h, text, fontSize: size,
-    });
-    let frame: Item;
-    let content: Item[] = [];
-    if (template === "lesson") {
-      frame = { id: frameId, kind: "frame", x: center.x - 460, y: center.y - 320, width: 920, height: 640, text: "План урока", color: "#73798a", presentationOrder: order };
-      content = [
-        addText(frame.x + 54, frame.y + 68, 800, 56, "Тема урока", 32),
-        addSticky(frame.x + 54, frame.y + 150, 240, 180, "Цель\nЧто ученики должны понять?", "#dcecff"),
-        addSticky(frame.x + 340, frame.y + 150, 240, 180, "Ключевая идея\nГлавная мысль урока", "#fff3a6"),
-        addSticky(frame.x + 626, frame.y + 150, 240, 180, "Практика\nЧто делаем вместе?", "#dff5c8"),
-        addSticky(frame.x + 54, frame.y + 380, 812, 170, "Итог и вопросы\nЧто важно унести с собой?", "#eadcff"),
-      ];
-    } else if (template === "compare") {
-      frame = { id: frameId, kind: "frame", x: center.x - 470, y: center.y - 300, width: 940, height: 600, text: "Сравнение", color: "#73798a", presentationOrder: order };
-      content = [
-        addText(frame.x + 52, frame.y + 68, 820, 52, "Сравним два подхода", 30),
-        addSticky(frame.x + 70, frame.y + 160, 350, 330, "Вариант A\n\n• критерий 1\n• критерий 2\n• критерий 3", "#dcecff"),
-        addSticky(frame.x + 520, frame.y + 160, 350, 330, "Вариант B\n\n• критерий 1\n• критерий 2\n• критерий 3", "#ffd9de"),
-        addText(frame.x + 438, frame.y + 285, 70, 50, "VS", 28),
-      ];
-    } else if (template === "brainstorm") {
-      frame = { id: frameId, kind: "frame", x: center.x - 500, y: center.y - 330, width: 1000, height: 660, text: "Мозговой штурм", color: "#73798a", presentationOrder: order };
-      const colors = ["#fff3a6", "#dcecff", "#dff5c8", "#ffd9de", "#eadcff", "#fff3a6", "#dcecff", "#dff5c8"];
-      content = [addText(frame.x + 52, frame.y + 66, 850, 50, "Вопрос / проблема", 30)];
-      for (let n = 0; n < 8; n++) {
-        const col = n % 4, row = Math.floor(n / 4);
-        content.push(addSticky(frame.x + 52 + col * 232, frame.y + 145 + row * 220, 190, 170, `Идея ${n + 1}`, colors[n]));
-      }
-    } else if (template === "checklist") {
-      frame = { id: frameId, kind: "frame", x: center.x - 430, y: center.y - 300, width: 860, height: 600, text: "Проверка понимания", color: "#73798a", presentationOrder: order };
-      content = [
-        addText(frame.x + 52, frame.y + 64, 740, 52, "Что уже получилось?", 30),
-        { id: createId(), kind: "checklist", x: frame.x + 54, y: frame.y + 145, width: 470, height: 350, text: "Чек-лист урока", fontSize: 16, color: "#5355c9", checklistItems: ["Я могу объяснить главную идею своими словами", "Я выполнил основное задание", "Я понимаю, где допустил ошибку", "У меня остался вопрос по теме"], checklistDone: [false, false, false, false] },
-        addSticky(frame.x + 565, frame.y + 145, 235, 170, "Мой вопрос\nЧто ещё хочется уточнить?", "#fff3a6"),
-        addSticky(frame.x + 565, frame.y + 345, 235, 150, "Следующий шаг\nЧто попробовать дальше?", "#dff5c8"),
-      ];
-    } else if (template === "quiz") {
-      frame = { id: frameId, kind: "frame", x: center.x - 430, y: center.y - 300, width: 860, height: 600, text: "Быстрый вопрос", color: "#73798a", presentationOrder: order };
-      content = [
-        addText(frame.x + 52, frame.y + 58, 750, 48, "Проверим понимание", 30),
-        { id: createId(), kind: "quiz", x: frame.x + 70, y: frame.y + 135, width: 520, height: 360, text: "Какой вариант лучше всего отвечает на вопрос?", fontSize: 16, color: "#5355c9", quizOptions: ["Вариант A", "Вариант B", "Вариант C", "Вариант D"], quizCorrect: 0, quizRevealed: false },
-        addSticky(frame.x + 625, frame.y + 150, 180, 150, "Обсуждение\nПочему этот ответ верный?", "#fff3a6"),
-        addSticky(frame.x + 625, frame.y + 335, 180, 150, "Вывод\nЧто запомним?", "#dff5c8"),
-      ];
-    } else if (template === "cards") {
-      frame = { id: frameId, kind: "frame", x: center.x - 500, y: center.y - 320, width: 1000, height: 640, text: "Карточки для повторения", color: "#73798a", presentationOrder: order };
-      content = [addText(frame.x + 52, frame.y + 58, 820, 48, "Повторим ключевые понятия", 30)];
-      const colors = ["#5355c9", "#2f855a", "#d97706", "#8b5cf6", "#dc4c64", "#475569"];
-      for (let n = 0; n < 6; n++) {
-        const col = n % 3, row = Math.floor(n / 3);
-        content.push({ id: createId(), kind: "flashcard", x: frame.x + 52 + col * 300, y: frame.y + 135 + row * 220, width: 260, height: 180, text: `Вопрос ${n + 1}`, flashcardBack: `Ответ ${n + 1}`, flashcardFlipped: false, fontSize: 17, color: colors[n] });
-      }
-    } else {
-      frame = { id: frameId, kind: "frame", x: center.x - 520, y: center.y - 330, width: 1040, height: 660, text: "Карта идей", color: "#73798a", presentationOrder: order };
-      const centerNode: Item = { id: createId(), kind: "shape", x: center.x - 120, y: center.y - 60, width: 240, height: 120, text: "", shapeType: "rounded", color: "#5355c9" };
-      const nodes: Item[] = [
-        { id: createId(), kind: "sticky", x: center.x - 440, y: center.y - 230, width: 210, height: 140, text: "Ветка 1", color: "#dcecff", fontSize: 18 },
-        { id: createId(), kind: "sticky", x: center.x + 230, y: center.y - 230, width: 210, height: 140, text: "Ветка 2", color: "#dff5c8", fontSize: 18 },
-        { id: createId(), kind: "sticky", x: center.x - 440, y: center.y + 100, width: 210, height: 140, text: "Ветка 3", color: "#ffd9de", fontSize: 18 },
-        { id: createId(), kind: "sticky", x: center.x + 230, y: center.y + 100, width: 210, height: 140, text: "Ветка 4", color: "#eadcff", fontSize: 18 },
-      ];
-      const label: Item = addText(center.x - 95, center.y - 22, 190, 55, "Главная тема", 24);
-      const connectors = nodes.map((node) => connectorItemFromPoints(
-        { x: centerNode.x + centerNode.width / 2, y: centerNode.y + centerNode.height / 2 },
-        { x: node.x + node.width / 2, y: node.y + node.height / 2 },
-        "arrow", "#7379d6", 2.5, createId(), "straight",
-        { itemId: centerNode.id, nx: node.x < centerNode.x ? 0 : 1, ny: .5 },
-        { itemId: node.id, nx: node.x < centerNode.x ? 1 : 0, ny: .5 },
-      ));
-      content = [...connectors, centerNode, label, ...nodes];
-    }
-    const all = [frame, ...content];
-    commit([...itemsRef.current, ...all]);
-    setSelected([frame.id]);
-    setTemplatesOpen(false);
-    setCommentsOpen(false);
-    requestAnimationFrame(() => fitToBounds(boundsOf(all), 110));
-    setNotice(`Шаблон добавлен · ${frame.text}`);
+  const openSaveTemplate=()=>{
+    if(!canSaveTemplate)return;
+    setTemplateTitle(title.slice(0,120));
+    setTemplateDescription("");
+    setTemplateCategory("");
+    setTemplateError("");
+    setSearchOpen(false);
+    setTemplatesOpen(true);
+  };
+  const saveTemplate=async()=>{
+    if(!canSaveTemplate||templateBusy||!templateTitle.trim())return;
+    setTemplateBusy(true);setTemplateError("");
+    try{
+      await savePersonalBoardTemplate(authUser.id,boardSummary.id,templateTitle,templateDescription,templateCategory,currentDocument());
+      setTemplatesOpen(false);setNotice("Шаблон сохранён в разделе «Шаблоны»");
+    }catch(error){setTemplateError(error instanceof Error?error.message:"Не удалось сохранить шаблон")}
+    finally{setTemplateBusy(false)}
   };
 
   const setSelectedFramePosition = (position: number) => {
@@ -8334,7 +8265,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 {!authUser.isGuest&&<button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");void openHistory()}}><Icon name="reset" size={16}/><span>История изменений</span></button>}
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");startPresentation()}}><Icon name="present" size={16}/><span>Презентация</span></button>
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");void exportItemsToPng("all")}}><Icon name="download" size={16}/><span>Экспорт PNG</span></button>
-                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setTemplatesOpen(v=>!v);setSearchOpen(false)}}><Icon name="templates" size={16}/><span>Шаблоны</span></button>
+                {canSaveTemplate&&<button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");openSaveTemplate()}}><Icon name="templates" size={16}/><span>Сохранить как шаблон</span></button>}
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setShortcutsOpen(v=>!v)}}><Icon name="keyboard" size={16}/><span>Горячие клавиши</span></button>
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setCommentsOpen(v=>!v)}}><Icon name="comments" size={16}/><span>Комментарии</span>{openComments.length>0&&<b>{openComments.length}</b>}</button>
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setSearchOpen(v=>!v)}}><Icon name="search" size={16}/><span>Поиск по доске</span></button>
@@ -8539,10 +8470,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             ["Связь","Создание",() => setTool("connector"),"connector"],["Фрейм","Создание",() => setTool("frame"),"frame"],["Таблица","Интерактив",() => setTool("table"),"table"],
             ["Формула","Интерактив",() => setTool("formula"),"formula"],["График","Интерактив",() => setTool("graph"),"graph"],["Чек-лист","Задание",() => setTool("checklist"),"checklist"],
             ["Мини-тест","Задание",() => setTool("quiz"),"quiz"],["Карточка вопрос–ответ","Задание",() => setTool("flashcard"),"flashcard"],["Шторка","Интерактив",() => setTool("cover"),"cover"],
-            ["Фото / PDF","Материалы",() => setTool("media"),"media"],["Поиск по доске","Панель",() => setSearchOpen(true)],["Шаблоны","Панель",() => setTemplatesOpen(true)],
+            ["Фото / PDF","Материалы",() => setTool("media"),"media"],["Поиск по доске","Панель",() => setSearchOpen(true)],
             ["Комментарии","Панель",() => setCommentsOpen(true)],["Слои","Панель",() => setLayersOpen(true)],["Горячие клавиши","Справка",() => setShortcutsOpen(true)],
             ["Режим показа","Презентация",() => { setPresentation(true); setPresentationFrameIndex(0); }],
           ];
+          if(canSaveTemplate)commands.push(["Сохранить как шаблон","Доска",openSaveTemplate]);
           const q = commandPaletteQuery.trim().toLocaleLowerCase("ru");
           const filtered = commands.filter(([label,hint,,toolId]) => (!toolId || toolAllowedForRole(toolId)) && (!q || `${label} ${hint}`.toLocaleLowerCase("ru").includes(q)));
           const closeCommandPalette = () => { setCommandPaletteOpen(false); setCommandPaletteQuery(""); setCommandPaletteIndex(0); };
@@ -8590,21 +8522,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             </div>
           </aside>
         )}
-        {templatesOpen && (
-          <aside className="templates-panel" aria-label="Шаблоны">
+        {templatesOpen && canSaveTemplate && (
+          <aside className="templates-panel" aria-label="Сохранить как шаблон">
             <div className="panel-heading">
-              <div><strong>Шаблоны</strong><span>Готовые заготовки для урока и обсуждения</span></div>
-              <button onClick={() => setTemplatesOpen(false)} aria-label="Закрыть шаблоны"><Icon name="close" size={17} /></button>
+              <div><strong>Сохранить как шаблон</strong><span>Создайте свою заготовку для будущих досок</span></div>
+              <button disabled={templateBusy} onClick={() => setTemplatesOpen(false)} aria-label="Закрыть"><Icon name="close" size={17}/></button>
             </div>
-            <div className="template-grid">
-              <button onClick={() => insertTemplate("lesson")}><span className="template-preview lesson"><i/><i/><i/><i/></span><strong>План урока</strong><small>цель, идея, практика, итог</small></button>
-              <button onClick={() => insertTemplate("mindmap")}><span className="template-preview mindmap"><i/><i/><i/><i/><b/></span><strong>Карта идей</strong><small>центр и четыре связанные ветки</small></button>
-              <button onClick={() => insertTemplate("compare")}><span className="template-preview compare"><i/><i/><b>VS</b></span><strong>Сравнение</strong><small>два подхода рядом</small></button>
-              <button onClick={() => insertTemplate("brainstorm")}><span className="template-preview brainstorm">{Array.from({length:8},(_,i)=><i key={i}/>)}</span><strong>Мозговой штурм</strong><small>поле для восьми идей</small></button>
-              <button onClick={() => insertTemplate("checklist")}><span className="template-preview checklist">{Array.from({length:4},(_,i)=><i key={i}/>)}</span><strong>Проверка понимания</strong><small>чек-лист, вопрос и следующий шаг</small></button>
-              <button onClick={() => insertTemplate("quiz")}><span className="template-preview quiz"><b>?</b><i/><i/><i/></span><strong>Быстрый опрос</strong><small>вопрос, варианты и обсуждение ответа</small></button>
-              <button onClick={() => insertTemplate("cards")}><span className="template-preview cards"><b>Q</b><i/><b>A</b></span><strong>Карточки для повторения</strong><small>шесть вопрос–ответ карточек</small></button>
-            </div>
+            <form className="personal-template-form" onSubmit={e=>{e.preventDefault();void saveTemplate()}}>
+              <label>Название<input required maxLength={120} value={templateTitle} onChange={e=>setTemplateTitle(e.target.value)} disabled={templateBusy}/></label>
+              <label>Категория (необязательно)<input maxLength={80} value={templateCategory} onChange={e=>setTemplateCategory(e.target.value)} disabled={templateBusy}/></label>
+              <label>Описание (необязательно)<textarea maxLength={500} rows={3} value={templateDescription} onChange={e=>setTemplateDescription(e.target.value)} disabled={templateBusy}/></label>
+              {templateError&&<div role="alert">{templateError}</div>}
+              <button type="submit" className="students-primary" disabled={templateBusy||!templateTitle.trim()}>{templateBusy?"Сохранение…":"Сохранить шаблон"}</button>
+            </form>
           </aside>
         )}
         {commentsOpen && (

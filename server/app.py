@@ -1115,6 +1115,8 @@ from comments import make_comments_router
 app.include_router(make_comments_router(current_user, board_access, announce_comments))
 from materials import make_material_router
 app.include_router(make_material_router(current_user))
+from board_templates import make_template_router
+app.include_router(make_template_router(current_user, board_access, serialize_document))
 from notifications import make_router as make_notifications_router
 app.include_router(make_notifications_router(current_user))
 from organization import make_router as make_organization_router
