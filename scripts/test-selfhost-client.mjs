@@ -12,6 +12,9 @@ assert.match(registrationForm,/password!==passwordConfirmation/);
 assert.match(registrationForm,/mode==="register"&&!awaitingConfirmation&&password!==passwordConfirmation/);
 assert.match(registrationForm,/auth-shell-register/);
 const registrationStyles=readFileSync(new URL("../src/lektrusAuthLayout.css",import.meta.url),"utf8");
+const appSource=readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+assert.match(appSource,/const cached=isSelfhostBackendEnabled\(\)\?getCachedCurrentUser\(\):null;\s*setAuthUser\(cached\);setAuthReady\(true\);\s*if\(cached\)retrySession\(cached.id\)/,
+  "A temporary session restore failure must not discard the saved account");
 assert.match(registrationStyles,/\.auth-shell-register \.auth-card/);
 assert.match(registrationStyles,/grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
 assert.match(registrationStyles,/@media \(min-width: 760px\)/);
@@ -30,6 +33,11 @@ async function loadSelfhost(enabled) {
   const data=new Map([["lesson-board.supabase.session.v1","production-must-remain"]]);
   const record=[];
   let expires=900,refreshes=0,documentVersion=3,documentFailures=0;
+  let refreshStatus=200,rotations=0,activeRefresh="refresh-first",rejectOldAccess=false;
+  let lockTail=Promise.resolve();
+  const locks={request(_name,callback){
+    const result=lockTail.then(callback);lockTail=result.catch(()=>{});return result;
+  }};
   const nativeBoardId="00000000-0000-4000-8000-000000000004";
   let nativeDoc=null,nativeVersion=0,nativeDelta=null,brokenChain=false;
   const nativeComment={id:"comment-root",board_id:nativeBoardId,
@@ -64,7 +72,11 @@ async function loadSelfhost(enabled) {
     }
     if(u.pathname==="/api/v1/auth/refresh"){
       refreshes++;
-      return ok({access_token:"token-refreshed",refresh_token:"refresh-refreshed",expires_in:900,user});
+      if(refreshStatus!==200)return ok({detail:"Session service unavailable"},refreshStatus);
+      if(JSON.parse(options.body).refresh_token!==activeRefresh)return ok({detail:"Already rotated"},401);
+      const suffix=++rotations===1?"":"-"+rotations;
+      activeRefresh="refresh-refreshed"+suffix;
+      return ok({access_token:"token-refreshed"+suffix,refresh_token:activeRefresh,expires_in:900,user});
     }
     if(u.pathname==="/api/v1/admin/users/student-1"&&options.method==="DELETE"){
       assert.deepEqual(JSON.parse(options.body),{email:"student@example.test"});
@@ -180,7 +192,10 @@ async function loadSelfhost(enabled) {
       assert.deepEqual(JSON.parse(options.body),{resolved:true});
       return ok({...nativeComment,resolved:true});
     }
-    if(u.pathname==="/api/v1/boards")return ok([{id:"board-1",title:"Тест",role:"owner"}]);
+    if(u.pathname==="/api/v1/boards"){
+      if(rejectOldAccess&&headers.get("Authorization")==="Bearer token-first")return ok({detail:"Expired"},401);
+      return ok([{id:"board-1",title:"Тест",role:"owner"}]);
+    }
     if(u.pathname==="/api/v1/boards/board-1/document"&&options.method==="PUT"){
       assert.equal(u.searchParams.get("version_only"),"true");
       if(JSON.parse(options.body).expected_version!==3)
@@ -239,20 +254,23 @@ async function loadSelfhost(enabled) {
     open(){this.readyState=1;this.onopen?.()}
   }
   const listeners=new Map();
-  const context=vm.createContext({
+  const makeContext=(withLocks=true)=>vm.createContext({
     exports:{},fetch,URL,Headers,Response,AbortController,FormData,TextEncoder,queueMicrotask,
-    navigator:{onLine:true},WebSocket:Socket,
+    navigator:{onLine:true,locks:withLocks?locks:undefined},WebSocket:Socket,
     localStorage:sessionStorage,sessionStorage,setTimeout,clearTimeout,setInterval,clearInterval,Date,
     window:{location:{origin:"https://pilot.lektrus.example"},
       addEventListener(name,fn){listeners.set(name,fn)},
       removeEventListener(name){listeners.delete(name)}},
   });
+  const context=makeContext();
   vm.runInContext(compiled,context);
   const api=context.exports;
   const broadcastSource=readFileSync(new URL("../src/boardBroadcast.ts",import.meta.url),"utf8");
   const broadcastContext=vm.createContext({exports:{},require:name=>name==="./selfhostApi"?api:{isRemoteBackendEnabled:()=>false},setTimeout,clearTimeout,Date,Math,Map,crypto:globalThis.crypto});
   vm.runInContext(ts.transpileModule(broadcastSource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,broadcastContext);
   return {api,broadcast:broadcastContext.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,sessionStorage,changeExpires:v=>{expires=v},changeDocument:(v,failures=0)=>{documentVersion=v;documentFailures=failures},
+    forkApi:(withLocks=true)=>{const tab=makeContext(withLocks);vm.runInContext(compiled,tab);return tab.exports},
+    setRefreshStatus:v=>{refreshStatus=v},rejectOldAccess:()=>{rejectOldAccess=true},
     remoteNativeEdit:(delta,broken=false)=>{nativeDoc=JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(nativeDoc,delta)));nativeVersion++;nativeDelta=delta;brokenChain=broken}};
 }
 
@@ -549,4 +567,39 @@ await api.selfhostLogout();
 assert.equal(api.cachedSelfhostSession(),null);
 assert.equal(storage.get("lesson-board.supabase.session.v1"),"production-must-remain");
 assert.ok(records.some(x=>x.path==="/api/v1/auth/logout"&&x.bearer==="Bearer token-refreshed"));
+// Independent tabs share storage and only one single-use refresh token.
+const multi=await loadSelfhost(true);
+await multi.api.selfhostLogin("teacher@example.test","test-password");
+const secondTab=multi.forkApi();
+const expiredSession=()=>{
+ const current=JSON.parse(multi.storage.get("lektrus.selfhost.session.v1"));
+ multi.storage.set("lektrus.selfhost.session.v1",JSON.stringify({...current,expires_at:1}));
+};
+expiredSession();
+const both=await Promise.all([multi.api.selfhostSession(),secondTab.selfhostSession()]);
+assert.deepEqual(both.map(s=>s.access_token),["token-refreshed","token-refreshed"]);
+assert.equal(multi.refreshCount(),1,"Cross-tab rotation must issue only one request");
+expiredSession();multi.setRefreshStatus(503);
+await assert.rejects(multi.api.selfhostSession(),e=>e.status===503);
+assert.equal(multi.api.cachedSelfhostSession().refresh_token,"refresh-refreshed","Do not erase a session during server restart");
+multi.setRefreshStatus(200);
+assert.equal((await secondTab.selfhostSession()).access_token,"token-refreshed-2");
+expiredSession();multi.setRefreshStatus(401);
+assert.equal(await multi.api.selfhostSession(),null,"A confirmed rejection still expires the session");
+assert.equal(secondTab.cachedSelfhostSession(),null);
+const delayed=await loadSelfhost(true);
+await delayed.api.selfhostLogin("teacher@example.test","test-password");
+delayed.rejectOldAccess();
+const delayedTab=delayed.forkApi();
+await Promise.all([delayed.api.selfhostBoards(),delayedTab.selfhostBoards()]);
+assert.equal(delayed.refreshCount(),1,"Concurrent 401 responses must use the latest access token");
+const legacy=await loadSelfhost(true);
+await legacy.api.selfhostLogin("teacher@example.test","test-password");
+const legacyA=legacy.forkApi(false),legacyB=legacy.forkApi(false);
+const legacySession=JSON.parse(legacy.storage.get("lektrus.selfhost.session.v1"));
+legacy.storage.set("lektrus.selfhost.session.v1",JSON.stringify({...legacySession,expires_at:1}));
+const legacyBoth=await Promise.all([legacyA.selfhostSession(),legacyB.selfhostSession()]);
+assert.deepEqual(legacyBoth.map(s=>s.access_token),["token-refreshed","token-refreshed"]);
+assert.equal(legacyA.cachedSelfhostSession().refresh_token,"refresh-refreshed");
+console.log("Session restoration: two tabs, single-use rotation, transient restart and confirmed revocation OK.");
 console.log("Self-hosted Lektrus API: auth, native documents, private assets, students, assignments, schedule, lessons, discussions, presence and realtime events OK.");
