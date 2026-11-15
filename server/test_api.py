@@ -156,11 +156,34 @@ async def test_native_document_deltas_preserve_concurrent_edits_and_fallback(cli
     for invalid in ({"items":{"order":["a"]}}, {"set":{"items":[]}}, {"items":{"remove":["unknown"]}}):
         assert (await client.patch(url,headers=owner,json={"expected_version":4,"delta":invalid})).status_code==422
     assert (await client.get(url+"?version_only=true",headers=owner)).json()["version"]==4
+    async with app.state.pool.acquire() as conn:
+        rows = await conn.fetch("SELECT item_id,xmin::text AS revision FROM board_document_items WHERE board_id=$1", UUID(board_id))
+        assert {r["item_id"] for r in rows} == {"a","c","d"}
+        old_rows = {r["item_id"]: r["revision"] for r in rows}
+        assert json.loads(await conn.fetchval("SELECT document FROM board_documents WHERE board_id=$1", UUID(board_id))) == old
+    # A second change to one item must not write any of the unchanged rows.
+    edited = {**stroke, "points":[{"x":5,"y":6}]}
+    assert (await client.patch(url,headers=owner,json={"expected_version":4,"delta":{"items":{"upsert":[edited]}}})).status_code==200
+    async with app.state.pool.acquire() as conn:
+        rows = await conn.fetch("SELECT item_id,xmin::text AS revision FROM board_document_items WHERE board_id=$1", UUID(board_id))
+        new_rows = {r["item_id"]: r["revision"] for r in rows}
+        assert new_rows["a"]==old_rows["a"] and new_rows["d"]==old_rows["d"]
+        assert new_rows["c"]!=old_rows["c"]
+        # Materializing for an older backend preserves the latest document and revision.
+        assert await conn.fetchval("SELECT lektrus_materialize_board_documents()") == 1
+        assert await conn.fetchval("SELECT count(*) FROM board_document_items") == 0
+        materialized = json.loads(await conn.fetchval("SELECT document FROM board_documents WHERE board_id=$1", UUID(board_id)))
+        assert materialized["items"][-1] == edited
+        assert materialized == (await client.get(url,headers=owner)).json()["document"]
+    # Normalize again, then exercise full-save compatibility/cleanup.
+    assert (await client.patch(url,headers=owner,json={"expected_version":5,"delta":{"set":{"title":"Final"}}})).status_code==200
     # A legacy/full save interrupts the chain; the old client still works.
-    assert (await client.put(url,headers=owner,json={"expected_version":4,"document":old})).status_code==200
-    fallback = (await client.get(url+"?since_version=4",headers=editor)).json()
+    assert (await client.put(url,headers=owner,json={"expected_version":6,"document":old})).status_code==200
+    fallback = (await client.get(url+"?since_version=6",headers=editor)).json()
     assert fallback["document"]==old and "patches" not in fallback
-    assert fallback["version"]==5
+    assert fallback["version"]==7
+    async with app.state.pool.acquire() as conn:
+        assert await conn.fetchval("SELECT count(*) FROM board_document_items") == 0
 
 
 @pytest.mark.asyncio
