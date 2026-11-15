@@ -259,8 +259,8 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
           </div>
           {loading?<p className="lectris-hub-placeholder">Загружаем доски…</p>:visibleHomeBoards.length?
             <div className="lectris-hub-board-list">{visibleHomeBoards.map(boardTile)}</div>:
-            <div className="lectris-hub-empty"><strong>{boardSearch.trim()?"Ничего не найдено":"Пока нет досок"}</strong>
-              <p>{boardSearch.trim()?"Попробуйте другое название или очистите поиск.":teacher?"Создайте доску, чтобы начать занятие.":"Откройте доску по приглашению преподавателя."}</p></div>}
+            <div className="lectris-hub-empty"><strong>{boards.length?"Ничего не найдено":"Здесь будут находиться ваши доски"}</strong>
+              <p>{boards.length?"Попробуйте другое название или очистите поиск.":teacher?"Создайте свою первую доску, когда будете готовы.":"Откройте доску по приглашению преподавателя."}</p></div>}
         </section>
         <div className="lectris-hub-aside">
           <section className="lectris-hub-section lektrus-calendar-panel">

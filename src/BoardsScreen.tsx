@@ -6,7 +6,7 @@ import {markTemplateUsed} from "./templatesStore";
 import { flushLectrisOrganization, queueLectrisBoardOrganization } from "./lectrisOrganizationStore";
 import { cachedBoardPreview, loadBoardPreviews, backfillCachedBoardPreviews } from "./boardPreview";
 import { BOARD_ROLE_LABELS, isRemoteBackendEnabled, type AuthUser, type BoardRole } from "./authStore";
-import { boardStorageKey, createBoard, deleteBoard, deleteBoardForever, ensureUserBoards, getCachedUserBoards, getTrashedBoards, getUserBoards, restoreBoard, renameBoard, getBoardAccess, changeMemberRole, removeMember, type BoardAccessMember, type BoardInvitation, type BoardSummary } from "./boardStore";
+import { boardStorageKey, createBoard, deleteBoard, deleteBoardForever, getCachedUserBoards, getTrashedBoards, getUserBoards, restoreBoard, renameBoard, getBoardAccess, changeMemberRole, removeMember, type BoardAccessMember, type BoardInvitation, type BoardSummary } from "./boardStore";
 import { boardDirectUrl, boardShareUrl, clearPendingShareToken, copyBoardLink, createBoardShareLink, listBoardShareLinks, pendingShareToken, revokeBoardShareLink, shareLinksEnabled, type BoardShareLink, type ShareRole } from "./shareLinks";
 
 type Props={user:AuthUser;accountRole:AccountRole;isAppAdmin:boolean;onOpenBoard:(b:BoardSummary)=>void;onLogout:()=>void};
@@ -92,7 +92,7 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
      if(alive)setNotice("Эта ссылка требует серверной версии приложения.");
    }
    try{
-     const list=accountRole==="teacher"?await ensureUserBoards(user):await getUserBoards(user);
+     const list=await getUserBoards(user);
      if(alive)setBoards(list);
    }catch(e){
      if(alive&&getCachedUserBoards(user).length===0)setNotice(e instanceof Error?e.message:"Не удалось загрузить доски");
@@ -200,7 +200,7 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
     </div>
     {notice&&<div className="access-notice" style={{marginBottom:12}}>{notice}</div>}
     {!loading&&visible.length===0
-      ?<div className="boards-empty"><strong>{boards.length?"Ничего не найдено":"Пока нет досок"}</strong><span>{boards.length?"Измените поиск или выберите другой фильтр.":"Создайте первую доску и начните занятие."}</span><button type="button" onClick={()=>{setQuery("");setFilter("all")}}>Показать все</button></div>
+      ?<div className="boards-empty"><strong>{boards.length?"Ничего не найдено":"Здесь будут находиться ваши доски"}</strong>{boards.length>0?<><span>Измените поиск или выберите другой фильтр.</span><button type="button" onClick={()=>{setQuery("");setFilter("all")}}>Показать все</button></>:<span>{accountRole==="teacher"?"Создайте свою первую доску, когда будете готовы.":"Откройте доску по приглашению преподавателя."}</span>}</div>
       :<div className="boards-grid lectris-library-grid">
         {accountRole==="teacher"&&filter!=="shared"&&!query&&<button type="button" className="lectris-library-create-tile" disabled={busy} onClick={()=>void add()}>
           <span className="lectris-library-create-icon">＋</span><strong>Новая доска</strong>

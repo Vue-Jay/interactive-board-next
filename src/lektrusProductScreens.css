@@ -929,6 +929,16 @@ html body select:not([multiple]) option{background:var(--lt-surface,#fff);color:
 .lectris-workspace-stage .lektrus-feedback-contact-card,.lectris-workspace-stage .lektrus-feedback-app-card{padding:clamp(22px,2.2vw,34px)!important;border-radius:18px!important}
 .lectris-workspace-stage .lektrus-feedback-contact-card h2{font-size:clamp(22px,2vw,29px)!important}
 .lectris-workspace-stage .lektrus-feedback-contact-card p{font-size:14px!important;line-height:1.7}
+.lektrus-feedback-contact-card .lektrus-feedback-telegram-card{display:flex;align-items:center;gap:12px;min-width:0;min-height:66px;margin-top:24px;padding:12px;border:1px solid var(--lt-line);border-radius:13px;background:var(--lt-subtle);color:var(--lt-text);text-decoration:none;transition:background .18s,border-color .18s,box-shadow .18s}
+.lektrus-feedback-contact-card .lektrus-feedback-telegram-card:hover{border-color:var(--lt-primary);background:var(--lt-selected);box-shadow:0 4px 16px #218fce15}
+.lektrus-feedback-contact-card .lektrus-feedback-telegram-card:focus-visible{outline:2px solid var(--lt-focus,var(--lt-primary));outline-offset:3px}
+.lektrus-feedback-telegram-icon{display:grid;place-items:center;flex:0 0 42px;height:42px;border-radius:12px;background:#168bc9;color:#fff}
+.lektrus-feedback-telegram-copy{display:grid;gap:4px;min-width:0;flex:1}
+.lektrus-feedback-telegram-copy strong{font-size:13px;font-weight:750;line-height:1.3;overflow-wrap:anywhere}
+.lektrus-feedback-telegram-copy small{font-size:12px;line-height:1.3;color:var(--lt-muted)}
+.lektrus-feedback-telegram-arrow{flex:none;color:var(--lt-primary);font-size:19px;line-height:1;transition:transform .18s}
+.lektrus-feedback-telegram-card:hover .lektrus-feedback-telegram-arrow{transform:translate(2px,-2px)}
+@media(prefers-reduced-motion:reduce){.lektrus-feedback-contact-card .lektrus-feedback-telegram-card,.lektrus-feedback-telegram-arrow{transition:none}.lektrus-feedback-telegram-card:hover .lektrus-feedback-telegram-arrow{transform:none}}
 .lectris-workspace-stage .lektrus-feedback-privacy{margin-top:30px!important;padding:13px!important;font-size:12px!important}
 .lectris-workspace-stage .lektrus-feedback-form{gap:18px!important}
 .lectris-workspace-stage .lektrus-feedback-form-heading h2{font-size:23px!important}
