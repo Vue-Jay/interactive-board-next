@@ -47,7 +47,9 @@ def jwt_secret() -> str:
     return value
 
 def allowed_origins() -> list[str]:
-    return [x.strip().rstrip("/") for x in os.getenv("LEKTRUS_ALLOWED_ORIGINS", "").split(",") if x.strip()]
+    return list(dict.fromkeys(x.strip().rstrip("/") for setting_name in (
+        "LEKTRUS_ALLOWED_ORIGINS", "LEKTRUS_DEPLOYMENT_ORIGINS"
+    ) for x in os.getenv(setting_name, "").split(",") if x.strip()))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -429,9 +431,14 @@ def document_view(row, board_id: UUID):
     }
 
 @app.get("/api/v1/boards/{board_id}/document")
-async def get_document(board_id: UUID, request: Request, user=Depends(current_user)):
+async def get_document(board_id: UUID, request: Request, version_only: bool = False,
+                       user=Depends(current_user)):
     async with request.app.state.pool.acquire() as conn:
         await board_access(conn, board_id, user["id"])
+        if version_only:
+            return {"version": await conn.fetchval(
+                "SELECT version FROM board_documents WHERE board_id=$1", board_id
+            ) or 0}
         row = await conn.fetchrow(
             "SELECT document,version,updated_at,updated_by FROM board_documents WHERE board_id=$1",
             board_id,
