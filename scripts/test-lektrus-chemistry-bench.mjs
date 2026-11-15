@@ -1263,7 +1263,12 @@ assert.deepEqual(stock.labReagentForms(item("HCl")),["ml"]);
 assert.deepEqual(stock.labReagentForms(item("Cu")),["g"]);
 assert.deepEqual(stock.labReagentForms(item("NaCl")),["g","ml"]);
 assert.deepEqual(stock.labReagentForms(item("AgCl")),["g"]);
-assert.equal(stock.labReagentPhaseLabel(item("CuSO4"),"ml"),"Раствор / жидкость");
+assert.equal(stock.labReagentPhaseLabel(item("CuSO4"),"ml"),"Раствор");
+assert.equal(stock.labReagentPhaseLabel(item("H2O"),"ml"),"Чистая жидкость");
+assert.equal(stock.labReagentPhaseLabel(item("O2"),"ml"),"Газообразное вещество");
+for(const id of ["Al(OH)3","Mg(OH)2","Zn(OH)2","FeS2"])
+ assert.deepEqual(stock.labReagentForms(item(id)),["g"],id+" must not be offered as a standard solution");
+assert.notEqual(lab.labDisplayNumber(2e-8,"high","moles"),"0");
 assert.equal(stock.labReagentPhaseLabel(item("CaCO3"),"g"),"Твёрдое вещество");
 assert.match(hoverSurface,/labVesselQuantity\(vessel\)/);
 assert.match(hoverSurface,/totalLabel\|\|\"Осадок\"/);
@@ -2311,8 +2316,10 @@ assert.equal(deferred.vessels[0].inventoryPrecipitation,undefined);
 assert.ok((deferred.vessels[0].chemicalInventory.solidMol.AgCl??0)>growingAgCl,
  "The settled precipitate finishes growing only after resuming");
 deferred=lab.recordLabReactions(deferred);
-assert.equal(deferred.reactionLog.length,2,
- "The follow-up equation is written once, after the reaction runs");
+assert.equal(new Set(deferred.reactionLog).size,deferred.reactionLog.length,
+ "Each completed equation is written only once, including reactions of equilibrium traces");
+assert.ok(deferred.reactionLog.some(eq=>eq==="AgNO3 + NaCl → AgCl↓ + NaNO3"),
+ "The major follow-up precipitation is written after the reaction runs");
 assert.match(deferred.reactionLog.at(-1),/AgCl↓/);
 
 const pausedGasVessel={

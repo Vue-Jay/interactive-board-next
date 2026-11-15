@@ -128,11 +128,19 @@ export function addPlacedLabDevice(bench:LabBench,kind:LabDevice,point?:{x:numbe
  if(!labDevices.some(v=>v.id===kind))return bench;
  const existing=placedLabDevices(bench);
  if(existing.length>=MAX_LAB_DEVICES)return bench;
- const occupied=existing.length;
+ // Insertion from the cabinet should not bury a device's switch beneath
+ // glassware that is already on the table. A deliberate drag still wins.
+ const spots=[62,74,84].flatMap(y=>[22,35,48,61,74].map(x=>({x,y:kind==="tripod"?Math.min(72,y):y})));
+ const glass=bench.vessels.map(v=>labDisplayPoint(v,bench.vessels.length>3));
+ const distance=(p:{x:number;y:number},q:{x:number;y:number})=>
+  Math.hypot((p.x-q.x)*1.4,p.y-q.y);
+ const score=(p:{x:number;y:number})=>Math.min(
+  ...glass.map(g=>distance(p,g)),...existing.map(d=>distance(p,d)),100);
+ const free=spots.reduce((best,p)=>score(p)>score(best)?p:best,spots[0]);
  const id="device-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,9);
  const placed:LabPlacedDevice={id,kind,
-  x:clampDevice(point?.x??(22+(occupied%5)*13),9,79),
-  y:clampDevice(point?.y??(62+Math.floor(occupied/5)*22),58,kind==="tripod"?72:84),
+  x:clampDevice(point?.x??free.x,9,79),
+  y:clampDevice(point?.y??free.y,58,kind==="tripod"?72:84),
   powered:false,heatLevel:2,temperatureC:22,targetTemperatureC:kind==="cooler"?0:150,standHeight:kind==="tripod"?.88:.5};
  return {...bench,placedDevices:[...existing,placed],
   devices:[...new Set([...(bench.devices??[]),kind])],event:bench.event+1};
@@ -724,6 +732,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
  result={...result,vessels};
  // Quantitative progress is allowed only for balanced and fully measured cases.
  // Carrier-solution volume stays constant while solute moles are consumed.
+ const completedInventoryEntries:{vesselId:string;equations:string[]}[]=[];
  vessels=result.vessels.map(v=>{
   // A staged multi-step mixture is owned by the conserved inventory solver.
   // Starting a second stoichiometric timer from its historic dose labels
@@ -781,6 +790,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
    const previousSeconds=active?.elapsedSeconds??activeGas?.elapsedSeconds??0;
    const elapsedSeconds=Math.min(durationSeconds,previousSeconds+seconds);
    const complete=elapsedSeconds>=durationSeconds;
+   if(complete)completedInventoryEntries.push({vesselId:v.id,equations:measured.steps.map(step=>step.equation)});
    const final=labInventorySnapshot(measured);
    const snapshot=complete?final:
     labInterpolateInventory(initial,final,elapsedSeconds/durationSeconds);
@@ -854,6 +864,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
   }
   const step=measured.steps[measured.steps.length-1];
   const completed=step?reviewedReactionCases.find(row=>row.equation===step.equation):undefined;
+  if(completed)completedInventoryEntries.push({vesselId:v.id,equations:measured.steps.map(step=>step.equation)});
   changed=true;
   return {...v,
    chemicalInventory:labInventorySnapshot(measured),
@@ -865,6 +876,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
    visualStartedAtMs:completed?nowMs:v.visualStartedAtMs};
  });
  result={...result,vessels};
+ result=appendLabReactionEquations(result,completedInventoryEntries);
  // An outlet captures only NEW measured gas, never the final predicted yield.
  // Receiver capacity bounds retained gas; anything additional vents.
  for(const source of [...result.vessels]){
@@ -1135,6 +1147,8 @@ export function labDisplayNumber(value:number,realism:LabRealism="high",
   return (Math.round(value/step)*step).toLocaleString("ru-RU",{maximumFractionDigits:1});
  }
  let digits:number=kind==="moles"?profile.moleDigits:profile.quantityDigits;
+ if(value!==0&&Math.abs(value)<1e-6)
+  return value.toExponential(2).replace(".",",");
  // A measured trace must never be displayed as zero merely because it is small.
  if(value!==0&&Math.abs(value)<1)
   digits=Math.min(6,Math.max(digits,Math.ceil(-Math.log10(Math.abs(value)))+1));
@@ -1474,9 +1488,7 @@ export const selectedLabVessel=(bench:LabBench)=>bench.vessels.find(v=>v.id===be
 export function recordLabReactions(bench:LabBench):LabBench{
  // Preparation on a paused bench must not write predicted equations.
  if(bench.simulationPaused)return bench;
- const seen=new Set(bench.seenReactionKeys??[]);
- const log=[...(bench.reactionLog??[])];
- let changed=false;
+ const entries:{vesselId:string;equations:string[]}[]=[];
  for(const vessel of bench.vessels){
   // Only the completed, measured equation belongs on the chalkboard.
   // A solver's equilibrium forecast, a partly progressed reaction or a
@@ -1486,7 +1498,17 @@ export function recordLabReactions(bench:LabBench):LabBench{
   const equation=vessel.reactionAmounts?.complete?
    vessel.reactionAmounts.equation:vessel.completedReaction?.equation;
   if(!equation)continue;
-  const key=vessel.id+"|"+equation;
+  entries.push({vesselId:vessel.id,equations:[equation]});
+ }
+ return appendLabReactionEquations(bench,entries);
+}
+function appendLabReactionEquations(bench:LabBench,entries:readonly {vesselId:string;equations:readonly string[]}[]):LabBench{
+ if(bench.simulationPaused||!entries.length)return bench;
+ const seen=new Set(bench.seenReactionKeys??[]);
+ const log=[...(bench.reactionLog??[])];
+ let changed=false;
+ for(const entry of entries)for(const equation of entry.equations){
+  const key=entry.vesselId+"|"+equation;
   if(seen.has(key))continue;
   seen.add(key);changed=true;
   if(log.length>=30)log.shift();
@@ -2246,6 +2268,7 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
  if(!stock)return bench;
  const measured:LabDose=stock.unit==="ml"&&stock.concentrationM===undefined&&
   labIsPreparedStock(reagent)?{...stock,concentrationM:LAB_STOCK_MOLARITY_M}:stock;
+ let completedInventoryEquations:string[]=[];
  const updated=revise(bench,id,v=>{
   const validDose=Number.isFinite(measured.value)&&measured.value>0&&
    measured.value<=10000&&(measured.unit==="ml"||measured.unit==="g")&&
@@ -2323,6 +2346,7 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
      row.observation==="gas"));
    const defer=!!v.pendingInventoryReaction||!!bench.simulationPaused&&
     quantified.steps.length>0||gradualGas;
+   if(!defer)completedInventoryEquations=quantified.steps.map(step=>step.equation);
    const productIds=Object.keys(defer?speciesMol:quantified.speciesMol);
    const confirmed=quantified.steps.length?
     reviewedReactionCases.find(row=>row.equation===quantified.steps[quantified.steps.length-1].equation):
@@ -2346,6 +2370,24 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
     visualStartedAtMs:confirmed&&!defer?Date.now():v.visualStartedAtMs};
   }
   const matching=identifyReaction(reagents,environment);
+  // A child can add spectators or several reactive stocks before pressing
+  // Play. An exact cabinet recipe is not required: the measured reaction
+  // network can already find supported reactions within a larger mixture.
+  // Keep the unreacted ledger on pause, then let the normal staged solver
+  // produce the solids/gases and equation history, rather than displaying
+  // final products instantly without ever scheduling the experiment.
+  if(matching.status==="unknown"&&!v.reactionAmounts&&!v.completedReaction&&
+    reagents.length>=3&&environment==="aqueous"&&nextDoses){
+   const input={reagents,doses:nextDoses,environment,temperatureC:v.temperatureC??22};
+   const predicted=simulateLabInventory(input);
+   if(predicted.steps.length&&!predicted.unmeasured.length&&!predicted.limited){
+    const initial=simulateLabInventory(input,0);
+    return {...v,reagents,doses:nextDoses,environment,observed:true,uncertain:false,
+     chemicalInventory:labInventorySnapshot(initial),pendingInventoryReaction:true,
+     binarySaltPhase:undefined,mixedSaltPhase:undefined,physicalProcess:undefined,
+     physicalStartedAtMs:undefined,visualStartedAtMs:undefined};
+   }
+  }
   const previousAmounts=v.reactionAmounts;
   const recorded=v.completedReaction??(v.reactionAmounts?.complete&&
    beforeReaction.status==="reaction"?beforeReaction.caseData:undefined);
@@ -2431,10 +2473,11 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
    // products are NEVER erased just because another substance was added.
    uncertain:v.uncertain||unsupportedAddition};
  });
- const activeMixer=placedLabDevices(updated).some(d=>
+ const logged=appendLabReactionEquations(updated,[{vesselId:id,equations:completedInventoryEquations}]);
+ const activeMixer=placedLabDevices(logged).some(d=>
   d.kind==="stirrer"&&d.active&&d.powered&&d.linkedVesselId===id);
- const running=updated!==bench&&activeMixer?
-  {...updated,stirringVesselId:id}:updated;
+ const running=logged!==bench&&activeMixer?
+  {...logged,stirringVesselId:id}:logged;
  return running!==bench&&bench.titrationPair&&
   (bench.titrationPair.sourceId===id||bench.titrationPair.targetId===id)?
   {...running,titrationPair:undefined,titration:undefined}:running;

@@ -95,3 +95,24 @@ assert.ok((diluted.solidMol.AgCl??0)>.0009);
 assert.ok((diluted.solidMol.CaCO3??0)<.0001);
 assert.ok(lab.labVesselQuantity(state(bench)).volumeMl>60);
 console.log("Sequential carbonate/chloride precipitates, acid dissolution, CO2, pH, dilution and conservation OK");
+
+// A spectator salt and two precipitations poured while paused must not
+// reveal final products before Play or omit their equations from the wall.
+let crash=lab.defaultLabBench();
+for(const [id,d] of [["KNO3",dose()],["AgNO3",dose(30,.1)],
+ ["NaCl",dose()],["KI",dose()]])crash=lab.putLabReagent(crash,"v1",id,d);
+assert.equal(crash.simulationPaused,true);
+assert.equal(lab.labReactionNeedsTick(state(crash)),true);
+assert.equal(lab.labVesselContents(state(crash)).solid.length,0,
+ "No predicted precipitates may appear before Play in a four-stock mixture");
+assert.ok(!crash.reactionLog?.length);
+crash=lab.setLabSimulationPaused(crash,false,1000);
+for(const t of [6000,16000,26000,36000])crash=lab.advanceLabSimulation(crash,t);
+crash=lab.recordLabReactions(crash);
+const precipitates=lab.labVesselContents(state(crash)).solid;
+for(const f of ["AgCl","AgI"]){
+ assert.ok(precipitates.some(s=>s.formula===f&&s.massG>0),f+" must form from a larger mixture");
+ assert.ok(crash.reactionLog.some(eq=>eq.includes(f+"↓")),f+" equation must be recorded");
+}
+assert.ok(!state(crash).pendingInventoryReaction);
+console.log("Four-stock paused mixture, both precipitates and all completed equations OK");

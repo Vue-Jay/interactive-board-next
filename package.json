@@ -32,7 +32,7 @@
     "native:android": "npm run build && npx cap sync android && npx cap open android",
     "native:ios": "npm run build && npx cap sync ios && npx cap open ios",
     "native:check": "node scripts/test-native-mobile.mjs",
-    "test:lab-acceptance": "node scripts/test-lektrus-lab-acceptance.mjs && node scripts/test-lektrus-lab-freezing-solids-tablet.mjs",
+    "test:lab-acceptance": "node scripts/test-lektrus-lab-acceptance.mjs && node scripts/test-lektrus-lab-freezing-solids-tablet.mjs && node scripts/test-lektrus-lab-quantitative-matrix.mjs && node scripts/test-lektrus-lab-crash-audit.mjs",
     "test:realtime": "node --test tests/realtime.test.mjs tests/live-ink.test.mjs",
     "test:board-links": "node --test tests/shareLinks.test.mjs",
     "test:brush-crop": "node scripts/test-lektrus-brush-crop.mjs",

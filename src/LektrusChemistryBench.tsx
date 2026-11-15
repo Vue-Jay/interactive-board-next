@@ -157,9 +157,14 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   }:measuredIndicator;
  const {volumeMl,massG,capacityMl,liquidFraction,solidFraction,solidVolumeMl}=labVesselQuantity(vessel);
  const contents=labVesselContents(vessel);
- const readable=(n:number,decimals=3)=>realism==="high"?
-  n.toLocaleString("ru-RU",{maximumFractionDigits:decimals}):labDisplayNumber(n,realism);
- const solutionNames=contents.solution.map(x=>x.formula+(x.mmol===undefined?"":" ("+readable(x.mmol)+" ммоль)"));
+ const readable=(n:number)=>labDisplayNumber(n,realism);
+ // Water is the solvent, not a solute. Keep the limited inline space for
+ // actual reagents and products; the detailed dialog includes tracked water.
+ const solutes=contents.solution.filter(x=>x.formula!=="H2O")
+  .sort((a,b)=>(b.mmol??0)-(a.mmol??0));
+ const solutionNames=solutes.map(x=>x.formula+(x.mmol===undefined?"":" ("+labDisplayNumber(x.mmol,realism,"moles")+" ммоль)"));
+ const solutionPreview=solutionNames.length>2?
+  solutionNames.slice(0,2).join(", ")+" · ещё "+(solutionNames.length-2):solutionNames.join(", ");
  const solidNames=contents.solid.map(x=>x.formula+(x.massG===undefined?"":" ("+readable(x.massG)+" г)"));
  const realCrystals=labVisibleBinarySaltSolid(vessel,vessel.binarySaltPhase,vessel.temperatureC??22);
  const crystallineSalt=realCrystals&&realCrystals.solidMol>1e-12?
@@ -480,10 +485,9 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
       <strong>{readable(volumeMl)}<small>мл</small></strong>
       {details&&<span className="lektrus-lab-quantity-info is-solution">
        <b>Раствор · {readable(contents.solutionMl)} мл</b>
-       <span>{solutionNames.join(", ")||"Растворённых веществ нет"}</span>
+       <span title={solutionNames.join(", ")}>{solutionPreview||"Растворённых веществ нет"}</span>
        <small className="lektrus-lab-inline-ph" title={ph?.note??"Недостаточно данных о равновесии и концентрации"}>
-        {ph?.pH===undefined?(ph?.label??"pH не определён"):
-         "pH "+labDisplayNumber(ph.pH,realism)}
+        {ph?.label??"pH не определён"}
         {isLiquidIndicator?" · "+(vessel.indicatorDrops??1)+" кап.":""}
        </small>
       </span>}
@@ -565,7 +569,7 @@ function LabExperimentControls({settings,editable,onUpdate}:{
     </button>)}
    </div>
    <small className="lektrus-lab-experiment-realism-note">
-    {settings.realism==="low"?"Округление до 5 °C и целых единиц. Упрощённая школьная демонстрация.":
+    {settings.realism==="low"?"Округление до 5 °C и целых единиц; нагрев и охлаждение условные. Для количественных опытов выберите средний или высокий реализм.":
      settings.realism==="medium"?"Округление до 1 °C и десятых. Основные количественные процессы.":
      "Измерения с десятыми долями градуса и расширенная физико-химическая модель."}
    </small>
@@ -2047,7 +2051,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      (focused?" is-selected":"")+(device.powered?" is-running":"")+
      (device.active?" is-mounted":"")+
      (dropDeviceId===device.id?" is-drop-device":"")}
-    style={{left:current.x+"%",top:current.y+"%",zIndex:focused?28:11+i}}>
+    style={{left:current.x+"%",top:current.y+"%",zIndex:focused?36:11+i}}>
     <div role="button" tabIndex={editable?0:-1} data-board-interactive="true"
      className="lektrus-lab-device-grip"
      aria-label={"Переместить "+(meta?.name??device.kind)}
@@ -2316,11 +2320,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     ...(inventory?.steps.flatMap(step=>
      labProductIdentities(step.equation).map(p=>p.formula))??[])
    ])].slice(0,48);
+   const formatted=(n:number)=>Number.isFinite(n)&&n!==0&&Math.abs(n)<1e-6?
+    n.toExponential(2).replace(".",","):
+    Number.isFinite(n)?n.toLocaleString("ru-RU",{maximumFractionDigits:6}):"—";
    const massOf=(formula:string,mmol:number)=>labMolarMass(formula)===undefined?
-    "масса не определена":
-    labDisplayNumber(labMolarMass(formula)!*mmol/1000,settings.realism)+" г";
-   const formatted=(n:number)=>settings.realism==="high"?
-    n.toLocaleString("ru-RU",{maximumFractionDigits:6}):labDisplayNumber(n,settings.realism);
+    "масса не определена":formatted(labMolarMass(formula)!*mmol/1000)+" г";
+   const measuredPH=labVesselPH(v);
+   const solutes=composition.solution.filter(s=>s.formula!=="H2O");
+   const trackedWater=composition.solution.find(s=>s.formula==="H2O");
    return <div data-board-interactive="true" role="presentation" onPointerDown={e=>e.stopPropagation()}
     style={{position:"absolute",inset:0,zIndex:110,display:"grid",placeItems:"center",background:"#132c2b99"}}>
     <section role="dialog" aria-modal="true" aria-label="Полный состав сосуда"
@@ -2330,6 +2337,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
       <button type="button" onClick={()=>setCompositionId(null)} aria-label="Закрыть состав">✕</button>
      </div>
      <p>Жидкость: {formatted(composition.solutionMl)} мл из {formatted(quantity.capacityMl)} мл. Добавлено твёрдых веществ: {formatted(quantity.massG)} г. Температура: {formatted(v.temperatureC??22)} °C.</p>
+     {composition.solutionMl>0&&<p title={measuredPH?.note}><strong>{measuredPH?.label??"pH не определён"}</strong></p>}
      {labKnownHeatCapacityJPerK(v.kind,v.doses)!==undefined&&
       <p>Расчётная теплоёмкость содержимого и посуды:
        {" "+formatted(labKnownHeatCapacityJPerK(v.kind,v.doses)!)} Дж/°C.
@@ -2469,7 +2477,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
       </ul>
      </details>
      <strong>Растворённые вещества</strong>
-     <ul>{composition.solution.length?composition.solution.map((s,i)=><li key={i}>{s.formula}: {s.mmol===undefined?"количество не рассчитано":formatted(s.mmol)+" ммоль · "+massOf(s.formula,s.mmol)+(composition.solutionMl>0?" · "+formatted(s.mmol/composition.solutionMl)+" моль/л":"")}</li>):<li>Нет</li>}</ul>
+     <ul>{solutes.length?solutes.map((s,i)=><li key={i}>{s.formula}: {s.mmol===undefined?"количество не рассчитано":formatted(s.mmol)+" ммоль · "+massOf(s.formula,s.mmol)+(composition.solutionMl>0?" · "+formatted(s.mmol/composition.solutionMl)+" моль/л":"")}</li>):<li>Нет</li>}</ul>
+     {trackedWater?.mmol!==undefined&&<p>Учтённая вода (добавленная и образовавшаяся): {formatted(trackedWater.mmol)} ммоль · {massOf("H2O",trackedWater.mmol)}. Вода в исходных растворах в эту массу не включена.</p>}
      <strong>Твёрдая фаза и осадок</strong>
      <ul>{composition.solid.length?composition.solid.map((s,i)=><li key={i}>{s.formula}: {s.massG===undefined?"масса не рассчитана":formatted(s.massG)+" г"}</li>):<li>Нет</li>}</ul>
      {!producedGas&&!gasPending&&inventory&&Object.keys(inventory.retainedGasMol).length>0&&<>
@@ -2497,7 +2506,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      </>:v.reactionAmounts&&<><strong>Текущая реакция</strong><p>{v.reactionAmounts.equation}</p></>}
      {inventory&&labInventoryMassG(inventory)!==undefined&&
       <p title="Сумма масс известных химических компонентов, включая выделившиеся газы. Не включает неучтённый растворитель стандартных растворов.">
-       Масса учтённых компонентов: {formatted(labInventoryMassG(inventory)!)} г
+       Масса учтённых компонентов: {formatted(labInventoryMassG(inventory)!)} г. Не является полной массой раствора: растворитель исходных растворов не учтён.
       </p>}
      <small>Расчёт выполнен по измеренным количествам и проверенным уравнениям. Для произвольных смесей, активности и скорости реакций необходимы дополнительные термодинамические данные.</small>
      {composition.remainderUnknown&&<p>Для части компонентов количественная модель реакции пока отсутствует. Эти количества нельзя считать точным результатом.</p>}
@@ -2801,8 +2810,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
             setMolarity(String(saved?.concentrationM??.1))}}>
            <i style={{background:cabinetColor(v)}}/>
            <strong>{v.formula}</strong>
-           <span>{v.name}<small>{labReagentForms(v).includes("ml")?"Раствор · доступен":
-            labReagentPhaseLabel(v,labReagentForms(v)[0])}</small>
+           <span>{v.name}<small>{labReagentForms(v).includes("ml")?
+            labReagentPhaseLabel(v,"ml")+" · доступен":labReagentPhaseLabel(v,labReagentForms(v)[0])}</small>
             {labReagentForms(v).includes("g")&&
              <small className="lektrus-lab-solid-property">Твёрдое · {labThermalInfo(v.id,"g").meltingC!==undefined?
               "tпл "+labThermalInfo(v.id,"g").meltingC+" °C":

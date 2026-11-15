@@ -718,6 +718,10 @@ SrCl2+K2SO4|aqueous|SrCl2 + K2SO4 → SrSO4↓ + 2KCl|precipitate|Малорас
 SrCl2+K2CO3|aqueous|SrCl2 + K2CO3 → SrCO3↓ + 2KCl|precipitate|Белый карбонат стронция|exchange|crystals
 CaCl2+Na2SO4|aqueous|CaCl2 + Na2SO4 → CaSO4↓ + 2NaCl|precipitate|При подходящих концентрациях образуется малорастворимый сульфат кальция|exchange|crystals
 Ba(NO3)2+K2SO4|aqueous|Ba(NO3)2 + K2SO4 → BaSO4↓ + 2KNO3|precipitate|Белый сульфат бария|exchange|crystals
+Ba(NO3)2+Na3PO4|aqueous|3Ba(NO3)2 + 2Na3PO4 → Ba3(PO4)2↓ + 6NaNO3|precipitate|Белый фосфат бария|exchange|crystals
+Zn(NO3)2+Na2S|aqueous|Zn(NO3)2 + Na2S → ZnS↓ + 2NaNO3|precipitate|Белый сульфид цинка|exchange|crystals
+Ca(NO3)2+K2CO3|aqueous|Ca(NO3)2 + K2CO3 → CaCO3↓ + 2KNO3|precipitate|Белый карбонат кальция|exchange|crystals
+Ca(NO3)2+Na3PO4|aqueous|3Ca(NO3)2 + 2Na3PO4 → Ca3(PO4)2↓ + 6NaNO3|precipitate|Белый фосфат кальция|exchange|crystals
 LiOH+CO2|aqueous|2LiOH + CO2 → Li2CO3↓ + H2O|precipitate|Образование малорастворимого карбоната лития|exchange|crystals
 Li2CO3+HNO3|aqueous|Li2CO3 + 2HNO3 → 2LiNO3 + CO2↑ + H2O|gas|Углекислый газ выделяется при реакции карбоната с кислотой|exchange|fizz
 Li+H2O|aqueous|2Li + 2H2O → 2LiOH + H2↑|gas|Литий реагирует с водой с выделением водорода|displacement|fizz
