@@ -1,6 +1,7 @@
 import LektrusChemistryCollectionAction from "./LektrusChemistryCollectionAction";
 import UserAvatar from "./UserAvatar";
-import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useLayoutEffect, useState, type PointerEvent as PE, type CSSProperties } from "react";
+import { lazy, memo, Suspense, useCallback, useEffect, useId, useMemo, useRef, useLayoutEffect, useState, type PointerEvent as PE, type CSSProperties } from "react";
+import { compileGraphExpression } from "./lektrusGraphExpression";
 import { boardWorldTransform, boardOverlayTransform, fitBoardCamera } from "./boardPanTransform";
 import { planCompositeBoardDrag, connectorDragEndpoints, paintBoardDeformedConnector, canCompositeBoardRotation, translatedBoardDragItems, paintBoardDragTranslation, clearBoardDragTranslation, paintBoardRotationPreview, clearBoardRotationPreview, type ConnectorDragTarget } from "./boardDragCompositor";
 import { canCompositeGroupRotation, rotatedGroupItems, paintGroupRotationFrame, clearGroupRotationFrame, type GroupRotationTarget } from "./boardGroupRotationCompositor";
@@ -1059,16 +1060,6 @@ function FormulaView({ text, fontSize = 28, color = "#20242c" }: { text: string;
   return <div className="formula-view" style={{ fontSize, color }}>{parseSequence()}</div>;
 }
 
-function evaluateGraphExpression(source: string, x: number): number {
-  const text=source.trim().toLowerCase().replace(/^y\s*=\s*/,"").replace(/,/g,".").replace(/π/g,"pi");
-  if(!text) return NaN;
-  const tokens=(text.match(/(?:\d+(?:\.\d+)?)|(?:[a-z]+)|[()+\-*/^]/g)??[]); let pos=0;
-  const primary=():number=>{const t=tokens[pos++];if(t===undefined)throw 0;if(t==="("){const v=expr();if(tokens[pos++]!==")")throw 0;return v}if(t==="-")return-primary();if(t==="+")return primary();if(/^\d/.test(t))return Number(t);if(t==="x")return x;if(t==="pi")return Math.PI;if(t==="e")return Math.E;if(/^[a-z]+$/.test(t)){if(tokens[pos++]!=="(")throw 0;const v=expr();if(tokens[pos++]!==")")throw 0;const f:{[k:string]:(n:number)=>number}={sin:Math.sin,cos:Math.cos,tan:Math.tan,sqrt:Math.sqrt,abs:Math.abs,exp:Math.exp,ln:Math.log,log:Math.log10};if(!f[t])throw 0;return f[t](v)}throw 0};
-  const power=():number=>{let v=primary();while(tokens[pos]==="^"){pos++;v=Math.pow(v,power())}return v};
-  const term=():number=>{let v=power();while(tokens[pos]==="*"||tokens[pos]==="/"){const op=tokens[pos++];const q=power();v=op==="*"?v*q:v/q}return v};
-  const expr=():number=>{let v=term();while(tokens[pos]==="+"||tokens[pos]==="-"){const op=tokens[pos++];const q=term();v=op==="+"?v+q:v-q}return v};
-  try{const value=expr();return pos===tokens.length&&Number.isFinite(value)?value:NaN}catch{return NaN}
-}
 function prettyGraphEquation(expression:string):string{
   const plain=expression.replace(/^y\s*=\s*/i,"").trim();
   return "y = "+plain.replace(/\^([0-9]+)/g,(_,digits:string)=>digits.replace(/[0-9]/g,d=>"⁰¹²³⁴⁵⁶⁷⁸⁹"[Number(d)]))
@@ -1105,6 +1096,8 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   onPhysicalPartPreview?: (target:PhysicalTarget,position:{x:number;y:number})=>void;
 }) {
   const [liveSpin,setLiveSpin]=useState<[number,number]|null>(null);
+  const curveClipId=`graph-curve-clip-${useId()}`;
+  const evaluateCurve=useMemo(()=>compileGraphExpression(item.graphExpression??""),[item.graphExpression]);
   const [liveRay,setLiveRay]=useState<{x:number;y:number}|null>(null);
   const [liveVertex,setLiveVertex]=useState<{index:number;x:number;y:number}|null>(null);
   const freeTap=useRef<{id:number;x:number;y:number;cancelled:boolean}|null>(null);
@@ -1180,7 +1173,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   const hasX = axes === "both" || axes === "x", hasY = axes === "both" || axes === "y";
   const point = (index:number) => gp[index];
   const distance = (a:{x:number;y:number},b:{x:number;y:number}) => Math.hypot(a.x-b.x,a.y-b.y);
-  const curve = purpose === "function" && item.graphShowCurve !== false && expression ? Array.from({length:401},(_,i)=>{const x=xMin+(xMax-xMin)*i/400,y=evaluateGraphExpression(expression,x);return {x:sx(x),y:sy(y),ok:Number.isFinite(y)&&y>=yMin-(yMax-yMin)*2&&y<=yMax+(yMax-yMin)*2};}) : [];
+  const curve = purpose === "function" && item.graphShowCurve !== false && evaluateCurve && xMax>xMin && yMax>yMin ? Array.from({length:401},(_,i)=>{const x=xMin+(xMax-xMin)*i/400,y=evaluateCurve(x);return {x:sx(x),y:sy(y),ok:Number.isFinite(y)&&y>=yMin-(yMax-yMin)*2&&y<=yMax+(yMax-yMin)*2};}) : [];
   let curvePath="",drawing=false;
   for(const p of curve){if(!p.ok){drawing=false;continue}curvePath+=`${drawing?"L":"M"}${p.x.toFixed(1)} ${p.y.toFixed(1)} `;drawing=true}
   const coord = (clientX:number,clientY:number,svg:SVGSVGElement,pointIndex=-1) => {
@@ -1453,7 +1446,10 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         {hasX&&<text x={W-17} y={Math.max(14,Math.min(H-8,sy(0)-9))}>x</text>}
         {hasY&&<text x={Math.max(5,Math.min(W-18,sx(0)+9))} y="13">y</text>}
       </g>}
-      {curvePath&&<path className="graph-curve" d={curvePath}/>}
+      {curvePath&&<>
+        <defs><clipPath id={curveClipId}><rect x={sx(xMin)} y={sy(yMax)} width={sx(xMax)-sx(xMin)} height={sy(yMin)-sy(yMax)}/></clipPath></defs>
+        <path className="graph-curve" d={curvePath} clipPath={`url(#${curveClipId})`}/>
+      </>}
 
       {item.graphProjections&&<g className="graph-projections">{(purpose==="unit-circle"?gp.slice(5,6):gp).map((p,i)=><g key={i}><line x1={sx(p.x)} y1={sy(p.y)} x2={sx(p.x)} y2={sy(0)}/><line x1={sx(p.x)} y1={sy(p.y)} x2={sx(0)} y2={sy(p.y)}/></g>)}</g>}
       <g className="graph-constructions">

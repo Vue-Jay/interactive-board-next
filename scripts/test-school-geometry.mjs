@@ -27,8 +27,41 @@ await loadTs("src/lektrusGeometryPointNames.ts");
 const {mathPresets,makeMathPresetItem}=await loadTs("src/lektrusMathPresets.ts");
 const {isSolidFigure,solidWorldPoints,projectSolid,projectSolidSurfaces,projectSolidEdges}=await loadTs("src/lektrusSolid3d.ts");
 const {geometryLabelLayout}=await loadTs("src/lektrusGeometryLabelLayout.ts");
+const {compileGraphExpression}=await loadTs("src/lektrusGraphExpression.ts");
+const {fractionHitPart}=await loadTs("src/lektrusFractionHit.ts");
 const app=read("src/BoardApp.tsx");
 const editor=read("src/LektrusGraphEditor.tsx");
+
+// Educational correctness: standard notation, precedence and strict syntax.
+for(const [expression,x,expected] of [
+ ["-x^2",3,-9],["(-x)^2",3,9],["2^-3",0,.125],["2^3^2",0,512],
+ ["2x+1",3,7],["y = 2x + 1",-2,-3],["2(x+1)",3,8],
+ ["(x+1)(x-1)",3,8],["2sin(x)",Math.PI/2,2],["−x^2",3,-9],
+ ["sqrt(x)",9,3],[".5x+1,5",3,3],["2*pi",0,2*Math.PI]
+]) assert.ok(Math.abs(compileGraphExpression(expression)(x)-expected)<1e-10,expression);
+for(const expression of ["sin(","x+","1..2","x@+1","sinx","unknown(x)","2 3","", "x;"])
+ assert.equal(compileGraphExpression(expression),null,expression+" must be rejected");
+assert.ok(!Number.isFinite(compileGraphExpression("1/x")(0)));
+assert.ok(Number.isNaN(compileGraphExpression("sqrt(x)")(-1)),"domain error is not a syntax error");
+assert.match(app,/clipPath=\{`url\(#\$\{curveClipId\}\)`\}/,"curve must be clipped to the plot");
+assert.match(editor,/disabled=\{expressionInvalid\}/,"invalid graph cannot be saved");
+assert.match(editor,/if\(compileGraphExpression\(expression\)\)patch\(\{expression\}\)/,"unfinished expression must not be published");
+
+// Fractions: invert the actual SVG 'meet' transform for tall, wide and exact layouts.
+for(const rect of [{left:12,top:34,width:344,height:351},{left:5,top:20,width:720,height:220},{left:0,top:0,width:360,height:250}]){
+ const scale=Math.min(rect.width/360,rect.height/250);
+ const client=(x,y)=>[rect.left+(rect.width-360*scale)/2+x*scale,rect.top+(rect.height-250*scale)/2+y*scale];
+ const hit=(mode,x,y)=>fractionHitPart(mode,12,...client(x,y),rect);
+ for(let i=0;i<12;i++){
+  const angle=-Math.PI/2+(i+.5)*Math.PI/6;
+  assert.equal(hit("circle",180+85*Math.cos(angle),125+85*Math.sin(angle)),i);
+  assert.equal(hit("bar",22+(i+.5)*316/12,126),i);
+ }
+ assert.equal(hit("bar",280,20),null,"click above strip must not change numerator");
+ assert.equal(hit("bar",5,126),null,"click left of strip must not change numerator");
+ assert.equal(hit("circle",180,10),null,"click outside circle must not change numerator");
+ assert.equal(hit("circle",180+78*Math.sin(.47),125-78*Math.cos(.47)),0,"angle just below sector boundary");
+}
 
 // A label's entire estimated text box must sit clear of edges, faces and other labels.
 for(const preset of mathPresets){

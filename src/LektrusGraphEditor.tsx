@@ -12,6 +12,7 @@ import {nextGeometryPointLabel,availableGeometryLabel,isGeometryLabelInUse} from
 import {existingPointTools,linkExistingPoints,type ExistingPointTool} from "./lektrusGeometryExistingPoints";
 import {adjustGeometryPoints,geometryDistance,geometryAngle,geometryPolygonMetrics,formatGeometryMetric,type PrecisionMode} from "./lektrusGeometryPrecision";
 import {lockGeometryConstraint,forgetGeometryConstraint,moveGeometryVertex,removeVertexConstraints} from "./lektrusGeometryConstraints";
+import {compileGraphExpression} from "./lektrusGraphExpression";
 
 /** Small vector thumbnails make the school shape library usable at a glance. */
 function LektrusGeometryPresetGlyph({id}:{id:MathPresetId}){
@@ -216,6 +217,10 @@ const formulas:Record<GraphDraft["type"],string>={
 };
 
 export default function LektrusGraphEditor({draft,userId,preview,mode,collaborative=false,onChange:emitChange,onSave,onCancel,onClose}:Props) {
+  // Keep unfinished expressions local; collaborators must not receive half-typed syntax.
+  const [expressionInput,setExpressionInput]=useState(draft.expression);
+  useEffect(()=>setExpressionInput(draft.expression),[draft.expression,draft.purpose]);
+  const expressionInvalid=draft.purpose==="function"&&!compileGraphExpression(expressionInput);
   // Record exactly one history step per completed user action.
   // Continuous wheel/pinch gestures and one tap that both creates and links
   // a point are explicit groups. Unrelated edits are NEVER time-merged.
@@ -305,11 +310,11 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
       }else if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="y"){
         event.preventDefault();event.stopPropagation();redoDraft();
       }
-      if((event.ctrlKey||event.metaKey)&&event.key==="Enter"){event.preventDefault();event.stopPropagation();onSave()}
+      if((event.ctrlKey||event.metaKey)&&event.key==="Enter"){event.preventDefault();event.stopPropagation();if(!expressionInvalid)onSave()}
     };
     document.addEventListener("keydown",key,true);
     return ()=>document.removeEventListener("keydown",key,true);
-  },[onClose,onSave,undoDraft,redoDraft]);
+  },[onClose,onSave,undoDraft,redoDraft,expressionInvalid]);
   const patch=(next:Partial<GraphDraft>)=>onChange({...draft,...next});
   // The axes are the viewport. Zoom changes their range, never vertex values.
   const validViewport=Number.isFinite(draft.xMin)&&Number.isFinite(draft.xMax)&&
@@ -482,6 +487,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
     canvasTool==="point"?"Коснитесь чертежа, чтобы поставить точку.":"Выбирайте вершины на поле. На пустом месте новая точка создаётся автоматически.";
   const loadPreset=(id:MathPresetId)=>{
     const sample=makeMathPresetItem(id,0,0,"editor");
+    setExpressionInput(sample.graphExpression??"");
     setGeometryError("");setLinkPoints([]);setCanvasTool(id==="free"?"point":"select");
     if(mode==="geometry"){setFigureCategory(solidPresetIds.has(id)?"Объёмные фигуры":"Геометрия");setTab(id==="free"?"points":"presets");if(typeof window!=="undefined"&&window.innerWidth<=900)setSettingsOpen(false)}
     patch({
@@ -732,14 +738,15 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
             <label className="lektrus-graph-field"><span>Название построения</span><input value={draft.title} maxLength={100} onChange={e=>patch({title:e.target.value})}/></label>
             {draft.purpose==="function"&&<div className="lektrus-graph-section"><strong>Функция</strong>
               <label className="lektrus-graph-field"><span>Шаблон построения</span>
-                <select value={draft.type} onChange={e=>{const type=e.target.value as GraphDraft["type"];patch({type,expression:formulas[type],showCurve:true})}}>
+                <select value={draft.type} onChange={e=>{const type=e.target.value as GraphDraft["type"];setExpressionInput(formulas[type]);patch({type,expression:formulas[type],showCurve:true})}}>
                   <option value="linear">Линейная</option><option value="quadratic">Квадратичная</option>
                   <option value="sin">Синус</option><option value="cos">Косинус</option>
                 </select>
               </label>
-              <label className="lektrus-graph-field"><span>Формула y =</span><input value={draft.expression} onChange={e=>patch({expression:e.target.value})} placeholder="Например: x^2 - 4*x + 3"/></label>
+              <label className="lektrus-graph-field"><span>Формула y =</span><input value={expressionInput} maxLength={500} aria-invalid={expressionInvalid} onChange={e=>{const expression=e.target.value;setExpressionInput(expression);if(compileGraphExpression(expression))patch({expression})}} placeholder="Например: x^2 - 4*x + 3"/></label>
+              {expressionInvalid&&<small role="alert">Проверьте запись функции. Показан последний корректный график.</small>}
               <small>Можно менять формулу вручную. Доступны +, −, *, /, ^, sin, cos, sqrt, abs, exp, ln.</small>
-              <div className="lektrus-graph-formula-typeset" aria-label="Математическая запись формулы">{displayGraphFormula(draft.expression)}</div>
+              <div className="lektrus-graph-formula-typeset" aria-label="Математическая запись формулы">{displayGraphFormula(expressionInput)}</div>
               <div className="lektrus-graph-axis-ranges">
                 <strong>Длина координатных осей</strong>
                 <small>Задайте любое нужное значение начала и конца каждой оси. Увеличение диапазона не ограничивается фиксированным школьным масштабом.</small>
@@ -1572,7 +1579,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
         <span>{collaborative?"Общий редактор · изменения сразу видны на доске всем участникам":"Изменения сохраняются после подтверждения"}</span>
         <div>
           {!collaborative&&<button type="button" className="secondary" onClick={onCancel}>Отмена</button>}
-          <button type="button" className="primary" onClick={onSave}>{collaborative?"Готово":"Сохранить"}</button>
+          <button type="button" className="primary" disabled={expressionInvalid} onClick={onSave}>{collaborative?"Готово":"Сохранить"}</button>
         </div>
       </footer>
     </section>

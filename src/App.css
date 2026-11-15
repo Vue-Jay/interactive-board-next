@@ -8236,6 +8236,10 @@ option{background:#fff;color:#343741}
 }
 .lektrus-graph-section>strong,.lektrus-graph-section-head strong{font-size:12px;color:#293753;font-weight:750}
 .lektrus-graph-section>small,.lektrus-graph-note{font-size:11px;color:#718096;line-height:1.5}
+.lektrus-graph-axis-ranges{display:flex;flex-direction:column;gap:6px}
+.lektrus-graph-section>small[role=alert],.lektrus-graph-axis-ranges>small[role=alert]{color:#b42318;font-weight:600}
+.lektrus-graph-dialog input[aria-invalid=true]{border-color:#b42318}
+.lektrus-graph-footer button:disabled{opacity:.5;cursor:not-allowed}
 .lektrus-graph-dialog .lektrus-graph-field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#56647f}
 .lektrus-graph-dialog input:not([type=checkbox]):not([type=color]),
 .lektrus-graph-dialog select{
