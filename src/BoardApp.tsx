@@ -6419,7 +6419,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
      const next={...latest,subjectBoardEntries:entries.map(entry=>entry.id===entryId?{
        ...entry,...changes,subject:boardTone(latest)}:entry)};
      if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
-     commit(itemsRef.current.map(value=>value.id===latest.id?next:value));
+     // Controlled language-work inputs need the latest value before the next
+     // input/change event. A deferred frame can restore the old value and lose a sound.
+     commit(itemsRef.current.map(value=>value.id===latest.id?next:value),{immediatePaint:changes.russianWork!==undefined});
      workChannel.current?.publishEdit(latest.id,editorDiff(latest,next));
    };
    const growSubjectBoard=(boardId:string,neededHeight:number)=>{

@@ -45,6 +45,7 @@ assert.ok(board.includes('onRussianWorkChange(entry.id,work)'));
 assert.ok(board.includes('["morphemes","syntax","morphology","phonetics","text"].includes(entry.format'));
 assert.ok(board.includes('LektrusRussianTaskAnswer'));
 assert.ok(app.includes('patchSubjectBoardEntry(item.id,entryId,{russianWork:work})'));
+assert.ok(app.includes('{immediatePaint:changes.russianWork!==undefined}'),"Controlled Russian work renders before the next input event");
 assert.ok(app.includes('"russianWork"].includes(key)'),"Learners and guests may submit structured analyses");
 assert.ok(model.includes('russianWork?:RussianTaskWork'));
 assert.ok(model.includes('Повреждён разбор по русскому языку'));
