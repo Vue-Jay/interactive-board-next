@@ -219,6 +219,28 @@ jobs:
           chmod 700 "$askpass"
           trap 'rm -f "$askpass"' EXIT
           export GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0
-          git -c credential.helper= push \
-            https://git.msk1.amvera.ru/vuejay/lektrus/ \
-            HEAD:refs/heads/master
+          repository=https://git.msk1.amvera.ru/vuejay/lektrus/
+          expected="$(git rev-parse HEAD)"
+          expected_tree="$(git rev-parse HEAD^{tree})"
+          git -c credential.helper= fetch --no-tags "$repository" refs/heads/master
+          deployed="$(git rev-parse FETCH_HEAD)"
+          if [[ "$(git rev-parse "$deployed^{tree}")" == "$expected_tree" ]] &&
+             git merge-base --is-ancestor "$expected" "$deployed"; then
+            echo "Amvera already contains the validated main tree."
+            exit 0
+          fi
+          if git merge-base --is-ancestor "$deployed" "$expected"; then
+            target="$expected"
+          else
+            # Amvera's webhook creates its own merge commits. Reconcile their
+            # history with the tested main tree without a force push or file
+            # merge: only source code is replaced, not the app disk/database.
+            target="$(printf 'Synchronize Amvera to validated main %s\n' "$expected" |
+              git -c user.name='Lektrus CI' -c user.email='actions@users.noreply.github.com' \
+                commit-tree "$expected_tree" -p "$deployed" -p "$expected")"
+          fi
+          test "$(git rev-parse "$target^{tree}")" = "$expected_tree"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$expected"
+          git -c credential.helper= push "$repository" "$target:refs/heads/master"
+          test "$(git -c credential.helper= ls-remote "$repository" refs/heads/master | cut -f1)" = "$target"
+          echo "Amvera now contains the validated main tree: $expected_tree"
