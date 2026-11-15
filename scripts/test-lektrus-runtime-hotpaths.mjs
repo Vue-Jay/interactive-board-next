@@ -15,6 +15,11 @@ assert.match(inkOverlay,/useSyncExternalStore\(store\.subscribe,store\.getSnapsh
 assert.match(inkOverlay,/\!persistedItemIds\.has\(ink\.id\)/);
 assert.doesNotMatch(app,/setRemoteInk\(/,
  "Do not rescan the entire board once per live stroke");
+assert.match(app,/<RemoteCursorOverlay store=\{remoteCursorStore\}/);
+assert.match(app,/<RemoteCursorCount store=\{remoteCursorStore\}/);
+assert.doesNotMatch(app,/setRemoteCursors\(/,"Cursor activity must not rerender the board");
+assert.match(app,/const storedById=getCurrentItemIndex\(itemsRef\.current\)/);
+assert.match(app,/const byId=itemById;/,"Do not rebuild the durable index on each peer transform");
 assert.match(inkOverlay,/<polyline key=\{ink\.id\+":"\+run\.offset\}/);
 assert.match(inkOverlay,/<circle key=\{ink\.id\+":"\+run\.offset\}/,
  "Every peer stroke must keep a stable unique SVG key");

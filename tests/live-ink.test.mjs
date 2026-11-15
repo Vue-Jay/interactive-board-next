@@ -301,7 +301,7 @@ function inkStoreHarness(){
   };
   const packet=(id,start,end,finished=false)=>({id,clientId:id,userId:id,kind:'pen',color:'#000',
     weight:3,offset:start,points:Array.from({length:end-start},(_,i)=>({x:start+i,y:start+i})),finished});
-  return {api,store:api.createRemoteInkStore(scheduler),frame,advance,frames,timers,packet};
+  return {api,store:api.createRemoteInkStore(scheduler),scheduler,frame,advance,frames,timers,packet};
 }
 
 test('30 simultaneous peers publish one snapshot per frame without dropping points or completions',()=>{
@@ -352,4 +352,58 @@ test('hidden-tab fallback, expiry refresh, board cleanup and resubscription rema
   h.store.push(h.packet('new-board',0,3,true));h.frame();
   assert.deepEqual([...h.store.getSnapshot().keys()],['new-board']);
   h.store.reset();assert.equal(h.store.getSnapshot().size,0);
+});
+
+function loadMotionModule(path){
+  const source=readFileSync(new URL(`../src/${path}`,import.meta.url),'utf8'),api={};
+  vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:api});
+  return api;
+}
+test('cursor bursts retain the latest position per peer and never notify the board per packet',()=>{
+  const h=inkStoreHarness(),store=loadMotionModule('boardRemoteCursors.ts').createRemoteCursorStore(h.scheduler);
+  let updates=0;store.subscribe(()=>updates++);
+  const cursor=(peer,x)=>({userId:`peer-${peer}`,name:`Peer ${peer}`,role:'editor',x,y:x*2,updatedAt:999999999});
+  const empty=store.getSnapshot();
+  for(let f=0;f<20;f++){
+    for(let peer=0;peer<30;peer++)for(let n=0;n<4;n++)store.push(cursor(peer,f*4+n));
+    assert.equal(updates,f);
+    assert.equal(h.frames.size,1);assert.equal(h.timers.size,2);
+    h.frame();assert.equal(updates,f+1);assert.equal(store.getCount(),30);
+  }
+  assert.equal(empty.size,0);
+  for(const value of store.getSnapshot().values()){assert.equal(value.x,79);assert.equal(value.y,158)}
+  const old=store.getSnapshot();
+  store.push(cursor(0,79));h.frame();assert.strictEqual(store.getSnapshot(),old);
+  h.advance(10000);store.push(cursor(0,79)); // TTL refresh without repaint
+  store.push(cursor(31,1));store.retainOnline(new Set(['peer-0','peer-1']));
+  h.frame();assert.equal(store.getCount(),2);assert.equal(store.getSnapshot().has('peer-31'),false);
+  h.advance(2000);assert.equal(store.getCount(),1,'idle cursor expires even with skewed client clocks');
+  h.advance(10000);assert.equal(store.getCount(),0);assert.equal(h.timers.size,0,'no idle polling timer');
+  store.push(cursor(2,11));h.advance(50);assert.equal(store.getCount(),1,'hidden-tab fallback');
+  store.push(cursor(3,12));store.reset();assert.equal(h.timers.size,0);assert.equal(h.frames.size,0);
+  assert.equal(store.getCount(),0);
+  console.log('Cursor bursts: 2400 packets / 20 frame publications; duplicate moves, presence, TTL and cleanup passed');
+});
+
+test('remote transforms reuse the current item index across 600 packets on a 10000-object board',()=>{
+  const api=loadMotionModule('boardObjectMotion.ts');
+  const items=Array.from({length:10000},(_,i)=>({id:`obj-${i}`,x:i,y:0,width:10,height:10}));
+  const ids=Array.from({length:600},(_,i)=>`obj-${i*13}`);
+  let count=0;
+  const tracked=items;
+  Object.defineProperty(tracked,'map',{value(callback){count++;return Array.prototype.map.call(this,callback)}});
+  const start=performance.now();
+  const old=ids.map(id=>new Map(tracked.map(item=>[item.id,item])).get(id));
+  const oldMs=performance.now()-start;
+  assert.equal(count,600);
+  count=0;const index=api.createCurrentItemIndex();const fasterStart=performance.now();
+  const next=ids.map(id=>index(tracked).get(id));
+  const newMs=performance.now()-fasterStart;
+  assert.equal(count,1);assert.deepEqual(old,next);
+  const stored=index(tracked).get('obj-0');const origin=api.objectPoseOrigin(stored);
+  const latest=[{...stored,x:200},...items.slice(1)];
+  assert.notEqual(api.objectPoseOrigin(index(latest).get('obj-0')),origin,'old origin invalidated on authoritative revision');
+  assert.notEqual(index(latest),index(tracked),'local undo/gesture replacement must reindex too');
+  const deleted=items.slice(1);assert.equal(index(deleted).get('obj-0'),undefined,'deleted object cannot accept stale preview');
+  console.log(`Transform lookup (600 packets, 10000 objects): 600 index builds -> 1; ${oldMs.toFixed(2)} -> ${newMs.toFixed(2)} ms`);
 });

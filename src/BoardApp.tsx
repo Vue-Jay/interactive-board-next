@@ -102,12 +102,14 @@ import { boardRoleCapabilities, canUseBoardCreationTool, isStudentProtectedBoard
 import { subscribeBoardPresence, type BoardPresenceUser } from "./boardPresence";
 import { trackBoardVisit, listBoardVisits, type BoardVisit } from "./boardVisits";
 import BoardVisitHistoryDialog from "./BoardVisitHistoryDialog";
-import { connectBoardCursorChannel, type BoardCursorChannel, type RemoteCursor } from "./boardBroadcast";
+import { connectBoardCursorChannel, type BoardCursorChannel } from "./boardBroadcast";
+import { createRemoteCursorStore } from "./boardRemoteCursors";
+import { RemoteCursorOverlay, RemoteCursorCount } from "./RemoteCursorOverlay";
 import { createRemoteInkStore } from "./boardLiveInk";
 import { RemoteInkOverlay } from "./RemoteInkOverlay";
 import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState, type BoardObjectPose } from "./boardWorkSync";
-import { objectPoseOrigin, objectPoseMatches } from "./boardObjectMotion";
+import { objectPoseOrigin, objectPoseMatches, createCurrentItemIndex } from "./boardObjectMotion";
 import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest } from "./boardAttachmentApprovalSync";
 import { documentFingerprint, sharedBoardFingerprint, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
 import { mergeEditedValue, editorDiff, applyEditorOps } from "./lektrusLiveEditorMerge";
@@ -2156,7 +2158,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [visitError,setVisitError]=useState("");
   const loadVisitHistory=async()=>{setVisitLoading(true);setVisitError("");try{setVisitRows(await listBoardVisits(boardSummary.id))}catch(error){setVisitError(error instanceof Error?error.message:"Не удалось получить посещения")}finally{setVisitLoading(false)}};
   const visiblePresenceUsers = useMemo(() => adminHidden ? presenceUsers.filter((user) => user.userId !== authUser.id) : presenceUsers, [presenceUsers, adminHidden, authUser.id]);
-  const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
+  const [remoteCursorStore] = useState(createRemoteCursorStore);
   const [remoteInkStore] = useState(createRemoteInkStore);
   const inkDiagnostics=useRef("подключается");
   const inkDiagnosticsElement=useRef<HTMLSpanElement|null>(null);
@@ -2235,8 +2237,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     window.addEventListener("onlinerepetitor:developer-preferences",update);
     return()=>window.removeEventListener("onlinerepetitor:developer-preferences",update);
   },[]);
-  const pendingRemoteCursors = useRef<Record<string, RemoteCursor>>({});
-  const remoteCursorFrame = useRef<number | null>(null);
   const cursorChannel = useRef<BoardCursorChannel | null>(null);
   const viewControlChannel = useRef<BoardViewControlChannel | null>(null);
   const [followTeacher] = useState(false);
@@ -2685,6 +2685,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // Per-stroke expiry below bounds memory without assuming a server-save time.
 
   const itemsRef = useRef(items);
+  const [getCurrentItemIndex] = useState(()=>createCurrentItemIndex<Item>());
   const eraserSession = useRef<{pointer:number;last:Point;zoom:number;path:Point[]}|null>(null);
   const eraserPreviewCanvas=useRef<HTMLCanvasElement>(null);
   const eraserPreviewRatio=useRef(1);
@@ -7780,17 +7781,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const channel = connectBoardCursorChannel(
       boardSummary.id,
       { userId: authUser.id, name: authUser.name, role: boardSummary.role },
-      (cursor) => {
-        if(!active)return;
-        pendingRemoteCursors.current[cursor.userId] = cursor;
-        if (remoteCursorFrame.current != null) return;
-        remoteCursorFrame.current = requestAnimationFrame(() => {
-          remoteCursorFrame.current = null;
-          const pending = pendingRemoteCursors.current;
-          pendingRemoteCursors.current = {};
-          if (Object.keys(pending).length) setRemoteCursors((current) => ({ ...current, ...pending }));
-        });
-      },
+      cursor=>{if(active)remoteCursorStore.push(cursor)},
       true, // Keep the socket active independently of invisible mode; cursor emission is guarded at pointer-move.
       ink=>{if(active)remoteInkStore.push(ink)},
       status=>{if(active)setInkDiagnostics(status)},
@@ -7801,13 +7792,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       active=false;
       cursorChannel.current = null;
       channel.close();
-      if (remoteCursorFrame.current != null) cancelAnimationFrame(remoteCursorFrame.current);
-      remoteCursorFrame.current = null;
-      pendingRemoteCursors.current = {};
-      setRemoteCursors({});
+      remoteCursorStore.reset();
       remoteInkStore.reset();
     };
-  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, layoutEditing, remoteInkStore, setInkDiagnostics]);
+  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, layoutEditing, remoteInkStore, remoteCursorStore, setInkDiagnostics]);
 
   useEffect(() => {
     if(layoutEditing)return;
@@ -7845,7 +7833,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   useEffect(()=>{
     const stale:string[]=[];
     for(const [id,baseline] of remoteLiveBases.current){
-      const stored=items.find(item=>item.id===id);
+      const stored=itemById.get(id);
       if(!stored||JSON.stringify(stored)!==baseline)stale.push(id);
     }
     if(!stale.length)return;
@@ -7860,7 +7848,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       for(const id of stale)delete updated[id];
       return updated;
     });
-  },[items]);
+  },[itemById]);
   useEffect(() => {
     if(layoutEditing)return;
     const channel = connectBoardWorkChannel(
@@ -7875,7 +7863,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }),
       !adminHidden,
       (mutation)=>{
-        const stored=itemsRef.current.find(item=>item.id===mutation.itemId);
+        const stored=getCurrentItemIndex(itemsRef.current).get(mutation.itemId);
         const liveLab=stored?.graphFigureId==="chem-experiment-free"&&!!stored.scienceLabBench;
         if(!stored||stored.kind!=="graph"||
           !(stored.graphPurpose==="geometry"||stored.graphFigureId==="contour-atlas"||
@@ -7931,7 +7919,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       (mutation)=>{
         // No broadcast may mutate board history, ownership, or saved content.
         // Unknown IDs and objects currently held by this user are ignored.
-        const storedById=new Map(itemsRef.current.map(item=>[item.id,item]));
+        const storedById=getCurrentItemIndex(itemsRef.current);
         const localIds=new Set(gesture.current?.ids??[]);
         const changed=mutation.items.filter(pose=>{
           const stored=storedById.get(pose.id);
@@ -8003,7 +7991,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // arrive before the last transient preview packet. Never let a dropped FINAL
   // packet pin an old intermediate pose over already-saved geometry.
   useEffect(()=>{
-    const byId=new Map(items.map(item=>[item.id,item]));
+    const byId=itemById;
     const stale=Object.entries(remoteObjectPoses).filter(([id,pose])=>{
       const stored=byId.get(id);
       return !stored || (
@@ -8038,7 +8026,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       });
     },160);
     return()=>window.clearTimeout(timer);
-  },[items,remoteObjectPoses]);
+  },[itemById,remoteObjectPoses]);
 
   const remoteWorkValues = useMemo(() => Object.values(remoteWork), [remoteWork]);
   const remoteWorkIndex = useMemo(() => {
@@ -8079,33 +8067,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   }, [adminHidden, canManageBoard, view.x, view.y, view.zoom]);
 
   useEffect(() => {
-    const online = new Set(presenceUsers.map((user) => user.userId));
-    setRemoteCursors((current) => {
-      let changed = false;
-      const next: Record<string, RemoteCursor> = {};
-      for (const [userId, cursor] of Object.entries(current)) {
-        if (online.has(userId)) next[userId] = cursor;
-        else changed = true;
-      }
-      return changed ? next : current;
-    });
-  }, [presenceUsers]);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      const cutoff = Date.now() - 12000;
-      setRemoteCursors((current) => {
-        let changed = false;
-        const next: Record<string, RemoteCursor> = {};
-        for (const [userId, cursor] of Object.entries(current)) {
-          if (cursor.updatedAt >= cutoff) next[userId] = cursor;
-          else changed = true;
-        }
-        return changed ? next : current;
-      });
-    }, 4000);
-    return () => window.clearInterval(timer);
-  }, []);
+    remoteCursorStore.retainOnline(new Set(presenceUsers.map(user=>user.userId)));
+  }, [presenceUsers,remoteCursorStore]);
 
   return (
     <div className={`app ${presentation ? "presentation-mode" : ""} ${!canEdit ? "viewer-mode" : ""} ${publicPresentation ? "public-presentation-mode" : ""}`}>
@@ -9923,7 +9886,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         >
           {showAdminControls && (showInkDiagnostics || showBoardDiagnostics || showPerformanceDiagnostics) && <div style={{position:"absolute",right:12,top:12,zIndex:2400,background:"rgba(20,23,33,.85)",color:"#fff",padding:"7px 10px",borderRadius:8,fontSize:11,pointerEvents:"none",maxWidth:"min(90vw,480px)"}}>
             {showInkDiagnostics && <div>Штрихи: <span ref={attachInkDiagnostics}/></div>}
-            {showBoardDiagnostics && <div>Соединение: {realtimeStatus} · курсоров: {Object.keys(remoteCursors).length} · участников: {visiblePresenceUsers.length} · версия: {remoteVersion.current ?? "нет"}</div>}
+            {showBoardDiagnostics && <div>Соединение: {realtimeStatus} · курсоров: <RemoteCursorCount store={remoteCursorStore}/> · участников: {visiblePresenceUsers.length} · версия: {remoteVersion.current ?? "нет"}</div>}
             {showPerformanceDiagnostics && <div>Объектов: {items.length} · штрихов: {drawingCount} · масштаб: {Math.round(view.zoom*100)}% · rAF FPS: <span ref={diagnosticFps}>…</span></div>}
           </div>}
           <div
@@ -9942,18 +9905,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             className="geometry-instrument-viewport-layer" aria-label="Измерительные инструменты" />
           <div ref={fastPanOverlay} className="remote-cursors-layer" aria-hidden="true" style={{transformOrigin:"0 0"}}>
             <RemoteInkOverlay store={remoteInkStore} persistedItemIds={persistedItemIds} x={view.x} y={view.y} zoom={view.zoom}/>
-            {Object.values(remoteCursors).map((cursor) => <div
-              className="remote-cursor"
-              key={cursor.userId}
-              style={{
-                transform: `translate(${cursor.x * view.zoom + view.x}px,${cursor.y * view.zoom + view.y}px)`,
-              }}
-            >
-              <svg className="remote-cursor-pointer" viewBox="0 0 24 30">
-                <path d="M2 2 19 17l-8.2 1.5L7 27 2 2Z"/>
-              </svg>
-              <span>{cursor.name}</span>
-            </div>)}
+            <RemoteCursorOverlay store={remoteCursorStore} x={view.x} y={view.y} zoom={view.zoom}/>
           </div>
           <div
             ref={fastPanWorld}

@@ -7,8 +7,12 @@ import {createRoot} from 'react-dom/client';
 import {flushSync} from 'react-dom';
 import {createRemoteInkStore} from '/src/boardLiveInk.ts';
 import {RemoteInkOverlay} from '/src/RemoteInkOverlay.tsx';
+import {createRemoteCursorStore} from '/src/boardRemoteCursors.ts';
+import {RemoteCursorOverlay,RemoteCursorCount} from '/src/RemoteCursorOverlay.tsx';
 
 const store=createRemoteInkStore();
+const cursorStore=createRemoteCursorStore();
+let cursorPublications=0;cursorStore.subscribe(()=>cursorPublications++);
 let parentRenders=0,publications=0;
 store.subscribe(()=>publications++);
 const root=createRoot(document.getElementById('root'));
@@ -17,7 +21,9 @@ const parent=({x=30,y=40,zoom=2,persistedItemIds=empty})=>{
   parentRenders++;
   return React.createElement(React.Fragment,null,
     React.createElement('div',{'data-board-content':true},'Board content'),
-    React.createElement(RemoteInkOverlay,{store,x,y,zoom,persistedItemIds}));
+    React.createElement(RemoteInkOverlay,{store,x,y,zoom,persistedItemIds}),
+    React.createElement(RemoteCursorOverlay,{store:cursorStore,x,y,zoom}),
+    React.createElement('div',{id:'cursor-count'},React.createElement(RemoteCursorCount,{store:cursorStore})));
 };
 const render=(props={})=>flushSync(()=>root.render(React.createElement(parent,props)));
 const nextFrame=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
@@ -60,7 +66,31 @@ try{
   assert(paths().length===29&&!finalPath.isConnected,'Persisted stroke was drawn twice');
   store.reset();await nextFrame();
   assert(paths().length===0&&!dot.isConnected,'Board switch left preview geometry');
+  const cursorStart=parentRenders;
+  const cursor=(peer,x)=>({userId:`cursor-${peer}`,name:`Peer ${peer}`,role:'editor',x,y:x*2,updatedAt:0});
+  const cursors=()=>[...document.querySelectorAll('.remote-cursor')];
+  let cursorPackets=0;
+  for(let frame=0;frame<20;frame++){
+    for(let peer=0;peer<30;peer++)for(let n=0;n<4;n++){
+      cursorStore.push(cursor(peer,frame*4+n));cursorPackets++;
+    }
+    await nextFrame();
+    assert(cursors().length===30,'Missing remote cursor');
+  }
+  assert(parentRenders===cursorStart,'Cursor activity rerendered board');
+  assert(cursorPublications===20,'Cursor activity published more than once per frame');
+  assert(document.querySelector('#cursor-count').textContent==='30','Cursor diagnostics mismatch');
+  const firstCursor=cursors()[0];
+  assert(firstCursor.style.transform==='translate(188px, 356px)','Latest cursor position incorrect');
+  cursorStore.push(cursor(0,79));await nextFrame();
+  assert(cursorPublications===20,'Stationary cursor repainted');
+  render({x:10,y:20,zoom:1});
+  assert(cursors()[0]===firstCursor&&firstCursor.style.transform==='translate(89px, 178px)','Cursor camera position or identity incorrect');
+  cursorStore.retainOnline(new Set(['cursor-0']));await nextFrame();
+  assert(cursors().length===1&&document.querySelector('#cursor-count').textContent==='1','Offline cursor not retired');
+  cursorStore.reset();await nextFrame();assert(cursors().length===0,'Cursor remains after board reset');
   root.unmount();
-  window.result={packets,publicationsBeforeChecks:20,parentRendersDuringInk:0,elapsedMs:Math.round(elapsedMs),pointsPerPeer:400};
+  window.result={packets,publicationsBeforeChecks:20,parentRendersDuringInk:0,elapsedMs:Math.round(elapsedMs),pointsPerPeer:400,
+    cursorPackets,cursorFramePublications:20,parentRendersDuringCursors:0};
 }catch(error){window.result={error:String(error.stack||error)}}
 </script></html>

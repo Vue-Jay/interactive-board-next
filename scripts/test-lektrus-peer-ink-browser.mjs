@@ -58,6 +58,9 @@ try{
   assert.equal(result.packets,2400);
   assert.equal(result.publicationsBeforeChecks,20);
   assert.equal(result.parentRendersDuringInk,0);
+  assert.equal(result.cursorPackets,2400);
+  assert.equal(result.cursorFramePublications,20);
+  assert.equal(result.parentRendersDuringCursors,0);
   console.log('Peer ink Chromium:',JSON.stringify(result));
 }finally{
   ws?.close();

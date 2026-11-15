@@ -17,3 +17,15 @@ export function objectPoseMatches(a:ObjectPoseGeometry,b:ObjectPoseGeometry):boo
   Math.abs(a.width-b.width)<.001&&Math.abs(a.height-b.height)<.001&&
   Math.abs((a.rotation??0)-(b.rotation??0))<.001;
 }
+
+/** Keep only the latest index; histories may retain hundreds of older item
+ * arrays, so a WeakMap of every revision would retain those indexes too.
+ * Board items are replaced immutably, including local gesture commits. */
+export function createCurrentItemIndex<T extends {id:string}>(){
+ let source:readonly T[]|undefined;
+ let index:ReadonlyMap<string,T>=new Map();
+ return (items:readonly T[])=>{
+  if(items!==source){source=items;index=new Map(items.map(item=>[item.id,item]))}
+  return index;
+ };
+}
