@@ -2290,7 +2290,17 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [arrowHeadStyle,setArrowHeadStyle]=useState<ArrowHeadStyle>("triangle");
   const [arrowHeadSize,setArrowHeadSize]=useState(8);
   const [connectorRouting, setConnectorRouting] = useState<ConnectorRouting>("straight");
-  const [notice, setNotice] = useState("");
+  const [notice, setNoticeState] = useState({ message: "", sequence: 0 });
+  const setNotice = useCallback((message: string) => {
+    setNoticeState(previous => ({ message, sequence: previous.sequence + 1 }));
+  }, []);
+  useEffect(() => {
+    if (!notice.message) return;
+    const timer = window.setTimeout(() => {
+      setNoticeState(current => current === notice ? { ...current, message: "" } : current);
+    }, 3000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [templatesOpen, setTemplatesOpen] = useState(false);
@@ -2808,7 +2818,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [mobileToolsOpen,setMobileToolsOpen]=useState(false);
   const [subjectToolsOpen,setSubjectToolsOpen]=useState(false);
   const [subjectToolsAnchor,setSubjectToolsAnchor]=useState<HTMLElement|null>(null);
-  const toggleSubjectTools=(anchor:HTMLElement)=>{setSubjectToolsAnchor(anchor);setSubjectToolsOpen(open=>!open);setMobileToolsOpen(false);setDesktopToolsExpanded(false)};
+  useEffect(()=>{if(!canCreateAssignments){setSubjectToolsOpen(false);setSubjectToolsAnchor(null)}},[canCreateAssignments]);
+  const toggleSubjectTools=(anchor:HTMLElement)=>{if(!canCreateAssignments)return;setSubjectToolsAnchor(anchor);setSubjectToolsOpen(open=>!open);setMobileToolsOpen(false);setDesktopToolsExpanded(false)};
   const [colorMenuOpen,setColorMenuOpen]=useState(false);
   // "Ещё" is a transient floating menu, not a persistent expansion of the rail.
   const [desktopToolsExpanded,setDesktopToolsExpanded]=useState(false);
@@ -8513,9 +8524,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             </section>
           </div>;
         })()}
-        {notice && (
-          <div className="notice" role="status">
-            {notice}
+        {notice.message && (
+          <div key={notice.sequence} className="board-system-notice" role="status">
+            <span>{notice.message}</span>
             <button
               aria-label="Закрыть уведомление"
               onClick={() => setNotice("")}
@@ -9278,7 +9289,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               editable={canEdit} renderOverlays={false} />}</div>})}
           </div>
           <span className="mobile-tool-separator" aria-hidden="true"/>
-          <button type="button" className={`lektrus-mobile-subject-trigger ${subjectToolsOpen?"active":""}`} aria-label="Предметные инструменты" title="Предметные инструменты" aria-haspopup="dialog" aria-controls="lektrus-subject-tools-panel" aria-expanded={subjectToolsOpen} onClick={e=>toggleSubjectTools(e.currentTarget)}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5.5c3.4-.9 6.4-.6 9 1.4 2.6-2 5.6-2.3 9-1.4v13c-3.4-.9-6.4-.6-9 1.4-2.6-2-5.6-2.3-9-1.4z"/><path d="M12 7v13M6 10h3M15 10h3M6 13h2M15 13h2"/></svg></button>
+          {canCreateAssignments&&<button type="button" className={`lektrus-mobile-subject-trigger ${subjectToolsOpen?"active":""}`} aria-label="Предметные инструменты" title="Предметные инструменты" aria-haspopup="dialog" aria-controls="lektrus-subject-tools-panel" aria-expanded={subjectToolsOpen} onClick={e=>toggleSubjectTools(e.currentTarget)}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5.5c3.4-.9 6.4-.6 9 1.4 2.6-2 5.6-2.3 9-1.4v13c-3.4-.9-6.4-.6-9 1.4-2.6-2-5.6-2.3-9-1.4z"/><path d="M12 7v13M6 10h3M15 10h3M6 13h2M15 13h2"/></svg></button>}
           <button type="button" className={`mobile-tools-more ${mobileToolsOpen?"active":""}`} aria-label="Все инструменты" title="Все инструменты" aria-expanded={mobileToolsOpen} onClick={()=>setMobileToolsOpen(v=>!v)}><Icon name={mobileToolsOpen?"chevron-left":"plus"} size={20}/></button>
         </nav>
         {mobileToolsOpen&&<section className="mobile-tools-sheet" aria-label="Все инструменты">
@@ -9295,7 +9306,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <div className="lektrus-desktop-sections" aria-label="Разделы инструментов">
             {desktopToolSections.filter(g=>g.ids.some(toolAllowedForRole)).map(group=><button key={group.id} type="button" className={`tool-button ${desktopToolsExpanded&&desktopToolSection===group.id?"active":""}`} aria-label={group.label} title={group.label} aria-expanded={desktopToolsExpanded&&desktopToolSection===group.id} onClick={()=>{if(desktopToolSection===group.id)setDesktopToolsExpanded(v=>!v);else{setDesktopToolSection(group.id);setDesktopToolsExpanded(true)}}}><span className="lektrus-section-icon" aria-hidden="true"><Icon name={group.icon} size={22}/></span><span className="tool-tooltip">{group.label}</span></button>)}
           </div>
-          <button type="button" className={`tool-button lektrus-desktop-subject-trigger ${subjectToolsOpen?"active":""}`} aria-label="Предметные инструменты" title="Предметные инструменты" aria-expanded={subjectToolsOpen} aria-haspopup="dialog" aria-controls="lektrus-subject-tools-panel" onClick={e=>toggleSubjectTools(e.currentTarget)}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5.5c3.4-.9 6.4-.6 9 1.4 2.6-2 5.6-2.3 9-1.4v13c-3.4-.9-6.4-.6-9 1.4-2.6-2-5.6-2.3-9-1.4z"/><path d="M12 7v13M6 10h3M15 10h3M6 13h2M15 13h2"/></svg><span className="tool-tooltip">Предметные инструменты</span></button>
+          {canCreateAssignments&&<button type="button" className={`tool-button lektrus-desktop-subject-trigger ${subjectToolsOpen?"active":""}`} aria-label="Предметные инструменты" title="Предметные инструменты" aria-expanded={subjectToolsOpen} aria-haspopup="dialog" aria-controls="lektrus-subject-tools-panel" onClick={e=>toggleSubjectTools(e.currentTarget)}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5.5c3.4-.9 6.4-.6 9 1.4 2.6-2 5.6-2.3 9-1.4v13c-3.4-.9-6.4-.6-9 1.4-2.6-2-5.6-2.3-9-1.4z"/><path d="M12 7v13M6 10h3M15 10h3M6 13h2M15 13h2"/></svg><span className="tool-tooltip">Предметные инструменты</span></button>}
           {toolAllowedForRole("comment")&&<button type="button" className={`tool-button lektrus-direct-comment ${tool==="comment"?"active":""}`} title="Комментарий" aria-label="Комментарий" onClick={()=>{finishEdit();setTool("comment");setDesktopToolsExpanded(false)}}><Icon name="comment" size={20}/><span className="tool-tooltip">Комментарий</span></button>}
           <div className="lektrus-toolbar-measure" aria-label="Измерительные инструменты">
             <GeometryInstruments view={view} boardRef={board}
@@ -9343,7 +9354,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             </div>)}
           </div>
         </LektrusToolOverflow>}
-        {subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} canChangeSubject={canManageBoard&&boardSummary.ownerId===authUser.id} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.filter(entry=>canEdit&&toolAllowedForRole(entry.id==="math-formula"?"formula":"graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,group:entry.group,icon:<LektrusSubjectToolIcon id={entry.id} size={24}/>}))} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
+        {canCreateAssignments&&subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} canChangeSubject={canManageBoard&&boardSummary.ownerId===authUser.id} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.filter(entry=>canEdit&&toolAllowedForRole(entry.id==="math-formula"?"formula":"graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,group:entry.group,icon:<LektrusSubjectToolIcon id={entry.id} size={24}/>}))} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
           finishEdit();
           if(mathematicalSubjectTools.some(entry=>entry.id===id)){
             if(!canEdit||!toolAllowedForRole(id==="math-formula"?"formula":"graph")){setNotice("Недостаточно прав для создания предметного инструмента");return}
