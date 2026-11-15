@@ -6419,7 +6419,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
      const next={...latest,subjectBoardEntries:entries.map(entry=>entry.id===entryId?{
        ...entry,...changes,subject:boardTone(latest)}:entry)};
      if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
-     commit(itemsRef.current.map(value=>value.id===latest.id?next:value));
+     // Controlled worksheet inputs and editor buttons must observe the latest
+     // entry before the next input event. Frame-batched painting is for
+     // gestures; deferring these edits can overwrite a just-entered question
+     // when the teacher immediately adds another row or marks punctuation.
+     commit(itemsRef.current.map(value=>value.id===latest.id?next:value),{immediatePaint:true});
      workChannel.current?.publishEdit(latest.id,editorDiff(latest,next));
    };
    const growSubjectBoard=(boardId:string,neededHeight:number)=>{
