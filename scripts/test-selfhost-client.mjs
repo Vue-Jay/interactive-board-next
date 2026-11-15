@@ -282,6 +282,27 @@ const nativeSaved=await api.selfhostSaveDocument(
 assert.equal(nativeSaved.version,1);
 assert.equal((await api.selfhostReadDocument(nativeBoard.id)).document.title,"Нативная доска");
 const nextDoc={...nativeDocument,items:[...nativeDocument.items,{id:"new-ink",kind:"pen",points:[{x:1,y:2}]}]};
+const normalizedBase=JSON.parse(JSON.stringify(nativeDocument));
+const prepared=api.prepareSmallDocumentDelta(normalizedBase,nextDoc,1);
+assert.ok(prepared,"Large boards with small deltas avoid full JSON serialization");
+assert.equal(prepared.next.items[0],normalizedBase.items[0],"Reuse an acknowledged detached item");
+assert.notEqual(prepared.next.items.at(-1),nextDoc.items.at(-1),"New object belongs to the isolated save snapshot");
+assert.deepEqual(JSON.parse(JSON.stringify(prepared.next)),nextDoc);
+const unusual={...nextDoc,subject:undefined,items:nextDoc.items.map((item,i)=>i===0?{...item,text:undefined,optional:[undefined,NaN],nested:{toJSON(key){return key}}}:item)};
+const normalizedUnusual=api.prepareSmallDocumentDelta(normalizedBase,unusual,1);
+assert.deepEqual(JSON.parse(JSON.stringify(normalizedUnusual.next)),JSON.parse(JSON.stringify(unusual)));
+assert.deepEqual(JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(normalizedBase,JSON.parse(normalizedUnusual.body).delta))),JSON.parse(JSON.stringify(unusual)));
+assert.equal(api.prepareSmallDocumentDelta(normalizedBase,{...nextDoc,items:nextDoc.items.slice(0,2)},1),null);
+assert.equal(api.prepareSmallDocumentDelta(normalizedBase,{...nextDoc,toJSON(){return nextDoc}},1),null);
+assert.equal(api.prepareSmallDocumentDelta(normalizedBase,{...nextDoc,title:"x".repeat(20_000)},1),null);
+const sampleTimings=fn=>{
+  const values=[];
+  for(let i=0;i<25;i++){const start=performance.now();fn();values.push(performance.now()-start);}
+  return values.sort((a,b)=>a-b)[Math.floor(values.length/2)];
+};
+const fullMedian=sampleTimings(()=>api.diffSelfhostDocument(normalizedBase,JSON.parse(JSON.stringify(nextDoc))));
+const preparedMedian=sampleTimings(()=>api.prepareSmallDocumentDelta(normalizedBase,nextDoc,1));
+console.log(`Large-board delta preparation median: ${fullMedian.toFixed(2)} -> ${preparedMedian.toFixed(2)} ms`);
 assert.equal((await api.selfhostSaveDocument(nativeBoard.id,1,nextDoc)).version,2);
 const patchRequest=records.at(-1);
 assert.equal(patchRequest.method,"PATCH");
