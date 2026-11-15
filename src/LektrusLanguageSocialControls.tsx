@@ -52,7 +52,7 @@ export default function LektrusLanguageSocialControls({diagram:d,onChange}:Props
     onChange={e=>onChange({...d,showHint:e.target.checked})}/> Показывать подсказку о конструкции</label>}
    <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showKey}
     onChange={e=>onChange({...d,showKey:e.target.checked})}/> Показать правильный порядок на доске</label>
-   <p className="lektrus-school-hint">На доске элементы перемешиваются. Ученик меняет местами две выбранные карточки и проверяет порядок. Правильный ответ по умолчанию скрыт. Это проверка последовательности, а не автоматический лингвистический разбор.</p>
+   <p className="lektrus-school-hint">На доске элементы перемешиваются. Ученик перетаскивает слова в нужные позиции или перемещает их стрелками клавиатуры, затем проверяет порядок. Правильный ответ по умолчанию скрыт. Это проверка последовательности, а не автоматический лингвистический разбор.</p>
   </>;
  }
  const updateNode=(id:string,change:Partial<StateNode>)=>

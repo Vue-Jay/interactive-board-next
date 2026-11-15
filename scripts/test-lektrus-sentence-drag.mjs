@@ -47,6 +47,9 @@ for(const marker of [
 ])assert.ok(view.includes(marker),"Sentence drag UI is missing "+marker);
 assert.ok(!view.includes("onClick={()=>swap(id)}"),"Remove two-click swap behavior");
 assert.ok(!view.includes("Нажмите два элемента"),"Remove obsolete two-click guidance");
+const controls=read("src/LektrusLanguageSocialControls.tsx");
+assert.match(controls,/перетаскивает слова в нужные позиции/,"Editor describes the actual drag interaction");
+assert.doesNotMatch(controls,/меняет местами две выбранные карточки/);
 const styles=read("src/lektrusSchoolDiagrams.css");
 assert.ok(styles.includes(".lektrus-sentence-parts button.is-dragging"));
 assert.ok(styles.includes(".lektrus-sentence-drag-preview"));

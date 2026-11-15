@@ -185,7 +185,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
      </div>
      <textarea className="lektrus-language-gap-source" ref={selectedRef} rows={5} maxLength={1800}
       aria-label="Текст упражнения для создания пропусков" value={markup}
-      placeholder={punctuation?"Напишите предложение. Выделите существующий знак или выберите место для нового.":"Напишите слова или предложения, затем выделите орфограммы."}
+      placeholder={punctuation?"Напишите предложение. Выделите существующий знак или выберите место для нового.":orthography?"Напишите слова или предложения, затем выделите орфограммы.":"Напишите текст, затем выделите слова или буквы для пропусков."}
       onChange={e=>changeMarkup(e.target.value)}/>
      <div className="lektrus-language-gap-actions">
       <button type="button" onMouseDown={e=>e.preventDefault()} onClick={markSelected}>
