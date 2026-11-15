@@ -7,7 +7,7 @@ const app=readFileSync("src/BoardApp.tsx","utf8");
 const js=ts.transpileModule(script,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const mod={exports:{}};
 new Function("require","module","exports",js)((id)=>{throw Error("Unexpected runtime dependency: "+id)},mod,mod.exports);
-const {boardWorldTransform,boardOverlayTransform}=mod.exports;
+const {boardWorldTransform,boardOverlayTransform,fitBoardCamera}=mod.exports;
 
 const base={x:100,y:-40,zoom:2};
 const moved={x:280,y:-115,zoom:2};
@@ -41,6 +41,18 @@ assert.match(app,/const margin = Math\.min\(600,Math\.max\(280,boardViewportSize
 // was moved by paintPendingPan. Verify it uses exactly the same camera delta
 // for *all* selection modes and no more costly React state on pointermove.
 const css=readFileSync("src/App.css","utf8");
+assert.match(css,/\.board\s*\{[^}]*overflow:\s*clip;[^}]*isolation:\s*isolate;/,
+  "Canvas must not scroll on focus or place selection above docked UI");
+const fitBounds={x:3670,y:8360,width:480,height:320};
+for(const viewport of [{width:1363,height:884},{width:960,height:798},{width:740,height:650}]){
+  const panels=[{x:10,y:10,width:54,height:600},{x:viewport.width-300,y:14,width:286,height:viewport.height-28}];
+  const v=fitBoardCamera(fitBounds,viewport,120,panels);
+  const x=fitBounds.x*v.zoom+v.x,y=fitBounds.y*v.zoom+v.y;
+  assert.ok(x>=72-1e-6&&x+fitBounds.width*v.zoom<=viewport.width-308+1e-6,"Fit must avoid both side panels");
+  assert.ok(y>=57&&y+fitBounds.height*v.zoom+52<=viewport.height,"Selection rotation and actions fit vertically");
+}
+const phone=fitBoardCamera(fitBounds,{width:320,height:640},120,[{x:20,y:15,width:286,height:600}]);
+assert.ok(Number.isFinite(phone.x)&&Number.isFinite(phone.y)&&phone.zoom>=.1,"Nearly full-screen dock must not produce an invalid camera");
 const paint=app.slice(app.indexOf("const paintPendingPan ="),app.indexOf("const scheduleViewerPan ="));
 assert.match(paint,/fastPanSelection\.current\.style\.transform=boardOverlayTransform\(next,viewRef\.current\)/,
   "Selection frame must be moved every compositor pan frame, not only on release");

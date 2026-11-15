@@ -467,6 +467,70 @@ html body .topbar .topbar-right .topbar-menu-section .topbar-menu-danger{color:#
 .lectris-workspace-stage .lektrus-calendar-panel .lectris-hub-placeholder{margin:5px 0 0!important;color:var(--lt-muted,#718096);font-size:11px!important;line-height:1.4}
 .lectris-workspace-stage .lektrus-calendar-panel .lectris-hub-lesson{margin-top:7px!important;padding-top:7px!important;border-top:1px solid var(--lt-line,#d4dce8)}
 
+/* The sidebar changes the available width independently of the viewport.
+   Reflow the home page against its actual content width, not screen width. */
+.lectris-workspace-stage .lectris-hub:has(.lectris-hub-hero-compact){
+ container:lektrus-home / inline-size;
+ min-width:0;
+}
+.lectris-workspace-stage .lectris-hub .lectris-hub-aside{
+ grid-template-columns:minmax(0,1fr)!important;
+ min-width:0;max-width:none!important;
+}
+.lectris-workspace-stage .lectris-hub .lektrus-calendar-panel{
+ min-width:0;width:100%;max-width:100%;
+}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-head{
+ flex-wrap:wrap!important;row-gap:2px!important;
+}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-head>div{
+ flex:1 1 155px!important;
+}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-head h2{
+ white-space:normal;overflow-wrap:normal;
+}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-toolbar{
+ flex-wrap:wrap;row-gap:4px;
+}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-toolbar>div{
+ flex:0 0 auto;max-width:100%;
+}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-selected-day{
+ flex-wrap:wrap;
+}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-day-heading{
+ flex-wrap:wrap;gap:3px 8px;
+}
+.lectris-workspace-stage .lektrus-calendar-panel .lektrus-calendar-grid button{
+ min-width:0;padding-inline:0!important;
+}
+.lectris-workspace-stage .lectris-hub .lectris-hub-home-sync{
+ color:var(--lt-muted,#64748b);white-space:normal;max-width:100%;
+}
+@container lektrus-home (max-width:740px){
+ .lectris-workspace-stage .lectris-hub .lectris-hub-columns{
+  grid-template-columns:minmax(0,1fr)!important;align-items:start!important;
+ }
+ .lectris-workspace-stage .lectris-hub .lectris-hub-columns>.lectris-hub-section,
+ .lectris-workspace-stage .lectris-hub .lectris-hub-aside{height:auto}
+ .lectris-workspace-stage .lectris-hub .lectris-hub-tiles{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ }
+ .lectris-workspace-stage .lectris-hub .lectris-hub-tile{min-height:120px!important}
+ .lectris-workspace-stage .lectris-hub:has(.lectris-hub-hero-compact) .lectris-hub-board-list{
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr))!important;
+ }
+ .lectris-workspace-stage .lectris-hub .lectris-hub-hero-compact{flex-wrap:wrap!important}
+ .lectris-workspace-stage .lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-copy{flex:1 1 280px}
+ .lectris-workspace-stage .lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-actions:not(:empty){margin-top:0}
+ .lectris-workspace-stage .lectris-hub .lectris-hub-hero-separator{display:none}
+}
+@container lektrus-home (max-width:380px){
+ .lectris-workspace-stage .lectris-hub .lectris-hub-tile{padding:10px!important}
+ .lectris-workspace-stage .lectris-hub .lectris-hub-tile-copy strong{overflow-wrap:anywhere}
+ .lectris-workspace-stage .lectris-hub .lectris-hub-section-label{flex-wrap:wrap;row-gap:3px}
+}
+
 /* Shared surface language for the content of each application section. */
 .lectris-workspace-stage :is(.boards-shell,.students-shell,.assignments-shell,.progress-shell,.schedule-shell,.materials-shell,.templates-shell,.notifications-shell,.profile-shell,.admin-users-shell){
  min-height:calc(100dvh - 73px)!important;background:var(--lt-bg)!important;color:var(--lt-text)!important
