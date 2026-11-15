@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { navigateWorkspaceSection } from "./routes";
 import {
   clearAiDrafts,
   generateLocalAiDraft,
@@ -77,8 +78,7 @@ export default function AiStudioScreen({ onBack }: { onBack: () => void }) {
     queueAiDraftForBoard(draft);
     setTransferNotice("Материал подготовлен. Откройте нужную доску, и он появится в её центре.");
     window.setTimeout(() => {
-      window.history.pushState({}, "", "/");
-      window.dispatchEvent(new PopStateEvent("popstate"));
+      navigateWorkspaceSection("boards");
     }, 450);
   };
 

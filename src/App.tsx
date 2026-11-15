@@ -511,37 +511,35 @@ export default function App() {
   if (!activeBoard) {
     return (
       <>
-        <Suspense fallback={<div className="board-server-overlay"><div className="board-server-card"><strong>Открываем раздел…</strong><span>Загружаем только нужный модуль.</span></div></div>}>
-        {route.kind === "home" && <LectrisWorkspaceShell section={new URLSearchParams(window.location.search).get("section")||""} role={effectiveAccountRole} isAdmin={isAppAdmin} name={authUser.name} rolePreview={appRolePreview}>{(()=>{const section=new URLSearchParams(window.location.search).get("section");return section==="registration-preview"&&isAppAdmin&&appRolePreview==="actual"
+        {route.kind === "home" && <LectrisWorkspaceShell section={new URLSearchParams(window.location.search).get("section")||""} role={effectiveAccountRole} isAdmin={isAppAdmin} name={authUser.name} rolePreview={appRolePreview}><Suspense fallback={<div className="lectris-section-loading" role="status"><strong>Открываем раздел…</strong><span>Загружаем только нужный модуль.</span></div>}>{(()=>{const section=new URLSearchParams(window.location.search).get("section");return section==="registration-preview"&&isAppAdmin&&appRolePreview==="actual"
           ? <AuthScreen onAuthenticated={()=>{}} previewMode onPreviewClose={()=>{window.history.pushState({}, "", "/app?section=boards");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="admin" && isAppAdmin && appRolePreview==="actual"
-          ? <AdminScreen user={authUser} invisible={adminInvisible} onInvisibleChange={changeAdminInvisible} adminEdit={adminEdit} onAdminEditChange={changeAdminEdit} rolePreview={appRolePreview} onRolePreviewChange={changeAppRolePreview} onCheckRegistration={()=>navigate("/?section=registration-preview")} onOpenBoard={(board)=>{setAdminInspecting(true);void openBoard(board,()=>true)}} onOpenLayout={async()=>{navigate(`/board/${INTERFACE_STUDIO_BOARD_ID}?layout-editor=1`)}} onBack={()=>{window.history.pushState({}, "", "/app");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          ? <AdminScreen user={authUser} invisible={adminInvisible} onInvisibleChange={changeAdminInvisible} adminEdit={adminEdit} onAdminEditChange={changeAdminEdit} rolePreview={appRolePreview} onRolePreviewChange={changeAppRolePreview} onCheckRegistration={()=>navigate("/?section=registration-preview")} onOpenBoard={(board)=>{setAdminInspecting(true);void openBoard(board,()=>true)}} onOpenLayout={async()=>{navigate(`/board/${INTERFACE_STUDIO_BOARD_ID}?layout-editor=1`)}} onBack={()=>navigate("/app?section=boards")} />
           : section==="students" && effectiveAccountRole==="teacher"
-          ? <StudentsScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/app");window.dispatchEvent(new PopStateEvent("popstate"))}} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
+          ? <StudentsScreen user={authUser} onBack={()=>navigate("/app?section=boards")} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
           : section==="assignments"
-          ? <AssignmentsScreen user={authUser} accountRole={effectiveAccountRole} onBack={()=>{window.history.pushState({}, "", "/app");window.dispatchEvent(new PopStateEvent("popstate"))}} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
+          ? <AssignmentsScreen user={authUser} accountRole={effectiveAccountRole} onBack={()=>navigate("/app?section=boards")} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
           : section==="progress" && effectiveAccountRole==="teacher"
-          ? <ProgressScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/app");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          ? <ProgressScreen user={authUser} onBack={()=>navigate("/app?section=boards")} />
           : section==="schedule"
-          ? <ScheduleScreen user={authUser} accountRole={effectiveAccountRole} onBack={()=>{window.history.pushState({}, "", "/app");window.dispatchEvent(new PopStateEvent("popstate"))}} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
+          ? <ScheduleScreen user={authUser} accountRole={effectiveAccountRole} onBack={()=>navigate("/app?section=boards")} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
           : section==="materials" && effectiveAccountRole==="teacher"
-          ? <MaterialsScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/app");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          ? <MaterialsScreen user={authUser} onBack={()=>navigate("/app?section=boards")} />
           : section==="notifications"
-          ? <NotificationsScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/app");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          ? <NotificationsScreen user={authUser} onBack={()=>navigate("/app?section=boards")} />
           : section==="feedback"
           ? <FeedbackScreen />
           : section==="profile"
-          ? <ProfileScreen user={authUser} accountRole={effectiveAccountRole} isAppAdmin={isAppAdmin&&appRolePreview==="actual"} previewMode={appRolePreview!=="actual"} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} onBack={()=>{window.history.pushState({}, "", "/app");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          ? <ProfileScreen user={authUser} accountRole={effectiveAccountRole} isAppAdmin={isAppAdmin&&appRolePreview==="actual"} previewMode={appRolePreview!=="actual"} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} onBack={()=>navigate("/app?section=boards")} />
           : section==="settings"
-          ? <SettingsScreen user={authUser} previewRole={appRolePreview==="actual"?null:effectiveAccountRole} onPreviewRoleChange={changeAppRolePreview} onBack={()=>{window.history.pushState({}, "", "/app");window.dispatchEvent(new PopStateEvent("popstate"))}} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} installAvailable={Boolean(globalInstallPrompt)} isInstalled={globalStandalone} onInstall={()=>void installGlobalApp()} onBilling={()=>{window.history.pushState({}, "", "/app?section=billing");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          ? <SettingsScreen user={authUser} previewRole={appRolePreview==="actual"?null:effectiveAccountRole} onPreviewRoleChange={changeAppRolePreview} onBack={()=>navigate("/app?section=boards")} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} installAvailable={Boolean(globalInstallPrompt)} isInstalled={globalStandalone} onInstall={()=>void installGlobalApp()} onBilling={()=>{window.history.pushState({}, "", "/app?section=billing");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="billing"
           ? <BillingScreen onBack={()=>{window.history.pushState({}, "", "/app?section=settings");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="ai"
           ? <AiStudioScreen onBack={()=>{window.history.pushState({}, "", "/app?section=settings");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="templates" && effectiveAccountRole==="teacher"
-          ? <TemplatesScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/app");window.dispatchEvent(new PopStateEvent("popstate"))}} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
-          : <BoardsScreen user={authUser} accountRole={effectiveAccountRole} isAppAdmin={isAppAdmin&&appRolePreview==="actual"} onOpenBoard={(board) => navigate(`/board/${board.id}`)} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} />})()}</LectrisWorkspaceShell>}
-        </Suspense>
+          ? <TemplatesScreen user={authUser} onBack={()=>navigate("/app?section=boards")} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
+          : <BoardsScreen user={authUser} accountRole={effectiveAccountRole} isAppAdmin={isAppAdmin&&appRolePreview==="actual"} onOpenBoard={(board) => navigate(`/board/${board.id}`)} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} />})()}</Suspense></LectrisWorkspaceShell>}
         {sharePasswordRequired && route.kind==="join" && <div className="board-server-overlay"><form className="board-server-card share-password-card" onSubmit={e=>{e.preventDefault();if(!sharePassword.trim())return;setSharePasswordRequired(false);setSubmittedSharePassword({token:route.token,value:sharePassword});}}><strong>Ссылка защищена паролем</strong><span>Введите пароль, который сообщил владелец доски.</span><input type="password" value={sharePassword} onChange={e=>setSharePassword(e.target.value)} placeholder="Пароль ссылки" autoComplete="off"/><div className="share-password-actions"><button className="primary" type="submit" disabled={!sharePassword.trim()}>Открыть доску</button><button type="button" onClick={()=>{setSharePassword("");clearPendingShare();navigate("/",true)}}>Отмена</button></div></form></div>}
         {boardLoading && <BoardLoadingScreen/>}
         {boardLoadError && <div className="board-server-overlay"><div className="board-server-card"><strong>Не удалось открыть доску</strong><span>{boardLoadError}</span><button className="primary" onClick={() => setRoute({ ...route })}>Повторить</button><button onClick={() => { clearPendingShare(); navigate("/", true); }}>К моим доскам</button></div></div>}

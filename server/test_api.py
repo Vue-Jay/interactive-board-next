@@ -474,6 +474,22 @@ async def test_board_access_and_conflict_free_save(client):
     assert trashed.status_code == 200 and trashed.json()["ok"] is True
     assert (await client.get(url,headers=teacher)).status_code == 404
     assert (await client.get("/api/v1/boards",headers=teacher)).json() == []
+    trash_url = "/api/v1/boards/trash"
+    assert [row["id"] for row in (await client.get(trash_url, headers=teacher)).json()] == [board_id]
+    assert (await client.get(trash_url, headers=student)).json() == []
+    assert (await client.post(url+"/restore", headers=student)).status_code == 404
+    assert (await client.post(url+"/permanent-delete", headers=student,
+                              json={"confirmation": "Урок химии: итог"})).status_code == 404
+    assert (await client.post(url+"/restore", headers=teacher)).status_code == 200
+    assert (await client.get(url+"/document", headers=teacher)).json()["document"] == native_document
+    assert (await client.post(url+"/permanent-delete", headers=teacher,
+                              json={"confirmation": "Урок химии: итог"})).status_code == 404
+    assert (await client.delete(url, headers=teacher)).status_code == 200
+    assert (await client.post(url+"/permanent-delete", headers=teacher,
+                              json={"confirmation": "Не то название"})).status_code == 400
+    assert (await client.post(url+"/permanent-delete", headers=teacher,
+                              json={"confirmation": "Урок химии: итог"})).status_code == 200
+    assert (await client.get(trash_url, headers=teacher)).json() == []
 
 @pytest.mark.asyncio
 async def test_payload_limits_and_unconfirmed_accounts(client, monkeypatch):

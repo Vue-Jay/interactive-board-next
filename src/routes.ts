@@ -5,6 +5,11 @@ const PENDING_BOARD_KEY = "lektrus.pending-board-route.v1";
 const PENDING_BOARD_CROSS_TAB_KEY = "lektrus.pending-board-route.v2";
 const PENDING_TTL_MS = 2 * 60 * 60 * 1000;
 const TOKEN = /^[a-f0-9]{64}$/;
+/** Internal workspace navigation must never land on the public marketing root. */
+export function navigateWorkspaceSection(section = "") {
+  window.history.pushState({}, "", section ? "/app?section=" + encodeURIComponent(section) : "/app");
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
 export function parseRoute(path: string): AppRoute {
   if (path === "/confirm-email" || path === "/confirm-email/") return { kind: "home" };
   if (path === "/") return { kind: "site" };

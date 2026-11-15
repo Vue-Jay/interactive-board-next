@@ -145,12 +145,17 @@ export const removeMember=async(o:string,b:string,u:string)=>{if(isSelfhostBacke
 export const revokeInvitation=async(o:string,b:string,id:string)=>{if(isSelfhostBackendEnabled()){await selfhostRevokeInvitation(b,id);return true}if(isRemoteBackendEnabled()){await remoteRequest(`/rest/v1/board_invites?id=eq.${encodeURIComponent(id)}&board_id=eq.${encodeURIComponent(b)}`,{method:"DELETE",headers:{Prefer:"return=minimal"}});return true}if(localRole(o,b)!=="owner")return false;write(INVITES_KEY,invites().filter(i=>!(i.boardId===b&&i.id===id)));return true};
 
 export const getTrashedBoards=async(_user:AuthUser):Promise<BoardSummary[]>=>{
+ if(isSelfhostBackendEnabled())return (await selfhostRequest<SelfhostBoard[]>("/api/v1/boards/trash")).map(row=>rowToBoard(row,"owner"));
  if(!isRemoteBackendEnabled())return[];
  const rows=await remoteRequest<any[]>("/rest/v1/rpc/list_my_trashed_boards",{method:"POST",body:"{}"});
  return rows.map(row=>rowToBoard(row,"owner"));
 };
-export const restoreBoard=async(id:string)=>{await remoteRequest("/rest/v1/rpc/restore_board",{method:"POST",body:JSON.stringify({p_board_id:id})});return true};
+export const restoreBoard=async(id:string)=>{if(isSelfhostBackendEnabled()){await selfhostRequest("/api/v1/boards/"+encodeURIComponent(id)+"/restore",{method:"POST"});return true}await remoteRequest("/rest/v1/rpc/restore_board",{method:"POST",body:JSON.stringify({p_board_id:id})});return true};
 export const deleteBoardForever=async(id:string,confirmation:string)=>{
+ if(isSelfhostBackendEnabled()){
+  const result=await selfhostRequest<{deleted_assets:number;files_pending:number}>("/api/v1/boards/"+encodeURIComponent(id)+"/permanent-delete",{method:"POST",body:JSON.stringify({confirmation})});
+  return {deletedAssets:result.deleted_assets,filesPending:result.files_pending};
+ }
  const prep=await remoteRequest<{board_id:string;asset_count:number}>("/rest/v1/rpc/prepare_board_permanent_delete",{method:"POST",body:JSON.stringify({p_board_id:id,p_confirmation:confirmation})});
  let deleted=0;
  if((prep.asset_count||0)>0){
@@ -160,5 +165,5 @@ export const deleteBoardForever=async(id:string,confirmation:string)=>{
    for(let i=0;i<paths.length;i+=100){const batch=paths.slice(i,i+100);await deleteRemoteStorageObjects("board-assets",batch);deleted+=batch.length}
  }
  await remoteRequest("/rest/v1/rpc/finish_board_permanent_delete",{method:"POST",body:JSON.stringify({p_board_id:id,p_confirmation:confirmation})});
- return {deletedAssets:deleted};
+ return {deletedAssets:deleted,filesPending:0};
 };

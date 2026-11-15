@@ -1153,3 +1153,5 @@ body .workspace section.mobile-tools-sheet .mobile-tools-sheet-head-actions>butt
 @media screen and (max-width:350px) and (orientation:portrait){
  body .workspace section.mobile-tools-sheet .mobile-tools-group>div{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 }
+.lectris-section-loading{display:grid;place-content:center;gap:.5rem;min-height:220px;padding:24px;text-align:center;color:var(--lt-text)}
+.lectris-section-loading span{font-size:.875rem;opacity:.75}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { navigateWorkspaceSection } from "./routes";
 import UserAvatar from "./UserAvatar";
 import type { AuthUser } from "./authStore";
 import type { BoardSummary } from "./boardStore";
@@ -58,9 +59,9 @@ export default function StudentsScreen({user,onBack,onOpenBoard}:Props){
  const late=studentAssignments.filter(overdue).length;
  const pendingReview=studentAssignments.filter(a=>a.status==="submitted").length;
  const nextLesson=student?schedule.filter(x=>x.studentId===student.userId&&x.status==="planned"&&Date.parse(x.startsAt)>=Date.now()).sort((a,b)=>a.startsAt.localeCompare(b.startsAt))[0]||null:null;
- const openProgress=()=>{if(!student)return;sessionStorage.setItem("onlinerepetitor.progress.student",student.userId);window.history.pushState({},"","/?section=progress");window.dispatchEvent(new PopStateEvent("popstate"))};
- const openAssignments=()=>{if(!student)return;sessionStorage.setItem("onlinerepetitor.assignments.student",student.userId);window.history.pushState({},"","/?section=assignments");window.dispatchEvent(new PopStateEvent("popstate"))};
- const openSchedule=()=>{window.history.pushState({},"","/?section=schedule");window.dispatchEvent(new PopStateEvent("popstate"))};
+ const openProgress=()=>{if(!student)return;sessionStorage.setItem("onlinerepetitor.progress.student",student.userId);navigateWorkspaceSection("progress")};
+ const openAssignments=()=>{if(!student)return;sessionStorage.setItem("onlinerepetitor.assignments.student",student.userId);navigateWorkspaceSection("assignments")};
+ const openSchedule=()=>navigateWorkspaceSection("schedule");
 
  return <main className="students-shell">
   <header className="students-header"><div><button className="boards-secondary" onClick={onBack}>← Доски</button><div><strong>Ученики</strong><span>Карточки, история, результаты, задания и расписание</span></div></div><span>{loading?"Загрузка…":`${students.length} учеников`}</span></header>

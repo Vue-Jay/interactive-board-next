@@ -141,6 +141,101 @@ try{
   const collapsed=await snapshot();
   assert.ok(!collapsed.outside.length&&!collapsed.overlap.length,'Collapsed sidebar: calendar overlap');
   console.log('✓ Home sidebar collapse: no overlap');
+  await click('.lectris-collapse-button');
+  await call('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
+  const sections=[
+   ["Доски","boards",".lectris-library-intro"],
+   ["Предметы","subjects",".lektrus-category-panel"],
+   ["Группы и классы","groups",".lektrus-group-layout"],
+   ["Ученики","students",".students-shell"],
+   ["Задания","assignments",".assignments-shell"],
+   ["Расписание","schedule",".schedule-shell"],
+   ["Прогресс","progress",".progress-shell"],
+   ["Материалы","materials",".materials-shell"],
+   ["Шаблоны","templates",".templates-shell"],
+   ["Уведомления","notifications",".notifications-shell"],
+   ["Отзывы и предложения","feedback",".lektrus-feedback-screen"],
+   ["Профиль","profile",".profile-only-shell"],
+   ["Настройки","settings",".settings-shell"],
+  ];
+  const checkSection=async(id,selector)=>{
+   await wait(`location.pathname==="/app"&&new URLSearchParams(location.search).get("section")===${JSON.stringify(id)}&&!!document.querySelector(${JSON.stringify(selector)})`,
+    "Wrong workspace section: "+id);
+  };
+  for(const [label,id,selector] of sections){
+   await click('.lectris-workspace-sidebar button[aria-label="'+label+'"]');
+   await checkSection(id,selector);
+   console.log('✓ Sidebar: '+label);
+  }
+  await click('.settings-plan-row button');
+  await checkSection("billing",".billing-page");
+  await click('.billing-head button');
+  await checkSection("settings",".settings-shell");
+  await evaluate('[...document.querySelectorAll(".settings-row-card")].find(x=>x.textContent.includes("AI-студия")).querySelector("button").click()');
+  await checkSection("ai",".ai-studio");
+  for(let i=0;i<3;i++){
+   await click('.ai-tool-tabs button:nth-child('+(i+1)+')');
+   await wait(`document.querySelector(".ai-tool-tabs button:nth-child(${i+1})").classList.contains("active")`,"AI tab did not select");
+  }
+  await click('.ai-head button');
+  await checkSection("settings",".settings-shell");
+  await click('.lectris-brand');
+  await wait('!!document.querySelector(".lektrus-calendar-grid")',"Home brand did not navigate");
+  for(const [label,id,selector] of sections.filter(x=>["groups","students","subjects","assignments"].includes(x[1]))){
+   await evaluate(`[...document.querySelectorAll(".lectris-hub-tile")].find(x=>x.textContent.includes(${JSON.stringify(label)})).click()`);
+   await checkSection(id,selector);
+   await click('.lectris-brand');
+   await wait('!!document.querySelector(".lektrus-calendar-grid")',"Home did not reopen");
+  }
+  await click('.lectris-hub-section-head:not(.lektrus-calendar-head) button');
+  await checkSection("boards",".lectris-library-intro");
+  for(let i=1;i<=3;i++){
+   await click('.lectris-library-filters button:nth-child('+i+')');
+   await wait(`document.querySelector(".lectris-library-filters button:nth-child(${i})").getAttribute("aria-pressed")==="true"`,"Board filter did not select");
+  }
+  await click('.lectris-library-new');
+  await wait('!!document.querySelector(".lektrus-create-dialog")',"Create board dialog did not open");
+  await evaluate('[...document.querySelectorAll(".lektrus-create-dialog button")].find(b=>b.textContent.includes("Отмена")).click()');
+  await wait('!document.querySelector(".lektrus-create-dialog")',"Create board dialog did not close");
+  await click('.lectris-brand');
+  await wait('!!document.querySelector(".lektrus-calendar-grid")',"Home did not reopen");
+  await click('.lektrus-calendar-head button');
+  await checkSection("schedule",".schedule-shell");
+  const week=await evaluate('document.querySelector(".schedule-toolbar strong").textContent');
+  await click('.schedule-toolbar button:last-child');
+  await wait(`document.querySelector(".schedule-toolbar strong").textContent!==${JSON.stringify(week)}`,"Schedule next week did not change");
+  await click('.schedule-toolbar button:nth-child(2)');
+  await wait(`document.querySelector(".schedule-toolbar strong").textContent===${JSON.stringify(week)}`,"Today did not restore week");
+  await click('.schedule-view-toggle button:nth-child(2)');
+  await wait('document.querySelector(".schedule-view-toggle button:nth-child(2)").getAttribute("aria-pressed")==="true"',"Completed lessons filter did not activate");
+  await click('.schedule-view-toggle button:first-child');
+  await wait('document.querySelector(".schedule-view-toggle button:first-child").getAttribute("aria-pressed")==="true"',"Current lessons filter did not activate");
+  await click('.schedule-shell .boards-create');
+  await wait('!!document.querySelector(".schedule-modal")',"New lesson did not open");
+  await click('.schedule-modal .access-head button');
+  await wait('!document.querySelector(".schedule-modal")',"Lesson dialog did not close");
+  await click('.lectris-workspace-sidebar button[aria-label="Прогресс"]');
+  await wait('!!document.querySelector(".progress-tabs button")',"Progress tabs did not load");
+  for(let i=1;i<=3;i++){
+   await click('.progress-tabs button:nth-child('+i+')');
+   await wait(`document.querySelector(".progress-tabs button:nth-child(${i})").getAttribute("aria-selected")==="true"`,"Progress tab did not select");
+  }
+  await click('.lectris-workspace-sidebar button[aria-label="Уведомления"]');
+  await checkSection("notifications",".notifications-shell");
+  await click('.notifications-shell .students-header>button');
+  await wait('!!document.querySelector(".notification-settings")',"Notification settings did not open");
+  await click('.notification-settings .access-head button');
+  await wait('!document.querySelector(".notification-settings")',"Notification settings did not close");
+  await click('.lectris-header-search');
+  await wait('!!document.querySelector(".lectris-command-dialog")',"Command search did not open");
+  await evaluate('[...document.querySelectorAll(".lectris-command-results button")].find(b=>b.textContent.includes("Шаблоны")).click()');
+  await checkSection("templates",".templates-shell");
+  await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:false});
+  await click('.lectris-mobile-bottom button[aria-label="Ещё разделы"]');
+  await wait('!!document.querySelector(".lektrus-more-page")',"Mobile More did not open");
+  await evaluate('[...document.querySelectorAll(".lektrus-more-page-item")].find(b=>b.textContent.includes("Настройки")).click()');
+  await checkSection("settings",".settings-shell");
+  console.log('✓ Desktop tiles, schedule controls, progress tabs, AI/billing, notifications dialog, command search and mobile More');
  }else{
 
  // Initial lesson must actually render the board with math, text and table objects.
