@@ -6,7 +6,7 @@ import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBen
  setLabSimulationPaused,setLabGasCollection,labGasStoredMl,labGasReceiverFreeMl,labGasTransferPreview,transferLabGasSample,formatLabDose,labDisplayNumber,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
-import {reagentAppearance} from "./lektrusLabAppearance";
+import {reagentAppearance,labSolutionTint,labSedimentTint} from "./lektrusLabAppearance";
 import {labThermalInfo,labVesselThermal,labThermalState} from "./lektrusLabPhysicalProperties";
 import {labKnownHeatCapacityJPerK} from "./lektrusLabCalorimetry";
 import {labReactionGasProgress} from "./lektrusLabGasDynamics";
@@ -219,7 +219,8 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   appearance.productSolidColor:undefined;
  // Only indicator SOLUTIONS tint the bulk sample. Universal test paper
  // displays its reading on the strip without recoloring the liquid.
- const naturalColor=dryProductColor??(active?appearance.solutionAfter:reagent?.color??"#e7f3f3");
+ const naturalColor=dryProductColor??(volumeMl>1e-9?
+  labSolutionTint(contents.solution,volumeMl):active?appearance.solutionAfter:reagent?.color??"#e7f3f3");
  const color=vessel.filteredResidue?.color??(isLiquidIndicator?
   indicator?.color??naturalColor:naturalColor);
  const observation=visualCase?.observation??"none";
@@ -301,13 +302,11 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
     {contents.solid.length>0&&visiblePowderH>0&&
      <g className="lektrus-lab-added-solid" aria-label="Твёрдое вещество на дне сосуда">
       <path d={`M19 ${sedimentFloor-visiblePowderH}Q50 ${sedimentFloor-visiblePowderH-2} 81 ${sedimentFloor-visiblePowderH}V${sedimentFloor}H19Z`}
-       fill={contents.solid.length===1?
-        reagentAppearance(contents.solid[0].formula,"dry")?.color??appearance.solidColor??"#d5c5a7":
-        appearance.solidColor??"#d5c5a7"} opacity=".88"/>
+       fill={labSedimentTint(contents.solid,.5)} opacity=".88"/>
       {Array.from({length:Math.max(5,Math.min(24,Math.ceil(visiblePowderH)))},(_,i)=>
        <circle key={i} cx={26+(i*17)%48}
         cy={sedimentFloor-2-(i*7)%Math.max(3,Math.floor(visiblePowderH))}
-        r={.8+i%3*.4} fill="#fff7e8" fillOpacity=".6"/>)}
+        r={.8+i%3*.4} fill={labSedimentTint(contents.solid,(i*.61803398875)%1)} stroke="#536060" strokeOpacity=".22" fillOpacity=".9"/>)}
      </g>}
     {volumeMl>1e-9&&(vessel.frozenFraction??0)>1e-4&&
      <g className="lektrus-lab-frozen-liquid" aria-label="Кристаллизация: жидкость застывает в лёд">
@@ -360,19 +359,19 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
     {/* The measured precipitate is material state, not a transient visual
          effect. Indicator additions and dilution must never hide it. */}
     {(measuredPrecipitateG>1e-10||hasSettledSolid&&precipitationProgress>0||
-      active&&observation==="precipitate"&&precipitationProgress>0&&
+      !vessel.doses&&active&&observation==="precipitate"&&precipitationProgress>0&&
       conversionFraction>0)&&<>
      {/* Quantified precipitation uses actual produced mass/density and vessel volume.
          The one-pixel minimum only keeps subpixel traces perceptible. */}
      {sedimentH>0&&<rect className="lektrus-lab-sediment"
       x="16" y={sedimentFloor-sedimentH} width="70" height={sedimentH}
-      fill={appearance.solidColor||"#d6dee1"} opacity=".94"/>}
+      fill={contents.solid.length?labSedimentTint(contents.solid,.5):appearance.solidColor||"#d6dee1"} opacity=".78"/>}
      {contents.precipitateFraction===undefined&&precipitationProgress>0&&
       <g className="lektrus-lab-qualitative-residue">
       {Array.from({length:18},(_,i)=><circle key={i} cx={23+i*17%56}
-       cy={sedimentFloor-3-i%3*1.8} r="1.1" fill={appearance.solidColor||"#d6dee1"}/>)}
+       cy={sedimentFloor-3-i%3*1.8} r="1.1" fill={contents.solid.length?labSedimentTint(contents.solid,(i*.61803398875)%1):appearance.solidColor||"#d6dee1"}/>)}
      </g>}
-     {precipitationProgress>0&&!amounts?.complete&&
+     {precipitationProgress>0&&(!!vessel.inventoryPrecipitation||!!amounts&&!amounts.complete)&&
       Array.from({length:14},(_,i)=><circle key={i}
       className="lektrus-lab-particle" cx={28+i*31%45} cy={76+i*13%31}
       r={1.1+i%3*.5} fill={appearance.solidColor||"#cddbe0"}

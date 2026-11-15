@@ -736,6 +736,26 @@ Fe(NO3)2+KOH|aqueous|Fe(NO3)2 + 2KOH → Fe(OH)2↓ + 2KNO3|precipitate|Зеле
 NiCl2+KOH|aqueous|NiCl2 + 2KOH → Ni(OH)2↓ + 2KCl|precipitate|Зеленоватый осадок гидроксида никеля|exchange|crystals
 H3PO4+Ca(OH)2|aqueous|2H3PO4 + 3Ca(OH)2 → Ca3(PO4)2↓ + 6H2O|precipitate|Условное полное осаждение фосфата кальция при заданном соотношении|exchange|crystals
 H3PO4+Ba(OH)2|aqueous|2H3PO4 + 3Ba(OH)2 → Ba3(PO4)2↓ + 6H2O|precipitate|Условное полное осаждение фосфата бария при заданном соотношении|exchange|crystals
+Pb(NO3)2+NaBr|aqueous|Pb(NO3)2 + 2NaBr → PbBr2↓ + 2NaNO3|precipitate|Светлый осадок бромида свинца(II) при превышении произведения растворимости|exchange|crystals
+Pb(NO3)2+LiCl|aqueous|Pb(NO3)2 + 2LiCl → PbCl2↓ + 2LiNO3|precipitate|Белый осадок хлорида свинца(II) при достаточной концентрации|exchange|crystals
+Pb(NO3)2+Li2SO4|aqueous|Pb(NO3)2 + Li2SO4 → PbSO4↓ + 2LiNO3|precipitate|Белый осадок сульфата свинца(II)|exchange|crystals
+Pb(NO3)2+K2CO3|aqueous|Pb(NO3)2 + K2CO3 → PbCO3↓ + 2KNO3|precipitate|Светлый осадок карбоната свинца(II)|exchange|crystals
+BaCl2+Li2SO4|aqueous|BaCl2 + Li2SO4 → BaSO4↓ + 2LiCl|precipitate|Белый сульфат бария|exchange|crystals
+BaCl2+K3PO4|aqueous|3BaCl2 + 2K3PO4 → Ba3(PO4)2↓ + 6KCl|precipitate|Белый фосфат бария|exchange|crystals
+Ba(NO3)2+Li2SO4|aqueous|Ba(NO3)2 + Li2SO4 → BaSO4↓ + 2LiNO3|precipitate|Белый сульфат бария|exchange|crystals
+Ba(NO3)2+K3PO4|aqueous|3Ba(NO3)2 + 2K3PO4 → Ba3(PO4)2↓ + 6KNO3|precipitate|Белый фосфат бария|exchange|crystals
+Ba(NO3)2+Na2CO3|aqueous|Ba(NO3)2 + Na2CO3 → BaCO3↓ + 2NaNO3|precipitate|Белый карбонат бария|exchange|crystals
+Ba(NO3)2+K2CO3|aqueous|Ba(NO3)2 + K2CO3 → BaCO3↓ + 2KNO3|precipitate|Белый карбонат бария|exchange|crystals
+CaCl2+K3PO4|aqueous|3CaCl2 + 2K3PO4 → Ca3(PO4)2↓ + 6KCl|precipitate|Светлый фосфат кальция|exchange|crystals
+Ca(NO3)2+K3PO4|aqueous|3Ca(NO3)2 + 2K3PO4 → Ca3(PO4)2↓ + 6KNO3|precipitate|Светлый фосфат кальция|exchange|crystals
+Cu(NO3)2+LiOH|aqueous|Cu(NO3)2 + 2LiOH → Cu(OH)2↓ + 2LiNO3|precipitate|Голубой гидроксид меди(II)|exchange|crystals
+Cu(NO3)2+Na2S|aqueous|Cu(NO3)2 + Na2S → CuS↓ + 2NaNO3|precipitate|Чёрный сульфид меди(II)|exchange|crystals
+MgCl2+LiOH|aqueous|MgCl2 + 2LiOH → Mg(OH)2↓ + 2LiCl|precipitate|Белый гидроксид магния|exchange|crystals
+Mg(NO3)2+LiOH|aqueous|Mg(NO3)2 + 2LiOH → Mg(OH)2↓ + 2LiNO3|precipitate|Белый гидроксид магния|exchange|crystals
+FeCl3+LiOH|aqueous|FeCl3 + 3LiOH → Fe(OH)3↓ + 3LiCl|precipitate|Бурый гидроксид железа(III)|exchange|crystals
+FeCl2+LiOH|aqueous|FeCl2 + 2LiOH → Fe(OH)2↓ + 2LiCl|precipitate|Зеленоватый гидроксид железа(II)|exchange|crystals
+NiCl2+Na2S|aqueous|NiCl2 + Na2S → NiS↓ + 2NaCl|precipitate|Чёрный сульфид никеля(II)|exchange|crystals
+NiCl2+LiOH|aqueous|NiCl2 + 2LiOH → Ni(OH)2↓ + 2LiCl|precipitate|Зеленоватый гидроксид никеля(II)|exchange|crystals
 `;
 for(const row of complementaryAqueousCases.trim().split("\n")){
  const [reactants,environment,equation,observation,description,family,visual]=row.split("|");
@@ -850,6 +870,7 @@ export const schoolSolidColors:Record<string,string>={
  "K2MnO4":"#66945e",
  "SrSO4":"#f3f3ef","SrCO3":"#f4f3ee",
  "Ni(OH)2":"#91b796","Co(OH)2":"#9d86b1",
+ "NiS":"#292d30","CoS":"#292c30",
  "Li2CO3":"#f3f3ed"
 };
 export function reactionProducts(equation:string):string[]{
@@ -881,6 +902,13 @@ export function reactionAppearance(row:ReactionCase|undefined){
 }
 export const reviewedReactionCases=cases;
 const key=(ids:string[])=>ids.slice().sort().join("|");
+// Repeated UI observations and the exhaustive pair matrix must not sort
+// hundreds of reference cases per lookup. Preserve the first case exactly.
+const caseBySignature=new Map<string,ReactionCase>();
+for(const row of cases){
+ const signature=row.environment+":"+key(row.reactants);
+ if(!caseBySignature.has(signature))caseBySignature.set(signature,row);
+}
 export const identifyReaction=(reagents:string[],environment:ReactionEnvironment):{
  status:ReactionStatus;caseData?:ReactionCase;message:string
 }=>{
@@ -888,13 +916,12 @@ export const identifyReaction=(reagents:string[],environment:ReactionEnvironment
  if(ids.length<1)return{status:"unknown",message:"Добавьте реагенты и выберите условия."};
  if(ids.length>6)return{status:"unknown",message:"Выберите не более шести веществ."};
  if(ids.length!==new Set(ids).size)return{status:"unknown",message:"Один и тот же реагент выбран несколько раз. Измените список."};
- const direct=cases.find(c=>c.environment===environment&&key(c.reactants)===key(ids));
+ const direct=caseBySignature.get(environment+":"+key(ids));
  // An added bottle of water does not turn an otherwise supported
  // *aqueous* reaction into unknown chemistry. Direct matching wins so
  // Na + H2O still consumes H2O as a genuine reactant.
  const diluted=environment==="aqueous"&&ids.includes("H2O")?
-  cases.find(c=>c.environment==="aqueous"&&!c.reactants.includes("H2O")&&
-   key(c.reactants)===key(ids.filter(x=>x!=="H2O"))):undefined;
+  caseBySignature.get("aqueous:"+key(ids.filter(x=>x!=="H2O"))):undefined;
  const found=direct??diluted;
  if(found)return{status:found.status,caseData:found,
   message:found.status==="none"?"Нет наблюдаемого превращения для данной проверенной пары.":found.description};

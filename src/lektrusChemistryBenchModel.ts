@@ -743,6 +743,7 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
    if(v.completedReaction)return v;
    const reaction=identifyReaction(v.reagents,v.environment);
    if(reaction.status!=="reaction"||!reaction.caseData)return v;
+   if(labMeasuredPrecipitationUnsaturated(v,reaction.caseData))return v;
    state=startQuantifiedLabReaction(reaction.caseData,v.reagents,v.doses,nowMs)??undefined;
    if(!state)return v;
    // Gas reactions need a watchable 24-second school demonstration.
@@ -1704,6 +1705,17 @@ export function labVesselContents(v:LabVessel){
 }
 
 const reactionTickByVessel=new WeakMap<LabVessel,boolean>();
+/** An exact recipe alone cannot prove precipitation at the measured dose.
+ * The reviewed inventory solver already applies the concentration-dependent
+ * equilibrium. Do not start a separate stoichiometric clock or show a
+ * phantom equation when no precipitate can form. */
+function labMeasuredPrecipitationUnsaturated(v:LabVessel,row:ReactionCase):boolean{
+ if(row.observation!=="precipitate"||v.environment!=="aqueous"||!v.doses||
+  v.chemicalInventory||v.reactionAmounts||v.completedReaction)return false;
+ const q=labVesselQuantity(v);if(q.volumeMl<=1e-9)return false;
+ const predicted=simulateLabInventory({...v,volumeMl:q.volumeMl});
+ return !predicted.unmeasured.length&&!predicted.limited&&!predicted.steps.length;
+}
 export function labReactionNeedsTick(vessel:LabVessel):boolean{
  const cached=reactionTickByVessel.get(vessel);
  if(cached!==undefined)return cached;
@@ -1719,6 +1731,7 @@ function calculateLabReactionNeedsTick(vessel:LabVessel):boolean{
  if(!vessel.observed||vessel.completedReaction)return false;
  const reaction=identifyReaction(vessel.reagents,vessel.environment);
  if(reaction.status!=="reaction"||!reaction.caseData)return false;
+ if(labMeasuredPrecipitationUnsaturated(vessel,reaction.caseData))return false;
  if(reaction.caseData.thermalEffect&&!vessel.reactionHeat)return true;
  return !vessel.reactionAmounts&&
   !!startQuantifiedLabReaction(reaction.caseData,vessel.reagents,vessel.doses);
@@ -1778,7 +1791,10 @@ function calculateLabObservation(vessel:LabVessel):LabObservation{
  if(vessel.reagents.length===1&&!vessel.observed)
   return{status:"unknown",message:"Добавьте второй реагент или настройте условия."};
  if(!vessel.observed)return{status:"unknown",message:"До смешивания изменений нет."};
- return identifyReaction(vessel.reagents,vessel.environment);
+ const known=identifyReaction(vessel.reagents,vessel.environment);
+ if(known.caseData&&labMeasuredPrecipitationUnsaturated(vessel,known.caseData))
+  return {status:"none",message:"При измеренных концентрациях осадок не образуется."};
+ return known;
 }
 /** A predicted equilibrium is not a completed experiment. */
 const labFinishedReaction=(v:LabVessel):ReactionCase|undefined=>
@@ -2377,7 +2393,7 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
   // produce the solids/gases and equation history, rather than displaying
   // final products instantly without ever scheduling the experiment.
   if(matching.status==="unknown"&&!v.reactionAmounts&&!v.completedReaction&&
-    reagents.length>=3&&environment==="aqueous"&&nextDoses){
+    reagents.length>=2&&environment==="aqueous"&&nextDoses){
    const input={reagents,doses:nextDoses,environment,temperatureC:v.temperatureC??22};
    const predicted=simulateLabInventory(input);
    if(predicted.steps.length&&!predicted.unmeasured.length&&!predicted.limited){

@@ -22,6 +22,10 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Audit every registered reaction, kit and simulation
         run: node scripts/test-lektrus-lab-reaction-audit.mjs
+      - name: Mix every distinct pair of catalogue substances at two dose levels
+        run: node scripts/test-lektrus-lab-pair-matrix.mjs > lab-pair-matrix.json
+      - name: Standalone laboratory visual regression in Chrome
+        run: LAB_QA_SCREENSHOT=lab-visual-qa.png node scripts/test-lektrus-lab-visual-browser.mjs
       - name: Verify TypeScript and production bundle
         run: npm run build
       - name: Test quantitative gas collection and sample transfer
@@ -31,6 +35,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lektrus-reaction-audit
-          path: reaction-audit-report.json
+          path: |
+            reaction-audit-report.json
+            lab-pair-matrix.json
+            lab-visual-qa.png
           if-no-files-found: warn
           retention-days: 14
