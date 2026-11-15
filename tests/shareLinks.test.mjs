@@ -310,6 +310,45 @@ test('ordinary board deep links read fresh RLS-authorized boards and member role
   assert.ok(requests.some(path => path.includes('deleted_at=is.null')));
 });
 
+test('empty workspaces only read the board list and have the same empty state on both pages', async () => {
+  const user = { id: 'new-teacher', name: 'New teacher', email: 'new@example.test' };
+  const stored = new Map();
+  const rows = [];
+  let creations = 0;
+  const api = load('boardStore', {
+    localStorage: { getItem: key => stored.get(key), setItem: (key, value) => stored.set(key, value) },
+    require: name => name === './backend' ? { isRemoteBackendEnabled: () => false } : {},
+    selfhost: {
+      isSelfhostBackendEnabled: () => true,
+      selfhostBoards: async () => rows,
+      selfhostCreateBoard: async title => {
+        creations++;
+        const row = { id: boardId, owner_id: user.id, role: 'owner', title, created_at: '', updated_at: '' };
+        rows.push(row);
+        return row;
+      },
+    },
+  });
+  for (let i = 0; i < 3; i++) assert.equal((await api.getUserBoards(user)).length, 0);
+  assert.equal(creations, 0);
+  await api.createBoard(user, 'Создана вручную');
+  assert.equal(creations, 1);
+  assert.equal((await api.getUserBoards(user))[0].title, 'Создана вручную');
+  const boards = read('src/BoardsScreen.tsx');
+  assert.match(boards, /const list=await getUserBoards\(user\)/);
+  assert.doesNotMatch(boards, /ensureUserBoards/);
+  for (const file of ['src/BoardsScreen.tsx', 'src/LectrisHub.tsx']) {
+    assert.match(read(file), /boards\.length\?"Ничего не найдено":"Здесь будут находиться ваши доски"/);
+  }
+});
+
+test('in-app feedback links to the official Telegram and retains the private form', () => {
+  const screen = read('src/FeedbackScreen.tsx');
+  assert.match(screen, /href="https:\/\/t\.me\/lektrus" target="_blank" rel="noopener noreferrer"/);
+  assert.match(screen, /<LektrusFeedbackForm compact source="app"\/>/);
+  assert.match(read('src/lektrusProductScreens.css'), /\.lektrus-feedback-telegram-card:focus-visible/);
+});
+
 test('links remain gated by server mode and database enforces expiry, password and access', async () => {
   const api = load('shareLinks', { require: () => ({
     isRemoteBackendEnabled: () => false,
