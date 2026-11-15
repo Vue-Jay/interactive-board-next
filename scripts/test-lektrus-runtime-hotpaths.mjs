@@ -6,16 +6,17 @@ import ts from "typescript";
 
 const read=(path)=>readFileSync(new URL("../src/"+path,import.meta.url),"utf8");
 const app=read("BoardApp.tsx"),preview=read("boardPreview.ts"),sync=read("boardSync.ts");
+const inkOverlay=read("RemoteInkOverlay.tsx");
 
 assert.match(app,/const persistedItemIds=useMemo\(\(\)=>new Set\(items\.map\(item=>item\.id\)\),\[items\]\)/,
  "Build one persisted board ID index per items revision");
-assert.match(app,/const uncommittedRemoteInk=useMemo\(/);
-assert.match(app,/\!persistedItemIds\.has\(ink\.id\)/);
-assert.match(app,/\{uncommittedRemoteInk\.flatMap\(ink => remoteInkRuns\(ink\)\.map\(run => \(/);
-assert.doesNotMatch(app,/Object\.values\(remoteInk\)\.filter\(ink => !items\.some/,
+assert.match(app,/<RemoteInkOverlay store=\{remoteInkStore\}/);
+assert.match(inkOverlay,/useSyncExternalStore\(store\.subscribe,store\.getSnapshot/);
+assert.match(inkOverlay,/\!persistedItemIds\.has\(ink\.id\)/);
+assert.doesNotMatch(app,/setRemoteInk\(/,
  "Do not rescan the entire board once per live stroke");
-assert.match(app,/<polyline key=\{ink\.id\+":"\+run\.offset\}/);
-assert.match(app,/<circle key=\{ink\.id\+":"\+run\.offset\}/,
+assert.match(inkOverlay,/<polyline key=\{ink\.id\+":"\+run\.offset\}/);
+assert.match(inkOverlay,/<circle key=\{ink\.id\+":"\+run\.offset\}/,
  "Every peer stroke must keep a stable unique SVG key");
 const sampleObjects=Array.from({length:10_000},(_,i)=>({id:"obj-"+i}));
 const sampleRemoteInk=Array.from({length:150},(_,i)=>({id:i%10===0?"obj-"+i:"new-"+i}));

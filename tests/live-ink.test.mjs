@@ -187,6 +187,8 @@ test('incremental previews stitch into long strokes, reject stale packets and bo
   assert.equal(finished.points.length,620,
     'the final overlapping window must retain the early part of the stroke');
   assert.strictEqual(api.mergeRemoteLiveInk(finished,packet(400,510)),finished);
+  assert.strictEqual(api.mergeRemoteLiveInk(finished,packet(120,620,true)),finished,
+    'duplicate final packets must not invalidate the snapshot');
   const gap=api.mergeRemoteLiveInk(packet(0,50),packet(100,130));
   assert.equal(gap.offset,100,'a dropped packet cannot create a false diagonal stroke');
   assert.equal(gap.points[0].x,100);
@@ -199,7 +201,7 @@ test('incremental previews stitch into long strokes, reject stale packets and bo
   const old={...packet(0,3)};delete old.offset;
   assert.equal(api.mergeRemoteLiveInk(long,old),old,'legacy peers remain compatible');
   const app=readFileSync(new URL('../src/BoardApp.tsx',import.meta.url),'utf8');
-  assert.match(app,/mergeRemoteLiveInk\(current\[ink\.id\],ink\)/);
+  assert.match(app,/remoteInkStore\.push\(ink\)/);
   assert.match(app,/offset:Math\.max\(0,g\.path\.length-500\)/);
 });
 
@@ -270,8 +272,84 @@ test('disconnected peer-ink history remains bounded and renderable',()=>{
   assert.ok(runs.length>1,'network loss remains visible as separate fragments');
   assert.equal(runs.reduce((sum,run)=>sum+run.points.length,0),
     api.MAX_REMOTE_LIVE_INK_POINTS,'RAM is bounded across ALL disconnected runs');
-  const app=readFileSync(new URL('../src/BoardApp.tsx',import.meta.url),'utf8');
-  assert.match(app,/uncommittedRemoteInk\.flatMap\(ink => remoteInkRuns\(ink\)\.map\(run/);
-  assert.match(app,/key=\{ink\.id\+":"\+run\.offset\}/,
+  const overlay=readFileSync(new URL('../src/RemoteInkOverlay.tsx',import.meta.url),'utf8');
+  assert.match(overlay,/remoteInkRuns\(ink\)\.map\(run/);
+  assert.match(overlay,/key=\{ink\.id\+":"\+run\.offset\}/,
     'recovered fragments must keep independent SVG element identity');
+});
+
+function inkStoreHarness(){
+  const source=readFileSync(new URL('../src/boardLiveInk.ts',import.meta.url),'utf8');
+  const api={};
+  vm.runInNewContext(ts.transpileModule(source,{
+    compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+  }).outputText,{exports:api});
+  let now=0,sequence=0;
+  const frames=new Map(),timers=new Map();
+  const scheduler={now:()=>now,requestFrame:fn=>{frames.set(++sequence,fn);return sequence},
+    cancelFrame:id=>frames.delete(id),setTimer:(fn,delay)=>{timers.set(++sequence,{fn,at:now+delay});return sequence},
+    clearTimer:id=>timers.delete(id)};
+  const frame=()=>{for(const [id,fn] of [...frames]){if(frames.delete(id))fn()}};
+  const advance=ms=>{
+    const end=now+ms;
+    for(;;){
+      const next=[...timers].filter(([,timer])=>timer.at<=end).sort((a,b)=>a[1].at-b[1].at)[0];
+      if(!next)break;
+      now=next[1].at;timers.delete(next[0]);next[1].fn();
+    }
+    now=end;
+  };
+  const packet=(id,start,end,finished=false)=>({id,clientId:id,userId:id,kind:'pen',color:'#000',
+    weight:3,offset:start,points:Array.from({length:end-start},(_,i)=>({x:start+i,y:start+i})),finished});
+  return {api,store:api.createRemoteInkStore(scheduler),frame,advance,frames,timers,packet};
+}
+
+test('30 simultaneous peers publish one snapshot per frame without dropping points or completions',()=>{
+  const h=inkStoreHarness(),expected=new Map();
+  let updates=0,packets=0;
+  const unsubscribe=h.store.subscribe(()=>updates++);
+  const old=h.store.getSnapshot();
+  const send=ink=>{packets++;expected.set(ink.id,h.api.mergeRemoteLiveInk(expected.get(ink.id),ink));h.store.push(ink)};
+  for(let f=0;f<20;f++){
+    for(let peer=0;peer<30;peer++){
+      const id=`peer-${peer}`,start=f*20;
+      send(h.packet(id,start,start+5));
+      send(h.packet(id,start+10,start+15)); // gap
+      send(h.packet(id,start+5,start+10)); // late repair
+      send(h.packet(id,start+15,start+20,f===19));
+    }
+    assert.equal(updates,f,'no React notification before frame');
+    assert.equal(h.frames.size,1);
+    assert.equal(h.timers.size,2,'one expiry and one fallback for all strokes');
+    h.frame();
+    assert.equal(updates,f+1);
+    assert.equal(h.timers.size,1);
+  }
+  assert.equal(old.size,0,'previous snapshots stay immutable');
+  assert.equal(JSON.stringify([...h.store.getSnapshot()]),JSON.stringify([...expected]));
+  const snapshot=h.store.getSnapshot();
+  h.store.push(h.packet('peer-0',395,400,true));h.frame();
+  assert.strictEqual(h.store.getSnapshot(),snapshot);
+  assert.equal(updates,20,'duplicate final does not repaint');
+  unsubscribe();h.store.reset();
+  assert.equal(h.timers.size,0);assert.equal(h.frames.size,0);
+  console.log(`Peer ink: ${packets} packets, ${updates} overlay publications (${packets/updates}x fewer), no lost points`);
+});
+
+test('hidden-tab fallback, expiry refresh, board cleanup and resubscription remain safe',()=>{
+  const h=inkStoreHarness();let updates=0;
+  h.store.subscribe(()=>updates++);
+  h.store.push(h.packet('early',0,10,true));h.store.push(h.packet('late',0,10));
+  h.advance(49);assert.equal(updates,0);
+  h.advance(1);assert.equal(updates,1);assert.equal(h.frames.size,0);
+  h.advance(100_000);h.store.push(h.packet('late',0,10));
+  h.advance(19_950);h.frame();
+  assert.equal(h.store.getSnapshot().has('early'),false);
+  assert.equal(h.store.getSnapshot().has('late'),true,'duplicates refresh TTL without rendering');
+  h.advance(100_050);h.frame();assert.equal(h.store.getSnapshot().size,0);
+  h.store.push(h.packet('old-board',0,2));h.store.reset();
+  assert.equal(h.frames.size,0);assert.equal(h.timers.size,0);
+  h.store.push(h.packet('new-board',0,3,true));h.frame();
+  assert.deepEqual([...h.store.getSnapshot().keys()],['new-board']);
+  h.store.reset();assert.equal(h.store.getSnapshot().size,0);
 });

@@ -103,7 +103,8 @@ import { subscribeBoardPresence, type BoardPresenceUser } from "./boardPresence"
 import { trackBoardVisit, listBoardVisits, type BoardVisit } from "./boardVisits";
 import BoardVisitHistoryDialog from "./BoardVisitHistoryDialog";
 import { connectBoardCursorChannel, type BoardCursorChannel, type RemoteCursor } from "./boardBroadcast";
-import { mergeRemoteLiveInk, remoteInkRuns, type RemoteLiveInkPreview } from "./boardLiveInk";
+import { createRemoteInkStore } from "./boardLiveInk";
+import { RemoteInkOverlay } from "./RemoteInkOverlay";
 import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState, type BoardObjectPose } from "./boardWorkSync";
 import { objectPoseOrigin, objectPoseMatches } from "./boardObjectMotion";
@@ -2156,9 +2157,23 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const loadVisitHistory=async()=>{setVisitLoading(true);setVisitError("");try{setVisitRows(await listBoardVisits(boardSummary.id))}catch(error){setVisitError(error instanceof Error?error.message:"Не удалось получить посещения")}finally{setVisitLoading(false)}};
   const visiblePresenceUsers = useMemo(() => adminHidden ? presenceUsers.filter((user) => user.userId !== authUser.id) : presenceUsers, [presenceUsers, adminHidden, authUser.id]);
   const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
-  const [remoteInk, setRemoteInk] = useState<Record<string, RemoteLiveInkPreview>>({});
-  const remoteInkExpiryTimers = useRef(new Map<string,ReturnType<typeof setTimeout>>());
-  const [inkDiagnostics, setInkDiagnostics] = useState("подключается");
+  const [remoteInkStore] = useState(createRemoteInkStore);
+  const inkDiagnostics=useRef("подключается");
+  const inkDiagnosticsElement=useRef<HTMLSpanElement|null>(null);
+  const settingsInkDiagnosticsElement=useRef<HTMLSpanElement|null>(null);
+  const setInkDiagnostics=useCallback((status:string)=>{
+    inkDiagnostics.current=status;
+    if(inkDiagnosticsElement.current)inkDiagnosticsElement.current.textContent=status;
+    if(settingsInkDiagnosticsElement.current)settingsInkDiagnosticsElement.current.textContent=status;
+  },[]);
+  const attachInkDiagnostics=useCallback((element:HTMLSpanElement|null)=>{
+    inkDiagnosticsElement.current=element;
+    if(element)element.textContent=inkDiagnostics.current;
+  },[]);
+  const attachSettingsInkDiagnostics=useCallback((element:HTMLSpanElement|null)=>{
+    settingsInkDiagnosticsElement.current=element;
+    if(element)element.textContent=inkDiagnostics.current;
+  },[]);
   const [developerSettingsOpen, setDeveloperSettingsOpen] = useState(false);
   const [controlSettingsOpen,setControlSettingsOpen]=useState(false);
   type ControlSettings={wheel:"scroll"|"zoom";zoomSpeed:number;panSpeed:number;invertZoom:boolean;horizontalShift:boolean};
@@ -2652,10 +2667,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // scanning the entire board once per preview stroke (previously O(ink*items)
   // in JSX). Rebuild the ID index only when persisted items actually change.
   const persistedItemIds=useMemo(()=>new Set(items.map(item=>item.id)),[items]);
-  const uncommittedRemoteInk=useMemo(
-    ()=>Object.values(remoteInk).filter(ink=>!persistedItemIds.has(ink.id)),
-    [remoteInk,persistedItemIds],
-  );
   // Realtime broadcasts are untrusted display-only previews until the sender
   // persists the change through the board's RLS-protected server RPC.
   const [remoteLiveItems,setRemoteLiveItems]=useState<Record<string,Item>>({});
@@ -7765,10 +7776,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   useEffect(() => {
     if(layoutEditing)return;
+    let active=true;
     const channel = connectBoardCursorChannel(
       boardSummary.id,
       { userId: authUser.id, name: authUser.name, role: boardSummary.role },
       (cursor) => {
+        if(!active)return;
         pendingRemoteCursors.current[cursor.userId] = cursor;
         if (remoteCursorFrame.current != null) return;
         remoteCursorFrame.current = requestAnimationFrame(() => {
@@ -7779,40 +7792,22 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         });
       },
       true, // Keep the socket active independently of invisible mode; cursor emission is guarded at pointer-move.
-      (ink) => {
-        // Each stroke must retain its own preview until the persisted document contains it.
-        // Keying by clientId replaced the previous completed stroke as soon as a new one began.
-        setRemoteInk(current => ({...current,[ink.id]:mergeRemoteLiveInk(current[ink.id],ink)}));
-        const previous=remoteInkExpiryTimers.current.get(ink.id);
-        if(previous)clearTimeout(previous);
-        // Network delivery and document persistence are independent channels.
-        // Keep the hidden fallback long enough to survive server retries or
-        // version conflicts. Unlike the old 15s cutoff, no gap in normal saves.
-        const timer=window.setTimeout(()=>{
-          remoteInkExpiryTimers.current.delete(ink.id);
-          setRemoteInk(current=>{
-            if(!current[ink.id])return current;
-            const next={...current};delete next[ink.id];return next;
-          });
-        },120000);
-        remoteInkExpiryTimers.current.set(ink.id,timer);
-      },
-      setInkDiagnostics,
+      ink=>{if(active)remoteInkStore.push(ink)},
+      status=>{if(active)setInkDiagnostics(status)},
       true, // Drawings remain collaborative even when the admin hides their presence.
     );
     cursorChannel.current = channel;
     return () => {
+      active=false;
       cursorChannel.current = null;
       channel.close();
       if (remoteCursorFrame.current != null) cancelAnimationFrame(remoteCursorFrame.current);
       remoteCursorFrame.current = null;
       pendingRemoteCursors.current = {};
       setRemoteCursors({});
-      for(const timer of remoteInkExpiryTimers.current.values())clearTimeout(timer);
-      remoteInkExpiryTimers.current.clear();
-      setRemoteInk({});
+      remoteInkStore.reset();
     };
-  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name]);
+  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, layoutEditing, remoteInkStore, setInkDiagnostics]);
 
   useEffect(() => {
     if(layoutEditing)return;
@@ -8157,8 +8152,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             <label style={{display:"flex",alignItems:"center",gap:10}}><input type="checkbox" checked={showInkDiagnostics} onChange={e=>changeDeveloperPref("showInkDiagnostics",e.target.checked)}/> Показывать отправку и получение штрихов</label>
             <label style={{display:"flex",alignItems:"center",gap:10}}><input type="checkbox" checked={showBoardDiagnostics} onChange={e=>changeDeveloperPref("showBoardDiagnostics",e.target.checked)}/> Показывать состояние доски и синхронизации</label>
             <label style={{display:"flex",alignItems:"center",gap:10}}><input type="checkbox" checked={showPerformanceDiagnostics} onChange={e=>changeDeveloperPref("showPerformanceDiagnostics",e.target.checked)}/> Показывать статистику объектов и масштаб</label>
-            <div style={{fontSize:12,lineHeight:1.8,overflowWrap:"anywhere"}}><strong>Состояние Realtime:</strong> {realtimeStatus}<div><strong>Канал штрихов:</strong> {inkDiagnostics}</div><div><strong>Объектов:</strong> {items.length}</div><div><strong>Активных участников:</strong> {visiblePresenceUsers.length}</div><div><strong>Версия документа:</strong> {remoteVersion.current ?? "неизвестна"}</div></div>
-            <button type="button" className="boards-secondary" onClick={()=>void navigator.clipboard.writeText([`Доска: ${boardSummary.id}`,`Realtime: ${realtimeStatus}`,`Штрихи: ${inkDiagnostics}`,`Объектов: ${items.length}`,`Участников: ${visiblePresenceUsers.length}`,`Версия: ${remoteVersion.current ?? "unknown"}`].join("\\n")).then(()=>setNotice("Диагностика скопирована")).catch(()=>setNotice("Не удалось скопировать диагностику"))}>Скопировать диагностику</button>
+            <div style={{fontSize:12,lineHeight:1.8,overflowWrap:"anywhere"}}><strong>Состояние Realtime:</strong> {realtimeStatus}<div><strong>Канал штрихов:</strong> <span ref={attachSettingsInkDiagnostics}/></div><div><strong>Объектов:</strong> {items.length}</div><div><strong>Активных участников:</strong> {visiblePresenceUsers.length}</div><div><strong>Версия документа:</strong> {remoteVersion.current ?? "неизвестна"}</div></div>
+            <button type="button" className="boards-secondary" onClick={()=>void navigator.clipboard.writeText([`Доска: ${boardSummary.id}`,`Realtime: ${realtimeStatus}`,`Штрихи: ${inkDiagnostics.current}`,`Объектов: ${items.length}`,`Участников: ${visiblePresenceUsers.length}`,`Версия: ${remoteVersion.current ?? "unknown"}`].join("\\n")).then(()=>setNotice("Диагностика скопирована")).catch(()=>setNotice("Не удалось скопировать диагностику"))}>Скопировать диагностику</button>
           </div>
         </section>
       </div>}
@@ -9927,7 +9922,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           }}
         >
           {showAdminControls && (showInkDiagnostics || showBoardDiagnostics || showPerformanceDiagnostics) && <div style={{position:"absolute",right:12,top:12,zIndex:2400,background:"rgba(20,23,33,.85)",color:"#fff",padding:"7px 10px",borderRadius:8,fontSize:11,pointerEvents:"none",maxWidth:"min(90vw,480px)"}}>
-            {showInkDiagnostics && <div>Штрихи: {inkDiagnostics}</div>}
+            {showInkDiagnostics && <div>Штрихи: <span ref={attachInkDiagnostics}/></div>}
             {showBoardDiagnostics && <div>Соединение: {realtimeStatus} · курсоров: {Object.keys(remoteCursors).length} · участников: {visiblePresenceUsers.length} · версия: {remoteVersion.current ?? "нет"}</div>}
             {showPerformanceDiagnostics && <div>Объектов: {items.length} · штрихов: {drawingCount} · масштаб: {Math.round(view.zoom*100)}% · rAF FPS: <span ref={diagnosticFps}>…</span></div>}
           </div>}
@@ -9946,13 +9941,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <div ref={setInstrumentViewportHost}
             className="geometry-instrument-viewport-layer" aria-label="Измерительные инструменты" />
           <div ref={fastPanOverlay} className="remote-cursors-layer" aria-hidden="true" style={{transformOrigin:"0 0"}}>
-            <svg className="remote-live-ink-layer" width="100%" height="100%" style={{position:"absolute",inset:0,overflow:"hidden",pointerEvents:"none"}}>
-              {uncommittedRemoteInk.flatMap(ink => remoteInkRuns(ink).map(run => (
-                run.points.length === 1
-                  ? <circle key={ink.id+":"+run.offset} cx={run.points[0].x*view.zoom+view.x} cy={run.points[0].y*view.zoom+view.y} r={Math.max(0.5,ink.weight*view.zoom/2)} fill={ink.color} opacity={ink.kind==="marker"?0.32:1}/>
-                  : <polyline key={ink.id+":"+run.offset} points={run.points.map(point => `${point.x*view.zoom+view.x},${point.y*view.zoom+view.y}`).join(" ")} fill="none" stroke={ink.color} strokeWidth={ink.weight*view.zoom} strokeLinecap="round" strokeLinejoin="round" opacity={ink.kind==="marker"?0.32:1}/>
-              )))}
-            </svg>
+            <RemoteInkOverlay store={remoteInkStore} persistedItemIds={persistedItemIds} x={view.x} y={view.y} zoom={view.zoom}/>
             {Object.values(remoteCursors).map((cursor) => <div
               className="remote-cursor"
               key={cursor.userId}

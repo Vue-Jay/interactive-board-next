@@ -47,7 +47,7 @@ export function mergeRemoteLiveInk(
   // duplicate preview must not schedule a React repaint.
   if(previousRuns.some(run=>run.offset<=nextStart&&
       run.offset+run.points.length>=nextEnd)){
-    return incoming.finished&&nextEnd>=oldEnd
+    return !previous.finished&&incoming.finished&&nextEnd>=oldEnd
       ? {...previous,finished:true} : previous;
   }
 
@@ -84,3 +84,96 @@ export function mergeRemoteLiveInk(
     priorRuns:joined.length>1?joined.slice(0,-1):undefined,
     finished:previous.finished||incoming.finished&&nextEnd>=oldEnd};
 }
+
+const PREVIEW_TTL=120_000;
+const FRAME_FALLBACK=50;
+
+export type RemoteInkScheduler={
+  now:()=>number;
+  requestFrame:(callback:()=>void)=>number;
+  cancelFrame:(id:number)=>void;
+  setTimer:(callback:()=>void,delay:number)=>number;
+  clearTimer:(id:number)=>void;
+};
+const browserScheduler:RemoteInkScheduler={
+  now:()=>Date.now(),
+  requestFrame:callback=>requestAnimationFrame(callback),
+  cancelFrame:id=>cancelAnimationFrame(id),
+  setTimer:(callback,delay)=>window.setTimeout(callback,delay),
+  clearTimer:id=>window.clearTimeout(id),
+};
+
+/** Merge packets in arrival order, but publish at most one immutable ink
+ * snapshot per animation frame. Neither the board nor the other strokes need
+ * to rerender on each WebSocket packet. One expiry timer covers all previews.
+ */
+export function createRemoteInkStore(scheduler:RemoteInkScheduler=browserScheduler){
+  let snapshot:ReadonlyMap<string,RemoteLiveInkPreview>=new Map();
+  const pending=new Map<string,RemoteLiveInkPreview>();
+  const expired=new Set<string>();
+  const deadlines=new Map<string,number>();
+  const listeners=new Set<()=>void>();
+  let frame:number|undefined,fallback:number|undefined,expiry:number|undefined;
+  const publish=()=>{for(const listener of listeners)listener()};
+  const cancelFlush=()=>{
+    if(frame!==undefined)scheduler.cancelFrame(frame);
+    if(fallback!==undefined)scheduler.clearTimer(fallback);
+    frame=fallback=undefined;
+  };
+  const flush=()=>{
+    cancelFlush();
+    if(!pending.size&&!expired.size)return;
+    const next=new Map(snapshot);
+    for(const id of expired)next.delete(id);
+    for(const [id,ink] of pending)next.set(id,ink);
+    expired.clear();pending.clear();
+    snapshot=next;publish();
+  };
+  const scheduleFlush=()=>{
+    if(frame!==undefined)return;
+    frame=scheduler.requestFrame(flush);
+    // rAF may be suspended when a class switches tabs. Don't accumulate
+    // previews until the next visible frame or lose a completed stroke.
+    fallback=scheduler.setTimer(flush,FRAME_FALLBACK);
+  };
+  const scheduleExpiry=()=>{
+    if(expiry!==undefined||!deadlines.size)return;
+    let earliest=Infinity;
+    for(const deadline of deadlines.values())earliest=Math.min(earliest,deadline);
+    expiry=scheduler.setTimer(()=>{
+      expiry=undefined;
+      const now=scheduler.now();
+      for(const [id,deadline] of deadlines){
+        if(deadline>now)continue;
+        deadlines.delete(id);pending.delete(id);
+        if(snapshot.has(id))expired.add(id);
+      }
+      if(expired.size)scheduleFlush();
+      scheduleExpiry();
+    },Math.max(0,earliest-scheduler.now()));
+  };
+  return {
+    getSnapshot:()=>snapshot,
+    subscribe:(listener:()=>void)=>{
+      listeners.add(listener);
+      return ()=>{listeners.delete(listener)};
+    },
+    push:(ink:LiveInkMessage)=>{
+      // Refresh only the deadline, not a separate timeout on every packet.
+      deadlines.set(ink.id,scheduler.now()+PREVIEW_TTL);
+      scheduleExpiry();
+      const previous=pending.get(ink.id)??(expired.has(ink.id)?undefined:snapshot.get(ink.id));
+      const next=mergeRemoteLiveInk(previous,ink);
+      if(next===previous)return;
+      expired.delete(ink.id);pending.set(ink.id,next);scheduleFlush();
+    },
+    reset:()=>{
+      cancelFlush();
+      if(expiry!==undefined)scheduler.clearTimer(expiry);
+      expiry=undefined;
+      pending.clear();expired.clear();deadlines.clear();
+      if(snapshot.size){snapshot=new Map();publish()}
+    },
+  };
+}
+export type RemoteInkStore=ReturnType<typeof createRemoteInkStore>;

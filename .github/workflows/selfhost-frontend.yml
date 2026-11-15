@@ -37,6 +37,8 @@ jobs:
           node scripts/test-lektrus-physics-collaboration.mjs
           node scripts/test-lektrus-chemistry-ux.mjs
           node scripts/test-lektrus-subject-editors.mjs
+      - name: Check peer ink rendering in real Chrome
+        run: node scripts/test-lektrus-peer-ink-browser.mjs
       - name: Build the standard Lektrus application against the self-hosted backend
         env:
           VITE_LEKTRUS_BACKEND: 'selfhost'
