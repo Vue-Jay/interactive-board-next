@@ -101,3 +101,29 @@ for(const row of db.reviewedReactionCases.filter(r=>r.status==='reaction'&&st.la
 }
 console.log(`Gas collector pipeline: ${pipelineCases} measured cases, ${pipeline.length} failures`);
 assert.deepEqual(pipeline,[]);
+
+// Mix every collected gas with every other collected gas inside the actual
+// valved receiver. This is a virtual stress test of phase and mass accounting.
+const gasCatalog=[...new Set([...db.substances.filter(s=>s.kind==='газ').map(s=>s.id),
+ ...db.reviewedReactionCases.flatMap(row=>[...st.labGasProductFormulas(row.equation)])])];
+let gasPairs=0;const gasPairFindings=[];
+for(let i=0;i<gasCatalog.length;i++)for(let j=i+1;j<gasCatalog.length;j++){
+ const ids=[gasCatalog[i],gasCatalog[j]];
+ let b=lab.attachLabGasCollector(lab.defaultLabBench(),'v1');
+ for(const id of ids)b=lab.putLabReagent(b,'v2',id,st.labGasDose(id,5));
+ const initial=b.vessels[1];
+ if(initial.reagents.length!==2||lab.labVesselQuantity(initial).volumeMl!==0||initial.environment!=='dry'){
+  gasPairFindings.push({ids,reason:'initial phase or dose'});continue;
+ }
+ const expected=ids.reduce((mass,id)=>mass+st.labDoseMoles(id,st.labGasDose(id,5))*st.labMolarMass(id),0);
+ b=lab.setLabSimulationPaused(b,false,1000);
+ for(let t=2000;t<=31000;t+=1000)b=lab.advanceLabSimulation(b,t);
+ const v=b.vessels[1],q=lab.labVesselQuantity(v),stored=lab.labGasStoredMl(v);
+ const inventory=net.simulateLabInventory({...v,volumeMl:q.volumeMl});
+ const mass=net.labInventoryMassG(inventory);
+ if(!Number.isFinite(mass)||Math.abs(mass-expected)>1e-7||!Number.isFinite(stored)||stored<0||stored>10.001)
+  gasPairFindings.push({ids,reason:'mass or gas inventory',expected,mass,stored});
+ gasPairs++;
+}
+console.log(`Valved receiver gas pair matrix: ${gasCatalog.length} gases, ${gasPairs} pairs, ${gasPairFindings.length} failures`);
+assert.deepEqual(gasPairFindings,[]);

@@ -163,8 +163,9 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
  const readable=(n:number)=>labDisplayNumber(n,realism);
  const gasStock=labGasStoredMl(vessel);
  if(vessel.gasCollector){
-  const fraction=Math.min(1,gasStock/capacityMl),pistonY=27+65*fraction;
+  const fraction=Math.min(1,(gasStock+solidVolumeMl)/capacityMl),pistonY=27+65*fraction;
   const tint=labGasTint(labGasStoredSamples(vessel));
+  const residue=contents.solid.filter(s=>(s.massG??0)>1e-10);
   return <div className={"lektrus-lab-vessel-art"+(small?" is-small":"")}>
    <svg viewBox="0 0 100 133" role="img" aria-label={"Газосборник: "+readable(gasStock)+" мл"}>
     <ellipse cx="50" cy="126" rx="29" ry="4" fill="#254f49" opacity=".12"/>
@@ -175,6 +176,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
      <circle data-lab-gas-port="true" cx="50" cy="2" r="1" fill="none"/>
      <rect x="28" y="24" width="44" height="79" rx="5" fill="#def4f033" stroke="#76a6a5" strokeWidth="2.3"/>
      {tint&&<rect x="30" y="27" width="40" height={65*fraction} fill={tint} opacity=".45"/>}
+     {residue.length>0&&<rect x="30" y={Math.max(27,pistonY-3)} width="40" height="3" fill={labSedimentTint(residue,.5)} stroke="#7e9494" strokeWidth=".6" aria-label="Твёрдый продукт реакции газов"/>}
      {Array.from({length:9},(_,index)=><path key={index} d={`M${index%2?33:30} ${27+index*8.125}H40`} stroke="#719a98" strokeWidth=".8"/>)}
      <rect x="30" y={pistonY} width="40" height="7" rx="2" fill="#557c7b"/>
      <path d={`M50 ${pistonY+7}V${pistonY+29}`} stroke="#6f9390" strokeWidth="6"/>

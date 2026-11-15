@@ -2370,6 +2370,10 @@ export function labMixEnvironment(
  const measured=Object.entries(all);
  if(measured.some(([id,d])=>d.unit==="ml"&&!LAB_NEAT_LIQUIDS.has(id)&&
   !labIsGasDose(id,d)))return "aqueous";
+ // A gas-only headspace is not a water solution merely because an empty
+ // vessel originally had the default aqueous environment selected.
+ if(measured.some(([id,d])=>labIsGasDose(id,d))&&
+  measured.every(([id,d])=>d.unit==="g"||labIsGasDose(id,d)))return "dry";
  // Preserve explicitly requested dry experiments when every portion is solid.
  if(measured.length&&measured.every(([,d])=>d.unit==="g")&&
   inputs.some(x=>x.environment==="dry"))return "dry";

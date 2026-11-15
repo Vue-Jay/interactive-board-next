@@ -521,6 +521,16 @@ const phasePlan=lab.labGasTransferPreview(mixedPhase,"v2","v1",5);
 assert.equal(phasePlan.transferMl,0);
 assert.equal(phasePlan.incompatiblePhase,true);
 assert.equal(lab.transferLabGasSample(mixedPhase,"v2","v1",5),mixedPhase);
+// A gas-only receiver must run dry gas chemistry, not falsely classify
+// the measured gas volume as a solvent or preserve consumed samples.
+let reactedCollector=lab.attachLabGasCollector(lab.defaultLabBench(),"v1");
+reactedCollector=lab.putLabReagent(reactedCollector,"v2","NH3",{unit:"ml",value:5});
+reactedCollector=lab.putLabReagent(reactedCollector,"v2","HCl",{unit:"ml",value:5,phase:"gas"});
+assert.equal(reactedCollector.vessels[1].environment,"dry");
+reactedCollector=lab.setLabSimulationPaused(reactedCollector,false,1000);
+for(let t=2000;t<=12000;t+=1000)reactedCollector=lab.advanceLabSimulation(reactedCollector,t);
+assert.equal(lab.labGasStoredMl(reactedCollector.vessels[1]),0);
+assert.ok(lab.labVesselContents(reactedCollector.vessels[1]).solid.some(s=>s.formula==="NH4Cl"&&s.massG>0));
 
 // Measured headspace never masquerades as liquid during pipetting or a pour.
 let headspace=lab.addLabVessel(lab.defaultLabBench(),"flask");
