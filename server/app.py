@@ -425,7 +425,7 @@ def document_view(row, board_id: UUID):
         "document": json.loads(row["document"]) if isinstance(row["document"], str) else row["document"],
         "version": row["version"],
         "updated_at": row["updated_at"].isoformat(),
-        "updated_by": str(row["updated_by"]),
+        "updated_by": str(row["updated_by"]) if row["updated_by"] is not None else None,
     }
 
 @app.get("/api/v1/boards/{board_id}/document")

@@ -2,13 +2,18 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import asyncio
 import json
+import logging
 from typing import Literal
 from uuid import UUID, uuid4
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
+
+from assets import assets_root, file_path
+from materials import material_path
 
 
 def require_admin(user):
@@ -32,6 +37,10 @@ class TeacherReviewInput(BaseModel):
 class SubscriptionInput(BaseModel):
     plan: Literal["free", "teacher", "pro"]
     until: datetime | None = None
+
+
+class DeleteUserInput(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
 
 
 class FeedbackInput(BaseModel):
@@ -162,6 +171,75 @@ def make_admin_router(current_user) -> APIRouter:
             ),
             "created_at": row["created_at"].isoformat(),
         } for row in rows]
+
+    @router.delete("/api/v1/admin/users/{user_id}")
+    async def admin_delete_user(user_id: UUID, data: DeleteUserInput,
+                                request: Request, user=Depends(current_user)):
+        require_admin(user)
+        if user_id == user["id"]:
+            raise HTTPException(409, "Нельзя удалить собственный аккаунт.")
+        async with request.app.state.pool.acquire() as conn:
+            async with conn.transaction():
+                target = await conn.fetchrow(
+                    "SELECT email,is_admin FROM account_users WHERE id=$1 FOR UPDATE",
+                    user_id,
+                )
+                if target is None:
+                    raise HTTPException(404, "Пользователь не найден.")
+                if target["is_admin"]:
+                    raise HTTPException(409, "Нельзя удалить администратора.")
+                if data.email.strip().lower() != target["email"]:
+                    raise HTTPException(409, "Адрес электронной почты не совпадает.")
+                # Lock owned boards before recording their physical files. Shared
+                # boards are not deleted; historical attribution becomes NULL.
+                await conn.fetch("SELECT id FROM boards WHERE owner_id=$1 FOR UPDATE", user_id)
+                assets = await conn.fetch(
+                    """SELECT a.board_id,a.storage_name FROM board_assets a
+                       JOIN boards b ON b.id=a.board_id WHERE b.owner_id=$1""", user_id,
+                )
+                materials = await conn.fetch(
+                    "SELECT storage_name FROM learning_materials WHERE owner_id=$1", user_id,
+                )
+                # Keep other members' replies on a shared board rather than
+                # cascading them through the deleted author's comment.
+                await conn.execute(
+                    """UPDATE board_comments reply SET parent_id=NULL
+                       FROM board_comments parent
+                       WHERE reply.parent_id=parent.id AND parent.author_id=$1
+                         AND reply.author_id<>$1""", user_id,
+                )
+                # An existing private chat requires both participants. Remove
+                # the deleted user's chats and any remaining authored messages.
+                await conn.execute(
+                    """DELETE FROM direct_conversations WHERE id IN
+                       (SELECT conversation_id FROM direct_conversation_members WHERE user_id=$1)""",
+                    user_id,
+                )
+                await conn.execute("DELETE FROM direct_messages WHERE sender_id=$1", user_id)
+                await conn.execute("DELETE FROM board_invites WHERE email=$1", target["email"])
+                await conn.execute("DELETE FROM product_feedback WHERE user_id=$1", user_id)
+                # Foreign keys cascade personal records, owned boards and all
+                # sessions. Shared board documents/assets use ON DELETE SET NULL.
+                await conn.execute("DELETE FROM account_users WHERE id=$1", user_id)
+        # A rollback must never remove files. Only unlink explicitly recorded
+        # server-generated names after the transaction has committed.
+        failed_files = 0
+        for row in assets:
+            try:
+                path = file_path(assets_root(), row["board_id"], row["storage_name"])
+                await asyncio.to_thread(path.unlink, missing_ok=True)
+            except (OSError, RuntimeError):
+                failed_files += 1
+        for row in materials:
+            try:
+                await asyncio.to_thread(material_path(row["storage_name"]).unlink, missing_ok=True)
+            except (OSError, RuntimeError):
+                failed_files += 1
+        if failed_files:
+            logging.getLogger("lektrus.admin").warning(
+                "Account deleted; %d private files need cleanup", failed_files
+            )
+        return {"ok": True, "files_pending": failed_files}
 
     @router.get("/api/v1/admin/teacher-requests")
     async def admin_list_teacher_requests(request: Request, user=Depends(current_user)):
