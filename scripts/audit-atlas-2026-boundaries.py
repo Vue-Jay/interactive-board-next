@@ -161,6 +161,10 @@ def describe(a, b):
             "intersectionOverUnion": round(intersection / union, 7)}
 
 
+def geometry_digest(feature):
+    return hashlib.sha256(json.dumps(feature["geometry"], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
 def source_edition(meta):
     stamp = meta.get("editingInfo", {}).get("dataLastEditDate") or meta.get("editingInfo", {}).get("lastEditDate")
     assert stamp, "reference data edition is not available"
@@ -417,6 +421,9 @@ def main():
     # may mean a different cartographic convention; never silently discard them.
     reference_codes = {f["properties"].get("ISO_A3") for f in reference}
     baseline = []
+    neutral_by_geometry = {}
+    for f in default:
+        neutral_by_geometry.setdefault(geometry_digest(f), []).append(f["properties"])
     crosswalk = {"SDS": "SSD", "PSX": "PSE", "ALD": "ALA", "CLP": "CPT"}
     named = {"ATC": ("AUS", "Ashmore and Cartier Islands (Aus.)"), "ESB": ("GBR", "Sovereign Base Areas of Akrotiri and Dhekelia (U.K.)"),
              "WSB": ("GBR", "Sovereign Base Areas of Akrotiri and Dhekelia (U.K.)")}
@@ -427,12 +434,16 @@ def main():
         if code in named:
             target_code, name = named[code]
             matches = [g["properties"] for g in corrected_features if g["properties"].get("ISO_A3") == target_code and g["properties"].get("NAM_0") == name]
+        digest = geometry_digest(f)
+        neutral_exact = neutral_by_geometry.get(digest, [])
         baseline.append({"index": i, "code": code, "name": p.get("NAME"), "type": p.get("TYPE"), "sovCode": p.get("SOV_A3"),
+                         "archiveViewCode": p.get("ADM0_A3_RU"),
+                         "neutralExactGeometryMatches": [{"code": g.get("ADM0_A3"), "name": g.get("NAME"), "type": g.get("TYPE")} for g in neutral_exact],
                          "referenceCodePresent": crosswalk.get(code, code) in reference_codes,
                          "referenceCandidatePresent": bool(matches),
                          "referenceCandidates": [{"id": g["LEKTRUS_ENTITY_ID"], "code": g["ISO_A3"], "name": g["LEKTRUS_NAME"]} for g in matches],
                          "matchKind": "combined-source-territory" if code in {"ESB", "WSB"} and matches else "multiple-source-records" if len(matches) > 1 else "candidate-crosswalk" if matches else "unresolved",
-                         "geometrySHA256": hashlib.sha256(json.dumps(f["geometry"], sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+                         "geometrySHA256": digest,
                          "review": "candidate-only"})
     report = {"year": 2026, "source": URL, "edition": edition, "referenceLicense": "CC BY 4.0",
               "atlasEdition": "2022-06-02", "method": "EPSG:6933 area intersection; different coastline resolution and political conventions affect results",
