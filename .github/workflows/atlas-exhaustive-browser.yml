@@ -53,6 +53,8 @@ jobs:
           path: |
             /tmp/lektrus-modern-audit/world-2026-source.geojson
             /tmp/lektrus-modern-audit/world-2026-candidate.geojson
+            /tmp/lektrus-modern-audit/world-2026-ndlsa-source.geojson
+            /tmp/lektrus-modern-audit/world-2026-ndlsa-candidate.geojson
           retention-days: 14
   every-country:
     runs-on: ubuntu-latest

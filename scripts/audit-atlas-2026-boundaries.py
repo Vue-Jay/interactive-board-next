@@ -16,13 +16,15 @@ import urllib.request
 from datetime import datetime, timezone
 
 from pyproj import Transformer
-from shapely import make_valid
+from shapely import make_valid, prepare
 from shapely.affinity import translate
-from shapely.geometry import shape, Polygon, box, mapping
+from shapely.geometry import shape, Polygon, MultiPolygon, box, mapping
 from shapely.ops import transform, unary_union
 from shapely.strtree import STRtree
+from shapely.validation import explain_validity
 
 URL = "https://services.arcgis.com/iQ1dY19aHwbSDYIF/arcgis/rest/services/World_Bank_Global_Administrative_Divisions/FeatureServer/1"
+NDLSA_URL = URL.rsplit("/", 1)[0] + "/5"
 TRANSFORMER = Transformer.from_crs(4326, 6933, always_xy=True)
 INVERSE_TRANSFORMER = Transformer.from_crs(6933, 4326, always_xy=True)
 
@@ -59,6 +61,37 @@ def unwrap_ring(coords, anchor=None):
     return result
 
 
+def repair_nested_shells(parts):
+    """Recover odd-depth holes and even-depth islands without a global
+    linework overlay over hundreds of thousands of unrelated coastline points.
+    Only accept a valid result; otherwise use GEOS's general linework repair."""
+    tree = STRtree(parts)
+    areas = [p.area for p in parts]
+    parents = {}
+    for i, p in enumerate(parts):
+        candidates = sorted((int(j) for j in tree.query(p) if areas[j] > areas[i]), key=lambda j: areas[j])
+        for j in candidates:
+            prepare(parts[j])
+            if parts[j].contains_properly(p):
+                parents[i] = j
+                break
+    if not parents:
+        return None
+    children = {}
+    for child, parent in parents.items():
+        children.setdefault(parent, []).append(parts[child])
+    result = []
+    for i, p in enumerate(parts):
+        depth, ancestor = 0, i
+        while ancestor in parents:
+            depth += 1
+            ancestor = parents[ancestor]
+        if depth % 2 == 0:
+            result.extend(polygon_parts(p.difference(unary_union(children[i])) if i in children else p))
+    candidate = result[0] if len(result) == 1 else MultiPolygon(result)
+    return candidate if not candidate.is_empty and candidate.is_valid else None
+
+
 def antimeridian_safe(geometry):
     """Unwrap rings before projecting. Split at +/-180, keeping holes.
     A polygon crossing the date line must not cover the whole planet.
@@ -71,10 +104,41 @@ def antimeridian_safe(geometry):
         if unwrapped.is_empty:
             continue
         lo, _, hi, _ = unwrapped.bounds
+        if lo >= -180 and hi <= 180:
+            parts.extend(polygon_parts(unwrapped))
+            continue
         for k in range(math.floor((lo + 180) / 360), math.floor((hi + 180) / 360) + 1):
             segment = unwrapped.intersection(box(-180 + 360*k, -90, 180 + 360*k, 90))
             parts.extend(translate(g, xoff=-360*k) for g in polygon_parts(segment))
-    return unary_union(parts)
+    if not parts:
+        return MultiPolygon()
+    # Nested shells in the source may actually represent holes. Unioning
+    # separate rings first fills those holes (Italy, South Africa, etc.).
+    combined = parts[0] if len(parts) == 1 else MultiPolygon(parts)
+    if combined.is_valid:
+        return combined
+    if explain_validity(combined).startswith("Nested shells"):
+        nested = repair_nested_shells(parts)
+        if nested is not None:
+            return nested
+    return unary_union(polygon_parts(make_valid(combined)))
+
+
+def normalize_source_topology(features):
+    corrected, repairs = [], []
+    for f in features:
+        if not f.get("geometry"):
+            corrected.append(f)
+            continue
+        raw = shape(f["geometry"])
+        normalized = antimeridian_safe(raw)
+        assert normalized.is_valid and not normalized.is_empty, f"unusable polygon: {f['properties']}"
+        if not raw.is_valid:
+            repairs.append({"sourceId": f["properties"].get("FID", f.get("id")), "code": f["properties"].get("ISO_A3"),
+                            "name": f["properties"].get("NAM_0"), "reason": explain_validity(raw)})
+        corrected.append({**f, "geometry": mapping(normalized), "properties": {**f["properties"],
+                          "LEKTRUS_TOPOLOGY": "source-valid" if raw.is_valid else "repaired-invalid-source"}})
+    return corrected, repairs
 
 
 def projected(features):
@@ -103,11 +167,11 @@ def source_edition(meta):
     return datetime.fromtimestamp(stamp / 1000, timezone.utc).date().isoformat()
 
 
-def fetch_complete_reference(meta):
+def fetch_complete_reference(meta, endpoint=URL):
     """Fetch the full dated source, not only the UN roster. No World Bank
     administrative feature is promoted to independent state by this import."""
     oid_field = meta.get("objectIdField") or next(f["name"] for f in meta["fields"] if f["type"] == "esriFieldTypeOID")
-    query = URL + "/query"
+    query = endpoint + "/query"
     ids = request({"where": "1=1", "returnIdsOnly": "true", "f": "json"}, query)["objectIds"]
     assert ids and len(ids) == len(set(ids)), "source object ID list is empty or duplicated"
     features = []
@@ -121,11 +185,11 @@ def fetch_complete_reference(meta):
         assert set(map(int, returned)) == set(batch) and len(returned) == len(batch), "incomplete reference batch"
         features.extend(sorted(response["features"], key=lambda f: int(f.get("properties", {}).get(oid_field, f.get("id")))))
     assert len(features) == len(ids)
-    assert source_edition(request({"f": "json"})) == source_edition(meta), "source changed during download"
+    assert source_edition(request({"f": "json"}, endpoint)) == source_edition(meta), "source changed during download"
     return features
 
 
-def source_snapshot(reference, edition):
+def source_snapshot(reference, edition, endpoint=URL):
     """A real date-specific candidate asset; keep source statuses and raw
     polygons. No inference of sovereign ownership or intra-year history."""
     missing_geometry = 0
@@ -136,7 +200,7 @@ def source_snapshot(reference, edition):
         else:
             assert f["geometry"]["type"] in {"Polygon", "MultiPolygon"}
     return {"type": "FeatureCollection", "year": 2026, "edition": edition,
-            "source": URL, "sourceLicense": "CC BY 4.0", "reviewStatus": "candidate-only",
+            "source": endpoint, "sourceLicense": "CC BY 4.0", "reviewStatus": "candidate-only",
             "notice": "World Bank administrative polygons, not certified sovereignty or exact legal boundaries; source edition is not a year-end state.",
             "missingGeometry": missing_geometry, "features": reference}
 
@@ -144,44 +208,63 @@ def source_snapshot(reference, edition):
 ENCLAVE_SOURCES = {
     "VAT": "https://www.vaticanstate.va/en/state-and-government/general-informations/geography.html",
     "SMR": "https://www.esteri.it/it/temi/aree_geografiche/europa/europa_meridionale_e_mediterranea/",
+    "LSO": "https://www.gov.ls/about-lesotho/",
 }
+ENCLAVE_HOSTS = {"ITA": ("VAT", "SMR"), "ZAF": ("LSO",)}
 
 
-def normalize_known_enclaves(features, code_field="ISO_A3"):
-    """Remove only proven independent enclaves from Italy's candidate polygon.
-
-    The reference administrative layer actually overlaps both enclaves. Use
-    its exact enclave polygons as holes, retaining their own geometry. Never
-    generalize this operation to disputed territory or dependencies.
-    """
+def normalize_known_enclaves(features, code_field="ISO_A3", require_all=False):
+    """Remove only proven sovereign enclaves; do not alter disputed areas."""
     by_code = lambda code: [f for f in features if f["properties"].get(code_field) == code and f.get("geometry")]
-    holes = {code: unary_union([make_valid(shape(f["geometry"])) for f in by_code(code)]) for code in ENCLAVE_SOURCES}
-    assert all(not g.is_empty for g in holes.values()) and by_code("ITA"), "missing Italy or enclave geometry"
-    original_italy = unary_union([make_valid(shape(f["geometry"])) for f in by_code("ITA")])
     report = []
-    for code, hole in holes.items():
-        before = transform(TRANSFORMER.transform, original_italy.intersection(hole)).area / 1e6
-        report.append({"host": "ITA", "enclave": code, "overlapBeforeKm2": round(before, 6),
-                       "source": ENCLAVE_SOURCES[code], "status": "candidate-topology-correction"})
-    union = unary_union(list(holes.values()))
-    corrected = []
-    for f in features:
-        if f["properties"].get(code_field) != "ITA" or not f.get("geometry"):
-            corrected.append(f)
+    corrected = list(features)
+    for host, codes in ENCLAVE_HOSTS.items():
+        if not require_all and not any(by_code(c) for c in (host, *codes)):
             continue
-        geometry = make_valid(shape(f["geometry"]))
-        if geometry.intersection(union).area > 0:
-            result = unary_union(polygon_parts(geometry.difference(union)))
-            assert not result.is_empty and result.is_valid
-            corrected.append({**f, "geometry": mapping(result), "properties": {**f["properties"], "LEKTRUS_CORRECTION": "remove-VAT-and-SMR-overlaps"}})
-        else:
-            corrected.append(f)
-    new_italy = unary_union([make_valid(shape(f["geometry"])) for f in corrected if f["properties"].get(code_field) == "ITA" and f.get("geometry")])
-    for row in report:
-        after = transform(TRANSFORMER.transform, new_italy.intersection(holes[row["enclave"]])).area / 1e6
-        assert after < 1e-8, "Italian candidate still overlaps independent enclave"
-        row["overlapAfterKm2"] = round(after, 6)
+        holes = {c: unary_union([antimeridian_safe(shape(f["geometry"])) for f in by_code(c)]) for c in codes}
+        assert by_code(host) and all(not g.is_empty for g in holes.values()), f"missing host or enclave: {host}"
+        original = unary_union([antimeridian_safe(shape(f["geometry"])) for f in by_code(host)])
+        union = unary_union(list(holes.values()))
+        for i, f in enumerate(corrected):
+            if f["properties"].get(code_field) != host or not f.get("geometry"):
+                continue
+            geometry = antimeridian_safe(shape(f["geometry"]))
+            if geometry.intersection(union).area > 0:
+                result = unary_union(polygon_parts(geometry.difference(union)))
+                assert not result.is_empty and result.is_valid
+                corrected[i] = {**f, "geometry": mapping(result), "properties": {**f["properties"], "LEKTRUS_CORRECTION": "remove-" + "-".join(codes) + "-overlaps"}}
+        new_host = projected([f for f in corrected if f["properties"].get(code_field) == host and f.get("geometry")])
+        for code, hole in holes.items():
+            before = transform(TRANSFORMER.transform, original.intersection(hole)).area / 1e6
+            after = new_host.intersection(transform(TRANSFORMER.transform, hole)).area / 1e6
+            assert after < 1e-8, f"candidate still overlaps independent enclave: {code}"
+            report.append({"host": host, "enclave": code, "overlapBeforeKm2": round(before, 6), "overlapAfterKm2": round(after, 6),
+                           "source": ENCLAVE_SOURCES[code], "status": "candidate-topology-correction"})
     return corrected, report
+
+
+def annotate_reference_identity(features, roster, edition, layer="ADM0"):
+    """UN roster membership is distinct from the provider's administrative status."""
+    main_ids = set()
+    if layer == "ADM0":
+        for code in roster:
+            matches = [f for f in features if f["properties"].get("ISO_A3") == code]
+            if len(matches) > 1:
+                matches = [f for f in matches if f["properties"].get("WB_STATUS") != "Territory"]
+            assert len(matches) == 1, f"ambiguous or missing sovereign entity: {code}"
+            main_ids.add(matches[0]["properties"].get("FID", matches[0].get("id")))
+    result, ids = [], set()
+    for f in features:
+        p = f["properties"]
+        fid = p.get("FID", f.get("id"))
+        assert fid is not None and fid not in ids, "missing or duplicate source record identity"
+        ids.add(fid)
+        code = p.get("ISO_A3")
+        status = ("non-member-observer" if code in {"PSE", "VAT"} else "un-member") if fid in main_ids else "outside-roster"
+        name = "French Guiana" if layer == "ADM0" and code == "GUF" else p.get("NAM_0")
+        result.append({**f, "properties": {**p, "LEKTRUS_ENTITY_ID": f"wb:{layer}:{edition}:{fid}",
+                       "LEKTRUS_UN_ROSTER_STATUS": status, "LEKTRUS_NAME": name}})
+    return result
 
 
 def classify_country_rows(rows):
@@ -240,12 +323,12 @@ def geometry_overlaps(features, code_field):
         code = f["properties"].get(code_field)
         key = code if code and code not in {"-99", "UNK"} else f"unresolved-source-{i}"
         groups.setdefault(key, []).append(f)
-    data = [(key, projected(group)) for key, group in groups.items()]
-    data = [(key, geom) for key, geom in data if geom is not None]
-    geoms = [g for _, g in data]
+    data = [(key, projected(group), group[0]["properties"]) for key, group in groups.items()]
+    data = [(key, geom, props) for key, geom, props in data if geom is not None]
+    geoms = [g for _, g, _ in data]
     tree = STRtree(geoms)
     overlaps = []
-    for i, (name, geometry) in enumerate(data):
+    for i, (name, geometry, props) in enumerate(data):
         for j in tree.query(geometry):
             if j <= i:
                 continue
@@ -253,7 +336,9 @@ def geometry_overlaps(features, code_field):
             area = geometry.intersection(other).area
             if area <= 1000:  # 0.001 km²: exclude numerical slivers only
                 continue
-            overlaps.append({"entities": sorted([name, data[j][0]]), "overlapKm2": round(area / 1e6, 6),
+            pair = sorted([(name, props), (data[j][0], data[j][2])], key=lambda row: row[0])
+            overlaps.append({"entities": [key for key, _ in pair], "names": [p.get("LEKTRUS_NAME", p.get("NAME", p.get("NAM_0"))) for _, p in pair],
+                             "codes": [p.get("ISO_A3", p.get("ADM0_A3")) for _, p in pair], "overlapKm2": round(area / 1e6, 6),
                              "shareOfSmaller": round(area / min(geometry.area, other.area), 6),
                              "review": "requires-territorial-status-review"})
     return sorted(overlaps, key=lambda row: (-row["overlapKm2"], row["entities"]))
@@ -266,26 +351,61 @@ def main():
     assert len(roster) == len(set(roster)) == 195
     dateline = Polygon([(179, 0), (-179, 0), (-179, 1), (179, 1), (179, 0)])
     assert abs(antimeridian_safe(dateline).area - 2) < 1e-9
-    meta = request({"f": "json"})
-    edition = source_edition(meta)
+    offline = len(sys.argv) == 5 and sys.argv[3] == "--existing-source"
+    assert offline or len(sys.argv) == 3, "usage: DATA_FOLDER REPORT [--existing-source GEOJSON]"
+    if offline:
+        raw_bytes = pathlib.Path(sys.argv[4]).read_bytes()
+        raw_snapshot = json.loads(raw_bytes)
+        assert raw_snapshot["source"] == URL and raw_snapshot["type"] == "FeatureCollection"
+        edition = raw_snapshot["edition"]
+        reference = raw_snapshot["features"]
+    else:
+        meta = request({"f": "json"})
+        edition = source_edition(meta)
+        reference = fetch_complete_reference(meta)
+        raw_snapshot = source_snapshot(reference, edition)
+        raw_bytes = json.dumps(raw_snapshot, ensure_ascii=False, separators=(",", ":")).encode()
     assert edition.startswith("2026-"), f"reference must be dated 2026, got {edition}"
     # Fetch the actual polygons, not the ArcGIS tile imagery. Query batches to
     # avoid silent service transfer limits. Keep returned geometry precision.
-    reference = fetch_complete_reference(meta)
-    raw_snapshot = source_snapshot(reference, edition)
-    raw_bytes = json.dumps(raw_snapshot, ensure_ascii=False, separators=(",", ":")).encode()
     out.with_name("world-2026-source.geojson").write_bytes(raw_bytes)
-    corrected_features, corrections = normalize_known_enclaves(reference)
+    normalized, repairs = normalize_source_topology(reference)
+    corrected_features, corrections = normalize_known_enclaves(normalized, require_all=True)
+    corrected_features = annotate_reference_identity(corrected_features, roster, edition)
+    membership = {status: sum(f["properties"]["LEKTRUS_UN_ROSTER_STATUS"] == status for f in corrected_features)
+                  for status in ("un-member", "non-member-observer", "outside-roster")}
+    assert membership["un-member"] == 193 and membership["non-member-observer"] == 2
     snapshot = {**raw_snapshot, "features": corrected_features,
-                "sourceSHA256": hashlib.sha256(raw_bytes).hexdigest(), "corrections": corrections}
+                "sourceSHA256": hashlib.sha256(raw_bytes).hexdigest(), "corrections": corrections, "topologyRepairs": repairs,
+                "membershipSources": ["https://www.un.org/en/about-us/member-states", "https://www.un.org/en/about-us/non-member-states"],
+                "nameSource": "https://unstats.un.org/unsd/methodology/m49/overview",
+                "membershipNotice": "VAT represents the geographic Vatican City; the Holy See is the UN observer. Provider WB_STATUS remains unchanged."}
     snapshot_bytes = json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")).encode()
     out.with_name("world-2026-candidate.geojson").write_bytes(snapshot_bytes)
+    ndlsa = {"status": "not-fetched-in-offline-replay"}
+    if not offline:
+        ndlsa_meta = request({"f": "json"}, NDLSA_URL)
+        ndlsa_edition = source_edition(ndlsa_meta)
+        assert ndlsa_edition == edition, "ADM0 and NDLSA editions do not match"
+        ndlsa_features = fetch_complete_reference(ndlsa_meta, NDLSA_URL)
+        ndlsa_raw = source_snapshot(ndlsa_features, ndlsa_edition, NDLSA_URL)
+        ndlsa_raw_bytes = json.dumps(ndlsa_raw, ensure_ascii=False, separators=(",", ":")).encode()
+        ndlsa_normalized, ndlsa_repairs = normalize_source_topology(ndlsa_features)
+        ndlsa_candidate = {**ndlsa_raw, "layer": "NDLSA", "features": annotate_reference_identity(ndlsa_normalized, roster, edition, "NDLSA"),
+                           "sourceSHA256": hashlib.sha256(ndlsa_raw_bytes).hexdigest(), "topologyRepairs": ndlsa_repairs}
+        ndlsa_bytes = json.dumps(ndlsa_candidate, ensure_ascii=False, separators=(",", ":")).encode()
+        out.with_name("world-2026-ndlsa-source.geojson").write_bytes(ndlsa_raw_bytes)
+        out.with_name("world-2026-ndlsa-candidate.geojson").write_bytes(ndlsa_bytes)
+        ndlsa = {"status": "separate-layer-pending-territorial-review", "edition": ndlsa_edition, "features": len(ndlsa_features),
+                 "sourceSHA256": hashlib.sha256(ndlsa_raw_bytes).hexdigest(), "candidateSHA256": hashlib.sha256(ndlsa_bytes).hexdigest(),
+                 "missingGeometry": ndlsa_raw["missingGeometry"], "topologyRepairs": len(ndlsa_repairs)}
     rus = json.loads((folder / "ne_10m_admin_0_countries_rus.geojson").read_text())["features"]
     default = json.loads((folder / "ne_10m_admin_0_countries.geojson").read_text())["features"]
     rows = []
     for code in roster:
         adm = {"SSD": "SDS", "PSE": "PSX"}.get(code, code)
-        ref = projected([f for f in reference if f["properties"].get("ISO_A3") == code and f.get("geometry")])
+        ref = projected([f for f in corrected_features if f["properties"].get("ISO_A3") == code and f.get("geometry")
+                         and f["properties"]["LEKTRUS_UN_ROSTER_STATUS"] != "outside-roster"])
         current = projected([f for f in rus if f["properties"].get("ADM0_A3") == adm])
         neutral = projected([f for f in default if f["properties"].get("ADM0_A3") == adm])
         rows.append({"iso": code, "referencePresent": ref is not None,
@@ -296,10 +416,24 @@ def main():
     # Crosswalk every archived atlas territory separately. Non-matching codes
     # may mean a different cartographic convention; never silently discard them.
     reference_codes = {f["properties"].get("ISO_A3") for f in reference}
-    baseline = [{"index": i, "code": f["properties"].get("ADM0_A3"), "name": f["properties"].get("NAME"),
-                 "type": f["properties"].get("TYPE"), "sovCode": f["properties"].get("SOV_A3"),
-                 "referenceCodePresent": {"SDS": "SSD", "PSX": "PSE"}.get(f["properties"].get("ADM0_A3"), f["properties"].get("ADM0_A3")) in reference_codes,
-                 "review": "candidate-only"} for i, f in enumerate(rus)]
+    baseline = []
+    crosswalk = {"SDS": "SSD", "PSX": "PSE", "ALD": "ALA", "CLP": "CPT"}
+    named = {"ATC": ("AUS", "Ashmore and Cartier Islands (Aus.)"), "ESB": ("GBR", "Sovereign Base Areas of Akrotiri and Dhekelia (U.K.)"),
+             "WSB": ("GBR", "Sovereign Base Areas of Akrotiri and Dhekelia (U.K.)")}
+    for i, f in enumerate(rus):
+        p = f["properties"]
+        code = p.get("ADM0_A3")
+        matches = [g["properties"] for g in corrected_features if code and g["properties"].get("ISO_A3") == crosswalk.get(code, code)]
+        if code in named:
+            target_code, name = named[code]
+            matches = [g["properties"] for g in corrected_features if g["properties"].get("ISO_A3") == target_code and g["properties"].get("NAM_0") == name]
+        baseline.append({"index": i, "code": code, "name": p.get("NAME"), "type": p.get("TYPE"), "sovCode": p.get("SOV_A3"),
+                         "referenceCodePresent": crosswalk.get(code, code) in reference_codes,
+                         "referenceCandidatePresent": bool(matches),
+                         "referenceCandidates": [{"id": g["LEKTRUS_ENTITY_ID"], "code": g["ISO_A3"], "name": g["LEKTRUS_NAME"]} for g in matches],
+                         "matchKind": "combined-source-territory" if code in {"ESB", "WSB"} and matches else "multiple-source-records" if len(matches) > 1 else "candidate-crosswalk" if matches else "unresolved",
+                         "geometrySHA256": hashlib.sha256(json.dumps(f["geometry"], sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+                         "review": "candidate-only"})
     report = {"year": 2026, "source": URL, "edition": edition, "referenceLicense": "CC BY 4.0",
               "atlasEdition": "2022-06-02", "method": "EPSG:6933 area intersection; different coastline resolution and political conventions affect results",
               "reviewState": "geometry candidates, not historical acceptance", "countries": classify_country_rows(rows),
@@ -307,9 +441,10 @@ def main():
                                  "rawFile": "world-2026-source.geojson", "rawSHA256": hashlib.sha256(raw_bytes).hexdigest(),
                                  "features": len(reference), "distinctSourceCodes": len(reference_codes), "missingGeometry": raw_snapshot["missingGeometry"]},
               "candidateCorrections": corrections,
+              "sourceTopologyRepairs": repairs, "membershipCounts": membership, "ndlsa": ndlsa,
               "archivedTerritoryCoverage": baseline,
               "archivedOverlaps": geometry_overlaps(rus, "ADM0_A3"),
-              "candidateOverlaps": geometry_overlaps(corrected_features, "ISO_A3")}
+              "candidateOverlaps": geometry_overlaps(corrected_features, "LEKTRUS_ENTITY_ID")}
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2))
     # Preserve real reference geometry for manual review, including the
     # neighbour context for landlocked microstates. Do not import names or
@@ -318,7 +453,7 @@ def main():
     context = {"FRA": box(6.9, 43.6, 7.7, 44.0), "ITA": box(12.2, 41.6, 12.8, 42.1).union(box(12.2, 43.7, 12.7, 44.2)),
                "AUT": box(9.3, 46.9, 9.8, 47.5), "CHE": box(9.3, 46.9, 9.8, 47.5), "MYS": box(103.4, 1.0, 104.5, 1.9), "IDN": box(103.4, 0.8, 104.5, 1.9)}
     review_features = []
-    for f in reference:
+    for f in corrected_features:
         code = f["properties"].get("ISO_A3")
         if code not in candidates and code not in context:
             continue
@@ -331,7 +466,7 @@ def main():
     out.with_name("boundary-candidates.geojson").write_text(json.dumps({"type": "FeatureCollection", "source": URL, "license": "CC BY 4.0", "features": review_features}))
     present = sum(row["referencePresent"] for row in rows)
     print(f"2026 independent boundary reference {edition}: {present}/195 country polygons available")
-    assert present >= 180, "reference unexpectedly incomplete"
+    assert present == 195, "reference unexpectedly incomplete"
     ranked = sorted((r for r in rows if r["russianViewVsReference"]), key=lambda r: r["russianViewVsReference"]["intersectionOverUnion"])
     for row in ranked[:25]:
         print(row["iso"], json.dumps(row["russianViewVsReference"]))
