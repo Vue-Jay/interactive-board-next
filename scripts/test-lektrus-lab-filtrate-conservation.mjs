@@ -54,6 +54,18 @@ assert.equal(autoSeparated.selectedId,"v3","Nearest closed receiver is skipped")
 assert.equal(autoSeparated.vessels[0].reagents.length,0);
 assert.equal(lab.placedLabDevices(autoSeparated).find(d=>d.id===suspensionFilterId).collectedResidue.formula,"SiO2");
 assert.equal(autoSeparated.reactionLog?.length??0,0,"Filtration is not a chemical reaction");
+const recoveredSand=lab.recoverLabFilterResidue(autoSeparated,suspensionFilterId);
+assert.notEqual(recoveredSand,autoSeparated);
+assert.equal(recoveredSand.selectedId,"v1");
+assert.equal(lab.placedLabDevices(recoveredSand).find(d=>d.id===suspensionFilterId).collectedResidue,undefined);
+approx(lab.labVesselContents(recoveredSand.vessels[0]).solid.find(s=>s.formula==="SiO2").massG,2);
+assert.equal(lab.returnPlacedLabDevice(autoSeparated,suspensionFilterId),autoSeparated,"A loaded filter must not be discarded by returning it to the cabinet");
+assert.notEqual(lab.returnPlacedLabDevice(recoveredSand,suspensionFilterId),recoveredSand);
+assert.equal(lab.recoverLabFilterResidue(recoveredSand,suspensionFilterId),recoveredSand,"No duplicate recovery");
+const rewet=lab.putLabReagent(suspensionSeparated,"v1","H2O",{unit:"ml",value:10});
+assert.equal(rewet.vessels[0].filteredResidue,undefined,"Reusing a separated solid must clear the historic residue label");
+approx(lab.labVesselQuantity(rewet.vessels[0]).volumeMl,10);
+approx(lab.labVesselContents(rewet.vessels[0]).solid.find(s=>s.formula==="SiO2").massG,2);
 let bench=lab.setLabSimulationPaused(lab.defaultLabBench(),false,0);
 bench=lab.putLabReagent(bench,"v1","BaCl2",dose());
 bench=lab.putLabReagent(bench,"v1","Na2SO4",dose());
@@ -366,6 +378,27 @@ const poured=lab.pourLabIntoFilter(filterDevice,"v1",filterId);
 assert.notEqual(poured,filterDevice,"Filter device accepts two different precipitates");
 assert.deepEqual(lab.placedLabDevices(poured).find(x=>x.id===filterId).
  collectedResidue.components.map(x=>x.formula).sort(),["AgCl","BaSO4"]);
+const recovered=lab.recoverLabFilterResidue(poured,filterId);
+const recoveredCake=recovered.vessels.find(v=>v.id===recovered.selectedId);
+assert.equal(recoveredCake.id,"v1");
+assert.equal(lab.placedLabDevices(recovered).find(x=>x.id===filterId).collectedResidue,undefined);
+for(const [formula,mol] of Object.entries(priorMulti.solidMol))
+ approx(recoveredCake.chemicalInventory.speciesMol[formula],mol,1e-10);
+approx(chemistry.labInventoryMassG(chemistry.simulateLabInventory(recoveredCake)),retainedMass,1e-7);
+const half=lab.addLabVessel(poured,"pipette");
+assert.equal(lab.recoverLabFilterResidue(half,filterId,half.selectedId),half,"A pipette cannot hold the filter cake");
+const occupied=lab.putLabReagent(poured,"v1","H2O",{unit:"ml",value:1});
+assert.equal(lab.recoverLabFilterResidue(occupied,filterId),occupied,"No free receiver must leave the entire cake untouched");
+const board=load("src/boardModel.ts");
+const reloadFilterBench=b=>board.parseDocument(JSON.stringify({version:1,title:"Filter recovery",view:{x:0,y:0,zoom:1},items:[{
+ id:"filter-recovery",kind:"graph",text:"Химический стол",x:0,y:0,width:650,height:420,
+ graphFigureId:"chem-experiment-free",scienceLabBench:b}]})).items[0].scienceLabBench;
+const reopened=reloadFilterBench(poured);
+assert.deepEqual(lab.placedLabDevices(reopened).find(d=>d.id===filterId).collectedResidue,
+ lab.placedLabDevices(poured).find(d=>d.id===filterId).collectedResidue);
+const reopenedRecovered=reloadFilterBench(lab.recoverLabFilterResidue(reopened,filterId));
+assert.equal(lab.placedLabDevices(reopenedRecovered).find(d=>d.id===filterId).collectedResidue,undefined);
+assert.deepEqual(reopenedRecovered.vessels.find(v=>v.id==="v1").chemicalInventory,recoveredCake.chemicalInventory);
 console.log("Multiple precipitates: mixed filter cake, separated filtrate and exact mass balance PASS");
 
 // The titration indicator must follow the current reagents, not the first

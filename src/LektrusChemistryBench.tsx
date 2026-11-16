@@ -1,7 +1,7 @@
 import {memo,useEffect,useLayoutEffect,useId,useMemo,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabBenchSettings,LabRealism,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
-import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labSimulationTickWaitMs,pourLabIntoFilter,
+import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labSimulationTickWaitMs,pourLabIntoFilter,recoverLabFilterResidue,
  labVesselVisualClock,labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,labFollowUpGasProgress,labGasTubeFlowActive,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabCoolerTemperature,LAB_COOLER_MIN_C,LAB_COOLER_MAX_C,LAB_HOTPLATE_MAX_C,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,setLabExperimentClock,labExperimentClockSeconds,formatLabClock,
  setLabSimulationPaused,setLabGasCollection,attachLabGasCollector,labGasStoredMl,labGasStoredSamples,labGasReceiverFreeMl,labGasTransferPreview,transferLabGasSample,formatLabDose,labDisplayNumber,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,labHasFrozenLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
@@ -1250,6 +1250,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      onChange?.({...next,selectedId:""});
      setActiveDeviceId(null);setVesselMenuId(null);
      setNotice("Выбранный прибор убран со стола");
+    }else if(placedLabDevices(bench).find(d=>d.id===deviceId)?.collectedResidue){
+     setNotice("Сначала перенесите осадок в сосуд или очистите фильтр");
     }
     return;
    }
@@ -1504,8 +1506,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   const p=point(e);
   if(g.dragged&&p){
    if(returnUp(p,g.startY)||(!compactFullscreen&&p.y>=8&&p.y<=42&&p.x>=82)){
-    onChange?.(returnPlacedLabDevice(bench,g.id));
-    setActiveDeviceId(null);setNotice("Прибор убран со стола");
+    const next=returnPlacedLabDevice(bench,g.id);
+    if(next!==bench){onChange?.(next);setActiveDeviceId(null);setNotice("Прибор убран со стола");}
+    else setNotice("Сначала перенесите осадок в сосуд или очистите фильтр");
    }else{
     const moved=movePlacedLabDevice(bench,g.id,g.x+p.x-g.startX,g.y+p.y-g.startY);
     const device=physicalDevices.find(d=>d.id===g.id);
@@ -2174,10 +2177,16 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
        onPointerMove={e=>e.stopPropagation()}
        onPointerUp={e=>e.stopPropagation()}
        onClick={e=>e.stopPropagation()}>
-       {device.kind==="filter"?<>{device.collectedResidue&&<button type="button"
+       {device.kind==="filter"?<>{device.collectedResidue&&<>
+        <button type="button" className="lektrus-lab-filter-recover"
+         title="Перенести осадок в пустой сосуд" aria-label="Перенести осадок в пустой сосуд"
+         onClick={()=>{const next=recoverLabFilterResidue(bench,device.id);
+          if(next!==bench){onChange?.(next);setNotice("Осадок перенесён в сосуд");}
+          else setNotice("Нужен пустой открытый сосуд подходящего объёма");}}>↓</button>
+        <button type="button" className="lektrus-lab-filter-discard"
         title="Очистить мембранный фильтр" aria-label="Очистить мембранный фильтр"
         onClick={()=>onChange?.({...bench,placedDevices:physicalDevices.map(d=>d.id===device.id?
-         {...d,collectedResidue:undefined}:d),event:bench.event+1})}>×</button>}</>:
+         {...d,collectedResidue:undefined,filterStartedAtMs:undefined}:d),event:bench.event+1})}>×</button></>}</>:
         device.kind!=="tripod"?<>
         {device.kind==="burner"?
          <button type="button" className="lektrus-lab-burner-valve"
@@ -2355,6 +2364,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
       labThermalState(v.reagents,v.doses,v.temperatureC??22,v.meltFraction).label+" · ":"")+
       (editable?"Выбрать или переместить; перетащить на сосуд для переливания, на раковину для слива, вверх для возврата":"Посуда")}
     onPointerDown={e=>down(e,v)} onPointerMove={move} onPointerUp={finish}
+    onClick={e=>{if(e.detail===0){e.stopPropagation();setActiveDeviceId(null);onSelect?.(v.id);setVesselMenuId(current=>current===v.id?null:v.id)}}}
     onPointerCancel={e=>{e.stopPropagation();endContact();gesture.current=null;cancelVesselPreview();setPreview(null);
      setDropTarget(null);setDropFurniture(null);setDropDeviceId(null)}}
     onDragOver={e=>{if(editable)e.preventDefault()}}

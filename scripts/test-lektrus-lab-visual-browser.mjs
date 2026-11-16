@@ -98,5 +98,20 @@ try{
  const residueTag=await evalPage(`(()=>{const e=document.querySelector('.lektrus-lab-vessel.is-beaker .lektrus-lab-content-tag');return e&&{text:e.textContent,title:e.title};})()`);
  assert.ok(residueTag?.text.includes('AgCl')&&residueTag?.text.includes(' г'),'Dry residue tag must give the product and actual mass');
  assert.ok(residueTag?.title.includes('ммоль'),'Product amount must be derived from the measured ledger');
+ // The filter is a reusable physical device, not a one-way material sink.
+ await click('button[aria-label="Очистить стол"]');await click('button[aria-label="Подтвердить очистку стола"]');
+ await click('button[aria-label="Взять из шкафа Стакан"]');await place(.35,.72);
+ await add('H2O');await add('CaCO3');
+ await click('button[aria-label="Взять прибор: Мембранный фильтр"]');
+ await wait('!!document.querySelector(".lektrus-lab-placed-device.is-filter")','Filter must be placed on the table');
+ const points=await evalPage(`(()=>{const h=document.querySelector('.lektrus-lab-bench').getBoundingClientRect(),s=document.querySelector('.lektrus-lab-vessel.is-beaker').getBoundingClientRect(),f=document.querySelector('.lektrus-lab-placed-device.is-filter');return {from:{x:s.left+s.width/2,y:s.top+s.height/2},to:{x:h.left+h.width*parseFloat(f.style.left)/100,y:h.top+h.height*parseFloat(f.style.top)/100}}})()`);
+ await call('Input.dispatchMouseEvent',{type:'mousePressed',...points.from,button:'left',buttons:1,clickCount:1});
+ for(let i=1;i<=8;i++){const t=i/8;await call('Input.dispatchMouseEvent',{type:'mouseMoved',x:points.from.x+(points.to.x-points.from.x)*t,y:points.from.y+(points.to.y-points.from.y)*t,button:'left',buttons:1});await delay(35);}
+ await call('Input.dispatchMouseEvent',{type:'mouseReleased',...points.to,button:'left',buttons:0,clickCount:1});
+ await wait('!!document.querySelector(".lektrus-lab-filter-recover")','Filter must retain the calcium carbonate');
+ assert.ok((await evalPage('document.querySelector(".lektrus-lab-filter-residue").textContent')).includes('CaCO3'));
+ await click('.lektrus-lab-filter-recover');
+ await wait('!document.querySelector(".lektrus-lab-filter-recover")','Recovery must empty the cartridge');
+ await wait('!!document.querySelector(".lektrus-lab-vessel.selected .lektrus-lab-added-solid")','Recovered solid must be visible in selected vessel');
  console.log(JSON.stringify({clear,blue,diluted,solid}));
 }finally{socket?.close();chrome?.kill();await server.close();await delay(200);await rm(profile,{recursive:true,force:true});}

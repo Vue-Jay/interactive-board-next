@@ -172,7 +172,7 @@ export function movePlacedLabDevice(bench:LabBench,id:string,x:number,y:number):
 }
 export function returnPlacedLabDevice(bench:LabBench,id:string):LabBench{
  const existing=placedLabDevices(bench),target=existing.find(d=>d.id===id);
- if(!target)return bench;
+ if(!target||target.collectedResidue)return bench;
  const normalized=target.active?stopPlacedLabDevice(bench,id):bench;
  const placedDevices=placedLabDevices(normalized).filter(d=>d.id!==id);
  const devices=[...new Set(placedDevices.map(d=>d.kind))];
@@ -2420,6 +2420,14 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
  if(!bench.vessels.some(v=>v.id===id&&!v.stoppered&&
   !v.inventoryPrecipitation&&
   !(v.inventoryGasReaction&&v.pendingInventoryReaction)))return bench;
+ // A recovered cake becomes ordinary measured material on the next
+ // addition; its old separation label must not hide new liquid/products.
+ const retained=bench.vessels.find(v=>v.id===id)?.filteredResidue;
+ if(retained){
+  const prepared={...bench,vessels:bench.vessels.map(v=>v.id===id?{...v,filteredResidue:undefined}:v)};
+  const changed=putLabReagent(prepared,id,reagent,dose);
+  return changed===prepared?bench:changed;
+ }
  // Legacy callsites and presets receive a REAL, explicit stock dose.
  // Never create a reagent name without material quantity / concentration.
  const stock=dose??labDefaultStockDose(reagent);
@@ -3090,6 +3098,34 @@ export function pourLabIntoFilter(bench:LabBench,sourceId:string,filterId:string
   placedDevices:placedLabDevices(separated).map(d=>d.id===filterId?
    {...d,collectedResidue:solid,filterStartedAtMs:Date.now()}:d),
   event:separated.event+1};
+}
+
+/** Recover the measured filter cake into clean solid-compatible glassware.
+ * Select an empty vessel explicitly, or reuse the nearest empty vessel.
+ * A failed recovery leaves the cartridge and all quantities untouched. */
+export function recoverLabFilterResidue(bench:LabBench,filterId:string,targetId?:string):LabBench{
+ const filter=placedLabDevices(bench).find(d=>d.id===filterId&&d.kind==="filter");
+ const residue=filter?.collectedResidue;
+ if(!filter||!residue)return bench;
+ const components=residue.components??[{formula:residue.formula,massG:residue.massG,color:residue.color}];
+ if(!components.length||components.length>MAX_VESSEL_REAGENTS||new Set(components.map(c=>c.formula)).size!==components.length||
+  components.some(c=>!labMolarMass(c.formula)||!Number.isFinite(c.massG)||(c.massG??0)<=0||(c.massG??0)>10000))return bench;
+ const doses:Record<string,LabDose>=Object.fromEntries(components.map(c=>[c.formula,{unit:"g",value:c.massG!}]));
+ const volume=components.reduce((n,c)=>n+c.massG!/precipitateDensity(c.formula),0);
+ const accepts=(v:LabVessel)=>!v.gasCollector&&!v.stoppered&&!v.reagents.length&&!v.filteredSolution&&
+  !v.filteredResidue&&!v.chemicalInventory&&!v.reactionAmounts&&!Object.keys(v.doses??{}).length&&
+  ["beaker","tube","flask","conical","dish","crucible","volumetric"].includes(v.kind)&&
+  labVesselQuantity(v).availableMl>=volume;
+ const target=targetId?bench.vessels.find(v=>v.id===targetId&&accepts(v)):
+  bench.vessels.find(v=>v.id===bench.selectedId&&accepts(v))??bench.vessels.filter(accepts)
+   .sort((a,b)=>Math.hypot(a.x-filter.x,a.y-filter.y)-Math.hypot(b.x-filter.x,b.y-filter.y))[0];
+ if(!target)return bench;
+ const speciesMol=Object.fromEntries(components.map(c=>[c.formula,c.massG!/labMolarMass(c.formula)!]));
+ const recovered=revise(bench,target.id,v=>({...v,reagents:components.map(c=>c.formula),doses,
+  chemicalInventory:{speciesMol,solidMol:{...speciesMol},settled:true},
+  environment:"dry",observed:false,uncertain:false}));
+ return {...recovered,selectedId:target.id,placedDevices:placedLabDevices(recovered).map(d=>d.id===filterId?
+  {...d,collectedResidue:undefined,filterStartedAtMs:undefined}:d)};
 }
 
 /** School displacement: source crystal density when measured, a marked
