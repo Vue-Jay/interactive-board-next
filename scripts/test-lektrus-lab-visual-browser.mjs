@@ -33,6 +33,7 @@ try{
  const add=async formula=>{assert.ok(await evalPage(`(()=>{const e=[...document.querySelectorAll('.lektrus-lab-quick-bottle')].find(x=>x.querySelector('strong')?.textContent===${JSON.stringify(formula)});if(!e||e.disabled)return false;e.click();return true})()`),formula);await delay(150);};
  const play=()=>click('button[aria-label^="Пуск"]');
  const pause=()=>click('button[aria-label^="Пауза"]');
+ const place=async(x,y)=>{await evalPage(`(()=>{const e=document.querySelector('.lektrus-lab-bench');const r=e.getBoundingClientRect();e.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,isPrimary:true,button:0,clientX:r.left+r.width*${x},clientY:r.top+r.height*${y}}));})()`);await delay(200);};
  await wait('!!document.querySelector(".lektrus-lab-quick-bottle")','Lab controls did not render');
  await click('.lektrus-lab-vessel');await add('H2O');const clear=await fluid();assert.ok(clear,'Water must have a visible liquid');
  await add('CuSO4');const blue=await fluid();assert.notEqual(blue,clear,'Copper solution added after water must visibly tint the liquid');
@@ -45,11 +46,24 @@ try{
  await pause();const solid=await evalPage(`document.querySelector('.lektrus-lab-vessel.selected .lektrus-lab-added-solid path')?.getAttribute('fill')`);
  assert.ok(solid&&solid!=='#e9e7df','Copper hydroxide must not use an uncolored generic powder');
  if(process.env.LAB_QA_SCREENSHOT){await call('Page.enable');const data=await call('Page.captureScreenshot',{format:'png'});await writeFile(process.env.LAB_QA_SCREENSHOT,Buffer.from(data.data,'base64'));}
+ // Real measuring controls must transfer liquid without visually moving the
+ // collected precipitate, then empty the pipette when the sample is returned.
+ await click('button[aria-label="Взять из шкафа Пипетка"]');
+ await place(.68,.72);
+ await wait('!!document.querySelector(".lektrus-lab-vessel.is-pipette.selected")','Pipette placement must select it');
+ await click('button[aria-label="Открыть шкаф посуды"]');
+ const measure=async label=>{assert.ok(await evalPage(`(()=>{const e=[...document.querySelectorAll('.lektrus-lab-measuring-cabinet button')].find(x=>x.textContent===${JSON.stringify(label)});if(!e||e.disabled)return false;e.click();return true})()`),label);await delay(150);};
+ await measure('Набрать');
+ await wait('!!document.querySelector(".lektrus-lab-vessel.is-pipette .lektrus-lab-fluid")','Sample must be visible inside pipette');
+ assert.equal(await evalPage('!!document.querySelector(".lektrus-lab-vessel.is-pipette .lektrus-lab-added-solid")'),false,'Pipette must not draw settled precipitate');
+ assert.equal(await evalPage('!!document.querySelector(".lektrus-lab-vessel:not(.is-pipette) .lektrus-lab-added-solid")'),true,'Precipitate must remain visible in the donor');
+ await measure('Выдать');
+ await wait('!document.querySelector(".lektrus-lab-vessel.is-pipette .lektrus-lab-fluid")','Returned sample must visibly empty the pipette');
+ await click('.lektrus-lab-furniture-dialog button[aria-label="Закрыть шкаф"]');
  // Actual UI controls: clear, choose new glassware, and check the visual
  // difference between prepared reagents and measured evolving gas.
  await click('button[aria-label="Очистить стол"]');await click('button[aria-label="Подтвердить очистку стола"]');
  await click('button[aria-label="Взять из шкафа Стакан"]');
- const place=async(x,y)=>{await evalPage(`(()=>{const e=document.querySelector('.lektrus-lab-bench');const r=e.getBoundingClientRect();e.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,isPrimary:true,button:0,clientX:r.left+r.width*${x},clientY:r.top+r.height*${y}}));})()`);await delay(200);};
  await place(.35,.72);
  await wait('!!document.querySelector(".lektrus-lab-vessel.selected")','Glassware placement did not select its new vessel');
  await add('Na2CO3');await add('HCl');
