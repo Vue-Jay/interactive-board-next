@@ -90,3 +90,7 @@ jobs:
         with:
           name: lektrus-annual-atlas-audit
           path: /tmp/lektrus-annual-data/annual-atlas-audit.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lektrus-historical-gap-candidates
+          path: /tmp/lektrus-annual-data/historical-gap-candidates.geojson

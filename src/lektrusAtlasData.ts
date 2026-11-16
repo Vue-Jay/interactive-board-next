@@ -416,6 +416,15 @@ function historicalCorrectionsForYear(year:number):Record<string,HistoricalLabel
  colonial({"Papua New Guinea":"Папуа и Новая Гвинея (условный контур)"},"Статус частей территории различался; австралийская администрация",1920,1960);
  colonial({"Saar Protectorate":"Саарская область"},"Французская оккупационная зона; особый статус оформлен позднее",1945,1945,"https://www.saarland.de/stk/EN/service/downloads/Entstehung_Saarland.pdf?__blob=publicationFile&v=1");
  colonial({Zaire:"Демократическая Республика Конго"},"Демократическая Республика Конго",2000,2010);
+ colonial({Burma:"Мьянма"},"Союз Мьянма; название в ООН изменено в июне 1989 г.",1994,2010,"https://www.un.org/en/about-us/member-states/myanmar");
+ colonial({Byelarus:"Беларусь"},"Республика Беларусь; название в ООН изменено 19 сентября 1991 г.",1994,2010,"https://research.un.org/en/unmembers/currentmembers");
+ colonial({Macedonia:"Республика Македония"},"В ООН в 1993–2019 гг. использовалось временное наименование «бывшая югославская Республика Македония»",1994,2010,"https://digitallibrary.un.org/record/914046");
+ colonial({"Puerto Rico":"Пуэрто-Рико"},"Территория США, не отдельное суверенное государство",1994,2010,"https://www.doi.gov/oia/islands/politicatypes");
+ colonial({Trinidad:"Тринидад и Тобаго (неполный контур)"},"Независимое государство с 1962 г.; исходный полигон не охватывает остров Тобаго",1994,2010,"https://digitallibrary.un.org/record/707403/files/A_HRC_WG.6_12_TTO_1-EN.pdf");
+ colonial({Italy:"Италия (условный контур)"},"В исходном контуре включено местоположение Сан-Марино; Сан-Марино — отдельное государство и член ООН с 1992 г.",1994,2010,"https://www.un.org/en/about-us/growth-in-un-membership");
+ colonial({Indonesia:"Индонезия (условный контур)"},"Восточный Тимор — независимое государство с 2002 г.; источник 2010 г. не выделяет его отдельной границей",2010,2010,"https://peacekeeping.un.org/sites/default/files/past/unmit/background.shtml");
+ colonial({Indonesia:"Индонезия (условный контур)"},"В Восточном Тиморе с 1999 г. действовала переходная администрация ООН; отдельная граница в слое 2000 г. отсутствует",2000,2000,"https://peacekeeping.un.org/sites/default/files/past/unmit/background.shtml");
+ colonial({Switzerland:"Швейцария"},"Швейцарская Конфедерация; основной исходный полигон восстановлен по проверенному идентификатору геометрии",1994,2010,"https://www.swisstopo.admin.ch/en/national-border");
  colonial({"Hong Kong":"Гонконг"},"КНР, специальный административный район с 1 июля 1997 г.",2000,2010,"https://www.basiclaw.gov.hk/en/basiclaw/preamble.html");
  colonial({"Saint Barthelemy":"Сен-Бартелеми"},"Франция; самостоятельная заморская общность с 2007 г.",1994,2000,"https://www.outre-mer.gouv.fr/territoires/saint-barthelemy");
  colonial({"Saint Martin":"Сен-Мартен (французская часть)"},"Франция; самостоятельная заморская общность с 2007 г.",1994,2000,"https://www.outre-mer.gouv.fr/territoires/saint-martin");
@@ -496,9 +505,22 @@ export function correctHistoricalLabels(source:GeoCollection,year:number):GeoCol
  const corrections=historicalCorrectionsForYear(year);
  if(!Object.keys(corrections).length||!source.features.some(f=>Boolean(corrections[String(f.properties?.NAME??"").trim()])))return source;
  return {...source,features:source.features.map(f=>{
-  const name=String(f.properties?.NAME??"").trim(), correction=corrections[name];
+  // The same pinned unnamed polygon occurs in all three late snapshots.
+  // Its geographic extent matches swisstopo and the Natural Earth layer;
+  // exact ring sizes and fingerprint prevent attributing arbitrary blanks.
+  let name=String(f.properties?.NAME??"").trim();
+  let restored=false;
+  if(!name&&[1994,2000,2010].includes(year)&&f.geometry?.type==="MultiPolygon"){
+   const p=f.geometry.coordinates as number[][][][];
+   if(p?.length===1&&p[0]?.length===3&&p[0][0]?.length===2857&&p[0][1]?.length===15&&p[0][2]?.length===16){
+    let hash=2166136261;
+    for(const char of JSON.stringify(f.geometry))hash=Math.imul(hash^char.charCodeAt(0),16777619)>>>0;
+    if(hash===0x64809a59){name="Switzerland";restored=true;}
+   }
+  }
+  const correction=corrections[name];
   if(!correction)return f;
-  return {...f,properties:{...f.properties,ATLAS_HISTORICAL_LABEL:correction[0],ATLAS_HISTORICAL_AFFILIATION:correction[1],ATLAS_HISTORICAL_SOURCE:correction[2],ATLAS_HISTORICAL_NOTE:"Название и статус уточнены. Контур взят из исходной реконструкции и может содержать современные границы."}};
+  return {...f,properties:{...f.properties,...(restored?{NAME:name,ATLAS_ORIGINAL_NAME:f.properties?.NAME??null}:{}),ATLAS_HISTORICAL_LABEL:correction[0],ATLAS_HISTORICAL_AFFILIATION:correction[1],ATLAS_HISTORICAL_SOURCE:correction[2],ATLAS_HISTORICAL_NOTE:restored?"Основной полигон присутствовал в источнике без имени. Восстановлена подпись, исходный контур не изменён.":"Название и статус уточнены. Контур взят из исходной реконструкции и может содержать современные границы."}};
  })};
 }
 export function correctedHistoricalIndexLabel(raw:string,year:number):string|undefined{
@@ -867,7 +889,7 @@ export function historicalFeatureFacts(feature:GeoFeature):Array<{label:string;v
   ["SOURCE","Источник атрибута"],["NOTES","Примечания источника"]];
  return fields.flatMap(([key,label])=>{
   if(p.ATLAS_HISTORICAL_LABEL&&["SUBJECTO","PARTOF","BORDERPRECISION","BORDER_PRECISION"].includes(key))return [];
-  const value=p[key];
+  const value=key==="NAME"&&Object.hasOwn(p,"ATLAS_ORIGINAL_NAME")?p.ATLAS_ORIGINAL_NAME:p[key];
   if(typeof value==="number"&&Number.isFinite(value))
    return [{label,value:String(value)}];
   if(typeof value!=="string"||!value.trim())return [];

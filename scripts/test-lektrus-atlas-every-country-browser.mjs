@@ -36,6 +36,7 @@ try{
   await page.locator(`[data-atlas-source-year="${year}"]`).waitFor({timeout:90000});
   await page.getByTitle("Вписать выбранный регион").click();
   await page.locator(".lektrus-atlas-overlay").waitFor({state:"hidden",timeout:90000});
+  const missingCount={2010:19,2000:18,1994:15}[year];
   const shapes=page.locator("path.lektrus-atlas-country[data-atlas-feature-index]");
   await shapes.first().waitFor({state:"attached",timeout:90000});
   const ids=await shapes.evaluateAll(nodes=>nodes.map(node=>node.dataset.atlasFeatureIndex));
@@ -60,6 +61,10 @@ try{
    const title=await selected.locator(".lektrus-atlas-description strong").first().textContent({timeout:6000});
    assert.ok(title?.trim(),`${year}, ${id}: missing country title`);
    assert.ok(!/^(?:undefined|null|NaN|Infinity)$/.test(title.trim()),`${year}, ${id}: damaged country title (${title})`);
+   if(missingCount&&id===(year===1994?"179":"180")){
+    assert.equal(title.trim(),"Швейцария",`${year}: main Swiss polygon not restored in UI`);
+    await selected.locator(`[data-atlas-missing-members="${missingCount}"]`).waitFor({state:"visible",timeout:6000});
+   }
    tested++;
   }
   console.log(`${year}: ${ids.length} map clicks, ${tested} total`);

@@ -571,6 +571,32 @@ if(process.env.LEKTRUS_ATLAS_DATA_DIR){
  const unMembers="AFG ALB DZA AND AGO ATG ARG ARM AUS AUT AZE BHS BHR BGD BRB BLR BEL BLZ BEN BTN BOL BIH BWA BRA BRN BGR BFA BDI CPV KHM CMR CAN CAF TCD CHL CHN COL COM COG COD CRI CIV HRV CUB CYP CZE DNK DJI DMA DOM ECU EGY SLV GNQ ERI EST SWZ ETH FJI FIN FRA GAB GMB GEO DEU GHA GRC GRD GTM GIN GNB GUY HTI HND HUN ISL IND IDN IRN IRQ IRL ISR ITA JAM JPN JOR KAZ KEN KIR PRK KOR KWT KGZ LAO LVA LBN LSO LBR LBY LIE LTU LUX MDG MWI MYS MDV MLI MLT MHL MRT MUS MEX FSM MDA MCO MNG MNE MAR MOZ MMR NAM NRU NPL NLD NZL NIC NER NGA MKD NOR OMN PAK PLW PAN PNG PRY PER PHL POL PRT QAT ROU RUS RWA KNA LCA VCT WSM SMR STP SAU SEN SRB SYC SLE SGP SVK SVN SLB SOM ZAF SSD ESP LKA SDN SUR SWE CHE SYR TJK TZA THA TLS TGO TON TTO TUN TUR TKM TUV UGA UKR ARE GBR USA URY UZB VUT VEN VNM YEM ZMB ZWE".split(" ");
  assert.equal(new Set(unMembers).size,193);
  const modern=JSON.parse(fs.readFileSync(process.env.LEKTRUS_ATLAS_DATA_DIR+"/ne_10m_admin_0_countries_rus.geojson","utf8"));
+ const coverageSource=fs.readFileSync(new URL("../src/lektrusAtlasHistoricalCoverage.ts",import.meta.url),"utf8");
+ const coverageExports={};
+ new Function("exports",ts.transpileModule(coverageSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(coverageExports);
+ // Verify minimum named coverage against all 193 present-day members, with
+ // the UN roster's actual year-end totals and explicit historical aliases.
+ const oldAliases={BLR:"Byelarus",COG:"Congo",COD:"Zaire",SWZ:"Swaziland",GMB:"Gambia, The",PRK:"Korea, Democratic People's Republic of",KOR:"Korea, Republic of",MMR:"Burma",MKD:"Macedonia",TZA:"Tanzania, United Republic of",TTO:"Trinidad",CPV:"Cape Verde"};
+ const admittedLater={SSD:2011,TLS:2002,MNE:2006,CHE:2002,KIR:1999,NRU:1999,TON:1999,TUV:2000};
+ for(const [year,expected,missingCount] of [[2010,192,19],[2000,189,18],[1994,185,15]]){
+  const raw=JSON.parse(fs.readFileSync(`${process.env.LEKTRUS_ATLAS_DATA_DIR}/world_${year}.geojson`,"utf8"));
+  const roster=unMembers.filter(iso=>(admittedLater[iso]??0)<=year);
+  assert.equal(roster.length,expected);
+  const named=new Set(raw.features.map(f=>String(f.properties?.NAME??"").trim().toLowerCase()).filter(Boolean));
+  const missing=roster.filter(iso=>{
+   const p=modern.features.find(f=>f.properties?.ADM0_A3===iso).properties;
+   return ![p.NAME,p.ADMIN,p.NAME_LONG,p.FORMAL_EN,p.BRK_NAME,oldAliases[iso]].filter(Boolean).some(n=>named.has(n.toLowerCase()));
+  }).sort();
+  const coverage=coverageExports.historicalMemberCoverage(year);
+  assert.equal(coverage.expected,expected);
+  assert.equal(missing.length,missingCount);
+  assert.deepEqual(coverage.missing.map(m=>m.iso).sort(),missing);
+  const restored=geoExports.correctHistoricalLabels(raw,year).features.filter(f=>f.properties?.NAME==="Switzerland"&&Object.hasOwn(f.properties,"ATLAS_ORIGINAL_NAME"));
+  assert.equal(restored.length,1,`${year}: missing main Swiss contour`);
+  assert.ok(raw.features.some(f=>!f.properties.NAME?.trim()&&f.geometry===restored[0].geometry),"Swiss geometry must be original, not recreated");
+  assert.equal(restored[0].geometry.coordinates[0][0].length,2857);
+  console.log(`${year}: ${expected-missingCount}/${expected} UN roster entries have named outlines; ${missingCount} missing; main Swiss contour identified.`);
+ }
  for(const iso of [...unMembers,"PSE","VAT"]){
   const adm={SSD:"SDS",PSE:"PSX"}[iso]??iso;
   const feature=modern.features.find(f=>f.properties?.ADM0_A3===adm);

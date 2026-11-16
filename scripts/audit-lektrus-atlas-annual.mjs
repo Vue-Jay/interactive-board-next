@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
+import {historicalMemberCoverage} from "../src/lektrusAtlasHistoricalCoverage.ts";
 
 const MIN=-3400,MAX=2024,CURRENT=2026;
 const polygon=f=>["Polygon","MultiPolygon"].includes(f.geometry?.type)&&Array.isArray(f.geometry.coordinates)&&f.geometry.coordinates.length>0;
@@ -21,6 +22,21 @@ export function referenceAdmissionWarnings(year,polities){
  const present=new Set(polities.map(normalize));
  return admissionAnchors.filter(a=>year>=a.year&&year<=MAX&&!a.aliases.some(n=>present.has(normalize(n))))
   .map(a=>({name:a.name,date:a.date,source:"https://www.un.org/en/about-us/member-states",reason:year===a.year?"missing in admission year (intra-year transition)":"missing in full year after admission"}));
+}
+
+// Exact reviewed crosswalk for the missing late-snapshot countries. These
+// are candidates for geometric review only; no automatic overlay on the map.
+const referenceGapNames={BHR:"Kingdom of Bahrain",CPV:"Republic of Cabo Verde",MUS:"Mauritius",FSM:"Micronesia",MCO:"Principality of Monaco",PLW:"Palau",STP:"São Tomé and Príncipe",SYC:"Seychelles",SGP:"Republic of Singapore",SLB:"Solomon Islands",TLS:"East Timor",VUT:"Vanuatu"};
+export function extractHistoricalGapCandidates(source){
+ const candidates=[],unresolved=[];
+ for(const year of [2010,2000,1994])for(const member of historicalMemberCoverage(year).missing){
+  const wanted=referenceGapNames[member.iso];
+  const matches=wanted?source.features.filter(f=>f.properties?.Type==="POLITY"&&f.properties.Name===wanted&&Number(f.properties.FromYear)<=year&&Number(f.properties.ToYear)>=year&&polygon(f)):[];
+  if(matches.length!==1){unresolved.push({year,iso:member.iso,name:member.name,reason:matches.length?"multiple reference records":"no reviewed reference record"});continue;}
+  const f=matches[0];
+  candidates.push({type:"Feature",geometry:f.geometry,properties:{year,iso:member.iso,name:member.name,referenceName:wanted,from:f.properties.FromYear,to:f.properties.ToYear,review:"candidate-only"}});
+ }
+ return {type:"FeatureCollection",source:"Cliopatria v0.2.1, CC BY 4.0, https://doi.org/10.5281/zenodo.23128623",notice:"Do not render as accepted borders until geographic and historical checks pass",features:candidates,unresolved};
 }
 
 export function auditAnnual(source,snapshots,{from=CURRENT,to=MIN}={}){
@@ -74,6 +90,10 @@ function selfTest(){
  assert.deepEqual(referenceAdmissionWarnings(2012,["East Timor"]).map(w=>w.name),["South Sudan"]);
  assert.equal(referenceAdmissionWarnings(2002,[])[0].reason,"missing in admission year (intra-year transition)");
  assert.equal(referenceAdmissionWarnings(2014,["Republic of South Sudan","Timor-Leste"]).length,0);
+ const gaps=extractHistoricalGapCandidates({features:[f("East Timor",2006,2013)]});
+ assert.equal(gaps.features.length,1);
+ assert.equal(gaps.features[0].properties.year,2010);
+ assert.equal(gaps.features.length+gaps.unresolved.length,52);
  console.log("Annual audit fixtures passed: inclusive date intervals, descending years, missing sources, name differences, no year zero.");
 }
 
@@ -90,10 +110,14 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
    snapshots.set(year,names(JSON.parse(fs.readFileSync(path.join(dir,file),"utf8")).features));
   }
   assert.equal(snapshots.size,54,"all pinned Historical Basemaps snapshots required");
-  const result=auditAnnual(JSON.parse(fs.readFileSync(reference,"utf8")),snapshots);
+  const source=JSON.parse(fs.readFileSync(reference,"utf8"));
+  const result=auditAnnual(source,snapshots);
   assert.equal(result.years.length,5426);
   assert.ok(result.sourceRecordCount>1000,"reference appears incomplete");
   fs.writeFileSync(out,JSON.stringify(result));
+  const gapCandidates=extractHistoricalGapCandidates(source);
+  fs.writeFileSync(path.join(path.dirname(out),"historical-gap-candidates.geojson"),JSON.stringify(gapCandidates));
+  console.log(`Historical gap candidates: ${gapCandidates.features.length} dated polygons for review; ${gapCandidates.unresolved.length} still without a reviewed reference record`);
   for(const row of result.years.slice(0,27))console.log(`${row.year}: ${row.atlasStatus}; ${row.sourceStatus}; ${row.polityCount} reference polities; ${row.recordCount} records`);
   for(const row of result.years)for(const warning of row.referenceWarnings)console.log(`Reference warning ${row.year}: ${warning.name}; ${warning.reason}; UN admission ${warning.date}`);
   console.log(`Annual coverage: ${result.years.length} years; ${result.sourceRecordCount} valid dated polity records; ${result.invalidRecords.length} invalid reference records; ${result.years.filter(y=>y.atlasStatus==="no-dated-snapshot").length} years missing a dated Lektrus map.`);

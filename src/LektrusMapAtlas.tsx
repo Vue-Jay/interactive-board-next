@@ -31,6 +31,7 @@ import {borderPrecision,geoFeatureName,hasAtlasName,isRussianAtlasName,featureLa
 historicalFeatureFacts,historicalCountryName,historicalSourceName,historicalMapFeatures,loadHistoricalIndex,correctedHistoricalIndexLabel,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
 import {findHistoricalArticle,historicalRussianName,historyArticleUrl} from "./lektrusHistoryEncyclopedia";
 import {findHistoricalReference,historicalReferences,normalizeHistoricalReferenceName} from "./lektrusHistoricalReferences";
+import {historicalMemberCoverage} from "./lektrusAtlasHistoricalCoverage";
 type Props={diagram:AtlasDocument;onChange?:(next:AtlasDocument)=>void;editorMode?:boolean;userId?:string};
 const MAX_ATLAS_ZOOM=16384;
 const hash=(value:string)=>{let h=7;for(const ch of value)h=(h*31+ch.charCodeAt(0))|0;return Math.abs(h)};
@@ -372,6 +373,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const dragged=useRef(false);
  const snapshot=historicalSnapshots[index];
  const modernReference=snapshot.year===2026;
+ const memberCoverage=historicalMemberCoverage(snapshot.year);
  const russianView=true; // Modern map: fixed Russian Natural Earth POV.
  const scope=d.scope??(d.mode==="historical"||d.mode==="events"?"history":"geography");
  useEffect(()=>{setRegionId(d.regionId??"world")},[d.regionId]);
@@ -916,9 +918,10 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  };
  const historicalSubject=selected?String(selected.properties?.ATLAS_HISTORICAL_AFFILIATION??russianSourceName(selected.properties?.SUBJECTO)):"";
  const historicalPart=selected&&!selected.properties?.ATLAS_HISTORICAL_LABEL?russianSourceName(selected.properties?.PARTOF):"";
+ const correctedSelectionTitle=historical&&!modernReference&&typeof selected?.properties?.ATLAS_HISTORICAL_LABEL==="string"?selected.properties.ATLAS_HISTORICAL_LABEL:undefined;
  const selectedTitle=selected?(selectedIsCity?
   (russianPlaceName(selected)??""):
-  ((selectedArticle?.name??fallbackReference?.title??atlasDisplayName(selected,snapshot.year,historical&&!modernReference))||
+  ((correctedSelectionTitle??selectedArticle?.name??fallbackReference?.title??atlasDisplayName(selected,snapshot.year,historical&&!modernReference))||
    (historical?(historicalSourceName(selectedRaw)||"Историческая территория"):""))):"";
  const selectedCountrySymbol=selected&&!selectedIsCity&&(historical||mode==="political")&&
   (selected.geometry?.type==="Polygon"||selected.geometry?.type==="MultiPolygon")?
@@ -2258,6 +2261,13 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      <strong>{yearLabel(snapshot.year)}{modernReference?" · современный обзор":""}</strong>
      <small>{modernReference?"Архивная геометрия Natural Earth (2022); не точная карта 2026 года":"Историческая реконструкция: отдельные контуры могут отражать более поздние границы. Не считать их точной картой суверенных государств."}</small>
     </div>}
+    {historical&&memberCoverage&&<details className="lektrus-atlas-layer-warning" data-atlas-missing-members={memberCoverage.missing.length}>
+     <summary>Неполный слой: {memberCoverage.missing.length} государств — членов ООН без именованного контура</summary>
+     <p>На конец {snapshot.year} г. в списке ООН числилось {memberCoverage.expected} членов. Список ниже показывает подтверждённые пропуски в исходном слое, а не все погрешности его границ.</p>
+     <ul>{memberCoverage.missing.map(member=><li key={member.iso}>{member.name}{member.transition?" (вступление в ООН в течение этого года)":""}</li>)}</ul>
+     <small>Неназванные или отсутствующие контуры не подменены современными границами. Членство в ООН не является перечнем всех существовавших государств.</small>{" "}
+     <a href={memberCoverage.source} target="_blank" rel="noopener noreferrer">Список ООН по годам ↗</a>
+    </details>}
     {historical&&<div className="lektrus-history-tabs" role="tablist" aria-label="Разделы исторического справочника">
      {([["directory","Территории"],["article","Справка"],["changes","Изменения"]] as const)
       .map(([key,title])=><button type="button" key={key} role="tab"
