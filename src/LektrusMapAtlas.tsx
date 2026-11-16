@@ -28,7 +28,7 @@ import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDi
 import {atlasModes,atlasModesFor,normalizeAtlasMode,historicalSnapshots,nearestSnapshotIndex,yearLabel,eventsNearYear} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,hasAtlasName,isRussianAtlasName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
-historicalFeatureFacts,historicalCountryName,historicalMapFeatures,loadHistoricalIndex,correctedHistoricalIndexLabel,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
+historicalFeatureFacts,historicalCountryName,historicalSourceName,historicalMapFeatures,loadHistoricalIndex,correctedHistoricalIndexLabel,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
 import {findHistoricalArticle,historicalRussianName,historyArticleUrl} from "./lektrusHistoryEncyclopedia";
 import {findHistoricalReference,historicalReferences,normalizeHistoricalReferenceName} from "./lektrusHistoricalReferences";
 type Props={diagram:AtlasDocument;onChange?:(next:AtlasDocument)=>void;editorMode?:boolean;userId?:string};
@@ -303,6 +303,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const [search,setSearch]=useState("");
  const [focusedUnit,setFocusedUnit]=useState("");
  const [directoryFilter,setDirectoryFilter]=useState("");
+ const [directoryPage,setDirectoryPage]=useState(0);
  const [searchAcrossYears,setSearchAcrossYears]=useState(false);
  const [referenceOnlyCurrentPeriod,setReferenceOnlyCurrentPeriod]=useState(false);
  const [historyTab,setHistoryTab]=useState<"directory"|"article"|"changes">("directory");
@@ -522,8 +523,8 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  // fixed 0.00015 world-unit tolerance produced excessive SVG geometry at ×8.
  const precision=highDetail?(scale>=8?Math.max(.00015,.4/scale):.08):modernBorders?.13:.10;
  // Historical geometry must never depend on the completeness of the Russian
- // label dictionary. Every polygon in the dated source is drawn; only labels
- // and directory entries require translated names.
+ // label dictionary. Every polygon in the dated source is drawn; on-map
+ // text requires a translation, but the directory can expose the source name.
  const mapSourceFeatures=useMemo(()=>historical&&!modernReference?
   historicalMapFeatures(mapSource):
   mapSource?.features.filter(f=>!!atlasDisplayName(f,snapshot.year,false))??[],
@@ -918,7 +919,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const selectedTitle=selected?(selectedIsCity?
   (russianPlaceName(selected)??""):
   ((selectedArticle?.name??fallbackReference?.title??atlasDisplayName(selected,snapshot.year,historical&&!modernReference))||
-   (historical?"Историческая территория":""))):"";
+   (historical?(historicalSourceName(selectedRaw)||"Историческая территория"):""))):"";
  const selectedCountrySymbol=selected&&!selectedIsCity&&(historical||mode==="political")&&
   (selected.geometry?.type==="Polygon"||selected.geometry?.type==="MultiPolygon")?
   atlasCountrySymbol(selected,selectedTitle,snapshot.year,historical&&!modernReference):null;
@@ -930,12 +931,15 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   mode==="political"?[...mapSourceFeatures,...(administrative?.features.filter(hasAtlasName)??[]),...cityPoints.filter(p=>russianPlaceName(p.feature)&&matchesCityCategory(p.feature,cityCategory)).map(p=>p.feature)]:
   mapSourceFeatures;
  const directoryEntries=useMemo(()=>historical?mapSourceFeatures.map(feature=>({
-  name:atlasDisplayName(feature,snapshot.year,!modernReference),feature}))
-  .filter(v=>isRussianAtlasName(v.name))
+  name:atlasDisplayName(feature,snapshot.year,!modernReference)||historicalSourceName(feature.properties?.NAME),feature}))
+  .filter(v=>!!v.name)
   .sort((a,b)=>a.name.localeCompare(b.name,"ru")):[],
   [historical,mapSourceFeatures,modernReference,snapshot.year]);
- const visibleDirectory=directoryEntries.filter(entry=>entry.name.toLocaleLowerCase("ru")
-  .includes(directoryFilter.trim().toLocaleLowerCase("ru")));
+ const visibleDirectory=directoryEntries.filter(entry=>[entry.name,historicalSourceName(entry.feature.properties?.NAME)]
+  .some(name=>name.toLocaleLowerCase("ru").includes(directoryFilter.trim().toLocaleLowerCase("ru"))));
+ const directoryPageCount=Math.max(1,Math.ceil(visibleDirectory.length/120));
+ const currentDirectoryPage=Math.min(directoryPage,directoryPageCount-1);
+ useEffect(()=>setDirectoryPage(0),[snapshot.year,directoryFilter]);
  const referenceQuery=directoryFilter.trim().toLocaleLowerCase("ru");
  const visibleHistoricalReferences=historicalReferences.filter(entry=>(!referenceOnlyCurrentPeriod||modernReference||
    snapshot.year>=entry.from&&snapshot.year<=entry.to)&&(!referenceQuery||
@@ -972,8 +976,8 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   const found=new Map<string,{name:string;raw:string;years:number[]}>();
   for(const record of historyIndex){
    for(const raw of record.countries){
-    const title=correctedHistoricalIndexLabel(raw,record.year)??historicalRussianName(raw,record.year)??findHistoricalArticle(raw,record.year)?.name??findHistoricalReference(raw,record.year)?.title??"";
-    if(!isRussianAtlasName(title))continue;
+    const title=correctedHistoricalIndexLabel(raw,record.year)??historicalRussianName(raw,record.year)??findHistoricalArticle(raw,record.year)?.name??findHistoricalReference(raw,record.year)?.title??(historicalCountryName(raw)||historicalSourceName(raw));
+    if(!title)continue;
     if(!title.toLocaleLowerCase("ru").includes(query)&&
      !raw.toLocaleLowerCase("en").includes(query))continue;
     const key=normalizeHistoricalReferenceName(raw)+"|"+title;
@@ -1539,7 +1543,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
     onClick={()=>setInspectorOpen(open=>!open)}>{inspectorOpen?"Скрыть сведения":"☷ Сведения"}</button>
   </header>}
   <div className="lektrus-atlas-body">
-   <div className="lektrus-atlas-map-box"
+   <div className="lektrus-atlas-map-box" data-atlas-source-year={historical&&sourceYear!==null?sourceYear:undefined}
     onWheel={e=>{
      if(objectMoveMode)return;
      e.stopPropagation();e.preventDefault();
@@ -1592,7 +1596,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
         const fillKey=String(s.feature.properties?.ADM0_A3||s.feature.properties?.ISO_A3||s.name);
         const fill=mode==="contour"?(painted[fillKey]||"#fffdfa"):mode==="physical"||mode==="relief"?"#d2e5c8":mode==="hydrography"?"#e6eee2":mode==="minerals"?"#f4ecd6":
          mode==="political"?politicalColors[s.i]??"#ecd9bf":historical?(modernReference?politicalColors[s.i]??"#ecd9bf":palettes[hash(s.name||String(s.feature.properties?.NAME??s.i))%palettes.length]):palettes[hash(s.name)%palettes.length];
-        return <path key={s.i} d={s.path} fillRule="evenodd" fill={fill}
+        return <path key={s.i} data-atlas-feature-index={s.i} d={s.path} fillRule="evenodd" fill={fill}
          data-contour-fill-key={isWorksheet&&painted[fillKey]?fillKey:undefined}
          fillOpacity={mineralTerrainEnabled?.56:1}
          stroke={isWorksheet&&!contourConfig.showBorders?"none":highlighted||s.feature===selected?"#df793e":mode==="minerals"?"#a4aea2":mode==="contour"?"#8c9eaa":"#819fb2"}
@@ -1910,7 +1914,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      <strong>Сведения о выбранном объекте</strong>
      <button type="button" aria-label="Скрыть сведения" onClick={()=>setInspectorOpen(false)}>×</button>
     </div>
-    <div className="lektrus-atlas-info-content lektrus-atlas-info-object">
+    <div className="lektrus-atlas-info-content lektrus-atlas-info-object" data-atlas-selected-index={selected?mapSourceFeatures.indexOf(selected):undefined}>
      {mode==="minerals"&&<details className="lektrus-atlas-study-card lektrus-atlas-mineral-settings" open={!selectedMineral&&!selected}>
       <summary>Условные знаки и фильтр месторождений</summary>
       <div className="lektrus-atlas-natural-legend">
@@ -2007,7 +2011,8 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        {historical&&selectedCountrySymbol.kind==="historic"&&<small>{selectedCountrySymbol.label} · {selectedCountrySymbol.period}</small>}
       </div>
      </div>:<><strong>{selectedTitle}</strong><small>{selectedLayer}</small></>}
-     {historical&&selectedCountrySymbol?.sourceUrl&&
+      {historical&&!isRussianAtlasName(selectedTitle)&&<small>Исходное название; русский перевод не подтверждён.</small>}
+      {historical&&selectedCountrySymbol?.sourceUrl&&
       <a className="lektrus-history-symbol-source" href={selectedCountrySymbol.sourceUrl}
        target="_blank" rel="noopener noreferrer">Источник и описание исторического символа ↗</a>}
      {selectedCountryCapitals.length>0&&<div className="lektrus-atlas-country-capitals">
@@ -2075,9 +2080,9 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        "Современная геометрия из Natural Earth. Дата публикации набора не равна точной исторической обстановке 2026 года.":
        "Территория представлена в историческом наборе для "+yearLabel(snapshot.year)+". Границы могут отражать реконструкцию."}</p>
       <p>Историческая реконструкция принадлежит авторам снимка. Российская позиция применяется к современному политическому слою, но не подменяет исторические эпохи.</p>
-      {historicalSubject&&<p>Административная принадлежность в источнике: {historicalSubject}</p>}
+      {historicalSubject&&<p>{selected.properties?.ATLAS_HISTORICAL_LABEL?"Уточнённая административная принадлежность":"Административная принадлежность по реконструкции (не подтверждена)"}: {historicalSubject}</p>}
       {historicalPart&&historicalPart!==selectedTitle&&
-       <p>Регион/группа: {historicalPart}</p>}</>}
+       <p>Регион/группа по реконструкции: {historicalPart}</p>}</>}
     </div>:
       <div className="lektrus-atlas-description">
        <strong>Выберите объект на карте</strong>
@@ -2287,16 +2292,20 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       <small>Периоды присутствия названия не устанавливают даты существования государства.</small>
      </>:<>
       <div className="lektrus-atlas-directory-list" style={{maxHeight:230,overflowY:"auto"}}>
-       {visibleDirectory.length?visibleDirectory.slice(0,120).map((entry,i)=><button type="button" key={i}
+       {visibleDirectory.length?visibleDirectory.slice(currentDirectoryPage*120,(currentDirectoryPage+1)*120).map((entry,i)=><button type="button" key={currentDirectoryPage*120+i}
         onClick={()=>focusFeature(entry.feature)} title={"Показать на карте: "+entry.name}
         style={{display:"block",width:"100%",textAlign:"left",padding:"6px 8px",
          background:selected===entry.feature?"#e2edff":"transparent",border:0,cursor:"pointer"}}>
         <LektrusAtlasCountrySymbol compact symbol={atlasCountrySymbol(entry.feature,entry.name,snapshot.year,!modernReference)}/>
-        <span>{entry.name}</span>
+        <span>{entry.name}{!isRussianAtlasName(entry.name)?" (название источника)":""}</span>
        </button>):<p>Нет названных территорий. Уточните запрос.</p>}
       </div>
-      <small>Найдено: {visibleDirectory.length} из {directoryEntries.length}.
-       {visibleDirectory.length>120?" Показаны первые 120. Уточните поиск.":""}</small>
+      <small>Найдено: {visibleDirectory.length} из {directoryEntries.length}.</small>
+      {directoryPageCount>1&&<div className="lektrus-history-scope" role="group" aria-label="Страницы территорий">
+       <button type="button" disabled={currentDirectoryPage===0} onClick={()=>setDirectoryPage(currentDirectoryPage-1)}>‹ Назад</button>
+       <small>{currentDirectoryPage+1} / {directoryPageCount}</small>
+       <button type="button" disabled={currentDirectoryPage+1>=directoryPageCount} onClick={()=>setDirectoryPage(currentDirectoryPage+1)}>Далее ›</button>
+      </div>}
      </>}
      <details className="lektrus-history-source-library">
       <summary>Исторические справки <small>{visibleHistoricalReferences.length} из {historicalReferences.length}</small></summary>
@@ -2408,6 +2417,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        {historical&&selectedCountrySymbol.kind==="historic"&&<small>{selectedCountrySymbol.label} · {selectedCountrySymbol.period}</small>}
       </div>
      </div>:<><strong>{selectedTitle}</strong><small>{selectedLayer}</small></>}
+     {historical&&!isRussianAtlasName(selectedTitle)&&<small>Исходное название; русский перевод не подтверждён.</small>}
      {historical&&selectedCountrySymbol?.sourceUrl&&
       <a className="lektrus-history-symbol-source" href={selectedCountrySymbol.sourceUrl}
        target="_blank" rel="noopener noreferrer">Источник и описание исторического символа ↗</a>}
@@ -2466,8 +2476,8 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        <p><strong>Точность границ:</strong> {selected.properties?.ATLAS_HISTORICAL_LABEL?"Условный контур, границы не подтверждены":precisions[borderPrecision(selected)]}</p>
        {fallbackReference?.formation&&<p><strong>Образование:</strong> {fallbackReference.formation}</p>}
        {historicalFeatureFacts(selected).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
-       {historicalSubject&&<p><strong>Принадлежность:</strong> {historicalSubject}</p>}
-       {historicalPart&&historicalPart!==selectedTitle&&<p><strong>Регион:</strong> {historicalPart}</p>}
+       {historicalSubject&&<p><strong>{selected.properties?.ATLAS_HISTORICAL_LABEL?"Уточнённая принадлежность":"Принадлежность по реконструкции (не подтверждена)"}:</strong> {historicalSubject}</p>}
+       {historicalPart&&historicalPart!==selectedTitle&&<p><strong>Регион по реконструкции:</strong> {historicalPart}</p>}
        {!modernReference&&selectedYears.length>0&&<div className="lektrus-history-observed">
         <strong>Объект показан на картах</strong>
         <div>{selectedYears.map(y=><button type="button" key={y} className={snapshot.year===y?"selected":""}

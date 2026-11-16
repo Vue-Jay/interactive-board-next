@@ -275,6 +275,13 @@ export function historicalCountryName(rawName:string):string{
 /** Only real, meaningful Russian proper names may appear on the map.
  * Unnamed / placeholder entries must not acquire invented titles. */
 const atlasUnnamed=/^(?:unknown|unnamed|no[ -]?name|name[ -]?unknown|none|null|undefined|n.a|not applicable|unassigned|untitled|без названия|неизвестно|объект без названия|безымянн(?:ый|ая|ое)|[-?.\s]+)$/i;
+/** Original historical names can be browsed before a Russian translation has
+ * been verified. This is not a name to draw as a Russian map label. */
+export function historicalSourceName(value:unknown):string{
+ if(typeof value!=="string")return "";
+ const name=value.trim();
+ return name.length>1&&name.length<=160&&!atlasUnnamed.test(name)?name:"";
+}
 export function isRussianAtlasName(value:unknown):value is string{
  return typeof value==="string"&&value.trim().length>1&&
   /[А-ЯЁа-яё]/.test(value)&&!atlasUnnamed.test(value.trim());
@@ -343,10 +350,76 @@ const unDecolonization="https://www.un.org/dppa/decolonization/history/former-tr
 const diplomaticHistory="https://history.state.gov/countries/";
 type HistoricalLabelCorrection=[label:string,affiliation:string,source:string];
 const colonialNames:Record<string,string>={Belize:"Британский Гондурас",Botswana:"Бечуаналенд",Lesotho:"Басутоленд",Guyana:"Британская Гвиана",Malawi:"Ньясаленд",Zambia:"Северная Родезия",Zimbabwe:"Южная Родезия",Namibia:"Юго-Западная Африка"};
-export function correctHistoricalLabels(source:GeoCollection,year:number):GeoCollection{
- if(![1914,1920,1945,1960].includes(year))return source;
- const corrections:Record<string,HistoricalLabelCorrection>={};
- for(const [name,label] of Object.entries(colonialNames))corrections[name]=[label,name==="Namibia"?"Администрация Южно-Африканского Союза":"Британская империя",unDecolonization];
+const historicalCorrectionCache=new Map<number,Record<string,HistoricalLabelCorrection>>();
+function historicalCorrectionsForYear(year:number):Record<string,HistoricalLabelCorrection>{
+ const cached=historicalCorrectionCache.get(year);
+ if(cached)return cached;
+ const corrections:Record<string,HistoricalLabelCorrection>=Object.create(null);
+ const colonial=(names:Record<string,string>,affiliation:string,from:number,to:number,sourceUrl=unDecolonization)=>{
+  if(year<from||year>to)return;
+  for(const [name,label] of Object.entries(names))corrections[name]=[label,affiliation,sourceUrl];
+ };
+ // Apply dated rules only to periods in which the documented administration
+ // actually existed. Modern geographic names alone are not evidence of statehood.
+ for(const [name,label] of Object.entries(colonialNames)){
+  if(year>=1920&&year<=1960||year===1914&&!["Namibia","Zambia","Zimbabwe"].includes(name))
+   corrections[name]=[label,name==="Namibia"?"Южно-Африканская администрация":"Британская империя",unDecolonization];
+ }
+ colonial({Belize:"Британский Гондурас",Guyana:"Британская Гвиана",Lesotho:"Басутоленд"},"Великобритания",1878,1960);
+ colonial({Botswana:"Бечуаналенд"},"Великобритания",1900,1960);
+ colonial({"Gambia, The":"Гамбия",Gambia:"Гамбия","Sierra Leone":"Сьерра-Леоне",Malta:"Мальта",Jamaica:"Ямайка",Barbados:"Барбадос",Grenada:"Гренада",Dominica:"Доминика",Montserrat:"Монтсеррат",Anguilla:"Ангилья","Saint Lucia":"Сент-Люсия","Saint Kitts and Nevis":"Сент-Китс и Невис","Saint Vincent and the Grenadines":"Сент-Винсент и Гренадины","Antigua and Barbuda":"Антигуа и Барбуда",Trinidad:"Тринидад",Bahamas:"Багамские острова","Turks and Caicos Islands":"Теркс и Кайкос",Fiji:"Фиджи"},"Великобритания",1878,1960);
+ colonial({Uganda:"Уганда",Kenya:"Кения",Swaziland:"Свазиленд",Brunei:"Бруней"},"Британский протекторат / колониальная администрация",1914,1960);
+ colonial({Ghana:"Золотой Берег"},"Великобритания",1900,1945);
+ colonial({Malaysia:"Малайские территории (условный контур)"},"Британская администрация; статус областей различался",1914,1945);
+ colonial({"Guinea-Bissau":"Португальская Гвинея",Angola:"Ангола",Mozambique:"Мозамбик"},"Португалия",1900,1960);
+ colonial({"Equatorial Guinea":"Испанская Гвинея"},"Испания",1914,1960);
+ colonial({"Western Sahara":"Испанская Сахара"},"Испания",1920,1960);
+ colonial({Djibouti:"Французский берег Сомали"},"Франция",1914,1960);
+ colonial({Algeria:"Алжир"},"Французская администрация; с 1954 г. война за независимость",1960,1960,"https://digitallibrary.un.org/record/860972/files/1963-E.pdf");
+ colonial({Algeria:"Алжир"},"Франция",1900,1945);
+ colonial({Tunisia:"Тунис"},"Французский протекторат",1900,1945);
+ colonial({Morocco:"Марокко (условный контур)"},"Французский и испанский протектораты; статус областей различался",1914,1945);
+ colonial({"French Guiana":"Французская Гвиана",Guadeloupe:"Гваделупа",Martinique:"Мартиника"},"Франция",1878,2010);
+ colonial({Greenland:"Гренландия"},"Дания",1878,2010);
+ colonial({"Netherlands Antilles":"Нидерландские владения в Карибском море"},"Нидерланды",1878,1945);
+ colonial({"Netherlands Antilles":"Нидерландские Антильские острова"},"Королевство Нидерландов",1960,2000);
+ colonial({"Netherlands Antilles":"Нидерландские Антильские острова (до 10 октября 2010 г.)"},"В течение 2010 года статус изменился",2010,2010,"https://www.government.nl/themes/government-and-democracy/caribbean-parts-of-the-kingdom");
+ colonial({"United States Virgin Islands":"Датская Вест-Индия"},"Дания",1878,1914,"https://www.doi.gov/oia/islands/virgin-islands");
+ colonial({"United States Virgin Islands":"Американские Виргинские острова"},"США",1920,2010,"https://www.doi.gov/oia/islands/virgin-islands");
+ colonial({"American Samoa":"Самоанские острова (восточная часть)"},"Местные политические образования; контур условный",1878,1880,"https://www.doi.gov/sites/default/files/elips/documents/575-dm-1.pdf");
+ colonial({"American Samoa":"Американское Самоа"},"США; присоединение в 1900–1904 гг.",1900,2010,"https://www.doi.gov/sites/default/files/elips/documents/575-dm-1.pdf");
+ colonial({"Kingdom of Hawaii":"Гавайские острова"},"США (аннексия 1898 г.)",1900,1900,diplomaticHistory+"hawaii");
+ colonial({"Kingdom of Brazil":"Бразильская республика"},"Бразилия",1900,1900,"https://history.state.gov/historicaldocuments/frus1894app2/ch7subch1");
+ colonial({Iran:"Персия"},"Персия",1920,1930,"https://history.state.gov/historicaldocuments/frus1935v01/d338");
+ colonial({Israel:"Подмандатная Палестина (условный контур)"},"Британский мандат",1930,1945,"https://history.state.gov/milestones/1945-1952/creation-israel");
+ colonial({"Tanzania, United Republic of":"Танганьика и Занзибар (условный контур)"},"Британская администрация; отдельные территории",1920,1960);
+ colonial({Burundi:"Бурунди (часть Руанды-Урунди)",Rwanda:"Руанда (часть Руанды-Урунди)"},"Бельгийская администрация",1920,1960);
+ colonial({"Papua New Guinea":"Папуа и Новая Гвинея (условный контур)"},"Статус частей территории различался; австралийская администрация",1920,1960);
+ colonial({"Saar Protectorate":"Саарская область"},"Французская оккупационная зона; особый статус оформлен позднее",1945,1945,"https://www.saarland.de/stk/EN/service/downloads/Entstehung_Saarland.pdf?__blob=publicationFile&v=1");
+ colonial({Zaire:"Демократическая Республика Конго"},"Демократическая Республика Конго",2000,2010);
+ colonial({"Hong Kong":"Гонконг"},"КНР, специальный административный район с 1 июля 1997 г.",2000,2010,"https://www.basiclaw.gov.hk/en/basiclaw/preamble.html");
+ colonial({Serbia:"Сербия",Montenegro:"Черногория"},"Союзная Республика Югославия",1994,2000,diplomaticHistory+"serbia/summary");
+ // The following polygons explicitly use a polity name outside its known
+ // period. Their geometry is not evidence for a replacement polity; mark the
+ // territorial outline rather than assign a guessed successor to the shape.
+ const disputedContour=(name:string,label:string,period:number,reason:string,url:string)=>{
+  if(year===period)corrections[name]=[label+" (условный контур)",reason+"; принадлежность по этому контуру не установлена",url];
+ };
+ disputedContour("Mauryan Empire","Бывшие земли империи Маурьев",-100,"Империя распалась около 185 г. до н. э.","https://www.metmuseum.org/essays/mauryan-empire-ca-323-185-b-c");
+ disputedContour("Parthian Empire","Бывшие земли Парфянской державы",300,"Парфянская держава прекратила существование в 224 г.","https://www.metmuseum.org/toah/hd/paru/hd_paru.htm");
+ disputedContour("Sasanian Empire","Бывшие земли Сасанидов",700,"Держава Сасанидов пала к 651 г.","https://www.metmuseum.org/essays/the-sasanian-empire-224-651-a-d");
+ disputedContour("Sui Empire","Бывшие земли империи Суй",700,"Династия Суй прекратилась в 618 г.","https://www.metmuseum.org/toah/ht/06/eac.html");
+ disputedContour("Koguryo","Бывшие земли Когурё",700,"Когурё пало в 668 г.","https://www.metmuseum.org/toah/ht/06/eak.html");
+ disputedContour("Paekche","Бывшие земли Пэкче",700,"Пэкче пало в 660 г.","https://www.metmuseum.org/toah/ht/06/eak.html");
+ disputedContour("Xixia","Тангутские земли",1000,"Государство Си Ся сформировалось позже", "https://www.metmuseum.org/toah/ht/07/nc.html");
+ disputedContour("Mongol Empire","Монгольские земли",1200,"Монгольская империя образована в 1206 г.","https://www.metmuseum.org/toah/ht/07/nc.html");
+ disputedContour("Sultanate of Delhi","Земли будущего Делийского султаната",1200,"Делийский султанат основан в 1206 г.","https://www.metmuseum.org/toah/ht/07/ssn.html");
+ disputedContour("Fatimid Caliphate","Бывшие земли Фатимидов",1200,"Фатимидский халифат прекратил существование в 1171 г.","https://www.metmuseum.org/toah/ht/07/wae.html");
+ for(const period of [1300,1400])disputedContour("Chola Empire","Бывшие земли Чола",period,"Имперская династия Чола завершилась к 1279 г.","https://www.metmuseum.org/toah/ht/07/sss.html");
+ disputedContour("Inca Empire","Бывшие земли империи инков",1600,"Империя инков пала в 1530-х гг.; последнее государство инков в Вилькабамбе — в 1572 г.","https://www.metmuseum.org/toah/ht/08/sanc.html");
+ colonial({"Poland-Lithuania":"Королевство Польское и Великое княжество Литовское (условный контур)"},"Польско-литовская династическая уния; Речь Посполитая образована в 1569 г.",1400,1530,"https://pamiecpolski.archiwa.gov.pl/akt-unii-krewskiej/");
+ colonial({"United Kingdom":"Королевство Великобритания"},"Королевство Великобритания (1707–1800); уния с Ирландией с 1801 г.",1715,1800,"https://www.parliament.uk/about/living-heritage/evolutionofparliament/legislativescrutiny/act-of-union-1707/overview/the-articles-constitution-and-trade/");
+ colonial({India:"Британская Индия (условный контур)"},"Британская администрация; княжества имели особый статус",1900,1938,diplomaticHistory+"india");
  if(year===1914){
   delete corrections.Namibia;delete corrections.Zambia;delete corrections.Zimbabwe;
   for(const [n,label] of Object.entries({Armenia:"Армянские земли Закавказья",Azerbaijan:"Азербайджанские земли Закавказья",Georgia:"Грузинские земли Закавказья",Finland:"Великое княжество Финляндское"}))corrections[n]=[label,"Российская империя",diplomaticHistory+n.toLowerCase()];
@@ -366,7 +439,7 @@ export function correctHistoricalLabels(source:GeoCollection,year:number):GeoCol
   corrections.Israel=["Подмандатная Палестина (условный контур)","Британский мандат",diplomaticHistory+"israel"];
   corrections.Jordan=["Трансиордания","Британский мандат",diplomaticHistory+"jordan"];
   corrections.Zaire=["Бельгийское Конго","Бельгия",unDecolonization];
-  corrections.Malaysia=["Малайские территории","Британская империя",unDecolonization];
+  corrections.Malaysia=["Малайские территории","Британская администрация; японская оккупация завершилась в 1945 г.",unDecolonization];
  }
  if(year===1960){
   corrections.Zaire=["Республика Конго (Леопольдвиль)","Республика Конго",unDecolonization];
@@ -378,7 +451,12 @@ export function correctHistoricalLabels(source:GeoCollection,year:number):GeoCol
   corrections.Benin=["Дагомея",year===1945?"Французская Западная Африка":"Дагомея",unDecolonization];
   corrections["Burkina Faso"]=[year===1945?"Территория будущей Верхней Вольты":"Верхняя Вольта (условный контур)",year===1945?"Французская Западная Африка":"Верхняя Вольта",unDecolonization];
  }
- if(year===1920||year===1945||year===1960)corrections["Tanzania, United Republic of"]=["Танганьика (условный контур)","Британская администрация",unDecolonization];
+ historicalCorrectionCache.set(year,corrections);
+ return corrections;
+}
+export function correctHistoricalLabels(source:GeoCollection,year:number):GeoCollection{
+ const corrections=historicalCorrectionsForYear(year);
+ if(!Object.keys(corrections).length||!source.features.some(f=>Boolean(corrections[String(f.properties?.NAME??"").trim()])))return source;
  return {...source,features:source.features.map(f=>{
   const name=String(f.properties?.NAME??"").trim(), correction=corrections[name];
   if(!correction)return f;
@@ -386,9 +464,7 @@ export function correctHistoricalLabels(source:GeoCollection,year:number):GeoCol
  })};
 }
 export function correctedHistoricalIndexLabel(raw:string,year:number):string|undefined{
- const feature=correctHistoricalLabels({type:"FeatureCollection",features:[{type:"Feature",geometry:null,properties:{NAME:raw}}]},year).features[0];
- const label=feature?.properties?.ATLAS_HISTORICAL_LABEL;
- return typeof label==="string"?label:undefined;
+ return historicalCorrectionsForYear(year)[raw.trim()]?.[0];
 }
 export function loadHistoricalSnapshot(year:number){
  if(year===2026)return loadAtlasLayer("countries-russian"); // contemporary Russian POV, not a dated historical snapshot
@@ -486,7 +562,10 @@ function pathForRing(points:number[][],close:boolean,minDistance=.62,viewport?:M
   if(Math.abs(dx)>180){
    const edge=dx>0?-180:180;
    const adjusted=dx>0?b[0]-360:b[0]+360;
-   const t=(edge-a[0])/(adjusted-a[0]);
+   // +180 and -180 may describe the same meridian. The historical
+   // source includes consecutive points on opposite representations of
+   // that seam; a zero denominator must never produce NaN SVG vertices.
+   const t=adjusted===a[0]?1:(edge-a[0])/(adjusted-a[0]);
    const lat=a[1]+t*(b[1]-a[1]);
    fragment.push([edge,lat]);fragments.push(fragment);
    fragment=[[-edge,lat],b];

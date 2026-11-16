@@ -522,6 +522,10 @@ assert.ok(map.includes("historical&&!modernReference||!!f.name"),
 assert.equal(geoExports.historicalCountryName("France"),"Франция");
 assert.equal(geoExports.historicalCountryName("Germany"),"Германия");
 assert.equal(geoExports.historicalCountryName("India"),"Индия");
+assert.equal(geoExports.historicalSourceName("  Untranslated real polity  "),"Untranslated real polity");
+assert.equal(geoExports.historicalSourceName("Unknown"),"");
+assert.match(map,/visibleDirectory\.slice\(currentDirectoryPage\*120,\(currentDirectoryPage\+1\)\*120\)/);
+assert.ok(map.includes("data-atlas-selected-index"),"browser tests must be able to verify precise selected identity");
 const anachronistic={type:"FeatureCollection",features:[named({NAME:"Azerbaijan",SUBJECTO:"Azerbaijan"}),named({NAME:"Israel"}),named({NAME:"Bangladesh"}),named({NAME:"United Arab Emirates"})]};
 assert.equal(geoExports.correctHistoricalLabels(anachronistic,1914).features[0].properties.ATLAS_HISTORICAL_AFFILIATION,"Российская империя");
 assert.equal(geoExports.correctHistoricalLabels(anachronistic,1945).features[1].properties.ATLAS_HISTORICAL_LABEL,"Подмандатная Палестина (условный контур)");
@@ -531,6 +535,58 @@ assert.equal(geoExports.correctedHistoricalIndexLabel("Israel",1945),"Подма
 assert.equal(geoExports.correctedHistoricalIndexLabel("Israel",1960),undefined);
 assert.equal(geoExports.borderPrecision(geoExports.correctHistoricalLabels(anachronistic,1914).features[0]),1);
 assert.equal(geoExports.correctHistoricalLabels(anachronistic,1994),anachronistic);
+for(const [name,year,label,affiliation] of [
+ ["United States Virgin Islands",1914,"Датская Вест-Индия","Дания"],
+ ["Kingdom of Hawaii",1900,"Гавайские острова","США"],
+ ["Hong Kong",2000,"Гонконг","КНР"],
+ ["Zaire",2010,"Демократическая Республика Конго","Демократическая Республика Конго"],
+ ["Montenegro",1994,"Черногория","Союзная Республика Югославия"],
+ ["Algeria",1960,"Алжир","Французская администрация"],
+ ["Mauryan Empire",-100,"Бывшие земли империи Маурьев (условный контур)","185 г. до н. э."],
+ ["Sasanian Empire",700,"Бывшие земли Сасанидов (условный контур)","651 г."],
+ ["Mongol Empire",1200,"Монгольские земли (условный контур)","1206 г."]
+]){
+ const result=geoExports.correctHistoricalLabels({type:"FeatureCollection",features:[named({NAME:name,SUBJECTO:name})]},year).features[0];
+ assert.equal(result.properties.ATLAS_HISTORICAL_LABEL,label,name+" "+year);
+ assert.ok(result.properties.ATLAS_HISTORICAL_AFFILIATION.includes(affiliation));
+ assert.equal(geoExports.correctedHistoricalIndexLabel(name,year),label);
+ assert.equal(geoExports.borderPrecision(result),1);
+ assert.ok(result.properties.ATLAS_HISTORICAL_SOURCE.startsWith("https://"));
+}
+// Optional exhaustive pass over the *actual* pinned source files. Download
+// them first; CI's offline fixture assertions above remain deterministic.
+if(process.env.LEKTRUS_ATLAS_DATA_DIR){
+ let featureCount=0,namedPairs=0,correctedCount=0,emptyPaths=0;
+ for(const snapshot of historicalSnapshots.filter(s=>s.year!==2026)){
+  const actual=JSON.parse(fs.readFileSync(process.env.LEKTRUS_ATLAS_DATA_DIR+"/"+snapshot.file,"utf8"));
+  const result=geoExports.correctHistoricalLabels(actual,snapshot.year);
+  assert.equal(result.features.length,actual.features.length);
+  const drawable=geoExports.historicalMapFeatures(result);
+  const names=new Set();
+  for(const feature of drawable){
+   featureCount++;
+   const name=String(feature.properties?.NAME??"").trim();
+   if(name)names.add(name);
+   const rawPath=geoExports.mapFeaturePath(feature,.62);
+   if(!rawPath)emptyPaths++;
+   else assert.ok(!/NaN|Infinity/.test(rawPath),`${snapshot.year} ${name}: invalid map geometry`);
+   const facts=geoExports.historicalFeatureFacts(feature);
+   assert.ok(facts.every(f=>f.label&&f.value),`${snapshot.year} ${name}: empty card field`);
+   const corrected=feature.properties?.ATLAS_HISTORICAL_LABEL;
+   if(corrected){
+    correctedCount++;
+    assert.equal(geoExports.correctedHistoricalIndexLabel(name,snapshot.year),corrected);
+    assert.equal(geoExports.borderPrecision(feature),1);
+    assert.ok(feature.properties.ATLAS_HISTORICAL_SOURCE);
+    assert.ok(!facts.some(f=>f.label==="Подчинение / принадлежность в базе"));
+   }
+  }
+  namedPairs+=names.size;
+ }
+ assert.equal(emptyPaths,0,"every historical polygon must render at overview scale");
+ assert.equal(featureCount,17769,"actual pinned source polygon coverage changed");
+ console.log(`Actual historical dataset: ${featureCount} polygons, ${namedPairs} distinct name/year pairs, ${correctedCount} corrected polygons, ${emptyPaths} empty paths at overview scale.`);
+}
 assert.equal(geoExports.historicalCountryName("Japan"),"Япония");
 assert.equal(geoExports.historicalCountryName("United States of America"),"Соединённые Штаты Америки");
 assert.equal(geoExports.historicalCountryName("Czechoslovakia"),"Чехословакия");
