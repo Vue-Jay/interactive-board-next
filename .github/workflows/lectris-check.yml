@@ -129,6 +129,18 @@ jobs:
         run: node scripts/test-lektrus-atlas.mjs
       - name: Russian-language historical encyclopedia and cross-era search regression
         run: node scripts/test-lektrus-history-encyclopedia.mjs
+      - name: Real browser geography and historical atlas cards and markers
+        run: ATLAS_QA_SCREENSHOTS=1 node scripts/test-lektrus-atlas-visual-browser.mjs
+      - name: Upload atlas visual verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lektrus-atlas-visual-qa
+          path: |
+            atlas-geography-qa.png
+            atlas-history-qa.png
+          if-no-files-found: warn
+          retention-days: 14
       - name: Sentence builder and civics reference regression
         run: node scripts/test-lektrus-language-social.mjs
       - name: DNA and taxonomy diagram regression
