@@ -51,7 +51,7 @@ try{
    await page.locator(`path.lektrus-atlas-country[data-atlas-feature-index="${id}"]`).dispatchEvent("click");
    const selected=page.locator(`.lektrus-atlas-info-object[data-atlas-selected-index="${id}"]`);
    await selected.waitFor({state:"visible",timeout:6000});
-   const title=await selected.locator(".lektrus-atlas-selected-symbol-title strong").first().textContent({timeout:6000});
+   const title=await selected.locator(".lektrus-atlas-description strong").first().textContent({timeout:6000});
    assert.ok(title?.trim(),`${year}, ${id}: missing country title`);
    assert.ok(!/undefined|NaN/i.test(title),`${year}, ${id}: damaged country title`);
    tested++;

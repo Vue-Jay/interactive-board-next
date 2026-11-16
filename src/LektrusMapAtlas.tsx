@@ -2248,7 +2248,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       <p>Точка пока не выбрана.</p>}
     </div>}
     </div>
-    <div className="lektrus-atlas-info-content lektrus-atlas-info-object">
+    <div className="lektrus-atlas-info-content lektrus-atlas-info-object" data-atlas-selected-index={selected?mapSourceFeatures.indexOf(selected):undefined}>
      {!selected&&!selectedMineral&&!selectedMarker&&!historical&&<div className="lektrus-atlas-study-card">
       <strong>Выберите объект на карте</strong><p>Нажмите на страну, город, реку, озеро, гору или месторождение. Здесь появятся доступные сведения из базы и ссылки на источники.</p>
      </div>}
