@@ -21,6 +21,32 @@ assert.ok(net.simulateLabInventory({...dry,environment:'heated',temperatureC:85}
 const target=net.simulateLabInventory({...dry,environment:'heated',temperatureC:120});
 assert.ok(target.releasedGasMol.CO2>0);near(net.labInventoryMassG(target),originalMass);
 const base=lab.setLabBenchSettings(lab.defaultLabBench(),{realism:'high',evaporationEnabled:false});
+// Switching off heat must recover the actual solvent, not classify every
+// liquid as water. Filtered aqueous carrier is stored separately from doses.
+for(const [label,doses,carrier,expected] of [
+ ['neat alcohol',{C2H5OH:{unit:'ml',value:10}},undefined,'dry'],
+ ['aqueous alcohol',{C2H5OH:{unit:'ml',value:10,concentrationM:.1}},undefined,'aqueous'],
+ ['aqueous acid',{HCl:{unit:'ml',value:10,concentrationM:.1}},undefined,'aqueous'],
+ ['water',{H2O:{unit:'ml',value:10}},undefined,'aqueous'],
+ ['dry salt',{NaCl:{unit:'g',value:1}},undefined,'dry'],
+ ['gas',{N2:st.labGasDose('N2',10)},undefined,'dry'],
+ ['filtrate',{}, {sourceEquation:'',solutes:['NaCl'],volumeMl:10},'aqueous'],
+]){
+ const hot={...base,simulationPaused:false,simulationAtMs:1000,vessels:[{
+  ...base.vessels[0],environment:'heated',temperatureC:30,reagents:Object.keys(doses),doses,filteredSolution:carrier,
+ }]};
+ const cooled=lab.advanceLabSimulation(hot,2000).vessels[0];
+ assert.equal(cooled.environment,expected,`${label}: cooling must preserve the physical solvent`);
+}
+console.log('Cooling restores measured solvent and filtrate medium: OK');
+let nearlyDry=lab.setLabBenchSettings({...base,simulationPaused:false,simulationAtMs:1000,vessels:[{
+ ...base.vessels[0],environment:'aqueous',temperatureC:85,reagents:['H2O','NaCl'],
+ doses:{H2O:{unit:'ml',value:.001},NaCl:{unit:'g',value:.1}},
+}]},{evaporationEnabled:true});
+for(let t=2000;t<=21000;t+=1000)nearlyDry=lab.advanceLabSimulation(nearlyDry,t);
+assert.equal(nearlyDry.vessels[0].doses.H2O,undefined,'Last solvent evaporates');
+assert.equal(nearlyDry.vessels[0].environment,'dry','Evaporated solvent cannot leave an aqueous medium');
+assert.equal(nearlyDry.vessels[0].doses.NaCl.value,.1,'Dry residue remains');
 const plate={id:'plate-1',kind:'hotplate',x:50,y:70,active:true,linkedVesselId:'v1',powered:true,temperatureC:150,targetTemperatureC:150,heatLevel:2};
 let bench={...base,simulationPaused:false,simulationAtMs:1000,vessels:[{...base.vessels[0],...dry,kind:'crucible',temperatureC:120,observed:true}],placedDevices:[plate]};
 bench=lab.advanceLabSimulation(bench,2000);

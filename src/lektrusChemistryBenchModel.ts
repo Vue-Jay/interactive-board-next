@@ -706,8 +706,9 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
   if(next===old&&!cooling&&!evaporating&&!popped&&!dissolutionComplete&&
    !phaseChanged&&!kineticChanged&&!mixedChanged)return v;
   const doses=updatedDoses,reagents=updatedReagents;
-  const hasLiquid=Object.entries(doses??{}).some(([id,d])=>d.unit==="ml"&&
-   !labIsGasDose(id,d));
+  const refreshMedium=cooling||evaporating&&v.environment==="aqueous";
+  const medium=refreshMedium?((phase?.filteredSolution?.volumeMl??v.filteredSolution?.volumeMl??0)>1e-9?
+   "aqueous":labMixEnvironment([{environment:"dry",doses}],doses)):v.environment;
   const vented=popped?labVentStopperedVessel(v):undefined;
   return {...v,temperatureC:next,
    ...(phaseChanged?{meltFraction,frozenFraction,phaseTransition}:{}),
@@ -727,8 +728,8 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
     sealedReactionGasBaselineMol:undefined,
     chemicalInventory:vented.chemicalInventory,
     gasCollectionProcessedMol:vented.gasCollectionProcessedMol}:{}),
-   environment:evaporating&&reagents.length===0?"dry":
-    cooling?(hasLiquid?"aqueous":"dry"):v.environment};
+   environment:evaporating&&reagents.length===0&&
+    (phase?.filteredSolution?.volumeMl??v.filteredSolution?.volumeMl??0)<=1e-9?"dry":medium};
  });
  result={...result,vessels};
  // Quantitative progress is allowed only for balanced and fully measured cases.
