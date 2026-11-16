@@ -12,8 +12,8 @@
  * https://www.rsc.org/suppdata/cc/c3/c3cc39116g/c3cc39116g.pdf (IPA)
  */
 /** Same structural dose shape as the bench, without a runtime cycle. */
-type LabDose={value:number;unit:"ml"|"g";concentrationM?:number};
-export type EvaporatingLiquid="H2O"|"C2H5OH"|"CH3OH"|"C3H8O"|"Br2"|"CH3CHO";
+type LabDose={value:number;unit:"ml"|"g";concentrationM?:number;phase?:"gas"};
+export type EvaporatingLiquid="H2O"|"C2H5OH"|"CH3OH"|"C3H8O"|"Br2"|"CH3CHO"|"C2H4Br2";
 type Antoine={minK:number;maxK:number;A:number;B:number;C:number;molG:number;densityGml:number};
 const table:Record<EvaporatingLiquid,Antoine>={
  H2O:{minK:255.9,maxK:373,A:4.6543,B:1435.264,C:-64.848,molG:18.015,densityGml:.997},
@@ -23,7 +23,9 @@ const table:Record<EvaporatingLiquid,Antoine>={
  Br2:{minK:224.5,maxK:331.4,A:2.94529,B:638.258,C:-115.144,molG:159.808,densityGml:3.1055},
  // NIST WebBook acetaldehyde (Coles and Popper 1950), 272.9–307.6 K:
  // https://webbook.nist.gov/cgi/cbook.cgi?ID=C75070&Type=ANTOINE
- CH3CHO:{minK:272.9,maxK:307.6,A:5.1883,B:1637.083,C:22.317,molG:44.053,densityGml:.7846}
+ CH3CHO:{minK:272.9,maxK:307.6,A:5.1883,B:1637.083,C:22.317,molG:44.053,densityGml:.7846},
+ // NIST 1,2-dibromoethane: restrict Antoine liquid range above melting.
+ C2H4Br2:{minK:283.05,maxK:404.7,A:7.36914,B:4101.146,C:153.034,molG:187.861,densityGml:2.172}
 };
 export const LAB_VAPOR_REFERENCE=table;
 /** Latent heat at (or near) normal boiling, J/g of the NEAT liquid.
@@ -41,7 +43,8 @@ export const LAB_VAPOR_REFERENCE=table;
  */
 export const LAB_LATENT_VAPORIZATION_J_PER_G:Readonly<Record<EvaporatingLiquid,number>>={
  H2O:2257,C2H5OH:846,CH3OH:1100,C3H8O:669.44,Br2:31300/159.808,
- CH3CHO:25760/44.053
+ CH3CHO:25760/44.053,
+ C2H4Br2:41780/187.861 // NIST at 404.7 K, https://webbook.nist.gov/cgi/cbook.cgi?ID=C106934&Mask=4
 };
 export function labSaturationPressureKPa(id:string,tempC:number):number|undefined{
  const entry=table[id as EvaporatingLiquid];if(!entry)return;
@@ -94,6 +97,7 @@ const aperture:Record<string,number>={
 };
 const own=(obj:object,key:string)=>Object.prototype.hasOwnProperty.call(obj,key);
 import {labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
+import {labIsGasDose} from "./lektrusLabStoichiometry";
 /** Classroom Raoult-style fractions. Prepared solutions use a water carrier
  * and conserve solute moles while increasing molarity on evaporation.
  * Activity coefficients, acid fumes and high-strength stock solutions
@@ -105,7 +109,6 @@ import {labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstant
 const FILTRATE_WATER_ID="__measured_filtrate_water";
 function components(v:LabEvaporationState,tempC=v.temperatureC??25){
  const entries=Object.entries(v.doses??{});
- const gasIds=new Set(["CO2","H2","O2","NH3","Cl2","NO2","SO2","CO","H2S","N2"]);
  // Filtration records its exact solvent volume separately from stock doses.
  // Recreating the original BaCl2 / Na2SO4 doses would invent chemistry;
  // treat only the MEASURED nonvolatile solution carrier as evaporating water.
@@ -116,7 +119,7 @@ function components(v:LabEvaporationState,tempC=v.temperatureC??25){
   !!v.chemicalInventory&&soluble.every(([id,mol])=>
    !!aqueousNonvolatile[id]&&Number.isFinite(mol)&&mol>=0);
  const liquid=entries.flatMap(([sourceId,d])=>{
-  if(d.unit!=="ml"||!Number.isFinite(d.value)||d.value<=0)return [];
+  if(d.unit!=="ml"||labIsGasDose(sourceId,d)||!Number.isFinite(d.value)||d.value<=0)return [];
   if(own(table,sourceId)&&d.concentrationM===undefined)
    return [{sourceId,id:sourceId,d,aqueous:false}];
   if(!own(table,sourceId)&&d.concentrationM!==undefined&&
@@ -126,8 +129,11 @@ function components(v:LabEvaporationState,tempC=v.temperatureC??25){
  });
  if(supportedFiltrate)liquid.push({sourceId:FILTRATE_WATER_ID,
   id:"H2O",d:{value:filtrateMl,unit:"ml"},aqueous:false});
- if(entries.some(([id,d])=>d.unit==="ml"&&d.value>0&&!gasIds.has(id)&&
+ if(entries.some(([id,d])=>d.unit==="ml"&&d.value>0&&!labIsGasDose(id,d)&&
   !liquid.some(c=>c.sourceId===id))||!liquid.length)return [];
+ // No validated liquid-liquid equilibrium / mixed activity for this
+ // limited-miscibility liquid. Only its measured neat phase is supported.
+ if(liquid.some(c=>c.id==="C2H4Br2")&&liquid.length>1)return [];
  const solids=entries.filter(([,d])=>d.unit==="g"&&d.value>0);
  let particleMoles=liquid.reduce((sum,c)=>sum+
   (c.aqueous?c.d.value*(c.d.concentrationM??0)/1000*2:0),0);
@@ -206,7 +212,7 @@ export function labIdealBoilingC(v:LabEvaporationState):number|undefined{
  let lowerT=20,lowerP=labVaporPressureKPa(v,lowerT);
  if(lowerP!==undefined&&lowerP>=101.325)return lowerT;
  let solved:number|undefined;
- for(let t=21;t<=125;t++){
+ for(let t=21;t<=132;t++){
   const currentP=labVaporPressureKPa(v,t);
   if(lowerP!==undefined&&currentP!==undefined&&
    lowerP<101.325&&currentP>=101.325){
@@ -256,7 +262,7 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
  const kelvin=temperatureC+273.15;
  const hasUnsupportedLiquid=Object.entries(v.doses??{}).some(([id,d])=>
   d.unit==="ml"&&d.value>0&&!items.some(c=>c.sourceId===id)&&
-  !["CO2","H2","O2","NH3","Cl2","NO2","SO2","CO","H2S","N2"].includes(id));
+  !labIsGasDose(id,d));
  const gasOnly=!items.length&&!hasUnsupportedLiquid;
  const vaporKnown=known||gasOnly;
  const vaporAtSeal=known?items.reduce((s,item)=>
@@ -355,10 +361,10 @@ const aqueousNonvolatile:Record<string,{molarG:number;i:number}>={
 };
 export function labApproxWaterBoilingC(doses?:Record<string,LabDose>):number|undefined{
  const entries=Object.entries(doses??{}),water=doses?.H2O;
- if(!water||water.unit!=="ml"||water.concentrationM!==undefined||water.value<.5)return;
+ if(!water||water.unit!=="ml"||labIsGasDose("H2O",water)||water.concentrationM!==undefined||water.value<.5)return;
  let soluteParticles=0;
  for(const [id,d] of entries){
-  if(id==="H2O")continue;
+  if(id==="H2O"||labIsGasDose(id,d))continue;
   const solid=aqueousNonvolatile[id];
   if(!solid||d.unit!=="g")return;
   soluteParticles+=d.value/solid.molarG*solid.i;

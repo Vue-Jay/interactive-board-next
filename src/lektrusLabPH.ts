@@ -9,10 +9,11 @@
  */
 import {simulateLabInventory,type LabChemicalSnapshot} from "./lektrusLabReactionNetwork";
 import {labWaterIonProduct,labNeutralWaterPH} from "./lektrusLabWaterIonization";
-import {substances} from "./lektrusReactionDatabase";
+import {LAB_NEAT_STOCK} from "./lektrusLabCatalog";
+import {labIsGasDose} from "./lektrusLabStoichiometry";
 export type LabPHInput={
  reagents:readonly string[];
- doses?:Record<string,{value:number;unit:"ml"|"g";concentrationM?:number}>;
+ doses?:Record<string,{value:number;unit:"ml"|"g";concentrationM?:number;phase?:"gas"}>;
  environment:string;uncertain?:boolean;temperatureC?:number;
  chemicalInventory?:LabChemicalSnapshot;
  /** A follow-up transformation staged while the global simulation is paused. */
@@ -27,7 +28,6 @@ export type LabPHResult={pH:number;label:string;note:string;acidMol:number;baseM
  // A preloaded H2/CO2 sample is measured in gas ml, NOT aqueous solvent ml.
  // Including those millilitres would artificially dilute real acids/bases and
  // change the indicator colour whenever gas is collected above the liquid.
-const GAS_REAGENTS=new Set(substances.filter(s=>s.kind==="газ").map(s=>s.id));
 const STRONG_ACIDS=new Set(["HCl","HBr","HNO3","HI"]);
 const STRONG_BASES=new Set(["NaOH","KOH","LiOH"]);
 const NEUTRAL_SPECTATORS=new Set([
@@ -49,9 +49,15 @@ function doseMoles(id:string,dose:{value:number;unit:"ml"|"g";concentrationM?:nu
 export function labVesselPH(v:LabPHInput):LabPHResult|null{
  if(v.environment!=="aqueous"||
   (!v.reagents.length&&!v.chemicalInventory))return null;
+ // K_w and all Ka/Kb in this meter are AQUEOUS reference values.
+ // Neat organic liquids (or their mixed-solvent samples) must not
+ // display invented water pH, even if the vessel has aqueous mode.
+ if(Object.entries(v.doses??{}).some(([id,d])=>id!=="H2O"&&
+  LAB_NEAT_STOCK.has(id)&&d.unit==="ml"&&d.value>0&&
+  d.concentrationM===undefined&&!labIsGasDose(id,d)))return null;
  const volumeMl=(v.filteredSolution?.volumeMl??0)+
   Object.entries(v.doses??{}).reduce((total,[id,d])=>
-   total+(d.unit==="ml"&&!GAS_REAGENTS.has(id)?d.value:0),0);
+   total+(d.unit==="ml"&&!labIsGasDose(id,d)?d.value:0),0);
  if(!Number.isFinite(volumeMl)||volumeMl<=0)return null;
  // For paused multi-stage experiments, pH must use the PRESENT species.
  // A saved mixture's possible future neutralisation cannot tint indicators.

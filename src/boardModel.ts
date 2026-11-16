@@ -988,6 +988,8 @@ export function parseDocument(raw: string): DocumentData {
           Number.isFinite((entry as {value:number}).value)&&
           (entry as {value:number}).value>0&&(entry as {value:number}).value<=10000&&
           ["ml","g"].includes((entry as {unit:string}).unit)&&
+          ((entry as {phase?:string}).phase==null||((entry as {phase?:string}).phase==="gas"&&
+            (entry as {unit:string}).unit==="ml"&&(entry as {concentrationM?:number}).concentrationM==null))&&
           ((entry as {concentrationM?:number}).concentrationM==null||
             ((entry as {unit:string}).unit==="ml"&&
              Number.isFinite((entry as {concentrationM?:number}).concentrationM)&&
@@ -1230,6 +1232,7 @@ export function parseDocument(raw: string): DocumentData {
             new Set(v.reagents).size===v.reagents.length&&
             environments.includes(v.environment)&&typeof v.observed==="boolean"&&
             (v.uncertain==null||typeof v.uncertain==="boolean")&&
+            (v.gasCollector==null||typeof v.gasCollector==="boolean"&&(!v.gasCollector||v.kind==="flask"&&!v.stoppered))&&
             (v.stoppered==null||(typeof v.stoppered==="boolean"&&
              (!v.stoppered||["tube","flask","conical","volumetric"].includes(v.kind))))&&
             (v.stopperedAtC==null||(typeof v.stopperedAtC==="number"&&

@@ -278,6 +278,34 @@ export const LAB_CURATED_PROPERTY_BATCH:readonly LabCuratedPropertyBatchRow[]=[
   sourceUrl:"https://stacks.cdc.gov/view/cdc/206356/cdc_206356_DS1.pdf",
   note:"Теплоёмкость безводного CaSO₃ при 298,15 К; исходная единица кал/(моль·К), не дигидрат."},
 
+ // NIST-JANAF separately identifies the solid-solid transitions and
+ // alpha crystal -> liquid at 1405.2 K (not the sublimation observation).
+ {formula:"Na2O",property:"meltingC",value:1132.05,
+  phase:"anhydrous-solid",sourceCondition:"NIST-JANAF Na2O(cr,l), alpha crystal to liquid at 1405.2 K, standard state 0.1 MPa",
+  sourceUrl:"https://janaf.nist.gov/tables/Na-014.html",
+  note:"Справочное плавление сухого Na₂O при 1132 °C; при контакте с водой реагирует, а не плавится как раствор."},
+ // JANAF's stoichiometric nickel monosulfide, not Ni3S2 or NiS2.
+ {formula:"NiS",property:"meltingC",value:975.85,
+  phase:"anhydrous-solid",sourceCondition:"NIST-JANAF NiS(cr,l), alpha crystal to liquid at 1249 K; decomposition or sulfur loss may affect observed fusion",
+  sourceUrl:"https://janaf.nist.gov/tables/Ni-010.html",
+  note:"Справочное плавление стехиометрического NiS около 976 °C; при потере серы реальный переход может отличаться."},
+ // Jalota et al. J Am Ceram Soc 88 (2005) 3353–3360, Fig. 1 and
+ // Eq. 3a: decomposition after complete dehydration of the monohydrate.
+ {formula:"Ca(CH3COO)2",property:"decompositionC",value:400,
+  phase:"anhydrous-solid",sourceCondition:"TG/DTA in air, approximate onset of anhydrous calcium acetate decomposition after dehydration; produces calcium carbonate",
+  sourceUrl:"https://cuneyttas.com/TTCP-paper.pdf",
+  note:"Безводный ацетат кальция начинает разлагаться около 400 °C; это приближённый порог, зависящий от условий нагрева."},
+ // Kourkova et al., Thermochimica Acta 491 (2009) 80–83. Melting
+ // measured by DSC (553.2 ± 0.2 K); Cp is the room-temperature value
+ // of the authors' fitted polynomial, not a fabricated raw measurement.
+ {formula:"NaNO2",property:"meltingC",value:280.05,
+  phase:"anhydrous-solid",sourceCondition:"oven-dried analytical NaNO2, DSC melting at 553.2 ± 0.2 K; Kourkova et al. 2009",
+  sourceUrl:"https://trc.nist.gov/ThermoML/10.1016/j.tca.2009.03.005.html",
+  note:"Плавление сухого NaNO₂ около 280 °C по DSC; более ранние твёрдофазные переходы не являются плавлением."},
+ {formula:"NaNO2",property:"specificHeatJPerGK",value:1.266226,
+  phase:"anhydrous-solid",sourceCondition:"oven-dried crystalline NaNO2; Kourkova et al. Table 2 fitted DSC Cp=237-1.128*T+0.00210*T^2 (273.15–408.15 K); at 298.15 K 87.36298725 J/(mol K), converted to J/(g K)",
+  sourceUrl:"https://doi.org/10.1016/j.tca.2009.03.005",
+  note:"Оценка теплоёмкости сухого NaNO₂ при 298,15 К по экспериментальной аппроксимации, не теплоёмкость раствора."},
 ];
 
 /** Generated dry crystal density map (single source of truth). */

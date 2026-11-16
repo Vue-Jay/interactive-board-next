@@ -1,12 +1,12 @@
-import {memo,useEffect,useId,useMemo,useRef,useState,type PointerEvent} from "react";
+import {memo,useEffect,useLayoutEffect,useId,useMemo,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabBenchSettings,LabRealism,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
-import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labSimulationTickWaitMs,pourLabIntoFilter,
+import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labSimulationTickWaitMs,pourLabIntoFilter,recoverLabFilterResidue,
  labVesselVisualClock,labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,labFollowUpGasProgress,labGasTubeFlowActive,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabCoolerTemperature,LAB_COOLER_MIN_C,LAB_COOLER_MAX_C,LAB_HOTPLATE_MAX_C,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,setLabExperimentClock,labExperimentClockSeconds,formatLabClock,
- setLabSimulationPaused,setLabGasCollection,labGasStoredMl,labGasReceiverFreeMl,labGasTransferPreview,transferLabGasSample,formatLabDose,labDisplayNumber,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ setLabSimulationPaused,setLabGasCollection,attachLabGasCollector,labGasStoredMl,labGasStoredSamples,labGasReceiverFreeMl,labGasTransferPreview,transferLabGasSample,formatLabDose,labDisplayNumber,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,labHasFrozenLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
-import {reagentAppearance,labSolutionTint,labSedimentTint} from "./lektrusLabAppearance";
+import {reagentAppearance,labSolutionTint,labSedimentTint,labGasTint} from "./lektrusLabAppearance";
 import {labThermalInfo,labVesselThermal,labThermalState} from "./lektrusLabPhysicalProperties";
 import {labKnownHeatCapacityJPerK} from "./lektrusLabCalorimetry";
 import {labReactionGasProgress} from "./lektrusLabGasDynamics";
@@ -15,7 +15,7 @@ import {labProductIdentities,labSubstanceProperties} from "./lektrusLabPropertyR
 import {labCanStopper,labVaporPressureKPa,labIdealBoilingC,labIsBoiling} from "./lektrusLabEvaporation";
 import {labVesselPH} from "./lektrusLabPH";
 import {simulateLabInventory,labInventoryMassG} from "./lektrusLabReactionNetwork";
-import {labMolarMass} from "./lektrusLabStoichiometry";
+import {labMolarMass,labIsGasDose,labGasProductFormulas} from "./lektrusLabStoichiometry";
 import {labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 import {buildLabCatalog,cabinetColor,labReagentForms,labReagentPhaseLabel,labIsPreparedStock,type CatalogueGroup,type CatalogueSort,type StoragePhase}
  from "./lektrusLabCatalog";
@@ -26,6 +26,8 @@ import LektrusLabDeviceIcon from "./LektrusLabDeviceIcon";
 import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint,labStandClampSvgY,labTitrationDropEndpoints,labShelfGestureMoved,isLabSink,isLabCupboard,isLabWorktop,isLabReturnDrop} from "./lektrusLabLayout";
 
 const names:Record<LabGlassware,string>=Object.fromEntries(labGlassware.map(v=>[v.id,v.name])) as Record<LabGlassware,string>;
+const frozenTransferNotice="Содержимое частично или полностью замёрзло. Дождитесь оттаивания перед переливанием.";
+const frozenTransfer=(from?:LabVessel,to?:LabVessel)=>!!from&&labHasFrozenLiquid(from)||!!to&&labHasFrozenLiquid(to);
 const shape:Record<LabGlassware,{inside:string;outline:string;liquid:string}> ={
  beaker:{
   inside:"M20 18H80V104Q80 116 68 116H32Q20 116 20 104Z",
@@ -85,8 +87,8 @@ export const reactionFamilyLabels:Record<ReactionFamily,string>={
 };
 /** Ephemeral visual events share their clock through the board model.
  * Existing settled products stay visible, flames and flashes do not. */
-function LabReactionBurst({vessel,visual,formula,visualNow}:{
- vessel:LabVessel;visual?:ReactionVisual;formula:string;visualNow:number}){
+function LabReactionBurst({vessel,visual,formula,visualNow,gasTint}:{
+ vessel:LabVessel;visual?:ReactionVisual;formula:string;visualNow:number;gasTint?:string}){
  const started=vessel.visualStartedAtMs;
  if(!visual||!started)return null;
  const elapsed=Math.max(0,visualNow-started);
@@ -108,11 +110,12 @@ function LabReactionBurst({vessel,visual,formula,visualNow}:{
    <i key={i} className="lektrus-lab-reaction-mote"
     style={{"--lab-particle-x":(i*53%91-45)+"px",
      "--lab-particle-delay":-(elapsed/1000)+(i%7)*.11+"s",
-     "--lab-particle-angle":(i*61%130-65)+"deg"} as React.CSSProperties}/>)}
+     "--lab-particle-angle":(i*61%130-65)+"deg",
+     ...(visual==="smoke"&&gasTint?{backgroundColor:gasTint}:{})} as React.CSSProperties}/>)}
  </div>;
 }
 
-const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,readoutLeft=false,stirring=false,titrationResult,temperatureC,temperatureVisible=true,realism="high",evaporationEnabled=true,simulationPaused=false,pausedAtMs,visualNowMs}:{
+const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,readoutLeft=false,stirring=false,titrationResult,temperatureC,temperatureVisible=true,realism="high",evaporationEnabled=false,simulationPaused=false,pausedAtMs,visualNowMs}:{
  vessel:LabVessel;small?:boolean;showLabels?:boolean;details?:boolean;readoutLeft?:boolean;stirring?:boolean;
  titrationResult?:ReturnType<typeof titrationReading>;temperatureC?:number;
  temperatureVisible?:boolean;realism?:LabRealism;
@@ -130,6 +133,8 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
  const gasProgress=labFollowUpGasProgress(vessel)??
   labReactionGasProgress(vessel.reactionAmounts,
    temperatureC??vessel.temperatureC??22);
+ const evolvedGasTint=labGasTint(gasProgress?.producedMol);
+ const retainedGasTint=labGasTint(vessel.chemicalInventory?.retainedGasMol??gasProgress?.producedMol);
  const retainedGasTotal=vessel.stoppered?labHeadspaceGasMoles(vessel):0;
  const recentCase=mostRecentEquation?
   reviewedReactionCases.find(row=>row.equation===mostRecentEquation):undefined;
@@ -158,6 +163,33 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
  const {volumeMl,massG,capacityMl,liquidFraction,solidFraction,solidVolumeMl}=labVesselQuantity(vessel);
  const contents=labVesselContents(vessel);
  const readable=(n:number)=>labDisplayNumber(n,realism);
+ const gasStock=labGasStoredMl(vessel);
+ if(vessel.gasCollector){
+  const fraction=Math.min(1,(gasStock+solidVolumeMl)/capacityMl),pistonY=27+65*fraction;
+  const tint=labGasTint(labGasStoredSamples(vessel));
+  const residue=contents.solid.filter(s=>(s.massG??0)>1e-10);
+  return <div className={"lektrus-lab-vessel-art"+(small?" is-small":"")}>
+   <svg viewBox="0 0 100 133" role="img" aria-label={"Газосборник: "+readable(gasStock)+" мл"}>
+    <ellipse cx="50" cy="126" rx="29" ry="4" fill="#254f49" opacity=".12"/>
+    <g className="lektrus-lab-gas-collector-valve" aria-label="Газовый шприц с клапаном и подвижным поршнем">
+     <path d="M46 25V10H54V25" fill="#d8efee" stroke="#39767a" strokeWidth="2"/>
+     <rect x="40" y="5" width="20" height="9" rx="3" fill="#387e83" stroke="#24565c" strokeWidth="1.5"/>
+     <path d="M50 6V2M44 2H56" stroke="#24565c" strokeWidth="3" strokeLinecap="round"/>
+     <circle data-lab-gas-port="true" cx="50" cy="2" r="1" fill="none"/>
+     <rect x="28" y="24" width="44" height="79" rx="5" fill="#def4f033" stroke="#76a6a5" strokeWidth="2.3"/>
+     {tint&&<rect x="30" y="27" width="40" height={65*fraction} fill={tint} opacity=".45"/>}
+     {residue.length>0&&<rect x="30" y={Math.max(27,pistonY-3)} width="40" height="3" fill={labSedimentTint(residue,.5)} stroke="#7e9494" strokeWidth=".6" aria-label="Твёрдый продукт реакции газов"/>}
+     {Array.from({length:9},(_,index)=><path key={index} d={`M${index%2?33:30} ${27+index*8.125}H40`} stroke="#719a98" strokeWidth=".8"/>)}
+     <rect x="30" y={pistonY} width="40" height="7" rx="2" fill="#557c7b"/>
+     <path d={`M50 ${pistonY+7}V${pistonY+29}`} stroke="#6f9390" strokeWidth="6"/>
+     <rect x="39" y={pistonY+26} width="22" height="5" rx="2" fill="#4c6d6c"/>
+     <rect x="61" y="39" width="37" height="27" rx="4" fill="#f1fffb" stroke="#77a8a5"/>
+     <text x="79.5" y="49" fontSize="7" textAnchor="middle" fill="#23595e" fontWeight="800">ГАЗ</text>
+     <text x="79.5" y="60" fontSize="8" textAnchor="middle" fill="#23595e" fontWeight="800">{readable(gasStock)} мл</text>
+    </g>
+   </svg>
+  </div>;
+ }
  // Water is the solvent, not a solute. Keep the limited inline space for
  // actual reagents and products; the detailed dialog includes tracked water.
  const solutes=contents.solution.filter(x=>x.formula!=="H2O")
@@ -210,8 +242,9 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   precipitationProgress<=0?0:
   Math.min(70,Math.max(4,
    106*contents.precipitateFraction*precipitationProgress));
+ const displayedMassG=volumeMl===0&&solidInventoryMassG>0?solidInventoryMassG:massG;
  const totalLabel=[volumeMl>0?labDisplayNumber(volumeMl,realism)+" мл":null,
-  massG>0?labDisplayNumber(massG,realism)+" г":null].filter(Boolean).join(" · ");
+  displayedMassG>0?labDisplayNumber(displayedMassG,realism)+" г":null].filter(Boolean).join(" · ");
  const reagent=vessel.reagents[0]?reagentAppearance(vessel.reagents[0],
   massG>0&&volumeMl===0?"dry":vessel.environment):null;
  const active=Boolean(visualCase);
@@ -245,8 +278,10 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   (temperatureC??vessel.temperatureC??22)>=40&&
   (labVaporPressureKPa(vessel,temperatureC??vessel.temperatureC??22)??0)>=10;
  const gasOnly=vessel.reagents.length>0&&vessel.reagents.every(id=>
-  substances.find(s=>s.id===id)?.kind==="газ")&&massG===0;
- const singlePhase=vessel.filteredResidue?"solid":gasOnly?"gas":
+  labIsGasDose(id,vessel.doses?.[id]))&&massG===0;
+ // A measured reaction product may have no historical weighed dose.
+ // Its actual solid ledger still determines the phase after decanting.
+ const singlePhase=vessel.filteredResidue||volumeMl===0&&contents.solid.length>0?"solid":gasOnly?"gas":
   massG>0&&volumeMl===0?"solid":volumeMl>0?"solution":
   vessel.reagents.length===1&&!active?reagent?.phase:undefined;
  const pureThermal=labVesselThermal(vessel.reagents,vessel.doses);
@@ -268,10 +303,11 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   labIsBoiling(vessel,temperatureC??vessel.temperatureC??22);
  const renderedSolidFraction=vessel.filteredResidue?Math.max(.23,solidFraction):
   solidFraction*(1-moltenFraction);
+ const measuredDry=volumeMl===0&&!!inventory&&!inventory.unmeasured.length&&!inventory.limited;
  const fillFraction=volumeMl>0?Math.max(.008,liquidFraction):
-  (vessel.reagents.length>0?(vessel.pourFraction??0.5):0);
+  (!measuredDry&&vessel.reagents.length>0?(vessel.pourFraction??0.5):0);
  return <div className={"lektrus-lab-vessel-art"+(small?" is-small":"")}>
-  <svg viewBox="0 0 100 133" role="img" aria-label={names[vessel.kind]+": "+(labels.join(", ")||"пустой")}>
+  <svg viewBox="0 0 100 133" role="img" aria-label={(vessel.gasCollector?"Газосборник":names[vessel.kind])+": "+(labels.join(", ")||"пустой")}>
    <defs>
     <clipPath id={id+"clip"}><path d={geo.inside}/></clipPath>
     <clipPath id={id+"level"}><rect x="0" y={120-106*fillFraction}
@@ -284,7 +320,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
    <ellipse cx="50" cy="126" rx="34" ry="4" fill="#254f49" opacity=".12"/>
    <path d={geo.inside} fill={"url(#"+id+"glass)"} stroke="none"/>
    <g clipPath={"url(#"+id+"clip)"}>
-    {labels.length>0&&singlePhase!=="solid"&&singlePhase!=="metal"&&singlePhase!=="gas"&&
+    {labels.length>0&&!measuredDry&&singlePhase!=="solid"&&singlePhase!=="metal"&&singlePhase!=="gas"&&
      <path d={geo.liquid} clipPath={"url(#"+id+"level)"} fill={color} opacity=".76" className="lektrus-lab-fluid"/>}
     {labels.length>0&&moltenFraction>0&&<g className="lektrus-lab-molten-liquid">
      <path d={geo.liquid} clipPath={"url(#"+id+"melt-level)"}
@@ -319,16 +355,12 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
      </g>}
     {vessel.stoppered&&retainedGasTotal>1e-12&&
      <g className="lektrus-lab-retained-gas" aria-label="Газ удерживается пробкой">
-      {Array.from({length:8},(_,i)=><circle key={"retained"+i}
-       cx={35+(i*11)%34} cy={29+(i*17)%36} r={1.5+i%3}
-       fill="#bbecf3" fillOpacity=".48" stroke="#7fbfc4" strokeWidth=".4"/>)}
+      {retainedGasTint&&<path d={geo.inside} fill={retainedGasTint} opacity=".28"/>}
      </g>}
-    {labels.length>0&&singlePhase==="gas"&&<>
-     <path d={geo.inside} fill={color} opacity=".17"/>
-     {Array.from({length:9},(_,i)=><circle key={"gascloud"+i}
-      cx={34+(i*13)%33} cy={32+(i*21)%61} r={3+i%3}
-      fill={color} opacity=".42"/>)}
-    </>}
+    {labels.length>0&&singlePhase==="gas"&&(()=>{
+     const tint=labGasTint(labGasStoredSamples(vessel));
+     return tint?<path d={geo.inside} fill={tint} opacity=".33"/>:null;
+    })()}
     {vessel.physicalProcess==="dissolving"&&vessel.physicalStartedAtMs&&
      <g className="lektrus-lab-dissolving-particles">
       {Array.from({length:16},(_,i)=><circle key={i}
@@ -341,7 +373,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
      aria-label="Кристаллы соли образуются при выпаривании воды">
      {Array.from({length:13},(_,i)=><path key={i}
       d={`M${25+i*13%48} ${113-i%4*2}l3 -4l3 4l-3 3Z`}
-      fill="#f7faf8" stroke="#a2b4c0" strokeWidth=".65"
+      fill={contents.solid.length?labSedimentTint(contents.solid,(i*.61803398875)%1):"#f7faf8"} stroke="#a2b4c0" strokeWidth=".65"
       style={{animationDelay:-(i%6)*.4+"s"}}/>)}
     </g>}
     {boiling&&<g className="lektrus-lab-boiling-particles"
@@ -377,7 +409,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
       r={1.1+i%3*.5} fill={appearance.solidColor||"#cddbe0"}
       style={{animationDelay:-(i%9)*.25+"s"}}/>)}
     </>}
-    {active&&observation==="gas"&&gasEventActive&&
+    {active&&(observation==="gas"||!!gasProgress)&&gasEventActive&&volumeMl>1e-9&&
      <g className="lektrus-lab-gas-bubbles" clipPath={"url(#"+id+"level)"}>
       {Array.from({length:gasBubbleCount},(_,i)=><circle key={i}
        className="lektrus-lab-bubble" cx={31+i*29%38} cy={98-i*17%45}
@@ -407,6 +439,11 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
    {/* Vapor rises outside the SVG: earlier duplicate paths were clipped
        by viewBox while extending above the glass rim. */}
    <path d={geo.outline} fill="none" stroke="#75a4a4" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+   {!vessel.gasCollector&&vessel.gasCollectionTargetId&&<g className="lektrus-lab-gas-outlet-adapter" aria-label="Газоотвод установлен">
+    <rect x="36" y="6" width="28" height="8" rx="3" fill="#598c91" stroke="#346870"/>
+    <path d="M50 12V3" stroke="#346870" strokeWidth="5" strokeLinecap="round"/>
+   </g>}
+   <circle data-lab-gas-port="true" cx="50" cy={vessel.gasCollectionTargetId?3:10} r="1" fill="none"/>
    {vessel.stoppered&&labCanStopper(vessel.kind)&&<g className="lektrus-lab-physical-stopper">
     <ellipse cx="50" cy="7.5" rx={vessel.kind==="tube"?17:21} ry="4.5"
      fill="#ad8365" stroke="#665348" strokeWidth="1.6"/>
@@ -438,7 +475,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
     <path d="M29 32V57" stroke="#fff" strokeWidth="5" strokeLinecap="round" opacity=".5"/>
    </g>
    {/* Contents are labelled above the vessel; temperature stays on glass. */}
-   {temperatureVisible&&vessel.kind!=="burette"&&<g className="lektrus-lab-ware-engraving">
+   {temperatureVisible&&vessel.kind!=="burette"&&!vessel.gasCollector&&<g className="lektrus-lab-ware-engraving">
     <rect x="27" y="75" width="46" height="16" rx="4"
      fill="#f0faf3" fillOpacity=".8" stroke="#83b1a6" strokeWidth=".7"/>
     <text x="50" y="86" fontWeight="800" fontSize="10" textAnchor="middle"
@@ -460,12 +497,13 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
    {Array.from({length:3},(_,i)=><span key={i}/>)}
   </div>}
   {gasEventActive&&!vessel.stoppered&&!vessel.gasCollectionTargetId&&
-   active&&observation==="gas"&&<div className="lektrus-lab-gas-vent"
+   active&&(observation==="gas"||!!gasProgress)&&(volumeMl>1e-9||!!evolvedGasTint)&&<div className="lektrus-lab-gas-vent"
     role="img" aria-label="Газ выходит из открытого сосуда">
-    {Array.from({length:5},(_,i)=><i key={i} style={{animationDelay:-(i*.36)+"s"}}/>)}
+    {Array.from({length:5},(_,i)=><i key={i} style={{animationDelay:-(i*.36)+"s",
+     ...(evolvedGasTint?{backgroundColor:evolvedGasTint,border:"none",width:12,height:12,filter:"blur(3px)"}:{})}}/>)}
    </div>}
-  <LabReactionBurst vessel={vessel} visual={visualCase?.visual}
-   formula={visualCase?.equation??""} visualNow={visualNow}/>
+  <LabReactionBurst vessel={vessel} visual={volumeMl<=1e-9&&visualCase?.visual==="fizz"?undefined:visualCase?.visual}
+   formula={visualCase?.equation??""} visualNow={visualNow} gasTint={evolvedGasTint}/>
   {vessel.reactionHeat&&(!vessel.reactionHeat.complete||
    !!vessel.visualStartedAtMs&&visualNow-vessel.visualStartedAtMs<8500)&&
    <span className={"lektrus-lab-reaction-heat is-"+vessel.reactionHeat.direction}
@@ -516,8 +554,8 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
    </div>}
   {showLabels&&details&&(volumeMl>1e-9||contents.solid.length>0)&&<span className="lektrus-lab-content-tag"
    title={labels.length?labels.map((formula,i)=>{
-    const dose=amounts?undefined:vessel.doses?.[vessel.reagents[i]];
-    const mol=amounts?species[i]?.[1]:undefined;
+    const dose=amounts?undefined:vessel.doses?.[species[i]?.[0]??formula];
+    const mol=amounts||vessel.chemicalInventory&&inventory&&!inventory.unmeasured.length&&!inventory.limited?species[i]?.[1]:undefined;
      return formula+(mol!==undefined?" · "+labDisplayNumber(mol*1000,realism,"moles")+" ммоль":
       dose?" · "+formatLabDose(dose,realism)+
      (dose.concentrationM!==undefined?" · "+dose.concentrationM.toLocaleString("ru-RU")+" моль/л":""):"");
@@ -531,7 +569,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
     {labels.length?labels.map((formula,i)=>{
       const id=species[i]?.[0]??formula;
       const dose=vessel.doses?.[id];
-      const mol=amounts?species[i]?.[1]:undefined;
+      const mol=amounts||vessel.chemicalInventory&&inventory&&!inventory.unmeasured.length&&!inventory.limited?species[i]?.[1]:undefined;
       return <span key={id}>{formula}: {mol!==undefined?
        labDisplayNumber(mol*1000,realism,"moles")+" ммоль":
        dose?formatLabDose(dose,realism)+(dose.concentrationM!==undefined?
@@ -591,7 +629,7 @@ function LabExperimentControls({settings,editable,onUpdate}:{
     <small>Потеря растворителя и выпаривание при нагреве</small>
    </div>
    <button type="button" className="lektrus-lab-experiment-switch"
-    role="switch" aria-checked={settings.evaporationEnabled}
+    role="switch" aria-label="Испарение" aria-checked={settings.evaporationEnabled}
     disabled={!editable}
     onClick={()=>onUpdate({evaporationEnabled:!settings.evaporationEnabled})}>
     {settings.evaporationEnabled?"Включено":"Выключено"}
@@ -683,6 +721,7 @@ export function clearLabCabinetSession(sessionKey:string){
 export default function LektrusChemistryBenchSurface({bench,editable=false,compactFullscreen=false,fullscreenOwner=false,pouringId,
  onChange,onSelect,onPour,onDropReagent,cabinetSessionKey}:SurfaceProps){
  const host=useRef<HTMLDivElement>(null);
+ const [gasPorts,setGasPorts]=useState<Record<string,{x:number;y:number}>>({});
  const [stageSize,setStageSize]=useState({width:1600,height:1000});
  useEffect(()=>{
   const node=host.current;if(!node)return;
@@ -825,7 +864,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  const [titrationTarget,setTitrationTarget]=useState("");
  const [measuredMl,setMeasuredMl]=useState("5");
  const [gasSampleTargetId,setGasSampleTargetId]=useState("");
- const [gasPortionMode,setGasPortionMode]=useState<"5"|"20"|"all">("20");
+ const [gasPortionMode,setGasPortionMode]=useState<string>("20");
  const [measuredPartnerId,setMeasuredPartnerId]=useState("");
  const [localPourId,setLocalPourId]=useState<string|null>(null);
  // Toast actions are transient UI, never persisted with the collaborative bench.
@@ -879,6 +918,24 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   }
   return labDisplayPoint(v);
  };
+ // The gas fittings are anchored to their actual SVG affordances, not to
+ // an arbitrary fraction of the scene. This also follows responsive sizes.
+ useLayoutEffect(()=>{
+  const root=host.current;
+  if(!root||!bench.vessels.some(v=>v.gasCollectionTargetId))return;
+  const bounds=root.getBoundingClientRect();
+  if(!bounds.width||!bounds.height)return;
+  const next:Record<string,{x:number;y:number}>={};
+  for(const vessel of root.querySelectorAll<HTMLElement>("[data-lab-vessel-id]")){
+   const marker=vessel.querySelector("[data-lab-gas-port]");
+   if(!marker||!vessel.dataset.labVesselId)continue;
+   const r=marker.getBoundingClientRect();
+   next[vessel.dataset.labVesselId]={x:100*(r.left+r.width/2-bounds.left)/bounds.width,
+    y:100*(r.top+r.height/2-bounds.top)/bounds.height};
+  }
+  setGasPorts(old=>Object.keys(old).length===Object.keys(next).length&&Object.entries(next).every(([id,p])=>
+   old[id]&&Math.abs(old[id].x-p.x)<.02&&Math.abs(old[id].y-p.y)<.02)?old:next);
+ },[bench.vessels,bench.selectedId,preview,devicePreview,stageSize,settings.showVesselLabels]);
  const benchRef=useRef(bench);
  const changeRef=useRef(onChange);
  const localPourRef=useRef<string|null>(null);
@@ -1049,6 +1106,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   }).filter(v=>v.dist<Math.min(115,Math.max(54,rect.width*.15))).sort((a,b)=>a.dist-b.dist)[0]?.id??null;
  };
  const drip=(sourceId:string,targetId:string,ml:number)=>{
+  if(frozenTransfer(bench.vessels.find(v=>v.id===sourceId),bench.vessels.find(v=>v.id===targetId))){
+   setNotice(frozenTransferNotice);return;
+  }
   const next=dripLabVessel(bench,sourceId,targetId,ml);
   if(next===bench){
    setNotice("Для титрования наполните бюретку и колбу кислотой и щёлочью с известной концентрацией");
@@ -1065,6 +1125,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  };
  const transferVessel=(sourceId:string,targetId:string)=>{
   const from=bench.vessels.find(v=>v.id===sourceId);
+  if(frozenTransfer(from,bench.vessels.find(v=>v.id===targetId))){setNotice(frozenTransferNotice);return;}
   if(from?.kind==="burette"&&labTitrationTargets(bench,sourceId).some(v=>v.id===targetId)){
    drip(sourceId,targetId,1);return;
   }
@@ -1105,6 +1166,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    const from=latest.vessels.find(v=>v.id===sourceId);
    const to=latest.vessels.find(v=>v.id===targetId);
    if(!from||!to)return;
+   if(frozenTransfer(from,to)){
+    setNotice(frozenTransferNotice);contactRef.current={...c,activated:true};setContactCountdown(null);return;
+   }
    let next=latest;
    if(from.kind==="pipette"||to.kind==="pipette"){
     const pipette=from.kind==="pipette"?from:to;
@@ -1186,6 +1250,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      onChange?.({...next,selectedId:""});
      setActiveDeviceId(null);setVesselMenuId(null);
      setNotice("Выбранный прибор убран со стола");
+    }else if(placedLabDevices(bench).find(d=>d.id===deviceId)?.collectedResidue){
+     setNotice("Сначала перенесите осадок в сосуд или очистите фильтр");
     }
     return;
    }
@@ -1235,7 +1301,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    setDropFurniture(furniture);
    const pouring=furniture||nearestFilter?null:targetAt(g.id,p);
    setDropTarget(pouring);
-   if(pouring)beginContact(g.id,pouring);
+   const gasDonor=bench.vessels.find(v=>v.id===g.id)?.gasCollector;
+   if(pouring&&!gasDonor)beginContact(g.id,pouring);
    else if(contactRef.current)endContact();
    const vessel=bench.vessels.find(v=>v.id===g.id);
    const nearby=!furniture&&!pouring&&vessel?physicalDevices.map(d=>({
@@ -1271,11 +1338,19 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
       if(from)setTransfer({from:vesselPosition(from),to:{x:filter.d.x,y:filter.d.y-3}});
       onChange?.(next);
       setNotice("Осадок задержан фильтром, фильтрат в чистом сосуде");
-     }else setNotice("Нужен завершённый осадок и свободное место для фильтрата");
+     }else setNotice(labGasStoredMl(bench.vessels.find(v=>v.id===g.id)!)>0?"Сначала перенесите газ в газосборник":"Нужна водная взвесь без текущей реакции, чистый фильтр и свободный приёмник");
      setPreview(null);setDropDeviceId(null);setDropTarget(null);return;
     }
     const target=targetAt(g.id,p);
-    if(contacted){setLocalPourId(null);}
+    const gasDonor=bench.vessels.find(v=>v.id===g.id);
+    if(target&&gasDonor?.gasCollector){
+     const requested=gasPortionMode==="all"?labGasStoredMl(gasDonor):Number(gasPortionMode.replace(",","."));
+     const plan=labGasTransferPreview(bench,g.id,target,requested);
+     const next=transferLabGasSample(bench,g.id,target,requested);
+     if(next!==bench){onChange?.(next);setNotice("Через клапан перенесено "+labDisplayNumber(plan.transferMl,settings.realism)+" мл газа")}
+     else setNotice(plan.incompatiblePhase?"В приёмнике уже есть то же вещество в другой фазе":"Нет доступного газа или свободного объёма в приёмнике");
+    }
+    else if(contacted){setLocalPourId(null);}
     else if(target){setNotice("Поднесите сосуд ближе к приёмнику");}
     else{
      const rect=host.current?.getBoundingClientRect();
@@ -1431,8 +1506,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   const p=point(e);
   if(g.dragged&&p){
    if(returnUp(p,g.startY)||(!compactFullscreen&&p.y>=8&&p.y<=42&&p.x>=82)){
-    onChange?.(returnPlacedLabDevice(bench,g.id));
-    setActiveDeviceId(null);setNotice("Прибор убран со стола");
+    const next=returnPlacedLabDevice(bench,g.id);
+    if(next!==bench){onChange?.(next);setActiveDeviceId(null);setNotice("Прибор убран со стола");}
+    else setNotice("Сначала перенесите осадок в сосуд или очистите фильтр");
    }else{
     const moved=movePlacedLabDevice(bench,g.id,g.x+p.x-g.startX,g.y+p.y-g.startY);
     const device=physicalDevices.find(d=>d.id===g.id);
@@ -1458,8 +1534,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
       if(source&&filter)setTransfer({from:vesselPosition(source),to:{x:filter.x,y:filter.y-3}});
       onChange?.(next);setLocalPourId(null);
       setNotice("Фильтрат прошёл через мембрану, осадок остался на фильтре");
-     }else setNotice("Нужна завершённая реакция с осадком и свободный приёмник");
-    }else setNotice("Перетащите сосуд с готовым осадком непосредственно на фильтр");
+     }else setNotice(bench.vessels.some(v=>v.id===effectivePouringId&&labGasStoredMl(v)>0)?"Сначала перенесите газ в газосборник":"Нужна водная взвесь без текущей реакции, чистый фильтр и свободный приёмник");
+    }else setNotice("Перетащите сосуд с осадком или взвесью непосредственно на фильтр");
    }
   }
   setDevicePreview(null);setDropDeviceShelf(false);
@@ -1495,7 +1571,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     concentration<.001||concentration>2)){
     setNotice("Укажите концентрацию от 0,001 до 2 моль/л");return;
   }
-  const dose:LabDose={value:Math.round(value*100)/100,unit,
+  const measuredValue=unit==="ml"?Math.round(value*100)/100:value;
+  if(measuredValue<=0){setNotice("Минимальный измеряемый объём — 0,01 мл");return}
+  const dose:LabDose={value:measuredValue,unit,
    ...(isQuantifiedSolution?{concentrationM:concentration}:{})};
   const updated=putLabReagent(bench,selected.id,chosen,dose);
   if(updated===bench){setNotice("Реагент уже добавлен или посуда заполнена");return}
@@ -1617,9 +1695,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   {bench.vessels.filter(v=>!!v.gasCollectionTargetId).map(source=>{
    const receiver=bench.vessels.find(v=>v.id===source.gasCollectionTargetId);
    if(!receiver)return null;
-   const from=vesselPosition(source),to=vesselPosition(receiver);
-   const y=Math.max(31,Math.min(from.y,to.y)-21);
-   const path=`M ${from.x} ${from.y-9} Q ${(from.x+to.x)/2} ${y} ${to.x} ${to.y-9}`;
+   const from=gasPorts[source.id]??{...vesselPosition(source),y:vesselPosition(source).y-6};
+   const to=gasPorts[receiver.id]??{...vesselPosition(receiver),y:vesselPosition(receiver).y-6};
+   const y=Math.max(43,Math.min(from.y,to.y)-7);
+   const path=`M ${from.x} ${from.y} Q ${(from.x+to.x)/2} ${y} ${to.x} ${to.y}`;
    // Same kinetic ledger as the gas collector, including SECOND reactions.
    // Do not animate a blocked tube after pause, corking or receiver fill.
    const flowing=labGasTubeFlowActive(source,receiver,!!bench.simulationPaused);
@@ -1633,23 +1712,22 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     {flowing&&<path d={path} className="lektrus-lab-gas-tube-flow"
      stroke="#75e1e7" strokeWidth=".37" strokeDasharray="1 1.8"
      strokeLinecap="round" fill="none"/>}
-    <circle cx={to.x} cy={to.y-9} r="1.2" fill="#c6f7f9"
+    <circle cx={to.x} cy={to.y} r=".55" fill="#c6f7f9"
      stroke="#45858e" strokeWidth=".35"/>
    </svg>;
   })}
   {editable&&selected&&(()=>{
    const reaction=labObservation(selected).caseData;
-   const gasReaction=reaction?.observation==="gas"||
-    !!selected.inventoryGasReaction||!!selected.gasCollectionTargetId;
-   const storedGas=Object.entries(selected.doses??{}).filter(([id,d])=>
-    substances.find(s=>s.id===id)?.kind==="газ"&&d.unit==="ml"&&d.value>0);
+   const gasReaction=!!reaction&&labGasProductFormulas(reaction.equation).size>0||
+    !!selected.inventoryGasReaction||!!selected.gasCollectionTargetId||!!selected.pendingInventoryReaction;
+   const storedGas=Object.entries(labGasStoredSamples(selected));
    const storedTotal=labGasStoredMl(selected);
    const targets=bench.vessels.filter(v=>v.id!==selected.id&&!v.stoppered&&
     ["beaker","tube","flask","conical","volumetric"].includes(v.kind));
-   if(!gasReaction&&!storedGas.length)return null;
+   if(!gasReaction&&!storedGas.length&&!selected.gasCollector)return null;
    const chosen=targets.some(v=>v.id===gasSampleTargetId)?
     gasSampleTargetId:targets[0]?.id??"";
-   const requestedMl=gasPortionMode==="all"?storedTotal:Number(gasPortionMode);
+   const requestedMl=gasPortionMode==="all"?storedTotal:Number(gasPortionMode.replace(",","."));
    const transfer=labGasTransferPreview(bench,selected.id,chosen,requestedMl);
    const recipient=bench.vessels.find(v=>v.id===chosen);
    const recipientQuantity=recipient?labVesselQuantity(recipient):undefined;
@@ -1661,10 +1739,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    return <div className="lektrus-lab-gas-workbench" data-board-interactive="true"
     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
     <div className="lektrus-lab-gas-heading">
-     <strong>Газоотвод <span aria-hidden="true">↗</span></strong>
+     <strong>{selected.gasCollector?"Газосборник":"Газоотвод"} <span aria-hidden="true">↗</span></strong>
      <span>{gasReaction?"Сбор и использование":"Газовая проба"}</span>
     </div>
-    {gasReaction&&<div className="lektrus-lab-gas-stage">
+    {gasReaction&&!selected.gasCollector&&<div className="lektrus-lab-gas-stage">
      <label><b>1. Собрать газ</b>
       <select aria-label="Сосуд для сбора газа"
        value={selected.gasCollectionTargetId??""}
@@ -1675,9 +1753,16 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
         !targets.some(v=>v.id===selected.gasCollectionTargetId)&&
         <option value={selected.gasCollectionTargetId}>Приёмник недоступен</option>}
        {targets.map(v=><option key={v.id} value={v.id}>
-        {names[v.kind]} · {bench.vessels.indexOf(v)+1}</option>)}
+        {v.gasCollector?"Газосборник":names[v.kind]} · {bench.vessels.indexOf(v)+1}</option>)}
       </select>
      </label>
+     {!collector?.gasCollector&&<button type="button" className="lektrus-lab-gas-connect" disabled={selected.stoppered||bench.vessels.length>=6}
+      onClick={e=>{e.stopPropagation();const next=attachLabGasCollector(bench,selected.id);
+       if(next!==bench){onChange?.(next);setNotice("Газосборник подключён. Газ будет поступать по трубке.")}}}>＋ Подключить газосборник</button>}
+     {collector&&<div className="lektrus-lab-gas-capacity"><span>Собрано в приёмнике</span>
+      <strong>{labDisplayNumber(labGasStoredMl(collector),settings.realism)} мл</strong>
+      <div className="lektrus-lab-gas-capacity-track"><i style={{width:Math.min(100,100*labGasStoredMl(collector)/labVesselQuantity(collector).capacityMl)+"%"}}/></div>
+      <button type="button" className="lektrus-lab-gas-connect" onClick={()=>{onSelect?.(collector.id);setVesselMenuId(null)}}>Открыть приёмник</button></div>}
      <small className="lektrus-lab-gas-status">
       {selected.stoppered?"Снимите пробку с источника":
        !selected.gasCollectionTargetId?"Подключите сосуд до запуска опыта":
@@ -1686,12 +1771,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
        bench.simulationPaused?"Подключено. Сбор начнётся после пуска":
        "Подключено. Новый газ поступает по трубке"}
      </small>
+     <small>Газ выделяется постепенно даже при ускорении часов.</small>
     </div>}
+    {selected.gasCollector&&<small className="lektrus-lab-gas-status">Клапан закрывается после сбора. {labDisplayNumber(storedTotal,settings.realism)} / {labVesselQuantity(selected).capacityMl} мл. Выберите приёмник или перетащите газосборник к сосуду, чтобы передать выбранную порцию газа.</small>}
     {storedTotal>.001&&<div className="lektrus-lab-gas-transfer">
      <div className="lektrus-lab-gas-sample">
       <b>2. Перенести собранный газ</b>
-      <span className="lektrus-lab-gas-stock">{storedGas.map(([formula,d])=>
-       formula+" · "+labDisplayNumber(d.value,settings.realism)+" мл").join(" + ")}</span>
+      <span className="lektrus-lab-gas-stock">{storedGas.map(([formula,ml])=>
+       formula+" · "+labDisplayNumber(ml,settings.realism)+" мл").join(" + ")}</span>
      </div>
      <label>Приёмник
       <select aria-label="Куда перенести собранный газ"
@@ -1699,7 +1786,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
        value={chosen} onChange={e=>setGasSampleTargetId(e.target.value)}>
        {!targets.length&&<option value="">Добавьте второй сосуд</option>}
        {targets.map(v=><option key={v.id} value={v.id}>
-        {names[v.kind]} · {bench.vessels.indexOf(v)+1}</option>)}
+        {v.gasCollector?"Газосборник":names[v.kind]} · {bench.vessels.indexOf(v)+1}</option>)}
       </select>
      </label>
      <div className="lektrus-lab-gas-amount" role="group" aria-label="Порция газа">
@@ -1708,6 +1795,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
         aria-pressed={gasPortionMode===value} onClick={e=>{
          e.stopPropagation();setGasPortionMode(value)}}>{label}</button>)}
      </div>
+     {gasPortionMode!=="all"&&<label>Объём, мл<input aria-label="Точный объём газа" type="number" min="0.01" step="0.01" value={gasPortionMode} onChange={e=>setGasPortionMode(e.target.value)}/></label>}
      {recipient&&<div className="lektrus-lab-gas-capacity">
       <span>Свободно в приёмнике</span>
       <strong>{labDisplayNumber(transfer.freeMl,settings.realism)} мл</strong>
@@ -1728,8 +1816,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
        }else setNotice("Не удалось перенести газ: проверьте сосуд и состав")}}>
       {transfer.transferMl>=.01?
        "Перенести "+labDisplayNumber(transfer.transferMl,settings.realism)+" мл":
-       "Нет места для газа"}
+       transfer.incompatiblePhase?"Выберите другой приёмник":"Нет доступной порции газа"}
      </button>
+     {transfer.incompatiblePhase&&<small>В приёмнике уже есть то же вещество в другой фазе. Раздельный учёт этих фаз пока не поддерживается.</small>}
      {storedGas.length>1&&<small>Смесь переносится с сохранением пропорций газов.</small>}
     </div>}
     {!targets.length&&<small>Для сбора и переноса газа добавьте второй сосуд без пробки.</small>}
@@ -1826,13 +1915,15 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     <div className="lektrus-lab-selected-vessel-actions" data-board-interactive="true">
      {bench.vessels.filter(v=>v.id===bench.selectedId).map(v=><div key={v.id}
       className="lektrus-lab-selected-controls">
-      {labCanStopper(v.kind)&&<button type="button"
+      {!v.gasCollector&&labCanStopper(v.kind)&&<button type="button"
        className={"lektrus-lab-stopper-action"+(v.stoppered?" is-sealed":"")}
        aria-pressed={!!v.stoppered}
        title={v.stoppered?"Снять пробку с "+names[v.kind]:"Закрыть "+names[v.kind]+" пробкой"}
        onClick={e=>{e.stopPropagation();onChange?.(setLabVesselStopper(bench,v.id,!v.stoppered))}}>
        <span aria-hidden="true">◒</span>{v.stoppered?"Снять пробку":"Пробка"}
       </button>}
+      {!v.gasCollector&&!v.gasCollectionTargetId&&<button type="button" className="lektrus-lab-composition-action" disabled={v.stoppered||bench.vessels.length>=6}
+       onClick={e=>{e.stopPropagation();const next=attachLabGasCollector(bench,v.id);if(next!==bench){onChange?.(next);setNotice("Газосборник подключён")}}}>Газосборник</button>}
       {(v.reagents.length>0||v.filteredResidue||v.filteredSolution)&&
        <button type="button" className="lektrus-lab-composition-action"
         onClick={e=>{e.stopPropagation();setCompositionId(v.id)}}>
@@ -2088,10 +2179,16 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
        onPointerMove={e=>e.stopPropagation()}
        onPointerUp={e=>e.stopPropagation()}
        onClick={e=>e.stopPropagation()}>
-       {device.kind==="filter"?<>{device.collectedResidue&&<button type="button"
+       {device.kind==="filter"?<>{device.collectedResidue&&<>
+        <button type="button" className="lektrus-lab-filter-recover"
+         title="Перенести осадок в пустой сосуд" aria-label="Перенести осадок в пустой сосуд"
+         onClick={()=>{const next=recoverLabFilterResidue(bench,device.id);
+          if(next!==bench){onChange?.(next);setNotice("Осадок перенесён в сосуд");}
+          else setNotice("Нужен пустой открытый сосуд подходящего объёма");}}>↓</button>
+        <button type="button" className="lektrus-lab-filter-discard"
         title="Очистить мембранный фильтр" aria-label="Очистить мембранный фильтр"
         onClick={()=>onChange?.({...bench,placedDevices:physicalDevices.map(d=>d.id===device.id?
-         {...d,collectedResidue:undefined}:d),event:bench.event+1})}>×</button>}</>:
+         {...d,collectedResidue:undefined,filterStartedAtMs:undefined}:d),event:bench.event+1})}>×</button></>}</>:
         device.kind!=="tripod"?<>
         {device.kind==="burner"?
          <button type="button" className="lektrus-lab-burner-valve"
@@ -2253,7 +2350,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   {bench.vessels.map((v,i)=>{
    const p=preview?.id===v.id?preview:vesselPosition(v);
    const selectedVessel=bench.selectedId===v.id;
-   return <button type="button" key={v.id} data-board-interactive="true"
+   return <button type="button" key={v.id} data-board-interactive="true" data-lab-vessel-id={v.id}
     className={"lektrus-lab-vessel is-"+v.kind+(selectedVessel?" selected":"")+
     (effectivePouringId===v.id?" is-pouring":"")+
     (dropTarget===v.id?" is-drop-target":"")+(bench.stirringVesselId===v.id||
@@ -2261,7 +2358,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     (preview?.id===v.id&&dropTarget?" is-pour-drag":"")+
     (effectivePouringId&&effectivePouringId!==v.id?" is-pour-target":"")}
     style={{left:p.x+"%",top:p.y+"%",zIndex:v.kind==="burette"?44:selectedVessel||preview?.id===v.id?35:23+i}}
-    disabled={!editable} aria-label={"Сосуд "+(i+1)+": "+names[v.kind]+
+    disabled={!editable} aria-label={"Сосуд "+(i+1)+": "+(v.gasCollector?"Газосборник":names[v.kind])+
       (v.reagents.length?", "+v.reagents.join(", "):", пустой")}
     aria-pressed={selectedVessel} title={(v.reactionHeat?
       (v.reactionHeat.direction==="exothermic"?"Экзотермический нагрев":"Эндотермическое охлаждение")+" · ":"")+
@@ -2269,6 +2366,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
       labThermalState(v.reagents,v.doses,v.temperatureC??22,v.meltFraction).label+" · ":"")+
       (editable?"Выбрать или переместить; перетащить на сосуд для переливания, на раковину для слива, вверх для возврата":"Посуда")}
     onPointerDown={e=>down(e,v)} onPointerMove={move} onPointerUp={finish}
+    onClick={e=>{if(e.detail===0){e.stopPropagation();setActiveDeviceId(null);onSelect?.(v.id);setVesselMenuId(current=>current===v.id?null:v.id)}}}
     onPointerCancel={e=>{e.stopPropagation();endContact();gesture.current=null;cancelVesselPreview();setPreview(null);
      setDropTarget(null);setDropFurniture(null);setDropDeviceId(null)}}
     onDragOver={e=>{if(editable)e.preventDefault()}}
@@ -2298,14 +2396,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    if(!v)return null;
    const composition=labVesselContents(v),quantity=labVesselQuantity(v);
    const vaporReading=labVesselPressure(v);
-   const producedGas=labReactionGasProgress(v.reactionAmounts,v.temperatureC??22);
+   const producedGas=labFollowUpGasProgress(v)??labReactionGasProgress(v.reactionAmounts,v.temperatureC??22);
    const gasPending=!producedGas&&!v.chemicalInventory&&!v.completedReaction&&
     !!v.doses&&labObservation(v).caseData?.observation==="gas";
    const boilingEstimate=labIdealBoilingC(v);
    const inventory=v.chemicalInventory?
-    simulateLabInventory({...v,volumeMl:quantity.volumeMl}):
+    simulateLabInventory({...v,presentOnly:!!v.pendingInventoryReaction,volumeMl:quantity.volumeMl}):
     v.doses&&!v.filteredResidue&&!v.filteredSolution?
-    simulateLabInventory(v):undefined;
+    simulateLabInventory({...v,presentOnly:gasPending}):undefined;
    const realCrystals=labVisibleBinarySaltSolid(v,v.binarySaltPhase,v.temperatureC??22);
    const crystallineSalt=realCrystals&&realCrystals.solidMol>1e-12?
     [realCrystals.formula,realCrystals.solidMol] as const:
@@ -2332,10 +2430,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     <section role="dialog" aria-modal="true" aria-label="Полный состав сосуда"
      style={{width:"min(520px,90%)",maxHeight:"85%",overflowY:"auto",background:"#f7fffc",color:"#183c37",borderRadius:16,padding:20,boxShadow:"0 12px 45px #102b2855"}}>
      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
-      <strong>Содержимое: {names[v.kind]}</strong>
+      <strong>Содержимое: {v.gasCollector?"Газосборник":names[v.kind]}</strong>
       <button type="button" onClick={()=>setCompositionId(null)} aria-label="Закрыть состав">✕</button>
      </div>
      <p>Жидкость: {formatted(composition.solutionMl)} мл из {formatted(quantity.capacityMl)} мл. Добавлено твёрдых веществ: {formatted(quantity.massG)} г. Температура: {formatted(v.temperatureC??22)} °C.</p>
+     {labGasStoredMl(v)>0&&<div className="lektrus-lab-gas-readout"><strong>Доступный для переноса газ</strong>
+      {Object.entries(labGasStoredSamples(v)).map(([id,ml])=><p key={id}>{id}: {formatted(ml)} мл (25 °C, 1 атм, учебная модель)</p>)}
+     </div>}
      {composition.solutionMl>0&&<p title={measuredPH?.note}><strong>{measuredPH?.label??"pH не определён"}</strong></p>}
      {labKnownHeatCapacityJPerK(v.kind,v.doses)!==undefined&&
       <p>Расчётная теплоёмкость содержимого и посуды:
@@ -2354,12 +2455,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
         " · Кристаллизовалось "+crystallineSalt[0]+": "+
         formatted(crystallineSalt[1]*(labMolarMass(crystallineSalt[0])??0))+" г."}
       </p>}
-     {quantity.solidVolumeMl>1e-8&&<p>
-      Объём твёрдой фазы по справочной плотности:
-      {" "+formatted(quantity.solidVolumeMl)} мл.
+     {(quantity.solidVolumeMl>1e-8||quantity.gasVolumeMl>1e-8)&&<p>
+      {quantity.solidVolumeMl>1e-8&&<>Объём твёрдой фазы по справочной плотности:
+      {" "+formatted(quantity.solidVolumeMl)} мл. </>}
+      {quantity.gasVolumeMl>1e-8&&<>Учтённая газовая проба: {formatted(quantity.gasVolumeMl)} мл. </>}
       {quantity.solidVolumeComplete?
-       " Всего занято в сосуде: "+formatted(quantity.occupiedMl)+" мл.":
-       " Для части твёрдых веществ объём не рассчитан."}
+       "Всего учтено: "+formatted(quantity.occupiedMl+quantity.gasVolumeMl)+" мл.":
+       "Для части твёрдых веществ объём не рассчитан."}
       {" "}Свободный объём по известным фазам: {formatted(quantity.availableMl)} мл.
      </p>}
      <p>Горлышко: {v.stoppered?"закрыто пробкой":"открыто"}.
@@ -2372,10 +2474,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
       <p>Сейчас образовалось {formatted(producedGas.totalMol*1000)} ммоль
        {" · "}объём при температуре сосуда и 1 атм:
        {" "+formatted(producedGas.volumeMl)} мл.
-       {v.stoppered?" Газ удерживается в закрытой колбе.":" Газ выходит в окружающую среду."}
+       {v.stoppered?" Газ удерживается в закрытой колбе.":v.gasCollectionTargetId?" Часть газа поступает в подключённый приёмник.":" Газ выходит в окружающую среду."}
       </p>
       {Object.entries(producedGas.producedMol).map(([formula,mol])=>
        <p key={formula}>{formula}: {formatted(mol*1000)} ммоль.</p>)}
+      {v.gasCollectedMol&&<p>Всего собрано по газоотводу: {formatted(Object.values(v.gasCollectedMol).reduce((n,m)=>n+m,0)*24465)} мл при 25 °C и 1 атм.</p>}
       {!v.reactionAmounts?.complete&&
        <small>Мгновенная скорость газа и пузырьки зависят от рассчитанного прогресса реакции. Скорость химической реакции остаётся учебной аппроксимацией.</small>}
      </div>}
@@ -2399,9 +2502,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
        <li key={id}>{id}: {formatted(ml)} мл</li>)}</ul>
      </>}
      {v.chemicalInventory&&v.filteredSolution&&
-      <p>Фильтрат: {formatted(v.filteredSolution.volumeMl??quantity.volumeMl)} мл.
-       Количество каждого растворённого вещества сохранено после отделения осадка и
-       используется в последующих реакциях.</p>}
+      <p>{v.filteredSolution.sourceEquation?"Фильтрат":"Учтённый раствор"}: {formatted(v.filteredSolution.volumeMl??quantity.volumeMl)} мл.
+       {v.filteredSolution.sourceEquation?" Количество каждого вещества сохранено после отделения осадка.":
+        " Дозы учитываются по количеству вещества; растворимость и объём водного носителя моделируются приближённо."}
+       {" Состав используется в последующих реакциях."}</p>}
      <details className="lektrus-lab-property-inspector">
       <summary>Физико-химические свойства реагентов и продуктов ({formulasInVessel.length})</summary>
       <small>Значения относятся только к указанному чистому веществу и
@@ -2965,9 +3069,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
            const requested=Number(measuredMl);
            const configured=selected.kind==="pipette"?
             setLabPipetteTarget(bench,selected.id,requested):bench;
-           const next=from&&to?transferLabMeasuredLiquid(configured,from,to,requested):bench;
-           if(next!==bench){onChange?.(next);setNotice(action+" "+measuredMl+" мл")}
-           else setNotice("Не удалось отмерить: проверьте объём и сосуд");
+           if(frozenTransfer(bench.vessels.find(v=>v.id===from),bench.vessels.find(v=>v.id===to))){setNotice(frozenTransferNotice);return;}
+           const next=from&&to?transferLabMeasuredLiquid(configured,from,to,requested):configured;
+           if(next!==configured){onChange?.(next);setNotice(action+" "+measuredMl+" мл")}
+           else{if(configured!==bench)onChange?.(configured);setNotice("Не удалось отмерить: проверьте объём и сосуд");}
           }}>{action}</button>)}
         </>
        </section>}

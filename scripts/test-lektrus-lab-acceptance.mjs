@@ -33,7 +33,7 @@ const dose=(value=10,concentrationM=.1)=>({unit:"ml",value,concentrationM});
 const high=()=>{
  const bench=lab.defaultLabBench();
  return {...bench,simulationPaused:false,
-  settings:{...bench.settings,realism:"high"}};
+  settings:{...bench.settings,realism:"high",evaporationEnabled:true}};
 };
 const results=[];
 function check(id,name,fn){
@@ -74,6 +74,7 @@ check("LAB-01","Каталог и сбалансированные школьн�
    term=>stoich.labMolarMass(term.formula)>0),row.equation);
  }
  assert.equal(lab.labBenchSettings(lab.defaultLabBench()).realism,"low");
+ assert.equal(lab.labBenchSettings(lab.defaultLabBench()).evaporationEnabled,false);
  assert.equal(lab.defaultLabBench().simulationPaused,true,
   "Every new school experiment must start on pause");
  assert.equal(lab.LAB_MODES.length,5);

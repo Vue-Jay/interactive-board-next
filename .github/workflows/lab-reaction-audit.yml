@@ -24,8 +24,10 @@ jobs:
         run: node scripts/test-lektrus-lab-reaction-audit.mjs
       - name: Mix every distinct pair of catalogue substances at two dose levels
         run: node scripts/test-lektrus-lab-pair-matrix.mjs > lab-pair-matrix.json
+      - name: Audit thermal mixtures, gas phases and cooling interruptions
+        run: node scripts/test-lektrus-lab-thermal-mixtures.mjs
       - name: Standalone laboratory visual regression in Chrome
-        run: LAB_QA_SCREENSHOT=lab-visual-qa.png node scripts/test-lektrus-lab-visual-browser.mjs
+        run: LAB_QA_SCREENSHOT=lab-visual-qa.png LAB_QA_GAS_SCREENSHOT=lab-gas-qa.png node scripts/test-lektrus-lab-visual-browser.mjs
       - name: Verify TypeScript and production bundle
         run: npm run build
       - name: Test quantitative gas collection and sample transfer
@@ -39,5 +41,6 @@ jobs:
             reaction-audit-report.json
             lab-pair-matrix.json
             lab-visual-qa.png
+            lab-gas-qa.png
           if-no-files-found: warn
           retention-days: 14

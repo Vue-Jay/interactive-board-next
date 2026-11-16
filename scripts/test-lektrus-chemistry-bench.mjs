@@ -44,6 +44,7 @@ const dissolution=load("src/lektrusLabDissolution.ts",key=>{
  assert.equal(key,"./lektrusLabStoichiometry");return chem;
 });
 const vapor=load("src/lektrusLabEvaporation.ts",key=>{
+ if(key==="./lektrusLabStoichiometry")return chem;
  assert.equal(key,"./lektrusLabMaterialConstants");return constants;
 });
 const network=load("src/lektrusLabReactionNetwork.ts",key=>{
@@ -68,14 +69,17 @@ const materialRegistry=load("src/lektrusLabPropertyRegistry.ts",key=>{
 const waterIonization=load("src/lektrusLabWaterIonization.ts");
 const acidBase=load("src/lektrusLabPH.ts",key=>{
  if(key==="./lektrusLabWaterIonization")return waterIonization;
- if(key==="./lektrusReactionDatabase")return reaction;
+ if(key==="./lektrusLabStoichiometry")return chem;
+ if(key==="./lektrusLabCatalog")return catalog;
  assert.equal(key,"./lektrusLabReactionNetwork");return network;
 });
 const freezing=load("src/lektrusLabFreezing.ts",key=>{
  if(key==="./lektrusLabStoichiometry")return chem;
  assert.equal(key,"./lektrusLabMaterialConstants");return constants;
 });
+const benchPalette=load("src/lektrusLabAppearance.ts",key=>{assert.equal(key,"./lektrusReactionDatabase");return reaction;});
 const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
+ if(key==="./lektrusLabAppearance")return benchPalette;
  if(key==="./lektrusLabTitration")return titration;
  if(key==="./lektrusLabFreezing")return freezing;
  if(key==="./lektrusLabLayout")return layout;
@@ -149,7 +153,7 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
 const detailedBench=()=>{
  const bench=lab.defaultLabBench();
  return {...bench,simulationPaused:false,
-  settings:{...bench.settings,realism:"high"}};
+  settings:{...bench.settings,realism:"high",evaporationEnabled:true}};
 };
 assert.equal(lab.labBenchSettings(lab.defaultLabBench()).realism,"low",
  "New chemistry laboratories start in simple classroom mode");
@@ -454,6 +458,10 @@ assert.equal(palette.reagentAppearance("CuSO4").color,"#61a9d3");
 assert.equal(palette.reagentAppearance("FeCl3").color,"#e1b66d");
 assert.equal(palette.reagentAppearance("NaCl").phase,"solution");
 assert.equal(palette.reagentAppearance("CuO").phase,"solid");
+for(const id of ["C3H8O","CH3CHO","C2H4Br2"]){
+ assert.equal(palette.reagentAppearance(id,"dry").phase,"solution");
+ assert.match(palette.reagentAppearance(id,"dry").label,/жидкость/);
+}
 const pureWaterColor=palette.labSolutionTint([{formula:"H2O",mmol:1000}],20);
 const copperColor=palette.labSolutionTint([{formula:"H2O",mmol:1000},{formula:"CuSO4",mmol:1}],20);
 assert.notEqual(copperColor,pureWaterColor,"Dissolved copper colors water regardless of stock order");
@@ -1095,8 +1103,8 @@ const solidSample=lab.putLabReagent(detailedBench(),"v1","NaCl",{value:12,unit:"
 assert.equal(lab.labVesselQuantity(solidSample.vessels[0]).massG,12);
 assert.equal(lab.labVesselQuantity(solidSample.vessels[0]).volumeMl,0);
 assert.ok(lab.labVesselQuantity(solidSample.vessels[0]).solidFraction>0);
-// Exact pipette sampling from multicomponent solutions is atomic. Rounding
-// cannot create a negative aliquot or list a component that did not transfer.
+// A graduated pipette measures the total volume; each constituent is a
+// proportional share, even if smaller than its 0.01 ml graduation.
 let diluteSample=detailedBench();
 for(const id of ["NaCl","KCl","NaNO3"])
  diluteSample=lab.putLabReagent(diluteSample,"v1",id,{value:10,unit:"ml"});
@@ -1106,8 +1114,12 @@ const sampleBefore=lab.labVesselQuantity(diluteSample.vessels.find(v=>v.id==="v1
 diluteSample=lab.transferLabMeasuredLiquid(diluteSample,"v1",samplePipette,.01);
 const sampled=diluteSample.vessels.find(v=>v.id===samplePipette);
 assert.equal(lab.labVesselQuantity(sampled).volumeMl,.01);
-assert.equal(sampled.reagents.length,1,
- "A trace rounded to zero must not materialize as an extra solute");
+assert.equal(sampled.reagents.length,3,
+ "Every dissolved component of a homogeneous sample must be transferred");
+for(const id of sampled.reagents){
+ assert.ok(Math.abs(sampled.doses[id].value-.01/3)<1e-12);
+ assert.ok(Math.abs(sampled.doses[id].value+diluteSample.vessels[0].doses[id].value-10)<1e-12);
+}
 assert.ok(Object.values(sampled.doses).every(d=>d.value>0));
 assert.equal(lab.labVesselQuantity(diluteSample.vessels.find(v=>v.id==="v1")).volumeMl,
  sampleBefore.volumeMl-.01);
@@ -1301,10 +1313,19 @@ onFoot=lab.putLabReagent(onFoot,onFootBurette,"HCl",{value:5,unit:"ml"});
 assert.equal(lab.setLabBuretteValve(onFoot,onFootBurette,true,"v1",.05)
  .vessels.find(v=>v.id===onFootBurette).buretteOpen,true);
 onFoot=lab.setLabBuretteValve({...onFoot,simulationAtMs:0},onFootBurette,true,"v1",.05);
+// First measure the valve flow without evaporating water; the real open
+// vessel case separately checks that continuous dosing conserves acid.
+let evaporatingDrip=onFoot;
+const initialAcid=chem.labDoseMoles("HCl",evaporatingDrip.vessels.find(v=>v.id===onFootBurette).doses.HCl);
+for(let i=1;i<=10;i++)evaporatingDrip=lab.advanceLabSimulation(evaporatingDrip,i*500);
+const finalAcid=evaporatingDrip.vessels.reduce((n,v)=>n+(v.doses?.HCl?chem.labDoseMoles("HCl",v.doses.HCl):0),0);
+assert.ok(Math.abs(finalAcid-initialAcid)<1e-12,"Slow dripping and evaporation conserve actual acid moles");
+onFoot=lab.setLabBenchSettings(onFoot,{evaporationEnabled:false});
 for(let i=1;i<=10;i++)onFoot=lab.advanceLabSimulation(onFoot,i*500);
-assert.equal(onFoot.vessels.find(v=>v.id==="v1").doses?.HCl?.value,.25,
+assert.ok(Math.abs(onFoot.vessels.find(v=>v.id==="v1").doses?.HCl?.value-.25)<1e-9,
  "Ten half-second slow-drip ticks must deliver exactly 0.25 ml");
 onFoot=lab.setLabBuretteValve(onFoot,onFootBurette,false);
+onFoot=lab.setLabBenchSettings(onFoot,{evaporationEnabled:true});
 const atCloseDose=onFoot.vessels.find(v=>v.id==="v1").doses.HCl;
 const atCloseMoles=chem.labDoseMoles("HCl",atCloseDose);
 onFoot=lab.advanceLabSimulation(onFoot,6000);
@@ -1396,6 +1417,15 @@ const nextDrop=accurateTitration.vessels.find(v=>v.id==="v1").reactionAmounts;
 assert.ok(Math.abs(nextDrop.productsMol.NaCl-.0003)<1e-12,
  "The newly added 2 ml must grow the product total from 0.1 to 0.3 mmol");
 assert.ok(Math.abs(nextDrop.remainingMol.HCl-.0007)<1e-12);
+// Evaporation or a proportional transfer can leave fractions of a graduation
+// in the burette. The final drop must transfer the actual amount, not round
+// it into or out of existence.
+const fractionalTitration={...accurateTitration,vessels:accurateTitration.vessels.map(v=>
+ v.id===titrationBurette?{...v,doses:{NaOH:{...v.doses.NaOH,value:.004}}}:v)};
+const finalDrop=lab.dripLabVessel(fractionalTitration,titrationBurette,"v1",.1);
+assert.equal(finalDrop.vessels.find(v=>v.id===titrationBurette).doses,undefined);
+assert.ok(Math.abs(finalDrop.titration.addedMl-3.004)<1e-12,"The last drop must preserve the real fractional amount");
+assert.ok(Math.abs(finalDrop.vessels.find(v=>v.id==="v1").reactionAmounts.productsMol.NaCl-.0003004)<1e-12);
 const editorFixed=read("src/LektrusChemistryBenchEditor.tsx");
 assert.match(editorFixed,/setStage/);
 assert.match(editorFixed,/zoom:stage\.scale/,"Fullscreen must use layout zoom to avoid Android GPU repaint artifacts");
@@ -1559,7 +1589,7 @@ assert.match(polishedLabSource,/className=\{"lektrus-lab-board-write-toggle"/);
 assert.match(polishedLabSource,/pourLabIntoFilter\(bench,g\.id,filter\.d\.id\)/);
 assert.match(polishedLabSource,/d\.kind==="filter"/,
  "The real filter must be recognized as an interactive tabletop appliance");
-assert.match(polishedLabSource,/setNotice\("Перетащите сосуд с готовым осадком непосредственно на фильтр"\)/,
+assert.match(polishedLabSource,/setNotice\("Перетащите сосуд с осадком или взвесью непосредственно на фильтр"\)/,
  "The device asks for direct pouring, never an extra selection dialog");
 assert.ok(lab.devicesForLabMode(detailedBench()).some(v=>v.id==="filter"));
 
@@ -2023,6 +2053,16 @@ const parseLab=bench=>docModel.parseDocument(JSON.stringify({...savedDocument,
  items:[{...persistedItem,scienceLabBench:bench},savedDocument.items[1]]}));
 const reopened=parseLab(persistedLab);
 assert.equal(reopened.items.length,2,"Opening a hot laboratory must preserve other board items");
+// Gas phase must survive the board serialization even when the catalogue
+// sells the same formula as a prepared liquid stock.
+let savedGas=lab.attachLabGasCollector(lab.defaultLabBench(),"v1");
+savedGas=lab.putLabReagent(savedGas,"v2","HCl",{unit:"ml",value:8.75,phase:"gas"});
+const reopenedGas=parseLab(savedGas).items[0].scienceLabBench;
+assert.equal(reopenedGas.vessels[1].gasCollector,true);
+assert.equal(reopenedGas.vessels[1].doses.HCl.phase,"gas");
+assert.equal(lab.labVesselQuantity(reopenedGas.vessels[1]).volumeMl,0);
+assert.equal(lab.labGasStoredMl(reopenedGas.vessels[1]),8.75);
+assert.equal(reopenedGas.vessels[0].gasCollectionTargetId,"v2");
 const deselectedBeforeSave=lab.selectLabVessel(persistedLab,"");
 assert.equal(deselectedBeforeSave.selectedId,"",
  "Clicking the bare worktop may leave no vessel selected");
@@ -2854,6 +2894,14 @@ assert.equal(liquidTransfer.vessels.find(v=>v.id==="v1").indicatorDrops,undefine
 const idealAcid={reagents:["HCl"],environment:"aqueous",doses:{
  HCl:{value:20,unit:"ml",concentrationM:.1}}};
 assert.equal(acidBase.labVesselPH(idealAcid).pH,1);
+for(const id of catalog.LAB_NEAT_STOCK){
+ if(id==="H2O")continue;
+ const neat={reagents:[id],environment:"aqueous",doses:{[id]:{value:10,unit:"ml"}}};
+ assert.equal(acidBase.labVesselPH(neat),null,id+" cannot have an aqueous pH when neat");
+ assert.equal(acidBase.labVesselPH({...neat,reagents:[id,"H2O"],
+  doses:{...neat.doses,H2O:{value:10,unit:"ml"}}}),null,
+  id+" mixed solvent needs its own validated pH model");
+}
 const dilution={reagents:["HCl","H2O"],environment:"aqueous",doses:{
  HCl:{value:20,unit:"ml",concentrationM:.1},H2O:{value:20,unit:"ml"}}};
 assert.ok(Math.abs(acidBase.labVesselPH(dilution).pH-1.30)<.02);
@@ -3275,7 +3323,7 @@ const noHeaterAlcohol=vapor.labEvaporate({kind:"beaker",
  doses:{C2H5OH:{value:15,unit:"ml"}}},10,25,180,0);
 assert.equal(coolAlcohol.evaporatedMl,noHeaterAlcohol.evaporatedMl,
  "Heat cannot be used for latent boiling before the boiling point");
-console.log("Evaporation: all six reviewed pure-liquid latent heats obey the shared power budget");
+console.log("Evaporation: all reviewed pure-liquid latent heats obey the shared power budget");
 
 
 /* Kinetic phase regression: reference saturation controls only the target.

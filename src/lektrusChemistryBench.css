@@ -3709,6 +3709,10 @@
  width:44px;height:5px;display:block;border-radius:4px;
  border:1px solid #68817b}
 .lektrus-lab-bench .lektrus-lab-filter-residue small{font-size:9px}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-filter :is(.lektrus-lab-filter-recover,.lektrus-lab-filter-discard){
+ width:24%!important;height:23%!important;top:40%!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-filter .lektrus-lab-filter-recover{left:35%!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-filter .lektrus-lab-filter-discard{left:65%!important}
 .lektrus-lab-bench .lektrus-lab-placed-device.is-filter.is-drop-device{
  filter:drop-shadow(0 0 8px #45bb8c)}
 

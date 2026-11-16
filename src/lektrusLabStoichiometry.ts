@@ -2,8 +2,24 @@
  * Only balanced equations and measured stock (g or mol/L) are supported.
  * The 4-second animation is instructional, NOT a kinetic-rate prediction. */
 import type {LabDose} from "./lektrusChemistryBenchModel";
-import {substances,type ReactionCase} from "./lektrusReactionDatabase";
+import {substances,reviewedReactionCases,type ReactionCase} from "./lektrusReactionDatabase";
 const substancesByFormula=(formula:string)=>substances.find(v=>v.id===formula);
+const thermalEquations=new Set(reviewedReactionCases.filter(row=>row.environment==="heated"||row.environment==="ignited").map(row=>row.equation));
+const permanentGasFormulas=new Set(substances.filter(s=>s.kind==="газ").map(s=>s.id));
+// These reviewed thermal products leave the hot reaction as vapor. The
+// cabinet still stocks HCl/HCHO in water and CH3CHO as a measured liquid:
+// do not globally change the phase of those reagent bottles.
+// NIST SRD 69: acetaldehyde (C75070), formaldehyde (C50000).
+const thermalVaporProducts=new Set(["HCl","CH3CHO","HCHO"]);
+// Older equation records omit ↑ on some combustion/redox gases. Preserve
+// their saved equation identity but never classify CO2, SO2, or N2 as powder.
+export function labGasProductFormulas(equation:string):Set<string>{
+ const thermal=thermalEquations.has(equation);
+ return new Set((equation.split("→")[1]??"").split(/\s+\+\s+/).flatMap(term=>{
+  const formula=term.replace(/^\s*\d+\s*/,"").replace(/[↑↓]/g,"").trim();
+  return term.includes("↑")||thermal&&(permanentGasFormulas.has(formula)||thermalVaporProducts.has(formula))?[formula]:[];
+ }));
+}
 
 const ATOMIC_MASS:Record<string,number>={
  H:1.008,C:12.011,N:14.007,O:15.999,Na:22.989769,K:39.0983,
@@ -106,9 +122,17 @@ const NEAT_DENSITY_G_ML:Record<string,number>={
  // Pure liquid densities match calorimetry and the Antoine evaporation
  // reference at ~25 °C. A prepared 0.1 M stock uses molarity INSTEAD.
  // NIST / CRC values; Br2: bromine engineering handbook, CH3CHO: PubChem.
- H2O:.997,C2H5OH:.789,CH3OH:.792,C3H8O:.785,Br2:3.1055,CH3CHO:.7846
+ // 1,2-dibromoethane: ATSDR toxicological profile, Table 4-2 (25°C).
+ H2O:.997,C2H5OH:.789,CH3OH:.792,C3H8O:.785,Br2:3.1055,CH3CHO:.7846,
+ C2H4Br2:2.172
 };
 const REFERENCE_GAS_MOLAR_VOLUME_ML=24465;
+export function labIsGasDose(formula:string,dose?:LabDose):boolean{
+ return dose?dose.unit==="ml"&&dose.concentrationM===undefined&&(dose.phase==="gas"||permanentGasFormulas.has(formula)):permanentGasFormulas.has(formula);
+}
+export function labGasDose(formula:string,value:number):LabDose{
+ return {unit:"ml",value,...(permanentGasFormulas.has(formula)?{}:{phase:"gas"})};
+}
 export function labDoseMoles(formula:string,dose:LabDose):number|undefined{
  if(!Number.isFinite(dose.value)||dose.value<=0)return undefined;
  if(dose.unit==="ml"){
@@ -116,7 +140,7 @@ export function labDoseMoles(formula:string,dose:LabDose):number|undefined{
    return Number.isFinite(dose.concentrationM)&&dose.concentrationM>0?
     dose.value*dose.concentrationM/1000:undefined;
   const substance=substancesByFormula(formula);
-  if(substance?.kind==="газ")
+  if(labIsGasDose(formula,dose))
    return dose.value/REFERENCE_GAS_MOLAR_VOLUME_ML;
   const density=NEAT_DENSITY_G_ML[formula];
   const mass=density!==undefined?labMolarMass(formula):undefined;

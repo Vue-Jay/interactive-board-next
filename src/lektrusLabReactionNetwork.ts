@@ -3,10 +3,10 @@
  * never fabricated. Gases marked ↑ leave the open vessel; ↓ remain as solids.
  * Solutions are ideal at 25 °C for the limited Ksp cases listed below. */
 import {reviewedReactionCases,type ReactionEnvironment,type ReactionCase} from "./lektrusReactionDatabase";
-import {labDoseMoles,labMolarMass,parseBalancedLabEquation,type LabReactionAmounts} from "./lektrusLabStoichiometry";
+import {labDoseMoles,labIsGasDose,labMolarMass,parseBalancedLabEquation,labGasProductFormulas,type LabReactionAmounts} from "./lektrusLabStoichiometry";
 import type {LabDose} from "./lektrusChemistryBenchModel";
 import {labEquilibrateSingleSaltCrystals,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
-import {labSchoolMixedSaltEquilibrium} from "./lektrusLabDissolution";
+import {labSchoolMixedSaltEquilibrium,labMeasuredStockSaltEquilibrium} from "./lektrusLabDissolution";
 
 /** Persistent, strictly quantitative phase inventory. A transfer can carry
  * these molecule counts without pretending the filtrate is a fresh stock
@@ -80,6 +80,7 @@ export const LAB_DILUTE_WATER_SOLUBLE_STOCKS:ReadonlySet<string>=new Set([
 export const labIsTypicallyWaterSoluble=(formula:string):boolean=>
  LAB_DILUTE_WATER_SOLUBLE_STOCKS.has(formula);
 const EPS=1e-12;
+
 const knownRows=reviewedReactionCases.flatMap((row,index)=>{
  if(row.status!=="reaction")return [];
  const equation=parseBalancedLabEquation(row.equation);
@@ -316,7 +317,8 @@ export function simulateLabInventory(input:{
  reagents:readonly string[];doses?:Record<string,LabDose>;
  environment:ReactionEnvironment;temperatureC?:number;stoppered?:boolean;
  chemicalInventory?:LabChemicalSnapshot;
- filteredSolution?:{volumeMl?:number};
+ filteredSolution?:{sourceEquation?:string;volumeMl?:number};
+ completedReaction?:unknown;uncertain?:boolean;filteredResidue?:unknown;
  /** Partial progress of a measured gas-generating reaction. */
  reactionAmounts?:Pick<LabReactionAmounts,"equation"|"productsMol"|"remainingMol">&
   Partial<LabReactionAmounts>;
@@ -326,18 +328,23 @@ export function simulateLabInventory(input:{
  mixedSaltPhase?:Record<string,number>;
  /** Measured total liquid volume, independent of solute molar amounts. */
  volumeMl?:number;
+ /** Optional single reviewed step for a running thermal experiment. */
+ onlyEquation?:string;
+ /** Inspect measured starting material without forecasting a reaction. */
+ presentOnly?:boolean;
 },maxSteps=48):LabInventory{
  const doses=input.doses??{};
  const volumeMl=input.volumeMl??((input.filteredSolution?.volumeMl??0)+
   Object.entries(doses).reduce((n,[id,d])=>
-   n+(d.unit==="ml"&&!["CO2","H2","O2","NH3","Cl2","NO2","SO2"].includes(id)?d.value:0),0));
+   n+(d.unit==="ml"&&!labIsGasDose(id,d)?d.value:0),0));
  // The molecular snapshot can be unchanged while the MEASURED carrier water
  // evaporates or is replenished. Key solubility/Ksp predictions by the actual
  // solvent volume, not only the chemical ledger and optional caller override.
  // Otherwise a cached unsaturated filtrate masks newly formed crystals.
  const key=JSON.stringify([input.reagents,input.doses,input.environment,input.temperatureC??22,!!input.stoppered,
   input.chemicalInventory,input.reactionAmounts,input.binarySaltPhase,
-  input.mixedSaltPhase,volumeMl,maxSteps]);
+  input.mixedSaltPhase,input.filteredSolution?.sourceEquation,input.filteredSolution?.volumeMl,
+  !!input.completedReaction,!!input.uncertain,!!input.filteredResidue,volumeMl,maxSteps,input.onlyEquation,input.presentOnly]);
  const cached=inventoryCache.get(key);
  if(cached)return cached;
  const inventory:LabInventory={speciesMol:{},solidMol:{},releasedGasMol:{},retainedGasMol:{},
@@ -369,7 +376,7 @@ export function simulateLabInventory(input:{
  }
  // Unknown quantities must not be treated as absent: suppress the entire
  // predictive stage rather than claiming a chemically complete result.
- if(inventory.unmeasured.length)return remember(key,inventory);
+ if(inventory.unmeasured.length||input.presentOnly)return remember(key,inventory);
  // A filtered and physically SEPARATED solution is not a fresh mixture of
  // the original molecular salts. Replaying its historical spectator stocks
  // can create imaginary precipitates via alternative, otherwise-valid
@@ -384,8 +391,32 @@ export function simulateLabInventory(input:{
   // conserved solute moles between liquid and crystals. The approximation
   // is limited to school salts with measured water-solubility curves;
   // unsupported mixed chemistry keeps its recorded phase untouched.
+  if(input.chemicalInventory.settled&&(!input.filteredSolution||input.filteredSolution.sourceEquation==="")){
+   const phaseInput={...input,filteredSolution:input.filteredSolution?
+    {...input.filteredSolution,sourceEquation:""}:undefined};
+   const stock=labMeasuredStockSaltEquilibrium(phaseInput,input.temperatureC??22);
+   if(stock){
+    const phase=input.binarySaltPhase;
+    const solid=stock.waterMl<=1e-9?stock.totalMol:phase?.formula===stock.formula&&Number.isFinite(phase.solidMol)?
+     Math.max(0,Math.min(stock.totalMol,phase.solidMol)):stock.equilibriumSolidMol;
+    if(solid>EPS)inventory.solidMol[stock.formula]=solid;
+    else delete inventory.solidMol[stock.formula];
+    return remember(key,inventory);
+   }
+   const mixed=labSchoolMixedSaltEquilibrium(phaseInput,input.temperatureC??22);
+   if(mixed){
+    for(const formula of mixed.formulas){
+     const current=input.mixedSaltPhase?.[formula];
+     const solid=Math.max(0,Math.min(mixed.totals[formula],
+      current!==undefined&&Number.isFinite(current)?current:mixed.solidMol[formula]??0));
+     if(solid>EPS)inventory.solidMol[formula]=solid;
+     else delete inventory.solidMol[formula];
+    }
+    return remember(key,inventory);
+   }
+  }
   if(input.chemicalInventory.settled&&input.filteredSolution&&
-    input.environment==="aqueous"){
+    (input.environment==="aqueous"||input.environment==="dry"&&volumeMl<=1e-9)){
    const dissolved=Object.entries(inventory.speciesMol).filter(([id,mol])=>
     id!=="H2O"&&mol>EPS);
    const known=dissolved.map(([id,mol])=>({
@@ -419,7 +450,7 @@ export function simulateLabInventory(input:{
   (input.environment!=="aqueous"||hasMeasuredLiquid)?
   knownRows.find(entry=>entry.row.equation===progress.equation&&
    entry.row.environment===input.environment&&
-   entry.row.observation==="gas"):undefined;
+   labGasProductFormulas(entry.row.equation).size>0):undefined;
  if(progressCase&&progress&&typeof progress.extentMol==="number"&&
   typeof progress.maxExtentMol==="number"&&Number.isFinite(progress.extentMol)&&
   Number.isFinite(progress.maxExtentMol)&&progress.extentMol>=0&&
@@ -436,15 +467,16 @@ export function simulateLabInventory(input:{
     if(solid>0)sum(inventory.solidMol,term.formula,-solid);
    }
    const rawProducts=(row.equation.split("→")[1]??"").split(/\s+\+\s+/);
+   const gases=labGasProductFormulas(row.equation);
    for(const term of equation.products){
     const gained=extentMol*term.coefficient;
     const marker=rawProducts.find(x=>x.replace(/^\s*\d+\s*/,"").
      replace(/[↓↑]/g,"").trim()===term.formula)??"";
-    if(marker.includes("↑"))sum(input.stoppered?
+    if(gases.has(term.formula))sum(input.stoppered?
      inventory.retainedGasMol:inventory.releasedGasMol,term.formula,gained);
     else{
      sum(inventory.speciesMol,term.formula,gained);
-     if(marker.includes("↓"))sum(inventory.solidMol,term.formula,gained);
+     if(marker.includes("↓")||row.environment!=="aqueous"&&term.formula!=="H2O")sum(inventory.solidMol,term.formula,gained);
     }
    }
    const heatKJ=row.enthalpyKJPerMol===undefined?undefined:
@@ -464,6 +496,7 @@ export function simulateLabInventory(input:{
    const {row,equation}=entry;
    if(used.has(row.equation+"|"+row.environment))continue;
    if(row.environment!==input.environment)continue;
+   if(input.onlyEquation&&row.equation!==input.onlyEquation)continue;
    // The standalone peroxide decomposition demonstration is an explicitly
    // accelerated classroom case, not a prediction that every arbitrary
    // room-temperature peroxide mixture instantly releases all its oxygen.
@@ -482,8 +515,8 @@ export function simulateLabInventory(input:{
    // verified heated/ignited dry reactions keep their own environment.
    if(row.environment==="aqueous"&&!hasMeasuredLiquid)continue;
    if((row.minTemperatureC??0)>(input.temperatureC??22))continue;
-   if(row.environment==="heated"&&(input.temperatureC??22)<90)continue;
-   if(row.environment==="ignited"&&(input.temperatureC??22)<135)continue;
+   if(row.environment==="heated"&&(input.temperatureC??22)<(row.minTemperatureC??90))continue;
+   if(row.environment==="ignited"&&(input.temperatureC??22)<(row.minTemperatureC??135))continue;
    if(!row.reactants.every(id=>available(inventory.speciesMol,id)>EPS))continue;
    const bound=Math.min(...equation.reactants.map(t=>
     available(inventory.speciesMol,t.formula)/t.coefficient));
@@ -508,11 +541,12 @@ export function simulateLabInventory(input:{
   }
   const rhs=row.equation.split("→")[1]??"";
   const rawProducts=rhs.split(/\s+\+\s+/);
+  const gases=labGasProductFormulas(row.equation);
   for(const term of equation.products){
    const gained=winningExtent*term.coefficient;
    const marker=rawProducts.find(s=>s.replace(/^\s*\d+\s*/,"").
     replace(/[↓↑]/g,"").trim()===term.formula)??"";
-   if(marker.includes("↑")){
+   if(gases.has(term.formula)){
     sum(input.stoppered?inventory.retainedGasMol:inventory.releasedGasMol,
      term.formula,gained);
    }else{
@@ -535,7 +569,7 @@ export function simulateLabInventory(input:{
  // No rule from these measured binary curves is imposed on mixed salts,
  // reaction mixtures, unspecified stock-solvent or unknown hydrates.
  const binary=inventory.steps.length===0&&input.environment==="aqueous"&&
-  !!doses.H2O&&doses.H2O.unit==="ml"&&doses.H2O.concentrationM===undefined;
+  !!doses.H2O&&doses.H2O.unit==="ml"&&!labIsGasDose("H2O",doses.H2O)&&doses.H2O.concentrationM===undefined;
  if(binary){
   const binaryFormula=labEquilibrateSingleSaltCrystals(inventory,
    input.temperatureC??22,true,labMolarMass);

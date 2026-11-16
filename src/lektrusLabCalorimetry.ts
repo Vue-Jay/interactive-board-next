@@ -65,6 +65,9 @@ export const LAB_CALORIMETRY_REFERENCE:Readonly<Record<string,SubstanceHeat>>={
  C3H8O:{specificJPerGK:2.604,densityGPerMl:.785,phase:"liquid"},
  Br2:{specificJPerGK:.473,densityGPerMl:3.1055,phase:"liquid"},
  CH3CHO:{specificJPerGK:1.38,densityGPerMl:.7846,phase:"liquid"},
+ // 1,2-dibromoethane: NIST liquid Cp 134.7 J/mol/K at 298.15 K.
+ // https://webbook.nist.gov/cgi/cbook.cgi?ID=C106934&Mask=2
+ C2H4Br2:{specificJPerGK:134.7/187.861,densityGPerMl:2.172,phase:"liquid"},
  // Room-temperature elemental-solid c_p, explicitly J/g/K, not J/kg/K.
  // Royal Society of Chemistry individually tabulated elements:
  // https://periodic-table.rsc.org/element/3/lithium
