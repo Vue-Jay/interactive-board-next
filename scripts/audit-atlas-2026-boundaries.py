@@ -5,6 +5,7 @@ Differences are review candidates, not automatic replacements of a worldview.
 Run in CI with shapely and pyproj. Never change the production data here.
 """
 import json
+import hashlib
 import math
 import pathlib
 import re
@@ -94,6 +95,112 @@ def describe(a, b):
             "intersectionOverUnion": round(intersection / union, 7)}
 
 
+def source_edition(meta):
+    stamp = meta.get("editingInfo", {}).get("dataLastEditDate") or meta.get("editingInfo", {}).get("lastEditDate")
+    assert stamp, "reference data edition is not available"
+    return datetime.fromtimestamp(stamp / 1000, timezone.utc).date().isoformat()
+
+
+def fetch_complete_reference(meta):
+    """Fetch the full dated source, not only the UN roster. No World Bank
+    administrative feature is promoted to independent state by this import."""
+    oid_field = meta.get("objectIdField") or next(f["name"] for f in meta["fields"] if f["type"] == "esriFieldTypeOID")
+    query = URL + "/query"
+    ids = request({"where": "1=1", "returnIdsOnly": "true", "f": "json"}, query)["objectIds"]
+    assert ids and len(ids) == len(set(ids)), "source object ID list is empty or duplicated"
+    features = []
+    ids = sorted(ids)
+    for start in range(0, len(ids), 10):
+        batch = ids[start:start + 10]
+        response = request({"objectIds": ",".join(map(str, batch)), "outFields": f"{oid_field},ISO_A3,NAM_0,WB_STATUS",
+                            "returnGeometry": "true", "outSR": "4326", "f": "geojson"}, query)
+        assert response.get("type") == "FeatureCollection"
+        returned = [f.get("properties", {}).get(oid_field, f.get("id")) for f in response["features"]]
+        assert set(map(int, returned)) == set(batch) and len(returned) == len(batch), "incomplete reference batch"
+        features.extend(sorted(response["features"], key=lambda f: int(f.get("properties", {}).get(oid_field, f.get("id")))))
+    assert len(features) == len(ids)
+    assert source_edition(request({"f": "json"})) == source_edition(meta), "source changed during download"
+    return features
+
+
+def source_snapshot(reference, edition):
+    """A real date-specific candidate asset; keep source statuses and raw
+    polygons. No inference of sovereign ownership or intra-year history."""
+    missing_geometry = 0
+    for f in reference:
+        assert f.get("type") == "Feature" and isinstance(f.get("properties"), dict)
+        if not f.get("geometry"):
+            missing_geometry += 1
+        else:
+            assert f["geometry"]["type"] in {"Polygon", "MultiPolygon"}
+    return {"type": "FeatureCollection", "year": 2026, "edition": edition,
+            "source": URL, "sourceLicense": "CC BY 4.0", "reviewStatus": "candidate-only",
+            "notice": "World Bank administrative polygons, not certified sovereignty or exact legal boundaries; source edition is not a year-end state.",
+            "missingGeometry": missing_geometry, "features": reference}
+
+
+ENCLAVE_SOURCES = {
+    "VAT": "https://www.vaticanstate.va/en/state-and-government/general-informations/geography.html",
+    "SMR": "https://www.esteri.it/it/temi/aree_geografiche/europa/europa_meridionale_e_mediterranea/",
+}
+
+
+def normalize_known_enclaves(features, code_field="ISO_A3"):
+    """Remove only proven independent enclaves from Italy's candidate polygon.
+
+    The reference administrative layer actually overlaps both enclaves. Use
+    its exact enclave polygons as holes, retaining their own geometry. Never
+    generalize this operation to disputed territory or dependencies.
+    """
+    by_code = lambda code: [f for f in features if f["properties"].get(code_field) == code and f.get("geometry")]
+    holes = {code: unary_union([make_valid(shape(f["geometry"])) for f in by_code(code)]) for code in ENCLAVE_SOURCES}
+    assert all(not g.is_empty for g in holes.values()) and by_code("ITA"), "missing Italy or enclave geometry"
+    original_italy = unary_union([make_valid(shape(f["geometry"])) for f in by_code("ITA")])
+    report = []
+    for code, hole in holes.items():
+        before = transform(TRANSFORMER.transform, original_italy.intersection(hole)).area / 1e6
+        report.append({"host": "ITA", "enclave": code, "overlapBeforeKm2": round(before, 6),
+                       "source": ENCLAVE_SOURCES[code], "status": "candidate-topology-correction"})
+    union = unary_union(list(holes.values()))
+    corrected = []
+    for f in features:
+        if f["properties"].get(code_field) != "ITA" or not f.get("geometry"):
+            corrected.append(f)
+            continue
+        geometry = make_valid(shape(f["geometry"]))
+        if geometry.intersection(union).area > 0:
+            result = unary_union(polygon_parts(geometry.difference(union)))
+            assert not result.is_empty and result.is_valid
+            corrected.append({**f, "geometry": mapping(result), "properties": {**f["properties"], "LEKTRUS_CORRECTION": "remove-VAT-and-SMR-overlaps"}})
+        else:
+            corrected.append(f)
+    new_italy = unary_union([make_valid(shape(f["geometry"])) for f in corrected if f["properties"].get(code_field) == "ITA" and f.get("geometry")])
+    for row in report:
+        after = transform(TRANSFORMER.transform, new_italy.intersection(holes[row["enclave"]])).area / 1e6
+        assert after < 1e-8, "Italian candidate still overlaps independent enclave"
+        row["overlapAfterKm2"] = round(after, 6)
+    return corrected, report
+
+
+def classify_country_rows(rows):
+    """Numerical triage, not an automatic acceptance based on area/IoU."""
+    for row in rows:
+        comparison = row["russianViewVsReference"]
+        views = row["russianVsDefault2022"]
+        row["review"] = "pending-source-and-boundary-review"
+        row["flags"] = []
+        if comparison is None:
+            row["flags"].append("no-comparable-polygon")
+            continue
+        if comparison["intersectionOverUnion"] < 0.9:
+            row["flags"].append("large-spatial-disagreement")
+        if views and views["intersectionOverUnion"] < 0.999:
+            row["flags"].append("cartographic-viewpoint-difference")
+        if row["iso"] in {"VAT", "MCO", "SGP"}:
+            row["flags"].append("archived-geometry-not-suitable-for-precise-boundary")
+    return rows
+
+
 def main():
     folder, out = map(pathlib.Path, sys.argv[1:3])
     roster_text = (pathlib.Path(__file__).parent / "atlas-2026-capitals.mjs").read_text()
@@ -102,20 +209,19 @@ def main():
     dateline = Polygon([(179, 0), (-179, 0), (-179, 1), (179, 1), (179, 0)])
     assert abs(antimeridian_safe(dateline).area - 2) < 1e-9
     meta = request({"f": "json"})
-    stamp = meta.get("editingInfo", {}).get("dataLastEditDate") or meta.get("editingInfo", {}).get("lastEditDate")
-    assert stamp, "reference data edition is not available"
-    edition = datetime.fromtimestamp(stamp / 1000, timezone.utc).date().isoformat()
+    edition = source_edition(meta)
     assert edition.startswith("2026-"), f"reference must be dated 2026, got {edition}"
     # Fetch the actual polygons, not the ArcGIS tile imagery. Query batches to
     # avoid silent service transfer limits. Keep returned geometry precision.
-    reference = []
-    for start in range(0, len(roster), 10):
-        codes = roster[start:start+10]
-        where = "ISO_A3 IN (" + ",".join(f"'{c}'" for c in codes) + ")"
-        response = request({"where": where, "outFields": "ISO_A3,NAM_0,WB_STATUS", "returnGeometry": "true",
-                            "outSR": "4326", "f": "geojson"}, URL + "/query")
-        assert response.get("type") == "FeatureCollection"
-        reference.extend(response["features"])
+    reference = fetch_complete_reference(meta)
+    raw_snapshot = source_snapshot(reference, edition)
+    raw_bytes = json.dumps(raw_snapshot, ensure_ascii=False, separators=(",", ":")).encode()
+    out.with_name("world-2026-source.geojson").write_bytes(raw_bytes)
+    corrected_features, corrections = normalize_known_enclaves(reference)
+    snapshot = {**raw_snapshot, "features": corrected_features,
+                "sourceSHA256": hashlib.sha256(raw_bytes).hexdigest(), "corrections": corrections}
+    snapshot_bytes = json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")).encode()
+    out.with_name("world-2026-candidate.geojson").write_bytes(snapshot_bytes)
     rus = json.loads((folder / "ne_10m_admin_0_countries_rus.geojson").read_text())["features"]
     default = json.loads((folder / "ne_10m_admin_0_countries.geojson").read_text())["features"]
     rows = []
@@ -128,9 +234,21 @@ def main():
                      "russianViewVsReference": describe(current, ref),
                      "defaultViewVsReference": describe(neutral, ref),
                      "russianVsDefault2022": describe(current, neutral)})
+    # Crosswalk every archived atlas territory separately. Non-matching codes
+    # may mean a different cartographic convention; never silently discard them.
+    reference_codes = {f["properties"].get("ISO_A3") for f in reference}
+    baseline = [{"index": i, "code": f["properties"].get("ADM0_A3"), "name": f["properties"].get("NAME"),
+                 "type": f["properties"].get("TYPE"), "sovCode": f["properties"].get("SOV_A3"),
+                 "referenceCodePresent": {"SDS": "SSD", "PSX": "PSE"}.get(f["properties"].get("ADM0_A3"), f["properties"].get("ADM0_A3")) in reference_codes,
+                 "review": "candidate-only"} for i, f in enumerate(rus)]
     report = {"year": 2026, "source": URL, "edition": edition, "referenceLicense": "CC BY 4.0",
               "atlasEdition": "2022-06-02", "method": "EPSG:6933 area intersection; different coastline resolution and political conventions affect results",
-              "reviewState": "geometry candidates, not historical acceptance", "countries": rows}
+              "reviewState": "geometry candidates, not historical acceptance", "countries": classify_country_rows(rows),
+              "sourceSnapshot": {"file": "world-2026-candidate.geojson", "sha256": hashlib.sha256(snapshot_bytes).hexdigest(),
+                                 "rawFile": "world-2026-source.geojson", "rawSHA256": hashlib.sha256(raw_bytes).hexdigest(),
+                                 "features": len(reference), "distinctSourceCodes": len(reference_codes), "missingGeometry": raw_snapshot["missingGeometry"]},
+              "candidateCorrections": corrections,
+              "archivedTerritoryCoverage": baseline}
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2))
     # Preserve real reference geometry for manual review, including the
     # neighbour context for landlocked microstates. Do not import names or

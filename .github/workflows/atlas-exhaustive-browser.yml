@@ -11,6 +11,7 @@ on:
       - 'scripts/test-lektrus-atlas-every-country-browser.mjs'
       - 'scripts/audit-lektrus-atlas-annual.mjs'
       - 'scripts/audit-atlas-2026-boundaries.py'
+      - 'scripts/test-atlas-2026-boundaries.py'
       - 'scripts/atlas-2026-capitals.mjs'
       - '.github/workflows/atlas-exhaustive-browser.yml'
   workflow_dispatch:
@@ -35,7 +36,9 @@ jobs:
             curl -fsSL --retry 3 --max-time 120 "$NATURAL/$file" -o "/tmp/lektrus-modern-audit/$file"
           done
           python -m pip install 'shapely==2.1.2' 'pyproj==3.7.2'
+          python scripts/test-atlas-2026-boundaries.py
           python scripts/audit-atlas-2026-boundaries.py /tmp/lektrus-modern-audit /tmp/lektrus-modern-audit/boundary-comparison.json
+          python scripts/test-atlas-2026-boundaries.py /tmp/lektrus-modern-audit/boundary-candidates.geojson
       - uses: actions/upload-artifact@v4
         with:
           name: lektrus-modern-boundary-comparison-2026
@@ -44,6 +47,13 @@ jobs:
         with:
           name: lektrus-modern-boundary-candidates-2026
           path: /tmp/lektrus-modern-audit/boundary-candidates.geojson
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lektrus-modern-full-candidate-2026
+          path: |
+            /tmp/lektrus-modern-audit/world-2026-source.geojson
+            /tmp/lektrus-modern-audit/world-2026-candidate.geojson
+          retention-days: 14
   every-country:
     runs-on: ubuntu-latest
     timeout-minutes: 60

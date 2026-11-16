@@ -327,6 +327,15 @@ export const hasAtlasName=(feature:GeoFeature)=>geoFeatureName(feature).length>0
 export function modernAtlasTerritoryUpdate(feature:GeoFeature):{note:string;url:string}|undefined{
  if(!["Polygon","MultiPolygon"].includes(feature.geometry?.type??""))return undefined;
  const code=String(feature.properties?.ADM0_A3??"");
+ if(code==="VAT")return {
+  note:"Территория Ватикана — 0,44 км² по данным государства. Контур Natural Earth 2022 г. является крайне условным (около 0,012 км² при сравнении в равновеликой проекции); непригоден для точного определения границы. Экстерриториальные объекты Святого Престола не следует считать территорией Ватикана.",
+  url:"https://www.vaticanstate.va/en/state-and-government/general-informations/geography.html"};
+ if(code==="MCO")return {
+  note:"Площадь суши Монако — 2,08 км² по справке ЕС за 2026 г. Архивный контур Natural Earth (около 18,84 км²) сильно преувеличивает размеры государства; необходима замена на согласованную геометрию границы с Францией и береговой линии.",
+  url:"https://data.consilium.europa.eu/doc/document/WK-3179-2026-INIT/en/pdf"};
+ if(code==="SGP")return {
+  note:"Площадь суши Сингапура в июне 2026 г. составляет 745,1 км² по кадастровым данным Singapore Land Authority. Намыв территорий изменяет береговую линию; архивная карта 2022 г. не подтверждает её современное положение.",
+  url:"https://data.gov.sg/datasets/d_d5472d7368d6547892138f779872bbff/view"};
  if(code==="KGZ"||code==="TJK")return {
   note:"13 марта 2025 г. Кыргызстан и Таджикистан подписали договор о государственной границе. 14 июля 2026 г. началась совместная установка первых пограничных столбов. Архивный контур Natural Earth 2022 г. не подтверждает новую договорную линию.",
   url:"https://www.gov.kg/index.php/ru/post/s/26456-kyrgyzstan-menen-tazikstandyn-mamlekettik-cek-arasyn-demarkaciyaloo-isterinin-alkagynda-algacky-cek-ara-mamycalaryn-ornotuu-bastaldy"};

@@ -5,7 +5,17 @@ import type {GeoFeature} from "./lektrusAtlasData";
 // The surface-area figure is a statistical value, not the area of our map.
 export const UN_STATISTICS_SOURCE="https://unstats.un.org/UNSDWebsite/publications/pocketbook/world-stats-pocketbook-2025.pdf";
 const rows="AFG=43844,652864|ALB=2772,28748|DZA=47435,2381741|AND=83,468|AGO=39040,1246700|ATG=94,442|ARG=45851,2796427|ARM=2952,29743|AUS=26974,7692024|AUT=9114,83878|AZE=10398,86600|BHS=403,13940|BHR=1643,778|BGD=175687,148460|BRB=283,431|BLR=8998,207600|BEL=11759,30528|BLZ=423,22965|BEN=14814,114763|BTN=797,38394|BOL=12582,1098581|BIH=3140,51209|BWA=2562,582000|BRA=212812,8515767|BRN=466,5765|BGR=6715,110372|BFA=24075,274200|BDI=14390,27834|CPV=527,4033|KHM=17848,181035|CMR=29879,475650|CAN=40127,9984670|CAF=5513,622984|TCD=21004,1284000|CHL=19860,756102|CHN=1416096,9600000|COL=53426,1141748|COM=883,2235|COG=6484,342000|COD=112832,2345410|CRI=5153,51100|CIV=32712,322462|HRV=3848,56594|CUB=10937,109884|CYP=1371,9251|CZE=10609,78871|DNK=6002,42938|DJI=1184,23200|DMA=66,750|DOM=11520,48671|ECU=18290,257217|EGY=118366,1002000|SLV=6366,21041|GNQ=1938,28052|ERI=3607,121144|EST=1344,45261|SWZ=1256,17363|ETH=135472,1104300|FJI=933,18272|FIN=5623,336884|FRA=66651,551500|GAB=2593,267668|GMB=2822,11295|GEO=3807,69700|DEU=84075,357581|GHA=35064,238537|GRC=9939,131957|GRD=117,345|GTM=18688,108889|GIN=15100,245836|GNB=2250,36125|GUY=836,214969|HTI=11906,27750|HND=11006,112492|HUN=9632,93023|ISL=398,103000|IND=1463866,3287263|IDN=285721,1910931|IRN=92418,1630848|IRQ=47021,435052|IRL=5308,69825|ISR=9517,22072|ITA=59146,302068|JAM=2837,10990|JPN=123104,377930|JOR=11521,89318|KAZ=20844,2724902|KEN=57532,591958|KIR=136,726|PRK=26571,120538|KOR=51667,100401|KWT=5026,17818|KGZ=7295,199949|LAO=7873,236800|LVA=1854,64594|LBN=5849,10452|LSO=2363,30355|LBR=5731,111369|LBY=7459,1676198|LIE=40,160|LTU=2830,65286|LUX=680,2586|MDG=32741,587041|MWI=22216,117726|MYS=35978,330621|MDV=530,300|MLI=25199,1240192|MLT=545,315|MHL=36,181|MRT=5315,1030700|MUS=1268,1979|MEX=131947,1964375|FSM=114,702|MDA=2996,33847|MCO=38,2|MNG=3517,1564116|MNE=633,13812|MAR=38431,446550|MOZ=35632,799380|MMR=54851,676577|NAM=3093,825229|NRU=12,21|NPL=29618,147181|NLD=18347,41543|NZL=5252,268107|NIC=7008,130374|NER=27918,1267000|NGA=237528,923768|MKD=1814,25713|NOR=5623,323772|OMN=5495,309980|PAK=255220,796095|PLW=18,459|PAN=4571,75320|PNG=10763,462840|PRY=7013,406752|PER=34577,1285216|PHL=116787,300000|POL=38141,312679|PRT=10412,92226|QAT=3116,11627|ROU=18909,238391|RUS=143997,17098246|RWA=14569,26338|KNA=47,261|LCA=180,616|VCT=100,389|WSM=219,2842|SMR=34,61|STP=240,964|SAU=34566,2206714|SEN=18932,196712|SRB=6689,88444|SYC=133,457|SLE=8820,72300|SGP=5871,728|SVK=5475,49035|SVN=2117,20273|SLB=839,28896|SOM=19655,637657|ZAF=64747,1221037|SSD=12189,-|ESP=47890,506008|LKA=23230,65610|SDN=51662,-|SUR=640,163820|SWE=10657,438574|CHE=8967,41291|SYR=25620,185180|TJK=10787,141400|TZA=70546,947303|THA=71620,513140|TLS=1418,14919|TGO=9722,56785|TON=104,747|TTO=1511,5127|TUN=12349,163610|TUR=87685,783562|TKM=7619,488100|TUV=10,26|UGA=51385,241550|UKR=38980,603500|ARE=11346,71024|GBR=69551,242495|USA=347276,9833517|URY=3385,173626|UZB=37053,448969|VUT=335,12189|VEN=28517,929690|VNM=101598,331317|YEM=41774,527968|ZMB=21914,752612|ZWE=16951,390757|PSE=5590,6025|VAT=~0,-";
-export type ModernCountryStats={populationThousands:number|null;areaKm2:number|null};
+export type NationalAreaReference={areaKm2:number;label:string;url:string};
+export type ModernCountryStats={populationThousands:number|null;areaKm2:number|null;nationalArea?:NationalAreaReference};
+// More precise, explicitly attributed national figures. Preserve the original
+// UN statistical values and do not confuse reported areas with map geometry.
+export const nationalAreaReferences:Readonly<Record<string,NationalAreaReference>>={
+ VAT:{areaKm2:0.44,label:"Площадь государства (Ватикан)",url:"https://www.vaticanstate.va/en/state-and-government/general-informations/geography.html"},
+ MCO:{areaKm2:2.08,label:"Площадь суши (Европейская служба внешних связей, 2026)",url:"https://data.consilium.europa.eu/doc/document/WK-3179-2026-INIT/en/pdf"},
+ SGP:{areaKm2:745.1,label:"Площадь суши (Singapore Land Authority, июнь 2026)",url:"https://data.gov.sg/datasets/d_d5472d7368d6547892138f779872bbff/view"},
+ LIE:{areaKm2:160,label:"Площадь государства (земельный реестр Лихтенштейна)",url:"https://www.llv.li/en/national-administration/office-of-justice/land-register/background-information"},
+ SMR:{areaKm2:61.2,label:"Площадь государства (правительственный профиль Сан-Марино, 2023)",url:"https://www.gov.sm/pub1/GovSM/dam/jcr%3A42a8bce9-6303-446b-ad8e-8dbc3e74ff37/PROFILO%20SALUTE%202022_ultima%20versione_24_7_2023_DEFINITIVO.pdf"},
+};
 export const modernCountryStats:Readonly<Record<string,ModernCountryStats>>=Object.fromEntries(rows.split("|").map(row=>{
  const [code,values]=row.split("="),[population,area]=values.split(",");
  return [code,{populationThousands:population==="~0"?null:Number(population),areaKm2:area==="-"?null:Number(area)}];
@@ -13,12 +23,16 @@ export const modernCountryStats:Readonly<Record<string,ModernCountryStats>>=Obje
 export function countryStatistics(feature:GeoFeature):ModernCountryStats|undefined{
  if(!["Polygon","MultiPolygon"].includes(feature.geometry?.type??""))return undefined;
  const code=String(feature.properties?.ADM0_A3??"");
- return modernCountryStats[({SDS:"SSD",PSX:"PSE"} as Record<string,string>)[code]??code];
+ const iso=({SDS:"SSD",PSX:"PSE"} as Record<string,string>)[code]??code;
+ const stats=modernCountryStats[iso],nationalArea=nationalAreaReferences[iso];
+ return stats&&nationalArea?{...stats,nationalArea}:stats;
 }
 export function countryStatisticsFacts(stats:ModernCountryStats){
  const format=(n:number)=>n.toLocaleString("ru-RU");
- return [
+ const facts:{label:string;value:string;sourceUrl?:string}[]=[
   {label:"Население (оценка ООН, 2025 г.)",value:stats.populationThousands===null?"Менее 1 тыс.":format(stats.populationThousands)+" тыс. чел."},
   ...(stats.areaKm2===null?[]:[{label:"Площадь территории (справочник ООН, 2025)",value:format(stats.areaKm2)+" км²"}])
  ];
+ if(stats.nationalArea)facts.push({label:stats.nationalArea.label,value:format(stats.nationalArea.areaKm2)+" км²",sourceUrl:stats.nationalArea.url});
+ return facts;
 }

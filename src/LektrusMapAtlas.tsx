@@ -2038,7 +2038,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       {cityArea&&<a href={cityArea.url} target="_blank" rel="noopener noreferrer">Источник площади ↗</a>}
      </div>}
      {modernStats&&<div className="lektrus-atlas-study-card" data-atlas-verified-statistics="2025">
-      {countryStatisticsFacts(modernStats).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
+      {countryStatisticsFacts(modernStats).map(f=><p key={f.label}>{f.label}: {f.value}{f.sourceUrl&&<> · <a href={f.sourceUrl} target="_blank" rel="noopener noreferrer">Источник ↗</a></>}</p>)}
       <a href={UN_STATISTICS_SOURCE} target="_blank" rel="noopener noreferrer">Статистический справочник ООН ↗</a>
       <small>Оценка населения округлена; площадь и территориальный охват справочника могут отличаться от контура карты. Не данные на конец 2026 года.</small>
      </div>}
@@ -2457,7 +2457,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       {cityArea&&<a href={cityArea.url} target="_blank" rel="noopener noreferrer">Источник площади ↗</a>}
      </div>}
      {modernStats&&<div className="lektrus-atlas-study-card" data-atlas-verified-statistics="2025">
-      {countryStatisticsFacts(modernStats).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
+      {countryStatisticsFacts(modernStats).map(f=><p key={f.label}>{f.label}: {f.value}{f.sourceUrl&&<> · <a href={f.sourceUrl} target="_blank" rel="noopener noreferrer">Источник ↗</a></>}</p>)}
       <a href={UN_STATISTICS_SOURCE} target="_blank" rel="noopener noreferrer">Статистический справочник ООН ↗</a>
       <small>Оценка населения округлена; площадь и территориальный охват справочника могут отличаться от контура карты. Не данные на конец 2026 года.</small>
      </div>}
