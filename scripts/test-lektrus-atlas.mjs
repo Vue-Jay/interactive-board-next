@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import ts from "typescript";
+import {un2025CapitalReference,modernCapitalOverrides,normalizeCapital,capitalInsideCountry} from "./atlas-2026-capitals.mjs";
 const schoolAtlasSrc=fs.readFileSync(new URL("../src/lektrusSchoolAtlasMinerals.ts",import.meta.url),"utf8");
 const schoolAtlasExports={};
 new Function("exports",ts.transpileModule(schoolAtlasSrc,{compilerOptions:{
@@ -611,6 +612,38 @@ if(process.env.LEKTRUS_ATLAS_DATA_DIR){
   assert.ok(update?.note.includes(date)&&update.url.startsWith("https://"),`dated note missing for ${adm}`);
  }
  console.log("2026 overview: 193/193 UN member states and 2/2 observer states present, named and drawable. Geometry is the archived 2022 layer, not a certified 2026 border survey.");
+ const roster=[...unMembers,"PSE","VAT"];
+ assert.deepEqual(Object.keys(un2025CapitalReference).sort(),roster.slice().sort(),"independent capital roster must cover all 195 entries");
+ for(const scale of [110,50,10]){
+  const layer=JSON.parse(fs.readFileSync(`${process.env.LEKTRUS_ATLAS_DATA_DIR}/ne_${scale}m_populated_places.geojson`,"utf8"));
+  const points=places.applyVerifiedCapitalUpdates2026(layer).features;
+  let spatialChecks=0;
+  for(const iso of roster){
+   const adm={SSD:"SDS",PSE:"PSX"}[iso]??iso;
+   const country=modern.features.find(f=>f.properties?.ADM0_A3===adm);
+   const actual=places.capitalsForCountry(country,points);
+   const wanted=modernCapitalOverrides[iso]??[un2025CapitalReference[iso]];
+   const found=actual.map(p=>normalizeCapital(p.properties.NAME));
+   if(iso==="KIR"){
+    assert.equal(found.length,1);
+    assert.ok(wanted.map(normalizeCapital).includes(found[0]));
+   }else assert.deepEqual(found.sort(),wanted.map(normalizeCapital).sort(),`2026 capital, 1:${scale}m, ${iso}`);
+   for(const capital of actual){
+    assert.ok(places.russianPlaceName(capital),`${iso}: untranslated capital`);
+    assert.ok(capital.geometry.coordinates.every(Number.isFinite),`${iso}: invalid capital coordinates`);
+    assert.ok(capitalInsideCountry(capital.geometry.coordinates,country.geometry),`${iso}: capital outside its source country`);
+    spatialChecks++;
+   }
+   if(!wanted.length)assert.ok(places.modernCapitalContext(country)?.url.startsWith("https://"),`${iso}: missing source-backed capital context`);
+  }
+  assert.equal(spatialChecks,197);
+  console.log(`2026 capital crosswalk: ${roster.length}/${roster.length} states checked at 1:${scale}m, ${spatialChecks} capital points inside corresponding source polygons.`);
+ }
+ for(const adm of ["NRU","PSX","ISR","BOL","NLD","MYS","IDN","SDN","YEM"]){
+  const feature=modern.features.find(f=>f.properties.ADM0_A3===adm);
+  const context=places.modernCapitalContext(feature);
+  assert.ok(context?.text&&context.url.startsWith("https://"),`${adm}: capital context missing`);
+ }
  let featureCount=0,namedPairs=0,correctedCount=0,emptyPaths=0;
  for(const snapshot of historicalSnapshots.filter(s=>s.year!==2026).slice().reverse()){
   const actual=JSON.parse(fs.readFileSync(process.env.LEKTRUS_ATLAS_DATA_DIR+"/"+snapshot.file,"utf8"));

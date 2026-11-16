@@ -328,8 +328,8 @@ export function modernAtlasTerritoryUpdate(feature:GeoFeature):{note:string;url:
  if(!["Polygon","MultiPolygon"].includes(feature.geometry?.type??""))return undefined;
  const code=String(feature.properties?.ADM0_A3??"");
  if(code==="KGZ"||code==="TJK")return {
-  note:"13 марта 2025 г. Кыргызстан и Таджикистан подписали договор о государственной границе. Архивный контур Natural Earth 2022 г. не подтверждает новую договорную линию.",
-  url:"https://kyrgyzstan.un.org/en/290892-secretary-general-treaty-state-border-between-kyrgyz-republic-and-republic-tajikistan"};
+  note:"13 марта 2025 г. Кыргызстан и Таджикистан подписали договор о государственной границе. 14 июля 2026 г. началась совместная установка первых пограничных столбов. Архивный контур Natural Earth 2022 г. не подтверждает новую договорную линию.",
+  url:"https://www.gov.kg/index.php/ru/post/s/26456-kyrgyzstan-menen-tazikstandyn-mamlekettik-cek-arasyn-demarkaciyaloo-isterinin-alkagynda-algacky-cek-ara-mamycalaryn-ornotuu-bastaldy"};
  if(code==="IOT"||code==="MUS")return {
   note:"Архипелаг Чагос: Великобритания и Маврикий подписали соглашение о суверенитете 22 мая 2025 г. По ответу правительства Великобритании от 6 ноября 2026 г. соглашение ещё не реализовано; архивный контур не заменяет описание спорного статуса.",
   url:"https://questions-statements.parliament.uk/written-questions/detail/2026-10-19/35838"};

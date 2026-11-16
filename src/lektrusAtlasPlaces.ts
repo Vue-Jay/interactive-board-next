@@ -137,6 +137,28 @@ const JUBA_SOURCE="https://data.un.org/legacy/en/iso/ss.html";
 const ESWATINI_SOURCE="https://au.int/en/cities/lobambaroyal-and-legislative-mbabane-administrative";
 const KIRIBATI_SOURCE="https://www.dfat.gov.au/geo/heads-of-government/kiribati";
 export const NAURU_CAPITAL_NOTE={text:"У Науру нет официальной столицы. Органы правительства расположены в округе Ярен; его часто называют фактической столицей.",url:"https://www.dfat.gov.au/geo/heads-of-government/naoero"};
+// Political status of a capital and the actual seat of government are not
+// interchangeable. Keep these country-level facts even if the point layer
+// has no capital marker (Palestine/Nauru) or a disputed designation.
+const capitalContexts:Record<string,{text:string;url:string}>={
+ NR:NAURU_CAPITAL_NOTE,
+ PS:{text:"Восточный Иерусалим — заявленная столица Государства Палестина; административный центр — Рамалла. Статус Иерусалима остаётся предметом международного спора.",url:"https://www.un.org/unispal/wp-content/uploads/2021/12/WFPSUMSTRATPLAN_2018-22_191021.pdf"},
+ IL:{text:"Израиль считает Иерусалим своей столицей. Резолюция СБ ООН 478 (1980) не признаёт одностороннее изменение статуса города; Восточный Иерусалим заявлен как столица Государства Палестина.",url:"https://www.un.org/unispal/permanent-status-issues/"},
+ BO:{text:"Сукре — конституционная столица Боливии; Ла-Пас — место пребывания правительства.",url:"https://data.un.org/legacy/en/iso/bo.html"},
+ NL:{text:"Амстердам — столица Нидерландов, Гаага — место пребывания правительства и парламента.",url:"https://data.un.org/legacy/en/iso/nl.html"},
+ MY:{text:"Куала-Лумпур — официальная столица Малайзии, Путраджая — федеральный административный центр.",url:"https://www.kln.gov.my/web/fin_helsinki/post/federal-territory-day"},
+ ID:{text:"Джакарта указана как столица; перенос официальных функций в Нусантару требует отдельного президентского решения по закону № 3/2022. Строительство нового центра не равнозначно юридическому переносу столицы.",url:"https://ikn.go.id/storage/regulasi/law-number-3-2022-english.pdf"},
+ SD:{text:"Хартум — столица Судана. После временного переезда министерств в Порт-Судан в апреле 2023 года они вернулись в Хартум; этот факт отражён в отчёте ООН, опубликованном в 2026 году.",url:"https://sudan.un.org/sites/default/files/2026-07/2025%20Sudan%20ARR%20%2811%29.pdf"},
+ YE:{text:"Сана — столица Йемена. По сообщению ООН от 19 января 2026 года, её контролировали хуситы, а международно признанное правительство находилось в Адене.",url:"https://yemen.un.org/ar/node/308866"},
+};
+const capitalContextCodes:Record<string,string>={NRU:"NR",PSX:"PS",PSE:"PS",ISR:"IL",BOL:"BO",NLD:"NL",MYS:"MY",IDN:"ID",SDN:"SD",YEM:"YE"};
+export function modernCapitalContext(feature:GeoFeature){
+ if(!["Polygon","MultiPolygon"].includes(feature.geometry?.type??""))return undefined;
+ const p=feature.properties??{};
+ const iso=String(p.ISO_A2??"").toUpperCase();
+ const a3=String(p.ADM0_A3??p.ISO_A3??"").toUpperCase();
+ return capitalContexts[capitalContextCodes[a3]??iso];
+}
 export function applyVerifiedCapitalUpdates2026(collection:GeoCollection):GeoCollection{
  // Features are never mutated; the same source may be used on multiple maps.
  const hasBairiki=collection.features.some(f=>String(f.properties?.ISO_A2??f.properties?.iso_a2)==="KI"&&String(f.properties?.NAME??f.properties?.name)==="Bairiki");

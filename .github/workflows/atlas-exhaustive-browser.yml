@@ -7,11 +7,36 @@ on:
       - 'src/lektrusAtlas*.ts'
       - 'scripts/test-lektrus-atlas-every-country-browser.mjs'
       - 'scripts/audit-lektrus-atlas-annual.mjs'
+      - 'scripts/audit-atlas-2026-boundaries.py'
+      - 'scripts/atlas-2026-capitals.mjs'
       - '.github/workflows/atlas-exhaustive-browser.yml'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
+  modern-boundary-audit-2026:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compare every country against independent 2026 geometry
+        env:
+          NATURAL: https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ca96624a56bd078437bca8184e78163e5039ad19/geojson
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/lektrus-modern-audit
+          for file in ne_10m_admin_0_countries.geojson ne_10m_admin_0_countries_rus.geojson; do
+            curl -fsSL --retry 3 --max-time 120 "$NATURAL/$file" -o "/tmp/lektrus-modern-audit/$file"
+          done
+          python -m pip install 'shapely==2.1.2' 'pyproj==3.7.2'
+          python scripts/audit-atlas-2026-boundaries.py /tmp/lektrus-modern-audit /tmp/lektrus-modern-audit/boundary-comparison.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lektrus-modern-boundary-comparison-2026
+          path: /tmp/lektrus-modern-audit/boundary-comparison.json
   every-country:
     runs-on: ubuntu-latest
     timeout-minutes: 60
