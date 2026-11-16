@@ -117,7 +117,7 @@ def audit(folder, archive, output, original_source):
         if not manifest['from'] <= year <= manifest['to']:
             continue
         data = filename.read_bytes()
-        active = [r for r in records.values() if r['from'] <= year <= r['to'] and r['geometryId'] in geom and r['geometryStatus'] != 'rejected']
+        active = [r for r in records.values() if r['from'] <= year <= r['to'] and r['geometryId'] in geom and r['geometryStatus'] != 'rejected' and r['role'] == 'polity']
         shapes = [geom[r['geometryId']] for r in active]
         tree = STRtree(shapes)
         rows = []

@@ -16,6 +16,7 @@ export const sha256 = data => createHash('sha256').update(data).digest('hex');
 const identity = (...parts) => sha256(JSON.stringify(parts));
 const MALI_SOURCES = ['https://digitallibrary.un.org/record/620443','https://legal.un.org/ilc/publications/yearbooks/english/ilc_1962_v2.pdf'];
 const INDONESIA_SOURCE = 'https://peacekeeping.un.org/sites/default/files/past/unsfbackgr.html';
+const ZIMBABWE_SOURCE = 'https://legal.un.org/repertory/art73/english/rep_supp6_vol5_art73.pdf';
 // Precisely identified by the bulk GEOS audit. Only retract zero-area spikes in
 // interior rings: no shell, coordinate, polygon extent or historical claim changes.
 const RETRACED_HOLES=new Set([
@@ -63,16 +64,21 @@ function validateGeometry(g) {
 export function normalizeHistoricalSource(source) {
   assert.equal(source.type,'FeatureCollection');
   const geometries = new Map(), records = [];
-  const counts = {sourcePolities:0, excludedRelations:0, zeroBoundaryRecords:0, revisions:0, uniqueGeometries:0, rejectedRevisions:0, reviewedNames:0};
+  const counts = {sourcePolities:0, sourceComposites:0, sourceRelations:0, zeroBoundaryRecords:0, revisions:0, uniqueGeometries:0, rejectedRevisions:0, reviewedNames:0};
   for (const [sourceIndex, feature] of source.features.entries()) {
     const p = feature.properties;
-    if (p.Type === 'RELATION') {counts.excludedRelations++; continue;}
-    assert.equal(p.Type,'POLITY');
-    counts.sourcePolities++;
+    assert.ok(['POLITY','RELATION'].includes(p.Type));
     const sourceFrom = p.FromYear, sourceTo = p.ToYear;
     assert.ok(Number.isInteger(sourceFrom) && Number.isInteger(sourceTo) && sourceFrom <= sourceTo && sourceFrom >= HISTORY_FIRST_YEAR && sourceTo <= HISTORY_LAST_YEAR, `Invalid dates at ${sourceIndex}`);
     const sourceName = p.Name.trim(), sourceWikidata = p.Wikidata ?? '';
     assert.ok(sourceName, `Empty name at ${sourceIndex}`);
+    // The authors explicitly distinguish composite polities from their member
+    // polygons; RELATION is a different semantic layer (not sovereignty).
+    const list=value=>String(value??'').split(';').map(s=>s.trim()).filter(Boolean);
+    const components=list(p.Components),memberOf=list(p.MemberOf);
+    const role=p.Type==='RELATION'?'relation':/^\(.+\)$/.test(sourceName)?'composite':'polity';
+    assert.equal(role==='polity',components.length===0,`Unexpected component encoding ${sourceIndex}`);
+    counts[role==='polity'?'sourcePolities':role==='composite'?'sourceComposites':'sourceRelations']++;
     if (sourceFrom === 0 || sourceTo === 0) counts.zeroBoundaryRecords++;
     // Preserve original endpoints; the displayed calendar has no year zero.
     const from = sourceFrom === 0 ? 1 : sourceFrom, to = sourceTo === 0 ? -1 : sourceTo;
@@ -85,8 +91,8 @@ export function normalizeHistoricalSource(source) {
     if (!geometries.has(geometryId)) geometries.set(geometryId, geometry);
     // Provisional source identity, never inferred from a similar display name.
     // A reviewed crosswalk can explicitly link variants later.
-    const entityId = identity('source-polity', sourceName, sourceWikidata);
-    const base = {entityId, geometryId, ...(geometryId!==sourceGeometryId?{sourceGeometryId,geometryRepair:'retracted-zero-area-interior-edges'}:{}),name: sourceName, sourceName, sourceWikidata, sourceIndex, sourceFrom, sourceTo, from, to, nameStatus:'candidate', geometryStatus:'candidate'};
+    const entityId = identity('source-'+role, sourceName, sourceWikidata);
+    const base = {entityId, geometryId, role,components,memberOf,sourceSeshatId:String(p.SeshatID??''),sourceWikipedia:String(p.Wikipedia??''), ...(geometryId!==sourceGeometryId?{sourceGeometryId,geometryRepair:'retracted-zero-area-interior-edges'}:{}),name: sourceName, sourceName, sourceWikidata, sourceIndex, sourceFrom, sourceTo, from, to, nameStatus:'candidate', geometryStatus:'candidate'};
     const add = revision => {
       const id = identity('revision', sourceIndex, sourceFrom, sourceTo, geometryId, revision.from, revision.to, revision.name);
       records.push({id, ...revision});
@@ -95,6 +101,9 @@ export function normalizeHistoricalSource(source) {
     };
     if (sourceName === 'Mali Federation' && from >= 1961 && sourceWikidata === 'Q216632') {
       add({...base, entityId:identity('reviewed-polity','republic-of-mali'), name:'Republic of Mali', nameRu:'Республика Мали', nameStatus:'reviewed', review:{reason:'Federation dissolved in 1960; later records refer to the Republic of Mali. Geometry remains unverified.',sources:MALI_SOURCES}});
+    } else if (sourceName === 'Zimbabwe Rhodesia' && sourceWikidata === 'Q890120' && from === 1979 && to === 1982) {
+      add({...base,to:1979});
+      add({...base,from:1980,entityId:identity('source-polity','Republic of Zimbabwe','Q954'),name:'Republic of Zimbabwe',nameRu:'Республика Зимбабве',nameStatus:'reviewed',review:{reason:'Independence as the Republic of Zimbabwe on 18 April 1980; annual label reflects the new state, not a day-level boundary reconstruction. Geometry remains unverified.',sources:[ZIMBABWE_SOURCE]}});
     } else if (sourceName === 'Republic of Indonesia' && from === 1960 && to >= 1963 && capitalInsideCountry([138,-4], feature.geometry)) {
       add({...base, to:1962, geometryStatus:'rejected', review:{reason:'Source polygon includes western New Guinea before the 1963 transfer; excluded from candidate drawing until corrected geometry is sourced.',sources:[INDONESIA_SOURCE]}});
       add({...base, from:1963});

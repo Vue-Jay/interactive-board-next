@@ -12,8 +12,8 @@ export function buildChangeRegistry(records, rows, from, to) {
   const units=new Map(), events=new Map(), issueRuns=new Map();
   const event=(at)=>{if(!events.has(at))events.set(at,{starts:[],ends:[]});return events.get(at)};
   for(const r of records){
-    const key=sha256(JSON.stringify([r.entityId,r.geometryId,r.name,r.nameRu??null,r.nameStatus,r.geometryStatus,r.review??null]));
-    if(!units.has(key))units.set(key,{id:key,entityId:r.entityId,geometryId:r.geometryId,name:r.name,nameRu:r.nameRu,geometryStatus:r.geometryStatus,reviewStatus:'pending-independent-review',revisions:[],intervals:[]});
+    const key=sha256(JSON.stringify([r.entityId,r.geometryId,r.name,r.nameRu??null,r.nameStatus,r.geometryStatus,r.role,r.components,r.memberOf,r.sourceSeshatId,r.sourceWikipedia,r.review??null]));
+    if(!units.has(key))units.set(key,{id:key,entityId:r.entityId,geometryId:r.geometryId,name:r.name,nameRu:r.nameRu,role:r.role,components:r.components,memberOf:r.memberOf,geometryStatus:r.geometryStatus,reviewStatus:'pending-independent-review',revisions:[],intervals:[]});
     const unit=units.get(key);unit.revisions.push(r.id);unit.intervals.push([ordinal(r.from),ordinal(r.to)]);
     event(ordinal(r.from)).starts.push(r.id);event(ordinal(r.to)+1).ends.push(r.id);
   }
@@ -43,6 +43,7 @@ export function buildChangeRegistry(records, rows, from, to) {
     for(const w of row.membershipWarnings??[])addIssue('membership',w,y);
     for(const group of row.identityCollisions??[])addIssue('identity-collision',[...group].sort((a,b)=>a.sourceIndex-b.sourceIndex),y);
     for(const group of row.sharedGeometry??[])addIssue('shared-geometry',[...group].sort((a,b)=>a.sourceIndex-b.sourceIndex),y);
+    for(const detail of row.groupLinkWarnings??[])addIssue('group-link',detail,y);
   }
   const reviewUnits=[...units.values()].map(u=>({...u,intervals:coalesce(u.intervals)})).sort((a,b)=>b.intervals.at(-1).to-a.intervals.at(-1).to);
   const issues=[...issueRuns.values()].map(u=>({...u,intervals:coalesce(u.intervals),status:'open'})).sort((a,b)=>b.intervals.at(-1).to-a.intervals.at(-1).to);

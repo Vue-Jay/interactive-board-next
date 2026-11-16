@@ -170,6 +170,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: lektrus-historical-timeline-candidates
+          retention-days: 14
           path: |
             /tmp/lektrus-annual-data/history-v1/manifest.json
             /tmp/lektrus-annual-data/history-v1/change-review-registry.json
@@ -224,4 +225,3 @@ jobs:
             sleep 1
           done
           node scripts/test-lektrus-annual-atlas-browser.mjs
-          retention-days: 14

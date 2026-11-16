@@ -36,12 +36,19 @@ try{
   await page.locator(`[data-atlas-source-year="${year}"]`).waitFor({timeout:90000});
   await page.getByTitle('Вписать выбранный регион').click();
   await page.locator('.lektrus-atlas-overlay').waitFor({state:'hidden',timeout:90000});
+  const layer=page.getByLabel('Дополнительный исторический слой');
+  let renderedCount=0;
+  for(const mode of ['none','composite','relation']){
+  await layer.selectOption(mode);
   const shapes=page.locator('path.lektrus-atlas-country[data-atlas-revision-id]');
-  const rendered=await shapes.evaluateAll(nodes=>nodes.map(n=>({id:n.dataset.atlasRevisionId,d:n.getAttribute('d')})));
-  assert.deepEqual(rendered.map(r=>r.id).sort(),state.drawable.map(r=>r.record.id).sort(),`Missing or wrong rendered revisions at ${year}`);
+  const rendered=await shapes.evaluateAll(nodes=>nodes.map(n=>({id:n.dataset.atlasRevisionId,role:n.dataset.atlasHistoryRole,fill:n.getAttribute('fill'),d:n.getAttribute('d')})));
+  const expected=[...state.drawable,...state.overlays.filter(r=>r.record.role===mode)];
+  assert.deepEqual(rendered.map(r=>r.id).sort(),expected.map(r=>r.record.id).sort(),`Missing or wrong rendered revisions at ${year} (${mode})`);
   assert.ok(rendered.every(r=>r.d&&!/NaN|Infinity/.test(r.d)),`Invalid SVG at ${year}`);
+  assert.ok(rendered.every(r=>r.role==='polity'||(r.role===mode&&r.fill==='none')),`Incorrect layer semantics at ${year}`);
+  renderedCount+=rendered.filter(r=>mode==='none'||r.role===mode).length;
   const active=new Set(rendered.map(r=>r.id));
-  for(const unit of byYear.get(year)??[]){
+  for(const unit of (byYear.get(year)??[]).filter(u=>(u.role==='polity'?'none':u.role)===mode)){
    const id=unit.revisions.find(id=>active.has(id));assert.ok(id,`No rendered record for unit ${unit.id}`);
    const shape=page.locator(`path[data-atlas-revision-id="${id}"]`),index=await shape.getAttribute('data-atlas-feature-index');
    await shape.dispatchEvent('click');
@@ -50,8 +57,10 @@ try{
    assert.ok((await selected.locator('.lektrus-atlas-description strong').first().textContent()).trim(),`Empty title for ${id}`);
    tested++;
   }
+  }
+  await layer.selectOption('none');
   states++;
-  console.log(`${year}: ${rendered.length} polygons, ${tested} distinct unit clicks (${states}/${periods.length} states)`);
+  console.log(`${year}: ${renderedCount} polygons across all layers, ${tested} distinct unit clicks (${states}/${periods.length} states)`);
  }
  if(shard===0){await input.fill('2025');await input.press('Enter');await page.getByRole('alert').filter({hasText:'Для 2025 года пока нет'}).waitFor({timeout:90000});assert.equal(await page.locator('path[data-atlas-revision-id]').count(),0);}
  assert.deepEqual(errors,[]);

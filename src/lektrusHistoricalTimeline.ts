@@ -1,11 +1,13 @@
 /** Annual historical data contract. Imported polygons are evidence candidates,
  * not independently verified borders. No interpolation or nearest-year fallback. */
-export const HISTORY_SCHEMA = 1;
+export const HISTORY_SCHEMA = 2;
 export const HISTORY_FIRST_YEAR = -3400;
 export const HISTORY_LAST_YEAR = 2024;
 export type HistoricalGeometry = {type: 'Polygon' | 'MultiPolygon'; coordinates: unknown};
 export type HistoricalRevision = {
   id: string; entityId: string; geometryId: string;
+  role: 'polity' | 'composite' | 'relation';
+  components: string[]; memberOf: string[]; sourceSeshatId: string; sourceWikipedia: string;
   sourceGeometryId?: string; geometryRepair?: 'retracted-zero-area-interior-edges';
   name: string; nameRu?: string; sourceName: string; sourceWikidata: string;
   sourceIndex: number; sourceFrom: number; sourceTo: number;
@@ -14,14 +16,14 @@ export type HistoricalRevision = {
   review?: {reason: string; sources: string[]};
 };
 export type HistoricalPack = {
-  schema: 1; from: number; to: number;
+  schema: 2; from: number; to: number;
   records: HistoricalRevision[]; geometries: Record<string, HistoricalGeometry>;
 };
 export type HistoricalBlock = {from: number; to: number; file: string; sha256: string; bytes: number; gzipBytes: number};
 export type HistoricalManifest = {
-  schema: 1; from: number; to: number; source: {name: string; version: string; url: string; license: string; sha256: string};
+  schema: 2; from: number; to: number; source: {name: string; version: string; url: string; license: string; sha256: string};
   blocks: HistoricalBlock[];
-  counts: {sourcePolities: number; excludedRelations: number; zeroBoundaryRecords: number; revisions: number; uniqueGeometries: number; rejectedRevisions: number; reviewedNames: number};
+  counts: {sourcePolities: number; sourceComposites: number; sourceRelations: number; zeroBoundaryRecords: number; revisions: number; uniqueGeometries: number; rejectedRevisions: number; reviewedNames: number};
 };
 
 export function validHistoricalYear(year: number): boolean {
@@ -51,19 +53,22 @@ export function historicalYearState(pack: HistoricalPack, year: number) {
   return {
     year, status: records.length ? 'candidate' as const : 'no-records' as const,
     records,
-    drawable: records.filter(record => record.geometryStatus === 'candidate').map(record => ({record, geometry: pack.geometries[record.geometryId]})),
+    drawable: records.filter(record => record.geometryStatus === 'candidate'&&record.role==='polity').map(record => ({record, geometry: pack.geometries[record.geometryId]})),
+    overlays: records.filter(record => record.geometryStatus === 'candidate'&&record.role!=='polity').map(record => ({record, geometry: pack.geometries[record.geometryId]})),
     rejected: records.filter(record => record.geometryStatus === 'rejected'),
   };
 }
 
 /** Geometry adapter for the existing SVG atlas renderer. Rejected records
  * remain in the audit state but cannot silently reach the map layer. */
-export function historicalYearFeatureCollection(state: ReturnType<typeof historicalYearState>) {
-  return {type:'FeatureCollection' as const, features:state.drawable.map(({record,geometry})=>({
-    type:'Feature' as const, geometry, properties:{NAME:record.nameRu ?? record.name,
+export function historicalYearFeatureCollection(state: ReturnType<typeof historicalYearState>, includeOverlays=false) {
+  return {type:'FeatureCollection' as const, historicalRejected:state.rejected.map(r=>({name:r.nameRu??r.name,review:r.review})),features:(includeOverlays?[...state.drawable,...state.overlays]:state.drawable).map(({record,geometry})=>({
+    type:'Feature' as const, geometry, properties:{NAME:record.nameRu ?? (record.role==='polity'?record.name:record.name.slice(1,-1)),
       ATLAS_HISTORICAL_LABEL:record.nameRu, historicalEntityId:record.entityId,
       historicalRevisionId:record.id, sourceName:record.sourceName, sourceWikidata:record.sourceWikidata,
       sourceIndex:record.sourceIndex, from:record.from, to:record.to,
+      historicalRole:record.role, historicalComponents:record.components, historicalMemberOf:record.memberOf,
+      sourceSeshatId:record.sourceSeshatId, sourceWikipedia:record.sourceWikipedia,
       sourceGeometryId:record.sourceGeometryId, geometryRepair:record.geometryRepair,
       year:state.year, nameStatus:record.nameStatus, geometryStatus:record.geometryStatus,
       review:record.review},
@@ -90,6 +95,7 @@ export function validateHistoricalPack(value: unknown, block: HistoricalBlock): 
   for (const record of pack.records) {
     if (!record || !hash.test(record.id) || recordIds.has(record.id) || !hash.test(record.entityId) || !hash.test(record.geometryId) || !record.name || !validHistoricalYear(record.from) || !validHistoricalYear(record.to) || record.from > record.to || record.from > block.to || record.to < block.from || !['candidate','rejected'].includes(record.geometryStatus) || !['candidate','reviewed'].includes(record.nameStatus)) throw new Error('Invalid historical revision');
     const geometry = pack.geometries[record.geometryId];
+    if (!['polity','composite','relation'].includes(record.role)||!Array.isArray(record.components)||!Array.isArray(record.memberOf)||![...record.components,...record.memberOf].every(n=>typeof n==='string'&&n.length>0)||(record.role==='polity'?record.components.length!==0:!record.components.length)) throw new Error('Invalid historical layer classification');
     if (record.sourceGeometryId && (!hash.test(record.sourceGeometryId) || record.sourceGeometryId===record.geometryId || record.geometryRepair!=='retracted-zero-area-interior-edges')) throw new Error('Invalid historical repair provenance');
     if (!geometry || !['Polygon','MultiPolygon'].includes(geometry.type) || !Array.isArray(geometry.coordinates)) throw new Error('Missing historical geometry');
     if ((record.geometryStatus === 'rejected' || record.nameStatus === 'reviewed') && (!record.review?.reason || !record.review.sources.length)) throw new Error('Unattributed historical correction');
