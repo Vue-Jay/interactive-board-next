@@ -15,6 +15,21 @@ export const PINNED_SOURCE_SHA256 = 'fc6f0d1e4cc42f45da83522b3696db6f2cc85ec0d12
 const MAX_PACK_GZIP = 2 * 1024 * 1024;
 export const sha256 = data => createHash('sha256').update(data).digest('hex');
 const identity = (...parts) => sha256(JSON.stringify(parts));
+export function componentHash(polygon){
+  const canonicalRing=ring=>{
+    const points=ring.slice(0,-1).map(p=>JSON.stringify(p));
+    let min=points[0];
+    for(const p of points)if(p<min)min=p;
+    let best;
+    for(let i=0;i<points.length;i++)if(points[i]===min)for(const d of [1,-1]){
+      const candidate=Array.from({length:points.length},(_,j)=>points[(i+d*j+points.length)%points.length]).join(',');
+      if(best===undefined||candidate<best)best=candidate;
+    }
+    return best;
+  };
+  return sha256(JSON.stringify([canonicalRing(polygon[0]),polygon.slice(1).map(canonicalRing).sort()]));
+}
+
 const MALI_SOURCES = ['https://digitallibrary.un.org/record/620443','https://legal.un.org/ilc/publications/yearbooks/english/ilc_1962_v2.pdf'];
 const INDONESIA_SOURCE = 'https://peacekeeping.un.org/sites/default/files/past/unsfbackgr.html';
 const ZIMBABWE_SOURCE = 'https://legal.un.org/repertory/art73/english/rep_supp6_vol5_art73.pdf';
@@ -135,7 +150,50 @@ const componentExclusions=[
  [13279,51,1991,[49],'Four-power status in Berlin ended in 1990.','Четырёхсторонний статус Берлина завершился в 1990 году.',GERMANY_OCCUPATION],
  [13279,51,1995,[37],'Palau became independent in 1994.','Палау получило независимость в 1994 году.',SURINAME_SOURCE],
 ];
-const exclusionsFor=(index,year)=>componentExclusions.filter(r=>r[0]===index&&year>=r[2]&&(r[7]===undefined||year<=r[7]));
+const exclusionsFor=(index,year,derived=[])=>[...componentExclusions,...derived].filter(r=>r[0]===index&&year>=r[2]&&(r[7]===undefined||year<=r[7]));
+// A historically reviewed transition may be resolved by exact source equality
+// when part indices differ among source revisions. Geographic boxes only restrict
+// eligible already-identical components; no geometry is synthesized or clipped.
+const confirmedOverlapPolicies=[
+ {index:10767,loser:/Dutch East Indies/i,winner:/British|Great Britain/i,from:1812,to:1815,boxes:[[105,-9.5,114.75,-5.4]],reason:'British occupation of Java began in 1811 and Dutch government returned in 1816; retain exact contemporary British components in the intervening full years.',ru:'Британская оккупация Явы началась в 1811 году, нидерландская власть восстановлена в 1816 году. Одинаковые компоненты сохранены в британской записи в промежуточные полные годы.',source:'https://digitalcollections.anu.edu.au/entities/publication/d32c0b05-0085-4f2f-9286-1c5df071eb6f/full'},
+ {index:10767,loser:/Dutch East Indies/i,winner:/British|Great Britain/i,from:1811,to:1816,boxes:[[127.7,-4.05,128.6,-3.2],[127.2,0.6,127.55,0.98]],reason:'Ambon and Ternate were occupied by Britain from 1810 until the Dutch restoration in 1817; exclude only exact British duplicate components.',ru:'Амбон и Тернате находились под британским управлением с 1810 года до восстановления нидерландской власти в 1817 году; исключены только точные дубли британских компонентов.',source:'https://www.cambridge.org/core/journals/itinerario/article/revolution-and-resistance-an-exploration-of-the-looping-effect-in-the-moluccas-in-1817/4B19594F36FAB6EEBF4B854A417A3CBA'},
+ {index:11781,loser:/Dutch East Indies/i,winner:/British|Great Britain/i,from:1870,to:1872,boxes:[[92.4,6.5,94.3,9.7]],reason:'Britain formally took possession of the Nicobar Islands in 1869. Identical Dutch and British source components are attributed to the latter in subsequent full years.',ru:'В 1869 году Великобритания формально вступила во владение Никобарскими островами. Совпадающие нидерландские и британские компоненты в последующие полные годы отнесены к британской записи.',source:'https://nicobars.andaman.nic.in/history/'},
+ {index:12119,loser:/British|Great Britain/i,winner:/German Empire/i,winnerIndex:12069,from:1895,to:1898,boxes:[[156.25,-7.55,157.65,-6.35],[158,-8.8,159.95,-7.05],[155.3,-7.6,156.4,-6.6]],reason:'Choiseul, Isabel, Shortland and adjacent northern Solomon islands were German until the Anglo-German convention of November 1899. Preserve exact German rather than premature British components.',ru:'Шуазёль, Исабель, Шортленд и соседние северные острова Соломонова архипелага оставались германскими до англо-германской конвенции ноября 1899 года. Сохранены германские, а не преждевременные британские дубли.',source:'https://gazette.slv.vic.gov.au/images/1900/V/general/110.pdf'},
+];
+const rawParts=f=>f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates;
+const withinBox=(polygon,box)=>polygon.every(ring=>ring.every(([x,y])=>x>=box[0]&&x<=box[2]&&y>=box[1]&&y<=box[3]));
+export function deriveConfirmedOverlapExclusions(features,policies=confirmedOverlapPolicies){
+ const all=[];
+ const partsCache=new Map();
+ const partHashes=index=>{
+  if(!partsCache.has(index))partsCache.set(index,rawParts(features[index]).map(componentHash));
+  return partsCache.get(index);
+ };
+ for(const policy of policies){
+  const f=features[policy.index];
+  if(!f||f.properties.Type!=='POLITY'||!policy.loser.test(f.properties.Name))continue;
+  const lo=Math.max(f.properties.FromYear,policy.from),hi=Math.min(f.properties.ToYear,policy.to);
+  if(lo>hi)continue;
+  const parts=rawParts(f),eligible=parts.flatMap((polygon,part)=>policy.boxes.some(box=>withinBox(polygon,box))?[part]:[]);
+  if(!eligible.length)continue;
+  const counterparts=features.flatMap((other,index)=>index!==policy.index&&(policy.winnerIndex===undefined||index===policy.winnerIndex)&&other.properties.Type==='POLITY'&&!other.properties.Name.startsWith('(')&&policy.winner.test(other.properties.Name)&&other.properties.FromYear<=hi&&other.properties.ToYear>=lo?[index]:[]);
+  const hash=partHashes(policy.index);
+  const intervals=[];
+  for(let year=lo;year<=hi;year++){
+   const active=counterparts.filter(index=>features[index].properties.FromYear<=year&&features[index].properties.ToYear>=year);
+   const matches=eligible.filter(part=>active.some(index=>{
+    const excluded=new Set(exclusionsFor(index,year).flatMap(r=>r[3]));
+    return partHashes(index).some((h,i)=>h===hash[part]&&!excluded.has(i));
+   }));
+   if(!matches.length)continue;
+   const last=intervals.at(-1);if(last&&last.to+1===year&&JSON.stringify(last.parts)===JSON.stringify(matches))last.to=year;
+   else intervals.push({from:year,to:year,parts:matches});
+  }
+  for(const span of intervals)all.push([policy.index,parts.length,span.from,span.parts,policy.reason,policy.ru,policy.source,span.to]);
+ }
+ return all;
+}
+
 const reviewedNames=[
  ['Former Yugoslav Republic of Macedonia','Q221',2019,'Republic of North Macedonia','Республика Северная Македония','https://www.un.org/en/node/123222'],
  ["People's Republic of Angola",'Q916',1992,'Republic of Angola','Республика Ангола','https://ciam.gov.ao/ao/angola/constituicao'],
@@ -153,7 +211,7 @@ const TANZANIA_UN='https://www.un.org/en/about-us/member-states/tanzania';
 // Annual labels use the successor in the transition year; no new cartographic
 // boundary is inferred from a dynastic succession. All raw fields survive.
 const delhiTransitions=[{old:'Mamluk Dynasty',next:'Khalji Dynasty',qid:'Q919071',ru:'Династия Хильджи',from:1290,to:1293},{old:'Khalji Dynasty',next:'Tughlaq Dynasty',qid:'Q1124402',ru:'Династия Туглаков',from:1320,to:1325},{old:'Tughlaq Dynasty',next:'Sayyid Dynasty',qid:'Q1331421',ru:'Династия Сайидов',from:1414,to:1450},{old:'Sayyid Dynasty',next:'Lodi Dynasty',qid:'Q11709',ru:'Династия Лоди',from:1451,to:1452}];
-function editorialSegments(base){
+function editorialSegments(base,derived=[]){
  const out=[];
  // Split only at an applicable correction boundary, never drop original years.
  const cuts=new Set([base.from,base.to+1]);
@@ -162,7 +220,7 @@ function editorialSegments(base){
  const spring=chinaGroupTransition.has(base.sourceIndex)&&base.memberOf.includes('(Spring and Autumn States)')&&base.from<=-480&&base.to>=-480;
  if(spring)cuts.add(-480);
  const cut=year=>{if(base.from<year&&year<=base.to)cuts.add(year)};
- for(const rule of componentExclusions)if(rule[0]===base.sourceIndex){cut(rule[2]);if(rule[7]!==undefined)cut(rule[7]+1)}
+ for(const rule of [...componentExclusions,...derived])if(rule[0]===base.sourceIndex){cut(rule[2]);if(rule[7]!==undefined)cut(rule[7]+1)}
  if(base.sourceIndex===9410)cut(1707);
  if(base.sourceIndex===7187){cut(1454);cut(1462)}
  if(base.role==='polity'&&base.sourceName==='Sultanate of Malacca')cut(1529);
@@ -226,7 +284,7 @@ function editorialSegments(base){
    r={...r,name:'Kingdom of Naples (Bourbon)',nameRu:'Неаполитанское королевство (Бурбоны)',nameStatus:'reviewed',entityId:identity('reviewed-polity','bourbon-naples')};
    note('Ferdinand IV of Bourbon reigned from 1759; the 1762–1798 source revision belongs to Bourbon Naples, not the Napoleonic kingdom. Its territorial extent remains unverified.',['https://www.treccani.it/enciclopedia/ferdinando-i-di-borbone-re-delle-due-sicilie_%28Dizionario-Biografico%29/'],'В 1762–1798 годах Неаполем правил Фердинанд IV из династии Бурбонов, а не наполеоновская династия. Контур требует независимой проверки.');
   }
-  for(const rule of exclusionsFor(base.sourceIndex,from))note(rule[4]+' Only identified source components were removed; coverage and remaining borders are unverified.',[rule[6]],rule[5]+' Остальные границы и полнота покрытия требуют проверки.');
+  for(const rule of exclusionsFor(base.sourceIndex,from,derived))note(rule[4]+' Only identified source components were removed; coverage and remaining borders are unverified.',[rule[6]],rule[5]+' Остальные границы и полнота покрытия требуют проверки.');
   if(base.sourceName==='First Hellenic Republic'&&base.sourceWikidata==='Q528546'&&from>=1832){
    const republic=from>=1924&&from<1935;
    r={...r,name:republic?'Second Hellenic Republic':'Kingdom of Greece',nameRu:republic?'Вторая Греческая республика':'Королевство Греция',nameStatus:'reviewed',entityId:republic?identity('reviewed-polity','second-hellenic-republic'):identity('source-polity','Kingdom of Greece','Q209065')};
@@ -336,10 +394,10 @@ function editorialSegments(base){
 }
 // Component selections are pinned to original feature/part indices. No modern
 // geometry, coordinate interpolation or nearest-year geometry is introduced.
-export function reviewedGeometryParts(r){
+export function reviewedGeometryParts(r,derived=[]){
  if(r.sourceIndex===13265)return [{index:13265,part:0},...((r.from<1964?[0]:[0,1,2]).map(part=>({index:13271,part})))];
  if(r.sourceIndex===13271&&r.from<1964)return [1,2].map(part=>({index:13271,part}));
- const exclusions=exclusionsFor(r.sourceIndex,r.from);
+ const exclusions=exclusionsFor(r.sourceIndex,r.from,derived);
  if(exclusions.length){
   const excluded=new Set(exclusions.flatMap(rule=>rule[3]));
   return Array.from({length:exclusions[0][1]},(_,part)=>part).filter(part=>!excluded.has(part)).map(part=>({index:r.sourceIndex,part}));
@@ -399,6 +457,7 @@ function validateGeometry(g) {
 export function normalizeHistoricalSource(source) {
   assert.equal(source.type,'FeatureCollection');
   const geometries = new Map(), records = [];
+  const derivedExclusions=deriveConfirmedOverlapExclusions(source.features);
   const counts = {sourcePolities:0, sourceComposites:0, sourceRelations:0, zeroBoundaryRecords:0, revisions:0, uniqueGeometries:0, rejectedRevisions:0, reviewedNames:0};
   for (const [sourceIndex, feature] of source.features.entries()) {
     const p = feature.properties;
@@ -429,8 +488,11 @@ export function normalizeHistoricalSource(source) {
     const entityId = identity('source-'+role, sourceName, sourceWikidata);
     const base = {entityId, geometryId, role,components,memberOf,sourceSeshatId:String(p.SeshatID??''),sourceWikipedia:String(p.Wikipedia??''), ...(geometryId!==sourceGeometryId?{sourceGeometryId,geometryRepair:'retracted-zero-area-interior-edges'}:{}),name: sourceName, sourceName, sourceWikidata, sourceIndex, sourceFrom, sourceTo, from, to, nameStatus:'candidate', geometryStatus:'candidate'};
     const add = revision => {
-      const selection=reviewedGeometryParts(revision);
-      if(selection){
+      const selection=reviewedGeometryParts(revision,derivedExclusions);
+      if(selection?.length===0){
+        assert.ok(revision.review?.sources.length);
+        revision={...revision,geometryStatus:'rejected'};
+      }else if(selection){
         assert.ok(revision.review?.sources.length);
         const coordinates=selection.map(({index,part})=>{const g=source.features[index].geometry;const polygons=g.type==='Polygon'?[g.coordinates]:g.coordinates;assert.ok(polygons[part]);return polygons[part]});
         const selected={type:'MultiPolygon',coordinates};validateGeometry(selected);
@@ -450,7 +512,7 @@ export function normalizeHistoricalSource(source) {
     } else if (sourceName === 'Republic of Indonesia' && from === 1960 && to >= 1963 && capitalInsideCountry([138,-4], feature.geometry)) {
       add({...base, to:1962, geometryStatus:'rejected', review:{reason:'Source polygon includes western New Guinea before the 1963 transfer; excluded from candidate drawing until corrected geometry is sourced.',sources:[INDONESIA_SOURCE]}});
       add({...base, from:1963});
-    } else for(const revision of editorialSegments(base))add(revision);
+    } else for(const revision of editorialSegments(base,derivedExclusions))add(revision);
   }
   counts.revisions = records.length;
   const used=new Set(records.map(r=>r.geometryId));for(const id of geometries.keys())if(!used.has(id))geometries.delete(id);

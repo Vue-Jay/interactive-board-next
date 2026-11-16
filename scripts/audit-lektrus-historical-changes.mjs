@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {sha256} from './build-lektrus-historical-timeline.mjs';
+import {sha256,componentHash} from './build-lektrus-historical-timeline.mjs';
 import {historicalYearOrdinal as ordinal,historicalYearFromOrdinal as year,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
 
 // A new review is required when the identity, contour or semantic facts change.
@@ -56,20 +56,7 @@ export function buildChangeRegistry(records, rows, from, to) {
 // that whole-geometry equality misses. A match is a review candidate, not
 // automatic proof of sovereignty or an instruction to delete a polygon.
 // Ignore ring start and winding, not coordinates or precision.
-export function componentHash(polygon){
-  const canonicalRing=ring=>{
-    const points=ring.slice(0,-1).map(p=>JSON.stringify(p));
-    let min=points[0];
-    for(const p of points)if(p<min)min=p;
-    let best;
-    for(let i=0;i<points.length;i++)if(points[i]===min)for(const d of [1,-1]){
-      const candidate=Array.from({length:points.length},(_,j)=>points[(i+d*j+points.length)%points.length]).join(',');
-      if(best===undefined||candidate<best)best=candidate;
-    }
-    return best;
-  };
-  return sha256(JSON.stringify([canonicalRing(polygon[0]),polygon.slice(1).map(canonicalRing).sort()]));
-}
+export {componentHash} from './build-lektrus-historical-timeline.mjs';
 export function exactComponentConflicts(records, hashesByGeometry, thematic=false){
   const byHash=new Map(),pairs=new Map();
   for(const r of records){

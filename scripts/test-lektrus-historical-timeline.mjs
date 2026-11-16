@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole} from './build-lektrus-historical-timeline.mjs';
+import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions} from './build-lektrus-historical-timeline.mjs';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
 import {createHistoricalTimelineLoader} from '../src/lektrusHistoricalTimelineLoader.ts';
 import {referenceAdmissionWarnings} from './audit-lektrus-atlas-annual.mjs';
@@ -35,6 +35,9 @@ assert.deepEqual(exactComponentConflicts(withSettlement,new Map([['a',['x','y']]
 assert.equal(componentHash(square().coordinates),componentHash([[[1,1],[1,0],[0,0],[0,1],[1,1]]]));
 assert.notEqual(componentHash(square().coordinates),componentHash(square(1).coordinates));
 const feature=(name,from,to,geometry=square(),wikidata='',type='POLITY',components='')=>({type:'Feature',properties:{Name:name,FromYear:from,ToYear:to,Wikidata:wikidata,Type:type,Components:components},geometry});
+const duplicateSource=[feature('Old rule',1800,1806,{type:'MultiPolygon',coordinates:[square().coordinates,square(3).coordinates]}),feature('New rule',1802,1803,square()),feature('New rule',1805,1806,square()),feature('New rule',1802,1806,square(3))];
+const derived=deriveConfirmedOverlapExclusions(duplicateSource,[{index:0,loser:/Old rule/,winner:/New rule/,from:1801,to:1805,boxes:[[-1,-1,2,2]],reason:'evidence',ru:'evidence',source:'https://example.com'}]);
+assert.deepEqual(derived.map(r=>[r[2],r[3],r[7]]),[[1802,[0],1803],[1805,[0],1805]]);
 const evidenceFixture=sourceComponentEvidence([{left:{sourceIndex:0,name:'A'},right:{sourceIndex:1,name:'B'},intervals:[{from:1,to:2,years:2,components:[componentHash(square(1).coordinates),'unmatched']}]}],[feature('A',1,2,{type:'MultiPolygon',coordinates:[square().coordinates,square(1).coordinates]}),feature('B',1,2,square(1))]);
 assert.deepEqual(evidenceFixture[0].intervals[0].matches.map(m=>[m.left,m.right]),[[[{part:1,bbox:[1,0,2,1]}],[{part:0,bbox:[1,0,2,1]}]],[[],[]]]);
 const malaccaFixture=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Sultanate of Malacca',1520,1535)]});
