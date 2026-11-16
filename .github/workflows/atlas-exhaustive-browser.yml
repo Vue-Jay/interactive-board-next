@@ -10,6 +10,7 @@ on:
       - 'scripts/export-lektrus-historical-year.mjs'
       - 'scripts/test-lektrus-atlas-every-country-browser.mjs'
       - 'scripts/test-lektrus-annual-atlas-browser.mjs'
+      - 'scripts/summarize-lektrus-annual-browser-audit.mjs'
       - 'scripts/audit-lektrus-historical-changes.mjs'
       - 'scripts/audit-historical-unique-geometries.py'
       - 'vite.config.ts'
@@ -184,7 +185,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3, 4, 5]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -208,13 +209,14 @@ jobs:
           export OUT=/tmp/lektrus-atlas-data
           curl -fsSL --retry 3 --max-time 60 "$HIST/index.json" -o "$OUT/index.json"
           grep -Eo 'ne_[A-Za-z0-9_]+\.geojson' src/lektrusAtlasData.ts | sort -u | xargs -P 6 -I % curl -fsSL --retry 3 --max-time 60 "$NATURAL/%" -o "$OUT/%"
-      - name: Render each changed map state and click every unique review unit
+      - name: Open every individual year and click each territory in Chromium
         env:
           LEKTRUS_ANNUAL_TIMELINE_DIR: /tmp/lektrus-annual-preview
           LEKTRUS_ATLAS_DATA_DIR: /tmp/lektrus-atlas-data
           LEKTRUS_PLAYWRIGHT_MODULE: /tmp/lektrus-atlas-playwright/node_modules/playwright
           LEKTRUS_ATLAS_SHARD: ${{ matrix.shard }}
-          LEKTRUS_ATLAS_SHARDS: '6'
+          LEKTRUS_ATLAS_SHARDS: '24'
+          LEKTRUS_ATLAS_AUDIT_OUTPUT: /tmp/lektrus-browser-audit
           VITE_LEKTRUS_BACKEND: selfhost
           VITE_LEKTRUS_API_ORIGIN: ''
         run: |
@@ -227,3 +229,33 @@ jobs:
             sleep 1
           done
           node scripts/test-lektrus-annual-atlas-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lektrus-annual-browser-shard-${{ matrix.shard }}
+          path: /tmp/lektrus-browser-audit/*.jsonl
+          if-no-files-found: error
+          retention-days: 14
+  annual-browser-summary:
+    needs: annual-browser
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: lektrus-annual-browser-shard-*
+          path: /tmp/lektrus-browser-shards
+      - name: Check complete yearly coverage and collect all defects
+        run: node scripts/summarize-lektrus-annual-browser-audit.mjs /tmp/lektrus-browser-shards /tmp/lektrus-browser-summary
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lektrus-annual-browser-complete-ledger
+          path: /tmp/lektrus-browser-summary/*.json
+          if-no-files-found: error
