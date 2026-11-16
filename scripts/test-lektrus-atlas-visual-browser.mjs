@@ -5,16 +5,29 @@ import {mkdtemp,rm,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
-import {createServer} from 'vite';
+import {preview} from 'vite';
 import net from 'node:net';
 
 const chromium=process.env.CHROME_PATH||['/usr/bin/google-chrome','/usr/bin/chromium'].find(existsSync);
 assert.ok(chromium,'Chrome required for atlas visual regression');
-const server=await createServer({server:{host:'127.0.0.1',port:0}});
+assert.ok(existsSync('dist/index.html'),'Build the production application before the browser regression');
+// Fetch exactly the pinned production geodata from the CI runner. The preview
+// endpoint avoids unrelated browser cross-origin/network variability; no map
+// shapes, names, records or dates are mocked by this test.
+const upstream=/^https:\/\/(?:raw\.githubusercontent\.com\/(?:nvkelso\/natural-earth-vector\/ca96624a56bd078437bca8184e78163e5039ad19|aourednik\/historical-basemaps\/da7a4b735ecef70aebdc9c73e409d8a2500d50f3)\/|cdn\.jsdelivr\.net\/gh\/(?:nvkelso\/natural-earth-vector@ca96624a56bd078437bca8184e78163e5039ad19|aourednik\/historical-basemaps@da7a4b735ecef70aebdc9c73e409d8a2500d50f3)\/)/;
+const sourceCache=new Map();
+const server=await preview({preview:{host:'127.0.0.1',port:0},plugins:[{name:'atlas-qa-source',configurePreviewServer(s){s.middlewares.use('/__atlas-qa-source',async(req,res)=>{
+ const url=new URL(req.url,'http://localhost').searchParams.get('url')??'';
+ if(!upstream.test(url)){res.writeHead(400).end('Not an atlas source');return}
+ try{
+  if(!sourceCache.has(url))sourceCache.set(url,fetch(url,{signal:AbortSignal.timeout(20000)}).then(async r=>{if(!r.ok)throw Error('HTTP '+r.status);return Buffer.from(await r.arrayBuffer())}).catch(e=>{sourceCache.delete(url);throw e}));
+  const bytes=await sourceCache.get(url);res.writeHead(200,{'Content-Type':'application/json'}).end(bytes);
+ }catch(e){console.error('Atlas source failed:',url,String(e));res.writeHead(502).end('Upstream unavailable')}
+})}}]});
 const profile=await mkdtemp(join(tmpdir(),'lektrus-atlas-qa-'));
 let chrome,socket;
 try{
- await server.listen();const origin=`http://127.0.0.1:${server.httpServer.address().port}`;
+ const origin=`http://127.0.0.1:${server.httpServer.address().port}`;
  const portServer=net.createServer();await new Promise((r,j)=>portServer.once('error',j).listen(0,'127.0.0.1',r));
  const debugPort=portServer.address().port;await new Promise(r=>portServer.close(r));
  const log=[];
@@ -32,6 +45,7 @@ try{
  const screenshot=async name=>{if(!process.env.ATLAS_QA_SCREENSHOTS)return;const p=await call('Page.captureScreenshot',{format:'png'});await writeFile(name,Buffer.from(p.data,'base64'))};
  const mapReady='document.querySelectorAll(".lektrus-atlas-country").length>10&&!document.querySelector(".lektrus-atlas-failure")';
  await call('Page.enable');
+ await call('Page.addScriptToEvaluateOnNewDocument',{source:`(()=>{const original=window.fetch.bind(window);window.fetch=(input,options)=>{const url=typeof input==='string'?input:input instanceof URL?input.href:input.url;if(${upstream.toString()}.test(url))return original('/__atlas-qa-source?url='+encodeURIComponent(url),options);return original(input,options)}})()`});
  await call('Page.navigate',{url:origin+'/tools/atlas'});
  await wait(mapReady,'Geographic map failed to load real country polygons');
  if(await evaluate('document.querySelector(".lektrus-atlas-inspector-toggle")?.getAttribute("aria-expanded")==="false"'))await click('.lektrus-atlas-inspector-toggle');
@@ -61,4 +75,10 @@ try{
  assert.ok(await evaluate('[...document.querySelectorAll(".lektrus-atlas-description")].some(e=>e.innerText.includes("2 сентября 1945 года")&&e.getBoundingClientRect().width>0&&e.getBoundingClientRect().height>0)'),'Event card is not visible');
  await screenshot('atlas-history-qa.png');
  console.log('Atlas browser visual regression: live geography polygons, Gitega capital, date and source card, 1945 timeline and separate Japanese and German surrender events passed.');
-}finally{socket?.close();chrome?.kill();await server.close();await rm(profile,{recursive:true,force:true})}
+}catch(error){console.error('Atlas visual regression failed:',error);throw error}
+finally{
+ socket?.close();
+ if(chrome&&chrome.exitCode===null){chrome.kill();await Promise.race([new Promise(r=>chrome.once('exit',r)),delay(3000)])}
+ await server.close();
+ await rm(profile,{recursive:true,force:true,maxRetries:5,retryDelay:200}).catch(e=>console.warn('QA profile cleanup:',e.message));
+}
