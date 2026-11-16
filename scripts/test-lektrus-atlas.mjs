@@ -34,6 +34,11 @@ assert.equal(historicalSnapshots[nearestSnapshotIndex(1916)].year,1914);
 assert.ok(eventsNearYear(1914).some(v=>v.year===1914));
 assert.ok(eventsNearYear(1920).some(v=>v.year===1922));
 assert.ok(eventsNearYear(2000).some(v=>v.year===2004));
+const endWWII=eventsNearYear(1945).find(v=>v.title==="Окончание Второй мировой войны");
+assert.ok(endWWII.lon>139&&endWWII.lon<140&&endWWII.lat>35&&endWWII.lat<36);
+assert.match(endWWII.description,/2 сентября 1945/);
+assert.ok(eventsNearYear(1945).some(v=>v.title.includes("Капитуляция Германии")));
+assert.ok(eventsNearYear(500).some(v=>v.year===476&&v.lat>44&&v.lat<45));
 const atlas=createAtlasDocument();
 assert.equal(validAtlasDocument(atlas),true);
 assert.equal(atlas.cityMinPopulation,0);
@@ -110,8 +115,11 @@ assert.ok(mineralGuides.mineralGuides.length>=14);
 assert.equal(mineralGuides.mineralGuide("Железные руды")?.uses,"Получение железа и стали");
 const areaSource=fs.readFileSync(new URL("../src/lektrusAtlasCityArea.ts",import.meta.url),"utf8");
 const cityAreaExports={};
-new Function("exports",ts.transpileModule(areaSource,{compilerOptions:{
- module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(cityAreaExports);
+const areaFactsExports={};
+new Function("exports",ts.transpileModule(fs.readFileSync(new URL("../src/lektrusAtlasSchoolFacts.ts",import.meta.url),"utf8"),{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(areaFactsExports);
+new Function("exports","require",ts.transpileModule(areaSource,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(cityAreaExports,()=>areaFactsExports);
 assert.equal(cityAreaExports.cityAreaId({WIKIDATAID:"Q649"}),"Q649");
 assert.equal(cityAreaExports.cityAreaId({WIKIDATAID:"invalid"}),null);
 
@@ -533,6 +541,9 @@ assert.equal(schoolCountryFacts.find(f=>f.label==="Часть света")?.valu
 assert.equal(schoolCountryFacts.find(f=>f.label==="Регион мира")?.value,"Центральная Азия");
 assert.match(schoolCountryFacts.find(f=>f.label==="Население (оценка картографического источника)")?.value??"",/2024/);
 assert.match(schoolCountryFacts.find(f=>f.label==="ВВП (оценка источника)")?.value??"",/2022/);
+const sentinelFacts=geoExports.featureSourceFacts(named({ELEVATION:-9999,ELEV:-430,POP_MAX:-99,POP_MIN:"нет данных"}));
+assert.equal(sentinelFacts.find(f=>f.label==="Высота, м")?.value,"-430");
+assert.ok(!sentinelFacts.some(f=>f.label.startsWith("Население")));
 assert.equal(geoExports.hasAtlasName(named({NAME:"Unknown"})),false);
 assert.equal(places.russianPlaceName(named({NAME_RU:"Неизвестно"})),null);
 assert.ok(!map.includes('!=="Объект без названия"'),"the UI must not use placeholder text");
@@ -560,6 +571,13 @@ const worldPlaces={type:"FeatureCollection",features:[
   ...place("Dodoma",0,"Admin-0 capital alt").properties,NAME:"Dodoma",NAME_RU:"Додома",ISO_A2:"TZ"}}
 ]};
 const updatedPlaces=places.applyVerifiedCapitalUpdates2026(worldPlaces);
+const southAfrica=places.applyVerifiedCapitalUpdates2026({type:"FeatureCollection",features:[]});
+const saCapitals=places.capitalsForCountry({type:"Feature",geometry:null,properties:{ISO_A2:"ZA"}},southAfrica.features);
+assert.deepEqual(saCapitals.map(places.russianPlaceName).sort(),["Блумфонтейн","Кейптаун","Претория"]);
+assert.ok(saCapitals.every(c=>c.properties.CAPITAL_CORRECTION_URL.startsWith("https://www.gov.za/")));
+for(const [iso,name] of [["SS","Джуба"],["LK","Шри-Джаяварденепура-Котте"],["NG","Абуджа"]])
+ assert.equal(places.russianPlaceName(places.capitalsForCountry({type:"Feature",geometry:null,properties:{ISO_A2:iso}},southAfrica.features)[0]),name);
+assert.equal(geoExports.featureSourceFacts(named({FEATURECLA:"Admin-0 capital",ADM0CAP:0,CAPALT:0})).find(x=>x.label==="Категория")?.value,"Населённый пункт");
 const legacyKazakhstan={type:"Feature",geometry:{type:"Point",coordinates:[71.43,51.13]},
  properties:{NAME:"Nur-Sultan",NAME_RU:"Нур-Султан",ISO_A2:"KZ",
  FEATURECLA:"Admin-0 capital",ADM0CAP:1}};

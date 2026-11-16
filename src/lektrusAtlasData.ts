@@ -634,9 +634,17 @@ export function featureSourceFacts(feature:GeoFeature):Array<{label:string;value
   if((typeof value==="string"&&value.trim()!==""||
    typeof value==="number"&&Number.isFinite(value))&&!seen.has(label)){
    let display=String(value).trim();
+   if(key==="ELEVATION"||key==="ELEV"||key==="POP_MAX"||key==="POP_MIN"){
+    const measurement=Number(display);
+    // Natural Earth uses negative sentinel values for unavailable records.
+    // Actual below-sea-level elevations remain valid.
+    if(!Number.isFinite(measurement)||((key==="POP_MAX"||key==="POP_MIN")?measurement<=0:measurement<=-9999))continue;
+   }
    if(key==="FEATURECLA"||key==="FEATURECLASS"){
     // An unknown English source category is metadata, not a translated legend.
-    display=localizedFeatureClasses[display]??"";
+    if(/^Admin-0 capital(?: alt)?$/i.test(display)&&Number(p.ADM0CAP??p.adm0cap)===0)
+     display=Number(p.CAPALT??p.capalt)===1?"Столичный статус в источнике (требует уточнения)":"Населённый пункт";
+    else display=localizedFeatureClasses[display]??"";
    }else if(key==="ADM0NAME"||key==="SOVEREIGNT"){
     // Do not confuse a dependent territory's ISO code with its sovereign state.
     display=geoFeatureName({type:"Feature",geometry:null,properties:{NAME:display}});

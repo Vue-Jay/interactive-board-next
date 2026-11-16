@@ -108,15 +108,40 @@ const CAPITAL_UPDATES=[
  {country:"BJ",old:"Cotonou",current:"Porto-Novo",rus:"Порто-Ново",
   lon:2.616626,lat:6.483311,
   note:"Конституционная столица Бенина Порто-Ново; Котону является местом пребывания правительства.",
-  document:"https://www.gouv.bj/article/935/allons--ensemble-decouverte-communes-benin/"}
+  document:"https://www.gouv.bj/article/935/allons--ensemble-decouverte-communes-benin/"},
+ {country:"LK",old:"Colombo",current:"Sri Jayawardenepura Kotte",rus:"Шри-Джаяварденепура-Котте",
+  lon:79.91,lat:6.89,
+  note:"Административная столица Шри-Ланки — Шри-Джаяварденепура-Котте; Коломбо — коммерческая столица.",
+  document:"https://www.mfa.gov.lk/en/national-profile-and-geography"},
+ {country:"NG",old:"Lagos",current:"Abuja",rus:"Абуджа",
+  lon:7.49,lat:9.06,
+  note:"Абуджа стала столицей Нигерии 12 декабря 1991 года вместо Лагоса.",
+  document:"https://faan.gov.ng/international-airports/"}
 ] as const;
 export const verifiedCapitalUpdates2026=CAPITAL_UPDATES;
+const SOUTH_AFRICA_CAPITALS=[
+ {name:"Pretoria",rus:"Претория",role:"Административная столица ЮАР",lon:28.19,lat:-25.75},
+ {name:"Cape Town",rus:"Кейптаун",role:"Законодательная столица ЮАР",lon:18.42,lat:-33.92},
+ {name:"Bloemfontein",rus:"Блумфонтейн",role:"Судебная столица ЮАР",lon:26.21,lat:-29.12}
+] as const;
+const SOUTH_AFRICA_SOURCE="https://www.gov.za/about-sa/south-africas-provinces";
+const JUBA_SOURCE="https://data.un.org/legacy/en/iso/ss.html";
 export function applyVerifiedCapitalUpdates2026(collection:GeoCollection):GeoCollection{
  // Features are never mutated; the same source may be used on multiple maps.
  const items=collection.features.map(feature=>{
   const p=feature.properties??{};
   const iso=String(p.ISO_A2??p.iso_a2??"").toUpperCase();
   const raw=String(p.NAME??p.name??"");
+  if((iso==="SS"||String(p.ADM0_A3??p.adm0_a3)==="SSD")&&raw==="Juba")return {...feature,properties:{...p,
+   NAME:"Juba",NAME_RU:"Джуба",ISO_A2:"SS",ADM0_A3:"SSD",ADM0CAP:1,CAPALT:0,FEATURECLA:"Admin-0 capital",
+   CAPITAL_CORRECTION_RU:"Столица Южного Судана по данным ООН — Джуба.",CAPITAL_CORRECTION_URL:JUBA_SOURCE}};
+  const southAfrica=(iso==="ZA"||String(p.ADM0_A3??p.adm0_a3)==="ZAF")&&SOUTH_AFRICA_CAPITALS.find(c=>c.name===raw);
+  if(southAfrica)return {...feature,properties:{...p,ISO_A2:"ZA",NAME:southAfrica.name,NAME_RU:southAfrica.rus,ADM0CAP:1,
+   CAPALT:0,FEATURECLA:"Admin-0 capital",CAPITAL_CORRECTION_RU:southAfrica.role,
+   CAPITAL_CORRECTION_URL:SOUTH_AFRICA_SOURCE}};
+  if(iso==="ZA"&&raw==="Johannesburg")return {...feature,properties:{...p,ADM0CAP:0,CAPALT:0,
+   FEATURECLA:"Populated place",CAPITAL_CORRECTION_RU:"Йоханнесбург — крупнейший город ЮАР, но не одна из трёх столиц.",
+   CAPITAL_CORRECTION_URL:SOUTH_AFRICA_SOURCE}};
   if(isAstanaCapitalFeature(feature)){
    return {...feature,properties:{...p,NAME:"Astana",NAMEASCII:"Astana",
     NAME_RU:"Астана",NAME_ALT:"Нур-Султан",ADM0CAP:1,CAPALT:0,
@@ -127,9 +152,9 @@ export function applyVerifiedCapitalUpdates2026(collection:GeoCollection):GeoCol
   const relevant=CAPITAL_UPDATES.find(c=>c.country===iso&&(c.old===raw||c.current===raw));
   if(!relevant)return feature;
   const isNew=relevant.current===raw;
-  return {...feature,properties:{...p,ADM0CAP:isNew?1:0,CAPALT:0,
+  return {...feature,properties:{...p,...(isNew?{NAME:relevant.current,NAME_RU:relevant.rus,ISO_A2:iso}:{}),ADM0CAP:isNew?1:0,CAPALT:0,
    FEATURECLA:isNew?"Admin-0 capital":"Populated place",
-   CAPITAL_CORRECTION_RU:isNew?relevant.note:"Прежняя столица; актуальный статус изменён. "+relevant.note,
+   CAPITAL_CORRECTION_RU:isNew||iso==="BJ"||iso==="LK"?relevant.note:"Прежняя столица; актуальный статус изменён. "+relevant.note,
    CAPITAL_CORRECTION_URL:relevant.document}};
  });
  // Natural Earth's older place records do not contain the newest capital.
@@ -143,6 +168,16 @@ export function applyVerifiedCapitalUpdates2026(collection:GeoCollection):GeoCol
     LOCATION_SOURCE_RU:"Координаты населённого пункта по OpenStreetMap/Mapcarta (приблизительно)",
     LOCATION_SOURCE_URL:"https://mapcarta.com/Ciudad_de_la_Paz"}});
  }
+ for(const c of SOUTH_AFRICA_CAPITALS){
+  if(items.some(f=>f.properties?.ISO_A2==="ZA"&&f.properties?.NAME===c.name))continue;
+  items.push({type:"Feature",geometry:{type:"Point",coordinates:[c.lon,c.lat]},properties:{
+   NAME:c.name,NAME_RU:c.rus,ISO_A2:"ZA",ADM0_A3:"ZAF",ADM0CAP:1,CAPALT:0,
+   FEATURECLA:"Admin-0 capital",CAPITAL_CORRECTION_RU:c.role,CAPITAL_CORRECTION_URL:SOUTH_AFRICA_SOURCE,
+   LOCATION_SOURCE_RU:"Приблизительный центр города"}});
+ }
+ if(!items.some(f=>f.properties?.ISO_A2==="SS"&&f.properties?.NAME==="Juba"))items.push({type:"Feature",geometry:{type:"Point",coordinates:[31.58,4.85]},
+  properties:{NAME:"Juba",NAME_RU:"Джуба",ISO_A2:"SS",ADM0_A3:"SSD",ADM0CAP:1,CAPALT:0,FEATURECLA:"Admin-0 capital",
+   LOCATION_SOURCE_RU:"Приблизительный центр города",CAPITAL_CORRECTION_RU:"Столица Южного Судана по данным ООН — Джуба.",CAPITAL_CORRECTION_URL:JUBA_SOURCE}});
  return {...collection,features:items};
 }
 

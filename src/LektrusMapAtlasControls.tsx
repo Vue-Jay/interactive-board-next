@@ -20,7 +20,7 @@ export default function LektrusMapAtlasControls({diagram:d,onChange}:Props){
    <div className="lektrus-school-controls-heading">Временная шкала</div>
    <label className="lektrus-school-field">Доступный датированный снимок
     <select value={d.year} onChange={e=>patch({year:Number(e.target.value)})}>
-     {historicalSnapshots.map(s=><option value={s.year} key={s.year}>{yearLabel(s.year)}</option>)}
+     {historicalSnapshots.map(s=><option value={s.year} key={s.year}>{yearLabel(s.year)}{s.year===2026?" · обзор (границы 2022)":""}</option>)}
     </select>
    </label>
    <input aria-label="Год исторической карты" type="range" min="0" max={historicalSnapshots.length-1}
