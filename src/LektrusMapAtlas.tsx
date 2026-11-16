@@ -2037,12 +2037,12 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        target="_blank" rel="noopener noreferrer">Географический источник координат ↗</a>}
      {historical&&<><p>Точность: {precisions[borderPrecision(selected)]}.</p>
       {selectedArticle&&<div className="lektrus-history-article">
-       <p className="lektrus-history-period">{yearLabel(selectedArticle.from)} – {yearLabel(selectedArticle.to)}</p>
+       <p className="lektrus-history-period">Справочный период: {yearLabel(selectedArticle.from)} – {yearLabel(selectedArticle.to)}</p>
        <p><strong>Столица и важные центры:</strong> {selectedArticle.capital}</p>
        <p>{selectedArticle.summary}</p>
        <p><strong>Важное изменение:</strong> {selectedArticle.turn}</p>
        <a target="_blank" rel="noopener noreferrer" href={historyArticleUrl(selectedArticle)}>
-        Открыть обзорную статью на русском ↗</a>
+        Открыть исторический источник ↗</a>
        <small>Учебная справка подготовлена отдельно от картографической базы; исторические границы и датировки необходимо сверять с дополнительными источниками.</small>
       </div>}
       {fallbackReference&&<div className="lektrus-history-article">
@@ -2302,7 +2302,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
         <summary><LektrusAtlasCountrySymbol compact symbol={atlasCountrySymbol(
          {type:"Feature",properties:{NAME:entry.aliases[0]??entry.title},
           geometry:{type:"Polygon",coordinates:[]}},entry.title,historicalReferenceSymbolYear(entry),true)}/>
-         <strong>{entry.title}</strong><small>{yearLabel(entry.from)} – {yearLabel(entry.to)}</small></summary>
+         <strong>{entry.title}</strong><small>Справочный период: {yearLabel(entry.from)} – {yearLabel(entry.to)}</small></summary>
         {entry.capital&&<p><strong>Столица и центры:</strong> {entry.capital}</p>}
         <p>{entry.description}</p>
         <p><strong>Изменение:</strong> {entry.change}</p>
@@ -2439,7 +2439,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      {historical&&<div className="lektrus-history-compact-facts">
       <div className="lektrus-history-key-facts">
        <span><strong>Период карты</strong>{yearLabel(snapshot.year)}</span>
-       {selectedArticle&&<span><strong>Время существования</strong>{yearLabel(selectedArticle.from)} – {yearLabel(selectedArticle.to)}</span>}
+       {selectedArticle&&<span><strong>Справочный период</strong>{yearLabel(selectedArticle.from)} – {yearLabel(selectedArticle.to)}</span>}
        {selectedArticle?.capital&&<span><strong>Столица и центры</strong>{selectedArticle.capital}</span>}
        {!selectedArticle&&fallbackReference?.capital&&<span><strong>Центры</strong>{fallbackReference.capital}</span>}
       </div>
