@@ -727,14 +727,19 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  },[mode,refresh]);
  const worldMineralPoints=useMemo(()=>[...(worldMinerals?.features??[]),...(mrdsWorld?.features??[])]
   .flatMap((feature,id)=>{
-   const point=featureMapPoint(feature),commodity=mineralCommodity(feature)??mrdsMineralCommodity(feature);
+   const preferred=mineralFilter==="Все виды"?undefined:mineralFilter;
+   const point=featureMapPoint(feature),commodity=mineralCommodity(feature,preferred)??mrdsMineralCommodity(feature,preferred);
    return point&&commodity?[{id,point,feature,commodity}]:[];
-  }),[worldMinerals,mrdsWorld]);
+  }),[worldMinerals,mrdsWorld,mineralFilter]);
  const mineralPoints=useMemo(()=>[...(minerals?.features??[]),...(mrdsRegion?.features??[])]
   .flatMap((feature,id)=>{
-   const point=featureMapPoint(feature),commodity=mineralCommodity(feature)??mrdsMineralCommodity(feature);
+   const preferred=mineralFilter==="Все виды"?undefined:mineralFilter;
+   const point=featureMapPoint(feature),commodity=mineralCommodity(feature,preferred)??mrdsMineralCommodity(feature,preferred);
    return point&&commodity?[{id,point,feature,commodity}]:[];
-  }),[minerals,mrdsRegion]);
+  }),[minerals,mrdsRegion,mineralFilter]);
+ const selectedMineralCommodity=selectedMineral?(mineralCommodity(selectedMineral,mineralFilter==="Все виды"?undefined:mineralFilter)??
+  mrdsMineralCommodity(selectedMineral,mineralFilter==="Все виды"?undefined:mineralFilter)??
+  mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral)):null;
  const localMineralDetail=mineralsAvailable&&scale>=6&&mineralPoints.length>0;
  // Continuous wheel/pinch zoom previously regrouped thousands of deposits on
  // every animation frame. Grouping is screen-space approximate, so quarter-
@@ -1956,7 +1961,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      {markerDetails.url&&<a href={markerDetails.url} target="_blank" rel="noopener noreferrer">Исторический источник ↗</a>}
     </div>:
     selectedMineral&&mode==="minerals"?<div className="lektrus-atlas-description">
-     <strong>Запись о минеральном сырье: {(mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))?.name??"Полезное ископаемое"}</strong>
+     <strong>Запись о минеральном сырье: {selectedMineralCommodity?.name??"Полезное ископаемое"}</strong>
      <p>Источник: Геологическая служба США, {selectedMineral.properties?.ATLAS_DATASET==="MRDS"?
       "архивный каталог минеральных ресурсов MRDS":"каталог крупных месторождений"}.</p>
      {selectedMineral.properties?.ATLAS_DATASET==="MRDS"&&<>
@@ -1968,12 +1973,12 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        <p><strong>Статус в архивной базе (не подтверждён на 2026 год):</strong> {String(selectedMineral.properties.dev_stat)}</p>}
      </>}
      {mineralDepositFacts(selectedMineral).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
-     {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))?.name??"")&&
+     {mineralGuide(selectedMineralCommodity?.name??"")&&
       <div className="lektrus-atlas-city-data">
        <strong>Справка о минеральном сырье</strong>
-       <p>{mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.className}</p>
-       <p><strong>Состав:</strong> {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.composition}</p>
-       <p><strong>Использование:</strong> {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.uses}</p>
+       <p>{mineralGuide(selectedMineralCommodity!.name)!.className}</p>
+       <p><strong>Состав:</strong> {mineralGuide(selectedMineralCommodity!.name)!.composition}</p>
+       <p><strong>Использование:</strong> {mineralGuide(selectedMineralCommodity!.name)!.uses}</p>
        <small>Генетический тип конкретного месторождения приводится отдельно, если он известен из USGS.</small>
       </div>}
      <p>Координаты: {(()=>{
@@ -2357,7 +2362,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      {markerDetails.url&&<a href={markerDetails.url} target="_blank" rel="noopener noreferrer">Исторический источник ↗</a>}
     </div>:
     selectedMineral&&mode==="minerals"?<div className="lektrus-atlas-description">
-     <strong>Запись о минеральном сырье: {(mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))?.name??"Полезное ископаемое"}</strong>
+     <strong>Запись о минеральном сырье: {selectedMineralCommodity?.name??"Полезное ископаемое"}</strong>
      <p>Источник: Геологическая служба США, {selectedMineral.properties?.ATLAS_DATASET==="MRDS"?
       "архивный каталог минеральных ресурсов MRDS":"каталог крупных месторождений"}.</p>
      {selectedMineral.properties?.ATLAS_DATASET==="MRDS"&&<>
@@ -2369,12 +2374,12 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        <p><strong>Статус в архивной базе (не подтверждён на 2026 год):</strong> {String(selectedMineral.properties.dev_stat)}</p>}
      </>}
      {mineralDepositFacts(selectedMineral).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
-     {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))?.name??"")&&
+     {mineralGuide(selectedMineralCommodity?.name??"")&&
       <div className="lektrus-atlas-city-data">
        <strong>Справка о минеральном сырье</strong>
-       <p>{mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.className}</p>
-       <p><strong>Состав:</strong> {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.composition}</p>
-       <p><strong>Использование:</strong> {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.uses}</p>
+       <p>{mineralGuide(selectedMineralCommodity!.name)!.className}</p>
+       <p><strong>Состав:</strong> {mineralGuide(selectedMineralCommodity!.name)!.composition}</p>
+       <p><strong>Использование:</strong> {mineralGuide(selectedMineralCommodity!.name)!.uses}</p>
        <small>Генетический тип конкретного месторождения приводится отдельно, если он известен из USGS.</small>
       </div>}
      <p>Координаты: {(()=>{

@@ -187,8 +187,8 @@ export function applyVerifiedCapitalUpdates2026(collection:GeoCollection):GeoCol
    properties:{NAME:c.current,NAME_RU:c.rus,ISO_A2:c.country,
     FEATURECLA:"Admin-0 capital",ADM0CAP:1,CAPALT:0,
     CAPITAL_CORRECTION_RU:c.note,CAPITAL_CORRECTION_URL:c.document,
-    LOCATION_SOURCE_RU:"Координаты населённого пункта по OpenStreetMap/Mapcarta (приблизительно)",
-    LOCATION_SOURCE_URL:"https://mapcarta.com/Ciudad_de_la_Paz"}});
+    LOCATION_SOURCE_RU:"Приблизительный центр города",
+    ...(c.country==="GQ"?{LOCATION_SOURCE_URL:"https://mapcarta.com/Ciudad_de_la_Paz"}:{})}});
  }
  for(const c of SOUTH_AFRICA_CAPITALS){
   if(items.some(f=>f.properties?.ISO_A2==="ZA"&&f.properties?.NAME===c.name))continue;

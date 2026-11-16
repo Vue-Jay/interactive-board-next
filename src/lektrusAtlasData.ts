@@ -47,7 +47,8 @@ const pending=new Map<string,Promise<GeoCollection>>();
 const validData=(v:unknown):v is GeoCollection=>!!v&&typeof v==="object"&&
  (v as GeoCollection).type==="FeatureCollection"&&Array.isArray((v as GeoCollection).features)&&
  (v as GeoCollection).features.length>0&&
- (v as GeoCollection).features.every(f=>f?.type==="Feature"&&!!f.geometry);
+ (v as GeoCollection).features.every(f=>f?.type==="Feature"&&(f.geometry===null||!!f.geometry))&&
+ (v as GeoCollection).features.some(f=>!!f.geometry);
 async function requestGeojson(key:string,urls:string[]):Promise<GeoCollection>{
  const saved=cache.get(key);
  if(saved)return saved;
@@ -65,10 +66,14 @@ async function requestGeojson(key:string,urls:string[]):Promise<GeoCollection>{
     if(!response.ok)throw new Error("HTTP "+response.status);
     const body=await response.json();
     if(!validData(body))throw new Error("Некорректный GeoJSON");
-    cache.set(key,body);
+    // GeoJSON explicitly permits null geometry. Natural Earth's 10m admin-1
+    // lines contain one such New Zealand record; rejecting the whole dataset
+    // would discard thousands of genuine borders. Never invent its line.
+    const drawable={...body,features:body.features.filter(f=>f.geometry!==null)};
+    cache.set(key,drawable);
     // Keep memory bounded. Slow phones should not hold decades of geometry.
     if(cache.size>8)cache.delete(cache.keys().next().value!);
-    return body;
+    return drawable;
    }catch(error){errors.push(error instanceof Error?error.message:String(error))}
   }
   throw new Error("Не удалось получить геоданные: "+errors.join("; "));
@@ -366,7 +371,7 @@ export function loadHistoricalIndex():Promise<HistoricalIndexRecord[]>{
       item.countries.some(name=>typeof name!=="string"||name.length>160))continue;
      if(available.get(item.year)!==item.filename||item.year===2026)continue;
      rows.push({year:item.year,filename:item.filename,
-      countries:[...new Set(item.countries.filter(name=>name.trim()))]});
+      countries:[...new Set(item.countries.map(name=>name.trim()).filter(Boolean))]});
     }
     if(rows.length<35)throw new Error("Неполный индекс периодов");
     return rows.sort((a,b)=>a.year-b.year);
@@ -601,6 +606,12 @@ const continentSchoolNames:Record<string,string>={
 };
 export function featureSourceFacts(feature:GeoFeature):Array<{label:string;value:string}>{
  const p=feature.properties??{};
+ // The Natural Earth elevation-point layer uses lower-case attributes.
+ const sourceValue=(key:string)=>p[key]??p[key.toLowerCase()];
+ const peakName=String(sourceValue("NAME")??"");
+ const officialPeak=String(sourceValue("FEATURECLA")).toLowerCase()==="mountain"?
+  peakName==="Mount Everest"?{height:8848.86,source:"Совместное измерение Непала и Китая, 2020 г."}:
+  peakName==="Cerro Aconcagua"?{height:6960.8,source:"Национальный географический институт Аргентины, 2012 г."}:null:null;
  const fields:[string,string][]=[
   ["ELEVATION","Высота, м"],["ELEV","Высота, м"],
   ["POP_MAX","Население (оценка источника)"],["POP_MIN","Население (минимальная оценка)"],
@@ -615,7 +626,7 @@ export function featureSourceFacts(feature:GeoFeature):Array<{label:string;value
     (Number.isFinite(year)&&year>1900&&year<=2100?" ("+year+" г.)":" (год не указан)")});
  }
  for(const [property,label] of [["CONTINENT","Часть света"],["SUBREGION","Регион мира"],["REGION_UN","Регион ООН"]] as const){
-  const value=String(p[property]??"");
+  const value=String(sourceValue(property)??"");
   if(continentSchoolNames[value])result.push({label,value:continentSchoolNames[value]});
  }
  const gdp=Number(p.GDP_MD??p.gdp_md);
@@ -630,7 +641,7 @@ export function featureSourceFacts(feature:GeoFeature):Array<{label:string;value
   result.push({label:"Точность координат",value:p.LOCATION_SOURCE_RU});
  const seen=new Set<string>();
  for(const [key,label] of fields){
-  const value=p[key];
+  const value=sourceValue(key);
   if((typeof value==="string"&&value.trim()!==""||
    typeof value==="number"&&Number.isFinite(value))&&!seen.has(label)){
    let display=String(value).trim();
@@ -639,6 +650,7 @@ export function featureSourceFacts(feature:GeoFeature):Array<{label:string;value
     // Natural Earth uses negative sentinel values for unavailable records.
     // Actual below-sea-level elevations remain valid.
     if(!Number.isFinite(measurement)||((key==="POP_MAX"||key==="POP_MIN")?measurement<=0:measurement<=-9999))continue;
+    if(officialPeak&&(key==="ELEVATION"||key==="ELEV"))display=officialPeak.height.toLocaleString("ru-RU",{useGrouping:false});
    }
    if(key==="FEATURECLA"||key==="FEATURECLASS"){
     // An unknown English source category is metadata, not a translated legend.
@@ -656,6 +668,7 @@ export function featureSourceFacts(feature:GeoFeature):Array<{label:string;value
    result.push({label,value:display});seen.add(label);
   }
  }
+ if(officialPeak&&seen.has("Высота, м"))result.push({label:"Источник уточнённой высоты",value:officialPeak.source});
  return result;
 }
 

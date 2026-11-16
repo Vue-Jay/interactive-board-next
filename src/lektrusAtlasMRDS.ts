@@ -16,16 +16,16 @@ const CODE_MATCHES:ReadonlyArray<[string,readonly string[]]>=[
  ["Поваренная соль",["HAL"]]
 ];
 const schoolInk="#202528";
-export function mrdsMineralCommodity(feature:GeoFeature):{name:string;color:string}|null{
+export function mrdsMineralCommodity(feature:GeoFeature,preferred?:string):{name:string;color:string}|null{
  const p=feature.properties??{};
  if(p.ATLAS_DATASET!=="MRDS")return null;
  // Commodity codes are tokens, not English free text. An exact token check
  // avoids e.g. confusing "AG" (silver) with "AGT" or "CU" with other codes.
  const codes=new Set(String(p.code_list??"").toUpperCase()
   .split(/[^A-Z0-9]+/).filter(Boolean));
- if(codes.has("PB")&&codes.has("ZN"))
+ if((!preferred||preferred==="Полиметаллические руды")&&codes.has("PB")&&codes.has("ZN"))
   return {name:"Полиметаллические руды",color:schoolInk};
- const match=CODE_MATCHES.find(([,values])=>values.some(code=>codes.has(code)));
+ const match=CODE_MATCHES.find(([name,values])=>(!preferred||name===preferred)&&values.some(code=>codes.has(code)));
  return match?{name:match[0],color:schoolInk}:null;
 }
 
