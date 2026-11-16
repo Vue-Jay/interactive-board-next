@@ -108,15 +108,62 @@ const CAPITAL_UPDATES=[
  {country:"BJ",old:"Cotonou",current:"Porto-Novo",rus:"Порто-Ново",
   lon:2.616626,lat:6.483311,
   note:"Конституционная столица Бенина Порто-Ново; Котону является местом пребывания правительства.",
-  document:"https://www.gouv.bj/article/935/allons--ensemble-decouverte-communes-benin/"}
+  document:"https://www.gouv.bj/article/935/allons--ensemble-decouverte-communes-benin/"},
+ {country:"LK",old:"Colombo",current:"Sri Jayawardenepura Kotte",rus:"Шри-Джаяварденепура-Котте",
+  lon:79.91,lat:6.89,
+  note:"Административная столица Шри-Ланки — Шри-Джаяварденепура-Котте; Коломбо — коммерческая столица.",
+  document:"https://www.mfa.gov.lk/en/national-profile-and-geography"},
+ {country:"NG",old:"Lagos",current:"Abuja",rus:"Абуджа",
+  lon:7.49,lat:9.06,
+  note:"Абуджа стала столицей Нигерии 12 декабря 1991 года вместо Лагоса.",
+  document:"https://faan.gov.ng/international-airports/"},
+ {country:"BI",old:"Bujumbura",current:"Gitega",rus:"Гитега",
+  lon:29.92,lat:-3.43,
+  note:"Политическая столица Бурунди с 2019 года — Гитега, экономическая столица — Бужумбура.",
+  document:"https://primature.gov.bi/presentation-generale/"},
+ {country:"CI",old:"Abidjan",current:"Yamoussoukro",rus:"Ямусукро",
+  lon:-5.28,lat:6.82,
+  note:"Политическая и административная столица Кот-д’Ивуара — Ямусукро, экономическая — Абиджан.",
+  document:"https://onu.diplomatie.gouv.ci/?lang=en"}
 ] as const;
 export const verifiedCapitalUpdates2026=CAPITAL_UPDATES;
+const SOUTH_AFRICA_CAPITALS=[
+ {name:"Pretoria",rus:"Претория",role:"Административная столица ЮАР",lon:28.19,lat:-25.75},
+ {name:"Cape Town",rus:"Кейптаун",role:"Законодательная столица ЮАР",lon:18.42,lat:-33.92},
+ {name:"Bloemfontein",rus:"Блумфонтейн",role:"Судебная столица ЮАР",lon:26.21,lat:-29.12}
+] as const;
+const SOUTH_AFRICA_SOURCE="https://www.gov.za/about-sa/south-africas-provinces";
+const JUBA_SOURCE="https://data.un.org/legacy/en/iso/ss.html";
+const ESWATINI_SOURCE="https://au.int/en/cities/lobambaroyal-and-legislative-mbabane-administrative";
+const KIRIBATI_SOURCE="https://www.dfat.gov.au/geo/heads-of-government/kiribati";
+export const NAURU_CAPITAL_NOTE={text:"У Науру нет официальной столицы. Органы правительства расположены в округе Ярен; его часто называют фактической столицей.",url:"https://www.dfat.gov.au/geo/heads-of-government/naoero"};
 export function applyVerifiedCapitalUpdates2026(collection:GeoCollection):GeoCollection{
  // Features are never mutated; the same source may be used on multiple maps.
+ const hasBairiki=collection.features.some(f=>String(f.properties?.ISO_A2??f.properties?.iso_a2)==="KI"&&String(f.properties?.NAME??f.properties?.name)==="Bairiki");
  const items=collection.features.map(feature=>{
   const p=feature.properties??{};
   const iso=String(p.ISO_A2??p.iso_a2??"").toUpperCase();
   const raw=String(p.NAME??p.name??"");
+  if(iso==="SZ"&&(raw==="Mbabane"||raw==="Lobamba"))return {...feature,properties:{...p,
+   NAME:raw,NAME_RU:raw==="Mbabane"?"Мбабане":"Лобамба",ADM0CAP:1,CAPALT:0,FEATURECLA:"Admin-0 capital",
+   CAPITAL_CORRECTION_RU:raw==="Mbabane"?"Административная столица Эсватини":"Королевская и законодательная столица Эсватини",
+   CAPITAL_CORRECTION_URL:ESWATINI_SOURCE}};
+  if(iso==="KI"&&(raw==="Tarawa"||raw==="Bairiki"))return {...feature,properties:{...p,
+   NAME_RU:hasBairiki&&raw==="Tarawa"?"Тарава":"Южная Тарава (Баирики)",
+   ADM0CAP:hasBairiki&&raw==="Tarawa"?0:1,CAPALT:0,FEATURECLA:hasBairiki&&raw==="Tarawa"?"Populated place":"Admin-0 capital",
+   CAPITAL_CORRECTION_RU:"Правительственный центр Кирибати — Баирики, часть Южной Таравы.",CAPITAL_CORRECTION_URL:KIRIBATI_SOURCE}};
+  if(iso==="NR"&&raw==="Yaren")return {...feature,properties:{...p,ADM0CAP:0,CAPALT:0,FEATURECLA:"Populated place",
+   CAPITAL_CORRECTION_RU:NAURU_CAPITAL_NOTE.text,CAPITAL_CORRECTION_URL:NAURU_CAPITAL_NOTE.url}};
+  if((iso==="SS"||String(p.ADM0_A3??p.adm0_a3)==="SSD")&&raw==="Juba")return {...feature,properties:{...p,
+   NAME:"Juba",NAME_RU:"Джуба",ISO_A2:"SS",ADM0_A3:"SSD",ADM0CAP:1,CAPALT:0,FEATURECLA:"Admin-0 capital",
+   CAPITAL_CORRECTION_RU:"Столица Южного Судана по данным ООН — Джуба.",CAPITAL_CORRECTION_URL:JUBA_SOURCE}};
+  const southAfrica=(iso==="ZA"||String(p.ADM0_A3??p.adm0_a3)==="ZAF")&&SOUTH_AFRICA_CAPITALS.find(c=>c.name===raw);
+  if(southAfrica)return {...feature,properties:{...p,ISO_A2:"ZA",NAME:southAfrica.name,NAME_RU:southAfrica.rus,ADM0CAP:1,
+   CAPALT:0,FEATURECLA:"Admin-0 capital",CAPITAL_CORRECTION_RU:southAfrica.role,
+   CAPITAL_CORRECTION_URL:SOUTH_AFRICA_SOURCE}};
+  if(iso==="ZA"&&raw==="Johannesburg")return {...feature,properties:{...p,ADM0CAP:0,CAPALT:0,
+   FEATURECLA:"Populated place",CAPITAL_CORRECTION_RU:"Йоханнесбург — крупнейший город ЮАР, но не одна из трёх столиц.",
+   CAPITAL_CORRECTION_URL:SOUTH_AFRICA_SOURCE}};
   if(isAstanaCapitalFeature(feature)){
    return {...feature,properties:{...p,NAME:"Astana",NAMEASCII:"Astana",
     NAME_RU:"Астана",NAME_ALT:"Нур-Султан",ADM0CAP:1,CAPALT:0,
@@ -127,9 +174,9 @@ export function applyVerifiedCapitalUpdates2026(collection:GeoCollection):GeoCol
   const relevant=CAPITAL_UPDATES.find(c=>c.country===iso&&(c.old===raw||c.current===raw));
   if(!relevant)return feature;
   const isNew=relevant.current===raw;
-  return {...feature,properties:{...p,ADM0CAP:isNew?1:0,CAPALT:0,
+  return {...feature,properties:{...p,...(isNew?{NAME:relevant.current,NAME_RU:relevant.rus,ISO_A2:iso}:{}),ADM0CAP:isNew?1:0,CAPALT:0,
    FEATURECLA:isNew?"Admin-0 capital":"Populated place",
-   CAPITAL_CORRECTION_RU:isNew?relevant.note:"Прежняя столица; актуальный статус изменён. "+relevant.note,
+   CAPITAL_CORRECTION_RU:isNew||["BJ","LK","BI","CI"].includes(iso)?relevant.note:"Прежняя столица; актуальный статус изменён. "+relevant.note,
    CAPITAL_CORRECTION_URL:relevant.document}};
  });
  // Natural Earth's older place records do not contain the newest capital.
@@ -140,9 +187,28 @@ export function applyVerifiedCapitalUpdates2026(collection:GeoCollection):GeoCol
    properties:{NAME:c.current,NAME_RU:c.rus,ISO_A2:c.country,
     FEATURECLA:"Admin-0 capital",ADM0CAP:1,CAPALT:0,
     CAPITAL_CORRECTION_RU:c.note,CAPITAL_CORRECTION_URL:c.document,
-    LOCATION_SOURCE_RU:"Координаты населённого пункта по OpenStreetMap/Mapcarta (приблизительно)",
-    LOCATION_SOURCE_URL:"https://mapcarta.com/Ciudad_de_la_Paz"}});
+    LOCATION_SOURCE_RU:"Приблизительный центр города",
+    ...(c.country==="GQ"?{LOCATION_SOURCE_URL:"https://mapcarta.com/Ciudad_de_la_Paz"}:{})}});
  }
+ for(const c of SOUTH_AFRICA_CAPITALS){
+  if(items.some(f=>f.properties?.ISO_A2==="ZA"&&f.properties?.NAME===c.name))continue;
+  items.push({type:"Feature",geometry:{type:"Point",coordinates:[c.lon,c.lat]},properties:{
+   NAME:c.name,NAME_RU:c.rus,ISO_A2:"ZA",ADM0_A3:"ZAF",ADM0CAP:1,CAPALT:0,
+   FEATURECLA:"Admin-0 capital",CAPITAL_CORRECTION_RU:c.role,CAPITAL_CORRECTION_URL:SOUTH_AFRICA_SOURCE,
+   LOCATION_SOURCE_RU:"Приблизительный центр города"}});
+ }
+ if(!items.some(f=>f.properties?.ISO_A2==="SS"&&f.properties?.NAME==="Juba"))items.push({type:"Feature",geometry:{type:"Point",coordinates:[31.58,4.85]},
+  properties:{NAME:"Juba",NAME_RU:"Джуба",ISO_A2:"SS",ADM0_A3:"SSD",ADM0CAP:1,CAPALT:0,FEATURECLA:"Admin-0 capital",
+   LOCATION_SOURCE_RU:"Приблизительный центр города",CAPITAL_CORRECTION_RU:"Столица Южного Судана по данным ООН — Джуба.",CAPITAL_CORRECTION_URL:JUBA_SOURCE}});
+ for(const c of [{name:"Mbabane",rus:"Мбабане",role:"Административная столица Эсватини",lon:31.14,lat:-26.32},
+  {name:"Lobamba",rus:"Лобамба",role:"Королевская и законодательная столица Эсватини",lon:31.20,lat:-26.45}]){
+  if(!items.some(f=>f.properties?.ISO_A2==="SZ"&&f.properties?.NAME===c.name))items.push({type:"Feature",geometry:{type:"Point",coordinates:[c.lon,c.lat]},
+   properties:{NAME:c.name,NAME_RU:c.rus,ISO_A2:"SZ",ADM0_A3:"SWZ",ADM0CAP:1,CAPALT:0,FEATURECLA:"Admin-0 capital",
+    LOCATION_SOURCE_RU:"Приблизительный центр города",CAPITAL_CORRECTION_RU:c.role,CAPITAL_CORRECTION_URL:ESWATINI_SOURCE}});
+ }
+ if(!items.some(f=>f.properties?.ISO_A2==="NR"&&f.properties?.NAME==="Yaren"))items.push({type:"Feature",geometry:{type:"Point",coordinates:[166.92,-0.55]},
+  properties:{NAME:"Yaren",NAME_RU:"Ярен",ISO_A2:"NR",ADM0_A3:"NRU",ADM0CAP:0,CAPALT:0,FEATURECLA:"Populated place",
+   LOCATION_SOURCE_RU:"Приблизительный центр округа",CAPITAL_CORRECTION_RU:NAURU_CAPITAL_NOTE.text,CAPITAL_CORRECTION_URL:NAURU_CAPITAL_NOTE.url}});
  return {...collection,features:items};
 }
 

@@ -34,6 +34,14 @@ assert.equal(historicalSnapshots[nearestSnapshotIndex(1916)].year,1914);
 assert.ok(eventsNearYear(1914).some(v=>v.year===1914));
 assert.ok(eventsNearYear(1920).some(v=>v.year===1922));
 assert.ok(eventsNearYear(2000).some(v=>v.year===2004));
+const endWWII=eventsNearYear(1945).find(v=>v.title==="Окончание Второй мировой войны");
+assert.ok(endWWII.lon>139&&endWWII.lon<140&&endWWII.lat>35&&endWWII.lat<36);
+assert.match(endWWII.description,/2 сентября 1945/);
+assert.ok(eventsNearYear(1945).some(v=>v.title.includes("Капитуляция Германии")));
+assert.ok(eventsNearYear(500).some(v=>v.year===476&&v.lat>44&&v.lat<45));
+assert.ok(exports.schoolHistoryEvents.some(v=>v.year===1347&&v.lat>38&&v.lat<39&&v.lon>15&&v.lon<16&&v.description.includes("Мессина")));
+assert.ok(exports.schoolHistoryEvents.some(v=>v.year===800&&v.lon>12.44&&v.lon<12.46));
+assert.ok(exports.schoolHistoryEvents.some(v=>v.year===1871&&v.description.includes("до завершения")));
 const atlas=createAtlasDocument();
 assert.equal(validAtlasDocument(atlas),true);
 assert.equal(atlas.cityMinPopulation,0);
@@ -92,7 +100,7 @@ for(const specialized of ["Литий","Уран","Редкоземельные 
   specialized+" must not appear on the mineral map");
 }
 for(const [raw,schoolName] of [
- ["Lead","Полиметаллические руды"],["Zinc","Полиметаллические руды"],
+ ["Lead, Zinc","Полиметаллические руды"],
  ["Apatite","Апатиты"],["Phosphate","Фосфориты"],
  ["Gold","Золото"],["Iron","Железные руды"],["Bauxite","Алюминиевые руды"],
  ["Copper","Медные руды"],["Mercury","Ртутные руды"],["Graphite","Графит"]
@@ -101,6 +109,10 @@ for(const [raw,schoolName] of [
   schoolName,raw+" should receive the appropriate school-atlas glyph");
 }
 assert.equal(externalExports.mineralDepositFacts(copperDeposit).find(x=>x.label==="Генетический тип")?.value,"Гидротермальное");
+for(const commodity of ["Lead","Zinc","Nonferrous metals","Chemical grade"])assert.equal(externalExports.mineralCommodity({properties:{commodity}}),null);
+assert.equal(externalExports.mineralCommodity({properties:{dep_type:"Gold"}}),null,"The genetic type is not a commodity");
+assert.equal(externalExports.mineralCommodity({properties:{commodity:"Copper-molybdenum-gold"}},"Золото")?.name,"Золото");
+assert.equal(externalExports.mineralCommodity({properties:{commodity:"Copper-molybdenum-gold"}},"Алмазы"),null);
 assert.equal(externalExports.mineralDepositSource({properties:{url:"http://unknown.example/"} ,geometry:null}),null);
 const guideSource=fs.readFileSync(new URL("../src/lektrusAtlasMineralGuide.ts",import.meta.url),"utf8");
 const mineralGuides={};
@@ -110,8 +122,11 @@ assert.ok(mineralGuides.mineralGuides.length>=14);
 assert.equal(mineralGuides.mineralGuide("Железные руды")?.uses,"Получение железа и стали");
 const areaSource=fs.readFileSync(new URL("../src/lektrusAtlasCityArea.ts",import.meta.url),"utf8");
 const cityAreaExports={};
-new Function("exports",ts.transpileModule(areaSource,{compilerOptions:{
- module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(cityAreaExports);
+const areaFactsExports={};
+new Function("exports",ts.transpileModule(fs.readFileSync(new URL("../src/lektrusAtlasSchoolFacts.ts",import.meta.url),"utf8"),{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(areaFactsExports);
+new Function("exports","require",ts.transpileModule(areaSource,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(cityAreaExports,()=>areaFactsExports);
 assert.equal(cityAreaExports.cityAreaId({WIKIDATAID:"Q649"}),"Q649");
 assert.equal(cityAreaExports.cityAreaId({WIKIDATAID:"invalid"}),null);
 
@@ -242,6 +257,11 @@ assert.match(map,/Гипсометрическая карта/);
 assert.match(fs.readFileSync(new URL("../src/LektrusMapBase.tsx",import.meta.url),"utf8"),/\{terrain\}/);
 
 const data=fs.readFileSync(new URL("../src/lektrusAtlasData.ts",import.meta.url),"utf8");
+const sourceLoader={};
+const sourceBoundaryLine={type:"Feature",properties:{NAME:"Verified boundary"},geometry:{type:"LineString",coordinates:[[0,0],[1,1]]}};
+const noGeometry={type:"Feature",properties:{NAME:"Hawke's Bay - Waikato"},geometry:null};
+new Function("exports","require","fetch",ts.transpileModule(data,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(sourceLoader,()=>exports,async()=>({ok:true,json:async()=>({type:"FeatureCollection",features:[sourceBoundaryLine,noGeometry]})}));
+assert.deepEqual((await sourceLoader.loadAtlasLayer("admin-world-lines")).features,[sourceBoundaryLine],"A published geometry-less record must not suppress the entire detailed map");
 
 const historicalInsigniaSource=fs.readFileSync(new URL("../src/lektrusHistoricalInsignia.ts",import.meta.url),"utf8");
 const historicalReferenceSource=fs.readFileSync(new URL("../src/lektrusHistoricalReferences.ts",import.meta.url),"utf8");
@@ -333,11 +353,15 @@ assert.equal(symbols.atlasCountrySymbol(symbolCountry("Qing dynasty"),"Импе�
 assert.match(symbols.atlasCountrySymbol(symbolCountry("German Democratic Republic"),"ГДР",1980,true).imageUrl??"",
  /German%20Democratic%20Republic/,"Historic GDR flag should be used for 1980");
 assert.match(symbols.atlasCountrySymbol(symbolCountry("Soviet Union"),"СССР",1940,true).imageUrl??"",
- /1924/,"Use the documented early USSR flag for the 1940 period");
+ /1936/,"Use the documented 1936 version of the USSR flag for the 1940 period");
 assert.match(symbols.atlasCountrySymbol(symbolCountry("Soviet Union"),"СССР",1980,true).imageUrl??"",
  /Soviet%20Union/,"Flag of the USSR must be visible for 1980");
 assert.match(symbols.atlasCountrySymbol(symbolCountry("Soviet Union"),"СССР",1965,true).imageUrl??"",
- /dark%20version/,"Use the dated 1955-1980 USSR flag");
+ /Flag%20of%20the%20Soviet%20Union\.svg/,"Use the 1955 flag, not an arbitrary darker illustration");
+assert.match(symbols.atlasCountrySymbol(symbolCountry("United States","US"),"США",1908,true).imageUrl??"",/1908/);
+assert.match(symbols.atlasCountrySymbol(symbolCountry("Spain","ES"),"Испания",1800,true).note,/военно-морской/);
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Slovakia","SK"),"Словакия",1992,true).kind,"symbol");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Slovakia","SK"),"Словакия",1994,true).kind,"historic");
 assert.match(symbols.atlasCountrySymbol(symbolCountry("Republic of Venice"),"Венеция",1600,true).imageUrl??"",
  /Republic%20of%20Venice/,"Include reconstructed heraldic imagery only for the attested polity");
 assert.match(symbols.atlasCountrySymbol(symbolCountry("Safavid Empire"),"Держава Сефевидов",1600,true).imageUrl??"",
@@ -533,6 +557,12 @@ assert.equal(schoolCountryFacts.find(f=>f.label==="Часть света")?.valu
 assert.equal(schoolCountryFacts.find(f=>f.label==="Регион мира")?.value,"Центральная Азия");
 assert.match(schoolCountryFacts.find(f=>f.label==="Население (оценка картографического источника)")?.value??"",/2024/);
 assert.match(schoolCountryFacts.find(f=>f.label==="ВВП (оценка источника)")?.value??"",/2022/);
+const sentinelFacts=geoExports.featureSourceFacts(named({ELEVATION:-9999,ELEV:-430,POP_MAX:-99,POP_MIN:"нет данных"}));
+assert.equal(sentinelFacts.find(f=>f.label==="Высота, м")?.value,"-430");
+assert.ok(!sentinelFacts.some(f=>f.label.startsWith("Население")));
+assert.equal(geoExports.featureSourceFacts(named({name:"Gora Elbrus",elevation:5642,featurecla:"mountain"})).find(f=>f.label==="Высота, м")?.value,"5642");
+assert.equal(geoExports.featureSourceFacts(named({name:"Mount Everest",elevation:8848,featurecla:"mountain"})).find(f=>f.label==="Высота, м")?.value,"8848,86");
+assert.equal(geoExports.featureSourceFacts(named({name:"Cerro Aconcagua",elevation:6959,featurecla:"mountain"})).find(f=>f.label==="Высота, м")?.value,"6960,8");
 assert.equal(geoExports.hasAtlasName(named({NAME:"Unknown"})),false);
 assert.equal(places.russianPlaceName(named({NAME_RU:"Неизвестно"})),null);
 assert.ok(!map.includes('!=="Объект без названия"'),"the UI must not use placeholder text");
@@ -560,6 +590,17 @@ const worldPlaces={type:"FeatureCollection",features:[
   ...place("Dodoma",0,"Admin-0 capital alt").properties,NAME:"Dodoma",NAME_RU:"Додома",ISO_A2:"TZ"}}
 ]};
 const updatedPlaces=places.applyVerifiedCapitalUpdates2026(worldPlaces);
+const southAfrica=places.applyVerifiedCapitalUpdates2026({type:"FeatureCollection",features:[]});
+const saCapitals=places.capitalsForCountry({type:"Feature",geometry:null,properties:{ISO_A2:"ZA"}},southAfrica.features);
+assert.deepEqual(saCapitals.map(places.russianPlaceName).sort(),["Блумфонтейн","Кейптаун","Претория"]);
+assert.ok(saCapitals.every(c=>c.properties.CAPITAL_CORRECTION_URL.startsWith("https://www.gov.za/")));
+for(const [iso,name] of [["SS","Джуба"],["LK","Шри-Джаяварденепура-Котте"],["NG","Абуджа"]])
+ assert.equal(places.russianPlaceName(places.capitalsForCountry({type:"Feature",geometry:null,properties:{ISO_A2:iso}},southAfrica.features)[0]),name);
+assert.equal(places.russianPlaceName(places.capitalsForCountry({type:"Feature",geometry:null,properties:{ISO_A2:"BI"}},southAfrica.features)[0]),"Гитега");
+assert.deepEqual(places.capitalsForCountry({type:"Feature",geometry:null,properties:{ISO_A2:"SZ"}},southAfrica.features).map(places.russianPlaceName).sort(),["Лобамба","Мбабане"]);
+assert.equal(places.capitalsForCountry({type:"Feature",geometry:null,properties:{ISO_A2:"NR"}},southAfrica.features).length,0);
+assert.match(places.NAURU_CAPITAL_NOTE.text,/нет официальной столицы/);
+assert.equal(geoExports.featureSourceFacts(named({FEATURECLA:"Admin-0 capital",ADM0CAP:0,CAPALT:0})).find(x=>x.label==="Категория")?.value,"Населённый пункт");
 const legacyKazakhstan={type:"Feature",geometry:{type:"Point",coordinates:[71.43,51.13]},
  properties:{NAME:"Nur-Sultan",NAME_RU:"Нур-Султан",ISO_A2:"KZ",
  FEATURECLA:"Admin-0 capital",ADM0CAP:1}};
@@ -583,6 +624,7 @@ assert.equal(places.nationalCapital(fixed("Ciudad de la Paz")),true);
 assert.equal(places.russianPlaceName(fixed("Ciudad de la Paz")),"Сьюдад-де-ла-Пас");
 assert.equal(places.nationalCapital(fixed("Dar es Salaam")),false,"Tanzania law declares Dodoma capital");
 assert.equal(places.nationalCapital(fixed("Dodoma")),true);
+assert.equal(fixed("Dodoma").properties.LOCATION_SOURCE_URL,undefined,"Never link a Tanzanian city's coordinates to Equatorial Guinea");
 assert.equal(places.applyVerifiedCapitalUpdates2026(updatedPlaces).features.length,updatedPlaces.features.length,
  "corrections must not duplicate a capital");
 assert.equal(places.nationalCapital(worldPlaces.features[0]),true,"source must not be mutated");

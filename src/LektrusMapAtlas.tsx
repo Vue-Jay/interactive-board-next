@@ -21,11 +21,11 @@ import {fetchCityArea,cityAreaId,type AtlasCityArea} from "./lektrusAtlasCityAre
 import {mineralGuide} from "./lektrusAtlasMineralGuide";
 import {atlasOSMCoverageTiles,loadAtlasOSMCoverage,loadMineralDeposits,loadWorldMineralOverview,mineralCommodity,mineralDepositFacts,mineralDepositSource,
  canLoadMinerals,externalBBoxKey,type ExternalBounds} from "./lektrusAtlasExternal";
-import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols,applyVerifiedCapitalUpdates2026,capitalsForCountry,matchesCityCategory,type CityCategory} from "./lektrusAtlasPlaces";
+import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols,applyVerifiedCapitalUpdates2026,capitalsForCountry,matchesCityCategory,NAURU_CAPITAL_NOTE,type CityCategory} from "./lektrusAtlasPlaces";
 import LektrusAtlasTerrain,{sampleTerrainElevation,type TerrainStatus} from "./LektrusAtlasTerrain";
 import {atlasRiverStroke,atlasLakeStroke,atlasGlacierStroke,atlasWaterGeometryTolerance,atlasRiverLabelRank} from "./lektrusAtlasHydro";
 import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDistanceScale,zoomAtlasCamera} from "./lektrusAtlasRegions";
-import {atlasModes,atlasModesFor,normalizeAtlasMode,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
+import {atlasModes,atlasModesFor,normalizeAtlasMode,historicalSnapshots,nearestSnapshotIndex,yearLabel,eventsNearYear} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,hasAtlasName,isRussianAtlasName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
 historicalFeatureFacts,historicalCountryName,historicalMapFeatures,loadHistoricalIndex,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
@@ -727,14 +727,19 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  },[mode,refresh]);
  const worldMineralPoints=useMemo(()=>[...(worldMinerals?.features??[]),...(mrdsWorld?.features??[])]
   .flatMap((feature,id)=>{
-   const point=featureMapPoint(feature),commodity=mineralCommodity(feature)??mrdsMineralCommodity(feature);
+   const preferred=mineralFilter==="Все виды"?undefined:mineralFilter;
+   const point=featureMapPoint(feature),commodity=mineralCommodity(feature,preferred)??mrdsMineralCommodity(feature,preferred);
    return point&&commodity?[{id,point,feature,commodity}]:[];
-  }),[worldMinerals,mrdsWorld]);
+  }),[worldMinerals,mrdsWorld,mineralFilter]);
  const mineralPoints=useMemo(()=>[...(minerals?.features??[]),...(mrdsRegion?.features??[])]
   .flatMap((feature,id)=>{
-   const point=featureMapPoint(feature),commodity=mineralCommodity(feature)??mrdsMineralCommodity(feature);
+   const preferred=mineralFilter==="Все виды"?undefined:mineralFilter;
+   const point=featureMapPoint(feature),commodity=mineralCommodity(feature,preferred)??mrdsMineralCommodity(feature,preferred);
    return point&&commodity?[{id,point,feature,commodity}]:[];
-  }),[minerals,mrdsRegion]);
+  }),[minerals,mrdsRegion,mineralFilter]);
+ const selectedMineralCommodity=selectedMineral?(mineralCommodity(selectedMineral,mineralFilter==="Все виды"?undefined:mineralFilter)??
+  mrdsMineralCommodity(selectedMineral,mineralFilter==="Все виды"?undefined:mineralFilter)??
+  mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral)):null;
  const localMineralDetail=mineralsAvailable&&scale>=6&&mineralPoints.length>0;
  // Continuous wheel/pinch zoom previously regrouped thousands of deposits on
  // every animation frame. Grouping is screen-space approximate, so quarter-
@@ -857,6 +862,9 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const userMarkers=d.markers.filter(marker=>!historical||
   Math.abs(marker.year-snapshot.year)<=Math.max(10,(historicalSnapshots[Math.min(index+1,historicalSnapshots.length-1)].year-
    historicalSnapshots[Math.max(0,index-1)].year)/2));
+ const schoolMarkers=historical&&mode==="events"?eventsNearYear(snapshot.year).map(event=>({...event,
+  id:`school-${event.year}-${event.lat}-${event.lon}`})):[];
+ const displayedMarkers=[...userMarkers.map(marker=>({...marker,url:undefined})),...schoolMarkers];
  const selectedRaw=String(selected?.properties?.NAME??selected?.properties?.ADMIN??"");
  const selectedArticle=selected&&historical&&!modernReference?
   findHistoricalArticle(selectedRaw,snapshot.year):undefined;
@@ -880,6 +888,10 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  },[selectedReferenceId]);
  const selectedCountryCapitals=selected&&mode==="political"?
   capitalsForCountry(selected,cityPoints.map(c=>c.feature)):[];
+ const nauruCapital=!!selected&&mode==="political"&&selected.geometry?.type!=="Point"&&
+  (selected.properties?.ISO_A2==="NR"||selected.properties?.ADM0_A3==="NRU"||selected.properties?.ISO_A3==="NRU");
+ const verifiedCountryCapital=nauruCapital||selectedCountryCapitals.some(c=>typeof c.properties?.CAPITAL_CORRECTION_URL==="string");
+ const displayedSchoolFacts=schoolReference?.facts.filter(f=>!verifiedCountryCapital||f.label!=="Столица");
  const selectedIsCity=!!selected&&["Populated place","Admin-0 capital","Admin-0 capital alt",
   "Admin-0 region capital","Admin-1 capital","Admin-1 region capital"]
   .includes(String(selected.properties?.FEATURECLA??selected.properties?.featurecla??""));
@@ -910,7 +922,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   atlasCountrySymbol(selected,selectedTitle,snapshot.year,historical&&!modernReference):null;
  const selectedYears=selectedRaw?historyIndex.filter(record=>record.countries.some(name=>
   normalizeHistoricalReferenceName(name)===normalizeHistoricalReferenceName(selectedRaw))).map(record=>record.year):[];
- const markerDetails=userMarkers.find(m=>m.id===selectedMarker)??null;
+ const markerDetails=displayedMarkers.find(m=>m.id===selectedMarker)??null;
  const namedFeatures=mode==="physical"?[...landforms.map(f=>f.feature),...peakPoints.map(f=>f.feature),...natureNames.map(f=>f.feature),...ponds.map(f=>f.feature),...(rivers?.features.filter(hasAtlasName)??[]),...marineNames.map(f=>f.feature)]:
   mode==="hydrography"?[...ponds.map(f=>f.feature),...(rivers?.features.filter(hasAtlasName)??[]),...marineNames.map(f=>f.feature)]:
   mode==="political"?[...mapSourceFeatures,...(administrative?.features.filter(hasAtlasName)??[]),...cityPoints.filter(p=>russianPlaceName(p.feature)&&matchesCityCategory(p.feature,cityCategory)).map(p=>p.feature)]:
@@ -1847,19 +1859,19 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
         strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"/>
       </g>}
 
-      {userMarkers.map(marker=>{
+      {displayedMarkers.map(marker=>{
        const point=projectGeography(marker.lon,marker.lat);
        return <g key={marker.id} transform={`translate(${point[0]} ${point[1]}) scale(${1/scale})`}
         className="lektrus-atlas-event lektrus-atlas-user-pin" role="button" tabIndex={0}
-        onClick={e=>{e.stopPropagation();if(dragged.current)return;setSelectedMarker(marker.id);setSelected(null)}}
-        onDoubleClick={e=>{e.stopPropagation();onChange?.({...d,markers:d.markers.filter(m=>m.id!==marker.id)});
+        onClick={e=>{e.stopPropagation();if(dragged.current)return;setSelectedMarker(marker.id);setSelected(null);setSelectedMineral(null);if(historical)setHistoryTab("article")}}
+        onDoubleClick={e=>{e.stopPropagation();if(marker.url)return;onChange?.({...d,markers:d.markers.filter(m=>m.id!==marker.id)});
          setSelectedMarker(null)}}
-        onContextMenu={e=>{e.preventDefault();e.stopPropagation();onChange?.({...d,markers:d.markers.filter(m=>m.id!==marker.id)});
+        onContextMenu={e=>{e.preventDefault();e.stopPropagation();if(marker.url)return;onChange?.({...d,markers:d.markers.filter(m=>m.id!==marker.id)});
          setSelectedMarker(null)}}
-        onKeyDown={e=>{if(e.key==="Enter"){setSelectedMarker(marker.id);setSelected(null)}
-         if(e.key==="Delete"||e.key==="Backspace"){e.preventDefault();
+        onKeyDown={e=>{if(e.key==="Enter"){setSelectedMarker(marker.id);setSelected(null);setSelectedMineral(null);if(historical)setHistoryTab("article")}
+         if(!marker.url&&(e.key==="Delete"||e.key==="Backspace")){e.preventDefault();
           onChange?.({...d,markers:d.markers.filter(m=>m.id!==marker.id)});setSelectedMarker(null)}}}>
-        <circle r="4.5" fill="#426fbd" stroke="#fff" strokeWidth="1.7"/>
+        <circle r="4.5" fill={marker.url?"#a44b27":"#426fbd"} stroke="#fff" strokeWidth="1.7"/>
         <title>{marker.title} ({yearLabel(marker.year)})</title>
        </g>;
       })}
@@ -1946,9 +1958,10 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      <p>{markerDetails.description||"Маркер преподавателя"}</p>
      <p>Координаты: {markerDetails.lat.toFixed(3)}°, {markerDetails.lon.toFixed(3)}°</p>
      {historical&&<p>Дата: {yearLabel(markerDetails.year)}</p>}
+     {markerDetails.url&&<a href={markerDetails.url} target="_blank" rel="noopener noreferrer">Исторический источник ↗</a>}
     </div>:
     selectedMineral&&mode==="minerals"?<div className="lektrus-atlas-description">
-     <strong>Запись о минеральном сырье: {(mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))?.name??"Полезное ископаемое"}</strong>
+     <strong>Запись о минеральном сырье: {selectedMineralCommodity?.name??"Полезное ископаемое"}</strong>
      <p>Источник: Геологическая служба США, {selectedMineral.properties?.ATLAS_DATASET==="MRDS"?
       "архивный каталог минеральных ресурсов MRDS":"каталог крупных месторождений"}.</p>
      {selectedMineral.properties?.ATLAS_DATASET==="MRDS"&&<>
@@ -1960,12 +1973,12 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        <p><strong>Статус в архивной базе (не подтверждён на 2026 год):</strong> {String(selectedMineral.properties.dev_stat)}</p>}
      </>}
      {mineralDepositFacts(selectedMineral).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
-     {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))?.name??"")&&
+     {mineralGuide(selectedMineralCommodity?.name??"")&&
       <div className="lektrus-atlas-city-data">
        <strong>Справка о минеральном сырье</strong>
-       <p>{mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.className}</p>
-       <p><strong>Состав:</strong> {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.composition}</p>
-       <p><strong>Использование:</strong> {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.uses}</p>
+       <p>{mineralGuide(selectedMineralCommodity!.name)!.className}</p>
+       <p><strong>Состав:</strong> {mineralGuide(selectedMineralCommodity!.name)!.composition}</p>
+       <p><strong>Использование:</strong> {mineralGuide(selectedMineralCommodity!.name)!.uses}</p>
        <small>Генетический тип конкретного месторождения приводится отдельно, если он известен из USGS.</small>
       </div>}
      <p>Координаты: {(()=>{
@@ -1999,9 +2012,11 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       {selectedCountryCapitals.map((capital,i)=>
        <button key={i} type="button" onClick={()=>focusFeature(capital,"Столица государства")}>
         ◆ {russianPlaceName(capital)}
+        {typeof capital.properties?.CAPITAL_CORRECTION_RU==="string"&&<small>{capital.properties.CAPITAL_CORRECTION_RU}</small>}
         <span>Показать на карте ↗</span>
        </button>)}
      </div>}
+     {nauruCapital&&<p>{NAURU_CAPITAL_NOTE.text} <a href={NAURU_CAPITAL_NOTE.url} target="_blank" rel="noopener noreferrer">Источник ↗</a></p>}
      {selectedIsCity&&<div className="lektrus-atlas-city-data">
       <strong>Площадь города</strong>
       {cityArea?<p>{cityArea.km2.toLocaleString("ru-RU",{maximumFractionDigits:2})} км²
@@ -2014,7 +2029,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       <strong>Справка об объекте</strong>
       {schoolReferenceLoading&&<small>Загрузка дополнительных сведений…</small>}
       {schoolReference?.description&&<p>{schoolReference.description}</p>}
-      {schoolReference?.facts.map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
+      {displayedSchoolFacts?.map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
       {schoolReference&&<a href={schoolReference.url} target="_blank" rel="noopener noreferrer">Данные Wikidata, открытая база ↗</a>}
       {schoolReferenceError&&<small>{schoolReferenceError}</small>}
       {!schoolReferenceLoading&&!schoolReferenceError&&!schoolReference&&
@@ -2027,12 +2042,12 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        target="_blank" rel="noopener noreferrer">Географический источник координат ↗</a>}
      {historical&&<><p>Точность: {precisions[borderPrecision(selected)]}.</p>
       {selectedArticle&&<div className="lektrus-history-article">
-       <p className="lektrus-history-period">{yearLabel(selectedArticle.from)} – {yearLabel(selectedArticle.to)}</p>
+       <p className="lektrus-history-period">Справочный период: {yearLabel(selectedArticle.from)} – {yearLabel(selectedArticle.to)}</p>
        <p><strong>Столица и важные центры:</strong> {selectedArticle.capital}</p>
        <p>{selectedArticle.summary}</p>
        <p><strong>Важное изменение:</strong> {selectedArticle.turn}</p>
        <a target="_blank" rel="noopener noreferrer" href={historyArticleUrl(selectedArticle)}>
-        Открыть обзорную статью на русском ↗</a>
+        Открыть исторический источник ↗</a>
        <small>Учебная справка подготовлена отдельно от картографической базы; исторические границы и датировки необходимо сверять с дополнительными источниками.</small>
       </div>}
       {fallbackReference&&<div className="lektrus-history-article">
@@ -2159,7 +2174,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       Города и административные границы</label>
      <div><span className="lektrus-atlas-legend-swatch lektrus-atlas-legend-capital"/>◆ Столица по данным Natural Earth</div>
      <small>Столиц в слое: {totalCapitals}. На карте они отмечены тёмными ромбами; это не маркеры маленьких государств.</small>
-     <small>Столицы показаны по Natural Earth, кроме подтверждённых исправлений: Додома (Танзания) и Сьюдад-де-ла-Пас (Экваториальная Гвинея). Для остальных стран ещё требуется актуализация по официальным сведениям.</small>
+     <small>Данные Natural Earth дополнены уточнениями по справочнику ООН и правительственным источникам, включая столицы, правительственные центры и государства без официальной столицы.</small>
      <a href="https://oagmis.oag.go.tz/portal/acts/52" target="_blank" rel="noopener noreferrer">Закон Танзании о столице ↗</a>
      <a href="https://www.guineaecuatorialpress.com/noticias/decreto_ley_por_el_que_se_declara_la_ciudad_de_la_paz_djibloho_capital_de_la_republica_de_guinea_ecuatorial"
       target="_blank" rel="noopener noreferrer">Декрет о столице Экваториальной Гвинеи, 2026 ↗</a>
@@ -2231,7 +2246,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      </div>}
     {historical&&<div className="lektrus-atlas-year-header">
      <strong>{yearLabel(snapshot.year)}{modernReference?" · современный обзор":""}</strong>
-     <small>{modernReference?"Современные границы, не историческая реконструкция":"Историческая реконструкция выбранной эпохи"}</small>
+     <small>{modernReference?"Архивная геометрия Natural Earth (2022); не точная карта 2026 года":"Историческая реконструкция выбранной эпохи"}</small>
     </div>}
     {historical&&<div className="lektrus-history-tabs" role="tablist" aria-label="Разделы исторического справочника">
      {([["directory","Территории"],["article","Справка"],["changes","Изменения"]] as const)
@@ -2292,7 +2307,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
         <summary><LektrusAtlasCountrySymbol compact symbol={atlasCountrySymbol(
          {type:"Feature",properties:{NAME:entry.aliases[0]??entry.title},
           geometry:{type:"Polygon",coordinates:[]}},entry.title,historicalReferenceSymbolYear(entry),true)}/>
-         <strong>{entry.title}</strong><small>{yearLabel(entry.from)} – {yearLabel(entry.to)}</small></summary>
+         <strong>{entry.title}</strong><small>Справочный период: {yearLabel(entry.from)} – {yearLabel(entry.to)}</small></summary>
         {entry.capital&&<p><strong>Столица и центры:</strong> {entry.capital}</p>}
         <p>{entry.description}</p>
         <p><strong>Изменение:</strong> {entry.change}</p>
@@ -2344,9 +2359,10 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      <p>{markerDetails.description||"Маркер преподавателя"}</p>
      <p>Координаты: {markerDetails.lat.toFixed(3)}°, {markerDetails.lon.toFixed(3)}°</p>
      {historical&&<p>Дата: {yearLabel(markerDetails.year)}</p>}
+     {markerDetails.url&&<a href={markerDetails.url} target="_blank" rel="noopener noreferrer">Исторический источник ↗</a>}
     </div>:
     selectedMineral&&mode==="minerals"?<div className="lektrus-atlas-description">
-     <strong>Запись о минеральном сырье: {(mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))?.name??"Полезное ископаемое"}</strong>
+     <strong>Запись о минеральном сырье: {selectedMineralCommodity?.name??"Полезное ископаемое"}</strong>
      <p>Источник: Геологическая служба США, {selectedMineral.properties?.ATLAS_DATASET==="MRDS"?
       "архивный каталог минеральных ресурсов MRDS":"каталог крупных месторождений"}.</p>
      {selectedMineral.properties?.ATLAS_DATASET==="MRDS"&&<>
@@ -2358,12 +2374,12 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        <p><strong>Статус в архивной базе (не подтверждён на 2026 год):</strong> {String(selectedMineral.properties.dev_stat)}</p>}
      </>}
      {mineralDepositFacts(selectedMineral).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
-     {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))?.name??"")&&
+     {mineralGuide(selectedMineralCommodity?.name??"")&&
       <div className="lektrus-atlas-city-data">
        <strong>Справка о минеральном сырье</strong>
-       <p>{mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.className}</p>
-       <p><strong>Состав:</strong> {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.composition}</p>
-       <p><strong>Использование:</strong> {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.uses}</p>
+       <p>{mineralGuide(selectedMineralCommodity!.name)!.className}</p>
+       <p><strong>Состав:</strong> {mineralGuide(selectedMineralCommodity!.name)!.composition}</p>
+       <p><strong>Использование:</strong> {mineralGuide(selectedMineralCommodity!.name)!.uses}</p>
        <small>Генетический тип конкретного месторождения приводится отдельно, если он известен из USGS.</small>
       </div>}
      <p>Координаты: {(()=>{
@@ -2397,9 +2413,11 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       {selectedCountryCapitals.map((capital,i)=>
        <button key={i} type="button" onClick={()=>focusFeature(capital,"Столица государства")}>
         ◆ {russianPlaceName(capital)}
+        {typeof capital.properties?.CAPITAL_CORRECTION_RU==="string"&&<small>{capital.properties.CAPITAL_CORRECTION_RU}</small>}
         <span>Показать на карте ↗</span>
        </button>)}
      </div>}
+     {nauruCapital&&<p>{NAURU_CAPITAL_NOTE.text} <a href={NAURU_CAPITAL_NOTE.url} target="_blank" rel="noopener noreferrer">Источник ↗</a></p>}
      {selectedIsCity&&<div className="lektrus-atlas-city-data">
       <strong>Площадь города</strong>
       {cityArea?<p>{cityArea.km2.toLocaleString("ru-RU",{maximumFractionDigits:2})} км²
@@ -2412,7 +2430,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       <strong>Справка об объекте</strong>
       {schoolReferenceLoading&&<small>Загрузка дополнительных сведений…</small>}
       {schoolReference?.description&&<p>{schoolReference.description}</p>}
-      {schoolReference?.facts.map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
+      {displayedSchoolFacts?.map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
       {schoolReference&&<a href={schoolReference.url} target="_blank" rel="noopener noreferrer">Данные Wikidata, открытая база ↗</a>}
       {schoolReferenceError&&<small>{schoolReferenceError}</small>}
       {!schoolReferenceLoading&&!schoolReferenceError&&!schoolReference&&
@@ -2426,7 +2444,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      {historical&&<div className="lektrus-history-compact-facts">
       <div className="lektrus-history-key-facts">
        <span><strong>Период карты</strong>{yearLabel(snapshot.year)}</span>
-       {selectedArticle&&<span><strong>Время существования</strong>{yearLabel(selectedArticle.from)} – {yearLabel(selectedArticle.to)}</span>}
+       {selectedArticle&&<span><strong>Справочный период</strong>{yearLabel(selectedArticle.from)} – {yearLabel(selectedArticle.to)}</span>}
        {selectedArticle?.capital&&<span><strong>Столица и центры</strong>{selectedArticle.capital}</span>}
        {!selectedArticle&&fallbackReference?.capital&&<span><strong>Центры</strong>{fallbackReference.capital}</span>}
       </div>
@@ -2479,6 +2497,13 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      {changes.disappeared.length>0&&<details><summary>Исчезнувшие названия ({changes.disappeared.length})</summary><p>{changes.disappeared.join(", ")}</p></details>}
      {!changes.appeared.length&&!changes.disappeared.length&&<p>Состав названий на соседних снимках совпадает.</p>}
      <small>Сравниваются названия в источнике, а не точная геометрия границ или причины исторических событий.</small>
+    </div>}
+    {historical&&mode==="events"&&<div className="lektrus-atlas-history-events">
+     <strong>События ближайших лет</strong>
+     <small>Дата события указана отдельно; подложка показывает выбранный снимок, не обязательно обстановку в день события.</small>
+     {schoolMarkers.length===0&&<small>Для этого периода пока нет отметок в справочнике.</small>}
+     {schoolMarkers.map(marker=><button key={marker.id} className={selectedMarker===marker.id?"selected":""} type="button" onClick={()=>{setSelectedMarker(marker.id);setSelected(null);setSelectedMineral(null);setHistoryTab("article")}}>
+      {marker.title} · {yearLabel(marker.year)}</button>)}
     </div>}
     {d.markers.length>0&&<div className="lektrus-atlas-user-markers">
      <strong>Маркеры преподавателя</strong>
@@ -2586,7 +2611,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
    <select aria-label="Выбрать год исторической карты" className="lektrus-history-period-select"
     value={snapshot.year} onChange={e=>jumpToPeriod(Number(e.target.value))}>
     {historicalSnapshots.map(period=><option key={period.year} value={period.year}>
-     {yearLabel(period.year)}{period.year===2026?" · современный обзор":""}</option>)}
+     {yearLabel(period.year)}{period.year===2026?" · обзор (границы 2022)":""}</option>)}
    </select>
    <input aria-label="Исторический период" type="range" min={0}
     max={historicalSnapshots.length-1} step={1} value={index}

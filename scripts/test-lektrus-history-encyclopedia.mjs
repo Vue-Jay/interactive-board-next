@@ -39,6 +39,9 @@ assert.equal(findHistoricalArticle("Roman Empire",600),undefined);
 assert.equal(findHistoricalArticle("USSR",1945).name,"СССР");
 assert.equal(findHistoricalArticle("India",1800),undefined);
 assert.equal(findHistoricalArticle("Kievan Rus",1000).name,"Древняя Русь");
+assert.match(findHistoricalArticle("Byzantine Empire",1250).capital,/Никея/);
+assert.equal(findHistoricalArticle("Prussia",1900).to,1918);
+assert.equal(findHistoricalArticle("Mughal Empire",1858).to,1858);
 assert.equal(findHistoricalArticle("unknown historical state",1900),undefined);
 const atlas=fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8");
 for(const keyword of ["loadHistoricalIndex","Все эпохи","lektrus-history-tabs","lektrus-history-scope",

@@ -72,7 +72,7 @@ export function loadLocalInfrastructure(b:ExternalBounds,kind:"roads"|"waterways
 /** Only types in the Russian school atlas. Specialized USGS commodities stay
  * in the source database but are not rendered as extra school map symbols. */
 const mineralWords:ReadonlyArray<[RegExp,string,string]>=[
- [/iron(?:\s+ore)?|железн|ferrous/i,"Железные руды","#333"],
+ [/\biron(?:\s+ore)?\b|железн|\bferrous\b/i,"Железные руды","#333"],
  [/manganese|марганц/i,"Марганцевые руды","#333"],
  [/chromium|chromite|хромит/i,"Хромовые руды","#333"],
  [/nickel|никел/i,"Никелевые руды","#333"],
@@ -80,13 +80,13 @@ const mineralWords:ReadonlyArray<[RegExp,string,string]>=[
  [/molybdenum|молибден/i,"Молибденовые руды","#333"],
  [/bauxite|alumini?um|боксит|алюмини/i,"Алюминиевые руды","#333"],
  [/copper|медн|cupr/i,"Медные руды","#333"],
- [/polymetallic|lead|zinc|свинц|цинк|полиметал/i,"Полиметаллические руды","#333"],
+ [/polymetallic|полиметал|(?:\blead\b|свинц).*(?:\bzinc\b|цинк)|(?:\bzinc\b|цинк).*(?:\blead\b|свинц)/i,"Полиметаллические руды","#333"],
  [/\btin\b|олов/i,"Оловянные руды","#333"],
  [/gold|aurum|золот/i,"Золото","#333"],
  [/mercury|cinnabar|ртут|киновар/i,"Ртутные руды","#333"],
  [/asbestos|асбест/i,"Асбест","#333"],
  [/graphite|графит/i,"Графит","#333"],
- [/mica|слюд/i,"Слюда","#333"],
+ [/\bmica\b|слюд/i,"Слюда","#333"],
  [/apatite|апатит/i,"Апатиты","#333"],
  [/phosphate|phosphorite|фосфат|фосфорит/i,"Фосфориты","#333"],
  [/potash|potassium|калийн/i,"Калийные соли","#333"],
@@ -100,11 +100,11 @@ export const mineralTypes=SCHOOL_ATLAS_USGS_MINERALS.map(name=>{
  if(!entry)throw Error("Отсутствует школьный тип полезного ископаемого: "+name);
  return {name,color:entry[2]};
 });
-export function mineralCommodity(feature:GeoFeature):{name:string;color:string}|null{
+export function mineralCommodity(feature:GeoFeature,preferred?:string):{name:string;color:string}|null{
  const p=feature.properties??{};
  const candidates=["commod1","commod2","commod3","commodities","commodity","COMMOD1","COMMODITIES",
-  "commodity_name","main_commodity","dep_type"].map(k=>String(p[k]??"")).join(" ");
- const found=mineralWords.find(x=>x[0].test(candidates));
+  "commodity_name","main_commodity"].map(k=>String(p[k]??"")).join(" ");
+ const found=mineralWords.find(x=>(!preferred||x[1]===preferred)&&x[0].test(candidates));
  return found?{name:found[1],color:found[2]}:null;
 }
 /** Archive of the published USGS OFR 2005-1294 dataset. Loaded once on demand,
@@ -169,6 +169,9 @@ const mineralOriginRu:Record<string,string>={
 };
 export function mineralDepositFacts(feature:GeoFeature):Array<{label:string;value:string}>{
  const p=feature.properties??{},result:Array<{label:string;value:string}>=[];
+ if(typeof p.dep_name==="string"&&p.dep_name.trim())result.push({label:"Название в исходном каталоге",value:p.dep_name});
+ if(typeof p.commodity==="string"&&p.commodity.trim())result.push({label:"Сырьё по исходному каталогу (оригинал)",value:p.commodity});
+ if(typeof p.code_list==="string"&&p.code_list.trim())result.push({label:"Коды сырья MRDS",value:p.code_list});
  const type=String(p.dep_type??"").trim();
  if(mineralOriginRu[type])result.push({label:"Генетический тип",value:mineralOriginRu[type]});
  const code=String(p.model_code??"").trim();

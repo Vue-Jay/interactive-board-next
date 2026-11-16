@@ -121,6 +121,7 @@ const goldPoint={type:"Feature",geometry:null,properties:{ATLAS_DATASET:"MRDS",c
 assert.equal(mrds.mrdsMineralCommodity(goldPoint)?.name,"Золото");
 assert.equal(mrds.mrdsMineralCommodity({...goldPoint,properties:{ATLAS_DATASET:"MRDS",code_list:"AG"}}),null);
 assert.equal(mrds.mrdsMineralCommodity({...goldPoint,properties:{ATLAS_DATASET:"MRDS",code_list:"PB, ZN"}})?.name,"Полиметаллические руды");
+assert.equal(mrds.mrdsMineralCommodity({...goldPoint,properties:{ATLAS_DATASET:"MRDS",code_list:"AU, CU"}},"Медные руды")?.name,"Медные руды");
 assert.equal(mrds.mrdsMineralCommodity({...goldPoint,properties:{ATLAS_DATASET:"MRDS",code_list:"CU2"}}),null);
 const mrdsOverview=await mrds.loadMRDSWorldOverview();
 assert.equal(mrdsNetwork.length,12,"MRDS must query all 12 world sectors");

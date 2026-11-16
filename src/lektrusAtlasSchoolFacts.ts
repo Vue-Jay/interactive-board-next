@@ -18,10 +18,10 @@ export function atlasFactEntityId(properties:Record<string,unknown>|null|undefin
   properties?.wikidata_id??properties?.WIKIDATA_ID??"").trim();
  return idPattern.test(value)?value:null;
 }
-async function queryWikidata(ids:string[]):Promise<Record<string,WikidataEntity>>{
+async function queryWikidata(ids:string[],includeClaims=true):Promise<Record<string,WikidataEntity>>{
  const url="https://www.wikidata.org/w/api.php?action=wbgetentities&ids="+
   encodeURIComponent(ids.join("|"))+
-  "&props=labels%7Cdescriptions%7Cclaims&languages=ru%7Cen&format=json&origin=*";
+  "&props="+(includeClaims?"labels%7Cdescriptions%7Cclaims":"labels")+"&languages=ru%7Cen&format=json&origin=*";
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
  try{
   const response=await fetch(url,{signal:controller.signal,cache:"force-cache"});
@@ -36,14 +36,29 @@ function label(entity:WikidataEntity|undefined):string{
 function snakValue(claim:WikidataSnak):unknown{
  return claim.mainsnak?.datavalue?.value;
 }
-function wikidataYear(claim:WikidataSnak):number|null{
- const temporal=claim.qualifiers?.P585?.[0]?.datavalue?.value as {time?:unknown}|undefined;
- const year=typeof temporal?.time==="string"?/^\+?(\d{1,6})-/.exec(temporal.time)?.[1]:undefined;
+function qualifierYear(claim:WikidataSnak,property:string):number|null{
+ const temporal=claim.qualifiers?.[property]?.[0]?.datavalue?.value as {time?:unknown}|undefined;
+ const year=typeof temporal?.time==="string"?/^([+-]?\d{1,6})-/.exec(temporal.time)?.[1]:undefined;
  return year?Number(year):null;
 }
+const wikidataYear=(claim:WikidataSnak)=>qualifierYear(claim,"P585");
+function currentClaims(claims:WikidataSnak[]|undefined):WikidataSnak[]{
+ const today=new Date(),now=today.getUTCFullYear();
+ const relativeDate=(claim:WikidataSnak,property:string)=>{
+  const year=qualifierYear(claim,property);
+  if(year===null)return 0;
+  if(year!==now)return year-now;
+  const value=claim.qualifiers?.[property]?.[0]?.datavalue?.value as {time?:string;precision?:number}|undefined;
+  const parts=/^[+-]?\d{1,6}-(\d{2})-(\d{2})/.exec(value?.time??"");
+  if(!parts||(value?.precision??11)<10||Number(parts[1])===0)return 0;
+  const month=Number(parts[1])-(today.getUTCMonth()+1);
+  return month||((value?.precision??11)>=11&&Number(parts[2])>0?Number(parts[2])-today.getUTCDate():0);
+ };
+ return (claims??[]).filter(c=>c.rank!=="deprecated"&&snakValue(c)!==undefined&&
+  relativeDate(c,"P580")<=0&&relativeDate(c,"P582")>=0&&relativeDate(c,"P585")<=0);
+}
 function bestClaim(claims:WikidataSnak[]|undefined):WikidataSnak|undefined{
- if(!claims?.length)return undefined;
- const candidates=claims.filter(c=>c.rank!=="deprecated"&&snakValue(c)!==undefined);
+ const candidates=currentClaims(claims);
  candidates.sort((a,b)=>(b.rank==="preferred"?1:0)-(a.rank==="preferred"?1:0)||
   (wikidataYear(b)??0)-(wikidataYear(a)??0));
  return candidates[0];
@@ -52,11 +67,18 @@ function linkedId(claim:WikidataSnak|undefined):string|null{
  const value=claim&&snakValue(claim) as {id?:unknown}|undefined;
  return typeof value?.id==="string"&&idPattern.test(value.id)?value.id:null;
 }
-function quantity(claim:WikidataSnak|undefined):{value:number;unit:string;year:number|null}|null{
+function quantity(claim:WikidataSnak|undefined,allowNegative=false):{value:number;unit:string;year:number|null}|null{
  const item=claim&&snakValue(claim) as {amount?:unknown;unit?:unknown}|undefined;
  if(typeof item?.amount!=="string")return null;
  const value=Number(item.amount),unit=String(item.unit??"");
- return Number.isFinite(value)&&value>=0?{value,unit,year:wikidataYear(claim!)}:null;
+ return Number.isFinite(value)&&(allowNegative||value>=0)?{value,unit,year:wikidataYear(claim!)}:null;
+}
+export function atlasAreaKm2(claims:WikidataSnak[]|undefined):number|null{
+ const area=quantity(bestClaim(claims));
+ if(!area||area.value<=0)return null;
+ return area.unit.endsWith("/Q712226")?area.value:
+  area.unit.endsWith("/Q25343")?area.value/1e6:
+  area.unit.endsWith("/Q35852")?area.value/100:null;
 }
 function ruNumber(value:number,digits=0):string{
  return value.toLocaleString("ru-RU",{maximumFractionDigits:digits});
@@ -75,30 +97,27 @@ export async function fetchAtlasSchoolReference(id:string):Promise<AtlasSchoolRe
   const record=(await queryWikidata([id]))[id];
   if(!record)return null;
   const claims=record.claims??{};
-  const references=entityProperties.flatMap(([property])=>{
-   const linked=linkedId(bestClaim(claims[property]));return linked?[linked]:[];
-  });
-  const unique=[...new Set(references)].slice(0,12);
-  const entities=unique.length?await queryWikidata(unique):{};
+  const links=new Map(entityProperties.map(([property])=>[property,
+   [...new Set(currentClaims(claims[property]).map(linkedId).filter((id):id is string=>id!==null))]]));
+  const unique=[...new Set([...links.values()].flat())];
+  const batches=[];
+  for(let i=0;i<unique.length;i+=50)batches.push(queryWikidata(unique.slice(i,i+50),false));
+  const entities=Object.assign({},...await Promise.all(batches)) as Record<string,WikidataEntity>;
   const facts:AtlasSchoolFact[]=[];
   const add=(name:string,value:string|undefined)=>{
    if(value&&facts.length<18&&![...facts].some(f=>f.label===name))
     facts.push({label:name,value});
   };
   const people=quantity(bestClaim(claims.P1082));
-  if(people){
+  if(people&&people.unit==="1"&&Number.isInteger(people.value)){
    const year=people.year?" ("+people.year+" г.)":" (дата в источнике не указана)";
    add("Численность населения",ruNumber(people.value)+year);
   }
-  const area=quantity(bestClaim(claims.P2046));
-  if(area){
-   const km2=area.unit.endsWith("/Q712226")?area.value:
-    area.unit.endsWith("/Q25343")?area.value/1e6:null;
-   if(km2!==null)add("Площадь",ruNumber(km2,km2<10?2:0)+" км²");
-  }
+  const km2=atlasAreaKm2(claims.P2046);
+  if(km2!==null)add("Площадь",ruNumber(km2,km2<10?2:0)+" км²");
   for(const [property,title] of entityProperties){
-   const link=linkedId(bestClaim(claims[property]));
-   if(link)add(title,label(entities[link]));
+   const names=[...new Set((links.get(property)??[]).map(link=>label(entities[link])).filter(Boolean))];
+   if(names.length)add(title,names.join("; "));
   }
   const length=quantity(bestClaim(claims.P2043));
   if(length){
@@ -106,11 +125,12 @@ export async function fetchAtlasSchoolReference(id:string):Promise<AtlasSchoolRe
     length.unit.endsWith("/Q11573")?length.value/1000:null;
    if(km!==null)add("Протяжённость",ruNumber(km,km<10?2:0)+" км");
   }
-  const height=quantity(bestClaim(claims.P2044));
+  const height=quantity(bestClaim(claims.P2044),true);
   if(height&&height.unit.endsWith("/Q11573"))
    add("Высота над уровнем моря",ruNumber(height.value)+" м");
-  const coords=snakValue(bestClaim(claims.P625)??{}) as {latitude?:number;longitude?:number}|undefined;
-  if(typeof coords?.latitude==="number"&&typeof coords.longitude==="number")
+  const coords=snakValue(bestClaim(claims.P625)??{}) as {latitude?:number;longitude?:number;globe?:string}|undefined;
+  if(typeof coords?.latitude==="number"&&typeof coords.longitude==="number"&&
+    Math.abs(coords.latitude)<=90&&Math.abs(coords.longitude)<=180&&(!coords.globe||coords.globe.endsWith("/Q2")))
    add("Географические координаты",Math.abs(coords.latitude).toFixed(3)+"° "+
     (coords.latitude>=0?"с. ш.":"ю. ш.")+", "+Math.abs(coords.longitude).toFixed(3)+"° "+
     (coords.longitude>=0?"в. д.":"з. д."));

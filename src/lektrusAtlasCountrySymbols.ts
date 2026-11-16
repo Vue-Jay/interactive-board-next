@@ -85,7 +85,11 @@ const validHistoricalNames:Readonly<Record<string,string[]>>={
  AU:["Australia"],NZ:["New Zealand"],BR:["Brazil"],MX:["Mexico"],
  ZA:["South Africa"],ES:["Spain"],PT:["Portugal"],
  CH:["Switzerland"],SE:["Sweden"],NO:["Norway"],PL:["Poland"],
- FI:["Finland"],TR:["Turkey","Türkiye"],IL:["Israel"],AR:["Argentina"],BD:["Bangladesh"]
+ FI:["Finland"],TR:["Turkey","Türkiye"],IL:["Israel"],AR:["Argentina"],BD:["Bangladesh"],
+ BY:["Belarus","Republic of Belarus","Byelorussia"],IS:["Iceland"],UA:["Ukraine"],
+ SK:["Slovakia","Slovak Republic"],RO:["Romania","Rumania"],BG:["Bulgaria"],
+ MK:["Macedonia","North Macedonia","Republic of Macedonia"],AL:["Albania"],
+ BA:["Bosnia and Herzegovina"],GE:["Georgia"],CY:["Cyprus"],LT:["Lithuania"]
 };
 function initials(name:string):string{
  const words=name.replace(/[()]/g," ").split(/[\s,;:–—-]+/).filter(Boolean);
