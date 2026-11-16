@@ -577,6 +577,10 @@ assert.deepEqual(saCapitals.map(places.russianPlaceName).sort(),["Блумфон
 assert.ok(saCapitals.every(c=>c.properties.CAPITAL_CORRECTION_URL.startsWith("https://www.gov.za/")));
 for(const [iso,name] of [["SS","Джуба"],["LK","Шри-Джаяварденепура-Котте"],["NG","Абуджа"]])
  assert.equal(places.russianPlaceName(places.capitalsForCountry({type:"Feature",geometry:null,properties:{ISO_A2:iso}},southAfrica.features)[0]),name);
+assert.equal(places.russianPlaceName(places.capitalsForCountry({type:"Feature",geometry:null,properties:{ISO_A2:"BI"}},southAfrica.features)[0]),"Гитега");
+assert.deepEqual(places.capitalsForCountry({type:"Feature",geometry:null,properties:{ISO_A2:"SZ"}},southAfrica.features).map(places.russianPlaceName).sort(),["Лобамба","Мбабане"]);
+assert.equal(places.capitalsForCountry({type:"Feature",geometry:null,properties:{ISO_A2:"NR"}},southAfrica.features).length,0);
+assert.match(places.NAURU_CAPITAL_NOTE.text,/нет официальной столицы/);
 assert.equal(geoExports.featureSourceFacts(named({FEATURECLA:"Admin-0 capital",ADM0CAP:0,CAPALT:0})).find(x=>x.label==="Категория")?.value,"Населённый пункт");
 const legacyKazakhstan={type:"Feature",geometry:{type:"Point",coordinates:[71.43,51.13]},
  properties:{NAME:"Nur-Sultan",NAME_RU:"Нур-Султан",ISO_A2:"KZ",

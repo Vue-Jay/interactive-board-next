@@ -21,7 +21,7 @@ import {fetchCityArea,cityAreaId,type AtlasCityArea} from "./lektrusAtlasCityAre
 import {mineralGuide} from "./lektrusAtlasMineralGuide";
 import {atlasOSMCoverageTiles,loadAtlasOSMCoverage,loadMineralDeposits,loadWorldMineralOverview,mineralCommodity,mineralDepositFacts,mineralDepositSource,
  canLoadMinerals,externalBBoxKey,type ExternalBounds} from "./lektrusAtlasExternal";
-import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols,applyVerifiedCapitalUpdates2026,capitalsForCountry,matchesCityCategory,type CityCategory} from "./lektrusAtlasPlaces";
+import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols,applyVerifiedCapitalUpdates2026,capitalsForCountry,matchesCityCategory,NAURU_CAPITAL_NOTE,type CityCategory} from "./lektrusAtlasPlaces";
 import LektrusAtlasTerrain,{sampleTerrainElevation,type TerrainStatus} from "./LektrusAtlasTerrain";
 import {atlasRiverStroke,atlasLakeStroke,atlasGlacierStroke,atlasWaterGeometryTolerance,atlasRiverLabelRank} from "./lektrusAtlasHydro";
 import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDistanceScale,zoomAtlasCamera} from "./lektrusAtlasRegions";
@@ -883,7 +883,9 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  },[selectedReferenceId]);
  const selectedCountryCapitals=selected&&mode==="political"?
   capitalsForCountry(selected,cityPoints.map(c=>c.feature)):[];
- const verifiedCountryCapital=selectedCountryCapitals.some(c=>typeof c.properties?.CAPITAL_CORRECTION_URL==="string");
+ const nauruCapital=!!selected&&mode==="political"&&selected.geometry?.type!=="Point"&&
+  (selected.properties?.ISO_A2==="NR"||selected.properties?.ADM0_A3==="NRU"||selected.properties?.ISO_A3==="NRU");
+ const verifiedCountryCapital=nauruCapital||selectedCountryCapitals.some(c=>typeof c.properties?.CAPITAL_CORRECTION_URL==="string");
  const displayedSchoolFacts=schoolReference?.facts.filter(f=>!verifiedCountryCapital||f.label!=="Столица");
  const selectedIsCity=!!selected&&["Populated place","Admin-0 capital","Admin-0 capital alt",
   "Admin-0 region capital","Admin-1 capital","Admin-1 region capital"]
@@ -2009,6 +2011,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
         <span>Показать на карте ↗</span>
        </button>)}
      </div>}
+     {nauruCapital&&<p>{NAURU_CAPITAL_NOTE.text} <a href={NAURU_CAPITAL_NOTE.url} target="_blank" rel="noopener noreferrer">Источник ↗</a></p>}
      {selectedIsCity&&<div className="lektrus-atlas-city-data">
       <strong>Площадь города</strong>
       {cityArea?<p>{cityArea.km2.toLocaleString("ru-RU",{maximumFractionDigits:2})} км²
@@ -2166,7 +2169,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       Города и административные границы</label>
      <div><span className="lektrus-atlas-legend-swatch lektrus-atlas-legend-capital"/>◆ Столица по данным Natural Earth</div>
      <small>Столиц в слое: {totalCapitals}. На карте они отмечены тёмными ромбами; это не маркеры маленьких государств.</small>
-     <small>Данные Natural Earth дополнены официальными уточнениями для Казахстана, Танзании, Экваториальной Гвинеи, Бенина, ЮАР, Южного Судана, Шри-Ланки и Нигерии. Остальные сведения требуют сверки с официальными источниками.</small>
+     <small>Данные Natural Earth дополнены уточнениями по справочнику ООН и правительственным источникам, включая столицы, правительственные центры и государства без официальной столицы.</small>
      <a href="https://oagmis.oag.go.tz/portal/acts/52" target="_blank" rel="noopener noreferrer">Закон Танзании о столице ↗</a>
      <a href="https://www.guineaecuatorialpress.com/noticias/decreto_ley_por_el_que_se_declara_la_ciudad_de_la_paz_djibloho_capital_de_la_republica_de_guinea_ecuatorial"
       target="_blank" rel="noopener noreferrer">Декрет о столице Экваториальной Гвинеи, 2026 ↗</a>
@@ -2409,6 +2412,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
         <span>Показать на карте ↗</span>
        </button>)}
      </div>}
+     {nauruCapital&&<p>{NAURU_CAPITAL_NOTE.text} <a href={NAURU_CAPITAL_NOTE.url} target="_blank" rel="noopener noreferrer">Источник ↗</a></p>}
      {selectedIsCity&&<div className="lektrus-atlas-city-data">
       <strong>Площадь города</strong>
       {cityArea?<p>{cityArea.km2.toLocaleString("ru-RU",{maximumFractionDigits:2})} км²
