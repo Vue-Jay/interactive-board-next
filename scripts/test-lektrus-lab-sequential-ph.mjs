@@ -113,5 +113,12 @@ assert.equal(ph.labVesselPH({reagents:["HCl"],environment:"aqueous",
 near(ph.labVesselPH({...acid,reagents:["HCl","SO3"],doses:{...acid.doses,
  SO3:{unit:"ml",value:150,phase:"gas"}}}).pH,1,
  "Explicit gas product volume cannot dilute an aqueous acid");
+for(const id of ["C2H5OH","CH3OH","C3H8O","CH3CHO","C2H4Br2","Br2"]){
+ near(ph.labVesselPH({...acid,reagents:["HCl",id],doses:{...acid.doses,
+  [id]:{unit:"ml",value:5,phase:"gas"}}}).pH,1,
+  `${id}: a collected vapor must not turn the aqueous pH meter off`);
+ assert.equal(ph.labVesselPH({...acid,reagents:["HCl",id],doses:{...acid.doses,
+  [id]:{unit:"ml",value:5}}}),null,`${id}: nonaqueous liquid mixture has no reviewed pH`);
+}
 assert.match(ui,/!v\.chemicalInventory&&v\.reagents\.length===1/);
 console.log("Lab pH: gas-headspace exclusion, pure water, historical ledgers, consecutive precipitate/acid/base reactions OK");

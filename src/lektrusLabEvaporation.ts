@@ -97,6 +97,7 @@ const aperture:Record<string,number>={
 };
 const own=(obj:object,key:string)=>Object.prototype.hasOwnProperty.call(obj,key);
 import {labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
+import {labIsGasDose} from "./lektrusLabStoichiometry";
 /** Classroom Raoult-style fractions. Prepared solutions use a water carrier
  * and conserve solute moles while increasing molarity on evaporation.
  * Activity coefficients, acid fumes and high-strength stock solutions
@@ -108,7 +109,6 @@ import {labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstant
 const FILTRATE_WATER_ID="__measured_filtrate_water";
 function components(v:LabEvaporationState,tempC=v.temperatureC??25){
  const entries=Object.entries(v.doses??{});
- const gasIds=new Set(["CO2","H2","O2","NH3","Cl2","NO2","SO2","CO","H2S","N2"]);
  // Filtration records its exact solvent volume separately from stock doses.
  // Recreating the original BaCl2 / Na2SO4 doses would invent chemistry;
  // treat only the MEASURED nonvolatile solution carrier as evaporating water.
@@ -119,7 +119,7 @@ function components(v:LabEvaporationState,tempC=v.temperatureC??25){
   !!v.chemicalInventory&&soluble.every(([id,mol])=>
    !!aqueousNonvolatile[id]&&Number.isFinite(mol)&&mol>=0);
  const liquid=entries.flatMap(([sourceId,d])=>{
-  if(d.unit!=="ml"||d.phase==="gas"||!Number.isFinite(d.value)||d.value<=0)return [];
+  if(d.unit!=="ml"||labIsGasDose(sourceId,d)||!Number.isFinite(d.value)||d.value<=0)return [];
   if(own(table,sourceId)&&d.concentrationM===undefined)
    return [{sourceId,id:sourceId,d,aqueous:false}];
   if(!own(table,sourceId)&&d.concentrationM!==undefined&&
@@ -129,7 +129,7 @@ function components(v:LabEvaporationState,tempC=v.temperatureC??25){
  });
  if(supportedFiltrate)liquid.push({sourceId:FILTRATE_WATER_ID,
   id:"H2O",d:{value:filtrateMl,unit:"ml"},aqueous:false});
- if(entries.some(([id,d])=>d.unit==="ml"&&d.value>0&&!(d.concentrationM===undefined&&(d.phase==="gas"||gasIds.has(id)))&&
+ if(entries.some(([id,d])=>d.unit==="ml"&&d.value>0&&!labIsGasDose(id,d)&&
   !liquid.some(c=>c.sourceId===id))||!liquid.length)return [];
  // No validated liquid-liquid equilibrium / mixed activity for this
  // limited-miscibility liquid. Only its measured neat phase is supported.
@@ -262,7 +262,7 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
  const kelvin=temperatureC+273.15;
  const hasUnsupportedLiquid=Object.entries(v.doses??{}).some(([id,d])=>
   d.unit==="ml"&&d.value>0&&!items.some(c=>c.sourceId===id)&&
-  !(d.concentrationM===undefined&&(d.phase==="gas"||["CO2","H2","O2","NH3","Cl2","NO2","SO2","CO","H2S","N2"].includes(id))));
+  !labIsGasDose(id,d));
  const gasOnly=!items.length&&!hasUnsupportedLiquid;
  const vaporKnown=known||gasOnly;
  const vaporAtSeal=known?items.reduce((s,item)=>
@@ -361,10 +361,10 @@ const aqueousNonvolatile:Record<string,{molarG:number;i:number}>={
 };
 export function labApproxWaterBoilingC(doses?:Record<string,LabDose>):number|undefined{
  const entries=Object.entries(doses??{}),water=doses?.H2O;
- if(!water||water.unit!=="ml"||water.concentrationM!==undefined||water.value<.5)return;
+ if(!water||water.unit!=="ml"||labIsGasDose("H2O",water)||water.concentrationM!==undefined||water.value<.5)return;
  let soluteParticles=0;
  for(const [id,d] of entries){
-  if(id==="H2O")continue;
+  if(id==="H2O"||labIsGasDose(id,d))continue;
   const solid=aqueousNonvolatile[id];
   if(!solid||d.unit!=="g")return;
   soluteParticles+=d.value/solid.molarG*solid.i;

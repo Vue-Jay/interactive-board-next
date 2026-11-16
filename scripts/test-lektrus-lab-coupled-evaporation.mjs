@@ -21,6 +21,30 @@ const phase=load("src/lektrusLabEvaporation.ts");
 const net=load("src/lektrusLabReactionNetwork.ts");
 const heat=load("src/lektrusLabCalorimetry.ts");
 const close=(a,b,tol=1e-8)=>assert.ok(Math.abs(a-b)<=tol,a+" != "+b);
+// Gas samples must not disable solvent evaporation or masquerade as an
+// unsupported liquid. Exercise every cabinet gas and explicitly tagged vapor.
+const gasStocks=load("src/lektrusReactionDatabase.ts").substances
+ .filter(stock=>stock.kind==="газ").map(stock=>stock.id);
+const gasDoses=[...gasStocks.map(id=>[id,{unit:"ml",value:5}]),
+ ["HCl",{unit:"ml",value:5,phase:"gas"}],
+ ["C2H5OH",{unit:"ml",value:5,phase:"gas"}]];
+const waterSample={kind:"flask",doses:{H2O:{unit:"ml",value:20}}};
+for(const [id,dose] of gasDoses){
+ const sample={...waterSample,doses:{...waterSample.doses,[id]:dose}};
+ const expected=phase.labVaporPressureKPa(waterSample,80);
+ assert.ok(Number.isFinite(phase.labVaporPressureKPa(sample,80)),`${id}: gas must not disable vapor pressure`);
+ close(phase.labVaporPressureKPa(sample,80),expected);
+ close(phase.labIdealBoilingC(sample),phase.labIdealBoilingC(waterSample));
+ const evaporated=phase.labEvaporate(sample,5,80);
+ assert.ok(evaporated.evaporatedMl>0,`${id}: water must evaporate`);
+ assert.deepEqual(evaporated.doses[id],dose);
+ const gasOnly=phase.labEvaporate({kind:"flask",doses:{[id]:dose},stoppered:true,
+  stopperedAtC:22,headspaceMl:100,reactionGasMol:5/24465},1,40);
+ assert.ok(gasOnly.pressureKPa>101.325,`${id}: closed gas must have a pressure estimate`);
+ assert.equal(gasOnly.evaporatedMl,0);
+}
+assert.equal(phase.labIdealBoilingC({kind:"flask",doses:{H2O:{unit:"ml",value:20,phase:"gas"}}}),undefined,
+ "Explicitly collected steam is not a liquid-water boiling sample");
 // Persisted molecular composition is unchanged as its measured water volume
 // evaporates. Cached precipitation MUST follow the actual remaining water.
 const inventory={speciesMol:{NaCl:.002},solidMol:{},settled:true};
