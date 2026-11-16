@@ -1571,7 +1571,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     concentration<.001||concentration>2)){
     setNotice("Укажите концентрацию от 0,001 до 2 моль/л");return;
   }
-  const dose:LabDose={value:Math.round(value*100)/100,unit,
+  const measuredValue=unit==="ml"?Math.round(value*100)/100:value;
+  if(measuredValue<=0){setNotice("Минимальный измеряемый объём — 0,01 мл");return}
+  const dose:LabDose={value:measuredValue,unit,
    ...(isQuantifiedSolution?{concentrationM:concentration}:{})};
   const updated=putLabReagent(bench,selected.id,chosen,dose);
   if(updated===bench){setNotice("Реагент уже добавлен или посуда заполнена");return}

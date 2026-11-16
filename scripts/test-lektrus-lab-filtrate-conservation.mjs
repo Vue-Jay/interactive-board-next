@@ -25,6 +25,18 @@ const stoich=load("src/lektrusLabStoichiometry.ts");
 const dose=(value=10)=>({value,unit:"ml",concentrationM:.1});
 const approx=(a,b,tolerance=1e-7)=>
  assert.ok(Math.abs(a-b)<tolerance,String(a)+" != "+String(b));
+const micro=lab.defaultLabBench();
+assert.equal(lab.putLabReagent(micro,"v1","H2O",{unit:"ml",value:.001}),micro,"Do not store a zero-volume dose");
+assert.equal(lab.setLabQuickReagent(micro,"H2O",{unit:"ml",value:.001}),micro,"No phantom stock on the quick shelf");
+const microSolid=lab.putLabReagent(micro,"v1","NaCl",{unit:"g",value:.001});
+approx(lab.labVesselContents(microSolid.vessels[0]).solid[0].massG,.001,1e-12);
+const moreMicro=lab.putLabReagent(microSolid,"v1","NaCl",{unit:"g",value:.01});
+approx(moreMicro.vessels[0].doses.NaCl.value,.011,1e-12);
+const movedMicro=lab.pourLabVessel(lab.addLabVessel(microSolid,"beaker"),"v1","v2");
+approx(movedMicro.vessels[1].doses.NaCl.value,.001,1e-12);
+const quickGas=lab.setLabQuickReagent(micro,"HCl",{unit:"ml",value:5,phase:"gas"});
+assert.equal(lab.labQuickReagents(quickGas).find(q=>q.id==="HCl").dose.concentrationM,undefined);
+assert.equal(lab.setLabQuickReagent(micro,"HCl",{unit:"ml",value:5,concentrationM:NaN}),micro);
 // A simple measured suspension can be separated without inventing a
 // chemical reaction. A closed nearby flask must not mask another receiver.
 let suspension=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",{unit:"ml",value:20});
@@ -92,6 +104,8 @@ const filtrateContents=lab.labVesselContents(liquid);
 assert.ok(filtrateContents.solution.some(s=>s.formula==="NaCl"&&s.mmol>1.99));
 assert.ok(filtrateContents.solid.length===0);
 const massSolid=chemistry.labInventoryMassG(chemistry.simulateLabInventory(solid));
+const augmentedSolid=lab.putLabReagent(filtered,"v1","BaSO4",{unit:"g",value:.01});
+approx(chemistry.labInventoryMassG(chemistry.simulateLabInventory(augmentedSolid.vessels[0])),massSolid+.01,1e-10);
 const massLiquid=chemistry.labInventoryMassG(chemistry.simulateLabInventory({
  ...liquid,volumeMl:lab.labVesselQuantity(liquid).volumeMl
 }));

@@ -381,15 +381,15 @@ export function dispenseLabBurette(bench:LabBench,id:string,targetId:string,ml:n
  const target=bench.vessels.find(v=>v.id===targetId);
  if(!target||!["beaker","conical","flask","tube"].includes(target.kind)||
   !dose||dose.unit!=="ml"||dose.value<=0)return bench;
- const amount=Math.min(dose.value,Math.round(ml*100)/100);
+ const amount=Math.min(Math.floor(dose.value*100+1e-7)/100,Math.round(ml*100)/100);
  if(amount<=0)return bench;
  const updated=putLabReagent(bench,targetId,reagent,{...dose,value:amount});
  if(updated===bench)return bench;
  const vessels=updated.vessels.map(v=>v.id!==id?v:{
   ...v,
-  doses:dose.value>amount?{...v.doses,[reagent]:{...dose,value:Math.round((dose.value-amount)*100)/100}}:undefined,
-  reagents:dose.value>amount?v.reagents:[],
-  observed:dose.value>amount?v.observed:false
+  doses:dose.value>amount+1e-9?{...v.doses,[reagent]:{...dose,value:dose.value-amount}}:undefined,
+  reagents:dose.value>amount+1e-9?v.reagents:[],
+  observed:dose.value>amount+1e-9?v.observed:false
  });
  return {...updated,vessels};
 }
@@ -1340,7 +1340,7 @@ export function labQuickReagents(bench:LabBench):LabQuickReagent[]{
   substances.some(v=>v.id===q.id)).slice(0,MAX_QUICK_REAGENTS)
   .map(q=>({id:q.id,dose:{
    ...q.dose,
-   ...(q.dose.unit==="ml"&&q.dose.concentrationM===undefined&&labIsPreparedStock(q.id)?
+   ...(q.dose.unit==="ml"&&q.dose.concentrationM===undefined&&!labIsGasDose(q.id,q.dose)&&labIsPreparedStock(q.id)?
     {concentrationM:LAB_STOCK_MOLARITY_M}:{})}}));
 }
 export function setLabQuickReagent(bench:LabBench,id:string,dose?:LabDose):LabBench{
@@ -1352,11 +1352,14 @@ export function setLabQuickReagent(bench:LabBench,id:string,dose?:LabDose):LabBe
  }
  if(!Number.isFinite(dose.value)||dose.value<=0||dose.value>10000||
   !["g","ml"].includes(dose.unit)||
-  (dose.concentrationM!==undefined&&(dose.unit!=="ml"||dose.concentrationM<.001||
+  (dose.phase!==undefined&&(dose.phase!=="gas"||dose.unit!=="ml"||dose.concentrationM!==undefined))||
+  (dose.concentrationM!==undefined&&(dose.unit!=="ml"||!Number.isFinite(dose.concentrationM)||dose.concentrationM<.001||
    dose.concentrationM>2)))return bench;
  if(!existing&&list.length>=MAX_QUICK_REAGENTS)return bench;
- const normalized={id,dose:{...dose,value:Math.round(dose.value*100)/100,
-  ...(dose.unit==="ml"&&dose.concentrationM===undefined&&labIsPreparedStock(id)?
+ const value=dose.unit==="ml"?Math.round(dose.value*100)/100:dose.value;
+ if(value<=0)return bench;
+ const normalized={id,dose:{...dose,value,
+  ...(dose.unit==="ml"&&dose.concentrationM===undefined&&!labIsGasDose(id,dose)&&labIsPreparedStock(id)?
    {concentrationM:LAB_STOCK_MOLARITY_M}:{})}};
  return {...bench,quickReagents:existing?list.map(v=>v.id===id?normalized:v):
   [...list,normalized],event:bench.event+1};
@@ -2432,8 +2435,12 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
  // Never create a reagent name without material quantity / concentration.
  const stock=dose??labDefaultStockDose(reagent);
  if(!stock)return bench;
- const measured:LabDose=stock.unit==="ml"&&stock.concentrationM===undefined&&
+ const preparedStock:LabDose=stock.unit==="ml"&&stock.concentrationM===undefined&&
   !labIsGasDose(reagent,stock)&&labIsPreparedStock(reagent)?{...stock,concentrationM:LAB_STOCK_MOLARITY_M}:stock;
+ // The liquid measuring scale has 0.01 ml resolution. Do not store a zero
+ // dose when a positive request rounds down; retain exact solid masses.
+ if(!Number.isFinite(stock.value)||stock.value<=0||stock.value>10000)return bench;
+ const measured:LabDose=preparedStock.unit==="ml"?{...preparedStock,value:Math.round(preparedStock.value*100)/100}:preparedStock;
  let completedInventoryEquations:string[]=[];
  const updated=revise(bench,id,v=>{
   const validDose=Number.isFinite(measured.value)&&measured.value>0&&
@@ -2459,7 +2466,7 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
   const mixedStock=!!previous&&labMixedAqueousStock(reagent,previous,validDose);
   if(previous&&!mixedStock&&(previous.unit!==validDose.unit||labIsGasDose(reagent,previous)!==labIsGasDose(reagent,validDose)))return v;
   if(mixedStock&&(v.uncertain||v.reactionAmounts&&!v.reactionAmounts.complete))return v;
-  const combined=!mixedStock?{value:Math.round(((previous?.value??0)+validDose.value)*100)/100,
+  const combined=!mixedStock?{value:(previous?.value??0)+validDose.value,
    unit:validDose.unit,
    ...(validDose.phase?{phase:validDose.phase}:{}),
    ...(validDose.unit==="ml"&&validDose.concentrationM!==undefined?
@@ -3568,14 +3575,14 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
    const doses={...v.doses};
    for(const [id,dose] of Object.entries(source.doses??{})){
     const old=doses[id];
-    const total=Math.round(((old?.value??0)+dose.value)*100)/100;
+    const total=(old?.value??0)+dose.value;
     // Preserve known concentrations when decanting, and use a
     // volume-weighted average for two same-solute solutions.
     const concentrationM=dose.unit==="ml"&&
      (old?old.concentrationM!==undefined&&dose.concentrationM!==undefined:
       dose.concentrationM!==undefined)?
-     Math.round(((old?.value??0)*(old?.concentrationM??0)+
-      dose.value*(dose.concentrationM??0))/total*100000)/100000:undefined;
+     ((old?.value??0)*(old?.concentrationM??0)+
+      dose.value*(dose.concentrationM??0))/total:undefined;
     doses[id]={value:total,unit:dose.unit,
      ...(concentrationM!==undefined?{concentrationM}:{})};
    }

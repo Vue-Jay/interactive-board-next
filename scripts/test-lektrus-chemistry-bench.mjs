@@ -1309,10 +1309,19 @@ onFoot=lab.putLabReagent(onFoot,onFootBurette,"HCl",{value:5,unit:"ml"});
 assert.equal(lab.setLabBuretteValve(onFoot,onFootBurette,true,"v1",.05)
  .vessels.find(v=>v.id===onFootBurette).buretteOpen,true);
 onFoot=lab.setLabBuretteValve({...onFoot,simulationAtMs:0},onFootBurette,true,"v1",.05);
+// First measure the valve flow without evaporating water; the real open
+// vessel case separately checks that continuous dosing conserves acid.
+let evaporatingDrip=onFoot;
+const initialAcid=chem.labDoseMoles("HCl",evaporatingDrip.vessels.find(v=>v.id===onFootBurette).doses.HCl);
+for(let i=1;i<=10;i++)evaporatingDrip=lab.advanceLabSimulation(evaporatingDrip,i*500);
+const finalAcid=evaporatingDrip.vessels.reduce((n,v)=>n+(v.doses?.HCl?chem.labDoseMoles("HCl",v.doses.HCl):0),0);
+assert.ok(Math.abs(finalAcid-initialAcid)<1e-12,"Slow dripping and evaporation conserve actual acid moles");
+onFoot=lab.setLabBenchSettings(onFoot,{evaporationEnabled:false});
 for(let i=1;i<=10;i++)onFoot=lab.advanceLabSimulation(onFoot,i*500);
-assert.equal(onFoot.vessels.find(v=>v.id==="v1").doses?.HCl?.value,.25,
+assert.ok(Math.abs(onFoot.vessels.find(v=>v.id==="v1").doses?.HCl?.value-.25)<1e-9,
  "Ten half-second slow-drip ticks must deliver exactly 0.25 ml");
 onFoot=lab.setLabBuretteValve(onFoot,onFootBurette,false);
+onFoot=lab.setLabBenchSettings(onFoot,{evaporationEnabled:true});
 const atCloseDose=onFoot.vessels.find(v=>v.id==="v1").doses.HCl;
 const atCloseMoles=chem.labDoseMoles("HCl",atCloseDose);
 onFoot=lab.advanceLabSimulation(onFoot,6000);
