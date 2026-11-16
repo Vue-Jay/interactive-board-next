@@ -27,7 +27,7 @@ import {atlasRiverStroke,atlasLakeStroke,atlasGlacierStroke,atlasWaterGeometryTo
 import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDistanceScale,zoomAtlasCamera} from "./lektrusAtlasRegions";
 import {atlasModes,atlasModesFor,normalizeAtlasMode,historicalSnapshots,nearestSnapshotIndex,yearLabel,eventsNearYear} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,hasAtlasName,isRussianAtlasName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
- modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
+ modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,modernAtlasTerritoryUpdate,summariseNamedChanges,
 historicalFeatureFacts,historicalCountryName,historicalSourceName,historicalMapFeatures,loadHistoricalIndex,correctedHistoricalIndexLabel,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
 import {findHistoricalArticle,historicalRussianName,historyArticleUrl} from "./lektrusHistoryEncyclopedia";
 import {findHistoricalReference,historicalReferences,normalizeHistoricalReferenceName} from "./lektrusHistoricalReferences";
@@ -923,6 +923,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const selectedCountrySymbol=selected&&!selectedIsCity&&(historical||mode==="political")&&
   (selected.geometry?.type==="Polygon"||selected.geometry?.type==="MultiPolygon")?
   atlasCountrySymbol(selected,selectedTitle,snapshot.year,historical&&!modernReference):null;
+ const selectedModernUpdate=selected&&(!historical||modernReference)?modernAtlasTerritoryUpdate(selected):undefined;
  const selectedYears=selectedRaw?historyIndex.filter(record=>record.countries.some(name=>
   normalizeHistoricalReferenceName(name)===normalizeHistoricalReferenceName(selectedRaw))).map(record=>record.year):[];
  const markerDetails=displayedMarkers.find(m=>m.id===selectedMarker)??null;
@@ -2033,6 +2034,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       {cityArea&&<a href={cityArea.url} target="_blank" rel="noopener noreferrer">Источник площади ↗</a>}
      </div>}
      {featureSourceFacts(selected).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
+     {selectedModernUpdate&&<p>{selectedModernUpdate.note} <a href={selectedModernUpdate.url} target="_blank" rel="noopener noreferrer">Источник уточнения ↗</a></p>}
      {!historical&&<div className="lektrus-atlas-study-card lektrus-atlas-reference-card">
       <strong>Справка об объекте</strong>
       {schoolReferenceLoading&&<small>Загрузка дополнительных сведений…</small>}
@@ -2439,6 +2441,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       {cityArea&&<a href={cityArea.url} target="_blank" rel="noopener noreferrer">Источник площади ↗</a>}
      </div>}
      {featureSourceFacts(selected).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
+     {selectedModernUpdate&&<p>{selectedModernUpdate.note} <a href={selectedModernUpdate.url} target="_blank" rel="noopener noreferrer">Источник уточнения ↗</a></p>}
      {!historical&&<div className="lektrus-atlas-study-card lektrus-atlas-reference-card">
       <strong>Справка об объекте</strong>
       {schoolReferenceLoading&&<small>Загрузка дополнительных сведений…</small>}

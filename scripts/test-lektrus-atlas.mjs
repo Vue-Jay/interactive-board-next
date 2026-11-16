@@ -566,8 +566,26 @@ for(const [name,year,label,affiliation] of [
 // Optional exhaustive pass over the *actual* pinned source files. Download
 // them first; CI's offline fixture assertions above remain deterministic.
 if(process.env.LEKTRUS_ATLAS_DATA_DIR){
+ // 193 UN members (UNCHARTER list) and the two observer states are a
+ // coverage check, not a determination of the sovereignty of all map areas.
+ const unMembers="AFG ALB DZA AND AGO ATG ARG ARM AUS AUT AZE BHS BHR BGD BRB BLR BEL BLZ BEN BTN BOL BIH BWA BRA BRN BGR BFA BDI CPV KHM CMR CAN CAF TCD CHL CHN COL COM COG COD CRI CIV HRV CUB CYP CZE DNK DJI DMA DOM ECU EGY SLV GNQ ERI EST SWZ ETH FJI FIN FRA GAB GMB GEO DEU GHA GRC GRD GTM GIN GNB GUY HTI HND HUN ISL IND IDN IRN IRQ IRL ISR ITA JAM JPN JOR KAZ KEN KIR PRK KOR KWT KGZ LAO LVA LBN LSO LBR LBY LIE LTU LUX MDG MWI MYS MDV MLI MLT MHL MRT MUS MEX FSM MDA MCO MNG MNE MAR MOZ MMR NAM NRU NPL NLD NZL NIC NER NGA MKD NOR OMN PAK PLW PAN PNG PRY PER PHL POL PRT QAT ROU RUS RWA KNA LCA VCT WSM SMR STP SAU SEN SRB SYC SLE SGP SVK SVN SLB SOM ZAF SSD ESP LKA SDN SUR SWE CHE SYR TJK TZA THA TLS TGO TON TTO TUN TUR TKM TUV UGA UKR ARE GBR USA URY UZB VUT VEN VNM YEM ZMB ZWE".split(" ");
+ assert.equal(new Set(unMembers).size,193);
+ const modern=JSON.parse(fs.readFileSync(process.env.LEKTRUS_ATLAS_DATA_DIR+"/ne_10m_admin_0_countries_rus.geojson","utf8"));
+ for(const iso of [...unMembers,"PSE","VAT"]){
+  const adm={SSD:"SDS",PSE:"PSX"}[iso]??iso;
+  const feature=modern.features.find(f=>f.properties?.ADM0_A3===adm);
+  assert.ok(feature,`2026 overview missing ${iso}`);
+  assert.ok(geoExports.geoFeatureName(feature),`2026 overview missing Russian name for ${iso}`);
+  assert.ok(geoExports.mapFeaturePath(feature,.62),`2026 overview missing outline for ${iso}`);
+ }
+ for(const adm of ["KGZ","TJK","MUS","IOT"]){
+  const feature=modern.features.find(f=>f.properties?.ADM0_A3===adm);
+  const update=geoExports.modernAtlasTerritoryUpdate(feature);
+  assert.ok(update?.note.includes("2025")&&update.url.startsWith("https://"),`dated note missing for ${adm}`);
+ }
+ console.log("2026 overview: 193/193 UN member states and 2/2 observer states present, named and drawable. Geometry is the archived 2022 layer, not a certified 2026 border survey.");
  let featureCount=0,namedPairs=0,correctedCount=0,emptyPaths=0;
- for(const snapshot of historicalSnapshots.filter(s=>s.year!==2026)){
+ for(const snapshot of historicalSnapshots.filter(s=>s.year!==2026).slice().reverse()){
   const actual=JSON.parse(fs.readFileSync(process.env.LEKTRUS_ATLAS_DATA_DIR+"/"+snapshot.file,"utf8"));
   const result=geoExports.correctHistoricalLabels(actual,snapshot.year);
   assert.equal(result.features.length,actual.features.length);

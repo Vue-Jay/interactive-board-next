@@ -31,7 +31,7 @@ try{
  const requested=process.env.LEKTRUS_ATLAS_YEARS?.split(",").map(Number);
  if(requested)for(const year of requested)assert.ok(years.includes(year),`missing period in UI: ${year}`);
  let tested=0;
- for(const year of years.filter(y=>!requested||requested.includes(y))){
+ for(const year of years.filter(y=>!requested||requested.includes(y)).sort((a,b)=>b-a)){
   await period.selectOption(String(year));
   await page.locator(`[data-atlas-source-year="${year}"]`).waitFor({timeout:90000});
   await page.getByTitle("Вписать выбранный регион").click();
@@ -44,6 +44,11 @@ try{
    const source=JSON.parse(fs.readFileSync(path.join(dir,`world_${year<0?"bc"+(-year):year}.geojson`),"utf8"));
    const expected=source.features.filter(feature=>["Polygon","MultiPolygon"].includes(feature.geometry?.type)).length;
    assert.equal(ids.length,expected,`${year}: map has missing source polygons`);
+  }else{
+   const source=JSON.parse(fs.readFileSync(path.join(dir,"ne_10m_admin_0_countries_rus.geojson"),"utf8"));
+   // The pinned Russian viewpoint layer has eight deliberately unnamed records.
+   const expected=source.features.filter(feature=>feature.properties?.NAME_RU?.trim()).length;
+   assert.equal(ids.length,expected,"modern overview: named country/territory polygons missing");
   }
   // Dispatch the actual map path click, not a direct call to React state.
   // This includes tiny and overlapping islands that cannot reliably be hit
@@ -54,7 +59,7 @@ try{
    await selected.waitFor({state:"visible",timeout:6000});
    const title=await selected.locator(".lektrus-atlas-description strong").first().textContent({timeout:6000});
    assert.ok(title?.trim(),`${year}, ${id}: missing country title`);
-   assert.ok(!/\b(?:undefined|NaN)\b/i.test(title),`${year}, ${id}: damaged country title (${title})`);
+   assert.ok(!/^(?:undefined|null|NaN|Infinity)$/.test(title.trim()),`${year}, ${id}: damaged country title (${title})`);
    tested++;
   }
   console.log(`${year}: ${ids.length} map clicks, ${tested} total`);

@@ -6,6 +6,7 @@ on:
       - 'src/LektrusMapAtlas.tsx'
       - 'src/lektrusAtlas*.ts'
       - 'scripts/test-lektrus-atlas-every-country-browser.mjs'
+      - 'scripts/audit-lektrus-atlas-annual.mjs'
       - '.github/workflows/atlas-exhaustive-browser.yml'
   workflow_dispatch:
 permissions:
@@ -18,10 +19,10 @@ jobs:
       fail-fast: false
       matrix:
         years:
-          - '-123000,-10000,-8000,-5000,-4000,-3000,-2000,-1500,-1000,-700,-500,-400,-323,-300,-200,-100,-1,100,200,300,400,500,600,700,800,900'
-          - '1000,1100,1200,1279,1300,1400,1492,1500'
-          - '1530,1600,1650,1700,1715,1783,1800,1815,1878,1880'
           - '1900,1914,1920,1930,1938,1945,1960,1994,2000,2010,2026'
+          - '1530,1600,1650,1700,1715,1783,1800,1815,1878,1880'
+          - '1000,1100,1200,1279,1300,1400,1492,1500'
+          - '-123000,-10000,-8000,-5000,-4000,-3000,-2000,-1500,-1000,-700,-500,-400,-323,-300,-200,-100,-1,100,200,300,400,500,600,700,800,900'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -62,3 +63,27 @@ jobs:
             sleep 1
           done
           node scripts/test-lektrus-atlas-every-country-browser.mjs
+  annual-source-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Compare years in descending order against Cliopatria v0.2.1
+        env:
+          HIST: https://raw.githubusercontent.com/aourednik/historical-basemaps/da7a4b735ecef70aebdc9c73e409d8a2500d50f3
+          CLIO: https://raw.githubusercontent.com/Seshat-Global-History-Databank/cliopatria/5f433377139a6eeaeacbdc894b70f8805b72c8b5/cliopatria.geojson.zip
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/lektrus-annual-data
+          export OUT=/tmp/lektrus-annual-data
+          grep -Eo 'world_[a-z0-9]+\.geojson' src/lektrusAtlasModel.ts | sort -u | xargs -P 6 -I % curl -fsSL --retry 3 --max-time 60 "$HIST/geojson/%" -o "$OUT/%"
+          curl -fsSL --retry 3 --max-time 180 "$CLIO" -o "$OUT/cliopatria.zip"
+          unzip -p "$OUT/cliopatria.zip" cliopatria.geojson > "$OUT/cliopatria.geojson"
+          node --max-old-space-size=4096 scripts/audit-lektrus-atlas-annual.mjs "$OUT/cliopatria.geojson" "$OUT" "$OUT/annual-atlas-audit.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lektrus-annual-atlas-audit
+          path: /tmp/lektrus-annual-data/annual-atlas-audit.json
