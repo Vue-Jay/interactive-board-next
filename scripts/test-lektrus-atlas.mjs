@@ -578,10 +578,11 @@ if(process.env.LEKTRUS_ATLAS_DATA_DIR){
   assert.ok(geoExports.geoFeatureName(feature),`2026 overview missing Russian name for ${iso}`);
   assert.ok(geoExports.mapFeaturePath(feature,.62),`2026 overview missing outline for ${iso}`);
  }
- for(const adm of ["KGZ","TJK","MUS","IOT"]){
+ for(const adm of ["KGZ","TJK","MUS","IOT","ARM","AZE","RUS","UKR"]){
   const feature=modern.features.find(f=>f.properties?.ADM0_A3===adm);
   const update=geoExports.modernAtlasTerritoryUpdate(feature);
-  assert.ok(update?.note.includes("2025")&&update.url.startsWith("https://"),`dated note missing for ${adm}`);
+  const date=["ARM","AZE"].includes(adm)?"2024":["RUS","UKR"].includes(adm)?"2022":"2025";
+  assert.ok(update?.note.includes(date)&&update.url.startsWith("https://"),`dated note missing for ${adm}`);
  }
  console.log("2026 overview: 193/193 UN member states and 2/2 observer states present, named and drawable. Geometry is the archived 2022 layer, not a certified 2026 border survey.");
  let featureCount=0,namedPairs=0,correctedCount=0,emptyPaths=0;

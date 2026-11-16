@@ -81,7 +81,10 @@ jobs:
           export OUT=/tmp/lektrus-annual-data
           grep -Eo 'world_[a-z0-9]+\.geojson' src/lektrusAtlasModel.ts | sort -u | xargs -P 6 -I % curl -fsSL --retry 3 --max-time 60 "$HIST/geojson/%" -o "$OUT/%"
           curl -fsSL --retry 3 --max-time 180 "$CLIO" -o "$OUT/cliopatria.zip"
-          unzip -p "$OUT/cliopatria.zip" cliopatria.geojson > "$OUT/cliopatria.geojson"
+          unzip -Z1 "$OUT/cliopatria.zip"
+          mapfile -t geojson_entries < <(unzip -Z1 "$OUT/cliopatria.zip" | grep -E '\.geojson$' | grep -vE '(^|/)__MACOSX/|(^|/)\._')
+          test "${#geojson_entries[@]}" -eq 1
+          unzip -p "$OUT/cliopatria.zip" "${geojson_entries[0]}" > "$OUT/cliopatria.geojson"
           node --max-old-space-size=4096 scripts/audit-lektrus-atlas-annual.mjs "$OUT/cliopatria.geojson" "$OUT" "$OUT/annual-atlas-audit.json"
       - uses: actions/upload-artifact@v4
         with:
