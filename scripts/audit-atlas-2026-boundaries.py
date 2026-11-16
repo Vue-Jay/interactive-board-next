@@ -20,9 +20,11 @@ from shapely import make_valid
 from shapely.affinity import translate
 from shapely.geometry import shape, Polygon, box, mapping
 from shapely.ops import transform, unary_union
+from shapely.strtree import STRtree
 
 URL = "https://services.arcgis.com/iQ1dY19aHwbSDYIF/arcgis/rest/services/World_Bank_Global_Administrative_Divisions/FeatureServer/1"
 TRANSFORMER = Transformer.from_crs(4326, 6933, always_xy=True)
+INVERSE_TRANSFORMER = Transformer.from_crs(6933, 4326, always_xy=True)
 
 
 def request(params, endpoint=URL):
@@ -201,6 +203,62 @@ def classify_country_rows(rows):
     return rows
 
 
+def component_gaps(a, b, minimum_km2=0.01):
+    """Identify disconnected land components absent from the other layer.
+
+    A different coastline scale can produce these candidates. Record actual
+    coordinates for subsequent island-by-island source checking; do not
+    manufacture land or claim missing sovereignty from geometry alone.
+    """
+    if a is None or b is None:
+        return None
+
+    def disconnected(geometry, other):
+        components = polygon_parts(geometry)
+        other_parts = polygon_parts(other)
+        index = STRtree(other_parts)
+        gaps = []
+        for part in components:
+            km2 = part.area / 1e6
+            if km2 < minimum_km2 or any(part.intersection(other_parts[j]).area > 1e-6 for j in index.query(part)):
+                continue
+            location = transform(INVERSE_TRANSFORMER.transform, part.representative_point())
+            gaps.append({"km2": round(km2, 6), "lon": round(location.x, 6), "lat": round(location.y, 6)})
+        return {"componentCount": len(components), "disconnectedCount": len(gaps), "disconnectedKm2": round(sum(g["km2"] for g in gaps), 6),
+                "components": sorted(gaps, key=lambda g: -g["km2"])}
+
+    return {"minimumKm2": minimum_km2, "atlasOnly": disconnected(a, b), "referenceOnly": disconnected(b, a)}
+
+
+def geometry_overlaps(features, code_field):
+    """All overlapping country/territory polygons, without automatically
+    resolving potentially contested or institutionally aggregated regions."""
+    groups = {}
+    for i, f in enumerate(features):
+        if not f.get("geometry"):
+            continue
+        code = f["properties"].get(code_field)
+        key = code if code and code not in {"-99", "UNK"} else f"unresolved-source-{i}"
+        groups.setdefault(key, []).append(f)
+    data = [(key, projected(group)) for key, group in groups.items()]
+    data = [(key, geom) for key, geom in data if geom is not None]
+    geoms = [g for _, g in data]
+    tree = STRtree(geoms)
+    overlaps = []
+    for i, (name, geometry) in enumerate(data):
+        for j in tree.query(geometry):
+            if j <= i:
+                continue
+            other = geoms[j]
+            area = geometry.intersection(other).area
+            if area <= 1000:  # 0.001 km²: exclude numerical slivers only
+                continue
+            overlaps.append({"entities": sorted([name, data[j][0]]), "overlapKm2": round(area / 1e6, 6),
+                             "shareOfSmaller": round(area / min(geometry.area, other.area), 6),
+                             "review": "requires-territorial-status-review"})
+    return sorted(overlaps, key=lambda row: (-row["overlapKm2"], row["entities"]))
+
+
 def main():
     folder, out = map(pathlib.Path, sys.argv[1:3])
     roster_text = (pathlib.Path(__file__).parent / "atlas-2026-capitals.mjs").read_text()
@@ -233,7 +291,8 @@ def main():
         rows.append({"iso": code, "referencePresent": ref is not None,
                      "russianViewVsReference": describe(current, ref),
                      "defaultViewVsReference": describe(neutral, ref),
-                     "russianVsDefault2022": describe(current, neutral)})
+                     "russianVsDefault2022": describe(current, neutral),
+                     "disconnectedLandComponents": component_gaps(current, ref)})
     # Crosswalk every archived atlas territory separately. Non-matching codes
     # may mean a different cartographic convention; never silently discard them.
     reference_codes = {f["properties"].get("ISO_A3") for f in reference}
@@ -248,7 +307,9 @@ def main():
                                  "rawFile": "world-2026-source.geojson", "rawSHA256": hashlib.sha256(raw_bytes).hexdigest(),
                                  "features": len(reference), "distinctSourceCodes": len(reference_codes), "missingGeometry": raw_snapshot["missingGeometry"]},
               "candidateCorrections": corrections,
-              "archivedTerritoryCoverage": baseline}
+              "archivedTerritoryCoverage": baseline,
+              "archivedOverlaps": geometry_overlaps(rus, "ADM0_A3"),
+              "candidateOverlaps": geometry_overlaps(corrected_features, "ISO_A3")}
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2))
     # Preserve real reference geometry for manual review, including the
     # neighbour context for landlocked microstates. Do not import names or

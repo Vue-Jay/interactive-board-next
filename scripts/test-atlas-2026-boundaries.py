@@ -6,6 +6,7 @@ import sys
 from unittest.mock import patch
 
 from shapely.geometry import box, mapping, shape
+from shapely.ops import unary_union
 
 spec = importlib.util.spec_from_file_location("boundary", pathlib.Path(__file__).with_name("audit-atlas-2026-boundaries.py"))
 boundary = importlib.util.module_from_spec(spec)
@@ -24,6 +25,11 @@ assert corrected[1:] == fixture[1:], "do not modify enclave or unrelated dispute
 assert all(r["overlapBeforeKm2"] > 0 and r["overlapAfterKm2"] == 0 for r in rows)
 again, rows = boundary.normalize_known_enclaves(corrected)
 assert again == corrected and all(r["overlapBeforeKm2"] == 0 for r in rows)
+overlap_pairs = {tuple(r["entities"]) for r in boundary.geometry_overlaps(corrected, "ISO_A3")}
+assert ("ITA", "VAT") not in overlap_pairs and ("ITA", "SMR") not in overlap_pairs
+assert ("ITA", "OTHER") in overlap_pairs, "unreviewed overlapping entity must remain visible as a review issue"
+gaps = boundary.component_gaps(unary_union([box(0, 0, 1000, 1000), box(2000, 2000, 3000, 3000)]), box(0, 0, 1000, 1000))
+assert gaps["atlasOnly"]["disconnectedCount"] == 1 and gaps["atlasOnly"]["disconnectedKm2"] == 1
 
 meta = {"objectIdField": "OBJECTID", "editingInfo": {"lastEditDate": 1787918400000}}
 
@@ -54,5 +60,6 @@ if len(sys.argv) > 1:
     corrected, rows = boundary.normalize_known_enclaves(data["features"], "iso")
     assert len(corrected) == len(data["features"])
     assert all(r["overlapAfterKm2"] == 0 for r in rows)
+    assert not any(r["entities"] in (["ITA", "VAT"], ["ITA", "SMR"]) for r in boundary.geometry_overlaps(corrected, "iso"))
     print(json.dumps(rows, ensure_ascii=False))
 print("2026 boundary tests: source coverage guards, independent enclave topology, no unrelated changes OK")
