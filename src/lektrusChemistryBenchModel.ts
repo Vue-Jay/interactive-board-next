@@ -2690,7 +2690,8 @@ function transferSnapshotSample(bench:LabBench,source:LabVessel,target:LabVessel
  const movedCarrier=(source.filteredSolution?.volumeMl??0)*fraction;
  const leftCarrier=(source.filteredSolution?.volumeMl??0)-movedCarrier;
  const toCarrier=(target.filteredSolution?.volumeMl??0)+movedCarrier;
- const medium=labMixEnvironment([source,target],toDoses);
+ const medium=toCarrier>1e-9?"aqueous":labMixEnvironment([source,target],toDoses);
+ const mixedTemperature=labMixedSampleTemperatureC(source,target,fraction);
  const combinedSnapshot:LabChemicalSnapshot={
   speciesMol:toSpecies,solidMol:{...receiver.solidMol},
   retainedGasMol:{...receiver.retainedGasMol},
@@ -2704,7 +2705,7 @@ function transferSnapshotSample(bench:LabBench,source:LabVessel,target:LabVessel
  const targetInventory=simulateLabInventory({
   reagents:Object.keys(toSpecies),environment:medium,
   volumeMl:labVesselQuantity(target).volumeMl+amountMl,
-  temperatureC:target.temperatureC,chemicalInventory:combinedSnapshot
+  temperatureC:mixedTemperature,chemicalInventory:combinedSnapshot
  });
  const pending=!!source.pendingInventoryReaction||!!target.pendingInventoryReaction||
   !!bench.simulationPaused&&targetInventory.steps.length>0||
@@ -2734,7 +2735,7 @@ function transferSnapshotSample(bench:LabBench,source:LabVessel,target:LabVessel
    observed:fromIds.length>0,uncertain:false,
    reactionAmounts:undefined,inventoryGasReaction:undefined,
    completedReaction:fromIds.length?v.completedReaction:undefined};
-  if(v.id===target.id)return {...v,reagents:toIds,
+  if(v.id===target.id)return {...v,reagents:toIds,temperatureC:mixedTemperature,
    doses:Object.keys(toDoses).length?toDoses:undefined,
    chemicalInventory:toSnapshot,pendingInventoryReaction:pending||undefined,
    filteredSolution:toCarrier>1e-9?
@@ -2771,9 +2772,7 @@ export function transferLabMeasuredLiquid(
  const totalCents=amounts.reduce((n,v)=>n+v,0);
  const requested=Math.round(volumeMl*100);
  if(requested>totalCents)return bench;
- const capacity=labVesselQuantity(target).capacityMl;
- const current=labVesselQuantity(target).volumeMl;
- if(capacity!==undefined&&current+volumeMl>capacity+1e-7)return bench;
+ if(volumeMl>labVesselQuantity(target).availableMl+1e-7)return bench;
  // Decide which solutes actually enter the recipient after rounding to 0.01 ml.
  // An untransferred trace must not appear as a new reagent in the target.
  // Largest remainder allocation: every 0.01ml is attributed to a component,
@@ -2798,7 +2797,7 @@ export function transferLabMeasuredLiquid(
   const {id,dose}=entries[i],portion=allocated[i]/100;
   if(portion<=0)continue;
   const existing=received[id];
-  if(existing?.unit!=="ml"&&existing!==undefined)return bench;
+  if(existing&&(existing.unit!=="ml"||labIsGasDose(id,existing)))return bench;
   const quantity=Math.round(((existing?.value??0)+portion)*100)/100;
   if(quantity>10000)return bench;
   const concentrationM=existing?
@@ -2815,10 +2814,9 @@ export function transferLabMeasuredLiquid(
  const wasEmpty=target.reagents.length===0;
  const sourceReaction=source.completedReaction??labObservation(source).caseData;
  const targetReaction=target.completedReaction??labObservation(target).caseData;
- const medium=wasEmpty?source.environment:target.environment;
+ const medium=labMixEnvironment([source,target],received);
  const uncertain=Boolean(source.uncertain||target.uncertain||source.reactionAmounts||target.reactionAmounts||
-  (!wasEmpty&&(sourceReaction||targetReaction))||
-  (!wasEmpty&&source.environment!==target.environment&&source.environment!=="aqueous"));
+  (!wasEmpty&&(sourceReaction||targetReaction)));
  const newReaction=!uncertain&&!sourceReaction&&!targetReaction&&
   identifyReaction(ids,medium).status==="reaction";
  const now=newReaction?Date.now():undefined;
@@ -2833,6 +2831,7 @@ export function transferLabMeasuredLiquid(
     indicatorAddedAtMs:remainingIds.length?v.indicatorAddedAtMs:undefined,
    visualStartedAtMs:remainingIds.length?v.visualStartedAtMs:undefined};
   if(v.id===targetId)return {...v,reactionAmounts:undefined,reagents:ids,doses:received,
+   temperatureC:labMixedSampleTemperatureC(source,target,requested/totalCents),
    observed:ids.length>1||source.observed,
    environment:medium,uncertain,
    completedReaction:wasEmpty?labFinishedReaction(source):labFinishedReaction(target),
@@ -3081,6 +3080,13 @@ export function labMixedContentsTemperatureC(
  return Math.round(Math.max(LAB_COOLER_MIN_C,Math.min(1250,
   (sourceCapacity*sourceC+targetCapacity*targetC)/total))*10)/10;
 }
+/** A measured supernatant sample carries only its liquid heat capacity.
+ * Settled solids and gas headspace remain in the donor glassware. */
+function labMixedSampleTemperatureC(source:LabVessel,target:LabVessel,fraction:number):number{
+ const doses=Object.fromEntries(Object.entries(source.doses??{}).
+  filter(([id,d])=>d.unit==="ml"&&!labIsGasDose(id,d)));
+ return labMixedContentsTemperatureC({...source,doses},target,fraction);
+}
 
 /** One shared 20-step pour. The initiating client advances 5% per 150ms tick. */
 export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:string):LabBench{
@@ -3225,8 +3231,9 @@ function pourMeasuredFiltrate(bench:LabBench,source:LabVessel,target:LabVessel):
  if(a.unmeasured.length||b.unmeasured.length||a.limited||b.limited)return bench;
  const received={...target.doses};
  for(const [id,dose] of Object.entries(source.doses??{})){
+  if(labIsGasDose(id,dose))continue;
   const existing=received[id];
-  if(existing&&existing.unit!==dose.unit)return bench;
+  if(existing&&(existing.unit!==dose.unit||labIsGasDose(id,existing)))return bench;
   const value=Math.round(((existing?.value??0)+dose.value)*1e6)/1e6;
   if(value<=0||value>10000)return bench;
   const concentrationM=dose.unit==="ml"&&(existing?.concentrationM!==undefined||
@@ -3240,7 +3247,8 @@ function pourMeasuredFiltrate(bench:LabBench,source:LabVessel,target:LabVessel):
  const carrier=(source.filteredSolution?.volumeMl??0)+
   (target.filteredSolution?.volumeMl??0);
  const volume=labVesselQuantity(source).volumeMl+labVesselQuantity(target).volumeMl;
- const environment=labMixEnvironment([source,target],received);
+ const environment=carrier>1e-9?"aqueous":labMixEnvironment([source,target],received);
+ const mixedTemperature=labMixedContentsTemperatureC(source,target);
  const chemicalInventory:LabChemicalSnapshot={
   speciesMol:mergeLabMoles(a.speciesMol,b.speciesMol),
   solidMol:mergeLabMoles(a.solidMol,b.solidMol),
@@ -3253,7 +3261,7 @@ function pourMeasuredFiltrate(bench:LabBench,source:LabVessel,target:LabVessel):
  };
  const reacted=simulateLabInventory({reagents:Object.keys(chemicalInventory.speciesMol),
   chemicalInventory,volumeMl:volume,environment,stoppered:false,
-  temperatureC:target.temperatureC??source.temperatureC});
+  temperatureC:mixedTemperature});
  if(reacted.unmeasured.length||reacted.limited||
   Object.keys(reacted.speciesMol).length>MAX_VESSEL_REAGENTS)return bench;
  const pending=!!source.pendingInventoryReaction||!!target.pendingInventoryReaction||
@@ -3273,7 +3281,7 @@ function pourMeasuredFiltrate(bench:LabBench,source:LabVessel,target:LabVessel):
    observed:false,uncertain:false,indicator:undefined,
    indicatorDrops:undefined,indicatorAddedAtMs:undefined};
   if(v.id===target.id)return {...v,reagents:ids,
-   temperatureC:labMixedContentsTemperatureC(source,v),
+   temperatureC:mixedTemperature,
    doses:Object.keys(received).length?received:undefined,
    filteredSolution:carrier>0?{sourceEquation:source.filteredSolution?.sourceEquation??
     target.filteredSolution?.sourceEquation??"",solutes:ids.filter(x=>x!=="H2O"),

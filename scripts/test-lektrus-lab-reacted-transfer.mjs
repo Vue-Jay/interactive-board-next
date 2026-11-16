@@ -50,6 +50,36 @@ for(let index=0;index<lab.LAB_POUR_STEPS;index++)
 approx(qty(thermalGradual,"v2").temperatureC,50,.31);
 assert.ok(qty(thermalFast,"v2").temperatureC<80&&
  qty(thermalFast,"v2").temperatureC>20);
+// A pipette or cylinder sample is a real thermal transfer too, including
+// when either vessel has a persistent measured reaction inventory.
+const thermalSample=lab.transferLabMeasuredLiquid(thermal,"v1","v2",5);
+approx(qty(thermalSample,"v2").temperatureC,40,.11);
+approx(qty(thermalSample,"v1").temperatureC,80,.11);
+const snapshotThermal={...thermal,vessels:thermal.vessels.map(v=>v.id!=="v1"?v:{
+ ...v,chemicalInventory:chemical.labInventorySnapshot(chemical.simulateLabInventory(v))})};
+const snapshotSample=lab.transferLabMeasuredLiquid(snapshotThermal,"v1","v2",5);
+approx(qty(snapshotSample,"v2").temperatureC,40,.11);
+approx(qty(snapshotSample,"v1").temperatureC,80,.11);
+
+// A measured liquid sample must respect solid displacement and must not
+// silently turn a pre-existing same-formula gas sample into liquid.
+let solidReceiver=lab.addLabVessel(thermal,"tube");
+solidReceiver=lab.putLabReagent(solidReceiver,"v3","NaCl",{value:5,unit:"g"});
+solidReceiver=lab.putLabReagent(solidReceiver,"v3","H2O",{value:21,unit:"ml"});
+const free=lab.labVesselQuantity(qty(solidReceiver,"v3")).availableMl;
+assert.ok(free<4);
+assert.strictEqual(lab.transferLabMeasuredLiquid(solidReceiver,"v1","v3",4),solidReceiver);
+const gasReceiver=lab.putLabReagent(lab.addLabVessel(thermal,"flask"),"v3","H2O",stoich.labGasDose("H2O",5));
+assert.strictEqual(lab.transferLabMeasuredLiquid(gasReceiver,"v1","v3",5),gasReceiver);
+
+// Aqueous sample added to a dry receiver should select the actual solvent
+// medium so the reviewed chemical reaction is not lost by pipetting.
+let medium=lab.addLabVessel(lab.defaultLabBench(),"beaker");
+medium=lab.putLabReagent(medium,"v1","HCl",dose(10,.1));
+medium=lab.putLabReagent(medium,"v2","NaHCO3",{value:.1,unit:"g"});
+medium=lab.transferLabMeasuredLiquid(medium,"v1","v2",5);
+assert.equal(qty(medium,"v2").environment,"aqueous");
+assert.equal(lab.labObservation(qty(medium,"v2")).caseData?.observation,"gas");
 
 // A same-solute solution must be mixed using measured concentration and volume.
 let mixed=lab.putLabReagent(transfer,"v2","NaCl",dose(8,.3));
@@ -149,3 +179,37 @@ const dormant=lab.setLabSimulationPaused(lab.defaultLabBench(),false,0).vessels[
 assert.equal(lab.labReactionNeedsTick(dormant),false);
 assert.equal(lab.labReactionNeedsTick(dormant),false);
 console.log("Laboratory transfers: fast path, measured products, secondary reaction and conservation OK");
+
+// A measured sample must behave like the same reagent portion added from
+// the cabinet, across all supported liquid stocks and receiver stock forms.
+// An already running single-stock demonstration is tested separately.
+const database=load("src/lektrusReactionDatabase.ts");
+const cabinet=load("src/lektrusLabCatalog.ts");
+const stocks=database.substances.flatMap(s=>cabinet.labReagentForms(s).map(unit=>
+ [s.id,cabinet.labDefaultStockDose(s.id,unit)]));
+const liquids=stocks.filter(([id,d])=>d.unit==="ml"&&!stoich.labIsGasDose(id,d));
+let sampled=0;const sampleIssues=[];
+for(const [sourceId,stock] of liquids){
+ const sourceDose={...stock,value:10};
+ const seed=lab.putLabReagent(lab.addLabVessel(lab.defaultLabBench(),"beaker"),"v1",sourceId,sourceDose);
+ if(lab.labReactionNeedsTick(qty(seed,"v1")))continue;
+ for(const [targetId,targetStock] of stocks){
+  if(targetId===sourceId&&targetStock.unit!==sourceDose.unit)continue;
+  const ready=lab.putLabReagent(seed,"v2",targetId,targetStock);
+  if(lab.labReactionNeedsTick(qty(ready,"v2")))continue;
+  const direct=lab.putLabReagent(ready,"v2",sourceId,{...sourceDose,value:5});
+  const moved=lab.transferLabMeasuredLiquid(ready,"v1","v2",5);
+  if(direct===ready)continue;
+  const a=qty(direct,"v2"),b=qty(moved,"v2");sampled++;
+  const actual=chemical.simulateLabInventory(b),expected=chemical.simulateLabInventory(a);
+  if(moved===ready||a.environment!==b.environment||
+   Math.abs(chemical.labInventoryMassG(actual)-chemical.labInventoryMassG(expected))>1e-7||
+   lab.labReactionNeedsTick(a)!==lab.labReactionNeedsTick(b)){
+   if(sampleIssues.length<20)sampleIssues.push({sourceId,targetId,targetForm:targetStock.unit,
+    directMedium:a.environment,transferMedium:b.environment,
+    directTick:lab.labReactionNeedsTick(a),transferTick:lab.labReactionNeedsTick(b)});
+  }
+ }
+}
+console.log(`Measured liquid transfer matrix: ${sampled} cases, findings: ${sampleIssues.length}`);
+assert.deepEqual(sampleIssues,[]);
