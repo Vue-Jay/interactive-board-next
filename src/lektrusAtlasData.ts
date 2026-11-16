@@ -70,10 +70,11 @@ async function requestGeojson(key:string,urls:string[]):Promise<GeoCollection>{
     // lines contain one such New Zealand record; rejecting the whole dataset
     // would discard thousands of genuine borders. Never invent its line.
     const drawable={...body,features:body.features.filter(f=>f.geometry!==null)};
-    cache.set(key,drawable);
+    const corrected=key==="modern-countries-russian"?correctModernTerritoryLabels(drawable):drawable;
+    cache.set(key,corrected);
     // Keep memory bounded. Slow phones should not hold decades of geometry.
     if(cache.size>8)cache.delete(cache.keys().next().value!);
-    return drawable;
+    return corrected;
    }catch(error){errors.push(error instanceof Error?error.message:String(error))}
   }
   throw new Error("Не удалось получить геоданные: "+errors.join("; "));
@@ -322,11 +323,68 @@ export function historicalMapFeatures(source:GeoCollection|null):GeoFeature[]{
   feature.geometry?.type==="MultiPolygon")??[];
 }
 export const hasAtlasName=(feature:GeoFeature)=>geoFeatureName(feature).length>0;
+// Exact identities from the pinned RUS 2022 file. Its eight intentionally
+// unnamed polygons are geographical records, not additional sovereign states.
+// Require the exact archive code AND bbox before projecting a label onto them.
+type ModernTerritoryRecord={label?:string;bbox?:number[];note:string;url:string};
+const unGeorgia="https://www.un.org/pga/80/2026/06/04/pga-remarks-at-an-annual-meeting-on-guam-status-of-internally-displaced-persons-and-refugees-from-abkhazia-georgia-and-the-tskhinvali-region-south-ossetia-georgia/";
+const unUkraine="https://digitallibrary.un.org/record/3990400";
+const brazilUruguay="https://funag.gov.br/loja/download/685-O_estatuto_da_fronteira_brasil_uruguai.pdf";
+const southChinaArbitration="https://pca-cpa.org/en/cases/7/";
+const modernArchiveTerritories:Record<string,ModernTerritoryRecord>={
+ B38:{label:"Нагорный Карабах (архивный контур)",bbox:[46.291365,39.538156,47.203353,40.412728],note:"Архивный контур района Нагорного Карабаха, не независимое государство и не линия контроля на 2026 г. После событий сентября 2023 г. Международный суд ООН обязал Азербайджан обеспечить безопасное возвращение и выезд жителей.",url:"https://api.icj-cij.org/sites/default/files/press-releases/0/000-20240722-sta-01-00-en.pdf"},
+ C03:{label:"Луганская область (архивный участок)",bbox:[38.255732,47.811527,39.993248,48.705613],note:"Один архивный участок карты 2022 г., а не вся Луганская область или актуальная линия контроля. Резолюция ГА ООН ES-11/4 не признаёт изменение международно признанных границ Украины.",url:unUkraine},
+ C02:{label:"Донецкая область (архивный участок)",bbox:[37.49331,47.026353,39.055529,48.454614],note:"Один архивный участок карты 2022 г., а не вся Донецкая область или актуальная линия контроля. Резолюция ГА ООН ES-11/4 не признаёт изменение международно признанных границ Украины.",url:unUkraine},
+ "-99":{label:"Южное Патагонское ледниковое плато",bbox:[-73.588036,-49.759959,-73.057424,-49.272754],note:"Участок Южного Патагонского ледникового поля, идентифицирован по совпадающей геометрии нейтральной версии Natural Earth. Аргентина и Чили заключили соглашение о линии границы в 1998 г.; архивный участок не определяет суверенитет.",url:"https://www.argentina.gob.ar/normativa/nacional/resoluci%C3%B3n-142-2018-307629/texto"},
+ B92:{label:"Ринкон-де-Артигас (архивный участок)",bbox:[-56.02239,-31.082443,-55.816728,-30.856161],note:"Участок на границе Бразилии и Уругвая; картографическое сопоставление не разрешает разногласия по прохождению границы.",url:brazilUruguay},
+ PFA:{label:"Парасельские острова",bbox:[111.192882,15.775377,112.736827,16.933254],note:"Архипелаг в Южно-Китайском море. Вьетнам заявляет права на Хоангша (Парасельские острова), находящиеся под контролем Китая. Архивный контур не является решением вопроса о суверенитете.",url:"https://mofa.gov.vn/web/ministry-of-foreign-affairs/detail/chi-tiet/the-announcement-of-the-spokesperson-of-the-ministry-of-foreign-affairs-of-viet-nam-pham-thu-hang-on-viet-nam-s-position-concerning-china-s-invasion-of-the-hoang-sa-paracel-islands-in-1974--51.html"},
+ DEN:{label:"Остров Ханса (Тартупалук)",bbox:[-66.377919,80.820258,-66.297963,80.832831],note:"Канада и Дания подписали соглашение о разделении острова в июне 2022 г. По материалам правительства Канады от 16 июня 2026 г. работа над условиями доступа продолжалась в ожидании ратификации. Контур предшествует соглашению.",url:"https://international.canada.ca/en/global-affairs/corporate/transparency/briefing-documents/parliamentary-committee/2026-06-16-faae"},
+ KOD:{label:"Скалы Лианкур (Токто / Такэсима)",bbox:[131.860148,37.241606,131.862522,37.244006],note:"Островки находятся под управлением Республики Корея (Токто); Япония предъявляет претензии (Такэсима). Подпись не выражает признания претензий какой-либо стороны.",url:"https://www.mofa.go.jp/region/asia-paci/takeshima/"},
+ PGA:{label:"Острова Спратли",bbox:[114.02768,9.679511,115.848806,11.117987],note:"Архипелаг в Южно-Китайском море. Арбитраж 2016 г. касался морских прав и статуса отдельных объектов, а не определения суверенитета над островами. В архиве ошибочно записано Уэйк; это другой остров на Тихом океане.",url:southChinaArbitration},
+ SAH:{note:"Западная Сахара включена ООН в список несамоуправляющихся территорий. Отдельный контур не означает признания окончательного суверенитета.",url:"https://www.un.org/dppa/decolonization/en/nsgt"},
+ B35:{note:"Абхазия: де-факто отдельная администрация; ООН подтверждает территориальную целостность Грузии в международно признанных границах. Контур не определяет юридический статус.",url:unGeorgia},
+ B37:{note:"Южная Осетия: де-факто отдельная администрация; ООН подтверждает территориальную целостность Грузии в международно признанных границах. Контур не определяет юридический статус.",url:unGeorgia},
+ BRI:{note:"Остров Бразилера у устья реки Куараи; Бразилия и Уругвай расходятся в трактовке принадлежности острова.",url:brazilUruguay},
+ BRT:{note:"Бир-Тавиль — участок между Египтом и Суданом. Обозначение в Natural Earth не является юридическим подтверждением отсутствия суверенитета.",url:"https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-admin-0-breakaway-disputed-areas/"},
+ ATA:{note:"Антарктида не является государством. Статья IV Договора об Антарктике сохраняет позиции сторон по территориальным претензиям и запрещает новые или расширенные претензии во время действия договора.",url:"https://www.ats.aq/e/peaceful.html"},
+ IOA:{note:"Архивная объединённая запись острова Рождества и Кокосовых (Килинг) островов. Это две отдельные внешние территории Австралии, а не одно государство.",url:"https://www.ga.gov.au/scientific-topics/national-location-information/geography/external-territories"},
+ SGS:{note:"Южная Георгия и Южные Сандвичевы острова управляются Великобританией; Аргентина заявляет права на них. Контур не разрешает спор о суверенитете.",url:"https://treaties.un.org/Pages/ViewDetails.aspx?chapter=19&clang=_en&mtdsg_no=XIX-41-a&src=IND"},
+ FLK:{note:"Фолклендские (Мальвинские) острова — несамоуправляющаяся территория в списке ООН, управляемая Великобританией; существует спор о суверенитете с Аргентиной.",url:"https://www.un.org/dppa/decolonization/en/content/falkland-islands-malvinas"},
+ CSI:{note:"Острова Кораллового моря — внешняя территория Австралии; разрозненные рифы и островки не следует считать сплошной сушей.",url:"https://www.ga.gov.au/scientific-topics/national-location-information/dimensions/remote-offshore-territories/coral-sea-islands"},
+ SCR:{note:"Риф Скарборо (Скарборо-Шол) — спорный морской объект. Арбитраж 2016 г. не определял суверенитет над ним.",url:southChinaArbitration},
+ FRA:{note:"Архивный полигон включает Французскую Гвиану, а источник ООН M49 выделяет её отдельно. Статистическая площадь Франции не обязана совпадать с контуром, включающим заморскую территорию.",url:"https://unstats.un.org/unsd/methodology/m49/overview"},
+ NOR:{note:"Архивный полигон включает Шпицберген и Ян-Майен. Статистическое управление Норвегии отдельно учитывает основную территорию, Шпицберген и Ян-Майен; их площади нельзя сравнивать без одинакового охвата.",url:"https://www.ssb.no/en/natur-og-miljo/areal/statistikk/areal-av-land-og-ferskvatn"},
+ SRB:{note:"Архивный контур включает Косово, в другой картографической базе оно выделено отдельно. Резолюция Совета Безопасности ООН 1244 определяет мандат международного присутствия; сравнение полигонов не устанавливает окончательный статус.",url:"https://digitallibrary.un.org/record/274488?ln=en"},
+ GEO:{note:"В архивной геометрии Абхазия и Южная Осетия выделены из контура Грузии. ООН подтверждает территориальную целостность Грузии в международно признанных границах; контуры отражают разные картографические подходы.",url:unGeorgia},
+};
+function modernArchiveTerritory(feature:GeoFeature):ModernTerritoryRecord|undefined{
+ if(!["Polygon","MultiPolygon"].includes(feature.geometry?.type??""))return undefined;
+ const p=feature.properties??{},code=String(p.ADM0_A3??p.ADM0_A3_RU??"");
+ if(!Object.hasOwn(modernArchiveTerritories,code))return undefined;
+ const record=modernArchiveTerritories[code];
+ if(!record)return undefined;
+ if(record.bbox&&(!feature.bbox||feature.bbox.length!==4||!record.bbox.every((value,i)=>Math.abs(value-feature.bbox![i])<1e-6)))return undefined;
+ return record;
+}
+export function correctModernTerritoryLabels(collection:GeoCollection):GeoCollection{
+ return {...collection,features:collection.features.map(f=>{
+  if(f.properties?.ATLAS_MODERN_TERRITORY_LABEL===true)return f;
+  const record=modernArchiveTerritory(f);
+  if(!record?.label)return f;
+  const p=f.properties??{};
+  // Preserve raw source identity, but never request unrelated Wake Island facts.
+  return {...f,properties:{...p,ATLAS_ORIGINAL_NAME_RU:p.NAME_RU??null,NAME_RU:record.label,
+   ...(p.ADM0_A3==="PGA"?{ATLAS_ORIGINAL_WIKIDATAID:p.WIKIDATAID,ATLAS_ORIGINAL_NAME_EN:p.NAME_EN,WIKIDATAID:null,NAME_EN:"Spratly Islands"}:{}),
+   ATLAS_MODERN_TERRITORY_LABEL:true}};
+ })};
+}
 /** Dated corrections for the modern overview. Do not apply to historical
  * shapes or change geometry in the absence of an authoritative new layer. */
 export function modernAtlasTerritoryUpdate(feature:GeoFeature):{note:string;url:string}|undefined{
  if(!["Polygon","MultiPolygon"].includes(feature.geometry?.type??""))return undefined;
  const code=String(feature.properties?.ADM0_A3??"");
+ const reviewed=modernArchiveTerritory(feature);
+ if(reviewed)return {note:reviewed.note,url:reviewed.url};
  if(code==="VAT")return {
   note:"Территория Ватикана — 0,44 км² по данным государства. Контур Natural Earth 2022 г. является крайне условным (около 0,012 км² при сравнении в равновеликой проекции); непригоден для точного определения границы. Экстерриториальные объекты Святого Престола не следует считать территорией Ватикана.",
   url:"https://www.vaticanstate.va/en/state-and-government/general-informations/geography.html"};

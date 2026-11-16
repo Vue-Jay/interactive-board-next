@@ -11,7 +11,7 @@ const {chromium}=require(process.env.LEKTRUS_PLAYWRIGHT_MODULE||"playwright");
 const dir=process.env.LEKTRUS_ATLAS_DATA_DIR;
 assert.ok(dir,"LEKTRUS_ATLAS_DATA_DIR must contain the pinned GeoJSON files");
 const base=process.env.LEKTRUS_ATLAS_BASE_URL||"http://127.0.0.1:4175";
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,...(process.env.LEKTRUS_CHROMIUM_EXECUTABLE?{executablePath:process.env.LEKTRUS_CHROMIUM_EXECUTABLE}:{})});
 try{
  const page=await browser.newPage({viewport:{width:1360,height:1000}});
  const errors=[];
@@ -48,9 +48,10 @@ try{
    assert.equal(ids.length,expected,`${year}: map has missing source polygons`);
   }else{
    const source=JSON.parse(fs.readFileSync(path.join(dir,"ne_10m_admin_0_countries_rus.geojson"),"utf8"));
-   // The pinned Russian viewpoint layer has eight deliberately unnamed records.
-   const expected=source.features.filter(feature=>feature.properties?.NAME_RU?.trim()).length;
-   assert.equal(ids.length,expected,"modern overview: named country/territory polygons missing");
+   // Eight previously anonymous archive polygons now have source-reviewed
+   // geographic labels, not independent sovereign-state identities.
+   const expected=source.features.filter(feature=>["Polygon","MultiPolygon"].includes(feature.geometry?.type)).length;
+   assert.equal(ids.length,expected,"modern overview: country/territory polygons missing");
   }
   // Dispatch the actual map path click, not a direct call to React state.
   // This includes tiny and overlapping islands that cannot reliably be hit
@@ -65,6 +66,13 @@ try{
    const title=await selected.locator(".lektrus-atlas-description strong").first().textContent({timeout:6000});
    assert.ok(title?.trim(),`${year}, ${id}: missing country title`);
    assert.ok(!/^(?:undefined|null|NaN|Infinity)$/.test(title.trim()),`${year}, ${id}: damaged country title (${title})`);
+   if(year===2026){
+    const correctedTitles={73:"Нагорный Карабах (архивный контур)",140:"Луганская область (архивный участок)",141:"Донецкая область (архивный участок)",171:"Южное Патагонское ледниковое плато",172:"Ринкон-де-Артигас (архивный участок)",247:"Парасельские острова",250:"Острова Спратли",254:"Остров Ханса (Тартупалук)",255:"Скалы Лианкур (Токто / Такэсима)"};
+    if(correctedTitles[id]){
+     assert.equal(title.trim(),correctedTitles[id],`2026 ${id}: wrong corrected territory label`);
+     await selected.getByText("Источник уточнения",{exact:false}).first().waitFor({state:"visible",timeout:6000});
+    }
+   }
    if(adm){
     const iso={SDS:"SSD",PSX:"PSE"}[adm]??adm;
     const stats=modernCountryStats[iso];

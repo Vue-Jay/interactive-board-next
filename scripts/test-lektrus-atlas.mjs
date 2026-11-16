@@ -589,6 +589,32 @@ if(process.env.LEKTRUS_ATLAS_DATA_DIR){
  const unMembers="AFG ALB DZA AND AGO ATG ARG ARM AUS AUT AZE BHS BHR BGD BRB BLR BEL BLZ BEN BTN BOL BIH BWA BRA BRN BGR BFA BDI CPV KHM CMR CAN CAF TCD CHL CHN COL COM COG COD CRI CIV HRV CUB CYP CZE DNK DJI DMA DOM ECU EGY SLV GNQ ERI EST SWZ ETH FJI FIN FRA GAB GMB GEO DEU GHA GRC GRD GTM GIN GNB GUY HTI HND HUN ISL IND IDN IRN IRQ IRL ISR ITA JAM JPN JOR KAZ KEN KIR PRK KOR KWT KGZ LAO LVA LBN LSO LBR LBY LIE LTU LUX MDG MWI MYS MDV MLI MLT MHL MRT MUS MEX FSM MDA MCO MNG MNE MAR MOZ MMR NAM NRU NPL NLD NZL NIC NER NGA MKD NOR OMN PAK PLW PAN PNG PRY PER PHL POL PRT QAT ROU RUS RWA KNA LCA VCT WSM SMR STP SAU SEN SRB SYC SLE SGP SVK SVN SLB SOM ZAF SSD ESP LKA SDN SUR SWE CHE SYR TJK TZA THA TLS TGO TON TTO TUN TUR TKM TUV UGA UKR ARE GBR USA URY UZB VUT VEN VNM YEM ZMB ZWE".split(" ");
  assert.equal(new Set(unMembers).size,193);
  const modern=JSON.parse(fs.readFileSync(process.env.LEKTRUS_ATLAS_DATA_DIR+"/ne_10m_admin_0_countries_rus.geojson","utf8"));
+ const correctedModern=geoExports.correctModernTerritoryLabels(modern);
+ assert.equal(correctedModern.features.length,257);
+ assert.equal(correctedModern.features.filter(geoExports.hasAtlasName).length,257,"every geographic source record must be visible");
+ const correctedTerritories=correctedModern.features.filter(f=>f.properties.ATLAS_MODERN_TERRITORY_LABEL);
+ assert.equal(correctedTerritories.length,9);
+ for(const [i,f] of correctedModern.features.entries()){
+  assert.equal(f.geometry,modern.features[i].geometry,"source boundary must not change while correcting names");
+  if(f.properties.ATLAS_MODERN_TERRITORY_LABEL){
+   assert.ok(geoExports.modernAtlasTerritoryUpdate(f)?.url.startsWith("https://"));
+   assert.ok(geoExports.mapFeaturePath(f,.62),"corrected feature must be drawable");
+  }
+ }
+ const spratly=correctedTerritories.find(f=>f.properties.ADM0_A3==="PGA");
+ assert.equal(geoExports.geoFeatureName(spratly),"Острова Спратли");
+ assert.equal(spratly.properties.WIKIDATAID,null,"prevent unrelated Wake Island encyclopedia card");
+ assert.equal(spratly.properties.ATLAS_ORIGINAL_NAME_RU,"Уэйк");
+ for(const i of [24,57,59,73,137,140,141,171,172,173,174,226,227,239,240,247,249,250,254,255,256]){
+  const update=geoExports.modernAtlasTerritoryUpdate(correctedModern.features[i]);
+  assert.ok(update?.note&&update.url.startsWith("https://"),`archive territory ${i}: missing reviewed context`);
+ }
+ for(const iso of ["FRA","NOR","SRB","GEO"]){
+  const update=geoExports.modernAtlasTerritoryUpdate(correctedModern.features.find(f=>f.properties.ADM0_A3===iso));
+  assert.ok(update?.note&&update.url.startsWith("https://"),`${iso}: comparable territorial extent note missing`);
+ }
+ const unrelated={...modern.features[171],bbox:[0,0,1,1]};
+ assert.equal(geoExports.correctModernTerritoryLabels({type:"FeatureCollection",features:[unrelated]}).features[0],unrelated,"generic -99 code must not rename unrelated geometry");
  const coverageSource=fs.readFileSync(new URL("../src/lektrusAtlasHistoricalCoverage.ts",import.meta.url),"utf8");
  const coverageExports={};
  new Function("exports",ts.transpileModule(coverageSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(coverageExports);
