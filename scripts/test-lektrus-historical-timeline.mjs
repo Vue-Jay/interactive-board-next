@@ -237,8 +237,13 @@ if(outDir&&sourceFile){
   for(const part of [11,12,13,15])assert.ok(rawHashes(12119).has(componentHash(rawParts(12069)[part])));
   assert.equal(partsAt(578,1986),undefined);
   assert.deepEqual(partsAt(579,1986),[0,1]);
-  assert.deepEqual(partsAt(1454,7187),[0,3,5]);
-  assert.deepEqual(partsAt(1461,7187),[3,5]);
+  assert.deepEqual(partsAt(1440,7187),[0,1,2,4,5,6]);
+  assert.deepEqual(partsAt(1454,7187),[0,5]);
+  assert.deepEqual(partsAt(1461,7187),[5]);
+  assert.equal(partsAt(1539,7944),undefined);
+  assert.deepEqual(partsAt(1540,7944),Array.from({length:21},(_,i)=>i).filter(i=>![13,14,17,19].includes(i)));
+  assert.equal(revisionAt(1744,9806).geometryStatus,'rejected');
+  assert.equal(revisionAt(1799,9806).geometryStatus,'rejected');
   assert.equal(partsAt(1970,13318),undefined);
   assert.ok(!partsAt(1971,13318).includes(22));
   assert.ok(partsAt(1972,13318).includes(5));
