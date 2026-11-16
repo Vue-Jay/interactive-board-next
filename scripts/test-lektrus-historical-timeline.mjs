@@ -123,7 +123,13 @@ if(outDir&&sourceFile){
       assert.deepEqual(r.sourceComponents??r.components,list(f.properties.Components));assert.deepEqual(r.sourceMemberOf??r.memberOf,list(f.properties.MemberOf));
       assert.equal(r.sourceFrom,f.properties.FromYear);assert.equal(r.sourceTo,f.properties.ToYear);
       assert.equal(r.sourceGeometryId??r.geometryId,sourceHashes.get(r.sourceIndex));
-      if(r.sourceGeometryId){assert.equal(r.geometryRepair,'retracted-zero-area-interior-edges');const orig=f.geometry, repaired=pack.geometries[r.geometryId];assert.equal(orig.type,repaired.type);const shells=g=>(g.type==='Polygon'?[g.coordinates]:g.coordinates).map(p=>p[0]);assert.deepEqual(shells(orig),shells(repaired));}
+      if(r.sourceGeometryId){
+        const orig=f.geometry,repaired=pack.geometries[r.geometryId];
+        if(r.geometryRepair==='reviewed-source-components'){
+          const parts=r.geometryParts.map(({index,part})=>{const x=input.features[index];assert.ok(x.properties.FromYear<=r.from&&x.properties.ToYear>=r.to);return (x.geometry.type==='Polygon'?[x.geometry.coordinates]:x.geometry.coordinates)[part]});
+          assert.deepEqual(repaired,{type:'MultiPolygon',coordinates:parts});
+        }else{assert.equal(r.geometryRepair,'retracted-zero-area-interior-edges');assert.equal(orig.type,repaired.type);const shells=g=>(g.type==='Polygon'?[g.coordinates]:g.coordinates).map(p=>p[0]);assert.deepEqual(shells(orig),shells(repaired));}
+      }
     }
     for(let year=block.to;year>=block.from;year--){
       if(year===0)continue;
@@ -162,6 +168,27 @@ if(outDir&&sourceFile){
   assert.equal(years,5424);
   assert.equal(seen.size,manifest.counts.revisions);
   assert.equal(allGeometries.size,manifest.counts.uniqueGeometries);
+  const revisionAt=(year,index)=>{const b=historicalBlockForYear(manifest,year);const p=JSON.parse(fs.readFileSync(path.join(outDir,b.file)));return historicalYearState(p,year).records.find(r=>r.sourceIndex===index)};
+  assert.equal(revisionAt(1800,10558).name,'Kingdom of Great Britain');
+  assert.equal(revisionAt(1801,10558).name,'United Kingdom of Great Britain and Ireland');
+  assert.equal(revisionAt(1927,12623).name,'United Kingdom of Great Britain and Northern Ireland');
+  assert.deepEqual(revisionAt(1969,13305).geometryParts.map(p=>p.part),[2,3,4,5,6,7,13,14]);
+  assert.deepEqual(revisionAt(2024,13684).geometryParts.map(p=>p.part),[1,2,3,4,5,6,7,8]);
+  assert.deepEqual(revisionAt(1985,11956).geometryParts.map(p=>p.part),[1,2,3,4]);
+  assert.deepEqual(revisionAt(1986,11956).geometryParts.map(p=>p.part),[1,2,4]);
+  assert.equal(revisionAt(2009,11956).geometryStatus,'candidate');
+  assert.equal(revisionAt(2010,11956).geometryStatus,'rejected');
+  assert.equal(revisionAt(2024,13642).geometryStatus,'rejected');
+  assert.equal(revisionAt(2024,13708).geometryStatus,'rejected');
+  assert.equal(revisionAt(2024,13753).geometryStatus,'rejected');
+  assert.equal(revisionAt(1974,13277).name,'Portugal');
+  assert.deepEqual(revisionAt(1975,13277).geometryParts.map(p=>p.part),[7,8,9,10,20,21]);
+  assert.equal(revisionAt(1999,13399).geometryParts,undefined);
+  assert.deepEqual(revisionAt(2000,13399).geometryParts.map(p=>p.part),[1,2,3,4,5,6]);
+  assert.deepEqual(revisionAt(2024,13659).geometryParts,[{index:13659,part:0},{index:13753,part:0}]);
+  assert.equal(revisionAt(2018,13552).name,'Former Yugoslav Republic of Macedonia');
+  assert.equal(revisionAt(2019,13552).name,'Republic of North Macedonia');
+  assert.equal(revisionAt(1991,13369).entityId,revisionAt(1992,13369).entityId);
   const report={years,recordYears,rejectedYears,emptyYears,packCount,yearsWithIdentityCollisions,yearsWithSharedGeometry,admissionWarnings,counts:manifest.counts,source:manifest.source,notice:'Technical annual coverage with review warnings. Shared geometry, aliases and admission warnings are candidates, not proof of errors. Historical, geographic and visual acceptance NOT complete.',rows};
   fs.writeFileSync(path.join(outDir,'technical-annual-audit.json'),JSON.stringify(report,null,2)+'\n');
   console.log(JSON.stringify({...report,rows:undefined}));

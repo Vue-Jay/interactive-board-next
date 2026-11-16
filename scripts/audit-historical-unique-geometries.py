@@ -67,7 +67,7 @@ def audit(folder, archive, output, original_source):
     manifest = json.loads((folder / 'manifest.json').read_text())
     registry = json.loads((folder / 'change-review-registry.json').read_text())
     assert registry['source']['sha256'] == manifest['source']['sha256']
-    geom, topology, records, repaired = {}, {}, {}, {}
+    geom, topology, records, repaired, selections = {}, {}, {}, {}, {}
     for block in manifest['blocks']:
         data = (folder / block['file']).read_bytes()
         assert hash_bytes(data) == block['sha256']
@@ -83,7 +83,9 @@ def audit(folder, archive, output, original_source):
         for r in pack['records']:
             assert r['id'] not in records or records[r['id']] == r
             records[r['id']] = r
-            if r.get('sourceGeometryId'):
+            if r.get('geometryRepair') == 'reviewed-source-components':
+                selections[r['id']] = (r, pack['geometries'][r['geometryId']])
+            elif r.get('sourceGeometryId'):
                 repaired[r['sourceIndex']] = pack['geometries'][r['geometryId']]
     assert len(topology) == manifest['counts']['uniqueGeometries']
     assert len(records) == manifest['counts']['revisions']
@@ -98,6 +100,15 @@ def audit(folder, archive, output, original_source):
         after = shape(raw)
         assert not before.is_valid and after.is_valid
         assert after.equals(unary_union(polygons(make_valid(before)))), f'Repair changed areal geometry at {index}'
+    for revision, raw in selections.values():
+        parts = []
+        for part in revision['geometryParts']:
+            feature = original['features'][part['index']]
+            assert feature['properties']['FromYear'] <= revision['from'] <= revision['to'] <= feature['properties']['ToYear']
+            g = shape(feature['geometry'])
+            parts.append(polygons(g)[part['part']])
+        after = shape(raw)
+        assert after.is_valid and after.equals(unary_union(parts)), f'Component selection changed geometry at {revision["sourceIndex"]}'
     del original, original_bytes
     affected = {}
     for unit in registry['reviewUnits']:
@@ -154,7 +165,7 @@ def audit(folder, archive, output, original_source):
         snapshots.append({'year': year, 'file': filename.name, 'sha256': hash_bytes(data), 'counts': counts, 'rows': rows})
     snapshots.sort(key=lambda s: s['year'], reverse=True)
     report = {'source': manifest['source'], 'method': 'EPSG:6933; exact source-name equality plus spatial overlap; no automatic historical identity or boundary approval; invalid polygons made valid for diagnostic comparison only',
-              'counts': {'uniqueGeometries': len(topology), 'invalidGeometries': sum(t['invalid'] is not None for t in topology.values()), 'excludedGeometries': sum(bool(t['comparisonExcluded']) for t in topology.values()), 'equivalentRepairs': len(repaired), 'affectedReviewUnits': sum(map(len, affected.values())), 'snapshots': len(snapshots), 'archivePolygons': sum(len(s['rows']) for s in snapshots), 'uniqueSpatialPairs': len(pairs)},
+              'counts': {'uniqueGeometries': len(topology), 'invalidGeometries': sum(t['invalid'] is not None for t in topology.values()), 'excludedGeometries': sum(bool(t['comparisonExcluded']) for t in topology.values()), 'equivalentRepairs': len(repaired), 'reviewedComponentSelections': len(selections), 'affectedReviewUnits': sum(map(len, affected.values())), 'snapshots': len(snapshots), 'archivePolygons': sum(len(s['rows']) for s in snapshots), 'uniqueSpatialPairs': len(pairs)},
               'topology': topology, 'affectedReviewUnits': affected, 'snapshots': snapshots}
     output.write_text(json.dumps(report, ensure_ascii=False, separators=(',', ':')))
     print(json.dumps(report['counts']), flush=True)

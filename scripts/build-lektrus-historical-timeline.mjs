@@ -22,6 +22,26 @@ const DELHI_SOURCES=['https://ignca.gov.in/Asi_data/44707.pdf','https://www.metm
 const ZHOU_SOURCE='https://www.metmuseum.org/zh/toah/ht/04/eac.html';
 const CHINA_GROUP_SOURCE='https://github.com/Seshat-Global-History-Databank/cliopatria/tree/5f433377139a6eeaeacbdc894b70f8805b72c8b5';
 const chinaGroupTransition=new Set([155,172,175,176,177,178,261,273]);
+const UK_SOURCE='https://commonslibrary.parliament.uk/research-briefings/cbp-10649/';
+const UK_DEPENDENCIES='https://www.gov.uk/government/publications/crown-dependencies-jersey-guernsey-and-the-isle-of-man';
+const COMMONWEALTH='https://thecommonwealth.org/our-member-countries';
+const DUTCH_SOURCE='https://www.government.nl/themes/government-and-democracy/caribbean-parts-of-the-kingdom';
+const DUTCH_TRANSITIONS='https://treaties.un.org/pages/historicalinfo.aspx';
+const SURINAME_SOURCE='https://www.un.org/dppa/decolonization/en/history/former-trust-and-nsgts';
+const PORTUGAL_SOURCE='https://www.parlamento.pt/Parlamento/Paginas/EstadoNovo.aspx';
+const PORTUGAL_CONSTITUTION='https://www.parlamento.pt/Legislacao/Paginas/ConstituicaorepublicaPortuguesa.aspx';
+const MACAO_SOURCE='https://bo.dsaj.gov.mo/BO/ii/2002/23/aviso42.asp';
+const CABINDA_SOURCE='https://digitallibrary.un.org/record/855865/files/A_10040-EN.pdf';
+const COUNTRY_NAMES='https://www.gov.uk/government/publications/country-names/timeline-of-country-name-changes-in-hmg-use-1919-to-present';
+const reviewedNames=[
+ ['Former Yugoslav Republic of Macedonia','Q221',2019,'Republic of North Macedonia','Республика Северная Македония','https://www.un.org/en/node/123222'],
+ ["People's Republic of Angola",'Q916',1992,'Republic of Angola','Республика Ангола','https://ciam.gov.ao/ao/angola/constituicao'],
+ ['Union of Myanmar','Q836',2011,'Republic of the Union of Myanmar','Республика Союз Мьянма',DUTCH_TRANSITIONS],
+ ['Saint Kitts','Q204989',1983,'Saint Kitts and Nevis','Сент-Китс и Невис',COUNTRY_NAMES],
+ ['Saint Vincent','Q757',1979,'Saint Vincent and the Grenadines','Сент-Винсент и Гренадины',COUNTRY_NAMES],
+ ['Federated Republic of Germany','Q183',1991,'Federal Republic of Germany','Федеративная Республика Германия','https://www.bundestag.de/en/parliament/history/parliamentarism/frg_parliamentarism/frg_parliamentarism-200324'],
+];
+const ukName=year=>year<1927?'United Kingdom of Great Britain and Ireland':'United Kingdom of Great Britain and Northern Ireland';
 // Annual labels use the successor in the transition year; no new cartographic
 // boundary is inferred from a dynastic succession. All raw fields survive.
 const delhiTransitions=[{old:'Mamluk Dynasty',next:'Khalji Dynasty',qid:'Q919071',ru:'Династия Хильджи',from:1290,to:1293},{old:'Khalji Dynasty',next:'Tughlaq Dynasty',qid:'Q1124402',ru:'Династия Туглаков',from:1320,to:1325},{old:'Tughlaq Dynasty',next:'Sayyid Dynasty',qid:'Q1331421',ru:'Династия Сайидов',from:1414,to:1450},{old:'Sayyid Dynasty',next:'Lodi Dynasty',qid:'Q11709',ru:'Династия Лоди',from:1451,to:1452}];
@@ -33,12 +53,25 @@ function editorialSegments(base){
  if(delhi)for(const t of delhiTransitions)if(t.from<=base.to&&t.to>=base.from){cuts.add(Math.max(base.from,t.from));cuts.add(Math.min(base.to,t.to)+1)}
  const spring=chinaGroupTransition.has(base.sourceIndex)&&base.memberOf.includes('(Spring and Autumn States)')&&base.from<=-480&&base.to>=-480;
  if(spring)cuts.add(-480);
+ const cut=year=>{if(base.from<year&&year<=base.to)cuts.add(year)};
+ const british=base.sourceName==='Kingdom of Great Britain'&&base.sourceWikidata==='Q23666';
+ const britishComponent=base.components.includes('Kingdom of Great Britain');
+ if(british||britishComponent){cut(1801);cut(1927)}
+ if(british){cut(2000);cut(2024)}
+ for(const [name,qid,year] of reviewedNames)if(base.sourceName===name&&base.sourceWikidata===qid)cut(year);
+ if(base.sourceName==='Netherlands Antilles'&&base.sourceWikidata==='Q25227'){cut(1976);cut(1986);cut(2010)}
+ if(base.sourceName==='Estado Novo'&&base.sourceWikidata==='Q824489'){cut(1933);cut(1974)}
+ if(base.sourceIndex===13399)cut(2000);
+ if(base.sourceIndex===7783)cut(1516);
+ if(base.sourceIndex===5295)cut(1210);
+ if(base.sourceIndex===4776)cut(1126);
+ if(base.sourceIndex===4678)cut(1094);
  const sorted=[...cuts].sort((a,b)=>a-b);
  for(let i=0;i+1<sorted.length;i++){
   const from=sorted[i],to=sorted[i+1]-1;
   let r={...base,from,to};
-  const reasons=[],sources=new Set();
-  const note=(reason,urls)=>{reasons.push(reason);for(const url of urls)sources.add(url)};
+  const reasons=[],reasonsRu=[],sources=new Set();
+  const note=(reason,urls,ru)=>{reasons.push(reason);if(ru)reasonsRu.push(ru);for(const url of urls)sources.add(url)};
   if(delhi){
    let label=base.role==='composite'?base.components[0]:base.name;
    for(const t of delhiTransitions)if(from>=t.from&&from<=t.to&&label===t.old){
@@ -53,11 +86,54 @@ function editorialSegments(base){
   if(base.sourceName==='Later Zhou'&&base.sourceWikidata==='Q1154556'&&to<0){r={...r,name:'Eastern Zhou',nameRu:'Восточная Чжоу',nameStatus:'reviewed',entityId:identity('reviewed-polity','eastern-zhou')};note('Ancient Zhou royal territory, not the Later Zhou dynasty of the tenth century; the reconstructed extent is unverified.',[ZHOU_SOURCE])}
   if(base.role==='composite'&&to<0&&['(Spring and Autumn States)','(Warring States China)'].includes(base.sourceName)&&base.components.includes('Later Zhou')){r={...r,sourceComponents:base.components,components:base.components.map(n=>n==='Later Zhou'?'Eastern Zhou':n)};note('Ancient Zhou component corrected; source extent is unchanged.',[ZHOU_SOURCE])}
   if(spring&&from>=-480){r={...r,sourceMemberOf:base.memberOf,memberOf:base.memberOf.map(n=>n==='(Spring and Autumn States)'?'(Warring States China)':n)};note('Membership aligned with the pinned dataset’s active chronological grouping and explicit components; this is the dataset convention, not an independently established exact period boundary.',[CHINA_GROUP_SOURCE])}
-  if(reasons.length)r={...r,review:{reason:reasons.join(' '),sources:[...sources]}};
+  for(const [name,qid,year,next,ru,url] of reviewedNames)if(base.sourceName===name&&base.sourceWikidata===qid&&from>=year){
+   r={...r,name:next,nameRu:ru,nameStatus:'reviewed',entityId:name==='Federated Republic of Germany'?identity('source-polity',next,qid):base.entityId};
+   const island=['Saint Kitts','Saint Vincent'].includes(name);
+   note('Historical state name corrected; source geometry remains unverified.'+(island?' Only the main island is present in the source; other islands remain missing.':''),[url],'Уточнено историческое название. Контур ещё не проверен.'+(island?' В исходнике есть только главный остров, остальные отсутствуют.':''));
+  }
+  if(british&&from>=1801){
+   r={...r,name:ukName(from),nameRu:from<1927?'Соединённое Королевство Великобритании и Ирландии':'Соединённое Королевство Великобритании и Северной Ирландии',nameStatus:'reviewed',entityId:identity('reviewed-polity','united-kingdom')};
+   note('The 1801 union established the United Kingdom; the 1927 title distinguishes Northern Ireland. The original geometry is not independent proof of historical borders.',[UK_SOURCE],'С 1801 года — Соединённое Королевство, с 1927 года в официальном названии указана Северная Ирландия. Исторические границы требуют независимой проверки.');
+   if(from>=2000&&to<=2023&&base.memberOf.includes('(British Empire)')){r={...r,sourceMemberOf:base.memberOf,memberOf:base.memberOf.filter(n=>n!=='(British Empire)')};note('Removed obsolete map link to an absent empire grouping; this is not a claim about Commonwealth membership.',[COMMONWEALTH])}
+   if(base.sourceIndex===13305||base.sourceIndex===13684)note('UK core only: excluded disconnected non-UK territories (including Crown dependency Isle of Man); retained original UK islands and Northern Ireland. Missing or separately administered territories require separate review.',[UK_DEPENDENCIES],'Оставлены острова Великобритании и Северная Ирландия; исключены отдельные территории, не входящие в состав самого Соединённого Королевства. Контуры этих территорий требуют отдельной проверки.');
+  }
+  if(britishComponent&&from>=1801){r={...r,sourceComponents:base.components,components:base.components.map(n=>n==='Kingdom of Great Britain'?ukName(from):n)};note('Updated historical component name in line with the 1801 union and 1927 title.',[UK_SOURCE])}
+  if(base.sourceIndex===13708){r={...r,geometryStatus:'rejected'};note('The Commonwealth is an association of independent countries, not a territorial union of the UK and its overseas territories. This two-component overlay is not a Commonwealth map.',[COMMONWEALTH],'Содружество состоит из независимых государств. Контур только Великобритании и её заморских территорий не является картой Содружества.')}
+  if(base.sourceIndex===13633){r={...r,sourceMemberOf:base.memberOf,memberOf:base.memberOf.filter(n=>n!=='(Commonwealth of Nations)')};note('Overseas territories are not individual sovereign Commonwealth member countries.',[COMMONWEALTH],'Заморские территории не являются самостоятельными государствами — членами Содружества.')}
+  if(base.sourceName==='Netherlands Antilles'&&base.sourceWikidata==='Q25227'){
+   if(to<1976){r={...r,name:base.sourceIndex===11004?'Dutch Caribbean possessions':'Dutch Caribbean possessions and Suriname (source aggregate)',nameRu:base.sourceIndex===11004?'Нидерландские владения в Карибском море':'Нидерландские владения в Карибском море и Суринам (сводный контур)',nameStatus:'reviewed'};note('Source combines distinct Dutch territories; it cannot be identified as the Netherlands Antilles alone. Source extent remains unverified.',[SURINAME_SOURCE])}
+   else if(from<2010){note('Source component for Suriname excluded after its 1975 independence. '+(from>=1986?'Aruba excluded from 1 January 1986. ':'')+'Source island coverage is incomplete; not a fully verified border.',[SURINAME_SOURCE,DUTCH_TRANSITIONS],'Исключён Суринам после независимости в 1975 году. '+(from>=1986?'С 1986 года исключена также Аруба. ':'')+'Остальные островные контуры неполны.')}
+   else {r={...r,geometryStatus:'rejected'};note('Netherlands Antilles dissolved on 10 October 2010. A single former-country polygon is not a valid reconstruction of the successor territories; the 2010 transition and later years need separate dated polygons.',[DUTCH_SOURCE,DUTCH_TRANSITIONS],'Нидерландские Антильские острова распущены 10 октября 2010 года. Нужны отдельные датированные контуры территорий-преемников.')}
+  }
+  if(base.sourceName==='Estado Novo'&&base.sourceWikidata==='Q824489'){
+   if(to<1933){r={...r,name:'Portugal (military dictatorship)',nameRu:'Португалия (военная диктатура)',nameStatus:'reviewed'};note('The Estado Novo constitution dates to 1933; preceding military dictatorship is a distinct regime. Source extent includes colonial areas and remains unverified.',[PORTUGAL_SOURCE])}
+   else if(from>=1979){r={...r,geometryStatus:'rejected'};note('The source polygon is Cabinda, an integral part of Angola from independence in 1975, not the defunct Portuguese Estado Novo.',[PORTUGAL_SOURCE,CABINDA_SOURCE],'Кабинда входит в состав Анголы с момента независимости в 1975 году, а не в состав прекратившего существование португальского режима.')}
+   else if(from>=1974){r={...r,name:'Portugal',nameRu:'Португалия',nameStatus:'reviewed',entityId:identity('source-polity','Portugal','Q45')};note('Estado Novo ended on 25 April 1974; retain only mainland Portugal, the Azores and Madeira from the same source record. Overseas transition territories require separate reconstruction.',[PORTUGAL_SOURCE,PORTUGAL_CONSTITUTION],'Режим Нового государства завершился 25 апреля 1974 года. Сохранён контур материковой Португалии, Азорских островов и Мадейры; заморские территории переходного периода требуют отдельной реконструкции.')}
+  }
+  if(base.sourceIndex===13399&&from>=2000){note('Macao reverted to Chinese sovereignty on 20 December 1999. Excluded the Macao polygon from the Portuguese state in the following full years, without altering the European outlines.',[MACAO_SOURCE],'Макао передан Китаю 20 декабря 1999 года. С 2000 года его контур исключён из Португалии; европейские контуры сохранены.')}
+  if(base.sourceIndex===13659)note('Cabinda component restored from the same-year archival record incorrectly labelled Estado Novo; exact source coordinates preserved. The Angolan border remains a candidate.',[CABINDA_SOURCE],'Кабинда восстановлена в контуре Анголы из ошибочно подписанной записи того же года. Координаты исходника сохранены; границы требуют независимой проверки.');
+  // Only reconcile names with exact pinned-source evidence; do not infer missing borders.
+  const replaceComponent=(old,next)=>{r={...r,sourceComponents:base.components,components:r.components.map(n=>n===old?next:n)};note('Component label aligned with the simultaneously active record, without inferring territorial changes.',[CHINA_GROUP_SOURCE])};
+  if(base.sourceIndex===7783&&from>=1516)replaceComponent('House of Habsburg','Habsburg Monarchy');
+  if(base.sourceIndex===5295&&from>=1210)replaceComponent('Angevin Empire','Kingdom of England');
+  if(base.sourceIndex===4776&&from>=1126)replaceComponent('County of Anjou','Angevins');
+  if(base.sourceIndex===4678&&from>=1094){r={...r,sourceComponents:base.components,components:[...r.components,'County of Champagne']};note('Active County of Champagne explicitly identifies this composite in the source; its reciprocal component label was missing. Geometry is unchanged.',[CHINA_GROUP_SOURCE])}
+  if(reasons.length)r={...r,review:{reason:reasons.join(' '),...(reasonsRu.length?{reasonRu:reasonsRu.join(' ')}:{}),sources:[...sources]}};
   // Avoid artificial splits where none of the corrections applied.
   const last=out.at(-1);if(last&&JSON.stringify({...last,from:0,to:0})===JSON.stringify({...r,from:0,to:0}))last.to=to;else out.push(r);
  }
  return out;
+}
+// Component selections are pinned to original feature/part indices. No modern
+// geometry, coordinate interpolation or nearest-year geometry is introduced.
+export function reviewedGeometryParts(r){
+ if(r.sourceIndex===13305&&r.sourceName==='Kingdom of Great Britain')return [2,3,4,5,6,7,13,14].map(part=>({index:13305,part}));
+ if(r.sourceIndex===13684&&r.sourceName==='Kingdom of Great Britain')return [1,2,3,4,5,6,7,8].map(part=>({index:13684,part}));
+ if(r.sourceIndex===11956&&r.sourceName==='Netherlands Antilles'&&r.from>=1976&&r.to<2010)return (r.from<1986?[1,2,3,4]:[1,2,4]).map(part=>({index:11956,part}));
+ if(r.sourceIndex===13659&&r.sourceName==="People's Republic of Angola")return [{index:13659,part:0},{index:13753,part:0}];
+ if(r.sourceIndex===13277&&r.sourceName==='Estado Novo'&&r.from>=1974)return [7,8,9,10,20,21].map(part=>({index:13277,part}));
+ if(r.sourceIndex===13399&&r.sourceName==='Portugal'&&r.from>=2000)return [1,2,3,4,5,6].map(part=>({index:13399,part}));
+ return null;
 }
 // Precisely identified by the bulk GEOS audit. Only retract zero-area spikes in
 // interior rings: no shell, coordinate, polygon extent or historical claim changes.
@@ -136,7 +212,15 @@ export function normalizeHistoricalSource(source) {
     const entityId = identity('source-'+role, sourceName, sourceWikidata);
     const base = {entityId, geometryId, role,components,memberOf,sourceSeshatId:String(p.SeshatID??''),sourceWikipedia:String(p.Wikipedia??''), ...(geometryId!==sourceGeometryId?{sourceGeometryId,geometryRepair:'retracted-zero-area-interior-edges'}:{}),name: sourceName, sourceName, sourceWikidata, sourceIndex, sourceFrom, sourceTo, from, to, nameStatus:'candidate', geometryStatus:'candidate'};
     const add = revision => {
-      const id = identity('revision', sourceIndex, sourceFrom, sourceTo, geometryId, revision.from, revision.to, revision.name);
+      const selection=reviewedGeometryParts(revision);
+      if(selection){
+        assert.ok(revision.review?.sources.length);
+        const coordinates=selection.map(({index,part})=>{const g=source.features[index].geometry;const polygons=g.type==='Polygon'?[g.coordinates]:g.coordinates;assert.ok(polygons[part]);return polygons[part]});
+        const selected={type:'MultiPolygon',coordinates};validateGeometry(selected);
+        const selectedId=sha256(JSON.stringify(selected));geometries.set(selectedId,selected);
+        revision={...revision,geometryId:selectedId,sourceGeometryId,geometryRepair:'reviewed-source-components',geometryParts:selection};
+      }
+      const id = identity('revision', sourceIndex, sourceFrom, sourceTo, revision.geometryId, revision.from, revision.to, revision.name);
       records.push({id, ...revision});
       if (revision.nameStatus === 'reviewed') counts.reviewedNames++;
       if (revision.geometryStatus === 'rejected') counts.rejectedRevisions++;
@@ -152,6 +236,7 @@ export function normalizeHistoricalSource(source) {
     } else for(const revision of editorialSegments(base))add(revision);
   }
   counts.revisions = records.length;
+  const used=new Set(records.map(r=>r.geometryId));for(const id of geometries.keys())if(!used.has(id))geometries.delete(id);
   counts.uniqueGeometries = geometries.size;
   return {records,geometries,counts};
 }

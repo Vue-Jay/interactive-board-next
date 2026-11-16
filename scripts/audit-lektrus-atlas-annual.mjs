@@ -239,12 +239,12 @@ function selfTest(){
  assert.deepEqual(a.years[5].disappearsGoingBack,["A"]);
  const bc=auditAnnual({type:"FeatureCollection",features:[f("B",-2,2)]},new Map(),{from:2,to:-2});
  assert.deepEqual(bc.years.map(y=>y.year),[2,1,-1,-2]);
- assert.deepEqual(referenceAdmissionWarnings(2012,["East Timor"]).filter(w=>w.date>="2000").map(w=>w.name),["South Sudan"]);
+ assert.deepEqual(referenceAdmissionWarnings(2012,["East Timor"]).filter(w=>w.date>="2000").map(w=>w.name),["Tuvalu","Switzerland","Montenegro","South Sudan"]);
  assert.equal(referenceAdmissionWarnings(2002,[]).find(w=>w.name==="Timor-Leste").reason,"missing in admission year (intra-year transition)");
- assert.equal(referenceAdmissionWarnings(2014,["Republic of South Sudan","Timor-Leste"]).filter(w=>w.date>="2000").length,0);
+ assert.equal(referenceAdmissionWarnings(2014,["Republic of South Sudan","Timor-Leste","Tuvalu","Swiss Confederation","Montenegro"]).filter(w=>w.date>="2000").length,0);
  assert.equal(referenceAdmissionWarnings(1959,[]).length,0);
  assert.equal(referenceAdmissionWarnings(1960,[]).length,17);
- assert.equal(laterAdmissions.length,88);
+ assert.equal(laterAdmissions.length,95);
  assert.equal(unMembershipYearEnd(1993),184);
  assert.equal(unMembershipYearEnd(1989),159);
  assert.equal(unMembershipYearEnd(1969),126);
