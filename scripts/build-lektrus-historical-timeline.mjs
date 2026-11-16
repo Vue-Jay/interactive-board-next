@@ -43,6 +43,13 @@ const JAPAN_OCCUPATION='https://history.state.gov/countries/japan';
 const RYUKYU='https://www.mofa.go.jp/policy/other/bluebook/1985/1985-3-3.htm';
 const COMOROS='https://digitallibrary.un.org/record/441662/files/E_1990_6_Add.27-EN.pdf';
 const componentExclusions=[
+ // Bounded exclusions use an optional inclusive end year (slot 7).
+ [10461,2,1803,[0],'The Cape returned to Batavian administration in 1803 and was retaken by Britain in 1806; retain the original Cape component before and after this interval.','Капская колония вернулась под управление Батавской республики в 1803 году; британская власть восстановлена в 1806 году. Исходный капский контур сохранён до и после этого интервала.','https://sahistory.org.za/article/batavian-republic-1803-1806',1805],
+ [9410,38,1709,[0,1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17,18,19,20,21,22,23,25,26,30,31,32,33,34,35,36,37],'After the 1707 union, these 33 exact components are already represented by the contemporary British colonial source record 9518. Keep the five unmatched components as an unverified supplemental footprint.','После унии 1707 года эти 33 точных контура уже представлены британской колониальной записью 9518 того же периода. Пять несовпадающих компонентов сохранены как непроверенный дополнительный контур.','https://www.parliament.uk/about/living-heritage/evolutionofparliament/legislativescrutiny/act-of-union-1707/'],
+ [9553,2,1718,[1],'The Bombay component is duplicated by contemporary British colonial source records in 1718–1740. Preserve the unmatched Madras component and restore the original selection after the overlap interval.','Контур Бомбея дублируется британскими колониальными записями 1718–1740 годов. Несовпадающий контур Мадраса сохранён; после интервала совпадения восстанавливается исходный выбор.','https://www.parliament.uk/about/living-heritage/evolutionofparliament/legislativescrutiny/act-of-union-1707/',1740],
+ [12069,22,1895,[11,12,13,15],'Makira, Guadalcanal, Malaita and New Georgia were included in the 1893 British protectorate; exclude their duplicated German source components only once the equivalent British record exists. The northern islands require separate review.','Макира, Гуадалканал, Малаита и Нью-Джорджия вошли в британский протекторат в 1893 году; их дублирующие немецкие контуры исключены с появления соответствующей британской записи. Северные острова требуют отдельной проверки.','https://press-files.anu.edu.au/downloads/press/p298111/html/ch06.xhtml?page=13&referer='],
+ [1986,4,579,[2,3],'Aksumite domination in Yemen ended in the Persian interventions of the 570s; exclude the duplicated Arabian components after the latest proposed date of Sayf’s death in the source chronology. The surviving Himyarite record is not proof of independence from Persia.','Владычество Аксума в Йемене прекратилось после персидских интервенций 570-х годов; исключены дублирующие аравийские контуры после переходного периода. Сохранившаяся химьяритская запись не доказывает независимость от Персии.','https://www.iranicaonline.org/articles/abna-term/'],
+ [7187,7,1454,[2,4],'Imbros and Thasos belonged to the Gattilusio lordships, not the Constantinopolitan empire after its fall in 1453. Subsequent changes of island administration and source gaps remain unverified.','Имброс и Тасос находились во владениях Гаттилузио, а не Константинопольской империи после её падения в 1453 году. Последующие переходы власти и пробелы источника остаются открытыми.','https://pandektis.ekt.gr/pandektis/handle/10442/163629'],
  [13241,16,1969,[8,9],'Equatorial Guinea became independent in 1968; exclude Río Muni and Bioko from the following full years.','Экваториальная Гвинея получила независимость в 1968 году; в последующие полные годы исключены Рио-Муни и Биоко.',SURINAME_SOURCE],
  [13241,16,1970,[10],'Spain transferred Ifni to Morocco in 1969.','Испания передала Ифни Марокко в 1969 году.','https://digitallibrary.un.org/record/843644/files/A_7753-EN.pdf'],
  [13262,44,1967,[21,23],'Guyana and Barbados became independent in 1966.','Гайана и Барбадос получили независимость в 1966 году.',SURINAME_SOURCE],
@@ -124,7 +131,7 @@ const componentExclusions=[
  [13279,51,1991,[49],'Four-power status in Berlin ended in 1990.','Четырёхсторонний статус Берлина завершился в 1990 году.',GERMANY_OCCUPATION],
  [13279,51,1995,[37],'Palau became independent in 1994.','Палау получило независимость в 1994 году.',SURINAME_SOURCE],
 ];
-const exclusionsFor=(index,year)=>componentExclusions.filter(r=>r[0]===index&&year>=r[2]);
+const exclusionsFor=(index,year)=>componentExclusions.filter(r=>r[0]===index&&year>=r[2]&&(r[7]===undefined||year<=r[7]));
 const reviewedNames=[
  ['Former Yugoslav Republic of Macedonia','Q221',2019,'Republic of North Macedonia','Республика Северная Македония','https://www.un.org/en/node/123222'],
  ["People's Republic of Angola",'Q916',1992,'Republic of Angola','Республика Ангола','https://ciam.gov.ao/ao/angola/constituicao'],
@@ -151,7 +158,8 @@ function editorialSegments(base){
  const spring=chinaGroupTransition.has(base.sourceIndex)&&base.memberOf.includes('(Spring and Autumn States)')&&base.from<=-480&&base.to>=-480;
  if(spring)cuts.add(-480);
  const cut=year=>{if(base.from<year&&year<=base.to)cuts.add(year)};
- for(const rule of componentExclusions)if(rule[0]===base.sourceIndex)cut(rule[2]);
+ for(const rule of componentExclusions)if(rule[0]===base.sourceIndex){cut(rule[2]);if(rule[7]!==undefined)cut(rule[7]+1)}
+ if(base.sourceIndex===9410)cut(1707);
  if(base.sourceIndex===13313)cut(1973);
  const british=base.sourceName==='Kingdom of Great Britain'&&base.sourceWikidata==='Q23666';
  const britishComponent=base.components.includes('Kingdom of Great Britain');
@@ -184,6 +192,16 @@ function editorialSegments(base){
   if(base.role==='polity'&&base.sourceName==='Viking settlements'){
    r={...r,role:'settlement',sourceRole:'polity',nameRu:'Поселения скандинавов (викингов)',nameStatus:'reviewed'};
    note('The source aggregates settlements of different Norse communities, across different rulers and periods. Preserve the source footprint in a thematic layer, not as a single sovereign polity. Exact settlement extent and chronology still require independent review.',['https://www.metmuseum.org/pt/essays/the-vikings-780-1100','https://en.natmus.dk/historical-knowledge/denmark/prehistoric-period-until-1050-ad/the-viking-age/power-and-aristocracy/magnates-and-kings/'],'Исходник объединяет поселения разных скандинавских общин, правителей и эпох. Контур сохранён в тематическом слое расселения, а не как единое государство. Точные размеры и датировки поселений требуют отдельной сверки.');
+  }
+  if((base.sourceIndex===9410||base.sourceIndex===9553)&&from>=1707){
+   const supplemental=base.sourceIndex===9410;
+   r={...r,name:supplemental?'British colonial possessions (supplemental source record)':'British settlements in India (source aggregate)',nameRu:supplemental?'Британские колониальные владения (дополнительный контур)':'Британские поселения в Индии (сводный контур)',nameStatus:'reviewed',entityId:identity('reviewed-polity',supplemental?'british-colonial-supplement-9410':'british-indian-settlements-9553')};
+   note('The 1707 Acts of Union created Great Britain; these are surviving source records for British possessions, not a separate English colonial empire. Exact remaining extents and archival group associations are unverified.',['https://www.parliament.uk/about/living-heritage/evolutionofparliament/legislativescrutiny/act-of-union-1707/'],'После образования Великобритании в 1707 году эти записи относятся к британским владениям, а не к отдельной английской колониальной империи. Оставшиеся границы и архивные связи требуют проверки.');
+  }
+  if(base.sourceIndex===10461){
+   const sierraOnly=from>=1803&&to<=1805;
+   r={...r,name:sierraOnly?'Sierra Leone Company settlement':'British Cape and Sierra Leone possessions (source aggregate)',nameRu:sierraOnly?'Поселение Компании Сьерра-Леоне':'Британские владения в Капской колонии и Сьерра-Леоне (сводный контур)',nameStatus:'reviewed',entityId:identity('reviewed-polity',sierraOnly?'sierra-leone-company-10461':'british-cape-sierra-leone-10461')};
+   note('The source combines geographically distinct Cape and Sierra Leone components. Freetown was administered by the Sierra Leone Company before the Crown took possession in 1808. The source footprint remains unverified.',['https://unipsil.unmissions.org/en/about-sierra-leone-history','https://sahistory.org.za/article/batavian-republic-1803-1806'],'Исходная запись объединяет отдельные территории Капской колонии и Сьерра-Леоне. Фритаун находился под управлением Компании Сьерра-Леоне до передачи короне в 1808 году. Точный контур остаётся непроверенным.');
   }
   if(base.sourceIndex===9986){
    r={...r,name:'Kingdom of Naples (Bourbon)',nameRu:'Неаполитанское королевство (Бурбоны)',nameStatus:'reviewed',entityId:identity('reviewed-polity','bourbon-naples')};
