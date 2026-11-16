@@ -342,7 +342,7 @@ console.log("12 additional measured binary salt curves: 72 temperature cells and
 // phase, calorimetry and vapor simulation paths.
 const heatProps=load("src/lektrusLabCalorimetry.ts");
 const vaporProps=load("src/lektrusLabEvaporation.ts");
-const neatLiquids=["H2O","C2H5OH","CH3OH","C3H8O","Br2","CH3CHO"];
+const neatLiquids=["H2O","C2H5OH","CH3OH","C3H8O","Br2","CH3CHO","C2H4Br2"];
 for(const formula of neatLiquids){
  const heat=heatProps.LAB_CALORIMETRY_REFERENCE[formula];
  const vapor=vaporProps.LAB_VAPOR_REFERENCE[formula];
@@ -372,6 +372,23 @@ const aqueousAldehyde=vaporProps.labEvaporate({
 },10,22,100,200);
 assert.equal(aqueousAldehyde.evaporatedMl,0,
  "Prepared stocks must never inherit neat acetaldehyde vapor constants");
+const dibromo=allStockReagents.find(s=>s.id==="C2H4Br2");
+assert.equal(catalogue.cabinetPhase(dibromo),"liquid");
+assert.deepEqual(catalogue.labReagentForms(dibromo),["ml"]);
+assert.deepEqual(catalogue.labDefaultStockDose(dibromo.id),{value:10,unit:"ml"});
+approximately(labDoseMoles(dibromo.id,{value:10,unit:"ml"}),21.72/labMolarMass(dibromo.id),1e-10);
+const dibromoInfo=thermalProps.labThermalInfo(dibromo.id,"ml");
+assert.equal(dibromoInfo.form,"pure");
+assert.equal(dibromoInfo.meltingC,9.9);
+assert.equal(dibromoInfo.boilingC,131.4);
+assert.equal(vaporProps.labSaturationPressureKPa(dibromo.id,5),undefined);
+assert.ok(vaporProps.labSaturationPressureKPa(dibromo.id,131.4)>100);
+const dibromoSample={kind:"dish",doses:{C2H4Br2:{value:10,unit:"ml"}}};
+assert.ok(vaporProps.labIdealBoilingC(dibromoSample)>130);
+assert.ok(vaporProps.labEvaporate(dibromoSample,5,131.4,180,100).evaporatedMl>0);
+const immiscible={...dibromoSample,doses:{...dibromoSample.doses,H2O:{value:10,unit:"ml"}}};
+assert.equal(vaporProps.labVaporPressureKPa(immiscible,25),undefined);
+assert.equal(vaporProps.labEvaporate(immiscible,5,25).evaporatedMl,0);
 for(const [formula,density] of Object.entries({
  K2Cr2O7:2.676,KMnO4:2.70,KI:3.13,NaBr:3.21,SrSO4:3.96,
  "Ba(NO3)2":3.24,"Pb(NO3)2":4.53,KNO2:1.915,

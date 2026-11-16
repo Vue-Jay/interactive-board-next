@@ -3,8 +3,8 @@
   "minimum": {
     "stock": 180,
     "crystalDensity": 132,
-    "thermal": 152,
-    "specificHeat": 132,
+    "thermal": 153,
+    "specificHeat": 133,
     "binarySolubility": 67,
     "binarySolubilityAnyTemperature": 70,
     "binarySolubilityMeasuredPoints": 222,

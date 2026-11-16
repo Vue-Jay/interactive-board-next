@@ -11,12 +11,15 @@ export const classNames:Record<string,string>={
  металл:"Металлы",неметалл:"Неметаллы",газ:"Газы",органика:"Органические",
  вода:"Вода",пероксид:"Пероксиды","простое вещество":"Простые вещества"
 };
+export const LAB_NEAT_STOCK=new Set([
+ "H2O","C2H5OH","CH3OH","C3H8O","Br2","CH3CHO","C2H4Br2"
+]);
 /** Physical state as stocked in a school virtual reagent cabinet. The same
  * formula can be a solution during an experiment and a solid in storage. */
 export function cabinetPhase(v:Substance):StoragePhase{
  if(v.kind==="газ"||["CO2","NH3","Cl2","NO2"].includes(v.id))return "gas";
- if(v.kind==="кислота"||v.id==="H2O"||v.id==="NH4OH"||
-  ["C2H5OH","CH3OH","C3H8O","CH3COOH","H2O2","Br2","CH3CHO","HCHO"].includes(v.id))return "liquid";
+ if(v.kind==="кислота"||LAB_NEAT_STOCK.has(v.id)||
+  ["NH4OH","CH3COOH","H2O2","HCHO"].includes(v.id))return "liquid";
  return "solid";
 }
 /** Presentation in the reagent cabinet is determined by the supplied form,
@@ -34,8 +37,8 @@ const insolubleStock=new Set([
 export function labReagentForms(v:Substance):("ml"|"g")[]{
  const state=cabinetPhase(v);
  if(state==="gas")return ["ml"];
- if(v.kind==="кислота"||v.kind==="вода"||v.id==="H2O"||v.id==="NH4OH"||
-  ["C2H5OH","CH3OH","C3H8O","CH3COOH","H2O2","Br2","CH3CHO","HCHO"].includes(v.id))return ["ml"];
+ if(v.kind==="кислота"||v.kind==="вода"||LAB_NEAT_STOCK.has(v.id)||
+  ["NH4OH","CH3COOH","H2O2","HCHO"].includes(v.id))return ["ml"];
  if(v.kind==="металл"||v.kind==="неметалл"||v.kind==="оксид"||
   insolubleStock.has(v.id))return ["g"];
  if(v.kind==="соль"||v.kind==="основание")return ["g","ml"];
@@ -46,9 +49,6 @@ export function labReagentForms(v:Substance):("ml"|"g")[]{
  * explicitly visible/editable in the catalog. Pure liquids and gases are
  * tracked by physical volume, never given fictitious 0.1M molarity. */
 export const LAB_STOCK_MOLARITY_M=0.1;
-export const LAB_NEAT_STOCK=new Set([
- "H2O","C2H5OH","CH3OH","C3H8O","Br2","CH3CHO"
-]);
 export function labIsPreparedStock(id:string):boolean{
  const item=substances.find(v=>v.id===id);
  return !!item&&labReagentForms(item).includes("ml")&&

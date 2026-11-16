@@ -69,6 +69,7 @@ const waterIonization=load("src/lektrusLabWaterIonization.ts");
 const acidBase=load("src/lektrusLabPH.ts",key=>{
  if(key==="./lektrusLabWaterIonization")return waterIonization;
  if(key==="./lektrusReactionDatabase")return reaction;
+ if(key==="./lektrusLabCatalog")return catalog;
  assert.equal(key,"./lektrusLabReactionNetwork");return network;
 });
 const freezing=load("src/lektrusLabFreezing.ts",key=>{
@@ -456,6 +457,10 @@ assert.equal(palette.reagentAppearance("CuSO4").color,"#61a9d3");
 assert.equal(palette.reagentAppearance("FeCl3").color,"#e1b66d");
 assert.equal(palette.reagentAppearance("NaCl").phase,"solution");
 assert.equal(palette.reagentAppearance("CuO").phase,"solid");
+for(const id of ["C3H8O","CH3CHO","C2H4Br2"]){
+ assert.equal(palette.reagentAppearance(id,"dry").phase,"solution");
+ assert.match(palette.reagentAppearance(id,"dry").label,/жидкость/);
+}
 const pureWaterColor=palette.labSolutionTint([{formula:"H2O",mmol:1000}],20);
 const copperColor=palette.labSolutionTint([{formula:"H2O",mmol:1000},{formula:"CuSO4",mmol:1}],20);
 assert.notEqual(copperColor,pureWaterColor,"Dissolved copper colors water regardless of stock order");
@@ -2866,6 +2871,14 @@ assert.equal(liquidTransfer.vessels.find(v=>v.id==="v1").indicatorDrops,undefine
 const idealAcid={reagents:["HCl"],environment:"aqueous",doses:{
  HCl:{value:20,unit:"ml",concentrationM:.1}}};
 assert.equal(acidBase.labVesselPH(idealAcid).pH,1);
+for(const id of catalog.LAB_NEAT_STOCK){
+ if(id==="H2O")continue;
+ const neat={reagents:[id],environment:"aqueous",doses:{[id]:{value:10,unit:"ml"}}};
+ assert.equal(acidBase.labVesselPH(neat),null,id+" cannot have an aqueous pH when neat");
+ assert.equal(acidBase.labVesselPH({...neat,reagents:[id,"H2O"],
+  doses:{...neat.doses,H2O:{value:10,unit:"ml"}}}),null,
+  id+" mixed solvent needs its own validated pH model");
+}
 const dilution={reagents:["HCl","H2O"],environment:"aqueous",doses:{
  HCl:{value:20,unit:"ml",concentrationM:.1},H2O:{value:20,unit:"ml"}}};
 assert.ok(Math.abs(acidBase.labVesselPH(dilution).pH-1.30)<.02);
@@ -3287,7 +3300,7 @@ const noHeaterAlcohol=vapor.labEvaporate({kind:"beaker",
  doses:{C2H5OH:{value:15,unit:"ml"}}},10,25,180,0);
 assert.equal(coolAlcohol.evaporatedMl,noHeaterAlcohol.evaporatedMl,
  "Heat cannot be used for latent boiling before the boiling point");
-console.log("Evaporation: all six reviewed pure-liquid latent heats obey the shared power budget");
+console.log("Evaporation: all reviewed pure-liquid latent heats obey the shared power budget");
 
 
 /* Kinetic phase regression: reference saturation controls only the target.

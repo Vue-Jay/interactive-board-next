@@ -1,6 +1,6 @@
 import type {Item} from "./boardModel";
 import {labVesselPH,labIndicatorTint} from "./lektrusLabPH";
-import {labDefaultStockDose,labIsPreparedStock,LAB_STOCK_MOLARITY_M} from "./lektrusLabCatalog";
+import {labDefaultStockDose,labIsPreparedStock,LAB_STOCK_MOLARITY_M,LAB_NEAT_STOCK} from "./lektrusLabCatalog";
 import {labVesselThermal} from "./lektrusLabPhysicalProperties";
 import {labAqueousFreezeReference} from "./lektrusLabFreezing";
 import {labSensibleHeatStep,labKnownHeatCapacityJPerK,labSchoolSpecificHeatJPerGK,LAB_CALORIMETRY_REFERENCE} from "./lektrusLabCalorimetry";
@@ -2361,14 +2361,13 @@ export function setLabEnvironment(bench:LabBench,id:string,environment:ReactionE
  * granule does not make a beaker of water "dry". Aqueous acid stock remains
  * aqueous even when the destination vessel was dry. Gas or neat organic
  * liquids are not silently reclassified as water. */
-const LAB_NEAT_LIQUIDS=new Set(["C2H5OH","CH3OH","C3H8O","Br2","CH3CHO"]);
 export function labMixEnvironment(
  inputs:readonly {environment:ReactionEnvironment;doses?:Record<string,LabDose>}[],
  combinedDoses?:Record<string,LabDose>
 ):ReactionEnvironment{
  const all:Record<string,LabDose>=combinedDoses??Object.assign({},...inputs.map(x=>x.doses??{}));
  const measured=Object.entries(all);
- if(measured.some(([id,d])=>d.unit==="ml"&&!LAB_NEAT_LIQUIDS.has(id)&&
+ if(measured.some(([id,d])=>d.unit==="ml"&&(id==="H2O"||!LAB_NEAT_STOCK.has(id)||d.concentrationM!==undefined)&&
   !labIsGasDose(id,d)))return "aqueous";
  // A gas-only headspace is not a water solution merely because an empty
  // vessel originally had the default aqueous environment selected.

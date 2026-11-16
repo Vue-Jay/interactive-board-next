@@ -35,6 +35,9 @@ const vivid:Record<string,{solution?:string;solid?:string;label:string}>={
  "Pb(NO3)2":{solid:"#f2f0ed",label:"Белые кристаллы; раствор бесцветен"},
  "I2":{solution:"#bd9965",solid:"#4c354b",label:"Буроватая водная окраска; тёмные кристаллы"},
  "Br2":{solution:"#a85d37",solid:"#9f4d29",label:"Красно-бурый бром"},
+ "C2H4Br2":{label:"Бесцветная жидкость (1,2-дибромэтан); только виртуально"},
+ "CH3CHO":{label:"Бесцветная летучая жидкость"},
+ "C3H8O":{label:"Бесцветная жидкость"},
  "Cl2":{solution:"#d7d89a",label:"Желтовато-зелёный газ"},
  "NO2":{solution:"#b56c42",label:"Бурый газ"},
  "S":{solid:"#e0ca54",label:"Жёлтая сера"},
@@ -65,7 +68,7 @@ export function reagentAppearance(id:string,environment:ReactionEnvironment="aqu
  const dry=environment==="dry";
  const gas=kind==="газ"||(id==="HCl"&&dry);
  const liquid=new Set(["H2O","H2SO4","HNO3","H3PO4","CH3COOH","H2O2",
-  "C2H5OH","CH3OH","Br2"]);
+  "C2H5OH","CH3OH","C3H8O","Br2","CH3CHO","C2H4Br2"]);
  const solid=insoluble.has(id)||["оксид","металл","неметалл"].includes(kind)||
   (kind==="простое вещество"&&id!=="Br2")||
   (dry&&!gas&&!liquid.has(id));
@@ -73,7 +76,8 @@ export function reagentAppearance(id:string,environment:ReactionEnvironment="aqu
  const color=solid?(record?.solid??schoolSolidColors[id]??(kind==="оксид"?"#dededa":"#e9e7df")):
   (record?.solution??(gas?"#e9f0e2":"#e4f1f2"));
  const label=record?.label??(gas?"Газ (условная окраска)":
-  solid?"Светлое твёрдое вещество, схематично":"Бесцветный раствор при обычных условиях, схематично");
+  solid?"Светлое твёрдое вещество, схематично":dry&&liquid.has(id)?
+   "Бесцветная жидкость при обычных условиях, схематично":"Бесцветный раствор при обычных условиях, схематично");
  return {color,phase,label};
 }
 export const reagentAppearanceCount=substances.length;

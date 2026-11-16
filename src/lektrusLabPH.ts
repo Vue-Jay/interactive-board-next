@@ -10,6 +10,7 @@
 import {simulateLabInventory,type LabChemicalSnapshot} from "./lektrusLabReactionNetwork";
 import {labWaterIonProduct,labNeutralWaterPH} from "./lektrusLabWaterIonization";
 import {substances} from "./lektrusReactionDatabase";
+import {LAB_NEAT_STOCK} from "./lektrusLabCatalog";
 export type LabPHInput={
  reagents:readonly string[];
  doses?:Record<string,{value:number;unit:"ml"|"g";concentrationM?:number;phase?:"gas"}>;
@@ -49,6 +50,12 @@ function doseMoles(id:string,dose:{value:number;unit:"ml"|"g";concentrationM?:nu
 export function labVesselPH(v:LabPHInput):LabPHResult|null{
  if(v.environment!=="aqueous"||
   (!v.reagents.length&&!v.chemicalInventory))return null;
+ // K_w and all Ka/Kb in this meter are AQUEOUS reference values.
+ // Neat organic liquids (or their mixed-solvent samples) must not
+ // display invented water pH, even if the vessel has aqueous mode.
+ if(Object.entries(v.doses??{}).some(([id,d])=>id!=="H2O"&&
+  LAB_NEAT_STOCK.has(id)&&d.unit==="ml"&&d.value>0&&
+  d.concentrationM===undefined))return null;
  const volumeMl=(v.filteredSolution?.volumeMl??0)+
   Object.entries(v.doses??{}).reduce((total,[id,d])=>
    total+(d.unit==="ml"&&!(d.concentrationM===undefined&&(d.phase==="gas"||GAS_REAGENTS.has(id)))?d.value:0),0);

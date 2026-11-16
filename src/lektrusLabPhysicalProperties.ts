@@ -307,6 +307,10 @@ const physical:Record<string,LabThermalRecord>={
  // https://pubchem.ncbi.nlm.nih.gov/compound/177 (pure ethanal)
  CH3CHO:{meltingC:-123.4,boilingC:20.8,
   note:"Чистый этаналь кипит около комнатной температуры; это не температура кипения раствора."},
+ // 1,2-dibromoethane (ethylene dibromide), not the 1,1 isomer.
+ // https://www.atsdr.cdc.gov/toxprofiles/tp37-c4.pdf
+ C2H4Br2:{meltingC:9.9,boilingC:131.4,
+  note:"Чистый 1,2-дибромэтан; токсичен, только виртуальное вещество. Ограниченно смешивается с водой; разделение жидких слоёв пока не моделируется."},
  // FeCl2 pure anhydrous crystal melts near 674 C; air oxidation can
  // interfere in practice (PubChem CID 24458 / Merck Index).
  // https://pubchem.ncbi.nlm.nih.gov/compound/24458
@@ -384,7 +388,7 @@ const physical:Record<string,LabThermalRecord>={
  "Fe(OH)3":{decompositionC:100,behavior:"decomposes"},
  "Mg(OH)2":{decompositionC:350,behavior:"decomposes"}
 };
-const pureLiquids=new Set(["H2O","C2H5OH","CH3OH","C3H8O","Br2","CH3CHO"]);
+const pureLiquids=new Set(["H2O","C2H5OH","CH3OH","C3H8O","Br2","CH3CHO","C2H4Br2"]);
 /** A measured ml of a stock acid or a salt solution is not the neat compound.
  * Formula alone does not specify its solvent ratio or boiling range. */
 export function labThermalInfo(id:string,unit:"ml"|"g"):LabThermalRecord&{

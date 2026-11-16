@@ -117,7 +117,9 @@ const NEAT_DENSITY_G_ML:Record<string,number>={
  // Pure liquid densities match calorimetry and the Antoine evaporation
  // reference at ~25 °C. A prepared 0.1 M stock uses molarity INSTEAD.
  // NIST / CRC values; Br2: bromine engineering handbook, CH3CHO: PubChem.
- H2O:.997,C2H5OH:.789,CH3OH:.792,C3H8O:.785,Br2:3.1055,CH3CHO:.7846
+ // 1,2-dibromoethane: ATSDR toxicological profile, Table 4-2 (25°C).
+ H2O:.997,C2H5OH:.789,CH3OH:.792,C3H8O:.785,Br2:3.1055,CH3CHO:.7846,
+ C2H4Br2:2.172
 };
 const REFERENCE_GAS_MOLAR_VOLUME_ML=24465;
 export function labIsGasDose(formula:string,dose?:LabDose):boolean{
