@@ -242,8 +242,9 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   precipitationProgress<=0?0:
   Math.min(70,Math.max(4,
    106*contents.precipitateFraction*precipitationProgress));
+ const displayedMassG=volumeMl===0&&solidInventoryMassG>0?solidInventoryMassG:massG;
  const totalLabel=[volumeMl>0?labDisplayNumber(volumeMl,realism)+" мл":null,
-  massG>0?labDisplayNumber(massG,realism)+" г":null].filter(Boolean).join(" · ");
+  displayedMassG>0?labDisplayNumber(displayedMassG,realism)+" г":null].filter(Boolean).join(" · ");
  const reagent=vessel.reagents[0]?reagentAppearance(vessel.reagents[0],
   massG>0&&volumeMl===0?"dry":vessel.environment):null;
  const active=Boolean(visualCase);
@@ -278,7 +279,9 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   (labVaporPressureKPa(vessel,temperatureC??vessel.temperatureC??22)??0)>=10;
  const gasOnly=vessel.reagents.length>0&&vessel.reagents.every(id=>
   labIsGasDose(id,vessel.doses?.[id]))&&massG===0;
- const singlePhase=vessel.filteredResidue?"solid":gasOnly?"gas":
+ // A measured reaction product may have no historical weighed dose.
+ // Its actual solid ledger still determines the phase after decanting.
+ const singlePhase=vessel.filteredResidue||volumeMl===0&&contents.solid.length>0?"solid":gasOnly?"gas":
   massG>0&&volumeMl===0?"solid":volumeMl>0?"solution":
   vessel.reagents.length===1&&!active?reagent?.phase:undefined;
  const pureThermal=labVesselThermal(vessel.reagents,vessel.doses);
@@ -300,8 +303,9 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   labIsBoiling(vessel,temperatureC??vessel.temperatureC??22);
  const renderedSolidFraction=vessel.filteredResidue?Math.max(.23,solidFraction):
   solidFraction*(1-moltenFraction);
+ const measuredDry=volumeMl===0&&!!inventory&&!inventory.unmeasured.length&&!inventory.limited;
  const fillFraction=volumeMl>0?Math.max(.008,liquidFraction):
-  (vessel.reagents.length>0?(vessel.pourFraction??0.5):0);
+  (!measuredDry&&vessel.reagents.length>0?(vessel.pourFraction??0.5):0);
  return <div className={"lektrus-lab-vessel-art"+(small?" is-small":"")}>
   <svg viewBox="0 0 100 133" role="img" aria-label={(vessel.gasCollector?"Газосборник":names[vessel.kind])+": "+(labels.join(", ")||"пустой")}>
    <defs>
@@ -316,7 +320,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
    <ellipse cx="50" cy="126" rx="34" ry="4" fill="#254f49" opacity=".12"/>
    <path d={geo.inside} fill={"url(#"+id+"glass)"} stroke="none"/>
    <g clipPath={"url(#"+id+"clip)"}>
-    {labels.length>0&&singlePhase!=="solid"&&singlePhase!=="metal"&&singlePhase!=="gas"&&
+    {labels.length>0&&!measuredDry&&singlePhase!=="solid"&&singlePhase!=="metal"&&singlePhase!=="gas"&&
      <path d={geo.liquid} clipPath={"url(#"+id+"level)"} fill={color} opacity=".76" className="lektrus-lab-fluid"/>}
     {labels.length>0&&moltenFraction>0&&<g className="lektrus-lab-molten-liquid">
      <path d={geo.liquid} clipPath={"url(#"+id+"melt-level)"}
@@ -550,8 +554,8 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
    </div>}
   {showLabels&&details&&(volumeMl>1e-9||contents.solid.length>0)&&<span className="lektrus-lab-content-tag"
    title={labels.length?labels.map((formula,i)=>{
-    const dose=amounts?undefined:vessel.doses?.[vessel.reagents[i]];
-    const mol=amounts?species[i]?.[1]:undefined;
+    const dose=amounts?undefined:vessel.doses?.[species[i]?.[0]??formula];
+    const mol=amounts||vessel.chemicalInventory&&inventory&&!inventory.unmeasured.length&&!inventory.limited?species[i]?.[1]:undefined;
      return formula+(mol!==undefined?" · "+labDisplayNumber(mol*1000,realism,"moles")+" ммоль":
       dose?" · "+formatLabDose(dose,realism)+
      (dose.concentrationM!==undefined?" · "+dose.concentrationM.toLocaleString("ru-RU")+" моль/л":""):"");
@@ -565,7 +569,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
     {labels.length?labels.map((formula,i)=>{
       const id=species[i]?.[0]??formula;
       const dose=vessel.doses?.[id];
-      const mol=amounts?species[i]?.[1]:undefined;
+      const mol=amounts||vessel.chemicalInventory&&inventory&&!inventory.unmeasured.length&&!inventory.limited?species[i]?.[1]:undefined;
       return <span key={id}>{formula}: {mol!==undefined?
        labDisplayNumber(mol*1000,realism,"moles")+" ммоль":
        dose?formatLabDose(dose,realism)+(dose.concentrationM!==undefined?

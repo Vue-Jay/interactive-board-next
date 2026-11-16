@@ -79,5 +79,24 @@ try{
  await click('.lektrus-lab-gas-capacity .lektrus-lab-gas-connect');
  await wait('!!document.querySelector(".lektrus-lab-vessel.selected .lektrus-lab-gas-collector-valve")','Receiver must be selectable from the producer panel');
  await wait('!!document.querySelector(".lektrus-lab-gas-transfer input")','Measured gas transfer controls must be visible');
+ // No historical gram dose is present in a precipitate formed from two
+ // measured solutions. Draining every millilitre must not draw fake fluid.
+ await click('button[aria-label="Очистить стол"]');await click('button[aria-label="Подтвердить очистку стола"]');
+ await click('button[aria-label="Взять из шкафа Стакан"]');await place(.35,.72);
+ await add('HCl');await add('AgNO3');await play();
+ await wait('document.querySelector(".lektrus-lab-equation-history")?.textContent.includes("AgCl")','Silver chloride precipitation must finish');
+ await pause();
+ await click('button[aria-label="Взять из шкафа Пипетка"]');await place(.68,.72);
+ await click('button[aria-label="Открыть шкаф посуды"]');
+ await evalPage(`(()=>{const e=document.querySelector('.lektrus-lab-measuring-cabinet input');const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(e,'20');e.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+ await measure('Набрать');
+ await wait('!!document.querySelector(".lektrus-lab-vessel.is-pipette .lektrus-lab-fluid")','The full liquid sample must be transferred');
+ assert.equal(await evalPage('!!document.querySelector(".lektrus-lab-vessel.is-beaker .lektrus-lab-fluid")'),false,'Dry reaction residue must not draw imaginary fluid');
+ assert.equal(await evalPage('!!document.querySelector(".lektrus-lab-vessel.is-beaker .lektrus-lab-added-solid")'),true,'Dry reaction residue must remain visible');
+ await click('.lektrus-lab-furniture-dialog button[aria-label="Закрыть шкаф"]');
+ await click('.lektrus-lab-vessel.is-beaker');
+ const residueTag=await evalPage(`(()=>{const e=document.querySelector('.lektrus-lab-vessel.is-beaker .lektrus-lab-content-tag');return e&&{text:e.textContent,title:e.title};})()`);
+ assert.ok(residueTag?.text.includes('AgCl')&&residueTag?.text.includes(' г'),'Dry residue tag must give the product and actual mass');
+ assert.ok(residueTag?.title.includes('ммоль'),'Product amount must be derived from the measured ledger');
  console.log(JSON.stringify({clear,blue,diluted,solid}));
 }finally{socket?.close();chrome?.kill();await server.close();await delay(200);await rm(profile,{recursive:true,force:true});}

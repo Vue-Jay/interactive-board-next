@@ -60,6 +60,23 @@ const qty=(bench,id)=>bench.vessels.find(v=>v.id===id);
  approx(lab.labGasStoredMl(donor),0);
  approx(chemical.simulateLabInventory(qty(sampled,"v2")).speciesMol.NaCl,.001);
 }
+{
+ let precipitated=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",dose());
+ precipitated=lab.putLabReagent(precipitated,"v1","AgNO3",dose());
+ precipitated=lab.setLabSimulationPaused(precipitated,false,1000);
+ for(let t=2000;t<=15000;t+=1000)precipitated=lab.advanceLabSimulation(precipitated,t);
+ const before=qty(precipitated,"v1"),precipitate=lab.labVesselContents(before).solid.find(s=>s.formula==="AgCl");
+ assert.ok(precipitate?.massG>0);
+ precipitated=lab.addLabVessel(precipitated,"pipette");
+ const sampled=lab.transferLabMeasuredLiquid(precipitated,"v1","v2",20);
+ assert.notEqual(sampled,precipitated);
+ const residue=qty(sampled,"v1");
+ approx(lab.labVesselQuantity(residue).volumeMl,0);
+ approx(lab.labVesselQuantity(residue).massG,0); // no historical weighed stock
+ approx(lab.labVesselContents(residue).solid.find(s=>s.formula==="AgCl").massG,precipitate.massG,1e-9);
+ approx(lab.labVesselQuantity(qty(sampled,"v2")).volumeMl,20);
+ assert.equal(lab.labVesselContents(qty(sampled,"v2")).solid.length,0);
+}
 for(const formulas of [["NaCl"],["NaCl","KNO3"],["CuSO4"]]){
  let salt=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",{unit:"ml",value:20});
  for(const formula of formulas)salt=lab.putLabReagent(salt,"v1",formula,{unit:"g",value:2});
