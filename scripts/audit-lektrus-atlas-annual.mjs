@@ -107,6 +107,13 @@ const laterAdmissions=[
  [1993,"Monaco","Principality of Monaco|Monaco"],
  [1993,"Slovakia","Slovakia|Slovak Republic"],
  [1993,"Macedonia / North Macedonia","Former Yugoslav Republic of Macedonia|Republic of Macedonia|Republic of North Macedonia|North Macedonia"],
+ [1994,"Palau","Palau|Republic of Palau"],
+ [1999,"Kiribati","Kiribati|Republic of Kiribati"],
+ [1999,"Nauru","Nauru|Republic of Nauru"],
+ [1999,"Tonga","Tonga|Kingdom of Tonga"],
+ [2000,"Tuvalu","Tuvalu"],
+ [2002,"Switzerland","Switzerland|Swiss Confederation"],
+ [2006,"Montenegro","Montenegro|Republic of Montenegro"],
 ];
 const unMembershipTotals1960To1993=[
  [1960,99],[1961,104],[1962,110],[1963,113],[1964,115],[1965,117],[1966,122],[1967,123],[1968,126],

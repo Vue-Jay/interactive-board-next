@@ -7,6 +7,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {gzipSync} from 'node:zlib';
 import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
+import {referenceAdmissionWarnings} from './audit-lektrus-atlas-annual.mjs';
 import {HISTORY_SCHEMA, HISTORY_FIRST_YEAR, HISTORY_LAST_YEAR, historicalYearOrdinal, historicalYearFromOrdinal, validateHistoricalManifest, validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
 
 export const SOURCE = Object.freeze({name:'Cliopatria', version:'0.2.1', url:'https://raw.githubusercontent.com/Seshat-Global-History-Databank/cliopatria/5f433377139a6eeaeacbdc894b70f8805b72c8b5/cliopatria.geojson.zip', license:'CC BY 4.0'});
@@ -17,6 +18,47 @@ const identity = (...parts) => sha256(JSON.stringify(parts));
 const MALI_SOURCES = ['https://digitallibrary.un.org/record/620443','https://legal.un.org/ilc/publications/yearbooks/english/ilc_1962_v2.pdf'];
 const INDONESIA_SOURCE = 'https://peacekeeping.un.org/sites/default/files/past/unsfbackgr.html';
 const ZIMBABWE_SOURCE = 'https://legal.un.org/repertory/art73/english/rep_supp6_vol5_art73.pdf';
+const DELHI_SOURCES=['https://ignca.gov.in/Asi_data/44707.pdf','https://www.metmuseum.org/de/toah/ht/08/ssa'];
+const ZHOU_SOURCE='https://www.metmuseum.org/zh/toah/ht/04/eac.html';
+const CHINA_GROUP_SOURCE='https://github.com/Seshat-Global-History-Databank/cliopatria/tree/5f433377139a6eeaeacbdc894b70f8805b72c8b5';
+const chinaGroupTransition=new Set([155,172,175,176,177,178,261,273]);
+// Annual labels use the successor in the transition year; no new cartographic
+// boundary is inferred from a dynastic succession. All raw fields survive.
+const delhiTransitions=[{old:'Mamluk Dynasty',next:'Khalji Dynasty',qid:'Q919071',ru:'Династия Хильджи',from:1290,to:1293},{old:'Khalji Dynasty',next:'Tughlaq Dynasty',qid:'Q1124402',ru:'Династия Туглаков',from:1320,to:1325},{old:'Tughlaq Dynasty',next:'Sayyid Dynasty',qid:'Q1331421',ru:'Династия Сайидов',from:1414,to:1450},{old:'Sayyid Dynasty',next:'Lodi Dynasty',qid:'Q11709',ru:'Династия Лоди',from:1451,to:1452}];
+function editorialSegments(base){
+ const out=[];
+ // Split only at an applicable correction boundary, never drop original years.
+ const cuts=new Set([base.from,base.to+1]);
+ const delhi=base.sourceSeshatId==='in_delhi_sultanate'&&(base.role==='composite'||base.memberOf.includes('(Delhi Sultanate)'));
+ if(delhi)for(const t of delhiTransitions)if(t.from<=base.to&&t.to>=base.from){cuts.add(Math.max(base.from,t.from));cuts.add(Math.min(base.to,t.to)+1)}
+ const spring=chinaGroupTransition.has(base.sourceIndex)&&base.memberOf.includes('(Spring and Autumn States)')&&base.from<=-480&&base.to>=-480;
+ if(spring)cuts.add(-480);
+ const sorted=[...cuts].sort((a,b)=>a-b);
+ for(let i=0;i+1<sorted.length;i++){
+  const from=sorted[i],to=sorted[i+1]-1;
+  let r={...base,from,to};
+  const reasons=[],sources=new Set();
+  const note=(reason,urls)=>{reasons.push(reason);for(const url of urls)sources.add(url)};
+  if(delhi){
+   let label=base.role==='composite'?base.components[0]:base.name;
+   for(const t of delhiTransitions)if(from>=t.from&&from<=t.to&&label===t.old){
+    label=t.next;
+    if(base.role==='composite')r={...r,sourceComponents:base.components,components:[t.next]};
+    else r={...r,name:t.next,nameRu:t.ru,nameStatus:'reviewed',entityId:identity('source-polity',t.next,t.qid)};
+    note('Delhi Sultanate ruling dynasty corrected to '+t.next+'; source geometry remains unverified.',DELHI_SOURCES);
+   }
+   // This composite retains a stale Tughlaq label even after the Sayyid-to-Lodi transition.
+   if(base.role==='composite'&&base.sourceName==='(Delhi Sultanate)'&&base.components[0]==='Tughlaq Dynasty'&&from>=1451&&to<=1452){r={...r,sourceComponents:base.components,components:['Lodi Dynasty']};note('The Lodi dynasty succeeded the Sayyids in 1451; source geometry remains unverified.',DELHI_SOURCES)}
+  }
+  if(base.sourceName==='Later Zhou'&&base.sourceWikidata==='Q1154556'&&to<0){r={...r,name:'Eastern Zhou',nameRu:'Восточная Чжоу',nameStatus:'reviewed',entityId:identity('reviewed-polity','eastern-zhou')};note('Ancient Zhou royal territory, not the Later Zhou dynasty of the tenth century; the reconstructed extent is unverified.',[ZHOU_SOURCE])}
+  if(base.role==='composite'&&to<0&&['(Spring and Autumn States)','(Warring States China)'].includes(base.sourceName)&&base.components.includes('Later Zhou')){r={...r,sourceComponents:base.components,components:base.components.map(n=>n==='Later Zhou'?'Eastern Zhou':n)};note('Ancient Zhou component corrected; source extent is unchanged.',[ZHOU_SOURCE])}
+  if(spring&&from>=-480){r={...r,sourceMemberOf:base.memberOf,memberOf:base.memberOf.map(n=>n==='(Spring and Autumn States)'?'(Warring States China)':n)};note('Membership aligned with the pinned dataset’s active chronological grouping and explicit components; this is the dataset convention, not an independently established exact period boundary.',[CHINA_GROUP_SOURCE])}
+  if(reasons.length)r={...r,review:{reason:reasons.join(' '),sources:[...sources]}};
+  // Avoid artificial splits where none of the corrections applied.
+  const last=out.at(-1);if(last&&JSON.stringify({...last,from:0,to:0})===JSON.stringify({...r,from:0,to:0}))last.to=to;else out.push(r);
+ }
+ return out;
+}
 // Precisely identified by the bulk GEOS audit. Only retract zero-area spikes in
 // interior rings: no shell, coordinate, polygon extent or historical claim changes.
 const RETRACED_HOLES=new Set([
@@ -107,7 +149,7 @@ export function normalizeHistoricalSource(source) {
     } else if (sourceName === 'Republic of Indonesia' && from === 1960 && to >= 1963 && capitalInsideCountry([138,-4], feature.geometry)) {
       add({...base, to:1962, geometryStatus:'rejected', review:{reason:'Source polygon includes western New Guinea before the 1963 transfer; excluded from candidate drawing until corrected geometry is sourced.',sources:[INDONESIA_SOURCE]}});
       add({...base, from:1963});
-    } else add(base);
+    } else for(const revision of editorialSegments(base))add(revision);
   }
   counts.revisions = records.length;
   counts.uniqueGeometries = geometries.size;
@@ -123,7 +165,12 @@ export function buildHistoricalTimeline(source, sourceHash, outDir) {
     const to = historicalYearFromOrdinal(end);
     const active = records.filter(r => r.from <= to && r.to >= from);
     const ids = [...new Set(active.map(r=>r.geometryId))].sort();
-    const pack = {schema:HISTORY_SCHEMA,from,to,records:active,geometries:Object.fromEntries(ids.map(id=>[id,geometries.get(id)]))};
+    const coverageGaps={};
+    for(let year=Math.max(1960,from);year<=to;year++){
+      const gaps=referenceAdmissionWarnings(year,active.filter(r=>r.role==='polity'&&r.geometryStatus!=='rejected'&&r.from<=year&&r.to>=year).map(r=>r.name));
+      if(gaps.length)coverageGaps[year]=gaps;
+    }
+    const pack = {schema:HISTORY_SCHEMA,from,to,records:active,coverageGaps,geometries:Object.fromEntries(ids.map(id=>[id,geometries.get(id)]))};
     const bytes = Buffer.from(JSON.stringify(pack));
     const gzipBytes = gzipSync(bytes,{level:6}).length;
     if (gzipBytes > MAX_PACK_GZIP && ordinal < end) {

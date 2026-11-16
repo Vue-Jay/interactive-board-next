@@ -133,6 +133,7 @@ jobs:
         env:
           HIST: https://raw.githubusercontent.com/aourednik/historical-basemaps/da7a4b735ecef70aebdc9c73e409d8a2500d50f3
           CLIO: https://raw.githubusercontent.com/Seshat-Global-History-Databank/cliopatria/5f433377139a6eeaeacbdc894b70f8805b72c8b5/cliopatria.geojson.zip
+          NATURAL: https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ca96624a56bd078437bca8184e78163e5039ad19/geojson
         run: |
           set -euo pipefail
           mkdir -p /tmp/lektrus-annual-data
@@ -143,9 +144,10 @@ jobs:
           mapfile -t geojson_entries < <(unzip -Z1 "$OUT/cliopatria.zip" | grep -E '\.geojson$' | grep -vE '(^|/)__MACOSX/|(^|/)\._')
           test "${#geojson_entries[@]}" -eq 1
           unzip -p "$OUT/cliopatria.zip" "${geojson_entries[0]}" > "$OUT/cliopatria.geojson"
+          curl -fsSL --retry 3 --max-time 60 "$NATURAL/ne_10m_admin_0_countries.geojson" -o "$OUT/ne_10m_admin_0_countries.geojson"
           node --max-old-space-size=4096 scripts/audit-lektrus-atlas-annual.mjs "$OUT/cliopatria.geojson" "$OUT" "$OUT/annual-atlas-audit.json"
           node --max-old-space-size=4096 scripts/build-lektrus-historical-timeline.mjs "$OUT/cliopatria.geojson" "$OUT/history-v1"
-          node --max-old-space-size=4096 scripts/test-lektrus-historical-timeline.mjs "$OUT/history-v1" "$OUT/cliopatria.geojson"
+          LEKTRUS_GAP_LOCATOR_SOURCE_FILE="$OUT/ne_10m_admin_0_countries.geojson" node --max-old-space-size=4096 scripts/test-lektrus-historical-timeline.mjs "$OUT/history-v1" "$OUT/cliopatria.geojson"
           node --max-old-space-size=4096 scripts/audit-lektrus-historical-changes.mjs "$OUT/history-v1"
           python -m pip install 'shapely==2.1.2' 'pyproj==3.7.2'
           python scripts/audit-historical-unique-geometries.py "$OUT/history-v1" "$OUT" "$OUT/history-v1/unique-geometry-audit.json" "$OUT/cliopatria.geojson"

@@ -8,6 +8,7 @@ import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,histo
 import {createHistoricalTimelineLoader} from '../src/lektrusHistoricalTimelineLoader.ts';
 import {referenceAdmissionWarnings} from './audit-lektrus-atlas-annual.mjs';
 import {buildChangeRegistry} from './audit-lektrus-historical-changes.mjs';
+import {historicalGapLocators} from '../src/lektrusHistoricalGapLocators.ts';
 
 const square = (x=0,y=0)=>({type:'Polygon',coordinates:[[[x,y],[x+1,y],[x+1,y+1],[x,y+1],[x,y]]]});
 assert.equal(removeRetracedHole([[0,0],[1,0],[0,0],[1,1],[0,0]]),null);
@@ -40,6 +41,13 @@ const zimbabwe=normalizeHistoricalSource({type:'FeatureCollection',features:[fea
 assert.deepEqual(zimbabwe.records.map(r=>[r.from,r.to,r.name]),[[1979,1979,'Zimbabwe Rhodesia'],[1980,1982,'Republic of Zimbabwe'],[1983,2024,'Republic of Zimbabwe']]);
 assert.equal(zimbabwe.records[1].sourceName,'Zimbabwe Rhodesia');
 assert.equal(zimbabwe.records[1].entityId,zimbabwe.records[2].entityId);
+const delhiFeature=(name,from,to,components='')=>{const f=feature(name,from,to,square(),'Q229411','POLITY',components);f.properties.SeshatID='in_delhi_sultanate';if(!components)f.properties.MemberOf='(Delhi Sultanate)';return f};
+const delhi=normalizeHistoricalSource({type:'FeatureCollection',features:[delhiFeature('(Delhi Sultanate)',1407,1452,'Tughlaq Dynasty'),delhiFeature('Tughlaq Dynasty',1407,1414),delhiFeature('Sayyid Dynasty',1415,1452)]});
+assert.deepEqual(delhi.records.filter(r=>r.role==='composite').map(r=>[r.from,r.to,r.components[0]]),[[1407,1413,'Tughlaq Dynasty'],[1414,1450,'Sayyid Dynasty'],[1451,1452,'Lodi Dynasty']]);
+assert.equal(delhi.records.find(r=>r.from===1451&&r.role==='polity').name,'Lodi Dynasty');
+assert.deepEqual(delhi.records.find(r=>r.from===1451&&r.role==='composite').sourceComponents,['Tughlaq Dynasty']);
+const zhou=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Later Zhou',-750,-451,square(),'Q1154556'),feature('Later Zhou',960,960,square(),'Q1154556'),feature('(Spring and Autumn States)',-750,-481,square(),'','POLITY','Later Zhou')]});
+assert.equal(zhou.records[0].name,'Eastern Zhou');assert.equal(zhou.records[1].name,'Later Zhou');assert.deepEqual(zhou.records[2].components,['Eastern Zhou']);assert.deepEqual(zhou.records[2].sourceComponents,['Later Zhou']);
 assert.throws(()=>normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Bad',1,2,{type:'Polygon',coordinates:[[[0,0],[1,0],[0,1],[1,1]]]})]}));
 const fixtureDir=mkdtempSync(path.join(tmpdir(),'lektrus-timeline-fixture-'));
 const fixture=buildHistoricalTimeline(source,sha256(JSON.stringify(source)),fixtureDir);
@@ -54,6 +62,8 @@ assert.equal(state.overlays.length,1);
 assert.equal(state.overlays[0].record.role,'relation');
 assert.equal(historicalYearFeatureCollection(state,true).features.length,2);
 assert.equal(state.rejected.length,1);
+assert.ok(state.coverageGaps.some(g=>g.name==='Algeria'));
+assert.deepEqual(historicalYearFeatureCollection(state).historicalCoverageGaps,state.coverageGaps);
 assert.equal(historicalYearFeatureCollection(state).features.length,1);
 assert.equal(historicalYearFeatureCollection(state).features[0].properties.NAME,'Республика Мали');
 assert.equal(historicalYearState(pack,1963).drawable.length,2);
@@ -77,6 +87,16 @@ console.log('Annual timeline fixtures: dates, identity, geometry deduplication, 
 // Independently compare every requested calendar year with the original
 // source records, not just the builder's own normalized representation.
 const [outDir,sourceFile]=process.argv.slice(2);
+if(process.env.LEKTRUS_GAP_LOCATOR_SOURCE_FILE){
+ const bytes=fs.readFileSync(process.env.LEKTRUS_GAP_LOCATOR_SOURCE_FILE);
+ assert.equal(sha256(bytes),'239eec57ac17f100a11e2536cffc56752c318b50ae765b0918ff7aab4ce8f255');
+ const features=JSON.parse(bytes).features;
+ for(const l of Object.values(historicalGapLocators)){
+  const f=features.filter(f=>f.properties.ADM0_A3===l.iso);assert.equal(f.length,1);
+  assert.deepEqual([l.lon,l.lat],[f[0].properties.LABEL_X,f[0].properties.LABEL_Y]);
+ }
+ console.log('10 gap map locators verified against pinned Natural Earth label anchors');
+}
 if(outDir&&sourceFile){
   const raw=fs.readFileSync(sourceFile);
   const input=JSON.parse(raw);
@@ -100,7 +120,7 @@ if(outDir&&sourceFile){
       seen.add(r.id);const f=input.features[r.sourceIndex];
       assert.equal(r.role,f.properties.Type==='RELATION'?'relation':f.properties.Components?'composite':'polity');assert.equal(r.sourceName,f.properties.Name.trim());
       const list=v=>String(v??'').split(';').map(s=>s.trim()).filter(Boolean);
-      assert.deepEqual(r.components,list(f.properties.Components));assert.deepEqual(r.memberOf,list(f.properties.MemberOf));
+      assert.deepEqual(r.sourceComponents??r.components,list(f.properties.Components));assert.deepEqual(r.sourceMemberOf??r.memberOf,list(f.properties.MemberOf));
       assert.equal(r.sourceFrom,f.properties.FromYear);assert.equal(r.sourceTo,f.properties.ToYear);
       assert.equal(r.sourceGeometryId??r.geometryId,sourceHashes.get(r.sourceIndex));
       if(r.sourceGeometryId){assert.equal(r.geometryRepair,'retracted-zero-area-interior-edges');const orig=f.geometry, repaired=pack.geometries[r.geometryId];assert.equal(orig.type,repaired.type);const shells=g=>(g.type==='Polygon'?[g.coordinates]:g.coordinates).map(p=>p[0]);assert.deepEqual(shells(orig),shells(repaired));}
@@ -124,13 +144,14 @@ if(outDir&&sourceFile){
       const identityCollisions=[...byEntity.values()].filter(group=>group.length>1).map(group=>group.map(r=>({name:r.name,sourceIndex:r.sourceIndex})));
       const sharedGeometry=[...byGeometry.values()].filter(group=>new Set(group.map(r=>r.entityId)).size>1).map(group=>group.map(r=>({name:r.name,sourceIndex:r.sourceIndex})));
       const expectedLayerOverlaps=[...allGeometry.values()].filter(group=>group.some(r=>r.role!=='polity')&&new Set(group.map(r=>r.entityId)).size>1).map(group=>group.map(r=>({name:r.name,sourceIndex:r.sourceIndex,role:r.role})));
-      const bySourceName=new Map();for(const r of state.records){if(!bySourceName.has(r.sourceName))bySourceName.set(r.sourceName,[]);bySourceName.get(r.sourceName).push(r)}
+      const bySourceName=new Map();for(const r of state.records){if(!bySourceName.has(r.name))bySourceName.set(r.name,[]);bySourceName.get(r.name).push(r)}
       const groupLinkWarnings=[];
       for(const r of state.records){
         for(const component of r.components){const active=bySourceName.get(component);if(!active)groupLinkWarnings.push({kind:'missing-component',group:r.sourceName,component,sourceIndex:r.sourceIndex});else if(active.length>1)groupLinkWarnings.push({kind:'ambiguous-component',group:r.sourceName,component,sourceIndex:r.sourceIndex})}
-        for(const group of r.memberOf){if(!bySourceName.get(group)?.some(g=>g.role!=='polity'&&g.components.includes(r.sourceName)))groupLinkWarnings.push({kind:'unmatched-membership',group,component:r.sourceName,sourceIndex:r.sourceIndex})}
+        for(const group of r.memberOf){if(!bySourceName.get(group)?.some(g=>g.role!=='polity'&&g.components.includes(r.name)))groupLinkWarnings.push({kind:'unmatched-membership',group,component:r.name,sourceIndex:r.sourceIndex})}
       }
-      const membershipWarnings=referenceAdmissionWarnings(year,state.records.filter(r=>r.role==='polity').map(r=>r.name));
+      const membershipWarnings=referenceAdmissionWarnings(year,state.drawable.map(r=>r.record.name));
+      assert.deepEqual(state.coverageGaps,membershipWarnings,`Coverage gaps not preserved at ${year}`);
       if(identityCollisions.length)yearsWithIdentityCollisions++;
       if(sharedGeometry.length)yearsWithSharedGeometry++;
       admissionWarnings+=membershipWarnings.length;

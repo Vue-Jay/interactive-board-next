@@ -28,6 +28,7 @@ import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDi
 import {atlasModes,atlasModesFor,normalizeAtlasMode,historicalSnapshots as legacyHistoricalSnapshots,nearestSnapshotIndex,yearLabel,eventsNearYear} from "./lektrusAtlasModel";
 import {HISTORY_FIRST_YEAR,HISTORY_LAST_YEAR,historicalYearFeatureCollection} from "./lektrusHistoricalTimeline";
 import {createHistoricalTimelineLoader} from "./lektrusHistoricalTimelineLoader";
+import {historicalGapLocators,HISTORICAL_GAP_LOCATOR_SOURCE} from "./lektrusHistoricalGapLocators";
 import {borderPrecision,geoFeatureName,hasAtlasName,isRussianAtlasName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,modernAtlasTerritoryUpdate,summariseNamedChanges,
 historicalFeatureFacts,historicalCountryName,historicalSourceName,historicalMapFeatures,loadHistoricalIndex,correctedHistoricalIndexLabel,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
@@ -267,6 +268,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const isContourTool=d.title==="Контурная карта";
  const [index,setIndex]=useState(initialPeriodIndex(d.year));
  const [annualOverlay,setAnnualOverlay]=useState<'none'|'composite'|'relation'>('none');
+ const [annualGapDetailsOpen,setAnnualGapDetailsOpen]=useState(false);
  const [source,setSource]=useState<GeoCollection|null>(null);
  const [baseLand,setBaseLand]=useState<GeoCollection|null>(null);
  const [baseCoastline,setBaseCoastline]=useState<GeoCollection|null>(null);
@@ -1918,6 +1920,14 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
         <title>{marker.title} ({yearLabel(marker.year)})</title>
        </g>;
       })}
+      {historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year&&source?.historicalCoverageGaps?.map(g=>{
+       const locator=historicalGapLocators[g.name];if(!locator)return null;
+       const [x,y]=projectGeography(locator.lon,locator.lat);
+       const open=()=>{setInspectorOpen(true);setAnnualGapDetailsOpen(true);setSelected(null);setSelectedMarker(null)};
+       return <g key={g.name} data-atlas-gap-locator={locator.iso} transform={`translate(${x} ${y}) scale(${1/scale})`} role="button" tabIndex={0} aria-label={`${locator.nameRu}: контур отсутствует, географический ориентир`} style={{cursor:'pointer'}} onClick={e=>{e.stopPropagation();if(!dragged.current)open()}} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open()}}}>
+        <circle r="4.5" fill="#fff" stroke="#a65a13" strokeWidth="1.5" strokeDasharray="2 1"/><text y="2.4" fontSize="6.8" fontWeight="700" textAnchor="middle" fill="#a65a13">?</text><title>{locator.nameRu} — географический ориентир, исторический контур отсутствует</title>
+       </g>;
+      })}
      </g>
      <g className="lektrus-atlas-linear-scale" pointerEvents="none" role="presentation">
       <rect x="757" y="405" width="131" height="37" rx="6" fill="#fff" fillOpacity=".9" stroke="#b7c9d9" strokeWidth=".8"/>
@@ -2300,6 +2310,12 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      {annualSource(snapshot.year)&&<><label>Дополнительный слой <select aria-label="Дополнительный исторический слой" value={annualOverlay} onChange={e=>{setAnnualOverlay(e.target.value as typeof annualOverlay);setSelected(null)}}><option value="none">Только территории</option><option value="composite">Политические объединения</option><option value="relation">Политические связи</option></select></label>{annualOverlay!=='none'&&<small>Пунктирный контур — {annualOverlay==='composite'?'объединение нескольких территорий':'политическая связь'}, а не дополнительная государственная граница.</small>}</>}
     </div>}
     {historical&&annualSource(snapshot.year)&&!!source?.historicalRejected?.length&&<details className="lektrus-atlas-layer-warning"><summary>Исключённые неподтверждённые контуры: {source.historicalRejected.length}</summary><ul>{source.historicalRejected.map((r,i)=><li key={i}>{r.name}{r.review?.sources.map(url=><span key={url}>{" "}<a href={url} target="_blank" rel="noopener noreferrer">Источник ↗</a></span>)}</li>)}</ul><small>Эти контуры не показаны из-за подтверждённых ошибок. Отсутствие контура не означает отсутствие государства.</small></details>}
+    {historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year&&!!source?.historicalCoverageGaps?.length&&<details open={annualGapDetailsOpen} onToggle={e=>setAnnualGapDetailsOpen(e.currentTarget.open)} className="lektrus-atlas-layer-warning" data-atlas-annual-gap-count={source.historicalCoverageGaps.length}>
+     <summary>Пробелы исторического покрытия: {source.historicalCoverageGaps.length}</summary>
+     <small>По сведениям ООН эти государства уже были приняты в организацию, но в выбранном годовом слое нет сопоставленного пригодного контура. Год вступления может содержать переход статуса. Это не полный перечень существовавших государств.</small>
+     <ul>{source.historicalCoverageGaps.map(g=>{const locator=historicalGapLocators[g.name];return <li key={g.name}>{locator?<button type="button" title="Найти географический ориентир" onClick={()=>{const [x,y]=projectGeography(locator.lon,locator.lat);const s=16;commitCamera({scale:s,position:normalizePosition({x:-(x-450)*s,y:-(y-225)*s},s)})}}>{locator.nameRu} ⌖</button>:g.name} — ООН: {g.date}{g.reason.includes('intra-year')?' (переходный год)':''} <a href={g.source} target="_blank" rel="noopener noreferrer">Источник ↗</a></li>})}</ul>
+     <small>Знак «?» — только географический ориентир из <a href={HISTORICAL_GAP_LOCATOR_SOURCE} target="_blank" rel="noopener noreferrer">Natural Earth</a>; не историческая столица и не граница.</small>
+    </details>}
     {historical&&memberCoverage&&<details className="lektrus-atlas-layer-warning" data-atlas-missing-members={memberCoverage.missing.length}>
      <summary>Неполный слой: {memberCoverage.missing.length} государств — членов ООН без именованного контура</summary>
      <p>На конец {snapshot.year} г. в списке ООН числилось {memberCoverage.expected} членов. Список ниже показывает подтверждённые пропуски в исходном слое, а не все погрешности его границ.</p>
@@ -2532,8 +2548,10 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       </div>:<p className="lektrus-history-missing-facts">Для этой территории пока нет отдельной проверенной исторической справки.</p>}
       <details className="lektrus-history-more">
        <summary>Источники и дополнительные сведения</summary>
-       {annualSource(snapshot.year)&&Array.isArray(selected.properties?.historicalComponents)&&selected.properties.historicalComponents.length>0&&<p><strong>Состав по источнику:</strong> {selected.properties.historicalComponents.join(', ')}</p>}
-       {annualSource(snapshot.year)&&Array.isArray(selected.properties?.historicalMemberOf)&&selected.properties.historicalMemberOf.length>0&&<p><strong>Связанные объединения по источнику:</strong> {selected.properties.historicalMemberOf.join(', ')}</p>}
+       {annualSource(snapshot.year)&&Array.isArray(selected.properties?.historicalComponents)&&selected.properties.historicalComponents.length>0&&<p><strong>Состав{selected.properties.historicalSourceComponents?' (уточнённый)':' по источнику'}:</strong> {selected.properties.historicalComponents.join(', ')}</p>}
+       {annualSource(snapshot.year)&&Array.isArray(selected.properties?.historicalMemberOf)&&selected.properties.historicalMemberOf.length>0&&<p><strong>Связанные объединения{selected.properties.historicalSourceMemberOf?' (уточнённые)':' по источнику'}:</strong> {selected.properties.historicalMemberOf.join(', ')}</p>}
+       {annualSource(snapshot.year)&&Array.isArray(selected.properties?.historicalSourceComponents)&&<p><strong>Состав исходной записи:</strong> {selected.properties.historicalSourceComponents.join(', ')}</p>}
+       {annualSource(snapshot.year)&&Array.isArray(selected.properties?.historicalSourceMemberOf)&&<p><strong>Связи исходной записи:</strong> {selected.properties.historicalSourceMemberOf.join(', ')}</p>}
        {selectedAnnualReview&&<p><strong>Редакционное уточнение по источникам:</strong> {selectedAnnualReview.sources.map((url,i)=><span key={url}>{" "}<a href={url} target="_blank" rel="noopener noreferrer">Документ {i+1} ↗</a></span>)}</p>}
        <p><strong>Точность границ:</strong> {selected.properties?.ATLAS_HISTORICAL_LABEL?"Условный контур, границы не подтверждены":precisions[borderPrecision(selected)]}</p>
        {fallbackReference?.formation&&<p><strong>Образование:</strong> {fallbackReference.formation}</p>}

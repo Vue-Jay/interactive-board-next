@@ -31,15 +31,17 @@ export function buildChangeRegistry(records, rows, from, to) {
   };
   const annual=new Map(rows.filter(r=>r.year>=from&&r.year<=to).map(r=>[r.year,r]));
   const active=new Set(), periods=[];
-  let recordYears=0;
+  let recordYears=0,lastCoverage;
   for(let o=ordinal(from);o<=ordinal(to);o++){
     const e=events.get(o);
     if(e){for(const id of e.ends)assert.ok(active.delete(id));for(const id of e.starts){assert.ok(!active.has(id));active.add(id)}}
     const y=year(o), row=annual.get(y);assert.ok(row,`Missing annual acceptance row ${y}`);
     assert.equal(active.size,row.records,`Event sweep disagrees with annual source at ${y}`);
     recordYears+=active.size;
-    if(e||!periods.length)periods.push({from:y,to:y,records:active.size,started:e?.starts??[],ended:e?.ends??[],stateHash:sha256(JSON.stringify([...active].sort()))});
+    const coverage=JSON.stringify(row.membershipWarnings??[]);
+    if(e||!periods.length||coverage!==lastCoverage)periods.push({from:y,to:y,records:active.size,started:e?.starts??[],ended:e?.ends??[],stateHash:sha256(JSON.stringify([[...active].sort(),coverage]))});
     else periods.at(-1).to=y;
+    lastCoverage=coverage;
     for(const w of row.membershipWarnings??[])addIssue('membership',w,y);
     for(const group of row.identityCollisions??[])addIssue('identity-collision',[...group].sort((a,b)=>a.sourceIndex-b.sourceIndex),y);
     for(const group of row.sharedGeometry??[])addIssue('shared-geometry',[...group].sort((a,b)=>a.sourceIndex-b.sourceIndex),y);

@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createRequire} from 'node:module';
 import {historicalBlockForYear,historicalYearState} from '../src/lektrusHistoricalTimeline.ts';
+import {historicalGapLocators} from '../src/lektrusHistoricalGapLocators.ts';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.LEKTRUS_PLAYWRIGHT_MODULE||'playwright');
 const root=process.env.LEKTRUS_ANNUAL_TIMELINE_DIR, archive=process.env.LEKTRUS_ATLAS_DATA_DIR;
@@ -36,6 +37,13 @@ try{
   await page.locator(`[data-atlas-source-year="${year}"]`).waitFor({timeout:90000});
   await page.getByTitle('Вписать выбранный регион').click();
   await page.locator('.lektrus-atlas-overlay').waitFor({state:'hidden',timeout:90000});
+  const gaps=page.locator('[data-atlas-annual-gap-count]');
+  assert.equal(await gaps.count(),state.coverageGaps.length?1:0,`Coverage warning missing or stale at ${year}`);
+  if(state.coverageGaps.length)assert.equal(Number(await gaps.getAttribute('data-atlas-annual-gap-count')),state.coverageGaps.length);
+  const expectedLocators=state.coverageGaps.flatMap(g=>historicalGapLocators[g.name]?[historicalGapLocators[g.name].iso]:[]).sort();
+  const actualLocators=await page.locator('[data-atlas-gap-locator]').evaluateAll(nodes=>nodes.map(n=>n.dataset.atlasGapLocator).sort());
+  assert.deepEqual(actualLocators,expectedLocators,`Missing geographical gap locators at ${year}`);
+  if(year===2024&&expectedLocators.length){await page.locator('[data-atlas-gap-locator]').first().dispatchEvent('click');assert.notEqual(await gaps.getAttribute('open'),null);}
   const layer=page.getByLabel('Дополнительный исторический слой');
   let renderedCount=0;
   for(const mode of ['none','composite','relation']){

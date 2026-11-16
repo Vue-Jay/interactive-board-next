@@ -18,7 +18,7 @@ export function createHistoricalTimelineLoader(baseUrl: string, request: typeof 
   async function year(year: number) {
     const index = await manifest();
     const block = historicalBlockForYear(index,year);
-    if (!block) return {year,status:'outside-source-coverage' as const,records:[],drawable:[],overlays:[],rejected:[]};
+    if (!block) return {year,status:'outside-source-coverage' as const,records:[],drawable:[],overlays:[],rejected:[],coverageGaps:[]};
     let pending = cached.get(block.sha256);
     if (pending) cached.delete(block.sha256);
     else pending = request(`${base}/${block.file}`, {cache:'force-cache'}).then(async response => {
