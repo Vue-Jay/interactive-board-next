@@ -43,6 +43,19 @@ const JAPAN_OCCUPATION='https://history.state.gov/countries/japan';
 const RYUKYU='https://www.mofa.go.jp/policy/other/bluebook/1985/1985-3-3.htm';
 const COMOROS='https://digitallibrary.un.org/record/441662/files/E_1990_6_Add.27-EN.pdf';
 const componentExclusions=[
+ [9854,4,1769,[0],'Genoa ceded its rights to Corsica in 1768 and French forces conquered the island in 1769.','Генуя уступила права на Корсику в 1768 году; в 1769 остров заняла Франция.','https://www.napoleon.org/en/history-of-the-two-empires/biographies/paoli-pascal-philippe-antoine-also-known-as-pasquale-paoli/'],
+ [9852,8,1762,[2,4,5,6],'Ferdinand inherited the Neapolitan throne in 1759 while his father Charles became king of Spain; the matching components are retained in the contemporary Naples record.','В 1759 году Фердинанд унаследовал неаполитанский престол, а его отец Карл стал королём Испании. Совпадающие компоненты остаются в записи Неаполя.','https://www.treccani.it/enciclopedia/ferdinando-i-di-borbone-re-delle-due-sicilie_%28Dizionario-Biografico%29/'],
+ [11345,18,1840,[14],'The personal union with Hanover ended in 1837.','Личная уния с Ганновером завершилась в 1837 году.','https://researchbriefings.files.parliament.uk/documents/SN00683/SN00683.pdf'],
+ [12589,74,1926,[40],'The treaty recognizing Cuban title to the Isle of Pines was ratified in 1925.','Договор о признании принадлежности острова Пинос Кубе ратифицирован в 1925 году.','https://history.state.gov/historicaldocuments/frus1925v02/d4'],
+ [12589,74,1935,[37,38],'US forces withdrew from Haiti in 1934.','Американские войска покинули Гаити в 1934 году.','https://history.state.gov/countries/haiti'],
+ [13036,61,1948,[42,43,44,45,46],'New Zealand adopted the Statute of Westminster in November 1947; this was no longer a British colony.','Новая Зеландия приняла Вестминстерский статут в ноябре 1947 года; это уже не британская колония.','https://nzhistory.govt.nz/statute-of-westminster-passed-confirming-nz-autonomy'],
+ [13036,61,1948,[33,35,36],'Burma became independent on 4 January 1948.','Бирма получила независимость 4 января 1948 года.','https://history.state.gov/countries/burma'],
+ [13036,61,1949,[20,41],'Newfoundland and Labrador joined Canada in March 1949.','Ньюфаундленд и Лабрадор вошли в состав Канады в марте 1949 года.','https://www.canada.ca/en/canadian-heritage/services/historical-boundaries-canada.html'],
+ [13070,91,1949,[22,36],'Newfoundland and Labrador joined Canada in March 1949.','Ньюфаундленд и Лабрадор вошли в состав Канады в марте 1949 года.','https://www.canada.ca/en/canadian-heritage/services/historical-boundaries-canada.html'],
+ [13161,18,1961,[14],'Cyprus became independent in 1960, except for the two sovereign base areas, which lack separate source geometry here.','Кипр стал независимым в 1960 году, кроме двух британских военных баз, отдельные контуры которых здесь отсутствуют.','https://www.gov.uk/government/publications/historical-background-information-on-nationality/historical-background-information-on-nationality-accessible'],
+ [13161,18,1965,[15],'Malta became independent in September 1964.','Мальта получила независимость в сентябре 1964 года.','https://www.un.org/dppa/decolonization/en/history/former-trust-and-nsgts'],
+ [13111,7,1951,[0,6],'Nationalist forces evacuated Hainan and the Chusan (Zhoushan) archipelago in 1950; this is a correction of effective control, not of competing sovereignty claims.','В 1950 году силы Китайской Республики эвакуировались с Хайнаня и архипелага Чжоушань. Уточнён фактический контроль, не юридические притязания.','https://history.state.gov/historicaldocuments/frus1950v06/d178'],
+ [6167,5,1407,[0],'After alternating English and Scottish rule, the Isle of Man was granted by Henry IV to John Stanley in 1406.','После смены английской и шотландской власти Генрих IV передал остров Мэн Джону Стэнли в 1406 году.','https://manxnationalheritage.im/news/medieval-ring-declared-treasure/'],
  [11901,2,1890,[0],'Luxembourg was a separate sovereign grand duchy under a personal union, which ended in 1890.','Люксембург был отдельным великим герцогством в личной унии, завершившейся в 1890 году.','https://luxembourg.public.lu/en/society-and-culture/history/renaissance-dun-pays.html'],
  [13318,38,1971,[22,23,24],'Fiji became independent in 1970.','Фиджи получило независимость в 1970 году.',SURINAME_SOURCE],
  [13318,38,1973,[5,6,7,8,9,10,11,12,13,14,15,16,17],'The Bahamas became independent in 1973.','Багамы получили независимость в 1973 году.',SURINAME_SOURCE],
@@ -113,6 +126,14 @@ function editorialSegments(base){
   let r={...base,from,to};
   const reasons=[],reasonsRu=[],sources=new Set();
   const note=(reason,urls,ru)=>{reasons.push(reason);if(ru)reasonsRu.push(ru);for(const url of urls)sources.add(url)};
+  if(base.role==='polity'&&base.sourceName==='Viking settlements'){
+   r={...r,role:'settlement',sourceRole:'polity',nameRu:'Поселения скандинавов (викингов)',nameStatus:'reviewed'};
+   note('The source aggregates settlements of different Norse communities, across different rulers and periods. Preserve the source footprint in a thematic layer, not as a single sovereign polity. Exact settlement extent and chronology still require independent review.',['https://www.metmuseum.org/pt/essays/the-vikings-780-1100','https://en.natmus.dk/historical-knowledge/denmark/prehistoric-period-until-1050-ad/the-viking-age/power-and-aristocracy/magnates-and-kings/'],'Исходник объединяет поселения разных скандинавских общин, правителей и эпох. Контур сохранён в тематическом слое расселения, а не как единое государство. Точные размеры и датировки поселений требуют отдельной сверки.');
+  }
+  if(base.sourceIndex===9986){
+   r={...r,name:'Kingdom of Naples (Bourbon)',nameRu:'Неаполитанское королевство (Бурбоны)',nameStatus:'reviewed',entityId:identity('reviewed-polity','bourbon-naples')};
+   note('Ferdinand IV of Bourbon reigned from 1759; the 1762–1798 source revision belongs to Bourbon Naples, not the Napoleonic kingdom. Its territorial extent remains unverified.',['https://www.treccani.it/enciclopedia/ferdinando-i-di-borbone-re-delle-due-sicilie_%28Dizionario-Biografico%29/'],'В 1762–1798 годах Неаполем правил Фердинанд IV из династии Бурбонов, а не наполеоновская династия. Контур требует независимой проверки.');
+  }
   for(const rule of exclusionsFor(base.sourceIndex,from))note(rule[4]+' Only identified source components were removed; coverage and remaining borders are unverified.',[rule[6]],rule[5]+' Остальные границы и полнота покрытия требуют проверки.');
   if(base.sourceIndex===13309){
    r={...r,name:'Seychelles (British colony)',nameRu:'Сейшельские острова (британская колония)',nameStatus:'reviewed',entityId:identity('reviewed-polity','seychelles-british-colony')};

@@ -267,7 +267,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const savePaint=(next:Record<string,string>)=>{captureContour();onChange?.({...d,paintedCountries:next})};
  const isContourTool=d.title==="Контурная карта";
  const [index,setIndex]=useState(initialPeriodIndex(d.year));
- const [annualOverlay,setAnnualOverlay]=useState<'none'|'composite'|'relation'>('none');
+ const [annualOverlay,setAnnualOverlay]=useState<'none'|'composite'|'relation'|'settlement'>('none');
  const [annualGapDetailsOpen,setAnnualGapDetailsOpen]=useState(false);
  const [source,setSource]=useState<GeoCollection|null>(null);
  const [baseLand,setBaseLand]=useState<GeoCollection|null>(null);
@@ -900,7 +900,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const displayedMarkers=[...userMarkers.map(marker=>({...marker,url:undefined})),...schoolMarkers];
  const selectedRaw=String(selected?.properties?.NAME??selected?.properties?.ADMIN??"");
  const selectedAnnualReview=annualSource(snapshot.year)?selected?.properties?.review as {reason:string;reasonRu?:string;sources:string[]}|undefined:undefined;
- const selectedPoliticalOverlay=selected?.properties?.historicalRole==='composite'||selected?.properties?.historicalRole==='relation';
+ const selectedPoliticalOverlay=['composite','relation','settlement'].includes(String(selected?.properties?.historicalRole));
  const selectedArticle=selected&&historical&&!modernReference&&!selectedPoliticalOverlay&&!selected.properties?.ATLAS_HISTORICAL_LABEL?
   findHistoricalArticle(selectedRaw,snapshot.year):undefined;
  const fallbackReference=selected&&historical&&!modernReference&&!selectedPoliticalOverlay&&!selectedArticle&&!selected.properties?.ATLAS_HISTORICAL_LABEL?
@@ -1637,7 +1637,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
         return <path key={s.i} data-atlas-feature-index={s.i} data-atlas-revision-id={annualPreview?s.feature.properties?.historicalRevisionId as string|undefined:undefined} data-atlas-history-role={annualSource(snapshot.year)?s.feature.properties?.historicalRole as string|undefined:undefined} data-atlas-country-code={modernBorders?s.feature.properties?.ADM0_A3 as string|undefined:undefined} d={s.path} fillRule="evenodd" fill={overlay?'none':fill} pointerEvents={overlay?'stroke':undefined}
          data-contour-fill-key={isWorksheet&&painted[fillKey]?fillKey:undefined}
          fillOpacity={mineralTerrainEnabled?.56:1}
-         stroke={isWorksheet&&!contourConfig.showBorders?"none":highlighted||s.feature===selected?"#df793e":overlay?(annualOverlay==='relation'?'#c2410c':'#6d28d9'):mode==="minerals"?"#a4aea2":mode==="contour"?"#8c9eaa":"#819fb2"}
+         stroke={isWorksheet&&!contourConfig.showBorders?"none":highlighted||s.feature===selected?"#df793e":overlay?(annualOverlay==='relation'?'#c2410c':annualOverlay==='settlement'?'#0f766e':'#6d28d9'):mode==="minerals"?"#a4aea2":mode==="contour"?"#8c9eaa":"#819fb2"}
          strokeWidth={overlay?2:highlighted||s.feature===selected?1.9:mode==="minerals"?.4:historical?(precise===1?.8:.58):.65}
          vectorEffect="non-scaling-stroke"
          strokeDasharray={overlay?'6 3':historical&&!modernReference&&(precise===1||!!s.feature.properties?.ATLAS_HISTORICAL_LABEL)?"3 2":undefined}
@@ -2307,7 +2307,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
     {historical&&<div className="lektrus-atlas-year-header">
      <strong>{yearLabel(snapshot.year)}{modernReference?" · современный обзор":""}</strong>
      <small>{modernReference?"Архивная геометрия Natural Earth (2022); не точная карта 2026 года":annualSource(snapshot.year)?"Предварительная ежегодная реконструкция Cliopatria 0.2.1. Контуры ещё не получили независимую историческую приёмку.":"Историческая реконструкция: отдельные контуры могут отражать более поздние границы. Не считать их точной картой суверенных государств."}</small>
-     {annualSource(snapshot.year)&&<><label>Дополнительный слой <select aria-label="Дополнительный исторический слой" value={annualOverlay} onChange={e=>{setAnnualOverlay(e.target.value as typeof annualOverlay);setSelected(null)}}><option value="none">Только территории</option><option value="composite">Политические объединения</option><option value="relation">Политические связи</option></select></label>{annualOverlay!=='none'&&<small>Пунктирный контур — {annualOverlay==='composite'?'объединение нескольких территорий':'политическая связь'}, а не дополнительная государственная граница.</small>}</>}
+     {annualSource(snapshot.year)&&<><label>Дополнительный слой <select aria-label="Дополнительный исторический слой" value={annualOverlay} onChange={e=>{setAnnualOverlay(e.target.value as typeof annualOverlay);setSelected(null)}}><option value="none">Только территории</option><option value="composite">Политические объединения</option><option value="relation">Политические связи</option><option value="settlement">Поселения и расселение</option></select></label>{annualOverlay!=='none'&&<small>Пунктирный контур — {annualOverlay==='composite'?'объединение нескольких территорий':annualOverlay==='settlement'?'предварительная область поселений':'политическая связь'}, а не дополнительная государственная граница.</small>}</>}
     </div>}
     {historical&&annualSource(snapshot.year)&&!!source?.historicalRejected?.length&&<details className="lektrus-atlas-layer-warning"><summary>Исключённые неподтверждённые контуры: {source.historicalRejected.length}</summary><ul>{source.historicalRejected.map((r,i)=><li key={i}><strong>{r.name}</strong>{r.review&&<p>{r.review.reasonRu??r.review.reason}</p>}{r.review?.sources.map(url=><span key={url}>{" "}<a href={url} target="_blank" rel="noopener noreferrer">Источник ↗</a></span>)}</li>)}</ul><small>Эти контуры не показаны из-за подтверждённых ошибок. Отсутствие контура не означает отсутствие государства.</small></details>}
     {historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year&&!!source?.historicalCoverageGaps?.length&&<details open={annualGapDetailsOpen} onToggle={e=>setAnnualGapDetailsOpen(e.currentTarget.open)} className="lektrus-atlas-layer-warning" data-atlas-annual-gap-count={source.historicalCoverageGaps.length}>
@@ -2531,7 +2531,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       {typeof selected.properties?.ATLAS_HISTORICAL_NOTE==="string"&&<p>{selected.properties.ATLAS_HISTORICAL_NOTE} <strong>{historicalSubject}</strong> {typeof selected.properties?.ATLAS_HISTORICAL_SOURCE==="string"&&<a href={selected.properties.ATLAS_HISTORICAL_SOURCE} target="_blank" rel="noopener noreferrer">Источник уточнения ↗</a>}</p>}
       <div className="lektrus-history-key-facts">
        <span><strong>Период карты</strong>{yearLabel(snapshot.year)}</span>
-       {annualSource(snapshot.year)&&<span><strong>Тип записи</strong>{selected.properties?.historicalRole==='composite'?'Составное объединение':selected.properties?.historicalRole==='relation'?'Политическая связь (не государство)':'Отдельная территория'}</span>}
+       {annualSource(snapshot.year)&&<span><strong>Тип записи</strong>{selected.properties?.historicalRole==='composite'?'Составное объединение':selected.properties?.historicalRole==='relation'?'Политическая связь (не государство)':selected.properties?.historicalRole==='settlement'?'Область поселений (не государство)':'Отдельная территория'}</span>}
        {annualSource(snapshot.year)&&typeof selected.properties?.from==="number"&&typeof selected.properties?.to==="number"&&<span><strong>Интервал этой версии записи</strong>{yearLabel(selected.properties.from)} – {yearLabel(selected.properties.to)}</span>}
        {selectedArticle&&<span><strong>Справочный период</strong>{yearLabel(selectedArticle.from)} – {yearLabel(selectedArticle.to)}</span>}
        {selectedArticle?.capital&&<span><strong>Столица и центры</strong>{selectedArticle.capital}</span>}

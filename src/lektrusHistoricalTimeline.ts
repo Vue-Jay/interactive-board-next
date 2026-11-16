@@ -1,12 +1,13 @@
 /** Annual historical data contract. Imported polygons are evidence candidates,
  * not independently verified borders. No interpolation or nearest-year fallback. */
-export const HISTORY_SCHEMA = 4;
+export const HISTORY_SCHEMA = 5;
 export const HISTORY_FIRST_YEAR = -3400;
 export const HISTORY_LAST_YEAR = 2024;
 export type HistoricalGeometry = {type: 'Polygon' | 'MultiPolygon'; coordinates: unknown};
 export type HistoricalRevision = {
   id: string; entityId: string; geometryId: string;
-  role: 'polity' | 'composite' | 'relation';
+  role: 'polity' | 'composite' | 'relation' | 'settlement';
+  sourceRole?: 'polity';
   components: string[]; memberOf: string[]; sourceSeshatId: string; sourceWikipedia: string;
   sourceComponents?: string[]; sourceMemberOf?: string[];
   sourceGeometryId?: string; geometryRepair?: 'retracted-zero-area-interior-edges' | 'reviewed-source-components';
@@ -18,14 +19,14 @@ export type HistoricalRevision = {
   review?: {reason: string; reasonRu?:string; sources: string[]};
 };
 export type HistoricalPack = {
-  schema: 4; from: number; to: number;
+  schema: 5; from: number; to: number;
   records: HistoricalRevision[]; geometries: Record<string, HistoricalGeometry>;
   coverageGaps: Record<string, HistoricalCoverageGap[]>;
 };
 export type HistoricalCoverageGap={name:string;date:string;source:string;reason:string};
 export type HistoricalBlock = {from: number; to: number; file: string; sha256: string; bytes: number; gzipBytes: number};
 export type HistoricalManifest = {
-  schema: 4; from: number; to: number; source: {name: string; version: string; url: string; license: string; sha256: string};
+  schema: 5; from: number; to: number; source: {name: string; version: string; url: string; license: string; sha256: string};
   blocks: HistoricalBlock[];
   counts: {sourcePolities: number; sourceComposites: number; sourceRelations: number; zeroBoundaryRecords: number; revisions: number; uniqueGeometries: number; rejectedRevisions: number; reviewedNames: number};
 };
@@ -68,11 +69,11 @@ export function historicalYearState(pack: HistoricalPack, year: number) {
  * remain in the audit state but cannot silently reach the map layer. */
 export function historicalYearFeatureCollection(state: ReturnType<typeof historicalYearState>, includeOverlays=false) {
   return {type:'FeatureCollection' as const, historicalCoverageGaps:state.coverageGaps,historicalRejected:state.rejected.map(r=>({name:r.nameRu??r.name,review:r.review})),features:(includeOverlays?[...state.drawable,...state.overlays]:state.drawable).map(({record,geometry})=>({
-    type:'Feature' as const, geometry, properties:{NAME:record.nameRu ?? (record.role==='polity'?record.name:record.name.slice(1,-1)),
+    type:'Feature' as const, geometry, properties:{NAME:record.nameRu ?? (record.role==='polity'||record.role==='settlement'?record.name:record.name.slice(1,-1)),
       ATLAS_HISTORICAL_LABEL:record.nameRu, historicalEntityId:record.entityId,
       historicalRevisionId:record.id, sourceName:record.sourceName, sourceWikidata:record.sourceWikidata,
       sourceIndex:record.sourceIndex, from:record.from, to:record.to,
-      historicalRole:record.role, historicalComponents:record.components, historicalMemberOf:record.memberOf,
+      historicalRole:record.role, historicalSourceRole:record.sourceRole, historicalComponents:record.components, historicalMemberOf:record.memberOf,
       historicalSourceComponents:record.sourceComponents,historicalSourceMemberOf:record.sourceMemberOf,
       sourceSeshatId:record.sourceSeshatId, sourceWikipedia:record.sourceWikipedia,
       sourceGeometryId:record.sourceGeometryId, geometryRepair:record.geometryRepair,geometryParts:record.geometryParts,
@@ -102,11 +103,12 @@ export function validateHistoricalPack(value: unknown, block: HistoricalBlock): 
   for (const record of pack.records) {
     if (!record || !hash.test(record.id) || recordIds.has(record.id) || !hash.test(record.entityId) || !hash.test(record.geometryId) || !record.name || !validHistoricalYear(record.from) || !validHistoricalYear(record.to) || record.from > record.to || record.from > block.to || record.to < block.from || !['candidate','rejected'].includes(record.geometryStatus) || !['candidate','reviewed'].includes(record.nameStatus)) throw new Error('Invalid historical revision');
     const geometry = pack.geometries[record.geometryId];
-    if (!['polity','composite','relation'].includes(record.role)||!Array.isArray(record.components)||!Array.isArray(record.memberOf)||![...record.components,...record.memberOf].every(n=>typeof n==='string'&&n.length>0)||(record.role==='polity'?record.components.length!==0:!record.components.length)) throw new Error('Invalid historical layer classification');
+    if (!['polity','composite','relation','settlement'].includes(record.role)||!Array.isArray(record.components)||!Array.isArray(record.memberOf)||![...record.components,...record.memberOf].every(n=>typeof n==='string'&&n.length>0)||(['polity','settlement'].includes(record.role)?record.components.length!==0:!record.components.length)) throw new Error('Invalid historical layer classification');
+    if((record.role==='settlement'&&record.sourceRole!=='polity')||(record.role!=='settlement'&&record.sourceRole!==undefined))throw new Error('Invalid historical source role provenance');
     if (record.sourceGeometryId && (!hash.test(record.sourceGeometryId) || record.sourceGeometryId===record.geometryId || !['retracted-zero-area-interior-edges','reviewed-source-components'].includes(record.geometryRepair??''))) throw new Error('Invalid historical repair provenance');
     if(record.geometryRepair==='reviewed-source-components'&&(!record.sourceGeometryId||!Array.isArray(record.geometryParts)||!record.geometryParts.length||record.geometryParts.some(p=>!Number.isSafeInteger(p.index)||p.index<0||!Number.isSafeInteger(p.part)||p.part<0)||!record.review?.sources.length))throw new Error('Invalid historical component provenance');
     if (!geometry || !['Polygon','MultiPolygon'].includes(geometry.type) || !Array.isArray(geometry.coordinates)) throw new Error('Missing historical geometry');
-    if ((record.geometryStatus === 'rejected' || record.nameStatus === 'reviewed'||record.sourceComponents||record.sourceMemberOf) && (!record.review?.reason || !record.review.sources.length)) throw new Error('Unattributed historical correction');
+    if ((record.geometryStatus === 'rejected' || record.nameStatus === 'reviewed'||record.sourceRole||record.sourceComponents||record.sourceMemberOf) && (!record.review?.reason || !record.review.sources.length)) throw new Error('Unattributed historical correction');
     recordIds.add(record.id);
   }
   return pack;

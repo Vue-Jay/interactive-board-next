@@ -29,9 +29,16 @@ const overlapRecords=[
 const overlaps=exactComponentConflicts(overlapRecords,new Map([['a',['x','y']],['b',['y','z']]]));
 assert.deepEqual(overlaps.counts,{pairs:1,annualPairOccurrences:3,annualComponentOccurrences:3});
 assert.deepEqual(overlaps.groups[0].intervals,[{from:-1,to:2,years:3,components:['y']}]);
+const withSettlement=[...overlapRecords,{...reviewBase,role:'settlement',sourceRole:'polity',sourceIndex:5,sourceName:'Settlements',entityId:'e',geometryId:'b',from:1,to:2}];
+assert.equal(exactComponentConflicts(withSettlement,new Map([['a',['x','y']],['b',['y','z']]])).counts.pairs,1);
+assert.deepEqual(exactComponentConflicts(withSettlement,new Map([['a',['x','y']],['b',['y','z']]]),true).counts,{pairs:2,annualPairOccurrences:4,annualComponentOccurrences:6});
 assert.equal(componentHash(square().coordinates),componentHash([[[1,1],[1,0],[0,0],[0,1],[1,1]]]));
 assert.notEqual(componentHash(square().coordinates),componentHash(square(1).coordinates));
 const feature=(name,from,to,geometry=square(),wikidata='',type='POLITY',components='')=>({type:'Feature',properties:{Name:name,FromYear:from,ToYear:to,Wikidata:wikidata,Type:type,Components:components},geometry});
+const settlementFixture=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Viking settlements',1028,1325)]});
+assert.equal(settlementFixture.records[0].role,'settlement');
+assert.equal(settlementFixture.records[0].sourceRole,'polity');
+assert.equal(settlementFixture.records[0].geometryId,sha256(JSON.stringify(square())));
 const source={type:'FeatureCollection',features:[feature('A',-3400,0),feature('A',1,10),feature('Mali Federation',1960,1960,square(),'Q216632'),feature('Mali Federation',1961,2024,square(),'Q216632'),feature('Republic of Indonesia',1960,1975,square(137.5,-4.5),'Q252'),feature('(Relation)',1,2024,square(),'','RELATION','A;B'),feature('(Composite)',1,10,square(),'','POLITY','A')]};
 assert.equal(stepHistoricalYear(-1,1),1);
 assert.equal(stepHistoricalYear(1,-1),-1);
@@ -129,7 +136,8 @@ if(outDir&&sourceFile){
     for(const [id,geometry] of Object.entries(pack.geometries)){assert.equal(sha256(JSON.stringify(geometry)),id);allGeometries.add(id);}
     for(const r of pack.records){
       seen.add(r.id);const f=input.features[r.sourceIndex];
-      assert.equal(r.role,f.properties.Type==='RELATION'?'relation':f.properties.Components?'composite':'polity');assert.equal(r.sourceName,f.properties.Name.trim());
+      assert.equal(r.sourceRole??r.role,f.properties.Type==='RELATION'?'relation':f.properties.Components?'composite':'polity');assert.equal(r.sourceName,f.properties.Name.trim());
+      if(r.role==='settlement'){assert.equal(r.sourceName,'Viking settlements');assert.ok(r.review?.sources.length);}
       const list=v=>String(v??'').split(';').map(s=>s.trim()).filter(Boolean);
       assert.deepEqual(r.sourceComponents??r.components,list(f.properties.Components));assert.deepEqual(r.sourceMemberOf??r.memberOf,list(f.properties.MemberOf));
       assert.equal(r.sourceFrom,f.properties.FromYear);assert.equal(r.sourceTo,f.properties.ToYear);
@@ -219,6 +227,23 @@ if(outDir&&sourceFile){
   assert.ok(!partsAt(1954,13019).includes(49));
   assert.ok(!partsAt(1973,13279).includes(43)&&!partsAt(1973,13279).includes(39));
   assert.ok(!partsAt(1995,13279).includes(37)&&!partsAt(1995,13279).includes(49));
+  assert.equal(revisionAt(1100,4253).role,'settlement');
+  assert.equal(revisionAt(1100,4253).sourceRole,'polity');
+  assert.equal(revisionAt(1100,4529).role,'polity');
+  assert.equal(revisionAt(1326,6249).role,'settlement');
+  assert.ok(!partsAt(1948,13036).includes(42)&&!partsAt(1948,13036).includes(33)&&partsAt(1948,13036).includes(41));
+  assert.ok(!partsAt(1949,13036).includes(41)&&!partsAt(1949,13070).includes(36));
+  assert.ok(!partsAt(1961,13161).includes(14)&&partsAt(1961,13161).includes(15));
+  assert.ok(!partsAt(1965,13161).includes(15));
+  assert.equal(partsAt(1950,13111),undefined);
+  assert.deepEqual(partsAt(1951,13111),[1,2,3,4,5]);
+  assert.deepEqual(partsAt(1769,9854),[1,2,3]);
+  assert.deepEqual(partsAt(1762,9852),[0,1,3,7]);
+  assert.equal(revisionAt(1762,9986).name,'Kingdom of Naples (Bourbon)');
+  assert.ok(!partsAt(1842,11345).includes(14));
+  assert.ok(!partsAt(1926,12589).includes(40)&&partsAt(1926,12589).includes(37));
+  assert.ok(!partsAt(1935,12589).includes(37));
+  assert.deepEqual(partsAt(1407,6167),[1,2,3,4]);
   const report={years,recordYears,rejectedYears,emptyYears,packCount,yearsWithIdentityCollisions,yearsWithSharedGeometry,admissionWarnings,counts:manifest.counts,source:manifest.source,notice:'Technical annual coverage with review warnings. Shared geometry, aliases and admission warnings are candidates, not proof of errors. Historical, geographic and visual acceptance NOT complete.',rows};
   fs.writeFileSync(path.join(outDir,'technical-annual-audit.json'),JSON.stringify(report,null,2)+'\n');
   console.log(JSON.stringify({...report,rows:undefined}));

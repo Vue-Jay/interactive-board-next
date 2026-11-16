@@ -46,7 +46,7 @@ try{
   if(year===2024&&expectedLocators.length){await page.locator('[data-atlas-gap-locator]').first().dispatchEvent('click');assert.notEqual(await gaps.getAttribute('open'),null);}
   const layer=page.getByLabel('Дополнительный исторический слой');
   let renderedCount=0;
-  for(const mode of ['none','composite','relation']){
+  for(const mode of ['none','composite','relation','settlement']){
   await layer.selectOption(mode);
   const shapes=page.locator('path.lektrus-atlas-country[data-atlas-revision-id]');
   const rendered=await shapes.evaluateAll(nodes=>nodes.map(n=>({id:n.dataset.atlasRevisionId,role:n.dataset.atlasHistoryRole,fill:n.getAttribute('fill'),d:n.getAttribute('d')})));

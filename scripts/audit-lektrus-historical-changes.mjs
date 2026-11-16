@@ -70,10 +70,10 @@ export function componentHash(polygon){
   };
   return sha256(JSON.stringify([canonicalRing(polygon[0]),polygon.slice(1).map(canonicalRing).sort()]));
 }
-export function exactComponentConflicts(records, hashesByGeometry){
+export function exactComponentConflicts(records, hashesByGeometry, thematic=false){
   const byHash=new Map(),pairs=new Map();
   for(const r of records){
-    if(r.role!=='polity'||r.geometryStatus!=='candidate')continue;
+    if((r.role!=='polity'&&!(thematic&&r.role==='settlement'))||r.geometryStatus!=='candidate')continue;
     for(const hash of new Set(hashesByGeometry.get(r.geometryId)??[])){
       if(!byHash.has(hash))byHash.set(hash,[]);
       byHash.get(hash).push(r);
@@ -85,6 +85,7 @@ export function exactComponentConflicts(records, hashesByGeometry){
       const a=entries[i],b=entries[j];
       if(ordinal(b.from)>ordinal(a.to))break;
       if(a.sourceIndex===b.sourceIndex||a.entityId===b.entityId)continue;
+      if(thematic&&a.role!=='settlement'&&b.role!=='settlement')continue;
       const [left,right]=[a,b].sort((x,y)=>x.sourceIndex-y.sourceIndex);
       const key=left.sourceIndex+':'+right.sourceIndex;
       if(!pairs.has(key))pairs.set(key,{left:{sourceIndex:left.sourceIndex,name:left.sourceName},right:{sourceIndex:right.sourceIndex,name:right.sourceName},years:new Map()});
@@ -121,9 +122,10 @@ export function auditChanges(folder){
   assert.equal(annual.source.sha256,manifest.source.sha256);
   const report=buildChangeRegistry([...records.values()],annual.rows,manifest.from,manifest.to);
   const exactComponents=exactComponentConflicts([...records.values()],hashesByGeometry);
+  const thematicComponents=exactComponentConflicts([...records.values()],hashesByGeometry,true);
   assert.equal(report.recordYears,annual.recordYears);
-  fs.writeFileSync(path.join(folder,'change-review-registry.json'),JSON.stringify({...report,exactComponents,source:manifest.source,notice:'Review units are work deduplication, NOT historical acceptance. Exact component matches are unresolved candidates, not necessarily incorrect borders. Annual rows and modern unresolved issues remain tracked.'},null,2)+'\n');
-  console.log(JSON.stringify({recordYears:report.recordYears,...report.counts,exactComponents:exactComponents.counts}));
+  fs.writeFileSync(path.join(folder,'change-review-registry.json'),JSON.stringify({...report,exactComponents,thematicComponents,source:manifest.source,notice:'Review units are work deduplication, NOT historical acceptance. Exact component matches are unresolved candidates, not necessarily incorrect borders. Thematic overlaps remain separately documented. Annual rows and modern unresolved issues remain tracked.'},null,2)+'\n');
+  console.log(JSON.stringify({recordYears:report.recordYears,...report.counts,exactComponents:exactComponents.counts,thematicComponents:thematicComponents.counts}));
   return report;
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
