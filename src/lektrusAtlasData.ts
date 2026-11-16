@@ -316,6 +316,7 @@ export function historicalMapFeatures(source:GeoCollection|null):GeoFeature[]{
 }
 export const hasAtlasName=(feature:GeoFeature)=>geoFeatureName(feature).length>0;
 export const borderPrecision=(f:GeoFeature):number=>{
+ if(f.properties?.ATLAS_HISTORICAL_LABEL)return 1;
  const number=Number(f.properties?.BORDERPRECISION);
  return Number.isFinite(number)&&number>=1&&number<=3?number:0;
 };
@@ -335,11 +336,65 @@ export function loadAtlasLayer(layer:GeoLayer){
  const filename=names[layer];
  return requestGeojson("modern-"+layer,[BASE+filename,BACKUP+filename]);
 }
+// Source polygons may carry modern country names even when those states did
+// not exist. Retain their geometry as an approximate territorial outline,
+// but never present those names/sovereignties as historical facts.
+const unDecolonization="https://www.un.org/dppa/decolonization/history/former-trust-and-nsgts";
+const diplomaticHistory="https://history.state.gov/countries/";
+type HistoricalLabelCorrection=[label:string,affiliation:string,source:string];
+const colonialNames:Record<string,string>={Belize:"Британский Гондурас",Botswana:"Бечуаналенд",Lesotho:"Басутоленд",Guyana:"Британская Гвиана",Malawi:"Ньясаленд",Zambia:"Северная Родезия",Zimbabwe:"Южная Родезия",Namibia:"Юго-Западная Африка"};
+export function correctHistoricalLabels(source:GeoCollection,year:number):GeoCollection{
+ if(![1914,1920,1945,1960].includes(year))return source;
+ const corrections:Record<string,HistoricalLabelCorrection>={};
+ for(const [name,label] of Object.entries(colonialNames))corrections[name]=[label,name==="Namibia"?"Администрация Южно-Африканского Союза":"Британская империя",unDecolonization];
+ if(year===1914){
+  delete corrections.Namibia;delete corrections.Zambia;delete corrections.Zimbabwe;
+  for(const [n,label] of Object.entries({Armenia:"Армянские земли Закавказья",Azerbaijan:"Азербайджанские земли Закавказья",Georgia:"Грузинские земли Закавказья",Finland:"Великое княжество Финляндское"}))corrections[n]=[label,"Российская империя",diplomaticHistory+n.toLowerCase()];
+  corrections["Manchu Empire"]=["Китайская республика","Китайская республика",diplomaticHistory+"china"];
+  corrections["South Africa"]=["Южно-Африканский Союз","Британская империя",unDecolonization];
+ }
+ if(year===1920){
+  corrections.USSR=["Советская Россия","Советская Россия",diplomaticHistory+"russia"];
+  corrections.Georgia=["Грузинская демократическая республика","Грузия",diplomaticHistory+"georgia"];
+  corrections.Azerbaijan=["Азербайджан (смена власти в 1920 г.)","Статус менялся в течение года",diplomaticHistory+"azerbaijan"];
+  corrections.Armenia=["Армения (смена власти в 1920 г.)","Статус менялся в течение года",diplomaticHistory+"armenia"];
+  corrections.Ghana=["Золотой Берег","Британская империя",unDecolonization];
+  corrections.Malaysia=["Малайские территории","Британская империя",unDecolonization];
+ }
+ if(year===1945){
+  for(const n of ["India","Pakistan","Bangladesh"])corrections[n]=["Британская Индия (условный контур)","Британская империя",diplomaticHistory+"pakistan"];
+  corrections.Israel=["Подмандатная Палестина (условный контур)","Британский мандат",diplomaticHistory+"israel"];
+  corrections.Jordan=["Трансиордания","Британский мандат",diplomaticHistory+"jordan"];
+  corrections.Zaire=["Бельгийское Конго","Бельгия",unDecolonization];
+  corrections.Malaysia=["Малайские территории","Британская империя",unDecolonization];
+ }
+ if(year===1960){
+  corrections.Zaire=["Республика Конго (Леопольдвиль)","Республика Конго",unDecolonization];
+  corrections.Malaysia=["Малайская Федерация (условный контур)","Статус территорий неодинаков",diplomaticHistory+"malaysia"];
+ }
+ if(year===1945||year===1960){
+  corrections["United Arab Emirates"]=["Договорный Оман","Британские договорные протектораты",diplomaticHistory+"united-arab-emirates"];
+  corrections["Sri Lanka"]=["Цейлон",year===1945?"Британская империя":"Цейлон",unDecolonization];
+  corrections.Benin=["Дагомея",year===1945?"Французская Западная Африка":"Дагомея",unDecolonization];
+  corrections["Burkina Faso"]=[year===1945?"Территория будущей Верхней Вольты":"Верхняя Вольта (условный контур)",year===1945?"Французская Западная Африка":"Верхняя Вольта",unDecolonization];
+ }
+ if(year===1920||year===1945||year===1960)corrections["Tanzania, United Republic of"]=["Танганьика (условный контур)","Британская администрация",unDecolonization];
+ return {...source,features:source.features.map(f=>{
+  const name=String(f.properties?.NAME??"").trim(), correction=corrections[name];
+  if(!correction)return f;
+  return {...f,properties:{...f.properties,ATLAS_HISTORICAL_LABEL:correction[0],ATLAS_HISTORICAL_AFFILIATION:correction[1],ATLAS_HISTORICAL_SOURCE:correction[2],ATLAS_HISTORICAL_NOTE:"Название и статус уточнены. Контур взят из исходной реконструкции и может содержать современные границы."}};
+ })};
+}
+export function correctedHistoricalIndexLabel(raw:string,year:number):string|undefined{
+ const feature=correctHistoricalLabels({type:"FeatureCollection",features:[{type:"Feature",geometry:null,properties:{NAME:raw}}]},year).features[0];
+ const label=feature?.properties?.ATLAS_HISTORICAL_LABEL;
+ return typeof label==="string"?label:undefined;
+}
 export function loadHistoricalSnapshot(year:number){
  if(year===2026)return loadAtlasLayer("countries-russian"); // contemporary Russian POV, not a dated historical snapshot
  const found=historicalSnapshots.find(s=>s.year===year);
  if(!found)return Promise.reject(new Error("Исторического снимка на этот год нет"));
- return requestGeojson("historical-"+year,[HIST+found.file,HIST_BACKUP+found.file]);
+ return requestGeojson("historical-"+year,[HIST+found.file,HIST_BACKUP+found.file]).then(source=>correctHistoricalLabels(source,year));
 }
 /** Lightweight per-year name index supplied by Historical Basemaps.
  * A name appearing on a dated map does NOT establish founding/dissolution dates. */
@@ -673,7 +728,7 @@ export function featureSourceFacts(feature:GeoFeature):Array<{label:string;value
 }
 
 export function summariseNamedChanges(prev:GeoCollection,next:GeoCollection){
- const names=(geo:GeoCollection)=>new Set(geo.features.map(geoFeatureName).filter(Boolean));
+ const names=(geo:GeoCollection)=>new Set(geo.features.map(f=>String(f.properties?.ATLAS_HISTORICAL_LABEL??geoFeatureName(f))).filter(Boolean));
  const a=names(prev),b=names(next);
  return {
   appeared:[...b].filter(n=>!a.has(n)).sort().slice(0,24),
@@ -694,6 +749,7 @@ export function historicalFeatureFacts(feature:GeoFeature):Array<{label:string;v
   ["START","Начало периода (по источнику)"],["END","Конец периода (по источнику)"],
   ["SOURCE","Источник атрибута"],["NOTES","Примечания источника"]];
  return fields.flatMap(([key,label])=>{
+  if(p.ATLAS_HISTORICAL_LABEL&&["SUBJECTO","PARTOF","BORDERPRECISION","BORDER_PRECISION"].includes(key))return [];
   const value=p[key];
   if(typeof value==="number"&&Number.isFinite(value))
    return [{label,value:String(value)}];

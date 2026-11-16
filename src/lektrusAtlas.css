@@ -259,11 +259,11 @@
 .lektrus-atlas-country-capitals{display:flex;flex-direction:column;gap:5px;padding:8px;
  margin:7px 0;background:#f1f5f9;border:1px solid #d6e0e8;border-radius:7px}
 .lektrus-atlas-country-capitals>strong{font-size:11px;color:#375777}
-.lektrus-atlas-country-capitals button{display:flex;justify-content:space-between;align-items:center;
- gap:8px;text-align:left;padding:7px 8px;border:1px solid #d3e1ee;border-radius:6px;
+.lektrus-atlas-country-capitals button{display:flex;flex-direction:column;align-items:flex-start;
+ gap:3px;text-align:left;padding:7px 8px;border:1px solid #d3e1ee;border-radius:6px;
  background:#fff;color:#27435c;font-size:11px;cursor:pointer}
 .lektrus-atlas-country-capitals button:hover{background:#e7f3ff}
-.lektrus-atlas-country-capitals button span{font-size:9px;color:#4077a2;white-space:nowrap}
+.lektrus-atlas-country-capitals button span{font-size:10px;color:#4077a2;white-space:normal}
 
 /* Dragging and pinch-zooming must never select geographical SVG labels. */
 .lektrus-atlas-map-box,.lektrus-atlas-map-box *,.lektrus-atlas-svg,.lektrus-atlas-svg text{
