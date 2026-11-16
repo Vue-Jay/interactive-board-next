@@ -50,6 +50,30 @@ for(const stock of db.substances.filter(x=>x.kind==='газ')){
  assert.ok(inventory.solidMol.NaCl>0,`${stock.id} must not dissolve dry salt`);
 }
 const kits=load('src/lektrusLabExperimentKits.ts');
+assert.equal(st.labIsGasDose('CH3CHO',{unit:'ml',value:1}),false);
+assert.equal(st.labIsGasDose('HCHO',{unit:'ml',value:1,concentrationM:.1}),false);
+assert.equal(st.labIsGasDose('CH3CHO',st.labGasDose('CH3CHO',1)),true);
+assert.equal(st.labIsGasDose('HCHO',st.labGasDose('HCHO',1)),true);
+// Volatile aldehyde products of the reviewed thermal oxidation cases are
+// actual gas-phase products, not a layer of powder. Keep equation identity
+// unchanged so saved experiments and the chalkboard remain compatible.
+for(const [id,formula] of [['C2H5OH','CH3CHO'],['CH3OH','HCHO']]){
+ const row=db.reviewedReactionCases.find(r=>r.environment==='heated'&&r.reactants.includes(id)&&r.reactants.includes('CuO'));
+ assert.ok(row);
+ assert.ok(st.labGasProductFormulas(row.equation).has(formula),`${formula}: volatile thermal product must be counted as gas`);
+ const doses=Object.fromEntries(row.reactants.map(r=>[r,kits.labExperimentDose(row,r)]));
+ const input={reagents:row.reactants,doses,environment:row.environment,temperatureC:row.minTemperatureC};
+ const inv=net.simulateLabInventory(input);
+ assert.ok(inv.releasedGasMol[formula]>0,`${formula}: gas ledger receives the produced amount`);
+ assert.equal(inv.solidMol[formula]??0,0);
+ assert.equal(inv.speciesMol[formula]??0,0);
+ const qualitative={...lab.defaultLabBench().vessels[0],reagents:row.reactants,
+  doses:undefined,environment:row.environment,observed:true,completedReaction:row};
+ const shown=lab.labVesselContents(qualitative);
+ assert.ok(!shown.solution.some(s=>s.formula===formula)&&!shown.solid.some(s=>s.formula===formula),
+  `${formula}: qualitative chemistry must not render gas as dissolved or powdered product`);
+ assert.ok(shown.solid.some(s=>s.formula==='Cu'), 'Thermal residue belongs in the solid phase');
+}
 let checked=0;
 for(const row of db.reviewedReactionCases.filter(r=>r.status==='reaction'&&['heated','ignited'].includes(r.environment))){
  const products=st.labGasProductFormulas(row.equation);if(!products.size)continue;

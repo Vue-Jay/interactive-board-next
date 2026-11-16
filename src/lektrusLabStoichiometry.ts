@@ -6,13 +6,18 @@ import {substances,reviewedReactionCases,type ReactionCase} from "./lektrusReact
 const substancesByFormula=(formula:string)=>substances.find(v=>v.id===formula);
 const thermalEquations=new Set(reviewedReactionCases.filter(row=>row.environment==="heated"||row.environment==="ignited").map(row=>row.equation));
 const permanentGasFormulas=new Set(substances.filter(s=>s.kind==="газ").map(s=>s.id));
+// These reviewed thermal products leave the hot reaction as vapor. The
+// cabinet still stocks HCl/HCHO in water and CH3CHO as a measured liquid:
+// do not globally change the phase of those reagent bottles.
+// NIST SRD 69: acetaldehyde (C75070), formaldehyde (C50000).
+const thermalVaporProducts=new Set(["HCl","CH3CHO","HCHO"]);
 // Older equation records omit ↑ on some combustion/redox gases. Preserve
 // their saved equation identity but never classify CO2, SO2, or N2 as powder.
 export function labGasProductFormulas(equation:string):Set<string>{
  const thermal=thermalEquations.has(equation);
  return new Set((equation.split("→")[1]??"").split(/\s+\+\s+/).flatMap(term=>{
   const formula=term.replace(/^\s*\d+\s*/,"").replace(/[↑↓]/g,"").trim();
-  return term.includes("↑")||thermal&&(permanentGasFormulas.has(formula)||formula==="HCl")?[formula]:[];
+  return term.includes("↑")||thermal&&(permanentGasFormulas.has(formula)||thermalVaporProducts.has(formula))?[formula]:[];
  }));
 }
 

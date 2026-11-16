@@ -1642,12 +1642,14 @@ function calculateLabVesselContents(v:LabVessel){
    precipitateFraction:unknownDensity?undefined:
     precipitateVolumeMl>1e-12?Math.max(0,Math.min(.8,precipitateVolumeMl/capacityMl)):undefined};
  }
- const equation=(v.completedReaction??labObservation(v).caseData)?.equation??"";
+ const reactionCase=v.completedReaction??labObservation(v).caseData;
+ const equation=reactionCase?.equation??"";
  const products=(equation.split("→")[1]??"").split(/\s+\+\s+/);
  const precipitates=new Set(products.filter(t=>t.includes("↓"))
   .map(t=>t.replace(/^\d+\s*/,"").replace(/[↓↑]/g,"").trim()));
- const gases=new Set(products.filter(t=>t.includes("↑"))
-  .map(t=>t.replace(/^\d+\s*/,"").replace(/[↓↑]/g,"").trim()));
+ const gases=labGasProductFormulas(equation);
+ const isSolidProduct=(formula:string)=>precipitates.has(formula)||
+  (reactionCase?.environment??v.environment)!=="aqueous"&&formula!=="H2O";
  const solid:{formula:string;massG?:number}[]=[];
  const solution:{formula:string;mmol?:number}[]=[];
  let precipitateG: number|undefined=undefined,precipitateVolumeMl: number|undefined=undefined;
@@ -1660,7 +1662,7 @@ function calculateLabVesselContents(v:LabVessel){
   // During pause, show the stored reactants and previously settled solids,
   // not the products of a chemical transformation that has yet to run.
   for(const [formula,mol] of Object.entries(v.chemicalInventory.speciesMol)){
-   if(mol<=1e-12)continue;
+   if(mol<=1e-12||labIsGasDose(formula,v.doses?.[formula]))continue;
    const solidMol=v.chemicalInventory.solidMol[formula]??0;
    if(solidMol>1e-12){
     const mass=labMolarMass(formula);
@@ -1678,17 +1680,17 @@ function calculateLabVesselContents(v:LabVessel){
  }else if(quantities){
   for(const [formula,mol] of Object.entries(quantities.productsMol)){
    if(mol<=1e-12||gases.has(formula))continue;
-   if(precipitates.has(formula)){
+   if(isSolidProduct(formula)){
     const mass=labMolarMass(formula);
     const massG=mass===undefined?undefined:mol*mass;
     solid.push({formula,massG});
-    if(massG!==undefined)precipitateG=(precipitateG??0)+massG;
-    if(massG!==undefined&&precipitateDensity(formula))
+    if(precipitates.has(formula)&&massG!==undefined)precipitateG=(precipitateG??0)+massG;
+    if(precipitates.has(formula)&&massG!==undefined&&precipitateDensity(formula))
      precipitateVolumeMl=(precipitateVolumeMl??0)+massG/precipitateDensity(formula);
    }else solution.push({formula,mmol:formatMol(mol)});
   }
   for(const [formula,mol] of Object.entries(quantities.remainingMol)){
-   if(mol<=1e-12)continue;
+   if(mol<=1e-12||labIsGasDose(formula,v.doses?.[formula]))continue;
    // Only non-dissolved solids remain a separate particulate phase.
    if(v.doses?.[formula]?.unit==="g"&&!LAB_WATER_SOLUTES.has(formula)&&formula!=="H2O")
     solid.push({formula,massG:labMolarMass(formula)===undefined?undefined:labMolarMass(formula)!*mol});
@@ -1703,7 +1705,7 @@ function calculateLabVesselContents(v:LabVessel){
   for(const formula of v.reagents){
    if(accounted.has(formula))continue;
    const dose=v.doses?.[formula];
-   if(!dose)continue;
+   if(!dose||labIsGasDose(formula,dose))continue;
    if(dose.unit==="g"&&!LAB_WATER_SOLUTES.has(formula))
     solid.push({formula,massG:dose.value});
    else{
@@ -1721,12 +1723,13 @@ function calculateLabVesselContents(v:LabVessel){
   for(const term of products){
    const formula=term.replace(/^\d+\s*/,"").replace(/[↓↑]/g,"").trim();
    if(!formula||gases.has(formula))continue;
-   if(precipitates.has(formula))solid.push({formula});
+   if(isSolidProduct(formula))solid.push({formula});
    else solution.push({formula});
   }
  }else{
   for(const formula of v.reagents){
    const d=v.doses?.[formula];
+   if(labIsGasDose(formula,d))continue;
    if(d?.unit==="g"&&!LAB_WATER_SOLUTES.has(formula))solid.push({formula,massG:d.value});
    else solution.push({formula});
   }
