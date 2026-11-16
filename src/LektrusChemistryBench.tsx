@@ -1332,7 +1332,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
       if(from)setTransfer({from:vesselPosition(from),to:{x:filter.d.x,y:filter.d.y-3}});
       onChange?.(next);
       setNotice("Осадок задержан фильтром, фильтрат в чистом сосуде");
-     }else setNotice(labGasStoredMl(bench.vessels.find(v=>v.id===g.id)!)>0?"Сначала перенесите газ в газосборник":"Нужен завершённый осадок и свободное место для фильтрата");
+     }else setNotice(labGasStoredMl(bench.vessels.find(v=>v.id===g.id)!)>0?"Сначала перенесите газ в газосборник":"Нужна водная взвесь без текущей реакции, чистый фильтр и свободный приёмник");
      setPreview(null);setDropDeviceId(null);setDropTarget(null);return;
     }
     const target=targetAt(g.id,p);
@@ -1527,8 +1527,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
       if(source&&filter)setTransfer({from:vesselPosition(source),to:{x:filter.x,y:filter.y-3}});
       onChange?.(next);setLocalPourId(null);
       setNotice("Фильтрат прошёл через мембрану, осадок остался на фильтре");
-     }else setNotice(bench.vessels.some(v=>v.id===effectivePouringId&&labGasStoredMl(v)>0)?"Сначала перенесите газ в газосборник":"Нужна завершённая реакция с осадком и свободный приёмник");
-    }else setNotice("Перетащите сосуд с готовым осадком непосредственно на фильтр");
+     }else setNotice(bench.vessels.some(v=>v.id===effectivePouringId&&labGasStoredMl(v)>0)?"Сначала перенесите газ в газосборник":"Нужна водная взвесь без текущей реакции, чистый фильтр и свободный приёмник");
+    }else setNotice("Перетащите сосуд с осадком или взвесью непосредственно на фильтр");
    }
   }
   setDevicePreview(null);setDropDeviceShelf(false);

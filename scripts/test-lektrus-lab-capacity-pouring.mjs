@@ -49,6 +49,33 @@ assert.equal(lab.labVesselQuantity(vessel(setup,"v2")).availableMl,15);
 const started=lab.startLabPour(setup,"v1","v2","cap-gradual");
 assert.ok(started.pouring,"Must be able to begin even when source > free capacity");
 approx(started.pouring.transferFraction,.15,1e-10);
+// While an animated pour is pending, a second action can change the
+// physical state. Stop rather than resurrect or overfill material.
+const firstPortion=lab.advanceLabPour(started);
+const filledWhilePouring=lab.putLabReagent(firstPortion,"v2","H2O",water(14.25));
+const stoppedAtRim=lab.advanceLabPour(filledWhilePouring);
+assert.equal(stoppedAtRim.pouring,undefined);
+assert.deepEqual(stoppedAtRim.vessels,filledWhilePouring.vessels);
+const newStock=lab.putLabReagent(firstPortion,"v1","NaCl",{unit:"g",value:1});
+const interrupted=lab.advanceLabPour(newStock,19);
+assert.equal(interrupted.pouring,undefined);
+assert.deepEqual(interrupted.vessels,newStock.vessels,"Do not erase a new stock during an old pour");
+let corkTest=lab.addLabVessel(setup,"flask");
+corkTest=lab.startLabPour(corkTest,"v1","v3","corked-mid-pour");
+corkTest=lab.setLabVesselStopper(corkTest,"v3",true);
+assert.equal(lab.advanceLabPour(corkTest).pouring,undefined);
+assert.deepEqual(lab.advanceLabPour(corkTest).vessels,corkTest.vessels);
+const washed=lab.emptyLabVessel(firstPortion,"v2");
+assert.equal(washed.pouring,undefined,"Washing receiver stops the old pour");
+assert.equal(lab.advanceLabPour(washed),washed);
+const stalePortion=lab.advanceLabPour(firstPortion);
+for(const [local,remote] of [[washed,stalePortion],[stalePortion,washed]]){
+ const merged=lab.mergeLabBench(firstPortion,local,remote);
+ assert.equal(merged.pouring,undefined,"Stale peer tick cannot resume a cancelled pour");
+ assert.equal(vessel(merged,"v1").doses.H2O.value,vessel(washed,"v1").doses.H2O.value);
+ assert.deepEqual(vessel(merged,"v2").reagents,[]);
+ assert.equal(vessel(merged,"v2").doses,undefined);
+}
 let staged=lab.advanceLabPour(started);
 approx(vessel(staged,"v1").doses.H2O.value,99.25);
 approx(vessel(staged,"v2").doses.H2O.value,10.75);

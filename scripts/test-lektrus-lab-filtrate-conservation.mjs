@@ -25,6 +25,35 @@ const stoich=load("src/lektrusLabStoichiometry.ts");
 const dose=(value=10)=>({value,unit:"ml",concentrationM:.1});
 const approx=(a,b,tolerance=1e-7)=>
  assert.ok(Math.abs(a-b)<tolerance,String(a)+" != "+String(b));
+// A simple measured suspension can be separated without inventing a
+// chemical reaction. A closed nearby flask must not mask another receiver.
+let suspension=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",{unit:"ml",value:20});
+suspension=lab.putLabReagent(suspension,"v1","SiO2",{unit:"g",value:2});
+suspension=lab.setLabIndicator(suspension,"v1","phenolphthalein");
+suspension={...suspension,vessels:suspension.vessels.map(v=>({...v,temperatureC:45}))};
+suspension=lab.addLabVessel(suspension,"flask",{x:31,y:70});
+suspension=lab.setLabVesselStopper(suspension,"v2",true);
+suspension=lab.addLabVessel(suspension,"beaker",{x:70,y:70});
+suspension=lab.addPlacedLabDevice(suspension,"filter",{x:30,y:70});
+const suspensionFilterId=lab.placedLabDevices(suspension).find(d=>d.kind==="filter").id;
+assert.equal(lab.filterLabPrecipitate(suspension,"v1","v2"),suspension,"Closed flask cannot receive filtrate");
+const suspensionSeparated=lab.filterLabPrecipitate(suspension,"v1","v3");
+assert.notEqual(suspensionSeparated,suspension,"Mechanical filtration does not require a chemical equation");
+const sand=suspensionSeparated.vessels[0],water=suspensionSeparated.vessels[2];
+assert.equal(sand.filteredResidue.formula,"SiO2");
+approx(sand.filteredResidue.massG,2);
+assert.equal(water.filteredSolution.volumeMl,20);
+assert.equal(water.temperatureC,45);
+assert.equal(water.indicator,"phenolphthalein");
+assert.equal(sand.indicator,undefined);
+approx(chemistry.labInventoryMassG(chemistry.simulateLabInventory(sand))+
+ chemistry.labInventoryMassG(chemistry.simulateLabInventory(water)),
+ chemistry.labInventoryMassG(chemistry.simulateLabInventory(suspension.vessels[0])));
+const autoSeparated=lab.pourLabIntoFilter(suspension,"v1",suspensionFilterId);
+assert.equal(autoSeparated.selectedId,"v3","Nearest closed receiver is skipped");
+assert.equal(autoSeparated.vessels[0].reagents.length,0);
+assert.equal(lab.placedLabDevices(autoSeparated).find(d=>d.id===suspensionFilterId).collectedResidue.formula,"SiO2");
+assert.equal(autoSeparated.reactionLog?.length??0,0,"Filtration is not a chemical reaction");
 let bench=lab.setLabSimulationPaused(lab.defaultLabBench(),false,0);
 bench=lab.putLabReagent(bench,"v1","BaCl2",dose());
 bench=lab.putLabReagent(bench,"v1","Na2SO4",dose());
