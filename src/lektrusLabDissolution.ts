@@ -10,10 +10,31 @@ type Dose={value:number;unit:"g"|"ml";concentrationM?:number;phase?:"gas"};
 export type LabBinarySaltState={formula:string;solidMol:number};
 export type LabBinarySaltInput={
  reagents:readonly string[];environment:string;doses?:Record<string,Dose>;
- uncertain?:boolean;chemicalInventory?:unknown;completedReaction?:unknown;
- reactionAmounts?:unknown;filteredSolution?:unknown;filteredResidue?:unknown;
+ uncertain?:boolean;chemicalInventory?:{speciesMol:Record<string,number>;solidMol:Record<string,number>;settled?:boolean};completedReaction?:unknown;
+ reactionAmounts?:unknown;filteredSolution?:{sourceEquation:string;volumeMl?:number};filteredResidue?:unknown;
 };
+/** One salt in a measured aqueous stock carrier. Use the same clearly
+ * illustrative water-volume approximation as the other classroom models;
+ * the molecular ledger, unlike the carrier estimate, stays exact. */
+export function labMeasuredStockSaltEquilibrium(v:LabBinarySaltInput,tempC:number){
+ if(!["aqueous","dry"].includes(v.environment)||!v.chemicalInventory||!v.filteredSolution||
+  v.filteredSolution.sourceEquation!==""||v.uncertain||v.completedReaction||v.reactionAmounts||v.filteredResidue)return;
+ const solutes=Object.entries(v.chemicalInventory.speciesMol).filter(([id,mol])=>id!=="H2O"&&mol>1e-12);
+ if(solutes.length!==1)return;
+ const [formula,totalMol]=solutes[0];
+ const parts=Object.entries(v.doses??{});
+ if(parts.some(([id,d])=>id!==formula&&id!=="H2O"||labIsGasDose(id,d)||
+  d.unit==="ml"&&id!=="H2O"&&d.concentrationM===undefined))return;
+ const waterMl=(v.filteredSolution.volumeMl??0)+parts.reduce((sum,[,d])=>sum+(d.unit==="ml"?d.value:0),0);
+ if(v.environment==="dry"&&waterMl>1e-9)return;
+ const solubility=labSchoolSolubilityGPer100gWater(formula,tempC)?.value;
+ const molarMass=labMolarMass(formula);
+ if(waterMl<0||solubility===undefined||!molarMass||!Number.isFinite(totalMol))return;
+ return {formula,molarMass,totalMol,waterMl,
+  equilibriumSolidMol:Math.max(0,totalMol-waterMl*.997*solubility/100/molarMass)};
+}
 export function labBinarySaltEquilibrium(v:LabBinarySaltInput,tempC:number){
+ if(v.chemicalInventory?.settled)return labMeasuredStockSaltEquilibrium(v,tempC);
  if(v.environment!=="aqueous"||v.uncertain||v.chemicalInventory||
   v.completedReaction||v.reactionAmounts||v.filteredSolution||v.filteredResidue||
   !v.doses||!Number.isFinite(tempC))return;
@@ -42,6 +63,8 @@ export function labAdvanceBinarySaltPhase(
  const eq=labBinarySaltEquilibrium(v,tempC);
  if(!eq)return;
  const {formula,totalMol,equilibriumSolidMol}=eq;
+ if(eq.waterMl<=1e-9)return {state:{formula,solidMol:totalMol},totalMol,equilibriumSolidMol,
+  active:false,direction:"stable"};
  const old=previous?.formula===formula?
   Math.max(0,Math.min(totalMol,previous.solidMol)):
   startingDry?totalMol:equilibriumSolidMol;
@@ -62,7 +85,7 @@ export function labVisibleBinarySaltSolid(
  const eq=labBinarySaltEquilibrium(v,tempC);
  if(!eq||phase?.formula!==eq.formula||!Number.isFinite(phase.solidMol)||
    phase.solidMol<0||phase.solidMol>eq.totalMol+1e-7)return;
- return {formula:eq.formula,solidMol:Math.min(eq.totalMol,phase.solidMol),
+ return {formula:eq.formula,solidMol:eq.waterMl<=1e-9?eq.totalMol:Math.min(eq.totalMol,phase.solidMol),
   totalMol:eq.totalMol,equilibriumSolidMol:eq.equilibriumSolidMol};
 }
 

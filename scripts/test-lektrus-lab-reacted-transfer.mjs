@@ -24,6 +24,54 @@ const stoich=load("src/lektrusLabStoichiometry.ts");
 const dose=(volume=10,molarity=.1)=>({unit:"ml",value:volume,concentrationM:molarity});
 const approx=(a,b,tol=1e-6)=>assert.ok(Math.abs(a-b)<=tol,a+" != "+b);
 const qty=(bench,id)=>bench.vessels.find(v=>v.id===id);
+// The school cabinet offers both weighed and prepared forms for many salts.
+// Combining them must preserve moles, solvent volume and actual crystal mass.
+const drySalt={unit:"g",value:5};
+const aqueousSalt=dose(10,.1);
+const expectedSaltMol=5/stoich.labMolarMass("NaCl")+.001;
+for(const [a,b] of [[drySalt,aqueousSalt],[aqueousSalt,drySalt]]){
+ let mix=lab.putLabReagent(lab.defaultLabBench(),"v1","NaCl",a);
+ mix=lab.putLabReagent(mix,"v1","NaCl",b);
+ let v=qty(mix,"v1");
+ approx(lab.labVesselQuantity(v).volumeMl,10);
+ approx(v.chemicalInventory.speciesMol.NaCl,expectedSaltMol,1e-10);
+ approx(v.binarySaltPhase.solidMol,5/stoich.labMolarMass("NaCl"),1e-10);
+ assert.equal(v.physicalProcess,"dissolving");
+ mix=lab.setLabSimulationPaused(mix,false,1000);
+ for(let t=2000;t<=181000;t+=1000)mix=lab.advanceLabSimulation(mix,t);
+ v=qty(mix,"v1");
+ const phase=chemical.simulateLabInventory(v);
+ approx(phase.speciesMol.NaCl,expectedSaltMol,1e-10);
+ assert.ok(phase.solidMol.NaCl>0&&phase.solidMol.NaCl<5/stoich.labMolarMass("NaCl"),"Excess salt remains as real crystals");
+ assert.ok(lab.labVesselContents(v).solid.some(s=>s.formula==="NaCl"&&s.massG>0));
+ mix=lab.putLabReagent(mix,"v1","H2O",{unit:"ml",value:30});
+ for(let t=182000;t<=361000;t+=1000)mix=lab.advanceLabSimulation(mix,t);
+ v=qty(mix,"v1");
+ approx(chemical.simulateLabInventory(v).speciesMol.NaCl,expectedSaltMol,1e-10);
+ assert.ok((chemical.simulateLabInventory(v).solidMol.NaCl??0)<1e-4,"Dilution dissolves remaining crystals");
+}
+{
+let concentrated=lab.putLabReagent(lab.defaultLabBench(),"v1","NaCl",drySalt);
+concentrated=lab.putLabReagent(concentrated,"v1","NaCl",aqueousSalt);
+const originalMixed=qty(concentrated,"v1");
+const evaporation=load("src/lektrusLabEvaporation.ts");
+const evaporated=evaporation.labEvaporate(originalMixed,10,100,150,150);
+assert.ok(evaporated.evaporatedMl>0,"Mixed stock carrier can evaporate");
+approx(evaporated.filteredSolution.volumeMl+evaporated.ventedVaporMl.H2O,10,1e-7);
+const dryReadback={...originalMixed,environment:"dry",filteredSolution:{...originalMixed.filteredSolution,volumeMl:0},
+ binarySaltPhase:{formula:"NaCl",solidMol:0}};
+approx(chemical.simulateLabInventory(dryReadback).solidMol.NaCl,expectedSaltMol,1e-10);
+// A later reagent must react with the real accumulated salt, not merely the
+// original dilute stock concentration or the most recent powder dose.
+const reacting=lab.putLabReagent(concentrated,"v1","AgNO3",dose(10,.1));
+assert.ok(qty(reacting,"v1").pendingInventoryReaction);
+let progressed=lab.setLabSimulationPaused(reacting,false,1000);
+for(let t=2000;t<=25000;t+=1000)progressed=lab.advanceLabSimulation(progressed,t);
+const products=chemical.simulateLabInventory(qty(progressed,"v1"));
+assert.ok(products.solidMol.AgCl>.00099);
+approx(chemical.labInventoryMassG(products),expectedSaltMol*stoich.labMolarMass("NaCl")+
+ .001*stoich.labMolarMass("AgNO3"),1e-7);
+}
 let transfer=lab.addLabVessel(lab.setLabSimulationPaused(lab.defaultLabBench(),false,0),"beaker");
 transfer=lab.putLabReagent(transfer,"v1","NaCl",dose(10,.1));
 const moved=lab.fastLabPour(transfer,"v1","v2");
@@ -188,13 +236,44 @@ const cabinet=load("src/lektrusLabCatalog.ts");
 const stocks=database.substances.flatMap(s=>cabinet.labReagentForms(s).map(unit=>
  [s.id,cabinet.labDefaultStockDose(s.id,unit)]));
 const liquids=stocks.filter(([id,d])=>d.unit==="ml"&&!stoich.labIsGasDose(id,d));
+const dualStocks=database.substances.filter(s=>cabinet.labReagentForms(s).length===2);
+let stockCases=0;
+for(const stock of dualStocks){
+ const id=stock.id,solid=cabinet.labDefaultStockDose(id,"g"),liquid=cabinet.labDefaultStockDose(id,"ml");
+ const expected=stoich.labDoseMoles(id,solid)+stoich.labDoseMoles(id,liquid);
+ for(const [a,b] of [[solid,liquid],[liquid,solid]]){
+  const base=lab.putLabReagent(lab.defaultLabBench(),"v1",id,a);
+  const mixed=lab.putLabReagent(base,"v1",id,b);
+  assert.notEqual(mixed,base,id+": mixed stock must be accepted");
+  approx(chemical.simulateLabInventory(qty(mixed,"v1")).speciesMol[id],expected,1e-10);
+  approx(lab.labVesselQuantity(qty(mixed,"v1")).volumeMl,liquid.value);
+  let split=lab.addLabVessel(base,"beaker");
+  split=lab.putLabReagent(split,"v2",id,b);
+  for(const move of [lab.pourLabVessel,lab.fastLabPour]){
+   const joined=move(split,"v1","v2");
+   assert.notEqual(joined,split,id+": mixed stock pour must be accepted");
+   approx(chemical.simulateLabInventory(qty(joined,"v2")).speciesMol[id],expected,1e-10);
+   approx(lab.labVesselQuantity(qty(joined,"v2")).volumeMl,liquid.value);
+   stockCases++;
+  }
+  if(a.unit==="ml"){
+   const sampled=lab.transferLabMeasuredLiquid(split,"v1","v2",5);
+   assert.notEqual(sampled,split,id+": solution to weighed stock sample");
+   const total=sampled.vessels.reduce((sum,v)=>sum+(chemical.simulateLabInventory(v).speciesMol[id]??0),0);
+   approx(total,expected,1e-10);
+   approx(lab.labVesselQuantity(qty(sampled,"v2")).volumeMl,5);
+   stockCases++;
+  }
+  stockCases++;
+ }
+}
+console.log(`Solid + prepared solution matrix: ${dualStocks.length} compounds, ${stockCases} scenarios`);
 let sampled=0;const sampleIssues=[];
 for(const [sourceId,stock] of liquids){
  const sourceDose={...stock,value:10};
  const seed=lab.putLabReagent(lab.addLabVessel(lab.defaultLabBench(),"beaker"),"v1",sourceId,sourceDose);
  if(lab.labReactionNeedsTick(qty(seed,"v1")))continue;
  for(const [targetId,targetStock] of stocks){
-  if(targetId===sourceId&&targetStock.unit!==sourceDose.unit)continue;
   const ready=lab.putLabReagent(seed,"v2",targetId,targetStock);
   if(lab.labReactionNeedsTick(qty(ready,"v2")))continue;
   const direct=lab.putLabReagent(ready,"v2",sourceId,{...sourceDose,value:5});

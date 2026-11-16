@@ -6,7 +6,7 @@ import {reviewedReactionCases,type ReactionEnvironment,type ReactionCase} from "
 import {labDoseMoles,labIsGasDose,labMolarMass,parseBalancedLabEquation,labGasProductFormulas,type LabReactionAmounts} from "./lektrusLabStoichiometry";
 import type {LabDose} from "./lektrusChemistryBenchModel";
 import {labEquilibrateSingleSaltCrystals,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
-import {labSchoolMixedSaltEquilibrium} from "./lektrusLabDissolution";
+import {labSchoolMixedSaltEquilibrium,labMeasuredStockSaltEquilibrium} from "./lektrusLabDissolution";
 
 /** Persistent, strictly quantitative phase inventory. A transfer can carry
  * these molecule counts without pretending the filtrate is a fresh stock
@@ -317,7 +317,7 @@ export function simulateLabInventory(input:{
  reagents:readonly string[];doses?:Record<string,LabDose>;
  environment:ReactionEnvironment;temperatureC?:number;stoppered?:boolean;
  chemicalInventory?:LabChemicalSnapshot;
- filteredSolution?:{volumeMl?:number};
+ filteredSolution?:{sourceEquation?:string;volumeMl?:number};
  /** Partial progress of a measured gas-generating reaction. */
  reactionAmounts?:Pick<LabReactionAmounts,"equation"|"productsMol"|"remainingMol">&
   Partial<LabReactionAmounts>;
@@ -342,7 +342,7 @@ export function simulateLabInventory(input:{
  // Otherwise a cached unsaturated filtrate masks newly formed crystals.
  const key=JSON.stringify([input.reagents,input.doses,input.environment,input.temperatureC??22,!!input.stoppered,
   input.chemicalInventory,input.reactionAmounts,input.binarySaltPhase,
-  input.mixedSaltPhase,volumeMl,maxSteps,input.onlyEquation,input.presentOnly]);
+  input.mixedSaltPhase,input.filteredSolution?.sourceEquation,input.filteredSolution?.volumeMl,volumeMl,maxSteps,input.onlyEquation,input.presentOnly]);
  const cached=inventoryCache.get(key);
  if(cached)return cached;
  const inventory:LabInventory={speciesMol:{},solidMol:{},releasedGasMol:{},retainedGasMol:{},
@@ -390,7 +390,18 @@ export function simulateLabInventory(input:{
   // is limited to school salts with measured water-solubility curves;
   // unsupported mixed chemistry keeps its recorded phase untouched.
   if(input.chemicalInventory.settled&&input.filteredSolution&&
-    input.environment==="aqueous"){
+    (input.environment==="aqueous"||input.environment==="dry"&&volumeMl<=1e-9)){
+   const stock=input.filteredSolution.sourceEquation===""?labMeasuredStockSaltEquilibrium({
+    ...input,filteredSolution:{...input.filteredSolution,sourceEquation:""}
+   },input.temperatureC??22):undefined;
+   if(stock){
+    const phase=input.binarySaltPhase;
+    const solid=stock.waterMl<=1e-9?stock.totalMol:phase?.formula===stock.formula&&Number.isFinite(phase.solidMol)?
+     Math.max(0,Math.min(stock.totalMol,phase.solidMol)):stock.equilibriumSolidMol;
+    if(solid>EPS)inventory.solidMol[stock.formula]=solid;
+    else delete inventory.solidMol[stock.formula];
+    return remember(key,inventory);
+   }
    const dissolved=Object.entries(inventory.speciesMol).filter(([id,mol])=>
     id!=="H2O"&&mol>EPS);
    const known=dissolved.map(([id,mol])=>({

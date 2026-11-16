@@ -2486,9 +2486,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
        <li key={id}>{id}: {formatted(ml)} мл</li>)}</ul>
      </>}
      {v.chemicalInventory&&v.filteredSolution&&
-      <p>Фильтрат: {formatted(v.filteredSolution.volumeMl??quantity.volumeMl)} мл.
-       Количество каждого растворённого вещества сохранено после отделения осадка и
-       используется в последующих реакциях.</p>}
+      <p>{v.filteredSolution.sourceEquation?"Фильтрат":"Учтённый раствор"}: {formatted(v.filteredSolution.volumeMl??quantity.volumeMl)} мл.
+       {v.filteredSolution.sourceEquation?" Количество каждого вещества сохранено после отделения осадка.":
+        " Дозы учитываются по количеству вещества; растворимость и объём водного носителя моделируются приближённо."}
+       {" Состав используется в последующих реакциях."}</p>}
      <details className="lektrus-lab-property-inspector">
       <summary>Физико-химические свойства реагентов и продуктов ({formulasInVessel.length})</summary>
       <small>Значения относятся только к указанному чистому веществу и

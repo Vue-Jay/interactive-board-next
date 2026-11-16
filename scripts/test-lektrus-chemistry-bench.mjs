@@ -1567,7 +1567,7 @@ assert.match(polishedLabSource,/className=\{"lektrus-lab-board-write-toggle"/);
 assert.match(polishedLabSource,/pourLabIntoFilter\(bench,g\.id,filter\.d\.id\)/);
 assert.match(polishedLabSource,/d\.kind==="filter"/,
  "The real filter must be recognized as an interactive tabletop appliance");
-assert.match(polishedLabSource,/setNotice\("Перетащите сосуд с готовым осадком непосредственно на фильтр"\)/,
+assert.match(polishedLabSource,/setNotice\("Перетащите сосуд с осадком или взвесью непосредственно на фильтр"\)/,
  "The device asks for direct pouring, never an extra selection dialog");
 assert.ok(lab.devicesForLabMode(detailedBench()).some(v=>v.id==="filter"));
 
