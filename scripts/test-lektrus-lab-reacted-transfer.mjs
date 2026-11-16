@@ -24,6 +24,20 @@ const stoich=load("src/lektrusLabStoichiometry.ts");
 const dose=(volume=10,molarity=.1)=>({unit:"ml",value:volume,concentrationM:molarity});
 const approx=(a,b,tol=1e-6)=>assert.ok(Math.abs(a-b)<=tol,a+" != "+b);
 const qty=(bench,id)=>bench.vessels.find(v=>v.id===id);
+// An exact partial sample plus fresh prepared stock must preserve the dose
+// metadata and concentration, even though the molecular ledger is separate.
+{
+ let b=lab.addLabVessel(lab.defaultLabBench(),"beaker");
+ b=lab.putLabReagent(b,"v1","NaCl",dose(10,.137321));
+ const source=qty(b,"v1");
+ b={...b,vessels:b.vessels.map(v=>v.id!=="v1"?v:{...v,
+  chemicalInventory:{speciesMol:{NaCl:.00137321},solidMol:{},settled:true}})};
+ const moved=lab.pourLabVessel(b,"v1","v2");
+ assert.notEqual(moved,b);
+ assert.equal(qty(moved,"v1").doses,undefined);
+ approx(qty(moved,"v2").doses.NaCl.value,source.doses.NaCl.value,1e-12);
+ approx(qty(moved,"v2").doses.NaCl.concentrationM,source.doses.NaCl.concentrationM,1e-12);
+}
 // Real liquid-only sampling: measured solid phase stays in the donor,
 // including powder suspended in plain water, visible crystals and gas.
 {

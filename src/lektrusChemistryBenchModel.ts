@@ -1138,9 +1138,11 @@ export function dripLabVessel(bench:LabBench,sourceId:string,targetId:string,req
  const addedBefore=old?.addedMl??0;
  const freeMl=Math.max(0,labVesselQuantity(dst).availableMl);
  const ml=Math.min(Math.round(requestedMl*100)/100,sourceDose.value,100-addedBefore,
-  Math.floor(freeMl*100+1e-7)/100);
+  freeMl);
  if(ml<=0)return bench;
- const newTotal=Math.round((addedBefore+ml)*100)/100;
+ // Graduations constrain the requested dose, not the actual liquid left in
+ // the burette or receiver. Keep an exact ledger for the final partial drop.
+ const newTotal=Math.min(100,addedBefore+ml);
  const model:TitrationModel=old?{...old,addedMl:newTotal}:{
   acid:(isAcid?titrant:analyte) as TitrationModel["acid"],
   base:(isAcid?analyte:titrant) as TitrationModel["base"],
@@ -1153,7 +1155,7 @@ export function dripLabVessel(bench:LabBench,sourceId:string,targetId:string,req
  if(!validTitration(model))return bench;
  const vessels=bench.vessels.map(v=>{
   if(v.id===sourceId){
-   const left=Math.round((sourceDose.value-ml)*100)/100;
+   const left=Math.max(0,sourceDose.value-ml);
    return {...v,reagents:left?[titrant]:[],doses:left?
     {[titrant]:{...sourceDose,value:left}}:undefined,observed:false};
   }
@@ -3473,13 +3475,12 @@ function pourMeasuredFiltrate(bench:LabBench,source:LabVessel,target:LabVessel):
   if(labIsGasDose(id,dose))continue;
   const existing=received[id];
   if(existing&&(existing.unit!==dose.unit||labIsGasDose(id,existing)))return bench;
-  const value=Math.round(((existing?.value??0)+dose.value)*1e6)/1e6;
+  const value=(existing?.value??0)+dose.value;
   if(value<=0||value>10000)return bench;
-  const concentrationM=dose.unit==="ml"&&(existing?.concentrationM!==undefined||
-   dose.concentrationM!==undefined)?
-   existing?.concentrationM!==undefined&&dose.concentrationM!==undefined?
-    (existing.value*existing.concentrationM+dose.value*dose.concentrationM)/value:
-    undefined:undefined;
+  const concentrationM=dose.unit==="ml"?(existing?
+   existing.concentrationM!==undefined&&dose.concentrationM!==undefined?
+    existing.concentrationM+(dose.concentrationM-existing.concentrationM)*(dose.value/value):
+    undefined:dose.concentrationM):undefined;
   received[id]={value,unit:dose.unit,
    ...(concentrationM===undefined?{}:{concentrationM})};
  }

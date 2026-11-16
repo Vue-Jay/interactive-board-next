@@ -1417,6 +1417,15 @@ const nextDrop=accurateTitration.vessels.find(v=>v.id==="v1").reactionAmounts;
 assert.ok(Math.abs(nextDrop.productsMol.NaCl-.0003)<1e-12,
  "The newly added 2 ml must grow the product total from 0.1 to 0.3 mmol");
 assert.ok(Math.abs(nextDrop.remainingMol.HCl-.0007)<1e-12);
+// Evaporation or a proportional transfer can leave fractions of a graduation
+// in the burette. The final drop must transfer the actual amount, not round
+// it into or out of existence.
+const fractionalTitration={...accurateTitration,vessels:accurateTitration.vessels.map(v=>
+ v.id===titrationBurette?{...v,doses:{NaOH:{...v.doses.NaOH,value:.004}}}:v)};
+const finalDrop=lab.dripLabVessel(fractionalTitration,titrationBurette,"v1",.1);
+assert.equal(finalDrop.vessels.find(v=>v.id===titrationBurette).doses,undefined);
+assert.ok(Math.abs(finalDrop.titration.addedMl-3.004)<1e-12,"The last drop must preserve the real fractional amount");
+assert.ok(Math.abs(finalDrop.vessels.find(v=>v.id==="v1").reactionAmounts.productsMol.NaCl-.0003004)<1e-12);
 const editorFixed=read("src/LektrusChemistryBenchEditor.tsx");
 assert.match(editorFixed,/setStage/);
 assert.match(editorFixed,/zoom:stage\.scale/,"Fullscreen must use layout zoom to avoid Android GPU repaint artifacts");
