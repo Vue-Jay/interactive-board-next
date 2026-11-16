@@ -15,6 +15,108 @@ const minus=(a,b)=>{const other=new Set(b.map(normalize));return a.filter(n=>!ot
 
 // Independent minimum-presence checks. Admission establishes statehood by
 // that date, not recognition before admission or exact border geometry.
+// Year precision is intentional for the roster's later admissions. Aliases
+// explicitly represent the same polity, never just a similar name.
+// https://www.un.org/en/about-us/growth-in-un-membership
+const laterAdmissions=[
+ [1961,"Mauritania","Mauritania|Islamic Republic of Mauritania"],
+ [1961,"Mongolia","Mongolian People's Republic|Mongolia"],
+ [1961,"Sierra Leone","Sierra Leone|Republic of Sierra Leone"],
+ [1961,"Tanganyika / Tanzania","Tanganyika|Tanzania|United Republic of Tanzania|United Republic of Tanganyika and Zanzibar"],
+ [1962,"Algeria","People's Democratic Republic of Algeria|Algeria"],
+ [1962,"Burundi","Republic of Burundi|Kingdom of Burundi|Burundi"],
+ [1962,"Jamaica","Jamaica"],
+ [1962,"Rwanda","Republic of Rwanda|Rwanda"],
+ [1962,"Trinidad and Tobago","Republic of Trinidad and Tobago|Trinidad and Tobago"],
+ [1962,"Uganda","Republic of Uganda|Uganda"],
+ [1963,"Kenya","Republic of Kenya|Kenya"],
+ [1963,"Kuwait","Kuwait|State of Kuwait"],
+ [1963,"Zanzibar","Zanzibar|Sultanate of Zanzibar|People's Republic of Zanzibar",1963],
+ [1964,"Malawi","Malawi|Republic of Malawi"],
+ [1964,"Malta","Malta|Republic of Malta"],
+ [1964,"Zambia","Zambia|Republic of Zambia"],
+ [1965,"The Gambia","Republic of The Gambia|The Gambia|Gambia"],
+ [1965,"Maldives","Maldives|Republic of Maldives|Sultanate of Maldives|Maldive Islands"],
+ [1965,"Singapore","Republic of Singapore|Singapore"],
+ [1966,"Barbados","Barbados"],
+ [1966,"Botswana","Republic of Botswana|Botswana"],
+ [1966,"Guyana","Guyana|Co-operative Republic of Guyana"],
+ [1966,"Lesotho","Lesotho|Kingdom of Lesotho"],
+ [1967,"South Yemen","People's Democratic Republic of Yemen|People's Republic of Southern Yemen|South Yemen",1989],
+ [1968,"Equatorial Guinea","Equatorial Guinea|Republic of Equatorial Guinea"],
+ [1968,"Mauritius","Mauritius|Republic of Mauritius"],
+ [1968,"Swaziland / Eswatini","Eswatini|Swaziland|Kingdom of Swaziland|Kingdom of Eswatini"],
+ [1970,"Fiji","Republic of Fiji|Fiji"],
+ [1971,"Bahrain","Kingdom of Bahrain|State of Bahrain|Bahrain"],
+ [1971,"Bhutan","Kingdom of Bhutan|Bhutan"],
+ [1971,"Oman","Sultanate of Oman|Oman"],
+ [1971,"Qatar","State of Qatar|Qatar"],
+ [1971,"United Arab Emirates","United Arab Emirates"],
+ [1973,"Bahamas","Commonwealth of The Bahamas|Bahamas|The Bahamas"],
+ [1973,"Federal Republic of Germany / Germany","Federal Republic of Germany|Federated Republic of Germany|Germany"],
+ [1973,"German Democratic Republic","German Democratic Republic|East Germany",1989],
+ [1974,"Bangladesh","People's Republic of Bangladesh|Bangladesh"],
+ [1974,"Grenada","Grenada"],
+ [1974,"Guinea-Bissau","Republic of Guinea-Bissau|Guinea-Bissau"],
+ [1975,"Cabo Verde","Republic of Cabo Verde|Cape Verde|Cabo Verde"],
+ [1975,"Comoros","Comoros|Union of the Comoros|Federal Islamic Republic of the Comoros"],
+ [1975,"Mozambique","Mozambique|Republic of Mozambique|People's Republic of Mozambique"],
+ [1975,"Papua New Guinea","Papua New Guinea|Independent State of Papua New Guinea"],
+ [1975,"São Tomé and Príncipe","São Tomé and Príncipe|Sao Tome and Principe|Democratic Republic of São Tomé and Príncipe"],
+ [1975,"Suriname","Republic of Suriname|Suriname"],
+ [1976,"Angola","People's Republic of Angola|Republic of Angola|Angola"],
+ [1976,"Samoa","Samoa|Western Samoa|Independent State of Samoa"],
+ [1976,"Seychelles","Seychelles|Republic of Seychelles"],
+ [1977,"Djibouti","Republic of Djibouti|Djibouti"],
+ [1977,"Vietnam","Socialist Republic of Vietnam|Vietnam|Viet Nam"],
+ [1978,"Dominica","Commonwealth of Dominica|Dominica"],
+ [1978,"Solomon Islands","Solomon Islands"],
+ [1979,"Saint Lucia","Saint Lucia|St Lucia"],
+ [1980,"Saint Vincent and the Grenadines","Saint Vincent|Saint Vincent and the Grenadines"],
+ [1980,"Zimbabwe","Republic of Zimbabwe|Zimbabwe"],
+ [1981,"Antigua and Barbuda","Antigua and Barbuda"],
+ [1981,"Belize","Belize"],
+ [1981,"Vanuatu","Vanuatu|Republic of Vanuatu"],
+ [1983,"Saint Kitts and Nevis","Saint Kitts|Saint Kitts and Nevis|Saint Christopher and Nevis"],
+ [1984,"Brunei","Sultanate of Brunei|Brunei|Brunei Darussalam"],
+ [1990,"Liechtenstein","Liechtenstein|Principality of Liechtenstein"],
+ [1990,"Namibia","Namibia|Republic of Namibia"],
+ [1991,"North Korea","Democratic People's Republic of Korea|North Korea"],
+ [1991,"Estonia","Republic of Estonia|Estonia"],
+ [1991,"Latvia","Republic of Latvia|Latvia"],
+ [1991,"Lithuania","Republic of Lithuania|Lithuania"],
+ [1991,"Marshall Islands","Marshall Islands|Republic of the Marshall Islands"],
+ [1991,"Micronesia","Micronesia|Federated States of Micronesia"],
+ [1991,"South Korea","Republic of Korea|South Korea"],
+ [1992,"Armenia","Republic of Armenia|Armenia"],
+ [1992,"Azerbaijan","Republic of Azerbaijan|Azerbaijan"],
+ [1992,"Bosnia and Herzegovina","Bosnia and Herzegovina|Republic of Bosnia and Herzegovina"],
+ [1992,"Croatia","Republic of Croatia|Croatia"],
+ [1992,"Georgia","Georgia|Republic of Georgia"],
+ [1992,"Kazakhstan","Kazakhstan|Republic of Kazakhstan"],
+ [1992,"Kyrgyzstan","Kyrgyzstan|Kyrgyz Republic"],
+ [1992,"Moldova","Republic of Moldova|Moldova"],
+ [1992,"San Marino","San Marino|Republic of San Marino"],
+ [1992,"Slovenia","Republic of Slovenia|Slovenia"],
+ [1992,"Tajikistan","Republic of Tajikistan|Tajikistan"],
+ [1992,"Turkmenistan","Turkmenistan"],
+ [1992,"Uzbekistan","Republic of Uzbekistan|Uzbekistan"],
+ [1993,"Andorra","Principality of Andorra|Andorra"],
+ [1993,"Czech Republic","Czech Republic|Czechia"],
+ [1993,"Eritrea","State of Eritrea|Eritrea"],
+ [1993,"Monaco","Principality of Monaco|Monaco"],
+ [1993,"Slovakia","Slovakia|Slovak Republic"],
+ [1993,"Macedonia / North Macedonia","Former Yugoslav Republic of Macedonia|Republic of Macedonia|Republic of North Macedonia|North Macedonia"],
+];
+const unMembershipTotals1960To1993=[
+ [1960,99],[1961,104],[1962,110],[1963,113],[1964,115],[1965,117],[1966,122],[1967,123],[1968,126],
+ [1970,127],[1971,132],[1973,135],[1974,138],[1975,144],[1976,147],[1977,149],[1978,151],[1979,152],
+ [1980,154],[1981,157],[1983,158],[1984,159],[1990,159],[1991,166],[1992,179],[1993,184],
+];
+export function unMembershipYearEnd(year){
+ if(year<1960||year>1993)return null;
+ return unMembershipTotals1960To1993.findLast(([start])=>start<=year)[1];
+}
 const admissionAnchors=[
  ...[
   ["Benin",["Republic of Benin","Benin","Dahomey","Republic of Dahomey"]],
@@ -35,13 +137,14 @@ const admissionAnchors=[
  {name:"Mali",aliases:["Republic of Mali","Mali"],year:1960,date:"1960-09-28"},
  {name:"Senegal",aliases:["Republic of Senegal","Senegal"],year:1960,date:"1960-09-28"},
  {name:"Nigeria",aliases:["Federal Republic of Nigeria","Federation of Nigeria","Nigeria"],year:1960,date:"1960-10-07"},
+ ...laterAdmissions.map(([year,name,aliases,end])=>({name,aliases:aliases.split("|"),year,date:String(year),end})),
  {name:"South Sudan",aliases:["South Sudan","Republic of South Sudan"],year:2011,date:"2011-07-14"},
  {name:"Timor-Leste",aliases:["Timor-Leste","East Timor","Democratic Republic of Timor-Leste"],year:2002,date:"2002-09-27"},
 ];
 export function referenceAdmissionWarnings(year,polities){
  const present=new Set(polities.map(normalize));
- return admissionAnchors.filter(a=>year>=a.year&&year<=MAX&&!a.aliases.some(n=>present.has(normalize(n))))
-  .map(a=>({name:a.name,date:a.date,source:"https://www.un.org/en/about-us/member-states",reason:year===a.year?"missing in admission year (intra-year transition)":"missing in full year after admission"}));
+ return admissionAnchors.filter(a=>year>=a.year&&year<=(a.end??MAX)&&!a.aliases.some(n=>present.has(normalize(n))))
+  .map(a=>({name:a.name,date:a.date,source:a.date.length===4?"https://www.un.org/en/about-us/growth-in-un-membership":"https://www.un.org/en/about-us/member-states",reason:year===a.year?"missing in admission year (intra-year transition)":"missing in full year after admission"}));
 }
 
 // Exact reviewed crosswalk for the missing late-snapshot countries. These
@@ -109,7 +212,7 @@ export function auditAnnual(source,snapshots,{from=CURRENT,to=MIN}={}){
    // territories need historical review, not automatic renaming or deletion.
    namesOnlyInAtlas:minus(snapshot,polities),namesOnlyInReference:minus(polities,snapshot)
   }:null;
-  rows.push({year,atlasStatus,sourceStatus,polityCount:polities.length,recordCount:active.length,
+  rows.push({year,atlasStatus,sourceStatus,polityCount:polities.length,recordCount:active.length,unMembershipYearEnd:unMembershipYearEnd(year),
    polities,appearsGoingBack:supported&&year<MAX?minus(polities,newer):[],
    disappearsGoingBack:supported&&year<MAX?minus(newer,polities):[],comparison,
    referenceWarnings:referenceAdmissionWarnings(year,polities)});
@@ -134,6 +237,14 @@ function selfTest(){
  assert.equal(referenceAdmissionWarnings(2014,["Republic of South Sudan","Timor-Leste"]).filter(w=>w.date>="2000").length,0);
  assert.equal(referenceAdmissionWarnings(1959,[]).length,0);
  assert.equal(referenceAdmissionWarnings(1960,[]).length,17);
+ assert.equal(laterAdmissions.length,88);
+ assert.equal(unMembershipYearEnd(1993),184);
+ assert.equal(unMembershipYearEnd(1989),159);
+ assert.equal(unMembershipYearEnd(1969),126);
+ assert.equal(unMembershipYearEnd(1959),null);
+ assert.ok(referenceAdmissionWarnings(1963,[]).some(w=>w.name==="Zanzibar"));
+ assert.ok(!referenceAdmissionWarnings(1964,[]).some(w=>w.name==="Zanzibar"));
+ assert.ok(!referenceAdmissionWarnings(1990,[]).some(w=>w.name==="South Yemen"||w.name==="German Democratic Republic"));
  assert.ok(referenceAdmissionWarnings(1960,["Mali Federation"]).some(w=>w.name==="Mali"),"the dissolved federation is not the Republic of Mali");
  assert.ok(!referenceAdmissionWarnings(1960,["Republic of Senegal"]).some(w=>w.name==="Senegal"));
  const gaps=extractHistoricalGapCandidates({features:[f("East Timor",2006,2013)]});
