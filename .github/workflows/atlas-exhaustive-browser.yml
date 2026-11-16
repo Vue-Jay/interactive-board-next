@@ -41,9 +41,9 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/lektrus-atlas-data
           export OUT=/tmp/lektrus-atlas-data
-          rg -o 'world_[a-z0-9]+\.geojson' src/lektrusAtlasModel.ts | sort -u | xargs -P 6 -I % curl -fsSL --retry 3 --max-time 60 "$HIST/geojson/%" -o "$OUT/%"
+          grep -Eo 'world_[a-z0-9]+\.geojson' src/lektrusAtlasModel.ts | sort -u | xargs -P 6 -I % curl -fsSL --retry 3 --max-time 60 "$HIST/geojson/%" -o "$OUT/%"
           curl -fsSL --retry 3 --max-time 60 "$HIST/index.json" -o "$OUT/index.json"
-          rg -o 'ne_[A-Za-z0-9_]+\.geojson' src/lektrusAtlasData.ts | sort -u | xargs -P 6 -I % curl -fsSL --retry 3 --max-time 60 "$NATURAL/%" -o "$OUT/%"
+          grep -Eo 'ne_[A-Za-z0-9_]+\.geojson' src/lektrusAtlasData.ts | sort -u | xargs -P 6 -I % curl -fsSL --retry 3 --max-time 60 "$NATURAL/%" -o "$OUT/%"
       - name: Verify every map polygon and historical card in the real browser
         env:
           LEKTRUS_ATLAS_DATA_DIR: /tmp/lektrus-atlas-data

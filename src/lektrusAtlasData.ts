@@ -419,6 +419,18 @@ function historicalCorrectionsForYear(year:number):Record<string,HistoricalLabel
  disputedContour("Inca Empire","Бывшие земли империи инков",1600,"Империя инков пала в 1530-х гг.; последнее государство инков в Вилькабамбе — в 1572 г.","https://www.metmuseum.org/toah/ht/08/sanc.html");
  colonial({"Poland-Lithuania":"Королевство Польское и Великое княжество Литовское (условный контур)"},"Польско-литовская династическая уния; Речь Посполитая образована в 1569 г.",1400,1530,"https://pamiecpolski.archiwa.gov.pl/akt-unii-krewskiej/");
  colonial({"United Kingdom":"Королевство Великобритания"},"Королевство Великобритания (1707–1800); уния с Ирландией с 1801 г.",1715,1800,"https://www.parliament.uk/about/living-heritage/evolutionofparliament/legislativescrutiny/act-of-union-1707/overview/the-articles-constitution-and-trade/");
+ colonial({Kuwait:"Кувейт"},"Британская договорная защита до 19 июня 1961 г.",1900,1960,diplomaticHistory+"kuwait");
+ colonial({Qatar:"Катар"},"Британский протекторат до 1971 г.",1920,1960,diplomaticHistory+"qatar/recognition");
+ colonial({Egypt:"Египетское королевство"},"Египет; формальная независимость с 1922 г., сохранялось британское влияние",1930,1945,diplomaticHistory+"egypt");
+ colonial({Egypt:"Объединённая Арабская Республика (Египет)",Syria:"Объединённая Арабская Республика (Сирия)"},"Объединённая Арабская Республика, 1958–1961 гг. (союз Египта и Сирии)",1960,1960,diplomaticHistory+"egypt");
+ colonial({Vietnam:"Северный и Южный Вьетнам (общий условный контур)"},"После Женевских соглашений 1954 г. существовали разные режимы; линия разделения в исходном контуре отсутствует",1960,1960,diplomaticHistory+"vietnam");
+ colonial({Eritrea:"Эритрея"},"Автономная единица в федерации с Эфиопией под суверенитетом Эфиопской короны",1960,1960,"https://history.state.gov/historicaldocuments/frus1951v05/d701");
+ colonial({Philippines:"Филиппины"},"Под суверенитетом США; полная независимость с 1946 г.",1900,1938,diplomaticHistory+"philippines");
+ colonial({Philippines:"Филиппины (Содружество)"},"В 1945 г. завершалось освобождение от японской оккупации; полная независимость с 1946 г.",1945,1945,diplomaticHistory+"philippines");
+ const sovietConstitution="https://projects.rusarchives.ru/statehood/09-05-konstitution-project-1924.shtml";
+ colonial({"White Russia":"СССР (условный контур)","Far Eastern SSR":"СССР (Дальний Восток, условный контур)"},"СССР; исходная подпись и контур не соответствуют отдельной союзной республике",1930,1930,sovietConstitution);
+ colonial({Georgia:"Грузинская ССР",Armenia:"Армянская ССР",Azerbaijan:"Азербайджанская ССР"},"СССР, Закавказская СФСР",1930,1930,sovietConstitution);
+ colonial({Armenia:"Армянская ССР",Georgia:"Грузинская ССР",Azerbaijan:"Азербайджанская ССР"},"Союзная республика СССР",1938,1960,"https://guides.rusarchives.ru/node/1397");
  colonial({India:"Британская Индия (условный контур)"},"Британская администрация; княжества имели особый статус",1900,1938,diplomaticHistory+"india");
  if(year===1914){
   delete corrections.Namibia;delete corrections.Zambia;delete corrections.Zimbabwe;
@@ -428,6 +440,7 @@ function historicalCorrectionsForYear(year:number):Record<string,HistoricalLabel
  }
  if(year===1920){
   corrections.USSR=["Советская Россия","Советская Россия",diplomaticHistory+"russia"];
+  corrections["Far Eastern SSR"]=["Дальневосточная республика (с апреля 1920 г.)","Образована 6 апреля 1920 г.; границы и контроль менялись в течение года","https://guides.rusarchives.ru/terms/74/11935/organy-vlasti-i-upravleniya-dalnevostochnoy-respubliki"];
   corrections.Georgia=["Грузинская демократическая республика","Грузия",diplomaticHistory+"georgia"];
   corrections.Azerbaijan=["Азербайджан (смена власти в 1920 г.)","Статус менялся в течение года",diplomaticHistory+"azerbaijan"];
   corrections.Armenia=["Армения (смена власти в 1920 г.)","Статус менялся в течение года",diplomaticHistory+"armenia"];
