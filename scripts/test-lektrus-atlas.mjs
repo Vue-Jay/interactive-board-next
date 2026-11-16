@@ -613,6 +613,21 @@ if(process.env.LEKTRUS_ATLAS_DATA_DIR){
  }
  console.log("2026 overview: 193/193 UN member states and 2/2 observer states present, named and drawable. Geometry is the archived 2022 layer, not a certified 2026 border survey.");
  const roster=[...unMembers,"PSE","VAT"];
+ const statsExports={};
+ new Function("exports",ts.transpileModule(fs.readFileSync(new URL("../src/lektrusAtlasModernStats.ts",import.meta.url),"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(statsExports);
+ assert.deepEqual(Object.keys(statsExports.modernCountryStats).sort(),roster.slice().sort());
+ for(const iso of roster){
+  const feature=modern.features.find(f=>f.properties.ADM0_A3===({SSD:"SDS",PSE:"PSX"}[iso]??iso));
+  const s=statsExports.countryStatistics(feature);
+  assert.ok(s,`${iso}: missing modern statistical profile`);
+  assert.ok(iso==="VAT"?s.populationThousands===null:Number.isInteger(s.populationThousands)&&s.populationThousands>0);
+  assert.ok(["VAT","SSD","SDN"].includes(iso)?s.areaKm2===null:Number.isInteger(s.areaKm2)&&s.areaKm2>0);
+  assert.ok(statsExports.countryStatisticsFacts(s).every(f=>f.label.includes("2025")&&f.value));
+ }
+ assert.deepEqual(statsExports.modernCountryStats.RUS,{populationThousands:143997,areaKm2:17098246});
+ assert.deepEqual(statsExports.modernCountryStats.CHN,{populationThousands:1416096,areaKm2:9600000});
+ assert.deepEqual(statsExports.modernCountryStats.PSE,{populationThousands:5590,areaKm2:6025});
+ console.log("2026 overview: 195/195 country statistics compared to UN's dated 2025 reference; 192 surface areas available, 3 not supplied.");
  assert.deepEqual(Object.keys(un2025CapitalReference).sort(),roster.slice().sort(),"independent capital roster must cover all 195 entries");
  for(const scale of [110,50,10]){
   const layer=JSON.parse(fs.readFileSync(`${process.env.LEKTRUS_ATLAS_DATA_DIR}/ne_${scale}m_populated_places.geojson`,"utf8"));

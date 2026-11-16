@@ -32,6 +32,7 @@ historicalFeatureFacts,historicalCountryName,historicalSourceName,historicalMapF
 import {findHistoricalArticle,historicalRussianName,historyArticleUrl} from "./lektrusHistoryEncyclopedia";
 import {findHistoricalReference,historicalReferences,normalizeHistoricalReferenceName} from "./lektrusHistoricalReferences";
 import {historicalMemberCoverage} from "./lektrusAtlasHistoricalCoverage";
+import {countryStatistics,countryStatisticsFacts,UN_STATISTICS_SOURCE} from "./lektrusAtlasModernStats";
 type Props={diagram:AtlasDocument;onChange?:(next:AtlasDocument)=>void;editorMode?:boolean;userId?:string};
 const MAX_ATLAS_ZOOM=16384;
 const hash=(value:string)=>{let h=7;for(const ch of value)h=(h*31+ch.charCodeAt(0))|0;return Math.abs(h)};
@@ -894,8 +895,9 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const selectedCountryCapitals=selected&&mode==="political"?
   capitalsForCountry(selected,cityPoints.map(c=>c.feature)):[];
  const capitalContext=selected&&(!historical||modernReference)?modernCapitalContext(selected):undefined;
+ const modernStats=selected&&(!historical||modernReference)?countryStatistics(selected):undefined;
  const verifiedCountryCapital=!!capitalContext||selectedCountryCapitals.some(c=>typeof c.properties?.CAPITAL_CORRECTION_URL==="string");
- const displayedSchoolFacts=schoolReference?.facts.filter(f=>!verifiedCountryCapital||f.label!=="Столица");
+ const displayedSchoolFacts=schoolReference?.facts.filter(f=>(!verifiedCountryCapital||f.label!=="Столица")&&(!modernStats||f.label!=="Площадь"));
  const selectedIsCity=!!selected&&["Populated place","Admin-0 capital","Admin-0 capital alt",
   "Admin-0 region capital","Admin-1 capital","Admin-1 region capital"]
   .includes(String(selected.properties?.FEATURECLA??selected.properties?.featurecla??""));
@@ -1599,7 +1601,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
         const fillKey=String(s.feature.properties?.ADM0_A3||s.feature.properties?.ISO_A3||s.name);
         const fill=mode==="contour"?(painted[fillKey]||"#fffdfa"):mode==="physical"||mode==="relief"?"#d2e5c8":mode==="hydrography"?"#e6eee2":mode==="minerals"?"#f4ecd6":
          mode==="political"?politicalColors[s.i]??"#ecd9bf":historical?(modernReference?politicalColors[s.i]??"#ecd9bf":palettes[hash(s.name||String(s.feature.properties?.NAME??s.i))%palettes.length]):palettes[hash(s.name)%palettes.length];
-        return <path key={s.i} data-atlas-feature-index={s.i} d={s.path} fillRule="evenodd" fill={fill}
+        return <path key={s.i} data-atlas-feature-index={s.i} data-atlas-country-code={modernBorders?s.feature.properties?.ADM0_A3 as string|undefined:undefined} d={s.path} fillRule="evenodd" fill={fill}
          data-contour-fill-key={isWorksheet&&painted[fillKey]?fillKey:undefined}
          fillOpacity={mineralTerrainEnabled?.56:1}
          stroke={isWorksheet&&!contourConfig.showBorders?"none":highlighted||s.feature===selected?"#df793e":mode==="minerals"?"#a4aea2":mode==="contour"?"#8c9eaa":"#819fb2"}
@@ -2035,7 +2037,12 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        <p>{cityAreaLoading?"Получение площади из источника…":cityAreaMessage}</p>}
       {cityArea&&<a href={cityArea.url} target="_blank" rel="noopener noreferrer">Источник площади ↗</a>}
      </div>}
-     {featureSourceFacts(selected).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
+     {modernStats&&<div className="lektrus-atlas-study-card" data-atlas-verified-statistics="2025">
+      {countryStatisticsFacts(modernStats).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
+      <a href={UN_STATISTICS_SOURCE} target="_blank" rel="noopener noreferrer">Статистический справочник ООН ↗</a>
+      <small>Оценка населения округлена; площадь и территориальный охват справочника могут отличаться от контура карты. Не данные на конец 2026 года.</small>
+     </div>}
+     {featureSourceFacts(selected).filter(f=>!modernStats||f.label!=="Население (оценка картографического источника)").map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
      {selectedModernUpdate&&<p>{selectedModernUpdate.note} <a href={selectedModernUpdate.url} target="_blank" rel="noopener noreferrer">Источник уточнения ↗</a></p>}
      {!historical&&<div className="lektrus-atlas-study-card lektrus-atlas-reference-card">
       <strong>Справка об объекте</strong>
@@ -2449,7 +2456,12 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        <p>{cityAreaLoading?"Получение площади из источника…":cityAreaMessage}</p>}
       {cityArea&&<a href={cityArea.url} target="_blank" rel="noopener noreferrer">Источник площади ↗</a>}
      </div>}
-     {featureSourceFacts(selected).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
+     {modernStats&&<div className="lektrus-atlas-study-card" data-atlas-verified-statistics="2025">
+      {countryStatisticsFacts(modernStats).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
+      <a href={UN_STATISTICS_SOURCE} target="_blank" rel="noopener noreferrer">Статистический справочник ООН ↗</a>
+      <small>Оценка населения округлена; площадь и территориальный охват справочника могут отличаться от контура карты. Не данные на конец 2026 года.</small>
+     </div>}
+     {featureSourceFacts(selected).filter(f=>!modernStats||f.label!=="Население (оценка картографического источника)").map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
      {selectedModernUpdate&&<p>{selectedModernUpdate.note} <a href={selectedModernUpdate.url} target="_blank" rel="noopener noreferrer">Источник уточнения ↗</a></p>}
      {!historical&&<div className="lektrus-atlas-study-card lektrus-atlas-reference-card">
       <strong>Справка об объекте</strong>

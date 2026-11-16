@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import {createRequire} from "node:module";
+import {modernCountryStats,countryStatisticsFacts} from "../src/lektrusAtlasModernStats.ts";
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.LEKTRUS_PLAYWRIGHT_MODULE||"playwright");
 const dir=process.env.LEKTRUS_ATLAS_DATA_DIR;
@@ -54,19 +55,34 @@ try{
   // Dispatch the actual map path click, not a direct call to React state.
   // This includes tiny and overlapping islands that cannot reliably be hit
   // via a coordinate click at world scale. Verify the exact selected feature.
+  const verifiedStats=new Set();
   for(const id of ids){
-   await page.locator(`path.lektrus-atlas-country[data-atlas-feature-index="${id}"]`).dispatchEvent("click");
+   const path=page.locator(`path.lektrus-atlas-country[data-atlas-feature-index="${id}"]`);
+   const adm=year===2026?await path.getAttribute("data-atlas-country-code"):null;
+   await path.dispatchEvent("click");
    const selected=page.locator(`.lektrus-atlas-info-object[data-atlas-selected-index="${id}"]`);
    await selected.waitFor({state:"visible",timeout:6000});
    const title=await selected.locator(".lektrus-atlas-description strong").first().textContent({timeout:6000});
    assert.ok(title?.trim(),`${year}, ${id}: missing country title`);
    assert.ok(!/^(?:undefined|null|NaN|Infinity)$/.test(title.trim()),`${year}, ${id}: damaged country title (${title})`);
+   if(adm){
+    const iso={SDS:"SSD",PSX:"PSE"}[adm]??adm;
+    const stats=modernCountryStats[iso];
+    if(stats){
+     const card=selected.locator('[data-atlas-verified-statistics="2025"]');
+     await card.waitFor({state:"visible",timeout:6000});
+     const actual=(await card.textContent()).replace(/\s+/g," ");
+     for(const fact of countryStatisticsFacts(stats))assert.ok(actual.includes(fact.value.replace(/\s+/g," ")),`${iso}: missing verified statistic ${fact.label}`);
+     verifiedStats.add(iso);
+    }
+   }
    if(missingCount&&id===(year===1994?"179":"180")){
     assert.equal(title.trim(),"Швейцария",`${year}: main Swiss polygon not restored in UI`);
     await selected.locator(`[data-atlas-missing-members="${missingCount}"]`).waitFor({state:"visible",timeout:6000});
    }
    tested++;
   }
+  if(year===2026){assert.equal(verifiedStats.size,195,"all 195 UN roster cards must expose verified statistics");console.log("2026: 195 sourced country statistics cards verified after map clicks");}
   console.log(`${year}: ${ids.length} map clicks, ${tested} total`);
  }
  assert.deepEqual(errors,[],"uncaught browser errors during atlas audit");
