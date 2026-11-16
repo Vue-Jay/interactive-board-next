@@ -5,6 +5,9 @@ on:
     paths:
       - 'src/LektrusMapAtlas.tsx'
       - 'src/lektrusAtlas*.ts'
+      - 'src/lektrusHistoricalTimeline*.ts'
+      - 'scripts/*-lektrus-historical-timeline.mjs'
+      - 'scripts/export-lektrus-historical-year.mjs'
       - 'scripts/test-lektrus-atlas-every-country-browser.mjs'
       - 'scripts/audit-lektrus-atlas-annual.mjs'
       - 'scripts/audit-atlas-2026-boundaries.py'
@@ -115,6 +118,8 @@ jobs:
           test "${#geojson_entries[@]}" -eq 1
           unzip -p "$OUT/cliopatria.zip" "${geojson_entries[0]}" > "$OUT/cliopatria.geojson"
           node --max-old-space-size=4096 scripts/audit-lektrus-atlas-annual.mjs "$OUT/cliopatria.geojson" "$OUT" "$OUT/annual-atlas-audit.json"
+          node --max-old-space-size=4096 scripts/build-lektrus-historical-timeline.mjs "$OUT/cliopatria.geojson" "$OUT/history-v1"
+          node --max-old-space-size=4096 scripts/test-lektrus-historical-timeline.mjs "$OUT/history-v1" "$OUT/cliopatria.geojson"
       - uses: actions/upload-artifact@v4
         with:
           name: lektrus-annual-atlas-audit
@@ -123,3 +128,16 @@ jobs:
         with:
           name: lektrus-historical-gap-candidates
           path: /tmp/lektrus-annual-data/historical-gap-candidates.geojson
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lektrus-historical-timeline-audit
+          path: |
+            /tmp/lektrus-annual-data/history-v1/manifest.json
+            /tmp/lektrus-annual-data/history-v1/technical-annual-audit.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lektrus-historical-timeline-candidates
+          path: |
+            /tmp/lektrus-annual-data/history-v1/manifest.json
+            /tmp/lektrus-annual-data/history-v1/packs/*.json
+          retention-days: 14
