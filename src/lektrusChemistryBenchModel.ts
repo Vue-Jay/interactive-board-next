@@ -1214,7 +1214,7 @@ export type LabBenchSettings={
 };
 export const defaultLabBenchSettings=():LabBenchSettings=>({
  showEquationBoard:true,showVesselLabels:true,animateEffects:true,showTemperatures:true,
- pourMode:"gradual",evaporationEnabled:true,timeScale:1,realism:"low"
+ pourMode:"gradual",evaporationEnabled:false,timeScale:1,realism:"low"
 });
 export const labBenchSettings=(bench:LabBench):LabBenchSettings=>({
  ...defaultLabBenchSettings(),...bench.settings
@@ -2912,52 +2912,40 @@ export function transferLabMeasuredLiquid(
  const entries=source.reagents.filter(id=>!labIsGasDose(id,source.doses?.[id])).map(id=>({id,dose:source.doses?.[id]}));
  if(!entries.length)return bench;
  if(entries.some(e=>!e.dose||e.dose.unit!=="ml"||e.dose.value<=0))return bench;
- const amounts=entries.map(e=>Math.round(e.dose!.value*100));
- const totalCents=amounts.reduce((n,v)=>n+v,0);
- const requested=Math.round(volumeMl*100);
- if(requested>totalCents)return bench;
+ const totalMl=entries.reduce((n,e)=>n+e.dose!.value,0);
+ if(volumeMl>totalMl+1e-10)return bench;
+ const fraction=Math.min(1,volumeMl/totalMl);
  if(volumeMl>labVesselQuantity(target).availableMl+1e-7)return bench;
- // Decide which solutes actually enter the recipient after rounding to 0.01 ml.
- // An untransferred trace must not appear as a new reagent in the target.
- // Largest remainder allocation: every 0.01ml is attributed to a component,
- // and no component can contribute more than its actual stock.
- const exactShares=amounts.map(v=>requested*v/totalCents);
- const allocated=exactShares.map(v=>Math.floor(v));
- let remainder=requested-allocated.reduce((n,v)=>n+v,0);
- const order=exactShares.map((_,i)=>i).sort((a,b)=>
-  (exactShares[b]-Math.floor(exactShares[b]))-
-  (exactShares[a]-Math.floor(exactShares[a]))||a-b);
- for(const i of order){
-  if(remainder<=0)break;
-  if(allocated[i]<amounts[i]){allocated[i]++;remainder--}
- }
- if(remainder!==0)return bench;
- const transferredIds=entries.filter((_,i)=>allocated[i]>0).map(e=>e.id);
+ // The pipette is graduated to 0.01 ml, not each of the dissolved
+ // constituents. Sampling a homogeneous mixture preserves their proportions.
+ const shares=entries.map(e=>fraction===1?e.dose!.value:volumeMl*(e.dose!.value/totalMl));
+ const transferredIds=entries.filter((_,i)=>shares[i]>0).map(e=>e.id);
  const ids=[...new Set([...target.reagents,...transferredIds])];
  if(ids.length>MAX_VESSEL_REAGENTS)return bench;
  const received={...target.doses};
  const left={...source.doses};
  for(let i=0;i<entries.length;i++){
-  const {id,dose}=entries[i],portion=allocated[i]/100;
+  const {id,dose}=entries[i],portion=shares[i];
   if(portion<=0)continue;
   const existing=received[id];
   if(existing&&(existing.unit!=="ml"||labIsGasDose(id,existing)))return bench;
-  const quantity=Math.round(((existing?.value??0)+portion)*100)/100;
+  const quantity=(existing?.value??0)+portion;
   if(quantity>10000)return bench;
   const concentrationM=existing?
    existing.concentrationM!==undefined&&dose!.concentrationM!==undefined?
-    ((existing.value*existing.concentrationM)+(portion*dose!.concentrationM))/quantity:
+    existing.concentrationM+(dose!.concentrationM-existing.concentrationM)*(portion/quantity):
     undefined:dose!.concentrationM;
   received[id]={value:quantity,unit:"ml",
-   ...(concentrationM!==undefined?{concentrationM:Math.round(concentrationM*1e5)/1e5}:{})};
-  const remaining=Math.round((dose!.value-portion)*100)/100;
+   ...(concentrationM!==undefined?{concentrationM}:{})};
+  const remaining=Math.max(0,dose!.value-portion);
   if(remaining>0)left[id]={...dose!,value:remaining};
   else delete left[id];
  }
  const remainingIds=source.reagents.filter(id=>left[id]);
  const wasEmpty=target.reagents.length===0;
- const sourceReaction=source.completedReaction??labObservation(source).caseData;
- const targetReaction=target.completedReaction??labObservation(target).caseData;
+ const sourceResult=labObservation(source),targetResult=labObservation(target);
+ const sourceReaction=source.completedReaction??(sourceResult.status==="reaction"?sourceResult.caseData:undefined);
+ const targetReaction=target.completedReaction??(targetResult.status==="reaction"?targetResult.caseData:undefined);
  const medium=labMixEnvironment([source,target],received);
  const uncertain=Boolean(source.uncertain||target.uncertain||source.reactionAmounts||target.reactionAmounts||
   (!wasEmpty&&(sourceReaction||targetReaction)));
@@ -2975,7 +2963,7 @@ export function transferLabMeasuredLiquid(
     indicatorAddedAtMs:remainingIds.length?v.indicatorAddedAtMs:undefined,
    visualStartedAtMs:remainingIds.length?v.visualStartedAtMs:undefined};
   if(v.id===targetId)return {...v,reactionAmounts:undefined,reagents:ids,doses:received,
-   temperatureC:labMixedSampleTemperatureC(source,target,requested/totalCents),
+   temperatureC:labMixedSampleTemperatureC(source,target,fraction),
    observed:ids.length>1||source.observed,
    environment:medium,uncertain,
    completedReaction:wasEmpty?labFinishedReaction(source):labFinishedReaction(target),
@@ -3313,6 +3301,32 @@ export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:strin
   unmeasured:a.reagents.some(r=>!labIsGasDose(r,a.doses?.[r])&&!initialDoses[r])},event:b.event+1};
 }
 const portionRound=(x:number)=>Math.round(x*1000000)/1000000;
+/** Preserve the PRESENT crystal fraction when a suspension is moved.
+ * A physical pour reallocates solid and dissolved stock; only a simulation
+ * tick may subsequently bring either vessel closer to equilibrium. */
+function labRawSaltPhaseAfterPour(v:LabVessel,current:(formula:string)=>number):Partial<LabVessel>|undefined{
+ const temperature=v.temperatureC??22;
+ const eq=labBinarySaltEquilibrium(v,temperature);
+ if(eq){
+  const solidMol=Math.max(0,Math.min(eq.totalMol,current(eq.formula)));
+  const moving=Math.abs(solidMol-eq.equilibriumSolidMol)>Math.max(1e-10,eq.totalMol*.0005);
+  return {binarySaltPhase:{formula:eq.formula,solidMol},mixedSaltPhase:undefined,
+   physicalProcess:moving?(solidMol>eq.equilibriumSolidMol?"dissolving":"crystallizing"):undefined,
+   physicalStartedAtMs:moving?(v.physicalStartedAtMs??Date.now()):undefined};
+ }
+ const mixed=labSchoolMixedSaltEquilibrium(v,temperature);
+ if(!mixed||simulateLabInventory(v).steps.length)return;
+ const phases=Object.fromEntries(mixed.formulas.map(id=>[id,Math.max(0,Math.min(mixed.totals[id],current(id)))]));
+ const moving=mixed.formulas.some(id=>Math.abs(phases[id]-(mixed.solidMol[id]??0))>Math.max(1e-10,mixed.totals[id]*.0005));
+ const dissolving=mixed.formulas.some(id=>phases[id]>(mixed.solidMol[id]??0)+1e-10);
+ return {binarySaltPhase:undefined,mixedSaltPhase:phases,
+  physicalProcess:moving?(dissolving?"dissolving":"crystallizing"):undefined,
+  physicalStartedAtMs:moving?(v.physicalStartedAtMs??Date.now()):undefined};
+}
+function labRawPresentSolidMol(v:LabVessel,formula:string):number{
+ if(v.doses?.[formula]?.unit!=="g")return 0;
+ return labInventoryAvailableForTransfer(v).solidMol[formula]??0;
+}
 export function advanceLabPour(b:LabBench,portions=1):LabBench{
  const p=b.pouring;if(!p||p.step>=LAB_POUR_STEPS)return b;
  const source=b.vessels.find(v=>v.id===p.sourceId),target=b.vessels.find(v=>v.id===p.targetId);
@@ -3335,24 +3349,30 @@ export function advanceLabPour(b:LabBench,portions=1):LabBench{
  let incomingMl=0;
  for(const [reagent,original] of Object.entries(p.initialDoses)){
   const fraction=p.transferFraction??1;
-  const amount=portionRound(portionRound(original.value*fraction*n/LAB_POUR_STEPS)-
-   portionRound(original.value*fraction*p.step/LAB_POUR_STEPS));
+  // Round the progress readout, never the actual material. Even a very
+  // small measured stock must survive each of the twenty portions.
+  const previousMoved=original.value*fraction*(p.step/LAB_POUR_STEPS);
+  const nextMoved=original.value*fraction*(n/LAB_POUR_STEPS);
+  const expected=Math.max(0,original.value-previousMoved);
   const remaining=left[reagent]?.value??0,old=received[reagent];
   const current=left[reagent];
-  const expected=portionRound(original.value-portionRound(original.value*fraction*p.step/LAB_POUR_STEPS));
-  if(!current||Math.abs(remaining-expected)>1e-6||current.unit!==original.unit||
+  if(!current||Math.abs(remaining-expected)>Math.max(original.value*1e-12,1e-15)||current.unit!==original.unit||
    labIsGasDose(reagent,current)||current.concentrationM!==original.concentrationM||
    old&&(old.unit!==original.unit||labIsGasDose(reagent,old)))return stopLabPour(b);
+  const last=Math.max(0,original.value-nextMoved);
+  const amount=Math.max(0,remaining-last);
+  if(amount===0)continue;
   if(original.unit==="ml")incomingMl+=amount;
   if(amount>remaining+1e-7||(old?.value??0)+amount>10000)return stopLabPour(b);
-  const updated=portionRound((old?.value??0)+amount);
+  const updated=(old?.value??0)+amount;
   const concentrationM=old?
    old.concentrationM!==undefined&&original.concentrationM!==undefined?
-    portionRound(((old.value*old.concentrationM)+(amount*original.concentrationM))/updated):
+    old.concentrationM+(original.concentrationM-old.concentrationM)*(amount/updated):
     undefined:original.concentrationM;
   received[reagent]={...original,value:updated,
    ...(concentrationM===undefined?{concentrationM:undefined}:{concentrationM})};
-  left[reagent]={...original,value:portionRound(Math.max(0,remaining-amount))};
+  if(last>0)left[reagent]={...original,value:last};
+  else delete left[reagent];
  }
  // Re-check the receiver every time in case another action has filled it.
  // Use the same solid fraction estimate as at the start, rather than count
@@ -3363,10 +3383,12 @@ export function advanceLabPour(b:LabBench,portions=1):LabBench{
  const transferMl=donorVolume.occupiedMl*incomingFraction;
  if(Math.max(transferMl,incomingMl)>receiverVolume.availableMl+.011)
   return stopLabPour(b);
- const combined=[...new Set([...target.reagents,...source.reagents.filter(formula=>!labIsGasDose(formula,source.doses?.[formula]))])];
+ const combined=[...new Set([...target.reagents,...source.reagents.filter(formula=>
+  !labIsGasDose(formula,source.doses?.[formula])&&(!p.initialDoses[formula]||!!received[formula]))])];
  const targetWasEmpty=!target.reagents.length;
- const sourceReaction=source.completedReaction??labObservation(source).caseData;
- const targetReaction=target.completedReaction??labObservation(target).caseData;
+ const sourceResult=labObservation(source),targetResult=labObservation(target);
+ const sourceReaction=source.completedReaction??(sourceResult.status==="reaction"?sourceResult.caseData:undefined);
+ const targetReaction=target.completedReaction??(targetResult.status==="reaction"?targetResult.caseData:undefined);
  const medium=labMixEnvironment([source,target],received);
  const uncertain=target.uncertain||source.uncertain||
   (p.step===0&&!targetWasEmpty&&Boolean(sourceReaction||targetReaction));
@@ -3374,6 +3396,12 @@ export function advanceLabPour(b:LabBench,portions=1):LabBench{
  const remainingReagents=transferredAll?source.reagents.filter(formula=>labIsGasDose(formula,source.doses?.[formula])):source.reagents;
  if(transferredAll)for(const formula of Object.keys(left))if(!remainingReagents.includes(formula))delete left[formula];
  const fullyEmptied=transferredAll&&!remainingReagents.length;
+ const dryPhaseReset={binarySaltPhase:undefined,mixedSaltPhase:undefined};
+ const fromPhase=fullyEmptied?undefined:labRawSaltPhaseAfterPour({...source,reagents:remainingReagents,doses:left},
+  id=>labRawPresentSolidMol(source,id)*(1-incomingFraction));
+ const targetTemperature=labMixedContentsTemperatureC(source,target,incomingFraction);
+ const toPhase=labRawSaltPhaseAfterPour({...target,reagents:combined,doses:received,environment:medium,
+  temperatureC:targetTemperature,uncertain},id=>labRawPresentSolidMol(target,id)+labRawPresentSolidMol(source,id)*incomingFraction);
  const vessels=b.vessels.map(v=>{
   if(v.id===source.id)return {...v,reactionAmounts:undefined,
     reactionHeat:fullyEmptied?undefined:v.reactionHeat,
@@ -3383,18 +3411,19 @@ export function advanceLabPour(b:LabBench,portions=1):LabBench{
    indicator:fullyEmptied?undefined:v.indicator,
     indicatorDrops:fullyEmptied?undefined:v.indicatorDrops,
     indicatorAddedAtMs:fullyEmptied?undefined:v.indicatorAddedAtMs,
+   ...dryPhaseReset,...fromPhase,
+   ...(fullyEmptied?{physicalProcess:undefined,physicalStartedAtMs:undefined,meltFraction:undefined,phaseTransition:undefined}:{}),
    pourFraction:p.unmeasured?portionRound(.5*(1-(p.transferFraction??1)*n/20)):v.pourFraction};
   if(v.id===target.id){
    const dissolving=received.H2O?.unit==="ml"&&combined.some(key=>
     key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&received[key]?.unit==="g")&&
     identifyReaction(combined,medium).status!=="reaction";
    return {...v,reactionAmounts:undefined,reagents:combined,doses:received,
-   temperatureC:labMixedContentsTemperatureC(source,v,
-    (p.transferFraction??1)*(n-p.step)/
-      (LAB_POUR_STEPS-(p.transferFraction??1)*p.step)),
+   temperatureC:targetTemperature,
    reactionHeat:p.step===0?undefined:v.reactionHeat,
    physicalProcess:dissolving?"dissolving" as const:undefined,
    physicalStartedAtMs:dissolving?(v.physicalStartedAtMs??Date.now()):undefined,
+   ...dryPhaseReset,...toPhase,
    observed:true,uncertain,environment:medium,
    visualStartedAtMs:!uncertain&&!sourceReaction&&!targetReaction&&
     identifyReaction(combined,medium).status==="reaction"?
@@ -3569,7 +3598,7 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
   if(v.id===sourceId)return {...v,reactionAmounts:undefined,reactionHeat:undefined,reagents:[],observed:false,uncertain:false,
    completedReaction:undefined,indicator:undefined,
     indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,
-    binarySaltPhase:undefined,physicalProcess:undefined,
+    binarySaltPhase:undefined,mixedSaltPhase:undefined,physicalProcess:undefined,
     physicalStartedAtMs:undefined};
   if(v.id===targetId){
    const doses={...v.doses};
@@ -3591,14 +3620,18 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
     identifyReaction(reagents,medium).status==="reaction";
    const dissolving=!newReaction&&doses.H2O?.unit==="ml"&&
     reagents.some(key=>key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&doses[key]?.unit==="g");
+   const temperatureC=labMixedContentsTemperatureC(source,v);
+   const phase=labRawSaltPhaseAfterPour({...v,reagents,doses,environment:medium,temperatureC,uncertain},
+    id=>labRawPresentSolidMol(source,id)+labRawPresentSolidMol(v,id));
    return {...v,reagents,reactionAmounts:undefined,reactionHeat:undefined,
-    temperatureC:labMixedContentsTemperatureC(source,v),
+    temperatureC,
     observed:reagents.length>1||source.observed,
     // A complete transfer to empty glassware carries the physical crystal
     // inventory. Mixed recipients must re-evaluate their phase separately.
-    binarySaltPhase:targetWasEmpty?source.binarySaltPhase:undefined,
+    binarySaltPhase:undefined,mixedSaltPhase:undefined,
     physicalProcess:dissolving?"dissolving" as const:undefined,
     physicalStartedAtMs:dissolving?Date.now():undefined,
+    ...phase,
     doses,environment:medium,
     visualStartedAtMs:newReaction?Date.now():v.visualStartedAtMs,
     completedReaction:targetWasEmpty?labFinishedReaction(source):

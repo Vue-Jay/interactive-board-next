@@ -20,11 +20,73 @@ function load(file){
  return mod.exports;
 }
 const lab=load("src/lektrusChemistryBenchModel.ts");
+const stoich=load("src/lektrusLabStoichiometry.ts");
 const read=path=>fs.readFileSync(path,"utf8");
 const vessel=(b,id)=>b.vessels.find(v=>v.id===id);
 const approx=(value,expected,tol=.005)=>assert.ok(
  Math.abs(value-expected)<=tol,value+" !== "+expected);
 const water=volume=>({unit:"ml",value:volume});
+// Even a trace dose must remain measurable throughout a 20-step transfer.
+// Rounding each delta to six decimal places previously created zero-valued
+// doses, lost trace solids and accumulated concentration error.
+for(const mass of [1e-7,.000003,.00123456789]){
+ let trace=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",water(10));
+ trace=lab.putLabReagent(trace,"v1","SiO2",{unit:"g",value:mass});
+ trace=lab.addLabVessel(trace,"tube");
+ const quick=lab.fastLabPour(trace,"v1","v2");
+ let staged=lab.startLabPour(trace,"v1","v2","trace-"+mass);
+ for(let i=1;i<=20;i++){
+  staged=lab.advanceLabPour(staged);
+  assert.equal(staged.pouring?.step,i);
+  for(const v of staged.vessels)for(const d of Object.values(v.doses??{}))assert.ok(d.value>0,"No zero dose on the board");
+  approx((vessel(staged,"v1").doses?.SiO2?.value??0)+(vessel(staged,"v2").doses?.SiO2?.value??0),mass,1e-15);
+ }
+ approx(vessel(staged,"v2").doses.SiO2.value,mass,1e-15);
+ approx(vessel(quick,"v2").doses.SiO2.value,mass,1e-15);
+}
+{
+ let mixture=lab.putLabReagent(lab.defaultLabBench(),"v1","NaCl",{unit:"ml",value:17.23,concentrationM:.137321});
+ mixture=lab.addLabVessel(mixture,"tube");
+ mixture=lab.putLabReagent(mixture,"v2","NaCl",{unit:"ml",value:10.17,concentrationM:.861237});
+ const moles=b=>b.vessels.reduce((sum,v)=>sum+(v.doses?.NaCl?stoich.labDoseMoles("NaCl",v.doses.NaCl):0),0);
+ const initial=moles(mixture),quick=lab.fastLabPour(mixture,"v1","v2");
+ let staged=lab.startLabPour(mixture,"v1","v2","exact-molarity");
+ for(let i=1;i<=20;i++){
+  staged=lab.advanceLabPour(staged);
+  assert.equal(staged.pouring?.step,i);
+  approx(moles(staged),initial,1e-12);
+ }
+ approx(moles(quick),initial,1e-12);
+ approx(vessel(staged,"v2").doses.NaCl.concentrationM,vessel(quick,"v2").doses.NaCl.concentrationM,1e-12);
+}
+// With the clock paused, moving a slurry cannot magically dissolve its
+// visible crystals. Every portion moves the same fraction of each phase.
+for(const formulas of [["NaCl"],["NaCl","KNO3"]]){
+ let salt=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",water(20));
+ for(const formula of formulas)salt=lab.putLabReagent(salt,"v1",formula,{unit:"g",value:2});
+ salt=lab.addLabVessel(salt,"beaker");
+ salt=lab.putLabReagent(salt,"v2","H2O",water(10));
+ const solidMass=(b,id,formula)=>lab.labVesselContents(vessel(b,id)).solid.find(s=>s.formula===formula)?.massG??0;
+ const initial=Object.fromEntries(formulas.map(f=>[f,solidMass(salt,"v1",f)]));
+ assert.ok(formulas.every(f=>initial[f]>0));
+ let staged=lab.startLabPour(salt,"v1","v2","salt-slurry");
+ for(let i=1;i<=20;i++){
+  staged=lab.advanceLabPour(staged);
+  assert.equal(staged.pouring?.step,i);
+  for(const f of formulas){
+   approx(solidMass(staged,"v1",f),initial[f]*(1-i/20),1e-7);
+   approx(solidMass(staged,"v2",f),initial[f]*i/20,1e-7);
+  }
+ }
+ for(const method of [lab.fastLabPour,lab.pourLabVessel]){
+  const moved=method(salt,"v1","v2");
+  for(const f of formulas)approx(solidMass(moved,"v2",f),initial[f],1e-7);
+  assert.equal(vessel(moved,"v1").binarySaltPhase,undefined);
+  assert.equal(vessel(moved,"v1").mixedSaltPhase,undefined);
+ }
+ assert.equal(vessel(staged,"v1").physicalProcess,undefined);
+ assert.equal(vessel(staged,"v2").physicalProcess,"dissolving");
+}
 // Measured gas samples reserve headspace as well as liquid/solid volume.
 // Liquid dosing, pipetting and pouring must share the same capacity limit.
 let gasCapacity=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",water(20));

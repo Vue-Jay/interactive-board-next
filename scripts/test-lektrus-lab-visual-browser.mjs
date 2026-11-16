@@ -35,6 +35,13 @@ try{
  const pause=()=>click('button[aria-label^="Пауза"]');
  const place=async(x,y)=>{await evalPage(`(()=>{const e=document.querySelector('.lektrus-lab-bench');const r=e.getBoundingClientRect();e.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,isPrimary:true,button:0,clientX:r.left+r.width*${x},clientY:r.top+r.height*${y}}));})()`);await delay(200);};
  await wait('!!document.querySelector(".lektrus-lab-quick-bottle")','Lab controls did not render');
+ await click('summary[aria-label="Настройки опытов"]');
+ const evaporationSwitch='[role="switch"][aria-label="Испарение"]';
+ const evaporationState=()=>evalPage(`document.querySelector(${JSON.stringify(evaporationSwitch)})?.getAttribute('aria-checked')`);
+ assert.equal(await evaporationState(),'false','A new experiment must default to evaporation off');
+ await click(evaporationSwitch);assert.equal(await evaporationState(),'true','Evaporation can still be enabled');
+ await click(evaporationSwitch);assert.equal(await evaporationState(),'false','Evaporation can be disabled again');
+ await click('button[aria-label="Закрыть настройки опыта"]');
  await click('.lektrus-lab-vessel');await add('H2O');const clear=await fluid();assert.ok(clear,'Water must have a visible liquid');
  await add('CuSO4');const blue=await fluid();assert.notEqual(blue,clear,'Copper solution added after water must visibly tint the liquid');
  await add('H2O');const diluted=await fluid();assert.notEqual(diluted,blue,'Dilution must lighten a measured colored solution');

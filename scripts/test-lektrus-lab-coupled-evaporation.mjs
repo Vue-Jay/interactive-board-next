@@ -70,7 +70,7 @@ close(net.labInventoryMassG(crystal),net.labInventoryMassG(first));
 // not silently lose mass while using only the glass/ambient heat equation.
 assert.equal(lab.labBenchSettings(lab.defaultLabBench()).realism,"low",
  "Every new school experiment must begin in simple mode");
-const bare={...lab.setLabBenchSettings(lab.defaultLabBench(),{realism:"high"}),
+const bare={...lab.setLabBenchSettings(lab.defaultLabBench(),{realism:"high",evaporationEnabled:true}),
  simulationPaused:false};
 const water={...bare.vessels[0],kind:"beaker",temperatureC:80,
  doses:{H2O:{unit:"ml",value:40}},reagents:["H2O"],environment:"aqueous"};
@@ -120,7 +120,14 @@ console.log("Lab coupled thermal-vapor energy, solvent-aware crystals and mass c
 
 
 // Experiment controls are shared state, not local UI preferences.
-// Legacy boards default to evaporation on and normal time.
+// New and legacy boards without saved preferences default to no evaporation.
+assert.equal(lab.labBenchSettings(lab.defaultLabBench()).evaporationEnabled,false);
+assert.equal(lab.labBenchSettings({...bare,settings:undefined}).evaporationEnabled,false);
+const defaultOff=lab.advanceLabSimulation({...idle,settings:{realism:"high"}},11000).vessels[0];
+assert.equal(defaultOff.doses.H2O.value,40);
+assert.equal(defaultOff.ventedVaporMl?.H2O??0,0);
+assert.equal(defaultOff.lastEvaporatedAtMs,undefined);
+// Explicitly enabling the option is preserved as a shared setting.
 assert.equal(lab.labBenchSettings(bare).evaporationEnabled,true);
 assert.equal(lab.labBenchSettings(bare).timeScale,1);
 const configured=lab.setLabBenchSettings(idle,{

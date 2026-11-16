@@ -153,7 +153,7 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
 const detailedBench=()=>{
  const bench=lab.defaultLabBench();
  return {...bench,simulationPaused:false,
-  settings:{...bench.settings,realism:"high"}};
+  settings:{...bench.settings,realism:"high",evaporationEnabled:true}};
 };
 assert.equal(lab.labBenchSettings(lab.defaultLabBench()).realism,"low",
  "New chemistry laboratories start in simple classroom mode");
@@ -1103,8 +1103,8 @@ const solidSample=lab.putLabReagent(detailedBench(),"v1","NaCl",{value:12,unit:"
 assert.equal(lab.labVesselQuantity(solidSample.vessels[0]).massG,12);
 assert.equal(lab.labVesselQuantity(solidSample.vessels[0]).volumeMl,0);
 assert.ok(lab.labVesselQuantity(solidSample.vessels[0]).solidFraction>0);
-// Exact pipette sampling from multicomponent solutions is atomic. Rounding
-// cannot create a negative aliquot or list a component that did not transfer.
+// A graduated pipette measures the total volume; each constituent is a
+// proportional share, even if smaller than its 0.01 ml graduation.
 let diluteSample=detailedBench();
 for(const id of ["NaCl","KCl","NaNO3"])
  diluteSample=lab.putLabReagent(diluteSample,"v1",id,{value:10,unit:"ml"});
@@ -1114,8 +1114,12 @@ const sampleBefore=lab.labVesselQuantity(diluteSample.vessels.find(v=>v.id==="v1
 diluteSample=lab.transferLabMeasuredLiquid(diluteSample,"v1",samplePipette,.01);
 const sampled=diluteSample.vessels.find(v=>v.id===samplePipette);
 assert.equal(lab.labVesselQuantity(sampled).volumeMl,.01);
-assert.equal(sampled.reagents.length,1,
- "A trace rounded to zero must not materialize as an extra solute");
+assert.equal(sampled.reagents.length,3,
+ "Every dissolved component of a homogeneous sample must be transferred");
+for(const id of sampled.reagents){
+ assert.ok(Math.abs(sampled.doses[id].value-.01/3)<1e-12);
+ assert.ok(Math.abs(sampled.doses[id].value+diluteSample.vessels[0].doses[id].value-10)<1e-12);
+}
 assert.ok(Object.values(sampled.doses).every(d=>d.value>0));
 assert.equal(lab.labVesselQuantity(diluteSample.vessels.find(v=>v.id==="v1")).volumeMl,
  sampleBefore.volumeMl-.01);

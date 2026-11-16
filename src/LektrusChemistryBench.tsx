@@ -115,7 +115,7 @@ function LabReactionBurst({vessel,visual,formula,visualNow,gasTint}:{
  </div>;
 }
 
-const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,readoutLeft=false,stirring=false,titrationResult,temperatureC,temperatureVisible=true,realism="high",evaporationEnabled=true,simulationPaused=false,pausedAtMs,visualNowMs}:{
+const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,readoutLeft=false,stirring=false,titrationResult,temperatureC,temperatureVisible=true,realism="high",evaporationEnabled=false,simulationPaused=false,pausedAtMs,visualNowMs}:{
  vessel:LabVessel;small?:boolean;showLabels?:boolean;details?:boolean;readoutLeft?:boolean;stirring?:boolean;
  titrationResult?:ReturnType<typeof titrationReading>;temperatureC?:number;
  temperatureVisible?:boolean;realism?:LabRealism;
@@ -629,7 +629,7 @@ function LabExperimentControls({settings,editable,onUpdate}:{
     <small>Потеря растворителя и выпаривание при нагреве</small>
    </div>
    <button type="button" className="lektrus-lab-experiment-switch"
-    role="switch" aria-checked={settings.evaporationEnabled}
+    role="switch" aria-label="Испарение" aria-checked={settings.evaporationEnabled}
     disabled={!editable}
     onClick={()=>onUpdate({evaporationEnabled:!settings.evaporationEnabled})}>
     {settings.evaporationEnabled?"Включено":"Выключено"}
