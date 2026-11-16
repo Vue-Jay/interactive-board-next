@@ -24,6 +24,85 @@ const stoich=load("src/lektrusLabStoichiometry.ts");
 const dose=(volume=10,molarity=.1)=>({unit:"ml",value:volume,concentrationM:molarity});
 const approx=(a,b,tol=1e-6)=>assert.ok(Math.abs(a-b)<=tol,a+" != "+b);
 const qty=(bench,id)=>bench.vessels.find(v=>v.id===id);
+// Real liquid-only sampling: measured solid phase stays in the donor,
+// including powder suspended in plain water, visible crystals and gas.
+{
+ let suspension=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",{unit:"ml",value:20});
+ suspension=lab.putLabReagent(suspension,"v1","SiO2",{unit:"g",value:3});
+ suspension=lab.putLabReagent(suspension,"v1","N2",stoich.labGasDose("N2",10));
+ suspension=lab.addLabVessel(suspension,"pipette");
+ const sampled=lab.transferLabMeasuredLiquid(suspension,"v1","v2",20);
+ assert.notEqual(sampled,suspension,"A pipette can collect liquid above settled powder");
+ const donor=qty(sampled,"v1"),recipient=qty(sampled,"v2");
+ approx(lab.labVesselQuantity(donor).volumeMl,0);
+ approx(lab.labVesselQuantity(recipient).volumeMl,20);
+ approx(lab.labGasStoredMl(donor),10);
+ approx(lab.labGasStoredMl(recipient),0);
+ assert.equal(donor.environment,"dry");
+ assert.ok(lab.labVesselContents(donor).solid.some(s=>s.formula==="SiO2"&&Math.abs(s.massG-3)<1e-7));
+ assert.ok(!recipient.reagents.includes("SiO2")&&!recipient.reagents.includes("N2"));
+}
+{
+ // Persisted product ledger with a consumed gaseous stock left in the dose
+ // history. Emptying its liquid phase must not resurrect that stock.
+ let reacted=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",{unit:"ml",value:20});
+ const v=qty(reacted,"v1");
+ reacted={...reacted,vessels:[{...v,reagents:["H2O","NaCl"],
+  doses:{...v.doses,HCl:stoich.labGasDose("HCl",5)},
+  chemicalInventory:{speciesMol:{H2O:stoich.labDoseMoles("H2O",v.doses.H2O),NaCl:.001},
+   solidMol:{},settled:true}}]};
+ approx(lab.labGasStoredMl(qty(reacted,"v1")),0);
+ reacted=lab.addLabVessel(reacted,"pipette");
+ const sampled=lab.transferLabMeasuredLiquid(reacted,"v1","v2",20);
+ assert.notEqual(sampled,reacted);
+ const donor=qty(sampled,"v1");
+ assert.equal(donor.doses?.HCl,undefined,"Consumed gas must not be resurrected by sampling");
+ approx(lab.labGasStoredMl(donor),0);
+ approx(chemical.simulateLabInventory(qty(sampled,"v2")).speciesMol.NaCl,.001);
+}
+for(const formulas of [["NaCl"],["NaCl","KNO3"],["CuSO4"]]){
+ let salt=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",{unit:"ml",value:20});
+ for(const formula of formulas)salt=lab.putLabReagent(salt,"v1",formula,{unit:"g",value:2});
+ salt=lab.setLabSimulationPaused(salt,false,1000);
+ for(let t=2000;t<=6000;t+=1000)salt=lab.advanceLabSimulation(salt,t);
+ const before=qty(salt,"v1"),contents=lab.labVesselContents(before);
+ const currentSolid=Object.fromEntries(formulas.map(formula=>[formula,
+  (contents.solid.find(s=>s.formula===formula)?.massG??0)/stoich.labMolarMass(formula)]));
+ assert.ok(formulas.some(formula=>currentSolid[formula]<2/stoich.labMolarMass(formula)),"Default realism must actually dissolve salts: "+formulas.join(","));
+ const split=lab.addLabVessel(salt,"pipette");
+ const sampled=lab.transferLabMeasuredLiquid(split,"v1","v2",5);
+ assert.notEqual(sampled,split,"Soluble fraction can be sampled independently");
+ for(const formula of formulas){
+  const total=2/stoich.labMolarMass(formula),taken=(total-currentSolid[formula])*.25;
+  const donor=chemical.simulateLabInventory(qty(sampled,"v1"));
+  const recipient=chemical.simulateLabInventory(qty(sampled,"v2"));
+  approx(recipient.speciesMol[formula]??0,taken,1e-9);
+  approx((donor.speciesMol[formula]??0)+(recipient.speciesMol[formula]??0),total,1e-9);
+  approx(donor.solidMol[formula]??0,currentSolid[formula],1e-9);
+  approx(recipient.solidMol[formula]??0,0,1e-9);
+ }
+ let advanced=sampled;
+ for(let t=7000;t<=186000;t+=1000)advanced=lab.advanceLabSimulation(advanced,t);
+ const v=qty(advanced,"v1");
+ assert.ok(!v.physicalProcess,"Dissolution must finish after sampling");
+ for(const formula of formulas)assert.ok((chemical.simulateLabInventory(v).speciesMol[formula]??0)>0);
+}
+{
+ let dissolved=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",{unit:"ml",value:20});
+ dissolved=lab.putLabReagent(dissolved,"v1","NaCl",{unit:"g",value:1});
+ dissolved=lab.setLabSimulationPaused(dissolved,false,1000);
+ for(let t=2000;t<=181000;t+=1000)dissolved=lab.advanceLabSimulation(dissolved,t);
+ assert.equal(qty(dissolved,"v1").binarySaltPhase.solidMol,0,"No permanent phantom microcrystals");
+ dissolved=lab.setLabIndicator(dissolved,"v1","phenolphthalein");
+ dissolved=lab.addLabVessel(dissolved,"pipette");
+ const moved=lab.transferLabMeasuredLiquid(dissolved,"v1","v2",20);
+ const empty=qty(moved,"v1");
+ assert.deepEqual(empty.reagents,[]);
+ assert.equal(empty.doses,undefined,"Empty donor cannot keep historical dry mass");
+ assert.equal(empty.binarySaltPhase,undefined);
+ assert.equal(empty.indicator,undefined);
+ approx(chemical.simulateLabInventory(qty(moved,"v2")).speciesMol.NaCl,1/stoich.labMolarMass("NaCl"),1e-9);
+}
 // The school cabinet offers both weighed and prepared forms for many salts.
 // Combining them must preserve moles, solvent volume and actual crystal mass.
 const drySalt={unit:"g",value:5};
@@ -236,6 +315,26 @@ const cabinet=load("src/lektrusLabCatalog.ts");
 const stocks=database.substances.flatMap(s=>cabinet.labReagentForms(s).map(unit=>
  [s.id,cabinet.labDefaultStockDose(s.id,unit)]));
 const liquids=stocks.filter(([id,d])=>d.unit==="ml"&&!stoich.labIsGasDose(id,d));
+let suspensionCases=0;
+for(const [id,powder] of stocks.filter(([,d])=>d.unit==="g")){
+ let source=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",{unit:"ml",value:20});
+ source=lab.putLabReagent(source,"v1",id,powder);
+ const before=qty(source,"v1");
+ // Still-reacting substances require the separate reaction/pause fixtures.
+ if(lab.labObservation(before).status==="reaction"||before.pendingInventoryReaction)continue;
+ const total=stoich.labDoseMoles(id,powder);
+ const solid=(lab.labVesselContents(before).solid.find(s=>s.formula===id)?.massG??0)/stoich.labMolarMass(id);
+ source=lab.addLabVessel(source,"pipette");
+ const moved=lab.transferLabMeasuredLiquid(source,"v1","v2",5);
+ assert.notEqual(moved,source,id+": liquid-only sample from measured suspension");
+ const from=chemical.simulateLabInventory(qty(moved,"v1"));
+ const into=chemical.simulateLabInventory(qty(moved,"v2"));
+ approx((from.speciesMol[id]??0)+(into.speciesMol[id]??0),total,1e-9);
+ approx(into.speciesMol[id]??0,(total-solid)*.25,1e-9);
+ approx(into.solidMol[id]??0,0,1e-9);
+ suspensionCases++;
+}
+console.log(`Nonreacting powder/water sampling matrix: ${suspensionCases} cabinet stocks`);
 const dualStocks=database.substances.filter(s=>cabinet.labReagentForms(s).length===2);
 let stockCases=0;
 for(const stock of dualStocks){

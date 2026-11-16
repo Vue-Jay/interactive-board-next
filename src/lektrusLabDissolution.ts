@@ -17,15 +17,16 @@ export type LabBinarySaltInput={
  * illustrative water-volume approximation as the other classroom models;
  * the molecular ledger, unlike the carrier estimate, stays exact. */
 export function labMeasuredStockSaltEquilibrium(v:LabBinarySaltInput,tempC:number){
- if(!["aqueous","dry"].includes(v.environment)||!v.chemicalInventory||!v.filteredSolution||
-  v.filteredSolution.sourceEquation!==""||v.uncertain||v.completedReaction||v.reactionAmounts||v.filteredResidue)return;
+ if(!["aqueous","dry"].includes(v.environment)||!v.chemicalInventory||
+  v.filteredSolution&&v.filteredSolution.sourceEquation!==""||v.uncertain||v.completedReaction||v.reactionAmounts||v.filteredResidue)return;
  const solutes=Object.entries(v.chemicalInventory.speciesMol).filter(([id,mol])=>id!=="H2O"&&mol>1e-12);
  if(solutes.length!==1)return;
  const [formula,totalMol]=solutes[0];
  const parts=Object.entries(v.doses??{});
  if(parts.some(([id,d])=>id!==formula&&id!=="H2O"||labIsGasDose(id,d)||
   d.unit==="ml"&&id!=="H2O"&&d.concentrationM===undefined))return;
- const waterMl=(v.filteredSolution.volumeMl??0)+parts.reduce((sum,[,d])=>sum+(d.unit==="ml"?d.value:0),0);
+ const waterMl=(v.filteredSolution?.volumeMl??0)+parts.reduce((sum,[,d])=>sum+(d.unit==="ml"?d.value:0),0);
+ if(!v.filteredSolution&&!v.doses?.H2O&&v.environment!=="dry")return;
  if(v.environment==="dry"&&waterMl>1e-9)return;
  const solubility=labSchoolSolubilityGPer100gWater(formula,tempC)?.value;
  const molarMass=labMolarMass(formula);
@@ -72,10 +73,11 @@ export function labAdvanceBinarySaltPhase(
  // Area/flow coefficients chosen for an interactive classroom experiment.
  const temperatureFactor=Math.max(.5,Math.min(2.5,Math.exp((tempC-22)/95)));
  const rate=(stirring?.16:.055)*temperatureFactor;
- const solidMol=Math.max(0,Math.min(totalMol,equilibriumSolidMol+
+ const approaching=Math.max(0,Math.min(totalMol,equilibriumSolidMol+
   (old-equilibriumSolidMol)*Math.exp(-dt*rate)));
- const active=Math.abs(solidMol-equilibriumSolidMol)>
+ const active=Math.abs(approaching-equilibriumSolidMol)>
   Math.max(1e-10,totalMol*.0005);
+ const solidMol=active?approaching:equilibriumSolidMol;
  return {state:{formula,solidMol},totalMol,equilibriumSolidMol,active,
   direction:solidMol<old?"dissolving":solidMol>old?"crystallizing":"stable"};
 }
@@ -115,27 +117,32 @@ const classroomSimpleIons:Readonly<Record<string,readonly [string,string]>>={
  KI:["K+","I-"]
 };
 export function labSchoolMixedSaltEquilibrium(v:LabBinarySaltInput,tempC:number){
- if(v.environment!=="aqueous"||v.uncertain||v.chemicalInventory||
-  v.completedReaction||v.reactionAmounts||v.filteredSolution||
-  v.filteredResidue||!v.doses||!Number.isFinite(tempC))return;
- const measured=Object.entries(v.doses).filter(([,d])=>d.value>0);
- const water=v.doses.H2O;
+ if(v.environment!=="aqueous"||v.uncertain||v.completedReaction||v.reactionAmounts||
+  v.filteredResidue||!Number.isFinite(tempC))return;
+ // Sampling a previously nonreacting weighed mixture creates a molecular
+ // snapshot. Its remaining dissolved and solid moles must still approach
+ // the same classroom equilibrium, rather than freezing the phase in time.
+ const snapshot=v.chemicalInventory?.settled?v.chemicalInventory:undefined;
+ if(v.chemicalInventory&&!snapshot||v.filteredSolution)return;
+ const measured=Object.entries(v.doses??{}).filter(([,d])=>d.value>0);
+ const water=v.doses?.H2O;
  if(!water||water.unit!=="ml"||labIsGasDose("H2O",water)||water.concentrationM!==undefined||
   !Number.isFinite(water.value)||water.value<=0)return;
- const salts=measured.filter(([id])=>id!=="H2O");
- if(salts.length<2||measured.length!==salts.length+1)return;
+ if(measured.some(([id,d])=>id!=="H2O"&&(d.unit!=="g"||d.concentrationM!==undefined)))return;
+ const salts=snapshot?Object.entries(snapshot.speciesMol).filter(([id,n])=>id!=="H2O"&&n>1e-12):
+  measured.filter(([id])=>id!=="H2O").map(([id,d])=>[id,d.value/(labMolarMass(id)??Infinity)] as const);
+ if(salts.length<2)return;
  const waterMassG=water.value*.997;
  const solids:Record<string,number>={};
  const capacities:Record<string,number>={};
  const totals:Record<string,number>={};
- for(const [id,dose] of salts){
-  if(dose.unit!=="g"||dose.concentrationM!==undefined||
-   !Number.isFinite(dose.value)||dose.value<=0||
+ for(const [id,total] of salts){
+  if(!Number.isFinite(total)||total<=0||
    !v.reagents.includes(id))return;
   const sol=labSchoolSolubilityGPer100gWater(id,tempC);
   const mass=labMolarMass(id);
   if(!sol||!Number.isFinite(sol.value)||!mass||mass<=0)return;
-  totals[id]=dose.value/mass;
+  totals[id]=total;
   capacities[id]=Math.max(0,waterMassG*sol.value/100/mass);
  }
  // Simultaneously update solute fractions from the previous iteration,
@@ -164,7 +171,7 @@ export function labSchoolMixedSaltEquilibrium(v:LabBinarySaltInput,tempC:number)
   if(solidMol>1e-12)solids[id]=solidMol;
  }
  return {solidMol:solids,waterMl:water.value,estimated:true as const,
-  formulas};
+  formulas,totals};
 }
 /** Smooth first-order transport for EACH salt. Incoming dry mass remains
  * crystalline initially; shaking/stirring accelerates the approach.
@@ -175,9 +182,8 @@ export function labAdvanceSchoolMixedSaltPhase(
  previous?:Record<string,number>,startingDry=false
 ){
  const eq=labSchoolMixedSaltEquilibrium(v,tempC);
- if(!eq||!v.doses)return;
- const totals=Object.fromEntries(eq.formulas.map(id=>
-  [id,v.doses![id].value/(labMolarMass(id)??Infinity)]));
+ if(!eq)return;
+ const totals=eq.totals;
  const old=Object.fromEntries(eq.formulas.map(id=>
   [id,Math.max(0,Math.min(totals[id],previous?.[id]??
    (startingDry?totals[id]:eq.solidMol[id]??0)))]));
@@ -189,10 +195,12 @@ export function labAdvanceSchoolMixedSaltPhase(
  let active=false;
  for(const id of eq.formulas){
   const goal=eq.solidMol[id]??0;
-  const next=Math.max(0,Math.min(totals[id],
+  const approaching=Math.max(0,Math.min(totals[id],
    goal+(old[id]-goal)*Math.exp(-dt*rate)));
+  const changing=Math.abs(approaching-goal)>Math.max(1e-10,totals[id]*.0005);
+  const next=changing?approaching:goal;
   solidMol[id]=next;
-  if(Math.abs(next-goal)>Math.max(1e-10,totals[id]*.0005))active=true;
+  if(changing)active=true;
   if(next<old[id]-1e-10)direction="dissolving";
   else if(next>old[id]+1e-10&&direction==="stable")direction="crystallizing";
  }

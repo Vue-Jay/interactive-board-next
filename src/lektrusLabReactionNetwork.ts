@@ -318,6 +318,7 @@ export function simulateLabInventory(input:{
  environment:ReactionEnvironment;temperatureC?:number;stoppered?:boolean;
  chemicalInventory?:LabChemicalSnapshot;
  filteredSolution?:{sourceEquation?:string;volumeMl?:number};
+ completedReaction?:unknown;uncertain?:boolean;filteredResidue?:unknown;
  /** Partial progress of a measured gas-generating reaction. */
  reactionAmounts?:Pick<LabReactionAmounts,"equation"|"productsMol"|"remainingMol">&
   Partial<LabReactionAmounts>;
@@ -342,7 +343,8 @@ export function simulateLabInventory(input:{
  // Otherwise a cached unsaturated filtrate masks newly formed crystals.
  const key=JSON.stringify([input.reagents,input.doses,input.environment,input.temperatureC??22,!!input.stoppered,
   input.chemicalInventory,input.reactionAmounts,input.binarySaltPhase,
-  input.mixedSaltPhase,input.filteredSolution?.sourceEquation,input.filteredSolution?.volumeMl,volumeMl,maxSteps,input.onlyEquation,input.presentOnly]);
+  input.mixedSaltPhase,input.filteredSolution?.sourceEquation,input.filteredSolution?.volumeMl,
+  !!input.completedReaction,!!input.uncertain,!!input.filteredResidue,volumeMl,maxSteps,input.onlyEquation,input.presentOnly]);
  const cached=inventoryCache.get(key);
  if(cached)return cached;
  const inventory:LabInventory={speciesMol:{},solidMol:{},releasedGasMol:{},retainedGasMol:{},
@@ -389,11 +391,10 @@ export function simulateLabInventory(input:{
   // conserved solute moles between liquid and crystals. The approximation
   // is limited to school salts with measured water-solubility curves;
   // unsupported mixed chemistry keeps its recorded phase untouched.
-  if(input.chemicalInventory.settled&&input.filteredSolution&&
-    (input.environment==="aqueous"||input.environment==="dry"&&volumeMl<=1e-9)){
-   const stock=input.filteredSolution.sourceEquation===""?labMeasuredStockSaltEquilibrium({
-    ...input,filteredSolution:{...input.filteredSolution,sourceEquation:""}
-   },input.temperatureC??22):undefined;
+  if(input.chemicalInventory.settled&&(!input.filteredSolution||input.filteredSolution.sourceEquation==="")){
+   const phaseInput={...input,filteredSolution:input.filteredSolution?
+    {...input.filteredSolution,sourceEquation:""}:undefined};
+   const stock=labMeasuredStockSaltEquilibrium(phaseInput,input.temperatureC??22);
    if(stock){
     const phase=input.binarySaltPhase;
     const solid=stock.waterMl<=1e-9?stock.totalMol:phase?.formula===stock.formula&&Number.isFinite(phase.solidMol)?
@@ -402,6 +403,20 @@ export function simulateLabInventory(input:{
     else delete inventory.solidMol[stock.formula];
     return remember(key,inventory);
    }
+   const mixed=labSchoolMixedSaltEquilibrium(phaseInput,input.temperatureC??22);
+   if(mixed){
+    for(const formula of mixed.formulas){
+     const current=input.mixedSaltPhase?.[formula];
+     const solid=Math.max(0,Math.min(mixed.totals[formula],
+      current!==undefined&&Number.isFinite(current)?current:mixed.solidMol[formula]??0));
+     if(solid>EPS)inventory.solidMol[formula]=solid;
+     else delete inventory.solidMol[formula];
+    }
+    return remember(key,inventory);
+   }
+  }
+  if(input.chemicalInventory.settled&&input.filteredSolution&&
+    (input.environment==="aqueous"||input.environment==="dry"&&volumeMl<=1e-9)){
    const dissolved=Object.entries(inventory.speciesMol).filter(([id,mol])=>
     id!=="H2O"&&mol>EPS);
    const known=dissolved.map(([id,mol])=>({
