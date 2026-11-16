@@ -43,6 +43,29 @@ const JAPAN_OCCUPATION='https://history.state.gov/countries/japan';
 const RYUKYU='https://www.mofa.go.jp/policy/other/bluebook/1985/1985-3-3.htm';
 const COMOROS='https://digitallibrary.un.org/record/441662/files/E_1990_6_Add.27-EN.pdf';
 const componentExclusions=[
+ [13241,16,1969,[8,9],'Equatorial Guinea became independent in 1968; exclude Río Muni and Bioko from the following full years.','Экваториальная Гвинея получила независимость в 1968 году; в последующие полные годы исключены Рио-Муни и Биоко.',SURINAME_SOURCE],
+ [13241,16,1970,[10],'Spain transferred Ifni to Morocco in 1969.','Испания передала Ифни Марокко в 1969 году.','https://digitallibrary.un.org/record/843644/files/A_7753-EN.pdf'],
+ [13262,44,1967,[21,23],'Guyana and Barbados became independent in 1966.','Гайана и Барбадос получили независимость в 1966 году.',SURINAME_SOURCE],
+ [13232,13,1963,[7],'Tanganyika became independent in 1961; the Mafia Island component is present in the reconstructed same-year Tanganyika record from 1963.','Танганьика получила независимость в 1961 году; с 1963 года контур острова Мафия сохранён в записи Танганьики того же года.','https://www.un.org/en/about-us/member-states/tanzania'],
+ [13232,13,1964,[8,9],'Zanzibar became independent in 1963; its union with Tanganyika formed Tanzania in 1964. Retain the equivalent island contours in the successor source record.','Занзибар получил независимость в 1963 году; в 1964 объединился с Танганьикой в Танзанию. Островные контуры сохранены у преемника.','https://www.un.org/en/about-us/member-states/tanzania'],
+ [13232,13,1967,[0,3,4,5,6],'Lesotho, Malawi and The Gambia were independent by 1966; their separate island or territorial components are present in successor records.','К 1966 году Лесото, Малави и Гамбия получили независимость; отдельные контуры имеются в записях преемников.',SURINAME_SOURCE],
+ [13209,3,1961,[2],'Syria left the United Arab Republic on 28 September 1961; the independent Syrian record is present from that year.','28 сентября 1961 года Сирия вышла из ОАР; отдельная сирийская запись присутствует с этого года.','https://history.state.gov/countries/syria'],
+ [12920,2,1958,[0],'The Gold Coast became independent as Ghana in 1957. The second component is the Nigerian colony, not Ghana.','Золотой Берег получил независимость как Гана в 1957 году. Второй контур относится к колониальной Нигерии, а не к Гане.',SURINAME_SOURCE],
+ [11752,7,1918,[6],'Iceland became a separate sovereign kingdom on 1 December 1918.','1 декабря 1918 года Исландия стала отдельным суверенным королевством.','https://www.government.is/library/01-Ministries/Ministry-for-Foreign-Affairs/PDF-skjol/Diplomatic-Handbook/Diplomatic%20Handbook%20WEB_09-2-22.pdf'],
+ [11633,17,1865,[9,10,11,12,13],'The Ionian Islands were ceded to Greece by the 1864 treaty.','По договору 1864 года Ионические острова переданы Греции.','https://api.parliament.uk/historic-hansard/commons/1902/dec/11/british-cemeteries-in-the-ionian-states'],
+ [10558,12,1803,[6],'British rule of Minorca ended in 1802.','Британское управление Меноркой завершилось в 1802 году.','https://www.push.gov.uk/wp-content/uploads/2018/05/Portsmouth-Harbour-Hinterland-project-2016.pdf'],
+ [10007,15,1764,[7],'France ceded mainland North American possessions by the 1763 peace.','По миру 1763 года Франция уступила континентальные североамериканские владения.','https://history.state.gov/milestones/1750-1775/treaty-of-paris'],
+ [10007,15,1769,[3,4,5,6],'France ceded Louisiana to Spain in the 1762–1763 settlements; Spanish administration was established by 1769.','Франция уступила Луизиану Испании по соглашениям 1762–1763 годов; к 1769 году установилось испанское управление.','https://www.loc.gov/collections/louisiana-european-explorations-and-the-louisiana-purchase/articles-and-essays/louisiana-as-a-spanish-colony/'],
+ [10192,16,1780,[7],'The mainland North American source component is stale after the 1763 cessions.','Континентальный североамериканский контур устарел после уступок 1763 года.','https://history.state.gov/milestones/1750-1775/treaty-of-paris'],
+ [10246,14,1783,[6],'The mainland North American source component is stale after the 1763 cessions.','Континентальный североамериканский контур устарел после уступок 1763 года.','https://history.state.gov/milestones/1750-1775/treaty-of-paris'],
+ [10325,2,1791,[0],'The mainland North American source component is stale after the 1763 cessions. Saint-Pierre and Miquelon remains.','Континентальный североамериканский контур устарел после уступок 1763 года. Сохранён Сен-Пьер и Микелон.','https://history.state.gov/milestones/1750-1775/treaty-of-paris'],
+ [7180,7,1451,[2],'Normandy was recovered by France in 1450.','Франция вернула Нормандию в 1450 году.','https://assets.cambridge.org/97805217/13894/frontmatter/9780521713894_frontmatter.pdf'],
+ [7180,7,1452,[0],'Bayonne was recovered by France in 1451.','Франция вернула Байонну в 1451 году.','https://assets.cambridge.org/97805217/13894/frontmatter/9780521713894_frontmatter.pdf'],
+ [7180,7,1454,[1],'The Hundred Years War ended in 1453 with the loss of Gascony; the Calais component remains.','Столетняя война закончилась в 1453 году потерей Гаскони; контур Кале сохранён.','https://www.english-heritage.org.uk/learn/story-of-england/medieval/war/'],
+ [7268,14,1457,[1],'Gattilusio control of Lemnos ended in 1456; Venetian and Ottoman control alternated until 1479.','Власть Гаттилузио на Лемносе закончилась в 1456 году; до 1479 года остров переходил между венецианцами и османами.','https://www.myrina-castle.gr/en/historical-information/period-alternating-rule-1453-1479-gattilusi-venetians-ottomans'],
+ [7187,7,1454,[1],'Lemnos was held by the Gattilusio from 1453, not the defunct Constantinopolitan empire.','С 1453 года Лемнос находился под властью Гаттилузио, а не прекратившей существование константинопольской империи.','https://www.myrina-castle.gr/en/historical-information/period-alternating-rule-1453-1479-gattilusi-venetians-ottomans'],
+ [11215,8,1830,[0,7],'Crete was excluded from the Greek state under the 1832 settlement; the disconnected component near Heidelberg is also outside Greece.','Крит не вошёл в состав греческого государства по соглашению 1832 года; отдельный контур у Гейдельберга также не относится к Греции.','https://www.crete1821.gr/en/section/i-kriti-m%CE%B5ta-tin-%CE%B5panastasi'],
+ [11275,8,1834,[7],'The disconnected component near Heidelberg is outside the Greek territory established in 1832.','Отдельный контур у Гейдельберга находится за пределами греческой территории, установленной в 1832 году.','https://200years.mfa.gr/international-treaties/'],
  [13161,18,1961,[13],'The Anglo-Kuwaiti protection agreement was terminated on 19 June 1961; Kuwait was no longer a British protectorate.','19 июня 1961 года прекращён договор о британском покровительстве Кувейту.','https://treaties.un.org/doc/publication/unts/volume%20399/v399.pdf'],
  [11140,43,1826,[1],'The Treaty of Tantauco of 19 January 1826 incorporated Chiloé into Chile.','По договору в Тантауко от 19 января 1826 года архипелаг Чилоэ вошёл в состав Чили.','https://www.archivonacional.gob.cl/noticias/archivos-para-comprender-el-bicentenario-de-chiloe-y-el-fin-del-dominio-espanol-en-chile'],
  [11140,43,1828,[2],'The Río de la Plata declared independence of Spain in 1816; the identical Río Negro coastal polygon is already present in contemporary Río de la Plata and Argentine Confederation records from 1828.','Независимость от Испании провозглашена в 1816 году; с 1828 года совпадающий прибрежный контур Рио-Негро уже присутствует в записях Рио-де-ла-Платы и Аргентинской конфедерации.','https://www.argentina.gob.ar/noticias/9-de-julio-de-1816-declaracion-de-la-independencia-de-la-argentina'],
@@ -111,6 +134,11 @@ const reviewedNames=[
  ['Federated Republic of Germany','Q183',1991,'Federal Republic of Germany','Федеративная Республика Германия','https://www.bundestag.de/en/parliament/history/parliamentarism/frg_parliamentarism/frg_parliamentarism-200324'],
 ];
 const ukName=year=>year<1927?'United Kingdom of Great Britain and Ireland':'United Kingdom of Great Britain and Northern Ireland';
+const GREEK_REGIMES='https://www.presidency.gr/en/mansion/history/';
+const DENMARK_SEPARATION='https://www.kongehuset.dk/nyheder/1814-spillet-om-danmark-og-norge';
+const EGYPT_UAR='https://history.state.gov/countries/egypt';
+const FRENCH_CESSIONS='https://history.state.gov/milestones/1750-1775/treaty-of-paris';
+const TANZANIA_UN='https://www.un.org/en/about-us/member-states/tanzania';
 // Annual labels use the successor in the transition year; no new cartographic
 // boundary is inferred from a dynastic succession. All raw fields survive.
 const delhiTransitions=[{old:'Mamluk Dynasty',next:'Khalji Dynasty',qid:'Q919071',ru:'Династия Хильджи',from:1290,to:1293},{old:'Khalji Dynasty',next:'Tughlaq Dynasty',qid:'Q1124402',ru:'Династия Туглаков',from:1320,to:1325},{old:'Tughlaq Dynasty',next:'Sayyid Dynasty',qid:'Q1331421',ru:'Династия Сайидов',from:1414,to:1450},{old:'Sayyid Dynasty',next:'Lodi Dynasty',qid:'Q11709',ru:'Династия Лоди',from:1451,to:1452}];
@@ -130,6 +158,16 @@ function editorialSegments(base){
  if(british||britishComponent){cut(1801);cut(1927)}
  if(british){cut(2000);cut(2024)}
  for(const [name,qid,year] of reviewedNames)if(base.sourceName===name&&base.sourceWikidata===qid)cut(year);
+ if(base.sourceName==='First Hellenic Republic'&&base.sourceWikidata==='Q528546'){cut(1832);cut(1924);cut(1935)}
+ if(base.sourceName==='Denmark-Norway'&&base.sourceWikidata==='Q62651')cut(1814);
+ if(base.sourceName==='United Arab Republic'&&base.sourceWikidata==='Q170468')cut(1971);
+ if(base.sourceName==='New France'&&base.sourceWikidata==='Q170604')cut(1763);
+ if(base.sourceName==='New Netherland'&&base.sourceWikidata==='Q382593')cut(1675);
+ if(base.sourceIndex===13271)cut(1964);
+ if(base.sourceIndex===13265)cut(1964);
+ if(base.role==='composite'&&base.sourceName==='(British Empire)'&&base.components.includes('British Gold Coast')){cut(1905);cut(1958);cut(1960)}
+ if(base.role==='composite'&&base.sourceName==='(British Empire)'&&base.components.includes('British East Africa')){cut(1961);cut(1969)}
+ if(base.role==='composite'&&base.sourceName==='(Kingdom of France)'&&base.components.includes('New France')){cut(1763);cut(1791)}
  if(base.sourceName==='Netherlands Antilles'&&base.sourceWikidata==='Q25227'){cut(1976);cut(1986);cut(2010)}
  if(base.sourceName==='Estado Novo'&&base.sourceWikidata==='Q824489'){cut(1933);cut(1974)}
  if(base.sourceIndex===13399)cut(2000);
@@ -152,6 +190,45 @@ function editorialSegments(base){
    note('Ferdinand IV of Bourbon reigned from 1759; the 1762–1798 source revision belongs to Bourbon Naples, not the Napoleonic kingdom. Its territorial extent remains unverified.',['https://www.treccani.it/enciclopedia/ferdinando-i-di-borbone-re-delle-due-sicilie_%28Dizionario-Biografico%29/'],'В 1762–1798 годах Неаполем правил Фердинанд IV из династии Бурбонов, а не наполеоновская династия. Контур требует независимой проверки.');
   }
   for(const rule of exclusionsFor(base.sourceIndex,from))note(rule[4]+' Only identified source components were removed; coverage and remaining borders are unverified.',[rule[6]],rule[5]+' Остальные границы и полнота покрытия требуют проверки.');
+  if(base.sourceName==='First Hellenic Republic'&&base.sourceWikidata==='Q528546'&&from>=1832){
+   const republic=from>=1924&&from<1935;
+   r={...r,name:republic?'Second Hellenic Republic':'Kingdom of Greece',nameRu:republic?'Вторая Греческая республика':'Королевство Греция',nameStatus:'reviewed',entityId:republic?identity('reviewed-polity','second-hellenic-republic'):identity('source-polity','Kingdom of Greece','Q209065')};
+   note('Greece became a kingdom in 1832, a republic in 1924 and restored the monarchy in 1935. The historical extent remains a candidate.',[GREEK_REGIMES,'https://200years.mfa.gr/international-treaties/'],'В 1832 году образовано Греческое королевство, в 1924 провозглашена Вторая республика, в 1935 восстановлена монархия. Границы требуют отдельной проверки.');
+  }
+  if(base.sourceName==='Denmark-Norway'&&base.sourceWikidata==='Q62651'&&from>=1814){
+   r={...r,name:base.sourceIndex===12846?'Faroe Islands (Danish territory)':'Denmark',nameRu:base.sourceIndex===12846?'Фарерские острова (территория Дании)':'Дания',nameStatus:'reviewed',entityId:base.sourceIndex===12846?identity('reviewed-polity','faroe-islands-danish-territory'):identity('source-polity','Denmark','Q350186')};
+   note('Denmark and Norway separated in 1814; the source geometry is not the former dual monarchy.'+(base.sourceIndex===12846?' This record contains only the Faroe Islands, not mainland Denmark.':''),[DENMARK_SEPARATION],'Датско-норвежская уния распалась в 1814 году. Исходный контур не представляет прежнюю двойную монархию.'+(base.sourceIndex===12846?' Здесь только Фарерские острова, без материковой Дании.':''));
+  }
+  if(base.sourceName==='United Arab Republic'&&base.sourceWikidata==='Q170468'&&from>=1971){
+   r={...r,name:'Arab Republic of Egypt',nameRu:'Арабская Республика Египет',nameStatus:'reviewed',entityId:identity('source-polity','Arab Republic of Egypt','Q79')};
+   note('Egypt retained the name United Arab Republic after Syria withdrew, but changed its official name in 1971.',[EGYPT_UAR],'После выхода Сирии Египет сохранял название ОАР, но в 1971 году изменил официальное название.');
+  }
+  if(base.sourceName==='New France'&&base.sourceWikidata==='Q170604'&&from>=1763){
+   r={...r,name:base.sourceIndex===10325?'Saint Pierre and Miquelon':'French colonial possessions (source aggregate)',nameRu:base.sourceIndex===10325?'Сен-Пьер и Микелон':'Французские колониальные владения (сводный контур)',nameStatus:'reviewed',entityId:identity('reviewed-polity',base.sourceIndex===10325?'saint-pierre-miquelon':'french-colonial-possessions-aggregate')};
+   note('After the 1763 cessions the source combines separate French colonial possessions in the Caribbean, Africa and elsewhere; it is not New France. Remaining borders need independent review.',[FRENCH_CESSIONS],'После уступок 1763 года исходник объединяет отдельные французские колонии в Карибском море, Африке и других регионах, а не Новую Францию. Остальные границы требуют проверки.');
+  }
+  if(base.sourceName==='New Netherland'&&base.sourceWikidata==='Q382593'&&from>=1675){
+   r={...r,name:'Dutch Caribbean and Guiana possessions (source aggregate)',nameRu:'Нидерландские владения в Карибском море и Гвиане (сводный контур)',nameStatus:'reviewed',entityId:identity('reviewed-polity','dutch-caribbean-guiana-aggregate')};
+   note('New Netherland in North America was ceded to England in 1674. The surviving source components are Caribbean and Guiana possessions, not New Netherland; their changing control still requires review.',['https://www.nps.gov/parkhistory/online_books/acad/wabanaki_peoples_vol1.pdf'],'Новые Нидерланды в Северной Америке уступлены Англии в 1674 году. Оставшиеся контуры относятся к Карибскому морю и Гвиане, а не к Новым Нидерландам; смена власти на них требует проверки.');
+  }
+  if(base.sourceName==='British Gold Coast'&&base.sourceWikidata==='Q503623'&&from>=1905){
+   const nigeria=from>=1958;
+   r={...r,name:nigeria?(from>=1960?'Nigeria (independence transition year)':'British Nigeria'):'British West African territories (Gold Coast and Nigeria)',nameRu:nigeria?(from>=1960?'Нигерия (год независимости)':'Британская Нигерия'):'Британские владения в Западной Африке (Золотой Берег и Нигерия)',nameStatus:'reviewed',entityId:identity('reviewed-polity',nigeria?(from>=1960?'nigeria-independence-transition':'british-nigeria'):'british-gold-coast-nigeria-aggregate')};
+   if(from>=1960)r={...r,sourceMemberOf:base.memberOf,memberOf:base.memberOf.filter(n=>n!=='(British Empire)')};
+   note('This source record also includes the disconnected outline of Nigeria; Gold Coast became Ghana in 1957 and Nigeria became independent in 1960. The Nigeria boundary remains unverified.',[SURINAME_SOURCE],'Исходная запись включает отдельный контур Нигерии. Золотой Берег стал Ганой в 1957 году, Нигерия получила независимость в 1960. Границы Нигерии требуют проверки.');
+  }
+  if(base.sourceIndex===13232){
+   r={...r,name:'British African and Arabian possessions (source aggregate)',nameRu:'Британские владения в Африке и Аравии (сводный контур)',nameStatus:'reviewed'};
+   note('The source is not merely East Africa; it includes multiple disconnected territories and two merged mainland polygons. The remaining mainland components mix territories with different independence dates and are not a verified colonial boundary; reconstruct separately.',[SURINAME_SOURCE],'Исходник не ограничен Восточной Африкой: есть отдельные владения и два слитных материковых контура. В оставшихся материковых контурах смешаны территории с разными датами независимости; необходима отдельная реконструкция границ.');
+  }
+  if(base.sourceIndex===13265){
+   if(from<1964){r={...r,name:'Tanganyika',nameRu:'Танганьика',nameStatus:'reviewed',entityId:identity('reviewed-polity','tanganyika')};note('Before the union of April 1964, mainland Tanganyika and Mafia Island formed the separate country of Tanganyika. Mafia is transferred from the same-year island source record.',[TANZANIA_UN],'До объединения в апреле 1964 года материковая Танганьика и остров Мафия составляли отдельное государство. Контур Мафии перенесён из островной записи того же года.');}
+   else note('Tanganyika and Zanzibar united in April 1964; the three original island components from the now-defunct separate Zanzibar record are restored in this mainland record. Remaining borders are unverified.',[TANZANIA_UN],'Танганьика и Занзибар объединились в апреле 1964 года; три исходных островных контура добавлены из отдельной записи прекратившего существование Занзибара. Остальные границы требуют проверки.');
+  }
+  if(base.sourceIndex===13271){
+   if(from>=1964){r={...r,geometryStatus:'rejected'};note('The independent Sultanate no longer existed after the 1964 union; all three original island components are retained under Tanzania in the same-year mainland record.',[TANZANIA_UN],'После объединения 1964 года самостоятельный султанат прекратил существование; все три исходных островных контура сохранены в записи Танзании того же года.');}
+   else note('Mafia Island belonged to Tanganyika; it is transferred to the same-year mainland record. Zanzibar and Pemba remain here.',[TANZANIA_UN],'Остров Мафия относился к Танганьике и перенесён в материковую запись того же года. Здесь сохранены Занзибар и Пемба.');
+  }
   if(base.sourceIndex===13309){
    r={...r,name:'Seychelles (British colony)',nameRu:'Сейшельские острова (британская колония)',nameStatus:'reviewed',entityId:identity('reviewed-polity','seychelles-british-colony')};
    note('The source polygon is Mahé in the Seychelles, not the mainland East Africa Protectorate. Seychelles remained a British colony until 1976.',[SURINAME_SOURCE],'Исходный контур — остров Маэ, а не материковый протекторат Восточной Африки. Сейшелы оставались британской колонией до 1976 года.');
@@ -186,6 +263,14 @@ function editorialSegments(base){
    if(base.sourceIndex===13305||base.sourceIndex===13684)note('UK core only: excluded disconnected non-UK territories (including Crown dependency Isle of Man); retained original UK islands and Northern Ireland. Missing or separately administered territories require separate review.',[UK_DEPENDENCIES],'Оставлены острова Великобритании и Северная Ирландия; исключены отдельные территории, не входящие в состав самого Соединённого Королевства. Контуры этих территорий требуют отдельной проверки.');
   }
   if(britishComponent&&from>=1801){r={...r,sourceComponents:base.components,components:base.components.map(n=>n==='Kingdom of Great Britain'?ukName(from):n)};note('Updated historical component name in line with the 1801 union and 1927 title.',[UK_SOURCE])}
+  if(base.role==='composite'&&base.sourceName==='(British Empire)'){
+   if(from>=1905&&base.components.includes('British Gold Coast')){
+    r={...r,sourceComponents:base.components,components:r.components.flatMap(n=>n!=='British Gold Coast'?[n]:from<1958?['British West African territories (Gold Coast and Nigeria)']:from<1960?['British Nigeria']:[])};
+    note('Aligned the component label with the corrected Gold Coast/Nigeria source grouping; remove the link in the Nigerian independence year. Composite geometry remains unverified.',[SURINAME_SOURCE]);
+   }
+   if(from>=1961&&from<1969&&base.components.includes('British East Africa')){r={...r,sourceComponents:base.components,components:r.components.map(n=>n==='British East Africa'?'British African and Arabian possessions (source aggregate)':n)};note('Aligned the label with the corrected source aggregate; the composite geometry remains unverified.',[SURINAME_SOURCE]);}
+  }
+  if(base.role==='composite'&&base.sourceName==='(Kingdom of France)'&&from>=1763&&base.components.includes('New France')){r={...r,sourceComponents:base.components,components:r.components.map(n=>n==='New France'?(from<1791?'French colonial possessions (source aggregate)':'Saint Pierre and Miquelon'):n)};note('Aligned component labels with the surviving French colonial source records after the 1763 cessions; composite geometry remains unverified.',[FRENCH_CESSIONS]);}
   if(base.sourceIndex===13708){r={...r,geometryStatus:'rejected'};note('The Commonwealth is an association of independent countries, not a territorial union of the UK and its overseas territories. This two-component overlay is not a Commonwealth map.',[COMMONWEALTH],'Содружество состоит из независимых государств. Контур только Великобритании и её заморских территорий не является картой Содружества.')}
   if(base.sourceIndex===13633){r={...r,sourceMemberOf:base.memberOf,memberOf:base.memberOf.filter(n=>n!=='(Commonwealth of Nations)')};note('Overseas territories are not individual sovereign Commonwealth member countries.',[COMMONWEALTH],'Заморские территории не являются самостоятельными государствами — членами Содружества.')}
   if(base.sourceName==='Netherlands Antilles'&&base.sourceWikidata==='Q25227'){
@@ -215,6 +300,8 @@ function editorialSegments(base){
 // Component selections are pinned to original feature/part indices. No modern
 // geometry, coordinate interpolation or nearest-year geometry is introduced.
 export function reviewedGeometryParts(r){
+ if(r.sourceIndex===13265)return [{index:13265,part:0},...((r.from<1964?[0]:[0,1,2]).map(part=>({index:13271,part})))];
+ if(r.sourceIndex===13271&&r.from<1964)return [1,2].map(part=>({index:13271,part}));
  const exclusions=exclusionsFor(r.sourceIndex,r.from);
  if(exclusions.length){
   const excluded=new Set(exclusions.flatMap(rule=>rule[3]));
