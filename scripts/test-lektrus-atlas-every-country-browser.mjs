@@ -29,6 +29,7 @@ try{
  await page.getByTitle("Выбрать территорию карты").click();
  await page.getByRole("option",{name:"Весь мир",exact:true}).click();
  const requested=process.env.LEKTRUS_ATLAS_YEARS?.split(",").map(Number);
+ if(requested)for(const year of requested)assert.ok(years.includes(year),`missing period in UI: ${year}`);
  let tested=0;
  for(const year of years.filter(y=>!requested||requested.includes(y))){
   await period.selectOption(String(year));
@@ -53,7 +54,7 @@ try{
    await selected.waitFor({state:"visible",timeout:6000});
    const title=await selected.locator(".lektrus-atlas-description strong").first().textContent({timeout:6000});
    assert.ok(title?.trim(),`${year}, ${id}: missing country title`);
-   assert.ok(!/undefined|NaN/i.test(title),`${year}, ${id}: damaged country title`);
+   assert.ok(!/\b(?:undefined|NaN)\b/i.test(title),`${year}, ${id}: damaged country title (${title})`);
    tested++;
   }
   console.log(`${year}: ${ids.length} map clicks, ${tested} total`);

@@ -398,6 +398,10 @@ function historicalCorrectionsForYear(year:number):Record<string,HistoricalLabel
  colonial({"Saar Protectorate":"Саарская область"},"Французская оккупационная зона; особый статус оформлен позднее",1945,1945,"https://www.saarland.de/stk/EN/service/downloads/Entstehung_Saarland.pdf?__blob=publicationFile&v=1");
  colonial({Zaire:"Демократическая Республика Конго"},"Демократическая Республика Конго",2000,2010);
  colonial({"Hong Kong":"Гонконг"},"КНР, специальный административный район с 1 июля 1997 г.",2000,2010,"https://www.basiclaw.gov.hk/en/basiclaw/preamble.html");
+ colonial({"Saint Barthelemy":"Сен-Бартелеми"},"Франция; самостоятельная заморская общность с 2007 г.",1994,2000,"https://www.outre-mer.gouv.fr/territoires/saint-barthelemy");
+ colonial({"Saint Martin":"Сен-Мартен (французская часть)"},"Франция; самостоятельная заморская общность с 2007 г.",1994,2000,"https://www.outre-mer.gouv.fr/territoires/saint-martin");
+ colonial({"Saint Barthelemy":"Сен-Бартелеми"},"Заморская общность Франции",2010,2010,"https://www.outre-mer.gouv.fr/territoires/saint-barthelemy");
+ colonial({"Saint Martin":"Сен-Мартен (французская часть)"},"Заморская общность Франции",2010,2010,"https://www.outre-mer.gouv.fr/territoires/saint-martin");
  colonial({Serbia:"Сербия",Montenegro:"Черногория"},"Союзная Республика Югославия",1994,2000,diplomaticHistory+"serbia/summary");
  // The following polygons explicitly use a polity name outside its known
  // period. Their geometry is not evidence for a replacement polity; mark the
@@ -419,6 +423,8 @@ function historicalCorrectionsForYear(year:number):Record<string,HistoricalLabel
  disputedContour("Inca Empire","Бывшие земли империи инков",1600,"Империя инков пала в 1530-х гг.; последнее государство инков в Вилькабамбе — в 1572 г.","https://www.metmuseum.org/toah/ht/08/sanc.html");
  colonial({"Poland-Lithuania":"Королевство Польское и Великое княжество Литовское (условный контур)"},"Польско-литовская династическая уния; Речь Посполитая образована в 1569 г.",1400,1530,"https://pamiecpolski.archiwa.gov.pl/akt-unii-krewskiej/");
  colonial({"United Kingdom":"Королевство Великобритания"},"Королевство Великобритания (1707–1800); уния с Ирландией с 1801 г.",1715,1800,"https://www.parliament.uk/about/living-heritage/evolutionofparliament/legislativescrutiny/act-of-union-1707/overview/the-articles-constitution-and-trade/");
+ colonial({"United Kingdom of Great Britain and Ireland":"Соединённое Королевство Великобритании и Северной Ирландии"},"Название Соединённого Королевства уточнено законом 1927 г.",1930,2010,"https://www.legislation.gov.uk/ukpga/1927/4/pdfs/ukpga_19270004_en.pdf");
+ colonial({Hail:"Хаиль (условный контур)",Hejaz:"Хиджаз (условный контур)"},"Королевство Хиджаза и Неджда; переименовано в Саудовскую Аравию в 1932 г.",1930,1930,"https://history.state.gov/historicaldocuments/frus1933v02/ch26subch1");
  colonial({Kuwait:"Кувейт"},"Британская договорная защита до 19 июня 1961 г.",1900,1960,diplomaticHistory+"kuwait");
  colonial({Qatar:"Катар"},"Британский протекторат до 1971 г.",1920,1960,diplomaticHistory+"qatar/recognition");
  colonial({Egypt:"Египетское королевство"},"Египет; формальная независимость с 1922 г., сохранялось британское влияние",1930,1945,diplomaticHistory+"egypt");
@@ -461,8 +467,8 @@ function historicalCorrectionsForYear(year:number):Record<string,HistoricalLabel
  if(year===1945||year===1960){
   corrections["United Arab Emirates"]=["Договорный Оман","Британские договорные протектораты",diplomaticHistory+"united-arab-emirates"];
   corrections["Sri Lanka"]=["Цейлон",year===1945?"Британская империя":"Цейлон",unDecolonization];
-  corrections.Benin=["Дагомея",year===1945?"Французская Западная Африка":"Дагомея",unDecolonization];
-  corrections["Burkina Faso"]=[year===1945?"Территория будущей Верхней Вольты":"Верхняя Вольта (условный контур)",year===1945?"Французская Западная Африка":"Верхняя Вольта",unDecolonization];
+  corrections.Benin=["Дагомея",year===1945?"Французская Западная Африка":"Независимость с 1 августа 1960 г.",year===1945?unDecolonization:diplomaticHistory+"benin"];
+  corrections["Burkina Faso"]=[year===1945?"Территория будущей Верхней Вольты":"Верхняя Вольта (условный контур)",year===1945?"Французская Западная Африка":"Независимость с 5 августа 1960 г.",year===1945?unDecolonization:diplomaticHistory+"burkina-faso"];
  }
  historicalCorrectionCache.set(year,corrections);
  return corrections;
