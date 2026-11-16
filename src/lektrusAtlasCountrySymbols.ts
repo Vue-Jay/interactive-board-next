@@ -103,6 +103,7 @@ export function atlasCountryFlagUrl(code:string):string{
 }
 export function atlasCountrySymbol(feature:GeoFeature,title:string,year:number,historical:boolean):AtlasCountrySymbol{
  const raw=String(feature.properties?.NAME??feature.properties?.name??"").trim();
+ if(historical&&feature.properties?.ATLAS_HISTORICAL_LABEL)return {kind:"symbol",code:null,monogram:initials(title||raw),label:"Условный картографический знак",note:"Контур источника уточнён; не официальный исторический флаг",key:raw+"|"+year+"|corrected"};
  const code=atlasCountryIso(feature);
  if(historical){
   // Bound to the *same* historical polity and year, not merely a shared modern ISO.

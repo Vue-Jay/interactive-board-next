@@ -522,6 +522,15 @@ assert.ok(map.includes("historical&&!modernReference||!!f.name"),
 assert.equal(geoExports.historicalCountryName("France"),"Франция");
 assert.equal(geoExports.historicalCountryName("Germany"),"Германия");
 assert.equal(geoExports.historicalCountryName("India"),"Индия");
+const anachronistic={type:"FeatureCollection",features:[named({NAME:"Azerbaijan",SUBJECTO:"Azerbaijan"}),named({NAME:"Israel"}),named({NAME:"Bangladesh"}),named({NAME:"United Arab Emirates"})]};
+assert.equal(geoExports.correctHistoricalLabels(anachronistic,1914).features[0].properties.ATLAS_HISTORICAL_AFFILIATION,"Российская империя");
+assert.equal(geoExports.correctHistoricalLabels(anachronistic,1945).features[1].properties.ATLAS_HISTORICAL_LABEL,"Подмандатная Палестина (условный контур)");
+assert.equal(geoExports.correctHistoricalLabels(anachronistic,1945).features[2].properties.ATLAS_HISTORICAL_LABEL,"Британская Индия (условный контур)");
+assert.equal(geoExports.correctHistoricalLabels(anachronistic,1960).features[3].properties.ATLAS_HISTORICAL_LABEL,"Договорный Оман");
+assert.equal(geoExports.correctedHistoricalIndexLabel("Israel",1945),"Подмандатная Палестина (условный контур)");
+assert.equal(geoExports.correctedHistoricalIndexLabel("Israel",1960),undefined);
+assert.equal(geoExports.borderPrecision(geoExports.correctHistoricalLabels(anachronistic,1914).features[0]),1);
+assert.equal(geoExports.correctHistoricalLabels(anachronistic,1994),anachronistic);
 assert.equal(geoExports.historicalCountryName("Japan"),"Япония");
 assert.equal(geoExports.historicalCountryName("United States of America"),"Соединённые Штаты Америки");
 assert.equal(geoExports.historicalCountryName("Czechoslovakia"),"Чехословакия");

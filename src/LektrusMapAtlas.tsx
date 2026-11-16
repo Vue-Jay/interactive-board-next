@@ -28,7 +28,7 @@ import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDi
 import {atlasModes,atlasModesFor,normalizeAtlasMode,historicalSnapshots,nearestSnapshotIndex,yearLabel,eventsNearYear} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,hasAtlasName,isRussianAtlasName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
-historicalFeatureFacts,historicalCountryName,historicalMapFeatures,loadHistoricalIndex,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
+historicalFeatureFacts,historicalCountryName,historicalMapFeatures,loadHistoricalIndex,correctedHistoricalIndexLabel,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
 import {findHistoricalArticle,historicalRussianName,historyArticleUrl} from "./lektrusHistoryEncyclopedia";
 import {findHistoricalReference,historicalReferences,normalizeHistoricalReferenceName} from "./lektrusHistoricalReferences";
 type Props={diagram:AtlasDocument;onChange?:(next:AtlasDocument)=>void;editorMode?:boolean;userId?:string};
@@ -65,6 +65,8 @@ export function atlasDisplayName(feature:GeoFeature,year:number,history:boolean)
    props.adm1_code===undefined&&props.ADM1_CODE===undefined;
   return sovereign?schoolCountryName(direct,String(props.ISO_A2??props.ISO_A2_EH??"")):direct;
  }
+ const corrected=feature.properties?.ATLAS_HISTORICAL_LABEL;
+ if(typeof corrected==="string")return corrected;
  const raw=String(feature.properties?.NAME??feature.properties?.name??"").trim();
  const found=historicalRussianName(raw,year)??findHistoricalArticle(raw,year)?.name??
   findHistoricalReference(raw,year)?.title??historicalCountryName(raw);
@@ -866,9 +868,9 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   id:`school-${event.year}-${event.lat}-${event.lon}`})):[];
  const displayedMarkers=[...userMarkers.map(marker=>({...marker,url:undefined})),...schoolMarkers];
  const selectedRaw=String(selected?.properties?.NAME??selected?.properties?.ADMIN??"");
- const selectedArticle=selected&&historical&&!modernReference?
+ const selectedArticle=selected&&historical&&!modernReference&&!selected.properties?.ATLAS_HISTORICAL_LABEL?
   findHistoricalArticle(selectedRaw,snapshot.year):undefined;
- const fallbackReference=selected&&historical&&!modernReference&&!selectedArticle?
+ const fallbackReference=selected&&historical&&!modernReference&&!selectedArticle&&!selected.properties?.ATLAS_HISTORICAL_LABEL?
   findHistoricalReference(selectedRaw,snapshot.year):undefined;
  useEffect(()=>{
   if(selected||selectedMineral||selectedMarker)setInspectorOpen(true)
@@ -911,8 +913,8 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   if(typeof value!=="string")return "";
   return geoFeatureName({type:"Feature",geometry:null,properties:{NAME:value}});
  };
- const historicalSubject=selected?russianSourceName(selected.properties?.SUBJECTO):"";
- const historicalPart=selected?russianSourceName(selected.properties?.PARTOF):"";
+ const historicalSubject=selected?String(selected.properties?.ATLAS_HISTORICAL_AFFILIATION??russianSourceName(selected.properties?.SUBJECTO)):"";
+ const historicalPart=selected&&!selected.properties?.ATLAS_HISTORICAL_LABEL?russianSourceName(selected.properties?.PARTOF):"";
  const selectedTitle=selected?(selectedIsCity?
   (russianPlaceName(selected)??""):
   ((selectedArticle?.name??fallbackReference?.title??atlasDisplayName(selected,snapshot.year,historical&&!modernReference))||
@@ -949,6 +951,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const indexedReferenceMaps=useMemo(()=>{
   const byAlias=new Map<string,Array<{year:number;raw:string}>>();
   for(const record of historyIndex)for(const raw of record.countries){
+   if(correctedHistoricalIndexLabel(raw,record.year))continue;
    const key=normalizeHistoricalReferenceName(raw);
    const matches=byAlias.get(key);
    if(matches)matches.push({year:record.year,raw});
@@ -969,11 +972,11 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   const found=new Map<string,{name:string;raw:string;years:number[]}>();
   for(const record of historyIndex){
    for(const raw of record.countries){
-    const title=historicalRussianName(raw,record.year)??findHistoricalArticle(raw,record.year)?.name??findHistoricalReference(raw,record.year)?.title??"";
+    const title=correctedHistoricalIndexLabel(raw,record.year)??historicalRussianName(raw,record.year)??findHistoricalArticle(raw,record.year)?.name??findHistoricalReference(raw,record.year)?.title??"";
     if(!isRussianAtlasName(title))continue;
     if(!title.toLocaleLowerCase("ru").includes(query)&&
      !raw.toLocaleLowerCase("en").includes(query))continue;
-    const key=normalizeHistoricalReferenceName(raw);
+    const key=normalizeHistoricalReferenceName(raw)+"|"+title;
     const old=found.get(key);
     if(old){if(!old.years.includes(record.year))old.years.push(record.year);}
     else found.set(key,{name:title,raw,years:[record.year]});
@@ -1595,7 +1598,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
          stroke={isWorksheet&&!contourConfig.showBorders?"none":highlighted||s.feature===selected?"#df793e":mode==="minerals"?"#a4aea2":mode==="contour"?"#8c9eaa":"#819fb2"}
          strokeWidth={highlighted||s.feature===selected?1.9:mode==="minerals"?.4:historical?(precise===1?.8:.58):.65}
          vectorEffect="non-scaling-stroke"
-         strokeDasharray={historical&&!modernReference&&precise===1?"3 2":undefined}
+         strokeDasharray={historical&&!modernReference&&(precise===1||!!s.feature.properties?.ATLAS_HISTORICAL_LABEL)?"3 2":undefined}
          onClick={()=>showCountry(s.feature)} className="lektrus-atlas-country">
          <title>{mode==="contour"?"Граница государства":s.name||"Историческая территория"}</title>
         </path>;
@@ -2246,7 +2249,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      </div>}
     {historical&&<div className="lektrus-atlas-year-header">
      <strong>{yearLabel(snapshot.year)}{modernReference?" · современный обзор":""}</strong>
-     <small>{modernReference?"Архивная геометрия Natural Earth (2022); не точная карта 2026 года":"Историческая реконструкция выбранной эпохи"}</small>
+     <small>{modernReference?"Архивная геометрия Natural Earth (2022); не точная карта 2026 года":"Историческая реконструкция: отдельные контуры могут отражать более поздние границы. Не считать их точной картой суверенных государств."}</small>
     </div>}
     {historical&&<div className="lektrus-history-tabs" role="tablist" aria-label="Разделы исторического справочника">
      {([["directory","Территории"],["article","Справка"],["changes","Изменения"]] as const)
@@ -2268,10 +2271,10 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       <small>{historyIndex.length?historyIndex.length+" датированных карт в индексе":"Загрузка указателя периодов"}</small>
       {indexProblem&&<small>Индекс временно недоступен: {indexProblem}</small>}
       {directoryFilter.trim().length>=2?<div className="lektrus-history-results">
-       {globalMatches.length?globalMatches.map(item=><div key={item.raw} className="lektrus-history-result">
+       {globalMatches.length?globalMatches.map(item=><div key={item.raw+"|"+item.name} className="lektrus-history-result">
         <div className="lektrus-history-result-heading">
          <LektrusAtlasCountrySymbol compact symbol={atlasCountrySymbol({type:"Feature",
-          properties:{NAME:item.raw},geometry:{type:"Polygon",coordinates:[]}},
+          properties:{NAME:item.raw,ATLAS_HISTORICAL_LABEL:correctedHistoricalIndexLabel(item.raw,item.years[item.years.length-1])},geometry:{type:"Polygon",coordinates:[]}},
           item.name,item.years[item.years.length-1],true)}/>
          <strong>{item.name}</strong>
         </div><small>{item.years.length} датированных карт</small>
@@ -2442,6 +2445,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       {typeof selected.properties?.LOCATION_SOURCE_URL==="string"&&<a href={selected.properties.LOCATION_SOURCE_URL}
        target="_blank" rel="noopener noreferrer">Географический источник координат ↗</a>}
      {historical&&<div className="lektrus-history-compact-facts">
+      {typeof selected.properties?.ATLAS_HISTORICAL_NOTE==="string"&&<p>{selected.properties.ATLAS_HISTORICAL_NOTE} <strong>{historicalSubject}</strong> {typeof selected.properties?.ATLAS_HISTORICAL_SOURCE==="string"&&<a href={selected.properties.ATLAS_HISTORICAL_SOURCE} target="_blank" rel="noopener noreferrer">Источник уточнения ↗</a>}</p>}
       <div className="lektrus-history-key-facts">
        <span><strong>Период карты</strong>{yearLabel(snapshot.year)}</span>
        {selectedArticle&&<span><strong>Справочный период</strong>{yearLabel(selectedArticle.from)} – {yearLabel(selectedArticle.to)}</span>}
@@ -2459,7 +2463,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       </div>:<p className="lektrus-history-missing-facts">Для этой территории пока нет отдельной проверенной исторической справки.</p>}
       <details className="lektrus-history-more">
        <summary>Источники и дополнительные сведения</summary>
-       <p><strong>Точность границ:</strong> {precisions[borderPrecision(selected)]}</p>
+       <p><strong>Точность границ:</strong> {selected.properties?.ATLAS_HISTORICAL_LABEL?"Условный контур, границы не подтверждены":precisions[borderPrecision(selected)]}</p>
        {fallbackReference?.formation&&<p><strong>Образование:</strong> {fallbackReference.formation}</p>}
        {historicalFeatureFacts(selected).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
        {historicalSubject&&<p><strong>Принадлежность:</strong> {historicalSubject}</p>}
