@@ -3,7 +3,7 @@ import {createPortal} from "react-dom";
 import type {LabBench,LabBenchSettings,LabRealism,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labSimulationTickWaitMs,pourLabIntoFilter,
  labVesselVisualClock,labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,labFollowUpGasProgress,labGasTubeFlowActive,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabCoolerTemperature,LAB_COOLER_MIN_C,LAB_COOLER_MAX_C,LAB_HOTPLATE_MAX_C,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,setLabExperimentClock,labExperimentClockSeconds,formatLabClock,
- setLabSimulationPaused,setLabGasCollection,attachLabGasCollector,labGasStoredMl,labGasStoredSamples,labGasReceiverFreeMl,labGasTransferPreview,transferLabGasSample,formatLabDose,labDisplayNumber,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ setLabSimulationPaused,setLabGasCollection,attachLabGasCollector,labGasStoredMl,labGasStoredSamples,labGasReceiverFreeMl,labGasTransferPreview,transferLabGasSample,formatLabDose,labDisplayNumber,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,labHasFrozenLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance,labSolutionTint,labSedimentTint,labGasTint} from "./lektrusLabAppearance";
@@ -26,6 +26,8 @@ import LektrusLabDeviceIcon from "./LektrusLabDeviceIcon";
 import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint,labStandClampSvgY,labTitrationDropEndpoints,labShelfGestureMoved,isLabSink,isLabCupboard,isLabWorktop,isLabReturnDrop} from "./lektrusLabLayout";
 
 const names:Record<LabGlassware,string>=Object.fromEntries(labGlassware.map(v=>[v.id,v.name])) as Record<LabGlassware,string>;
+const frozenTransferNotice="Содержимое частично или полностью замёрзло. Дождитесь оттаивания перед переливанием.";
+const frozenTransfer=(from?:LabVessel,to?:LabVessel)=>!!from&&labHasFrozenLiquid(from)||!!to&&labHasFrozenLiquid(to);
 const shape:Record<LabGlassware,{inside:string;outline:string;liquid:string}> ={
  beaker:{
   inside:"M20 18H80V104Q80 116 68 116H32Q20 116 20 104Z",
@@ -1100,6 +1102,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   }).filter(v=>v.dist<Math.min(115,Math.max(54,rect.width*.15))).sort((a,b)=>a.dist-b.dist)[0]?.id??null;
  };
  const drip=(sourceId:string,targetId:string,ml:number)=>{
+  if(frozenTransfer(bench.vessels.find(v=>v.id===sourceId),bench.vessels.find(v=>v.id===targetId))){
+   setNotice(frozenTransferNotice);return;
+  }
   const next=dripLabVessel(bench,sourceId,targetId,ml);
   if(next===bench){
    setNotice("Для титрования наполните бюретку и колбу кислотой и щёлочью с известной концентрацией");
@@ -1116,6 +1121,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  };
  const transferVessel=(sourceId:string,targetId:string)=>{
   const from=bench.vessels.find(v=>v.id===sourceId);
+  if(frozenTransfer(from,bench.vessels.find(v=>v.id===targetId))){setNotice(frozenTransferNotice);return;}
   if(from?.kind==="burette"&&labTitrationTargets(bench,sourceId).some(v=>v.id===targetId)){
    drip(sourceId,targetId,1);return;
   }
@@ -1156,6 +1162,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    const from=latest.vessels.find(v=>v.id===sourceId);
    const to=latest.vessels.find(v=>v.id===targetId);
    if(!from||!to)return;
+   if(frozenTransfer(from,to)){
+    setNotice(frozenTransferNotice);contactRef.current={...c,activated:true};setContactCountdown(null);return;
+   }
    let next=latest;
    if(from.kind==="pipette"||to.kind==="pipette"){
     const pipette=from.kind==="pipette"?from:to;
@@ -2430,12 +2439,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
         " · Кристаллизовалось "+crystallineSalt[0]+": "+
         formatted(crystallineSalt[1]*(labMolarMass(crystallineSalt[0])??0))+" г."}
       </p>}
-     {quantity.solidVolumeMl>1e-8&&<p>
-      Объём твёрдой фазы по справочной плотности:
-      {" "+formatted(quantity.solidVolumeMl)} мл.
+     {(quantity.solidVolumeMl>1e-8||quantity.gasVolumeMl>1e-8)&&<p>
+      {quantity.solidVolumeMl>1e-8&&<>Объём твёрдой фазы по справочной плотности:
+      {" "+formatted(quantity.solidVolumeMl)} мл. </>}
+      {quantity.gasVolumeMl>1e-8&&<>Учтённая газовая проба: {formatted(quantity.gasVolumeMl)} мл. </>}
       {quantity.solidVolumeComplete?
-       " Всего занято в сосуде: "+formatted(quantity.occupiedMl)+" мл.":
-       " Для части твёрдых веществ объём не рассчитан."}
+       "Всего учтено: "+formatted(quantity.occupiedMl+quantity.gasVolumeMl)+" мл.":
+       "Для части твёрдых веществ объём не рассчитан."}
       {" "}Свободный объём по известным фазам: {formatted(quantity.availableMl)} мл.
      </p>}
      <p>Горлышко: {v.stoppered?"закрыто пробкой":"открыто"}.
@@ -3042,9 +3052,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
            const requested=Number(measuredMl);
            const configured=selected.kind==="pipette"?
             setLabPipetteTarget(bench,selected.id,requested):bench;
-           const next=from&&to?transferLabMeasuredLiquid(configured,from,to,requested):bench;
-           if(next!==bench){onChange?.(next);setNotice(action+" "+measuredMl+" мл")}
-           else setNotice("Не удалось отмерить: проверьте объём и сосуд");
+           if(frozenTransfer(bench.vessels.find(v=>v.id===from),bench.vessels.find(v=>v.id===to))){setNotice(frozenTransferNotice);return;}
+           const next=from&&to?transferLabMeasuredLiquid(configured,from,to,requested):configured;
+           if(next!==configured){onChange?.(next);setNotice(action+" "+measuredMl+" мл")}
+           else{if(configured!==bench)onChange?.(configured);setNotice("Не удалось отмерить: проверьте объём и сосуд");}
           }}>{action}</button>)}
         </>
        </section>}

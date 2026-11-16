@@ -25,6 +25,21 @@ const vessel=(b,id)=>b.vessels.find(v=>v.id===id);
 const approx=(value,expected,tol=.005)=>assert.ok(
  Math.abs(value-expected)<=tol,value+" !== "+expected);
 const water=volume=>({unit:"ml",value:volume});
+// Measured gas samples reserve headspace as well as liquid/solid volume.
+// Liquid dosing, pipetting and pouring must share the same capacity limit.
+let gasCapacity=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",water(20));
+gasCapacity=lab.addLabVessel(gasCapacity,"tube");
+gasCapacity=lab.putLabReagent(gasCapacity,"v2","N2",{unit:"ml",value:20});
+assert.equal(lab.labVesselQuantity(vessel(gasCapacity,"v2")).availableMl,5);
+assert.equal(lab.labGasReceiverFreeMl(vessel(gasCapacity,"v2")),5);
+assert.strictEqual(lab.putLabReagent(gasCapacity,"v2","H2O",water(6)),gasCapacity);
+assert.strictEqual(lab.transferLabMeasuredLiquid(gasCapacity,"v1","v2",6),gasCapacity);
+const gasFill=lab.fastLabPour(gasCapacity,"v1","v2");
+approx(lab.labVesselQuantity(vessel(gasFill,"v2")).volumeMl,5);
+approx(lab.labGasStoredMl(vessel(gasFill,"v2")),20);
+assert.equal(lab.labVesselQuantity(vessel(gasFill,"v2")).availableMl,0);
+assert.equal(lab.labGasReceiverFreeMl(vessel(gasFill,"v2")),0);
+approx(vessel(gasFill,"v1").doses.H2O.value,15);
 let setup=lab.setLabSimulationPaused(lab.defaultLabBench(),false,0);
 setup=lab.putLabReagent(setup,"v1","H2O",water(100));
 setup=lab.addLabVessel(setup,"tube");

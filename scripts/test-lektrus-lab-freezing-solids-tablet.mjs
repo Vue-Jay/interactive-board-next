@@ -68,6 +68,23 @@ assert.ok(bench.vessels.find(v=>v.id===start.id).temperatureC<=.5,
  "Water freezes around 0°C before its solid temperature drops");
 assert.equal(bench.vessels.find(v=>v.id===start.id).doses.H2O.value,20,
  "Freezing does not destroy water mass");
+const frozenBench=lab.addLabVessel(bench,"beaker");
+assert.strictEqual(lab.transferLabMeasuredLiquid(frozenBench,start.id,"v2",5),frozenBench,
+ "A partially frozen sample cannot be measured as a homogeneous liquid");
+assert.strictEqual(lab.fastLabPour(frozenBench,start.id,"v2"),frozenBench);
+assert.strictEqual(lab.pourLabVessel(frozenBench,start.id,"v2"),frozenBench);
+let thawed=lab.setLabCoolerTemperature(frozenBench,cooler.id,20);
+const thawStart=thawed.simulationAtMs??0;
+for(let n=1;n<=150&&lab.labHasFrozenLiquid(thawed.vessels[0]);n++)
+ thawed=lab.advanceLabSimulation(thawed,thawStart+n*10000);
+assert.equal(lab.labHasFrozenLiquid(thawed.vessels[0]),false,"A thawed sample is transferable again");
+assert.notStrictEqual(lab.transferLabMeasuredLiquid(thawed,start.id,"v2",5),thawed);
+const discarded=lab.emptyLabVessel(bench,start.id);
+assert.equal(discarded.vessels[0].frozenFraction,undefined,
+ "Emptying the glassware clears its former ice fraction");
+const refilled=lab.putLabReagent(discarded,start.id,"H2O",{value:10,unit:"ml"});
+assert.equal(refilled.vessels[0].frozenFraction,undefined,
+ "New liquid must not inherit ice from a discarded experiment");
 // A weighed soluble salt does NOT freeze at pure water's 0°C.
 const freezing=load("src/lektrusLabFreezing.ts");
 const salineDoses={H2O:{value:20,unit:"ml"},NaCl:{value:1,unit:"g"}};
@@ -150,6 +167,8 @@ assert.equal(saltVessel.doses.H2O.value,20,
 assert.equal(saltVessel.doses.NaCl.value,1,
  "Freezing does not erase dissolved salt");
 const ui=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
+assert.match(ui,/Дождитесь оттаивания перед переливанием/);
+assert.match(ui,/if\(next!==configured\)/,"Changing the pipette setting alone is not a successful transfer");
 const css=fs.readFileSync("src/lektrusChemistryBench.css","utf8");
 const art=fs.readFileSync("src/LektrusLabDeviceIcon.tsx","utf8");
 assert.match(ui,/LAB_COOLER_MIN_C,LAB_COOLER_MAX_C/);
