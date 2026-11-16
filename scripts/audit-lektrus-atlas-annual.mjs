@@ -11,6 +11,18 @@ const normalize=name=>name.normalize("NFKC").trim().toLowerCase().replace(/\s+/g
 const names=features=>[...new Set(features.map(f=>String(f.properties?.NAME??"").trim()).filter(Boolean))].sort();
 const minus=(a,b)=>{const other=new Set(b.map(normalize));return a.filter(n=>!other.has(normalize(n)))};
 
+// Independent minimum-presence checks. Admission establishes statehood by
+// that date, not recognition before admission or exact border geometry.
+const admissionAnchors=[
+ {name:"South Sudan",aliases:["South Sudan","Republic of South Sudan"],year:2011,date:"2011-07-14"},
+ {name:"Timor-Leste",aliases:["Timor-Leste","East Timor","Democratic Republic of Timor-Leste"],year:2002,date:"2002-09-27"},
+];
+export function referenceAdmissionWarnings(year,polities){
+ const present=new Set(polities.map(normalize));
+ return admissionAnchors.filter(a=>year>=a.year&&year<=MAX&&!a.aliases.some(n=>present.has(normalize(n))))
+  .map(a=>({name:a.name,date:a.date,source:"https://www.un.org/en/about-us/member-states",reason:year===a.year?"missing in admission year (intra-year transition)":"missing in full year after admission"}));
+}
+
 export function auditAnnual(source,snapshots,{from=CURRENT,to=MIN}={}){
  assert.equal(source.type,"FeatureCollection");
  const records=[],invalid=[];
@@ -41,7 +53,8 @@ export function auditAnnual(source,snapshots,{from=CURRENT,to=MIN}={}){
   }:null;
   rows.push({year,atlasStatus,sourceStatus,polityCount:polities.length,recordCount:active.length,
    polities,appearsGoingBack:supported&&year<MAX?minus(polities,newer):[],
-   disappearsGoingBack:supported&&year<MAX?minus(newer,polities):[],comparison});
+   disappearsGoingBack:supported&&year<MAX?minus(newer,polities):[],comparison,
+   referenceWarnings:referenceAdmissionWarnings(year,polities)});
   newer=polities;
  }
  return {source:"Cliopatria v0.2.1 (CC BY 4.0, 10.5281/zenodo.23128623)",
@@ -58,6 +71,9 @@ function selfTest(){
  assert.deepEqual(a.years[5].disappearsGoingBack,["A"]);
  const bc=auditAnnual({type:"FeatureCollection",features:[f("B",-2,2)]},new Map(),{from:2,to:-2});
  assert.deepEqual(bc.years.map(y=>y.year),[2,1,-1,-2]);
+ assert.deepEqual(referenceAdmissionWarnings(2012,["East Timor"]).map(w=>w.name),["South Sudan"]);
+ assert.equal(referenceAdmissionWarnings(2002,[])[0].reason,"missing in admission year (intra-year transition)");
+ assert.equal(referenceAdmissionWarnings(2014,["Republic of South Sudan","Timor-Leste"]).length,0);
  console.log("Annual audit fixtures passed: inclusive date intervals, descending years, missing sources, name differences, no year zero.");
 }
 
@@ -79,6 +95,7 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
   assert.ok(result.sourceRecordCount>1000,"reference appears incomplete");
   fs.writeFileSync(out,JSON.stringify(result));
   for(const row of result.years.slice(0,27))console.log(`${row.year}: ${row.atlasStatus}; ${row.sourceStatus}; ${row.polityCount} reference polities; ${row.recordCount} records`);
+  for(const row of result.years)for(const warning of row.referenceWarnings)console.log(`Reference warning ${row.year}: ${warning.name}; ${warning.reason}; UN admission ${warning.date}`);
   console.log(`Annual coverage: ${result.years.length} years; ${result.sourceRecordCount} valid dated polity records; ${result.invalidRecords.length} invalid reference records; ${result.years.filter(y=>y.atlasStatus==="no-dated-snapshot").length} years missing a dated Lektrus map.`);
  }
 }
