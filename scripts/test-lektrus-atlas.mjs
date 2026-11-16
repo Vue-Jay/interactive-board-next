@@ -545,6 +545,23 @@ for(const [name,year,label,affiliation] of [
  ["Algeria",1960,"Алжир","Французская администрация"],
  ["Vietnam",1960,"Северный и Южный Вьетнам (общий условный контур)","линия разделения"],
  ["Egypt",1960,"Объединённая Арабская Республика (Египет)","1958–1961"],
+ ["Yemen",1960,"Йеменское королевство и британские владения (условный контур)","1990"],
+ ["Malaysia",1960,"Малайская Федерация и британские территории (условный контур)","1963"],
+ ["Indonesia",1960,"Индонезия (условный контур)","1963"],
+ ["Pakistan",1960,"Пакистан (Западный и Восточный)","1971"],
+ ["Cameroon",1960,"Республика Камерун (условный контур)","1961"],
+ ["Mali",1960,"Республика Мали (условный контур)","22 сентября 1960"],
+ ["Senegal",1960,"Республика Сенегал (условный контур)","20 августа 1960"],
+ ["China",1960,"Китайская Народная Республика","Китайской Республики"],
+ ["Taiwan",1960,"Китайская Республика (Тайвань)","1971"],
+ ["Tibet",1960,"Тибет (условный контур)","1959"],
+ ["Samoa",1960,"Западное Самоа","1962"],
+ ["Niue",1960,"Ниуэ","1974"],
+ ["Suriname",1960,"Суринам","1975"],
+ ["Hong Kong",1960,"Гонконг","Британская администрация"],
+ ["South Africa",1960,"Южно-Африканский Союз","1961"],
+ ["Congo",1960,"Республика Конго (Браззавиль)","1960"],
+ ["Zaire",1960,"Республика Конго (Леопольдвиль)","1971"],
  ["Philippines",1945,"Филиппины (Содружество)","1946"],
  ["White Russia",1930,"СССР (условный контур)","исходная подпись"],
  ["Far Eastern SSR",1920,"Дальневосточная республика (с апреля 1920 г.)","6 апреля 1920"],
@@ -575,6 +592,26 @@ if(process.env.LEKTRUS_ATLAS_DATA_DIR){
  const coverageSource=fs.readFileSync(new URL("../src/lektrusAtlasHistoricalCoverage.ts",import.meta.url),"utf8");
  const coverageExports={};
  new Function("exports",ts.transpileModule(coverageSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(coverageExports);
+ // A/RES/1514(XV), 14 December 1960: 99 voting members, including the
+ // Ukrainian and Byelorussian SSR seats that are not independent map polities.
+ // The China seat was represented by the Republic of China; Egypt and Syria
+ // were one UN member (UAR). Never compare this period against today's ISO list.
+ const un1960="Afghanistan|Albania|Argentina|Australia|Austria|Belgium|Bolivia|Brazil|Bulgaria|Burma|Cambodia|Cameroon|Canada|Central African Republic|Sri Lanka|Chad|Chile|Taiwan|Colombia|Congo|Zaire|Costa Rica|Cuba|Cyprus|Czechoslovakia|Benin|Denmark|Dominican Republic|Ecuador|El Salvador|Ethiopia|Malaysia|Finland|France|Gabon|Ghana|Greece|Guatemala|Guinea|Haiti|Honduras|Hungary|Iceland|India|Indonesia|Iran|Iraq|Ireland|Israel|Italy|Ivory Coast|Japan|Jordan|Laos|Lebanon|Liberia|Libya|Luxembourg|Madagascar|Mali|Mexico|Morocco|Nepal|Netherlands|New Zealand|Nicaragua|Niger|Nigeria|Norway|Pakistan|Panama|Paraguay|Peru|Philippines|Poland|Portugal|Romania|Saudi Arabia|Senegal|Somalia|Spain|Sudan|Sweden|Thailand|Togo|Tunisia|Turkey|South Africa|USSR|Egypt|United Kingdom|United States|Burkina Faso|Uruguay|Venezuela|Yemen|Yugoslavia".split("|");
+ assert.equal(new Set(un1960).size+2,99);
+ const raw1960=JSON.parse(fs.readFileSync(`${process.env.LEKTRUS_ATLAS_DATA_DIR}/world_1960.geojson`,"utf8"));
+ const named1960=new Set(raw1960.features.filter(f=>["MultiPolygon","Polygon"].includes(f.geometry?.type)).map(f=>f.properties?.NAME?.trim()));
+ assert.deepEqual(un1960.filter(n=>!named1960.has(n)),[]);
+ // Interior points demonstrate actual anachronistic coverage, not just a
+ // mismatch of labels. All points are well inland, away from the coastline
+ // simplification. Retain the original geometry, but mark it conditional.
+ for(const [name,point] of [["Yemen",[48.8,15.5]],["Malaysia",[112.5,2.7]],["Malaysia",[117,5]],["Indonesia",[138,-4]],["Cameroon",[9.4,5.6]]]){
+  const original=raw1960.features.find(f=>f.properties?.NAME===name&&capitalInsideCountry(point,f.geometry));
+  assert.ok(original,`1960: expected known composite outline for ${name}`);
+  const corrected=geoExports.correctHistoricalLabels(raw1960,1960).features.find(f=>f.geometry===original.geometry);
+  assert.match(corrected.properties.ATLAS_HISTORICAL_LABEL,/условный контур/);
+  assert.equal(geoExports.borderPrecision(corrected),1);
+ }
+ console.log("1960: 97/97 named outlines corresponding to 99 UN seats (two SSRs included in USSR); geometry acceptance remains open.");
  // Verify minimum named coverage against all 193 present-day members, with
  // the UN roster's actual year-end totals and explicit historical aliases.
  const oldAliases={BLR:"Byelarus",COG:"Congo",COD:"Zaire",SWZ:"Swaziland",GMB:"Gambia, The",PRK:"Korea, Democratic People's Republic of",KOR:"Korea, Republic of",MMR:"Burma",MKD:"Macedonia",TZA:"Tanzania, United Republic of",TTO:"Trinidad",CPV:"Cape Verde"};

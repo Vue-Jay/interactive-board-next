@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 import {historicalMemberCoverage} from "../src/lektrusAtlasHistoricalCoverage.ts";
+import {capitalInsideCountry} from "./atlas-2026-capitals.mjs";
 
 const MIN=-3400,MAX=2024,CURRENT=2026;
 const polygon=f=>["Polygon","MultiPolygon"].includes(f.geometry?.type)&&Array.isArray(f.geometry.coordinates)&&f.geometry.coordinates.length>0;
@@ -15,6 +16,25 @@ const minus=(a,b)=>{const other=new Set(b.map(normalize));return a.filter(n=>!ot
 // Independent minimum-presence checks. Admission establishes statehood by
 // that date, not recognition before admission or exact border geometry.
 const admissionAnchors=[
+ ...[
+  ["Benin",["Republic of Benin","Benin","Dahomey","Republic of Dahomey"]],
+  ["Burkina Faso",["Burkina Faso","Upper Volta","Republic of Upper Volta"]],
+  ["Cameroon",["Republic of Cameroon","Cameroon","Cameroun"]],
+  ["Central African Republic",["Central African Republic","Central African Empire"]],
+  ["Chad",["Republic of Chad","Chad"]],
+  ["Congo (Brazzaville)",["Republic of the Congo","Congo (Brazzaville)","People's Republic of the Congo"]],
+  ["Congo (Leopoldville)",["Democratic Republic of the Congo","Republic of the Congo (Léopoldville)","Zaire","Republic of Zaire"]],
+  ["Cyprus",["Republic of Cyprus","Cyprus"]],
+  ["Gabon",["Gabon","Gabonese Republic"]],
+  ["Ivory Coast",["Republic of Côte d'Ivoire","Ivory Coast","Côte d'Ivoire"]],
+  ["Madagascar",["Madagascar","Malagasy Republic","Republic of Madagascar"]],
+  ["Niger",["Republic of the Niger","Niger"]],
+  ["Somalia",["Federal Republic of Somalia","Somali Republic","Somalia"]],
+  ["Togo",["Togo","Togolese Republic"]],
+ ].map(([name,aliases])=>({name,aliases,year:1960,date:"1960-09-20"})),
+ {name:"Mali",aliases:["Republic of Mali","Mali"],year:1960,date:"1960-09-28"},
+ {name:"Senegal",aliases:["Republic of Senegal","Senegal"],year:1960,date:"1960-09-28"},
+ {name:"Nigeria",aliases:["Federal Republic of Nigeria","Federation of Nigeria","Nigeria"],year:1960,date:"1960-10-07"},
  {name:"South Sudan",aliases:["South Sudan","Republic of South Sudan"],year:2011,date:"2011-07-14"},
  {name:"Timor-Leste",aliases:["Timor-Leste","East Timor","Democratic Republic of Timor-Leste"],year:2002,date:"2002-09-27"},
 ];
@@ -37,6 +57,28 @@ export function extractHistoricalGapCandidates(source){
   candidates.push({type:"Feature",geometry:f.geometry,properties:{year,iso:member.iso,name:member.name,referenceName:wanted,from:f.properties.FromYear,to:f.properties.ToYear,review:"candidate-only"}});
  }
  return {type:"FeatureCollection",source:"Cliopatria v0.2.1, CC BY 4.0, https://doi.org/10.5281/zenodo.23128623",notice:"Do not render as accepted borders until geographic and historical checks pass",features:candidates,unresolved};
+}
+
+// These inland points distinguish historically separate administrations.
+// Passing points is necessary, not sufficient: the actual boundaries still
+// require date-specific geographic evidence and topology/overlap review.
+const checks1960=[
+ {name:"North Yemen",inside:[44.2,15.3],outside:[48.8,15.5],source:"https://history.state.gov/countries/yemen"},
+ {name:"Federation of Malaya",inside:[101.7,3.1],outside:[112.5,2.7],source:"https://www.un.org/dppa/decolonization/history/former-trust-and-nsgts"},
+ {name:"Republic of Indonesia",inside:[106.85,-6.2],outside:[138,-4],source:"https://peacekeeping.un.org/sites/default/files/past/unsfbackgr.html"},
+ {name:"Republic of Cameroon",inside:[11.5,3.85],outside:[9.4,5.6],source:"https://digitallibrary.un.org/record/1291384/files/1138094_EN.pdf"},
+ {name:"Democratic Republic of Vietnam",inside:[105.8,21],outside:[106.7,10.8],source:"https://history.state.gov/historicaldocuments/frus1952-54v16/d1035"},
+ {name:"Republic of Vietnam",inside:[106.7,10.8],outside:[105.8,21],source:"https://history.state.gov/historicaldocuments/frus1952-54v16/d1035"},
+];
+export function review1960GeometryCandidates(source){
+ return checks1960.map(check=>{
+  const matches=source.features.filter(f=>f.properties?.Type==="POLITY"&&f.properties.Name===check.name&&Number(f.properties.FromYear)<=1960&&Number(f.properties.ToYear)>=1960&&polygon(f));
+  if(matches.length!==1)return {...check,matches:matches.length,review:"unresolved"};
+  const geometry=matches[0].geometry;
+  const includesRequired=capitalInsideCountry(check.inside,geometry);
+  const includesExcluded=capitalInsideCountry(check.outside,geometry);
+  return {...check,matches:1,includesRequired,includesExcluded,review:includesRequired&&!includesExcluded?"candidate-only":"reject"};
+ });
 }
 
 export function auditAnnual(source,snapshots,{from=CURRENT,to=MIN}={}){
@@ -74,7 +116,7 @@ export function auditAnnual(source,snapshots,{from=CURRENT,to=MIN}={}){
   newer=polities;
  }
  return {source:"Cliopatria v0.2.1 (CC BY 4.0, 10.5281/zenodo.23128623)",
-  sourceRange:[MIN,MAX],invalidRecords:invalid,sourceRecordCount:records.length,years:rows};
+  sourceRange:[MIN,MAX],invalidRecords:invalid,sourceRecordCount:records.length,geometry1960Checks:review1960GeometryCandidates(source),years:rows};
 }
 
 function selfTest(){
@@ -87,13 +129,18 @@ function selfTest(){
  assert.deepEqual(a.years[5].disappearsGoingBack,["A"]);
  const bc=auditAnnual({type:"FeatureCollection",features:[f("B",-2,2)]},new Map(),{from:2,to:-2});
  assert.deepEqual(bc.years.map(y=>y.year),[2,1,-1,-2]);
- assert.deepEqual(referenceAdmissionWarnings(2012,["East Timor"]).map(w=>w.name),["South Sudan"]);
- assert.equal(referenceAdmissionWarnings(2002,[])[0].reason,"missing in admission year (intra-year transition)");
- assert.equal(referenceAdmissionWarnings(2014,["Republic of South Sudan","Timor-Leste"]).length,0);
+ assert.deepEqual(referenceAdmissionWarnings(2012,["East Timor"]).filter(w=>w.date>="2000").map(w=>w.name),["South Sudan"]);
+ assert.equal(referenceAdmissionWarnings(2002,[]).find(w=>w.name==="Timor-Leste").reason,"missing in admission year (intra-year transition)");
+ assert.equal(referenceAdmissionWarnings(2014,["Republic of South Sudan","Timor-Leste"]).filter(w=>w.date>="2000").length,0);
+ assert.equal(referenceAdmissionWarnings(1959,[]).length,0);
+ assert.equal(referenceAdmissionWarnings(1960,[]).length,17);
+ assert.ok(referenceAdmissionWarnings(1960,["Mali Federation"]).some(w=>w.name==="Mali"),"the dissolved federation is not the Republic of Mali");
+ assert.ok(!referenceAdmissionWarnings(1960,["Republic of Senegal"]).some(w=>w.name==="Senegal"));
  const gaps=extractHistoricalGapCandidates({features:[f("East Timor",2006,2013)]});
  assert.equal(gaps.features.length,1);
  assert.equal(gaps.features[0].properties.year,2010);
  assert.equal(gaps.features.length+gaps.unresolved.length,52);
+ assert.equal(review1960GeometryCandidates({features:[]}).every(c=>c.review==="unresolved"),true);
  console.log("Annual audit fixtures passed: inclusive date intervals, descending years, missing sources, name differences, no year zero.");
 }
 
@@ -118,6 +165,7 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
   const gapCandidates=extractHistoricalGapCandidates(source);
   fs.writeFileSync(path.join(path.dirname(out),"historical-gap-candidates.geojson"),JSON.stringify(gapCandidates));
   console.log(`Historical gap candidates: ${gapCandidates.features.length} dated polygons for review; ${gapCandidates.unresolved.length} still without a reviewed reference record`);
+  for(const check of result.geometry1960Checks)console.log(`1960 geometry ${check.name}: ${check.review}`);
   for(const row of result.years.slice(0,27))console.log(`${row.year}: ${row.atlasStatus}; ${row.sourceStatus}; ${row.polityCount} reference polities; ${row.recordCount} records`);
   for(const row of result.years)for(const warning of row.referenceWarnings)console.log(`Reference warning ${row.year}: ${warning.name}; ${warning.reason}; UN admission ${warning.date}`);
   console.log(`Annual coverage: ${result.years.length} years; ${result.sourceRecordCount} valid dated polity records; ${result.invalidRecords.length} invalid reference records; ${result.years.filter(y=>y.atlasStatus==="no-dated-snapshot").length} years missing a dated Lektrus map.`);
