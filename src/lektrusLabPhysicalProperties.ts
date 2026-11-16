@@ -370,7 +370,7 @@ const physical:Record<string,LabThermalRecord>={
  KNO3:{meltingC:334,decompositionC:400,behavior:"decomposes"},
  NH4NO3:{meltingC:169.7,decompositionC:210,behavior:"decomposes",
   note:"Разложение зависит от условий; точная температура не универсальна."},
- NaNO2:{meltingC:271,decompositionC:320,behavior:"decomposes"},
+ NaNO2:{decompositionC:320,behavior:"decomposes",...LAB_BATCH_THERMAL_PROPERTIES.NaNO2},
  KNO2:{meltingC:440,decompositionC:537,behavior:"decomposes"},
  C12H22O11:{decompositionC:185.5,behavior:"decomposes",
   note:"При нагревании разлагается/карамелизуется; нормальной температуры кипения нет."},
