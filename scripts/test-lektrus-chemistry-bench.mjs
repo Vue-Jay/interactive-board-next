@@ -44,6 +44,7 @@ const dissolution=load("src/lektrusLabDissolution.ts",key=>{
  assert.equal(key,"./lektrusLabStoichiometry");return chem;
 });
 const vapor=load("src/lektrusLabEvaporation.ts",key=>{
+ if(key==="./lektrusLabStoichiometry")return chem;
  assert.equal(key,"./lektrusLabMaterialConstants");return constants;
 });
 const network=load("src/lektrusLabReactionNetwork.ts",key=>{
@@ -68,7 +69,7 @@ const materialRegistry=load("src/lektrusLabPropertyRegistry.ts",key=>{
 const waterIonization=load("src/lektrusLabWaterIonization.ts");
 const acidBase=load("src/lektrusLabPH.ts",key=>{
  if(key==="./lektrusLabWaterIonization")return waterIonization;
- if(key==="./lektrusReactionDatabase")return reaction;
+ if(key==="./lektrusLabStoichiometry")return chem;
  if(key==="./lektrusLabCatalog")return catalog;
  assert.equal(key,"./lektrusLabReactionNetwork");return network;
 });

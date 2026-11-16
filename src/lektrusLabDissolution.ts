@@ -5,8 +5,8 @@
  * rate coefficients below must not be presented as measured material data.
  */
 import {labSchoolSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
-import {labMolarMass} from "./lektrusLabStoichiometry";
-type Dose={value:number;unit:"g"|"ml";concentrationM?:number};
+import {labIsGasDose,labMolarMass} from "./lektrusLabStoichiometry";
+type Dose={value:number;unit:"g"|"ml";concentrationM?:number;phase?:"gas"};
 export type LabBinarySaltState={formula:string;solidMol:number};
 export type LabBinarySaltInput={
  reagents:readonly string[];environment:string;doses?:Record<string,Dose>;
@@ -19,7 +19,7 @@ export function labBinarySaltEquilibrium(v:LabBinarySaltInput,tempC:number){
   !v.doses||!Number.isFinite(tempC))return;
  const water=v.doses.H2O;
  const parts=Object.entries(v.doses).filter(([,d])=>d.value>0);
- if(!water||water.unit!=="ml"||water.concentrationM!==undefined||
+ if(!water||water.unit!=="ml"||labIsGasDose("H2O",water)||water.concentrationM!==undefined||
   !Number.isFinite(water.value)||water.value<=0||parts.length!==2)return;
  const other=parts.find(([id])=>id!=="H2O");
  if(!other)return;
@@ -97,7 +97,7 @@ export function labSchoolMixedSaltEquilibrium(v:LabBinarySaltInput,tempC:number)
   v.filteredResidue||!v.doses||!Number.isFinite(tempC))return;
  const measured=Object.entries(v.doses).filter(([,d])=>d.value>0);
  const water=v.doses.H2O;
- if(!water||water.unit!=="ml"||water.concentrationM!==undefined||
+ if(!water||water.unit!=="ml"||labIsGasDose("H2O",water)||water.concentrationM!==undefined||
   !Number.isFinite(water.value)||water.value<=0)return;
  const salts=measured.filter(([id])=>id!=="H2O");
  if(salts.length<2||measured.length!==salts.length+1)return;

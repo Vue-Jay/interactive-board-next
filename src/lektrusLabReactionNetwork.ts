@@ -543,7 +543,7 @@ export function simulateLabInventory(input:{
  // No rule from these measured binary curves is imposed on mixed salts,
  // reaction mixtures, unspecified stock-solvent or unknown hydrates.
  const binary=inventory.steps.length===0&&input.environment==="aqueous"&&
-  !!doses.H2O&&doses.H2O.unit==="ml"&&doses.H2O.concentrationM===undefined;
+  !!doses.H2O&&doses.H2O.unit==="ml"&&!labIsGasDose("H2O",doses.H2O)&&doses.H2O.concentrationM===undefined;
  if(binary){
   const binaryFormula=labEquilibrateSingleSaltCrystals(inventory,
    input.temperatureC??22,true,labMolarMass);

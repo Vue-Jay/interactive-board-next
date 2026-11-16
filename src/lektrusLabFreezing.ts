@@ -8,7 +8,7 @@
  * crystallize non-ideally and change composition during ice formation.
  */
 import type {LabDose} from "./lektrusChemistryBenchModel";
-import {labMolarMass} from "./lektrusLabStoichiometry";
+import {labIsGasDose,labMolarMass} from "./lektrusLabStoichiometry";
 import {labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 
 export type LabAqueousFreezeReference={
@@ -25,7 +25,7 @@ const ION_COUNTS:Readonly<Record<string,number>>={
  "Ca(NO3)2":3,CuSO4:2,AgNO3:2,Na2CO3:3,NaHCO3:2,
  H2SO4:3,FeCl3:4,AlCl3:4
 };
-type DoseInput=Record<string,Pick<LabDose,"unit"|"value"|"concentrationM">>;
+type DoseInput=Record<string,Pick<LabDose,"unit"|"value"|"concentrationM"|"phase">>;
 export function labAqueousFreezeReference(
  doses:DoseInput|undefined,
 ):LabAqueousFreezeReference|undefined{
@@ -34,6 +34,7 @@ export function labAqueousFreezeReference(
  const dry:{id:string;g:number}[]=[];
  for(const [id,d] of Object.entries(doses)){
   if(!Number.isFinite(d.value)||d.value<=0)return undefined;
+  if(labIsGasDose(id,d))continue;
   if(id==="H2O"&&d.unit==="ml"&&d.concentrationM===undefined){
    waterMl+=d.value;
   }else if(d.unit==="ml"&&d.concentrationM!==undefined&&

@@ -77,6 +77,55 @@ assert.ok(salineReference?.freezingPointC<-.1 &&
  "School NaCl brine should freeze below 0°C by a bounded measured estimate");
 assert.equal(freezing.labAqueousFreezeReference({C2H5OH:{value:20,unit:"ml"}}),undefined,
  "Pure ethanol cannot be depicted as water ice at 0°C");
+const network=load("src/lektrusLabReactionNetwork.ts");
+const dissolution=load("src/lektrusLabDissolution.ts");
+const steam={value:20,unit:"ml",phase:"gas"};
+const steamAndSalt={reagents:["H2O","NaCl"],environment:"aqueous",
+ doses:{H2O:steam,NaCl:{value:1,unit:"g"}}};
+assert.equal(freezing.labAqueousFreezeReference(steamAndSalt.doses),undefined,
+ "Water vapor cannot create a liquid freezing plateau");
+assert.equal(dissolution.labBinarySaltEquilibrium(steamAndSalt,22),undefined,
+ "Gas-volume water must not dissolve weighed salt");
+const steamAndSalts={...steamAndSalt,reagents:[...steamAndSalt.reagents,"KCl"],
+ doses:{...steamAndSalt.doses,KCl:{value:1,unit:"g"}}};
+assert.equal(dissolution.labSchoolMixedSaltEquilibrium(steamAndSalts,22),undefined);
+for(const input of [steamAndSalt,steamAndSalts]){
+ const inv=network.simulateLabInventory(input);
+ for(const id of input.reagents.filter(id=>id!=="H2O")){
+  assert.equal(inv.solidMol[id],inv.speciesMol[id],`${id}: all weighed salt stays solid without liquid water`);
+ }
+}
+for(const id of ["N2","O2","H2","CH4"]){
+ assert.deepEqual(freezing.labAqueousFreezeReference({...salineDoses,
+  [id]:{value:5,unit:"ml"}}),salineReference,`${id}: headspace is not a solvent`);
+}
+// A stock labelled "liquid" does not automatically create an aqueous
+// medium. Unreviewed solvent mixtures must not silently dissolve weighed
+// salts using the water-only solubility registry.
+const neatStocks=load("src/lektrusLabCatalog.ts").LAB_NEAT_STOCK;
+for(const id of [...neatStocks].filter(id=>id!=="H2O")){
+ for(const order of [[id,"NaCl"],["NaCl",id]]){
+  const doses={[id]:{value:10,unit:"ml"},NaCl:{value:1,unit:"g"}};
+  let mixture=lab.defaultLabBench();
+  for(const formula of order)mixture=lab.putLabReagent(mixture,start.id,formula,doses[formula]);
+  const v=mixture.vessels[0];
+  assert.equal(v.environment,"dry",`${id}: a neat liquid is not water`);
+  assert.ok(lab.labVesselContents(v).solid.some(row=>row.formula==="NaCl"&&row.massG>.99),
+   `${id}: unreviewed dissolution should retain the weighed solid`);
+ }
+}
+// Preserve the existing virtual organic bromine-addition demonstration.
+let bromine=lab.putLabReagent(lab.defaultLabBench(),start.id,"Br2",{value:1,unit:"ml"});
+bromine=lab.putLabReagent(bromine,start.id,"C2H4",{value:10,unit:"ml"});
+assert.equal(lab.labObservation(bromine.vessels[0]).caseData?.family,"organic");
+// Dry organic reactions must be reachable through the normal reagent
+// cabinet instead of requiring a hidden environment switch.
+for(const alcohol of ["C2H5OH","CH3OH"]){
+ let mixture=lab.putLabReagent(lab.defaultLabBench(),start.id,alcohol,{value:10,unit:"ml"});
+ mixture=lab.putLabReagent(mixture,start.id,"Na",{value:.05,unit:"g"});
+ assert.equal(mixture.vessels[0].environment,"dry");
+ assert.equal(lab.labObservation(mixture.vessels[0]).caseData?.family,"organic");
+}
 const salinePrepared=lab.putLabReagent(
  lab.putLabReagent(lab.defaultLabBench(),start.id,"H2O",salineDoses.H2O),
  start.id,"NaCl",salineDoses.NaCl);

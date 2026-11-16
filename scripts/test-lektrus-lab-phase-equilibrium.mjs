@@ -7,6 +7,14 @@ const options={target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS};
 const material={};
 const measurements={};
 const curated={};
+const reaction={};
+const stoichiometry={};
+const reactionSource=readFileSync(new URL("../src/lektrusReactionDatabase.ts",import.meta.url),"utf8");
+new Function("exports",ts.transpileModule(reactionSource,{compilerOptions:options}).outputText)(reaction);
+const stoichiometrySource=readFileSync(new URL("../src/lektrusLabStoichiometry.ts",import.meta.url),"utf8");
+new Function("require","exports",ts.transpileModule(stoichiometrySource,{compilerOptions:options}).outputText)(key=>{
+ assert.equal(key,"./lektrusReactionDatabase");return reaction;
+},stoichiometry);
 const curatedSource=readFileSync(new URL(
  "../src/lektrusLabCuratedPropertyBatch.ts",import.meta.url),"utf8");
 new Function("exports",ts.transpileModule(curatedSource,{
@@ -17,11 +25,12 @@ const materialSource=readFileSync(new URL("../src/lektrusLabMaterialConstants.ts
 new Function("require","exports",ts.transpileModule(materialSource,{compilerOptions:options}).outputText)(
  key=>{
  if(key==="./lektrusLabCuratedPropertyBatch")return curated;
- if(key==="./lektrusReactionDatabase")return {};
+ if(key==="./lektrusReactionDatabase")return reaction;
  assert.equal(key,"./lektrusLabSolubilityMeasurements");return measurements;
 },material);
 const js=ts.transpileModule(src,{compilerOptions:options}).outputText;
 new Function("require","exports",js)(key=>{
+ if(key==="./lektrusLabStoichiometry")return stoichiometry;
  assert.equal(key,"./lektrusLabMaterialConstants");return material;
 },exports);
 const {labSaturationPressureKPa,labVaporPressureKPa,labIdealBoilingC,

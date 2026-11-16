@@ -2369,6 +2369,14 @@ export function labMixEnvironment(
  const measured=Object.entries(all);
  if(measured.some(([id,d])=>d.unit==="ml"&&(id==="H2O"||!LAB_NEAT_STOCK.has(id)||d.concentrationM!==undefined)&&
   !labIsGasDose(id,d)))return "aqueous";
+ // A neat alcohol or organic liquid is a nonaqueous medium. Retain the
+ // reviewed bromine-addition demo's historical aqueous recipe identifier:
+ // it is an explicitly curated organic exception, not water solubility.
+ if(measured.some(([id,d])=>id!=="H2O"&&LAB_NEAT_STOCK.has(id)&&d.unit==="ml"&&!labIsGasDose(id,d))){
+  if(all.Br2?.unit==="ml"&&!labIsGasDose("Br2",all.Br2)&&
+   ["C2H4","C2H2"].some(id=>!!all[id]&&labIsGasDose(id,all[id])))return "aqueous";
+  return "dry";
+ }
  // A gas-only headspace is not a water solution merely because an empty
  // vessel originally had the default aqueous environment selected.
  if(measured.some(([id,d])=>labIsGasDose(id,d))&&
@@ -2533,7 +2541,7 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
   const preservedAmounts=previousAmounts&&carrierWater?previousAmounts:
    newState?advanceQuantifiedLabReaction(newState,
     previousAmounts?.elapsedSeconds??0):previousAmounts;
-  const physicalDissolution=!!nextDoses?.H2O&&nextDoses.H2O.unit==="ml"&&
+  const physicalDissolution=!!nextDoses?.H2O&&nextDoses.H2O.unit==="ml"&&!labIsGasDose("H2O",nextDoses.H2O)&&
    reagents.some(key=>key!=="H2O"&&
     (LAB_WATER_SOLUTES.has(key)||
      labSingleSaltSolubilityGPer100gWater(key,v.temperatureC??22)!==undefined)&&
