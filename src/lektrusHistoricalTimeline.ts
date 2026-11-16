@@ -6,6 +6,7 @@ export const HISTORY_LAST_YEAR = 2024;
 export type HistoricalGeometry = {type: 'Polygon' | 'MultiPolygon'; coordinates: unknown};
 export type HistoricalRevision = {
   id: string; entityId: string; geometryId: string;
+  sourceGeometryId?: string; geometryRepair?: 'retracted-zero-area-interior-edges';
   name: string; nameRu?: string; sourceName: string; sourceWikidata: string;
   sourceIndex: number; sourceFrom: number; sourceTo: number;
   from: number; to: number; nameStatus: 'candidate' | 'reviewed';
@@ -63,6 +64,7 @@ export function historicalYearFeatureCollection(state: ReturnType<typeof histori
       ATLAS_HISTORICAL_LABEL:record.nameRu, historicalEntityId:record.entityId,
       historicalRevisionId:record.id, sourceName:record.sourceName, sourceWikidata:record.sourceWikidata,
       sourceIndex:record.sourceIndex, from:record.from, to:record.to,
+      sourceGeometryId:record.sourceGeometryId, geometryRepair:record.geometryRepair,
       year:state.year, nameStatus:record.nameStatus, geometryStatus:record.geometryStatus,
       review:record.review},
   }))};
@@ -88,6 +90,7 @@ export function validateHistoricalPack(value: unknown, block: HistoricalBlock): 
   for (const record of pack.records) {
     if (!record || !hash.test(record.id) || recordIds.has(record.id) || !hash.test(record.entityId) || !hash.test(record.geometryId) || !record.name || !validHistoricalYear(record.from) || !validHistoricalYear(record.to) || record.from > record.to || record.from > block.to || record.to < block.from || !['candidate','rejected'].includes(record.geometryStatus) || !['candidate','reviewed'].includes(record.nameStatus)) throw new Error('Invalid historical revision');
     const geometry = pack.geometries[record.geometryId];
+    if (record.sourceGeometryId && (!hash.test(record.sourceGeometryId) || record.sourceGeometryId===record.geometryId || record.geometryRepair!=='retracted-zero-area-interior-edges')) throw new Error('Invalid historical repair provenance');
     if (!geometry || !['Polygon','MultiPolygon'].includes(geometry.type) || !Array.isArray(geometry.coordinates)) throw new Error('Missing historical geometry');
     if ((record.geometryStatus === 'rejected' || record.nameStatus === 'reviewed') && (!record.review?.reason || !record.review.sources.length)) throw new Error('Unattributed historical correction');
     recordIds.add(record.id);

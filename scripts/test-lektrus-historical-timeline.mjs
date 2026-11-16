@@ -3,12 +3,22 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {buildHistoricalTimeline,normalizeHistoricalSource,sha256} from './build-lektrus-historical-timeline.mjs';
+import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole} from './build-lektrus-historical-timeline.mjs';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
 import {createHistoricalTimelineLoader} from '../src/lektrusHistoricalTimelineLoader.ts';
 import {referenceAdmissionWarnings} from './audit-lektrus-atlas-annual.mjs';
+import {buildChangeRegistry} from './audit-lektrus-historical-changes.mjs';
 
 const square = (x=0,y=0)=>({type:'Polygon',coordinates:[[[x,y],[x+1,y],[x+1,y+1],[x,y+1],[x,y]]]});
+assert.equal(removeRetracedHole([[0,0],[1,0],[0,0],[1,1],[0,0]]),null);
+assert.deepEqual(removeRetracedHole([[0,0],[1,0],[1,1],[2,2],[1,1],[0,1],[0,0]]),square().coordinates[0]);
+const reviewBase={entityId:'a',geometryId:'shared',name:'A',nameStatus:'candidate',geometryStatus:'candidate'};
+const reviewRecords=[{...reviewBase,id:'a1',from:-1,to:-1},{...reviewBase,id:'a2',from:1,to:2},{...reviewBase,id:'b1',entityId:'b',from:2,to:2}];
+const warning={name:'missing',date:'1'};
+const review=buildChangeRegistry(reviewRecords,[{year:-1,records:1},{year:1,records:1,membershipWarnings:[warning]},{year:2,records:2,membershipWarnings:[warning]}],-1,2);
+assert.equal(review.counts.uniqueGeometries,1);assert.equal(review.counts.reviewUnits,2);assert.equal(review.counts.changePeriods,3);
+assert.deepEqual(review.reviewUnits.find(u=>u.entityId==='a').intervals,[{from:-1,to:2,years:3}]);
+assert.deepEqual(review.issues[0].intervals,[{from:1,to:2,years:2}]);
 const feature=(name,from,to,geometry=square(),wikidata='',type='POLITY')=>({type:'Feature',properties:{Name:name,FromYear:from,ToYear:to,Wikidata:wikidata,Type:type},geometry});
 const source={type:'FeatureCollection',features:[feature('A',-3400,0),feature('A',1,10),feature('Mali Federation',1960,1960,square(),'Q216632'),feature('Mali Federation',1961,2024,square(),'Q216632'),feature('Republic of Indonesia',1960,1975,square(137.5,-4.5),'Q252'),feature('Relation',1,2024,square(),'','RELATION')]};
 assert.equal(stepHistoricalYear(-1,1),1);
@@ -82,7 +92,8 @@ if(outDir&&sourceFile){
       seen.add(r.id);const f=input.features[r.sourceIndex];
       assert.equal(f.properties.Type,'POLITY');assert.equal(r.sourceName,f.properties.Name.trim());
       assert.equal(r.sourceFrom,f.properties.FromYear);assert.equal(r.sourceTo,f.properties.ToYear);
-      assert.equal(r.geometryId,sourceHashes.get(r.sourceIndex));
+      assert.equal(r.sourceGeometryId??r.geometryId,sourceHashes.get(r.sourceIndex));
+      if(r.sourceGeometryId){assert.equal(r.geometryRepair,'retracted-zero-area-interior-edges');const orig=f.geometry, repaired=pack.geometries[r.geometryId];assert.equal(orig.type,repaired.type);const shells=g=>(g.type==='Polygon'?[g.coordinates]:g.coordinates).map(p=>p[0]);assert.deepEqual(shells(orig),shells(repaired));}
     }
     for(let year=block.to;year>=block.from;year--){
       if(year===0)continue;

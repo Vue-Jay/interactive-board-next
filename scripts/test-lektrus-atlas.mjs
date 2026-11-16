@@ -583,6 +583,21 @@ for(const [name,year,label,affiliation] of [
 }
 // Optional exhaustive pass over the *actual* pinned source files. Download
 // them first; CI's offline fixture assertions above remain deterministic.
+if(process.env.LEKTRUS_ANNUAL_TIMELINE_DIR){
+ const root=process.env.LEKTRUS_ANNUAL_TIMELINE_DIR;
+ const manifest=JSON.parse(fs.readFileSync(`${root}/manifest.json`,"utf8"));
+ const seen=new Set();
+ for(const block of manifest.blocks){
+  const pack=JSON.parse(fs.readFileSync(`${root}/${block.file}`,"utf8"));
+  for(const [id,geometry] of Object.entries(pack.geometries)){
+   if(seen.has(id))continue;seen.add(id);
+   const path=geoExports.mapFeaturePath({type:"Feature",properties:{},geometry},.10);
+   assert.ok(path&&!/NaN|Infinity/.test(path),`Historical SVG contour ${id} missing or invalid`);
+  }
+ }
+ assert.equal(seen.size,manifest.counts.uniqueGeometries);
+ console.log(`Annual atlas: ${seen.size} unique geometries render at overview resolution.`);
+}
 if(process.env.LEKTRUS_ATLAS_DATA_DIR){
  // 193 UN members (UNCHARTER list) and the two observer states are a
  // coverage check, not a determination of the sovereignty of all map areas.

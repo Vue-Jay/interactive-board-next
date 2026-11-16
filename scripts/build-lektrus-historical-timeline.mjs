@@ -16,6 +16,35 @@ export const sha256 = data => createHash('sha256').update(data).digest('hex');
 const identity = (...parts) => sha256(JSON.stringify(parts));
 const MALI_SOURCES = ['https://digitallibrary.un.org/record/620443','https://legal.un.org/ilc/publications/yearbooks/english/ilc_1962_v2.pdf'];
 const INDONESIA_SOURCE = 'https://peacekeeping.un.org/sites/default/files/past/unsfbackgr.html';
+// Precisely identified by the bulk GEOS audit. Only retract zero-area spikes in
+// interior rings: no shell, coordinate, polygon extent or historical claim changes.
+const RETRACED_HOLES=new Set([
+ 'f997fe499f3ddf20456b2d95b3453ef88f1abb29ef6a2f1df95fdd48287661e9','50204fb705323b193bdcd69a37b4d33c32dbfdd55220b17b521e07eca0ef9d86',
+ '00786671cb5daa0fa15b18636ead2753b15377443bdd09e13a530b88b9078d2f','962c7db877623c69f7517952f2ec79d401f08d950101dd747ca4b591a3305962',
+ 'cec2a64fe0b26774482c6ba3bd37d8a48f8606d080858534065e7806a0c01fc3','27a6bacb623875306d1f48e960e06396d390bbec077f05848588cd0632e7c72b',
+ '7819e7b5ec9482a5cb0c52edc9b6987a82a3d856af63e68d5eca48a7e2889bb8','16e63e027a8082f89428731513ab3e5005f8b657a95e370b5a5766f4b8296a0b',
+ 'edfcab649fbe27ee26898125ca418acde76b7cf03ceb877b68444f3f76fd654f','274cd2ebff1fef2b38376a9aa953f4d3c8f3207bcdbeecf0b857196a0500d731',
+ 'af6ace1e0cbeacecd733df2007fea7d0a0a14395b0b37f5d64e36b140ec10fd3','cda8ecb9fd71fa7512fcd9972418a12000ac7dc5566ca800d9a6c4730c5ec2c0',
+ '69fde5edb1cf8f8e0a239b131801f552e12eed146fb68aa74a8602504c919bba'
+]);
+const samePoint=(a,b)=>a[0]===b[0]&&a[1]===b[1];
+export function removeRetracedHole(ring){
+ const pts=ring.slice(0,-1);let changed=true;
+ while(changed&&pts.length>2){
+  changed=false;for(let i=0;i<pts.length;i++){
+   const next=(i+1)%pts.length,after=(i+2)%pts.length;
+   if(samePoint(pts[i],pts[next])){pts.splice(next,1);changed=true;break}
+   if(samePoint(pts[i],pts[after])){for(const k of [next,after].sort((a,b)=>b-a))pts.splice(k,1);changed=true;break}
+  }
+ }
+ if(pts.length<3)return null;
+ return [...pts,pts[0]];
+}
+function repairGeometry(geometry,sourceGeometryId){
+ if(!RETRACED_HOLES.has(sourceGeometryId))return geometry;
+ const fix=p=>[p[0],...p.slice(1).map(removeRetracedHole).filter(Boolean)];
+ return {...geometry,coordinates:geometry.type==='Polygon'?fix(geometry.coordinates):geometry.coordinates.map(fix)};
+}
 
 function validateGeometry(g) {
   assert.ok(g && ['Polygon','MultiPolygon'].includes(g.type));
@@ -49,12 +78,15 @@ export function normalizeHistoricalSource(source) {
     const from = sourceFrom === 0 ? 1 : sourceFrom, to = sourceTo === 0 ? -1 : sourceTo;
     assert.ok(from <= to, `Zero-only source record at ${sourceIndex} requires editorial review`);
     validateGeometry(feature.geometry);
-    const geometryId = sha256(JSON.stringify(feature.geometry));
-    if (!geometries.has(geometryId)) geometries.set(geometryId, feature.geometry);
+    const sourceGeometryId = sha256(JSON.stringify(feature.geometry));
+    const geometry=repairGeometry(feature.geometry,sourceGeometryId);
+    const geometryId = sha256(JSON.stringify(geometry));
+    validateGeometry(geometry);
+    if (!geometries.has(geometryId)) geometries.set(geometryId, geometry);
     // Provisional source identity, never inferred from a similar display name.
     // A reviewed crosswalk can explicitly link variants later.
     const entityId = identity('source-polity', sourceName, sourceWikidata);
-    const base = {entityId, geometryId, name: sourceName, sourceName, sourceWikidata, sourceIndex, sourceFrom, sourceTo, from, to, nameStatus:'candidate', geometryStatus:'candidate'};
+    const base = {entityId, geometryId, ...(geometryId!==sourceGeometryId?{sourceGeometryId,geometryRepair:'retracted-zero-area-interior-edges'}:{}),name: sourceName, sourceName, sourceWikidata, sourceIndex, sourceFrom, sourceTo, from, to, nameStatus:'candidate', geometryStatus:'candidate'};
     const add = revision => {
       const id = identity('revision', sourceIndex, sourceFrom, sourceTo, geometryId, revision.from, revision.to, revision.name);
       records.push({id, ...revision});

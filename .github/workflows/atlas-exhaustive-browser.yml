@@ -9,6 +9,10 @@ on:
       - 'scripts/*-lektrus-historical-timeline.mjs'
       - 'scripts/export-lektrus-historical-year.mjs'
       - 'scripts/test-lektrus-atlas-every-country-browser.mjs'
+      - 'scripts/test-lektrus-annual-atlas-browser.mjs'
+      - 'scripts/audit-lektrus-historical-changes.mjs'
+      - 'scripts/audit-historical-unique-geometries.py'
+      - 'vite.config.ts'
       - 'scripts/audit-lektrus-atlas-annual.mjs'
       - 'scripts/audit-atlas-2026-boundaries.py'
       - 'scripts/audit-atlas-2026-territories.py'
@@ -121,6 +125,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Compare years in descending order against Cliopatria v0.2.1
         env:
           HIST: https://raw.githubusercontent.com/aourednik/historical-basemaps/da7a4b735ecef70aebdc9c73e409d8a2500d50f3
@@ -138,6 +146,11 @@ jobs:
           node --max-old-space-size=4096 scripts/audit-lektrus-atlas-annual.mjs "$OUT/cliopatria.geojson" "$OUT" "$OUT/annual-atlas-audit.json"
           node --max-old-space-size=4096 scripts/build-lektrus-historical-timeline.mjs "$OUT/cliopatria.geojson" "$OUT/history-v1"
           node --max-old-space-size=4096 scripts/test-lektrus-historical-timeline.mjs "$OUT/history-v1" "$OUT/cliopatria.geojson"
+          node --max-old-space-size=4096 scripts/audit-lektrus-historical-changes.mjs "$OUT/history-v1"
+          python -m pip install 'shapely==2.1.2' 'pyproj==3.7.2'
+          python scripts/audit-historical-unique-geometries.py "$OUT/history-v1" "$OUT" "$OUT/history-v1/unique-geometry-audit.json" "$OUT/cliopatria.geojson"
+          npm ci --no-audit --no-fund
+          LEKTRUS_ANNUAL_TIMELINE_DIR="$OUT/history-v1" npm run test:atlas
       - uses: actions/upload-artifact@v4
         with:
           name: lektrus-annual-atlas-audit
@@ -152,10 +165,63 @@ jobs:
           path: |
             /tmp/lektrus-annual-data/history-v1/manifest.json
             /tmp/lektrus-annual-data/history-v1/technical-annual-audit.json
+            /tmp/lektrus-annual-data/history-v1/change-review-registry.json
+            /tmp/lektrus-annual-data/history-v1/unique-geometry-audit.json
       - uses: actions/upload-artifact@v4
         with:
           name: lektrus-historical-timeline-candidates
           path: |
             /tmp/lektrus-annual-data/history-v1/manifest.json
+            /tmp/lektrus-annual-data/history-v1/change-review-registry.json
             /tmp/lektrus-annual-data/history-v1/packs/*.json
+  annual-browser:
+    needs: annual-source-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/download-artifact@v4
+        with:
+          name: lektrus-historical-timeline-candidates
+          path: /tmp/lektrus-annual-preview
+      - name: Install dependencies, Chromium and real basemap
+        env:
+          HIST: https://raw.githubusercontent.com/aourednik/historical-basemaps/da7a4b735ecef70aebdc9c73e409d8a2500d50f3
+          NATURAL: https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ca96624a56bd078437bca8184e78163e5039ad19/geojson
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm install --prefix /tmp/lektrus-atlas-playwright --no-audit --no-fund playwright@1.64.1
+          /tmp/lektrus-atlas-playwright/node_modules/.bin/playwright install --with-deps chromium
+          mkdir -p /tmp/lektrus-atlas-data
+          export OUT=/tmp/lektrus-atlas-data
+          curl -fsSL --retry 3 --max-time 60 "$HIST/index.json" -o "$OUT/index.json"
+          grep -Eo 'ne_[A-Za-z0-9_]+\.geojson' src/lektrusAtlasData.ts | sort -u | xargs -P 6 -I % curl -fsSL --retry 3 --max-time 60 "$NATURAL/%" -o "$OUT/%"
+      - name: Render each changed map state and click every unique review unit
+        env:
+          LEKTRUS_ANNUAL_TIMELINE_DIR: /tmp/lektrus-annual-preview
+          LEKTRUS_ATLAS_DATA_DIR: /tmp/lektrus-atlas-data
+          LEKTRUS_PLAYWRIGHT_MODULE: /tmp/lektrus-atlas-playwright/node_modules/playwright
+          LEKTRUS_ATLAS_SHARD: ${{ matrix.shard }}
+          LEKTRUS_ATLAS_SHARDS: '6'
+          VITE_LEKTRUS_BACKEND: selfhost
+          VITE_LEKTRUS_API_ORIGIN: ''
+        run: |
+          set -euo pipefail
+          npm run dev -- --host 127.0.0.1 --port 4175 --strictPort > /tmp/lektrus-atlas-vite.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:4175/ > /dev/null; then break; fi
+            sleep 1
+          done
+          node scripts/test-lektrus-annual-atlas-browser.mjs
           retention-days: 14
