@@ -33,6 +33,45 @@ const PORTUGAL_CONSTITUTION='https://www.parlamento.pt/Legislacao/Paginas/Consti
 const MACAO_SOURCE='https://bo.dsaj.gov.mo/BO/ii/2002/23/aviso42.asp';
 const CABINDA_SOURCE='https://digitallibrary.un.org/record/855865/files/A_10040-EN.pdf';
 const COUNTRY_NAMES='https://www.gov.uk/government/publications/country-names/timeline-of-country-name-changes-in-hmg-use-1919-to-present';
+// Pinned component indices, checked against the source coordinates and the
+// dated historical transition. Apply from the first complete calendar year
+// or the transition year if the independent state is already present.
+// Where the independent record starts late, this exposes a gap rather than
+// continuing to draw the former administering power over it.
+const GERMANY_OCCUPATION='https://www.bundesregierung.de/breg-de/schwerpunkte/deutsche-einheit/die-vier-maechte-in-deutschland-von-1945-bis-1990-480498';
+const JAPAN_OCCUPATION='https://history.state.gov/countries/japan';
+const RYUKYU='https://www.mofa.go.jp/policy/other/bluebook/1985/1985-3-3.htm';
+const COMOROS='https://digitallibrary.un.org/record/441662/files/E_1990_6_Add.27-EN.pdf';
+const componentExclusions=[
+ [11901,2,1890,[0],'Luxembourg was a separate sovereign grand duchy under a personal union, which ended in 1890.','Люксембург был отдельным великим герцогством в личной унии, завершившейся в 1890 году.','https://luxembourg.public.lu/en/society-and-culture/history/renaissance-dun-pays.html'],
+ [13318,38,1971,[22,23,24],'Fiji became independent in 1970.','Фиджи получило независимость в 1970 году.',SURINAME_SOURCE],
+ [13318,38,1973,[5,6,7,8,9,10,11,12,13,14,15,16,17],'The Bahamas became independent in 1973.','Багамы получили независимость в 1973 году.',SURINAME_SOURCE],
+ [13318,38,1975,[1],'Grenada became independent in 1974.','Гренада получила независимость в 1974 году.',SURINAME_SOURCE],
+ [13318,38,1979,[3,25,26,27,28,29,30,31,32,33,34,35],'Dominica and the Solomon Islands became independent in 1978.','Доминика и Соломоновы Острова получили независимость в 1978 году.',SURINAME_SOURCE],
+ [13318,38,1979,[2],'Saint Lucia became independent in 1979.','Сент-Люсия получила независимость в 1979 году.',SURINAME_SOURCE],
+ [13318,38,1982,[4],'Belize became independent in 1981.','Белиз получил независимость в 1981 году.',SURINAME_SOURCE],
+ [13318,38,1985,[36],'Brunei became independent in 1984.','Бруней получил независимость в 1984 году.',SURINAME_SOURCE],
+ [12994,12,1976,[8,9,10,11],'Papua New Guinea became independent in 1975; the four source components are its islands.','Папуа — Новая Гвинея получила независимость в 1975 году; исключены четыре её островных контура.',SURINAME_SOURCE],
+ [12994,12,1946,[7],'Manawatāwhi / Three Kings Islands are in New Zealand, not Australia.','Манаватафи / острова Три-Кингс относятся к Новой Зеландии, а не Австралии.','https://www.doc.govt.nz/nature/habitats/offshore-islands/te-hiku-far-north-islands/'],
+ [13247,19,1963,[4],'France recognized Algerian independence on 3 July 1962.','Франция признала независимость Алжира 3 июля 1962 года.','https://history.state.gov/countries/algeria/recognition'],
+ [13247,19,1976,[16,17,18],'Grande Comore, Anjouan and Mohéli became independent in 1975; Mayotte remains separately administered and disputed.','Гранд-Комор, Анжуан и Мохели получили независимость в 1975 году; Майотта остаётся отдельно управляемой спорной территорией.',COMOROS],
+ [13247,19,1978,[1],'Djibouti became independent in 1977.','Джибути получило независимость в 1977 году.',SURINAME_SOURCE],
+ [13247,19,1961,[8],'The occupation of the Federal Republic of Germany ended in 1955; the source retains a German component.','Оккупационный режим ФРГ завершился в 1955 году; исходник сохраняет немецкий компонент.',GERMANY_OCCUPATION],
+ [13247,19,1991,[9],'Four-power status in Berlin ended in 1990.','Четырёхсторонний статус Берлина завершился в 1990 году.',GERMANY_OCCUPATION],
+ [13372,11,1976,[6,7,8,9],'These four source polygons are the Comoro Islands, not Cabo Verde; the Comoros require a separate dated record.','Четыре исходных контура относятся к Коморским островам, а не к Кабо-Верде; нужна отдельная датированная запись Комор.',COMOROS],
+ [13646,11,2024,[6,7,8,9],'These four source polygons are the Comoro Islands, not Cabo Verde; the Comoros require a separate dated record.','Четыре исходных контура относятся к Коморским островам, а не к Кабо-Верде; нужна отдельная датированная запись Комор.',COMOROS],
+ [13019,66,1949,[29,33],'The Republic of Korea was established in 1948 and recognized by the USA on 1 January 1949.','Республика Корея образована в 1948 году, признана США 1 января 1949 года.','https://history.state.gov/countries/korea-south'],
+ [13019,66,1953,[28,50,51,52,53,54,55,56,57,58,59,60],'Allied occupation of mainland Japan ended in April 1952.','Союзная оккупация основной территории Японии завершилась в апреле 1952 года.',JAPAN_OCCUPATION],
+ [13019,66,1954,[49],'Amami Islands reverted to Japanese administration in 1953.','Острова Амами возвращены под управление Японии в 1953 году.',RYUKYU],
+ [13019,66,1956,[38],'Occupation status of the Federal Republic of Germany ended in May 1955.','Оккупационный режим ФРГ завершился в мае 1955 года.',GERMANY_OCCUPATION],
+ [13279,51,1973,[38,39,41],'The Paris Peace Accords ended US combat and provided for withdrawal from Vietnam.','Парижские соглашения 1973 года предусматривали вывод американских войск из Вьетнама.','https://history.state.gov/historicaldocuments/frus1969-76v15/d74'],
+ [13279,51,1973,[43],'Okinawa reverted to Japanese administration in 1972.','Окинава возвращена под управление Японии в 1972 году.',RYUKYU],
+ [13279,51,1980,[17],'The Panama Canal Zone ceased to exist on 1 October 1979.','Зона Панамского канала упразднена 1 октября 1979 года.','https://history.state.gov/milestones/1977-1980/panama-canal'],
+ [13279,51,1987,[34,35,36],'The Compact of Free Association entered into force in 1986 for Micronesia.','С 1986 года Микронезия — в свободной ассоциации с США.',SURINAME_SOURCE],
+ [13279,51,1991,[49],'Four-power status in Berlin ended in 1990.','Четырёхсторонний статус Берлина завершился в 1990 году.',GERMANY_OCCUPATION],
+ [13279,51,1995,[37],'Palau became independent in 1994.','Палау получило независимость в 1994 году.',SURINAME_SOURCE],
+];
+const exclusionsFor=(index,year)=>componentExclusions.filter(r=>r[0]===index&&year>=r[2]);
 const reviewedNames=[
  ['Former Yugoslav Republic of Macedonia','Q221',2019,'Republic of North Macedonia','Республика Северная Македония','https://www.un.org/en/node/123222'],
  ["People's Republic of Angola",'Q916',1992,'Republic of Angola','Республика Ангола','https://ciam.gov.ao/ao/angola/constituicao'],
@@ -54,6 +93,8 @@ function editorialSegments(base){
  const spring=chinaGroupTransition.has(base.sourceIndex)&&base.memberOf.includes('(Spring and Autumn States)')&&base.from<=-480&&base.to>=-480;
  if(spring)cuts.add(-480);
  const cut=year=>{if(base.from<year&&year<=base.to)cuts.add(year)};
+ for(const rule of componentExclusions)if(rule[0]===base.sourceIndex)cut(rule[2]);
+ if(base.sourceIndex===13313)cut(1973);
  const british=base.sourceName==='Kingdom of Great Britain'&&base.sourceWikidata==='Q23666';
  const britishComponent=base.components.includes('Kingdom of Great Britain');
  if(british||britishComponent){cut(1801);cut(1927)}
@@ -72,6 +113,15 @@ function editorialSegments(base){
   let r={...base,from,to};
   const reasons=[],reasonsRu=[],sources=new Set();
   const note=(reason,urls,ru)=>{reasons.push(reason);if(ru)reasonsRu.push(ru);for(const url of urls)sources.add(url)};
+  for(const rule of exclusionsFor(base.sourceIndex,from))note(rule[4]+' Only identified source components were removed; coverage and remaining borders are unverified.',[rule[6]],rule[5]+' Остальные границы и полнота покрытия требуют проверки.');
+  if(base.sourceIndex===13309){
+   r={...r,name:'Seychelles (British colony)',nameRu:'Сейшельские острова (британская колония)',nameStatus:'reviewed',entityId:identity('reviewed-polity','seychelles-british-colony')};
+   note('The source polygon is Mahé in the Seychelles, not the mainland East Africa Protectorate. Seychelles remained a British colony until 1976.',[SURINAME_SOURCE],'Исходный контур — остров Маэ, а не материковый протекторат Восточной Африки. Сейшелы оставались британской колонией до 1976 года.');
+  }
+  if(base.sourceIndex===13313){
+   r={...r,geometryStatus:'rejected',sourceComponents:base.components,components:r.components.map(n=>n==='British East Africa'?'Seychelles (British colony)':n)};
+   note('Static imperial aggregate contains territories after their independence and cannot represent the changing empire. The original contour is preserved for review, not displayed. Seychelles colonial coverage is missing in 1973–1975.',[SURINAME_SOURCE],'Неизменный сводный контур империи включает территории после их независимости, поэтому исключён из отрисовки. Колониальный контур Сейшел за 1973–1975 годы отсутствует.');
+  }
   if(delhi){
    let label=base.role==='composite'?base.components[0]:base.name;
    for(const t of delhiTransitions)if(from>=t.from&&from<=t.to&&label===t.old){
@@ -127,6 +177,11 @@ function editorialSegments(base){
 // Component selections are pinned to original feature/part indices. No modern
 // geometry, coordinate interpolation or nearest-year geometry is introduced.
 export function reviewedGeometryParts(r){
+ const exclusions=exclusionsFor(r.sourceIndex,r.from);
+ if(exclusions.length){
+  const excluded=new Set(exclusions.flatMap(rule=>rule[3]));
+  return Array.from({length:exclusions[0][1]},(_,part)=>part).filter(part=>!excluded.has(part)).map(part=>({index:r.sourceIndex,part}));
+ }
  if(r.sourceIndex===13305&&r.sourceName==='Kingdom of Great Britain')return [2,3,4,5,6,7,13,14].map(part=>({index:13305,part}));
  if(r.sourceIndex===13684&&r.sourceName==='Kingdom of Great Britain')return [1,2,3,4,5,6,7,8].map(part=>({index:13684,part}));
  if(r.sourceIndex===11956&&r.sourceName==='Netherlands Antilles'&&r.from>=1976&&r.to<2010)return (r.from<1986?[1,2,3,4]:[1,2,4]).map(part=>({index:11956,part}));

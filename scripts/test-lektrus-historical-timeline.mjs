@@ -7,7 +7,7 @@ import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedH
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
 import {createHistoricalTimelineLoader} from '../src/lektrusHistoricalTimelineLoader.ts';
 import {referenceAdmissionWarnings} from './audit-lektrus-atlas-annual.mjs';
-import {buildChangeRegistry} from './audit-lektrus-historical-changes.mjs';
+import {buildChangeRegistry,componentHash,exactComponentConflicts} from './audit-lektrus-historical-changes.mjs';
 import {historicalGapLocators} from '../src/lektrusHistoricalGapLocators.ts';
 
 const square = (x=0,y=0)=>({type:'Polygon',coordinates:[[[x,y],[x+1,y],[x+1,y+1],[x,y+1],[x,y]]]});
@@ -20,6 +20,17 @@ const review=buildChangeRegistry(reviewRecords,[{year:-1,records:1},{year:1,reco
 assert.equal(review.counts.uniqueGeometries,1);assert.equal(review.counts.reviewUnits,2);assert.equal(review.counts.changePeriods,3);
 assert.deepEqual(review.reviewUnits.find(u=>u.entityId==='a').intervals,[{from:-1,to:2,years:3}]);
 assert.deepEqual(review.issues[0].intervals,[{from:1,to:2,years:2}]);
+const overlapRecords=[
+ {...reviewBase,role:'polity',sourceIndex:1,sourceName:'A',geometryId:'a',from:-2,to:2},
+ {...reviewBase,role:'polity',sourceIndex:2,sourceName:'B',entityId:'b',geometryId:'b',from:-1,to:3},
+ {...reviewBase,role:'composite',sourceIndex:3,sourceName:'Union',entityId:'c',geometryId:'b',from:-1,to:3},
+ {...reviewBase,role:'polity',sourceIndex:4,sourceName:'Rejected',entityId:'d',geometryStatus:'rejected',geometryId:'b',from:-1,to:3}
+];
+const overlaps=exactComponentConflicts(overlapRecords,new Map([['a',['x','y']],['b',['y','z']]]));
+assert.deepEqual(overlaps.counts,{pairs:1,annualPairOccurrences:3,annualComponentOccurrences:3});
+assert.deepEqual(overlaps.groups[0].intervals,[{from:-1,to:2,years:3,components:['y']}]);
+assert.equal(componentHash(square().coordinates),componentHash([[[1,1],[1,0],[0,0],[0,1],[1,1]]]));
+assert.notEqual(componentHash(square().coordinates),componentHash(square(1).coordinates));
 const feature=(name,from,to,geometry=square(),wikidata='',type='POLITY',components='')=>({type:'Feature',properties:{Name:name,FromYear:from,ToYear:to,Wikidata:wikidata,Type:type,Components:components},geometry});
 const source={type:'FeatureCollection',features:[feature('A',-3400,0),feature('A',1,10),feature('Mali Federation',1960,1960,square(),'Q216632'),feature('Mali Federation',1961,2024,square(),'Q216632'),feature('Republic of Indonesia',1960,1975,square(137.5,-4.5),'Q252'),feature('(Relation)',1,2024,square(),'','RELATION','A;B'),feature('(Composite)',1,10,square(),'','POLITY','A')]};
 assert.equal(stepHistoricalYear(-1,1),1);
@@ -189,6 +200,25 @@ if(outDir&&sourceFile){
   assert.equal(revisionAt(2018,13552).name,'Former Yugoslav Republic of Macedonia');
   assert.equal(revisionAt(2019,13552).name,'Republic of North Macedonia');
   assert.equal(revisionAt(1991,13369).entityId,revisionAt(1992,13369).entityId);
+  const partsAt=(year,index)=>revisionAt(year,index).geometryParts?.map(r=>r.part);
+  assert.equal(partsAt(1970,13318),undefined);
+  assert.ok(!partsAt(1971,13318).includes(22));
+  assert.ok(partsAt(1972,13318).includes(5));
+  assert.ok(!partsAt(1973,13318).includes(5));
+  assert.deepEqual(partsAt(1985,13318),[0,18,19,20,21,37]);
+  assert.equal(revisionAt(1972,13309).name,'Seychelles (British colony)');
+  assert.equal(revisionAt(1973,13313).geometryStatus,'rejected');
+  assert.deepEqual(partsAt(1976,13372),[0,1,2,3,4,5,10]);
+  assert.deepEqual(partsAt(2024,13646),[0,1,2,3,4,5,10]);
+  assert.deepEqual(partsAt(1976,12994),[0,1,2,3,4,5,6]);
+  assert.ok(partsAt(1962,13247).includes(4)&&!partsAt(1963,13247).includes(4));
+  assert.deepEqual(partsAt(1890,11901),[1]);
+  assert.ok(partsAt(1976,13247).includes(15)&&!partsAt(1976,13247).includes(16));
+  assert.ok(partsAt(1977,13247).includes(1)&&!partsAt(1978,13247).includes(1));
+  assert.ok(!partsAt(1953,13019).includes(57)&&partsAt(1953,13019).includes(49));
+  assert.ok(!partsAt(1954,13019).includes(49));
+  assert.ok(!partsAt(1973,13279).includes(43)&&!partsAt(1973,13279).includes(39));
+  assert.ok(!partsAt(1995,13279).includes(37)&&!partsAt(1995,13279).includes(49));
   const report={years,recordYears,rejectedYears,emptyYears,packCount,yearsWithIdentityCollisions,yearsWithSharedGeometry,admissionWarnings,counts:manifest.counts,source:manifest.source,notice:'Technical annual coverage with review warnings. Shared geometry, aliases and admission warnings are candidates, not proof of errors. Historical, geographic and visual acceptance NOT complete.',rows};
   fs.writeFileSync(path.join(outDir,'technical-annual-audit.json'),JSON.stringify(report,null,2)+'\n');
   console.log(JSON.stringify({...report,rows:undefined}));
