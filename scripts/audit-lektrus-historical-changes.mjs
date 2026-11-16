@@ -108,7 +108,32 @@ export function exactComponentConflicts(records, hashesByGeometry, thematic=fals
   return {groups,counts:{pairs:groups.length,annualPairOccurrences:groups.reduce((n,g)=>n+g.annualOccurrences,0),annualComponentOccurrences:groups.reduce((n,g)=>n+g.intervals.reduce((s,i)=>s+i.years*i.components.length,0),0)}};
 }
 
-export function auditChanges(folder){
+// Identify the exact original feature parts behind each unresolved hash.
+// Bounds are descriptive coordinates, not a new or simplified geometry.
+export function sourceComponentEvidence(groups,features){
+ const cache=new Map();
+ const indexParts=index=>{
+  if(cache.has(index))return cache.get(index);
+  const feature=features[index];
+  assert.ok(feature?.geometry,`Unknown source feature ${index}`);
+  const {geometry}=feature,parts=geometry.type==='Polygon'?[geometry.coordinates]:geometry.coordinates;
+  assert.ok(geometry.type==='Polygon'||geometry.type==='MultiPolygon');
+  const hashes=new Map();
+  for(const [part,polygon] of parts.entries()){
+   let west=Infinity,south=Infinity,east=-Infinity,north=-Infinity;
+   for(const ring of polygon)for(const [x,y] of ring){west=Math.min(west,x);south=Math.min(south,y);east=Math.max(east,x);north=Math.max(north,y)}
+   const hash=componentHash(polygon);
+   if(!hashes.has(hash))hashes.set(hash,[]);
+   hashes.get(hash).push({part,bbox:[west,south,east,north].map(n=>Math.round(n*10000)/10000)});
+  }
+  const result={count:parts.length,hashes};cache.set(index,result);return result;
+ };
+ return groups.map(g=>{
+  const left=indexParts(g.left.sourceIndex),right=indexParts(g.right.sourceIndex);
+  return {left:{...g.left,parts:left.count},right:{...g.right,parts:right.count},intervals:g.intervals.map(i=>({from:i.from,to:i.to,years:i.years,matches:i.components.map(hash=>({hash,left:left.hashes.get(hash)??[],right:right.hashes.get(hash)??[]}))}))};
+ }).sort((a,b)=>ordinal(b.intervals.at(-1).to)-ordinal(a.intervals.at(-1).to)||a.left.sourceIndex-b.left.sourceIndex||a.right.sourceIndex-b.right.sourceIndex);
+}
+export function auditChanges(folder,sourceFile){
   const manifest=validateHistoricalManifest(JSON.parse(fs.readFileSync(path.join(folder,'manifest.json'))));
   const records=new Map(),hashesByGeometry=new Map();
   for(const block of manifest.blocks){
@@ -124,10 +149,20 @@ export function auditChanges(folder){
   const exactComponents=exactComponentConflicts([...records.values()],hashesByGeometry);
   const thematicComponents=exactComponentConflicts([...records.values()],hashesByGeometry,true);
   assert.equal(report.recordYears,annual.recordYears);
-  fs.writeFileSync(path.join(folder,'change-review-registry.json'),JSON.stringify({...report,exactComponents,thematicComponents,source:manifest.source,notice:'Review units are work deduplication, NOT historical acceptance. Exact component matches are unresolved candidates, not necessarily incorrect borders. Thematic overlaps remain separately documented. Annual rows and modern unresolved issues remain tracked.'},null,2)+'\n');
+  const rawEvidence=sourceFile?(()=>{
+   const bytes=fs.readFileSync(sourceFile);
+   assert.equal(sha256(bytes),manifest.source.sha256,'Evidence source differs from candidate source');
+   const source=JSON.parse(bytes);
+   const evidence={political:sourceComponentEvidence(exactComponents.groups,source.features),thematic:sourceComponentEvidence(thematicComponents.groups,source.features)};
+   // Compact evidence in CI logs permits review without downloading large packs.
+   for(const [layer,groups] of Object.entries(evidence))for(const group of groups)console.log('ATLAS_COMPONENT_EVIDENCE '+JSON.stringify({layer,...group}));
+   for(const issue of report.issues)console.log('ATLAS_OPEN_ISSUE '+JSON.stringify({type:issue.type,detail:issue.detail,intervals:issue.intervals}));
+   return evidence;
+  })():undefined;
+  fs.writeFileSync(path.join(folder,'change-review-registry.json'),JSON.stringify({...report,exactComponents,thematicComponents,...(rawEvidence?{sourceComponentEvidence:rawEvidence}:{}),source:manifest.source,notice:'Review units are work deduplication, NOT historical acceptance. Exact component matches are unresolved candidates, not necessarily incorrect borders. Thematic overlaps remain separately documented. Annual rows and modern unresolved issues remain tracked.'},null,2)+'\n');
   console.log(JSON.stringify({recordYears:report.recordYears,...report.counts,exactComponents:exactComponents.counts,thematicComponents:thematicComponents.counts}));
   return report;
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
-  assert.ok(process.argv[2],'Usage: audit-lektrus-historical-changes.mjs TIMELINE_FOLDER');auditChanges(process.argv[2]);
+  assert.ok(process.argv[2],'Usage: audit-lektrus-historical-changes.mjs TIMELINE_FOLDER [PINNED_SOURCE.geojson]');auditChanges(process.argv[2],process.argv[3]);
 }

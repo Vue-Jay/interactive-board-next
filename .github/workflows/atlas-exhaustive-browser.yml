@@ -148,7 +148,7 @@ jobs:
           node --max-old-space-size=4096 scripts/audit-lektrus-atlas-annual.mjs "$OUT/cliopatria.geojson" "$OUT" "$OUT/annual-atlas-audit.json"
           node --max-old-space-size=4096 scripts/build-lektrus-historical-timeline.mjs "$OUT/cliopatria.geojson" "$OUT/history-v1"
           LEKTRUS_GAP_LOCATOR_SOURCE_FILE="$OUT/ne_10m_admin_0_countries.geojson" node --max-old-space-size=4096 scripts/test-lektrus-historical-timeline.mjs "$OUT/history-v1" "$OUT/cliopatria.geojson"
-          node --max-old-space-size=4096 scripts/audit-lektrus-historical-changes.mjs "$OUT/history-v1"
+          node --max-old-space-size=4096 scripts/audit-lektrus-historical-changes.mjs "$OUT/history-v1" "$OUT/cliopatria.geojson"
           python -m pip install 'shapely==2.1.2' 'pyproj==3.7.2'
           python scripts/audit-historical-unique-geometries.py "$OUT/history-v1" "$OUT" "$OUT/history-v1/unique-geometry-audit.json" "$OUT/cliopatria.geojson"
           npm ci --no-audit --no-fund

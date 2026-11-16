@@ -164,6 +164,8 @@ function editorialSegments(base){
  const cut=year=>{if(base.from<year&&year<=base.to)cuts.add(year)};
  for(const rule of componentExclusions)if(rule[0]===base.sourceIndex){cut(rule[2]);if(rule[7]!==undefined)cut(rule[7]+1)}
  if(base.sourceIndex===9410)cut(1707);
+ if(base.sourceIndex===7187){cut(1454);cut(1462)}
+ if(base.role==='polity'&&base.sourceName==='Sultanate of Malacca')cut(1529);
  if(base.sourceIndex===13313)cut(1973);
  const british=base.sourceName==='Kingdom of Great Britain'&&base.sourceWikidata==='Q23666';
  const britishComponent=base.components.includes('Kingdom of Great Britain');
@@ -206,6 +208,15 @@ function editorialSegments(base){
    const sierraOnly=from>=1803&&to<=1805;
    r={...r,name:sierraOnly?'Sierra Leone Company settlement':'British Cape and Sierra Leone possessions (source aggregate)',nameRu:sierraOnly?'Поселение Компании Сьерра-Леоне':'Британские владения в Капской колонии и Сьерра-Леоне (сводный контур)',nameStatus:'reviewed',entityId:identity('reviewed-polity',sierraOnly?'sierra-leone-company-10461':'british-cape-sierra-leone-10461')};
    note('The source combines geographically distinct Cape and Sierra Leone components. Freetown was administered by the Sierra Leone Company before the Crown took possession in 1808. The source footprint remains unverified.',['https://unipsil.unmissions.org/en/about-sierra-leone-history','https://sahistory.org.za/article/batavian-republic-1803-1806'],'Исходная запись объединяет отдельные территории Капской колонии и Сьерра-Леоне. Фритаун находился под управлением Компании Сьерра-Леоне до передачи короне в 1808 году. Точный контур остаётся непроверенным.');
+  }
+  if(base.sourceIndex===7187&&from>=1454){
+   r={...r,name:'Byzantine remnants (unverified source aggregate)',nameRu:'Остаточные византийские территории (непроверенный сводный контур)',nameStatus:'reviewed',entityId:identity('reviewed-polity','byzantine-remnants-7187')};
+   if(from>=1462)r.geometryStatus='rejected';
+   note('Constantinople fell in 1453, Morea in 1460 and Trebizond in 1461. Remaining source components cannot be identified as a surviving Byzantine empire; after 1461 the unidentified remnant is rejected for drawing and retained for separate attribution.',['https://www.ime.gr/chronos/10/en/p/pb9/pb9c.html'],'Константинополь пал в 1453 году, Морея — в 1460, Трапезунд — в 1461. Оставшиеся компоненты источника не представляют сохранившуюся Византийскую империю; с 1462 года неопознанный остаток исключён из отрисовки, исходник сохранён для атрибуции.');
+  }
+  if(base.role==='polity'&&base.sourceName==='Sultanate of Malacca'&&from>=1529){
+   r={...r,geometryStatus:'rejected'};
+   note('Melaka fell in 1511 and the successor Johor sultanate was founded in 1528. Post-1528 contours labelled as the old Malacca polity require independent attribution to their actual successor states or colonial authorities. Retain the source record but do not draw it as a continuing Malacca Sultanate.',['https://kemahkotaan.johor.gov.my/pengenalan/sejarah-kesultanan-johor/?lang=en','https://www.malaysia.gov.my/en/government/learn-about-malaysia/malaysian-history'],'Малакка пала в 1511 году, султанат-преемник Джохор основан в 1528 году. Контуры после 1528 года, подписанные как старый Малаккский султанат, требуют отдельной атрибуции. Исходные данные сохранены, неверная политическая принадлежность исключена из отрисовки.');
   }
   if(base.sourceIndex===9806){
    r={...r,geometryStatus:'rejected'};

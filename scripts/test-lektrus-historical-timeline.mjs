@@ -7,7 +7,7 @@ import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedH
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
 import {createHistoricalTimelineLoader} from '../src/lektrusHistoricalTimelineLoader.ts';
 import {referenceAdmissionWarnings} from './audit-lektrus-atlas-annual.mjs';
-import {buildChangeRegistry,componentHash,exactComponentConflicts} from './audit-lektrus-historical-changes.mjs';
+import {buildChangeRegistry,componentHash,exactComponentConflicts,sourceComponentEvidence} from './audit-lektrus-historical-changes.mjs';
 import {historicalGapLocators} from '../src/lektrusHistoricalGapLocators.ts';
 
 const square = (x=0,y=0)=>({type:'Polygon',coordinates:[[[x,y],[x+1,y],[x+1,y+1],[x,y+1],[x,y]]]});
@@ -35,6 +35,11 @@ assert.deepEqual(exactComponentConflicts(withSettlement,new Map([['a',['x','y']]
 assert.equal(componentHash(square().coordinates),componentHash([[[1,1],[1,0],[0,0],[0,1],[1,1]]]));
 assert.notEqual(componentHash(square().coordinates),componentHash(square(1).coordinates));
 const feature=(name,from,to,geometry=square(),wikidata='',type='POLITY',components='')=>({type:'Feature',properties:{Name:name,FromYear:from,ToYear:to,Wikidata:wikidata,Type:type,Components:components},geometry});
+const evidenceFixture=sourceComponentEvidence([{left:{sourceIndex:0,name:'A'},right:{sourceIndex:1,name:'B'},intervals:[{from:1,to:2,years:2,components:[componentHash(square(1).coordinates),'unmatched']}]}],[feature('A',1,2,{type:'MultiPolygon',coordinates:[square().coordinates,square(1).coordinates]}),feature('B',1,2,square(1))]);
+assert.deepEqual(evidenceFixture[0].intervals[0].matches.map(m=>[m.left,m.right]),[[[{part:1,bbox:[1,0,2,1]}],[{part:0,bbox:[1,0,2,1]}]],[[],[]]]);
+const malaccaFixture=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Sultanate of Malacca',1520,1535)]});
+assert.deepEqual(malaccaFixture.records.map(r=>[r.from,r.to,r.geometryStatus]),[[1520,1528,'candidate'],[1529,1535,'rejected']]);
+assert.equal(malaccaFixture.records[0].geometryId,malaccaFixture.records[1].geometryId);
 const settlementFixture=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Viking settlements',1028,1325)]});
 assert.equal(settlementFixture.records[0].role,'settlement');
 assert.equal(settlementFixture.records[0].sourceRole,'polity');
@@ -240,6 +245,11 @@ if(outDir&&sourceFile){
   assert.deepEqual(partsAt(1440,7187),[0,1,2,4,5,6]);
   assert.deepEqual(partsAt(1454,7187),[0,5]);
   assert.deepEqual(partsAt(1461,7187),[5]);
+  assert.equal(revisionAt(1453,7187).name,'Byzantine Empire');
+  assert.equal(revisionAt(1454,7187).name,'Byzantine remnants (unverified source aggregate)');
+  assert.equal(revisionAt(1461,7187).geometryStatus,'candidate');
+  assert.equal(revisionAt(1462,7187).geometryStatus,'rejected');
+  assert.equal(revisionAt(1467,7187).geometryStatus,'rejected');
   assert.equal(partsAt(1539,7944),undefined);
   assert.deepEqual(partsAt(1540,7944),Array.from({length:21},(_,i)=>i).filter(i=>![13,14,17,19].includes(i)));
   assert.equal(revisionAt(1744,9806).geometryStatus,'rejected');
