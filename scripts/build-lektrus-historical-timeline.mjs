@@ -471,6 +471,7 @@ const TANZANIA_UN='https://www.un.org/en/about-us/member-states/tanzania';
 // Dated names for unchanged source identities; rules are restricted to the
 // affected source name and Wikidata ID, not the modern spellings of neighbors.
 export const historicalTitleCorrections=[
+ ['Antigua and Barbuda','Q781',1967,1980,'Antigua (associated state)','Антигуа (ассоциированное государство)','https://www.legislation.gov.uk/ukpga/1967/4','Antigua was an associated state of the United Kingdom; independent Antigua and Barbuda dates from 1981.','Антигуа имела статус ассоциированного с Великобританией государства; независимое государство Антигуа и Барбуда образовано в 1981 году.'],
  ['Sri Lanka','Q854',1948,1971,'Ceylon','Цейлон',COUNTRY_NAMES,'Sri Lanka replaced Ceylon in 1972.','Название Шри-Ланка принято в 1972 году.'],
  ['Eswatini','Q1050',1968,2017,'Kingdom of Swaziland','Королевство Свазиленд',COUNTRY_NAMES,'Swaziland was renamed Eswatini in 2018.','Свазиленд переименован в Эсватини в 2018 году.'],
  ['Republic of Poland','Q36',1952,1988,"Polish People's Republic",'Польская Народная Республика','https://eng.ipn.gov.pl/en/brief-history-of-poland','The 1952 constitution introduced the Polish People’s Republic; the Republic of Poland name was restored in December 1989.','Конституция 1952 года ввела название ПНР; название Республика Польша восстановлено в декабре 1989 года.'],
@@ -768,12 +769,72 @@ export function partitionHistoricalGeometry(base,cuts){
   }
 }
 
+// Second pass over the remaining exact-component registry. Each row asserts
+// contemporaneous, identical source coastlines before excluding a duplicate.
+const colonialEvidence='https://github.com/Seshat-Global-History-Databank/cliopatria/tree/5f433377139a6eeaeacbdc894b70f8805b72c8b5';
+const comoroTreaties='https://mjp.univ-perp.fr/constit/km1886.htm';
+const comoroHistory='https://documents1.worldbank.org/curated/en/831811468771713041/pdf/multi0page.pdf';
+const colonialNote='Одинаковая исходная геометрия колониального владения показана один раз; отдельная запись не означает независимость от метрополии.';
+export const secondaryExactReviews=[
+ [13590,13526,2014,2023,[0],[0],'Крым: международно признанная принадлежность Украине; с 2014 года фактический контроль России. Карта правового статуса не отображает отдельную линию военного контроля.','https://digitallibrary.un.org/record/767883'],
+ [13277,13325,1973,1973,[18],[0],'Гвинея-Бисау провозгласила независимость в 1973 году; признание Португалией последовало в сентябре 1974 года. Контур не реконструирует фронт войны.','https://digitallibrary.un.org/record/447673/files/A_10207_S_11811-EN.pdf'],
+ [13262,13299,1967,1968,[27],[0],'Антигуа получила статус ассоциированного с Великобританией государства в 1967 году; независимость Антигуа и Барбуды — 1981 год.','https://www.legislation.gov.uk/ukpga/1967/4'],
+ [13232,13271,1963,1963,[8,9],[1,2],'Занзибар получил независимость 10 декабря 1963 года; объединение с Танганьикой произошло в 1964 году.',TANZANIA_UN],
+ [13019,13142,1953,1953,[49],[2],'Острова Амами возвращены под управление Японии в декабре 1953 года.',RYUKYU],
+ [13019,13062,1948,1948,[29,33],[0,1],'Республика Корея образована в августе 1948 года; признана США 1 января 1949 года.','https://history.state.gov/countries/korea-south'],
+ [11633,11746,1864,1864,[9,13,11,10],[0,4,3,1],'Ионические острова переданы Греции в 1864 году.','https://api.parliament.uk/historic-hansard/commons/1902/dec/11/british-cemeteries-in-the-ionian-states'],
+ [12130,12174,1898,1899,[0],[0],'Критское государство с 1898 года — автономия под османским сюзеренитетом, не полная независимость.','https://www.crete.gov.gr/chronologio-periodoy/'],
+ [10408,10552,1800,1802,[2,19,14,15,10,8,26,24,1,5,9,23,16,17,25,7,22,6,12,20,21,11,4,3,18],[2,18,13,14,10,8,25,23,1,5,9,22,15,16,24,7,21,6,12,19,20,11,4,3,17],colonialNote,colonialEvidence],
+ [7641,7690,1502,1506,[18,10,3,4,2,5,12,1,11,0,15,13,14],[16,9,5,6,3,7,11,2,10,1,4,12,13],colonialNote,colonialEvidence],
+ [8229,8258,1564,1571,[5,15,2,12,18,3,8,4,10,7,6,14,13,17,9,11,16],[4,14,1,11,16,2,7,3,9,6,5,13,12,15,8,10,0],colonialNote,colonialEvidence],
+ ...[[10326,1791,1791],[10351,1792,1793]].map(([target,from,to])=>[9759,target,from,to,[1,7,10,6,0,8,9],[11,14,17,13,10,15,16],colonialNote,colonialEvidence]),
+ ...[[10386,1794,1795,7,6],[10427,1796,1796,7,6],[10477,1797,1798,11,10],[10487,1799,1799,14,13],[10557,1800,1802,1,0],[10566,1803,1804,1,0],[10656,1805,1805,7,6],[10668,1806,1806,7,6],[10719,1807,1808,6,5],[10778,1809,1810,10,9]].map(([target,from,to,a,b])=>[9759,target,from,to,[1,0],[a,b],colonialNote,colonialEvidence]),
+ [11329,11399,1843,1845,[1],[8],'Франция вступила во владение Майоттой 13 июня 1843 года; остров включён в колонию Нуси-Бе и зависимые территории.',comoroTreaties],
+];
+export const earlyComorosRoutes=[[9189,4,1677,1720],[9631,2,1721,1726],[9660,2,1727,1740],[9759,2,1741,1814],[11008,0,1815,1819],[11071,1,1820,1839],[11329,1,1840,1841]];
+export const earlyComorosHashes=['5e8c3940ad185cbe4cf1af0d7f420aeaaa9bead9e850dd11ecbb7a72f850de2a','ca0861672c2aec6d4ea750a6f663d4b43e5be11e371c321ed69e8c520313b233','8f31d16f944b3cefe048b3146bf73aea4320e11e4b0dcabb74b7fe8d1886569c','cf8a539df8f350003fa8d49a17d63e1c36f9ff5f3a21c912e39b611680012904'];
+export function deriveSecondaryTerritorialReviews(features){
+ const exclusions=[],restorations=[],pending=[],attributions=[];
+ const exclude=(source,from,to,parts,reasonRu,url)=>{
+  const f=features[source];assert.ok(f.properties.Type==='POLITY'&&f.properties.FromYear<=from&&f.properties.ToYear>=to);
+  exclusions.push([source,rawParts(f).length,from,parts,'Reviewed dated source-component attribution; see linked evidence.',reasonRu,url,to]);
+ };
+ for(const [source,target,from,to,parts,winners,reason,url] of secondaryExactReviews){
+  const f=features[source],t=features[target];assert.ok(t.properties.Type==='POLITY'&&t.properties.FromYear<=from&&t.properties.ToYear>=to&&parts.length===winners.length);
+  for(const [i,part] of parts.entries()){
+   const hash=componentHash(rawParts(f)[part]);assert.equal(hash,componentHash(rawParts(t)[winners[i]]));
+   attributions.push({source:target,part:winners[i],hash,group:'Историческая принадлежность',from,to,reason,sources:[url]});
+  }
+  exclude(source,from,to,parts,reason,url);
+ }
+ const reasonRu='Коморские острова не входили во Французскую Индию в этот период. Франция вступила во владение Майоттой в 1843 году; протектораты других островов относятся к 1886 году. Береговой контур не подтверждает точную внутреннюю границу или непрерывность одной династии.';
+ const decision=(entity,name,nameRu,reason=reasonRu)=>({entity,name,nameRu,reason:'Reviewed island attribution; the historical internal jurisdictions are approximate, not a surveyed political boundary.',reasonRu:reason,sources:[comoroTreaties,comoroHistory]});
+ const local=[decision('historical-mayotte','Mayotte (local rulers)','Майотта (местные правители)'),decision('historical-moheli','Mohéli (local rulers)','Мохели (местные правители)'),decision('historical-anjouan','Anjouan (sultanate)','Анжуан (султанат)')];
+ const restore=(source,part,from,to,d)=>{
+  const polygon=rawParts(features[source])[part],hash=componentHash(polygon);
+  restorations.push({source,part,from,to,hash,group:'Коморы',decision:d,geometry:{type:'MultiPolygon',coordinates:[polygon]}});
+ };
+ for(const [source,first,from,to] of earlyComorosRoutes){
+  const f=features[source];assert.equal(f.properties.Name,'French India');
+  for(let i=0;i<4;i++)assert.equal(componentHash(rawParts(f)[first+i]),earlyComorosHashes[i]);
+  exclude(source,from,to,[first,first+1,first+2,first+3],reasonRu,comoroTreaties);
+  for(let i=0;i<3;i++)if(source!==11329||i!==0)restore(source,first+i,from,to,local[i]);
+  pending.push({source,part:first+3,from,to,hash:earlyComorosHashes[3],group:'Коморы',reason:'На Нгазидже существовали соперничающие местные султанаты. Французская принадлежность ошибочна; точные границы султанатов для этого года не установлены.',counterpartName:'Местные султанаты Нгазиджи',evidence:comoroTreaties,sources:[comoroTreaties,comoroHistory],geometry:{type:'Polygon',coordinates:rawParts(f)[first+3]}});
+ }
+ assert.equal(componentHash(rawParts(features[11329])[1]),earlyComorosHashes[0]);assert.equal(componentHash(rawParts(features[11399])[8]),earlyComorosHashes[0]);
+ exclude(11329,1842,1842,[1],reasonRu,comoroTreaties);exclude(11399,1842,1842,[8],reasonRu,comoroTreaties);
+ restore(11329,1,1840,1840,local[0]);restore(11329,1,1841,1842,decision('historical-mayotte','Mayotte (cession treaty pending ratification)','Майотта (договор уступки, до ратификации)','Договор уступки подписан 25 апреля 1841 года; ратификация и фактическое вступление Франции во владение — 1843 год.'));
+ exclude(11329,1840,1845,[6],'Французская колонистская экспедиция в Акароа прибыла после провозглашения британского суверенитета над Южным островом; отдельного французского владения не возникло.','https://nzhistory.govt.nz/french-pipped-at-akaroa-british-sovereignty-proclaimed-over-the-south-island-again');
+ return {exclusions,restorations,pending,attributions};
+}
+
 export function normalizeHistoricalSource(source) {
   assert.equal(source.type,'FeatureCollection');
   const geometries = new Map(), records = [];
   const derivedExclusions=deriveConfirmedOverlapExclusions(source.features);
   // Small synthetic fixtures do not contain the pinned source indices.
   const batch=source.features.length>Math.max(...territorialBatch.rows.map(r=>Math.max(r.source,r.other)))?deriveTerritorialBatch(source.features):{exclusions:[],pending:[],resolved:[],restorations:[],relabels:new Map(),attributions:[],count:0};
+  if(batch.count){const secondary=deriveSecondaryTerritorialReviews(source.features);for(const key of ['exclusions','pending','restorations','attributions'])batch[key].push(...secondary[key]);}
   derivedExclusions.push(...batch.exclusions);
   const pendingBySource=new Map();
   const attributionsBySource=new Map();

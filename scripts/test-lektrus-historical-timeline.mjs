@@ -4,7 +4,7 @@ import path from 'node:path';
 import polygonClipping from 'polygon-clipping';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,historicalTitleCorrections} from './build-lektrus-historical-timeline.mjs';
+import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,historicalTitleCorrections,secondaryExactReviews,earlyComorosRoutes,earlyComorosHashes} from './build-lektrus-historical-timeline.mjs';
 import {historicalUnresolvedCenters,historicalUnresolvedRegions} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
@@ -235,6 +235,24 @@ if(outDir&&sourceFile){
         assert.deepEqual(owners.map(({record})=>record.sourceIndex),[12942]);
       }
       const hasPart=(record,index,part)=>record&&record.geometryStatus==='candidate'&&(record.geometryParts?record.geometryParts.some(p=>p.index===index&&p.part===part):record.sourceIndex===index);
+      for(const [source,target,from,to,losers,winners] of secondaryExactReviews)if(from<=year&&year<=to){
+        assert.ok(losers.every(part=>!hasPart(activeRecords.get(source),source,part)),`Secondary duplicate ${source}/${year}`);
+        const winner=activeRecords.get(target);assert.ok(winners.every(part=>hasPart(winner,target,part)),`Missing secondary counterpart ${target}/${year}`);
+        assert.ok(winners.every(part=>winner.territorialAttributions?.some(note=>note.part===part&&note.from<=year&&year<=note.to)));
+      }
+      const earlyComoros=earlyComorosRoutes.find(([, ,from,to])=>from<=year&&year<=to);
+      if(earlyComoros){
+        const [source,first]=earlyComoros;
+        for(let i=0;i<4;i++)assert.ok(!hasPart(activeRecords.get(source),source,first+i));
+        for(let i=0;i<3;i++){
+          const candidates=state.drawable.filter(({record,geometry})=>record.editorialRestoration&&geometry.coordinates.some(p=>componentHash(p)===earlyComorosHashes[i]));
+          assert.equal(candidates.length,1,`Missing local Comorian island ${i}/${year}`);
+          assert.match(candidates[0].record.name,/^(Mayotte|Mohéli|Anjouan)/);
+        }
+        assert.ok(state.territorialIssues.some(i=>i.sourceIndex===source&&i.hash===earlyComorosHashes[3]));
+      }
+      if(year===1842){assert.ok(!hasPart(activeRecords.get(11399),11399,8));assert.ok(!hasPart(activeRecords.get(11329),11329,1));assert.ok(state.drawable.some(({record})=>record.name==='Mayotte (cession treaty pending ratification)'));}
+      if(year>=1840&&year<=1845)assert.ok(!hasPart(activeRecords.get(11329),11329,6),'Akaroa settlement is not French India');
       for(const item of batchByYear.get(year)??[]){
         const record=activeRecords.get(item.source);assert.ok(record,`Missing reviewed record ${item.source}/${year}`);
         const decision=decisionsByKey.get(`${item.source}:${item.part}:${item.from}:${item.to}`);
@@ -395,8 +413,8 @@ if(outDir&&sourceFile){
   }
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,537);assert.equal(batchPending,159);
-  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,313);assert.equal(externalRecordYears,469);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
-  assert.equal(unresolvedSourceYears,202);assert.equal(unresolvedRegionYears,121);
+  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,809);assert.equal(externalRecordYears,469);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
+  assert.equal(unresolvedSourceYears,367);assert.equal(unresolvedRegionYears,286);
   assert.equal(admissionWarnings,1,'Independent-state coverage must not regress');
   assert.deepEqual(rows.filter(r=>r.membershipWarnings?.length).map(r=>[r.year,...r.membershipWarnings.map(w=>w.name)]),[[1971,'United Arab Emirates']]);
   assert.equal(historicalGapLocators['United Arab Emirates'].iso,'ARE');
@@ -482,7 +500,7 @@ if(outDir&&sourceFile){
   assert.deepEqual(partsAt(1890,11901),[1]);
   assert.ok(partsAt(1976,13247).includes(15)&&!partsAt(1976,13247).includes(16));
   assert.ok(partsAt(1976,13247).includes(1)&&!partsAt(1977,13247).includes(1)&&!partsAt(1978,13247).includes(1));
-  assert.ok(!partsAt(1953,13019).includes(57)&&partsAt(1953,13019).includes(49));
+  assert.ok(!partsAt(1953,13019).includes(57)&&!partsAt(1953,13019).includes(49));
   assert.ok(!partsAt(1954,13019).includes(49));
   assert.ok(!partsAt(1973,13279).includes(43)&&!partsAt(1973,13279).includes(39));
   assert.ok(!partsAt(1995,13279).includes(37)&&!partsAt(1995,13279).includes(49));
@@ -524,7 +542,7 @@ if(outDir&&sourceFile){
   assert.deepEqual(partsAt(-188,833),[0,2,5]);
   assert.ok(!partsAt(1969,13241).includes(8)&&!partsAt(1969,13241).includes(9)&&partsAt(1969,13241).includes(10));
   assert.ok(!partsAt(1970,13241).includes(10));
-  assert.ok(!partsAt(1967,13262).includes(21)&&!partsAt(1967,13262).includes(23)&&partsAt(1967,13262).includes(27));
+  assert.ok(!partsAt(1967,13262).includes(21)&&!partsAt(1967,13262).includes(23)&&!partsAt(1967,13262).includes(27));
   assert.ok(!partsAt(1964,13232).includes(7)&&partsAt(1964,13232).includes(6));
   assert.deepEqual(partsAt(1967,13232),[1,2,10,11,12]);
   assert.deepEqual(partsAt(1961,13209),[0,1]);
