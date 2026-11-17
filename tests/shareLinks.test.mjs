@@ -53,7 +53,9 @@ test('installed apps share production links and only open validated board routes
     assert.equal(routes.nativeBoardPath('https://lektrus.ru'+path),path);
   }
   for (const url of [`https://lektrus.ru.evil.test/join/${token}`,`ru.lektrus.board://join/${token}?other=1`,
-    `ru.lektrus.board://auth/confirmed`,`ru.lektrus.board://board/not-an-id`,`https://lektrus.ru@evil.test/join/${token}`]) {
+    `ru.lektrus.board://auth/confirmed`,`ru.lektrus.board://board/not-an-id`,`https://lektrus.ru@evil.test/join/${token}`,
+    `ru.lektrus.board://user@board/${boardId}`,`ru.lektrus.board://board:123/${boardId}`,
+    `ru.lektrus.board://board/${boardId}#extra`]) {
     assert.equal(routes.nativeBoardPath(url),null);
   }
 });

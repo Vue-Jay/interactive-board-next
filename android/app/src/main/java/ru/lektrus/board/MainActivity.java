@@ -124,9 +124,17 @@ public class MainActivity extends BridgeActivity {
         Uri url = intent.getData();
         if (boardWebView == null || !Intent.ACTION_VIEW.equals(intent.getAction()) || url == null ||
                 !"ru.lektrus.board".equals(url.getScheme()) ||
-                !("board".equals(url.getHost()) || "join".equals(url.getHost()))) return;
-        String script = "window.dispatchEvent(new CustomEvent('lektrus:native-board-url',{detail:" +
-                JSONObject.quote(url.toString()) + "}))";
+                !("board".equals(url.getEncodedAuthority()) || "join".equals(url.getEncodedAuthority()))) return;
+        String path = "/" + url.getHost() + url.getEncodedPath();
+        if (url.getEncodedQuery() != null || url.getEncodedFragment() != null ||
+                !path.matches("/(join/[a-f0-9]{64}|board/[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})/?")) return;
+        if (path.endsWith("/")) path = path.substring(0, path.length() - 1);
+        // Use the same history/popstate navigation as the native Back button.
+        // This does not require a ready React event listener and never loads
+        // remote content; the normal board authorization still runs in App.
+        String script = "(function(){var p=" + JSONObject.quote(path) +
+                ";if(location.pathname!==p){history.replaceState(null,'',p);" +
+                "window.dispatchEvent(new PopStateEvent('popstate'));}return location.pathname;})()";
         boardWebView.post(() -> boardWebView.evaluateJavascript(script, null));
     }
 

@@ -10888,8 +10888,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           {selected.length
             ? selectionLocked
               ? `Выделено: ${selected.length} · объект заблокирован · разблокируйте для редактирования`
-              : `Выделено: ${selected.length} · Alt+перетаскивание — копия · стрелки — сдвиг · Shift+стрелка — 10 px`
-            : `Сейчас: ${toolShortLabel[tool]} · ЛКМ — выделение областью · удерживать ПКМ — рука · ПКМ — меню`}
+              : isCoarsePointer || Capacitor.isNativePlatform()
+                ? `Выделено: ${selected.length} · перетащите для перемещения`
+                : `Выделено: ${selected.length} · Alt+перетаскивание — копия · стрелки — сдвиг · Shift+стрелка — 10 px`
+            : isCoarsePointer || Capacitor.isNativePlatform()
+              ? `Сейчас: ${toolShortLabel[tool]} · два пальца — масштаб и перемещение`
+              : `Сейчас: ${toolShortLabel[tool]} · ЛКМ — выделение областью · удерживать ПКМ — рука · ПКМ — меню`}
         </div>
         <div className="board-controls">
           <button aria-label="Уменьшить" title="Уменьшить" onClick={() => zoom(0.8)}><Icon name="zoom-out" size={16} /></button>

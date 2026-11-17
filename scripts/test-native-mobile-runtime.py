@@ -172,7 +172,10 @@ def open_new_board():
 
 
 def board_layout():
-    return check_layout(['.topbar', '.back-to-boards', '.board-title', '.board-controls'])
+    report = check_layout(['.topbar', '.back-to-boards', '.board-title', '.board-controls'])
+    hint = js('return document.querySelector(".coordinates")?.textContent || ""')
+    assert 'ЛКМ' not in hint and 'ПКМ' not in hint, f'Desktop-only hint on touch device: {hint}'
+    return report
 
 
 def choose_tool(tool):
@@ -329,6 +332,7 @@ def native_back_and_link():
         if args.platform=='android':
             logs=subprocess.run(['adb','logcat','-d','-s','Capacitor','Capacitor/AppPlugin','Capacitor/Console'],capture_output=True,text=True,timeout=20)
             (args.output/'native-link-logcat.txt').write_text(logs.stdout[-150000:])
+        print('Native URL parser diagnostic', js('const u=new URL(arguments[0]);return {protocol:u.protocol,hostname:u.hostname,pathname:u.pathname,port:u.port,username:u.username}',url), flush=True)
         raise
     wait(lambda: ink()==before, 'Native back/deep link did not preserve drawing', 15)
     return {'route':path,'strokes':len(before)}

@@ -22,6 +22,7 @@ import { ensureBoardAssets } from "./assetStore";
 import { cacheBoardPreview, cachedBoardPreview, previewFromRemoteDocument, scheduleBackgroundBoardPreview } from "./boardPreview";
 
 const INTERFACE_STUDIO_BOARD_ID="00000000-0000-4000-8000-00000000a11a";
+const LektrusSystemUi = registerPlugin<{setBoardMode(options:{enabled:boolean}):Promise<void> }>("LektrusSystemUi");
 
 const StudentsScreen = lazy(() => import("./StudentsScreen"));
 
@@ -66,7 +67,7 @@ export default function App() {
   });
   useEffect(() => {
     if (Capacitor.getPlatform() !== "android") return;
-    void registerPlugin<{setBoardMode(options:{enabled:boolean}):Promise<void>}>("LektrusSystemUi")
+    void LektrusSystemUi
       .setBoardMode({ enabled: route.kind === "board" })
       .catch(error => console.warn("Lektrus Android status bar update failed", error));
   }, [route.kind]);
@@ -195,10 +196,6 @@ export default function App() {
       if(alive&&window.location.pathname!==path)navigate(path,true);
       return true;
     };
-    const nativeBoardListener=(event:Event)=>{
-      const url=(event as CustomEvent<unknown>).detail;
-      if(typeof url==="string")acceptBoardUrl(url);
-    };
     const retrySession=(userId:string,attempt=0)=>{
       authRetryTimer=window.setTimeout(async()=>{
         if(!alive)return;
@@ -256,7 +253,6 @@ export default function App() {
       if(alive)setAuthUser(user);
       if(alive)setAuthReady(true);
     };
-    if(Capacitor.isNativePlatform())window.addEventListener("lektrus:native-board-url",nativeBoardListener);
     void initialize().catch(error=>{
       console.warn("Lektrus authentication initialization failed",error);
       if(!alive)return;
@@ -266,7 +262,7 @@ export default function App() {
       setAuthUser(cached);setAuthReady(true);
       if(cached)retrySession(cached.id);
     });
-    return () => {alive=false;window.removeEventListener("lektrus:native-board-url",nativeBoardListener);if(authRetryTimer!==undefined)window.clearTimeout(authRetryTimer);void confirmationListener?.remove()};
+    return () => {alive=false;if(authRetryTimer!==undefined)window.clearTimeout(authRetryTimer);void confirmationListener?.remove()};
   }, [navigate]);
 
   // Load the administrator-published interface design for every signed-in
