@@ -19,6 +19,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('platform', choices=['android', 'ios'])
 parser.add_argument('--app', required=True)
 parser.add_argument('--udid')
+parser.add_argument('--wda-app')
+parser.add_argument('--wda-derived-data')
 parser.add_argument('--output', type=Path, required=True)
 args = parser.parse_args()
 args.output.mkdir(parents=True, exist_ok=True)
@@ -320,7 +322,14 @@ def native_back_and_link():
         subprocess.run(['adb','shell','am','start','-a','android.intent.action.VIEW','-d',url,'ru.lektrus.board.dev'],check=True,timeout=30)
     else:
         subprocess.run(['xcrun','simctl','openurl',args.udid,url],check=True,timeout=30)
-    wait(lambda: js('return location.pathname')==path and visible_id('section.board'), 'Native deep link did not open its board', 60)
+    try:
+        wait(lambda: js('return location.pathname')==path and visible_id('section.board'), 'Native deep link did not open its board', 60)
+    except Exception:
+        print('Deep-link diagnostic', {'expected':path,'actual':js('return location.pathname'), 'boardVisible': bool(visible_id('section.board'))}, flush=True)
+        if args.platform=='android':
+            logs=subprocess.run(['adb','logcat','-d','-s','Capacitor','Capacitor/AppPlugin','Capacitor/Console'],capture_output=True,text=True,timeout=20)
+            (args.output/'native-link-logcat.txt').write_text(logs.stdout[-150000:])
+        raise
     wait(lambda: ink()==before, 'Native back/deep link did not preserve drawing', 15)
     return {'route':path,'strokes':len(before)}
 
@@ -339,6 +348,10 @@ def create_session():
         common.update({'appium:udid':args.udid, 'appium:deviceName':'iPhone Simulator',
                        'appium:bundleId':'ru.lektrus.board','appium:wdaLaunchTimeout':180000,
                        'appium:wdaConnectionTimeout':180000, 'appium:showXcodeLog':True})
+        if args.wda_app:
+            common.update({'appium:usePreinstalledWDA':True,'appium:prebuiltWDAPath':args.wda_app})
+        elif args.wda_derived_data:
+            common.update({'appium:usePrebuiltWDA':True,'appium:derivedDataPath':args.wda_derived_data})
     return request('POST','/session',{'capabilities':{'alwaysMatch':common,'firstMatch':[{}]}}, timeout=420)
 
 

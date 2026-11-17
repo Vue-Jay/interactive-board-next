@@ -79,7 +79,7 @@ jobs:
 
   ios:
     name: iPhone simulator native runtime
-    runs-on: macos-26-intel
+    runs-on: macos-26
     timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
@@ -119,15 +119,25 @@ jobs:
           sleep 15
           xcrun simctl io "$SIMULATOR_UDID" screenshot artifacts/mobile-qa/ios-native-startup.png
           xcrun simctl terminate "$SIMULATOR_UDID" ru.lektrus.board || true
-          # The Intel runner spent the entire session timeout compiling and
-          # statically analysing WDA. Prebuild it before requesting a session.
-          WDA="$APPIUM_HOME/node_modules/appium-xcuitest-driver/node_modules/appium-webdriveragent/WebDriverAgent.xcodeproj"
-          xcodebuild -project "$WDA" -scheme WebDriverAgentRunner -configuration Debug \
-            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
-            CODE_SIGNING_ALLOWED=NO RUN_CLANG_STATIC_ANALYZER=NO COMPILER_INDEX_STORE_ENABLE=NO \
-            build-for-testing > artifacts/mobile-qa/wda-prebuild.log 2>&1 || tail -80 artifacts/mobile-qa/wda-prebuild.log
-          "$RUNNER_TEMP/appium/node_modules/.bin/appium" --address 127.0.0.1 --port 4723 > artifacts/mobile-qa/appium.log 2>&1 &
-          python3 scripts/test-native-mobile-runtime.py ios --app "$APP" --udid "$SIMULATOR_UDID" --output artifacts/mobile-qa
+          # Avoid repeatedly building WebDriverAgent during the session startup.
+          APPIUM="$RUNNER_TEMP/appium/node_modules/.bin/appium"
+          WDA_APP=""
+          if "$APPIUM" driver run xcuitest download-wda -- --platform=ios --kind=sim --outdir="$RUNNER_TEMP/wda-download" > artifacts/mobile-qa/wda-prebuild.log 2>&1; then
+            WDA_APP=$(find "$RUNNER_TEMP/wda-download" -type d -name '*-Runner.app' -print -quit)
+          fi
+          if [[ -n "$WDA_APP" ]]; then
+            WDA_ARGS=(--wda-app "$WDA_APP")
+          else
+            WDA="$APPIUM_HOME/node_modules/appium-xcuitest-driver/node_modules/appium-webdriveragent/WebDriverAgent.xcodeproj"
+            WDA_DERIVED="$RUNNER_TEMP/lektrus-wda"
+            xcodebuild -project "$WDA" -scheme WebDriverAgentRunner -configuration Debug \
+              -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" -derivedDataPath "$WDA_DERIVED" \
+              CODE_SIGNING_ALLOWED=NO RUN_CLANG_STATIC_ANALYZER=NO COMPILER_INDEX_STORE_ENABLE=NO \
+              build-for-testing >> artifacts/mobile-qa/wda-prebuild.log 2>&1
+            WDA_ARGS=(--wda-derived-data "$WDA_DERIVED")
+          fi
+          "$APPIUM" --address 127.0.0.1 --port 4723 > artifacts/mobile-qa/appium.log 2>&1 &
+          python3 scripts/test-native-mobile-runtime.py ios --app "$APP" --udid "$SIMULATOR_UDID" "${WDA_ARGS[@]}" --output artifacts/mobile-qa
       - name: Upload iOS runtime logs and screenshots
         if: always()
         uses: actions/upload-artifact@v4

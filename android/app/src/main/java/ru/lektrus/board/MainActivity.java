@@ -1,6 +1,8 @@
 package ru.lektrus.board;
 
 import android.os.Bundle;
+import android.content.Intent;
+import android.net.Uri;
 import android.view.ViewGroup;
 import android.webkit.WebView;
 import androidx.activity.OnBackPressedCallback;
@@ -10,6 +12,7 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
+import org.json.JSONObject;
 
 /**
  * WebView padding does not reliably move its HTML viewport on Android 15+.
@@ -109,6 +112,22 @@ public class MainActivity extends BridgeActivity {
                     "window.dispatchEvent(new Event('lektrus:native-back'))", null);
             }
         });
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (intent == null) return;
+        setIntent(intent);
+        // Keep a reliable warm-launch handoff even when the Capacitor App
+        // plugin's listener was registered after a lifecycle transition.
+        Uri url = intent.getData();
+        if (boardWebView == null || !Intent.ACTION_VIEW.equals(intent.getAction()) || url == null ||
+                !"ru.lektrus.board".equals(url.getScheme()) ||
+                !("board".equals(url.getHost()) || "join".equals(url.getHost()))) return;
+        String script = "window.dispatchEvent(new CustomEvent('lektrus:native-board-url',{detail:" +
+                JSONObject.quote(url.toString()) + "}))";
+        boardWebView.post(() -> boardWebView.evaluateJavascript(script, null));
     }
 
     @Override
