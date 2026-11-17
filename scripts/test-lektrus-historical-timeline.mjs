@@ -12,7 +12,7 @@ import {createHistoricalTimelineLoader} from '../src/lektrusHistoricalTimelineLo
 import {referenceAdmissionWarnings} from './audit-lektrus-atlas-annual.mjs';
 import {buildChangeRegistry,componentHash,exactComponentConflicts,sourceComponentEvidence} from './audit-lektrus-historical-changes.mjs';
 import {historicalGapLocators} from '../src/lektrusHistoricalGapLocators.ts';
-import {componentHash as sourceComponentHash,documentedCores,buildDocumentedCore,ceylonCoastalRoutes,ceylonEarlyRoutes,ceylonWarRoutes,capeTerritoryRoutes,capeTerritories} from './build-lektrus-historical-timeline.mjs';
+import {componentHash as sourceComponentHash,documentedCores,buildDocumentedCore,ceylonCoastalRoutes,ceylonEarlyRoutes,ceylonWarRoutes,capeTerritoryRoutes,capeTerritories,songAnnexations} from './build-lektrus-historical-timeline.mjs';
 
 const square = (x=0,y=0)=>({type:'Polygon',coordinates:[[[x,y],[x+1,y],[x+1,y+1],[x,y+1],[x,y]]]});
 const elbaParts=buildElbaPartition().map(g=>g.coordinates),elbaUnion=polygonClipping.union(...elbaParts);
@@ -252,6 +252,21 @@ if(outDir&&sourceFile){
         assert.deepEqual(owners.map(({record})=>record.sourceIndex),[12942]);
       }
       const hasPart=(record,index,part)=>record&&record.geometryStatus==='candidate'&&(record.geometryParts?record.geometryParts.some(p=>p.index===index&&p.part===part):record.sourceIndex===index);
+      if(year===960){const r=activeRecords.get(3861);assert.equal(r.name,'Northern Song');assert.deepEqual(r.memberOf,[]);}
+      for(const [source,target,from] of songAnnexations)if(year>=from&&year<=input.features[source].properties.ToYear){
+        const old=activeRecords.get(source),owner=activeRecords.get(target);assert.equal(old.geometryStatus,'rejected');assert.deepEqual(old.memberOf,[]);assert.equal(owner.name,'Northern Song');
+        for(const [part] of input.features[source].geometry.coordinates.entries())assert.ok(hasPart(owner,source,part),`Song annexation ${source}/${part}/${year}`);
+        for(const {record} of state.overlays.filter(x=>[3863,3963].includes(x.record.sourceIndex)))assert.ok(!record.components.includes(old.sourceName));
+      }
+      if(year>=1077&&year<=1125){
+        const island=activeRecords.get(4524);assert.equal(island.name,year<1116?'Taifa of Mallorca':'Balearic Islands (Almoravid administration)');assert.deepEqual(island.geometryParts,[1,2,3].map(part=>({index:4524,part})));
+        if(year<=1084)assert.ok(hasPart(activeRecords.get(4604),4524,0));
+        assert.equal(state.territorialIssues.some(i=>i.group==='Дения — материковый контур'),year>=1085&&year<=1093);
+        if(year>=1111){const group=activeRecords.get(4744);assert.deepEqual(group.components,year<1116?['Taifa of Mallorca']:[]);assert.equal(group.geometryStatus,year<1116?'candidate':'rejected');if(year<1116)assert.deepEqual(group.geometryParts,island.geometryParts);}
+      }
+      if(year>=1111&&year<=1146){const group=activeRecords.get(4739);assert.ok(!group.components.includes('County of Maine'));assert.ok(group.geometryParts.every(p=>p.index===4734));if(year>=1144){assert.deepEqual(group.geometryParts,[{index:4734,part:1}]);assert.ok(hasPart(activeRecords.get(4893),4734,0));assert.ok(hasPart(activeRecords.get(4880),4734,0));assert.ok(!hasPart(activeRecords.get(4734),4734,0));}}
+      if(year>=1126&&year<=1151){const combined=state.drawable.filter(({record})=>[4821,4874,4898].includes(record.sourceIndex));assert.equal(combined.length,1);assert.equal(combined[0].record.name,'Counties of Blois and Champagne (same ruler)');for(const {record} of state.overlays.filter(x=>[4776,4880,4915].includes(x.record.sourceIndex))){assert.ok(!record.components.includes('County of Champagne'));assert.ok(record.components.includes(combined[0].record.name));}}
+      if(year>=1707&&year<=1712){const group=activeRecords.get(year<=1708?9441:9507);assert.ok(group.components.includes('Kingdom of Great Britain'));assert.ok(group.components.includes('British colonial possessions (supplemental source record)'));assert.ok(group.geometryParts.some(p=>p.index===9410));assert.equal(group.geometryRepair,'reviewed-union-source-components');if(year<=1708){assert.equal(activeRecords.get(9438).name,'Kingdom of Great Britain');assert.equal(activeRecords.get(9450).geometryStatus,'rejected');}}
       for(const [source,target,from,to,losers,winners] of [...secondaryExactReviews,...thirdExactReviews,...fourthExactReviews,...fifthExactReviews,...sixthExactReviews,...provisionalExactReviews])if(from<=year&&year<=to){
         assert.ok(losers.every(part=>!hasPart(activeRecords.get(source),source,part)),`Secondary duplicate ${source}/${year}`);
         const winner=activeRecords.get(target);assert.ok(winners.every(part=>hasPart(winner,target,part)),`Missing secondary counterpart ${target}/${year}`);
@@ -548,19 +563,20 @@ if(outDir&&sourceFile){
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,541);assert.equal(batchPending,155);
   assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,1230);assert.equal(externalRecordYears,469);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
-  assert.equal(unresolvedSourceYears,398);assert.equal(unresolvedRegionYears,319);
+  assert.equal(unresolvedSourceYears,407);assert.equal(unresolvedRegionYears,328);
   assert.equal(fifthExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0),18);
   assert.equal(sixthExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0),2);
   assert.equal(exactConflictPendingReviews.length,8);
   assert.equal(unresolvedExactComponentYears,94);assert.equal(unresolvedExactSourceYears,188);
   const provisionalComponentYears=provisionalExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0);
   assert.equal(provisionalExactReviews.length,1);assert.equal(provisionalComponentYears,3);
-  assert.deepEqual(Object.fromEntries(Object.entries(territorialOpenByGroup).map(([g,v])=>[g,v.sourceYears])),{Mindanao:158,Corsica:22,'Коморы':173,'Малакка':10,'Горе — материковый контур':11,'Цейлон — война VOC':24});
+  assert.deepEqual(Object.fromEntries(Object.entries(territorialOpenByGroup).map(([g,v])=>[g,v.sourceYears])),{Mindanao:158,Corsica:22,'Коморы':173,'Малакка':10,'Горе — материковый контур':11,'Цейлон — война VOC':24,'Дения — материковый контур':9});
   assert.equal(Object.values(exactOpenByGroup).reduce((sum,v)=>sum+v.componentYears,0),unresolvedExactComponentYears);
   assert.deepEqual(documentedCoreByGroup,{'cap-corse':8,'malacca-fort':7});
   const groupLinkIssues=rows.flatMap(r=>r.groupLinkWarnings??[]);
-  assert.equal(new Set(groupLinkIssues.map(i=>JSON.stringify(i))).size,22);assert.equal(groupLinkIssues.length,222);
-  const auditLedger={territorial:{total:3215,resolved:3215-unresolvedSourceYears,open:unresolvedSourceYears,openRegionYears:unresolvedRegionYears,openByGroup:territorialOpenByGroup},exactPairs:{total:82,resolved:82-exactConflictPendingReviews.length,confirmed:82-exactConflictPendingReviews.length-provisionalExactReviews.length,provisional:provisionalExactReviews.length,provisionalComponentYears,open:exactConflictPendingReviews.length,openComponentYears:unresolvedExactComponentYears,openSourceYears:unresolvedExactSourceYears,openByGroup:exactOpenByGroup},partialReconstructions:{componentYears:Object.values(documentedCoreByGroup).reduce((a,b)=>a+b,0),byGroup:documentedCoreByGroup},groupLinks:{openGroups:new Set(groupLinkIssues.map(i=>JSON.stringify(i))).size,openAnnualOccurrences:groupLinkIssues.length}};
+  console.log('Remaining group links:',JSON.stringify([...new Set(groupLinkIssues.map(i=>JSON.stringify(i)))].map(s=>JSON.parse(s))));
+  assert.equal(new Set(groupLinkIssues.map(i=>JSON.stringify(i))).size,13);assert.equal(groupLinkIssues.length,96);
+  const auditLedger={territorial:{total:3489,resolved:3489-unresolvedSourceYears,open:unresolvedSourceYears,openRegionYears:unresolvedRegionYears,openByGroup:territorialOpenByGroup},exactPairs:{total:82,resolved:82-exactConflictPendingReviews.length,confirmed:82-exactConflictPendingReviews.length-provisionalExactReviews.length,provisional:provisionalExactReviews.length,provisionalComponentYears,open:exactConflictPendingReviews.length,openComponentYears:unresolvedExactComponentYears,openSourceYears:unresolvedExactSourceYears,openByGroup:exactOpenByGroup},partialReconstructions:{componentYears:Object.values(documentedCoreByGroup).reduce((a,b)=>a+b,0),byGroup:documentedCoreByGroup},groupLinks:{openGroups:new Set(groupLinkIssues.map(i=>JSON.stringify(i))).size,openAnnualOccurrences:groupLinkIssues.length}};
   console.log(`Historical audit ledger: ${JSON.stringify(auditLedger)}`);
   assert.equal(admissionWarnings,1,'Independent-state coverage must not regress');
   assert.deepEqual(rows.filter(r=>r.membershipWarnings?.length).map(r=>[r.year,...r.membershipWarnings.map(w=>w.name)]),[[1971,'United Arab Emirates']]);

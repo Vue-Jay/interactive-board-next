@@ -49,6 +49,22 @@ const PORTUGAL_CONSTITUTION='https://www.parlamento.pt/Legislacao/Paginas/Consti
 const MACAO_SOURCE='https://bo.dsaj.gov.mo/BO/ii/2002/23/aviso42.asp';
 const CABINDA_SOURCE='https://digitallibrary.un.org/record/855865/files/A_10040-EN.pdf';
 const COUNTRY_NAMES='https://www.gov.uk/government/publications/country-names/timeline-of-country-name-changes-in-hmg-use-1919-to-present';
+const UNION_1707='https://www.parliament.uk/globalassets/documents/heritage/articlesofunion.pdf';
+const BLOIS_CHAMPAGNE='https://sigilla.irht.cnrs.fr/59645';
+const MAINE_FULK='https://fasg.org/projects/henryproject/data/fulk0005.htm';
+const NORMANDY_GEOFFREY='https://theses.gla.ac.uk/3052/1/2011DuttonPhD.pdf';
+const SONG_REUNIFICATION='https://assets.cambridge.org/97805218/12481/excerpt/9780521812481_excerpt.pdf';
+const SONG_CHRONOLOGY='https://pages.ucsd.edu/~dkjordan/chin/chinahistory/dyn15-u.html';
+const DENIA_HISTORY='https://digibug.ugr.es/bitstream/handle/10481/88108/Tawaif_PDF.pdf?isAllowed=y&sequence=4';
+const MALLORCA_HISTORY='https://conservancy.umn.edu/bitstreams/994f9abb-c044-48ff-9f9b-fd84aa1cf8be/download';
+const TAIFA_HISTORY='https://ifc.dpz.es/webs/atlash/indice_epocas/islamica/27.htm';
+const BLOIS_UNION='Counties of Blois and Champagne (same ruler)';
+const BRITISH_SUPPLEMENT='British colonial possessions (supplemental source record)';
+const MALLORCA_TAIFA='Taifa of Mallorca';
+// Full-year map convention, from the documented annexation year; the
+// transition within that year is noted, never presented as a day-level map.
+export const songAnnexations=[[3929,3909,963],[3921,3909,965],[3949,3956,971],[3951,3956,975],[3932,3956,978],[3962,3956,979]];
+const SONG_ENDS={'Later Zhou':960,Jingnan:963,'Later Shu':965,'Southern Han':971,'Southern Tang':975,Wuyue:978,'Northern Han':979};
 // Pinned component indices, checked against the source coordinates and the
 // dated historical transition. Apply from the first complete calendar year
 // or the transition year if the independent state is already present.
@@ -501,7 +517,12 @@ function editorialSegments(base,derived=[]){
  if(spring)cuts.add(-480);
  const cut=year=>{if(year===0)year=1;if(base.from<year&&year<=base.to)cuts.add(year)};
  for(const rule of [...componentExclusions,...derived])if(rule[0]===base.sourceIndex){cut(rule[2]);if(rule[7]!==undefined)cut(rule[7]+1)}
- if(base.sourceIndex===9410)cut(1707);
+ if([9410,9438,9441,9450].includes(base.sourceIndex))cut(1707);
+ if([4739,4734].includes(base.sourceIndex)){cut(1111);cut(1144)}
+ if([4776,4821,4874,4898,4880,4915].includes(base.sourceIndex)){cut(1126);cut(1152)}
+ if([3863,3963].includes(base.sourceIndex))for(const year of Object.values(SONG_ENDS))cut(year);
+ if(songAnnexations.some(([source])=>source===base.sourceIndex))cut(songAnnexations.find(([source])=>source===base.sourceIndex)[2]);
+ if([4524,4600,4641,4705,4744].includes(base.sourceIndex))for(const year of [1077,1092,1094,1111,1116])cut(year);
  if(base.sourceIndex===7187){cut(1454);cut(1462)}
  if(base.role==='polity'&&base.sourceName==='Sultanate of Malacca')cut(1529);
  if(base.sourceIndex===13313){cut(1973);cut(1976)}
@@ -548,6 +569,36 @@ function editorialSegments(base,derived=[]){
   const reasons=[],reasonsRu=[],sources=new Set();
   const note=(reason,urls,ru)=>{reasons.push(reason);if(ru)reasonsRu.push(ru);for(const url of urls)sources.add(url)};
   const rename=(name,nameRu,url,reason,reasonRu)=>{r={...r,name,nameRu,nameStatus:'reviewed'};note(reason,[url],reasonRu);};
+  if(base.sourceIndex===3861&&from===960){
+   r={...r,entityId:identity('source-polity','Northern Song','Q7462'),sourceMemberOf:base.memberOf,memberOf:[]};
+   rename('Northern Song','Северная Сун',SONG_REUNIFICATION,'The Later Zhou was replaced by Song in 960; the next-year source polygon is identical. The annual label denotes the transition year.','Поздняя Чжоу сменилась Сун в 960 г.; исходный контур следующего года идентичен. Годовая запись отражает переход, а не конкретный день.');
+  }
+  if([3863,3963].includes(base.sourceIndex)){
+   const components=base.components.filter(n=>!(n in SONG_ENDS)||from<SONG_ENDS[n]);
+   if(components.length!==base.components.length){r={...r,sourceComponents:base.components,components};note('Only the surviving kingdoms are included after their dated annexations by Song; the group is reconstructed from contemporaneous member components.',[SONG_REUNIFICATION,SONG_CHRONOLOGY],'После датированных присоединений к Сун в сводном слое остаются только существующие царства; объединение построено из исходных контуров того же года.');}
+   if(!components.length)r={...r,geometryStatus:'rejected'};
+  }
+  const songEnd=songAnnexations.find(([source])=>source===base.sourceIndex);
+  if(songEnd&&from>=songEnd[2]){r={...r,sourceMemberOf:base.memberOf,memberOf:[],geometryStatus:'rejected'};note('Annexed by Northern Song in '+songEnd[2]+'; source record retained but its political area is transferred to the contemporary Song record.',[SONG_REUNIFICATION,SONG_CHRONOLOGY],'Присоединено к Северной Сун в '+songEnd[2]+' г.; исходная запись сохранена, территория отнесена к записи Сун того же года.');}
+  if([4821,4874,4898].includes(base.sourceIndex)){
+   rename(BLOIS_UNION,'Графства Блуа и Шампань (общий правитель)',BLOIS_CHAMPAGNE,'Thibaut IV of Blois became count of Champagne in 1125 and held both until 1152. The pinned combined polygon includes Champagne; this is common rule, not abolition of the separate titles.','Тибо IV Блуаский стал графом Шампани в 1125 г. и владел обоими графствами до 1152 г. Исходный объединённый контур включает Шампань; общая власть не означает упразднение двух титулов.');
+  }
+  if([4776,4827,4880,4915].includes(base.sourceIndex)&&from>=1126){r={...r,sourceComponents:base.components,components:r.components.filter(n=>n!=='County of Champagne').map(n=>n==='County of Blôis'?BLOIS_UNION:n)};note('Replace the separate labels with the combined source footprint of Thibaut’s two counties.',[BLOIS_CHAMPAGNE],'Указан объединённый контур двух графств Тибо.');}
+  if(base.sourceIndex===4739&&from>=1111){r={...r,sourceComponents:base.components,components:base.components.filter(n=>n!=='County of Maine')};note('Maine passed to Fulk of Anjou in 1110; remove it from the English aggregate, retaining the dated Norman England source. Normandy is separately reassigned from 1144.',[MAINE_FULK,NORMANDY_GEOFFREY],'Мэн перешёл Фульку Анжуйскому в 1110 г.; он исключён из английского сводного контура. Нормандия отдельно перераспределена с 1144 г.');}
+  if(base.sourceIndex===9438&&from>=1707){r={...r,entityId:identity('source-polity','Kingdom of Great Britain','Q23666'),sourceMemberOf:base.memberOf,memberOf:['(British Empire)']};rename('Kingdom of Great Britain','Королевство Великобритания',UNION_1707,'The 1 May 1707 union created Great Britain. The contemporaneous source polygon already includes the British mainland; exact borders remain candidates.','1 мая 1707 г. образовано Королевство Великобритания. Исходный контур того же года уже включает британский остров; точные границы требуют сверки.');}
+  if(base.sourceIndex===9450&&from>=1707){r={...r,sourceComponents:base.components,components:[],geometryStatus:'rejected'};note('The English aggregate was superseded by the British aggregate after the union; its member outlines are retained in the rebuilt British layer.',[UNION_1707],'После унии английское объединение заменено британским; составляющие сохранены в восстановленном британском слое.');}
+  if((base.sourceIndex===9441&&from>=1707)||base.sourceIndex===9507){r={...r,sourceComponents:base.components,components:[...new Set([...base.components,'Kingdom of Great Britain',BRITISH_SUPPLEMENT])]};note('The British composite includes the contemporary metropolitan and both colonial source records, with their source parts kept separately traceable.',[UNION_1707],'Британский сводный слой включает метрополию и обе колониальные записи того же года; исходные части прослеживаются отдельно.');}
+  if(base.sourceIndex===4524&&from>=1077){
+   const independent=from<1116;
+   r={...r,entityId:identity('reviewed-polity',independent?'mallorca-taifa':'almoravid-balearics'),sourceMemberOf:base.memberOf,memberOf:independent?base.memberOf:[]};
+   rename(independent?MALLORCA_TAIFA:'Balearic Islands (Almoravid administration)',independent?'Тайфа Мальорка':'Балеарские острова (Альморавиды)',MALLORCA_HISTORY,independent?'The Balearic polity became independent after the fall of Dénia in 1076. The 1114–15 expedition and subsequent Almoravid takeover do not establish day-level borders.':'The Balearics came under Almoravid rule in 1116; the source islands remain an approximate separate administrative region, not an independent taifa.',independent?'После захвата Дении в 1076 г. Балеарские острова стали самостоятельной тайфой. Поход 1114–1115 гг. и последующая власть Альморавидов не задают границы на конкретный день.':'С 1116 г. Балеарские острова под властью Альморавидов; островной контур — приблизительная отдельная область управления, не самостоятельная тайфа.');
+  }
+  if([4600,4641,4705,4744].includes(base.sourceIndex)&&from>=1077){
+   const obsolete=new Set(['Taifa of Alpuente','Taifa of Zaragoza','Taifa of Tortosa','Taifa of Albarracín']);
+   const components=base.components.flatMap(n=>n==='Taifa of Dénia'?(from<1116?[MALLORCA_TAIFA]:[]):from>=1111&&obsolete.has(n)?[]:[n]);
+   r={...r,sourceComponents:base.components,components};note('The mainland taifas were annexed and the independent island polity survived separately until the 1115–16 transition.',[DENIA_HISTORY,MALLORCA_HISTORY,TAIFA_HISTORY],'Материковые тайфы присоединены к другим государствам, отдельная островная тайфа существовала до перехода 1115–1116 гг.');
+   if(!components.length)r={...r,geometryStatus:'rejected'};
+  }
   if(base.sourceName==='(Spanish Empire)'&&from>=1629&&to<=1639&&base.components.includes('Iberian Union')){
    r={...r,sourceComponents:base.components,components:[...r.components,'Portuguese Ceylon']};
    note('Portuguese Ceylon retained its Portuguese administration under the shared Iberian monarch; it is a distinct component of the union-era aggregate.',ceylonEarlySources,'Португальский Цейлон сохранял португальскую администрацию при общем монархе Иберийской унии; выделен отдельной составляющей объединения.');
@@ -587,6 +638,7 @@ function editorialSegments(base,derived=[]){
   if((base.sourceIndex===9410||base.sourceIndex===9553)&&from>=1707){
    const supplemental=base.sourceIndex===9410;
    r={...r,name:supplemental?'British colonial possessions (supplemental source record)':'British settlements in India (source aggregate)',nameRu:supplemental?'Британские колониальные владения (дополнительный контур)':'Британские поселения в Индии (сводный контур)',nameStatus:'reviewed',entityId:identity('reviewed-polity',supplemental?'british-colonial-supplement-9410':'british-indian-settlements-9553')};
+   if(supplemental)r={...r,sourceMemberOf:base.memberOf,memberOf:['(British Empire)']};
    note('The 1707 Acts of Union created Great Britain; these are surviving source records for British possessions, not a separate English colonial empire. Exact remaining extents and archival group associations are unverified.',['https://www.parliament.uk/about/living-heritage/evolutionofparliament/legislativescrutiny/act-of-union-1707/'],'После образования Великобритании в 1707 году эти записи относятся к британским владениям, а не к отдельной английской колониальной империи. Оставшиеся границы и архивные связи требуют проверки.');
   }
   if(base.sourceIndex===10461&&from>=1803&&to<=1805){
@@ -1248,6 +1300,54 @@ export function deriveCapeTerritoryReviews(features,existingExclusions){
  return {exclusions,restorations,pending};
 }
 
+export function deriveMedievalAndUnionReviews(features,existingExclusions){
+ const exclusions=[],transfers=[],pending=[],groupRebuilds=[];
+ const d=(reason,reasonRu,sources)=>({reason,reasonRu,sources});
+ const all=source=>rawParts(features[source]).map((_,part)=>part);
+ const exclude=(source,from,to,parts,decision)=>{
+  const f=features[source];assert.ok(f.properties.FromYear<=from&&f.properties.ToYear>=to&&parts.every(p=>rawParts(f)[p]));
+  for(let y=from;y<=to;y++){const old=new Set(exclusionsFor(source,y,existingExclusions).flatMap(r=>r[3]));assert.ok(parts.every(p=>!old.has(p)),`Previously excluded historic component ${source}/${y}`);}
+  exclusions.push([source,rawParts(f).length,from,parts,decision.reason,decision.reasonRu,decision.sources[0],to]);
+ };
+ const move=(source,target,from,to,parts,decision)=>{exclude(source,from,to,parts,decision);for(const part of parts)transfers.push({source,target,part,from,to,decision});};
+ const rebuild=(target,from,to,refs,decision)=>{
+  assert.ok(features[target].properties.Components&&features[target].properties.FromYear<=from&&features[target].properties.ToYear>=to);
+  const parts=refs.flatMap(([index,selection])=>{const f=features[index];assert.ok(f.properties.FromYear<=from&&f.properties.ToYear>=to);return (selection??all(index)).map(part=>({index,part}));});
+  assert.ok(parts.length&&new Set(parts.map(p=>`${p.index}/${p.part}`)).size===parts.length);
+  groupRebuilds.push({target,from,to,parts,decision});
+ };
+ const song=d('The dated conquests of Northern Song replace the obsolete independent polity with the same-year source components. Boundaries are generalized; no day-level claim.','Датированные завоевания Северной Сун заменяют устаревшую самостоятельную политию исходными компонентами того же года. Границы генерализованы; без утверждения о контроле на конкретный день.',[SONG_REUNIFICATION,SONG_CHRONOLOGY]);
+ assert.equal(componentHash(rawParts(features[3861])[0]),componentHash(rawParts(features[3909])[0]));
+ for(const [source,target,from] of songAnnexations){const to=features[source].properties.ToYear,decision=source===3932?{...song,allowSourceOverlap:true,group:'Сун — объединение'}:song;move(source,target,from,to,all(source),decision);}
+ for(const target of [3863,3963]){
+  const f=features[target],names=f.properties.Components.split(';');
+  for(let year=f.properties.FromYear;year<=f.properties.ToYear;year++){
+   const active=names.filter(n=>year<SONG_ENDS[n]);if(!active.length)continue;
+   const refs=active.map(name=>{const matches=features.flatMap((x,index)=>x.properties.Name===name&&x.properties.FromYear<=year&&x.properties.ToYear>=year?[[index]]:[]);assert.equal(matches.length,1,`${name}/${year}`);return matches[0];});
+   rebuild(target,year,year,refs,song);
+  }
+ }
+ const maine=d('Maine passed to the counts of Anjou in 1110; the English political aggregate is rebuilt from the contemporary Norman England record alone.','Мэн перешёл графам Анжу в 1110 г.; английский сводный слой восстановлен только из записи Нормандской Англии того же года.',[MAINE_FULK]);
+ rebuild(4739,1111,1143,[[4734]],maine);
+ const normandy=d('Geoffrey of Anjou completed the conquest of Normandy in 1144. The contemporary Norman French component is reassigned to Geoffrey; original source outline remains approximate.','Жоффруа Анжуйский завершил завоевание Нормандии в 1144 г. Французский компонент того же года отнесён к его владениям; исходная граница приблизительна.',[NORMANDY_GEOFFREY,'https://fasg.org/projects/henryproject/data/geoff005.htm']);
+ move(4734,4893,1144,1146,[0],normandy);transfers.push({source:4734,target:4880,part:0,from:1144,to:1146,decision:normandy});
+ rebuild(4739,1144,1146,[[4734,[1]]],normandy);
+ const british=d('The 1707 union replaced the English state and composite. Rebuild the British overlay from the same-year metropolitan and colonial footprints, including the nonduplicated supplemental parts.','Уния 1707 г. заменила английское государство и сводный контур. Британский слой восстановлен из метрополии и колоний того же года, включая недублирующие дополнительные части.',[UNION_1707]);
+ rebuild(9441,1707,1708,[[9438],[9449],[9410]],british);
+ rebuild(9507,1709,1712,[[9477],[9518],[9410,[14,24,27,28,29]]],british);
+ const denia=d('The mainland taifa of Dénia was annexed by Zaragoza in 1076; its island polity survived independently. The source mainland component is attributed only where the contemporary regional contours do not compete.','Материковая тайфа Дения присоединена к Сарагосе в 1076 г., островная тайфа сохраняла самостоятельность. Материковый компонент отнесён только там, где исходные контуры того же времени не конфликтуют.',[DENIA_HISTORY,MALLORCA_HISTORY,TAIFA_HISTORY]);
+ move(4524,4604,1077,1084,[0],denia);
+ const ambiguous=d('The former Dénia mainland component overlaps the source Tortosa polity in 1085–93 and the boundary of the 1092 Almoravid takeover is not established.','Материковый контур бывшей Дении накладывается на исходную запись Тортосы в 1085–1093 гг.; пределы перехода к Альморавидам в 1092 г. не установлены.',[DENIA_HISTORY,TAIFA_HISTORY]);
+ exclude(4524,1085,1093,[0],ambiguous);const polygon=rawParts(features[4524])[0];
+ pending.push({source:4524,part:0,from:1085,to:1093,hash:componentHash(polygon),group:'Дения — материковый контур',reason:ambiguous.reasonRu,counterpartName:'Сарагоса / Альморавиды',evidence:ambiguous.sources[0],sources:ambiguous.sources,geometry:{type:'Polygon',coordinates:polygon}});
+ const almoravid=d('The mainland taifa had fallen to the Almoravids by the end of the eleventh century. The contemporary successor outline covers more than 99% of this source component; the remaining border differences are not reconstructed.','К концу XI в. материковая тайфа перешла к Альморавидам. Контур преемника того же года охватывает более 99% исходного компонента; оставшиеся различия границ не реконструированы.',[DENIA_HISTORY,TAIFA_HISTORY]);
+ exclude(4524,1094,1125,[0],almoravid);
+ // By 1111 the only surviving member represented in this obsolete Iberian
+ // mainland aggregate is the Balearic taifa. Keep its exact island shapes.
+ rebuild(4744,1111,1115,[[4524,[1,2,3]]],denia);
+ return {exclusions,transfers,pending,groupRebuilds};
+}
+
 export function normalizeHistoricalSource(source) {
   assert.equal(source.type,'FeatureCollection');
   const geometries = new Map(), records = [];
@@ -1258,6 +1358,7 @@ export function normalizeHistoricalSource(source) {
    const coast=deriveCeylonCoastalReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','restorations','transfers'])batch[key].push(...coast[key]);
    const cape=deriveCapeTerritoryReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','restorations','pending'])batch[key].push(...cape[key]);
    const war=deriveCeylonWarReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','restorations','transfers','pending'])batch[key].push(...war[key]);
+   const medieval=deriveMedievalAndUnionReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','transfers','pending'])batch[key].push(...medieval[key]);batch.groupRebuilds=medieval.groupRebuilds;
    // The old opposing claims remain excluded; the reconstructed three-part
    // island replaces the unresolved footprint, not either original owner.
    assert.equal(batch.pending.filter(p=>p.group==='Эльба'&&p.from===1797&&p.to===1798).length,2);
@@ -1314,6 +1415,8 @@ export function normalizeHistoricalSource(source) {
       const territorialIssues=(pendingBySource.get(sourceIndex)??[]).filter(issue=>issue.from<=revision.to&&issue.to>=revision.from);
       if(territorialIssues.length)revision={...revision,territorialIssues};
       let selection=reviewedGeometryParts(revision,derivedExclusions);
+      const rebuild=(batch.groupRebuilds??[]).find(t=>t.target===sourceIndex&&t.from<=revision.from&&t.to>=revision.to);
+      if(rebuild){assert.equal(revision.role,'composite');assert.equal(selection,null);selection=rebuild.parts;const d=rebuild.decision;revision={...revision,review:{reason:[revision.review?.reason,d.reason].filter(Boolean).join(' '),reasonRu:[revision.review?.reasonRu,d.reasonRu].filter(Boolean).join(' '),sources:[...new Set([...(revision.review?.sources??[]),...d.sources])]}};}
       const matchingTransfers=(batch.transfers??[]).filter(t=>t.target===sourceIndex&&t.from<=revision.from&&t.to>=revision.to);
       const matchingSubtractions=(batch.subtractions??[]).filter(t=>t.target===sourceIndex&&t.from<=revision.from&&t.to>=revision.to);
       const transfer=matchingTransfers[0];
@@ -1341,13 +1444,13 @@ export function normalizeHistoricalSource(source) {
         if(transfer&&!preserveCoastalParts)for(let i=coordinates.length-matchingTransfers.length;i<coordinates.length;i++){
           const t=matchingTransfers[i-(coordinates.length-matchingTransfers.length)],previous=polygonClipping.union(...coordinates.slice(0,i)),overlap=polygonClipping.intersection(previous,coordinates[i]);
           if(t.decision.allowSourceOverlap){
-            assert.equal(t.decision.group,'Давао');assert.ok(overlap.length&&polygonClipping.difference(coordinates[i],previous).length,`Davao transfer must partially overlap ${sourceIndex}`);
+            assert.ok(['Давао','Сун — объединение'].includes(t.decision.group));assert.ok(polygonClipping.difference(coordinates[i],previous).length,`Transfer must retain part outside previous geometry ${sourceIndex}`);if(t.decision.group==='Давао')assert.ok(overlap.length);
           }else assert.equal(overlap.length,0,`Overlapping transfer ${sourceIndex}`);
         }
         const subtractions=matchingSubtractions.map(t=>({index:t.source,part:t.part}));
-        const selected={type:'MultiPolygon',coordinates:subtractions.length?polygonClipping.difference(polygonClipping.union(...coordinates),...subtractions.map(({index,part})=>rawParts(source.features[index])[part])):transfer&&!preserveCoastalParts?polygonClipping.union(...coordinates):coordinates};validateGeometry(selected);
+        const selected={type:'MultiPolygon',coordinates:subtractions.length?polygonClipping.difference(polygonClipping.union(...coordinates),...subtractions.map(({index,part})=>rawParts(source.features[index])[part])):rebuild||transfer&&!preserveCoastalParts?polygonClipping.union(...coordinates):coordinates};validateGeometry(selected);
         const selectedId=sha256(JSON.stringify(selected));geometries.set(selectedId,selected);
-        revision={...revision,geometryId:selectedId,sourceGeometryId,geometryRepair:subtractions.length?'reviewed-difference-source-components':transfer&&!preserveCoastalParts?'reviewed-union-source-components':'reviewed-source-components',geometryParts:selection,...(subtractions.length?{geometrySubtractions:subtractions}:{})};
+        revision={...revision,geometryId:selectedId,sourceGeometryId,geometryRepair:subtractions.length?'reviewed-difference-source-components':rebuild||transfer&&!preserveCoastalParts?'reviewed-union-source-components':'reviewed-source-components',geometryParts:selection,...(subtractions.length?{geometrySubtractions:subtractions}:{})};
       }
       const id = identity('revision', sourceIndex, sourceFrom, sourceTo, revision.geometryId, revision.from, revision.to, revision.name);
       records.push({id, ...revision});
@@ -1356,7 +1459,7 @@ export function normalizeHistoricalSource(source) {
     };
     const add=revision=>{
       const cuts=new Set([revision.from,revision.to+1]);
-      for(const t of [...(batch.transfers??[]),...(batch.subtractions??[])])if(t.target===sourceIndex&&t.from<=revision.to&&t.to>=revision.from){cuts.add(Math.max(revision.from,t.from));cuts.add(Math.min(revision.to+1,t.to+1));}
+      for(const t of [...(batch.transfers??[]),...(batch.subtractions??[]),...(batch.groupRebuilds??[])])if(t.target===sourceIndex&&t.from<=revision.to&&t.to>=revision.from){cuts.add(Math.max(revision.from,t.from));cuts.add(Math.min(revision.to+1,t.to+1));}
       const sorted=[...cuts].sort((a,b)=>a-b);
       for(let i=0;i<sorted.length-1;i++)addOne({...revision,from:sorted[i],to:sorted[i+1]-1});
     };
