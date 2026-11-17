@@ -11,6 +11,8 @@ import {createRemoteCursorStore} from '/src/boardRemoteCursors.ts';
 import {RemoteCursorOverlay,RemoteCursorCount} from '/src/RemoteCursorOverlay.tsx';
 import {previewRemoteErasures} from '/src/remoteEraserPreview.ts';
 import {fitLanguageFlashcardItem} from '/src/languageFlashcardSize.ts';
+import '/src/lektrusThemes.css';
+import {BOARD_SELECTION_ARROW_PATH} from '/src/lektrusSelectionCursor.ts';
 
 const store=createRemoteInkStore();
 const cursorStore=createRemoteCursorStore();
@@ -105,6 +107,15 @@ try{
   assert(document.querySelector('#cursor-count').textContent==='30','Cursor diagnostics mismatch');
   const firstCursor=cursors()[0];
   assert(firstCursor.style.transform==='translate(188px, 356px)','Latest cursor position incorrect');
+  const pointer=firstCursor.querySelector('svg'),arrow=pointer.querySelector('path'),label=firstCursor.querySelector('span');
+  assert(arrow.getAttribute('d')===BOARD_SELECTION_ARROW_PATH,'Peer pointer differs from the Lektrus cursor family');
+  assert(getComputedStyle(pointer).width==='22px'&&getComputedStyle(pointer).height==='22px','Peer pointer lost its compact screen size');
+  assert(getComputedStyle(arrow).fill==='rgb(255, 255, 255)'&&getComputedStyle(arrow).stroke==='rgb(48, 86, 200)','Peer cursor uses obsolete colors');
+  assert(getComputedStyle(label).backgroundColor==='rgb(48, 86, 200)'&&getComputedStyle(label).fontSize==='11px','Peer name label is not styled');
+  assert(getComputedStyle(firstCursor).pointerEvents==='none','Peer cursor intercepts drawing or erasing');
+  document.documentElement.dataset.theme='dark';document.documentElement.dataset.lectrisPalette='jade';
+  assert(getComputedStyle(label).backgroundColor==='rgb(8, 120, 107)'&&getComputedStyle(arrow).stroke==='rgb(8, 120, 107)','Peer cursor ignores active theme palette');
+  delete document.documentElement.dataset.theme;delete document.documentElement.dataset.lectrisPalette;
   cursorStore.push(cursor(0,79));await nextFrame();
   assert(cursorPublications===20,'Stationary cursor repainted');
   render({x:10,y:20,zoom:1});

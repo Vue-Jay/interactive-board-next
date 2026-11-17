@@ -1,10 +1,12 @@
 import { memo, useSyncExternalStore } from "react";
 import type { RemoteCursor } from "./boardBroadcast";
 import type { RemoteCursorStore } from "./boardRemoteCursors";
+import { BOARD_SELECTION_ARROW_PATH } from "./lektrusSelectionCursor";
+import "./lektrusRemoteCursor.css";
 
 const Cursor=memo(function Cursor({cursor,x,y,zoom}:{cursor:RemoteCursor;x:number;y:number;zoom:number}){
-  return <div className="remote-cursor" style={{transform:`translate(${cursor.x*zoom+x}px,${cursor.y*zoom+y}px)`}}>
-    <svg className="remote-cursor-pointer" viewBox="0 0 24 30"><path d="M2 2 19 17l-8.2 1.5L7 27 2 2Z"/></svg>
+  return <div className="remote-cursor lektrus-remote-cursor" style={{transform:`translate(${cursor.x*zoom+x}px,${cursor.y*zoom+y}px)`}}>
+    <svg className="remote-cursor-pointer" viewBox="0 0 32 32" aria-hidden="true"><path d={BOARD_SELECTION_ARROW_PATH}/></svg>
     <span>{cursor.name}</span>
   </div>;
 });
