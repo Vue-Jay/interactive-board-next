@@ -170,7 +170,9 @@ if(outDir&&sourceFile){
       if(r.sourceGeometryId){
         const orig=f.geometry,repaired=pack.geometries[r.geometryId];
         if(['reviewed-source-components','reviewed-union-source-components','reviewed-difference-source-components'].includes(r.geometryRepair)){
-          const readPart=({index,part})=>{const x=input.features[index];assert.ok(x.properties.FromYear<=r.from&&x.properties.ToYear>=r.to);return (x.geometry.type==='Polygon'?[x.geometry.coordinates]:x.geometry.coordinates)[part]};
+          const sourcePart=({index,part})=>{const g=input.features[index].geometry;return (g.type==='Polygon'?[g.coordinates]:g.coordinates)[part]};
+          for(const w of r.geometryTemporalWitnesses??[]){assert.equal(input.features[w.before.index].properties.ToYear,w.year-1);assert.equal(input.features[w.after.index].properties.FromYear,w.year+1);assert.equal(componentHash(sourcePart(w.before)),w.hash);assert.equal(componentHash(sourcePart(w.after)),w.hash);}
+          const readPart=({index,part})=>{const x=input.features[index];assert.ok((x.properties.FromYear<=r.from&&x.properties.ToYear>=r.to)||r.geometryTemporalWitnesses?.some(w=>w.before.index===index&&w.before.part===part&&w.year===r.from&&w.year===r.to));return sourcePart({index,part})};
           const parts=r.geometryParts.map(readPart);
           assert.deepEqual(repaired,{type:'MultiPolygon',coordinates:r.geometryRepair==='reviewed-difference-source-components'?polygonClipping.difference(polygonClipping.union(...parts),...r.geometrySubtractions.map(readPart)):r.geometryRepair==='reviewed-union-source-components'?polygonClipping.union(...parts):parts});
         }else{assert.equal(r.geometryRepair,'retracted-zero-area-interior-edges');assert.equal(orig.type,repaired.type);const shells=g=>(g.type==='Polygon'?[g.coordinates]:g.coordinates).map(p=>p[0]);assert.deepEqual(shells(orig),shells(repaired));}
@@ -188,6 +190,13 @@ if(outDir&&sourceFile){
       assert.equal(historicalYearFeatureCollection(state).features.length,state.drawable.length);
       assert.equal(historicalYearFeatureCollection(state,true).features.length,state.drawable.length+state.overlays.length);
       const activeRecords=new Map(sourceRecords.map(r=>[r.sourceIndex,r]));
+      if(year===1944){
+        const target=activeRecords.get(12942),island=input.features[12901].geometry.coordinates[4];
+        assert.equal(target.name,'Free French');assert.equal(target.geometryTemporalWitnesses.length,1);assert.ok(target.geometryParts.some(p=>p.index===12901&&p.part===4));
+        const normalizedHash=componentHash(polygonClipping.union(island)[0]);
+        const owners=state.drawable.filter(({geometry})=>(geometry.type==='Polygon'?[geometry.coordinates]:geometry.coordinates).some(p=>componentHash(p)===normalizedHash||componentHash(p)==='c6112dfe98f227b48dbd7df302405c9bd2abbe65204887ced3463de80aa1ac44'));
+        assert.deepEqual(owners.map(({record})=>record.sourceIndex),[12942]);
+      }
       const hasPart=(record,index,part)=>record&&record.geometryStatus==='candidate'&&(record.geometryParts?record.geometryParts.some(p=>p.index===index&&p.part===part):record.sourceIndex===index);
       for(const item of batchByYear.get(year)??[]){
         const record=activeRecords.get(item.source);assert.ok(record,`Missing reviewed record ${item.source}/${year}`);

@@ -318,6 +318,14 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
  assert.equal(features[corsica1796.target].properties.Name,'French Directory');
  registerIslandCorrection(corsica1796.source,corsica1796.part,corsica1796.from,corsica1796.to,corsica1796,corsica1796.target);
  for(const d of territorialResolutions.datedIslandCorrections)registerIslandCorrection(d.source,d.part,d.from,d.to,d,d.target);
+ for(const d of territorialResolutions.bracketedIslandRestorations){
+  const before=features[d.before.index],after=features[d.after.index],target=features[d.target];
+  assert.equal(before.properties.ToYear,d.year-1);assert.equal(after.properties.FromYear,d.year+1);
+  assert.equal(target.properties.Name,'Free French');assert.ok(target.properties.FromYear<=d.year&&target.properties.ToYear>=d.year);
+  assert.equal(componentHash(rawParts(before)[d.before.part]),d.hash);assert.equal(componentHash(rawParts(after)[d.after.part]),d.hash);
+  assert.ok(!features.some(f=>f.properties.FromYear<=d.year&&f.properties.ToYear>=d.year&&rawParts(f).some(p=>componentHash(p)===d.hash)),`Existing island ${d.group}/${d.year}`);
+  transfers.push({source:d.before.index,part:d.before.part,target:d.target,from:d.year,to:d.year,decision:d,temporalWitness:{before:d.before,after:d.after,year:d.year,hash:d.hash}});
+ }
  // Reassemble the missing independent state from its three exact island
  // cells. The Cabo Verde exclusions alone had left it entirely absent.
  const comoros=territorialResolutions.independentComoros;
@@ -768,6 +776,8 @@ export function normalizeHistoricalSource(source) {
         assert.notEqual(selection?.length,0);
         selection=[...(selection??rawParts(feature).map((_,part)=>({index:sourceIndex,part}))),...matchingTransfers.map(t=>({index:t.source,part:t.part}))];
         const decisions=matchingTransfers.map(t=>t.decision);
+        const witnesses=matchingTransfers.flatMap(t=>t.temporalWitness?[t.temporalWitness]:[]);
+        if(witnesses.length)revision={...revision,geometryTemporalWitnesses:witnesses};
         revision={...revision,review:{reason:[...new Set([revision.review?.reason,...decisions.map(d=>d.reason)].filter(Boolean))].join(' '),reasonRu:[...new Set([revision.review?.reasonRu,...decisions.map(d=>d.reasonRu)].filter(Boolean))].join(' '),sources:[...new Set([...(revision.review?.sources??[]),...decisions.flatMap(d=>d.sources)])]}};
       }
       if(matchingSubtractions.length){

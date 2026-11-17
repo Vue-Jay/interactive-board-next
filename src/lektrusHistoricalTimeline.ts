@@ -14,6 +14,7 @@ export type HistoricalRevision = {
   sourceComponents?: string[]; sourceMemberOf?: string[];
   sourceGeometryId?: string; geometryRepair?: 'retracted-zero-area-interior-edges' | 'reviewed-source-components' | 'reviewed-union-source-components' | 'reviewed-difference-source-components';
   geometryParts?: {index:number;part:number}[];
+  geometryTemporalWitnesses?: {before:{index:number;part:number};after:{index:number;part:number};year:number;hash:string}[];
   geometrySubtractions?: {index:number;part:number}[];
   territorialIssues?: HistoricalTerritorialIssue[];
   territorialAttributions?: HistoricalTerritorialAttribution[];
@@ -83,7 +84,7 @@ export function historicalYearFeatureCollection(state: ReturnType<typeof histori
       historicalRole:record.role, historicalSourceRole:record.sourceRole, historicalComponents:record.components, historicalMemberOf:record.memberOf,
       historicalSourceComponents:record.sourceComponents,historicalSourceMemberOf:record.sourceMemberOf,
       sourceSeshatId:record.sourceSeshatId, sourceWikipedia:record.sourceWikipedia,
-      sourceGeometryId:record.sourceGeometryId, geometryRepair:record.geometryRepair,geometryParts:record.geometryParts,geometrySubtractions:record.geometrySubtractions,
+      sourceGeometryId:record.sourceGeometryId, geometryRepair:record.geometryRepair,geometryParts:record.geometryParts,geometrySubtractions:record.geometrySubtractions,geometryTemporalWitnesses:record.geometryTemporalWitnesses,
       year:state.year, nameStatus:record.nameStatus, geometryStatus:record.geometryStatus,
       review:record.review,editorialRestoration:record.editorialRestoration,territorialAttributions:record.territorialAttributions?.filter(i=>i.from<=state.year&&i.to>=state.year)},
   }))};
@@ -116,6 +117,7 @@ export function validateHistoricalPack(value: unknown, block: HistoricalBlock): 
     const validParts=(parts:HistoricalRevision['geometryParts'])=>Array.isArray(parts)&&parts.length>0&&parts.every(p=>Number.isSafeInteger(p.index)&&p.index>=0&&Number.isSafeInteger(p.part)&&p.part>=0);
     if(['reviewed-source-components','reviewed-union-source-components','reviewed-difference-source-components'].includes(record.geometryRepair??'')&&(!record.sourceGeometryId||!validParts(record.geometryParts)||!record.review?.sources.length))throw new Error('Invalid historical component provenance');
     if(record.geometryRepair==='reviewed-difference-source-components'?!validParts(record.geometrySubtractions):record.geometrySubtractions!==undefined)throw new Error('Invalid historical subtraction provenance');
+    if(record.geometryTemporalWitnesses!==undefined&&(!Array.isArray(record.geometryTemporalWitnesses)||!record.geometryTemporalWitnesses.length||record.geometryRepair!=='reviewed-union-source-components'||record.geometryTemporalWitnesses.some(w=>!w||!validParts([w.before,w.after])||w.before.index===w.after.index||w.year!==record.from||w.year!==record.to||!hash.test(w.hash)||!record.geometryParts?.some(p=>p.index===w.before.index&&p.part===w.before.part))))throw new Error('Invalid historical temporal witness');
     if (!geometry || !['Polygon','MultiPolygon'].includes(geometry.type) || !Array.isArray(geometry.coordinates)) throw new Error('Missing historical geometry');
     if(record.territorialIssues!==undefined){
       if(!Array.isArray(record.territorialIssues)||!record.review?.sources.length||record.territorialIssues.some(i=>!Number.isSafeInteger(i.part)||i.part<0||!hash.test(i.hash)||!hash.test(i.geometryId)||!validHistoricalYear(i.from)||!validHistoricalYear(i.to)||i.from>i.to||i.from>record.to||i.to<record.from||!i.group||!i.reason||!i.counterpartName||!i.evidence.startsWith('https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-')||pack.geometries[i.geometryId]?.type!=='Polygon'))throw new Error('Invalid unresolved historical territorial issue');
