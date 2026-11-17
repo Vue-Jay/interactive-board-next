@@ -141,6 +141,9 @@ try{
    await wait(`(()=>{const f=document.querySelector('.lektrus-layout-device-frame');return f?.contentDocument?.documentElement?.dataset.interfaceLayoutDevice===${JSON.stringify(profile)}&&getComputedStyle(f).visibility==='visible'&&!!f.contentDocument.querySelector('.workspace .board')})()`,"Real profile did not load: "+profile,30000);
    const state=await evaluate(`(()=>{const f=document.querySelector('.lektrus-layout-device-frame'),w=f.contentWindow,r=f.getBoundingClientRect(),dock=document.querySelector('.lektrus-live-layout-actions').getBoundingClientRect();return {width:w.innerWidth,height:w.innerHeight,coarse:w.matchMedia('(pointer:coarse)').matches,hover:w.matchMedia('(hover:hover)').matches,recursive:!!f.contentDocument.querySelector('.lektrus-live-layout-editor'),fits:r.bottom<=dock.top&&r.width<=w.innerWidth+1}})()`);
    assert.deepEqual(state,{width,height,coarse:touch,hover:!touch,recursive:false,fits:true},profile);
+   const bounds=await evaluate(`(()=>{const d=document.querySelector('.lektrus-layout-device-frame').contentDocument;const b=d.querySelector('.board-home-button').getBoundingClientRect(),l=d.querySelector('.topbar-left').getBoundingClientRect(),h=d.querySelector('.topbar').getBoundingClientRect(),rail=d.querySelector('nav.mobile-board-tools')?.getBoundingClientRect();return {button:b.width>0&&b.left>=Math.max(l.left,h.left)-0.5&&b.right<=Math.min(l.right,h.right)+0.5&&b.top>=h.top&&b.bottom<=h.bottom,rail:rail?.left??null}})()`);
+   assert.ok(bounds.button,profile+": board back button is clipped");
+   if(touch&&width>height) assert.ok(bounds.rail>=10&&bounds.rail<=18,profile+": rail must be near the left safe edge: "+bounds.rail);
   };
   await select("ПК");await check("desktop",1920,1080,false);
   const target=await evaluate(`(()=>{const f=document.querySelector('.lektrus-layout-device-frame');const b=f.contentDocument.querySelector('.toolbar-pinned [data-interface-control="marker"]').getBoundingClientRect(),r=f.getBoundingClientRect(),k=r.width/f.clientWidth;return {x:r.left+(b.x+b.width/2)*k,y:r.top+(b.y+b.height/2)*k}})()`);
@@ -154,6 +157,15 @@ try{
   await select("Телефон");await check("phonePortrait",390,844,true);
   await evaluate(`[...document.querySelectorAll('.lektrus-live-layout-actions button')].find(b=>b.textContent.includes('Повернуть')).click()`);
   await check("phone",844,390,true);
+  // Reproduce both physical landscape orientations, including a side system
+  // navigation bar, and verify native insets are applied to actual controls.
+  for(const [left,right,systemLeft,systemRight] of [[38,0,0,26],[0,38,26,0]]){
+   const safe=await evaluate(`(()=>{const f=document.querySelector('.lektrus-layout-device-frame'),d=f.contentDocument,r=d.documentElement;r.classList.add('lektrus-native-app','lektrus-android-app');for(const [key,value] of Object.entries(${JSON.stringify({"cutout-left":left,"cutout-right":right,"system-left":systemLeft,"system-right":systemRight,"system-top":24})}))r.style.setProperty('--lektrus-'+key,value+'px');const b=d.querySelector('.board-home-button').getBoundingClientRect(),rail=d.querySelector('nav.mobile-board-tools').getBoundingClientRect(),z=d.querySelector('.board-controls').getBoundingClientRect();return {button:b.left,buttonTop:b.top,rail:rail.left,railTop:rail.top,railBottom:rail.bottom,zoomRight:z.right}})()`);
+   assert.ok(safe.button>=Math.max(left,systemLeft)+7&&safe.buttonTop>=24,"Native back button crosses the safe area: "+JSON.stringify(safe));
+   assert.ok(safe.rail>=Math.max(left,systemLeft)+10&&safe.railTop>=96&&safe.railBottom<=390,"Native rail crosses the safe area: "+JSON.stringify(safe));
+   assert.ok(safe.zoomRight<=844-Math.max(right,systemRight)-11,"Native zoom crosses the safe area: "+JSON.stringify(safe));
+  }
+  await evaluate(`(()=>{const r=document.querySelector('.lektrus-layout-device-frame').contentDocument.documentElement;r.classList.remove('lektrus-native-app','lektrus-android-app');for(const key of ['cutout-left','cutout-right','system-left','system-right','system-top'])r.style.removeProperty('--lektrus-'+key)})()`);
   await select("ПК");await check("desktop",1920,1080,false);
   await click(".lektrus-live-layout-actions .primary");
   await wait('!document.querySelector(".lektrus-live-layout-editor")',"Published layout did not close editor",15000);

@@ -24,6 +24,7 @@ public class MainActivity extends BridgeActivity {
     public void setBoardMode(boolean enabled) {
         runOnUiThread(() -> {
             boardMode = enabled;
+            lastCutoutInsets = "";
             applyBars();
             if (boardWebView != null) ViewCompat.requestApplyInsets(boardWebView);
         });
@@ -50,11 +51,17 @@ public class MainActivity extends BridgeActivity {
         applyBars();
         ViewCompat.setOnApplyWindowInsetsListener(boardWebView, (view, insets) -> {
             Insets cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
+            Insets navigation = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
+            Insets tappable = insets.getInsets(WindowInsetsCompat.Type.tappableElement());
+            Insets status = insets.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.statusBars());
+            int systemLeft = Math.max(status.left, Math.max(navigation.left, tappable.left));
+            int systemRight = Math.max(status.right, Math.max(navigation.right, tappable.right));
             // DisplayCutout insets are physical pixels; export them to CSS in
             // CSS pixels after accounting for the WebView devicePixelRatio.
             // Unlike hard-coded offsets, this responds to each device,
             // display rotation, and camera/notch position.
-            String cutoutInsets = cutout.left + "," + cutout.top + "," + cutout.right + "," + cutout.bottom;
+            String cutoutInsets = cutout.left + "," + cutout.top + "," + cutout.right + "," + cutout.bottom
+                + "," + systemLeft + "," + systemRight + "," + status.top;
             if (!cutoutInsets.equals(lastCutoutInsets)) {
                 lastCutoutInsets = cutoutInsets;
                 ((WebView) view).evaluateJavascript(
@@ -63,13 +70,13 @@ public class MainActivity extends BridgeActivity {
                     "s.setProperty('--lektrus-cutout-top',(" + cutout.top + "/r)+'px');" +
                     "s.setProperty('--lektrus-cutout-right',(" + cutout.right + "/r)+'px');" +
                     "s.setProperty('--lektrus-cutout-bottom',(" + cutout.bottom + "/r)+'px');" +
+                    "s.setProperty('--lektrus-system-left',(" + systemLeft + "/r)+'px');" +
+                    "s.setProperty('--lektrus-system-right',(" + systemRight + "/r)+'px');" +
+                    "s.setProperty('--lektrus-system-top',(" + status.top + "/r)+'px');" +
                     "})();", null);
             }
-            Insets navigation = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
-            Insets tappable = insets.getInsets(WindowInsetsCompat.Type.tappableElement());
             // Use ignoring-visibility inset: status can be temporarily hidden by
             // rotation/transition even though home screens require the space.
-            Insets status = insets.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.statusBars());
             int top = boardMode ? 0 : Math.max(status.top, cutout.top);
             int bottom = tappable.bottom > 0 ? Math.max(navigation.bottom, tappable.bottom) : 0;
             bottom = Math.max(bottom, cutout.bottom);
