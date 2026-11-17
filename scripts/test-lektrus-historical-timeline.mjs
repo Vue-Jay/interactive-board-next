@@ -4,7 +4,7 @@ import path from 'node:path';
 import polygonClipping from 'polygon-clipping';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,historicalTitleCorrections,secondaryExactReviews,thirdExactReviews,fourthExactReviews,exactConflictPendingReviews,exactConflictGroupPrefix,elba1797Partition,buildElbaPartition,earlyComorosRoutes,earlyComorosHashes} from './build-lektrus-historical-timeline.mjs';
+import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,historicalTitleCorrections,secondaryExactReviews,thirdExactReviews,fourthExactReviews,fifthExactReviews,exactConflictPendingReviews,exactConflictGroupPrefix,elba1797Partition,buildElbaPartition,earlyComorosRoutes,earlyComorosHashes} from './build-lektrus-historical-timeline.mjs';
 import {historicalUnresolvedCenters,historicalUnresolvedRegions} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
@@ -241,7 +241,7 @@ if(outDir&&sourceFile){
         assert.deepEqual(owners.map(({record})=>record.sourceIndex),[12942]);
       }
       const hasPart=(record,index,part)=>record&&record.geometryStatus==='candidate'&&(record.geometryParts?record.geometryParts.some(p=>p.index===index&&p.part===part):record.sourceIndex===index);
-      for(const [source,target,from,to,losers,winners] of [...secondaryExactReviews,...thirdExactReviews,...fourthExactReviews])if(from<=year&&year<=to){
+      for(const [source,target,from,to,losers,winners] of [...secondaryExactReviews,...thirdExactReviews,...fourthExactReviews,...fifthExactReviews])if(from<=year&&year<=to){
         assert.ok(losers.every(part=>!hasPart(activeRecords.get(source),source,part)),`Secondary duplicate ${source}/${year}`);
         const winner=activeRecords.get(target);assert.ok(winners.every(part=>hasPart(winner,target,part)),`Missing secondary counterpart ${target}/${year}`);
         assert.ok(winners.every(part=>winner.territorialAttributions?.some(note=>note.part===part&&note.from<=year&&year<=note.to)));
@@ -343,8 +343,19 @@ if(outDir&&sourceFile){
         assert.equal(polygonClipping.difference(cell,spain.geometry.coordinates).length,0);
         for(const entry of state.drawable)if(entry!==spain)assert.equal(polygonClipping.intersection(entry.geometry.coordinates,cell).length,0,`Davao overlaps ${entry.record.name}/${year}`);
       }
+      if(year>=1662&&year<=1664)expectedCenters.push('cape-coast-castle','mouri-fort');
+      if(year>=1552&&year<=1555)expectedCenters.push('muscat-port');
+      if(year>=410&&year<=442)expectedCenters.push('kath-afrighid');
+      if(year===-203)expectedCenters.push('cyzicus-city');
       const centers=historicalUnresolvedCenters(year,state.territorialIssues);
       assert.deepEqual(centers.map(c=>c.id),expectedCenters.map(id=>`historical-center-${id}`));
+      if(year>=1662&&year<=1664){
+        const disputed=state.territorialIssues.find(i=>i.sourceIndex===9047&&i.part===0);
+        assert.ok(disputed);
+        const castle=centers.find(c=>c.id==='historical-center-cape-coast-castle'),mouri=centers.find(c=>c.id==='historical-center-mouri-fort');
+        assert.ok(!capitalInsideCountry([castle.lon,castle.lat],disputed.geometry));
+        assert.ok(capitalInsideCountry([mouri.lon,mouri.lat],disputed.geometry));
+      }
       const regions=historicalUnresolvedRegions(year,state.territorialIssues);
       assert.equal(regions.length,new Set(state.territorialIssues.map(i=>i.hash)).size);
       assert.equal(regions.flatMap(r=>r.rows).length,state.territorialIssues.length);
@@ -435,7 +446,9 @@ if(outDir&&sourceFile){
   assert.equal(batchReady,293);assert.equal(batchResolved,541);assert.equal(batchPending,155);
   assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,815);assert.equal(externalRecordYears,469);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
   assert.equal(unresolvedSourceYears,363);assert.equal(unresolvedRegionYears,284);
-  assert.equal(unresolvedExactComponentYears,117);assert.equal(unresolvedExactSourceYears,234);
+  assert.equal(fifthExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0),18);
+  assert.equal(exactConflictPendingReviews.length,11);
+  assert.equal(unresolvedExactComponentYears,99);assert.equal(unresolvedExactSourceYears,198);
   assert.equal(admissionWarnings,1,'Independent-state coverage must not regress');
   assert.deepEqual(rows.filter(r=>r.membershipWarnings?.length).map(r=>[r.year,...r.membershipWarnings.map(w=>w.name)]),[[1971,'United Arab Emirates']]);
   assert.equal(historicalGapLocators['United Arab Emirates'].iso,'ARE');
