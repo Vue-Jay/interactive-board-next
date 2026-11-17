@@ -141,6 +141,19 @@ def more():
     return {'items': js('return [...document.querySelectorAll(".lektrus-more-page-item")].map(e=>e.innerText)')}
 
 
+def workspace_section(label, route, selector):
+    primary = f'.lectris-mobile-bottom button[aria-label="{label}"]'
+    if visible_id(primary):
+        click(primary)
+    else:
+        click('.lectris-mobile-bottom button[aria-label="Ещё разделы"]')
+        element = wait(lambda: js('return [...document.querySelectorAll(".lektrus-more-page-item")].find(e=>e.querySelector(".lektrus-more-page-label")?.textContent===arguments[0])||null', label), f'Missing section: {label}')
+        command('POST', f'/element/{element[ELEMENT]}/click', {})
+    wait(lambda: visible_id(selector), f'Section did not render: {label}')
+    assert js('return new URLSearchParams(location.search).get("section")') == route, f'Wrong page: {label}'
+    return check_layout(['.lectris-mobile-bottom', '.lectris-mobile-bottom button'])
+
+
 def open_new_board():
     click('.lectris-mobile-bottom button[aria-label="Доски"]')
     click('.lectris-library-new')
@@ -284,8 +297,10 @@ def create_session():
               'appium:app': str(Path(args.app).resolve()), 'appium:newCommandTimeout': 180,
               'appium:automationName': 'UiAutomator2' if args.platform=='android' else 'XCUITest'}
     if args.platform=='android':
-        common.update({'appium:deviceName':'Android Emulator','appium:appPackage':'ru.lektrus.board',
-                       'appium:appActivity':'.MainActivity','appium:ensureWebviewsHavePages':True,
+        # Debug APK intentionally has .dev applicationIdSuffix; the Java
+        # namespace/activity remains unchanged. Never launch the release app.
+        common.update({'appium:deviceName':'Android Emulator','appium:appPackage':'ru.lektrus.board.dev',
+                       'appium:appActivity':'ru.lektrus.board.MainActivity','appium:ensureWebviewsHavePages':True,
                        'appium:autoGrantPermissions':True})
     else:
         common.update({'appium:udid':args.udid, 'appium:deviceName':'iPhone Simulator',
@@ -304,6 +319,21 @@ try:
     assert js('return window.Capacitor?.isNativePlatform()'), 'Not a native Capacitor runtime'
     check('home-portrait-layout', home, fatal=True)
     check('more-and-native-keyboard', more)
+    for label, route, selector in [
+        ('Предметы','subjects','.lektrus-category-panel'),
+        ('Группы и классы','groups','.lektrus-group-layout'),
+        ('Ученики','students','.students-shell'),
+        ('Задания','assignments','.assignments-shell'),
+        ('Расписание','schedule','.schedule-shell'),
+        ('Прогресс','progress','.progress-shell'),
+        ('Материалы','materials','.materials-shell'),
+        ('Шаблоны','templates','.templates-shell'),
+        ('Уведомления','notifications','.notifications-shell'),
+        ('Отзывы и предложения','feedback','.lektrus-feedback-screen'),
+        ('Профиль','profile','.profile-only-shell'),
+        ('Настройки','settings','.settings-shell'),
+    ]:
+        check('workspace-'+route, lambda: workspace_section(label, route, selector))
     check('create-board-and-landscape', open_new_board, fatal=True)
     check('board-landscape-bounds', board_layout)
     check('two-finger-pinch', pinch)
