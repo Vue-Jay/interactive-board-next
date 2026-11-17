@@ -9706,6 +9706,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             if(gesture.current)end(true);
             const screen=local(e.clientX,e.clientY);
             const p=world(screen);
+            if(!adminHidden)cursorChannel.current?.sendCursor(p.x,p.y);
             eraserSession.current={id:createId(),pointer:e.pointerId,last:p,zoom:view.zoom,weight:eraserSize/view.zoom,path:[p]};
             sendLiveEraser(eraserSession.current);
             setSelected([]);
@@ -9735,12 +9736,27 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               if(Math.hypot(p.x-start.x,p.y-start.y)>5)rightPress.current.dragged=true;
             }
             const g=eraserSession.current;
-            if(!g||g.pointer!==e.pointerId)return;
+            if(!g){
+              // Eraser hover used to return from the bubble handler before
+              // publishing presence. Capture also sees moves over widgets
+              // that stop propagation. Keep camera navigation on its fast path.
+              if(tool==="eraser"&&!pinchState.current&&!consumedTouchIds.current.has(e.pointerId)&&
+                 !gesture.current&&e.pointerType!=="touch"){
+                const screen=local(e.clientX,e.clientY);
+                const p=world(screen);
+                if(!adminHidden)cursorChannel.current?.sendCursor(p.x,p.y);
+                setLiveEraserCursor(screen.x,screen.y,e.pointerType);
+              }
+              return;
+            }
+            if(g.pointer!==e.pointerId)return;
             e.preventDefault();e.stopPropagation();
             const screen=local(e.clientX,e.clientY);
             const previous={x:g.last.x*g.zoom+view.x,y:g.last.y*g.zoom+view.y};
             previewEraserSegment(previous,screen);
-            recordEraserPoint(world(screen));
+            const p=world(screen);
+            if(!adminHidden)cursorChannel.current?.sendCursor(p.x,p.y);
+            recordEraserPoint(p);
             setLiveEraserCursor(screen.x,screen.y,e.pointerType,true);
           }}
           onPointerUpCapture={(e) => {
@@ -9804,7 +9820,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             const screen=local(e.clientX,e.clientY);
             const previous={x:g.last.x*g.zoom+view.x,y:g.last.y*g.zoom+view.y};
             previewEraserSegment(previous,screen);
-            finishEraser(world(screen));
+            const p=world(screen);
+            if(!adminHidden)cursorChannel.current?.sendCursor(p.x,p.y);
+            finishEraser(p);
             if(e.pointerType==="touch"&&eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden";
             if(board.current?.hasPointerCapture(e.pointerId))board.current.releasePointerCapture(e.pointerId);
           }}
@@ -9858,7 +9876,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               move(e);
               return;
             }
-            if(tool==="eraser"){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y,e.pointerType);return;}
+            if(tool==="eraser")return; // hover/erase presence is handled in capture
             const localPoint=local(e.clientX,e.clientY);
             const worldPoint=world(localPoint);
             if(!adminHidden)cursorChannel.current?.sendCursor(worldPoint.x,worldPoint.y);

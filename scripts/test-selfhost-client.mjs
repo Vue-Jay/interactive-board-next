@@ -521,8 +521,8 @@ openedBoard();
 await Promise.resolve();
 
 // Production board adapter receives cumulative pointer windows, not pilot packets.
-const adapterInk=[],adapterStatuses=[];
-const channel=env.broadcast.connectBoardCursorChannel("board-1",{userId:"me",name:"Me",role:"owner"},()=>{},true,ink=>adapterInk.push(ink),status=>adapterStatuses.push(status));
+const adapterInk=[],adapterStatuses=[],adapterCursors=[];
+const channel=env.broadcast.connectBoardCursorChannel("board-1",{userId:"me",name:"Me",role:"owner"},cursor=>adapterCursors.push(cursor),true,ink=>adapterInk.push(ink),status=>adapterStatuses.push(status));
 await new Promise(resolve=>setTimeout(resolve,0));
 const inkSocket=sockets.at(-1);
 inkSocket.open();
@@ -548,7 +548,13 @@ assert.equal(adapterInk.length,1,"A second browser tab must receive the stroke e
 assert.deepEqual(JSON.parse(JSON.stringify(adapterInk[0].points)),points.slice(200));
 const erase={id:"eraser_1",kind:"eraser",color:"#000000",weight:92,offset:0,points:[{x:10,y:10},{x:20,y:20}],finished:false};
 channel.sendInk(erase);
+for(let i=0;i<100;i++)channel.sendCursor(i,i+1);
 await waitFor(()=>inkSocket.sent.some(x=>x.type==="live_erase"&&!x.finished));
+await waitFor(()=>inkSocket.sent.some(x=>x.type==="cursor"&&x.x===99&&x.y===100));
+const cursorFrames=inkSocket.sent.filter(x=>x.type==="cursor");
+assert.equal(cursorFrames.length,1,"Rapid eraser moves use the existing coalesced cursor relay");
+inkSocket.emit({...cursorFrames[0],client_id:"other_tab",user_id:"user_2",name:"Student",role:"editor",sent_at:Date.now()});
+assert.deepEqual([adapterCursors.at(-1)?.x,adapterCursors.at(-1)?.y],[99,100],"The observer receives the collaborator cursor during erasing");
 const erasePreview=inkSocket.sent.find(x=>x.type==="live_erase");
 inkSocket.emit({...erasePreview,client_id:"other_tab",user_id:"me",name:"Me",role:"owner"});
 assert.equal(adapterInk.at(-1).kind,"eraser");
