@@ -114,6 +114,11 @@ jobs:
           # Amvera forwards the public Host to Caddy. Do not redirect the
           # platform health probe, the canonical domain, or existing API clients.
           curl -fsS -H 'Host: lektrus.ru' http://127.0.0.1:8080/app | grep -q '/assets/'
+          studio='/board/00000000-0000-4000-8000-00000000a11a'
+          curl -fsSI "http://127.0.0.1:8080$studio?layout-editor=1&layout-preview=1&device=phonePortrait" | grep -qi 'x-frame-options: SAMEORIGIN'
+          curl -fsSI "http://127.0.0.1:8080$studio?layout-editor=1&layout-preview=1" | grep -qi "content-security-policy: frame-ancestors 'self'"
+          curl -fsSI "http://127.0.0.1:8080$studio?layout-editor=1" | grep -qi 'x-frame-options: DENY'
+          curl -fsSI "http://127.0.0.1:8080/board/00000000-0000-4000-8000-000000000004?layout-editor=1&layout-preview=1" | grep -qi 'x-frame-options: DENY'
           for host in www.lektrus.ru lectrus.ru www.lectrus.ru lektrus-vuejay.msk1.amvera.tech; do
             for path in / /app '/join/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?source=invite' '/board/00000000-0000-4000-8000-000000000004?tab=1' '/confirm-email?token=example' '/tools/laboratory'; do
               test "$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' -H "Host: $host" "http://127.0.0.1:8080$path")" = "308 https://lektrus.ru$path"

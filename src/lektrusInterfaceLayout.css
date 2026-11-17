@@ -6,24 +6,23 @@
 .workspace .mobile-board-tools{translate:var(--li-mobileTools-x,0vw) var(--li-mobileTools-y,0vh);scale:var(--li-mobileTools-scale,1)}
 .workspace .selection-toolbar-screen{translate:var(--li-selection-x,0vw) var(--li-selection-y,0vh);scale:var(--li-selection-scale,1)}
 #lektrus-subject-tools-panel{translate:var(--li-subjectTools-x,0vw) var(--li-subjectTools-y,0vh);scale:var(--li-subjectTools-scale,1)}
-.workspace .toolbar-pinned>.tool-button:nth-child(1),
-.workspace .mobile-tool-cluster-navigation>button:first-child{
+.workspace [data-interface-control="select"]{
  translate:var(--li-control-select-x,0vw) var(--li-control-select-y,0vh);
  scale:var(--li-control-select-scale,1)
 }
-.workspace .toolbar-pinned>.tool-button:nth-child(2){
+.workspace [data-interface-control="lasso"]{
  translate:var(--li-control-lasso-x,0vw) var(--li-control-lasso-y,0vh);
  scale:var(--li-control-lasso-scale,1)
 }
-.workspace .toolbar-pinned>.tool-button:nth-child(3){
+.workspace [data-interface-control="pen"]{
  translate:var(--li-control-pen-x,0vw) var(--li-control-pen-y,0vh);
  scale:var(--li-control-pen-scale,1)
 }
-.workspace .toolbar-pinned>.tool-button:nth-child(4){
+.workspace [data-interface-control="marker"]{
  translate:var(--li-control-marker-x,0vw) var(--li-control-marker-y,0vh);
  scale:var(--li-control-marker-scale,1)
 }
-.workspace .toolbar-pinned>.tool-button:nth-child(5){
+.workspace [data-interface-control="eraser"]{
  translate:var(--li-control-eraser-x,0vw) var(--li-control-eraser-y,0vh);
  scale:var(--li-control-eraser-scale,1)
 }
@@ -119,3 +118,7 @@
  box-shadow:0 0 0 1px #2c6cd7;pointer-events:none}
 .lektrus-live-layout-device-switch button.is-active,
 .lektrus-live-layout-actions>button.is-active{background:#dbeafe;color:#154eac;border-color:#91b4e9}
+.lektrus-layout-size{display:flex;align-items:center;gap:5px;font-size:12px;white-space:nowrap}
+.lektrus-layout-size input{width:65px;background:var(--lt-raised,#fff);color:inherit;border:1px solid #cbd9ef;border-radius:5px;padding:5px}
+.lektrus-layout-preview-status{position:fixed;z-index:3;top:35%;left:50%;transform:translateX(-50%);display:grid;gap:8px;text-align:center;pointer-events:auto;background:#fff;color:#37587b;padding:16px;border-radius:10px}
+.lektrus-live-layout-status{bottom:auto;top:8px;max-width:90vw}

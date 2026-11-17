@@ -2,11 +2,14 @@
  * never part of the collaborative board document or remote board history. */
 import {applyExtraLayout,safeInterfaceSelector} from "./lektrusInterfaceTargets";
 import {isRemoteBackendEnabled,remoteRequest} from "./backend";
+import {isSelfhostBackendEnabled,selfhostRequest} from "./selfhostApi";
+import {interfacePreviewProfile} from "./lektrusInterfacePreview";
 export const INTERFACE_LAYOUT_KEY="lektrus.interface-layout.v1";
 export const INTERFACE_LAYOUT_EVENT="lektrus-interface-layout-changed";
 export const INTERFACE_TEMPLATE_KEY="lektrus.interface-layout-templates.v1";
 export const deviceProfiles=["desktop","laptop","tablet","phone"] as const;
-export type DeviceProfile=typeof deviceProfiles[number];
+export const layoutProfiles=[...deviceProfiles,"tabletPortrait","phonePortrait"] as const;
+export type DeviceProfile=typeof layoutProfiles[number];
 export const layoutRegions=["headerLeft","headerRight","toolbar","zoom","mobileTools","selection","subjectTools"] as const;
 export type LayoutRegion=typeof layoutRegions[number];
 export const layoutControls=["select","lasso","pen","marker","eraser","subject","zoomOut","zoomValue","zoomIn","boardSettings","participants","chat"] as const;
@@ -37,9 +40,10 @@ const cleanNumber=(value:unknown,low:number,high:number,fallback:number)=>{
 export function defaultInterfaceLayout():InterfaceLayout{
  const region=()=>Object.fromEntries(layoutRegions.map(key=>[key,{x:0,y:0,scale:1}])) as Record<LayoutRegion,Placement>;
  const control=()=>Object.fromEntries(layoutControls.map(key=>[key,{x:0,y:0,scale:1}])) as Record<LayoutControl,Placement>;
- return {version:1,profiles:{desktop:region(),laptop:region(),tablet:region(),phone:region()},
-  controls:{desktop:control(),laptop:control(),tablet:control(),phone:control()},
- extras:{desktop:{},laptop:{},tablet:{},phone:{}}};
+ return {version:1,
+ profiles:Object.fromEntries(layoutProfiles.map(id=>[id,region()])) as InterfaceLayout["profiles"],
+ controls:Object.fromEntries(layoutProfiles.map(id=>[id,control()])) as InterfaceLayout["controls"],
+ extras:Object.fromEntries(layoutProfiles.map(id=>[id,{}])) as InterfaceLayout["extras"]};
 }
 export function normalizeInterfaceLayout(value:unknown):InterfaceLayout{
  const normal=defaultInterfaceLayout();
@@ -47,8 +51,9 @@ export function normalizeInterfaceLayout(value:unknown):InterfaceLayout{
  const incoming=(value as {profiles?:Record<string,unknown>}).profiles;
  const incomingControls=(value as {controls?:Record<string,unknown>}).controls;
  const extraControls=(value as {extras?:Record<string,unknown>}).extras;
- for(const device of deviceProfiles){
-  const entries=incoming?.[device];
+ for(const device of layoutProfiles){
+  const legacy=device==="tabletPortrait"?"tablet":device==="phonePortrait"?"phone":device;
+  const entries=incoming?.[device]??incoming?.[legacy];
   if(entries&&typeof entries==="object")for(const region of layoutRegions){
    const raw=(entries as Record<string,unknown>)[region];
    if(!raw||typeof raw!=="object")continue;
@@ -59,7 +64,7 @@ export function normalizeInterfaceLayout(value:unknown):InterfaceLayout{
     scale:cleanNumber(object.scale,.65,1.45,1)
    };
   }
-  const controls=incomingControls?.[device];
+  const controls=incomingControls?.[device]??incomingControls?.[legacy];
   if(controls&&typeof controls==="object")for(const id of layoutControls){
    const raw=(controls as Record<string,unknown>)[id];
    if(!raw||typeof raw!=="object")continue;
@@ -70,7 +75,7 @@ export function normalizeInterfaceLayout(value:unknown):InterfaceLayout{
     scale:cleanNumber(object.scale,.65,1.45,1)
    };
   }
-  const extra=extraControls?.[device];
+  const extra=extraControls?.[device]??extraControls?.[legacy];
   if(extra&&typeof extra==="object"){
    for(const [selector,raw] of Object.entries(extra).slice(0,700)){
     if(!safeInterfaceSelector(selector)||!raw||typeof raw!=="object")continue;
@@ -90,21 +95,29 @@ export function readInterfaceLayout():InterfaceLayout{
  catch{return defaultInterfaceLayout()}
 }
 export function saveInterfaceLayout(layout:InterfaceLayout){
- localStorage.setItem(INTERFACE_LAYOUT_KEY,JSON.stringify(normalizeInterfaceLayout(layout)));
+ const serialized=JSON.stringify(normalizeInterfaceLayout(layout));
+ if(localStorage.getItem(INTERFACE_LAYOUT_KEY)===serialized)return;
+ localStorage.setItem(INTERFACE_LAYOUT_KEY,serialized);
  window.dispatchEvent(new Event(INTERFACE_LAYOUT_EVENT));
 }
 /** Published interface design is stored once for the whole application. The
  * database checks admin rights; this client-side check is only for the UI. */
 export async function publishGlobalInterfaceLayout(layout:InterfaceLayout){
  const normalized=normalizeInterfaceLayout(layout);
- if(isRemoteBackendEnabled()){
+ if(isSelfhostBackendEnabled()){
+  await selfhostRequest("/api/v1/admin/interface-layout",{method:"PUT",body:JSON.stringify({layout:normalized})});
+ }else if(isRemoteBackendEnabled()){
   await remoteRequest("/rest/v1/rpc/admin_publish_interface_layout",{
    method:"POST",body:JSON.stringify({p_layout:normalized}),
   });
- }
+ }else throw new Error("No global layout backend");
  saveInterfaceLayout(normalized);
 }
 export async function loadGlobalInterfaceLayout():Promise<InterfaceLayout|null>{
+ if(isSelfhostBackendEnabled()){
+  const result=await selfhostRequest<{layout:unknown}>("/api/v1/interface-layout");
+  return result.layout?normalizeInterfaceLayout(result.layout):null;
+ }
  if(!isRemoteBackendEnabled())return null;
  const rows=await remoteRequest<Array<{layout:unknown}>>("/rest/v1/rpc/get_global_interface_layout",{method:"POST",body:"{}"});
  const layout=Array.isArray(rows)?rows[0]?.layout:null;
@@ -122,12 +135,13 @@ export function saveInterfaceTemplates(templates:NamedInterfaceLayout[]){
  localStorage.setItem(INTERFACE_TEMPLATE_KEY,JSON.stringify(templates.slice(-30)));
 }
 export function currentDeviceProfile():DeviceProfile{
- const width=window.innerWidth;
+ const preview=interfacePreviewProfile();
+ if(preview)return preview;
+ const width=window.innerWidth,height=window.innerHeight,short=Math.min(width,height);
  const coarse=window.matchMedia?.("(pointer:coarse)").matches??false;
- if(coarse&&width<=950)return width<=600?"phone":"tablet";
- if(width<=600)return "phone";
- if(width<=900)return "tablet";
- return width<1200?"laptop":"desktop";
+ if(coarse&&short<=600||width<=600)return height>width?"phonePortrait":"phone";
+ if(coarse&&short<=1100||width<=950)return height>width?"tabletPortrait":"tablet";
+ return width<1440?"laptop":"desktop";
 }
 export function applyInterfaceLayout(){
  const documentData=readInterfaceLayout();
@@ -153,6 +167,7 @@ export function installInterfaceLayout(){
  if(installed)return;
  installed=true;
  applyInterfaceLayout();
+ if(interfacePreviewProfile())return; // the studio owns the draft in this isolated frame
  window.addEventListener("resize",applyInterfaceLayout);
  window.addEventListener("orientationchange",applyInterfaceLayout);
  window.addEventListener("storage",event=>{if(event.key===INTERFACE_LAYOUT_KEY)applyInterfaceLayout()});

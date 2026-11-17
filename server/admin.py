@@ -69,6 +69,10 @@ class TestMailInput(BaseModel):
     kinds: list[Literal["confirmation", "password_reset", "notification", "reply"]] = Field(min_length=1, max_length=4)
 
 
+class InterfaceLayoutInput(BaseModel):
+    layout: dict
+
+
 # Bound test traffic without preventing administrators from checking templates
 # individually. One batch at a time, at most twelve messages per minute.
 _test_mail_attempts: deque[float] = deque()
@@ -125,6 +129,32 @@ def access_view(row):
 
 def make_admin_router(current_user) -> APIRouter:
     router = APIRouter()
+
+    @router.get("/api/v1/interface-layout")
+    async def read_interface_layout(request: Request):
+        # Shared UI settings contain no account or board data, including for guests.
+        async with request.app.state.pool.acquire() as conn:
+            value = await conn.fetchval("select layout from global_interface_layout where singleton")
+        return {"layout": json_object(value) if value is not None else None}
+
+    @router.put("/api/v1/admin/interface-layout")
+    async def publish_interface_layout(data: InterfaceLayoutInput, request: Request,
+                                       user=Depends(current_user)):
+        require_admin(user)
+        try:
+            serialized = json.dumps(data.layout, ensure_ascii=False, allow_nan=False)
+        except (ValueError, TypeError):
+            raise HTTPException(422, "Некорректный формат интерфейса.")
+        if (data.layout.get("version") != 1 or
+            any(not isinstance(data.layout.get(key), dict) for key in ("profiles", "controls", "extras")) or
+            len(serialized.encode("utf-8")) > 1_000_000):
+            raise HTTPException(422, "Некорректный формат интерфейса.")
+        async with request.app.state.pool.acquire() as conn:
+            await conn.execute("""
+                insert into global_interface_layout (singleton, layout) values (true, $1::jsonb)
+                on conflict (singleton) do update set layout=excluded.layout, updated_at=now()
+            """, serialized)
+        return {"ok": True}
 
     @router.post("/api/v1/account/teacher-request")
     async def request_teacher_access(data: TeacherApplicationInput, request: Request,

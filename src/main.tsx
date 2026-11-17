@@ -6,6 +6,8 @@ import "./lektrusMarketingTypography.css";
 import { Capacitor } from "@capacitor/core";
 import { pendingSharePath } from "./routes";
 import { isChunkLoadError, recoverOutdatedChunk } from "./chunkRecovery";
+import {installInterfacePreviewEnvironment} from "./lektrusInterfacePreview";
+installInterfacePreviewEnvironment();
 
 const query=new URLSearchParams(window.location.search);
 const pendingInvite=Boolean(pendingSharePath());

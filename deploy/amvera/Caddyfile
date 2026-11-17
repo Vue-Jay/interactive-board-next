@@ -8,7 +8,19 @@
   header {
     X-Content-Type-Options nosniff
     Referrer-Policy no-referrer
-    X-Frame-Options DENY
+  }
+  @interface_preview {
+    path /board/00000000-0000-4000-8000-00000000a11a
+    query layout-editor=1 layout-preview=1
+  }
+  @not_interface_preview not {
+    path /board/00000000-0000-4000-8000-00000000a11a
+    query layout-editor=1 layout-preview=1
+  }
+  header @not_interface_preview X-Frame-Options DENY
+  header @interface_preview {
+    X-Frame-Options SAMEORIGIN
+    Content-Security-Policy "frame-ancestors 'self'"
   }
 
   # Amvera terminates TLS before forwarding to this HTTP listener. Redirect

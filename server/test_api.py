@@ -89,7 +89,7 @@ async def client():
     connection = await asyncpg.connect(os.environ["DATABASE_URL"])
     await apply_schema(connection)
     await connection.execute(
-        "TRUNCATE account_sessions,board_documents,board_members,boards,account_users CASCADE"
+        "TRUNCATE account_sessions,board_documents,board_members,boards,account_users,global_interface_layout CASCADE"
     )
     hashed = bcrypt.hashpw(PASSWORD.encode(), bcrypt.gensalt(rounds=4)).decode()
     for user_id, email, role in [
