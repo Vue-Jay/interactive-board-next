@@ -213,14 +213,15 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
  const extensionKeys=new Set();
  // The exact same entire-island geometry continued outside the duplicate
  // interval. Do not turn cessation of the duplicate into evidence of control.
- for(const [source,part,from,to,other] of mindanao.pendingRoutes){
-  const f=features[source],parts=rawParts(f),hash=mindanao.hash;
+ for(const [group,routes,review] of [[mindanao.group,mindanao.pendingRoutes,mindanao],['Малакка',territorialResolutions.malaccaPendingRoutes,territorialResolutions.pendingIslandReviews['Малакка']]])for(const [source,part,from,to,other] of routes){
+  const f=features[source],parts=rawParts(f);
+  const original=batch.rows.find(r=>r.group===group&&((r.source===source&&r.other===other)||(r.source===other&&r.other===source)));
+  assert.ok(original);const hash=original.hash;
   assert.equal(componentHash(parts[part]),hash);assert.ok(f.properties.FromYear<=from&&f.properties.ToYear>=to);
-  const original=batch.rows.find(r=>r.group===mindanao.group&&r.source===source&&r.other===other);
-  assert.ok(original&&original.hash===hash);
+  assert.ok(rawParts(features[other]).some(p=>componentHash(p)===hash));
   for(let year=from;year<=to;year++){const key=`${source}:${hash}:${year}`;assert.ok(!seen.has(key)&&!extensionKeys.has(key));extensionKeys.add(key);}
-  const issue={source,part,from,to,other,hash,group:mindanao.group,status:'reconstruct',reason:mindanao.reasonRu,evidence:original.evidence,sources:mindanao.sources,geometry:{type:'Polygon',coordinates:parts[part]},counterpartName:'Местные политические образования (границы не установлены)'};
-  pending.push(issue);pendingExtensions.push(issue);exclusions.push([source,parts.length,from,[part],mindanao.reason,mindanao.reasonRu,mindanao.sources[0],to]);
+  const issue={source,part,from,to,other,hash,group,status:'reconstruct',reason:review.reasonRu,evidence:original.evidence,sources:review.sources,geometry:{type:'Polygon',coordinates:parts[part]},counterpartName:group===mindanao.group?'Местные политические образования (границы не установлены)':'Нидерландская Малакка и соседние владения (границы не установлены)'};
+  pending.push(issue);pendingExtensions.push(issue);exclusions.push([source,parts.length,from,[part],review.reason,review.reasonRu,review.sources[0],to]);
  }
  for(const ext of territorialResolutions.extensions){
   const {source,part,from,to,group,other,otherPart}=ext,f=features[source],parts=rawParts(f),hash=batch.rows.find(r=>r.group===group).hash;

@@ -190,14 +190,14 @@
   },
   "pendingIslandReviews": {
     "Corsica": {
-      "reason": "Corsican Republic controlled much of the island, while Genoese fortified towns remained outside Paoli's rule; French garrisons entered several towns from 1764. Whole-island coastlines cannot represent the partition.",
-      "reasonRu": "Республика Паоли контролировала большую часть острова; генуэзские укреплённые города оставались вне её власти, с 1764 года в некоторые из них вошли французские гарнизоны. Береговая линия не устанавливает границы разделённой власти.",
-      "sources": ["https://www.napoleon.org/en/history-of-the-two-empires/biographies/paoli-pascal-philippe-antoine-also-known-as-pasquale-paoli/", "https://www.isula.corsica/file/200599/"]
+      "reason": "Corsican Republic controlled much of the island, while Genoese fortified towns and Cap Corse (until 1763) remained outside Paoli's rule; French garrisons entered several towns from 1764. Whole-island coastlines cannot represent the changing partition.",
+      "reasonRu": "Республика Паоли контролировала значительную часть острова; генуэзские укреплённые города и до 1763 года также Кап-Корс оставались вне её власти. С 1764 года в некоторые города вошли французские гарнизоны. Береговая линия не устанавливает меняющиеся границы разделённой власти.",
+      "sources": ["https://www.persee.fr/doc/ahrf_0003-4436_1974_num_218_1_4183", "https://www.ac-corse.fr/paoli-storia-e-memoria-124634", "https://www.napoleon.org/en/history-of-the-two-empires/biographies/paoli-pascal-philippe-antoine-also-known-as-pasquale-paoli/", "https://www.isula.corsica/file/200599/"]
     },
     "Эльба": {
-      "reason": "The island was divided between the Tuscan possession of Portoferraio, Neapolitan Porto Longone and Piombino; British military presence did not establish island-wide sovereignty.",
-      "reasonRu": "Остров был разделён между тосканским Портоферрайо, неаполитанским Порто-Лонгоне и Пьомбино; присутствие британских войск не означало суверенитета над островом. Точные внутренние границы ещё не установлены.",
-      "sources": ["https://archiviodistatosiena.cultura.gov.it/fileadmin/user_upload/045-GOVERNO-DI-SIENA.pdf", "https://siusa-archivi.cultura.gov.it/cgi-bin/siusa/pagina.pl?Chiave=8550&RicDimF=2&RicLin=en&TipoPag=prodente"]
+      "reason": "The island was divided between the Tuscan possession of Portoferraio, Neapolitan Porto Longone and Piombino. The British occupied Portoferraio in 1796 and withdrew in 1797; their garrison did not constitute sovereignty over Elba. The 1575 demarcation and eighteenth-century maps attest the Tuscan boundary, not a ready-to-use georeferenced partition.",
+      "reasonRu": "Остров был разделён между тосканским Портоферрайо, неаполитанским Порто-Лонгоне и Пьомбино. Британцы заняли Портоферрайо в 1796 году и эвакуировались в 1797-м; на конец обоих рассматриваемых лет британского владения не было. Межевание 1575 года и карты XVIII века подтверждают границу Тосканы, но точные геопривязанные границы трёх владений ещё не восстановлены.",
+      "sources": ["https://www.consiglio.regione.toscana.it/upload/eda/pubblicazioni/pub4072.pdf", "https://www.e-perimetron.org/Vol_7_4/Piccardi_Lepore.pdf", "https://www.rmg.co.uk/collections/objects/rmgc-object-540400", "https://archiviodistatosiena.cultura.gov.it/fileadmin/user_upload/045-GOVERNO-DI-SIENA.pdf", "https://siusa-archivi.cultura.gov.it/cgi-bin/siusa/pagina.pl?Chiave=8550&RicDimF=2&RicLin=en&TipoPag=prodente"]
     },
     "Коморы": {
       "reason": "Grande Comore contained historical sultanates such as Bambao and Itsandra, rather than a single French colonial polity. Individual boundaries are not established.",
@@ -205,11 +205,12 @@
       "sources": ["https://whc.unesco.org/document/136401", "https://mjp.univ-perp.fr/constit/km1886.htm"]
     },
     "Малакка": {
-      "reason": "The Dutch took the town of Malacca in 1641 with Johor's support. Neither the Portuguese copy nor the extent of adjacent Dutch/Johor territory is a confirmed boundary for 1645–1647.",
-      "reasonRu": "В 1641 году Малакка перешла нидерландцам при поддержке Джохора. Португальская копия ошибочна, но точный охват прилегающих нидерландских и джохорских владений в 1645–1647 годах ещё не установлен.",
-      "sources": ["https://api.icj-cij.org/sites/default/files/case-related/130/14139.pdf"]
+      "reason": "The Dutch took Malacca in 1641 with Johor's support. The Portuguese cell is false after the conquest. The identical oversized Dutch cell is also unsupported: published accounts distinguish the coastal boundary between the Linggi and Kesang estuaries from varying claims and effective inland jurisdiction. Preserve the confirmed port and the disputed source footprint without treating either as a surveyed frontier.",
+      "reasonRu": "В 1641 году Малакка перешла нидерландцам при поддержке Джохора. Португальская ячейка после завоевания ошибочна; идентичная чрезмерно обширная нидерландская ячейка также не подтверждена. В источниках различаются прибрежные пределы между устьями Лингги и Кесанг, притязания и фактическая внутренняя юрисдикция. Подтверждён порт, но точная граница ещё не восстановлена.",
+      "sources": ["https://api.icj-cij.org/sites/default/files/case-related/130/14139.pdf", "https://www.sabrizain.org/malaya/library/polistat01.pdf", "https://gtwhi.com.my/ms/wp-content/uploads/2024/09/Nomination-Dossier-Historic-Cities-of-the-Straits-of-Malacca.pdf", "https://macaudata.mo/showbook?bno=b000614"]
     }
   },
+  "malaccaPendingRoutes": [[8866,11,1641,1644,8910],[8910,10,1645,1647,8866]],
   "mindanaoReview": {
     "group": "Mindanao", "hash": "a067cf1d9a83eeef3a75003f2b0ecc21af4e3a0b4148972b03644ca58a1caaec",
     "reason": "The island contained multiple distinct centres: Maguindanao in the lower Pulangi valley, Buayan upstream and Butuan in the northeast. Neither Brunei nor Maguindanao can be assigned the entire island. The coastline is not a political boundary; keep the unverified territorial reconstruction open.",
