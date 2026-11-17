@@ -516,6 +516,8 @@ function editorialSegments(base,derived=[]){
  if(base.sourceName==='Denmark-Norway'&&base.sourceWikidata==='Q62651')cut(1814);
  if(base.sourceName==='United Arab Republic'&&base.sourceWikidata==='Q170468')cut(1971);
  if(base.sourceName==='New France'&&base.sourceWikidata==='Q170604')cut(1763);
+ if(base.sourceName==='(Dutch Republic)'||base.components.includes('Portuguese Ceylon')){cut(1638);cut(1659);cut(1796)}
+ if(base.sourceName==='(Spanish Empire)'){cut(1629);cut(1638)}
  if(base.sourceName==='New Netherland'&&base.sourceWikidata==='Q382593')cut(1675);
  if(base.sourceIndex===13271)cut(1964);
  if(base.sourceIndex===13265)cut(1964);
@@ -545,6 +547,18 @@ function editorialSegments(base,derived=[]){
   const reasons=[],reasonsRu=[],sources=new Set();
   const note=(reason,urls,ru)=>{reasons.push(reason);if(ru)reasonsRu.push(ru);for(const url of urls)sources.add(url)};
   const rename=(name,nameRu,url,reason,reasonRu)=>{r={...r,name,nameRu,nameStatus:'reviewed'};note(reason,[url],reasonRu);};
+  if(base.sourceName==='(Spanish Empire)'&&from>=1629&&to<=1637&&base.components.includes('Iberian Union')){
+   r={...r,sourceComponents:base.components,components:[...r.components,'Portuguese Ceylon']};
+   note('Portuguese Ceylon retained its Portuguese administration under the shared Iberian monarch; it is a distinct component of the union-era aggregate.',ceylonEarlySources,'Португальский Цейлон сохранял португальскую администрацию при общем монархе Иберийской унии; выделен отдельной составляющей объединения.');
+  }
+  if(base.sourceName==='(Dutch Republic)'&&from>=1659&&to<=1795&&!r.components.includes('Dutch Ceylon')){
+   r={...r,sourceComponents:base.components,components:[...r.components,'Dutch Ceylon']};
+   note('The Dutch coastal possessions in Ceylon are a distinct member of this composite.',ceylonCoastalSources,'Прибрежные владения VOC на Цейлоне выделены как отдельная составляющая объединения.');
+  }
+  if(base.sourceName==='(Portuguese Empire)'&&from>=1659&&r.components.includes('Portuguese Ceylon')){
+   r={...r,sourceComponents:base.components,components:r.components.filter(n=>n!=='Portuguese Ceylon')};
+   note('Portuguese coastal rule ended in 1658; Kandy was not a Portuguese possession.',ceylonCoastalSources,'Португальское правление на побережье завершилось в 1658 году; Канди не принадлежало Португалии.');
+  }
   for(const [,,start,end,name,ru,url,reason,reasonRu] of titleRules)if(from>=start&&to<=end)rename(name,ru,url,reason,reasonRu);
   if(from>=1416&&base.components.includes('County of Savoy')){
    r={...r,sourceComponents:base.components,components:r.components.map(n=>n==='County of Savoy'?'Duchy of Savoy':n)};
@@ -1034,6 +1048,85 @@ export function deriveSecondaryTerritorialReviews(features){
  return {exclusions,restorations,pending,attributions};
 }
 
+const ceylonCoastalSources=[
+ 'https://www.archives.gov.lk/online-exhibits/path-to-freedom/1-1815-convention',
+ 'https://www.archives.gov.lk/our-catalogues',
+ 'https://researchbriefings.files.parliament.uk/documents/RP09-51/RP09-51.pdf',
+ 'https://cdn.nationalarchives.gov.uk/documents/migratedarchives-2.guidance.pdf',
+];
+const ceylonEarlySources=[...ceylonCoastalSources,
+ 'https://www.cambridge.org/core/journals/transactions-of-the-royal-historical-society/article/representative-institutions-and-parliamentary-culture-in-the-portuguese-and-spanish-empires-c-1500c-1700/F21F4E68DCE923AE9E714057D6346F81',
+ 'https://bulletin.rijksmuseum.nl/article/download/9736/10237/16002',
+];
+export const ceylonEarlyRoutes=[[8721,1629,1631,[60,61,62]],[8769,1632,1635,[59,60,61]],[8785,1636,1637,[56,57,58]]];
+// Exact, contemporaneous Cliopatria components, not modern island outlines.
+// The eastern coastal parts already attributed to Kandy through 1664 must
+// remain outside these VOC routes. The source is pinned by SHA-256.
+export const ceylonCoastalRoutes=[
+ [9054,1659,1661,[5,8]],[9066,1662,1664,[6,9]],[9066,1665,1669,[6,7,8,9]],
+ [9099,1670,1672,[7,8,9,10]],[9173,1673,1676,[8,9,10,11]],[9196,1677,1682,[8,9,10,11]],
+ [9246,1683,1686,[1,2,3,4]],[9277,1687,1690,[1,2,3,4,5]],[9324,1691,1699,[1,2,3,4,5]],
+ [9403,1700,1701,[1,2,3,4,5]],[9416,1702,1705,[1,2,3,4,5]],[9472,1706,1708,[1,2,3,4,5]],
+ [9499,1709,1712,[1,2,3,4,5]],[9545,1713,1720,[0,1,2,3,4]],[9622,1721,1733,[0,1,2,3,4]],
+ [9695,1734,1743,[0,1,2,3,4]],[9828,1744,1756,[0,1,2,3,4]],[9924,1757,1761,[0,1,2,3,4]],
+ [9980,1762,1762,[0,1,2,3,4]],[10032,1763,1768,[0,1,2,3,4]],[10068,1769,1774,[9]],
+ [10125,1775,1779,[10]],[10214,1780,1787,[11]],[10255,1788,1790,[10]],[10300,1791,1793,[9]],
+ [10396,1794,1795,[11]],[10404,1796,1796,[20]],[10456,1797,1798,[20]],[10499,1799,1799,[19]],
+ [10560,1800,1801,[18]],[10560,1802,1802,[18]],[10575,1803,1804,[19]],[10625,1805,1805,[30]],
+ [10702,1806,1806,[31]],[10728,1807,1808,[32]],[10763,1809,1810,[33]],[10798,1811,1813,[34]],
+ [10944,1814,1814,[35]],
+];
+export function deriveCeylonCoastalReviews(features,existingExclusions){
+ const exclusions=[],restorations=[],transfers=[];
+ const islandPart=polygon=>polygon.every(r=>r.every(([x,y])=>x>=79.4&&x<=82&&y>=5.65&&y<=10));
+ const coastDecision=(from)=>{
+  const dutch=from<1796,crown=from>=1802;
+  return {entity:dutch?'dutch-ceylon-coast':'british-ceylon-coast',name:dutch?'Dutch Ceylon':'British Ceylon',nameRu:dutch?'Нидерландский Цейлон (прибрежные владения)':'Британский Цейлон (прибрежные владения)',memberOf:[dutch?'(Dutch Republic)':'(British Empire)'],reason:`Separate contemporaneous coastal components from the metropolitan aggregate; Kandy remained independent until 1815. ${dutch?'VOC territories.':crown?'Crown colony from 1802.':'British occupation and administration from 1796.'} Source coastline and inland boundaries remain approximate.`,reasonRu:`Прибрежные компоненты выделены из сводного контура империи. Канди сохраняло независимость до 1815 года. ${dutch?'Владения VOC.':crown?'Коронная колония с 1802 года.':'Британская оккупация и управление с 1796 года.'} Исторические береговые и внутренние границы источника приблизительны.`,sources:ceylonCoastalSources};
+ };
+ const exclude=(source,from,to,parts,decision)=>{
+  const f=features[source];assert.ok(f.properties.FromYear<=from&&f.properties.ToYear>=to&&parts.every(p=>islandPart(rawParts(f)[p])));
+  for(let y=from;y<=to;y++){const old=new Set(exclusionsFor(source,y,existingExclusions).flatMap(r=>r[3]));assert.ok(parts.every(p=>!old.has(p)),`Ceylon component previously excluded ${source}/${y}`);}
+  exclusions.push([source,rawParts(f).length,from,parts,decision.reason,decision.reasonRu,decision.sources[0],to]);
+ };
+ for(const [source,from,to,parts] of ceylonCoastalRoutes){
+  const f=features[source],d=coastDecision(from);assert.equal(f.properties.Name,from<1796?'Dutch Republic':'British Empire');assert.equal(f.properties.Type,'POLITY');
+  exclude(source,from,to,parts,d);
+  const coordinates=parts.map(p=>rawParts(f)[p]);restorations.push({source,part:parts[0],parts,from,to,hash:sha256(JSON.stringify(coordinates)),group:'Цейлон — побережье',decision:d,geometry:{type:'MultiPolygon',coordinates}});
+ }
+ const early={entity:'portuguese-ceylon-coast',name:'Portuguese Ceylon',nameRu:'Португальский Цейлон (прибрежные владения)',memberOf:['(Portuguese Empire)','(Spanish Empire)'],reason:'Portuguese coastal administration under the shared Iberian monarch, before the Dutch capture of Batticaloa in 1638. Kandy remained independent. The contemporaneous source coast is approximate.',reasonRu:'Португальская прибрежная администрация при общем монархе Иберийской унии до захвата Баттикалоа голландцами в 1638 году. Канди независимо. Современный указанной эпохе контур источника приблизителен.',sources:ceylonEarlySources,preserveCoastalParts:true};
+ for(const [source,from,to,parts] of ceylonEarlyRoutes){
+  assert.equal(features[source].properties.Name,'Spanish Empire');exclude(source,from,to,parts,early);
+  const coordinates=parts.map(p=>rawParts(features[source])[p]);restorations.push({source,part:parts[0],parts,from,to,hash:sha256(JSON.stringify(coordinates)),group:'Цейлон — побережье',decision:early,geometry:{type:'MultiPolygon',coordinates}});
+  for(const [target,f] of features.entries()){
+   const p=f.properties;if(p.Name!=='(Portuguese Empire)'||p.FromYear>to||p.ToYear<from)continue;
+   assert.ok(p.Components.includes('Portuguese Ceylon'));const old=rawParts(f).flatMap((poly,part)=>islandPart(poly)?[part]:[]);assert.ok(old.length);
+   const start=Math.max(from,p.FromYear),end=Math.min(to,p.ToYear);exclude(target,start,end,old,early);
+   for(const part of parts)transfers.push({target,source,part,from:start,to:end,decision:early});
+  }
+ }
+ const portuguese={reason:'Portuguese rule in Ceylon ended in 1658; remove the stale island component.',reasonRu:'Португальские владения на Цейлоне ликвидированы в 1658 году; удалён устаревший компонент острова.',sources:ceylonCoastalSources};
+ assert.equal(features[9013].properties.Name,'Portuguese Colonies');exclude(9013,1659,1661,[11],portuguese);
+ // Composite and relation outlines previously included the inland kingdom.
+ // Replace only their Sri Lankan parts with the reviewed same-year coast.
+ for(const [target,f] of features.entries()){
+  const p=f.properties;if(p.ToYear<1659||p.FromYear>1814||!p.Components)continue;
+  const dutch=p.Name==='(Dutch Republic)'&&p.FromYear<=1795;
+  const brit=p.Components.includes('British Ceylon')&&p.ToYear>=1796;
+  const portug=p.Name==='(Portuguese Empire)'&&p.Components.includes('Portuguese Ceylon');
+  if(!dutch&&!brit&&!portug)continue;
+  const old=rawParts(f).flatMap((poly,part)=>islandPart(poly)?[part]:[]);assert.ok(old.length,`Missing island overlay ${target}`);
+  if(portug){exclude(target,Math.max(1659,p.FromYear),Math.min(1814,p.ToYear),old,portuguese);continue;}
+  for(const [source,start,end,parts] of ceylonCoastalRoutes){
+   if(dutch!==(start<1796))continue;
+   const from=Math.max(start,p.FromYear),to=Math.min(end,p.ToYear);if(from>to)continue;
+   const decision={...coastDecision(from),preserveCoastalParts:true};exclude(target,from,to,old,decision);
+   for(const part of parts)transfers.push({target,source,part,from,to,decision});
+  }
+ }
+ assert.equal(restorations.reduce((n,r)=>n+r.to-r.from+1,0),165);
+ return {exclusions,restorations,transfers};
+}
+
 export function normalizeHistoricalSource(source) {
   assert.equal(source.type,'FeatureCollection');
   const geometries = new Map(), records = [];
@@ -1041,6 +1134,7 @@ export function normalizeHistoricalSource(source) {
   // Small synthetic fixtures do not contain the pinned source indices.
   const batch=source.features.length>Math.max(...territorialBatch.rows.map(r=>Math.max(r.source,r.other)))?deriveTerritorialBatch(source.features):{exclusions:[],pending:[],resolved:[],restorations:[],relabels:new Map(),attributions:[],count:0};
   if(batch.count){const secondary=deriveSecondaryTerritorialReviews(source.features);for(const key of ['exclusions','pending','restorations','attributions'])batch[key].push(...secondary[key]);
+   const coast=deriveCeylonCoastalReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','restorations','transfers'])batch[key].push(...coast[key]);
    // The old opposing claims remain excluded; the reconstructed three-part
    // island replaces the unresolved footprint, not either original owner.
    assert.equal(batch.pending.filter(p=>p.group==='Эльба'&&p.from===1797&&p.to===1798).length,2);
@@ -1100,6 +1194,7 @@ export function normalizeHistoricalSource(source) {
       const matchingTransfers=(batch.transfers??[]).filter(t=>t.target===sourceIndex&&t.from<=revision.from&&t.to>=revision.to);
       const matchingSubtractions=(batch.subtractions??[]).filter(t=>t.target===sourceIndex&&t.from<=revision.from&&t.to>=revision.to);
       const transfer=matchingTransfers[0];
+      const preserveCoastalParts=matchingTransfers.length>0&&matchingTransfers.every(t=>t.decision.preserveCoastalParts);
       if(transfer){
         assert.notEqual(selection?.length,0);
         selection=[...(selection??rawParts(feature).map((_,part)=>({index:sourceIndex,part}))),...matchingTransfers.map(t=>({index:t.source,part:t.part}))];
@@ -1120,16 +1215,16 @@ export function normalizeHistoricalSource(source) {
       }else if(selection){
         assert.ok(revision.review?.sources.length);
         const coordinates=selection.map(({index,part})=>{const g=source.features[index].geometry;const polygons=g.type==='Polygon'?[g.coordinates]:g.coordinates;assert.ok(polygons[part]);return polygons[part]});
-        if(transfer)for(let i=coordinates.length-matchingTransfers.length;i<coordinates.length;i++){
+        if(transfer&&!preserveCoastalParts)for(let i=coordinates.length-matchingTransfers.length;i<coordinates.length;i++){
           const t=matchingTransfers[i-(coordinates.length-matchingTransfers.length)],previous=polygonClipping.union(...coordinates.slice(0,i)),overlap=polygonClipping.intersection(previous,coordinates[i]);
           if(t.decision.allowSourceOverlap){
             assert.equal(t.decision.group,'Давао');assert.ok(overlap.length&&polygonClipping.difference(coordinates[i],previous).length,`Davao transfer must partially overlap ${sourceIndex}`);
           }else assert.equal(overlap.length,0,`Overlapping transfer ${sourceIndex}`);
         }
         const subtractions=matchingSubtractions.map(t=>({index:t.source,part:t.part}));
-        const selected={type:'MultiPolygon',coordinates:subtractions.length?polygonClipping.difference(polygonClipping.union(...coordinates),...subtractions.map(({index,part})=>rawParts(source.features[index])[part])):transfer?polygonClipping.union(...coordinates):coordinates};validateGeometry(selected);
+        const selected={type:'MultiPolygon',coordinates:subtractions.length?polygonClipping.difference(polygonClipping.union(...coordinates),...subtractions.map(({index,part})=>rawParts(source.features[index])[part])):transfer&&!preserveCoastalParts?polygonClipping.union(...coordinates):coordinates};validateGeometry(selected);
         const selectedId=sha256(JSON.stringify(selected));geometries.set(selectedId,selected);
-        revision={...revision,geometryId:selectedId,sourceGeometryId,geometryRepair:subtractions.length?'reviewed-difference-source-components':transfer?'reviewed-union-source-components':'reviewed-source-components',geometryParts:selection,...(subtractions.length?{geometrySubtractions:subtractions}:{})};
+        revision={...revision,geometryId:selectedId,sourceGeometryId,geometryRepair:subtractions.length?'reviewed-difference-source-components':transfer&&!preserveCoastalParts?'reviewed-union-source-components':'reviewed-source-components',geometryParts:selection,...(subtractions.length?{geometrySubtractions:subtractions}:{})};
       }
       const id = identity('revision', sourceIndex, sourceFrom, sourceTo, revision.geometryId, revision.from, revision.to, revision.name);
       records.push({id, ...revision});
@@ -1176,7 +1271,7 @@ export function normalizeHistoricalSource(source) {
    const sourceGeometryId=sha256(JSON.stringify(raw.geometry));
    const identitySource=d.identitySource===undefined?undefined:source.features[d.identitySource].properties;
    if(identitySource)assert.equal(identitySource.Name,d.identitySourceName??label.name);
-   const restored={...origin,id:identity('restoration',r.source,r.hash,r.from,r.to,d.entity),entityId:identitySource?identity('source-polity',identitySource.Name,identitySource.Wikidata??''):identity(d.entityNamespace??'reviewed-territory',d.entity),name:label.name,nameRu:label.nameRu,role:'polity',nameStatus:'reviewed',geometryStatus:'candidate',geometryId,sourceGeometryId,geometryRepair:'reviewed-source-components',geometryParts:(r.parts??[r.part]).map(part=>({index:r.source,part})),from:r.from,to:r.to,editorialRestoration:true,components:[],memberOf:[],sourceComponents:origin.sourceComponents??origin.components,sourceMemberOf:origin.sourceMemberOf??origin.memberOf,review:{reason:d.reason,reasonRu:d.reasonRu,sources:d.sources}};
+   const restored={...origin,id:identity('restoration',r.source,r.hash,r.from,r.to,d.entity),entityId:identitySource?identity('source-polity',identitySource.Name,identitySource.Wikidata??''):identity(d.entityNamespace??'reviewed-territory',d.entity),name:label.name,nameRu:label.nameRu,role:'polity',nameStatus:'reviewed',geometryStatus:'candidate',geometryId,sourceGeometryId,geometryRepair:'reviewed-source-components',geometryParts:(r.parts??[r.part]).map(part=>({index:r.source,part})),from:r.from,to:r.to,editorialRestoration:true,components:[],memberOf:d.memberOf??[],sourceComponents:origin.sourceComponents??origin.components,sourceMemberOf:origin.sourceMemberOf??origin.memberOf,review:{reason:d.reason,reasonRu:d.reasonRu,sources:d.sources}};
    delete restored.territorialIssues;delete restored.territorialAttributions;
    records.push(restored);counts.reviewedNames++;
   }

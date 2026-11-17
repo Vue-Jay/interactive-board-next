@@ -12,7 +12,7 @@ import {createHistoricalTimelineLoader} from '../src/lektrusHistoricalTimelineLo
 import {referenceAdmissionWarnings} from './audit-lektrus-atlas-annual.mjs';
 import {buildChangeRegistry,componentHash,exactComponentConflicts,sourceComponentEvidence} from './audit-lektrus-historical-changes.mjs';
 import {historicalGapLocators} from '../src/lektrusHistoricalGapLocators.ts';
-import {componentHash as sourceComponentHash,documentedCores,buildDocumentedCore} from './build-lektrus-historical-timeline.mjs';
+import {componentHash as sourceComponentHash,documentedCores,buildDocumentedCore,ceylonCoastalRoutes,ceylonEarlyRoutes} from './build-lektrus-historical-timeline.mjs';
 
 const square = (x=0,y=0)=>({type:'Polygon',coordinates:[[[x,y],[x+1,y],[x+1,y+1],[x,y+1],[x,y]]]});
 const elbaParts=buildElbaPartition().map(g=>g.coordinates),elbaUnion=polygonClipping.union(...elbaParts);
@@ -416,6 +416,30 @@ if(outDir&&sourceFile){
       for(const c of centers){assert.ok(c.url.startsWith('https://'));assert.ok(c.description.includes('Точка'));assert.ok(Number.isFinite(c.lon)&&Math.abs(c.lon)<=180&&Number.isFinite(c.lat)&&Math.abs(c.lat)<=90);assert.equal(c.year,year);}
       assert.deepEqual(historicalUnresolvedCenters(year,[]),[]);
       if(year>=1629&&year<=1814){const kandy=state.drawable.filter(({record})=>record.name==='Kingdom of Kandy');assert.equal(kandy.length,1);assert.equal(kandy[0].record.nameRu,'Королевство Канди');assert.deepEqual(kandy[0].record.memberOf,[]);assert.ok(kandy[0].record.sourceMemberOf.length);}
+      if(year>=1629&&year<=1637){
+        const coast=state.drawable.filter(({record})=>record.name==='Portuguese Ceylon');assert.equal(coast.length,1);
+        const [source,,,parts]=ceylonEarlyRoutes.find(([,from,to])=>year>=from&&year<=to);
+        assert.deepEqual(coast[0].record.geometryParts,parts.map(part=>({index:source,part})));assert.deepEqual(coast[0].record.memberOf,['(Portuguese Empire)','(Spanish Empire)']);
+        const kandy=state.drawable.find(({record})=>record.name==='Kingdom of Kandy');assert.equal(polygonClipping.intersection(coast[0].geometry.coordinates,kandy.geometry.coordinates).length,0);
+        for(const point of [[79.86,6.93],[80.025,9.66],[80.22,6.03],[81.23,8.58],[81.69,7.71]]){const owners=state.drawable.filter(({geometry})=>capitalInsideCountry(point,geometry));assert.equal(owners.length,1);assert.equal(owners[0].record.id,coast[0].record.id);}
+        for(const name of coast[0].record.memberOf){const o=state.overlays.find(({record})=>record.name===name);assert.ok(o&&o.record.components.includes('Portuguese Ceylon'));assert.ok(!capitalInsideCountry([80.635,7.29],o.geometry));}
+      }
+      if(year>=1659&&year<=1814){
+        const dutch=year<1796,name=dutch?'Dutch Ceylon':'British Ceylon',group=dutch?'(Dutch Republic)':'(British Empire)';
+        const candidates=state.drawable.filter(({record})=>record.name===name);assert.equal(candidates.length,1,`Missing or duplicate Ceylon coast ${year}`);
+        const coast=candidates[0],kandy=state.drawable.find(({record})=>record.name==='Kingdom of Kandy');
+        const [source,,,parts]=ceylonCoastalRoutes.find(([,start,end])=>year>=start&&year<=end);
+        assert.deepEqual(coast.record.memberOf,[group]);assert.deepEqual(coast.record.geometryParts,parts.map(part=>({index:source,part})));
+        assert.equal(polygonClipping.intersection(coast.geometry.coordinates,kandy.geometry.coordinates).length,0,`Ceylon coast intersects Kandy ${year}`);
+        for(const point of [[79.86,6.93],[80.025,9.66],[80.22,6.03],...(year>=1665?[[81.23,8.58],[81.69,7.71]]:[])]){
+          const owners=state.drawable.filter(({geometry})=>capitalInsideCountry(point,geometry));
+          assert.equal(owners.length,1,`Ceylon port has ${owners.length} owners ${year} ${point}`);assert.equal(owners[0].record.id,coast.record.id);
+        }
+        if(year<1665)for(const point of [[81.23,8.58],[81.69,7.71]]){const owners=state.drawable.filter(({geometry})=>capitalInsideCountry(point,geometry));assert.equal(owners.length,1);assert.equal(owners[0].record.id,kandy.record.id);}
+        const overlays=state.overlays.filter(({record})=>record.name===group||record.components.includes(name));assert.ok(overlays.length);
+        for(const o of overlays){assert.ok(o.record.components.includes(name));assert.ok(!capitalInsideCountry([80.635,7.29],o.geometry),`Kandy inside imperial overlay ${year}/${o.record.sourceIndex}`);for(const part of parts)assert.ok(o.record.geometryParts.some(p=>p.index===source&&p.part===part));}
+        for(const o of state.overlays.filter(({record})=>record.name==='(Portuguese Empire)')){assert.ok(!o.record.components.includes('Portuguese Ceylon'));assert.ok(!capitalInsideCountry([80.635,7.29],o.geometry));}
+      }
       if(year>=1815&&year<=1859){
         const hash='c440529d0c7fde4ec1dbf13983ef01d0c128f86661e64156915318dd023a27c8';
         const island=state.drawable.filter(({geometry})=>geometry.coordinates.some(p=>{const h=componentHash(p);return h===hash||h===elbaUnionHash;}));
@@ -492,7 +516,7 @@ if(outDir&&sourceFile){
   }
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,541);assert.equal(batchPending,155);
-  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,830);assert.equal(externalRecordYears,469);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
+  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,995);assert.equal(externalRecordYears,469);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
   assert.equal(unresolvedSourceYears,363);assert.equal(unresolvedRegionYears,284);
   assert.equal(fifthExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0),18);
   assert.equal(sixthExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0),2);
@@ -504,6 +528,7 @@ if(outDir&&sourceFile){
   assert.equal(Object.values(exactOpenByGroup).reduce((sum,v)=>sum+v.componentYears,0),unresolvedExactComponentYears);
   assert.deepEqual(documentedCoreByGroup,{'cap-corse':8,'malacca-fort':7});
   const groupLinkIssues=rows.flatMap(r=>r.groupLinkWarnings??[]);
+  assert.equal(new Set(groupLinkIssues.map(i=>JSON.stringify(i))).size,32);assert.equal(groupLinkIssues.length,248);
   const auditLedger={territorial:{total:2908,resolved:2908-unresolvedSourceYears,open:unresolvedSourceYears,openRegionYears:unresolvedRegionYears,openByGroup:territorialOpenByGroup},exactPairs:{total:82,resolved:82-exactConflictPendingReviews.length,confirmed:82-exactConflictPendingReviews.length-provisionalExactReviews.length,provisional:provisionalExactReviews.length,provisionalComponentYears,open:exactConflictPendingReviews.length,openComponentYears:unresolvedExactComponentYears,openSourceYears:unresolvedExactSourceYears,openByGroup:exactOpenByGroup},partialReconstructions:{componentYears:Object.values(documentedCoreByGroup).reduce((a,b)=>a+b,0),byGroup:documentedCoreByGroup},groupLinks:{openGroups:new Set(groupLinkIssues.map(i=>JSON.stringify(i))).size,openAnnualOccurrences:groupLinkIssues.length}};
   console.log(`Historical audit ledger: ${JSON.stringify(auditLedger)}`);
   assert.equal(admissionWarnings,1,'Independent-state coverage must not regress');
