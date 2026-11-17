@@ -29,7 +29,7 @@ import {atlasModes,atlasModesFor,normalizeAtlasMode,historicalSnapshots as legac
 import {HISTORY_FIRST_YEAR,HISTORY_LAST_YEAR,historicalYearFeatureCollection} from "./lektrusHistoricalTimeline";
 import {createHistoricalTimelineLoader} from "./lektrusHistoricalTimelineLoader";
 import {historicalGapLocators,HISTORICAL_GAP_LOCATOR_SOURCE} from "./lektrusHistoricalGapLocators";
-import {historicalUnresolvedCenters} from "./lektrusHistoricalUnresolvedCenters";
+import {historicalUnresolvedCenters,historicalUnresolvedRegions} from "./lektrusHistoricalUnresolvedCenters";
 import {borderPrecision,geoFeatureName,hasAtlasName,isRussianAtlasName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,modernAtlasTerritoryUpdate,summariseNamedChanges,
 historicalFeatureFacts,historicalCountryName,historicalSourceName,historicalMapFeatures,loadHistoricalIndex,correctedHistoricalIndexLabel,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
@@ -899,6 +899,15 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const schoolMarkers=historical&&mode==="events"?eventsNearYear(snapshot.year).map(event=>({...event,
   id:`school-${event.year}-${event.lat}-${event.lon}`})):[];
  const unresolvedCenters=historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year?historicalUnresolvedCenters(snapshot.year,source?.historicalTerritorialIssues??[]):[];
+ const unresolvedRegions=historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year?historicalUnresolvedRegions(snapshot.year,source?.historicalTerritorialIssues??[]):[];
+ const selectedRegionDetails=unresolvedRegions.find(r=>r.id===selectedMarker);
+ const openUnresolvedRegion=(id:string)=>{setSelectedMarker(id);setSelected(null);setSelectedMineral(null);setHistoryTab('article');setInspectorOpen(true)};
+ const unresolvedRegionCard=selectedRegionDetails&&<div className="lektrus-atlas-description" data-atlas-selected-unresolved={selectedRegionDetails.id}>
+  <strong>{selectedRegionDetails.title}</strong><p>Год карты: {yearLabel(snapshot.year)}</p><p>{selectedRegionDetails.description}</p>
+  <p>Контур — историческая область проверки, не единое государство. Точная внутренняя граница не установлена.</p>
+  <p>Исключённые исходные атрибуции: {selectedRegionDetails.rows.map(r=>r.name).join('; ')}.</p>
+  <ul>{selectedRegionDetails.sources.map((url,i)=><li key={url}><a href={url} target="_blank" rel="noopener noreferrer">Источник {i+1} ↗</a></li>)}</ul>
+ </div>;
  const displayedMarkers=[...userMarkers.map(marker=>({...marker,url:undefined})),...schoolMarkers,...unresolvedCenters];
  const selectedRaw=String(selected?.properties?.NAME??selected?.properties?.ADMIN??"");
  const selectedAnnualReview=annualSource(snapshot.year)?selected?.properties?.review as {reason:string;reasonRu?:string;sources:string[]}|undefined:undefined;
@@ -1650,9 +1659,10 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        })}
       </g>
       {historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year&&!!source?.historicalTerritorialIssues?.length&&
-       <g data-atlas-unresolved-territories="true" fill="none" stroke="#b45309" strokeWidth="1.7" strokeDasharray="5 4" pointerEvents="none">
-        {[...new Map(source.historicalTerritorialIssues.map(issue=>[issue.geometryId,issue])).values()].map(issue=>
-         <path key={issue.geometryId} d={mapFeaturePath({type:'Feature',properties:null,geometry:issue.geometry})} vectorEffect="non-scaling-stroke"><title>Спорный исходный контур — не установленная граница: {issue.reason}</title></path>)}
+       <g data-atlas-unresolved-territories="true" fill="none" stroke="#b45309" strokeWidth="1.7" strokeDasharray="5 4">
+        {unresolvedRegions.map(region=>
+         <path key={region.id} data-atlas-unresolved-region={region.id} role="button" tabIndex={0} aria-label={region.title} pointerEvents="stroke" style={{cursor:'pointer'}} d={mapFeaturePath({type:'Feature',properties:null,geometry:region.issue.geometry})} vectorEffect="non-scaling-stroke"
+          onClick={e=>{e.stopPropagation();if(!dragged.current)openUnresolvedRegion(region.id)}} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openUnresolvedRegion(region.id)}}}><title>{region.title} — границы не установлены</title></path>)}
        </g>}
       {citiesOn&&scale>=2.5&&worldAdminLinePaths.length>0&&
        <g className="lektrus-atlas-global-admin1" fill="none" pointerEvents="none"
@@ -2014,7 +2024,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        <a href="https://special-edu.kz/TEXTBOOKS/1RAZDEL/book/pdf/geog9Methods.pdf" target="_blank" rel="noopener noreferrer">Примеры условных знаков из школьного учебного материала ↗</a>
       </div>
      </details>}
-     {markerDetails?<div className="lektrus-atlas-description">
+     {selectedRegionDetails?unresolvedRegionCard:markerDetails?<div className="lektrus-atlas-description">
      <strong>{markerDetails.title}</strong>
      <p>{markerDetails.description||"Маркер преподавателя"}</p>
      <p>Координаты: {markerDetails.lat.toFixed(3)}°, {markerDetails.lon.toFixed(3)}°</p>
@@ -2318,9 +2328,9 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      {annualSource(snapshot.year)&&<><label>Дополнительный слой <select aria-label="Дополнительный исторический слой" value={annualOverlay} onChange={e=>{setAnnualOverlay(e.target.value as typeof annualOverlay);setSelected(null)}}><option value="none">Только территории</option><option value="composite">Политические объединения</option><option value="relation">Политические связи</option><option value="settlement">Поселения и расселение</option></select></label>{annualOverlay!=='none'&&<small>Пунктирный контур — {annualOverlay==='composite'?'объединение нескольких территорий':annualOverlay==='settlement'?'предварительная область поселений':'политическая связь'}, а не дополнительная государственная граница.</small>}</>}
     </div>}
     {historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year&&!!source?.historicalTerritorialIssues?.length&&<details className="lektrus-atlas-layer-warning" data-atlas-unresolved-count={source.historicalTerritorialIssues.length}>
-     <summary>Территории, требующие реконструкции: {source.historicalTerritorialIssues.length}</summary>
+     <summary>Области с неизвестными границами: {unresolvedRegions.length}</summary>
      <small>Оранжевый пунктир показывает ошибочный исходный контур, а не исторически установленную границу. Принадлежность, местное управление и границы уточняются отдельно.</small>
-     <ul>{source.historicalTerritorialIssues.map(i=><li key={`${i.sourceIndex}:${i.part}:${i.hash}`}><strong>{i.name}</strong> — {i.counterpartName}<p>{i.reason}</p><a href={i.evidence} target="_blank" rel="noopener noreferrer">Обоснование ↗</a>{i.sources?.map((url,index)=><span key={url}> · <a href={url} target="_blank" rel="noopener noreferrer">Источник {index+1} ↗</a></span>)}</li>)}</ul>
+     <ul>{unresolvedRegions.map(r=><li key={r.id}><button type="button" onClick={()=>openUnresolvedRegion(r.id)}>{r.title}</button><p>{r.description}</p><small>Исключённых исходных записей: {r.rows.length}</small></li>)}</ul>
      {unresolvedCenters.length>0&&<><p>Ромбы — приблизительные местоположения подтверждённых политических центров, не границы государств.</p><ul>{unresolvedCenters.map(c=><li key={c.id}><button type="button" onClick={()=>{const [x,y]=projectGeography(c.lon,c.lat);const s=32;commitCamera({scale:s,position:normalizePosition({x:-(x-450)*s,y:-(y-225)*s},s)});setSelectedMarker(c.id);setSelected(null);setSelectedMineral(null);setHistoryTab('article')}}>{c.title} ⌖</button> <a href={c.url} target="_blank" rel="noopener noreferrer">Источник ↗</a></li>)}</ul></>}
     </details>}
     {historical&&annualSource(snapshot.year)&&!!source?.historicalRejected?.length&&<details className="lektrus-atlas-layer-warning"><summary>Исключённые неподтверждённые контуры: {source.historicalRejected.length}</summary><ul>{source.historicalRejected.map((r,i)=><li key={i}><strong>{r.name}</strong>{r.review&&<p>{r.review.reasonRu??r.review.reason}</p>}{r.review?.sources.map(url=><span key={url}>{" "}<a href={url} target="_blank" rel="noopener noreferrer">Источник ↗</a></span>)}</li>)}</ul><small>Эти контуры не показаны из-за подтверждённых ошибок. Отсутствие контура не означает отсутствие государства.</small></details>}
@@ -2447,7 +2457,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       <small>Даты относятся к учебным справкам. Они не устанавливают точные границы для каждого года.</small>
      </details>
     </div>}
-    {historical&&historyTab!=="article"?null:markerDetails?<div className="lektrus-atlas-description">
+    {historical&&historyTab!=="article"?null:selectedRegionDetails?unresolvedRegionCard:markerDetails?<div className="lektrus-atlas-description">
      <strong>{markerDetails.title}</strong>
      <p>{markerDetails.description||"Маркер преподавателя"}</p>
      <p>Координаты: {markerDetails.lat.toFixed(3)}°, {markerDetails.lon.toFixed(3)}°</p>

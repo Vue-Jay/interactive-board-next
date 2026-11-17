@@ -6,7 +6,7 @@ import path from 'node:path';
 import {createRequire} from 'node:module';
 import {historicalBlockForYear,historicalYearState} from '../src/lektrusHistoricalTimeline.ts';
 import {historicalGapLocators} from '../src/lektrusHistoricalGapLocators.ts';
-import {historicalUnresolvedCenters} from '../src/lektrusHistoricalUnresolvedCenters.ts';
+import {historicalUnresolvedCenters,historicalUnresolvedRegions} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 function planAnnualYears(registry,shard,shards){
  const years=[];
  for(const period of registry.periods)for(let year=period.to;year>=period.from;year--)if(year!==0)years.push({year,weight:20+period.records});
@@ -158,7 +158,21 @@ async function main(){
      const pendingCount=await pending.count();
      if(pendingCount!==(state.territorialIssues.length?1:0)||(pendingCount===1&&Number(await pending.getAttribute('data-atlas-unresolved-count'))!==state.territorialIssues.length))row.issues.push({kind:'wrong-territorial-reconstruction-warning'});
      const outlineCount=await page.locator('[data-atlas-unresolved-territories] path').count();
-     if(outlineCount!==new Set(state.territorialIssues.map(i=>i.geometryId)).size)row.issues.push({kind:'wrong-territorial-reconstruction-outline-count',actual:outlineCount});
+     if(outlineCount!==new Set(state.territorialIssues.map(i=>i.hash)).size)row.issues.push({kind:'wrong-territorial-reconstruction-outline-count',actual:outlineCount});
+     const regions=historicalUnresolvedRegions(year,state.territorialIssues);
+     row.unresolvedRegions=[];
+     for(const region of regions){
+      const item={id:region.id,clicked:false,verified:false};
+      try{
+       await page.locator(`[data-atlas-unresolved-region="${region.id}"]`).dispatchEvent('click');item.clicked=true;
+       const card=page.locator(`.lektrus-atlas-info-object [data-atlas-selected-unresolved="${region.id}"]`);
+       await card.waitFor({state:'visible',timeout:5000});
+       const actual=await card.locator('a[href]').evaluateAll(links=>links.map(a=>a.getAttribute('href')));
+       item.verified=JSON.stringify(actual)===JSON.stringify(region.sources);
+       if(!item.verified)row.issues.push({kind:'wrong-unresolved-region-sources',id:region.id});
+      }catch(error){row.issues.push({kind:'unresolved-region-card-error',id:region.id,message:String(error?.message??error)});}
+      row.unresolvedRegions.push(item);
+     }
      const expectedLocators=state.coverageGaps.flatMap(g=>historicalGapLocators[g.name]?[historicalGapLocators[g.name].iso]:[]).sort();
      const actualLocators=await page.locator('[data-atlas-gap-locator]').evaluateAll(nodes=>nodes.map(n=>n.dataset.atlasGapLocator).sort());
      if(JSON.stringify(actualLocators)!==JSON.stringify(expectedLocators))row.issues.push({kind:'wrong-gap-locators',expected:expectedLocators,actual:actualLocators});

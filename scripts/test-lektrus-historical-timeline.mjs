@@ -5,7 +5,7 @@ import polygonClipping from 'polygon-clipping';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch} from './build-lektrus-historical-timeline.mjs';
-import {historicalUnresolvedCenters} from '../src/lektrusHistoricalUnresolvedCenters.ts';
+import {historicalUnresolvedCenters,historicalUnresolvedRegions} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
 import {createHistoricalTimelineLoader} from '../src/lektrusHistoricalTimelineLoader.ts';
@@ -55,6 +55,10 @@ assert.equal(stepHistoricalYear(-1,1),1);
 assert.equal(stepHistoricalYear(1,-1),-1);
 assert.equal(stepHistoricalYear(-3400,-1),-3400);
 assert.equal(stepHistoricalYear(2024,1),2024);
+const unresolvedFixture={hash:'same-canonical-footprint',geometryId:'raw-1',group:'Corsica',from:1757,to:1767,reason:'Раздельное управление',evidence:'https://example.test/first',sources:['https://example.test/map']};
+const groupedFixture=historicalUnresolvedRegions(1763,[unresolvedFixture,{...unresolvedFixture,geometryId:'raw-2',evidence:'https://example.test/second'}]);
+assert.equal(groupedFixture.length,1);assert.equal(groupedFixture[0].rows.length,2);assert.ok(groupedFixture[0].description.includes('1763'));assert.equal(groupedFixture[0].sources.length,3);
+assert.deepEqual(historicalUnresolvedRegions(1768,[unresolvedFixture]),[]);
 assert.throws(()=>historicalYearOrdinal(0));
 for(let year=2024;year>=-3400;year--){if(year===0)continue;assert.equal(historicalYearFromOrdinal(historicalYearOrdinal(year)),year);}
 const normalized=normalizeHistoricalSource(source);
@@ -141,7 +145,7 @@ if(outDir&&sourceFile){
   const decisionsByKey=new Map(reviewedBatch.resolved.map(r=>[`${r.source}:${r.part}:${r.from}:${r.to}`,r]));
   const extensionsByYear=new Map();for(const r of reviewedBatch.extensions)for(let year=r.from;year<=r.to;year++){if(!extensionsByYear.has(year))extensionsByYear.set(year,[]);extensionsByYear.get(year).push(r)}
   const pendingExtensionsByYear=new Map();for(const r of reviewedBatch.pendingExtensions)for(let year=r.from;year<=r.to;year++){if(!pendingExtensionsByYear.has(year))pendingExtensionsByYear.set(year,[]);pendingExtensionsByYear.get(year).push(r)}
-  let batchReady=0,batchPending=0,batchResolved=0,extended=0,sourceRecordYears=0,restoredRecordYears=0;
+  let batchReady=0,batchPending=0,batchResolved=0,extended=0,sourceRecordYears=0,restoredRecordYears=0,unresolvedRegionYears=0,unresolvedSourceYears=0;
   assert.equal(manifest.counts.sourcePolities+manifest.counts.sourceComposites+manifest.counts.sourceRelations,original.length);
   const sourceHashes=new Map(original.map(({f,index})=>[index,sha256(JSON.stringify(f.geometry))]));
   const seen=new Set(), allGeometries=new Set();
@@ -241,7 +245,7 @@ if(outDir&&sourceFile){
         if(year<=1581)assert.ok(!hasPart(activeRecords.get(7792),7792,7));
         if(year>=1521)assert.equal(activeRecords.get(7904).geometryStatus,'rejected');
       }else assert.equal(mindanaoIssues.length,0);
-      const expectedCenters=[...(year>=1521&&year<=1608?['maguindanao']:[]),...(year>=1521&&year<=1565?['butuan']:[]),...(year>=1596&&year<=1608?['buayan']:[]),...(year===1515?['malabang']:[]),...(year===1521?['kipit']:[]),...(year>=1757&&year<=1767?['corte','bastia','ajaccio','calvi','bonifacio']:[]),...(year>=1757&&year<=1762?['cap-corse']:[]),...(year>=1797&&year<=1798?['portoferraio','portolongone','rio-elba']:[]),...(year>=1842&&year<=1845?['iconi','itsandra']:[]),...(year>=1641&&year<=1647?['melaka','linggi-estuary','kesang-estuary']:[])];
+      const expectedCenters=[...(year>=1521&&year<=1608?['maguindanao']:[]),...(year>=1521&&year<=1565?['butuan']:[]),...(year>=1579&&year<=1608?['buayan']:[]),...(year===1515?['malabang']:[]),...(year===1521?['kipit']:[]),...(year===1578?['butuan-1578']:[]),...(year>=1757&&year<=1767?['corte','bastia','ajaccio','calvi','bonifacio']:[]),...(year>=1757&&year<=1762?['cap-corse']:[]),...(year>=1797&&year<=1798?['portoferraio','portolongone','rio-elba','bagnaia']:[]),...(year>=1842&&year<=1845?['iconi','itsandra']:[]),...(year===1844?['moroni-1844','mitsamiouli-1844']:[]),...(year>=1641&&year<=1647?['melaka','linggi-estuary','kesang-estuary']:[])];
       if(year>=1641&&year<=1647){
         const issues=state.territorialIssues.filter(i=>i.group==='Малакка');
         assert.equal(issues.length,year<1645?1:2);
@@ -260,6 +264,11 @@ if(outDir&&sourceFile){
       }
       const centers=historicalUnresolvedCenters(year,state.territorialIssues);
       assert.deepEqual(centers.map(c=>c.id),expectedCenters.map(id=>`historical-center-${id}`));
+      const regions=historicalUnresolvedRegions(year,state.territorialIssues);
+      assert.equal(regions.length,new Set(state.territorialIssues.map(i=>i.hash)).size);
+      assert.equal(regions.flatMap(r=>r.rows).length,state.territorialIssues.length);
+      for(const r of regions){assert.ok(r.title&&r.description&&r.sources.length&&r.rows.every(i=>i.hash===r.issue.hash&&i.group===r.issue.group));assert.equal(r.year,year);}
+      unresolvedRegionYears+=regions.length;unresolvedSourceYears+=state.territorialIssues.length;
       for(const issue of state.territorialIssues.filter(i=>['Corsica','Эльба','Коморы','Малакка'].includes(i.group)))assert.ok(issue.sources?.length&&issue.sources.every(s=>s.startsWith('https://')));
       for(const c of centers){assert.ok(c.url.startsWith('https://'));assert.ok(c.description.includes('Точка'));assert.ok(Number.isFinite(c.lon)&&Math.abs(c.lon)<=180&&Number.isFinite(c.lat)&&Math.abs(c.lat)<=90);assert.equal(c.year,year);}
       assert.deepEqual(historicalUnresolvedCenters(year,[]),[]);
@@ -341,6 +350,7 @@ if(outDir&&sourceFile){
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,537);assert.equal(batchPending,159);
   assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,300);assert.equal(extended,667);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
+  assert.equal(unresolvedSourceYears,202);assert.equal(unresolvedRegionYears,121);
   console.log(`Reviewed batch: ${batchReady} original corrections; ${batchResolved} newly resolved attributions; ${batchPending} open; ${extended} adjacent cases; ${restoredRecordYears} restored territory-years`);
   assert.equal(seen.size,manifest.counts.revisions);
   assert.equal(allGeometries.size,manifest.counts.uniqueGeometries);
