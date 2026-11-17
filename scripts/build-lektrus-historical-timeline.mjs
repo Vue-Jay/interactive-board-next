@@ -317,6 +317,24 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
  assert.equal(features[corsica1796.source].properties.Name,'Kingdom of Great Britain');
  assert.equal(features[corsica1796.target].properties.Name,'French Directory');
  registerIslandCorrection(corsica1796.source,corsica1796.part,corsica1796.from,corsica1796.to,corsica1796,corsica1796.target);
+ for(const d of territorialResolutions.datedIslandCorrections)registerIslandCorrection(d.source,d.part,d.from,d.to,d,d.target);
+ // Reassemble the missing independent state from its three exact island
+ // cells. The Cabo Verde exclusions alone had left it entirely absent.
+ const comoros=territorialResolutions.independentComoros;
+ for(const [source,from,to,parts] of comoros.routes){
+  const raw=rawParts(features[source]);
+  assert.deepEqual(parts.map(p=>componentHash(raw[p])),comoros.hashes);
+  for(const [i,part] of parts.entries()){
+   registerIslandCorrection(source,part,from,to,{...comoros,hash:comoros.hashes[i]});
+  }
+  const individual=restorations.splice(-parts.length,parts.length);
+  assert.ok(individual.every(r=>r.source===source&&r.from===from&&r.to===to&&r.decision.entity===comoros.entity));
+  restorations.push({...individual[0],parts,geometry:{type:'MultiPolygon',coordinates:parts.map(p=>raw[p])}});
+ }
+ const mayotte=territorialResolutions.mayotte2024;
+ registerIslandCorrection(mayotte.source,mayotte.part,mayotte.from,mayotte.to,mayotte,mayotte.target);
+ assert.equal(componentHash(rawParts(features[13247])[15]),mayotte.hash);
+ attributions.push({source:13247,part:15,hash:mayotte.hash,group:mayotte.group,from:1975,to:2023,reason:mayotte.reasonRu,sources:mayotte.sources});
  const davao=territorialResolutions.davaoTransfer;
  assert.equal(features[davao.target].properties.Name,'Spanish Empire');
  for(const [source,part,from,to] of davao.routes){

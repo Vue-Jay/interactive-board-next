@@ -287,6 +287,22 @@ if(outDir&&sourceFile){
         assert.equal(polygonClipping.difference(corsica,pack.geometries[france.geometryId].coordinates).length,0);
       }
       if(year===1861){const italy=activeRecords.get(11691);assert.equal(italy.name,'Kingdom of Italy');assert.equal(italy.nameRu,'Королевство Италия');assert.equal(italy.nameStatus,'reviewed');}
+      if(year>=1975){
+        const comoros=state.drawable.filter(({record})=>record.name==='Comoros');
+        assert.equal(comoros.length,1);assert.equal(comoros[0].geometry.coordinates.length,3);
+        assert.equal(comoros[0].record.editorialRestoration,true);
+        assert.ok(!state.coverageGaps.some(g=>g.name==='Comoros'));
+        const mayotteHash='5e8c3940ad185cbe4cf1af0d7f420aeaaa9bead9e850dd11ecbb7a72f850de2a';
+        const mayotte=state.drawable.filter(({record,geometry})=>geometry.coordinates.some(p=>componentHash(p)===mayotteHash)||hasPart(record,13646,6));
+        assert.equal(mayotte.length,1);assert.equal(mayotte[0].record.name,'French Fifth Republic');
+        assert.equal(polygonClipping.difference(input.features[13646].geometry.coordinates[6],mayotte[0].geometry.coordinates).length,0);
+      }
+      for(const [y,source,part,name] of [[1802,10561,14,'French Consulate'],[1814,10892,4,'Principality of Elba'],[1943,12901,4,'Free French'],[1944,12928,13,'Kingdom of Italy']])if(year===y){
+        const cell=input.features[source].geometry.coordinates[part],hash=componentHash(cell);
+        const island=state.drawable.filter(({record,geometry})=>geometry.coordinates.some(p=>componentHash(p)===hash)||hasPart(record,source,part));
+        assert.equal(island.length,1);assert.equal(island[0].record.name,name);
+        assert.equal(polygonClipping.difference(cell,island[0].geometry.coordinates).length,0);
+      }
       const byEntity=new Map(),byGeometry=new Map(),allGeometry=new Map();
       for(const r of state.records){
         if(!allGeometry.has(r.geometryId))allGeometry.set(r.geometryId,[]);allGeometry.get(r.geometryId).push(r);
@@ -314,7 +330,7 @@ if(outDir&&sourceFile){
   }
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,537);assert.equal(batchPending,159);
-  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,226);assert.equal(extended,483);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
+  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,277);assert.equal(extended,638);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
   console.log(`Reviewed batch: ${batchReady} original corrections; ${batchResolved} newly resolved attributions; ${batchPending} open; ${extended} adjacent cases; ${restoredRecordYears} restored territory-years`);
   assert.equal(seen.size,manifest.counts.revisions);
   assert.equal(allGeometries.size,manifest.counts.uniqueGeometries);
