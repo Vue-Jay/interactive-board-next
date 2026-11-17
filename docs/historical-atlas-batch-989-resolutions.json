@@ -1,5 +1,10 @@
 {
   "retained": {
+    "Champagne": {
+      "reason": "Hugh was Count of Champagne during 1094–1110; Blois and Champagne must not be depicted as the same independent political possession before the succession of 1125.",
+      "reasonRu": "В 1094–1110 гг. Шампанью правил граф Гуго; совпадающий контур сохранён за Шампанью, а не графством Блуа. Исторические границы остаются приблизительными.",
+      "sources": ["https://www.archives-aube.fr/image/583298/116357?crop=centre&download=1&force-inline=&format=pdf&realHeight=1754&realWidth=1240&region=full&size=%21800%2C800", "https://pure.royalholloway.ac.uk/files/18393326/A_History_of_the_Counts_of_Brienne.pdf"]
+    },
     "Athenian islands": {
       "reason": "The exact island components are retained in the Roman political layer; this does not extinguish local civic institutions or imply uniform provincial administration. Rome guaranteed Athenian possession of Lemnos after Pydna; Kea and Lemnos had distinct local histories under Roman hegemony.",
       "reasonRu": "Кея и Лемнос показаны в политическом контуре Рима, а не как второе независимое государство. Рим подтвердил афинские права на Лемнос после Пидны; местное самоуправление и правовой статус отдельных островов различались.",
@@ -27,6 +32,18 @@
     }
   },
   "restored": {
+    "Мэн (лордство)": {
+      "anchor": 6167, "entity": "isle-of-man-lordship", "name": "Isle of Man (English Crown suzerainty)", "nameRu": "Остров Мэн (сюзеренитет английской короны)", "excludeCounterpart": true,
+      "reason": "Henry IV took control in 1402 and granted the island to Stanley in 1406; distinguish the island lordship from both Scotland and England proper.",
+      "reasonRu": "Генрих IV установил контроль в 1402 году и пожаловал остров Стэнли в 1406 году; остров выделен отдельно от Шотландии и собственно Англии.",
+      "sources": ["https://www.gov.im/news/2023/may/04/manx-coronation-gift-recognises-kings-passion-for-environment-and-continues-600-year-old-tradition/", "https://manxnationalheritage.im/news/medieval-ring-declared-treasure/"]
+    },
+    "Манус": {
+      "anchor": 12956, "entity": "manus-mandated-new-guinea", "name": "Manus (Australian-administered mandated New Guinea)", "nameRu": "Манус (подмандатная Новая Гвинея, управление Австралии)", "excludeCounterpart": true,
+      "reason": "Allied forces retook the Admiralty Islands in 1944; in 1945 Manus belonged to Australian-administered mandated New Guinea, not Japan or a separate direct British administration.",
+      "reasonRu": "Союзники заняли острова Адмиралтейства в 1944 году; в 1945 году Манус относился к подмандатной Новой Гвинее под управлением Австралии, а не Японии или отдельному прямому британскому владению.",
+      "sources": ["https://www.awm.gov.au/collection/MSS1920", "https://www.history.navy.mil/browse-by-topic/wars-conflicts-and-operations/world-war-ii/1944/admiralty-islands.html"]
+    },
     "Исландия": {
       "anchor": 12868,
       "name": "Kingdom of Iceland",
@@ -55,6 +72,26 @@
       "reasonRu": "Банка уступлена британцам в 1812 году и до передачи голландцам в 1816 году оставалась под британским управлением. Восстановлен точный исходный контур острова за 1814–1815 годы.",
       "sources": ["https://searcharchives.bl.uk/catalog/040-003377793", "https://revue-archipel.fr/pdfnumeros/ARCHIPEL107%282024%29.pdf", "https://www.orientalnumismaticsociety.org/archive/ONS_215.pdf"]
     }
+  },
+  "componentRestorations": {
+    "8f31d16f944b3cefe048b3146bf73aea4320e11e4b0dcabb74b7fe8d1886569c": {
+      "group": "Коморы", "anchor": 11329, "entity": "anjouan-sultanate", "name": "Sultanate of Anjouan", "nameRu": "Султанат Анжуан",
+      "reason": "Anjouan was an independent sultanate in 1842–1845; the French protectorate came later in the nineteenth century.", "reasonRu": "В 1842–1845 гг. Анжуан оставался самостоятельным султанатом; французский протекторат установлен позднее.",
+      "sources": ["https://www.persee.fr/doc/outre_1631-0438_2012_num_99_374_4921", "https://www.assemblee-nationale.fr/dyn/17/rapports/om/l17b0774_rapport-information.pdf"]
+    },
+    "ca0861672c2aec6d4ea750a6f663d4b43e5be11e371c321ed69e8c520313b233": {
+      "group": "Коморы", "anchor": 11329, "entity": "moheli-sultanate", "name": "Sultanate of Mohéli", "nameRu": "Султанат Мохели",
+      "reason": "Mohéli was a separate sultanate in 1842–1845; the French protectorate came later in the nineteenth century.", "reasonRu": "В 1842–1845 гг. Мохели был самостоятельным султанатом; французский протекторат установлен позднее.",
+      "sources": ["https://www.persee.fr/doc/outre_1631-0438_2012_num_99_374_4921", "https://www.assemblee-nationale.fr/dyn/17/rapports/om/l17b0774_rapport-information.pdf"]
+    }
+  },
+  "transfer": {
+    "group": "Савойя — север Ниццы", "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+    "reason": "Nice and its hinterland passed to Savoy in 1388. The exact source cell north of Nice joins the contemporaneous Savoy geometry; this is not a newly surveyed historical boundary.",
+    "reasonRu": "Ницца и её окрестности перешли к Савойе в 1388 году. Исходная ячейка карты к северу от Ниццы присоединена к контуру Савойи соответствующего года; это приблизительный исторический контур, а не точная реконструкция границы.",
+    "sources": ["https://www.departement06.fr/du-xie-au-xive-siecle", "https://www.departement06.fr/les-xve-et-xvie-siecles", "https://www.nice.fr/uploads/media/default/0001/02/les-limites-du-comte-de-nice.pdf"],
+    "routes": [[6732,3,1388,1394],[6756,4,1395,1401],[6865,0,1402,1406],[6887,0,1407,1414],[6960,4,1415,1421],[6996,0,1422,1428],[7062,0,1429,1439],[7149,4,1440,1449],[7254,4,1450,1452],[7268,4,1453,1525],[7938,2,1526,1528],[7992,2,1529,1539]],
+    "targets": [6727,6752,6825,7146,7320,7460,7529,7644,7787,7845,7874,7999,8026]
   },
   "extensions": [
     {"group":"Сент-Круа","source":12421,"part":38,"from":1917,"to":1917},

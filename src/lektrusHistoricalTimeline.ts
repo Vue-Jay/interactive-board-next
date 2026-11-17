@@ -12,7 +12,7 @@ export type HistoricalRevision = {
   sourceRole?: 'polity';
   components: string[]; memberOf: string[]; sourceSeshatId: string; sourceWikipedia: string;
   sourceComponents?: string[]; sourceMemberOf?: string[];
-  sourceGeometryId?: string; geometryRepair?: 'retracted-zero-area-interior-edges' | 'reviewed-source-components';
+  sourceGeometryId?: string; geometryRepair?: 'retracted-zero-area-interior-edges' | 'reviewed-source-components' | 'reviewed-union-source-components';
   geometryParts?: {index:number;part:number}[];
   territorialIssues?: HistoricalTerritorialIssue[];
   territorialAttributions?: HistoricalTerritorialAttribution[];
@@ -111,8 +111,8 @@ export function validateHistoricalPack(value: unknown, block: HistoricalBlock): 
     const geometry = pack.geometries[record.geometryId];
     if (!['polity','composite','relation','settlement'].includes(record.role)||!Array.isArray(record.components)||!Array.isArray(record.memberOf)||![...record.components,...record.memberOf].every(n=>typeof n==='string'&&n.length>0)||(['polity','settlement'].includes(record.role)?record.components.length!==0:!record.components.length)) throw new Error('Invalid historical layer classification');
     if((record.role==='settlement'&&record.sourceRole!=='polity')||(record.role!=='settlement'&&record.sourceRole!==undefined))throw new Error('Invalid historical source role provenance');
-    if (record.sourceGeometryId && (!hash.test(record.sourceGeometryId) || record.sourceGeometryId===record.geometryId || !['retracted-zero-area-interior-edges','reviewed-source-components'].includes(record.geometryRepair??''))) throw new Error('Invalid historical repair provenance');
-    if(record.geometryRepair==='reviewed-source-components'&&(!record.sourceGeometryId||!Array.isArray(record.geometryParts)||!record.geometryParts.length||record.geometryParts.some(p=>!Number.isSafeInteger(p.index)||p.index<0||!Number.isSafeInteger(p.part)||p.part<0)||!record.review?.sources.length))throw new Error('Invalid historical component provenance');
+    if (record.sourceGeometryId && (!hash.test(record.sourceGeometryId) || record.sourceGeometryId===record.geometryId || !['retracted-zero-area-interior-edges','reviewed-source-components','reviewed-union-source-components'].includes(record.geometryRepair??''))) throw new Error('Invalid historical repair provenance');
+    if((record.geometryRepair==='reviewed-source-components'||record.geometryRepair==='reviewed-union-source-components')&&(!record.sourceGeometryId||!Array.isArray(record.geometryParts)||!record.geometryParts.length||record.geometryParts.some(p=>!Number.isSafeInteger(p.index)||p.index<0||!Number.isSafeInteger(p.part)||p.part<0)||!record.review?.sources.length))throw new Error('Invalid historical component provenance');
     if (!geometry || !['Polygon','MultiPolygon'].includes(geometry.type) || !Array.isArray(geometry.coordinates)) throw new Error('Missing historical geometry');
     if(record.territorialIssues!==undefined){
       if(!Array.isArray(record.territorialIssues)||!record.review?.sources.length||record.territorialIssues.some(i=>!Number.isSafeInteger(i.part)||i.part<0||!hash.test(i.hash)||!hash.test(i.geometryId)||!validHistoricalYear(i.from)||!validHistoricalYear(i.to)||i.from>i.to||i.from>record.to||i.to<record.from||!i.group||!i.reason||!i.counterpartName||!i.evidence.startsWith('https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-')||pack.geometries[i.geometryId]?.type!=='Polygon'))throw new Error('Invalid unresolved historical territorial issue');

@@ -83,7 +83,7 @@ def audit(folder, archive, output, original_source):
         for r in pack['records']:
             assert r['id'] not in records or records[r['id']] == r
             records[r['id']] = r
-            if r.get('geometryRepair') == 'reviewed-source-components':
+            if r.get('geometryRepair') in ('reviewed-source-components', 'reviewed-union-source-components'):
                 selections[r['id']] = (r, pack['geometries'][r['geometryId']])
             elif r.get('sourceGeometryId'):
                 repaired[r['sourceIndex']] = pack['geometries'][r['geometryId']]

@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {gzipSync} from 'node:zlib';
+import polygonClipping from 'polygon-clipping';
 import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
 import {referenceAdmissionWarnings} from './audit-lektrus-atlas-annual.mjs';
 import {HISTORY_SCHEMA, HISTORY_FIRST_YEAR, HISTORY_LAST_YEAR, historicalYearOrdinal, historicalYearFromOrdinal, validateHistoricalManifest, validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
@@ -167,7 +168,8 @@ const rawParts=f=>f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometr
 export const territorialBatch=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-batch-989.json',import.meta.url),'utf8'));
 export const territorialResolutions=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-batch-989-resolutions.json',import.meta.url),'utf8'));
 export function deriveTerritorialBatch(features,batch=territorialBatch){
- const exclusions=[],pending=[],resolved=[],restorations=[],relabels=new Map(),attributions=[],extensions=[],seen=new Set();
+ const exclusions=[],pending=[],resolved=[],restorations=[],relabels=new Map(),attributions=[],extensions=[],seen=new Set(),transfers=[];
+ const transfer=territorialResolutions.transfer;
  assert.equal(batch.sourceSha256,PINNED_SOURCE_SHA256);
  for(const row of batch.rows){
   const {source,part,other,otherParts,hash,from,to,status,group,evidence}=row;
@@ -181,8 +183,9 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
   assert.ok(status==='ready'||status==='reconstruct');
   const reason=batch.descriptions[group];assert.ok(reason&&evidence.startsWith('https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-'));
   for(let year=from;year<=to;year++){if(year===0)continue;const key=`${source}:${hash}:${year}`;assert.ok(!seen.has(key),`Duplicate reviewed component-year ${key}`);seen.add(key);}
-  const retained=territorialResolutions.retained[group],restored=territorialResolutions.restored[group],relabel=territorialResolutions.relabel[group];
-  const decision=status==='reconstruct'?(retained??restored??relabel):undefined;
+  const component=territorialResolutions.componentRestorations[hash];
+  const retained=territorialResolutions.retained[group],restored=territorialResolutions.restored[group]??(component?.group===group?component:undefined),relabel=territorialResolutions.relabel[group],moved=group===transfer.group?transfer:undefined;
+  const decision=status==='reconstruct'?(retained??restored??relabel??moved):undefined;
   const rule=[source,parts.length,from,[part],status==='ready'?'Historically reviewed exact duplicate: '+group+'.':decision?decision.reason:'Incorrect or conflated political attribution; territorial reconstruction is still pending: '+group+'.',decision?.reasonRu??reason,decision?.sources[0]??evidence,to];
   // Unresolved original contours must not be presented as established filled
   // political boundaries. Preserve their source parts as explicit open issues.
@@ -190,9 +193,10 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
   if(!relabel?.indices.includes(source))exclusions.push(rule);
   if(status==='reconstruct'&&decision){
    assert.ok(decision.sources.length&&decision.sources.every(s=>s.startsWith('https://')));
-   resolved.push({...row,mode:retained?'retained':restored?'restored':'relabel',target:retained?other:restored?restored.anchor:relabel.indices.find(i=>features[i].properties.FromYear<=from&&features[i].properties.ToYear>=to)});
+   resolved.push({...row,mode:retained?'retained':restored?'restored':moved?'transfer':'relabel',target:retained?other:restored?restored.anchor:moved?undefined:relabel.indices.find(i=>features[i].properties.FromYear<=from&&features[i].properties.ToYear>=to)});
    if(retained)attributions.push({source:other,part:otherParts[0],hash,group,from,to,reason:retained.reasonRu,sources:retained.sources});
    if(restored&&source===restored.anchor)restorations.push({...row,decision,geometry:{type:'MultiPolygon',coordinates:[parts[part]]}});
+   if(restored?.excludeCounterpart)exclusions.push([other,otherGeometry.length,from,otherParts,decision.reason,decision.reasonRu,decision.sources[0],to]);
   }else if(status==='reconstruct')pending.push({...row,reason,geometry:{type:'Polygon',coordinates:parts[part]},counterpartName:counterpart.properties.Name});
  }
  for(const [group,decision] of Object.entries(territorialResolutions.relabel))for(const index of decision.indices){
@@ -219,8 +223,27 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
   }
   extensions.push({...ext,hash});exclusions.push([source,parts.length,from,[part],decision.reason,decision.reasonRu,decision.sources[0],to]);
  }
+ // Transfer the same independently identified cell into the contemporaneous
+ // Savoy outline. Preserve the original component hash and both source dates.
+ for(const [source,part,from,to] of transfer.routes){
+  const f=features[source],parts=rawParts(f);assert.equal(componentHash(parts[part]),transfer.hash);
+  assert.ok(f.properties.FromYear<=from&&f.properties.ToYear>=to);
+  for(let year=from;year<=to;year++){
+   const targets=transfer.targets.filter(i=>features[i].properties.FromYear<=year&&features[i].properties.ToYear>=year);
+   assert.equal(targets.length,1,`Missing unique Savoy target ${year}`);const target=targets[0];assert.equal(features[target].properties.Name,'County of Savoy');
+   const last=transfers.at(-1);if(last&&last.target===target&&last.source===source&&last.part===part&&last.to+1===year)last.to=year;
+   else transfers.push({source,part,target,from:year,to:year,decision:transfer});
+   const key=`${source}:${transfer.hash}:${year}`;
+   if(!seen.has(key)){
+    assert.ok(!extensionKeys.has(key));extensionKeys.add(key);
+    extensions.push({source,part,from:year,to:year,group:transfer.group,hash:transfer.hash,mode:'transfer',target});
+    exclusions.push([source,parts.length,year,[part],transfer.reason,transfer.reasonRu,transfer.sources[0],year]);
+   }
+  }
+ }
+ for(const row of resolved.filter(r=>r.mode==='transfer'))for(let y=row.from;y<=row.to;y++)assert.ok(transfers.some(t=>t.from<=y&&t.to>=y),`Missing transfer ${y}`);
  for(const row of resolved.filter(r=>r.mode==='restored'))for(let y=row.from;y<=row.to;y++)assert.ok(restorations.some(r=>r.source===row.target&&r.hash===row.hash&&r.from<=y&&r.to>=y),`Missing restored component ${row.group}/${y}`);
- return {exclusions,pending,resolved,restorations,relabels,attributions,extensions,count:seen.size};
+ return {exclusions,pending,resolved,restorations,relabels,attributions,extensions,transfers,count:seen.size};
 }
 const withinBox=(polygon,box)=>polygon.every(ring=>ring.every(([x,y])=>x>=box[0]&&x<=box[2]&&y>=box[1]&&y<=box[3]));
 export function deriveConfirmedOverlapExclusions(features,policies=confirmedOverlapPolicies){
@@ -560,28 +583,42 @@ export function normalizeHistoricalSource(source) {
     // A reviewed crosswalk can explicitly link variants later.
     const entityId = identity('source-'+role, sourceName, sourceWikidata);
     const base = {entityId, geometryId, role,components,memberOf,sourceSeshatId:String(p.SeshatID??''),sourceWikipedia:String(p.Wikipedia??''), ...(geometryId!==sourceGeometryId?{sourceGeometryId,geometryRepair:'retracted-zero-area-interior-edges'}:{}),name: sourceName, sourceName, sourceWikidata, sourceIndex, sourceFrom, sourceTo, from, to, nameStatus:'candidate', geometryStatus:'candidate'};
-    const add = revision => {
+    const addOne = revision => {
       const attribution=(attributionsBySource.get(sourceIndex)??[]).filter(issue=>issue.from<=revision.to&&issue.to>=revision.from);
       if(attribution.length)revision={...revision,territorialAttributions:attribution};
       const relabel=batch.relabels.get(sourceIndex);
       if(relabel)revision={...revision,name:relabel.name,nameRu:relabel.nameRu,entityId:identity('reviewed-territory','saint-croix'),nameStatus:'reviewed',review:{reason:relabel.reason,reasonRu:relabel.reasonRu,sources:relabel.sources}};
       const territorialIssues=(pendingBySource.get(sourceIndex)??[]).filter(issue=>issue.from<=revision.to&&issue.to>=revision.from);
       if(territorialIssues.length)revision={...revision,territorialIssues};
-      const selection=reviewedGeometryParts(revision,derivedExclusions);
+      let selection=reviewedGeometryParts(revision,derivedExclusions);
+      const transfer=(batch.transfers??[]).find(t=>t.target===sourceIndex&&t.from<=revision.from&&t.to>=revision.to);
+      if(transfer){
+        assert.notEqual(selection?.length,0);
+        selection=[...(selection??rawParts(feature).map((_,part)=>({index:sourceIndex,part}))),{index:transfer.source,part:transfer.part}];
+        const {reason,reasonRu,sources}=transfer.decision;
+        revision={...revision,review:{reason:[revision.review?.reason,reason].filter(Boolean).join(' '),reasonRu:[revision.review?.reasonRu,reasonRu].filter(Boolean).join(' '),sources:[...new Set([...(revision.review?.sources??[]),...sources])]}};
+      }
       if(selection?.length===0){
         assert.ok(revision.review?.sources.length);
         revision={...revision,geometryStatus:'rejected'};
       }else if(selection){
         assert.ok(revision.review?.sources.length);
         const coordinates=selection.map(({index,part})=>{const g=source.features[index].geometry;const polygons=g.type==='Polygon'?[g.coordinates]:g.coordinates;assert.ok(polygons[part]);return polygons[part]});
-        const selected={type:'MultiPolygon',coordinates};validateGeometry(selected);
+        if(transfer)assert.equal(polygonClipping.intersection(polygonClipping.union(...coordinates.slice(0,-1)),coordinates.at(-1)).length,0,`Overlapping transfer ${sourceIndex}`);
+        const selected={type:'MultiPolygon',coordinates:transfer?polygonClipping.union(...coordinates):coordinates};validateGeometry(selected);
         const selectedId=sha256(JSON.stringify(selected));geometries.set(selectedId,selected);
-        revision={...revision,geometryId:selectedId,sourceGeometryId,geometryRepair:'reviewed-source-components',geometryParts:selection};
+        revision={...revision,geometryId:selectedId,sourceGeometryId,geometryRepair:transfer?'reviewed-union-source-components':'reviewed-source-components',geometryParts:selection};
       }
       const id = identity('revision', sourceIndex, sourceFrom, sourceTo, revision.geometryId, revision.from, revision.to, revision.name);
       records.push({id, ...revision});
       if (revision.nameStatus === 'reviewed') counts.reviewedNames++;
       if (revision.geometryStatus === 'rejected') counts.rejectedRevisions++;
+    };
+    const add=revision=>{
+      const cuts=new Set([revision.from,revision.to+1]);
+      for(const t of batch.transfers??[])if(t.target===sourceIndex&&t.from<=revision.to&&t.to>=revision.from){cuts.add(Math.max(revision.from,t.from));cuts.add(Math.min(revision.to+1,t.to+1));}
+      const sorted=[...cuts].sort((a,b)=>a-b);
+      for(let i=0;i<sorted.length-1;i++)addOne({...revision,from:sorted[i],to:sorted[i+1]-1});
     };
     if (sourceName === 'Mali Federation' && from >= 1961 && sourceWikidata === 'Q216632') {
       add({...base, entityId:identity('reviewed-polity','republic-of-mali'), name:'Republic of Mali', nameRu:'Республика Мали', nameStatus:'reviewed', review:{reason:'Federation dissolved in 1960; later records refer to the Republic of Mali. Geometry remains unverified.',sources:MALI_SOURCES}});
