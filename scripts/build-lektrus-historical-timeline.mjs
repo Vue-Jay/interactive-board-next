@@ -518,6 +518,7 @@ function editorialSegments(base,derived=[]){
  if(base.sourceName==='New France'&&base.sourceWikidata==='Q170604')cut(1763);
  if(base.sourceName==='(Dutch Republic)'||base.components.includes('Portuguese Ceylon')){cut(1638);cut(1659);cut(1796)}
  if(base.sourceName==='(Spanish Empire)'){cut(1629);cut(1638)}
+ if(base.components.includes('British Cape Colony'))for(const y of [1797,1803,1806,1808,1811,1820,1885])cut(y);
  if(base.sourceName==='New Netherland'&&base.sourceWikidata==='Q382593')cut(1675);
  if(base.sourceIndex===13271)cut(1964);
  if(base.sourceIndex===13265)cut(1964);
@@ -547,7 +548,7 @@ function editorialSegments(base,derived=[]){
   const reasons=[],reasonsRu=[],sources=new Set();
   const note=(reason,urls,ru)=>{reasons.push(reason);if(ru)reasonsRu.push(ru);for(const url of urls)sources.add(url)};
   const rename=(name,nameRu,url,reason,reasonRu)=>{r={...r,name,nameRu,nameStatus:'reviewed'};note(reason,[url],reasonRu);};
-  if(base.sourceName==='(Spanish Empire)'&&from>=1629&&to<=1637&&base.components.includes('Iberian Union')){
+  if(base.sourceName==='(Spanish Empire)'&&from>=1629&&to<=1639&&base.components.includes('Iberian Union')){
    r={...r,sourceComponents:base.components,components:[...r.components,'Portuguese Ceylon']};
    note('Portuguese Ceylon retained its Portuguese administration under the shared Iberian monarch; it is a distinct component of the union-era aggregate.',ceylonEarlySources,'Португальский Цейлон сохранял португальскую администрацию при общем монархе Иберийской унии; выделен отдельной составляющей объединения.');
   }
@@ -588,10 +589,9 @@ function editorialSegments(base,derived=[]){
    r={...r,name:supplemental?'British colonial possessions (supplemental source record)':'British settlements in India (source aggregate)',nameRu:supplemental?'Британские колониальные владения (дополнительный контур)':'Британские поселения в Индии (сводный контур)',nameStatus:'reviewed',entityId:identity('reviewed-polity',supplemental?'british-colonial-supplement-9410':'british-indian-settlements-9553')};
    note('The 1707 Acts of Union created Great Britain; these are surviving source records for British possessions, not a separate English colonial empire. Exact remaining extents and archival group associations are unverified.',['https://www.parliament.uk/about/living-heritage/evolutionofparliament/legislativescrutiny/act-of-union-1707/'],'После образования Великобритании в 1707 году эти записи относятся к британским владениям, а не к отдельной английской колониальной империи. Оставшиеся границы и архивные связи требуют проверки.');
   }
-  if(base.sourceIndex===10461){
-   const sierraOnly=from>=1803&&to<=1805;
-   r={...r,name:sierraOnly?'Sierra Leone Company settlement':'British Cape and Sierra Leone possessions (source aggregate)',nameRu:sierraOnly?'Поселение Компании Сьерра-Леоне':'Британские владения в Капской колонии и Сьерра-Леоне (сводный контур)',nameStatus:'reviewed',entityId:identity('reviewed-polity',sierraOnly?'sierra-leone-company-10461':'british-cape-sierra-leone-10461')};
-   note('The source combines geographically distinct Cape and Sierra Leone components. Freetown was administered by the Sierra Leone Company before the Crown took possession in 1808. The source footprint remains unverified.',['https://unipsil.unmissions.org/en/about-sierra-leone-history','https://sahistory.org.za/article/batavian-republic-1803-1806'],'Исходная запись объединяет отдельные территории Капской колонии и Сьерра-Леоне. Фритаун находился под управлением Компании Сьерра-Леоне до передачи короне в 1808 году. Точный контур остаётся непроверенным.');
+  if(base.sourceIndex===10461&&from>=1803&&to<=1805){
+   r={...r,name:'British Cape Colony (inactive source record)',nameRu:'Капская колония — исходная запись без действующего британского контура',nameStatus:'reviewed',sourceMemberOf:base.memberOf,memberOf:[]};
+   note('The Cape was governed by the Batavian Republic in 1803–1805; only the separately restored Sierra Leone settlement was British.',[capeSource],'В 1803–1805 гг. Капская колония управлялась Батавской республикой; британское поселение Сьерра-Леоне выделено отдельно.');
   }
   if(base.sourceIndex===7187&&from>=1454){
    r={...r,name:'Byzantine remnants (unverified source aggregate)',nameRu:'Остаточные византийские территории (непроверенный сводный контур)',nameStatus:'reviewed',entityId:identity('reviewed-polity','byzantine-remnants-7187')};
@@ -725,6 +725,12 @@ function editorialSegments(base,derived=[]){
   if(base.sourceIndex===5295&&from>=1210)replaceComponent('Angevin Empire','Kingdom of England');
   if(base.sourceIndex===4776&&from>=1126)replaceComponent('County of Anjou','Angevins');
   if(base.sourceIndex===4678&&from>=1094){r={...r,sourceComponents:base.components,components:[...r.components,'County of Champagne']};note('Active County of Champagne explicitly identifies this composite in the source; its reciprocal component label was missing. Geometry is unchanged.',[CHINA_GROUP_SOURCE])}
+  if(base.components.includes('British Cape Colony')&&from>=1797&&to<=1884){
+   const names=[from<1808?capeTerritories.company.name:capeTerritories.sierra.name,...(from>=1811?[capeTerritories.seychelles.name]:[]),...(from>=1820?[capeTerritories.gambia.name]:[])];
+   const components=r.components.filter(n=>!(from>=1803&&to<=1805&&n==='British Cape Colony'));
+   r={...r,sourceComponents:base.components,components:[...new Set([...components,...names])]};
+   note('Separate geographically distinct colonial administrations formerly hidden in the Cape source aggregate; their local boundaries remain approximate.',[capeSource,sierraSource,seychellesSource,gambiaSource],'Раздельно указаны колониальные администрации, ошибочно объединённые в исходной записи Капской колонии; местные границы остаются приблизительными.');
+  }
   if(reasons.length)r={...r,review:{reason:reasons.join(' '),...(reasonsRu.length?{reasonRu:reasonsRu.join(' ')}:{}),sources:[...sources]}};
   // Avoid artificial splits where none of the corrections applied.
   const last=out.at(-1);if(last&&JSON.stringify({...last,from:0,to:0})===JSON.stringify({...r,from:0,to:0}))last.to=to;else out.push(r);
@@ -1127,6 +1133,121 @@ export function deriveCeylonCoastalReviews(features,existingExclusions){
  return {exclusions,restorations,transfers};
 }
 
+const ceylonWarSources=[
+ 'https://eprints.soas.ac.uk/33621/1/11010382.pdf',
+ 'https://www.sciencedirect.com/org/science/article/pii/S0006229480000093',
+ 'https://bulletin.rijksmuseum.nl/article/download/9736/10237/16002',
+ 'https://ccf.gov.lk/heritage-sites/galle-fort/',
+];
+// Order is Batticaloa, western/ northern coast, Trincomalee. The western
+// component spans several opposing fort administrations after 1640.
+export const ceylonWarRoutes=[[8785,1638,1639,56,57,58],[8866,1640,1647,12,0,13],[8953,1648,1652,10,11,12],[9013,1653,1658,10,11,12]];
+export function deriveCeylonWarReviews(features,existingExclusions){
+ const exclusions=[],restorations=[],transfers=[],pending=[];
+ const islandPart=polygon=>polygon.every(r=>r.every(([x,y])=>x>=79.4&&x<=82&&y>=5.65&&y<=10));
+ const d=(reason,reasonRu)=>({reason,reasonRu,sources:ceylonWarSources});
+ const exclude=(source,from,to,parts,decision)=>{
+  const f=features[source];assert.ok(f.properties.FromYear<=from&&f.properties.ToYear>=to&&parts.every(p=>islandPart(rawParts(f)[p])));
+  for(let y=from;y<=to;y++){const old=new Set(exclusionsFor(source,y,existingExclusions).flatMap(r=>r[3]));assert.ok(parts.every(p=>!old.has(p)),`Previously excluded war component ${source}/${y}`);}
+  exclusions.push([source,rawParts(f).length,from,parts,decision.reason,decision.reasonRu,decision.sources[0],to]);
+ };
+ const uncertain=(source,part,from,to,decision)=>{
+  const polygon=rawParts(features[source])[part];exclude(source,from,to,[part],decision);
+  pending.push({source,part,from,to,hash:componentHash(polygon),group:'Цейлон — война VOC',reason:decision.reasonRu,counterpartName:'Португалия / VOC / Канди',evidence:decision.sources[0],sources:decision.sources,geometry:{type:'Polygon',coordinates:polygon}});
+ };
+ const early={...d('Portuguese coastal possessions still held after the capture of Batticaloa in 1638 and before the capture of Trincomalee in 1639 and Galle in 1640. The outline is generalized.','Португальские прибрежные владения после потери Баттикалоа в 1638 г., Тринкомале в 1639 г. и до захвата Галле в 1640 г. Исходные границы приблизительны.'),entity:'portuguese-ceylon-coast',name:'Portuguese Ceylon',nameRu:'Португальский Цейлон (прибрежные владения)',memberOf:['(Portuguese Empire)','(Spanish Empire)'],preserveCoastalParts:true};
+ for(const [source,from,to,batti,west,trinco] of ceylonWarRoutes){
+  const f=features[source];assert.equal(f.properties.Name,from<1640?'Spanish Empire':'Portuguese Colonies');
+  if(from===1638){for(const year of [1638,1639]){
+   const parts=year===1638?[west,trinco]:[west],coordinates=parts.map(p=>rawParts(f)[p]);exclude(source,year,year,parts,early);
+   restorations.push({source,part:parts[0],parts,from:year,to:year,hash:sha256(JSON.stringify(coordinates)),group:'Цейлон — побережье',decision:early,geometry:{type:'MultiPolygon',coordinates}});
+   for(const part of parts)transfers.push({target:8788,source,part,from:year,to:year,decision:early});
+  }}else uncertain(source,west,from,to,d('The 1640–1658 source outline combines opposing coastal possessions, including Galle, Colombo and Jaffna. The 1645 treaty and later fort captures do not establish its complete internal borders.','Контур 1640–1658 гг. объединяет владения противоборствующих сторон, в том числе Галле, Коломбо и Джафну. Договор 1645 г. и последующие захваты фортов не устанавливают все внутренние границы.'));
+  for(const [part,capture,handed,port] of [[batti,1638,1642,'Batticaloa'],[trinco,1639,1640,'Trincomalee']]){
+   const begin=Math.max(from,capture),end=Math.min(to,handed-1);
+   if(begin<=end)uncertain(source,part,begin,end,d(`${port}: captured by VOC in ${capture}, passed to Kandy in ${handed}; the extent of temporary Dutch rule is not known.`,`${port==='Batticaloa'?'Баттикалоа':'Тринкомале'}: захвачена VOC в ${capture} г., передана Канди в ${handed} г.; границы временной нидерландской администрации не установлены.`));
+   const start=Math.max(from,handed);if(start>to)continue;
+   const decision=d(`${port}: the fort was handed to Kandy in ${handed}; the contemporaneous eastern component is retained as an approximate regional attribution, not a surveyed boundary or proof of direct garrison administration throughout.`,`${port==='Batticaloa'?'Баттикалоа':'Тринкомале'}: крепость передана Канди в ${handed} г.; современный эпохе восточный компонент сохранён как приблизительная атрибуция региона, а не точно установленная граница или доказательство управления всей областью из гарнизона.`);
+   exclude(source,start,to,[part],decision);transfers.push({source,part,target:8828,from:start,to,decision});
+  }
+ }
+ // The empire overlay showed the inland kingdom as Portuguese Ceylon.
+ // Remove that inland area even when the coastal boundary remains unresolved.
+ for(const [target,f] of features.entries()){
+  const p=f.properties;if(p.Name!=='(Portuguese Empire)'||p.FromYear>1658||p.ToYear<1638||!p.Components.includes('Portuguese Ceylon'))continue;
+  const parts=rawParts(f).flatMap((poly,part)=>islandPart(poly)?[part]:[]);assert.ok(parts.length);
+  exclude(target,Math.max(1638,p.FromYear),Math.min(1658,p.ToYear),parts,early);
+ }
+ assert.equal(features[8816].properties.Name,'(Spanish Empire)');
+ for(const [part,from] of [[70,1638],[72,1639]])exclude(8816,from,1639,[part],early);
+ assert.equal(restorations.reduce((n,r)=>n+r.parts.length,0),3);assert.equal(transfers.filter(t=>t.target===8828).reduce((n,r)=>n+r.to-r.from+1,0),36);assert.equal(pending.reduce((n,r)=>n+r.to-r.from+1,0),24);
+ return {exclusions,restorations,transfers,pending};
+}
+
+const capeSource='https://sahistory.org.za/article/batavian-republic-1803-1806';
+const sierraSource='https://www.parliament.gov.sl/uploads/other_resources/TRCVolume3A.pdf';
+const seychellesSource='https://seychellesnationalmuseums.org/history/';
+const gambiaSource='https://www.cambridge.org/core/books/abs/political-history-of-the-gambia-18161994/constitutional-change-in-the-gambia-18161994/90E1B0F127CA3D62479566082FC0EA3D';
+const socotraSource='https://qdl.qa/en/archive/81055/vdc_100023462214.0x00004f';
+const goreeSource='https://www.cambridge.org/core/books/abs/political-history-of-the-gambia-18161994/merchants-and-recaptives-the-origins-of-modern-politics-181686/0343E946F8D5DFBB14438F4D2D8E2EA9';
+const capeDecision=(entity,name,nameRu,reason,reasonRu,sources,memberOf=['(British Empire)'])=>({entity,name,nameRu,reason,reasonRu,sources,memberOf});
+export const capeTerritories={
+ company:capeDecision('sierra-leone-company','Sierra Leone Company settlement','Поселение Компании Сьерра-Леоне','The Freetown settlement belonged to the Sierra Leone Company until Crown administration began in 1808; the source outline is not a surveyed boundary.','Поселение Фритаун управлялось Компанией Сьерра-Леоне до перехода под управление короны в 1808 г.; исходный контур не является точно установленной границей.',[sierraSource,'https://sierraleonepublicarchives.gov.sl/Public/about.php']),
+ sierra:capeDecision('sierra-leone-crown','Sierra Leone (Crown colony)','Сьерра-Леоне (коронная колония)','British Crown administration dates from 1808, initially around Freetown; the inland Protectorate dates from 1896. This historical source outline is approximate and does not establish direct rule over the entire mapped interior.','С 1808 г. существовала британская коронная колония, первоначально вокруг Фритауна; протекторат внутренних земель образован в 1896 г. Исходный приблизительный контур не доказывает прямое управление всей обозначенной внутренней областью.',[sierraSource,'https://tourism.gov.sl/history-of-sierra-leone/']),
+ seychelles:capeDecision('seychelles-mauritius','Seychelles (dependency of Mauritius)','Сейшелы (зависимая территория Маврикия)','British possession in 1811, formally ceded in 1814; administered through Mauritius until 1903. This generalized source component depicts only a portion of the archipelago, not its full extent.','Британское владение с 1811 г., официальная уступка в 1814 г.; управление через Маврикий до 1903 г. Генерализованный исходный компонент не охватывает весь архипелаг.',[seychellesSource,'https://cdn.nationalarchives.gov.uk/documents/migrated-archives-5-guidance.pdf']),
+ gambia:capeDecision('gambia-settlements','Gambia (British settlements)','Гамбия (британские поселения)','Bathurst founded in 1816; colonial administration dates from 1821. The source component is approximate, not proof of the boundaries of the later protectorate.','Батерст основан в 1816 г.; колониальное управление с 1821 г. Приблизительный компонент источника не подтверждает границы позднейшего протектората.',[gambiaSource,'https://cdn.nationalarchives.gov.uk/documents/migratedarchives-2.guidance.pdf']),
+ socotra:capeDecision('mahra-socotra','Socotra (Mahra Sultanate)','Сокотра (султанат Махра)','The 1834 coaling arrangement and subsequent negotiations did not transfer sovereignty over Socotra; a British garrison did not make the entire island a Cape Colony possession. The generalized source island is retained under its local ruler.','Соглашение 1834 г. о снабжении углём и переговоры не передали суверенитет над Сокотрой; присутствие гарнизона не превращало остров в Капскую колонию. Сохранён генерализованный контур острова под местной властью.',[socotraSource,'https://whc.unesco.org/document/168954'],[]),
+};
+// Indexes of geographically separate source components. South African
+// mainland parts are deliberately not changed by this attribution pass.
+export const capeTerritoryRoutes=[
+ [10461,1,-1,-1,-1],[10769,1,-1,-1,2],[10804,2,1,-1,3],
+ [11041,2,1,3,-1],[11083,2,1,3,-1],[11123,2,1,3,-1],[11183,2,1,3,-1],
+ [11248,2,1,4,-1],[11341,2,1,3,-1],[11465,2,1,3,-1],[11513,2,1,3,-1],[11590,2,1,3,-1],
+ [11909,4,3,5,-1],[11962,6,5,7,-1],[11996,6,5,7,-1],
+];
+export function deriveCapeTerritoryReviews(features,existingExclusions){
+ const exclusions=[],restorations=[],pending=[];
+ const exclude=(source,from,to,parts,d)=>{
+  const f=features[source];assert.ok(f.properties.FromYear<=from&&f.properties.ToYear>=to&&parts.every(p=>rawParts(f)[p]));
+  for(let y=from;y<=to;y++){const old=new Set(exclusionsFor(source,y,existingExclusions).flatMap(r=>r[3]));assert.ok(parts.every(p=>!old.has(p)),`Previously excluded Cape component ${source}/${y}`);}
+  exclusions.push([source,rawParts(f).length,from,parts,d.reason,d.reasonRu,d.sources[0],to]);
+ };
+ const restore=(source,part,from,to,d)=>{
+  const polygon=rawParts(features[source])[part];exclude(source,from,to,[part],d);
+  restorations.push({source,part,from,to,hash:componentHash(polygon),group:'Капская колония — отдельные владения',decision:d,geometry:{type:'MultiPolygon',coordinates:[polygon]}});
+ };
+ const within=(polygon,x0,y0,x1,y1)=>polygon.every(r=>r.every(([x,y])=>x>=x0&&x<=x1&&y>=y0&&y<=y1));
+ for(const [source,sierra,seychelles,gambia,goree] of capeTerritoryRoutes){
+  const f=features[source],{Name,FromYear:from,ToYear:to}=f.properties;assert.equal(Name,'British Cape Colony');const parts=rawParts(f);
+  assert.ok(within(parts[sierra],-14,6,-10,11));
+  if(from<1808)restore(source,sierra,from,Math.min(1807,to),capeTerritories.company);
+  if(to>=1808)restore(source,sierra,Math.max(from,1808),to,capeTerritories.sierra);
+  if(seychelles>=0){assert.ok(within(parts[seychelles],55,-5,56,-4));restore(source,seychelles,from,to,capeTerritories.seychelles);}
+  if(gambia>=0){assert.ok(within(parts[gambia],-17,12,-16,14));restore(source,gambia,from,to,capeTerritories.gambia);}
+  if(goree>=0){
+   const polygon=parts[goree];assert.ok(within(polygon,-18,14,-17,15));const hash=componentHash(polygon);
+   const d={reason:'The polygon represents a broad mainland area near Dakar, not the island of Gorée. British occupation of Gorée ended in 1817. Neither a British nor a French polygon of this extent is established.',reasonRu:'Контур охватывает материковый район близ Дакара, а не остров Горе. Британская оккупация Горе завершилась в 1817 г. Ни британская, ни французская принадлежность всей исходной площади не установлена.',sources:[goreeSource,'https://whc.unesco.org/en/list/26/']};
+   exclude(source,from,to,[goree],d);pending.push({source,part:goree,from,to,hash,group:'Горе — материковый контур',reason:d.reasonRu,counterpartName:'Горе / территория близ Дакара',evidence:d.sources[0],sources:d.sources,geometry:{type:'Polygon',coordinates:polygon}});
+   // Remove the same unsupported mainland part from EVERY same-date British overlay.
+   for(const [target,overlay] of features.entries()){
+    const p=overlay.properties;if(!p.Components.includes('British Cape Colony')||p.FromYear>to||p.ToYear<from)continue;
+    const matches=rawParts(overlay).flatMap((poly,j)=>componentHash(poly)===hash?[j]:[]);assert.equal(matches.length,1,`Missing Gorée overlay part ${target}`);
+    exclude(target,Math.max(from,p.FromYear),Math.min(to,p.ToYear),matches,d);
+   }
+  }
+ }
+ const source=11248,part=3,polygon=rawParts(features[source])[part],d=capeTerritories.socotra;assert.ok(within(polygon,53,12,55,13));
+ restore(source,part,1834,1839,d);const hash=componentHash(polygon);
+ for(const [target,overlay] of features.entries()){
+  const p=overlay.properties;if(!p.Components.includes('British Cape Colony')||p.FromYear>1839||p.ToYear<1834)continue;
+  const matches=rawParts(overlay).flatMap((poly,j)=>componentHash(poly)===hash?[j]:[]);assert.equal(matches.length,1,`Missing Socotra overlay part ${target}`);
+  exclude(target,Math.max(1834,p.FromYear),Math.min(1839,p.ToYear),matches,d);
+ }
+ assert.equal(restorations.reduce((n,r)=>n+r.to-r.from+1,0),233);assert.equal(pending.reduce((n,r)=>n+r.to-r.from+1,0),11);
+ return {exclusions,restorations,pending};
+}
+
 export function normalizeHistoricalSource(source) {
   assert.equal(source.type,'FeatureCollection');
   const geometries = new Map(), records = [];
@@ -1135,6 +1256,8 @@ export function normalizeHistoricalSource(source) {
   const batch=source.features.length>Math.max(...territorialBatch.rows.map(r=>Math.max(r.source,r.other)))?deriveTerritorialBatch(source.features):{exclusions:[],pending:[],resolved:[],restorations:[],relabels:new Map(),attributions:[],count:0};
   if(batch.count){const secondary=deriveSecondaryTerritorialReviews(source.features);for(const key of ['exclusions','pending','restorations','attributions'])batch[key].push(...secondary[key]);
    const coast=deriveCeylonCoastalReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','restorations','transfers'])batch[key].push(...coast[key]);
+   const cape=deriveCapeTerritoryReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','restorations','pending'])batch[key].push(...cape[key]);
+   const war=deriveCeylonWarReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','restorations','transfers','pending'])batch[key].push(...war[key]);
    // The old opposing claims remain excluded; the reconstructed three-part
    // island replaces the unresolved footprint, not either original owner.
    assert.equal(batch.pending.filter(p=>p.group==='Эльба'&&p.from===1797&&p.to===1798).length,2);
