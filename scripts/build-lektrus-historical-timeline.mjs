@@ -553,6 +553,7 @@ function editorialSegments(base,derived=[]){
  if([4524,4600,4641,4705,4744].includes(base.sourceIndex))for(const year of [1077,1092,1094,1111,1116])cut(year);
  if(base.sourceIndex===9759||FRENCH_INDIA_GROUPS.includes(base.sourceIndex)||base.sourceIndex===10351)for(const y of [1791,1793])cut(y);
  if(base.sourceIndex===12755)cut(1940);
+ if([13129,13137].includes(base.sourceIndex))cut(1954);
  if(base.sourceIndex===8663)cut(1622);
  if([6924,7269].includes(base.sourceIndex))cut(1459);
  if([...DUTCH_HOLLAND_GROUPS,...DUTCH_HOLLAND_METRO,...DUTCH_HOLLAND_COLONIES].includes(base.sourceIndex))for(const y of [1807,1811])cut(y);
@@ -775,6 +776,12 @@ function editorialSegments(base,derived=[]){
    if(base.sourceIndex===12970)r={...r,name:provisionalGroup,nameRu:'Временное правительство Французской Республики (сводный контур)',nameStatus:'reviewed',entityId:identity('reviewed-composite','french-provisional-government'),sourceComponents:base.components,components:r.components.map(n=>n==='French Fourth Republic'?provisionalFrance:n)};
    else r={...r,sourceMemberOf:base.memberOf,memberOf:r.memberOf.map(n=>n==='(French Fourth Republic)'?provisionalGroup:n)};
    note('The Fourth Republic constitution was promulgated on 27 October 1946. In 1945 the Provisional Government remained in power; the composite is a source aggregation, not proof of effective control in Indochina.',[frenchLiberation,frenchConstitution],'Конституция Четвёртой республики обнародована 27 октября 1946 года. В 1945 году действовало Временное правительство; сводный контур не доказывает фактический контроль над Индокитаем.');
+  }
+  if((base.sourceIndex===13129||base.sourceIndex===13137)&&from>=1954||[13172,13165].includes(base.sourceIndex)){
+   const sources=['https://peacemaker.un.org/en/node/9753','https://history.state.gov/milestones/1953-1960/dien-bien-phu','https://www.cheminsdememoire.gouv.fr/fr/14-septembre-1956-les-francais-quittent-lindochine'];
+   if(base.role==='composite')r={...r,sourceComponents:base.components,components:r.components.filter(n=>n!=='French Indochina')};
+   else r={...r,sourceMemberOf:base.memberOf,memberOf:[],geometryStatus:'rejected'};
+   note('The 1954 Geneva agreements ended the colonial territorial union; ongoing troop deployments did not constitute French sovereignty. The former colonial mainland outline is not retained as French territory.',sources,'Женевские соглашения 1954 года прекратили территориальное объединение колоний; остававшиеся французские воинские части не означают французский суверенитет. Прежний материковый контур не отображается как Франция.');
   }
   if(delhi){
    let label=base.role==='composite'?base.components[0]:base.name;
@@ -1111,6 +1118,19 @@ export const malaccaCore={
  ],
 };
 export const documentedCores=[corsicaCore,malaccaCore];
+// Whole-island attribution while a single documented colonial power
+// administered Saint Martin. Union of Natural Earth 1:10m MAF and SXM;
+// the modern internal border is deliberately discarded.
+export const saintMartinSpanish={
+ periods:[[8771,3,1633,1635],[8797,5,1636,1639],[8841,5,1640,1641],[8901,5,1642,1644],[8935,5,1645,1647]],
+ sources:['https://www1.sintmaartengov.org/Documents/Policies/Spatial%20development%20Strategy%20%2B%20attachements%20-%20Policy%20department%202022%20-%20Final.pdf','https://www.sintmaartengov.org/Ministries/Departments/Documents/Integrated%20Cultural%20Policy%20Framework%20St%20Maarten.pdf',independentIslands.source.url],
+ coastline:[[[[-63.14684,18.070299],[-63.14387,18.064683],[-63.134348,18.059475],[-63.130523,18.060248],[-63.115305,18.065375],[-63.107004,18.066962],[-63.107004,18.059475],[-63.118886,18.0515],[-63.112172,18.043036],[-63.097646,18.035956],[-63.030629,18.01911],[-63.017569,18.033391],[-63.010732,18.040839],[-63.011098,18.070746],[-63.017934,18.100531],[-63.017649,18.122138],[-63.031402,18.121894],[-63.052113,18.116848],[-63.070872,18.110012],[-63.079091,18.104193],[-63.083811,18.087958],[-63.096099,18.078803],[-63.113759,18.074652],[-63.143625,18.074164],[-63.14684,18.070299]]]]
+};
+export const tobagoDutch={
+ periods:[[9029,1,1659,1661],[9090,1,1662,1664]],
+ sources:['https://visittobago.gov.tt/local-culture-people-heritage/history-culture/historical-timeline','https://www.tha.gov.tt/info-hub/the-dutch-presence-in-tobago/','https://library2.nalis.gov.tt/greenstone/collect/hist3/index/assoc/HASH0100.dir/doc.pdf',independentIslands.source.url],
+ coastline:[[[[-60.530507,11.35106],[-60.523061,11.343655],[-60.522084,11.318834],[-60.525543,11.288153],[-60.53303,11.266506],[-60.544179,11.26911],[-60.550364,11.26911],[-60.556508,11.254096],[-60.565297,11.252427],[-60.575266,11.255764],[-60.585113,11.25552],[-60.587066,11.251125],[-60.60204,11.231431],[-60.60558,11.230658],[-60.628774,11.216539],[-60.636057,11.210761],[-60.647125,11.204169],[-60.659779,11.204291],[-60.671864,11.206732],[-60.681304,11.207099],[-60.74177,11.177069],[-60.759511,11.172919],[-60.786448,11.14997],[-60.803334,11.143256],[-60.810414,11.159247],[-60.825429,11.151801],[-60.839345,11.15412],[-60.847524,11.163967],[-60.845204,11.179145],[-60.836741,11.183336],[-60.822865,11.185533],[-60.809926,11.19066],[-60.80427,11.203681],[-60.794342,11.21662],[-60.709706,11.271308],[-60.69164,11.288886],[-60.681304,11.296454],[-60.668609,11.302924],[-60.635813,11.314846],[-60.607574,11.320705],[-60.595815,11.327297],[-60.583648,11.329535],[-60.567738,11.320299],[-60.560374,11.321194],[-60.541331,11.343411],[-60.530507,11.35106]]]]
+};
 export function buildDocumentedCore(outline,definition){
  const coordinates=polygonClipping.intersection(outline,definition.mask);
  assert.ok(coordinates.length&&polygonClipping.difference(outline,coordinates).length);
@@ -1405,7 +1425,7 @@ export function deriveMedievalAndUnionReviews(features,existingExclusions){
 // remain accessible as provenance. Repair only the specifically identified
 // source parts, not entire modern country outlines.
 export function deriveColonialAndSalonaReviews(features,existingExclusions){
- const exclusions=[],transfers=[],restorations=[],subtractions=[],pending=[];
+ const exclusions=[],transfers=[],restorations=[],subtractions=[],pending=[],groupLinks=[];
  const d=(reason,reasonRu,sources)=>({reason,reasonRu,sources});
  const exclude=(source,from,to,parts,decision)=>{
   const f=features[source];assert.ok(f.properties.FromYear<=from&&f.properties.ToYear>=to&&parts.every(p=>rawParts(f)[p]));
@@ -1456,8 +1476,13 @@ export function deriveColonialAndSalonaReviews(features,existingExclusions){
    const [entity,name,nameRu,url]=[['curacao','Curaçao (Dutch colony)','Кюрасао (нидерландская колония)',DUTCH_CURACAO],['bonaire','Bonaire (Dutch colony)','Бонайре (нидерландская колония)',DUTCH_BONAIRE],['aruba','Aruba (Dutch colony)','Аруба (нидерландская колония)',DUTCH_ARUBA]][j];
    restore(source,part,from,to,{...d('The ABC islands were administered by the Dutch West India Company after the respective conquests in 1634–36, separately from the North American colony.','Острова АВС после завоеваний 1634–1636 гг. управлялись Нидерландской Вест-Индской компанией отдельно от североамериканской колонии.',[url,DUTCH_WIC]),entity,name,nameRu,memberOf:[]});
   }
-  uncertain(source,sint,from,to,'Сен-Мартен — раздел острова','The whole-island source outline cannot be attributed to New Netherland; the 1648 Concordia Treaty provided for Franco-Dutch partition but did not fix the precise line. Earlier colonial settlement control needs separate documentation.','Весь остров не относится к Новым Нидерландам. Договор Конкордия 1648 г. предусматривает франко-нидерландский раздел без точного установления границы; более ранний контроль поселений требует отдельных документов.',[SAINT_MARTIN_PARTITION,'https://www.diplomatie.gouv.fr/en/information-by-country/netherlands/france-and-the-netherlands']);
-  if(tob>=0)uncertain(source,tob,from,to,'Тобаго — колониальные поселения','The whole-island outline does not establish the geographical extent of Dutch, Courlander, or indigenous control, including the 1628 Dutch settlement and later changes.','Контур всего острова не устанавливает границы нидерландских, курляндских поселений и земель коренных народов, включая поселение 1628 г. и позднейшие переходы.',[TOBAGO_HISTORY,'https://www.nalis.gov.tt/resources/tt-content-guide/towns-and-villages/towns-and-villages-s-z/']);
+  const spanish=saintMartinSpanish.periods.find(([s])=>s===source);
+  if(spanish){assert.equal(spanish[1],sint);exclude(source,spanish[2],spanish[3],[sint],d('Spanish occupation of Saint Martin, 1633–1647.','Испанская оккупация Сен-Мартена в 1633–1647 гг.',saintMartinSpanish.sources));}
+  for(const [a,b] of spanish?[[from,spanish[2]-1],[spanish[3]+1,to]]:[[from,to]])if(a<=b)uncertain(source,sint,a,b,'Сен-Мартен — раздел острова','The whole-island source outline cannot be attributed to New Netherland; the 1648 Concordia Treaty provided for Franco-Dutch partition but did not fix the precise line. Earlier colonial settlement control needs separate documentation.','Весь остров не относится к Новым Нидерландам. Договор Конкордия 1648 г. предусматривает франко-нидерландский раздел без точного установления границы; более ранний контроль поселений требует отдельных документов.',[SAINT_MARTIN_PARTITION,'https://www.diplomatie.gouv.fr/en/information-by-country/netherlands/france-and-the-netherlands']);
+  if(tob>=0){const dutchTobago=tobagoDutch.periods.find(([s])=>s===source);
+   if(dutchTobago){assert.equal(dutchTobago[1],tob);exclude(source,dutchTobago[2],dutchTobago[3],[tob],d('Dutch colonial administration of Tobago after the Courland surrender.','Нидерландская колониальная администрация Тобаго после капитуляции курляндцев.',tobagoDutch.sources));}
+   for(const [a,b] of dutchTobago?[[from,dutchTobago[2]-1],[dutchTobago[3]+1,to]]:[[from,to]])if(a<=b)uncertain(source,tob,a,b,'Тобаго — колониальные поселения','The whole-island outline does not establish the geographical extent of Dutch, Courlander, or indigenous control, including the 1628 Dutch settlement and later changes.','Контур всего острова не устанавливает границы нидерландских, курляндских поселений и земель коренных народов, включая поселение 1628 г. и позднейшие переходы.',[TOBAGO_HISTORY,'https://www.nalis.gov.tt/resources/tt-content-guide/towns-and-villages/towns-and-villages-s-z/']);
+  }
  }
  const occupation=d('The metropolitan Netherlands was occupied by German forces in May 1940. Its government remained in exile; the colonial overlay must not duplicate the German occupation polygon.','Метрополия Нидерландов оккупирована немецкими войсками в мае 1940 г. Правительство оставалось в изгнании; колониальный слой не должен дублировать контур немецкой оккупации.',[DUTCH_1940]);
  exclude(12755,1940,1940,[17],occupation);
@@ -1472,7 +1497,103 @@ export function deriveColonialAndSalonaReviews(features,existingExclusions){
    for(const part of parts){const polygon=rawParts(f)[part];if(polygonClipping.intersection(rawParts(g),polygon).length)subtractions.push({target,source,part,from,to,decision:restitution});}
   }
  }
- return {exclusions,transfers,restorations,subtractions,pending};
+ // All five Indian enclaves in the later source are repeatedly attached to
+ // metropolitan France, New Caledonia, and then French Indochina. Match the
+ // pinned footprints, not a loose geographic name or a modern border.
+ const indiaArchive='https://rdf.archives-nationales.culture.gouv.fr/garance/entities/agent/FRAN_RI_013-d3m0bo6nd5i-1kc429fvh2r1t/?lang=en';
+ const india1940='https://www.cheminsdememoire.gouv.fr/de/node/7707';
+ const indiaTransfer='https://statistics.py.gov.in/sites/default/files/ii-iv-freedom-movement.pdf';
+ const indiaCession='https://www.py.gov.in/sites/default/files/lawvol1.pdf';
+ const lateIndia={...d('The five French establishments in India were a separate administration; their source footprints are generalized, not surveyed boundaries. They rallied to Free France in September 1940. Chandernagore passed to Indian administration on 2 May 1950; the remaining four on 1 November 1954.','Пять французских поселений в Индии составляли отдельную администрацию; исходные контуры генерализованы, а не кадастровые границы. В сентябре 1940 г. они присоединились к Свободной Франции. Чандернагор перешёл под управление Индии 2 мая 1950 г., остальные четыре — 1 ноября 1954 г.',[indiaArchive,india1940,indiaTransfer,indiaCession]),name:'French India',nameRu:'Французская Индия',entity:'french-india',identitySource:11407};
+ const ceded={...lateIndia,allowSourceOverlap:true,group:'Индия — передача поселений'};
+ const indianCells=rawParts(features[11464]).slice(7);assert.equal(indianCells.length,5);
+ const indianHashes=indianCells.map(componentHash),chandernagoreHashes=[indianHashes[4],componentHash(rawParts(features[11657])[5])];indianHashes.push(chandernagoreHashes[1]);
+ const isIndian=p=>indianHashes.includes(componentHash(p));
+ const caveat=' The inherited outline has cartographic generalization; no new surveyed boundary is implied.';
+ const reunionDecision={...d('Réunion was a separate French colony, not New Caledonia or Indochina; it rallied to Free France on 28 November 1942 and became an overseas department on 19 March 1946.'+caveat,'Реюньон — отдельная французская колония, не часть Новой Каледонии или Индокитая; присоединился к Свободной Франции 28 ноября 1942 г., стал заморским департаментом 19 марта 1946 г. Береговой контур генерализован.',[REUNION_HISTORY,'https://www.departement974.fr/actualite/19-mars-1793-19-mars-1946-dun-19-mars-lautre-reunion-change-de-nom-de-statut-2023','https://www.cheminsdememoire.gouv.fr/fr/1942-11-28-la-reunion-se-rallie-la-france-libre']),entity:'ile-bourbon',name:'Réunion (French colony)',nameRu:'Реюньон (французская колония)'};
+ const ncDecision={...d('New Caledonia administered separately from French Indochina. The archipelago joined Free France in September 1940 and became an overseas territory in 1946.'+caveat,'Новая Каледония управлялась отдельно от Французского Индокитая. В сентябре 1940 г. присоединилась к Свободной Франции, с 1946 г. — заморская территория. Береговые контуры генерализованы.',['https://service-public.nc/article/repartition-des-competences-en-nouvelle-caledonie','https://www.cheminsdememoire.gouv.fr/fr/la-nouvelle-caledonie-dans-les-deux-guerres-mondiales']),entity:'new-caledonia',identitySource:11576,identitySourceName:'New Caledonia',name:'New Caledonia',nameRu:'Новая Каледония (французская колония)'};
+ const kerguelenDecision={...d('French sovereignty over Kerguelen was reaffirmed in 1893. Administration was attached to Madagascar in 1924 and the islands became a district of the French Southern and Antarctic Lands on 6 August 1955. They were never part of Indochina.'+caveat,'Франция подтвердила суверенитет над Кергеленом в 1893 г.; в 1924 г. архипелаг административно присоединён к Мадагаскару, 6 августа 1955 г. стал округом Французских Южных и Антарктических территорий. К Индокитаю не относился. Береговой контур генерализован.',['https://taaf.fr/actualite/crozet-et-kerguelen-250-ans-dhistoire-et-de-decouvertes/','https://taaf.fr/actualite/2-janvier-1893-une-date-historique-pour-kerguelen/','https://www.cheminsdememoire.gouv.fr/fr/revue/80-ans-apres-1942']),entity:'kerguelen',name:'Kerguelen (French possession)',nameRu:'Кергелен (французское владение)'};
+ const isReunion=p=>componentHash(p)===componentHash(rawParts(features[11464])[6]);
+ const ncHashes=[0,1,3].map(part=>componentHash(rawParts(features[11576])[part]));
+ const isNC=p=>ncHashes.includes(componentHash(p));
+ const kerguelenHashes=[12107,12155].map(i=>componentHash(rawParts(features[i])[0]));
+ const restoreGroup=(source,parts,from,to,decision)=>{
+  exclude(source,from,to,parts,decision);const coordinates=parts.map(part=>rawParts(features[source])[part]);
+  restorations.push({source,part:parts[0],parts,from,to,hash:sha256(JSON.stringify(coordinates)),group:'Разделение французских владений',decision,geometry:{type:'MultiPolygon',coordinates}});
+ };
+ const frenchGroups=features.flatMap((f,index)=>/^\((French Second Republic|Second French Empire|French Third Republic|Vichy France|French Fourth Republic)\)$/.test(f.properties.Name)&&f.properties.FromYear>=1848&&f.properties.ToYear<=1957?[index]:[]);
+ const links=(source,parts,from,to,decision,freeFrom)=>{
+  // Retain the imperial outline only for the actual allegiance. The 1944
+  // Africa-only source overlay is intentionally not expanded to a full empire.
+  for(const target of frenchGroups){const f=features[target];const start=Math.max(from,f.properties.FromYear),end=Math.min(to,f.properties.ToYear);if(start>end)continue;
+   const hashes=parts.map(part=>componentHash(rawParts(features[source])[part]));
+   const present=rawParts(f).flatMap((p,i)=>hashes.includes(componentHash(p))?[i]:[]);
+   if(f.properties.Name==='(Vichy France)'&&start>=freeFrom){if(present.length)exclude(target,start,end,present,decision);continue;}
+   if(start===1944)continue;
+   const missing=parts.filter(part=>!present.some(i=>componentHash(rawParts(f)[i])===componentHash(rawParts(features[source])[part])));
+   if(missing.length)addParts(source,target,start,end,missing,decision);
+   groupLinks.push({target,from:start,to:end,name:decision.name,decision});
+  }
+ };
+ let indianYears=0,reunionYears=0,ncYears=0,kerguelenYears=0;
+ for(const [source,f] of features.entries()){
+  const {Name:name,FromYear:from,ToYear:to}=f.properties;
+  if(from<1848||to>1957||!['French Second Republic','Second French Empire','New Caledonia','French Indochina'].includes(name))continue;
+  const parts=rawParts(f),indiaParts=parts.flatMap((p,i)=>isIndian(p)?[i]:[]),reunionParts=parts.flatMap((p,i)=>isReunion(p)?[i]:[]),ncParts=parts.flatMap((p,i)=>isNC(p)?[i]:[]),kerguelenParts=parts.flatMap((p,i)=>kerguelenHashes.includes(componentHash(p))?[i]:[]);
+  if(indiaParts.length){assert.equal(indiaParts.length,5);indianYears+=indiaParts.length*(to-from+1);exclude(source,from,to,indiaParts,lateIndia);
+   for(const [a,b] of [[from,Math.min(to,1949)],[Math.max(from,1950),Math.min(to,1953)]])if(a<=b){
+    const selected=indiaParts.filter(i=>a<1950||!chandernagoreHashes.includes(componentHash(parts[i])));
+    restoreGroup(source,selected,a,b,lateIndia);links(source,selected,a,b,lateIndia,1940);
+    for(const [target,g] of features.entries()){
+     if(!['British Empire','(British Empire)','British Raj','Republic of India'].includes(g.properties.Name))continue;
+     const start=Math.max(a,g.properties.FromYear),end=Math.min(b,g.properties.ToYear);if(start>end)continue;
+     for(const part of selected)if(polygonClipping.intersection(rawParts(g),parts[part]).length)subtractions.push({target,source,part,from:start,to:end,decision:lateIndia});
+    }
+   }
+   for(const [a,b,selected] of [[Math.max(from,1950),Math.min(to,1953),indiaParts.filter(i=>chandernagoreHashes.includes(componentHash(parts[i])) )],[Math.max(from,1954),to,indiaParts]])if(a<=b){
+    for(const target of frenchGroups){const g=features[target],start=Math.max(a,g.properties.FromYear),end=Math.min(b,g.properties.ToYear);if(start>end)continue;
+     const remove=rawParts(g).flatMap((p,i)=>selected.some(part=>componentHash(parts[part])===componentHash(p))?[i]:[]);if(remove.length)exclude(target,start,end,remove,lateIndia);
+    }
+    for(const [target,g] of features.entries())if(g.properties.Name==='Republic of India'){
+     const start=Math.max(a,g.properties.FromYear),end=Math.min(b,g.properties.ToYear);if(start>end)continue;
+     for(const part of selected)if(polygonClipping.difference(parts[part],rawParts(g)).length)addParts(source,target,start,end,[part],ceded);
+    }
+   }
+  }
+  if(reunionParts.length){assert.equal(reunionParts.length,1);reunionYears+=to-from+1;
+   for(const [a,b,decision] of [[from,Math.min(to,1945),reunionDecision],[Math.max(from,1946),to,{...reunionDecision,name:'Réunion (French overseas department)',nameRu:'Реюньон (заморский департамент Франции)'}]])if(a<=b){restoreGroup(source,reunionParts,a,b,decision);links(source,reunionParts,a,b,decision,1942);}
+  }
+  if(name==='French Indochina'&&ncParts.length){assert.equal(ncParts.length,3);ncYears+=3*(to-from+1);
+   for(const [a,b,decision] of [[from,Math.min(to,1945),ncDecision],[Math.max(from,1946),to,{...ncDecision,nameRu:'Новая Каледония (заморская территория Франции)'}]])if(a<=b){restoreGroup(source,ncParts,a,b,decision);links(source,ncParts,a,b,decision,1940);}
+  }
+  if(name==='French Indochina'&&kerguelenParts.length){assert.equal(kerguelenParts.length,1);kerguelenYears+=to-from+1;
+   for(const [a,b,decision] of [[from,Math.min(to,1923),kerguelenDecision],[Math.max(from,1924),Math.min(to,1954),{...kerguelenDecision,name:'Kerguelen (dependency of French Madagascar)',nameRu:'Кергелен (владение Франции, под управлением Мадагаскара)'}],[Math.max(from,1955),to,{...kerguelenDecision,name:'Kerguelen (French Southern and Antarctic Lands)',nameRu:'Кергелен (Французские Южные и Антарктические территории)'}]])if(a<=b){restoreGroup(source,kerguelenParts,a,b,decision);links(source,kerguelenParts,a,b,decision,1942);}
+  }
+ }
+ assert.equal(indianYears,540);assert.equal(reunionYears,110);assert.equal(ncYears,294);assert.equal(kerguelenYears,63);
+ // The source cells north of the actual city of Tianjin cannot represent
+ // the historically much smaller municipal concession along the Hai River.
+ // Preserve the unresolved footprint and do not paint a fictitious colony.
+ const tianjin=d('The French diplomatic archives document a municipal concession in Tianjin along the Hai River, with its 1861 lease regulations and later mapped extensions. The oversized source cell north of the city is neither its surveyed boundary nor part of Indochina.','Дипломатические архивы Франции документируют городскую концессию на реке Хайхэ, регламент аренды 1861 г. и более поздние планы расширения. Крупная исходная ячейка севернее города не соответствует её границе и не относится к Индокитаю.',['https://archivesdiplomatiques.diplomatie.gouv.fr/ark%3A/14366/tdp05kl67vqh','https://archivesdiplomatiques.diplomatie.gouv.fr/media/c280d180-2df1-4465-9d32-5b0670458caf.pdf']);
+ const tianjinHashes=[11671,12208,12800,12910].map((i,j)=>componentHash(rawParts(features[i])[[11,13,13,13][j]]));
+ let tianjinYears=0;
+ for(const [source,f] of features.entries())if(f.properties.Name==='French Indochina'&&f.properties.FromYear>=1860&&f.properties.ToYear<=1945){
+  const {FromYear:from,ToYear:to}=f.properties;
+  const parts=rawParts(f).flatMap((p,i)=>tianjinHashes.includes(componentHash(p))?[i]:[]);assert.equal(parts.length,1,`Tianjin ${source}`);tianjinYears+=to-from+1;
+  uncertain(source,parts[0],from,to,'Тяньцзинь — концессия',tianjin.reason,tianjin.reasonRu,tianjin.sources);
+ }
+ assert.equal(tianjinYears,86);
+ for(const target of frenchGroups){const f=features[target],parts=rawParts(f).flatMap((p,i)=>tianjinHashes.includes(componentHash(p))?[i]:[]);if(parts.length)exclude(target,f.properties.FromYear,f.properties.ToYear,parts,tianjin);}
+ // The 1859 conquest of Saigon must not be confused with the later cession
+ // of Cochinchina; this source has already painted most of the Mekong delta.
+ const saigon=d('The French campaign began in 1858 and seized Saigon in 1859. The broader cession of Cochinchina occurred in stages in 1862 and 1867. The source extent cannot substantiate French control of these mainland areas in 1859, and neither belongs to New Caledonia.','Французская кампания началась в 1858 г., Сайгон был захвачен в 1859 г.; территориальные уступки Кохинхины происходили в 1862 и 1867 гг. Исходный контур не доказывает контроль Франции над всей обозначенной материковой областью в 1859 г.; ни одна из этих частей не относится к Новой Каледонии.',['https://archives-nationales-outre-mer.culture.gouv.fr/faire-une-recherche/indochine']);
+ for(const part of [9,10])uncertain(11657,part,1859,1859,'Кохинхина — кампания 1859 года',saigon.reason,saigon.reasonRu,saigon.sources);
+ const geneva=d('The Geneva accords replaced French Indochina with sovereign Cambodia and Laos and provisional Vietnamese regroupment zones. Residual French military presence was not French sovereign territory.','Женевские соглашения закрепили независимость Камбоджи и Лаоса, а во Вьетнаме — временные зоны перегруппировки. Оставшееся присутствие французских войск не означает суверенитет Франции.',['https://peacemaker.un.org/en/node/9753','https://www.cheminsdememoire.gouv.fr/fr/14-septembre-1956-les-francais-quittent-lindochine']);
+ exclude(13129,1954,1955,[10,11],geneva);exclude(13137,1954,1955,[22,26],geneva);
+ // The small source land cell in the Vietnamese interior is not a separate
+ // sovereign colony. Preserve it in the contemporary Vietnamese outline.
+ exclude(13172,1956,1957,[5],geneva);exclude(13165,1956,1957,[22],geneva);addParts(13172,13153,1956,1957,[5],geneva);
+ return {exclusions,transfers,restorations,subtractions,pending,groupLinks};
 }
 
 export function normalizeHistoricalSource(source) {
@@ -1486,7 +1607,7 @@ export function normalizeHistoricalSource(source) {
    const cape=deriveCapeTerritoryReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','restorations','pending'])batch[key].push(...cape[key]);
    const war=deriveCeylonWarReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','restorations','transfers','pending'])batch[key].push(...war[key]);
    const medieval=deriveMedievalAndUnionReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','transfers','pending'])batch[key].push(...medieval[key]);batch.groupRebuilds=medieval.groupRebuilds;
-   const colonies=deriveColonialAndSalonaReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','transfers','restorations','subtractions','pending'])batch[key].push(...colonies[key]);
+   const colonies=deriveColonialAndSalonaReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','transfers','restorations','subtractions','pending'])batch[key].push(...colonies[key]);batch.groupLinks=colonies.groupLinks;
    // The old opposing claims remain excluded; the reconstructed three-part
    // island replaces the unresolved footprint, not either original owner.
    assert.equal(batch.pending.filter(p=>p.group==='Эльба'&&p.from===1797&&p.to===1798).length,2);
@@ -1536,6 +1657,8 @@ export function normalizeHistoricalSource(source) {
     const entityId = identity('source-'+role, sourceName, sourceWikidata);
     const base = {entityId, geometryId, role,components,memberOf,sourceSeshatId:String(p.SeshatID??''),sourceWikipedia:String(p.Wikipedia??''), ...(geometryId!==sourceGeometryId?{sourceGeometryId,geometryRepair:'retracted-zero-area-interior-edges'}:{}),name: sourceName, sourceName, sourceWikidata, sourceIndex, sourceFrom, sourceTo, from, to, nameStatus:'candidate', geometryStatus:'candidate'};
     const addOne = revision => {
+      const linked=(batch.groupLinks??[]).filter(t=>t.target===sourceIndex&&t.from<=revision.from&&t.to>=revision.to);
+      if(linked.length){assert.equal(revision.role,'composite');revision={...revision,sourceComponents:revision.sourceComponents??revision.components,components:[...new Set([...revision.components,...linked.map(t=>t.name)])],review:{reason:[...new Set([revision.review?.reason,...linked.map(t=>t.decision.reason)].filter(Boolean))].join(' '),reasonRu:[...new Set([revision.review?.reasonRu,...linked.map(t=>t.decision.reasonRu)].filter(Boolean))].join(' '),sources:[...new Set([...(revision.review?.sources??[]),...linked.flatMap(t=>t.decision.sources)])]}};}
       const attribution=(attributionsBySource.get(sourceIndex)??[]).filter(issue=>issue.from<=revision.to&&issue.to>=revision.from);
       if(attribution.length)revision={...revision,territorialAttributions:attribution};
       const relabel=batch.relabels.get(sourceIndex);
@@ -1572,7 +1695,7 @@ export function normalizeHistoricalSource(source) {
         if(transfer&&!preserveCoastalParts)for(let i=coordinates.length-matchingTransfers.length;i<coordinates.length;i++){
           const t=matchingTransfers[i-(coordinates.length-matchingTransfers.length)],previous=polygonClipping.union(...coordinates.slice(0,i)),overlap=polygonClipping.intersection(previous,coordinates[i]);
           if(t.decision.allowSourceOverlap){
-            assert.ok(['Давао','Сун — объединение','Индия — британская оккупация'].includes(t.decision.group));assert.ok(polygonClipping.difference(coordinates[i],previous).length,`Transfer must retain part outside previous geometry ${sourceIndex}`);if(t.decision.group==='Давао')assert.ok(overlap.length);
+            assert.ok(['Давао','Сун — объединение','Индия — британская оккупация','Индия — передача поселений'].includes(t.decision.group));assert.ok(polygonClipping.difference(coordinates[i],previous).length,`Transfer must retain part outside previous geometry ${sourceIndex}`);if(t.decision.group==='Давао')assert.ok(overlap.length);
           }else assert.equal(overlap.length,0,`Overlapping transfer ${sourceIndex}`);
         }
         const subtractions=matchingSubtractions.map(t=>({index:t.source,part:t.part}));
@@ -1587,7 +1710,7 @@ export function normalizeHistoricalSource(source) {
     };
     const add=revision=>{
       const cuts=new Set([revision.from,revision.to+1]);
-      for(const t of [...(batch.transfers??[]),...(batch.subtractions??[]),...(batch.groupRebuilds??[])])if(t.target===sourceIndex&&t.from<=revision.to&&t.to>=revision.from){cuts.add(Math.max(revision.from,t.from));cuts.add(Math.min(revision.to+1,t.to+1));}
+      for(const t of [...(batch.transfers??[]),...(batch.subtractions??[]),...(batch.groupRebuilds??[]),...(batch.groupLinks??[])])if(t.target===sourceIndex&&t.from<=revision.to&&t.to>=revision.from){cuts.add(Math.max(revision.from,t.from));cuts.add(Math.min(revision.to+1,t.to+1));}
       const sorted=[...cuts].sort((a,b)=>a-b);
       for(let i=0;i<sorted.length-1;i++)addOne({...revision,from:sorted[i],to:sorted[i+1]-1});
     };
@@ -1650,6 +1773,16 @@ export function normalizeHistoricalSource(source) {
     delete restored.territorialIssues;delete restored.territorialAttributions;delete restored.geometrySubtractions;delete restored.geometryTemporalWitnesses;
     records.push(restored);counts.reviewedNames++;
    }
+  }
+  if(batch.count){
+   for(const [d,entity,name,nameRu,reason,reasonRu] of [[saintMartinSpanish,'saint-martin-spanish','Saint Martin (Spanish occupation)','Сен-Мартен (испанская оккупация)','The Spanish took the island in 1633 and withdrew in 1648. The outline is a union of modern generalized island coastlines, not a survey of the seventeenth-century garrison or a claim of uniform local control. The later Franco-Dutch boundary is not inferred.','Испанцы заняли остров в 1633 году и покинули его в 1648 году. Контур объединяет современные генерализованные береговые линии; это не съёмка испанских укреплений и не доказательство повсеместного фактического контроля. Позднейшая франко-нидерландская граница не реконструирована.'],[tobagoDutch,'tobago-dutch','Tobago (Dutch colony)','Тобаго (нидерландская колония)','The Dutch took control after the Courland surrender in 1659; the conservative continuous interval ends in 1664 because sources differ on the subsequent conquest. The generalized modern island coastline represents colonial administration, not the extent of indigenous settlements or a surveyed territorial boundary.','После капитуляции курляндцев в 1659 г. контроль перешёл к нидерландцам; непрерывный период ограничен 1664 г., поскольку даты последующих захватов расходятся в источниках. Генерализованная современная береговая линия обозначает колониальную администрацию, а не границы поселений коренных народов или результаты исторической съёмки.']]){
+   const geometry={type:'MultiPolygon',coordinates:d.coastline},geometryId=sha256(JSON.stringify(geometry));validateGeometry(geometry);geometries.set(geometryId,geometry);
+   for(const [index,part,from,to] of d.periods){
+    const f=source.features[index],origin=records.find(r=>r.sourceIndex===index&&r.from<=from&&r.to>=from&&!r.editorialRestoration),raw=rawParts(f)[part];assert.ok(origin);
+    const outline={type:'MultiPolygon',coordinates:[raw]},outlineGeometryId=sha256(JSON.stringify(outline));geometries.set(outlineGeometryId,outline);
+    const restored={...origin,id:identity('documented-island',index,from,to),entityId:identity('reviewed-territory',entity),name,nameRu,role:'polity',nameStatus:'reviewed',geometryStatus:'candidate',geometryId,sourceGeometryId:sha256(JSON.stringify(f.geometry)),geometryRepair:'reviewed-map-partition',geometryParts:[{index,part}],mapPartition:{kind:'documented-island',area:0,outlineGeometryId,evidence:d.sources[0]},from,to,editorialRestoration:true,components:[],memberOf:[],sourceComponents:origin.sourceComponents??origin.components,sourceMemberOf:origin.sourceMemberOf??origin.memberOf,review:{reason,reasonRu,sources:d.sources}};
+    delete restored.territorialIssues;delete restored.territorialAttributions;delete restored.geometrySubtractions;delete restored.geometryTemporalWitnesses;records.push(restored);counts.reviewedNames++;
+   }}
   }
   // A separate, explicitly approximate cartographic supplement for absent
   // independent island states. Never substitute modern boundaries wholesale.
@@ -1714,7 +1847,7 @@ export function normalizeHistoricalSource(source) {
         const geometryId=saveGeometry(candidate);
         for(let i=0;i<records.length;i++){
           const r=records[i];
-          if(!d.restitution&&r.role!=='polity'||r.geometryStatus!=='candidate'||r.from>year||r.to<year||!d.owners.includes(r.sourceIndex)||r.datedGeography)continue;
+          if(!d.restitution&&!d.cutOverlays&&r.role!=='polity'||r.geometryStatus!=='candidate'||r.from>year||r.to<year||!d.owners.includes(r.sourceIndex)||r.datedGeography)continue;
           const other=geometries.get(r.geometryId);if(!checked('predecessor intersection',r,()=>overlaps(candidate,other)))continue;
           const cutGeometryId=geometryId,baseGeometryId=r.boundaryAdjustment?.baseGeometryId??r.geometryId;
           const cuts=[...(r.boundaryAdjustment?.cuts??[]),{cutGeometryId,iso:d.iso}];
@@ -1727,7 +1860,7 @@ export function normalizeHistoricalSource(source) {
         }
         const successor=records.find(r=>r.sourceIndex===d.index&&r.from<=p.FromYear&&r.to>=p.FromYear&&!r.editorialRestoration&&!r.datedGeography);
         assert.ok(successor);
-        records.push({id:identity(d.restitution?'dated-colonial-restitution':'dated-independence',d.index,year),entityId:successor.entityId,geometryId,role:'polity',components:[],memberOf:[],sourceSeshatId:String(p.SeshatID??''),sourceWikipedia:String(p.Wikipedia??''),sourceName:p.Name.trim(),sourceWikidata:p.Wikidata??'',sourceIndex:d.index,sourceFrom:p.FromYear,sourceTo:p.ToYear,from:year,to:year,name:d.name,nameRu:d.nameRu,nameStatus:'reviewed',geometryStatus:'candidate',datedGeography:{referenceYear:p.FromYear,outlineGeometryId,trimGeometryIds,parts:selectedParts},review:{reason:d.restitution?'Documented return of colonial settlements; generalized outline from first subsequent dated source, adjusted to avoid neighboring overlaps, not an exact contemporary boundary.':'Documented independent state in the transition year; generalized outline from first subsequent dated source, adjusted to avoid neighboring overlaps, not an exact contemporary boundary.',reasonRu:`${d.restitution?'Возвращённые колониальные поселения':'Независимое государство'} в конце ${year} года. Контур основан на датированном источнике за ${p.FromYear} год и согласован с соседними полигонами; точная граница переходного года не подтверждена. ${d.note??''}`,sources}});
+        records.push({id:identity(d.restitution?'dated-colonial-restitution':'dated-independence',d.index,year),entityId:successor.entityId,geometryId,role:'polity',components:[],memberOf:[],sourceSeshatId:String(p.SeshatID??''),sourceWikipedia:String(p.Wikipedia??''),sourceName:p.Name.trim(),sourceWikidata:p.Wikidata??'',sourceIndex:d.index,sourceFrom:p.FromYear,sourceTo:p.ToYear,from:year,to:year,name:d.namesByYear?.[year]?.[0]??d.name,nameRu:d.namesByYear?.[year]?.[1]??d.nameRu,nameStatus:'reviewed',geometryStatus:'candidate',datedGeography:{referenceYear:p.FromYear,outlineGeometryId,trimGeometryIds,parts:selectedParts},review:{reason:d.restitution?'Documented return of colonial settlements; generalized outline from first subsequent dated source, adjusted to avoid neighboring overlaps, not an exact contemporary boundary.':'Documented independent state or provisional administrative zone in the transition year; generalized outline from first subsequent dated source, adjusted to avoid neighboring overlaps, not an exact contemporary boundary.',reasonRu:`${d.restitution?'Возвращённые колониальные поселения':d.namesByYear||d.iso==='VNM'?'Административная зона':'Независимое государство'} в конце ${year} года. Контур основан на датированном источнике за ${p.FromYear} год и согласован с соседними полигонами; точная граница переходного года не подтверждена. ${d.note??''}`,sources}});
         counts.reviewedNames++;
       }
     }
