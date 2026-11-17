@@ -38,9 +38,11 @@ const safeControls=source("src/lektrusMobileSafeControls.css");
 assert.match(safeControls,
   /@media screen and \(max-width:1100px\) and \(max-height:450px\) and \(orientation:landscape\)/);
 assert.match(safeControls,
-  /body \.workspace \.board-controls\s*\{\s*left:auto!important;\s*right:max\(12px,env\(safe-area-inset-right,0px\)\)!important/);
+  /body \.workspace \.board-controls\s*\{\s*left:auto!important;\s*right:calc\(var\(--lektrus-safe-right\) \+ 12px\)!important/);
 assert.match(safeControls,
-  /html\.lektrus-android-app body \.workspace \.board-controls\s*\{\s*left:auto!important/);
+  /--lektrus-safe-right:max\(env\(safe-area-inset-right,0px\),var\(--lektrus-cutout-right,0px\),var\(--lektrus-system-right,0px\)\)/);
+assert.match(safeControls,/\.board-home-button\s*\{\s*margin-left:0!important/);
+assert.match(safeControls,/left:var\(--lektrus-rail-left\)!important/);
 
 assert.ok(shell.includes("Lektrus"));
 assert.ok(base.includes(".lektrus-category-strip"));

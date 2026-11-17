@@ -1,10 +1,17 @@
 /* Mobile board chrome, after all legacy responsive overrides.
    Preserve board actions on phones and account for Android camera cutouts. */
+:root {
+  --lektrus-safe-left:max(env(safe-area-inset-left,0px),var(--lektrus-cutout-left,0px),var(--lektrus-system-left,0px));
+  --lektrus-safe-right:max(env(safe-area-inset-right,0px),var(--lektrus-cutout-right,0px),var(--lektrus-system-right,0px));
+  --lektrus-safe-top:max(env(safe-area-inset-top,0px),var(--lektrus-cutout-top,0px),var(--lektrus-system-top,0px));
+  --lektrus-safe-bottom:max(env(safe-area-inset-bottom,0px),var(--lektrus-cutout-bottom,0px));
+  --lektrus-rail-left:calc(var(--lektrus-safe-left) + clamp(10px,1.5vw,16px));
+}
 @media screen and (max-width:1100px) {
   html body .topbar:not(.update-banner) {
     box-sizing:border-box!important;
-    padding-left:max(4px,env(safe-area-inset-left,0px))!important;
-    padding-right:max(18px,env(safe-area-inset-right,0px))!important;
+    padding-left:calc(var(--lektrus-safe-left) + 8px)!important;
+    padding-right:calc(var(--lektrus-safe-right) + 8px)!important;
   }
   html body .topbar .topbar-right {
     margin-right:0!important;
@@ -12,7 +19,8 @@
     max-width:calc(54vw - 12px)!important;
   }
   html body .topbar .board-home-button {
-    margin-left:-8px!important;
+    margin-left:0!important;
+    flex-shrink:0!important;
   }
   body .workspace .board-controls {
     display:flex!important;
@@ -60,16 +68,32 @@
 }
 /* Landscape mobile: toolbar starts below header and moves toward the safe left edge. */
 @media screen and (max-width:1100px) and (orientation:landscape) {
-  body .workspace nav.mobile-board-tools {
-    left:63px!important;
-    top:calc(72px + env(safe-area-inset-top,0px))!important;
-    max-height:calc(100dvh - 88px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;
+  html body .topbar:not(.update-banner) {
+    height:calc(48px + var(--lektrus-safe-top))!important;
+    min-height:calc(48px + var(--lektrus-safe-top))!important;
+    max-height:calc(48px + var(--lektrus-safe-top))!important;
+    padding-top:var(--lektrus-safe-top)!important;
   }
-  body .workspace section.mobile-tools-sheet {
-    top:calc(72px + env(safe-area-inset-top,0px))!important;
+  html body .workspace nav.mobile-board-tools {
+    left:var(--lektrus-rail-left)!important;
+    right:auto!important;
+    top:calc(72px + var(--lektrus-safe-top))!important;
+    max-height:calc(100dvh - 88px - var(--lektrus-safe-top) - var(--lektrus-safe-bottom))!important;
   }
-  body .workspace .board-controls {
-    left:146px!important;
+  html body .workspace section.mobile-tools-sheet {
+    left:calc(var(--lektrus-rail-left) + 60px)!important;
+    top:calc(72px + var(--lektrus-safe-top))!important;
+    width:min(510px,calc(100vw - var(--lektrus-rail-left) - var(--lektrus-safe-right) - 74px))!important;
+    max-width:calc(100vw - var(--lektrus-rail-left) - var(--lektrus-safe-right) - 74px)!important;
+    max-height:calc(100dvh - 88px - var(--lektrus-safe-top) - var(--lektrus-safe-bottom))!important;
+  }
+  html body .workspace .board-controls {
+    left:calc(var(--lektrus-rail-left) + 82px)!important;
+    bottom:calc(14px + var(--lektrus-safe-bottom))!important;
+    max-width:calc(100vw - var(--lektrus-rail-left) - var(--lektrus-safe-right) - 96px)!important;
+  }
+  html body .workspace :is(.minimap,.zoom-controls) {
+    right:calc(var(--lektrus-safe-right) + 12px)!important;
   }
 }
 /* Portrait phones: zoom and remaining board actions above the bottom tool dock. */
@@ -82,71 +106,27 @@
   }
 }
 
-/* Landscape phone: position the rail and flyout clear of the camera cutout. */
-@media screen and (max-width:1100px) and (orientation:landscape) {
-  body .workspace section.mobile-tools-sheet {
-    left:123px!important;
-    width:min(510px,calc(100vw - 135px - env(safe-area-inset-right,0px)))!important;
-    max-width:calc(100vw - 135px)!important;
-  }
-  body .workspace .board-controls {
-    max-width:calc(100vw - 145px - env(safe-area-inset-right,0px))!important;
-  }
-}
-
-/* Native Android: real cutout geometry comes from WindowInsets in MainActivity.
-   env() remains a fallback for other WebViews. The canvas stays full-width,
-   only its floating controls are kept in the device's interactive safe area. */
-html.lektrus-android-app {
-  --lektrus-cutout-left: env(safe-area-inset-left, 0px);
-  --lektrus-cutout-right: env(safe-area-inset-right, 0px);
-  --lektrus-cutout-top: env(safe-area-inset-top, 0px);
-  --lektrus-cutout-bottom: env(safe-area-inset-bottom, 0px);
-  --lektrus-edge-gap: clamp(12px, 1.45vw, 22px);
-  --lektrus-tool-gap: clamp(10px, 2.6vw, 40px);
-}
-@media screen and (max-width:1100px) and (orientation:landscape) {
-  html.lektrus-android-app body .topbar:not(.update-banner) {
-    padding-left:calc(max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) + var(--lektrus-edge-gap))!important;
-    padding-right:calc(max(var(--lektrus-cutout-right), env(safe-area-inset-right,0px)) + var(--lektrus-edge-gap))!important;
-  }
-  html.lektrus-android-app body .topbar .board-home-button {
-    margin-left:0!important;
-  }
-  html.lektrus-android-app body .workspace nav.mobile-board-tools {
-    left:calc(max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) + var(--lektrus-tool-gap))!important;
-    right:auto!important;
-    top:calc(72px + max(var(--lektrus-cutout-top), env(safe-area-inset-top,0px)))!important;
-    max-height:calc(100dvh - 88px - max(var(--lektrus-cutout-top), env(safe-area-inset-top,0px)) - max(var(--lektrus-cutout-bottom), env(safe-area-inset-bottom,0px)))!important;
-  }
-  html.lektrus-android-app body .workspace section.mobile-tools-sheet {
-    left:calc(max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) + var(--lektrus-tool-gap) + 60px)!important;
-    top:calc(72px + max(var(--lektrus-cutout-top), env(safe-area-inset-top,0px)))!important;
-    width:min(510px,calc(100vw - max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) - max(var(--lektrus-cutout-right), env(safe-area-inset-right,0px)) - var(--lektrus-tool-gap) - 74px))!important;
-    max-width:calc(100vw - max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) - max(var(--lektrus-cutout-right), env(safe-area-inset-right,0px)) - var(--lektrus-tool-gap) - 74px)!important;
-    max-height:calc(100dvh - 88px - max(var(--lektrus-cutout-top), env(safe-area-inset-top,0px)) - max(var(--lektrus-cutout-bottom), env(safe-area-inset-bottom,0px)))!important;
-  }
-  html.lektrus-android-app body .workspace .board-controls {
-    left:calc(max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) + var(--lektrus-tool-gap) + 82px)!important;
-    max-width:calc(100vw - max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) - max(var(--lektrus-cutout-right), env(safe-area-inset-right,0px)) - var(--lektrus-tool-gap) - 96px)!important;
-  }
-  html.lektrus-android-app body .workspace .minimap,
-  html.lektrus-android-app body .workspace .zoom-controls {
-    right:calc(max(var(--lektrus-cutout-right), env(safe-area-inset-right,0px)) + var(--lektrus-edge-gap))!important;
-  }
-}
-
 /* Short landscape: the bottom-left zoom bar overlapped the action strip of
    a selected object (844×390: 974 px²). Return zoom controls to the lower
    right, away from the touch rail and the usual selection-action position.
    Keep the native Android right cutout outside the touch targets. */
 @media screen and (max-width:1100px) and (max-height:450px) and (orientation:landscape) {
-  body .workspace .board-controls {
+  html body .workspace .board-controls {
     left:auto!important;
-    right:max(12px,env(safe-area-inset-right,0px))!important;
+    right:calc(var(--lektrus-safe-right) + 12px)!important;
   }
-  html.lektrus-android-app body .workspace .board-controls {
-    left:auto!important;
-    right:calc(max(var(--lektrus-cutout-right),env(safe-area-inset-right,0px)) + var(--lektrus-edge-gap))!important;
+}
+
+/* Larger native tablets use the desktop tool rail; keep both docking sides safe. */
+@media screen and (min-width:1101px) and (orientation:landscape) {
+  html.lektrus-native-app body .topbar:not(.update-banner) {
+    padding-left:calc(var(--lektrus-safe-left) + 16px)!important;
+    padding-right:calc(var(--lektrus-safe-right) + 16px)!important;
+  }
+  html.lektrus-native-app body .workspace.lectris-tools-left .toolbar.compact-toolbar {
+    left:calc(var(--lektrus-safe-left) + 12px)!important;
+  }
+  html.lektrus-native-app body .workspace.lectris-tools-right .toolbar.compact-toolbar {
+    right:calc(var(--lektrus-safe-right) + 12px)!important;
   }
 }
