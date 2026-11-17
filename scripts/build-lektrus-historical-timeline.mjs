@@ -169,7 +169,7 @@ export const territorialBatch=JSON.parse(fs.readFileSync(new URL('../docs/histor
 export const territorialResolutions=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-batch-989-resolutions.json',import.meta.url),'utf8'));
 export function deriveTerritorialBatch(features,batch=territorialBatch){
  const exclusions=[],pending=[],resolved=[],restorations=[],relabels=new Map(),attributions=[],extensions=[],seen=new Set(),transfers=[],pendingExtensions=[];
- const transfer=territorialResolutions.transfer,ceylon=territorialResolutions.ceylonTransfer;
+ const transfer=territorialResolutions.transfer,ceylon=territorialResolutions.ceylonTransfer,mindanao=territorialResolutions.mindanaoReview;
  assert.equal(batch.sourceSha256,PINNED_SOURCE_SHA256);
  for(const row of batch.rows){
   const {source,part,other,otherParts,hash,from,to,status,group,evidence}=row;
@@ -181,12 +181,12 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
   assert.equal(componentHash(parts[part]),hash,`Reviewed geometry changed ${source}:${part}`);
   assert.ok(otherParts.length&&otherParts.every(p=>componentHash(otherGeometry[p])===hash),`Counterpart geometry changed ${other}`);
   assert.ok(status==='ready'||status==='reconstruct');
-  const reason=batch.descriptions[group];assert.ok(reason&&evidence.startsWith('https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-'));
+  const reason=group===mindanao.group?mindanao.reasonRu:batch.descriptions[group];assert.ok(reason&&evidence.startsWith('https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-'));
   for(let year=from;year<=to;year++){if(year===0)continue;const key=`${source}:${hash}:${year}`;assert.ok(!seen.has(key),`Duplicate reviewed component-year ${key}`);seen.add(key);}
   const component=territorialResolutions.componentRestorations[hash];
   const retained=territorialResolutions.retained[group],restored=territorialResolutions.restored[group]??(component?.group===group?component:undefined),relabel=territorialResolutions.relabel[group],moved=group===transfer.group?transfer:group===ceylon.group?ceylon:undefined;
   const decision=status==='reconstruct'?(retained??restored??relabel??moved):undefined;
-  const rule=[source,parts.length,from,[part],status==='ready'?'Historically reviewed exact duplicate: '+group+'.':decision?decision.reason:'Incorrect or conflated political attribution; territorial reconstruction is still pending: '+group+'.',decision?.reasonRu??reason,decision?.sources[0]??evidence,to];
+  const rule=[source,parts.length,from,[part],status==='ready'?'Historically reviewed exact duplicate: '+group+'.':decision?decision.reason:group===mindanao.group?mindanao.reason:'Incorrect or conflated political attribution; territorial reconstruction is still pending: '+group+'.',decision?.reasonRu??reason,decision?.sources[0]??(group===mindanao.group?mindanao.sources[0]:evidence),to];
   // Unresolved original contours must not be presented as established filled
   // political boundaries. Preserve their source parts as explicit open issues.
   // Relabel a wholly misidentified island rather than deleting its geography.
@@ -201,7 +201,7 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
     for(const [start,end] of ranges)restorations.push({...row,from:start,to:end,decision,geometry:{type:'MultiPolygon',coordinates:[parts[part]]}});
    }
    if(restored?.excludeCounterpart)exclusions.push([other,otherGeometry.length,from,otherParts,decision.reason,decision.reasonRu,decision.sources[0],to]);
-  }else if(status==='reconstruct')pending.push({...row,reason,geometry:{type:'Polygon',coordinates:parts[part]},counterpartName:counterpart.properties.Name});
+  }else if(status==='reconstruct')pending.push({...row,reason,geometry:{type:'Polygon',coordinates:parts[part]},counterpartName:counterpart.properties.Name,...(group===mindanao.group?{sources:mindanao.sources}:{})});
  }
  for(const [group,decision] of Object.entries(territorialResolutions.relabel))for(const index of decision.indices){
   const f=features[index];assert.equal(f.properties.Name,'Saint Kitts');assert.equal(rawParts(f).length,1);assert.equal(componentHash(rawParts(f)[0]),decision.hash);
@@ -210,6 +210,17 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
  // Extend exact, historically justified island corrections to adjacent years
  // that were not duplicates in the original 989-case registry.
  const extensionKeys=new Set();
+ // The exact same entire-island geometry continued outside the duplicate
+ // interval. Do not turn cessation of the duplicate into evidence of control.
+ for(const [source,part,from,to,other] of mindanao.pendingRoutes){
+  const f=features[source],parts=rawParts(f),hash=mindanao.hash;
+  assert.equal(componentHash(parts[part]),hash);assert.ok(f.properties.FromYear<=from&&f.properties.ToYear>=to);
+  const original=batch.rows.find(r=>r.group===mindanao.group&&r.source===source&&r.other===other);
+  assert.ok(original&&original.hash===hash);
+  for(let year=from;year<=to;year++){const key=`${source}:${hash}:${year}`;assert.ok(!seen.has(key)&&!extensionKeys.has(key));extensionKeys.add(key);}
+  const issue={source,part,from,to,other,hash,group:mindanao.group,status:'reconstruct',reason:mindanao.reasonRu,evidence:original.evidence,sources:mindanao.sources,geometry:{type:'Polygon',coordinates:parts[part]},counterpartName:'Местные политические образования (границы не установлены)'};
+  pending.push(issue);pendingExtensions.push(issue);exclusions.push([source,parts.length,from,[part],mindanao.reason,mindanao.reasonRu,mindanao.sources[0],to]);
+ }
  for(const ext of territorialResolutions.extensions){
   const {source,part,from,to,group,other,otherPart}=ext,f=features[source],parts=rawParts(f),hash=batch.rows.find(r=>r.group===group).hash;
   assert.ok(f.properties.Type==='POLITY'&&f.properties.FromYear<=from&&f.properties.ToYear>=to&&from<=to);assert.equal(componentHash(parts[part]),hash);
@@ -617,7 +628,7 @@ export function normalizeHistoricalSource(source) {
   for(const issue of batch.pending){
    const geometryId=sha256(JSON.stringify(issue.geometry));geometries.set(geometryId,issue.geometry);
    if(!pendingBySource.has(issue.source))pendingBySource.set(issue.source,[]);
-   pendingBySource.get(issue.source).push({part:issue.part,hash:issue.hash,from:issue.from,to:issue.to,group:issue.group,reason:issue.reason,evidence:issue.evidence,counterpartName:issue.counterpartName,geometryId});
+   pendingBySource.get(issue.source).push({part:issue.part,hash:issue.hash,from:issue.from,to:issue.to,group:issue.group,reason:issue.reason,evidence:issue.evidence,counterpartName:issue.counterpartName,geometryId,...(issue.sources?{sources:issue.sources}:{})});
   }
   const counts = {sourcePolities:0, sourceComposites:0, sourceRelations:0, zeroBoundaryRecords:0, revisions:0, uniqueGeometries:0, rejectedRevisions:0, reviewedNames:0};
   for (const [sourceIndex, feature] of source.features.entries()) {

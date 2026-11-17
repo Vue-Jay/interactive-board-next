@@ -6,6 +6,7 @@ import path from 'node:path';
 import {createRequire} from 'node:module';
 import {historicalBlockForYear,historicalYearState} from '../src/lektrusHistoricalTimeline.ts';
 import {historicalGapLocators} from '../src/lektrusHistoricalGapLocators.ts';
+import {historicalUnresolvedCenters} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 function planAnnualYears(registry,shard,shards){
  const years=[];
  for(const period of registry.periods)for(let year=period.to;year>=period.from;year--)if(year!==0)years.push({year,weight:20+period.records});
@@ -161,6 +162,21 @@ async function main(){
      const expectedLocators=state.coverageGaps.flatMap(g=>historicalGapLocators[g.name]?[historicalGapLocators[g.name].iso]:[]).sort();
      const actualLocators=await page.locator('[data-atlas-gap-locator]').evaluateAll(nodes=>nodes.map(n=>n.dataset.atlasGapLocator).sort());
      if(JSON.stringify(actualLocators)!==JSON.stringify(expectedLocators))row.issues.push({kind:'wrong-gap-locators',expected:expectedLocators,actual:actualLocators});
+     const centers=historicalUnresolvedCenters(year,state.territorialIssues);
+     const actualCenters=await page.locator('[data-atlas-historical-center]').evaluateAll(nodes=>nodes.map(n=>n.dataset.atlasHistoricalCenter).sort());
+     if(JSON.stringify(actualCenters)!==JSON.stringify(centers.map(c=>c.id).sort()))row.issues.push({kind:'wrong-historical-center-locators',expected:centers.map(c=>c.id),actual:actualCenters});
+     row.historicalCenters=[];
+     for(const center of centers){
+      const item={id:center.id,title:center.title,clicked:false,verified:false};
+      try{
+       await page.locator(`[data-atlas-historical-center="${center.id}"]`).dispatchEvent('click');item.clicked=true;
+       const card=page.locator('.lektrus-atlas-info-object .lektrus-atlas-description').filter({hasText:center.title});
+       await card.waitFor({state:'visible',timeout:5000});
+       item.verified=await card.getByRole('link',{name:'Исторический источник ↗'}).getAttribute('href')===center.url;
+       if(!item.verified)row.issues.push({kind:'wrong-historical-center-source',id:center.id});
+      }catch(error){row.issues.push({kind:'historical-center-card-error',id:center.id,message:String(error?.message??error)});}
+      row.historicalCenters.push(item);
+     }
      const layer=page.getByLabel('Дополнительный исторический слой');
      for(const mode of ['none','composite','relation','settlement']){
       try{

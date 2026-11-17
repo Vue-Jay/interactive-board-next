@@ -4,7 +4,7 @@ export const HISTORY_SCHEMA = 5;
 export const HISTORY_FIRST_YEAR = -3400;
 export const HISTORY_LAST_YEAR = 2024;
 export type HistoricalGeometry = {type: 'Polygon' | 'MultiPolygon'; coordinates: unknown};
-export type HistoricalTerritorialIssue={part:number;hash:string;from:number;to:number;group:string;reason:string;evidence:string;counterpartName:string;geometryId:string};
+export type HistoricalTerritorialIssue={part:number;hash:string;from:number;to:number;group:string;reason:string;evidence:string;counterpartName:string;geometryId:string;sources?:string[]};
 export type HistoricalTerritorialAttribution={part:number;hash:string;from:number;to:number;group:string;reason:string;sources:string[]};
 export type HistoricalRevision = {
   id: string; entityId: string; geometryId: string;
@@ -116,6 +116,7 @@ export function validateHistoricalPack(value: unknown, block: HistoricalBlock): 
     if (!geometry || !['Polygon','MultiPolygon'].includes(geometry.type) || !Array.isArray(geometry.coordinates)) throw new Error('Missing historical geometry');
     if(record.territorialIssues!==undefined){
       if(!Array.isArray(record.territorialIssues)||!record.review?.sources.length||record.territorialIssues.some(i=>!Number.isSafeInteger(i.part)||i.part<0||!hash.test(i.hash)||!hash.test(i.geometryId)||!validHistoricalYear(i.from)||!validHistoricalYear(i.to)||i.from>i.to||i.from>record.to||i.to<record.from||!i.group||!i.reason||!i.counterpartName||!i.evidence.startsWith('https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-')||pack.geometries[i.geometryId]?.type!=='Polygon'))throw new Error('Invalid unresolved historical territorial issue');
+      if(record.territorialIssues.some(i=>i.sources!==undefined&&(!Array.isArray(i.sources)||!i.sources.length||i.sources.some(s=>typeof s!=='string'||!s.startsWith('https://')))))throw new Error('Invalid unresolved historical evidence sources');
     }
     if(record.territorialAttributions!==undefined&&(!Array.isArray(record.territorialAttributions)||record.territorialAttributions.some(i=>!Number.isSafeInteger(i.part)||i.part<0||!hash.test(i.hash)||!validHistoricalYear(i.from)||!validHistoricalYear(i.to)||i.from>i.to||i.from>record.to||i.to<record.from||!i.group||!i.reason||!Array.isArray(i.sources)||!i.sources.length||i.sources.some(s=>!s.startsWith('https://')))))throw new Error('Invalid reviewed territorial attribution');
     if(record.editorialRestoration!==undefined&&(record.editorialRestoration!==true||record.role!=='polity'||record.geometryStatus!=='candidate'||record.nameStatus!=='reviewed'||record.geometryRepair!=='reviewed-source-components'||!record.review?.sources.length))throw new Error('Invalid editorial restoration');

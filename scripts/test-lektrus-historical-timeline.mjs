@@ -5,6 +5,7 @@ import polygonClipping from 'polygon-clipping';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch} from './build-lektrus-historical-timeline.mjs';
+import {historicalUnresolvedCenters} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
 import {createHistoricalTimelineLoader} from '../src/lektrusHistoricalTimelineLoader.ts';
 import {referenceAdmissionWarnings} from './audit-lektrus-atlas-annual.mjs';
@@ -221,6 +222,18 @@ if(outDir&&sourceFile){
         assert.ok(state.territorialIssues.some(i=>i.sourceIndex===item.source&&i.hash===item.hash&&componentHash(i.geometry.coordinates)===item.hash));
       }
       if(year>=1416&&year<=1539)assert.equal(sourceRecords.find(r=>r.sourceName==='County of Savoy')?.name,'Duchy of Savoy');
+      const mindanaoIssues=state.territorialIssues.filter(i=>i.group==='Mindanao');
+      if(year>=1512&&year<=1608){
+        assert.equal(mindanaoIssues.length,year>=1521&&year<=1581?2:1);
+        assert.ok(mindanaoIssues.every(i=>i.sources?.length>=3&&i.sources.every(s=>s.startsWith('https://'))));
+        if(year<=1581)assert.ok(!hasPart(activeRecords.get(7792),7792,7));
+        if(year>=1521)assert.equal(activeRecords.get(7904).geometryStatus,'rejected');
+      }else assert.equal(mindanaoIssues.length,0);
+      const expectedCenters=[...(year>=1521&&year<=1608?['maguindanao']:[]),...(year>=1521&&year<=1565?['butuan']:[]),...(year>=1596&&year<=1608?['buayan']:[])];
+      const centers=historicalUnresolvedCenters(year,state.territorialIssues);
+      assert.deepEqual(centers.map(c=>c.id),expectedCenters.map(id=>`historical-center-${id}`));
+      for(const c of centers){assert.ok(c.url.startsWith('https://'));assert.ok(c.description.includes('Точка'));assert.ok(c.lon>=121&&c.lon<=127&&c.lat>=5&&c.lat<=10);assert.equal(c.year,year);}
+      assert.deepEqual(historicalUnresolvedCenters(year,[]),[]);
       if(year>=1629&&year<=1814){const kandy=state.drawable.filter(({record})=>record.name==='Kingdom of Kandy');assert.equal(kandy.length,1);assert.equal(kandy[0].record.nameRu,'Королевство Канди');assert.deepEqual(kandy[0].record.memberOf,[]);assert.ok(kandy[0].record.sourceMemberOf.length);}
       const byEntity=new Map(),byGeometry=new Map(),allGeometry=new Map();
       for(const r of state.records){
@@ -249,7 +262,7 @@ if(outDir&&sourceFile){
   }
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,537);assert.equal(batchPending,159);
-  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,189);assert.equal(extended,364);assert.equal([...pendingExtensionsByYear.values()].flat().length,24);
+  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,189);assert.equal(extended,364);assert.equal([...pendingExtensionsByYear.values()].flat().length,60);
   console.log(`Reviewed batch: ${batchReady} original corrections; ${batchResolved} newly resolved attributions; ${batchPending} open; ${extended} adjacent cases; ${restoredRecordYears} restored territory-years`);
   assert.equal(seen.size,manifest.counts.revisions);
   assert.equal(allGeometries.size,manifest.counts.uniqueGeometries);
