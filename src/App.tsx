@@ -7,7 +7,7 @@ import LectrisWorkspaceShell from "./LectrisWorkspaceShell";
 import { clearNotificationCache } from "./notificationsStore";
 import { clearAiBoardTransfer } from "./aiLocalStore";
 import { clearAccountAccessCache, getAccountAccess, getCachedAccountAccess, type AccountRole } from "./accountRoleStore";
-import { clearPendingBoardPath, clearPendingShare, initialRoute, nativeBoardPath, parseRoute, pendingBoardPath, pendingSharePath, rememberBoardPath, rememberShareToken, type AppRoute } from "./routes";
+import { clearPendingBoardPath, clearPendingShare, initialRoute, nativeBoardPath, nativeBoardUrl, parseRoute, pendingBoardPath, pendingSharePath, rememberBoardPath, rememberShareToken, type AppRoute } from "./routes";
 import { redeemShareLink } from "./shareLinks";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
@@ -158,6 +158,9 @@ export default function App() {
   const [sharePassword, setSharePassword] = useState("");
   const [submittedSharePassword, setSubmittedSharePassword] = useState<{token:string;value:string}|null>(null);
   const [sharePasswordRequired, setSharePasswordRequired] = useState(false);
+  const [browserJoinToken,setBrowserJoinToken]=useState("");
+  const mobileJoinUrl=route.kind==="join"&&browserJoinToken!==route.token&&!Capacitor.isNativePlatform()&&
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)?nativeBoardUrl(`/join/${route.token}`):null;
   const [remoteVersion, setRemoteVersion] = useState<number | null>(null);
   const [boardMountKey, setBoardMountKey] = useState(0);
   const changeAppRolePreview=useCallback((role:"actual"|AccountRole)=>{
@@ -432,6 +435,8 @@ export default function App() {
     if (route.kind === "demo") { setBoardLoading(false); return; }
     if (authUser.guestBoardId && route.kind === "home") { navigate(`/board/${authUser.guestBoardId}`,true);return; }
     if (route.kind === "home") { setBoardLoading(false); return; }
+    // Don't redeem in the browser before the participant can choose the app.
+    if (mobileJoinUrl) {setBoardLoading(false);return;}
     setBoardLoading(true);
     void (async () => {
       try {
@@ -475,7 +480,7 @@ export default function App() {
       }
     })();
     return () => { alive = false; };
-  }, [route, authReady, authUser, navigate, openBoard, submittedSharePassword]);
+  }, [route, authReady, authUser, navigate, openBoard, submittedSharePassword, mobileJoinUrl]);
 
   useEffect(()=>{
     if(!authUser)return;
@@ -520,6 +525,8 @@ export default function App() {
   if (!authUser) {
     return <AuthScreen initialError={authCallbackError} onAuthenticated={(user) => { clearAccountAccessCache(); clearNotificationCache(); if(user.guestBoardId){clearPendingShare();navigate(`/board/${user.guestBoardId}`,true);}setAuthUser(user); setActiveBoard(null); }} />;
   }
+
+  if(mobileJoinUrl&&route.kind==="join")return <main className="auth-shell"><section className="auth-card"><strong>Приглашение на доску Lektrus</strong><p>Где открыть доску?</p><div className="share-password-actions"><a className="primary" href={mobileJoinUrl}>Открыть в приложении</a><button type="button" onClick={()=>setBrowserJoinToken(route.token)}>Продолжить в браузере</button></div><button type="button" onClick={()=>{clearPendingShare();navigate("/app",true)}}>Отмена</button></section></main>;
 
   if (!activeBoard) {
     return (

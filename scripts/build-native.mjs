@@ -19,4 +19,7 @@ if (!offline) {
 }
 const result = spawnSync(process.execPath, [process.env.npm_execpath, 'run', 'build'], {env, stdio:'inherit'});
 if (result.error) throw result.error;
-process.exit(result.status ?? 1);
+if(result.status!==0)process.exit(result.status??1);
+const pdf = spawnSync(process.execPath, ['scripts/test-native-pdf-worker.mjs'], {env,stdio:'inherit'});
+if(pdf.error)throw pdf.error;
+process.exit(pdf.status??1);
