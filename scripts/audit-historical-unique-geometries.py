@@ -83,7 +83,7 @@ def audit(folder, archive, output, original_source):
         for r in pack['records']:
             assert r['id'] not in records or records[r['id']] == r
             records[r['id']] = r
-            if r.get('geometryRepair') in ('reviewed-source-components', 'reviewed-union-source-components'):
+            if r.get('geometryRepair') in ('reviewed-source-components', 'reviewed-union-source-components', 'reviewed-difference-source-components'):
                 selections[r['id']] = (r, pack['geometries'][r['geometryId']])
             elif r.get('sourceGeometryId'):
                 repaired[r['sourceIndex']] = pack['geometries'][r['geometryId']]
@@ -108,7 +108,16 @@ def audit(folder, archive, output, original_source):
             g = shape(feature['geometry'])
             parts.append(polygons(g)[part['part']])
         after = shape(raw)
-        assert after.is_valid and after.equals(unary_union(parts)), f'Component selection changed geometry at {revision["sourceIndex"]}'
+        expected = unary_union(parts)
+        if revision.get('geometryRepair') == 'reviewed-difference-source-components':
+            for part in revision['geometrySubtractions']:
+                feature = original['features'][part['index']]
+                assert feature['properties']['FromYear'] <= revision['from'] <= revision['to'] <= feature['properties']['ToYear']
+                expected = expected.difference(polygons(shape(feature['geometry']))[part['part']])
+            # Independent clipping engines may differ at floating-point intersections.
+            assert after.is_valid and after.symmetric_difference(expected).area < 1e-10, f'Invalid subtraction at {revision["sourceIndex"]}'
+        else:
+            assert after.is_valid and after.equals(expected), f'Component selection changed geometry at {revision["sourceIndex"]}'
     del original, original_bytes
     affected = {}
     for unit in registry['reviewUnits']:

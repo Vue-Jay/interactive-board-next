@@ -168,7 +168,7 @@ const rawParts=f=>f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometr
 export const territorialBatch=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-batch-989.json',import.meta.url),'utf8'));
 export const territorialResolutions=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-batch-989-resolutions.json',import.meta.url),'utf8'));
 export function deriveTerritorialBatch(features,batch=territorialBatch){
- const exclusions=[],pending=[],resolved=[],restorations=[],relabels=new Map(),attributions=[],extensions=[],seen=new Set(),transfers=[],pendingExtensions=[];
+ const exclusions=[],pending=[],resolved=[],restorations=[],relabels=new Map(),attributions=[],extensions=[],seen=new Set(),transfers=[],subtractions=[],pendingExtensions=[];
  const transfer=territorialResolutions.transfer,ceylon=territorialResolutions.ceylonTransfer,mindanao=territorialResolutions.mindanaoReview;
  assert.equal(batch.sourceSha256,PINNED_SOURCE_SHA256);
  for(const row of batch.rows){
@@ -316,17 +316,21 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
  assert.equal(features[corsica1796.source].properties.Name,'Kingdom of Great Britain');
  assert.equal(features[corsica1796.target].properties.Name,'French Directory');
  registerIslandCorrection(corsica1796.source,corsica1796.part,corsica1796.from,corsica1796.to,corsica1796,corsica1796.target);
- // Genoa's same Nice cell remains wrong during the French occupation of the
- // duchy. No active Savoy outline exists, and other source geometry intersects
- // it. Preserve the cell separately until the occupation boundary is resolved.
- for(const [source,part,from,to,other] of transfer.pendingRoutes){
+ // Legal sovereignty, not transient military control: preserve the exact
+ // source cell east of the Var and remove only its overlap with France.
+ const nice={...territorialResolutions.niceLegalRestoration,hash:transfer.hash};
+ for(const [source,part,from,to] of nice.routes){
   const f=features[source],parts=rawParts(f);assert.equal(componentHash(parts[part]),transfer.hash);
-  assert.ok(f.properties.FromYear<=from&&f.properties.ToYear>=to&&features[other].properties.Name==='Kingdom of France');
-  const reason='Ницца осталась связана с Савойей, но в 1540–1563 гг. исходная база не содержит действующего отдельного контура Савойи, а французский контур частично перекрывает ячейку. Требуется реконструкция, не автоматическое присоединение.';
-  for(let y=from;y<=to;y++){const key=`${source}:${transfer.hash}:${y}`;assert.ok(!seen.has(key)&&!extensionKeys.has(key));extensionKeys.add(key);}
-  const evidence=batch.rows.find(r=>r.group===transfer.group).evidence;
-  const issue={source,part,from,to,other,hash:transfer.hash,group:transfer.group,status:'reconstruct',reason,evidence,geometry:{type:'Polygon',coordinates:parts[part]},counterpartName:'Kingdom of France'};
-  pending.push(issue);pendingExtensions.push(issue);exclusions.push([source,parts.length,from,[part],transfer.reason,reason,transfer.sources[0],to]);
+  assert.ok(f.properties.FromYear<=from&&f.properties.ToYear>=to&&f.properties.Name==='Republic of Genoa');
+  registerIslandCorrection(source,part,from,to,nice);
+  for(const target of nice.frenchTargets){
+   const french=features[target];assert.equal(french.properties.Name,'Kingdom of France');
+   const start=Math.max(from,french.properties.FromYear),end=Math.min(to,french.properties.ToYear);
+   if(start>end)continue;
+   assert.ok(polygonClipping.intersection(french.geometry.coordinates,parts[part]).length);
+   subtractions.push({target,source,part,from:start,to:end,decision:nice});
+  }
+  for(let year=from;year<=to;year++)assert.equal(subtractions.filter(s=>s.source===source&&s.from<=year&&s.to>=year).length,1);
  }
  // The exact Great and Little Nicobar source polygons were systematically
  // misassigned in later source revisions, even when no duplicate was present.
@@ -358,7 +362,7 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
  }
  for(const row of resolved.filter(r=>r.mode==='transfer'))for(let y=row.from;y<=row.to;y++)assert.ok(transfers.some(t=>t.from<=y&&t.to>=y&&(t.hash??t.decision.hash)===row.hash),`Missing transfer ${y}`);
  for(const row of resolved.filter(r=>r.mode==='restored'))for(let y=row.from;y<=row.to;y++)assert.ok(restorations.some(r=>r.source===row.target&&r.hash===row.hash&&r.from<=y&&r.to>=y),`Missing restored component ${row.group}/${y}`);
- return {exclusions,pending,resolved,restorations,relabels,attributions,extensions,transfers,pendingExtensions,count:seen.size};
+ return {exclusions,pending,resolved,restorations,relabels,attributions,extensions,transfers,subtractions,pendingExtensions,count:seen.size};
 }
 const withinBox=(polygon,box)=>polygon.every(ring=>ring.every(([x,y])=>x>=box[0]&&x<=box[2]&&y>=box[1]&&y<=box[3]));
 export function deriveConfirmedOverlapExclusions(features,policies=confirmedOverlapPolicies){
@@ -718,11 +722,18 @@ export function normalizeHistoricalSource(source) {
       if(territorialIssues.length)revision={...revision,territorialIssues};
       let selection=reviewedGeometryParts(revision,derivedExclusions);
       const matchingTransfers=(batch.transfers??[]).filter(t=>t.target===sourceIndex&&t.from<=revision.from&&t.to>=revision.to);
+      const matchingSubtractions=(batch.subtractions??[]).filter(t=>t.target===sourceIndex&&t.from<=revision.from&&t.to>=revision.to);
       const transfer=matchingTransfers[0];
       if(transfer){
         assert.notEqual(selection?.length,0);
         selection=[...(selection??rawParts(feature).map((_,part)=>({index:sourceIndex,part}))),...matchingTransfers.map(t=>({index:t.source,part:t.part}))];
         const decisions=matchingTransfers.map(t=>t.decision);
+        revision={...revision,review:{reason:[...new Set([revision.review?.reason,...decisions.map(d=>d.reason)].filter(Boolean))].join(' '),reasonRu:[...new Set([revision.review?.reasonRu,...decisions.map(d=>d.reasonRu)].filter(Boolean))].join(' '),sources:[...new Set([...(revision.review?.sources??[]),...decisions.flatMap(d=>d.sources)])]}};
+      }
+      if(matchingSubtractions.length){
+        assert.notEqual(selection?.length,0);
+        selection=selection??rawParts(feature).map((_,part)=>({index:sourceIndex,part}));
+        const decisions=matchingSubtractions.map(t=>t.decision);
         revision={...revision,review:{reason:[...new Set([revision.review?.reason,...decisions.map(d=>d.reason)].filter(Boolean))].join(' '),reasonRu:[...new Set([revision.review?.reasonRu,...decisions.map(d=>d.reasonRu)].filter(Boolean))].join(' '),sources:[...new Set([...(revision.review?.sources??[]),...decisions.flatMap(d=>d.sources)])]}};
       }
       if(selection?.length===0){
@@ -732,9 +743,10 @@ export function normalizeHistoricalSource(source) {
         assert.ok(revision.review?.sources.length);
         const coordinates=selection.map(({index,part})=>{const g=source.features[index].geometry;const polygons=g.type==='Polygon'?[g.coordinates]:g.coordinates;assert.ok(polygons[part]);return polygons[part]});
         if(transfer)for(let i=coordinates.length-matchingTransfers.length;i<coordinates.length;i++)assert.equal(polygonClipping.intersection(polygonClipping.union(...coordinates.slice(0,i)),coordinates[i]).length,0,`Overlapping transfer ${sourceIndex}`);
-        const selected={type:'MultiPolygon',coordinates:transfer?polygonClipping.union(...coordinates):coordinates};validateGeometry(selected);
+        const subtractions=matchingSubtractions.map(t=>({index:t.source,part:t.part}));
+        const selected={type:'MultiPolygon',coordinates:subtractions.length?polygonClipping.difference(polygonClipping.union(...coordinates),...subtractions.map(({index,part})=>rawParts(source.features[index])[part])):transfer?polygonClipping.union(...coordinates):coordinates};validateGeometry(selected);
         const selectedId=sha256(JSON.stringify(selected));geometries.set(selectedId,selected);
-        revision={...revision,geometryId:selectedId,sourceGeometryId,geometryRepair:transfer?'reviewed-union-source-components':'reviewed-source-components',geometryParts:selection};
+        revision={...revision,geometryId:selectedId,sourceGeometryId,geometryRepair:subtractions.length?'reviewed-difference-source-components':transfer?'reviewed-union-source-components':'reviewed-source-components',geometryParts:selection,...(subtractions.length?{geometrySubtractions:subtractions}:{})};
       }
       const id = identity('revision', sourceIndex, sourceFrom, sourceTo, revision.geometryId, revision.from, revision.to, revision.name);
       records.push({id, ...revision});
@@ -743,7 +755,7 @@ export function normalizeHistoricalSource(source) {
     };
     const add=revision=>{
       const cuts=new Set([revision.from,revision.to+1]);
-      for(const t of batch.transfers??[])if(t.target===sourceIndex&&t.from<=revision.to&&t.to>=revision.from){cuts.add(Math.max(revision.from,t.from));cuts.add(Math.min(revision.to+1,t.to+1));}
+      for(const t of [...(batch.transfers??[]),...(batch.subtractions??[])])if(t.target===sourceIndex&&t.from<=revision.to&&t.to>=revision.from){cuts.add(Math.max(revision.from,t.from));cuts.add(Math.min(revision.to+1,t.to+1));}
       const sorted=[...cuts].sort((a,b)=>a-b);
       for(let i=0;i<sorted.length-1;i++)addOne({...revision,from:sorted[i],to:sorted[i+1]-1});
     };

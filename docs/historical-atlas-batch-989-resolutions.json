@@ -108,8 +108,16 @@
     "reasonRu": "Ницца и её окрестности перешли к Савойе в 1388 году. Исходная ячейка карты к северу от Ниццы присоединена к контуру Савойи соответствующего года; это приблизительный исторический контур, а не точная реконструкция границы.",
     "sources": ["https://www.departement06.fr/du-xie-au-xive-siecle", "https://www.departement06.fr/les-xve-et-xvie-siecles", "https://www.nice.fr/uploads/media/default/0001/02/les-limites-du-comte-de-nice.pdf"],
     "routes": [[6732,3,1388,1394],[6756,4,1395,1401],[6865,0,1402,1406],[6887,0,1407,1414],[6960,4,1415,1421],[6996,0,1422,1428],[7062,0,1429,1439],[7149,4,1440,1449],[7254,4,1450,1452],[7268,4,1453,1525],[7938,2,1526,1528],[7992,2,1529,1539],[8238,2,1564,1631],[8762,1,1632,1641]],
-    "targets": [6727,6752,6825,7146,7320,7460,7529,7644,7787,7845,7874,7999,8026,8260,8336,8453,8466,8556,8758],
-    "pendingRoutes": [[8090,2,1540,1546,8069],[8124,2,1547,1563,8100]]
+    "targets": [6727,6752,6825,7146,7320,7460,7529,7644,7787,7845,7874,7999,8026,8260,8336,8453,8466,8556,8758]
+  },
+  "niceLegalRestoration": {
+    "group": "Савойя — север Ниццы", "entity": "county-nice-savoy",
+    "name": "County of Nice (Duchy of Savoy)", "nameRu": "Графство Ницца (Савойское герцогство)",
+    "reason": "The source cell north of Nice lies east of the Var, the France–Savoy boundary. Nice remained under Savoy's legal sovereignty during the French occupation of the duchy, including the siege of 1543. The cell is not an independently surveyed boundary or a reconstruction of transient military control.",
+    "reasonRu": "Исходная ячейка к северу от Ниццы лежит восточнее Вара, исторической границы Франции и Савойи. Юридическая принадлежность Ниццы Савойе сохранялась и во время французской оккупации герцогства, включая осаду 1543 года. Ячейка приблизительная; временный военный контроль и точные границы графства не реконструированы.",
+    "sources": ["https://www.departement06.fr/les-xve-et-xvie-siecles", "https://www.nice.fr/uploads/media/default/0001/02/les-limites-du-comte-de-nice.pdf", "https://www.persee.fr/doc/acths_1764-7355_2015_act_136_12_2749", "https://www.persee.fr/doc/camed_0395-9317_1984_num_28_1_961"],
+    "routes": [[8090,2,1540,1546],[8124,2,1547,1563]],
+    "frenchTargets": [8069,8100,8159,8235]
   },
   "kandy": {
     "indices": [8742,8760,8828,9052,9108,9257,9276,10067,10395,10423,10917],

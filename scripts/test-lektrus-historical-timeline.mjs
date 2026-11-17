@@ -165,9 +165,10 @@ if(outDir&&sourceFile){
       assert.equal(r.sourceGeometryId??r.geometryId,sourceHashes.get(r.sourceIndex));
       if(r.sourceGeometryId){
         const orig=f.geometry,repaired=pack.geometries[r.geometryId];
-        if(['reviewed-source-components','reviewed-union-source-components'].includes(r.geometryRepair)){
-          const parts=r.geometryParts.map(({index,part})=>{const x=input.features[index];assert.ok(x.properties.FromYear<=r.from&&x.properties.ToYear>=r.to);return (x.geometry.type==='Polygon'?[x.geometry.coordinates]:x.geometry.coordinates)[part]});
-          assert.deepEqual(repaired,{type:'MultiPolygon',coordinates:r.geometryRepair==='reviewed-union-source-components'?polygonClipping.union(...parts):parts});
+        if(['reviewed-source-components','reviewed-union-source-components','reviewed-difference-source-components'].includes(r.geometryRepair)){
+          const readPart=({index,part})=>{const x=input.features[index];assert.ok(x.properties.FromYear<=r.from&&x.properties.ToYear>=r.to);return (x.geometry.type==='Polygon'?[x.geometry.coordinates]:x.geometry.coordinates)[part]};
+          const parts=r.geometryParts.map(readPart);
+          assert.deepEqual(repaired,{type:'MultiPolygon',coordinates:r.geometryRepair==='reviewed-difference-source-components'?polygonClipping.difference(polygonClipping.union(...parts),...r.geometrySubtractions.map(readPart)):r.geometryRepair==='reviewed-union-source-components'?polygonClipping.union(...parts):parts});
         }else{assert.equal(r.geometryRepair,'retracted-zero-area-interior-edges');assert.equal(orig.type,repaired.type);const shells=g=>(g.type==='Polygon'?[g.coordinates]:g.coordinates).map(p=>p[0]);assert.deepEqual(shells(orig),shells(repaired));}
       }
     }
@@ -225,6 +226,14 @@ if(outDir&&sourceFile){
         assert.ok(state.territorialIssues.some(i=>i.sourceIndex===item.source&&i.hash===item.hash&&componentHash(i.geometry.coordinates)===item.hash));
       }
       if(year>=1416&&year<=1539)assert.equal(sourceRecords.find(r=>r.sourceName==='County of Savoy')?.name,'Duchy of Savoy');
+      if(year>=1540&&year<=1563){
+        const nice=state.drawable.filter(({record})=>record.editorialRestoration&&record.name==='County of Nice (Duchy of Savoy)');
+        assert.equal(nice.length,1);
+        assert.ok(nice[0].record.review.reasonRu.includes('временный военный контроль'));
+        const france=state.drawable.find(({record})=>record.sourceName==='Kingdom of France'&&record.geometryRepair==='reviewed-difference-source-components');
+        assert.ok(france&&france.record.geometrySubtractions.some(p=>p.index===(year<=1546?8090:8124)&&p.part===2));
+        for(const entry of state.drawable)if(entry!==nice[0])assert.equal(polygonClipping.intersection(entry.geometry.coordinates,nice[0].geometry.coordinates).length,0,`Nice overlaps ${entry.record.name}/${year}`);
+      }
       const mindanaoIssues=state.territorialIssues.filter(i=>i.group==='Mindanao');
       if(year>=1512&&year<=1608){
         assert.equal(mindanaoIssues.length,year>=1521&&year<=1581?2:1);
@@ -289,7 +298,7 @@ if(outDir&&sourceFile){
   }
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,537);assert.equal(batchPending,159);
-  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,202);assert.equal(extended,454);assert.equal([...pendingExtensionsByYear.values()].flat().length,60);
+  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,226);assert.equal(extended,478);assert.equal([...pendingExtensionsByYear.values()].flat().length,36);
   console.log(`Reviewed batch: ${batchReady} original corrections; ${batchResolved} newly resolved attributions; ${batchPending} open; ${extended} adjacent cases; ${restoredRecordYears} restored territory-years`);
   assert.equal(seen.size,manifest.counts.revisions);
   assert.equal(allGeometries.size,manifest.counts.uniqueGeometries);
