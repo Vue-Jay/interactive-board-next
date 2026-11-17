@@ -113,6 +113,29 @@
   html body .workspace :is(.minimap,.zoom-controls) {
     right:calc(var(--lektrus-safe-right) + 12px)!important;
   }
+  /* Embedded Android WebViews may report a fine pointer after rotation.
+     The mobile history buttons must not disappear at widths above 900px. */
+  html.lektrus-native-app body .workspace .mobile-undo-redo {
+    display:flex!important;
+    position:absolute;
+    z-index:90;
+    top:calc(60px + var(--lektrus-safe-top));
+    right:calc(12px + var(--lektrus-safe-right));
+    gap:6px;
+    pointer-events:auto;
+  }
+  html.lektrus-native-app body .workspace .mobile-undo-redo button {
+    width:38px;
+    height:38px;
+    border-radius:11px;
+    border:1px solid var(--border,#cbd5e1);
+    background:var(--surface,#fff);
+    color:var(--text,#263343);
+    display:grid;
+    place-items:center;
+    touch-action:manipulation;
+  }
+  html.lektrus-native-app body .workspace .mobile-undo-redo button:disabled { opacity:.35; }
 }
 /* Portrait phones: zoom and remaining board actions above the bottom tool dock. */
 @media screen and (max-width:700px) and (orientation:portrait) {

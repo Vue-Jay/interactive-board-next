@@ -180,7 +180,10 @@ def open_new_board():
 
 
 def board_layout():
-    report = check_layout(['.topbar', '.back-to-boards', '.board-title', '.board-controls'])
+    report = check_layout(['.topbar', '.back-to-boards', '.board-title', '.board-controls', '.mobile-undo-redo', '.mobile-undo-redo button'])
+    assert visible_id('.mobile-undo-redo button[aria-label="Отменить"]'), 'Native undo must be visible after rotation'
+    assert visible_id('.mobile-undo-redo button[aria-label="Повторить"]'), 'Native redo must be visible after rotation'
+    assert js('return document.querySelector(".mobile-undo-redo").getBoundingClientRect().top >= document.querySelector(".topbar").getBoundingClientRect().bottom - 2'), 'History controls overlap board header'
     hint = js('return document.querySelector(".coordinates")?.textContent || ""')
     assert 'ЛКМ' not in hint and 'ПКМ' not in hint, f'Desktop-only hint on touch device: {hint}'
     return report
