@@ -113,6 +113,19 @@ jobs:
           mkdir -p artifacts/mobile-qa
           APP="$PWD/ios/DerivedData/Build/Products/Debug-iphonesimulator/App.app"
           xcrun simctl install "$SIMULATOR_UDID" "$APP"
+          # Capture a native launch independently of Appium/WebDriverAgent.
+          # A driver timeout must not hide whether the installed app renders.
+          xcrun simctl launch "$SIMULATOR_UDID" ru.lektrus.board
+          sleep 15
+          xcrun simctl io "$SIMULATOR_UDID" screenshot artifacts/mobile-qa/ios-native-startup.png
+          xcrun simctl terminate "$SIMULATOR_UDID" ru.lektrus.board || true
+          # The Intel runner spent the entire session timeout compiling and
+          # statically analysing WDA. Prebuild it before requesting a session.
+          WDA="$APPIUM_HOME/node_modules/appium-xcuitest-driver/node_modules/appium-webdriveragent/WebDriverAgent.xcodeproj"
+          xcodebuild -project "$WDA" -scheme WebDriverAgentRunner -configuration Debug \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
+            CODE_SIGNING_ALLOWED=NO RUN_CLANG_STATIC_ANALYZER=NO COMPILER_INDEX_STORE_ENABLE=NO \
+            build-for-testing > artifacts/mobile-qa/wda-prebuild.log 2>&1 || tail -80 artifacts/mobile-qa/wda-prebuild.log
           "$RUNNER_TEMP/appium/node_modules/.bin/appium" --address 127.0.0.1 --port 4723 > artifacts/mobile-qa/appium.log 2>&1 &
           python3 scripts/test-native-mobile-runtime.py ios --app "$APP" --udid "$SIMULATOR_UDID" --output artifacts/mobile-qa
       - name: Upload iOS runtime logs and screenshots
