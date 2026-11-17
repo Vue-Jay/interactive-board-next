@@ -11,6 +11,12 @@ const config: CapacitorConfig = {
   android: {
     allowMixedContent: false,
   },
+  // MainActivity owns Android WebView margins and exports cutout insets.
+  // Capacitor 8 otherwise adds a second set of decor-view insets on older
+  // WebViews. SystemBars.insetHandling is Android-only; iOS uses safe-area env.
+  plugins: {
+    SystemBars: { insetsHandling: "disable" },
+  },
 };
 
 export default config;

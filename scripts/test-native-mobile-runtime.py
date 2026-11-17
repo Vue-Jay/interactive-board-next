@@ -130,7 +130,9 @@ def check_layout(selectors):
 
 def home():
     wait(lambda: visible_id('.lektrus-calendar-grid'), 'Workspace not rendered', 90)
-    return check_layout(['.lectris-mobile-bottom', '.lectris-mobile-bottom button'])
+    report = check_layout(['.lectris-mobile-bottom', '.lectris-mobile-bottom button'])
+    report['screen'] = js('return {width:screen.width,height:screen.height,availableHeight:screen.availHeight,ratio:devicePixelRatio}')
+    return report
 
 
 def more():

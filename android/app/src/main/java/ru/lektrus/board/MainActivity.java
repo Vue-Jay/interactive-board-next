@@ -56,6 +56,7 @@ public class MainActivity extends BridgeActivity {
             Insets cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
             Insets navigation = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
             Insets tappable = insets.getInsets(WindowInsetsCompat.Type.tappableElement());
+            Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
             Insets status = insets.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.statusBars());
             int systemLeft = Math.max(status.left, Math.max(navigation.left, tappable.left));
             int systemRight = Math.max(status.right, Math.max(navigation.right, tappable.right));
@@ -81,14 +82,15 @@ public class MainActivity extends BridgeActivity {
             // Use ignoring-visibility inset: status can be temporarily hidden by
             // rotation/transition even though home screens require the space.
             int top = boardMode ? 0 : Math.max(status.top, cutout.top);
-            int bottom = tappable.bottom > 0 ? Math.max(navigation.bottom, tappable.bottom) : 0;
+            int bottom = Math.max(navigation.bottom, tappable.bottom);
             bottom = Math.max(bottom, cutout.bottom);
+            if (insets.isVisible(WindowInsetsCompat.Type.ime())) bottom = Math.max(bottom, ime.bottom);
 
             // On landscape boards the entire canvas fills the screen. Cutout
             // protection belongs to floating controls, not to the WebView
             // itself (which otherwise leaves a blank stripe along the edge).
-            int horizontalLeft = boardMode ? 0 : cutout.left;
-            int horizontalRight = boardMode ? 0 : cutout.right;
+            int horizontalLeft = boardMode ? 0 : Math.max(cutout.left, systemLeft);
+            int horizontalRight = boardMode ? 0 : Math.max(cutout.right, systemRight);
             ViewGroup.LayoutParams original = view.getLayoutParams();
             if (original instanceof ViewGroup.MarginLayoutParams) {
                 ViewGroup.MarginLayoutParams margins = (ViewGroup.MarginLayoutParams) original;
