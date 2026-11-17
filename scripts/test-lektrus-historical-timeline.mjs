@@ -136,6 +136,7 @@ if(outDir&&sourceFile){
   for(const r of territorialBatch.rows)for(let year=r.from;year<=r.to;year++){if(year===0)continue;if(!batchByYear.has(year))batchByYear.set(year,[]);batchByYear.get(year).push(r);}
   const decisionsByKey=new Map(reviewedBatch.resolved.map(r=>[`${r.source}:${r.part}:${r.from}:${r.to}`,r]));
   const extensionsByYear=new Map();for(const r of reviewedBatch.extensions)for(let year=r.from;year<=r.to;year++){if(!extensionsByYear.has(year))extensionsByYear.set(year,[]);extensionsByYear.get(year).push(r)}
+  const pendingExtensionsByYear=new Map();for(const r of reviewedBatch.pendingExtensions)for(let year=r.from;year<=r.to;year++){if(!pendingExtensionsByYear.has(year))pendingExtensionsByYear.set(year,[]);pendingExtensionsByYear.get(year).push(r)}
   let batchReady=0,batchPending=0,batchResolved=0,extended=0,sourceRecordYears=0,restoredRecordYears=0;
   assert.equal(manifest.counts.sourcePolities+manifest.counts.sourceComposites+manifest.counts.sourceRelations,original.length);
   const sourceHashes=new Map(original.map(({f,index})=>[index,sha256(JSON.stringify(f.geometry))]));
@@ -194,7 +195,8 @@ if(outDir&&sourceFile){
           }else if(decision.mode==='restored'){
             const matching=state.drawable.filter(({record,geometry})=>record.editorialRestoration&&record.sourceIndex===decision.target&&geometry.coordinates.some(p=>componentHash(p)===item.hash));
             assert.equal(matching.length,1,`Missing or duplicate restored island ${item.group}/${year}`);
-            if(['Мэн (лордство)','Манус'].includes(item.group))assert.ok(item.otherParts.every(p=>!hasPart(activeRecords.get(item.other),item.other,p)));
+            if(['Мэн (лордство)','Манус','Никобары'].includes(item.group))assert.ok(item.otherParts.every(p=>!hasPart(activeRecords.get(item.other),item.other,p)));
+            if(item.group==='Никобары')assert.ok(matching[0].record.name.includes(year===1868?'annexation pending':'British India'));
           }else if(decision.mode==='transfer'){
             const targets=state.drawable.filter(({record})=>record.sourceName==='County of Savoy'&&record.geometryRepair==='reviewed-union-source-components'&&record.geometryParts.some(p=>componentHash((input.features[p.index].geometry.type==='Polygon'?[input.features[p.index].geometry.coordinates]:input.features[p.index].geometry.coordinates)[p.part])===item.hash));
             assert.equal(targets.length,1,`Missing Savoy transfer ${year}`);
@@ -214,6 +216,11 @@ if(outDir&&sourceFile){
         else assert.equal(state.drawable.filter(({record,geometry})=>record.editorialRestoration&&record.sourceIndex===item.source&&geometry.coordinates.some(p=>componentHash(p)===item.hash)).length,1,`Adjacent restoration missing ${item.group}/${year}`);
         extended++;
       }
+      for(const item of pendingExtensionsByYear.get(year)??[]){
+        assert.ok(!hasPart(activeRecords.get(item.source),item.source,item.part));
+        assert.ok(state.territorialIssues.some(i=>i.sourceIndex===item.source&&i.hash===item.hash&&componentHash(i.geometry.coordinates)===item.hash));
+      }
+      if(year>=1416&&year<=1539)assert.equal(sourceRecords.find(r=>r.sourceName==='County of Savoy')?.name,'Duchy of Savoy');
       const byEntity=new Map(),byGeometry=new Map(),allGeometry=new Map();
       for(const r of state.records){
         if(!allGeometry.has(r.geometryId))allGeometry.set(r.geometryId,[]);allGeometry.get(r.geometryId).push(r);
@@ -240,8 +247,8 @@ if(outDir&&sourceFile){
     }
   }
   assert.equal(years,5424);
-  assert.equal(batchReady,293);assert.equal(batchResolved,515);assert.equal(batchPending,181);
-  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,79);assert.equal(extended,154);
+  assert.equal(batchReady,293);assert.equal(batchResolved,531);assert.equal(batchPending,165);
+  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,189);assert.equal(extended,352);assert.equal([...pendingExtensionsByYear.values()].flat().length,24);
   console.log(`Reviewed batch: ${batchReady} original corrections; ${batchResolved} newly resolved attributions; ${batchPending} open; ${extended} adjacent cases; ${restoredRecordYears} restored territory-years`);
   assert.equal(seen.size,manifest.counts.revisions);
   assert.equal(allGeometries.size,manifest.counts.uniqueGeometries);
@@ -351,7 +358,7 @@ if(outDir&&sourceFile){
   assert.deepEqual(partsAt(1721,9578),[3,4,5]);
   assert.deepEqual(partsAt(1665,9047),[1]);
   assert.ok(!partsAt(1665,9089).includes(0)&&partsAt(1665,9089).includes(10));
-  assert.deepEqual(partsAt(1567,8238),[1,2,3,4,5]);
+  assert.deepEqual(partsAt(1567,8238),[1,3,4,5]); // Chios and the Nice cell are independently excluded
   assert.ok(!partsAt(1463,7268).includes(8)&&partsAt(1463,7268).includes(10));
   assert.deepEqual(partsAt(1476,7268),[0,2,3,5,6,7]); // part 4 is in the reviewed Nice reconstruction queue
   assert.ok(!partsAt(1454,7187).includes(6)&&partsAt(1454,7187).includes(0));

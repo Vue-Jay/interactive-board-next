@@ -1,5 +1,10 @@
 {
   "retained": {
+    "Nicobar": {
+      "reason": "The Austrian expedition claimed Nancowry, Chaura, Trinkat and Katchal, not Great or Little Nicobar. Retain the documented Danish claim, not an Austrian territorial possession; colonial administration of indigenous communities was limited.",
+      "reasonRu": "Австрийская экспедиция заявляла права на Нанкаури, Чауру, Тринкат и Катчал, не на Большой или Малый Никобар. Сохранена датская номинальная претензия, а не австрийское владение; местные общины не следует считать полностью подконтрольными колониальной администрации.",
+      "sources": ["https://bibliotekanauki.pl/articles/23051028.pdf", "https://censusindia.gov.in/nada/index.php/catalog/32395/download/35576/20797_1911_REP.pdf"]
+    },
     "Champagne": {
       "reason": "Hugh was Count of Champagne during 1094–1110; Blois and Champagne must not be depicted as the same independent political possession before the succession of 1125.",
       "reasonRu": "В 1094–1110 гг. Шампанью правил граф Гуго; совпадающий контур сохранён за Шампанью, а не графством Блуа. Исторические границы остаются приблизительными.",
@@ -74,6 +79,18 @@
     }
   },
   "componentRestorations": {
+    "49bad8e0df1d4b6978774e72482211a230a2fc16d3a56064d47b334c80173320": {
+      "group": "Никобары", "anchor": 11781, "entity": "great-nicobar", "name": "Great Nicobar (local communities; annexation pending)", "nameRu": "Большой Никобар (местные общины; присоединение не завершено)", "excludeCounterpart": true,
+      "transition": {"year":1869,"name":"Great Nicobar (British India)","nameRu":"Большой Никобар (Британская Индия)"},
+      "reason": "Denmark relinquished its claim in 1868; formal British possession followed in 1869. Neither island was Dutch. The source island outline is exact but does not imply uniform colonial control.", "reasonRu": "Дания отказалась от притязаний в 1868 году; формальное присоединение Великобританией состоялось в 1869 году. Остров не являлся нидерландским владением; исходный островной контур не означает полного контроля над местными общинами.",
+      "sources": ["https://www.persee.fr/doc/outre_0399-1385_1933_num_21_93_2853", "https://nicobars.andaman.nic.in/history/", "https://searcharchives.bl.uk/catalog/041-000543417"]
+    },
+    "0bef4c92c6b9d24d9c7853ca3096f14378cf1809d30b1ed0feaf091d102c7dae": {
+      "group": "Никобары", "anchor": 11781, "entity": "little-nicobar", "name": "Little Nicobar (local communities; annexation pending)", "nameRu": "Малый Никобар (местные общины; присоединение не завершено)", "excludeCounterpart": true,
+      "transition": {"year":1869,"name":"Little Nicobar (British India)","nameRu":"Малый Никобар (Британская Индия)"},
+      "reason": "Denmark relinquished its claim in 1868; formal British possession followed in 1869. Neither island was Dutch. The source island outline is exact but does not imply uniform colonial control.", "reasonRu": "Дания отказалась от притязаний в 1868 году; формальное присоединение Великобританией состоялось в 1869 году. Остров не являлся нидерландским владением; исходный островной контур не означает полного контроля над местными общинами.",
+      "sources": ["https://www.persee.fr/doc/outre_0399-1385_1933_num_21_93_2853", "https://nicobars.andaman.nic.in/history/", "https://searcharchives.bl.uk/catalog/041-000543417"]
+    },
     "8f31d16f944b3cefe048b3146bf73aea4320e11e4b0dcabb74b7fe8d1886569c": {
       "group": "Коморы", "anchor": 11329, "entity": "anjouan-sultanate", "name": "Sultanate of Anjouan", "nameRu": "Султанат Анжуан",
       "reason": "Anjouan was an independent sultanate in 1842–1845; the French protectorate came later in the nineteenth century.", "reasonRu": "В 1842–1845 гг. Анжуан оставался самостоятельным султанатом; французский протекторат установлен позднее.",
@@ -90,8 +107,14 @@
     "reason": "Nice and its hinterland passed to Savoy in 1388. The exact source cell north of Nice joins the contemporaneous Savoy geometry; this is not a newly surveyed historical boundary.",
     "reasonRu": "Ницца и её окрестности перешли к Савойе в 1388 году. Исходная ячейка карты к северу от Ниццы присоединена к контуру Савойи соответствующего года; это приблизительный исторический контур, а не точная реконструкция границы.",
     "sources": ["https://www.departement06.fr/du-xie-au-xive-siecle", "https://www.departement06.fr/les-xve-et-xvie-siecles", "https://www.nice.fr/uploads/media/default/0001/02/les-limites-du-comte-de-nice.pdf"],
-    "routes": [[6732,3,1388,1394],[6756,4,1395,1401],[6865,0,1402,1406],[6887,0,1407,1414],[6960,4,1415,1421],[6996,0,1422,1428],[7062,0,1429,1439],[7149,4,1440,1449],[7254,4,1450,1452],[7268,4,1453,1525],[7938,2,1526,1528],[7992,2,1529,1539]],
-    "targets": [6727,6752,6825,7146,7320,7460,7529,7644,7787,7845,7874,7999,8026]
+    "routes": [[6732,3,1388,1394],[6756,4,1395,1401],[6865,0,1402,1406],[6887,0,1407,1414],[6960,4,1415,1421],[6996,0,1422,1428],[7062,0,1429,1439],[7149,4,1440,1449],[7254,4,1450,1452],[7268,4,1453,1525],[7938,2,1526,1528],[7992,2,1529,1539],[8238,2,1564,1631],[8762,1,1632,1641]],
+    "targets": [6727,6752,6825,7146,7320,7460,7529,7644,7787,7845,7874,7999,8026,8260,8336,8453,8466,8556,8758],
+    "pendingRoutes": [[8090,2,1540,1546,8069],[8124,2,1547,1563,8100]]
+  },
+  "nicobarExtensions": {
+    "austrian": [[10174,11,12,1778,1779],[10205,11,12,1780,1790]],
+    "dutch": [[10767,11,12,1809,1813],[10939,12,13,1814,1814],[10978,12,13,1815,1821],[11081,13,14,1822,1823],[11124,16,17,1824,1827],[11184,16,17,1828,1829],[11279,16,17,1836,1845],[11427,18,19,1846,1848],[11504,18,19,1849,1852],[11514,18,19,1853,1855],[11591,14,15,1856,1856],[11610,16,17,1857,1858],[11628,16,17,1859,1859],[11660,15,16,1860,1861],[11709,15,16,1862,1865],[11781,16,17,1866,1867]],
+    "british": [[11781,16,17,1870,1872]]
   },
   "extensions": [
     {"group":"Сент-Круа","source":12421,"part":38,"from":1917,"to":1917},

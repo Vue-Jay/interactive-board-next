@@ -168,7 +168,7 @@ const rawParts=f=>f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometr
 export const territorialBatch=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-batch-989.json',import.meta.url),'utf8'));
 export const territorialResolutions=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-batch-989-resolutions.json',import.meta.url),'utf8'));
 export function deriveTerritorialBatch(features,batch=territorialBatch){
- const exclusions=[],pending=[],resolved=[],restorations=[],relabels=new Map(),attributions=[],extensions=[],seen=new Set(),transfers=[];
+ const exclusions=[],pending=[],resolved=[],restorations=[],relabels=new Map(),attributions=[],extensions=[],seen=new Set(),transfers=[],pendingExtensions=[];
  const transfer=territorialResolutions.transfer;
  assert.equal(batch.sourceSha256,PINNED_SOURCE_SHA256);
  for(const row of batch.rows){
@@ -195,7 +195,11 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
    assert.ok(decision.sources.length&&decision.sources.every(s=>s.startsWith('https://')));
    resolved.push({...row,mode:retained?'retained':restored?'restored':moved?'transfer':'relabel',target:retained?other:restored?restored.anchor:moved?undefined:relabel.indices.find(i=>features[i].properties.FromYear<=from&&features[i].properties.ToYear>=to)});
    if(retained)attributions.push({source:other,part:otherParts[0],hash,group,from,to,reason:retained.reasonRu,sources:retained.sources});
-   if(restored&&source===restored.anchor)restorations.push({...row,decision,geometry:{type:'MultiPolygon',coordinates:[parts[part]]}});
+   if(restored&&source===restored.anchor){
+    const transition=restored.transition?.year;
+    const ranges=transition>from&&transition<=to?[[from,transition-1],[transition,to]]:[[from,to]];
+    for(const [start,end] of ranges)restorations.push({...row,from:start,to:end,decision,geometry:{type:'MultiPolygon',coordinates:[parts[part]]}});
+   }
    if(restored?.excludeCounterpart)exclusions.push([other,otherGeometry.length,from,otherParts,decision.reason,decision.reasonRu,decision.sources[0],to]);
   }else if(status==='reconstruct')pending.push({...row,reason,geometry:{type:'Polygon',coordinates:parts[part]},counterpartName:counterpart.properties.Name});
  }
@@ -230,7 +234,7 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
   assert.ok(f.properties.FromYear<=from&&f.properties.ToYear>=to);
   for(let year=from;year<=to;year++){
    const targets=transfer.targets.filter(i=>features[i].properties.FromYear<=year&&features[i].properties.ToYear>=year);
-   assert.equal(targets.length,1,`Missing unique Savoy target ${year}`);const target=targets[0];assert.equal(features[target].properties.Name,'County of Savoy');
+   assert.equal(targets.length,1,`Missing unique Savoy target ${year}`);const target=targets[0];assert.ok(['County of Savoy','House of Savoy'].includes(features[target].properties.Name));
    const last=transfers.at(-1);if(last&&last.target===target&&last.source===source&&last.part===part&&last.to+1===year)last.to=year;
    else transfers.push({source,part,target,from:year,to:year,decision:transfer});
    const key=`${source}:${transfer.hash}:${year}`;
@@ -241,9 +245,49 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
    }
   }
  }
+ // Genoa's same Nice cell remains wrong during the French occupation of the
+ // duchy. No active Savoy outline exists, and other source geometry intersects
+ // it. Preserve the cell separately until the occupation boundary is resolved.
+ for(const [source,part,from,to,other] of transfer.pendingRoutes){
+  const f=features[source],parts=rawParts(f);assert.equal(componentHash(parts[part]),transfer.hash);
+  assert.ok(f.properties.FromYear<=from&&f.properties.ToYear>=to&&features[other].properties.Name==='Kingdom of France');
+  const reason='Ницца осталась связана с Савойей, но в 1540–1563 гг. исходная база не содержит действующего отдельного контура Савойи, а французский контур частично перекрывает ячейку. Требуется реконструкция, не автоматическое присоединение.';
+  for(let y=from;y<=to;y++){const key=`${source}:${transfer.hash}:${y}`;assert.ok(!seen.has(key)&&!extensionKeys.has(key));extensionKeys.add(key);}
+  const evidence=batch.rows.find(r=>r.group===transfer.group).evidence;
+  const issue={source,part,from,to,other,hash:transfer.hash,group:transfer.group,status:'reconstruct',reason,evidence,geometry:{type:'Polygon',coordinates:parts[part]},counterpartName:'Kingdom of France'};
+  pending.push(issue);pendingExtensions.push(issue);exclusions.push([source,parts.length,from,[part],transfer.reason,reason,transfer.sources[0],to]);
+ }
+ // The exact Great and Little Nicobar source polygons were systematically
+ // misassigned in later source revisions, even when no duplicate was present.
+ const islandHashes=['great-nicobar','little-nicobar'].map(entity=>Object.keys(territorialResolutions.componentRestorations).find(h=>territorialResolutions.componentRestorations[h].entity===entity));
+ assert.ok(islandHashes.every(Boolean));
+ for(const [kind,routes] of Object.entries(territorialResolutions.nicobarExtensions))for(const [source,great,little,from,to] of routes){
+  const f=features[source],parts=rawParts(f);
+  assert.ok(f.properties.FromYear<=from&&f.properties.ToYear>=to);
+  for(const [part,k] of [[great,0],[little,1]]){
+   const hash=islandHashes[k],d=territorialResolutions.componentRestorations[hash];assert.equal(componentHash(parts[part]),hash);
+   for(let year=from;year<=to;year++){
+    const key=`${source}:${hash}:${year}`;if(seen.has(key))continue;assert.ok(!extensionKeys.has(key));extensionKeys.add(key);
+    const ext={source,part,from:year,to:year,hash,group:kind==='austrian'?'Nicobar':'Никобары'};
+    let decision;
+    if(kind==='austrian'||kind==='british'){
+     const other=kind==='austrian'?9940:11836,otherPart=kind==='austrian'?k:k===0?1:3;
+     assert.equal(componentHash(rawParts(features[other])[otherPart]),hash);assert.ok(features[other].properties.FromYear<=year&&features[other].properties.ToYear>=year);
+     decision=kind==='austrian'?territorialResolutions.retained.Nicobar:d;
+     attributions.push({source:other,part:otherPart,hash,group:ext.group,from:year,to:year,reason:decision.reasonRu,sources:decision.sources});
+     extensions.push({...ext,other,otherPart});
+    }else{
+     assert.equal(kind,'dutch');const island=k===0?'Great Nicobar':'Little Nicobar',ru=k===0?'Большой Никобар':'Малый Никобар';
+     decision={...d,transition:undefined,name:`${island} (Danish claim; local communities)`,nameRu:`${ru} (датская претензия; местные общины)`,reason:'Denmark maintained a nominal claim until 1868, despite withdrawal of its establishment in 1848; no Dutch sovereignty. Preserve the local island geography without claiming effective island-wide control.',reasonRu:'Дания сохраняла номинальные притязания до 1868 года, несмотря на уход администрации в 1848 году. Нидерландского суверенитета не было. Контур острова не означает единой эффективной колониальной власти.'};
+     restorations.push({...ext,decision,geometry:{type:'MultiPolygon',coordinates:[parts[part]]}});extensions.push(ext);
+    }
+    exclusions.push([source,parts.length,year,[part],decision.reason,decision.reasonRu,decision.sources[0],year]);
+   }
+  }
+ }
  for(const row of resolved.filter(r=>r.mode==='transfer'))for(let y=row.from;y<=row.to;y++)assert.ok(transfers.some(t=>t.from<=y&&t.to>=y),`Missing transfer ${y}`);
  for(const row of resolved.filter(r=>r.mode==='restored'))for(let y=row.from;y<=row.to;y++)assert.ok(restorations.some(r=>r.source===row.target&&r.hash===row.hash&&r.from<=y&&r.to>=y),`Missing restored component ${row.group}/${y}`);
- return {exclusions,pending,resolved,restorations,relabels,attributions,extensions,transfers,count:seen.size};
+ return {exclusions,pending,resolved,restorations,relabels,attributions,extensions,transfers,pendingExtensions,count:seen.size};
 }
 const withinBox=(polygon,box)=>polygon.every(ring=>ring.every(([x,y])=>x>=box[0]&&x<=box[2]&&y>=box[1]&&y<=box[3]));
 export function deriveConfirmedOverlapExclusions(features,policies=confirmedOverlapPolicies){
@@ -279,6 +323,7 @@ export function deriveConfirmedOverlapExclusions(features,policies=confirmedOver
 }
 
 const reviewedNames=[
+ ['County of Savoy','Q1232887',1416,'Duchy of Savoy','Савойское герцогство','https://ladpe.fr/archives-turin-eng/'],
  ['Former Yugoslav Republic of Macedonia','Q221',2019,'Republic of North Macedonia','Республика Северная Македония','https://www.un.org/en/node/123222'],
  ["People's Republic of Angola",'Q916',1992,'Republic of Angola','Республика Ангола','https://ciam.gov.ao/ao/angola/constituicao'],
  ['Union of Myanmar','Q836',2011,'Republic of the Union of Myanmar','Республика Союз Мьянма',DUTCH_TRANSITIONS],
