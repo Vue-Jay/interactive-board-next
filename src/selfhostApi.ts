@@ -34,8 +34,10 @@ export type SelfhostAccess = {
 export type SelfhostRealtimeStatus = "online"|"reconnecting"|"offline";
 export type SelfhostPoint={x:number;y:number};
 export type SelfhostLiveInkPacket={
-  type:"live_ink";client_id:string;stroke_id:string;kind:"pen"|"marker";
+  type:"live_ink"|"live_erase";client_id:string;stroke_id:string;kind:"pen"|"marker"|"eraser";
   color:string;weight:number;offset:number;points:SelfhostPoint[];finished:boolean;
+  cancelled?:boolean;
+  cut_ids?:string[];
 };
 export type SelfhostPresenceUser={user_id:string;name:string;role:SelfhostBoardRole;online_at?:string};
 export type SelfhostLiveEvent=
@@ -698,7 +700,7 @@ function connectSelfhostBoard(
   const sendRaw=(frame:Record<string,unknown>):boolean=>{
     if(!ready||!socket||socket.readyState!==WebSocket.OPEN)return false;
     try{
-      const wire=compactInk&&frame.type==="live_ink"&&Array.isArray(frame.points)
+      const wire=compactInk&&(frame.type==="live_ink"||frame.type==="live_erase")&&Array.isArray(frame.points)
         ?{...frame,points:frame.points.map((point:SelfhostPoint)=>[point.x,point.y])}:frame;
       socket.send(JSON.stringify(wire));return true
     }
@@ -732,7 +734,7 @@ function connectSelfhostBoard(
     return sent;
   };
   const sendInk=(ink:SelfhostLiveInkPacket):boolean=>{
-    if(ink.type!=="live_ink"||!Array.isArray(ink.points)||
+    if((ink.type!=="live_ink"&&ink.type!=="live_erase")||!Array.isArray(ink.points)||
        !ink.points.length||ink.points.length>200)return false;
     if(ready&&sendInkNow(ink))return true;
     if(queuedInk.length>=256)return false;
@@ -876,9 +878,10 @@ function connectSelfhostBoard(
              Number.isFinite(message.y)){
             onLive?.(message as SelfhostLiveEvent);
           }
-          if(message?.type==="live_ink"&&typeof message.stroke_id==="string"&&
+          if((message?.type==="live_ink"||message?.type==="live_erase")&&typeof message.stroke_id==="string"&&
              Array.isArray(message.points)&&message.points.length<=200&&
              typeof message.user_id==="string"){
+            if(message.type==="live_erase"&&(message.kind!=="eraser"||!Number.isFinite(message.weight)||message.weight<0.5||message.weight>1000))return;
             const points=message.points.map((point:unknown)=>Array.isArray(point)&&point.length===2
               ?{x:point[0],y:point[1]}:point);
             if(points.every((point:unknown)=>jsonObject(point)&&typeof point.x==="number"&&typeof point.y==="number"&&Number.isFinite(point.x)&&Number.isFinite(point.y)))

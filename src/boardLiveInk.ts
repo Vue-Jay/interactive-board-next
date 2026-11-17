@@ -112,8 +112,12 @@ export function createRemoteInkStore(scheduler:RemoteInkScheduler=browserSchedul
   const pending=new Map<string,RemoteLiveInkPreview>();
   const expired=new Set<string>();
   const deadlines=new Map<string,number>();
+  // IDs are unique per board. Once confirmed by the document, no delayed
+  // preview packet may resurrect that ID after a cut/delete/undo.
+  const acknowledged=new Set<string>();
   const listeners=new Set<()=>void>();
   let frame:number|undefined,fallback:number|undefined,expiry:number|undefined;
+  let expiryAt=Infinity;
   const publish=()=>{for(const listener of listeners)listener()};
   const cancelFlush=()=>{
     if(frame!==undefined)scheduler.cancelFrame(frame);
@@ -137,11 +141,14 @@ export function createRemoteInkStore(scheduler:RemoteInkScheduler=browserSchedul
     fallback=scheduler.setTimer(flush,FRAME_FALLBACK);
   };
   const scheduleExpiry=()=>{
-    if(expiry!==undefined||!deadlines.size)return;
+    if(!deadlines.size){if(expiry!==undefined)scheduler.clearTimer(expiry);expiry=undefined;expiryAt=Infinity;return;}
     let earliest=Infinity;
     for(const deadline of deadlines.values())earliest=Math.min(earliest,deadline);
+    if(expiry!==undefined&&expiryAt<=earliest)return;
+    if(expiry!==undefined)scheduler.clearTimer(expiry);
+    expiryAt=earliest;
     expiry=scheduler.setTimer(()=>{
-      expiry=undefined;
+      expiry=undefined;expiryAt=Infinity;
       const now=scheduler.now();
       for(const [id,deadline] of deadlines){
         if(deadline>now)continue;
@@ -159,19 +166,35 @@ export function createRemoteInkStore(scheduler:RemoteInkScheduler=browserSchedul
       return ()=>{listeners.delete(listener)};
     },
     push:(ink:LiveInkMessage)=>{
-      // Refresh only the deadline, not a separate timeout on every packet.
-      deadlines.set(ink.id,scheduler.now()+PREVIEW_TTL);
-      scheduleExpiry();
+      if(acknowledged.has(ink.id))return;
+      if(ink.cancelled){
+        acknowledged.add(ink.id);deadlines.delete(ink.id);pending.delete(ink.id);
+        if(snapshot.has(ink.id)){expired.add(ink.id);flush();}
+        scheduleExpiry();
+        return;
+      }
       const previous=pending.get(ink.id)??(expired.has(ink.id)?undefined:snapshot.get(ink.id));
       const next=mergeRemoteLiveInk(previous,ink);
+      // Reordered packets must not extend a finished eraser's lifetime.
+      deadlines.set(ink.id,scheduler.now()+(next.kind==="eraser"&&next.finished?8000:PREVIEW_TTL));
+      scheduleExpiry();
       if(next===previous)return;
       expired.delete(ink.id);pending.set(ink.id,next);scheduleFlush();
+    },
+    acknowledge:(ids:Iterable<string>)=>{
+      let changed=false;
+      for(const id of ids){
+        acknowledged.add(id);deadlines.delete(id);pending.delete(id);
+        if(snapshot.has(id)){expired.add(id);changed=true;}
+      }
+      if(changed)flush();
+      scheduleExpiry();
     },
     reset:()=>{
       cancelFlush();
       if(expiry!==undefined)scheduler.clearTimer(expiry);
-      expiry=undefined;
-      pending.clear();expired.clear();deadlines.clear();
+      expiry=undefined;expiryAt=Infinity;
+      pending.clear();expired.clear();deadlines.clear();acknowledged.clear();
       if(snapshot.size){snapshot=new Map();publish()}
     },
   };

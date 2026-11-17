@@ -2,6 +2,7 @@ import type {Item} from "./boardModel";
 import {subjectAccentPalette,type SubjectTone} from "./lektrusSubjectAccent";
 import {normalizeLektrusSubject} from "./lektrusSchoolSubjects";
 import {makeSchoolDiagram,type SchoolDiagramId} from "./lektrusSchoolDiagramModel";
+import {fitLanguageFlashcardItem} from "./languageFlashcardSize";
 import {makeMathPresetItem} from "./lektrusMathPresets";
 import {makeSciencePresetItem} from "./lektrusSciencePresets";
 import {emptyMechanics} from "./lektrusMechanicsModel";
@@ -111,10 +112,10 @@ export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:
      id==="ru-morphology"||id==="ru-phonetics"||id==="ru-orthography"||
      id==="ru-sentence-builder"||id==="language-sentence-builder"||id==="civics-structure"||id==="literature-analysis"){
     const diagram=makeSchoolDiagram(id);
-    return {id:createId(),kind:"graph",text:diagram.title,
+    return fitLanguageFlashcardItem({id:createId(),kind:"graph",text:diagram.title,
       x:x-405,y:y-225,width:810,height:450,graphFigureId:id,
       graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,graphSnap:false,
-      graphPoints:[],graphSegments:[],schoolDiagram:diagram};
+      graphPoints:[],graphSegments:[],schoolDiagram:diagram});
   }
   const sciencePreset=scienceDefaultPreset(id);
   if(sciencePreset){

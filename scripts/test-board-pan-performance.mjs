@@ -32,6 +32,8 @@ assert.match(app,/const finishViewerPan = \(cancel=false,restore\?:View\) => \{/
 assert.match(app,/if \(cancel\) \{[\s\S]*paintPendingPan\(target\)/);
 assert.match(app,/if \(next\) \{\s*paintPendingPan\(next\);\s*setView\(next\)/);
 assert.match(app,/const cached=navigation\?panBoardBounds\.current:null/);
+const pointerMove=app.slice(app.indexOf('onPointerMove={(e) => {\n            if(inertSurfaceDragPointer'),app.indexOf('onContextMenu={(e) => {',app.indexOf('onPointerMove={(e) => {\n            if(inertSurfaceDragPointer')));
+assert.ok(pointerMove.indexOf('activeGesture?.mode==="pan"')>=0&&pointerMove.indexOf('activeGesture?.mode==="pan"')<pointerMove.indexOf('if(tool==="eraser")'),"RMB pan must run before the eraser hover early return");
 assert.match(app,/const fastPanWorld = useRef<HTMLDivElement>\(null\)/);
 assert.match(app,/ref=\{fastPanWorld\}[\s\S]{0,120}className="world"/);
 assert.match(app,/ref=\{fastPanOverlay\} className="remote-cursors-layer"/);
