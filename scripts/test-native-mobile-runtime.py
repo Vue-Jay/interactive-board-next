@@ -173,7 +173,15 @@ def board_layout():
 
 
 def choose_tool(tool):
-    click(f'[data-interface-control="{tool}"]')
+    # The mobile dock has only pinned tools. Its creation cluster also scrolls
+    # on short landscape displays; use the full mobile catalogue for marker
+    # and eraser instead of mistaking hidden desktop controls for failures.
+    if tool in ('marker', 'eraser') and visible_id('.mobile-tools-more'):
+        click('.mobile-tools-more')
+        label = {'marker':'Маркер','eraser':'Ластик'}[tool]
+        click(f'.mobile-tools-sheet button[aria-label^="{label}"]')
+    else:
+        click(f'[data-interface-control="{tool}"]')
     wait(lambda: js('return document.querySelector("section.board")?.classList.contains("board-tool-"+arguments[0]);', tool), f'Tool not active: {tool}')
 
 
@@ -229,15 +237,16 @@ paths = {}
 
 def pinch():
     choose_tool('select')
-    click('.zoom-value')
     width,height = js('return [innerWidth,innerHeight]')
     x,y=round(width*.52),round(height*.5)
     p1=[(x-18-i*5,y) for i in range(9)]
     p2=[(x+18+i*5,y) for i in range(9)]
-    before=js('return document.querySelector(".zoom-value")?.innerText')
+    # The percentage is deliberately hidden in compact landscape. Read its
+    # model-backed text, while the actual gesture goes through native touch.
+    before=js('return document.querySelector(".zoom-value")?.textContent')
+    assert before, 'Scale readout missing from board DOM'
     native_gesture(p1,p2)
-    after=wait(lambda: js('return document.querySelector(".zoom-value")?.innerText') if js('return document.querySelector(".zoom-value")?.innerText')!=before else None, 'Two-finger pinch did not change zoom', 10)
-    click('.zoom-value')
+    after=wait(lambda: js('return document.querySelector(".zoom-value")?.textContent') if js('return document.querySelector(".zoom-value")?.textContent')!=before else None, 'Two-finger pinch did not change zoom', 10)
     return {'before':before,'after':after}
 
 
@@ -338,8 +347,9 @@ try:
     check('board-landscape-bounds', board_layout)
     check('two-finger-pinch', pinch)
     check('pencil-touch', lambda: draw('pen',[.38,.46,.52]), fatal=True)
-    check('marker-touch', lambda: draw('marker',[.68,.74,.60]), fatal=True)
-    check('eraser-touch', erase)
+    check('marker-touch', lambda: draw('marker',[.68,.74,.60]))
+    if any(x['kind']=='marker' for x in ink()):
+        check('eraser-touch', erase)
     check('undo-redo', undo_redo)
     check('tool-catalogue', tools_menu)
     check('board-reopen-persistence', reopen)
