@@ -287,6 +287,16 @@ if(outDir&&sourceFile){
         assert.equal(polygonClipping.difference(corsica,pack.geometries[france.geometryId].coordinates).length,0);
       }
       if(year===1861){const italy=activeRecords.get(11691);assert.equal(italy.name,'Kingdom of Italy');assert.equal(italy.nameRu,'Королевство Италия');assert.equal(italy.nameStatus,'reviewed');}
+      for(const [start,end,name,gap,parts] of [[1964,1966,'Malta','Malta',1],[1965,1966,'The Gambia','The Gambia',1],[1970,1972,'Fiji','Fiji',3],[1971,1972,'State of Qatar','Qatar',1],[1971,1972,'Bahrain','Bahrain',1],[1974,1975,'Grenada','Grenada',1],[1977,1978,'Republic of Djibouti','Djibouti',1],[1981,1982,'Belize','Belize',1],[1994,1995,'Palau','Palau',1],[1973,1975,'Seychelles (British colony)',null,1]])if(year>=start&&year<=end){
+        const country=state.drawable.filter(({record})=>record.name===name);
+        assert.equal(country.length,1,`${name}/${year}`);assert.ok(country[0].record.editorialRestoration);assert.equal(country[0].geometry.coordinates.length,parts);
+        if(gap)assert.ok(!state.coverageGaps.some(g=>g.name===gap),`${gap}/${year} still missing`);
+        const restoredHashes=new Set(country[0].geometry.coordinates.map(componentHash));
+        for(const other of state.drawable.filter(e=>e!==country[0]))assert.ok(!other.geometry.coordinates.some(p=>restoredHashes.has(componentHash(p))),`Duplicate restored component ${name}/${year}/${other.record.name}`);
+      }
+      if(year>=1979&&year<=1982){assert.equal(activeRecords.get(13415).name,year===1979?'New Hebrides':'Vanuatu');if(year>=1980)assert.ok(!state.coverageGaps.some(g=>g.name==='Vanuatu'));}
+      if(year>=1967&&year<=2023)assert.equal(activeRecords.get(13285).name,year<1970?'The Gambia':'Republic of The Gambia');
+      if(year>=1973&&year<=2023){assert.equal(activeRecords.get(13329).name,year<1987?'Fiji':'Republic of Fiji');assert.equal(activeRecords.get(13327).name,year<2002?'Bahrain':'Kingdom of Bahrain');}
       if(year>=1975){
         const comoros=state.drawable.filter(({record})=>record.name==='Comoros');
         assert.equal(comoros.length,1);assert.equal(comoros[0].geometry.coordinates.length,3);
@@ -330,7 +340,7 @@ if(outDir&&sourceFile){
   }
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,537);assert.equal(batchPending,159);
-  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,277);assert.equal(extended,638);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
+  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,300);assert.equal(extended,667);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
   console.log(`Reviewed batch: ${batchReady} original corrections; ${batchResolved} newly resolved attributions; ${batchPending} open; ${extended} adjacent cases; ${restoredRecordYears} restored territory-years`);
   assert.equal(seen.size,manifest.counts.revisions);
   assert.equal(allGeometries.size,manifest.counts.uniqueGeometries);
@@ -397,7 +407,7 @@ if(outDir&&sourceFile){
   assert.deepEqual(partsAt(1540,7944),Array.from({length:21},(_,i)=>i).filter(i=>![13,14,17,19].includes(i)));
   assert.equal(revisionAt(1744,9806).geometryStatus,'rejected');
   assert.equal(revisionAt(1799,9806).geometryStatus,'rejected');
-  assert.equal(partsAt(1970,13318),undefined);
+  assert.deepEqual(partsAt(1970,13318),Array.from({length:38},(_,i)=>i).filter(i=>![22,23,24].includes(i)));
   assert.ok(!partsAt(1971,13318).includes(22));
   assert.ok(partsAt(1972,13318).includes(5));
   assert.ok(!partsAt(1973,13318).includes(5));
@@ -410,7 +420,7 @@ if(outDir&&sourceFile){
   assert.ok(partsAt(1962,13247).includes(4)&&!partsAt(1963,13247).includes(4));
   assert.deepEqual(partsAt(1890,11901),[1]);
   assert.ok(partsAt(1976,13247).includes(15)&&!partsAt(1976,13247).includes(16));
-  assert.ok(partsAt(1977,13247).includes(1)&&!partsAt(1978,13247).includes(1));
+  assert.ok(partsAt(1976,13247).includes(1)&&!partsAt(1977,13247).includes(1)&&!partsAt(1978,13247).includes(1));
   assert.ok(!partsAt(1953,13019).includes(57)&&partsAt(1953,13019).includes(49));
   assert.ok(!partsAt(1954,13019).includes(49));
   assert.ok(!partsAt(1973,13279).includes(43)&&!partsAt(1973,13279).includes(39));

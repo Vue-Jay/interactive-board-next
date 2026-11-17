@@ -293,7 +293,7 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
    const key=`${source}:${hash}:${year}`;assert.ok(!seen.has(key)&&!extensionKeys.has(key));extensionKeys.add(key);
    extensions.push({source,part,from:year,to:year,group:decision.group,hash,...(target===undefined?{}:{mode:'transfer',target})});
   }
-  exclusions.push([source,parts.length,from,[part],decision.reason,decision.reasonRu,decision.sources[0],to]);
+  if(!decision.alreadyExcluded)exclusions.push([source,parts.length,from,[part],decision.reason,decision.reasonRu,decision.sources[0],to]);
  };
  assert.equal(features[elba.target].properties.Name,'Grand Duchy of Tuscany');
  for(const [source,part,from,to] of elba.routes){
@@ -335,6 +335,20 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
  registerIslandCorrection(mayotte.source,mayotte.part,mayotte.from,mayotte.to,mayotte,mayotte.target);
  assert.equal(componentHash(rawParts(features[13247])[15]),mayotte.hash);
  attributions.push({source:13247,part:15,hash:mayotte.hash,group:mayotte.group,from:1975,to:2023,reason:mayotte.reasonRu,sources:mayotte.sources});
+ // Restore gaps at independence using cells that actually exist in the
+ // same year. A separately dated successor is an exact geometric witness,
+ // not a substitute geometry or a guess at a missing frontier.
+ for(const d of territorialResolutions.independenceGapRestorations){
+  const raw=rawParts(features[d.source]),reference=features[d.geometryReference??d.identitySource];
+  assert.ok(reference.properties.FromYear===d.to+1&&reference.properties.Type==='POLITY');
+  const hashes=d.parts.map(p=>componentHash(raw[p]));
+  assert.deepEqual([...hashes].sort(),rawParts(reference).map(componentHash).sort());
+  const decision={...d,reason:d.reason??`Independence in ${d.year}; the exact same-year components match the subsequent independent state, whose candidate geometry is preserved.`,reasonRu:d.reasonRu??`Независимость с ${d.year} года. Датированные исходные компоненты полностью совпадают с последующей записью независимого государства; сохранён предварительный контур источника.`,sources:d.sources??['https://www.un.org/dppa/decolonization/en/history/former-trust-and-nsgts']};
+  for(const [i,part] of d.parts.entries())registerIslandCorrection(d.source,part,d.from,d.to,{...decision,hash:hashes[i]});
+  const individual=restorations.splice(-d.parts.length,d.parts.length);
+  assert.ok(individual.every(r=>r.source===d.source&&r.from===d.from&&r.to===d.to&&r.decision.entity===d.entity));
+  restorations.push({...individual[0],parts:d.parts,geometry:{type:'MultiPolygon',coordinates:d.parts.map(p=>raw[p])}});
+ }
  const davao=territorialResolutions.davaoTransfer;
  assert.equal(features[davao.target].properties.Name,'Spanish Empire');
  for(const [source,part,from,to] of davao.routes){
@@ -795,6 +809,19 @@ export function normalizeHistoricalSource(source) {
     } else if (sourceName === 'Zimbabwe Rhodesia' && sourceWikidata === 'Q890120' && from === 1979 && to === 1982) {
       add({...base,to:1979});
       add({...base,from:1980,entityId:identity('source-polity','Republic of Zimbabwe','Q954'),name:'Republic of Zimbabwe',nameRu:'Республика Зимбабве',nameStatus:'reviewed',review:{reason:'Independence as the Republic of Zimbabwe on 18 April 1980; annual label reflects the new state, not a day-level boundary reconstruction. Geometry remains unverified.',sources:[ZIMBABWE_SOURCE]}});
+    } else if(territorialResolutions.datedPostIndependenceNames.some(d=>d.source===sourceIndex)){
+      const d=territorialResolutions.datedPostIndependenceNames.find(d=>d.source===sourceIndex);
+      assert.equal(sourceName,d.sourceName);assert.ok(from<d.year&&d.year<=to);
+      for(const r of editorialSegments(base,derivedExclusions)){
+        if(r.from<d.year)add({...r,to:Math.min(r.to,d.year-1),name:d.name,nameRu:d.nameRu,nameStatus:'reviewed',review:{reason:d.reason,reasonRu:d.reasonRu,sources:d.sources}});
+        if(r.to>=d.year)add({...r,from:Math.max(r.from,d.year)});
+      }
+    } else if(sourceIndex===territorialResolutions.vanuatuIndependence.source){
+      const d=territorialResolutions.vanuatuIndependence,next=source.features[d.successor];
+      assert.equal(sourceName,'New Hebrides');assert.equal(next.properties.Name,d.name);assert.equal(next.properties.FromYear,to+1);
+      assert.deepEqual(rawParts(feature).map(componentHash).sort(),rawParts(next).map(componentHash).sort());
+      add({...base,to:d.year-1});
+      add({...base,from:d.year,entityId:identity('source-polity',next.properties.Name,next.properties.Wikidata??''),name:d.name,nameRu:d.nameRu,nameStatus:'reviewed',memberOf:[],...(base.memberOf.length?{sourceMemberOf:base.memberOf}:{}),review:{reason:d.reason,reasonRu:d.reasonRu,sources:d.sources}});
     } else if (sourceIndex===territorialResolutions.italy1861.source&&sourceName==='Kingdom of Sardinia'&&from===1861&&to===1861) {
       const d=territorialResolutions.italy1861,next=source.features[d.successor];assert.equal(next.properties.Name,'Kingdom of Italy');assert.equal(sha256(JSON.stringify(next.geometry)),sourceGeometryId);
       add({...base,entityId:identity('source-polity',next.properties.Name,next.properties.Wikidata),name:next.properties.Name,nameRu:'Королевство Италия',nameStatus:'reviewed',review:{reason:d.reason,reasonRu:d.reasonRu,sources:d.sources}});
@@ -810,8 +837,8 @@ export function normalizeHistoricalSource(source) {
    const geometryId=sha256(JSON.stringify(r.geometry));validateGeometry(r.geometry);geometries.set(geometryId,r.geometry);
    const sourceGeometryId=sha256(JSON.stringify(raw.geometry));
    const identitySource=d.identitySource===undefined?undefined:source.features[d.identitySource].properties;
-   if(identitySource)assert.equal(identitySource.Name,label.name);
-   const restored={...origin,id:identity('restoration',r.source,r.hash,r.from,r.to,d.entity),entityId:identitySource?identity('source-polity',identitySource.Name,identitySource.Wikidata??''):identity('reviewed-territory',d.entity),name:label.name,nameRu:label.nameRu,role:'polity',nameStatus:'reviewed',geometryStatus:'candidate',geometryId,sourceGeometryId,geometryRepair:'reviewed-source-components',geometryParts:(r.parts??[r.part]).map(part=>({index:r.source,part})),from:r.from,to:r.to,editorialRestoration:true,components:[],memberOf:[],sourceComponents:origin.sourceComponents??origin.components,sourceMemberOf:origin.sourceMemberOf??origin.memberOf,review:{reason:d.reason,reasonRu:d.reasonRu,sources:d.sources}};
+   if(identitySource)assert.equal(identitySource.Name,d.identitySourceName??label.name);
+   const restored={...origin,id:identity('restoration',r.source,r.hash,r.from,r.to,d.entity),entityId:identitySource?identity('source-polity',identitySource.Name,identitySource.Wikidata??''):identity(d.entityNamespace??'reviewed-territory',d.entity),name:label.name,nameRu:label.nameRu,role:'polity',nameStatus:'reviewed',geometryStatus:'candidate',geometryId,sourceGeometryId,geometryRepair:'reviewed-source-components',geometryParts:(r.parts??[r.part]).map(part=>({index:r.source,part})),from:r.from,to:r.to,editorialRestoration:true,components:[],memberOf:[],sourceComponents:origin.sourceComponents??origin.components,sourceMemberOf:origin.sourceMemberOf??origin.memberOf,review:{reason:d.reason,reasonRu:d.reasonRu,sources:d.sources}};
    delete restored.territorialIssues;delete restored.territorialAttributions;
    records.push(restored);counts.reviewedNames++;
   }
