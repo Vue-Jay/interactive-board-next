@@ -3,6 +3,7 @@ import {test} from 'node:test';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import {randomUUID} from 'node:crypto';
 
 function harness(){
   const sockets=[], timers=new Map(), listeners=new Map(), received=[];
@@ -354,11 +355,55 @@ test('hidden-tab fallback, expiry refresh, board cleanup and resubscription rema
   h.store.reset();assert.equal(h.store.getSnapshot().size,0);
 });
 
-function loadMotionModule(path){
+function loadMotionModule(path,dependencies={}){
   const source=readFileSync(new URL(`../src/${path}`,import.meta.url),'utf8'),api={};
-  vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:api});
+  vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:api,require:name=>dependencies[name],crypto:{randomUUID}});
   return api;
 }
+test('authoritative ink never reappears after erase, and cancel removes live erase immediately',()=>{
+  const h=inkStoreHarness();
+  h.store.push(h.packet('saved',0,10,true));h.frame();
+  h.store.acknowledge(['saved']);
+  assert.equal(h.store.getSnapshot().size,0);
+  h.store.push(h.packet('saved',5,10,true));h.frame();
+  assert.equal(h.store.getSnapshot().size,0);
+  const erase={...h.packet('erase',0,10),kind:'eraser'};
+  h.store.push(erase);h.frame();assert.ok(h.store.getSnapshot().has('erase'));
+  h.store.push({...erase,finished:true,cancelled:true});
+  assert.equal(h.store.getSnapshot().size,0);
+  h.store.push(erase);h.frame();assert.equal(h.store.getSnapshot().size,0);
+  const complete={...erase,id:'finished',finished:true};
+  h.store.push(complete);h.frame();h.advance(1000);
+  h.store.push({...complete,finished:false});h.advance(8000);h.frame();
+  assert.equal(h.store.getSnapshot().size,0,'late unfinished packet must not resurrect the long TTL');
+});
+test('live erase cuts only target ink without mutating the persistent board; vocabulary cards fit both faces',()=>{
+  const h=inkStoreHarness();
+  const {previewRemoteErasures}=loadMotionModule('remoteEraserPreview.ts',{
+    './boardModel':{isInkItem:item=>['pen','marker'].includes(item.kind)},
+    './boardLiveInk':h.api,'./inkEraser':loadMotionModule('inkEraser.ts')});
+  const item={id:'ink',kind:'marker',x:0,y:0,width:100,height:4,weight:4,points:[{x:0,y:0},{x:100,y:0}]};
+  const untouched={...item,id:'different'};
+  const before=[item,untouched],original=JSON.stringify(before);
+  const preview={...h.packet('erase',0,1),kind:'eraser',weight:12,points:[{x:50,y:0}]};
+  const previews=new Map([['erase',preview]]),targets=new Map([['erase',new Set(['ink'])]]);
+  const cut=previewRemoteErasures(before,previews,targets);
+  assert.equal(cut.length,3);assert.strictEqual(cut[2],untouched);
+  assert.equal(JSON.stringify(before),original);assert.ok(cut.slice(0,2).every(x=>x.id.startsWith('ink:remote-erase:')));
+  const final=cut.slice(0,2).map((x,i)=>({...x,id:'saved'+i}));
+  assert.ok(previewRemoteErasures(final,previews,targets).every((x,i)=>x===final[i]));
+  const {fitLanguageFlashcardItem}=loadMotionModule('languageFlashcardSize.ts');
+  const deck={id:'card',kind:'graph',graphFigureId:'language-flashcards',x:0,y:0,width:810,height:450,schoolDiagram:{kind:'flashcards',cards:[{term:'cat',translation:'кот',transcription:''}],showTranslation:true,showTranscription:true,direction:'foreign-first'}};
+  const short=fitLanguageFlashcardItem(deck);
+  assert.ok(short.width<450&&short.height<350);assert.equal(short.x+short.width/2,405);
+  assert.strictEqual(fitLanguageFlashcardItem(short,short),short,'unchanged deck retains manual size');
+  const long=fitLanguageFlashcardItem({...deck,schoolDiagram:{...deck.schoolDiagram,cards:[{term:'a very long phrase',translation:'длинное предложение со многими словами',transcription:''}]}},deck);
+  assert.ok(long.width>short.width&&long.height>short.height);
+  const app=readFileSync(new URL('../src/BoardApp.tsx',import.meta.url),'utf8');
+  const paint=app.slice(app.indexOf('const beginInkPreview='),app.indexOf('const scheduleInkPreviewPaint='));
+  assert.match(paint,/canvas\.style\.opacity=ink\.kind==="marker"\?"0\.32":"1"/);
+  assert.equal([...paint.matchAll(/ctx\.globalAlpha=1/g)].length,2,'Both preview batches paint opaque before compositing');
+});
 test('cursor bursts retain the latest position per peer and never notify the board per packet',()=>{
   const h=inkStoreHarness(),store=loadMotionModule('boardRemoteCursors.ts').createRemoteCursorStore(h.scheduler);
   let updates=0;store.subscribe(()=>updates++);

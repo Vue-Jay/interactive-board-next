@@ -634,7 +634,7 @@ async def broadcast_checked(board_id: UUID, event: dict[str, Any], pool: asyncpg
     # Modern ink-only classrooms need only the compact representation. Use a
     # fixed encoding choice for each socket throughout this fan-out.
     compact_peers = ({peer for peer in peers if peer in _compact_ink_subscribers}
-                     if event["type"] == "live_ink" else set())
+                     if event["type"] in ("live_ink", "live_erase") else set())
     payload = (json.dumps(event, ensure_ascii=False, separators=(",", ":"))
                if len(compact_peers) != len(peers) else "")
     compact_payload = (json.dumps({**event, "points": [[p["x"], p["y"]] for p in event["points"]]},
@@ -750,7 +750,7 @@ async def relay_live_event(board_id: UUID, sender: WebSocket,
 # These frames need no additional asynchronous validation between checking
 # permissions and starting peer delivery. Target/pilot events still perform
 # their separate database checks and use a fresh recipient lookup afterwards.
-INLINE_RELAY_TYPES = ("cursor", "live_ink", "work_state", "editor_mutation",
+INLINE_RELAY_TYPES = ("cursor", "live_ink", "live_erase", "work_state", "editor_mutation",
                       "object_transform", "teacher_view", "guided_follow", "attachment_request")
 
 
@@ -1127,7 +1127,7 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                                             checked_peers, authorized=checked_rows)
                 else:
                     await relay_live_event(board_id, websocket, event, websocket.app.state.pool)
-                if event["type"] == "live_ink":
+                if event["type"] in ("live_ink", "live_erase"):
                     # An ack confirms delivery to the server's relay, not that
                     # the stroke is saved in the durable board document.
                     await websocket.send_json({

@@ -110,6 +110,17 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                         received=json.loads(await asyncio.wait_for(receiver.recv(),3))
                         assert received["type"]=="live_ink" and received["points"]==packet["points"]
                         assert json.loads(await asyncio.wait_for(sender.recv(),3))["type"]=="ink_ack"
+                        erase={**packet,"type":"live_erase","kind":"eraser","stroke_id":"native_eraser",
+                               "weight":120,"cancelled":False,"cut_ids":[]}
+                        await sender.send(json.dumps(erase))
+                        preview=json.loads(await asyncio.wait_for(receiver.recv(),3))
+                        assert preview["type"]=="live_erase" and preview["finished"] is False
+                        assert preview["points"]==erase["points"]
+                        assert json.loads(await asyncio.wait_for(sender.recv(),3))["type"]=="ink_ack"
+                        await sender.send(json.dumps({**erase,"finished":True,"cut_ids":["native_stroke"]}))
+                        final=json.loads(await asyncio.wait_for(receiver.recv(),3))
+                        assert final["finished"] is True and final["cut_ids"]==["native_stroke"]
+                        assert json.loads(await asyncio.wait_for(sender.recv(),3))["type"]=="ink_ack"
                     saved=await http.put(f"/api/v1/boards/{native}/document?version_only=true",headers=owner,
                         json={"expected_version":0,"document":{"items":[],"ink":[]}})
                     assert saved.status_code==200,saved.text

@@ -80,15 +80,19 @@ test("eraser draws a lightweight canvas preview and commits once at gesture end"
  assert.ok(app.includes("const previewEraserSegment=(from:Point,to:Point)=>"));
  assert.ok(app.includes("const recordEraserPoint=(point:Point)=>"));
  assert.ok(app.includes("const finishEraser=(point:Point|null)=>"));
- assert.match(app,/const next=eraseInkAlongPath\(before,g\.path,eraserSize\/2\/g\.zoom,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\)\)/);
- assert.ok(app.includes("commit(next);"));
+ const finish=app.slice(app.indexOf("const finishEraser="),app.indexOf("const currentDocument ="));
+ assert.match(finish,/const next=eraseInkAlongPath\(before,g\.path,g\.weight\/2,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\)\)/);
+ assert.equal([...finish.matchAll(/commit\(next,\{immediatePaint:true\}\)/g)].length,1);
  assert.ok(app.includes("stopEraserPreview();"));
 });
 
 test("eraser hover does not render the entire board or broadcast cursor each mouse event",()=>{
  const app=readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
- assert.ok(app.includes('if(tool==="eraser"){if(!eraserSession.current)'));
- assert.ok(app.includes("setLiveEraserCursor(p.x,p.y)"));
+ const hover='if(tool==="eraser"){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y,e.pointerType);return;}';
+ assert.ok(app.includes(hover));
+ const handler=app.slice(app.lastIndexOf('onPointerMove={(e) => {',app.indexOf(hover)),app.indexOf(hover));
+ assert.ok(handler.includes('if(eraserSession.current||pinchState.current||consumedTouchIds.current.has(e.pointerId))return;'));
+ assert.match(handler,/activeGesture\?\.mode==="pan"[\s\S]*?move\(e\);\s*return;/);
  assert.ok(!app.includes("setEraserCursor("));
  assert.ok(!app.includes("eraserCursor &&"));
  assert.ok(app.includes('el.style.visibility="visible"'));
@@ -97,8 +101,10 @@ test("eraser hover does not render the entire board or broadcast cursor each mou
 test("autosave waits until eraser stroke ends and only commits once",()=>{
  const app=readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
  assert.ok(app.includes("if (saveBlocked || gesture.current || eraserSession.current) return;"));
- assert.match(app,/const next=eraseInkAlongPath\(before,g\.path,eraserSize\/2\/g\.zoom,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\)\)/);
- assert.ok(app.includes("commit(next);"));
+ const finish=app.slice(app.indexOf("const finishEraser="),app.indexOf("const currentDocument ="));
+ assert.match(finish,/const next=eraseInkAlongPath\(before,g\.path,g\.weight\/2,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\)\)/);
+ assert.equal([...finish.matchAll(/commit\(next,\{immediatePaint:true\}\)/g)].length,1);
+ assert.match(finish,/commit\(next,\{immediatePaint:true\}\)[\s\S]*?flushSave\(\)/);
  assert.ok(app.includes("stopEraserPreview();"));
  assert.ok(app.includes("eraserSession.current=null;"));
 });

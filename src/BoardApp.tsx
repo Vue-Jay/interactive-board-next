@@ -1,6 +1,6 @@
 import LektrusChemistryCollectionAction from "./LektrusChemistryCollectionAction";
 import UserAvatar from "./UserAvatar";
-import { lazy, memo, Suspense, useCallback, useEffect, useId, useMemo, useRef, useLayoutEffect, useState, type PointerEvent as PE, type CSSProperties } from "react";
+import { lazy, memo, Suspense, useCallback, useEffect, useId, useMemo, useRef, useLayoutEffect, useState, useSyncExternalStore, type PointerEvent as PE, type CSSProperties } from "react";
 import { compileGraphExpression } from "./lektrusGraphExpression";
 import { boardWorldTransform, boardOverlayTransform, fitBoardCamera } from "./boardPanTransform";
 import { planCompositeBoardDrag, connectorDragEndpoints, paintBoardDeformedConnector, canCompositeBoardRotation, translatedBoardDragItems, paintBoardDragTranslation, clearBoardDragTranslation, paintBoardRotationPreview, clearBoardRotationPreview, type ConnectorDragTarget } from "./boardDragCompositor";
@@ -32,6 +32,7 @@ import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
 import LektrusSubjectToolIcon from "./LektrusSubjectToolIcons";
 import LektrusSchoolDiagramView from "./LektrusSchoolDiagramView";
 import { fitGeoMatchingItem } from "./lektrusGeoMatchingLayout";
+import { fitLanguageFlashcardItem } from "./languageFlashcardSize";
 import { boardObjectTypeName } from "./boardObjectNames";
 import { isSchoolDiagramId, isSchoolDiagram } from "./lektrusSchoolDiagramModel";
 // Load heavy chemistry/physics editors only when a teacher opens one.
@@ -110,6 +111,7 @@ import { connectBoardCursorChannel, type BoardCursorChannel } from "./boardBroad
 import { createRemoteCursorStore } from "./boardRemoteCursors";
 import { RemoteCursorOverlay, RemoteCursorCount } from "./RemoteCursorOverlay";
 import { createRemoteInkStore } from "./boardLiveInk";
+import { previewRemoteErasures } from "./remoteEraserPreview";
 import { RemoteInkOverlay } from "./RemoteInkOverlay";
 import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState, type BoardObjectPose } from "./boardWorkSync";
@@ -2175,6 +2177,23 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const visiblePresenceUsers = useMemo(() => adminHidden ? presenceUsers.filter((user) => user.userId !== authUser.id) : presenceUsers, [presenceUsers, adminHidden, authUser.id]);
   const [remoteCursorStore] = useState(createRemoteCursorStore);
   const [remoteInkStore] = useState(createRemoteInkStore);
+  const [remoteEraseStore] = useState(createRemoteInkStore);
+  const remoteEraseTargets=useRef(new Map<string,Set<string>>());
+  const remoteErasures=useSyncExternalStore(remoteEraseStore.subscribe,remoteEraseStore.getSnapshot,remoteEraseStore.getSnapshot);
+  const previousRemoteErasures=useRef<ReadonlyMap<string,unknown>>(new Map());
+  useEffect(()=>{
+    for(const id of previousRemoteErasures.current.keys())if(!remoteErasures.has(id))remoteEraseTargets.current.delete(id);
+    previousRemoteErasures.current=remoteErasures;
+  },[remoteErasures]);
+  const acknowledgeRemoteInk=useCallback((data:DocumentData)=>{
+    const ids=expandDocumentInk(data).filter(isInkItem).map(item=>item.id);
+    remoteInkStore.acknowledge(ids);
+    if(remoteEraseTargets.current.size){
+      const retained=new Set(ids);
+      for(const targets of remoteEraseTargets.current.values())
+        for(const id of targets)if(!retained.has(id)&&!remoteInkStore.getSnapshot().has(id))targets.delete(id);
+    }
+  },[remoteInkStore]);
   const inkDiagnostics=useRef("подключается");
   const inkDiagnosticsElement=useRef<HTMLSpanElement|null>(null);
   const settingsInkDiagnosticsElement=useRef<HTMLSpanElement|null>(null);
@@ -2709,15 +2728,18 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const remoteLiveBases=useRef(new Map<string,string>());
   const pendingEditorBases=useRef(new Map<string,Item>());
   const remoteLiveCleanup=useRef(new Map<string,ReturnType<typeof setTimeout>>());
-  // Keep live ink available as a fallback after its first server rendering.
-  // A later competing document revision may temporarily lack that stroke:
-  // immediately deleting the broadcast overlay made it visibly disappear.
-  // The renderer hides duplicate previews whenever the permanent ink exists.
-  // Per-stroke expiry below bounds memory without assuming a server-save time.
+  // A server-confirmed stroke belongs exclusively to the document. Keeping its
+  // live preview after confirmation can resurrect it when an eraser removes
+  // the original ID and replaces it with cut fragments.
 
   const itemsRef = useRef(items);
   const [getCurrentItemIndex] = useState(()=>createCurrentItemIndex<Item>());
-  const eraserSession = useRef<{pointer:number;last:Point;zoom:number;path:Point[]}|null>(null);
+  const eraserSession = useRef<{id:string;pointer:number;last:Point;zoom:number;weight:number;path:Point[]}|null>(null);
+  const sendLiveEraser=(g:NonNullable<typeof eraserSession.current>,finished=false,cancelled=false,cutIds:string[]=[])=>{
+    const offset=Math.max(0,g.path.length-(cancelled?1:500));
+    cursorChannel.current?.sendInk({id:g.id,kind:"eraser",color:"#000000",weight:g.weight,
+      points:g.path.slice(offset),offset,finished,cancelled,cutIds});
+  };
   const eraserPreviewCanvas=useRef<HTMLCanvasElement>(null);
   const eraserPreviewRatio=useRef(1);
   const eraserCursorElement = useRef<HTMLDivElement>(null);
@@ -2736,12 +2758,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     canvas.width=Math.max(1,Math.round(rect.width*ratio));
     canvas.height=Math.max(1,Math.round(rect.height*ratio));
     canvas.style.display="block";
+    canvas.style.opacity=ink.kind==="marker"?"0.32":"1";
     const ctx=canvas.getContext("2d");
     if(!ctx)return;
     ctx.setTransform(1,0,0,1,0,0);
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.setTransform(ratio*g.view.zoom,0,0,ratio*g.view.zoom,ratio*g.view.x,ratio*g.view.y);
-    ctx.globalAlpha=ink.kind==="marker"?.32:1;
+    // Composite the entire active stroke once. Alpha on each incremental
+    // batch would darken round caps and self-intersections on the sender.
+    ctx.globalAlpha=1;
     ctx.fillStyle=ink.color;
     ctx.beginPath();ctx.arc(point.x,point.y,ink.weight/2,0,Math.PI*2);ctx.fill();
     lastInkPreviewPoint.current=point;
@@ -2754,7 +2779,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(!ctx)return;
     const ratio=inkPreviewRatio.current;
     ctx.setTransform(ratio*g.view.zoom,0,0,ratio*g.view.zoom,ratio*g.view.x,ratio*g.view.y);
-    ctx.globalAlpha=ink.kind==="marker"?.32:1;
+    ctx.globalAlpha=1;
     ctx.strokeStyle=ink.color;ctx.fillStyle=ink.color;
     ctx.lineWidth=ink.weight;ctx.lineCap="round";ctx.lineJoin="round";
     const previous=lastInkPreviewPoint.current??points[0];
@@ -3190,6 +3215,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       // Reusing this hash avoids a second full document traversal per save.
       acknowledgedSharedContent.current = fingerprint;
       acknowledgedBoardData.current = data;
+      acknowledgeRemoteInk(data);
       // A newer local edit may already be queued. Never clear its pending flag
       // merely because the previous remote revision finished.
       if(snapshot.current&&documentFingerprint(snapshot.current)===fingerprint){
@@ -3236,7 +3262,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if (queued && !deferred)
         void pushRemoteSnapshot(snapshot.current??queued);
     }
-  }, [boardSummary.id, canEdit, layoutEditing, documentSyncEnabled, selfhostMode, adminMaintenance]);
+  }, [boardSummary.id, canEdit, layoutEditing, documentSyncEnabled, selfhostMode, adminMaintenance, acknowledgeRemoteInk]);
 
   const flushSave = useCallback(() => {
     if (!canEdit || layoutEditing) return;
@@ -3637,12 +3663,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const canvas=eraserPreviewCanvas.current;
     if(canvas)canvas.style.display="none";
   };
+  const cancelEraser=()=>{
+    const g=eraserSession.current;
+    if(g)sendLiveEraser(g,true,true);
+    eraserSession.current=null;
+    stopEraserPreview();
+  };
   const recordEraserPoint=(point:Point)=>{
     const g=eraserSession.current;
     if(!g)return;
     if(Math.hypot(point.x-g.last.x,point.y-g.last.y)>.1){
       g.path.push(point);
       g.last=point;
+      sendLiveEraser(g);
     }
   };
   const finishEraser=(point:Point|null)=>{
@@ -3652,14 +3685,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     eraserSession.current=null;
     // The model is changed once per gesture, as one undo/history operation.
     const before=itemsRef.current;
-    const next=eraseInkAlongPath(before,g.path,eraserSize/2/g.zoom,
+    const next=eraseInkAlongPath(before,g.path,g.weight/2,
       item=>canRemoveBoardItem(item,authUser.id,isStudent,isBoardOwner));
+    const remaining=next===before?null:new Set(next.map(item=>item.id));
+    const cutIds=remaining?before.filter(item=>isInkItem(item)&&!remaining.has(item.id)).map(item=>item.id).slice(0,500):[];
+    sendLiveEraser(g,true,next===before,cutIds);
     if(next!==before){
       // Keep the canvas preview until the actual SVG fragments have painted.
       flushSync(()=>{
-        commit(next);
+        commit(next,{immediatePaint:true});
         setItems(itemsRef.current);
       });
+      // Erasing should not wait for the generic document autosave debounce.
+      flushSave();
     }
     stopEraserPreview();
     if (!remoteSaveInFlight.current && deferredRemote.current) {
@@ -4354,7 +4392,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       consumedTouchIds.current.clear();
       pinchState.current=null;
       pinchSelectionSnapshot.current=null;
-      if(eraserSession.current){eraserSession.current=null;stopEraserPreview();}
+      if(eraserSession.current)cancelEraser();
       if(gesture.current)end(true);
       setPanning(false);
     }
@@ -4369,10 +4407,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       for(const id of touchPoints.current.keys())consumedTouchIds.current.add(id);
       // Two fingers always navigate. Discard an unfinished eraser preview
       // before zooming; otherwise its pointer capture outlives the gesture.
-      if(eraserSession.current){
-        eraserSession.current=null;
-        stopEraserPreview();
-      }
+      if(eraserSession.current)cancelEraser();
       // A pan keeps its current viewport; an object transform is cancelled.
       end(gesture.current?.mode!=="pan");
       // The first touch may have selected an object before the second arrived.
@@ -4603,8 +4638,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(previousInteractionTool.current===tool)return;
     previousInteractionTool.current=tool;
     end(true);
-    eraserSession.current=null;
-    stopEraserPreview();
+    cancelEraser();
     touchPoints.current.clear();
     consumedTouchIds.current.clear();
     pinchState.current=null;
@@ -4623,14 +4657,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const release=(event:PointerEvent)=>{
       if(touchPoints.current.has(event.pointerId)||consumedTouchIds.current.has(event.pointerId))touchEnd(event);
       if(eraserSession.current?.pointer===event.pointerId){
-        eraserSession.current=null;stopEraserPreview();
+        cancelEraser();
       }
       if(gesture.current?.pointer===event.pointerId)end(true);
     };
     const blur=()=>{
       end(true);
-      eraserSession.current=null;
-      stopEraserPreview();
+      cancelEraser();
       touchPoints.current.clear();
       consumedTouchIds.current.clear();
       pinchState.current=null;
@@ -7329,6 +7362,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     commit(itemsRef.current.filter(item=>item.id!==id));
   };
   const visibleItems = useMemo(() => items.filter((item) => !item.hidden && item.kind !== "instrument"), [items]);
+  const displayInkItems=useMemo(()=>previewRemoteErasures(visibleItems,remoteErasures,remoteEraseTargets.current),[visibleItems,remoteErasures]);
   const visibleObjects = visibleItems;
   const objectCount = items.length;
   const drawingCount = useMemo(() => items.filter(isInkItem).length, [items]);
@@ -7374,14 +7408,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     };
     // A few selected strokes may show their editing handles individually.
     // Large lasso selections remain batched to avoid thousands of DOM nodes.
-    for (const item of visibleItems) {
+    for (const item of displayInkItems) {
       if (isInkItem(item) && item.points?.length &&
           !detailedInkIds.has(item.id)) run.push(item);
       else { flush(); layers.push({ kind: "item", key: item.id, item }); }
     }
     flush();
     return layers;
-  }, [visibleItems, detailedInkIds]);
+  }, [displayInkItems, detailedInkIds]);
   const renderEntries = useMemo(() => {
     // Wait for ResizeObserver before mounting a heavy board. Without viewport
     // dimensions the old renderer mounted every single object at startup.
@@ -7615,6 +7649,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     acknowledgedDocument.current = incomingFingerprint;
     acknowledgedSharedContent.current = incomingFingerprint;
     acknowledgedBoardData.current = data;
+    acknowledgeRemoteInk(data);
     pendingRemote.current = null;
     queuedRemoteSnapshot.current = null;
     remoteSaveFailures.current = 0;
@@ -7675,6 +7710,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         acknowledgedDocument.current = lastAttempt.current!.fingerprint;
         acknowledgedSharedContent.current = sharedBoardFingerprint(data);
         acknowledgedBoardData.current = data;
+        acknowledgeRemoteInk(data);
         return;
       }
       // A different viewport is not new shared board content. Accept the
@@ -7704,6 +7740,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         acknowledgedDocument.current = remoteFingerprint;
         acknowledgedSharedContent.current = remoteFingerprint;
         acknowledgedBoardData.current = remote;
+        acknowledgeRemoteInk(remote);
         pendingRemote.current = null;
         setRemoteConflict(null);
         setConflictLocalBackup(null);
@@ -7757,12 +7794,32 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   useEffect(() => {
     if(layoutEditing)return;
     let active=true;
+    if(acknowledgedBoardData.current)acknowledgeRemoteInk(acknowledgedBoardData.current);
     const channel = connectBoardCursorChannel(
       boardSummary.id,
       { userId: authUser.id, name: authUser.name, role: boardSummary.role },
       cursor=>{if(active)remoteCursorStore.push(cursor)},
       true, // Keep the socket active independently of invisible mode; cursor emission is guarded at pointer-move.
-      ink=>{if(active)remoteInkStore.push(ink)},
+      ink=>{
+        if(!active)return;
+        if(ink.kind!=="eraser"){remoteInkStore.push(ink);return;}
+        const targets=remoteEraseTargets.current;
+        if(ink.cancelled)targets.delete(ink.id);
+        else if(!targets.has(ink.id)){
+          if(targets.size>=128){const oldest=targets.keys().next().value;if(oldest!==undefined){targets.delete(oldest);remoteEraseStore.acknowledge([oldest]);}}
+          targets.set(ink.id,new Set([...itemsRef.current.filter(isInkItem).map(item=>item.id),...remoteInkStore.getSnapshot().keys()]));
+        }
+        // A rapid draw-then-erase can remove a stroke before its first save.
+        // Retire that preview too; the durable fragments will arrive normally.
+        if(ink.finished&&!ink.cancelled&&ink.cutIds?.length){
+          if(ink.cutIds.length<500){
+            const originalTargets=targets.get(ink.id);
+            targets.set(ink.id,new Set(ink.cutIds.filter(id=>originalTargets?.has(id))));
+          }
+          remoteInkStore.acknowledge(ink.cutIds);
+        }
+        remoteEraseStore.push(ink);
+      },
       status=>{if(active)setInkDiagnostics(status)},
       true, // Drawings remain collaborative even when the admin hides their presence.
     );
@@ -7773,8 +7830,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       channel.close();
       remoteCursorStore.reset();
       remoteInkStore.reset();
+      remoteEraseStore.reset();remoteEraseTargets.current.clear();
     };
-  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, layoutEditing, remoteInkStore, remoteCursorStore, setInkDiagnostics]);
+  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, layoutEditing, remoteInkStore, remoteEraseStore, acknowledgeRemoteInk, remoteCursorStore, setInkDiagnostics]);
 
   useEffect(() => {
     if(layoutEditing)return;
@@ -8755,7 +8813,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               {...saved,schoolDiagram:{...saved.schoolDiagram,
                 contourMarks:next.schoolDiagram.contourMarks,contourStrokes:next.schoolDiagram.contourStrokes,
                 contourLegend:next.schoolDiagram.contourLegend,paintedCountries:next.schoolDiagram.paintedCountries}}:next;
-            const fitted=fitGeoMatchingItem(updated);
+            const fitted=fitLanguageFlashcardItem(fitGeoMatchingItem(updated),saved);
             commit(itemsRef.current.some(i=>i.id===next.id)?
               itemsRef.current.map(i=>i.id===next.id?fitted:i):[...itemsRef.current,fitted]);
             setSchoolEditorItem(null);setNotice(studentContour?"Контурная карта сохранена":"Учебная схема сохранена");
@@ -9484,7 +9542,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               // Complete the previous move at its last valid position instead
               // of silently snapping the object or viewport backwards.
               end();
-              if(eraserSession.current){eraserSession.current=null;stopEraserPreview();}
+              if(eraserSession.current)cancelEraser();
               touchPoints.current.clear();
               consumedTouchIds.current.clear();
               pinchState.current=null;
@@ -9596,6 +9654,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               setContextMenu(null);
               setRightPointerActive(true);
               setPanning(true);
+              if(eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden";
               gesture.current={pointer:e.pointerId,mode:"pan",start,view,
                 before:itemsRef.current,ids:[],path:[world(start)],additive:false};
               e.currentTarget.setPointerCapture(e.pointerId);
@@ -9647,7 +9706,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             if(gesture.current)end(true);
             const screen=local(e.clientX,e.clientY);
             const p=world(screen);
-            eraserSession.current={pointer:e.pointerId,last:p,zoom:view.zoom,path:[p]};
+            eraserSession.current={id:createId(),pointer:e.pointerId,last:p,zoom:view.zoom,weight:eraserSize/view.zoom,path:[p]};
+            sendLiveEraser(eraserSession.current);
             setSelected([]);
             beginEraserPreview();
             previewEraserSegment(screen,screen);
@@ -9768,8 +9828,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             if(eraserSession.current?.pointer!==e.pointerId)return;
             e.preventDefault();e.stopPropagation();
             // Pointer cancellation (e.g. a second finger) is not an erase.
-            eraserSession.current=null;
-            stopEraserPreview();
+            cancelEraser();
             if(eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden";
           }}
           onClickCapture={(e)=>{
@@ -9790,7 +9849,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             if(tool==="eraser")return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; if (presentation) { const point = local(e.clientX, e.clientY); if (presentationLaser) setPresentationLaserPos(point); if (presentationSpotlight) setPresentationSpotlightPos(point); return; } down(e); if(tool==="select")syncSelectionCursor(e.target,e.pointerType); }}
           onPointerMove={(e) => {
             if(inertSurfaceDragPointer.current===e.pointerId)return;
-            if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y,e.pointerType);}return;}
             if(eraserSession.current||pinchState.current||consumedTouchIds.current.has(e.pointerId))return;
             const activeGesture=gesture.current;
             // Navigation uses cached board bounds and CSS transforms. It does
@@ -9800,6 +9858,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               move(e);
               return;
             }
+            if(tool==="eraser"){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y,e.pointerType);return;}
             const localPoint=local(e.clientX,e.clientY);
             const worldPoint=world(localPoint);
             if(!adminHidden)cursorChannel.current?.sendCursor(worldPoint.x,worldPoint.y);
@@ -9856,7 +9915,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             // Releasing a previous object's capture must not cancel a NEW
             // gesture. Only the owner of the lost capture can be cleared.
             if(eraserSession.current?.pointer===e.pointerId){
-              eraserSession.current=null;stopEraserPreview();
+              cancelEraser();
             }
             if(e.pointerType==="touch"&&eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden";
             if(gesture.current?.pointer===e.pointerId)end(true);
@@ -9883,7 +9942,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <div ref={setInstrumentViewportHost}
             className="geometry-instrument-viewport-layer" aria-label="Измерительные инструменты" />
           <div ref={fastPanOverlay} className="remote-cursors-layer" aria-hidden="true" style={{transformOrigin:"0 0"}}>
-            <RemoteInkOverlay store={remoteInkStore} persistedItemIds={persistedItemIds} x={view.x} y={view.y} zoom={view.zoom}/>
+            <RemoteInkOverlay store={remoteInkStore} persistedItemIds={persistedItemIds} x={view.x} y={view.y} zoom={view.zoom} erasures={remoteErasures} eraseTargets={remoteEraseTargets.current}/>
             <RemoteCursorOverlay store={remoteCursorStore} x={view.x} y={view.y} zoom={view.zoom}/>
           </div>
           <div
