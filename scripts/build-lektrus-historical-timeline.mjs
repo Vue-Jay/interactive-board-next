@@ -167,6 +167,8 @@ const rawParts=f=>f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometr
 // their dates, and the reviewed hash. The reconstruction queue remains open.
 export const territorialBatch=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-batch-989.json',import.meta.url),'utf8'));
 export const territorialResolutions=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-batch-989-resolutions.json',import.meta.url),'utf8'));
+export const independentIslands=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-independent-islands.json',import.meta.url),'utf8'));
+export const independentIslandGeometry=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-independent-islands-geometry.json',import.meta.url),'utf8'));
 export function deriveTerritorialBatch(features,batch=territorialBatch){
  const exclusions=[],pending=[],resolved=[],restorations=[],relabels=new Map(),attributions=[],extensions=[],seen=new Set(),transfers=[],subtractions=[],pendingExtensions=[];
  const transfer=territorialResolutions.transfer,ceylon=territorialResolutions.ceylonTransfer,mindanao=territorialResolutions.mindanaoReview;
@@ -851,6 +853,30 @@ export function normalizeHistoricalSource(source) {
    const restored={...origin,id:identity('restoration',r.source,r.hash,r.from,r.to,d.entity),entityId:identitySource?identity('source-polity',identitySource.Name,identitySource.Wikidata??''):identity(d.entityNamespace??'reviewed-territory',d.entity),name:label.name,nameRu:label.nameRu,role:'polity',nameStatus:'reviewed',geometryStatus:'candidate',geometryId,sourceGeometryId,geometryRepair:'reviewed-source-components',geometryParts:(r.parts??[r.part]).map(part=>({index:r.source,part})),from:r.from,to:r.to,editorialRestoration:true,components:[],memberOf:[],sourceComponents:origin.sourceComponents??origin.components,sourceMemberOf:origin.sourceMemberOf??origin.memberOf,review:{reason:d.reason,reasonRu:d.reasonRu,sources:d.sources}};
    delete restored.territorialIssues;delete restored.territorialAttributions;
    records.push(restored);counts.reviewedNames++;
+  }
+  // A separate, explicitly approximate cartographic supplement for absent
+  // independent island states. Never substitute modern boundaries wholesale.
+  // Verify every applicable dated candidate has no intersecting land polygon.
+  if(batch.count){
+    const polygons=g=>g.type==='Polygon'?[g.coordinates]:g.coordinates;
+    const bounds=polygon=>{let x=Infinity,y=Infinity,X=-Infinity,Y=-Infinity;for(const [a,b] of polygon[0]){x=Math.min(x,a);y=Math.min(y,b);X=Math.max(X,a);Y=Math.max(Y,b);}return [x,y,X,Y];};
+    const intersects=(a,b)=>a[0]<=b[2]&&a[2]>=b[0]&&a[1]<=b[3]&&a[3]>=b[1];
+    const cache=new Map(),parts=g=>{if(!cache.has(g))cache.set(g,polygons(g).map(p=>({p,b:bounds(p)})));return cache.get(g);};
+    assert.equal(independentIslands.states.length,independentIslandGeometry.length);
+    assert.equal(new Set(independentIslandGeometry.map(g=>g.iso)).size,independentIslandGeometry.length);
+    for(const d of independentIslands.states){
+      const evidence=independentIslandGeometry.find(g=>g.iso===d.iso);assert.ok(evidence);
+      const raw=evidence.geometry;assert.equal(sha256(JSON.stringify(raw)),evidence.hash);const g={type:'MultiPolygon',coordinates:polygons(raw)},geometryId=sha256(JSON.stringify(g));validateGeometry(g);
+      for(const r of records)if(r.role==='polity'&&r.geometryStatus==='candidate'&&r.to>=d.from){
+        const other=geometries.get(r.geometryId);
+        for(const a of parts(other))for(const b of parts(g))if(intersects(a.b,b.b))assert.equal(polygonClipping.intersection(a.p,b.p).length,0,`External island overlap ${d.iso}/${r.name}/${r.from}-${r.to}`);
+      }
+      geometries.set(geometryId,g);
+      const segments=d.transition?[{...d,to:d.transition.year-1},{...d,...d.transition,from:d.transition.year,to:HISTORY_LAST_YEAR}]:[{...d,to:HISTORY_LAST_YEAR}];
+      for(const s of segments){
+        records.push({id:identity('external-island',d.iso,s.from,s.to),entityId:identity('external-island-polity',d.iso),geometryId,role:'polity',components:[],memberOf:[],sourceSeshatId:'',sourceWikipedia:'',sourceName:`Natural Earth: ${d.iso}`,sourceWikidata:d.wikidata,sourceIndex:evidence.neId,sourceFrom:d.from,sourceTo:HISTORY_LAST_YEAR,from:s.from,to:s.to,name:s.name,nameRu:s.nameRu,nameStatus:'reviewed',geometryStatus:'candidate',externalGeography:{iso:d.iso,neId:evidence.neId,datasetHash:independentIslands.source.sha256,url:independentIslands.source.url,kind:'modern-island-outline'},review:{reason:'Historically documented statehood; modern generalized land outlines only, not a dated shoreline or maritime frontier.',reasonRu:`${d.reasonRu} Береговой контур — современная генерализация Natural Earth 1:10 млн; он не является исторической съёмкой береговой линии. Мелкие острова, намыв и изменение берегов по годам не реконструированы. Морские границы не показаны.`,sources:[...d.sources,independentIslands.source.url]}});counts.reviewedNames++;
+      }
+    }
   }
   counts.revisions = records.length;
   const used=new Set(records.flatMap(r=>[r.geometryId,...(r.territorialIssues??[]).map(i=>i.geometryId)]));for(const id of geometries.keys())if(!used.has(id))geometries.delete(id);

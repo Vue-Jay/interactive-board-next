@@ -4,7 +4,7 @@ import path from 'node:path';
 import polygonClipping from 'polygon-clipping';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch} from './build-lektrus-historical-timeline.mjs';
+import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,independentIslands,independentIslandGeometry} from './build-lektrus-historical-timeline.mjs';
 import {historicalUnresolvedCenters,historicalUnresolvedRegions} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
@@ -128,6 +128,7 @@ if(process.env.LEKTRUS_GAP_LOCATOR_SOURCE_FILE){
   const f=features.filter(f=>f.properties.ADM0_A3===l.iso);assert.equal(f.length,1);
   assert.deepEqual([l.lon,l.lat],[f[0].properties.LABEL_X,f[0].properties.LABEL_Y]);
  }
+ for(const e of independentIslandGeometry){const f=features.filter(f=>f.properties.ADM0_A3===e.iso);assert.equal(f.length,1);assert.equal(f[0].properties.NE_ID,e.neId);assert.deepEqual(f[0].geometry,e.geometry);assert.equal(sha256(JSON.stringify(f[0].geometry)),e.hash);}
  console.log('10 gap map locators verified against pinned Natural Earth label anchors');
 }
 if(outDir&&sourceFile){
@@ -145,7 +146,7 @@ if(outDir&&sourceFile){
   const decisionsByKey=new Map(reviewedBatch.resolved.map(r=>[`${r.source}:${r.part}:${r.from}:${r.to}`,r]));
   const extensionsByYear=new Map();for(const r of reviewedBatch.extensions)for(let year=r.from;year<=r.to;year++){if(!extensionsByYear.has(year))extensionsByYear.set(year,[]);extensionsByYear.get(year).push(r)}
   const pendingExtensionsByYear=new Map();for(const r of reviewedBatch.pendingExtensions)for(let year=r.from;year<=r.to;year++){if(!pendingExtensionsByYear.has(year))pendingExtensionsByYear.set(year,[]);pendingExtensionsByYear.get(year).push(r)}
-  let batchReady=0,batchPending=0,batchResolved=0,extended=0,sourceRecordYears=0,restoredRecordYears=0,unresolvedRegionYears=0,unresolvedSourceYears=0;
+  let batchReady=0,batchPending=0,batchResolved=0,extended=0,sourceRecordYears=0,restoredRecordYears=0,externalRecordYears=0,unresolvedRegionYears=0,unresolvedSourceYears=0;
   assert.equal(manifest.counts.sourcePolities+manifest.counts.sourceComposites+manifest.counts.sourceRelations,original.length);
   const sourceHashes=new Map(original.map(({f,index})=>[index,sha256(JSON.stringify(f.geometry))]));
   const seen=new Set(), allGeometries=new Set();
@@ -160,7 +161,14 @@ if(outDir&&sourceFile){
     packCount++;
     for(const [id,geometry] of Object.entries(pack.geometries)){assert.equal(sha256(JSON.stringify(geometry)),id);allGeometries.add(id);}
     for(const r of pack.records){
-      seen.add(r.id);const f=input.features[r.sourceIndex];
+      seen.add(r.id);
+      if(r.externalGeography){
+        const e=independentIslandGeometry.find(x=>x.iso===r.externalGeography.iso),d=independentIslands.states.find(x=>x.iso===r.externalGeography.iso);assert.ok(e&&d);
+        assert.equal(r.sourceIndex,e.neId);assert.equal(r.sourceFrom,d.from);assert.equal(r.sourceTo,2024);assert.equal(r.externalGeography.datasetHash,independentIslands.source.sha256);
+        assert.deepEqual(pack.geometries[r.geometryId],{type:'MultiPolygon',coordinates:e.geometry.type==='Polygon'?[e.geometry.coordinates]:e.geometry.coordinates});
+        assert.ok(r.review.reasonRu.includes('не является исторической съёмкой'));continue;
+      }
+      const f=input.features[r.sourceIndex];
       assert.equal(r.sourceRole??r.role,f.properties.Type==='RELATION'?'relation':f.properties.Components?'composite':'polity');assert.equal(r.sourceName,f.properties.Name.trim());
       if(r.role==='settlement'){assert.equal(r.sourceName,'Viking settlements');assert.ok(r.review?.sources.length);}
       const list=v=>String(v??'').split(';').map(s=>s.trim()).filter(Boolean);
@@ -182,14 +190,23 @@ if(outDir&&sourceFile){
       if(year===0)continue;
       const expected=original.filter(({f})=>f.properties.FromYear<=year&&f.properties.ToYear>=year).map(({index})=>index);
       const state=historicalYearState(pack,year);
-      const sourceRecords=state.records.filter(r=>!r.editorialRestoration);
+      const sourceRecords=state.records.filter(r=>!r.editorialRestoration&&!r.externalGeography);
       assert.deepEqual(sourceRecords.map(r=>r.sourceIndex),expected,`Incorrect active source records at ${year}`);
-      sourceRecordYears+=sourceRecords.length;restoredRecordYears+=state.records.length-sourceRecords.length;
+      sourceRecordYears+=sourceRecords.length;restoredRecordYears+=state.records.filter(r=>r.editorialRestoration).length;externalRecordYears+=state.records.filter(r=>r.externalGeography).length;
       assert.equal(state.records.length,state.drawable.length+state.overlays.length+state.rejected.length);
       assert.ok(state.drawable.every(r=>r.record.geometryStatus==='candidate'&&r.geometry));
       assert.equal(historicalYearFeatureCollection(state).features.length,state.drawable.length);
       assert.equal(historicalYearFeatureCollection(state,true).features.length,state.drawable.length+state.overlays.length);
       const activeRecords=new Map(sourceRecords.map(r=>[r.sourceIndex,r]));
+      for(const d of independentIslands.states){
+        const candidates=state.drawable.filter(({record})=>record.externalGeography?.iso===d.iso);
+        assert.equal(candidates.length,year>=d.from?1:0,`${d.iso}/${year}`);
+        if(candidates.length){const {record}=candidates[0];assert.equal(record.name,d.transition&&year>=d.transition.year?d.transition.name:d.name);assert.ok(record.review.sources.includes(independentIslands.source.url));}
+      }
+      for(const d of territorialResolutions.independenceGapRestorations)if(d.from===d.to&&year===d.from){
+        const owners=state.drawable.filter(({record})=>record.editorialRestoration&&record.sourceIndex===d.source&&record.name===d.name);
+        assert.equal(owners.length,1,`${d.name}/${year}`);assert.equal(owners[0].geometry.coordinates.length,d.parts.length);
+      }
       if(year===1944){
         const target=activeRecords.get(12942),island=input.features[12901].geometry.coordinates[4];
         assert.equal(target.name,'Free French');assert.equal(target.geometryTemporalWitnesses.length,1);assert.ok(target.geometryParts.some(p=>p.index===12901&&p.part===4));
@@ -358,8 +375,9 @@ if(outDir&&sourceFile){
   }
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,537);assert.equal(batchPending,159);
-  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,300);assert.equal(extended,667);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
+  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,313);assert.equal(externalRecordYears,401);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
   assert.equal(unresolvedSourceYears,202);assert.equal(unresolvedRegionYears,121);
+  assert.equal(admissionWarnings,113,'Independent-state coverage must not regress');
   console.log(`Reviewed batch: ${batchReady} original corrections; ${batchResolved} newly resolved attributions; ${batchPending} open; ${extended} adjacent cases; ${restoredRecordYears} restored territory-years`);
   assert.equal(seen.size,manifest.counts.revisions);
   assert.equal(allGeometries.size,manifest.counts.uniqueGeometries);
@@ -518,7 +536,7 @@ if(outDir&&sourceFile){
   assert.equal(revisionAt(1674,9135).name,'New Netherland');
   assert.equal(revisionAt(1675,9135).name,'Dutch Caribbean and Guiana possessions (source aggregate)');
   assert.equal(revisionAt(1905,12227).name,'British West African territories (Gold Coast and Nigeria)');
-  const report={years,recordYears,rejectedYears,emptyYears,packCount,yearsWithIdentityCollisions,yearsWithSharedGeometry,admissionWarnings,counts:manifest.counts,source:manifest.source,notice:'Technical annual coverage with review warnings. Shared geometry, aliases and admission warnings are candidates, not proof of errors. Historical, geographic and visual acceptance NOT complete.',rows};
+  const report={years,recordYears,rejectedYears,emptyYears,packCount,yearsWithIdentityCollisions,yearsWithSharedGeometry,admissionWarnings,externalRecordYears,counts:manifest.counts,source:manifest.source,notice:'Technical annual coverage with review warnings. Shared geometry, aliases and admission warnings are candidates, not proof of errors. External island outlines are modern geographic candidates; historical, geographic and visual acceptance NOT complete.',rows};
   fs.writeFileSync(path.join(outDir,'technical-annual-audit.json'),JSON.stringify(report,null,2)+'\n');
   console.log(JSON.stringify({...report,rows:undefined}));
 }
