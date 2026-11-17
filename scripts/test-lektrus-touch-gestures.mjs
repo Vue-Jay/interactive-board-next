@@ -28,8 +28,11 @@ assert.ok(touchStart.includes('if(e.isPrimary && touchPoints.current.size)'),
 assert.ok(touchStart.indexOf('consumedTouchIds.current.add(id)')<
  touchStart.indexOf('end(gesture.current?.mode!=="pan")'),
  "Mark pinch fingers before ending the first gesture and releasing its capture");
-assert.match(touchStart,/eraserSession\.current=null;\s*stopEraserPreview\(\)/,
+assert.match(touchStart,/if\(eraserSession\.current\)cancelEraser\(\)/,
  "Pinch must cancel the uncommitted eraser session");
+const eraseCancellation=slice("  const cancelEraser=","  const recordEraserPoint=");
+assert.match(eraseCancellation,/if\(g\)sendLiveEraser\(g,true,true\);\s*eraserSession\.current=null;\s*stopEraserPreview\(\)/,
+ "Cancelled gestures must roll back both local and remote eraser previews");
 assert.match(touchStart,/pinchState\.current=\{distance:/);
 assert.ok(touchStart.includes("const pinchBaseView=viewerPendingPan.current??viewRef.current;"),
  "Pinch zoom must start from the live panned position, not stale React state");
@@ -42,7 +45,7 @@ assert.ok(cancel.includes('const consumed=touchEnd(e)'));
 assert.ok(cancel.includes('if(gesture.current?.pointer===e.pointerId){end(true);return;}'));
 assert.match(down,/if\(eraserSession\.current\|\|pinchState\.current\|\|touchPoints\.current\.size>1\|\|/);
 assert.ok(down.includes('setSelected([])'));
-assert.match(app,/const next=eraseInkAlongPath\(before,g\.path,eraserSize\/2\/g\.zoom,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\)\)/,
+assert.match(app,/const next=eraseInkAlongPath\(before,g\.path,g\.weight\/2,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\)\)/,
  "Touch eraser persists one gesture and allows erasing every participant's stroke");
 assert.ok(eraser.includes('item.kind!=="pen"&&item.kind!=="marker"'),
  "Brush must only erase ink strokes and marker strokes");
@@ -55,7 +58,7 @@ assert.ok(lost.includes('gesture.current?.pointer===e.pointerId'));
 assert.ok(!lost.includes('else end(true)'),
  "A late capture-loss from one finger must not cancel a different gesture");
 assert.ok(toolChange.includes('if(previousInteractionTool.current===tool)return;'));
-for(const key of ['end(true)','eraserSession.current=null','stopEraserPreview()',
+for(const key of ['end(true)','cancelEraser()',
  'touchPoints.current.clear()','consumedTouchIds.current.clear()','pinchState.current=null',
  'rightPress.current=null','setMarqueeRect(null)'])assert.ok(toolChange.includes(key),"Tool switch must reset "+key);
 assert.ok(toolChange.includes('window.addEventListener("pointerup",release)'));
