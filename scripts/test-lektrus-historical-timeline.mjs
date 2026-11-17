@@ -4,7 +4,7 @@ import path from 'node:path';
 import polygonClipping from 'polygon-clipping';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,independentIslands,independentIslandGeometry,partitionHistoricalGeometry} from './build-lektrus-historical-timeline.mjs';
+import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,historicalTitleCorrections} from './build-lektrus-historical-timeline.mjs';
 import {historicalUnresolvedCenters,historicalUnresolvedRegions} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
@@ -199,6 +199,10 @@ if(outDir&&sourceFile){
       const expected=original.filter(({f})=>f.properties.FromYear<=year&&f.properties.ToYear>=year).map(({index})=>index);
       const state=historicalYearState(pack,year);
       const sourceRecords=state.records.filter(r=>!r.editorialRestoration&&!r.externalGeography&&!r.datedGeography);
+      for(const r of sourceRecords){
+        const rule=historicalTitleCorrections.find(([name,qid,from,to])=>r.sourceName===name&&r.sourceWikidata===qid&&year>=from&&year<=to);
+        if(rule){assert.equal(r.name,rule[4],`Incorrect historical title ${r.sourceIndex}/${year}`);assert.equal(r.nameRu,rule[5]);assert.ok(r.review.sources.includes(rule[6]));}
+      }
       assert.deepEqual(sourceRecords.map(r=>r.sourceIndex),expected,`Incorrect active source records at ${year}`);
       sourceRecordYears+=sourceRecords.length;restoredRecordYears+=state.records.filter(r=>r.editorialRestoration).length;externalRecordYears+=state.records.filter(r=>r.externalGeography).length;datedRecordYears+=state.records.filter(r=>r.datedGeography).length;
       for(const {record:r} of state.drawable.filter(({record})=>record.datedGeography||record.externalGeography?.kind==='modern-stable-land-border')){
@@ -394,6 +398,9 @@ if(outDir&&sourceFile){
   assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,313);assert.equal(externalRecordYears,469);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
   assert.equal(unresolvedSourceYears,202);assert.equal(unresolvedRegionYears,121);
   assert.equal(admissionWarnings,1,'Independent-state coverage must not regress');
+  assert.deepEqual(rows.filter(r=>r.membershipWarnings?.length).map(r=>[r.year,...r.membershipWarnings.map(w=>w.name)]),[[1971,'United Arab Emirates']]);
+  assert.equal(historicalGapLocators['United Arab Emirates'].iso,'ARE');
+  assert.match(historicalGapLocators['United Arab Emirates'].historicalNote,/10 февраля 1972/);
   assert.equal(datedRecordYears,43);assert.equal(checkedSupplementYears,111);
   console.log(`Reviewed batch: ${batchReady} original corrections; ${batchResolved} newly resolved attributions; ${batchPending} open; ${extended} adjacent cases; ${restoredRecordYears} restored territory-years`);
   assert.equal(seen.size,manifest.counts.revisions);

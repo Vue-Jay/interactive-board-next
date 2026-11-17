@@ -468,6 +468,24 @@ const DENMARK_SEPARATION='https://www.kongehuset.dk/nyheder/1814-spillet-om-danm
 const EGYPT_UAR='https://history.state.gov/countries/egypt';
 const FRENCH_CESSIONS='https://history.state.gov/milestones/1750-1775/treaty-of-paris';
 const TANZANIA_UN='https://www.un.org/en/about-us/member-states/tanzania';
+// Dated names for unchanged source identities; rules are restricted to the
+// affected source name and Wikidata ID, not the modern spellings of neighbors.
+export const historicalTitleCorrections=[
+ ['Sri Lanka','Q854',1948,1971,'Ceylon','Цейлон',COUNTRY_NAMES,'Sri Lanka replaced Ceylon in 1972.','Название Шри-Ланка принято в 1972 году.'],
+ ['Eswatini','Q1050',1968,2017,'Kingdom of Swaziland','Королевство Свазиленд',COUNTRY_NAMES,'Swaziland was renamed Eswatini in 2018.','Свазиленд переименован в Эсватини в 2018 году.'],
+ ['Republic of Poland','Q36',1952,1988,"Polish People's Republic",'Польская Народная Республика','https://eng.ipn.gov.pl/en/brief-history-of-poland','The 1952 constitution introduced the Polish People’s Republic; the Republic of Poland name was restored in December 1989.','Конституция 1952 года ввела название ПНР; название Республика Польша восстановлено в декабре 1989 года.'],
+ ['Socialist Republic of Romania','Q842794',1948,1964,"People's Republic of Romania",'Румынская Народная Республика','https://legislatie.just.ro/Public/DetaliiDocumentAfis/14938','The Socialist Republic title dates from the constitution of 21 August 1965.','Название Социалистическая Республика Румыния установлено конституцией 21 августа 1965 года.'],
+ ['Federal Republic of Somalia','Q1045',1960,1968,'Somali Republic','Сомалийская Республика','https://somalia.un.org/sites/default/files/2019-09/The%20UN%20in%20SOMALIA%20Yearbook%202014.pdf','The Somali Republic was formed on 1 July 1960.','Сомалийская Республика образована 1 июля 1960 года.'],
+ ['Federal Republic of Somalia','Q1045',1969,1990,'Somali Democratic Republic','Сомалийская Демократическая Республика','https://somaliembassy.se/history/','The military government proclaimed the Somali Democratic Republic in 1969.','В 1969 году провозглашена Сомалийская Демократическая Республика.'],
+ ['Federal Republic of Somalia','Q1045',1991,2011,'Somalia','Сомали','https://senate.gov.so/historical-background/?lang=en','The federal constitution dates from 2012; this neutral name does not imply unified effective control during civil war.','Федеральная конституция принята в 2012 году; нейтральное название не означает единого фактического контроля во время гражданской войны.'],
+ ['Democratic Republic of the Congo','Q974',1960,1963,'Republic of the Congo (Léopoldville)','Республика Конго (Леопольдвиль)','https://www.un.org/dppa/decolonization/en/history/former-trust-and-nsgts','At UN admission the state was the Republic of the Congo (Léopoldville); the DRC title dates from 1964.','При вступлении в ООН государство называлось Республика Конго (Леопольдвиль); название ДР Конго принято в 1964 году.'],
+ ['Democratic Republic of the Congo','Q974',1971,1996,'Republic of Zaire','Республика Заир','https://www.un.org/sites/un2.un.org/files/achieving_our_common_humanity.pdf','The Republic of Zaire title was used from 27 October 1971 until 17 May 1997.','Название Республика Заир использовалось с 27 октября 1971 до 17 мая 1997 года.'],
+ ['Kingdom of Cambodia','Q424',1970,1974,'Khmer Republic','Кхмерская Республика','https://legal.un.org/avl/ha/abunac/abunac.html','The monarchy was replaced by the Khmer Republic in 1970; the Khmer Rouge seized Phnom Penh in April 1975.','В 1970 году монархию сменила Кхмерская Республика; в апреле 1975 года власть в Пномпене захватили красные кхмеры.'],
+ ['Kingdom of Cambodia','Q424',1975,1975,'Cambodia (Khmer Rouge government)','Камбоджа (правительство красных кхмеров)','https://legal.un.org/avl/ha/abunac/abunac.html','Khmer Rouge rule began in April 1975; Democratic Kampuchea was formally named in 1976.','Правление красных кхмеров началось в апреле 1975 года; название Демократическая Кампучия официально принято в 1976 году.'],
+ ['Papua New Guinea','Q691',1949,1971,'Territory of Papua and New Guinea (Australian administration)','Территория Папуа и Новая Гвинея (австралийское управление)','https://www.awm.gov.au/collection/PL384','The combined territory formed in 1949 under Australian administration, not as an independent country.','Объединённая территория образована в 1949 году под управлением Австралии, а не как независимое государство.'],
+ ['Papua New Guinea','Q691',1972,1972,'Papua New Guinea (Australian administration)','Папуа — Новая Гвинея (австралийское управление)','https://www.dfat.gov.au/geo/papua-new-guinea/papua-new-guinea-country-brief','The territory was renamed Papua New Guinea in 1972; self-government followed in 1973.','В 1972 году территория переименована в Папуа — Новая Гвинея; самоуправление получено в 1973 году.'],
+ ['Papua New Guinea','Q691',1973,1974,'Papua New Guinea (self-governing territory)','Папуа — Новая Гвинея (самоуправляемая территория)','https://www.naa.gov.au/help-your-research/fact-sheets/independence-papua-new-guinea','Self-government began on 1 December 1973; independence followed on 16 September 1975.','Самоуправление получено 1 декабря 1973 года, независимость — 16 сентября 1975 года.'],
+];
 // Annual labels use the successor in the transition year; no new cartographic
 // boundary is inferred from a dynastic succession. All raw fields survive.
 const delhiTransitions=[{old:'Mamluk Dynasty',next:'Khalji Dynasty',qid:'Q919071',ru:'Династия Хильджи',from:1290,to:1293},{old:'Khalji Dynasty',next:'Tughlaq Dynasty',qid:'Q1124402',ru:'Династия Туглаков',from:1320,to:1325},{old:'Tughlaq Dynasty',next:'Sayyid Dynasty',qid:'Q1331421',ru:'Династия Сайидов',from:1414,to:1450},{old:'Sayyid Dynasty',next:'Lodi Dynasty',qid:'Q11709',ru:'Династия Лоди',from:1451,to:1452}];
@@ -513,6 +531,8 @@ function editorialSegments(base,derived=[]){
  if(base.sourceIndex===13245)cut(1963);
  if(base.sourceIndex===13306)cut(1970);
  if(base.sourceIndex===13371)cut(1990);
+ const titleRules=historicalTitleCorrections.filter(([name,qid])=>base.role==='polity'&&base.sourceName===name&&base.sourceWikidata===qid);
+ for(const [, , start,end] of titleRules){cut(start);cut(end+1);}
  const sorted=[...cuts].sort((a,b)=>a-b);
  for(let i=0;i+1<sorted.length;i++){
   const from=sorted[i]===0?1:sorted[i],to=sorted[i+1]-1===0?-1:sorted[i+1]-1;
@@ -521,6 +541,7 @@ function editorialSegments(base,derived=[]){
   const reasons=[],reasonsRu=[],sources=new Set();
   const note=(reason,urls,ru)=>{reasons.push(reason);if(ru)reasonsRu.push(ru);for(const url of urls)sources.add(url)};
   const rename=(name,nameRu,url,reason,reasonRu)=>{r={...r,name,nameRu,nameStatus:'reviewed'};note(reason,[url],reasonRu);};
+  for(const [,,start,end,name,ru,url,reason,reasonRu] of titleRules)if(from>=start&&to<=end)rename(name,ru,url,reason,reasonRu);
   if(base.sourceName==='Republic of Benin'&&base.sourceWikidata==='Q962'&&from<1990){
    const dahomey=from<1975;
    rename(dahomey?'Republic of Dahomey':"People's Republic of Benin",dahomey?'Республика Дагомея':'Народная Республика Бенин','https://www.gouv.bj/pages/histoire/','Dahomey was renamed the People’s Republic of Benin in 1975; the latter name ended in 1990.','Дагомея переименована в Народную Республику Бенин в 1975 году; с 1990 года — Республика Бенин.');

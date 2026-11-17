@@ -138,7 +138,7 @@ const admissionAnchors=[
   ["Ivory Coast",["Republic of Côte d'Ivoire","Ivory Coast","Côte d'Ivoire"]],
   ["Madagascar",["Madagascar","Malagasy Republic","Republic of Madagascar"]],
   ["Niger",["Republic of the Niger","Niger"]],
-  ["Somalia",["Federal Republic of Somalia","Somali Republic","Somalia"]],
+  ["Somalia",["Federal Republic of Somalia","Somali Republic","Somali Democratic Republic","Somalia"]],
   ["Togo",["Togo","Togolese Republic"]],
  ].map(([name,aliases])=>({name,aliases,year:1960,date:"1960-09-20"})),
  {name:"Mali",aliases:["Republic of Mali","Mali"],year:1960,date:"1960-09-28"},
