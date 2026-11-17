@@ -161,6 +161,33 @@ const confirmedOverlapPolicies=[
  {index:12119,loser:/British|Great Britain/i,winner:/German Empire/i,winnerIndex:12069,from:1895,to:1898,boxes:[[156.25,-7.55,157.65,-6.35],[158,-8.8,159.95,-7.05],[155.3,-7.6,156.4,-6.6]],reason:'Choiseul, Isabel, Shortland and adjacent northern Solomon islands were German until the Anglo-German convention of November 1899. Preserve exact German rather than premature British components.',ru:'Шуазёль, Исабель, Шортленд и соседние северные острова Соломонова архипелага оставались германскими до англо-германской конвенции ноября 1899 года. Сохранены германские, а не преждевременные британские дубли.',source:'https://gazette.slv.vic.gov.au/images/1900/V/general/110.pdf'},
 ];
 const rawParts=f=>f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates;
+// The reviewed register is pinned to the exact source release. A component
+// is never removed on the strength of an index alone: check both geometries,
+// their dates, and the reviewed hash. The reconstruction queue remains open.
+export const territorialBatch=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-batch-989.json',import.meta.url),'utf8'));
+export function deriveTerritorialBatch(features,batch=territorialBatch){
+ const exclusions=[],pending=[],seen=new Set();
+ assert.equal(batch.sourceSha256,PINNED_SOURCE_SHA256);
+ for(const row of batch.rows){
+  const {source,part,other,otherParts,hash,from,to,status,group,evidence}=row;
+  const f=features[source],counterpart=features[other];
+  assert.ok(f&&counterpart,`Missing reviewed source pair ${source}:${other}`);
+  assert.ok(f.properties.Type==='POLITY'&&counterpart.properties.Type==='POLITY');
+  assert.ok(from<=to&&f.properties.FromYear<=from&&f.properties.ToYear>=to&&counterpart.properties.FromYear<=from&&counterpart.properties.ToYear>=to,`Reviewed interval changed ${source}:${part}`);
+  const parts=rawParts(f),otherGeometry=rawParts(counterpart);
+  assert.equal(componentHash(parts[part]),hash,`Reviewed geometry changed ${source}:${part}`);
+  assert.ok(otherParts.length&&otherParts.every(p=>componentHash(otherGeometry[p])===hash),`Counterpart geometry changed ${other}`);
+  assert.ok(status==='ready'||status==='reconstruct');
+  const reason=batch.descriptions[group];assert.ok(reason&&evidence.startsWith('https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-'));
+  for(let year=from;year<=to;year++){if(year===0)continue;const key=`${source}:${hash}:${year}`;assert.ok(!seen.has(key),`Duplicate reviewed component-year ${key}`);seen.add(key);}
+  const rule=[source,parts.length,from,[part],status==='ready'?'Historically reviewed exact duplicate: '+group+'.':'Incorrect or conflated political attribution; territorial reconstruction is still pending: '+group+'.',reason,evidence,to];
+  // Unresolved original contours must not be presented as established filled
+  // political boundaries. Preserve their source parts as explicit open issues.
+  exclusions.push(rule);
+  if(status==='reconstruct')pending.push({...row,reason,geometry:{type:'Polygon',coordinates:parts[part]},counterpartName:counterpart.properties.Name});
+ }
+ return {exclusions,pending,count:seen.size};
+}
 const withinBox=(polygon,box)=>polygon.every(ring=>ring.every(([x,y])=>x>=box[0]&&x<=box[2]&&y>=box[1]&&y<=box[3]));
 export function deriveConfirmedOverlapExclusions(features,policies=confirmedOverlapPolicies){
  const all=[];
@@ -219,7 +246,7 @@ function editorialSegments(base,derived=[]){
  if(delhi)for(const t of delhiTransitions)if(t.from<=base.to&&t.to>=base.from){cuts.add(Math.max(base.from,t.from));cuts.add(Math.min(base.to,t.to)+1)}
  const spring=chinaGroupTransition.has(base.sourceIndex)&&base.memberOf.includes('(Spring and Autumn States)')&&base.from<=-480&&base.to>=-480;
  if(spring)cuts.add(-480);
- const cut=year=>{if(base.from<year&&year<=base.to)cuts.add(year)};
+ const cut=year=>{if(year===0)year=1;if(base.from<year&&year<=base.to)cuts.add(year)};
  for(const rule of [...componentExclusions,...derived])if(rule[0]===base.sourceIndex){cut(rule[2]);if(rule[7]!==undefined)cut(rule[7]+1)}
  if(base.sourceIndex===9410)cut(1707);
  if(base.sourceIndex===7187){cut(1454);cut(1462)}
@@ -249,7 +276,8 @@ function editorialSegments(base,derived=[]){
  if(base.sourceIndex===4678)cut(1094);
  const sorted=[...cuts].sort((a,b)=>a-b);
  for(let i=0;i+1<sorted.length;i++){
-  const from=sorted[i],to=sorted[i+1]-1;
+  const from=sorted[i]===0?1:sorted[i],to=sorted[i+1]-1===0?-1:sorted[i+1]-1;
+  if(from>to)continue;
   let r={...base,from,to};
   const reasons=[],reasonsRu=[],sources=new Set();
   const note=(reason,urls,ru)=>{reasons.push(reason);if(ru)reasonsRu.push(ru);for(const url of urls)sources.add(url)};
@@ -458,6 +486,15 @@ export function normalizeHistoricalSource(source) {
   assert.equal(source.type,'FeatureCollection');
   const geometries = new Map(), records = [];
   const derivedExclusions=deriveConfirmedOverlapExclusions(source.features);
+  // Small synthetic fixtures do not contain the pinned source indices.
+  const batch=source.features.length>Math.max(...territorialBatch.rows.map(r=>Math.max(r.source,r.other)))?deriveTerritorialBatch(source.features):{exclusions:[],pending:[],count:0};
+  derivedExclusions.push(...batch.exclusions);
+  const pendingBySource=new Map();
+  for(const issue of batch.pending){
+   const geometryId=sha256(JSON.stringify(issue.geometry));geometries.set(geometryId,issue.geometry);
+   if(!pendingBySource.has(issue.source))pendingBySource.set(issue.source,[]);
+   pendingBySource.get(issue.source).push({part:issue.part,hash:issue.hash,from:issue.from,to:issue.to,group:issue.group,reason:issue.reason,evidence:issue.evidence,counterpartName:issue.counterpartName,geometryId});
+  }
   const counts = {sourcePolities:0, sourceComposites:0, sourceRelations:0, zeroBoundaryRecords:0, revisions:0, uniqueGeometries:0, rejectedRevisions:0, reviewedNames:0};
   for (const [sourceIndex, feature] of source.features.entries()) {
     const p = feature.properties;
@@ -488,6 +525,8 @@ export function normalizeHistoricalSource(source) {
     const entityId = identity('source-'+role, sourceName, sourceWikidata);
     const base = {entityId, geometryId, role,components,memberOf,sourceSeshatId:String(p.SeshatID??''),sourceWikipedia:String(p.Wikipedia??''), ...(geometryId!==sourceGeometryId?{sourceGeometryId,geometryRepair:'retracted-zero-area-interior-edges'}:{}),name: sourceName, sourceName, sourceWikidata, sourceIndex, sourceFrom, sourceTo, from, to, nameStatus:'candidate', geometryStatus:'candidate'};
     const add = revision => {
+      const territorialIssues=(pendingBySource.get(sourceIndex)??[]).filter(issue=>issue.from<=revision.to&&issue.to>=revision.from);
+      if(territorialIssues.length)revision={...revision,territorialIssues};
       const selection=reviewedGeometryParts(revision,derivedExclusions);
       if(selection?.length===0){
         assert.ok(revision.review?.sources.length);
@@ -515,7 +554,7 @@ export function normalizeHistoricalSource(source) {
     } else for(const revision of editorialSegments(base,derivedExclusions))add(revision);
   }
   counts.revisions = records.length;
-  const used=new Set(records.map(r=>r.geometryId));for(const id of geometries.keys())if(!used.has(id))geometries.delete(id);
+  const used=new Set(records.flatMap(r=>[r.geometryId,...(r.territorialIssues??[]).map(i=>i.geometryId)]));for(const id of geometries.keys())if(!used.has(id))geometries.delete(id);
   counts.uniqueGeometries = geometries.size;
   return {records,geometries,counts};
 }
@@ -528,7 +567,7 @@ export function buildHistoricalTimeline(source, sourceHash, outDir) {
     const from = historicalYearFromOrdinal(ordinal);
     const to = historicalYearFromOrdinal(end);
     const active = records.filter(r => r.from <= to && r.to >= from);
-    const ids = [...new Set(active.map(r=>r.geometryId))].sort();
+    const ids = [...new Set(active.flatMap(r=>[r.geometryId,...(r.territorialIssues??[]).map(i=>i.geometryId)]))].sort();
     const coverageGaps={};
     for(let year=Math.max(1960,from);year<=to;year++){
       const gaps=referenceAdmissionWarnings(year,active.filter(r=>r.role==='polity'&&r.geometryStatus!=='rejected'&&r.from<=year&&r.to>=year).map(r=>r.name));

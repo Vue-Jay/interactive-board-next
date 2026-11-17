@@ -1646,6 +1646,11 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
         </path>;
        })}
       </g>
+      {historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year&&!!source?.historicalTerritorialIssues?.length&&
+       <g data-atlas-unresolved-territories="true" fill="none" stroke="#b45309" strokeWidth="1.7" strokeDasharray="5 4" pointerEvents="none">
+        {[...new Map(source.historicalTerritorialIssues.map(issue=>[issue.geometryId,issue])).values()].map(issue=>
+         <path key={issue.geometryId} d={mapFeaturePath({type:'Feature',properties:null,geometry:issue.geometry})} vectorEffect="non-scaling-stroke"><title>Спорный исходный контур — не установленная граница: {issue.reason}</title></path>)}
+       </g>}
       {citiesOn&&scale>=2.5&&worldAdminLinePaths.length>0&&
        <g className="lektrus-atlas-global-admin1" fill="none" pointerEvents="none"
         stroke="#84999e" strokeWidth=".58" strokeLinecap="round" strokeLinejoin="round"
@@ -2309,6 +2314,11 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      <small>{modernReference?"Архивная геометрия Natural Earth (2022); не точная карта 2026 года":annualSource(snapshot.year)?"Предварительная ежегодная реконструкция Cliopatria 0.2.1. Контуры ещё не получили независимую историческую приёмку.":"Историческая реконструкция: отдельные контуры могут отражать более поздние границы. Не считать их точной картой суверенных государств."}</small>
      {annualSource(snapshot.year)&&<><label>Дополнительный слой <select aria-label="Дополнительный исторический слой" value={annualOverlay} onChange={e=>{setAnnualOverlay(e.target.value as typeof annualOverlay);setSelected(null)}}><option value="none">Только территории</option><option value="composite">Политические объединения</option><option value="relation">Политические связи</option><option value="settlement">Поселения и расселение</option></select></label>{annualOverlay!=='none'&&<small>Пунктирный контур — {annualOverlay==='composite'?'объединение нескольких территорий':annualOverlay==='settlement'?'предварительная область поселений':'политическая связь'}, а не дополнительная государственная граница.</small>}</>}
     </div>}
+    {historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year&&!!source?.historicalTerritorialIssues?.length&&<details className="lektrus-atlas-layer-warning" data-atlas-unresolved-count={source.historicalTerritorialIssues.length}>
+     <summary>Территории, требующие реконструкции: {source.historicalTerritorialIssues.length}</summary>
+     <small>Оранжевый пунктир показывает ошибочный исходный контур, а не исторически установленную границу. Принадлежность, местное управление и границы уточняются отдельно.</small>
+     <ul>{source.historicalTerritorialIssues.map(i=><li key={`${i.sourceIndex}:${i.part}:${i.hash}`}><strong>{i.name}</strong> — {i.counterpartName}<p>{i.reason}</p><a href={i.evidence} target="_blank" rel="noopener noreferrer">Обоснование и источники ↗</a></li>)}</ul>
+    </details>}
     {historical&&annualSource(snapshot.year)&&!!source?.historicalRejected?.length&&<details className="lektrus-atlas-layer-warning"><summary>Исключённые неподтверждённые контуры: {source.historicalRejected.length}</summary><ul>{source.historicalRejected.map((r,i)=><li key={i}><strong>{r.name}</strong>{r.review&&<p>{r.review.reasonRu??r.review.reason}</p>}{r.review?.sources.map(url=><span key={url}>{" "}<a href={url} target="_blank" rel="noopener noreferrer">Источник ↗</a></span>)}</li>)}</ul><small>Эти контуры не показаны из-за подтверждённых ошибок. Отсутствие контура не означает отсутствие государства.</small></details>}
     {historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year&&!!source?.historicalCoverageGaps?.length&&<details open={annualGapDetailsOpen} onToggle={e=>setAnnualGapDetailsOpen(e.currentTarget.open)} className="lektrus-atlas-layer-warning" data-atlas-annual-gap-count={source.historicalCoverageGaps.length}>
      <summary>Пробелы исторического покрытия: {source.historicalCoverageGaps.length}</summary>

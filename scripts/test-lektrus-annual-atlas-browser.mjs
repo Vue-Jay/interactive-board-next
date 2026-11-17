@@ -152,6 +152,12 @@ async function main(){
      const gapCount=await gaps.count();
      if(gapCount!==(state.coverageGaps.length?1:0))row.issues.push({kind:'wrong-gap-warning-count',expected:state.coverageGaps.length,actual:gapCount});
      if(gapCount===1&&Number(await gaps.getAttribute('data-atlas-annual-gap-count'))!==state.coverageGaps.length)row.issues.push({kind:'wrong-gap-warning-value'});
+     row.territorialIssues=state.territorialIssues.map(({geometry,...issue})=>issue);
+     const pending=page.locator('[data-atlas-unresolved-count]');
+     const pendingCount=await pending.count();
+     if(pendingCount!==(state.territorialIssues.length?1:0)||(pendingCount===1&&Number(await pending.getAttribute('data-atlas-unresolved-count'))!==state.territorialIssues.length))row.issues.push({kind:'wrong-territorial-reconstruction-warning'});
+     const outlineCount=await page.locator('[data-atlas-unresolved-territories] path').count();
+     if(outlineCount!==new Set(state.territorialIssues.map(i=>i.geometryId)).size)row.issues.push({kind:'wrong-territorial-reconstruction-outline-count',actual:outlineCount});
      const expectedLocators=state.coverageGaps.flatMap(g=>historicalGapLocators[g.name]?[historicalGapLocators[g.name].iso]:[]).sort();
      const actualLocators=await page.locator('[data-atlas-gap-locator]').evaluateAll(nodes=>nodes.map(n=>n.dataset.atlasGapLocator).sort());
      if(JSON.stringify(actualLocators)!==JSON.stringify(expectedLocators))row.issues.push({kind:'wrong-gap-locators',expected:expectedLocators,actual:actualLocators});

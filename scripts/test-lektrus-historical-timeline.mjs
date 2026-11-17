@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions} from './build-lektrus-historical-timeline.mjs';
+import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch} from './build-lektrus-historical-timeline.mjs';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
 import {createHistoricalTimelineLoader} from '../src/lektrusHistoricalTimelineLoader.ts';
 import {referenceAdmissionWarnings} from './audit-lektrus-atlas-annual.mjs';
@@ -129,6 +129,11 @@ if(outDir&&sourceFile){
   const manifest=validateHistoricalManifest(JSON.parse(fs.readFileSync(path.join(outDir,'manifest.json'))));
   assert.equal(manifest.source.sha256,sha256(raw));
   const original=input.features.map((f,index)=>({f,index}));
+  const reviewedBatch=deriveTerritorialBatch(input.features);
+  assert.equal(reviewedBatch.count,989);
+  const batchByYear=new Map();
+  for(const r of territorialBatch.rows)for(let year=r.from;year<=r.to;year++){if(year===0)continue;if(!batchByYear.has(year))batchByYear.set(year,[]);batchByYear.get(year).push(r);}
+  let batchReady=0,batchPending=0;
   assert.equal(manifest.counts.sourcePolities+manifest.counts.sourceComposites+manifest.counts.sourceRelations,original.length);
   const sourceHashes=new Map(original.map(({f,index})=>[index,sha256(JSON.stringify(f.geometry))]));
   const seen=new Set(), allGeometries=new Set();
@@ -167,6 +172,18 @@ if(outDir&&sourceFile){
       assert.ok(state.drawable.every(r=>r.record.geometryStatus==='candidate'&&r.geometry));
       assert.equal(historicalYearFeatureCollection(state).features.length,state.drawable.length);
       assert.equal(historicalYearFeatureCollection(state,true).features.length,state.drawable.length+state.overlays.length);
+      const activeRecords=new Map(state.records.map(r=>[r.sourceIndex,r]));
+      const hasPart=(record,index,part)=>record&&record.geometryStatus==='candidate'&&(record.geometryParts?record.geometryParts.some(p=>p.index===index&&p.part===part):record.sourceIndex===index);
+      for(const item of batchByYear.get(year)??[]){
+        const record=activeRecords.get(item.source);assert.ok(record,`Missing reviewed record ${item.source}/${year}`);
+        assert.ok(!hasPart(record,item.source,item.part),`Wrong political component retained ${item.source}/${item.part}/${year}`);
+        if(item.status==='ready'){
+          assert.ok(item.otherParts.some(p=>hasPart(activeRecords.get(item.other),item.other,p)),`Correct exact counterpart lost ${item.other}/${year}`);batchReady++;
+        }else{
+          const issue=state.territorialIssues.find(i=>i.sourceIndex===item.source&&i.part===item.part&&i.hash===item.hash);
+          assert.ok(issue&&componentHash(issue.geometry.coordinates)===item.hash,`Unresolved geometry lost ${item.source}/${item.part}/${year}`);batchPending++;
+        }
+      }
       const byEntity=new Map(),byGeometry=new Map(),allGeometry=new Map();
       for(const r of state.records){
         if(!allGeometry.has(r.geometryId))allGeometry.set(r.geometryId,[]);allGeometry.get(r.geometryId).push(r);
@@ -193,6 +210,8 @@ if(outDir&&sourceFile){
     }
   }
   assert.equal(years,5424);
+  assert.equal(batchReady,293);assert.equal(batchPending,696);
+  console.log(`Reviewed batch: ${batchReady} retained verified counterparts; ${batchPending} quarantined source components with open reconstruction and exact geometry`);
   assert.equal(seen.size,manifest.counts.revisions);
   assert.equal(allGeometries.size,manifest.counts.uniqueGeometries);
   const revisionAt=(year,index)=>{const b=historicalBlockForYear(manifest,year);const p=JSON.parse(fs.readFileSync(path.join(outDir,b.file)));return historicalYearState(p,year).records.find(r=>r.sourceIndex===index)};
@@ -241,8 +260,8 @@ if(outDir&&sourceFile){
   for(const index of bombayDuplicates)assert.ok(rawHashes(index).has(bombayHash),`Missing Bombay duplicate in ${index}`);
   for(let year=1718;year<=1740;year++)assert.ok(bombayDuplicates.some(index=>{const {FromYear,ToYear}=input.features[index].properties;return FromYear<=year&&year<=ToYear}),`Missing contemporaneous Bombay record at ${year}`);
   assert.equal(partsAt(1894,12069),undefined);
-  assert.deepEqual(partsAt(1895,12069),Array.from({length:22},(_,i)=>i).filter(i=>![11,12,13,15].includes(i)));
-  for(const part of [11,12,13,15])assert.ok(rawHashes(12119).has(componentHash(rawParts(12069)[part])));
+  assert.deepEqual(partsAt(1895,12069),Array.from({length:22},(_,i)=>i).filter(i=>![11,12,13,14,15,17].includes(i)));
+  for(const part of [11,12,13,14,15,17])assert.ok(rawHashes(12119).has(componentHash(rawParts(12069)[part])));
   assert.equal(partsAt(578,1986),undefined);
   assert.deepEqual(partsAt(579,1986),[0,1]);
   assert.deepEqual(partsAt(1440,7187),[0,1,2,4,5,6]);
@@ -302,7 +321,7 @@ if(outDir&&sourceFile){
   assert.ok(!partsAt(1665,9089).includes(0)&&partsAt(1665,9089).includes(10));
   assert.deepEqual(partsAt(1567,8238),[1,2,3,4,5]);
   assert.ok(!partsAt(1463,7268).includes(8)&&partsAt(1463,7268).includes(10));
-  assert.deepEqual(partsAt(1476,7268),[0,2,3,4,5,6,7]);
+  assert.deepEqual(partsAt(1476,7268),[0,2,3,5,6,7]); // part 4 is in the reviewed Nice reconstruction queue
   assert.ok(!partsAt(1454,7187).includes(6)&&partsAt(1454,7187).includes(0));
   assert.ok(!partsAt(1461,7187).includes(0));
   assert.deepEqual(partsAt(1344,6377),[0,1,2]);
