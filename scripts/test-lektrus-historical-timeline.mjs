@@ -4,7 +4,7 @@ import path from 'node:path';
 import polygonClipping from 'polygon-clipping';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,independentIslands,independentIslandGeometry} from './build-lektrus-historical-timeline.mjs';
+import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,independentIslands,independentIslandGeometry,partitionHistoricalGeometry} from './build-lektrus-historical-timeline.mjs';
 import {historicalUnresolvedCenters,historicalUnresolvedRegions} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
@@ -146,7 +146,12 @@ if(outDir&&sourceFile){
   const decisionsByKey=new Map(reviewedBatch.resolved.map(r=>[`${r.source}:${r.part}:${r.from}:${r.to}`,r]));
   const extensionsByYear=new Map();for(const r of reviewedBatch.extensions)for(let year=r.from;year<=r.to;year++){if(!extensionsByYear.has(year))extensionsByYear.set(year,[]);extensionsByYear.get(year).push(r)}
   const pendingExtensionsByYear=new Map();for(const r of reviewedBatch.pendingExtensions)for(let year=r.from;year<=r.to;year++){if(!pendingExtensionsByYear.has(year))pendingExtensionsByYear.set(year,[]);pendingExtensionsByYear.get(year).push(r)}
-  let batchReady=0,batchPending=0,batchResolved=0,extended=0,sourceRecordYears=0,restoredRecordYears=0,externalRecordYears=0,unresolvedRegionYears=0,unresolvedSourceYears=0;
+  let batchReady=0,batchPending=0,batchResolved=0,extended=0,sourceRecordYears=0,restoredRecordYears=0,externalRecordYears=0,datedRecordYears=0,unresolvedRegionYears=0,unresolvedSourceYears=0;
+  let checkedSupplementYears=0;
+  const ringArea=r=>Math.abs(r.slice(1).reduce((a,p,i)=>a+r[i][0]*p[1]-p[0]*r[i][1],0))/2;
+  const area=g=>g.reduce((a,p)=>a+ringArea(p[0])-p.slice(1).reduce((s,r)=>s+ringArea(r),0),0);
+  const bounds=p=>p[0].reduce((a,[x,y])=>[Math.min(a[0],x),Math.min(a[1],y),Math.max(a[2],x),Math.max(a[3],y)],[Infinity,Infinity,-Infinity,-Infinity]);
+  const intersect=(a,b)=>{try{return polygonClipping.intersection(a,b);}catch(e){const snap=p=>p.map(r=>r.map(([x,y])=>[Math.round(x*1e7)/1e7,Math.round(y*1e7)/1e7]));return polygonClipping.intersection(snap(a),snap(b));}};
   assert.equal(manifest.counts.sourcePolities+manifest.counts.sourceComposites+manifest.counts.sourceRelations,original.length);
   const sourceHashes=new Map(original.map(({f,index})=>[index,sha256(JSON.stringify(f.geometry))]));
   const seen=new Set(), allGeometries=new Set();
@@ -158,6 +163,7 @@ if(outDir&&sourceFile){
     assert.equal(bytes.length,block.bytes);
     assert.equal(sha256(bytes),block.sha256);
     const pack=validateHistoricalPack(JSON.parse(bytes),block);
+    const partCache=new Map(),parts=id=>{if(!partCache.has(id)){const g=pack.geometries[id];partCache.set(id,(g.type==='Polygon'?[g.coordinates]:g.coordinates).map(p=>[bounds(p),p]));}return partCache.get(id);};
     packCount++;
     for(const [id,geometry] of Object.entries(pack.geometries)){assert.equal(sha256(JSON.stringify(geometry)),id);allGeometries.add(id);}
     for(const r of pack.records){
@@ -174,9 +180,11 @@ if(outDir&&sourceFile){
       const list=v=>String(v??'').split(';').map(s=>s.trim()).filter(Boolean);
       assert.deepEqual(r.sourceComponents??r.components,list(f.properties.Components));assert.deepEqual(r.sourceMemberOf??r.memberOf,list(f.properties.MemberOf));
       assert.equal(r.sourceFrom,f.properties.FromYear);assert.equal(r.sourceTo,f.properties.ToYear);
-      assert.equal(r.sourceGeometryId??r.geometryId,sourceHashes.get(r.sourceIndex));
+      if(r.datedGeography){const d=r.datedGeography,f=input.features[r.sourceIndex],raw=f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates;assert.equal(f.properties.FromYear,d.referenceYear);const outline=d.parts.map(i=>raw[i]);assert.deepEqual(pack.geometries[d.outlineGeometryId],{type:'MultiPolygon',coordinates:outline});let coords=outline;for(const id of d.trimGeometryIds)coords=polygonClipping.difference(coords,pack.geometries[id].coordinates);assert.deepEqual(pack.geometries[r.geometryId],{type:'MultiPolygon',coordinates:coords});continue;}
+      if(r.boundaryAdjustment){const a=r.boundaryAdjustment,base=pack.geometries[a.baseGeometryId],coords=partitionHistoricalGeometry(base.type==='Polygon'?[base.coordinates]:base.coordinates,a.cuts.map(c=>pack.geometries[c.cutGeometryId].coordinates));if(a.exhausted)assert.equal(coords.length,0);else assert.deepEqual(pack.geometries[r.geometryId],{type:'MultiPolygon',coordinates:coords});}
+      assert.equal(r.sourceGeometryId??r.boundaryAdjustment?.baseGeometryId??r.geometryId,sourceHashes.get(r.sourceIndex));
       if(r.sourceGeometryId){
-        const orig=f.geometry,repaired=pack.geometries[r.geometryId];
+        const orig=f.geometry,repaired=pack.geometries[r.boundaryAdjustment?.baseGeometryId??r.geometryId];
         if(['reviewed-source-components','reviewed-union-source-components','reviewed-difference-source-components'].includes(r.geometryRepair)){
           const sourcePart=({index,part})=>{const g=input.features[index].geometry;return (g.type==='Polygon'?[g.coordinates]:g.coordinates)[part]};
           for(const w of r.geometryTemporalWitnesses??[]){assert.equal(input.features[w.before.index].properties.ToYear,w.year-1);assert.equal(input.features[w.after.index].properties.FromYear,w.year+1);assert.equal(componentHash(sourcePart(w.before)),w.hash);assert.equal(componentHash(sourcePart(w.after)),w.hash);}
@@ -190,9 +198,17 @@ if(outDir&&sourceFile){
       if(year===0)continue;
       const expected=original.filter(({f})=>f.properties.FromYear<=year&&f.properties.ToYear>=year).map(({index})=>index);
       const state=historicalYearState(pack,year);
-      const sourceRecords=state.records.filter(r=>!r.editorialRestoration&&!r.externalGeography);
+      const sourceRecords=state.records.filter(r=>!r.editorialRestoration&&!r.externalGeography&&!r.datedGeography);
       assert.deepEqual(sourceRecords.map(r=>r.sourceIndex),expected,`Incorrect active source records at ${year}`);
-      sourceRecordYears+=sourceRecords.length;restoredRecordYears+=state.records.filter(r=>r.editorialRestoration).length;externalRecordYears+=state.records.filter(r=>r.externalGeography).length;
+      sourceRecordYears+=sourceRecords.length;restoredRecordYears+=state.records.filter(r=>r.editorialRestoration).length;externalRecordYears+=state.records.filter(r=>r.externalGeography).length;datedRecordYears+=state.records.filter(r=>r.datedGeography).length;
+      for(const {record:r} of state.drawable.filter(({record})=>record.datedGeography||record.externalGeography?.kind==='modern-stable-land-border')){
+        checkedSupplementYears++;
+        for(const {record:o} of state.drawable)if(o.id!==r.id){
+          let overlap=0;
+          for(const [a,q] of parts(r.geometryId))for(const [b,t] of parts(o.geometryId))if(a[0]<=b[2]&&a[2]>=b[0]&&a[1]<=b[3]&&a[3]>=b[1])overlap+=area(intersect(q,t));
+          assert.ok(overlap<1e-5,`Material land overlap ${year}: ${r.name}/${o.name} (${overlap} square degrees)`);
+        }
+      }
       assert.equal(state.records.length,state.drawable.length+state.overlays.length+state.rejected.length);
       assert.ok(state.drawable.every(r=>r.record.geometryStatus==='candidate'&&r.geometry));
       assert.equal(historicalYearFeatureCollection(state).features.length,state.drawable.length);
@@ -375,9 +391,10 @@ if(outDir&&sourceFile){
   }
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,537);assert.equal(batchPending,159);
-  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,313);assert.equal(externalRecordYears,401);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
+  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,313);assert.equal(externalRecordYears,469);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
   assert.equal(unresolvedSourceYears,202);assert.equal(unresolvedRegionYears,121);
-  assert.equal(admissionWarnings,113,'Independent-state coverage must not regress');
+  assert.equal(admissionWarnings,1,'Independent-state coverage must not regress');
+  assert.equal(datedRecordYears,43);assert.equal(checkedSupplementYears,111);
   console.log(`Reviewed batch: ${batchReady} original corrections; ${batchResolved} newly resolved attributions; ${batchPending} open; ${extended} adjacent cases; ${restoredRecordYears} restored territory-years`);
   assert.equal(seen.size,manifest.counts.revisions);
   assert.equal(allGeometries.size,manifest.counts.uniqueGeometries);
@@ -508,7 +525,10 @@ if(outDir&&sourceFile){
   assert.equal(revisionAt(1971,13317).name,'Arab Republic of Egypt');
   assert.deepEqual(partsAt(1958,12920),[1]);
   assert.equal(revisionAt(1958,12920).name,'British Nigeria');
-  assert.equal(revisionAt(1960,13214).name,'Nigeria (independence transition year)');
+  assert.equal(revisionAt(1960,13214).name,'Federation of Nigeria');
+  assert.equal(revisionAt(1960,13206).geometryStatus,'rejected');
+  assert.equal(revisionAt(1962,13227).geometryStatus,'rejected');
+  for(const [year,index,name] of [[1961,13244,'Republic of Dahomey'],[1974,13307,'Republic of Dahomey'],[1975,13307,"People's Republic of Benin"],[1990,13307,'Republic of Benin'],[1983,13249,'Republic of Upper Volta'],[1984,13249,'Burkina Faso'],[1965,13267,'Kingdom of Burundi'],[1966,13267,'Republic of Burundi'],[1962,13245,'Federation of Nigeria'],[1963,13245,'Federal Republic of Nigeria'],[1969,13306,"People's Republic of Southern Yemen"],[1970,13306,"People's Democratic Republic of Yemen"],[1989,13371,"People's Republic of Mozambique"],[1990,13371,'Mozambique']])assert.equal(revisionAt(year,index).name,name,`${year}/${index}`);
   assert.equal(revisionAt(1813,10758).name,'Denmark-Norway');
   assert.equal(revisionAt(1814,10923).name,'Denmark');
   assert.deepEqual(partsAt(1918,11752),[0,1,2,3,4,5]);
@@ -536,7 +556,7 @@ if(outDir&&sourceFile){
   assert.equal(revisionAt(1674,9135).name,'New Netherland');
   assert.equal(revisionAt(1675,9135).name,'Dutch Caribbean and Guiana possessions (source aggregate)');
   assert.equal(revisionAt(1905,12227).name,'British West African territories (Gold Coast and Nigeria)');
-  const report={years,recordYears,rejectedYears,emptyYears,packCount,yearsWithIdentityCollisions,yearsWithSharedGeometry,admissionWarnings,externalRecordYears,counts:manifest.counts,source:manifest.source,notice:'Technical annual coverage with review warnings. Shared geometry, aliases and admission warnings are candidates, not proof of errors. External island outlines are modern geographic candidates; historical, geographic and visual acceptance NOT complete.',rows};
+  const report={years,recordYears,rejectedYears,emptyYears,packCount,yearsWithIdentityCollisions,yearsWithSharedGeometry,admissionWarnings,externalRecordYears,datedRecordYears,checkedSupplementYears,counts:manifest.counts,source:manifest.source,notice:'Technical annual coverage with review warnings. Shared geometry, aliases and admission warnings are candidates, not proof of errors. External and dated successor outlines are approximate cartographic candidates; historical, geographic and visual acceptance NOT complete.',rows};
   fs.writeFileSync(path.join(outDir,'technical-annual-audit.json'),JSON.stringify(report,null,2)+'\n');
   console.log(JSON.stringify({...report,rows:undefined}));
 }

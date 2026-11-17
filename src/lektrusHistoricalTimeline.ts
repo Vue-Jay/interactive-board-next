@@ -16,7 +16,9 @@ export type HistoricalRevision = {
   geometryParts?: {index:number;part:number}[];
   geometryTemporalWitnesses?: {before:{index:number;part:number};after:{index:number;part:number};year:number;hash:string}[];
   /** Separate public-domain cartographic supplement, never a historical shoreline survey. */
-  externalGeography?: {iso:string;neId:number;datasetHash:string;url:string;kind:'modern-island-outline'};
+  externalGeography?: {iso:string;neId:number;datasetHash:string;url:string;kind:'modern-island-outline'|'modern-stable-land-border'};
+  boundaryAdjustment?: {baseGeometryId:string;cuts:{cutGeometryId:string;iso:string}[];exhausted?:true};
+  datedGeography?: {referenceYear:number;outlineGeometryId:string;trimGeometryIds:string[];parts:number[]};
   geometrySubtractions?: {index:number;part:number}[];
   territorialIssues?: HistoricalTerritorialIssue[];
   territorialAttributions?: HistoricalTerritorialAttribution[];
@@ -86,7 +88,7 @@ export function historicalYearFeatureCollection(state: ReturnType<typeof histori
       historicalRole:record.role, historicalSourceRole:record.sourceRole, historicalComponents:record.components, historicalMemberOf:record.memberOf,
       historicalSourceComponents:record.sourceComponents,historicalSourceMemberOf:record.sourceMemberOf,
       sourceSeshatId:record.sourceSeshatId, sourceWikipedia:record.sourceWikipedia,
-      sourceGeometryId:record.sourceGeometryId, geometryRepair:record.geometryRepair,geometryParts:record.geometryParts,geometrySubtractions:record.geometrySubtractions,geometryTemporalWitnesses:record.geometryTemporalWitnesses,externalGeography:record.externalGeography,
+      sourceGeometryId:record.sourceGeometryId, geometryRepair:record.geometryRepair,geometryParts:record.geometryParts,geometrySubtractions:record.geometrySubtractions,geometryTemporalWitnesses:record.geometryTemporalWitnesses,externalGeography:record.externalGeography,boundaryAdjustment:record.boundaryAdjustment,datedGeography:record.datedGeography,
       year:state.year, nameStatus:record.nameStatus, geometryStatus:record.geometryStatus,
       review:record.review,editorialRestoration:record.editorialRestoration,territorialAttributions:record.territorialAttributions?.filter(i=>i.from<=state.year&&i.to>=state.year)},
   }))};
@@ -122,8 +124,10 @@ export function validateHistoricalPack(value: unknown, block: HistoricalBlock): 
     if(record.geometryTemporalWitnesses!==undefined&&(!Array.isArray(record.geometryTemporalWitnesses)||!record.geometryTemporalWitnesses.length||record.geometryRepair!=='reviewed-union-source-components'||record.geometryTemporalWitnesses.some(w=>!w||!validParts([w.before,w.after])||w.before.index===w.after.index||w.year!==record.from||w.year!==record.to||!hash.test(w.hash)||!record.geometryParts?.some(p=>p.index===w.before.index&&p.part===w.before.part))))throw new Error('Invalid historical temporal witness');
     if(record.externalGeography!==undefined){
       const e=record.externalGeography;
-      if(!e||e.kind!=='modern-island-outline'||!/^\w{3}$/.test(e.iso)||!Number.isSafeInteger(e.neId)||e.neId!==record.sourceIndex||!hash.test(e.datasetHash)||!e.url.startsWith('https://github.com/nvkelso/natural-earth-vector/blob/')||record.role!=='polity'||record.nameStatus!=='reviewed'||record.geometryStatus!=='candidate'||record.editorialRestoration||record.sourceGeometryId||record.geometryRepair||record.geometryParts||record.geometryTemporalWitnesses||!record.review?.sources.includes(e.url))throw new Error('Invalid external island provenance');
+      if(!e||!['modern-island-outline','modern-stable-land-border'].includes(e.kind)||!/^\w{3}$/.test(e.iso)||!Number.isSafeInteger(e.neId)||e.neId!==record.sourceIndex||!hash.test(e.datasetHash)||!e.url.startsWith('https://github.com/nvkelso/natural-earth-vector/blob/')||record.role!=='polity'||record.nameStatus!=='reviewed'||record.geometryStatus!=='candidate'||record.editorialRestoration||record.sourceGeometryId||record.geometryRepair||record.geometryParts||record.geometryTemporalWitnesses||!record.review?.sources.includes(e.url))throw new Error('Invalid external geography provenance');
     }
+    if(record.boundaryAdjustment){const a=record.boundaryAdjustment;if(!hash.test(a.baseGeometryId)||!pack.geometries[a.baseGeometryId]||!Array.isArray(a.cuts)||!a.cuts.length||a.cuts.some(c=>!hash.test(c.cutGeometryId)||!pack.geometries[c.cutGeometryId]||!/^\w{3}$/.test(c.iso))||!record.review?.sources.length||record.externalGeography||record.datedGeography||a.exhausted&&record.geometryStatus!=='rejected')throw new Error('Invalid historical boundary adjustment');}
+    if(record.datedGeography){const d=record.datedGeography;if(d.referenceYear!==record.sourceFrom||record.to>=d.referenceYear||d.referenceYear-record.from>5||!hash.test(d.outlineGeometryId)||!pack.geometries[d.outlineGeometryId]||!Array.isArray(d.trimGeometryIds)||d.trimGeometryIds.some(id=>!hash.test(id)||!pack.geometries[id])||!Array.isArray(d.parts)||!d.parts.length||d.parts.some(p=>!Number.isSafeInteger(p)||p<0)||record.role!=='polity'||record.nameStatus!=='reviewed'||record.geometryStatus!=='candidate'||record.externalGeography||record.editorialRestoration||!record.review?.sources.length)throw new Error('Invalid dated successor outline');}
     if (!geometry || !['Polygon','MultiPolygon'].includes(geometry.type) || !Array.isArray(geometry.coordinates)) throw new Error('Missing historical geometry');
     if(record.territorialIssues!==undefined){
       if(!Array.isArray(record.territorialIssues)||!record.review?.sources.length||record.territorialIssues.some(i=>!Number.isSafeInteger(i.part)||i.part<0||!hash.test(i.hash)||!hash.test(i.geometryId)||!validHistoricalYear(i.from)||!validHistoricalYear(i.to)||i.from>i.to||i.from>record.to||i.to<record.from||!i.group||!i.reason||!i.counterpartName||!i.evidence.startsWith('https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-')||pack.geometries[i.geometryId]?.type!=='Polygon'))throw new Error('Invalid unresolved historical territorial issue');

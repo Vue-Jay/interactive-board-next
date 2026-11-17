@@ -126,7 +126,7 @@ export function unMembershipYearEnd(year){
 }
 const admissionAnchors=[
  ...[
-  ["Benin",["Republic of Benin","Benin","Dahomey","Republic of Dahomey"]],
+  ["Benin",["Republic of Benin","Benin","Dahomey","Republic of Dahomey","People's Republic of Benin"]],
   ["Burkina Faso",["Burkina Faso","Upper Volta","Republic of Upper Volta"]],
   ["Cameroon",["Republic of Cameroon","Cameroon","Cameroun"]],
   ["Central African Republic",["Central African Republic","Central African Empire"]],

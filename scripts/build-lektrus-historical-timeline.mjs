@@ -169,6 +169,12 @@ export const territorialBatch=JSON.parse(fs.readFileSync(new URL('../docs/histor
 export const territorialResolutions=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-batch-989-resolutions.json',import.meta.url),'utf8'));
 export const independentIslands=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-independent-islands.json',import.meta.url),'utf8'));
 export const independentIslandGeometry=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-independent-islands-geometry.json',import.meta.url),'utf8'));
+independentIslandGeometry.push(...JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-microstate-geometry.json',import.meta.url),'utf8')));
+independentIslands.states.push(
+ {iso:'LIE',wikidata:'Q347',from:1990,name:'Liechtenstein',nameRu:'Лихтенштейн',neighbors:[13108,13662,13045,13499,13699],reasonRu:'Княжество существовало до вступления в ООН в 1990 году; его границы устойчивы на протяжении столетий.',sources:['https://www.liechtensteinusa.org/history','https://www.llv.li/en/national-administration/civil-engineering-and-geoinformation-office/national-survey/sovereign-borders']},
+ {iso:'SMR',wikidata:'Q238',from:1992,name:'San Marino',nameRu:'Сан-Марино',neighbors:[13384,13794],reasonRu:'Республика существовала до вступления в ООН в 1992 году; последнее территориальное расширение состоялось в 1463 году.',sources:['https://www.elezioni.sm/on-line/home/elezioni-giunte/cenni-storici-e-curiosita.html']}
+);
+export const independenceTransitions=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-independence-transitions.json',import.meta.url),'utf8'));
 export function deriveTerritorialBatch(features,batch=territorialBatch){
  const exclusions=[],pending=[],resolved=[],restorations=[],relabels=new Map(),attributions=[],extensions=[],seen=new Set(),transfers=[],subtractions=[],pendingExtensions=[];
  const transfer=territorialResolutions.transfer,ceylon=territorialResolutions.ceylonTransfer,mindanao=territorialResolutions.mindanaoReview;
@@ -501,6 +507,12 @@ function editorialSegments(base,derived=[]){
  if(base.sourceIndex===5295)cut(1210);
  if(base.sourceIndex===4776)cut(1126);
  if(base.sourceIndex===4678)cut(1094);
+ if(base.sourceName==='Republic of Benin'&&base.sourceWikidata==='Q962'){cut(1975);cut(1990)}
+ if(base.sourceIndex===13249)cut(1984);
+ if(base.sourceIndex===13267)cut(1966);
+ if(base.sourceIndex===13245)cut(1963);
+ if(base.sourceIndex===13306)cut(1970);
+ if(base.sourceIndex===13371)cut(1990);
  const sorted=[...cuts].sort((a,b)=>a-b);
  for(let i=0;i+1<sorted.length;i++){
   const from=sorted[i]===0?1:sorted[i],to=sorted[i+1]-1===0?-1:sorted[i+1]-1;
@@ -508,6 +520,16 @@ function editorialSegments(base,derived=[]){
   let r={...base,from,to};
   const reasons=[],reasonsRu=[],sources=new Set();
   const note=(reason,urls,ru)=>{reasons.push(reason);if(ru)reasonsRu.push(ru);for(const url of urls)sources.add(url)};
+  const rename=(name,nameRu,url,reason,reasonRu)=>{r={...r,name,nameRu,nameStatus:'reviewed'};note(reason,[url],reasonRu);};
+  if(base.sourceName==='Republic of Benin'&&base.sourceWikidata==='Q962'&&from<1990){
+   const dahomey=from<1975;
+   rename(dahomey?'Republic of Dahomey':"People's Republic of Benin",dahomey?'Республика Дагомея':'Народная Республика Бенин','https://www.gouv.bj/pages/histoire/','Dahomey was renamed the People’s Republic of Benin in 1975; the latter name ended in 1990.','Дагомея переименована в Народную Республику Бенин в 1975 году; с 1990 года — Республика Бенин.');
+  }
+  if(base.sourceIndex===13249&&from<1984)rename('Republic of Upper Volta','Республика Верхняя Вольта','https://history.state.gov/countries/burkina-faso','Upper Volta became Burkina Faso in 1984.','Верхняя Вольта переименована в Буркина-Фасо в 1984 году.');
+  if(base.sourceIndex===13267&&from<1966)rename('Kingdom of Burundi','Королевство Бурунди','https://www.mae.gov.bi/histoire/','The monarchy was abolished on 28 November 1966.','Монархия упразднена 28 ноября 1966 года.');
+  if(base.sourceIndex===13245&&from<1963)rename('Federation of Nigeria','Федерация Нигерия','https://sccr.gov.ng/?page_id=119','The republic constitution entered into force on 1 October 1963.','Республиканская конституция вступила в силу 1 октября 1963 года.');
+  if(base.sourceIndex===13306&&from<1970)rename("People's Republic of Southern Yemen",'Народная Республика Южного Йемена','https://history.state.gov/countries/yemen','South Yemen adopted its later official name in 1970.','Южный Йемен изменил официальное название в 1970 году.');
+  if(base.sourceIndex===13371&&from<1990)rename("People's Republic of Mozambique",'Народная Республика Мозамбик','https://www.ts.gov.mz/legislacao/','The 1990 Constitution established the Republic of Mozambique.','Конституция 1990 года закрепила наименование Республика Мозамбик.');
   if(territorialResolutions.kandy.indices.includes(base.sourceIndex)){
    const d=territorialResolutions.kandy;
    assert.ok(['Portuguese Ceylon','Dutch Ceylon','British Ceylon'].includes(base.sourceName)&&from>=1629&&to<=1814);
@@ -569,7 +591,7 @@ function editorialSegments(base,derived=[]){
   }
   if(base.sourceName==='British Gold Coast'&&base.sourceWikidata==='Q503623'&&from>=1905){
    const nigeria=from>=1958;
-   r={...r,name:nigeria?(from>=1960?'Nigeria (independence transition year)':'British Nigeria'):'British West African territories (Gold Coast and Nigeria)',nameRu:nigeria?(from>=1960?'Нигерия (год независимости)':'Британская Нигерия'):'Британские владения в Западной Африке (Золотой Берег и Нигерия)',nameStatus:'reviewed',entityId:identity('reviewed-polity',nigeria?(from>=1960?'nigeria-independence-transition':'british-nigeria'):'british-gold-coast-nigeria-aggregate')};
+   r={...r,name:nigeria?(from>=1960?'Federation of Nigeria':'British Nigeria'):'British West African territories (Gold Coast and Nigeria)',nameRu:nigeria?(from>=1960?'Федерация Нигерия':'Британская Нигерия'):'Британские владения в Западной Африке (Золотой Берег и Нигерия)',nameStatus:'reviewed',entityId:identity('reviewed-polity',nigeria?(from>=1960?'nigeria-independence-transition':'british-nigeria'):'british-gold-coast-nigeria-aggregate')};
    if(from>=1960)r={...r,sourceMemberOf:base.memberOf,memberOf:base.memberOf.filter(n=>n!=='(British Empire)')};
    note('This source record also includes the disconnected outline of Nigeria; Gold Coast became Ghana in 1957 and Nigeria became independent in 1960. The Nigeria boundary remains unverified.',[SURINAME_SOURCE],'Исходная запись включает отдельный контур Нигерии. Золотой Берег стал Ганой в 1957 году, Нигерия получила независимость в 1960. Границы Нигерии требуют проверки.');
   }
@@ -712,6 +734,16 @@ function validateGeometry(g) {
       for (const point of ring) assert.ok(Array.isArray(point) && point.length >= 2 && Number.isFinite(point[0]) && Number.isFinite(point[1]) && Math.abs(point[0]) <= 180 && Math.abs(point[1]) <= 90);
       assert.deepEqual(ring[0], ring.at(-1), 'unclosed ring');
     }
+  }
+}
+
+// Rare near-coincident edges in the generalized source can break the sweep
+// algorithm. Retry on a documented sub-meter grid only for that partition.
+export function partitionHistoricalGeometry(base,cuts){
+  try{return polygonClipping.difference(base,...cuts);}
+  catch(e){
+    const snap=ps=>ps.map(p=>p.map(r=>r.map(([x,y])=>[Math.round(x*1e6)/1e6,Math.round(y*1e6)/1e6])));
+    return polygonClipping.difference(snap(base),...cuts.map(snap));
   }
 }
 
@@ -867,19 +899,88 @@ export function normalizeHistoricalSource(source) {
     for(const d of independentIslands.states){
       const evidence=independentIslandGeometry.find(g=>g.iso===d.iso);assert.ok(evidence);
       const raw=evidence.geometry;assert.equal(sha256(JSON.stringify(raw)),evidence.hash);const g={type:'MultiPolygon',coordinates:polygons(raw)},geometryId=sha256(JSON.stringify(g));validateGeometry(g);
-      for(const r of records)if(r.role==='polity'&&r.geometryStatus==='candidate'&&r.to>=d.from){
+      for(let idx=0;idx<records.length;idx++){const r=records[idx];if(r.role!=='polity'||r.geometryStatus!=='candidate'||r.to<d.from)continue;
         const other=geometries.get(r.geometryId);
-        for(const a of parts(other))for(const b of parts(g))if(intersects(a.b,b.b))assert.equal(polygonClipping.intersection(a.p,b.p).length,0,`External island overlap ${d.iso}/${r.name}/${r.from}-${r.to}`);
+        const overlap=parts(other).some(a=>parts(g).some(b=>intersects(a.b,b.b)&&polygonClipping.intersection(a.p,b.p).length));
+        if(!overlap)continue;
+        assert.ok(d.neighbors?.includes(r.sourceIndex),`Unexpected external boundary overlap ${d.iso}/${r.sourceIndex}/${r.name}/${r.from}-${r.to}`);
+        assert.ok(!r.boundaryAdjustment,'Unreviewed multiple boundary adjustments');
+        const clipped={type:'MultiPolygon',coordinates:polygonClipping.difference(polygons(other),polygons(g))};
+        validateGeometry(clipped);const clippedId=sha256(JSON.stringify(clipped));geometries.set(clippedId,clipped);
+        const from=Math.max(r.from,d.from);
+        const adjusted={...r,id:identity('external-boundary-cut',r.id,from,r.to,geometryId),from,geometryId:clippedId,boundaryAdjustment:{baseGeometryId:r.geometryId,cuts:[{cutGeometryId:geometryId,iso:d.iso}]},review:{reason:[r.review?.reason,'Generalized land boundary excludes the separately sourced independent microstate.'].filter(Boolean).join(' '),reasonRu:[r.review?.reasonRu,'Контур согласован с генерализованной границей отдельного микрогосударства.'].filter(Boolean).join(' '),sources:[...new Set([...(r.review?.sources??[]),...d.sources,independentIslands.source.url])]}};
+        if(r.from<from){records.splice(idx,1,{...r,to:from-1,id:identity('before-external-boundary-cut',r.id,from)},adjusted);idx++;}
+        else records[idx]=adjusted;
       }
       geometries.set(geometryId,g);
       const segments=d.transition?[{...d,to:d.transition.year-1},{...d,...d.transition,from:d.transition.year,to:HISTORY_LAST_YEAR}]:[{...d,to:HISTORY_LAST_YEAR}];
       for(const s of segments){
-        records.push({id:identity('external-island',d.iso,s.from,s.to),entityId:identity('external-island-polity',d.iso),geometryId,role:'polity',components:[],memberOf:[],sourceSeshatId:'',sourceWikipedia:'',sourceName:`Natural Earth: ${d.iso}`,sourceWikidata:d.wikidata,sourceIndex:evidence.neId,sourceFrom:d.from,sourceTo:HISTORY_LAST_YEAR,from:s.from,to:s.to,name:s.name,nameRu:s.nameRu,nameStatus:'reviewed',geometryStatus:'candidate',externalGeography:{iso:d.iso,neId:evidence.neId,datasetHash:independentIslands.source.sha256,url:independentIslands.source.url,kind:'modern-island-outline'},review:{reason:'Historically documented statehood; modern generalized land outlines only, not a dated shoreline or maritime frontier.',reasonRu:`${d.reasonRu} Береговой контур — современная генерализация Natural Earth 1:10 млн; он не является исторической съёмкой береговой линии. Мелкие острова, намыв и изменение берегов по годам не реконструированы. Морские границы не показаны.`,sources:[...d.sources,independentIslands.source.url]}});counts.reviewedNames++;
+        records.push({id:identity('external-island',d.iso,s.from,s.to),entityId:identity('external-island-polity',d.iso),geometryId,role:'polity',components:[],memberOf:[],sourceSeshatId:'',sourceWikipedia:'',sourceName:`Natural Earth: ${d.iso}`,sourceWikidata:d.wikidata,sourceIndex:evidence.neId,sourceFrom:d.from,sourceTo:HISTORY_LAST_YEAR,from:s.from,to:s.to,name:s.name,nameRu:s.nameRu,nameStatus:'reviewed',geometryStatus:'candidate',externalGeography:{iso:d.iso,neId:evidence.neId,datasetHash:independentIslands.source.sha256,url:independentIslands.source.url,kind:d.neighbors?'modern-stable-land-border':'modern-island-outline'},review:{reason:'Historically documented statehood; modern generalized land outlines only, not a dated boundary survey.',reasonRu:`${d.reasonRu} ${d.neighbors?'Сухопутный контур — современная генерализация Natural Earth 1:10 млн; он не является исторической съёмкой границы. Мелкие изменения границы не реконструированы.':'Береговой контур — современная генерализация Natural Earth 1:10 млн; он не является исторической съёмкой береговой линии. Мелкие острова, намыв и изменение берегов по годам не реконструированы. Морские границы не показаны.'}`,sources:[...d.sources,independentIslands.source.url]}});counts.reviewedNames++;
+      }
+    }
+    // The admission dates establish sovereignty, not exact historical borders.
+    // Use the first dated successor outline only for the documented transition gap.
+    // Preserve existing neighboring borders, then partition only named predecessors.
+    const ringArea=r=>Math.abs(r.slice(1).reduce((a,p,i)=>a+r[i][0]*p[1]-p[0]*r[i][1],0))/2;
+    const area=g=>g.reduce((a,p)=>a+ringArea(p[0])-p.slice(1).reduce((s,r)=>s+ringArea(r),0),0);
+    const overlaps=(a,b)=>parts(a).some(x=>parts(b).some(y=>intersects(x.b,y.b)&&polygonClipping.intersection(x.p,y.p).length));
+    const saveGeometry=g=>{validateGeometry(g);const id=sha256(JSON.stringify(g));geometries.set(id,g);return id;};
+    const un='https://www.un.org/en/about-us/growth-in-un-membership',decolonization='https://www.un.org/dppa/decolonization/en/history/former-trust-and-nsgts';
+    for(const d of independenceTransitions){
+      const f=source.features[d.index],p=f.properties,to=p.FromYear-1;
+      assert.ok(to>=d.from&&to-d.from<5);
+      const raw=polygons(f.geometry),outline={type:'MultiPolygon',coordinates:d.parts?d.parts.map(i=>raw[i]):raw};
+      const outlineGeometryId=saveGeometry(outline),sources=[un,decolonization,...(d.sources??[])];
+      for(let year=d.from;year<=to;year++){
+        let candidate=outline;const trimGeometryIds=[];
+        const checked=(op,r,fn)=>{try{return fn();}catch(e){throw new Error(`Transition ${d.iso}/${year} ${op} with ${r.sourceIndex} ${r.name}`,{cause:e});}};
+        const active=records.filter(r=>r.role==='polity'&&r.geometryStatus==='candidate'&&r.from<=year&&r.to>=year);
+        for(const r of active){
+          if(d.owners.includes(r.sourceIndex)&&!r.datedGeography)continue;
+          const other=geometries.get(r.geometryId);
+          if(checked('neighbor intersection',r,()=>overlaps(candidate,other))){
+            candidate={type:'MultiPolygon',coordinates:checked('neighbor trim',r,()=>polygonClipping.difference(candidate.coordinates,polygons(other)))};
+            trimGeometryIds.push(r.geometryId);
+          }
+        }
+        assert.ok(area(candidate.coordinates)>area(outline.coordinates)*0.95,`Too much neighboring land in ${d.iso}/${year}`);
+        const geometryId=saveGeometry(candidate);
+        for(let i=0;i<records.length;i++){
+          const r=records[i];
+          if(r.role!=='polity'||r.geometryStatus!=='candidate'||r.from>year||r.to<year||!d.owners.includes(r.sourceIndex)||r.datedGeography)continue;
+          const other=geometries.get(r.geometryId);if(!checked('predecessor intersection',r,()=>overlaps(candidate,other)))continue;
+          const cutGeometryId=geometryId,baseGeometryId=r.boundaryAdjustment?.baseGeometryId??r.geometryId;
+          const cuts=[...(r.boundaryAdjustment?.cuts??[]),{cutGeometryId,iso:d.iso}];
+          const coordinates=checked('predecessor partition',r,()=>partitionHistoricalGeometry(polygons(geometries.get(baseGeometryId)),cuts.map(c=>polygons(geometries.get(c.cutGeometryId)))));
+          const exhausted=!coordinates.length;
+          const clippedId=exhausted?r.geometryId:saveGeometry({type:'MultiPolygon',coordinates});
+          const adjusted={...r,id:identity('dated-boundary-cut',r.id,year,geometryId),from:year,to:year,geometryId:clippedId,geometryStatus:exhausted?'rejected':r.geometryStatus,boundaryAdjustment:{baseGeometryId,cuts,...(exhausted?{exhausted:true}:{})},review:{reason:[r.review?.reason,'Documented independence: predecessor partitioned using a generalized dated successor outline.'].filter(Boolean).join(' '),reasonRu:[r.review?.reasonRu,'После документированной независимости из контура предшественника исключена территория нового государства по генерализованному контуру ближайшего последующего года.'].filter(Boolean).join(' '),sources:[...new Set([...(r.review?.sources??[]),...sources])]}};
+          const split=[...(r.from<year?[{...r,id:identity('before-dated-cut',r.id,year),to:year-1}]:[]),adjusted,...(r.to>year?[{...r,id:identity('after-dated-cut',r.id,year),from:year+1}]:[])];
+          records.splice(i,1,...split);i+=split.length-1;
+        }
+        const successor=records.find(r=>r.sourceIndex===d.index&&r.from<=p.FromYear&&r.to>=p.FromYear&&!r.editorialRestoration&&!r.datedGeography);
+        assert.ok(successor);
+        records.push({id:identity('dated-independence',d.index,year),entityId:successor.entityId,geometryId,role:'polity',components:[],memberOf:[],sourceSeshatId:String(p.SeshatID??''),sourceWikipedia:String(p.Wikipedia??''),sourceName:p.Name.trim(),sourceWikidata:p.Wikidata??'',sourceIndex:d.index,sourceFrom:p.FromYear,sourceTo:p.ToYear,from:year,to:year,name:d.name,nameRu:d.nameRu,nameStatus:'reviewed',geometryStatus:'candidate',datedGeography:{referenceYear:p.FromYear,outlineGeometryId,trimGeometryIds,parts:d.parts??raw.map((_,i)=>i)},review:{reason:'Documented independent state in the transition year; generalized outline from first subsequent dated source, adjusted to avoid neighboring overlaps, not an exact contemporary boundary.',reasonRu:`Независимое государство в конце ${year} года. Контур основан на датированном источнике за ${p.FromYear} год и согласован с соседними полигонами; точная граница переходного года не подтверждена. ${d.note??''}`,sources}});
+        counts.reviewedNames++;
+      }
+    }
+    // Both successor republics now cover the former federation. Do not draw a
+    // sliver of a dissolved polity created by mismatched map generalizations.
+    for(const [index,year,reason,reasonRu] of [
+      [13206,1960,'The Mali Federation dissolved in 1960; the small remaining sliver is not a surviving federation.','Федерация Мали распалась в 1960 году; небольшой остаток несовпадающих контуров не является сохранившейся федерацией.'],
+      [13227,1962,'Ruanda-Urundi became the two independent states of Rwanda and Burundi in 1962; the small remaining sliver is not Belgian Congo.','В 1962 году Руанда-Урунди разделилась на независимые Руанду и Бурунди; небольшой остаток контура не относится к Бельгийскому Конго.']
+    ]){
+      const r=records.find(r=>r.sourceIndex===index&&r.from===year&&r.to===year);assert.ok(r);
+      if(r.geometryStatus==='candidate'){
+        assert.ok(r.boundaryAdjustment&&area(polygons(geometries.get(r.geometryId)))<area(polygons(geometries.get(r.boundaryAdjustment.baseGeometryId)))*0.01);
+        r.geometryStatus='rejected';r.review={...r.review,reason:r.review.reason+' '+reason,reasonRu:r.review.reasonRu+' '+reasonRu};
       }
     }
   }
   counts.revisions = records.length;
-  const used=new Set(records.flatMap(r=>[r.geometryId,...(r.territorialIssues??[]).map(i=>i.geometryId)]));for(const id of geometries.keys())if(!used.has(id))geometries.delete(id);
+  counts.rejectedRevisions=records.filter(r=>r.geometryStatus==='rejected').length;
+  const geometryReferences=r=>[r.geometryId,...(r.boundaryAdjustment?[r.boundaryAdjustment.baseGeometryId,...r.boundaryAdjustment.cuts.map(c=>c.cutGeometryId)]:[]),...(r.datedGeography?[r.datedGeography.outlineGeometryId,...r.datedGeography.trimGeometryIds]:[]),...(r.territorialIssues??[]).map(i=>i.geometryId)];
+  const used=new Set(records.flatMap(geometryReferences));for(const id of geometries.keys())if(!used.has(id))geometries.delete(id);
   counts.uniqueGeometries = geometries.size;
   return {records,geometries,counts};
 }
@@ -892,7 +993,7 @@ export function buildHistoricalTimeline(source, sourceHash, outDir) {
     const from = historicalYearFromOrdinal(ordinal);
     const to = historicalYearFromOrdinal(end);
     const active = records.filter(r => r.from <= to && r.to >= from);
-    const ids = [...new Set(active.flatMap(r=>[r.geometryId,...(r.territorialIssues??[]).map(i=>i.geometryId)]))].sort();
+    const ids = [...new Set(active.flatMap(r=>[r.geometryId,...(r.boundaryAdjustment?[r.boundaryAdjustment.baseGeometryId,...r.boundaryAdjustment.cuts.map(c=>c.cutGeometryId)]:[]),...(r.datedGeography?[r.datedGeography.outlineGeometryId,...r.datedGeography.trimGeometryIds]:[]),...(r.territorialIssues??[]).map(i=>i.geometryId)]))].sort();
     const coverageGaps={};
     for(let year=Math.max(1960,from);year<=to;year++){
       const gaps=referenceAdmissionWarnings(year,active.filter(r=>r.role==='polity'&&r.geometryStatus!=='rejected'&&r.from<=year&&r.to>=year).map(r=>r.name));
