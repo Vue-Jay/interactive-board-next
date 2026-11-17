@@ -198,8 +198,8 @@ if(outDir&&sourceFile){
             if(['Мэн (лордство)','Манус','Никобары'].includes(item.group))assert.ok(item.otherParts.every(p=>!hasPart(activeRecords.get(item.other),item.other,p)));
             if(item.group==='Никобары')assert.ok(matching[0].record.name.includes(year===1868?'annexation pending':'British India'));
           }else if(decision.mode==='transfer'){
-            const targets=state.drawable.filter(({record})=>record.sourceName==='County of Savoy'&&record.geometryRepair==='reviewed-union-source-components'&&record.geometryParts.some(p=>componentHash((input.features[p.index].geometry.type==='Polygon'?[input.features[p.index].geometry.coordinates]:input.features[p.index].geometry.coordinates)[p.part])===item.hash));
-            assert.equal(targets.length,1,`Missing Savoy transfer ${year}`);
+            const targets=state.drawable.filter(({record})=>(item.group==='Цейлон'?record.name==='Kingdom of Kandy':record.sourceName==='County of Savoy')&&record.geometryRepair==='reviewed-union-source-components'&&record.geometryParts.some(p=>componentHash((input.features[p.index].geometry.type==='Polygon'?[input.features[p.index].geometry.coordinates]:input.features[p.index].geometry.coordinates)[p.part])===item.hash));
+            assert.equal(targets.length,1,`Missing transfer ${item.group}/${year}`);
           }else{
             const target=activeRecords.get(decision.target);assert.equal(target.name,'Saint Croix (United States Virgin Islands)');assert.equal(target.geometryStatus,'candidate');
           }
@@ -211,7 +211,7 @@ if(outDir&&sourceFile){
       }
       for(const item of extensionsByYear.get(year)??[]){
         assert.ok(!hasPart(activeRecords.get(item.source),item.source,item.part),`Adjacent misattribution retained ${item.source}/${year}`);
-        if(item.mode==='transfer'){const target=activeRecords.get(item.target);assert.equal(target.geometryRepair,'reviewed-union-source-components');assert.ok(hasPart(target,item.source,item.part));}
+        if(item.mode==='transfer'){const target=activeRecords.get(item.target);assert.equal(target.geometryRepair,'reviewed-union-source-components');assert.ok(item.group==='Цейлон'?target.geometryParts.some(p=>componentHash((input.features[p.index].geometry.type==='Polygon'?[input.features[p.index].geometry.coordinates]:input.features[p.index].geometry.coordinates)[p.part])===item.hash):hasPart(target,item.source,item.part));}
         else if(item.other!==undefined){const target=activeRecords.get(item.other);assert.ok(hasPart(target,item.other,item.otherPart));assert.ok(target.territorialAttributions.some(n=>n.hash===item.hash&&n.from<=year&&n.to>=year));}
         else assert.equal(state.drawable.filter(({record,geometry})=>record.editorialRestoration&&record.sourceIndex===item.source&&geometry.coordinates.some(p=>componentHash(p)===item.hash)).length,1,`Adjacent restoration missing ${item.group}/${year}`);
         extended++;
@@ -221,6 +221,7 @@ if(outDir&&sourceFile){
         assert.ok(state.territorialIssues.some(i=>i.sourceIndex===item.source&&i.hash===item.hash&&componentHash(i.geometry.coordinates)===item.hash));
       }
       if(year>=1416&&year<=1539)assert.equal(sourceRecords.find(r=>r.sourceName==='County of Savoy')?.name,'Duchy of Savoy');
+      if(year>=1629&&year<=1814){const kandy=state.drawable.filter(({record})=>record.name==='Kingdom of Kandy');assert.equal(kandy.length,1);assert.equal(kandy[0].record.nameRu,'Королевство Канди');assert.deepEqual(kandy[0].record.memberOf,[]);assert.ok(kandy[0].record.sourceMemberOf.length);}
       const byEntity=new Map(),byGeometry=new Map(),allGeometry=new Map();
       for(const r of state.records){
         if(!allGeometry.has(r.geometryId))allGeometry.set(r.geometryId,[]);allGeometry.get(r.geometryId).push(r);
@@ -247,8 +248,8 @@ if(outDir&&sourceFile){
     }
   }
   assert.equal(years,5424);
-  assert.equal(batchReady,293);assert.equal(batchResolved,531);assert.equal(batchPending,165);
-  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,189);assert.equal(extended,352);assert.equal([...pendingExtensionsByYear.values()].flat().length,24);
+  assert.equal(batchReady,293);assert.equal(batchResolved,537);assert.equal(batchPending,159);
+  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,189);assert.equal(extended,364);assert.equal([...pendingExtensionsByYear.values()].flat().length,24);
   console.log(`Reviewed batch: ${batchReady} original corrections; ${batchResolved} newly resolved attributions; ${batchPending} open; ${extended} adjacent cases; ${restoredRecordYears} restored territory-years`);
   assert.equal(seen.size,manifest.counts.revisions);
   assert.equal(allGeometries.size,manifest.counts.uniqueGeometries);

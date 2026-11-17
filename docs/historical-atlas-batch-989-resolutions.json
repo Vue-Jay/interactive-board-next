@@ -111,6 +111,18 @@
     "targets": [6727,6752,6825,7146,7320,7460,7529,7644,7787,7845,7874,7999,8026,8260,8336,8453,8466,8556,8758],
     "pendingRoutes": [[8090,2,1540,1546,8069],[8124,2,1547,1563,8100]]
   },
+  "kandy": {
+    "indices": [8742,8760,8828,9052,9108,9257,9276,10067,10395,10423,10917],
+    "reason": "These inland source polygons cover Kandy, not the colonial ports. The Kandyan kingdom remained independent until 1815; the 1766 treaty ceded coastal territory without extinguishing the kingdom. The source footprint is approximate.",
+    "reasonRu": "Внутренние контуры охватывают Канди, а не колониальные порты. Королевство Канди сохраняло независимость до 1815 года; договор 1766 года передавал прибрежные земли, но не прекращал самостоятельность королевства. Исходные границы приблизительны.",
+    "sources": ["https://www.noolaham.net/project/47/4612/4612.pdf", "https://tile.loc.gov/storage-services/master/frd/frdcstdy/sr/srilankacountrys00ross/srilankacountrys00ross.pdf", "https://epub.ub.uni-muenchen.de/123143/1/9789004699830-70374.pdf"]},
+  "ceylonTransfer": {
+    "group": "Цейлон", "target": 9052,
+    "reason": "Portuguese rule ended in 1658. Before the Dutch reoccupation of Trincomalee and Batticaloa in 1665, the two eastern regional cells belonged within the Kandyan political sphere; local chiefs and earlier Dutch fort occupations had distinct status. The source cells approximate regions, not exact fort or administrative boundaries.",
+    "reasonRu": "Португальское правление завершилось в 1658 году. До повторного занятия Тринкомали и Баттикалоа нидерландцами в 1665 году эти восточные области относились к политической сфере Канди; местные вожди и более ранние нидерландские форты имели особый статус. Исходные ячейки приблизительны, это не точные границы фортов или округов.",
+    "sources": ["https://lakdiva.org.lk/codrington/chap09.html", "https://thenationaltrust.lk/blog/robert-knoxs-journeys-in-ceylon-and-the-world-in-the-17th-century-one/", "https://soas-repository.worktribe.com/output/388087/dutch-power-in-ceylon-1658-1687", "https://noolaham.net/project/1025/102411/102411.pdf"],
+    "routes": [[9013,10,1659,1661],[9013,12,1659,1661],[9054,6,1659,1661],[9054,7,1659,1661],[9066,7,1662,1664],[9066,8,1662,1664]]
+  },
   "nicobarExtensions": {
     "austrian": [[10174,11,12,1778,1779],[10205,11,12,1780,1790]],
     "dutch": [[10767,11,12,1809,1813],[10939,12,13,1814,1814],[10978,12,13,1815,1821],[11081,13,14,1822,1823],[11124,16,17,1824,1827],[11184,16,17,1828,1829],[11279,16,17,1836,1845],[11427,18,19,1846,1848],[11504,18,19,1849,1852],[11514,18,19,1853,1855],[11591,14,15,1856,1856],[11610,16,17,1857,1858],[11628,16,17,1859,1859],[11660,15,16,1860,1861],[11709,15,16,1862,1865],[11781,16,17,1866,1867]],

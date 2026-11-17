@@ -169,7 +169,7 @@ export const territorialBatch=JSON.parse(fs.readFileSync(new URL('../docs/histor
 export const territorialResolutions=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-batch-989-resolutions.json',import.meta.url),'utf8'));
 export function deriveTerritorialBatch(features,batch=territorialBatch){
  const exclusions=[],pending=[],resolved=[],restorations=[],relabels=new Map(),attributions=[],extensions=[],seen=new Set(),transfers=[],pendingExtensions=[];
- const transfer=territorialResolutions.transfer;
+ const transfer=territorialResolutions.transfer,ceylon=territorialResolutions.ceylonTransfer;
  assert.equal(batch.sourceSha256,PINNED_SOURCE_SHA256);
  for(const row of batch.rows){
   const {source,part,other,otherParts,hash,from,to,status,group,evidence}=row;
@@ -184,7 +184,7 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
   const reason=batch.descriptions[group];assert.ok(reason&&evidence.startsWith('https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-'));
   for(let year=from;year<=to;year++){if(year===0)continue;const key=`${source}:${hash}:${year}`;assert.ok(!seen.has(key),`Duplicate reviewed component-year ${key}`);seen.add(key);}
   const component=territorialResolutions.componentRestorations[hash];
-  const retained=territorialResolutions.retained[group],restored=territorialResolutions.restored[group]??(component?.group===group?component:undefined),relabel=territorialResolutions.relabel[group],moved=group===transfer.group?transfer:undefined;
+  const retained=territorialResolutions.retained[group],restored=territorialResolutions.restored[group]??(component?.group===group?component:undefined),relabel=territorialResolutions.relabel[group],moved=group===transfer.group?transfer:group===ceylon.group?ceylon:undefined;
   const decision=status==='reconstruct'?(retained??restored??relabel??moved):undefined;
   const rule=[source,parts.length,from,[part],status==='ready'?'Historically reviewed exact duplicate: '+group+'.':decision?decision.reason:'Incorrect or conflated political attribution; territorial reconstruction is still pending: '+group+'.',decision?.reasonRu??reason,decision?.sources[0]??evidence,to];
   // Unresolved original contours must not be presented as established filled
@@ -245,6 +245,20 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
    }
   }
  }
+ // Restore the two eastern Ceylon cells only once, excluding their competing
+ // colonial copies; the source revisions and exact component hashes are pinned.
+ for(const [source,part,from,to] of ceylon.routes){
+  const f=features[source],parts=rawParts(f),hash=componentHash(parts[part]);
+  assert.ok(batch.rows.some(r=>r.group===ceylon.group&&r.hash===hash));
+  assert.ok(f.properties.FromYear<=from&&f.properties.ToYear>=to&&features[ceylon.target].properties.FromYear<=from&&features[ceylon.target].properties.ToYear>=to);
+  if(source!==9054)transfers.push({source,part,target:ceylon.target,from,to,decision:ceylon,hash});
+  for(let year=from;year<=to;year++){
+   const key=`${source}:${hash}:${year}`;if(seen.has(key))continue;
+   assert.ok(!extensionKeys.has(key));extensionKeys.add(key);
+   extensions.push({source,part,from:year,to:year,group:ceylon.group,hash,mode:'transfer',target:ceylon.target});
+   exclusions.push([source,parts.length,year,[part],ceylon.reason,ceylon.reasonRu,ceylon.sources[0],year]);
+  }
+ }
  // Genoa's same Nice cell remains wrong during the French occupation of the
  // duchy. No active Savoy outline exists, and other source geometry intersects
  // it. Preserve the cell separately until the occupation boundary is resolved.
@@ -285,7 +299,7 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
    }
   }
  }
- for(const row of resolved.filter(r=>r.mode==='transfer'))for(let y=row.from;y<=row.to;y++)assert.ok(transfers.some(t=>t.from<=y&&t.to>=y),`Missing transfer ${y}`);
+ for(const row of resolved.filter(r=>r.mode==='transfer'))for(let y=row.from;y<=row.to;y++)assert.ok(transfers.some(t=>t.from<=y&&t.to>=y&&(t.hash??t.decision.hash)===row.hash),`Missing transfer ${y}`);
  for(const row of resolved.filter(r=>r.mode==='restored'))for(let y=row.from;y<=row.to;y++)assert.ok(restorations.some(r=>r.source===row.target&&r.hash===row.hash&&r.from<=y&&r.to>=y),`Missing restored component ${row.group}/${y}`);
  return {exclusions,pending,resolved,restorations,relabels,attributions,extensions,transfers,pendingExtensions,count:seen.size};
 }
@@ -383,6 +397,12 @@ function editorialSegments(base,derived=[]){
   let r={...base,from,to};
   const reasons=[],reasonsRu=[],sources=new Set();
   const note=(reason,urls,ru)=>{reasons.push(reason);if(ru)reasonsRu.push(ru);for(const url of urls)sources.add(url)};
+  if(territorialResolutions.kandy.indices.includes(base.sourceIndex)){
+   const d=territorialResolutions.kandy;
+   assert.ok(['Portuguese Ceylon','Dutch Ceylon','British Ceylon'].includes(base.sourceName)&&from>=1629&&to<=1814);
+   r={...r,name:'Kingdom of Kandy',nameRu:'Королевство Канди',nameStatus:'reviewed',entityId:identity('reviewed-polity','kingdom-of-kandy'),sourceMemberOf:base.memberOf,memberOf:[]};
+   note(d.reason,d.sources,d.reasonRu);
+  }
   if(base.role==='polity'&&base.sourceName==='Viking settlements'){
    r={...r,role:'settlement',sourceRole:'polity',nameRu:'Поселения скандинавов (викингов)',nameStatus:'reviewed'};
    note('The source aggregates settlements of different Norse communities, across different rulers and periods. Preserve the source footprint in a thematic layer, not as a single sovereign polity. Exact settlement extent and chronology still require independent review.',['https://www.metmuseum.org/pt/essays/the-vikings-780-1100','https://en.natmus.dk/historical-knowledge/denmark/prehistoric-period-until-1050-ad/the-viking-age/power-and-aristocracy/magnates-and-kings/'],'Исходник объединяет поселения разных скандинавских общин, правителей и эпох. Контур сохранён в тематическом слое расселения, а не как единое государство. Точные размеры и датировки поселений требуют отдельной сверки.');
@@ -621,6 +641,10 @@ export function normalizeHistoricalSource(source) {
     validateGeometry(feature.geometry);
     const sourceGeometryId = sha256(JSON.stringify(feature.geometry));
     const geometry=repairGeometry(feature.geometry,sourceGeometryId);
+    if(territorialResolutions.kandy.indices.includes(sourceIndex)){
+      assert.ok(capitalInsideCountry([80.635,7.29],feature.geometry),`Kandy missing from source ${sourceIndex}`);
+      for(const port of [[79.86,6.93],[80.025,9.66],[80.22,6.03],[81.23,8.58],[81.69,7.71]])assert.ok(!capitalInsideCountry(port,feature.geometry),`Colonial port inside Kandy candidate ${sourceIndex}`);
+    }
     const geometryId = sha256(JSON.stringify(geometry));
     validateGeometry(geometry);
     if (!geometries.has(geometryId)) geometries.set(geometryId, geometry);
@@ -636,10 +660,11 @@ export function normalizeHistoricalSource(source) {
       const territorialIssues=(pendingBySource.get(sourceIndex)??[]).filter(issue=>issue.from<=revision.to&&issue.to>=revision.from);
       if(territorialIssues.length)revision={...revision,territorialIssues};
       let selection=reviewedGeometryParts(revision,derivedExclusions);
-      const transfer=(batch.transfers??[]).find(t=>t.target===sourceIndex&&t.from<=revision.from&&t.to>=revision.to);
+      const matchingTransfers=(batch.transfers??[]).filter(t=>t.target===sourceIndex&&t.from<=revision.from&&t.to>=revision.to);
+      const transfer=matchingTransfers[0];
       if(transfer){
         assert.notEqual(selection?.length,0);
-        selection=[...(selection??rawParts(feature).map((_,part)=>({index:sourceIndex,part}))),{index:transfer.source,part:transfer.part}];
+        selection=[...(selection??rawParts(feature).map((_,part)=>({index:sourceIndex,part}))),...matchingTransfers.map(t=>({index:t.source,part:t.part}))];
         const {reason,reasonRu,sources}=transfer.decision;
         revision={...revision,review:{reason:[revision.review?.reason,reason].filter(Boolean).join(' '),reasonRu:[revision.review?.reasonRu,reasonRu].filter(Boolean).join(' '),sources:[...new Set([...(revision.review?.sources??[]),...sources])]}};
       }
@@ -649,7 +674,7 @@ export function normalizeHistoricalSource(source) {
       }else if(selection){
         assert.ok(revision.review?.sources.length);
         const coordinates=selection.map(({index,part})=>{const g=source.features[index].geometry;const polygons=g.type==='Polygon'?[g.coordinates]:g.coordinates;assert.ok(polygons[part]);return polygons[part]});
-        if(transfer)assert.equal(polygonClipping.intersection(polygonClipping.union(...coordinates.slice(0,-1)),coordinates.at(-1)).length,0,`Overlapping transfer ${sourceIndex}`);
+        if(transfer)for(let i=coordinates.length-matchingTransfers.length;i<coordinates.length;i++)assert.equal(polygonClipping.intersection(polygonClipping.union(...coordinates.slice(0,i)),coordinates[i]).length,0,`Overlapping transfer ${sourceIndex}`);
         const selected={type:'MultiPolygon',coordinates:transfer?polygonClipping.union(...coordinates):coordinates};validateGeometry(selected);
         const selectedId=sha256(JSON.stringify(selected));geometries.set(selectedId,selected);
         revision={...revision,geometryId:selectedId,sourceGeometryId,geometryRepair:transfer?'reviewed-union-source-components':'reviewed-source-components',geometryParts:selection};
