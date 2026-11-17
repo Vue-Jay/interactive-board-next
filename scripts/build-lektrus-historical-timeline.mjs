@@ -61,6 +61,34 @@ const TAIFA_HISTORY='https://ifc.dpz.es/webs/atlash/indice_epocas/islamica/27.ht
 const BLOIS_UNION='Counties of Blois and Champagne (same ruler)';
 const BRITISH_SUPPLEMENT='British colonial possessions (supplemental source record)';
 const MALLORCA_TAIFA='Taifa of Mallorca';
+const INDIA_OCCUPATION='https://www.loc.gov/resource/gdc.a22000934/?sp=2&st=list';
+const INDIA_HISTORY='https://puducherry-dt.gov.in/history/';
+const INDIA_RESTITUTION='https://library.bjp.org/jspui/bitstream/123456789/1945/1/The-Imperial-Gazetteer-Of-India-Vol-12%20%28Eineme%20to%20Gwalior%29.pdf';
+const REUNION_RESTITUTION='https://www.portail-esclavage-reunion.fr/documentaires/la-traite-des-esclaves/la-traite-illegale-2/la-traite-illegale/';
+const REUNION_HISTORY='https://www.departement974.fr/actualite/presentation-de-linstitution-histoire-departement-de-reunion';
+const JULY_CHARTER='https://www.elysee.fr/la-presidence/la-charte-constitutionnelle-du-14-aout-1830';
+const SECOND_REPUBLIC_CHARTER='https://www.elysee.fr/la-presidence/la-constitution-du-4-novembre-1848';
+const SALONA_HISTORY='https://www.ime.gr/chronos/projects/fragokratia/en/webpages/salona_gen.html';
+const SALONA_MUSEUM='https://delphi.culture.gr/phocis/';
+const DUTCH_HOLLAND='https://www.rijksmuseum.nl/en/collection/object/Grootkruis-van-de-Orde-van-de-Unie-behoord-hebbend-aan-IJA-Gogel--3fb25da543f1f15b4fbff75c4640bc01';
+const DUTCH_JAVA='https://www.rijksmuseum.nl/en/collection/publication/The-British-in-Java-1811-1816-a-Javanese-account-a-text-edition-English-synopsis-and-commentary-on-British-Library-additional-manuscript-12330-Babad-Bedhah-ing-Ngayogyakarta--eab08913130797b8ae5c29a1142b9b29';
+const DUTCH_1940='https://www.annefrank.org/en/anne-frank/go-in-depth/german-invasion-netherlands/';
+const DUTCH_GUYANA='https://ntg.gov.gy/monument/fort-kyk-over-al/';
+const DUTCH_HUDSON='https://www.loc.gov/loc/lcib/93/9321/chart.html';
+const DUTCH_BRAZIL='https://bndigital.bn.gov.br/dossies/historias-da-nova-holanda/';
+const DUTCH_BRAZIL_CAPITULATION='https://funag.gov.br/loja/download/975-Obras_do_Barao_do_Rio_Branco_VI_Efemerides_Brasileiras.pdf';
+const NEW_NETHERLAND_TRANSFER='https://www.loc.gov/item/2021666724/';
+const DUTCH_WIC='https://www.rijksmuseum.nl/en/collection/node/The-Dutch-West-India-Company-WIC--6ce37825be4846f6bb3e683aea272840';
+const DUTCH_CURACAO='https://nationaalarchief.cw/educatie/educatiemappen/';
+const DUTCH_ARUBA='https://www.gobierno.aw/nl/historie-van-het-koninkrijk-en-aruba';
+const DUTCH_BONAIRE='https://canoncuracao.cw/47-de-andere-eilanden-van-de-nederlandse-antillen/';
+const SAINT_MARTIN_PARTITION='https://www.senat.fr/leg/pjl25-437.pdf';
+const TOBAGO_HISTORY='https://visittobago.gov.tt/local-culture-people-heritage/history-culture/historical-timeline';
+const ITALIAN_AUTONOMY='https://www.treccani.it/machiavelli/saggi_e_approfondimenti/saggi/equilibri-politico-diplomatici-anni-Machiavelli.html';
+const FRENCH_INDIA_GROUPS=[10304,10339,10384,10416,10448,10512,10530,10600,10646,10683,10713,10786,10826,10866,10915];
+const DUTCH_HOLLAND_GROUPS=[10639,10738,10747];
+const DUTCH_HOLLAND_METRO=[10591,10735,10748];
+const DUTCH_HOLLAND_COLONIES=[10631,10767];
 // Full-year map convention, from the documented annexation year; the
 // transition within that year is noted, never presented as a day-level map.
 export const songAnnexations=[[3929,3909,963],[3921,3909,965],[3949,3956,971],[3951,3956,975],[3932,3956,978],[3962,3956,979]];
@@ -523,6 +551,11 @@ function editorialSegments(base,derived=[]){
  if([3863,3963].includes(base.sourceIndex))for(const year of Object.values(SONG_ENDS))cut(year);
  if(songAnnexations.some(([source])=>source===base.sourceIndex))cut(songAnnexations.find(([source])=>source===base.sourceIndex)[2]);
  if([4524,4600,4641,4705,4744].includes(base.sourceIndex))for(const year of [1077,1092,1094,1111,1116])cut(year);
+ if(base.sourceIndex===9759||FRENCH_INDIA_GROUPS.includes(base.sourceIndex)||base.sourceIndex===10351)for(const y of [1791,1793])cut(y);
+ if(base.sourceIndex===12755)cut(1940);
+ if(base.sourceIndex===8663)cut(1622);
+ if([6924,7269].includes(base.sourceIndex))cut(1459);
+ if([...DUTCH_HOLLAND_GROUPS,...DUTCH_HOLLAND_METRO,...DUTCH_HOLLAND_COLONIES].includes(base.sourceIndex))for(const y of [1807,1811])cut(y);
  if(base.sourceIndex===7187){cut(1454);cut(1462)}
  if(base.role==='polity'&&base.sourceName==='Sultanate of Malacca')cut(1529);
  if(base.sourceIndex===13313){cut(1973);cut(1976)}
@@ -569,6 +602,26 @@ function editorialSegments(base,derived=[]){
   const reasons=[],reasonsRu=[],sources=new Set();
   const note=(reason,urls,ru)=>{reasons.push(reason);if(ru)reasonsRu.push(ru);for(const url of urls)sources.add(url)};
   const rename=(name,nameRu,url,reason,reasonRu)=>{r={...r,name,nameRu,nameStatus:'reviewed'};note(reason,[url],reasonRu);};
+  if(base.sourceIndex===9759&&from>=1791){r={...r,sourceMemberOf:base.memberOf,memberOf:[]};note('The surviving source components were duplicated in metropolitan France or under British occupation after the 1793 conquest. The historic French claim did not establish French administration until restoration in 1816–17.',[INDIA_OCCUPATION,INDIA_HISTORY],'Сохранившиеся компоненты дублировались в записи метрополии либо находились под британской оккупацией после захвата 1793 г. Французские притязания не означали французского управления до фактического возвращения в 1816–1817 гг.');}
+  if(FRENCH_INDIA_GROUPS.includes(base.sourceIndex)){r={...r,sourceComponents:base.components,components:r.components.filter(n=>n!=='French India')};if(!r.components.length)r={...r,geometryStatus:'rejected'};note('Remove the obsolete India component label: the source composite either already includes the settlements in its metropolitan record or represents the period of British occupation. Comoro island claims are independently unresolved.',[INDIA_OCCUPATION,INDIA_HISTORY,comoroTraditionalRegions],'Устранена устаревшая ссылка на Индию: поселения уже включены в запись метрополии либо находились под британской оккупацией. Притязания на Коморские острова рассматриваются отдельно.');}
+  if(base.sourceIndex===12755&&from>=1940){r={...r,sourceComponents:base.components,components:r.components.filter(n=>n!=='Netherlands'),nameRu:'Нидерландские владения (метрополия оккупирована)'};note('The German invasion in May 1940 led to occupation of the metropolis and the Dutch government in exile. The colonial aggregate does not establish continued Dutch effective control in Europe.',[DUTCH_1940],'После немецкого вторжения в мае 1940 г. метрополия находилась под оккупацией, нидерландское правительство — в изгнании. Колониальный контур не означает сохранения фактического контроля в Европе.');}
+  if(base.sourceIndex===8648){r={...r,sourceMemberOf:base.memberOf,memberOf:[],geometryStatus:'rejected'};note('Both imported American polygons represent Dutch settlements, not Portugal; restored separately by region.',[DUTCH_GUYANA,DUTCH_HUDSON],'Оба американских контура относятся к нидерландским поселениям, не к Португалии; восстановлены отдельно по регионам.');}
+  if(base.sourceIndex===8663){r={...r,sourceComponents:base.components,components:r.components.filter(n=>n!=='Portuguese Empire')};note('The American polygons are Dutch settlements, not the Portuguese Empire. The surviving aggregate contains only the contemporary Portuguese Ceylon and colonial records.',[DUTCH_GUYANA,DUTCH_HUDSON],'Американские контуры относятся к нидерландским поселениям, не к Португальской империи. В сводном слое остаются только португальский Цейлон и колонии того же года.');}
+  if([6924,7269].includes(base.sourceIndex)&&from>=1459){r={...r,sourceMemberOf:base.memberOf,memberOf:r.memberOf.filter(n=>n!=='(Holy Roman Empire)')};note('The source imperial overlay now represents minor states only. Florence and Milan remain autonomous Italian states in the post-Lodi system; this cartographic link is not a determination that all imperial legal claims ended in 1459.',[ITALIAN_AUTONOMY],'Исходный имперский слой теперь охватывает только малые государства. Флоренция и Милан сохраняют автономию в послелодийской системе; удаление связи со слоем не означает прекращения всех имперских юридических притязаний в 1459 г.');}
+  if(DUTCH_HOLLAND_METRO.includes(base.sourceIndex)&&from>=1807){r={...r,entityId:identity('reviewed-polity','kingdom-of-holland'),sourceMemberOf:base.memberOf,memberOf:['(Kingdom of Holland)']};rename('Kingdom of Holland','Королевство Голландия',DUTCH_HOLLAND,'The Batavian Republic was replaced by the Kingdom of Holland in 1806; annexation by France followed in 1810. The annual source geometry cannot resolve the intra-year change.','Батавскую республику сменило Королевство Голландия в 1806 г.; в 1810 г. последовала аннексия Францией. Годовой контур не устанавливает границу на конкретный день.');}
+  if(DUTCH_HOLLAND_GROUPS.includes(base.sourceIndex)&&from>=1807){r={...r,sourceComponents:base.components,components:r.components.map(n=>n==='Batavian Republic'?'Kingdom of Holland':n),entityId:identity('reviewed-composite','kingdom-of-holland')};rename('(Kingdom of Holland)','Королевство Голландия (сводный контур)',DUTCH_HOLLAND,'The Batavian Republic was replaced by the Kingdom of Holland in 1806; the 1810 transition is approximate.','Батавскую республику сменило Королевство Голландия в 1806 г.; переход 1810 г. показан приблизительно.');}
+  if(DUTCH_HOLLAND_COLONIES.includes(base.sourceIndex)&&from>=1807){r={...r,sourceMemberOf:base.memberOf,memberOf:from<1811?['(Kingdom of Holland)']:[]};if(from>=1811)rename('Former Dutch colonial possessions (British occupation, source aggregate)','Бывшие нидерландские колониальные владения (британская оккупация; сводный контур)',DUTCH_JAVA,'British rule in Java began in 1811; the source aggregate includes other islands and overseas settlements, whose precise local control is not established.','Британское управление Явой началось в 1811 г.; сводная запись включает другие острова и поселения, точный местный контроль которых не установлен.');else note('The colonial link follows the successor Kingdom of Holland after 1806.',[DUTCH_HOLLAND],'Колониальная связь отнесена к Королевству Голландия, преемнику республики после 1806 г.');}
+  if(base.sourceIndex===10835){r={...r,sourceComponents:base.components,components:[],geometryStatus:'rejected'};note('The 1811–13 source composite mixes former Dutch possessions under British occupation with unrelated Danish claims; preserve provenance but do not draw the obsolete Dutch aggregate.',[DUTCH_JAVA],'Сводный контур 1811–1813 гг. смешивает бывшие нидерландские владения под британской оккупацией с датскими притязаниями; исходная запись сохранена, политический слой скрыт.');}
+  if(base.sourceIndex===11008){r={...r,entityId:identity('rejected-source','french-india-comoros-1815'),geometryStatus:'rejected'};rename('French India (misplaced Comoro source record)','Французская Индия (ошибочный исходный контур Комор)',INDIA_OCCUPATION,'The source record consists only of Comoro components and cannot show the Indian settlements returned in 1816–17.','Исходная запись содержит только контуры Комор и не показывает индийские поселения, возвращённые в 1816–1817 гг.');}
+  if(from>=1830&&to<=1847&&base.sourceName==='Bourbon Kingdom of France'){
+   r={...r,entityId:identity('reviewed-polity','july-monarchy'),sourceMemberOf:base.memberOf,memberOf:['(July Monarchy)']};rename('July Monarchy','Июльская монархия',JULY_CHARTER,'The July Revolution replaced Charles X with Louis-Philippe in 1830; the constitutional monarchy lasted until February 1848.','После Июльской революции 1830 г. Карла X сменил Луи-Филипп. Июльская монархия существовала до февраля 1848 г.');
+  }
+  if(from>=1830&&to<=1847&&base.sourceName==='(Bourbon Kingdom of France)'){
+   r={...r,entityId:identity('reviewed-composite','july-monarchy'),sourceComponents:base.components,components:r.components.map(n=>n==='Bourbon Kingdom of France'?'July Monarchy':n)};rename('(July Monarchy)','Июльская монархия (сводный контур)',JULY_CHARTER,'The composite follows the July Monarchy from 1830.','Сводный контур относится к Июльской монархии с 1830 г.');
+  }
+  if(from>=1830&&to<=1847&&base.sourceName!=='Bourbon Kingdom of France'&&r.memberOf.includes('(Bourbon Kingdom of France)')){r={...r,sourceMemberOf:base.memberOf,memberOf:r.memberOf.map(n=>n==='(Bourbon Kingdom of France)'?'(July Monarchy)':n)};note('Colonial administrative link follows the July Monarchy.',[JULY_CHARTER],'Колониальная связь отнесена к Июльской монархии.');}
+  if(base.sourceIndex===11472){r={...r,entityId:identity('reviewed-composite','french-colonial-possession-1848')};rename('(French colonial possessions, 1848)','Французские колониальные владения (1848)',SECOND_REPUBLIC_CHARTER,'Monarchy ended in February 1848; the separate source aggregate represents colonial possessions of the Second Republic.','Монархия прекратилась в феврале 1848 г.; отдельный сводный контур относится к колониям Второй республики.');}
+  if(base.sourceIndex===11458){r={...r,sourceMemberOf:base.memberOf,memberOf:['(French colonial possessions, 1848)']};note('The French African territories belonged to the Second Republic following the February revolution.',[SECOND_REPUBLIC_CHARTER],'Французские владения в Африке после Февральской революции принадлежали Второй республике.');}
   if(base.sourceIndex===3861&&from===960){
    r={...r,entityId:identity('source-polity','Northern Song','Q7462'),sourceMemberOf:base.memberOf,memberOf:[]};
    rename('Northern Song','Северная Сун',SONG_REUNIFICATION,'The Later Zhou was replaced by Song in 960; the next-year source polygon is identical. The annual label denotes the transition year.','Поздняя Чжоу сменилась Сун в 960 г.; исходный контур следующего года идентичен. Годовая запись отражает переход, а не конкретный день.');
@@ -1348,6 +1401,80 @@ export function deriveMedievalAndUnionReviews(features,existingExclusions){
  return {exclusions,transfers,pending,groupRebuilds};
 }
 
+// Independently sourced political/colonial transitions; the old outlines
+// remain accessible as provenance. Repair only the specifically identified
+// source parts, not entire modern country outlines.
+export function deriveColonialAndSalonaReviews(features,existingExclusions){
+ const exclusions=[],transfers=[],restorations=[],subtractions=[],pending=[];
+ const d=(reason,reasonRu,sources)=>({reason,reasonRu,sources});
+ const exclude=(source,from,to,parts,decision)=>{
+  const f=features[source];assert.ok(f.properties.FromYear<=from&&f.properties.ToYear>=to&&parts.every(p=>rawParts(f)[p]));
+  let range;
+  for(let y=from;y<=to;y++){
+   const previous=new Set(exclusionsFor(source,y,[...existingExclusions,...exclusions]).flatMap(r=>r[3]));
+   const remaining=parts.filter(p=>!previous.has(p));if(!remaining.length){range=undefined;continue;}
+   if(range&&range[7]===y-1&&JSON.stringify(range[3])===JSON.stringify(remaining))range[7]=y;
+   else{range=[source,rawParts(f).length,y,remaining,decision.reason,decision.reasonRu,decision.sources[0],y];exclusions.push(range);}
+  }
+ };
+ const restore=(source,part,from,to,decision)=>{exclude(source,from,to,[part],decision);const polygon=rawParts(features[source])[part];restorations.push({source,part,from,to,hash:componentHash(polygon),group:'Историческая атрибуция',decision,geometry:{type:'MultiPolygon',coordinates:[polygon]}});};
+ const addParts=(source,target,from,to,parts,decision)=>{for(const part of parts)transfers.push({source,target,part,from,to,decision});};
+ const india=d('The French Indian settlements were occupied by Britain in 1793; the 1802 Amiens provision was not implemented and actual restoration came in 1816–17. Correct the physical-control map without denying the French legal claims.','Французские поселения Индии заняты Великобританией в 1793 г.; положение Амьенского мира 1802 г. не было реализовано, фактическое возвращение состоялось в 1816–1817 гг. Исправляется карта фактического контроля, а не юридических притязаний.',[INDIA_OCCUPATION,INDIA_HISTORY]);
+ const partialIndia={...india,allowSourceOverlap:true,group:'Индия — британская оккупация'};
+ exclude(10351,1793,1793,[13,14,15,16,17],india);
+ exclude(9759,1794,1814,[6,7,8,9,10],india);
+ // In these intervals the British source omits part or all of a documented
+ // occupied settlement. Preserve that contemporaneous source outline by union.
+ for(const [source,from,to,parts,polity,overlay] of [[10351,1793,1793,[13,14,15,16],10346,10332],[9759,1799,1799,[6],10499,10481],[9759,1800,1802,[6,8],10560,10535],[9759,1803,1804,[10],10575,10607]]){
+  addParts(source,polity,from,to,parts,partialIndia);addParts(source,overlay,from,to,parts,partialIndia);
+ }
+ const islands=d('The French imperial composite includes the same pre-annexation Comoro components already removed from its political source records; the unresolved island outlines must not reappear via the thematic layer.','Французский сводный контур включает те же доаннексионные компоненты Комор, которые уже исключены из политических записей; спорные острова не должны повторно появляться в тематическом слое.',[comoroTraditionalRegions]);
+ for(const target of FRENCH_INDIA_GROUPS){const f=features[target],parts=rawParts(f).flatMap((p,i)=>p[0].every(([x,y])=>x>=43&&x<=45.3&&y>=-13.2&&y<=-11.2)?[i]:[]);assert.equal(parts.length,4);exclude(target,f.properties.FromYear,f.properties.ToYear,parts,islands);}
+ exclude(10339,1793,1793,[19,20,21,22,23],india);
+ const salona=d('The Greek component centred on Amfissa and Delphi is not territory of the Republic of Florence. Salona passed to the Despot of Morea in 1402, to the Hospitallers in 1403, and back to Ottoman rule in 1410. The source outline is generalized.','Греческий компонент с Амфиссой и Дельфами не принадлежит Флорентийской республике. Салона перешла к Морейскому деспоту в 1402 г., к госпитальерам в 1403 г., вновь под власть османов в 1410 г. Исходный контур генерализован.',[SALONA_MUSEUM,SALONA_HISTORY]);
+ const morea={...salona,entity:'salona-morea',name:'Salona (Despotate of Morea)',nameRu:'Салона (Морейский деспотат)',memberOf:[]};
+ const hospitaller={...salona,entity:'salona-hospitaller',name:'Salona (Knights Hospitaller)',nameRu:'Салона (госпитальеры)',memberOf:[]};
+ restore(6808,0,1402,1402,morea);restore(6808,0,1403,1406,hospitaller);restore(6924,0,1407,1409,hospitaller);
+ exclude(6924,1410,1486,[0],salona);
+ for(const [target,from,to] of [[6912,1410,1414],[6997,1422,1428]])addParts(6924,target,from,to,[0],salona);
+ for(const target of [6814,6915,7015]){const f=features[target];const parts=rawParts(f).flatMap((p,i)=>capitalInsideCountry([22.38,38.525],{type:'Polygon',coordinates:p})?[i]:[]);assert.equal(parts.length,1);exclude(target,f.properties.FromYear,f.properties.ToYear,parts,salona);}
+ const dutch=d('The source Portuguese aggregate incorrectly includes Dutch trading settlements in Essequibo and the Hudson valley. Both precede the later Dutch West India Company colony; the precise imported regional boundaries are not verified.','Исходный португальский контур ошибочно включает нидерландские торговые поселения Эссекибо и долины Гудзона. Оба предшествуют более поздней колонии Вест-Индской компании; точные исходные региональные границы не подтверждены.',[DUTCH_GUYANA,DUTCH_HUDSON]);
+ const essequibo={...dutch,entity:'dutch-essequibo',name:'Essequibo (Dutch settlements)',nameRu:'Эссекибо (нидерландские поселения)',memberOf:[]};
+ restore(8648,0,1619,1621,essequibo);restore(8648,1,1619,1621,{...dutch,entity:'dutch-hudson-trading-posts',name:'Dutch Hudson River settlements',nameRu:'Нидерландские поселения на Гудзоне',memberOf:[]});
+ restore(8670,0,1622,1625,essequibo);restore(8712,0,1626,1628,essequibo);exclude(8663,1619,1628,[0,4],dutch);
+ const guiana={...essequibo,reason:'Dutch trading settlements in Essequibo formed a separate colonial territory from New Netherland; the source outline is not a verified seventeenth-century border.',reasonRu:'Нидерландские поселения в Эссекибо образовывали отдельное колониальное владение и не являлись частью Новых Нидерландов. Исходная граница XVII века не подтверждена.',sources:[DUTCH_GUYANA,DUTCH_WIC]};
+ const brazil={...d('Dutch Brazil was a separate West India Company colony, not New Netherland. Its last occupied forts surrendered in January 1654. The contemporary source outlines are generalized.','Голландская Бразилия была отдельным владением Вест-Индской компании, а не частью Новых Нидерландов; последние укрепления капитулировали в январе 1654 г. Контуры источника генерализованы.',[DUTCH_BRAZIL,DUTCH_BRAZIL_CAPITULATION]),entity:'dutch-brazil',name:'Dutch Brazil (New Holland)',nameRu:'Голландская Бразилия (Новая Голландия)',memberOf:[]};
+ const recife={...brazil,entity:'portuguese-recife',name:'Portuguese Brazil (Recife region)',nameRu:'Португальская Бразилия (район Ресифи)',reasonRu:'Последние нидерландские укрепления капитулировали в январе 1654 года. Район Ресифи возвращён Португалии; сохранён исходный обобщённый контур.'};
+ const english={...d('England seized New Netherland in 1664, dividing it into New York and New Jersey. The source outline combines the regional English claims and does not establish exact colonial or indigenous boundaries.','Англия захватила Новые Нидерланды в 1664 г. и разделила их на Нью-Йорк и Нью-Джерси; исходный контур не устанавливает точные границы колоний и коренных народов.',[NEW_NETHERLAND_TRANSFER,'https://www.loc.gov/item/today-in-history/may-04/']),entity:'english-new-york-region',name:'English colonies of New York and New Jersey (source region)',nameRu:'Английские колонии Нью-Йорк и Нью-Джерси (сводный контур)',memberOf:[]};
+ const uncertain=(source,part,from,to,group,reason,reasonRu,sources)=>{const decision=d(reason,reasonRu,sources),polygon=rawParts(features[source])[part];exclude(source,from,to,[part],decision);pending.push({source,part,from,to,hash:componentHash(polygon),group,reason:reasonRu,counterpartName:group,evidence:sources[0],sources,geometry:{type:'Polygon',coordinates:polygon}});};
+ for(const [source,es,braz,tob,sint,abc,north] of [[8725,0,-1,1,2,[],3],[8771,1,0,2,3,[],4],[8797,1,0,-1,5,[2,3,4],6],[8841,1,0,-1,5,[2,3,4],6],[8901,1,0,-1,5,[2,3,4],6],[8935,1,0,-1,5,[2,3,4],6],[8973,1,0,-1,5,[2,3,4],6],[8998,1,0,-1,5,[2,3,4],6],[9029,0,-1,1,5,[2,3,4],6],[9090,0,-1,1,5,[2,3,4],6],[9135,0,-1,-1,4,[1,2,3],-1]]){
+  const f=features[source],from=f.properties.FromYear,to=f.properties.ToYear;
+  restore(source,es,from,to,from<1670?guiana:{...guiana,entity:'dutch-guiana',name:'Dutch Guiana (source region)',nameRu:'Нидерландская Гвиана (сводный контур)',reasonRu:'Сводный контур в Гвиане не является частью Новых Нидерландов; границы отдельных поселений требуют отдельной реконструкции.'});
+  if(braz>=0){if(from<1654)restore(source,braz,from,Math.min(to,1653),brazil);if(to>=1654)restore(source,braz,Math.max(from,1654),to,recife);}
+  if(north>=0&&to>=1664)restore(source,north,Math.max(from,1664),to,english);
+  for(const [j,part] of abc.entries()){
+   const [entity,name,nameRu,url]=[['curacao','Curaçao (Dutch colony)','Кюрасао (нидерландская колония)',DUTCH_CURACAO],['bonaire','Bonaire (Dutch colony)','Бонайре (нидерландская колония)',DUTCH_BONAIRE],['aruba','Aruba (Dutch colony)','Аруба (нидерландская колония)',DUTCH_ARUBA]][j];
+   restore(source,part,from,to,{...d('The ABC islands were administered by the Dutch West India Company after the respective conquests in 1634–36, separately from the North American colony.','Острова АВС после завоеваний 1634–1636 гг. управлялись Нидерландской Вест-Индской компанией отдельно от североамериканской колонии.',[url,DUTCH_WIC]),entity,name,nameRu,memberOf:[]});
+  }
+  uncertain(source,sint,from,to,'Сен-Мартен — раздел острова','The whole-island source outline cannot be attributed to New Netherland; the 1648 Concordia Treaty provided for Franco-Dutch partition but did not fix the precise line. Earlier colonial settlement control needs separate documentation.','Весь остров не относится к Новым Нидерландам. Договор Конкордия 1648 г. предусматривает франко-нидерландский раздел без точного установления границы; более ранний контроль поселений требует отдельных документов.',[SAINT_MARTIN_PARTITION,'https://www.diplomatie.gouv.fr/en/information-by-country/netherlands/france-and-the-netherlands']);
+  if(tob>=0)uncertain(source,tob,from,to,'Тобаго — колониальные поселения','The whole-island outline does not establish the geographical extent of Dutch, Courlander, or indigenous control, including the 1628 Dutch settlement and later changes.','Контур всего острова не устанавливает границы нидерландских, курляндских поселений и земель коренных народов, включая поселение 1628 г. и позднейшие переходы.',[TOBAGO_HISTORY,'https://www.nalis.gov.tt/resources/tt-content-guide/towns-and-villages/towns-and-villages-s-z/']);
+ }
+ const occupation=d('The metropolitan Netherlands was occupied by German forces in May 1940. Its government remained in exile; the colonial overlay must not duplicate the German occupation polygon.','Метрополия Нидерландов оккупирована немецкими войсками в мае 1940 г. Правительство оставалось в изгнании; колониальный слой не должен дублировать контур немецкой оккупации.',[DUTCH_1940]);
+ exclude(12755,1940,1940,[17],occupation);
+ const reunion={...d('Bourbon was handed back to France on 6 April 1815. It was a separate colonial administration, not one of the five French Indian settlements.','Остров Бурбон возвращён Франции 6 апреля 1815 г.; это отдельная колониальная администрация, а не один из пяти французских анклавов Индии.',[REUNION_RESTITUTION,REUNION_HISTORY]),entity:'ile-bourbon',name:'Île Bourbon (French colony)',nameRu:'Остров Бурбон (французская колония)',memberOf:[]};
+ restore(10975,48,1815,1819,reunion);exclude(10959,1815,1819,[99],reunion);exclude(10953,1815,1819,[106],reunion);
+ for(const source of [11071,11329,11407]){const f=features[source];restore(source,0,f.properties.FromYear,f.properties.ToYear,reunion);}
+ const restitution=d('The five settlements were returned in December 1816–April 1817. The dated source presents French territory and parts of the British outline over the same land; remove the overlap from British control without claiming cadastral precision.','Пять поселений возвращены в декабре 1816 — апреле 1817 гг. Датированные контуры французской и британской территорий частично перекрываются; перекрытие исключено из британской заливки. Кадастровая точность границы не заявляется.',[INDIA_RESTITUTION,INDIA_OCCUPATION]);
+ for(const [source,parts] of [[11071,[5,6,7,8,9]],[11329,[5,7,8,9,10]],[11407,[1,2,3,4,5]]]){
+  const f=features[source];for(const [target,g] of features.entries()){
+   if(!['British Empire','(British Empire)'].includes(g.properties.Name))continue;
+   const from=Math.max(f.properties.FromYear,g.properties.FromYear),to=Math.min(f.properties.ToYear,g.properties.ToYear);if(from>to)continue;
+   for(const part of parts){const polygon=rawParts(f)[part];if(polygonClipping.intersection(rawParts(g),polygon).length)subtractions.push({target,source,part,from,to,decision:restitution});}
+  }
+ }
+ return {exclusions,transfers,restorations,subtractions,pending};
+}
+
 export function normalizeHistoricalSource(source) {
   assert.equal(source.type,'FeatureCollection');
   const geometries = new Map(), records = [];
@@ -1359,6 +1486,7 @@ export function normalizeHistoricalSource(source) {
    const cape=deriveCapeTerritoryReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','restorations','pending'])batch[key].push(...cape[key]);
    const war=deriveCeylonWarReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','restorations','transfers','pending'])batch[key].push(...war[key]);
    const medieval=deriveMedievalAndUnionReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','transfers','pending'])batch[key].push(...medieval[key]);batch.groupRebuilds=medieval.groupRebuilds;
+   const colonies=deriveColonialAndSalonaReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','transfers','restorations','subtractions','pending'])batch[key].push(...colonies[key]);
    // The old opposing claims remain excluded; the reconstructed three-part
    // island replaces the unresolved footprint, not either original owner.
    assert.equal(batch.pending.filter(p=>p.group==='Эльба'&&p.from===1797&&p.to===1798).length,2);
@@ -1444,7 +1572,7 @@ export function normalizeHistoricalSource(source) {
         if(transfer&&!preserveCoastalParts)for(let i=coordinates.length-matchingTransfers.length;i<coordinates.length;i++){
           const t=matchingTransfers[i-(coordinates.length-matchingTransfers.length)],previous=polygonClipping.union(...coordinates.slice(0,i)),overlap=polygonClipping.intersection(previous,coordinates[i]);
           if(t.decision.allowSourceOverlap){
-            assert.ok(['Давао','Сун — объединение'].includes(t.decision.group));assert.ok(polygonClipping.difference(coordinates[i],previous).length,`Transfer must retain part outside previous geometry ${sourceIndex}`);if(t.decision.group==='Давао')assert.ok(overlap.length);
+            assert.ok(['Давао','Сун — объединение','Индия — британская оккупация'].includes(t.decision.group));assert.ok(polygonClipping.difference(coordinates[i],previous).length,`Transfer must retain part outside previous geometry ${sourceIndex}`);if(t.decision.group==='Давао')assert.ok(overlap.length);
           }else assert.equal(overlap.length,0,`Overlapping transfer ${sourceIndex}`);
         }
         const subtractions=matchingSubtractions.map(t=>({index:t.source,part:t.part}));
@@ -1563,12 +1691,14 @@ export function normalizeHistoricalSource(source) {
     const overlaps=(a,b)=>parts(a).some(x=>parts(b).some(y=>intersects(x.b,y.b)&&polygonClipping.intersection(x.p,y.p).length));
     const saveGeometry=g=>{validateGeometry(g);const id=sha256(JSON.stringify(g));geometries.set(id,g);return id;};
     const un='https://www.un.org/en/about-us/growth-in-un-membership',decolonization='https://www.un.org/dppa/decolonization/en/history/former-trust-and-nsgts';
-    for(const d of independenceTransitions){
+    const restitutions=[{index:11071,from:1816,name:'French India',nameRu:'Французская Индия (возвращённые поселения)',iso:'FRA',owners:[10983,10959,10953],parts:[5,6,7,8,9],initialParts:[7,9],sources:[INDIA_RESTITUTION,INDIA_OCCUPATION],note:'Пондишери и Чандернагор возвращены 4 декабря 1816 г., Карикал 13 января 1817 г., Маэ 22 февраля, Янаон 12 апреля.',restitution:true}];
+    for(const d of [...independenceTransitions,...restitutions]){
       const f=source.features[d.index],p=f.properties,to=p.FromYear-1;
       assert.ok(to>=d.from&&to-d.from<5);
-      const raw=polygons(f.geometry),outline={type:'MultiPolygon',coordinates:d.parts?d.parts.map(i=>raw[i]):raw};
-      const outlineGeometryId=saveGeometry(outline),sources=[un,decolonization,...(d.sources??[])];
+      const raw=polygons(f.geometry),sources=d.restitution?d.sources:[un,decolonization,...(d.sources??[])];
       for(let year=d.from;year<=to;year++){
+        const selectedParts=year===d.from&&d.initialParts?d.initialParts:d.parts??raw.map((_,i)=>i);
+        const outline={type:'MultiPolygon',coordinates:selectedParts.map(i=>raw[i])},outlineGeometryId=saveGeometry(outline);
         let candidate=outline;const trimGeometryIds=[];
         const checked=(op,r,fn)=>{try{return fn();}catch(e){throw new Error(`Transition ${d.iso}/${year} ${op} with ${r.sourceIndex} ${r.name}`,{cause:e});}};
         const active=records.filter(r=>r.role==='polity'&&r.geometryStatus==='candidate'&&r.from<=year&&r.to>=year);
@@ -1584,20 +1714,20 @@ export function normalizeHistoricalSource(source) {
         const geometryId=saveGeometry(candidate);
         for(let i=0;i<records.length;i++){
           const r=records[i];
-          if(r.role!=='polity'||r.geometryStatus!=='candidate'||r.from>year||r.to<year||!d.owners.includes(r.sourceIndex)||r.datedGeography)continue;
+          if(!d.restitution&&r.role!=='polity'||r.geometryStatus!=='candidate'||r.from>year||r.to<year||!d.owners.includes(r.sourceIndex)||r.datedGeography)continue;
           const other=geometries.get(r.geometryId);if(!checked('predecessor intersection',r,()=>overlaps(candidate,other)))continue;
           const cutGeometryId=geometryId,baseGeometryId=r.boundaryAdjustment?.baseGeometryId??r.geometryId;
           const cuts=[...(r.boundaryAdjustment?.cuts??[]),{cutGeometryId,iso:d.iso}];
           const coordinates=checked('predecessor partition',r,()=>partitionHistoricalGeometry(polygons(geometries.get(baseGeometryId)),cuts.map(c=>polygons(geometries.get(c.cutGeometryId)))));
           const exhausted=!coordinates.length;
           const clippedId=exhausted?r.geometryId:saveGeometry({type:'MultiPolygon',coordinates});
-          const adjusted={...r,id:identity('dated-boundary-cut',r.id,year,geometryId),from:year,to:year,geometryId:clippedId,geometryStatus:exhausted?'rejected':r.geometryStatus,boundaryAdjustment:{baseGeometryId,cuts,...(exhausted?{exhausted:true}:{})},review:{reason:[r.review?.reason,'Documented independence: predecessor partitioned using a generalized dated successor outline.'].filter(Boolean).join(' '),reasonRu:[r.review?.reasonRu,'После документированной независимости из контура предшественника исключена территория нового государства по генерализованному контуру ближайшего последующего года.'].filter(Boolean).join(' '),sources:[...new Set([...(r.review?.sources??[]),...sources])]}};
+          const adjusted={...r,id:identity('dated-boundary-cut',r.id,year,geometryId),from:year,to:year,geometryId:clippedId,geometryStatus:exhausted?'rejected':r.geometryStatus,boundaryAdjustment:{baseGeometryId,cuts,...(exhausted?{exhausted:true}:{})},review:{reason:[r.review?.reason,d.restitution?'Documented colonial restitution: former occupier outline partitioned using the first subsequent dated settlement outline.':'Documented independence: predecessor partitioned using a generalized dated successor outline.'].filter(Boolean).join(' '),reasonRu:[r.review?.reasonRu,d.restitution?'После возвращения колониальных поселений из контура оккупирующей державы исключены возвращённые территории по ближайшему датированному контуру.':'После документированной независимости из контура предшественника исключена территория нового государства по генерализованному контуру ближайшего последующего года.'].filter(Boolean).join(' '),sources:[...new Set([...(r.review?.sources??[]),...sources])]}};
           const split=[...(r.from<year?[{...r,id:identity('before-dated-cut',r.id,year),to:year-1}]:[]),adjusted,...(r.to>year?[{...r,id:identity('after-dated-cut',r.id,year),from:year+1}]:[])];
           records.splice(i,1,...split);i+=split.length-1;
         }
         const successor=records.find(r=>r.sourceIndex===d.index&&r.from<=p.FromYear&&r.to>=p.FromYear&&!r.editorialRestoration&&!r.datedGeography);
         assert.ok(successor);
-        records.push({id:identity('dated-independence',d.index,year),entityId:successor.entityId,geometryId,role:'polity',components:[],memberOf:[],sourceSeshatId:String(p.SeshatID??''),sourceWikipedia:String(p.Wikipedia??''),sourceName:p.Name.trim(),sourceWikidata:p.Wikidata??'',sourceIndex:d.index,sourceFrom:p.FromYear,sourceTo:p.ToYear,from:year,to:year,name:d.name,nameRu:d.nameRu,nameStatus:'reviewed',geometryStatus:'candidate',datedGeography:{referenceYear:p.FromYear,outlineGeometryId,trimGeometryIds,parts:d.parts??raw.map((_,i)=>i)},review:{reason:'Documented independent state in the transition year; generalized outline from first subsequent dated source, adjusted to avoid neighboring overlaps, not an exact contemporary boundary.',reasonRu:`Независимое государство в конце ${year} года. Контур основан на датированном источнике за ${p.FromYear} год и согласован с соседними полигонами; точная граница переходного года не подтверждена. ${d.note??''}`,sources}});
+        records.push({id:identity(d.restitution?'dated-colonial-restitution':'dated-independence',d.index,year),entityId:successor.entityId,geometryId,role:'polity',components:[],memberOf:[],sourceSeshatId:String(p.SeshatID??''),sourceWikipedia:String(p.Wikipedia??''),sourceName:p.Name.trim(),sourceWikidata:p.Wikidata??'',sourceIndex:d.index,sourceFrom:p.FromYear,sourceTo:p.ToYear,from:year,to:year,name:d.name,nameRu:d.nameRu,nameStatus:'reviewed',geometryStatus:'candidate',datedGeography:{referenceYear:p.FromYear,outlineGeometryId,trimGeometryIds,parts:selectedParts},review:{reason:d.restitution?'Documented return of colonial settlements; generalized outline from first subsequent dated source, adjusted to avoid neighboring overlaps, not an exact contemporary boundary.':'Documented independent state in the transition year; generalized outline from first subsequent dated source, adjusted to avoid neighboring overlaps, not an exact contemporary boundary.',reasonRu:`${d.restitution?'Возвращённые колониальные поселения':'Независимое государство'} в конце ${year} года. Контур основан на датированном источнике за ${p.FromYear} год и согласован с соседними полигонами; точная граница переходного года не подтверждена. ${d.note??''}`,sources}});
         counts.reviewedNames++;
       }
     }
