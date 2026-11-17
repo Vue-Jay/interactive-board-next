@@ -186,7 +186,8 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
   const component=territorialResolutions.componentRestorations[hash];
   const retained=territorialResolutions.retained[group],restored=territorialResolutions.restored[group]??(component?.group===group?component:undefined),relabel=territorialResolutions.relabel[group],moved=group===transfer.group?transfer:group===ceylon.group?ceylon:undefined;
   const decision=status==='reconstruct'?(retained??restored??relabel??moved):undefined;
-  const rule=[source,parts.length,from,[part],status==='ready'?'Historically reviewed exact duplicate: '+group+'.':decision?decision.reason:group===mindanao.group?mindanao.reason:'Incorrect or conflated political attribution; territorial reconstruction is still pending: '+group+'.',decision?.reasonRu??reason,decision?.sources[0]??(group===mindanao.group?mindanao.sources[0]:evidence),to];
+  const pendingReview=group===mindanao.group?mindanao:territorialResolutions.pendingIslandReviews[group];
+  const rule=[source,parts.length,from,[part],status==='ready'?'Historically reviewed exact duplicate: '+group+'.':decision?decision.reason:pendingReview?.reason??'Incorrect or conflated political attribution; territorial reconstruction is still pending: '+group+'.',decision?.reasonRu??(status==='reconstruct'?pendingReview?.reasonRu:undefined)??reason,decision?.sources[0]??(status==='reconstruct'?pendingReview?.sources[0]:undefined)??evidence,to];
   // Unresolved original contours must not be presented as established filled
   // political boundaries. Preserve their source parts as explicit open issues.
   // Relabel a wholly misidentified island rather than deleting its geography.
@@ -201,7 +202,7 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
     for(const [start,end] of ranges)restorations.push({...row,from:start,to:end,decision,geometry:{type:'MultiPolygon',coordinates:[parts[part]]}});
    }
    if(restored?.excludeCounterpart)exclusions.push([other,otherGeometry.length,from,otherParts,decision.reason,decision.reasonRu,decision.sources[0],to]);
-  }else if(status==='reconstruct')pending.push({...row,reason,geometry:{type:'Polygon',coordinates:parts[part]},counterpartName:counterpart.properties.Name,...(group===mindanao.group?{sources:mindanao.sources}:{})});
+  }else if(status==='reconstruct')pending.push({...row,reason:pendingReview?.reasonRu??reason,geometry:{type:'Polygon',coordinates:parts[part]},counterpartName:counterpart.properties.Name,...(pendingReview?{sources:pendingReview.sources}:{})});
  }
  for(const [group,decision] of Object.entries(territorialResolutions.relabel))for(const index of decision.indices){
   const f=features[index];assert.equal(f.properties.Name,'Saint Kitts');assert.equal(rawParts(f).length,1);assert.equal(componentHash(rawParts(f)[0]),decision.hash);
@@ -275,12 +276,17 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
  // island as a distinct documented restoration thereafter; do not guess
  // the missing mainland boundaries from the Austrian aggregate.
  const elba=territorialResolutions.elbaTransfer;
- const registerIslandCorrection=(source,part,from,to,decision,target)=>{
+ const registerIslandCorrection=(source,part,from,to,decision,target,mergeRestoration=false)=>{
   const f=features[source],parts=rawParts(f),hash=componentHash(parts[part]);
   assert.equal(hash,decision.hash);assert.ok(f.properties.Type==='POLITY'&&f.properties.FromYear<=from&&f.properties.ToYear>=to);
   if(target!==undefined){
    const t=features[target];assert.ok(t.properties.FromYear<=from&&t.properties.ToYear>=to);
    transfers.push({source,part,target,from,to,decision});
+  }else if(mergeRestoration){
+   const r=restorations.find(r=>r.source===source&&r.from===from&&r.to===to&&r.hash===elba.hash);
+   assert.ok(r&&r.geometry.coordinates.length===1);
+   assert.equal(polygonClipping.intersection(r.geometry.coordinates,parts[part]).length,0);
+   r.parts=[r.part,part];r.geometry.coordinates.push(parts[part]);r.decision={...decision,identitySource:elba.target};
   }else restorations.push({source,part,from,to,hash,group:decision.group,decision,geometry:{type:'MultiPolygon',coordinates:[parts[part]]}});
   for(let year=from;year<=to;year++){
    const key=`${source}:${hash}:${year}`;assert.ok(!seen.has(key)&&!extensionKeys.has(key));extensionKeys.add(key);
@@ -293,12 +299,23 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
   assert.equal(features[source].properties.Name,'Austrian Empire');
   registerIslandCorrection(source,part,from,to,elba,to<=1847?elba.target:undefined);
  }
+ const tuscany=territorialResolutions.tuscanyMainland;
+ for(const [source,part,from,to] of tuscany.routes){
+  const early=to<=1847,decision={...tuscany,hash:early?tuscany.earlyHash:tuscany.lateHash};
+  assert.equal(features[source].properties.Name,'Austrian Empire');
+  assert.ok(capitalInsideCountry([11.2558,43.7696],{type:'Polygon',coordinates:rawParts(features[source])[part]}));
+  registerIslandCorrection(source,part,from,to,decision,early?elba.target:undefined,!early);
+ }
  const provisional={...elba,...elba.provisional};
  assert.equal(features[provisional.source].properties.Name,'Kingdom of Sardinia');
  registerIslandCorrection(provisional.source,provisional.part,provisional.from,provisional.to,provisional);
  const angloCorsican=territorialResolutions.angloCorsicanRestoration;
  assert.equal(features[angloCorsican.source].properties.Name,'Kingdom of Great Britain');
  registerIslandCorrection(angloCorsican.source,angloCorsican.part,angloCorsican.from,angloCorsican.to,angloCorsican);
+ const corsica1796=territorialResolutions.corsica1796;
+ assert.equal(features[corsica1796.source].properties.Name,'Kingdom of Great Britain');
+ assert.equal(features[corsica1796.target].properties.Name,'French Directory');
+ registerIslandCorrection(corsica1796.source,corsica1796.part,corsica1796.from,corsica1796.to,corsica1796,corsica1796.target);
  // Genoa's same Nice cell remains wrong during the French occupation of the
  // duchy. No active Savoy outline exists, and other source geometry intersects
  // it. Preserve the cell separately until the occupation boundary is resolved.
@@ -705,8 +722,8 @@ export function normalizeHistoricalSource(source) {
       if(transfer){
         assert.notEqual(selection?.length,0);
         selection=[...(selection??rawParts(feature).map((_,part)=>({index:sourceIndex,part}))),...matchingTransfers.map(t=>({index:t.source,part:t.part}))];
-        const {reason,reasonRu,sources}=transfer.decision;
-        revision={...revision,review:{reason:[revision.review?.reason,reason].filter(Boolean).join(' '),reasonRu:[revision.review?.reasonRu,reasonRu].filter(Boolean).join(' '),sources:[...new Set([...(revision.review?.sources??[]),...sources])]}};
+        const decisions=matchingTransfers.map(t=>t.decision);
+        revision={...revision,review:{reason:[...new Set([revision.review?.reason,...decisions.map(d=>d.reason)].filter(Boolean))].join(' '),reasonRu:[...new Set([revision.review?.reasonRu,...decisions.map(d=>d.reasonRu)].filter(Boolean))].join(' '),sources:[...new Set([...(revision.review?.sources??[]),...decisions.flatMap(d=>d.sources)])]}};
       }
       if(selection?.length===0){
         assert.ok(revision.review?.sources.length);
@@ -735,6 +752,9 @@ export function normalizeHistoricalSource(source) {
     } else if (sourceName === 'Zimbabwe Rhodesia' && sourceWikidata === 'Q890120' && from === 1979 && to === 1982) {
       add({...base,to:1979});
       add({...base,from:1980,entityId:identity('source-polity','Republic of Zimbabwe','Q954'),name:'Republic of Zimbabwe',nameRu:'Республика Зимбабве',nameStatus:'reviewed',review:{reason:'Independence as the Republic of Zimbabwe on 18 April 1980; annual label reflects the new state, not a day-level boundary reconstruction. Geometry remains unverified.',sources:[ZIMBABWE_SOURCE]}});
+    } else if (sourceIndex===territorialResolutions.italy1861.source&&sourceName==='Kingdom of Sardinia'&&from===1861&&to===1861) {
+      const d=territorialResolutions.italy1861,next=source.features[d.successor];assert.equal(next.properties.Name,'Kingdom of Italy');assert.equal(sha256(JSON.stringify(next.geometry)),sourceGeometryId);
+      add({...base,entityId:identity('source-polity',next.properties.Name,next.properties.Wikidata),name:next.properties.Name,nameRu:'Королевство Италия',nameStatus:'reviewed',review:{reason:d.reason,reasonRu:d.reasonRu,sources:d.sources}});
     } else if (sourceName === 'Republic of Indonesia' && from === 1960 && to >= 1963 && capitalInsideCountry([138,-4], feature.geometry)) {
       add({...base, to:1962, geometryStatus:'rejected', review:{reason:'Source polygon includes western New Guinea before the 1963 transfer; excluded from candidate drawing until corrected geometry is sourced.',sources:[INDONESIA_SOURCE]}});
       add({...base, from:1963});
@@ -746,7 +766,9 @@ export function normalizeHistoricalSource(source) {
    assert.ok(origin&&(!d.transition||r.to<d.transition.year||r.from>=d.transition.year));
    const geometryId=sha256(JSON.stringify(r.geometry));validateGeometry(r.geometry);geometries.set(geometryId,r.geometry);
    const sourceGeometryId=sha256(JSON.stringify(raw.geometry));
-   const restored={...origin,id:identity('restoration',r.source,r.hash,r.from,r.to,d.entity),entityId:identity('reviewed-territory',d.entity),name:label.name,nameRu:label.nameRu,role:'polity',nameStatus:'reviewed',geometryStatus:'candidate',geometryId,sourceGeometryId,geometryRepair:'reviewed-source-components',geometryParts:[{index:r.source,part:r.part}],from:r.from,to:r.to,editorialRestoration:true,components:[],memberOf:[],sourceComponents:origin.sourceComponents??origin.components,sourceMemberOf:origin.sourceMemberOf??origin.memberOf,review:{reason:d.reason,reasonRu:d.reasonRu,sources:d.sources}};
+   const identitySource=d.identitySource===undefined?undefined:source.features[d.identitySource].properties;
+   if(identitySource)assert.equal(identitySource.Name,label.name);
+   const restored={...origin,id:identity('restoration',r.source,r.hash,r.from,r.to,d.entity),entityId:identitySource?identity('source-polity',identitySource.Name,identitySource.Wikidata??''):identity('reviewed-territory',d.entity),name:label.name,nameRu:label.nameRu,role:'polity',nameStatus:'reviewed',geometryStatus:'candidate',geometryId,sourceGeometryId,geometryRepair:'reviewed-source-components',geometryParts:(r.parts??[r.part]).map(part=>({index:r.source,part})),from:r.from,to:r.to,editorialRestoration:true,components:[],memberOf:[],sourceComponents:origin.sourceComponents??origin.components,sourceMemberOf:origin.sourceMemberOf??origin.memberOf,review:{reason:d.reason,reasonRu:d.reasonRu,sources:d.sources}};
    delete restored.territorialIssues;delete restored.territorialAttributions;
    records.push(restored);counts.reviewedNames++;
   }

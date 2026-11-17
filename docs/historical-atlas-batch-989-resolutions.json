@@ -144,6 +144,31 @@
       "sources": ["https://sias-archivi.cultura.gov.it/cgi-bin/pagina.pl?Chiave=112&RicProgetto=as&TipoPag=contesto"]
     }
   },
+  "tuscanyMainland": {
+    "group": "Тоскана",
+    "entity": "tuscany-restoration",
+    "name": "Grand Duchy of Tuscany",
+    "nameRu": "Великое герцогство Тосканское",
+    "reason": "The restored Grand Duchy of Tuscany was a distinct state, not an Austrian province. The original coarse mainland cell contains Florence, Pisa, Siena and Arezzo; comparison with the source's 1848 Tuscany cell confirms its regional identity. Its precise border with Lucca, Massa and the neighbouring duchies, including the transfers of 1847–1849, remains unverified.",
+    "reasonRu": "Великое герцогство Тосканское было отдельным государством, а не австрийской провинцией. Исходная приблизительная материковая ячейка содержит Флоренцию, Пизу, Сиену и Ареццо; её региональная принадлежность подтверждается сопоставлением с исходным контуром Тосканы 1848 года. Точные границы с Луккой, Массой и соседними герцогствами, включая обмены 1847–1849 годов, ещё не проверены.",
+    "sources": ["https://worldjpn.net/documents/texts/docs/18150609.T1E.html", "https://archiviodistatofirenze.cultura.gov.it/catastotoscano/fondo_mappe.html", "https://www502.regione.toscana.it/castoreapp/0_introduzione.htm", "https://www.bancaditalia.it/pubblicazioni/collana-storica/contributi/contributi-12/CSBI-contributi-12.pdf"],
+    "routes": [[10965,3,1815,1819],[11031,2,1820,1827],[11192,2,1828,1829],[11232,2,1830,1833],[11241,2,1834,1835],[11309,2,1836,1839],[11349,2,1840,1845],[11432,2,1846,1847],[11481,2,1849,1852],[11549,2,1853,1855],[11556,2,1856,1856],[11603,2,1857,1858]],
+    "earlyHash": "47a0c32bb12dba54abe2b4c6a38b64290b0576778958e51f645c0b205b7d5a08",
+    "lateHash": "cf6e6e04ac8c03d1c0de0045129eaa968ca710b4b00ae28213ee29d856ad90d4"
+  },
+  "corsica1796": {
+    "group": "Corsica", "source": 10403, "part": 5, "from": 1796, "to": 1796, "target": 10427,
+    "hash": "c6112dfe98f227b48dbd7df302405c9bd2abbe65204887ced3463de80aa1ac44",
+    "reason": "British withdrawal and French reconquest in October 1796: the annual transition shows French rule at the end of the year.",
+    "reasonRu": "В октябре 1796 года британцы покинули Корсику и остров вновь заняла Франция. В переходном годовом состоянии показана принадлежность на конец года.",
+    "sources": ["https://www.isula.corsica/assemblea/file/243958/", "https://www.napoleon.org/en/history-of-the-two-empires/articles/the-british-navy-1793-1802/"]
+  },
+  "italy1861": {
+    "source": 11691, "successor": 11710, "year": 1861,
+    "reason": "Kingdom of Italy proclaimed on 17 March 1861; the source has the same geometry as its 1862–1865 Kingdom of Italy record. Correct the annual name and identity only; boundaries remain candidates.",
+    "reasonRu": "Королевство Италия провозглашено 17 марта 1861 года. Исходная геометрия совпадает с записью Королевства Италия за 1862–1865 гг.; исправлены годовое название и идентичность, границы остаются предварительными.",
+    "sources": ["https://www.senato.it/legislature/regno/italia/8/resoconti-elenco-cronologico"]
+  },
   "angloCorsicanRestoration": {
     "group": "Corsica",
     "hash": "c6112dfe98f227b48dbd7df302405c9bd2abbe65204887ced3463de80aa1ac44",
@@ -154,6 +179,28 @@
     "reason": "Corsica had its own constitution and parliament under the British crown from June 1794; it was not an integral territory of the Kingdom of Great Britain. The transition during 1796 is reviewed separately.",
     "reasonRu": "С июня 1794 года Корсика имела собственную конституцию и парламент под британской короной, а не являлась частью собственно Великобритании. Переходный 1796 год требует отдельной проверки.",
     "sources": ["https://research-repository.st-andrews.ac.uk/handle/10023/13232", "https://www.isula.corsica/assemblea/docs/RapportCP/2025052CP-annexe.pdf"]
+  },
+  "pendingIslandReviews": {
+    "Corsica": {
+      "reason": "Corsican Republic controlled much of the island, while Genoese fortified towns remained outside Paoli's rule; French garrisons entered several towns from 1764. Whole-island coastlines cannot represent the partition.",
+      "reasonRu": "Республика Паоли контролировала большую часть острова; генуэзские укреплённые города оставались вне её власти, с 1764 года в некоторые из них вошли французские гарнизоны. Береговая линия не устанавливает границы разделённой власти.",
+      "sources": ["https://www.napoleon.org/en/history-of-the-two-empires/biographies/paoli-pascal-philippe-antoine-also-known-as-pasquale-paoli/", "https://www.isula.corsica/file/200599/"]
+    },
+    "Эльба": {
+      "reason": "The island was divided between the Tuscan possession of Portoferraio, Neapolitan Porto Longone and Piombino; British military presence did not establish island-wide sovereignty.",
+      "reasonRu": "Остров был разделён между тосканским Портоферрайо, неаполитанским Порто-Лонгоне и Пьомбино; присутствие британских войск не означало суверенитета над островом. Точные внутренние границы ещё не установлены.",
+      "sources": ["https://archiviodistatosiena.cultura.gov.it/fileadmin/user_upload/045-GOVERNO-DI-SIENA.pdf", "https://siusa-archivi.cultura.gov.it/cgi-bin/siusa/pagina.pl?Chiave=8550&RicDimF=2&RicLin=en&TipoPag=prodente"]
+    },
+    "Коморы": {
+      "reason": "Grande Comore contained historical sultanates such as Bambao and Itsandra, rather than a single French colonial polity. Individual boundaries are not established.",
+      "reasonRu": "На Нгазидже (Гранд-Комор) существовали отдельные султанаты, включая Бамбао и Итсандру, а не единое французское колониальное владение. Границы отдельных султанатов не установлены.",
+      "sources": ["https://whc.unesco.org/document/136401", "https://mjp.univ-perp.fr/constit/km1886.htm"]
+    },
+    "Малакка": {
+      "reason": "The Dutch took the town of Malacca in 1641 with Johor's support. Neither the Portuguese copy nor the extent of adjacent Dutch/Johor territory is a confirmed boundary for 1645–1647.",
+      "reasonRu": "В 1641 году Малакка перешла нидерландцам при поддержке Джохора. Португальская копия ошибочна, но точный охват прилегающих нидерландских и джохорских владений в 1645–1647 годах ещё не установлен.",
+      "sources": ["https://api.icj-cij.org/sites/default/files/case-related/130/14139.pdf"]
+    }
   },
   "mindanaoReview": {
     "group": "Mindanao", "hash": "a067cf1d9a83eeef3a75003f2b0ecc21af4e3a0b4148972b03644ca58a1caaec",

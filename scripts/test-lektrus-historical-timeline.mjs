@@ -6,6 +6,7 @@ import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch} from './build-lektrus-historical-timeline.mjs';
 import {historicalUnresolvedCenters} from '../src/lektrusHistoricalUnresolvedCenters.ts';
+import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
 import {createHistoricalTimelineLoader} from '../src/lektrusHistoricalTimelineLoader.ts';
 import {referenceAdmissionWarnings} from './audit-lektrus-atlas-annual.mjs';
@@ -231,22 +232,36 @@ if(outDir&&sourceFile){
         if(year<=1581)assert.ok(!hasPart(activeRecords.get(7792),7792,7));
         if(year>=1521)assert.equal(activeRecords.get(7904).geometryStatus,'rejected');
       }else assert.equal(mindanaoIssues.length,0);
-      const expectedCenters=[...(year>=1521&&year<=1608?['maguindanao']:[]),...(year>=1521&&year<=1565?['butuan']:[]),...(year>=1596&&year<=1608?['buayan']:[])];
+      const expectedCenters=[...(year>=1521&&year<=1608?['maguindanao']:[]),...(year>=1521&&year<=1565?['butuan']:[]),...(year>=1596&&year<=1608?['buayan']:[]),...(year>=1757&&year<=1767?['corte','bastia','ajaccio','calvi','bonifacio']:[]),...(year>=1797&&year<=1798?['portoferraio','portolongone','rio-elba']:[]),...(year>=1842&&year<=1845?['iconi','itsandra']:[]),...(year>=1645&&year<=1647?['melaka']:[])];
       const centers=historicalUnresolvedCenters(year,state.territorialIssues);
       assert.deepEqual(centers.map(c=>c.id),expectedCenters.map(id=>`historical-center-${id}`));
-      for(const c of centers){assert.ok(c.url.startsWith('https://'));assert.ok(c.description.includes('Точка'));assert.ok(c.lon>=121&&c.lon<=127&&c.lat>=5&&c.lat<=10);assert.equal(c.year,year);}
+      for(const issue of state.territorialIssues.filter(i=>['Corsica','Эльба','Коморы','Малакка'].includes(i.group)))assert.ok(issue.sources?.length&&issue.sources.every(s=>s.startsWith('https://')));
+      for(const c of centers){assert.ok(c.url.startsWith('https://'));assert.ok(c.description.includes('Точка'));assert.ok(Number.isFinite(c.lon)&&Math.abs(c.lon)<=180&&Number.isFinite(c.lat)&&Math.abs(c.lat)<=90);assert.equal(c.year,year);}
       assert.deepEqual(historicalUnresolvedCenters(year,[]),[]);
       if(year>=1629&&year<=1814){const kandy=state.drawable.filter(({record})=>record.name==='Kingdom of Kandy');assert.equal(kandy.length,1);assert.equal(kandy[0].record.nameRu,'Королевство Канди');assert.deepEqual(kandy[0].record.memberOf,[]);assert.ok(kandy[0].record.sourceMemberOf.length);}
       if(year>=1815&&year<=1859){
         const hash='c440529d0c7fde4ec1dbf13983ef01d0c128f86661e64156915318dd023a27c8';
         const island=state.drawable.filter(({geometry})=>geometry.coordinates.some(p=>{const h=componentHash(p);return h===hash||h===elbaUnionHash;}));
         assert.equal(island.length,1,`Elba must have one political attribution in ${year}`);
-        assert.equal(island[0].record.name,year<=1848?'Grand Duchy of Tuscany':year<=1858?'Elba (Grand Duchy of Tuscany)':'Elba (Provisional Government of Tuscany)');
+        assert.equal(island[0].record.name,year<=1858?'Grand Duchy of Tuscany':'Elba (Provisional Government of Tuscany)');
+        if(year<=1858){
+          const florence=state.drawable.filter(({geometry})=>capitalInsideCountry([11.2558,43.7696],geometry));
+          assert.equal(florence.length,1,`Florence must have one political attribution in ${year}`);
+          assert.equal(florence[0].record.entityId,island[0].record.entityId);
+        }
       }
       if(year===1794||year===1795){
         const island=state.drawable.filter(({record,geometry})=>record.role==='polity'&&geometry.coordinates.some(p=>componentHash(p)==='c6112dfe98f227b48dbd7df302405c9bd2abbe65204887ced3463de80aa1ac44'));
         assert.equal(island.length,1);assert.equal(island[0].record.name,'Anglo-Corsican Kingdom');
       }
+      if(year===1796){
+        const corsica=input.features[10403].geometry.coordinates[5];
+        const france=activeRecords.get(10427);
+        assert.equal(france.name,'French Directory');
+        assert.ok(hasPart(france,10403,5));
+        assert.equal(polygonClipping.difference(corsica,pack.geometries[france.geometryId].coordinates).length,0);
+      }
+      if(year===1861){const italy=activeRecords.get(11691);assert.equal(italy.name,'Kingdom of Italy');assert.equal(italy.nameRu,'Королевство Италия');assert.equal(italy.nameStatus,'reviewed');}
       const byEntity=new Map(),byGeometry=new Map(),allGeometry=new Map();
       for(const r of state.records){
         if(!allGeometry.has(r.geometryId))allGeometry.set(r.geometryId,[]);allGeometry.get(r.geometryId).push(r);
@@ -274,7 +289,7 @@ if(outDir&&sourceFile){
   }
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,537);assert.equal(batchPending,159);
-  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,202);assert.equal(extended,410);assert.equal([...pendingExtensionsByYear.values()].flat().length,60);
+  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,202);assert.equal(extended,454);assert.equal([...pendingExtensionsByYear.values()].flat().length,60);
   console.log(`Reviewed batch: ${batchReady} original corrections; ${batchResolved} newly resolved attributions; ${batchPending} open; ${extended} adjacent cases; ${restoredRecordYears} restored territory-years`);
   assert.equal(seen.size,manifest.counts.revisions);
   assert.equal(allGeometries.size,manifest.counts.uniqueGeometries);
