@@ -130,8 +130,14 @@ def check_layout(selectors):
 
 def home():
     wait(lambda: visible_id('.lektrus-calendar-grid'), 'Workspace not rendered', 90)
-    report = check_layout(['.lectris-mobile-bottom', '.lectris-mobile-bottom button'])
+    report = check_layout(['.lectris-mobile-bottom', '.lectris-mobile-bottom button', '.lectris-workspace-header'])
     report['screen'] = js('return {width:screen.width,height:screen.height,availableHeight:screen.availHeight,ratio:devicePixelRatio}')
+    report['headerAndHero'] = js('''const h=document.querySelector('.lectris-workspace-header'), r=h.getBoundingClientRect(), p=parseFloat(getComputedStyle(h).paddingTop)||0;
+      const controls=[...h.querySelectorAll('.lectris-brand,.lectris-header-actions')].map(e=>e.getBoundingClientRect());
+      const copy=document.querySelector('.lectris-hub-hero-copy').getBoundingClientRect(), actions=document.querySelector('.lectris-hub-hero-actions').getBoundingClientRect();
+      return {headerHeight:r.height,paddingTop:p,headerOverflow:controls.some(e=>e.top<r.top+p-2||e.bottom>r.bottom+2),heroGap:actions.top-copy.bottom};''')
+    assert not report['headerAndHero']['headerOverflow'], report
+    assert report['headerAndHero']['heroGap'] <= 32, report
     return report
 
 

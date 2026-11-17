@@ -36,6 +36,35 @@ html.lektrus-android-app .lectris-mobile-nav,
 html.lektrus-android-app .lectris-bottom-nav { padding-bottom: 0; }
 html.lektrus-android-app body { overscroll-behavior-y: none; }
 
+/* iOS WebView extends under the Dynamic Island. Padding inside a fixed-height
+   header shrinks its usable row and makes controls spill over the next card.
+   Reserve the complete row PLUS the system inset in the shell's flex layout. */
+html.lektrus-ios-app .lectris-workspace {
+  --lektrus-ios-header-row:70px;
+  --lektrus-ios-header-height:calc(var(--lektrus-ios-header-row) + env(safe-area-inset-top,0px));
+}
+html.lektrus-ios-app .lectris-workspace > .lectris-workspace-header {
+  box-sizing:border-box!important;
+  height:var(--lektrus-ios-header-height)!important;
+  min-height:var(--lektrus-ios-header-height)!important;
+  flex:0 0 var(--lektrus-ios-header-height)!important;
+  padding-top:env(safe-area-inset-top,0px)!important;
+  padding-bottom:0!important;
+  padding-left:max(12px,env(safe-area-inset-left,0px))!important;
+  padding-right:max(12px,env(safe-area-inset-right,0px))!important;
+}
+@media screen and (max-width:700px) and (orientation:portrait) {
+  html.lektrus-ios-app .lectris-workspace { --lektrus-ios-header-row:58px; }
+}
+@media screen and (max-width:1100px) and (orientation:landscape) {
+  html.lektrus-ios-app .lectris-workspace { --lektrus-ios-header-row:60px; }
+  html.lektrus-ios-app .lectris-workspace .lectris-workspace-body,
+  html.lektrus-ios-app .lectris-workspace .lectris-workspace-stage {
+    height:calc(100dvh - var(--lektrus-ios-header-height))!important;
+    min-height:0!important;
+  }
+}
+
 /* Touch-only hand. On a mouse/desktop viewport there is no visible hand tool. */
 @media (pointer:fine) {
   .mobile-board-tools .mobile-tool-cluster-navigation>button[aria-label^="Рука"] {display:none!important}
