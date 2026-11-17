@@ -123,6 +123,38 @@
     "sources": ["https://lakdiva.org.lk/codrington/chap09.html", "https://thenationaltrust.lk/blog/robert-knoxs-journeys-in-ceylon-and-the-world-in-the-17th-century-one/", "https://soas-repository.worktribe.com/output/388087/dutch-power-in-ceylon-1658-1687", "https://noolaham.net/project/1025/102411/102411.pdf"],
     "routes": [[9013,10,1659,1661],[9013,12,1659,1661],[9054,6,1659,1661],[9054,7,1659,1661],[9066,7,1662,1664],[9066,8,1662,1664]]
   },
+  "elbaTransfer": {
+    "group": "Эльба",
+    "hash": "c440529d0c7fde4ec1dbf13983ef01d0c128f86661e64156915318dd023a27c8",
+    "entity": "elba-tuscany",
+    "name": "Elba (Grand Duchy of Tuscany)",
+    "nameRu": "Эльба (Великое герцогство Тосканское)",
+    "reason": "Article 100 of the 1815 Final Act assigned Elba to the Grand Duchy of Tuscany; the Habsburg-Lorraine dynastic connection did not make it a province of the Austrian Empire.",
+    "reasonRu": "По статье 100 Венского акта 1815 года Эльба вошла в Великое герцогство Тосканское, а не в Австрийскую империю. Династическая связь Габсбургов-Лотарингских не означает австрийского суверенитета.",
+    "sources": ["https://worldjpn.net/documents/texts/docs/18150609.T1E.html", "https://www.consiglio.regione.toscana.it/upload/COCCOINA/documenti/pannelli%20percorsi%20storici%282%29.pdf", "https://archiviodistatosiena.cultura.gov.it/fileadmin/user_upload/045-GOVERNO-DI-SIENA.pdf"],
+    "target": 10979,
+    "routes": [[10965,1,1815,1819],[11031,1,1820,1827],[11192,1,1828,1829],[11232,1,1830,1833],[11241,1,1834,1835],[11309,1,1836,1839],[11349,1,1840,1845],[11432,1,1846,1847],[11481,1,1849,1852],[11549,1,1853,1855],[11556,1,1856,1856],[11603,1,1857,1858]],
+    "provisional": {
+      "source": 11649, "part": 1, "from": 1859, "to": 1859,
+      "entity": "elba-tuscany-provisional",
+      "name": "Elba (Provisional Government of Tuscany)",
+      "nameRu": "Эльба (Временное правительство Тосканы)",
+      "reason": "The Provisional Government of Tuscany held power in 1859; legal annexation to Sardinia followed on 22 March 1860.",
+      "reasonRu": "В 1859 году Тосканой управляло временное правительство; формальное присоединение к Сардинскому королевству произошло 22 марта 1860 года.",
+      "sources": ["https://sias-archivi.cultura.gov.it/cgi-bin/pagina.pl?Chiave=112&RicProgetto=as&TipoPag=contesto"]
+    }
+  },
+  "angloCorsicanRestoration": {
+    "group": "Corsica",
+    "hash": "c6112dfe98f227b48dbd7df302405c9bd2abbe65204887ced3463de80aa1ac44",
+    "source": 10380, "part": 5, "from": 1794, "to": 1795,
+    "entity": "anglo-corsican-kingdom",
+    "name": "Anglo-Corsican Kingdom",
+    "nameRu": "Англо-Корсиканское королевство",
+    "reason": "Corsica had its own constitution and parliament under the British crown from June 1794; it was not an integral territory of the Kingdom of Great Britain. The transition during 1796 is reviewed separately.",
+    "reasonRu": "С июня 1794 года Корсика имела собственную конституцию и парламент под британской короной, а не являлась частью собственно Великобритании. Переходный 1796 год требует отдельной проверки.",
+    "sources": ["https://research-repository.st-andrews.ac.uk/handle/10023/13232", "https://www.isula.corsica/assemblea/docs/RapportCP/2025052CP-annexe.pdf"]
+  },
   "mindanaoReview": {
     "group": "Mindanao", "hash": "a067cf1d9a83eeef3a75003f2b0ecc21af4e3a0b4148972b03644ca58a1caaec",
     "reason": "The island contained multiple distinct centres: Maguindanao in the lower Pulangi valley, Buayan upstream and Butuan in the northeast. Neither Brunei nor Maguindanao can be assigned the entire island. The coastline is not a political boundary; keep the unverified territorial reconstruction open.",

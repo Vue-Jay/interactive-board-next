@@ -270,6 +270,35 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
    exclusions.push([source,parts.length,year,[part],ceylon.reason,ceylon.reasonRu,ceylon.sources[0],year]);
   }
  }
+ // Elba is a physically separate, exact island component. Tuscany's
+ // mainland is available as a dated target only through 1847. Preserve the
+ // island as a distinct documented restoration thereafter; do not guess
+ // the missing mainland boundaries from the Austrian aggregate.
+ const elba=territorialResolutions.elbaTransfer;
+ const registerIslandCorrection=(source,part,from,to,decision,target)=>{
+  const f=features[source],parts=rawParts(f),hash=componentHash(parts[part]);
+  assert.equal(hash,decision.hash);assert.ok(f.properties.Type==='POLITY'&&f.properties.FromYear<=from&&f.properties.ToYear>=to);
+  if(target!==undefined){
+   const t=features[target];assert.ok(t.properties.FromYear<=from&&t.properties.ToYear>=to);
+   transfers.push({source,part,target,from,to,decision});
+  }else restorations.push({source,part,from,to,hash,group:decision.group,decision,geometry:{type:'MultiPolygon',coordinates:[parts[part]]}});
+  for(let year=from;year<=to;year++){
+   const key=`${source}:${hash}:${year}`;assert.ok(!seen.has(key)&&!extensionKeys.has(key));extensionKeys.add(key);
+   extensions.push({source,part,from:year,to:year,group:decision.group,hash,...(target===undefined?{}:{mode:'transfer',target})});
+  }
+  exclusions.push([source,parts.length,from,[part],decision.reason,decision.reasonRu,decision.sources[0],to]);
+ };
+ assert.equal(features[elba.target].properties.Name,'Grand Duchy of Tuscany');
+ for(const [source,part,from,to] of elba.routes){
+  assert.equal(features[source].properties.Name,'Austrian Empire');
+  registerIslandCorrection(source,part,from,to,elba,to<=1847?elba.target:undefined);
+ }
+ const provisional={...elba,...elba.provisional};
+ assert.equal(features[provisional.source].properties.Name,'Kingdom of Sardinia');
+ registerIslandCorrection(provisional.source,provisional.part,provisional.from,provisional.to,provisional);
+ const angloCorsican=territorialResolutions.angloCorsicanRestoration;
+ assert.equal(features[angloCorsican.source].properties.Name,'Kingdom of Great Britain');
+ registerIslandCorrection(angloCorsican.source,angloCorsican.part,angloCorsican.from,angloCorsican.to,angloCorsican);
  // Genoa's same Nice cell remains wrong during the French occupation of the
  // duchy. No active Savoy outline exists, and other source geometry intersects
  // it. Preserve the cell separately until the occupation boundary is resolved.

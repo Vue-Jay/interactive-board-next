@@ -131,6 +131,8 @@ if(outDir&&sourceFile){
   const manifest=validateHistoricalManifest(JSON.parse(fs.readFileSync(path.join(outDir,'manifest.json'))));
   assert.equal(manifest.source.sha256,sha256(raw));
   const original=input.features.map((f,index)=>({f,index}));
+  const elbaPolygon=input.features[10965].geometry.coordinates[1];
+  const elbaUnionHash=componentHash(polygonClipping.union(elbaPolygon)[0]);
   const reviewedBatch=deriveTerritorialBatch(input.features);
   assert.equal(reviewedBatch.count,989);
   const batchByYear=new Map();
@@ -235,6 +237,16 @@ if(outDir&&sourceFile){
       for(const c of centers){assert.ok(c.url.startsWith('https://'));assert.ok(c.description.includes('Точка'));assert.ok(c.lon>=121&&c.lon<=127&&c.lat>=5&&c.lat<=10);assert.equal(c.year,year);}
       assert.deepEqual(historicalUnresolvedCenters(year,[]),[]);
       if(year>=1629&&year<=1814){const kandy=state.drawable.filter(({record})=>record.name==='Kingdom of Kandy');assert.equal(kandy.length,1);assert.equal(kandy[0].record.nameRu,'Королевство Канди');assert.deepEqual(kandy[0].record.memberOf,[]);assert.ok(kandy[0].record.sourceMemberOf.length);}
+      if(year>=1815&&year<=1859){
+        const hash='c440529d0c7fde4ec1dbf13983ef01d0c128f86661e64156915318dd023a27c8';
+        const island=state.drawable.filter(({geometry})=>geometry.coordinates.some(p=>{const h=componentHash(p);return h===hash||h===elbaUnionHash;}));
+        assert.equal(island.length,1,`Elba must have one political attribution in ${year}`);
+        assert.equal(island[0].record.name,year<=1848?'Grand Duchy of Tuscany':year<=1858?'Elba (Grand Duchy of Tuscany)':'Elba (Provisional Government of Tuscany)');
+      }
+      if(year===1794||year===1795){
+        const island=state.drawable.filter(({record,geometry})=>record.role==='polity'&&geometry.coordinates.some(p=>componentHash(p)==='c6112dfe98f227b48dbd7df302405c9bd2abbe65204887ced3463de80aa1ac44'));
+        assert.equal(island.length,1);assert.equal(island[0].record.name,'Anglo-Corsican Kingdom');
+      }
       const byEntity=new Map(),byGeometry=new Map(),allGeometry=new Map();
       for(const r of state.records){
         if(!allGeometry.has(r.geometryId))allGeometry.set(r.geometryId,[]);allGeometry.get(r.geometryId).push(r);
@@ -262,7 +274,7 @@ if(outDir&&sourceFile){
   }
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,537);assert.equal(batchPending,159);
-  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,189);assert.equal(extended,364);assert.equal([...pendingExtensionsByYear.values()].flat().length,60);
+  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,202);assert.equal(extended,410);assert.equal([...pendingExtensionsByYear.values()].flat().length,60);
   console.log(`Reviewed batch: ${batchReady} original corrections; ${batchResolved} newly resolved attributions; ${batchPending} open; ${extended} adjacent cases; ${restoredRecordYears} restored territory-years`);
   assert.equal(seen.size,manifest.counts.revisions);
   assert.equal(allGeometries.size,manifest.counts.uniqueGeometries);
