@@ -792,14 +792,93 @@ export const secondaryExactReviews=[
  [11329,11399,1843,1845,[1],[8],'Франция вступила во владение Майоттой 13 июня 1843 года; остров включён в колонию Нуси-Бе и зависимые территории.',comoroTreaties],
 ];
 export const earlyComorosRoutes=[[9189,4,1677,1720],[9631,2,1721,1726],[9660,2,1727,1740],[9759,2,1741,1814],[11008,0,1815,1819],[11071,1,1820,1839],[11329,1,1840,1841]];
+// Review the remaining exact overlaps as a fixed queue. A dependency or
+// occupation is a historical relationship, not a second independent polygon.
+const manxSource='https://manxnationalheritage.im/wp-content/uploads/2020/01/Vikings-in-Mann-Teachers-Guide.pdf';
+const manxNote='Мэн и острова — отдельное морское королевство в орбите Норвегии. Связь с норвежской короной не означает постоянное прямое управление из Норвегии; Магнус Босоногий временно подчинил королевство.';
+const rusSource='https://www.encyclopediaofukraine.com/display.asp?linkpath=pages%5CK%5CY%5CKyivanRushDA.htm';
+const rusNote='В составе и при распаде древнерусского государства существовали отдельные княжества. Общая династическая связь не означает двойной суверенитет; совпавшая ячейка исходной сетки принадлежит локальной записи, её точная внешняя граница не подтверждена.';
+const genoaSource='https://www.treccani.it/enciclopedia/genova_%28Enciclopedia-machiavelliana%29/';
+const genoaNote='Местная генуэзская запись сохраняется: господство французских и миланских правителей было переменным. Дубликат не изображается как ещё одно географическое владение; точные линии смены контроля не восстановлены.';
+const pacificSource='https://www.awm.gov.au/learn/schools/sww/pacific';
+const pacificNote='Политическая принадлежность показана отдельно от японской военной оккупации в 1942–1945 годах. Источник подтверждает театр военных действий, но не одновременный контроль каждого острова на протяжении всего года.';
+const philippineSource='https://ncca.gov.ph/about-ncca-3/subcommissions/subcommission-on-cultural-heritagesch/historical-research/politico-diplomatic-history-of-the-philippines/';
+const philippineNote='Местное политическое образование и династические/торговые связи с Брунеем показаны раздельно. Влияние Брунея не означает прямого управления всеми его союзниками; исходный контур не является точной исторической съёмкой.';
+const dutchNote='Британское управление Нидерландской Ост-Индией в переходный период после захвата Явы в 1811 году не образует вторую независимую политическую территорию. Сохранён контур конкретной колонии, не предполагающий одинакового фактического контроля над всеми островами.';
+const dutchSource='https://emuseum.aberdeencity.gov.uk/objects/85179/mountbatten-medallic-history-of-great-britain-and-the-sea-medal';
+const rusRoutes=[[5405,1216,1219,1],[5357,1210,1215,1],[5333,1206,1209,1],[5219,1202,1205,1],[5182,1192,1201,1],[4448,1056,1191,1],[4692,1094,1125,5],[4605,1072,1093,5],[4511,1056,1084,3],[4466,1056,1071,5]];
+const genoaRoutes=[[7933,1521,1525,2],[7893,1519,1520,2],[7829,1516,1518,2],[7808,1512,1515,2],[7755,1507,1511,3],[7701,1502,1506,4],[7643,1497,1501,2],[7622,1492,1496,1],[7388,1463,1481,1]];
+export const thirdExactReviews=[
+ [12956,12888,1945,1945,[122,113,105,120,104,121,111,114,124],[45,77,66,80,64,81,75,78,47],pacificNote,pacificSource],
+ [12923,12888,1944,1944,[129,135,31,126,118,133,117,134,32,131,33,124,127,138,136],[79,45,50,77,66,80,64,81,51,43,52,75,78,47,46],pacificNote,pacificSource],
+ [12904,12888,1943,1943,[147,154,149,111,26,145,137,152,136,153,142,27,150,151,139,28,143,146,141,148,156,155,144],[79,45,41,44,50,77,66,80,64,81,74,51,42,43,69,52,75,78,72,40,47,46,76],pacificNote,pacificSource],
+ [12956,12910,1945,1945,[28],[2],'Японская оккупация Индокитая в 1945 году не была передачей суверенитета Японии; в течение года менялся политический статус и фактическое управление.','https://history.state.gov/historicaldocuments/frus1945v06/d170'],
+ [12852,12765,1940,1940,[35,34,69,70],[2,1,8,9],'Норвегия оккупирована Германией с апреля 1940 года; законное правительство продолжало деятельность в изгнании. Это не аннексия территории Германии.','https://www.regjeringen.no/en/the-government/previous-governments/regjeringer-siden-1814/historiske-regjeringer/norways-governments-1940-1945/johan-nygaardsvolds-government/id438691/'],
+ [12295,12345,1913,1913,[72,73],[8,9],colonialNote,colonialEvidence],
+ [10869,10882,1814,1814,[1,0,3],[2,0,3],'Восточноафриканские владения оманского султана представлены отдельной региональной записью; это не независимая от Омана территория.','https://whc.unesco.org/uploads/nominations/1055.pdf'],
+ [10855,10767,1812,1813,[67,75,69,70,84,80,87,83,34,82,71,73,85,36,78,79,88,76,66,77,86,72,68,74],[2,22,16,17,29,7,31,28,1,27,18,20,30,6,25,5,10,23,0,24,9,19,3,21],dutchNote,dutchSource],
+ [10840,10767,1811,1811,[65,73,67,68,81,77,84,80,33,79,69,71,82,35,76,34,85,74,64,75,83,70,66,72],[2,22,16,17,29,7,31,28,1,27,18,20,30,6,25,5,10,23,0,24,9,19,3,21],dutchNote,dutchSource],
+ [10780,10978,1816,1816,[2],[9],'Остров Банка перешёл к британцам по договору 1812 года, затем к нидерландцам в ходе возврата колоний в 1816 году.','https://searcharchives.bl.uk/catalog/040-003377793'],
+ [10780,10855,1812,1812,[1,2],[37,39],'Банка и Белитунг уступлены британцам по соглашению от 17 мая 1812 года.','https://geologi.esdm.go.id/storage/publikasi/UpSPbHG8i7VYakTV7JEn4Obk70FowYWUM1YQ9.pdf'],
+ [7792,8003,1529,1581,[5,3],[2,0],philippineNote,philippineSource],
+ [7792,7947,1526,1571,[9],[0],philippineNote,philippineSource],
+ [7792,7906,1521,1525,[9],[0],philippineNote,philippineSource],
+ ...genoaRoutes.map(([source,from,to,part])=>[source,7268,from,to,[part],[5],genoaNote,genoaSource]),
+ [7338,7268,1459,1462,[2,3],[5,6],genoaNote,genoaSource],
+ [7268,7462,1475,1475,[12,13],[7,8],'В 1475 году османское завоевание прекратило генуэзское управление соответствующими черноморскими колониями.',genoaSource],
+ [6608,6741,1395,1401,[2],[2],'После воссоединения владений Джучидов Токтамышем отдельная запись Синей Орды не означает вторую суверенную территорию. После поражения 1395 года фактический контроль был изменчив.','https://www.cambridge.org/core/services/aop-cambridge-core/content/view/AEB03260F727D9147A9043682A24804B/S1356186324000269a.pdf/between_the_chinggisid_principle_loyalty_and_selfaggrandisement_jochid_elites_in_the_time_of_troubles_1359_to_circa_1380.pdf'],
+ [6608,6711,1385,1394,[2],[2],'Токтамыш объединил владения Джучидов; дублирующее обозначение Синей Орды не означает второе государство на этой территории.','https://eurasian-research.org/wp-content/uploads/2020/10/Saryarka-and-the-Golden-Horde.pdf'],
+ [6392,6133,1346,1346,[12],[0],'Хиос перешёл под генуэзское управление в 1346 году.','https://www.chios.gr/en/afieromata/mesaioniki-chios'],
+ ...rusRoutes.map(([target,from,to,part])=>[4369,target,from,to,[part],[1],rusNote,rusSource]),
+ [4529,5062,1177,1187,[6,8,0],[1,2,0],manxNote,manxSource],
+ [4529,5024,1169,1176,[6,8,0],[1,2,0],manxNote,manxSource],
+ [4529,4703,1094,1168,[6,5,2,7,4,8,1,3,0],[7,6,3,8,5,9,2,4,1],manxNote,manxSource],
+ [4529,4658,1085,1093,[6,5,2,7,4,8,1,3,0],[6,5,2,7,4,8,1,3,0],manxNote,manxSource],
+ [4586,4694,1094,1098,[2],[0],'Мальта после похода Рожера I в 1091 году признавала норманнский сюзеренитет; местное мусульманское население и администрация сохранялись.','https://malteselivingabroad.gov.mt/wp-content/uploads/2023/03/NEWS275.pdf'],
+ [4863,4640,1139,1146,[1],[0],'В XII веке на Корсике преобладало пизанское влияние; имперские притязания не создают отдельного контура над тем же островом.','https://italica.cultura.gov.it/percorsi/p/g9ucoyi26da7852pr05n26tm'],
+ [4539,4640,1085,1093,[1],[0],'Пизанское влияние на Корсике представлено отдельно от имперской принадлежности; это не два независимых острова.','https://italica.cultura.gov.it/percorsi/p/g9ucoyi26da7852pr05n26tm'],
+ [3376,3404,884,885,[18],[0],'Кипр в период византийско-арабского соперничества имел особый режим; местная запись кондоминиума не означает независимое государство или точную линию раздела.','https://www.culture.gov.cy/dmculture/DA/DA.nsf/DMLchtable_en/DMLchtable_en?OpenDocument=&print='],
+ [6591,6715,1385,1394,[1],[0],'Дубровницкая республика после 1358 года самостоятельно управлялась под покровительством венгерской короны; дублирующая её контур сербская запись не подтверждает сербский суверенитет.','https://hrcak.srce.hr/en/file/98050'],
+ [6041,5885,1298,1304,[2,3],[0,1],'Мальорка в этот период сохраняла отдельное королевство; принадлежность к арагонской династической сфере не превращает её в два независимых государства.','https://www.caib.es/pidip2front/ficha_convocatoria.xhtml?lang=es&urlSemantica=8818060'],
+ [4310,4203,1034,1035,[6,5,9,8],[17,16,15,14],'Кнут владел норвежской короной; в 1035 году Норвегия перешла к Магнусу. Сохраняется местное королевство, а не дублирующий контур объединения корон.','https://www.english-heritage.org.uk/learn/histories/1066-and-the-norman-conquest/northern-battles-1066/'],
+ [4257,4203,1028,1033,[6,5,9,8],[17,16,15,14],'Владение Кнутом норвежской короной было частью объединения корон Англии, Дании и Норвегии; сохраняется отдельная запись Норвегии.','https://www.english-heritage.org.uk/learn/histories/1066-and-the-norman-conquest/northern-battles-1066/'],
+ [3926,3869,962,969,[0,1],[0,2],'В 962 году Оттон I объединил итальянскую корону с императорской; местное Итальянское королевство не является вторым независимым сувереном.','https://www.treccani.it/enciclopedia/il-regno-italico_%28Storia-della-civilta-Europea%29/'],
+ [3901,3869,961,961,[0,1],[0,2],'В 961 году Оттон I вернулся в Италию и получил итальянскую корону; личная уния корон не делает одинаковые контуры двумя территориями.','https://www.treccani.it/enciclopedia/la-dinastia-sassone-e-il-sacro-romano-impero_%28Storia-della-civilt%C3%A0-europea-a-cura-di-Umberto-Eco%29/'],
+ [10342,10328,1792,1793,[0,3,1,2],[0,4,1,2],'Нгуен Ань занял Сайгон в 1788 году, сделал Зядинь своей столицей и опорой для борьбы с Тэйшонами. Это не утверждение о точной линии фронта.','https://baotanglichsu.vn/VI/Articles/3091/7512/ngam-cac-thanh-co-viet-nam-tu-tren-cao-phan-1.html'],
+ [9564,9740,1738,1740,[5],[0],'Бахрейн был занят войсками Надир-шаха в 1736 году; отдельный оманский контур на том же острове не соответствует этому переходу.','https://www.iranicaonline.org/articles/navy-i-nader-shah/'],
+ [7853,7200,1519,1519,[6],[1],'Экспедиция Кортеса высадилась на Косумеле в 1519 году; местный правитель Нахум Пат оставался у власти и встретил экспедицию Монтехо в 1527 году. Высадка не равнозначна постоянной аннексии.','https://mexicograndezaydiversidad.inah.gob.mx/images/fasciculos/MexicoGrandezaDiversidad_F-08.pdf'],
+ [1048,943,-48,-47,[16],[1],'В 48–47 гг. до н. э. Кипр в ходе Александрийской войны был возвращён Египту; дата перехода в течение этого периода не установлена с точностью до дня.','https://publications.gov.cy/assets/user/publications/CyprusAlwaysEurope/Cyprus_has_always_been_Europe_ENEL.pdf'],
+ ];
 export const earlyComorosHashes=['5e8c3940ad185cbe4cf1af0d7f420aeaaa9bead9e850dd11ecbb7a72f850de2a','ca0861672c2aec6d4ea750a6f663d4b43e5be11e371c321ed69e8c520313b233','8f31d16f944b3cefe048b3146bf73aea4320e11e4b0dcabb74b7fe8d1886569c','cf8a539df8f350003fa8d49a17d63e1c36f9ff5f3a21c912e39b611680012904'];
+// Elba: approximate manual transcription of the three jurisdictions in the
+// regional historical atlas, section 8.19, printed p.114; the map is not a
+// georeferenced cadastral survey. Bagnaia and the Felciaio boundary are anchors.
+// Only the coastline is modern (Natural Earth); no modern municipal borders.
+export const elba1797Partition={
+ source:9986,part:2,from:1797,to:1798,
+ sources:['https://www.consiglio.regione.toscana.it/upload/eda/pubblicazioni/vol2.pdf','https://www.rmg.co.uk/collections/objects/rmgc-object-540400','https://www.comune.rio.li.it/vivere-il-comune/luoghi/localita-bagnaia/','https://www.consiglio.regione.toscana.it/upload/eda/pubblicazioni/pub4072.pdf',independentIslands.source.url],
+ outline:[[[10.44337,42.845445],[10.436046,42.838121],[10.431163,42.827867],[10.430675,42.816148],[10.436697,42.804429],[10.430024,42.787584],[10.420258,42.776435],[10.406912,42.768988],[10.388845,42.763495],[10.40797,42.75727],[10.425141,42.74079],[10.430675,42.722113],[10.415538,42.708889],[10.410981,42.717963],[10.403331,42.718899],[10.39324,42.718207],[10.381358,42.722561],[10.377289,42.727973],[10.367198,42.745998],[10.364268,42.749823],[10.351248,42.755683],[10.337901,42.764838],[10.325043,42.764838],[10.313731,42.742987],[10.304535,42.759752],[10.265391,42.744574],[10.245372,42.75727],[10.240001,42.741889],[10.235199,42.735907],[10.229666,42.735419],[10.147227,42.737291],[10.124848,42.743109],[10.106781,42.757392],[10.10141,42.784003],[10.111664,42.801256],[10.132986,42.811916],[10.158214,42.817288],[10.179535,42.818752],[10.189952,42.816881],[10.212169,42.807847],[10.224376,42.804429],[10.242198,42.803168],[10.26588,42.804429],[10.264903,42.809394],[10.264334,42.810452],[10.262706,42.810248],[10.259044,42.811916],[10.272146,42.818752],[10.272146,42.826239],[10.272146,42.827338],[10.289317,42.825629],[10.326834,42.826239],[10.322113,42.811713],[10.332774,42.805976],[10.347341,42.805854],[10.354666,42.808173],[10.358084,42.817532],[10.365977,42.822943],[10.374766,42.827094],[10.381358,42.832424],[10.3921,42.857978],[10.399913,42.868842],[10.412364,42.873358],[10.422048,42.870836],[10.431,42.864447],[10.438487,42.855455],[10.44337,42.845445]]],
+ // Digitized generalized separation from the published diagram: Tuscany
+ // encloses Portoferraio, the Presidi enclose Porto Longone and Fort Focardo.
+ masks:[[[[10.26,42.86],[10.26,42.819],[10.267,42.8],[10.292,42.79],[10.31,42.788],[10.316,42.774],[10.334,42.766],[10.345,42.75],[10.355,42.757],[10.356,42.775],[10.35,42.79],[10.364,42.81],[10.365,42.86],[10.26,42.86]]],
+ [[[10.365,42.78],[10.376,42.791],[10.40,42.792],[10.415,42.782],[10.46,42.78],[10.46,42.736],[10.410,42.736],[10.398,42.749],[10.378,42.758],[10.365,42.77],[10.365,42.78]]]],
+ areas:[['elba-tuscany-1797','Portoferraio (Grand Duchy of Tuscany)','Портоферрайо (Великое герцогство Тосканское)'],['elba-naples-1797','Porto Longone (Kingdom of Naples)','Порто-Лонгоне (Неаполитанское королевство)'],['elba-piombino-1797','Elba (Principality of Piombino)','Эльба (Княжество Пьомбино)']]
+};
+export function buildElbaPartition(){
+ const {outline,masks}=elba1797Partition;
+ const areas=masks.map(mask=>polygonClipping.intersection(outline,mask));
+ assert.equal(polygonClipping.intersection(...areas).length,0);
+ areas.push(polygonClipping.difference(outline,...masks));
+ assert.ok(areas.every(a=>a.length));
+ return areas.map(coordinates=>({type:'MultiPolygon',coordinates}));
+}
 export function deriveSecondaryTerritorialReviews(features){
  const exclusions=[],restorations=[],pending=[],attributions=[];
  const exclude=(source,from,to,parts,reasonRu,url)=>{
   const f=features[source];assert.ok(f.properties.Type==='POLITY'&&f.properties.FromYear<=from&&f.properties.ToYear>=to);
   exclusions.push([source,rawParts(f).length,from,parts,'Reviewed dated source-component attribution; see linked evidence.',reasonRu,url,to]);
  };
- for(const [source,target,from,to,parts,winners,reason,url] of secondaryExactReviews){
+ for(const [source,target,from,to,parts,winners,reason,url] of [...secondaryExactReviews,...thirdExactReviews]){
   const f=features[source],t=features[target];assert.ok(t.properties.Type==='POLITY'&&t.properties.FromYear<=from&&t.properties.ToYear>=to&&parts.length===winners.length);
   for(const [i,part] of parts.entries()){
    const hash=componentHash(rawParts(f)[part]);assert.equal(hash,componentHash(rawParts(t)[winners[i]]));
@@ -834,7 +913,12 @@ export function normalizeHistoricalSource(source) {
   const derivedExclusions=deriveConfirmedOverlapExclusions(source.features);
   // Small synthetic fixtures do not contain the pinned source indices.
   const batch=source.features.length>Math.max(...territorialBatch.rows.map(r=>Math.max(r.source,r.other)))?deriveTerritorialBatch(source.features):{exclusions:[],pending:[],resolved:[],restorations:[],relabels:new Map(),attributions:[],count:0};
-  if(batch.count){const secondary=deriveSecondaryTerritorialReviews(source.features);for(const key of ['exclusions','pending','restorations','attributions'])batch[key].push(...secondary[key]);}
+  if(batch.count){const secondary=deriveSecondaryTerritorialReviews(source.features);for(const key of ['exclusions','pending','restorations','attributions'])batch[key].push(...secondary[key]);
+   // The old opposing claims remain excluded; the reconstructed three-part
+   // island replaces the unresolved footprint, not either original owner.
+   assert.equal(batch.pending.filter(p=>p.group==='Эльба'&&p.from===1797&&p.to===1798).length,2);
+   batch.pending=batch.pending.filter(p=>!(p.group==='Эльба'&&p.from===1797&&p.to===1798));
+  }
   derivedExclusions.push(...batch.exclusions);
   const pendingBySource=new Map();
   const attributionsBySource=new Map();
@@ -968,6 +1052,18 @@ export function normalizeHistoricalSource(source) {
    delete restored.territorialIssues;delete restored.territorialAttributions;
    records.push(restored);counts.reviewedNames++;
   }
+  if(batch.count){
+   const d=elba1797Partition,raw=source.features[d.source],origin=records.find(r=>r.sourceIndex===d.source&&r.from<=d.from&&r.to>=d.from);
+   assert.ok(origin);assert.equal(componentHash(rawParts(raw)[d.part]),'c440529d0c7fde4ec1dbf13983ef01d0c128f86661e64156915318dd023a27c8');
+   const outline={type:'MultiPolygon',coordinates:[d.outline]},outlineGeometryId=sha256(JSON.stringify(outline));geometries.set(outlineGeometryId,outline);
+   for(const [area,geometry] of buildElbaPartition().entries()){
+    validateGeometry(geometry);const geometryId=sha256(JSON.stringify(geometry));geometries.set(geometryId,geometry);
+    const [entity,name,nameRu]=d.areas[area];
+    const restored={...origin,id:identity('historical-map-partition',entity,d.from,d.to,geometryId),entityId:identity('reviewed-territory',entity),name,nameRu,role:'polity',nameStatus:'reviewed',geometryStatus:'candidate',geometryId,sourceGeometryId:sha256(JSON.stringify(raw.geometry)),geometryRepair:'reviewed-map-partition',geometryParts:[{index:d.source,part:d.part}],mapPartition:{area,outlineGeometryId,evidence:d.sources[0]},from:d.from,to:d.to,editorialRestoration:true,components:[],memberOf:[],sourceComponents:origin.sourceComponents??origin.components,sourceMemberOf:origin.sourceMemberOf??origin.memberOf,review:{reason:'Approximate manual digitization from the Tuscan historical atlas, section 8.19; modern generalized coastline, not a historical cadastral survey.',reasonRu:'Приблизительная оцифровка трёх владений по историческому атласу Тосканы (раздел 8.19, с. 114) с генерализованной современной береговой линией. Не является точной исторической кадастровой съёмкой. Британцы эвакуировались в 1797 году.',sources:d.sources}};
+    delete restored.territorialIssues;delete restored.territorialAttributions;delete restored.geometrySubtractions;delete restored.geometryTemporalWitnesses;
+    records.push(restored);counts.reviewedNames++;
+   }
+  }
   // A separate, explicitly approximate cartographic supplement for absent
   // independent island states. Never substitute modern boundaries wholesale.
   // Verify every applicable dated candidate has no intersecting land polygon.
@@ -1061,7 +1157,7 @@ export function normalizeHistoricalSource(source) {
   }
   counts.revisions = records.length;
   counts.rejectedRevisions=records.filter(r=>r.geometryStatus==='rejected').length;
-  const geometryReferences=r=>[r.geometryId,...(r.boundaryAdjustment?[r.boundaryAdjustment.baseGeometryId,...r.boundaryAdjustment.cuts.map(c=>c.cutGeometryId)]:[]),...(r.datedGeography?[r.datedGeography.outlineGeometryId,...r.datedGeography.trimGeometryIds]:[]),...(r.territorialIssues??[]).map(i=>i.geometryId)];
+  const geometryReferences=r=>[r.geometryId,...(r.mapPartition?[r.mapPartition.outlineGeometryId]:[]),...(r.boundaryAdjustment?[r.boundaryAdjustment.baseGeometryId,...r.boundaryAdjustment.cuts.map(c=>c.cutGeometryId)]:[]),...(r.datedGeography?[r.datedGeography.outlineGeometryId,...r.datedGeography.trimGeometryIds]:[]),...(r.territorialIssues??[]).map(i=>i.geometryId)];
   const used=new Set(records.flatMap(geometryReferences));for(const id of geometries.keys())if(!used.has(id))geometries.delete(id);
   counts.uniqueGeometries = geometries.size;
   return {records,geometries,counts};
@@ -1075,7 +1171,7 @@ export function buildHistoricalTimeline(source, sourceHash, outDir) {
     const from = historicalYearFromOrdinal(ordinal);
     const to = historicalYearFromOrdinal(end);
     const active = records.filter(r => r.from <= to && r.to >= from);
-    const ids = [...new Set(active.flatMap(r=>[r.geometryId,...(r.boundaryAdjustment?[r.boundaryAdjustment.baseGeometryId,...r.boundaryAdjustment.cuts.map(c=>c.cutGeometryId)]:[]),...(r.datedGeography?[r.datedGeography.outlineGeometryId,...r.datedGeography.trimGeometryIds]:[]),...(r.territorialIssues??[]).map(i=>i.geometryId)]))].sort();
+    const ids = [...new Set(active.flatMap(r=>[r.geometryId,...(r.mapPartition?[r.mapPartition.outlineGeometryId]:[]),...(r.boundaryAdjustment?[r.boundaryAdjustment.baseGeometryId,...r.boundaryAdjustment.cuts.map(c=>c.cutGeometryId)]:[]),...(r.datedGeography?[r.datedGeography.outlineGeometryId,...r.datedGeography.trimGeometryIds]:[]),...(r.territorialIssues??[]).map(i=>i.geometryId)]))].sort();
     const coverageGaps={};
     for(let year=Math.max(1960,from);year<=to;year++){
       const gaps=referenceAdmissionWarnings(year,active.filter(r=>r.role==='polity'&&r.geometryStatus!=='rejected'&&r.from<=year&&r.to>=year).map(r=>r.name));

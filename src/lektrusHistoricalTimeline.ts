@@ -12,7 +12,8 @@ export type HistoricalRevision = {
   sourceRole?: 'polity';
   components: string[]; memberOf: string[]; sourceSeshatId: string; sourceWikipedia: string;
   sourceComponents?: string[]; sourceMemberOf?: string[];
-  sourceGeometryId?: string; geometryRepair?: 'retracted-zero-area-interior-edges' | 'reviewed-source-components' | 'reviewed-union-source-components' | 'reviewed-difference-source-components';
+  sourceGeometryId?: string; geometryRepair?: 'retracted-zero-area-interior-edges' | 'reviewed-source-components' | 'reviewed-union-source-components' | 'reviewed-difference-source-components' | 'reviewed-map-partition';
+  mapPartition?: {area:number;outlineGeometryId:string;evidence:string};
   geometryParts?: {index:number;part:number}[];
   geometryTemporalWitnesses?: {before:{index:number;part:number};after:{index:number;part:number};year:number;hash:string}[];
   /** Separate public-domain cartographic supplement, never a historical shoreline survey. */
@@ -88,7 +89,7 @@ export function historicalYearFeatureCollection(state: ReturnType<typeof histori
       historicalRole:record.role, historicalSourceRole:record.sourceRole, historicalComponents:record.components, historicalMemberOf:record.memberOf,
       historicalSourceComponents:record.sourceComponents,historicalSourceMemberOf:record.sourceMemberOf,
       sourceSeshatId:record.sourceSeshatId, sourceWikipedia:record.sourceWikipedia,
-      sourceGeometryId:record.sourceGeometryId, geometryRepair:record.geometryRepair,geometryParts:record.geometryParts,geometrySubtractions:record.geometrySubtractions,geometryTemporalWitnesses:record.geometryTemporalWitnesses,externalGeography:record.externalGeography,boundaryAdjustment:record.boundaryAdjustment,datedGeography:record.datedGeography,
+      sourceGeometryId:record.sourceGeometryId, geometryRepair:record.geometryRepair,geometryParts:record.geometryParts,geometrySubtractions:record.geometrySubtractions,geometryTemporalWitnesses:record.geometryTemporalWitnesses,externalGeography:record.externalGeography,boundaryAdjustment:record.boundaryAdjustment,datedGeography:record.datedGeography,mapPartition:record.mapPartition,
       year:state.year, nameStatus:record.nameStatus, geometryStatus:record.geometryStatus,
       review:record.review,editorialRestoration:record.editorialRestoration,territorialAttributions:record.territorialAttributions?.filter(i=>i.from<=state.year&&i.to>=state.year)},
   }))};
@@ -117,9 +118,10 @@ export function validateHistoricalPack(value: unknown, block: HistoricalBlock): 
     const geometry = pack.geometries[record.geometryId];
     if (!['polity','composite','relation','settlement'].includes(record.role)||!Array.isArray(record.components)||!Array.isArray(record.memberOf)||![...record.components,...record.memberOf].every(n=>typeof n==='string'&&n.length>0)||(['polity','settlement'].includes(record.role)?record.components.length!==0:!record.components.length)) throw new Error('Invalid historical layer classification');
     if((record.role==='settlement'&&record.sourceRole!=='polity')||(record.role!=='settlement'&&record.sourceRole!==undefined))throw new Error('Invalid historical source role provenance');
-    if (record.sourceGeometryId && (!hash.test(record.sourceGeometryId) || record.sourceGeometryId===record.geometryId || !['retracted-zero-area-interior-edges','reviewed-source-components','reviewed-union-source-components','reviewed-difference-source-components'].includes(record.geometryRepair??''))) throw new Error('Invalid historical repair provenance');
+    if (record.sourceGeometryId && (!hash.test(record.sourceGeometryId) || record.sourceGeometryId===record.geometryId || !['retracted-zero-area-interior-edges','reviewed-source-components','reviewed-union-source-components','reviewed-difference-source-components','reviewed-map-partition'].includes(record.geometryRepair??''))) throw new Error('Invalid historical repair provenance');
     const validParts=(parts:HistoricalRevision['geometryParts'])=>Array.isArray(parts)&&parts.length>0&&parts.every(p=>Number.isSafeInteger(p.index)&&p.index>=0&&Number.isSafeInteger(p.part)&&p.part>=0);
-    if(['reviewed-source-components','reviewed-union-source-components','reviewed-difference-source-components'].includes(record.geometryRepair??'')&&(!record.sourceGeometryId||!validParts(record.geometryParts)||!record.review?.sources.length))throw new Error('Invalid historical component provenance');
+    if(['reviewed-source-components','reviewed-union-source-components','reviewed-difference-source-components','reviewed-map-partition'].includes(record.geometryRepair??'')&&(!record.sourceGeometryId||!validParts(record.geometryParts)||!record.review?.sources.length))throw new Error('Invalid historical component provenance');
+    if(record.geometryRepair==='reviewed-map-partition'){const p=record.mapPartition;if(!p||!Number.isSafeInteger(p.area)||p.area<0||p.area>2||!hash.test(p.outlineGeometryId)||pack.geometries[p.outlineGeometryId]?.type!=='MultiPolygon'||!p.evidence.startsWith('https://')||!record.review?.sources.includes(p.evidence)||!record.editorialRestoration)throw new Error('Invalid historical map partition provenance');}else if(record.mapPartition!==undefined)throw new Error('Unexpected historical map partition');
     if(record.geometryRepair==='reviewed-difference-source-components'?!validParts(record.geometrySubtractions):record.geometrySubtractions!==undefined)throw new Error('Invalid historical subtraction provenance');
     if(record.geometryTemporalWitnesses!==undefined&&(!Array.isArray(record.geometryTemporalWitnesses)||!record.geometryTemporalWitnesses.length||record.geometryRepair!=='reviewed-union-source-components'||record.geometryTemporalWitnesses.some(w=>!w||!validParts([w.before,w.after])||w.before.index===w.after.index||w.year!==record.from||w.year!==record.to||!hash.test(w.hash)||!record.geometryParts?.some(p=>p.index===w.before.index&&p.part===w.before.part))))throw new Error('Invalid historical temporal witness');
     if(record.externalGeography!==undefined){
@@ -134,7 +136,7 @@ export function validateHistoricalPack(value: unknown, block: HistoricalBlock): 
       if(record.territorialIssues.some(i=>i.sources!==undefined&&(!Array.isArray(i.sources)||!i.sources.length||i.sources.some(s=>typeof s!=='string'||!s.startsWith('https://')))))throw new Error('Invalid unresolved historical evidence sources');
     }
     if(record.territorialAttributions!==undefined&&(!Array.isArray(record.territorialAttributions)||record.territorialAttributions.some(i=>!Number.isSafeInteger(i.part)||i.part<0||!hash.test(i.hash)||!validHistoricalYear(i.from)||!validHistoricalYear(i.to)||i.from>i.to||i.from>record.to||i.to<record.from||!i.group||!i.reason||!Array.isArray(i.sources)||!i.sources.length||i.sources.some(s=>!s.startsWith('https://')))))throw new Error('Invalid reviewed territorial attribution');
-    if(record.editorialRestoration!==undefined&&(record.editorialRestoration!==true||record.role!=='polity'||record.geometryStatus!=='candidate'||record.nameStatus!=='reviewed'||record.geometryRepair!=='reviewed-source-components'||!record.review?.sources.length))throw new Error('Invalid editorial restoration');
+    if(record.editorialRestoration!==undefined&&(record.editorialRestoration!==true||record.role!=='polity'||record.geometryStatus!=='candidate'||record.nameStatus!=='reviewed'||!['reviewed-source-components','reviewed-map-partition'].includes(record.geometryRepair??'')||!record.review?.sources.length))throw new Error('Invalid editorial restoration');
     if ((record.geometryStatus === 'rejected' || record.nameStatus === 'reviewed'||record.sourceRole||record.sourceComponents||record.sourceMemberOf) && (!record.review?.reason || !record.review.sources.length)) throw new Error('Unattributed historical correction');
     recordIds.add(record.id);
   }
