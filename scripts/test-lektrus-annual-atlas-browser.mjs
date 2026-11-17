@@ -7,7 +7,7 @@ import {createRequire} from 'node:module';
 import {createHash} from 'node:crypto';
 import {historicalBlockForYear,historicalYearState} from '../src/lektrusHistoricalTimeline.ts';
 import {historicalGapLocators} from '../src/lektrusHistoricalGapLocators.ts';
-import {historicalUnresolvedCenters,historicalUnresolvedRegions} from '../src/lektrusHistoricalUnresolvedCenters.ts';
+import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 function planAnnualYears(registry,shard,shards){
  const years=[];
  for(const period of registry.periods)for(let year=period.to;year>=period.from;year--)if(year!==0)years.push({year,weight:20+period.records});
@@ -186,7 +186,7 @@ async function main(){
      const expectedLocators=state.coverageGaps.flatMap(g=>historicalGapLocators[g.name]?[historicalGapLocators[g.name].iso]:[]).sort();
      const actualLocators=await page.locator('[data-atlas-gap-locator]').evaluateAll(nodes=>nodes.map(n=>n.dataset.atlasGapLocator).sort());
      if(JSON.stringify(actualLocators)!==JSON.stringify(expectedLocators))row.issues.push({kind:'wrong-gap-locators',expected:expectedLocators,actual:actualLocators});
-     const centers=historicalUnresolvedCenters(year,state.territorialIssues);
+     const centers=[...historicalUnresolvedCenters(year,state.territorialIssues),...historicalTreatyPortCenters(year)];
      const actualCenters=await page.locator('[data-atlas-historical-center]').evaluateAll(nodes=>nodes.map(n=>n.dataset.atlasHistoricalCenter).sort());
      if(JSON.stringify(actualCenters)!==JSON.stringify(centers.map(c=>c.id).sort()))row.issues.push({kind:'wrong-historical-center-locators',expected:centers.map(c=>c.id),actual:actualCenters});
      row.historicalCenters=[];

@@ -5,7 +5,7 @@ import polygonClipping from 'polygon-clipping';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,historicalTitleCorrections,secondaryExactReviews,thirdExactReviews,fourthExactReviews,fifthExactReviews,sixthExactReviews,provisionalExactReviews,exactConflictPendingReviews,exactConflictGroupPrefix,elba1797Partition,buildElbaPartition,earlyComorosRoutes,earlyComorosHashes} from './build-lektrus-historical-timeline.mjs';
-import {historicalUnresolvedCenters,historicalUnresolvedRegions} from '../src/lektrusHistoricalUnresolvedCenters.ts';
+import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
 import {createHistoricalTimelineLoader} from '../src/lektrusHistoricalTimelineLoader.ts';
@@ -158,6 +158,10 @@ if(outDir&&sourceFile){
   const ringArea=r=>Math.abs(r.slice(1).reduce((a,p,i)=>a+r[i][0]*p[1]-p[0]*r[i][1],0))/2;
   const area=g=>g.reduce((a,p)=>a+ringArea(p[0])-p.slice(1).reduce((s,r)=>s+ringArea(r),0),0);
   const bounds=p=>p[0].reduce((a,[x,y])=>[Math.min(a[0],x),Math.min(a[1],y),Math.max(a[2],x),Math.max(a[3],y)],[Infinity,Infinity,-Infinity,-Infinity]);
+  const tianjinSourceNames=new Set(['French Indochina','British Colonial Empire','United States of America','German Empire','Empire of Japan','Russian Empire','Kingdom of Belgium','Kingdom of Italy','Austria-Hungary']);
+  const tianjinCells=original.flatMap(({f,index})=>{const {Name:name,FromYear:from,ToYear:to,Components:components}=f.properties;if(!tianjinSourceNames.has(name)||components||to<1860||from>1946)return [];return (f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates).flatMap((p,part)=>{const [x,y,X,Y]=bounds(p);return x>116.5&&X<118.3&&y>38.5&&Y<40.2&&!(name==='Empire of Japan'&&y<39)?[{index,from,to,part,p,hash:componentHash(p)}]:[];});});
+  assert.equal(tianjinCells.length,121);
+  let tianjinClosed=0,tianjinOpen=0;
   const intersect=(a,b)=>{try{return polygonClipping.intersection(a,b);}catch(e){const snap=p=>p.map(r=>r.map(([x,y])=>[Math.round(x*1e7)/1e7,Math.round(y*1e7)/1e7]));return polygonClipping.intersection(snap(a),snap(b));}};
   assert.equal(manifest.counts.sourcePolities+manifest.counts.sourceComposites+manifest.counts.sourceRelations,original.length);
   const sourceHashes=new Map(original.map(({f,index})=>[index,sha256(JSON.stringify(f.geometry))]));
@@ -326,15 +330,29 @@ if(outDir&&sourceFile){
         }
         for(const {record:o} of [...state.drawable,...state.overlays].filter(({record})=>/British Empire|British Colonial Empire/.test(record.name)))assert.ok(!capitalInsideCountry([55.45,-20.88],pack.geometries[o.geometryId]),`Bourbon still British ${year}/${o.sourceIndex}`);
       }
-      if(year>=1860&&year<=1945){
-        const unresolved=state.territorialIssues.filter(i=>i.group==='Тяньцзинь — концессия');assert.equal(unresolved.length,1);
-        const issue=unresolved[0],b=bounds(issue.geometry.coordinates);assert.ok(b[0]>116&&b[2]<118&&b[1]>39.2&&b[3]<40);assert.ok(!capitalInsideCountry([117.2,39.13],issue.geometry));assert.ok(issue.sources.length>=2);
-        assert.ok(!hasPart(activeRecords.get(issue.sourceIndex),issue.sourceIndex,issue.part));
-        for(const {geometry} of [...state.drawable,...state.overlays].filter(({record})=>record.name.includes('French')))assert.ok(!geometry.coordinates.some(p=>componentHash(p)===issue.hash),`False concession ${year}`);
+      if(year>=1860&&year<=1946){
+        const unresolved=state.territorialIssues.filter(i=>i.group==='Тяньцзинь — концессия');
+        const cells=tianjinCells.filter(c=>c.from<=year&&year<=c.to),owner=year<=1899||year>=1903&&year<=1911?'Qing Dynasty':year>=1912&&year<=1915||year>=1930&&year<=1935||year===1946?'Republic of China':year>=1928&&year<=1929?'Kuomintang':year>=1938&&year<=1944?'Empire of Japan':null;
+        for(const c of cells){
+          // A transferred component can belong to a regional owner, but never
+          // to its original concession row or any unrelated aggregate.
+          const r=activeRecords.get(c.index);assert.ok(!hasPart(r,c.index,c.part)||r.sourceName===owner&&r.geometryParts?.some(p=>p.index!==c.index),`False concession ${c.index}/${year}`);
+          const issue=unresolved.find(i=>i.sourceIndex===c.index&&i.part===c.part);
+          if(issue){tianjinOpen++;assert.equal(issue.hash,c.hash);assert.ok(issue.sources.length>=3);}
+          else{tianjinClosed++;assert.ok(owner);const regional=state.drawable.filter(({record})=>record.sourceName===owner);assert.ok(regional.length);const b=bounds(c.p),local=regional.flatMap(({record})=>parts(record.geometryId).filter(([a])=>a[0]<b[2]&&a[2]>b[0]&&a[1]<b[3]&&a[3]>b[1]).map(([,p])=>p));assert.ok(local.length);assert.equal(polygonClipping.difference(c.p,...local).length,0,`Uncovered Tianjin ${c.index}/${year}`);}
+          const b=bounds(c.p);for(const {record} of [...state.drawable,...state.overlays])if(tianjinSourceNames.has(record.sourceName)||record.role==='composite')if(record.sourceName!==owner)assert.ok(!parts(record.geometryId).some(([a,p])=>a.every((v,i)=>v===b[i])&&componentHash(p)===c.hash),`False concession in ${record.sourceIndex}/${year}`);
+        }
+        assert.ok(unresolved.every(i=>cells.some(c=>c.index===i.sourceIndex&&c.part===i.part)));
       }
       if(year===1859){
         const unresolved=state.territorialIssues.filter(i=>i.group==='Кохинхина — кампания 1859 года');assert.deepEqual(unresolved.map(i=>i.part).sort((a,b)=>a-b),[9,10]);assert.ok(unresolved.every(i=>i.sourceIndex===11657));
         const caledonia=activeRecords.get(11657);assert.ok([9,10].every(part=>!hasPart(caledonia,11657,part)));assert.ok(pack.geometries[caledonia.geometryId].coordinates.every(p=>bounds(p)[0]>160));
+      }
+      if(year>=1860&&year<=1886){
+        const early=sourceRecords.find(r=>r.sourceName==='French Indochina');assert.ok(early);
+        const expected=year<=1866?'French campaign in Cochinchina':year===1867?'French Cochinchina':year<=1884?'French Cochinchina and Cambodia (source aggregate)':'French possessions in Indochina (source aggregate)';assert.equal(early.name,expected);assert.equal(early.nameStatus,'reviewed');
+        for(const r of sourceRecords.filter(r=>r.role==='composite'&&r.sourceComponents?.includes('French Indochina')))assert.ok(r.components.includes(expected)&&!r.components.includes('French Indochina'));
+        if(year<=1866){const issues=state.territorialIssues.filter(i=>i.group==='Кохинхина — поэтапная уступка');assert.equal(issues.length,2);for(const issue of issues){assert.equal(early.geometryStatus,'rejected');assert.ok(!hasPart(early,issue.sourceIndex,issue.part));for(const {geometry,record} of state.overlays.filter(({record})=>record.name.includes('French')))assert.ok(!geometry.coordinates.some(p=>componentHash(p)===issue.hash),`Cochinchina false extent ${record.sourceIndex}/${year}`);}}
       }
       if(year>=1848&&year<=1957){
         const settlements=state.drawable.filter(({record})=>record.name==='French India');
@@ -344,12 +362,13 @@ if(outDir&&sourceFile){
           for(const p of geometry.coordinates){const b=bounds(p);assert.ok(b[0]>72&&b[2]<89&&b[1]>9&&b[3]<24);for(const {record:o} of [...state.drawable,...state.overlays].filter(({record})=>/British Empire|British Raj|Republic of India/.test(record.name))){let overlap=0;for(const [a,q] of parts(o.geometryId))if(a[0]<=b[2]&&a[2]>=b[0]&&a[1]<=b[3]&&a[3]>=b[1])overlap+=area(intersect(p,q));assert.ok(overlap<1e-5,`French India overlap ${year}/${o.sourceIndex}`);}}
         }
         const reunion=state.drawable.filter(({record})=>record.name.startsWith('Réunion (French'));assert.equal(reunion.length,1);assert.equal(reunion[0].record.name,year<1946?'Réunion (French colony)':'Réunion (French overseas department)');assert.ok(capitalInsideCountry([55.45,-20.88],reunion[0].geometry));
-        const nc=state.drawable.filter(({record})=>record.name==='New Caledonia');assert.equal(nc.length,year>=1856?1:0);if(year>=1860)assert.equal(nc[0].geometry.coordinates.length,3);
-        const kerguelen=state.drawable.filter(({record})=>record.name.startsWith('Kerguelen ('));assert.equal(kerguelen.length,year>=1895?1:0);if(kerguelen.length){assert.equal(kerguelen[0].record.name,year<1924?'Kerguelen (French possession)':year<1955?'Kerguelen (dependency of French Madagascar)':'Kerguelen (French Southern and Antarctic Lands)');assert.ok(capitalInsideCountry([70.22,-49.35],kerguelen[0].geometry));}
-        for(const {record,geometry} of state.drawable.filter(({record})=>record.name==='French Indochina'||['French Second Republic','Second French Empire','New Caledonia'].includes(record.name)&&!record.editorialRestoration)){
+        const nc=state.drawable.filter(({record})=>record.name==='New Caledonia');assert.equal(nc.length,year>=1853?1:0);if(nc.length){assert.equal(nc[0].geometry.coordinates.length,year<=1863?1:year===1864?2:3);assert.equal(Boolean(nc[0].record.datedGeography),year<1856);assert.ok(capitalInsideCountry([166.45,-22.27],nc[0].geometry));}
+        if(year>=1856&&year<=1864){const issues=state.territorialIssues.filter(i=>i.group==='Луайоте — местные вождества');assert.equal(issues.length,year<1864?2:1);for(const issue of issues){assert.ok(!hasPart(activeRecords.get(issue.sourceIndex),issue.sourceIndex,issue.part));assert.ok(issue.sources.length>=3);for(const {record,geometry} of [...state.drawable,...state.overlays])if(record.name.includes('French')||record.name==='New Caledonia')assert.ok(!geometry.coordinates.some(p=>componentHash(p)===issue.hash));}}
+        const kerguelen=state.drawable.filter(({record})=>record.name.startsWith('Kerguelen ('));assert.equal(kerguelen.length,year>=1893?1:0);if(kerguelen.length){assert.equal(kerguelen[0].record.name,year<1924?'Kerguelen (French possession)':year<1955?'Kerguelen (dependency of French Madagascar)':'Kerguelen (French Southern and Antarctic Lands)');assert.ok(capitalInsideCountry([70.22,-49.35],kerguelen[0].geometry));assert.equal(Boolean(kerguelen[0].record.datedGeography),year<1895);}
+        for(const {record,geometry} of state.drawable.filter(({record})=>!record.editorialRestoration&&!record.datedGeography&&['French Indochina','French Second Republic','Second French Empire','New Caledonia'].includes(record.sourceName))){
           assert.ok(!capitalInsideCountry([55.45,-20.88],geometry),`Réunion mislabeled ${year}/${record.sourceIndex}`);
           assert.ok(!geometry.coordinates.some(p=>{const b=bounds(p);return b[0]>72&&b[2]<89&&b[1]>9&&b[3]<24;}),`French India mislabeled ${year}/${record.sourceIndex}`);
-          if(record.name==='French Indochina'){assert.ok(!capitalInsideCountry([166.45,-22.27],geometry));assert.ok(!capitalInsideCountry([70.22,-49.35],geometry));}
+          if(record.sourceName==='French Indochina'){assert.ok(!capitalInsideCountry([166.45,-22.27],geometry));assert.ok(!capitalInsideCountry([70.22,-49.35],geometry));}
         }
         for(const {geometry} of state.overlays.filter(({record})=>record.sourceName==='(Vichy France)')){
           assert.ok(!capitalInsideCountry([79.80,11.86],geometry));assert.ok(!capitalInsideCountry([166.45,-22.27],geometry));if(year>=1942)assert.ok(!capitalInsideCountry([55.45,-20.88],geometry));
@@ -389,6 +408,17 @@ if(outDir&&sourceFile){
         assert.ok(state.territorialIssues.some(i=>i.sourceIndex===source&&i.hash===earlyComorosHashes[3]));
       }
       if(year===1842){assert.ok(!hasPart(activeRecords.get(11399),11399,8));assert.ok(!hasPart(activeRecords.get(11329),11329,1));assert.ok(state.drawable.some(({record})=>record.name==='Mayotte (cession treaty pending ratification)'));}
+      if(year>=1846&&year<=1974){
+        const source=sourceRecords.find(r=>r.sourceName===(year<1958?'French Africa':'French Fifth Republic'));assert.ok(source);
+        const raw=input.features[source.sourceIndex].geometry.coordinates,parts=earlyComorosHashes.map(h=>raw.findIndex(p=>componentHash(p)===h));assert.ok(parts.every(i=>i>=0));
+        const labels=year<1886?['Mayotte (French colony)','Mohéli (local rulers)','Anjouan (sultanate)',null]:year<1912?['Mayotte (French colony)','Mohéli (French protectorate)','Anjouan (French protectorate)','Grande Comore (French protectorate)']:Array(4).fill(year<1946?'Comoros (Madagascar dependencies)':year<1961?'Comoros (French overseas territory)':'Comoros (autonomous French overseas territory)');
+        for(const [i,part] of parts.entries()){
+          const h=earlyComorosHashes[i];assert.ok(!hasPart(source,source.sourceIndex,part));const owners=state.drawable.filter(({geometry})=>geometry.coordinates.some(p=>componentHash(p)===h));
+          if(labels[i]){assert.equal(owners.length,1,`Comoro owner ${year}/${i}`);assert.equal(owners[0].record.name,labels[i]);assert.ok(owners[0].record.editorialRestoration);assert.ok(owners[0].record.review.sources.length>=4);}
+          else{assert.equal(owners.length,0);assert.ok(state.territorialIssues.some(r=>r.sourceIndex===source.sourceIndex&&r.part===part&&r.group==='Коморы'));}
+          for(const {geometry,record} of state.overlays.filter(({record})=>/French|France/.test(record.sourceName)))if(year<1886&&i!==0||year>=1942&&record.sourceName==='(Vichy France)')assert.ok(!geometry.coordinates.some(p=>componentHash(p)===h),`Premature or outdated Comoro overlay ${year}/${i}`);
+        }
+      }
       if(year>=1840&&year<=1845)assert.ok(!hasPart(activeRecords.get(11329),11329,6),'Akaroa settlement is not French India');
       for(const item of batchByYear.get(year)??[]){
         const record=activeRecords.get(item.source);assert.ok(record,`Missing reviewed record ${item.source}/${year}`);
@@ -465,7 +495,7 @@ if(outDir&&sourceFile){
         if(year<=1581)assert.ok(!hasPart(activeRecords.get(7792),7792,7));
         if(year>=1521)assert.equal(activeRecords.get(7904).geometryStatus,'rejected');
       }else assert.equal(mindanaoIssues.length,0);
-      const expectedCenters=[...(year>=1521&&year<=1608?['maguindanao']:[]),...(year>=1521&&year<=1565?['butuan']:[]),...(year>=1579&&year<=1608?['buayan']:[]),...(year===1515?['malabang']:[]),...(year===1521?['kipit']:[]),...(year===1578?['butuan-1578']:[]),...(year>=1757&&year<=1767?['corte','bastia','saint-florent',year<1764?'algajola-genoa':year===1767?'algajola-1767':'algajola','ajaccio','calvi','bonifacio']:[]),...(year>=1757&&year<=1762?['cap-corse']:[]),...(year>=1677&&year<=1845?['iconi','itsandra','ntsudjini']:[]),...(year===1844?['moroni-1844','mitsamiouli-1844']:[]),...(year>=1641&&year<=1647?['melaka','linggi-estuary','kesang-estuary']:[])];
+      const expectedCenters=[...(year>=1521&&year<=1608?['maguindanao']:[]),...(year>=1521&&year<=1565?['butuan']:[]),...(year>=1579&&year<=1608?['buayan']:[]),...(year===1515?['malabang']:[]),...(year===1521?['kipit']:[]),...(year===1578?['butuan-1578']:[]),...(year>=1757&&year<=1767?['corte','bastia','saint-florent',year<1764?'algajola-genoa':year===1767?'algajola-1767':'algajola','ajaccio','calvi','bonifacio']:[]),...(year>=1757&&year<=1762?['cap-corse']:[]),...(year>=1677&&year<=1885?['iconi','itsandra','ntsudjini']:[]),...(year===1844?['moroni-1844','mitsamiouli-1844']:[]),...(year>=1641&&year<=1647?['melaka','linggi-estuary','kesang-estuary']:[])];
       if(year>=1641&&year<=1647){
         const issues=state.territorialIssues.filter(i=>i.group==='Малакка');
         assert.equal(issues.length,year<1645?1:2);
@@ -474,6 +504,12 @@ if(outDir&&sourceFile){
         if(year>=1645)assert.ok(!hasPart(activeRecords.get(8910),8910,10));
       }
       if(year===1640)assert.ok(hasPart(activeRecords.get(8866),8866,11));
+      if(year>=1612&&year<=1847){
+        const cell=input.features[8613].geometry.coordinates,b=bounds(cell),issue=state.territorialIssues.find(i=>i.group==='Давао — местные правители');assert.ok(issue&&issue.sourceIndex===8613&&issue.part===0&&issue.sources.length>=4);assert.equal(activeRecords.get(8613).geometryStatus,'rejected');
+        const spanish=[...state.drawable,...state.overlays].filter(({record})=>!record.editorialRestoration&&!record.datedGeography&&['Spanish Empire','(Spanish Empire)'].includes(record.sourceName));assert.equal(spanish.length,2,`Spanish Davao source layers ${year}`);
+        for(const {record} of spanish){assert.ok(record.geometrySubtractions?.some(p=>p.index===8613&&p.part===0));let overlap=0;for(const [a,p] of parts(record.geometryId))if(a[0]<b[2]&&a[2]>b[0]&&a[1]<b[3]&&a[3]>b[1])overlap+=area(intersect(p,cell));assert.ok(overlap<1e-10,`Spanish Davao overlap ${year}/${record.sourceIndex}`);}
+        expectedCenters.push('cotabato-late','buayan-late');if(year>=1620)expectedCenters.push(year<1844?'davao-local':'davao-cession');
+      }
       if(year>=1848&&year<=1852){
         const source=year===1848?8613:11490,cell=input.features[source].geometry.coordinates;
         assert.equal(activeRecords.get(source).geometryStatus,'rejected');
@@ -482,6 +518,9 @@ if(outDir&&sourceFile){
         assert.equal(polygonClipping.difference(cell,spain.geometry.coordinates).length,0);
         for(const entry of state.drawable)if(entry!==spain)assert.equal(polygonClipping.intersection(entry.geometry.coordinates,cell).length,0,`Davao overlaps ${entry.record.name}/${year}`);
       }
+      if(year===1859)expectedCenters.push('saigon-1859');
+      if(year>=1860&&year<=1861)expectedCenters.push('saigon-1860');
+      if(year>=1862&&year<=1866)expectedCenters.push('saigon-1862','bienhoa-1862','mytho-1862');
       if(year>=1641&&year<=1647)expectedCenters.push('malacca-fort');
       if(year===1641)expectedCenters.push('naning-1641','rembau-1641');
       if(year===1646)expectedCenters.push('rembau-1646');
@@ -495,7 +534,7 @@ if(outDir&&sourceFile){
       if(year===1639)expectedCenters.push('trincomalee-voc');
       if(year>=1640&&year<=1658)expectedCenters.push('galle-voc',year<1656?'colombo-portuguese':'colombo-voc',year<1658?'jaffna-portuguese':'jaffna-voc');
       const centers=historicalUnresolvedCenters(year,state.territorialIssues);
-      assert.deepEqual(centers.map(c=>c.id),expectedCenters.map(id=>`historical-center-${id}`));
+      assert.deepEqual(centers.map(c=>c.id).sort(),expectedCenters.map(id=>`historical-center-${id}`).sort());
       if(year>=1662&&year<=1664){
         const disputed=state.territorialIssues.find(i=>i.sourceIndex===9047&&i.part===0);
         assert.ok(disputed);
@@ -528,6 +567,7 @@ if(outDir&&sourceFile){
       for(const issue of state.territorialIssues.filter(i=>['Corsica','Эльба','Коморы','Малакка'].includes(i.group)))assert.ok(issue.sources?.length&&issue.sources.every(s=>s.startsWith('https://')));
       for(const c of centers){assert.ok(c.url.startsWith('https://'));assert.ok(c.description.includes('Точка'));assert.ok(Number.isFinite(c.lon)&&Math.abs(c.lon)<=180&&Number.isFinite(c.lat)&&Math.abs(c.lat)<=90);assert.equal(c.year,year);}
       assert.deepEqual(historicalUnresolvedCenters(year,[]),[]);
+      const treatyPorts=historicalTreatyPortCenters(year);assert.equal(treatyPorts.length,year>=1860&&year<=1946?1:0);if(treatyPorts.length){assert.equal(treatyPorts[0].id,'historical-center-tianjin-treaty-port');assert.ok(treatyPorts[0].description.includes('Точка'));assert.equal(treatyPorts[0].year,year);}
       if(year>=1629&&year<=1814){const kandy=state.drawable.filter(({record})=>record.name==='Kingdom of Kandy');assert.equal(kandy.length,1);assert.equal(kandy[0].record.nameRu,'Королевство Канди');assert.deepEqual(kandy[0].record.memberOf,[]);assert.ok(kandy[0].record.sourceMemberOf.length);}
       if(year>=1797&&year<=1884){
         const route=capeTerritoryRoutes.find(([source])=>input.features[source].properties.FromYear<=year&&input.features[source].properties.ToYear>=year);assert.ok(route);const [source,sierra,seychelles,gambia,goree]=route;
@@ -656,27 +696,28 @@ if(outDir&&sourceFile){
   }
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,541);assert.equal(batchPending,155);
-  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,1886);assert.equal(externalRecordYears,469);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
-  assert.equal(unresolvedSourceYears,540);assert.equal(unresolvedRegionYears,461);
+  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,2173);assert.equal(externalRecordYears,469);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
+  assert.equal(tianjinClosed,269);assert.equal(tianjinOpen,98);
+  assert.equal(unresolvedSourceYears,859);assert.equal(unresolvedRegionYears,780);
   assert.equal(fifthExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0),18);
   assert.equal(sixthExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0),2);
   assert.equal(exactConflictPendingReviews.length,8);
   assert.equal(unresolvedExactComponentYears,94);assert.equal(unresolvedExactSourceYears,188);
   const provisionalComponentYears=provisionalExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0);
   assert.equal(provisionalExactReviews.length,1);assert.equal(provisionalComponentYears,3);
-  assert.deepEqual(Object.fromEntries(Object.entries(territorialOpenByGroup).map(([g,v])=>[g,v.sourceYears])),{Mindanao:158,Corsica:22,'Коморы':173,'Малакка':10,'Горе — материковый контур':11,'Цейлон — война VOC':24,'Дения — материковый контур':9,'Сен-Мартен — раздел острова':33,'Тобаго — колониальные поселения':12,'Тяньцзинь — концессия':86,'Кохинхина — кампания 1859 года':2});
+  assert.deepEqual(Object.fromEntries(Object.entries(territorialOpenByGroup).map(([g,v])=>[g,v.sourceYears])),{Mindanao:158,Corsica:22,'Коморы':213,'Малакка':10,'Горе — материковый контур':11,'Цейлон — война VOC':24,'Дения — материковый контур':9,'Сен-Мартен — раздел острова':33,'Тобаго — колониальные поселения':12,'Тяньцзинь — концессия':98,'Кохинхина — кампания 1859 года':2,'Луайоте — местные вождества':17,'Кохинхина — поэтапная уступка':14,'Давао — местные правители':236});
   assert.equal(Object.values(exactOpenByGroup).reduce((sum,v)=>sum+v.componentYears,0),unresolvedExactComponentYears);
   assert.deepEqual(documentedCoreByGroup,{'cap-corse':8,'malacca-fort':7});
   const groupLinkIssues=rows.flatMap(r=>r.groupLinkWarnings??[]);
   console.log('Remaining group links:',JSON.stringify([...new Set(groupLinkIssues.map(i=>JSON.stringify(i)))].map(s=>JSON.parse(s))));
   assert.equal(new Set(groupLinkIssues.map(i=>JSON.stringify(i))).size,7);assert.equal(groupLinkIssues.length,29);
-  const auditLedger={territorial:{total:5195,resolved:5195-unresolvedSourceYears,open:unresolvedSourceYears,openRegionYears:unresolvedRegionYears,openByGroup:territorialOpenByGroup},exactPairs:{total:82,resolved:82-exactConflictPendingReviews.length,confirmed:82-exactConflictPendingReviews.length-provisionalExactReviews.length,provisional:provisionalExactReviews.length,provisionalComponentYears,open:exactConflictPendingReviews.length,openComponentYears:unresolvedExactComponentYears,openSourceYears:unresolvedExactSourceYears,openByGroup:exactOpenByGroup},partialReconstructions:{componentYears:Object.values(documentedCoreByGroup).reduce((a,b)=>a+b,0),byGroup:documentedCoreByGroup},groupLinks:{openGroups:new Set(groupLinkIssues.map(i=>JSON.stringify(i))).size,openAnnualOccurrences:groupLinkIssues.length}};
+  const auditLedger={territorial:{total:6486,resolved:6486-unresolvedSourceYears,open:unresolvedSourceYears,openRegionYears:unresolvedRegionYears,openByGroup:territorialOpenByGroup},exactPairs:{total:82,resolved:82-exactConflictPendingReviews.length,confirmed:82-exactConflictPendingReviews.length-provisionalExactReviews.length,provisional:provisionalExactReviews.length,provisionalComponentYears,open:exactConflictPendingReviews.length,openComponentYears:unresolvedExactComponentYears,openSourceYears:unresolvedExactSourceYears,openByGroup:exactOpenByGroup},partialReconstructions:{componentYears:Object.values(documentedCoreByGroup).reduce((a,b)=>a+b,0),byGroup:documentedCoreByGroup},groupLinks:{openGroups:new Set(groupLinkIssues.map(i=>JSON.stringify(i))).size,openAnnualOccurrences:groupLinkIssues.length}};
   console.log(`Historical audit ledger: ${JSON.stringify(auditLedger)}`);
   assert.equal(admissionWarnings,1,'Independent-state coverage must not regress');
   assert.deepEqual(rows.filter(r=>r.membershipWarnings?.length).map(r=>[r.year,...r.membershipWarnings.map(w=>w.name)]),[[1971,'United Arab Emirates']]);
   assert.equal(historicalGapLocators['United Arab Emirates'].iso,'ARE');
   assert.match(historicalGapLocators['United Arab Emirates'].historicalNote,/10 февраля 1972/);
-  assert.equal(datedRecordYears,57);assert.equal(checkedSupplementYears,125);
+  assert.equal(datedRecordYears,62);assert.equal(checkedSupplementYears,130);
   console.log(`Reviewed batch: ${batchReady} original corrections; ${batchResolved} newly resolved attributions; ${batchPending} open; ${extended} adjacent cases; ${restoredRecordYears} restored territory-years`);
   assert.equal(seen.size,manifest.counts.revisions);
   assert.equal(allGeometries.size,manifest.counts.uniqueGeometries);
@@ -796,7 +837,8 @@ if(outDir&&sourceFile){
   assert.ok(!partsAt(1935,12589).includes(37));
   assert.deepEqual(partsAt(1407,6167),[1,2,3,4]);
   assert.ok(!partsAt(1961,13161).includes(13)&&partsAt(1961,13161).includes(15));
-  assert.equal(partsAt(1825,11140),undefined);
+  assert.deepEqual(partsAt(1825,11140),Array.from({length:43},(_,i)=>i));
+  assert.ok(revisionAt(1825,11140).geometrySubtractions.some(p=>p.index===8613&&p.part===0));
   assert.ok(!partsAt(1826,11140).includes(1)&&!partsAt(1826,11140).includes(3)&&partsAt(1826,11140).includes(2));
   assert.ok(partsAt(1827,11140).includes(2)&&!partsAt(1828,11140).includes(2)&&partsAt(1828,11140).includes(6));
   assert.deepEqual(partsAt(1824,11074),[0,1]);

@@ -1516,6 +1516,8 @@ export function deriveColonialAndSalonaReviews(features,existingExclusions){
  const isReunion=p=>componentHash(p)===componentHash(rawParts(features[11464])[6]);
  const ncHashes=[0,1,3].map(part=>componentHash(rawParts(features[11576])[part]));
  const isNC=p=>ncHashes.includes(componentHash(p));
+ const loyalty=d('French military assertion of authority in the Loyalty Islands began on Lifou in 1864 and reached Maré in 1865. The 1853 declaration over New Caledonia and its dependencies did not establish effective control of these islands; local chiefly jurisdictions and exact borders remain unknown.','Установление французской власти на островах Луайоте началось с военной экспедиции на Лифу в 1864 г. и распространилось на Маре в 1865 г. Декларация 1853 г. о Новой Каледонии и её зависимостях не означает фактического контроля над этими островами; точное деление местных вождеств не установлено.',['https://www.unc.nc/wp-content/uploads/2021/11/Understanding-New-Caledonia-Web.pdf','https://www.persee.fr/doc/outre_0300-9513_1998_num_85_319_3652_t1_0174_0000_1','https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000000555817']);
+ const loyaltyDate=new Map([[ncHashes[0],1865],[ncHashes[2],1864]]);
  const kerguelenHashes=[12107,12155].map(i=>componentHash(rawParts(features[i])[0]));
  const restoreGroup=(source,parts,from,to,decision)=>{
   exclude(source,from,to,parts,decision);const coordinates=parts.map(part=>rawParts(features[source])[part]);
@@ -1535,7 +1537,39 @@ export function deriveColonialAndSalonaReviews(features,existingExclusions){
    groupLinks.push({target,from:start,to:end,name:decision.name,decision});
   }
  };
- let indianYears=0,reunionYears=0,ncYears=0,kerguelenYears=0;
+ // The next source series continues to aggregate the whole Comoro archipelago
+ // under French Africa, then metropolitan France, from 1846 until independence.
+ // Keep legal colonial status separate from actual island-level power.
+ const comoroAdministration='https://mjp.univ-perp.fr/constit/km1896.htm',comoroModern='https://mjp.univ-perp.fr/constit/km.htm',comoroFrance='https://www.diplomatie.gouv.fr/fr/priorites-et-actions/grands-dossiers/la-strategie-de-la-france-dans-lindopacifique/l-espace-indopacifique-une-priorite-pour-la-france/l-union-des-comores-et-mayotte';
+ const comoroDecision=(entity,name,nameRu,reason,reasonRu)=>({...d(reason,reasonRu,[comoroTreaties,comoroAdministration,comoroHistory,comoroModern,comoroFrance]),entity,name,nameRu});
+ const comoroLocal=[null,comoroDecision('historical-moheli','Mohéli (local rulers)','Мохели (местные правители)','Separate local island authority before the French protectorate treaty of 26 April 1886; this is an island outline, not a surveyed dynastic frontier.','Местные правители Мохели до договора о протекторате 26 апреля 1886 г.; контур острова не устанавливает точные пределы власти отдельных династий.'),comoroDecision('historical-anjouan','Anjouan (sultanate)','Анжуан (султанат)','Separate sultanate before the French protectorate treaty of 21 April 1886; this is a generalized coastline.','Отдельный султанат до договора о французском протекторате 21 апреля 1886 г.; береговой контур генерализован.')];
+ const mayotteColony=comoroDecision('historical-mayotte','Mayotte (French colony)','Майотта (французская колония)','France formally took possession in June 1843; Mayotte remained a colony distinct from the neighboring protectorates until the 1912 reorganization.','Франция официально вступила во владение в июне 1843 г.; Майотта оставалась колонией, отличной от соседних протекторатов, до реорганизации 1912 г.');
+ const protectorates=[mayotteColony,...[[1,'historical-moheli','Mohéli','Мохели','26 April','26 апреля'],[2,'historical-anjouan','Anjouan','Анжуан','21 April','21 апреля'],[3,'historical-ngazidja','Grande Comore','Нгазиджа','6 January','6 января']].map(([,entity,name,ru,date,dateRu])=>comoroDecision(entity,`${name} (French protectorate)`,`${ru} (французский протекторат)`,`The initial protectorate treaty was signed on ${date} 1886, with later complementary agreements and reorganizations; formal protectorate status, not uniform effective control.`,`Первоначальный договор о протекторате подписан ${dateRu} 1886 г.; последовали дополнительные соглашения и административные изменения. Показан юридический статус, не единообразный фактический контроль.`))];
+ const comoroColony=comoroDecision('comoros-colonial','Comoros (Madagascar dependencies)','Коморы (зависимости Мадагаскара)','The 1908 decree attached Mayotte and the protectorates to Madagascar; the 25 July 1912 law annexed the three protectorates. During WWII the archipelago was affected by the British intervention and Free French transition. Colonial jurisdiction, not precise military control.','Декрет 1908 г. подчинил Майотту и протектораты Мадагаскару; закон от 25 июля 1912 г. превратил три протектората в колонии. Во Вторую мировую войну архипелаг затронули британская операция и переход к Свободной Франции. Показана колониальная юрисдикция, не точные пределы военного контроля.');
+ const comoroTerritory=comoroDecision('comoros-colonial','Comoros (French overseas territory)','Коморы (заморская территория Франции)','The archipelago became a separate overseas territory under the 1946 law; internal autonomy followed in 1961.','В 1946 г. архипелаг стал самостоятельной заморской территорией Франции; в 1961 г. получил внутреннюю автономию.');
+ const comoroAutonomous={...comoroTerritory,name:'Comoros (autonomous French overseas territory)',nameRu:'Коморы (автономная заморская территория Франции)'};
+ const comoroUncertain=comoroDecision('historical-ngazidja','Grande Comore (local sultanates)','Нгазиджа (местные султанаты)','Several rival sultanates existed on Ngazidja before the 1886 protectorate; no year-specific territorial partition has been established.','На Нгазидже до договора 1886 г. существовали соперничающие местные султанаты; точное ежегодное разделение территории не установлено.');
+ const comoroOverlays=features.flatMap((f,target)=>f.properties.Components&&f.properties.ToYear>=1846&&f.properties.FromYear<=1974&&/French|France/.test(f.properties.Name)?[{target,f,parts:rawParts(f).flatMap((p,part)=>earlyComorosHashes.includes(componentHash(p))?[{part,hash:componentHash(p)}]:[])}]:[]).filter(x=>x.parts.length);
+ let comoroReviewed=0,comoroPending=0;
+ for(const [source,f] of features.entries()){
+  const {Name:name,FromYear:from,ToYear:to}=f.properties;if(to<1846||from>1974||!['French Africa','French Fifth Republic'].includes(name))continue;
+  const parts=earlyComorosHashes.map(h=>rawParts(f).findIndex(p=>componentHash(p)===h));assert.ok(parts.every(i=>i>=0),`Comoro source ${source}`);
+  const overlay=(selected,a,b,decision,local=false)=>{for(const {target,f,parts:overlayParts} of comoroOverlays){const start=Math.max(a,f.properties.FromYear),end=Math.min(b,f.properties.ToYear);if(start>end)continue;const matching=overlayParts.filter(p=>selected.some(i=>componentHash(rawParts(features[source])[i])===p.hash)).map(p=>p.part);if(!matching.length)continue;if(local||f.properties.Name==='(Vichy France)'&&start>=1942)exclude(target,start,end,matching,decision);else groupLinks.push({target,from:start,to:end,name:decision.name,decision});}};
+  const first=Math.max(from,1846),last=Math.min(to,1974);
+  for(const [a,b,mode] of [[first,Math.min(last,1885),'local'],[Math.max(first,1886),Math.min(last,1911),'protectorate'],[Math.max(first,1912),Math.min(last,1945),'colony'],[Math.max(first,1946),Math.min(last,1960),'territory'],[Math.max(first,1961),last,'autonomy']])if(a<=b){
+   if(mode==='local'){
+    for(let i=0;i<3;i++){const decision=i===0?mayotteColony:comoroLocal[i];restoreGroup(source,[parts[i]],a,b,decision);overlay([parts[i]],a,b,decision,i!==0);comoroReviewed+=b-a+1;}
+    uncertain(source,parts[3],a,b,'Коморы',comoroUncertain.reason,comoroUncertain.reasonRu,comoroUncertain.sources);overlay([parts[3]],a,b,comoroUncertain,true);comoroPending+=b-a+1;
+   }else if(mode==='protectorate'){
+    for(let i=0;i<4;i++){restoreGroup(source,[parts[i]],a,b,protectorates[i]);overlay([parts[i]],a,b,protectorates[i]);comoroReviewed+=b-a+1;}
+   }else{
+    const decision=mode==='colony'?comoroColony:mode==='territory'?comoroTerritory:comoroAutonomous;
+    restoreGroup(source,parts,a,b,decision);overlay(parts,a,b,decision);comoroReviewed+=4*(b-a+1);
+   }
+  }
+ }
+ assert.equal(comoroReviewed,476);assert.equal(comoroPending,40);
+ let indianYears=0,reunionYears=0,ncYears=0,kerguelenYears=0,loyaltyYears=0;
  for(const [source,f] of features.entries()){
   const {Name:name,FromYear:from,ToYear:to}=f.properties;
   if(from<1848||to>1957||!['French Second Republic','Second French Empire','New Caledonia','French Indochina'].includes(name))continue;
@@ -1563,31 +1597,86 @@ export function deriveColonialAndSalonaReviews(features,existingExclusions){
   if(reunionParts.length){assert.equal(reunionParts.length,1);reunionYears+=to-from+1;
    for(const [a,b,decision] of [[from,Math.min(to,1945),reunionDecision],[Math.max(from,1946),to,{...reunionDecision,name:'Réunion (French overseas department)',nameRu:'Реюньон (заморский департамент Франции)'}]])if(a<=b){restoreGroup(source,reunionParts,a,b,decision);links(source,reunionParts,a,b,decision,1942);}
   }
-  if(name==='French Indochina'&&ncParts.length){assert.equal(ncParts.length,3);ncYears+=3*(to-from+1);
-   for(const [a,b,decision] of [[from,Math.min(to,1945),ncDecision],[Math.max(from,1946),to,{...ncDecision,nameRu:'Новая Каледония (заморская территория Франции)'}]])if(a<=b){restoreGroup(source,ncParts,a,b,decision);links(source,ncParts,a,b,decision,1940);}
+  if(ncParts.length&&['New Caledonia','French Indochina'].includes(name)){
+   for(const part of ncParts){const start=loyaltyDate.get(componentHash(parts[part]));if(!start||from>=start)continue;const end=Math.min(to,start-1);loyaltyYears+=end-from+1;uncertain(source,part,from,end,'Луайоте — местные вождества',loyalty.reason,loyalty.reasonRu,loyalty.sources);
+    for(const target of frenchGroups){const g=features[target],a=Math.max(from,g.properties.FromYear),b=Math.min(end,g.properties.ToYear);if(a>b)continue;const remove=rawParts(g).flatMap((p,i)=>componentHash(p)===componentHash(parts[part])?[i]:[]);if(remove.length)exclude(target,a,b,remove,loyalty);}
+   }
+   if(name==='French Indochina'){assert.equal(ncParts.length,3);ncYears+=3*(to-from+1);
+    for(const [a,b,decision] of [[from,Math.min(to,1863),ncDecision],[Math.max(from,1864),Math.min(to,1864),ncDecision],[Math.max(from,1865),Math.min(to,1945),{...ncDecision,reason:ncDecision.reason+' '+loyalty.reason,reasonRu:ncDecision.reasonRu+' После установления колониального управления границы местных вождеств и фактический охват власти не показаны.',sources:[...ncDecision.sources,...loyalty.sources]}],[Math.max(from,1946),to,{...ncDecision,nameRu:'Новая Каледония (заморская территория Франции)'}]])if(a<=b){const selected=ncParts.filter(part=>(loyaltyDate.get(componentHash(parts[part]))??0)<=a);restoreGroup(source,selected,a,b,decision);links(source,selected,a,b,decision,1940);}
+   }
   }
   if(name==='French Indochina'&&kerguelenParts.length){assert.equal(kerguelenParts.length,1);kerguelenYears+=to-from+1;
    for(const [a,b,decision] of [[from,Math.min(to,1923),kerguelenDecision],[Math.max(from,1924),Math.min(to,1954),{...kerguelenDecision,name:'Kerguelen (dependency of French Madagascar)',nameRu:'Кергелен (владение Франции, под управлением Мадагаскара)'}],[Math.max(from,1955),to,{...kerguelenDecision,name:'Kerguelen (French Southern and Antarctic Lands)',nameRu:'Кергелен (Французские Южные и Антарктические территории)'}]])if(a<=b){restoreGroup(source,kerguelenParts,a,b,decision);links(source,kerguelenParts,a,b,decision,1942);}
   }
  }
- assert.equal(indianYears,540);assert.equal(reunionYears,110);assert.equal(ncYears,294);assert.equal(kerguelenYears,63);
- // The source cells north of the actual city of Tianjin cannot represent
- // the historically much smaller municipal concession along the Hai River.
- // Preserve the unresolved footprint and do not paint a fictitious colony.
- const tianjin=d('The French diplomatic archives document a municipal concession in Tianjin along the Hai River, with its 1861 lease regulations and later mapped extensions. The oversized source cell north of the city is neither its surveyed boundary nor part of Indochina.','Дипломатические архивы Франции документируют городскую концессию на реке Хайхэ, регламент аренды 1861 г. и более поздние планы расширения. Крупная исходная ячейка севернее города не соответствует её границе и не относится к Индокитаю.',['https://archivesdiplomatiques.diplomatie.gouv.fr/ark%3A/14366/tdp05kl67vqh','https://archivesdiplomatiques.diplomatie.gouv.fr/media/c280d180-2df1-4465-9d32-5b0670458caf.pdf']);
- const tianjinHashes=[11671,12208,12800,12910].map((i,j)=>componentHash(rawParts(features[i])[[11,13,13,13][j]]));
- let tianjinYears=0;
- for(const [source,f] of features.entries())if(f.properties.Name==='French Indochina'&&f.properties.FromYear>=1860&&f.properties.ToYear<=1945){
-  const {FromYear:from,ToYear:to}=f.properties;
-  const parts=rawParts(f).flatMap((p,i)=>tianjinHashes.includes(componentHash(p))?[i]:[]);assert.equal(parts.length,1,`Tianjin ${source}`);tianjinYears+=to-from+1;
-  uncertain(source,parts[0],from,to,'Тяньцзинь — концессия',tianjin.reason,tianjin.reasonRu,tianjin.sources);
+ assert.equal(indianYears,540);assert.equal(reunionYears,110);assert.equal(ncYears,294);assert.equal(kerguelenYears,63);assert.equal(loyaltyYears,17);
+ // All nine treaty-port concessions are misrepresented by oversized source
+ // cells. They were municipal administrations on the Hai River, not broad
+ // sovereign territories. Preserve original footprints as provenance; repair
+ // the underlying regional control only in independently documented years.
+ const tianjin=d('The nine Tianjin concessions were confined to an urban area along the Hai River. The oversized source footprints are not surveyed concession boundaries. For the world map, use the documented surrounding regional authority; the concessions themselves require a separate municipal-scale layer.','Девять концессий Тяньцзиня располагались в городской зоне вдоль Хайхэ, а не на десятках километров вокруг города. Исходные крупные ячейки не являются границами концессий. На мировой карте восстанавливается подтверждённая принадлежность окружающей территории; точные городские границы концессий требуют отдельного слоя.',['https://journals.open.tudelft.nl/iphs/article/download/2751/2962/','https://archivesdiplomatiques.diplomatie.gouv.fr/ark%3A/14366/tdp05kl67vqh','https://www.cambridge.org/core/journals/urban-history/article/multiimperial-dimensions-in-treatyport-tianjin-and-its-historiographical-significance/B0D546345E6077BF4C7AAD7872AC0399','https://history.state.gov/historicaldocuments/frus1928v02/d100','https://history.state.gov/historicaldocuments/frus1937v03/ch1subch3']);
+ const tianjinTransfer={...tianjin,group:'Тяньцзинь — фон',allowSourceOverlap:true};
+ const tianjinNames=new Set(['French Indochina','British Colonial Empire','United States of America','German Empire','Empire of Japan','Russian Empire','Kingdom of Belgium','Kingdom of Italy','Austria-Hungary']);
+ const box=p=>{let x=180,y=90,X=-180,Y=-90;for(const [a,b] of p[0]){x=Math.min(x,a);y=Math.min(y,b);X=Math.max(X,a);Y=Math.max(Y,b);}return [x,y,X,Y];};
+ const intersectsBox=(a,b)=>a[0]<b[2]&&a[1]<b[3]&&a[2]>b[0]&&a[3]>b[1];
+ const tianjinLocal=features.flatMap((f,source)=>{
+  const {Name:name,FromYear:from,ToYear:to}=f.properties;if(to<1860||from>1946||f.properties.Type!=='POLITY'||f.properties.Components)return [];
+  return rawParts(f).flatMap((p,part)=>{const b=box(p);if(!intersectsBox(b,[116.5,38.5,118.3,40.2]))return [];
+   const cell=tianjinNames.has(name)&&b[0]>116.5&&b[2]<118.3&&b[1]>38.5&&b[3]<40.2&&!(name==='Empire of Japan'&&b[1]<39);
+   return [{source,part,from,to,name,p,b,cell}];});
+ });
+ const tianjinCells=tianjinLocal.filter(c=>c.cell);assert.equal(tianjinCells.length,121);
+ const tianjinHashes=new Set(tianjinCells.map(c=>componentHash(c.p)));
+ assert.deepEqual(Object.fromEntries([...tianjinNames].map(n=>[n,tianjinCells.filter(c=>c.name===n).reduce((sum,c)=>sum+c.to-c.from+1,0)])),{'French Indochina':86,'British Colonial Empire':86,'United States of America':12,'German Empire':19,'Empire of Japan':40,'Russian Empire':34,'Kingdom of Belgium':36,'Kingdom of Italy':42,'Austria-Hungary':12});
+ for(const c of tianjinCells)exclude(c.source,c.from,c.to,[c.part],tianjin);
+ for(const [target,f] of features.entries())if(f.properties.Components&&f.properties.FromYear>=1860&&f.properties.ToYear<=1946){const parts=rawParts(f).flatMap((p,i)=>tianjinHashes.has(componentHash(p))?[i]:[]);if(parts.length)exclude(target,f.properties.FromYear,f.properties.ToYear,parts,tianjin);}
+ // Do not use the inaccurate source's Kuomintang label for the Beiyang
+ // period (1917–27), the wartime transition years, or the TPG (1900–02).
+ const tianjinOwner=y=>y<=1899||y>=1903&&y<=1911?'Qing Dynasty':y>=1912&&y<=1915||y>=1930&&y<=1935||y===1946?'Republic of China':y>=1928&&y<=1929?'Kuomintang':y>=1938&&y<=1944?'Empire of Japan':null;
+ const openRanges=new Map(),transferRanges=new Map();let tianjinResolved=0,tianjinPending=0;
+ for(let year=1860;year<=1946;year++){
+  const local=tianjinLocal.filter(c=>c.from<=year&&year<=c.to),cells=local.filter(c=>c.cell),owner=tianjinOwner(year),base=local.filter(c=>!c.cell&&c.name===owner);
+  const targets=new Set(base.map(c=>c.source));if(owner)assert.equal(targets.size,1,`Tianjin regional owner ${year}`);
+  const target=base[0]?.source;let covered=base.map(c=>c.p);
+  for(const c of cells){
+   const competition=local.some(o=>!o.cell&&o.name!==owner&&intersectsBox(c.b,o.b)&&polygonClipping.intersection(c.p,o.p).length);
+   if(!owner||competition){
+    tianjinPending++;const key=`${c.source}/${c.part}`,range=openRanges.get(key);
+    if(range&&range.to===year-1)range.to=year;
+    else{const issue={source:c.source,part:c.part,from:year,to:year,hash:componentHash(c.p),group:'Тяньцзинь — концессия',reason:`${tianjin.reasonRu} В этой редакции принадлежность исходной ячейки требует проверки переходного периода, конкурирующего контура или региональной власти.`,counterpartName:'Китай / иностранные концессии',evidence:tianjin.sources[0],sources:tianjin.sources,geometry:{type:'Polygon',coordinates:c.p}};openRanges.set(key,issue);pending.push(issue);}
+    continue;
+   }
+   tianjinResolved++;
+   if(!polygonClipping.difference(c.p,...covered).length)continue;
+   const key=`${c.source}/${c.part}/${target}`,range=transferRanges.get(key);
+   if(range&&range.to===year-1)range.to=year;
+   else{const entry={source:c.source,part:c.part,target,from:year,to:year,decision:tianjinTransfer};transferRanges.set(key,entry);transfers.push(entry);}
+   covered=polygonClipping.union(...covered,c.p);
+  }
  }
- assert.equal(tianjinYears,86);
- for(const target of frenchGroups){const f=features[target],parts=rawParts(f).flatMap((p,i)=>tianjinHashes.includes(componentHash(p))?[i]:[]);if(parts.length)exclude(target,f.properties.FromYear,f.properties.ToYear,parts,tianjin);}
+ assert.equal(tianjinResolved,269);assert.equal(tianjinPending,98);
  // The 1859 conquest of Saigon must not be confused with the later cession
  // of Cochinchina; this source has already painted most of the Mekong delta.
- const saigon=d('The French campaign began in 1858 and seized Saigon in 1859. The broader cession of Cochinchina occurred in stages in 1862 and 1867. The source extent cannot substantiate French control of these mainland areas in 1859, and neither belongs to New Caledonia.','Французская кампания началась в 1858 г., Сайгон был захвачен в 1859 г.; территориальные уступки Кохинхины происходили в 1862 и 1867 гг. Исходный контур не доказывает контроль Франции над всей обозначенной материковой областью в 1859 г.; ни одна из этих частей не относится к Новой Каледонии.',['https://archives-nationales-outre-mer.culture.gouv.fr/faire-une-recherche/indochine']);
+ const saigon=d('The French campaign began in 1858 and seized Saigon in 1859. The treaty of 5 June 1862 ceded the three eastern provinces and Poulo Condor; the three western provinces were annexed in June 1867, recognized by treaty in 1874. The identical source extent for 1859–1867 cannot substantiate French control of all these mainland areas before 1867.','Французская кампания началась в 1858 г., Сайгон был захвачен в 1859 г. По договору от 5 июня 1862 г. переданы три восточные провинции и Пуло-Кондор; три западные провинции аннексированы в июне 1867 г., уступка признана договором 1874 г. Одинаковый исходный контур 1859–1867 гг. не подтверждает контроль Франции над всей областью до 1867 г.',['https://mjp.univ-perp.fr/constit/vn1862.htm','https://archives-nationales-outre-mer.culture.gouv.fr/faire-une-recherche/indochine','https://www.musee-armee.fr/ExpoIndochine/pdf/MA_ExpoIndochine_Livretvisite.pdf']);
  for(const part of [9,10])uncertain(11657,part,1859,1859,'Кохинхина — кампания 1859 года',saigon.reason,saigon.reasonRu,saigon.sources);
+ for(const part of [9,10]){
+  const hash=componentHash(rawParts(features[11657])[part]);assert.equal(componentHash(rawParts(features[11671])[part]),hash);
+  uncertain(11671,part,1860,1866,'Кохинхина — поэтапная уступка',saigon.reason,saigon.reasonRu,saigon.sources);
+  for(const target of frenchGroups){const g=features[target],a=Math.max(1859,g.properties.FromYear),b=Math.min(1866,g.properties.ToYear);if(a>b)continue;const remove=rawParts(g).flatMap((p,i)=>componentHash(p)===hash?[i]:[]);if(remove.length)exclude(target,a,b,remove,saigon);}
+ }
+ // A small Davao Gulf cell is the only raw representation of the Sultanate
+ // of Maguindanao for 1612–1847 even though its principal centre was Cotabato.
+ // Spanish colonial claim and actual control must not be conflated here.
+ const davao=d('The Maguindanao and Buayan power centres were based in the lower and upper Pulangi valley; the source polygon instead lies in Davao Gulf. Davao contained local datus, and Dutch accounts recorded several rulers in the 1620s; Cotabato ceded Davao in 1844 but acknowledged by 1847 that the local datus no longer obeyed the sultan. Spanish effective conquest began in 1848. The source cell cannot establish a boundary for any of these authorities.','Центры Магинданао и Буаяна располагались в нижнем и верхнем течении Пуланги; исходная ячейка лежит в заливе Давао. Нидерландские сведения 1620-х гг. называют нескольких местных правителей. Султан Котабато уступил Давао в 1844 г., но к 1847 г. признал неподчинение местных дату; фактическое испанское завоевание началось в 1848 г. Контур не позволяет установить границы ни одной из этих властей.',['https://cpdo.davaocity.gov.ph/wp-content/uploads/2016/10/Vol1CLUP2013-202220151215084007.pdf','https://ecommons.cornell.edu/bitstream/handle/1813/57550/082.pdf?sequence=1andisAllowed%3Dy','https://publishing.cdlib.org/ucpressebooks/public/book/muslim-rulers-and-rebels-everyday-politics-and-armed-separatism-in-the-southern-philippines.html','https://davaocity.gov.ph/wp-content/uploads/2018/09/Davao-History.pdf']);
+ const davaoCell=rawParts(features[8613])[0];assert.equal(features[8613].properties.Name,'Sultanate of Maguindanao');assert.equal(componentHash(davaoCell),componentHash(rawParts(features[11490])[0]));
+ uncertain(8613,0,1612,1847,'Давао — местные правители',davao.reason,davao.reasonRu,davao.sources);
+ let spanishDavaoYears=0;
+ for(const [target,f] of features.entries())if(['Spanish Empire','(Spanish Empire)'].includes(f.properties.Name)&&f.properties.ToYear>=1612&&f.properties.FromYear<=1847){
+  const from=Math.max(1612,f.properties.FromYear),to=Math.min(1847,f.properties.ToYear);
+  if(!rawParts(f).some(p=>intersectsBox(box(p),box(davaoCell))&&polygonClipping.intersection(p,davaoCell).length))continue;
+  subtractions.push({target,source:8613,part:0,from,to,decision:davao});if(!f.properties.Components)spanishDavaoYears+=to-from+1;
+ }
+ assert.equal(spanishDavaoYears,236);
  const geneva=d('The Geneva accords replaced French Indochina with sovereign Cambodia and Laos and provisional Vietnamese regroupment zones. Residual French military presence was not French sovereign territory.','Женевские соглашения закрепили независимость Камбоджи и Лаоса, а во Вьетнаме — временные зоны перегруппировки. Оставшееся присутствие французских войск не означает суверенитет Франции.',['https://peacemaker.un.org/en/node/9753','https://www.cheminsdememoire.gouv.fr/fr/14-septembre-1956-les-francais-quittent-lindochine']);
  exclude(13129,1954,1955,[10,11],geneva);exclude(13137,1954,1955,[22,26],geneva);
  // The small source land cell in the Vietnamese interior is not a separate
@@ -1598,6 +1687,7 @@ export function deriveColonialAndSalonaReviews(features,existingExclusions){
 
 export function normalizeHistoricalSource(source) {
   assert.equal(source.type,'FeatureCollection');
+  const indochinaLabel=year=>year<=1866?['French campaign in Cochinchina','Французская кампания в Кохинхине']:year===1867?['French Cochinchina','Французская Кохинхина']:year<=1884?['French Cochinchina and Cambodia (source aggregate)','Французская Кохинхина и протекторат Камбоджа (сводный контур)']:year<=1886?['French possessions in Indochina (source aggregate)','Французские владения и протектораты в Индокитае (сводный контур)']:['French Indochina','Французский Индокитай'];
   const geometries = new Map(), records = [];
   const derivedExclusions=deriveConfirmedOverlapExclusions(source.features);
   // Small synthetic fixtures do not contain the pinned source indices.
@@ -1657,6 +1747,11 @@ export function normalizeHistoricalSource(source) {
     const entityId = identity('source-'+role, sourceName, sourceWikidata);
     const base = {entityId, geometryId, role,components,memberOf,sourceSeshatId:String(p.SeshatID??''),sourceWikipedia:String(p.Wikipedia??''), ...(geometryId!==sourceGeometryId?{sourceGeometryId,geometryRepair:'retracted-zero-area-interior-edges'}:{}),name: sourceName, sourceName, sourceWikidata, sourceIndex, sourceFrom, sourceTo, from, to, nameStatus:'candidate', geometryStatus:'candidate'};
     const addOne = revision => {
+      if(sourceName==='French Indochina'&&revision.to<1887){
+        const [name,nameRu]=indochinaLabel(revision.to);
+        revision={...revision,name,nameRu,nameStatus:'reviewed',review:{reason:[revision.review?.reason,'The Indochinese Union was established in 1887. Earlier source records represent a military campaign or earlier colonial possessions, not the later union.'].filter(Boolean).join(' '),reasonRu:[revision.review?.reasonRu,'Индокитайский союз учреждён в 1887 г.; ранние записи означают военную кампанию или предшествующие колониальные владения, а не союз. Сводный контур не устанавливает фактические пределы военного контроля.'].filter(Boolean).join(' '),sources:[...new Set([...(revision.review?.sources??[]),'https://mjp.univ-perp.fr/constit/vn1862.htm','https://blogs.loc.gov/international-collections/2018/03/early-european-resources-on-vietnam-at-the-library-of-congress/'])]}};
+      }
+      if(revision.to<1887&&revision.components.includes('French Indochina'))revision={...revision,sourceComponents:revision.sourceComponents??revision.components,components:revision.components.map(c=>c==='French Indochina'?indochinaLabel(revision.to)[0]:c)};
       const linked=(batch.groupLinks??[]).filter(t=>t.target===sourceIndex&&t.from<=revision.from&&t.to>=revision.to);
       if(linked.length){assert.equal(revision.role,'composite');revision={...revision,sourceComponents:revision.sourceComponents??revision.components,components:[...new Set([...revision.components,...linked.map(t=>t.name)])],review:{reason:[...new Set([revision.review?.reason,...linked.map(t=>t.decision.reason)].filter(Boolean))].join(' '),reasonRu:[...new Set([revision.review?.reasonRu,...linked.map(t=>t.decision.reasonRu)].filter(Boolean))].join(' '),sources:[...new Set([...(revision.review?.sources??[]),...linked.flatMap(t=>t.decision.sources)])]}};}
       const attribution=(attributionsBySource.get(sourceIndex)??[]).filter(issue=>issue.from<=revision.to&&issue.to>=revision.from);
@@ -1673,7 +1768,9 @@ export function normalizeHistoricalSource(source) {
       const transfer=matchingTransfers[0];
       const preserveCoastalParts=matchingTransfers.length>0&&matchingTransfers.every(t=>t.decision.preserveCoastalParts);
       if(transfer){
-        assert.notEqual(selection?.length,0);
+        // Italy's sole raw 1944 component was the false Tianjin footprint;
+        // its independently reviewed Elba transfer remains valid.
+        if(selection?.length===0)assert.ok(sourceIndex===12929&&revision.from===1944&&matchingTransfers.every(t=>t.decision.group==='Эльба'),`Empty transfer target ${sourceIndex}/${revision.from}`);
         selection=[...(selection??rawParts(feature).map((_,part)=>({index:sourceIndex,part}))),...matchingTransfers.map(t=>({index:t.source,part:t.part}))];
         const decisions=matchingTransfers.map(t=>t.decision);
         const witnesses=matchingTransfers.flatMap(t=>t.temporalWitness?[t.temporalWitness]:[]);
@@ -1693,9 +1790,10 @@ export function normalizeHistoricalSource(source) {
         assert.ok(revision.review?.sources.length);
         const coordinates=selection.map(({index,part})=>{const g=source.features[index].geometry;const polygons=g.type==='Polygon'?[g.coordinates]:g.coordinates;assert.ok(polygons[part]);return polygons[part]});
         if(transfer&&!preserveCoastalParts)for(let i=coordinates.length-matchingTransfers.length;i<coordinates.length;i++){
+          if(i===0)continue;
           const t=matchingTransfers[i-(coordinates.length-matchingTransfers.length)],previous=polygonClipping.union(...coordinates.slice(0,i)),overlap=polygonClipping.intersection(previous,coordinates[i]);
           if(t.decision.allowSourceOverlap){
-            assert.ok(['Давао','Сун — объединение','Индия — британская оккупация','Индия — передача поселений'].includes(t.decision.group));assert.ok(polygonClipping.difference(coordinates[i],previous).length,`Transfer must retain part outside previous geometry ${sourceIndex}`);if(t.decision.group==='Давао')assert.ok(overlap.length);
+            assert.ok(['Давао','Сун — объединение','Индия — британская оккупация','Индия — передача поселений','Тяньцзинь — фон'].includes(t.decision.group));assert.ok(polygonClipping.difference(coordinates[i],previous).length,`Transfer must retain part outside previous geometry ${sourceIndex}`);if(t.decision.group==='Давао')assert.ok(overlap.length);
           }else assert.equal(overlap.length,0,`Overlapping transfer ${sourceIndex}`);
         }
         const subtractions=matchingSubtractions.map(t=>({index:t.source,part:t.part}));
@@ -1710,6 +1808,7 @@ export function normalizeHistoricalSource(source) {
     };
     const add=revision=>{
       const cuts=new Set([revision.from,revision.to+1]);
+      if(sourceName==='French Indochina'||revision.components.includes('French Indochina'))for(const year of [1867,1868,1885,1887])if(revision.from<year&&revision.to>=year)cuts.add(year);
       for(const t of [...(batch.transfers??[]),...(batch.subtractions??[]),...(batch.groupRebuilds??[]),...(batch.groupLinks??[])])if(t.target===sourceIndex&&t.from<=revision.to&&t.to>=revision.from){cuts.add(Math.max(revision.from,t.from));cuts.add(Math.min(revision.to+1,t.to+1));}
       const sorted=[...cuts].sort((a,b)=>a-b);
       for(let i=0;i<sorted.length-1;i++)addOne({...revision,from:sorted[i],to:sorted[i+1]-1});
@@ -1749,7 +1848,9 @@ export function normalizeHistoricalSource(source) {
    const identitySource=d.identitySource===undefined?undefined:source.features[d.identitySource].properties;
    if(identitySource)assert.equal(identitySource.Name,d.identitySourceName??label.name);
    const restored={...origin,id:identity('restoration',r.source,r.hash,r.from,r.to,d.entity),entityId:identitySource?identity('source-polity',identitySource.Name,identitySource.Wikidata??''):identity(d.entityNamespace??'reviewed-territory',d.entity),name:label.name,nameRu:label.nameRu,role:'polity',nameStatus:'reviewed',geometryStatus:'candidate',geometryId,sourceGeometryId,geometryRepair:'reviewed-source-components',geometryParts:(r.parts??[r.part]).map(part=>({index:r.source,part})),from:r.from,to:r.to,editorialRestoration:true,components:[],memberOf:d.memberOf??[],sourceComponents:origin.sourceComponents??origin.components,sourceMemberOf:origin.sourceMemberOf??origin.memberOf,review:{reason:d.reason,reasonRu:d.reasonRu,sources:d.sources}};
-   delete restored.territorialIssues;delete restored.territorialAttributions;
+   // A moved component has its own reviewed source geometry. Do not inherit
+   // subtraction or date-witness metadata from the residual parent polygon.
+   delete restored.territorialIssues;delete restored.territorialAttributions;delete restored.geometrySubtractions;delete restored.geometryTemporalWitnesses;
    records.push(restored);counts.reviewedNames++;
   }
   if(batch.count){
@@ -1825,10 +1926,14 @@ export function normalizeHistoricalSource(source) {
     const saveGeometry=g=>{validateGeometry(g);const id=sha256(JSON.stringify(g));geometries.set(id,g);return id;};
     const un='https://www.un.org/en/about-us/growth-in-un-membership',decolonization='https://www.un.org/dppa/decolonization/en/history/former-trust-and-nsgts';
     const restitutions=[{index:11071,from:1816,name:'French India',nameRu:'Французская Индия (возвращённые поселения)',iso:'FRA',owners:[10983,10959,10953],parts:[5,6,7,8,9],initialParts:[7,9],sources:[INDIA_RESTITUTION,INDIA_OCCUPATION],note:'Пондишери и Чандернагор возвращены 4 декабря 1816 г., Карикал 13 января 1817 г., Маэ 22 февраля, Янаон 12 апреля.',restitution:true}];
-    for(const d of [...independenceTransitions,...restitutions]){
+    const colonialGaps=[
+     {index:11576,from:1853,name:'New Caledonia',nameRu:'Новая Каледония (французское владение)',iso:'NCL',parts:[1],owners:[],colonial:true,sources:['https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000000555817','https://mjp.univ-perp.fr/constit/nc1853.htm','https://www.unc.nc/wp-content/uploads/2021/11/Understanding-New-Caledonia-Web.pdf'],note:'24 сентября 1853 г. Франция объявила о присоединении Гранд-Тер. Показан юридический территориальный акт, не фактический охват управления над канакскими общинами. Луайоте не включены.'},
+     {index:12107,from:1893,name:'Kerguelen (French possession)',nameRu:'Кергелен (французское владение)',iso:'ATF',parts:[0],owners:[],colonial:true,restoredSuccessor:true,sources:['https://taaf.fr/actualite/2-janvier-1893-une-date-historique-pour-kerguelen/','https://taaf.fr/collectivites/presentation-des-territoires/les-iles-australes/'],note:'2 января 1893 г. Франция официально подтвердила суверенитет над архипелагом. Использован только островной компонент карты 1895 г., а не весь исходный агрегат Индокитая.'}
+    ];
+    for(const d of [...independenceTransitions,...restitutions,...colonialGaps]){
       const f=source.features[d.index],p=f.properties,to=p.FromYear-1;
       assert.ok(to>=d.from&&to-d.from<5);
-      const raw=polygons(f.geometry),sources=d.restitution?d.sources:[un,decolonization,...(d.sources??[])];
+      const raw=polygons(f.geometry),sources=d.restitution||d.colonial?d.sources:[un,decolonization,...(d.sources??[])];
       for(let year=d.from;year<=to;year++){
         const selectedParts=year===d.from&&d.initialParts?d.initialParts:d.parts??raw.map((_,i)=>i);
         const outline={type:'MultiPolygon',coordinates:selectedParts.map(i=>raw[i])},outlineGeometryId=saveGeometry(outline);
@@ -1858,9 +1963,9 @@ export function normalizeHistoricalSource(source) {
           const split=[...(r.from<year?[{...r,id:identity('before-dated-cut',r.id,year),to:year-1}]:[]),adjusted,...(r.to>year?[{...r,id:identity('after-dated-cut',r.id,year),from:year+1}]:[])];
           records.splice(i,1,...split);i+=split.length-1;
         }
-        const successor=records.find(r=>r.sourceIndex===d.index&&r.from<=p.FromYear&&r.to>=p.FromYear&&!r.editorialRestoration&&!r.datedGeography);
+        const successor=records.find(r=>r.sourceIndex===d.index&&r.from<=p.FromYear&&r.to>=p.FromYear&&Boolean(r.editorialRestoration)===Boolean(d.restoredSuccessor)&&(!d.restoredSuccessor||r.name===d.name)&&!r.datedGeography);
         assert.ok(successor);
-        records.push({id:identity(d.restitution?'dated-colonial-restitution':'dated-independence',d.index,year),entityId:successor.entityId,geometryId,role:'polity',components:[],memberOf:[],sourceSeshatId:String(p.SeshatID??''),sourceWikipedia:String(p.Wikipedia??''),sourceName:p.Name.trim(),sourceWikidata:p.Wikidata??'',sourceIndex:d.index,sourceFrom:p.FromYear,sourceTo:p.ToYear,from:year,to:year,name:d.namesByYear?.[year]?.[0]??d.name,nameRu:d.namesByYear?.[year]?.[1]??d.nameRu,nameStatus:'reviewed',geometryStatus:'candidate',datedGeography:{referenceYear:p.FromYear,outlineGeometryId,trimGeometryIds,parts:selectedParts},review:{reason:d.restitution?'Documented return of colonial settlements; generalized outline from first subsequent dated source, adjusted to avoid neighboring overlaps, not an exact contemporary boundary.':'Documented independent state or provisional administrative zone in the transition year; generalized outline from first subsequent dated source, adjusted to avoid neighboring overlaps, not an exact contemporary boundary.',reasonRu:`${d.restitution?'Возвращённые колониальные поселения':d.namesByYear||d.iso==='VNM'?'Административная зона':'Независимое государство'} в конце ${year} года. Контур основан на датированном источнике за ${p.FromYear} год и согласован с соседними полигонами; точная граница переходного года не подтверждена. ${d.note??''}`,sources}});
+        records.push({id:identity(d.colonial?'dated-colonial-possession':d.restitution?'dated-colonial-restitution':'dated-independence',d.index,year),entityId:successor.entityId,geometryId,role:'polity',components:[],memberOf:[],...(d.colonial?{sourceMemberOf:String(p.MemberOf??'').split(';').map(s=>s.trim()).filter(Boolean)}:{}),sourceSeshatId:String(p.SeshatID??''),sourceWikipedia:String(p.Wikipedia??''),sourceName:p.Name.trim(),sourceWikidata:p.Wikidata??'',sourceIndex:d.index,sourceFrom:p.FromYear,sourceTo:p.ToYear,from:year,to:year,name:d.namesByYear?.[year]?.[0]??d.name,nameRu:d.namesByYear?.[year]?.[1]??d.nameRu,nameStatus:'reviewed',geometryStatus:'candidate',datedGeography:{referenceYear:p.FromYear,outlineGeometryId,trimGeometryIds,parts:selectedParts},review:{reason:`${d.colonial?'Documented colonial claim over the island, not exact effective territorial control':d.restitution?'Documented return of colonial settlements':'Documented independent state or provisional administrative zone in the transition year'}; generalized outline from first subsequent dated source, adjusted to avoid neighboring overlaps, not an exact contemporary boundary.`,reasonRu:`${d.colonial?'Документированное французское владение':d.restitution?'Возвращённые колониальные поселения':d.namesByYear||d.iso==='VNM'?'Административная зона':'Независимое государство'} в конце ${year} года. Контур основан на датированном источнике за ${p.FromYear} год и согласован с соседними полигонами; точная граница переходного года не подтверждена. ${d.note??''}`,sources}});
         counts.reviewedNames++;
       }
     }
