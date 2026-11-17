@@ -7,7 +7,7 @@ import LectrisWorkspaceShell from "./LectrisWorkspaceShell";
 import { clearNotificationCache } from "./notificationsStore";
 import { clearAiBoardTransfer } from "./aiLocalStore";
 import { clearAccountAccessCache, getAccountAccess, getCachedAccountAccess, type AccountRole } from "./accountRoleStore";
-import { clearPendingBoardPath, clearPendingShare, initialRoute, parseRoute, pendingBoardPath, pendingSharePath, rememberBoardPath, rememberShareToken, type AppRoute } from "./routes";
+import { clearPendingBoardPath, clearPendingShare, initialRoute, nativeBoardPath, parseRoute, pendingBoardPath, pendingSharePath, rememberBoardPath, rememberShareToken, type AppRoute } from "./routes";
 import { redeemShareLink } from "./shareLinks";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
@@ -75,6 +75,7 @@ export default function App() {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     const goBackInsideLektrus = () => {
+      if(!window.dispatchEvent(new Event("lektrus:board-native-back",{cancelable:true})))return;
       const current = new URL(window.location.href);
       if (current.pathname !== "/" && current.pathname !== "/app") {
         window.history.pushState({}, "", "/app");
@@ -112,6 +113,7 @@ export default function App() {
     window.history[replace ? "replaceState" : "pushState"](null, "", appPath);
     const url = new URL(appPath, window.location.href);
     const next=parseRoute(url.pathname);
+    if(next.kind==="join")rememberShareToken(next.token);
     if(next.kind==="board")rememberBoardPath(next.boardId);
     setRoute(Capacitor.isNativePlatform()&&next.kind==="site"?{kind:"home"}:next);
   }, []);
@@ -225,9 +227,17 @@ export default function App() {
         return;
       }
       if(Capacitor.isNativePlatform()){
-        confirmationListener=await CapacitorApp.addListener("appUrlOpen",({url})=>{void processConfirmation(url).then(done=>{if(done&&alive)setAuthReady(true)})});
+        const processNativeUrl=async(url:string)=>{
+          const path=nativeBoardPath(url);
+          if(path){if(alive)navigate(path,true);return false;}
+          // A board invitation is not an authentication callback.
+          try {const parsed=new URL(url);if(parsed.protocol!=="ru.lektrus.board:"||parsed.hostname!=="auth"||parsed.pathname!=="/confirmed")return false;}
+          catch{return false;}
+          return processConfirmation(url);
+        };
+        confirmationListener=await CapacitorApp.addListener("appUrlOpen",({url})=>{void processNativeUrl(url).then(done=>{if(done&&alive)setAuthReady(true)})});
         const launch=await CapacitorApp.getLaunchUrl();
-        if(launch?.url&&await processConfirmation(launch.url)){if(alive)setAuthReady(true);return}
+        if(launch?.url&&await processNativeUrl(launch.url)){if(alive)setAuthReady(true);return}
       }
       await processConfirmation(window.location.href);
       const user=await getCurrentUser();

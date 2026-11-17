@@ -46,7 +46,7 @@ jobs:
       - name: Check native project
         run: npm run native:check
       - name: Build offline Lektrus web app
-        run: npm run build
+        run: npm run native:build
       - name: Require offline test identity in bundled JavaScript
         shell: bash
         run: |

@@ -15,9 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-      VITE_AUTH_REDIRECT_URL: ${{ vars.LEKTRUS_AUTH_REDIRECT_URL }}
+      VITE_LEKTRUS_API_ORIGIN: https://lektrus.ru
       LEKTRUS_SIGNING_STORE_BASE64: ${{ secrets.LEKTRUS_SIGNING_STORE_BASE64 }}
       LEKTRUS_SIGNING_STORE_PASSWORD: ${{ secrets.LEKTRUS_SIGNING_STORE_PASSWORD }}
       LEKTRUS_SIGNING_KEY_ALIAS: ${{ secrets.LEKTRUS_SIGNING_KEY_ALIAS }}
@@ -44,14 +42,8 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Verify native project
         run: npm run native:check
-      - name: Explain missing production connection
-        shell: bash
-        run: |
-          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
-            echo "::warning::Supabase build secrets are missing. This test APK runs in local-only mode; set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable account synchronization."
-          fi
       - name: Build bundled Lektrus
-        run: npm run build
+        run: npm run native:build
       - name: Sync Android native files
         run: npx cap sync android
       - name: Require persistent Android signing credentials
@@ -100,9 +92,7 @@ jobs:
     runs-on: macos-26-intel
     timeout-minutes: 45
     env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-      VITE_AUTH_REDIRECT_URL: ${{ vars.LEKTRUS_AUTH_REDIRECT_URL }}
+      VITE_LEKTRUS_API_ORIGIN: https://lektrus.ru
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -112,7 +102,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run native:check
       - name: Build bundled Lektrus
-        run: npm run build
+        run: npm run native:build
       - name: Sync iOS native files
         run: npx cap sync ios
       - name: Build simulator app without Apple signing

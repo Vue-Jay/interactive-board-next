@@ -3475,6 +3475,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
   };
 
+  // Android's physical Back button must follow the same save path as «Доски».
+  useEffect(()=>{
+    const back=(event:Event)=>{event.preventDefault();void saveBeforeLeaving(false);};
+    window.addEventListener("lektrus:board-native-back",back);
+    return ()=>window.removeEventListener("lektrus:board-native-back",back);
+  });
+
   const openHistory=async()=>{
     if(!historyEnabled){setNotice("История версий доступна зарегистрированным участникам при серверной синхронизации");return}
     setHistoryOpen(true);setHistoryBusy(true);setHistoryError("");
@@ -9888,7 +9895,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             e.preventDefault();
             // Mouse RMB is handled on pointerup. Prevent the native menu from
             // appearing during a drag or reopening after release.
-            if(e.nativeEvent.button!==2){
+            if(e.nativeEvent.button!==2&&tool==="select"&&!gesture.current&&!eraserSession.current&&!pinchState.current){
               openBoardContextMenu(e.clientX,e.clientY,
                 (e.target as HTMLElement).closest<HTMLElement>("[data-object]")?.dataset.object);
             }

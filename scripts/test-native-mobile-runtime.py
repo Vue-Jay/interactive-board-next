@@ -6,6 +6,7 @@ DOM reads select/measure controls; all clicks and gestures go through WebDriver.
 import argparse
 import base64
 import json
+import subprocess
 import sys
 import time
 import traceback
@@ -256,6 +257,7 @@ def draw(tool, band):
     before = {x['id'] for x in ink()}
     native_gesture(paths[tool])
     value = wait(lambda: next((x for x in ink() if x['kind']==tool and x['id'] not in before and x['points']>1), None), f'{tool} did not save real touch stroke', 20)
+    assert not visible_id('[data-context-menu]'), 'Drawing opens an unwanted context menu'
     return value
 
 
@@ -266,6 +268,7 @@ def erase():
     native_gesture(paths['marker'])
     after = wait(lambda: {'points': n} if (n:=sum(x['points'] for x in ink() if x['kind']=='marker'))<before else None, 'Eraser did not remove marker points', 20)
     assert any(x['kind']=='pen' for x in ink()), 'Eraser also removed the distant pencil stroke'
+    assert not visible_id('[data-context-menu]'), 'Erasing opens an unwanted context menu'
     return {'before': before, 'after': after['points']}
 
 
@@ -299,6 +302,27 @@ def reopen():
     wait(lambda: js('return innerWidth>innerHeight'), 'Reopened board did not rotate')
     wait(lambda: ink()==before, 'Saved ink differs after reopening', 15)
     return before
+
+
+def native_back_and_link():
+    before = ink()
+    path = js('return location.pathname')
+    assert path.startswith('/board/'), 'No direct board route'
+    if args.platform == 'android':
+        context('NATIVE_APP')
+        command('POST','/appium/device/press_keycode',{'keycode':4})
+        context(web_context)
+    else:
+        click('.back-to-boards')
+    wait(lambda: visible_id('.lectris-library-intro,.lektrus-calendar-grid'), 'Native back did not return to workspace', 45)
+    url = 'ru.lektrus.board://' + path.lstrip('/')
+    if args.platform == 'android':
+        subprocess.run(['adb','shell','am','start','-a','android.intent.action.VIEW','-d',url,'ru.lektrus.board.dev'],check=True,timeout=30)
+    else:
+        subprocess.run(['xcrun','simctl','openurl',args.udid,url],check=True,timeout=30)
+    wait(lambda: js('return location.pathname')==path and visible_id('section.board'), 'Native deep link did not open its board', 60)
+    wait(lambda: ink()==before, 'Native back/deep link did not preserve drawing', 15)
+    return {'route':path,'strokes':len(before)}
 
 
 def create_session():
@@ -353,6 +377,7 @@ try:
     check('undo-redo', undo_redo)
     check('tool-catalogue', tools_menu)
     check('board-reopen-persistence', reopen)
+    check('native-back-and-deep-link', native_back_and_link)
 except Exception as error:
     print(traceback.format_exc(), file=sys.stderr, flush=True)
     results.append({'check':'runtime-aborted','status':'failed','detail':str(error)})

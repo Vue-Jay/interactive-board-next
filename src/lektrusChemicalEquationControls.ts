@@ -2,16 +2,17 @@
 export type ReactionArrow="→"|"⇌"|"="|"≠";
 export type ReactionTextParts={reactants:string;products:string;arrow:ReactionArrow;standalone:boolean};
 // Prefer arrows and require spaces around equality so CH2=CH2 stays a molecule.
-const arrowPattern=/(⇌|⇄|↔|→|⟶|⟹|->)|(?<=\s)(?:=|≠)(?=\s)/;
+const arrowPattern=/(⇌|⇄|↔|→|⟶|⟹|->)|\s([=≠])(?=\s)/;
 export function readReactionText(expression:string):ReactionTextParts{
  const found=arrowPattern.exec(expression);
  if(!found)return {reactants:expression,products:"",arrow:"→",standalone:true};
+ const marker=found[2]??found[0],index=found.index+(found[2]?1:0);
  return {
   // Keep text and caret stable while typing, including spaces around "+".
   // Only strip the single spacer inserted by writeReactionText near the arrow.
-  reactants:expression.slice(0,found.index).replace(/ $/,""),
-  products:expression.slice(found.index+found[0].length).replace(/^ /,""),
-  arrow:found[0]==="⇌"||found[0]==="⇄"||found[0]==="↔"?"⇌":found[0]==="≠"?"≠":found[0].includes("=")? "=":"→",
+  reactants:expression.slice(0,index).replace(/ $/,""),
+  products:expression.slice(index+marker.length).replace(/^ /,""),
+  arrow:marker==="⇌"||marker==="⇄"||marker==="↔"?"⇌":marker==="≠"?"≠":marker.includes("=")? "=":"→",
   standalone:false
  };
 }

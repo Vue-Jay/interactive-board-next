@@ -38,7 +38,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Build isolated native debug APK
         run: |
-          npm run build
+          npm run native:build
           npx cap sync android
           chmod +x android/gradlew
           (cd android && ./gradlew :app:assembleDebug --no-daemon)
@@ -90,7 +90,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Build isolated native simulator app
         run: |
-          npm run build
+          npm run native:build
           npx cap sync ios
           xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \

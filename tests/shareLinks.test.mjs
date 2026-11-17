@@ -31,12 +31,32 @@ function browser(href) {
       get search() { return address.search; },
       get hash() { return address.hash; },
       get origin() { return address.origin; },
+      get protocol() { return address.protocol; },
+      get hostname() { return address.hostname; },
     },
   };
   return { window, getHref: () => address.href };
 }
 const token = 'a'.repeat(64);
 const boardId = 'a1000000-1234-4567-89ab-1234567890ab';
+
+test('installed apps share production links and only open validated board routes', () => {
+  const routes = load('routes', {});
+  for (const origin of ['https://localhost','capacitor://localhost']) {
+    const {window}=browser(origin+'/app');
+    const api=load('shareLinks',{window,require:()=>({})});
+    assert.equal(api.boardShareUrl(token),`https://lektrus.ru/join/${token}`);
+    assert.equal(api.boardDirectUrl(boardId),`https://lektrus.ru/board/${boardId}`);
+  }
+  for (const path of [`/join/${token}`,`/board/${boardId}`]) {
+    assert.equal(routes.nativeBoardPath(routes.nativeBoardUrl(path)),path);
+    assert.equal(routes.nativeBoardPath('https://lektrus.ru'+path),path);
+  }
+  for (const url of [`https://lektrus.ru.evil.test/join/${token}`,`ru.lektrus.board://join/${token}?other=1`,
+    `ru.lektrus.board://auth/confirmed`,`ru.lektrus.board://board/not-an-id`,`https://lektrus.ru@evil.test/join/${token}`]) {
+    assert.equal(routes.nativeBoardPath(url),null);
+  }
+});
 
 test('Timeweb share links use the native API even when a legacy backend is configured', async () => {
   const calls = [];

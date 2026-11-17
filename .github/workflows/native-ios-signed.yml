@@ -11,9 +11,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 50
     env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-      VITE_AUTH_REDIRECT_URL: ${{ vars.LEKTRUS_AUTH_REDIRECT_URL }}
+      VITE_LEKTRUS_API_ORIGIN: https://lektrus.ru
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       IOS_PROFILE_NAME: ${{ secrets.IOS_PROFILE_NAME }}
       IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
@@ -28,14 +26,14 @@ jobs:
       - name: Check required credentials
         shell: bash
         run: |
-          for variable in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY APPLE_TEAM_ID IOS_PROFILE_NAME IOS_CERTIFICATE_P12_BASE64 IOS_CERTIFICATE_PASSWORD IOS_PROVISIONING_PROFILE_BASE64; do
+          for variable in APPLE_TEAM_ID IOS_PROFILE_NAME IOS_CERTIFICATE_P12_BASE64 IOS_CERTIFICATE_PASSWORD IOS_PROVISIONING_PROFILE_BASE64; do
             if [ -z "${!variable}" ]; then
               echo "::error::Missing GitHub Actions secret: $variable"
               exit 1
             fi
           done
       - run: npm ci --no-audit --no-fund
-      - run: npm run build
+      - run: npm run native:build
       - run: npx cap sync ios
       - name: Import Apple signing certificate and provisioning profile
         shell: bash

@@ -7,6 +7,24 @@
   --lektrus-safe-bottom:max(env(safe-area-inset-bottom,0px),var(--lektrus-cutout-bottom,0px));
   --lektrus-rail-left:calc(var(--lektrus-safe-left) + clamp(10px,1.5vw,16px));
 }
+/* Short native landscape: expose complete pinned controls, with scrolling
+   inside the creation group and a second safety scroll for extreme cutouts. */
+@media screen and (max-width:1100px) and (max-height:450px) and (orientation:landscape) {
+  html body .workspace nav.mobile-board-tools {
+    overflow-y:auto!important;
+  }
+  html body .workspace nav.mobile-board-tools .mobile-tool-cluster-create {
+    flex:0 0 auto!important;
+    max-height:75px!important;
+    scrollbar-width:thin!important;
+    scroll-snap-type:y mandatory;
+  }
+}
+@media screen and (max-width:1100px) and (max-height:380px) and (orientation:landscape) {
+  html body .workspace nav.mobile-board-tools .mobile-tool-cluster-create {
+    max-height:36px!important;
+  }
+}
 @media screen and (max-width:1100px) {
   html body .topbar:not(.update-banner) {
     box-sizing:border-box!important;
