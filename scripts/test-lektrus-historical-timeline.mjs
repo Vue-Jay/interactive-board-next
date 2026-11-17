@@ -4,7 +4,7 @@ import path from 'node:path';
 import polygonClipping from 'polygon-clipping';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,historicalTitleCorrections,secondaryExactReviews,thirdExactReviews,fourthExactReviews,fifthExactReviews,exactConflictPendingReviews,exactConflictGroupPrefix,elba1797Partition,buildElbaPartition,earlyComorosRoutes,earlyComorosHashes} from './build-lektrus-historical-timeline.mjs';
+import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,historicalTitleCorrections,secondaryExactReviews,thirdExactReviews,fourthExactReviews,fifthExactReviews,sixthExactReviews,exactConflictPendingReviews,exactConflictGroupPrefix,elba1797Partition,buildElbaPartition,earlyComorosRoutes,earlyComorosHashes} from './build-lektrus-historical-timeline.mjs';
 import {historicalUnresolvedCenters,historicalUnresolvedRegions} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
@@ -241,7 +241,7 @@ if(outDir&&sourceFile){
         assert.deepEqual(owners.map(({record})=>record.sourceIndex),[12942]);
       }
       const hasPart=(record,index,part)=>record&&record.geometryStatus==='candidate'&&(record.geometryParts?record.geometryParts.some(p=>p.index===index&&p.part===part):record.sourceIndex===index);
-      for(const [source,target,from,to,losers,winners] of [...secondaryExactReviews,...thirdExactReviews,...fourthExactReviews,...fifthExactReviews])if(from<=year&&year<=to){
+      for(const [source,target,from,to,losers,winners] of [...secondaryExactReviews,...thirdExactReviews,...fourthExactReviews,...fifthExactReviews,...sixthExactReviews])if(from<=year&&year<=to){
         assert.ok(losers.every(part=>!hasPart(activeRecords.get(source),source,part)),`Secondary duplicate ${source}/${year}`);
         const winner=activeRecords.get(target);assert.ok(winners.every(part=>hasPart(winner,target,part)),`Missing secondary counterpart ${target}/${year}`);
         assert.ok(winners.every(part=>winner.territorialAttributions?.some(note=>note.part===part&&note.from<=year&&year<=note.to)));
@@ -346,7 +346,6 @@ if(outDir&&sourceFile){
       if(year>=1662&&year<=1664)expectedCenters.push('cape-coast-castle','mouri-fort');
       if(year>=1552&&year<=1555)expectedCenters.push('muscat-port');
       if(year>=410&&year<=442)expectedCenters.push('kath-afrighid');
-      if(year===-203)expectedCenters.push('cyzicus-city');
       const centers=historicalUnresolvedCenters(year,state.territorialIssues);
       assert.deepEqual(centers.map(c=>c.id),expectedCenters.map(id=>`historical-center-${id}`));
       if(year>=1662&&year<=1664){
@@ -447,8 +446,11 @@ if(outDir&&sourceFile){
   assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,815);assert.equal(externalRecordYears,469);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
   assert.equal(unresolvedSourceYears,363);assert.equal(unresolvedRegionYears,284);
   assert.equal(fifthExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0),18);
-  assert.equal(exactConflictPendingReviews.length,11);
-  assert.equal(unresolvedExactComponentYears,99);assert.equal(unresolvedExactSourceYears,198);
+  assert.equal(sixthExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0),2);
+  assert.equal(exactConflictPendingReviews.length,9);
+  assert.equal(unresolvedExactComponentYears,97);assert.equal(unresolvedExactSourceYears,194);
+  const auditLedger={territorial:{total:2908,resolved:2908-unresolvedSourceYears,open:unresolvedSourceYears,openRegionYears:unresolvedRegionYears},exactPairs:{total:82,resolved:82-exactConflictPendingReviews.length,open:exactConflictPendingReviews.length,openComponentYears:unresolvedExactComponentYears,openSourceYears:unresolvedExactSourceYears}};
+  console.log(`Historical audit ledger: ${JSON.stringify(auditLedger)}`);
   assert.equal(admissionWarnings,1,'Independent-state coverage must not regress');
   assert.deepEqual(rows.filter(r=>r.membershipWarnings?.length).map(r=>[r.year,...r.membershipWarnings.map(w=>w.name)]),[[1971,'United Arab Emirates']]);
   assert.equal(historicalGapLocators['United Arab Emirates'].iso,'ARE');
@@ -615,7 +617,7 @@ if(outDir&&sourceFile){
   assert.equal(revisionAt(1674,9135).name,'New Netherland');
   assert.equal(revisionAt(1675,9135).name,'Dutch Caribbean and Guiana possessions (source aggregate)');
   assert.equal(revisionAt(1905,12227).name,'British West African territories (Gold Coast and Nigeria)');
-  const report={years,recordYears,rejectedYears,emptyYears,packCount,yearsWithIdentityCollisions,yearsWithSharedGeometry,admissionWarnings,externalRecordYears,datedRecordYears,checkedSupplementYears,counts:manifest.counts,source:manifest.source,notice:'Technical annual coverage with review warnings. Shared geometry, aliases and admission warnings are candidates, not proof of errors. External and dated successor outlines are approximate cartographic candidates; historical, geographic and visual acceptance NOT complete.',rows};
+  const report={years,recordYears,rejectedYears,emptyYears,packCount,yearsWithIdentityCollisions,yearsWithSharedGeometry,admissionWarnings,externalRecordYears,datedRecordYears,checkedSupplementYears,auditLedger,counts:manifest.counts,source:manifest.source,notice:'Technical annual coverage with review warnings. Shared geometry, aliases and admission warnings are candidates, not proof of errors. External and dated successor outlines are approximate cartographic candidates; historical, geographic and visual acceptance NOT complete.',rows};
   fs.writeFileSync(path.join(outDir,'technical-annual-audit.json'),JSON.stringify(report,null,2)+'\n');
   console.log(JSON.stringify({...report,rows:undefined}));
 }

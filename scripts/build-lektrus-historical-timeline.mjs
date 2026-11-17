@@ -877,6 +877,10 @@ export const fifthExactReviews=[
  [692,665,-230,-226,[9],[2],'Археологический музей Самофракии относит переход острова под контроль Птолемеев ко второй половине III века до н. э. и захват Филиппом V к 200/199 гг. до н. э. Сохранена птолемеевская атрибуция острова, без утверждения об отмене местного самоуправления.','https://www.samothracemuseum.gr/en/timeline-of-samothrace/'],
  [701,665,-225,-219,[10],[2],'Самофракия находилась в птолемеевской сфере до захвата Филиппом V в 200/199 гг. до н. э.; местные декреты в честь птолемеевских должностных лиц свидетельствуют о взаимодействии с островной общиной. Это не доказательство прямого управления каждым поселением.','https://www.samothracemuseum.gr/en/timeline-of-samothrace/'],
 ];
+export const sixthExactReviews=[
+ [815,808,-203,-203,[12],[13],'Кизик сохранял собственные городские институты и выступил на стороне Родоса против Филиппа V в войне 202–201 гг. до н. э. Сохранён контур местной греческой общины в 203 г. до н. э.; его точные сухопутные границы не подтверждены.','https://repository.ukim.mk/bitstream/20.500.12188/791/1/Comfortably_Sunk_Philip_the_Battle_of_Ch.pdf'],
+ [1083,1052,-31,-31,[2],[0],'Декрет IG XII.5.653 свидетельствует о собственных совете и народном собрании Сироса во II–I вв. до н. э.; городская община продолжала существовать при римском влиянии. В 31 г. до н. э. сохранён контур местной общины, а не неподтверждённая птолемеевская атрибуция. Точный провинциальный статус не установлен.','https://attalus.org/docs/other/inscr_201.html'],
+];
 // Both exact claims are demonstrably conflicting, but the literature does not
 // establish a unique owner of the whole footprint for each year. Preserve both
 // source records as evidence, render one explicitly uncertain region instead.
@@ -889,9 +893,7 @@ export const exactConflictPendingReviews=[
  [2436,2453,644,646,[11],[2],'Эльба — византийско-лангобардский переход','Археологическая литература связывает возможное присоединение Эльбы к Лангобардскому королевству с завоеваниями Ротари 643 года, но прямо характеризует это как гипотезу. Точный год смены власти не установлен.','https://www.academia.edu/59443324/UN_FILO_CHE_CI_LEGA_STORIE_DI_POPULONIA_E_DELL_ISOLA_D_ELBA_TRA_L_ANTICHIT%C3%80_CLASSICA_E_L_ALTO_MEDIOEVO'],
  [1986,2144,577,578,[2,3],[0,1],'Южная Аравия — аксумско-сасанидский переход','В 570-е годы эфиопское правление в Йемене было оспорено местной династией и персидскими войсками; источники расходятся в датировке смены власти. Нельзя представлять весь южноаравийский контур как два одновременно установленных царства.','https://www.iranicaonline.org/articles/abna-term/'],
  [1620,1661,410,442,[2,3],[1,2],'Хорезм — кидариты и эфталиты','В Хорезме существовала собственная династия шахов; после IV века он описывается как независимый или находившийся в вассальных отношениях с эфталитами. Принадлежность двух конкретных участков на Амударье не установлена; нельзя приравнивать возможную зависимость к прямому управлению гуннов.','https://www.iranicaonline.org/articles/central-asia-iii/'],
- [1052,1083,-31,-31,[0],[2],'Сирос — конец эллинистической эпохи','После Акция политический статус Киклад менялся. Эпиграфические данные не позволяют установить точную провинциальную принадлежность Сироса в 31 г. до н. э.; не переносим на него афинскую атрибуцию Лемноса.','https://www.academia.edu/36008952/From_Independence_to_Dependence_The_Administrative_Status_of_The_Aegean_Islands_From_129_BC_to_294_AD'],
  [809,830,-202,-198,[4],[10],'Икария — война Филиппа V','Икария была связана с птолемеевской системой восточной Эгеиды в III веке до н. э.; даты перехода под власть Самоса остаются спорными. Захват Самоса в 201 г. до н. э. не доказывает захвата Икарии.','https://www.tandfonline.com/doi/full/10.1080/09518967.2024.2319521'],
- [808,815,-203,-203,[13],[12],'Кизик — эллинистический статус','Кизик был самостоятельным крупным греческим центром Пропонтиды. Походы Филиппа V в районе Пропонтиды не доказывают завоевания именно этого контура в 203 г. до н. э.','https://academic.oup.com/edited-volume/61673/chapter-abstract/548726109'],
 ];
 export const exactConflictGroupPrefix='Неуточнённая принадлежность: ';
 export const earlyComorosHashes=['5e8c3940ad185cbe4cf1af0d7f420aeaaa9bead9e850dd11ecbb7a72f850de2a','ca0861672c2aec6d4ea750a6f663d4b43e5be11e371c321ed69e8c520313b233','8f31d16f944b3cefe048b3146bf73aea4320e11e4b0dcabb74b7fe8d1886569c','cf8a539df8f350003fa8d49a17d63e1c36f9ff5f3a21c912e39b611680012904'];
@@ -923,7 +925,7 @@ export function deriveSecondaryTerritorialReviews(features){
   const f=features[source];assert.ok(f.properties.Type==='POLITY'&&f.properties.FromYear<=from&&f.properties.ToYear>=to);
   exclusions.push([source,rawParts(f).length,from,parts,'Reviewed dated source-component attribution; see linked evidence.',reasonRu,url,to]);
  };
- for(const [source,target,from,to,parts,winners,reason,url] of [...secondaryExactReviews,...thirdExactReviews,...fourthExactReviews,...fifthExactReviews]){
+ for(const [source,target,from,to,parts,winners,reason,url] of [...secondaryExactReviews,...thirdExactReviews,...fourthExactReviews,...fifthExactReviews,...sixthExactReviews]){
   const f=features[source],t=features[target];assert.ok(t.properties.Type==='POLITY'&&t.properties.FromYear<=from&&t.properties.ToYear>=to&&parts.length===winners.length);
   for(const [i,part] of parts.entries()){
    const hash=componentHash(rawParts(f)[part]);assert.equal(hash,componentHash(rawParts(t)[winners[i]]));
