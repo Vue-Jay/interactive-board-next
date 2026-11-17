@@ -17,15 +17,36 @@ const chromePath=process.env.CHROME_PATH||[
 ].find(existsSync);
 assert.ok(chromePath,"Chrome required for integrated release browser smoke");
 const homeOnly=process.argv.includes("--home-only");
+const interfaceOnly=process.argv.includes("--interface-only");
 if(homeOnly)process.env.VITE_LEKTRUS_LOCAL_TEST="true";
+if(interfaceOnly){
+ process.env.VITE_LEKTRUS_BACKEND="selfhost";
+ delete process.env.VITE_LEKTRUS_API_ORIGIN;
+}
+const studioBoard="/board/00000000-0000-4000-8000-00000000a11a?layout-editor=1";
+const studioUser={id:"00000000-0000-4000-8000-000000000001",email:"admin@example.test",user_metadata:{display_name:"Admin"},account_role:"teacher",teacher_status:"approved",is_admin:true};
+let publishedLayout=null;
 const server=await createServer({configFile:"./vite.config.ts",
+ plugins:interfaceOnly?[{name:"interface-studio-fixture",configureServer(server){
+  server.middlewares.use(async(req,res,next)=>{
+   if(!req.url?.startsWith("/api/v1/"))return next();
+   res.setHeader("Content-Type","application/json");
+   if(req.url==="/api/v1/admin/interface-layout"&&req.method==="PUT"){
+    let raw="";for await(const chunk of req)raw+=chunk;
+    publishedLayout=JSON.parse(raw).layout;res.end('{"ok":true}');return;
+   }
+   if(req.url==="/api/v1/interface-layout"){res.end(JSON.stringify({layout:publishedLayout}));return;}
+   if(req.url==="/api/v1/auth/me"){res.end(JSON.stringify(studioUser));return;}
+   res.end("[]");
+  });
+ }}]:[],
  server:{host:"127.0.0.1",port:0,strictPort:false}});
 let profile,chrome,socket;
 const log=[];
 try{
  await server.listen();
  const port=server.httpServer.address().port;
- const route=homeOnly?"/app":"/demo/board?scene=math&capture=1";
+ const route=homeOnly||interfaceOnly?"/app":"/demo/board?scene=math&capture=1";
  const url=`http://127.0.0.1:${port}${route}`;
  const portServer=net.createServer();
  await new Promise((resolve,reject)=>portServer.once("error",reject).listen(0,"127.0.0.1",resolve));
@@ -109,6 +130,39 @@ try{
  });
  await call("Runtime.enable");
  await call("Page.enable");
+
+ if(interfaceOnly){
+  const session={access_token:"test-admin-token",refresh_token:"test-refresh-token",expires_at:Math.floor(Date.now()/1000)+3600,user:studioUser};
+  await call("Page.addScriptToEvaluateOnNewDocument",{source:`localStorage.setItem('lektrus.selfhost.session.v1',${JSON.stringify(JSON.stringify(session))})`});
+  await call("Page.navigate",{url:new URL(studioBoard,url).href});
+  await wait('!!document.querySelector(".lektrus-live-layout-actions")',"Admin interface studio did not open",30000);
+  const select=async label=>evaluate(`[...document.querySelectorAll('.lektrus-live-layout-device-switch button')].find(b=>b.textContent===${JSON.stringify(label)}).click()`);
+  const check=async(profile,width,height,touch)=>{
+   await wait(`(()=>{const f=document.querySelector('.lektrus-layout-device-frame');return f?.contentDocument?.documentElement?.dataset.interfaceLayoutDevice===${JSON.stringify(profile)}&&getComputedStyle(f).visibility==='visible'&&!!f.contentDocument.querySelector('.workspace .board')})()`,"Real profile did not load: "+profile,30000);
+   const state=await evaluate(`(()=>{const f=document.querySelector('.lektrus-layout-device-frame'),w=f.contentWindow,r=f.getBoundingClientRect(),dock=document.querySelector('.lektrus-live-layout-actions').getBoundingClientRect();return {width:w.innerWidth,height:w.innerHeight,coarse:w.matchMedia('(pointer:coarse)').matches,hover:w.matchMedia('(hover:hover)').matches,recursive:!!f.contentDocument.querySelector('.lektrus-live-layout-editor'),fits:r.bottom<=dock.top&&r.width<=w.innerWidth+1}})()`);
+   assert.deepEqual(state,{width,height,coarse:touch,hover:!touch,recursive:false,fits:true},profile);
+  };
+  await select("ПК");await check("desktop",1920,1080,false);
+  const target=await evaluate(`(()=>{const f=document.querySelector('.lektrus-layout-device-frame');const b=f.contentDocument.querySelector('.toolbar-pinned [data-interface-control="marker"]').getBoundingClientRect(),r=f.getBoundingClientRect(),k=r.width/f.clientWidth;return {x:r.left+(b.x+b.width/2)*k,y:r.top+(b.y+b.height/2)*k}})()`);
+  await mouse("mousePressed",target.x,target.y,{pressed:true});
+  await mouse("mouseMoved",target.x+36,target.y,{pressed:true});
+  await mouse("mouseReleased",target.x+36,target.y);
+  await select("Ноутбук");await check("laptop",1366,768,false);
+  await select("Планшет");await check("tablet",1024,768,true);
+  await evaluate(`[...document.querySelectorAll('.lektrus-live-layout-actions button')].find(b=>b.textContent.includes('Повернуть')).click()`);
+  await check("tabletPortrait",768,1024,true);
+  await select("Телефон");await check("phonePortrait",390,844,true);
+  await evaluate(`[...document.querySelectorAll('.lektrus-live-layout-actions button')].find(b=>b.textContent.includes('Повернуть')).click()`);
+  await check("phone",844,390,true);
+  await select("ПК");await check("desktop",1920,1080,false);
+  await click(".lektrus-live-layout-actions .primary");
+  await wait('!document.querySelector(".lektrus-live-layout-editor")',"Published layout did not close editor",15000);
+  assert.ok(publishedLayout?.controls?.desktop?.marker?.x>0,"Desktop marker move was not published");
+  assert.equal(publishedLayout.controls.phone.marker.x,0,"Phone was changed by desktop edit");
+  assert.equal(publishedLayout.controls.phonePortrait.marker.x,0,"Portrait was changed by desktop edit");
+  console.log("✓ Actual device preview: six viewports, touch CSS media, independent profile placements, published API payload");
+  process.exitCode=0;
+ }else
 
  if(homeOnly){
   await wait('!!document.querySelector(".lektrus-calendar-grid")',"Home did not render",30000);

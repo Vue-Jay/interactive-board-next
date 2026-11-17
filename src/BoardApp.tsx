@@ -9301,13 +9301,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
 <nav className="mobile-board-tools" aria-label="Основные инструменты">
           <div className="mobile-tool-cluster mobile-tool-cluster-navigation" aria-label="Навигация">
-            {lectrisTouchDockTools.slice(0,1).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>})}
+            {lectrisTouchDockTools.slice(0,1).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" data-interface-control={id} aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>})}
             <button type="button" data-lektrus-hand-tool="true" className={tool==="hand"?"active":""} aria-label="Рука — перемещать доску одним пальцем" title="Рука" aria-pressed={tool==="hand"} onClick={()=>{finishEdit();setTool("hand");setMobileToolsOpen(false);setSelected([])}}><Icon name="hand" size={20}/></button>
-            {lectrisTouchDockTools.slice(1,2).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>})}
+            {lectrisTouchDockTools.slice(1,2).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" data-interface-control={id} aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>})}
           </div>
           <span className="mobile-tool-separator" aria-hidden="true"/>
           <div className="mobile-tool-cluster mobile-tool-cluster-create" aria-label="Создание">
-            {lectrisTouchDockTools.slice(2).map((id)=>{const t=tools.find(x=>x.id===id)!;return <div key={id} className="mobile-tool-with-geometry"><button type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>{id==="eraser"&&<GeometryInstruments mobile view={view} boardRef={board}
+            {lectrisTouchDockTools.slice(2).map((id)=>{const t=tools.find(x=>x.id===id)!;return <div key={id} className="mobile-tool-with-geometry"><button type="button" data-interface-control={id} aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>{id==="eraser"&&<GeometryInstruments mobile view={view} boardRef={board}
               instruments={sharedInstruments} onAdd={addSharedInstrument}
               onUpdate={updateSharedInstrument} onRemove={removeSharedInstrument}
               editable={canEdit} renderOverlays={false} />}</div>})}
@@ -9324,7 +9324,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         </section>}
         <aside ref={adaptiveToolbarRef} className={`toolbar compact-toolbar ${desktopToolsExpanded?"expanded":""}`} aria-label="Инструменты">
           <div className="toolbar-pinned" aria-label="Основные инструменты">
-            {(["select","lasso",...(isCoarsePointer?["hand"]:[]),"pen","marker","eraser"] as Tool[]).map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} aria-label={t.label} title={toolShortLabel[id]} className={`tool-button ${tool===id?"active":""}`} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setDesktopToolsExpanded(false)}}><Icon name={t.icon} size={19}/><span className="tool-tooltip">{toolShortLabel[id]}</span></button>})}
+            {(["select","lasso",...(isCoarsePointer?["hand"]:[]),"pen","marker","eraser"] as Tool[]).map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} data-interface-control={id} aria-label={t.label} title={toolShortLabel[id]} className={`tool-button ${tool===id?"active":""}`} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setDesktopToolsExpanded(false)}}><Icon name={t.icon} size={19}/><span className="tool-tooltip">{toolShortLabel[id]}</span></button>})}
           </div>
           <span className="toolbar-section-line" aria-hidden="true"/>
           <div className="lektrus-desktop-sections" aria-label="Разделы инструментов">

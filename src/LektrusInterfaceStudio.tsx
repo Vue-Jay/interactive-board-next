@@ -3,7 +3,7 @@ import {createPortal} from "react-dom";
 import {applyExtraLayout,getInterfaceElements} from "./lektrusInterfaceTargets";
 import {
  applyInterfaceLayout,currentDeviceProfile,deviceProfiles,layoutControls,layoutRegions,
- readInterfaceLayout,publishGlobalInterfaceLayout,type DeviceProfile,type InterfaceLayout,type LayoutControl,type LayoutRegion
+ readInterfaceLayout,publishGlobalInterfaceLayout,loadGlobalInterfaceLayout,type DeviceProfile,type InterfaceLayout,type LayoutControl,type LayoutRegion
 } from "./lektrusInterfaceLayout";
 
 /** Edit actual Lektrus board controls. Responsive previews also load the actual
@@ -15,11 +15,11 @@ type Gesture={
  before:InterfaceLayout;targets:Target[];moved:boolean;
 };
 const controlSelectors:Record<LayoutControl,string>={
- select:".toolbar-pinned>.tool-button:nth-child(1),.mobile-tool-cluster-navigation>button:first-child",
- lasso:".toolbar-pinned>.tool-button:nth-child(2)",
- pen:".toolbar-pinned>.tool-button:nth-child(3)",
- marker:".toolbar-pinned>.tool-button:nth-child(4)",
- eraser:".toolbar-pinned>.tool-button:nth-child(5)",
+ select:'[data-interface-control="select"]',
+ lasso:'[data-interface-control="lasso"]',
+ pen:'[data-interface-control="pen"]',
+ marker:'[data-interface-control="marker"]',
+ eraser:'[data-interface-control="eraser"]',
  subject:".lektrus-desktop-subject-trigger,.lektrus-mobile-subject-trigger",
  zoomOut:".board-controls>button:first-child",
  zoomValue:".board-controls>.zoom-value",
@@ -35,10 +35,12 @@ const panelSelectors:Record<LayoutRegion,string>={
  subjectTools:"#lektrus-subject-tools-panel"
 };
 const specs:Record<DeviceProfile,{width:number;height:number;label:string}>={
- desktop:{width:1440,height:900,label:"ПК"},
- laptop:{width:1100,height:720,label:"Ноутбук"},
- tablet:{width:900,height:560,label:"Планшет"},
- phone:{width:600,height:338,label:"Телефон"}
+ desktop:{width:1920,height:1080,label:"ПК"},
+ laptop:{width:1366,height:768,label:"Ноутбук"},
+ tablet:{width:1024,height:768,label:"Планшет"},
+ tabletPortrait:{width:768,height:1024,label:"Планшет"},
+ phone:{width:844,height:390,label:"Телефон"},
+ phonePortrait:{width:390,height:844,label:"Телефон"}
 };
 const clone=(value:InterfaceLayout):InterfaceLayout=>structuredClone(value);
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
@@ -70,8 +72,13 @@ function applyDraft(layout:InterfaceLayout,device:DeviceProfile,doc:Document){
  applyExtraLayout(doc,layout.extras[device],device);
 }
 export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
- const [nativeDevice,setNativeDevice]=useState<DeviceProfile>(currentDeviceProfile);
  const [device,setDevice]=useState<DeviceProfile>(currentDeviceProfile);
+ const [customSizes,setCustomSizes]=useState<Partial<Record<DeviceProfile,{width:number;height:number}>>>({});
+ const [frameReady,setFrameReady]=useState(false);
+ const [frameError,setFrameError]=useState(false);
+ const [frameRetry,setFrameRetry]=useState(0);
+ const [configReady,setConfigReady]=useState(false);
+ const [interact,setInteract]=useState(false);
  const [layout,setLayout]=useState<InterfaceLayout>(readInterfaceLayout);
  const [selected,setSelected]=useState<Target[]>([]);
  const [marquee,setMarquee]=useState<Rectangle|null>(null);
@@ -80,20 +87,22 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
  const [version,setVersion]=useState(0);
  const [viewport,setViewport]=useState({width:window.innerWidth,height:window.innerHeight});
  const frame=useRef<HTMLIFrameElement>(null);
+ const actions=useRef<HTMLDivElement>(null);
+ const [dockHeight,setDockHeight]=useState(110);
  const gesture=useRef<Gesture|null>(null);
  const latest=useRef(layout);latest.current=layout;
  const past=useRef<InterfaceLayout[]>([]);
  const future=useRef<InterfaceLayout[]>([]);
- const alternate=device!==nativeDevice;
- const dimensions=specs[device];
- const fit=Math.max(.15,Math.min((viewport.width-24)/dimensions.width,(viewport.height-96)/dimensions.height));
- const frameUrl=window.location.pathname+"?layout-editor=1&layout-preview=1";
+ const dimensions={...specs[device],...customSizes[device]};
+ const availableHeight=Math.max(40,viewport.height-dockHeight-36);
+ const fit=Math.max(.01,Math.min(1,(viewport.width-24)/dimensions.width,availableHeight/dimensions.height));
+ const frameLeft=(viewport.width-dimensions.width*fit)/2;
+ const frameTop=12+(availableHeight-dimensions.height*fit)/2;
+ const frameUrl=window.location.pathname+"?layout-editor=1&layout-preview=1&device="+device;
  const activeDocument=()=>{
-  if(!alternate)return document;
   try{return frame.current?.contentDocument??null}catch{return null}
  };
  const mapBox=(box:DOMRect):Rectangle=>{
-  if(!alternate)return {left:box.left,top:box.top,width:box.width,height:box.height};
   const element=frame.current;
   if(!element)return {left:0,top:0,width:0,height:0};
   const frameBox=element.getBoundingClientRect();
@@ -102,14 +111,16 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
  };
  const candidates=()=>{
   const doc=activeDocument();
-  if(!doc)return [] as {target:Target;box:Rectangle}[];
+  if(!doc||!frameReady||!configReady)return [] as {target:Target;box:Rectangle}[];
   const found:{target:Target;box:Rectangle}[]=[];
+  const known=new Set<Element>();
   const add=(target:Target,selector:string)=>{
    for(const node of doc.querySelectorAll<HTMLElement>(selector)){
     const box=node.getBoundingClientRect();
     if(box.width<8||box.height<8||!node.getClientRects().length)continue;
     const style=doc.defaultView?.getComputedStyle(node);
     if(style?.display==="none"||style?.visibility==="hidden")continue;
+    known.add(node);
     found.push({target,box:mapBox(box)});
    }
   };
@@ -118,6 +129,7 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
   // Enumerate all remaining real controls and UI regions, including mobile
   // toolbar groups and actions not previously known to the editor.
   for(const item of getInterfaceElements(doc)){
+   if(known.has(item.node))continue;
    found.push({target:{kind:"extra",id:item.selector},box:mapBox(item.rect)});
   }
   return found;
@@ -136,26 +148,45 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
   const previous=past.current.pop();if(!previous)return;
   future.current=[...future.current.slice(-49),clone(latest.current)];
   apply(previous);setVersion(v=>v+1);
- },[device,nativeDevice]);
+ },[device]);
  const redo=useCallback(()=>{
   const following=future.current.pop();if(!following)return;
   past.current=[...past.current.slice(-49),clone(latest.current)];
   apply(following);setVersion(v=>v+1);
- },[device,nativeDevice]);
+ },[device]);
  useEffect(()=>{
   const resize=()=>{
-   setNativeDevice(currentDeviceProfile());
    setViewport({width:window.innerWidth,height:window.innerHeight});
   };
   window.addEventListener("resize",resize);
   return()=>window.removeEventListener("resize",resize);
  },[]);
  useEffect(()=>{
-  const doc=activeDocument();
-  if(doc)applyDraft(latest.current,device,doc);
-  // When returning from a breakpoint preview, update the original viewport too.
-  if(!alternate)applyDraft(latest.current,device,document);
- },[device,nativeDevice,alternate,version]);
+  const element=actions.current;if(!element)return;
+  const observer=new ResizeObserver(()=>setDockHeight(element.getBoundingClientRect().height));
+  observer.observe(element);return()=>observer.disconnect();
+ },[]);
+ useEffect(()=>{
+  let alive=true;
+  void loadGlobalInterfaceLayout().then(value=>{
+   if(alive){if(value){latest.current=value;setLayout(value)}setConfigReady(true)}
+  }).catch(()=>{if(alive)setMessage("Не удалось загрузить общую конфигурацию. Обновите страницу.")});
+  return()=>{alive=false};
+ },[]);
+ useEffect(()=>{
+  setFrameReady(false);setFrameError(false);
+  const start=Date.now();
+  const timer=window.setInterval(()=>{
+   const doc=activeDocument();
+   if(doc?.querySelector(".workspace .board")&&doc.querySelector(".topbar")){
+    applyDraft(latest.current,device,doc);setFrameReady(true);window.clearInterval(timer);
+   }else if(Date.now()-start>20_000){setFrameError(true);window.clearInterval(timer)}
+  },100);
+  return()=>window.clearInterval(timer);
+ },[device,frameRetry]);
+ useEffect(()=>{
+  const doc=activeDocument();if(doc&&frameReady)applyDraft(layout,device,doc);
+ },[device,version,layout,frameReady]);
  useEffect(()=>()=>{applyInterfaceLayout()},[]);
  const leave=()=>{
   applyInterfaceLayout();
@@ -163,7 +194,7 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
  };
  const [saving,setSaving]=useState(false);
  const save=async()=>{
-  if(saving)return;
+  if(saving||!configReady||!frameReady)return;
   setSaving(true);setMessage("");
   try{await publishGlobalInterfaceLayout(latest.current);onClose()}
   catch{setMessage("Не удалось опубликовать дизайн. Проверьте подключение и права администратора.")}
@@ -171,6 +202,7 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
  };
  useEffect(()=>{
   const onKey=(event:KeyboardEvent)=>{
+   if(event.target instanceof HTMLInputElement)return;
    const ctrl=event.ctrlKey||event.metaKey;
    if(ctrl&&event.code==="KeyZ"){
     event.preventDefault();event.stopImmediatePropagation();
@@ -197,7 +229,7 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
   return()=>window.removeEventListener("keydown",onKey,true);
  },[selected,device,undo,redo]);
  const pointerDown=(event:ReactPointerEvent<HTMLDivElement>)=>{
-  if(event.button!==0)return;
+  if(event.button!==0||!frameReady||!configReady)return;
   const targets=candidates().filter(c=>{
    const r=c.box;
    return event.clientX>=r.left&&event.clientX<=r.left+r.width&&event.clientY>=r.top&&event.clientY<=r.top+r.height;
@@ -248,16 +280,16 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
   if((current.mode!=="drag"&&current.mode!=="resize")||!current.moved)return;
   const next=clone(current.before);
   if(current.mode==="resize"){
-   const change=(dx+dy)/250;
+   const change=(dx+dy)/(250*fit);
    for(const target of current.targets){
     const p=placement(next,device,target),before=placement(current.before,device,target);
     p.scale=clamp(Math.round((before.scale+change)*100)/100,.65,1.45);
    }
    apply(next);return;
   }
-  const viewWidth=alternate?dimensions.width*fit:viewport.width;
-  const viewHeight=alternate?dimensions.height*fit:viewport.height;
-  const step=showGrid?16:0;
+  const viewWidth=dimensions.width*fit;
+  const viewHeight=dimensions.height*fit;
+  const step=showGrid?16*fit:0;
   const moveX=step?Math.round(dx/step)*step:dx;
   const moveY=step?Math.round(dy/step)*step:dy;
   for(const target of current.targets){
@@ -303,23 +335,31 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
  };
  const changingDevice=(value:DeviceProfile)=>{
   if(gesture.current)return;
-  setDevice(value);setSelected([]);setMarquee(null);setMessage("");
+  if(value===device)return;
+  setFrameReady(false);setFrameError(false);setInteract(false);setDevice(value);setSelected([]);setMarquee(null);
+ };
+ const baseDevice=device==="phonePortrait"?"phone":device==="tabletPortrait"?"tablet":device;
+ const touch=baseDevice==="phone"||baseDevice==="tablet";
+ const resizeDimension=(key:"width"|"height",value:number)=>{
+  if(!Number.isFinite(value)||value<240||value>3840)return;
+  setCustomSizes(previous=>({...previous,[device]:{width:dimensions.width,height:dimensions.height,[key]:value}}));
+  setSelected([]);
  };
  return createPortal(<div className="lektrus-live-layout-editor" role="application" aria-label="Редактирование интерфейса Lectrus">
-  {alternate&&<div className="lektrus-layout-device-backdrop">
-   <iframe ref={frame} title={"Настоящая доска Lectrus: "+dimensions.label} src={frameUrl}
+  <div className="lektrus-layout-device-backdrop">
+   <iframe key={device+":"+frameRetry} ref={frame} title={"Настоящая доска Lectrus: "+dimensions.label} src={frameUrl}
     className="lektrus-layout-device-frame"
     style={{width:dimensions.width,height:dimensions.height,
-     left:(viewport.width-dimensions.width*fit)/2,top:(viewport.height-96-dimensions.height*fit)/2,
-     transform:`scale(${fit})`}}
-    onLoad={()=>{const doc=activeDocument();if(doc)applyDraft(latest.current,device,doc);setVersion(v=>v+1)}}/>
+     left:frameLeft,top:frameTop,
+     pointerEvents:interact?"auto":"none",visibility:frameReady?"visible":"hidden",transform:`scale(${fit})`}}/>
+  </div>
+  {!frameReady&&<div className="lektrus-layout-preview-status" role="status">
+   {frameError?<><span>Не удалось загрузить доску в предпросмотре.</span><button onClick={()=>{setFrameError(false);setFrameRetry(v=>v+1)}}>Повторить</button></>:<span>Загрузка настоящей доски…</span>}
   </div>}
   {showGrid&&<div className="lektrus-layout-alignment-grid" aria-hidden="true"
-   style={alternate?{width:dimensions.width*fit,height:dimensions.height*fit,
-    left:(viewport.width-dimensions.width*fit)/2,
-    top:(viewport.height-96-dimensions.height*fit)/2,
-    backgroundSize:"16px 16px"}:{}}/>}
-  <div className="lektrus-live-layout-hit-area" onPointerDown={pointerDown} onPointerMove={pointerMove}
+   style={{width:dimensions.width*fit,height:dimensions.height*fit,
+    left:frameLeft,top:frameTop,backgroundSize:`${16*fit}px ${16*fit}px`}}/>}
+  <div className="lektrus-live-layout-hit-area" style={{pointerEvents:interact?"none":"auto"}} onPointerDown={pointerDown} onPointerMove={pointerMove}
    onPointerUp={pointerUp} onPointerCancel={pointerUp}
    onClickCapture={event=>{event.preventDefault();event.stopPropagation()}}
    onContextMenu={event=>event.preventDefault()} onWheelCapture={event=>event.preventDefault()}
@@ -329,19 +369,28 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
    <span className="lektrus-layout-resize-grip"/>
   </div>)}
   {marquee&&<div className="lektrus-live-layout-marquee" aria-hidden="true" style={marquee}/>}
-  <div className="lektrus-live-layout-actions">
+  <div ref={actions} className="lektrus-live-layout-actions">
    <div className="lektrus-live-layout-device-switch" role="group" aria-label="Версия интерфейса">
-    {deviceProfiles.map(id=><button key={id} type="button" className={device===id?"is-active":""}
-     aria-pressed={device===id} onClick={()=>changingDevice(id)}>{specs[id].label}</button>)}
+    {deviceProfiles.map(id=><button key={id} type="button" className={baseDevice===id?"is-active":""}
+     aria-pressed={baseDevice===id} onClick={()=>changingDevice(id==="phone"?"phonePortrait":id)}>{specs[id].label}</button>)}
    </div>
+   {touch&&<button type="button" onClick={()=>changingDevice(device.endsWith("Portrait")?baseDevice:baseDevice==="phone"?"phonePortrait":"tabletPortrait")}>↻ Повернуть</button>}
+   <label className="lektrus-layout-size"><span>Размер (CSS px)</span>
+    <input key={device+"w"} type="number" min={240} max={3840} aria-label="Ширина предпросмотра" defaultValue={dimensions.width} onBlur={e=>resizeDimension("width",Number(e.target.value))}/>
+    ×
+    <input key={device+"h"} type="number" min={240} max={3840} aria-label="Высота предпросмотра" defaultValue={dimensions.height} onBlur={e=>resizeDimension("height",Number(e.target.value))}/>
+    <span>{Math.round(fit*100)}%</span>
+   </label>
    <button type="button" className={showGrid?"is-active":""} aria-pressed={showGrid}
     onClick={()=>setShowGrid(v=>!v)} title="Сетка и привязка элементов с шагом 16 пикселей">▦ Сетка</button>
+   <button type="button" className={interact?"is-active":""} aria-pressed={interact}
+    disabled={!frameReady} onClick={()=>{setInteract(v=>!v);setSelected([]);setVersion(v=>v+1)}}>{interact?"Вернуться к настройке":"Проверить кнопки"}</button>
    <span className="lektrus-live-layout-actions-divider"/>
    <button type="button" onClick={undo} disabled={!past.current.length} title="Отменить последнее изменение (Ctrl+Z)">↶ Отменить</button>
    <button type="button" onClick={redo} disabled={!future.current.length} title="Вернуть отменённое (Ctrl+Y)">↷ Вернуть</button>
    <span className="lektrus-live-layout-actions-divider"/>
    <button type="button" onClick={leave}>Выход</button>
-   <button type="button" className="primary" onClick={()=>void save()} disabled={saving}>{saving?"Публикуем…":"Опубликовать для всех"}</button>
+   <button type="button" className="primary" onClick={()=>void save()} disabled={saving||!configReady||!frameReady}>{saving?"Публикуем…":"Опубликовать для всех"}</button>
   </div>
   {message&&<div role="status" className="lektrus-live-layout-status">{message}</div>}
  </div>,document.body);

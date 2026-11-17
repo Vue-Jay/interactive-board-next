@@ -249,7 +249,7 @@ export default function App() {
   // Load the administrator-published interface design for every signed-in
   // account. Refresh on return to the app so other devices pick up updates.
   useEffect(()=>{
-    if(!authReady||!authUser||!isRemoteBackendEnabled())return;
+    if(!authReady||!authUser||!(isRemoteBackendEnabled()||isSelfhostBackendEnabled()))return;
     if(new URLSearchParams(window.location.search).get("layout-editor")==="1")return;
     let alive=true;
     let pending=false;
@@ -261,7 +261,7 @@ export default function App() {
       finally{pending=false}
     };
     void refresh();
-    const interval=window.setInterval(()=>{if(document.visibilityState==="visible")void refresh()},60_000);
+    const interval=window.setInterval(()=>{if(document.visibilityState==="visible")void refresh()},15_000);
     window.addEventListener("focus",refresh);
     return()=>{alive=false;window.clearInterval(interval);window.removeEventListener("focus",refresh)};
   },[authReady,authUser?.id]);

@@ -12,6 +12,35 @@ import admin as admin_module
 
 
 @pytest.mark.asyncio
+async def test_global_interface_layout_is_shared_and_admin_write_only(client):
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET is_admin=true WHERE id=$1", TEACHER)
+    _, admin = await sign_in(client, "teacher@example.test")
+    _, student = await sign_in(client, "student@example.test")
+    _, other = await sign_in(client, "outsider@example.test")
+    read_url = "/api/v1/interface-layout"
+    write_url = "/api/v1/admin/interface-layout"
+    assert (await client.get(read_url)).json() == {"layout": None}
+    design = {"version": 1, "profiles": {
+        "desktop": {"toolbar": {"x": 4, "y": 0, "scale": 1}},
+        "phonePortrait": {"toolbar": {"x": 0, "y": 5, "scale": 0.9}},
+        "phone": {"toolbar": {"x": 0, "y": -5, "scale": 1.1}},
+    }, "controls": {}, "extras": {}}
+    payload = {"layout": design}
+    assert (await client.put(write_url, json=payload)).status_code == 401
+    assert (await client.put(write_url, json=payload, headers=student)).status_code == 403
+    assert (await client.put(write_url, json={"layout": {}}, headers=admin)).status_code == 422
+    assert (await client.put(write_url, json=payload, headers=admin)).status_code == 200
+    for headers in (admin, student, other, {}):
+        assert (await client.get(read_url, headers=headers)).json() == payload
+    design["profiles"]["desktop"]["toolbar"]["x"] = -2
+    assert (await client.put(write_url, json=payload, headers=admin)).status_code == 200
+    assert (await client.get(read_url, headers=other)).json() == payload
+    async with app.state.pool.acquire() as conn:
+        assert await conn.fetchval("select count(*) from global_interface_layout") == 1
+
+
+@pytest.mark.asyncio
 async def test_admin_sends_only_selected_mail_templates(client, monkeypatch):
     """Real builders and an SMTP stub: never create live accounts or send live mail."""
     monkeypatch.setattr(admin_module, "_test_mail_attempts", admin_module.deque())
