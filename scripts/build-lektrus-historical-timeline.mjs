@@ -504,7 +504,9 @@ function editorialSegments(base,derived=[]){
  if(base.sourceIndex===9410)cut(1707);
  if(base.sourceIndex===7187){cut(1454);cut(1462)}
  if(base.role==='polity'&&base.sourceName==='Sultanate of Malacca')cut(1529);
- if(base.sourceIndex===13313)cut(1973);
+ if(base.sourceIndex===13313){cut(1973);cut(1976)}
+ if(base.sourceIndex===12910)cut(1944);
+ if(base.components.includes('County of Savoy'))cut(1416);
  const british=base.sourceName==='Kingdom of Great Britain'&&base.sourceWikidata==='Q23666';
  const britishComponent=base.components.includes('Kingdom of Great Britain');
  if(british||britishComponent){cut(1801);cut(1927)}
@@ -544,6 +546,10 @@ function editorialSegments(base,derived=[]){
   const note=(reason,urls,ru)=>{reasons.push(reason);if(ru)reasonsRu.push(ru);for(const url of urls)sources.add(url)};
   const rename=(name,nameRu,url,reason,reasonRu)=>{r={...r,name,nameRu,nameStatus:'reviewed'};note(reason,[url],reasonRu);};
   for(const [,,start,end,name,ru,url,reason,reasonRu] of titleRules)if(from>=start&&to<=end)rename(name,ru,url,reason,reasonRu);
+  if(from>=1416&&base.components.includes('County of Savoy')){
+   r={...r,sourceComponents:base.components,components:r.components.map(n=>n==='County of Savoy'?'Duchy of Savoy':n)};
+   note('Sigismund elevated the Count of Savoy to Duke on 9 February 1416. Align the historical component label with the contemporary title, without altering or validating the source overlay geometry.',['https://archiviodistatotorino.beniculturali.it/siglist/?uid=270567'],'9 февраля 1416 года Сигизмунд возвёл графа Савойского в герцогское достоинство. Исправлено название составляющей; геометрия и состав остального объединения не подтверждаются этим документом.');
+  }
   if(base.sourceName==='Republic of Benin'&&base.sourceWikidata==='Q962'&&from<1990){
    const dahomey=from<1975;
    rename(dahomey?'Republic of Dahomey':"People's Republic of Benin",dahomey?'Республика Дагомея':'Народная Республика Бенин','https://www.gouv.bj/pages/histoire/','Dahomey was renamed the People’s Republic of Benin in 1975; the latter name ended in 1990.','Дагомея переименована в Народную Республику Бенин в 1975 году; с 1990 года — Республика Бенин.');
@@ -635,8 +641,21 @@ function editorialSegments(base,derived=[]){
    note('The source polygon is Mahé in the Seychelles, not the mainland East Africa Protectorate. Seychelles remained a British colony until 1976.',[SURINAME_SOURCE],'Исходный контур — остров Маэ, а не материковый протекторат Восточной Африки. Сейшелы оставались британской колонией до 1976 года.');
   }
   if(base.sourceIndex===13313){
-   r={...r,geometryStatus:'rejected',sourceComponents:base.components,components:r.components.map(n=>n==='British East Africa'?'Seychelles (British colony)':n)};
-   note('Static imperial aggregate contains territories after their independence and cannot represent the changing empire. The original contour is preserved for review, not displayed. Seychelles colonial coverage is missing in 1973–1975.',[SURINAME_SOURCE],'Неизменный сводный контур империи включает территории после их независимости, поэтому исключён из отрисовки. Колониальный контур Сейшел за 1973–1975 годы отсутствует.');
+   r={...r,geometryStatus:'rejected',sourceComponents:base.components,components:r.components.flatMap(n=>n!=='British East Africa'?[n]:from<1976?['Seychelles (British colony)']:[])};
+   note('Static imperial aggregate contains territories after independence and cannot represent the changing empire. It is not displayed. The Seychelles link is retained only through 1975; an independently attributed Mahé source component now covers 1973–1975.',[SURINAME_SOURCE,'https://mfa.gov.sc/history-of-the-department-2/'],'Неизменный сводный контур империи включает территории после их независимости, поэтому исключён из отрисовки. Связь с Сейшелами сохранена до 1975 года; контур Маэ за 1973–1975 годы отдельно восстановлен.');
+  }
+  const frenchLiberation='https://www.cheminsdememoire.gouv.fr/fr/revue/le-retour-la-republique',frenchAfrica='https://www.cheminsdememoire.gouv.fr/sites/default/files/2020-07/fiches%20tirailleurs%20africains%20complet%2011%2003%2020.pdf',frenchConstitution='https://www.vie-publique.fr/files/rapport/pdf/301916.pdf';
+  const provisionalFrance='Provisional Government of the French Republic',provisionalGroup=`(${provisionalFrance})`;
+  if(base.sourceIndex===12921){r={...r,sourceMemberOf:base.memberOf,memberOf:r.memberOf.filter(n=>n!=='(Vichy France)')};note('French Africa rallied to the Allied war effort after the North African campaign and joined the Algiers committee in 1943, not Vichy.',[frenchAfrica,'https://history.state.gov/historicaldocuments/frus1943v02/d104'],'После перехода французской Африки на сторону союзников в 1943 году её нельзя считать частью режима Виши.');}
+  if(base.sourceIndex===12916){r={...r,geometryStatus:'rejected',sourceComponents:base.components,components:r.components.filter(n=>n!=='French Africa')};note('The aggregate contains French Africa after its rally to the Algiers committee. The source overlay is retained but cannot be drawn as Vichy territory.',[frenchAfrica],'Сводный контур включает французскую Африку после её перехода к союзникам; как территорию Виши его показывать нельзя.');}
+  if(base.sourceIndex===12932){r={...r,sourceMemberOf:base.memberOf,memberOf:r.memberOf.map(n=>n==='(Vichy France)'?provisionalGroup:n)};note('The French Committee became the Provisional Government on 3 June 1944.',[frenchLiberation],'С 3 июня 1944 года Французский комитет национального освобождения стал Временным правительством Французской Республики.');}
+  if(base.sourceIndex===12941){r={...r,name:provisionalGroup,nameRu:'Временное правительство Французской Республики (французская Африка)',nameStatus:'reviewed',entityId:identity('reviewed-composite','french-provisional-government')};note('The only component is French Africa, administered by the Algiers provisional government, not Vichy.',[frenchLiberation,frenchAfrica],'Единственная составляющая — французская Африка, находившаяся под управлением Временного правительства, а не Виши; контур не является полной картой Франции.');}
+  if(base.sourceIndex===12910&&from>=1944){r={...r,sourceMemberOf:base.memberOf,memberOf:r.memberOf.filter(n=>n!=='(Vichy France)')};note('Decoux retained the colonial administration under Japanese pressure until the Japanese coup of 9 March 1945. This is not a continuing territorial union with the defunct Vichy regime, nor does the source extent prove uniform effective control.', ['https://www.cheminsdememoire.gouv.fr/fr/revue/1954-la-fin-de-lindochine-francaise-0','https://history.state.gov/historicaldocuments/frus1945v06/d173'],'Колониальная администрация Деку действовала под давлением Японии до переворота 9 марта 1945 года. Это не территориальный союз с прекратившим существование режимом Виши; исходный контур не подтверждает единый фактический контроль.');}
+  if([12962,12969,12970].includes(base.sourceIndex)){
+   if(base.sourceIndex===12962)r={...r,name:provisionalFrance,nameRu:'Временное правительство Французской Республики',nameStatus:'reviewed',entityId:identity('reviewed-polity','french-provisional-government')};
+   if(base.sourceIndex===12970)r={...r,name:provisionalGroup,nameRu:'Временное правительство Французской Республики (сводный контур)',nameStatus:'reviewed',entityId:identity('reviewed-composite','french-provisional-government'),sourceComponents:base.components,components:r.components.map(n=>n==='French Fourth Republic'?provisionalFrance:n)};
+   else r={...r,sourceMemberOf:base.memberOf,memberOf:r.memberOf.map(n=>n==='(French Fourth Republic)'?provisionalGroup:n)};
+   note('The Fourth Republic constitution was promulgated on 27 October 1946. In 1945 the Provisional Government remained in power; the composite is a source aggregation, not proof of effective control in Indochina.',[frenchLiberation,frenchConstitution],'Конституция Четвёртой республики обнародована 27 октября 1946 года. В 1945 году действовало Временное правительство; сводный контур не доказывает фактический контроль над Индокитаем.');
   }
   if(delhi){
    let label=base.role==='composite'?base.components[0]:base.name;
@@ -663,7 +682,7 @@ function editorialSegments(base,derived=[]){
    if(from>=2000&&to<=2023&&base.memberOf.includes('(British Empire)')){r={...r,sourceMemberOf:base.memberOf,memberOf:base.memberOf.filter(n=>n!=='(British Empire)')};note('Removed obsolete map link to an absent empire grouping; this is not a claim about Commonwealth membership.',[COMMONWEALTH])}
    if(base.sourceIndex===13305||base.sourceIndex===13684)note('UK core only: excluded disconnected non-UK territories (including Crown dependency Isle of Man); retained original UK islands and Northern Ireland. Missing or separately administered territories require separate review.',[UK_DEPENDENCIES],'Оставлены острова Великобритании и Северная Ирландия; исключены отдельные территории, не входящие в состав самого Соединённого Королевства. Контуры этих территорий требуют отдельной проверки.');
   }
-  if(britishComponent&&from>=1801){r={...r,sourceComponents:base.components,components:base.components.map(n=>n==='Kingdom of Great Britain'?ukName(from):n)};note('Updated historical component name in line with the 1801 union and 1927 title.',[UK_SOURCE])}
+  if(britishComponent&&from>=1801){r={...r,sourceComponents:base.components,components:r.components.map(n=>n==='Kingdom of Great Britain'?ukName(from):n)};note('Updated historical component name in line with the 1801 union and 1927 title.',[UK_SOURCE])}
   if(base.role==='composite'&&base.sourceName==='(British Empire)'){
    if(from>=1905&&base.components.includes('British Gold Coast')){
     r={...r,sourceComponents:base.components,components:r.components.flatMap(n=>n!=='British Gold Coast'?[n]:from<1958?['British West African territories (Gold Coast and Nigeria)']:from<1960?['British Nigeria']:[])};
@@ -891,7 +910,7 @@ export const provisionalExactReviews=[
 // establish a unique owner of the whole footprint for each year. Preserve both
 // source records as evidence, render one explicitly uncertain region instead.
 export const exactConflictPendingReviews=[
- [9854,10012,1768,1768,[0],[0],'Корсика — переход 1768 года','Генуя уступила права Франции по Версальскому договору 15 мая 1768 г.; республика Паоли сопротивлялась до поражения в 1769 г. Ни Генуя, ни республика не контролировали весь остров непрерывно.','https://www.isula.corsica/linguacorsa/Approche-historique-geographique-et-economique-de-la-Corse_a78.html'],
+ [9854,10012,1768,1768,[0],[0],'Корсика — переход 1768 года','Генуя уступила права Франции по Версальскому договору 15 мая 1768 г.; республика Паоли сопротивлялась до поражения в 1769 г. К концу августа французы заняли Кап-Корс, а в ноябре потребовали сдачи оружия у его жителей. Северная часть полуострова восстановлена отдельно; остальной остров остаётся областью неуточнённого контроля.','https://www.isula.corsica/linguacorsa/Approche-historique-geographique-et-economique-de-la-Corse_a78.html',['https://www.academia.edu/40638823/R_O_C_C_H_E_Revue_On_Line_Cap_Corse_Historique_vol_6_2019','https://www.servicehistorique.sga.defense.gouv.fr/en/node/1151057']],
  [9047,9089,1662,1664,[0],[0],'Золотой Берег — область восточнее Кейп-Коста','Исходный контур находится восточнее замка Кейп-Коста и включает район Мори. Договор Вест-Индской компании с правителем и старейшинами Асебу от 21 марта 1657 г. касается береговой полосы у форта Нассау, а не всей прилегающей территории. Здесь сохранялись местные африканские владения Асебу, Фету и Фанте; датская и шведская заливки не подтверждают суверенитет над всем контуром.','https://mass.cultureelerfgoed.nl/fort-nassau',['https://dokumen.pub/trade-and-politics-on-the-gold-coast-1600-1720-a-study-of-the-african-reaction-to-european-trade-9780198216537.html','https://books.openedition.org/ifra/pdf/3775']],
  [7908,8183,1552,1555,[1],[16],'Маскат — португальско-османское соперничество','В 1552 году Пири-реис захватил Маскат и продолжил поход к Ормузу; после его ухода португальцы вновь заняли Маскат. Архивные свидетельства описывают военно-морскую борьбу и контроль портов, но не подтверждают политическую границу всей полосы побережья.','https://www.sabrizain.org/malaya/library/portrecords.pdf'],
  [7955,8030,1534,1539,[0],[6],'Южный Пьемонт — спорные владения','Контур включает Бра и Кераско, но не Альбу и Асти. Бра вновь занят французами в 1536 г. Кераско юридически передан Беатрисе Португальской в 1531 г.; имперский гарнизон сохранялся, а в 1537 г. город пережил французское нападение и возвращение под имперский контроль. Нельзя распространить власть над одним городом на всю область.','https://www.treccani.it/enciclopedia/piemonte_%28Enciclopedia-Italiana%29/',['https://municipium-images-production.s3-eu-west-1.amazonaws.com/s3/874/allegati/archivio-storico.pdf','https://cherascocultura.it/quando-cherasco-divento-sabauda/','https://archiviodistatotorino.beniculturali.it/inventari/?id=313532','https://www.cherasco1547.org/public/pdf/20190620153420_Gli_Ebrei_di_Cherasco.pdf']],
@@ -923,6 +942,54 @@ export function buildElbaPartition(){
  areas.push(polygonClipping.difference(outline,...masks));
  assert.ok(areas.every(a=>a.length));
  return areas.map(coordinates=>({type:'MultiPolygon',coordinates}));
+}
+
+// A confirmed interior fragment is not a reconstructed political frontier.
+// The cut is deliberately north of the southern boundary of the Cap Corse
+// jurisdiction on the 1770 map (Dal Passo, fig. 2). The years of the siege
+// and local realignment (1761–64) remain unassigned (Macinaggio held out
+// until March 1765), as does the rest of Corsica.
+export const corsicaCore={
+ id:'cap-corse',
+ part:0,hash:'c6112dfe98f227b48dbd7df302405c9bd2abbe65204887ced3463de80aa1ac44',
+ mask:[[[8.9,42.83],[9.6,42.83],[9.6,43.1],[8.9,43.1],[8.9,42.83]]],
+ sources:[
+ 'https://www.stmoderna.it/uploads/pubblicazioni/870/2.LACORSICAXVIIISECOLO-FabrizioDalPasso.pdf',
+ 'https://www.persee.fr/doc/ahrf_0003-4436_1974_num_218_1_4183',
+ 'https://www.academia.edu/40638823/R_O_C_C_H_E_Revue_On_Line_Cap_Corse_Historique_vol_6_2019',
+ 'https://bureaudumercure.org/mercure/sites/default/files/webform/digital_copy/1044809/1764%2C%2001%2C%20vol.%201.pdf',
+ ],
+ periods:[
+ {source:9854,from:1757,to:1760,entity:'cap-corse-genoa',name:'Cap Corse (Genoese control, documented core)',nameRu:'Кап-Корс — генуэзское управление (подтверждённая область)'},
+ {source:10012,from:1765,to:1767,entity:'cap-corse-paoli',name:'Cap Corse (Corsican Republic, documented core)',nameRu:'Кап-Корс — Корсиканская республика (подтверждённая область)'},
+ {source:10012,from:1768,to:1768,entity:'cap-corse-france',name:'Cap Corse (French control, documented core)',nameRu:'Кап-Корс — французское управление (подтверждённая область)'},
+ ]
+};
+// The very small summit core is inside the old fortified town: the surviving
+// Church of Our Lady of the Mount anchors it, and the Portuguese gate lies
+// outside this conservative cut. The 2009 study's fig. 5 depicts a wider
+// late-Dutch enclosure, NOT the 1641 frontier. Schouten's 1641 report
+// independently documents the capture and the fort's hilltop interior.
+export const malaccaCore={
+ id:'malacca-fort',
+ hash:'863c6273c2e50d9d3fdb251fb1ac5c8af5def763839bc464af335a1af8dc4323',
+ mask:[[[102.24915,2.19225],[102.25005,2.19225],[102.25005,2.193],[102.24915,2.193],[102.24915,2.19225]]],
+ sources:[
+ 'https://repo.uum.edu.my/id/eprint/13538/1/PID226.pdf',
+ 'https://www.dbnl.org/tekst/_ber002185901_01/_ber002185901_01_0004.php',
+ 'https://hpip.org/en/heritage/details/1533',
+ 'https://commons.wikimedia.org/wiki/Commons:Wiki_Loves_Monuments_in_Malaysia/Monuments',
+ ],
+ periods:[
+ {source:8866,part:11,from:1641,to:1644,entity:'malacca-voc-core',name:'Malacca (VOC fortified town, documented core)',nameRu:'Малакка — крепость VOC (подтверждённая область)'},
+ {source:8910,part:10,from:1645,to:1647,entity:'malacca-voc-core',name:'Malacca (VOC fortified town, documented core)',nameRu:'Малакка — крепость VOC (подтверждённая область)'},
+ ],
+};
+export const documentedCores=[corsicaCore,malaccaCore];
+export function buildDocumentedCore(outline,definition){
+ const coordinates=polygonClipping.intersection(outline,definition.mask);
+ assert.ok(coordinates.length&&polygonClipping.difference(outline,coordinates).length);
+ return {type:'MultiPolygon',coordinates};
 }
 export function deriveSecondaryTerritorialReviews(features){
  const exclusions=[],restorations=[],pending=[],attributions=[];
@@ -1121,6 +1188,16 @@ export function normalizeHistoricalSource(source) {
     validateGeometry(geometry);const geometryId=sha256(JSON.stringify(geometry));geometries.set(geometryId,geometry);
     const [entity,name,nameRu]=d.areas[area];
     const restored={...origin,id:identity('historical-map-partition',entity,d.from,d.to,geometryId),entityId:identity('reviewed-territory',entity),name,nameRu,role:'polity',nameStatus:'reviewed',geometryStatus:'candidate',geometryId,sourceGeometryId:sha256(JSON.stringify(raw.geometry)),geometryRepair:'reviewed-map-partition',geometryParts:[{index:d.source,part:d.part}],mapPartition:{area,outlineGeometryId,evidence:d.sources[0]},from:d.from,to:d.to,editorialRestoration:true,components:[],memberOf:[],sourceComponents:origin.sourceComponents??origin.components,sourceMemberOf:origin.sourceMemberOf??origin.memberOf,review:{reason:'Approximate manual digitization from the Tuscan historical atlas, section 8.19; modern generalized coastline, not a historical cadastral survey.',reasonRu:'Приблизительная оцифровка трёх владений по историческому атласу Тосканы (раздел 8.19, с. 114) с генерализованной современной береговой линией. Не является точной исторической кадастровой съёмкой. Британцы эвакуировались в 1797 году.',sources:d.sources}};
+    delete restored.territorialIssues;delete restored.territorialAttributions;delete restored.geometrySubtractions;delete restored.geometryTemporalWitnesses;
+    records.push(restored);counts.reviewedNames++;
+   }
+   for(const definition of documentedCores)for(const d of definition.periods){
+    const index=d.part??definition.part,raw=source.features[d.source],origin=records.find(r=>r.sourceIndex===d.source&&r.from<=d.from&&r.to>=d.from),part=rawParts(raw)[index];
+    assert.ok(origin);if(definition.hash)assert.equal(componentHash(part),definition.hash);
+    const outline={type:'MultiPolygon',coordinates:[part]},outlineGeometryId=sha256(JSON.stringify(outline));geometries.set(outlineGeometryId,outline);
+    const geometry=buildDocumentedCore(part,definition),geometryId=sha256(JSON.stringify(geometry));validateGeometry(geometry);geometries.set(geometryId,geometry);
+    const review=definition.id==='cap-corse'?{reason:'Confirmed northern part of Cap Corse, using only a conservative interior cut of the generalized source coastline. Dal Passo fig. 2 and Carrington confirm historic geography; Macinaggio fell in March 1765, and French troops secured the cape in August 1768. The southern cut is NOT a historical frontier. The 1761–64 siege and the rest of Corsica remain unresolved.',reasonRu:'Восстановлена только северная часть Кап-Корса (по генерализованному береговому контуру). Карта административного деления 1770 года, рис. 2 Ф. Даль Пассо, и исследование Д. Каррингтон подтверждают географию района; Мацинажо оставлен генуэзским гарнизоном в марте 1765 года, весь полуостров заняли французы в августе 1768 года. Южный срез условный, не историческая граница. Осада и переход власти 1761–1764 годов, а также остальная Корсика остаются неуточнёнными.'}:{reason:'Conservative interior summit core around the surviving Church of Our Lady of the Mount, inside the captured fortress. Schouten’s 1641 report and the georeferenced reconstruction (2009, fig. 5) support the site, not a complete 1641 perimeter. The rectangle is a limited interior excerpt, NOT the fort wall or the colony’s political boundary.',reasonRu:'Восстановлен только небольшой внутренний участок на холме у сохранившейся церкви Святого Павла, внутри захваченной крепости. Отчёт Схаутена 1641 года и геопривязанная реконструкция (2009, рис. 5) подтверждают место, но не полную границу 1641 года. Прямоугольник — условный внутренний фрагмент, не стена крепости и не граница колонии.'};
+    const restored={...origin,id:identity('historical-documented-core',d.entity,d.from,d.to,geometryId),entityId:identity('reviewed-territory',d.entity),name:d.name,nameRu:d.nameRu,role:'polity',nameStatus:'reviewed',geometryStatus:'candidate',geometryId,sourceGeometryId:sha256(JSON.stringify(raw.geometry)),geometryRepair:'reviewed-map-partition',geometryParts:[{index:d.source,part:index}],mapPartition:{kind:'documented-core',area:0,outlineGeometryId,evidence:definition.sources[0]},from:d.from,to:d.to,editorialRestoration:true,components:[],memberOf:[],sourceComponents:origin.sourceComponents??origin.components,sourceMemberOf:origin.sourceMemberOf??origin.memberOf,review:{...review,sources:definition.sources}};
     delete restored.territorialIssues;delete restored.territorialAttributions;delete restored.geometrySubtractions;delete restored.geometryTemporalWitnesses;
     records.push(restored);counts.reviewedNames++;
    }

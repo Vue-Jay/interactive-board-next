@@ -1638,6 +1638,13 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        scale={scale} viewport={viewport}
         terrain={<LektrusAtlasTerrain enabled={terrainEnabled||mineralTerrainEnabled} scale={scale} position={position}
          onStatus={setTerrainStatus}/>}/>
+      {/* The interior is selectable, but sits below established political
+          shapes so the unresolved area cannot intercept their clicks. */}
+      {unresolvedRegions.length>0&&<g data-atlas-unresolved-interiors="true" fill="#b45309" fillOpacity=".10">
+       {unresolvedRegions.map(region=><path key={region.id} data-atlas-unresolved-interior={region.id}
+        d={mapFeaturePath({type:'Feature',properties:null,geometry:region.issue.geometry})} fillRule="evenodd" pointerEvents="fill" style={{cursor:'pointer'}}
+        onClick={e=>{e.stopPropagation();if(!dragged.current)openUnresolvedRegion(region.id)}}><title>{region.title} — неуточнённая область</title></path>)}
+      </g>}
       <g strokeLinejoin="round">
        {shapes.map(s=>{
         const precise=historical?borderPrecision(s.feature):3;
@@ -1646,9 +1653,10 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
         const fillKey=String(s.feature.properties?.ADM0_A3||s.feature.properties?.ISO_A3||s.name);
         const fill=mode==="contour"?(painted[fillKey]||"#fffdfa"):mode==="physical"||mode==="relief"?"#d2e5c8":mode==="hydrography"?"#e6eee2":mode==="minerals"?"#f4ecd6":
          mode==="political"?politicalColors[s.i]??"#ecd9bf":historical?(modernReference?politicalColors[s.i]??"#ecd9bf":palettes[hash(s.name||String(s.feature.properties?.NAME??s.i))%palettes.length]):palettes[hash(s.name)%palettes.length];
-        return <path key={s.i} data-atlas-feature-index={s.i} data-atlas-revision-id={annualPreview?s.feature.properties?.historicalRevisionId as string|undefined:undefined} data-atlas-history-role={annualSource(snapshot.year)?s.feature.properties?.historicalRole as string|undefined:undefined} data-atlas-country-code={modernBorders?s.feature.properties?.ADM0_A3 as string|undefined:undefined} d={s.path} fillRule="evenodd" fill={overlay?'none':fill} pointerEvents={overlay?'stroke':undefined}
+        const documentedCore=(s.feature.properties?.mapPartition as {kind?:string}|undefined)?.kind==='documented-core';
+        return <path key={s.i} data-atlas-feature-index={s.i} data-atlas-revision-id={annualPreview?s.feature.properties?.historicalRevisionId as string|undefined:undefined} data-atlas-history-role={annualSource(snapshot.year)?s.feature.properties?.historicalRole as string|undefined:undefined} data-atlas-documented-core={documentedCore?'true':undefined} data-atlas-country-code={modernBorders?s.feature.properties?.ADM0_A3 as string|undefined:undefined} d={s.path} fillRule="evenodd" fill={overlay?'none':fill} pointerEvents={overlay?'stroke':undefined}
          data-contour-fill-key={isWorksheet&&painted[fillKey]?fillKey:undefined}
-         fillOpacity={mineralTerrainEnabled?.56:1}
+         fillOpacity={documentedCore?.65:mineralTerrainEnabled?.56:1}
          stroke={isWorksheet&&!contourConfig.showBorders?"none":highlighted||s.feature===selected?"#df793e":overlay?(annualOverlay==='relation'?'#c2410c':annualOverlay==='settlement'?'#0f766e':'#6d28d9'):mode==="minerals"?"#a4aea2":mode==="contour"?"#8c9eaa":"#819fb2"}
          strokeWidth={overlay?2:highlighted||s.feature===selected?1.9:mode==="minerals"?.4:historical?(precise===1?.8:.58):.65}
          vectorEffect="non-scaling-stroke"
@@ -2578,7 +2586,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        {annualSource(snapshot.year)&&Array.isArray(selected.properties?.historicalSourceMemberOf)&&<p><strong>Связи исходной записи:</strong> {selected.properties.historicalSourceMemberOf.join(', ')}</p>}
        {selectedAnnualReview&&<p><strong>Редакционное уточнение по источникам:</strong> {selectedAnnualReview.reasonRu??selectedAnnualReview.reason}{selectedAnnualReview.sources.map((url,i)=><span key={url}>{" "}<a href={url} target="_blank" rel="noopener noreferrer">Документ {i+1} ↗</a></span>)}</p>}
        {!!selectedTerritorialAttributions?.length&&<div><strong>Статус отдельных территорий:</strong>{[...new Map(selectedTerritorialAttributions.map(i=>[i.group,i])).values()].map(i=><p key={i.group}>{i.reason}{i.sources.map((url,n)=><span key={url}>{" "}<a href={url} target="_blank" rel="noopener noreferrer">Документ {n+1} ↗</a></span>)}</p>)}</div>}
-       <p><strong>Точность границ:</strong> {selected.properties?.ATLAS_HISTORICAL_LABEL?"Условный контур, границы не подтверждены":precisions[borderPrecision(selected)]}</p>
+       <p><strong>Точность границ:</strong> {(selected.properties?.mapPartition as {kind?:string}|undefined)?.kind==='documented-core'?"Подтверждённая часть области; условный срез, не государственная граница":selected.properties?.ATLAS_HISTORICAL_LABEL?"Условный контур, границы не подтверждены":precisions[borderPrecision(selected)]}</p>
        {fallbackReference?.formation&&<p><strong>Образование:</strong> {fallbackReference.formation}</p>}
        {historicalFeatureFacts(selected).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
        {historicalSubject&&<p><strong>{selected.properties?.ATLAS_HISTORICAL_LABEL?"Уточнённая принадлежность":"Принадлежность по реконструкции (не подтверждена)"}:</strong> {historicalSubject}</p>}

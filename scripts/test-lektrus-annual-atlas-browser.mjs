@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {createRequire} from 'node:module';
+import {createHash} from 'node:crypto';
 import {historicalBlockForYear,historicalYearState} from '../src/lektrusHistoricalTimeline.ts';
 import {historicalGapLocators} from '../src/lektrusHistoricalGapLocators.ts';
 import {historicalUnresolvedCenters,historicalUnresolvedRegions} from '../src/lektrusHistoricalUnresolvedCenters.ts';
@@ -30,10 +31,13 @@ async function main(){
  const registry=JSON.parse(fs.readFileSync(path.join(root,'change-review-registry.json')));
  const manifest=JSON.parse(fs.readFileSync(path.join(root,'manifest.json')));
  const shard=Number(process.env.LEKTRUS_ATLAS_SHARD??0),shards=Number(process.env.LEKTRUS_ATLAS_SHARDS??1);
- const years=planAnnualYears(registry,shard,shards);
+ const focused=process.env.LEKTRUS_ATLAS_YEARS;
+ const allYears=planAnnualYears(registry,shard,shards);
+ const years=focused?[...new Set(focused.split(',').map(Number))].sort((a,b)=>b-a):allYears;
+ if(focused){assert.ok(shard===0&&shards===1&&years.length&&years.every(y=>allYears.includes(y)), 'Invalid focused annual audit years');}
  const output=process.env.LEKTRUS_ATLAS_AUDIT_OUTPUT||path.resolve('atlas-browser-audit');
  fs.mkdirSync(output,{recursive:true});
- const file=path.join(output,`year-audit-${shard}.jsonl`);
+ const file=path.join(output,focused?`focused-year-audit-${createHash('sha256').update(years.join(',')).digest('hex').slice(0,12)}.jsonl`:`year-audit-${shard}.jsonl`);
  fs.writeFileSync(file,'');
  const reportRow=row=>{fs.appendFileSync(file,JSON.stringify(row)+'\n');};
  const browser=await chromium.launch({headless:true,...(process.env.LEKTRUS_CHROMIUM_EXECUTABLE?{executablePath:process.env.LEKTRUS_CHROMIUM_EXECUTABLE}:{})});
@@ -160,11 +164,17 @@ async function main(){
      const outlineCount=await page.locator('[data-atlas-unresolved-territories] path').count();
      if(outlineCount!==new Set(state.territorialIssues.map(i=>i.hash)).size)row.issues.push({kind:'wrong-territorial-reconstruction-outline-count',actual:outlineCount});
      const regions=historicalUnresolvedRegions(year,state.territorialIssues);
+     const interiors=page.locator('[data-atlas-unresolved-interior]');
+     if(await interiors.count()!==regions.length)row.issues.push({kind:'wrong-unresolved-interior-count'});
+     const coreCount=state.drawable.filter(e=>e.record.mapPartition?.kind==='documented-core').length;
+     if(await page.locator('[data-atlas-documented-core]').count()!==coreCount)row.issues.push({kind:'wrong-documented-core-count'});
      row.unresolvedRegions=[];
      for(const region of regions){
       const item={id:region.id,clicked:false,verified:false};
       try{
-       await page.locator(`[data-atlas-unresolved-region="${region.id}"]`).dispatchEvent('click');item.clicked=true;
+       const interior=page.locator(`[data-atlas-unresolved-interior="${region.id}"]`);
+       assert.equal(await interior.getAttribute('pointer-events'),'fill');
+       await interior.dispatchEvent('click');item.clicked=true;
        const card=page.locator(`.lektrus-atlas-info-object [data-atlas-selected-unresolved="${region.id}"]`);
        await card.waitFor({state:'visible',timeout:5000});
        const actual=await card.locator('a[href]').evaluateAll(links=>links.map(a=>a.getAttribute('href')));
@@ -214,10 +224,10 @@ async function main(){
    console.log(`ATLAS_YEAR ${JSON.stringify({year,completed:row.completed,coverageStatus:row.coverageStatus,...row.summary})}`);
    if(issueCount)console.log(`ATLAS_YEAR_ISSUES ${JSON.stringify({year,issues:row.issues,layerIssues:row.layers.flatMap(l=>l.issues),cards:items.filter(x=>x.errors.length).slice(0,20).map(x=>({id:x.id,sourceIndex:x.sourceIndex,cardTitle:x.cardTitle,errors:x.errors})),pageErrors:row.pageErrors})}`);
   };
-  if(shard===0){await runYear(2026);await runYear(2025);}
+  if(shard===0&&!focused){await runYear(2026);await runYear(2025);}
   for(const year of years)await runYear(year);
   console.log(`Shard ${shard}: ${completed} years, ${clicked} actual SVG clicks, ${passed} card checks, ${failures} technical issues. Historical truth remains unverified.`);
-  if(failures||completed!==years.length+(shard===0?2:0))process.exitCode=1;
+  if(failures||completed!==years.length+(shard===0&&!focused?2:0))process.exitCode=1;
  }finally{await browser.close();}
 }
 await main();
