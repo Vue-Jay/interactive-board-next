@@ -165,8 +165,9 @@ const rawParts=f=>f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometr
 // is never removed on the strength of an index alone: check both geometries,
 // their dates, and the reviewed hash. The reconstruction queue remains open.
 export const territorialBatch=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-batch-989.json',import.meta.url),'utf8'));
+export const territorialResolutions=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-batch-989-resolutions.json',import.meta.url),'utf8'));
 export function deriveTerritorialBatch(features,batch=territorialBatch){
- const exclusions=[],pending=[],seen=new Set();
+ const exclusions=[],pending=[],resolved=[],restorations=[],relabels=new Map(),attributions=[],extensions=[],seen=new Set();
  assert.equal(batch.sourceSha256,PINNED_SOURCE_SHA256);
  for(const row of batch.rows){
   const {source,part,other,otherParts,hash,from,to,status,group,evidence}=row;
@@ -180,13 +181,46 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
   assert.ok(status==='ready'||status==='reconstruct');
   const reason=batch.descriptions[group];assert.ok(reason&&evidence.startsWith('https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-'));
   for(let year=from;year<=to;year++){if(year===0)continue;const key=`${source}:${hash}:${year}`;assert.ok(!seen.has(key),`Duplicate reviewed component-year ${key}`);seen.add(key);}
-  const rule=[source,parts.length,from,[part],status==='ready'?'Historically reviewed exact duplicate: '+group+'.':'Incorrect or conflated political attribution; territorial reconstruction is still pending: '+group+'.',reason,evidence,to];
+  const retained=territorialResolutions.retained[group],restored=territorialResolutions.restored[group],relabel=territorialResolutions.relabel[group];
+  const decision=status==='reconstruct'?(retained??restored??relabel):undefined;
+  const rule=[source,parts.length,from,[part],status==='ready'?'Historically reviewed exact duplicate: '+group+'.':decision?decision.reason:'Incorrect or conflated political attribution; territorial reconstruction is still pending: '+group+'.',decision?.reasonRu??reason,decision?.sources[0]??evidence,to];
   // Unresolved original contours must not be presented as established filled
   // political boundaries. Preserve their source parts as explicit open issues.
-  exclusions.push(rule);
-  if(status==='reconstruct')pending.push({...row,reason,geometry:{type:'Polygon',coordinates:parts[part]},counterpartName:counterpart.properties.Name});
+  // Relabel a wholly misidentified island rather than deleting its geography.
+  if(!relabel?.indices.includes(source))exclusions.push(rule);
+  if(status==='reconstruct'&&decision){
+   assert.ok(decision.sources.length&&decision.sources.every(s=>s.startsWith('https://')));
+   resolved.push({...row,mode:retained?'retained':restored?'restored':'relabel',target:retained?other:restored?restored.anchor:relabel.indices.find(i=>features[i].properties.FromYear<=from&&features[i].properties.ToYear>=to)});
+   if(retained)attributions.push({source:other,part:otherParts[0],hash,group,from,to,reason:retained.reasonRu,sources:retained.sources});
+   if(restored&&source===restored.anchor)restorations.push({...row,decision,geometry:{type:'MultiPolygon',coordinates:[parts[part]]}});
+  }else if(status==='reconstruct')pending.push({...row,reason,geometry:{type:'Polygon',coordinates:parts[part]},counterpartName:counterpart.properties.Name});
  }
- return {exclusions,pending,count:seen.size};
+ for(const [group,decision] of Object.entries(territorialResolutions.relabel))for(const index of decision.indices){
+  const f=features[index];assert.equal(f.properties.Name,'Saint Kitts');assert.equal(rawParts(f).length,1);assert.equal(componentHash(rawParts(f)[0]),decision.hash);
+  relabels.set(index,{...decision,group});
+ }
+ // Extend exact, historically justified island corrections to adjacent years
+ // that were not duplicates in the original 989-case registry.
+ const extensionKeys=new Set();
+ for(const ext of territorialResolutions.extensions){
+  const {source,part,from,to,group,other,otherPart}=ext,f=features[source],parts=rawParts(f),hash=batch.rows.find(r=>r.group===group).hash;
+  assert.ok(f.properties.Type==='POLITY'&&f.properties.FromYear<=from&&f.properties.ToYear>=to&&from<=to);assert.equal(componentHash(parts[part]),hash);
+  for(let y=from;y<=to;y++){const key=`${source}:${hash}:${y}`;assert.ok(!seen.has(key)&&!extensionKeys.has(key),`Extension overlaps reviewed registry ${source}/${y}`);extensionKeys.add(key);}
+  let decision=territorialResolutions.restored[group];
+  if(group==='Сент-Круа')decision={...territorialResolutions.relabel[group],entity:'saint-croix',reason:'Saint Croix was transferred to the United States on 31 March 1917; restore the exact island separately from the British colonial aggregate.',reasonRu:'Сент-Круа передан США 31 марта 1917 года. В переходном 1917 году показана новая принадлежность; исходный контур острова отделён от британского колониального объединения.'};
+  if(other!==undefined){
+   const target=features[other];assert.ok(target.properties.FromYear<=from&&target.properties.ToYear>=to);assert.equal(componentHash(rawParts(target)[otherPart]),hash);
+   decision={...decision,reason:from<1816?'Bangka was ceded to the British in 1812; preserve its matching British source component in 1813.':'Following the 1816 handover, retain the matching Dutch component, not Palembang.',reasonRu:from<1816?'Банка перешла к британцам в 1812 году; в 1813 году сохранён совпадающий британский контур.':'После передачи в 1816 году сохранён нидерландский контур Банки, а не принадлежность Палембангу.'};
+   attributions.push({source:other,part:otherPart,hash,group,from,to,reason:decision.reasonRu,sources:decision.sources});
+  }else{
+   if(group==='Исландия')decision={...decision,reason:decision.reason.replace('under the 1941 defence agreement','during British and US military presence, with sovereignty expressly recognized in the 1941 defence agreement'),reasonRu:decision.reasonRu.replace('по соглашению об обороне 1941 года','во время британского и американского военного присутствия; суверенитет прямо признан соглашением об обороне 1941 года')};
+   if(group==='Мафия')decision={...decision,reason:'The island was German following the 1890 agreement; British military capture occurred only in 1915.',reasonRu:'После соглашения 1890 года Мафия входила в Германскую Восточную Африку; британское завоевание острова произошло только в 1915 году.'};
+   restorations.push({...ext,hash,decision,geometry:{type:'MultiPolygon',coordinates:[parts[part]]}});
+  }
+  extensions.push({...ext,hash});exclusions.push([source,parts.length,from,[part],decision.reason,decision.reasonRu,decision.sources[0],to]);
+ }
+ for(const row of resolved.filter(r=>r.mode==='restored'))for(let y=row.from;y<=row.to;y++)assert.ok(restorations.some(r=>r.source===row.target&&r.hash===row.hash&&r.from<=y&&r.to>=y),`Missing restored component ${row.group}/${y}`);
+ return {exclusions,pending,resolved,restorations,relabels,attributions,extensions,count:seen.size};
 }
 const withinBox=(polygon,box)=>polygon.every(ring=>ring.every(([x,y])=>x>=box[0]&&x<=box[2]&&y>=box[1]&&y<=box[3]));
 export function deriveConfirmedOverlapExclusions(features,policies=confirmedOverlapPolicies){
@@ -487,9 +521,11 @@ export function normalizeHistoricalSource(source) {
   const geometries = new Map(), records = [];
   const derivedExclusions=deriveConfirmedOverlapExclusions(source.features);
   // Small synthetic fixtures do not contain the pinned source indices.
-  const batch=source.features.length>Math.max(...territorialBatch.rows.map(r=>Math.max(r.source,r.other)))?deriveTerritorialBatch(source.features):{exclusions:[],pending:[],count:0};
+  const batch=source.features.length>Math.max(...territorialBatch.rows.map(r=>Math.max(r.source,r.other)))?deriveTerritorialBatch(source.features):{exclusions:[],pending:[],resolved:[],restorations:[],relabels:new Map(),attributions:[],count:0};
   derivedExclusions.push(...batch.exclusions);
   const pendingBySource=new Map();
+  const attributionsBySource=new Map();
+  for(const {source,...note} of batch.attributions){if(!attributionsBySource.has(source))attributionsBySource.set(source,[]);attributionsBySource.get(source).push(note);}
   for(const issue of batch.pending){
    const geometryId=sha256(JSON.stringify(issue.geometry));geometries.set(geometryId,issue.geometry);
    if(!pendingBySource.has(issue.source))pendingBySource.set(issue.source,[]);
@@ -525,6 +561,10 @@ export function normalizeHistoricalSource(source) {
     const entityId = identity('source-'+role, sourceName, sourceWikidata);
     const base = {entityId, geometryId, role,components,memberOf,sourceSeshatId:String(p.SeshatID??''),sourceWikipedia:String(p.Wikipedia??''), ...(geometryId!==sourceGeometryId?{sourceGeometryId,geometryRepair:'retracted-zero-area-interior-edges'}:{}),name: sourceName, sourceName, sourceWikidata, sourceIndex, sourceFrom, sourceTo, from, to, nameStatus:'candidate', geometryStatus:'candidate'};
     const add = revision => {
+      const attribution=(attributionsBySource.get(sourceIndex)??[]).filter(issue=>issue.from<=revision.to&&issue.to>=revision.from);
+      if(attribution.length)revision={...revision,territorialAttributions:attribution};
+      const relabel=batch.relabels.get(sourceIndex);
+      if(relabel)revision={...revision,name:relabel.name,nameRu:relabel.nameRu,entityId:identity('reviewed-territory','saint-croix'),nameStatus:'reviewed',review:{reason:relabel.reason,reasonRu:relabel.reasonRu,sources:relabel.sources}};
       const territorialIssues=(pendingBySource.get(sourceIndex)??[]).filter(issue=>issue.from<=revision.to&&issue.to>=revision.from);
       if(territorialIssues.length)revision={...revision,territorialIssues};
       const selection=reviewedGeometryParts(revision,derivedExclusions);
@@ -552,6 +592,16 @@ export function normalizeHistoricalSource(source) {
       add({...base, to:1962, geometryStatus:'rejected', review:{reason:'Source polygon includes western New Guinea before the 1963 transfer; excluded from candidate drawing until corrected geometry is sourced.',sources:[INDONESIA_SOURCE]}});
       add({...base, from:1963});
     } else for(const revision of editorialSegments(base,derivedExclusions))add(revision);
+  }
+  for(const r of batch.restorations){
+   const raw=source.features[r.source],origin=records.find(x=>x.sourceIndex===r.source&&x.from<=r.from&&x.to>=r.from),d=r.decision;
+   const label=d.transition&&r.from>=d.transition.year?d.transition:d;
+   assert.ok(origin&&(!d.transition||r.to<d.transition.year||r.from>=d.transition.year));
+   const geometryId=sha256(JSON.stringify(r.geometry));validateGeometry(r.geometry);geometries.set(geometryId,r.geometry);
+   const sourceGeometryId=sha256(JSON.stringify(raw.geometry));
+   const restored={...origin,id:identity('restoration',r.source,r.hash,r.from,r.to,d.entity),entityId:identity('reviewed-territory',d.entity),name:label.name,nameRu:label.nameRu,role:'polity',nameStatus:'reviewed',geometryStatus:'candidate',geometryId,sourceGeometryId,geometryRepair:'reviewed-source-components',geometryParts:[{index:r.source,part:r.part}],from:r.from,to:r.to,editorialRestoration:true,components:[],memberOf:[],sourceComponents:origin.sourceComponents??origin.components,sourceMemberOf:origin.sourceMemberOf??origin.memberOf,review:{reason:d.reason,reasonRu:d.reasonRu,sources:d.sources}};
+   delete restored.territorialIssues;delete restored.territorialAttributions;
+   records.push(restored);counts.reviewedNames++;
   }
   counts.revisions = records.length;
   const used=new Set(records.flatMap(r=>[r.geometryId,...(r.territorialIssues??[]).map(i=>i.geometryId)]));for(const id of geometries.keys())if(!used.has(id))geometries.delete(id);

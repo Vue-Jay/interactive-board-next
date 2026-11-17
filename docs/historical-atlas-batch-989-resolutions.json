@@ -1,0 +1,92 @@
+{
+  "retained": {
+    "Athenian islands": {
+      "reason": "The exact island components are retained in the Roman political layer; this does not extinguish local civic institutions or imply uniform provincial administration. Rome guaranteed Athenian possession of Lemnos after Pydna; Kea and Lemnos had distinct local histories under Roman hegemony.",
+      "reasonRu": "Кея и Лемнос показаны в политическом контуре Рима, а не как второе независимое государство. Рим подтвердил афинские права на Лемнос после Пидны; местное самоуправление и правовой статус отдельных островов различались.",
+      "sources": ["https://www.cambridge.org/core/books/cyprus-crete-and-the-aegean-islands-in-antiquity/from-independence-to-dependence-the-administrative-status-of-the-aegean-islands-from-129-bc-to-294-ad/4A254CEB2266C96063586CAAFF55749F", "https://academic.oup.com/edited-volume/61673/chapter-abstract/549652393"]
+    },
+    "Crete": {
+      "reason": "Roman conquest of Crete ended in 67 BCE. The matching island belongs in the Roman political layer in 66–64 BCE, without erasing local city institutions.",
+      "reasonRu": "Римское завоевание Крита завершилось в 67 г. до н. э.; в 66–64 гг. до н. э. остров относится к римскому политическому контуру, а местные полисы не представляются отдельным независимым островным государством.",
+      "sources": ["https://assets.cambridge.org/97811070/18402/excerpt/9781107018402_excerpt.pdf", "https://www.cambridge.org/core/journals/annual-of-the-british-school-at-athens/article/the-destruction-of-political-communities-in-the-second-century-bc-and-the-resilience-of-the-cretan-polis/A8246A6F1F51CF5A8DD767DAD4E7AAD0"]
+    },
+    "Brandenburg-Prussia": {
+      "reason": "After the 1701 coronation, the elector of Brandenburg was King in Prussia. The matching contours belong to the same Hohenzollern monarchy, not two competing independent states; Brandenburg retained its distinct imperial legal status.",
+      "reasonRu": "После коронации 1701 года курфюрст Бранденбурга стал королём в Пруссии. Совпадающие компоненты относятся к одной монархии Гогенцоллернов, а не к двум независимым государствам; Бранденбург сохранял особый статус в Священной Римской империи.",
+      "sources": ["https://www.preussenchronik.de/service/popup_jsp/key%3Dbeitrag_25044.html", "https://www.preussenchronik.de/bild_jsp/key%3Dbild_200.html"]
+    },
+    "Papua and New Guinea": {
+      "reason": "Papua and mandated New Guinea were administered by Australia, through ANGAU during the war; the duplicated British imperial outline is not a separate direct administration. This does not establish the changing wartime front or Japanese occupation lines.",
+      "reasonRu": "Папуа и подмандатная Новая Гвинея находились под австралийским управлением, во время войны — ANGAU. Совпадающие контуры не являются вторым британским владением с отдельным прямым управлением; линия японской оккупации и фронта здесь не реконструирована.",
+      "sources": ["https://www.awm.gov.au/collection/MSS1920", "https://digitallibrary.un.org/record/828938/files/A_189-EN.pdf"]
+    },
+    "Ryukyu": {
+      "reason": "The exact Iriomote and Miyako components are shown with Japan's residual sovereignty rather than as US sovereign territory. Article 3 of the 1951 treaty gave the United States administrative, legislative and jurisdictional powers; neither component is in the Amami group returned in December 1953.",
+      "reasonRu": "Ириомоте и Мияко показаны с остаточным суверенитетом Японии, не как территория США. По статье 3 мирного договора американская администрация осуществляла законодательные, административные и судебные полномочия. Эти два компонента не относятся к возвращённой в 1953 году группе Амами.",
+      "sources": ["https://history.state.gov/historicaldocuments/frus1951v06p1/d596", "https://history.state.gov/historicaldocuments/frus1952-54v14p2/d595", "https://history.state.gov/historicaldocuments/frus1952-54v14p2/d731"]
+    }
+  },
+  "restored": {
+    "Исландия": {
+      "anchor": 12868,
+      "name": "Kingdom of Iceland",
+      "nameRu": "Королевство Исландия",
+      "entity": "iceland-1918",
+      "transition": {"year": 1944, "name": "Republic of Iceland", "nameRu": "Республика Исландия"},
+      "reason": "Iceland remained sovereign under the 1941 defence agreement; the republic was proclaimed on 17 June 1944. Annual 1944 label follows the successor with the transition explicitly recorded. Only the verified main-island contour is restored.",
+      "reasonRu": "Исландия сохраняла суверенитет по соглашению об обороне 1941 года; республика провозглашена 17 июня 1944 года. В переходном 1944 году указана республика. Восстановлен только подтверждённый контур главного острова.",
+      "sources": ["https://history.state.gov/historicaldocuments/frus1941v02/d779", "https://history.state.gov/historicaldocuments/frus1944v03/d915", "https://history.state.gov/countries/iceland"]
+    },
+    "Мафия": {
+      "anchor": 12295,
+      "name": "Mafia Island (German East Africa)",
+      "nameRu": "Мафия (Германская Восточная Африка)",
+      "entity": "mafia-german-east-africa",
+      "reason": "The 1890 Anglo-German agreement assigned Mafia to Germany; the island was German in 1913, before the First World War. Restore the exact island, not an inferred continental boundary.",
+      "reasonRu": "По англо-германскому соглашению 1890 года остров Мафия передан Германии; в 1913 году он входил в Германскую Восточную Африку. Восстановлен только исходный контур острова.",
+      "sources": ["https://germanhistorydocs.org/en/wilhelmine-germany-and-the-first-world-war-1890-1918/anglo-german-treaty-heligoland-zanzibar-treaty-july-1-1890", "https://brema.suub.uni-bremen.de/dsdk/content/pagetext/1788933", "https://hansard.parliament.uk/Lords%E2%80%8F/1915-04-20/debates/3dce5576-6ccc-45e1-91f7-1913bcf0f534/SecondaryTheatresOfTheWar"]
+    },
+    "Bangka": {
+      "anchor": 10780,
+      "name": "Bangka (British administration)",
+      "nameRu": "Банка (британское управление)",
+      "entity": "bangka-british-administration",
+      "reason": "Bangka was ceded to the British in 1812 and remained under their administration until the 1816 handover. The exact island contour is restored for 1814–1815 only.",
+      "reasonRu": "Банка уступлена британцам в 1812 году и до передачи голландцам в 1816 году оставалась под британским управлением. Восстановлен точный исходный контур острова за 1814–1815 годы.",
+      "sources": ["https://searcharchives.bl.uk/catalog/040-003377793", "https://revue-archipel.fr/pdfnumeros/ARCHIPEL107%282024%29.pdf", "https://www.orientalnumismaticsociety.org/archive/ONS_215.pdf"]
+    }
+  },
+  "extensions": [
+    {"group":"Сент-Круа","source":12421,"part":38,"from":1917,"to":1917},
+    {"group":"Сент-Круа","source":12464,"part":38,"from":1918,"to":1919},
+    {"group":"Сент-Круа","source":12542,"part":38,"from":1920,"to":1921},
+    {"group":"Сент-Круа","source":12557,"part":38,"from":1922,"to":1923},
+    {"group":"Сент-Круа","source":12598,"part":38,"from":1924,"to":1925},
+    {"group":"Сент-Круа","source":12644,"part":38,"from":1926,"to":1926},
+    {"group":"Сент-Круа","source":12652,"part":38,"from":1927,"to":1927},
+    {"group":"Сент-Круа","source":12661,"part":38,"from":1928,"to":1931},
+    {"group":"Сент-Круа","source":12730,"part":13,"from":1932,"to":1941},
+    {"group":"Сент-Круа","source":12888,"part":11,"from":1942,"to":1945},
+    {"group":"Сент-Круа","source":12988,"part":4,"from":1946,"to":1946},
+    {"group":"Сент-Круа","source":13036,"part":4,"from":1947,"to":1957},
+    {"group":"Сент-Круа","source":13183,"part":1,"from":1958,"to":1962},
+    {"group":"Сент-Круа","source":13262,"part":28,"from":1963,"to":1966},
+    {"group":"Исландия","source":12850,"part":9,"from":1940,"to":1940},
+    {"group":"Исландия","source":12868,"part":10,"from":1941,"to":1941},
+    {"group":"Исландия","source":12957,"part":41,"from":1945,"to":1945},
+    {"group":"Мафия","source":12272,"part":37,"from":1908,"to":1910},
+    {"group":"Мафия","source":12295,"part":71,"from":1911,"to":1912},
+    {"group":"Мафия","source":12353,"part":7,"from":1914,"to":1914}
+  ],
+  "relabel": {
+    "Сент-Круа": {
+      "indices": [13297, 13678],
+      "hash": "81a1445f2ace712fafb7d5e7d3b261cddff03b5a08df860b53feaeb1ac07c621",
+      "name": "Saint Croix (United States Virgin Islands)",
+      "nameRu": "Сент-Круа (Американские Виргинские острова)",
+      "reason": "The source record named Saint Kitts actually consists solely of Saint Croix. Denmark transferred Saint Croix to the United States on 31 March 1917. This fixes that false label, not the missing real Saint Kitts and Nevis geometry.",
+      "reasonRu": "Исходная запись «Сент-Китс» содержит только Сент-Круа. Дания передала этот остров США 31 марта 1917 года. Истинная геометрия Сент-Китса и Невиса остаётся отдельным незакрытым пробелом.",
+      "sources": ["https://history.state.gov/historicaldocuments/frus1917/d881", "https://history.state.gov/historicaldocuments/frus1917/d889", "https://www.doi.gov/oia/islands/virgin-islands", "https://www.weather.gov/media/ctwp/PDF/CARIBE-EWS%20Users%20Guide%20-%20V1.2a.pdf"]
+    }
+  }
+}

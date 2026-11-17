@@ -900,6 +900,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const displayedMarkers=[...userMarkers.map(marker=>({...marker,url:undefined})),...schoolMarkers];
  const selectedRaw=String(selected?.properties?.NAME??selected?.properties?.ADMIN??"");
  const selectedAnnualReview=annualSource(snapshot.year)?selected?.properties?.review as {reason:string;reasonRu?:string;sources:string[]}|undefined:undefined;
+ const selectedTerritorialAttributions=annualSource(snapshot.year)?selected?.properties?.territorialAttributions as {group:string;reason:string;sources:string[]}[]|undefined:undefined;
  const selectedPoliticalOverlay=['composite','relation','settlement'].includes(String(selected?.properties?.historicalRole));
  const selectedArticle=selected&&historical&&!modernReference&&!selectedPoliticalOverlay&&!selected.properties?.ATLAS_HISTORICAL_LABEL?
   findHistoricalArticle(selectedRaw,snapshot.year):undefined;
@@ -2563,6 +2564,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        {annualSource(snapshot.year)&&Array.isArray(selected.properties?.historicalSourceComponents)&&<p><strong>Состав исходной записи:</strong> {selected.properties.historicalSourceComponents.join(', ')}</p>}
        {annualSource(snapshot.year)&&Array.isArray(selected.properties?.historicalSourceMemberOf)&&<p><strong>Связи исходной записи:</strong> {selected.properties.historicalSourceMemberOf.join(', ')}</p>}
        {selectedAnnualReview&&<p><strong>Редакционное уточнение по источникам:</strong> {selectedAnnualReview.reasonRu??selectedAnnualReview.reason}{selectedAnnualReview.sources.map((url,i)=><span key={url}>{" "}<a href={url} target="_blank" rel="noopener noreferrer">Документ {i+1} ↗</a></span>)}</p>}
+       {!!selectedTerritorialAttributions?.length&&<div><strong>Статус отдельных территорий:</strong>{[...new Map(selectedTerritorialAttributions.map(i=>[i.group,i])).values()].map(i=><p key={i.group}>{i.reason}{i.sources.map((url,n)=><span key={url}>{" "}<a href={url} target="_blank" rel="noopener noreferrer">Документ {n+1} ↗</a></span>)}</p>)}</div>}
        <p><strong>Точность границ:</strong> {selected.properties?.ATLAS_HISTORICAL_LABEL?"Условный контур, границы не подтверждены":precisions[borderPrecision(selected)]}</p>
        {fallbackReference?.formation&&<p><strong>Образование:</strong> {fallbackReference.formation}</p>}
        {historicalFeatureFacts(selected).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}

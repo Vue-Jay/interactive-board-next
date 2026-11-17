@@ -12,7 +12,7 @@ export function buildChangeRegistry(records, rows, from, to) {
   const units=new Map(), events=new Map(), issueRuns=new Map();
   const event=(at)=>{if(!events.has(at))events.set(at,{starts:[],ends:[]});return events.get(at)};
   for(const r of records){
-    const key=sha256(JSON.stringify([r.entityId,r.geometryId,r.name,r.nameRu??null,r.nameStatus,r.geometryStatus,r.role,r.components,r.memberOf,r.sourceSeshatId,r.sourceWikipedia,r.review??null]));
+    const key=sha256(JSON.stringify([r.entityId,r.geometryId,r.name,r.nameRu??null,r.nameStatus,r.geometryStatus,r.role,r.components,r.memberOf,r.sourceSeshatId,r.sourceWikipedia,r.review??null,r.territorialAttributions??null,r.editorialRestoration??null]));
     if(!units.has(key))units.set(key,{id:key,entityId:r.entityId,geometryId:r.geometryId,name:r.name,nameRu:r.nameRu,role:r.role,components:r.components,memberOf:r.memberOf,geometryStatus:r.geometryStatus,reviewStatus:'pending-independent-review',revisions:[],intervals:[]});
     const unit=units.get(key);unit.revisions.push(r.id);unit.intervals.push([ordinal(r.from),ordinal(r.to)]);
     event(ordinal(r.from)).starts.push(r.id);event(ordinal(r.to)+1).ends.push(r.id);

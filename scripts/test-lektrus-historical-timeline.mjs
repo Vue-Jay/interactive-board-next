@@ -133,7 +133,9 @@ if(outDir&&sourceFile){
   assert.equal(reviewedBatch.count,989);
   const batchByYear=new Map();
   for(const r of territorialBatch.rows)for(let year=r.from;year<=r.to;year++){if(year===0)continue;if(!batchByYear.has(year))batchByYear.set(year,[]);batchByYear.get(year).push(r);}
-  let batchReady=0,batchPending=0;
+  const decisionsByKey=new Map(reviewedBatch.resolved.map(r=>[`${r.source}:${r.part}:${r.from}:${r.to}`,r]));
+  const extensionsByYear=new Map();for(const r of reviewedBatch.extensions)for(let year=r.from;year<=r.to;year++){if(!extensionsByYear.has(year))extensionsByYear.set(year,[]);extensionsByYear.get(year).push(r)}
+  let batchReady=0,batchPending=0,batchResolved=0,extended=0,sourceRecordYears=0,restoredRecordYears=0;
   assert.equal(manifest.counts.sourcePolities+manifest.counts.sourceComposites+manifest.counts.sourceRelations,original.length);
   const sourceHashes=new Map(original.map(({f,index})=>[index,sha256(JSON.stringify(f.geometry))]));
   const seen=new Set(), allGeometries=new Set();
@@ -167,22 +169,44 @@ if(outDir&&sourceFile){
       if(year===0)continue;
       const expected=original.filter(({f})=>f.properties.FromYear<=year&&f.properties.ToYear>=year).map(({index})=>index);
       const state=historicalYearState(pack,year);
-      assert.deepEqual(state.records.map(r=>r.sourceIndex),expected,`Incorrect active source records at ${year}`);
+      const sourceRecords=state.records.filter(r=>!r.editorialRestoration);
+      assert.deepEqual(sourceRecords.map(r=>r.sourceIndex),expected,`Incorrect active source records at ${year}`);
+      sourceRecordYears+=sourceRecords.length;restoredRecordYears+=state.records.length-sourceRecords.length;
       assert.equal(state.records.length,state.drawable.length+state.overlays.length+state.rejected.length);
       assert.ok(state.drawable.every(r=>r.record.geometryStatus==='candidate'&&r.geometry));
       assert.equal(historicalYearFeatureCollection(state).features.length,state.drawable.length);
       assert.equal(historicalYearFeatureCollection(state,true).features.length,state.drawable.length+state.overlays.length);
-      const activeRecords=new Map(state.records.map(r=>[r.sourceIndex,r]));
+      const activeRecords=new Map(sourceRecords.map(r=>[r.sourceIndex,r]));
       const hasPart=(record,index,part)=>record&&record.geometryStatus==='candidate'&&(record.geometryParts?record.geometryParts.some(p=>p.index===index&&p.part===part):record.sourceIndex===index);
       for(const item of batchByYear.get(year)??[]){
         const record=activeRecords.get(item.source);assert.ok(record,`Missing reviewed record ${item.source}/${year}`);
-        assert.ok(!hasPart(record,item.source,item.part),`Wrong political component retained ${item.source}/${item.part}/${year}`);
+        const decision=decisionsByKey.get(`${item.source}:${item.part}:${item.from}:${item.to}`);
+        if(decision?.mode==='relabel'&&item.source===decision.target)assert.equal(record.name,'Saint Croix (United States Virgin Islands)');
+        else assert.ok(!hasPart(record,item.source,item.part),`Wrong political component retained ${item.source}/${item.part}/${year}`);
         if(item.status==='ready'){
           assert.ok(item.otherParts.some(p=>hasPart(activeRecords.get(item.other),item.other,p)),`Correct exact counterpart lost ${item.other}/${year}`);batchReady++;
+        }else if(decision){
+          assert.ok(!state.territorialIssues.some(i=>i.sourceIndex===item.source&&i.part===item.part&&i.hash===item.hash),`Resolved issue still pending ${item.source}/${year}`);
+          if(decision.mode==='retained'){
+            const target=activeRecords.get(decision.target);assert.ok(item.otherParts.some(p=>hasPart(target,item.other,p)),`Verified attributed contour missing ${item.other}/${year}`);
+            assert.ok(target.territorialAttributions.some(n=>n.hash===item.hash&&n.from<=year&&n.to>=year&&n.sources.length),`Missing dated status for ${item.other}/${year}`);
+          }else if(decision.mode==='restored'){
+            const matching=state.drawable.filter(({record,geometry})=>record.editorialRestoration&&record.sourceIndex===decision.target&&geometry.coordinates.some(p=>componentHash(p)===item.hash));
+            assert.equal(matching.length,1,`Missing or duplicate restored island ${item.group}/${year}`);
+          }else{
+            const target=activeRecords.get(decision.target);assert.equal(target.name,'Saint Croix (United States Virgin Islands)');assert.equal(target.geometryStatus,'candidate');
+          }
+          batchResolved++;
         }else{
           const issue=state.territorialIssues.find(i=>i.sourceIndex===item.source&&i.part===item.part&&i.hash===item.hash);
           assert.ok(issue&&componentHash(issue.geometry.coordinates)===item.hash,`Unresolved geometry lost ${item.source}/${item.part}/${year}`);batchPending++;
         }
+      }
+      for(const item of extensionsByYear.get(year)??[]){
+        assert.ok(!hasPart(activeRecords.get(item.source),item.source,item.part),`Adjacent misattribution retained ${item.source}/${year}`);
+        if(item.other!==undefined){const target=activeRecords.get(item.other);assert.ok(hasPart(target,item.other,item.otherPart));assert.ok(target.territorialAttributions.some(n=>n.hash===item.hash&&n.from<=year&&n.to>=year));}
+        else assert.equal(state.drawable.filter(({record,geometry})=>record.editorialRestoration&&record.sourceIndex===item.source&&geometry.coordinates.some(p=>componentHash(p)===item.hash)).length,1,`Adjacent restoration missing ${item.group}/${year}`);
+        extended++;
       }
       const byEntity=new Map(),byGeometry=new Map(),allGeometry=new Map();
       for(const r of state.records){
@@ -210,11 +234,13 @@ if(outDir&&sourceFile){
     }
   }
   assert.equal(years,5424);
-  assert.equal(batchReady,293);assert.equal(batchPending,696);
-  console.log(`Reviewed batch: ${batchReady} retained verified counterparts; ${batchPending} quarantined source components with open reconstruction and exact geometry`);
+  assert.equal(batchReady,293);assert.equal(batchResolved,362);assert.equal(batchPending,334);
+  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,65);assert.equal(extended,59);
+  console.log(`Reviewed batch: ${batchReady} original corrections; ${batchResolved} newly resolved attributions; ${batchPending} open; ${extended} adjacent cases; ${restoredRecordYears} restored territory-years`);
   assert.equal(seen.size,manifest.counts.revisions);
   assert.equal(allGeometries.size,manifest.counts.uniqueGeometries);
   const revisionAt=(year,index)=>{const b=historicalBlockForYear(manifest,year);const p=JSON.parse(fs.readFileSync(path.join(outDir,b.file)));return historicalYearState(p,year).records.find(r=>r.sourceIndex===index)};
+  for(let year=1967;year<=2024;year++)assert.equal(revisionAt(year,year===2024?13678:13297).name,'Saint Croix (United States Virgin Islands)');
   assert.equal(revisionAt(1800,10558).name,'Kingdom of Great Britain');
   assert.equal(revisionAt(1801,10558).name,'United Kingdom of Great Britain and Ireland');
   assert.equal(revisionAt(1927,12623).name,'United Kingdom of Great Britain and Northern Ireland');

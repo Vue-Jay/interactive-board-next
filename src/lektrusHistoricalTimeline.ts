@@ -5,6 +5,7 @@ export const HISTORY_FIRST_YEAR = -3400;
 export const HISTORY_LAST_YEAR = 2024;
 export type HistoricalGeometry = {type: 'Polygon' | 'MultiPolygon'; coordinates: unknown};
 export type HistoricalTerritorialIssue={part:number;hash:string;from:number;to:number;group:string;reason:string;evidence:string;counterpartName:string;geometryId:string};
+export type HistoricalTerritorialAttribution={part:number;hash:string;from:number;to:number;group:string;reason:string;sources:string[]};
 export type HistoricalRevision = {
   id: string; entityId: string; geometryId: string;
   role: 'polity' | 'composite' | 'relation' | 'settlement';
@@ -14,6 +15,8 @@ export type HistoricalRevision = {
   sourceGeometryId?: string; geometryRepair?: 'retracted-zero-area-interior-edges' | 'reviewed-source-components';
   geometryParts?: {index:number;part:number}[];
   territorialIssues?: HistoricalTerritorialIssue[];
+  territorialAttributions?: HistoricalTerritorialAttribution[];
+  editorialRestoration?: true;
   name: string; nameRu?: string; sourceName: string; sourceWikidata: string;
   sourceIndex: number; sourceFrom: number; sourceTo: number;
   from: number; to: number; nameStatus: 'candidate' | 'reviewed';
@@ -81,7 +84,7 @@ export function historicalYearFeatureCollection(state: ReturnType<typeof histori
       sourceSeshatId:record.sourceSeshatId, sourceWikipedia:record.sourceWikipedia,
       sourceGeometryId:record.sourceGeometryId, geometryRepair:record.geometryRepair,geometryParts:record.geometryParts,
       year:state.year, nameStatus:record.nameStatus, geometryStatus:record.geometryStatus,
-      review:record.review},
+      review:record.review,editorialRestoration:record.editorialRestoration,territorialAttributions:record.territorialAttributions?.filter(i=>i.from<=state.year&&i.to>=state.year)},
   }))};
 }
 
@@ -114,6 +117,8 @@ export function validateHistoricalPack(value: unknown, block: HistoricalBlock): 
     if(record.territorialIssues!==undefined){
       if(!Array.isArray(record.territorialIssues)||!record.review?.sources.length||record.territorialIssues.some(i=>!Number.isSafeInteger(i.part)||i.part<0||!hash.test(i.hash)||!hash.test(i.geometryId)||!validHistoricalYear(i.from)||!validHistoricalYear(i.to)||i.from>i.to||i.from>record.to||i.to<record.from||!i.group||!i.reason||!i.counterpartName||!i.evidence.startsWith('https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-')||pack.geometries[i.geometryId]?.type!=='Polygon'))throw new Error('Invalid unresolved historical territorial issue');
     }
+    if(record.territorialAttributions!==undefined&&(!Array.isArray(record.territorialAttributions)||record.territorialAttributions.some(i=>!Number.isSafeInteger(i.part)||i.part<0||!hash.test(i.hash)||!validHistoricalYear(i.from)||!validHistoricalYear(i.to)||i.from>i.to||i.from>record.to||i.to<record.from||!i.group||!i.reason||!Array.isArray(i.sources)||!i.sources.length||i.sources.some(s=>!s.startsWith('https://')))))throw new Error('Invalid reviewed territorial attribution');
+    if(record.editorialRestoration!==undefined&&(record.editorialRestoration!==true||record.role!=='polity'||record.geometryStatus!=='candidate'||record.nameStatus!=='reviewed'||record.geometryRepair!=='reviewed-source-components'||!record.review?.sources.length))throw new Error('Invalid editorial restoration');
     if ((record.geometryStatus === 'rejected' || record.nameStatus === 'reviewed'||record.sourceRole||record.sourceComponents||record.sourceMemberOf) && (!record.review?.reason || !record.review.sources.length)) throw new Error('Unattributed historical correction');
     recordIds.add(record.id);
   }
