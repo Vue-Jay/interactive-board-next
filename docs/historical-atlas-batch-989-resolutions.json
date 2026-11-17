@@ -214,8 +214,16 @@
     "group": "Mindanao", "hash": "a067cf1d9a83eeef3a75003f2b0ecc21af4e3a0b4148972b03644ca58a1caaec",
     "reason": "The island contained multiple distinct centres: Maguindanao in the lower Pulangi valley, Buayan upstream and Butuan in the northeast. Neither Brunei nor Maguindanao can be assigned the entire island. The coastline is not a political boundary; keep the unverified territorial reconstruction open.",
     "reasonRu": "На острове существовали отдельные центры власти: Магинданао в нижнем течении Пуланги, Буаян выше по течению и Бутуан на северо-востоке. Ни Брунею, ни Магинданао нельзя приписывать весь остров. Береговая линия не является установленной политической границей; реконструкция остаётся открытой.",
-    "sources": ["https://www.nqc.gov.ph/en/map/", "https://ecommons.cornell.edu/bitstream/handle/1813/57550/082.pdf?sequence=1andisAllowed=y", "https://ncca.gov.ph/about-ncca-3/subcommissions/subcommission-on-cultural-communities-and-traditional-arts-sccta/central-cultural-communities/the-history-of-the-muslim-in-the-philippines/", "https://publishing.cdlib.org/ucpressebooks/public/book/muslim-rulers-and-rebels-everyday-politics-and-armed-separatism-in-the-southern-philippines.html"],
+    "sources": ["https://www.nqc.gov.ph/en/map/", "https://ecommons.cornell.edu/bitstream/handle/1813/57550/082.pdf?sequence=1andisAllowed=y", "https://ncca.gov.ph/about-ncca-3/subcommissions/subcommission-on-cultural-communities-and-traditional-arts-sccta/central-cultural-communities/the-history-of-the-muslim-in-the-philippines/", "https://publishing.cdlib.org/ucpressebooks/public/book/muslim-rulers-and-rebels-everyday-politics-and-armed-separatism-in-the-southern-philippines.html", "https://doi.org/10.1080/0967828X.2021.1927811"],
     "pendingRoutes": [[7792,7,1512,1520,7904],[7904,0,1582,1608,7792]]
+  },
+  "davaoTransfer": {
+    "group": "Давао", "hash": "60ce72fed1538dee528a2c4f3252e5173c6b6bcce3686f77c248b0420a8d87bf",
+    "target": 11140, "routes": [[8613,0,1848,1848],[11490,0,1849,1852]],
+    "allowSourceOverlap": true,
+    "reason": "The Davao Gulf conquest in 1848 replaced Datu Bago's authority with Spanish administration at Nueva Vergara; by early 1849 the coast of the gulf was under Spanish control. The annual transition is represented at year end. Only the existing small Davao source cell is merged with the partially overlapping Spanish candidate, not the rest of Maguindanao or a modern administrative boundary.",
+    "reasonRu": "Завоевание залива Давао в 1848 году привело к установлению испанской администрации в Нуэва-Вергаре; к началу 1849 года побережье залива перешло под испанский контроль. Переход показан по состоянию на конец 1848 года. С испанским контуром объединена только небольшая исходная ячейка Давао, а не весь султанат Магинданао; граница приблизительная.",
+    "sources": ["https://davaocity.gov.ph/wp-content/uploads/2018/09/Davao-History.pdf", "https://readingroo.ms/3/5/3/9/35391/35391-h/35391-h.htm", "https://www.academia.edu/127094528/Magindanao_1860_1888_The_Career_of_Datu_Utto_of_Buayan"]
   },
   "nicobarExtensions": {
     "austrian": [[10174,11,12,1778,1779],[10205,11,12,1780,1790]],

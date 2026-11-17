@@ -316,6 +316,13 @@ export function deriveTerritorialBatch(features,batch=territorialBatch){
  assert.equal(features[corsica1796.source].properties.Name,'Kingdom of Great Britain');
  assert.equal(features[corsica1796.target].properties.Name,'French Directory');
  registerIslandCorrection(corsica1796.source,corsica1796.part,corsica1796.from,corsica1796.to,corsica1796,corsica1796.target);
+ const davao=territorialResolutions.davaoTransfer;
+ assert.equal(features[davao.target].properties.Name,'Spanish Empire');
+ for(const [source,part,from,to] of davao.routes){
+  assert.equal(features[source].properties.Name,'Sultanate of Maguindanao');
+  assert.ok(capitalInsideCountry([125.612,7.075],{type:'Polygon',coordinates:rawParts(features[source])[part]}));
+  registerIslandCorrection(source,part,from,to,davao,davao.target);
+ }
  // Legal sovereignty, not transient military control: preserve the exact
  // source cell east of the Var and remove only its overlap with France.
  const nice={...territorialResolutions.niceLegalRestoration,hash:transfer.hash};
@@ -742,7 +749,12 @@ export function normalizeHistoricalSource(source) {
       }else if(selection){
         assert.ok(revision.review?.sources.length);
         const coordinates=selection.map(({index,part})=>{const g=source.features[index].geometry;const polygons=g.type==='Polygon'?[g.coordinates]:g.coordinates;assert.ok(polygons[part]);return polygons[part]});
-        if(transfer)for(let i=coordinates.length-matchingTransfers.length;i<coordinates.length;i++)assert.equal(polygonClipping.intersection(polygonClipping.union(...coordinates.slice(0,i)),coordinates[i]).length,0,`Overlapping transfer ${sourceIndex}`);
+        if(transfer)for(let i=coordinates.length-matchingTransfers.length;i<coordinates.length;i++){
+          const t=matchingTransfers[i-(coordinates.length-matchingTransfers.length)],previous=polygonClipping.union(...coordinates.slice(0,i)),overlap=polygonClipping.intersection(previous,coordinates[i]);
+          if(t.decision.allowSourceOverlap){
+            assert.equal(t.decision.group,'Давао');assert.ok(overlap.length&&polygonClipping.difference(coordinates[i],previous).length,`Davao transfer must partially overlap ${sourceIndex}`);
+          }else assert.equal(overlap.length,0,`Overlapping transfer ${sourceIndex}`);
+        }
         const subtractions=matchingSubtractions.map(t=>({index:t.source,part:t.part}));
         const selected={type:'MultiPolygon',coordinates:subtractions.length?polygonClipping.difference(polygonClipping.union(...coordinates),...subtractions.map(({index,part})=>rawParts(source.features[index])[part])):transfer?polygonClipping.union(...coordinates):coordinates};validateGeometry(selected);
         const selectedId=sha256(JSON.stringify(selected));geometries.set(selectedId,selected);
