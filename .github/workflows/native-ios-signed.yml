@@ -2,12 +2,16 @@ name: Lektrus signed iPhone IPA
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [qa/mobile-native-base-20261117]
 
 permissions:
   contents: read
 
 jobs:
   signed-ios:
+    # The isolated QA branch may produce an IPA, but never publishes it.
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: macos-26
     timeout-minutes: 50
     env:

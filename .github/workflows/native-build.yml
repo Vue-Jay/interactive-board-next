@@ -1,7 +1,7 @@
 name: Lektrus native Android APK and iOS simulator
 on:
   pull_request:
-    branches: [main]
+    branches: [main, qa/mobile-native-base-20261117]
   push:
     branches: [main]
   workflow_dispatch:
