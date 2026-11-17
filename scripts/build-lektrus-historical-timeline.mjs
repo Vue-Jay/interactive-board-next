@@ -774,6 +774,7 @@ export function partitionHistoricalGeometry(base,cuts){
 const colonialEvidence='https://github.com/Seshat-Global-History-Databank/cliopatria/tree/5f433377139a6eeaeacbdc894b70f8805b72c8b5';
 const comoroTreaties='https://mjp.univ-perp.fr/constit/km1886.htm';
 const comoroHistory='https://documents1.worldbank.org/curated/en/831811468771713041/pdf/multi0page.pdf';
+const comoroTraditionalRegions='https://files.core.ac.uk/download/46813576.pdf';
 const colonialNote='Одинаковая исходная геометрия колониального владения показана один раз; отдельная запись не означает независимость от метрополии.';
 export const secondaryExactReviews=[
  [13590,13526,2014,2023,[0],[0],'Крым: международно признанная принадлежность Украине; с 2014 года фактический контроль России. Карта правового статуса не отображает отдельную линию военного контроля.','https://digitallibrary.un.org/record/767883'],
@@ -849,6 +850,43 @@ export const thirdExactReviews=[
  [7853,7200,1519,1519,[6],[1],'Экспедиция Кортеса высадилась на Косумеле в 1519 году; местный правитель Нахум Пат оставался у власти и встретил экспедицию Монтехо в 1527 году. Высадка не равнозначна постоянной аннексии.','https://mexicograndezaydiversidad.inah.gob.mx/images/fasciculos/MexicoGrandezaDiversidad_F-08.pdf'],
  [1048,943,-48,-47,[16],[1],'В 48–47 гг. до н. э. Кипр в ходе Александрийской войны был возвращён Египту; дата перехода в течение этого периода не установлена с точностью до дня.','https://publications.gov.cy/assets/user/publications/CyprusAlwaysEurope/Cyprus_has_always_been_Europe_ENEL.pdf'],
  ];
+// Last exact-overlap pass: retain the more specific political record when
+// evidence supports it. These decisions do not certify the imported borders.
+export const fourthExactReviews=[
+ [10852,10794,1812,1813,[12],[1],'Рюген оставался частью Шведской Померании до передачи Пруссии в 1815 году. Французское военное присутствие в 1812–1813 гг. не означало аннексии.','https://www.greifswald.de/de/urlaub-kultur/stadtgeschichte-persoenlichkeiten/stadtgeschichte/schwedenzeit/index.html'],
+ [7335,6859,1459,1474,[1,2],[5,6],'Региональная историография Банки и Белитунга относит эти острова к периоду Шривиджаи и Маджапахита до 1475 г.; султанатская эпоха выделяется отдельно. Точные пределы власти не подтверждены.','https://disparbudkepora.babelprov.go.id/sites/default/files/dokumen/bank_data/Historiografi%20Bangka%20Belitung%20%281%29.pdf'],
+ [6859,7336,1459,1474,[13],[0],'После падения раннего Сингапура его правитель основал Малаккский султанат; Сингапур стал частью этого султаната. Прежнее яванское влияние не означает продолжающейся прямой власти Маджапахита.','https://www.roots.gov.sg/stories-landing/stories/a-game-of-thrones/a-game-of-thrones'],
+ [7187,7268,1453,1453,[1],[1],'Дорино I Гаттилузио ещё до 1453 года получил Лемнос как феод; после падения Константинополя власть династии подтверждена султаном за дань. Генуэзская династическая запись не означает прямого управления республикой из Генуи.','https://isamveri.org/pdfdkm/12/DKM120184.pdf'],
+ [6167,6346,1344,1346,[0],[0],'Эдуард III пожаловал остров Мэн Уильяму Монтегю в 1333 году; его сын наследовал владение в 1344 году. Шотландские притязания сохранялись, но не равнозначны второму прямому владению.','https://radar.brookes.ac.uk/radar/file/b86ba867-c96b-c287-3466-2d5a5c1b92f2/1/edge1997manx.pdf'],
+ [6233,6167,1326,1328,[5],[0],'Мэн после возвращения под власть шотландских правителей в 1310-е гг. оставался предметом англо-шотландских притязаний. В 1328 году английская сторона обязалась не содействовать лишению шотландцев острова; точная дата смены контроля не установлена.','https://www.isle-of-man.com/manxnotebook/fulltext/hist1900/ch17.htm'],
+ [5983,5356,1296,1304,[2],[1],'Сирос вошёл в герцогство Архипелага в 1207 году; данные о византийском возврате отдельных Киклад не подтверждают одновременную прямую власть Византии над Сиросом.','https://www.ime.gr/chronos/projects/fragokratia/en/webpages/aegean_gen.html'],
+ [5909,5356,1279,1280,[1],[1],'Сирос был завоёван венецианцами в 1207 году; греческая служба древностей относит последующие века к периоду латинского управления.','https://cyclades.culture.gov.gr/en/location/byzantine-syros/'],
+ [5457,5198,1220,1226,[5],[0],'Бонифачо с конца XII века являлся генуэзским укреплённым поселением; французская запись того же участка не подтверждается. Размер исходного округа остаётся приблизительным.','https://bonifacio.co.uk/discover/bonifacio-town-of-art-and-history/bonifacio-citadel/'],
+ [2797,2858,763,767,[4],[0],'С 763 года Неаполь управлялся автономным герцогом Стефаном, сохраняя связи с византийским миром; местная юрисдикция не является второй копией имперского контура.','https://whc.unesco.org/document/154119'],
+ [2238,2298,626,632,[0],[1],'Беда сообщает о подчинении Эдвином Меванских островов (Мэна и Англси). Это свидетельство верховенства, не доказательство прямого административного управления или точного года перехода.','https://orca.cardiff.ac.uk/id/eprint/161165/1/Guy%20-%20Manaw%20of%20the%20Britons.pdf'],
+ [510,503,-315,-314,[4,0,8,6,3,9,1,7,5,13,12],[4,1,10,6,3,12,2,7,5,17,15],'В 315 г. до н. э. Антигон объявил свободу и автономию греческих городов; война диадохов и гарнизоны продолжались. Сохранён сводный контур греческих общин, а не вторая копия единой Македонской державы; это не подтверждение независимости каждого полиса.','https://penelope.uchicago.edu/Thayer/E/Roman/Texts/Diodorus_Siculus/19C%2A.html'],
+ [510,503,-313,-308,[4,0,8,6,3,9,1,7,5,13],[4,1,10,6,3,12,2,7,5,17],'В ходе войн диадохов менялись гарнизоны и союзы греческих полисов; мир 311 г. до н. э. признавал их автономию. Сохранён сводный контур общин, не утверждение об их полной независимости или непрерывной власти одного правителя.','https://penelope.uchicago.edu/Thayer/E/Roman/Texts/Diodorus_Siculus/19F%2A.html'],
+ [180,187,-700,-676,[4],[1],'Гадир и другие финикийские поселения южной Иберии образовывали колониальную сеть, связанную с Тиром. Местная колониальная запись сохранена вместо дублирующей метрополии; площадь исходного контура не является доказанной границей колонии.','https://turismo.cadiz.es/es/node/17545'],
+];
+// Both exact claims are demonstrably conflicting, but the literature does not
+// establish a unique owner of the whole footprint for each year. Preserve both
+// source records as evidence, render one explicitly uncertain region instead.
+export const exactConflictPendingReviews=[
+ [9854,10012,1768,1768,[0],[0],'Корсика — переход 1768 года','Генуя уступила права Франции по Версальскому договору 15 мая 1768 г.; республика Паоли сопротивлялась до поражения в 1769 г. Ни Генуя, ни республика не контролировали весь остров непрерывно.','https://www.isula.corsica/linguacorsa/Approche-historique-geographique-et-economique-de-la-Corse_a78.html'],
+ [9047,9089,1662,1664,[0],[0],'Кейп-Кост — смена владельцев форта','В 1660-е годы форт переходил между европейскими и местными властями; хронология отдельных захватов различается в источниках. Контроль крепости не доказывает владение окружающей территорией.','https://history.ucla.edu/wp-content/uploads/2023/09/Apter_Dungeon_ahr_1.pdf'],
+ [7908,8183,1552,1555,[1],[16],'Маскат — португальско-османское соперничество','В 1552 году Пири-реис захватил и разграбил Маскат, затем продолжил поход к Ормузу; морские операции продолжались. Контроль порта не устанавливает власть над всей полосой побережья между Маскатом и Рас-эль-Хаддом.','https://belleten.gov.tr/eng/full-text/1854/eng'],
+ [7955,8030,1534,1539,[0],[6],'Южный Пьемонт — спорные владения','После 1536 г. Пьемонт стал театром франко-имперской войны; Альба, Кераско и соседние земли имели различную юрисдикцию. Контур не подтверждает единую французскую или испанскую власть.','https://www.treccani.it/enciclopedia/piemonte_%28Enciclopedia-Italiana%29/'],
+ [7955,8016,1529,1533,[0],[4],'Южный Пьемонт — спорные владения','В 1529–1533 гг. власть над соседними городами различалась; Альба оставалась связана с Монферратом, Кераско и Асти меняли правовой статус. Для всей исходной области единственная подтверждённая атрибуция отсутствует.','https://www.treccani.it/enciclopedia/alba_%28Enciclopedia-Italiana%29/'],
+ [2436,2453,644,646,[11],[2],'Эльба — византийско-лангобардский переход','В правление Ротари лангобарды расширили владения в Италии и захватили Лигурию. Дата перехода именно Эльбы и его полный территориальный охват отдельно не подтверждены.','https://www.cambridge.org/core/books/abs/new-cambridge-medieval-history/byzantine-italy-c-680c-876/49F49DDC4CC03659E094C1270FC8138F'],
+ [1986,2144,577,578,[2,3],[0,1],'Южная Аравия — аксумско-сасанидский переход','В 570-е годы эфиопское правление в Йемене было оспорено местной династией и персидскими войсками; источники расходятся в датировке смены власти. Нельзя представлять весь южноаравийский контур как два одновременно установленных царства.','https://www.iranicaonline.org/articles/abna-term/'],
+ [1620,1661,410,442,[2,3],[1,2],'Хорезм — кидариты и эфталиты','Хронология и география ранних иранских гуннов спорны: письменные свидетельства и нумизматика дают разные реконструкции. Принадлежность конкретных двух участков Хорезма по каждому году не подтверждена.','https://www.iranicaonline.org/articles/hunnic-coinage/'],
+ [1052,1083,-31,-31,[0,1],[2,9],'Сирос и Лемнос — конец эллинистической эпохи','После Акция политический статус островов менялся; позднеэллинистическое афинское владение Лемносом и принадлежность Сироса требуют отдельных датированных доказательств. Совпадение карт не доказывает власть Птолемеев над обоими.','https://www.ancientportsantiques.com/wp-content/uploads/Documents/AUTHORS/Hansen%26Nielsen2004-LexiquePoleis.pdf'],
+ [809,830,-202,-198,[5,4],[11,10],'Самос и Икария — война Филиппа V','Полибий сообщает о походах Филиппа V на Самос, но даты и длительность контроля Самоса и Икарии различаются. Не переносим захват одного острова автоматически на второй и все пять лет.','https://penelope.uchicago.edu/Thayer/E/Roman/Texts/Polybius/16%2A.html'],
+ [808,815,-203,-203,[13],[12],'Кизик — эллинистический статус','Кизик был самостоятельным крупным греческим центром Пропонтиды. Походы Филиппа V в районе Пропонтиды не доказывают завоевания именно этого контура в 203 г. до н. э.','https://academic.oup.com/edited-volume/61673/chapter-abstract/548726109'],
+ [665,701,-225,-219,[2],[10],'Самофракия — эллинистическая юрисдикция','Надписи Самофракии конца III века до н. э. свидетельствуют о связях с птолемеевскими должностными лицами; они не устанавливают исключительную власть над островом во все указанные годы.','https://helios.eie.gr/helios/bitstream/10442/16595/1/A01.058.0_03_121-138%20.pdf'],
+ [665,692,-230,-226,[2],[9],'Самофракия — эллинистическая юрисдикция','Декреты в честь птолемеевских должностных лиц датируются приблизительно 228–225 гг. до н. э.; точная принадлежность острова в пограничные годы остаётся неустановленной.','https://helios.eie.gr/helios/bitstream/10442/16595/1/A01.058.0_03_121-138%20.pdf'],
+];
+export const exactConflictGroupPrefix='Неуточнённая принадлежность: ';
 export const earlyComorosHashes=['5e8c3940ad185cbe4cf1af0d7f420aeaaa9bead9e850dd11ecbb7a72f850de2a','ca0861672c2aec6d4ea750a6f663d4b43e5be11e371c321ed69e8c520313b233','8f31d16f944b3cefe048b3146bf73aea4320e11e4b0dcabb74b7fe8d1886569c','cf8a539df8f350003fa8d49a17d63e1c36f9ff5f3a21c912e39b611680012904'];
 // Elba: approximate manual transcription of the three jurisdictions in the
 // regional historical atlas, section 8.19, printed p.114; the map is not a
@@ -878,13 +916,21 @@ export function deriveSecondaryTerritorialReviews(features){
   const f=features[source];assert.ok(f.properties.Type==='POLITY'&&f.properties.FromYear<=from&&f.properties.ToYear>=to);
   exclusions.push([source,rawParts(f).length,from,parts,'Reviewed dated source-component attribution; see linked evidence.',reasonRu,url,to]);
  };
- for(const [source,target,from,to,parts,winners,reason,url] of [...secondaryExactReviews,...thirdExactReviews]){
+ for(const [source,target,from,to,parts,winners,reason,url] of [...secondaryExactReviews,...thirdExactReviews,...fourthExactReviews]){
   const f=features[source],t=features[target];assert.ok(t.properties.Type==='POLITY'&&t.properties.FromYear<=from&&t.properties.ToYear>=to&&parts.length===winners.length);
   for(const [i,part] of parts.entries()){
    const hash=componentHash(rawParts(f)[part]);assert.equal(hash,componentHash(rawParts(t)[winners[i]]));
    attributions.push({source:target,part:winners[i],hash,group:'Историческая принадлежность',from,to,reason,sources:[url]});
   }
   exclude(source,from,to,parts,reason,url);
+ }
+ for(const [source,target,from,to,parts,counterparts,title,reason,url] of exactConflictPendingReviews){
+  const a=features[source],b=features[target];assert.equal(parts.length,counterparts.length);
+  for(const [i,part] of parts.entries()){
+   const left=rawParts(a)[part],right=rawParts(b)[counterparts[i]],hash=componentHash(left);assert.equal(hash,componentHash(right));
+   for(const [index,p,polygon,other] of [[source,part,left,b],[target,counterparts[i],right,a]])pending.push({source:index,part:p,from,to,hash,group:exactConflictGroupPrefix+title,reason,counterpartName:other.properties.Name,evidence:url,sources:[url],geometry:{type:'Polygon',coordinates:polygon}});
+  }
+  exclude(source,from,to,parts,reason,url);exclude(target,from,to,counterparts,reason,url);
  }
  const reasonRu='Коморские острова не входили во Французскую Индию в этот период. Франция вступила во владение Майоттой в 1843 году; протектораты других островов относятся к 1886 году. Береговой контур не подтверждает точную внутреннюю границу или непрерывность одной династии.';
  const decision=(entity,name,nameRu,reason=reasonRu)=>({entity,name,nameRu,reason:'Reviewed island attribution; the historical internal jurisdictions are approximate, not a surveyed political boundary.',reasonRu:reason,sources:[comoroTreaties,comoroHistory]});
@@ -924,6 +970,7 @@ export function normalizeHistoricalSource(source) {
   const attributionsBySource=new Map();
   for(const {source,...note} of batch.attributions){if(!attributionsBySource.has(source))attributionsBySource.set(source,[]);attributionsBySource.get(source).push(note);}
   for(const issue of batch.pending){
+   if(issue.group==='Коморы')issue.sources=[...new Set([...(issue.sources??[issue.evidence]),comoroTraditionalRegions])];
    const geometryId=sha256(JSON.stringify(issue.geometry));geometries.set(geometryId,issue.geometry);
    if(!pendingBySource.has(issue.source))pendingBySource.set(issue.source,[]);
    pendingBySource.get(issue.source).push({part:issue.part,hash:issue.hash,from:issue.from,to:issue.to,group:issue.group,reason:issue.reason,evidence:issue.evidence,counterpartName:issue.counterpartName,geometryId,...(issue.sources?{sources:issue.sources}:{})});

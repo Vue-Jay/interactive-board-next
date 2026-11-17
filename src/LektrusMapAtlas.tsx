@@ -904,7 +904,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const openUnresolvedRegion=(id:string)=>{setSelectedMarker(id);setSelected(null);setSelectedMineral(null);setHistoryTab('article');setInspectorOpen(true)};
  const unresolvedRegionCard=selectedRegionDetails&&<div className="lektrus-atlas-description" data-atlas-selected-unresolved={selectedRegionDetails.id}>
   <strong>{selectedRegionDetails.title}</strong><p>Год карты: {yearLabel(snapshot.year)}</p><p>{selectedRegionDetails.description}</p>
-  <p>Контур — историческая область проверки, не единое государство. Точная внутренняя граница не установлена.</p>
+  <p>Контур — область с неуточнённой принадлежностью или внутренними границами, не подтверждённая государственная граница.</p>
   <p>Исключённые исходные атрибуции: {selectedRegionDetails.rows.map(r=>r.name).join('; ')}.</p>
   <ul>{selectedRegionDetails.sources.map((url,i)=><li key={url}><a href={url} target="_blank" rel="noopener noreferrer">Источник {i+1} ↗</a></li>)}</ul>
  </div>;
@@ -2328,7 +2328,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      {annualSource(snapshot.year)&&<><label>Дополнительный слой <select aria-label="Дополнительный исторический слой" value={annualOverlay} onChange={e=>{setAnnualOverlay(e.target.value as typeof annualOverlay);setSelected(null)}}><option value="none">Только территории</option><option value="composite">Политические объединения</option><option value="relation">Политические связи</option><option value="settlement">Поселения и расселение</option></select></label>{annualOverlay!=='none'&&<small>Пунктирный контур — {annualOverlay==='composite'?'объединение нескольких территорий':annualOverlay==='settlement'?'предварительная область поселений':'политическая связь'}, а не дополнительная государственная граница.</small>}</>}
     </div>}
     {historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year&&!!source?.historicalTerritorialIssues?.length&&<details className="lektrus-atlas-layer-warning" data-atlas-unresolved-count={source.historicalTerritorialIssues.length}>
-     <summary>Области с неизвестными границами: {unresolvedRegions.length}</summary>
+     <summary>Неуточнённые территории: {unresolvedRegions.length}</summary>
      <small>Оранжевый пунктир показывает ошибочный исходный контур, а не исторически установленную границу. Принадлежность, местное управление и границы уточняются отдельно.</small>
      <ul>{unresolvedRegions.map(r=><li key={r.id}><button type="button" onClick={()=>openUnresolvedRegion(r.id)}>{r.title}</button><p>{r.description}</p><small>Исключённых исходных записей: {r.rows.length}</small></li>)}</ul>
      {unresolvedCenters.length>0&&<><p>Ромбы — приблизительные местоположения подтверждённых политических центров, не границы государств.</p><ul>{unresolvedCenters.map(c=><li key={c.id}><button type="button" onClick={()=>{const [x,y]=projectGeography(c.lon,c.lat);const s=32;commitCamera({scale:s,position:normalizePosition({x:-(x-450)*s,y:-(y-225)*s},s)});setSelectedMarker(c.id);setSelected(null);setSelectedMineral(null);setHistoryTab('article')}}>{c.title} ⌖</button> <a href={c.url} target="_blank" rel="noopener noreferrer">Источник ↗</a></li>)}</ul></>}

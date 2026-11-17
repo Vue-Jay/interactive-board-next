@@ -4,7 +4,7 @@ import path from 'node:path';
 import polygonClipping from 'polygon-clipping';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,historicalTitleCorrections,secondaryExactReviews,thirdExactReviews,elba1797Partition,buildElbaPartition,earlyComorosRoutes,earlyComorosHashes} from './build-lektrus-historical-timeline.mjs';
+import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,historicalTitleCorrections,secondaryExactReviews,thirdExactReviews,fourthExactReviews,exactConflictPendingReviews,exactConflictGroupPrefix,elba1797Partition,buildElbaPartition,earlyComorosRoutes,earlyComorosHashes} from './build-lektrus-historical-timeline.mjs';
 import {historicalUnresolvedCenters,historicalUnresolvedRegions} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
@@ -152,7 +152,7 @@ if(outDir&&sourceFile){
   const extensionsByYear=new Map();for(const r of reviewedBatch.extensions)for(let year=r.from;year<=r.to;year++){if(!extensionsByYear.has(year))extensionsByYear.set(year,[]);extensionsByYear.get(year).push(r)}
   const pendingExtensionsByYear=new Map();for(const r of reviewedBatch.pendingExtensions)for(let year=r.from;year<=r.to;year++){if(!pendingExtensionsByYear.has(year))pendingExtensionsByYear.set(year,[]);pendingExtensionsByYear.get(year).push(r)}
   let batchReady=0,batchPending=0,batchResolved=0,extended=0,sourceRecordYears=0,restoredRecordYears=0,externalRecordYears=0,datedRecordYears=0,unresolvedRegionYears=0,unresolvedSourceYears=0;
-  let checkedSupplementYears=0;
+  let checkedSupplementYears=0,unresolvedExactComponentYears=0,unresolvedExactSourceYears=0;
   const ringArea=r=>Math.abs(r.slice(1).reduce((a,p,i)=>a+r[i][0]*p[1]-p[0]*r[i][1],0))/2;
   const area=g=>g.reduce((a,p)=>a+ringArea(p[0])-p.slice(1).reduce((s,r)=>s+ringArea(r),0),0);
   const bounds=p=>p[0].reduce((a,[x,y])=>[Math.min(a[0],x),Math.min(a[1],y),Math.max(a[2],x),Math.max(a[3],y)],[Infinity,Infinity,-Infinity,-Infinity]);
@@ -241,10 +241,19 @@ if(outDir&&sourceFile){
         assert.deepEqual(owners.map(({record})=>record.sourceIndex),[12942]);
       }
       const hasPart=(record,index,part)=>record&&record.geometryStatus==='candidate'&&(record.geometryParts?record.geometryParts.some(p=>p.index===index&&p.part===part):record.sourceIndex===index);
-      for(const [source,target,from,to,losers,winners] of [...secondaryExactReviews,...thirdExactReviews])if(from<=year&&year<=to){
+      for(const [source,target,from,to,losers,winners] of [...secondaryExactReviews,...thirdExactReviews,...fourthExactReviews])if(from<=year&&year<=to){
         assert.ok(losers.every(part=>!hasPart(activeRecords.get(source),source,part)),`Secondary duplicate ${source}/${year}`);
         const winner=activeRecords.get(target);assert.ok(winners.every(part=>hasPart(winner,target,part)),`Missing secondary counterpart ${target}/${year}`);
         assert.ok(winners.every(part=>winner.territorialAttributions?.some(note=>note.part===part&&note.from<=year&&year<=note.to)));
+      }
+      for(const [source,target,from,to,left,right,title] of exactConflictPendingReviews)if(from<=year&&year<=to){
+        for(const [i,part] of left.entries()){
+          assert.ok(!hasPart(activeRecords.get(source),source,part)&&!hasPart(activeRecords.get(target),target,right[i]),`Uncertain pair retained as a political claim ${source}/${target}/${year}`);
+          const group=exactConflictGroupPrefix+title;
+          const a=state.territorialIssues.find(n=>n.sourceIndex===source&&n.part===part&&n.group===group),b=state.territorialIssues.find(n=>n.sourceIndex===target&&n.part===right[i]&&n.group===group);
+          assert.ok(a&&b&&a.hash===b.hash&&componentHash(a.geometry.coordinates)===componentHash(b.geometry.coordinates));
+          assert.ok(!state.drawable.some(({geometry})=>(geometry.type==='Polygon'?[geometry.coordinates]:geometry.coordinates).some(p=>componentHash(p)===a.hash)),`Uncertain contour rendered by another polity ${year}/${title}`);
+        }
       }
       const earlyComoros=earlyComorosRoutes.find(([, ,from,to])=>from<=year&&year<=to);
       if(earlyComoros){
@@ -340,7 +349,10 @@ if(outDir&&sourceFile){
       assert.equal(regions.length,new Set(state.territorialIssues.map(i=>i.hash)).size);
       assert.equal(regions.flatMap(r=>r.rows).length,state.territorialIssues.length);
       for(const r of regions){assert.ok(r.title&&r.description&&r.sources.length&&r.rows.every(i=>i.hash===r.issue.hash&&i.group===r.issue.group));assert.equal(r.year,year);}
-      unresolvedRegionYears+=regions.length;unresolvedSourceYears+=state.territorialIssues.length;
+      const exactRegions=regions.filter(r=>r.issue.group.startsWith(exactConflictGroupPrefix));
+      assert.ok(exactRegions.every(r=>r.rows.length===2&&r.rows.every(n=>n.sources?.length)));
+      unresolvedExactComponentYears+=exactRegions.length;unresolvedExactSourceYears+=exactRegions.flatMap(r=>r.rows).length;
+      unresolvedRegionYears+=regions.length-exactRegions.length;unresolvedSourceYears+=state.territorialIssues.length-exactRegions.flatMap(r=>r.rows).length;
       for(const issue of state.territorialIssues.filter(i=>['Corsica','Эльба','Коморы','Малакка'].includes(i.group)))assert.ok(issue.sources?.length&&issue.sources.every(s=>s.startsWith('https://')));
       for(const c of centers){assert.ok(c.url.startsWith('https://'));assert.ok(c.description.includes('Точка'));assert.ok(Number.isFinite(c.lon)&&Math.abs(c.lon)<=180&&Number.isFinite(c.lat)&&Math.abs(c.lat)<=90);assert.equal(c.year,year);}
       assert.deepEqual(historicalUnresolvedCenters(year,[]),[]);
@@ -423,6 +435,7 @@ if(outDir&&sourceFile){
   assert.equal(batchReady,293);assert.equal(batchResolved,541);assert.equal(batchPending,155);
   assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,815);assert.equal(externalRecordYears,469);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
   assert.equal(unresolvedSourceYears,363);assert.equal(unresolvedRegionYears,284);
+  assert.equal(unresolvedExactComponentYears,117);assert.equal(unresolvedExactSourceYears,234);
   assert.equal(admissionWarnings,1,'Independent-state coverage must not regress');
   assert.deepEqual(rows.filter(r=>r.membershipWarnings?.length).map(r=>[r.year,...r.membershipWarnings.map(w=>w.name)]),[[1971,'United Arab Emirates']]);
   assert.equal(historicalGapLocators['United Arab Emirates'].iso,'ARE');
@@ -480,7 +493,7 @@ if(outDir&&sourceFile){
   assert.equal(partsAt(1894,12069),undefined);
   assert.deepEqual(partsAt(1895,12069),Array.from({length:22},(_,i)=>i).filter(i=>![11,12,13,14,15,17].includes(i)));
   for(const part of [11,12,13,14,15,17])assert.ok(rawHashes(12119).has(componentHash(rawParts(12069)[part])));
-  assert.equal(partsAt(578,1986),undefined);
+  assert.deepEqual(partsAt(578,1986),[0,1]); // retain African parts; Arabian transition is explicitly unresolved
   assert.deepEqual(partsAt(579,1986),[0,1]);
   assert.deepEqual(partsAt(1440,7187),[0,1,2,4,5,6]);
   assert.deepEqual(partsAt(1454,7187),[0,5]);
