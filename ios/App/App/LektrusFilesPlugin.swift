@@ -4,7 +4,7 @@ import UIKit
 
 /** Native export uses the system Files picker, not a WKWebView blob download. */
 @objc(LektrusFilesPlugin)
-class LektrusFilesPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
+class LektrusFilesPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate, UIAdaptivePresentationControllerDelegate {
     let identifier = "LektrusFilesPlugin"
     let jsName = "LektrusFiles"
     let pluginMethods: [CAPPluginMethod] = [
@@ -24,6 +24,8 @@ class LektrusFilesPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate 
     private var expected = 0
     private var written = 0
     private var pending: CAPPluginCall?
+    // UIKit delegate methods and this reference are confined to the main thread.
+    private weak var activePicker: UIDocumentPickerViewController?
 
     private func owns(_ call: CAPPluginCall) -> Bool {
         guard let token = token else { return false }
@@ -92,7 +94,8 @@ class LektrusFilesPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate 
                 }
                 let picker = UIDocumentPickerViewController(forExporting: [file], asCopy: true)
                 picker.delegate = self
-                picker.isModalInPresentation = true
+                self.activePicker = picker
+                picker.presentationController?.delegate = self
                 controller.present(picker, animated: true)
             }
         }
@@ -105,7 +108,10 @@ class LektrusFilesPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate 
         }
     }
 
-    private func complete(saved: Bool) {
+    private func complete(saved: Bool, picker: UIDocumentPickerViewController) {
+        // Ignore duplicate or delayed callbacks from a previous presentation.
+        guard activePicker === picker else { return }
+        activePicker = nil
         queue.async {
             guard let pending = self.pending else { return }
             self.clear()
@@ -114,11 +120,16 @@ class LektrusFilesPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate 
     }
 
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-        complete(saved: !urls.isEmpty)
+        complete(saved: !urls.isEmpty, picker: controller)
     }
 
     func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
-        complete(saved: false)
+        complete(saved: false, picker: controller)
+    }
+
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        guard let picker = presentationController.presentedViewController as? UIDocumentPickerViewController else { return }
+        complete(saved: false, picker: picker)
     }
 }
 
