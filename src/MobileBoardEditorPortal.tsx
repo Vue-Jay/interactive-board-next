@@ -8,9 +8,11 @@ export default function MobileBoardEditorPortal({ children, active }: {children:
   // synthetic click after the portal appears. That click belongs to the
   // board, not whichever editor control now occupies the same coordinates.
   const receivedPointerDown = useRef(false);
+  const openedAt = useRef(0);
   useLayoutEffect(() => {
     if (!active || !ref.current) return;
     receivedPointerDown.current = false;
+    openedAt.current = performance.now();
     const node = ref.current;
     const viewport = window.visualViewport;
     const update = () => {
@@ -44,8 +46,10 @@ export default function MobileBoardEditorPortal({ children, active }: {children:
       event.stopPropagation();
       focused.blur();
     }
-  }} onClickCapture={event => {
-    if (!receivedPointerDown.current && event.detail > 0) {
+  }} onTouchStartCapture={()=>{receivedPointerDown.current=true;}} onClickCapture={event => {
+    // The placement compatibility click is brief; do not require a pointer
+    // event forever on engines/assistive tech that deliver click-only input.
+    if (!receivedPointerDown.current && event.detail > 0 && performance.now()-openedAt.current<500) {
       event.preventDefault();
       event.stopPropagation();
     }

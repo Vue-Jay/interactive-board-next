@@ -8347,6 +8347,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <details className="topbar-more-menu">
             <summary className="top-button topbar-more-trigger" title="Дополнительные действия" aria-label="Дополнительные действия"><Icon name="more" /></summary>
             <div className="topbar-more-popover">
+              <div className="lektrus-board-menu-pager" aria-label="Прокрутка действий доски">
+                {([-1,1] as const).map(direction=><button type="button" key={direction} data-menu-page={direction===1?"next":"previous"} aria-label={direction===1?"Следующие действия":"Предыдущие действия"} onClick={event=>{
+                  const menu=event.currentTarget.closest<HTMLElement>(".topbar-more-popover");
+                  const pager=event.currentTarget.parentElement;
+                  if(menu&&pager)menu.scrollTop+=direction*Math.max(24,menu.clientHeight-pager.offsetHeight-16);
+                }}>{direction===1?"↓ Далее":"↑ Назад"}</button>)}
+              </div>
               <button type="button" className="lektrus-controls-menu-entry" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setControlSettingsOpen(true)}}><Icon name="settings" size={17}/><span>Управление доской</span></button>
               <div className="topbar-menu-account">
                 <span className="account-avatar" aria-hidden="true"><UserAvatar/></span>

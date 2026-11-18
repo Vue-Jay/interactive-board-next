@@ -23,6 +23,7 @@ parser.add_argument('--udid')
 parser.add_argument('--wda-app')
 parser.add_argument('--wda-derived-data')
 parser.add_argument('--output', type=Path, required=True)
+parser.add_argument('--suite', choices=['full','ios-remaining','android-lab'], default='full')
 args = parser.parse_args()
 args.output.mkdir(parents=True, exist_ok=True)
 URL = 'http://127.0.0.1:4723'
@@ -111,6 +112,11 @@ def visible_id(selector):
 
 def click(selector):
     element = wait(lambda: visible_id(selector), f'Visible control: {selector}')
+    # XCUITest's WebView click atom does not emit a real touch/pointerdown.
+    # Use physical taps for the portal's commit/cancel actions on iOS.
+    if args.platform=='ios' and ('-editor-footer' in selector or selector.startswith('.checklist-add-row') or 'selection-toolbar-danger' in selector or 'quiz-correct-radio' in selector or 'checklist-editor-check' in selector):
+        native_tap(selector)
+        return element
     command('POST', f'/element/{element}/click', {})
     return element
 
@@ -353,7 +359,7 @@ def path_for_ink(y_band):
     return value
 
 
-def native_gesture(points, second=None):
+def native_gesture(points, second=None, reattach=True):
     viewport = js('return [innerWidth,innerHeight,visualViewport?.offsetLeft||0,visualViewport?.offsetTop||0,devicePixelRatio,window.__lektrusQaNativeWebViewRect||null]')
     def finger(pts, name, rect, sx, sy):
         coords = [(round(rect['x']+x*sx), round(rect['y']+y*sy)) for x, y in pts]
@@ -408,7 +414,33 @@ def native_gesture(points, second=None):
         assert 0.5 <= sx <= 5 and 0.5 <= sy <= 5, (rect, viewport)
         perform(rect,sx,sy)
     finally:
-        reattach_webview()
+        if reattach:
+            reattach_webview()
+
+
+def native_tap(selector, reattach=True):
+    p=wait(lambda:js('''const e=[...document.querySelectorAll(arguments[0])].find(e=>e.getClientRects().length&&e.getBoundingClientRect().width>0);if(!e)return null;const r=e.getBoundingClientRect();for(const y of [.5,.2,.8,.03,.97])for(const x of [.5,.2,.8,.03,.97]){const p=[Math.round(r.left+r.width*x),Math.round(r.top+r.height*y)];if(e.contains(document.elementFromPoint(...p)))return p}return null;''',selector),'Touchable control: '+selector,12)
+    native_gesture([tuple(p)],reattach=reattach)
+
+
+def scroll_toward(data):
+    lo,hi=round(data['top']+12),round(data['bottom']-12)
+    assert hi-lo>25,data
+    if args.platform=='ios':
+        # WKWebView inertia moved ~340px for a 194px gesture. A full-height
+        # swipe repeatedly jumped *over* the desired row in both directions.
+        # Use the target column and an adaptive shorter physical drag.
+        x=round(max(data['left']+16,min(data['right']-16,data['x'])))
+        center=(lo+hi)/2
+        delta=data['y']-center
+        distance=min((hi-lo)*.42,max(16,abs(delta)*.40))
+        start,end=(center+distance/2,center-distance/2) if delta>0 else (center-distance/2,center+distance/2)
+    else:
+        x=round((data['left']+data['right'])/2)
+        start,end=(hi,lo) if data['y']>data['bottom'] else (lo,hi)
+    native_gesture([(x,round(start+(end-start)*i/8)) for i in range(9)])
+    if args.platform=='ios':
+        time.sleep(.35)
 
 
 paths = {}
@@ -530,6 +562,20 @@ def native_back_and_link():
         subprocess.run(['adb','shell','am','start','-a','android.intent.action.VIEW','-d',url,'ru.lektrus.board.dev'],check=True,timeout=30)
     else:
         subprocess.run(['xcrun','simctl','openurl',args.udid,url],check=True,timeout=30)
+        # Fresh iOS simulators ask whether the custom scheme may open the
+        # app. The failure screenshot showed this real OS confirmation.
+        context('NATIVE_APP')
+        try:
+            try:
+                alert=wait(lambda:command('GET','/alert/text'), 'No URL-open confirmation appeared',5)
+                if 'Lektrus' in alert or 'Open' in alert:
+                    command('POST','/alert/accept',{})
+            except AssertionError:
+                open_button=native_picker_button(('Open','Открыть'))
+                if open_button:
+                    command('POST',f'/element/{open_button}/click',{})
+        finally:
+            reattach_webview()
     try:
         wait(lambda: js('return location.pathname')==path and visible_id('section.board'), 'Native deep link did not open its board', 60)
     except Exception:
@@ -569,11 +615,12 @@ def start_native_export(label):
         if target['hit'] and target['top']<=target['y']<=target['bottom']:
             # This tap launches a different OS activity; do not reattach to
             # the WebView until the picker has returned its actual result.
-            click_text('.topbar-more-popover button',label);break
-        x=round((target['left']+target['right'])/2)
-        lo,hi=round(target['top']+10),round(target['bottom']-10)
-        start,end=(hi,lo) if target['y']>target['bottom'] else (lo,hi)
-        native_gesture([(x,round(start+(end-start)*i/8)) for i in range(9)])
+            if args.platform=='ios':
+                native_gesture([(target['x'],target['y'])],reattach=False)
+            else:
+                click_text('.topbar-more-popover button',label)
+            break
+        scroll_toward(target)
     else:
         raise AssertionError(f'Board action remained inaccessible after scrolling: {label}')
     # OS file chooser is outside the installed WebView; DOM clicks are not
@@ -671,11 +718,7 @@ def pick_element(selector, label=None):
             native_gesture([(data['x'],data['y'])])
             wait(lambda:not visible_id('.mobile-tools-sheet'),'Catalogue did not close after selecting tool')
             return
-        x=round((data['left']+data['right'])/2)
-        lo,hi=round(data['top']+12),round(data['bottom']-12)
-        assert hi-lo>30, f'Catalogue has insufficient scroll area: {data}'
-        start,end=(hi,lo) if data['y']>data['bottom'] else (lo,hi)
-        native_gesture([(x,round(start+(end-start)*i/8)) for i in range(9)])
+        scroll_toward(data)
     raise AssertionError(f'Catalogue tool blocked after native scrolling: {selector} {data}')
 
 
@@ -778,7 +821,10 @@ def shape_actions():
     click('.selection-toolbar-screen .selection-toolbar-danger')
     wait(lambda:item_by_id(duplicate['id']) is None,'Duplicate not deleted')
     # Delete original using its visible object and button, keeping board clear for text/table.
-    click(f'.board-object[data-object="{item_id}"]')
+    if args.platform=='ios':
+        native_tap(f'.board-object[data-object="{item_id}"]')
+    else:
+        click(f'.board-object[data-object="{item_id}"]')
     click('.selection-toolbar-screen .selection-toolbar-danger')
     wait(lambda:item_by_id(item_id) is None,'Original shape not deleted')
     return {'rotation':rotated['rotation'],'duplicate':duplicate['id'],'deleted':True,'selectionDockNoOverlap':True}
@@ -816,7 +862,10 @@ def type_into(selector, value, clear=False, outside=None):
     if outside:
         # Exercise the same outside-tap behavior users use, not a synthetic
         # blur or a driver context transition while the keyboard is open.
-        click(outside)
+        if args.platform=='ios':
+            native_tap(outside)
+        else:
+            click(outside)
         wait(lambda:js('return document.activeElement!==document.querySelector(arguments[0])',selector),'Outside tap did not dismiss editor keyboard',15)
         assert js('return document.querySelector(arguments[0])?.value',selector)==value,'Outside tap lost typed text'
         # Native IME dismissal animates and can move the next control while
@@ -1005,7 +1054,17 @@ def subject_panel(subject):
     if js('return document.querySelector(arguments[0]).value',selector)!=subject:
         option=js('return [...document.querySelector(arguments[0]).options].find(e=>e.value===arguments[1])',selector,subject)
         assert option, f'Subject option missing: {subject}'
-        command('POST',f'/element/{option[ELEMENT]}/click',{})
+        if args.platform=='ios':
+            # Clicking a DOM <option> via WebKit's automation atom opens
+            # the native menu without selecting it. Choose the OS entry.
+            native_tap(selector,reattach=False)
+            try:
+                choice=wait(lambda:native_picker_button((subject,)),f'Native subject option: {subject}',12)
+                command('POST',f'/element/{choice}/click',{})
+            finally:
+                reattach_webview()
+        else:
+            command('POST',f'/element/{option[ELEMENT]}/click',{})
         wait(lambda:js('return document.querySelector(arguments[0]).value===arguments[1]',selector,subject),'Subject change did not persist')
     expected=['Задания на доске',*SUBJECTS[subject]]
     labels=lambda:js('return Array.from(document.querySelectorAll(".lektrus-subject-tools-list button")).map(e=>e.getAttribute("aria-label"))')
@@ -1033,11 +1092,7 @@ def choose_subject_tool(subject,label):
             native_gesture([(data['x'],data['y'])])
             wait(lambda:not visible_id('#lektrus-subject-tools-panel'),'Subject tool did not activate')
             return
-        x=round((data['left']+data['right'])/2)
-        lo,hi=round(data['top']+12),round(data['bottom']-12)
-        assert hi-lo>25,data
-        start,end=(hi,lo) if data['y']>data['bottom'] else (lo,hi)
-        native_gesture([(x,round(start+(end-start)*i/8)) for i in range(9)])
+        scroll_toward(data)
     raise AssertionError(f'Subject tool blocked: {label}')
 
 
@@ -1194,13 +1249,7 @@ def create_session():
     return request('POST','/session',{'capabilities':{'alwaysMatch':common,'firstMatch':[{}]}}, timeout=900 if args.platform=='ios' else 420)
 
 
-try:
-    wait(lambda: request('GET','/status',timeout=3).get('ready'), 'Appium server unavailable', 90)
-    session = create_session()['sessionId']
-    print('Native session launched', session, flush=True)
-    reattach_webview(150 if args.platform=='ios' else 90)
-    print('Native WebView attached', web_context, flush=True)
-    assert js('return window.Capacitor?.isNativePlatform()'), 'Not a native Capacitor runtime'
+def run_full():
     check('home-portrait-layout', home, fatal=True)
     check('more-and-native-keyboard', more)
     for label, route, selector in [
@@ -1263,6 +1312,61 @@ try:
     check('native-file-export-cancel',native_file_export_cancel)
     check('subject-chemistry-lab-fullscreen',chemistry_lab)
     check('native-back-and-deep-link', native_back_and_link)
+
+
+def run_remaining():
+    # Fresh isolated state, real touches and the same assertions as the full
+    # suite. Only prerequisites and the previously unresolved checks run.
+    check('create-board-and-landscape', open_new_board, fatal=True)
+    check('pencil-touch', lambda: draw('pen',[.38,.46,.52]), fatal=True)
+    if args.suite=='android-lab':
+        check('subject-chemistry-lab-fullscreen',chemistry_lab)
+        check('native-back-and-deep-link',native_back_and_link)
+        return
+    check('zoom-for-object-tests', zoom_for_objects)
+    check('create-rectangle-touch', create_shape, fatal=True)
+    check('rotate-duplicate-delete', shape_actions)
+    check('text-native-keyboard',lambda:text_object('text','Текст','Текст QA'))
+    check('sticky-native-keyboard',lambda:text_object('sticky','Стикер','Заметка QA'))
+    check('table-edit-and-save',table_editor)
+    check('all-objects-reopen-persistence',full_document_persistence)
+    if results[-1]['status']!='passed':
+        recover_reopen_after_failure()
+    check('checklist-edit-and-save',checklist_editor)
+    check('flashcard-edit-and-save',flashcard_editor)
+    check('quiz-edit-and-save',quiz_editor)
+    check('formula-edit-and-save',formula_editor)
+    check('subject-math-geometry-editor',lambda:subject_editor('Математика','Построение фигур','.graph-editor-modal','button[aria-label="Закрыть редактор без сохранения"]',geometry_editor_action))
+    check('subject-physics-circuit-editor',lambda:subject_editor('Физика','Электрические цепи','.lektrus-circuit-editor','.lektrus-circuit-close',circuit_editor_action))
+    check('subject-geography-atlas-editor',lambda:subject_editor('География','Географические карты','.lektrus-school-editor','.lektrus-school-close',atlas_zoom))
+    check('subject-history-atlas-editor',lambda:subject_editor('История','Исторические карты','.lektrus-school-editor','.lektrus-school-close',history_year))
+    check('subject-language-sentence-editor',lambda:subject_editor('Иностранный язык','Составление предложений','.lektrus-school-editor','.lektrus-school-close',language_drag))
+    check('native-file-export-save',native_file_export_save)
+    check('native-file-export-cancel',native_file_export_cancel)
+    check('native-back-and-deep-link',native_back_and_link)
+
+
+if args.suite=='android-lab':
+    EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','subject-chemistry-lab-fullscreen','native-back-and-deep-link']
+elif args.suite=='ios-remaining':
+    EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','zoom-for-object-tests','create-rectangle-touch',
+                     'rotate-duplicate-delete','text-native-keyboard','sticky-native-keyboard','table-edit-and-save','all-objects-reopen-persistence',
+                     'checklist-edit-and-save','flashcard-edit-and-save','quiz-edit-and-save','formula-edit-and-save',
+                     'subject-math-geometry-editor','subject-physics-circuit-editor','subject-geography-atlas-editor','subject-history-atlas-editor',
+                     'subject-language-sentence-editor','native-file-export-save','native-file-export-cancel','native-back-and-deep-link']
+
+try:
+    wait(lambda: request('GET','/status',timeout=3).get('ready'), 'Appium server unavailable', 90)
+    session = create_session()['sessionId']
+    print('Native session launched', session, flush=True)
+    reattach_webview(150 if args.platform=='ios' else 90)
+    print('Native WebView attached', web_context, flush=True)
+    assert js('return window.Capacitor?.isNativePlatform()'), 'Not a native Capacitor runtime'
+    print('QA SUITE: '+args.suite,flush=True)
+    if args.suite=='full':
+        run_full()
+    else:
+        run_remaining()
 except Exception as error:
     print(traceback.format_exc(), file=sys.stderr, flush=True)
     runtime_abort=str(error)
@@ -1278,7 +1382,7 @@ finally:
             results.append({'check':name,'status':'blocked','detail':'Prior prerequisite failed or runtime aborted'})
     summary={'planned':len(EXPECTED_CHECKS),**{s:sum(r['status']==s for r in results) for s in ('passed','failed','blocked')}}
     evidence_summary={s:sum(r['status']==s for r in screenshot_evidence) for s in ('captured','missing')}
-    (args.output/'report.json').write_text(json.dumps({'platform': args.platform, 'summary':summary,'runtime_abort':runtime_abort,'results':results,'screenshot_summary':evidence_summary,'screenshot_evidence':screenshot_evidence}, ensure_ascii=False, indent=2))
+    (args.output/'report.json').write_text(json.dumps({'platform': args.platform,'suite':args.suite, 'summary':summary,'runtime_abort':runtime_abort,'results':results,'screenshot_summary':evidence_summary,'screenshot_evidence':screenshot_evidence}, ensure_ascii=False, indent=2))
     if session:
         try:
             command('DELETE','')

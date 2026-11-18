@@ -3,6 +3,12 @@ on:
   pull_request:
     branches: [qa/mobile-native-base-20261117]
   workflow_dispatch:
+    inputs:
+      phase:
+        description: Full acceptance or targeted remaining checks
+        type: choice
+        options: [full, remaining]
+        default: full
 
 permissions:
   contents: read
@@ -43,7 +49,7 @@ jobs:
           curl -fsSI "$board?lektrus-board-frame=1" | grep -i "content-security-policy: frame-ancestors 'self'"
           curl -fsSI 'http://127.0.0.1:18080/app?lektrus-board-frame=1' | grep -i 'x-frame-options: DENY'
       - run: node scripts/test-lektrus-release-browser-smoke.mjs --keyboard-only
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && inputs.phase == 'full' }}
       - run: node scripts/test-lektrus-release-browser-smoke.mjs --landscape-only
         if: ${{ !cancelled() }}
 
@@ -54,7 +60,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        api: [30, 35, 36]
+        # During the repair phase run only the unresolved Android platform.
+        # The final manually selected full acceptance retains all three APIs.
+        api: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.phase == 'full' && '[30,35,36]' || '[35]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -106,7 +114,7 @@ jobs:
             LOGCAT_PID=$!
             "$RUNNER_TEMP/appium/node_modules/.bin/appium" --address 127.0.0.1 --port 4723 --allow-insecure=uiautomator2:chromedriver_autodownload > artifacts/mobile-qa/appium.log 2>&1 &
             QA_RESULT=0
-            python3 scripts/test-native-mobile-runtime.py android --app "$PWD/android/app/build/outputs/apk/debug/app-debug.apk" --output artifacts/mobile-qa || QA_RESULT=$?
+            python3 scripts/test-native-mobile-runtime.py android --suite "${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'full' && 'full' || 'android-lab' }}" --app "$PWD/android/app/build/outputs/apk/debug/app-debug.apk" --output artifacts/mobile-qa || QA_RESULT=$?
             if [ "$QA_RESULT" -ne 0 ]; then
               timeout 20s adb shell dumpsys activity exit-info ru.lektrus.board.dev > artifacts/mobile-qa/android-exit-info.txt 2>&1 || true
             fi
@@ -181,7 +189,7 @@ jobs:
             WDA_ARGS=(--wda-derived-data "$WDA_DERIVED")
           fi
           "$APPIUM" --address 127.0.0.1 --port 4723 > artifacts/mobile-qa/appium.log 2>&1 &
-          python3 scripts/test-native-mobile-runtime.py ios --app "$APP" --udid "$SIMULATOR_UDID" "${WDA_ARGS[@]}" --output artifacts/mobile-qa
+          python3 scripts/test-native-mobile-runtime.py ios --suite "${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'full' && 'full' || 'ios-remaining' }}" --app "$APP" --udid "$SIMULATOR_UDID" "${WDA_ARGS[@]}" --output artifacts/mobile-qa
       - name: Upload iOS runtime logs and screenshots
         if: always()
         uses: actions/upload-artifact@v4
