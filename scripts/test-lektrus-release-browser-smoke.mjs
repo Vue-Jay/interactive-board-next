@@ -260,6 +260,10 @@ try{
   const directPath=await evaluate('window.__boardPath');
   await call('Page.navigate',{url:new URL(directPath,url).href});
   await wait(boardReady,'Direct link did not reopen landscape board',45000);
+  // A full navigation can replace the renderer. Reapply touch emulation so
+  // subsequent menu actions exercise touch rather than compatibility clicks.
+  await call('Emulation.setTouchEmulationEnabled',{enabled:false});
+  await viewport(390,844);
   await evaluate(`window.__boardPath=${JSON.stringify(directPath)}`);
   assert.equal((await evaluate(storedPen)).id,ink.id);
   console.log('✓ Return to portrait workspace and direct-link reopen preserve saved ink');

@@ -12,6 +12,7 @@ export function BrowserBoardMenuGestureBridge({frame,area,enabled}:{frame:RefObj
  const [surface,setSurface]=useState<Surface|null>(null);
  const overlay=useRef<HTMLDivElement>(null);
  const drag=useRef<{menu:HTMLElement;source:"pointer"|"touch";id:number;x:number;y:number;scroll:number;target:HTMLElement|null;moved:boolean}|null>(null);
+ const completed=useRef<{x:number;y:number;time:number}|null>(null);
  useLayoutEffect(()=>{
   if(!enabled){setSurface(null);drag.current=null;return;}
   const iframe=frame.current,region=area.current;
@@ -48,6 +49,7 @@ export function BrowserBoardMenuGestureBridge({frame,area,enabled}:{frame:RefObj
   return target&&menu.contains(target)?target:null;
  };
  const begin=(menu:HTMLElement,source:"pointer"|"touch",id:number,x:number,y:number)=>{
+  completed.current=null;
   drag.current={menu,source,id,x,y,scroll:menu.scrollTop,target:actionAt(menu,x,y),moved:false};
  };
  const scroll=(source:"pointer"|"touch",id:number,x:number,y:number)=>{
@@ -62,6 +64,7 @@ export function BrowserBoardMenuGestureBridge({frame,area,enabled}:{frame:RefObj
   const current=drag.current;
   if(!current||current.source!==source||current.id!==id)return;
   drag.current=null;
+  completed.current={x,y,time:performance.now()};
   if(!current.menu.isConnected||current.moved||Math.hypot(x-current.x,y-current.y)>=8)return;
   // Only forward a genuine tap if it begins and ends on the same action.
   const target=actionAt(current.menu,x,y);
@@ -109,5 +112,13 @@ export function BrowserBoardMenuGestureBridge({frame,area,enabled}:{frame:RefObj
   event.preventDefault();finish("pointer",event.pointerId,event.clientX,event.clientY);
  };
  if(!enabled||!surface)return null;
- return <div ref={overlay} className="lektrus-browser-board-menu-gesture" aria-hidden="true" style={{left:surface.left,top:surface.top,width:surface.width,height:surface.height}} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={()=>{if(drag.current?.source==="pointer")drag.current=null}} onLostPointerCapture={()=>{if(drag.current?.source==="pointer")drag.current=null}} onClick={event=>{event.preventDefault();event.stopPropagation()}}/>;
+ return <div ref={overlay} className="lektrus-browser-board-menu-gesture" aria-hidden="true" style={{left:surface.left,top:surface.top,width:surface.width,height:surface.height}} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={()=>{if(drag.current?.source==="pointer")drag.current=null}} onLostPointerCapture={()=>{if(drag.current?.source==="pointer")drag.current=null}} onClick={event=>{
+  event.preventDefault();event.stopPropagation();
+  // Some engines deliver only a compatibility click after the touchscreen
+  // interaction. Keep the action accessible, but never replay a handled drag/tap.
+  const previous=completed.current;completed.current=null;
+  if(previous&&performance.now()-previous.time<600&&Math.hypot(event.clientX-previous.x,event.clientY-previous.y)<12)return;
+  const target=actionAt(surface.menu,event.clientX,event.clientY);
+  if(target){target.focus({preventScroll:true});target.click();}
+ }}/>;
 }
