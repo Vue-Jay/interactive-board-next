@@ -1,5 +1,6 @@
 import { isRemoteBackendEnabled,remoteRequest,remoteStorageRequest } from "./backend";
 import { SELFHOST_BACKEND_ENABLED,selfhostMaterials,selfhostMaterialFile,selfhostMaterialMeta,selfhostMaterialFavorite,selfhostMaterialUsed,selfhostDeleteMaterial } from "./selfhostApi";
+import { saveExport } from "./nativeFileExport";
 export type Material={id:string;ownerId:string;folder:string;title:string;fileName:string;mime:string;size:number;storagePath:string;createdAt:string;favorite:boolean;useCount:number;lastUsedAt:string|null};
 const KEY="onlinerepetitor.materials.v44";
 const read=():Material[]=>{try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch{return[]}};
@@ -12,5 +13,5 @@ export async function deleteMaterial(id:string,path:string){if(SELFHOST_BACKEND_
 export async function renameMaterial(id:string,title:string,folder:string){if(SELFHOST_BACKEND_ENABLED){await selfhostMaterialMeta(id,title,folder);return}if(!isRemoteBackendEnabled()){write(read().map(x=>x.id===id?{...x,title,folder}:x));return}await remoteRequest(`/rest/v1/materials?id=eq.${encodeURIComponent(id)}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({title:title.trim(),folder:folder.trim()})})}
 export async function setMaterialFavorite(id:string,favorite:boolean){if(SELFHOST_BACKEND_ENABLED){await selfhostMaterialFavorite(id,favorite);return}if(!isRemoteBackendEnabled()){write(read().map(x=>x.id===id?{...x,favorite}:x));return}await remoteRequest(`/rest/v1/materials?id=eq.${encodeURIComponent(id)}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({favorite})})}
 export async function materialBlob(m:Material){if(SELFHOST_BACKEND_ENABLED)return selfhostMaterialFile(m.id);if(!isRemoteBackendEnabled())throw new Error("Для повторного использования файла нужна серверная библиотека");const blob=await remoteStorageRequest("materials",m.storagePath);if(!blob)throw new Error("Файл не найден");return blob}
-export async function downloadMaterial(m:Material){const blob=await materialBlob(m);const u=URL.createObjectURL(blob);const a=document.createElement("a");a.href=u;a.download=m.fileName;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
+export async function downloadMaterial(m:Material){const blob=await materialBlob(m);return saveExport(blob,m.fileName)}
 export async function markMaterialUsed(id:string){const now=new Date().toISOString();if(SELFHOST_BACKEND_ENABLED){await selfhostMaterialUsed(id);return}if(!isRemoteBackendEnabled()){write(read().map(x=>x.id===id?{...x,useCount:(x.useCount||0)+1,lastUsedAt:now}:x));return}await remoteRequest("/rest/v1/rpc/mark_material_used",{method:"POST",body:JSON.stringify({p_material_id:id})})}

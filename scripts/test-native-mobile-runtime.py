@@ -5,6 +5,7 @@ DOM reads select/measure controls; all clicks and gestures go through WebDriver.
 """
 import argparse
 import json
+import shlex
 import subprocess
 import sys
 import time
@@ -165,6 +166,9 @@ def layout(selectors):
 
 def check_layout(selectors):
     report = layout(selectors)
+    if args.platform == 'ios':
+        scale = js('return visualViewport?.scale || 1')
+        assert abs(scale - 1) < .02, f'iOS page zoom changed native viewport: {scale}; {report}'
     assert report['scrollWidth'] <= report['width'] + 2, report
     assert not report['issues'], report
     return report
@@ -191,7 +195,14 @@ def more():
     element = visible_id('.lektrus-more-page-search input')
     command('POST', f'/element/{element}/value', {'text': 'Настройки', 'value': list('Настройки')})
     wait(lambda: js('return [...document.querySelectorAll(".lektrus-more-page-item")].some(e=>e.innerText.includes("Настройки"));'), 'Settings filter unavailable')
-    return {'items': js('return [...document.querySelectorAll(".lektrus-more-page-item")].map(e=>e.innerText)')}
+    if args.platform == 'ios':
+        scale = js('return visualViewport?.scale || 1')
+        assert abs(scale - 1) < .02, f'Focusing search zoomed native viewport: {scale}'
+    assert js('return document.activeElement===document.querySelector(".lektrus-more-page-search input")'), 'Search field was not focused before outside tap'
+    click('.lektrus-more-page-title h1')
+    wait(lambda: js('return document.activeElement!==document.querySelector(".lektrus-more-page-search input")'), 'Outside tap did not dismiss keyboard')
+    assert js('return document.querySelector(".lektrus-more-page-search input").value') == 'Настройки'
+    return {'items': js('return [...document.querySelectorAll(".lektrus-more-page-item")].map(e=>e.innerText)'), 'outsideTapDismissedKeyboard': True}
 
 
 def workspace_section(label, route, selector):
@@ -405,17 +416,15 @@ def native_back_and_link():
     path = js('return location.pathname')
     assert path.startswith('/board/'), 'No direct board route'
     if args.platform == 'android':
-        context('NATIVE_APP')
-        command('POST','/appium/device/press_keycode',{'keycode':4})
-        reattach_webview()
+        # Sending the actual system key through ADB avoids disconnecting
+        # Chromedriver during the portrait/landscape activity transition.
+        subprocess.run(['adb','shell','input','keyevent','4'],check=True,timeout=30)
     else:
         click('.back-to-boards')
     wait(lambda: visible_id('.lectris-library-intro,.lektrus-calendar-grid'), 'Native back did not return to workspace', 45)
     url = 'ru.lektrus.board://' + path.lstrip('/')
     if args.platform == 'android':
         subprocess.run(['adb','shell','am','start','-a','android.intent.action.VIEW','-d',url,'ru.lektrus.board.dev'],check=True,timeout=30)
-        context('NATIVE_APP')
-        reattach_webview()
     else:
         subprocess.run(['xcrun','simctl','openurl',args.udid,url],check=True,timeout=30)
     try:
@@ -429,6 +438,75 @@ def native_back_and_link():
         raise
     wait(lambda: ink()==before, 'Native back/deep link did not preserve drawing', 15)
     return {'route':path,'strokes':len(before)}
+
+
+def native_picker_button(labels):
+    attributes = ('text','content-desc') if args.platform=='android' else ('label','name')
+    predicate=' or '.join(f'@{attr}="{label}"' for attr in attributes for label in labels)
+    try:
+        elements=command('POST','/elements',{'using':'xpath','value':'//*['+predicate+']'})
+        return next((e[ELEMENT] for e in elements if ELEMENT in e), None)
+    except RuntimeError:
+        return None
+
+
+def start_native_export(label):
+    js('''window.__nativeExportNotices=[]; new MutationObserver(()=>{const n=document.querySelector('.board-system-notice');if(n)window.__nativeExportNotices.push(n.innerText)}).observe(document.body,{childList:true,subtree:true,characterData:true});''')
+    click('.topbar-more-menu>summary')
+    click_text('.topbar-more-popover button',label)
+    # OS file chooser is outside the installed WebView; DOM clicks are not
+    # sufficient evidence that a bytes-on-disk native export occurred.
+    context('NATIVE_APP')
+
+
+def native_file_export_save():
+    name='Native QA.orboard'
+    start_native_export('Скачать копию')
+    try:
+        save=wait(lambda:native_picker_button(('Save','SAVE','Сохранить')),'Native system file picker did not offer Save',45)
+        screenshot('native-board-save-picker')
+        if args.platform=='ios':
+            local=native_picker_button(('On My iPhone','На iPhone'))
+            if local:
+                command('POST',f'/element/{local}/click',{})
+                save=wait(lambda:native_picker_button(('Save','SAVE','Сохранить')),'Local file destination not selectable',20)
+        command('POST',f'/element/{save}/click',{})
+    finally:
+        reattach_webview()
+    wait(lambda: js('return window.__nativeExportNotices?.some(n=>n.includes("Копия"))'),'Native save completion not acknowledged',30)
+    if args.platform=='android':
+        escaped=shlex.quote(name)
+        locations=subprocess.run(['adb','shell',f'find /sdcard/Download /sdcard/Documents -maxdepth 3 -name {escaped} 2>/dev/null'],capture_output=True,text=True,timeout=20).stdout.splitlines()
+        assert locations,'Saved board not found in Android shared storage'
+        raw=subprocess.run(['adb','exec-out','cat',shlex.quote(locations[0].strip())],check=True,capture_output=True,timeout=25).stdout
+    else:
+        container=Path(subprocess.check_output(['xcrun','simctl','get_app_container',args.udid,'ru.lektrus.board','data'],text=True,timeout=20).strip())
+        # Look in this isolated simulator's shared/local Files containers only;
+        # the private staging directory is deleted before the app reports success.
+        root=container.parents[2]
+        locations=[p for p in root.rglob(name) if p.is_file() and 'lektrus-export-' not in str(p)]
+        assert locations,'Saved board not found in iPhone simulator Files storage'
+        raw=locations[0].read_bytes()
+    bundle=json.loads(raw)
+    assert bundle['format']=='onlinerepetitor-board' and bundle['version']==2,bundle.keys()
+    assert any(i['kind']=='pen' for i in bundle['document']['items']),'Export omitted the saved drawing'
+    return {'bytes':len(raw),'name':name,'containsPen':True}
+
+
+def native_file_export_cancel():
+    start_native_export('Экспорт PNG')
+    try:
+        wait(lambda:native_picker_button(('Save','SAVE','Сохранить')),'PNG did not reach native file picker',45)
+        screenshot('native-png-save-picker')
+        if args.platform=='android':
+            subprocess.run(['adb','shell','input','keyevent','4'],check=True,timeout=20)
+        else:
+            cancel=wait(lambda:native_picker_button(('Cancel','CANCEL','Отмена')),'Native picker Cancel missing',15)
+            command('POST',f'/element/{cancel}/click',{})
+    finally:
+        reattach_webview()
+    wait(lambda:js('return window.__nativeExportNotices?.some(n=>n.includes("Сохранение отменено"))'),'Cancelling native save reported no cancellation',30)
+    return {'cancelled':True}
 
 
 def board_items():
@@ -645,6 +723,9 @@ def table_editor():
     click('.table-editor-footer button.primary')
     saved=wait(lambda:(i if (i:=item_by_id(item['id'])) and i.get('tableCells',[None])[0]=='Урок QA' else None),'Table cell not saved',20)
     assert saved['tableRows']==3 and saved['tableCols']==3,saved
+    wait(lambda:js('''const e=document.querySelector('.back-to-boards'),r=e.getBoundingClientRect();
+        const p=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+        return r.top>=0&&r.bottom<=innerHeight&&e.contains(p);'''),'Board header disappeared after closing table keyboard',12)
     return {'id':saved['id'],'rows':saved['tableRows'],'columns':saved['tableCols'],'cell':saved['tableCells'][0]}
 
 
@@ -702,6 +783,7 @@ EXPECTED_CHECKS=[
     *['subject-catalogue-'+str(i+1) for i in range(len(SUBJECTS))],
     'subject-math-geometry-editor','subject-physics-circuit-editor','subject-geography-atlas-editor',
     'subject-history-atlas-editor','subject-language-sentence-editor','subject-chemistry-lab-fullscreen',
+    'native-file-export-save','native-file-export-cancel',
 ]
 runtime_abort=None
 
@@ -937,7 +1019,6 @@ try:
     check('navigation-dock-no-overlap', navigation_dock_layout)
     check('tool-catalogue', tools_menu)
     check('board-reopen-persistence', reopen)
-    check('native-back-and-deep-link', native_back_and_link)
     check('zoom-for-object-tests', zoom_for_objects)
     check('create-rectangle-touch', create_shape)
     if 'shape_id' in paths:
@@ -956,6 +1037,12 @@ try:
     check('subject-history-atlas-editor',lambda:subject_editor('История','Исторические карты','.lektrus-school-editor','.lektrus-school-close',history_year))
     check('subject-language-sentence-editor',lambda:subject_editor('Иностранный язык','Составление предложений','.lektrus-school-editor','.lektrus-school-close',language_drag))
     check('subject-chemistry-lab-fullscreen',chemistry_lab)
+    # Native activity transitions can invalidate the automation driver even
+    # when the installed app still runs. Keep them after independent editor
+    # coverage so a lost transport cannot mask another 27 product checks.
+    check('native-back-and-deep-link', native_back_and_link)
+    check('native-file-export-save',native_file_export_save)
+    check('native-file-export-cancel',native_file_export_cancel)
 except Exception as error:
     print(traceback.format_exc(), file=sys.stderr, flush=True)
     runtime_abort=str(error)

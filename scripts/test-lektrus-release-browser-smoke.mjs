@@ -17,8 +17,9 @@ const chromePath=process.env.CHROME_PATH||[
 ].find(existsSync);
 assert.ok(chromePath,"Chrome required for integrated release browser smoke");
 const homeOnly=process.argv.includes("--home-only");
+const keyboardOnly=process.argv.includes("--keyboard-only");
 const interfaceOnly=process.argv.includes("--interface-only");
-if(homeOnly)process.env.VITE_LEKTRUS_LOCAL_TEST="true";
+if(homeOnly||keyboardOnly)process.env.VITE_LEKTRUS_LOCAL_TEST="true";
 if(interfaceOnly){
  process.env.VITE_LEKTRUS_BACKEND="selfhost";
  delete process.env.VITE_LEKTRUS_API_ORIGIN;
@@ -46,7 +47,7 @@ const log=[];
 try{
  await server.listen();
  const port=server.httpServer.address().port;
- const route=homeOnly||interfaceOnly?"/app":"/demo/board?scene=math&capture=1";
+ const route=homeOnly||interfaceOnly||keyboardOnly?"/app":"/demo/board?scene=math&capture=1";
  const url=`http://127.0.0.1:${port}${route}`;
  const portServer=net.createServer();
  await new Promise((resolve,reject)=>portServer.once("error",reject).listen(0,"127.0.0.1",resolve));
@@ -131,6 +132,26 @@ try{
  await call("Runtime.enable");
  await call("Page.enable");
 
+ if(keyboardOnly){
+  await wait('!!document.querySelector(".lektrus-calendar-grid")',"Application did not render",30000);
+  // A fixture inside the actual app documents the shared startup behavior even
+  // for canvas/gesture targets that suppress the browser's default focus change.
+  await evaluate(`(()=>{const f=document.createElement('div');f.id='keyboard-fixture';f.style.cssText='position:fixed;inset:12px;z-index:2147483647;background:white;padding:12px;touch-action:none';f.innerHTML='<label for="qa-one">First</label><input id="qa-one" value="Retained"><textarea id="qa-two"></textarea><div id="qa-outside" style="height:160px;touch-action:none">Outside</div>';document.body.append(f);f.querySelector('#qa-outside').addEventListener('pointerdown',e=>e.preventDefault());})()`);
+  const tap=async(selector,dy=0)=>{const p=await rect(selector);await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:p.x,y:p.y}]});if(dy)await call('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:p.x,y:p.y+dy}]});await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await delay(120);};
+  const focused=()=>evaluate('document.activeElement.id');
+  for(const [width,height] of [[390,844],[768,1024],[1024,768]]){
+   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:true});
+   await call('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
+   await delay(200);
+   await tap('#qa-one');assert.equal(await focused(),'qa-one');
+   await tap('#qa-outside',40);assert.equal(await focused(),'qa-one','A drag must not dismiss the keyboard');
+   await tap('#qa-two');assert.equal(await focused(),'qa-two','A different input must retain focus');
+   await tap('label[for="qa-one"]');assert.equal(await focused(),'qa-one','A field label must retain focus');
+   await tap('#qa-outside');assert.notEqual(await focused(),'qa-one','An outside tap must dismiss the keyboard');
+   assert.equal(await evaluate('document.querySelector("#qa-one").value'),'Retained');
+   console.log(`✓ ${width}×${height}: outside tap, drag, field switch, label and preserved text`);
+  }
+ }else
  if(interfaceOnly){
   const session={access_token:"test-admin-token",refresh_token:"test-refresh-token",expires_at:Math.floor(Date.now()/1000)+3600,user:studioUser};
   await call("Page.addScriptToEvaluateOnNewDocument",{source:`localStorage.setItem('lektrus.selfhost.session.v1',${JSON.stringify(JSON.stringify(session))})`});

@@ -1,6 +1,6 @@
 import { useEffect,useMemo,useRef,useState,type DragEvent } from "react";
 import type { AuthUser } from "./authStore";
-import { deleteMaterial,downloadMaterial,listMaterials,materialBlob,renameMaterial,setMaterialFavorite,uploadMaterial,type Material } from "./materialsStore";
+import { deleteMaterial,downloadMaterial as saveMaterialFile,listMaterials,materialBlob,renameMaterial,setMaterialFavorite,uploadMaterial,type Material } from "./materialsStore";
 
 type Props={user:AuthUser;onBack:()=>void};
 type SortMode="recent"|"name"|"size"|"used";
@@ -16,6 +16,7 @@ export default function MaterialsScreen({user,onBack}:Props){
  const visible=useMemo(()=>rows.filter(x=>(!favoritesOnly||x.favorite)&&(folder==="all"||x.folder===folder)&&(!query.trim()||`${x.title} ${x.fileName} ${x.folder}`.toLowerCase().includes(query.toLowerCase()))).sort((a,b)=>sort==="name"?a.title.localeCompare(b.title,"ru"):sort==="size"?b.size-a.size:sort==="used"?(b.useCount||0)-(a.useCount||0):(b.lastUsedAt||b.createdAt).localeCompare(a.lastUsedAt||a.createdAt)),[rows,query,folder,favoritesOnly,sort]);
  const upload=async(files:FileList|null)=>{if(!files?.length)return;setBusy(true);let ok=0;try{for(const f of Array.from(files)){await uploadMaterial(user.id,f,folder==="all"?"":folder,f.name);ok++}setNotice(`Загружено файлов: ${ok}`);await load()}catch(e){setNotice(e instanceof Error?e.message:"Ошибка загрузки")}finally{setBusy(false);if(input.current)input.current.value=""}};
  const drop=async(e:DragEvent)=>{e.preventDefault();setDragging(false);await upload(e.dataTransfer.files)};
+ const downloadMaterial=async(m:Material)=>{try{setNotice(await saveMaterialFile(m)?"Файл сохранён":"Сохранение отменено")}catch(e){setNotice(e instanceof Error?e.message:"Не удалось сохранить файл")}};
  const openPreview=async(m:Material)=>{if(!isPreviewable(m)){setNotice("Для этого типа файла доступно скачивание, но не встроенный просмотр");return}setPreview(m);setPreviewBusy(true);try{const blob=await materialBlob(m);setPreviewUrl(old=>{if(old)URL.revokeObjectURL(old);return URL.createObjectURL(blob)})}catch(e){setNotice(e instanceof Error?e.message:"Не удалось открыть файл");setPreview(null)}finally{setPreviewBusy(false)}};
  const toggleSelected=(id:string)=>setSelected(x=>x.includes(id)?x.filter(v=>v!==id):[...x,id]);
  const selectedRows=rows.filter(x=>selected.includes(x.id));

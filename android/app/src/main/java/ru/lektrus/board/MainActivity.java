@@ -48,6 +48,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedState) {
         registerPlugin(LektrusSystemUiPlugin.class);
+        registerPlugin(LektrusFilesPlugin.class);
         super.onCreate(savedState);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         boardWebView = getBridge().getWebView();

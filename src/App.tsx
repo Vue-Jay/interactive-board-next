@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import AuthScreen from "./AuthScreen";
 import { loadGlobalInterfaceLayout, saveInterfaceLayout } from "./lektrusInterfaceLayout";
@@ -65,6 +65,41 @@ export default function App() {
     const initial=initialRoute();
     return Capacitor.isNativePlatform()&&initial.kind==="site"?{kind:"home"}:initial;
   });
+  useLayoutEffect(() => {
+    if (!Capacitor.isNativePlatform() || route.kind !== "board") return;
+    const page = document.documentElement;
+    page.classList.add("lektrus-native-board");
+    let frame = 0;
+    let settle: ReturnType<typeof setTimeout> | undefined;
+    const resetOuterScroll = () => {
+      const focus = document.activeElement;
+      if (focus?.matches('input:not([type="button"]):not([type="checkbox"]):not([type="range"]),textarea,[contenteditable="true"]')) return;
+      // Older WebViews can scroll an overflow:hidden ancestor on focus. Do
+      // not reset the editor's own scroller or the infinite canvas camera.
+      window.scrollTo(0, 0);
+      for (const element of [page, document.body, document.getElementById("root"), document.querySelector("#root > .app")]) {
+        if (element) { element.scrollTop = 0; element.scrollLeft = 0; }
+      }
+    };
+    const afterKeyboard = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(resetOuterScroll);
+      clearTimeout(settle);
+      settle = setTimeout(resetOuterScroll, 360);
+    };
+    resetOuterScroll();
+    window.addEventListener("resize", afterKeyboard);
+    window.visualViewport?.addEventListener("resize", afterKeyboard);
+    document.addEventListener("focusout", afterKeyboard);
+    return () => {
+      page.classList.remove("lektrus-native-board");
+      window.removeEventListener("resize", afterKeyboard);
+      window.visualViewport?.removeEventListener("resize", afterKeyboard);
+      document.removeEventListener("focusout", afterKeyboard);
+      cancelAnimationFrame(frame);
+      clearTimeout(settle);
+    };
+  }, [route.kind]);
   useEffect(() => {
     if (Capacitor.getPlatform() !== "android") return;
     void LektrusSystemUi

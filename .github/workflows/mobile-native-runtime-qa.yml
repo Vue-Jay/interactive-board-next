@@ -18,6 +18,20 @@ env:
   VITE_AUTH_REDIRECT_URL: ''
 
 jobs:
+  browser-touch:
+    name: Mobile and tablet browser touch regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: node scripts/test-native-file-export.mjs
+      - run: node scripts/test-lektrus-release-browser-smoke.mjs --keyboard-only
+
   android:
     name: Android API ${{ matrix.api }} native runtime
     runs-on: ubuntu-latest

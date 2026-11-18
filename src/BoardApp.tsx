@@ -138,6 +138,7 @@ import { createBoardComment, listBoardComments, listBoardCommentParticipants, se
 import { subscribeBoardComments } from "./commentRealtime";
 import { LinkMediaPlayer, resolveLinkMedia } from "./linkMedia";
 import { safeBackupName, validatePortableBundle, type PortableBoardBundle } from "./backupStore";
+import { saveExport } from "./nativeFileExport";
 
 const createId = (): string => {
   const native = globalThis.crypto?.randomUUID;
@@ -3541,14 +3542,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         assets: assets.map(asset=>({ ...asset, size: Math.round((asset.data.length * 3) / 4) })),
       };
       validatePortableBundle(bundle);
-      const url = URL.createObjectURL(
-        new Blob([JSON.stringify(bundle)], { type: "application/json" }),
-      );
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = safeBackupName(title);
-      a.click();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const saved = await saveExport(new Blob([JSON.stringify(bundle)], { type: "application/octet-stream" }), safeBackupName(title));
+      if (!saved) { setNotice("Сохранение отменено"); return; }
       setNotice(assets.length ? `Копия скачана вместе с вложениями: ${assets.length}` : "Копия доски скачана");
     } catch {
       setNotice("Не удалось подготовить переносимую копию");
@@ -4289,14 +4284,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   const downloadMediaAsset = async (item: Item) => {
     if ((item.kind !== "image" && item.kind !== "pdf") || !item.assetId) return;
-    const blob = await getAsset(item.assetId, boardSummary.id);
-    if (!blob) { setNotice("Исходный файл не найден в хранилище браузера"); return; }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = item.name || (item.kind === "pdf" ? "document.pdf" : "image");
-    a.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    try {
+      const blob = await getAsset(item.assetId, boardSummary.id);
+      if (!blob) { setNotice("Исходный файл не найден в хранилище"); return; }
+      const saved = await saveExport(blob, item.name || (item.kind === "pdf" ? "document.pdf" : "image"));
+      setNotice(saved ? "Файл сохранён" : "Сохранение отменено");
+    } catch (error) { setNotice(error instanceof Error ? error.message : "Не удалось сохранить исходный файл"); }
   };
 
   const setPdfPage = (item: Item, page: number) => {
@@ -6081,12 +6074,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png", .96));
       if (!blob) throw new Error("Не удалось создать PNG");
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a"); a.href = url;
       const base = (title || "board").replace(/[\\/:*?"<>|]+/g, "_").slice(0, 70);
       const suffix = scope === "selection" ? "_selection" : scope === "frame" ? `_${(frameForExport?.text || "frame").replace(/[\/:*?"<>|]+/g, "_").slice(0, 40)}` : "";
-      a.download = `${base}${suffix}.png`; a.click();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      if (!await saveExport(blob, `${base}${suffix}.png`)) { setNotice("Сохранение отменено"); return; }
       setNotice(`PNG сохранён · ${canvas.width} × ${canvas.height}`);
     } catch (error) {
       setNotice(error instanceof Error ? `Не удалось экспортировать PNG: ${error.message}` : "Не удалось экспортировать PNG");
@@ -8341,7 +8331,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               <div className="topbar-menu-section">
                 <button onClick={()=>{finishEdit();fileInput.current?.click()}}><Icon name="open" size={16}/><span>Импорт доски</span></button>
                 {previous&&<button onClick={()=>{if(window.confirm("Вернуть доску, сохранённую перед последним импортом? Текущие изменения заменятся.")){applyDocument(previous);setNotice("Доска до импорта восстановлена")}}}><Icon name="undo" size={16}/><span>Вернуть до импорта</span></button>}
-                <button onClick={()=>void exportBoard()}><Icon name="download" size={16}/><span>Скачать копию</span></button>
+                <button onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");void exportBoard()}}><Icon name="download" size={16}/><span>Скачать копию</span></button>
               </div>
               {showAdminControls && <div className="topbar-menu-section">
                 <button type="button" onClick={()=>setDeveloperSettingsOpen(true)}><Icon name="settings" size={16}/><span>Настройки разработчика</span></button>

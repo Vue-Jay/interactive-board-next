@@ -8,7 +8,16 @@ import { Capacitor } from "@capacitor/core";
 import { pendingSharePath } from "./routes";
 import { isChunkLoadError, recoverOutdatedChunk } from "./chunkRecovery";
 import {installInterfacePreviewEnvironment} from "./lektrusInterfacePreview";
+import { installMobileKeyboardDismissal } from "./dismissMobileKeyboard";
 installInterfacePreviewEnvironment();
+installMobileKeyboardDismissal(Capacitor.isNativePlatform());
+
+// A native iOS app must retain the device viewport when the keyboard focuses
+// a compact input. Board pinch gestures use the board camera, independently
+// of WebKit's page zoom. Keep browser/PWA accessibility settings unchanged.
+if (Capacitor.getPlatform() === "ios") {
+  document.querySelector('meta[name="viewport"]')?.setAttribute("content", "width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover");
+}
 
 const query=new URLSearchParams(window.location.search);
 const pendingInvite=Boolean(pendingSharePath());
