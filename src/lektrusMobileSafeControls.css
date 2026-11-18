@@ -7,16 +7,19 @@
   --lektrus-safe-bottom:max(env(safe-area-inset-bottom,0px),var(--lektrus-cutout-bottom,0px));
   --lektrus-rail-left:calc(var(--lektrus-safe-left) + clamp(10px,1.5vw,16px));
 }
-/* The native keyboard shrinks the WebView's available height. Keep the
-   create action in view instead of letting the form footer scroll behind it. */
-@media screen and (max-width:700px) {
-  html.lektrus-native-app .lektrus-create-backdrop {
+/* Keyboard can shrink only the visual viewport (iOS Safari/WKWebView).
+   Keep the create action pinned above it on phones and touch tablets. */
+@media screen and (max-width:1100px), screen and (any-pointer:coarse) {
+  html .lektrus-create-backdrop {
     box-sizing:border-box;
+    inset:var(--lektrus-dialog-visible-top,0px) auto auto var(--lektrus-dialog-visible-left,0px);
+    width:var(--lektrus-dialog-visible-width,100vw);
+    height:var(--lektrus-dialog-visible-height,100vh);
     grid-template-rows:minmax(0,1fr);
-    padding:12px;
+    padding:max(12px,var(--lektrus-safe-top)) max(12px,var(--lektrus-safe-right)) max(12px,var(--lektrus-safe-bottom)) max(12px,var(--lektrus-safe-left));
     overflow:hidden;
   }
-  html.lektrus-native-app .lektrus-create-dialog {
+  html .lektrus-create-dialog {
     box-sizing:border-box;
     display:flex;
     flex-direction:column;
@@ -25,15 +28,15 @@
     max-width:100%;
     overflow:hidden;
   }
-  html.lektrus-native-app .lektrus-create-dialog>header {flex:none;margin-bottom:12px;}
-  html.lektrus-native-app .lektrus-create-fields {
+  html .lektrus-create-dialog>header {flex:none;margin-bottom:12px;}
+  html .lektrus-create-fields {
     min-height:0;
     overflow-y:auto;
     overscroll-behavior:contain;
     padding:2px;
     flex:1 1 auto;
   }
-  html.lektrus-native-app .lektrus-create-dialog>footer {
+  html .lektrus-create-dialog>footer {
     flex:none;
     margin-top:12px;
     padding-top:12px;

@@ -151,7 +151,28 @@ try{
    assert.equal(await evaluate('document.querySelector("#qa-one").value'),'Retained');
    console.log(`✓ ${width}×${height}: outside tap, drag, field switch, label and preserved text`);
   }
-  await evaluate(`(async()=>{document.querySelector('#keyboard-fixture').remove();const {mountPdfFixture}=await import('/scripts/qa-pdf-browser-fixture.tsx');window.__disposePdfFixture=mountPdfFixture();return true})()`);
+  await evaluate(`document.querySelector('#keyboard-fixture').remove()`);
+  // Reproduce the WebKit keyboard case: the layout viewport stays full size,
+  // while the visual viewport shrinks. This is not a native keyboard test;
+  // the Appium run independently taps the real button with the IME open.
+  for(const [width,height,visibleHeight] of [[390,844,480],[768,1024,600],[1024,768,400]]){
+   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:true});
+   await delay(200);
+   await evaluate(`(()=>{const v=Object.assign(new EventTarget(),{width:${width},height:${height},offsetTop:0,offsetLeft:0,scale:1});Object.defineProperty(window,'visualViewport',{configurable:true,value:v});})()`);
+   await evaluate(`document.querySelector('.lectris-mobile-bottom button[aria-label="Доски"],.lectris-nav-link[aria-label="Доски"]').click()`);
+   await wait('!!document.querySelector(".lectris-library-new")','Board library did not open');
+   await evaluate('document.querySelector(".lectris-library-new").click()');
+   await wait('!!document.querySelector(".lektrus-create-dialog")','Create board dialog did not render');
+   await evaluate(`visualViewport.height=${visibleHeight};visualViewport.dispatchEvent(new Event('resize'))`);
+   await delay(200);
+   const submit=await rect('.lektrus-create-dialog button[type="submit"]');
+   assert.ok(submit.top>=0&&submit.bottom<=visibleHeight,`Create button obscured by keyboard: ${JSON.stringify(submit)}`);
+   await tap('.lektrus-create-dialog>footer button[type="button"]');
+   await wait('!document.querySelector(".lektrus-create-dialog")','Cancel action inaccessible');
+   await evaluate('delete window.visualViewport');
+   console.log(`✓ ${width}×${height}: create board footer stays above reduced visual viewport (${visibleHeight}px)`);
+  }
+  await evaluate(`(async()=>{const {mountPdfFixture}=await import('/scripts/qa-pdf-browser-fixture.tsx');window.__disposePdfFixture=mountPdfFixture();return true})()`);
   const pdfReady=()=>wait('document.querySelector(".lektrus-pdf-canvas-stage")?.dataset.pdfStatus==="ready"',"Embedded PDF page did not render",30000);
   const pdfPixel=()=>evaluate(`(()=>{const c=document.querySelector('.lektrus-pdf-canvas'); return Array.from(c.getContext('2d').getImageData(Math.floor(c.width/2),Math.floor(c.height/2),1,1).data)})()`);
   await pdfReady();assert.deepEqual(await pdfPixel(),[255,0,0,255],"Actual PDF first page pixels");

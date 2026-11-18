@@ -1,4 +1,4 @@
-import {useEffect,useState} from "react";
+import {useEffect,useLayoutEffect,useRef,useState} from "react";
 import {LEKTRUS_SCHOOL_SUBJECTS,normalizeLektrusSubject} from "./lektrusSchoolSubjects";
 import type {AuthUser} from "./authStore";
 import {getStudentsForTeacher,type StudentRecord} from "./studentsStore";
@@ -13,8 +13,27 @@ export default function LektrusCreateBoardDialog({user,initial,onClose,onCreate,
  const [templateId,setTemplateId]=useState("");
  const [students,setStudents]=useState<StudentRecord[]>([]);
  const [templates,setTemplates]=useState<BoardTemplate[]>([]);
+ const backdrop=useRef<HTMLDivElement>(null);
+ // iOS Safari/WKWebView often leaves the layout viewport unchanged when
+ // the keyboard opens. Size the dialog to the visible viewport instead.
+ useLayoutEffect(()=>{
+  const element=backdrop.current;
+  if(!element)return;
+  const viewport=window.visualViewport;
+  const update=()=>{
+   element.style.setProperty("--lektrus-dialog-visible-top",`${viewport?.offsetTop??0}px`);
+   element.style.setProperty("--lektrus-dialog-visible-left",`${viewport?.offsetLeft??0}px`);
+   element.style.setProperty("--lektrus-dialog-visible-width",`${viewport?.width??window.innerWidth}px`);
+   element.style.setProperty("--lektrus-dialog-visible-height",`${viewport?.height??window.innerHeight}px`);
+  };
+  update();
+  viewport?.addEventListener("resize",update);
+  viewport?.addEventListener("scroll",update);
+  window.addEventListener("resize",update);
+  return()=>{viewport?.removeEventListener("resize",update);viewport?.removeEventListener("scroll",update);window.removeEventListener("resize",update)};
+ },[]);
  useEffect(()=>{let active=true;void getStudentsForTeacher(user).then(x=>{if(active)setStudents(x)}).catch(()=>{});void listTemplates(user.id).then(x=>{if(active)setTemplates(x)}).catch(()=>{});return()=>{active=false}},[user.id]);
- return <div className="lektrus-create-backdrop" onPointerDown={e=>{if(e.target===e.currentTarget&&!busy)onClose()}}>
+ return <div ref={backdrop} className="lektrus-create-backdrop" onPointerDown={e=>{if(e.target===e.currentTarget&&!busy)onClose()}}>
   <form className="lektrus-create-dialog" role="dialog" aria-modal="true" aria-label="Создание доски" onSubmit={e=>{e.preventDefault();onCreate({title:title.trim()||"Новая доска",subject:normalizeLektrusSubject(subject),group,studentEmail,template:templates.find(t=>t.id===templateId)||null})}}>
    <header><div><small>НОВАЯ РАБОЧАЯ ДОСКА</small><h2>Создать доску</h2><p>Настройте пространство для занятия. Всё можно будет изменить позже.</p></div><button type="button" aria-label="Закрыть" disabled={busy} onClick={onClose}>×</button></header>
    <div className="lektrus-create-fields">

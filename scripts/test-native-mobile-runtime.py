@@ -256,7 +256,8 @@ def open_new_board():
     # an actual touch on the visible submit button rather than a DOM click.
     coords=js('''const r=document.querySelector('.lektrus-create-dialog button[type="submit"]').getBoundingClientRect();
       const x=Math.round(r.x+r.width/2), y=Math.round(r.y+r.height/2);
-      return {x,y,visible:y<innerHeight&&!!document.elementFromPoint(x,y)?.closest('button[type="submit"]')};''')
+      const v=visualViewport, top=v?.offsetTop||0, bottom=top+(v?.height||innerHeight);
+      return {x,y,viewport:[innerWidth,innerHeight],visualViewport:[top,bottom],button:[r.top,r.bottom],visible:r.top>=top&&r.bottom<=bottom+1&&!!document.elementFromPoint(x,y)?.closest('button[type="submit"]')};''')
     assert coords['visible'], f'Create button inaccessible with native keyboard: {coords}'
     js('''window.__boardLoadingFrames=[];window.__boardLoadingObserve=true;
       const sample=()=>{if(!window.__boardLoadingObserve)return;const e=document.querySelector('.lektrus-board-loading');
@@ -267,7 +268,7 @@ def open_new_board():
     frames=js('window.__boardLoadingObserve=false;return window.__boardLoadingFrames||[];')
     assert all(f['loader'][0]>=f['loader'][1] for f in frames), f'Board loading rendered vertically: {frames[:5]}'
     assert js('return document.querySelector(".board-title")?.value') == 'Native QA', 'Board title did not persist'
-    return {'viewport': js('return [innerWidth, innerHeight]'), 'path': js('return location.pathname'), 'landscapeLoadingFrames':len(frames), 'firstLoadingFrame':frames[0] if frames else None}
+    return {'viewport': js('return [innerWidth, innerHeight]'), 'path': js('return location.pathname'), 'createButtonWithKeyboard':coords, 'landscapeLoadingFrames':len(frames), 'firstLoadingFrame':frames[0] if frames else None}
 
 
 def board_layout():
@@ -314,7 +315,7 @@ def path_for_ink(y_band):
 
 
 def native_gesture(points, second=None):
-    viewport = js('return [innerWidth,innerHeight]')
+    viewport = js('return [innerWidth,innerHeight,visualViewport?.offsetLeft||0,visualViewport?.offsetTop||0]')
     def finger(pts, name, rect, sx, sy):
         coords = [(round(rect['x']+x*sx), round(rect['y']+y*sy)) for x, y in pts]
         actions = [{'type':'pointerMove','duration':0,'x':coords[0][0],'y':coords[0][1],'origin':'viewport'},
@@ -346,6 +347,12 @@ def native_gesture(points, second=None):
             perform({'x':0,'y':0},1,1)
             return
         sx, sy = rect['width']/viewport[0], rect['height']/viewport[1]
+        if args.platform=='ios':
+            # WKWebView's layout height can exclude part of the device screen
+            # while its native accessibility frame still covers the full view.
+            # CSS pixels scale equally on both axes, not with keyboard height.
+            sy=sx
+            rect={**rect,'x':rect['x']-viewport[2]*sx,'y':rect['y']-viewport[3]*sy}
         # Physical pixels for Android, coordinate points for iOS. The native
         # WebView rect includes the actual OS bars/insets, not browser guesses.
         assert 0.5 <= sx <= 5 and 0.5 <= sy <= 5, (rect, viewport)
