@@ -172,7 +172,14 @@ def open_new_board():
     command('POST', f'/element/{title}/value', {'text': 'Native QA', 'value': list('Native QA')})
     wait(lambda: js('return document.querySelector(".lektrus-create-dialog input")?.value === "Native QA"'), 'Native keyboard did not enter title')
     screenshot('board-create-keyboard')
-    click('.lektrus-create-dialog button[type="submit"]')
+    # Keep the action reachable while the native keyboard is still shown.
+    # A WebDriver click can first dismiss the keyboard on old Chromium; use
+    # an actual touch on the visible submit button rather than a DOM click.
+    coords=js('''const r=document.querySelector('.lektrus-create-dialog button[type="submit"]').getBoundingClientRect();
+      const x=Math.round(r.x+r.width/2), y=Math.round(r.y+r.height/2);
+      return {x,y,visible:y<innerHeight&&!!document.elementFromPoint(x,y)?.closest('button[type="submit"]')};''')
+    assert coords['visible'], f'Create button inaccessible with native keyboard: {coords}'
+    native_gesture([(coords['x'],coords['y'])])
     wait(lambda: visible_id('section.board'), 'Board not rendered', 90)
     wait(lambda: js('return innerWidth>innerHeight'), 'Board failed to rotate to landscape', 30)
     assert js('return document.querySelector(".board-title")?.value') == 'Native QA', 'Board title did not persist'
@@ -286,6 +293,23 @@ def erase():
     assert any(x['kind']=='pen' for x in ink()), 'Eraser also removed the distant pencil stroke'
     assert not visible_id('[data-context-menu]'), 'Erasing opens an unwanted context menu'
     return {'before': before, 'after': after['points']}
+
+
+def navigation_dock_layout():
+    # Ink settings and board zoom must not cover the clickable miniature map.
+    choose_tool('pen')
+    report=js('''const sel=['.minimap','.board-controls','.mobile-undo-redo'];
+      const out={}; for(const s of sel){const e=document.querySelector(s);if(!e||!e.getClientRects().length)continue;
+        const r=e.getBoundingClientRect();out[s]=[r.left,r.top,r.right,r.bottom];}
+      return out;''')
+    assert '.board-controls' in report and '.mobile-undo-redo' in report,report
+    if '.minimap' in report:
+        r=report['.minimap']
+        assert r[3] <= report['.board-controls'][1]+2, f'Minimap overlaps zoom: {report}'
+        assert r[1] >= report['.mobile-undo-redo'][3]-2, f'Minimap overlaps history: {report}'
+        assert js('''const e=document.querySelector('.minimap-world'),r=e.getBoundingClientRect();
+          return Boolean(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)?.closest('.minimap-world'));'''), 'Minimap center is not clickable'
+    return report
 
 
 def undo_redo():
@@ -564,6 +588,7 @@ try:
     if any(x['kind']=='marker' for x in ink()):
         check('eraser-touch', erase)
     check('undo-redo', undo_redo)
+    check('navigation-dock-no-overlap', navigation_dock_layout)
     check('tool-catalogue', tools_menu)
     check('board-reopen-persistence', reopen)
     check('native-back-and-deep-link', native_back_and_link)
