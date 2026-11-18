@@ -4,7 +4,6 @@ No browser emulation, production account, or synthetic DOM pointer events.
 DOM reads select/measure controls; all clicks and gestures go through WebDriver.
 """
 import argparse
-import base64
 import json
 import subprocess
 import sys
@@ -98,12 +97,19 @@ def click(selector):
 
 
 def screenshot(label):
-    context('NATIVE_APP')
-    try:
-        encoded = command('GET', '/screenshot')
-        (args.output / f'{label}.png').write_bytes(base64.b64decode(encoded))
-    finally:
-        context(web_context)
+    # Platform-native screenshot avoids switching Appium contexts between
+    # every check, especially while a keyboard or new activity is opening.
+    path=args.output / f'{label}.png'
+    if args.platform=='android':
+        def capture():
+            result=subprocess.run(['adb','exec-out','screencap','-p'],capture_output=True,timeout=15)
+            if result.returncode==0 and result.stdout.startswith(b'\x89PNG\r\n\x1a\n'):
+                path.write_bytes(result.stdout)
+                return True
+            return None
+        wait(capture,'Native Android screenshot unavailable',25)
+    else:
+        subprocess.run(['xcrun','simctl','io',args.udid,'screenshot',str(path)],check=True,timeout=25,capture_output=True)
 
 
 def check(name, fn, fatal=False):
@@ -268,7 +274,7 @@ def native_gesture(points, second=None):
         command('POST', '/actions', {'actions':actions})
         command('DELETE', '/actions')
     finally:
-        context(web_context)
+        reattach_webview()
 
 
 paths = {}
@@ -521,8 +527,19 @@ def shape_actions():
 def type_into(selector, value, clear=False):
     element=click(selector)
     if clear:
-        command('POST',f'/element/{element}/clear',{})
-        element=click(selector)
+        # React-controlled cells must receive a real deletion input event:
+        # some old/WebKit drivers clear only the DOM, leaving state unchanged.
+        old_value=js('return document.querySelector(arguments[0]).value',selector)
+        if old_value:
+            modifier='\ue009' if args.platform=='android' else '\ue03d'
+            command('POST','/actions',{'actions':[{'type':'key','id':'keyboard','actions':[
+                {'type':'keyDown','value':modifier},{'type':'keyDown','value':'a'},
+                {'type':'keyUp','value':'a'},{'type':'keyUp','value':modifier},
+                {'type':'keyDown','value':'\ue003'},{'type':'keyUp','value':'\ue003'}]}]})
+            command('DELETE','/actions')
+            if js('return document.querySelector(arguments[0]).value',selector):
+                command('POST',f'/element/{element}/clear',{})
+                element=click(selector)
     command('POST',f'/element/{element}/value',{'text':value,'value':list(value)})
     try:
         wait(lambda:js('return document.querySelector(arguments[0])?.value===arguments[1]',selector,value),'Text input did not receive exact value',10)
@@ -536,7 +553,7 @@ def type_into(selector, value, clear=False):
     except Exception:
         pass
     finally:
-        context(web_context)
+        reattach_webview()
 
 
 def text_object(kind,label,value):
@@ -561,13 +578,28 @@ def table_editor():
 
 
 def full_document_persistence():
-    before=board_items()
+    # The document schema materializes optional style defaults on reload.
+    # Normalize only those exact defaults; compare every other persisted field.
+    def normalized():
+        items=board_items()
+        for item in items:
+            if item['kind'] in ('text','sticky'):
+                for k,v in {'textAlign':'left','fontWeight':'normal','fontStyle':'normal','textDecoration':'none','textList':'none','lineHeight':1.45}.items():
+                    item.setdefault(k,v)
+            if item['kind']=='table':
+                for k,v in {'tableAlign':'left','tableStripe':False,'tableCompact':False,'tableHeader':True}.items():
+                    item.setdefault(k,v)
+            for k in ('locked','hidden'):
+                if item.get(k) is False:
+                    item.pop(k)
+        return items
+    before=normalized()
     assert any(i['kind']=='text' for i in before) and any(i['kind']=='sticky' for i in before) and any(i['kind']=='table' for i in before),'Object cases incomplete'
     reopen()
     try:
-        wait(lambda:board_items()==before,'Full model changed after saving/reopening',20)
+        wait(lambda:normalized()==before,'Full model changed after saving/reopening',20)
     except AssertionError:
-        after={i['id']:i for i in board_items()}
+        after={i['id']:i for i in normalized()}
         differences=[{'kind':i['kind'],'id':i['id'],'changed':{k:[i.get(k),after.get(i['id'],{}).get(k)] for k in i if i.get(k)!=after.get(i['id'],{}).get(k)}} for i in before if i!=after.get(i['id'])]
         raise AssertionError(f'Persisted model differs: {json.dumps(differences,ensure_ascii=False)[:2500]}')
     return {'objects':len(before),'kinds':sorted(set(i['kind'] for i in before))}
@@ -587,6 +619,19 @@ SUBJECTS={
     'Иностранный язык':['Составление предложений','Карточки слов'],
 }
 
+EXPECTED_CHECKS=[
+    'home-portrait-layout','more-and-native-keyboard',
+    *['workspace-'+r for r in ('subjects','groups','students','assignments','schedule','progress','materials','templates','notifications','feedback','profile','settings')],
+    'create-board-and-landscape','board-landscape-bounds','two-finger-pinch','pencil-touch','marker-touch',
+    'eraser-touch','undo-redo','navigation-dock-no-overlap','tool-catalogue','board-reopen-persistence',
+    'native-back-and-deep-link','zoom-for-object-tests','create-rectangle-touch','move-object-touch',
+    'resize-object-touch','rotate-duplicate-delete','text-native-keyboard','sticky-native-keyboard',
+    'table-edit-and-save','all-objects-reopen-persistence',
+    *['subject-catalogue-'+str(i+1) for i in range(len(SUBJECTS))],
+    'subject-math-geometry-editor','subject-physics-circuit-editor','subject-geography-atlas-editor',
+    'subject-history-atlas-editor','subject-language-sentence-editor','subject-chemistry-lab-fullscreen',
+]
+runtime_abort=None
 
 def subject_panel(subject):
     if not visible_id('#lektrus-subject-tools-panel'):
@@ -735,20 +780,25 @@ try:
     check('subject-chemistry-lab-fullscreen',chemistry_lab)
 except Exception as error:
     print(traceback.format_exc(), file=sys.stderr, flush=True)
-    results.append({'check':'runtime-aborted','status':'failed','detail':str(error)})
+    runtime_abort=str(error)
     if session:
         try:
-            context('NATIVE_APP')
-            (args.output/'runtime-aborted.png').write_bytes(base64.b64decode(command('GET','/screenshot')))
+            screenshot('runtime-aborted')
         except Exception:
             pass
 finally:
-    (args.output/'report.json').write_text(json.dumps({'platform': args.platform, 'results': results}, ensure_ascii=False, indent=2))
+    seen={r['check'] for r in results}
+    for name in EXPECTED_CHECKS:
+        if name not in seen:
+            results.append({'check':name,'status':'blocked','detail':'Prior prerequisite failed or runtime aborted'})
+    summary={'planned':len(EXPECTED_CHECKS),**{s:sum(r['status']==s for r in results) for s in ('passed','failed','blocked')}}
+    (args.output/'report.json').write_text(json.dumps({'platform': args.platform, 'summary':summary,'runtime_abort':runtime_abort,'results': results}, ensure_ascii=False, indent=2))
     if session:
         try:
             command('DELETE','')
         except Exception:
             pass
+    print('QA SUMMARY: '+json.dumps(summary),flush=True)
     print(json.dumps(results, ensure_ascii=False), flush=True)
 
-sys.exit(0 if results and all(r['status']=='passed' for r in results) else 1)
+sys.exit(0 if runtime_abort is None and len(results)==len(EXPECTED_CHECKS) and all(r['status']=='passed' for r in results) else 1)
