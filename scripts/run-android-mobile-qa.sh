@@ -4,9 +4,22 @@ set -euo pipefail
 # The emulator action executes its script input as individual shell commands.
 # Keep the session, process IDs, diagnostics and real exit status in one shell.
 suite=${1:?Expected native QA suite}
+expected_api=${2:-}
 apk="$PWD/android/app/build/outputs/apk/debug/app-debug.apk"
 out="$PWD/artifacts/mobile-qa"
 mkdir -p "$out"
+actual_api=$(adb shell getprop ro.build.version.sdk | tr -d '\r')
+if [ -n "$expected_api" ] && [ "$actual_api" != "$expected_api" ]; then
+  echo "Expected Android API $expected_api, got $actual_api" >&2
+  exit 1
+fi
+{
+  echo "Android API: $actual_api"
+  adb shell getprop ro.build.version.release
+  adb shell getprop ro.build.fingerprint
+  adb shell dumpsys webviewupdate || true
+  sha256sum "$apk"
+} > "$out/android-runtime-version.txt" 2>&1
 free -m > "$out/host-memory-before.txt"
 adb shell cat /proc/meminfo > "$out/guest-memory-before.txt"
 # Suppress only isolated-emulator background ANRs; foreground app ANRs

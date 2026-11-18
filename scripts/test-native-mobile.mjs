@@ -8,6 +8,15 @@ const entry = read("src/main.tsx");
 const appEntry = read("src/appEntry.tsx");
 const backend = read("src/backend.ts");
 const workflow = read(".github/workflows/native-build.yml");
+const runtimeWorkflow = read(".github/workflows/mobile-native-runtime-qa.yml");
+const androidVersions = read("android/variables.gradle");
+const minApi = Number(androidVersions.match(/minSdkVersion\s*=\s*(\d+)/)?.[1]);
+const targetApi = Number(androidVersions.match(/targetSdkVersion\s*=\s*(\d+)/)?.[1]);
+const fullApiMatrix = runtimeWorkflow.match(/api:\s*[^\n]+\|\|\s*'(\[\d+(?:,\d+)*\])'/)?.[1];
+assert.ok(Number.isInteger(minApi)&&Number.isInteger(targetApi)&&fullApiMatrix,"Missing full Android QA compatibility matrix");
+assert.deepEqual(JSON.parse(fullApiMatrix),Array.from({length:targetApi-minApi+1},(_,i)=>minApi+i),"QA must exercise every supported Android API");
+assert.match(runtimeWorkflow,/needs: android-build/);
+assert.match(runtimeWorkflow,/sha256sum -c app-debug\.apk\.sha256/);
 
 for (const name of ["@capacitor/core","@capacitor/android","@capacitor/ios"]) {
   assert.ok(pkg.dependencies[name], "Missing mobile runtime: " + name);

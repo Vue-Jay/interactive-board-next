@@ -26,8 +26,9 @@ env:
 jobs:
   browser-touch:
     name: Mobile and tablet browser touch regression
-    # Recheck touch and keyboard because the remaining iOS editor repair
-    # also touches the shared mobile browser controls.
+    # The current app tree already passed browser QA. The Android matrix
+    # expansion changes only CI; do not repeat browser/iOS on this PR push.
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -56,19 +57,10 @@ jobs:
       - run: node scripts/test-lektrus-release-browser-smoke.mjs --landscape-only
         if: ${{ !cancelled() }}
 
-  android:
-    name: Android API ${{ matrix.api }} native runtime
-    # API 35's remaining checks passed on AOSP; the final full dispatch
-    # re-exercises all Android versions after iPhone repairs are complete.
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+  android-build:
+    name: Build a single isolated Android QA APK
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        # During the repair phase run only the unresolved Android platform.
-        # The final manually selected full acceptance retains all three APIs.
-        api: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.phase == 'full' && '[30,35,36]' || '[35]') }}
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -87,12 +79,51 @@ jobs:
           chmod +x android/gradlew
           (cd android && ./gradlew :app:assembleDebug --no-daemon)
           test -s android/app/build/outputs/apk/debug/app-debug.apk
+          (cd android/app/build/outputs/apk/debug && sha256sum app-debug.apk > app-debug.apk.sha256)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-qa-apk
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/debug/app-debug.apk.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+  android:
+    name: Android API ${{ matrix.api }} native runtime
+    needs: android-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 13
+      matrix:
+        # Every API supported by android/variables.gradle (24 through 36).
+        # The explicit remaining phase is still available for targeted repair.
+        api: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining' && '[35]' || '[24,25,26,27,28,29,30,31,32,33,34,35,36]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-qa-apk
+          path: android/app/build/outputs/apk/debug
+      - name: Verify identical APK
+        run: (cd android/app/build/outputs/apk/debug && sha256sum -c app-debug.apk.sha256)
       - name: Install mobile automation driver
         run: |
           export APPIUM_HOME="$RUNNER_TEMP/appium-drivers"
           echo "APPIUM_HOME=$APPIUM_HOME" >> "$GITHUB_ENV"
-          npm install --prefix "$RUNNER_TEMP/appium" --no-audit --no-fund appium@3
-          "$RUNNER_TEMP/appium/node_modules/.bin/appium" driver install uiautomator2
+          npm install --prefix "$RUNNER_TEMP/appium" --no-audit --no-fund appium@3.9.1
+          # UiAutomator2 6+ requires Android 8/API 26. Version 5.0.7
+          # supports Android 7 and Appium 3 (automation only, not app code).
+          "$RUNNER_TEMP/appium/node_modules/.bin/appium" driver install "uiautomator2@${{ matrix.api < 26 && '5.0.7' || '8.7.3' }}"
       - name: Enable emulator acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -111,7 +142,7 @@ jobs:
           disable-animations: true
           # Keep a realistic memory budget for the Android 15 phone image.
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim ${{ matrix.api == 35 && '-memory 4096' || '' }}
-          script: bash scripts/run-android-mobile-qa.sh "${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'full' && 'full' || 'android-lab' }}"
+          script: bash scripts/run-android-mobile-qa.sh "${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining' && 'android-lab' || 'full' }}" "${{ matrix.api }}"
       - name: Upload Android runtime logs and screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -123,6 +154,8 @@ jobs:
 
   ios:
     name: iPhone simulator native runtime
+    # Keep the in-flight iPhone acceptance on the identical app code.
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: macos-26
     timeout-minutes: 50
     steps:
