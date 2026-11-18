@@ -270,6 +270,34 @@
     left:auto!important;
     right:calc(var(--lektrus-safe-right) + 12px)!important;
   }
+  /* A moving selection can reach the bottom-right corner after rotation or
+     duplication. Give its action strip a separate, bounded bottom lane so
+     neither the trash button nor the zoom controls can intercept each other.
+     Explicit top:auto also overrides the React object's inline position. */
+  html.lektrus-native-app body .workspace .selection-toolbar-screen {
+    position:fixed!important;
+    top:auto!important;
+    bottom:calc(14px + var(--lektrus-safe-bottom))!important;
+    left:calc(var(--lektrus-rail-left) + 62px)!important;
+    right:calc(var(--lektrus-safe-right) + 230px)!important;
+    width:max-content!important;
+    max-width:calc(100vw - var(--lektrus-rail-left) - var(--lektrus-safe-right) - 292px)!important;
+    margin:0 auto!important;
+    transform:none!important;
+    translate:none!important;
+    scale:none!important;
+    touch-action:pan-x!important;
+  }
+  html.lektrus-native-app body .workspace .selection-toolbar-screen[data-more-direction] .selection-more-menu {
+    top:auto!important;
+    bottom:calc(100% + 8px)!important;
+    max-height:calc(100vh - var(--lektrus-safe-top) - var(--lektrus-safe-bottom) - 126px);
+  }
+  /* Chromium 83 cannot evaluate :has(.selection-more[open]). */
+  html.lektrus-native-app body .workspace .selection-toolbar-screen.is-more-open {
+    overflow:visible!important;
+    z-index:2500!important;
+  }
   /* Keep the miniature navigation clickable, never behind the zoom bar.
      The fixed positions share the same viewport and safe-area coordinate space. */
   html body .workspace .minimap {

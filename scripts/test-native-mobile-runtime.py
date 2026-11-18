@@ -477,9 +477,9 @@ def pick_element(selector, label=None):
 def open_point():
     p=js('''const b=document.querySelector('section.board').getBoundingClientRect();
        const blocked='.board-object,.screen-transform-overlay,.selection-toolbar-screen,button,input,textarea,.toolbar,.board-controls,.mobile-board-tools,.topbar,.minimap,[data-board-interactive]';
-       for(const y of [.49,.42,.57,.66])for(const x of [.52,.38,.66,.30]){
+       for(const y of [.49,.42,.57,.66,.35,.74,.28,.81,.21,.88])for(const x of [.52,.38,.66,.30,.24,.76,.18,.82,.12,.88]){
           const p=[Math.round(b.left+b.width*x),Math.round(b.top+b.height*y)];
-          const e=document.elementFromPoint(...p);if(e?.closest('section.board')&&!e.closest(blocked))return p;
+          const e=document.elementFromPoint(...p);if(e?.closest('section.board')&&!e.closest(blocked)&&e!==document.querySelector('.topbar'))return p;
        }return null;''')
     assert p,'No unobstructed object placement point'
     return p
@@ -546,18 +546,37 @@ def resize_shape():
 
 def shape_actions():
     item_id=paths['shape_id']
+    def selection_dock():
+        report=js('''const r=document.querySelector('.selection-toolbar-screen').getBoundingClientRect();
+          const docks=['.board-controls','.minimap','.mobile-undo-redo','nav.mobile-board-tools','.topbar'];
+          return {selection:[r.left,r.top,r.right,r.bottom],overlaps:docks.filter(s=>{
+            const e=document.querySelector(s);if(!e||!e.getClientRects().length)return false;
+            const d=e.getBoundingClientRect();return Math.min(r.right,d.right)-Math.max(r.left,d.left)>1&&Math.min(r.bottom,d.bottom)-Math.max(r.top,d.top)>1;
+          })};''')
+        assert not report['overlaps'], f'Selection actions collide with the board chrome: {report}'
+        return report
+    selection_dock()
     click('.selection-toolbar-screen button[title^="Повернуть на 90° вправо"]')
     rotated=wait(lambda:(i if (i:=item_by_id(item_id)) and round(i.get('rotation',0))%360==90 else None),'Rotation not persisted')
+    click('.selection-toolbar-screen .selection-more summary')
+    wait(lambda:visible_id('.selection-more[open] .selection-more-menu'),'Selection actions menu not visible')
+    menu=js('''const e=document.querySelector('.selection-more[open] .selection-more-menu button');
+      const r=e.getBoundingClientRect(), x=r.left+r.width/2,y=r.top+r.height/2;
+      return {reachable:e.contains(document.elementFromPoint(x,y)),rect:[r.left,r.top,r.right,r.bottom]};''')
+    assert menu['reachable'], f'Selection menu painted behind other layers: {menu}'
+    click('.selection-toolbar-screen .selection-more summary')
+    wait(lambda:not visible_id('.selection-more[open] .selection-more-menu'),'Selection actions menu did not close')
     click('.selection-toolbar-screen button[title^="Дублировать"]')
     duplicate=wait(lambda:next((i for i in board_items() if i['kind']=='shape' and i['id']!=item_id),None),'Shape duplication not persisted')
     assert duplicate['shapeType']==rotated['shapeType'] and duplicate['width']==rotated['width'],duplicate
+    selection_dock()
     click('.selection-toolbar-screen .selection-toolbar-danger')
     wait(lambda:item_by_id(duplicate['id']) is None,'Duplicate not deleted')
     # Delete original using its visible object and button, keeping board clear for text/table.
     click(f'.board-object[data-object="{item_id}"]')
     click('.selection-toolbar-screen .selection-toolbar-danger')
     wait(lambda:item_by_id(item_id) is None,'Original shape not deleted')
-    return {'rotation':rotated['rotation'],'duplicate':duplicate['id'],'deleted':True}
+    return {'rotation':rotated['rotation'],'duplicate':duplicate['id'],'deleted':True,'selectionDockNoOverlap':True}
 
 
 def type_into(selector, value, clear=False):
@@ -646,7 +665,8 @@ def full_document_persistence():
                     item.pop(k)
         return items
     before=normalized()
-    assert any(i['kind']=='text' for i in before) and any(i['kind']=='sticky' for i in before) and any(i['kind']=='table' for i in before),'Object cases incomplete'
+    if not {'text','sticky','table'}.issubset({i['kind'] for i in before}):
+        raise BlockedCheck('Object creation prerequisite incomplete; full persistence was not exercised')
     reopen()
     try:
         wait(lambda:normalized()==before,'Full model changed after saving/reopening',20)

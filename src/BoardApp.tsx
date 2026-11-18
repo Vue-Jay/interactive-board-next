@@ -10675,7 +10675,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 </>
               )}
 
-              <details className="selection-more">
+              <details className="selection-more" onToggle={event=>{
+                const details=event.currentTarget;
+                details.closest(".selection-toolbar-screen")?.classList.toggle("is-more-open",details.open);
+              }}>
                 <summary title="Ещё действия" aria-label="Ещё действия"><Icon name="more" size={17} /></summary>
                 <div className="selection-more-menu">
                   {singleSelected&&!isInkItem(singleSelected)&&
