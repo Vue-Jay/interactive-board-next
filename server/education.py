@@ -22,7 +22,7 @@ async def ensure_student_link(conn: asyncpg.Connection, teacher_id: UUID,
              SELECT 1 FROM account_users u
              JOIN board_members bm ON bm.user_id=u.id
              JOIN boards b ON b.id=bm.board_id
-            WHERE u.id=$2 AND u.account_role='student'
+            WHERE u.id=$2 AND (bm.participant_role='student' OR (bm.participant_role IS NULL AND u.account_role='student'))
               AND b.owner_id=$1 AND b.deleted_at IS NULL
               AND ($3::uuid IS NULL OR b.id=$3)
          )""",
@@ -127,7 +127,7 @@ def make_education_router(current_user, board_access) -> APIRouter:
                      LEFT JOIN student_profiles sp
                        ON sp.teacher_id=$1 AND sp.student_id=u.id
                     WHERE b.owner_id=$1 AND b.deleted_at IS NULL
-                      AND u.account_role='student' AND u.guest_board_id IS NULL
+                      AND (bm.participant_role='student' OR (bm.participant_role IS NULL AND u.account_role='student')) AND u.guest_board_id IS NULL
                     GROUP BY u.id,u.display_name,u.email,sp.note,sp.tags
                     ORDER BY lower(u.display_name),u.id""",
                 user["id"],
@@ -304,8 +304,6 @@ def make_education_router(current_user, board_access) -> APIRouter:
         assignment_id: UUID, data: AssignmentSubmitInput, request: Request,
         user=Depends(current_user),
     ):
-        if user["account_role"] != "student":
-            raise HTTPException(403, "Сдать задание может только ученик.")
         async with request.app.state.pool.acquire() as conn:
             async with conn.transaction():
                 assignment = await conn.fetchrow(

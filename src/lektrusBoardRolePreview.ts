@@ -1,4 +1,4 @@
-import type {BoardRole} from "./authStore";
+import type {BoardRole,BoardParticipantRole} from "./authStore";
 import type {AccountRole} from "./accountRoleStore";
 import type {SchoolDiagram} from "./lektrusSchoolDiagramModel";
 
@@ -18,11 +18,11 @@ export type BoardRoleCapabilities={
  */
 export function boardRoleCapabilities(input:{
  preview:BoardRolePreview;
- boardRole:BoardRole;accountRole:AccountRole;
+ boardRole:BoardRole;accountRole:AccountRole;participantRole?:BoardParticipantRole;
  isAppAdmin:boolean;adminMaintenance:boolean;
  isGuest?:boolean;
 }):BoardRoleCapabilities{
- const {preview,boardRole,accountRole,isAppAdmin,adminMaintenance,isGuest=false}=input;
+ const {preview,boardRole,accountRole,participantRole,isAppAdmin,adminMaintenance,isGuest=false}=input;
  const safePreview=isAppAdmin?preview:"actual";
  const realCanEdit=boardRole!=="viewer"||(isAppAdmin&&adminMaintenance);
  const effectiveRole:"teacher"|"student"=safePreview==="teacher"?"teacher":
@@ -31,6 +31,8 @@ export function boardRoleCapabilities(input:{
    // regardless of whether their account was originally created as a pupil
    // or an anonymous guest. Developer previews remain simulations only.
    boardRole==="owner"?"teacher":
+   participantRole==="student"?"student":
+   participantRole==="co_teacher"&&accountRole==="teacher"&&!isGuest?"teacher":
    (isGuest||(accountRole==="student"&&!adminMaintenance))?"student":"teacher";
  const isStudent=effectiveRole==="student";
  const isGuestPreview=safePreview==="guest";

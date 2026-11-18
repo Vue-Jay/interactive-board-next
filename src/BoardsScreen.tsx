@@ -5,12 +5,12 @@ import {inviteToBoard} from "./boardStore";
 import {copyTemplateAssets,markTemplateUsed} from "./templatesStore";
 import { flushLectrisOrganization, queueLectrisBoardOrganization } from "./lectrisOrganizationStore";
 import { cachedBoardPreview, loadBoardPreviews, backfillCachedBoardPreviews } from "./boardPreview";
-import { BOARD_ROLE_LABELS, isRemoteBackendEnabled, type AuthUser, type BoardRole } from "./authStore";
+import { BOARD_ROLE_LABELS, PARTICIPANT_ROLE_LABELS, participantAccess, participantRoleFor, type InvitedParticipantRole, isRemoteBackendEnabled, type AuthUser, type BoardRole } from "./authStore";
 import { isSelfhostBackendEnabled } from "./selfhostApi";
 import { boardStorageKey, createBoard, deleteBoard, deleteBoardForever, getCachedUserBoards, getTrashedBoards, getUserBoards, restoreBoard, renameBoard, getBoardAccess, changeMemberRole, removeMember, type BoardAccessMember, type BoardInvitation, type BoardSummary } from "./boardStore";
 import { boardDirectUrl, boardShareUrl, clearPendingShareToken, copyBoardLink, createBoardShareLink, listBoardShareLinks, pendingShareToken, revokeBoardShareLink, shareLinksEnabled, type BoardShareLink, type ShareRole } from "./shareLinks";
 
-type Props={user:AuthUser;accountRole:AccountRole;isAppAdmin:boolean;onOpenBoard:(b:BoardSummary)=>void;onLogout:()=>void};
+type Props={user:AuthUser;accountRole:AccountRole;workspaceMode?:"teaching"|"learning";isAppAdmin:boolean;onOpenBoard:(b:BoardSummary)=>void;onLogout:()=>void};
 type BoardFilter="all"|"mine"|"shared";
 type BoardSort="recent"|"name"|"oldest";
 const fmt=(iso:string)=>new Intl.DateTimeFormat("ru-RU",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
@@ -20,7 +20,7 @@ import { importAsNewBoard, inspectBoardImport, type BoardImportPreview } from ".
 import { exportWorkspace, importWorkspace, validateWorkspaceBackup, workspaceFileName, type WorkspaceBackup } from "./workspaceBackup";
 import type { AccountRole } from "./accountRoleStore";
 
-export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onLogout}:Props){
+export default function BoardsScreen({user,accountRole,workspaceMode,onOpenBoard,onLogout:_onLogout}:Props){
  const section=new URLSearchParams(window.location.search).get("section");
  const isBoardListView=section==="boards";
  const hubView=section==="subjects"?"subjects":section==="groups"&&accountRole==="teacher"?"groups":"home";
@@ -60,9 +60,10 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
  const [importPreview,setImportPreview]=useState<BoardImportPreview|null>(null); const [importFileName,setImportFileName]=useState(""); const [importProgress,setImportProgress]=useState("");
  const [workspacePreview,setWorkspacePreview]=useState<WorkspaceBackup|null>(null); const [workspaceProgress,setWorkspaceProgress]=useState("");
 
+ const modeBoards=useMemo(()=>!workspaceMode?boards:boards.filter(board=>{const kind=participantRoleFor(board.role,board.participantRole);return workspaceMode==="teaching"?kind==="owner"||kind==="co_teacher":kind==="student"||kind==="observer"}),[boards,workspaceMode]);
  const visible=useMemo(()=>{
    const q=query.trim().toLowerCase();
-   let list=boards.filter(b=>{
+   let list=modeBoards.filter(b=>{
      if(q&&!b.title.toLowerCase().includes(q))return false;
      if(filter==="mine"&&b.role!=="owner")return false;
      if(filter==="shared"&&b.role==="owner")return false;
@@ -73,7 +74,7 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
    else if(sort==="oldest")list.sort((a,b)=>a.updatedAt.localeCompare(b.updatedAt));
    else list.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
    return list;
- },[boards,query,filter,sort]);
+ },[modeBoards,query,filter,sort]);
 
  const refresh=async()=>setBoards(await getUserBoards(user));
  const trashAvailable=isRemoteBackendEnabled()||isSelfhostBackendEnabled();
@@ -149,11 +150,11 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
 
 
 
- const createLink=async(role:ShareRole)=>{
+ const createLink=async(role:ShareRole,participantRole?:InvitedParticipantRole)=>{
    if(!manage||busy)return;
    setBusy(true);
    try{
-     const link=await createBoardShareLink(manage.id,role);
+     const link=await createBoardShareLink(manage.id,role,participantRole);
      const url=boardShareUrl(link.token);
      setCreatedUrl(url);
      setNotice(role==="editor"?"Создана ссылка для редактирования":"Создана ссылка только для просмотра");
@@ -166,7 +167,7 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
 
  return <main className="boards-shell">
  {createOpen&&<LektrusCreateBoardDialog user={user} initial={createAssociation} busy={busy} onClose={()=>setCreateOpen(false)} onCreate={options=>void confirmCreate(options)}/>}
- {!isBoardListView&&<LectrisHub user={user} role={accountRole} view={hubView} boards={boards}
+ {!isBoardListView&&<LectrisHub user={user} role={accountRole} view={hubView} boards={modeBoards}
     loading={loading} creating={busy} previews={previews} onCreateBoard={association=>add(association)} onOpenBoard={onOpenBoard} onDeleteBoard={board=>{if(!confirm(`Переместить доску «${board.title}» в корзину? Её можно восстановить.`))return;void (async()=>{try{await deleteBoard(user.id,board.id);setNotice("Доска перемещена в корзину");await refresh()}catch(e){setNotice(e instanceof Error?e.message:"Не удалось удалить доску")}})()}}/>}
   {isBoardListView&&<section className="boards-content lectris-library">
     {user.isGuest&&<div className="guest-lifecycle-note"><strong>Гостевой режим</strong><span>Доступ к доскам сохраняется в пределах этой гостевой сессии. Для постоянного аккаунта зарегистрируйтесь.</span></div>}
@@ -174,7 +175,7 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
       <div className="lectris-library-heading"><span className="lectris-library-eyebrow">ВАШИ РАБОЧИЕ ПРОСТРАНСТВА</span>
         <h1>Доски</h1>
         <p>Ваши идеи, уроки и совместная работа в одном месте. Откройте доску или создайте новую.</p>
-        <div className="lectris-library-metrics"><span><strong>{boards.length}</strong> Всего досок</span><span><strong>{boards.filter(b=>b.role==="owner").length}</strong> Мои</span><span><strong>{boards.filter(b=>b.role!=="owner").length}</strong> Общие</span></div>
+        <div className="lectris-library-metrics"><span><strong>{modeBoards.length}</strong> Всего досок</span><span><strong>{modeBoards.filter(b=>b.role==="owner").length}</strong> Мои</span><span><strong>{modeBoards.filter(b=>b.role!=="owner").length}</strong> Общие</span></div>
       </div>
       <div className="lectris-library-hero-art" aria-hidden="true">
         <span className="lectris-library-hero-note">A + B = C</span><span className="lectris-library-hero-card"><i/><i/><i/><i/></span><span className="lectris-library-hero-orbit"/>
@@ -214,7 +215,7 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
             {previews[b.id]
               ?<img className="lectris-library-preview-image" src={previews[b.id]} alt="" decoding="async"/>
               :<><span className="board-card-grid"/><span className="lectris-library-preview-empty" aria-hidden="true">Пустой холст</span></>}
-            <span className="lectris-library-preview-label">{b.role==="owner"?"Моя доска":"Совместная работа"}</span>
+            <span className="lectris-library-preview-label">{isSelfhostBackendEnabled()?PARTICIPANT_ROLE_LABELS[participantRoleFor(b.role,b.participantRole)]:b.role==="owner"?"Моя доска":"Совместная работа"}</span>
             <span className="lectris-library-preview-open" aria-hidden="true">↗</span>
           </button>
           <div className="board-card-body lectris-library-card-body">
@@ -238,7 +239,7 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
  <div className="board-invite-link-panel">
    <div className="board-invite-link-title"><span>🔗</span><div><strong>Ссылка-приглашение</strong><small>Выберите, что сможет делать участник</small></div></div>
    <span style={{fontSize:13,opacity:.72}}>Создайте ссылку с нужными правами и отправьте её ученику, преподавателю или коллеге. После входа или регистрации доступ применится автоматически.</span>
-   <div className="board-invite-role-grid"><button className="editor" disabled={busy||!shareLinksEnabled()} onClick={()=>void createLink("editor")}><span>✎</span><b>Редактирование</b><small>Можно менять содержимое доски</small></button><button className="viewer" disabled={busy||!shareLinksEnabled()} onClick={()=>void createLink("viewer")}><span>👁</span><b>Только просмотр</b><small>Без возможности редактирования</small></button></div>
+   <div className="board-invite-role-grid">{isSelfhostBackendEnabled()?(["student","co_teacher","observer"] as const).map(kind=><button key={kind} className={kind==="observer"?"viewer":"editor"} disabled={busy||!shareLinksEnabled()} onClick={()=>void createLink(participantAccess(kind),kind)}><span>{kind==="observer"?"👁":"✎"}</span><b>{PARTICIPANT_ROLE_LABELS[kind]}</b><small>{kind==="student"?"Выполнять задания":kind==="co_teacher"?"Создавать задания":"Без редактирования"}</small></button>):<><button className="editor" disabled={busy||!shareLinksEnabled()} onClick={()=>void createLink("editor")}><span>✎</span><b>Редактирование</b><small>Можно менять содержимое доски</small></button><button className="viewer" disabled={busy||!shareLinksEnabled()} onClick={()=>void createLink("viewer")}><span>👁</span><b>Только просмотр</b><small>Без возможности редактирования</small></button></>}</div>
    {!shareLinksEnabled()&&<div className="access-notice">Для ссылок доступа нужна серверная синхронизация.</div>}
    {createdUrl&&<div className="board-invite-created"><div><span>✓</span><strong>Ссылка готова</strong></div><div><input readOnly value={createdUrl} onFocus={e=>e.currentTarget.select()}/><button onClick={()=>void copyCreated()}>⧉ Копировать</button></div></div>}
    {shareLinksEnabled()&&<details className="board-direct-link">
@@ -251,10 +252,10 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
  {notice&&<div className="access-notice">{notice}</div>}
 
  <div className="access-list">
-   {shareLinks.length>0&&<><div style={{padding:"8px 0",fontWeight:700}}>Активные ссылки</div>{shareLinks.map(link=><div className="access-person" key={link.id}><div><strong>{link.role==="editor"?"Редактирование":"Только просмотр"}</strong><span>Создана {fmt(link.createdAt)}</span></div><button className="danger" onClick={async()=>{await revokeBoardShareLink(link.id);await loadLinks(manage);setNotice("Ссылка отозвана")}}>Отозвать</button></div>)}</>}
+   {shareLinks.length>0&&<><div style={{padding:"8px 0",fontWeight:700}}>Активные ссылки</div>{shareLinks.map(link=><div className="access-person" key={link.id}><div><strong>{isSelfhostBackendEnabled()?PARTICIPANT_ROLE_LABELS[participantRoleFor(link.role,link.participantRole)]:link.role==="editor"?"Редактирование":"Только просмотр"}</strong><span>Создана {fmt(link.createdAt)}</span></div><button className="danger" onClick={async()=>{await revokeBoardShareLink(link.id);await loadLinks(manage);setNotice("Ссылка отозвана")}}>Отозвать</button></div>)}</>}
    <div style={{padding:"14px 0 8px",fontWeight:700}}>Участники</div>
    <div className="access-person"><div><strong>{user.name}</strong><span>{user.email}</span></div><b>Владелец</b></div>
-   {access.members.map(m=><div className="access-person" key={m.userId}><div><strong>{m.user?.name||"Пользователь"}</strong><span>{m.user?.email||m.userId}</span></div><select value={m.role} onChange={async e=>{await changeMemberRole(user.id,manage.id,m.userId,e.target.value as Exclude<BoardRole,"owner">);await loadAccess(manage)}}><option value="editor">Редактор</option><option value="viewer">Просмотр</option></select><button className="danger" onClick={async()=>{await removeMember(user.id,manage.id,m.userId);await loadAccess(manage)}}>Удалить</button></div>)}
+   {access.members.map(m=><div className="access-person" key={m.userId}><div><strong>{m.user?.name||"Пользователь"}</strong><span>{m.user?.email||m.userId}</span></div>{isSelfhostBackendEnabled()?<select aria-label="Роль участника" value={participantRoleFor(m.role,m.participantRole)} onChange={async e=>{try{const kind=e.target.value as InvitedParticipantRole;await changeMemberRole(user.id,manage.id,m.userId,participantAccess(kind),kind);await loadAccess(manage)}catch(error){setNotice(error instanceof Error?error.message:"Не удалось изменить роль")}}}><option value="student">Ученик</option><option value="co_teacher">Сопреподаватель</option><option value="observer">Наблюдатель</option></select>:<select value={m.role} onChange={async e=>{await changeMemberRole(user.id,manage.id,m.userId,e.target.value as Exclude<BoardRole,"owner">);await loadAccess(manage)}}><option value="editor">Редактор</option><option value="viewer">Просмотр</option></select>}<button className="danger" onClick={async()=>{await removeMember(user.id,manage.id,m.userId);await loadAccess(manage)}}>Удалить</button></div>)}
  </div></section></div>}
  {trashOpen&&<div className="access-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)setTrashOpen(false)}}><section className="access-modal trash-modal"><div className="access-head"><div><h2>Корзина</h2><p>Удалённые доски можно восстановить или удалить окончательно.</p></div><button onClick={()=>setTrashOpen(false)}>×</button></div>{trash.length===0?<div className="boards-empty trash-empty"><strong>Корзина пуста</strong><span>Удалённые доски появятся здесь.</span></div>:<div className="trash-list">{trash.map(board=><div className="trash-row" key={board.id}><div><strong>{board.title}</strong><span>Удалена {board.deletedAt?fmt(board.deletedAt):"недавно"}{board.purgeAfter?` · до ${fmt(board.purgeAfter)} · ${retention(board.purgeAfter)}`:""}{board.purgeQueued?` · в очереди очистки${board.purgeAssetCount?` · файлов: ${board.purgeAssetCount}`:""}`:""}</span></div><div><button disabled={busy} onClick={async()=>{setBusy(true);try{await restoreBoard(board.id);setNotice(`Доска «${board.title}» восстановлена`);await Promise.all([refresh(),loadTrash()])}catch(e){setNotice(e instanceof Error?e.message:"Не удалось восстановить доску")}finally{setBusy(false)}}}>Восстановить</button><button className="danger" disabled={busy} onClick={async()=>{const confirmation=window.prompt(`Окончательное удаление нельзя отменить.\n\nЧтобы удалить доску навсегда, введите её название:\n${board.title}`);if(confirmation===null)return;if(confirmation!==board.title){setNotice("Название не совпало. Доска не удалена.");return}setBusy(true);try{const result=await deleteBoardForever(board.id,confirmation);setNotice(result.filesPending?`Доска удалена, закрытые файлы требуют очистки: ${result.filesPending}`:result.deletedAssets>0?`Доска удалена окончательно. Удалено файлов: ${result.deletedAssets}`:"Доска удалена окончательно");await loadTrash()}catch(e){setNotice(e instanceof Error?e.message:"Не удалось удалить доску")}finally{setBusy(false)}}}>Удалить навсегда</button></div></div>)}</div>}<div className="trash-warning">{isSelfhostBackendEnabled()?"Доски остаются в корзине до восстановления или окончательного удаления. Для окончательного удаления требуется точное название доски.":"Доски хранятся в корзине 30 дней. После срока сервер ставит их в очередь автоматической очистки. Окончательное удаление требует точного названия доски."}</div></section></div>}
  </main>}

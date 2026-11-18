@@ -2082,7 +2082,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [rolePreview,setRolePreview]=useState<BoardRolePreview>(globalRolePreview);
   useEffect(()=>setRolePreview(globalRolePreview),[boardSummary.id,globalRolePreview]);
   const roleCapabilities=boardRoleCapabilities({
-    preview:rolePreview,boardRole:boardSummary.role,accountRole,
+    preview:rolePreview,boardRole:boardSummary.role,accountRole,participantRole:boardSummary.participantRole,
     isAppAdmin,adminMaintenance:rolePreview==="actual"&&adminMaintenance,isGuest:authUser.isGuest===true
   });
   const {canEdit,isStudent,canManageBoard,canCreateAssignments}=roleCapabilities;

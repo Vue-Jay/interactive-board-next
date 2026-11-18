@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { type AuthUser, type BoardRole, BOARD_ROLE_LABELS } from "./authStore";
+import { type AuthUser, type BoardRole, BOARD_ROLE_LABELS, PARTICIPANT_ROLE_LABELS, participantAccess, participantRoleFor, type InvitedParticipantRole } from "./authStore";
 import { getBoardAccess, inviteToBoard, changeMemberRole, removeMember, revokeInvitation, type BoardSummary } from "./boardStore";
+import { isSelfhostBackendEnabled } from "./selfhostApi";
 import { boardDirectUrl, boardShareUrl, copyBoardLink, createShareLink, listShareLinks, revokeShareLink, shareLinksEnabled, type ShareLink } from "./shareLinks";
 
 export default function ShareDialog({ board, user, onClose }: { board: BoardSummary; user: AuthUser; onClose: () => void }) {
@@ -19,6 +20,11 @@ export default function ShareDialog({ board, user, onClose }: { board: BoardSumm
   const [notice, setNotice] = useState("");
   const [section,setSection]=useState<"link"|"people"|"manage">("link");
   const [linkRole,setLinkRole]=useState<ShareLink["role"]>("viewer");
+  const explicitRoles=isSelfhostBackendEnabled();
+  const [participant,setParticipant]=useState<InvitedParticipantRole>("observer");
+  const [linkParticipant,setLinkParticipant]=useState<InvitedParticipantRole>("observer");
+  const participantOptions=(<><option value="observer">Наблюдатель</option><option value="student">Ученик</option><option value="co_teacher">Сопреподаватель</option></>);
+  const roleLabel=(access:BoardRole,kind?:InvitedParticipantRole)=>explicitRoles?PARTICIPANT_ROLE_LABELS[participantRoleFor(access,kind)]:BOARD_ROLE_LABELS[access];
   const [showAdvanced,setShowAdvanced]=useState(false);
   const remote = shareLinksEnabled();
   const shareCacheKey="lektrus.share-link."+user.id+"."+board.id;
@@ -34,7 +40,7 @@ export default function ShareDialog({ board, user, onClose }: { board: BoardSumm
   const run = async (action: () => Promise<void>) => { if (busy) return; setBusy(true); setNotice(""); try { await action(); } catch (error) { setNotice(error instanceof Error ? error.message : "Не удалось выполнить действие"); } finally { setBusy(false); } };
   const create = (linkRole: ShareLink["role"]) => run(async () => {
     const expiresAt=expiry==="never"?null:new Date(Date.now()+({"1d":1,"7d":7,"30d":30}[expiry])*86400000).toISOString();
-    const link = await createShareLink(board.id, linkRole,{expiresAt,maxUses:maxUses>0?maxUses:null,password:linkPassword.trim()||null});
+    const link = await createShareLink(board.id, linkRole,{expiresAt,maxUses:maxUses>0?maxUses:null,password:linkPassword.trim()||null,participantRole:explicitRoles?linkParticipant:undefined});
     const saved={ id: link.id, url:boardShareUrl(link.token) };
     // The RPC has already succeeded. Keep the new link available even if
     // reloading the separate access/member list fails temporarily.
@@ -58,10 +64,11 @@ export default function ShareDialog({ board, user, onClose }: { board: BoardSumm
       {section==="link"&&<div className="lektrus-share-content">
         {remote&&<div className="lektrus-share-primary">
           <h3>Создать ссылку-приглашение</h3>
-          <p>Гость сможет войти по ссылке без регистрации. Выберите, что ему разрешено.</p>
+          <p>{explicitRoles?"Выберите роль на этой доске. Ученик и наблюдатель могут войти без регистрации; сопреподаватель — только с подтверждённым аккаунтом преподавателя.":"Гость сможет войти по ссылке без регистрации. Выберите, что ему разрешено."}</p>
           <div className="lektrus-share-roles" role="group" aria-label="Права по ссылке">
+            {explicitRoles? (["observer","student","co_teacher"] as const).map(kind=><button key={kind} type="button" disabled={busy} className={linkParticipant===kind?"active":""} aria-pressed={linkParticipant===kind} onClick={()=>{setLinkParticipant(kind);setLinkRole(participantAccess(kind))}}><b>{PARTICIPANT_ROLE_LABELS[kind]}</b><small>{kind==="observer"?"Только просмотр":kind==="student"?"Рисовать и выполнять задания":"Создавать задания и редактировать урок"}</small></button>):<>
             <button type="button" disabled={busy} className={linkRole==="viewer"?"active":""} onClick={()=>setLinkRole("viewer")}><b>◉ Только просмотр</b><small>Без изменения доски</small></button>
-            <button type="button" disabled={busy} className={linkRole==="editor"?"active":""} onClick={()=>setLinkRole("editor")}><b>✎ Редактирование</b><small>Рисование и работа с объектами</small></button>
+            <button type="button" disabled={busy} className={linkRole==="editor"?"active":""} onClick={()=>setLinkRole("editor")}><b>✎ Редактирование</b><small>Рисование и работа с объектами</small></button></>}
           </div>
           <details className="lektrus-share-advanced" open={showAdvanced} onToggle={e=>setShowAdvanced(e.currentTarget.open)}>
             <summary>Дополнительные настройки <span>{showAdvanced?"Скрыть":"Срок, пароль, ограничения"}</span></summary>
@@ -84,19 +91,19 @@ export default function ShareDialog({ board, user, onClose }: { board: BoardSumm
           <small>Это не приглашение. Без уже выданного доступа доска не откроется.</small>
         </details>}
         {!remote&&<p className="share-note">Локальный режим: пригласить можно только существующий аккаунт этого браузера. Для ссылок требуется Supabase.</p>}
-        <details className="invite-email-panel"><summary><span>✉</span><div><strong>Пригласить конкретного человека по email</strong><small>Выдать доступ определённому аккаунту</small></div><b>⌄</b></summary><div className="invite-row"><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email пользователя" aria-label="Email пользователя"/><select value={role} onChange={e=>setRole(e.target.value as typeof role)} aria-label="Роль приглашения"><option value="viewer">Просмотр</option><option value="editor">Редактор</option></select><button disabled={busy||!email.trim()} onClick={()=>void run(async()=>{await inviteToBoard(user.id,board.id,email.trim(),role);setEmail("");await reload();setNotice("Приглашение отправлено")})}>Пригласить</button></div></details>
+        <details className="invite-email-panel"><summary><span>✉</span><div><strong>Пригласить конкретного человека по email</strong><small>Выдать доступ определённому аккаунту</small></div><b>⌄</b></summary><div className="invite-row"><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email пользователя" aria-label="Email пользователя"/>{explicitRoles?<select value={participant} onChange={e=>{const kind=e.target.value as InvitedParticipantRole;setParticipant(kind);setRole(participantAccess(kind))}} aria-label="Роль приглашения">{participantOptions}</select>:<select value={role} onChange={e=>setRole(e.target.value as typeof role)} aria-label="Роль приглашения"><option value="viewer">Просмотр</option><option value="editor">Редактор</option></select>}<button disabled={busy||!email.trim()} onClick={()=>void run(async()=>{await inviteToBoard(user.id,board.id,email.trim(),role,explicitRoles?participant:undefined);setEmail("");await reload();setNotice("Приглашение отправлено")})}>Пригласить</button></div></details>
       </div>}
       {section==="manage"&&<div className="lektrus-share-content">
         <h3>Действующие ссылки</h3>
         {links.filter(isActive).length===0&&<p className="share-note">Активных ссылок пока нет. Создайте первую во вкладке «Ссылка».</p>}
-        {links.filter(isActive).map(link=><div className="access-person invite-link-row" key={link.id}><div><strong>{BOARD_ROLE_LABELS[link.role]}</strong><span>Создана {new Date(link.created_at).toLocaleDateString("ru-RU")}{link.expires_at?` · до ${new Date(link.expires_at).toLocaleDateString("ru-RU")}`:" · без срока"} · входов {link.use_count}{link.max_uses?`/${link.max_uses}`:""}{link.protected?" · с паролем":""}</span></div><button disabled={busy} onClick={()=>void run(async()=>{await revokeShareLink(link.id);if(created?.id===link.id){setCreated(null);try{localStorage.removeItem(shareCacheKey)}catch{/* unavailable */}}await reload();setNotice("Ссылка отозвана")})}>Отозвать</button></div>)}
+        {links.filter(isActive).map(link=><div className="access-person invite-link-row" key={link.id}><div><strong>{roleLabel(link.role,link.participant_role)}</strong><span>Создана {new Date(link.created_at).toLocaleDateString("ru-RU")}{link.expires_at?` · до ${new Date(link.expires_at).toLocaleDateString("ru-RU")}`:" · без срока"} · входов {link.use_count}{link.max_uses?`/${link.max_uses}`:""}{link.protected?" · с паролем":""}</span></div><button disabled={busy} onClick={()=>void run(async()=>{await revokeShareLink(link.id);if(created?.id===link.id){setCreated(null);try{localStorage.removeItem(shareCacheKey)}catch{/* unavailable */}}await reload();setNotice("Ссылка отозвана")})}>Отозвать</button></div>)}
         <p className="share-note">Отзыв запрещает новые входы по ссылке. Уже подключённым участникам доступ отменяется отдельно.</p>
       </div>}
       {notice && <div className="access-notice" role="status">{notice}</div>}
       {section==="people"&&<><div className="invite-section-title members"><span>👥</span><div><h3>Участники</h3><small>Кто уже имеет доступ к доске</small></div></div>
       <div className="access-list"><div className="access-person"><div><strong>{user.name}</strong><span>{user.email}</span></div><b>Владелец</b></div>
-        {access.members.map(member => <div className="access-person" key={member.userId}><div><strong>{member.user?.name || "Пользователь"}</strong><span>{member.user?.email || "Участник доски"}</span></div><select disabled={busy} value={member.role} aria-label="Роль участника" onChange={e => { const value = e.target.value as typeof role; void run(async () => { await changeMemberRole(user.id, board.id, member.userId, value); await reload(); }); }}><option value="viewer">Просмотр</option><option value="editor">Редактор</option></select><button disabled={busy} onClick={() => void run(async () => { await removeMember(user.id, board.id, member.userId); await reload(); })}>Удалить</button></div>)}
-        {access.invites.map(invite => <div className="access-person" key={invite.id}><div><strong>{invite.email}</strong><span>Ожидает входа</span></div><b>{BOARD_ROLE_LABELS[invite.role]}</b><button disabled={busy} onClick={() => void run(async () => { await revokeInvitation(user.id, board.id, invite.id); await reload(); })}>Отменить</button></div>)}
+        {access.members.map(member => <div className="access-person" key={member.userId}><div><strong>{member.user?.name || "Пользователь"}</strong><span>{member.user?.email || "Участник доски"}</span></div>{explicitRoles?<select disabled={busy} value={participantRoleFor(member.role,member.participantRole)} aria-label="Роль участника" onChange={e=>{const kind=e.target.value as InvitedParticipantRole;void run(async()=>{await changeMemberRole(user.id,board.id,member.userId,participantAccess(kind),kind);await reload()})}}>{participantOptions}</select>:<select disabled={busy} value={member.role} aria-label="Роль участника" onChange={e => { const value = e.target.value as typeof role; void run(async () => { await changeMemberRole(user.id, board.id, member.userId, value); await reload(); }); }}><option value="viewer">Просмотр</option><option value="editor">Редактор</option></select>}<button disabled={busy} onClick={() => void run(async () => { await removeMember(user.id, board.id, member.userId); await reload(); })}>Удалить</button></div>)}
+        {access.invites.map(invite => <div className="access-person" key={invite.id}><div><strong>{invite.email}</strong><span>Ожидает входа</span></div><b>{roleLabel(invite.role,invite.participantRole)}</b><button disabled={busy} onClick={() => void run(async () => { await revokeInvitation(user.id, board.id, invite.id); await reload(); })}>Отменить</button></div>)}
       </div></>}
     </section>
   </div>;
