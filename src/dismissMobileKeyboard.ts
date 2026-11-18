@@ -15,12 +15,27 @@ export function installMobileKeyboardDismissal(native: boolean, doc = document, 
   type Tap = { field: HTMLElement; id: number; x: number; y: number };
   let pending: Tap | null = null;
   let touchPending: Tap | null = null;
+  let scheduled: { field: HTMLElement; timer: number } | null = null;
   const targetOf = (event: Event) => event.composedPath().find((node): node is Element => node instanceof Element) ?? null;
-  const dismiss = (field: HTMLElement) => win.setTimeout(() => {
-    if (editable(doc.activeElement) === field) field.blur();
-  }, 0);
+  const clearScheduled = () => {
+    if(scheduled)win.clearTimeout(scheduled.timer);
+    scheduled=null;
+  };
+  const dismiss = (field: HTMLElement, delay: number) => {
+    clearScheduled();
+    const timer=win.setTimeout(() => {
+      scheduled=null;
+      if (editable(doc.activeElement) === field) field.blur();
+    }, delay);
+    scheduled={field,timer};
+  };
+  // Let a touch's compatibility click finish before moving the visual
+  // viewport. Otherwise WKWebView can retarget that click to the input
+  // that has just blurred (observed in the landscape quiz editor).
+  const click = () => { if(scheduled)dismiss(scheduled.field,0); };
   const moved = (event: PointerEvent) => pending && Math.hypot(event.clientX - pending.x, event.clientY - pending.y) > 10;
   const down = (event: PointerEvent) => {
+    clearScheduled();
     pending = null;
     if (!event.isPrimary || event.button !== 0 || !(native || mobile.matches || event.pointerType === 'touch')) return;
     const field = editable(doc.activeElement);
@@ -37,12 +52,13 @@ export function installMobileKeyboardDismissal(native: boolean, doc = document, 
     pending = null;
     if (wasMoved || isFieldTarget(targetOf(event))) return;
     // Do not intercept clicks or steal focus from a newly opened editor.
-    dismiss(tap.field);
+    dismiss(tap.field,event.pointerType==='touch'?350:0);
   };
   // WKWebView may cancel a pointer sequence while moving the visual viewport
   // around a focused input. Keep the independent real touch sequence as a
   // fallback, never treating a scroll or multi-finger gesture as a tap.
   const touchStart = (event: TouchEvent) => {
+    clearScheduled();
     touchPending = null;
     if (event.touches.length !== 1) return;
     const field = editable(doc.activeElement), target=targetOf(event), touch=event.changedTouches[0];
@@ -59,23 +75,25 @@ export function installMobileKeyboardDismissal(native: boolean, doc = document, 
     const p=touchPending;touchPending=null;
     if (!p || event.touches.length || isFieldTarget(targetOf(event))) return;
     const touch=Array.from(event.changedTouches).find(t=>t.identifier===p.id);
-    if (touch&&Math.hypot(touch.clientX-p.x,touch.clientY-p.y)<=10) dismiss(p.field);
+    if (touch&&Math.hypot(touch.clientX-p.x,touch.clientY-p.y)<=10) dismiss(p.field,350);
   };
   const touchCancel = () => {touchPending=null;};
   doc.addEventListener('pointerdown', down, true);
   doc.addEventListener('pointermove', move, true);
   doc.addEventListener('pointerup', up, true);
   doc.addEventListener('pointercancel', cancel, true);
+  doc.addEventListener('click',click,true);
   doc.addEventListener('touchstart',touchStart,{capture:true,passive:true});
   doc.addEventListener('touchmove',touchMove,{capture:true,passive:true});
   doc.addEventListener('touchend',touchEnd,{capture:true,passive:true});
   doc.addEventListener('touchcancel',touchCancel,{capture:true,passive:true});
   return () => {
-    pending = null;touchPending=null;
+    pending = null;touchPending=null;clearScheduled();
     doc.removeEventListener('pointerdown', down, true);
     doc.removeEventListener('pointermove', move, true);
     doc.removeEventListener('pointerup', up, true);
     doc.removeEventListener('pointercancel', cancel, true);
+    doc.removeEventListener('click',click,true);
     doc.removeEventListener('touchstart',touchStart,true);
     doc.removeEventListener('touchmove',touchMove,true);
     doc.removeEventListener('touchend',touchEnd,true);

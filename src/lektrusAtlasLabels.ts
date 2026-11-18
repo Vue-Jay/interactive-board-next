@@ -1,6 +1,7 @@
 /** Cartographic display names: concise Russian school usage, never rewrite source records.
  * Explicit aliases prevent changing historical states or similarly named countries.
  */
+import {regionDisplayNames} from "./regionDisplayNames";
 const shortCountryNames:Record<string,string>={
  "Китайская Народная Республика":"Китай",
  "Китайская народная республика":"Китай",
@@ -45,7 +46,7 @@ const shortCountryNames:Record<string,string>={
  "Сирийская Арабская Республика":"Сирия",
  "Республика Союз Мьянма":"Мьянма"
 };
-const localizedCountries=new Intl.DisplayNames(["ru"],{type:"region"});
+const localizedCountries=regionDisplayNames("ru");
 const isoShortNames:Record<string,string>={
  CN:"Китай",CD:"ДР Конго",CG:"Конго",RU:"Россия",US:"США",
  GB:"Великобритания",KP:"КНДР",KR:"Южная Корея",

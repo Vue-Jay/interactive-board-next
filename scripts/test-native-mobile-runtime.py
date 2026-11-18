@@ -635,7 +635,15 @@ def native_picker_button(labels):
     predicate=' or '.join(f'@{attr}="{label}"' for attr in attributes for label in labels)
     try:
         elements=command('POST','/elements',{'using':'xpath','value':'//*['+predicate+']'})
-        return next((e[ELEMENT] for e in elements if ELEMENT in e), None)
+        for e in elements:
+            value=e.get(ELEMENT)
+            if not value:
+                continue
+            if args.platform=='ios':
+                if not command('GET',f'/element/{value}/displayed') or not command('GET',f'/element/{value}/enabled'):
+                    continue
+            return value
+        return None
     except RuntimeError:
         return None
 
@@ -716,8 +724,38 @@ def native_file_export_cancel():
         if args.platform=='android':
             subprocess.run(['adb','shell','input','keyevent','4'],check=True,timeout=20)
         else:
-            cancel=wait(lambda:native_picker_button(('Cancel','CANCEL','Отмена')),'Native picker Cancel missing',15)
-            command('POST',f'/element/{cancel}/click',{})
+            # On iOS 26 the export sheet resumes in the last used folder.
+            # Accessibility can expose the hidden parent Cancel button while
+            # the visible top-left control is actually Back. Navigate up to
+            # the visible cancellation control, not a hidden element.
+            for attempt in range(4):
+                cancel=native_picker_button(('Cancel','CANCEL','Отмена'))
+                if cancel:
+                    command('POST',f'/element/{cancel}/click',{})
+                    try:
+                        wait(lambda:not native_picker_button(('Save','SAVE','Сохранить')),'File picker stayed open',5)
+                        break
+                    except AssertionError:
+                        pass
+                if not native_picker_button(('Save','SAVE','Сохранить')):
+                    break
+                (args.output/f'ios-picker-cancel-{attempt}.xml').write_text(command('GET','/source'))
+                back=native_picker_button(('Back','Browse','Locations','Назад','Обзор'))
+                if not back:
+                    # The system top-left navigation arrow may have a
+                    # localized folder name rather than a fixed Back label.
+                    screen=command('GET','/window/rect')
+                    for candidate in command('POST','/elements',{'using':'-ios predicate string','value':'type == "XCUIElementTypeButton" AND visible == 1 AND enabled == 1'}):
+                        element=candidate.get(ELEMENT)
+                        if not element:continue
+                        rect=command('GET',f'/element/{element}/rect')
+                        if rect['width']>0 and rect['height']>0 and rect['x']<screen['width']*.2 and rect['y']<screen['height']*.25:
+                            back=element;break
+                assert back,'Visible native picker Back/Cancel missing'
+                command('POST',f'/element/{back}/click',{})
+                time.sleep(.7)
+            else:
+                raise AssertionError('Unable to dismiss native document picker through its visible controls')
     finally:
         reattach_webview()
     wait(lambda:js('return window.__nativeExportNotices?.some(n=>n.includes("Сохранение отменено"))'),'Cancelling native save reported no cancellation',30)
@@ -1280,6 +1318,7 @@ def create_session():
             common['appium:skipDeviceInitialization']=True
         if os.environ.get('LEKTRUS_QA_CHROMEDRIVER'):
             common['appium:chromedriverExecutable']=os.environ['LEKTRUS_QA_CHROMEDRIVER']
+            common['appium:chromeOptions']={'w3c':True}
     else:
         common.update({'appium:udid':args.udid, 'appium:deviceName':'iPhone Simulator',
                        'appium:bundleId':'ru.lektrus.board','appium:wdaLaunchTimeout':180000,
@@ -1371,6 +1410,7 @@ def run_remaining():
         recover_board_after_create_failure()
     check('pencil-touch', lambda: draw('pen',[.38,.46,.52]), fatal=True)
     if args.suite=='android-lab':
+        check('quiz-edit-and-save',quiz_editor)
         check('native-back-and-deep-link',native_back_and_link)
         check('subject-chemistry-lab-fullscreen',chemistry_lab)
         return
@@ -1391,7 +1431,7 @@ def run_remaining():
 
 
 if args.suite=='android-lab':
-    EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','native-back-and-deep-link','subject-chemistry-lab-fullscreen']
+    EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','quiz-edit-and-save','native-back-and-deep-link','subject-chemistry-lab-fullscreen']
 elif args.suite=='ios-remaining':
     EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','table-edit-and-save',
                      'checklist-edit-and-save','flashcard-edit-and-save','quiz-edit-and-save','formula-edit-and-save',

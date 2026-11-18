@@ -18,13 +18,13 @@ const field=new ElementStub('field'),other=new ElementStub('field'),outside=new 
 const label=new ElementStub('label');label.control=other;
 const listeners=new Map();
 const doc={activeElement:field,addEventListener:(name,fn)=>listeners.set(name,fn),removeEventListener:name=>listeners.delete(name)};
-const queued=[];
-const win={matchMedia:()=>({matches:true}),setTimeout:fn=>queued.push(fn)};
+const queued=new Map();let timer=0;
+const win={matchMedia:()=>({matches:true}),setTimeout:fn=>{queued.set(++timer,fn);return timer;},clearTimeout:id=>queued.delete(id)};
 const stop=installMobileKeyboardDismissal(true,doc,win);
 const emit=(name,target,extra={})=>listeners.get(name)?.({composedPath:()=>[target],...extra});
 const touch=(name,target,x=20,y=20,remaining=name==='touchend'?[]:[{identifier:2,clientX:x,clientY:y}])=>emit(name,target,{touches:remaining,changedTouches:[{identifier:2,clientX:x,clientY:y}]});
 const pointer=(name,target,x=20,y=20)=>emit(name,target,{isPrimary:true,button:0,pointerType:'touch',pointerId:2,clientX:x,clientY:y});
-const finish=()=>{for(const fn of queued.splice(0))fn();return doc.activeElement;};
+const finish=()=>{const callbacks=[...queued.values()];queued.clear();for(const fn of callbacks)fn();return doc.activeElement;};
 const check=(name,fn,expected)=>{doc.activeElement=field;fn();assert.equal(finish(),expected,name);console.log('PASS '+name);};
 check('pointer outside tap',()=>{pointer('pointerdown',outside);pointer('pointerup',outside)},outside);
 check('touch without pointer events',()=>{touch('touchstart',outside);touch('touchend',outside)},outside);
@@ -34,4 +34,6 @@ check('touch cancellation',()=>{touch('touchstart',outside);touch('touchcancel',
 check('two fingers',()=>{touch('touchstart',outside);touch('touchstart',outside,20,20,[{identifier:1},{identifier:2}]);touch('touchend',outside)},field);
 check('other field label',()=>{touch('touchstart',label);touch('touchend',label)},field);
 check('newly focused field',()=>{touch('touchstart',outside);touch('touchend',outside);doc.activeElement=other},other);
+check('WebKit compatibility click on old field',()=>{touch('touchstart',outside);touch('touchend',outside);assert.equal(doc.activeElement,field);emit('click',field)},outside);
+check('second deliberate touch cancels pending dismissal',()=>{touch('touchstart',outside);touch('touchend',outside);touch('touchstart',other);touch('touchend',other);doc.activeElement=other;emit('click',other)},other);
 stop();assert.equal(listeners.size,0);

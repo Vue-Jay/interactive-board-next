@@ -34,22 +34,26 @@ if [ "$actual_api" -lt 30 ]; then
   export LEKTRUS_QA_LEGACY_WEBVIEW=1
   # Android 7 can start Appium Settings but the driver's legacy ps-based
   # readiness check does not always find it. The emulator is already booted.
-  if [ "$actual_api" -eq 24 ]; then
+  if [ "$actual_api" -lt 26 ]; then
     export LEKTRUS_QA_SKIP_DEVICE_INIT=1
   fi
   # Establish independent native launch evidence before starting automation.
   adb shell am start -W -n ru.lektrus.board.dev/ru.lektrus.board.MainActivity > "$out/native-launch.txt"
+  sleep 8
   adb shell dumpsys window > "$out/native-launch-window.txt"
   adb exec-out screencap -p > "$out/native-launch.png"
   adb shell am force-stop ru.lektrus.board.dev
-  # ChromeDriver 2.44 reports build.version=alpha; Appium rejects the reply.
-  # Official 2.42 supports Chrome 68–70. Leave newer engines on autodetection.
+  # Official 2.42 supports Chrome 68–70 but reports JSON Wire status; the
+  # isolated adapter translates only its actual successful readiness reply.
+  # Leave newer engines on autodetection.
   chrome_version=$(adb shell dumpsys package com.android.chrome | sed -n 's/^[[:space:]]*versionName=\([0-9]*\).*/\1/p' | head -1 | tr -d '\r')
   if [ "$actual_api" -lt 29 ] && [ "$chrome_version" = 69 ]; then
     mkdir -p "$RUNNER_TEMP/legacy-chromedriver"
     curl --fail --silent --show-error --location --retry 3 https://chromedriver.storage.googleapis.com/2.42/chromedriver_linux64.zip -o "$RUNNER_TEMP/legacy-chromedriver/driver.zip"
     unzip -oq "$RUNNER_TEMP/legacy-chromedriver/driver.zip" -d "$RUNNER_TEMP/legacy-chromedriver"
-    export LEKTRUS_QA_CHROMEDRIVER="$RUNNER_TEMP/legacy-chromedriver/chromedriver"
+    export LEKTRUS_QA_REAL_CHROMEDRIVER="$RUNNER_TEMP/legacy-chromedriver/chromedriver"
+    chmod +x scripts/legacy-chromedriver-adapter.mjs
+    export LEKTRUS_QA_CHROMEDRIVER="$PWD/scripts/legacy-chromedriver-adapter.mjs"
     "$LEKTRUS_QA_CHROMEDRIVER" --version
   fi
 fi

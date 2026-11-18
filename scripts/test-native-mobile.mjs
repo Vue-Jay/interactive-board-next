@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
+import { regionDisplayNames } from "../src/regionDisplayNames.ts";
 
 const read = name => readFileSync(new URL("../" + name, import.meta.url), "utf8");
 const pkg = JSON.parse(read("package.json"));
@@ -41,6 +42,18 @@ assert.match(workflow, /npm run native:build/);
 assert.match(read("scripts/build-native.mjs"), /VITE_LEKTRUS_BACKEND: offline \? '' : 'selfhost'/);
 assert.match(read("vite.config.ts"), /'chrome69', 'safari15'/);
 assert.match(entry, /import "\.\/nativeCompatibility"/);
+// The atlas must load on stock Android 7–10 engines without Intl.DisplayNames.
+const displayNames=Intl.DisplayNames;
+try {
+  Intl.DisplayNames=undefined;
+  for(const locale of ['ru','en']){
+    const expected=new displayNames([locale],{type:'region'}),actual=regionDisplayNames(locale);
+    // Compare stable labels; newer ICU/CLDR releases may rename regions.
+    for(const code of ['RU','JP','DE','FR','BR','CN','IN','AQ','AA']){
+      assert.equal(actual.of(code),expected.of(code),`${locale}:${code}`);
+    }
+  }
+} finally { Intl.DisplayNames=displayNames; }
 const gradle = read("android/app/build.gradle");
 assert.match(gradle,/LEKTRUS_ANDROID_VERSION_CODE/);
 assert.match(gradle,/hasReleaseSigning/);

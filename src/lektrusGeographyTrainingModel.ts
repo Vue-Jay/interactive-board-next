@@ -1,6 +1,7 @@
 /** Geography practice shares country facts between matching and question cards.
  * Modern ISO flags use the same flag source as the political atlas.
  * Multiple-capital states list the school-appropriate primary capital with a note. */
+import {regionDisplayNames} from "./regionDisplayNames";
 export type GeoRegion="Европа"|"Азия"|"Африка"|"Америка"|"Океания";
 export type GeoExercise="matching"|"cards";
 export type GeoRelation="flag-country"|"country-capital"|"outline-country";
@@ -9,7 +10,7 @@ export type GeoSelectionDifficulty=GeoDifficulty|"custom";
 export type GeoTrainingDiagram={kind:"geo-training";title:string;exercise:GeoExercise;
  relation:GeoRelation;reverse:boolean;countryCodes:string[];difficulty?:GeoSelectionDifficulty};
 export type GeoCountry={code:string;name:string;capital:string;region:GeoRegion;note?:string;difficulty:GeoDifficulty};
-const countryNames=new Intl.DisplayNames(["ru"],{type:"region"});
+const countryNames=regionDisplayNames("ru");
 const overrides:Record<string,string>={
  US:"США",GB:"Великобритания",KR:"Республика Корея",KP:"КНДР",
  CZ:"Чехия",TR:"Турция",CI:"Кот-д’Ивуар",CD:"ДР Конго",

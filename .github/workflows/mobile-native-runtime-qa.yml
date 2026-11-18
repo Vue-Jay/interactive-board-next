@@ -26,9 +26,7 @@ env:
 jobs:
   browser-touch:
     name: Mobile and tablet browser touch regression
-    # The current app tree already passed browser QA. The Android matrix
-    # expansion changes only CI; do not repeat browser/iOS on this PR push.
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    # Recheck touch dismissal after the WKWebView compatibility-click fix.
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -98,9 +96,9 @@ jobs:
       fail-fast: false
       max-parallel: 13
       matrix:
-        # Retest the legacy WebView images first. Full manual acceptance
-        # retains the complete supported OS matrix.
-        api: ${{ fromJSON(github.event_name == 'pull_request' && '[24,25,26,27,28,29]' || github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining' && '[35]' || '[24,25,26,27,28,29,30,31,32,33,34,35,36]') }}
+        # Retest legacy engines after their startup/driver fixes, plus
+        # emulator crashes on API 32–34/36. Full remains every supported OS.
+        api: ${{ fromJSON(github.event_name == 'pull_request' && '[24,25,26,27,28,29,32,33,34,36]' || github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining' && '[32,33,34,35]' || '[24,25,26,27,28,29,30,31,32,33,34,35,36]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -139,15 +137,15 @@ jobs:
           # Google API 35 loses the whole emulator during background Google
           # service activity, including with ample host/guest memory. The
           # isolated app does not use Play services; use the AOSP phone image.
-          target: ${{ matrix.api == 35 && 'default' || 'google_apis' }}
+          target: ${{ matrix.api >= 32 && 'default' || 'google_apis' }}
           # SDK Manager no longer publishes google_apis;x86_64 for API 27.
           # Keep the OS/API unchanged and test its available 32-bit image.
           arch: ${{ matrix.api == 27 && 'x86' || 'x86_64' }}
           profile: pixel_6
           disable-animations: true
           # Keep a realistic memory budget for the Android 15 phone image.
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim ${{ matrix.api == 35 && '-memory 4096' || '' }}
-          script: bash scripts/run-android-mobile-qa.sh "${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining' && 'android-lab' || 'full' }}" "${{ matrix.api }}"
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim ${{ matrix.api >= 32 && '-memory 4096' || '' }}
+          script: bash scripts/run-android-mobile-qa.sh "${{ (github.event_name == 'pull_request' && matrix.api >= 32 && matrix.api <= 34 || github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining') && 'android-lab' || 'full' }}" "${{ matrix.api }}"
       - name: Upload Android runtime logs and screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -159,8 +157,7 @@ jobs:
 
   ios:
     name: iPhone simulator native runtime
-    # Keep the in-flight iPhone acceptance on the identical app code.
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    # The PR changes touch handling; rerun the remaining native cases.
     runs-on: macos-26
     timeout-minutes: 50
     steps:
