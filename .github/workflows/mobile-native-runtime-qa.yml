@@ -96,9 +96,9 @@ jobs:
       fail-fast: false
       max-parallel: 13
       matrix:
-        # Retest file-picker and compact notices on legacy WebViews.
-        # Full acceptance still covers every supported OS.
-        api: ${{ fromJSON(github.event_name == 'pull_request' && '[24,25,26,27,28,29]' || github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining' && '[32,33,34,35]' || '[24,25,26,27,28,29,30,31,32,33,34,35,36]') }}
+        # Final bounded acceptance: identical APK, every supported Android OS.
+        # Manual remaining mode is retained for targeted diagnostics.
+        api: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining' && '[32,33,34,35]' || '[24,25,26,27,28,29,30,31,32,33,34,35,36]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -147,7 +147,7 @@ jobs:
           # API 33/34 repeatedly lost the emulator during the laboratory's
           # graphics workload. Use ANGLE rather than the old GLES translator.
           emulator-options: -no-window -gpu ${{ (matrix.api == 33 || matrix.api == 34) && 'swangle' || 'swiftshader_indirect' }} -no-snapshot -noaudio -no-boot-anim ${{ matrix.api >= 32 && '-memory 4096' || '' }}
-          script: bash scripts/run-android-mobile-qa.sh "${{ github.event_name == 'pull_request' && matrix.api < 30 && 'android-export-lab' || (github.event_name == 'pull_request' && matrix.api >= 32 && matrix.api <= 34 || github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining') && 'android-lab' || 'full' }}" "${{ matrix.api }}"
+          script: bash scripts/run-android-mobile-qa.sh "${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining' && 'android-lab' || 'full' }}" "${{ matrix.api }}"
       - name: Upload Android runtime logs and screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -159,9 +159,9 @@ jobs:
 
   ios:
     name: iPhone simulator native runtime
-    # The PR changes touch handling; rerun the remaining native cases.
+    # Final 57-scenario iPhone acceptance, including the first loader frame.
     runs-on: macos-26
-    timeout-minutes: 50
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -218,7 +218,7 @@ jobs:
             WDA_ARGS=(--wda-derived-data "$WDA_DERIVED")
           fi
           "$APPIUM" --address 127.0.0.1 --port 4723 > artifacts/mobile-qa/appium.log 2>&1 &
-          python3 scripts/test-native-mobile-runtime.py ios --suite "${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'full' && 'full' || 'ios-remaining' }}" --app "$APP" --udid "$SIMULATOR_UDID" "${WDA_ARGS[@]}" --output artifacts/mobile-qa
+          python3 scripts/test-native-mobile-runtime.py ios --suite "${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining' && 'ios-remaining' || 'full' }}" --app "$APP" --udid "$SIMULATOR_UDID" "${WDA_ARGS[@]}" --output artifacts/mobile-qa
       - name: Upload iOS runtime logs and screenshots
         if: always()
         uses: actions/upload-artifact@v4

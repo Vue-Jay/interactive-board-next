@@ -65,8 +65,10 @@ export function releaseBrowserBoardLandscape(){
  if(ownsFullscreen){ownsFullscreen=false;if(document.fullscreenElement===document.documentElement)void document.exitFullscreen().catch(()=>{})}
 }
 
-export function BoardLoadingScreen({browserRotate=false}:{browserRotate?:boolean}={}){
- return <main className="lektrus-board-loading" data-browser-rotate={browserRotate||undefined} role="status" aria-live="polite"><section className="lektrus-board-loading-card"><div className="lektrus-board-loading-mark"><img src="/lektrus-icon-192.png" alt=""/><i/></div><span className="lektrus-board-loading-kicker">LEKTRUS · РАБОЧЕЕ ПРОСТРАНСТВО</span><h1>Готовим доску</h1><p>Подключаем материалы и инструменты для занятия.</p><div className="lektrus-board-loading-progress" aria-hidden="true"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></section></main>;
+export function BoardLoadingScreen({browserRotate=false,nativeRotate=Capacitor.isNativePlatform()}:{browserRotate?:boolean;nativeRotate?:boolean}={}){
+ // The first painted loader must not depend on a parent layout effect or
+ // the asynchronous native orientation transition.
+ return <main className="lektrus-board-loading" data-native-rotate={nativeRotate} data-browser-rotate={browserRotate||undefined} role="status" aria-live="polite"><section className="lektrus-board-loading-card"><div className="lektrus-board-loading-mark"><img src="/lektrus-icon-192.png" alt=""/><i/></div><span className="lektrus-board-loading-kicker">LEKTRUS · РАБОЧЕЕ ПРОСТРАНСТВО</span><h1>Готовим доску</h1><p>Подключаем материалы и инструменты для занятия.</p><div className="lektrus-board-loading-progress" aria-hidden="true"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></section></main>;
 }
 
 function frameUrl(path:string){

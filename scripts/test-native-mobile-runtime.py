@@ -324,7 +324,7 @@ def open_new_board():
       for(const name of ['pointerdown','pointerup','click','submit','focusout'])document.addEventListener(name,e=>{
       if(window.__createTouchEvents.length<40)window.__createTouchEvents.push({type:name,target:e.target.tagName,button:e.target.closest('button')?.textContent,point:[e.clientX,e.clientY],active:document.activeElement?.tagName,visualTop:visualViewport?.offsetTop})},true);
       const sample=()=>{if(!window.__boardLoadingObserve)return;const e=document.querySelector('.lektrus-board-loading');
-      if(e&&e.getClientRects().length&&window.__boardLoadingFrames.length<240)window.__boardLoadingFrames.push({viewport:[innerWidth,innerHeight],loader:[e.offsetWidth,e.offsetHeight],transform:getComputedStyle(e).transform});requestAnimationFrame(sample)};requestAnimationFrame(sample);''')
+      if(e&&e.getClientRects().length&&window.__boardLoadingFrames.length<240)window.__boardLoadingFrames.push({viewport:[innerWidth,innerHeight],loader:[e.offsetWidth,e.offsetHeight],transform:getComputedStyle(e).transform,nativeRotate:e.getAttribute('data-native-rotate'),rootRotating:document.documentElement.classList.contains('lektrus-native-rotating'),portraitMedia:matchMedia('(orientation:portrait)').matches,path:location.pathname});requestAnimationFrame(sample)};requestAnimationFrame(sample);''')
     native_gesture([(coords['x'],coords['y'])])
     try:
         wait(lambda: visible_id('section.board'), 'Board not rendered', 90)
@@ -333,7 +333,8 @@ def open_new_board():
         raise
     wait(lambda: js('return innerWidth>innerHeight'), 'Board failed to rotate to landscape', 30)
     frames=js('window.__boardLoadingObserve=false;return window.__boardLoadingFrames||[];')
-    assert frames and all(f['loader'][0]>=f['loader'][1] for f in frames), f'Board loading missing or rendered vertically: {[f for f in frames if f["loader"][0]<f["loader"][1]][:5] or frames[:5]}'
+    assert frames and all(f['nativeRotate']=='true' for f in frames), f'Native rotation marker missing from painted loader: {frames[:5]}'
+    assert all(f['loader'][0]>=f['loader'][1] for f in frames), f'Board loading missing or rendered vertically: {[f for f in frames if f["loader"][0]<f["loader"][1]][:5] or frames[:5]}'
     assert js('return document.querySelector(".board-title")?.value') == 'Native QA', 'Board title did not persist'
     return {'viewport': js('return [innerWidth, innerHeight]'), 'path': js('return location.pathname'), 'createButtonWithKeyboard':coords, 'landscapeLoadingFrames':len(frames), 'firstLoadingFrame':frames[0] if frames else None}
 
@@ -677,25 +678,44 @@ def start_native_export(label):
     context('NATIVE_APP')
 
 
-def android_app_has_focus():
-    # WebDriver can attach to a hidden WebView beneath DocumentsUI; verify
-    # the actual focused Android window before accepting save or cancel.
+def android_foreground_activity():
+    # Android 10 can resume Lektrus after a successful document write while
+    # the focus is briefly on the status/navigation window during rotation.
+    # Prefer the actual resumed Activity; window focus is a fallback only.
+    state=subprocess.run(['adb','shell','dumpsys','activity','activities'],
+                         capture_output=True,text=True,timeout=15,check=True).stdout
+    lines=state.splitlines()
+    resumed=[line for line in lines if 'topresumedactivity' in line.lower() and 'ActivityRecord{' in line]
+    if not resumed:
+        resumed=[line for line in lines if 'mresumedactivity' in line.lower() and 'ActivityRecord{' in line]
+    if any('documentsui/' in line for line in resumed): return 'picker'
+    if any('ru.lektrus.board.dev/' in line for line in resumed): return 'app'
     state=subprocess.run(['adb','shell','dumpsys','window','windows'],
                          capture_output=True,text=True,timeout=15,check=True).stdout
-    return any('mCurrentFocus=' in line and 'ru.lektrus.board.dev/' in line
-               for line in state.splitlines())
+    focused=[line for line in state.splitlines() if 'mCurrentFocus=' in line]
+    if any('documentsui/' in line for line in focused): return 'picker'
+    if any('ru.lektrus.board.dev/' in line for line in focused): return 'app'
+    return 'unknown'
+
+
+def android_app_has_focus():
+    return android_foreground_activity()=='app'
 
 
 def dismiss_android_picker():
     for attempt in range(3):
-        if android_app_has_focus(): return
+        foreground=wait(lambda: activity if (activity:=android_foreground_activity()) in ('app','picker') else None,
+                        'Unable to identify the foreground Android activity',8)
+        if foreground=='app': return
+        # Never press Back after the board Activity has resumed, even if an
+        # OS status-bar window temporarily owns keyboard/input focus.
         subprocess.run(['adb','shell','input','keyevent','4'],check=True,timeout=20)
         try:
-            wait(android_app_has_focus,'DocumentsUI still focused',4)
+            wait(android_app_has_focus,'DocumentsUI still resumed',4)
             return
         except AssertionError:
             pass
-    assert android_app_has_focus(),'DocumentsUI did not return focus to Lektrus'
+    assert android_app_has_focus(),'DocumentsUI did not return to Lektrus'
 
 
 def native_file_export_save():
@@ -731,9 +751,11 @@ def native_file_export_save():
             except AssertionError:
                 # An overlay may have consumed the first tap; reacquire the
                 # real enabled Save button. A completed export never retries.
-                save=wait(lambda:native_picker_button(('Save','SAVE','Сохранить'),require_enabled=True),'Save control unavailable on retry',10)
-                command('POST',f'/element/{save}/click',{})
-                wait(android_app_has_focus,'File picker did not close after Save',15)
+                if not android_app_has_focus():
+                    save=wait(lambda:native_picker_button(('Save','SAVE','Сохранить'),require_enabled=True),'Save control unavailable on retry',10)
+                    if android_foreground_activity()=='picker':
+                        command('POST',f'/element/{save}/click',{})
+                    wait(android_app_has_focus,'File picker did not close after Save',20)
     finally:
         if args.platform=='android' and not android_app_has_focus():
             dismiss_android_picker()
