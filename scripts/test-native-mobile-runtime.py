@@ -362,12 +362,16 @@ def create_session():
     else:
         common.update({'appium:udid':args.udid, 'appium:deviceName':'iPhone Simulator',
                        'appium:bundleId':'ru.lektrus.board','appium:wdaLaunchTimeout':180000,
-                       'appium:wdaConnectionTimeout':180000, 'appium:showXcodeLog':True})
+                       'appium:wdaConnectionTimeout':180000, 'appium:showXcodeLog':True,
+                       # The CI simulator was explicitly booted via simctl. Opening
+                       # Simulator.app makes Appium restart its UI and can time out.
+                       'appium:isHeadless':True,'appium:simulatorStartupTimeout':300000,
+                       'appium:noReset':True})
         if args.wda_app:
             common.update({'appium:usePreinstalledWDA':True,'appium:prebuiltWDAPath':args.wda_app})
         elif args.wda_derived_data:
             common.update({'appium:usePrebuiltWDA':True,'appium:derivedDataPath':args.wda_derived_data})
-    return request('POST','/session',{'capabilities':{'alwaysMatch':common,'firstMatch':[{}]}}, timeout=420)
+    return request('POST','/session',{'capabilities':{'alwaysMatch':common,'firstMatch':[{}]}}, timeout=900 if args.platform=='ios' else 420)
 
 
 try:
