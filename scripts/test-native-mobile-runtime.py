@@ -798,7 +798,7 @@ def native_file_export_cancel():
             # Accessibility can expose the hidden parent Cancel button while
             # the visible top-left control is actually Back. Navigate up to
             # the visible cancellation control, not a hidden element.
-            for attempt in range(4):
+            for attempt in range(6):
                 cancel=native_picker_button(('Cancel','CANCEL','Отмена'))
                 if cancel:
                     command('POST',f'/element/{cancel}/click',{})
@@ -807,8 +807,10 @@ def native_file_export_cancel():
                         break
                     except AssertionError:
                         pass
-                if not native_picker_button(('Save','SAVE','Сохранить')):
-                    break
+                # The iOS Files "Browse" root intentionally has no Save
+                # button. Missing Save means navigation, NOT cancellation.
+                # Keep walking toward the actual visible Cancel control so
+                # didPick/cancelled fires and the native sheet closes.
                 (args.output/f'ios-picker-cancel-{attempt}.xml').write_text(command('GET','/source'))
                 back=native_picker_button(('Back','Browse','Locations','Назад','Обзор'))
                 if not back:
