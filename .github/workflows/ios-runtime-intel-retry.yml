@@ -1,7 +1,8 @@
-name: iPhone full runtime retry (Intel isolated)
+name: iPhone export and lab retry (Intel isolated)
 on:
   push:
     branches: [qa/ios-runtime-intel-20261118]
+    paths: [scripts/test-native-mobile-runtime.py]
 
 permissions:
   contents: read
@@ -19,7 +20,7 @@ env:
 jobs:
   ios:
     name: iPhone simulator native runtime
-    # Same installed iOS simulator and full 57 scenarios; alternate Intel runner.
+    # Same installed iOS simulator; focus on unresolved export, lab and link.
     runs-on: macos-26-intel
     timeout-minutes: 90
     steps:
@@ -86,7 +87,7 @@ jobs:
             WDA_ARGS=(--wda-derived-data "$WDA_DERIVED")
           fi
           "$APPIUM" --address 127.0.0.1 --port 4723 > artifacts/mobile-qa/appium.log 2>&1 &
-          python3 scripts/test-native-mobile-runtime.py ios --suite "full" --app "$APP" --udid "$SIMULATOR_UDID" "${WDA_ARGS[@]}" --output artifacts/mobile-qa
+          python3 scripts/test-native-mobile-runtime.py ios --suite "ios-export-lab" --app "$APP" --udid "$SIMULATOR_UDID" "${WDA_ARGS[@]}" --output artifacts/mobile-qa
       - name: Upload iOS runtime logs and screenshots
         if: always()
         uses: actions/upload-artifact@v4
