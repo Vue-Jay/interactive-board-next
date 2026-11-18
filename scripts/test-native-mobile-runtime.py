@@ -1574,16 +1574,33 @@ def run_full():
     check('native-back-and-deep-link', native_back_and_link)
 
 
+def ios_native_return_for_rotation():
+    # Leaving a landscape WKWebView can invalidate an in-flight inspector
+    # command. Touch the actual Back control, wait on native orientation,
+    # then reattach and verify the actual workspace in the installed app.
+    native_tap('.back-to-boards',reattach=False)
+    def portrait_window():
+        rect=command('GET','/window/rect',timeout=15)
+        return rect if rect['height']>rect['width'] else None
+    try:
+        rect=wait(portrait_window,'Native iPhone window did not restore portrait',45)
+    finally:
+        reattach_webview(60)
+    wait(lambda:visible_id('.lectris-library-intro,.lektrus-calendar-grid'),'Rotation retry could not return to workspace',45)
+    wait(lambda:js('return innerHeight>innerWidth'),'Rotation retry workspace did not restore portrait',30)
+    path=js('return location.pathname')
+    assert path in ('/','/app'),f'Unexpected return route: {path}'
+    return {'path':path,'nativeWindow':rect,'webViewport':js('return [innerWidth,innerHeight]')}
+
+
 def run_ios_rotation():
-    # Reproduce the race three times, without relying on previous native state.
+    # Exercise each opening and each real return as separately reported checks.
     for attempt in range(1,4):
         check(f'create-board-and-landscape-{attempt}',open_new_board)
         if results[-1]['status']!='passed':
             recover_board_after_create_failure()
         if attempt<3:
-            click('.back-to-boards')
-            wait(lambda:visible_id('.lectris-library-intro,.lektrus-calendar-grid'),'Rotation retry could not return to workspace',45)
-            wait(lambda:js('return innerHeight>innerWidth'),'Rotation retry workspace did not restore portrait',30)
+            check(f'return-to-workspace-{attempt}',ios_native_return_for_rotation,fatal=True)
 
 
 def run_remaining():
@@ -1634,7 +1651,7 @@ if args.suite in ('android-lab','android-export-lab','ios-export-lab'):
     if args.suite=='ios-export-lab':
         EXPECTED_CHECKS[3:]=['subject-chemistry-lab-fullscreen','native-back-and-deep-link','native-file-export-save','native-file-export-cancel']
 elif args.suite=='ios-rotation':
-    EXPECTED_CHECKS=[f'create-board-and-landscape-{attempt}' for attempt in range(1,4)]
+    EXPECTED_CHECKS=['create-board-and-landscape-1','return-to-workspace-1','create-board-and-landscape-2','return-to-workspace-2','create-board-and-landscape-3']
 elif args.suite=='ios-remaining':
     EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','table-edit-and-save',
                      'checklist-edit-and-save','flashcard-edit-and-save','quiz-edit-and-save','formula-edit-and-save',
