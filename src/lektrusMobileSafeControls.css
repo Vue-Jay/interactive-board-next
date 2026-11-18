@@ -7,6 +7,18 @@
   --lektrus-safe-bottom:max(env(safe-area-inset-bottom,0px),var(--lektrus-cutout-bottom,0px));
   --lektrus-rail-left:calc(var(--lektrus-safe-left) + clamp(10px,1.5vw,16px));
 }
+/* Invalid CSS functions inside custom properties invalidate every consumer
+   on Chromium 69/74, so fixed navigation controls otherwise all land at 0,0.
+   Android exports the same maximum in CSS pixels directly for these engines. */
+@supports not (width:max(1px,2px)) {
+  html.lektrus-native-app {
+    --lektrus-safe-left:var(--lektrus-legacy-safe-left,0px);
+    --lektrus-safe-right:var(--lektrus-legacy-safe-right,0px);
+    --lektrus-safe-top:var(--lektrus-legacy-safe-top,0px);
+    --lektrus-safe-bottom:var(--lektrus-legacy-safe-bottom,0px);
+    --lektrus-rail-left:calc(var(--lektrus-safe-left) + 12px);
+  }
+}
 /* Keyboard can shrink only the visual viewport (iOS Safari/WKWebView).
    Keep the create action pinned above it on phones and touch tablets. */
 @media screen and (max-width:1100px), screen and (any-pointer:coarse) {
@@ -16,6 +28,7 @@
     width:var(--lektrus-dialog-visible-width,100vw);
     height:var(--lektrus-dialog-visible-height,100vh);
     grid-template-rows:minmax(0,1fr);
+    padding:12px;
     padding:max(12px,var(--lektrus-safe-top)) max(12px,var(--lektrus-safe-right)) max(12px,var(--lektrus-safe-bottom)) max(12px,var(--lektrus-safe-left));
     overflow:hidden;
   }
@@ -137,6 +150,7 @@
   html body .workspace section.mobile-tools-sheet {
     left:calc(var(--lektrus-rail-left) + 60px)!important;
     top:calc(72px + var(--lektrus-safe-top))!important;
+    width:510px!important;
     width:min(510px,calc(100vw - var(--lektrus-rail-left) - var(--lektrus-safe-right) - 74px))!important;
     max-width:calc(100vw - var(--lektrus-rail-left) - var(--lektrus-safe-right) - 74px)!important;
     bottom:calc(16px + var(--lektrus-safe-bottom))!important;
@@ -162,6 +176,8 @@
      Reserve proportional clearance for the lab expansion button so it is
      reachable even when the whole object is scaled down on a phone. */
   html.lektrus-native-app body .workspace .lektrus-chemistry-bench-on-board>.lektrus-lab-open-editor {
+    right:12%!important;
+    top:10%!important;
     right:max(14px,12%)!important;
     top:max(14px,10%)!important;
   }

@@ -41,6 +41,18 @@ export function installNativeCompatibility() {
   return String(this).replace(new RegExp(String(search).replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"g"),replacement as string);
  });
  define(Object,"hasOwn",(object:object,key:PropertyKey)=>Object.prototype.hasOwnProperty.call(object,key));
+ // Chromium 69 has FileReader but not the promise-based Blob methods.
+ // Keep chunked native exports and PDF imports working without buffering
+ // the whole file or changing the binary payload.
+ define(Blob.prototype,"arrayBuffer",function(this:Blob){
+  return new Promise<ArrayBuffer>((resolve,reject)=>{
+   const reader=new FileReader();
+   reader.onload=()=>resolve(reader.result as ArrayBuffer);
+   reader.onerror=()=>reject(reader.error);
+   reader.onabort=()=>reject(new DOMException("Read aborted","AbortError"));
+   reader.readAsArrayBuffer(this);
+  });
+ });
  // The app uses structuredClone for plain board/editor data, not transferable
  // objects. Preserve undefined, repeated references, and cycles.
  define(globalThis,"structuredClone",function<T>(input:T):T{

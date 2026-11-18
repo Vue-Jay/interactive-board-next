@@ -96,9 +96,9 @@ jobs:
       fail-fast: false
       max-parallel: 13
       matrix:
-        # Retest legacy engines after their startup/driver fixes, plus
-        # emulator crashes on API 32–34/36. Full remains every supported OS.
-        api: ${{ fromJSON(github.event_name == 'pull_request' && '[24,25,26,27,28,29,32,33,34,36]' || github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining' && '[32,33,34,35]' || '[24,25,26,27,28,29,30,31,32,33,34,35,36]') }}
+        # Retest the legacy layout and remaining laboratory regressions.
+        # Full remains every supported OS; API 32 and 36 passed their retries.
+        api: ${{ fromJSON(github.event_name == 'pull_request' && '[24,25,26,27,28,29,33,34]' || github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining' && '[32,33,34,35]' || '[24,25,26,27,28,29,30,31,32,33,34,35,36]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

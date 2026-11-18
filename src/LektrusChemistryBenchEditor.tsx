@@ -1,10 +1,18 @@
-import {useEffect,useRef,useState} from "react";
+import {useEffect,useLayoutEffect,useRef,useState} from "react";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import LektrusChemistryBenchSurface,{clearLabCabinetSession} from "./LektrusChemistryBench";
 import {putLabReagent,pourLabVessel,readLabBench,selectLabVessel,type LabBench,type LabDose}
  from "./lektrusChemistryBenchModel";
 import {subjectEditorStyle} from "./lektrusSubjectAccent";
+
+function fullscreenStage(w:number,h:number){
+ const compact=(document.documentElement.classList.contains("lektrus-native-app")&&w<=1100)||
+  window.matchMedia("(pointer:coarse) and (max-width:1100px)").matches||
+  window.matchMedia("(max-width:650px)").matches;
+ const scale=compact?1:h/1000;
+ return {width:compact?w:w/scale,height:compact?h:1000,scale,compact};
+}
 
 type Props={item:Item;onChange:(next:Item,simulationOnly?:boolean)=>void;onSave:()=>void;onCancel:()=>void};
 /** The fullscreen view renders the EXACT shared bench used by the board object.
@@ -18,10 +26,11 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
   if(save)onSave();else onCancel();
  };
  const viewport=useRef<HTMLDivElement>(null);
- const [stage,setStage]=useState({width:1600,height:1000,scale:1,compact:false});
+ // A phone must never paint the full-size desktop stage as its first frame.
+ const [stage,setStage]=useState(()=>fullscreenStage(window.innerWidth||1600,window.innerHeight||1000));
  // The full-screen laboratory owns the live simulation. Keep the underlying
  // board out of Android WebView's paint tree while the portal is shown.
- useEffect(()=>{
+ useLayoutEffect(()=>{
   document.body.classList.add("lektrus-lab-fullscreen-active");
   window.dispatchEvent(new Event("lektrus-lab-fullscreen-change"));
   return()=>{
@@ -29,19 +38,14 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
    window.dispatchEvent(new Event("lektrus-lab-fullscreen-change"));
   };
  },[]);
- useEffect(()=>{
+ useLayoutEffect(()=>{
   const node=viewport.current;if(!node)return;
   const resize=()=>{
    const w=node.clientWidth,h=node.clientHeight;
    if(!w||!h)return;
    // Phones need real-size controls, not a 1000px desktop stage zoomed
    // down to illegible text. Landscape/portrait can change at runtime.
-   const compact=(document.documentElement.classList.contains("lektrus-native-app")&&w<=1100)||
-    window.matchMedia("(pointer:coarse) and (max-width:1100px)").matches||
-    window.matchMedia("(max-width:650px)").matches;
-   const scale=compact?1:h/1000;
-   const width=compact?w:w/scale;
-   const height=compact?h:1000;
+   const {width,height,scale,compact}=fullscreenStage(w,h);
    setStage(old=>Math.abs(old.width-width)<.5&&
     Math.abs(old.height-height)<.5&&Math.abs(old.scale-scale)<.001&&
     old.compact===compact?old:{width,height,scale,compact});

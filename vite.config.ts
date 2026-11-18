@@ -21,6 +21,21 @@ export default defineConfig({
     css: { postcss: { plugins: [{
       postcssPlugin: 'native-viewport-unit-fallback',
       Declaration(decl) {
+        // Chromium 69–83 ignores the inset shorthand. Split its top-level
+        // CSS values without breaking nested var()/calc() expressions.
+        if (decl.prop === 'inset') {
+          const values:string[]=[];let depth=0,token='';
+          for(const ch of decl.value){
+            if(ch==='(')depth++;else if(ch===')')depth--;
+            if(!depth&&/\s/.test(ch)){if(token){values.push(token);token='';}}
+            else token+=ch;
+          }
+          if(token)values.push(token);
+          if(values.length>=1&&values.length<=4){
+            const [top,right=top,bottom=top,left=right]=values;
+            for(const [prop,value] of Object.entries({top,right,bottom,left}))decl.cloneBefore({prop,value});
+          }
+        }
         if (/\d(?:d|s|l)v[hw]\b/.test(decl.value)) {
           const value=decl.value.replace(/(\d)(?:d|s|l)v([hw])\b/g,'$1v$2');
           decl.cloneBefore({ value });

@@ -97,6 +97,11 @@ public class MainActivity extends BridgeActivity {
                     "s.setProperty('--lektrus-system-left',(" + systemLeft + "/r)+'px');" +
                     "s.setProperty('--lektrus-system-right',(" + systemRight + "/r)+'px');" +
                     "s.setProperty('--lektrus-system-top',(" + status.top + "/r)+'px');" +
+                    // CSS max()/clamp() are unavailable on legacy WebView 69/74.
+                    "s.setProperty('--lektrus-legacy-safe-left',(" + Math.max(cutout.left, systemLeft) + "/r)+'px');" +
+                    "s.setProperty('--lektrus-legacy-safe-right',(" + Math.max(cutout.right, systemRight) + "/r)+'px');" +
+                    "s.setProperty('--lektrus-legacy-safe-top',(" + Math.max(cutout.top, status.top) + "/r)+'px');" +
+                    "s.setProperty('--lektrus-legacy-safe-bottom',(" + cutout.bottom + "/r)+'px');" +
                     "})();", null);
             }
             // Use ignoring-visibility inset: status can be temporarily hidden by

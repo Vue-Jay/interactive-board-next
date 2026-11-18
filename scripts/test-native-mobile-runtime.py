@@ -917,6 +917,13 @@ def type_into(selector, value, clear=False, outside=None):
         # some old/WebKit drivers clear only the DOM, leaving state unchanged.
         old_value=js('return document.querySelector(arguments[0]).value',selector)
         if old_value:
+            if os.environ.get('LEKTRUS_QA_CHROMEDRIVER'):
+                # Legacy ChromeDriver 2.x does not implement W3C key actions.
+                # Use the actual Android input stack, not JavaScript mutation.
+                subprocess.run(['adb','shell','input','keyevent','123',*(['67']*len(old_value))],check=True,timeout=25)
+                wait(lambda:js('return document.querySelector(arguments[0]).value=== ""',selector),'Native keyboard did not clear previous text',10)
+                old_value=''
+        if old_value:
             modifier='\ue009' if args.platform=='android' else '\ue03d'
             command('POST','/actions',{'actions':[{'type':'key','id':'keyboard','actions':[
                 {'type':'keyDown','value':modifier},{'type':'keyDown','value':'a'},
