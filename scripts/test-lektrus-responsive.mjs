@@ -32,6 +32,8 @@ assert.ok(styles.includes("pointer:coarse")&&styles.includes("orientation:landsc
   "touch landscape layout must have its own bounds");
 
 const safeControls=source("src/lektrusMobileSafeControls.css");
+const mobileDialogs=source("src/lektrusMobileDialogs.css");
+assert.match(mobileDialogs,/\.topbar-more-menu\[open\]>\.topbar-more-popover,[\s\S]*?max-height:calc\(100vh - 108px/,"Legacy Chromium menus require an explicit selector and vh fallback");
 // A browser-level 844×390 coarse-pointer acceptance exposed a real overlap:
 // the selection toolbar intercepted the rightmost zoom action (974 px²).
 // These source guards complement, but do not replace, that DOM hit test.

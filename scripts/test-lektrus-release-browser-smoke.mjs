@@ -210,6 +210,14 @@ try{
   await evaluate(`window.__boardPath=${JSON.stringify(directPath)}`);
   assert.equal((await evaluate(storedPen)).id,ink.id);
   console.log('✓ Return to portrait workspace and direct-link reopen preserve saved ink');
+  const menu=await point('.topbar-more-menu>summary');assert.ok(menu,'Board actions menu unavailable');await touch([menu]);
+  const menuBounds=await evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),element=f.contentDocument.querySelector('.topbar-more-menu[open] .topbar-more-popover');if(!element)return null;const r=element.getBoundingClientRect();return {top:r.top,bottom:r.bottom,height:f.contentWindow.innerHeight,scrollable:element.scrollHeight>element.clientHeight,overflow:f.contentWindow.getComputedStyle(element).overflowY}})()`);
+  assert.ok(menuBounds&&menuBounds.top>=0&&menuBounds.bottom<=menuBounds.height+1&&(!menuBounds.scrollable||menuBounds.overflow==='auto'||menuBounds.overflow==='scroll'),JSON.stringify(menuBounds));
+  console.log('✓ Rotated board actions menu fits the viewport and can scroll');
+  await call('Page.navigate',{url:new URL('/demo/board?scene=math',url).href});
+  await wait(boardReady,'Public demo did not open in landscape',45000);
+  const demoState=await state();assert.equal(demoState.rotated,true);assert.ok(demoState.width>demoState.height);
+  console.log('✓ Public demo board uses the same landscape viewport');
  }else
  if(keyboardOnly){
   await wait('!!document.querySelector(".lektrus-calendar-grid")',"Application did not render",30000);

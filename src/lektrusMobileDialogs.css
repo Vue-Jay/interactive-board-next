@@ -155,7 +155,12 @@
    actual top toolbar and within the viewport, not a full-height panel
    starting 70px below the top. Every action must remain reachable by touch. */
 @media (max-width:1100px), (any-pointer:coarse) {
-  html body .topbar .topbar-right :is(.topbar-more-popover,.lektrus-board-actions-popover,.presence-popover,.lectris-layout-menu) {
+  /* Do not put the legacy fallback inside :is(): Chromium 83 drops
+     the entire selector. Match the real open details explicitly. */
+  html body .topbar .topbar-right .topbar-more-menu[open]>.topbar-more-popover,
+  html body .topbar .topbar-right .lektrus-board-actions-menu[open]>.lektrus-board-actions-popover,
+  html body .topbar .topbar-right .presence-menu[open]>.presence-popover,
+  html body .topbar .topbar-right .lectris-layout-picker[open]>.lectris-layout-menu {
     box-sizing:border-box!important;
     max-height:calc(100vh - 108px - env(safe-area-inset-bottom,0px))!important;
     max-height:calc(100dvh - 108px - env(safe-area-inset-bottom,0px))!important;

@@ -280,6 +280,7 @@ html body .topbar .lektrus-board-actions-menu[open]>.lektrus-board-actions-popov
  display:block!important;position:fixed!important;
  left:auto!important;right:12px!important;top:calc(54px + env(safe-area-inset-top,0px))!important;bottom:auto!important;
  z-index:5000!important;width:min(290px,calc(100vw - 24px))!important;
+ max-height:calc(100vh - 66px - env(safe-area-inset-top,0px))!important;
  max-height:calc(100dvh - 66px - env(safe-area-inset-top,0px))!important;
  overflow-x:hidden!important;overflow-y:auto!important;
  box-sizing:border-box!important;padding:7px!important;margin:0!important;
@@ -314,6 +315,7 @@ html body .topbar .topbar-more-popover .lektrus-controls-menu-entry:hover{backgr
 @media(max-width:700px){
  html body .topbar .lektrus-board-actions-menu[open]>.lektrus-board-actions-popover{
  top:calc(50px + env(safe-area-inset-top,0px))!important;right:8px!important;
+ max-height:calc(100vh - 60px - env(safe-area-inset-top,0px))!important;
  max-height:calc(100dvh - 60px - env(safe-area-inset-top,0px))!important;
  }
 }
