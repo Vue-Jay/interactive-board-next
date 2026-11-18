@@ -93,7 +93,7 @@ try{
  });
  const evaluate=async expression=>{
   const result=await call("Runtime.evaluate",{expression,awaitPromise:true,returnByValue:true,userGesture:true});
-  if(result.exceptionDetails)throw new Error("Browser evaluation: "+result.exceptionDetails.text);
+  if(result.exceptionDetails)throw new Error("Browser evaluation: "+(result.exceptionDetails.exception?.description||result.exceptionDetails.text));
   return result.result?.value;
  };
  const wait=async (expression,message,timeout=12000)=>{
@@ -146,10 +146,18 @@ try{
   await wait('!!document.querySelector(".lectris-library-new")','Board library did not render');
   await click('.lectris-library-new');
   await wait('!!document.querySelector(".lektrus-create-dialog")','Create board dialog did not render');
-  await evaluate(`(()=>{const e=document.querySelector('.lektrus-create-dialog input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,'Landscape browser QA');e.dispatchEvent(new Event('input',{bubbles:true}));e.blur();window.__loaderFrames=[];window.__sampleLoader=true;const sample=()=>{if(!window.__sampleLoader)return;const e=document.querySelector('.lektrus-browser-board-logical > .lektrus-board-loading');if(e)window.__loaderFrames.push([e.offsetWidth,e.offsetHeight]);requestAnimationFrame(sample)};requestAnimationFrame(sample)})()`);
-  await click('.lektrus-create-dialog button[type="submit"]');
+  const titleInput=await rect('.lektrus-create-dialog input');
+  await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:titleInput.x,y:titleInput.y,id:1}]});
+  await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await call('Input.insertText',{text:'Landscape browser QA'});
+  assert.equal(await evaluate('document.activeElement.value'),'Landscape browser QA','Title input must remain focused before submit');
+  await evaluate(`(()=>{window.__loaderFrames=[];window.__sampleLoader=true;window.__createSubmitEvents=0;document.querySelector('.lektrus-create-dialog').addEventListener('submit',()=>window.__createSubmitEvents++);const sample=()=>{if(!window.__sampleLoader)return;const e=document.querySelector('.lektrus-browser-board-logical > .lektrus-board-loading');if(e)window.__loaderFrames.push([e.offsetWidth,e.offsetHeight]);requestAnimationFrame(sample)};requestAnimationFrame(sample)})()`);
+  const submitButton=await rect('.lektrus-create-dialog button[type="submit"]');
+  await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:submitButton.x,y:submitButton.y,id:1}]});
+  await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
   const boardReady='!!document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector("section.board")';
   await wait(boardReady,'Landscape frame did not render the actual created board',45000);
+  assert.equal(await evaluate('window.__createSubmitEvents'),1,'One touch must submit exactly once');
   const state=()=>evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),w=f.contentWindow,d=f.contentDocument,r=f.getBoundingClientRect();return {width:w.innerWidth,height:w.innerHeight,rotated:f.parentElement.dataset.rotated==='true',bounds:[r.left,r.top,r.right,r.bottom],title:d.querySelector('.board-title')?.value,tool:d.querySelector('section.board')?.className}})()`);
   const first=await state();
   assert.equal(first.title,'Landscape browser QA');
@@ -245,13 +253,14 @@ try{
   // constrain the menu. Inline geometry must win over the legacy rule.
   await evaluate(`(()=>{const d=document.querySelector('.lektrus-browser-board-frame').contentDocument,s=d.createElement('style');s.id='legacy-menu-viewport';s.textContent='html body .topbar .topbar-right .topbar-more-menu[open]>.topbar-more-popover{max-height:none!important;overflow:visible!important}';d.head.append(s)})()`);
   const menu=await point('.topbar-more-menu>summary');assert.ok(menu,'Board actions menu unavailable');await touch([menu]);
-  const menuGeometry=`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),element=f.contentDocument.querySelector('.topbar-more-menu[open] .topbar-more-popover');if(!element)return null;const r=element.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:f.contentWindow.innerHeight,scrollable:element.scrollHeight>element.clientHeight,overflow:f.contentWindow.getComputedStyle(element).overflowY,inline:element.style.maxHeight,scrollTop:element.scrollTop}})()`;
+  const menuGeometry=`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),element=f?.contentDocument?.querySelector('.topbar-more-menu[open] .topbar-more-popover');if(!element)return null;const r=element.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:f.contentWindow.innerHeight,scrollable:element.scrollHeight>element.clientHeight,overflow:f.contentWindow.getComputedStyle(element).overflowY,inline:element.style.maxHeight,scrollTop:element.scrollTop}})()`;
   const menuBounds=await evaluate(menuGeometry);
   assert.ok(menuBounds&&menuBounds.top>=0&&menuBounds.bottom<=menuBounds.height+1&&menuBounds.scrollable&&menuBounds.overflow==='auto'&&menuBounds.inline.endsWith('px'),JSON.stringify(menuBounds));
   const scrollX=(menuBounds.left+menuBounds.right)/2;
   assert.ok(await evaluate(`!!document.querySelector('.lektrus-browser-board-frame').contentDocument.elementFromPoint(${scrollX},${menuBounds.bottom-25})?.closest('.topbar-more-popover')`),'Menu is visually bounded but does not receive touches');
+  await evaluate(`(()=>{window.__menuTouchTrace=[];const d=document.querySelector('.lektrus-browser-board-frame').contentDocument;for(const type of ['pointerdown','pointermove','pointerup','pointercancel','click'])d.addEventListener(type,e=>{if(window.__menuTouchTrace.length<40)window.__menuTouchTrace.push({type,x:e.clientX,y:e.clientY,kind:e.pointerType,target:e.target.tagName,button:e.target.closest('button')?.textContent,menu:!!e.target.closest('.topbar-more-popover')})},true)})()`);
   await touch(Array.from({length:9},(_,i)=>({x:scrollX,y:menuBounds.bottom-25-(menuBounds.bottom-menuBounds.top-50)*i/8})));
-  await wait(`(${menuGeometry})?.scrollTop>0`,'Rotated touch did not scroll the action menu');
+  try{await wait(`(${menuGeometry})?.scrollTop>0`,'Rotated touch did not scroll the action menu',4000)}catch(e){console.log('Menu touch diagnostic',JSON.stringify({before:menuBounds,after:await evaluate(menuGeometry),path:await evaluate('location.pathname'),events:await evaluate('window.__menuTouchTrace')}));throw e}
   await evaluate(`(()=>{const w=document.querySelector('.lektrus-browser-board-frame').contentWindow,v=new w.EventTarget();Object.assign(v,{width:w.innerWidth,height:185,offsetLeft:0,offsetTop:0});Object.defineProperty(w,'visualViewport',{configurable:true,value:v});w.dispatchEvent(new w.Event('resize'))})()`);
   await wait(`(${menuGeometry})?.bottom<=185`,'Menu did not adapt to a reduced visual viewport');
   await evaluate(`(()=>{const w=document.querySelector('.lektrus-browser-board-frame').contentWindow;delete w.visualViewport;w.document.querySelector('#legacy-menu-viewport').remove();w.dispatchEvent(new w.Event('resize'))})()`);

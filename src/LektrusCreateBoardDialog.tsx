@@ -14,6 +14,9 @@ export default function LektrusCreateBoardDialog({user,initial,onClose,onCreate,
  const [students,setStudents]=useState<StudentRecord[]>([]);
  const [templates,setTemplates]=useState<BoardTemplate[]>([]);
  const backdrop=useRef<HTMLDivElement>(null);
+ const submitting=useRef(false);
+ const submitTouch=useRef<{id:number;x:number;y:number}|null>(null);
+ useEffect(()=>{if(!busy)submitting.current=false},[busy]);
  // iOS Safari/WKWebView often leaves the layout viewport unchanged when
  // the keyboard opens. Size the dialog to the visible viewport instead.
  useLayoutEffect(()=>{
@@ -34,7 +37,7 @@ export default function LektrusCreateBoardDialog({user,initial,onClose,onCreate,
  },[]);
  useEffect(()=>{let active=true;void getStudentsForTeacher(user).then(x=>{if(active)setStudents(x)}).catch(()=>{});void listTemplates(user.id).then(x=>{if(active)setTemplates(x)}).catch(()=>{});return()=>{active=false}},[user.id]);
  return <div ref={backdrop} className="lektrus-create-backdrop" onPointerDown={e=>{if(e.target===e.currentTarget&&!busy)onClose()}}>
-  <form className="lektrus-create-dialog" role="dialog" aria-modal="true" aria-label="Создание доски" onSubmit={e=>{e.preventDefault();onCreate({title:title.trim()||"Новая доска",subject:normalizeLektrusSubject(subject),group,studentEmail,template:templates.find(t=>t.id===templateId)||null})}}>
+  <form className="lektrus-create-dialog" role="dialog" aria-modal="true" aria-label="Создание доски" onSubmit={e=>{e.preventDefault();if(busy||submitting.current)return;submitting.current=true;onCreate({title:title.trim()||"Новая доска",subject:normalizeLektrusSubject(subject),group,studentEmail,template:templates.find(t=>t.id===templateId)||null})}}>
    <header><div><small>НОВАЯ РАБОЧАЯ ДОСКА</small><h2>Создать доску</h2><p>Настройте пространство для занятия. Всё можно будет изменить позже.</p></div><button type="button" aria-label="Закрыть" disabled={busy} onClick={onClose}>×</button></header>
    <div className="lektrus-create-fields">
     <label className="wide"><span>Название доски</span><input autoFocus maxLength={120} placeholder="Например, Химия · 9 класс" value={title} onChange={e=>setTitle(e.target.value)}/></label>
@@ -43,7 +46,22 @@ export default function LektrusCreateBoardDialog({user,initial,onClose,onCreate,
     <label><span>Ученик <small>необязательно</small></span><input list="lektrus-create-students" type="email" placeholder="Email ученика" value={studentEmail} onChange={e=>setStudentEmail(e.target.value)}/><datalist id="lektrus-create-students">{students.filter(x=>x.email).map(s=><option value={s.email} key={s.userId}>{s.name}</option>)}</datalist></label>
     <label><span>Мой шаблон <small>необязательно</small></span><select value={templateId} onChange={e=>setTemplateId(e.target.value)}><option value="">Пустая доска</option>{templates.map(t=><option value={t.id} key={t.id}>{t.title}</option>)}</select></label>
    </div>
-   <footer><button type="button" disabled={busy} onClick={onClose}>Отмена</button><button type="submit" disabled={busy}>{busy?"Создание…":"Создать и открыть →"}</button></footer>
+   <footer><button type="button" disabled={busy} onClick={onClose}>Отмена</button><button type="submit" disabled={busy}
+    onPointerDown={e=>{
+     // WKWebView may blur the field and move the dialog underneath the
+     // finger before its synthetic click. Finish a genuine touch tap while
+     // the visible button is still anchored above the keyboard.
+     if(e.pointerType!=="touch"||!e.isPrimary||!document.activeElement?.matches("input,textarea,[contenteditable=true]"))return;
+     e.preventDefault();submitTouch.current={id:e.pointerId,x:e.clientX,y:e.clientY};
+    }}
+    onPointerCancel={()=>{submitTouch.current=null}}
+    onPointerUp={e=>{
+     const touch=submitTouch.current;submitTouch.current=null;
+     if(!touch||touch.id!==e.pointerId||Math.hypot(e.clientX-touch.x,e.clientY-touch.y)>10||!e.currentTarget.contains(document.elementFromPoint(e.clientX,e.clientY)))return;
+     e.preventDefault();const form=e.currentTarget.form;
+     if(form&&typeof form.requestSubmit==="function")form.requestSubmit(e.currentTarget);
+     else e.currentTarget.click();
+    }}>{busy?"Создание…":"Создать и открыть →"}</button></footer>
   </form>
  </div>
 }

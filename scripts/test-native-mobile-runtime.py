@@ -273,11 +273,17 @@ def open_new_board():
       const v=visualViewport, top=v?.offsetTop||0, bottom=top+(v?.height||innerHeight);
       return {x,y,viewport:[innerWidth,innerHeight],visualViewport:[top,bottom],button:[r.top,r.bottom],visible:r.top>=top&&r.bottom<=bottom+1&&!!document.elementFromPoint(x,y)?.closest('button[type="submit"]')};''')
     assert coords['visible'], f'Create button inaccessible with native keyboard: {coords}'
-    js('''window.__boardLoadingFrames=[];window.__boardLoadingObserve=true;
+    js('''window.__boardLoadingFrames=[];window.__boardLoadingObserve=true;window.__createTouchEvents=[];
+      for(const name of ['pointerdown','pointerup','click','submit','focusout'])document.addEventListener(name,e=>{
+      if(window.__createTouchEvents.length<40)window.__createTouchEvents.push({type:name,target:e.target.tagName,button:e.target.closest('button')?.textContent,point:[e.clientX,e.clientY],active:document.activeElement?.tagName,visualTop:visualViewport?.offsetTop})},true);
       const sample=()=>{if(!window.__boardLoadingObserve)return;const e=document.querySelector('.lektrus-board-loading');
       if(e&&e.getClientRects().length&&window.__boardLoadingFrames.length<240)window.__boardLoadingFrames.push({viewport:[innerWidth,innerHeight],loader:[e.offsetWidth,e.offsetHeight],transform:getComputedStyle(e).transform});requestAnimationFrame(sample)};requestAnimationFrame(sample);''')
     native_gesture([(coords['x'],coords['y'])])
-    wait(lambda: visible_id('section.board'), 'Board not rendered', 90)
+    try:
+        wait(lambda: visible_id('section.board'), 'Board not rendered', 90)
+    except Exception:
+        print('Create board touch diagnostic',coords,js('return {events:window.__createTouchEvents,dialog:!!document.querySelector(".lektrus-create-dialog"),path:location.pathname,active:document.activeElement?.tagName,visualHeight:visualViewport?.height}'),flush=True)
+        raise
     wait(lambda: js('return innerWidth>innerHeight'), 'Board failed to rotate to landscape', 30)
     frames=js('window.__boardLoadingObserve=false;return window.__boardLoadingFrames||[];')
     assert all(f['loader'][0]>=f['loader'][1] for f in frames), f'Board loading rendered vertically: {frames[:5]}'
@@ -774,6 +780,16 @@ def type_into(selector, value, clear=False, outside=None):
         click(outside)
         wait(lambda:js('return document.activeElement!==document.querySelector(arguments[0])',selector),'Outside tap did not dismiss editor keyboard',15)
         assert js('return document.querySelector(arguments[0])?.value',selector)==value,'Outside tap lost typed text'
+        # Native IME dismissal animates and can move the next control while
+        # focus has already cleared. Require stable geometry before the next
+        # physical interaction; otherwise a click can land on a shifted row.
+        last=[None]
+        def settled():
+            current=js('return [innerHeight,visualViewport?.height,visualViewport?.offsetTop,document.querySelector(".lektrus-touch-editor-portal")?.getBoundingClientRect().height].map(v=>v==null?null:Math.round(v))')
+            same=current==last[0]
+            last[0]=current
+            return same
+        wait(settled,'Editor viewport did not settle after keyboard dismissal',10)
         return
     # Hiding the keyboard through the driver does not simulate DOM events and
     # makes footer actions reachable in a landscape WebView.
@@ -830,10 +846,16 @@ def create_study_editor(kind, label, modal):
 def checklist_editor():
     before=create_study_editor('checklist','Чек-лист / задание','.checklist-editor-modal')
     header='.checklist-editor-header strong'
+    count=lambda:js('return document.querySelectorAll(".checklist-editor-row").length')
+    assert count()==1,'New checklist did not start with one row'
     type_into('.checklist-title-input input','План QA',clear=True,outside=header)
     type_into('.checklist-editor-row input[placeholder="Пункт 1"]','Чтение',clear=True,outside=header)
+    assert count()==1,f'Outside tap added a checklist row: {count()}'
     click('.checklist-add-row')
+    wait(lambda: count()>=2,'Add row click did not create a checklist row')
+    assert count()==2,f'One Add row click created {count()} rows'
     type_into('.checklist-editor-row input[placeholder="Пункт 2"]','Задача',clear=True,outside=header)
+    assert count()==2,f'Editing second row unexpectedly created {count()} rows'
     click('.checklist-editor-row:first-child .checklist-editor-check')
     click('.checklist-editor-footer button.primary')
     item=wait(lambda:next((i for i in board_items() if i['kind']=='checklist' and i['id'] not in before),None),'Saved checklist missing')
