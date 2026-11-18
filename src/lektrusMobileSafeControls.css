@@ -315,6 +315,16 @@ html.lektrus-native-app .lektrus-lab-editor.is-board-identical {
   width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;
   max-width:100%!important;max-height:100%!important;box-sizing:border-box!important;
 }
+/* WebView 83 cannot parse the modern :is() selector used to hide the old
+   laboratory shelves. Match each closed drawer explicitly, leaving the
+   active drawer's detailed layout rules untouched. */
+html.lektrus-native-app .lektrus-lab-bench.is-compact-fullscreen:not(.is-drawer-reagents) .lektrus-lab-reagent-furniture,
+html.lektrus-native-app .lektrus-lab-bench.is-compact-fullscreen:not(.is-drawer-glassware) .lektrus-lab-glass-cupboard,
+html.lektrus-native-app .lektrus-lab-bench.is-compact-fullscreen:not(.is-drawer-equipment) .lektrus-lab-device-cupboard,
+html.lektrus-native-app .lektrus-lab-bench.is-compact-fullscreen:not(.is-drawer-indicators) .lektrus-lab-indicator-cupboard,
+html.lektrus-native-app .lektrus-lab-bench.is-compact-fullscreen:not(.is-drawer-equations) .lektrus-lab-chalkboard {
+  display:none!important;
+}
 
 /* Larger native tablets use the desktop tool rail; keep both docking sides safe. */
 @media screen and (min-width:1101px) and (orientation:landscape) {

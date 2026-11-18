@@ -44,6 +44,16 @@ assert.match(safeControls,
 assert.match(safeControls,/\.board-home-button\s*\{\s*margin-left:0!important/);
 assert.match(safeControls,/left:var\(--lektrus-rail-left\)!important/);
 
+// Native WebView 83 has no dvh/modern :is() support. A fixed panel must be
+// constrained on both edges, and only its inner catalogue should scroll.
+assert.match(safeControls,/section\.mobile-tools-sheet\s*\{[^}]*bottom:calc\(16px \+ var\(--lektrus-safe-bottom\)\)!important[^}]*max-height:none!important/s);
+assert.match(safeControls,/\.mobile-tools-groups\s*\{[^}]*flex:1 1 0px!important[^}]*height:0!important[^}]*overflow-y:auto!important/s);
+const labEditor=source("src/LektrusChemistryBenchEditor.tsx");
+assert.match(labEditor,/classList\.contains\("lektrus-native-app"\)&&w<=1100/);
+for(const drawer of ["reagents","glassware","equipment","indicators","equations"]){
+ assert.ok(safeControls.includes(":not(.is-drawer-"+drawer+")"),"Closed native lab drawer must be hidden on legacy WebView: "+drawer);
+}
+
 assert.ok(shell.includes("Lektrus"));
 assert.ok(base.includes(".lektrus-category-strip"));
 assert.equal(manifest.short_name,"Lektrus");

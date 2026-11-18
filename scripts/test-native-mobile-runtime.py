@@ -832,8 +832,14 @@ def chemistry_lab():
     report=check_layout(['.lektrus-lab-editor','.lektrus-lab-editor-exit'])
     screenshot('chemistry-lab-fullscreen')
     try:
-        if visible_id('.lektrus-lab-compact-drawer-bar'):
-            click('.lektrus-lab-compact-drawer-bar button[aria-controls="lektrus-lab-compact-reagents"]')
+        drawers=('glassware','equipment','indicators','equations','settings','reagents')
+        visible_drawers=lambda: [key for key in drawers if visible_id('#lektrus-lab-compact-'+key)]
+        assert visible_drawers()==[], 'Closed drawers cover the lab worktop'
+        for drawer in drawers:
+            click('.lektrus-lab-compact-drawer-bar button[aria-controls="lektrus-lab-compact-'+drawer+'"]')
+            wait(lambda:visible_drawers()==[drawer],f'Only {drawer} drawer must be visible',12)
+            check_layout(['#lektrus-lab-compact-'+drawer])
+        report['exclusiveDrawers']=list(drawers)
         click('.lektrus-lab-editor button[title="Открыть шкаф реактивов"]')
         wait(lambda:visible_id('.lektrus-lab-furniture-dialog.is-reagents'),'Reagent cabinet not opened')
         type_into('.lektrus-lab-furniture-dialog input[type="search"]','HCl')
