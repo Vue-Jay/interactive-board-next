@@ -1,4 +1,4 @@
-name: iPhone chemistry and file picker regression (Intel isolated)
+name: iPhone rotation and native return regression (Intel isolated)
 on:
   push:
     branches: [qa/ios-runtime-intel-20261118]
@@ -87,7 +87,7 @@ jobs:
             WDA_ARGS=(--wda-derived-data "$WDA_DERIVED")
           fi
           "$APPIUM" --address 127.0.0.1 --port 4723 > artifacts/mobile-qa/appium.log 2>&1 &
-          python3 scripts/test-native-mobile-runtime.py ios --suite "ios-export-lab" --app "$APP" --udid "$SIMULATOR_UDID" "${WDA_ARGS[@]}" --output artifacts/mobile-qa
+          python3 scripts/test-native-mobile-runtime.py ios --suite "ios-rotation" --app "$APP" --udid "$SIMULATOR_UDID" "${WDA_ARGS[@]}" --output artifacts/mobile-qa
       - name: Upload iOS runtime logs and screenshots
         if: always()
         uses: actions/upload-artifact@v4
