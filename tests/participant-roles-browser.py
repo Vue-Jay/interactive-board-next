@@ -76,7 +76,10 @@ def assert_drawing_saved(page,ident,name):
         for _ in range(60):
             result=client.get(f"/api/v1/boards/{ident}/document")
             result.raise_for_status()
-            if any(item.get("kind")=="pen" and item.get("createdBy") for item in result.json()["document"]["items"]):
+            saved=result.json()
+            doc=saved["document"]
+            items=doc["items"]+[entry["stroke"] for entry in doc.get("ink",[])]
+            if any(item.get("kind")=="pen" and item.get("createdBy")==saved["updated_by"] for item in items):
                 return
             page.wait_for_timeout(500)
     raise AssertionError("Learner drawing did not persist to the real API")
