@@ -26,5 +26,6 @@ if [ "$qa_result" -ne 0 ]; then
   timeout 20s adb shell dumpsys activity exit-info ru.lektrus.board.dev > "$out/android-exit-info.txt" 2>&1 || true
   free -m > "$out/host-memory-after.txt"
   timeout 10s adb shell cat /proc/meminfo > "$out/guest-memory-after.txt" 2>&1 || true
+  sudo dmesg --color=never | grep -Ei 'oom|out of memory|killed process|segfault|qemu|emulator|kvm' > "$out/host-emulator-kernel.txt" || true
 fi
 exit "$qa_result"

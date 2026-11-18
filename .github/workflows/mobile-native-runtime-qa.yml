@@ -99,13 +99,14 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api }}
-          target: google_apis
+          # Google API 35 loses the whole emulator during background Google
+          # service activity, including with ample host/guest memory. The
+          # isolated app does not use Play services; use the AOSP phone image.
+          target: ${{ matrix.api == 35 && 'default' || 'google_apis' }}
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          # API 35's Google system image repeatedly exhausted its default
-          # 2560 MB guest RAM and lost the whole ADB device, even on a clean
-          # board. Allocate a realistic phone RAM budget on this runner.
+          # Keep a realistic memory budget for the Android 15 phone image.
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim ${{ matrix.api == 35 && '-memory 4096' || '' }}
           script: bash scripts/run-android-mobile-qa.sh "${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'full' && 'full' || 'android-lab' }}"
       - name: Upload Android runtime logs and screenshots

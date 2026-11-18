@@ -1322,8 +1322,8 @@ def run_remaining():
         recover_board_after_create_failure()
     check('pencil-touch', lambda: draw('pen',[.38,.46,.52]), fatal=True)
     if args.suite=='android-lab':
-        check('subject-chemistry-lab-fullscreen',chemistry_lab)
         check('native-back-and-deep-link',native_back_and_link)
+        check('subject-chemistry-lab-fullscreen',chemistry_lab)
         return
     check('zoom-for-object-tests', zoom_for_objects)
     check('create-rectangle-touch', create_shape, fatal=True)
@@ -1349,7 +1349,7 @@ def run_remaining():
 
 
 if args.suite=='android-lab':
-    EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','subject-chemistry-lab-fullscreen','native-back-and-deep-link']
+    EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','native-back-and-deep-link','subject-chemistry-lab-fullscreen']
 elif args.suite=='ios-remaining':
     EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','zoom-for-object-tests','create-rectangle-touch',
                      'rotate-duplicate-delete','text-native-keyboard','sticky-native-keyboard','table-edit-and-save','all-objects-reopen-persistence',
