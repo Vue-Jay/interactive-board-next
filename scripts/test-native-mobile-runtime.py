@@ -1206,21 +1206,85 @@ EXPECTED_CHECKS=[
 ]
 runtime_abort=None
 
+def ios_pick_subject(subject, current, options):
+    """Scroll the actual WKWebView select popover; never set DOM values."""
+    target=options.index(subject)
+    direction=1 if target<options.index(current) else -1
+    predicate=' or '.join(f'@label="{label}" or @name="{label}"' for label in options if label)
+    # iOS 26 only exposes the visible rows of a long select menu. The first
+    # three subjects are off-screen when reopening it on Foreign Language.
+    # Measure the visible native rows to keep the swipe inside the popover.
+    for attempt in range(5):
+        choice=native_picker_button((subject,))
+        if choice:
+            command('POST',f'/element/{choice}/click',{})
+            return
+        elements=command('POST','/elements',{'using':'xpath','value':'//*['+predicate+']'})
+        rows=[]
+        for element in elements:
+            ident=element.get(ELEMENT)
+            if not ident or not command('GET',f'/element/{ident}/displayed'):
+                continue
+            rect=command('GET',f'/element/{ident}/rect')
+            if rect['width']>10 and rect['height']>10:
+                rows.append(rect)
+        # The menu rows have the same horizontal bounds. Exclude unrelated
+        # accessibility elements (such as the top-bar current subject).
+        groups={}
+        for r in rows:
+            groups.setdefault((round(r['x']),round(r['width'])),[]).append(r)
+        group=max(groups.values(),key=lambda g:(len(g),max(r['y'] for r in g)-min(r['y'] for r in g)),default=[])
+        if len(group)<2 or max(r['y'] for r in group)-min(r['y'] for r in group)<45:
+            # Some OS versions expose text bounds rather than whole rows.
+            columns={}
+            for r in rows:
+                columns.setdefault(round(r['x']),[]).append(r)
+            group=max(columns.values(),key=len,default=[])
+        if len(group)<2:
+            time.sleep(.5)
+            continue
+        group.sort(key=lambda r:r['y'])
+        x=round(group[0]['x']+group[0]['width']/2)
+        top=round(group[0]['y']+group[0]['height']/2)
+        bottom=round(group[-1]['y']+group[-1]['height']/2)
+        if bottom-top<45:
+            time.sleep(.5)
+            continue
+        # A downward finger drag exposes earlier choices and vice versa.
+        # Avoid the extreme screen edge and avoid selecting a menu item.
+        distance=min(180,bottom-top-12)
+        center=(top+bottom)/2
+        start=round(center-direction*distance/2)
+        end=round(center+direction*distance/2)
+        print(f'Native subject picker scroll: {current} -> {subject}, attempt {attempt+1}, ({x},{start}) -> ({x},{end})',flush=True)
+        actions=[{'type':'pointerMove','duration':0,'origin':'viewport','x':x,'y':start},
+                 {'type':'pointerDown','button':0},{'type':'pause','duration':100},
+                 *[{'type':'pointerMove','duration':70,'origin':'viewport','x':x,'y':round(start+(end-start)*i/7)} for i in range(1,8)],
+                 {'type':'pointerUp','button':0}]
+        command('POST','/actions',{'actions':[{'type':'pointer','id':'subject-menu-finger','parameters':{'pointerType':'touch'},'actions':actions}]})
+        command('DELETE','/actions')
+        time.sleep(.5)
+    choice=native_picker_button((subject,))
+    assert choice, f'Native subject option remained inaccessible after physical scroll: {subject}'
+    command('POST',f'/element/{choice}/click',{})
+
+
 def subject_panel(subject):
     if not visible_id('#lektrus-subject-tools-panel'):
         click('.lektrus-mobile-subject-trigger')
     wait(lambda:visible_id('#lektrus-subject-tools-panel'),'Subject panel did not open')
     selector='.lektrus-subject-tools-category select'
-    if js('return document.querySelector(arguments[0]).value',selector)!=subject:
+    current=js('return document.querySelector(arguments[0]).value',selector)
+    if current!=subject:
         option=js('return [...document.querySelector(arguments[0]).options].find(e=>e.value===arguments[1])',selector,subject)
         assert option, f'Subject option missing: {subject}'
         if args.platform=='ios':
             # Clicking a DOM <option> via WebKit's automation atom opens
             # the native menu without selecting it. Choose the OS entry.
+            options=js('return [...document.querySelector(arguments[0]).options].map(e=>e.value)',selector)
             native_tap(selector,reattach=False)
             try:
-                choice=wait(lambda:native_picker_button((subject,)),f'Native subject option: {subject}',12)
-                command('POST',f'/element/{choice}/click',{})
+                ios_pick_subject(subject,current,options)
             finally:
                 reattach_webview()
         else:
