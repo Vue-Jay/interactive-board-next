@@ -180,7 +180,12 @@ export default function App() {
     if (!Capacitor.isNativePlatform()) return;
     if (!nativeBoardOpening) {
       setNativeLandscapeReady(false);
-      void ScreenOrientation.unlock().catch(error => console.warn("Unable to unlock Lektrus orientation", error));
+      // iOS unlock() permits every orientation but does not request a move
+      // back from the forced landscape scene. On iPhone the workspace is
+      // portrait; iPad retains its flexible workspace orientation.
+      const iphone = Capacitor.getPlatform()==="ios" && Math.min(screen.width,screen.height)<600;
+      const restore=iphone?ScreenOrientation.lock({orientation:"portrait-primary"}):ScreenOrientation.unlock();
+      void restore.catch(error => console.warn("Unable to restore Lektrus workspace orientation", error));
       return;
     }
     // Start rotation before the first loader paint, not when BoardApp mounts.

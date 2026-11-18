@@ -11,7 +11,7 @@ const ACTION="button,a,summary,[role=button]";
 export function BrowserBoardMenuGestureBridge({frame,area,enabled}:{frame:RefObject<HTMLIFrameElement|null>;area:RefObject<HTMLDivElement|null>;enabled:boolean}){
  const [surface,setSurface]=useState<Surface|null>(null);
  const overlay=useRef<HTMLDivElement>(null);
- const drag=useRef<{menu:HTMLElement;id:number;x:number;y:number;scroll:number;target:HTMLElement|null;moved:boolean}|null>(null);
+ const drag=useRef<{menu:HTMLElement;source:"pointer"|"touch";id:number;x:number;y:number;scroll:number;target:HTMLElement|null;moved:boolean}|null>(null);
  useLayoutEffect(()=>{
   if(!enabled){setSurface(null);drag.current=null;return;}
   const iframe=frame.current,region=area.current;
@@ -41,6 +41,32 @@ export function BrowserBoardMenuGestureBridge({frame,area,enabled}:{frame:RefObj
   iframe.addEventListener("load",connect);window.addEventListener("resize",schedule);connect();
   return()=>{iframe.removeEventListener("load",connect);window.removeEventListener("resize",schedule);observer?.disconnect();resize?.disconnect();cancelAnimationFrame(raf);drag.current=null;setSurface(null);};
  },[enabled,frame,area]);
+ const actionAt=(menu:HTMLElement,x:number,y:number)=>{
+  const f=frame.current?.getBoundingClientRect();
+  if(!f)return null;
+  const target=menu.ownerDocument.elementFromPoint(y-f.top,f.right-x)?.closest<HTMLElement>(ACTION)??null;
+  return target&&menu.contains(target)?target:null;
+ };
+ const begin=(menu:HTMLElement,source:"pointer"|"touch",id:number,x:number,y:number)=>{
+  drag.current={menu,source,id,x,y,scroll:menu.scrollTop,target:actionAt(menu,x,y),moved:false};
+ };
+ const scroll=(source:"pointer"|"touch",id:number,x:number,y:number)=>{
+  const current=drag.current;
+  if(!current||current.source!==source||current.id!==id)return;
+  if(!current.moved&&Math.hypot(x-current.x,y-current.y)<8)return;
+  current.moved=true;
+  // The logical y-axis points physically to the left after rotate(90deg).
+  current.menu.scrollTop=current.scroll+x-current.x;
+ };
+ const finish=(source:"pointer"|"touch",id:number,x:number,y:number)=>{
+  const current=drag.current;
+  if(!current||current.source!==source||current.id!==id)return;
+  drag.current=null;
+  if(!current.menu.isConnected||current.moved||Math.hypot(x-current.x,y-current.y)>=8)return;
+  // Only forward a genuine tap if it begins and ends on the same action.
+  const target=actionAt(current.menu,x,y);
+  if(target&&target===current.target){target.focus({preventScroll:true});target.click();}
+ };
  useLayoutEffect(()=>{
   const element=overlay.current,menu=surface?.menu;
   if(!element||!menu)return;
@@ -49,40 +75,39 @@ export function BrowserBoardMenuGestureBridge({frame,area,enabled}:{frame:RefObj
    const factor=event.deltaMode===1?16:event.deltaMode===2?menu.clientHeight:1;
    menu.scrollTop+=(event.deltaY||event.deltaX)*factor;
   };
+  // Use non-passive touch listeners as well as pointer events. A browser can
+  // deliver either sequence; once touchstart arrives it owns that gesture.
+  const touchStart=(event:TouchEvent)=>{
+   if(event.touches.length!==1){drag.current=null;return;}
+   event.preventDefault();const t=event.changedTouches[0];begin(menu,"touch",t.identifier,t.clientX,t.clientY);
+  };
+  const touchMove=(event:TouchEvent)=>{
+   if(event.touches.length!==1){drag.current=null;return;}
+   event.preventDefault();const t=event.changedTouches[0];scroll("touch",t.identifier,t.clientX,t.clientY);
+  };
+  const touchEnd=(event:TouchEvent)=>{
+   event.preventDefault();const t=event.changedTouches[0];finish("touch",t.identifier,t.clientX,t.clientY);
+  };
+  const touchCancel=()=>{if(drag.current?.source==="touch")drag.current=null;};
   element.addEventListener("wheel",wheel,{passive:false});
-  return()=>element.removeEventListener("wheel",wheel);
+  element.addEventListener("touchstart",touchStart,{passive:false});element.addEventListener("touchmove",touchMove,{passive:false});
+  element.addEventListener("touchend",touchEnd,{passive:false});element.addEventListener("touchcancel",touchCancel);
+  return()=>{element.removeEventListener("wheel",wheel);element.removeEventListener("touchstart",touchStart);element.removeEventListener("touchmove",touchMove);element.removeEventListener("touchend",touchEnd);element.removeEventListener("touchcancel",touchCancel);};
  },[surface?.menu]);
- const actionAt=(menu:HTMLElement,x:number,y:number)=>{
-  const f=frame.current?.getBoundingClientRect();
-  if(!f)return null;
-  const target=menu.ownerDocument.elementFromPoint(y-f.top,f.right-x)?.closest<HTMLElement>(ACTION)??null;
-  return target&&menu.contains(target)?target:null;
- };
  const down=(event:ReactPointerEvent<HTMLDivElement>)=>{
   if(!surface||!event.isPrimary||event.button!==0)return;
   event.preventDefault();
-  const {menu}=surface;
-  drag.current={menu,id:event.pointerId,x:event.clientX,y:event.clientY,scroll:menu.scrollTop,target:actionAt(menu,event.clientX,event.clientY),moved:false};
+  begin(surface.menu,"pointer",event.pointerId,event.clientX,event.clientY);
   try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* Old pointer implementation. */}
  };
  const move=(event:ReactPointerEvent<HTMLDivElement>)=>{
-  const current=drag.current;
-  if(!current||current.id!==event.pointerId)return;
-  if(!current.moved&&Math.hypot(event.clientX-current.x,event.clientY-current.y)<8)return;
-  current.moved=true;event.preventDefault();
-  // The logical y-axis points physically to the left after rotate(90deg).
-  current.menu.scrollTop=current.scroll+event.clientX-current.x;
+  if(drag.current?.source!=="pointer")return;
+  event.preventDefault();scroll("pointer",event.pointerId,event.clientX,event.clientY);
  };
  const up=(event:ReactPointerEvent<HTMLDivElement>)=>{
-  const current=drag.current;
-  if(!current||current.id!==event.pointerId)return;
-  drag.current=null;event.preventDefault();
-  if(!current.menu.isConnected||current.moved||Math.hypot(event.clientX-current.x,event.clientY-current.y)>=8)return;
-  // Only forward a genuine tap if it begins and ends on the same action.
-  // Same-origin child activation remains inside this real pointerup handler.
-  const target=actionAt(current.menu,event.clientX,event.clientY);
-  if(target&&target===current.target){target.focus({preventScroll:true});target.click();}
+  if(drag.current?.source!=="pointer")return;
+  event.preventDefault();finish("pointer",event.pointerId,event.clientX,event.clientY);
  };
  if(!enabled||!surface)return null;
- return <div ref={overlay} className="lektrus-browser-board-menu-gesture" aria-hidden="true" style={{left:surface.left,top:surface.top,width:surface.width,height:surface.height}} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={()=>{drag.current=null}} onLostPointerCapture={()=>{drag.current=null}} onClick={event=>{event.preventDefault();event.stopPropagation()}}/>;
+ return <div ref={overlay} className="lektrus-browser-board-menu-gesture" aria-hidden="true" style={{left:surface.left,top:surface.top,width:surface.width,height:surface.height}} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={()=>{if(drag.current?.source==="pointer")drag.current=null}} onLostPointerCapture={()=>{if(drag.current?.source==="pointer")drag.current=null}} onClick={event=>{event.preventDefault();event.stopPropagation()}}/>;
 }

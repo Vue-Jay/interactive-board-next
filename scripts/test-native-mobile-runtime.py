@@ -485,16 +485,30 @@ def tools_menu():
     return items
 
 
+def reopen_from_workspace():
+    if not visible_id('.lectris-library-intro'):
+        nav='.lectris-mobile-bottom button[aria-label="Доски"]' if visible_id('.lectris-mobile-bottom button[aria-label="Доски"]') else '.lectris-workspace-sidebar button[aria-label="Доски"]'
+        click(nav)
+    click('button[aria-label="Открыть доску Native QA"]')
+    wait(lambda: visible_id('section.board'), 'Saved board did not reopen', 60)
+    wait(lambda: js('return innerWidth>innerHeight'), 'Reopened board did not rotate')
+
+
+def recover_reopen_after_failure():
+    if visible_id('section.board'):
+        return
+    wait(lambda:visible_id('.lectris-library-intro,.lektrus-calendar-grid'),'Reopen recovery could not find workspace',20)
+    reopen_from_workspace()
+    print('Recovery: reopened saved board via visible workspace navigation; failed persistence/orientation check remains failed',flush=True)
+
+
 def reopen():
     before = ink()
     assert any(x['kind']=='pen' for x in before), 'No persisted drawing to verify'
     click('.back-to-boards')
     wait(lambda: visible_id('.lectris-library-intro,.lektrus-calendar-grid'), 'Back to workspace failed', 45)
-    if not visible_id('.lectris-library-intro'):
-        click('.lectris-mobile-bottom button[aria-label="Доски"]')
-    click('button[aria-label="Открыть доску Native QA"]')
-    wait(lambda: visible_id('section.board'), 'Saved board did not reopen', 60)
-    wait(lambda: js('return innerWidth>innerHeight'), 'Reopened board did not rotate')
+    wait(lambda: js('return innerHeight>innerWidth'), 'Phone workspace did not return to portrait after closing board', 20)
+    reopen_from_workspace()
     wait(lambda: ink()==before, 'Saved ink differs after reopening', 15)
     return before
 
@@ -510,6 +524,7 @@ def native_back_and_link():
     else:
         click('.back-to-boards')
     wait(lambda: visible_id('.lectris-library-intro,.lektrus-calendar-grid'), 'Native back did not return to workspace', 45)
+    wait(lambda: js('return innerHeight>innerWidth'), 'Native back did not restore portrait phone workspace', 20)
     url = 'ru.lektrus.board://' + path.lstrip('/')
     if args.platform == 'android':
         subprocess.run(['adb','shell','am','start','-a','android.intent.action.VIEW','-d',url,'ru.lektrus.board.dev'],check=True,timeout=30)
@@ -1216,6 +1231,8 @@ try:
     check('navigation-dock-no-overlap', navigation_dock_layout)
     check('tool-catalogue', tools_menu)
     check('board-reopen-persistence', reopen)
+    if results[-1]['status']!='passed':
+        recover_reopen_after_failure()
     check('zoom-for-object-tests', zoom_for_objects)
     check('create-rectangle-touch', create_shape)
     if 'shape_id' in paths:
@@ -1226,6 +1243,8 @@ try:
     check('sticky-native-keyboard',lambda:text_object('sticky','Стикер','Заметка QA'))
     check('table-edit-and-save',table_editor)
     check('all-objects-reopen-persistence',full_document_persistence)
+    if results[-1]['status']!='passed':
+        recover_reopen_after_failure()
     check('checklist-edit-and-save',checklist_editor)
     check('flashcard-edit-and-save',flashcard_editor)
     check('quiz-edit-and-save',quiz_editor)

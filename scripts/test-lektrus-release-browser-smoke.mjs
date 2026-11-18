@@ -269,8 +269,11 @@ try{
   const menu=await point('.topbar-more-menu>summary');assert.ok(menu,'Board actions menu unavailable');await touch([menu]);
   await wait('!!document.querySelector(".lektrus-browser-board-menu-gesture")','Rotated action menu gesture surface not created');
   const settings=await point('.topbar-more-popover .lektrus-controls-menu-entry');assert.ok(settings,'First action menu button is not visible');
+  const settingsPhysical=(await physical([settings]))[0];
+  const settingsHit=await evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),p=${JSON.stringify(settingsPhysical)},c=f.contentDocument.elementFromPoint(${settings.x},${settings.y});return {outer:document.elementFromPoint(p.x,p.y)?.outerHTML.slice(0,250),inner:c?.outerHTML.slice(0,250),surface:document.querySelector('.lektrus-browser-board-menu-gesture').getBoundingClientRect().toJSON()}})()`);
+  await evaluate(`(()=>{window.__menuTapTrace=[];const d=document.querySelector('.lektrus-browser-board-frame').contentDocument;for(const doc of [document,d])for(const type of ['touchstart','touchend','pointerdown','pointerup','pointercancel','lostpointercapture','click'])doc.addEventListener(type,e=>{if(window.__menuTapTrace.length<30)window.__menuTapTrace.push({scope:doc===document?'outer':'inner',type,x:e.clientX??e.changedTouches?.[0]?.clientX,y:e.clientY??e.changedTouches?.[0]?.clientY,primary:e.isPrimary,button:e.button,id:e.pointerId,target:e.target.className?.baseVal??e.target.className,activation:doc.defaultView.navigator.userActivation?.isActive})},true)})()`);
   await touch([settings]);
-  await wait('!!document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector(".lektrus-control-settings")','Rotated action menu tap did not open board controls');
+  try{await wait('!!document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector(".lektrus-control-settings")','Rotated action menu tap did not open board controls')}catch(e){console.log('Menu tap diagnostic',JSON.stringify({settings,settingsPhysical,settingsHit,events:await evaluate('window.__menuTapTrace')}));throw e}
   const closeSettings=await point('.lektrus-control-settings button[aria-label="Закрыть настройки"]');assert.ok(closeSettings,'Board control settings close is not accessible');await touch([closeSettings]);
   await wait('!document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector(".lektrus-control-settings")','Board control settings did not close');
   await touch([menu]);
