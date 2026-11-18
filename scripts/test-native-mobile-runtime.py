@@ -390,12 +390,29 @@ def click_text(selector, label):
 
 
 def pick_element(selector, label=None):
-    click('.mobile-tools-more')
+    if not visible_id('.mobile-tools-sheet'):
+        click('.mobile-tools-more')
     wait(lambda: visible_id('.mobile-tools-sheet'),'Mobile tool catalogue unavailable')
-    if label is None:
-        click('.mobile-tools-sheet '+selector)
-    else:
-        click_text('.mobile-tools-sheet '+selector,label)
+    for _ in range(20):
+        data=js('''const panel=document.querySelector('.mobile-tools-sheet'), pr=panel.getBoundingClientRect();
+          const header=panel.querySelector('.mobile-tools-sheet-head').getBoundingClientRect();
+          const e=[...panel.querySelectorAll(arguments[0])].find(e=>arguments[1]===null||e.textContent.trim()===arguments[1]);
+          if(!e)return null;
+          const r=e.getBoundingClientRect(), x=Math.round(r.x+r.width/2), y=Math.round(r.y+r.height/2);
+          const hit=document.elementFromPoint(x,y);
+          return {x,y,hit:!!hit&&(e===hit||e.contains(hit)),top:Math.max(pr.top,header.bottom),
+            bottom:Math.min(pr.bottom,innerHeight),left:pr.left,right:pr.right,scroll:panel.scrollTop};''',selector,label)
+        assert data, f'Missing catalogue tool: {selector} {label}'
+        if data['hit'] and data['top']<=data['y']<=data['bottom']:
+            native_gesture([(data['x'],data['y'])])
+            wait(lambda:not visible_id('.mobile-tools-sheet'),'Catalogue did not close after selecting tool')
+            return
+        x=round((data['left']+data['right'])/2)
+        lo,hi=round(data['top']+12),round(data['bottom']-12)
+        assert hi-lo>30, f'Catalogue has insufficient scroll area: {data}'
+        start,end=(hi,lo) if data['y']>data['bottom'] else (lo,hi)
+        native_gesture([(x,round(start+(end-start)*i/8)) for i in range(9)])
+    raise AssertionError(f'Catalogue tool blocked after native scrolling: {selector} {data}')
 
 
 def open_point():
@@ -488,8 +505,12 @@ def type_into(selector, value, clear=False):
     element=click(selector)
     if clear:
         command('POST',f'/element/{element}/clear',{})
+        element=click(selector)
     command('POST',f'/element/{element}/value',{'text':value,'value':list(value)})
-    wait(lambda:js('return document.querySelector(arguments[0])?.value===arguments[1]',selector,value),'Text input did not receive exact value')
+    try:
+        wait(lambda:js('return document.querySelector(arguments[0])?.value===arguments[1]',selector,value),'Text input did not receive exact value',10)
+    except AssertionError:
+        raise AssertionError(f'Native input mismatch: {selector}, value={js("return document.querySelector(arguments[0])?.value",selector)!r}')
     # Hiding the keyboard through the driver does not simulate DOM events and
     # makes footer actions reachable in a landscape WebView.
     try:
@@ -526,7 +547,12 @@ def full_document_persistence():
     before=board_items()
     assert any(i['kind']=='text' for i in before) and any(i['kind']=='sticky' for i in before) and any(i['kind']=='table' for i in before),'Object cases incomplete'
     reopen()
-    wait(lambda:board_items()==before,'Full model changed after saving/reopening',20)
+    try:
+        wait(lambda:board_items()==before,'Full model changed after saving/reopening',20)
+    except AssertionError:
+        after={i['id']:i for i in board_items()}
+        differences=[{'kind':i['kind'],'id':i['id'],'changed':{k:[i.get(k),after.get(i['id'],{}).get(k)] for k in i if i.get(k)!=after.get(i['id'],{}).get(k)}} for i in before if i!=after.get(i['id'])]
+        raise AssertionError(f'Persisted model differs: {json.dumps(differences,ensure_ascii=False)[:2500]}')
     return {'objects':len(before),'kinds':sorted(set(i['kind'] for i in before))}
 
 
