@@ -36,14 +36,16 @@ jobs:
           docker run --rm -e LEKTRUS_DOMAIN=:8080 -v "${{ github.workspace }}/deploy/selfhost/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2.10.2-alpine caddy adapt --config /etc/caddy/Caddyfile --validate
           docker run --rm -d --name lektrus-header-qa -p 127.0.0.1:18080:8080 -v "${{ github.workspace }}/deploy/amvera/Caddyfile:/etc/caddy/Caddyfile:ro" -v "${{ github.workspace }}/index.html:/srv/web/index.html:ro" caddy:2.10.2-alpine
           trap 'docker stop lektrus-header-qa >/dev/null 2>&1 || true' EXIT
-          curl -fsSI --retry 10 --retry-connrefused http://127.0.0.1:18080/app | grep -i 'x-frame-options: DENY'
+          curl -fsSI --retry 10 --retry-delay 1 --retry-all-errors http://127.0.0.1:18080/app | grep -i 'x-frame-options: DENY'
           board=http://127.0.0.1:18080/board/00000000-0000-4000-8000-00000000a11f
           curl -fsSI "$board" | grep -i 'x-frame-options: DENY'
           curl -fsSI "$board?lektrus-board-frame=1" | grep -i 'x-frame-options: SAMEORIGIN'
           curl -fsSI "$board?lektrus-board-frame=1" | grep -i "content-security-policy: frame-ancestors 'self'"
           curl -fsSI 'http://127.0.0.1:18080/app?lektrus-board-frame=1' | grep -i 'x-frame-options: DENY'
       - run: node scripts/test-lektrus-release-browser-smoke.mjs --keyboard-only
+        if: ${{ !cancelled() }}
       - run: node scripts/test-lektrus-release-browser-smoke.mjs --landscape-only
+        if: ${{ !cancelled() }}
 
   android:
     name: Android API ${{ matrix.api }} native runtime

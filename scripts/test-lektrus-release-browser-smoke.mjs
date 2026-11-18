@@ -141,7 +141,7 @@ try{
   await viewport(390,844);
   await wait('!!document.querySelector(".lektrus-calendar-grid")','Workspace did not render',30000);
   // Emulate a browser denying orientation lock to exercise the fallback.
-  await evaluate(`Object.defineProperty(document,'fullscreenEnabled',{configurable:true,value:false});Object.defineProperty(screen.orientation,'lock',{configurable:true,value:async()=>{throw new Error('Orientation lock denied')}})`);
+  await evaluate(`Object.defineProperty(document,'fullscreenEnabled',{configurable:true,value:false});Object.defineProperty(screen.orientation,'lock',{configurable:true,value:async()=>{throw new Error('Orientation lock denied')}});true`);
   await click('.lectris-mobile-bottom button[aria-label="Доски"]');
   await wait('!!document.querySelector(".lectris-library-new")','Board library did not render');
   await click('.lectris-library-new');
@@ -171,6 +171,27 @@ try{
   const dx=ink.points.at(-1).x-ink.points[0].x,dy=ink.points.at(-1).y-ink.points[0].y;
   assert.ok(dx>40&&Math.abs(dy)<4,'A logical horizontal stroke was transposed: '+JSON.stringify({dx,dy}));
   console.log('✓ First loader horizontal; real rotated touch pencil drew logical horizontal ink');
+  const select=await point('nav.mobile-board-tools button[data-interface-control="select"],.toolbar-pinned button[data-interface-control="select"]');
+  assert.ok(select,'No visible select tool');await touch([select]);
+  const zoom=()=>evaluate(`document.querySelector('.lektrus-browser-board-frame').contentDocument.querySelector('.zoom-value').textContent`);
+  const beforeZoom=await zoom(),center=path[4];
+  let pinch=await physical([{x:center.x-16,y:center.y},{x:center.x+16,y:center.y}]);
+  await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:pinch.map((p,id)=>({...p,id}))});
+  for(let i=1;i<=9;i++){
+   pinch=await physical([{x:center.x-16-i*4,y:center.y},{x:center.x+16+i*4,y:center.y}]);
+   await call('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:pinch.map((p,id)=>({...p,id}))});await delay(35);
+  }
+  await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await wait(`document.querySelector('.lektrus-browser-board-frame').contentDocument.querySelector('.zoom-value').textContent!==${JSON.stringify(beforeZoom)}`,'Two-finger pinch did not zoom the rotated board');
+  const title=await point('.board-title');assert.ok(title,'Board title inaccessible while rotated');await touch([title]);
+  const titleFocused=`(()=>{const d=document.querySelector('.lektrus-browser-board-frame').contentDocument;return d.activeElement===d.querySelector('.board-title')})()`;
+  await wait(titleFocused,'Rotated touch did not focus the title field');
+  await call('Input.insertText',{text:'!'});
+  const edited=await evaluate(`document.querySelector('.lektrus-browser-board-frame').contentDocument.querySelector('.board-title').value`);
+  assert.ok(edited.includes('!'),'Real browser typing was not received inside landscape board');
+  await touch([center]);await wait('!'+titleFocused,'Outside touch did not blur the title editor');
+  assert.equal(await evaluate(`document.querySelector('.lektrus-browser-board-frame').contentDocument.querySelector('.board-title').value`),edited);
+  console.log('✓ Real two-finger zoom, keyboard input and outside-tap dismissal in rotated board');
   for(const [w,h,rotated] of [[844,390,false],[768,1024,true],[1024,768,false],[390,844,true]]){
    await viewport(w,h);
    await wait(`document.querySelector('.lektrus-browser-board-frame').parentElement.dataset.rotated===String(${rotated})`,'Incorrect orientation after physical rotation');
@@ -183,8 +204,10 @@ try{
   // BoardApp may present a return confirmation; answer through the real UI.
   await wait('!document.querySelector(".lektrus-browser-board-frame")','Back action did not return to portrait workspace',15000);
   assert.ok(await evaluate('!document.documentElement.classList.contains("lektrus-browser-board-active")&&innerHeight>innerWidth'));
-  await evaluate('history.pushState({}, "", window.__boardPath);window.dispatchEvent(new PopStateEvent("popstate"))');
+  const directPath=await evaluate('window.__boardPath');
+  await call('Page.navigate',{url:new URL(directPath,url).href});
   await wait(boardReady,'Direct link did not reopen landscape board',45000);
+  await evaluate(`window.__boardPath=${JSON.stringify(directPath)}`);
   assert.equal((await evaluate(storedPen)).id,ink.id);
   console.log('✓ Return to portrait workspace and direct-link reopen preserve saved ink');
  }else
