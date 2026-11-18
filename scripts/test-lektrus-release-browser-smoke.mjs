@@ -227,6 +227,13 @@ try{
    const header=await point('.'+kind+'-editor-header strong');assert.ok(header,kind+' clipped header');await touch([header]);
    await wait(`window.__originalFrame.document.activeElement!==window.__originalFrame.document.querySelector(${JSON.stringify(field)})`,kind+' outside touch did not blur input');
    await evaluate(`delete window.__originalFrame.visualViewport;window.__originalFrame.dispatchEvent(new window.__originalFrame.Event('resize'))`);
+   if(kind==='checklist'){
+    const rows=()=>evaluate(`window.__originalFrame.document.querySelectorAll('.checklist-editor-row').length`);
+    assert.equal(await rows(),1,'Outside tap accidentally added a checklist row');
+    await evaluate(`window.__originalFrame.document.querySelector('.checklist-add-row').scrollIntoView({block:'center'})`);
+    const add=await point('.checklist-add-row');assert.ok(add,'Checklist add row inaccessible');await touch([add]);
+    assert.equal(await rows(),2,'One touch must add exactly one checklist row');
+   }
    const cancel=await point('.'+kind+'-editor-footer button.secondary'+(kind==='checklist'?':nth-child(3)':''));assert.ok(cancel,kind+' cancel inaccessible');await touch([cancel]);
    await wait(`!window.__originalFrame.document.querySelector('.${kind}-editor-modal')`,kind+' editor did not close');
    console.log('✓ '+kind+' editor: input, header and footer accessible with short landscape keyboard');
@@ -257,9 +264,11 @@ try{
   const menuBounds=await evaluate(menuGeometry);
   assert.ok(menuBounds&&menuBounds.top>=0&&menuBounds.bottom<=menuBounds.height+1&&menuBounds.scrollable&&menuBounds.overflow==='auto'&&menuBounds.inline.endsWith('px'),JSON.stringify(menuBounds));
   const scrollX=(menuBounds.left+menuBounds.right)/2;
-  assert.ok(await evaluate(`!!document.querySelector('.lektrus-browser-board-frame').contentDocument.elementFromPoint(${scrollX},${menuBounds.bottom-25})?.closest('.topbar-more-popover')`),'Menu is visually bounded but does not receive touches');
+  // Start in the middle, not at the physical browser/OS back-gesture edge.
+  const scrollStart=menuBounds.top+(menuBounds.bottom-menuBounds.top)*.66,scrollEnd=menuBounds.top+28;
+  assert.ok(await evaluate(`!!document.querySelector('.lektrus-browser-board-frame').contentDocument.elementFromPoint(${scrollX},${scrollStart})?.closest('.topbar-more-popover')`),'Menu is visually bounded but does not receive touches');
   await evaluate(`(()=>{window.__menuTouchTrace=[];sessionStorage.removeItem('qa-menu-touch');const d=document.querySelector('.lektrus-browser-board-frame').contentDocument;for(const type of ['pointerdown','pointermove','pointerup','pointercancel','click'])d.addEventListener(type,e=>{if(window.__menuTouchTrace.length<40){window.__menuTouchTrace.push({type,x:e.clientX,y:e.clientY,kind:e.pointerType,target:e.target.tagName,button:e.target.closest('button')?.textContent,menu:!!e.target.closest('.topbar-more-popover')});sessionStorage.setItem('qa-menu-touch',JSON.stringify(window.__menuTouchTrace))}},true)})()`);
-  await touch(Array.from({length:9},(_,i)=>({x:scrollX,y:menuBounds.bottom-25-(menuBounds.bottom-menuBounds.top-50)*i/8})));
+  await touch(Array.from({length:9},(_,i)=>({x:scrollX,y:scrollStart+(scrollEnd-scrollStart)*i/8})));
   try{await wait(`(${menuGeometry})?.scrollTop>0`,'Rotated touch did not scroll the action menu',4000)}catch(e){console.log('Menu touch diagnostic',JSON.stringify({before:menuBounds,after:await evaluate(menuGeometry),path:await evaluate('location.pathname'),events:await evaluate('JSON.parse(sessionStorage.getItem("qa-menu-touch")||"[]")')}));throw e}
   await evaluate(`(()=>{const w=document.querySelector('.lektrus-browser-board-frame').contentWindow,v=new w.EventTarget();Object.assign(v,{width:w.innerWidth,height:185,offsetLeft:0,offsetTop:0});Object.defineProperty(w,'visualViewport',{configurable:true,value:v});w.dispatchEvent(new w.Event('resize'))})()`);
   await wait(`(${menuGeometry})?.bottom<=185`,'Menu did not adapt to a reduced visual viewport');

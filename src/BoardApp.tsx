@@ -6948,8 +6948,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const saveChecklistEditor = () => {
     if(!canCreateAssignments){setNotice("Изменять структуру задания может преподаватель");return;}
     if (!checklistEditorId || !checklistDraft) { setChecklistEditorId(null); setChecklistDraft(null); return; }
-    const cleanItems = checklistDraft.items.slice(0, 40).map((value) => value.slice(0, 2000));
-    const cleanDone = cleanItems.map((_, index) => checklistDraft.done[index] === true);
+    const rows = checklistDraft.items.slice(0, 40).map((value,index) => ({text:value.slice(0, 2000),done:checklistDraft.done[index]===true}));
+    // New draft rows are placeholders until filled. Do not leave an unused
+    // trailing row on a newly created checklist (especially after an IME
+    // transition). Existing checklists retain deliberately empty entries.
+    if(pendingStudyItem?.id===checklistEditorId){
+      while(rows.length>1&&!rows[rows.length-1].text.trim()&&!rows[rows.length-1].done)rows.pop();
+    }
+    const cleanItems = rows.map(row=>row.text);
+    const cleanDone = rows.map(row=>row.done);
     if(pendingStudyItem?.id===checklistEditorId && (!checklistDraft.title.trim()||!cleanItems.some(x=>x.trim()))){
       setNotice("Введите название и хотя бы один пункт чек-листа");return;
     }

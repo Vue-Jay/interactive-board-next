@@ -291,6 +291,20 @@ def open_new_board():
     return {'viewport': js('return [innerWidth, innerHeight]'), 'path': js('return location.pathname'), 'createButtonWithKeyboard':coords, 'landscapeLoadingFrames':len(frames), 'firstLoadingFrame':frames[0] if frames else None}
 
 
+def recover_board_after_create_failure():
+    """Keep the failed IME scenario failed, but exercise the board afterwards."""
+    if not visible_id('section.board'):
+        assert visible_id('.lektrus-create-dialog'),'Create failed and no recoverable form remains'
+        click('.lektrus-create-dialog h2')
+        wait(lambda:js('return !document.activeElement?.matches("input,textarea")'),'Recovery outside tap did not dismiss keyboard',15)
+        wait(lambda:js('return !visualViewport||visualViewport.height>=innerHeight-5'),'Recovery keyboard viewport did not expand',15)
+        click('.lektrus-create-dialog button[type="submit"]')
+        wait(lambda:visible_id('section.board'),'Recovery could not open board with keyboard closed',60)
+    wait(lambda:js('return innerWidth>innerHeight'),'Recovered board did not rotate',30)
+    assert js('return document.querySelector(".board-title")?.value')=='Native QA','Recovered board did not retain entered title'
+    print('Recovery: board opened via normal UI with keyboard closed; original keyboard-submit scenario remains failed',flush=True)
+
+
 def board_layout():
     report = check_layout(['.topbar', '.back-to-boards', '.board-title', '.board-controls', '.mobile-undo-redo', '.mobile-undo-redo button'])
     assert visible_id('.mobile-undo-redo button[aria-label="Отменить"]'), 'Native undo must be visible after rotation'
@@ -1184,7 +1198,9 @@ try:
         ('Настройки','settings','.settings-shell'),
     ]:
         check('workspace-'+route, lambda: workspace_section(label, route, selector))
-    check('create-board-and-landscape', open_new_board, fatal=True)
+    check('create-board-and-landscape', open_new_board)
+    if results[-1]['status']!='passed':
+        recover_board_after_create_failure()
     check('board-landscape-bounds', board_layout)
     check('two-finger-pinch', pinch)
     check('pencil-touch', lambda: draw('pen',[.38,.46,.52]), fatal=True)
