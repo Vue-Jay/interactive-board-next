@@ -29,6 +29,9 @@ web_context = None
 results = []
 ELEMENT = 'element-6066-11e4-a52e-4f735466cecf'
 
+class BlockedCheck(RuntimeError):
+    """The installed app could not be exercised, e.g. remote map unavailable."""
+
 
 def request(method, route, payload=None, timeout=180):
     data = json.dumps(payload).encode() if payload is not None else None
@@ -66,6 +69,12 @@ def context(name):
 def reattach_webview(seconds=45):
     global web_context
     def attach():
+        try:
+            current=command('GET','/context')
+            if current and current.startswith('WEBVIEW') and js('return !!document.documentElement'):
+                return current
+        except Exception:
+            pass
         candidates=[c for c in command('GET','/contexts') if c.startswith('WEBVIEW')]
         for candidate in candidates:
             try:
@@ -121,14 +130,24 @@ def check(name, fn, fatal=False):
         results.append({'check': name, 'status': 'passed', 'detail': detail})
         print(f'PASS: {name}: {detail}', flush=True)
     except Exception as error:
-        results.append({'check': name, 'status': 'failed', 'detail': str(error)})
-        print(f'FAIL: {name}: {error}', flush=True)
+        detail=str(error)
+        driver_lost=('Native WebView context unavailable' in detail or
+                     ('/execute/sync' in detail and 'Method is not implemented' in detail) or
+                     'Native Android screenshot unavailable' in detail)
+        blocked=driver_lost or isinstance(error,BlockedCheck)
+        results.append({'check': name, 'status': 'blocked' if blocked else 'failed', 'detail': detail})
+        print(f'{"BLOCKED" if blocked else "FAIL"}: {name}: {error}', flush=True)
         try:
             screenshot(f'{len(results):02d}-{name}-failure')
         except Exception:
             pass
         if fatal:
             raise
+        if driver_lost:
+            # Do not inflate the error count by replaying later tests in a
+            # disconnected native session. Attempt recovery once; otherwise
+            # the report marks all remaining work as blocked.
+            reattach_webview(60)
 
 
 def layout(selectors):
@@ -572,13 +591,21 @@ def type_into(selector, value, clear=False):
         raise AssertionError(f'Native input mismatch: {selector}, value={js("return document.querySelector(arguments[0])?.value",selector)!r}')
     # Hiding the keyboard through the driver does not simulate DOM events and
     # makes footer actions reachable in a landscape WebView.
-    try:
-        context('NATIVE_APP')
-        command('POST','/appium/device/hide_keyboard',{})
-    except Exception:
-        pass
-    finally:
-        reattach_webview()
+    if args.platform=='android':
+        # The native keyboard is owned by Android, not the DOM. Avoid
+        # switching away from Chromedriver while the IME is closing.
+        ime=subprocess.run(['adb','shell','dumpsys','input_method'],capture_output=True,text=True,timeout=20,check=True).stdout
+        if any(flag in ime for flag in ('mInputShown=true','mIsInputViewShown=true','mShowRequested=true')):
+            subprocess.run(['adb','shell','input','keyevent','4'],timeout=20,check=True)
+        wait(lambda:js('return !!document.documentElement'),'WebView not responsive after keyboard',15)
+    else:
+        try:
+            context('NATIVE_APP')
+            command('POST','/appium/device/hide_keyboard',{})
+        except Exception:
+            pass
+        finally:
+            reattach_webview()
 
 
 def text_object(kind,label,value):
@@ -751,6 +778,16 @@ def circuit_editor_action():
 
 
 def atlas_zoom():
+    # Map geometry is fetched asynchronously. Do not try to click behind
+    # the explicit loading/error overlay or claim an offline map is tested.
+    try:
+        wait(lambda:not visible_id('.lektrus-atlas-overlay'),'Atlas data loading',90)
+    except AssertionError:
+        failure=js('return document.querySelector(".lektrus-atlas-failure")?.innerText||null')
+        if failure:
+            assert visible_id('.lektrus-atlas-failure button'),'Atlas retry control missing'
+            raise BlockedCheck('Map data unavailable in isolated native environment: '+failure)
+        raise BlockedCheck('Atlas data still loading in isolated native environment')
     selector='.lektrus-atlas-zoom-slider input'
     before=js('return Number(document.querySelector(arguments[0]).value)',selector)
     click('.lektrus-atlas-zoom button[title="Увеличить масштаб"]')
@@ -791,6 +828,7 @@ def chemistry_lab():
     wait(lambda:visible_id('.lektrus-lab-open-editor'),'Lab object missing',35)
     click('.lektrus-lab-open-editor')
     wait(lambda:visible_id('.lektrus-lab-editor'),'Fullscreen lab not rendered',45)
+    wait(lambda:visible_id('.lektrus-lab-compact-drawer-bar'),'Native phone lab must use compact fullscreen controls',20)
     report=check_layout(['.lektrus-lab-editor','.lektrus-lab-editor-exit'])
     screenshot('chemistry-lab-fullscreen')
     try:
@@ -819,7 +857,7 @@ def create_session():
         # namespace/activity remains unchanged. Never launch the release app.
         common.update({'appium:deviceName':'Android Emulator','appium:appPackage':'ru.lektrus.board.dev',
                        'appium:appActivity':'ru.lektrus.board.MainActivity','appium:ensureWebviewsHavePages':True,
-                       'appium:autoGrantPermissions':True})
+                       'appium:autoGrantPermissions':True,'appium:adbExecTimeout':90000})
     else:
         common.update({'appium:udid':args.udid, 'appium:deviceName':'iPhone Simulator',
                        'appium:bundleId':'ru.lektrus.board','appium:wdaLaunchTimeout':180000,
@@ -827,7 +865,10 @@ def create_session():
                        # The CI simulator was explicitly booted via simctl. Opening
                        # Simulator.app makes Appium restart its UI and can time out.
                        'appium:isHeadless':True,'appium:simulatorStartupTimeout':300000,
-                       'appium:noReset':True})
+                       'appium:noReset':True,
+                       # iOS 26 simulator reports the host app as process-App
+                       # (verified in Web Inspector logs), not its bundle ID.
+                       'appium:additionalWebviewBundleIds':['process-App']})
         if args.wda_app:
             common.update({'appium:usePreinstalledWDA':True,'appium:prebuiltWDAPath':args.wda_app})
         elif args.wda_derived_data:

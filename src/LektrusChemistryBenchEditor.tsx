@@ -36,7 +36,8 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
    if(!w||!h)return;
    // Phones need real-size controls, not a 1000px desktop stage zoomed
    // down to illegible text. Landscape/portrait can change at runtime.
-   const compact=window.matchMedia("(pointer:coarse) and (max-width:1100px)").matches||
+   const compact=(document.documentElement.classList.contains("lektrus-native-app")&&w<=1100)||
+    window.matchMedia("(pointer:coarse) and (max-width:1100px)").matches||
     window.matchMedia("(max-width:650px)").matches;
    const scale=compact?1:h/1000;
    const width=compact?w:w/scale;
