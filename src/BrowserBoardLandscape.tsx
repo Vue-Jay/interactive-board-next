@@ -66,9 +66,24 @@ export function releaseBrowserBoardLandscape(){
 }
 
 export function BoardLoadingScreen({browserRotate=false,nativeRotate=Capacitor.isNativePlatform()}:{browserRotate?:boolean;nativeRotate?:boolean}={}){
- // The first painted loader must not depend on a parent layout effect or
- // the asynchronous native orientation transition.
- return <main className="lektrus-board-loading" data-native-rotate={nativeRotate} data-browser-rotate={browserRotate||undefined} role="status" aria-live="polite"><section className="lektrus-board-loading-card"><div className="lektrus-board-loading-mark"><img src="/lektrus-icon-192.png" alt=""/><i/></div><span className="lektrus-board-loading-kicker">LEKTRUS · РАБОЧЕЕ ПРОСТРАНСТВО</span><h1>Готовим доску</h1><p>Подключаем материалы и инструменты для занятия.</p><div className="lektrus-board-loading-progress" aria-hidden="true"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></section></main>;
+ // iOS may report matchMedia("(orientation:portrait)") as false for a
+ // landscape-locked scene while WKWebView is still physically portrait.
+ // Size the loader from actual layout viewport pixels on its FIRST render,
+ // then update on resize. CSS media queries cannot reliably detect this gap.
+ const [viewport,setViewport]=useState(()=>({width:typeof window==="undefined"?0:innerWidth,height:typeof window==="undefined"?0:innerHeight}));
+ useLayoutEffect(()=>{
+  if(!nativeRotate)return;
+  const update=()=>{
+   const width=innerWidth,height=innerHeight;
+   setViewport(previous=>previous.width===width&&previous.height===height?previous:{width,height});
+  };
+  update();
+  window.addEventListener("resize",update);
+  window.visualViewport?.addEventListener("resize",update);
+  return()=>{window.removeEventListener("resize",update);window.visualViewport?.removeEventListener("resize",update)};
+ },[nativeRotate]);
+ const nativePortrait=nativeRotate&&viewport.height>viewport.width;
+ return <main className="lektrus-board-loading" data-native-rotate={nativeRotate} data-native-portrait={nativePortrait||undefined} data-browser-rotate={browserRotate||undefined} style={nativePortrait?{width:viewport.height,height:viewport.width}:undefined} role="status" aria-live="polite"><section className="lektrus-board-loading-card"><div className="lektrus-board-loading-mark"><img src="/lektrus-icon-192.png" alt=""/><i/></div><span className="lektrus-board-loading-kicker">LEKTRUS · РАБОЧЕЕ ПРОСТРАНСТВО</span><h1>Готовим доску</h1><p>Подключаем материалы и инструменты для занятия.</p><div className="lektrus-board-loading-progress" aria-hidden="true"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></section></main>;
 }
 
 function frameUrl(path:string){
