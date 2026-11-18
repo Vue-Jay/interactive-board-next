@@ -4,6 +4,7 @@ No browser emulation, production account, or synthetic DOM pointer events.
 DOM reads select/measure controls; all clicks and gestures go through WebDriver.
 """
 import argparse
+import base64
 import json
 import shlex
 import subprocess
@@ -28,6 +29,7 @@ URL = 'http://127.0.0.1:4723'
 session = None
 web_context = None
 results = []
+screenshot_evidence = []
 ELEMENT = 'element-6066-11e4-a52e-4f735466cecf'
 
 class BlockedCheck(RuntimeError):
@@ -45,8 +47,8 @@ def request(method, route, payload=None, timeout=180):
         raise RuntimeError(f'{method} {route}: {error.read().decode()[:3500]}') from error
 
 
-def command(method, route, payload=None):
-    return request(method, f'/session/{session}{route}', payload)
+def command(method, route, payload=None, timeout=180):
+    return request(method, f'/session/{session}{route}', payload, timeout)
 
 
 def wait(fn, description, seconds=40):
@@ -112,29 +114,49 @@ def screenshot(label):
     # Platform-native screenshot avoids switching Appium contexts between
     # every check, especially while a keyboard or new activity is opening.
     path=args.output / f'{label}.png'
-    if args.platform=='android':
-        def capture():
-            result=subprocess.run(['adb','exec-out','screencap','-p'],capture_output=True,timeout=15)
-            if result.returncode==0 and result.stdout.startswith(b'\x89PNG\r\n\x1a\n'):
-                path.write_bytes(result.stdout)
-                return True
-            return None
-        wait(capture,'Native Android screenshot unavailable',25)
-    else:
-        subprocess.run(['xcrun','simctl','io',args.udid,'screenshot',str(path)],check=True,timeout=25,capture_output=True)
+    errors=[]
+    try:
+        if args.platform=='android':
+            result=subprocess.run(['adb','exec-out','screencap','-p'],check=True,capture_output=True,timeout=15)
+            raw=result.stdout
+        else:
+            subprocess.run(['xcrun','simctl','io',args.udid,'screenshot',str(path)],check=True,timeout=15,capture_output=True)
+            raw=path.read_bytes()
+        if not raw.startswith(b'\x89PNG\r\n\x1a\n'):
+            raise ValueError('Native screenshot was not a PNG')
+        path.write_bytes(raw)
+        screenshot_evidence.append({'label':label,'status':'captured','method':'platform'})
+        return True
+    except Exception as error:
+        errors.append(str(error))
+    # Simulator capture may fail independently of the installed app. Use the
+    # existing Appium context, without disturbing the keyboard/activity state.
+    try:
+        raw=base64.b64decode(command('GET','/screenshot',timeout=15),validate=True)
+        if not raw.startswith(b'\x89PNG\r\n\x1a\n'):
+            raise ValueError('WebDriver screenshot was not a PNG')
+        path.write_bytes(raw)
+        screenshot_evidence.append({'label':label,'status':'captured','method':'webdriver','platform_error':errors[0]})
+        print(f'CAPTURE FALLBACK: {label}: {errors[0]}',flush=True)
+        return True
+    except Exception as error:
+        errors.append(str(error))
+        screenshot_evidence.append({'label':label,'status':'missing','errors':errors})
+        print(f'CAPTURE MISSING: {label}: {errors}',flush=True)
+        return False
 
 
 def check(name, fn, fatal=False):
     try:
         detail = fn()
-        screenshot(f'{len(results)+1:02d}-{name}')
-        results.append({'check': name, 'status': 'passed', 'detail': detail})
+        captured=screenshot(f'{len(results)+1:02d}-{name}')
+        results.append({'check': name, 'status': 'passed', 'detail': detail, 'screenshot':captured})
         print(f'PASS: {name}: {detail}', flush=True)
     except Exception as error:
         detail=str(error)
         driver_lost=('Native WebView context unavailable' in detail or
                      ('/execute/sync' in detail and 'Method is not implemented' in detail) or
-                     'Native Android screenshot unavailable' in detail)
+                     any(message in detail.casefold() for message in ('invalid session id','device offline','device not found','no such session','connection refused','socket hang up','not connected to devtools')))
         blocked=driver_lost or isinstance(error,BlockedCheck)
         results.append({'check': name, 'status': 'blocked' if blocked else 'failed', 'detail': detail})
         print(f'{"BLOCKED" if blocked else "FAIL"}: {name}: {error}', flush=True)
@@ -190,6 +212,7 @@ def home():
 def more():
     click('.lectris-mobile-bottom button[aria-label="Ещё разделы"]')
     wait(lambda: visible_id('.lektrus-more-page'), 'More page not rendered')
+    full_height=js('return visualViewport?.height||innerHeight')
     click('.lektrus-more-page-search input')
     # Actual native input/keyboard path; query must filter the list.
     element = visible_id('.lektrus-more-page-search input')
@@ -199,10 +222,13 @@ def more():
         scale = js('return visualViewport?.scale || 1')
         assert abs(scale - 1) < .02, f'Focusing search zoomed native viewport: {scale}'
     assert js('return document.activeElement===document.querySelector(".lektrus-more-page-search input")'), 'Search field was not focused before outside tap'
+    keyboard_height=js('return visualViewport?.height||innerHeight')
     click('.lektrus-more-page-title h1')
     wait(lambda: js('return document.activeElement!==document.querySelector(".lektrus-more-page-search input")'), 'Outside tap did not dismiss keyboard')
     assert js('return document.querySelector(".lektrus-more-page-search input").value') == 'Настройки'
-    return {'items': js('return [...document.querySelectorAll(".lektrus-more-page-item")].map(e=>e.innerText)'), 'outsideTapDismissedKeyboard': True}
+    if full_height-keyboard_height>50:
+        wait(lambda:js('return visualViewport?.height||innerHeight')>=full_height-24,'Native keyboard still consumes screen space after outside tap',15)
+    return {'items': js('return [...document.querySelectorAll(".lektrus-more-page-item")].map(e=>e.innerText)'), 'outsideTapDismissedKeyboard': True,'viewportBefore':full_height,'viewportWhileTyping':keyboard_height,'viewportAfter':js('return visualViewport?.height||innerHeight')}
 
 
 def workspace_section(label, route, selector):
@@ -457,8 +483,26 @@ def native_picker_button(labels):
 
 def start_native_export(label):
     js('''window.__nativeExportNotices=[]; new MutationObserver(()=>{const n=document.querySelector('.board-system-notice');if(n)window.__nativeExportNotices.push(n.innerText)}).observe(document.body,{childList:true,subtree:true,characterData:true});''')
-    click('.topbar-more-menu>summary')
-    click_text('.topbar-more-popover button',label)
+    if not visible_id('.topbar-more-menu[open] .topbar-more-popover'):
+        click('.topbar-more-menu>summary')
+    wait(lambda:visible_id('.topbar-more-menu[open] .topbar-more-popover'),'Board action menu did not open')
+    for _ in range(12):
+        target=js('''const menu=document.querySelector('.topbar-more-menu[open] .topbar-more-popover');if(!menu)return null;
+          const m=menu.getBoundingClientRect(),e=[...menu.querySelectorAll('button')].find(b=>b.textContent.trim()===arguments[0]);if(!e)return null;
+          const r=e.getBoundingClientRect(),x=Math.round(r.left+r.width/2),y=Math.round(r.top+r.height/2);
+          return {x,y,left:m.left,right:m.right,top:m.top,bottom:m.bottom,viewport:innerHeight,hit:e.contains(document.elementFromPoint(x,y))};''',label)
+        assert target,f'Menu action missing: {label}'
+        assert target['top']>=0 and target['bottom']<=target['viewport']+2,f'Board action menu extends outside viewport: {target}'
+        if target['hit'] and target['top']<=target['y']<=target['bottom']:
+            # This tap launches a different OS activity; do not reattach to
+            # the WebView until the picker has returned its actual result.
+            click_text('.topbar-more-popover button',label);break
+        x=round((target['left']+target['right'])/2)
+        lo,hi=round(target['top']+10),round(target['bottom']-10)
+        start,end=(hi,lo) if target['y']>target['bottom'] else (lo,hi)
+        native_gesture([(x,round(start+(end-start)*i/8)) for i in range(9)])
+    else:
+        raise AssertionError(f'Board action remained inaccessible after scrolling: {label}')
     # OS file chooser is outside the installed WebView; DOM clicks are not
     # sufficient evidence that a bytes-on-disk native export occurred.
     context('NATIVE_APP')
@@ -662,7 +706,7 @@ def shape_actions():
     return {'rotation':rotated['rotation'],'duplicate':duplicate['id'],'deleted':True,'selectionDockNoOverlap':True}
 
 
-def type_into(selector, value, clear=False):
+def type_into(selector, value, clear=False, outside=None):
     element=click(selector)
     if clear:
         # React-controlled cells must receive a real deletion input event:
@@ -691,6 +735,13 @@ def type_into(selector, value, clear=False):
         wait(lambda:js('return document.querySelector(arguments[0])?.value===arguments[1]',selector,value),'Text input did not receive exact value',10)
     except AssertionError:
         raise AssertionError(f'Native input mismatch: {selector}, value={js("return document.querySelector(arguments[0])?.value",selector)!r}')
+    if outside:
+        # Exercise the same outside-tap behavior users use, not a synthetic
+        # blur or a driver context transition while the keyboard is open.
+        click(outside)
+        wait(lambda:js('return document.activeElement!==document.querySelector(arguments[0])',selector),'Outside tap did not dismiss editor keyboard',15)
+        assert js('return document.querySelector(arguments[0])?.value',selector)==value,'Outside tap lost typed text'
+        return
     # Hiding the keyboard through the driver does not simulate DOM events and
     # makes footer actions reachable in a landscape WebView.
     if args.platform=='android':
@@ -724,7 +775,7 @@ def table_editor():
     wait(lambda:visible_id('.table-editor-modal'),'Table editor did not open')
     check_layout(['.table-editor-modal'])
     selector='.table-editor-grid textarea:first-of-type'
-    type_into(selector,'Урок QA',clear=True)
+    type_into(selector,'Урок QA',clear=True,outside='.table-editor-header strong')
     click('.table-editor-footer button.primary')
     saved=wait(lambda:(i if (i:=item_by_id(item['id'])) and i.get('tableCells',[None])[0]=='Урок QA' else None),'Table cell not saved',20)
     assert saved['tableRows']==3 and saved['tableCols']==3,saved
@@ -732,6 +783,66 @@ def table_editor():
         const p=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
         return r.top>=0&&r.bottom<=innerHeight&&e.contains(p);'''),'Board header disappeared after closing table keyboard',12)
     return {'id':saved['id'],'rows':saved['tableRows'],'columns':saved['tableCols'],'cell':saved['tableCells'][0]}
+
+
+def create_study_editor(kind, label, modal):
+    before={i['id'] for i in board_items()}
+    pick_element(f'button[aria-label^="{label}"]')
+    native_gesture([tuple(open_point())])
+    wait(lambda:visible_id(modal),f'{kind} editor did not open')
+    assert not any(i['kind']==kind and i['id'] not in before for i in board_items()),'Uncommitted study object appeared on board'
+    return before
+
+
+def checklist_editor():
+    before=create_study_editor('checklist','Чек-лист / задание','.checklist-editor-modal')
+    header='.checklist-editor-header strong'
+    type_into('.checklist-title-input input','План QA',clear=True,outside=header)
+    type_into('.checklist-editor-row input[placeholder="Пункт 1"]','Чтение',clear=True,outside=header)
+    click('.checklist-add-row')
+    type_into('.checklist-editor-row input[placeholder="Пункт 2"]','Задача',clear=True,outside=header)
+    click('.checklist-editor-row:first-child .checklist-editor-check')
+    click('.checklist-editor-footer button.primary')
+    item=wait(lambda:next((i for i in board_items() if i['kind']=='checklist' and i['id'] not in before),None),'Saved checklist missing')
+    assert item['text']=='План QA' and item['checklistItems']==['Чтение','Задача'] and item['checklistDone']==[True,False],item
+    return {'id':item['id'],'items':item['checklistItems'],'done':item['checklistDone']}
+
+
+def flashcard_editor():
+    before=create_study_editor('flashcard','Карточка вопрос–ответ','.flashcard-editor-modal')
+    header='.flashcard-editor-header strong'
+    type_into('.flashcard-editor-compose textarea[placeholder="Что нужно вспомнить?"]','Столица России',clear=True,outside=header)
+    type_into('.flashcard-editor-compose textarea[placeholder="Ответ или пояснение"]','Москва',clear=True,outside=header)
+    click('.flashcard-editor-footer button.primary')
+    item=wait(lambda:next((i for i in board_items() if i['kind']=='flashcard' and i['id'] not in before),None),'Saved flashcard missing')
+    assert item['text']=='Столица России' and item['flashcardBack']=='Москва',item
+    return {'id':item['id'],'front':item['text'],'back':item['flashcardBack']}
+
+
+def quiz_editor():
+    before=create_study_editor('quiz','Вопрос / мини-тест','.quiz-editor-modal')
+    header='.quiz-editor-header strong'
+    type_into('.quiz-question-editor textarea','2+2?',clear=True,outside=header)
+    type_into('.quiz-editor-option input[placeholder="Вариант A"]','3',clear=True,outside=header)
+    type_into('.quiz-editor-option input[placeholder="Вариант B"]','4',clear=True,outside=header)
+    click('.quiz-editor-option:nth-child(2) .quiz-correct-radio')
+    click('.quiz-editor-footer button.primary')
+    item=wait(lambda:next((i for i in board_items() if i['kind']=='quiz' and i['id'] not in before),None),'Saved quiz missing')
+    assert item['text']=='2+2?' and item['quizOptions']==['3','4'] and item['quizCorrect']==1,item
+    return {'id':item['id'],'options':item['quizOptions'],'correct':item['quizCorrect']}
+
+
+def formula_editor():
+    before={i['id'] for i in board_items()}
+    choose_subject_tool('Математика','Математическая формула')
+    wait(lambda:visible_id('.formula-editor-modal'),'Formula editor not rendered')
+    value='x^2+4=9'
+    type_into('#formula-source',value,clear=True,outside='.formula-editor-header strong')
+    assert visible_id('.formula-preview-card .formula-scripted'),'Formula preview did not render exponent'
+    click('.formula-editor-footer button.primary')
+    item=wait(lambda:next((i for i in board_items() if i['kind']=='formula' and i['id'] not in before),None),'Saved formula missing')
+    assert item['text']==value,item
+    return {'id':item['id'],'formula':item['text']}
 
 
 def full_document_persistence():
@@ -784,7 +895,7 @@ EXPECTED_CHECKS=[
     'eraser-touch','undo-redo','navigation-dock-no-overlap','tool-catalogue','board-reopen-persistence',
     'native-back-and-deep-link','zoom-for-object-tests','create-rectangle-touch','move-object-touch',
     'resize-object-touch','rotate-duplicate-delete','text-native-keyboard','sticky-native-keyboard',
-    'table-edit-and-save','all-objects-reopen-persistence',
+    'table-edit-and-save','all-objects-reopen-persistence','checklist-edit-and-save','flashcard-edit-and-save','quiz-edit-and-save','formula-edit-and-save',
     *['subject-catalogue-'+str(i+1) for i in range(len(SUBJECTS))],
     'subject-math-geometry-editor','subject-physics-circuit-editor','subject-geography-atlas-editor',
     'subject-history-atlas-editor','subject-language-sentence-editor','subject-chemistry-lab-fullscreen',
@@ -1034,6 +1145,10 @@ try:
     check('sticky-native-keyboard',lambda:text_object('sticky','Стикер','Заметка QA'))
     check('table-edit-and-save',table_editor)
     check('all-objects-reopen-persistence',full_document_persistence)
+    check('checklist-edit-and-save',checklist_editor)
+    check('flashcard-edit-and-save',flashcard_editor)
+    check('quiz-edit-and-save',quiz_editor)
+    check('formula-edit-and-save',formula_editor)
     for i,subject in enumerate(SUBJECTS):
         check('subject-catalogue-'+str(i+1),lambda:subject_catalogue(subject))
     check('subject-math-geometry-editor',lambda:subject_editor('Математика','Построение фигур','.graph-editor-modal','button[aria-label="Закрыть редактор без сохранения"]',geometry_editor_action))
@@ -1041,13 +1156,13 @@ try:
     check('subject-geography-atlas-editor',lambda:subject_editor('География','Географические карты','.lektrus-school-editor','.lektrus-school-close',atlas_zoom))
     check('subject-history-atlas-editor',lambda:subject_editor('История','Исторические карты','.lektrus-school-editor','.lektrus-school-close',history_year))
     check('subject-language-sentence-editor',lambda:subject_editor('Иностранный язык','Составление предложений','.lektrus-school-editor','.lektrus-school-close',language_drag))
-    check('subject-chemistry-lab-fullscreen',chemistry_lab)
     # Native activity transitions can invalidate the automation driver even
     # when the installed app still runs. Keep them after independent editor
     # coverage so a lost transport cannot mask another 27 product checks.
-    check('native-back-and-deep-link', native_back_and_link)
     check('native-file-export-save',native_file_export_save)
     check('native-file-export-cancel',native_file_export_cancel)
+    check('subject-chemistry-lab-fullscreen',chemistry_lab)
+    check('native-back-and-deep-link', native_back_and_link)
 except Exception as error:
     print(traceback.format_exc(), file=sys.stderr, flush=True)
     runtime_abort=str(error)
@@ -1062,13 +1177,15 @@ finally:
         if name not in seen:
             results.append({'check':name,'status':'blocked','detail':'Prior prerequisite failed or runtime aborted'})
     summary={'planned':len(EXPECTED_CHECKS),**{s:sum(r['status']==s for r in results) for s in ('passed','failed','blocked')}}
-    (args.output/'report.json').write_text(json.dumps({'platform': args.platform, 'summary':summary,'runtime_abort':runtime_abort,'results': results}, ensure_ascii=False, indent=2))
+    evidence_summary={s:sum(r['status']==s for r in screenshot_evidence) for s in ('captured','missing')}
+    (args.output/'report.json').write_text(json.dumps({'platform': args.platform, 'summary':summary,'runtime_abort':runtime_abort,'results':results,'screenshot_summary':evidence_summary,'screenshot_evidence':screenshot_evidence}, ensure_ascii=False, indent=2))
     if session:
         try:
             command('DELETE','')
         except Exception:
             pass
     print('QA SUMMARY: '+json.dumps(summary),flush=True)
+    print('QA SCREENSHOTS: '+json.dumps(evidence_summary),flush=True)
     print(json.dumps(results, ensure_ascii=False), flush=True)
 
-sys.exit(0 if runtime_abort is None and len(results)==len(EXPECTED_CHECKS) and all(r['status']=='passed' for r in results) else 1)
+sys.exit(0 if runtime_abort is None and len(results)==len(EXPECTED_CHECKS) and all(r['status']=='passed' for r in results) and not evidence_summary['missing'] else 1)

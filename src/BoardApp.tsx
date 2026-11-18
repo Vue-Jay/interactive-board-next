@@ -139,6 +139,10 @@ import { subscribeBoardComments } from "./commentRealtime";
 import { LinkMediaPlayer, resolveLinkMedia } from "./linkMedia";
 import { safeBackupName, validatePortableBundle, type PortableBoardBundle } from "./backupStore";
 import { saveExport } from "./nativeFileExport";
+import { usesEmbeddedPdf } from "./embeddedPdf";
+import type { AttachmentPreview } from "./AttachmentPreviewDialog";
+const PdfPageCanvas=lazy(()=>import("./PdfPageCanvas"));
+const AttachmentPreviewDialog=lazy(()=>import("./AttachmentPreviewDialog"));
 
 const createId = (): string => {
   const native = globalThis.crypto?.randomUUID;
@@ -739,7 +743,7 @@ function AttachmentRequestPreview({request,boardId}:{request:AttachmentApprovalR
  const [url,setUrl]=useState<string|null>(null);
  useEffect(()=>{let active=true;let objectUrl="";void getAsset(request.assetId,boardId).then(blob=>{if(!active||!blob)return;objectUrl=URL.createObjectURL(blob);setUrl(objectUrl)});return()=>{active=false;if(objectUrl)URL.revokeObjectURL(objectUrl)}},[request.assetId,boardId]);
  if(!url)return <div className="teacher-media-request-preview teacher-media-request-loading">Загрузка предпросмотра…</div>;
- return <div className="teacher-media-request-preview">{request.kind==="image"?<img src={url} alt={request.name} loading="lazy" decoding="async"/>:<iframe src={`${url}#page=1&toolbar=0`} title={request.name}/>}</div>;
+ return <div className="teacher-media-request-preview">{request.kind==="image"?<img src={url} alt={request.name} loading="lazy" decoding="async"/>:usesEmbeddedPdf()?<Suspense fallback={<span>Загрузка PDF…</span>}><PdfPageCanvas src={url} title={request.name} maxPixels={250000}/></Suspense>:<iframe src={`${url}#page=1&toolbar=0`} title={request.name}/>}</div>;
 }
 
 const Media = memo(function Media({ item, boardId }: { item: Item; boardId: string }) {
@@ -792,7 +796,9 @@ const Media = memo(function Media({ item, boardId }: { item: Item; boardId: stri
         ? <div className="media-missing">Загрузка…</div>
         : item.kind === "image"
           ? <img className="media-image" style={imageStyle} src={src} alt={item.name??"Изображение"} loading="lazy" decoding="async"/>
-          : <iframe
+          : usesEmbeddedPdf()
+            ? <Suspense fallback={<div className="media-missing">Загрузка PDF…</div>}><PdfPageCanvas src={src} page={item.pdfPage??1} title={item.name}/></Suspense>
+            : <iframe
               key={`${item.assetId}-${item.pdfPage ?? 1}`}
               className="media-pdf"
               src={`${src}#page=${Math.max(1, item.pdfPage ?? 1)}&view=FitH&toolbar=0&navpanes=0&scrollbar=0`}
@@ -2480,6 +2486,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [commandPaletteQuery, setCommandPaletteQuery] = useState("");
   const [commandPaletteIndex, setCommandPaletteIndex] = useState(0);
   const [preview, setPreview] = useState<Item | null>(null);
+  const [attachmentPreview,setAttachmentPreview]=useState<AttachmentPreview|null>(null);
   // The active tool belongs to THIS viewer/tab, not to the shared document
   // or a collaborator's presence/editor state. Restore it after remounts.
   const [tool, setToolState] = useState<Tool>(()=>readBoardSessionTool(boardSummary.id,authUser.id));
@@ -4267,19 +4274,25 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setNotice(`Вложение «${request.name}» отклонено`);
   };
   const openAttachmentRequest=async(request:AttachmentApprovalRequest)=>{
-    const blob=await getAsset(request.assetId,boardSummary.id);
-    if(!blob){setNotice("Не удалось загрузить вложение для предпросмотра");return}
-    const url=URL.createObjectURL(blob);window.open(request.kind==="pdf"?`${url}#page=1`:url,"_blank","noopener,noreferrer");window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+    try {
+      const blob=await getAsset(request.assetId,boardSummary.id);
+      if(!blob){setNotice("Не удалось загрузить вложение для предпросмотра");return}
+      if(usesEmbeddedPdf()){setAttachmentPreview({blob,name:request.name,kind:request.kind});return;}
+      const url=URL.createObjectURL(blob);window.open(request.kind==="pdf"?`${url}#page=1`:url,"_blank","noopener,noreferrer");window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+    }catch{setNotice("Не удалось загрузить вложение для предпросмотра");}
   };
 
   const openMediaAsset = async (item: Item) => {
     if ((item.kind !== "image" && item.kind !== "pdf") || !item.assetId) return;
-    const blob = await getAsset(item.assetId, boardSummary.id);
-    if (!blob) { setNotice("Исходный файл не найден в хранилище браузера"); return; }
-    const url = URL.createObjectURL(blob);
-    const targetUrl = item.kind === "pdf" ? `${url}#page=${Math.max(1, item.pdfPage ?? 1)}` : url;
-    window.open(targetUrl, "_blank", "noopener,noreferrer");
-    window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    try {
+      const blob = await getAsset(item.assetId, boardSummary.id);
+      if (!blob) { setNotice("Исходный файл не найден в хранилище"); return; }
+      if(usesEmbeddedPdf()){setAttachmentPreview({blob,name:item.name||(item.kind==="pdf"?"document.pdf":"Изображение"),kind:item.kind,page:item.pdfPage});return;}
+      const url = URL.createObjectURL(blob);
+      const targetUrl = item.kind === "pdf" ? `${url}#page=${Math.max(1, item.pdfPage ?? 1)}` : url;
+      window.open(targetUrl, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }catch{setNotice("Не удалось открыть исходный файл");}
   };
 
   const downloadMediaAsset = async (item: Item) => {
@@ -6067,8 +6080,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           else { ctx.fillStyle = "#eef0f4"; roundedRect(item.x, item.y, item.width, item.height, 8); ctx.fill(); }
         } else if (item.kind === "pdf") {
           ctx.fillStyle = "#fff"; ctx.strokeStyle = "#d8dce5"; ctx.lineWidth = 1.5; roundedRect(item.x, item.y, item.width, item.height, 8); ctx.fill(); ctx.stroke();
-          ctx.fillStyle = "#dc4c64"; ctx.font = "700 24px Arial, sans-serif"; ctx.fillText("PDF", item.x + 18, item.y + 38);
-          ctx.fillStyle = "#4a4f5c"; ctx.font = "14px Arial, sans-serif"; wrapText(item.name ?? "Документ PDF", item.x + 18, item.y + 66, Math.max(30, item.width - 36), 19, 3);
+          const pdfBlob=item.assetId?await getAsset(item.assetId,boardSummary.id):null;
+          if(!pdfBlob)throw new Error(`Не найден исходный PDF: ${item.name??"Документ"}`);
+          const {renderPdfPageCanvas}=await import("./pdfPagination");
+          const page=await renderPdfPageCanvas(pdfBlob,item.pdfPage??1);
+          const fit=Math.min(item.width/page.width,item.height/page.height), w=page.width*fit,h=page.height*fit;
+          ctx.save();roundedRect(item.x,item.y,item.width,item.height,8);ctx.clip();
+          ctx.drawImage(page,item.x+(item.width-w)/2,item.y+(item.height-h)/2,w,h);ctx.restore();
+          page.width=0;page.height=0;
         }
         ctx.restore();
       }
@@ -8106,6 +8125,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   return (
     <div className={`app ${presentation ? "presentation-mode" : ""} ${!canEdit ? "viewer-mode" : ""} ${publicPresentation ? "public-presentation-mode" : ""}`}>
+      {attachmentPreview&&<Suspense fallback={null}><AttachmentPreviewDialog preview={attachmentPreview} onClose={()=>setAttachmentPreview(null)}/></Suspense>}
       {isAppAdmin&&rolePreview!=="actual"&&
         <div className="lektrus-developer-role-banner" role="status">
           <span>Тест роли: <strong>{BOARD_ROLE_PREVIEW_LABELS[rolePreview]}</strong></span>

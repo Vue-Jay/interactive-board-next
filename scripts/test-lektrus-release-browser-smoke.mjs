@@ -151,6 +151,22 @@ try{
    assert.equal(await evaluate('document.querySelector("#qa-one").value'),'Retained');
    console.log(`✓ ${width}×${height}: outside tap, drag, field switch, label and preserved text`);
   }
+  await evaluate(`(async()=>{document.querySelector('#keyboard-fixture').remove();const {mountPdfFixture}=await import('/scripts/qa-pdf-browser-fixture.tsx');window.__disposePdfFixture=mountPdfFixture();return true})()`);
+  const pdfReady=()=>wait('document.querySelector(".lektrus-pdf-canvas-stage")?.dataset.pdfStatus==="ready"',"Embedded PDF page did not render",30000);
+  const pdfPixel=()=>evaluate(`(()=>{const c=document.querySelector('.lektrus-pdf-canvas'); return Array.from(c.getContext('2d').getImageData(Math.floor(c.width/2),Math.floor(c.height/2),1,1).data)})()`);
+  await pdfReady();assert.deepEqual(await pdfPixel(),[255,0,0,255],"Actual PDF first page pixels");
+  for(const [width,height] of [[390,844],[768,1024],[1024,768]]){
+   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:true});
+   await delay(200);
+   const bounds=await rect('.lektrus-pdf-canvas');assert.ok(bounds.left>=0&&bounds.top>=0&&bounds.right<=width+1&&bounds.bottom<=height+1,JSON.stringify(bounds));
+   await tap('.lektrus-pdf-page-controls button[aria-label="Следующая страница PDF"]');await pdfReady();assert.deepEqual(await pdfPixel(),[0,255,0,255],"Actual PDF second page pixels");
+   await tap('.lektrus-pdf-page-controls button[aria-label="Предыдущая страница PDF"]');await pdfReady();assert.deepEqual(await pdfPixel(),[255,0,0,255],"Actual PDF first page after return");
+   console.log(`✓ ${width}×${height}: PDF canvas rendered actual page pixels, touch pagination stays in viewport`);
+  }
+  const exportPixel=await evaluate(`(async()=>{const {renderPdfPageCanvas}=await import('/src/pdfPagination.ts');const blob=await fetch(document.querySelector('#pdf-fixture').dataset.source).then(r=>r.blob());const c=await renderPdfPageCanvas(blob,3);return Array.from(c.getContext('2d').getImageData(c.width>>1,c.height>>1,1,1).data)})()`);
+  assert.deepEqual(exportPixel,[0,0,255,255],"PNG export rasterizer must render actual third-page pixels");
+  console.log('✓ PDF rasterizer: actual third-page pixels for board PNG export');
+  await evaluate('window.__disposePdfFixture()');
  }else
  if(interfaceOnly){
   const session={access_token:"test-admin-token",refresh_token:"test-refresh-token",expires_at:Math.floor(Date.now()/1000)+3600,user:studioUser};

@@ -1,5 +1,6 @@
 /* Lektrus: mobile dialog fit and modern authentication. Imported last. */
 .auth-shell {
+  min-height:100vh;
   min-height:100dvh;
   box-sizing:border-box;
   padding:clamp(12px,3vmin,28px);
@@ -103,6 +104,7 @@
     width:min(100%,calc(100vw - 16px))!important;
     min-width:0!important;
     max-width:calc(100vw - 16px)!important;
+    max-height:calc(100vh - max(12px,env(safe-area-inset-top,0px)) - max(12px,env(safe-area-inset-bottom,0px)))!important;
     max-height:calc(100dvh - max(12px,env(safe-area-inset-top,0px)) - max(12px,env(safe-area-inset-bottom,0px)))!important;
     overflow-x:hidden!important;
     overflow-y:auto!important;
@@ -146,7 +148,19 @@
   .lectris-mobile-more-panel,.lectris-mobile-more-menu,
   .topbar-more-popover,.lektrus-board-actions-popover {
     box-sizing:border-box;max-width:min(330px,calc(100vw - 16px))!important;
-    max-height:calc(100dvh - 28px)!important;overflow-y:auto;overscroll-behavior:contain;
+    max-height:calc(100vh - 28px)!important;max-height:calc(100dvh - 28px)!important;overflow-y:auto;overscroll-behavior:contain;
+  }
+}
+/* Chrome 83 (Android 11) ignores dvh entirely. Keep the menu below the
+   actual top toolbar and within the viewport, not a full-height panel
+   starting 70px below the top. Every action must remain reachable by touch. */
+@media (max-width:1100px), (any-pointer:coarse) {
+  html body .topbar .topbar-right :is(.topbar-more-popover,.lektrus-board-actions-popover,.presence-popover,.lectris-layout-menu) {
+    box-sizing:border-box!important;
+    max-height:calc(100vh - 108px - env(safe-area-inset-bottom,0px))!important;
+    max-height:calc(100dvh - 108px - env(safe-area-inset-bottom,0px))!important;
+    overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain;touch-action:pan-y;
+    -webkit-overflow-scrolling:touch;
   }
 }
 @media (max-width:600px) {
