@@ -26,6 +26,9 @@ env:
 jobs:
   browser-touch:
     name: Mobile and tablet browser touch regression
+    # Browser passed on the identical app tree. This follow-up changes only
+    # Android AVD resources; run the browser again in the final full phase.
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -100,9 +103,14 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          # API 35's Google system image repeatedly exhausted its default
+          # 2560 MB guest RAM and lost the whole ADB device, even on a clean
+          # board. Allocate a realistic phone RAM budget on this runner.
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim ${{ matrix.api == 35 && '-memory 4096' || '' }}
           script: |
             mkdir -p artifacts/mobile-qa
+            free -m > artifacts/mobile-qa/host-memory-before.txt
+            adb shell cat /proc/meminfo > artifacts/mobile-qa/guest-memory-before.txt
             # This isolated emulator has reported Pixel Launcher background
             # ANRs over the foreground test app. Keep foreground-app ANRs
             # visible; suppress only Android's background-ANR notifications.
@@ -117,6 +125,8 @@ jobs:
             python3 scripts/test-native-mobile-runtime.py android --suite "${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'full' && 'full' || 'android-lab' }}" --app "$PWD/android/app/build/outputs/apk/debug/app-debug.apk" --output artifacts/mobile-qa || QA_RESULT=$?
             if [ "$QA_RESULT" -ne 0 ]; then
               timeout 20s adb shell dumpsys activity exit-info ru.lektrus.board.dev > artifacts/mobile-qa/android-exit-info.txt 2>&1 || true
+              free -m > artifacts/mobile-qa/host-memory-after.txt
+              timeout 10s adb shell cat /proc/meminfo > artifacts/mobile-qa/guest-memory-after.txt 2>&1 || true
             fi
             kill "$LOGCAT_PID" 2>/dev/null || true
             exit "$QA_RESULT"
@@ -131,6 +141,9 @@ jobs:
 
   ios:
     name: iPhone simulator native runtime
+    # The preceding commit's iPhone run is still exercising the exact same
+    # app and test script. Do not queue another macOS runner for an AVD change.
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: macos-26
     timeout-minutes: 50
     steps:
