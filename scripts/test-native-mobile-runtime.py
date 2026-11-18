@@ -70,6 +70,8 @@ def reattach_webview(seconds=45):
         for candidate in candidates:
             try:
                 context(candidate)
+                if not js('return !!document.documentElement'):
+                    continue
                 return candidate
             except Exception:
                 continue
@@ -252,27 +254,41 @@ def path_for_ink(y_band):
 
 def native_gesture(points, second=None):
     viewport = js('return [innerWidth,innerHeight]')
+    def finger(pts, name, rect, sx, sy):
+        coords = [(round(rect['x']+x*sx), round(rect['y']+y*sy)) for x, y in pts]
+        actions = [{'type':'pointerMove','duration':0,'x':coords[0][0],'y':coords[0][1],'origin':'viewport'},
+                   {'type':'pointerDown','button':0}, {'type':'pause','duration':80}]
+        actions.extend({'type':'pointerMove','duration':80,'x':x,'y':y,'origin':'viewport'} for x,y in coords[1:])
+        actions.append({'type':'pointerUp','button':0})
+        return {'type':'pointer','id':name,'parameters':{'pointerType':'touch'},'actions':actions}
+    def perform(rect,sx,sy):
+        actions=[finger(points,'finger1',rect,sx,sy)]
+        if second:
+            actions.append(finger(second,'finger2',rect,sx,sy))
+        command('POST','/actions',{'actions':actions})
+        command('DELETE','/actions')
     context('NATIVE_APP')
     try:
         classname = 'android.webkit.WebView' if args.platform == 'android' else 'XCUIElementTypeWebView'
-        element = command('POST', '/element', {'using': 'class name', 'value': classname})[ELEMENT]
-        rect = command('GET', f'/element/{element}/rect')
+        try:
+            element = wait(lambda:command('POST','/element',{'using':'class name','value':classname})[ELEMENT], 'Native WebView accessibility element unavailable', 5)
+            rect = command('GET', f'/element/{element}/rect')
+        except Exception:
+            # Android IME can hide the WebView from the accessibility tree
+            # while the installed Chromium WebView still has a live session.
+            # Use the driver's coordinate-based touch input, not JS events;
+            # only for a single tap, never mask multitouch/drag coverage.
+            if args.platform!='android' or second or len(points)!=1:
+                raise
+            reattach_webview()
+            print('Native accessibility WebView missing; using installed WebView touch input',flush=True)
+            perform({'x':0,'y':0},1,1)
+            return
         sx, sy = rect['width']/viewport[0], rect['height']/viewport[1]
         # Physical pixels for Android, coordinate points for iOS. The native
         # WebView rect includes the actual OS bars/insets, not browser guesses.
         assert 0.5 <= sx <= 5 and 0.5 <= sy <= 5, (rect, viewport)
-        def finger(pts, name):
-            coords = [(round(rect['x']+x*sx), round(rect['y']+y*sy)) for x, y in pts]
-            actions = [{'type':'pointerMove','duration':0,'x':coords[0][0],'y':coords[0][1],'origin':'viewport'},
-                       {'type':'pointerDown','button':0}, {'type':'pause','duration':80}]
-            actions.extend({'type':'pointerMove','duration':80,'x':x,'y':y,'origin':'viewport'} for x,y in coords[1:])
-            actions.append({'type':'pointerUp','button':0})
-            return {'type':'pointer','id':name,'parameters':{'pointerType':'touch'},'actions':actions}
-        actions=[finger(points,'finger1')]
-        if second:
-            actions.append(finger(second,'finger2'))
-        command('POST', '/actions', {'actions':actions})
-        command('DELETE', '/actions')
+        perform(rect,sx,sy)
     finally:
         reattach_webview()
 
@@ -418,13 +434,14 @@ def pick_element(selector, label=None):
     wait(lambda: visible_id('.mobile-tools-sheet'),'Mobile tool catalogue unavailable')
     for _ in range(20):
         data=js('''const panel=document.querySelector('.mobile-tools-sheet'), pr=panel.getBoundingClientRect();
+          const scroll=panel.querySelector('.mobile-tools-groups')||panel, sr=scroll.getBoundingClientRect();
           const header=panel.querySelector('.mobile-tools-sheet-head').getBoundingClientRect();
           const e=[...panel.querySelectorAll(arguments[0])].find(e=>arguments[1]===null||e.textContent.trim()===arguments[1]);
           if(!e)return null;
           const r=e.getBoundingClientRect(), x=Math.round(r.x+r.width/2), y=Math.round(r.y+r.height/2);
           const hit=document.elementFromPoint(x,y);
-          return {x,y,hit:!!hit&&(e===hit||e.contains(hit)),top:Math.max(pr.top,header.bottom),
-            bottom:Math.min(pr.bottom,innerHeight),left:pr.left,right:pr.right,scroll:panel.scrollTop};''',selector,label)
+          return {x,y,hit:!!hit&&(e===hit||e.contains(hit)),top:Math.max(pr.top,sr.top,header.bottom),
+            bottom:Math.min(pr.bottom,sr.bottom,innerHeight),left:sr.left,right:sr.right,scroll:scroll.scrollTop,scrollHeight:scroll.scrollHeight,clientHeight:scroll.clientHeight};''',selector,label)
         assert data, f'Missing catalogue tool: {selector} {label}'
         if data['hit'] and data['top']<=data['y']<=data['bottom']:
             native_gesture([(data['x'],data['y'])])
@@ -600,7 +617,7 @@ def full_document_persistence():
         wait(lambda:normalized()==before,'Full model changed after saving/reopening',20)
     except AssertionError:
         after={i['id']:i for i in normalized()}
-        differences=[{'kind':i['kind'],'id':i['id'],'changed':{k:[i.get(k),after.get(i['id'],{}).get(k)] for k in i if i.get(k)!=after.get(i['id'],{}).get(k)}} for i in before if i!=after.get(i['id'])]
+        differences=[{'kind':i['kind'],'id':i['id'],'changed':{k:[i.get(k),after.get(i['id'],{}).get(k)] for k in set(i)|set(after.get(i['id'],{})) if i.get(k)!=after.get(i['id'],{}).get(k)}} for i in before if i!=after.get(i['id'])]
         raise AssertionError(f'Persisted model differs: {json.dumps(differences,ensure_ascii=False)[:2500]}')
     return {'objects':len(before),'kinds':sorted(set(i['kind'] for i in before))}
 

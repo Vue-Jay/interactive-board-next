@@ -139,11 +139,26 @@
     bottom:auto!important;
     transform:none!important;
     box-sizing:border-box!important;
-    overflow-y:auto!important;
+    overflow:hidden!important;
     max-height:calc(100vh - 88px - var(--lektrus-safe-top) - var(--lektrus-safe-bottom))!important;
     max-height:calc(100dvh - 88px - var(--lektrus-safe-top) - var(--lektrus-safe-bottom))!important;
-    scroll-padding-top:52px;
+    touch-action:pan-y!important;
+  }
+  html body .workspace section.mobile-tools-sheet .mobile-tools-groups {
+    flex:1 1 auto!important;
+    min-height:0!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    touch-action:pan-y!important;
+    overscroll-behavior:contain;
     scroll-padding-bottom:8px;
+  }
+  /* The selection's screen-space corner handle sits above object content.
+     Reserve proportional clearance for the lab expansion button so it is
+     reachable even when the whole object is scaled down on a phone. */
+  html.lektrus-native-app body .workspace .lektrus-chemistry-bench-on-board>.lektrus-lab-open-editor {
+    right:max(14px,12%)!important;
+    top:max(14px,10%)!important;
   }
   html body .workspace .board-controls {
     left:calc(var(--lektrus-rail-left) + 82px)!important;
