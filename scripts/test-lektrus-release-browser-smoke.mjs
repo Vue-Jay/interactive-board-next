@@ -267,20 +267,23 @@ try{
   // constrain the menu. Inline geometry must win over the legacy rule.
   await evaluate(`(()=>{const d=document.querySelector('.lektrus-browser-board-frame').contentDocument,s=d.createElement('style');s.id='legacy-menu-viewport';s.textContent='html body .topbar .topbar-right .topbar-more-menu[open]>.topbar-more-popover{max-height:none!important;overflow:visible!important}';d.head.append(s)})()`);
   const menu=await point('.topbar-more-menu>summary');assert.ok(menu,'Board actions menu unavailable');await touch([menu]);
+  await wait('!!document.querySelector(".lektrus-browser-board-menu-gesture")','Rotated action menu gesture surface not created');
   const settings=await point('.topbar-more-popover .lektrus-controls-menu-entry');assert.ok(settings,'First action menu button is not visible');
   await touch([settings]);
   await wait('!!document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector(".lektrus-control-settings")','Rotated action menu tap did not open board controls');
   const closeSettings=await point('.lektrus-control-settings button[aria-label="Закрыть настройки"]');assert.ok(closeSettings,'Board control settings close is not accessible');await touch([closeSettings]);
   await wait('!document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector(".lektrus-control-settings")','Board control settings did not close');
   await touch([menu]);
+  await wait('!!document.querySelector(".lektrus-browser-board-menu-gesture")','Rotated menu gesture surface did not return');
   const menuGeometry=`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),element=f?.contentDocument?.querySelector('.topbar-more-menu[open] .topbar-more-popover');if(!element)return null;const r=element.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:f.contentWindow.innerHeight,scrollable:element.scrollHeight>element.clientHeight,overflow:f.contentWindow.getComputedStyle(element).overflowY,inline:element.style.maxHeight,scrollTop:element.scrollTop}})()`;
   const menuBounds=await evaluate(menuGeometry);
-  assert.ok(menuBounds&&menuBounds.top>=0&&menuBounds.bottom<=menuBounds.height+1&&menuBounds.scrollable&&menuBounds.overflow==='hidden'&&menuBounds.inline.endsWith('px'),JSON.stringify(menuBounds));
+  assert.ok(menuBounds&&menuBounds.top>=0&&menuBounds.bottom<=menuBounds.height+1&&menuBounds.scrollable&&menuBounds.overflow==='auto'&&menuBounds.inline.endsWith('px'),JSON.stringify(menuBounds));
   const scrollX=(menuBounds.left+menuBounds.right)/2;
   // Start in the middle, not at the physical browser/OS back-gesture edge.
   const scrollStart=menuBounds.top+(menuBounds.bottom-menuBounds.top)*.66,scrollEnd=menuBounds.top+28;
   assert.ok(await evaluate(`!!document.querySelector('.lektrus-browser-board-frame').contentDocument.elementFromPoint(${scrollX},${scrollStart})?.closest('.topbar-more-popover')`),'Menu is visually bounded but does not receive touches');
   const physicalStart=(await physical([{x:scrollX,y:scrollStart}]))[0];
+  assert.ok(await evaluate(`document.elementFromPoint(${physicalStart.x},${physicalStart.y})?.classList.contains('lektrus-browser-board-menu-gesture')`),'Physical swipe did not target the parent gesture surface');
   const hit=await evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),p=${JSON.stringify(physicalStart)},e=document.elementFromPoint(p.x,p.y),c=f.contentDocument.elementFromPoint(${scrollX},${scrollStart});return {outer:e?.outerHTML.slice(0,220),inner:c?.outerHTML.slice(0,220),innerTouchAction:f.contentWindow.getComputedStyle(c).touchAction,frame:f.getBoundingClientRect().toJSON(),viewport:[innerWidth,innerHeight,visualViewport.width,visualViewport.height],fullscreen:document.fullscreenElement?.tagName}})()`);
   await evaluate(`(()=>{window.__menuTouchTrace=[];sessionStorage.removeItem('qa-menu-touch');const d=document.querySelector('.lektrus-browser-board-frame').contentDocument;for(const doc of [document,d])for(const type of ['touchstart','touchmove','touchend','pointerdown','pointermove','pointerup','pointercancel','click'])doc.addEventListener(type,e=>{if(window.__menuTouchTrace.length<50){window.__menuTouchTrace.push({scope:doc===document?'outer':'inner',type,x:e.clientX??e.touches?.[0]?.clientX,y:e.clientY??e.touches?.[0]?.clientY,kind:e.pointerType,target:e.target.tagName,button:e.target.closest?.('button')?.textContent,menu:!!e.target.closest?.('.topbar-more-popover')});sessionStorage.setItem('qa-menu-touch',JSON.stringify(window.__menuTouchTrace))}},true)})()`);
   await touch(Array.from({length:9},(_,i)=>({x:scrollX,y:scrollStart+(scrollEnd-scrollStart)*i/8})));

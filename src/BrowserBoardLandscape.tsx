@@ -2,6 +2,7 @@ import {lazy,Suspense,useEffect,useLayoutEffect,useRef,useState,type ComponentPr
 import {Capacitor} from "@capacitor/core";
 import type BoardApp from "./BoardApp";
 import {parseRoute} from "./routes";
+import {BrowserBoardMenuGestureBridge} from "./BrowserBoardMenuGestureBridge";
 
 const Board=lazy(()=>import("./BoardApp"));
 const Demo=lazy(()=>import("./PublicDemoBoard"));
@@ -153,6 +154,7 @@ export function BrowserBoardLandscape({path,demo,payload,onBack,onLogout,onChang
    <iframe key={attempt} ref={iframe} className="lektrus-browser-board-frame" title="Рабочая доска Lektrus" src={frameUrl(path)} allow="fullscreen" allowFullScreen style={{visibility:ready?"visible":"hidden"}}/>
    {!ready&&timedOut&&<div className="lektrus-browser-board-error"><strong>Не удалось загрузить рабочую область</strong><button type="button" onClick={()=>{setTimedOut(false);setAttempt(n=>n+1)}}>Повторить</button><button type="button" onClick={onBack}>К доскам</button></div>}
   </div>
+  <BrowserBoardMenuGestureBridge frame={iframe} area={area} enabled={size.rotated&&ready}/>
  </div></div>;
 }
 

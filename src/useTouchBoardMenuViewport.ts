@@ -40,19 +40,11 @@ export function useTouchBoardMenuViewport(enabled: boolean) {
       if (touchGesture?.moved) cancelClick = touchGesture.menu;
       touchGesture = null;
     };
-    const wheel = (event: WheelEvent) => {
-      const menu = event.currentTarget as HTMLElement;
-      if(menu.style.overflowY!=="hidden" || menu.scrollHeight<=menu.clientHeight) return;
-      event.preventDefault();
-      const factor=event.deltaMode===1?16:event.deltaMode===2?menu.clientHeight:1;
-      menu.scrollTop += (event.deltaY || event.deltaX)*factor;
-    };
     const clear = (menu: HTMLElement) => {
       menu.removeEventListener("touchstart",touchStart);
       menu.removeEventListener("touchmove",touchMove);
       menu.removeEventListener("touchend",touchEnd);
       menu.removeEventListener("touchcancel",touchEnd);
-      menu.removeEventListener("wheel",wheel);
       if(touchGesture?.menu===menu)touchGesture=null;
       if(gesture?.menu===menu)gesture=null;
       menu.style.removeProperty("max-height");
@@ -77,11 +69,7 @@ export function useTouchBoardMenuViewport(enabled: boolean) {
         const top = menu.getBoundingClientRect().top;
         menu.style.setProperty("max-height", `${Math.max(0, Math.floor(bottom - top - edgeGap))}px`, "important");
         menu.style.setProperty("box-sizing", "border-box", "important");
-        // In a physically rotated iframe, do not present a user-scrollable
-        // compositor layer. Chrome can consume the physical horizontal drag
-        // before translating it to logical vertical coordinates. Hidden
-        // overflow still supports scrollTop, focus reveal and our gestures.
-        menu.style.setProperty("overflow-y", rotated ? "hidden" : "auto", "important");
+        menu.style.setProperty("overflow-y", "auto", "important");
         menu.style.setProperty("overflow-x", "hidden", "important");
         // A portrait browser's rotated board iframe can transpose native
         // scrolling axes. Track logical pointer coordinates in the menu.
@@ -92,7 +80,6 @@ export function useTouchBoardMenuViewport(enabled: boolean) {
           menu.addEventListener("touchmove",touchMove,{passive:false});
           menu.addEventListener("touchend",touchEnd);
           menu.addEventListener("touchcancel",touchEnd);
-          menu.addEventListener("wheel",wheel,{passive:false});
           managed.add(menu);
         }
       }
