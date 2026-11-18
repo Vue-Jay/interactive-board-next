@@ -267,6 +267,12 @@ try{
   // constrain the menu. Inline geometry must win over the legacy rule.
   await evaluate(`(()=>{const d=document.querySelector('.lektrus-browser-board-frame').contentDocument,s=d.createElement('style');s.id='legacy-menu-viewport';s.textContent='html body .topbar .topbar-right .topbar-more-menu[open]>.topbar-more-popover{max-height:none!important;overflow:visible!important}';d.head.append(s)})()`);
   const menu=await point('.topbar-more-menu>summary');assert.ok(menu,'Board actions menu unavailable');await touch([menu]);
+  const settings=await point('.topbar-more-popover .lektrus-controls-menu-entry');assert.ok(settings,'First action menu button is not visible');
+  await touch([settings]);
+  await wait('!!document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector(".lektrus-control-settings")','Rotated action menu tap did not open board controls');
+  const closeSettings=await point('.lektrus-control-settings button[aria-label="Закрыть настройки"]');assert.ok(closeSettings,'Board control settings close is not accessible');await touch([closeSettings]);
+  await wait('!document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector(".lektrus-control-settings")','Board control settings did not close');
+  await touch([menu]);
   const menuGeometry=`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),element=f?.contentDocument?.querySelector('.topbar-more-menu[open] .topbar-more-popover');if(!element)return null;const r=element.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:f.contentWindow.innerHeight,scrollable:element.scrollHeight>element.clientHeight,overflow:f.contentWindow.getComputedStyle(element).overflowY,inline:element.style.maxHeight,scrollTop:element.scrollTop}})()`;
   const menuBounds=await evaluate(menuGeometry);
   assert.ok(menuBounds&&menuBounds.top>=0&&menuBounds.bottom<=menuBounds.height+1&&menuBounds.scrollable&&menuBounds.overflow==='auto'&&menuBounds.inline.endsWith('px'),JSON.stringify(menuBounds));

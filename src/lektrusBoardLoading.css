@@ -8,6 +8,16 @@ html.lektrus-browser-board-frame-active,html.lektrus-browser-board-frame-active 
 .lektrus-browser-board-logical{position:absolute;left:50%;top:50%;overflow:hidden;transform-origin:center}
 .lektrus-browser-board-logical>.lektrus-board-loading{position:absolute;inset:0;box-sizing:border-box}
 .lektrus-browser-board-frame{display:block;width:100%;height:100%;border:0;background:#f5f7fb}
+/* The outer portrait document must not interpret the rotated frame's
+   physical horizontal motion as page panning/history navigation. Input
+   handling and scrolling remain owned by the embedded board document. */
+html.lektrus-browser-board-active .lektrus-browser-board-host,
+html.lektrus-browser-board-active .lektrus-browser-board-frame{touch-action:none;overscroll-behavior:none}
+/* Backdrop filters create separate compositor hit-test layers. In a rotated
+   frame the topbar's overflowing action menu must live in the normal layer,
+   not in a clipped filter surface the size of the narrow header. */
+html.lektrus-browser-board-frame-active .topbar,
+html.lektrus-browser-board-frame-active .topbar-more-popover{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 .lektrus-browser-board-error{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#f5f7fb;color:#173252;z-index:2001}
 .lektrus-browser-board-error button{padding:10px 20px;border:1px solid #cbd8ea;border-radius:8px;background:white;color:#244b82}
 .lektrus-board-loading:before,.lektrus-board-loading:after{position:absolute;content:"";width:min(70vw,620px);aspect-ratio:1;border:1px solid #d9e6fa;border-radius:50%;animation:lektrus-loading-orbit 14s linear infinite;pointer-events:none}
