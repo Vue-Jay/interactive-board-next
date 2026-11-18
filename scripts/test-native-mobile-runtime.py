@@ -26,7 +26,7 @@ parser.add_argument('--udid')
 parser.add_argument('--wda-app')
 parser.add_argument('--wda-derived-data')
 parser.add_argument('--output', type=Path, required=True)
-parser.add_argument('--suite', choices=['full','ios-remaining','ios-export-lab','android-lab','android-export-lab'], default='full')
+parser.add_argument('--suite', choices=['full','ios-remaining','ios-export-lab','ios-rotation','android-lab','android-export-lab'], default='full')
 args = parser.parse_args()
 args.output.mkdir(parents=True, exist_ok=True)
 URL = 'http://127.0.0.1:4723'
@@ -325,7 +325,7 @@ def open_new_board():
       for(const name of ['pointerdown','pointerup','click','submit','focusout'])document.addEventListener(name,e=>{
       if(window.__createTouchEvents.length<40)window.__createTouchEvents.push({type:name,target:e.target.tagName,button:e.target.closest('button')?.textContent,point:[e.clientX,e.clientY],active:document.activeElement?.tagName,visualTop:visualViewport?.offsetTop})},true);
       const sample=()=>{if(!window.__boardLoadingObserve)return;const e=document.querySelector('.lektrus-board-loading');
-      if(e&&e.getClientRects().length&&window.__boardLoadingFrames.length<240)window.__boardLoadingFrames.push({viewport:[innerWidth,innerHeight],loader:[e.offsetWidth,e.offsetHeight],transform:getComputedStyle(e).transform,nativeRotate:e.getAttribute('data-native-rotate'),rootRotating:document.documentElement.classList.contains('lektrus-native-rotating'),portraitMedia:matchMedia('(orientation:portrait)').matches,path:location.pathname});requestAnimationFrame(sample)};requestAnimationFrame(sample);''')
+      if(e&&e.getClientRects().length&&window.__boardLoadingFrames.length<240)window.__boardLoadingFrames.push({viewport:[innerWidth,innerHeight],loader:[e.offsetWidth,e.offsetHeight],rootViewport:[document.documentElement.clientWidth,document.documentElement.clientHeight],transform:getComputedStyle(e).transform,nativeRotate:e.getAttribute('data-native-rotate'),rootRotating:document.documentElement.classList.contains('lektrus-native-rotating'),portraitMedia:matchMedia('(orientation:portrait)').matches,path:location.pathname});requestAnimationFrame(sample)};requestAnimationFrame(sample);''')
     native_gesture([(coords['x'],coords['y'])])
     try:
         wait(lambda: visible_id('section.board'), 'Board not rendered', 90)
@@ -1572,6 +1572,18 @@ def run_full():
     check('native-back-and-deep-link', native_back_and_link)
 
 
+def run_ios_rotation():
+    # Reproduce the race three times, without relying on previous native state.
+    for attempt in range(1,4):
+        check(f'create-board-and-landscape-{attempt}',open_new_board)
+        if results[-1]['status']!='passed':
+            recover_board_after_create_failure()
+        if attempt<3:
+            click('.back-to-boards')
+            wait(lambda:visible_id('.lectris-library-intro,.lektrus-calendar-grid'),'Rotation retry could not return to workspace',45)
+            wait(lambda:js('return innerHeight>innerWidth'),'Rotation retry workspace did not restore portrait',30)
+
+
 def run_remaining():
     # Fresh isolated state, real touches and the same assertions as the full
     # suite. Only prerequisites and the previously unresolved checks run.
@@ -1610,6 +1622,8 @@ if args.suite in ('android-lab','android-export-lab','ios-export-lab'):
     EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','quiz-edit-and-save','native-back-and-deep-link','subject-chemistry-lab-fullscreen']
     if args.suite in ('android-export-lab','ios-export-lab'):
         EXPECTED_CHECKS[3:]=['native-file-export-save','native-file-export-cancel','subject-chemistry-lab-fullscreen','native-back-and-deep-link']
+elif args.suite=='ios-rotation':
+    EXPECTED_CHECKS=[f'create-board-and-landscape-{attempt}' for attempt in range(1,4)]
 elif args.suite=='ios-remaining':
     EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','table-edit-and-save',
                      'checklist-edit-and-save','flashcard-edit-and-save','quiz-edit-and-save','formula-edit-and-save',
@@ -1626,6 +1640,8 @@ try:
     print('QA SUITE: '+args.suite,flush=True)
     if args.suite=='full':
         run_full()
+    elif args.suite=='ios-rotation':
+        run_ios_rotation()
     else:
         run_remaining()
 except Exception as error:
