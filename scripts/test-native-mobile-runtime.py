@@ -14,6 +14,7 @@ import time
 import traceback
 import urllib.error
 import urllib.request
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from functools import lru_cache
 
@@ -25,7 +26,7 @@ parser.add_argument('--udid')
 parser.add_argument('--wda-app')
 parser.add_argument('--wda-derived-data')
 parser.add_argument('--output', type=Path, required=True)
-parser.add_argument('--suite', choices=['full','ios-remaining','android-lab','android-export-lab'], default='full')
+parser.add_argument('--suite', choices=['full','ios-remaining','ios-export-lab','android-lab','android-export-lab'], default='full')
 args = parser.parse_args()
 args.output.mkdir(parents=True, exist_ok=True)
 URL = 'http://127.0.0.1:4723'
@@ -794,38 +795,53 @@ def native_file_export_cancel():
         if args.platform=='android':
             dismiss_android_picker()
         else:
-            # On iOS 26 the export sheet resumes in the last used folder.
-            # Accessibility can expose the hidden parent Cancel button while
-            # the visible top-left control is actually Back. Navigate up to
-            # the visible cancellation control, not a hidden element.
-            for attempt in range(4):
-                cancel=native_picker_button(('Cancel','CANCEL','Отмена'))
-                if cancel:
-                    command('POST',f'/element/{cancel}/click',{})
-                    try:
-                        wait(lambda:not native_picker_button(('Save','SAVE','Сохранить')),'File picker stayed open',5)
-                        break
-                    except AssertionError:
-                        pass
-                if not native_picker_button(('Save','SAVE','Сохранить')):
+            # A Back transition can temporarily expose neither Save nor Cancel.
+            # Do not infer dismissal from absence in XCTest's accessibility tree.
+            # Wait for the real app cancellation notice; use measured visible
+            # native controls while the document picker remains on screen.
+            for attempt in range(10):
+                reattach_webview(45)
+                if js('return window.__nativeExportNotices?.some(n=>n.includes("Сохранение отменено"))'):
                     break
-                (args.output/f'ios-picker-cancel-{attempt}.xml').write_text(command('GET','/source'))
-                back=native_picker_button(('Back','Browse','Locations','Назад','Обзор'))
-                if not back:
-                    # The system top-left navigation arrow may have a
-                    # localized folder name rather than a fixed Back label.
-                    screen=command('GET','/window/rect')
-                    for candidate in command('POST','/elements',{'using':'-ios predicate string','value':'type == "XCUIElementTypeButton" AND visible == 1 AND enabled == 1'}):
-                        element=candidate.get(ELEMENT)
-                        if not element:continue
-                        rect=command('GET',f'/element/{element}/rect')
-                        if rect['width']>0 and rect['height']>0 and rect['x']<screen['width']*.2 and rect['y']<screen['height']*.25:
-                            back=element;break
-                assert back,'Visible native picker Back/Cancel missing'
-                command('POST',f'/element/{back}/click',{})
-                time.sleep(.7)
-            else:
-                raise AssertionError('Unable to dismiss native document picker through its visible controls')
+                context('NATIVE_APP')
+                source=command('GET','/source',timeout=45)
+                (args.output/f'ios-picker-cancel-{attempt}.xml').write_text(source)
+                root=ET.fromstring(source)
+                if not any('DOC.' in n.get('name','') or 'DocumentManager' in n.get('name','') for n in root.iter()):
+                    time.sleep(2)
+                    continue
+                screen=command('GET','/window/rect')
+                candidates=[]
+                for node in root.iter():
+                    if node.tag not in ('XCUIElementTypeButton','XCUIElementTypeOther') or node.get('visible')!='true' or node.get('enabled')!='true':
+                        continue
+                    labels={node.get('name'),node.get('label')}
+                    if labels & {'Cancel','CANCEL','Отмена'}:
+                        priority=0
+                    elif labels & {'BackButton','Back','Browse','Locations','Назад','Обзор'}:
+                        priority=1
+                    else:
+                        continue
+                    rect={key:int(node.get(key,'0')) for key in ('x','y','width','height')}
+                    if rect['width']<=0 or rect['height']<=0 or not 0<=rect['x']<screen['width'] or not 0<=rect['y']<screen['height']*.3:
+                        continue
+                    if priority==1 and not 0<=rect['x']<screen['width']*.2:
+                        continue
+                    candidates.append((priority,rect))
+                if not candidates:
+                    time.sleep(2)
+                    continue
+                _,rect=min(candidates,key=lambda item:item[0])
+                x=rect['x']+rect['width']//2
+                y=rect['y']+rect['height']//2
+                command('POST','/actions',{'actions':[{'type':'pointer','id':'picker-touch',
+                    'parameters':{'pointerType':'touch'},'actions':[
+                    {'type':'pointerMove','duration':0,'x':x,'y':y,'origin':'viewport'},
+                    {'type':'pointerDown','button':0},{'type':'pause','duration':100},
+                    {'type':'pointerUp','button':0}]}]})
+                command('DELETE','/actions')
+                time.sleep(2)
+            # The positive notice assertion below is the only success criterion.
     finally:
         reattach_webview()
     wait(lambda:js('return window.__nativeExportNotices?.some(n=>n.includes("Сохранение отменено"))'),'Cancelling native save reported no cancellation',30)
@@ -1563,15 +1579,15 @@ def run_remaining():
     if results[-1]['status']!='passed':
         recover_board_after_create_failure()
     check('pencil-touch', lambda: draw('pen',[.38,.46,.52]), fatal=True)
-    if args.suite in ('android-lab','android-export-lab'):
+    if args.suite in ('android-lab','android-export-lab','ios-export-lab'):
         check('quiz-edit-and-save',quiz_editor)
-        if args.suite=='android-export-lab':
+        if args.suite in ('android-export-lab','ios-export-lab'):
             check('native-file-export-save',native_file_export_save)
             check('native-file-export-cancel',native_file_export_cancel)
         else:
             check('native-back-and-deep-link',native_back_and_link)
         check('subject-chemistry-lab-fullscreen',chemistry_lab)
-        if args.suite=='android-export-lab':
+        if args.suite in ('android-export-lab','ios-export-lab'):
             check('native-back-and-deep-link',native_back_and_link)
         return
     # The previous targeted run passed shape operations, plain text, sticky
@@ -1590,9 +1606,9 @@ def run_remaining():
     check('native-file-export-cancel',native_file_export_cancel)
 
 
-if args.suite in ('android-lab','android-export-lab'):
+if args.suite in ('android-lab','android-export-lab','ios-export-lab'):
     EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','quiz-edit-and-save','native-back-and-deep-link','subject-chemistry-lab-fullscreen']
-    if args.suite=='android-export-lab':
+    if args.suite in ('android-export-lab','ios-export-lab'):
         EXPECTED_CHECKS[3:]=['native-file-export-save','native-file-export-cancel','subject-chemistry-lab-fullscreen','native-back-and-deep-link']
 elif args.suite=='ios-remaining':
     EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','table-edit-and-save',
