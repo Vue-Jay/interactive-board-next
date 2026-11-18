@@ -36,6 +36,7 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - run: python3 -m py_compile scripts/test-native-mobile-runtime.py
       - run: node scripts/test-mobile-keyboard-dismissal.mjs
       - run: node scripts/test-native-file-export.mjs
       - name: Validate same-origin board frame security headers
@@ -146,7 +147,7 @@ jobs:
           # Keep a realistic memory budget for the Android 15 phone image.
           # API 33/34 repeatedly lost the emulator during the laboratory's
           # graphics workload. Use ANGLE rather than the old GLES translator.
-          emulator-options: -no-window -gpu ${{ (matrix.api == 33 || matrix.api == 34) && 'swangle' || 'swiftshader_indirect' }} -no-snapshot -noaudio -no-boot-anim ${{ matrix.api >= 32 && '-memory 4096' || '' }}
+          emulator-options: -no-window -gpu ${{ (matrix.api == 33 || matrix.api == 34 || matrix.api == 36) && 'swangle' || 'swiftshader_indirect' }} -no-snapshot -noaudio -no-boot-anim ${{ matrix.api >= 32 && '-memory 4096' || '' }}
           script: bash scripts/run-android-mobile-qa.sh "${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining' && 'android-lab' || 'full' }}" "${{ matrix.api }}"
       - name: Upload Android runtime logs and screenshots
         if: always()
