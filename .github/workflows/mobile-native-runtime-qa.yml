@@ -98,9 +98,10 @@ jobs:
       fail-fast: false
       max-parallel: 13
       matrix:
-        # Every API supported by android/variables.gradle (24 through 36).
-        # The explicit remaining phase is still available for targeted repair.
-        api: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining' && '[35]' || '[24,25,26,27,28,29,30,31,32,33,34,35,36]') }}
+        # The original 13-way run is still exercising all other APIs. The
+        # follow-up PR push only repairs the missing API 27 SDK image;
+        # manually choosing full retains the complete compatibility matrix.
+        api: ${{ fromJSON(github.event_name == 'pull_request' && '[27]' || github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining' && '[35]' || '[24,25,26,27,28,29,30,31,32,33,34,35,36]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -137,7 +138,9 @@ jobs:
           # service activity, including with ample host/guest memory. The
           # isolated app does not use Play services; use the AOSP phone image.
           target: ${{ matrix.api == 35 && 'default' || 'google_apis' }}
-          arch: x86_64
+          # SDK Manager no longer publishes google_apis;x86_64 for API 27.
+          # Keep the OS/API unchanged and test its available 32-bit image.
+          arch: ${{ matrix.api == 27 && 'x86' || 'x86_64' }}
           profile: pixel_6
           disable-animations: true
           # Keep a realistic memory budget for the Android 15 phone image.
