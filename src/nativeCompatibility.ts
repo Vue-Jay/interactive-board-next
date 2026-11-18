@@ -1,4 +1,4 @@
-// WebView 83 and early iOS 15 lack a few runtime APIs that transpiling syntax
+// WebView 69 and early iOS 15 lack runtime APIs that transpiling syntax
 // cannot supply. Keep the compatibility layer limited to installed apps.
 import { Capacitor } from "@capacitor/core";
 
@@ -6,6 +6,29 @@ export function installNativeCompatibility() {
  const define=(target:object,key:string,value:unknown)=>{
   if(!(key in target))Object.defineProperty(target,key,{value,writable:true,configurable:true});
  };
+ define(window,"globalThis",window);
+ define(Object,"fromEntries",function(entries:Iterable<readonly [PropertyKey,unknown]>){
+  const result:Record<PropertyKey,unknown>={};
+  for(const [key,value] of entries)Object.defineProperty(result,key,{value,writable:true,configurable:true,enumerable:true});
+  return result;
+ });
+ define(window,"queueMicrotask",function(callback:()=>void){
+  Promise.resolve().then(callback).catch(error=>setTimeout(()=>{throw error},0));
+ });
+ define(Promise,"allSettled",function<T>(values:Iterable<T|PromiseLike<T>>){
+  return Promise.all(Array.from(values,value=>Promise.resolve(value).then(
+   value=>({status:"fulfilled",value}),reason=>({status:"rejected",reason}))));
+ });
+ define(String.prototype,"matchAll",function(this:string,expression:RegExp|string){
+  if(expression instanceof RegExp&&!expression.global)throw new TypeError("matchAll requires a global regular expression");
+  const regex=expression instanceof RegExp?new RegExp(expression.source,expression.flags):new RegExp(expression,"g");
+  if(expression instanceof RegExp)regex.lastIndex=expression.lastIndex;
+  const input=String(this);
+  return (function*(){let match:RegExpExecArray|null;while((match=regex.exec(input))!==null){
+   yield match;
+   if(match[0]==="")regex.lastIndex+=regex.unicode&&(input.codePointAt(regex.lastIndex)??0)>0xffff?2:1;
+  }})();
+ });
  define(Array.prototype,"at",function(this:unknown[],index:number){
   const offset=Math.trunc(Number(index)||0),position=offset<0?this.length+offset:offset;
   return position>=0&&position<this.length?this[position]:undefined;

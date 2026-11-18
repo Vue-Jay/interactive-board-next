@@ -39,7 +39,7 @@ assert.match(workflow, /LEKTRUS_SIGNING_STORE_BASE64/);
 assert.match(workflow, /LEKTRUS_ANDROID_VERSION_CODE/);
 assert.match(workflow, /npm run native:build/);
 assert.match(read("scripts/build-native.mjs"), /VITE_LEKTRUS_BACKEND: offline \? '' : 'selfhost'/);
-assert.match(read("vite.config.ts"), /'chrome83', 'safari15'/);
+assert.match(read("vite.config.ts"), /'chrome69', 'safari15'/);
 assert.match(entry, /import "\.\/nativeCompatibility"/);
 const gradle = read("android/app/build.gradle");
 assert.match(gradle,/LEKTRUS_ANDROID_VERSION_CODE/);

@@ -98,10 +98,9 @@ jobs:
       fail-fast: false
       max-parallel: 13
       matrix:
-        # The original 13-way run is still exercising all other APIs. The
-        # follow-up PR push only repairs the missing API 27 SDK image;
-        # manually choosing full retains the complete compatibility matrix.
-        api: ${{ fromJSON(github.event_name == 'pull_request' && '[27]' || github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining' && '[35]' || '[24,25,26,27,28,29,30,31,32,33,34,35,36]') }}
+        # Retest the legacy WebView images first. Full manual acceptance
+        # retains the complete supported OS matrix.
+        api: ${{ fromJSON(github.event_name == 'pull_request' && '[24,25,26,27,28,29]' || github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining' && '[35]' || '[24,25,26,27,28,29,30,31,32,33,34,35,36]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -117,6 +116,9 @@ jobs:
           path: android/app/build/outputs/apk/debug
       - name: Verify identical APK
         run: (cd android/app/build/outputs/apk/debug && sha256sum -c app-debug.apk.sha256)
+      - name: Install legacy WebView script compiler
+        if: ${{ matrix.api < 30 }}
+        run: npm ci --no-audit --no-fund
       - name: Install mobile automation driver
         run: |
           export APPIUM_HOME="$RUNNER_TEMP/appium-drivers"

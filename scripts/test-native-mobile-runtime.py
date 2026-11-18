@@ -6,6 +6,7 @@ DOM reads select/measure controls; all clicks and gestures go through WebDriver.
 import argparse
 import base64
 import json
+import os
 import shlex
 import subprocess
 import sys
@@ -14,6 +15,7 @@ import traceback
 import urllib.error
 import urllib.request
 from pathlib import Path
+from functools import lru_cache
 
 
 parser = argparse.ArgumentParser()
@@ -98,7 +100,20 @@ def reattach_webview(seconds=45):
     return web_context
 
 
+@lru_cache(maxsize=512)
+def legacy_script(source):
+    # execute/sync scripts are not bundled by Vite. Lower the same syntax for
+    # older installed WebViews, preserving the WebDriver arguments and this.
+    if '?.' not in source and '??' not in source:
+        return source
+    return subprocess.run(['node','--input-type=module','-e',
+        'import {transformWithOxc} from "vite";const chunks=[];for await(const chunk of process.stdin)chunks.push(chunk);const source=Buffer.concat(chunks).toString();const r=await transformWithOxc("function __qa(){"+source+"\\n}","qa.js",{target:"chrome69"});process.stdout.write(r.code+"\\nreturn __qa.apply(this, arguments);");'],
+        input=source,text=True,capture_output=True,check=True,timeout=15).stdout
+
+
 def js(source, *arguments):
+    if os.environ.get('LEKTRUS_QA_LEGACY_WEBVIEW')=='1':
+        source=legacy_script(source)
     return command('POST', '/execute/sync', {'script': source, 'args': arguments})
 
 
@@ -1261,6 +1276,10 @@ def create_session():
         common.update({'appium:deviceName':'Android Emulator','appium:appPackage':'ru.lektrus.board.dev',
                        'appium:appActivity':'ru.lektrus.board.MainActivity','appium:ensureWebviewsHavePages':True,
                        'appium:autoGrantPermissions':True,'appium:adbExecTimeout':90000})
+        if os.environ.get('LEKTRUS_QA_SKIP_DEVICE_INIT')=='1':
+            common['appium:skipDeviceInitialization']=True
+        if os.environ.get('LEKTRUS_QA_CHROMEDRIVER'):
+            common['appium:chromedriverExecutable']=os.environ['LEKTRUS_QA_CHROMEDRIVER']
     else:
         common.update({'appium:udid':args.udid, 'appium:deviceName':'iPhone Simulator',
                        'appium:bundleId':'ru.lektrus.board','appium:wdaLaunchTimeout':180000,

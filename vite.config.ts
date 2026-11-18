@@ -16,8 +16,8 @@ export default defineConfig({
     },
   }] },
   ...(process.env.LEKTRUS_NATIVE_BUILD === 'true' ? {
-    // Native Android 11 can ship WebView 83; iOS minimum is 15.0.
-    build: { target: ['chrome83', 'safari15'], cssTarget: ['chrome83', 'safari15'] },
+    // Android 7–9 emulator images can ship WebView 69; iOS minimum is 15.0.
+    build: { target: ['chrome69', 'safari15'], cssTarget: ['chrome69', 'safari15'] },
     css: { postcss: { plugins: [{
       postcssPlugin: 'native-viewport-unit-fallback',
       Declaration(decl) {
