@@ -1,0 +1,97 @@
+name: iPhone full runtime retry (Intel isolated)
+on:
+  push:
+    branches: [qa/ios-runtime-intel-20261118]
+
+permissions:
+  contents: read
+
+env:
+  # No production accounts, server connections or signing secrets.
+  LEKTRUS_NATIVE_QA: '1'
+  VITE_LEKTRUS_LOCAL_TEST: 'true'
+  VITE_LEKTRUS_BACKEND: ''
+  VITE_LEKTRUS_API_ORIGIN: ''
+  VITE_SUPABASE_URL: ''
+  VITE_SUPABASE_ANON_KEY: ''
+  VITE_AUTH_REDIRECT_URL: ''
+
+jobs:
+  ios:
+    name: iPhone simulator native runtime
+    # Same installed iOS simulator and full 57 scenarios; alternate Intel runner.
+    runs-on: macos-26-intel
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Build isolated native simulator app
+        run: |
+          npm run native:build
+          npx cap sync ios
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath ios/DerivedData CODE_SIGNING_ALLOWED=NO build
+          test -d ios/DerivedData/Build/Products/Debug-iphonesimulator/App.app
+      - name: Install mobile automation driver
+        run: |
+          export APPIUM_HOME="$RUNNER_TEMP/appium-drivers"
+          echo "APPIUM_HOME=$APPIUM_HOME" >> "$GITHUB_ENV"
+          npm install --prefix "$RUNNER_TEMP/appium" --no-audit --no-fund appium@3
+          "$RUNNER_TEMP/appium/node_modules/.bin/appium" driver install xcuitest
+      - name: Boot iPhone simulator
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for k in sorted(d,reverse=True) if "iOS" in k for x in d[k] if x.get("isAvailable") and x["name"].startswith("iPhone")))')
+          echo "SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID" || xcrun simctl list devices booted
+          xcrun simctl bootstatus "$UDID" -b
+      - name: Install and exercise app on iOS simulator
+        run: |
+          mkdir -p artifacts/mobile-qa
+          APP="$PWD/ios/DerivedData/Build/Products/Debug-iphonesimulator/App.app"
+          xcrun simctl install "$SIMULATOR_UDID" "$APP"
+          # Capture a native launch independently of Appium/WebDriverAgent.
+          # A driver timeout must not hide whether the installed app renders.
+          xcrun simctl launch "$SIMULATOR_UDID" ru.lektrus.board
+          sleep 15
+          xcrun simctl io "$SIMULATOR_UDID" screenshot artifacts/mobile-qa/ios-native-startup.png
+          xcrun simctl terminate "$SIMULATOR_UDID" ru.lektrus.board || true
+          # Avoid repeatedly building WebDriverAgent during the session startup.
+          APPIUM="$RUNNER_TEMP/appium/node_modules/.bin/appium"
+          WDA_APP=""
+          if "$APPIUM" driver run xcuitest download-wda -- --platform=ios --kind=sim --outdir="$RUNNER_TEMP/wda-download" > artifacts/mobile-qa/wda-prebuild.log 2>&1; then
+            WDA_APP=$(find "$RUNNER_TEMP/wda-download" -type d -name '*-Runner.app' -print -quit)
+          fi
+          if [[ -n "$WDA_APP" ]]; then
+            WDA_EXEC=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$WDA_APP/Info.plist" || true)
+            # A downloaded simulator WDA can be ARM-only. Use the same source
+            # build fallback rather than attempt to launch an incompatible binary.
+            if [[ -z "$WDA_EXEC" ]] || ! lipo -archs "$WDA_APP/$WDA_EXEC" 2>/dev/null | grep -qw "$(uname -m)"; then
+              WDA_APP=""
+            fi
+          fi
+          if [[ -n "$WDA_APP" ]]; then
+            WDA_ARGS=(--wda-app "$WDA_APP")
+          else
+            WDA="$APPIUM_HOME/node_modules/appium-xcuitest-driver/node_modules/appium-webdriveragent/WebDriverAgent.xcodeproj"
+            WDA_DERIVED="$RUNNER_TEMP/lektrus-wda"
+            xcodebuild -project "$WDA" -scheme WebDriverAgentRunner -configuration Debug \
+              -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" -derivedDataPath "$WDA_DERIVED" \
+              CODE_SIGNING_ALLOWED=NO RUN_CLANG_STATIC_ANALYZER=NO COMPILER_INDEX_STORE_ENABLE=NO \
+              build-for-testing >> artifacts/mobile-qa/wda-prebuild.log 2>&1
+            WDA_ARGS=(--wda-derived-data "$WDA_DERIVED")
+          fi
+          "$APPIUM" --address 127.0.0.1 --port 4723 > artifacts/mobile-qa/appium.log 2>&1 &
+          python3 scripts/test-native-mobile-runtime.py ios --suite "full" --app "$APP" --udid "$SIMULATOR_UDID" "${WDA_ARGS[@]}" --output artifacts/mobile-qa
+      - name: Upload iOS runtime logs and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-runtime-evidence
+          path: artifacts/mobile-qa/
+          if-no-files-found: warn
+          retention-days: 14
