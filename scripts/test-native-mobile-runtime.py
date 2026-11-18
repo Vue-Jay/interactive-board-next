@@ -566,7 +566,11 @@ def native_file_export_save():
         escaped=shlex.quote(name)
         locations=subprocess.run(['adb','shell',f'find /sdcard/Download /sdcard/Documents -maxdepth 3 -name {escaped} 2>/dev/null'],capture_output=True,text=True,timeout=20).stdout.splitlines()
         assert locations,'Saved board not found in Android shared storage'
-        raw=subprocess.run(['adb','exec-out','cat',shlex.quote(locations[0].strip())],check=True,capture_output=True,timeout=25).stdout
+        # The filename contains spaces. Pull bytes with the ADB file protocol
+        # instead of relying on a remote shell to preserve argument quoting.
+        exported=args.output/'native-exported-board.orboard'
+        subprocess.run(['adb','pull',locations[0].strip(),str(exported)],check=True,capture_output=True,timeout=25)
+        raw=exported.read_bytes()
     else:
         container=Path(subprocess.check_output(['xcrun','simctl','get_app_container',args.udid,'ru.lektrus.board','data'],text=True,timeout=20).strip())
         # Look in this isolated simulator's shared/local Files containers only;
@@ -575,6 +579,7 @@ def native_file_export_save():
         locations=[p for p in root.rglob(name) if p.is_file() and 'lektrus-export-' not in str(p)]
         assert locations,'Saved board not found in iPhone simulator Files storage'
         raw=locations[0].read_bytes()
+    assert raw and raw.lstrip().startswith(b'{'),f'Exported board is not JSON: {len(raw)} bytes; first bytes={raw[:80]!r}'
     bundle=json.loads(raw)
     assert bundle['format']=='onlinerepetitor-board' and bundle['version']==2,bundle.keys()
     assert any(i['kind']=='pen' for i in bundle['document']['items']),'Export omitted the saved drawing'

@@ -109,8 +109,14 @@ public class LektrusFilesPlugin extends Plugin {
                 try (FileInputStream input = new FileInputStream(staged);
                      OutputStream output = getContext().getContentResolver().openOutputStream(destination, "w")) {
                     if (output == null) throw new IOException("Destination unavailable");
+                    if (staged.length() != size) throw new IOException("Staged file size mismatch");
                     byte[] buffer = new byte[64 * 1024];
-                    for (int count; (count = input.read(buffer)) != -1;) output.write(buffer, 0, count);
+                    long copied = 0;
+                    for (int count; (count = input.read(buffer)) != -1;) {
+                        output.write(buffer, 0, count);
+                        copied += count;
+                    }
+                    if (copied != size) throw new IOException("Copied file size mismatch");
                     output.flush();
                 } catch (Exception e) { clear(); call.reject("Не удалось сохранить файл", e); return; }
                 clear();

@@ -163,6 +163,10 @@ export function BrowserBoardFrameEntry(){
  const emit=(type:string,data:Record<string,unknown>={})=>window.parent.postMessage({channel:CHANNEL,type,...data},location.origin);
  useLayoutEffect(()=>{
   const route=parseRoute(location.pathname);
+  // The embedded document also owns its overscroll boundary. Otherwise
+  // a horizontal physical swipe in the rotated portrait browser can
+  // become a top-level history navigation rather than a board gesture.
+  document.documentElement.classList.add("lektrus-browser-board-frame-active");
   const receive=(event:MessageEvent)=>{
    if(event.source!==window.parent||event.origin!==location.origin||event.data?.channel!==CHANNEL||event.data.type!=="payload")return;
    const payload=event.data.payload as BrowserBoardPayload|undefined;
@@ -173,7 +177,7 @@ export function BrowserBoardFrameEntry(){
   const applyUpdate=()=>emit("apply-update");
   window.addEventListener("lektrus:apply-update",applyUpdate);
   emit("ready");
-  return()=>{window.removeEventListener("message",receive);window.removeEventListener("lektrus:apply-update",applyUpdate)};
+  return()=>{document.documentElement.classList.remove("lektrus-browser-board-frame-active");window.removeEventListener("message",receive);window.removeEventListener("lektrus:apply-update",applyUpdate)};
  },[]);
  if(state.demo)return <Suspense fallback={<BoardLoadingScreen/>}><Demo onExit={()=>emit("back")}/></Suspense>;
  if(!state.payload)return <BoardLoadingScreen/>;

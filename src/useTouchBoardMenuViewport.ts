@@ -26,13 +26,17 @@ export function useTouchBoardMenuViewport(enabled: boolean) {
     const update = () => {
       const current = window.visualViewport;
       const bottom = Math.min(window.innerHeight, current ? current.offsetTop + current.height : window.innerHeight);
+      // Logical bottom is the physical left edge in the 90° fallback.
+      // Leave the menu's swipe surface away from browser/OS back gestures.
+      const rotated = window.frameElement?.parentElement?.getAttribute("data-rotated") === "true";
+      const edgeGap = rotated ? 40 : 8;
       for (const menu of document.querySelectorAll<HTMLElement>(MENU_SELECTOR)) {
         if (!menu.parentElement?.hasAttribute("open")) {
           if (managed.delete(menu)) clear(menu);
           continue;
         }
         const top = menu.getBoundingClientRect().top;
-        menu.style.setProperty("max-height", `${Math.max(0, Math.floor(bottom - top - 8))}px`, "important");
+        menu.style.setProperty("max-height", `${Math.max(0, Math.floor(bottom - top - edgeGap))}px`, "important");
         menu.style.setProperty("box-sizing", "border-box", "important");
         menu.style.setProperty("overflow-y", "auto", "important");
         menu.style.setProperty("overflow-x", "hidden", "important");
