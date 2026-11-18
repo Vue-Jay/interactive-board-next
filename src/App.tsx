@@ -206,8 +206,17 @@ export default function App() {
     const check = () => {
       if (innerWidth > innerHeight && innerWidth >= Math.max(screen.width, screen.height) - 100) ready();
     };
+    // Returning from a system file picker can leave older Android WebViews
+    // in portrait despite the original landscape request. Reassert it only
+    // when this still-mounted board becomes visible/focused again.
+    const restoreOnReturn = () => {
+      if(alive && document.visibilityState === "visible" && innerWidth < innerHeight)
+        void ScreenOrientation.lock({orientation:"landscape-primary"}).then(check).catch(()=>undefined);
+    };
     check();
     window.addEventListener("resize", check);
+    window.addEventListener("focus", restoreOnReturn);
+    document.addEventListener("visibilitychange", restoreOnReturn);
     window.visualViewport?.addEventListener("resize", check);
     void ScreenOrientation.lock({ orientation: "landscape-primary" }).then(check).catch(error => console.warn("Unable to change Lektrus orientation", error));
     // Large-screen OS modes can refuse an orientation lock; do not strand users.
@@ -217,6 +226,8 @@ export default function App() {
       root.classList.remove("lektrus-native-rotating");
       window.clearTimeout(timeout);
       window.removeEventListener("resize", check);
+      window.removeEventListener("focus", restoreOnReturn);
+      document.removeEventListener("visibilitychange", restoreOnReturn);
       window.visualViewport?.removeEventListener("resize", check);
     };
   }, [nativeBoardOpening]);

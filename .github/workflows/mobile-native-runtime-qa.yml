@@ -144,8 +144,10 @@ jobs:
           profile: pixel_6
           disable-animations: true
           # Keep a realistic memory budget for the Android 15 phone image.
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim ${{ matrix.api >= 32 && '-memory 4096' || '' }}
-          script: bash scripts/run-android-mobile-qa.sh "${{ (github.event_name == 'pull_request' && matrix.api >= 32 && matrix.api <= 34 || github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining') && 'android-lab' || 'full' }}" "${{ matrix.api }}"
+          # API 33/34 repeatedly lost the emulator during the laboratory's
+          # graphics workload. Use ANGLE rather than the old GLES translator.
+          emulator-options: -no-window -gpu ${{ (matrix.api == 33 || matrix.api == 34) && 'swangle' || 'swiftshader_indirect' }} -no-snapshot -noaudio -no-boot-anim ${{ matrix.api >= 32 && '-memory 4096' || '' }}
+          script: bash scripts/run-android-mobile-qa.sh "${{ github.event_name == 'pull_request' && matrix.api < 30 && 'android-export-lab' || (github.event_name == 'pull_request' && matrix.api >= 32 && matrix.api <= 34 || github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining') && 'android-lab' || 'full' }}" "${{ matrix.api }}"
       - name: Upload Android runtime logs and screenshots
         if: always()
         uses: actions/upload-artifact@v4

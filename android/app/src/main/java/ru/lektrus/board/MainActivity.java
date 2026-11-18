@@ -3,6 +3,8 @@ package ru.lektrus.board;
 import android.os.Bundle;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
 import android.net.Uri;
 import android.view.ViewGroup;
 import android.webkit.WebView;
@@ -44,6 +46,13 @@ public class MainActivity extends BridgeActivity {
         if (boardMode) controller.hide(WindowInsetsCompat.Type.statusBars());
         else controller.show(WindowInsetsCompat.Type.statusBars());
         controller.show(WindowInsetsCompat.Type.navigationBars());
+    }
+
+    private void restoreBoardOrientation() {
+        if (boardMode && (getRequestedOrientation() != ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE ||
+                getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE)) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        }
     }
 
     @Override
@@ -169,6 +178,9 @@ public class MainActivity extends BridgeActivity {
     public void onWindowFocusChanged(boolean focus) {
         super.onWindowFocusChanged(focus);
         if (focus) {
+            // System DocumentsUI is allowed to rotate independently. When
+            // it exits, Android 7/8 can leave the board in portrait.
+            restoreBoardOrientation();
             applyBars();
             if (boardWebView != null) ViewCompat.requestApplyInsets(boardWebView);
         }

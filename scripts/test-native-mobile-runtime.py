@@ -25,7 +25,7 @@ parser.add_argument('--udid')
 parser.add_argument('--wda-app')
 parser.add_argument('--wda-derived-data')
 parser.add_argument('--output', type=Path, required=True)
-parser.add_argument('--suite', choices=['full','ios-remaining','android-lab'], default='full')
+parser.add_argument('--suite', choices=['full','ios-remaining','android-lab','android-export-lab'], default='full')
 args = parser.parse_args()
 args.output.mkdir(parents=True, exist_ok=True)
 URL = 'http://127.0.0.1:4723'
@@ -630,7 +630,7 @@ def native_back_and_link():
     return {'route':path,'strokes':len(before)}
 
 
-def native_picker_button(labels):
+def native_picker_button(labels, require_enabled=False):
     attributes = ('text','content-desc') if args.platform=='android' else ('label','name')
     predicate=' or '.join(f'@{attr}="{label}"' for attr in attributes for label in labels)
     try:
@@ -639,7 +639,7 @@ def native_picker_button(labels):
             value=e.get(ELEMENT)
             if not value:
                 continue
-            if args.platform=='ios':
+            if args.platform=='ios' or require_enabled:
                 if not command('GET',f'/element/{value}/displayed') or not command('GET',f'/element/{value}/enabled'):
                     continue
             return value
@@ -682,6 +682,18 @@ def native_file_export_save():
     start_native_export('Скачать копию')
     try:
         save=wait(lambda:native_picker_button(('Save','SAVE','Сохранить')),'Native system file picker did not offer Save',45)
+        if args.platform=='android' and not command('GET',f'/element/{save}/enabled'):
+            # AOSP Android 7 launches DocumentsUI in Recent, a read-only
+            # virtual root. Select the real shared Downloads directory.
+            roots=native_picker_button(('Show roots','Open navigation drawer','Show navigation drawer','Показать корневые папки'),require_enabled=True)
+            if not roots:
+                controls=command('POST','/elements',{'using':'xpath','value':'//*[contains(@resource-id,"toolbar")]//android.widget.ImageButton'})
+                roots=next((e.get(ELEMENT) for e in controls if e.get(ELEMENT)),None)
+            assert roots,'DocumentsUI storage navigation button missing'
+            command('POST',f'/element/{roots}/click',{})
+            downloads=wait(lambda:native_picker_button(('Downloads','Download','Загрузки'),require_enabled=True),'Downloads destination missing',15)
+            command('POST',f'/element/{downloads}/click',{})
+            save=wait(lambda:native_picker_button(('Save','SAVE','Сохранить'),require_enabled=True),'Save not enabled after selecting Downloads',15)
         screenshot('native-board-save-picker')
         if args.platform=='ios':
             local=native_picker_button(('On My iPhone','На iPhone'))
@@ -692,6 +704,7 @@ def native_file_export_save():
     finally:
         reattach_webview()
     wait(lambda: js('return window.__nativeExportNotices?.some(n=>n.includes("Копия"))'),'Native save completion not acknowledged',30)
+    wait(lambda:js('return innerWidth>innerHeight'),'Board did not restore landscape after saving',15)
     if args.platform=='android':
         escaped=shlex.quote(name)
         locations=subprocess.run(['adb','shell',f'find /sdcard/Download /sdcard/Documents -maxdepth 3 -name {escaped} 2>/dev/null'],capture_output=True,text=True,timeout=20).stdout.splitlines()
@@ -759,6 +772,7 @@ def native_file_export_cancel():
     finally:
         reattach_webview()
     wait(lambda:js('return window.__nativeExportNotices?.some(n=>n.includes("Сохранение отменено"))'),'Cancelling native save reported no cancellation',30)
+    wait(lambda:js('return innerWidth>innerHeight'),'Board did not restore landscape after cancelling save',15)
     return {'cancelled':True}
 
 
@@ -1416,10 +1430,16 @@ def run_remaining():
     if results[-1]['status']!='passed':
         recover_board_after_create_failure()
     check('pencil-touch', lambda: draw('pen',[.38,.46,.52]), fatal=True)
-    if args.suite=='android-lab':
+    if args.suite in ('android-lab','android-export-lab'):
         check('quiz-edit-and-save',quiz_editor)
-        check('native-back-and-deep-link',native_back_and_link)
+        if args.suite=='android-export-lab':
+            check('native-file-export-save',native_file_export_save)
+            check('native-file-export-cancel',native_file_export_cancel)
+        else:
+            check('native-back-and-deep-link',native_back_and_link)
         check('subject-chemistry-lab-fullscreen',chemistry_lab)
+        if args.suite=='android-export-lab':
+            check('native-back-and-deep-link',native_back_and_link)
         return
     # The previous targeted run passed shape operations, plain text, sticky
     # notes and board reopen. Only the shared editor controls need regressions.
@@ -1437,8 +1457,10 @@ def run_remaining():
     check('native-file-export-cancel',native_file_export_cancel)
 
 
-if args.suite=='android-lab':
+if args.suite in ('android-lab','android-export-lab'):
     EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','quiz-edit-and-save','native-back-and-deep-link','subject-chemistry-lab-fullscreen']
+    if args.suite=='android-export-lab':
+        EXPECTED_CHECKS[3:]=['native-file-export-save','native-file-export-cancel','subject-chemistry-lab-fullscreen','native-back-and-deep-link']
 elif args.suite=='ios-remaining':
     EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','table-edit-and-save',
                      'checklist-edit-and-save','flashcard-edit-and-save','quiz-edit-and-save','formula-edit-and-save',
