@@ -555,8 +555,16 @@ def type_into(selector, value, clear=False):
                 {'type':'keyDown','value':'\ue003'},{'type':'keyUp','value':'\ue003'}]}]})
             command('DELETE','/actions')
             if js('return document.querySelector(arguments[0]).value',selector):
-                command('POST',f'/element/{element}/clear',{})
-                element=click(selector)
+                if args.platform=='android':
+                    # Some Chromium WebViews swallow the Ctrl+A combination
+                    # sent by Chromedriver. Real Android hardware key events
+                    # delete the existing text while keeping React in sync.
+                    remaining=js('return document.querySelector(arguments[0]).value',selector)
+                    subprocess.run(['adb','shell','input','keyevent','123',*(['67']*len(remaining))],check=True,timeout=25)
+                else:
+                    command('POST',f'/element/{element}/clear',{})
+                    element=click(selector)
+            wait(lambda:js('return document.querySelector(arguments[0]).value=== ""',selector),'Native keyboard did not clear previous text',10)
     command('POST',f'/element/{element}/value',{'text':value,'value':list(value)})
     try:
         wait(lambda:js('return document.querySelector(arguments[0])?.value===arguments[1]',selector,value),'Text input did not receive exact value',10)
