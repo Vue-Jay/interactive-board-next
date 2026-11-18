@@ -192,6 +192,35 @@ try{
   await touch([center]);await wait('!'+titleFocused,'Outside touch did not blur the title editor');
   assert.equal(await evaluate(`document.querySelector('.lektrus-browser-board-frame').contentDocument.querySelector('.board-title').value`),edited);
   console.log('✓ Real two-finger zoom, keyboard input and outside-tap dismissal in rotated board');
+  // Emulate an unusually short IME viewport in the landscape frame. The
+  // controls themselves are exercised using real rotated touch coordinates.
+  for(const [kind,tool,field] of [
+   ['table','.lektrus-elements-data-action','.table-editor-grid textarea'],
+   ['checklist','button[aria-label^="Чек-лист / задание"]','.checklist-title-input input'],
+   ['flashcard','button[aria-label^="Карточка вопрос–ответ"]','.flashcard-editor-compose textarea'],
+   ['quiz','button[aria-label^="Вопрос / мини-тест"]','.quiz-question-editor textarea'],
+  ]){
+   const more=await point('.mobile-tools-more');assert.ok(more,'Tool catalogue unavailable');await touch([more]);
+   await wait('!!window.__originalFrame.document.querySelector(".mobile-tools-sheet")','Tool catalogue did not open');
+   await evaluate(`window.__originalFrame.document.querySelector('.mobile-tools-sheet '+${JSON.stringify(tool)}).scrollIntoView({block:'center'})`);
+   const item=await point('.mobile-tools-sheet '+tool);assert.ok(item,kind+' catalogue tool inaccessible');await touch([item]);
+   const empty=await evaluate(`(()=>{const d=window.__originalFrame.document,b=d.querySelector('section.board').getBoundingClientRect();for(const fy of [.48,.6,.73,.35])for(const fx of [.35,.45,.55,.7]){const p={x:b.left+b.width*fx,y:b.top+b.height*fy};const e=d.elementFromPoint(p.x,p.y);if(e?.closest('section.board')&&!e.closest('.board-object,button,input,textarea,.toolbar,.board-controls,.mobile-board-tools,.selection-toolbar-screen'))return p}return null})()`);
+   assert.ok(empty,'No unobstructed editor placement');await touch([empty]);
+   await wait(`!!window.__originalFrame.document.querySelector('.lektrus-touch-editor-portal .${kind}-editor-modal')`,kind+' touch editor did not open');
+   await evaluate(`window.__originalFrame.document.querySelector(${JSON.stringify(field)}).scrollIntoView({block:'center'})`);
+   const fieldPoint=await point(field);assert.ok(fieldPoint,kind+' input inaccessible');await touch([fieldPoint]);
+   await call('Input.insertText',{text:'QA'});
+   await evaluate(`(()=>{const w=window.__originalFrame,v=new w.EventTarget();Object.assign(v,{width:w.innerWidth,height:165,offsetLeft:0,offsetTop:0});Object.defineProperty(w,'visualViewport',{configurable:true,value:v});w.dispatchEvent(new w.Event('resize'))})()`);
+   await wait(`window.__originalFrame.document.querySelector('.lektrus-touch-editor-portal').dataset.compactHeight==='true'`,kind+' editor ignored short viewport');
+   const geometry=await evaluate(`(()=>{const d=window.__originalFrame.document,m=d.querySelector('.${kind}-editor-modal'),h=m.querySelector('.${kind}-editor-header').getBoundingClientRect(),f=m.querySelector('.${kind}-editor-footer').getBoundingClientRect();return {top:h.top,headerBottom:h.bottom,footerTop:f.top,bottom:f.bottom}})()`);
+   assert.ok(geometry.top>=0&&geometry.bottom<=166&&geometry.footerTop-geometry.headerBottom>=42,kind+' keyboard viewport clipping: '+JSON.stringify(geometry));
+   const header=await point('.'+kind+'-editor-header strong');assert.ok(header,kind+' clipped header');await touch([header]);
+   await wait(`window.__originalFrame.document.activeElement!==window.__originalFrame.document.querySelector(${JSON.stringify(field)})`,kind+' outside touch did not blur input');
+   await evaluate(`delete window.__originalFrame.visualViewport;window.__originalFrame.dispatchEvent(new window.__originalFrame.Event('resize'))`);
+   const cancel=await point('.'+kind+'-editor-footer button.secondary'+(kind==='checklist'?':nth-child(3)':''));assert.ok(cancel,kind+' cancel inaccessible');await touch([cancel]);
+   await wait(`!window.__originalFrame.document.querySelector('.${kind}-editor-modal')`,kind+' editor did not close');
+   console.log('✓ '+kind+' editor: input, header and footer accessible with short landscape keyboard');
+  }
   for(const [w,h,rotated] of [[844,390,false],[768,1024,true],[1024,768,false],[390,844,true]]){
    await viewport(w,h);
    await wait(`document.querySelector('.lektrus-browser-board-frame').parentElement.dataset.rotated===String(${rotated})`,'Incorrect orientation after physical rotation');

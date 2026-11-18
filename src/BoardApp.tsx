@@ -9,6 +9,7 @@ import { canCompositeBoardResize, paintBoardResizePreview, type ResizePreviewTar
 import { boardGridTransform } from "./boardBackgroundPan";
 import { chemistryBoardHasContent } from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
+import MobileBoardEditorPortal from "./MobileBoardEditorPortal";
 import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./rectSelection";
 import { boardObjectAtInertPointerTarget } from "./boardObjectDragSurface";
 import { buildBoardDragSnapIndex, snapBoardDrag, type BoardDragSnapIndex } from "./boardDragSnapIndex";
@@ -9105,10 +9106,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             </div>
           </div>,document.body
         )}
+        <MobileBoardEditorPortal active={(isCoarsePointer||Capacitor.isNativePlatform())&&Boolean(checklistEditorId||flashcardEditorId||quizEditorId||tableEditorId)}>
         {checklistEditorId && checklistDraft && (
           <div className="checklist-editor-backdrop" onPointerDown={() => { cancelStudyEditor("checklist"); }}>
             <div className="checklist-editor-modal" role="dialog" aria-modal="false" aria-label="Редактор чек-листа" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cancelStudyEditor("checklist"); } if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); saveChecklistEditor(); } }}>
               <div className="checklist-editor-header"><div className="checklist-editor-header-main"><strong>{pendingStudyItem?.id===checklistEditorId?"Создание чек-листа":"Чек-лист / задание"}</strong><span>{checklistDraft.done.filter(Boolean).length} из {checklistDraft.items.length} выполнено</span></div><button onClick={() => { cancelStudyEditor("checklist"); }} aria-label="Закрыть без сохранения"><Icon name="close" size={17}/></button></div>
+              <div className="checklist-editor-scroll">
               {pendingStudyItem?.id===checklistEditorId&&<p className="lektrus-study-creation-hint">
                 Объект появится на доске только после сохранения. Отмена не создаёт задание.
               </p>}
@@ -9128,6 +9131,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   </div>
                 ))}
                 <button className="checklist-add-row" disabled={checklistDraft.items.length >= 40} onClick={addChecklistRow}><Icon name="plus" size={15}/> Добавить пункт</button>
+              </div>
               </div>
               <div className="checklist-editor-footer"><span>Ctrl+Enter — сохранить · Esc — закрыть</span><div className="checklist-editor-bulk"><button className="secondary" onClick={() => setChecklistDraft((current) => current ? { ...current, done: current.done.map(() => false) } : current)}>Сбросить отметки</button><button className="secondary" onClick={() => setChecklistDraft((current) => current ? { ...current, done: current.done.map(() => true) } : current)}>Отметить всё</button><button className="secondary" onClick={() => { cancelStudyEditor("checklist"); }}>Отмена</button><button className="primary" onClick={saveChecklistEditor}><Icon name="check" size={15}/> Сохранить</button></div></div>
             </div>
@@ -9256,6 +9260,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             </div>
           </div>
         )}
+        </MobileBoardEditorPortal>
         {selected.length === 1 &&
           !objectEditorOpen &&
           items.some(

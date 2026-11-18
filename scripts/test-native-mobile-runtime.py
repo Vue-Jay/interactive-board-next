@@ -171,6 +171,20 @@ def check(name, fn, fatal=False):
             # disconnected native session. Attempt recovery once; otherwise
             # the report marks all remaining work as blocked.
             reattach_webview(60)
+        elif name in ('table-edit-and-save','checklist-edit-and-save','flashcard-edit-and-save','quiz-edit-and-save'):
+            # An unsuccessful editor must not block unrelated later checks.
+            # Capture the failure first, then cancel through the actual UI.
+            try:
+                for kind in ('table','checklist','flashcard','quiz'):
+                    if visible_id(f'.{kind}-editor-modal'):
+                        # Cancel is the third checklist button; the others
+                        # have one secondary action. Avoid :has on Android 11.
+                        button=f'.{kind}-editor-footer button.secondary'+(':nth-child(3)' if kind=='checklist' else '')
+                        click(button)
+                        wait(lambda:not visible_id(f'.{kind}-editor-modal'),'Failed editor did not close',10)
+                        print(f'Cleanup: cancelled {kind} editor after failure',flush=True)
+            except Exception as cleanup_error:
+                print(f'Cleanup failed: {cleanup_error}',flush=True)
 
 
 def layout(selectors):
@@ -352,7 +366,8 @@ def native_gesture(points, second=None):
             # while its native accessibility frame still covers the full view.
             # CSS pixels scale equally on both axes, not with keyboard height.
             sy=sx
-            rect={**rect,'x':rect['x']-viewport[2]*sx,'y':rect['y']-viewport[3]*sy}
+            # DOM hit-test rectangles already include the visual viewport's
+            # displacement. Subtracting it again taps above the visible field.
         # Physical pixels for Android, coordinate points for iOS. The native
         # WebView rect includes the actual OS bars/insets, not browser guesses.
         assert 0.5 <= sx <= 5 and 0.5 <= sy <= 5, (rect, viewport)
