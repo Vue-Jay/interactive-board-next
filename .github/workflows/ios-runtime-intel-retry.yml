@@ -1,4 +1,4 @@
-name: iPhone loading orientation regression (Intel isolated)
+name: iPhone chemistry and file picker regression (Intel isolated)
 on:
   push:
     branches: [qa/ios-runtime-intel-20261118]
