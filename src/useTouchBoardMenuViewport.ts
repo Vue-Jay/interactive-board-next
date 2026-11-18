@@ -14,8 +14,39 @@ export function useTouchBoardMenuViewport(enabled: boolean) {
     const viewport = window.visualViewport;
     let frame = 0;
     let gesture: {menu: HTMLElement; id: number; x: number; y: number; scroll: number; moved: boolean} | null = null;
+    let touchGesture: {menu: HTMLElement; id: number; x: number; y: number; scroll: number; moved: boolean} | null = null;
     let cancelClick: HTMLElement | null = null;
+    // Register non-passive touch handlers on the actual menu surface. Some
+    // rotated Chromium frames route a scroll gesture to the compositor
+    // before delivering pointer moves; a native touch listener makes the
+    // scroll region explicit and covers older touch-only WebViews as well.
+    const touchStart = (event: TouchEvent) => {
+      cancelClick = null;
+      const menu = event.currentTarget as HTMLElement;
+      if (event.touches.length !== 1 || menu.scrollHeight <= menu.clientHeight) { touchGesture = null; return; }
+      const t = event.changedTouches[0];
+      touchGesture = {menu,id:t.identifier,x:t.clientX,y:t.clientY,scroll:menu.scrollTop,moved:false};
+    };
+    const touchMove = (event: TouchEvent) => {
+      const drag = touchGesture;
+      if (!drag || event.touches.length !== 1) return;
+      const t = Array.from(event.touches).find(value=>value.identifier===drag.id);
+      if (!t || (!drag.moved && Math.hypot(t.clientX-drag.x,t.clientY-drag.y)<8)) return;
+      drag.moved = true;
+      if (event.cancelable) event.preventDefault();
+      drag.menu.scrollTop = drag.scroll + drag.y - t.clientY;
+    };
+    const touchEnd = () => {
+      if (touchGesture?.moved) cancelClick = touchGesture.menu;
+      touchGesture = null;
+    };
     const clear = (menu: HTMLElement) => {
+      menu.removeEventListener("touchstart",touchStart);
+      menu.removeEventListener("touchmove",touchMove);
+      menu.removeEventListener("touchend",touchEnd);
+      menu.removeEventListener("touchcancel",touchEnd);
+      if(touchGesture?.menu===menu)touchGesture=null;
+      if(gesture?.menu===menu)gesture=null;
       menu.style.removeProperty("max-height");
       menu.style.removeProperty("overflow-y");
       menu.style.removeProperty("overflow-x");
@@ -44,7 +75,13 @@ export function useTouchBoardMenuViewport(enabled: boolean) {
         // scrolling axes. Track logical pointer coordinates in the menu.
         menu.style.setProperty("touch-action", "none", "important");
         menu.style.setProperty("overscroll-behavior", "contain", "important");
-        managed.add(menu);
+        if(!managed.has(menu)){
+          menu.addEventListener("touchstart",touchStart,{passive:false});
+          menu.addEventListener("touchmove",touchMove,{passive:false});
+          menu.addEventListener("touchend",touchEnd);
+          menu.addEventListener("touchcancel",touchEnd);
+          managed.add(menu);
+        }
       }
     };
     const schedule = () => {
