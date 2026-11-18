@@ -297,7 +297,7 @@ def open_new_board():
         raise
     wait(lambda: js('return innerWidth>innerHeight'), 'Board failed to rotate to landscape', 30)
     frames=js('window.__boardLoadingObserve=false;return window.__boardLoadingFrames||[];')
-    assert all(f['loader'][0]>=f['loader'][1] for f in frames), f'Board loading rendered vertically: {frames[:5]}'
+    assert frames and all(f['loader'][0]>=f['loader'][1] for f in frames), f'Board loading missing or rendered vertically: {[f for f in frames if f["loader"][0]<f["loader"][1]][:5] or frames[:5]}'
     assert js('return document.querySelector(".board-title")?.value') == 'Native QA', 'Board title did not persist'
     return {'viewport': js('return [innerWidth, innerHeight]'), 'path': js('return location.pathname'), 'createButtonWithKeyboard':coords, 'landscapeLoadingFrames':len(frames), 'firstLoadingFrame':frames[0] if frames else None}
 
@@ -1317,7 +1317,9 @@ def run_full():
 def run_remaining():
     # Fresh isolated state, real touches and the same assertions as the full
     # suite. Only prerequisites and the previously unresolved checks run.
-    check('create-board-and-landscape', open_new_board, fatal=True)
+    check('create-board-and-landscape', open_new_board)
+    if results[-1]['status']!='passed':
+        recover_board_after_create_failure()
     check('pencil-touch', lambda: draw('pen',[.38,.46,.52]), fatal=True)
     if args.suite=='android-lab':
         check('subject-chemistry-lab-fullscreen',chemistry_lab)

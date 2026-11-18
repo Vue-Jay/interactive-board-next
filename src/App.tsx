@@ -197,7 +197,10 @@ export default function App() {
     let alive = true;
     const ready = () => {
       if (!alive) return;
-      root.classList.remove("lektrus-native-rotating");
+      // The OS may briefly report a landscape-sized viewport and then
+      // return to portrait during rotation, or the readiness timeout may
+      // elapse while the board chunk is still loading. Keep the loader's
+      // portrait fallback until navigation actually leaves the board.
       setNativeLandscapeReady(true);
     };
     const check = () => {
