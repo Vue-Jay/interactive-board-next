@@ -349,6 +349,163 @@ def native_back_and_link():
     return {'route':path,'strokes':len(before)}
 
 
+def board_items():
+    return js('''const id=location.pathname.split('/').pop();
+      for(const k of Object.keys(localStorage).filter(k=>k.includes('.local-test.board.')&&k.endsWith(id))){
+        const d=JSON.parse(localStorage.getItem(k));if(Array.isArray(d?.items))return d.items;
+      }return [];''')
+
+
+def item_by_id(item_id):
+    return next((i for i in board_items() if i['id']==item_id), None)
+
+
+def click_text(selector, label):
+    element=wait(lambda: js('return [...document.querySelectorAll(arguments[0])].find(e=>e.getClientRects().length&&e.textContent.trim()===arguments[1])||null;',selector,label),f'Visible control: {label}')
+    command('POST',f'/element/{element[ELEMENT]}/click',{})
+
+
+def pick_element(selector, label=None):
+    click('.mobile-tools-more')
+    wait(lambda: visible_id('.mobile-tools-sheet'),'Mobile tool catalogue unavailable')
+    if label is None:
+        click('.mobile-tools-sheet '+selector)
+    else:
+        click_text('.mobile-tools-sheet '+selector,label)
+
+
+def open_point():
+    p=js('''const b=document.querySelector('section.board').getBoundingClientRect();
+       const blocked='.board-object,.screen-transform-overlay,.selection-toolbar-screen,button,input,textarea,.toolbar,.board-controls,.mobile-board-tools,.topbar,.minimap,[data-board-interactive]';
+       for(const y of [.49,.42,.57,.66])for(const x of [.52,.38,.66,.30]){
+          const p=[Math.round(b.left+b.width*x),Math.round(b.top+b.height*y)];
+          const e=document.elementFromPoint(...p);if(e?.closest('section.board')&&!e.closest(blocked))return p;
+       }return null;''')
+    assert p,'No unobstructed object placement point'
+    return p
+
+
+def zoom_for_objects():
+    choose_tool('select')
+    percent=lambda:int(js('return parseInt(document.querySelector(".zoom-value").textContent,10)'))
+    before=percent()
+    if before>115 or before<65:
+        w,h=js('return [innerWidth,innerHeight]')
+        x,y=round(w*.52),round(h*.46)
+        start=80 if before>115 else 22
+        end=max(12,min(100,round(start*85/before)))
+        distances=[round(start+(end-start)*i/8) for i in range(9)]
+        native_gesture([(x-d,y) for d in distances],[(x+d,y) for d in distances])
+        wait(lambda: 40<=percent()<=145,'Unable to obtain useful board scale',12)
+    return {'before':before,'after':percent()}
+
+
+def create_item(kind, selector, label=None):
+    before={i['id'] for i in board_items()}
+    pick_element(selector,label)
+    native_gesture([tuple(open_point())])
+    return wait(lambda:next((i for i in board_items() if i['kind']==kind and i['id'] not in before),None),f'{kind} not created by touch',20)
+
+
+def handle_point(selector):
+    point=js('''const e=document.querySelector(arguments[0]);if(!e)return null;const r=e.getBoundingClientRect();
+      const x=Math.round(r.left+r.width/2),y=Math.round(r.top+r.height/2);
+      if(x<0||y<0||x>=innerWidth||y>=innerHeight)return null;
+      const hit=document.elementFromPoint(x,y);return hit&&(e===hit||e.contains(hit))?[x,y]:null;''',selector)
+    assert point,f'Transform handle blocked or outside viewport: {selector}'
+    return tuple(point)
+
+
+def drag_handle(selector, dx, dy):
+    x,y=handle_point(selector)
+    native_gesture([(round(x+dx*i/8),round(y+dy*i/8)) for i in range(9)])
+
+
+def create_shape():
+    item=create_item('shape','.lektrus-elements-shape-grid button[title="Прямоугольник"]')
+    assert item['shapeType']=='rectangle',item
+    paths['shape_id']=item['id']
+    wait(lambda:visible_id('.screen-transform-overlay'),'New shape is not selected')
+    return {k:item[k] for k in ('id','shapeType','x','y','width','height')}
+
+
+def move_shape():
+    original=item_by_id(paths['shape_id'])
+    drag_handle('.lektrus-selection-move-grip',45,12)
+    changed=wait(lambda: (i if (i:=item_by_id(original['id'])) and i['x']>original['x']+5 else None),'Touch drag did not move shape')
+    assert changed['width']==original['width'] and changed['height']==original['height'],changed
+    return {'before':[original['x'],original['y']],'after':[changed['x'],changed['y']]}
+
+
+def resize_shape():
+    original=item_by_id(paths['shape_id'])
+    drag_handle('.screen-resize-handle[data-transform-handle="se"]',30,20)
+    changed=wait(lambda:(i if (i:=item_by_id(original['id'])) and i['width']>original['width']+4 and i['height']>original['height']+4 else None),'Touch resize did not enlarge shape',20)
+    return {'before':[original['width'],original['height']],'after':[changed['width'],changed['height']]}
+
+
+def shape_actions():
+    item_id=paths['shape_id']
+    click('.selection-toolbar-screen button[title^="Повернуть на 90° вправо"]')
+    rotated=wait(lambda:(i if (i:=item_by_id(item_id)) and round(i.get('rotation',0))%360==90 else None),'Rotation not persisted')
+    click('.selection-toolbar-screen button[title^="Дублировать"]')
+    duplicate=wait(lambda:next((i for i in board_items() if i['kind']=='shape' and i['id']!=item_id),None),'Shape duplication not persisted')
+    assert duplicate['shapeType']==rotated['shapeType'] and duplicate['width']==rotated['width'],duplicate
+    click('.selection-toolbar-screen .selection-toolbar-danger')
+    wait(lambda:item_by_id(duplicate['id']) is None,'Duplicate not deleted')
+    # Delete original using its visible object and button, keeping board clear for text/table.
+    click(f'.board-object[data-object="{item_id}"]')
+    click('.selection-toolbar-screen .selection-toolbar-danger')
+    wait(lambda:item_by_id(item_id) is None,'Original shape not deleted')
+    return {'rotation':rotated['rotation'],'duplicate':duplicate['id'],'deleted':True}
+
+
+def type_into(selector, value, clear=False):
+    element=click(selector)
+    if clear:
+        command('POST',f'/element/{element}/clear',{})
+    command('POST',f'/element/{element}/value',{'text':value,'value':list(value)})
+    wait(lambda:js('return document.querySelector(arguments[0])?.value===arguments[1]',selector,value),'Text input did not receive exact value')
+    # Hiding the keyboard through the driver does not simulate DOM events and
+    # makes footer actions reachable in a landscape WebView.
+    try:
+        context('NATIVE_APP')
+        command('POST','/appium/device/hide_keyboard',{})
+    except Exception:
+        pass
+    finally:
+        context(web_context)
+
+
+def text_object(kind,label,value):
+    item=create_item(kind,'.lektrus-elements-quick button',label)
+    type_into('textarea.text-editor',value)
+    click('.mobile-board-tools button[data-lektrus-hand-tool]')
+    saved=wait(lambda:(i if (i:=item_by_id(item['id'])) and i.get('text')==value else None),'Edited text not saved to the document',20)
+    assert not visible_id('textarea.text-editor'),'Text editor did not close'
+    return {'id':saved['id'],'kind':kind,'text':saved['text']}
+
+
+def table_editor():
+    item=create_item('table','.lektrus-elements-data-action',None)
+    wait(lambda:visible_id('.table-editor-modal'),'Table editor did not open')
+    check_layout(['.table-editor-modal'])
+    selector='.table-editor-grid textarea:first-of-type'
+    type_into(selector,'Урок QA',clear=True)
+    click('.table-editor-footer button.primary')
+    saved=wait(lambda:(i if (i:=item_by_id(item['id'])) and i.get('tableCells',[None])[0]=='Урок QA' else None),'Table cell not saved',20)
+    assert saved['tableRows']==3 and saved['tableCols']==3,saved
+    return {'id':saved['id'],'rows':saved['tableRows'],'columns':saved['tableCols'],'cell':saved['tableCells'][0]}
+
+
+def full_document_persistence():
+    before=board_items()
+    assert any(i['kind']=='text' for i in before) and any(i['kind']=='sticky' for i in before) and any(i['kind']=='table' for i in before),'Object cases incomplete'
+    reopen()
+    wait(lambda:board_items()==before,'Full model changed after saving/reopening',20)
+    return {'objects':len(before),'kinds':sorted(set(i['kind'] for i in before))}
+
+
 def create_session():
     common = {'platformName': 'Android' if args.platform=='android' else 'iOS',
               'appium:app': str(Path(args.app).resolve()), 'appium:newCommandTimeout': 180,
@@ -410,6 +567,16 @@ try:
     check('tool-catalogue', tools_menu)
     check('board-reopen-persistence', reopen)
     check('native-back-and-deep-link', native_back_and_link)
+    check('zoom-for-object-tests', zoom_for_objects)
+    check('create-rectangle-touch', create_shape)
+    if 'shape_id' in paths:
+        check('move-object-touch', move_shape)
+        check('resize-object-touch', resize_shape)
+        check('rotate-duplicate-delete', shape_actions)
+    check('text-native-keyboard',lambda:text_object('text','Текст','Текст QA'))
+    check('sticky-native-keyboard',lambda:text_object('sticky','Стикер','Заметка QA'))
+    check('table-edit-and-save',table_editor)
+    check('all-objects-reopen-persistence',full_document_persistence)
 except Exception as error:
     print(traceback.format_exc(), file=sys.stderr, flush=True)
     results.append({'check':'runtime-aborted','status':'failed','detail':str(error)})
