@@ -305,9 +305,56 @@ def workspace_section(label, route, selector):
     return check_layout(['.lectris-mobile-bottom', '.lectris-mobile-bottom button'])
 
 
+def recover_android_system_anr():
+    """Recover ONLY a foreground Android OS/launcher ANR; never hide app errors.
+
+    Android 16 software-rendered emulators can put a System UI "isn't
+    responding" dialog above a healthy Lektrus WebView. Real touchscreen
+    injection then reaches the OS dialog rather than the board. Press the
+    *native* Wait action, verify dismissal, and retain evidence of recovery.
+    """
+    if args.platform != 'android':
+        return False
+    previous = command('GET','/context')
+    recovered = False
+    try:
+        context('NATIVE_APP')
+        for attempt in range(3):
+            try:
+                source = command('GET','/source',timeout=20)
+            except RuntimeError as error:
+                if recovered:
+                    raise BlockedCheck(f'Cannot confirm System UI recovery: {error}') from error
+                print('Android native OS overlay inspection unavailable:',str(error)[:280],flush=True)
+                return False
+            normalized = source.casefold()
+            is_system_dialog = (
+                ('system ui' in normalized or 'quickstep' in normalized or 'системный интерфейс' in normalized)
+                and ("isn't responding" in normalized or 'is not responding' in normalized
+                     or 'не отвечает' in normalized))
+            if not is_system_dialog:
+                return recovered
+            button = native_picker_button(('Wait','WAIT','Подождать','Ожидать','Ждать'),require_enabled=True)
+            if not button:
+                raise BlockedCheck('Android OS System UI/Quickstep ANR blocks native touch; visible Wait button unavailable')
+            screenshot(f'android-system-anr-recovery-{attempt}')
+            command('POST',f'/element/{button}/click',{})
+            recovered = True
+            print(f'Recovered external Android OS ANR by pressing native Wait ({attempt+1}/3)',flush=True)
+            time.sleep(1.5)
+        raise BlockedCheck('Android OS System UI/Quickstep ANR reappeared three times; refusing to mask emulator failure')
+    finally:
+        if previous and previous.startswith('WEBVIEW'):
+            reattach_webview()
+
+
 def open_new_board():
+    if args.platform=='android':
+        recover_android_system_anr()
     click('.lectris-mobile-bottom button[aria-label="Доски"]')
     click('.lectris-library-new')
+    if args.platform=='android':
+        recover_android_system_anr()
     title = click('.lektrus-create-dialog input[placeholder]')
     command('POST', f'/element/{title}/value', {'text': 'Native QA', 'value': list('Native QA')})
     wait(lambda: js('return document.querySelector(".lektrus-create-dialog input")?.value === "Native QA"'), 'Native keyboard did not enter title')
@@ -325,12 +372,24 @@ def open_new_board():
       if(window.__createTouchEvents.length<40)window.__createTouchEvents.push({type:name,target:e.target.tagName,button:e.target.closest('button')?.textContent,point:[e.clientX,e.clientY],active:document.activeElement?.tagName,visualTop:visualViewport?.offsetTop})},true);
       const sample=()=>{if(!window.__boardLoadingObserve)return;const e=document.querySelector('.lektrus-board-loading');
       if(e&&e.getClientRects().length&&window.__boardLoadingFrames.length<240)window.__boardLoadingFrames.push({viewport:[innerWidth,innerHeight],loader:[e.offsetWidth,e.offsetHeight],transform:getComputedStyle(e).transform,nativeRotate:e.getAttribute('data-native-rotate'),rootRotating:document.documentElement.classList.contains('lektrus-native-rotating'),portraitMedia:matchMedia('(orientation:portrait)').matches,path:location.pathname});requestAnimationFrame(sample)};requestAnimationFrame(sample);''')
+    # The installed WebView may be fine while a foreground Android OS ANR
+    # swallows the native touch. Recover the *system* dialog and re-send a
+    # physical tap only if the original form is still visible.
+    if args.platform=='android':
+        recover_android_system_anr()
     native_gesture([(coords['x'],coords['y'])])
     try:
-        wait(lambda: visible_id('section.board'), 'Board not rendered', 90)
-    except Exception:
-        print('Create board touch diagnostic',coords,js('return {events:window.__createTouchEvents,dialog:!!document.querySelector(".lektrus-create-dialog"),path:location.pathname,active:document.activeElement?.tagName,visualHeight:visualViewport?.height}'),flush=True)
-        raise
+        wait(lambda: visible_id('section.board'), 'Board not rendered after native submit', 12 if args.platform=='android' else 90)
+    except AssertionError:
+        recovered = args.platform=='android' and recover_android_system_anr()
+        if recovered and visible_id('.lektrus-create-dialog button[type="submit"]'):
+            print('Retrying real native create tap after external Android System UI ANR',flush=True)
+            native_tap('.lektrus-create-dialog button[type="submit"]')
+        try:
+            wait(lambda: visible_id('section.board'), 'Board not rendered', 75 if args.platform=='android' else 10)
+        except Exception:
+            print('Create board touch diagnostic',coords,js('return {events:window.__createTouchEvents,dialog:!!document.querySelector(".lektrus-create-dialog"),path:location.pathname,active:document.activeElement?.tagName,visualHeight:visualViewport?.height}'),flush=True)
+            raise
     wait(lambda: js('return innerWidth>innerHeight'), 'Board failed to rotate to landscape', 30)
     frames=js('window.__boardLoadingObserve=false;return window.__boardLoadingFrames||[];')
     assert frames and all(f['nativeRotate']=='true' for f in frames), f'Native rotation marker missing from painted loader: {frames[:5]}'
@@ -498,9 +557,19 @@ def pinch():
     # model-backed text, while the actual gesture goes through native touch.
     before=js('return document.querySelector(".zoom-value")?.textContent')
     assert before, 'Scale readout missing from board DOM'
-    native_gesture(p1,p2)
-    after=wait(lambda: js('return document.querySelector(".zoom-value")?.textContent') if js('return document.querySelector(".zoom-value")?.textContent')!=before else None, 'Two-finger pinch did not change zoom', 10)
-    return {'before':before,'after':after}
+    for attempt in range(2 if args.platform=='android' else 1):
+        if args.platform=='android':
+            recover_android_system_anr()
+        native_gesture(p1,p2)
+        try:
+            after=wait(lambda: js('return document.querySelector(".zoom-value")?.textContent') if js('return document.querySelector(".zoom-value")?.textContent')!=before else None, 'Two-finger pinch did not change zoom', 6 if args.platform=='android' else 10)
+            return {'before':before,'after':after,'nativePinchAttempts':attempt+1}
+        except AssertionError:
+            if args.platform!='android' or attempt!=0:
+                raise
+            recovered=recover_android_system_anr()
+            print('Retrying actual two-finger OS gesture after no zoom delta; external OS ANR recovered:',recovered,flush=True)
+    raise AssertionError('Two independent real native pinch gestures failed to change zoom')
 
 
 def draw(tool, band):
