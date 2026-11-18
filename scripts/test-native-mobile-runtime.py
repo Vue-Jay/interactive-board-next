@@ -326,7 +326,7 @@ def navigation_dock_layout():
     assert '.board-controls' in report and '.mobile-undo-redo' in report,report
     if '.minimap' in report:
         r=report['.minimap']
-        assert r[3] <= report['.board-controls'][1]+2, f'Minimap overlaps zoom: {report}'
+        assert r[3] <= report['.board-controls'][1]-3, f'Minimap overlaps zoom: {report}'
         assert r[1] >= report['.mobile-undo-redo'][3]-2, f'Minimap overlaps history: {report}'
         assert js('''const e=document.querySelector('.minimap-world'),r=e.getBoundingClientRect();
           return Boolean(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)?.closest('.minimap-world'));'''), 'Minimap center is not clickable'
@@ -677,14 +677,88 @@ def choose_subject_tool(subject,label):
     raise AssertionError(f'Subject tool blocked: {label}')
 
 
-def subject_editor(subject,label,editor,close):
+def subject_editor(subject,label,editor,close,action=None):
     choose_subject_tool(subject,label)
     wait(lambda:visible_id(editor),f'{label} editor not rendered',90)
-    result=check_layout([editor,close])
-    screenshot('subject-editor-'+str(list(SUBJECTS).index(subject)+1)+'-'+str(len(results)))
-    click(close)
+    try:
+        result=check_layout([editor,close])
+        if action:
+            result['functional']=action()
+        screenshot('subject-editor-'+str(list(SUBJECTS).index(subject)+1)+'-'+str(len(results)))
+    finally:
+        if visible_id(close):
+            click(close)
     wait(lambda:not visible_id(editor),f'{label} editor did not close')
     return result
+
+
+def geometry_editor_action():
+    before={i['id'] for i in board_items()}
+    click_text('.lektrus-geometry-header-catalog button','2D')
+    element=wait(lambda:js('return [...document.querySelectorAll(".lektrus-math-preset-grid button")].find(e=>e.querySelector("strong")?.textContent==="Треугольник")||null;'),'Triangle preset missing')
+    command('POST',f'/element/{element[ELEMENT]}/click',{})
+    wait(lambda:js('return [...document.querySelectorAll(".lektrus-math-preset-grid button.active")].some(e=>e.querySelector("strong")?.textContent==="Треугольник")||!!document.querySelector(".lektrus-geometry-guided");'),'Triangle preset not selected')
+    screenshot('geometry-triangle-preview')
+    click('.graph-editor-footer button.primary')
+    item=wait(lambda:next((i for i in board_items() if i['id'] not in before and i.get('graphFigureId')=='triangle'),None),'Triangle not persisted',25)
+    assert len(item.get('graphPoints',[]))>=3,item
+    return {'id':item['id'],'vertices':len(item['graphPoints'])}
+
+
+def circuit_editor_action():
+    before={i['id'] for i in board_items()}
+    wait(lambda:visible_id('.lektrus-circuit-parts button') or visible_id('.lektrus-circuit-compact-button'),'Circuit parts unavailable')
+    if not visible_id('.lektrus-circuit-parts button'):
+        click('.lektrus-circuit-compact-button')
+    click('.lektrus-circuit-parts button')
+    point=js('''const e=document.querySelector('.lektrus-circuit-canvas-container'),r=e.getBoundingClientRect();
+      for(const y of [.45,.55,.35,.65])for(const x of [.5,.4,.6]){
+        const p=[Math.round(r.left+r.width*x),Math.round(r.top+r.height*y)],h=document.elementFromPoint(...p);
+        if(h&&e.contains(h)&&!h.closest('button,input'))return p;
+      }return null;''')
+    assert point,'Circuit canvas unavailable for placement'
+    native_gesture([tuple(point)])
+    wait(lambda:js('return /[1-9]\\d* элементов/.test(document.querySelector(".lektrus-circuit-stage-bottom").textContent)'), 'Touch placement did not add a circuit component')
+    screenshot('circuit-component-placed')
+    click('.lektrus-circuit-footer button.primary')
+    item=wait(lambda:next((i for i in board_items() if i['id'] not in before and i.get('scienceCircuit',{}).get('components')),None),'Circuit not persisted',25)
+    return {'id':item['id'],'components':len(item['scienceCircuit']['components'])}
+
+
+def atlas_zoom():
+    selector='.lektrus-atlas-zoom-slider input'
+    before=js('return Number(document.querySelector(arguments[0]).value)',selector)
+    click('.lektrus-atlas-zoom button[title="Увеличить масштаб"]')
+    after=wait(lambda: (v if (v:=js('return Number(document.querySelector(arguments[0]).value)',selector))>before else None),'Atlas zoom did not change')
+    return {'before':before,'after':after}
+
+
+def history_year():
+    selector='.lektrus-history-period-select'
+    before=js('return document.querySelector(arguments[0]).value',selector)
+    previous='.lektrus-atlas-timeline button[title="Предыдущий доступный период"]'
+    next_period='.lektrus-atlas-timeline button[title="Следующий доступный период"]'
+    control=next_period if js('return document.querySelector(arguments[0]).disabled',previous) else previous
+    click(control)
+    after=wait(lambda: (v if (v:=js('return document.querySelector(arguments[0]).value',selector))!=before else None),'Timeline did not change year',20)
+    return {'before':before,'after':after}
+
+
+def language_drag():
+    words=lambda:js('return Array.from(document.querySelectorAll(".lektrus-school-preview [data-sentence-word]")).map(e=>e.dataset.sentenceWord)')
+    before=words()
+    assert len(before)>=2,'Sentence preview did not render two words'
+    points=js('''const w=[...document.querySelectorAll('.lektrus-school-preview [data-sentence-word]')];
+      for(let i=0;i<w.length-1;i++){
+        const a=w[i].getBoundingClientRect(),b=w[i+1].getBoundingClientRect(),x=Math.round(a.left+a.width/2),y=Math.round(a.top+a.height/2),tx=Math.round(b.right-2),ty=Math.round(b.top+b.height/2);
+        if(w[i].contains(document.elementFromPoint(x,y))&&w[i+1].contains(document.elementFromPoint(tx,ty)))return [x,y,tx,ty];
+      }return null;''')
+    assert points,'No two visible word targets in mobile preview'
+    x,y,tx,ty=points
+    native_gesture([(round(x+(tx-x)*i/8),round(y+(ty-y)*i/8)) for i in range(9)])
+    after=wait(lambda:(v if (v:=words())!=before else None),'Touch drag did not reorder words',10)
+    assert sorted(after)==sorted(before),'Word lost during drag'
+    return {'before':before,'after':after}
 
 
 def chemistry_lab():
@@ -694,7 +768,19 @@ def chemistry_lab():
     wait(lambda:visible_id('.lektrus-lab-editor'),'Fullscreen lab not rendered',45)
     report=check_layout(['.lektrus-lab-editor','.lektrus-lab-editor-exit'])
     screenshot('chemistry-lab-fullscreen')
-    click('.lektrus-lab-editor-exit')
+    try:
+        if visible_id('.lektrus-lab-compact-drawer-bar'):
+            click('.lektrus-lab-compact-drawer-bar button[aria-controls="lektrus-lab-compact-reagents"]')
+        click('.lektrus-lab-editor button[title="Открыть шкаф реактивов"]')
+        wait(lambda:visible_id('.lektrus-lab-furniture-dialog.is-reagents'),'Reagent cabinet not opened')
+        type_into('.lektrus-lab-furniture-dialog input[type="search"]','HCl')
+        hits=wait(lambda:js('return [...document.querySelectorAll(".lektrus-lab-modal-reagents button")].map(e=>e.innerText).filter(e=>e.includes("HCl"))'),'Reagent search did not find hydrochloric acid')
+        report['reagents']=hits
+        screenshot('chemistry-reagent-search')
+    finally:
+        if visible_id('.lektrus-lab-modal-head button[aria-label="Закрыть шкаф"]'):
+            click('.lektrus-lab-modal-head button[aria-label="Закрыть шкаф"]')
+        click('.lektrus-lab-editor-exit')
     wait(lambda:not visible_id('.lektrus-lab-editor'),'Lab exit did not work')
     return report
 
@@ -772,11 +858,11 @@ try:
     check('all-objects-reopen-persistence',full_document_persistence)
     for i,subject in enumerate(SUBJECTS):
         check('subject-catalogue-'+str(i+1),lambda:subject_catalogue(subject))
-    check('subject-math-geometry-editor',lambda:subject_editor('Математика','Построение фигур','.graph-editor-modal','button[aria-label="Закрыть редактор без сохранения"]'))
-    check('subject-physics-circuit-editor',lambda:subject_editor('Физика','Электрические цепи','.lektrus-circuit-editor','.lektrus-circuit-close'))
-    check('subject-geography-atlas-editor',lambda:subject_editor('География','Географические карты','.lektrus-school-editor','.lektrus-school-close'))
-    check('subject-history-atlas-editor',lambda:subject_editor('История','Исторические карты','.lektrus-school-editor','.lektrus-school-close'))
-    check('subject-language-sentence-editor',lambda:subject_editor('Иностранный язык','Составление предложений','.lektrus-school-editor','.lektrus-school-close'))
+    check('subject-math-geometry-editor',lambda:subject_editor('Математика','Построение фигур','.graph-editor-modal','button[aria-label="Закрыть редактор без сохранения"]',geometry_editor_action))
+    check('subject-physics-circuit-editor',lambda:subject_editor('Физика','Электрические цепи','.lektrus-circuit-editor','.lektrus-circuit-close',circuit_editor_action))
+    check('subject-geography-atlas-editor',lambda:subject_editor('География','Географические карты','.lektrus-school-editor','.lektrus-school-close',atlas_zoom))
+    check('subject-history-atlas-editor',lambda:subject_editor('История','Исторические карты','.lektrus-school-editor','.lektrus-school-close',history_year))
+    check('subject-language-sentence-editor',lambda:subject_editor('Иностранный язык','Составление предложений','.lektrus-school-editor','.lektrus-school-close',language_drag))
     check('subject-chemistry-lab-fullscreen',chemistry_lab)
 except Exception as error:
     print(traceback.format_exc(), file=sys.stderr, flush=True)

@@ -257,7 +257,7 @@
      The fixed positions share the same viewport and safe-area coordinate space. */
   html body .workspace .minimap {
     position:fixed!important;
-    bottom:calc(64px + var(--lektrus-safe-bottom))!important;
+    bottom:calc(72px + var(--lektrus-safe-bottom))!important;
     right:calc(12px + var(--lektrus-safe-right))!important;
     width:142px!important;
     box-sizing:border-box!important;
@@ -277,7 +277,7 @@
    to 62px; raise the map by the same amount while that bar is present. */
 @media screen and (max-width:1100px) and (max-height:450px) and (orientation:landscape) and (pointer:coarse) {
   html body .workspace:has(.lectris-quick-properties.is-ink-properties) .minimap {
-    bottom:calc(112px + var(--lektrus-safe-bottom))!important;
+    bottom:calc(120px + var(--lektrus-safe-bottom))!important;
   }
 }
 @media screen and (max-width:1100px) and (max-height:335px) and (orientation:landscape) {

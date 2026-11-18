@@ -598,7 +598,7 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose,onLiv
           </section>
         </div>}
         <footer className="lektrus-circuit-footer">
-          <span role="status">{notice||"Редактирование на компьютере · без автоматического решения задач"}</span>
+          <span role="status">{notice||"Редактирование схемы · без автоматического решения задач"}</span>
           <button type="button" className="secondary" onClick={shared?close:onCancel}>{shared?"Закрыть":"Отмена"}</button>
           <button type="button" className="primary" onClick={()=>onSave(normalized())}>{shared?"Готово":"Сохранить на доску"}</button>
         </footer>
@@ -606,3 +606,4 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose,onLiv
     </div>,document.body
   );
 }
+
