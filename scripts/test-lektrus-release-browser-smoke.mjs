@@ -195,10 +195,12 @@ try{
   // Emulate an unusually short IME viewport in the landscape frame. The
   // controls themselves are exercised using real rotated touch coordinates.
   for(const [kind,tool,field] of [
-   ['table','.lektrus-elements-data-action','.table-editor-grid textarea'],
    ['checklist','button[aria-label^="Чек-лист / задание"]','.checklist-title-input input'],
    ['flashcard','button[aria-label^="Карточка вопрос–ответ"]','.flashcard-editor-compose textarea'],
    ['quiz','button[aria-label^="Вопрос / мини-тест"]','.quiz-question-editor textarea'],
+   // Table is created immediately and can occupy the full zoomed-in board;
+   // the other three create no object when Cancel is pressed.
+   ['table','.lektrus-elements-data-action','.table-editor-grid textarea'],
   ]){
    const more=await point('.mobile-tools-more');assert.ok(more,'Tool catalogue unavailable');await touch([more]);
    await wait('!!window.__originalFrame.document.querySelector(".mobile-tools-sheet")','Tool catalogue did not open');
