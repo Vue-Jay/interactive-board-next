@@ -179,6 +179,14 @@
 /* Give the editor its own bounded scroll area on short native screens,
    including Android 11 WebViews without :is() or dynamic viewport units. */
 @media screen and (max-width:1100px) and (max-height:540px) {
+  /* Portal is attached directly to body; use a legacy viewport fallback. */
+  html.lektrus-native-app body>.lektrus-subject-tools-panel {
+    max-height:min(540px,calc(100vh - 88px))!important;
+    max-height:min(540px,calc(100dvh - 88px))!important;
+    box-sizing:border-box;
+  }
+  html.lektrus-native-app .lektrus-subject-tools-head {flex:none;}
+  html.lektrus-native-app .lektrus-subject-tools-body {min-height:0;flex:1 1 auto;}
   html.lektrus-native-app body .workspace .table-editor-backdrop {
     position:fixed!important;
     inset:0!important;

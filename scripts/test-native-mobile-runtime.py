@@ -556,6 +556,87 @@ def full_document_persistence():
     return {'objects':len(before),'kinds':sorted(set(i['kind'] for i in before))}
 
 
+SUBJECTS={
+    'Математика':['Математическая формула','Дроби','Построение фигур','Координатная плоскость'],
+    'Физика':['Механика','Оптика','Графики движения','Электрические цепи'],
+    'Химия':['Периодическая система','Химические задания','Уравнения реакций','Органический редактор','Моделирование опытов'],
+    'Биология':[],
+    'География':['Географические карты','Контурная карта','Сопоставление','Карточки вопросов'],
+    'Русский язык':[],
+    'Литература':[],
+    'История':['Исторические карты'],
+    'Обществознание':[],
+    'Информатика':[],
+    'Иностранный язык':['Составление предложений','Карточки слов'],
+}
+
+
+def subject_panel(subject):
+    if not visible_id('#lektrus-subject-tools-panel'):
+        click('.lektrus-mobile-subject-trigger')
+    wait(lambda:visible_id('#lektrus-subject-tools-panel'),'Subject panel did not open')
+    selector='.lektrus-subject-tools-category select'
+    if js('return document.querySelector(arguments[0]).value',selector)!=subject:
+        option=js('return [...document.querySelector(arguments[0]).options].find(e=>e.value===arguments[1])',selector,subject)
+        assert option, f'Subject option missing: {subject}'
+        command('POST',f'/element/{option[ELEMENT]}/click',{})
+        wait(lambda:js('return document.querySelector(arguments[0]).value===arguments[1]',selector,subject),'Subject change did not persist')
+    expected=['Задания на доске',*SUBJECTS[subject]]
+    labels=lambda:js('return Array.from(document.querySelectorAll(".lektrus-subject-tools-list button")).map(e=>e.getAttribute("aria-label"))')
+    wait(lambda:sorted(labels())==sorted(expected), f'Subject tool catalogue mismatch, {subject}: {labels()}',10)
+    bounds=check_layout(['#lektrus-subject-tools-panel','.lektrus-subject-tools-head','.lektrus-subject-tools-category select'])
+    return {'subject':subject,'tools':labels(),'bounds':bounds}
+
+
+def subject_catalogue(subject):
+    result=subject_panel(subject)
+    screenshot('subject-catalogue-'+str(list(SUBJECTS).index(subject)+1))
+    click('.lektrus-subject-tools-head button')
+    wait(lambda:not visible_id('#lektrus-subject-tools-panel'),'Subject panel did not close')
+    return result
+
+
+def choose_subject_tool(subject,label):
+    subject_panel(subject)
+    for _ in range(15):
+        data=js('''const p=document.querySelector('.lektrus-subject-tools-body'),b=p.getBoundingClientRect();
+          const e=[...p.querySelectorAll('.lektrus-subject-tools-list button')].find(e=>e.getAttribute('aria-label')===arguments[0]);
+          const r=e.getBoundingClientRect(),x=Math.round(r.x+r.width/2),y=Math.round(r.y+r.height/2),hit=document.elementFromPoint(x,y);
+          return {x,y,hit:!!hit&&(e===hit||e.contains(hit)),top:b.top,bottom:b.bottom,left:b.left,right:b.right};''',label)
+        if data['hit'] and data['top']<=data['y']<=data['bottom']:
+            native_gesture([(data['x'],data['y'])])
+            wait(lambda:not visible_id('#lektrus-subject-tools-panel'),'Subject tool did not activate')
+            return
+        x=round((data['left']+data['right'])/2)
+        lo,hi=round(data['top']+12),round(data['bottom']-12)
+        assert hi-lo>25,data
+        start,end=(hi,lo) if data['y']>data['bottom'] else (lo,hi)
+        native_gesture([(x,round(start+(end-start)*i/8)) for i in range(9)])
+    raise AssertionError(f'Subject tool blocked: {label}')
+
+
+def subject_editor(subject,label,editor,close):
+    choose_subject_tool(subject,label)
+    wait(lambda:visible_id(editor),f'{label} editor not rendered',90)
+    result=check_layout([editor,close])
+    screenshot('subject-editor-'+str(list(SUBJECTS).index(subject)+1)+'-'+str(len(results)))
+    click(close)
+    wait(lambda:not visible_id(editor),f'{label} editor did not close')
+    return result
+
+
+def chemistry_lab():
+    choose_subject_tool('Химия','Моделирование опытов')
+    wait(lambda:visible_id('.lektrus-lab-open-editor'),'Lab object missing',35)
+    click('.lektrus-lab-open-editor')
+    wait(lambda:visible_id('.lektrus-lab-editor'),'Fullscreen lab not rendered',45)
+    report=check_layout(['.lektrus-lab-editor','.lektrus-lab-editor-exit'])
+    screenshot('chemistry-lab-fullscreen')
+    click('.lektrus-lab-editor-exit')
+    wait(lambda:not visible_id('.lektrus-lab-editor'),'Lab exit did not work')
+    return report
+
+
 def create_session():
     common = {'platformName': 'Android' if args.platform=='android' else 'iOS',
               'appium:app': str(Path(args.app).resolve()), 'appium:newCommandTimeout': 180,
@@ -628,6 +709,14 @@ try:
     check('sticky-native-keyboard',lambda:text_object('sticky','Стикер','Заметка QA'))
     check('table-edit-and-save',table_editor)
     check('all-objects-reopen-persistence',full_document_persistence)
+    for i,subject in enumerate(SUBJECTS):
+        check('subject-catalogue-'+str(i+1),lambda:subject_catalogue(subject))
+    check('subject-math-geometry-editor',lambda:subject_editor('Математика','Построение фигур','.graph-editor-modal','button[aria-label="Закрыть редактор без сохранения"]'))
+    check('subject-physics-circuit-editor',lambda:subject_editor('Физика','Электрические цепи','.lektrus-circuit-editor','.lektrus-circuit-close'))
+    check('subject-geography-atlas-editor',lambda:subject_editor('География','Географические карты','.lektrus-school-editor','.lektrus-school-close'))
+    check('subject-history-atlas-editor',lambda:subject_editor('История','Исторические карты','.lektrus-school-editor','.lektrus-school-close'))
+    check('subject-language-sentence-editor',lambda:subject_editor('Иностранный язык','Составление предложений','.lektrus-school-editor','.lektrus-school-close'))
+    check('subject-chemistry-lab-fullscreen',chemistry_lab)
 except Exception as error:
     print(traceback.format_exc(), file=sys.stderr, flush=True)
     results.append({'check':'runtime-aborted','status':'failed','detail':str(error)})
