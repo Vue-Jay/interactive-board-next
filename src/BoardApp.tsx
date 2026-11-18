@@ -9457,7 +9457,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           pinned={lectrisPinned} defaults={lectrisDefaultPinned}
           onChange={next=>setLectrisPinned(next.filter((id):id is Tool=>id!=="formula"&&id!=="graph"&&tools.some(t=>t.id===id)))}
           onClose={()=>setLectrisCustomizeOpen(false)}/>}
-        {isStudent&&<div className="student-board-mode" title="Можно писать и решать задания. Создание заданий доступно преподавателю.">{roleCapabilities.isGuestPreview||authUser.isGuest?"Режим гостя":"Режим ученика"}</div>}
+        {!canEdit?<div className="student-board-mode" title="Доступен просмотр доски без редактирования.">Наблюдатель</div>:isStudent&&<div className="student-board-mode" title="Можно писать и решать задания. Создание заданий доступно преподавателю.">{roleCapabilities.isGuestPreview||authUser.isGuest?"Гость · ученик":"Режим ученика"}</div>}
         {!isStudent&&attachmentRequests.length>0&&(()=>{
           const request=attachmentRequests[Math.min(attachmentRequestIndex,attachmentRequests.length-1)];
           return <aside className="teacher-media-request" onPointerDown={e=>e.stopPropagation()}>

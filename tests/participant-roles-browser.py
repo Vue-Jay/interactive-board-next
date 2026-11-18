@@ -46,8 +46,9 @@ def login(page,name):
     page.get_by_role("button",name="Войти",exact=True).click()
     expect(page.get_by_role("button",name="Я учусь",exact=True)).to_be_visible(timeout=60000)
 
-def assert_board(page,ident,can_author,owner):
-    page.goto(BASE+"/board/"+ident)
+def assert_board(page,ident,can_author,owner,*,navigate=True):
+    if navigate:
+        page.goto(BASE+"/board/"+ident)
     expect(page.locator("section.board")).to_be_visible(timeout=90000)
     subject=page.locator('button[aria-label="Предметные инструменты"]:visible')
     if can_author:
@@ -59,6 +60,79 @@ def assert_board(page,ident,can_author,owner):
         expect(share.first).to_be_visible()
     else:
         expect(share).to_have_count(0)
+
+def assert_drawing_saved(page,ident,name):
+    pen=page.locator('[data-interface-control="pen"]:visible').first
+    expect(pen).to_be_visible()
+    pen.click()
+    box=page.locator("section.board").bounding_box()
+    x=box["x"]+box["width"]*0.72
+    y=box["y"]+box["height"]*0.60
+    page.mouse.move(x,y)
+    page.mouse.down()
+    page.mouse.move(x+96,y+32,steps=12)
+    page.mouse.up()
+    with httpx.Client(base_url=API,headers=headers(name)) as client:
+        for _ in range(60):
+            result=client.get(f"/api/v1/boards/{ident}/document")
+            result.raise_for_status()
+            if any(item.get("kind")=="pen" and item.get("createdBy") for item in result.json()["document"]["items"]):
+                return
+            page.wait_for_timeout(500)
+    raise AssertionError("Learner drawing did not persist to the real API")
+
+def check_guest_and_registration(browser,ident):
+    with httpx.Client(base_url=API,headers=headers("owner")) as client:
+        links={}
+        for role in ("student","observer","co_teacher"):
+            response=client.post(f"/api/v1/boards/{ident}/share-links",json={"role":"viewer" if role=="observer" else "editor","participant_role":role,"max_uses":1})
+            response.raise_for_status()
+            links[role]=response.json()
+    for role in ("student","observer","co_teacher"):
+        ctx=browser.new_context(viewport={"width":390,"height":844},has_touch=True,is_mobile=True)
+        page=ctx.new_page()
+        errors=[]
+        page.on("pageerror",lambda e:errors.append(str(e)))
+        page.goto(BASE+"/join/"+links[role]["token"])
+        page.get_by_label("Ваше имя на доске",exact=True).fill("Guest QA")
+        page.get_by_role("button",name="Продолжить как гость",exact=True).click()
+        if role=="co_teacher":
+            expect(page.get_by_role("alert")).to_contain_text("Для ссылки сопреподавателя войдите",timeout=30000)
+            expect(page.get_by_role("button",name="Войти",exact=True)).to_be_visible()
+            expect(page.locator("section.board")).to_have_count(0)
+            page.screenshot(path=str(OUT/"guest-co-teacher-denied.png"))
+            with httpx.Client(base_url=API,headers=headers("owner")) as client:
+                result=client.get(f"/api/v1/boards/{ident}/share-links")
+                result.raise_for_status()
+                assert next(x for x in result.json() if x["id"]==links[role]["id"])["use_count"]==0
+        else:
+            page.set_viewport_size({"width":844,"height":390})
+            assert_board(page,ident,False,False,navigate=False)
+            expect(page.get_by_role("button",name="Я преподаю",exact=True)).to_have_count(0)
+            expect(page.locator(".student-board-mode")).to_have_text("Гость · ученик" if role=="student" else "Наблюдатель")
+            pen=page.locator('[data-interface-control="pen"]:visible')
+            if role=="student":
+                expect(pen.first).to_be_visible()
+            else:
+                expect(pen).to_have_count(0)
+            page.screenshot(path=str(OUT/f"guest-{role}-phone-board.png"))
+        assert not errors, f"guest {role}: browser exceptions {errors}"
+        ctx.close()
+    for width,height in ((1440,900),(390,844)):
+        ctx=browser.new_context(viewport={"width":width,"height":height})
+        page=ctx.new_page()
+        page.goto(BASE+"/app")
+        page.get_by_role("button",name="Регистрация",exact=True).click()
+        teacher=page.get_by_role("radio",name="Я хочу преподавать",exact=False)
+        student=page.get_by_role("radio",name="Я хочу учиться",exact=False)
+        teacher.check()
+        expect(teacher).to_be_checked()
+        student.check()
+        expect(student).to_be_checked()
+        expect(teacher).not_to_be_checked()
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 2")
+        page.screenshot(path=str(OUT/f"registration-{width}.png"),full_page=True)
+        ctx.close()
 
 def main():
     asyncio.run(seed())
@@ -82,6 +156,10 @@ def main():
                     assert client.get(f"/api/v1/boards/{ident}").json()["participant_role"]=="student"
             assert_board(page,ident,author,owner)
             page.screenshot(path=str(OUT/(name+"-desktop-board.png")))
+            if name=="learner":
+                assert_drawing_saved(page,ident,name)
+            if name=="observer":
+                expect(page.locator(".student-board-mode")).to_have_text("Наблюдатель")
             if owner:
                 page.locator('button[aria-label="Добавить участника"]:visible').first.click()
                 expect(page.get_by_role("button",name="Сопреподаватель",exact=False)).to_be_visible()
@@ -98,8 +176,9 @@ def main():
             page.screenshot(path=str(OUT/(name+"-phone-board.png")))
             assert not errors, f"{name}: browser exceptions {errors}"
             context.close()
+        check_guest_and_registration(browser,ident)
         browser.close()
-    print("All 4 participant contexts passed desktop and phone browser acceptance")
+    print("All registered and guest participant contexts, registration modes, and persistent learner drawing passed browser acceptance")
 
 if __name__=="__main__":
     main()
