@@ -26,6 +26,9 @@ public class MainActivity extends BridgeActivity {
     private WebView boardWebView;
     private boolean boardMode = false;
     private String lastCutoutInsets = "";
+    private final Runnable ensureBoardLandscape = () -> {
+        if (hasWindowFocus()) restoreBoardOrientation();
+    };
 
     public void setBoardMode(boolean enabled) {
         runOnUiThread(() -> {
@@ -49,9 +52,40 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void restoreBoardOrientation() {
-        if (boardMode && (getRequestedOrientation() != ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE ||
-                getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE)) {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        if (!boardMode || isInMultiWindowMode()) return;
+        int requested = getRequestedOrientation();
+        boolean landscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+        boolean landscapeRequested = requested == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE ||
+                requested == ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;
+        if (!landscapeRequested || !landscape) {
+            // Android 7/8 may already report the original requested value,
+            // yet a late DocumentsUI configuration change rotates the display.
+            // Reapply a different *landscape-only* request in that case.
+            setRequestedOrientation(!landscape && requested == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                    ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                    : ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        }
+    }
+
+    private void scheduleBoardOrientationRestore() {
+        if (!boardMode) return;
+        android.view.View decor = getWindow().getDecorView();
+        decor.removeCallbacks(ensureBoardLandscape);
+        decor.postDelayed(ensureBoardLandscape, 300);
+        decor.postDelayed(ensureBoardLandscape, 1200);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        scheduleBoardOrientationRestore();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration configuration) {
+        super.onConfigurationChanged(configuration);
+        if (boardMode && configuration.orientation != Configuration.ORIENTATION_LANDSCAPE) {
+            scheduleBoardOrientationRestore();
         }
     }
 
@@ -181,6 +215,7 @@ public class MainActivity extends BridgeActivity {
             // System DocumentsUI is allowed to rotate independently. When
             // it exits, Android 7/8 can leave the board in portrait.
             restoreBoardOrientation();
+            scheduleBoardOrientationRestore();
             applyBars();
             if (boardWebView != null) ViewCompat.requestApplyInsets(boardWebView);
         }

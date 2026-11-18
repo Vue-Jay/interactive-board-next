@@ -677,6 +677,27 @@ def start_native_export(label):
     context('NATIVE_APP')
 
 
+def android_app_has_focus():
+    # WebDriver can attach to a hidden WebView beneath DocumentsUI; verify
+    # the actual focused Android window before accepting save or cancel.
+    state=subprocess.run(['adb','shell','dumpsys','window','windows'],
+                         capture_output=True,text=True,timeout=15,check=True).stdout
+    return any('mCurrentFocus=' in line and 'ru.lektrus.board.dev/' in line
+               for line in state.splitlines())
+
+
+def dismiss_android_picker():
+    for attempt in range(3):
+        if android_app_has_focus(): return
+        subprocess.run(['adb','shell','input','keyevent','4'],check=True,timeout=20)
+        try:
+            wait(android_app_has_focus,'DocumentsUI still focused',4)
+            return
+        except AssertionError:
+            pass
+    assert android_app_has_focus(),'DocumentsUI did not return focus to Lektrus'
+
+
 def native_file_export_save():
     name='Native QA.orboard'
     start_native_export('Скачать копию')
@@ -693,6 +714,9 @@ def native_file_export_save():
             command('POST',f'/element/{roots}/click',{})
             downloads=wait(lambda:native_picker_button(('Downloads','Download','Загрузки'),require_enabled=True),'Downloads destination missing',15)
             command('POST',f'/element/{downloads}/click',{})
+            # Android 7 exposes the enabled Save accessibility node behind
+            # the still-closing root drawer. Wait for the drawer transition.
+            time.sleep(1.2)
             save=wait(lambda:native_picker_button(('Save','SAVE','Сохранить'),require_enabled=True),'Save not enabled after selecting Downloads',15)
         screenshot('native-board-save-picker')
         if args.platform=='ios':
@@ -701,7 +725,18 @@ def native_file_export_save():
                 command('POST',f'/element/{local}/click',{})
                 save=wait(lambda:native_picker_button(('Save','SAVE','Сохранить')),'Local file destination not selectable',20)
         command('POST',f'/element/{save}/click',{})
+        if args.platform=='android':
+            try:
+                wait(android_app_has_focus,'File picker still focused after Save',5)
+            except AssertionError:
+                # An overlay may have consumed the first tap; reacquire the
+                # real enabled Save button. A completed export never retries.
+                save=wait(lambda:native_picker_button(('Save','SAVE','Сохранить'),require_enabled=True),'Save control unavailable on retry',10)
+                command('POST',f'/element/{save}/click',{})
+                wait(android_app_has_focus,'File picker did not close after Save',15)
     finally:
+        if args.platform=='android' and not android_app_has_focus():
+            dismiss_android_picker()
         reattach_webview()
     wait(lambda: js('return window.__nativeExportNotices?.some(n=>n.includes("Копия"))'),'Native save completion not acknowledged',30)
     wait(lambda:js('return innerWidth>innerHeight'),'Board did not restore landscape after saving',15)
@@ -735,7 +770,7 @@ def native_file_export_cancel():
         wait(lambda:native_picker_button(('Save','SAVE','Сохранить')),'PNG did not reach native file picker',45)
         screenshot('native-png-save-picker')
         if args.platform=='android':
-            subprocess.run(['adb','shell','input','keyevent','4'],check=True,timeout=20)
+            dismiss_android_picker()
         else:
             # On iOS 26 the export sheet resumes in the last used folder.
             # Accessibility can expose the hidden parent Cancel button while
@@ -1297,6 +1332,18 @@ def language_drag():
 def chemistry_lab():
     choose_subject_tool('Химия','Моделирование опытов')
     wait(lambda:visible_id('.lektrus-lab-open-editor'),'Lab object missing',35)
+    notice=js("""const el=document.querySelector('.board-system-notice');
+      if(!el||getComputedStyle(el).visibility==='hidden')return null;
+      const r=el.getBoundingClientRect();return {width:r.width,left:r.left,
+      right:r.right,viewport:innerWidth,pointerEvents:getComputedStyle(el).pointerEvents};""")
+    if notice:
+        assert notice['width']<=381 and notice['left']>=-1 and notice['right']<=notice['viewport']+1,notice
+        assert notice['pointerEvents']=='none',notice
+    target=js("""const e=document.querySelector('.lektrus-lab-open-editor');
+      const r=e.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
+      const hit=document.elementFromPoint(x,y);return {x,y,hit:e.contains(hit),
+      blocker:hit&&hit.outerHTML.slice(0,300)};""")
+    assert target['hit'],target
     click('.lektrus-lab-open-editor')
     wait(lambda:visible_id('.lektrus-lab-editor'),'Fullscreen lab not rendered',45)
     wait(lambda:visible_id('.lektrus-lab-compact-drawer-bar'),'Native phone lab must use compact fullscreen controls',20)

@@ -209,12 +209,21 @@ export default function App() {
     // Returning from a system file picker can leave older Android WebViews
     // in portrait despite the original landscape request. Reassert it only
     // when this still-mounted board becomes visible/focused again.
+    let lastRestore = 0;
     const restoreOnReturn = () => {
-      if(alive && document.visibilityState === "visible" && innerWidth < innerHeight)
+      if(alive && document.visibilityState === "visible" && innerWidth < innerHeight &&
+          Date.now() - lastRestore > 300) {
+        lastRestore = Date.now();
         void ScreenOrientation.lock({orientation:"landscape-primary"}).then(check).catch(()=>undefined);
+      }
+    };
+    const resize = () => {
+      check();
+      // The system picker can deliver focus before a late portrait resize.
+      if (Capacitor.getPlatform() === "android") restoreOnReturn();
     };
     check();
-    window.addEventListener("resize", check);
+    window.addEventListener("resize", resize);
     window.addEventListener("focus", restoreOnReturn);
     document.addEventListener("visibilitychange", restoreOnReturn);
     window.visualViewport?.addEventListener("resize", check);
@@ -225,7 +234,7 @@ export default function App() {
       alive = false;
       root.classList.remove("lektrus-native-rotating");
       window.clearTimeout(timeout);
-      window.removeEventListener("resize", check);
+      window.removeEventListener("resize", resize);
       window.removeEventListener("focus", restoreOnReturn);
       document.removeEventListener("visibilitychange", restoreOnReturn);
       window.visualViewport?.removeEventListener("resize", check);
