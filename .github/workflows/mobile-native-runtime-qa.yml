@@ -9,6 +9,7 @@ permissions:
 
 env:
   # No production accounts, server connections or signing secrets.
+  LEKTRUS_NATIVE_QA: '1'
   VITE_LEKTRUS_LOCAL_TEST: 'true'
   VITE_LEKTRUS_BACKEND: ''
   VITE_LEKTRUS_API_ORIGIN: ''

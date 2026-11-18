@@ -64,6 +64,21 @@ def context(name):
     command('POST', '/context', {'name': name})
 
 
+def reattach_webview(seconds=45):
+    global web_context
+    def attach():
+        candidates=[c for c in command('GET','/contexts') if c.startswith('WEBVIEW')]
+        for candidate in candidates:
+            try:
+                context(candidate)
+                return candidate
+            except Exception:
+                continue
+        return None
+    web_context=wait(attach,'Native WebView context unavailable',seconds)
+    return web_context
+
+
 def js(source, *arguments):
     return command('POST', '/execute/sync', {'script': source, 'args': arguments})
 
@@ -351,13 +366,15 @@ def native_back_and_link():
     if args.platform == 'android':
         context('NATIVE_APP')
         command('POST','/appium/device/press_keycode',{'keycode':4})
-        context(web_context)
+        reattach_webview()
     else:
         click('.back-to-boards')
     wait(lambda: visible_id('.lectris-library-intro,.lektrus-calendar-grid'), 'Native back did not return to workspace', 45)
     url = 'ru.lektrus.board://' + path.lstrip('/')
     if args.platform == 'android':
         subprocess.run(['adb','shell','am','start','-a','android.intent.action.VIEW','-d',url,'ru.lektrus.board.dev'],check=True,timeout=30)
+        context('NATIVE_APP')
+        reattach_webview()
     else:
         subprocess.run(['xcrun','simctl','openurl',args.udid,url],check=True,timeout=30)
     try:
@@ -666,8 +683,7 @@ try:
     wait(lambda: request('GET','/status',timeout=3).get('ready'), 'Appium server unavailable', 90)
     session = create_session()['sessionId']
     print('Native session launched', session, flush=True)
-    web_context = wait(lambda: next((c for c in command('GET','/contexts') if c.startswith('WEBVIEW')), None), 'No debuggable WebView in native app', 90)
-    context(web_context)
+    reattach_webview(150 if args.platform=='ios' else 90)
     print('Native WebView attached', web_context, flush=True)
     assert js('return window.Capacitor?.isNativePlatform()'), 'Not a native Capacitor runtime'
     check('home-portrait-layout', home, fatal=True)
