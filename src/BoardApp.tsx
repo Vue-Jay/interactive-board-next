@@ -9,7 +9,7 @@ import { canCompositeBoardResize, paintBoardResizePreview, type ResizePreviewTar
 import { boardGridTransform } from "./boardBackgroundPan";
 import { chemistryBoardHasContent } from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
-import MobileBoardEditorPortal from "./MobileBoardEditorPortal";
+import MobileBoardEditorPortal, { dismissEditorBackdropInput, fitMobileEditorViewport } from "./MobileBoardEditorPortal";
 import { useTouchBoardMenuViewport } from "./useTouchBoardMenuViewport";
 import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./rectSelection";
 import { boardObjectAtInertPointerTarget } from "./boardObjectDragSurface";
@@ -2391,6 +2391,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [formulaPaletteTab, setFormulaPaletteTab] = useState<FormulaPaletteTab>("basic");
   const [formulaHistory, setFormulaHistory] = useState<string[]>(() => { try { const v=JSON.parse(localStorage.getItem("onlinerepetitor.formula-history.v54")||"[]"); return Array.isArray(v)?v.slice(0,12):[] } catch { return [] } });
   const formulaInput = useRef<HTMLTextAreaElement>(null);
+  const formulaWindow = useRef<HTMLDivElement>(null);
   const [frameNotesEditorId, setFrameNotesEditorId] = useState<string | null>(null);
   const [frameNotesDraft, setFrameNotesDraft] = useState("");
   const [presentationNotesOpen, setPresentationNotesOpen] = useState(false);
@@ -2883,6 +2884,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const desktopToolSections=[{id:"create",label:"Текст",icon:"section-create" as IconName,ids:["text","sticky","frame"] as Tool[]},{id:"shapes",label:"Фигуры",icon:"section-shapes" as IconName,ids:["shape","connector"] as Tool[]},{id:"data",label:"Таблицы и диаграммы",icon:"section-data" as IconName,ids:["table","graph"] as Tool[]},{id:"assignments",label:"Задания",icon:"section-assignments" as IconName,ids:["checklist","quiz","flashcard","cover"] as Tool[]},{id:"media",label:"Фото, PDF и видео",icon:"section-media" as IconName,ids:["media","linkmedia"] as Tool[]}];
   const adaptiveToolbarRef=useAdaptiveBoardToolbar(desktopToolsExpanded,desktopToolSection);
   const [isCoarsePointer,setIsCoarsePointer]=useState(()=>window.matchMedia?.("(pointer: coarse)").matches===true);
+  const touchEditorViewport=isCoarsePointer||Capacitor.isNativePlatform();
+  useLayoutEffect(()=>{
+    if(!touchEditorViewport||!formulaEditorId||!formulaWindow.current)return;
+    return fitMobileEditorViewport(formulaWindow.current);
+  },[touchEditorViewport,formulaEditorId]);
   useTouchBoardMenuViewport(isCoarsePointer||Capacitor.isNativePlatform());
   useEffect(()=>{const mq=window.matchMedia?.("(pointer: coarse)");if(!mq)return;const sync=()=>setIsCoarsePointer(mq.matches);sync();mq.addEventListener?.("change",sync);return()=>mq.removeEventListener?.("change",sync)},[]);
   useEffect(()=>{
@@ -9005,7 +9011,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         {formulaEditorId && formulaDraft && createPortal(
           <div
             className="formula-editor-backdrop lektrus-formula-window"
-            style={subjectEditorStyle("mathematics")} onPointerDown={(event) => { if(event.target===event.currentTarget)closeFormulaEditor(); }}
+            ref={formulaWindow} data-touch-viewport={touchEditorViewport?"true":undefined}
+            style={subjectEditorStyle("mathematics")} onPointerDown={(event) => { if(event.target===event.currentTarget&&!(touchEditorViewport&&dismissEditorBackdropInput(event.target)))closeFormulaEditor(); }}
             onKeyDown={(e) => {
               if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeFormulaEditor(); }
               if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); saveFormulaEditor(); }
@@ -9165,8 +9172,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               </p>}
               <div className="flashcard-editor-body">
                 <section className="flashcard-editor-compose">
-                  <label><span>Вопрос / лицевая сторона</span><textarea value={flashcardDraft.front} maxLength={5000} onChange={(e) => setFlashcardDraft({ ...flashcardDraft, front: e.target.value })} placeholder="Что нужно вспомнить?"/></label>
-                  <label><span>Ответ / обратная сторона</span><textarea value={flashcardDraft.back} maxLength={5000} onChange={(e) => setFlashcardDraft({ ...flashcardDraft, back: e.target.value })} placeholder="Ответ или пояснение"/></label>
+                  <label><span>Вопрос / лицевая сторона</span><textarea value={flashcardDraft.front} maxLength={5000} onChange={(e) => {const front=e.target.value;setFlashcardDraft(current=>current?{...current,front}:current)}} placeholder="Что нужно вспомнить?"/></label>
+                  <label><span>Ответ / обратная сторона</span><textarea value={flashcardDraft.back} maxLength={5000} onChange={(e) => {const back=e.target.value;setFlashcardDraft(current=>current?{...current,back}:current)}} placeholder="Ответ или пояснение"/></label>
                   <div className="flashcard-editor-settings">
                     <label><span>Размер текста</span><input type="range" min="10" max="48" value={flashcardDraft.fontSize} onChange={(e) => setFlashcardDraft({ ...flashcardDraft, fontSize: Number(e.target.value) })}/><strong>{flashcardDraft.fontSize}px</strong></label>
                     <LektrusColorPicker userId={authUser.id} compact label="Цвет" value={flashcardDraft.color} onChange={value=>setFlashcardDraft({ ...flashcardDraft, color: value })}/>

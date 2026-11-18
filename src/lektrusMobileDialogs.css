@@ -259,7 +259,7 @@
   position:absolute!important;inset:0!important;display:grid!important;
   grid-template-rows:minmax(0,1fr)!important;place-items:center!important;
   padding:4px!important;
-  padding:4px max(4px,var(--lektrus-safe-right,0px)) 4px max(4px,var(--lektrus-safe-left,0px))!important;
+  padding:max(4px,var(--lektrus-safe-top,0px)) max(4px,var(--lektrus-safe-right,0px)) max(4px,var(--lektrus-safe-bottom,0px)) max(4px,var(--lektrus-safe-left,0px))!important;
   box-sizing:border-box!important;pointer-events:auto!important;
   background:rgba(30,33,40,.28)!important;
 }
@@ -326,3 +326,5 @@
 .lektrus-touch-editor-portal[data-compact-height=true] .checklist-editor-header span,
 .lektrus-touch-editor-portal[data-compact-height=true] .flashcard-editor-header span,
 .lektrus-touch-editor-portal[data-compact-height=true] .quiz-editor-header span{display:none!important}
+.lektrus-touch-editor-portal :is(.checklist-editor-footer,.flashcard-editor-footer,.quiz-editor-footer,.table-editor-footer) button{touch-action:manipulation}
+.lektrus-touch-editor-portal[data-compact-height=true] :is(.flashcard-editor-compose,.quiz-editor-compose) textarea{min-height:56px!important;height:68px!important;resize:none}

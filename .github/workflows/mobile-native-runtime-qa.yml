@@ -26,9 +26,8 @@ env:
 jobs:
   browser-touch:
     name: Mobile and tablet browser touch regression
-    # Browser passed on the identical app tree. This follow-up changes only
-    # Android AVD resources; run the browser again in the final full phase.
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    # Recheck touch and keyboard because the remaining iOS editor repair
+    # also touches the shared mobile browser controls.
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -38,6 +37,7 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - run: node scripts/test-mobile-keyboard-dismissal.mjs
       - run: node scripts/test-native-file-export.mjs
       - name: Validate same-origin board frame security headers
         run: |
@@ -52,12 +52,15 @@ jobs:
           curl -fsSI "$board?lektrus-board-frame=1" | grep -i "content-security-policy: frame-ancestors 'self'"
           curl -fsSI 'http://127.0.0.1:18080/app?lektrus-board-frame=1' | grep -i 'x-frame-options: DENY'
       - run: node scripts/test-lektrus-release-browser-smoke.mjs --keyboard-only
-        if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && inputs.phase == 'full' }}
+        if: ${{ !cancelled() }}
       - run: node scripts/test-lektrus-release-browser-smoke.mjs --landscape-only
         if: ${{ !cancelled() }}
 
   android:
     name: Android API ${{ matrix.api }} native runtime
+    # API 35's remaining checks passed on AOSP; the final full dispatch
+    # re-exercises all Android versions after iPhone repairs are complete.
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -120,9 +123,6 @@ jobs:
 
   ios:
     name: iPhone simulator native runtime
-    # The preceding commit's iPhone run is still exercising the exact same
-    # app and test script. Do not queue another macOS runner for an AVD change.
-    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: macos-26
     timeout-minutes: 50
     steps:

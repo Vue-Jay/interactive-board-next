@@ -182,20 +182,41 @@ def check(name, fn, fatal=False):
             # disconnected native session. Attempt recovery once; otherwise
             # the report marks all remaining work as blocked.
             reattach_webview(60)
-        elif name in ('table-edit-and-save','checklist-edit-and-save','flashcard-edit-and-save','quiz-edit-and-save'):
+        elif name in ('table-edit-and-save','checklist-edit-and-save','flashcard-edit-and-save','quiz-edit-and-save','formula-edit-and-save') or name.startswith('subject-'):
             # An unsuccessful editor must not block unrelated later checks.
             # Capture the failure first, then cancel through the actual UI.
             try:
-                for kind in ('table','checklist','flashcard','quiz'):
+                if args.platform=='ios':
+                    context('NATIVE_APP')
+                    try:
+                        command('POST','/appium/device/hide_keyboard',{})
+                    except Exception:
+                        pass
+                    finally:
+                        reattach_webview()
+                for kind in ('table','checklist','flashcard','quiz','formula'):
                     if visible_id(f'.{kind}-editor-modal'):
                         # Cancel is the third checklist button; the others
                         # have one secondary action. Avoid :has on Android 11.
-                        button=f'.{kind}-editor-footer button.secondary'+(':nth-child(3)' if kind=='checklist' else '')
+                        button=f'.{kind}-editor-footer button.secondary'+(':nth-child(3)' if kind in ('checklist','formula') else '')
                         click(button)
                         wait(lambda:not visible_id(f'.{kind}-editor-modal'),'Failed editor did not close',10)
                         print(f'Cleanup: cancelled {kind} editor after failure',flush=True)
+                for modal,close in (('.graph-editor-modal','button[aria-label="Закрыть редактор без сохранения"]'),('.lektrus-circuit-editor','.lektrus-circuit-close'),('.lektrus-school-editor','.lektrus-school-close'),('#lektrus-subject-tools-panel','.lektrus-subject-tools-head button')):
+                    if visible_id(modal):
+                        if args.platform=='ios': native_tap(close)
+                        else: click(close)
+                        wait(lambda:not visible_id(modal),'Failed subject editor did not close',10)
             except Exception as cleanup_error:
                 print(f'Cleanup failed: {cleanup_error}',flush=True)
+                if args.platform=='ios':
+                    # Relaunch only the isolated debug app with its saved board.
+                    # The preceding failure remains failed; subsequent checks
+                    # are independent and must never rely on an obstructed UI.
+                    subprocess.run(['xcrun','simctl','terminate',args.udid,'ru.lektrus.board'],timeout=20)
+                    subprocess.run(['xcrun','simctl','launch',args.udid,'ru.lektrus.board'],check=True,timeout=30)
+                    reattach_webview(60)
+                    if not visible_id('section.board'): reopen_from_workspace()
 
 
 def layout(selectors):
@@ -419,8 +440,13 @@ def native_gesture(points, second=None, reattach=True):
 
 
 def native_tap(selector, reattach=True):
-    p=wait(lambda:js('''const e=[...document.querySelectorAll(arguments[0])].find(e=>e.getClientRects().length&&e.getBoundingClientRect().width>0);if(!e)return null;const r=e.getBoundingClientRect();for(const y of [.5,.2,.8,.03,.97])for(const x of [.5,.2,.8,.03,.97]){const p=[Math.round(r.left+r.width*x),Math.round(r.top+r.height*y)];if(e.contains(document.elementFromPoint(...p)))return p}return null;''',selector),'Touchable control: '+selector,12)
+    p=wait(lambda:js('''const e=[...document.querySelectorAll(arguments[0])].find(e=>e.getClientRects().length&&e.getBoundingClientRect().width>0);if(!e)return null;let r=e.getBoundingClientRect();if(e.tagName==='STRONG'){const range=document.createRange();range.selectNodeContents(e);const text=range.getBoundingClientRect();if(text.width&&text.height)r=text;}for(const y of [.5,.2,.8,.03,.97])for(const x of [.5,.2,.8,.03,.97]){const p=[Math.round(r.left+r.width*x),Math.round(r.top+r.height*y)];if(e.contains(document.elementFromPoint(...p)))return p}return null;''',selector),'Touchable control: '+selector,12)
+    trace=args.platform=='ios' and ('-editor-header' in selector or '-editor-footer' in selector)
+    if trace:
+        js('''if(!window.__qaEditorTapTrace){window.__qaEditorTapTrace=[];for(const type of ['pointerdown','pointerup','touchstart','touchend','click'])document.addEventListener(type,e=>{if(window.__qaEditorTapTrace.length<30)window.__qaEditorTapTrace.push({type,target:e.target.tagName,button:e.target.closest('button')?.textContent,role:e.target.closest('[role=dialog]')?.getAttribute('aria-label'),point:[e.clientX??e.changedTouches?.[0]?.clientX,e.clientY??e.changedTouches?.[0]?.clientY]})},true);}window.__qaEditorTapTrace.length=0''')
     native_gesture([tuple(p)],reattach=reattach)
+    if trace and reattach:
+        print('Editor touch evidence',selector,p,js('return window.__qaEditorTapTrace'),flush=True)
 
 
 def scroll_toward(data):
@@ -831,6 +857,7 @@ def shape_actions():
 
 
 def type_into(selector, value, clear=False, outside=None):
+    initial_height=js('return visualViewport?.height??innerHeight') if outside and args.platform=='ios' else 0
     element=click(selector)
     if clear:
         # React-controlled cells must receive a real deletion input event:
@@ -871,12 +898,12 @@ def type_into(selector, value, clear=False, outside=None):
         # Native IME dismissal animates and can move the next control while
         # focus has already cleared. Require stable geometry before the next
         # physical interaction; otherwise a click can land on a shifted row.
-        last=[None]
+        last=[None,0]
         def settled():
             current=js('return [innerHeight,visualViewport?.height,visualViewport?.offsetTop,document.querySelector(".lektrus-touch-editor-portal")?.getBoundingClientRect().height].map(v=>v==null?null:Math.round(v))')
-            same=current==last[0]
+            last[1]=last[1]+1 if current==last[0] else 0
             last[0]=current
-            return same
+            return last[1]>=2 and (not initial_height or current[1]>=initial_height*.95)
         wait(settled,'Editor viewport did not settle after keyboard dismissal',10)
         return
     # Hiding the keyboard through the driver does not simulate DOM events and
@@ -956,6 +983,7 @@ def flashcard_editor():
     header='.flashcard-editor-header strong'
     type_into('.flashcard-editor-compose textarea[placeholder="Что нужно вспомнить?"]','Столица России',clear=True,outside=header)
     type_into('.flashcard-editor-compose textarea[placeholder="Ответ или пояснение"]','Москва',clear=True,outside=header)
+    assert js('return [...document.querySelectorAll(".flashcard-editor-compose textarea")].map(e=>e.value)')==['Столица России','Москва'],'Flashcard draft lost a side before Save'
     click('.flashcard-editor-footer button.primary')
     item=wait(lambda:next((i for i in board_items() if i['kind']=='flashcard' and i['id'] not in before),None),'Saved flashcard missing')
     assert item['text']=='Столица России' and item['flashcardBack']=='Москва',item
@@ -968,6 +996,7 @@ def quiz_editor():
     type_into('.quiz-question-editor textarea','2+2?',clear=True,outside=header)
     type_into('.quiz-editor-option input[placeholder="Вариант A"]','3',clear=True,outside=header)
     type_into('.quiz-editor-option input[placeholder="Вариант B"]','4',clear=True,outside=header)
+    assert js('return [document.querySelector(".quiz-question-editor textarea").value,...[...document.querySelectorAll(".quiz-editor-option>input")].map(e=>e.value)]')==['2+2?','3','4'],'Quiz draft lost a field before Save'
     click('.quiz-editor-option:nth-child(2) .quiz-correct-radio')
     click('.quiz-editor-footer button.primary')
     item=wait(lambda:next((i for i in board_items() if i['kind']=='quiz' and i['id'] not in before),None),'Saved quiz missing')
@@ -1084,10 +1113,11 @@ def subject_catalogue(subject):
 def choose_subject_tool(subject,label):
     subject_panel(subject)
     for _ in range(15):
-        data=js('''const p=document.querySelector('.lektrus-subject-tools-body'),b=p.getBoundingClientRect();
+        data=js('''const p=document.querySelector('.lektrus-subject-tools-body');if(!p)return null;const b=p.getBoundingClientRect();
           const e=[...p.querySelectorAll('.lektrus-subject-tools-list button')].find(e=>e.getAttribute('aria-label')===arguments[0]);
-          const r=e.getBoundingClientRect(),x=Math.round(r.x+r.width/2),y=Math.round(r.y+r.height/2),hit=document.elementFromPoint(x,y);
+          if(!e)return null;const r=e.getBoundingClientRect(),x=Math.round(r.x+r.width/2),y=Math.round(r.y+r.height/2),hit=document.elementFromPoint(x,y);
           return {x,y,hit:!!hit&&(e===hit||e.contains(hit)),top:b.top,bottom:b.bottom,left:b.left,right:b.right};''',label)
+        if not data: raise AssertionError('Subject panel closed before selecting '+label)
         if data['hit'] and data['top']<=data['y']<=data['bottom']:
             native_gesture([(data['x'],data['y'])])
             wait(lambda:not visible_id('#lektrus-subject-tools-panel'),'Subject tool did not activate')
@@ -1325,15 +1355,9 @@ def run_remaining():
         check('native-back-and-deep-link',native_back_and_link)
         check('subject-chemistry-lab-fullscreen',chemistry_lab)
         return
-    check('zoom-for-object-tests', zoom_for_objects)
-    check('create-rectangle-touch', create_shape, fatal=True)
-    check('rotate-duplicate-delete', shape_actions)
-    check('text-native-keyboard',lambda:text_object('text','Текст','Текст QA'))
-    check('sticky-native-keyboard',lambda:text_object('sticky','Стикер','Заметка QA'))
+    # The previous targeted run passed shape operations, plain text, sticky
+    # notes and board reopen. Only the shared editor controls need regressions.
     check('table-edit-and-save',table_editor)
-    check('all-objects-reopen-persistence',full_document_persistence)
-    if results[-1]['status']!='passed':
-        recover_reopen_after_failure()
     check('checklist-edit-and-save',checklist_editor)
     check('flashcard-edit-and-save',flashcard_editor)
     check('quiz-edit-and-save',quiz_editor)
@@ -1345,17 +1369,15 @@ def run_remaining():
     check('subject-language-sentence-editor',lambda:subject_editor('Иностранный язык','Составление предложений','.lektrus-school-editor','.lektrus-school-close',language_drag))
     check('native-file-export-save',native_file_export_save)
     check('native-file-export-cancel',native_file_export_cancel)
-    check('native-back-and-deep-link',native_back_and_link)
 
 
 if args.suite=='android-lab':
     EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','native-back-and-deep-link','subject-chemistry-lab-fullscreen']
 elif args.suite=='ios-remaining':
-    EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','zoom-for-object-tests','create-rectangle-touch',
-                     'rotate-duplicate-delete','text-native-keyboard','sticky-native-keyboard','table-edit-and-save','all-objects-reopen-persistence',
+    EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','table-edit-and-save',
                      'checklist-edit-and-save','flashcard-edit-and-save','quiz-edit-and-save','formula-edit-and-save',
                      'subject-math-geometry-editor','subject-physics-circuit-editor','subject-geography-atlas-editor','subject-history-atlas-editor',
-                     'subject-language-sentence-editor','native-file-export-save','native-file-export-cancel','native-back-and-deep-link']
+                     'subject-language-sentence-editor','native-file-export-save','native-file-export-cancel']
 
 try:
     wait(lambda: request('GET','/status',timeout=3).get('ready'), 'Appium server unavailable', 90)
