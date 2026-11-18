@@ -95,6 +95,10 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
             mkdir -p artifacts/mobile-qa
+            # This isolated emulator has reported Pixel Launcher background
+            # ANRs over the foreground test app. Keep foreground-app ANRs
+            # visible; suppress only Android's background-ANR notifications.
+            adb shell settings put global anr_show_background 0
             adb install -r android/app/build/outputs/apk/debug/app-debug.apk
             "$RUNNER_TEMP/appium/node_modules/.bin/appium" --address 127.0.0.1 --port 4723 --allow-insecure=uiautomator2:chromedriver_autodownload > artifacts/mobile-qa/appium.log 2>&1 &
             python3 scripts/test-native-mobile-runtime.py android --app "$PWD/android/app/build/outputs/apk/debug/app-debug.apk" --output artifacts/mobile-qa

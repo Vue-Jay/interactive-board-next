@@ -71,10 +71,15 @@ def context(name):
 
 def reattach_webview(seconds=45):
     global web_context
+    # Web Inspector can expose a provisional/blank WKWebView before the
+    # Capacitor bridge is injected (or stale pages from another context).
+    # Merely finding documentElement is not proof the installed app is ready.
+    def native_document():
+        return js('return !!document.documentElement && window.Capacitor?.isNativePlatform?.()===true')
     def attach():
         try:
             current=command('GET','/context')
-            if current and current.startswith('WEBVIEW') and js('return !!document.documentElement'):
+            if current and current.startswith('WEBVIEW') and native_document():
                 return current
         except Exception:
             pass
@@ -82,7 +87,7 @@ def reattach_webview(seconds=45):
         for candidate in candidates:
             try:
                 context(candidate)
-                if not js('return !!document.documentElement'):
+                if not native_document():
                     continue
                 return candidate
             except Exception:
