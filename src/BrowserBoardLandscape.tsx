@@ -65,10 +65,43 @@ export function releaseBrowserBoardLandscape(){
  if(ownsFullscreen){ownsFullscreen=false;if(document.fullscreenElement===document.documentElement)void document.exitFullscreen().catch(()=>{})}
 }
 
+function iosBoardLoadingGeometry(width:number,height:number){
+ const portrait=width<height;
+ return {
+  inset:"auto",left:"50%",top:"50%",
+  width:`${Math.max(width,height)}px`,height:`${Math.min(width,height)}px`,
+  boxSizing:"border-box",
+  transform:`translate(-50%, -50%)${portrait?" rotate(90deg)":""}`,
+ };
+}
+
 export function BoardLoadingScreen({browserRotate=false,nativeRotate=Capacitor.isNativePlatform()}:{browserRotate?:boolean;nativeRotate?:boolean}={}){
+ const loader=useRef<HTMLElement>(null);
+ useLayoutEffect(()=>{
+  // WKWebView can flip the orientation media query one frame before its
+  // fixed-position layout viewport actually turns. Keep the loader's logical
+  // width >= height throughout the native rotation, even on that mixed frame.
+  // The CSS fallback still handles Android (including legacy WebViews).
+  if(!nativeRotate||Capacitor.getPlatform()!=="ios"||!loader.current)return;
+  const element=loader.current;
+  let frame=0,lastWidth=0,lastHeight=0;
+  const measure=()=>{
+   const root=document.documentElement;
+   const width=root.clientWidth||innerWidth,height=root.clientHeight||innerHeight;
+   if(width<=0||height<=0||(width===lastWidth&&height===lastHeight))return;
+   lastWidth=width;lastHeight=height;
+   Object.assign(element.style,iosBoardLoadingGeometry(width,height));
+  };
+  const track=()=>{measure();frame=requestAnimationFrame(track)};
+  track();
+  return ()=>{
+   cancelAnimationFrame(frame);
+   for(const property of ["inset","left","top","width","height","box-sizing","transform"])element.style.removeProperty(property);
+  };
+ },[nativeRotate]);
  // The first painted loader must not depend on a parent layout effect or
  // the asynchronous native orientation transition.
- return <main className="lektrus-board-loading" data-native-rotate={nativeRotate} data-browser-rotate={browserRotate||undefined} role="status" aria-live="polite"><section className="lektrus-board-loading-card"><div className="lektrus-board-loading-mark"><img src="/lektrus-icon-192.png" alt=""/><i/></div><span className="lektrus-board-loading-kicker">LEKTRUS · РАБОЧЕЕ ПРОСТРАНСТВО</span><h1>Готовим доску</h1><p>Подключаем материалы и инструменты для занятия.</p><div className="lektrus-board-loading-progress" aria-hidden="true"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></section></main>;
+ return <main ref={loader} className="lektrus-board-loading" data-native-rotate={nativeRotate} data-browser-rotate={browserRotate||undefined} role="status" aria-live="polite"><section className="lektrus-board-loading-card"><div className="lektrus-board-loading-mark"><img src="/lektrus-icon-192.png" alt=""/><i/></div><span className="lektrus-board-loading-kicker">LEKTRUS · РАБОЧЕЕ ПРОСТРАНСТВО</span><h1>Готовим доску</h1><p>Подключаем материалы и инструменты для занятия.</p><div className="lektrus-board-loading-progress" aria-hidden="true"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></section></main>;
 }
 
 function frameUrl(path:string){
