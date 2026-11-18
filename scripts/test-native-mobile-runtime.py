@@ -797,18 +797,20 @@ def native_file_export_cancel():
         else:
             # A Back transition can temporarily expose neither Save nor Cancel.
             # Do not infer dismissal from absence in XCTest's accessibility tree.
-            # Wait for the real app cancellation notice; use measured visible
-            # native controls while the document picker remains on screen.
-            for attempt in range(10):
-                reattach_webview(45)
-                if js('return window.__nativeExportNotices?.some(n=>n.includes("Сохранение отменено"))'):
-                    break
-                context('NATIVE_APP')
+            # Stay in the native context throughout Files navigation. Selecting
+            # the app's WebView while the system picker is active can disturb
+            # its remote accessibility hierarchy. Only reattach after dismissal.
+            context('NATIVE_APP')
+            for attempt in range(20):
                 source=command('GET','/source',timeout=45)
                 (args.output/f'ios-picker-cancel-{attempt}.xml').write_text(source)
                 root=ET.fromstring(source)
-                if not any('DOC.' in n.get('name','') or 'DocumentManager' in n.get('name','') for n in root.iter()):
-                    time.sleep(2)
+                picker_present=any('DOC.' in n.get('name','') or 'DocumentManager' in n.get('name','') for n in root.iter())
+                board_visible=any(n.tag=='XCUIElementTypeWebView' and n.get('visible')=='true' for n in root.iter())
+                if not picker_present:
+                    if board_visible:
+                        break
+                    time.sleep(1)
                     continue
                 screen=command('GET','/window/rect')
                 candidates=[]
@@ -840,7 +842,7 @@ def native_file_export_cancel():
                     {'type':'pointerDown','button':0},{'type':'pause','duration':100},
                     {'type':'pointerUp','button':0}]}]})
                 command('DELETE','/actions')
-                time.sleep(2)
+                time.sleep(3)
             # The positive notice assertion below is the only success criterion.
     finally:
         reattach_webview()
@@ -1593,6 +1595,13 @@ def run_remaining():
     check('pencil-touch', lambda: draw('pen',[.38,.46,.52]), fatal=True)
     if args.suite in ('android-lab','android-export-lab','ios-export-lab'):
         check('quiz-edit-and-save',quiz_editor)
+        if args.suite=='ios-export-lab':
+            # Verify independent features before a modal can obstruct the board.
+            check('subject-chemistry-lab-fullscreen',chemistry_lab)
+            check('native-back-and-deep-link',native_back_and_link)
+            check('native-file-export-save',native_file_export_save)
+            check('native-file-export-cancel',native_file_export_cancel)
+            return
         if args.suite in ('android-export-lab','ios-export-lab'):
             check('native-file-export-save',native_file_export_save)
             check('native-file-export-cancel',native_file_export_cancel)
@@ -1622,6 +1631,8 @@ if args.suite in ('android-lab','android-export-lab','ios-export-lab'):
     EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','quiz-edit-and-save','native-back-and-deep-link','subject-chemistry-lab-fullscreen']
     if args.suite in ('android-export-lab','ios-export-lab'):
         EXPECTED_CHECKS[3:]=['native-file-export-save','native-file-export-cancel','subject-chemistry-lab-fullscreen','native-back-and-deep-link']
+    if args.suite=='ios-export-lab':
+        EXPECTED_CHECKS[3:]=['subject-chemistry-lab-fullscreen','native-back-and-deep-link','native-file-export-save','native-file-export-cancel']
 elif args.suite=='ios-rotation':
     EXPECTED_CHECKS=[f'create-board-and-landscape-{attempt}' for attempt in range(1,4)]
 elif args.suite=='ios-remaining':
