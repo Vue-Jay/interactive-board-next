@@ -18,8 +18,9 @@ const chromePath=process.env.CHROME_PATH||[
 assert.ok(chromePath,"Chrome required for integrated release browser smoke");
 const homeOnly=process.argv.includes("--home-only");
 const keyboardOnly=process.argv.includes("--keyboard-only");
+const landscapeOnly=process.argv.includes("--landscape-only");
 const interfaceOnly=process.argv.includes("--interface-only");
-if(homeOnly||keyboardOnly)process.env.VITE_LEKTRUS_LOCAL_TEST="true";
+if(homeOnly||keyboardOnly||landscapeOnly)process.env.VITE_LEKTRUS_LOCAL_TEST="true";
 if(interfaceOnly){
  process.env.VITE_LEKTRUS_BACKEND="selfhost";
  delete process.env.VITE_LEKTRUS_API_ORIGIN;
@@ -47,7 +48,7 @@ const log=[];
 try{
  await server.listen();
  const port=server.httpServer.address().port;
- const route=homeOnly||interfaceOnly||keyboardOnly?"/app":"/demo/board?scene=math&capture=1";
+ const route=homeOnly||interfaceOnly||keyboardOnly||landscapeOnly?"/app":"/demo/board?scene=math&capture=1";
  const url=`http://127.0.0.1:${port}${route}`;
  const portServer=net.createServer();
  await new Promise((resolve,reject)=>portServer.once("error",reject).listen(0,"127.0.0.1",resolve));
@@ -132,6 +133,61 @@ try{
  await call("Runtime.enable");
  await call("Page.enable");
 
+ if(landscapeOnly){
+  const viewport=async(width,height)=>{
+   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:true,screenOrientation:{type:height>width?'portraitPrimary':'landscapePrimary',angle:height>width?0:90}});
+   await call('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});await delay(300);
+  };
+  await viewport(390,844);
+  await wait('!!document.querySelector(".lektrus-calendar-grid")','Workspace did not render',30000);
+  // Emulate a browser denying orientation lock to exercise the fallback.
+  await evaluate(`Object.defineProperty(document,'fullscreenEnabled',{configurable:true,value:false});Object.defineProperty(screen.orientation,'lock',{configurable:true,value:async()=>{throw new Error('Orientation lock denied')}})`);
+  await click('.lectris-mobile-bottom button[aria-label="Доски"]');
+  await wait('!!document.querySelector(".lectris-library-new")','Board library did not render');
+  await click('.lectris-library-new');
+  await wait('!!document.querySelector(".lektrus-create-dialog")','Create board dialog did not render');
+  await evaluate(`(()=>{const e=document.querySelector('.lektrus-create-dialog input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,'Landscape browser QA');e.dispatchEvent(new Event('input',{bubbles:true}));e.blur();window.__loaderFrames=[];window.__sampleLoader=true;const sample=()=>{if(!window.__sampleLoader)return;const e=document.querySelector('.lektrus-browser-board-logical > .lektrus-board-loading');if(e)window.__loaderFrames.push([e.offsetWidth,e.offsetHeight]);requestAnimationFrame(sample)};requestAnimationFrame(sample)})()`);
+  await click('.lektrus-create-dialog button[type="submit"]');
+  const boardReady='!!document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector("section.board")';
+  await wait(boardReady,'Landscape frame did not render the actual created board',45000);
+  const state=()=>evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),w=f.contentWindow,d=f.contentDocument,r=f.getBoundingClientRect();return {width:w.innerWidth,height:w.innerHeight,rotated:f.parentElement.dataset.rotated==='true',bounds:[r.left,r.top,r.right,r.bottom],title:d.querySelector('.board-title')?.value,tool:d.querySelector('section.board')?.className}})()`);
+  const first=await state();
+  assert.equal(first.title,'Landscape browser QA');
+  assert.equal(first.rotated,true);assert.ok(first.width>first.height,JSON.stringify(first));
+  const loader=await evaluate('window.__sampleLoader=false;window.__loaderFrames');
+  assert.ok(loader.length&&loader.every(([w,h])=>w>h),'First loader must be landscape: '+JSON.stringify(loader.slice(0,5)));
+  await evaluate('window.__originalFrame=document.querySelector(".lektrus-browser-board-frame").contentWindow;window.__originalBoard=window.__originalFrame.document.querySelector("section.board");window.__boardPath=location.pathname');
+  const point=async(selector)=>evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),d=f.contentDocument,e=[...d.querySelectorAll(${JSON.stringify(selector)})].find(b=>b.getBoundingClientRect().width>0&&b.getBoundingClientRect().height>0&&d.elementFromPoint(b.getBoundingClientRect().x+b.getBoundingClientRect().width/2,b.getBoundingClientRect().y+b.getBoundingClientRect().height/2)?.closest(${JSON.stringify(selector)}));if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`);
+  const physical=async(points)=>evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),r=f.getBoundingClientRect(),rotated=f.parentElement.dataset.rotated==='true';return ${JSON.stringify(points)}.map(p=>rotated?{x:r.right-p.y,y:r.top+p.x}:{x:r.left+p.x,y:r.top+p.y})})()`);
+  const touch=async(points)=>{const mapped=await physical(points);await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...mapped[0],id:1}]});for(const p of mapped.slice(1)){await call('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...p,id:1}]});await delay(30)}await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await delay(250)};
+  const pen=await point('nav.mobile-board-tools button[data-interface-control="pen"],.toolbar-pinned button[data-interface-control="pen"]');
+  assert.ok(pen,'No visible pencil on the landscape board');await touch([pen]);
+  await wait('document.querySelector(".lektrus-browser-board-frame").contentDocument.querySelector("section.board").classList.contains("board-tool-pen")','Rotated touch did not activate pencil');
+  const path=await evaluate(`(()=>{const d=document.querySelector('.lektrus-browser-board-frame').contentDocument,b=d.querySelector('section.board').getBoundingClientRect();for(const fy of [.48,.6,.73,.35])for(const fx of [.35,.45,.55]){const p=Array.from({length:9},(_,i)=>({x:Math.round(b.left+b.width*fx)+10*i,y:Math.round(b.top+b.height*fy)}));if(p.every(q=>{const hit=d.elementFromPoint(q.x,q.y);return hit?.closest('section.board')&&!hit.closest('.board-object,button,input,textarea,.toolbar,.board-controls,.mobile-board-tools,.selection-toolbar-screen')}))return p}return null})()`);
+  assert.ok(path,'Cannot find a clear drawing path');await touch(path);
+  const storedPen=`(()=>{const key=Object.keys(localStorage).find(k=>k.endsWith(window.__boardPath.split('/').pop())&&k.includes('document'));try{return JSON.parse(localStorage.getItem(key))?.items?.find(i=>i.kind==='pen')}catch{return null}})()`;
+  const ink=await wait(storedPen,'Real rotated touch stroke was not saved',15000);
+  assert.ok(ink.points.length>1,'Incomplete stroke');
+  const dx=ink.points.at(-1).x-ink.points[0].x,dy=ink.points.at(-1).y-ink.points[0].y;
+  assert.ok(dx>40&&Math.abs(dy)<4,'A logical horizontal stroke was transposed: '+JSON.stringify({dx,dy}));
+  console.log('✓ First loader horizontal; real rotated touch pencil drew logical horizontal ink');
+  for(const [w,h,rotated] of [[844,390,false],[768,1024,true],[1024,768,false],[390,844,true]]){
+   await viewport(w,h);
+   await wait(`document.querySelector('.lektrus-browser-board-frame').parentElement.dataset.rotated===String(${rotated})`,'Incorrect orientation after physical rotation');
+   const s=await state();assert.ok(s.width>s.height&&s.bounds[0]>=-1&&s.bounds[1]>=-1&&s.bounds[2]<=w+1&&s.bounds[3]<=h+1,JSON.stringify(s));
+   assert.ok(await evaluate(`document.querySelector('.lektrus-browser-board-frame').contentWindow===window.__originalFrame&&window.__originalFrame.document.querySelector('section.board')===window.__originalBoard`),'Board remounted during rotation');
+   assert.equal((await evaluate(storedPen)).id,ink.id);
+   console.log(`✓ ${w}×${h}: landscape viewport, same board instance and retained ink`);
+  }
+  const back=await point('.board-home-button');assert.ok(back,'Back button unavailable');await touch([back]);
+  // BoardApp may present a return confirmation; answer through the real UI.
+  await wait('!document.querySelector(".lektrus-browser-board-frame")','Back action did not return to portrait workspace',15000);
+  assert.ok(await evaluate('!document.documentElement.classList.contains("lektrus-browser-board-active")&&innerHeight>innerWidth'));
+  await evaluate('history.pushState({}, "", window.__boardPath);window.dispatchEvent(new PopStateEvent("popstate"))');
+  await wait(boardReady,'Direct link did not reopen landscape board',45000);
+  assert.equal((await evaluate(storedPen)).id,ink.id);
+  console.log('✓ Return to portrait workspace and direct-link reopen preserve saved ink');
+ }else
  if(keyboardOnly){
   await wait('!!document.querySelector(".lektrus-calendar-grid")',"Application did not render",30000);
   // A fixture inside the actual app documents the shared startup behavior even

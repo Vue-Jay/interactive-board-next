@@ -2890,7 +2890,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const observer=new ResizeObserver(update);observer.observe(element);return()=>observer.disconnect();
   },[boardSummary.id]);
   useEffect(()=>{
-    if(!isCoarsePointer)return;
+    if(!isCoarsePointer||window.parent!==window)return;
     // Never force browser fullscreen: Android/Chrome may create a persistent
     // "copy this app URL" notification for that app-like fullscreen session.
     // Installed PWA can lock orientation without entering browser fullscreen.
@@ -7589,8 +7589,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const formatPresentationTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
   const toggleFullscreen = async () => {
     try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else await document.documentElement.requestFullscreen();
+      // The rotated same-origin browser board owns a logical landscape
+      // viewport. Fullscreen the outer document, not the inner iframe.
+      const framed=window.parent!==window&&new URLSearchParams(location.search).get("lektrus-board-frame")==="1";
+      const target=framed?window.parent.document:document;
+      if (target.fullscreenElement) await target.exitFullscreen();
+      else {
+        await target.documentElement.requestFullscreen();
+        if(framed)try{await (window.parent.screen.orientation as ScreenOrientation&{lock?:(value:"landscape")=>Promise<void>})?.lock?.("landscape")}catch{/* Logical frame still works. */}
+      }
     } catch { setNotice("Браузер не разрешил полноэкранный режим"); }
   };
 

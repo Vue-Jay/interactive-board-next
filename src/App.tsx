@@ -20,6 +20,7 @@ import { documentFingerprint } from "./boardSync";
 import { parseDocument, type DocumentData } from "./boardModel";
 import { ensureBoardAssets } from "./assetStore";
 import { cacheBoardPreview, cachedBoardPreview, previewFromRemoteDocument, scheduleBackgroundBoardPreview } from "./boardPreview";
+import {BoardLoadingScreen,BrowserBoardLandscape,wantsBrowserBoardLandscape,requestBrowserBoardLandscape,releaseBrowserBoardLandscape} from "./BrowserBoardLandscape";
 
 const INTERFACE_STUDIO_BOARD_ID="00000000-0000-4000-8000-00000000a11a";
 const LektrusSystemUi = registerPlugin<{setBoardMode(options:{enabled:boolean}):Promise<void> }>("LektrusSystemUi");
@@ -55,10 +56,6 @@ const PublicDemoBoard = lazy(() => import("./PublicDemoBoard"));
 const FeedbackScreen = lazy(() => import("./FeedbackScreen"));
 
 const BoardApp = lazy(() => import("./BoardApp"));
-
-function BoardLoadingScreen(){
-  return <main className="lektrus-board-loading" role="status" aria-live="polite"><section className="lektrus-board-loading-card"><div className="lektrus-board-loading-mark"><img src="/lektrus-icon-192.png" alt=""/><i/></div><span className="lektrus-board-loading-kicker">LEKTRUS · РАБОЧЕЕ ПРОСТРАНСТВО</span><h1>Готовим доску</h1><p>Подключаем материалы и инструменты для занятия.</p><div className="lektrus-board-loading-progress" aria-hidden="true"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></section></main>;
-}
 
 export default function App() {
   const [route, setRoute] = useState<AppRoute>(() => {
@@ -133,6 +130,8 @@ export default function App() {
     window.history[replace ? "replaceState" : "pushState"](null, "", appPath);
     const url = new URL(appPath, window.location.href);
     const next=parseRoute(url.pathname);
+    if(next.kind==="board"||next.kind==="demo")requestBrowserBoardLandscape(true);
+    else releaseBrowserBoardLandscape();
     if(next.kind==="join")rememberShareToken(next.token);
     if(next.kind==="board")rememberBoardPath(next.boardId);
     setRoute(Capacitor.isNativePlatform()&&next.kind==="site"?{kind:"home"}:next);
@@ -146,6 +145,7 @@ export default function App() {
     const changed = () => {
       const parsed = parseRoute(window.location.pathname);
       const next=Capacitor.isNativePlatform()&&parsed.kind==="site"?{kind:"home" as const}:parsed;
+      if(next.kind!=="board"&&next.kind!=="demo")releaseBrowserBoardLandscape();
       if (next.kind === "join") rememberShareToken(next.token);
       if (next.kind === "board") rememberBoardPath(next.boardId);
       setRoute(next);
@@ -576,11 +576,13 @@ export default function App() {
   if(route.kind==="tool")return <Suspense fallback={<BoardLoadingScreen/>}><PublicToolScreen tool={route.tool} onBack={()=>window.location.assign("/")}/></Suspense>;
 
   if(route.kind==="demo"){
+    if(wantsBrowserBoardLandscape())return <BrowserBoardLandscape key={window.location.pathname+window.location.search} path={window.location.pathname+window.location.search} demo onBack={()=>window.location.assign("/")} onLogout={()=>window.location.assign("/")}/>;
     return <Suspense fallback={<BoardLoadingScreen/>}><PublicDemoBoard/></Suspense>;
   }
 
   if (!authReady) {
     if (nativeBoardOpening) return <BoardLoadingScreen/>;
+    if(route.kind==="board"&&wantsBrowserBoardLandscape())return <BoardLoadingScreen browserRotate/>;
     return <main className="auth-shell"><section className="auth-card"><div className="auth-brand-row"><div className="auth-logo">B</div><div><div className="auth-brand">Учебная доска</div><div className="auth-subtitle">Проверяем сессию…</div></div></div></section></main>;
   }
 
@@ -593,6 +595,18 @@ export default function App() {
   if(mobileJoinUrl&&route.kind==="join")return <main className="auth-shell"><section className="auth-card"><strong>Приглашение на доску Lektrus</strong><p>Где открыть доску?</p><div className="share-password-actions"><a className="primary" href={mobileJoinUrl}>Открыть в приложении</a><button type="button" onClick={()=>setBrowserJoinToken(route.token)}>Продолжить в браузере</button></div><button type="button" onClick={()=>{clearPendingShare();navigate("/app",true)}}>Отмена</button></section></main>;
 
   if (nativeBoardOpening && !nativeLandscapeReady) return <BoardLoadingScreen/>;
+
+  const returnFromBoard=()=>{if(authUser.guestBoardId){logout();return;}setActiveBoard(null);if(adminInspecting||new URLSearchParams(window.location.search).get("layout-editor")==="1"){setAdminInspecting(false);navigate("/?section=admin");}else navigate("/")};
+  if(wantsBrowserBoardLandscape()&&!boardLoadError&&(route.kind==="board"||(adminInspecting&&activeBoard))){
+    const id=route.kind==="board"?route.boardId:activeBoard!.id;
+    // Keep this iframe mounted throughout the loading -> interactive transition
+    // and subsequent real screen rotations. The parent alone loads the board.
+    const payload=activeBoard?.id.toLowerCase()===id.toLowerCase()?{authUser,boardSummary:activeBoard,accountRole,isAppAdmin,
+      globalRolePreview:appRolePreview,adminMaintenance:adminInspecting&&isAppAdmin&&adminEdit,
+      adminInvisible,initialRemoteVersion:remoteVersion,selfhostMode:isSelfhostBackendEnabled(),mountKey:boardMountKey}:undefined;
+    const path=route.kind==="board"?window.location.pathname+window.location.search+window.location.hash:`/board/${id}`;
+    return <BrowserBoardLandscape key={path} path={path} payload={payload} onBack={returnFromBoard} onLogout={logout} onChanged={boardChanged} onRoleChange={changeAppRolePreview}/>;
+  }
 
   if (!activeBoard) {
     return (
@@ -625,7 +639,7 @@ export default function App() {
           ? <TemplatesScreen user={authUser} onBack={()=>navigate("/app?section=boards")} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
           : <BoardsScreen user={authUser} accountRole={effectiveAccountRole} isAppAdmin={isAppAdmin&&appRolePreview==="actual"} onOpenBoard={(board) => navigate(`/board/${board.id}`)} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} />})()}</Suspense></LectrisWorkspaceShell>}
         {sharePasswordRequired && route.kind==="join" && <div className="board-server-overlay"><form className="board-server-card share-password-card" onSubmit={e=>{e.preventDefault();if(!sharePassword.trim())return;setSharePasswordRequired(false);setSubmittedSharePassword({token:route.token,value:sharePassword});}}><strong>Ссылка защищена паролем</strong><span>Введите пароль, который сообщил владелец доски.</span><input type="password" value={sharePassword} onChange={e=>setSharePassword(e.target.value)} placeholder="Пароль ссылки" autoComplete="off"/><div className="share-password-actions"><button className="primary" type="submit" disabled={!sharePassword.trim()}>Открыть доску</button><button type="button" onClick={()=>{setSharePassword("");clearPendingShare();navigate("/",true)}}>Отмена</button></div></form></div>}
-        {boardLoading && <BoardLoadingScreen/>}
+        {boardLoading && <BoardLoadingScreen browserRotate={adminInspecting&&wantsBrowserBoardLandscape()}/>}
         {boardLoadError && <div className="board-server-overlay"><div className="board-server-card"><strong>Не удалось открыть доску</strong><span>{boardLoadError}</span><button className="primary" onClick={() => setRoute({ ...route })}>Повторить</button><button onClick={() => { clearPendingShare(); navigate("/", true); }}>К моим доскам</button></div></div>}
       </>
     );
@@ -645,7 +659,7 @@ export default function App() {
       initialRemoteVersion={remoteVersion}
       selfhostMode={isSelfhostBackendEnabled()}
       onBoardChanged={boardChanged}
-      onBackToBoards={() => { if(authUser.guestBoardId){logout();return;}setActiveBoard(null); if(adminInspecting||new URLSearchParams(window.location.search).get("layout-editor")==="1"){setAdminInspecting(false);navigate("/?section=admin");}else navigate("/"); }}
+      onBackToBoards={returnFromBoard}
       onLogout={logout}
     /></Suspense>
   );
