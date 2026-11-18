@@ -232,11 +232,16 @@ def open_new_board():
       const x=Math.round(r.x+r.width/2), y=Math.round(r.y+r.height/2);
       return {x,y,visible:y<innerHeight&&!!document.elementFromPoint(x,y)?.closest('button[type="submit"]')};''')
     assert coords['visible'], f'Create button inaccessible with native keyboard: {coords}'
+    js('''window.__boardLoadingFrames=[];window.__boardLoadingObserve=true;
+      const sample=()=>{if(!window.__boardLoadingObserve)return;const e=document.querySelector('.lektrus-board-loading');
+      if(e&&e.getClientRects().length&&window.__boardLoadingFrames.length<240)window.__boardLoadingFrames.push({viewport:[innerWidth,innerHeight],loader:[e.offsetWidth,e.offsetHeight],transform:getComputedStyle(e).transform});requestAnimationFrame(sample)};requestAnimationFrame(sample);''')
     native_gesture([(coords['x'],coords['y'])])
     wait(lambda: visible_id('section.board'), 'Board not rendered', 90)
     wait(lambda: js('return innerWidth>innerHeight'), 'Board failed to rotate to landscape', 30)
+    frames=js('window.__boardLoadingObserve=false;return window.__boardLoadingFrames||[];')
+    assert all(f['loader'][0]>=f['loader'][1] for f in frames), f'Board loading rendered vertically: {frames[:5]}'
     assert js('return document.querySelector(".board-title")?.value') == 'Native QA', 'Board title did not persist'
-    return {'viewport': js('return [innerWidth, innerHeight]'), 'path': js('return location.pathname')}
+    return {'viewport': js('return [innerWidth, innerHeight]'), 'path': js('return location.pathname'), 'landscapeLoadingFrames':len(frames), 'firstLoadingFrame':frames[0] if frames else None}
 
 
 def board_layout():

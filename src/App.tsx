@@ -128,22 +128,6 @@ export default function App() {
     return () => window.removeEventListener("lektrus:native-back", goBackInsideLektrus);
   }, []);
 
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-    const apply = async () => {
-      try {
-        if (route.kind === "board") {
-          await ScreenOrientation.lock({ orientation: "landscape-primary" });
-        } else {
-          await ScreenOrientation.unlock();
-        }
-      } catch (error) {
-        console.warn("Unable to change Lektrus orientation", error);
-      }
-    };
-    void apply();
-  }, [route.kind]);
-
   const navigate = useCallback((path: string, replace = false) => {
     const appPath=path==="/"?"/app":path.startsWith("/?")?`/app${path.slice(1)}`:path;
     window.history[replace ? "replaceState" : "pushState"](null, "", appPath);
@@ -190,6 +174,44 @@ export default function App() {
     setActiveBoard(current => current?.id === updated.id ? updated : current);
   }, []);
   const [boardLoading, setBoardLoading] = useState(false);
+  const nativeBoardOpening = Capacitor.isNativePlatform() && (route.kind === "board" || Boolean(activeBoard) || (adminInspecting && boardLoading));
+  const [nativeLandscapeReady, setNativeLandscapeReady] = useState(false);
+  useLayoutEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    if (!nativeBoardOpening) {
+      setNativeLandscapeReady(false);
+      void ScreenOrientation.unlock().catch(error => console.warn("Unable to unlock Lektrus orientation", error));
+      return;
+    }
+    // Start rotation before the first loader paint, not when BoardApp mounts.
+    // A portrait keyboard can shrink the WebView into a landscape-shaped box.
+    // Check the display width as well, and never dismiss an already-open editor.
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    const root = document.documentElement;
+    root.classList.add("lektrus-native-rotating");
+    let alive = true;
+    const ready = () => {
+      if (!alive) return;
+      root.classList.remove("lektrus-native-rotating");
+      setNativeLandscapeReady(true);
+    };
+    const check = () => {
+      if (innerWidth > innerHeight && innerWidth >= Math.max(screen.width, screen.height) - 100) ready();
+    };
+    check();
+    window.addEventListener("resize", check);
+    window.visualViewport?.addEventListener("resize", check);
+    void ScreenOrientation.lock({ orientation: "landscape-primary" }).then(check).catch(error => console.warn("Unable to change Lektrus orientation", error));
+    // Large-screen OS modes can refuse an orientation lock; do not strand users.
+    const timeout = window.setTimeout(ready, 4000);
+    return () => {
+      alive = false;
+      root.classList.remove("lektrus-native-rotating");
+      window.clearTimeout(timeout);
+      window.removeEventListener("resize", check);
+      window.visualViewport?.removeEventListener("resize", check);
+    };
+  }, [nativeBoardOpening]);
   const [boardLoadError, setBoardLoadError] = useState("");
   const [sharePassword, setSharePassword] = useState("");
   const [submittedSharePassword, setSubmittedSharePassword] = useState<{token:string;value:string}|null>(null);
@@ -558,6 +580,7 @@ export default function App() {
   }
 
   if (!authReady) {
+    if (nativeBoardOpening) return <BoardLoadingScreen/>;
     return <main className="auth-shell"><section className="auth-card"><div className="auth-brand-row"><div className="auth-logo">B</div><div><div className="auth-brand">Учебная доска</div><div className="auth-subtitle">Проверяем сессию…</div></div></div></section></main>;
   }
 
@@ -568,6 +591,8 @@ export default function App() {
   }
 
   if(mobileJoinUrl&&route.kind==="join")return <main className="auth-shell"><section className="auth-card"><strong>Приглашение на доску Lektrus</strong><p>Где открыть доску?</p><div className="share-password-actions"><a className="primary" href={mobileJoinUrl}>Открыть в приложении</a><button type="button" onClick={()=>setBrowserJoinToken(route.token)}>Продолжить в браузере</button></div><button type="button" onClick={()=>{clearPendingShare();navigate("/app",true)}}>Отмена</button></section></main>;
+
+  if (nativeBoardOpening && !nativeLandscapeReady) return <BoardLoadingScreen/>;
 
   if (!activeBoard) {
     return (

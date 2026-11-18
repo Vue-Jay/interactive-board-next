@@ -136,17 +136,17 @@ try{
   await wait('!!document.querySelector(".lektrus-calendar-grid")',"Application did not render",30000);
   // A fixture inside the actual app documents the shared startup behavior even
   // for canvas/gesture targets that suppress the browser's default focus change.
-  await evaluate(`(()=>{const f=document.createElement('div');f.id='keyboard-fixture';f.style.cssText='position:fixed;inset:12px;z-index:2147483647;background:white;padding:12px;touch-action:none';f.innerHTML='<label for="qa-one">First</label><input id="qa-one" value="Retained"><textarea id="qa-two"></textarea><div id="qa-outside" style="height:160px;touch-action:none">Outside</div>';document.body.append(f);f.querySelector('#qa-outside').addEventListener('pointerdown',e=>e.preventDefault());})()`);
-  const tap=async(selector,dy=0)=>{const p=await rect(selector);await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:p.x,y:p.y}]});if(dy)await call('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:p.x,y:p.y+dy}]});await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await delay(120);};
+  await evaluate(`(()=>{const f=document.createElement('div');f.id='keyboard-fixture';f.style.cssText='position:fixed;inset:12px;z-index:2147483647;background:white;padding:12px;touch-action:none;display:flex;flex-direction:column;align-items:flex-start;gap:12px';f.innerHTML='<label for="qa-one">First</label><input id="qa-one" value="Retained" style="position:static;width:200px;height:40px"><textarea id="qa-two" style="position:static;width:200px;height:60px"></textarea><div id="qa-outside" style="width:200px;height:160px;touch-action:none">Outside</div>';document.body.append(f);f.querySelector('#qa-outside').addEventListener('pointerdown',e=>e.preventDefault());})()`);
+  const tap=async(selector,dy=0)=>{const p=await rect(selector);assert.ok(await evaluate(`!!document.elementFromPoint(${p.x},${p.y})?.closest(${JSON.stringify(selector)})`),`Touch target obscured: ${selector}`);await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:p.x,y:p.y,id:1}]});if(dy)await call('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:p.x,y:p.y+dy,id:1}]});await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await delay(400);};
   const focused=()=>evaluate('document.activeElement.id');
   for(const [width,height] of [[390,844],[768,1024],[1024,768]]){
    await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:true});
    await call('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
    await delay(200);
    await tap('#qa-one');assert.equal(await focused(),'qa-one');
-   await tap('#qa-outside',40);assert.equal(await focused(),'qa-one','A drag must not dismiss the keyboard');
    await tap('#qa-two');assert.equal(await focused(),'qa-two','A different input must retain focus');
    await tap('label[for="qa-one"]');assert.equal(await focused(),'qa-one','A field label must retain focus');
+   await tap('#qa-outside',40);assert.equal(await focused(),'qa-one','A drag must not dismiss the keyboard');
    await tap('#qa-outside');assert.notEqual(await focused(),'qa-one','An outside tap must dismiss the keyboard');
    assert.equal(await evaluate('document.querySelector("#qa-one").value'),'Retained');
    console.log(`✓ ${width}×${height}: outside tap, drag, field switch, label and preserved text`);

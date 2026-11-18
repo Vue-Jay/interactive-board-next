@@ -1,4 +1,6 @@
 .lektrus-board-loading{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;overflow:hidden;padding:24px;background:radial-gradient(ellipse at 50% 38%,#fff 0%,#f4f8ff 42%,#eaf1fb 100%);color:#173252;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+/* Render the loading screen horizontally even during the OS rotation animation. */
+@media (orientation:portrait){html.lektrus-native-rotating .lektrus-board-loading{inset:auto;left:50%;top:50%;width:100vh;height:100vw;box-sizing:border-box;transform:translate(-50%,-50%) rotate(90deg);}}
 .lektrus-board-loading:before,.lektrus-board-loading:after{position:absolute;content:"";width:min(70vw,620px);aspect-ratio:1;border:1px solid #d9e6fa;border-radius:50%;animation:lektrus-loading-orbit 14s linear infinite;pointer-events:none}
 .lektrus-board-loading:after{width:min(52vw,450px);animation-direction:reverse;animation-duration:19s;border-style:dashed;opacity:.72}
 .lektrus-board-loading-card{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;width:min(100%,420px);padding:36px 30px 32px;border:1px solid #e0e9f6;border-radius:24px;background:#ffffffd9;box-shadow:0 24px 80px #4569971c,0 4px 16px #4569970b;backdrop-filter:blur(16px);text-align:center}
