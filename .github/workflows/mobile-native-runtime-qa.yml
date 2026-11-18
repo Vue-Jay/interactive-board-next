@@ -107,29 +107,7 @@ jobs:
           # 2560 MB guest RAM and lost the whole ADB device, even on a clean
           # board. Allocate a realistic phone RAM budget on this runner.
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim ${{ matrix.api == 35 && '-memory 4096' || '' }}
-          script: |
-            mkdir -p artifacts/mobile-qa
-            free -m > artifacts/mobile-qa/host-memory-before.txt
-            adb shell cat /proc/meminfo > artifacts/mobile-qa/guest-memory-before.txt
-            # This isolated emulator has reported Pixel Launcher background
-            # ANRs over the foreground test app. Keep foreground-app ANRs
-            # visible; suppress only Android's background-ANR notifications.
-            adb shell settings put global anr_show_background 0
-            adb install -r android/app/build/outputs/apk/debug/app-debug.apk
-            # Preserve OS evidence even if ADB or the emulator disappears
-            # before the final screenshot (observed near the lab startup).
-            adb logcat -v threadtime -b all > artifacts/mobile-qa/android-logcat.txt 2>&1 &
-            LOGCAT_PID=$!
-            "$RUNNER_TEMP/appium/node_modules/.bin/appium" --address 127.0.0.1 --port 4723 --allow-insecure=uiautomator2:chromedriver_autodownload > artifacts/mobile-qa/appium.log 2>&1 &
-            QA_RESULT=0
-            python3 scripts/test-native-mobile-runtime.py android --suite "${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'full' && 'full' || 'android-lab' }}" --app "$PWD/android/app/build/outputs/apk/debug/app-debug.apk" --output artifacts/mobile-qa || QA_RESULT=$?
-            if [ "$QA_RESULT" -ne 0 ]; then
-              timeout 20s adb shell dumpsys activity exit-info ru.lektrus.board.dev > artifacts/mobile-qa/android-exit-info.txt 2>&1 || true
-              free -m > artifacts/mobile-qa/host-memory-after.txt
-              timeout 10s adb shell cat /proc/meminfo > artifacts/mobile-qa/guest-memory-after.txt 2>&1 || true
-            fi
-            kill "$LOGCAT_PID" 2>/dev/null || true
-            exit "$QA_RESULT"
+          script: bash scripts/run-android-mobile-qa.sh "${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'full' && 'full' || 'android-lab' }}"
       - name: Upload Android runtime logs and screenshots
         if: always()
         uses: actions/upload-artifact@v4
