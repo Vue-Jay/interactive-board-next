@@ -718,12 +718,38 @@ def dismiss_android_picker():
     assert android_app_has_focus(),'DocumentsUI did not return to Lektrus'
 
 
+def android_picker_save_state():
+    """Re-find DocumentsUI controls after every accessibility tree refresh.
+
+    API 35 may replace Save between /elements and /enabled while opening a
+    folder. A stale Appium node is not an app export failure.
+    """
+    element=native_picker_button(('Save','SAVE','Сохранить'))
+    if not element:
+        return None
+    try:
+        enabled=bool(command('GET',f'/element/{element}/enabled'))
+    except RuntimeError as error:
+        if 'stale element reference' in str(error).lower():
+            return None
+        raise
+    return {'id':element,'enabled':enabled}
+
+
 def native_file_export_save():
     name='Native QA.orboard'
     start_native_export('Скачать копию')
     try:
-        save=wait(lambda:native_picker_button(('Save','SAVE','Сохранить')),'Native system file picker did not offer Save',45)
-        if args.platform=='android' and not command('GET',f'/element/{save}/enabled'):
+        if args.platform=='android':
+            # DocumentsUI recreates its Save node during the activity opening
+            # transition. Poll the *current* node and state atomically enough
+            # to tolerate a stale reference without masking real failures.
+            save_state=wait(android_picker_save_state,'Native system file picker did not settle on Save',45)
+            save=save_state['id']
+        else:
+            save=wait(lambda:native_picker_button(('Save','SAVE','Сохранить')),'Native system file picker did not offer Save',45)
+            save_state={'id':save,'enabled':True}
+        if args.platform=='android' and not save_state['enabled']:
             # AOSP Android 7 launches DocumentsUI in Recent, a read-only
             # virtual root. Select the real shared Downloads directory.
             roots=native_picker_button(('Show roots','Open navigation drawer','Show navigation drawer','Показать корневые папки'),require_enabled=True)
@@ -739,6 +765,11 @@ def native_file_export_save():
             time.sleep(1.2)
             save=wait(lambda:native_picker_button(('Save','SAVE','Сохранить'),require_enabled=True),'Save not enabled after selecting Downloads',15)
         screenshot('native-board-save-picker')
+        if args.platform=='android':
+            # Screenshot or closing a storage drawer may rebuild accessibility
+            # nodes. Do not click a cached Save reference from before capture.
+            save=wait(lambda:native_picker_button(('Save','SAVE','Сохранить'),require_enabled=True),
+                      'Enabled Save missing before native click',15)
         if args.platform=='ios':
             local=native_picker_button(('On My iPhone','На iPhone'))
             if local:
