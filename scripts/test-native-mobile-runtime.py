@@ -329,7 +329,7 @@ def path_for_ink(y_band):
 
 
 def native_gesture(points, second=None):
-    viewport = js('return [innerWidth,innerHeight,visualViewport?.offsetLeft||0,visualViewport?.offsetTop||0]')
+    viewport = js('return [innerWidth,innerHeight,visualViewport?.offsetLeft||0,visualViewport?.offsetTop||0,devicePixelRatio,window.__lektrusQaNativeWebViewRect||null]')
     def finger(pts, name, rect, sx, sy):
         coords = [(round(rect['x']+x*sx), round(rect['y']+y*sy)) for x, y in pts]
         actions = [{'type':'pointerMove','duration':0,'x':coords[0][0],'y':coords[0][1],'origin':'viewport'},
@@ -349,13 +349,23 @@ def native_gesture(points, second=None):
         try:
             element = wait(lambda:command('POST','/element',{'using':'class name','value':classname})[ELEMENT], 'Native WebView accessibility element unavailable', 5)
             rect = command('GET', f'/element/{element}/rect')
-        except Exception:
-            # Android IME can hide the WebView from the accessibility tree
-            # while the installed Chromium WebView still has a live session.
-            # Use the driver's coordinate-based touch input, not JS events;
-            # only for a single tap, never mask multitouch/drag coverage.
+        except Exception as error:
+            # Android accessibility can omit the WebView even when its actual
+            # native surface is visible. Recover *native* touch using the
+            # current screen rectangle measured by the debug activity.
+            if args.platform=='android' and viewport[5]:
+                measured=viewport[5]
+                ratio=viewport[4]
+                if (abs(measured['width']/viewport[0]-ratio)<.06 and
+                    abs(measured['height']/viewport[1]-ratio)<.06 and
+                    measured['x']>=0 and measured['y']>=0):
+                    print('Native accessibility WebView missing; using measured native surface',measured,flush=True)
+                    perform(measured,ratio,ratio)
+                    return
+            # Single taps can also use the driver's WebView touch injection;
+            # never substitute that for native multitouch or drag coverage.
             if args.platform!='android' or second or len(points)!=1:
-                raise
+                raise BlockedCheck(f'Native WebView touch surface unavailable: {error}') from error
             reattach_webview()
             print('Native accessibility WebView missing; using installed WebView touch input',flush=True)
             perform({'x':0,'y':0},1,1)
@@ -512,7 +522,8 @@ def start_native_export(label):
         target=js('''const menu=document.querySelector('.topbar-more-menu[open] .topbar-more-popover');if(!menu)return null;
           const m=menu.getBoundingClientRect(),e=[...menu.querySelectorAll('button')].find(b=>b.textContent.trim()===arguments[0]);if(!e)return null;
           const r=e.getBoundingClientRect(),x=Math.round(r.left+r.width/2),y=Math.round(r.top+r.height/2);
-          return {x,y,left:m.left,right:m.right,top:m.top,bottom:m.bottom,viewport:innerHeight,hit:e.contains(document.elementFromPoint(x,y))};''',label)
+          const style=getComputedStyle(menu);
+          return {x,y,left:m.left,right:m.right,top:m.top,bottom:m.bottom,viewport:innerHeight,visualHeight:visualViewport?.height,visualTop:visualViewport?.offsetTop,maxHeight:style.maxHeight,inlineMaxHeight:menu.style.maxHeight,overflow:style.overflowY,scrollHeight:menu.scrollHeight,clientHeight:menu.clientHeight,hit:e.contains(document.elementFromPoint(x,y))};''',label)
         assert target,f'Menu action missing: {label}'
         assert target['top']>=0 and target['bottom']<=target['viewport']+2,f'Board action menu extends outside viewport: {target}'
         if target['hit'] and target['top']<=target['y']<=target['bottom']:

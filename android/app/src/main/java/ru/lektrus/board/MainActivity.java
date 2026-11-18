@@ -2,6 +2,7 @@ package ru.lektrus.board;
 
 import android.os.Bundle;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
 import android.net.Uri;
 import android.view.ViewGroup;
 import android.webkit.WebView;
@@ -52,6 +53,24 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedState);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         boardWebView = getBridge().getWebView();
+        // QA instrumentation only: accessibility can omit the WebView during
+        // rotation or IME transitions even though its native surface is alive.
+        // Expose the measured screen rectangle, not a guessed density or a
+        // synthetic DOM gesture. Signed release builds never install this hook.
+        if ((getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            boardWebView.addOnLayoutChangeListener((view, left, top, right, bottom,
+                    oldLeft, oldTop, oldRight, oldBottom) -> {
+                int[] location = new int[2];
+                view.getLocationOnScreen(location);
+                int width = view.getWidth();
+                int height = view.getHeight();
+                if (width > 0 && height > 0) {
+                    boardWebView.evaluateJavascript("window.__lektrusQaNativeWebViewRect={x:"
+                        + location[0] + ",y:" + location[1] + ",width:" + width
+                        + ",height:" + height + "}", null);
+                }
+            });
+        }
         applyBars();
         ViewCompat.setOnApplyWindowInsetsListener(boardWebView, (view, insets) -> {
             Insets cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout());

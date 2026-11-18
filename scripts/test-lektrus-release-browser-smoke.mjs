@@ -241,10 +241,20 @@ try{
   await evaluate(`window.__boardPath=${JSON.stringify(directPath)}`);
   assert.equal((await evaluate(storedPen)).id,ink.id);
   console.log('✓ Return to portrait workspace and direct-link reopen preserve saved ink');
+  // Reproduce the old native WebView where CSS viewport units fail to
+  // constrain the menu. Inline geometry must win over the legacy rule.
+  await evaluate(`(()=>{const d=document.querySelector('.lektrus-browser-board-frame').contentDocument,s=d.createElement('style');s.id='legacy-menu-viewport';s.textContent='html body .topbar .topbar-right .topbar-more-menu[open]>.topbar-more-popover{max-height:none!important;overflow:visible!important}';d.head.append(s)})()`);
   const menu=await point('.topbar-more-menu>summary');assert.ok(menu,'Board actions menu unavailable');await touch([menu]);
-  const menuBounds=await evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),element=f.contentDocument.querySelector('.topbar-more-menu[open] .topbar-more-popover');if(!element)return null;const r=element.getBoundingClientRect();return {top:r.top,bottom:r.bottom,height:f.contentWindow.innerHeight,scrollable:element.scrollHeight>element.clientHeight,overflow:f.contentWindow.getComputedStyle(element).overflowY}})()`);
-  assert.ok(menuBounds&&menuBounds.top>=0&&menuBounds.bottom<=menuBounds.height+1&&(!menuBounds.scrollable||menuBounds.overflow==='auto'||menuBounds.overflow==='scroll'),JSON.stringify(menuBounds));
-  console.log('✓ Rotated board actions menu fits the viewport and can scroll');
+  const menuGeometry=`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),element=f.contentDocument.querySelector('.topbar-more-menu[open] .topbar-more-popover');if(!element)return null;const r=element.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:f.contentWindow.innerHeight,scrollable:element.scrollHeight>element.clientHeight,overflow:f.contentWindow.getComputedStyle(element).overflowY,inline:element.style.maxHeight,scrollTop:element.scrollTop}})()`;
+  const menuBounds=await evaluate(menuGeometry);
+  assert.ok(menuBounds&&menuBounds.top>=0&&menuBounds.bottom<=menuBounds.height+1&&menuBounds.scrollable&&menuBounds.overflow==='auto'&&menuBounds.inline.endsWith('px'),JSON.stringify(menuBounds));
+  const scrollX=(menuBounds.left+menuBounds.right)/2;
+  await touch(Array.from({length:9},(_,i)=>({x:scrollX,y:menuBounds.bottom-25-(menuBounds.bottom-menuBounds.top-50)*i/8})));
+  await wait(`${menuGeometry}.scrollTop>0`,'Rotated touch did not scroll the action menu');
+  await evaluate(`(()=>{const w=document.querySelector('.lektrus-browser-board-frame').contentWindow,v=new w.EventTarget();Object.assign(v,{width:w.innerWidth,height:185,offsetLeft:0,offsetTop:0});Object.defineProperty(w,'visualViewport',{configurable:true,value:v});w.dispatchEvent(new w.Event('resize'))})()`);
+  await wait(`${menuGeometry}.bottom<=185`,'Menu did not adapt to a reduced visual viewport');
+  await evaluate(`(()=>{const w=document.querySelector('.lektrus-browser-board-frame').contentWindow;delete w.visualViewport;w.document.querySelector('#legacy-menu-viewport').remove();w.dispatchEvent(new w.Event('resize'))})()`);
+  console.log('✓ Rotated board menu fits even with legacy CSS viewport failure, scrolls by touch, and adapts to a reduced viewport');
   await call('Page.navigate',{url:new URL('/demo/board?scene=math',url).href});
   await wait(boardReady,'Public demo did not open in landscape',45000);
   const demoState=await state();assert.equal(demoState.rotated,true);assert.ok(demoState.width>demoState.height);
