@@ -303,9 +303,9 @@
     top:auto!important;
     bottom:calc(68px + var(--lektrus-safe-bottom))!important;
     left:calc(var(--lektrus-rail-left) + 62px)!important;
-    right:calc(var(--lektrus-safe-right) + 204px)!important;
+    right:calc(var(--lektrus-safe-right) + var(--lektrus-minimap-width,224px) + 20px)!important;
     width:max-content!important;
-    max-width:calc(100vw - var(--lektrus-rail-left) - var(--lektrus-safe-right) - 266px)!important;
+    max-width:calc(100vw - var(--lektrus-rail-left) - var(--lektrus-safe-right) - var(--lektrus-minimap-width,224px) - 82px)!important;
     margin:0 auto!important;
     transform:none!important;
     translate:none!important;
@@ -328,7 +328,7 @@
     position:fixed!important;
     bottom:calc(14px + var(--lektrus-safe-bottom))!important;
     right:calc(12px + var(--lektrus-safe-right))!important;
-    width:184px!important;
+    width:var(--lektrus-minimap-width,224px)!important;
     box-sizing:border-box!important;
     padding:6px!important;
   }
@@ -343,15 +343,14 @@
     letter-spacing:0;
     line-height:1.35;
   }
-  html body .workspace .minimap-world {height:88px!important;margin:0;}
+  html body .workspace .minimap-world {height:112px!important;margin:0;}
 }
 @media screen and (max-width:1100px) and (max-height:390px) and (orientation:landscape) {
-  html body .workspace .minimap-world {height:72px!important;}
+  html body .workspace .minimap-world {height:100px!important;}
   html body .workspace .minimap-header {padding:2px 6px 6px;}
 }
 @media screen and (max-width:1100px) and (max-height:335px) and (orientation:landscape) {
-  html body .workspace .minimap {width:168px!important;}
-  html body .workspace .minimap-world {height:60px!important;}
+  html body .workspace .minimap-world {height:86px!important;}
   html body .workspace .minimap-header {padding:1px 6px 5px;}
 }
 /* Board mode hides Android's status bar; only the real display cutout has to

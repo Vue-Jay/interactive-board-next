@@ -78,28 +78,41 @@ with sync_playwright() as p:
         page.goto(BASE+"/demo/board?scene=math",wait_until="domcontentloaded")
         # Touch browsers open the logical landscape board in a same-origin
         # iframe, even if their physical viewport is already landscape.
-        more=(page.frame_locator("iframe.lektrus-browser-board-frame").locator(".topbar-more-trigger")
-              if width<1000 else page.locator(".topbar-more-trigger"))
+        scope=page.frame_locator("iframe.lektrus-browser-board-frame") if width<1000 else page
+        more=scope.locator(".topbar-more-trigger")
         more.wait_for(timeout=25000)
         if width<1000:
             assert more.evaluate("el=>innerWidth-el.getBoundingClientRect().right") >= 16
-        if width>=1000:
-            navigator=page.get_by_role("region",name="Навигатор доски")
-            navigator.wait_for()
-            assert navigator.get_by_text("Навигатор",exact=True).is_visible()
-            assert navigator.locator(".minimap-header svg").count()==0
-            map_surface=navigator.locator(".minimap-world")
-            bounds=map_surface.bounding_box()
-            assert bounds['width'] >= (210 if width==1440 else 165), bounds
-            assert bounds['height'] >= (120 if width==1440 else 72), bounds
-            assert navigator.evaluate("el=>{const a=el.getBoundingClientRect(),b=document.querySelector('.board-controls').getBoundingClientRect();return a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top}")
-            navigator.screenshot(path=OUT/f"navigator-{width}.png")
-            page.mouse.move(bounds['x']+bounds['width']*.25,bounds['y']+bounds['height']*.3)
-            page.mouse.down()
-            transform=page.locator('.board .world').evaluate("el=>el.style.transform")
-            page.mouse.move(bounds['x']+bounds['width']*.75,bounds['y']+bounds['height']*.7,steps=5)
-            page.mouse.up()
-            assert page.locator('.board .world').evaluate("el=>el.style.transform") != transform, 'Dragging the navigator must pan the board'
+        navigator=scope.get_by_role("region",name="Навигатор доски")
+        navigator.wait_for()
+        assert navigator.get_by_text("Навигатор",exact=True).is_visible()
+        assert navigator.locator(".minimap-header svg").count()==0
+        map_surface=navigator.locator(".minimap-canvas")
+        bounds=map_surface.bounding_box()
+        assert bounds['width'] >= (210 if width==1440 else 200), bounds
+        assert bounds['height'] >= (120 if width==1440 else 96), bounds
+        assert navigator.evaluate("el=>{const a=el.getBoundingClientRect(),b=document.querySelector('.board-controls').getBoundingClientRect();return a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top}")
+        def check_geometry():
+            result=map_surface.evaluate('''svg=>{
+                const frame=svg.querySelector('.minimap-viewport'), b=document.querySelector('.board').getBoundingClientRect();
+                const v=svg.viewBox.baseVal, r=frame.getBBox(), m=new DOMMatrix(getComputedStyle(document.querySelector('.board .world')).transform);
+                const scale=svg.getScreenCTM(), real=frame.getBoundingClientRect();
+                return {uniform:Math.abs(scale.a-scale.d)<1e-6, ratio:Math.abs(real.width/real.height-b.width/b.height)<.015,
+                    correct:Math.abs(r.x+m.e/m.a)<1.5 && Math.abs(r.y+m.f/m.a)<1.5 && Math.abs(r.width-b.width/m.a)<1.5 && Math.abs(r.height-b.height/m.a)<1.5,
+                    contained:r.x>=v.x-.01&&r.y>=v.y-.01&&r.x+r.width<=v.x+v.width+.01&&r.y+r.height<=v.y+v.height+.01};
+            }''')
+            assert all(result.values()), (width,result)
+        check_geometry()
+        navigator.screenshot(path=OUT/f"navigator-{width}.png")
+        transform=scope.locator('.board .world').evaluate("el=>el.style.transform")
+        page.mouse.move(bounds['x']+bounds['width']*.25,bounds['y']+bounds['height']*.3)
+        page.mouse.down()
+        page.mouse.move(bounds['x']+bounds['width']*.75,bounds['y']+bounds['height']*.7,steps=8)
+        page.wait_for_timeout(100) # allow compositor animation frame before release
+        check_geometry()
+        page.mouse.up()
+        assert scope.locator('.board .world').evaluate("el=>el.style.transform") != transform, 'Dragging the navigator must pan the board'
+        check_geometry()
         page.screenshot(path=OUT/f"board-chrome-{width}.png")
         page.close()
     browser.close()

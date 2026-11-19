@@ -45,7 +45,7 @@ assert.match(safeControls,
   /--lektrus-safe-right:max\(env\(safe-area-inset-right,0px\),var\(--lektrus-cutout-right,0px\),var\(--lektrus-system-right,0px\)\)/);
 assert.match(safeControls,/\.board-home-button\s*\{\s*margin-left:0!important/);
 assert.match(safeControls,/left:var\(--lektrus-rail-left\)!important/);
-assert.match(safeControls,/\.selection-toolbar-screen\s*\{[^}]*top:auto!important[^}]*bottom:calc\(68px \+ var\(--lektrus-safe-bottom\)\)!important[^}]*right:calc\(var\(--lektrus-safe-right\) \+ 204px\)!important[^}]*max-width:calc\(100vw - var\(--lektrus-rail-left\) - var\(--lektrus-safe-right\) - 266px\)!important/s);
+assert.match(safeControls,/\.selection-toolbar-screen\s*\{[^}]*top:auto!important[^}]*bottom:calc\(68px \+ var\(--lektrus-safe-bottom\)\)!important[^}]*right:calc\(var\(--lektrus-safe-right\) \+ var\(--lektrus-minimap-width,224px\) \+ 20px\)!important[^}]*max-width:calc\(100vw - var\(--lektrus-rail-left\) - var\(--lektrus-safe-right\) - var\(--lektrus-minimap-width,224px\) - 82px\)!important/s);
 assert.match(safeControls,/\.selection-toolbar-screen\.is-more-open\s*\{[^}]*overflow:visible!important/s);
 assert.match(board,/classList\.toggle\("is-more-open",details\.open\)/);
 
