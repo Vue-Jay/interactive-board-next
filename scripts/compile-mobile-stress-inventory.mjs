@@ -66,10 +66,12 @@ const stressProfiles=[
   {id:'lifecycle-chaos',iterations:200,oracle:'No data loss or duplicate commits across kill/restart/background'},
   {id:'touch-chaos',iterations:10000,oracle:'No crash, stuck gesture, invisible controls or persistent overlay'},
 ];
-const cases=source.cases.map(c=>({...c,driver:null,oracle:null,implementation:'pending'}));
-const result={schema:1,description:'Unexecuted stress-test design. Counts are planned, not passed.',baselineCases:cases.length,environmentCombinations:environments.length,stressProfiles:stressProfiles.length,axes,environmentCases:environments,stressProfiles,cases};
+const subjectSource=JSON.parse(fs.readFileSync(new URL('../qa/mobile-subject-source-coverage.json',import.meta.url),'utf8'));
+const cases=[...source.cases.map(c=>({...c,driver:null,oracle:null,implementation:'pending'})),...subjectSource.cases.map(c=>({...c,area:'source-audited-subject',platforms:['android','ios','mobile-web','tablet-web'],driver:null,oracle:null,implementation:'pending'}))];
+if(new Set(cases.map(c=>c.id)).size!==cases.length)throw new Error('Duplicate case IDs across inventories');
+const result={schema:1,description:'Unexecuted stress-test design. Counts are planned, not passed.',baselineCases:cases.length,subjectSourceCases:subjectSource.cases.length,environmentCombinations:environments.length,stressProfiles:stressProfiles.length,axes,environmentCases:environments,stressProfiles,cases};
 const out=process.argv[2];
 if(out){fs.mkdirSync(path.dirname(out),{recursive:true});fs.writeFileSync(out,JSON.stringify(result,null,2)+'\n');}
 const missing=cases.filter(c=>!c.driver||!c.oracle);
-console.log(JSON.stringify({baselineCases:cases.length,environmentCombinations:environments.length,stressProfiles:stressProfiles.length,unimplemented:missing.length},null,2));
+console.log(JSON.stringify({baselineCases:cases.length,subjectSourceCases:subjectSource.cases.length,environmentCombinations:environments.length,stressProfiles:stressProfiles.length,unimplemented:missing.length},null,2));
 if(process.argv.includes('--require-ready')&&missing.length)process.exitCode=1;
