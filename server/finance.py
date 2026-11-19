@@ -1,5 +1,6 @@
 """Payment-ready ledger. No public checkout or webhook before a provider is configured."""
 from datetime import date, timedelta
+import os
 from typing import Literal, Protocol
 from uuid import uuid4, UUID
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -49,6 +50,9 @@ class Entry(BaseModel):
     category: Category
     amount_kopecks: int = Field(gt=0,le=100000000000)
     description: str = Field(min_length=1,max_length=500)
+class Checkout(BaseModel):
+    period: Literal['month','year']
+
 class Balance(BaseModel):
     balance_kopecks: int = Field(ge=-100000000000,le=100000000000)
 
@@ -58,9 +62,37 @@ def make_finance_router(current_user):
         if not user["is_admin"]:
             raise HTTPException(403,"Только для администратора.")
 
+    def configured_adapter(request):
+        adapter = getattr(request.app.state,"payment_adapter",None)
+        return adapter if os.getenv("LEKTRUS_PAYMENTS_ENABLED","").lower()=="true" else None
+
     @router.get("/billing/checkout-status")
-    async def checkout_status(user=Depends(current_user)):
-        return {"enabled": False, "currency": "RUB", "prices": PRICES}
+    async def checkout_status(request: Request, user=Depends(current_user)):
+        return {"enabled": configured_adapter(request) is not None, "currency": "RUB", "prices": PRICES}
+
+    @router.post("/billing/checkout",status_code=201)
+    async def checkout(data: Checkout, request: Request, user=Depends(current_user)):
+        adapter = configured_adapter(request)
+        if not adapter:
+            raise HTTPException(503,"Подключение оплаты скоро.")
+        if user["guest_board_id"]:
+            raise HTTPException(403,"Подписка доступна зарегистрированным пользователям.")
+        async with request.app.state.pool.acquire() as conn:
+            ident,url = await prepare_order(conn,user["id"],data.period,adapter)
+        return {"order_id":ident,"checkout_url":url}
+
+    @router.post("/billing/webhook/{provider}")
+    async def webhook(provider: str, request: Request):
+        adapter = configured_adapter(request)
+        if not adapter or provider != adapter.name:
+            raise HTTPException(404,"Платёжный провайдер не подключён.")
+        try:
+            order_id,payment_id,amount,currency = await adapter.verify_webhook(request)
+            async with request.app.state.pool.acquire() as conn:
+                await settle_verified_order(conn,order_id,provider,payment_id,amount,currency)
+        except ValueError:
+            raise HTTPException(400,"Платёж не подтверждён.")
+        return {"ok":True}
 
     @router.get("/admin/finance")
     async def report(request: Request, start: date, end: date, user=Depends(current_user)):
@@ -82,6 +114,8 @@ def make_finance_router(current_user):
             grants = await conn.fetch("""SELECT g.*,u.email FROM billing_grant_events g LEFT JOIN account_users u ON u.id=g.user_id
                 WHERE (happened_at AT TIME ZONE 'Asia/Yekaterinburg')::date BETWEEN $1 AND $2 ORDER BY happened_at DESC""",start,end)
             balance = await conn.fetchrow("SELECT balance_kopecks,recorded_at FROM finance_amvera_balances ORDER BY recorded_at DESC LIMIT 1")
+            balances = await conn.fetch("""SELECT balance_kopecks,recorded_at FROM finance_amvera_balances WHERE
+                (recorded_at AT TIME ZONE 'Asia/Yekaterinburg')::date BETWEEN $1 AND $2 ORDER BY recorded_at""",start,end)
         by_day = {}
         for entry in entries:
             key = entry["transaction_date"].isoformat()
@@ -101,7 +135,8 @@ def make_finance_router(current_user):
         totals["net"]=totals["sales"]+totals["other_income"]-totals["expenses"]
         return {"totals":totals,"entries":[dict(x) for x in entries],"orders":[dict(x) for x in orders],
             "subscriptions":[dict(x) for x in active],"grants":[dict(x) for x in grants],"balance":dict(balance) if balance else None,
-            "daily":sorted(by_day.values(),key=lambda x:x["date"]),"checkout_enabled":False}
+            "daily":sorted(by_day.values(),key=lambda x:x["date"]),"balances":[dict(x) for x in balances],
+            "checkout_enabled":configured_adapter(request) is not None}
 
     @router.post("/admin/finance/entries", status_code=201)
     async def add_entry(data: Entry, request: Request, user=Depends(current_user)):

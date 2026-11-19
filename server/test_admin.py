@@ -441,3 +441,7 @@ async def test_maintenance_schedule_exceptions_and_automatic_end(client):
     assert (await client.get(status)).json()["state"] == "off"
     assert (await client.get("/api/v1/boards", headers=ordinary)).status_code == 200
     assert (await client.put(path, headers=admin, json={"allowed_accounts":[]})).status_code == 200
+
+# Included by the existing explicit integration-suite file list.
+from test_billing import (test_free_concurrent_board_limit_manual_pro_and_downgrade,
+    test_group_and_storage_limits, test_finance_admin_only_and_manual_grants_not_revenue)
