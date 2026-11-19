@@ -7,6 +7,8 @@ const document=read("dist/service-unavailable.html");
 const index=read("dist/index.html");
 assert.match(document,/<main class="lektrus-unavailable"/);
 assert.match(document,/data-u-retry/);
+assert.match(document,/href="https:\/\/t\.me\/lektrus"/);
+assert.match(document,/href="mailto:lektrus\.system@inbox\.ru\?/);
 assert.match(document,/data:image\/png;base64,/);
 assert.doesNotMatch(document,/<script[^>]+src=/);
 assert.ok(index.includes('<template id="lektrus-unavailable-template">'),"Every native/web shell must embed recovery markup");
@@ -38,7 +40,13 @@ for(const route of ["/","/app?section=boards","/board/00000000-0000-4000-8000-00
 assert.equal(await (await navigate("/demo/board")).text(),"cached demo shell");
 assert.equal(navigate("/api/v1/health"),undefined);
 mode="bad";
-assert.match(await (await navigate("/app")).text(),/lektrus-unavailable/);
+for(const route of ["/","/#home","/app","/board/00000000-0000-4000-8000-000000000004"]){
+  const response=await navigate(route);
+  const body=await response.text();
+  assert.equal(response.status,503);
+  assert.match(body,/lektrus-unavailable/);
+  assert.match(body,/mailto:lektrus\.system@inbox\.ru/);
+}
 mode="good";
 assert.equal(await (await navigate("/app")).text(),"online");
 assert.equal(entries.size,2,"Private navigation URLs must not be cached");

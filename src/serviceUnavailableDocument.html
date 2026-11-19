@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex">
 <title>Lektrus — временно недоступен</title>
 <style>
-.lektrus-unavailable{--u-page:var(--lt-page,#f2f5fa);--u-surface:var(--lt-surface,#fff);--u-text:var(--lt-text,#172a45);--u-muted:var(--lt-secondary,#425a78);--u-line:var(--lt-line,#d5dfed);--u-accent:var(--lt-primary,#3056c8);--u-soft:var(--lt-selected,#e6eeff);--u-ink:var(--lt-selected-ink,#244da9);--u-warn:#a56b14;--u-warn-bg:#fff4db;position:fixed;left:0;right:0;top:0;bottom:0;z-index:20000;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;padding:24px;padding:calc(20px + env(safe-area-inset-top,0px)) calc(20px + env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) calc(20px + env(safe-area-inset-left,0px));background:radial-gradient(ellipse at 80% 12%,var(--u-soft) 0%,transparent 48%),var(--u-page);color:var(--u-text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;text-align:left;line-height:1.5}
+.lektrus-unavailable{--u-page:var(--lt-page,#f2f5fa);--u-surface:var(--lt-surface,#fff);--u-text:var(--lt-text,#172a45);--u-muted:var(--lt-secondary,#425a78);--u-line:var(--lt-line,#d5dfed);--u-accent:var(--lt-primary,#3056c8);--u-soft:var(--lt-selected,#e6eeff);--u-ink:var(--lt-selected-ink,#244da9);--u-warn:#2055a0;--u-warn-bg:#e0edff;position:fixed;left:0;right:0;top:0;bottom:0;z-index:20000;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;padding:24px;padding:calc(20px + env(safe-area-inset-top,0px)) calc(20px + env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) calc(20px + env(safe-area-inset-left,0px));background:radial-gradient(ellipse at 80% 12%,var(--u-soft) 0%,transparent 48%),var(--u-page);color:var(--u-text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;text-align:left;line-height:1.5}
 .lektrus-unavailable *{box-sizing:border-box}
 .lektrus-unavailable .u-shell{width:100%;max-width:840px;margin:auto}
 .lektrus-unavailable .u-brand{display:flex;align-items:center;margin-bottom:20px;color:var(--u-text)}
@@ -26,16 +26,24 @@
 .lektrus-unavailable .u-retry:focus-visible{outline:3px solid var(--u-ink);outline-offset:3px}
 .lektrus-unavailable .u-retry:disabled{opacity:.72;cursor:wait}
 .lektrus-unavailable .u-retry:disabled svg{animation:u-spin 1.2s linear infinite}
-.lektrus-unavailable .u-note{font-size:12px;line-height:1.55;color:var(--u-muted);margin:12px 0 0;min-height:36px}
+.lektrus-unavailable .u-support{width:100%;max-width:310px;margin:14px 0 0}
+.lektrus-unavailable .u-support-label{font-size:12px;font-weight:700;line-height:1.35;color:var(--u-muted);margin:0 0 6px}
+.lektrus-unavailable .u-support-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.lektrus-unavailable .u-support-link{display:flex;align-items:center;justify-content:center;gap:7px;min-width:0;min-height:44px;padding:8px 9px;border:1px solid var(--u-line);border-radius:11px;background:var(--u-soft);color:var(--u-ink);font-size:13px;font-weight:750;text-decoration:none;touch-action:manipulation}
+.lektrus-unavailable .u-support-link svg{width:17px;height:17px;flex:none}
+.lektrus-unavailable .u-support-link:hover{border-color:var(--u-ink)}
+.lektrus-unavailable .u-support-link:focus-visible{outline:3px solid var(--u-ink);outline-offset:2px}
+.lektrus-unavailable .u-note{font-size:12px;line-height:1.55;color:var(--u-muted);margin:12px 0 0;min-height:0}
 .lektrus-unavailable .u-art{position:relative;min-width:0;min-height:270px;display:grid;place-items:center;background:linear-gradient(145deg,var(--u-soft),var(--u-page));border-left:1px solid var(--u-line);overflow:hidden;padding:22px}
 .lektrus-unavailable .u-art svg{width:100%;max-width:290px;height:auto;overflow:visible;color:var(--u-ink)}
 .lektrus-unavailable .u-footer{display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;font-size:12px;color:var(--u-muted)}
 .lektrus-unavailable .u-footer span{margin-right:12px}
 @keyframes u-spin{to{transform:rotate(360deg)}}
-@media(max-width:620px){.lektrus-unavailable{padding:16px;padding:calc(14px + env(safe-area-inset-top,0px)) calc(14px + env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) calc(14px + env(safe-area-inset-left,0px))}.lektrus-unavailable .u-brand{margin-bottom:12px}.lektrus-unavailable .u-brand img{width:33px;height:33px}.lektrus-unavailable .u-brand strong{font-size:22px}.lektrus-unavailable .u-card{grid-template-columns:minmax(0,1fr);border-radius:20px}.lektrus-unavailable .u-art{order:-1;min-height:0;height:168px;padding:12px;border-left:0;border-bottom:1px solid var(--u-line)}.lektrus-unavailable .u-art svg{width:190px;max-height:142px}.lektrus-unavailable .u-content{padding:24px 20px}.lektrus-unavailable h1{font-size:28px;margin:14px 0 10px}.lektrus-unavailable .u-description{font-size:14px;margin-bottom:18px}.lektrus-unavailable .u-retry{max-width:none}.lektrus-unavailable .u-note{min-height:0}.lektrus-unavailable .u-footer{margin-top:12px}}
-@media(max-height:460px) and (orientation:landscape){.lektrus-unavailable{padding:10px;padding:calc(10px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) calc(12px + env(safe-area-inset-left,0px))}.lektrus-unavailable .u-brand{margin-bottom:7px}.lektrus-unavailable .u-brand img{width:28px;height:28px}.lektrus-unavailable .u-content{padding:18px 22px}.lektrus-unavailable .u-art{min-height:0;padding:12px}.lektrus-unavailable .u-art svg{max-width:215px}.lektrus-unavailable h1{font-size:25px;margin:10px 0 6px}.lektrus-unavailable .u-description{font-size:13px;margin-bottom:12px}.lektrus-unavailable .u-note{margin-top:8px;min-height:0}.lektrus-unavailable .u-footer{margin-top:6px}}
-html[data-theme=dark] .lektrus-unavailable{--u-page:var(--lt-page,#101a29);--u-surface:var(--lt-surface,#19283b);--u-text:var(--lt-text,#f2f6ff);--u-muted:var(--lt-secondary,#d2dff0);--u-line:var(--lt-line,#3a506a);--u-soft:var(--lt-selected,#293c64);--u-ink:var(--lt-selected-ink,#bdd0ff);--u-warn:#ffd78f;--u-warn-bg:#513c1f}
-@media(prefers-color-scheme:dark){html:not([data-theme]) .lektrus-unavailable{--u-page:#101a29;--u-surface:#19283b;--u-text:#f2f6ff;--u-muted:#d2dff0;--u-line:#3a506a;--u-soft:#293c64;--u-ink:#bdd0ff;--u-warn:#ffd78f;--u-warn-bg:#513c1f}}
+@media(max-width:620px){.lektrus-unavailable{padding:16px;padding:calc(14px + env(safe-area-inset-top,0px)) calc(14px + env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) calc(14px + env(safe-area-inset-left,0px))}.lektrus-unavailable .u-brand{margin-bottom:12px}.lektrus-unavailable .u-brand img{width:33px;height:33px}.lektrus-unavailable .u-brand strong{font-size:22px}.lektrus-unavailable .u-card{grid-template-columns:minmax(0,1fr);border-radius:20px}.lektrus-unavailable .u-art{order:-1;min-height:0;height:136px;padding:8px;border-left:0;border-bottom:1px solid var(--u-line)}.lektrus-unavailable .u-art svg{width:165px;max-height:118px}.lektrus-unavailable .u-content{padding:19px 18px}.lektrus-unavailable h1{font-size:28px;margin:14px 0 10px}.lektrus-unavailable .u-description{font-size:14px;margin-bottom:18px}.lektrus-unavailable .u-retry{max-width:none}.lektrus-unavailable .u-support{max-width:none}.lektrus-unavailable .u-note{min-height:0}.lektrus-unavailable .u-footer{margin-top:12px}}
+@media(max-width:360px){.lektrus-unavailable .u-art{height:110px}.lektrus-unavailable .u-art svg{max-height:96px}.lektrus-unavailable .u-brand small{font-size:9px}}
+@media(max-height:460px) and (orientation:landscape){.lektrus-unavailable{padding:10px;padding:calc(10px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) calc(12px + env(safe-area-inset-left,0px))}.lektrus-unavailable .u-brand{margin-bottom:7px}.lektrus-unavailable .u-brand img{width:28px;height:28px}.lektrus-unavailable .u-content{padding:13px 22px}.lektrus-unavailable .u-support{margin-top:8px}.lektrus-unavailable .u-support-label{margin-bottom:4px}.lektrus-unavailable .u-art{min-height:0;padding:12px}.lektrus-unavailable .u-art svg{max-width:215px}.lektrus-unavailable h1{font-size:25px;margin:10px 0 6px}.lektrus-unavailable .u-description{font-size:13px;margin-bottom:12px}.lektrus-unavailable .u-note{margin-top:8px;min-height:0}.lektrus-unavailable .u-footer{display:none}}
+html[data-theme=dark] .lektrus-unavailable{--u-page:var(--lt-page,#101a29);--u-surface:var(--lt-surface,#19283b);--u-text:var(--lt-text,#f2f6ff);--u-muted:var(--lt-secondary,#d2dff0);--u-line:var(--lt-line,#3a506a);--u-soft:var(--lt-selected,#293c64);--u-ink:var(--lt-selected-ink,#bdd0ff);--u-warn:#c6e1ff;--u-warn-bg:#284a77}
+@media(prefers-color-scheme:dark){html:not([data-theme]) .lektrus-unavailable{--u-page:#101a29;--u-surface:#19283b;--u-text:#f2f6ff;--u-muted:#d2dff0;--u-line:#3a506a;--u-soft:#293c64;--u-ink:#bdd0ff;--u-warn:#c6e1ff;--u-warn-bg:#284a77}}
 @media(prefers-reduced-motion:reduce){.lektrus-unavailable .u-retry{transition:none}.lektrus-unavailable .u-retry:disabled svg{animation:none}}
 </style>
 </head>
@@ -201,6 +209,13 @@ Pzw1NTHR+9KX23JbbsttuS235fb/u/0vhgYt+DNKb0cAAAAASUVORK5CYII=
         <h1 id="lektrus-unavailable-title" data-u-title>Скоро вернёмся</h1>
         <p class="u-description" data-u-description>Не удаётся связаться с сервером Lektrus. Попробуйте немного позже — возможно, сервис временно недоступен.</p>
         <button type="button" class="u-retry" data-u-retry><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6M20 4v7h-7"/></svg><span data-u-button>Повторить попытку</span></button>
+        <div class="u-support" aria-label="Связь с поддержкой">
+          <p class="u-support-label">Сообщить о проблеме</p>
+          <div class="u-support-links">
+            <a class="u-support-link" data-u-support-telegram href="https://t.me/lektrus" target="_blank" rel="noopener noreferrer" aria-label="Написать в Telegram @lektrus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4 20-7ZM22 2 11 13"/></svg>Telegram</a>
+            <a class="u-support-link" data-u-support-email href="mailto:lektrus.system@inbox.ru?subject=Lektrus%20%E2%80%94%20%D1%81%D0%B1%D0%BE%D0%B9" aria-label="Написать на почту lektrus.system@inbox.ru" title="lektrus.system@inbox.ru"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>Почта</a>
+          </div>
+        </div>
         <p class="u-note" data-u-note role="status" aria-live="polite">Эта ошибка не означает, что ваши данные удалены. Не переустанавливайте приложение.</p>
       </div>
       <div class="u-art" aria-hidden="true">
@@ -232,7 +247,7 @@ Pzw1NTHR+9KX23JbbsttuS235fb/u/0vhgYt+DNKb0cAAAAASUVORK5CYII=
 (function(){
   var retry=document.querySelector("[data-u-retry]");
   function title(){if(navigator.onLine===false){document.querySelector("[data-u-status]").textContent="Нет соединения";document.querySelector("[data-u-title]").textContent="Вы не в сети";document.querySelector("[data-u-description]").textContent="Проверьте Wi-Fi или мобильный интернет, чтобы снова открыть Lektrus."}}
-  function reload(){retry.disabled=true;document.querySelector("[data-u-button]").textContent="Проверяем…";if(location.pathname==="/service-unavailable.html")location.replace("/app");else location.reload()}
+  function reload(){retry.disabled=true;document.querySelector("[data-u-button]").textContent="Проверяем…";if(location.pathname==="/service-unavailable.html")location.replace("/");else location.reload()}
   title();retry.addEventListener("click",reload);window.addEventListener("online",reload);window.addEventListener("offline",title);
 })();
 </script>

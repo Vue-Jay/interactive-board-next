@@ -293,14 +293,18 @@ def check_service_unavailable(browser, ident):
         expect(screen).to_be_visible(timeout=30000)
         expect(screen.get_by_role("heading",name="Скоро вернёмся")).to_be_visible()
         expect(screen.get_by_role("button",name="Повторить попытку")).to_be_enabled()
+        expect(screen.get_by_role("link",name="Написать в Telegram @lektrus")).to_have_attribute("href","https://t.me/lektrus")
+        expect(screen.get_by_role("link",name="Написать на почту lektrus.system@inbox.ru")).to_have_attribute("href",re.compile(r"^mailto:lektrus\.system@inbox\.ru"))
         geometry=screen.evaluate("""node => {
           const card=node.querySelector('.u-card').getBoundingClientRect();
           const retry=node.querySelector('.u-retry').getBoundingClientRect();
           return {width:node.clientWidth,scrollWidth:node.scrollWidth,
-            left:card.left,right:card.right,top:card.top,bottom:card.bottom,retryHeight:retry.height}
+            left:card.left,right:card.right,top:card.top,bottom:card.bottom,retryHeight:retry.height,
+            contacts:[...node.querySelectorAll('.u-support-link')].map(el=>{const r=el.getBoundingClientRect();return {h:r.height,top:r.top,bottom:r.bottom,left:r.left,right:r.right}})}
         }""")
         assert geometry["scrollWidth"]<=width+1 and geometry["left"]>=0 and geometry["right"]<=width+1,geometry
         assert geometry["retryHeight"]>=44 and geometry["top"]>=0 and geometry["bottom"]<=height+1,geometry
+        assert all(r["h"]>=44 and r["top"]>=0 and r["bottom"]<=height+1 and r["left"]>=0 and r["right"]<=width+1 for r in geometry["contacts"]),geometry
         page.screenshot(path=str(OUT/f"service-unavailable-{width}x{height}.png"))
         page.unroute(health_pattern,unavailable)
         screen.get_by_role("button",name="Повторить попытку").click()
@@ -318,6 +322,26 @@ def check_service_unavailable(browser, ident):
     page.screenshot(path=str(OUT/"service-offline-phone.png"))
     ctx.set_offline(False)
     expect(page.get_by_label("Email",exact=True)).to_be_visible(timeout=30000)
+    ctx.close()
+
+    # The public landing page and standalone fallback share the same contacts.
+    ctx=browser.new_context(viewport={"width":390,"height":844},service_workers="block")
+    page=ctx.new_page()
+    page.route(health_pattern,unavailable)
+    page.goto(BASE+"/#home")
+    screen=page.locator(".lektrus-unavailable")
+    expect(screen.get_by_role("heading",name="Скоро вернёмся")).to_be_visible(timeout=30000)
+    expect(screen.locator("[data-u-support-telegram]")).to_be_visible()
+    expect(screen.locator("[data-u-support-email]")).to_be_visible()
+    page.screenshot(path=str(OUT/"service-unavailable-public.png"))
+    page.unroute(health_pattern,unavailable)
+    screen.get_by_role("button",name="Повторить попытку").click()
+    expect(page.locator(".marketing-site")).to_be_visible(timeout=30000)
+    expect(screen).to_have_count(0)
+    assert page.url==BASE+"/#home"
+    page.goto(BASE+"/service-unavailable.html")
+    expect(screen.locator("[data-u-support-telegram]")).to_have_attribute("href","https://t.me/lektrus")
+    expect(screen.locator("[data-u-support-email]")).to_have_attribute("href",re.compile(r"^mailto:lektrus\.system@inbox\.ru"))
     ctx.close()
 
     # An isolated error is not a service outage; the board retains its
@@ -353,7 +377,7 @@ def assert_maintenance_layout(site, ordinary):
             assert geom["left"]>=geom["mainLeft"]-1 and geom["right"]<=width+1, geom
             assert geom["top"]>=0 and geom["bottom"]<=height,geom
             assert geom["textVisible"] and geom["iconVisible"],geom
-            assert geom["fg"]=="rgb(87, 58, 13)" and geom["bg"]=="rgb(255, 244, 218)",geom
+            assert geom["fg"]=="rgb(23, 69, 121)" and geom["bg"]=="rgb(232, 243, 255)",geom
             assert geom["scroll"]<=width+2,geom
             if geom["headerFixed"]:
                 assert geom["left"]>=geom["headerRight"]-1,geom
