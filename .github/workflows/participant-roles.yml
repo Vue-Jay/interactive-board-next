@@ -1,11 +1,12 @@
 name: Board participant roles acceptance
 on:
   pull_request:
-    branches: [main, qa/mobile-native-base-20261117]
+    branches: [main, qa/mobile-native-base-20261117, qa/mobile-roles-polish-20261119]
     paths:
       - 'src/**'
       - 'server/**'
       - 'tests/participant-roles-browser.py'
+      - 'tests/production-browser-connectivity.py'
       - '.github/workflows/participant-roles.yml'
   workflow_dispatch:
 permissions:
@@ -72,3 +73,16 @@ jobs:
           name: participant-roles-browser-evidence-round-${{ matrix.round }}
           path: artifacts/participant-roles
           if-no-files-found: warn
+
+  production-browser:
+    name: Read-only live browser and API connectivity
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install playwright==1.64.1
+      - run: python -m playwright install --with-deps chromium
+      - run: python tests/production-browser-connectivity.py
