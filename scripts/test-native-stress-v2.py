@@ -60,6 +60,41 @@ def tap(x,y):
  # WebDriver W3C pointer touch action. Never fake DOM pointer events.
  cmd('POST','/actions',{'actions':[{'type':'pointer','id':'finger1','parameters':{'pointerType':'touch'},'actions':[{'type':'pointerMove','duration':0,'x':x,'y':y},{'type':'pointerDown','button':0},{'type':'pause','duration':60},{'type':'pointerUp','button':0}]}]})
  cmd('DELETE','/actions')
+ELEMENT='element-6066-11e4-a52e-4f735466cecf'
+def element(selector):
+ return js("""return [...document.querySelectorAll(arguments[0])].find(e=>{
+  const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(e).visibility!=='hidden';
+ })||null;""",selector)
+def tap_selector(selector):
+ el=wait(lambda:element(selector),'Missing visible touch target: '+selector)
+ # W3C WebElement click dispatches through the installed WebView driver.
+ cmd('POST','/element/'+el[ELEMENT]+'/click',{})
+ return el
+def keyboard_outside_touch():
+ tap_selector('.lectris-mobile-bottom button[aria-label="Ещё разделы"]')
+ wait(lambda:element('.lektrus-more-page-search input'),'Search input missing')
+ el=tap_selector('.lektrus-more-page-search input')
+ cmd('POST','/element/'+el[ELEMENT]+'/value',{'text':'Настройки','value':list('Настройки')})
+ assert js('return document.querySelector(".lektrus-more-page-search input").value')=='Настройки'
+ tap_selector('.lektrus-more-page-title h1')
+ wait(lambda:js('return document.activeElement!==document.querySelector(".lektrus-more-page-search input")'),'Outside touch did not blur search')
+ assert js('return document.querySelector(".lektrus-more-page-search input").value')=='Настройки'
+ return {'outsideTapBlurred':True,'valuePreserved':True}
+def create_board():
+ # Navigate from a clean workspace after prior keyboard test.
+ tap_selector('.lectris-mobile-bottom button[aria-label="Доски"]')
+ wait(lambda:element('.lectris-library-new'),'Board library missing')
+ tap_selector('.lectris-library-new')
+ field=wait(lambda:element('.lektrus-create-dialog input'),'Create-board title missing')
+ cmd('POST','/element/'+field[ELEMENT]+'/click',{})
+ title='Native stress '+args.platform+' '+str(int(time.time()))
+ cmd('POST','/element/'+field[ELEMENT]+'/value',{'text':title,'value':list(title)})
+ assert js('return document.querySelector(".lektrus-create-dialog input").value')==title
+ tap_selector('.lektrus-create-dialog button[type="submit"]')
+ wait(lambda:element('section.board'),'Native board did not render after submission',90)
+ actual=js('return document.querySelector(".board-title")?.value')
+ assert actual==title,{'expected':title,'actual':actual}
+ return {'title':actual,'createdVia':'installed app'}
 def layout():
  return js("""return {w:innerWidth,h:innerHeight,scroll:document.documentElement.scrollWidth,
   native:window.Capacitor?.isNativePlatform?.()===true,
@@ -105,6 +140,8 @@ try:
  wait(lambda:attach(),'Native WebView never became ready',90)
  check('installed-native-capacitor-and-layout',home_layout)
  check('native-touch-navigation-storm',navigation_storm)
+ check('native-keyboard-outside-touch',keyboard_outside_touch)
+ check('native-create-board',create_board)
  check('native-rotation-roundtrip',orientation)
 except Exception as error:
  fatal_error={'type':type(error).__name__,'message':str(error),'traceback':traceback.format_exc()}
