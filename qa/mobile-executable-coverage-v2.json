@@ -113,6 +113,14 @@
       "oracle": "Physical touch undo removes the newly drawn stroke; redo restores its point count",
       "status": "implemented-unverified",
       "lastRun": null
+    },
+    {
+      "id": "browser-reload-persistence",
+      "driver": "scripts/test-mobile-browser-stress-v2.mjs",
+      "environment": "mobile-browser-emulation",
+      "oracle": "Reloading the actual board frame restores the drawn stroke with identical point count",
+      "status": "implemented-unverified",
+      "lastRun": null
     }
   ],
   "excluded": [
