@@ -9,6 +9,17 @@ on:
 permissions:
   contents: read
 
+# Ordinary PRs exercise the signed APK UI and isolated API workflows; only
+# release candidates/main submit the reserved invalid login to production.
+# Queue release runs globally: one active run, no overlapping production logins.
+concurrency:
+  group: ${{ ((github.ref == 'refs/heads/main' && github.event_name != 'pull_request') || (github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/'))) && 'lektrus-native-production-login' || format('lektrus-native-{0}', github.run_id) }}
+  queue: max
+  cancel-in-progress: false
+
+env:
+  LEKTRUS_ANDROID_LOGIN_MODE: ${{ ((github.ref == 'refs/heads/main' && github.event_name != 'pull_request') || (github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/'))) && 'production' || 'ui' }}
+
 jobs:
   tls-chain:
     name: Verify production HTTPS chain with embedded Android public roots
@@ -123,13 +134,15 @@ jobs:
           retention-days: 14
 
   android-network:
-    name: Signed Android API ${{ matrix.api }} APK — live HTTPS login smoke test
+    name: Signed Android API ${{ matrix.api }} APK — ${{ ((github.ref == 'refs/heads/main' && github.event_name != 'pull_request') || (github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/'))) && 'production HTTPS login' || 'auth UI smoke test' }}
     needs: [android, tls-chain]
     runs-on: ubuntu-latest
     # One permitted ten-minute cooldown after a real production HTTP 429.
     timeout-minutes: 35
     strategy:
       fail-fast: false
+      # Production uses one emulator at a time; ordinary PR UI tests can run in parallel.
+      max-parallel: ${{ ((github.ref == 'refs/heads/main' && github.event_name != 'pull_request') || (github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/'))) && 1 || 3 }}
       matrix:
         # Actual signed artifact on the oldest, Redmi/Android 11 and newest OS.
         # The separate runtime workflow exercises every intermediate API.
@@ -222,6 +235,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test "$LEKTRUS_ANDROID_LOGIN_MODE" = production
           expected="$(git rev-parse HEAD)"
           [[ "$(git ls-remote origin refs/heads/main | cut -f1)" = "$expected" ]] || { echo 'Superseded release; skip publication'; exit 0; }
           APK_SIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"

@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt \
     && mkdir -p /srv/lektrus-assets \
     && chown lektrus:lektrus /srv/lektrus-assets
 COPY --chown=lektrus:lektrus app.py document_delta.py assets.py invitations.py registration.py realtime_events.py education.py admin.py site_news.py comments.py materials.py notifications.py organization.py direct_chats.py share_links.py profiles.py schema.py pilot_operations.py pilot_objects.py board_history.py board_visits.py feedback_mail.py mail_templates.py board_templates.py android_updates.py maintenance.py billing.py finance.py ./
+COPY --chown=lektrus:lektrus telegram_editor.py ./
 COPY --chown=lektrus:lektrus sql ./sql
 USER lektrus
 EXPOSE 8000

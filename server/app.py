@@ -36,6 +36,7 @@ from fastapi.responses import JSONResponse
 from board_history import ensure_baseline, record_revision, make_history_router
 from board_visits import make_visit_router
 from feedback_mail import run_feedback_mail
+from telegram_editor import telegram_enabled, run_telegram_editor, make_telegram_router
 from android_updates import router as android_updates_router
 
 ISSUER = "lektrus-selfhost"
@@ -75,6 +76,7 @@ async def lifespan(app: FastAPI):
     app.state.document_deltas = DeltaHistory()
     app.state.feedback_mail_wakeup = asyncio.Event()
     mail_task = None
+    telegram_task = None
     try:
         async with app.state.pool.acquire() as conn:
             if os.getenv("LEKTRUS_APPLY_SCHEMA") == "true":
@@ -83,8 +85,13 @@ async def lifespan(app: FastAPI):
                 await conn.fetchval("SELECT 1")
         if os.getenv("LEKTRUS_SMTP_HOST", "").strip():
             mail_task = asyncio.create_task(run_feedback_mail(app.state.pool, app.state.feedback_mail_wakeup))
+        if telegram_enabled():
+            telegram_task = asyncio.create_task(run_telegram_editor(app.state.pool))
         yield
     finally:
+        if telegram_task:
+            telegram_task.cancel()
+            await asyncio.gather(telegram_task, return_exceptions=True)
         if mail_task:
             mail_task.cancel()
             await asyncio.gather(mail_task, return_exceptions=True)
@@ -1277,6 +1284,7 @@ app.include_router(make_billing_router(current_user))
 app.include_router(make_finance_router(current_user))
 from site_news import make_news_router
 app.include_router(make_news_router(current_user))
+app.include_router(make_telegram_router(current_user))
 from comments import make_comments_router
 app.include_router(make_comments_router(current_user, board_access, announce_comments))
 from materials import make_material_router

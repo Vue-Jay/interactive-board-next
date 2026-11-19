@@ -8,6 +8,8 @@ import pytest
 from app import app
 from test_api import TEACHER, STUDENT, OUTSIDER, client, sign_in
 import feedback_mail
+import telegram_editor
+import asyncio
 import admin as admin_module
 
 
@@ -445,3 +447,70 @@ async def test_maintenance_schedule_exceptions_and_automatic_end(client):
 # Included by the existing explicit integration-suite file list.
 from test_billing import (test_free_concurrent_board_limit_manual_pro_and_downgrade,
     test_group_and_storage_limits, test_finance_admin_only_and_manual_grants_not_revenue, test_pro_storage_limit)
+
+@pytest.mark.asyncio
+async def test_telegram_editor_access_queue_and_no_duplicate(client, monkeypatch):
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET is_admin=true WHERE id=$1", TEACHER)
+        await conn.execute("DELETE FROM telegram_posts")
+        await conn.execute("""UPDATE telegram_editor_settings SET auto_news=false,auto_maintenance=false,auto_publish=false,
+            verified_chat_id=NULL,verified_bot_id=NULL,verified_channel=NULL,bot_username=NULL WHERE singleton""")
+    _, administrator = await sign_in(client, "teacher@example.test")
+    _, student = await sign_in(client, "student@example.test")
+    path = "/api/v1/admin/telegram"
+    monkeypatch.delenv("LEKTRUS_TELEGRAM_BOT_TOKEN", raising=False)
+    assert (await client.get(path, headers=student)).status_code == 403
+    assert (await client.post(path+"/posts", headers=student, json={"text":"Test"})).status_code == 403
+    draft = await client.post(path+"/posts",headers=administrator,json={"text":"Новые функции Lektrus"})
+    assert draft.status_code == 201, draft.text
+    post = path+"/posts/"+draft.json()["id"]
+    assert (await client.post(post+"/schedule",headers=administrator,json={})).status_code == 409
+    monkeypatch.setenv("LEKTRUS_TELEGRAM_BOT_TOKEN","123:fake_token")
+    monkeypatch.setenv("LEKTRUS_TELEGRAM_CHANNEL","@lektrus")
+    sent = []
+    async def fake_api(method, **kwargs):
+        if method == "getMe":
+            return {"id":123,"username":"lektrus_test_bot"}
+        if method == "getChat":
+            return {"id":-100123,"type":"channel","username":"lektrus"}
+        if method == "getChatMember":
+            return {"status":"administrator","can_post_messages":True}
+        assert method == "sendMessage"
+        sent.append(kwargs["json"]["text"])
+        return {"message_id":1234}
+    monkeypatch.setattr(telegram_editor,"telegram_api",fake_api)
+    assert (await client.post(path+"/verify",headers=administrator)).status_code == 200
+    assert (await client.post(post+"/schedule",headers=administrator,json={})).status_code == 200
+    await asyncio.gather(telegram_editor.deliver_one(app.state.pool),telegram_editor.deliver_one(app.state.pool))
+    assert sent == ["Новые функции Lektrus"]
+    overview = (await client.get(path,headers=administrator)).json()
+    assert overview["posts"][0]["status"] == "sent"
+    assert overview["posts"][0]["telegram_message_id"] == 1234
+    assert "fake_token" not in str(overview)
+    assert (await client.post(post+"/schedule",headers=administrator,json={})).status_code == 409
+    assert not await telegram_editor.deliver_one(app.state.pool)
+    assert (await client.put(path+"/settings",headers=administrator,json={"auto_news":True})).status_code == 200
+    await telegram_editor.collect_automatic(app.state.pool)
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("""INSERT INTO site_news(category,title,summary,body,published_at)
+            VALUES('update','Тест новой новости','Краткое описание','Текст',now())""")
+    await telegram_editor.collect_automatic(app.state.pool)
+    await telegram_editor.collect_automatic(app.state.pool)
+    overview = (await client.get(path,headers=administrator)).json()
+    auto = [p for p in overview["posts"] if p["source_kind"]=="news"]
+    assert len(auto)==1 and auto[0]["status"]=="draft"
+    assert "Тест новой новости" in auto[0]["text"]
+    assert (await client.post(path+"/posts/"+auto[0]["id"]+"/schedule",headers=administrator,json={})).status_code==200
+    async def uncertain_api(method, **kwargs):
+        if method == "sendMessage":
+            raise telegram_editor.Unknown("timeout")
+        return await fake_api(method,**kwargs)
+    monkeypatch.setattr(telegram_editor,"telegram_api",uncertain_api)
+    assert await telegram_editor.deliver_one(app.state.pool)
+    assert not await telegram_editor.deliver_one(app.state.pool)
+    overview=(await client.get(path,headers=administrator)).json()
+    assert next(p for p in overview["posts"] if p["id"]==auto[0]["id"])["status"]=="unknown"
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("DELETE FROM site_news WHERE title='Тест новой новости'")
+        await conn.execute("DELETE FROM telegram_posts")
+        await conn.execute("UPDATE telegram_editor_settings SET auto_news=false,auto_maintenance=false,auto_publish=false,verified_chat_id=NULL,verified_bot_id=NULL,verified_channel=NULL WHERE singleton")
