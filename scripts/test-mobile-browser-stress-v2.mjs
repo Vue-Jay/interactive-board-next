@@ -40,7 +40,7 @@ try{
  assert.ok(page,'Chrome failed to open mobile workspace');
  ws=new WebSocket(page.webSocketDebuggerUrl);
  await new Promise((resolve,reject)=>{ws.addEventListener('open',resolve,{once:true});ws.addEventListener('error',reject,{once:true});});
- ws.addEventListener('message',event=>{const data=JSON.parse(event.data);if(!data.id)return;const task=pending.get(data.id);if(!task)return;pending.delete(data.id);data.error?task.reject(Error(data.error.message)):task.resolve(data.result);});
+ ws.addEventListener('message',event=>{const data=JSON.parse(event.data);if(data.method==='Runtime.exceptionThrown')browserExceptions.push(data.params?.exceptionDetails?.text||'Uncaught browser exception');if(!data.id)return;const task=pending.get(data.id);if(!task)return;pending.delete(data.id);data.error?task.reject(Error(data.error.message)):task.resolve(data.result);});
  await send('Runtime.enable');await send('Page.enable');
  await send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
  await send('Runtime.evaluate',{expression:`window.__stressErrors=[];addEventListener('error',e=>__stressErrors.push(e.message));addEventListener('unhandledrejection',e=>__stressErrors.push(String(e.reason)))`});
