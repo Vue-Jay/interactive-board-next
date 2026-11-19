@@ -1435,6 +1435,29 @@ def subject_panel(subject):
 def subject_catalogue(subject):
     result=subject_panel(subject)
     screenshot('subject-catalogue-'+str(list(SUBJECTS).index(subject)+1))
+    # Check physical touch reachability for every subject action, including
+    # tools outside the initially visible mobile panel. Merely reading the
+    # button catalogue cannot detect an overlay intercepting finger taps.
+    reachable=[]
+    for label in ['Задания на доске', *SUBJECTS[subject]]:
+        for attempt in range(18):
+            data=js('''const p=document.querySelector('.lektrus-subject-tools-body');
+              const e=[...document.querySelectorAll('.lektrus-subject-tools-list button')]
+                .find(e=>e.getAttribute('aria-label')===arguments[0]);
+              if(!p||!e)return null;
+              const b=p.getBoundingClientRect(),r=e.getBoundingClientRect();
+              const x=Math.round(r.left+r.width/2),y=Math.round(r.top+r.height/2);
+              const hit=document.elementFromPoint(x,y);
+              return {x,y,hit:!!hit&&(e===hit||e.contains(hit)),
+                top:b.top,bottom:b.bottom,left:b.left,right:b.right};''',label)
+            assert data, f'Subject button disappeared: {subject} / {label}'
+            if data['hit'] and data['top']<=data['y']<=data['bottom'] and data['left']<=data['x']<=data['right']:
+                reachable.append(label)
+                break
+            scroll_toward(data)
+        else:
+            raise AssertionError(f'Subject button not physically touchable: {subject} / {label}')
+    result['touchReachable']=reachable
     click('.lektrus-subject-tools-head button')
     wait(lambda:not visible_id('#lektrus-subject-tools-panel'),'Subject panel did not close')
     return result
