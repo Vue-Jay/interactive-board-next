@@ -290,6 +290,19 @@ def auth_portrait(expected):
     wait(lambda:js('return innerHeight>innerWidth && screen.height>screen.width'),f'{expected}: device did not settle in portrait',30)
     state=js('return {width:innerWidth,height:innerHeight,screenWidth:screen.width,screenHeight:screen.height,scrollWidth:document.documentElement.scrollWidth,boardClass:document.documentElement.classList.contains("lektrus-native-board"),rotating:document.documentElement.classList.contains("lektrus-native-rotating"),path:location.pathname}')
     assert state['scrollWidth']<=state['width']+3 and not state['boardClass'] and not state['rotating'],state
+    state['formLayout']=js('''const s=document.querySelector('.auth-shell'),c=s.querySelector('.auth-card'),r=c.getBoundingClientRect(),stage=s.querySelector('.auth-stage'),p=getComputedStyle(stage),w=innerWidth;
+      const fields=[...s.querySelectorAll('.auth-field input')].filter(e=>e.getClientRects().length);
+      return {width:r.width,expectedWidth:Math.min(580,w-parseFloat(p.paddingLeft)-parseFloat(p.paddingRight)),left:r.left,right:r.right,top:r.top,bottom:r.bottom,height:r.height,viewport:s.clientHeight,scrollHeight:s.scrollHeight,ownScroll:getComputedStyle(s).overflowY,fields:fields.map(e=>({font:parseFloat(getComputedStyle(e).fontSize),height:e.getBoundingClientRect().height})),centered:Math.abs((r.top+r.bottom)/2-s.clientHeight/2)<8};''')
+    layout=state['formLayout']
+    assert layout['width']>=layout['expectedWidth']-3 and layout['width']<=layout['expectedWidth']+3,layout
+    assert layout['left']>=0 and layout['right']<=state['width']+1 and layout['ownScroll']=='auto',layout
+    assert all(f['font']>=16 and f['height']>=47 for f in layout['fields']),layout
+    if layout['scrollHeight']<=layout['viewport']+2:
+        assert layout['centered'],layout
+    else:
+        assert layout['top']>=0,layout
+        assert js('const s=document.querySelector(".auth-shell");s.scrollTop=s.scrollHeight;return s.scrollTop')>0,layout
+        js('document.querySelector(".auth-shell").scrollTop=0')
     return state
 
 

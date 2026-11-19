@@ -44,6 +44,16 @@ jobs:
         run: npm run native:check
       - name: Build bundled Lektrus
         run: npm run native:build
+      - name: Authentication viewport and visual geometry acceptance
+        run: |
+          node scripts/test-auth-viewport.mjs
+          CHROME_PATH="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node scripts/test-auth-layout-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Auth-layout-screenshots
+          path: artifacts/auth-layout
+          if-no-files-found: ignore
       - name: Sync Android native files
         run: npx cap sync android
       - name: Require persistent Android signing credentials

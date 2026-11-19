@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type FocusEvent, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type FocusEvent, type FormEvent } from "react";
 import { nativeBoardUrl, pendingSharePath } from "./routes";
 import { Capacitor } from "@capacitor/core";
+import { installAuthViewport } from "./authViewport";
 import UserAvatar from "./UserAvatar";
 import type { AccountRole } from "./accountRoleStore";
 import { isRemoteBackendEnabled } from "./backend";
@@ -35,6 +36,11 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
   const [passwordConfirmation,setPasswordConfirmation]=useState("");
   const [resetLinkRequested,setResetLinkRequested]=useState(false);
   const recovering=Boolean(passwordResetToken)||passwordResetRequest;
+  const authShell=useRef<HTMLElement>(null);
+  useLayoutEffect(()=>{
+    if(previewMode||!authShell.current)return;
+    return installAuthViewport(authShell.current,Capacitor.isNativePlatform());
+  },[previewMode]);
   const recoveryHeading=useRef<HTMLHeadingElement>(null);
   useEffect(()=>{
     if(recovering)recoveryHeading.current?.focus();
@@ -174,7 +180,7 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
   };
   const changeMode = (next: Mode) => { setMode(next);setError("");setNotice("");setPassword("");setPasswordConfirmation("");setPasswordResetRequest(false);setPasswordResetToken("");setAwaitingConfirmation(false);setPreviewComplete(false); };
 
-  return <main className={`auth-shell${previewMode?" lektrus-registration-preview":""}${mode==="register"&&!recovering&&!awaitingConfirmation?" auth-shell-register":""}`}><section className="auth-card" aria-labelledby="auth-title">
+  return <main ref={authShell} className={`auth-shell${previewMode?" lektrus-registration-preview":" auth-shell-interactive"}${mode==="register"&&!recovering&&!awaitingConfirmation?" auth-shell-register":""}`}><div className="auth-stage"><section className="auth-card" aria-labelledby="auth-title">
     <div className="auth-brand-row"><div className="auth-logo" aria-label="Lektrus"><img src="/lektrus-icon-192.png" width="52" height="52" alt="" /></div><div><div className="auth-brand">Lektrus</div><div className="auth-subtitle">Пространство для обучения</div></div>{previewMode&&<button type="button" className="boards-secondary auth-preview-close" onClick={onPreviewClose}>Вернуться к приложению</button>}</div>
     {!previewMode&&!isRemoteBackendEnabled()&&!isSelfhostBackendEnabled() && <div className="access-notice" role="alert">Сервер Lektrus не подключён. Сейчас доступен только локальный вход с аккаунтами, созданными в этом браузере.</div>}
     {joining && !recovering && <div className="access-notice">Откройте доску по приглашению: войдите в аккаунт или продолжите без регистрации.{!Capacitor.isNativePlatform()&&/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)&&nativeBoardUrl(pendingSharePath()??window.location.pathname)&&<div><a href={nativeBoardUrl(pendingSharePath()??window.location.pathname)!}>Открыть в приложении Lektrus</a></div>}</div>}
@@ -233,5 +239,5 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
       </>}
     </form>
     {!recovering&&<div className="auth-role-note">Одна доска, много возможностей. Учитесь, объясняйте и работайте вместе.</div>}
-  </section></main>;
+  </section></div></main>;
 }
