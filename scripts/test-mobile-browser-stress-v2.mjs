@@ -26,6 +26,7 @@ let chrome,ws,profileDir;const results=[];const pending=new Map();let seq=0;
 const send=(method,params={})=>new Promise((resolve,reject)=>{const id=++seq;pending.set(id,{resolve,reject});ws.send(JSON.stringify({id,method,params}));});
 const evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result?.value;};
 const touch=async(x,y)=>{await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});};
+const touchSelector=async(selector)=>{const pos=await evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)return null;const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2,visible:r.width>0&&r.height>0}})()`);assert.ok(pos?.visible,'Touch target missing: '+selector);await touch(pos.x,pos.y);};
 const wait=async(expression,description,timeout=20000)=>{const start=Date.now();while(Date.now()-start<timeout){if(await evaluate(expression))return;await sleep(120);}throw Error(description);};
 const check=async(name,fn)=>{const start=Date.now();try{const detail=await fn();results.push({name,status:'passed',durationMs:Date.now()-start,detail});console.log('PASS',name);}catch(e){results.push({name,status:'failed',durationMs:Date.now()-start,error:String(e)});console.error('FAIL',name,String(e));}};
 try{
@@ -55,11 +56,32 @@ try{
     assert.ok(geometry.scrollWidth<=width+3,'Unexpected horizontal document overflow: '+JSON.stringify(geometry));
     return geometry;
    });
+   if(!rotated)await check(tag+'-create-board-physical-touch',async()=>{
+    // Reset the route to make this test independent of previous navigation.
+    await send('Page.navigate',{url});
+    await wait('!!document.querySelector(".lektrus-calendar-grid")','Workspace did not reload');
+    await touchSelector('.lectris-mobile-bottom button[aria-label="Доски"]');
+    await wait('!!document.querySelector(".lectris-library-new")','Board list unavailable');
+    await touchSelector('.lectris-library-new');
+    await wait('!!document.querySelector(".lektrus-create-dialog input")','Board creation dialog missing');
+    await touchSelector('.lektrus-create-dialog input');
+    const boardTitle='Stress '+p.name+' '+Date.now();
+    await send('Input.insertText',{text:boardTitle});
+    assert.equal(await evaluate('document.querySelector(".lektrus-create-dialog input").value'),boardTitle);
+    await touchSelector('.lektrus-create-dialog button[type="submit"]');
+    await wait('!!document.querySelector(".lektrus-browser-board-frame")','Board did not open after touch submission',45000);
+    const title=await evaluate('document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector(".board-title")?.value');
+    assert.equal(title,boardTitle,'Created board title did not persist in board UI');
+    return {boardTitle: title,createdBy:'physical touch'};
+   });
    await check(tag+'-touch-storm',async()=>{
+    await send('Page.navigate',{url});
+    await wait('!!document.querySelector(".lektrus-calendar-grid")','Workspace did not reload for touch storm');
     const targets=await evaluate(`[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length&&e.getBoundingClientRect().width>=20&&e.getBoundingClientRect().height>=20).map(e=>{const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2,label:e.getAttribute('aria-label')||e.textContent?.trim().slice(0,60)}}).filter(p=>p.x>0&&p.x<innerWidth&&p.y>0&&p.y<innerHeight)`);
     assert.ok(targets.length>0,'No touch targets');
     // Touch the same safe, non-destructive navigation control repeatedly.
-    const safe=targets.find(t=>/главная|home|доски|boards/i.test(t.label||''))||targets[0];
+    const safe=targets.find(t=>/главная|home|доски|boards/i.test(t.label||''));
+    assert.ok(safe,'No known safe navigation button; refusing random destructive touches');
     for(let i=0;i<iterations;i++)await touch(safe.x,safe.y);
     const errors=await evaluate('window.__stressErrors||[]');
     assert.deepEqual(errors,[],'Browser runtime errors after touch storm');
