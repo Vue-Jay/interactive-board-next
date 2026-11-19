@@ -46,10 +46,9 @@ with sync_playwright() as p:
         assert page.locator(".marketing-news-card").count() == 12
         assert page.locator(".marketing-news-soon").count() == 3
         assert page.locator(".marketing-news-card").evaluate_all("cards=>cards.every(c=>c.getBoundingClientRect().height<200)"), width
+        assert page.locator(".marketing-news-card").evaluate_all("cards=>cards.slice(1).every((c,i)=>c.getBoundingClientRect().top>=cards[i].getBoundingClientRect().bottom-1&&Math.abs(c.getBoundingClientRect().left-cards[0].getBoundingClientRect().left)<1)"), width
         if width == 1440:
-            assert page.locator(".marketing-news-card").evaluate_all("cards=>Math.abs(cards[0].getBoundingClientRect().top-cards[1].getBoundingClientRect().top)<1")
-        if width <= 390:
-            assert page.locator(".marketing-news-card").evaluate_all("cards=>cards[1].getBoundingClientRect().top>=cards[0].getBoundingClientRect().bottom")
+            assert page.locator(".marketing-news-card").evaluate_all("cards=>cards.every(c=>c.getBoundingClientRect().height<125)"), "Desktop cards must be compact horizontal rows"
         assert page.get_by_role("heading",name="Мы в Telegram").is_visible()
         assert page.get_by_role("link",name="Перейти в канал").get_attribute("href") == "https://t.me/lektrus"
         assert page.evaluate("document.documentElement.scrollWidth<=innerWidth+1"), width
@@ -83,6 +82,7 @@ with sync_playwright() as p:
             navigator=page.get_by_role("region",name="Навигатор доски")
             navigator.wait_for()
             assert navigator.get_by_text("Навигатор",exact=True).is_visible()
+            assert navigator.locator(".minimap-header svg").count()==0
             navigator.screenshot(path=OUT/f"navigator-{width}.png")
         page.screenshot(path=OUT/f"board-chrome-{width}.png")
         page.close()
