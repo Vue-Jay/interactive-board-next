@@ -1,0 +1,3010 @@
+{
+  "schema": 1,
+  "purpose": "Fresh comprehensive Lektrus mobile acceptance contract, independent of legacy 57-case suite",
+  "execution_policy": "Do not run until every case has an executable implementation and explicit assertion; no silent skips",
+  "cases": [
+    {
+      "id": "navigation.launch-portrait",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "launch portrait",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.home-dashboard",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "home dashboard",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.boards-list",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "boards list",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.boards-empty-state",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "boards empty state",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.subjects",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "subjects",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.groups",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "groups",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.students",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "students",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.assignments",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "assignments",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.schedule",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "schedule",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.progress",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "progress",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.materials",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "materials",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.templates",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "templates",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.notifications",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "notifications",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.feedback",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "feedback",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.profile",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "profile",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.settings",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "settings",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.more-search",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "more search",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.bottom-tabs",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "bottom tabs",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.back-navigation",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "back navigation",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.deep-link",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "deep link",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.logout-login",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "logout login",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "navigation.session-restore",
+      "area": "navigation",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "session restore",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.create-board",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "create board",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.rename-board",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "rename board",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.open-board",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "open board",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.delete-board",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "delete board",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.board-loading-landscape",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "board loading landscape",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.safe-area-notch",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "safe area notch",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.toolbar-overflow",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "toolbar overflow",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.toolbar-position",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "toolbar position",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.zoom-in",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "zoom in",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.zoom-out",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "zoom out",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.pinch-in",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "pinch in",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.pinch-out",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "pinch out",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.pan",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "pan",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.reset-zoom",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "reset zoom",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.fit-to-screen",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "fit to screen",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.grid-toggle",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "grid toggle",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.snap-toggle",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "snap toggle",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.background-change",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "background change",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.undo",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "undo",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.redo",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "redo",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.clear-board",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "clear board",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.minimap",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "minimap",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.keyboard-dismiss",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "keyboard dismiss",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.portrait-return",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "portrait return",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "board-ui.rotation-resume",
+      "area": "board-ui",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "rotation resume",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.pen-select",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "pen select",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.pen-color",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "pen color",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.pen-width",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "pen width",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.pen-pressure",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "pen pressure",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.pen-save",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "pen save",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.marker-select",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "marker select",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.marker-opacity",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "marker opacity",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.marker-width",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "marker width",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.marker-save",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "marker save",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.eraser-select",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "eraser select",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.eraser-partial",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "eraser partial",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.eraser-whole",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "eraser whole",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.erase-other-user",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "erase other user",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.rectangle-select",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "rectangle select",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.lasso-select",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lasso select",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.multi-select",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "multi select",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.move-selection",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "move selection",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.resize-selection",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "resize selection",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.rotate-selection",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "rotate selection",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.duplicate-selection",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "duplicate selection",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.delete-selection",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "delete selection",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.copy-paste",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "copy paste",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.z-order",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "z order",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.group-ungroup",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "group ungroup",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.history-undo-redo",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "history undo redo",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "ink.reopen-persistence",
+      "area": "ink",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "reopen persistence",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.rectangle",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "rectangle",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.square",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "square",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.circle",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "circle",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.oval",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "oval",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.rounded-rectangle",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "rounded rectangle",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.triangle",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "triangle",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.right-triangle",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "right triangle",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.arrow",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "arrow",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.diamond",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "diamond",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.parallelogram",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "parallelogram",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.trapezoid",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "trapezoid",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.pentagon",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "pentagon",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.hexagon",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "hexagon",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.star",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "star",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.line",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "line",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.double-arrow",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "double arrow",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.text-create",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "text create",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.text-edit",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "text edit",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.text-format",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "text format",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.sticky-create",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "sticky create",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.sticky-edit",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "sticky edit",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.frame-create",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "frame create",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.frame-resize",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "frame resize",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.image-import",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "image import",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.image-crop",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "image crop",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.image-resize",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "image resize",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.pdf-import",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "pdf import",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.pdf-pages",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "pdf pages",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.video-insert",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "video insert",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.special-symbols",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "special symbols",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.chart-create",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "chart create",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.chart-edit",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "chart edit",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.table-create",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "table create",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.table-edit",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "table edit",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.table-rows-columns",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "table rows columns",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.table-delete-cell",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "table delete cell",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.checklist-create",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "checklist create",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.checklist-complete",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "checklist complete",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.quiz-create",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "quiz create",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.quiz-answer",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "quiz answer",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.flashcard-create",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "flashcard create",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.flashcard-flip",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "flashcard flip",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "objects.reveal-cover",
+      "area": "objects",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "reveal cover",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.formula-input",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "formula input",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.formula-save",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "formula save",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.formula-reopen",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "formula reopen",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.geometry-ruler",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "geometry ruler",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.geometry-protractor",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "geometry protractor",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.geometry-set-square",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "geometry set square",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.geometry-snap",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "geometry snap",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.geometry-labels",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "geometry labels",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.geometry-transform",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "geometry transform",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.graph-hyperbola",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "graph hyperbola",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.graph-functions",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "graph functions",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.physics-mechanics",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "physics mechanics",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.physics-motion-graphs",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "physics motion graphs",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.physics-optics",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "physics optics",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.physics-circuit-create",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "physics circuit create",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.physics-circuit-connect",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "physics circuit connect",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.physics-circuit-simulate",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "physics circuit simulate",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.language-word-drag",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "language word drag",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.language-word-reorder",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "language word reorder",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.language-save",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "language save",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.atlas-geography-open",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "atlas geography open",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.atlas-geography-zoom",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "atlas geography zoom",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.atlas-geography-territory",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "atlas geography territory",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.atlas-history-open",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "atlas history open",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.atlas-history-year-step",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "atlas history year step",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.atlas-history-country-selection",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "atlas history country selection",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "editors.atlas-history-boundary-consistency",
+      "area": "editors",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "atlas history boundary consistency",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-fullscreen",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab fullscreen",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-drawers",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab drawers",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-search",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab search",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-glassware",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab glassware",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-reagent-select",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab reagent select",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-volume-adjust",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab volume adjust",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-concentration-adjust",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab concentration adjust",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-temperature-adjust",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab temperature adjust",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-transfer",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab transfer",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-transfer-delay",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab transfer delay",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-transfer-overflow",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab transfer overflow",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-mix",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab mix",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-dissolution",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab dissolution",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-precipitate",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab precipitate",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-ph",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab ph",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-indicator",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab indicator",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-heating",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab heating",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-boiling",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab boiling",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-cooling",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab cooling",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-evaporation-default",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab evaporation default",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-gas-capture",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab gas capture",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-gas-transfer",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab gas transfer",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-burette",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab burette",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-pipette",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab pipette",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-filter",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab filter",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-stand",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab stand",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-stirrer",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab stirrer",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-hotplate",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab hotplate",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-burner",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab burner",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-pause-resume",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab pause resume",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-titration",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab titration",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-solution-preparation",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab solution preparation",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-synthesis",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab synthesis",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-clear-table",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab clear table",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-save-reopen",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab save reopen",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-chemical-mass-balance",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab chemical mass balance",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-chemical-color",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab chemical color",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "chemistry.lab-stress-mix-all",
+      "area": "chemistry",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "lab stress mix all",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.teacher-create",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "teacher create",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.student-create",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "student create",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.guest-join",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "guest join",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.invite-link",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "invite link",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.role-permissions",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "role permissions",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.student-tool-visibility",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "student tool visibility",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.teacher-follow",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "teacher follow",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.guest-draw",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "guest draw",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.cross-user-erase",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "cross user erase",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.cross-user-move",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "cross user move",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.cursor-appearance",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "cursor appearance",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.cursor-position",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "cursor position",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.simultaneous-ink",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "simultaneous ink",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.simultaneous-move",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "simultaneous move",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.comments-add",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "comments add",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.comments-edit",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "comments edit",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.comments-delete",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "comments delete",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.chat-send",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "chat send",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.realtime-reconnect",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "realtime reconnect",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.realtime-version-replay",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "realtime version replay",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.history-join-log",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "history join log",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "collaboration.board-access-revoke",
+      "area": "collaboration",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "board access revoke",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.export-png",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "export png",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.export-pdf",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "export pdf",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.export-board-copy",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "export board copy",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.export-cancel",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "export cancel",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.export-permission-denied",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "export permission denied",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.import-corrupt-file",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "import corrupt file",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.import-large-file",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "import large file",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.offline-open",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "offline open",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.offline-edit",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "offline edit",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.online-resync",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "online resync",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.background-foreground",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "background foreground",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.process-restart",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "process restart",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.low-memory",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "low memory",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.rapid-tap",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "rapid tap",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.double-tap",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "double tap",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.long-press",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "long press",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.keyboard-overlay",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "keyboard overlay",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.notification-overlap",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "notification overlap",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.orientation-lock",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "orientation lock",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.network-drop",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "network drop",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.auth-expiration",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "auth expiration",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.accessibility-labels",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "accessibility labels",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.touch-target-size",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "touch target size",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.screen-reader-navigation",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "screen reader navigation",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.tablet-landscape",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "tablet landscape",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.tablet-portrait",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "tablet portrait",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.android-api-24-36",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "android api 24 36",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    },
+    {
+      "id": "system.ios-simulator",
+      "area": "system",
+      "platforms": [
+        "android",
+        "ios",
+        "mobile-web",
+        "tablet-web"
+      ],
+      "action": "ios simulator",
+      "assertion": "Observe and assert the resulting user-visible state and persisted model change; capture screenshot and runtime errors",
+      "implementation": "pending"
+    }
+  ]
+}
