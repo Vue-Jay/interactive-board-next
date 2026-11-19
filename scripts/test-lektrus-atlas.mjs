@@ -284,7 +284,11 @@ for(const [filename,source,kind] of [
  assert.equal(parse.parseDiagnostics.length,0,filename+" must parse: "+
   parse.parseDiagnostics.map(d=>ts.flattenDiagnosticMessageText(d.messageText," ")).join("; "));
 }
-const symbols={},historicalSymbols={},historicalReferences={};
+const symbols={},historicalSymbols={},historicalReferences={},regionLabels={};
+const regionLabelsSource=fs.readFileSync(new URL("../src/regionDisplayNames.ts",import.meta.url),"utf8");
+new Function("exports",ts.transpileModule(regionLabelsSource,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022
+}}).outputText)(regionLabels);
 for(const [src,out] of [[historicalInsigniaSource,historicalSymbols],
  [historicalReferenceSource,historicalReferences]]){
  new Function("exports",ts.transpileModule(src,{compilerOptions:{
@@ -296,6 +300,7 @@ new Function("exports","require",ts.transpileModule(insigniaSource,{compilerOpti
 }}).outputText)(symbols,id=>{
  if(id.includes("lektrusHistoricalInsignia"))return historicalSymbols;
  if(id.includes("lektrusHistoricalReferences"))return historicalReferences;
+ if(id.includes("regionDisplayNames"))return regionLabels;
  throw Error("Unexpected atlas symbol import: "+id);
 });
 const symbolCountry=(name,code)=>({type:"Feature",properties:{NAME:name,...(code?{ISO_A2:code}:{})},
