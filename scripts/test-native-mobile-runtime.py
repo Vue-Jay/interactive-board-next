@@ -724,7 +724,8 @@ def navigation_dock_layout():
     assert '.board-controls' in report and '.mobile-undo-redo' in report,report
     if '.minimap' in report:
         r=report['.minimap']
-        assert r[3] <= report['.board-controls'][1]-3, f'Minimap overlaps zoom: {report}'
+        z=report['.board-controls']
+        assert r[2]<=z[0]-3 or z[2]<=r[0]-3 or r[3]<=z[1]-3 or z[3]<=r[1]-3, f'Minimap overlaps zoom: {report}'
         assert r[1] >= report['.mobile-undo-redo'][3]-2, f'Minimap overlaps history: {report}'
         assert js('''const e=document.querySelector('.minimap-world'),r=e.getBoundingClientRect();
           return Boolean(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)?.closest('.minimap-world'));'''), 'Minimap center is not clickable'

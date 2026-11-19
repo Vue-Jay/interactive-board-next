@@ -49,8 +49,13 @@ with sync_playwright() as p:
         assert page.locator(".marketing-news-card").evaluate_all("cards=>cards.slice(1).every((c,i)=>c.getBoundingClientRect().top>=cards[i].getBoundingClientRect().bottom-1&&Math.abs(c.getBoundingClientRect().left-cards[0].getBoundingClientRect().left)<1)"), width
         if width == 1440:
             assert page.locator(".marketing-news-card").evaluate_all("cards=>cards.every(c=>c.getBoundingClientRect().height<125)"), "Desktop cards must be compact horizontal rows"
-        assert page.get_by_role("heading",name="Мы в Telegram").is_visible()
-        assert page.get_by_role("link",name="Перейти в канал").get_attribute("href") == "https://t.me/lektrus"
+        telegram=page.get_by_role("link",name="Мы в Telegram",exact=False)
+        assert telegram.is_visible()
+        assert telegram.get_attribute("href") == "https://t.me/lektrus"
+        assert telegram.evaluate("el=>el.getBoundingClientRect().height<65")
+        assert telegram.evaluate("el=>el.getBoundingClientRect().bottom<=document.querySelector('.marketing-news-feed').getBoundingClientRect().top")
+        if width == 1440:
+            assert telegram.evaluate("el=>Math.abs(el.getBoundingClientRect().top-document.querySelector('.marketing-news-toolbar').getBoundingClientRect().top)<2")
         assert page.evaluate("document.documentElement.scrollWidth<=innerWidth+1"), width
         page.screenshot(path=OUT/f"news-{width}.png",full_page=True)
         page.get_by_role("button",name="Анонсы",exact=True).click()
@@ -68,7 +73,7 @@ with sync_playwright() as p:
         expect(page.locator(".marketing-news-card")).to_have_count(12)
         page.close()
     # Real board route: rounded screen corner clearance and navigator style.
-    for width,height in [(1440,900),(844,390)]:
+    for width,height in [(1440,900),(1024,390),(844,390)]:
         page=browser.new_page(viewport={"width":width,"height":height},has_touch=width<1000)
         page.goto(BASE+"/demo/board?scene=math",wait_until="domcontentloaded")
         # Touch browsers open the logical landscape board in a same-origin
@@ -83,7 +88,18 @@ with sync_playwright() as p:
             navigator.wait_for()
             assert navigator.get_by_text("Навигатор",exact=True).is_visible()
             assert navigator.locator(".minimap-header svg").count()==0
+            map_surface=navigator.locator(".minimap-world")
+            bounds=map_surface.bounding_box()
+            assert bounds['width'] >= (210 if width==1440 else 165), bounds
+            assert bounds['height'] >= (120 if width==1440 else 72), bounds
+            assert navigator.evaluate("el=>{const a=el.getBoundingClientRect(),b=document.querySelector('.board-controls').getBoundingClientRect();return a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top}")
             navigator.screenshot(path=OUT/f"navigator-{width}.png")
+            page.mouse.move(bounds['x']+bounds['width']*.25,bounds['y']+bounds['height']*.3)
+            page.mouse.down()
+            transform=page.locator('.board .world').evaluate("el=>el.style.transform")
+            page.mouse.move(bounds['x']+bounds['width']*.75,bounds['y']+bounds['height']*.7,steps=5)
+            page.mouse.up()
+            assert page.locator('.board .world').evaluate("el=>el.style.transform") != transform, 'Dragging the navigator must pan the board'
         page.screenshot(path=OUT/f"board-chrome-{width}.png")
         page.close()
     browser.close()

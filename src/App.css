@@ -1185,7 +1185,8 @@ button {
 
 /* Real minimap: content + viewport, click to navigate. */
 .minimap {
-  width: 184px;
+  width: 236px;
+  box-sizing: border-box;
   padding: 0;
   overflow: hidden;
   background: var(--lt-surface, #fff);
@@ -1197,12 +1198,12 @@ button {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  padding: 7px 8px;
+  padding: 8px 10px;
   margin: 0;
   background: var(--lt-hover, #eef3fb);
   border-bottom: 1px solid var(--ui-line, #dbe3ef);
   color: var(--lt-text, #253b56);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1.3;
   letter-spacing: 0;
@@ -1210,16 +1211,18 @@ button {
 }
 .minimap-world {
   position: relative;
-  height: 80px;
-  margin: 5px;
+  height: 132px;
+  margin: 7px;
   overflow: hidden;
   border: 1px solid var(--ui-line, #dbe3ef);
   border-radius: 8px;
-  cursor: crosshair;
+  cursor: grab;
+  touch-action: none;
   background-color: var(--lt-subtle, #f1f5fb);
   background-image: radial-gradient(var(--lt-line-strong, #cbd5e3) .6px, transparent .6px);
   background-size: 8px 8px;
 }
+.minimap-world:active { cursor: grabbing; }
 .minimap-item {
   position: absolute;
   min-width: 2px;
@@ -5136,7 +5139,8 @@ option{background:#fff;color:#343741}
   .ink-settings::-webkit-scrollbar,.connector-settings::-webkit-scrollbar,.shape-palette::-webkit-scrollbar{display:none}
   .shape-palette button{min-width:66px!important;height:52px!important}
   .board-controls{left:70px!important;bottom:max(12px,env(safe-area-inset-bottom))!important}
-  .minimap{right:12px!important;bottom:max(12px,env(safe-area-inset-bottom))!important;width:150px!important}
+  .minimap{right:12px!important;bottom:max(12px,env(safe-area-inset-bottom))!important;width:204px!important}
+  .minimap-world{height:110px}
   .coordinates{left:70px!important;bottom:58px!important}
   .selection-actions{transform:translateX(-50%) scale(1.06)!important;transform-origin:center bottom}
   .resize-handle{width:22px!important;height:22px!important}
