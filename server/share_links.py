@@ -48,14 +48,15 @@ async def consume_link(conn, data: RedeemLink):
         "SELECT * FROM boards WHERE id=$1 AND deleted_at IS NULL FOR UPDATE", link["board_id"])
     if board is None:
         raise invalid
-    role = await conn.fetchval(
-        f"UPDATE board_share_links SET use_count=use_count+1 WHERE token_hash=$1 AND {ACTIVE} RETURNING role", digest)
-    if role is None:
+    link_role = await conn.fetchrow(
+        f"UPDATE board_share_links SET use_count=use_count+1 WHERE token_hash=$1 AND {ACTIVE} RETURNING role,participant_role", digest)
+    if link_role is None:
         raise invalid
-    return board, role
+    role = link_role["role"]
+    return board, role, link_role["participant_role"] or ("observer" if role == "viewer" else "student")
 
 
-LINK_COLUMNS = """id, board_id, role, created_at, expires_at, revoked_at,
+LINK_COLUMNS = """id, board_id, role, participant_role, created_at, expires_at, revoked_at,
                   max_uses, use_count, password_hash IS NOT NULL AS protected"""
 ACTIVE = """revoked_at IS NULL AND (expires_at IS NULL OR expires_at > clock_timestamp())
             AND (max_uses IS NULL OR use_count < max_uses)"""
@@ -85,9 +86,9 @@ def make_share_router(current_user, board_access, board_view) -> APIRouter:
                     bcrypt.hashpw, password.encode(), bcrypt.gensalt()
                 )).decode()
             row = await conn.fetchrow(
-                f"""INSERT INTO board_share_links(id, board_id, token_hash, role, expires_at, max_uses, password_hash)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING {LINK_COLUMNS}""",
-                uuid4(), board_id, token_hash(token), data.role, data.expires_at, data.max_uses, password_hash,
+                f"""INSERT INTO board_share_links(id, board_id, token_hash, role, participant_role, expires_at, max_uses, password_hash)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING {LINK_COLUMNS}""",
+                uuid4(), board_id, token_hash(token), data.role, data.participant, data.expires_at, data.max_uses, password_hash,
             )
         return {**dict(row), "token": token}
 
@@ -119,18 +120,25 @@ def make_share_router(current_user, board_access, board_view) -> APIRouter:
     @router.post("/share-links/redeem")
     async def redeem(data: RedeemLink, request: Request, user=Depends(current_user)):
         async with request.app.state.pool.acquire() as conn, conn.transaction():
-            board, role = await consume_link(conn, data)
+            board, role, participant = await consume_link(conn, data)
             if board["owner_id"] == user["id"]:
-                role = "owner"
+                role, participant = "owner", "owner"
             else:
-                role = await conn.fetchval(
-                    """INSERT INTO board_members(board_id, user_id, role) VALUES ($1, $2, $3)
+                if participant == "co_teacher" and (user["account_role"] != "teacher" or user["teacher_status"] != "approved"):
+                    raise HTTPException(403, "Ссылка сопреподавателя требует подтверждённого аккаунта преподавателя.")
+                membership = await conn.fetchrow(
+                    """INSERT INTO board_members(board_id, user_id, role, participant_role) VALUES ($1, $2, $3, $4)
                        ON CONFLICT (board_id, user_id) DO UPDATE
-                       SET role=CASE WHEN board_members.role='editor' THEN 'editor' ELSE EXCLUDED.role END
-                       RETURNING role""",
-                    board["id"], user["id"], role,
+                       SET role=CASE WHEN board_members.role='editor' THEN 'editor' ELSE EXCLUDED.role END,
+                           participant_role=CASE
+                             WHEN board_members.role='editor' AND EXCLUDED.role='viewer' THEN COALESCE(board_members.participant_role,'student')
+                             WHEN board_members.participant_role='co_teacher' THEN 'co_teacher'
+                             ELSE EXCLUDED.participant_role END
+                       RETURNING role,participant_role""",
+                    board["id"], user["id"], role, participant,
                 )
-        return {**board_view(board, role), "board_id": str(board["id"])}
+                role, participant = membership["role"], membership["participant_role"]
+        return {**board_view(board, role, participant), "board_id": str(board["id"])}
 
     @router.post("/auth/guest")
     async def guest(data: GuestLink, request: Request):
@@ -145,7 +153,9 @@ def make_share_router(current_user, board_access, board_view) -> APIRouter:
             raise HTTPException(429, "Слишком много попыток входа. Попробуйте через минуту.")
         _guest_attempts.append(now)
         async with request.app.state.pool.acquire() as conn, conn.transaction():
-            board, role = await consume_link(conn, data)
+            board, role, participant = await consume_link(conn, data)
+            if participant == "co_teacher":
+                raise HTTPException(403, "Для ссылки сопреподавателя войдите в подтверждённый аккаунт.")
             user_id = uuid4()
             await conn.execute("""DELETE FROM board_members m USING account_users u
                 WHERE m.board_id=$1 AND m.user_id=u.id AND u.guest_board_id=$1 AND u.guest_expires_at<=now()""", board["id"])
@@ -154,8 +164,8 @@ def make_share_router(current_user, board_access, board_view) -> APIRouter:
                 """INSERT INTO account_users(id,email,password_hash,display_name,guest_board_id,guest_expires_at)
                    VALUES($1,$2,'!guest',$3,$4,now()+interval '24 hours') RETURNING *""",
                 user_id, f"{user_id}@guest.invalid", name, board["id"])
-            await conn.execute("INSERT INTO board_members(board_id,user_id,role) VALUES($1,$2,$3)",
-                               board["id"], user_id, role)
+            await conn.execute("INSERT INTO board_members(board_id,user_id,role,participant_role) VALUES($1,$2,$3,$4)",
+                               board["id"], user_id, role, participant)
             return await issue_tokens(conn, user)
 
     return router

@@ -2,10 +2,14 @@
  * Primary Lektrus self-hosted API client.
  * The primary API client used by the regular Lektrus application.
  */
+import { Capacitor, CapacitorHttp } from "@capacitor/core";
+
 const backendMode = String(import.meta.env.VITE_LEKTRUS_BACKEND || "").trim().toLowerCase();
 export const SELFHOST_BACKEND_ENABLED = backendMode === "selfhost";
 export type SelfhostRole = "teacher" | "student";
 export type SelfhostBoardRole = "owner" | "editor" | "viewer";
+export type SelfhostParticipantRole = "owner" | "co_teacher" | "student" | "observer";
+type InvitedParticipantRole = Exclude<SelfhostParticipantRole,"owner">;
 export type SelfhostUser = {
   id: string; email: string;
   guest_board_id?: string | null;
@@ -20,7 +24,7 @@ export type SelfhostUser = {
 };
 export type SelfhostSession = {access_token:string;refresh_token:string;expires_at:number;user:SelfhostUser};
 export type SelfhostBoard = {
-  id:string;owner_id:string;title:string;role:SelfhostBoardRole;
+  id:string;owner_id:string;title:string;role:SelfhostBoardRole;participant_role?:SelfhostParticipantRole;
   created_at:string;updated_at:string;
 };
 export type SelfhostDocument = {
@@ -28,8 +32,8 @@ export type SelfhostDocument = {
   updated_by:string|null;updated_at:string|null;
 };
 export type SelfhostAccess = {
-  members:Array<{user_id:string;name:string;email:string;role:"editor"|"viewer";added_at:string}>;
-  invites:Array<{id:string;email:string;role:"editor"|"viewer";created_at:string}>;
+  members:Array<{user_id:string;name:string;email:string;role:"editor"|"viewer";participant_role?:InvitedParticipantRole;added_at:string}>;
+  invites:Array<{id:string;email:string;role:"editor"|"viewer";participant_role?:InvitedParticipantRole;created_at:string}>;
 };
 export type SelfhostRealtimeStatus = "online"|"reconnecting"|"offline";
 export type SelfhostPoint={x:number;y:number};
@@ -39,7 +43,7 @@ export type SelfhostLiveInkPacket={
   cancelled?:boolean;
   cut_ids?:string[];
 };
-export type SelfhostPresenceUser={user_id:string;name:string;role:SelfhostBoardRole;online_at?:string};
+export type SelfhostPresenceUser={user_id:string;name:string;role:SelfhostBoardRole;participant_role?:SelfhostParticipantRole;online_at?:string};
 export type SelfhostLiveEvent=
   | {type:"cursor";client_id:string;user_id:string;name:string;role:SelfhostBoardRole;x:number;y:number;sent_at:number}
   | (SelfhostLiveInkPacket&{user_id:string;name:string;role:SelfhostBoardRole;sent_at:number})
@@ -65,6 +69,7 @@ export type SelfhostBoardChannel=(()=>void)&{
 
 const SESSION_KEY="lektrus.selfhost.session.v1";
 const TIMEOUT_MS=15000;
+const NATIVE_AUTH_TIMEOUT_MS=30000;
 let refreshInFlight:Promise<SelfhostSession|null>|null=null;
 
 export class SelfhostHttpError extends Error {
@@ -112,8 +117,46 @@ async function responseError(response:Response):Promise<SelfhostHttpError>{
   }catch{/* Do not display unsafe arbitrary response bodies. */}
   return new SelfhostHttpError(response.status,detail||("Ошибка сервера: HTTP "+response.status));
 }
-async function rawRequest(path:string,init:RequestInit={},token?:string,timeoutMs=TIMEOUT_MS):Promise<Response>{
+// Android's native HTTPS transport avoids the WebView's cross-origin preflight
+// round trip and legacy Chromium networking. Do not patch global fetch: binary
+// transfers, streamed/cancellable document requests and the web app retain it.
+async function androidJsonRequest(url:string,init:RequestInit,headers:Headers,signal:AbortSignal,timeoutMs:number):Promise<Response>{
+  const nativeHeaders:Record<string,string>={};
+  headers.forEach((value,key)=>{nativeHeaders[key]=value;});
+  nativeHeaders["cache-control"]="no-store";
+  let onAbort:()=>void=()=>{};
+  try{
+    if(signal.aborted)throw new DOMException("Request aborted","AbortError");
+    const aborted=new Promise<never>((_,reject)=>{
+      onAbort=()=>reject(new DOMException("Request aborted","AbortError"));
+      signal.addEventListener("abort",onAbort,{once:true});
+    });
+    const result=await Promise.race([aborted,CapacitorHttp.request({
+      url,method:init.method||"GET",headers:nativeHeaders,
+      ...(typeof init.body==="string"?{data:init.body}:{}),
+      connectTimeout:timeoutMs,readTimeout:timeoutMs,
+      disableRedirects:true,responseType:"text",
+    })]);
+    // Capacitor parses application/json even with responseType=text. Preserve
+    // HTTP status (including 401 and 204), rather than treating them as errors
+    // in the transport itself. Never expose arbitrary native exception text.
+    const body=[204,205,304].includes(result.status)?null:
+      typeof result.data==="string"?result.data:JSON.stringify(result.data??null);
+    return new Response(body,{status:result.status});
+  }catch(error){
+    if(signal.aborted)throw error;
+    const code=String((error as {code?:unknown})?.code||"");
+    if(code==="UnknownHostException")throw new Error("Не удалось найти сервер Lektrus (DNS). Проверьте соединение с интернетом.");
+    if(code==="SSLHandshakeException"||code==="SSLPeerUnverifiedException")throw new Error("Android не смог установить защищённое соединение с сервером Lektrus (TLS). Проверьте дату, время и обновления Android.");
+    if(code==="SocketTimeoutException")throw new Error("Сервер Lektrus не ответил на запрос Android вовремя. Проверьте соединение и повторите попытку.");
+    throw new Error("Не удалось установить соединение с сервером Lektrus через Android. Проверьте интернет.");
+  }finally{signal.removeEventListener("abort",onAbort);}
+}
+async function rawRequest(path:string,init:RequestInit={},token?:string,timeoutMs=TIMEOUT_MS,binary=false):Promise<Response>{
   if(!path.startsWith("/api/v1/"))throw new Error("Неправильный путь API Lektrus.");
+  const nativeJson=!binary&&!init.signal&&Capacitor.getPlatform()==="android"&&Capacitor.isPluginAvailable("CapacitorHttp")&&
+    (init.body===undefined||typeof init.body==="string");
+  if(nativeJson&&path.startsWith("/api/v1/auth/")&&timeoutMs===TIMEOUT_MS)timeoutMs=NATIVE_AUTH_TIMEOUT_MS;
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),timeoutMs);
   const upstream=init.signal;
@@ -124,12 +167,13 @@ async function rawRequest(path:string,init:RequestInit={},token?:string,timeoutM
     const headers=new Headers(init.headers);
     if(token)headers.set("Authorization","Bearer "+token);
     if(init.body!==undefined&&!headers.has("Content-Type"))headers.set("Content-Type","application/json");
+    if(nativeJson)return await androidJsonRequest(selfhostOrigin()+path,init,headers,controller.signal,timeoutMs);
     return await fetch(selfhostOrigin()+path,{
       ...init,headers,signal:controller.signal,cache:"no-store",credentials:"omit",
     });
   }catch(error){
     if(controller.signal.aborted&&!upstream?.aborted)
-      throw new Error("Время ожидания собственного сервера истекло.");
+      throw new Error(nativeJson?"Сервер Lektrus не ответил на запрос Android вовремя. Проверьте соединение и повторите попытку.":"Время ожидания собственного сервера истекло.");
     throw error;
   }finally{
     clearTimeout(timer);
@@ -273,7 +317,7 @@ export async function selfhostMaterialFile(id:string,file?:File,title?:string,fo
   const path="/api/v1/materials/"+encodeURIComponent(id)+(file?"":"/file");
   let session=await selfhostSession(); if(!session)throw new SelfhostHttpError(401,"Сессия завершена. Войдите снова.");
   const init:RequestInit=file?{method:"POST",headers:{"Content-Type":file.type||"application/octet-stream","X-File-Name":encodeURIComponent(file.name),"X-Material-Title":encodeURIComponent(title||file.name),"X-Material-Folder":encodeURIComponent(folder||"")},body:file}:{};
-  let response=await rawRequest(path,init,session.access_token,120000);
+  let response=await rawRequest(path,init,session.access_token,120000,true);
   if(!response.ok)throw await responseError(response); return file?response.json():response.blob();
 }
 export const selfhostDeleteMaterial=(id:string)=>selfhostRequest<void>("/api/v1/materials/"+encodeURIComponent(id),{method:"DELETE"});
@@ -289,11 +333,11 @@ function assetEndpoint(boardId:string,assetId:string):string{
 async function selfhostAssetRequest(path:string,init:RequestInit,timeoutMs=TIMEOUT_MS):Promise<Response>{
   let session=await selfhostSession();
   if(!session)throw new SelfhostHttpError(401,"Сессия завершена. Войдите в Lektrus заново.");
-  let response=await rawRequest(path,init,session.access_token,timeoutMs);
+  let response=await rawRequest(path,init,session.access_token,timeoutMs,true);
   if(response.status===401){
     session=await refreshAfterUnauthorized(session);
     if(!session)throw new SelfhostHttpError(401,"Сессия завершена. Войдите снова.");
-    response=await rawRequest(path,init,session.access_token,timeoutMs);
+    response=await rawRequest(path,init,session.access_token,timeoutMs,true);
   }
   return response;
 }
@@ -519,13 +563,13 @@ export type SelfhostRemoteObjectPreview=SelfhostObjectPreview&{
 export const selfhostAccess=(boardId:string)=>selfhostRequest<SelfhostAccess>(
   "/api/v1/boards/"+encodeURIComponent(boardId)+"/access"
 );
-export const selfhostInvite=(boardId:string,email:string,role:"editor"|"viewer")=>
+export const selfhostInvite=(boardId:string,email:string,role:"editor"|"viewer",participant_role?:InvitedParticipantRole)=>
   selfhostRequest<{kind:"member"|"invite"}>(
     "/api/v1/boards/"+encodeURIComponent(boardId)+"/invitations",{
-      method:"POST",body:JSON.stringify({email,role}),
+      method:"POST",body:JSON.stringify({email,role,participant_role}),
     });
-export const selfhostClaimInvitations=()=>selfhostRequest<{claimed:number}>(
-  "/api/v1/invitations/claim",{method:"POST"}
+export const selfhostClaimInvitations=(timeoutMs=TIMEOUT_MS)=>selfhostRequest<{claimed:number}>(
+  "/api/v1/invitations/claim",{method:"POST"},timeoutMs
 );
 
 export async function selfhostMe():Promise<SelfhostUser>{
@@ -539,6 +583,7 @@ export const selfhostRequestTeacherAccess=(application:{
 })=>selfhostRequest<SelfhostUser>("/api/v1/account/teacher-request",{
   method:"POST",body:JSON.stringify(application),
 });
+export const selfhostEnableTeacherRole=()=>selfhostRequest<SelfhostUser>("/api/v1/account/role/teacher",{method:"POST"});
 export const selfhostSetStudentRole=()=>selfhostRequest<SelfhostUser>(
   "/api/v1/account/role/student",{method:"POST"}
 );
@@ -1133,10 +1178,10 @@ export const selfhostRenameBoard = (boardId:string,title:string) =>
   });
 export const selfhostDeleteBoard = (boardId:string) =>
   selfhostRequest<{ok:boolean}>("/api/v1/boards/"+encodeURIComponent(boardId),{method:"DELETE"});
-export const selfhostChangeMemberRole = (boardId:string,memberId:string,role:"editor"|"viewer") =>
+export const selfhostChangeMemberRole = (boardId:string,memberId:string,role:"editor"|"viewer",participant_role?:InvitedParticipantRole) =>
   selfhostRequest<{ok:boolean;role:string}>(
     "/api/v1/boards/"+encodeURIComponent(boardId)+"/members/"+encodeURIComponent(memberId),{
-      method:"PATCH",body:JSON.stringify({role}),
+      method:"PATCH",body:JSON.stringify({role,participant_role}),
     });
 export const selfhostRemoveMember = (boardId:string,memberId:string) =>
   selfhostRequest<void>(

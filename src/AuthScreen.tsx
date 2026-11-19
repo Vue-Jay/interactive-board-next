@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState, type FocusEvent, type FormEvent } from "react";
-import { pendingSharePath } from "./routes";
+import { useEffect, useLayoutEffect, useRef, useState, type FocusEvent, type FormEvent } from "react";
+import { nativeBoardUrl, pendingSharePath } from "./routes";
+import { Capacitor } from "@capacitor/core";
+import { installAuthViewport } from "./authViewport";
 import UserAvatar from "./UserAvatar";
 import type { AccountRole } from "./accountRoleStore";
 import { isRemoteBackendEnabled } from "./backend";
@@ -34,6 +36,11 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
   const [passwordConfirmation,setPasswordConfirmation]=useState("");
   const [resetLinkRequested,setResetLinkRequested]=useState(false);
   const recovering=Boolean(passwordResetToken)||passwordResetRequest;
+  const authShell=useRef<HTMLElement>(null);
+  useLayoutEffect(()=>{
+    if(previewMode||!authShell.current)return;
+    return installAuthViewport(authShell.current,Capacitor.isNativePlatform());
+  },[previewMode]);
   const recoveryHeading=useRef<HTMLHeadingElement>(null);
   useEffect(()=>{
     if(recovering)recoveryHeading.current?.focus();
@@ -173,10 +180,10 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
   };
   const changeMode = (next: Mode) => { setMode(next);setError("");setNotice("");setPassword("");setPasswordConfirmation("");setPasswordResetRequest(false);setPasswordResetToken("");setAwaitingConfirmation(false);setPreviewComplete(false); };
 
-  return <main className={`auth-shell${previewMode?" lektrus-registration-preview":""}${mode==="register"&&!recovering&&!awaitingConfirmation?" auth-shell-register":""}`}><section className="auth-card" aria-labelledby="auth-title">
+  return <main ref={authShell} className={`auth-shell${previewMode?" lektrus-registration-preview":" auth-shell-interactive"}${mode==="register"&&!recovering&&!awaitingConfirmation?" auth-shell-register":""}`}><div className="auth-stage"><section className="auth-card" aria-labelledby="auth-title">
     <div className="auth-brand-row"><div className="auth-logo" aria-label="Lektrus"><img src="/lektrus-icon-192.png" width="52" height="52" alt="" /></div><div><div className="auth-brand">Lektrus</div><div className="auth-subtitle">Пространство для обучения</div></div>{previewMode&&<button type="button" className="boards-secondary auth-preview-close" onClick={onPreviewClose}>Вернуться к приложению</button>}</div>
     {!previewMode&&!isRemoteBackendEnabled()&&!isSelfhostBackendEnabled() && <div className="access-notice" role="alert">Сервер Lektrus не подключён. Сейчас доступен только локальный вход с аккаунтами, созданными в этом браузере.</div>}
-    {joining && !recovering && <div className="access-notice">Откройте доску по приглашению: войдите в аккаунт или продолжите без регистрации.</div>}
+    {joining && !recovering && <div className="access-notice">Откройте доску по приглашению: войдите в аккаунт или продолжите без регистрации.{!Capacitor.isNativePlatform()&&/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)&&nativeBoardUrl(pendingSharePath()??window.location.pathname)&&<div><a href={nativeBoardUrl(pendingSharePath()??window.location.pathname)!}>Открыть в приложении Lektrus</a></div>}</div>}
     {!previewMode&&!recovering&&mode==="login"&&remembered&&<div className="auth-remembered"><div className="auth-remembered-avatar"><UserAvatar/></div><div className="auth-remembered-copy"><strong>{remembered.name}</strong><span>{remembered.email}</span></div><button className="auth-remembered-login" type="button" disabled={busy} onClick={()=>void quickLogin()}>{busy?"Входим…":"Войти"}</button><button className="auth-remembered-forget" type="button" disabled={busy} onClick={()=>void forgetQuickLogin()} title="Забыть сохранённый аккаунт">×</button></div>}
     {!previewMode&&!recovering&&<div className="auth-tabs" role="tablist" aria-label="Вход или регистрация"><button type="button" className={mode==="login"?"active":""} disabled={busy} onClick={()=>changeMode("login")}>Вход</button><button type="button" className={mode==="register"?"active":""} disabled={busy} onClick={()=>changeMode("register")}>Регистрация</button></div>}
     <form className="auth-form" onSubmit={submit}>
@@ -205,17 +212,18 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
       </>:<>
       <div><h1 id="auth-title">{awaitingConfirmation?"Проверьте почту":mode==="register"?"Создать аккаунт":"С возвращением"}</h1><p>{awaitingConfirmation?previewMode?`Предпросмотр ссылки подтверждения для ${email}.`: `Мы отправили ссылку на ${email}. Откройте её, чтобы подтвердить адрес и автоматически войти в Lektrus. Если письма нет во входящих, проверьте папку «Спам».`:joining?"После входа откроется доска, которой с вами поделились.":mode==="register"?previewMode?"Заполните форму и проверьте собственный экран подтверждения Lektrus.":"Заполните данные, чтобы создать пространство для учёбы.":"Войдите, чтобы продолжить занятие или открыть свои доски."}</p></div>
       {mode==="register"&&!awaitingConfirmation&&<fieldset className="auth-role-choice">
-        <legend>Кем вы регистрируетесь?</legend>
+        <legend>Как вы хотите начать?</legend>
         <div className="auth-role-grid">
           <label className={`auth-role-option${registrationRole==="teacher"?" is-selected":""}`}>
             <input type="radio" name="registrationRole" value="teacher" required checked={registrationRole==="teacher"} onChange={()=>setRegistrationRole("teacher")}/>
-            <span><strong>Я учитель</strong><small>Создавать уроки и работать с учениками</small></span>
+            <span><strong>Я хочу преподавать</strong><small>Создавать уроки и работать с учениками</small></span>
           </label>
           <label className={`auth-role-option${registrationRole==="student"?" is-selected":""}`}>
             <input type="radio" name="registrationRole" value="student" required checked={registrationRole==="student"} onChange={()=>setRegistrationRole("student")}/>
-            <span><strong>Я ученик</strong><small>Участвовать в занятиях и выполнять задания</small></span>
+            <span><strong>Я хочу учиться</strong><small>Участвовать в занятиях и выполнять задания</small></span>
           </label>
         </div>
+        <small className="auth-role-help">Это начальный режим. Учёба доступна всем, преподавание можно подключить позже.</small>
       </fieldset>}
       {mode==="register"&&!awaitingConfirmation&&<div className="auth-register-name-grid"><label className="auth-field"><span>Имя</span><input required value={firstName} onChange={e=>fieldEdited(e.target.value,setFirstName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="given-name" autoCapitalize="words" placeholder="Ваше имя" maxLength={80} /></label><label className="auth-field"><span>Фамилия</span><input required value={lastName} onChange={e=>fieldEdited(e.target.value,setLastName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="family-name" autoCapitalize="words" placeholder="Ваша фамилия" maxLength={80} /></label><label className="auth-field auth-register-display-name"><span>Как к вам обращаться</span><input value={name} onChange={e=>fieldEdited(e.target.value,setName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="nickname" autoCapitalize="words" placeholder="Имя для участников доски" maxLength={80}/></label></div>}
       <label className="auth-field"><span>Email</span><input required type="email" value={email} readOnly={awaitingConfirmation&&!previewMode} onChange={e=>fieldEdited(e.target.value,setEmail)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="name@example.com" maxLength={180} /></label>
@@ -232,5 +240,5 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
       </>}
     </form>
     {!recovering&&<div className="auth-role-note">Одна доска, много возможностей. Учитесь, объясняйте и работайте вместе.</div>}
-  </section></main>;
+  </section></div></main>;
 }

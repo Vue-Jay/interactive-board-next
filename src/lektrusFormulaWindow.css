@@ -375,3 +375,23 @@ body > .lektrus-formula-window .formula-editor-footer button.primary{
   }
   body > .lektrus-formula-window .formula-help{display:none!important}
 }
+
+/* The keyboard reduces the iOS visual viewport without resizing 100dvh.
+   Keep the actual header and save actions visible during that transition. */
+body > .lektrus-formula-window[data-touch-viewport=true] {
+  inset:auto!important;
+  left:var(--lektrus-editor-left,0px)!important;top:var(--lektrus-editor-top,0px)!important;
+  width:var(--lektrus-editor-width,100vw)!important;height:var(--lektrus-editor-height,100dvh)!important;
+  padding:max(4px,var(--lektrus-safe-top,0px)) max(4px,var(--lektrus-safe-right,0px)) max(4px,var(--lektrus-safe-bottom,0px)) max(4px,var(--lektrus-safe-left,0px))!important;
+}
+body > .lektrus-formula-window[data-touch-viewport=true] .formula-editor-modal {
+  width:100%!important;height:100%!important;max-width:1050px!important;max-height:100%!important;
+}
+body > .lektrus-formula-window[data-touch-viewport=true] textarea.formula-source-input {font-size:16px!important}
+body > .lektrus-formula-window[data-compact-height=true] .formula-editor-header,
+body > .lektrus-formula-window[data-compact-height=true] .formula-editor-footer {min-height:38px!important;padding:4px 8px!important;flex:none!important}
+body > .lektrus-formula-window[data-compact-height=true] .formula-editor-header span,
+body > .lektrus-formula-window[data-compact-height=true] .formula-help,
+body > .lektrus-formula-window[data-compact-height=true] .formula-editor-footer>span {display:none!important}
+body > .lektrus-formula-window[data-compact-height=true] .formula-editor-header::before{height:28px;flex-basis:28px;font-size:19px}
+body > .lektrus-formula-window[data-compact-height=true] textarea.formula-source-input{height:68px!important;min-height:56px!important;resize:none}

@@ -1,0 +1,44 @@
+name: Native mobile API and realtime QA (isolated)
+on:
+  pull_request:
+    branches: [qa/mobile-native-base-20261117]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-api:
+    name: Native API and realtime — round ${{ matrix.round }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        round: [1, 2, 3]
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_USER: lektrus
+          POSTGRES_PASSWORD: test-password-only
+          POSTGRES_DB: lektrus
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lektrus -d lektrus"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://lektrus:test-password-only@127.0.0.1:5432/lektrus
+      LEKTRUS_ALLOWED_ORIGINS: https://lektrus.example
+      LEKTRUS_JWT_SECRET: CI-only-not-for-production-random-string-1234567890
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: server/requirements-test.txt
+      - run: python -m pip install --disable-pip-version-check -r server/requirements-test.txt
+      - name: Verify mobile HTTP, JWT, invitation, private assets and WebSocket roundtrip
+        run: python -m pytest -q -rP server/test_native_mobile_api.py
+      - name: Run broader API and permission regression tests
+        run: python -m pytest -q -rP server/test_api.py server/test_assets.py server/test_invitations.py server/test_registration.py server/test_guest_history_visits.py server/test_native_realtime_events.py server/test_ws_e2e.py server/test_participant_roles.py

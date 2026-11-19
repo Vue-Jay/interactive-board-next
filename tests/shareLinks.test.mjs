@@ -31,12 +31,34 @@ function browser(href) {
       get search() { return address.search; },
       get hash() { return address.hash; },
       get origin() { return address.origin; },
+      get protocol() { return address.protocol; },
+      get hostname() { return address.hostname; },
     },
   };
   return { window, getHref: () => address.href };
 }
 const token = 'a'.repeat(64);
 const boardId = 'a1000000-1234-4567-89ab-1234567890ab';
+
+test('installed apps share production links and only open validated board routes', () => {
+  const routes = load('routes', {});
+  for (const origin of ['https://localhost','capacitor://localhost']) {
+    const {window}=browser(origin+'/app');
+    const api=load('shareLinks',{window,require:()=>({})});
+    assert.equal(api.boardShareUrl(token),`https://lektrus.ru/join/${token}`);
+    assert.equal(api.boardDirectUrl(boardId),`https://lektrus.ru/board/${boardId}`);
+  }
+  for (const path of [`/join/${token}`,`/board/${boardId}`]) {
+    assert.equal(routes.nativeBoardPath(routes.nativeBoardUrl(path)),path);
+    assert.equal(routes.nativeBoardPath('https://lektrus.ru'+path),path);
+  }
+  for (const url of [`https://lektrus.ru.evil.test/join/${token}`,`ru.lektrus.board://join/${token}?other=1`,
+    `ru.lektrus.board://auth/confirmed`,`ru.lektrus.board://board/not-an-id`,`https://lektrus.ru@evil.test/join/${token}`,
+    `ru.lektrus.board://user@board/${boardId}`,`ru.lektrus.board://board:123/${boardId}`,
+    `ru.lektrus.board://board/${boardId}#extra`]) {
+    assert.equal(routes.nativeBoardPath(url),null);
+  }
+});
 
 test('Timeweb share links use the native API even when a legacy backend is configured', async () => {
   const calls = [];
@@ -315,9 +337,11 @@ test('empty workspaces only read the board list and have the same empty state on
   const stored = new Map();
   const rows = [];
   let creations = 0;
+  let invitationChecks = 0;
   const api = load('boardStore', {
     localStorage: { getItem: key => stored.get(key), setItem: (key, value) => stored.set(key, value) },
-    require: name => name === './backend' ? { isRemoteBackendEnabled: () => false } : {},
+    require: name => name === './backend' ? { isRemoteBackendEnabled: () => false }
+      : name === './authStore' ? { retrySelfhostInvitations: async id => { assert.equal(id,user.id); invitationChecks++; } } : {},
     selfhost: {
       isSelfhostBackendEnabled: () => true,
       selfhostBoards: async () => rows,
@@ -330,6 +354,7 @@ test('empty workspaces only read the board list and have the same empty state on
     },
   });
   for (let i = 0; i < 3; i++) assert.equal((await api.getUserBoards(user)).length, 0);
+  assert.equal(invitationChecks,3,"Only invitation recovery and board reads may happen on load");
   assert.equal(creations, 0);
   await api.createBoard(user, 'Создана вручную');
   assert.equal(creations, 1);
@@ -337,9 +362,8 @@ test('empty workspaces only read the board list and have the same empty state on
   const boards = read('src/BoardsScreen.tsx');
   assert.match(boards, /const list=await getUserBoards\(user\)/);
   assert.doesNotMatch(boards, /ensureUserBoards/);
-  for (const file of ['src/BoardsScreen.tsx', 'src/LectrisHub.tsx']) {
-    assert.match(read(file), /boards\.length\?"Ничего не найдено":"Здесь будут находиться ваши доски"/);
-  }
+  assert.match(boards, /modeBoards\.length\?"Ничего не найдено":"Здесь будут находиться ваши доски"/);
+  assert.match(read('src/LectrisHub.tsx'), /boards\.length\?"Ничего не найдено":"Здесь будут находиться ваши доски"/);
 });
 
 test('in-app feedback links to the official Telegram and retains the private form', () => {

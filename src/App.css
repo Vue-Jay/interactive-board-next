@@ -7,7 +7,9 @@
   box-sizing: border-box;
   width: max-content;
   height: fit-content;
+  max-width: 380px;
   max-width: min(380px, calc(100% - 32px));
+  pointer-events: none;
   padding: 12px;
   border: 1px solid var(--lt-line, #d4d5f3);
   border-radius: 10px;
@@ -23,9 +25,11 @@
 }
 .board-system-notice > span {
   min-width: 0;
+  overflow-wrap: break-word;
   overflow-wrap: anywhere;
 }
 .board-system-notice button {
+  pointer-events: auto;
   background: none;
   color: inherit;
   flex: 0 0 auto;
@@ -43,7 +47,10 @@
   to { opacity: 0; transform: translateY(-5px); visibility: hidden; }
 }
 @media (max-width: 700px), (max-width: 1100px) and (pointer: coarse) {
-  .board-system-notice { top: auto; bottom: 72px; right: 12px; max-width: calc(100% - 24px); }
+  .board-system-notice { top: auto; bottom: 72px; right: 12px; max-width: 380px; max-width: min(380px, calc(100% - 24px)); }
+}
+@media (max-width: 404px) {
+  .board-system-notice { max-width: calc(100% - 24px); }
 }
 @media (prefers-reduced-motion: reduce) {
   .board-system-notice { animation-name: board-system-notice-fade; }

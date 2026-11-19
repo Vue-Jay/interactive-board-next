@@ -1,5 +1,6 @@
 /* Lektrus: mobile dialog fit and modern authentication. Imported last. */
 .auth-shell {
+  min-height:100vh;
   min-height:100dvh;
   box-sizing:border-box;
   padding:clamp(12px,3vmin,28px);
@@ -103,6 +104,7 @@
     width:min(100%,calc(100vw - 16px))!important;
     min-width:0!important;
     max-width:calc(100vw - 16px)!important;
+    max-height:calc(100vh - max(12px,env(safe-area-inset-top,0px)) - max(12px,env(safe-area-inset-bottom,0px)))!important;
     max-height:calc(100dvh - max(12px,env(safe-area-inset-top,0px)) - max(12px,env(safe-area-inset-bottom,0px)))!important;
     overflow-x:hidden!important;
     overflow-y:auto!important;
@@ -146,7 +148,24 @@
   .lectris-mobile-more-panel,.lectris-mobile-more-menu,
   .topbar-more-popover,.lektrus-board-actions-popover {
     box-sizing:border-box;max-width:min(330px,calc(100vw - 16px))!important;
-    max-height:calc(100dvh - 28px)!important;overflow-y:auto;overscroll-behavior:contain;
+    max-height:calc(100vh - 28px)!important;max-height:calc(100dvh - 28px)!important;overflow-y:auto;overscroll-behavior:contain;
+  }
+}
+/* Chrome 83 (Android 11) ignores dvh entirely. Keep the menu below the
+   actual top toolbar and within the viewport, not a full-height panel
+   starting 70px below the top. Every action must remain reachable by touch. */
+@media (max-width:1100px), (any-pointer:coarse) {
+  /* Do not put the legacy fallback inside :is(): Chromium 83 drops
+     the entire selector. Match the real open details explicitly. */
+  html body .topbar .topbar-right .topbar-more-menu[open]>.topbar-more-popover,
+  html body .topbar .topbar-right .lektrus-board-actions-menu[open]>.lektrus-board-actions-popover,
+  html body .topbar .topbar-right .presence-menu[open]>.presence-popover,
+  html body .topbar .topbar-right .lectris-layout-picker[open]>.lectris-layout-menu {
+    box-sizing:border-box!important;
+    max-height:calc(100vh - 108px - env(safe-area-inset-bottom,0px))!important;
+    max-height:calc(100dvh - 108px - env(safe-area-inset-bottom,0px))!important;
+    overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain;touch-action:pan-y;
+    -webkit-overflow-scrolling:touch;
   }
 }
 @media (max-width:600px) {
@@ -206,6 +225,20 @@
   }
 }
 
+/* Native emulators can report a mouse pointer instead of touch. Keep the
+   authentication card centered and scrollable even if the OS or a windowed
+   mode delays or refuses the portrait request. */
+html.lektrus-native-app .auth-shell:not(.auth-shell-interactive) {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  overflow-x:hidden;
+  overflow-y:auto;
+  height:auto;
+}
+html.lektrus-native-app .auth-shell:not(.auth-shell-interactive) .auth-card {flex:0 0 auto;max-width:100%}
+
 /* Attendance: quiet typography, concise session rows and mobile-friendly scrolling. */
 .presence-visit-link{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:10px 12px!important;margin:4px 0 7px;background:#edf4ff!important;color:#2459a4!important;border:1px solid #d8e7fc!important;border-radius:10px;font-size:12px;font-weight:750;cursor:pointer}
 .presence-visit-link span{font-size:15px;opacity:.75}
@@ -222,3 +255,90 @@
 .student-visit-row b{font-size:12px;color:#28416b}
 .student-visit-row small{font-size:10px;color:#8392a8}
 .student-visit-row>strong{flex:none;font-size:12px;color:#2c60a1;white-space:nowrap}
+
+/* Desktop retains the existing dock. Touch editors escape the board's stacking
+   context and fit the actual visual viewport, including the native IME. */
+.checklist-editor-scroll{display:contents}
+.lektrus-touch-editor-portal .lektrus-study-creation-hint{
+  flex:none;margin:0;padding:9px 14px;background:#edf5ff;color:#4a6e9a;
+  font-size:12px;font-weight:650;line-height:1.4;border-bottom:1px solid #dae7f6;
+}
+.lektrus-touch-editor-portal{
+  position:fixed;z-index:6000;isolation:isolate;overflow:hidden;pointer-events:none;
+}
+.lektrus-touch-editor-portal>.table-editor-backdrop,
+.lektrus-touch-editor-portal>.checklist-editor-backdrop,
+.lektrus-touch-editor-portal>.flashcard-editor-backdrop,
+.lektrus-touch-editor-portal>.quiz-editor-backdrop{
+  position:absolute!important;inset:0!important;display:grid!important;
+  grid-template-rows:minmax(0,1fr)!important;place-items:center!important;
+  padding:4px!important;
+  padding:max(4px,var(--lektrus-safe-top,0px)) max(4px,var(--lektrus-safe-right,0px)) max(4px,var(--lektrus-safe-bottom,0px)) max(4px,var(--lektrus-safe-left,0px))!important;
+  box-sizing:border-box!important;pointer-events:auto!important;
+  background:rgba(30,33,40,.28)!important;
+}
+.lektrus-touch-editor-portal .table-editor-modal,
+.lektrus-touch-editor-portal .checklist-editor-modal,
+.lektrus-touch-editor-portal .flashcard-editor-modal,
+.lektrus-touch-editor-portal .quiz-editor-modal{
+  position:relative!important;inset:auto!important;transform:none!important;
+  width:100%!important;max-width:800px!important;max-height:100%!important;
+  height:100%!important;min-height:0!important;min-width:0!important;
+  box-sizing:border-box!important;margin:0!important;overflow:hidden!important;
+  display:flex!important;flex-direction:column!important;
+}
+.lektrus-touch-editor-portal .table-editor-header,
+.lektrus-touch-editor-portal .checklist-editor-header,
+.lektrus-touch-editor-portal .flashcard-editor-header,
+.lektrus-touch-editor-portal .quiz-editor-header,
+.lektrus-touch-editor-portal .table-editor-footer,
+.lektrus-touch-editor-portal .checklist-editor-footer,
+.lektrus-touch-editor-portal .flashcard-editor-footer,
+.lektrus-touch-editor-portal .quiz-editor-footer{
+  position:relative!important;inset:auto!important;flex:none!important;
+  min-height:40px!important;box-sizing:border-box;padding:4px 8px!important;
+  flex-direction:row!important;align-items:center!important;
+}
+.lektrus-touch-editor-portal .table-editor-footer>span,
+.lektrus-touch-editor-portal .checklist-editor-footer>span,
+.lektrus-touch-editor-portal .flashcard-editor-footer>span,
+.lektrus-touch-editor-portal .quiz-editor-footer>span{display:none}
+.lektrus-touch-editor-portal .checklist-editor-bulk{flex-wrap:wrap;justify-content:flex-end}
+.lektrus-touch-editor-portal .table-editor-footer>div,
+.lektrus-touch-editor-portal .checklist-editor-footer>div,
+.lektrus-touch-editor-portal .flashcard-editor-footer>div,
+.lektrus-touch-editor-portal .quiz-editor-footer>div{margin-left:auto}
+.lektrus-touch-editor-portal .checklist-editor-scroll,
+.lektrus-touch-editor-portal .flashcard-editor-body,
+.lektrus-touch-editor-portal .quiz-editor-body{
+  display:flex!important;flex-direction:column!important;flex:1 1 0!important;
+  min-height:0!important;min-width:0!important;overflow:auto!important;
+  overscroll-behavior:contain;
+}
+.lektrus-touch-editor-portal .checklist-editor-list,
+.lektrus-touch-editor-portal .checklist-editor-settings,
+.lektrus-touch-editor-portal .quiz-editor-compose,
+.lektrus-touch-editor-portal .quiz-editor-preview,
+.lektrus-touch-editor-portal .flashcard-editor-compose,
+.lektrus-touch-editor-portal .flashcard-editor-preview{
+  flex:none!important;min-width:0!important;max-width:100%!important;
+  overflow:visible!important;box-sizing:border-box;border-right:0!important;
+}
+.lektrus-touch-editor-portal .quiz-editor-option>input{width:100%;min-width:0!important}
+.lektrus-touch-editor-portal .table-editor-grid{flex:1 1 0!important;min-height:0!important;overflow:auto!important}
+.lektrus-touch-editor-portal .table-editor-controls,
+.lektrus-touch-editor-portal .table-editor-column-tools,
+.lektrus-touch-editor-portal .table-editor-row-tools{flex:none!important;overflow-x:auto!important}
+.lektrus-touch-editor-portal input:not([type=range]):not([type=checkbox]):not([type=radio]),
+.lektrus-touch-editor-portal textarea{font-size:16px!important;scroll-margin:6px}
+.lektrus-touch-editor-portal[data-compact-height=true] .lektrus-study-creation-hint,
+.lektrus-touch-editor-portal[data-compact-height=true] .table-editor-controls,
+.lektrus-touch-editor-portal[data-compact-height=true] .table-editor-column-tools,
+.lektrus-touch-editor-portal[data-compact-height=true] .table-editor-row-tools,
+.lektrus-touch-editor-portal[data-compact-height=true] .checklist-editor-bulk>button:nth-child(-n+2){display:none!important}
+.lektrus-touch-editor-portal[data-compact-height=true] .table-editor-header span,
+.lektrus-touch-editor-portal[data-compact-height=true] .checklist-editor-header span,
+.lektrus-touch-editor-portal[data-compact-height=true] .flashcard-editor-header span,
+.lektrus-touch-editor-portal[data-compact-height=true] .quiz-editor-header span{display:none!important}
+.lektrus-touch-editor-portal :is(.checklist-editor-footer,.flashcard-editor-footer,.quiz-editor-footer,.table-editor-footer) button{touch-action:manipulation}
+.lektrus-touch-editor-portal[data-compact-height=true] :is(.flashcard-editor-compose,.quiz-editor-compose) textarea{min-height:56px!important;height:68px!important;resize:none}

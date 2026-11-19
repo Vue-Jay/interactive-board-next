@@ -1,0 +1,4326 @@
+{
+  "schema": 1,
+  "note": "Source-grounded candidate tests; applicability depends on release configuration. NOT executed.",
+  "cases": [
+    {
+      "id": "subject-source.math-formula.visibility-by-role",
+      "toolId": "math-formula",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-formula.open-touch",
+      "toolId": "math-formula",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-formula.close-touch",
+      "toolId": "math-formula",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-formula.create-object",
+      "toolId": "math-formula",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-formula.edit-values",
+      "toolId": "math-formula",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-formula.save",
+      "toolId": "math-formula",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-formula.cancel",
+      "toolId": "math-formula",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-formula.reopen",
+      "toolId": "math-formula",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-formula.undo-redo",
+      "toolId": "math-formula",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-formula.rotate-device",
+      "toolId": "math-formula",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-formula.keyboard-dismiss",
+      "toolId": "math-formula",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-formula.offline-reconnect",
+      "toolId": "math-formula",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-formula.duplicate",
+      "toolId": "math-formula",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-formula.delete",
+      "toolId": "math-formula",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-formula.export",
+      "toolId": "math-formula",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-geometry.visibility-by-role",
+      "toolId": "math-geometry",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-geometry.open-touch",
+      "toolId": "math-geometry",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-geometry.close-touch",
+      "toolId": "math-geometry",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-geometry.create-object",
+      "toolId": "math-geometry",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-geometry.edit-values",
+      "toolId": "math-geometry",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-geometry.save",
+      "toolId": "math-geometry",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-geometry.cancel",
+      "toolId": "math-geometry",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-geometry.reopen",
+      "toolId": "math-geometry",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-geometry.undo-redo",
+      "toolId": "math-geometry",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-geometry.rotate-device",
+      "toolId": "math-geometry",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-geometry.keyboard-dismiss",
+      "toolId": "math-geometry",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-geometry.offline-reconnect",
+      "toolId": "math-geometry",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-geometry.duplicate",
+      "toolId": "math-geometry",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-geometry.delete",
+      "toolId": "math-geometry",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-geometry.export",
+      "toolId": "math-geometry",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-coordinate.visibility-by-role",
+      "toolId": "math-coordinate",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-coordinate.open-touch",
+      "toolId": "math-coordinate",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-coordinate.close-touch",
+      "toolId": "math-coordinate",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-coordinate.create-object",
+      "toolId": "math-coordinate",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-coordinate.edit-values",
+      "toolId": "math-coordinate",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-coordinate.save",
+      "toolId": "math-coordinate",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-coordinate.cancel",
+      "toolId": "math-coordinate",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-coordinate.reopen",
+      "toolId": "math-coordinate",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-coordinate.undo-redo",
+      "toolId": "math-coordinate",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-coordinate.rotate-device",
+      "toolId": "math-coordinate",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-coordinate.keyboard-dismiss",
+      "toolId": "math-coordinate",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-coordinate.offline-reconnect",
+      "toolId": "math-coordinate",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-coordinate.duplicate",
+      "toolId": "math-coordinate",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-coordinate.delete",
+      "toolId": "math-coordinate",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-coordinate.export",
+      "toolId": "math-coordinate",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-fractions.visibility-by-role",
+      "toolId": "math-fractions",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-fractions.open-touch",
+      "toolId": "math-fractions",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-fractions.close-touch",
+      "toolId": "math-fractions",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-fractions.create-object",
+      "toolId": "math-fractions",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-fractions.edit-values",
+      "toolId": "math-fractions",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-fractions.save",
+      "toolId": "math-fractions",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-fractions.cancel",
+      "toolId": "math-fractions",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-fractions.reopen",
+      "toolId": "math-fractions",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-fractions.undo-redo",
+      "toolId": "math-fractions",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-fractions.rotate-device",
+      "toolId": "math-fractions",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-fractions.keyboard-dismiss",
+      "toolId": "math-fractions",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-fractions.offline-reconnect",
+      "toolId": "math-fractions",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-fractions.duplicate",
+      "toolId": "math-fractions",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-fractions.delete",
+      "toolId": "math-fractions",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.math-fractions.export",
+      "toolId": "math-fractions",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-periodic-table.visibility-by-role",
+      "toolId": "chem-periodic-table",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-periodic-table.open-touch",
+      "toolId": "chem-periodic-table",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-periodic-table.close-touch",
+      "toolId": "chem-periodic-table",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-periodic-table.create-object",
+      "toolId": "chem-periodic-table",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-periodic-table.edit-values",
+      "toolId": "chem-periodic-table",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-periodic-table.save",
+      "toolId": "chem-periodic-table",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-periodic-table.cancel",
+      "toolId": "chem-periodic-table",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-periodic-table.reopen",
+      "toolId": "chem-periodic-table",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-periodic-table.undo-redo",
+      "toolId": "chem-periodic-table",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-periodic-table.rotate-device",
+      "toolId": "chem-periodic-table",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-periodic-table.keyboard-dismiss",
+      "toolId": "chem-periodic-table",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-periodic-table.offline-reconnect",
+      "toolId": "chem-periodic-table",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-periodic-table.duplicate",
+      "toolId": "chem-periodic-table",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-periodic-table.delete",
+      "toolId": "chem-periodic-table",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-periodic-table.export",
+      "toolId": "chem-periodic-table",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-assignments.visibility-by-role",
+      "toolId": "chem-assignments",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-assignments.open-touch",
+      "toolId": "chem-assignments",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-assignments.close-touch",
+      "toolId": "chem-assignments",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-assignments.create-object",
+      "toolId": "chem-assignments",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-assignments.edit-values",
+      "toolId": "chem-assignments",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-assignments.save",
+      "toolId": "chem-assignments",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-assignments.cancel",
+      "toolId": "chem-assignments",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-assignments.reopen",
+      "toolId": "chem-assignments",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-assignments.undo-redo",
+      "toolId": "chem-assignments",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-assignments.rotate-device",
+      "toolId": "chem-assignments",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-assignments.keyboard-dismiss",
+      "toolId": "chem-assignments",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-assignments.offline-reconnect",
+      "toolId": "chem-assignments",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-assignments.duplicate",
+      "toolId": "chem-assignments",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-assignments.delete",
+      "toolId": "chem-assignments",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.chem-assignments.export",
+      "toolId": "chem-assignments",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-dna.visibility-by-role",
+      "toolId": "bio-dna",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-dna.open-touch",
+      "toolId": "bio-dna",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-dna.close-touch",
+      "toolId": "bio-dna",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-dna.create-object",
+      "toolId": "bio-dna",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-dna.edit-values",
+      "toolId": "bio-dna",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-dna.save",
+      "toolId": "bio-dna",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-dna.cancel",
+      "toolId": "bio-dna",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-dna.reopen",
+      "toolId": "bio-dna",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-dna.undo-redo",
+      "toolId": "bio-dna",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-dna.rotate-device",
+      "toolId": "bio-dna",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-dna.keyboard-dismiss",
+      "toolId": "bio-dna",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-dna.offline-reconnect",
+      "toolId": "bio-dna",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-dna.duplicate",
+      "toolId": "bio-dna",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-dna.delete",
+      "toolId": "bio-dna",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-dna.export",
+      "toolId": "bio-dna",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-taxonomy.visibility-by-role",
+      "toolId": "bio-taxonomy",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-taxonomy.open-touch",
+      "toolId": "bio-taxonomy",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-taxonomy.close-touch",
+      "toolId": "bio-taxonomy",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-taxonomy.create-object",
+      "toolId": "bio-taxonomy",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-taxonomy.edit-values",
+      "toolId": "bio-taxonomy",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-taxonomy.save",
+      "toolId": "bio-taxonomy",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-taxonomy.cancel",
+      "toolId": "bio-taxonomy",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-taxonomy.reopen",
+      "toolId": "bio-taxonomy",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-taxonomy.undo-redo",
+      "toolId": "bio-taxonomy",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-taxonomy.rotate-device",
+      "toolId": "bio-taxonomy",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-taxonomy.keyboard-dismiss",
+      "toolId": "bio-taxonomy",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-taxonomy.offline-reconnect",
+      "toolId": "bio-taxonomy",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-taxonomy.duplicate",
+      "toolId": "bio-taxonomy",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-taxonomy.delete",
+      "toolId": "bio-taxonomy",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-taxonomy.export",
+      "toolId": "bio-taxonomy",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-division.visibility-by-role",
+      "toolId": "bio-division",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-division.open-touch",
+      "toolId": "bio-division",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-division.close-touch",
+      "toolId": "bio-division",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-division.create-object",
+      "toolId": "bio-division",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-division.edit-values",
+      "toolId": "bio-division",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-division.save",
+      "toolId": "bio-division",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-division.cancel",
+      "toolId": "bio-division",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-division.reopen",
+      "toolId": "bio-division",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-division.undo-redo",
+      "toolId": "bio-division",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-division.rotate-device",
+      "toolId": "bio-division",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-division.keyboard-dismiss",
+      "toolId": "bio-division",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-division.offline-reconnect",
+      "toolId": "bio-division",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-division.duplicate",
+      "toolId": "bio-division",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-division.delete",
+      "toolId": "bio-division",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-division.export",
+      "toolId": "bio-division",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-encoding.visibility-by-role",
+      "toolId": "info-encoding",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-encoding.open-touch",
+      "toolId": "info-encoding",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-encoding.close-touch",
+      "toolId": "info-encoding",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-encoding.create-object",
+      "toolId": "info-encoding",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-encoding.edit-values",
+      "toolId": "info-encoding",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-encoding.save",
+      "toolId": "info-encoding",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-encoding.cancel",
+      "toolId": "info-encoding",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-encoding.reopen",
+      "toolId": "info-encoding",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-encoding.undo-redo",
+      "toolId": "info-encoding",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-encoding.rotate-device",
+      "toolId": "info-encoding",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-encoding.keyboard-dismiss",
+      "toolId": "info-encoding",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-encoding.offline-reconnect",
+      "toolId": "info-encoding",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-encoding.duplicate",
+      "toolId": "info-encoding",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-encoding.delete",
+      "toolId": "info-encoding",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-encoding.export",
+      "toolId": "info-encoding",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-genetics.visibility-by-role",
+      "toolId": "bio-genetics",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-genetics.open-touch",
+      "toolId": "bio-genetics",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-genetics.close-touch",
+      "toolId": "bio-genetics",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-genetics.create-object",
+      "toolId": "bio-genetics",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-genetics.edit-values",
+      "toolId": "bio-genetics",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-genetics.save",
+      "toolId": "bio-genetics",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-genetics.cancel",
+      "toolId": "bio-genetics",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-genetics.reopen",
+      "toolId": "bio-genetics",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-genetics.undo-redo",
+      "toolId": "bio-genetics",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-genetics.rotate-device",
+      "toolId": "bio-genetics",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-genetics.keyboard-dismiss",
+      "toolId": "bio-genetics",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-genetics.offline-reconnect",
+      "toolId": "bio-genetics",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-genetics.duplicate",
+      "toolId": "bio-genetics",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-genetics.delete",
+      "toolId": "bio-genetics",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-genetics.export",
+      "toolId": "bio-genetics",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-circuit.visibility-by-role",
+      "toolId": "info-circuit",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-circuit.open-touch",
+      "toolId": "info-circuit",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-circuit.close-touch",
+      "toolId": "info-circuit",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-circuit.create-object",
+      "toolId": "info-circuit",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-circuit.edit-values",
+      "toolId": "info-circuit",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-circuit.save",
+      "toolId": "info-circuit",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-circuit.cancel",
+      "toolId": "info-circuit",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-circuit.reopen",
+      "toolId": "info-circuit",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-circuit.undo-redo",
+      "toolId": "info-circuit",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-circuit.rotate-device",
+      "toolId": "info-circuit",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-circuit.keyboard-dismiss",
+      "toolId": "info-circuit",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-circuit.offline-reconnect",
+      "toolId": "info-circuit",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-circuit.duplicate",
+      "toolId": "info-circuit",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-circuit.delete",
+      "toolId": "info-circuit",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-circuit.export",
+      "toolId": "info-circuit",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-logic.visibility-by-role",
+      "toolId": "info-logic",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-logic.open-touch",
+      "toolId": "info-logic",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-logic.close-touch",
+      "toolId": "info-logic",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-logic.create-object",
+      "toolId": "info-logic",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-logic.edit-values",
+      "toolId": "info-logic",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-logic.save",
+      "toolId": "info-logic",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-logic.cancel",
+      "toolId": "info-logic",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-logic.reopen",
+      "toolId": "info-logic",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-logic.undo-redo",
+      "toolId": "info-logic",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-logic.rotate-device",
+      "toolId": "info-logic",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-logic.keyboard-dismiss",
+      "toolId": "info-logic",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-logic.offline-reconnect",
+      "toolId": "info-logic",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-logic.duplicate",
+      "toolId": "info-logic",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-logic.delete",
+      "toolId": "info-logic",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-logic.export",
+      "toolId": "info-logic",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-cell.visibility-by-role",
+      "toolId": "bio-cell",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-cell.open-touch",
+      "toolId": "bio-cell",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-cell.close-touch",
+      "toolId": "bio-cell",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-cell.create-object",
+      "toolId": "bio-cell",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-cell.edit-values",
+      "toolId": "bio-cell",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-cell.save",
+      "toolId": "bio-cell",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-cell.cancel",
+      "toolId": "bio-cell",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-cell.reopen",
+      "toolId": "bio-cell",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-cell.undo-redo",
+      "toolId": "bio-cell",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-cell.rotate-device",
+      "toolId": "bio-cell",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-cell.keyboard-dismiss",
+      "toolId": "bio-cell",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-cell.offline-reconnect",
+      "toolId": "bio-cell",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-cell.duplicate",
+      "toolId": "bio-cell",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-cell.delete",
+      "toolId": "bio-cell",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-cell.export",
+      "toolId": "bio-cell",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-food-chain.visibility-by-role",
+      "toolId": "bio-food-chain",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-food-chain.open-touch",
+      "toolId": "bio-food-chain",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-food-chain.close-touch",
+      "toolId": "bio-food-chain",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-food-chain.create-object",
+      "toolId": "bio-food-chain",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-food-chain.edit-values",
+      "toolId": "bio-food-chain",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-food-chain.save",
+      "toolId": "bio-food-chain",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-food-chain.cancel",
+      "toolId": "bio-food-chain",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-food-chain.reopen",
+      "toolId": "bio-food-chain",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-food-chain.undo-redo",
+      "toolId": "bio-food-chain",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-food-chain.rotate-device",
+      "toolId": "bio-food-chain",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-food-chain.keyboard-dismiss",
+      "toolId": "bio-food-chain",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-food-chain.offline-reconnect",
+      "toolId": "bio-food-chain",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-food-chain.duplicate",
+      "toolId": "bio-food-chain",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-food-chain.delete",
+      "toolId": "bio-food-chain",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-food-chain.export",
+      "toolId": "bio-food-chain",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-timeline.visibility-by-role",
+      "toolId": "history-timeline",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-timeline.open-touch",
+      "toolId": "history-timeline",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-timeline.close-touch",
+      "toolId": "history-timeline",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-timeline.create-object",
+      "toolId": "history-timeline",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-timeline.edit-values",
+      "toolId": "history-timeline",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-timeline.save",
+      "toolId": "history-timeline",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-timeline.cancel",
+      "toolId": "history-timeline",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-timeline.reopen",
+      "toolId": "history-timeline",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-timeline.undo-redo",
+      "toolId": "history-timeline",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-timeline.rotate-device",
+      "toolId": "history-timeline",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-timeline.keyboard-dismiss",
+      "toolId": "history-timeline",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-timeline.offline-reconnect",
+      "toolId": "history-timeline",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-timeline.duplicate",
+      "toolId": "history-timeline",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-timeline.delete",
+      "toolId": "history-timeline",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-timeline.export",
+      "toolId": "history-timeline",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-syntax.visibility-by-role",
+      "toolId": "ru-syntax",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-syntax.open-touch",
+      "toolId": "ru-syntax",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-syntax.close-touch",
+      "toolId": "ru-syntax",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-syntax.create-object",
+      "toolId": "ru-syntax",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-syntax.edit-values",
+      "toolId": "ru-syntax",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-syntax.save",
+      "toolId": "ru-syntax",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-syntax.cancel",
+      "toolId": "ru-syntax",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-syntax.reopen",
+      "toolId": "ru-syntax",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-syntax.undo-redo",
+      "toolId": "ru-syntax",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-syntax.rotate-device",
+      "toolId": "ru-syntax",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-syntax.keyboard-dismiss",
+      "toolId": "ru-syntax",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-syntax.offline-reconnect",
+      "toolId": "ru-syntax",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-syntax.duplicate",
+      "toolId": "ru-syntax",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-syntax.delete",
+      "toolId": "ru-syntax",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-syntax.export",
+      "toolId": "ru-syntax",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-flowchart.visibility-by-role",
+      "toolId": "info-flowchart",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-flowchart.open-touch",
+      "toolId": "info-flowchart",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-flowchart.close-touch",
+      "toolId": "info-flowchart",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-flowchart.create-object",
+      "toolId": "info-flowchart",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-flowchart.edit-values",
+      "toolId": "info-flowchart",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-flowchart.save",
+      "toolId": "info-flowchart",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-flowchart.cancel",
+      "toolId": "info-flowchart",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-flowchart.reopen",
+      "toolId": "info-flowchart",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-flowchart.undo-redo",
+      "toolId": "info-flowchart",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-flowchart.rotate-device",
+      "toolId": "info-flowchart",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-flowchart.keyboard-dismiss",
+      "toolId": "info-flowchart",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-flowchart.offline-reconnect",
+      "toolId": "info-flowchart",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-flowchart.duplicate",
+      "toolId": "info-flowchart",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-flowchart.delete",
+      "toolId": "info-flowchart",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-flowchart.export",
+      "toolId": "info-flowchart",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-place-value.visibility-by-role",
+      "toolId": "info-place-value",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-place-value.open-touch",
+      "toolId": "info-place-value",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-place-value.close-touch",
+      "toolId": "info-place-value",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-place-value.create-object",
+      "toolId": "info-place-value",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-place-value.edit-values",
+      "toolId": "info-place-value",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-place-value.save",
+      "toolId": "info-place-value",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-place-value.cancel",
+      "toolId": "info-place-value",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-place-value.reopen",
+      "toolId": "info-place-value",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-place-value.undo-redo",
+      "toolId": "info-place-value",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-place-value.rotate-device",
+      "toolId": "info-place-value",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-place-value.keyboard-dismiss",
+      "toolId": "info-place-value",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-place-value.offline-reconnect",
+      "toolId": "info-place-value",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-place-value.duplicate",
+      "toolId": "info-place-value",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-place-value.delete",
+      "toolId": "info-place-value",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.info-place-value.export",
+      "toolId": "info-place-value",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-organ-systems.visibility-by-role",
+      "toolId": "bio-organ-systems",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-organ-systems.open-touch",
+      "toolId": "bio-organ-systems",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-organ-systems.close-touch",
+      "toolId": "bio-organ-systems",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-organ-systems.create-object",
+      "toolId": "bio-organ-systems",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-organ-systems.edit-values",
+      "toolId": "bio-organ-systems",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-organ-systems.save",
+      "toolId": "bio-organ-systems",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-organ-systems.cancel",
+      "toolId": "bio-organ-systems",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-organ-systems.reopen",
+      "toolId": "bio-organ-systems",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-organ-systems.undo-redo",
+      "toolId": "bio-organ-systems",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-organ-systems.rotate-device",
+      "toolId": "bio-organ-systems",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-organ-systems.keyboard-dismiss",
+      "toolId": "bio-organ-systems",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-organ-systems.offline-reconnect",
+      "toolId": "bio-organ-systems",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-organ-systems.duplicate",
+      "toolId": "bio-organ-systems",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-organ-systems.delete",
+      "toolId": "bio-organ-systems",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-organ-systems.export",
+      "toolId": "bio-organ-systems",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphemes.visibility-by-role",
+      "toolId": "ru-morphemes",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphemes.open-touch",
+      "toolId": "ru-morphemes",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphemes.close-touch",
+      "toolId": "ru-morphemes",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphemes.create-object",
+      "toolId": "ru-morphemes",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphemes.edit-values",
+      "toolId": "ru-morphemes",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphemes.save",
+      "toolId": "ru-morphemes",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphemes.cancel",
+      "toolId": "ru-morphemes",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphemes.reopen",
+      "toolId": "ru-morphemes",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphemes.undo-redo",
+      "toolId": "ru-morphemes",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphemes.rotate-device",
+      "toolId": "ru-morphemes",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphemes.keyboard-dismiss",
+      "toolId": "ru-morphemes",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphemes.offline-reconnect",
+      "toolId": "ru-morphemes",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphemes.duplicate",
+      "toolId": "ru-morphemes",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphemes.delete",
+      "toolId": "ru-morphemes",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphemes.export",
+      "toolId": "ru-morphemes",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-family-tree.visibility-by-role",
+      "toolId": "history-family-tree",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-family-tree.open-touch",
+      "toolId": "history-family-tree",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-family-tree.close-touch",
+      "toolId": "history-family-tree",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-family-tree.create-object",
+      "toolId": "history-family-tree",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-family-tree.edit-values",
+      "toolId": "history-family-tree",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-family-tree.save",
+      "toolId": "history-family-tree",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-family-tree.cancel",
+      "toolId": "history-family-tree",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-family-tree.reopen",
+      "toolId": "history-family-tree",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-family-tree.undo-redo",
+      "toolId": "history-family-tree",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-family-tree.rotate-device",
+      "toolId": "history-family-tree",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-family-tree.keyboard-dismiss",
+      "toolId": "history-family-tree",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-family-tree.offline-reconnect",
+      "toolId": "history-family-tree",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-family-tree.duplicate",
+      "toolId": "history-family-tree",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-family-tree.delete",
+      "toolId": "history-family-tree",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.history-family-tree.export",
+      "toolId": "history-family-tree",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-sentence-builder.visibility-by-role",
+      "toolId": "language-sentence-builder",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-sentence-builder.open-touch",
+      "toolId": "language-sentence-builder",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-sentence-builder.close-touch",
+      "toolId": "language-sentence-builder",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-sentence-builder.create-object",
+      "toolId": "language-sentence-builder",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-sentence-builder.edit-values",
+      "toolId": "language-sentence-builder",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-sentence-builder.save",
+      "toolId": "language-sentence-builder",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-sentence-builder.cancel",
+      "toolId": "language-sentence-builder",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-sentence-builder.reopen",
+      "toolId": "language-sentence-builder",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-sentence-builder.undo-redo",
+      "toolId": "language-sentence-builder",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-sentence-builder.rotate-device",
+      "toolId": "language-sentence-builder",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-sentence-builder.keyboard-dismiss",
+      "toolId": "language-sentence-builder",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-sentence-builder.offline-reconnect",
+      "toolId": "language-sentence-builder",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-sentence-builder.duplicate",
+      "toolId": "language-sentence-builder",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-sentence-builder.delete",
+      "toolId": "language-sentence-builder",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-sentence-builder.export",
+      "toolId": "language-sentence-builder",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.civics-structure.visibility-by-role",
+      "toolId": "civics-structure",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.civics-structure.open-touch",
+      "toolId": "civics-structure",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.civics-structure.close-touch",
+      "toolId": "civics-structure",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.civics-structure.create-object",
+      "toolId": "civics-structure",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.civics-structure.edit-values",
+      "toolId": "civics-structure",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.civics-structure.save",
+      "toolId": "civics-structure",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.civics-structure.cancel",
+      "toolId": "civics-structure",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.civics-structure.reopen",
+      "toolId": "civics-structure",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.civics-structure.undo-redo",
+      "toolId": "civics-structure",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.civics-structure.rotate-device",
+      "toolId": "civics-structure",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.civics-structure.keyboard-dismiss",
+      "toolId": "civics-structure",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.civics-structure.offline-reconnect",
+      "toolId": "civics-structure",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.civics-structure.duplicate",
+      "toolId": "civics-structure",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.civics-structure.delete",
+      "toolId": "civics-structure",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.civics-structure.export",
+      "toolId": "civics-structure",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-flashcards.visibility-by-role",
+      "toolId": "language-flashcards",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-flashcards.open-touch",
+      "toolId": "language-flashcards",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-flashcards.close-touch",
+      "toolId": "language-flashcards",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-flashcards.create-object",
+      "toolId": "language-flashcards",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-flashcards.edit-values",
+      "toolId": "language-flashcards",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-flashcards.save",
+      "toolId": "language-flashcards",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-flashcards.cancel",
+      "toolId": "language-flashcards",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-flashcards.reopen",
+      "toolId": "language-flashcards",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-flashcards.undo-redo",
+      "toolId": "language-flashcards",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-flashcards.rotate-device",
+      "toolId": "language-flashcards",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-flashcards.keyboard-dismiss",
+      "toolId": "language-flashcards",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-flashcards.offline-reconnect",
+      "toolId": "language-flashcards",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-flashcards.duplicate",
+      "toolId": "language-flashcards",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-flashcards.delete",
+      "toolId": "language-flashcards",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.language-flashcards.export",
+      "toolId": "language-flashcards",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphology.visibility-by-role",
+      "toolId": "ru-morphology",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphology.open-touch",
+      "toolId": "ru-morphology",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphology.close-touch",
+      "toolId": "ru-morphology",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphology.create-object",
+      "toolId": "ru-morphology",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphology.edit-values",
+      "toolId": "ru-morphology",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphology.save",
+      "toolId": "ru-morphology",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphology.cancel",
+      "toolId": "ru-morphology",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphology.reopen",
+      "toolId": "ru-morphology",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphology.undo-redo",
+      "toolId": "ru-morphology",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphology.rotate-device",
+      "toolId": "ru-morphology",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphology.keyboard-dismiss",
+      "toolId": "ru-morphology",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphology.offline-reconnect",
+      "toolId": "ru-morphology",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphology.duplicate",
+      "toolId": "ru-morphology",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphology.delete",
+      "toolId": "ru-morphology",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-morphology.export",
+      "toolId": "ru-morphology",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-phonetics.visibility-by-role",
+      "toolId": "ru-phonetics",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-phonetics.open-touch",
+      "toolId": "ru-phonetics",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-phonetics.close-touch",
+      "toolId": "ru-phonetics",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-phonetics.create-object",
+      "toolId": "ru-phonetics",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-phonetics.edit-values",
+      "toolId": "ru-phonetics",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-phonetics.save",
+      "toolId": "ru-phonetics",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-phonetics.cancel",
+      "toolId": "ru-phonetics",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-phonetics.reopen",
+      "toolId": "ru-phonetics",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-phonetics.undo-redo",
+      "toolId": "ru-phonetics",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-phonetics.rotate-device",
+      "toolId": "ru-phonetics",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-phonetics.keyboard-dismiss",
+      "toolId": "ru-phonetics",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-phonetics.offline-reconnect",
+      "toolId": "ru-phonetics",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-phonetics.duplicate",
+      "toolId": "ru-phonetics",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-phonetics.delete",
+      "toolId": "ru-phonetics",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-phonetics.export",
+      "toolId": "ru-phonetics",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-orthography.visibility-by-role",
+      "toolId": "ru-orthography",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-orthography.open-touch",
+      "toolId": "ru-orthography",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-orthography.close-touch",
+      "toolId": "ru-orthography",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-orthography.create-object",
+      "toolId": "ru-orthography",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-orthography.edit-values",
+      "toolId": "ru-orthography",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-orthography.save",
+      "toolId": "ru-orthography",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-orthography.cancel",
+      "toolId": "ru-orthography",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-orthography.reopen",
+      "toolId": "ru-orthography",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-orthography.undo-redo",
+      "toolId": "ru-orthography",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-orthography.rotate-device",
+      "toolId": "ru-orthography",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-orthography.keyboard-dismiss",
+      "toolId": "ru-orthography",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-orthography.offline-reconnect",
+      "toolId": "ru-orthography",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-orthography.duplicate",
+      "toolId": "ru-orthography",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-orthography.delete",
+      "toolId": "ru-orthography",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.ru-orthography.export",
+      "toolId": "ru-orthography",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "requires-release-configuration-audit",
+      "status": "pending",
+      "oracle": "Must execute action and verify persisted model, permissions, and UI"
+    },
+    {
+      "id": "subject-source.bio-anatomy.visibility-by-role",
+      "toolId": "bio-anatomy",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-anatomy.open-touch",
+      "toolId": "bio-anatomy",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-anatomy.close-touch",
+      "toolId": "bio-anatomy",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-anatomy.create-object",
+      "toolId": "bio-anatomy",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-anatomy.edit-values",
+      "toolId": "bio-anatomy",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-anatomy.save",
+      "toolId": "bio-anatomy",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-anatomy.cancel",
+      "toolId": "bio-anatomy",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-anatomy.reopen",
+      "toolId": "bio-anatomy",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-anatomy.undo-redo",
+      "toolId": "bio-anatomy",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-anatomy.rotate-device",
+      "toolId": "bio-anatomy",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-anatomy.keyboard-dismiss",
+      "toolId": "bio-anatomy",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-anatomy.offline-reconnect",
+      "toolId": "bio-anatomy",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-anatomy.duplicate",
+      "toolId": "bio-anatomy",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-anatomy.delete",
+      "toolId": "bio-anatomy",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-anatomy.export",
+      "toolId": "bio-anatomy",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-microscope.visibility-by-role",
+      "toolId": "bio-microscope",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-microscope.open-touch",
+      "toolId": "bio-microscope",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-microscope.close-touch",
+      "toolId": "bio-microscope",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-microscope.create-object",
+      "toolId": "bio-microscope",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-microscope.edit-values",
+      "toolId": "bio-microscope",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-microscope.save",
+      "toolId": "bio-microscope",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-microscope.cancel",
+      "toolId": "bio-microscope",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-microscope.reopen",
+      "toolId": "bio-microscope",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-microscope.undo-redo",
+      "toolId": "bio-microscope",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-microscope.rotate-device",
+      "toolId": "bio-microscope",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-microscope.keyboard-dismiss",
+      "toolId": "bio-microscope",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-microscope.offline-reconnect",
+      "toolId": "bio-microscope",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-microscope.duplicate",
+      "toolId": "bio-microscope",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-microscope.delete",
+      "toolId": "bio-microscope",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.bio-microscope.export",
+      "toolId": "bio-microscope",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.info-programming.visibility-by-role",
+      "toolId": "info-programming",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.info-programming.open-touch",
+      "toolId": "info-programming",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.info-programming.close-touch",
+      "toolId": "info-programming",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.info-programming.create-object",
+      "toolId": "info-programming",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.info-programming.edit-values",
+      "toolId": "info-programming",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.info-programming.save",
+      "toolId": "info-programming",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.info-programming.cancel",
+      "toolId": "info-programming",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.info-programming.reopen",
+      "toolId": "info-programming",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.info-programming.undo-redo",
+      "toolId": "info-programming",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.info-programming.rotate-device",
+      "toolId": "info-programming",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.info-programming.keyboard-dismiss",
+      "toolId": "info-programming",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.info-programming.offline-reconnect",
+      "toolId": "info-programming",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.info-programming.duplicate",
+      "toolId": "info-programming",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.info-programming.delete",
+      "toolId": "info-programming",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.info-programming.export",
+      "toolId": "info-programming",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.literature-analysis.visibility-by-role",
+      "toolId": "literature-analysis",
+      "action": "visibility-by-role",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.literature-analysis.open-touch",
+      "toolId": "literature-analysis",
+      "action": "open-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.literature-analysis.close-touch",
+      "toolId": "literature-analysis",
+      "action": "close-touch",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.literature-analysis.create-object",
+      "toolId": "literature-analysis",
+      "action": "create-object",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.literature-analysis.edit-values",
+      "toolId": "literature-analysis",
+      "action": "edit-values",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.literature-analysis.save",
+      "toolId": "literature-analysis",
+      "action": "save",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.literature-analysis.cancel",
+      "toolId": "literature-analysis",
+      "action": "cancel",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.literature-analysis.reopen",
+      "toolId": "literature-analysis",
+      "action": "reopen",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.literature-analysis.undo-redo",
+      "toolId": "literature-analysis",
+      "action": "undo-redo",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.literature-analysis.rotate-device",
+      "toolId": "literature-analysis",
+      "action": "rotate-device",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.literature-analysis.keyboard-dismiss",
+      "toolId": "literature-analysis",
+      "action": "keyboard-dismiss",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.literature-analysis.offline-reconnect",
+      "toolId": "literature-analysis",
+      "action": "offline-reconnect",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.literature-analysis.duplicate",
+      "toolId": "literature-analysis",
+      "action": "duplicate",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.literature-analysis.delete",
+      "toolId": "literature-analysis",
+      "action": "delete",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    },
+    {
+      "id": "subject-source.literature-analysis.export",
+      "toolId": "literature-analysis",
+      "action": "export",
+      "source": "src/lektrusSubjectToolRegistry.ts",
+      "visibility": "expected-hidden-in-release",
+      "status": "pending",
+      "oracle": "Must not be offered in release UI"
+    }
+  ]
+}

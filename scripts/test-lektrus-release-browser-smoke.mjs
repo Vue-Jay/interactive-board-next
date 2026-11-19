@@ -17,8 +17,10 @@ const chromePath=process.env.CHROME_PATH||[
 ].find(existsSync);
 assert.ok(chromePath,"Chrome required for integrated release browser smoke");
 const homeOnly=process.argv.includes("--home-only");
+const keyboardOnly=process.argv.includes("--keyboard-only");
+const landscapeOnly=process.argv.includes("--landscape-only");
 const interfaceOnly=process.argv.includes("--interface-only");
-if(homeOnly)process.env.VITE_LEKTRUS_LOCAL_TEST="true";
+if(homeOnly||keyboardOnly||landscapeOnly)process.env.VITE_LEKTRUS_LOCAL_TEST="true";
 if(interfaceOnly){
  process.env.VITE_LEKTRUS_BACKEND="selfhost";
  delete process.env.VITE_LEKTRUS_API_ORIGIN;
@@ -46,7 +48,7 @@ const log=[];
 try{
  await server.listen();
  const port=server.httpServer.address().port;
- const route=homeOnly||interfaceOnly?"/app":"/demo/board?scene=math&capture=1";
+ const route=homeOnly||interfaceOnly||keyboardOnly||landscapeOnly?"/app":"/demo/board?scene=math&capture=1";
  const url=`http://127.0.0.1:${port}${route}`;
  const portServer=net.createServer();
  await new Promise((resolve,reject)=>portServer.once("error",reject).listen(0,"127.0.0.1",resolve));
@@ -91,7 +93,7 @@ try{
  });
  const evaluate=async expression=>{
   const result=await call("Runtime.evaluate",{expression,awaitPromise:true,returnByValue:true,userGesture:true});
-  if(result.exceptionDetails)throw new Error("Browser evaluation: "+result.exceptionDetails.text);
+  if(result.exceptionDetails)throw new Error("Browser evaluation: "+(result.exceptionDetails.exception?.description||result.exceptionDetails.text));
   return result.result?.value;
  };
  const wait=async (expression,message,timeout=12000)=>{
@@ -131,6 +133,238 @@ try{
  await call("Runtime.enable");
  await call("Page.enable");
 
+ if(landscapeOnly){
+  const viewport=async(width,height)=>{
+   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:true,screenOrientation:{type:height>width?'portraitPrimary':'landscapePrimary',angle:height>width?0:90}});
+   await call('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});await delay(300);
+  };
+  await viewport(390,844);
+  await wait('!!document.querySelector(".lektrus-calendar-grid")','Workspace did not render',30000);
+  // Emulate a browser denying orientation lock to exercise the fallback.
+  await evaluate(`Object.defineProperty(document,'fullscreenEnabled',{configurable:true,value:false});Object.defineProperty(screen.orientation,'lock',{configurable:true,value:async()=>{throw new Error('Orientation lock denied')}});true`);
+  await click('.lectris-mobile-bottom button[aria-label="Доски"]');
+  await wait('!!document.querySelector(".lectris-library-new")','Board library did not render');
+  await click('.lectris-library-new');
+  await wait('!!document.querySelector(".lektrus-create-dialog")','Create board dialog did not render');
+  const titleInput=await rect('.lektrus-create-dialog input');
+  await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:titleInput.x,y:titleInput.y,id:1}]});
+  await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await call('Input.insertText',{text:'Landscape browser QA'});
+  assert.equal(await evaluate('document.activeElement.value'),'Landscape browser QA','Title input must remain focused before submit');
+  await evaluate(`(()=>{window.__loaderFrames=[];window.__sampleLoader=true;window.__createSubmitEvents=0;document.querySelector('.lektrus-create-dialog').addEventListener('submit',()=>window.__createSubmitEvents++);const sample=()=>{if(!window.__sampleLoader)return;const e=document.querySelector('.lektrus-browser-board-logical > .lektrus-board-loading');if(e)window.__loaderFrames.push([e.offsetWidth,e.offsetHeight]);requestAnimationFrame(sample)};requestAnimationFrame(sample)})()`);
+  const submitButton=await rect('.lektrus-create-dialog button[type="submit"]');
+  await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:submitButton.x,y:submitButton.y,id:1}]});
+  await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  const boardReady='!!document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector("section.board")';
+  await wait(boardReady,'Landscape frame did not render the actual created board',45000);
+  assert.equal(await evaluate('window.__createSubmitEvents'),1,'One touch must submit exactly once');
+  const state=()=>evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),w=f.contentWindow,d=f.contentDocument,r=f.getBoundingClientRect();return {width:w.innerWidth,height:w.innerHeight,rotated:f.parentElement.dataset.rotated==='true',bounds:[r.left,r.top,r.right,r.bottom],title:d.querySelector('.board-title')?.value,tool:d.querySelector('section.board')?.className}})()`);
+  const first=await state();
+  assert.equal(first.title,'Landscape browser QA');
+  assert.equal(first.rotated,true);assert.ok(first.width>first.height,JSON.stringify(first));
+  const loader=await evaluate('window.__sampleLoader=false;window.__loaderFrames');
+  assert.ok(loader.length&&loader.every(([w,h])=>w>h),'First loader must be landscape: '+JSON.stringify(loader.slice(0,5)));
+  await evaluate('window.__originalFrame=document.querySelector(".lektrus-browser-board-frame").contentWindow;window.__originalBoard=window.__originalFrame.document.querySelector("section.board");window.__boardPath=location.pathname');
+  const point=async(selector)=>evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),d=f.contentDocument,e=[...d.querySelectorAll(${JSON.stringify(selector)})].find(b=>b.getBoundingClientRect().width>0&&b.getBoundingClientRect().height>0&&d.elementFromPoint(b.getBoundingClientRect().x+b.getBoundingClientRect().width/2,b.getBoundingClientRect().y+b.getBoundingClientRect().height/2)?.closest(${JSON.stringify(selector)}));if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`);
+  const physical=async(points)=>evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),r=f.getBoundingClientRect(),rotated=f.parentElement.dataset.rotated==='true';return ${JSON.stringify(points)}.map(p=>rotated?{x:r.right-p.y,y:r.top+p.x}:{x:r.left+p.x,y:r.top+p.y})})()`);
+  const touch=async(points)=>{const mapped=await physical(points);await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...mapped[0],id:1}]});if(mapped.length>1)await delay(100);for(const p of mapped.slice(1)){await call('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...p,id:1}]});await delay(30)}await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await delay(250)};
+  const pen=await point('nav.mobile-board-tools button[data-interface-control="pen"],.toolbar-pinned button[data-interface-control="pen"]');
+  assert.ok(pen,'No visible pencil on the landscape board');await touch([pen]);
+  await wait('document.querySelector(".lektrus-browser-board-frame").contentDocument.querySelector("section.board").classList.contains("board-tool-pen")','Rotated touch did not activate pencil');
+  const path=await evaluate(`(()=>{const d=document.querySelector('.lektrus-browser-board-frame').contentDocument,b=d.querySelector('section.board').getBoundingClientRect();for(const fy of [.48,.6,.73,.35])for(const fx of [.35,.45,.55]){const p=Array.from({length:9},(_,i)=>({x:Math.round(b.left+b.width*fx)+10*i,y:Math.round(b.top+b.height*fy)}));if(p.every(q=>{const hit=d.elementFromPoint(q.x,q.y);return hit?.closest('section.board')&&!hit.closest('.board-object,button,input,textarea,.toolbar,.board-controls,.mobile-board-tools,.selection-toolbar-screen')}))return p}return null})()`);
+  assert.ok(path,'Cannot find a clear drawing path');await touch(path);
+  const storedPen=`(()=>{const key=Object.keys(localStorage).find(k=>k.endsWith(window.__boardPath.split('/').pop())&&k.includes('document'));try{return JSON.parse(localStorage.getItem(key))?.items?.find(i=>i.kind==='pen')}catch{return null}})()`;
+  const ink=await wait(storedPen,'Real rotated touch stroke was not saved',15000);
+  assert.ok(ink.points.length>1,'Incomplete stroke');
+  const dx=ink.points.at(-1).x-ink.points[0].x,dy=ink.points.at(-1).y-ink.points[0].y;
+  assert.ok(dx>40&&Math.abs(dy)<4,'A logical horizontal stroke was transposed: '+JSON.stringify({dx,dy}));
+  console.log('✓ First loader horizontal; real rotated touch pencil drew logical horizontal ink');
+  const select=await point('nav.mobile-board-tools button[data-interface-control="select"],.toolbar-pinned button[data-interface-control="select"]');
+  assert.ok(select,'No visible select tool');await touch([select]);
+  const zoom=()=>evaluate(`document.querySelector('.lektrus-browser-board-frame').contentDocument.querySelector('.zoom-value').textContent`);
+  const beforeZoom=await zoom(),center=path[4];
+  let pinch=await physical([{x:center.x-16,y:center.y},{x:center.x+16,y:center.y}]);
+  await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:pinch.map((p,id)=>({...p,id}))});
+  for(let i=1;i<=9;i++){
+   pinch=await physical([{x:center.x-16-i*4,y:center.y},{x:center.x+16+i*4,y:center.y}]);
+   await call('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:pinch.map((p,id)=>({...p,id}))});await delay(35);
+  }
+  await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await wait(`document.querySelector('.lektrus-browser-board-frame').contentDocument.querySelector('.zoom-value').textContent!==${JSON.stringify(beforeZoom)}`,'Two-finger pinch did not zoom the rotated board');
+  const title=await point('.board-title');assert.ok(title,'Board title inaccessible while rotated');await touch([title]);
+  const titleFocused=`(()=>{const d=document.querySelector('.lektrus-browser-board-frame').contentDocument;return d.activeElement===d.querySelector('.board-title')})()`;
+  await wait(titleFocused,'Rotated touch did not focus the title field');
+  await call('Input.insertText',{text:'!'});
+  const edited=await evaluate(`document.querySelector('.lektrus-browser-board-frame').contentDocument.querySelector('.board-title').value`);
+  assert.ok(edited.includes('!'),'Real browser typing was not received inside landscape board');
+  await touch([center]);await wait('!'+titleFocused,'Outside touch did not blur the title editor');
+  assert.equal(await evaluate(`document.querySelector('.lektrus-browser-board-frame').contentDocument.querySelector('.board-title').value`),edited);
+  console.log('✓ Real two-finger zoom, keyboard input and outside-tap dismissal in rotated board');
+  // Emulate an unusually short IME viewport in the landscape frame. The
+  // controls themselves are exercised using real rotated touch coordinates.
+  for(const [kind,tool,field] of [
+   ['checklist','button[aria-label^="Чек-лист / задание"]','.checklist-title-input input'],
+   ['flashcard','button[aria-label^="Карточка вопрос–ответ"]','.flashcard-editor-compose textarea'],
+   ['quiz','button[aria-label^="Вопрос / мини-тест"]','.quiz-question-editor textarea'],
+   // Table is created immediately and can occupy the full zoomed-in board;
+   // the other three create no object when Cancel is pressed.
+   ['table','.lektrus-elements-data-action','.table-editor-grid textarea'],
+  ]){
+   const more=await point('.mobile-tools-more');assert.ok(more,'Tool catalogue unavailable');await touch([more]);
+   await wait('!!window.__originalFrame.document.querySelector(".mobile-tools-sheet")','Tool catalogue did not open');
+   await evaluate(`window.__originalFrame.document.querySelector('.mobile-tools-sheet '+${JSON.stringify(tool)}).scrollIntoView({block:'center'})`);
+   const item=await point('.mobile-tools-sheet '+tool);assert.ok(item,kind+' catalogue tool inaccessible');await touch([item]);
+   const empty=await evaluate(`(()=>{const d=window.__originalFrame.document,b=d.querySelector('section.board').getBoundingClientRect();for(const fy of [.48,.6,.73,.35])for(const fx of [.35,.45,.55,.7]){const p={x:b.left+b.width*fx,y:b.top+b.height*fy};const e=d.elementFromPoint(p.x,p.y);if(e?.closest('section.board')&&!e.closest('.board-object,button,input,textarea,.toolbar,.board-controls,.mobile-board-tools,.selection-toolbar-screen'))return p}return null})()`);
+   assert.ok(empty,'No unobstructed editor placement');await touch([empty]);
+   await wait(`!!window.__originalFrame.document.querySelector('.lektrus-touch-editor-portal .${kind}-editor-modal')`,kind+' touch editor did not open');
+   if(kind==='checklist'){
+    assert.equal(await evaluate(`window.__originalFrame.document.querySelectorAll('.checklist-editor-row').length`),1,'Placement tap accidentally added a checklist row');
+    // Older WebViews can retarget the compatibility click after the board's
+    // pointerdown mounted the editor. It has no preceding editor pointerdown.
+    await evaluate(`(()=>{const w=window.__originalFrame;w.document.querySelector('.checklist-add-row').dispatchEvent(new w.MouseEvent('click',{bubbles:true,cancelable:true,detail:1}))})()`);
+    assert.equal(await evaluate(`window.__originalFrame.document.querySelectorAll('.checklist-editor-row').length`),1,'Retargeted placement click added a checklist row');
+   }
+   await evaluate(`window.__originalFrame.document.querySelector(${JSON.stringify(field)}).scrollIntoView({block:'center'})`);
+   const fieldPoint=await point(field);assert.ok(fieldPoint,kind+' input inaccessible');await touch([fieldPoint]);
+   await call('Input.insertText',{text:'QA'});
+   await evaluate(`(()=>{const w=window.__originalFrame,v=new w.EventTarget();Object.assign(v,{width:w.innerWidth,height:165,offsetLeft:0,offsetTop:0});Object.defineProperty(w,'visualViewport',{configurable:true,value:v});w.dispatchEvent(new w.Event('resize'))})()`);
+   await wait(`window.__originalFrame.document.querySelector('.lektrus-touch-editor-portal').dataset.compactHeight==='true'`,kind+' editor ignored short viewport');
+   const geometry=await evaluate(`(()=>{const d=window.__originalFrame.document,m=d.querySelector('.${kind}-editor-modal'),h=m.querySelector('.${kind}-editor-header').getBoundingClientRect(),f=m.querySelector('.${kind}-editor-footer').getBoundingClientRect();return {top:h.top,headerBottom:h.bottom,footerTop:f.top,bottom:f.bottom}})()`);
+   assert.ok(geometry.top>=0&&geometry.bottom<=166&&geometry.footerTop-geometry.headerBottom>=42,kind+' keyboard viewport clipping: '+JSON.stringify(geometry));
+   const header=await point('.'+kind+'-editor-header strong');assert.ok(header,kind+' clipped header');await touch([header]);
+   await wait(`window.__originalFrame.document.activeElement!==window.__originalFrame.document.querySelector(${JSON.stringify(field)})`,kind+' outside touch did not blur input');
+   await evaluate(`delete window.__originalFrame.visualViewport;window.__originalFrame.dispatchEvent(new window.__originalFrame.Event('resize'))`);
+   if(kind==='checklist'){
+    const rows=()=>evaluate(`window.__originalFrame.document.querySelectorAll('.checklist-editor-row').length`);
+    assert.equal(await rows(),1,'Outside tap accidentally added a checklist row');
+    await evaluate(`window.__originalFrame.document.querySelector('.checklist-add-row').scrollIntoView({block:'center'})`);
+    const add=await point('.checklist-add-row');assert.ok(add,'Checklist add row inaccessible');await touch([add]);
+    assert.equal(await rows(),2,'One touch must add exactly one checklist row');
+   }
+   const cancel=await point('.'+kind+'-editor-footer button.secondary'+(kind==='checklist'?':nth-child(3)':''));assert.ok(cancel,kind+' cancel inaccessible');await touch([cancel]);
+   await wait(`!window.__originalFrame.document.querySelector('.${kind}-editor-modal')`,kind+' editor did not close');
+   console.log('✓ '+kind+' editor: input, header and footer accessible with short landscape keyboard');
+  }
+  for(const [w,h,rotated] of [[844,390,false],[768,1024,true],[1024,768,false],[390,844,true]]){
+   await viewport(w,h);
+   await wait(`document.querySelector('.lektrus-browser-board-frame').parentElement.dataset.rotated===String(${rotated})`,'Incorrect orientation after physical rotation');
+   const s=await state();assert.ok(s.width>s.height&&s.bounds[0]>=-1&&s.bounds[1]>=-1&&s.bounds[2]<=w+1&&s.bounds[3]<=h+1,JSON.stringify(s));
+   assert.ok(await evaluate(`document.querySelector('.lektrus-browser-board-frame').contentWindow===window.__originalFrame&&window.__originalFrame.document.querySelector('section.board')===window.__originalBoard`),'Board remounted during rotation');
+   assert.equal((await evaluate(storedPen)).id,ink.id);
+   console.log(`✓ ${w}×${h}: landscape viewport, same board instance and retained ink`);
+  }
+  const back=await point('.board-home-button');assert.ok(back,'Back button unavailable');await touch([back]);
+  // BoardApp may present a return confirmation; answer through the real UI.
+  await wait('!document.querySelector(".lektrus-browser-board-frame")','Back action did not return to portrait workspace',15000);
+  assert.ok(await evaluate('!document.documentElement.classList.contains("lektrus-browser-board-active")&&innerHeight>innerWidth'));
+  const directPath=await evaluate('window.__boardPath');
+  await call('Page.navigate',{url:new URL(directPath,url).href});
+  await wait(boardReady,'Direct link did not reopen landscape board',45000);
+  // A full navigation can replace the renderer. Reapply touch emulation so
+  // subsequent menu actions exercise touch rather than compatibility clicks.
+  await call('Emulation.setTouchEmulationEnabled',{enabled:false});
+  await viewport(390,844);
+  await evaluate(`window.__boardPath=${JSON.stringify(directPath)}`);
+  assert.equal((await evaluate(storedPen)).id,ink.id);
+  console.log('✓ Return to portrait workspace and direct-link reopen preserve saved ink');
+  // Reproduce the old native WebView where CSS viewport units fail to
+  // constrain the menu. Inline geometry must win over the legacy rule.
+  await evaluate(`(()=>{const d=document.querySelector('.lektrus-browser-board-frame').contentDocument,s=d.createElement('style');s.id='legacy-menu-viewport';s.textContent='html body .topbar .topbar-right .topbar-more-menu[open]>.topbar-more-popover{max-height:none!important;overflow:visible!important}';d.head.append(s)})()`);
+  const menu=await point('.topbar-more-menu>summary');assert.ok(menu,'Board actions menu unavailable');await touch([menu]);
+  await wait('!!document.querySelector(".lektrus-browser-board-frame").contentDocument.querySelector(".topbar-more-menu[open] .lektrus-board-menu-pager")','Rotated action menu pager not created');
+  const settings=await point('.topbar-more-popover .lektrus-controls-menu-entry');assert.ok(settings,'First action menu button is not visible');
+  await touch([settings]);
+  await wait('!!document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector(".lektrus-control-settings")','Rotated action menu tap did not open board controls');
+  const closeSettings=await point('.lektrus-control-settings button[aria-label="Закрыть настройки"]');assert.ok(closeSettings,'Board control settings close is not accessible');await touch([closeSettings]);
+  await wait('!document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector(".lektrus-control-settings")','Board control settings did not close');
+  await touch([menu]);
+  await wait('!!document.querySelector(".lektrus-browser-board-frame").contentDocument.querySelector(".topbar-more-menu[open] .lektrus-board-menu-pager")','Rotated menu pager did not return');
+  const menuGeometry=`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),element=f?.contentDocument?.querySelector('.topbar-more-menu[open] .topbar-more-popover');if(!element)return null;const r=element.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:f.contentWindow.innerHeight,scrollable:element.scrollHeight>element.clientHeight,overflow:f.contentWindow.getComputedStyle(element).overflowY,inline:element.style.maxHeight,scrollTop:element.scrollTop}})()`;
+  const menuBounds=await evaluate(menuGeometry);
+  assert.ok(menuBounds&&menuBounds.top>=0&&menuBounds.bottom<=menuBounds.height+1&&menuBounds.scrollable&&menuBounds.overflow==='auto'&&menuBounds.inline.endsWith('px'),JSON.stringify(menuBounds));
+  const scrollX=(menuBounds.left+menuBounds.right)/2;
+  // Start in the middle, not at the physical browser/OS back-gesture edge.
+  const scrollStart=menuBounds.top+(menuBounds.bottom-menuBounds.top)*.66,scrollEnd=menuBounds.top+28;
+  assert.ok(await evaluate(`!!document.querySelector('.lektrus-browser-board-frame').contentDocument.elementFromPoint(${scrollX},${scrollStart})?.closest('.topbar-more-popover')`),'Menu is visually bounded but does not receive touches');
+  await touch(Array.from({length:9},(_,i)=>({x:scrollX,y:scrollStart+(scrollEnd-scrollStart)*i/8})));
+  const swipeScrolled=(await evaluate(menuGeometry)).scrollTop>0;
+  console.log(`Rotated menu swipe: ${swipeScrolled?'delivered':'browser intercepted; explicit paging available'}`);
+  // Verify actual touch reachability of every action, including the final one,
+  // even in browsers that consume the physical swipe before dispatching it.
+  const page=async direction=>{const p=await point(`.lektrus-board-menu-pager button[data-menu-page="${direction}"]`);assert.ok(p,'Menu paging control inaccessible');await touch([p]);};
+  for(let i=0;i<12&&(await evaluate(menuGeometry)).scrollTop>0;i++)await page('previous');
+  assert.equal((await evaluate(menuGeometry)).scrollTop,0,'Previous action paging failed');
+  const reachable=`(()=>{const d=document.querySelector('.lektrus-browser-board-frame').contentDocument;return [...d.querySelectorAll('.topbar-more-popover button:not([data-menu-page])')].map((b,i)=>{const r=b.getBoundingClientRect();return {i,hit:b.contains(d.elementFromPoint(r.x+r.width/2,r.y+r.height/2))}})})()`;
+  const seen=new Set();
+  let actions=await evaluate(reachable);for(const a of actions)if(a.hit)seen.add(a.i);
+  for(let i=0;i<16&&seen.size<actions.length;i++){const before=(await evaluate(menuGeometry)).scrollTop;await page('next');actions=await evaluate(reachable);for(const a of actions)if(a.hit)seen.add(a.i);assert.ok((await evaluate(menuGeometry)).scrollTop>before||seen.size===actions.length,'Next action paging did not advance');}
+  assert.equal(seen.size,actions.length,'Some board actions remain unreachable');
+  await evaluate(`(()=>{const w=document.querySelector('.lektrus-browser-board-frame').contentWindow,v=new w.EventTarget();Object.assign(v,{width:w.innerWidth,height:185,offsetLeft:0,offsetTop:0});Object.defineProperty(w,'visualViewport',{configurable:true,value:v});w.dispatchEvent(new w.Event('resize'))})()`);
+  await wait(`(${menuGeometry})?.bottom<=185`,'Menu did not adapt to a reduced visual viewport');
+  await evaluate(`(()=>{const w=document.querySelector('.lektrus-browser-board-frame').contentWindow;delete w.visualViewport;w.document.querySelector('#legacy-menu-viewport').remove();w.dispatchEvent(new w.Event('resize'))})()`);
+  console.log('✓ Rotated board menu fits even with legacy CSS viewport failure, all actions reachable by real touch paging, and adapts to a reduced viewport');
+  await call('Page.navigate',{url:new URL('/demo/board?scene=math',url).href});
+  await wait(boardReady,'Public demo did not open in landscape',45000);
+  const demoState=await state();assert.equal(demoState.rotated,true);assert.ok(demoState.width>demoState.height);
+  console.log('✓ Public demo board uses the same landscape viewport');
+ }else
+ if(keyboardOnly){
+  await wait('!!document.querySelector(".lektrus-calendar-grid")',"Application did not render",30000);
+  // A fixture inside the actual app documents the shared startup behavior even
+  // for canvas/gesture targets that suppress the browser's default focus change.
+  await evaluate(`(()=>{const f=document.createElement('div');f.id='keyboard-fixture';f.style.cssText='position:fixed;inset:12px;z-index:2147483647;background:white;padding:12px;touch-action:none;display:flex;flex-direction:column;align-items:flex-start;gap:12px';f.innerHTML='<label for="qa-one">First</label><input id="qa-one" value="Retained" style="position:static;width:200px;height:40px"><textarea id="qa-two" style="position:static;width:200px;height:60px"></textarea><div id="qa-outside" style="width:200px;height:160px;touch-action:none">Outside</div>';document.body.append(f);f.querySelector('#qa-outside').addEventListener('pointerdown',e=>e.preventDefault());})()`);
+  const tap=async(selector,dy=0)=>{const p=await rect(selector);assert.ok(await evaluate(`!!document.elementFromPoint(${p.x},${p.y})?.closest(${JSON.stringify(selector)})`),`Touch target obscured: ${selector}`);await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:p.x,y:p.y,id:1}]});if(dy)await call('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:p.x,y:p.y+dy,id:1}]});await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await delay(400);};
+  const focused=()=>evaluate('document.activeElement.id');
+  for(const [width,height] of [[390,844],[768,1024],[1024,768]]){
+   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:true});
+   await call('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
+   await delay(200);
+   await tap('#qa-one');assert.equal(await focused(),'qa-one');
+   await tap('#qa-two');assert.equal(await focused(),'qa-two','A different input must retain focus');
+   await tap('label[for="qa-one"]');assert.equal(await focused(),'qa-one','A field label must retain focus');
+   await tap('#qa-outside',40);assert.equal(await focused(),'qa-one','A drag must not dismiss the keyboard');
+   await tap('#qa-outside');assert.notEqual(await focused(),'qa-one','An outside tap must dismiss the keyboard');
+   assert.equal(await evaluate('document.querySelector("#qa-one").value'),'Retained');
+   console.log(`✓ ${width}×${height}: outside tap, drag, field switch, label and preserved text`);
+  }
+  await evaluate(`document.querySelector('#keyboard-fixture').remove()`);
+  // Reproduce the WebKit keyboard case: the layout viewport stays full size,
+  // while the visual viewport shrinks. This is not a native keyboard test;
+  // the Appium run independently taps the real button with the IME open.
+  for(const [width,height,visibleHeight] of [[390,844,480],[768,1024,600],[1024,768,400]]){
+   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:true});
+   await delay(200);
+   await evaluate(`(()=>{const v=Object.assign(new EventTarget(),{width:${width},height:${height},offsetTop:0,offsetLeft:0,scale:1});Object.defineProperty(window,'visualViewport',{configurable:true,value:v});})()`);
+   await evaluate(`document.querySelector('.lectris-mobile-bottom button[aria-label="Доски"],.lectris-nav-link[aria-label="Доски"]').click()`);
+   await wait('!!document.querySelector(".lectris-library-new")','Board library did not open');
+   await evaluate('document.querySelector(".lectris-library-new").click()');
+   await wait('!!document.querySelector(".lektrus-create-dialog")','Create board dialog did not render');
+   await evaluate(`visualViewport.height=${visibleHeight};visualViewport.dispatchEvent(new Event('resize'))`);
+   await delay(200);
+   const submit=await rect('.lektrus-create-dialog button[type="submit"]');
+   assert.ok(submit.top>=0&&submit.bottom<=visibleHeight,`Create button obscured by keyboard: ${JSON.stringify(submit)}`);
+   await tap('.lektrus-create-dialog>footer button[type="button"]');
+   await wait('!document.querySelector(".lektrus-create-dialog")','Cancel action inaccessible');
+   await evaluate('delete window.visualViewport');
+   console.log(`✓ ${width}×${height}: create board footer stays above reduced visual viewport (${visibleHeight}px)`);
+  }
+  await evaluate(`(async()=>{const {mountPdfFixture}=await import('/scripts/qa-pdf-browser-fixture.tsx');window.__disposePdfFixture=mountPdfFixture();return true})()`);
+  const pdfReady=()=>wait('document.querySelector(".lektrus-pdf-canvas-stage")?.dataset.pdfStatus==="ready"',"Embedded PDF page did not render",30000);
+  const pdfPixel=()=>evaluate(`(()=>{const c=document.querySelector('.lektrus-pdf-canvas'); return Array.from(c.getContext('2d').getImageData(Math.floor(c.width/2),Math.floor(c.height/2),1,1).data)})()`);
+  await pdfReady();assert.deepEqual(await pdfPixel(),[255,0,0,255],"Actual PDF first page pixels");
+  for(const [width,height] of [[390,844],[768,1024],[1024,768]]){
+   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:true});
+   await delay(200);
+   const bounds=await rect('.lektrus-pdf-canvas');assert.ok(bounds.left>=0&&bounds.top>=0&&bounds.right<=width+1&&bounds.bottom<=height+1,JSON.stringify(bounds));
+   await tap('.lektrus-pdf-page-controls button[aria-label="Следующая страница PDF"]');await pdfReady();assert.deepEqual(await pdfPixel(),[0,255,0,255],"Actual PDF second page pixels");
+   await tap('.lektrus-pdf-page-controls button[aria-label="Предыдущая страница PDF"]');await pdfReady();assert.deepEqual(await pdfPixel(),[255,0,0,255],"Actual PDF first page after return");
+   console.log(`✓ ${width}×${height}: PDF canvas rendered actual page pixels, touch pagination stays in viewport`);
+  }
+  const exportPixel=await evaluate(`(async()=>{const {renderPdfPageCanvas}=await import('/src/pdfPagination.ts');const blob=await fetch(document.querySelector('#pdf-fixture').dataset.source).then(r=>r.blob());const c=await renderPdfPageCanvas(blob,3);return Array.from(c.getContext('2d').getImageData(c.width>>1,c.height>>1,1,1).data)})()`);
+  assert.deepEqual(exportPixel,[0,0,255,255],"PNG export rasterizer must render actual third-page pixels");
+  console.log('✓ PDF rasterizer: actual third-page pixels for board PNG export');
+  await evaluate('window.__disposePdfFixture()');
+ }else
  if(interfaceOnly){
   const session={access_token:"test-admin-token",refresh_token:"test-refresh-token",expires_at:Math.floor(Date.now()/1000)+3600,user:studioUser};
   await call("Page.addScriptToEvaluateOnNewDocument",{source:`localStorage.setItem('lektrus.selfhost.session.v1',${JSON.stringify(JSON.stringify(session))})`});
