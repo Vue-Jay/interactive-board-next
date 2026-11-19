@@ -193,3 +193,46 @@ jobs:
           path: ios/DerivedData/Build/Products/Debug-iphonesimulator/App.app
           if-no-files-found: error
           retention-days: 14
+
+  publish-android:
+    name: Publish verified Android APK for the official download page
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [android-network, ios]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: lektrus-android-public-release
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Lektrus-Android-Update-APK
+      - name: Publish the exact signed, smoke-tested artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(git rev-parse HEAD)"
+          [[ "$(git ls-remote origin refs/heads/main | cut -f1)" = "$expected" ]] || { echo 'Superseded release; skip publication'; exit 0; }
+          APK_SIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          "$APK_SIGNER" verify --verbose --print-certs Lektrus-Android.apk
+          sha256sum Lektrus-Android.apk > Lektrus-Android.apk.sha256
+          version="1.0.${GITHUB_RUN_NUMBER}"
+          tag="android-v${version}"
+          # Never replace a public version with bytes from a different build.
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release view "$tag" --json isDraft --jq '.isDraft' | grep -qx false
+            mkdir -p "$RUNNER_TEMP/existing-release"
+            gh release download "$tag" --pattern 'Lektrus-Android.apk.sha256' --dir "$RUNNER_TEMP/existing-release"
+            cmp Lektrus-Android.apk.sha256 "$RUNNER_TEMP/existing-release/Lektrus-Android.apk.sha256"
+            exit 0
+          fi
+          gh release create "$tag" --target "$expected" --title "Lektrus Android $version" --draft \
+            --notes "Official signed Android APK. Source: $expected. Verified on Android API 24, 30 and 36. SHA-256 checksum attached." \
+            Lektrus-Android.apk Lektrus-Android.apk.sha256
+          [[ "$(git ls-remote origin refs/heads/main | cut -f1)" = "$expected" ]] || { echo 'Superseded release; leaving draft unpublished'; exit 0; }
+          gh release edit "$tag" --draft=false --latest

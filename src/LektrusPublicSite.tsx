@@ -7,12 +7,14 @@ import LektrusFeedbackForm from "./LektrusFeedbackForm";
 import {plans,limitLabel} from "./billingStore";
 import "./lektrusMarketing.css";
 import "./lektrusMarketingTypography.css";
+import "./lektrusMarketingDownload.css";
 
 type Page=string;
 const navigation:{id:Page;title:string}[]=[
  {id:"home",title:"Главная"},
  {id:"features",title:"Возможности"},
  {id:"pricing",title:"Тарифы"},
+ {id:"download",title:"Скачать приложение"},
  {id:"help",title:"Помощь и контакты"}
 ];
 const featureGroups=[
@@ -74,6 +76,7 @@ function SiteMenuIcon({name}:{name:string}){
   tools:<><path d="M9 3v7l-5 8.2A2 2 0 0 0 5.7 21h12.6a2 2 0 0 0 1.7-2.8L15 10V3"/><path d="M8 3h8M6.5 15h11"/></>,
   how:<><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/></>,
   pricing:<><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></>,
+  download:<><path d="M12 3v12m-5-5 5 5 5-5M4 16v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></>,
   about:<><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></>,
   help:<><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.6 2.6 0 0 1 5 1c0 1.8-2.5 2.1-2.5 3.8M12 17h.01"/></>,
   atlas:<><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></>,
@@ -257,6 +260,7 @@ export default function LektrusPublicSite(){
       {!copy?.heading&&<span className="marketing-hero-tagline">Онлайн-платформа для обучения</span>}
       <p className="marketing-hero-lead">{copy?.lead||"Lektrus — интерактивное пространство для уроков в классе и онлайн. Объясняйте на общей доске, исследуйте учебные модели, решайте задачи вместе и сохраняйте результаты в одном месте."}</p>
       <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Демо-версия доски <span aria-hidden="true">→</span></DemoLink></div>
+      <a href="#download" onClick={event=>navigate("download",event)} className="marketing-download-home-link"><SiteMenuIcon name="download"/> Скачать Lektrus для Android</a>
      </div>
      <div className="marketing-showcase" aria-label="Автоматическая презентация настоящих экранов Lektrus" data-site-showcase>
       <div className="marketing-showcase-screen" role="img" aria-label="Примеры реальных экранов приложения Lektrus">
@@ -339,6 +343,25 @@ export default function LektrusPublicSite(){
     <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container marketing-pricing-intro"><span className="marketing-eyebrow">{copy?.eyebrow||"Тарифы Lektrus"}</span><h1>{copy?.heading||<>Выберите формат работы <span>под свои задачи</span></>}</h1><p>{copy?.lead||"Ниже указаны тарифы и ограничения, которые сейчас определены в приложении. Платные тарифы находятся в тестовом состоянии, оформление подписки пока недоступно."}</p></section>
     {placed("before-1")}
     <section data-site-section-id="native-1" className="marketing-container marketing-pricing-grid" aria-label="Сравнение тарифов">{plans.map((plan,i)=><article className={"marketing-plan"+(i===1?" marketing-plan-highlight":"")} key={plan.id}><div className="marketing-plan-top"><span className="marketing-eyebrow">{i===0?"Для знакомства":i===1?"Для занятий":"Для групп"}</span><h2>{plan.name}</h2><p>{plan.description}</p></div><strong className="marketing-price">{plan.priceLabel}</strong><dl><div><dt>Доски</dt><dd>{limitLabel(plan.limits.boards)}</dd></div><div><dt>Участники на доске</dt><dd>{limitLabel(plan.limits.collaboratorsPerBoard)}</dd></div><div><dt>Материалы</dt><dd>{plan.limits.storageMb===100?"100 МБ":plan.limits.storageMb===2048?"2 ГБ":plan.limits.storageMb===10240?"10 ГБ":limitLabel(plan.limits.storageMb," МБ")}</dd></div></dl><ul>{plan.features.map(feature=><li key={feature}>{feature}</li>)}</ul><div className="marketing-plan-foot">{i===0?<a href="/app" className="marketing-primary">Начать бесплатно ↗</a>:<span>Тестовый тариф · оформление недоступно</span>}</div></article>)}</section>
+   </>}
+   {page==="download"&&!copy?.replaceDefault&&<>
+    {placed("before-0")}
+    <section data-site-section-id="native-0" data-site-page-hero className="marketing-container marketing-page-hero marketing-download-intro">
+     <span className="marketing-eyebrow">{copy?.eyebrow||"Мобильное приложение"}</span>
+     <h1>{copy?.heading||"Lektrus всегда под рукой"}</h1>
+     <p>{copy?.lead||"Работайте с досками, заданиями и учебными материалами на телефоне или планшете. Установите приложение напрямую с официального сайта."}</p>
+    </section>
+    {placed("before-1")}
+    <section data-site-section-id="native-1" className="marketing-container marketing-download-layout" aria-label="Скачать и установить Lektrus">
+     <article className="marketing-download-card">
+      <div className="marketing-download-card-top"><img src="/lektrus-icon-192.png" alt="" width="64" height="64"/><div><span className="marketing-download-platform">Android</span><h2>Lektrus</h2><p>Телефон и планшет · Android 7.0+</p></div></div>
+      <p>Полноценное приложение с синхронизацией досок и адаптивным интерфейсом. Войдите в свой аккаунт и продолжайте работу.</p>
+      <a className="marketing-primary marketing-download-button" href="https://github.com/Vue-Jay/interactive-board-next/releases/latest/download/Lektrus-Android.apk"><SiteMenuIcon name="download"/><span>Скачать APK</span><span aria-hidden="true">↓</span></a>
+      <div className="marketing-download-meta"><span>Официальная подписанная сборка</span><a href="https://github.com/Vue-Jay/interactive-board-next/releases/latest/download/Lektrus-Android.apk.sha256">SHA-256</a></div>
+     </article>
+     <article className="marketing-download-guide"><h2>Как установить</h2><ol><li><span>01</span><div><strong>Скачайте файл</strong><p>Откройте APK после завершения загрузки.</p></div></li><li><span>02</span><div><strong>Разрешите установку</strong><p>Если Android запросит разрешение для браузера, подтвердите установку из этого источника. Не отключайте Play Защиту.</p></div></li><li><span>03</span><div><strong>Войдите в Lektrus</strong><p>Обновления устанавливаются поверх предыдущей версии с той же подписью.</p></div></li></ol><a href="/app" className="marketing-download-web">На iPhone, iPad или компьютере — открыть веб-версию <span aria-hidden="true">↗</span></a></article>
+    </section>
+    {placed("before-2")}
    </>}
    {page==="help"&&!copy?.replaceDefault&&<>
     {placed("before-0")}

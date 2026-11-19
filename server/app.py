@@ -54,8 +54,8 @@ def jwt_secret() -> str:
     return value
 
 def allowed_origins() -> list[str]:
-    # Exact Capacitor origins only; auth still requires a bearer token for
-    # protected HTTP routes and a valid session for WebSocket connections.
+    # Capacitor bundles are served from exact local origins. The API and
+    # WebSocket handlers still require valid bearer/session credentials.
     configured = (x.strip().rstrip("/") for setting_name in (
         "LEKTRUS_ALLOWED_ORIGINS", "LEKTRUS_DEPLOYMENT_ORIGINS"
     ) for x in os.getenv(setting_name, "").split(",") if x.strip())

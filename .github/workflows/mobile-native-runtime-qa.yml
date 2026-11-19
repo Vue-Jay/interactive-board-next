@@ -1,9 +1,9 @@
 name: Native mobile runtime QA (isolated)
 on:
   # Explicitly scoped acceptance of the updated runtime suite on the mobile
-  # QA PR. Never run the large device matrix on production branches.
+  # QA PR and the final main-targeted pull request. Never run on production pushes.
   pull_request:
-    branches: [qa/mobile-native-base-20261117]
+    branches: [main, qa/mobile-native-base-20261117]
     paths:
       - '.github/workflows/mobile-native-runtime-qa.yml'
       - 'scripts/test-native-mobile-runtime.py'

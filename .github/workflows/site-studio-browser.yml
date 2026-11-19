@@ -10,6 +10,7 @@ on:
       - 'src/SiteObjectLayer.tsx'
       - 'src/marketingSiteConfig.ts'
       - 'src/lektrusMarketing.css'
+      - 'src/lektrusMarketingDownload.css'
       - 'src/siteStudioPresets.ts'
       - 'scripts/test-lektrus-marketing-site.mjs'
       - 'tests/site-studio-*'
@@ -49,6 +50,7 @@ jobs:
           done
           curl -fsS http://127.0.0.1:5173/tests/site-studio-preview.html > /dev/null
           /tmp/lektrus-site-playwright/bin/python tests/site-studio-browser-smoke.py
+          /tmp/lektrus-site-playwright/bin/python tests/site-studio-download-browser.py
       - name: Upload actual screenshots
         if: always()
         uses: actions/upload-artifact@v4

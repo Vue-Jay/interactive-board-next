@@ -1,7 +1,7 @@
 name: Native mobile API and realtime QA (isolated)
 on:
   pull_request:
-    branches: [qa/mobile-native-base-20261117]
+    branches: [main, qa/mobile-native-base-20261117]
   workflow_dispatch:
 permissions:
   contents: read

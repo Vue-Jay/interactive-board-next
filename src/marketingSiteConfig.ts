@@ -2,7 +2,7 @@ import {isRemoteBackendEnabled,remoteRequest} from "./backend";
 
 export const SITE_DRAFT_KEY="lektrus.marketing-site.draft.v1";
 export const SITE_PREVIEW_MESSAGE="lektrus:marketing-site-preview";
-export const BUILTIN_SITE_PAGES=["home","features","pricing","help"] as const;
+export const BUILTIN_SITE_PAGES=["home","features","pricing","download","help"] as const;
 export const RETIRED_SITE_PAGES=["tools","how","about","teachers","students"] as const;
 const retiredSitePages=new Set<string>(RETIRED_SITE_PAGES);
 export type SiteBlockKind="text"|"image"|"cards"|"gallery"|"cta"|"divider"|"faq"|"stats"|"quote"|"video"|"timeline"|"comparison"|"logos"|"spacer"|"checklist"|"button-row";
@@ -32,6 +32,7 @@ const defaults:SiteNavItem[]=[
  {id:"home",title:"Главная",hidden:false},
  {id:"features",title:"Возможности",hidden:false},
  {id:"pricing",title:"Тарифы",hidden:false},
+ {id:"download",title:"Скачать приложение",hidden:false},
  {id:"help",title:"Помощь и контакты",hidden:false}
 ];
 const baseTheme:SiteTheme={accent:"#2563eb",background:"#f8fafc",surface:"#ffffff",ink:"#122238",radius:18,maxWidth:1200};
