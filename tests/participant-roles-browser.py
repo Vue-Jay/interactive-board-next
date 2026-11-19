@@ -293,14 +293,18 @@ def check_service_unavailable(browser, ident):
         expect(screen).to_be_visible(timeout=30000)
         expect(screen.get_by_role("heading",name="Скоро вернёмся")).to_be_visible()
         expect(screen.get_by_role("button",name="Повторить попытку")).to_be_enabled()
+        expect(screen.get_by_role("link",name="Написать в Telegram @lektrus")).to_have_attribute("href","https://t.me/lektrus")
+        expect(screen.get_by_role("link",name="Написать на почту lektrus.system@inbox.ru")).to_have_attribute("href",re.compile(r"^mailto:lektrus\.system@inbox\.ru"))
         geometry=screen.evaluate("""node => {
           const card=node.querySelector('.u-card').getBoundingClientRect();
           const retry=node.querySelector('.u-retry').getBoundingClientRect();
           return {width:node.clientWidth,scrollWidth:node.scrollWidth,
-            left:card.left,right:card.right,top:card.top,bottom:card.bottom,retryHeight:retry.height}
+            left:card.left,right:card.right,top:card.top,bottom:card.bottom,retryHeight:retry.height,
+            contacts:[...node.querySelectorAll('.u-support-link')].map(el=>{const r=el.getBoundingClientRect();return {h:r.height,top:r.top,bottom:r.bottom,left:r.left,right:r.right}})}
         }""")
         assert geometry["scrollWidth"]<=width+1 and geometry["left"]>=0 and geometry["right"]<=width+1,geometry
         assert geometry["retryHeight"]>=44 and geometry["top"]>=0 and geometry["bottom"]<=height+1,geometry
+        assert all(r["h"]>=44 and r["top"]>=0 and r["bottom"]<=height+1 and r["left"]>=0 and r["right"]<=width+1 for r in geometry["contacts"]),geometry
         page.screenshot(path=str(OUT/f"service-unavailable-{width}x{height}.png"))
         page.unroute(health_pattern,unavailable)
         screen.get_by_role("button",name="Повторить попытку").click()
@@ -320,6 +324,26 @@ def check_service_unavailable(browser, ident):
     expect(page.get_by_label("Email",exact=True)).to_be_visible(timeout=30000)
     ctx.close()
 
+    # The public landing page and standalone fallback share the same contacts.
+    ctx=browser.new_context(viewport={"width":390,"height":844},service_workers="block")
+    page=ctx.new_page()
+    page.route(health_pattern,unavailable)
+    page.goto(BASE+"/#home")
+    screen=page.locator(".lektrus-unavailable")
+    expect(screen.get_by_role("heading",name="Скоро вернёмся")).to_be_visible(timeout=30000)
+    expect(screen.locator("[data-u-support-telegram]")).to_be_visible()
+    expect(screen.locator("[data-u-support-email]")).to_be_visible()
+    page.screenshot(path=str(OUT/"service-unavailable-public.png"))
+    page.unroute(health_pattern,unavailable)
+    screen.get_by_role("button",name="Повторить попытку").click()
+    expect(page.locator(".marketing-site")).to_be_visible(timeout=30000)
+    expect(screen).to_have_count(0)
+    assert page.url==BASE+"/#home"
+    page.goto(BASE+"/service-unavailable.html")
+    expect(screen.locator("[data-u-support-telegram]")).to_have_attribute("href","https://t.me/lektrus")
+    expect(screen.locator("[data-u-support-email]")).to_have_attribute("href",re.compile(r"^mailto:lektrus\.system@inbox\.ru"))
+    ctx.close()
+
     # An isolated error is not a service outage; the board retains its
     # original recovery behavior, and a live board never gets replaced.
     ctx=browser.new_context(viewport={"width":1440,"height":900},service_workers="block")
@@ -332,6 +356,48 @@ def check_service_unavailable(browser, ident):
     expect(page.locator(".lektrus-unavailable")).to_have_count(0)
     ctx.close()
     print("Service recovery: five responsive sizes, dark theme, offline/online, retry and active-board safety passed")
+
+def assert_maintenance_layout(site, ordinary):
+    # The desktop fixed sidebar previously covered the icon and entire text.
+    # Exercise the site's actual light palette with a dark OS preference too.
+    for theme in ("light","dark"):
+        site.emulate_media(color_scheme=theme)
+        ordinary.emulate_media(color_scheme=theme)
+        for width,height in ((320,568),(390,844),(768,1024),(1024,768),(1440,900),(1920,1080),(844,390)):
+            site.set_viewport_size({"width":width,"height":height})
+            notice=site.locator(".maintenance-notice-public")
+            expect(notice).to_be_visible()
+            expect(notice.locator("strong")).to_be_visible()
+            geom=site.evaluate("""() => {
+                const banner=document.querySelector('.maintenance-notice-public'),title=banner.querySelector('strong'),main=document.querySelector('#marketing-main'),header=document.querySelector('.marketing-header');
+                const b=banner.getBoundingClientRect(),t=title.getBoundingClientRect(),m=main.getBoundingClientRect(),h=header.getBoundingClientRect();
+                const visible=(r,el)=>el.contains(document.elementFromPoint(r.left+Math.min(8,r.width/2),r.top+r.height/2));
+                return {left:b.left,right:b.right,top:b.top,bottom:b.bottom,mainLeft:m.left,headerRight:h.right,headerBottom:h.bottom,headerFixed:getComputedStyle(header).position==='fixed',textVisible:visible(t,title),iconVisible:visible(banner.querySelector('.maintenance-notice-icon').getBoundingClientRect(),banner),fg:getComputedStyle(title).color,bg:getComputedStyle(banner).backgroundColor,scroll:document.documentElement.scrollWidth};
+            }""")
+            assert geom["left"]>=geom["mainLeft"]-1 and geom["right"]<=width+1, geom
+            assert geom["top"]>=0 and geom["bottom"]<=height,geom
+            assert geom["textVisible"] and geom["iconVisible"],geom
+            assert geom["fg"]=="rgb(23, 69, 121)" and geom["bg"]=="rgb(232, 243, 255)",geom
+            assert geom["scroll"]<=width+2,geom
+            if geom["headerFixed"]:
+                assert geom["left"]>=geom["headerRight"]-1,geom
+            else:
+                assert geom["top"]>=geom["headerBottom"]-1,geom
+            ordinary.set_viewport_size({"width":width,"height":height})
+            screen=ordinary.locator(".maintenance-blocking")
+            expect(screen).to_be_visible()
+            expect(screen.locator("button,a,input,[role=button],[tabindex='0']")).to_have_count(0)
+            expect(screen.get_by_role("heading",name="Скоро вернёмся")).to_be_visible()
+            expect(screen).not_to_contain_text("Проблема с подключением")
+            layout=screen.evaluate("""el=>{const r=el.getBoundingClientRect(),s=el.querySelector('.maintenance-screen').getBoundingClientRect(),heading=el.querySelector('h1').getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,contentWidth:s.width,scroll:el.scrollWidth,headingLeft:heading.left,headingRight:heading.right,headingTop:heading.top,headingBottom:heading.bottom}}""")
+            assert abs(layout["x"])<=1 and abs(layout["y"])<=1 and abs(layout["w"]-width)<=1 and abs(layout["h"]-height)<=1,layout
+            assert layout["scroll"]<=width+1 and layout["headingLeft"]>=0 and layout["headingRight"]<=width+1 and layout["headingBottom"]<=height,layout
+            if width in (390,1440,844):
+                site.screenshot(path=str(OUT/f"maintenance-public-{theme}-{width}.png"))
+                ordinary.screenshot(path=str(OUT/f"maintenance-fullscreen-{theme}-{width}.png"))
+    site.set_viewport_size({"width":390,"height":844})
+    ordinary.set_viewport_size({"width":390,"height":844})
+
 
 def check_maintenance(browser):
     async def promote():
@@ -381,15 +447,18 @@ def check_maintenance(browser):
         expect(selected.locator(".maintenance-notice")).to_contain_text("У вас есть доступ",timeout=15000)
         expect(selected.get_by_role("button",name="Я учусь",exact=True)).to_be_visible()
         expect(site.locator(".maintenance-notice")).to_contain_text("Ведутся технические работы",timeout=15000)
+        assert_maintenance_layout(site,ordinary)
         for page,name in [(admin,"admin"),(ordinary,"blocked-phone"),(selected,"allowed-phone"),(site,"site-phone")]:
             page.screenshot(path=str(OUT/f"maintenance-{name}.png"))
-        # A new unauthenticated user can still reach the login form for an exception.
+        # No controls on the blocked deep link. The normal login entry still works.
         fresh=browser.new_context(viewport={"width":390,"height":844},service_workers="block")
         try:
-            page=fresh.new_page();page.goto(BASE+"/app")
+            page=fresh.new_page();page.goto(BASE+"/board/00000000-0000-4000-8000-000000000000")
             expect(page.locator(".maintenance-blocking")).to_be_visible(timeout=15000)
-            page.get_by_role("button",name="Войти с разрешённым аккаунтом").click()
-            expect(page.get_by_label("Email",exact=True)).to_be_visible(timeout=15000)
+            expect(page.locator(".maintenance-blocking button")).to_have_count(0)
+            login(page,"colleague")
+            expect(page.locator(".maintenance-blocking")).to_have_count(0)
+            expect(page.locator(".maintenance-notice")).to_contain_text("У вас есть доступ",timeout=15000)
         finally:
             fresh.close()
         panel.get_by_role("button",name="Завершить работы").click()
