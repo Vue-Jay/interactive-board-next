@@ -84,7 +84,7 @@ try{
     const safe=targets.find(t=>/главная|home|доски|boards/i.test(t.label||''));
     assert.ok(safe,'No known safe navigation button; refusing random destructive touches');
     for(let i=0;i<iterations;i++){
-      const current=await evaluate(`(()=>{const e=[...document.querySelectorAll('button')].find(b=>(b.getAttribute('aria-label')||b.textContent?.trim())===${JSON.stringify('PLACEHOLDER')});if(!e)return null;const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2,visible:r.width>0&&r.height>0}})()` .replace('PLACEHOLDER',safe.label));
+      const current=await evaluate(`(()=>{const e=[...document.querySelectorAll('button')].find(b=>(b.getAttribute('aria-label')||b.textContent?.trim())===${JSON.stringify(safe.label)});if(!e)return null;const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2,visible:r.width>0&&r.height>0}})()`);
       assert.ok(current?.visible,'Navigation target disappeared during touch storm');
       await touch(current.x,current.y);
     }
