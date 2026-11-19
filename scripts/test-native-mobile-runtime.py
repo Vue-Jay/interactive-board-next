@@ -285,6 +285,34 @@ def home():
     return report
 
 
+def compact_board_library():
+    """Check the real installed phone workspace, including repeated physical taps."""
+    native_tap('.lectris-mobile-bottom button[aria-label="Доски"]')
+    wait(lambda: visible_id('.lectris-library-new'), 'Board library not rendered', 30)
+    toggle = '.lectris-library-actions-toggle'
+    actions = '#library-board-actions'
+    state = lambda: js('''const b=document.querySelector(arguments[0]), a=document.querySelector(arguments[1]);
+      const s=document.querySelector('.lectris-workspace-stage'), d=document.querySelector('.lectris-mobile-bottom');
+      if(!b||!a||!s||!d)return null;
+      const br=b.getBoundingClientRect(), sr=s.getBoundingClientRect(), dr=d.getBoundingClientRect();
+      return {expanded:b.getAttribute('aria-expanded'),actionsVisible:!!a.getClientRects().length,
+        width:innerWidth,scrollWidth:document.documentElement.scrollWidth,
+        buttonWidth:br.width,buttonHeight:br.height,stageBottom:sr.bottom,dockTop:dr.top,
+        paddingBottom:parseFloat(getComputedStyle(s).paddingBottom)};''', toggle, actions)
+    initial = wait(state, 'Compact board library controls unavailable')
+    assert initial['expanded']=='false' and not initial['actionsVisible'], initial
+    assert initial['buttonHeight']>=39 and initial['buttonWidth']>=150, initial
+    assert initial['scrollWidth']<=initial['width']+2, initial
+    assert initial['stageBottom']<=initial['dockTop']+2 and initial['paddingBottom']<=16, initial
+    for index in range(3):
+        native_tap(toggle)
+        wait(lambda: (s:=state()) and s['expanded']=='true' and s['actionsVisible'], f'Actions did not open on tap {index+1}')
+        assert state()['scrollWidth']<=initial['width']+2, state()
+        native_tap(toggle)
+        wait(lambda: (s:=state()) and s['expanded']=='false' and not s['actionsVisible'], f'Actions did not close on tap {index+1}')
+    return {**initial,'physicalToggleRoundTrips':3,'final':state()}
+
+
 def auth_portrait(expected):
     wait(lambda:js('const e=document.querySelector(".auth-form h1");return e&&e.textContent.trim()===arguments[0]',expected),f'Auth page missing: {expected}',60)
     wait(lambda:js('return innerHeight>innerWidth && screen.height>screen.width'),f'{expected}: device did not settle in portrait',30)
@@ -1387,7 +1415,7 @@ SUBJECTS={
 }
 
 EXPECTED_CHECKS=[
-    'home-portrait-layout','more-and-native-keyboard',
+    'home-portrait-layout','compact-board-library','more-and-native-keyboard',
     *['workspace-'+r for r in ('subjects','groups','students','assignments','schedule','progress','materials','templates','notifications','feedback','profile','settings')],
     'create-board-and-landscape','board-landscape-bounds','two-finger-pinch','pencil-touch','marker-touch',
     'eraser-touch','undo-redo','navigation-dock-no-overlap','tool-catalogue','tool-switch-roundtrip','board-reopen-persistence',
@@ -1719,6 +1747,7 @@ def create_session():
 
 def run_full():
     check('home-portrait-layout', home, fatal=True)
+    check('compact-board-library', compact_board_library)
     check('more-and-native-keyboard', more)
     for label, route, selector in [
         ('Предметы','subjects','.lektrus-category-panel'),

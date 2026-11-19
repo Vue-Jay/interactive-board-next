@@ -3,7 +3,7 @@ from copy import deepcopy
 from uuid import UUID, uuid4
 import pytest
 from app import app
-from test_api import client, sign_in, STUDENT, OUTSIDER
+from test_api import client, sign_in, TEACHER, STUDENT, OUTSIDER
 
 @pytest.mark.asyncio
 async def test_participant_roles_and_self_service_teacher_activation(client):
@@ -76,3 +76,41 @@ async def test_guest_can_never_redeem_co_teacher_link(client):
     assert (await client.get(root,headers=guest)).json()["participant_role"]=="student"
     assert (await client.post("/api/v1/account/role/teacher",headers=guest)).status_code==403
     assert (await client.post(root+"/share-links",headers=owner,json={"role":"viewer","participant_role":"co_teacher"})).status_code==422
+
+
+@pytest.mark.asyncio
+async def test_student_and_guest_can_erase_shared_ink_but_not_locked_lesson(client):
+    _, owner = await sign_in(client, "teacher@example.test")
+    _, pupil = await sign_in(client, "student@example.test")
+    _, observer = await sign_in(client, "outsider@example.test")
+    board_id = (await client.post("/api/v1/boards", headers=owner, json={"title":"Shared ink"})).json()["id"]
+    root = "/api/v1/boards/"+board_id
+    for email,role,kind in [("student@example.test","editor","student"),("outsider@example.test","viewer","observer")]:
+        invite=await client.post(root+"/invitations", headers=owner, json={"email":email,"role":role,"participant_role":kind})
+        assert invite.status_code==200, invite.text
+    link=(await client.post(root+"/share-links",headers=owner,json={"role":"editor","participant_role":"student"})).json()
+    guest=await client.post("/api/v1/auth/guest",json={"token":link["token"],"name":"Guest Learner"})
+    assert guest.status_code==200,guest.text
+    guest_headers={"Authorization":"Bearer "+guest.json()["access_token"]}
+    locked={"id":"lesson","kind":"text","text":"Protected task","locked":True,"createdBy":str(TEACHER)}
+    teacher_ink={"id":"shared-pen","kind":"pen","createdBy":str(TEACHER),"points":[{"x":1,"y":2},{"x":3,"y":4}]}
+    compact_stroke={"id":"shared-marker","kind":"marker","createdBy":str(TEACHER),"points":[{"x":10,"y":20},{"x":30,"y":40}]}
+    document={"version":1,"items":[locked,teacher_ink],"ink":[{"after":1,"stroke":compact_stroke}]}
+    saved=await client.put(root+"/document",headers=owner,json={"expected_version":0,"document":document})
+    assert saved.status_code==200,saved.text
+    for headers in (pupil,guest_headers):
+        deleted=await client.patch(root+"/document",headers=headers,json={"expected_version":1,"delta":{"items":{"remove":["lesson"]}}})
+        assert deleted.status_code==403,deleted.text
+        moved=await client.patch(root+"/document",headers=headers,json={"expected_version":1,"delta":{"items":{"upsert":[{**locked,"x":10}]}}})
+        assert moved.status_code==403,moved.text
+        lock_ink=await client.patch(root+"/document",headers=headers,json={"expected_version":1,"delta":{"items":{"upsert":[{**teacher_ink,"locked":True}]}}})
+        assert lock_ink.status_code==403,lock_ink.text
+    erase_delta={"items":{"remove":["shared-pen"]}}
+    assert (await client.patch(root+"/document",headers=observer,json={"expected_version":1,"delta":erase_delta})).status_code==403
+    erased=await client.patch(root+"/document",headers=pupil,json={"expected_version":1,"delta":erase_delta})
+    assert erased.status_code==200,erased.text
+    compact_erase=await client.patch(root+"/document",headers=guest_headers,json={"expected_version":2,"delta":{"set":{"ink":[]}}})
+    assert compact_erase.status_code==200,compact_erase.text
+    actual=(await client.get(root+"/document",headers=owner)).json()
+    assert actual["version"]==3
+    assert actual["document"]["items"]==[locked] and actual["document"]["ink"]==[]

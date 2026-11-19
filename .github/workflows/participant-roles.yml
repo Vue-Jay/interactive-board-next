@@ -12,8 +12,13 @@ permissions:
   contents: read
 jobs:
   browser:
+    name: Participant roles and touch UI — round ${{ matrix.round }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        round: [1, 2, 3]
     services:
       postgres:
         image: postgres:17.6-alpine
@@ -64,6 +69,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: participant-roles-browser-evidence
+          name: participant-roles-browser-evidence-round-${{ matrix.round }}
           path: artifacts/participant-roles
           if-no-files-found: warn

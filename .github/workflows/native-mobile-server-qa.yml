@@ -7,8 +7,13 @@ permissions:
   contents: read
 jobs:
   native-api:
+    name: Native API and realtime — round ${{ matrix.round }}
     runs-on: ubuntu-latest
     timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        round: [1, 2, 3]
     services:
       postgres:
         image: postgres:17.6-alpine
