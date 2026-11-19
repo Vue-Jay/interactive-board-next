@@ -77,12 +77,17 @@ try{
    await check(tag+'-touch-storm',async()=>{
     await send('Page.navigate',{url});
     await wait('!!document.querySelector(".lektrus-calendar-grid")','Workspace did not reload for touch storm');
+    await evaluate(`window.__stressErrors=[];addEventListener('error',e=>__stressErrors.push(e.message));addEventListener('unhandledrejection',e=>__stressErrors.push(String(e.reason)))`);
     const targets=await evaluate(`[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length&&e.getBoundingClientRect().width>=20&&e.getBoundingClientRect().height>=20).map(e=>{const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2,label:e.getAttribute('aria-label')||e.textContent?.trim().slice(0,60)}}).filter(p=>p.x>0&&p.x<innerWidth&&p.y>0&&p.y<innerHeight)`);
     assert.ok(targets.length>0,'No touch targets');
     // Touch the same safe, non-destructive navigation control repeatedly.
     const safe=targets.find(t=>/главная|home|доски|boards/i.test(t.label||''));
     assert.ok(safe,'No known safe navigation button; refusing random destructive touches');
-    for(let i=0;i<iterations;i++)await touch(safe.x,safe.y);
+    for(let i=0;i<iterations;i++){
+      const current=await evaluate(`(()=>{const e=[...document.querySelectorAll('button')].find(b=>(b.getAttribute('aria-label')||b.textContent?.trim())===${JSON.stringify('PLACEHOLDER')});if(!e)return null;const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2,visible:r.width>0&&r.height>0}})()` .replace('PLACEHOLDER',safe.label));
+      assert.ok(current?.visible,'Navigation target disappeared during touch storm');
+      await touch(current.x,current.y);
+    }
     const errors=await evaluate('window.__stressErrors||[]');
     assert.deepEqual(errors,[],'Browser runtime errors after touch storm');
     return {touches:iterations,target:safe.label};
