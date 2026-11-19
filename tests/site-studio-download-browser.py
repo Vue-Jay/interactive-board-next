@@ -30,7 +30,7 @@ with sync_playwright() as p:
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), width
         page.screenshot(path=OUT / f"download-{width}.png", full_page=True)
         page.reload(wait_until="domcontentloaded")
-        assert button.is_visible(), f"direct #download route lost at {width}"
+        button.wait_for()
         print(f"PASS official download {width}x{height}")
         page.close()
     browser.close()

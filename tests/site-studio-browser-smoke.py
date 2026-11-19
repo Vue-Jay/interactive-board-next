@@ -179,7 +179,7 @@ with sync_playwright() as p:
     showcase = visitor.locator(".marketing-showcase")
     showcase.wait_for()
     nav = visitor.locator("#marketing-nav a").all_inner_texts()
-    assert nav == ["Главная", "Возможности", "Тарифы", "Помощь и контакты"], f"Site must have four public tabs: {nav}"
+    assert nav == ["Главная", "Возможности", "Тарифы", "Скачать приложение", "Помощь и контакты"], f"Site must have five public tabs: {nav}"
     assert visitor.locator(".marketing-sidebar-caption").last.text_content().strip() == "Инструменты"
     assert visitor.locator(".marketing-sidebar-tools a").count() == 2
     shortcuts = visitor.locator(".marketing-sidebar-tools a")
@@ -340,7 +340,7 @@ with sync_playwright() as p:
     visitor.locator(".marketing-menu-toggle").click()
     assert visitor.locator(".marketing-menu-toggle").get_attribute("aria-expanded") == "true"
     assert shortcuts.first.is_visible() and shortcuts.nth(1).is_visible()
-    assert visitor.locator("#marketing-nav a").count() == 4
+    assert visitor.locator("#marketing-nav a").count() == 5
     visitor.keyboard.press("Escape")
     assert visitor.locator(".marketing-menu-toggle").get_attribute("aria-expanded") == "false"
     visitor.locator(".marketing-menu-toggle").click()
@@ -365,4 +365,4 @@ with sync_playwright() as p:
     visitor.close()
     browser.close()
 
-print("Site studio browser PASS: four compact public tabs, faster genuine capture animation, project story on Home, prose-only Features, old URLs redirected, responsive desktop/mobile, and existing Site Studio editing.")
+print("Site studio browser PASS: five compact public tabs, faster genuine capture animation, project story on Home, prose-only Features, old URLs redirected, responsive desktop/mobile, and existing Site Studio editing.")

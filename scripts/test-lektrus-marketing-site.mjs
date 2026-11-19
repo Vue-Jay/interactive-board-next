@@ -8,7 +8,7 @@ const css=read("src/lektrusMarketing.css");
 const entry=read("src/LektrusSiteEntry.tsx");
 const billing=read("src/billingStore.ts");
 
-for(const id of ["home","features","pricing","help"]){
+for(const id of ["home","features","pricing","download","help"]){
  assert.ok(site.includes('id:"'+id+'"'),"missing public marketing page: "+id);
 }
 assert.doesNotMatch(site,/\{id:"(?:teachers|students)",title:/,"former teacher/student tabs must be absent from navigation");
@@ -289,7 +289,7 @@ assert.ok(builder.includes('putSiteCanvasTransfer(event,{type:"block"')&&builder
 assert.ok(builder.includes("insertCanvasTransfer(")&&builder.includes('event.data?.type==="lektrus:site-canvas-drop"'),"cross-iframe drop must update the document");
 assert.ok(canvas.includes("event.dataTransfer.getData(SITE_CANVAS_MIME)")&&canvas.includes("SiteDropZone"),"canvas drop zones must actually read HTML5 drag payloads");
 assert.ok(site.includes('placed("before-0")')&&site.includes('placed("end")')&&site.includes("SiteAnchorSlot"),"native sections and page end must accept new blocks");
-for(const id of ["home","features","pricing","help"]){
+for(const id of ["home","features","pricing","download","help"]){
  assert.ok(site.includes('page==="'+id+'"'),"required page must keep native editable sections: "+id);
 }
 assert.doesNotMatch(site,/page==="(?:teachers|students|tools|how|about)"/,"retired pages must not render their old layouts");
@@ -450,4 +450,4 @@ assert.ok(css.includes("@keyframes marketing-showcase-zoom")&&css.includes("@key
 assert.ok(css.includes("min-height:0")&&css.includes(".marketing-project-summary")&&css.includes("margin-top:auto"),"project section and bottom-pinned footer must eliminate awkward whitespace");
 
 assert.doesNotMatch(site,/Это текущие технические ограничения тарифов/,"remove the old pricing disclaimer beneath plans");
-console.log("Lektrus marketing site: four compact pages, project information on Home, prose-only Features, retired routes, dynamic authentic screenshots and legacy migration verified.");
+console.log("Lektrus marketing site: five compact pages, official Android download, project information on Home, prose-only Features, retired routes, dynamic authentic screenshots and legacy migration verified.");
