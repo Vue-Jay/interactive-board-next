@@ -114,7 +114,13 @@ try{
     for(let i=0;i<9;i++){await send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:fingers(14+(i+1)*6)});await sleep(30);}
     await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
     await wait(`document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector(".zoom-value")?.textContent!==${JSON.stringify(beforeZoom)}`,'Two-finger zoom did not change board scale',10000);
-    return {boardTitle:title,createdBy:'physical touch',stroke:'physical CDP gesture',pinch:'physical two-finger zoom'};
+    // Reload the actual board frame and assert the same ink is restored.
+    await evaluate('document.querySelector(".lektrus-browser-board-frame").contentWindow.location.reload();true');
+    await wait('!!document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector("section.board")','Board did not recover after frame reload',30000);
+    await wait(`!!(${savedInk})`,'Pen stroke missing after board reload',15000);
+    const reloadedInk=await evaluate(savedInk);
+    assert.equal(reloadedInk.points,firstInk.points,'Reload altered persisted ink geometry');
+    return {boardTitle:title,createdBy:'physical touch',stroke:'physical CDP gesture',pinch:'physical two-finger zoom',reloadPersistence:true};
    });
    await check(tag+'-keyboard-outside-tap',async()=>{
     await send('Page.navigate',{url});
