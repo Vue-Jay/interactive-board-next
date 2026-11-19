@@ -1193,15 +1193,17 @@ button {
 .minimap-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 7px;
-  color: #858b95;
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .35px;
+  justify-content: flex-start;
+  gap: 6px;
+  margin: 1px 2px 8px;
+  color: var(--lt-text, #34445d);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: 0;
+  text-transform: none;
 }
+.minimap-header svg { flex: none; color: var(--lt-primary, #4264b5); }
 .minimap-world {
   position: relative;
   height: 92px;

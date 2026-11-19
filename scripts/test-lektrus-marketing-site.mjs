@@ -8,7 +8,7 @@ const css=read("src/lektrusMarketing.css");
 const entry=read("src/LektrusSiteEntry.tsx");
 const billing=read("src/billingStore.ts");
 
-for(const id of ["home","features","pricing","download","help"]){
+for(const id of ["home","features","pricing","news","download","help"]){
  assert.ok(site.includes('id:"'+id+'"'),"missing public marketing page: "+id);
 }
 assert.doesNotMatch(site,/\{id:"(?:teachers|students)",title:/,"former teacher/student tabs must be absent from navigation");
@@ -44,6 +44,7 @@ assert.ok(site.includes('href="/tools/atlas"')&&site.includes('href="/tools/labo
 assert.ok(site.includes('"/demo/board?scene="'),"example links must lead to the actual demo board");
 assert.ok(site.includes('<LektrusFeedbackForm compact source="site"/>'),"feedback must use the existing submission service");
 const feedbackComponent=read("src/LektrusFeedbackForm.tsx");
+assert.ok(feedbackComponent.includes("Email нужен, только если хотите получить ответ."),"feedback email hint must be punctuated correctly");
 assert.ok(feedbackComponent.includes('source==="app"&&import.meta.env.VITE_TELEGRAM_URL'),"App-only Telegram link must preserve the configurable legacy fallback");
 assert.ok(site.includes('href="https://t.me/lektrus"')&&site.includes('className="marketing-help-telegram-card"'),"Official Telegram link must be a dedicated contact option above the form");
 assert.ok(site.includes('marketing-help-contact-separator')&&site.indexOf('marketing-help-telegram-card')<site.indexOf('<LektrusFeedbackForm compact source="site"/>'),"Telegram should be visible before the contact form without duplication");
@@ -289,7 +290,7 @@ assert.ok(builder.includes('putSiteCanvasTransfer(event,{type:"block"')&&builder
 assert.ok(builder.includes("insertCanvasTransfer(")&&builder.includes('event.data?.type==="lektrus:site-canvas-drop"'),"cross-iframe drop must update the document");
 assert.ok(canvas.includes("event.dataTransfer.getData(SITE_CANVAS_MIME)")&&canvas.includes("SiteDropZone"),"canvas drop zones must actually read HTML5 drag payloads");
 assert.ok(site.includes('placed("before-0")')&&site.includes('placed("end")')&&site.includes("SiteAnchorSlot"),"native sections and page end must accept new blocks");
-for(const id of ["home","features","pricing","download","help"]){
+for(const id of ["home","features","pricing","news","download","help"]){
  assert.ok(site.includes('page==="'+id+'"'),"required page must keep native editable sections: "+id);
 }
 assert.doesNotMatch(site,/page==="(?:teachers|students|tools|how|about)"/,"retired pages must not render their old layouts");
@@ -427,7 +428,7 @@ assert.doesNotMatch(featuresPage,/Для преподавателей|Для у�
 assert.doesNotMatch(featuresPage,/<DemoLink|<NavLink|<a\b/,"Features must contain no navigation to board creation or demos");
 assert.doesNotMatch(site,/page==="(?:about|how|tools|teachers|students)"/,"retired tabs must not render");
 assert.ok(builder.includes("BUILTIN_SITE_PAGES"),"editor must adopt the built-in pages including downloads");
-assert.deepEqual(model.defaultSiteDocument().navigation.map(x=>x.id),["home","features","pricing","download","help"]);
+assert.deepEqual(model.defaultSiteDocument().navigation.map(x=>x.id),["home","features","pricing","news","download","help"]);
 const legacyNav=[
  {id:"home",title:"Главная",hidden:false},{id:"features",title:"Возможности",hidden:false},
  {id:"tools",title:"Инструменты",hidden:false},{id:"how",title:"Как это работает",hidden:false},
@@ -436,7 +437,10 @@ const legacyNav=[
  {id:"help",title:"Помощь",hidden:false}
 ];
 const normalizedLegacy=model.normalizeSiteDocument({...defaultMarketing,navigation:legacyNav});
-assert.deepEqual(normalizedLegacy.navigation.map(x=>x.id),["home","features","pricing","help","download"],"published legacy menus cannot bring deleted tabs back and must gain downloads");
+assert.deepEqual(normalizedLegacy.navigation.map(x=>x.id),["home","features","pricing","help","news","download"],"published legacy menus cannot bring deleted tabs back and must gain news and downloads");
+assert.ok(read("src/main.tsx").includes('import "./lektrusMarketingNews.css"'),"news CSS must be available on hash navigation");
+assert.ok(read("src/LektrusNews.tsx").includes("Мы в Telegram")&&read("src/LektrusNews.tsx").includes('href="https://t.me/lektrus"'),"news includes official social channel");
+assert.ok(read("src/AdminNewsPanel.tsx").includes('saveAdminNews')&&read("src/AdminScreen.tsx").includes('<AdminNewsPanel/>'),"journal has a real admin editor");
 assert.ok(site.includes('page==="download"')&&site.includes('href="#download"'),"download page must be discoverable from homepage");
 assert.ok(site.includes('releases/latest/download/Lektrus-Android.apk')&&site.includes('Lektrus-Android.apk.sha256'),"download must use the permanent signed release asset and checksum");
 assert.ok(site.includes('Не отключайте Play Защиту'),"installation guidance must preserve Android security");
@@ -451,4 +455,4 @@ assert.ok(css.includes("@keyframes marketing-showcase-zoom")&&css.includes("@key
 assert.ok(css.includes("min-height:0")&&css.includes(".marketing-project-summary")&&css.includes("margin-top:auto"),"project section and bottom-pinned footer must eliminate awkward whitespace");
 
 assert.doesNotMatch(site,/Это текущие технические ограничения тарифов/,"remove the old pricing disclaimer beneath plans");
-console.log("Lektrus marketing site: five compact pages, official Android download, project information on Home, prose-only Features, retired routes, dynamic authentic screenshots and legacy migration verified.");
+console.log("Lektrus marketing site: six compact pages, news journal, official Android download, project information on Home, prose-only Features, retired routes, dynamic authentic screenshots and legacy migration verified.");

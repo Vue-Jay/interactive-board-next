@@ -48,7 +48,7 @@ function NavGlyph({ name }: { name:NavIcon }) {
   return <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{icons[name]}</svg>;
 }
 function WorkspaceModeGlyph({mode}:{mode:"teaching"|"learning"}) {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{mode==="teaching"?<><rect x="8" y="3" width="13" height="12" rx="2"/><path d="M12 7h5M15 10h2M14.5 15v4M11.5 20h6"/><circle cx="5" cy="10" r="2.5"/><path d="M1.5 21v-3a4 4 0 0 1 4-4H8l4-4"/></>:<><path d="m2 9 10-5 10 5-10 5-10-5Z"/><path d="M6 11v5.5c3.5 3 8.5 3 12 0V11M22 9v7"/><path d="M21 19h2l-1-3"/></>}</svg>;
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{mode==="teaching"?<><rect x="3" y="3" width="18" height="13" rx="2.2"/><path d="M8 7.5h8M8 11h5M12 16v5M8 21l4-5 4 5"/></>:<><path d="m2 9 10-5 10 5-10 5-10-5Z"/><path d="M6 11v5.5c3.5 3 8.5 3 12 0V11M22 9v7"/><path d="M21 19h2l-1-3"/></>}</svg>;
 }
 type RolePreview="actual"|AccountRole;
 type Props={children:ReactNode;section:string;role:AccountRole;isAdmin:boolean;name:string;rolePreview?:RolePreview;workspaceMode?:"teaching"|"learning";onWorkspaceMode?:(mode:"teaching"|"learning")=>void;modeBusy?:boolean;modeNotice?:string};

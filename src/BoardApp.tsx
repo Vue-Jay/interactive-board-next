@@ -11019,9 +11019,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           </button>
         </div>
         {items.length > 0 && (
-          <div className="minimap">
+          <div className="minimap" role="region" aria-label="Обзор доски">
             <div className="minimap-header">
-              <span>Карта</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><rect x="9" y="8" width="8" height="7" rx="1.5"/></svg><span>Обзор доски</span>
             </div>
             <div
               className="minimap-world"

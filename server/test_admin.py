@@ -12,6 +12,43 @@ import admin as admin_module
 
 
 @pytest.mark.asyncio
+async def test_site_news_editor_publication_and_access(client):
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET is_admin=true WHERE id=$1", TEACHER)
+    _, administrator = await sign_in(client, "teacher@example.test")
+    _, student = await sign_in(client, "student@example.test")
+    public, manage = "/api/v1/news", "/api/v1/admin/news"
+    payload = {"title":"Анонс для теста", "category":"announcement", "summary":"Краткое описание", "body":"Подробности\nСледующая строка", "version":"1.2", "published":False}
+    assert (await client.get(manage)).status_code == 401
+    assert (await client.get(manage, headers=student)).status_code == 403
+    assert (await client.post(manage, json=payload, headers=student)).status_code == 403
+    result = await client.post(manage, json=payload, headers=administrator)
+    assert result.status_code == 201, result.text
+    article = result.json()
+    article_id = article["id"]
+    target = manage + "/" + article_id
+    assert article["published_at"] is None
+    assert article_id not in [entry["id"] for entry in (await client.get(public)).json()]
+    assert article_id in [entry["id"] for entry in (await client.get(manage, headers=administrator)).json()]
+    assert (await client.put(target, headers=student, json={**payload,"published":True})).status_code == 403
+    assert (await client.put(target, headers=administrator, json={**payload,"summary":" ","published":True})).status_code == 422
+    publish = await client.put(target, headers=administrator, json={**payload,"published":True})
+    assert publish.status_code == 200, publish.text
+    published_at = publish.json()["published_at"]
+    rows = (await client.get(public+"?category=announcement")).json()
+    current = next(row for row in rows if row["id"] == article_id)
+    assert current["body"] == payload["body"] and current["published_at"] == published_at
+    assert "created_at" not in current and "updated_at" not in current
+    assert article_id not in [row["id"] for row in (await client.get(public+"?category=feature")).json()]
+    edited = await client.put(target, headers=administrator, json={**payload,"title":"Уточнённый анонс","published":True})
+    assert edited.json()["published_at"] == published_at
+    assert (await client.get(public+"?limit=51")).status_code == 422
+    archived = await client.put(target, headers=administrator, json=payload)
+    assert archived.status_code == 200 and archived.json()["published_at"] is None
+    assert article_id not in [row["id"] for row in (await client.get(public)).json()]
+
+
+@pytest.mark.asyncio
 async def test_global_interface_layout_is_shared_and_admin_write_only(client):
     async with app.state.pool.acquire() as conn:
         await conn.execute("UPDATE account_users SET is_admin=true WHERE id=$1", TEACHER)

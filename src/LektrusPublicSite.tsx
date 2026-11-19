@@ -4,6 +4,7 @@ import {SiteCustomPage,SiteAnchorSlot} from "./SiteEditableSections";
 import {SiteObjectLayer} from "./SiteObjectLayer";
 import {commandFromKeyboard,type StudioCommand} from "./siteStudioCommands";
 import LektrusFeedbackForm from "./LektrusFeedbackForm";
+import LektrusNews from "./LektrusNews";
 import {plans,limitLabel} from "./billingStore";
 import "./lektrusMarketing.css";
 import "./lektrusMarketingTypography.css";
@@ -13,6 +14,7 @@ const navigation:{id:Page;title:string}[]=[
  {id:"home",title:"Главная"},
  {id:"features",title:"Возможности"},
  {id:"pricing",title:"Тарифы"},
+ {id:"news",title:"Новости и обновления"},
  {id:"download",title:"Скачать приложение"},
  {id:"help",title:"Помощь и контакты"}
 ];
@@ -75,6 +77,7 @@ function SiteMenuIcon({name}:{name:string}){
   tools:<><path d="M9 3v7l-5 8.2A2 2 0 0 0 5.7 21h12.6a2 2 0 0 0 1.7-2.8L15 10V3"/><path d="M8 3h8M6.5 15h11"/></>,
   how:<><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/></>,
   pricing:<><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></>,
+  news:<><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h3M14 15h2M8 18h8"/></>,
   download:<><path d="M12 3v12m-5-5 5 5 5-5M4 16v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></>,
   phone:<><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10 5.5h4M11 18.5h2"/></>,
   monitor:<><rect x="3" y="3.5" width="18" height="13" rx="2"/><path d="M12 17v4M8 21h8"/></>,
@@ -348,6 +351,13 @@ export default function LektrusPublicSite(){
     {placed("before-1")}
     <section data-site-section-id="native-1" className="marketing-container marketing-pricing-grid" aria-label="Сравнение тарифов">{plans.map((plan,i)=><article className={"marketing-plan"+(i===1?" marketing-plan-highlight":"")} key={plan.id}><div className="marketing-plan-top"><span className="marketing-eyebrow">{i===0?"Для знакомства":i===1?"Для занятий":"Для групп"}</span><h2>{plan.name}</h2><p>{plan.description}</p></div><strong className="marketing-price">{plan.priceLabel}</strong><dl><div><dt>Доски</dt><dd>{limitLabel(plan.limits.boards)}</dd></div><div><dt>Участники на доске</dt><dd>{limitLabel(plan.limits.collaboratorsPerBoard)}</dd></div><div><dt>Материалы</dt><dd>{plan.limits.storageMb===100?"100 МБ":plan.limits.storageMb===2048?"2 ГБ":plan.limits.storageMb===10240?"10 ГБ":limitLabel(plan.limits.storageMb," МБ")}</dd></div></dl><ul>{plan.features.map(feature=><li key={feature}>{feature}</li>)}</ul><div className="marketing-plan-foot">{i===0?<a href="/app" className="marketing-primary">Начать бесплатно ↗</a>:<span>Тестовый тариф · оформление недоступно</span>}</div></article>)}</section>
    </>}
+   {page==="news"&&!copy?.replaceDefault&&<>
+    {placed("before-0")}
+    <section data-site-section-id="native-0" data-site-page-hero className="marketing-container marketing-page-hero marketing-news-intro"><span className="marketing-eyebrow">{copy?.eyebrow||"Журнал Lektrus"}</span><h1>{copy?.heading||"Новости и обновления"}</h1><p>{copy?.lead||"Следите за развитием Lektrus: новые возможности, улучшения и анонсы будущих функций."}</p></section>
+    {placed("before-1")}
+    <LektrusNews/>
+    {placed("before-2")}
+   </>}
    {page==="download"&&!copy?.replaceDefault&&<>
     {placed("before-0")}
     <section data-site-section-id="native-0" data-site-page-hero className="marketing-container marketing-page-hero marketing-download-intro">
@@ -422,6 +432,7 @@ export default function LektrusPublicSite(){
        <span className="marketing-footer-home-label">На сайте</span>
        <NavLink id="features" title="Возможности"/>
        <NavLink id="pricing" title="Тарифы"/>
+       <NavLink id="news" title="Новости и обновления"/>
        <NavLink id="help" title="Помощь и контакты"/>
       </nav>
       <nav className="marketing-footer-home-links" aria-label="Учебные инструменты">
@@ -437,7 +448,7 @@ export default function LektrusPublicSite(){
     </div>:
     <div className="marketing-container">
      <span>© {new Date().getFullYear()} Lektrus</span>
-     <div className="marketing-footer-end"><NavLink id="features" title="Возможности"/><NavLink id="help" title="Помощь"/><a href="/app">Открыть приложение ↗</a></div>
+     <div className="marketing-footer-end"><NavLink id="features" title="Возможности"/><NavLink id="news" title="Новости"/><NavLink id="help" title="Помощь"/><a href="/app">Открыть приложение ↗</a></div>
     </div>}
   </footer>
   {isPreview&&(previewSelection||previewObject)&&<div className="site-canvas-selection-actions" role="toolbar" aria-label="Действия над выделенным элементом">
