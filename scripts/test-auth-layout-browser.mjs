@@ -38,6 +38,17 @@ try{
   await new Promise((resolve,reject)=>{socket.addEventListener('open',resolve,{once:true});socket.addEventListener('error',reject,{once:true});});
   socket.addEventListener('message',event=>{const r=JSON.parse(event.data),p=pending.get(r.id);if(!p)return;pending.delete(r.id);r.error?p.reject(new Error(r.error.message)):p.resolve(r.result);});
   await send('Page.enable');
+  // This is an isolated keyboard/form geometry test and the preview origin
+  // is intentionally not allowed by production CORS. Stub just public health
+  // so that availability checks do not replace the form during resize.
+  await send('Page.addScriptToEvaluateOnNewDocument',{source:`(() => {
+    const original=window.fetch.bind(window);
+    window.fetch=(input,init)=>{
+      const url=new URL(typeof input==='string'||input instanceof URL?String(input):input.url,location.href);
+      if(url.pathname==='/api/v1/health')return Promise.resolve(new Response(JSON.stringify({ok:true,service:'lektrus-selfhost'}),{status:200,headers:{'Content-Type':'application/json'}}));
+      return original(input,init);
+    };
+  })();`});
   // Capacitor's custom platform exercises the native layout path even when
   // Chromium reports a desktop mouse, exactly the BlueStacks edge case.
   const native=await send('Page.addScriptToEvaluateOnNewDocument',{source:`window.CapacitorCustomPlatform={name:'android'};`});
