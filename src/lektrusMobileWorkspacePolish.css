@@ -94,7 +94,7 @@
   .lectris-workspace-stage .lectris-library-toolbar .lectris-library-filters {grid-column:1/-1;grid-row:2}
   .lectris-workspace-stage .lectris-library-toolbar .lectris-library-sort {grid-column:1;grid-row:3;display:block!important}
   .lectris-workspace-stage .lectris-library-toolbar .lectris-library-sort-label {display:none}
-  .lectris-workspace-stage .lectris-library-toolbar .lectris-library-sort select {min-height:40px!important;min-width:0!important;padding-inline:8px!important}
+  .lectris-workspace-stage .lectris-library-toolbar .lectris-library-sort select {width:100%!important;max-width:100%!important;min-height:40px!important;min-width:0!important;padding-inline:8px!important}
   .lectris-workspace-stage .lectris-library-toolbar .lectris-library-actions-toggle {display:flex!important;align-items:center;justify-content:flex-start;gap:5px;grid-column:2;grid-row:3;width:100%;min-height:40px;padding:7px 6px;border:1px solid var(--lt-line);border-radius:10px;background:var(--lt-subtle);color:var(--lt-text);font:inherit;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
   .lectris-library-actions-toggle svg {flex:none;width:14px;height:14px}
   .lectris-library-actions-toggle svg:last-child {margin-left:auto;transition:transform .15s}
@@ -117,6 +117,10 @@
   .access-backdrop .invite-modal .lektrus-share-roles {grid-template-columns:1fr!important;gap:6px}
   .access-backdrop .invite-modal .lektrus-share-roles>button {min-height:52px;padding:9px 12px}
   .access-backdrop .invite-modal .access-person select {max-width:100%;min-height:40px}
+}
+
+@media(max-width:360px) and (orientation:portrait) {
+  .lectris-workspace-stage .lectris-library-grid .lectris-library-preview {height:100px!important}
 }
 
 @media(max-height:480px) and (orientation:landscape) {

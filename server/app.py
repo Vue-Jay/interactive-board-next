@@ -1057,6 +1057,7 @@ async def board_events(websocket: WebSocket, board_id: UUID):
             "user_id": str(user["id"]),
             "name": str(user["display_name"] or "Участник")[:100],
             "role": current_role,
+            "participant_role": user["participant_role"] or ("owner" if current_role == "owner" else "observer" if current_role == "viewer" else "student"),
             "online_at": str(int(time.time() * 1000)),
         }
         already_present = any(
@@ -1102,6 +1103,14 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                     websocket.app.state.pool, board_id, websocket, token, message.get("type")
                 )
                 current_role = refreshed_user["role"]
+                participant_role = refreshed_user["participant_role"] or ("owner" if current_role == "owner" else "observer" if current_role == "viewer" else "student")
+                updated_presence = []
+                for meta in _subscriber_users.get(board_id, {}).values():
+                    if meta["user_id"] == str(refreshed_user["id"]) and (meta["role"] != current_role or meta.get("participant_role") != participant_role):
+                        meta.update(role=current_role, participant_role=participant_role)
+                        updated_presence.append(meta)
+                if updated_presence:
+                    await announce_presence(board_id, joins=[updated_presence[0]], pool=websocket.app.state.pool)
                 if message.get("type") == "ping":
                     await websocket.send_json({"type": "pong", "version": refreshed_user["version"]})
                     continue

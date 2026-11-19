@@ -97,7 +97,7 @@ import { type AccountRole } from "./accountRoleStore";
 import { materialBlob, markMaterialUsed, type Material } from "./materialsStore";
 import ShareDialog from "./ShareDialog";
 import { Capacitor } from "@capacitor/core";
-import { BOARD_ROLE_LABELS, type AuthUser } from "./authStore";
+import { BOARD_ROLE_LABELS, PARTICIPANT_ROLE_LABELS, type AuthUser } from "./authStore";
 import { boardStorageKey, touchBoard, type BoardSummary } from "./boardStore";
 import { isRemoteBackendEnabled, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
 import { selfhostReadDocument, selfhostSaveDocument, selfhostWatchDocument, SelfhostHttpError } from "./selfhostApi";
@@ -8319,7 +8319,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 <span className="presence-avatar" aria-hidden="true"><UserAvatar/></span>
                 <span className="presence-person-copy">
                   <b>{user.name}{user.userId === authUser.id ? " · Вы" : ""}</b>
-                  <small>{BOARD_ROLE_LABELS[user.role]}{remoteWork[user.userId]?.editingId ? " · редактирует объект" : remoteWork[user.userId]?.selectedIds.length ? ` · выбрано: ${remoteWork[user.userId].selectedIds.length}` : ""}</small>
+                  <small>{user.participantRole?PARTICIPANT_ROLE_LABELS[user.participantRole]:BOARD_ROLE_LABELS[user.role]}{remoteWork[user.userId]?.editingId ? " · редактирует объект" : remoteWork[user.userId]?.selectedIds.length ? ` · выбрано: ${remoteWork[user.userId].selectedIds.length}` : ""}</small>
                 </span>
                 {canManageBoard && user.userId !== authUser.id && <button
                   type="button"
@@ -8339,7 +8339,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 <span className="presence-avatar" aria-hidden="true"><UserAvatar/></span>
                 <span className="presence-person-copy">
                   <b>{authUser.name} · Вы</b>
-                  <small>{BOARD_ROLE_LABELS[boardSummary.role]}</small>
+                  <small>{boardSummary.participantRole?PARTICIPANT_ROLE_LABELS[boardSummary.participantRole]:BOARD_ROLE_LABELS[boardSummary.role]}</small>
                 </span>
               </div>}
             </div>
@@ -8363,7 +8363,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               <button type="button" className="lektrus-controls-menu-entry" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setControlSettingsOpen(true)}}><Icon name="settings" size={17}/><span>Управление доской</span></button>
               <div className="topbar-menu-account">
                 <span className="account-avatar" aria-hidden="true"><UserAvatar/></span>
-                <span><strong>{authUser.name}</strong><small>{BOARD_ROLE_LABELS[boardSummary.role]}{authUser.email?` · ${authUser.email}`:""}</small></span>
+                <span><strong>{authUser.name}</strong><small>{boardSummary.participantRole?PARTICIPANT_ROLE_LABELS[boardSummary.participantRole]:BOARD_ROLE_LABELS[boardSummary.role]}{authUser.email?` · ${authUser.email}`:""}</small></span>
               </div>
               <div className="topbar-menu-section">
                 {(quizItems.length>0||flashcardItems.length>0)&&<button onClick={()=>setStudyOpen(true)}><Icon name="quiz" size={16}/><span>Учебный режим</span><b>{quizItems.length+flashcardItems.length}</b></button>}

@@ -43,7 +43,7 @@ export type SelfhostLiveInkPacket={
   cancelled?:boolean;
   cut_ids?:string[];
 };
-export type SelfhostPresenceUser={user_id:string;name:string;role:SelfhostBoardRole;online_at?:string};
+export type SelfhostPresenceUser={user_id:string;name:string;role:SelfhostBoardRole;participant_role?:SelfhostParticipantRole;online_at?:string};
 export type SelfhostLiveEvent=
   | {type:"cursor";client_id:string;user_id:string;name:string;role:SelfhostBoardRole;x:number;y:number;sent_at:number}
   | (SelfhostLiveInkPacket&{user_id:string;name:string;role:SelfhostBoardRole;sent_at:number})
