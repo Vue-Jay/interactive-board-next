@@ -25,7 +25,7 @@ const KEY="onlinerepetitor.billing.local.v187";
 
 export const plans:PlanDefinition[]=[
   {id:"free",name:"Free",description:"Для знакомства и индивидуальных занятий",priceLabel:"0 ₽",limits:{boards:5,collaboratorsPerBoard:6,storageMb:250},features:["5 собственных досок","6 участников одновременно, включая владельца","5 учеников в базе · 1 группа","250 МБ хранилища · до 25 МБ на файл","3 личных шаблона · история за 7 дней","Все инструменты, экспорт, локальный помощник","Занятия без ограничения времени"]},
-  {id:"pro",name:"Pro",description:"Для регулярной работы без тарифных лимитов",priceLabel:"299 ₽ / мес.",limits:{boards:null,collaboratorsPerBoard:null,storageMb:null},features:["Неограниченно досок, участников и учеников","Неограниченно групп, материалов и шаблонов","Вся сохранённая история изменений","Все возможности Free","2 990 ₽ в год · экономия 598 ₽","Действуют общие технические пределы безопасности"]},
+  {id:"pro",name:"Pro",description:"Для регулярных занятий без ограничений по доскам и участникам",priceLabel:"299 ₽ / мес.",limits:{boards:null,collaboratorsPerBoard:null,storageMb:5120},features:["Доски, участники и ученики — без тарифного лимита","Неограниченно групп и личных шаблонов","5 ГБ хранилища · до 50 МБ на файл","100 последних версий истории","Все возможности Free","2 990 ₽ в год · экономия 598 ₽","Действуют общие технические пределы безопасности"]},
 ];
 
 const defaultSubscription=():LocalSubscription=>({planId:"free",status:"active",trialEndsAt:null,periodEndsAt:null,updatedAt:new Date().toISOString()});

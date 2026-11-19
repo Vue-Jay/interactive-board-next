@@ -76,7 +76,13 @@ BEGIN
   IF TG_OP='UPDATE' THEN previous:=billing_template_bytes(OLD.assets); END IF;
  END IF;
  PERFORM billing_lock(owner);
- IF billing_unlimited(owner) THEN RETURN NEW; END IF;
+ IF billing_unlimited(owner) THEN
+  IF NOT EXISTS(SELECT 1 FROM account_users WHERE id=owner AND is_admin)
+     AND extra>previous AND billing_storage(owner)+extra-previous>5368709120 THEN
+   PERFORM billing_fail('storage_pro');
+  END IF;
+  RETURN NEW;
+ END IF;
  IF TG_TABLE_NAME='board_templates' THEN
   IF TG_OP='INSERT' AND (SELECT count(*) FROM board_templates WHERE owner_id=owner)>=3 THEN PERFORM billing_fail('templates'); END IF;
  ELSIF extra>26214400 THEN PERFORM billing_fail('file'); END IF;

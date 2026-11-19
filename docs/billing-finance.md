@@ -3,7 +3,7 @@
 Checkout is disabled. Migration 104 resets existing test subscriptions once; subsequent administrator grants are effective on the server, not in local storage.
 
 - Free: five own boards, six simultaneous unique participants (owner seat reserved), five registered students, one group, 250 MiB retained file storage, 25 MiB per file, three personal templates, seven days of available history.
-- Pro: no commercial count/storage/time limits. Existing technical safety limits (50 MiB per file, 100 WebSocket connections per board and 100 retained history revisions) are unchanged.
+- Pro: 5 GiB retained file storage, 100 latest retained history revisions, no commercial count caps for boards, participants, students, groups or templates. Existing technical safety limits (50 MiB single file and 100 WebSocket connections per board) remain.
 - Shared board consumption is billed to its owner. An expired subscription never removes boards or files.
 
 ## Connecting a provider

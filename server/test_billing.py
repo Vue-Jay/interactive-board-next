@@ -86,3 +86,20 @@ async def test_finance_admin_only_and_manual_grants_not_revenue(client):
         assert await settle_verified_order(conn,order,"test","p1",29900,"RUB")==first
     report=(await client.get(url,headers=admin)).json()
     assert report["totals"]["sales"]==29900 and report["totals"]["net"]==17400
+
+@pytest.mark.asyncio
+async def test_pro_storage_limit(client):
+    _, owner=await sign_in(client,"teacher@example.test")
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET subscription_plan='pro',subscription_until=now()+interval '1 day' WHERE id=$1",TEACHER)
+    board=(await client.post("/api/v1/boards",headers=owner,json={"title":"Pro storage"})).json()["id"]
+    async with app.state.pool.acquire() as conn:
+        await conn.executemany("""INSERT INTO board_assets(board_id,asset_id,storage_name,content_type,size_bytes,sha256,created_by)
+            VALUES($1,$2,$3,'application/pdf',$4,$5,$6)""",
+            [(UUID(board),str(i),uuid4(),52428800,"0"*64,TEACHER) for i in range(102)])
+        await conn.execute("""INSERT INTO board_assets(board_id,asset_id,storage_name,content_type,size_bytes,sha256,created_by)
+            VALUES($1,'fill',$2,'application/pdf',20971520,$3,$4)""", UUID(board),uuid4(),"0"*64,TEACHER)
+        with pytest.raises(Exception,match="LEKTRUS_PLAN:storage_pro"):
+            await conn.execute("""INSERT INTO board_assets(board_id,asset_id,storage_name,content_type,size_bytes,sha256,created_by)
+                VALUES($1,'extra',$2,'application/pdf',1,$3,$4)""",UUID(board),uuid4(),"0"*64,TEACHER)
+    assert (await client.get("/api/v1/billing",headers=owner)).json()["usage"]["storage_bytes"]==5368709120
