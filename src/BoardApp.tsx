@@ -7484,6 +7484,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const miniBottom = minimapBounds.y + minimapBounds.height + miniPad;
   const miniW = Math.max(1, miniRight - miniX);
   const miniH = Math.max(1, miniBottom - miniY);
+  // Draw the intersection inside the map instead of letting a huge viewport
+  // outline disappear behind its clipped edges (or leave a single blue line).
+  const miniViewport = visibleWorld ? {
+    left: Math.max(0, (visibleWorld.x - miniX) / miniW * 100),
+    top: Math.max(0, (visibleWorld.y - miniY) / miniH * 100),
+    right: Math.min(100, (visibleWorld.x + visibleWorld.width - miniX) / miniW * 100),
+    bottom: Math.min(100, (visibleWorld.y + visibleWorld.height - miniY) / miniH * 100),
+  } : null;
   // Retain minimap React elements between camera frames. Their geometry
   // depends on content/bounds and selection, not on every pointer movement.
   const minimapMarkers = useMemo(() => minimapObjects.slice(0, 400).map(item => (
@@ -11019,9 +11027,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           </button>
         </div>
         {items.length > 0 && (
-          <div className="minimap" role="region" aria-label="Обзор доски">
+          <div className="minimap" role="region" aria-label="Навигатор доски">
             <div className="minimap-header">
-              <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><rect x="9" y="8" width="8" height="7" rx="1.5"/></svg><span>Обзор доски</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15.8 8.2-2.2 5.4-5.4 2.2 2.2-5.4 5.4-2.2Z" fill="currentColor" strokeWidth="1.2"/></svg><span>Навигатор</span>
             </div>
             <div
               className="minimap-world"
@@ -11041,14 +11049,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               }}
             >
               {minimapMarkers}
-              {visibleWorld && (
+              {miniViewport && miniViewport.right > miniViewport.left && miniViewport.bottom > miniViewport.top && (
                 <span
                   className="minimap-viewport"
                   style={{
-                    left: `${((visibleWorld.x - miniX) / miniW) * 100}%`,
-                    top: `${((visibleWorld.y - miniY) / miniH) * 100}%`,
-                    width: `${(visibleWorld.width / miniW) * 100}%`,
-                    height: `${(visibleWorld.height / miniH) * 100}%`,
+                    left: `calc(${miniViewport.left}% + 1px)`,
+                    top: `calc(${miniViewport.top}% + 1px)`,
+                    right: `calc(${100 - miniViewport.right}% + 1px)`,
+                    bottom: `calc(${100 - miniViewport.bottom}% + 1px)`,
+                    width: "auto", height: "auto",
                   }}
                 />
               )}

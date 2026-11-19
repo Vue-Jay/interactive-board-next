@@ -7,22 +7,26 @@
 .marketing-site .marketing-news-toolbar button{min-height:38px;border:0;padding:7px 14px;border-radius:9px;background:transparent;color:#486482;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
 .marketing-site .marketing-news-toolbar button[aria-pressed=true]{background:#fff;color:var(--marketing-blue);box-shadow:0 2px 7px #193e6b15}
 .marketing-site .marketing-news-toolbar button:hover{color:var(--marketing-blue)}
-.marketing-site .marketing-news-feed{display:grid;gap:13px}
-.marketing-site .marketing-news-card,.marketing-site .marketing-news-state{min-width:0;box-sizing:border-box;background:var(--marketing-white);border:1px solid var(--marketing-line);border-radius:18px;padding:clamp(18px,2.1vw,28px);box-shadow:0 6px 18px #16395b08}
-.marketing-site .marketing-news-card-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:15px;color:#3460a2}
-.marketing-site .marketing-news-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:11px;background:#e6efff;color:#2563eb;flex:none}
-.marketing-site .marketing-news-kind,.marketing-site .marketing-news-version{font-size:11px;font-weight:750;line-height:1.4;border-radius:6px;padding:4px 8px;background:#eaf1ff;color:#2857ac}
+.marketing-site .marketing-news-feed{display:grid;grid-template-columns:minmax(0,1fr);grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));align-items:start;gap:12px}
+.marketing-site .marketing-news-card,.marketing-site .marketing-news-state{min-width:0;box-sizing:border-box;background:var(--marketing-white);border:1px solid var(--marketing-line);border-radius:14px;padding:14px 16px 10px;box-shadow:0 3px 12px #16395b08}
+.marketing-site .marketing-news-card-top{display:flex;align-items:center;gap:9px;margin-bottom:9px;color:#3460a2}
+.marketing-site .marketing-news-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:#e6efff;color:#2563eb;flex:none}
+.marketing-site .marketing-news-icon svg{width:20px;height:20px}
+.marketing-site .marketing-news-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-width:0;flex:1}
+.marketing-site .marketing-news-kind,.marketing-site .marketing-news-version,.marketing-site .marketing-news-soon{font-size:10px;font-weight:750;line-height:1.4;border-radius:5px;padding:3px 6px;background:#eaf1ff;color:#2857ac;white-space:nowrap}
 .marketing-site .news-category-feature .marketing-news-icon,.marketing-site .news-category-feature .marketing-news-kind{background:#e4f4ee;color:#216f55}
 .marketing-site .news-category-announcement .marketing-news-icon,.marketing-site .news-category-announcement .marketing-news-kind{background:#f1eafe;color:#7248a6}
 .marketing-site .marketing-news-version{color:#617994;background:#f1f4f8}
-.marketing-site .marketing-news-card-top time{margin-left:auto;font-size:12px;color:var(--marketing-muted)}
-.marketing-site .marketing-news-card h2{font-size:clamp(22px,2.1vw,29px);font-weight:760;line-height:1.25;letter-spacing:-.025em;overflow-wrap:anywhere}
-.marketing-site .marketing-news-card>p{margin:8px 0 13px;color:var(--marketing-muted);font-size:15px;line-height:1.65;overflow-wrap:anywhere}
-.marketing-site .marketing-news-detail summary{display:inline-flex;align-items:center;gap:10px;min-height:34px;color:var(--marketing-blue);font-size:14px;font-weight:700;cursor:pointer;list-style:none}
+.marketing-site .marketing-news-soon{background:#fff0d9;color:#94580e;display:inline-flex;align-items:center;gap:4px}
+.marketing-site .marketing-news-soon::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+.marketing-site .marketing-news-card-top time{margin-left:auto;font-size:10px;color:var(--marketing-muted);white-space:nowrap}
+.marketing-site .marketing-news-card h2{margin:0;font-size:18px;font-weight:760;line-height:1.26;letter-spacing:-.018em;overflow-wrap:anywhere;text-wrap:pretty}
+.marketing-site .marketing-news-card>p{margin:6px 0 4px;color:var(--marketing-muted);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.marketing-site .marketing-news-detail summary{display:inline-flex;align-items:center;gap:7px;min-height:30px;color:var(--marketing-blue);font-size:12px;font-weight:700;cursor:pointer;list-style:none}
 .marketing-site .marketing-news-detail summary::-webkit-details-marker{display:none}
 .marketing-site .marketing-news-detail[open] summary span{transform:rotate(90deg)}
-.marketing-site .marketing-news-body{margin-top:9px;padding-top:15px;border-top:1px solid var(--marketing-line);white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px;line-height:1.7;color:var(--marketing-ink)}
-.marketing-site .marketing-news-state{display:grid;justify-items:start;gap:8px;color:var(--marketing-muted);font-size:15px;min-height:125px;align-content:center}
+.marketing-site .marketing-news-body{margin-top:6px;padding:10px 0 3px;border-top:1px solid var(--marketing-line);white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.6;color:var(--marketing-ink)}
+.marketing-site .marketing-news-state{grid-column:1/-1;display:grid;justify-items:start;gap:8px;color:var(--marketing-muted);font-size:15px;min-height:125px;align-content:center}
 .marketing-site .marketing-news-state strong{font-size:18px;color:var(--marketing-ink)}
 .marketing-site .marketing-news-state button,.marketing-site .marketing-news-pagination button{border:1px solid var(--marketing-line);background:var(--marketing-white);border-radius:9px;padding:9px 13px;color:var(--marketing-blue);font:inherit;font-weight:650;cursor:pointer}
 .marketing-site .marketing-news-pagination{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:16px;color:var(--marketing-muted);font-size:12px}
@@ -39,4 +43,4 @@
 .marketing-site .marketing-news-social-link:hover{background:#edf5ff;border-color:#8ab8ec}
 @media(max-width:1050px){.marketing-site .marketing-news-layout{grid-template-columns:minmax(0,1fr) minmax(230px,275px);gap:15px}}
 @media(max-width:850px){.marketing-site .marketing-news-layout{grid-template-columns:minmax(0,1fr);gap:15px;padding-bottom:28px}.marketing-site .marketing-news-intro{padding-top:32px;padding-bottom:20px}.marketing-site .marketing-news-intro h1{font-size:clamp(30px,7vw,42px)}.marketing-site .marketing-news-toolbar{width:100%}.marketing-site .marketing-news-toolbar button{flex:1 0 auto;padding:8px 10px}.marketing-site .marketing-news-social{padding:18px}}
-@media(max-width:390px){.marketing-site .marketing-news-card-top time{margin-left:0;flex-basis:100%;padding-left:0}.marketing-site .marketing-news-card-top{gap:7px;margin-bottom:10px}.marketing-site .marketing-news-toolbar button{font-size:12px}.marketing-site .marketing-news-card{padding:17px}}
+@media(max-width:520px){.marketing-site .marketing-news-feed{grid-template-columns:minmax(0,1fr);gap:9px}.marketing-site .marketing-news-card{padding:12px 13px 7px}.marketing-site .marketing-news-card-top{gap:7px;margin-bottom:7px}.marketing-site .marketing-news-card h2{font-size:17px}.marketing-site .marketing-news-toolbar button{font-size:12px}}

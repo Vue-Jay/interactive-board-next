@@ -11,8 +11,21 @@ OUT.mkdir(parents=True, exist_ok=True)
 ARTICLES = [
     dict(id="1",category="update",title="Lektrus на Android",summary="Официальное мобильное приложение",body="Обновление интерфейса доски.\n\nУстановите APK с сайта.",version="1.0",published_at="2026-11-19T10:00:00Z"),
     dict(id="2",category="feature",title="Преподавание и обучение в одном аккаунте",summary="Два рабочих пространства",body="Выбирайте режим работы.",version="",published_at="2026-11-18T10:00:00Z"),
-    dict(id="3",category="announcement",title="Что дальше",summary="Планы развития платформы",body="Подробности анонса.",version="",published_at="2026-11-17T10:00:00Z"),
+    dict(id="3",category="announcement",title="Анатомия человека",summary="Интерактивное изучение строения организма и его систем.",body="Подробности анонса.",version="",published_at="2026-11-19T10:00:00Z"),
+    dict(id="4",category="announcement",title="Виртуальный микроскоп",summary="Исследование микропрепаратов непосредственно на учебной доске.",body="Описание микроскопа.",version="",published_at="2026-11-19T10:00:00Z"),
+    dict(id="5",category="announcement",title="Программирование на доске",summary="Редактор кода и запуск учебных программ внутри Lektrus.",body="Описание редактора кода.",version="",published_at="2026-11-19T10:00:00Z"),
 ]
+for i, (title, date) in enumerate([
+    ("Химическая лаборатория: полноценные эксперименты", "2026-11-16"),
+    ("Личные шаблоны досок", "2026-11-15"),
+    ("Гипербола и графики функций", "2026-11-15"),
+    ("Предложения из слов", "2026-11-14"),
+    ("ИИ-помощник на доске", "2026-11-11"),
+    ("Линейка, угольник и транспортир", "2026-11-01"),
+    ("Интерактивные модели по физике", "2026-10-25"),
+    ("Геометрические построения", "2026-10-24"),
+]):
+    ARTICLES.append(dict(id=str(10+i),category="feature",title=title,summary="Новые инструменты для занятий на доске.",body="Подробности обновления.",version="",published_at=date+"T12:00:00Z"))
 
 def respond(route):
     q = parse_qs(urlparse(route.request.url).query)
@@ -22,7 +35,7 @@ def respond(route):
     route.fulfill(status=200,content_type="application/json",body=json.dumps(rows[start:start+limit]))
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(headless=True,args=["--no-sandbox"])
+    browser = p.chromium.launch(headless=True,args=["--no-sandbox"],executable_path=os.environ.get("LEKTRUS_CHROMIUM_EXECUTABLE"))
     for width,height in [(320,640),(390,844),(768,1024),(1440,900)]:
         page=browser.new_page(viewport={"width":width,"height":height})
         page.route("**/api/v1/news?*", respond)
@@ -30,18 +43,44 @@ with sync_playwright() as p:
         page.get_by_role("heading",name="Новости и обновления").wait_for()
         page.get_by_role("heading",name="Lektrus на Android").wait_for()
         assert page.locator(".marketing-news-layout").evaluate("el=>getComputedStyle(el).display") == "grid"
-        assert page.locator(".marketing-news-card").count() == 3
+        assert page.locator(".marketing-news-card").count() == 12
+        assert page.locator(".marketing-news-soon").count() == 3
+        assert page.locator(".marketing-news-card").evaluate_all("cards=>cards.every(c=>c.getBoundingClientRect().height<200)"), width
+        if width == 1440:
+            assert page.locator(".marketing-news-card").evaluate_all("cards=>Math.abs(cards[0].getBoundingClientRect().top-cards[1].getBoundingClientRect().top)<1")
+        if width <= 390:
+            assert page.locator(".marketing-news-card").evaluate_all("cards=>cards[1].getBoundingClientRect().top>=cards[0].getBoundingClientRect().bottom")
         assert page.get_by_role("heading",name="Мы в Telegram").is_visible()
         assert page.get_by_role("link",name="Перейти в канал").get_attribute("href") == "https://t.me/lektrus"
         assert page.evaluate("document.documentElement.scrollWidth<=innerWidth+1"), width
         page.screenshot(path=OUT/f"news-{width}.png",full_page=True)
         page.get_by_role("button",name="Анонсы",exact=True).click()
-        expect(page.locator(".marketing-news-card")).to_have_count(1)
-        page.get_by_role("heading",name="Что дальше").wait_for()
-        page.locator(".marketing-news-detail summary").click()
+        expect(page.locator(".marketing-news-card")).to_have_count(3)
+        page.get_by_role("heading",name="Анатомия человека").wait_for()
+        page.locator(".marketing-news-card").filter(has_text="Анатомия человека").locator("summary").click()
         assert page.get_by_text("Подробности анонса.",exact=True).is_visible()
         page.get_by_role("button",name="Все записи",exact=True).click()
-        expect(page.locator(".marketing-news-card")).to_have_count(3)
+        expect(page.locator(".marketing-news-card")).to_have_count(12)
         page.get_by_role("heading",name="Lektrus на Android").wait_for()
+        page.get_by_role("button",name="Далее →",exact=True).click()
+        expect(page.locator(".marketing-news-card")).to_have_count(1)
+        page.get_by_role("heading",name="Геометрические построения").wait_for()
+        page.get_by_role("button",name="← Назад",exact=True).click()
+        expect(page.locator(".marketing-news-card")).to_have_count(12)
+        page.close()
+    # Real board route: rounded screen corner clearance and navigator style.
+    for width,height in [(1440,900),(844,390)]:
+        page=browser.new_page(viewport={"width":width,"height":height},has_touch=width<1000)
+        page.goto(BASE+"/demo/board?scene=math",wait_until="domcontentloaded")
+        more=page.locator(".topbar-more-trigger")
+        more.wait_for(timeout=25000)
+        if width<1000:
+            assert more.evaluate("el=>innerWidth-el.getBoundingClientRect().right") >= 16
+        if width>=1000:
+            navigator=page.get_by_role("region",name="Навигатор доски")
+            navigator.wait_for()
+            assert navigator.get_by_text("Навигатор",exact=True).is_visible()
+            navigator.screenshot(path=OUT/f"navigator-{width}.png")
+        page.screenshot(path=OUT/f"board-chrome-{width}.png")
         page.close()
     browser.close()

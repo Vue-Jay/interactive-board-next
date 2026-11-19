@@ -18,6 +18,12 @@ async def test_site_news_editor_publication_and_access(client):
     _, administrator = await sign_in(client, "teacher@example.test")
     _, student = await sign_in(client, "student@example.test")
     public, manage = "/api/v1/news", "/api/v1/admin/news"
+    seeded = (await client.get(public+"?category=announcement")).json()
+    assert {"Анатомия человека", "Виртуальный микроскоп", "Программирование на доске"} <= {row["title"] for row in seeded}
+    archive = (await client.get(public+"?limit=50")).json()
+    assert len(archive) >= 16
+    historical = next(row for row in archive if row["title"] == "Геометрические построения")
+    assert historical["published_at"].startswith("2026-10-24")
     payload = {"title":"Анонс для теста", "category":"announcement", "summary":"Краткое описание", "body":"Подробности\nСледующая строка", "version":"1.2", "published":False}
     assert (await client.get(manage)).status_code == 401
     assert (await client.get(manage, headers=student)).status_code == 403
