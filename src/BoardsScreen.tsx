@@ -224,7 +224,7 @@ export default function BoardsScreen({user,accountRole,workspaceMode,onOpenBoard
           </button>
           <div className="board-card-body lectris-library-card-body">
             {editingId===b.id?<input className="board-card-rename" value={draftTitle} onChange={e=>setDraftTitle(e.target.value)} onBlur={()=>void saveRename(b)} onKeyDown={e=>{if(e.key==="Enter")void saveRename(b);if(e.key==="Escape")setEditingId(null)}} autoFocus/>:<button className="board-card-title" onClick={()=>onOpenBoard(b)}>{b.title}</button>}
-            <div className="board-card-meta">{!isSelfhostBackendEnabled()&&<span>{BOARD_ROLE_LABELS[b.role]}</span>}<span>{fmt(b.updatedAt)}</span></div>
+            <div className="board-card-meta">{!isSelfhostBackendEnabled()&&<span>{BOARD_ROLE_LABELS[b.role]}</span>}<time dateTime={b.updatedAt}>{fmt(b.updatedAt)}</time></div>
             <div className="board-card-actions">
               <button className="lectris-library-open" onClick={()=>onOpenBoard(b)}>Открыть <span aria-hidden="true">↗</span></button>
               {b.role==="owner"&&<><button onClick={()=>{setEditingId(b.id);setDraftTitle(b.title)}}>Название</button><button onClick={()=>{setManage(b);setNotice("");setCreatedUrl("")}}>Доступ</button><button className="danger" onClick={async()=>{if(confirm(`Переместить доску «${b.title}» в корзину? Её можно будет восстановить.`)){await deleteBoard(user.id,b.id);setNotice("Доска перемещена в корзину");await refresh()}}}>Удалить</button></>}

@@ -27,8 +27,10 @@ const toolSheetPos=app.indexOf('className="mobile-tools-sheet"');
 assert.ok(newMobileActionMenu>=0 && newMobileActionMenu<toolSheetPos,
   "Board actions must be in a separate top bar menu");
 assert.equal(oldActionsSection,-1,"Board actions should not be in the tool catalogue");
+const newMobileActionMenuEnd=app.indexOf('</details>',newMobileActionMenu);
+assert.ok(newMobileActionMenuEnd>newMobileActionMenu,"Board action menu must be closed");
 for(const text of ["Управление доской","История изменений","Презентация","Экспорт PNG","Сохранить как шаблон","Горячие клавиши","Комментарии","Поиск по доске","Слои и объекты"]){
-  assert.ok(app.slice(newMobileActionMenu,newMobileActionMenu+3500).includes(text),
+  assert.ok(app.slice(newMobileActionMenu,newMobileActionMenuEnd).includes(text),
     "Missing board action "+text);
 }
 assert.match(css,/\.mobile-tools-sheet \.mobile-tools-groups\{[\s\S]*?grid-template-columns:minmax\(0,1fr\)!important/);
