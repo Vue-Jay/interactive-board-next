@@ -124,8 +124,9 @@ def native_ink_stroke():
  cmd('POST','/actions',{'actions':[{'type':'pointer','id':'pen-finger','parameters':{'pointerType':'touch'},'actions':actions}]})
  cmd('DELETE','/actions')
  def persisted():
-  return js("""for(const key of Object.keys(localStorage)){
-   if(!key.includes('document'))continue;
+  return js("""const boardId=location.pathname.split('/').pop();
+  for(const key of Object.keys(localStorage)){
+   if(!key.includes('document')||!key.includes(boardId))continue;
    try{const data=JSON.parse(localStorage.getItem(key));const ink=(data&&data.items||[]).find(i=>i.kind==='pen'&&i.points&&i.points.length>1);if(ink)return {key,points:ink.points.length};}catch{}
   }return null;""")
  return wait(persisted,'Native touch stroke not persisted',20)
