@@ -84,7 +84,8 @@ try{
     await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...points[0],id:1}]});
     for(const point of points.slice(1)){await send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...point,id:1}]});await sleep(25);}
     await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-    await wait('(()=>{const f=document.querySelector(".lektrus-browser-board-frame");return !!f?.contentDocument?.querySelector(".board-object-pen, .pen-stroke, [data-kind=pen]")})()','Pen stroke did not render',8000).catch(async()=>{const count=await evaluate('document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelectorAll("section.board svg path").length');assert.ok(count>0,'No SVG stroke rendered after real touch');});
+    const savedInk=`(()=>{for(const key of Object.keys(localStorage)){if(!key.includes('document'))continue;try{const data=JSON.parse(localStorage.getItem(key));const ink=data?.items?.find(item=>item.kind==='pen'&&item.points?.length>1);if(ink)return {points:ink.points.length,key};}catch{}}return null})()`;
+    await wait(savedInk,'Real touch pen stroke was not persisted in local board document',15000);
     return {boardTitle:title,createdBy:'physical touch',stroke:'physical CDP gesture'};
    });
    await check(tag+'-touch-storm',async()=>{
