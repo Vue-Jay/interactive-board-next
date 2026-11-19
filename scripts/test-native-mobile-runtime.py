@@ -602,7 +602,22 @@ def draw(tool, band):
     paths[tool] = path_for_ink(band)
     before = {x['id'] for x in ink()}
     native_gesture(paths[tool])
-    value = wait(lambda: next((x for x in ink() if x['kind']==tool and x['id'] not in before and x['points']>1), None), f'{tool} did not save real touch stroke', 20)
+    def saved_stroke():
+        return next((x for x in ink() if x['kind']==tool and x['id'] not in before and x['points']>1), None)
+    try:
+        value = wait(saved_stroke, f'{tool} did not save real touch stroke', 20)
+    except AssertionError:
+        # Some Android emulators lose the accessibility WebView after a pinch,
+        # and a native touch can be dropped during OS ANR / graphics recovery.
+        # Retry a genuine native drag at a newly hit-tested unobstructed path;
+        # never accept a DOM-synthesized event or an unsaved stroke.
+        if args.platform != 'android':
+            raise
+        print(f'Native {tool} drag was not persisted; retrying once after WebView recovery', flush=True)
+        reattach_webview()
+        paths[tool] = path_for_ink(band)
+        native_gesture(paths[tool])
+        value = wait(saved_stroke, f'{tool} did not save real touch stroke after native recovery', 20)
     assert not visible_id('[data-context-menu]'), 'Drawing opens an unwanted context menu'
     return value
 
