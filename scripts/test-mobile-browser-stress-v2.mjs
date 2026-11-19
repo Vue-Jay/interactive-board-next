@@ -88,6 +88,20 @@ try{
     await wait(savedInk,'Real touch pen stroke was not persisted in local board document',15000);
     return {boardTitle:title,createdBy:'physical touch',stroke:'physical CDP gesture'};
    });
+   await check(tag+'-keyboard-outside-tap',async()=>{
+    await send('Page.navigate',{url});
+    await wait('!!document.querySelector(".lektrus-calendar-grid")','Workspace missing for keyboard check');
+    await touchSelector('.lectris-mobile-bottom button[aria-label="Ещё разделы"]');
+    await wait('!!document.querySelector(".lektrus-more-page-search input")','More-page search missing');
+    await touchSelector('.lektrus-more-page-search input');
+    assert.equal(await evaluate('document.activeElement===document.querySelector(".lektrus-more-page-search input")'),true,'Search input not focused');
+    await send('Input.insertText',{text:'Настройки'});
+    assert.equal(await evaluate('document.querySelector(".lektrus-more-page-search input").value'),'Настройки');
+    await touchSelector('.lektrus-more-page-title h1');
+    await wait('document.activeElement!==document.querySelector(".lektrus-more-page-search input")','Outside touch did not dismiss input focus');
+    assert.equal(await evaluate('document.querySelector(".lektrus-more-page-search input").value'),'Настройки','Outside tap discarded search input');
+    return {outsideTouchBlurred:true,searchValuePreserved:true};
+   });
    await check(tag+'-touch-storm',async()=>{
     await send('Page.navigate',{url});
     await wait('!!document.querySelector(".lektrus-calendar-grid")','Workspace did not reload for touch storm');
