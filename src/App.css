@@ -1187,24 +1187,29 @@ button {
 .minimap {
   width: 236px;
   box-sizing: border-box;
-  padding: 0;
+  padding: 8px;
   overflow: hidden;
   background: var(--lt-surface, #fff);
   pointer-events: auto;
   user-select: none;
+}
+.workspace .minimap {
+  border-radius: 16px!important;
+  border-color: var(--lt-line, #d5dfed)!important;
+  box-shadow: var(--lt-shadow, 0 8px 26px #15274917)!important;
 }
 .minimap-header {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
-  padding: 8px 10px;
+  padding: 3px 8px 9px;
   margin: 0;
-  background: var(--lt-hover, #eef3fb);
-  border-bottom: 1px solid var(--ui-line, #dbe3ef);
+  background: transparent;
+  border: 0;
   color: var(--lt-text, #253b56);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1.3;
   letter-spacing: 0;
   text-transform: none;
@@ -1212,27 +1217,32 @@ button {
 .minimap-world {
   position: relative;
   height: 132px;
-  margin: 7px;
+  margin: 0;
   overflow: hidden;
-  border: 1px solid var(--ui-line, #dbe3ef);
-  border-radius: 8px;
+  border: 1px solid var(--lt-line, #d5dfed);
+  border-radius: 10px;
   cursor: grab;
   touch-action: none;
   background-color: var(--lt-subtle, #f1f5fb);
-  background-image: radial-gradient(var(--lt-line-strong, #cbd5e3) .6px, transparent .6px);
-  background-size: 8px 8px;
+  background-image: radial-gradient(var(--lt-line-strong, #cbd5e3) .7px, transparent .7px);
+  background-size: 11px 11px;
 }
 .minimap-world:active { cursor: grabbing; }
 .minimap-item {
   position: absolute;
   min-width: 2px;
   min-height: 2px;
-  border-radius: 1px;
-  background: var(--lt-muted, #8b9cb5);
+  box-sizing: border-box;
+  border: 1px solid var(--lt-muted, #8b9cb5);
+  border-radius: 2px;
+  background: var(--lt-line-strong, #b8c9e0);
+  opacity: .8;
   pointer-events: none;
 }
 .minimap-item.selected {
   background: var(--lt-selected-ink, #4263b8);
+  border-color: var(--lt-selected-ink, #4263b8);
+  opacity: 1;
 }
 .minimap-viewport {
   position: absolute;
@@ -1240,9 +1250,10 @@ button {
   box-sizing: border-box;
   min-width: 2px;
   min-height: 2px;
-  border: 1.5px solid var(--lt-selected-ink, #4263b8);
-  border-radius: 4px;
-  background: rgba(66,99,184,.08);
+  border: 2px solid var(--lt-focus, #5477d5);
+  border-radius: 6px;
+  background: rgba(66,99,184,.055);
+  box-shadow: inset 0 0 0 1px var(--lt-surface, #fff);
   pointer-events: none;
 }
 
