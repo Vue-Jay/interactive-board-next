@@ -2,10 +2,8 @@ name: Native mobile runtime QA (isolated)
 on:
   # Run the complete device matrix on QA-branch changes as well as PR updates.
   # This is isolated from main and never deploys to production.
-  push:
-    branches: [qa/mobile-native-runtime-20261117]
-  pull_request:
-    branches: [qa/mobile-native-base-20261117]
+  # Comprehensive QA is being rebuilt; run only on explicit dispatch.
+  # No intermediate push or PR may launch an obsolete acceptance suite.
   workflow_dispatch:
     inputs:
       phase:
