@@ -113,7 +113,7 @@ def create_board():
  assert actual==title,{'expected':title,'actual':actual}
  return {'title':actual,'createdVia':'installed app'}
 def native_ink_stroke():
- tap_selector('nav.mobile-board-tools button[data-interface-control="pen"],.toolbar-pinned button[data-interface-control="pen"]')
+ tap_selector('[data-interface-control="pen"]')
  wait(lambda:js('return !!(document.querySelector("section.board")&&document.querySelector("section.board").classList.contains("board-tool-pen"))'),'Pen did not activate')
  points=js("""const b=document.querySelector('section.board').getBoundingClientRect();
  return Array.from({length:12},(_,i)=>({x:Math.round(b.left+b.width*.35+i*5),y:Math.round(b.top+b.height*.55)}));""")
@@ -126,7 +126,7 @@ def native_ink_stroke():
  def persisted():
   return js("""const boardId=location.pathname.split('/').pop();
   for(const key of Object.keys(localStorage)){
-   if(!key.includes('document')||!key.includes(boardId))continue;
+   if(!key.includes('.local-test.board.')||!key.endsWith(boardId))continue;
    try{const data=JSON.parse(localStorage.getItem(key));const ink=(data&&data.items||[]).find(i=>i.kind==='pen'&&i.points&&i.points.length>1);if(ink)return {key,points:ink.points.length};}catch{}
   }return null;""")
  return wait(persisted,'Native touch stroke not persisted',20)
@@ -147,7 +147,7 @@ def native_undo_redo():
  wait(lambda:ink_state()==before,'Redo did not restore saved ink')
  return {'before':before,'undone':undone,'redone':ink_state()}
 def native_pinch_zoom():
- tap_selector('nav.mobile-board-tools button[data-interface-control="select"],.toolbar-pinned button[data-interface-control="select"]')
+ tap_selector('[data-interface-control="select"]')
  before=js('return (document.querySelector(".zoom-value")||{}).textContent')
  assert before,'Zoom indicator missing'
  center=js("""const b=document.querySelector('section.board').getBoundingClientRect();
