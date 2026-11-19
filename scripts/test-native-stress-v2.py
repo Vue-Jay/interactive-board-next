@@ -126,6 +126,21 @@ def native_ink_stroke():
    try{const data=JSON.parse(localStorage.getItem(key));const ink=data?.items?.find(i=>i.kind==='pen'&&i.points?.length>1);if(ink)return {key,points:ink.points.length};}catch{}
   }return null;""")
  return wait(persisted,'Native touch stroke not persisted',20)
+def native_pinch_zoom():
+ tap_selector('nav.mobile-board-tools button[data-interface-control="select"],.toolbar-pinned button[data-interface-control="select"]')
+ before=js('return document.querySelector(".zoom-value")?.textContent')
+ assert before,'Zoom indicator missing'
+ center=js("""const b=document.querySelector('section.board').getBoundingClientRect();
+ return {x:Math.round(b.left+b.width*.5),y:Math.round(b.top+b.height*.5)};""")
+ def finger(id,sign):
+  points=[{'type':'pointerMove','duration':0,'x':center['x']+sign*16,'y':center['y']},{'type':'pointerDown','button':0}]
+  points.extend({'type':'pointerMove','duration':55,'x':center['x']+sign*(16+step*5),'y':center['y']} for step in range(1,10))
+  points.append({'type':'pointerUp','button':0})
+  return {'type':'pointer','id':id,'parameters':{'pointerType':'touch'},'actions':points}
+ cmd('POST','/actions',{'actions':[finger('left-finger',-1),finger('right-finger',1)]})
+ cmd('DELETE','/actions')
+ wait(lambda:js('return document.querySelector(".zoom-value")?.textContent')!=before,'Two-finger native pinch did not zoom',15)
+ return {'zoomBefore':before,'zoomAfter':js('return document.querySelector(".zoom-value")?.textContent')}
 def layout():
  return js("""return {w:innerWidth,h:innerHeight,scroll:document.documentElement.scrollWidth,
   native:window.Capacitor?.isNativePlatform?.()===true,
@@ -175,6 +190,7 @@ try:
  check('native-keyboard-outside-touch',keyboard_outside_touch,requires=['installed-native-capacitor-and-layout'])
  check('native-create-board',create_board,requires=['native-keyboard-outside-touch'])
  check('native-touch-pen-persistence',native_ink_stroke,requires=['native-create-board'])
+ check('native-two-finger-pinch',native_pinch_zoom,requires=['native-create-board'])
 except Exception as error:
  fatal_error={'type':type(error).__name__,'message':str(error),'traceback':traceback.format_exc()}
  print('FATAL',str(error),flush=True)
