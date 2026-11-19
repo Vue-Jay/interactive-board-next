@@ -136,6 +136,40 @@ def native_ink_stroke():
    try{const data=JSON.parse(localStorage.getItem(key));const ink=(data&&data.items||[]).find(i=>i.kind==='pen'&&i.points&&i.points.length>1);if(ink)return {key,points:ink.points.length};}catch{}
   }return null;""")
  return wait(persisted,'Native touch stroke not persisted',20)
+def native_marker_eraser():
+ # Verify that a second drawing tool saves its own ink and that erasing is selective.
+ tap_selector('.mobile-tools-more,.toolbar-more')
+ tap_selector('.mobile-tools-sheet button[aria-label^="Маркер"],.lektrus-tool-overflow-content button[aria-label^="Маркер"]')
+ wait(lambda:js('return document.querySelector("section.board").classList.contains("board-tool-marker")'),'Marker tool not active')
+ def items():
+  return js("""const id=location.pathname.split('/').pop();
+   for(const key of Object.keys(localStorage).filter(k=>k.includes('.local-test.board.')&&k.endsWith(id))){
+    const d=JSON.parse(localStorage.getItem(key));
+    if(Array.isArray(d.items))return d.items.filter(i=>['pen','marker'].includes(i.kind)).map(i=>({id:i.id,kind:i.kind,points:(i.points||[]).length}));
+   }return [];""")
+ before=items()
+ b=js("""const r=document.querySelector('section.board').getBoundingClientRect();
+  const blockers='.board-object,button,input,select,textarea,[data-board-interactive],.toolbar,.board-controls,.mobile-board-tools,.selection-toolbar-screen,.topbar';
+  for(const fy of [.65,.72,.38])for(const fx of [.25,.38,.47]){
+   const pts=Array.from({length:9},(_,i)=>({x:Math.round(r.left+r.width*fx+i*8),y:Math.round(r.top+r.height*fy+Math.sin(i/3)*7)}));
+   if(pts.every(p=>{const e=document.elementFromPoint(p.x,p.y);return e&&e.closest('section.board')&&!e.closest(blockers)}))return pts;
+  }return null;""")
+ assert b,'No free path for native marker'
+ def gesture(points):
+  actions=[{'type':'pointerMove','duration':0,**points[0]},{'type':'pointerDown','button':0}]
+  actions.extend({'type':'pointerMove','duration':40,**p} for p in points[1:])
+  actions.append({'type':'pointerUp','button':0})
+  cmd('POST','/actions',{'actions':[{'type':'pointer','id':'marker-finger','parameters':{'pointerType':'touch'},'actions':actions}]})
+  cmd('DELETE','/actions')
+ gesture(b)
+ added=wait(lambda:next((i for i in items() if i['kind']=='marker' and i['id'] not in [v['id'] for v in before] and i['points']>1),None),'Native marker stroke missing',20)
+ tap_selector('.mobile-tools-more,.toolbar-more')
+ tap_selector('.mobile-tools-sheet button[aria-label^="Ластик"],.lektrus-tool-overflow-content button[aria-label^="Ластик"]')
+ wait(lambda:js('return document.querySelector("section.board").classList.contains("board-tool-eraser")'),'Eraser tool not active')
+ gesture(b)
+ after=wait(lambda:items() if next((i for i in items() if i['id']==added['id']),None) is None else None,'Native eraser did not remove marker',20)
+ assert any(i['kind']=='pen' for i in after),'Eraser removed independent pencil ink'
+ return {'markerId':added['id'],'markerRemoved':True,'penPreserved':True}
 def native_undo_redo():
  def ink_state():
   return js("""const boardId=location.pathname.split('/').pop();
@@ -217,6 +251,7 @@ try:
  check('native-create-board',create_board,requires=['native-keyboard-outside-touch'])
  check('native-touch-pen-persistence',native_ink_stroke,requires=['native-create-board'])
  check('native-undo-redo',native_undo_redo,requires=['native-touch-pen-persistence'])
+ check('native-marker-eraser',native_marker_eraser,requires=['native-touch-pen-persistence'])
  check('native-two-finger-pinch',native_pinch_zoom,requires=['native-create-board'])
 except Exception as error:
  fatal_error={'type':type(error).__name__,'message':str(error),'traceback':traceback.format_exc()}
