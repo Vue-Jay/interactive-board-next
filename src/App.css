@@ -1199,7 +1199,7 @@ button {
   gap: 7px;
   padding: 7px 8px;
   margin: 0;
-  background: var(--ui-soft, #eef3fb);
+  background: var(--lt-hover, #eef3fb);
   border-bottom: 1px solid var(--ui-line, #dbe3ef);
   color: var(--lt-text, #253b56);
   font-size: 13px;
@@ -1217,8 +1217,8 @@ button {
   border: 1px solid var(--ui-line, #dbe3ef);
   border-radius: 8px;
   cursor: crosshair;
-  background-color: #f1f5fb;
-  background-image: radial-gradient(#cbd5e3 .6px, transparent .6px);
+  background-color: var(--lt-subtle, #f1f5fb);
+  background-image: radial-gradient(var(--lt-line-strong, #cbd5e3) .6px, transparent .6px);
   background-size: 8px 8px;
 }
 .minimap-item {
@@ -1226,11 +1226,11 @@ button {
   min-width: 2px;
   min-height: 2px;
   border-radius: 1px;
-  background: #8b9cb5;
+  background: var(--lt-muted, #8b9cb5);
   pointer-events: none;
 }
 .minimap-item.selected {
-  background: #4263b8;
+  background: var(--lt-selected-ink, #4263b8);
 }
 .minimap-viewport {
   position: absolute;
@@ -1238,7 +1238,7 @@ button {
   box-sizing: border-box;
   min-width: 2px;
   min-height: 2px;
-  border: 1.5px solid #4263b8;
+  border: 1.5px solid var(--lt-selected-ink, #4263b8);
   border-radius: 4px;
   background: rgba(66,99,184,.08);
   pointer-events: none;
