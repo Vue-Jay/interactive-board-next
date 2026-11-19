@@ -105,6 +105,14 @@
       "oracle": "Undo changes persisted pen items; redo restores the exact original ink state",
       "status": "implemented-unverified",
       "lastRun": null
+    },
+    {
+      "id": "browser-undo-redo",
+      "driver": "scripts/test-mobile-browser-stress-v2.mjs",
+      "environment": "mobile-browser-emulation",
+      "oracle": "Physical touch undo removes the newly drawn stroke; redo restores its point count",
+      "status": "implemented-unverified",
+      "lastRun": null
     }
   ],
   "excluded": [
