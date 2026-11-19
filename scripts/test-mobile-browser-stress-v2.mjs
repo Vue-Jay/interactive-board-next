@@ -162,4 +162,4 @@ try{
  await server.close();if(profileDir)await rm(profileDir,{recursive:true,force:true});
 }
 if(fatalError||!results.length||results.some(r=>r.status!=='passed'))process.exitCode=1;
-console.log(JSON.stringify({checks:results.length,passed:results.filter(r=>r.status==='passed').length,failed:results.filter(r=>r.status==='failed').length,output},null,2));
+console.log(JSON.stringify({checks:results.length,passed:results.filter(r=>r.status==='passed').length,failed:results.filter(r=>r.status==='failed').length,blocked:results.filter(r=>r.status==='blocked').length,fatalError,output},null,2));
