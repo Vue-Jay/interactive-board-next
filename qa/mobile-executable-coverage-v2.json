@@ -121,6 +121,14 @@
       "oracle": "Reloading the actual board frame restores the drawn stroke with identical point count",
       "status": "implemented-unverified",
       "lastRun": null
+    },
+    {
+      "id": "native-marker-eraser",
+      "driver": "scripts/test-native-stress-v2.py",
+      "environment": "installed-android-or-ios",
+      "oracle": "Physical marker stroke persists, eraser reduces its ink, independent pen stroke remains",
+      "status": "implemented-unverified",
+      "lastRun": null
     }
   ],
   "excluded": [
