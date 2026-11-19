@@ -280,8 +280,7 @@ test('email confirmation keeps the invite; legacy query starts the app, not the 
   assert.match(auth, /pendingSharePath\(\)\?\.slice\(6\)/);
   assert.match(auth, /setGuestPasswordRequired\(true\)/);
   assert.match(boards, /window\.dispatchEvent\(new PopStateEvent\("popstate"\)\)/);
-  assert.match(boards, /boardDirectUrl\(manage\.id\)/);
-  assert.match(boards, /copyBoardLink\(createdUrl\)/);
+  assert.match(boards, /<ShareDialog key=\{manage\.id\} board=\{manage\}/);
   assert.doesNotMatch(boards, /await redeemBoardShareLink\(token\)/);
 });
 
@@ -291,7 +290,8 @@ test('link management hides revoked, expired or exhausted invitations and does n
   assert.match(dialog, /createdIsActive&&created/);
   assert.match(dialog, /boardDirectUrl\(board\.id\)/);
   assert.match(dialog, /setLinks\(rows=>\[link,/);
-  assert.match(dialog, /copyBoardLink\(created\.url\)/);
+  assert.match(dialog, /copyLink\(created\.url,/);
+  assert.match(dialog, /copyBoardLink\(url\)/);
   assert.doesNotMatch(dialog, /presentationUrl|present=1/);
 });
 

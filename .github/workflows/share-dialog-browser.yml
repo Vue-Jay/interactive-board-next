@@ -1,0 +1,42 @@
+name: Board access responsive acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/ShareDialog.tsx'
+      - 'src/lektrusShareDialog.css'
+      - 'src/BoardsScreen.tsx'
+      - 'tests/share-dialog-*'
+      - '.github/workflows/share-dialog-browser.yml'
+permissions:
+  contents: read
+jobs:
+  share-dialog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: |
+          python3 -m venv /tmp/lektrus-share-playwright
+          /tmp/lektrus-share-playwright/bin/pip -q install playwright==1.64.1
+          /tmp/lektrus-share-playwright/bin/python -m playwright install --with-deps chromium
+      - run: |
+          VITE_LEKTRUS_BACKEND=selfhost npm run dev -- --host 127.0.0.1 > /tmp/lektrus-share-vite.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5173/tests/share-dialog-preview.html >/dev/null; then break; fi
+            sleep 1
+          done
+          /tmp/lektrus-share-playwright/bin/python tests/share-dialog-browser.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: board-access-responsive-proof
+          path: artifacts/share-dialog/*.png
+          if-no-files-found: warn
