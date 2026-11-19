@@ -69,7 +69,7 @@ try{
     await send('Input.insertText',{text:boardTitle});
     assert.equal(await evaluate('document.querySelector(".lektrus-create-dialog input").value'),boardTitle);
     await touchSelector('.lektrus-create-dialog button[type="submit"]');
-    await wait('!!document.querySelector(".lektrus-browser-board-frame")','Board did not open after touch submission',45000);
+    await wait('!!document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector("section.board")','Board did not open after touch submission',45000);
     const title=await evaluate('document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector(".board-title")?.value');
     assert.equal(title,boardTitle,'Created board title did not persist in board UI');
     // Draw with a real CDP touch stroke inside the newly created board.
@@ -81,10 +81,11 @@ try{
     await wait('document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector("section.board")?.classList.contains("board-tool-pen")','Pencil did not activate after touch');
     const frame=await evaluate('(()=>{const f=document.querySelector(".lektrus-browser-board-frame"),r=f.getBoundingClientRect();return {left:r.left,top:r.top}})()');
     const points=drawing.points.map(q=>({x:frame.left+q.x,y:frame.top+q.y}));
+    assert.ok(points.every(q=>q.x>=0&&q.x<=width&&q.y>=0&&q.y<=height),'Stroke points fall outside the mobile viewport');
     await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...points[0],id:1}]});
     for(const point of points.slice(1)){await send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...point,id:1}]});await sleep(25);}
     await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-    const savedInk=`(()=>{for(const key of Object.keys(localStorage)){if(!key.includes('document'))continue;try{const data=JSON.parse(localStorage.getItem(key));const ink=data?.items?.find(item=>item.kind==='pen'&&item.points?.length>1);if(ink)return {points:ink.points.length,key};}catch{}}return null})()`;
+    const savedInk=`(()=>{const frame=document.querySelector('.lektrus-browser-board-frame');if(!frame?.contentWindow)return null;for(const key of Object.keys(frame.contentWindow.localStorage)){if(!key.includes('document'))continue;try{const data=JSON.parse(frame.contentWindow.localStorage.getItem(key));const ink=data?.items?.find(item=>item.kind==='pen'&&item.points?.length>1);if(ink)return {points:ink.points.length,key};}catch{}}return null})()`;
     await wait(savedInk,'Real touch pen stroke was not persisted in local board document',15000);
     return {boardTitle:title,createdBy:'physical touch',stroke:'physical CDP gesture'};
    });
