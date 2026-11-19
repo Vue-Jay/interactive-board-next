@@ -89,6 +89,14 @@
       "oracle": "Native landscape/portrait rotation and layout",
       "status": "implemented-unverified",
       "lastRun": null
+    },
+    {
+      "id": "native-pinch-zoom",
+      "driver": "scripts/test-native-stress-v2.py",
+      "environment": "installed-android-or-ios",
+      "oracle": "Two physical touch pointers change board zoom",
+      "status": "implemented-unverified",
+      "lastRun": null
     }
   ],
   "excluded": [
