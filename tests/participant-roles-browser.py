@@ -471,6 +471,30 @@ def check_maintenance(browser):
         for ctx in contexts:ctx.close()
     print("Maintenance: scheduled banner, admin and selected access, blocked account, login and automatic recovery passed")
 
+def check_billing_and_finance(browser):
+    contexts=[browser.new_context(viewport={"width":1440,"height":900},service_workers="block"),
+              browser.new_context(viewport={"width":390,"height":844},service_workers="block")]
+    admin,member=[ctx.new_page() for ctx in contexts]
+    try:
+        login(admin,"owner")
+        login(member,"colleague")
+        member.goto(BASE+"/app?section=billing")
+        expect(member.get_by_role("heading",name="Тарифы и использование")).to_be_visible(timeout=30000)
+        expect(member.locator(".billing-card")).to_have_count(2)
+        expect(member.locator(".billing-usage-grid")).to_be_visible(timeout=30000)
+        member.screenshot(path=str(OUT/"billing-free-phone.png"))
+        admin.goto(BASE+"/app?section=admin")
+        admin.get_by_role("button",name="Финансы",exact=True).click(timeout=30000)
+        panel=admin.locator(".finance-panel")
+        expect(panel.get_by_role("heading",name="Финансы и подписки")).to_be_visible(timeout=30000)
+        expect(panel.get_by_text("Покупок пока нет.",exact=False)).to_be_visible(timeout=30000)
+        panel.get_by_label("Текущий баланс ₽").fill("1500")
+        panel.get_by_role("button",name="Зафиксировать баланс").click()
+        expect(panel.get_by_text("Баланс по последней ручной сверке",exact=False)).to_be_visible(timeout=15000)
+        admin.screenshot(path=str(OUT/"admin-finance-desktop.png"))
+    finally:
+        for ctx in contexts:ctx.close()
+
 def main():
     asyncio.run(seed())
     ident=setup_board()
@@ -523,6 +547,7 @@ def main():
             context.close()
         check_guest_and_registration(browser,ident)
         check_maintenance(browser)
+        check_billing_and_finance(browser)
         browser.close()
     print("All registered and guest participant contexts, registration modes, and persistent learner drawing passed browser acceptance")
 
