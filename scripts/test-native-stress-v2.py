@@ -116,8 +116,14 @@ def native_ink_stroke():
  tap_selector('[data-interface-control="pen"]')
  wait(lambda:js('return !!(document.querySelector("section.board")&&document.querySelector("section.board").classList.contains("board-tool-pen"))'),'Pen did not activate')
  points=js("""const b=document.querySelector('section.board').getBoundingClientRect();
- return Array.from({length:12},(_,i)=>({x:Math.round(b.left+b.width*.35+i*5),y:Math.round(b.top+b.height*.55)}));""")
- assert points and all(0<=p['x']<=layout()['w'] and 0<=p['y']<=layout()['h'] for p in points),'Ink stroke outside native viewport'
+ const blockers='.board-object,button,input,select,textarea,[data-board-interactive],.toolbar,.board-controls,.mobile-board-tools,.selection-toolbar-screen,.topbar';
+ for(const fy of [.40,.50,.60,.70])for(const fx of [.25,.38,.47,.55]){
+  const pts=Array.from({length:12},(_,i)=>({x:Math.round(b.left+b.width*fx+i*5),y:Math.round(b.top+b.height*fy+Math.sin(i/3)*7)}));
+  if(pts.every(p=>{const e=document.elementFromPoint(p.x,p.y);return e&&e.closest('section.board')&&!e.closest(blockers)}))return pts;
+ }return null;""")
+ assert points,'No unobstructed native ink path found'
+ bounds=layout()
+ assert all(0<=p['x']<=bounds['w'] and 0<=p['y']<=bounds['h'] for p in points),'Ink stroke outside native viewport'
  actions=[{'type':'pointerMove','duration':0,**points[0]},{'type':'pointerDown','button':0}]
  actions.extend({'type':'pointerMove','duration':40,**point} for point in points[1:])
  actions.append({'type':'pointerUp','button':0})
