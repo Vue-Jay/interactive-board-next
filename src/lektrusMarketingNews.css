@@ -1,9 +1,11 @@
 .marketing-site .marketing-news-intro{padding-top:clamp(34px,5vw,72px);padding-bottom:26px}
 .marketing-site .marketing-news-intro h1{margin:8px 0 12px;line-height:1.1}
 .marketing-site .marketing-news-intro p{max-width:760px}
-.marketing-site .marketing-news-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,315px);align-items:start;gap:24px;padding-bottom:48px}
+.marketing-site :is(.marketing-news-intro,.marketing-news-layout){max-width:1040px}
+.marketing-site .marketing-news-layout{display:grid;grid-template-columns:minmax(0,1fr);padding-bottom:48px}
 .marketing-site .marketing-news-main{min-width:0}
-.marketing-site .marketing-news-toolbar{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 15px;padding:5px;background:#e9eff7;border:1px solid var(--marketing-line);border-radius:13px;width:fit-content;max-width:100%;box-sizing:border-box}
+.marketing-site .marketing-news-actions{display:flex;align-items:stretch;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:15px}
+.marketing-site .marketing-news-toolbar{display:flex;flex-wrap:wrap;gap:7px;margin:0;padding:5px;background:#e9eff7;border:1px solid var(--marketing-line);border-radius:13px;width:fit-content;max-width:100%;box-sizing:border-box}
 .marketing-site .marketing-news-toolbar button{min-height:38px;border:0;padding:7px 14px;border-radius:9px;background:transparent;color:#486482;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
 .marketing-site .marketing-news-toolbar button[aria-pressed=true]{background:#fff;color:var(--marketing-blue);box-shadow:0 2px 7px #193e6b15}
 .marketing-site .marketing-news-toolbar button:hover{color:var(--marketing-blue)}
@@ -34,17 +36,14 @@
 .marketing-site .marketing-news-state button,.marketing-site .marketing-news-pagination button{border:1px solid var(--marketing-line);background:var(--marketing-white);border-radius:9px;padding:9px 13px;color:var(--marketing-blue);font:inherit;font-weight:650;cursor:pointer}
 .marketing-site .marketing-news-pagination{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:16px;color:var(--marketing-muted);font-size:12px}
 .marketing-site .marketing-news-pagination button:disabled{opacity:.4;cursor:default}
-.marketing-site .marketing-news-social{position:relative;isolation:isolate;overflow:hidden;display:grid;gap:14px;background:linear-gradient(135deg,#edf4ff,#fff 85%);border:1px solid #c9dcf4;border-radius:18px;padding:22px;box-shadow:0 6px 22px #16395b08}
-.marketing-site .marketing-news-social::before{content:"";position:absolute;z-index:-1;pointer-events:none;border:23px solid #dce9fb80;width:150px;height:150px;border-radius:50%;right:-70px;top:-80px}
-.marketing-site .marketing-news-social-label{font-size:11px;text-transform:uppercase;font-weight:750;color:#3c679d;letter-spacing:.065em}
-.marketing-site .marketing-news-telegram-head{display:flex;align-items:center;gap:12px}
-.marketing-site .marketing-news-telegram-icon{display:grid;place-items:center;flex:none;width:48px;height:48px;background:#279bd6;color:white;border-radius:13px;box-shadow:0 4px 12px #279bd629}
-.marketing-site .marketing-news-telegram-head h3{font-size:19px;line-height:1.25;letter-spacing:-.025em}
-.marketing-site .marketing-news-telegram-head div>span{font-size:13px;color:#537496}
-.marketing-site .marketing-news-social p{font-size:14px;line-height:1.6;color:var(--marketing-muted)}
-.marketing-site .marketing-news-social-link{display:flex;justify-content:space-between;align-items:center;min-height:43px;box-sizing:border-box;padding:10px 13px;border:1px solid #bad2ef;border-radius:10px;background:#fff;color:#2260b5;font-size:13px;font-weight:750}
-.marketing-site .marketing-news-social-link:hover{background:#edf5ff;border-color:#8ab8ec}
-@media(max-width:1050px){.marketing-site .marketing-news-layout{grid-template-columns:minmax(0,1fr) minmax(230px,275px);gap:15px}}
-@media(max-width:850px){.marketing-site .marketing-news-layout{grid-template-columns:minmax(0,1fr);gap:15px;padding-bottom:28px}.marketing-site .marketing-news-intro{padding-top:32px;padding-bottom:20px}.marketing-site .marketing-news-intro h1{font-size:clamp(30px,7vw,42px)}.marketing-site .marketing-news-toolbar{width:100%}.marketing-site .marketing-news-toolbar button{flex:1 0 auto;padding:8px 10px}.marketing-site .marketing-news-social{padding:18px}}
+.marketing-site .marketing-news-social{display:flex;min-width:0}
+.marketing-site .marketing-news-social-link{display:flex;align-items:center;gap:10px;min-height:49px;box-sizing:border-box;padding:6px 12px 6px 7px;border:1px solid #c9dcf4;border-radius:13px;background:#fff;color:var(--marketing-ink);transition:border-color .16s,background .16s}
+.marketing-site .marketing-news-social-link:hover,.marketing-site .marketing-news-social-link:focus-visible{background:#edf5ff;border-color:#8ab8ec}
+.marketing-site .marketing-news-telegram-icon{display:grid;place-items:center;flex:none;width:34px;height:34px;background:#279bd6;color:#fff;border-radius:9px}
+.marketing-site .marketing-news-social-copy{display:grid;gap:1px;line-height:1.25;text-align:left;white-space:nowrap}
+.marketing-site .marketing-news-social-copy strong{font-size:13px;font-weight:750}
+.marketing-site .marketing-news-social-copy small{font-size:11px;color:var(--marketing-muted)}
+.marketing-site .marketing-news-social-arrow{color:#2260b5;margin-left:12px;font-size:16px;font-weight:700}
+@media(max-width:850px){.marketing-site .marketing-news-layout{padding-bottom:28px}.marketing-site .marketing-news-intro{padding-top:32px;padding-bottom:20px}.marketing-site .marketing-news-intro h1{font-size:clamp(30px,7vw,42px)}.marketing-site .marketing-news-toolbar{width:100%}.marketing-site .marketing-news-toolbar button{flex:1 0 auto;padding:8px 10px}.marketing-site .marketing-news-social{width:100%}.marketing-site .marketing-news-social-link{width:100%}.marketing-site .marketing-news-social-arrow{margin-left:auto}}
 @media(max-width:1050px){.marketing-site .marketing-news-card{grid-template-columns:34px minmax(0,1fr);column-gap:9px;row-gap:3px;padding:10px 12px 7px}.marketing-site .marketing-news-icon{width:34px;height:34px;align-self:start;grid-row:1/4}.marketing-site .marketing-news-detail,.marketing-site .marketing-news-detail[open]{grid-column:2;grid-row:4;justify-self:start}.marketing-site .marketing-news-detail[open]{justify-self:stretch}.marketing-site .marketing-news-detail summary{padding:0;min-height:26px}}
 @media(max-width:520px){.marketing-site .marketing-news-feed{gap:8px}.marketing-site .marketing-news-card h2{font-size:16px}.marketing-site .marketing-news-toolbar button{font-size:12px}.marketing-site .marketing-news-meta{gap:4px}}

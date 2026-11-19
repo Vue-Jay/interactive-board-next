@@ -7484,6 +7484,18 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const miniBottom = minimapBounds.y + minimapBounds.height + miniPad;
   const miniW = Math.max(1, miniRight - miniX);
   const miniH = Math.max(1, miniBottom - miniY);
+  function navigateMinimap(e: PE<HTMLDivElement>) {
+    const miniRect = e.currentTarget.getBoundingClientRect();
+    const mainRect = board.current?.getBoundingClientRect();
+    if (!mainRect || !miniRect.width || !miniRect.height) return;
+    const worldX = miniX + Math.max(0, Math.min(1, (e.clientX - miniRect.left) / miniRect.width)) * miniW;
+    const worldY = miniY + Math.max(0, Math.min(1, (e.clientY - miniRect.top) / miniRect.height)) * miniH;
+    setView(current => ({
+      ...current,
+      x: mainRect.width / 2 - worldX * current.zoom,
+      y: mainRect.height / 2 - worldY * current.zoom,
+    }));
+  }
   // Draw the intersection inside the map instead of letting a huge viewport
   // outline disappear behind its clipped edges (or leave a single blue line).
   const miniViewport = visibleWorld ? {
@@ -11033,20 +11045,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             </div>
             <div
               className="minimap-world"
-              title="Щёлкните, чтобы перейти к месту на доске"
+              title="Нажмите или проведите по карте, чтобы переместиться по доске"
               onPointerDown={(e) => {
+                if (!e.isPrimary || e.button !== 0) return;
                 e.preventDefault();
-                const miniRect = e.currentTarget.getBoundingClientRect();
-                const mainRect = board.current?.getBoundingClientRect();
-                if (!mainRect) return;
-                const worldX = miniX + ((e.clientX - miniRect.left) / miniRect.width) * miniW;
-                const worldY = miniY + ((e.clientY - miniRect.top) / miniRect.height) * miniH;
-                setView((current) => ({
-                  ...current,
-                  x: mainRect.width / 2 - worldX * current.zoom,
-                  y: mainRect.height / 2 - worldY * current.zoom,
-                }));
+                e.currentTarget.setPointerCapture(e.pointerId);
+                navigateMinimap(e);
               }}
+              onPointerMove={e => { if (e.currentTarget.hasPointerCapture(e.pointerId)) navigateMinimap(e); }}
             >
               {minimapMarkers}
               {miniViewport && miniViewport.right > miniViewport.left && miniViewport.bottom > miniViewport.top && (
