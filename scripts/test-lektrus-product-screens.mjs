@@ -47,7 +47,13 @@ assert.ok(adminScreen.includes("Просмотр приложения по ро�
 assert.ok(settings.includes("addPreviewTeacherRequest(user,cleaned)")&&previewRequests.includes("localStorage.setItem(KEY")&&adminScreen.includes("Удалить тестовую заявку"),"role preview teacher applications must stay local and be removable from administrator review");
 const applicationMigration=read("supabase/v251_teacher_application_details.sql");
 assert.ok(!profile.includes("Коротко о себе")&&!profile.includes("О вас и вашей работе"),"the profile must not include the biography or teacher application section heading");
-assert.ok(profile.includes("{isTeacher&&")&&settings.includes("Заявка преподавателя")&&settings.includes("experience"),"teacher information must be requested in the teacher application and shown only to teachers in their profile");
+assert.ok(!profile.includes("Преподавание")&&!profile.includes("teacherFields")&&profile.includes("Личные данные")&&profile.includes("Учётная запись"),"unified account profiles must show personal data without the obsolete teaching application fields");
+assert.ok(settings.includes("Заявка преподавателя")&&settings.includes("experience"),"legacy administrator role-preview applications remain available");
+assert.ok(shell.includes('workspaceMode&&section===""&&!morePage&&'),"the workspace switch belongs only on the home screen");
+const schedule=read("src/ScheduleScreen.tsx"),assignments=read("src/AssignmentsScreen.tsx"),learningStyles=read("src/lektrusLearningPages.css");
+assert.ok(schedule.includes('schedule-summary-learner')&&schedule.includes('!teacher||studentFilter')&&schedule.includes('schedule-day-agenda'),"learners must have appropriate schedule controls and a day agenda");
+assert.ok(learningStyles.includes('grid-template-columns:repeat(7,minmax(0,1fr))'),"all seven dates must fit within narrow screens");
+assert.ok(!assignments.includes('Создание и проверка заданий ученику недоступны')&&assignments.includes('Заданий пока нет'),"learner assignments must have clear, nonduplicated text");
 assert.ok(applicationMigration.includes("teacher_application")&&applicationMigration.includes("is_app_admin(auth.uid())"),"the application details must be stored securely for administrator review");
 const authScreen=read("src/AuthScreen.tsx");
 const signupEmail=read("supabase/email-templates/confirm-signup.html");
