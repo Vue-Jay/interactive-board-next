@@ -179,7 +179,7 @@ with sync_playwright() as p:
     showcase = visitor.locator(".marketing-showcase")
     showcase.wait_for()
     nav = visitor.locator("#marketing-nav a").all_inner_texts()
-    assert nav == ["Главная", "Возможности", "Тарифы", "Помощь и контакты"], f"Site navigation: {nav}"
+    assert nav == ["Главная", "Возможности", "Тарифы", "Новости и обновления", "Помощь и контакты"], f"Site navigation: {nav}"
     assert visitor.locator(".marketing-download-entry").get_attribute("href") == "#download"
     assert visitor.locator(".marketing-sidebar-caption").last.text_content().strip() == "Инструменты"
     assert visitor.locator(".marketing-sidebar-tools a").count() == 2
@@ -341,7 +341,7 @@ with sync_playwright() as p:
     visitor.locator(".marketing-menu-toggle").click()
     assert visitor.locator(".marketing-menu-toggle").get_attribute("aria-expanded") == "true"
     assert shortcuts.first.is_visible() and shortcuts.nth(1).is_visible()
-    assert visitor.locator("#marketing-nav a").count() == 4
+    assert visitor.locator("#marketing-nav a").count() == 5
     assert visitor.locator(".marketing-download-entry").count() == 1
     visitor.keyboard.press("Escape")
     assert visitor.locator(".marketing-menu-toggle").get_attribute("aria-expanded") == "false"

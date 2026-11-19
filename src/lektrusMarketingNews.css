@@ -1,0 +1,42 @@
+.marketing-site .marketing-news-intro{padding-top:clamp(34px,5vw,72px);padding-bottom:26px}
+.marketing-site .marketing-news-intro h1{margin:8px 0 12px;line-height:1.1}
+.marketing-site .marketing-news-intro p{max-width:760px}
+.marketing-site .marketing-news-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,315px);align-items:start;gap:24px;padding-bottom:48px}
+.marketing-site .marketing-news-main{min-width:0}
+.marketing-site .marketing-news-toolbar{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 15px;padding:5px;background:#e9eff7;border:1px solid var(--marketing-line);border-radius:13px;width:fit-content;max-width:100%;box-sizing:border-box}
+.marketing-site .marketing-news-toolbar button{min-height:38px;border:0;padding:7px 14px;border-radius:9px;background:transparent;color:#486482;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
+.marketing-site .marketing-news-toolbar button[aria-pressed=true]{background:#fff;color:var(--marketing-blue);box-shadow:0 2px 7px #193e6b15}
+.marketing-site .marketing-news-toolbar button:hover{color:var(--marketing-blue)}
+.marketing-site .marketing-news-feed{display:grid;gap:13px}
+.marketing-site .marketing-news-card,.marketing-site .marketing-news-state{min-width:0;box-sizing:border-box;background:var(--marketing-white);border:1px solid var(--marketing-line);border-radius:18px;padding:clamp(18px,2.1vw,28px);box-shadow:0 6px 18px #16395b08}
+.marketing-site .marketing-news-card-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:15px;color:#3460a2}
+.marketing-site .marketing-news-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:11px;background:#e6efff;color:#2563eb;flex:none}
+.marketing-site .marketing-news-kind,.marketing-site .marketing-news-version{font-size:11px;font-weight:750;line-height:1.4;border-radius:6px;padding:4px 8px;background:#eaf1ff;color:#2857ac}
+.marketing-site .news-category-feature .marketing-news-icon,.marketing-site .news-category-feature .marketing-news-kind{background:#e4f4ee;color:#216f55}
+.marketing-site .news-category-announcement .marketing-news-icon,.marketing-site .news-category-announcement .marketing-news-kind{background:#f1eafe;color:#7248a6}
+.marketing-site .marketing-news-version{color:#617994;background:#f1f4f8}
+.marketing-site .marketing-news-card-top time{margin-left:auto;font-size:12px;color:var(--marketing-muted)}
+.marketing-site .marketing-news-card h2{font-size:clamp(22px,2.1vw,29px);font-weight:760;line-height:1.25;letter-spacing:-.025em;overflow-wrap:anywhere}
+.marketing-site .marketing-news-card>p{margin:8px 0 13px;color:var(--marketing-muted);font-size:15px;line-height:1.65;overflow-wrap:anywhere}
+.marketing-site .marketing-news-detail summary{display:inline-flex;align-items:center;gap:10px;min-height:34px;color:var(--marketing-blue);font-size:14px;font-weight:700;cursor:pointer;list-style:none}
+.marketing-site .marketing-news-detail summary::-webkit-details-marker{display:none}
+.marketing-site .marketing-news-detail[open] summary span{transform:rotate(90deg)}
+.marketing-site .marketing-news-body{margin-top:9px;padding-top:15px;border-top:1px solid var(--marketing-line);white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px;line-height:1.7;color:var(--marketing-ink)}
+.marketing-site .marketing-news-state{display:grid;justify-items:start;gap:8px;color:var(--marketing-muted);font-size:15px;min-height:125px;align-content:center}
+.marketing-site .marketing-news-state strong{font-size:18px;color:var(--marketing-ink)}
+.marketing-site .marketing-news-state button,.marketing-site .marketing-news-pagination button{border:1px solid var(--marketing-line);background:var(--marketing-white);border-radius:9px;padding:9px 13px;color:var(--marketing-blue);font:inherit;font-weight:650;cursor:pointer}
+.marketing-site .marketing-news-pagination{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:16px;color:var(--marketing-muted);font-size:12px}
+.marketing-site .marketing-news-pagination button:disabled{opacity:.4;cursor:default}
+.marketing-site .marketing-news-social{position:relative;isolation:isolate;overflow:hidden;display:grid;gap:14px;background:linear-gradient(135deg,#edf4ff,#fff 85%);border:1px solid #c9dcf4;border-radius:18px;padding:22px;box-shadow:0 6px 22px #16395b08}
+.marketing-site .marketing-news-social::before{content:"";position:absolute;z-index:-1;pointer-events:none;border:23px solid #dce9fb80;width:150px;height:150px;border-radius:50%;right:-70px;top:-80px}
+.marketing-site .marketing-news-social-label{font-size:11px;text-transform:uppercase;font-weight:750;color:#3c679d;letter-spacing:.065em}
+.marketing-site .marketing-news-telegram-head{display:flex;align-items:center;gap:12px}
+.marketing-site .marketing-news-telegram-icon{display:grid;place-items:center;flex:none;width:48px;height:48px;background:#279bd6;color:white;border-radius:13px;box-shadow:0 4px 12px #279bd629}
+.marketing-site .marketing-news-telegram-head h3{font-size:19px;line-height:1.25;letter-spacing:-.025em}
+.marketing-site .marketing-news-telegram-head div>span{font-size:13px;color:#537496}
+.marketing-site .marketing-news-social p{font-size:14px;line-height:1.6;color:var(--marketing-muted)}
+.marketing-site .marketing-news-social-link{display:flex;justify-content:space-between;align-items:center;min-height:43px;box-sizing:border-box;padding:10px 13px;border:1px solid #bad2ef;border-radius:10px;background:#fff;color:#2260b5;font-size:13px;font-weight:750}
+.marketing-site .marketing-news-social-link:hover{background:#edf5ff;border-color:#8ab8ec}
+@media(max-width:1050px){.marketing-site .marketing-news-layout{grid-template-columns:minmax(0,1fr) minmax(230px,275px);gap:15px}}
+@media(max-width:850px){.marketing-site .marketing-news-layout{grid-template-columns:minmax(0,1fr);gap:15px;padding-bottom:28px}.marketing-site .marketing-news-intro{padding-top:32px;padding-bottom:20px}.marketing-site .marketing-news-intro h1{font-size:clamp(30px,7vw,42px)}.marketing-site .marketing-news-toolbar{width:100%}.marketing-site .marketing-news-toolbar button{flex:1 0 auto;padding:8px 10px}.marketing-site .marketing-news-social{padding:18px}}
+@media(max-width:390px){.marketing-site .marketing-news-card-top time{margin-left:0;flex-basis:100%;padding-left:0}.marketing-site .marketing-news-card-top{gap:7px;margin-bottom:10px}.marketing-site .marketing-news-toolbar button{font-size:12px}.marketing-site .marketing-news-card{padding:17px}}
