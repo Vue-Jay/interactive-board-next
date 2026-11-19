@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import AuthScreen from "./AuthScreen";
 import { loadGlobalInterfaceLayout, saveInterfaceLayout } from "./lektrusInterfaceLayout";
@@ -7,7 +7,7 @@ import LectrisWorkspaceShell from "./LectrisWorkspaceShell";
 import { clearNotificationCache } from "./notificationsStore";
 import { clearAiBoardTransfer } from "./aiLocalStore";
 import { clearAccountAccessCache, getAccountAccess, getCachedAccountAccess, type AccountRole } from "./accountRoleStore";
-import { clearPendingBoardPath, clearPendingShare, initialRoute, parseRoute, pendingBoardPath, pendingSharePath, rememberBoardPath, rememberShareToken, type AppRoute } from "./routes";
+import { clearPendingBoardPath, clearPendingShare, initialRoute, nativeBoardPath, nativeBoardUrl, parseRoute, pendingBoardPath, pendingSharePath, rememberBoardPath, rememberShareToken, type AppRoute } from "./routes";
 import { redeemShareLink } from "./shareLinks";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
@@ -20,8 +20,10 @@ import { documentFingerprint } from "./boardSync";
 import { parseDocument, type DocumentData } from "./boardModel";
 import { ensureBoardAssets } from "./assetStore";
 import { cacheBoardPreview, cachedBoardPreview, previewFromRemoteDocument, scheduleBackgroundBoardPreview } from "./boardPreview";
+import {BoardLoadingScreen,BrowserBoardLandscape,wantsBrowserBoardLandscape,requestBrowserBoardLandscape,releaseBrowserBoardLandscape} from "./BrowserBoardLandscape";
 
 const INTERFACE_STUDIO_BOARD_ID="00000000-0000-4000-8000-00000000a11a";
+const LektrusSystemUi = registerPlugin<{setBoardMode(options:{enabled:boolean}):Promise<void> }>("LektrusSystemUi");
 
 const StudentsScreen = lazy(() => import("./StudentsScreen"));
 
@@ -55,26 +57,66 @@ const FeedbackScreen = lazy(() => import("./FeedbackScreen"));
 
 const BoardApp = lazy(() => import("./BoardApp"));
 
-function BoardLoadingScreen(){
-  return <main className="lektrus-board-loading" role="status" aria-live="polite"><section className="lektrus-board-loading-card"><div className="lektrus-board-loading-mark"><img src="/lektrus-icon-192.png" alt=""/><i/></div><span className="lektrus-board-loading-kicker">LEKTRUS · РАБОЧЕЕ ПРОСТРАНСТВО</span><h1>Готовим доску</h1><p>Подключаем материалы и инструменты для занятия.</p><div className="lektrus-board-loading-progress" aria-hidden="true"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></section></main>;
-}
-
 export default function App() {
   const [route, setRoute] = useState<AppRoute>(() => {
     const initial=initialRoute();
     return Capacitor.isNativePlatform()&&initial.kind==="site"?{kind:"home"}:initial;
   });
-  useEffect(() => {
-    if (Capacitor.getPlatform() !== "android") return;
-    void registerPlugin<{setBoardMode(options:{enabled:boolean}):Promise<void>}>("LektrusSystemUi")
-      .setBoardMode({ enabled: route.kind === "board" })
-      .catch(error => console.warn("Lektrus Android status bar update failed", error));
-  }, [route.kind]);
+  // Android owns the orientation request and system bars in one native call.
+  // iOS uses the Capacitor orientation plugin.
+  const lockNativeOrientation = useCallback((board: boolean) => {
+    return Capacitor.getPlatform() === "android"
+      ? LektrusSystemUi.setBoardMode({enabled: board})
+      : ScreenOrientation.lock({ orientation: board ? "landscape-primary" : "portrait-primary" });
+  }, []);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() =>
+    new URLSearchParams(window.location.search).has("password-reset") ? null : getCachedCurrentUser()
+  );
+  const [authReady, setAuthReady] = useState(() =>
+    !new URLSearchParams(window.location.search).has("password-reset") && Boolean(getCachedCurrentUser())
+  );
+  const authenticatedBoardRoute = authReady && !!authUser && route.kind === "board";
+  useLayoutEffect(() => {
+    if (!Capacitor.isNativePlatform() || !authenticatedBoardRoute) return;
+    const page = document.documentElement;
+    page.classList.add("lektrus-native-board");
+    let frame = 0;
+    let settle: ReturnType<typeof setTimeout> | undefined;
+    const resetOuterScroll = () => {
+      const focus = document.activeElement;
+      if (focus?.matches('input:not([type="button"]):not([type="checkbox"]):not([type="range"]),textarea,[contenteditable="true"]')) return;
+      // Older WebViews can scroll an overflow:hidden ancestor on focus. Do
+      // not reset the editor's own scroller or the infinite canvas camera.
+      window.scrollTo(0, 0);
+      for (const element of [page, document.body, document.getElementById("root"), document.querySelector("#root > .app")]) {
+        if (element) { element.scrollTop = 0; element.scrollLeft = 0; }
+      }
+    };
+    const afterKeyboard = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(resetOuterScroll);
+      clearTimeout(settle);
+      settle = setTimeout(resetOuterScroll, 360);
+    };
+    resetOuterScroll();
+    window.addEventListener("resize", afterKeyboard);
+    window.visualViewport?.addEventListener("resize", afterKeyboard);
+    document.addEventListener("focusout", afterKeyboard);
+    return () => {
+      page.classList.remove("lektrus-native-board");
+      window.removeEventListener("resize", afterKeyboard);
+      window.visualViewport?.removeEventListener("resize", afterKeyboard);
+      document.removeEventListener("focusout", afterKeyboard);
+      cancelAnimationFrame(frame);
+      clearTimeout(settle);
+    };
+  }, [authenticatedBoardRoute]);
 
   // Android system back should behave like Lektrus navigation, not dismiss the app.
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     const goBackInsideLektrus = () => {
+      if(!window.dispatchEvent(new Event("lektrus:board-native-back",{cancelable:true})))return;
       const current = new URL(window.location.href);
       if (current.pathname !== "/" && current.pathname !== "/app") {
         window.history.pushState({}, "", "/app");
@@ -91,27 +133,14 @@ export default function App() {
     return () => window.removeEventListener("lektrus:native-back", goBackInsideLektrus);
   }, []);
 
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-    const apply = async () => {
-      try {
-        if (route.kind === "board") {
-          await ScreenOrientation.lock({ orientation: "landscape-primary" });
-        } else {
-          await ScreenOrientation.unlock();
-        }
-      } catch (error) {
-        console.warn("Unable to change Lektrus orientation", error);
-      }
-    };
-    void apply();
-  }, [route.kind]);
-
   const navigate = useCallback((path: string, replace = false) => {
     const appPath=path==="/"?"/app":path.startsWith("/?")?`/app${path.slice(1)}`:path;
     window.history[replace ? "replaceState" : "pushState"](null, "", appPath);
     const url = new URL(appPath, window.location.href);
     const next=parseRoute(url.pathname);
+    if(next.kind==="board"||next.kind==="demo")requestBrowserBoardLandscape(true);
+    else releaseBrowserBoardLandscape();
+    if(next.kind==="join")rememberShareToken(next.token);
     if(next.kind==="board")rememberBoardPath(next.boardId);
     setRoute(Capacitor.isNativePlatform()&&next.kind==="site"?{kind:"home"}:next);
   }, []);
@@ -124,6 +153,7 @@ export default function App() {
     const changed = () => {
       const parsed = parseRoute(window.location.pathname);
       const next=Capacitor.isNativePlatform()&&parsed.kind==="site"?{kind:"home" as const}:parsed;
+      if(next.kind!=="board"&&next.kind!=="demo")releaseBrowserBoardLandscape();
       if (next.kind === "join") rememberShareToken(next.token);
       if (next.kind === "board") rememberBoardPath(next.boardId);
       setRoute(next);
@@ -131,9 +161,6 @@ export default function App() {
     window.addEventListener("popstate", changed);
     return () => window.removeEventListener("popstate", changed);
   }, []);
-  const [authUser, setAuthUser] = useState<AuthUser | null>(() =>
-    new URLSearchParams(window.location.search).has("password-reset") ? null : getCachedCurrentUser()
-  );
   const [authCallbackError,setAuthCallbackError]=useState("");
   const [accountRole,setAccountRoleState]=useState<AccountRole>(()=>getCachedAccountAccess()?.role??"student");
   const [isAppAdmin,setIsAppAdmin]=useState(()=>getCachedAccountAccess()?.isAdmin??false);
@@ -144,18 +171,93 @@ export default function App() {
   const changeAdminEdit=useCallback((value:boolean)=>{setAdminEdit(value);try{localStorage.setItem("onlinerepetitor.adminEdit",value?"1":"0")}catch{}},[]);
   const [adminInvisible,setAdminInvisible]=useState(()=>{try{return localStorage.getItem("onlinerepetitor.adminInvisible")==="1"}catch{return false}});
   const changeAdminInvisible=useCallback((value:boolean)=>{setAdminInvisible(value);try{localStorage.setItem("onlinerepetitor.adminInvisible",value?"1":"0")}catch{}},[]);
-  const [authReady, setAuthReady] = useState(() =>
-    !new URLSearchParams(window.location.search).has("password-reset") && Boolean(getCachedCurrentUser())
-  );
   const [activeBoard, setActiveBoard] = useState<BoardSummary | null>(null);
   const boardChanged = useCallback((updated: BoardSummary) => {
     setActiveBoard(current => current?.id === updated.id ? updated : current);
   }, []);
   const [boardLoading, setBoardLoading] = useState(false);
+  // A pending board link must NOT rotate the login or registration screen.
+  const nativeBoardOpening = Capacitor.isNativePlatform() && (route.kind === "demo" ||
+    authenticatedBoardRoute || Boolean(authReady && authUser && adminInspecting && (activeBoard || boardLoading)));
+  const [nativeLandscapeReady, setNativeLandscapeReady] = useState(false);
+  useLayoutEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    if (!nativeBoardOpening) {
+      setNativeLandscapeReady(false);
+      void lockNativeOrientation(false).catch(error => console.warn("Unable to restore Lektrus workspace orientation", error));
+      return;
+    }
+    // Start rotation before the first loader paint, not when BoardApp mounts.
+    // A portrait keyboard can shrink the WebView into a landscape-shaped box.
+    // Check the display width as well, and never dismiss an already-open editor.
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    const root = document.documentElement;
+    root.classList.add("lektrus-native-rotating");
+    let alive = true;
+    const ready = () => {
+      if (!alive) return;
+      // The OS may briefly report a landscape-sized viewport and then
+      // return to portrait during rotation, or the readiness timeout may
+      // elapse while the board chunk is still loading. Keep the loader's
+      // portrait fallback until navigation actually leaves the board.
+      setNativeLandscapeReady(true);
+    };
+    const check = () => {
+      if (innerWidth > innerHeight && innerWidth >= Math.max(screen.width, screen.height) - 100) ready();
+    };
+    // Returning from a system file picker can leave older Android WebViews
+    // in portrait despite the original landscape request. Reassert it only
+    // when this still-mounted board becomes visible/focused again.
+    let lastRestore = 0;
+    const restoreOnReturn = () => {
+      if(alive && document.visibilityState === "visible" && innerWidth < innerHeight &&
+          Date.now() - lastRestore > 300) {
+        lastRestore = Date.now();
+        void lockNativeOrientation(true).then(check).catch(()=>undefined);
+      }
+    };
+    const resize = () => {
+      check();
+      // The system picker can deliver focus before a late portrait resize.
+      if (Capacitor.getPlatform() === "android") restoreOnReturn();
+    };
+    check();
+    window.addEventListener("resize", resize);
+    window.addEventListener("focus", restoreOnReturn);
+    document.addEventListener("visibilitychange", restoreOnReturn);
+    // Native file pickers can return without a WebView focus/visibility event.
+    // Retry on the Capacitor foreground event and after the picker animation.
+    let resumeRetry: ReturnType<typeof setTimeout> | undefined;
+    const onAppState = ({ isActive }: { isActive: boolean }) => {
+      if (!isActive || !alive) return;
+      restoreOnReturn();
+      if (resumeRetry) window.clearTimeout(resumeRetry);
+      resumeRetry = window.setTimeout(restoreOnReturn, 700);
+    };
+    const appStateListener = CapacitorApp.addListener("appStateChange", onAppState);
+    window.visualViewport?.addEventListener("resize", check);
+    void lockNativeOrientation(true).then(check).catch(error => console.warn("Unable to change Lektrus orientation", error));
+    // Large-screen OS modes can refuse an orientation lock; do not strand users.
+    const timeout = window.setTimeout(ready, 4000);
+    return () => {
+      alive = false;
+      root.classList.remove("lektrus-native-rotating");
+      window.clearTimeout(timeout);
+      window.removeEventListener("resize", resize);
+      window.removeEventListener("focus", restoreOnReturn);
+      document.removeEventListener("visibilitychange", restoreOnReturn);
+      if (resumeRetry) window.clearTimeout(resumeRetry);
+      void appStateListener.then(listener => listener.remove());
+      window.visualViewport?.removeEventListener("resize", check);
+    };
+  }, [nativeBoardOpening, lockNativeOrientation]);
   const [boardLoadError, setBoardLoadError] = useState("");
   const [sharePassword, setSharePassword] = useState("");
   const [submittedSharePassword, setSubmittedSharePassword] = useState<{token:string;value:string}|null>(null);
   const [sharePasswordRequired, setSharePasswordRequired] = useState(false);
+  const [browserJoinToken,setBrowserJoinToken]=useState("");
+  const mobileJoinUrl=route.kind==="join"&&browserJoinToken!==route.token&&!Capacitor.isNativePlatform()&&
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)?nativeBoardUrl(`/join/${route.token}`):null;
   const [remoteVersion, setRemoteVersion] = useState<number | null>(null);
   const [boardMountKey, setBoardMountKey] = useState(0);
   const changeAppRolePreview=useCallback((role:"actual"|AccountRole)=>{
@@ -184,6 +286,12 @@ export default function App() {
     let alive = true;
     let authRetryTimer:number|undefined;
     let confirmationListener:{remove:()=>Promise<void>}|null=null;
+    const acceptBoardUrl=(url:string)=>{
+      const path=nativeBoardPath(url);
+      if(!path)return false;
+      if(alive&&window.location.pathname!==path)navigate(path,true);
+      return true;
+    };
     const retrySession=(userId:string,attempt=0)=>{
       authRetryTimer=window.setTimeout(async()=>{
         if(!alive)return;
@@ -225,9 +333,16 @@ export default function App() {
         return;
       }
       if(Capacitor.isNativePlatform()){
-        confirmationListener=await CapacitorApp.addListener("appUrlOpen",({url})=>{void processConfirmation(url).then(done=>{if(done&&alive)setAuthReady(true)})});
+        const processNativeUrl=async(url:string)=>{
+          if(acceptBoardUrl(url))return false;
+          // A board invitation is not an authentication callback.
+          try {const parsed=new URL(url);if(parsed.protocol!=="ru.lektrus.board:"||parsed.hostname!=="auth"||parsed.pathname!=="/confirmed")return false;}
+          catch{return false;}
+          return processConfirmation(url);
+        };
+        confirmationListener=await CapacitorApp.addListener("appUrlOpen",({url})=>{void processNativeUrl(url).then(done=>{if(done&&alive)setAuthReady(true)})});
         const launch=await CapacitorApp.getLaunchUrl();
-        if(launch?.url&&await processConfirmation(launch.url)){if(alive)setAuthReady(true);return}
+        if(launch?.url&&await processNativeUrl(launch.url)){if(alive)setAuthReady(true);return}
       }
       await processConfirmation(window.location.href);
       const user=await getCurrentUser();
@@ -422,6 +537,8 @@ export default function App() {
     if (route.kind === "demo") { setBoardLoading(false); return; }
     if (authUser.guestBoardId && route.kind === "home") { navigate(`/board/${authUser.guestBoardId}`,true);return; }
     if (route.kind === "home") { setBoardLoading(false); return; }
+    // Don't redeem in the browser before the participant can choose the app.
+    if (mobileJoinUrl) {setBoardLoading(false);return;}
     setBoardLoading(true);
     void (async () => {
       try {
@@ -465,7 +582,7 @@ export default function App() {
       }
     })();
     return () => { alive = false; };
-  }, [route, authReady, authUser, navigate, openBoard, submittedSharePassword]);
+  }, [route, authReady, authUser, navigate, openBoard, submittedSharePassword, mobileJoinUrl]);
 
   useEffect(()=>{
     if(!authUser)return;
@@ -495,13 +612,17 @@ export default function App() {
 
   if(route.kind==="site")return <Suspense fallback={<div className="lektrus-site-loading"/>}><LektrusPublicSite/></Suspense>;
 
-  if(route.kind==="tool")return <Suspense fallback={<BoardLoadingScreen/>}><PublicToolScreen tool={route.tool} onBack={()=>window.location.assign("/")}/></Suspense>;
+  if(route.kind==="tool")return <Suspense fallback={<BoardLoadingScreen nativeRotate={false}/>}><PublicToolScreen tool={route.tool} onBack={()=>window.location.assign("/")}/></Suspense>;
 
   if(route.kind==="demo"){
+    if(nativeBoardOpening && !nativeLandscapeReady)return <BoardLoadingScreen/>;
+    if(wantsBrowserBoardLandscape())return <BrowserBoardLandscape key={window.location.pathname+window.location.search} path={window.location.pathname+window.location.search} demo onBack={()=>window.location.assign("/")} onLogout={()=>window.location.assign("/")}/>;
     return <Suspense fallback={<BoardLoadingScreen/>}><PublicDemoBoard/></Suspense>;
   }
 
   if (!authReady) {
+    if (nativeBoardOpening) return <BoardLoadingScreen/>;
+    if(route.kind==="board"&&wantsBrowserBoardLandscape())return <BoardLoadingScreen browserRotate/>;
     return <main className="auth-shell"><section className="auth-card"><div className="auth-brand-row"><div className="auth-logo">B</div><div><div className="auth-brand">Учебная доска</div><div className="auth-subtitle">Проверяем сессию…</div></div></div></section></main>;
   }
 
@@ -509,6 +630,22 @@ export default function App() {
 
   if (!authUser) {
     return <AuthScreen initialError={authCallbackError} onAuthenticated={(user) => { clearAccountAccessCache(); clearNotificationCache(); if(user.guestBoardId){clearPendingShare();navigate(`/board/${user.guestBoardId}`,true);}setAuthUser(user); setActiveBoard(null); }} />;
+  }
+
+  if(mobileJoinUrl&&route.kind==="join")return <main className="auth-shell"><section className="auth-card"><strong>Приглашение на доску Lektrus</strong><p>Где открыть доску?</p><div className="share-password-actions"><a className="primary" href={mobileJoinUrl}>Открыть в приложении</a><button type="button" onClick={()=>setBrowserJoinToken(route.token)}>Продолжить в браузере</button></div><button type="button" onClick={()=>{clearPendingShare();navigate("/app",true)}}>Отмена</button></section></main>;
+
+  if (nativeBoardOpening && !nativeLandscapeReady) return <BoardLoadingScreen/>;
+
+  const returnFromBoard=()=>{if(authUser.guestBoardId){logout();return;}setActiveBoard(null);if(adminInspecting||new URLSearchParams(window.location.search).get("layout-editor")==="1"){setAdminInspecting(false);navigate("/?section=admin");}else navigate("/")};
+  if(wantsBrowserBoardLandscape()&&!boardLoadError&&(route.kind==="board"||(adminInspecting&&activeBoard))){
+    const id=route.kind==="board"?route.boardId:activeBoard!.id;
+    // Keep this iframe mounted throughout the loading -> interactive transition
+    // and subsequent real screen rotations. The parent alone loads the board.
+    const payload=activeBoard?.id.toLowerCase()===id.toLowerCase()?{authUser,boardSummary:activeBoard,accountRole,isAppAdmin,
+      globalRolePreview:appRolePreview,adminMaintenance:adminInspecting&&isAppAdmin&&adminEdit,
+      adminInvisible,initialRemoteVersion:remoteVersion,selfhostMode:isSelfhostBackendEnabled(),mountKey:boardMountKey}:undefined;
+    const path=route.kind==="board"?window.location.pathname+window.location.search+window.location.hash:`/board/${id}`;
+    return <BrowserBoardLandscape key={path} path={path} payload={payload} onBack={returnFromBoard} onLogout={logout} onChanged={boardChanged} onRoleChange={changeAppRolePreview}/>;
   }
 
   if (!activeBoard) {
@@ -542,7 +679,7 @@ export default function App() {
           ? <TemplatesScreen user={authUser} onBack={()=>navigate("/app?section=boards")} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
           : <BoardsScreen user={authUser} accountRole={effectiveAccountRole} isAppAdmin={isAppAdmin&&appRolePreview==="actual"} onOpenBoard={(board) => navigate(`/board/${board.id}`)} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} />})()}</Suspense></LectrisWorkspaceShell>}
         {sharePasswordRequired && route.kind==="join" && <div className="board-server-overlay"><form className="board-server-card share-password-card" onSubmit={e=>{e.preventDefault();if(!sharePassword.trim())return;setSharePasswordRequired(false);setSubmittedSharePassword({token:route.token,value:sharePassword});}}><strong>Ссылка защищена паролем</strong><span>Введите пароль, который сообщил владелец доски.</span><input type="password" value={sharePassword} onChange={e=>setSharePassword(e.target.value)} placeholder="Пароль ссылки" autoComplete="off"/><div className="share-password-actions"><button className="primary" type="submit" disabled={!sharePassword.trim()}>Открыть доску</button><button type="button" onClick={()=>{setSharePassword("");clearPendingShare();navigate("/",true)}}>Отмена</button></div></form></div>}
-        {boardLoading && <BoardLoadingScreen/>}
+        {boardLoading && <BoardLoadingScreen browserRotate={adminInspecting&&wantsBrowserBoardLandscape()}/>}
         {boardLoadError && <div className="board-server-overlay"><div className="board-server-card"><strong>Не удалось открыть доску</strong><span>{boardLoadError}</span><button className="primary" onClick={() => setRoute({ ...route })}>Повторить</button><button onClick={() => { clearPendingShare(); navigate("/", true); }}>К моим доскам</button></div></div>}
       </>
     );
@@ -562,7 +699,7 @@ export default function App() {
       initialRemoteVersion={remoteVersion}
       selfhostMode={isSelfhostBackendEnabled()}
       onBoardChanged={boardChanged}
-      onBackToBoards={() => { if(authUser.guestBoardId){logout();return;}setActiveBoard(null); if(adminInspecting||new URLSearchParams(window.location.search).get("layout-editor")==="1"){setAdminInspecting(false);navigate("/?section=admin");}else navigate("/"); }}
+      onBackToBoards={returnFromBoard}
       onLogout={logout}
     /></Suspense>
   );

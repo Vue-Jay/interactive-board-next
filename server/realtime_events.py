@@ -333,6 +333,7 @@ class EventRateLimit:
         self.ink: deque[float] = deque()
         self.objects: deque[float] = deque()
         self.work: deque[float] = deque()
+        self.mutations: deque[float] = deque()
         self.views: deque[float] = deque()
         self.attachments: deque[float] = deque()
         self.violations = 0
@@ -345,8 +346,10 @@ class EventRateLimit:
             window, limit = self.objects, 24
         elif event_type in ("live_ink", "live_erase"):
             window, limit = self.ink, 30
-        elif event_type in ("work_state", "editor_mutation", "object_transform"):
-            window, limit = self.work, 30 if event_type == "work_state" else 24
+        elif event_type == "work_state":
+            window, limit = self.work, 30
+        elif event_type in ("editor_mutation", "object_transform"):
+            window, limit = self.mutations, 24
         elif event_type in ("focus_view", "teacher_view", "guided_follow"):
             window, limit = self.views, 10
         else:
@@ -358,3 +361,4 @@ class EventRateLimit:
             return False
         window.append(now)
         return True
+

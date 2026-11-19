@@ -178,6 +178,8 @@ const BOARD_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
 // tab remains open on an alias. Preserve local/test and independent installs.
 function boardLinkOrigin() {
   const origin = window.location.origin;
+  if (origin === "https://localhost" || origin === "capacitor://localhost" ||
+      (window.location.protocol === "capacitor:" && window.location.hostname === "localhost")) return "https://lektrus.ru";
   return /^https?:\/\/(?:lektrus\.ru|www\.lektrus\.ru|lectrus\.ru|www\.lectrus\.ru|lektrus-vuejay\.msk1\.amvera\.tech)$/i.test(origin)
     ? "https://lektrus.ru" : origin;
 }

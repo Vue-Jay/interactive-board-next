@@ -128,7 +128,7 @@ function documentFor(scene:Scene):DocumentData{
  ];
  return {version:1,title:sceneNames[scene],subject:"Математика",view:{x:0,y:0,zoom:1},items,background:{mode:"dots",color:"#fbfcfe",opacity:100}};
 }
-export default function PublicDemoBoard(){
+export default function PublicDemoBoard({onExit=()=>window.location.assign("/")}:{onExit?:()=>void}={}){
  const params=useMemo(()=>new URLSearchParams(window.location.search),[]);
  const raw=params.get("scene");
  const scene:Scene=raw&&raw in sceneIds?raw as Scene:"math";
@@ -151,5 +151,5 @@ export default function PublicDemoBoard(){
   // Storage-blocked/private browsers can still explore an in-memory lesson.
   useMemorySeed=true;
  }
- return <BoardApp key={scene} authUser={user} boardSummary={board} accountRole="student" demoMode demoInitialDocument={useMemorySeed?seed:undefined} onBackToBoards={()=>window.location.assign("/")} onLogout={()=>window.location.assign("/")} onBoardChanged={()=>{}}/>;
+ return <BoardApp key={scene} authUser={user} boardSummary={board} accountRole="student" demoMode demoInitialDocument={useMemorySeed?seed:undefined} onBackToBoards={onExit} onLogout={onExit} onBoardChanged={()=>{}}/>;
 }

@@ -1,0 +1,18 @@
+.lektrus-pdf-canvas-stage{display:grid;grid-template: minmax(0,1fr)/minmax(0,1fr);place-items:center;width:100%;height:100%;min-height:0;overflow:hidden;background:#fff;color:#65758b}
+.lektrus-pdf-canvas-stage>span{padding:12px;text-align:center;font-size:13px}
+.lektrus-pdf-canvas{display:block;max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain}
+.lektrus-pdf-canvas[hidden]{display:none}
+.media-host .lektrus-pdf-canvas-stage{pointer-events:none}
+.lektrus-pdf-document-viewer{box-sizing:border-box;width:100%;height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.lektrus-pdf-page-controls{display:flex;align-items:center;justify-content:center;gap:12px;flex:none;padding:6px;background:#f2f5fa;color:#173252;font-size:13px}
+.lektrus-pdf-page-controls button,.lektrus-attachment-preview-actions button{border:1px solid #d8e2f0;border-radius:8px;background:#fff;color:#173252;padding:8px 14px;min-height:36px;cursor:pointer;font:inherit}
+.lektrus-pdf-page-controls button:disabled{opacity:.35;cursor:default}
+.lektrus-pdf-document-viewer>.lektrus-pdf-canvas-stage{flex:1;min-height:0}
+.material-preview-stage>.lektrus-pdf-document-viewer{height:min(60vh,580px);height:min(60dvh,580px)}
+.lektrus-attachment-preview{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;background:#eef3fa;color:#173252;box-sizing:border-box;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));gap:8px}
+.lektrus-attachment-preview header{display:flex;align-items:center;gap:8px;justify-content:space-between;min-width:0;flex:none}
+.lektrus-attachment-preview header strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.lektrus-attachment-preview-actions{display:flex;align-items:center;gap:6px;flex:none;font-size:13px}
+.lektrus-attachment-preview-body{flex:1;min-height:0;display:grid;place-items:center;overflow:hidden;background:#fff;border-radius:10px}
+.lektrus-attachment-preview-body>img{max-width:100%;max-height:100%;object-fit:contain}
+.lektrus-attachment-preview .lektrus-attachment-preview-notice{font-size:13px;margin:0;color:#294c79}

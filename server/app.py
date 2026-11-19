@@ -54,9 +54,12 @@ def jwt_secret() -> str:
     return value
 
 def allowed_origins() -> list[str]:
-    return list(dict.fromkeys(x.strip().rstrip("/") for setting_name in (
+    # Exact Capacitor origins only; auth still requires a bearer token for
+    # protected HTTP routes and a valid session for WebSocket connections.
+    configured = (x.strip().rstrip("/") for setting_name in (
         "LEKTRUS_ALLOWED_ORIGINS", "LEKTRUS_DEPLOYMENT_ORIGINS"
-    ) for x in os.getenv(setting_name, "").split(",") if x.strip()))
+    ) for x in os.getenv(setting_name, "").split(",") if x.strip())
+    return list(dict.fromkeys([*configured, "https://localhost", "capacitor://localhost"]))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -95,7 +98,7 @@ app.add_middleware(
     allow_origins=allowed_origins(),
     allow_credentials=False,
     allow_methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "X-File-Name", "X-Material-Title", "X-Material-Folder"],
 )
 
 

@@ -4,14 +4,15 @@
  * Every other historical territory receives an explicitly NON-official,
  * deterministic monogram, never a fabricated historic flag or coat of arms. */
 import type {GeoFeature} from "./lektrusAtlasData";
+import {regionDisplayNames} from "./regionDisplayNames";
 import {findHistoricalReference} from "./lektrusHistoricalReferences";
 import {findHistoricalStateInsignia,findHistoricalCountryFlag,
  historicalInsigniaUrl,historicalInsigniaSourceUrl} from "./lektrusHistoricalInsignia";
 export type AtlasCountrySymbol={kind:"flag"|"symbol"|"historic";code:string|null;monogram:string;
  label:string;note:string;key:string;imageUrl?:string;sourceUrl?:string;
  period?:string;reconstruction?:boolean};
-const englishNames=new Intl.DisplayNames(["en"],{type:"region"});
-const russianNames=new Intl.DisplayNames(["ru"],{type:"region"});
+const englishNames=regionDisplayNames("en");
+const russianNames=regionDisplayNames("ru");
 const isoByName=(()=>{
  const lookup=new Map<string,string>();
  for(let a=65;a<=90;a++)for(let b=65;b<=90;b++){

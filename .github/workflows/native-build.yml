@@ -1,7 +1,7 @@
 name: Lektrus native Android APK and iOS simulator
 on:
   pull_request:
-    branches: [main]
+    branches: [main, qa/mobile-native-base-20261117]
   push:
     branches: [main]
   workflow_dispatch:
@@ -15,9 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-      VITE_AUTH_REDIRECT_URL: ${{ vars.LEKTRUS_AUTH_REDIRECT_URL }}
+      VITE_LEKTRUS_API_ORIGIN: https://lektrus.ru
       LEKTRUS_SIGNING_STORE_BASE64: ${{ secrets.LEKTRUS_SIGNING_STORE_BASE64 }}
       LEKTRUS_SIGNING_STORE_PASSWORD: ${{ secrets.LEKTRUS_SIGNING_STORE_PASSWORD }}
       LEKTRUS_SIGNING_KEY_ALIAS: ${{ secrets.LEKTRUS_SIGNING_KEY_ALIAS }}
@@ -44,14 +42,20 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Verify native project
         run: npm run native:check
-      - name: Explain missing production connection
-        shell: bash
-        run: |
-          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
-            echo "::warning::Supabase build secrets are missing. This test APK runs in local-only mode; set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable account synchronization."
-          fi
+      - name: Verify Android API transport and authentication state
+        run: node scripts/test-selfhost-client.mjs
       - name: Build bundled Lektrus
-        run: npm run build
+        run: npm run native:build
+      - name: Authentication viewport and visual geometry acceptance
+        run: |
+          node scripts/test-auth-viewport.mjs
+          CHROME_PATH="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node scripts/test-auth-layout-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Auth-layout-screenshots
+          path: artifacts/auth-layout
+          if-no-files-found: ignore
       - name: Sync Android native files
         run: npx cap sync android
       - name: Require persistent Android signing credentials
@@ -93,6 +97,39 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  android-network:
+    name: Signed Android 7 APK — live HTTPS login smoke test
+    needs: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Lektrus-Android-Update-APK
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Exercise the signed release APK on Android 7
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 24
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: python3 scripts/test-signed-android-login.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Signed-Android-login-evidence
+          path: artifacts/android-login
+          if-no-files-found: warn
+          retention-days: 14
+
   ios:
     name: Compile iOS simulator application
     # The standard macOS 26 ARM pool can remain unallocated during runner-capacity incidents.
@@ -100,9 +137,7 @@ jobs:
     runs-on: macos-26-intel
     timeout-minutes: 45
     env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-      VITE_AUTH_REDIRECT_URL: ${{ vars.LEKTRUS_AUTH_REDIRECT_URL }}
+      VITE_LEKTRUS_API_ORIGIN: https://lektrus.ru
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -112,7 +147,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run native:check
       - name: Build bundled Lektrus
-        run: npm run build
+        run: npm run native:build
       - name: Sync iOS native files
         run: npx cap sync ios
       - name: Build simulator app without Apple signing

@@ -5,6 +5,7 @@ import { Capacitor } from "@capacitor/core";
 import "./index.css";
 import "./nextTheme.css";
 import App from "./App";
+import {BrowserBoardFrameEntry,isBrowserBoardFrame} from "./BrowserBoardLandscape";
 import "./interactiveCursor.css";
 import "./settingsCursorFix.css";
 import "./lectrisLayout.css";
@@ -165,13 +166,14 @@ if (!root) {
 }
 
 createRoot(root).render(
+  isBrowserBoardFrame()?<ErrorBoundary><BrowserBoardFrameEntry/></ErrorBoundary>:
   Capacitor.isNativePlatform() && !LEKTRUS_LOCAL_TEST_MODE && !isSelfhostBackendEnabled() && !isRemoteBackendEnabled()
     ? <NativeConnectionSetup />
     : <ErrorBoundary><App /></ErrorBoundary>
 );
 
 // Register only in production so dev/HMR never reuses a cached app shell.
-if (import.meta.env.PROD && !Capacitor.isNativePlatform() && "serviceWorker" in navigator) {
+if (import.meta.env.PROD && !isBrowserBoardFrame() && !Capacitor.isNativePlatform() && "serviceWorker" in navigator) {
   let reloadAfterConfirmedUpdate = false;
   window.addEventListener("lektrus:apply-update", () => { reloadAfterConfirmedUpdate = true; });
   navigator.serviceWorker.addEventListener("controllerchange", () => {

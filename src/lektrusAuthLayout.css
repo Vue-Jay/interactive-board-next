@@ -6,6 +6,7 @@
   place-items: center;
 }
 .auth-card { max-width: 100%; }
+.auth-stage { display: contents; }
 .auth-brand-row { display: flex; align-items: center; }
 .auth-logo { display: grid; place-items: center; }
 .auth-tabs {
@@ -148,4 +149,71 @@
   .auth-shell-register .auth-field input { min-width: 0; min-height: 41px; padding: 9px 12px; }
   .auth-shell-register .auth-form .auth-submit { min-height: 41px; align-self: end; }
   .auth-shell-register .auth-role-note { display: none; }
+}
+
+/* Native and small/touch browser auth use the same bounded scrollport, with
+   an inner stage centered only when there is spare space. Never scale a
+   desktop-width card down: phone controls need readable text and touch targets.
+   The stage retains its pre-IME height so a keyboard resize cannot relocate
+   a focused field; registration can exceed the stage and scroll naturally. */
+.auth-shell-interactive[data-auth-mobile] {
+  display: block;
+  width: 100%;
+  height: 100vh;
+  height: var(--auth-visible-height, 100vh);
+  min-height: 0;
+  max-height: none;
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.auth-shell-interactive[data-auth-mobile]::-webkit-scrollbar { width: 0; height: 0; }
+.auth-shell-interactive[data-auth-mobile] .auth-stage {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  min-height: var(--auth-stable-height, 100vh);
+  padding: 16px;
+  padding-top: max(16px, env(safe-area-inset-top, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+}
+.auth-shell-interactive[data-auth-mobile] .auth-card {
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  max-width: 580px;
+  margin-top: auto;
+  margin-bottom: auto;
+  padding: clamp(18px, 5vw, 30px);
+  border-radius: 22px;
+}
+.auth-shell-interactive[data-auth-mobile] .auth-brand { font-size: 24px; }
+.auth-shell-interactive[data-auth-mobile] .auth-subtitle { font-size: 13px; }
+.auth-shell-interactive[data-auth-mobile] .auth-brand-row { margin-bottom: 22px; }
+.auth-shell-interactive[data-auth-mobile] .auth-tabs { margin-bottom: 20px; }
+.auth-shell-interactive[data-auth-mobile] .auth-tabs button { font-size: 15px; min-height: 44px; }
+.auth-shell-interactive[data-auth-mobile] .auth-form { gap: 16px; }
+.auth-shell-interactive[data-auth-mobile] .auth-form h1 { font-size: clamp(24px, 5vw, 30px); }
+.auth-shell-interactive[data-auth-mobile] .auth-form p { font-size: 14px; }
+.auth-shell-interactive[data-auth-mobile] .auth-field span { font-size: 14px; }
+.auth-shell-interactive[data-auth-mobile] .auth-field input { min-height: 48px; font-size: 16px; line-height: 1.3; scroll-margin-block: 20px; }
+.auth-shell-interactive[data-auth-mobile] .auth-submit,
+.auth-shell-interactive[data-auth-mobile] .auth-guest { min-height: 48px; font-size: 16px; }
+.auth-shell-interactive[data-auth-mobile] .auth-text-action { min-height: 44px; font-size: 15px; }
+.auth-shell-interactive[data-auth-mobile] .auth-role-note { font-size: 13px; margin-top: 18px; }
+.auth-shell-interactive[data-auth-mobile] .auth-role-option strong { font-size: 14px; }
+.auth-shell-interactive[data-auth-mobile] .auth-role-option small { font-size: 12px; }
+.auth-shell-interactive[data-auth-mobile] .auth-confirm-actions button { min-height: 44px; font-size: 14px; }
+@media (max-width: 360px) {
+  .auth-shell-interactive[data-auth-mobile] .auth-stage { padding-left: 12px; padding-right: 12px; }
+  .auth-shell-interactive[data-auth-mobile] .auth-card { padding-left: 14px; padding-right: 14px; }
 }

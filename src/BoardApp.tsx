@@ -9,6 +9,8 @@ import { canCompositeBoardResize, paintBoardResizePreview, type ResizePreviewTar
 import { boardGridTransform } from "./boardBackgroundPan";
 import { chemistryBoardHasContent } from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
+import MobileBoardEditorPortal, { dismissEditorBackdropInput, fitMobileEditorViewport } from "./MobileBoardEditorPortal";
+import { useTouchBoardMenuViewport } from "./useTouchBoardMenuViewport";
 import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./rectSelection";
 import { boardObjectAtInertPointerTarget } from "./boardObjectDragSurface";
 import { buildBoardDragSnapIndex, snapBoardDrag, type BoardDragSnapIndex } from "./boardDragSnapIndex";
@@ -138,6 +140,11 @@ import { createBoardComment, listBoardComments, listBoardCommentParticipants, se
 import { subscribeBoardComments } from "./commentRealtime";
 import { LinkMediaPlayer, resolveLinkMedia } from "./linkMedia";
 import { safeBackupName, validatePortableBundle, type PortableBoardBundle } from "./backupStore";
+import { saveExport } from "./nativeFileExport";
+import { usesEmbeddedPdf } from "./embeddedPdf";
+import type { AttachmentPreview } from "./AttachmentPreviewDialog";
+const PdfPageCanvas=lazy(()=>import("./PdfPageCanvas"));
+const AttachmentPreviewDialog=lazy(()=>import("./AttachmentPreviewDialog"));
 
 const createId = (): string => {
   const native = globalThis.crypto?.randomUUID;
@@ -738,7 +745,7 @@ function AttachmentRequestPreview({request,boardId}:{request:AttachmentApprovalR
  const [url,setUrl]=useState<string|null>(null);
  useEffect(()=>{let active=true;let objectUrl="";void getAsset(request.assetId,boardId).then(blob=>{if(!active||!blob)return;objectUrl=URL.createObjectURL(blob);setUrl(objectUrl)});return()=>{active=false;if(objectUrl)URL.revokeObjectURL(objectUrl)}},[request.assetId,boardId]);
  if(!url)return <div className="teacher-media-request-preview teacher-media-request-loading">Загрузка предпросмотра…</div>;
- return <div className="teacher-media-request-preview">{request.kind==="image"?<img src={url} alt={request.name} loading="lazy" decoding="async"/>:<iframe src={`${url}#page=1&toolbar=0`} title={request.name}/>}</div>;
+ return <div className="teacher-media-request-preview">{request.kind==="image"?<img src={url} alt={request.name} loading="lazy" decoding="async"/>:usesEmbeddedPdf()?<Suspense fallback={<span>Загрузка PDF…</span>}><PdfPageCanvas src={url} title={request.name} maxPixels={250000}/></Suspense>:<iframe src={`${url}#page=1&toolbar=0`} title={request.name}/>}</div>;
 }
 
 const Media = memo(function Media({ item, boardId }: { item: Item; boardId: string }) {
@@ -791,7 +798,9 @@ const Media = memo(function Media({ item, boardId }: { item: Item; boardId: stri
         ? <div className="media-missing">Загрузка…</div>
         : item.kind === "image"
           ? <img className="media-image" style={imageStyle} src={src} alt={item.name??"Изображение"} loading="lazy" decoding="async"/>
-          : <iframe
+          : usesEmbeddedPdf()
+            ? <Suspense fallback={<div className="media-missing">Загрузка PDF…</div>}><PdfPageCanvas src={src} page={item.pdfPage??1} title={item.name}/></Suspense>
+            : <iframe
               key={`${item.assetId}-${item.pdfPage ?? 1}`}
               className="media-pdf"
               src={`${src}#page=${Math.max(1, item.pdfPage ?? 1)}&view=FitH&toolbar=0&navpanes=0&scrollbar=0`}
@@ -2382,6 +2391,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [formulaPaletteTab, setFormulaPaletteTab] = useState<FormulaPaletteTab>("basic");
   const [formulaHistory, setFormulaHistory] = useState<string[]>(() => { try { const v=JSON.parse(localStorage.getItem("onlinerepetitor.formula-history.v54")||"[]"); return Array.isArray(v)?v.slice(0,12):[] } catch { return [] } });
   const formulaInput = useRef<HTMLTextAreaElement>(null);
+  const formulaWindow = useRef<HTMLDivElement>(null);
   const [frameNotesEditorId, setFrameNotesEditorId] = useState<string | null>(null);
   const [frameNotesDraft, setFrameNotesDraft] = useState("");
   const [presentationNotesOpen, setPresentationNotesOpen] = useState(false);
@@ -2479,6 +2489,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [commandPaletteQuery, setCommandPaletteQuery] = useState("");
   const [commandPaletteIndex, setCommandPaletteIndex] = useState(0);
   const [preview, setPreview] = useState<Item | null>(null);
+  const [attachmentPreview,setAttachmentPreview]=useState<AttachmentPreview|null>(null);
   // The active tool belongs to THIS viewer/tab, not to the shared document
   // or a collaborator's presence/editor state. Restore it after remounts.
   const [tool, setToolState] = useState<Tool>(()=>readBoardSessionTool(boardSummary.id,authUser.id));
@@ -2873,6 +2884,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const desktopToolSections=[{id:"create",label:"Текст",icon:"section-create" as IconName,ids:["text","sticky","frame"] as Tool[]},{id:"shapes",label:"Фигуры",icon:"section-shapes" as IconName,ids:["shape","connector"] as Tool[]},{id:"data",label:"Таблицы и диаграммы",icon:"section-data" as IconName,ids:["table","graph"] as Tool[]},{id:"assignments",label:"Задания",icon:"section-assignments" as IconName,ids:["checklist","quiz","flashcard","cover"] as Tool[]},{id:"media",label:"Фото, PDF и видео",icon:"section-media" as IconName,ids:["media","linkmedia"] as Tool[]}];
   const adaptiveToolbarRef=useAdaptiveBoardToolbar(desktopToolsExpanded,desktopToolSection);
   const [isCoarsePointer,setIsCoarsePointer]=useState(()=>window.matchMedia?.("(pointer: coarse)").matches===true);
+  const touchEditorViewport=isCoarsePointer||Capacitor.isNativePlatform();
+  useLayoutEffect(()=>{
+    if(!touchEditorViewport||!formulaEditorId||!formulaWindow.current)return;
+    return fitMobileEditorViewport(formulaWindow.current);
+  },[touchEditorViewport,formulaEditorId]);
+  useTouchBoardMenuViewport(isCoarsePointer||Capacitor.isNativePlatform());
   useEffect(()=>{const mq=window.matchMedia?.("(pointer: coarse)");if(!mq)return;const sync=()=>setIsCoarsePointer(mq.matches);sync();mq.addEventListener?.("change",sync);return()=>mq.removeEventListener?.("change",sync)},[]);
   useEffect(()=>{
     const element=board.current;if(!element)return;
@@ -2882,7 +2899,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const observer=new ResizeObserver(update);observer.observe(element);return()=>observer.disconnect();
   },[boardSummary.id]);
   useEffect(()=>{
-    if(!isCoarsePointer)return;
+    if(!isCoarsePointer||window.parent!==window)return;
     // Never force browser fullscreen: Android/Chrome may create a persistent
     // "copy this app URL" notification for that app-like fullscreen session.
     // Installed PWA can lock orientation without entering browser fullscreen.
@@ -3475,6 +3492,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
   };
 
+  // Android's physical Back button must follow the same save path as «Доски».
+  useEffect(()=>{
+    const back=(event:Event)=>{event.preventDefault();void saveBeforeLeaving(false);};
+    window.addEventListener("lektrus:board-native-back",back);
+    return ()=>window.removeEventListener("lektrus:board-native-back",back);
+  });
+
   const openHistory=async()=>{
     if(!historyEnabled){setNotice("История версий доступна зарегистрированным участникам при серверной синхронизации");return}
     setHistoryOpen(true);setHistoryBusy(true);setHistoryError("");
@@ -3534,14 +3558,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         assets: assets.map(asset=>({ ...asset, size: Math.round((asset.data.length * 3) / 4) })),
       };
       validatePortableBundle(bundle);
-      const url = URL.createObjectURL(
-        new Blob([JSON.stringify(bundle)], { type: "application/json" }),
-      );
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = safeBackupName(title);
-      a.click();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const saved = await saveExport(new Blob([JSON.stringify(bundle)], { type: "application/octet-stream" }), safeBackupName(title));
+      if (!saved) { setNotice("Сохранение отменено"); return; }
       setNotice(assets.length ? `Копия скачана вместе с вложениями: ${assets.length}` : "Копия доски скачана");
     } catch {
       setNotice("Не удалось подготовить переносимую копию");
@@ -4265,31 +4283,35 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setNotice(`Вложение «${request.name}» отклонено`);
   };
   const openAttachmentRequest=async(request:AttachmentApprovalRequest)=>{
-    const blob=await getAsset(request.assetId,boardSummary.id);
-    if(!blob){setNotice("Не удалось загрузить вложение для предпросмотра");return}
-    const url=URL.createObjectURL(blob);window.open(request.kind==="pdf"?`${url}#page=1`:url,"_blank","noopener,noreferrer");window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+    try {
+      const blob=await getAsset(request.assetId,boardSummary.id);
+      if(!blob){setNotice("Не удалось загрузить вложение для предпросмотра");return}
+      if(usesEmbeddedPdf()){setAttachmentPreview({blob,name:request.name,kind:request.kind});return;}
+      const url=URL.createObjectURL(blob);window.open(request.kind==="pdf"?`${url}#page=1`:url,"_blank","noopener,noreferrer");window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+    }catch{setNotice("Не удалось загрузить вложение для предпросмотра");}
   };
 
   const openMediaAsset = async (item: Item) => {
     if ((item.kind !== "image" && item.kind !== "pdf") || !item.assetId) return;
-    const blob = await getAsset(item.assetId, boardSummary.id);
-    if (!blob) { setNotice("Исходный файл не найден в хранилище браузера"); return; }
-    const url = URL.createObjectURL(blob);
-    const targetUrl = item.kind === "pdf" ? `${url}#page=${Math.max(1, item.pdfPage ?? 1)}` : url;
-    window.open(targetUrl, "_blank", "noopener,noreferrer");
-    window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    try {
+      const blob = await getAsset(item.assetId, boardSummary.id);
+      if (!blob) { setNotice("Исходный файл не найден в хранилище"); return; }
+      if(usesEmbeddedPdf()){setAttachmentPreview({blob,name:item.name||(item.kind==="pdf"?"document.pdf":"Изображение"),kind:item.kind,page:item.pdfPage});return;}
+      const url = URL.createObjectURL(blob);
+      const targetUrl = item.kind === "pdf" ? `${url}#page=${Math.max(1, item.pdfPage ?? 1)}` : url;
+      window.open(targetUrl, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }catch{setNotice("Не удалось открыть исходный файл");}
   };
 
   const downloadMediaAsset = async (item: Item) => {
     if ((item.kind !== "image" && item.kind !== "pdf") || !item.assetId) return;
-    const blob = await getAsset(item.assetId, boardSummary.id);
-    if (!blob) { setNotice("Исходный файл не найден в хранилище браузера"); return; }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = item.name || (item.kind === "pdf" ? "document.pdf" : "image");
-    a.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    try {
+      const blob = await getAsset(item.assetId, boardSummary.id);
+      if (!blob) { setNotice("Исходный файл не найден в хранилище"); return; }
+      const saved = await saveExport(blob, item.name || (item.kind === "pdf" ? "document.pdf" : "image"));
+      setNotice(saved ? "Файл сохранён" : "Сохранение отменено");
+    } catch (error) { setNotice(error instanceof Error ? error.message : "Не удалось сохранить исходный файл"); }
   };
 
   const setPdfPage = (item: Item, page: number) => {
@@ -6067,19 +6089,22 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           else { ctx.fillStyle = "#eef0f4"; roundedRect(item.x, item.y, item.width, item.height, 8); ctx.fill(); }
         } else if (item.kind === "pdf") {
           ctx.fillStyle = "#fff"; ctx.strokeStyle = "#d8dce5"; ctx.lineWidth = 1.5; roundedRect(item.x, item.y, item.width, item.height, 8); ctx.fill(); ctx.stroke();
-          ctx.fillStyle = "#dc4c64"; ctx.font = "700 24px Arial, sans-serif"; ctx.fillText("PDF", item.x + 18, item.y + 38);
-          ctx.fillStyle = "#4a4f5c"; ctx.font = "14px Arial, sans-serif"; wrapText(item.name ?? "Документ PDF", item.x + 18, item.y + 66, Math.max(30, item.width - 36), 19, 3);
+          const pdfBlob=item.assetId?await getAsset(item.assetId,boardSummary.id):null;
+          if(!pdfBlob)throw new Error(`Не найден исходный PDF: ${item.name??"Документ"}`);
+          const {renderPdfPageCanvas}=await import("./pdfPagination");
+          const page=await renderPdfPageCanvas(pdfBlob,item.pdfPage??1);
+          const fit=Math.min(item.width/page.width,item.height/page.height), w=page.width*fit,h=page.height*fit;
+          ctx.save();roundedRect(item.x,item.y,item.width,item.height,8);ctx.clip();
+          ctx.drawImage(page,item.x+(item.width-w)/2,item.y+(item.height-h)/2,w,h);ctx.restore();
+          page.width=0;page.height=0;
         }
         ctx.restore();
       }
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png", .96));
       if (!blob) throw new Error("Не удалось создать PNG");
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a"); a.href = url;
       const base = (title || "board").replace(/[\\/:*?"<>|]+/g, "_").slice(0, 70);
       const suffix = scope === "selection" ? "_selection" : scope === "frame" ? `_${(frameForExport?.text || "frame").replace(/[\/:*?"<>|]+/g, "_").slice(0, 40)}` : "";
-      a.download = `${base}${suffix}.png`; a.click();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      if (!await saveExport(blob, `${base}${suffix}.png`)) { setNotice("Сохранение отменено"); return; }
       setNotice(`PNG сохранён · ${canvas.width} × ${canvas.height}`);
     } catch (error) {
       setNotice(error instanceof Error ? `Не удалось экспортировать PNG: ${error.message}` : "Не удалось экспортировать PNG");
@@ -6929,8 +6954,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const saveChecklistEditor = () => {
     if(!canCreateAssignments){setNotice("Изменять структуру задания может преподаватель");return;}
     if (!checklistEditorId || !checklistDraft) { setChecklistEditorId(null); setChecklistDraft(null); return; }
-    const cleanItems = checklistDraft.items.slice(0, 40).map((value) => value.slice(0, 2000));
-    const cleanDone = cleanItems.map((_, index) => checklistDraft.done[index] === true);
+    const rows = checklistDraft.items.slice(0, 40).map((value,index) => ({text:value.slice(0, 2000),done:checklistDraft.done[index]===true}));
+    // New draft rows are placeholders until filled. Do not leave an unused
+    // trailing row on a newly created checklist (especially after an IME
+    // transition). Existing checklists retain deliberately empty entries.
+    if(pendingStudyItem?.id===checklistEditorId){
+      while(rows.length>1&&!rows[rows.length-1].text.trim()&&!rows[rows.length-1].done)rows.pop();
+    }
+    const cleanItems = rows.map(row=>row.text);
+    const cleanDone = rows.map(row=>row.done);
     if(pendingStudyItem?.id===checklistEditorId && (!checklistDraft.title.trim()||!cleanItems.some(x=>x.trim()))){
       setNotice("Введите название и хотя бы один пункт чек-листа");return;
     }
@@ -7573,8 +7605,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const formatPresentationTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
   const toggleFullscreen = async () => {
     try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else await document.documentElement.requestFullscreen();
+      // The rotated same-origin browser board owns a logical landscape
+      // viewport. Fullscreen the outer document, not the inner iframe.
+      const framed=window.parent!==window&&new URLSearchParams(location.search).get("lektrus-board-frame")==="1";
+      const target=framed?window.parent.document:document;
+      if (target.fullscreenElement) await target.exitFullscreen();
+      else {
+        await target.documentElement.requestFullscreen();
+        if(framed)try{await (window.parent.screen.orientation as ScreenOrientation&{lock?:(value:"landscape")=>Promise<void>})?.lock?.("landscape")}catch{/* Logical frame still works. */}
+      }
     } catch { setNotice("Браузер не разрешил полноэкранный режим"); }
   };
 
@@ -8109,6 +8148,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   return (
     <div className={`app ${presentation ? "presentation-mode" : ""} ${!canEdit ? "viewer-mode" : ""} ${publicPresentation ? "public-presentation-mode" : ""}`}>
+      {attachmentPreview&&<Suspense fallback={null}><AttachmentPreviewDialog preview={attachmentPreview} onClose={()=>setAttachmentPreview(null)}/></Suspense>}
       {isAppAdmin&&rolePreview!=="actual"&&
         <div className="lektrus-developer-role-banner" role="status">
           <span>Тест роли: <strong>{BOARD_ROLE_PREVIEW_LABELS[rolePreview]}</strong></span>
@@ -8313,6 +8353,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <details className="topbar-more-menu">
             <summary className="top-button topbar-more-trigger" title="Дополнительные действия" aria-label="Дополнительные действия"><Icon name="more" /></summary>
             <div className="topbar-more-popover">
+              <div className="lektrus-board-menu-pager" aria-label="Прокрутка действий доски">
+                {([-1,1] as const).map(direction=><button type="button" key={direction} data-menu-page={direction===1?"next":"previous"} aria-label={direction===1?"Следующие действия":"Предыдущие действия"} onClick={event=>{
+                  const menu=event.currentTarget.closest<HTMLElement>(".topbar-more-popover");
+                  const pager=event.currentTarget.parentElement;
+                  if(menu&&pager)menu.scrollTop+=direction*Math.max(24,menu.clientHeight-pager.offsetHeight-16);
+                }}>{direction===1?"↓ Далее":"↑ Назад"}</button>)}
+              </div>
               <button type="button" className="lektrus-controls-menu-entry" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setControlSettingsOpen(true)}}><Icon name="settings" size={17}/><span>Управление доской</span></button>
               <div className="topbar-menu-account">
                 <span className="account-avatar" aria-hidden="true"><UserAvatar/></span>
@@ -8334,7 +8381,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               <div className="topbar-menu-section">
                 <button onClick={()=>{finishEdit();fileInput.current?.click()}}><Icon name="open" size={16}/><span>Импорт доски</span></button>
                 {previous&&<button onClick={()=>{if(window.confirm("Вернуть доску, сохранённую перед последним импортом? Текущие изменения заменятся.")){applyDocument(previous);setNotice("Доска до импорта восстановлена")}}}><Icon name="undo" size={16}/><span>Вернуть до импорта</span></button>}
-                <button onClick={()=>void exportBoard()}><Icon name="download" size={16}/><span>Скачать копию</span></button>
+                <button onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");void exportBoard()}}><Icon name="download" size={16}/><span>Скачать копию</span></button>
               </div>
               {showAdminControls && <div className="topbar-menu-section">
                 <button type="button" onClick={()=>setDeveloperSettingsOpen(true)}><Icon name="settings" size={16}/><span>Настройки разработчика</span></button>
@@ -8964,7 +9011,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         {formulaEditorId && formulaDraft && createPortal(
           <div
             className="formula-editor-backdrop lektrus-formula-window"
-            style={subjectEditorStyle("mathematics")} onPointerDown={(event) => { if(event.target===event.currentTarget)closeFormulaEditor(); }}
+            ref={formulaWindow} data-touch-viewport={touchEditorViewport?"true":undefined}
+            style={subjectEditorStyle("mathematics")} onPointerDown={(event) => { if(event.target===event.currentTarget&&!(touchEditorViewport&&dismissEditorBackdropInput(event.target)))closeFormulaEditor(); }}
             onKeyDown={(e) => {
               if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeFormulaEditor(); }
               if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); saveFormulaEditor(); }
@@ -9081,10 +9129,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             </div>
           </div>,document.body
         )}
+        <MobileBoardEditorPortal active={(isCoarsePointer||Capacitor.isNativePlatform())&&Boolean(checklistEditorId||flashcardEditorId||quizEditorId||tableEditorId)}>
         {checklistEditorId && checklistDraft && (
           <div className="checklist-editor-backdrop" onPointerDown={() => { cancelStudyEditor("checklist"); }}>
             <div className="checklist-editor-modal" role="dialog" aria-modal="false" aria-label="Редактор чек-листа" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cancelStudyEditor("checklist"); } if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); saveChecklistEditor(); } }}>
               <div className="checklist-editor-header"><div className="checklist-editor-header-main"><strong>{pendingStudyItem?.id===checklistEditorId?"Создание чек-листа":"Чек-лист / задание"}</strong><span>{checklistDraft.done.filter(Boolean).length} из {checklistDraft.items.length} выполнено</span></div><button onClick={() => { cancelStudyEditor("checklist"); }} aria-label="Закрыть без сохранения"><Icon name="close" size={17}/></button></div>
+              <div className="checklist-editor-scroll">
               {pendingStudyItem?.id===checklistEditorId&&<p className="lektrus-study-creation-hint">
                 Объект появится на доске только после сохранения. Отмена не создаёт задание.
               </p>}
@@ -9105,6 +9155,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 ))}
                 <button className="checklist-add-row" disabled={checklistDraft.items.length >= 40} onClick={addChecklistRow}><Icon name="plus" size={15}/> Добавить пункт</button>
               </div>
+              </div>
               <div className="checklist-editor-footer"><span>Ctrl+Enter — сохранить · Esc — закрыть</span><div className="checklist-editor-bulk"><button className="secondary" onClick={() => setChecklistDraft((current) => current ? { ...current, done: current.done.map(() => false) } : current)}>Сбросить отметки</button><button className="secondary" onClick={() => setChecklistDraft((current) => current ? { ...current, done: current.done.map(() => true) } : current)}>Отметить всё</button><button className="secondary" onClick={() => { cancelStudyEditor("checklist"); }}>Отмена</button><button className="primary" onClick={saveChecklistEditor}><Icon name="check" size={15}/> Сохранить</button></div></div>
             </div>
           </div>
@@ -9121,8 +9172,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               </p>}
               <div className="flashcard-editor-body">
                 <section className="flashcard-editor-compose">
-                  <label><span>Вопрос / лицевая сторона</span><textarea value={flashcardDraft.front} maxLength={5000} onChange={(e) => setFlashcardDraft({ ...flashcardDraft, front: e.target.value })} placeholder="Что нужно вспомнить?"/></label>
-                  <label><span>Ответ / обратная сторона</span><textarea value={flashcardDraft.back} maxLength={5000} onChange={(e) => setFlashcardDraft({ ...flashcardDraft, back: e.target.value })} placeholder="Ответ или пояснение"/></label>
+                  <label><span>Вопрос / лицевая сторона</span><textarea value={flashcardDraft.front} maxLength={5000} onChange={(e) => {const front=e.target.value;setFlashcardDraft(current=>current?{...current,front}:current)}} placeholder="Что нужно вспомнить?"/></label>
+                  <label><span>Ответ / обратная сторона</span><textarea value={flashcardDraft.back} maxLength={5000} onChange={(e) => {const back=e.target.value;setFlashcardDraft(current=>current?{...current,back}:current)}} placeholder="Ответ или пояснение"/></label>
                   <div className="flashcard-editor-settings">
                     <label><span>Размер текста</span><input type="range" min="10" max="48" value={flashcardDraft.fontSize} onChange={(e) => setFlashcardDraft({ ...flashcardDraft, fontSize: Number(e.target.value) })}/><strong>{flashcardDraft.fontSize}px</strong></label>
                     <LektrusColorPicker userId={authUser.id} compact label="Цвет" value={flashcardDraft.color} onChange={value=>setFlashcardDraft({ ...flashcardDraft, color: value })}/>
@@ -9232,6 +9283,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             </div>
           </div>
         )}
+        </MobileBoardEditorPortal>
         {selected.length === 1 &&
           !objectEditorOpen &&
           items.some(
@@ -9888,7 +9940,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             e.preventDefault();
             // Mouse RMB is handled on pointerup. Prevent the native menu from
             // appearing during a drag or reopening after release.
-            if(e.nativeEvent.button!==2){
+            if(e.nativeEvent.button!==2&&tool==="select"&&!gesture.current&&!eraserSession.current&&!pinchState.current){
               openBoardContextMenu(e.clientX,e.clientY,
                 (e.target as HTMLElement).closest<HTMLElement>("[data-object]")?.dataset.object);
             }
@@ -10668,7 +10720,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 </>
               )}
 
-              <details className="selection-more">
+              <details className="selection-more" onToggle={event=>{
+                const details=event.currentTarget;
+                details.closest(".selection-toolbar-screen")?.classList.toggle("is-more-open",details.open);
+              }}>
                 <summary title="Ещё действия" aria-label="Ещё действия"><Icon name="more" size={17} /></summary>
                 <div className="selection-more-menu">
                   {singleSelected&&!isInkItem(singleSelected)&&
@@ -10881,8 +10936,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           {selected.length
             ? selectionLocked
               ? `Выделено: ${selected.length} · объект заблокирован · разблокируйте для редактирования`
-              : `Выделено: ${selected.length} · Alt+перетаскивание — копия · стрелки — сдвиг · Shift+стрелка — 10 px`
-            : `Сейчас: ${toolShortLabel[tool]} · ЛКМ — выделение областью · удерживать ПКМ — рука · ПКМ — меню`}
+              : isCoarsePointer || Capacitor.isNativePlatform()
+                ? `Выделено: ${selected.length} · перетащите для перемещения`
+                : `Выделено: ${selected.length} · Alt+перетаскивание — копия · стрелки — сдвиг · Shift+стрелка — 10 px`
+            : isCoarsePointer || Capacitor.isNativePlatform()
+              ? `Сейчас: ${toolShortLabel[tool]} · два пальца — масштаб и перемещение`
+              : `Сейчас: ${toolShortLabel[tool]} · ЛКМ — выделение областью · удерживать ПКМ — рука · ПКМ — меню`}
         </div>
         <div className="board-controls">
           <button aria-label="Уменьшить" title="Уменьшить" onClick={() => zoom(0.8)}><Icon name="zoom-out" size={16} /></button>

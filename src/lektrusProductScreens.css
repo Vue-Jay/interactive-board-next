@@ -531,6 +531,21 @@ html body .topbar .topbar-right .topbar-menu-section .topbar-menu-danger{color:#
  .lectris-workspace-stage .lectris-hub .lectris-hub-section-label{flex-wrap:wrap;row-gap:3px}
 }
 
+/* The 280px container-query flex basis is a horizontal layout preference.
+   In portrait the hero is a vertical stack; it must not become 280px of
+   height in WebKit and newer Android browsers. */
+@media screen and (max-width:700px) and (orientation:portrait){
+ .lectris-workspace-stage .lectris-hub .lectris-hub-hero.lectris-hub-hero-compact{
+  flex-direction:column!important;flex-wrap:nowrap!important;
+  align-items:stretch!important;justify-content:flex-start!important;
+  min-height:0!important;height:auto!important;gap:12px!important;
+ }
+ .lectris-workspace-stage .lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-copy,
+ .lectris-workspace-stage .lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-actions{
+  flex:0 0 auto!important;margin-top:0!important;
+ }
+}
+
 /* Shared surface language for the content of each application section. */
 .lectris-workspace-stage :is(.boards-shell,.students-shell,.assignments-shell,.progress-shell,.schedule-shell,.materials-shell,.templates-shell,.notifications-shell,.profile-shell,.admin-users-shell){
  min-height:calc(100dvh - 73px)!important;background:var(--lt-bg)!important;color:var(--lt-text)!important

@@ -1,0 +1,250 @@
+name: Native mobile runtime QA (isolated)
+on:
+  # Run the complete device matrix on QA-branch changes as well as PR updates.
+  # This is isolated from main and never deploys to production.
+  # Comprehensive QA is being rebuilt; run only on explicit dispatch.
+  # No intermediate push or PR may launch an obsolete acceptance suite.
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: Full acceptance or targeted remaining checks
+        type: choice
+        options: [full, remaining]
+        default: full
+
+permissions:
+  contents: read
+
+env:
+  # No production accounts, server connections or signing secrets.
+  LEKTRUS_NATIVE_QA: '1'
+  VITE_LEKTRUS_LOCAL_TEST: 'true'
+  VITE_LEKTRUS_BACKEND: ''
+  VITE_LEKTRUS_API_ORIGIN: ''
+  VITE_SUPABASE_URL: ''
+  VITE_SUPABASE_ANON_KEY: ''
+  VITE_AUTH_REDIRECT_URL: ''
+
+jobs:
+  browser-touch:
+    name: Mobile and tablet browser touch regression
+    # Recheck touch dismissal after the WKWebView compatibility-click fix.
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: python3 -m py_compile scripts/test-native-mobile-runtime.py
+      - run: node scripts/test-mobile-keyboard-dismissal.mjs
+      - run: node scripts/test-native-file-export.mjs
+      - name: Comprehensive application functionality regression for mobile release
+        run: |
+          # Collect ALL regression failures in one run instead of stopping at
+          # the first failure and hiding defects in subsequent suites.
+          failures=0
+          for suite in test:ui test:subject-boards test:lab-acceptance test:atlas test:board-links test:realtime test:brush-crop test:math-gesture native:check; do
+            echo "::group::Mobile release regression: $suite"
+            if npm run "$suite"; then
+              echo "PASS $suite" | tee -a "$RUNNER_TEMP/mobile-regression-summary.txt"
+            else
+              echo "FAIL $suite" | tee -a "$RUNNER_TEMP/mobile-regression-summary.txt"
+              failures=$((failures+1))
+            fi
+            echo "::endgroup::"
+          done
+          echo "=== Complete mobile regression summary ==="
+          cat "$RUNNER_TEMP/mobile-regression-summary.txt"
+          test "$failures" -eq 0
+      - name: Validate same-origin board frame security headers
+        run: |
+          docker run --rm -v "${{ github.workspace }}/deploy/amvera/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2.10.2-alpine caddy adapt --config /etc/caddy/Caddyfile --validate
+          docker run --rm -e LEKTRUS_DOMAIN=:8080 -v "${{ github.workspace }}/deploy/selfhost/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2.10.2-alpine caddy adapt --config /etc/caddy/Caddyfile --validate
+          docker run --rm -d --name lektrus-header-qa -p 127.0.0.1:18080:8080 -v "${{ github.workspace }}/deploy/amvera/Caddyfile:/etc/caddy/Caddyfile:ro" -v "${{ github.workspace }}/index.html:/srv/web/index.html:ro" caddy:2.10.2-alpine
+          trap 'docker stop lektrus-header-qa >/dev/null 2>&1 || true' EXIT
+          curl -fsSI --retry 10 --retry-delay 1 --retry-all-errors http://127.0.0.1:18080/app | grep -i 'x-frame-options: DENY'
+          board=http://127.0.0.1:18080/board/00000000-0000-4000-8000-00000000a11f
+          curl -fsSI "$board" | grep -i 'x-frame-options: DENY'
+          curl -fsSI "$board?lektrus-board-frame=1" | grep -i 'x-frame-options: SAMEORIGIN'
+          curl -fsSI "$board?lektrus-board-frame=1" | grep -i "content-security-policy: frame-ancestors 'self'"
+          curl -fsSI 'http://127.0.0.1:18080/app?lektrus-board-frame=1' | grep -i 'x-frame-options: DENY'
+      - run: node scripts/test-lektrus-release-browser-smoke.mjs --keyboard-only
+        if: ${{ !cancelled() }}
+      - run: node scripts/test-lektrus-release-browser-smoke.mjs --landscape-only
+        if: ${{ !cancelled() }}
+
+  android-build:
+    name: Build a single isolated Android QA APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci --no-audit --no-fund
+      - name: Build isolated native debug APK
+        run: |
+          npm run native:build
+          npx cap sync android
+          chmod +x android/gradlew
+          (cd android && ./gradlew :app:assembleDebug --no-daemon)
+          test -s android/app/build/outputs/apk/debug/app-debug.apk
+          (cd android/app/build/outputs/apk/debug && sha256sum app-debug.apk > app-debug.apk.sha256)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-qa-apk
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/debug/app-debug.apk.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+  android:
+    name: Android API ${{ matrix.api }} native runtime
+    needs: android-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 13
+      matrix:
+        # Final bounded acceptance: identical APK, every supported Android OS.
+        # Manual remaining mode is retained for targeted diagnostics.
+        api: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining' && '[32,33,34,35]' || '[24,25,26,27,28,29,30,31,32,33,34,35,36]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-qa-apk
+          path: android/app/build/outputs/apk/debug
+      - name: Verify identical APK
+        run: (cd android/app/build/outputs/apk/debug && sha256sum -c app-debug.apk.sha256)
+      - name: Install legacy WebView script compiler
+        if: ${{ matrix.api < 30 }}
+        run: npm ci --no-audit --no-fund
+      - name: Install mobile automation driver
+        run: |
+          export APPIUM_HOME="$RUNNER_TEMP/appium-drivers"
+          echo "APPIUM_HOME=$APPIUM_HOME" >> "$GITHUB_ENV"
+          npm install --prefix "$RUNNER_TEMP/appium" --no-audit --no-fund appium@3.9.1
+          # UiAutomator2 6+ requires Android 8/API 26. Version 5.0.7
+          # supports Android 7 and Appium 3 (automation only, not app code).
+          "$RUNNER_TEMP/appium/node_modules/.bin/appium" driver install "uiautomator2@${{ matrix.api < 26 && '5.0.7' || '8.7.3' }}"
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install and exercise app on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          # Google API 35 loses the whole emulator during background Google
+          # service activity, including with ample host/guest memory. The
+          # isolated app does not use Play services; use the AOSP phone image.
+          target: ${{ matrix.api >= 32 && 'default' || 'google_apis' }}
+          # SDK Manager no longer publishes google_apis;x86_64 for API 27.
+          # Keep the OS/API unchanged and test its available 32-bit image.
+          arch: ${{ matrix.api == 27 && 'x86' || 'x86_64' }}
+          profile: pixel_6
+          disable-animations: true
+          # Keep a realistic memory budget for the Android 15 phone image.
+          # API 33/34 repeatedly lost the emulator during the laboratory's
+          # graphics workload. Use ANGLE rather than the old GLES translator.
+          emulator-options: -no-window -gpu ${{ (matrix.api == 33 || matrix.api == 34 || matrix.api == 36) && 'swangle' || 'swiftshader_indirect' }} -no-snapshot -noaudio -no-boot-anim ${{ matrix.api >= 32 && '-memory 4096' || '' }}
+          script: bash scripts/run-android-mobile-qa.sh "${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining' && 'android-lab' || 'full' }}" "${{ matrix.api }}"
+      - name: Upload Android runtime logs and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-api-${{ matrix.api }}-runtime-evidence
+          path: artifacts/mobile-qa/
+          if-no-files-found: warn
+          retention-days: 14
+
+  ios:
+    name: iPhone simulator native runtime
+    # Final 57-scenario iPhone acceptance, including the first loader frame.
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Build isolated native simulator app
+        run: |
+          npm run native:build
+          npx cap sync ios
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath ios/DerivedData CODE_SIGNING_ALLOWED=NO build
+          test -d ios/DerivedData/Build/Products/Debug-iphonesimulator/App.app
+      - name: Install mobile automation driver
+        run: |
+          export APPIUM_HOME="$RUNNER_TEMP/appium-drivers"
+          echo "APPIUM_HOME=$APPIUM_HOME" >> "$GITHUB_ENV"
+          npm install --prefix "$RUNNER_TEMP/appium" --no-audit --no-fund appium@3
+          "$RUNNER_TEMP/appium/node_modules/.bin/appium" driver install xcuitest
+      - name: Boot iPhone simulator
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for k in sorted(d,reverse=True) if "iOS" in k for x in d[k] if x.get("isAvailable") and x["name"].startswith("iPhone")))')
+          echo "SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID" || xcrun simctl list devices booted
+          xcrun simctl bootstatus "$UDID" -b
+      - name: Install and exercise app on iOS simulator
+        run: |
+          mkdir -p artifacts/mobile-qa
+          APP="$PWD/ios/DerivedData/Build/Products/Debug-iphonesimulator/App.app"
+          xcrun simctl install "$SIMULATOR_UDID" "$APP"
+          # Capture a native launch independently of Appium/WebDriverAgent.
+          # A driver timeout must not hide whether the installed app renders.
+          xcrun simctl launch "$SIMULATOR_UDID" ru.lektrus.board
+          sleep 15
+          xcrun simctl io "$SIMULATOR_UDID" screenshot artifacts/mobile-qa/ios-native-startup.png
+          xcrun simctl terminate "$SIMULATOR_UDID" ru.lektrus.board || true
+          # Avoid repeatedly building WebDriverAgent during the session startup.
+          APPIUM="$RUNNER_TEMP/appium/node_modules/.bin/appium"
+          WDA_APP=""
+          if "$APPIUM" driver run xcuitest download-wda -- --platform=ios --kind=sim --outdir="$RUNNER_TEMP/wda-download" > artifacts/mobile-qa/wda-prebuild.log 2>&1; then
+            WDA_APP=$(find "$RUNNER_TEMP/wda-download" -type d -name '*-Runner.app' -print -quit)
+          fi
+          if [[ -n "$WDA_APP" ]]; then
+            WDA_ARGS=(--wda-app "$WDA_APP")
+          else
+            WDA="$APPIUM_HOME/node_modules/appium-xcuitest-driver/node_modules/appium-webdriveragent/WebDriverAgent.xcodeproj"
+            WDA_DERIVED="$RUNNER_TEMP/lektrus-wda"
+            xcodebuild -project "$WDA" -scheme WebDriverAgentRunner -configuration Debug \
+              -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" -derivedDataPath "$WDA_DERIVED" \
+              CODE_SIGNING_ALLOWED=NO RUN_CLANG_STATIC_ANALYZER=NO COMPILER_INDEX_STORE_ENABLE=NO \
+              build-for-testing >> artifacts/mobile-qa/wda-prebuild.log 2>&1
+            WDA_ARGS=(--wda-derived-data "$WDA_DERIVED")
+          fi
+          "$APPIUM" --address 127.0.0.1 --port 4723 > artifacts/mobile-qa/appium.log 2>&1 &
+          python3 scripts/test-native-mobile-runtime.py ios --suite "${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'remaining' && 'ios-remaining' || 'full' }}" --app "$APP" --udid "$SIMULATOR_UDID" "${WDA_ARGS[@]}" --output artifacts/mobile-qa
+      - name: Upload iOS runtime logs and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-runtime-evidence
+          path: artifacts/mobile-qa/
+          if-no-files-found: warn
+          retention-days: 14

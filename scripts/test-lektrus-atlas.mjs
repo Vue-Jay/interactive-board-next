@@ -258,9 +258,18 @@ assert.match(fs.readFileSync(new URL("../src/LektrusMapBase.tsx",import.meta.url
 
 const data=fs.readFileSync(new URL("../src/lektrusAtlasData.ts",import.meta.url),"utf8");
 const sourceLoader={};
+const regionDisplayNamesSource=fs.readFileSync(new URL("../src/regionDisplayNames.ts",import.meta.url),"utf8");
+const regionDisplayNamesExports={};
+new Function("exports",ts.transpileModule(regionDisplayNamesSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(regionDisplayNamesExports);
+assert.equal(typeof regionDisplayNamesExports.regionDisplayNames,"function","Atlas region display name helper must export a function");
+const atlasDataRequire=(path)=>{
+ if(path==="./regionDisplayNames")return regionDisplayNamesExports;
+ if(path==="./lektrusAtlasModel")return exports;
+ throw new Error("Unexpected atlas dependency: "+path);
+};
 const sourceBoundaryLine={type:"Feature",properties:{NAME:"Verified boundary"},geometry:{type:"LineString",coordinates:[[0,0],[1,1]]}};
 const noGeometry={type:"Feature",properties:{NAME:"Hawke's Bay - Waikato"},geometry:null};
-new Function("exports","require","fetch",ts.transpileModule(data,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(sourceLoader,()=>exports,async()=>({ok:true,json:async()=>({type:"FeatureCollection",features:[sourceBoundaryLine,noGeometry]})}));
+new Function("exports","require","fetch",ts.transpileModule(data,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(sourceLoader,atlasDataRequire,async()=>({ok:true,json:async()=>({type:"FeatureCollection",features:[sourceBoundaryLine,noGeometry]})}));
 assert.deepEqual((await sourceLoader.loadAtlasLayer("admin-world-lines")).features,[sourceBoundaryLine],"A published geometry-less record must not suppress the entire detailed map");
 
 const historicalInsigniaSource=fs.readFileSync(new URL("../src/lektrusHistoricalInsignia.ts",import.meta.url),"utf8");
@@ -277,7 +286,11 @@ for(const [filename,source,kind] of [
  assert.equal(parse.parseDiagnostics.length,0,filename+" must parse: "+
   parse.parseDiagnostics.map(d=>ts.flattenDiagnosticMessageText(d.messageText," ")).join("; "));
 }
-const symbols={},historicalSymbols={},historicalReferences={};
+const symbols={},historicalSymbols={},historicalReferences={},regionLabels={};
+const regionLabelsSource=fs.readFileSync(new URL("../src/regionDisplayNames.ts",import.meta.url),"utf8");
+new Function("exports",ts.transpileModule(regionLabelsSource,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022
+}}).outputText)(regionLabels);
 for(const [src,out] of [[historicalInsigniaSource,historicalSymbols],
  [historicalReferenceSource,historicalReferences]]){
  new Function("exports",ts.transpileModule(src,{compilerOptions:{
@@ -289,6 +302,7 @@ new Function("exports","require",ts.transpileModule(insigniaSource,{compilerOpti
 }}).outputText)(symbols,id=>{
  if(id.includes("lektrusHistoricalInsignia"))return historicalSymbols;
  if(id.includes("lektrusHistoricalReferences"))return historicalReferences;
+ if(id.includes("regionDisplayNames"))return regionLabels;
  throw Error("Unexpected atlas symbol import: "+id);
 });
 const symbolCountry=(name,code)=>({type:"Feature",properties:{NAME:name,...(code?{ISO_A2:code}:{})},
@@ -483,7 +497,7 @@ assert.match(map,/Фильтр городов по численности нас
 assert.ok(data.includes("ne_10m_populated_places.geojson"));
 const geoJs=ts.transpileModule(data,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const geoExports={};
-new Function("exports","require",geoJs)(geoExports,()=>({historicalSnapshots}));
+new Function("exports","require",geoJs)(geoExports,atlasDataRequire);
 const placeSource=fs.readFileSync(new URL("../src/lektrusAtlasPlaces.ts",import.meta.url),"utf8");
 const places={};
 new Function("exports","require",ts.transpileModule(placeSource,{compilerOptions:{

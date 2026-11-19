@@ -117,6 +117,13 @@ def test_native_event_rate_budgets_are_separate():
     assert limiter.check("work_state") is False
     assert all(limiter.check("editor_mutation") for _ in range(24))
     assert limiter.check("editor_mutation") is False
+    assert limiter.check("object_transform") is False
+    # Transform and editor mutations share a bounded budget, but neither
+    # is starved by work-state traffic.
+    limiter=EventRateLimit()
+    assert all(limiter.check("object_transform") for _ in range(24))
+    assert limiter.check("editor_mutation") is False
+    assert all(limiter.check("work_state") for _ in range(30))
     assert all(limiter.check("focus_view") for _ in range(10))
     assert limiter.check("focus_view") is False
 
@@ -133,3 +140,4 @@ def test_live_erase_is_editor_only_and_validates_cancellation():
     for bad in [{**frame,"cancelled":True}, {**frame,"kind":"marker"}, {**frame,"weight":1001}, {**frame,"cut_ids":["old_stroke"]}]:
         with pytest.raises(InvalidLiveEvent):
             accept(bad)
+

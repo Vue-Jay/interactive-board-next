@@ -30,6 +30,18 @@ const selfhostUser=(s:Awaited<ReturnType<typeof getSelfhostSession>>|SelfhostSes
   accountRole:s.user.account_role,teacherStatus:s.user.teacher_status,isAdmin:s.user.is_admin};
 };
 let pendingSelfhostRegistration:{email:string;password:string;name:string;first_name:string;last_name:string;role:"teacher"|"student"}|null=null;
+let pendingInvitationUser:string|null=null;
+// The session is valid as soon as login succeeds. Claiming email invitations
+// is a separate, idempotent operation, not a condition of authentication.
+export async function retrySelfhostInvitations(userId:string):Promise<void>{
+ if(pendingInvitationUser!==userId||getCachedSelfhostSession()?.user.id!==userId)return;
+ try{await selfhostClaimInvitations(5000);if(pendingInvitationUser===userId)pendingInvitationUser=null;}
+ catch{/* Keep it pending for the next workspace load. */}
+}
+async function claimSelfhostAfterAuth(session:SelfhostSession):Promise<void>{
+ pendingInvitationUser=session.user.id;
+ await retrySelfhostInvitations(session.user.id);
+}
 
 export const getCachedCurrentUser=():AuthUser|null=>{
  if(LEKTRUS_LOCAL_TEST_MODE)return {...LEKTRUS_LOCAL_TEST_USER};
@@ -73,7 +85,7 @@ export const completeEmailConfirmation=async(callbackUrl:string):Promise<AuthUse
   if(!token)return null;
   const session=await selfhostVerifyEmail(token);
   pendingSelfhostRegistration=null;
-  await selfhostClaimInvitations();
+  await claimSelfhostAfterAuth(session);
   return selfhostUser(session)!;
  }
  if(!isRemoteBackendEnabled())return null;
@@ -109,7 +121,7 @@ export const completePasswordReset=async(token:string,password:string):Promise<v
 
 export const loginUser=async(input:{email:string;password:string}):Promise<AuthUser>=>{
  const email=normalizeEmail(input.email);
- if(isSelfhostBackendEnabled()){const s=await selfhostLogin(email,input.password);await selfhostClaimInvitations();return selfhostUser(s)!}
+ if(isSelfhostBackendEnabled()){const s=await selfhostLogin(email,input.password);await claimSelfhostAfterAuth(s);return selfhostUser(s)!}
  if(isRemoteBackendEnabled()){const s=await signInRemote(email,input.password);await claimRemoteInvitations();return remoteUser(s)!}
  const u=loadUsers().find(x=>x.email===email);
  if(!u||await hashPassword(input.password,u.passwordSalt)!==u.passwordHash)throw new Error("Неверный email или пароль");
