@@ -44,6 +44,7 @@
 .access-backdrop .board-invite-role-grid>button>b {font-size:13px!important;line-height:1.25;overflow-wrap:anywhere}
 .access-backdrop .board-invite-role-grid>button>small {font-size:11px!important;line-height:1.35;color:var(--lt-secondary)!important}
 .access-backdrop .board-invite-role-grid>button>span {background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important}
+.lectris-library-actions-toggle {display:none!important}
 
 @media(max-width:700px) and (orientation:portrait) {
   /* There is exactly one space reservation for the fixed dock: the body.
@@ -75,6 +76,15 @@
   .lectris-workspace-stage .lectris-hub .lectris-hub-tile-copy strong {font-size:15px!important;line-height:1.25}
   .lectris-workspace-stage .lectris-hub .lectris-hub-tile-copy small {font-size:11px!important;line-height:1.35}
   .lectris-workspace-stage .lectris-library-intro {padding:14px!important;min-height:0!important}
+  .lectris-workspace-stage .lectris-library-intro .lectris-library-heading>p {display:none}
+  .lectris-workspace-stage .lectris-library-intro .lectris-library-metrics {margin-top:8px!important}
+  .lectris-workspace-stage .lectris-library-section-title {margin:15px 0 10px!important}
+  .lectris-workspace-stage .lectris-library-intro .student-board-note {font-size:13px;line-height:1.4;color:var(--lt-secondary)}
+  .lectris-workspace-stage .lectris-library-toolbar .lectris-library-actions-toggle {display:flex!important;align-items:center;justify-content:flex-start;gap:8px;order:3;width:100%;min-height:40px;padding:8px 10px;border:1px solid var(--lt-line);border-radius:10px;background:var(--lt-subtle);color:var(--lt-text);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+  .lectris-library-actions-toggle svg:last-child {margin-left:auto;transition:transform .15s}
+  .lectris-library-actions-toggle[aria-expanded="true"] svg:last-child {transform:rotate(180deg)}
+  .lectris-workspace-stage .lectris-library-toolbar .lectris-library-extras:not(.is-expanded) {display:none!important}
+  .lectris-workspace-stage .lectris-library-toolbar .lectris-library-extras.is-expanded {order:4}
   .lectris-workspace-stage .lectris-library-new {min-height:44px!important;border-radius:12px!important}
   .lectris-workspace-stage .settings-row-card {padding:12px!important;gap:8px!important;border-radius:13px!important}
   .lectris-workspace-stage .settings-row-card>button {min-height:40px;border-radius:10px}

@@ -55,6 +55,7 @@ export default function BoardsScreen({user,accountRole,workspaceMode,onOpenBoard
    return()=>{alive=false};
  },[previewIds,user.id]); const [editingId,setEditingId]=useState<string|null>(null); const [draftTitle,setDraftTitle]=useState("");
  const [filter,setFilter]=useState<BoardFilter>("all"); const [sort,setSort]=useState<BoardSort>("recent"); const [trashOpen,setTrashOpen]=useState(false); const [trash,setTrash]=useState<BoardSummary[]>([]);
+ const [boardActionsOpen,setBoardActionsOpen]=useState(false);
  const [createOpen,setCreateOpen]=useState(false); const [createAssociation,setCreateAssociation]=useState<{subject?:string;group?:string}>({});
  const [manage,setManage]=useState<BoardSummary|null>(null); const [notice,setNotice]=useState(""); const [busy,setBusy]=useState(false);
  const [access,setAccess]=useState<{members:BoardAccessMember[];invites:BoardInvitation[]}>({members:[],invites:[]});
@@ -198,7 +199,8 @@ export default function BoardsScreen({user,accountRole,workspaceMode,onOpenBoard
       <label className="lectris-library-sort">Сортировка <select value={sort} onChange={e=>setSort(e.target.value as BoardSort)} aria-label="Сортировка досок">
         <option value="recent">Недавно изменённые</option><option value="name">По названию</option><option value="oldest">Давние</option>
       </select></label>
-      <div className="lectris-library-extras">
+      <button type="button" className="lectris-library-actions-toggle" aria-expanded={boardActionsOpen} aria-controls="library-board-actions" onClick={()=>setBoardActionsOpen(open=>!open)}><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M5 5h14M5 12h14M5 19h14"/><circle cx="9" cy="5" r="2" fill="currentColor"/><circle cx="15" cy="12" r="2" fill="currentColor"/><circle cx="9" cy="19" r="2" fill="currentColor"/></svg> Управление досками <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
+      <div id="library-board-actions" className={`lectris-library-extras${boardActionsOpen?" is-expanded":""}`}>
         {accountRole==="teacher"&&<label className={`boards-secondary boards-import ${busy?"disabled":""}`}>Импорт<input type="file" hidden disabled={busy} accept=".orboard,.json,application/json,application/vnd.onlinerepetitor.board+json" onChange={e=>{const f=e.target.files?.[0];e.target.value="";if(f)void chooseImport(f)}}/></label>}
         <div className="backup-menu"><button className="boards-secondary" disabled={busy} onClick={()=>void downloadWorkspace()}>{workspaceProgress||"Скачать набор"}</button><label className={`boards-secondary boards-import ${busy?"disabled":""}`}>Восстановить<input type="file" hidden disabled={busy} accept=".orworkspace,application/json" onChange={e=>{const f=e.target.files?.[0];e.target.value="";if(f)void chooseWorkspace(f)}}/></label></div>
         <button className="boards-secondary trash-open-button" disabled={!trashAvailable} onClick={()=>{setTrashOpen(true);void loadTrash()}}>Корзина</button>

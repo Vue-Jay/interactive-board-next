@@ -67,22 +67,33 @@ def assert_compact_workspace(page, name, width, height):
         assert geometry["stage"]["y"]>=geometry["header"]["bottom"]-2, geometry
         assert geometry["stage"]["bottom"]<=geometry["dock"]["y"]+2, geometry
         assert geometry["padding"]<=16, geometry
+        toggle=page.get_by_role("button", name="Управление досками")
+        expect(toggle).to_have_attribute("aria-expanded", "false")
+        expect(page.locator("#library-board-actions")).to_be_hidden()
+        toggle.click()
+        expect(page.locator("#library-board-actions")).to_be_visible()
+        toggle.click()
+        expect(page.locator("#library-board-actions")).to_be_hidden()
     page.screenshot(path=str(OUT/f"{name}-compact-{width}x{height}.png"))
 
-def assert_board(page,ident,can_author,owner,*,navigate=True):
+def assert_board(page,ident,can_author,owner,*,navigate=True,embedded=False):
     if navigate:
         page.goto(BASE+"/board/"+ident)
-    expect(page.locator("section.board")).to_be_visible(timeout=90000)
-    subject=page.locator('button[aria-label="Предметные инструменты"]:visible')
+    # Touch browsers intentionally mount the board in a landscape iframe.
+    # Inspect its real controls and canvas, not the empty parent document.
+    scope=page.frame_locator("iframe.lektrus-browser-board-frame") if embedded else page
+    expect(scope.locator("section.board")).to_be_visible(timeout=90000)
+    subject=scope.locator('button[aria-label="Предметные инструменты"]:visible')
     if can_author:
         expect(subject.first).to_be_visible(timeout=15000)
     else:
         expect(subject).to_have_count(0)
-    share=page.locator('button[aria-label="Добавить участника"]:visible')
+    share=scope.locator('button[aria-label="Добавить участника"]:visible')
     if owner:
         expect(share.first).to_be_visible()
     else:
         expect(share).to_have_count(0)
+    return scope
 
 def assert_drawing_saved(page,ident,name):
     pen=page.locator('[data-interface-control="pen"]:visible').first
@@ -133,10 +144,10 @@ def check_guest_and_registration(browser,ident):
                 assert next(x for x in result.json() if x["id"]==links[role]["id"])["use_count"]==0
         else:
             page.set_viewport_size({"width":844,"height":390})
-            assert_board(page,ident,False,False,navigate=False)
+            scope=assert_board(page,ident,False,False,navigate=False,embedded=True)
             expect(page.get_by_role("button",name="Я преподаю",exact=True)).to_have_count(0)
-            expect(page.locator(".student-board-mode")).to_have_text("Гость · ученик" if role=="student" else "Наблюдатель")
-            pen=page.locator('[data-interface-control="pen"]:visible')
+            expect(scope.locator(".student-board-mode")).to_have_text("Гость · ученик" if role=="student" else "Наблюдатель")
+            pen=scope.locator('[data-interface-control="pen"]:visible')
             if role=="student":
                 expect(pen.first).to_be_visible()
             else:
@@ -197,11 +208,15 @@ def main():
             expect(page.get_by_role("button",name="Я учусь",exact=True)).to_be_visible(timeout=60000)
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 2"), f"{name}: horizontal overflow"
             page.screenshot(path=str(OUT/(name+"-phone-home.png")))
+            mobile=browser.new_context(storage_state=context.storage_state(),viewport={"width":390,"height":844},has_touch=True,is_mobile=True)
+            phone=mobile.new_page()
+            phone.on("pageerror",lambda e:errors.append(str(e)))
             for width,height in ((320,640),(390,844),(768,1024)):
-                assert_compact_workspace(page,name,width,height)
-            page.set_viewport_size({"width":844,"height":390})
-            assert_board(page,ident,author,owner)
-            page.screenshot(path=str(OUT/(name+"-phone-board.png")))
+                assert_compact_workspace(phone,name,width,height)
+            phone.set_viewport_size({"width":844,"height":390})
+            assert_board(phone,ident,author,owner,embedded=True)
+            phone.screenshot(path=str(OUT/(name+"-phone-board.png")))
+            mobile.close()
             assert not errors, f"{name}: browser exceptions {errors}"
             context.close()
         check_guest_and_registration(browser,ident)

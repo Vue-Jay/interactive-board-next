@@ -99,6 +99,7 @@
 .auth-role-option > span { display: grid; gap: 5px; min-width: 0; }
 .auth-role-option strong { font-size: 13px; line-height: 1.3; font-weight: 800; }
 .auth-role-option small { font-size: 11px; line-height: 1.4; color: #617493; }
+.auth-role-help { display:block;margin-top:8px;color:#617493;font-size:12px;line-height:1.4; }
 @media (max-width: 480px) {
   .auth-role-grid { grid-template-columns: minmax(0,1fr); gap: 8px; }
   .auth-role-option { padding: 10px 12px; }
@@ -213,6 +214,20 @@
 .auth-shell-interactive[data-auth-mobile] .auth-role-option strong { font-size: 14px; }
 .auth-shell-interactive[data-auth-mobile] .auth-role-option small { font-size: 12px; }
 .auth-shell-interactive[data-auth-mobile] .auth-confirm-actions button { min-height: 44px; font-size: 14px; }
+/* Registration contains more fields than sign-in. Keep 48px inputs and
+   separate password rows, but use the available width for the short names. */
+.auth-shell-register[data-auth-mobile] .auth-form { gap:12px; }
+.auth-shell-register[data-auth-mobile] .auth-brand-row,
+.auth-shell-register[data-auth-mobile] .auth-tabs { margin-bottom:14px; }
+.auth-shell-register[data-auth-mobile] .auth-role-option { padding:9px 10px; }
+.auth-shell-register[data-auth-mobile] .auth-role-option small { font-size:11px; }
+.auth-shell-register[data-auth-mobile] .auth-role-help { font-size:12px; }
+@media (min-width:375px) and (max-width:759px) {
+  .auth-shell-register[data-auth-mobile] .auth-register-name-grid {
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;
+  }
+  .auth-shell-register[data-auth-mobile] .auth-register-display-name { grid-column:1/-1; }
+}
 @media (max-width: 360px) {
   .auth-shell-interactive[data-auth-mobile] .auth-stage { padding-left: 12px; padding-right: 12px; }
   .auth-shell-interactive[data-auth-mobile] .auth-card { padding-left: 14px; padding-right: 14px; }
