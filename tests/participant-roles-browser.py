@@ -120,7 +120,7 @@ def check_board_read_recovery(page, ident):
 
 def assert_compact_workspace(page, name, width, height):
     page.set_viewport_size({"width":width,"height":height})
-    page.goto(BASE+"/app?section=boards")
+    page.goto(BASE+"/app")
     expect(page.locator(".lectris-mode-segment")).to_be_visible(timeout=60000)
     expect(page.locator(".lectris-mode-option[aria-pressed=true]")).to_have_count(1)
     geometry=page.evaluate("""() => {
@@ -139,6 +139,21 @@ def assert_compact_workspace(page, name, width, height):
         assert geometry["stage"]["y"]>=geometry["header"]["bottom"]-2, geometry
         assert geometry["stage"]["bottom"]<=geometry["dock"]["y"]+2, geometry
         assert geometry["padding"]<=16, geometry
+    page.screenshot(path=str(OUT/f"{name}-home-{width}x{height}.png"))
+
+    # The mode switch belongs exclusively to Home, never the board library,
+    # profile or settings. Navigate to the real sections before testing them.
+    page.goto(BASE+"/app?section=profile")
+    expect(page.get_by_role("heading",name="Личные данные",exact=True)).to_be_visible(timeout=60000)
+    expect(page.locator(".lectris-mode-segment")).to_have_count(0)
+    expect(page.locator(".profile-section-heading").get_by_text("01",exact=True)).to_have_count(0)
+    page.goto(BASE+"/app?section=settings")
+    expect(page.locator(".settings-compact-content")).to_be_visible(timeout=60000)
+    expect(page.locator(".lectris-mode-segment")).to_have_count(0)
+    page.goto(BASE+"/app?section=boards")
+    expect(page.get_by_role("heading",name="Все доски",exact=True)).to_be_visible(timeout=60000)
+    expect(page.locator(".lectris-mode-segment")).to_have_count(0)
+    if width<=700:
         toggle=page.get_by_role("button", name="Управление досками")
         expect(toggle).to_have_attribute("aria-expanded", "false")
         expect(page.locator("#library-board-actions")).to_be_hidden()
@@ -298,7 +313,7 @@ def main():
                 expect(page.get_by_role("button",name="Наблюдатель",exact=False)).to_be_visible()
                 page.screenshot(path=str(OUT/"owner-invitations.png"))
             page.set_viewport_size({"width":390,"height":844})
-            page.goto(BASE+"/app?section=boards")
+            page.goto(BASE+"/app")
             expect(page.get_by_role("button",name="Я учусь",exact=True)).to_be_visible(timeout=60000)
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 2"), f"{name}: horizontal overflow"
             page.screenshot(path=str(OUT/(name+"-phone-home.png")))

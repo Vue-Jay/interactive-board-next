@@ -86,6 +86,7 @@ import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import { initLectrisPalette } from "./lectrisPalette";
 import { initProfileAppearance } from "./profileStore";
 import { isChunkLoadError, recoverOutdatedChunk } from "./chunkRecovery";
+import {AndroidUpdateGate} from "./AndroidUpdateGate";
 
 installInterfaceLayout();
 
@@ -171,7 +172,7 @@ createRoot(root).render(
   isBrowserBoardFrame()?<ErrorBoundary><BrowserBoardFrameEntry/></ErrorBoundary>:
   Capacitor.isNativePlatform() && !LEKTRUS_LOCAL_TEST_MODE && !isSelfhostBackendEnabled() && !isRemoteBackendEnabled()
     ? <NativeConnectionSetup />
-    : <ErrorBoundary><App /></ErrorBoundary>
+    : <ErrorBoundary><AndroidUpdateGate><App /></AndroidUpdateGate></ErrorBoundary>
 );
 
 // Register only in production so dev/HMR never reuses a cached app shell.

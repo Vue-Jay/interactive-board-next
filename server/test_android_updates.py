@@ -1,0 +1,61 @@
+import asyncio
+import pytest
+from fastapi import HTTPException
+from android_updates import AndroidUpdateCatalog, apply_policy, select_android_release
+
+
+def release(version, **overrides):
+    tag = f"android-v{version}"
+    base = f"https://github.com/Vue-Jay/interactive-board-next/releases/download/{tag}/"
+    return {
+        "tag_name": tag, "draft": False, "prerelease": False,
+        "assets": [
+            {"name": name, "browser_download_url": base + name, "state": "uploaded", "size": size}
+            for name, size in [("Lektrus-Android.apk", 15_000_000), ("Lektrus-Android.apk.sha256", 91)]
+        ], **overrides,
+    }
+
+
+def test_only_published_complete_official_releases():
+    invalid = release("1.0.5000")
+    invalid["assets"][0]["browser_download_url"] = "https://other.example/file.apk"
+    selected = select_android_release([
+        release("1.0.4669"), release("1.0.99"), release("1.0.4671", draft=True),
+        release("1.0.4672", prerelease=True), release("1.0.4673", assets=[]),
+        invalid, {"tag_name": "windows-v1.0.9999"}, release("1.0.01"),
+    ])
+    assert selected["version"] == "1.0.4669"
+    assert selected["size_bytes"] == 15_000_000
+    assert selected["download_url"].endswith("/android-v1.0.4669/Lektrus-Android.apk")
+    assert select_android_release([invalid]) is None
+
+
+def test_policy_never_requires_unpublished_version():
+    selected = select_android_release([release("1.0.4669")])
+    assert apply_policy(selected, "1.0.4600")["minimum_version"] == "1.0.4600"
+    assert apply_policy(selected, "1.0.4670")["minimum_version"] == "1.0.0"
+    assert apply_policy(selected, "invalid")["minimum_version"] == "1.0.0"
+
+
+def test_catalog_cache_refresh_and_fail_open(monkeypatch):
+    now = [100.0]
+    calls = []
+    def loader():
+        calls.append(now[0])
+        if now[0] >= 400:
+            raise OSError("upstream unavailable")
+        return [release("1.0.4669")]
+
+    async def scenario():
+        catalog = AndroidUpdateCatalog(loader=loader, clock=lambda: now[0])
+        monkeypatch.setenv("LEKTRUS_ANDROID_MINIMUM_VERSION", "1.0.4600")
+        first, second = await asyncio.gather(catalog.get(), catalog.get())
+        assert first == second and len(calls) == 1
+        assert first["minimum_version"] == "1.0.4600"
+        now[0] = 400
+        for _ in range(2):
+            with pytest.raises(HTTPException) as error:
+                await catalog.get()
+            assert error.value.status_code == 503
+        assert len(calls) == 2
+    asyncio.run(scenario())

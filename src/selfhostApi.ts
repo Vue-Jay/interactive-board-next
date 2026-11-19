@@ -292,6 +292,12 @@ export async function selfhostRequest<T>(path:string,init:RequestInit={},timeout
   return await response.json() as T;
 }
 export const selfhostBoards=()=>selfhostRequest<SelfhostBoard[]>("/api/v1/boards");
+// Public update discovery must work before login, and must never refresh auth.
+export async function selfhostAndroidUpdate():Promise<unknown>{
+  const response=await rawRequest("/api/v1/mobile/android-update",{},undefined,6500);
+  if(!response.ok)throw await responseError(response);
+  return response.json();
+}
 export const selfhostNotifications=()=>selfhostRequest<any[]>("/api/v1/notifications");
 export const selfhostOrganization=()=>selfhostRequest<{categories:Array<{kind:"subject"|"group";name:string}>;boards:Array<{board_id:string;subject:string;group_name:string}>}>("/api/v1/organization");
 export const selfhostDirectChats=()=>selfhostRequest<any[]>("/api/v1/direct-chats");
