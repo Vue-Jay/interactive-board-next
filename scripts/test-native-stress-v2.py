@@ -95,6 +95,23 @@ def create_board():
  actual=js('return document.querySelector(".board-title")?.value')
  assert actual==title,{'expected':title,'actual':actual}
  return {'title':actual,'createdVia':'installed app'}
+def native_ink_stroke():
+ tap_selector('nav.mobile-board-tools button[data-interface-control="pen"],.toolbar-pinned button[data-interface-control="pen"]')
+ wait(lambda:js('return document.querySelector("section.board")?.classList.contains("board-tool-pen")'),'Pen did not activate')
+ points=js("""const b=document.querySelector('section.board').getBoundingClientRect();
+ return Array.from({length:12},(_,i)=>({x:Math.round(b.left+b.width*.35+i*5),y:Math.round(b.top+b.height*.55)}));""")
+ assert points and all(0<=p['x']<=layout()['w'] and 0<=p['y']<=layout()['h'] for p in points),'Ink stroke outside native viewport'
+ actions=[{'type':'pointerMove','duration':0,**points[0]},{'type':'pointerDown','button':0}]
+ actions.extend({'type':'pointerMove','duration':40,**point} for point in points[1:])
+ actions.append({'type':'pointerUp','button':0})
+ cmd('POST','/actions',{'actions':[{'type':'pointer','id':'pen-finger','parameters':{'pointerType':'touch'},'actions':actions}]})
+ cmd('DELETE','/actions')
+ def persisted():
+  return js("""for(const key of Object.keys(localStorage)){
+   if(!key.includes('document'))continue;
+   try{const data=JSON.parse(localStorage.getItem(key));const ink=data?.items?.find(i=>i.kind==='pen'&&i.points?.length>1);if(ink)return {key,points:ink.points.length};}catch{}
+  }return null;""")
+ return wait(persisted,'Native touch stroke not persisted',20)
 def layout():
  return js("""return {w:innerWidth,h:innerHeight,scroll:document.documentElement.scrollWidth,
   native:window.Capacitor?.isNativePlatform?.()===true,
@@ -142,6 +159,7 @@ try:
  check('native-touch-navigation-storm',navigation_storm)
  check('native-keyboard-outside-touch',keyboard_outside_touch)
  check('native-create-board',create_board)
+ check('native-touch-pen-persistence',native_ink_stroke)
  check('native-rotation-roundtrip',orientation)
 except Exception as error:
  fatal_error={'type':type(error).__name__,'message':str(error),'traceback':traceback.format_exc()}
