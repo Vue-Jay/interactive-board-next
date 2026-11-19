@@ -74,9 +74,9 @@ try{
     const title=await evaluate('document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector(".board-title")?.value');
     assert.equal(title,boardTitle,'Created board title did not persist in board UI');
     // Draw with a real CDP touch stroke inside the newly created board.
-    const drawing=await evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),d=f?.contentDocument,b=d?.querySelector('section.board');if(!f||!b)return null;const r=b.getBoundingClientRect();return {frame:[f.getBoundingClientRect().left,f.getBoundingClientRect().top],points:Array.from({length:10},(_,i)=>({x:Math.round(r.left+r.width*.35+i*7),y:Math.round(r.top+r.height*.55)})),tool:!!d.querySelector('nav.mobile-board-tools button[data-interface-control="pen"],.toolbar-pinned button[data-interface-control="pen"]')}})()`);
+    const drawing=await evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),d=f?.contentDocument,b=d?.querySelector('section.board');if(!f||!b)return null;const r=b.getBoundingClientRect();return {frame:[f.getBoundingClientRect().left,f.getBoundingClientRect().top],points:Array.from({length:10},(_,i)=>({x:Math.round(r.left+r.width*.35+i*7),y:Math.round(r.top+r.height*.55)})),tool:!!d.querySelector('[data-interface-control="pen"]')}})()`);
     assert.ok(drawing?.tool,'Pencil tool missing in created mobile board');
-    const penPoint=await evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),d=f.contentDocument,e=[...d.querySelectorAll('nav.mobile-board-tools button[data-interface-control="pen"],.toolbar-pinned button[data-interface-control="pen"]')].find(x=>x.getBoundingClientRect().width>0);if(!e)return null;const r=e.getBoundingClientRect(),fr=f.getBoundingClientRect(),p={x:r.left+r.width/2,y:r.top+r.height/2};return f.parentElement.dataset.rotated==='true'?{x:fr.right-p.y,y:fr.top+p.x}:{x:fr.left+p.x,y:fr.top+p.y}})()`);
+    const penPoint=await evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),d=f.contentDocument,e=[...d.querySelectorAll('[data-interface-control="pen"]')].find(x=>x.getBoundingClientRect().width>0);if(!e)return null;const r=e.getBoundingClientRect(),fr=f.getBoundingClientRect(),p={x:r.left+r.width/2,y:r.top+r.height/2};return f.parentElement.dataset.rotated==='true'?{x:fr.right-p.y,y:fr.top+p.x}:{x:fr.left+p.x,y:fr.top+p.y}})()`);
     assert.ok(penPoint,'Visible pencil control not found');
     await touch(penPoint.x,penPoint.y);
     await wait('document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector("section.board")?.classList.contains("board-tool-pen")','Pencil did not activate after touch');
@@ -86,7 +86,7 @@ try{
     await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...points[0],id:1}]});
     for(const point of points.slice(1)){await send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...point,id:1}]});await sleep(25);}
     await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-    const savedInk=`(()=>{const frame=document.querySelector('.lektrus-browser-board-frame');if(!frame?.contentWindow)return null;const boardId=frame.contentWindow.location.pathname.split('/').pop();if(!boardId)return null;for(const key of Object.keys(frame.contentWindow.localStorage)){if(!key.includes('document')||!key.includes(boardId))continue;try{const data=JSON.parse(frame.contentWindow.localStorage.getItem(key));const ink=data?.items?.find(item=>item.kind==='pen'&&item.points?.length>1);if(ink)return {points:ink.points.length,key};}catch{}}return null})()`;
+    const savedInk=`(()=>{const frame=document.querySelector('.lektrus-browser-board-frame');if(!frame?.contentWindow)return null;const boardId=frame.contentWindow.location.pathname.split('/').pop();if(!boardId)return null;for(const key of Object.keys(frame.contentWindow.localStorage)){if(!key.includes('.local-test.board.')||!key.endsWith(boardId))continue;try{const data=JSON.parse(frame.contentWindow.localStorage.getItem(key));const ink=data?.items?.find(item=>item.kind==='pen'&&item.points?.length>1);if(ink)return {points:ink.points.length,key};}catch{}}return null})()`;
     await wait(savedInk,'Real touch pen stroke was not persisted in local board document',15000);
     const firstInk=await evaluate(savedInk);
     const boardButton=async selector=>{
@@ -101,7 +101,7 @@ try{
     const restoredInk=await evaluate(savedInk);
     assert.equal(restoredInk.points,firstInk.points,'Redo changed the stroke point count');
     // Switch out of drawing mode before pinching to avoid accidental ink.
-    const selectPoint=await evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),d=f.contentDocument,e=[...d.querySelectorAll('nav.mobile-board-tools button[data-interface-control="select"],.toolbar-pinned button[data-interface-control="select"]')].find(x=>x.getBoundingClientRect().width>0);if(!e)return null;const r=e.getBoundingClientRect(),fr=f.getBoundingClientRect(),p={x:r.left+r.width/2,y:r.top+r.height/2};return f.parentElement.dataset.rotated==='true'?{x:fr.right-p.y,y:fr.top+p.x}:{x:fr.left+p.x,y:fr.top+p.y}})()`);
+    const selectPoint=await evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),d=f.contentDocument,e=[...d.querySelectorAll('[data-interface-control="select"]')].find(x=>x.getBoundingClientRect().width>0);if(!e)return null;const r=e.getBoundingClientRect(),fr=f.getBoundingClientRect(),p={x:r.left+r.width/2,y:r.top+r.height/2};return f.parentElement.dataset.rotated==='true'?{x:fr.right-p.y,y:fr.top+p.x}:{x:fr.left+p.x,y:fr.top+p.y}})()`);
     assert.ok(selectPoint,'Select tool unavailable before pinch');
     await touch(selectPoint.x,selectPoint.y);
     // Two independent physical fingers must change board zoom, including rotated frames.
