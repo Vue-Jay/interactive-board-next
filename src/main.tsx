@@ -3,6 +3,8 @@
 import "./nativeCompatibility";
 import "./lektrusMarketing.css";
 import "./lektrusMarketingTypography.css";
+// Download is a hash route, so its styles must also be in the initial CSS.
+import "./lektrusMarketingDownload.css";
 
 import { Capacitor } from "@capacitor/core";
 import { pendingSharePath } from "./routes";

@@ -14,7 +14,7 @@
   background:transparent;color:var(--lt-secondary);font:inherit;font-size:13px;font-weight:700;
   cursor:pointer;white-space:nowrap;
 }
-.lectris-mode-option svg {width:18px;height:18px;flex:none}
+.lectris-mode-option svg {width:22px;height:22px;flex:none}
 .lectris-mode-segment .lectris-mode-option[aria-pressed="true"] {
   background:var(--lt-raised);border-color:var(--lt-line);color:var(--lt-primary);
   box-shadow:0 1px 4px rgba(16,32,60,.08);
@@ -181,4 +181,32 @@
   .access-backdrop .invite-modal .lektrus-share-roles {grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:6px}
   .access-backdrop .invite-modal .lektrus-share-roles>button {padding:8px 10px;min-height:56px}
   .access-backdrop .invite-modal .lektrus-share-tabs>button {min-height:40px}
+}
+@media(max-width:359px) and (orientation:portrait) {
+  .lectris-workspace .lectris-mobile-bottom .lectris-mobile-tab {font-size:9px!important;letter-spacing:0!important}
+}
+
+/* The workspace begins immediately after the header. History controls are
+   therefore relative to that workspace, not to the screen or status bar. */
+@media (max-width:1100px), (pointer:coarse) {
+  html body .workspace .mobile-undo-redo {position:absolute;top:8px!important;right:calc(12px + var(--lektrus-safe-right))!important;gap:5px;}
+}
+html.lektrus-native-board body .workspace .mobile-undo-redo {display:flex!important;position:absolute;top:8px!important;right:calc(12px + var(--lektrus-safe-right))!important;gap:5px;}
+html.lektrus-native-board body .topbar:not(.update-banner) {
+  box-sizing:border-box!important;height:calc(48px + var(--lektrus-safe-top))!important;
+  min-height:calc(48px + var(--lektrus-safe-top))!important;max-height:calc(48px + var(--lektrus-safe-top))!important;
+  padding-top:var(--lektrus-safe-top)!important;padding-bottom:0!important;
+}
+@media (max-width:1100px) and (orientation:landscape) {
+  html body .workspace .board-controls {
+    position:fixed!important;left:calc(var(--lektrus-rail-left) + 72px)!important;right:auto!important;top:auto!important;
+    bottom:calc(14px + var(--lektrus-safe-bottom))!important;margin:0!important;transform:none!important;translate:none!important;scale:none!important;
+    max-width:calc(100vw - var(--lektrus-rail-left) - var(--lektrus-safe-right) - 224px)!important;
+  }
+  html body .workspace .minimap {
+    position:fixed!important;right:calc(12px + var(--lektrus-safe-right))!important;left:auto!important;bottom:calc(14px + var(--lektrus-safe-bottom))!important;top:auto!important;
+  }
+  html body .workspace .lectris-quick-properties.is-ink-properties {
+    bottom:calc(68px + var(--lektrus-safe-bottom))!important;
+  }
 }

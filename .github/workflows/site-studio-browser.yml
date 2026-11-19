@@ -50,7 +50,16 @@ jobs:
           done
           curl -fsS http://127.0.0.1:5173/tests/site-studio-preview.html > /dev/null
           /tmp/lektrus-site-playwright/bin/python tests/site-studio-browser-smoke.py
-          /tmp/lektrus-site-playwright/bin/python tests/site-studio-download-browser.py
+      - name: Check styled downloads in the production bundle
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/lektrus-site-preview.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/ > /dev/null; then break; fi
+            sleep 1
+          done
+          LEKTRUS_TEST_SITE_URL=http://127.0.0.1:4173 /tmp/lektrus-site-playwright/bin/python tests/site-studio-download-browser.py
       - name: Upload actual screenshots
         if: always()
         uses: actions/upload-artifact@v4

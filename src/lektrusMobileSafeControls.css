@@ -199,7 +199,7 @@
     display:flex!important;
     position:absolute;
     z-index:90;
-    top:calc(60px + var(--lektrus-safe-top));
+    top:8px;
     right:calc(12px + var(--lektrus-safe-right));
     gap:6px;
     pointer-events:auto;
@@ -284,14 +284,12 @@
   }
 }
 
-/* Short landscape: the bottom-left zoom bar overlapped the action strip of
-   a selected object (844×390: 974 px²). Return zoom controls to the lower
-   right, away from the touch rail and the usual selection-action position.
-   Keep the native Android right cutout outside the touch targets. */
+/* Short landscape: zoom and map have separate lower corners. A selection
+   uses a second lane above them rather than relocating the scale panel. */
 @media screen and (max-width:1100px) and (max-height:450px) and (orientation:landscape) {
   html body .workspace .board-controls {
-    left:auto!important;
-    right:calc(var(--lektrus-safe-right) + 12px)!important;
+    left:calc(var(--lektrus-rail-left) + 72px)!important;
+    right:auto!important;
   }
   /* A moving selection can reach the bottom-right corner after rotation or
      duplication. Give its action strip a separate, bounded bottom lane so
@@ -300,11 +298,11 @@
   html.lektrus-native-app body .workspace .selection-toolbar-screen {
     position:fixed!important;
     top:auto!important;
-    bottom:calc(14px + var(--lektrus-safe-bottom))!important;
+    bottom:calc(68px + var(--lektrus-safe-bottom))!important;
     left:calc(var(--lektrus-rail-left) + 62px)!important;
-    right:calc(var(--lektrus-safe-right) + 230px)!important;
+    right:calc(var(--lektrus-safe-right) + 154px)!important;
     width:max-content!important;
-    max-width:calc(100vw - var(--lektrus-rail-left) - var(--lektrus-safe-right) - 292px)!important;
+    max-width:calc(100vw - var(--lektrus-rail-left) - var(--lektrus-safe-right) - 216px)!important;
     margin:0 auto!important;
     transform:none!important;
     translate:none!important;
@@ -325,7 +323,7 @@
      The fixed positions share the same viewport and safe-area coordinate space. */
   html body .workspace .minimap {
     position:fixed!important;
-    bottom:calc(72px + var(--lektrus-safe-bottom))!important;
+    bottom:calc(14px + var(--lektrus-safe-bottom))!important;
     right:calc(12px + var(--lektrus-safe-right))!important;
     width:142px!important;
     box-sizing:border-box!important;
@@ -341,13 +339,6 @@
   }
   html body .workspace .minimap-world {height:60px!important;}
 }
-/* On modern coarse-pointer clients the quick ink settings raise the zoom bar
-   to 62px; raise the map by the same amount while that bar is present. */
-@media screen and (max-width:1100px) and (max-height:450px) and (orientation:landscape) and (pointer:coarse) {
-  html body .workspace:has(.lectris-quick-properties.is-ink-properties) .minimap {
-    bottom:calc(120px + var(--lektrus-safe-bottom))!important;
-  }
-}
 @media screen and (max-width:1100px) and (max-height:390px) and (orientation:landscape) {
   html body .workspace .minimap-world {height:38px!important;}
   html body .workspace .minimap-header {margin-bottom:3px;}
@@ -355,8 +346,10 @@
 @media screen and (max-width:1100px) and (max-height:335px) and (orientation:landscape) {
   html body .workspace .minimap-world {height:30px!important;}
   html body .workspace .minimap-header {margin-bottom:3px;}
-  html body .workspace .minimap-header span:first-child {display:none;}
 }
+/* Board mode hides Android's status bar; only the real display cutout has to
+   be reserved. The native WebView itself starts at y=0 on this route. */
+html.lektrus-android-app.lektrus-native-board {--lektrus-safe-top:var(--lektrus-cutout-top,0px);}
 /* Fixed native viewport, including Chromium versions without dvh. The
    full-screen lab is a portal attached to body rather than the board. */
 html.lektrus-native-app .lektrus-lab-editor-overlay.is-board-identical {
