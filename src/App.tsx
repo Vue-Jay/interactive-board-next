@@ -575,8 +575,12 @@ export default function App() {
     } finally {
       if (isCurrent()) setBoardLoading(false);
     }
-  }, [isAppAdmin]);
+  }, []);
 
+  // Refreshing the same cached identity must not remount an already opening
+  // board or spend the retry budget again. A genuine user/permission change
+  // still reloads with the fresh server-authorized board role.
+  const studioAdminAccess=route.kind==="board"&&route.boardId===INTERFACE_STUDIO_BOARD_ID&&isAppAdmin;
   useEffect(() => {
     if (!authReady || !authUser) return;
     let alive = true;
@@ -605,7 +609,7 @@ export default function App() {
         }
         setAdminInspecting(false);
         if(route.boardId===INTERFACE_STUDIO_BOARD_ID){
-          if(!isAppAdmin||new URLSearchParams(window.location.search).get("layout-editor")!=="1")
+          if(!studioAdminAccess||new URLSearchParams(window.location.search).get("layout-editor")!=="1")
            throw new Error("Редактор интерфейса доступен только администратору.");
           const board:BoardSummary={id:INTERFACE_STUDIO_BOARD_ID,title:"Новая доска",
            ownerId:authUser.id,role:"owner",createdAt:new Date().toISOString(),
@@ -632,7 +636,8 @@ export default function App() {
       }
     })();
     return () => { alive = false; };
-  }, [route, authReady, authUser, navigate, openBoard, submittedSharePassword, mobileJoinUrl]);
+  }, [route, authReady, authUser?.id, authUser?.email, authUser?.guestBoardId, authUser?.accountRole,
+      authUser?.teacherStatus, authUser?.isAdmin, studioAdminAccess, navigate, openBoard, submittedSharePassword, mobileJoinUrl]);
 
   useEffect(()=>{
     if(!authUser)return;
