@@ -15,6 +15,7 @@ type BoardFilter="all"|"mine"|"shared";
 type BoardSort="recent"|"name"|"oldest";
 const fmt=(iso:string)=>new Intl.DateTimeFormat("ru-RU",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
 const retention=(iso?:string|null)=>{if(!iso)return"";const days=Math.max(0,Math.ceil((Date.parse(iso)-Date.now())/86400000));return days===0?"очистка сегодня":`осталось ${days} дн.`};
+function ParticipantGlyph({role}:{role:InvitedParticipantRole}){return <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{role==="observer"?<><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.5"/></>:role==="co_teacher"?<><rect x="3" y="3" width="18" height="13" rx="2"/><path d="M7 21l5-5 5 5M7 8h10M7 12h6"/></>:<><path d="m4 16 12-12 4 4L8 20H4v-4Z"/><path d="m14 6 4 4"/></>}</svg>}
 
 import { importAsNewBoard, inspectBoardImport, type BoardImportPreview } from "./dashboardImport";
 import { exportWorkspace, importWorkspace, validateWorkspaceBackup, workspaceFileName, type WorkspaceBackup } from "./workspaceBackup";
@@ -158,7 +159,7 @@ export default function BoardsScreen({user,accountRole,workspaceMode,onOpenBoard
      const link=await createBoardShareLink(manage.id,role,participantRole);
      const url=boardShareUrl(link.token);
      setCreatedUrl(url);
-     setNotice(role==="editor"?"Создана ссылка для редактирования":"Создана ссылка только для просмотра");
+     setNotice(participantRole?`Ссылка создана · ${PARTICIPANT_ROLE_LABELS[participantRole]}`:role==="editor"?"Создана ссылка для редактирования":"Создана ссылка только для просмотра");
      if(await copyBoardLink(url))setNotice("Ссылка создана и скопирована")
      await loadLinks(manage);
    }catch(e){setNotice(e instanceof Error?e.message:"Не удалось создать ссылку")}finally{setBusy(false)}
@@ -205,7 +206,7 @@ export default function BoardsScreen({user,accountRole,workspaceMode,onOpenBoard
     </div>
     {notice&&<div className="access-notice" style={{marginBottom:12}}>{notice}</div>}
     {!loading&&visible.length===0
-      ?<div className="boards-empty"><strong>{boards.length?"Ничего не найдено":"Здесь будут находиться ваши доски"}</strong>{boards.length>0?<><span>Измените поиск или выберите другой фильтр.</span><button type="button" onClick={()=>{setQuery("");setFilter("all")}}>Показать все</button></>:<span>{accountRole==="teacher"?"Создайте свою первую доску, когда будете готовы.":"Откройте доску по приглашению преподавателя."}</span>}</div>
+      ?<div className="boards-empty"><strong>{modeBoards.length?"Ничего не найдено":"Здесь будут находиться ваши доски"}</strong>{modeBoards.length>0?<><span>Измените поиск или выберите другой фильтр.</span><button type="button" onClick={()=>{setQuery("");setFilter("all")}}>Показать все</button></>:<span>{accountRole==="teacher"?"Создайте свою первую доску, когда будете готовы.":"Откройте доску по приглашению преподавателя."}</span>}</div>
       :<div className="boards-grid lectris-library-grid">
         {accountRole==="teacher"&&filter!=="shared"&&!query&&<button type="button" className="lectris-library-create-tile" disabled={busy} onClick={()=>void add()}>
           <span className="lectris-library-create-icon">＋</span><strong>Новая доска</strong>
@@ -240,7 +241,7 @@ export default function BoardsScreen({user,accountRole,workspaceMode,onOpenBoard
  <div className="board-invite-link-panel">
    <div className="board-invite-link-title"><span>🔗</span><div><strong>Ссылка-приглашение</strong><small>Выберите, что сможет делать участник</small></div></div>
    <span style={{fontSize:13,opacity:.72}}>Создайте ссылку с нужными правами и отправьте её ученику, преподавателю или коллеге. После входа или регистрации доступ применится автоматически.</span>
-   <div className="board-invite-role-grid">{isSelfhostBackendEnabled()?(["student","co_teacher","observer"] as const).map(kind=><button key={kind} className={kind==="observer"?"viewer":"editor"} disabled={busy||!shareLinksEnabled()} onClick={()=>void createLink(participantAccess(kind),kind)}><span>{kind==="observer"?"👁":"✎"}</span><b>{PARTICIPANT_ROLE_LABELS[kind]}</b><small>{kind==="student"?"Выполнять задания":kind==="co_teacher"?"Создавать задания":"Без редактирования"}</small></button>):<><button className="editor" disabled={busy||!shareLinksEnabled()} onClick={()=>void createLink("editor")}><span>✎</span><b>Редактирование</b><small>Можно менять содержимое доски</small></button><button className="viewer" disabled={busy||!shareLinksEnabled()} onClick={()=>void createLink("viewer")}><span>👁</span><b>Только просмотр</b><small>Без возможности редактирования</small></button></>}</div>
+   <div className="board-invite-role-grid">{isSelfhostBackendEnabled()?(["student","co_teacher","observer"] as const).map(kind=><button key={kind} className={kind==="observer"?"viewer":"editor"} disabled={busy||!shareLinksEnabled()} onClick={()=>void createLink(participantAccess(kind),kind)}><span><ParticipantGlyph role={kind}/></span><b>{PARTICIPANT_ROLE_LABELS[kind]}</b><small>{kind==="student"?"Выполнять задания":kind==="co_teacher"?"Вести урок и создавать задания":"Без редактирования"}</small></button>):<><button className="editor" disabled={busy||!shareLinksEnabled()} onClick={()=>void createLink("editor")}><span>✎</span><b>Редактирование</b><small>Можно менять содержимое доски</small></button><button className="viewer" disabled={busy||!shareLinksEnabled()} onClick={()=>void createLink("viewer")}><span>👁</span><b>Только просмотр</b><small>Без возможности редактирования</small></button></>}</div>
    {!shareLinksEnabled()&&<div className="access-notice">Для ссылок доступа нужна серверная синхронизация.</div>}
    {createdUrl&&<div className="board-invite-created"><div><span>✓</span><strong>Ссылка готова</strong></div><div><input readOnly value={createdUrl} onFocus={e=>e.currentTarget.select()}/><button onClick={()=>void copyCreated()}>⧉ Копировать</button></div></div>}
    {shareLinksEnabled()&&<details className="board-direct-link">

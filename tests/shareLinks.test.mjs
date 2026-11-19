@@ -337,9 +337,11 @@ test('empty workspaces only read the board list and have the same empty state on
   const stored = new Map();
   const rows = [];
   let creations = 0;
+  let invitationChecks = 0;
   const api = load('boardStore', {
     localStorage: { getItem: key => stored.get(key), setItem: (key, value) => stored.set(key, value) },
-    require: name => name === './backend' ? { isRemoteBackendEnabled: () => false } : {},
+    require: name => name === './backend' ? { isRemoteBackendEnabled: () => false }
+      : name === './authStore' ? { retrySelfhostInvitations: async id => { assert.equal(id,user.id); invitationChecks++; } } : {},
     selfhost: {
       isSelfhostBackendEnabled: () => true,
       selfhostBoards: async () => rows,
@@ -352,6 +354,7 @@ test('empty workspaces only read the board list and have the same empty state on
     },
   });
   for (let i = 0; i < 3; i++) assert.equal((await api.getUserBoards(user)).length, 0);
+  assert.equal(invitationChecks,3,"Only invitation recovery and board reads may happen on load");
   assert.equal(creations, 0);
   await api.createBoard(user, 'Создана вручную');
   assert.equal(creations, 1);
@@ -359,9 +362,8 @@ test('empty workspaces only read the board list and have the same empty state on
   const boards = read('src/BoardsScreen.tsx');
   assert.match(boards, /const list=await getUserBoards\(user\)/);
   assert.doesNotMatch(boards, /ensureUserBoards/);
-  for (const file of ['src/BoardsScreen.tsx', 'src/LectrisHub.tsx']) {
-    assert.match(read(file), /boards\.length\?"Ничего не найдено":"Здесь будут находиться ваши доски"/);
-  }
+  assert.match(boards, /modeBoards\.length\?"Ничего не найдено":"Здесь будут находиться ваши доски"/);
+  assert.match(read('src/LectrisHub.tsx'), /boards\.length\?"Ничего не найдено":"Здесь будут находиться ваши доски"/);
 });
 
 test('in-app feedback links to the official Telegram and retains the private form', () => {

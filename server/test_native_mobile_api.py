@@ -80,6 +80,7 @@ async def test_native_android_ios_online_roundtrip(client, monkeypatch, tmp_path
                 token = link.json()["token"]
                 joined = await http.post("/api/v1/share-links/redeem", headers=ios, json={"token": token})
                 assert joined.status_code == 200 and joined.json()["role"] == "editor"
+                assert joined.json()["participant_role"] == "student"
                 assert (await http.post("/api/v1/share-links/redeem", headers=outsider, json={"token": token})).status_code == 404
 
                 uri = f"ws://127.0.0.1:{port}{base}/events"
@@ -117,10 +118,17 @@ async def test_native_android_ios_online_roundtrip(client, monkeypatch, tmp_path
                     assert read.json()["document"] == document
                     changed = {"id": "mobile-text", "kind": "text", "text": "iOS"}
                     patch = await http.patch(base + "/document", headers=ios, json={"expected_version": 1, "delta": {"items": {"upsert": [changed]}}})
+                    # An editor invitation now means learner access, not ownership
+                    # of the teacher's content. Assert the denial and then exercise
+                    # the same real native delta / realtime path with learner ink.
+                    assert patch.status_code == 403, patch.text
+                    assert (await http.get(base + "/document", headers=android)).json()["document"]["items"] == document["items"]
+                    ink = {"id": "mobile-learner-ink", "kind": "pen", "createdBy": student_session["user"]["id"], "points": [{"x": 20,"y":30}]}
+                    patch = await http.patch(base + "/document", headers=ios, json={"expected_version": 1, "delta": {"items": {"upsert": [ink]}}})
                     assert patch.status_code == 200, patch.text
                     for ws in (first, second):
                         assert await recv(ws) == {"type": "document_changed", "version": 2}
-                    assert (await http.get(base + "/document", headers=android)).json()["document"]["items"] == [changed]
+                    assert (await http.get(base + "/document", headers=android)).json()["document"]["items"] == [document["items"][0], ink]
                     assert (await http.get(base + "/document", headers=outsider)).status_code == 404
 
                 # Native teacher uploads a material using the same custom headers as WebView.
