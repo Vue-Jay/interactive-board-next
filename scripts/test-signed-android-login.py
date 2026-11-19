@@ -91,6 +91,7 @@ def collect_diagnostics():
 
 try:
     adb('install', '-r', 'Lektrus-Android.apk', timeout=120)
+    adb('shell', 'svc', 'power', 'stayon', 'true')
     # Three independent cold launches with the emulator held sideways.
     # Authentication must always request a portrait activity, including after
     # leaving registration/recovery. Do not clear or alter the installed APK.
@@ -119,16 +120,30 @@ try:
     adb('shell', 'input', 'text', 'NotARealPassword123')
     adb('shell', 'input', 'keyevent', '4')
     submit = wait_for(lambda nodes: next((n for n in nodes if label(n) == 'Войти' and n.get('enabled') == 'true'), None), 'Login submit unavailable')
-    tap(submit)
     def server_reply(nodes):
         for node in nodes:
             value = label(node)
             if 'Неверный email или пароль' in value:
-                return value
+                return '401'
+            if 'Слишком много попыток' in value:
+                return '429'
             if any(part in value for part in ('не ответил на запрос Android', 'TLS', '(DNS)', 'Время ожидания собственного сервера', 'Не удалось установить соединение')):
                 raise AssertionError(f'Android login transport failed: {value}')
         return None
+    tap(submit)
     reply = wait_for(server_reply, 'Expected production HTTP 401 response, not a network timeout', seconds=60)
+    if reply == '429':
+        # The same reserved invalid email is shared by the entire release
+        # matrix and concurrent CI revisions. Respect the real server's ten
+        # minute rate-limit window; never rotate addresses or evade it.
+        screenshot('02-server-rate-limited.png')
+        print('Production returned HTTP 429; respecting the 600-second limit before one same-address retry.',flush=True)
+        time.sleep(610)
+        # Keep the same form and account identity during the cooldown.
+        submit = wait_for(lambda nodes: next((n for n in nodes if label(n) == 'Войти' and n.get('enabled') == 'true'), None), 'Login submit unavailable after cooldown')
+        tap(submit)
+        reply = wait_for(server_reply, 'Expected production HTTP 401 after rate-limit cooldown', seconds=60)
+    assert reply == '401', 'Production login is still rate limited; no further retries are permitted.'
     screenshot('02-server-rejected-invalid-login.png')
     print('Signed Android APK: production HTTPS login returned the expected invalid-credentials response.')
 finally:

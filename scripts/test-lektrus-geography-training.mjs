@@ -2,15 +2,33 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import ts from "typescript";
 const read=(file)=>fs.readFileSync(new URL("../src/"+file,import.meta.url),"utf8");
-const mod={};
-new Function("exports",ts.transpileModule(read("lektrusGeographyTrainingModel.ts"),{compilerOptions:{
- target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS
-}}).outputText)(mod);
+// Load actual local TypeScript dependencies instead of assuming the model is
+// self-contained. Unknown imports fail rather than being silently stubbed.
+function load(file,deps={},intl=Intl){
+ const exports={};
+ new Function("exports","require","Intl",ts.transpileModule(read(file),{compilerOptions:{
+  target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS
+ }}).outputText)(exports,name=>{
+  assert.ok(Object.hasOwn(deps,name),`Unexpected import ${name} in ${file}`);
+  return deps[name];
+ },intl);
+ return exports;
+}
+const regions=load("regionDisplayNames.ts");
+const mod=load("lektrusGeographyTrainingModel.ts",{"./regionDisplayNames":regions});
 const {geoCountries,geoRegions,geoPair,getGeoCountry,makeGeoTraining,
  validGeoTraining,sampleGeoCountries,geoCountryDifficulty,geoDifficultyNames}=mod;
 assert.ok(geoCountries.length>=180,"Country catalogue should cover most school atlas nations");
 assert.equal(new Set(geoCountries.map(c=>c.code)).size,geoCountries.length);
 assert.equal(geoRegions.length,5);
+// Older Android WebViews lack Intl.DisplayNames. Exercise the actual fallback
+// module and the complete catalogue, not a mock that hides missing labels.
+const fallbackRegions=load("regionDisplayNames.ts",{},{});
+const fallback=load("lektrusGeographyTrainingModel.ts",{"./regionDisplayNames":fallbackRegions},{});
+assert.deepEqual(fallback.geoCountries.map(c=>[c.code,c.capital,c.region,c.difficulty]),geoCountries.map(c=>[c.code,c.capital,c.region,c.difficulty]));
+assert.ok(fallback.geoCountries.every(c=>c.name.length>1&&c.name!==c.code),"Legacy WebView catalogue must have real country names");
+assert.equal(fallbackRegions.regionDisplayNames("ru").of("FR"),"Франция");
+assert.equal(fallbackRegions.regionDisplayNames("en").of("FR"),"France");
 for(const country of geoCountries){
  assert.match(country.code,/^[A-Z]{2}$/);
  assert.ok(country.name.length>1&&country.capital.length>2);
@@ -59,10 +77,7 @@ for(const level of ["easy","medium","hard"]){
  assert.ok(all.every(code=>getGeoCountry(code).difficulty===level),
   "whole-world exercises must honour their chosen difficulty");
 }
-const layout={};
-new Function("exports","require",ts.transpileModule(read("lektrusGeoMatchingLayout.ts"),{
- compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}
-}).outputText)(layout,()=>mod);
+const layout=load("lektrusGeoMatchingLayout.ts",{"./lektrusGeographyTrainingModel":mod});
 const sample2={...makeGeoTraining("matching"),countryCodes:["RU","FR"],relation:"flag-country"};
 const sample12={...makeGeoTraining("matching"),countryCodes:geoCountries.slice(0,12).map(c=>c.code),relation:"outline-country"};
 assert.ok(layout.geoMatchingEstimatedHeight(sample12)>layout.geoMatchingEstimatedHeight(sample2),

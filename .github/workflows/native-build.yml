@@ -124,7 +124,8 @@ jobs:
     name: Signed Android API ${{ matrix.api }} APK — live HTTPS login smoke test
     needs: [android, tls-chain]
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # One permitted ten-minute cooldown after a real production HTTP 429.
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
