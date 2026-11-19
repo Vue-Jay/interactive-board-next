@@ -7408,7 +7408,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // Only actual objects need minimap markers; strokes are already rasterized.
   const minimapObjects = useMemo(() => visibleItems.filter(item => !isInkItem(item)), [visibleItems]);
   const miniContentBounds = useMemo(() => minimapContentBounds(visibleItems), [visibleItems]);
-  const allBounds = useMemo(() => boundsOf(visibleItems), [visibleItems]);
   // Rasterize unselected, unlocked pen/marker runs in every role. Selected
   // ink remains a real DOM object for handles, moving and rotating. The
   // separate geometric hit test resolves clicks on canvas strokes.
