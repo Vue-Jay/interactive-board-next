@@ -1,0 +1,37 @@
+name: Mobile stress v2 static validation (manual, no acceptance execution)
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-test-infrastructure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Check JavaScript and Python test-runner syntax
+        run: |
+          node --check scripts/test-mobile-browser-stress-v2.mjs
+          node --check scripts/compile-mobile-stress-inventory.mjs
+          node --check scripts/audit-mobile-stress-inventory.mjs
+          node --check scripts/audit-mobile-executable-coverage-v2.mjs
+          python3 -m py_compile scripts/test-native-stress-v2.py
+      - name: Audit planned mobile stress matrix (not an acceptance run)
+        run: |
+          node scripts/audit-mobile-stress-inventory.mjs
+          node scripts/audit-mobile-executable-coverage-v2.mjs
+      - name: Verify acceptance gate remains closed until implemented
+        run: |
+          if node scripts/compile-mobile-stress-inventory.mjs "$RUNNER_TEMP/mobile-matrix.json" --require-ready; then
+            echo "::error::Incomplete mobile scenarios were incorrectly marked ready"
+            exit 1
+          fi
+          echo "PASS: incomplete mobile scenarios block acceptance"

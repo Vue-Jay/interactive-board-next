@@ -4,16 +4,10 @@
     X-Content-Type-Options nosniff
     Referrer-Policy no-referrer
   }
-  @interface_preview {
-    path /board/00000000-0000-4000-8000-00000000a11a
-    query layout-editor=1 layout-preview=1
-  }
-  @not_interface_preview not {
-    path /board/00000000-0000-4000-8000-00000000a11a
-    query layout-editor=1 layout-preview=1
-  }
-  header @not_interface_preview X-Frame-Options DENY
-  header @interface_preview {
+  @same_origin_frame `(path('/board/00000000-0000-4000-8000-00000000a11a') && query({'layout-editor':'1','layout-preview':'1'})) || (path('/board/*','/demo/board','/demo/board/') && query({'lektrus-board-frame':'1'}))`
+  @not_same_origin_frame `!((path('/board/00000000-0000-4000-8000-00000000a11a') && query({'layout-editor':'1','layout-preview':'1'})) || (path('/board/*','/demo/board','/demo/board/') && query({'lektrus-board-frame':'1'})))`
+  header @not_same_origin_frame X-Frame-Options DENY
+  header @same_origin_frame {
     X-Frame-Options SAMEORIGIN
     Content-Security-Policy "frame-ancestors 'self'"
   }

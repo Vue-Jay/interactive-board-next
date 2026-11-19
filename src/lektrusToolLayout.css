@@ -153,9 +153,13 @@ body .workspace .toolbar.compact-toolbar .toolbar-list {
     order:3!important;flex:0 1 auto!important;
     min-height:0!important;max-height:100%!important;
     overflow-x:hidden!important;overflow-y:auto!important;
-    overscroll-behavior:contain!important;scrollbar-width:none!important;
+    overscroll-behavior:contain!important;scrollbar-width:thin!important;
+    scroll-snap-type:y proximity;
   }
-  body .workspace nav.mobile-board-tools .mobile-tool-cluster-create::-webkit-scrollbar{display:none!important}
+  body .workspace nav.mobile-board-tools .mobile-tool-cluster-create::-webkit-scrollbar{display:block!important;width:3px!important}
+  body .workspace nav.mobile-board-tools .mobile-tool-cluster-create::-webkit-scrollbar-thumb{background:var(--lt-line);border-radius:3px}
+  body .workspace nav.mobile-board-tools .mobile-tool-cluster-create>*,
+  body .workspace nav.mobile-board-tools .mobile-tool-with-geometry>button{scroll-snap-align:start}
   body .workspace nav.mobile-board-tools .mobile-tool-with-geometry{
     display:flex!important;flex-direction:column!important;align-items:center!important;
     width:100%!important;min-width:0!important;flex:0 0 auto!important;gap:2px!important;

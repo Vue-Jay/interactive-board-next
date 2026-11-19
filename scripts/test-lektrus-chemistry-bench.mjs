@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import ts from "typescript";
+import {assertFullscreenStage} from "./test-lab-fullscreen-stage.mjs";
 const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
 const load=(path,requireFn=()=>{throw Error("Unexpected import")})=>{
  const js=ts.transpileModule(read(path),{compilerOptions:{
@@ -1429,8 +1430,7 @@ assert.ok(Math.abs(finalDrop.vessels.find(v=>v.id==="v1").reactionAmounts.produc
 const editorFixed=read("src/LektrusChemistryBenchEditor.tsx");
 assert.match(editorFixed,/setStage/);
 assert.match(editorFixed,/zoom:stage\.scale/,"Fullscreen must use layout zoom to avoid Android GPU repaint artifacts");
-assert.match(editorFixed,/const width=compact\?w:w\/scale/,
- "Phones use native pixels while desktop continues fitted layout zoom");
+assertFullscreenStage();
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-fit-stage/);
 const polishedSurface=read("src/LektrusChemistryBench.tsx");
 assert.ok(polishedSurface.includes('window.addEventListener("lektrus-lab-fullscreen-change",resume)'),

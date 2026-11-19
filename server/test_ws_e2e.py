@@ -157,6 +157,8 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                     assert {u["user_id"] for u in student_presence["users"]}=={str(TEACHER),str(STUDENT)}
                     assert owner_join["type"]=="presence_diff"
                     assert [u["user_id"] for u in owner_join["joins"]]==[str(STUDENT)]
+                    assert owner_presence["users"][0]["participant_role"]=="owner"
+                    assert owner_join["joins"][0]["participant_role"]=="observer"
 
                     # View-only participants can show their cursor but cannot
                     # pretend to be the teacher or publish drawing strokes.
@@ -348,6 +350,16 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                             assert json.loads(await asyncio.wait_for(ws.recv(),3)) == {
                                 "type":"comments_changed",
                             }
+
+                    async with app.state.pool.acquire() as db:
+                        await db.execute("UPDATE board_members SET role='editor',participant_role='student' WHERE board_id=$1 AND user_id=$2",board_id,STUDENT)
+                    await ws_student.send(json.dumps({"type":"ping"}))
+                    for ws in (ws_owner,ws_student):
+                        changed=json.loads(await asyncio.wait_for(ws.recv(),3))
+                        assert changed["type"]=="presence_diff"
+                        assert changed["joins"][0]["participant_role"]=="student"
+                        assert changed["joins"][0]["role"]=="editor"
+                    assert json.loads(await asyncio.wait_for(ws_student.recv(),3))=={"type":"pong","version":2}
 
                     async with app.state.pool.acquire() as db:
                         await db.execute(

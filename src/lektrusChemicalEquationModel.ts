@@ -9,7 +9,7 @@ export type BalanceResult={status:"empty"|"incomplete"|"invalid"|"unsupported"|"
  message:string;coefficients?:number[]};
 export const blankSpecies=():EquationSpecies=>({formula:"",coefficient:1,indicator:""});
 // A bare = in organic condensed structures (CH2=CH2) is a bond, not a reaction arrow.
-const arrows=/(⇌|⇄|↔|→|⟶|⟹|->)|(?<=\s)(?:=|≠)(?=\s)/;
+const arrows=/(⇌|⇄|↔|→|⟶|⟹|->)|\s([=≠])(?=\s)/;
 const unicodeSub="₀₁₂₃₄₅₆₇₈₉";
 const elements=new Set(("H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr "+
 "Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu "+
@@ -51,10 +51,11 @@ export function parseEquationDraft(input:string):EquationDraft|null{
  if(!input.trim())return {left:[blankSpecies()],right:[blankSpecies()],arrow:"→"};
  const match=arrows.exec(input);
  if(!match)return null; // A standalone formula remains editable in source mode.
- const left=splitEquationSide(input.slice(0,match.index)).map(readSpecies);
- const right=splitEquationSide(input.slice(match.index+match[0].length)).map(readSpecies);
+ const marker=match[2]??match[0],index=match.index+(match[2]?1:0);
+ const left=splitEquationSide(input.slice(0,index)).map(readSpecies);
+ const right=splitEquationSide(input.slice(index+marker.length)).map(readSpecies);
  if(left.length>10||right.length>10)return null;
- return {left,right,arrow:arrowValue(match[0])};
+ return {left,right,arrow:arrowValue(marker)};
 }
 export function writeEquationDraft(e:EquationDraft):string{
  const side=(parts:EquationSpecies[])=>parts.map(p=>

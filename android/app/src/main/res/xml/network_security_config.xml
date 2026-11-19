@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Preserve platform trust and HTTPS-only transport for every host. -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <!-- Android 7.0 predates ISRG Root X1; older WebViews may also lack X2.
+         These are public, self-signed CA roots, NOT a leaf pin or a bypass.
+         Scope this compatibility trust to the actual Lektrus API hostname. -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="false">lektrus.ru</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/lektrus_isrg_roots" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>

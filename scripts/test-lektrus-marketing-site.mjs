@@ -8,7 +8,7 @@ const css=read("src/lektrusMarketing.css");
 const entry=read("src/LektrusSiteEntry.tsx");
 const billing=read("src/billingStore.ts");
 
-for(const id of ["home","features","pricing","help"]){
+for(const id of ["home","features","pricing","download","help"]){
  assert.ok(site.includes('id:"'+id+'"'),"missing public marketing page: "+id);
 }
 assert.doesNotMatch(site,/\{id:"(?:teachers|students)",title:/,"former teacher/student tabs must be absent from navigation");
@@ -289,7 +289,7 @@ assert.ok(builder.includes('putSiteCanvasTransfer(event,{type:"block"')&&builder
 assert.ok(builder.includes("insertCanvasTransfer(")&&builder.includes('event.data?.type==="lektrus:site-canvas-drop"'),"cross-iframe drop must update the document");
 assert.ok(canvas.includes("event.dataTransfer.getData(SITE_CANVAS_MIME)")&&canvas.includes("SiteDropZone"),"canvas drop zones must actually read HTML5 drag payloads");
 assert.ok(site.includes('placed("before-0")')&&site.includes('placed("end")')&&site.includes("SiteAnchorSlot"),"native sections and page end must accept new blocks");
-for(const id of ["home","features","pricing","help"]){
+for(const id of ["home","features","pricing","download","help"]){
  assert.ok(site.includes('page==="'+id+'"'),"required page must keep native editable sections: "+id);
 }
 assert.doesNotMatch(site,/page==="(?:teachers|students|tools|how|about)"/,"retired pages must not render their old layouts");
@@ -426,8 +426,8 @@ assert.doesNotMatch(featuresPage,/<img\b|marketing-showcase/, "Features must not
 assert.doesNotMatch(featuresPage,/Для преподавателей|Для учеников|Главное преимущество:/,"Features should not repeat homepage selling points or role divisions");
 assert.doesNotMatch(featuresPage,/<DemoLink|<NavLink|<a\b/,"Features must contain no navigation to board creation or demos");
 assert.doesNotMatch(site,/page==="(?:about|how|tools|teachers|students)"/,"retired tabs must not render");
-assert.ok(builder.includes("BUILTIN_SITE_PAGES"),"editor must adopt the new four built-in pages");
-assert.deepEqual(model.defaultSiteDocument().navigation.map(x=>x.id),["home","features","pricing","help"]);
+assert.ok(builder.includes("BUILTIN_SITE_PAGES"),"editor must adopt the built-in pages including downloads");
+assert.deepEqual(model.defaultSiteDocument().navigation.map(x=>x.id),["home","features","pricing","download","help"]);
 const legacyNav=[
  {id:"home",title:"Главная",hidden:false},{id:"features",title:"Возможности",hidden:false},
  {id:"tools",title:"Инструменты",hidden:false},{id:"how",title:"Как это работает",hidden:false},
@@ -436,7 +436,11 @@ const legacyNav=[
  {id:"help",title:"Помощь",hidden:false}
 ];
 const normalizedLegacy=model.normalizeSiteDocument({...defaultMarketing,navigation:legacyNav});
-assert.deepEqual(normalizedLegacy.navigation.map(x=>x.id),["home","features","pricing","help"],"published legacy menus cannot bring deleted tabs back");
+assert.deepEqual(normalizedLegacy.navigation.map(x=>x.id),["home","features","pricing","help","download"],"published legacy menus cannot bring deleted tabs back and must gain downloads");
+assert.ok(site.includes('page==="download"')&&site.includes('href="#download"'),"download page must be discoverable from homepage");
+assert.ok(site.includes('releases/latest/download/Lektrus-Android.apk')&&site.includes('Lektrus-Android.apk.sha256'),"download must use the permanent signed release asset and checksum");
+assert.ok(site.includes('Не отключайте Play Защиту'),"installation guidance must preserve Android security");
+assert.ok(read("src/lektrusMarketingDownload.css").includes("@media(max-width:850px)"),"download cards must reflow on narrow screens");
 const retiredAsCustom=model.normalizeSiteDocument({...defaultMarketing,customPages:[{id:"about",title:"Reintroduced About",blocks:[]},{id:"new-page",title:"New",blocks:[]}]});
 assert.ok(!retiredAsCustom.customPages.some(x=>x.id==="about"),"deleted page names stay reserved");
 assert.ok(retiredAsCustom.customPages.some(x=>x.id==="new-page"),"ordinary custom pages continue working");
@@ -446,4 +450,4 @@ assert.ok(css.includes("@keyframes marketing-showcase-zoom")&&css.includes("@key
 assert.ok(css.includes("min-height:0")&&css.includes(".marketing-project-summary")&&css.includes("margin-top:auto"),"project section and bottom-pinned footer must eliminate awkward whitespace");
 
 assert.doesNotMatch(site,/Это текущие технические ограничения тарифов/,"remove the old pricing disclaimer beneath plans");
-console.log("Lektrus marketing site: four compact pages, project information on Home, prose-only Features, retired routes, dynamic authentic screenshots and legacy migration verified.");
+console.log("Lektrus marketing site: five compact pages, official Android download, project information on Home, prose-only Features, retired routes, dynamic authentic screenshots and legacy migration verified.");

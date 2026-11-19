@@ -50,7 +50,7 @@ jobs:
       - name: Test public asset retention
         run: python -m pytest -q server/test_retain_web_assets.py
       - name: Integration tests against disposable PostgreSQL
-        run: python -m pytest -q -rP server/test_document_delta.py server/test_api.py server/test_assets.py server/test_invitations.py server/test_registration.py server/test_admin.py server/test_comments.py server/test_education.py server/test_pilot_objects.py server/test_pilot_operations.py server/test_live_frames.py server/test_realtime_permissions.py server/test_ws_e2e.py server/test_guest_history_visits.py
+        run: python -m pytest -q -rP server/test_document_delta.py server/test_api.py server/test_assets.py server/test_invitations.py server/test_registration.py server/test_admin.py server/test_comments.py server/test_education.py server/test_pilot_objects.py server/test_pilot_operations.py server/test_live_frames.py server/test_realtime_permissions.py server/test_ws_e2e.py server/test_guest_history_visits.py server/test_participant_roles.py
       - name: Build minimal production image
         run: docker build -f server/Dockerfile -t lektrus-selfhost-api:ci server
       - name: Boot actual API container and test private disk permissions

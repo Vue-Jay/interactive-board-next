@@ -21,7 +21,7 @@ assert.match(registrationStyles,/@media \(min-width: 760px\)/);
 assert.match(registrationStyles,/\.auth-shell-register \.auth-form > \.auth-field/);
 assert.match(registrationStyles,/\.auth-shell-register \.auth-form > \.auth-submit/);
 
-async function loadSelfhost(enabled) {
+async function loadSelfhost(enabled, platform="web") {
   let source=readFileSync(new URL("../src/selfhostApi.ts",import.meta.url),"utf8");
   source=source
     .replaceAll("import.meta.env.VITE_LEKTRUS_BACKEND",JSON.stringify(enabled?"selfhost":""))
@@ -242,6 +242,22 @@ async function loadSelfhost(enabled) {
     if(u.pathname==="/api/v1/auth/verify-email")return ok({access_token:"token-verified",refresh_token:"refresh-verified",expires_in:900,user});
     throw new Error("Unexpected pilot request "+u.pathname);
   };
+  const nativeRequests=[];
+  let nativeFailure=null,claimFailure=false,loginFailure=false;
+  const bridge={Capacitor:{getPlatform:()=>platform,isPluginAvailable:name=>name==="CapacitorHttp"},CapacitorHttp:{
+    async request(options){
+      nativeRequests.push(options);
+      assert.equal(options.disableRedirects,true);
+      assert.equal(options.headers["cache-control"],"no-store");
+      if(nativeFailure)throw {code:nativeFailure};
+      const pathname=new URL(options.url).pathname;
+      if(pathname==="/api/v1/auth/login"&&loginFailure)return loginFailure===429?{status:429,data:{detail:"Слишком много попыток. Попробуйте позже."}}:{status:401,data:{detail:"Неверный email или пароль."}};
+      if(pathname==="/api/v1/invitations/claim"&&claimFailure)return {status:503,data:{detail:"Unavailable"}};
+      const response=await fetch(options.url,{method:options.method,headers:options.headers,body:options.data,credentials:"omit"});
+      const raw=await response.text();
+      return {status:response.status,data:raw?JSON.parse(raw):""};
+    },
+  }};
   const sockets=[];
   class Socket {
     static OPEN=1;
@@ -255,7 +271,7 @@ async function loadSelfhost(enabled) {
   }
   const listeners=new Map();
   const makeContext=(withLocks=true)=>vm.createContext({
-    exports:{},fetch,URL,Headers,Response,AbortController,FormData,TextEncoder,queueMicrotask,
+    exports:{},require:name=>{assert.equal(name,"@capacitor/core");return bridge;},fetch,URL,Headers,Response,AbortController,DOMException,FormData,TextEncoder,queueMicrotask,
     navigator:{onLine:true,locks:withLocks?locks:undefined},WebSocket:Socket,
     localStorage:sessionStorage,sessionStorage,setTimeout,clearTimeout,setInterval,clearInterval,Date,
     window:{location:{origin:"https://pilot.lektrus.example"},
@@ -268,7 +284,7 @@ async function loadSelfhost(enabled) {
   const broadcastSource=readFileSync(new URL("../src/boardBroadcast.ts",import.meta.url),"utf8");
   const broadcastContext=vm.createContext({exports:{},require:name=>name==="./selfhostApi"?api:{isRemoteBackendEnabled:()=>false},setTimeout,clearTimeout,Date,Math,Map,crypto:globalThis.crypto});
   vm.runInContext(ts.transpileModule(broadcastSource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,broadcastContext);
-  return {api,broadcast:broadcastContext.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,sessionStorage,changeExpires:v=>{expires=v},changeDocument:(v,failures=0)=>{documentVersion=v;documentFailures=failures},
+  return {api,broadcast:broadcastContext.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,sessionStorage,nativeRequests,setNativeFailure:value=>{nativeFailure=value;},setClaimFailure:value=>{claimFailure=value;},setLoginFailure:value=>{loginFailure=value;},changeExpires:v=>{expires=v},changeDocument:(v,failures=0)=>{documentVersion=v;documentFailures=failures},
     forkApi:(withLocks=true)=>{const tab=makeContext(withLocks);vm.runInContext(compiled,tab);return tab.exports},
     setRefreshStatus:v=>{refreshStatus=v},rejectOldAccess:()=>{rejectOldAccess=true},
     remoteNativeEdit:(delta,broken=false)=>{nativeDoc=JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(nativeDoc,delta)));nativeVersion++;nativeDelta=delta;brokenChain=broken}};
@@ -289,6 +305,47 @@ assert.equal(api.cachedSelfhostSession().user.id,session.user.id);
 assert.equal(storage.get("lesson-board.supabase.session.v1"),"production-must-remain");
 assert.equal(records[0].body.email,"teacher@example.test");
 assert.equal((await api.selfhostBoards()).length,1);
+assert.equal(env.nativeRequests.length,0,"The regular browser must keep its own Fetch transport");
+
+// Simulate the actual Android HTTP bridge, checking the transport boundary,
+// HTTP statuses, signed-in requests, cancellation, and no accidental retries.
+const android=await loadSelfhost(true,"android");
+android.setLoginFailure(true);
+await assert.rejects(android.api.selfhostLogin("fake@example.test","invalid"),e=>e.status===401&&e.message==="Неверный email или пароль.");
+assert.equal(android.api.cachedSelfhostSession(),null);
+assert.equal(android.nativeRequests.length,1);
+assert.equal(android.nativeRequests[0].connectTimeout,30000);
+assert.equal(JSON.parse(android.nativeRequests[0].data).email,"fake@example.test");
+android.setLoginFailure(429);
+await assert.rejects(android.api.selfhostLogin("fake@example.test","invalid"),e=>e.status===429&&e.message==="Слишком много попыток. Попробуйте позже.");
+assert.equal(android.nativeRequests.length,2,"Rate-limited login must not be automatically replayed");
+assert.equal(android.api.cachedSelfhostSession(),null);
+android.setLoginFailure(false);
+const authSource=readFileSync(new URL("../src/authStore.ts",import.meta.url),"utf8");
+const authContext=vm.createContext({exports:{},require:name=>name==="./selfhostApi"?android.api:{},localStorage:android.sessionStorage});
+vm.runInContext(ts.transpileModule(authSource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,authContext);
+android.setClaimFailure(true);
+const androidUser=await authContext.exports.loginUser({email:"teacher@example.test",password:"test-password"});
+assert.equal(androidUser.id,android.api.cachedSelfhostSession().user.id,"Claim failure must not fail a completed login");
+assert.equal(android.nativeRequests.at(-1).connectTimeout,5000);
+android.setClaimFailure(false);
+await authContext.exports.retrySelfhostInvitations(androidUser.id);
+assert.equal(android.nativeRequests.at(-1).headers.authorization,"Bearer token-first");
+assert.equal((await android.api.selfhostBoards()).length,1);
+const nativeCount=android.nativeRequests.length;
+await android.api.selfhostAssetExists("00000000-0000-4000-8000-000000000004","missing");
+assert.equal(android.nativeRequests.length,nativeCount,"Binary asset requests must not use the JSON bridge");
+android.setNativeFailure("UnknownHostException");
+const attempts=android.nativeRequests.length;
+const webFallbacks=android.records.length;
+await assert.rejects(android.api.selfhostLogin("fake@example.test","invalid"),/DNS/);
+assert.equal(android.nativeRequests.length,attempts+1,"Do not replay authentication on network failure");
+assert.equal(android.records.length,webFallbacks,"Do not fall back to Fetch after native POST may have arrived");
+android.setNativeFailure("SSLHandshakeException");
+await assert.rejects(android.api.selfhostBoards(),/TLS/);
+android.setNativeFailure("SocketTimeoutException");
+await assert.rejects(android.api.selfhostBoards(),/вовремя/);
+console.log("Android JSON transport: 401, session, invitation recovery, bearer, binary isolation, DNS/TLS/timeout and no replay OK.");
 assert.equal((await api.selfhostCreateBoard("Тест",true)).id,"board-1");
 assert.equal((await api.selfhostReadDocument("board-1")).version,3);
 const nativeBoard=await api.selfhostCreateBoard("Нативная доска",false);

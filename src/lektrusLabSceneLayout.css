@@ -1109,6 +1109,9 @@ body.lektrus-lab-fullscreen-active .workspace{
  --lab-compact-nav-top:56px;
  --lab-compact-panel-top:calc(var(--lab-compact-nav-top) + 49px);
 }
+@supports not (width:max(1px,2px)) {
+ .lektrus-lab-bench.is-compact-fullscreen{--lab-compact-edge:9px;}
+}
 .lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-scene-header{
  left:var(--lab-compact-edge)!important;
  right:max(65px,calc(env(safe-area-inset-right,0px) + 59px))!important;
@@ -1170,7 +1173,7 @@ body.lektrus-lab-fullscreen-active .workspace{
  left:var(--lab-compact-edge)!important;
  right:max(9px,env(safe-area-inset-right,0px))!important;
  top:var(--lab-compact-panel-top)!important;
- max-height:min(49%,280px)!important;min-height:0!important;
+ max-height:49%!important;max-height:min(49%,280px)!important;min-height:0!important;
  padding:12px!important;gap:8px!important;
  border-radius:12px!important;
  overscroll-behavior:contain!important;
@@ -1192,7 +1195,9 @@ body.lektrus-lab-fullscreen-active .workspace{
  left:var(--lab-compact-edge)!important;
  right:max(9px,env(safe-area-inset-right,0px))!important;
  top:var(--lab-compact-panel-top)!important;
+ max-height:49%!important;
  max-height:min(49%,280px)!important;
+ box-sizing:border-box!important;
  padding:12px!important;gap:9px!important;
 }
 .lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-settings button{

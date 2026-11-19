@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import AuthScreen from "./AuthScreen";
 import { loadGlobalInterfaceLayout, saveInterfaceLayout } from "./lektrusInterfaceLayout";
@@ -6,8 +6,8 @@ import BoardsScreen from "./BoardsScreen";
 import LectrisWorkspaceShell from "./LectrisWorkspaceShell";
 import { clearNotificationCache } from "./notificationsStore";
 import { clearAiBoardTransfer } from "./aiLocalStore";
-import { clearAccountAccessCache, getAccountAccess, getCachedAccountAccess, type AccountRole } from "./accountRoleStore";
-import { clearPendingBoardPath, clearPendingShare, initialRoute, parseRoute, pendingBoardPath, pendingSharePath, rememberBoardPath, rememberShareToken, type AppRoute } from "./routes";
+import { clearAccountAccessCache, enableTeacherRole, getAccountAccess, getCachedAccountAccess, type AccountRole } from "./accountRoleStore";
+import { clearPendingBoardPath, clearPendingShare, initialRoute, nativeBoardPath, nativeBoardUrl, parseRoute, pendingBoardPath, pendingSharePath, rememberBoardPath, rememberShareToken, type AppRoute } from "./routes";
 import { redeemShareLink } from "./shareLinks";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
@@ -20,8 +20,10 @@ import { documentFingerprint } from "./boardSync";
 import { parseDocument, type DocumentData } from "./boardModel";
 import { ensureBoardAssets } from "./assetStore";
 import { cacheBoardPreview, cachedBoardPreview, previewFromRemoteDocument, scheduleBackgroundBoardPreview } from "./boardPreview";
+import {BoardLoadingScreen,BrowserBoardLandscape,wantsBrowserBoardLandscape,requestBrowserBoardLandscape,releaseBrowserBoardLandscape} from "./BrowserBoardLandscape";
 
 const INTERFACE_STUDIO_BOARD_ID="00000000-0000-4000-8000-00000000a11a";
+const LektrusSystemUi = registerPlugin<{setBoardMode(options:{enabled:boolean}):Promise<void> }>("LektrusSystemUi");
 
 const StudentsScreen = lazy(() => import("./StudentsScreen"));
 
@@ -55,8 +57,31 @@ const FeedbackScreen = lazy(() => import("./FeedbackScreen"));
 
 const BoardApp = lazy(() => import("./BoardApp"));
 
-function BoardLoadingScreen(){
-  return <main className="lektrus-board-loading" role="status" aria-live="polite"><section className="lektrus-board-loading-card"><div className="lektrus-board-loading-mark"><img src="/lektrus-icon-192.png" alt=""/><i/></div><span className="lektrus-board-loading-kicker">LEKTRUS · РАБОЧЕЕ ПРОСТРАНСТВО</span><h1>Готовим доску</h1><p>Подключаем материалы и инструменты для занятия.</p><div className="lektrus-board-loading-progress" aria-hidden="true"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></section></main>;
+type BoardLoadFailure = {message:string;reauth:boolean};
+function isTransientBoardRead(error:unknown):boolean{
+  if(error instanceof SelfhostHttpError)return [502,503,504].includes(error.status);
+  return error instanceof Error && /failed to fetch|networkerror|network error|network request failed|load failed|timeout|timed out|время ожидания|не ответил на запрос|не удалось установить соединение/i.test(error.message);
+}
+function describeBoardLoadFailure(error:unknown):BoardLoadFailure{
+  if(error instanceof SelfhostHttpError){
+    if(error.status===401)return {message:"Сессия завершена. Войдите снова, чтобы открыть эту доску.",reauth:true};
+    if(error.status===403||error.status===404)return {message:"Доска недоступна. Попросите владельца прислать действующую ссылку.",reauth:false};
+    if(error.status===429)return {message:"Слишком много запросов. Подождите немного и повторите попытку.",reauth:false};
+    if(error.status>=500)return {message:"Сервер Lektrus временно недоступен. Нажмите «Повторить» чуть позже.",reauth:false};
+  }
+  if(isTransientBoardRead(error))return {message:"Не удалось связаться с сервером Lektrus. Проверьте интернет-соединение и повторите попытку.",reauth:false};
+  return {message:error instanceof Error&&error.message?error.message:"Не удалось загрузить доску с сервера.",reauth:false};
+}
+// Only reads: never retry acceptance of invitations, writes or login requests.
+// A superseded navigation must not issue the second request.
+async function readBoardWithRetry<T>(read:()=>Promise<T>,isCurrent:()=>boolean):Promise<T>{
+  try{return await read()}
+  catch(error){
+    if(!isCurrent()||!isTransientBoardRead(error))throw error;
+    await new Promise<void>(resolve=>window.setTimeout(resolve,450));
+    if(!isCurrent())throw error;
+    return await read();
+  }
 }
 
 export default function App() {
@@ -64,17 +89,61 @@ export default function App() {
     const initial=initialRoute();
     return Capacitor.isNativePlatform()&&initial.kind==="site"?{kind:"home"}:initial;
   });
-  useEffect(() => {
-    if (Capacitor.getPlatform() !== "android") return;
-    void registerPlugin<{setBoardMode(options:{enabled:boolean}):Promise<void>}>("LektrusSystemUi")
-      .setBoardMode({ enabled: route.kind === "board" })
-      .catch(error => console.warn("Lektrus Android status bar update failed", error));
-  }, [route.kind]);
+  // Android owns the orientation request and system bars in one native call.
+  // iOS uses the Capacitor orientation plugin.
+  const lockNativeOrientation = useCallback((board: boolean) => {
+    return Capacitor.getPlatform() === "android"
+      ? LektrusSystemUi.setBoardMode({enabled: board})
+      : ScreenOrientation.lock({ orientation: board ? "landscape-primary" : "portrait-primary" });
+  }, []);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() =>
+    new URLSearchParams(window.location.search).has("password-reset") ? null : getCachedCurrentUser()
+  );
+  const [authReady, setAuthReady] = useState(() =>
+    !new URLSearchParams(window.location.search).has("password-reset") && Boolean(getCachedCurrentUser())
+  );
+  const authenticatedBoardRoute = authReady && !!authUser && route.kind === "board";
+  useLayoutEffect(() => {
+    if (!Capacitor.isNativePlatform() || !authenticatedBoardRoute) return;
+    const page = document.documentElement;
+    page.classList.add("lektrus-native-board");
+    let frame = 0;
+    let settle: ReturnType<typeof setTimeout> | undefined;
+    const resetOuterScroll = () => {
+      const focus = document.activeElement;
+      if (focus?.matches('input:not([type="button"]):not([type="checkbox"]):not([type="range"]),textarea,[contenteditable="true"]')) return;
+      // Older WebViews can scroll an overflow:hidden ancestor on focus. Do
+      // not reset the editor's own scroller or the infinite canvas camera.
+      window.scrollTo(0, 0);
+      for (const element of [page, document.body, document.getElementById("root"), document.querySelector("#root > .app")]) {
+        if (element) { element.scrollTop = 0; element.scrollLeft = 0; }
+      }
+    };
+    const afterKeyboard = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(resetOuterScroll);
+      clearTimeout(settle);
+      settle = setTimeout(resetOuterScroll, 360);
+    };
+    resetOuterScroll();
+    window.addEventListener("resize", afterKeyboard);
+    window.visualViewport?.addEventListener("resize", afterKeyboard);
+    document.addEventListener("focusout", afterKeyboard);
+    return () => {
+      page.classList.remove("lektrus-native-board");
+      window.removeEventListener("resize", afterKeyboard);
+      window.visualViewport?.removeEventListener("resize", afterKeyboard);
+      document.removeEventListener("focusout", afterKeyboard);
+      cancelAnimationFrame(frame);
+      clearTimeout(settle);
+    };
+  }, [authenticatedBoardRoute]);
 
   // Android system back should behave like Lektrus navigation, not dismiss the app.
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     const goBackInsideLektrus = () => {
+      if(!window.dispatchEvent(new Event("lektrus:board-native-back",{cancelable:true})))return;
       const current = new URL(window.location.href);
       if (current.pathname !== "/" && current.pathname !== "/app") {
         window.history.pushState({}, "", "/app");
@@ -91,27 +160,14 @@ export default function App() {
     return () => window.removeEventListener("lektrus:native-back", goBackInsideLektrus);
   }, []);
 
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-    const apply = async () => {
-      try {
-        if (route.kind === "board") {
-          await ScreenOrientation.lock({ orientation: "landscape-primary" });
-        } else {
-          await ScreenOrientation.unlock();
-        }
-      } catch (error) {
-        console.warn("Unable to change Lektrus orientation", error);
-      }
-    };
-    void apply();
-  }, [route.kind]);
-
   const navigate = useCallback((path: string, replace = false) => {
     const appPath=path==="/"?"/app":path.startsWith("/?")?`/app${path.slice(1)}`:path;
     window.history[replace ? "replaceState" : "pushState"](null, "", appPath);
     const url = new URL(appPath, window.location.href);
     const next=parseRoute(url.pathname);
+    if(next.kind==="board"||next.kind==="demo")requestBrowserBoardLandscape(true);
+    else releaseBrowserBoardLandscape();
+    if(next.kind==="join")rememberShareToken(next.token);
     if(next.kind==="board")rememberBoardPath(next.boardId);
     setRoute(Capacitor.isNativePlatform()&&next.kind==="site"?{kind:"home"}:next);
   }, []);
@@ -124,6 +180,7 @@ export default function App() {
     const changed = () => {
       const parsed = parseRoute(window.location.pathname);
       const next=Capacitor.isNativePlatform()&&parsed.kind==="site"?{kind:"home" as const}:parsed;
+      if(next.kind!=="board"&&next.kind!=="demo")releaseBrowserBoardLandscape();
       if (next.kind === "join") rememberShareToken(next.token);
       if (next.kind === "board") rememberBoardPath(next.boardId);
       setRoute(next);
@@ -131,31 +188,127 @@ export default function App() {
     window.addEventListener("popstate", changed);
     return () => window.removeEventListener("popstate", changed);
   }, []);
-  const [authUser, setAuthUser] = useState<AuthUser | null>(() =>
-    new URLSearchParams(window.location.search).has("password-reset") ? null : getCachedCurrentUser()
-  );
   const [authCallbackError,setAuthCallbackError]=useState("");
   const [accountRole,setAccountRoleState]=useState<AccountRole>(()=>getCachedAccountAccess()?.role??"student");
   const [isAppAdmin,setIsAppAdmin]=useState(()=>getCachedAccountAccess()?.isAdmin??false);
   const [appRolePreview,setAppRolePreview]=useState<"actual"|AccountRole>("actual");
   const effectiveAccountRole=appRolePreview==="actual"?accountRole:appRolePreview;
+  const [workspacePreference,setWorkspacePreference]=useState<"teaching"|"learning">("teaching");
+  const [workspaceModeBusy,setWorkspaceModeBusy]=useState(false);
+  const [workspaceModeNotice,setWorkspaceModeNotice]=useState("");
+  const modeEnabled=isSelfhostBackendEnabled()&&!authUser?.isGuest&&appRolePreview==="actual";
+  const workspaceMode=effectiveAccountRole==="teacher"&&workspacePreference==="teaching"?"teaching":"learning";
+  const workspaceRole:AccountRole=modeEnabled?(workspaceMode==="teaching"?"teacher":"student"):effectiveAccountRole;
+  useEffect(()=>{
+    if(!authUser)return;
+    try{setWorkspacePreference(localStorage.getItem("lektrus.workspace-mode."+authUser.id)==="learning"?"learning":"teaching")}catch{setWorkspacePreference("teaching")}
+    setWorkspaceModeNotice("");
+  },[authUser?.id]);
+  const chooseWorkspaceMode=async(next:"teaching"|"learning")=>{
+    if(!authUser||workspaceModeBusy||!modeEnabled)return;
+    setWorkspaceModeNotice("");
+    if(next==="teaching"&&accountRole!=="teacher"){
+      if(!window.confirm("Подключить преподавательские функции? Вы по-прежнему сможете учиться на чужих досках."))return;
+      setWorkspaceModeBusy(true);
+      try{const result=await enableTeacherRole();setAccountRoleState(result.role);setIsAppAdmin(result.isAdmin);window.dispatchEvent(new Event("onlinerepetitor:account-access"))}
+      catch(error){setWorkspaceModeNotice(error instanceof Error?error.message:"Не удалось подключить режим преподавателя.");return}
+      finally{setWorkspaceModeBusy(false)}
+    }
+    setWorkspacePreference(next);
+    try{localStorage.setItem("lektrus.workspace-mode."+authUser.id,next)}catch{}
+  };
   const [adminInspecting,setAdminInspecting]=useState(false);
   const [adminEdit,setAdminEdit]=useState(()=>{try{return localStorage.getItem("onlinerepetitor.adminEdit")==="1"}catch{return false}});
   const changeAdminEdit=useCallback((value:boolean)=>{setAdminEdit(value);try{localStorage.setItem("onlinerepetitor.adminEdit",value?"1":"0")}catch{}},[]);
   const [adminInvisible,setAdminInvisible]=useState(()=>{try{return localStorage.getItem("onlinerepetitor.adminInvisible")==="1"}catch{return false}});
   const changeAdminInvisible=useCallback((value:boolean)=>{setAdminInvisible(value);try{localStorage.setItem("onlinerepetitor.adminInvisible",value?"1":"0")}catch{}},[]);
-  const [authReady, setAuthReady] = useState(() =>
-    !new URLSearchParams(window.location.search).has("password-reset") && Boolean(getCachedCurrentUser())
-  );
   const [activeBoard, setActiveBoard] = useState<BoardSummary | null>(null);
   const boardChanged = useCallback((updated: BoardSummary) => {
     setActiveBoard(current => current?.id === updated.id ? updated : current);
   }, []);
   const [boardLoading, setBoardLoading] = useState(false);
-  const [boardLoadError, setBoardLoadError] = useState("");
+  // A pending board link must NOT rotate the login or registration screen.
+  const nativeBoardOpening = Capacitor.isNativePlatform() && (route.kind === "demo" ||
+    authenticatedBoardRoute || Boolean(authReady && authUser && adminInspecting && (activeBoard || boardLoading)));
+  const [nativeLandscapeReady, setNativeLandscapeReady] = useState(false);
+  useLayoutEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    if (!nativeBoardOpening) {
+      setNativeLandscapeReady(false);
+      void lockNativeOrientation(false).catch(error => console.warn("Unable to restore Lektrus workspace orientation", error));
+      return;
+    }
+    // Start rotation before the first loader paint, not when BoardApp mounts.
+    // A portrait keyboard can shrink the WebView into a landscape-shaped box.
+    // Check the display width as well, and never dismiss an already-open editor.
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    const root = document.documentElement;
+    root.classList.add("lektrus-native-rotating");
+    let alive = true;
+    const ready = () => {
+      if (!alive) return;
+      // The OS may briefly report a landscape-sized viewport and then
+      // return to portrait during rotation, or the readiness timeout may
+      // elapse while the board chunk is still loading. Keep the loader's
+      // portrait fallback until navigation actually leaves the board.
+      setNativeLandscapeReady(true);
+    };
+    const check = () => {
+      if (innerWidth > innerHeight && innerWidth >= Math.max(screen.width, screen.height) - 100) ready();
+    };
+    // Returning from a system file picker can leave older Android WebViews
+    // in portrait despite the original landscape request. Reassert it only
+    // when this still-mounted board becomes visible/focused again.
+    let lastRestore = 0;
+    const restoreOnReturn = () => {
+      if(alive && document.visibilityState === "visible" && innerWidth < innerHeight &&
+          Date.now() - lastRestore > 300) {
+        lastRestore = Date.now();
+        void lockNativeOrientation(true).then(check).catch(()=>undefined);
+      }
+    };
+    const resize = () => {
+      check();
+      // The system picker can deliver focus before a late portrait resize.
+      if (Capacitor.getPlatform() === "android") restoreOnReturn();
+    };
+    check();
+    window.addEventListener("resize", resize);
+    window.addEventListener("focus", restoreOnReturn);
+    document.addEventListener("visibilitychange", restoreOnReturn);
+    // Native file pickers can return without a WebView focus/visibility event.
+    // Retry on the Capacitor foreground event and after the picker animation.
+    let resumeRetry: ReturnType<typeof setTimeout> | undefined;
+    const onAppState = ({ isActive }: { isActive: boolean }) => {
+      if (!isActive || !alive) return;
+      restoreOnReturn();
+      if (resumeRetry) window.clearTimeout(resumeRetry);
+      resumeRetry = window.setTimeout(restoreOnReturn, 700);
+    };
+    const appStateListener = CapacitorApp.addListener("appStateChange", onAppState);
+    window.visualViewport?.addEventListener("resize", check);
+    void lockNativeOrientation(true).then(check).catch(error => console.warn("Unable to change Lektrus orientation", error));
+    // Large-screen OS modes can refuse an orientation lock; do not strand users.
+    const timeout = window.setTimeout(ready, 4000);
+    return () => {
+      alive = false;
+      root.classList.remove("lektrus-native-rotating");
+      window.clearTimeout(timeout);
+      window.removeEventListener("resize", resize);
+      window.removeEventListener("focus", restoreOnReturn);
+      document.removeEventListener("visibilitychange", restoreOnReturn);
+      if (resumeRetry) window.clearTimeout(resumeRetry);
+      void appStateListener.then(listener => listener.remove());
+      window.visualViewport?.removeEventListener("resize", check);
+    };
+  }, [nativeBoardOpening, lockNativeOrientation]);
+  const [boardLoadError, setBoardLoadError] = useState<BoardLoadFailure|null>(null);
   const [sharePassword, setSharePassword] = useState("");
   const [submittedSharePassword, setSubmittedSharePassword] = useState<{token:string;value:string}|null>(null);
   const [sharePasswordRequired, setSharePasswordRequired] = useState(false);
+  const [browserJoinToken,setBrowserJoinToken]=useState("");
+  const mobileJoinUrl=route.kind==="join"&&browserJoinToken!==route.token&&!Capacitor.isNativePlatform()&&
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)?nativeBoardUrl(`/join/${route.token}`):null;
   const [remoteVersion, setRemoteVersion] = useState<number | null>(null);
   const [boardMountKey, setBoardMountKey] = useState(0);
   const changeAppRolePreview=useCallback((role:"actual"|AccountRole)=>{
@@ -184,6 +337,12 @@ export default function App() {
     let alive = true;
     let authRetryTimer:number|undefined;
     let confirmationListener:{remove:()=>Promise<void>}|null=null;
+    const acceptBoardUrl=(url:string)=>{
+      const path=nativeBoardPath(url);
+      if(!path)return false;
+      if(alive&&window.location.pathname!==path)navigate(path,true);
+      return true;
+    };
     const retrySession=(userId:string,attempt=0)=>{
       authRetryTimer=window.setTimeout(async()=>{
         if(!alive)return;
@@ -225,9 +384,16 @@ export default function App() {
         return;
       }
       if(Capacitor.isNativePlatform()){
-        confirmationListener=await CapacitorApp.addListener("appUrlOpen",({url})=>{void processConfirmation(url).then(done=>{if(done&&alive)setAuthReady(true)})});
+        const processNativeUrl=async(url:string)=>{
+          if(acceptBoardUrl(url))return false;
+          // A board invitation is not an authentication callback.
+          try {const parsed=new URL(url);if(parsed.protocol!=="ru.lektrus.board:"||parsed.hostname!=="auth"||parsed.pathname!=="/confirmed")return false;}
+          catch{return false;}
+          return processConfirmation(url);
+        };
+        confirmationListener=await CapacitorApp.addListener("appUrlOpen",({url})=>{void processNativeUrl(url).then(done=>{if(done&&alive)setAuthReady(true)})});
         const launch=await CapacitorApp.getLaunchUrl();
-        if(launch?.url&&await processConfirmation(launch.url)){if(alive)setAuthReady(true);return}
+        if(launch?.url&&await processNativeUrl(launch.url)){if(alive)setAuthReady(true);return}
       }
       await processConfirmation(window.location.href);
       const user=await getCurrentUser();
@@ -296,12 +462,12 @@ export default function App() {
     // Interface editing is a read-only view of the REAL board, not a new
     // board session: never initialize templates or upload unsaved snapshots.
     const editingLayout=new URLSearchParams(window.location.search).get("layout-editor")==="1";
-    setBoardLoadError("");
+    setBoardLoadError(null);
     setBoardLoading(true);
     try {
       if (isRemoteBackendEnabled() || isSelfhostBackendEnabled()) {
         const selfhost=isSelfhostBackendEnabled();
-        const remote = selfhost ? await selfhostReadDocument(board.id) : await getRemoteBoardDocument(board.id);
+        const remote = selfhost ? await readBoardWithRetry(()=>selfhostReadDocument(board.id),isCurrent) : await readBoardWithRetry(()=>getRemoteBoardDocument(board.id),isCurrent);
         const saveBoardDocument=async(document:DocumentData,expectedVersion:number|null)=>{
           if(!selfhost)return saveRemoteBoardDocument(board.id,document,expectedVersion);
           try{
@@ -405,23 +571,29 @@ export default function App() {
       clearPendingBoardPath();
       setBoardMountKey((value) => value + 1);
     } catch (error) {
-      if (isCurrent()) setBoardLoadError(error instanceof Error ? error.message : "Не удалось загрузить доску с сервера");
+      if (isCurrent()) setBoardLoadError(describeBoardLoadFailure(error));
     } finally {
       if (isCurrent()) setBoardLoading(false);
     }
-  }, [isAppAdmin]);
+  }, []);
 
+  // Refreshing the same cached identity must not remount an already opening
+  // board or spend the retry budget again. A genuine user/permission change
+  // still reloads with the fresh server-authorized board role.
+  const studioAdminAccess=route.kind==="board"&&route.boardId===INTERFACE_STUDIO_BOARD_ID&&isAppAdmin;
   useEffect(() => {
     if (!authReady || !authUser) return;
     let alive = true;
     setActiveBoard(null);
-    setBoardLoadError("");
+    setBoardLoadError(null);
     setSharePasswordRequired(false);
     if (route.kind === "site") { setBoardLoading(false); return; }
     if (route.kind === "tool") { setBoardLoading(false); return; }
     if (route.kind === "demo") { setBoardLoading(false); return; }
     if (authUser.guestBoardId && route.kind === "home") { navigate(`/board/${authUser.guestBoardId}`,true);return; }
     if (route.kind === "home") { setBoardLoading(false); return; }
+    // Don't redeem in the browser before the participant can choose the app.
+    if (mobileJoinUrl) {setBoardLoading(false);return;}
     setBoardLoading(true);
     void (async () => {
       try {
@@ -437,7 +609,7 @@ export default function App() {
         }
         setAdminInspecting(false);
         if(route.boardId===INTERFACE_STUDIO_BOARD_ID){
-          if(!isAppAdmin||new URLSearchParams(window.location.search).get("layout-editor")!=="1")
+          if(!studioAdminAccess||new URLSearchParams(window.location.search).get("layout-editor")!=="1")
            throw new Error("Редактор интерфейса доступен только администратору.");
           const board:BoardSummary={id:INTERFACE_STUDIO_BOARD_ID,title:"Новая доска",
            ownerId:authUser.id,role:"owner",createdAt:new Date().toISOString(),
@@ -445,7 +617,8 @@ export default function App() {
           setRemoteVersion(null);setActiveBoard(board);setBoardMountKey(key=>key+1);
           setBoardLoading(false);return;
         }
-        const board = await getBoardForUser(authUser, route.boardId);
+        const boardId=route.boardId;
+        const board = await readBoardWithRetry(()=>getBoardForUser(authUser,boardId),()=>alive);
         if (!alive) return;
         if (!board) throw new Error("Доска недоступна. Попросите владельца прислать ссылку для доступа.");
         await openBoard(board, () => alive);
@@ -455,17 +628,16 @@ export default function App() {
         const message=error instanceof Error ? error.message : "Не удалось открыть доску";
         if(route.kind==="join" && /парол/i.test(message)){
           setSharePasswordRequired(true);
-          setBoardLoadError("");
+          setBoardLoadError(null);
         }else{
           setSharePasswordRequired(false);
-          setBoardLoadError(route.kind === "join"
-            ? message || "Не удалось принять ссылку. Возможно, она отозвана, истекла или сервер недоступен."
-            : message);
+          setBoardLoadError(describeBoardLoadFailure(error));
         }
       }
     })();
     return () => { alive = false; };
-  }, [route, authReady, authUser, navigate, openBoard, submittedSharePassword]);
+  }, [route, authReady, authUser?.id, authUser?.email, authUser?.guestBoardId, authUser?.accountRole,
+      authUser?.teacherStatus, authUser?.isAdmin, studioAdminAccess, navigate, openBoard, submittedSharePassword, mobileJoinUrl]);
 
   useEffect(()=>{
     if(!authUser)return;
@@ -495,13 +667,17 @@ export default function App() {
 
   if(route.kind==="site")return <Suspense fallback={<div className="lektrus-site-loading"/>}><LektrusPublicSite/></Suspense>;
 
-  if(route.kind==="tool")return <Suspense fallback={<BoardLoadingScreen/>}><PublicToolScreen tool={route.tool} onBack={()=>window.location.assign("/")}/></Suspense>;
+  if(route.kind==="tool")return <Suspense fallback={<BoardLoadingScreen nativeRotate={false}/>}><PublicToolScreen tool={route.tool} onBack={()=>window.location.assign("/")}/></Suspense>;
 
   if(route.kind==="demo"){
+    if(nativeBoardOpening && !nativeLandscapeReady)return <BoardLoadingScreen/>;
+    if(wantsBrowserBoardLandscape())return <BrowserBoardLandscape key={window.location.pathname+window.location.search} path={window.location.pathname+window.location.search} demo onBack={()=>window.location.assign("/")} onLogout={()=>window.location.assign("/")}/>;
     return <Suspense fallback={<BoardLoadingScreen/>}><PublicDemoBoard/></Suspense>;
   }
 
   if (!authReady) {
+    if (nativeBoardOpening) return <BoardLoadingScreen/>;
+    if(route.kind==="board"&&wantsBrowserBoardLandscape())return <BoardLoadingScreen browserRotate/>;
     return <main className="auth-shell"><section className="auth-card"><div className="auth-brand-row"><div className="auth-logo">B</div><div><div className="auth-brand">Учебная доска</div><div className="auth-subtitle">Проверяем сессию…</div></div></div></section></main>;
   }
 
@@ -511,22 +687,38 @@ export default function App() {
     return <AuthScreen initialError={authCallbackError} onAuthenticated={(user) => { clearAccountAccessCache(); clearNotificationCache(); if(user.guestBoardId){clearPendingShare();navigate(`/board/${user.guestBoardId}`,true);}setAuthUser(user); setActiveBoard(null); }} />;
   }
 
+  if(mobileJoinUrl&&route.kind==="join")return <main className="auth-shell"><section className="auth-card"><strong>Приглашение на доску Lektrus</strong><p>Где открыть доску?</p><div className="share-password-actions"><a className="primary" href={mobileJoinUrl}>Открыть в приложении</a><button type="button" onClick={()=>setBrowserJoinToken(route.token)}>Продолжить в браузере</button></div><button type="button" onClick={()=>{clearPendingShare();navigate("/app",true)}}>Отмена</button></section></main>;
+
+  if (nativeBoardOpening && !nativeLandscapeReady) return <BoardLoadingScreen/>;
+
+  const returnFromBoard=()=>{if(authUser.guestBoardId){logout();return;}setActiveBoard(null);if(adminInspecting||new URLSearchParams(window.location.search).get("layout-editor")==="1"){setAdminInspecting(false);navigate("/?section=admin");}else navigate("/")};
+  if(wantsBrowserBoardLandscape()&&!boardLoadError&&(route.kind==="board"||(adminInspecting&&activeBoard))){
+    const id=route.kind==="board"?route.boardId:activeBoard!.id;
+    // Keep this iframe mounted throughout the loading -> interactive transition
+    // and subsequent real screen rotations. The parent alone loads the board.
+    const payload=activeBoard?.id.toLowerCase()===id.toLowerCase()?{authUser,boardSummary:activeBoard,accountRole,isAppAdmin,
+      globalRolePreview:appRolePreview,adminMaintenance:adminInspecting&&isAppAdmin&&adminEdit,
+      adminInvisible,initialRemoteVersion:remoteVersion,selfhostMode:isSelfhostBackendEnabled(),mountKey:boardMountKey}:undefined;
+    const path=route.kind==="board"?window.location.pathname+window.location.search+window.location.hash:`/board/${id}`;
+    return <BrowserBoardLandscape key={path} path={path} payload={payload} onBack={returnFromBoard} onLogout={logout} onChanged={boardChanged} onRoleChange={changeAppRolePreview}/>;
+  }
+
   if (!activeBoard) {
     return (
       <>
-        {route.kind === "home" && <LectrisWorkspaceShell section={new URLSearchParams(window.location.search).get("section")||""} role={effectiveAccountRole} isAdmin={isAppAdmin} name={authUser.name} rolePreview={appRolePreview}><Suspense fallback={<div className="lectris-section-loading" role="status"><strong>Открываем раздел…</strong><span>Загружаем только нужный модуль.</span></div>}>{(()=>{const section=new URLSearchParams(window.location.search).get("section");return section==="registration-preview"&&isAppAdmin&&appRolePreview==="actual"
+        {route.kind === "home" && <LectrisWorkspaceShell section={new URLSearchParams(window.location.search).get("section")||""} role={workspaceRole} isAdmin={isAppAdmin} name={authUser.name} rolePreview={appRolePreview} workspaceMode={modeEnabled?workspaceMode:undefined} onWorkspaceMode={chooseWorkspaceMode} modeBusy={workspaceModeBusy} modeNotice={workspaceModeNotice}><Suspense fallback={<div className="lectris-section-loading" role="status"><strong>Открываем раздел…</strong><span>Загружаем только нужный модуль.</span></div>}>{(()=>{const section=new URLSearchParams(window.location.search).get("section");return section==="registration-preview"&&isAppAdmin&&appRolePreview==="actual"
           ? <AuthScreen onAuthenticated={()=>{}} previewMode onPreviewClose={()=>{window.history.pushState({}, "", "/app?section=boards");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="admin" && isAppAdmin && appRolePreview==="actual"
           ? <AdminScreen user={authUser} invisible={adminInvisible} onInvisibleChange={changeAdminInvisible} adminEdit={adminEdit} onAdminEditChange={changeAdminEdit} rolePreview={appRolePreview} onRolePreviewChange={changeAppRolePreview} onCheckRegistration={()=>navigate("/?section=registration-preview")} onOpenBoard={(board)=>{setAdminInspecting(true);void openBoard(board,()=>true)}} onOpenLayout={async()=>{navigate(`/board/${INTERFACE_STUDIO_BOARD_ID}?layout-editor=1`)}} onBack={()=>navigate("/app?section=boards")} />
-          : section==="students" && effectiveAccountRole==="teacher"
+          : section==="students" && workspaceRole==="teacher"
           ? <StudentsScreen user={authUser} onBack={()=>navigate("/app?section=boards")} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
           : section==="assignments"
-          ? <AssignmentsScreen user={authUser} accountRole={effectiveAccountRole} onBack={()=>navigate("/app?section=boards")} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
-          : section==="progress" && effectiveAccountRole==="teacher"
+          ? <AssignmentsScreen key={workspaceRole} user={authUser} accountRole={workspaceRole} onBack={()=>navigate("/app?section=boards")} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
+          : section==="progress" && workspaceRole==="teacher"
           ? <ProgressScreen user={authUser} onBack={()=>navigate("/app?section=boards")} />
           : section==="schedule"
-          ? <ScheduleScreen user={authUser} accountRole={effectiveAccountRole} onBack={()=>navigate("/app?section=boards")} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
-          : section==="materials" && effectiveAccountRole==="teacher"
+          ? <ScheduleScreen key={workspaceRole} user={authUser} accountRole={workspaceRole} onBack={()=>navigate("/app?section=boards")} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
+          : section==="materials" && workspaceRole==="teacher"
           ? <MaterialsScreen user={authUser} onBack={()=>navigate("/app?section=boards")} />
           : section==="notifications"
           ? <NotificationsScreen user={authUser} onBack={()=>navigate("/app?section=boards")} />
@@ -535,15 +727,26 @@ export default function App() {
           : section==="profile"
           ? <ProfileScreen user={authUser} accountRole={effectiveAccountRole} isAppAdmin={isAppAdmin&&appRolePreview==="actual"} previewMode={appRolePreview!=="actual"} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} onBack={()=>navigate("/app?section=boards")} />
           : section==="settings"
-          ? <SettingsScreen user={authUser} previewRole={appRolePreview==="actual"?null:effectiveAccountRole} onPreviewRoleChange={changeAppRolePreview} onBack={()=>navigate("/app?section=boards")} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} installAvailable={Boolean(globalInstallPrompt)} isInstalled={globalStandalone} onInstall={()=>void installGlobalApp()} onBilling={()=>{window.history.pushState({}, "", "/app?section=billing");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          ? <SettingsScreen user={authUser} onWorkspaceMode={modeEnabled?chooseWorkspaceMode:undefined} previewRole={appRolePreview==="actual"?null:effectiveAccountRole} onPreviewRoleChange={changeAppRolePreview} onBack={()=>navigate("/app?section=boards")} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} installAvailable={Boolean(globalInstallPrompt)} isInstalled={globalStandalone} onInstall={()=>void installGlobalApp()} onBilling={()=>{window.history.pushState({}, "", "/app?section=billing");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="billing"
           ? <BillingScreen onBack={()=>{window.history.pushState({}, "", "/app?section=settings");window.dispatchEvent(new PopStateEvent("popstate"))}} />
-          : section==="templates" && effectiveAccountRole==="teacher"
+          : section==="templates" && workspaceRole==="teacher"
           ? <TemplatesScreen user={authUser} onBack={()=>navigate("/app?section=boards")} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
-          : <BoardsScreen user={authUser} accountRole={effectiveAccountRole} isAppAdmin={isAppAdmin&&appRolePreview==="actual"} onOpenBoard={(board) => navigate(`/board/${board.id}`)} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} />})()}</Suspense></LectrisWorkspaceShell>}
+          : <BoardsScreen user={authUser} accountRole={workspaceRole} workspaceMode={modeEnabled?workspaceMode:undefined} isAppAdmin={isAppAdmin&&appRolePreview==="actual"} onOpenBoard={(board) => navigate(`/board/${board.id}`)} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} />})()}</Suspense></LectrisWorkspaceShell>}
         {sharePasswordRequired && route.kind==="join" && <div className="board-server-overlay"><form className="board-server-card share-password-card" onSubmit={e=>{e.preventDefault();if(!sharePassword.trim())return;setSharePasswordRequired(false);setSubmittedSharePassword({token:route.token,value:sharePassword});}}><strong>Ссылка защищена паролем</strong><span>Введите пароль, который сообщил владелец доски.</span><input type="password" value={sharePassword} onChange={e=>setSharePassword(e.target.value)} placeholder="Пароль ссылки" autoComplete="off"/><div className="share-password-actions"><button className="primary" type="submit" disabled={!sharePassword.trim()}>Открыть доску</button><button type="button" onClick={()=>{setSharePassword("");clearPendingShare();navigate("/",true)}}>Отмена</button></div></form></div>}
-        {boardLoading && <BoardLoadingScreen/>}
-        {boardLoadError && <div className="board-server-overlay"><div className="board-server-card"><strong>Не удалось открыть доску</strong><span>{boardLoadError}</span><button className="primary" onClick={() => setRoute({ ...route })}>Повторить</button><button onClick={() => { clearPendingShare(); navigate("/", true); }}>К моим доскам</button></div></div>}
+        {boardLoading && <BoardLoadingScreen browserRotate={adminInspecting&&wantsBrowserBoardLandscape()}/>}
+        {boardLoadError && <div className="board-server-overlay board-recovery-overlay"><section className="board-server-card board-recovery-card" role="alertdialog" aria-modal="true" aria-labelledby="board-recovery-title" aria-describedby="board-recovery-description">
+          <div className="board-recovery-mark" aria-hidden="true"><img src="/lektrus-icon-192.png" alt=""/></div>
+          <span className="board-recovery-kicker">LEKTRUS · ДОСКА</span><h1 id="board-recovery-title">Не удалось открыть доску</h1><p id="board-recovery-description">{boardLoadError.message}</p>
+          <div className="board-recovery-actions">
+            {boardLoadError.reauth?<button className="primary" type="button" autoFocus onClick={()=>{
+              if(route.kind==="board")rememberBoardPath(route.boardId);
+              if(route.kind==="join")rememberShareToken(route.token);
+              void logoutUser().catch(()=>{});
+              clearAccountAccessCache();clearNotificationCache();setActiveBoard(null);setAuthUser(null);setBoardLoadError(null);
+            }}>Войти заново</button>:<button type="button" className="primary" autoFocus onClick={()=>setRoute({...route})}>Повторить</button>}
+            <button type="button" onClick={()=>{if(authUser.guestBoardId){logout();return}clearPendingShare();clearPendingBoardPath();navigate("/app?section=boards",true)}}>{authUser.guestBoardId?"Выйти":"К моим доскам"}</button>
+          </div></section></div>}
       </>
     );
   }
@@ -562,7 +765,7 @@ export default function App() {
       initialRemoteVersion={remoteVersion}
       selfhostMode={isSelfhostBackendEnabled()}
       onBoardChanged={boardChanged}
-      onBackToBoards={() => { if(authUser.guestBoardId){logout();return;}setActiveBoard(null); if(adminInspecting||new URLSearchParams(window.location.search).get("layout-editor")==="1"){setAdminInspecting(false);navigate("/?section=admin");}else navigate("/"); }}
+      onBackToBoards={returnFromBoard}
       onLogout={logout}
     /></Suspense>
   );

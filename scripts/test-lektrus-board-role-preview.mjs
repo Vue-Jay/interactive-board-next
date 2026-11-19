@@ -279,3 +279,17 @@ assert.match(css,/\.lektrus-developer-role-options/,"responsive role buttons sty
 assert.match(css,/\.lektrus-developer-role-banner/,"active simulation visibly indicated");
 assert.match(model,/role:BoardRole/,"real board membership is separate");
 console.log(`Lektrus: ${cases} role scenarios, tool/object matrix, real guests and permissions checks passed.`);
+
+// Explicit participant roles are independent from the account category.
+for(const accountRole of ["student","teacher"]){
+ const pupil=boardRoleCapabilities({preview:"actual",boardRole:"editor",participantRole:"student",accountRole,isAppAdmin:false,adminMaintenance:false});
+ assert.ok(pupil.canEdit&&pupil.isStudent&&!pupil.canCreateAssignments&&!pupil.canManageBoard);
+ assert.ok(canUseBoardCreationTool("pen",pupil));assert.ok(!canUseBoardCreationTool("quiz",pupil));
+ const observer=boardRoleCapabilities({preview:"actual",boardRole:"viewer",participantRole:"observer",accountRole,isAppAdmin:false,adminMaintenance:false});
+ assert.ok(!observer.canEdit&&!observer.canCreateAssignments&&!observer.canManageBoard);
+ const colleague=boardRoleCapabilities({preview:"actual",boardRole:"editor",participantRole:"co_teacher",accountRole,isAppAdmin:false,adminMaintenance:false});
+ assert.equal(colleague.canCreateAssignments,accountRole==="teacher");assert.equal(colleague.canManageBoard,false);
+}
+const guestColleague=boardRoleCapabilities({preview:"actual",boardRole:"editor",participantRole:"co_teacher",accountRole:"teacher",isAppAdmin:false,adminMaintenance:false,isGuest:true});
+assert.ok(guestColleague.isStudent&&!guestColleague.canCreateAssignments);
+console.log("Board-local participant roles: explicit role matrix passed");

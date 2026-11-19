@@ -1,4 +1,35 @@
 .lektrus-board-loading{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;overflow:hidden;padding:24px;background:radial-gradient(ellipse at 50% 38%,#fff 0%,#f4f8ff 42%,#eaf1fb 100%);color:#173252;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+/* On iOS the OS can claim landscape before WKWebView receives a landscape
+   viewport. This marker is set from innerWidth/innerHeight at first render,
+   independently of the unreliable orientation media query. */
+.lektrus-board-loading[data-native-portrait=true]{inset:auto;left:50%;top:50%;box-sizing:border-box;transform:translate(-50%,-50%) rotate(90deg)}
+/* Browser fallback still uses its normal orientation media query. */
+@media (orientation:portrait){.lektrus-board-loading[data-browser-rotate=true]{inset:auto;left:50%;top:50%;width:100vh;height:100vw;box-sizing:border-box;transform:translate(-50%,-50%) rotate(90deg);}}
+html.lektrus-browser-board-active,html.lektrus-browser-board-active body,html.lektrus-browser-board-active #root{width:100%;height:100%;min-height:0;overflow:hidden;overscroll-behavior:none}
+html.lektrus-browser-board-frame-active,html.lektrus-browser-board-frame-active body,html.lektrus-browser-board-frame-active #root{width:100%;height:100%;min-height:0;overflow:hidden;overscroll-behavior:none!important}
+.lektrus-browser-board-host{position:fixed;inset:0;overflow:hidden;background:#eaf1fb;z-index:2000}
+.lektrus-browser-board-area{position:absolute;inset:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);overflow:hidden}
+.lektrus-browser-board-logical{position:absolute;left:50%;top:50%;overflow:hidden;transform-origin:center}
+.lektrus-browser-board-logical>.lektrus-board-loading{position:absolute;inset:0;box-sizing:border-box}
+.lektrus-browser-board-frame{display:block;width:100%;height:100%;border:0;background:#f5f7fb}
+.lektrus-board-menu-pager{display:none}
+/* A browser may intercept a horizontal gesture before it reaches a rotated
+   iframe. Retain regular scrolling and give users an explicit, native tap
+   alternative; no transparent surface intercepts menu actions. */
+html.lektrus-browser-board-frame-active .topbar-more-popover .lektrus-board-menu-pager{display:flex;position:sticky;top:0;z-index:3;gap:6px;padding:4px 0;background:var(--lt-surface,#fff);border-bottom:1px solid var(--lt-line,#d7e2f0)}
+html.lektrus-browser-board-frame-active .topbar-more-popover .lektrus-board-menu-pager button{flex:1;min-width:0;min-height:34px;border:1px solid var(--lt-line,#d7e2f0);border-radius:7px;background:var(--lt-subtle,#eef3fb);color:var(--lt-text,#263343);font:inherit;font-size:12px;touch-action:manipulation;cursor:pointer}
+/* The outer portrait document must not interpret the rotated frame's
+   physical horizontal motion as page panning/history navigation. Input
+   handling and scrolling remain owned by the embedded board document. */
+html.lektrus-browser-board-active .lektrus-browser-board-host,
+html.lektrus-browser-board-active .lektrus-browser-board-frame{touch-action:none;overscroll-behavior:none}
+/* Backdrop filters create separate compositor hit-test layers. In a rotated
+   frame the topbar's overflowing action menu must live in the normal layer,
+   not in a clipped filter surface the size of the narrow header. */
+html.lektrus-browser-board-frame-active .topbar,
+html.lektrus-browser-board-frame-active .topbar-more-popover{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.lektrus-browser-board-error{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#f5f7fb;color:#173252;z-index:2001}
+.lektrus-browser-board-error button{padding:10px 20px;border:1px solid #cbd8ea;border-radius:8px;background:white;color:#244b82}
 .lektrus-board-loading:before,.lektrus-board-loading:after{position:absolute;content:"";width:min(70vw,620px);aspect-ratio:1;border:1px solid #d9e6fa;border-radius:50%;animation:lektrus-loading-orbit 14s linear infinite;pointer-events:none}
 .lektrus-board-loading:after{width:min(52vw,450px);animation-direction:reverse;animation-duration:19s;border-style:dashed;opacity:.72}
 .lektrus-board-loading-card{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;width:min(100%,420px);padding:36px 30px 32px;border:1px solid #e0e9f6;border-radius:24px;background:#ffffffd9;box-shadow:0 24px 80px #4569971c,0 4px 16px #4569970b;backdrop-filter:blur(16px);text-align:center}
@@ -14,3 +45,21 @@
 @keyframes lektrus-loading-orbit{to{transform:rotate(360deg)}}@keyframes lektrus-loading-breathe{50%{transform:translateY(-3px) scale(1.04)}}@keyframes lektrus-loading-ring{0%{transform:scale(.92);opacity:.7}100%{transform:scale(1.23);opacity:0}}@keyframes lektrus-loading-dot{0%,70%,100%{opacity:.22;transform:translateY(0)}35%{opacity:1;transform:translateY(-4px)}}
 @media(max-width:560px){.lektrus-board-loading-card{padding:30px 20px 26px;border-radius:20px}.lektrus-board-loading-card h1{font-size:22px}.lektrus-board-loading:before{width:92vw}.lektrus-board-loading:after{width:70vw}}
 @media(prefers-reduced-motion:reduce){.lektrus-board-loading:before,.lektrus-board-loading:after,.lektrus-board-loading-mark img,.lektrus-board-loading-mark i,.lektrus-board-loading-progress i{animation:none}}
+
+/* The recovery screen renders before the lazy BoardApp (and App.css) load.
+   Keep this shared overlay in the eagerly imported application stylesheet. */
+html body .board-server-overlay{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;box-sizing:border-box;padding:16px;overflow:auto;background:var(--lt-bg,#edf3fb)}
+html body .board-server-overlay .board-server-card{box-sizing:border-box;display:grid;gap:10px;width:min(100%,440px);max-height:100%;overflow:auto;padding:24px;border:1px solid var(--lt-line,#d9e4f3);border-radius:20px;background:var(--lt-surface,#fff);color:var(--lt-text,#173252);box-shadow:0 18px 54px #203d711a}
+html body .board-recovery-overlay{background:radial-gradient(ellipse at 50% 35%,var(--lt-surface,#fff),var(--lt-bg,#edf3fb))}
+html body .board-recovery-card{justify-items:center;text-align:center;gap:8px}
+.board-recovery-mark{display:grid;place-items:center;width:64px;height:64px;border-radius:18px;background:var(--lt-selected,#eaf1ff);margin-bottom:4px}
+.board-recovery-mark img{width:46px;height:46px;object-fit:contain}
+.board-recovery-card .board-recovery-kicker{font-size:10px;font-weight:800;letter-spacing:.10em;color:var(--lt-secondary,#507198);opacity:1}
+.board-recovery-card h1{font-size:22px;line-height:1.25;letter-spacing:-.025em;margin:0}
+.board-recovery-card p{font-size:14px;line-height:1.55;color:var(--lt-secondary,#5b708e);margin:0;overflow-wrap:anywhere}
+.board-recovery-actions{display:grid;gap:8px;width:100%;margin-top:8px}
+.board-recovery-actions button{box-sizing:border-box;min-height:44px;padding:9px 14px;font:inherit;font-size:14px;font-weight:700;border-radius:11px;border:1px solid var(--lt-line,#d9e4f3);background:var(--lt-subtle,#f4f7fc);color:var(--lt-text,#173252);cursor:pointer}
+.board-recovery-actions button.primary{background:var(--lt-primary,#315bd4);border-color:var(--lt-primary,#315bd4);color:var(--lt-on-primary,#fff)}
+.board-recovery-actions button:focus-visible{outline:2px solid var(--lt-primary,#315bd4);outline-offset:3px}
+@media(max-width:420px){html body .board-server-overlay .board-server-card{padding:18px;border-radius:16px}.board-recovery-card h1{font-size:20px}}
+@media(max-height:420px) and (orientation:landscape){html body .board-recovery-overlay .board-recovery-card{padding:14px;gap:5px}.board-recovery-mark{width:44px;height:44px}.board-recovery-mark img{width:33px;height:33px}.board-recovery-actions{grid-template-columns:1fr 1fr}}

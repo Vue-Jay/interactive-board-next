@@ -108,6 +108,7 @@ def make_history_router(current_user, board_access):
             _, role = await board_access(conn, board_id, user["id"])
             if role != "owner" and not user["is_admin"] and not (
                 role == "editor" and user["account_role"] == "teacher" and user["teacher_status"] == "approved"
+                and await conn.fetchval("SELECT participant_role FROM board_members WHERE board_id=$1 AND user_id=$2",board_id,user["id"]) == "co_teacher"
             ):
                 raise HTTPException(403, "Восстановление версии доступно преподавателю.")
             current = await conn.fetchval("SELECT version FROM board_documents WHERE board_id=$1", board_id)

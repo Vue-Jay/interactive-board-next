@@ -1,0 +1,23 @@
+.marketing-site .marketing-download-home-link{display:inline-flex;align-items:center;gap:8px;margin-top:14px;color:var(--marketing-blue);font-size:13px;font-weight:700;min-height:40px}
+.marketing-site .marketing-download-home-link:hover{text-decoration:underline}
+.marketing-site .marketing-download-intro{padding-bottom:25px}
+.marketing-site .marketing-download-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;padding-bottom:42px;align-items:start}
+.marketing-site :is(.marketing-download-card,.marketing-download-guide){min-width:0;border:1px solid var(--marketing-line);border-radius:22px;background:var(--marketing-white);padding:clamp(18px,2.5vw,28px);box-shadow:0 10px 26px #1c375009;display:grid;gap:16px}
+.marketing-site .marketing-download-card{background:linear-gradient(145deg,#f1f6ff 0%,#fff 72%);border-color:#ceddf3}
+.marketing-site .marketing-download-card-top{display:flex;align-items:center;gap:14px}
+.marketing-site .marketing-download-card-top img{flex:none;border-radius:17px;background:#fff;box-shadow:0 3px 14px #11336b15;padding:7px}
+.marketing-site .marketing-download-platform{display:block;color:var(--marketing-blue);font-size:12px;font-weight:800;letter-spacing:.04em}
+.marketing-site .marketing-download-layout h2{font-size:clamp(21px,2.1vw,26px);letter-spacing:-.03em;line-height:1.2}
+.marketing-site .marketing-download-layout p{color:var(--marketing-muted);font-size:14px;line-height:1.55}
+.marketing-site .marketing-download-card-top p{font-size:12px;margin-top:5px}
+.marketing-site .marketing-download-button{display:flex;align-items:center;justify-content:flex-start;gap:10px;min-height:48px;width:100%;font-size:15px}
+.marketing-site .marketing-download-button>span:last-child{margin-left:auto}
+.marketing-site .marketing-download-meta{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;font-size:11px;font-weight:650;color:var(--marketing-muted)}
+.marketing-site .marketing-download-meta a,.marketing-site .marketing-download-web{color:var(--marketing-blue);text-decoration:underline;text-underline-offset:3px}
+.marketing-site .marketing-download-guide ol{list-style:none;margin:0;padding:0;display:grid;gap:15px}
+.marketing-site .marketing-download-guide li{display:flex;gap:12px;align-items:flex-start}
+.marketing-site .marketing-download-guide li>span{flex:none;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--marketing-soft);color:var(--marketing-blue);font-size:12px;font-weight:850}
+.marketing-site .marketing-download-guide strong{display:block;font-size:14px;margin:0 0 3px}
+.marketing-site .marketing-download-web{font-size:12px;font-weight:700;padding-top:12px;border-top:1px solid var(--marketing-line);line-height:1.5}
+@media(max-width:850px){.marketing-site .marketing-download-layout{grid-template-columns:1fr;gap:12px}.marketing-site .marketing-download-intro{padding-bottom:16px}}
+@media(max-width:370px){.marketing-site :is(.marketing-download-card,.marketing-download-guide){padding:15px;gap:12px;border-radius:16px}.marketing-site .marketing-download-card-top{gap:10px}.marketing-site .marketing-download-card-top img{width:52px;height:52px}.marketing-site .marketing-download-meta{font-size:10px}}
