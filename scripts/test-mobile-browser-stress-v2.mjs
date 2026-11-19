@@ -87,7 +87,17 @@ try{
     await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
     const savedInk=`(()=>{const frame=document.querySelector('.lektrus-browser-board-frame');if(!frame?.contentWindow)return null;for(const key of Object.keys(frame.contentWindow.localStorage)){if(!key.includes('document'))continue;try{const data=JSON.parse(frame.contentWindow.localStorage.getItem(key));const ink=data?.items?.find(item=>item.kind==='pen'&&item.points?.length>1);if(ink)return {points:ink.points.length,key};}catch{}}return null})()`;
     await wait(savedInk,'Real touch pen stroke was not persisted in local board document',15000);
-    return {boardTitle:title,createdBy:'physical touch',stroke:'physical CDP gesture'};
+    // Two independent physical fingers must change board zoom, including rotated frames.
+    const beforeZoom=await evaluate('document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector(".zoom-value")?.textContent');
+    assert.ok(beforeZoom,'Zoom indicator missing');
+    const center=drawing.points[4];
+    const mapPoint=q=>frame.rotated?{x:frame.right-q.y,y:frame.top+q.x}:{x:frame.left+q.x,y:frame.top+q.y};
+    const fingers=(distance)=>[mapPoint({x:center.x-distance,y:center.y}),mapPoint({x:center.x+distance,y:center.y})].map((q,id)=>({...q,id}));
+    await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:fingers(14)});
+    for(let i=0;i<9;i++){await send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:fingers(14+(i+1)*6)});await sleep(30);}
+    await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    await wait(`document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector(".zoom-value")?.textContent!==${JSON.stringify(beforeZoom)}`,'Two-finger zoom did not change board scale',10000);
+    return {boardTitle:title,createdBy:'physical touch',stroke:'physical CDP gesture',pinch:'physical two-finger zoom'};
    });
    await check(tag+'-keyboard-outside-tap',async()=>{
     await send('Page.navigate',{url});
