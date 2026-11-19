@@ -21,6 +21,31 @@ from document_delta import apply_delta, encoded_bytes
 from schema import apply_schema
 
 @pytest.mark.asyncio
+async def test_native_auth_and_material_cors_use_exact_origins():
+    from app import allowed_origins
+    assert "https://localhost" in allowed_origins()
+    assert "capacitor://localhost" in allowed_origins()
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
+        for origin in ("https://localhost", "capacitor://localhost", "https://localhost.evil.test", "capacitor://localhost.evil.test"):
+            for route, headers in (
+                ("/api/v1/auth/login", "content-type"),
+                ("/api/v1/materials", "authorization,content-type,x-file-name,x-material-title,x-material-folder"),
+            ):
+                response = await client.options(route, headers={
+                    "Origin": origin,
+                    "Access-Control-Request-Method": "POST",
+                    "Access-Control-Request-Headers": headers,
+                })
+                if origin.endswith(".evil.test"):
+                    assert response.status_code == 400
+                    assert "access-control-allow-origin" not in response.headers
+                else:
+                    assert response.status_code == 200
+                    assert response.headers["access-control-allow-origin"] == origin
+                    assert "access-control-allow-credentials" not in response.headers
+
+
+@pytest.mark.asyncio
 async def test_slow_http_logging_uses_route_pattern_not_private_request_path(caplog):
     from app import SlowRequestLogger
 
