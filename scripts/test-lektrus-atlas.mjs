@@ -497,7 +497,7 @@ assert.match(map,/Фильтр городов по численности нас
 assert.ok(data.includes("ne_10m_populated_places.geojson"));
 const geoJs=ts.transpileModule(data,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const geoExports={};
-new Function("exports","require",geoJs)(geoExports,()=>({historicalSnapshots}));
+new Function("exports","require",geoJs)(geoExports,atlasDataRequire);
 const placeSource=fs.readFileSync(new URL("../src/lektrusAtlasPlaces.ts",import.meta.url),"utf8");
 const places={};
 new Function("exports","require",ts.transpileModule(placeSource,{compilerOptions:{
