@@ -81,12 +81,15 @@ def assert_compact_workspace(page, name, width, height):
           const dock=document.querySelector('.lectris-mobile-bottom').getBoundingClientRect();
           const sort=document.querySelector('.lectris-library-sort select').getBoundingClientRect();
           const actions=document.querySelector('.lectris-library-actions-toggle').getBoundingClientRect();
-          return {previewTop:preview.top,dockTop:dock.top,sort:[sort.left,sort.right,sort.top,sort.height],actions:[actions.left,actions.right,actions.top,actions.height]};
+          const card=document.querySelector('.lectris-library-card').getBoundingClientRect();
+          const title=document.querySelector('.lectris-library-card .board-card-title').getBoundingClientRect();
+          return {previewTop:preview.top,previewRight:preview.right,dockTop:dock.top,cardWidth:card.width,titleLeft:title.left,titleBottom:title.bottom,sort:[sort.left,sort.right,sort.top,sort.height],actions:[actions.left,actions.right,actions.top,actions.height]};
         }""")
         assert gallery["previewTop"]+50<gallery["dockTop"], (name,width,gallery)
         assert gallery["sort"][1]<=gallery["actions"][0] and abs(gallery["sort"][2]-gallery["actions"][2])<3, gallery
         assert gallery["sort"][3]>=39 and gallery["actions"][3]>=39, gallery
         assert abs((gallery["sort"][1]-gallery["sort"][0])-(gallery["actions"][1]-gallery["actions"][0]))<3, gallery
+        assert gallery["cardWidth"]>=width-30 and gallery["titleLeft"]>gallery["previewRight"] and gallery["titleBottom"]<gallery["dockTop"], gallery
         expected_role={"owner":"Владелец","learner":"Ученик","colleague":"Сопреподаватель","observer":"Наблюдатель"}[name]
         expect(page.locator(".lectris-library-card .lectris-library-preview-label").first).to_have_text(expected_role)
         expect(page.locator(".lectris-library-card .board-card-meta").first).not_to_contain_text("Редактор")
