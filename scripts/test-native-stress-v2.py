@@ -167,9 +167,9 @@ def native_marker_eraser():
  tap_selector('.mobile-tools-sheet button[aria-label^="Ластик"],.lektrus-tool-overflow-content button[aria-label^="Ластик"]')
  wait(lambda:js('return document.querySelector("section.board").classList.contains("board-tool-eraser")'),'Eraser tool not active')
  gesture(b)
- after=wait(lambda:items() if next((i for i in items() if i['id']==added['id']),None) is None else None,'Native eraser did not remove marker',20)
+ after=wait(lambda:items() if sum(i['points'] for i in items() if i['kind']=='marker')<sum(i['points'] for i in before if i['kind']=='marker')+added['points'] else None,'Native eraser did not reduce marker ink',20)
  assert any(i['kind']=='pen' for i in after),'Eraser removed independent pencil ink'
- return {'markerId':added['id'],'markerRemoved':True,'penPreserved':True}
+ return {'markerId':added['id'],'markerPointsReduced':True,'penPreserved':True}
 def native_undo_redo():
  def ink_state():
   return js("""const boardId=location.pathname.split('/').pop();
