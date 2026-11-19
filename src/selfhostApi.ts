@@ -74,7 +74,7 @@ let refreshInFlight:Promise<SelfhostSession|null>|null=null;
 
 export class SelfhostHttpError extends Error {
   readonly status:number;
-  constructor(status:number,message:string){
+  constructor(status:number,message:string,readonly code?:string){
     super(message);this.name="SelfhostHttpError";this.status=status;
   }
 }
@@ -112,14 +112,14 @@ export const cachedSelfhostSession=()=>loadSession();
 export function clearSelfhostSession(){refreshInFlight=null;saveSession(null);}
 export function notifyPlanLimit(detail:{resource?:string;message?:string}){if(typeof window!=="undefined")window.dispatchEvent(new CustomEvent("lektrus:plan-limit",{detail}));}
 async function responseError(response:Response):Promise<SelfhostHttpError>{
-  let detail="";
+  let detail="",code:string|undefined;
   try{
     const data=await response.json() as {detail?:string|Array<{msg:string}>|{code?:string;resource?:string;message?:string};message?:string};
     detail=typeof data.detail==="string"?data.detail:
       Array.isArray(data.detail)?data.detail.map(x=>x.msg).join("; "):data.detail?.message||data.message||"";
-    if(typeof data.detail==="object"&&!Array.isArray(data.detail)&&data.detail?.code==="plan_limit") notifyPlanLimit(data.detail);
+    if(typeof data.detail==="object"&&!Array.isArray(data.detail)&&data.detail?.code==="plan_limit"){code=data.detail.code;notifyPlanLimit(data.detail);}
   }catch{/* Do not display unsafe arbitrary response bodies. */}
-  return new SelfhostHttpError(response.status,detail||("Ошибка сервера: HTTP "+response.status));
+  return new SelfhostHttpError(response.status,detail||("Ошибка сервера: HTTP "+response.status),code);
 }
 // Android's native HTTPS transport avoids the WebView's cross-origin preflight
 // round trip and legacy Chromium networking. Do not patch global fetch: binary

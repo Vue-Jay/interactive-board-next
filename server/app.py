@@ -378,6 +378,20 @@ app.add_middleware(
 )
 
 
+def billing_seat_available(board_id: UUID, owner: UUID, actor: UUID) -> bool:
+    if actor == owner:
+        return True
+    peers = []
+    for peer_token in _subscribers.get(board_id, {}).values():
+        try:
+            peer = jwt_claims(peer_token)["sub"]
+        except HTTPException:
+            continue
+        if peer != str(owner) and peer not in peers:
+            peers.append(peer)
+    return str(actor) in peers[:5] if len(peers)>=5 else True
+
+
 async def board_access(conn: asyncpg.Connection, board_id: UUID, user_id: UUID,
                        lock: bool = False):
     # Board row lock serializes the initial save against concurrent clients.
@@ -405,6 +419,8 @@ async def board_access(conn: asyncpg.Connection, board_id: UUID, user_id: UUID,
     if role not in ("editor", "viewer"):
         # Do not reveal whether the board ID exists to outsiders.
         error(404, "Доска не найдена.")
+    if lock and not billing_seat_available(board_id, board["owner_id"], user_id) and not await conn.fetchval("SELECT billing_unlimited($1)",board["owner_id"]):
+        raise HTTPException(409, limit_detail("participants"))
     return board, role
 
 async def board_participant(conn, board_id, user, role):
@@ -1078,19 +1094,11 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         if len(_subscribers[board_id]) >= 100:
             await websocket.close(code=4429)
             return
-        # Reserve one seat for the owner; multiple tabs of the same user count once.
-        if not user["unlimited"] and user["id"] != user["owner_id"]:
-            peers = set()
-            for peer_token in _subscribers[board_id].values():
-                try:
-                    peers.add(jwt_claims(peer_token)["sub"])
-                except HTTPException:
-                    pass
-            peers.discard(str(user["owner_id"]))
-            if str(user["id"]) not in peers and len(peers) >= 5:
-                await websocket.send_json({"type": "plan_limit", **limit_detail("participants")})
-                await websocket.close(code=4409)
-                return
+        # Reserve one seat for the owner; multiple tabs count once.
+        if not user["unlimited"] and not billing_seat_available(board_id,user["owner_id"],user["id"]):
+            await websocket.send_json({"type": "plan_limit", **limit_detail("participants")})
+            await websocket.close(code=4409)
+            return
         user_meta = {
             "user_id": str(user["id"]),
             "name": str(user["display_name"] or "Участник")[:100],
@@ -1140,6 +1148,10 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                 refreshed_user, checked_peers, checked_rows = await authorize_live_frame(
                     websocket.app.state.pool, board_id, websocket, token, message.get("type")
                 )
+                if not refreshed_user["unlimited"] and not billing_seat_available(board_id,refreshed_user["owner_id"],refreshed_user["id"]):
+                    await websocket.send_json({"type":"plan_limit", **limit_detail("participants")})
+                    await websocket.close(code=4409)
+                    return
                 current_role = refreshed_user["role"]
                 participant_role = refreshed_user["participant_role"] or ("owner" if current_role == "owner" else "observer" if current_role == "viewer" else "student")
                 updated_presence = []

@@ -3207,7 +3207,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           );
           result={conflict:false,version:saved.version};
         }catch(error){
-          if(error instanceof SelfhostHttpError&&error.status===409){
+          if(error instanceof SelfhostHttpError&&error.status===409&&error.code!=="plan_limit"){
             const latest=await selfhostReadDocument(boardSummary.id);
             if(!boardMounted.current)return;
             if(latest.document&&latest.version>expectedVersion){
@@ -3260,6 +3260,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     } catch (error) {
       const message=error instanceof Error?error.message:String(error);
       saveFailure.current={step:saveStep.current,message:message.slice(0,260)};
+      if(error instanceof SelfhostHttpError&&error.code==="plan_limit"){
+        setSaveStatus("Лимит тарифа · изменения сохранены локально");
+        return;
+      }
       // A short Supabase/network hiccup must not permanently leave the board in
       // a scary "server unavailable" state. The local copy is already safe,
       // so retry the latest snapshot quietly with a small exponential backoff.
