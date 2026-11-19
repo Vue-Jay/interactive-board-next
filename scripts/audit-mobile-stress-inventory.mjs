@@ -20,7 +20,7 @@ try {
  assert.equal(new Set(data.cases.map(c=>c.id)).size,data.cases.length,'Duplicate scenario IDs');
  assert.ok(data.environmentCombinations>0);
  assert.equal(data.environmentCases.length,data.environmentCombinations);
- assert.equal(data.stressProfiles.length,data.stressProfiles.length);
+ assert.ok(data.stressProfiles.length>=12,'Missing stress profiles');
  for(const profile of data.stressProfiles){
   assert.ok(profile.id&&profile.iterations>0&&profile.oracle,'Missing stress workload/oracle');
  }
