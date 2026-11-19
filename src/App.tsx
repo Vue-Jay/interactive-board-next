@@ -226,6 +226,16 @@ export default function App() {
     window.addEventListener("resize", resize);
     window.addEventListener("focus", restoreOnReturn);
     document.addEventListener("visibilitychange", restoreOnReturn);
+    // Native file pickers can return without a WebView focus/visibility event.
+    // Retry on the Capacitor foreground event and after the picker animation.
+    let resumeRetry: ReturnType<typeof setTimeout> | undefined;
+    const onAppState = ({ isActive }: { isActive: boolean }) => {
+      if (!isActive || !alive) return;
+      restoreOnReturn();
+      if (resumeRetry) window.clearTimeout(resumeRetry);
+      resumeRetry = window.setTimeout(restoreOnReturn, 700);
+    };
+    const appStateListener = CapacitorApp.addListener("appStateChange", onAppState);
     window.visualViewport?.addEventListener("resize", check);
     void ScreenOrientation.lock({ orientation: "landscape-primary" }).then(check).catch(error => console.warn("Unable to change Lektrus orientation", error));
     // Large-screen OS modes can refuse an orientation lock; do not strand users.
@@ -237,6 +247,8 @@ export default function App() {
       window.removeEventListener("resize", resize);
       window.removeEventListener("focus", restoreOnReturn);
       document.removeEventListener("visibilitychange", restoreOnReturn);
+      if (resumeRetry) window.clearTimeout(resumeRetry);
+      void appStateListener.then(listener => listener.remove());
       window.visualViewport?.removeEventListener("resize", check);
     };
   }, [nativeBoardOpening]);
