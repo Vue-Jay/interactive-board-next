@@ -77,10 +77,17 @@ const activity = read("android/app/src/main/java/ru/lektrus/board/MainActivity.j
 const androidManifest = read("android/app/src/main/AndroidManifest.xml");
 const iosPlist = read("ios/App/App/Info.plist");
 assert.ok(pkg.dependencies["@capacitor/screen-orientation"]);
-assert.ok(app.includes('ScreenOrientation.lock({ orientation: "landscape-primary" })'));
-assert.ok(app.includes("ScreenOrientation.unlock()"));
-assert.ok(app.includes("[route.kind]"));
-assert.match(app,/useLayoutEffect\(\(\) => \{[\s\S]*ScreenOrientation\.lock/);
+// The route policy applies even with device rotation enabled. A pending
+// authenticated board URL must never turn the sign-in form sideways.
+assert.ok(app.includes('ScreenOrientation.lock({ orientation: board ? "landscape-primary" : "portrait-primary" })'));
+assert.doesNotMatch(app,/ScreenOrientation\.unlock\(/);
+assert.match(app,/authenticatedBoardRoute = authReady && !!authUser && route.kind === "board"/);
+assert.match(app,/void lockNativeOrientation\(false\)/);
+assert.match(app,/void lockNativeOrientation\(true\)/);
+assert.match(androidManifest,/android:screenOrientation="portrait"/);
+assert.match(activity,/if \(!boardMode\) \{[\s\S]*setRequestedOrientation\(ActivityInfo\.SCREEN_ORIENTATION_PORTRAIT\)/);
+assert.match(activity,/boardMode = enabled;[\s\S]*restoreRouteOrientation\(\)/);
+assert.match(read("ios/App/App/LektrusFilesPlugin.swift"),/override func setScreenOrientationDefaults\(\) \{[\s\S]*supportedOrientations = \[UIInterfaceOrientation\.portrait\.rawValue\]/);
 assert.match(app,/nativeBoardOpening && !nativeLandscapeReady\) return <BoardLoadingScreen/);
 const loading = read("src/BrowserBoardLandscape.tsx");
 const loadingCss = read("src/lektrusBoardLoading.css");
@@ -113,7 +120,7 @@ assert.ok(boardApp.includes('aria-label="Рука — перемещать до�
 assert.ok(boardApp.includes('e.pointerType==="touch" && tool==="hand"'));
 assert.ok(boardApp.includes('mode:"pan",start,view'));
 assert.ok(read("src/lectrisBoard.css").includes("left:max(16px, env(safe-area-inset-left"));
-assert.ok(app.includes("enabled: route.kind === \"board\""));
+assert.ok(app.includes("LektrusSystemUi.setBoardMode({enabled: board})"));
 assert.ok(read("android/app/src/main/java/ru/lektrus/board/LektrusSystemUiPlugin.java").includes('name = "LektrusSystemUi"'));
 assert.ok(activity.includes("lektrus:native-back"));
 assert.ok(app.includes('window.addEventListener("lektrus:native-back"'));

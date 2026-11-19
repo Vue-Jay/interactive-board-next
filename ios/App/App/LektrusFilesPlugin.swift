@@ -124,6 +124,12 @@ class LektrusFilesPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate 
 
 @objc(LektrusBridgeViewController)
 class LektrusBridgeViewController: CAPBridgeViewController {
+    override func setScreenOrientationDefaults() {
+        // Start in portrait before the WebView loads. The orientation plugin
+        // may explicitly switch to landscape only when a board is opened.
+        supportedOrientations = [UIInterfaceOrientation.portrait.rawValue]
+    }
+
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
         bridge?.registerPluginInstance(LektrusFilesPlugin())

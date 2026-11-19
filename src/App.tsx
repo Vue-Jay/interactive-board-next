@@ -62,8 +62,22 @@ export default function App() {
     const initial=initialRoute();
     return Capacitor.isNativePlatform()&&initial.kind==="site"?{kind:"home"}:initial;
   });
+  // Android owns the orientation request and system bars in one native call.
+  // iOS uses the Capacitor orientation plugin.
+  const lockNativeOrientation = useCallback((board: boolean) => {
+    return Capacitor.getPlatform() === "android"
+      ? LektrusSystemUi.setBoardMode({enabled: board})
+      : ScreenOrientation.lock({ orientation: board ? "landscape-primary" : "portrait-primary" });
+  }, []);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() =>
+    new URLSearchParams(window.location.search).has("password-reset") ? null : getCachedCurrentUser()
+  );
+  const [authReady, setAuthReady] = useState(() =>
+    !new URLSearchParams(window.location.search).has("password-reset") && Boolean(getCachedCurrentUser())
+  );
+  const authenticatedBoardRoute = authReady && !!authUser && route.kind === "board";
   useLayoutEffect(() => {
-    if (!Capacitor.isNativePlatform() || route.kind !== "board") return;
+    if (!Capacitor.isNativePlatform() || !authenticatedBoardRoute) return;
     const page = document.documentElement;
     page.classList.add("lektrus-native-board");
     let frame = 0;
@@ -96,13 +110,7 @@ export default function App() {
       cancelAnimationFrame(frame);
       clearTimeout(settle);
     };
-  }, [route.kind]);
-  useEffect(() => {
-    if (Capacitor.getPlatform() !== "android") return;
-    void LektrusSystemUi
-      .setBoardMode({ enabled: route.kind === "board" })
-      .catch(error => console.warn("Lektrus Android status bar update failed", error));
-  }, [route.kind]);
+  }, [authenticatedBoardRoute]);
 
   // Android system back should behave like Lektrus navigation, not dismiss the app.
   useEffect(() => {
@@ -153,9 +161,6 @@ export default function App() {
     window.addEventListener("popstate", changed);
     return () => window.removeEventListener("popstate", changed);
   }, []);
-  const [authUser, setAuthUser] = useState<AuthUser | null>(() =>
-    new URLSearchParams(window.location.search).has("password-reset") ? null : getCachedCurrentUser()
-  );
   const [authCallbackError,setAuthCallbackError]=useState("");
   const [accountRole,setAccountRoleState]=useState<AccountRole>(()=>getCachedAccountAccess()?.role??"student");
   const [isAppAdmin,setIsAppAdmin]=useState(()=>getCachedAccountAccess()?.isAdmin??false);
@@ -166,26 +171,20 @@ export default function App() {
   const changeAdminEdit=useCallback((value:boolean)=>{setAdminEdit(value);try{localStorage.setItem("onlinerepetitor.adminEdit",value?"1":"0")}catch{}},[]);
   const [adminInvisible,setAdminInvisible]=useState(()=>{try{return localStorage.getItem("onlinerepetitor.adminInvisible")==="1"}catch{return false}});
   const changeAdminInvisible=useCallback((value:boolean)=>{setAdminInvisible(value);try{localStorage.setItem("onlinerepetitor.adminInvisible",value?"1":"0")}catch{}},[]);
-  const [authReady, setAuthReady] = useState(() =>
-    !new URLSearchParams(window.location.search).has("password-reset") && Boolean(getCachedCurrentUser())
-  );
   const [activeBoard, setActiveBoard] = useState<BoardSummary | null>(null);
   const boardChanged = useCallback((updated: BoardSummary) => {
     setActiveBoard(current => current?.id === updated.id ? updated : current);
   }, []);
   const [boardLoading, setBoardLoading] = useState(false);
-  const nativeBoardOpening = Capacitor.isNativePlatform() && (route.kind === "board" || Boolean(activeBoard) || (adminInspecting && boardLoading));
+  // A pending board link must NOT rotate the login or registration screen.
+  const nativeBoardOpening = Capacitor.isNativePlatform() && (route.kind === "demo" ||
+    authenticatedBoardRoute || Boolean(authReady && authUser && adminInspecting && (activeBoard || boardLoading)));
   const [nativeLandscapeReady, setNativeLandscapeReady] = useState(false);
   useLayoutEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     if (!nativeBoardOpening) {
       setNativeLandscapeReady(false);
-      // iOS unlock() permits every orientation but does not request a move
-      // back from the forced landscape scene. On iPhone the workspace is
-      // portrait; iPad retains its flexible workspace orientation.
-      const iphone = Capacitor.getPlatform()==="ios" && Math.min(screen.width,screen.height)<600;
-      const restore=iphone?ScreenOrientation.lock({orientation:"portrait-primary"}):ScreenOrientation.unlock();
-      void restore.catch(error => console.warn("Unable to restore Lektrus workspace orientation", error));
+      void lockNativeOrientation(false).catch(error => console.warn("Unable to restore Lektrus workspace orientation", error));
       return;
     }
     // Start rotation before the first loader paint, not when BoardApp mounts.
@@ -214,7 +213,7 @@ export default function App() {
       if(alive && document.visibilityState === "visible" && innerWidth < innerHeight &&
           Date.now() - lastRestore > 300) {
         lastRestore = Date.now();
-        void ScreenOrientation.lock({orientation:"landscape-primary"}).then(check).catch(()=>undefined);
+        void lockNativeOrientation(true).then(check).catch(()=>undefined);
       }
     };
     const resize = () => {
@@ -237,7 +236,7 @@ export default function App() {
     };
     const appStateListener = CapacitorApp.addListener("appStateChange", onAppState);
     window.visualViewport?.addEventListener("resize", check);
-    void ScreenOrientation.lock({ orientation: "landscape-primary" }).then(check).catch(error => console.warn("Unable to change Lektrus orientation", error));
+    void lockNativeOrientation(true).then(check).catch(error => console.warn("Unable to change Lektrus orientation", error));
     // Large-screen OS modes can refuse an orientation lock; do not strand users.
     const timeout = window.setTimeout(ready, 4000);
     return () => {
@@ -251,7 +250,7 @@ export default function App() {
       void appStateListener.then(listener => listener.remove());
       window.visualViewport?.removeEventListener("resize", check);
     };
-  }, [nativeBoardOpening]);
+  }, [nativeBoardOpening, lockNativeOrientation]);
   const [boardLoadError, setBoardLoadError] = useState("");
   const [sharePassword, setSharePassword] = useState("");
   const [submittedSharePassword, setSubmittedSharePassword] = useState<{token:string;value:string}|null>(null);
@@ -616,6 +615,7 @@ export default function App() {
   if(route.kind==="tool")return <Suspense fallback={<BoardLoadingScreen nativeRotate={false}/>}><PublicToolScreen tool={route.tool} onBack={()=>window.location.assign("/")}/></Suspense>;
 
   if(route.kind==="demo"){
+    if(nativeBoardOpening && !nativeLandscapeReady)return <BoardLoadingScreen/>;
     if(wantsBrowserBoardLandscape())return <BrowserBoardLandscape key={window.location.pathname+window.location.search} path={window.location.pathname+window.location.search} demo onBack={()=>window.location.assign("/")} onLogout={()=>window.location.assign("/")}/>;
     return <Suspense fallback={<BoardLoadingScreen/>}><PublicDemoBoard/></Suspense>;
   }

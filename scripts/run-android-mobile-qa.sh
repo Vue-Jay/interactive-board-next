@@ -29,6 +29,12 @@ adb shell cat /proc/meminfo > "$out/guest-memory-before.txt"
 # Suppress only isolated-emulator background ANRs; foreground app ANRs
 # remain visible and are still functional failures.
 adb shell settings put global anr_show_background 0
+if [ "$suite" = auth-orientation ] || [ "$suite" = orientation-board ]; then
+  # Reproduce a sideways-held phone on a dedicated emulator, BEFORE launch.
+  # The app, not the emulator's default pose, must request portrait.
+  adb shell settings put system accelerometer_rotation 0
+  adb shell settings put system user_rotation 1
+fi
 adb install -r "$apk"
 if [ "$actual_api" -lt 30 ]; then
   export LEKTRUS_QA_LEGACY_WEBVIEW=1

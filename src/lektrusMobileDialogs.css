@@ -225,6 +225,20 @@
   }
 }
 
+/* Native emulators can report a mouse pointer instead of touch. Keep the
+   authentication card centered and scrollable even if the OS or a windowed
+   mode delays or refuses the portrait request. */
+html.lektrus-native-app .auth-shell {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  overflow-x:hidden;
+  overflow-y:auto;
+  height:auto;
+}
+html.lektrus-native-app .auth-card {flex:0 0 auto;max-width:100%}
+
 /* Attendance: quiet typography, concise session rows and mobile-friendly scrolling. */
 .presence-visit-link{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:10px 12px!important;margin:4px 0 7px;background:#edf4ff!important;color:#2459a4!important;border:1px solid #d8e7fc!important;border-radius:10px;font-size:12px;font-weight:750;cursor:pointer}
 .presence-visit-link span{font-size:15px;opacity:.75}

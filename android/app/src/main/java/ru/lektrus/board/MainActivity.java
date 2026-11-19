@@ -26,14 +26,16 @@ public class MainActivity extends BridgeActivity {
     private WebView boardWebView;
     private boolean boardMode = false;
     private String lastCutoutInsets = "";
-    private final Runnable ensureBoardLandscape = () -> {
-        if (hasWindowFocus()) restoreBoardOrientation();
+    private final Runnable ensureRouteOrientation = () -> {
+        if (hasWindowFocus()) restoreRouteOrientation();
     };
 
     public void setBoardMode(boolean enabled) {
         runOnUiThread(() -> {
             boardMode = enabled;
             lastCutoutInsets = "";
+            restoreRouteOrientation();
+            scheduleRouteOrientationRestore();
             applyBars();
             if (boardWebView != null) ViewCompat.requestApplyInsets(boardWebView);
         });
@@ -51,9 +53,18 @@ public class MainActivity extends BridgeActivity {
         controller.show(WindowInsetsCompat.Type.navigationBars());
     }
 
-    private void restoreBoardOrientation() {
-        if (!boardMode || isInMultiWindowMode()) return;
+    private void restoreRouteOrientation() {
+        if (isInMultiWindowMode()) return;
         int requested = getRequestedOrientation();
+        if (!boardMode) {
+            // Authentication and every workspace page remain upright even
+            // when the device is held sideways or returning from a board.
+            if (requested != ActivityInfo.SCREEN_ORIENTATION_PORTRAIT ||
+                    getResources().getConfiguration().orientation != Configuration.ORIENTATION_PORTRAIT) {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            }
+            return;
+        }
         boolean landscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
         boolean landscapeRequested = requested == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE ||
                 requested == ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;
@@ -67,25 +78,27 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    private void scheduleBoardOrientationRestore() {
-        if (!boardMode) return;
+    private void scheduleRouteOrientationRestore() {
         android.view.View decor = getWindow().getDecorView();
-        decor.removeCallbacks(ensureBoardLandscape);
-        decor.postDelayed(ensureBoardLandscape, 300);
-        decor.postDelayed(ensureBoardLandscape, 1200);
+        // The callback reads current boardMode, never the previous route.
+        decor.removeCallbacks(ensureRouteOrientation);
+        decor.postDelayed(ensureRouteOrientation, 300);
+        decor.postDelayed(ensureRouteOrientation, 1200);
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        scheduleBoardOrientationRestore();
+        restoreRouteOrientation();
+        scheduleRouteOrientationRestore();
     }
 
     @Override
     public void onConfigurationChanged(Configuration configuration) {
         super.onConfigurationChanged(configuration);
-        if (boardMode && configuration.orientation != Configuration.ORIENTATION_LANDSCAPE) {
-            scheduleBoardOrientationRestore();
+        int expected = boardMode ? Configuration.ORIENTATION_LANDSCAPE : Configuration.ORIENTATION_PORTRAIT;
+        if (configuration.orientation != expected) {
+            scheduleRouteOrientationRestore();
         }
     }
 
@@ -214,8 +227,8 @@ public class MainActivity extends BridgeActivity {
         if (focus) {
             // System DocumentsUI is allowed to rotate independently. When
             // it exits, Android 7/8 can leave the board in portrait.
-            restoreBoardOrientation();
-            scheduleBoardOrientationRestore();
+            restoreRouteOrientation();
+            scheduleRouteOrientationRestore();
             applyBars();
             if (boardWebView != null) ViewCompat.requestApplyInsets(boardWebView);
         }

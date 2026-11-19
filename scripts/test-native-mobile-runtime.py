@@ -25,7 +25,7 @@ parser.add_argument('--udid')
 parser.add_argument('--wda-app')
 parser.add_argument('--wda-derived-data')
 parser.add_argument('--output', type=Path, required=True)
-parser.add_argument('--suite', choices=['full','ios-remaining','android-lab','android-export-lab'], default='full')
+parser.add_argument('--suite', choices=['full','ios-remaining','android-lab','android-export-lab','auth-orientation','orientation-board'], default='full')
 args = parser.parse_args()
 args.output.mkdir(parents=True, exist_ok=True)
 URL = 'http://127.0.0.1:4723'
@@ -273,6 +273,7 @@ def check_layout(selectors):
 
 def home():
     wait(lambda: visible_id('.lektrus-calendar-grid'), 'Workspace not rendered', 90)
+    wait(lambda:js('return innerHeight>innerWidth && screen.height>screen.width'), 'Phone workspace did not settle in portrait',30)
     report = check_layout(['.lectris-mobile-bottom', '.lectris-mobile-bottom button', '.lectris-workspace-header'])
     report['screen'] = js('return {width:screen.width,height:screen.height,availableHeight:screen.availHeight,ratio:devicePixelRatio}')
     report['headerAndHero'] = js('''const h=document.querySelector('.lectris-workspace-header'), r=h.getBoundingClientRect(), p=parseFloat(getComputedStyle(h).paddingTop)||0;
@@ -282,6 +283,35 @@ def home():
     assert not report['headerAndHero']['headerOverflow'], report
     assert report['headerAndHero']['heroGap'] <= 32, report
     return report
+
+
+def auth_portrait(expected):
+    wait(lambda:js('const e=document.querySelector(".auth-form h1");return e&&e.textContent.trim()===arguments[0]',expected),f'Auth page missing: {expected}',60)
+    wait(lambda:js('return innerHeight>innerWidth && screen.height>screen.width'),f'{expected}: device did not settle in portrait',30)
+    state=js('return {width:innerWidth,height:innerHeight,screenWidth:screen.width,screenHeight:screen.height,scrollWidth:document.documentElement.scrollWidth,boardClass:document.documentElement.classList.contains("lektrus-native-board"),rotating:document.documentElement.classList.contains("lektrus-native-rotating"),path:location.pathname}')
+    assert state['scrollWidth']<=state['width']+3 and not state['boardClass'] and not state['rotating'],state
+    return state
+
+
+def auth_orientation():
+    assert args.platform=='android','Auth orientation suite uses the Android isolated unsigned-in build'
+    check('auth-cold-launch-portrait',lambda:auth_portrait('С возвращением'),fatal=True)
+    native_tap('.auth-tabs button:nth-child(2)')
+    check('auth-registration-portrait',lambda:auth_portrait('Создать аккаунт'),fatal=True)
+    native_tap('.auth-tabs button:first-child')
+    native_tap('.auth-forgot-password')
+    check('auth-recovery-portrait',lambda:auth_portrait('Восстановление пароля'),fatal=True)
+    native_tap('.auth-text-action')
+    auth_portrait('С возвращением')
+    # A logged-out deep link retains its target for after login but must not
+    # rotate the authentication shell or apply the board's overflow clipping.
+    path='/board/00000000-0000-4000-8000-00000000a11f'
+    subprocess.run(['adb','shell','am','start','-W','-a','android.intent.action.VIEW','-d','ru.lektrus.board://'+path.lstrip('/'),'ru.lektrus.board.dev'],check=True,timeout=30)
+    reattach_webview()
+    def pending():
+        wait(lambda:js('return location.pathname')==path,'Pending board URL not received',30)
+        return auth_portrait('С возвращением')
+    check('auth-pending-board-portrait',pending,fatal=True)
 
 
 def more():
@@ -1778,6 +1808,10 @@ if args.suite in ('android-lab','android-export-lab'):
     EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','quiz-edit-and-save','native-back-and-deep-link','subject-chemistry-lab-fullscreen']
     if args.suite=='android-export-lab':
         EXPECTED_CHECKS[3:]=['native-file-export-save','native-file-export-cancel','subject-chemistry-lab-fullscreen','native-back-and-deep-link']
+elif args.suite=='auth-orientation':
+    EXPECTED_CHECKS=['auth-cold-launch-portrait','auth-registration-portrait','auth-recovery-portrait','auth-pending-board-portrait']
+elif args.suite=='orientation-board':
+    EXPECTED_CHECKS=['home-portrait-layout','create-board-and-landscape','native-back-and-deep-link']
 elif args.suite=='ios-remaining':
     EXPECTED_CHECKS=['create-board-and-landscape','pencil-touch','table-edit-and-save',
                      'checklist-edit-and-save','flashcard-edit-and-save','quiz-edit-and-save','formula-edit-and-save',
@@ -1794,6 +1828,12 @@ try:
     print('QA SUITE: '+args.suite,flush=True)
     if args.suite=='full':
         run_full()
+    elif args.suite=='auth-orientation':
+        auth_orientation()
+    elif args.suite=='orientation-board':
+        check('home-portrait-layout',home,fatal=True)
+        check('create-board-and-landscape',open_new_board,fatal=True)
+        check('native-back-and-deep-link',native_back_and_link,fatal=True)
     else:
         run_remaining()
 except Exception as error:
