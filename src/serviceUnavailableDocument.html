@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#3056c8">
+<meta name="robots" content="noindex">
+<title>Lektrus — временно недоступен</title>
+<style>
+.lektrus-unavailable{--u-page:var(--lt-page,#f2f5fa);--u-surface:var(--lt-surface,#fff);--u-text:var(--lt-text,#172a45);--u-muted:var(--lt-secondary,#425a78);--u-line:var(--lt-line,#d5dfed);--u-accent:var(--lt-primary,#3056c8);--u-soft:var(--lt-selected,#e6eeff);--u-ink:var(--lt-selected-ink,#244da9);--u-warn:#a56b14;--u-warn-bg:#fff4db;position:fixed;left:0;right:0;top:0;bottom:0;z-index:20000;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;padding:24px;padding:calc(20px + env(safe-area-inset-top,0px)) calc(20px + env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) calc(20px + env(safe-area-inset-left,0px));background:radial-gradient(ellipse at 80% 12%,var(--u-soft) 0%,transparent 48%),var(--u-page);color:var(--u-text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;text-align:left;line-height:1.5}
+.lektrus-unavailable *{box-sizing:border-box}
+.lektrus-unavailable .u-shell{width:100%;max-width:840px;margin:auto}
+.lektrus-unavailable .u-brand{display:flex;align-items:center;margin-bottom:20px;color:var(--u-text)}
+.lektrus-unavailable .u-brand img{width:38px;height:38px;margin-right:9px;object-fit:contain}
+.lektrus-unavailable .u-brand strong{font-size:25px;font-weight:800;letter-spacing:-.055em}
+.lektrus-unavailable .u-brand small{margin-left:auto;font-size:11px;color:var(--u-muted);letter-spacing:.07em;font-weight:700;text-transform:uppercase}
+.lektrus-unavailable .u-card{display:grid;grid-template-columns:minmax(0,1.13fr) minmax(0,.87fr);overflow:hidden;border-radius:26px;border:1px solid var(--u-line);background:var(--u-surface);box-shadow:0 24px 72px rgba(25,46,86,.10)}
+.lektrus-unavailable .u-content{padding:36px;min-width:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:center}
+.lektrus-unavailable .u-status{display:inline-flex;align-items:center;padding:6px 10px;border-radius:100px;background:var(--u-warn-bg);color:var(--u-warn);font-size:11px;font-weight:750;line-height:1.3}
+.lektrus-unavailable .u-status i{width:7px;height:7px;background:currentColor;border-radius:50%;margin-right:7px}
+.lektrus-unavailable h1{font-size:34px;font-size:clamp(26px,3.5vw,38px);font-weight:820;letter-spacing:-.047em;line-height:1.13;margin:18px 0 12px;color:var(--u-text);overflow-wrap:break-word}
+.lektrus-unavailable .u-description{font-size:15px;line-height:1.65;margin:0 0 22px;color:var(--u-muted)}
+.lektrus-unavailable .u-retry{display:flex;align-items:center;justify-content:center;width:100%;max-width:310px;min-height:48px;padding:12px 16px;border:0;border-radius:12px;background:var(--u-accent);color:#fff;font:inherit;font-weight:750;cursor:pointer;touch-action:manipulation;transition:filter .15s}
+.lektrus-unavailable .u-retry svg{flex:none;width:18px;height:18px;margin-right:9px}
+.lektrus-unavailable .u-retry:hover{filter:brightness(.94)}
+.lektrus-unavailable .u-retry:focus-visible{outline:3px solid var(--u-ink);outline-offset:3px}
+.lektrus-unavailable .u-retry:disabled{opacity:.72;cursor:wait}
+.lektrus-unavailable .u-retry:disabled svg{animation:u-spin 1.2s linear infinite}
+.lektrus-unavailable .u-note{font-size:12px;line-height:1.55;color:var(--u-muted);margin:12px 0 0;min-height:36px}
+.lektrus-unavailable .u-art{position:relative;min-width:0;min-height:270px;display:grid;place-items:center;background:linear-gradient(145deg,var(--u-soft),var(--u-page));border-left:1px solid var(--u-line);overflow:hidden;padding:22px}
+.lektrus-unavailable .u-art svg{width:100%;max-width:290px;height:auto;overflow:visible;color:var(--u-ink)}
+.lektrus-unavailable .u-footer{display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;font-size:12px;color:var(--u-muted)}
+.lektrus-unavailable .u-footer span{margin-right:12px}
+@keyframes u-spin{to{transform:rotate(360deg)}}
+@media(max-width:620px){.lektrus-unavailable{padding:16px;padding:calc(14px + env(safe-area-inset-top,0px)) calc(14px + env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) calc(14px + env(safe-area-inset-left,0px))}.lektrus-unavailable .u-brand{margin-bottom:12px}.lektrus-unavailable .u-brand img{width:33px;height:33px}.lektrus-unavailable .u-brand strong{font-size:22px}.lektrus-unavailable .u-card{grid-template-columns:minmax(0,1fr);border-radius:20px}.lektrus-unavailable .u-art{order:-1;min-height:0;height:168px;padding:12px;border-left:0;border-bottom:1px solid var(--u-line)}.lektrus-unavailable .u-art svg{width:190px;max-height:142px}.lektrus-unavailable .u-content{padding:24px 20px}.lektrus-unavailable h1{font-size:28px;margin:14px 0 10px}.lektrus-unavailable .u-description{font-size:14px;margin-bottom:18px}.lektrus-unavailable .u-retry{max-width:none}.lektrus-unavailable .u-note{min-height:0}.lektrus-unavailable .u-footer{margin-top:12px}}
+@media(max-height:460px) and (orientation:landscape){.lektrus-unavailable{padding:10px;padding:calc(10px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) calc(12px + env(safe-area-inset-left,0px))}.lektrus-unavailable .u-brand{margin-bottom:7px}.lektrus-unavailable .u-brand img{width:28px;height:28px}.lektrus-unavailable .u-content{padding:18px 22px}.lektrus-unavailable .u-art{min-height:0;padding:12px}.lektrus-unavailable .u-art svg{max-width:215px}.lektrus-unavailable h1{font-size:25px;margin:10px 0 6px}.lektrus-unavailable .u-description{font-size:13px;margin-bottom:12px}.lektrus-unavailable .u-note{margin-top:8px;min-height:0}.lektrus-unavailable .u-footer{margin-top:6px}}
+html[data-theme=dark] .lektrus-unavailable{--u-page:var(--lt-page,#101a29);--u-surface:var(--lt-surface,#19283b);--u-text:var(--lt-text,#f2f6ff);--u-muted:var(--lt-secondary,#d2dff0);--u-line:var(--lt-line,#3a506a);--u-soft:var(--lt-selected,#293c64);--u-ink:var(--lt-selected-ink,#bdd0ff);--u-warn:#ffd78f;--u-warn-bg:#513c1f}
+@media(prefers-color-scheme:dark){html:not([data-theme]) .lektrus-unavailable{--u-page:#101a29;--u-surface:#19283b;--u-text:#f2f6ff;--u-muted:#d2dff0;--u-line:#3a506a;--u-soft:#293c64;--u-ink:#bdd0ff;--u-warn:#ffd78f;--u-warn-bg:#513c1f}}
+@media(prefers-reduced-motion:reduce){.lektrus-unavailable .u-retry{transition:none}.lektrus-unavailable .u-retry:disabled svg{animation:none}}
+</style>
+</head>
+<body>
+<main class="lektrus-unavailable" aria-labelledby="lektrus-unavailable-title">
+  <div class="u-shell">
+    <header class="u-brand"><img alt="" width="38" height="38" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAMAAABlApw1AAADAFBMVEUAAAC0
+5frT8/sAOq3H6/qQ1voBRsIBQ7ppuflPqPgRh/RxxvoAKI6s2/pStvowl/UO
+dukDWM6IyfkvpvoLZtkVlfkriO1Qxvtx1vzl+vwIauMztfuU4/z+/v4BM5sj
+eOe0/v5Em/UAG3UBIXsapPsA//+38v5+//9jrfQAAP8Af/8rddU7wfxUqf17
+vfvN5vLk+Ps8vf1b0fzP6vbW9PoAqv+u5/rl9/sUct3l9Pmz5fiy6fvT8/vk
+9Pmqqv+05/nm9/smas0xhNoqp/PY8vkVVrgyqO3L6/jT+fzW8vrn8vhLiNN/
+f/+26Pm/v//N7PjD7PrQ8/oAHYcWlPYvqfYnp/h1y/uFu+2N1vmp2vfK7foA
+DmowWKlxuO+Nx/W/v7+04/PU8vvn6vTm7fYalvUtSJIrYbQpqPkmpfkysvgw
+svpV//9/v7+Y1/mM1/qk2fkAL6AAf78alvQapPkzVZo/f/8jmvIswv1Ha6xV
+ltZVqqpKtvJsyPN3xfR2yvZyzfqPxfSMxvSX2Pmk2PgAVaoUk/IlmvIsqvg2
+tPc3w/tNie1Nt+9JufZDufl/f39wzPlp1PuV2PKa5Pqv3vq66Pjb29vR3PnJ
+7vkeY7wSh+0PhewAqqoapvk/f78pjeIrldsxlfIgmvUms/o+2v9NeLVJes9T
+g71amdlCtfpSxPt3pvRm1Pxq1fx25P+P2fWR2fWc5vyjyvH/AAAAAH8AP78b
+R5gBX94AVf8VatQLY84Af38Qf+UMfeQUgO4YlPIeqPscrPsAv/8ftP8/crY+
+jN4lifEinvUhnvg/v788ufo7xfs+x/1Ab8RVf+lGj+JdpNxGoulBrvJfv99G
+uvpEzf9EzfhPw/tSyPpF0OduiblylsFomONqoN9/qux/v99/yfRn2f9/2/tt
+4/+Aq+uUudeFvvSKyfaFzviJzveX5/qU5Pme5/uR//+c8f+qqtS7zN2qxuKn
+zPC/39+l2PKk2fS12vG//7/GxuL/AP//f3//qqr/v//ixuLn7/cAAAAAAACs
+NhzEAAABAHRSTlMA/Pz9/Pz9/f39/Pz9/Pz8/Pz8/Pz8/fz9+/z8/AL8/QP9
+/Pz8Af0C/QEC/fwDBxPQBv0xrgOvrvxuUc/OUQOOj/39LVH9EksLjzD9AnEE
+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
+"><strong>Lektrus</strong><small>Пространство для обучения</small></header>
+    <section class="u-card">
+      <div class="u-content">
+        <span class="u-status"><i aria-hidden="true"></i><span data-u-status>Сервис недоступен</span></span>
+        <h1 id="lektrus-unavailable-title" data-u-title>Скоро вернёмся</h1>
+        <p class="u-description" data-u-description>Не удаётся связаться с сервером Lektrus. Попробуйте немного позже — возможно, сервис временно недоступен.</p>
+        <button type="button" class="u-retry" data-u-retry><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6M20 4v7h-7"/></svg><span data-u-button>Повторить попытку</span></button>
+        <p class="u-note" data-u-note role="status" aria-live="polite">Эта ошибка не означает, что ваши данные удалены. Не переустанавливайте приложение.</p>
+      </div>
+      <div class="u-art" aria-hidden="true">
+        <svg viewBox="0 0 300 246" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="150" cy="123" r="103" stroke="currentColor" stroke-opacity=".12" stroke-width="1.2"/>
+          <circle cx="150" cy="123" r="78" stroke="currentColor" stroke-opacity=".13" stroke-width="1.2" stroke-dasharray="4 7"/>
+          <path d="M37 169h226M43 77h214" stroke="currentColor" stroke-opacity=".11" stroke-dasharray="4 6"/>
+          <rect x="48" y="49" width="204" height="145" rx="18" fill="var(--u-surface)" stroke="currentColor" stroke-opacity=".23" stroke-width="1.5"/>
+          <path d="M48 76h204" stroke="currentColor" stroke-opacity=".2"/>
+          <circle cx="65" cy="63" r="3.5" fill="#6f92df"/><circle cx="76" cy="63" r="3.5" fill="#9eb5e9"/><circle cx="87" cy="63" r="3.5" fill="#cedaf5"/>
+          <rect x="65" y="88" width="80" height="13" rx="4" fill="var(--u-soft)"/>
+          <rect x="65" y="110" width="170" height="64" rx="8" fill="var(--u-page)" stroke="currentColor" stroke-opacity=".09"/>
+          <path d="M78 152l13-13 12 9 14-16 13 12" stroke="currentColor" stroke-opacity=".33" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M80 164h48M146 126h68M146 137h51M146 148h62" stroke="currentColor" stroke-opacity=".18" stroke-width="3" stroke-linecap="round"/>
+          <rect x="109" y="185" width="82" height="8" rx="4" fill="currentColor" fill-opacity=".12"/>
+          <circle cx="150" cy="120" r="41" fill="var(--u-surface)" stroke="currentColor" stroke-opacity=".18" stroke-width="2"/>
+          <circle cx="150" cy="120" r="31" fill="var(--u-soft)"/>
+          <path d="M131 113a28 28 0 0 1 38 0m-31 7a18 18 0 0 1 24 0m-17 7a8 8 0 0 1 10 0" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="150" cy="134" r="2.5" fill="currentColor"/><path d="m126 96 48 48" stroke="var(--u-surface)" stroke-width="7" stroke-linecap="round"/><path d="m126 96 48 48" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="224" cy="175" r="19" fill="var(--u-warn-bg)" stroke="var(--u-surface)" stroke-width="4"/><path d="M224 167v9m0 5v.1" stroke="var(--u-warn)" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M26 115v10m-5-5h10M270 91v10m-5-5h10M246 213v10m-5-5h10" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </section>
+    <footer class="u-footer"><span>Проблема с подключением</span><span>LEKTRUS</span></footer>
+  </div>
+</main>
+<script>
+(function(){
+  var retry=document.querySelector("[data-u-retry]");
+  function title(){if(navigator.onLine===false){document.querySelector("[data-u-status]").textContent="Нет соединения";document.querySelector("[data-u-title]").textContent="Вы не в сети";document.querySelector("[data-u-description]").textContent="Проверьте Wi-Fi или мобильный интернет, чтобы снова открыть Lektrus."}}
+  function reload(){retry.disabled=true;document.querySelector("[data-u-button]").textContent="Проверяем…";if(location.pathname==="/service-unavailable.html")location.replace("/app");else location.reload()}
+  title();retry.addEventListener("click",reload);window.addEventListener("online",reload);window.addEventListener("offline",title);
+})();
+</script>
+</body>
+</html>

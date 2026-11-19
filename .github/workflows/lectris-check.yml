@@ -25,6 +25,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: TypeScript and Vite build
         run: npm run build
+      - name: Branded unavailable screen and offline navigation fallback
+        run: node scripts/test-service-unavailable.mjs
       - name: Per-viewer ink tool isolation and all five pencil widths
         run: node scripts/test-lektrus-independent-ink-tools.mjs
       - name: Subzero chemistry freezing, tablet device switches and solid sediment

@@ -279,11 +279,66 @@ def check_guest_and_registration(browser,ident):
         page.screenshot(path=str(OUT/f"registration-{width}.png"),full_page=True)
         ctx.close()
 
+def check_service_unavailable(browser, ident):
+    health_pattern=API+"/api/v1/health"
+    for width,height in ((1440,900),(390,844),(320,640),(768,1024),(844,390)):
+        ctx=browser.new_context(viewport={"width":width,"height":height},
+            color_scheme="dark" if width in (320,768) else "light",service_workers="block")
+        page=ctx.new_page()
+        def unavailable(route):
+            route.fulfill(status=503,headers={"Access-Control-Allow-Origin":BASE,"Content-Type":"application/json"},body='{"detail":"unavailable"}')
+        page.route(health_pattern,unavailable)
+        page.goto(BASE+"/app")
+        screen=page.locator(".lektrus-unavailable")
+        expect(screen).to_be_visible(timeout=30000)
+        expect(screen.get_by_role("heading",name="Скоро вернёмся")).to_be_visible()
+        expect(screen.get_by_role("button",name="Повторить попытку")).to_be_enabled()
+        geometry=screen.evaluate("""node => {
+          const card=node.querySelector('.u-card').getBoundingClientRect();
+          const retry=node.querySelector('.u-retry').getBoundingClientRect();
+          return {width:node.clientWidth,scrollWidth:node.scrollWidth,
+            left:card.left,right:card.right,top:card.top,bottom:card.bottom,retryHeight:retry.height}
+        }""")
+        assert geometry["scrollWidth"]<=width+1 and geometry["left"]>=0 and geometry["right"]<=width+1,geometry
+        assert geometry["retryHeight"]>=44 and geometry["top"]>=0 and geometry["bottom"]<=height+1,geometry
+        page.screenshot(path=str(OUT/f"service-unavailable-{width}x{height}.png"))
+        page.unroute(health_pattern,unavailable)
+        screen.get_by_role("button",name="Повторить попытку").click()
+        expect(page.get_by_label("Email",exact=True)).to_be_visible(timeout=30000)
+        expect(screen).to_have_count(0)
+        assert page.url==BASE+"/app"
+        ctx.close()
+
+    ctx=browser.new_context(viewport={"width":390,"height":844},service_workers="block")
+    page=ctx.new_page()
+    page.goto(BASE+"/app")
+    expect(page.get_by_label("Email",exact=True)).to_be_visible(timeout=30000)
+    ctx.set_offline(True)
+    expect(page.get_by_role("heading",name="Вы не в сети",exact=True)).to_be_visible(timeout=30000)
+    page.screenshot(path=str(OUT/"service-offline-phone.png"))
+    ctx.set_offline(False)
+    expect(page.get_by_label("Email",exact=True)).to_be_visible(timeout=30000)
+    ctx.close()
+
+    # An isolated error is not a service outage; the board retains its
+    # original recovery behavior, and a live board never gets replaced.
+    ctx=browser.new_context(viewport={"width":1440,"height":900},service_workers="block")
+    page=ctx.new_page()
+    login(page,"owner")
+    assert_board(page,ident,True,True)
+    page.route(health_pattern,unavailable)
+    page.evaluate("window.dispatchEvent(new Event('lektrus:service-request-failed'))")
+    expect(page.locator("section.board")).to_be_visible()
+    expect(page.locator(".lektrus-unavailable")).to_have_count(0)
+    ctx.close()
+    print("Service recovery: five responsive sizes, dark theme, offline/online, retry and active-board safety passed")
+
 def main():
     asyncio.run(seed())
     ident=setup_board()
     with sync_playwright() as p:
         browser=p.chromium.launch(headless=True)
+        check_service_unavailable(browser,ident)
         for name,author,owner in [("owner",True,True),("learner",False,False),("colleague",True,False),("observer",False,False)]:
             context=browser.new_context(viewport={"width":1440,"height":900})
             page=context.new_page()

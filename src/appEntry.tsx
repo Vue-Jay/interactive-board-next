@@ -85,8 +85,10 @@ import { isSelfhostBackendEnabled } from "./selfhostApi";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import { initLectrisPalette } from "./lectrisPalette";
 import { initProfileAppearance } from "./profileStore";
-import { isChunkLoadError, recoverOutdatedChunk } from "./chunkRecovery";
+import { recoverOutdatedChunk } from "./chunkRecovery";
 import {AndroidUpdateGate} from "./AndroidUpdateGate";
+import {ServiceUnavailableScreen} from "./ServiceUnavailableScreen";
+import {registerLektrusServiceWorker} from "./registerServiceWorker";
 
 installInterfaceLayout();
 
@@ -137,19 +139,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
   }
   render() {
     if (this.state.error) {
-      const chunkError=isChunkLoadError(this.state.error);
-      return (
-        <div style={{ padding: 32, fontFamily: "system-ui, sans-serif", color: "#202331" }}>
-          <h1 style={{ marginTop: 0 }}>{chunkError?"Не удалось загрузить раздел":"Не удалось запустить интерфейс"}</h1>
-          <p>{chunkError?"Возможно, Lektrus обновился или соединение прервалось. Проверьте подключение и обновите страницу.":"Приложение поймало ошибку вместо пустого белого экрана."}</p>
-          {!chunkError&&<pre style={{ whiteSpace: "pre-wrap", padding: 16, borderRadius: 12, background: "#f3f4f8" }}>
-            {this.state.error.message || String(this.state.error)}
-          </pre>}
-          <button type="button" onClick={() => window.location.reload()} style={{ padding: "10px 14px", cursor: "pointer" }}>
-            Перезагрузить страницу
-          </button>
-        </div>
-      );
+      return <ServiceUnavailableScreen reason={navigator.onLine===false?"offline":"startup"} onRetry={()=>window.location.reload()}/>;
     }
     return this.props.children;
   }
@@ -175,37 +165,4 @@ createRoot(root).render(
     : <ErrorBoundary><AndroidUpdateGate><App /></AndroidUpdateGate></ErrorBoundary>
 );
 
-// Register only in production so dev/HMR never reuses a cached app shell.
-if (import.meta.env.PROD && !isBrowserBoardFrame() && !Capacitor.isNativePlatform() && "serviceWorker" in navigator) {
-  let reloadAfterConfirmedUpdate = false;
-  window.addEventListener("lektrus:apply-update", () => { reloadAfterConfirmedUpdate = true; });
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    // Never reload an active lesson merely because a new version was downloaded.
-    if (reloadAfterConfirmedUpdate) window.location.reload();
-  });
-  const registerServiceWorker = () => {
-    if (!window.isSecureContext) return; // Production PWA requires HTTPS.
-    void navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" })
-      .then(registration => {
-        const notify = () => {
-          if (registration.waiting && navigator.serviceWorker.controller) {
-            window.dispatchEvent(new CustomEvent("or-sw-update", { detail: { registration } }));
-          }
-        };
-        if (registration.waiting) notify();
-        registration.addEventListener("updatefound", () => {
-          const installing = registration.installing;
-          if (!installing) return;
-          installing.addEventListener("statechange", () => {
-            if (installing.state === "installed") notify();
-          });
-        });
-        const refresh = () => { if (document.visibilityState === "visible") void registration.update().catch(() => {}); };
-        window.addEventListener("focus", refresh);
-        document.addEventListener("visibilitychange", refresh);
-      })
-      .catch(error => console.warn("Lektrus PWA registration failed", error));
-  };
-  if (document.readyState === "complete") registerServiceWorker();
-  else window.addEventListener("load", registerServiceWorker, { once: true });
-}
+if(!isBrowserBoardFrame())registerLektrusServiceWorker();

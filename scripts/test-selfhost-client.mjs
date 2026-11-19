@@ -32,7 +32,7 @@ async function loadSelfhost(enabled, platform="web") {
   }).outputText;
   const data=new Map([["lesson-board.supabase.session.v1","production-must-remain"]]);
   const record=[];
-  let expires=900,refreshes=0,documentVersion=3,documentFailures=0;
+  let expires=900,refreshes=0,documentVersion=3,documentFailures=0,healthStatus=200,healthBody={ok:true,service:'lektrus-selfhost'};
   let refreshStatus=200,rotations=0,activeRefresh="refresh-first",rejectOldAccess=false;
   let lockTail=Promise.resolve();
   const locks={request(_name,callback){
@@ -66,6 +66,10 @@ async function loadSelfhost(enabled, platform="web") {
       body:typeof options.body==="string"?JSON.parse(options.body):
         options.body instanceof Blob?{size:options.body.size,type:options.body.type}:null});
     const ok=(value,status=200)=>Response.json(value,{status});
+    if(u.pathname==="/api/v1/health"){
+      assert.equal(headers.get("Authorization"),null);
+      return ok(healthBody,healthStatus);
+    }
     if(u.pathname==="/api/v1/auth/login"){
       assert.equal(headers.get("Authorization"),null);
       return ok({access_token:"token-first",refresh_token:"refresh-first",expires_in:expires,user});
@@ -284,7 +288,7 @@ async function loadSelfhost(enabled, platform="web") {
   const broadcastSource=readFileSync(new URL("../src/boardBroadcast.ts",import.meta.url),"utf8");
   const broadcastContext=vm.createContext({exports:{},require:name=>name==="./selfhostApi"?api:{isRemoteBackendEnabled:()=>false},setTimeout,clearTimeout,Date,Math,Map,crypto:globalThis.crypto});
   vm.runInContext(ts.transpileModule(broadcastSource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,broadcastContext);
-  return {api,broadcast:broadcastContext.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,sessionStorage,nativeRequests,setNativeFailure:value=>{nativeFailure=value;},setClaimFailure:value=>{claimFailure=value;},setLoginFailure:value=>{loginFailure=value;},changeExpires:v=>{expires=v},changeDocument:(v,failures=0)=>{documentVersion=v;documentFailures=failures},
+  return {api,broadcast:broadcastContext.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,sessionStorage,nativeRequests,setHealth:(status,body)=>{healthStatus=status;healthBody=body;},setNativeFailure:value=>{nativeFailure=value;},setClaimFailure:value=>{claimFailure=value;},setLoginFailure:value=>{loginFailure=value;},changeExpires:v=>{expires=v},changeDocument:(v,failures=0)=>{documentVersion=v;documentFailures=failures},
     forkApi:(withLocks=true)=>{const tab=makeContext(withLocks);vm.runInContext(compiled,tab);return tab.exports},
     setRefreshStatus:v=>{refreshStatus=v},rejectOldAccess:()=>{rejectOldAccess=true},
     remoteNativeEdit:(delta,broken=false)=>{nativeDoc=JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(nativeDoc,delta)));nativeVersion++;nativeDelta=delta;brokenChain=broken}};
@@ -679,3 +683,16 @@ assert.deepEqual(legacyBoth.map(s=>s.access_token),["token-refreshed","token-ref
 assert.equal(legacyA.cachedSelfhostSession().refresh_token,"refresh-refreshed");
 console.log("Session restoration: two tabs, single-use rotation, transient restart and confirmed revocation OK.");
 console.log("Self-hosted Lektrus API: auth, native documents, private assets, students, assignments, schedule, lessons, discussions, presence and realtime events OK.");
+
+for(const platform of ["web","android","ios"]){
+  const health=await loadSelfhost(true,platform);
+  assert.equal(await health.api.selfhostServiceHealthy(),true);
+  health.setHealth(503,{detail:"Database unavailable"});
+  assert.equal(await health.api.selfhostServiceHealthy(),false);
+  health.setHealth(200,{ok:true,service:"unrelated"});
+  assert.equal(await health.api.selfhostServiceHealthy(),false);
+  assert.equal(health.api.cachedSelfhostSession(),null);
+  assert.equal(health.refreshCount(),0);
+  assert.ok(health.records.every(r=>r.path==="/api/v1/health"&&r.bearer===null));
+}
+console.log("Public health probe: browser, Android transport and iOS, no auth or session mutation.");
