@@ -97,6 +97,14 @@
       "oracle": "Two physical touch pointers change board zoom",
       "status": "implemented-unverified",
       "lastRun": null
+    },
+    {
+      "id": "native-undo-redo",
+      "driver": "scripts/test-native-stress-v2.py",
+      "environment": "installed-android-or-ios",
+      "oracle": "Undo changes persisted pen items; redo restores the exact original ink state",
+      "status": "implemented-unverified",
+      "lastRun": null
     }
   ],
   "excluded": [
