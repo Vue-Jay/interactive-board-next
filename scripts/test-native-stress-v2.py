@@ -3,7 +3,7 @@
 Requires a running Appium server and an installed debug APK/iOS simulator app.
 No production writes. Physical WebDriver taps, not DOM .click().
 """
-import argparse, json, time, urllib.request, urllib.error, sys
+import argparse, json, time, urllib.request, urllib.error, sys, traceback
 from pathlib import Path
 
 p=argparse.ArgumentParser()
@@ -43,11 +43,14 @@ def check(name,fn):
   results.append({'name':name,'status':'failed','error':str(error),'seconds':round(time.monotonic()-started,2)})
   print('FAIL',name,error,flush=True)
 def attach():
+ errors=[]
  for name in cmd('GET','/contexts'):
   if not name.startswith('WEBVIEW'):continue
-  cmd('POST','/context',{'name':name})
-  if js('return !!document.documentElement && window.Capacitor?.isNativePlatform?.()===true'):return name
- raise AssertionError('Installed native Capacitor WebView not found')
+  try:
+   cmd('POST','/context',{'name':name})
+   if js('return !!document.documentElement && window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()===true'):return name
+  except Exception as error:errors.append(str(error))
+ raise AssertionError('Installed native Capacitor WebView not found: '+str(errors[-3:]))
 def visible_controls():
  return js("""return [...document.querySelectorAll('button')].filter(e=>{
   const r=e.getBoundingClientRect(),s=getComputedStyle(e);
@@ -83,12 +86,17 @@ def navigation_storm():
   c=fresh[0]
  return {'touches':args.iterations,'target':c['label']}
 def orientation():
+ observed=[]
  for name,value in [('LANDSCAPE',1),('PORTRAIT',0)]:
   cmd('POST','/orientation',{'orientation':name})
+  # Native WebView may be destroyed/recreated on rotation.
+  wait(lambda:attach(),'WebView unavailable after '+name,45)
   wait(lambda:bool(js('return innerWidth>innerHeight'))==bool(value),'Orientation did not settle: '+name,30)
   state=layout()
   assert state['scroll']<=state['w']+3,state
- return {'orientations':['LANDSCAPE','PORTRAIT']}
+  observed.append({'orientation':name,'viewport':state})
+ return {'observed':observed}
+fatal_error=None
 try:
  capabilities=({'platformName':'Android','appium:automationName':'UiAutomator2','appium:app':args.app,'appium:autoGrantPermissions':True} if args.platform=='android' else {'platformName':'iOS','appium:automationName':'XCUITest','appium:app':args.app,'appium:udid':args.udid})
  response=request('POST','/session',{'capabilities':{'alwaysMatch':capabilities,'firstMatch':[{}]}},full=True)
@@ -98,11 +106,14 @@ try:
  check('installed-native-capacitor-and-layout',home_layout)
  check('native-touch-navigation-storm',navigation_storm)
  check('native-rotation-roundtrip',orientation)
+except Exception as error:
+ fatal_error={'type':type(error).__name__,'message':str(error),'traceback':traceback.format_exc()}
+ print('FATAL',str(error),flush=True)
 finally:
  args.output.mkdir(parents=True,exist_ok=True)
- (args.output/(args.platform+'-stress-results.json')).write_text(json.dumps({'platform':args.platform,'installedApp':True,'results':results},indent=2)+'\n')
+ (args.output/(args.platform+'-stress-results.json')).write_text(json.dumps({'platform':args.platform,'installedApp':True,'results':results,'fatalError':fatal_error},indent=2)+'\n')
  if session:
   try:cmd('DELETE','')
   except Exception:pass
 print(json.dumps({'total':len(results),'failed':sum(r['status']!='passed' for r in results)}))
-if not results or any(r['status']!='passed' for r in results):sys.exit(1)
+if fatal_error or not results or any(r['status']!='passed' for r in results):sys.exit(1)
