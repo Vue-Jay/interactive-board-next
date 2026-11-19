@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import ts from "typescript";
+import {un2025CapitalReference,modernCapitalOverrides,normalizeCapital,capitalInsideCountry} from "./atlas-2026-capitals.mjs";
 const schoolAtlasSrc=fs.readFileSync(new URL("../src/lektrusSchoolAtlasMinerals.ts",import.meta.url),"utf8");
 const schoolAtlasExports={};
 new Function("exports",ts.transpileModule(schoolAtlasSrc,{compilerOptions:{
@@ -522,6 +523,10 @@ assert.ok(map.includes("historical&&!modernReference||!!f.name"),
 assert.equal(geoExports.historicalCountryName("France"),"Франция");
 assert.equal(geoExports.historicalCountryName("Germany"),"Германия");
 assert.equal(geoExports.historicalCountryName("India"),"Индия");
+assert.equal(geoExports.historicalSourceName("  Untranslated real polity  "),"Untranslated real polity");
+assert.equal(geoExports.historicalSourceName("Unknown"),"");
+assert.match(map,/visibleDirectory\.slice\(currentDirectoryPage\*120,\(currentDirectoryPage\+1\)\*120\)/);
+assert.ok(map.includes("data-atlas-selected-index"),"browser tests must be able to verify precise selected identity");
 const anachronistic={type:"FeatureCollection",features:[named({NAME:"Azerbaijan",SUBJECTO:"Azerbaijan"}),named({NAME:"Israel"}),named({NAME:"Bangladesh"}),named({NAME:"United Arab Emirates"})]};
 assert.equal(geoExports.correctHistoricalLabels(anachronistic,1914).features[0].properties.ATLAS_HISTORICAL_AFFILIATION,"Российская империя");
 assert.equal(geoExports.correctHistoricalLabels(anachronistic,1945).features[1].properties.ATLAS_HISTORICAL_LABEL,"Подмандатная Палестина (условный контур)");
@@ -531,6 +536,247 @@ assert.equal(geoExports.correctedHistoricalIndexLabel("Israel",1945),"Подма
 assert.equal(geoExports.correctedHistoricalIndexLabel("Israel",1960),undefined);
 assert.equal(geoExports.borderPrecision(geoExports.correctHistoricalLabels(anachronistic,1914).features[0]),1);
 assert.equal(geoExports.correctHistoricalLabels(anachronistic,1994),anachronistic);
+for(const [name,year,label,affiliation] of [
+ ["United States Virgin Islands",1914,"Датская Вест-Индия","Дания"],
+ ["Kingdom of Hawaii",1900,"Гавайские острова","США"],
+ ["Hong Kong",2000,"Гонконг","КНР"],
+ ["Zaire",2010,"Демократическая Республика Конго","Демократическая Республика Конго"],
+ ["Montenegro",1994,"Черногория","Союзная Республика Югославия"],
+ ["Algeria",1960,"Алжир","Французская администрация"],
+ ["Vietnam",1960,"Северный и Южный Вьетнам (общий условный контур)","линия разделения"],
+ ["Egypt",1960,"Объединённая Арабская Республика (Египет)","1958–1961"],
+ ["Yemen",1960,"Йеменское королевство и британские владения (условный контур)","1990"],
+ ["Malaysia",1960,"Малайская Федерация и британские территории (условный контур)","1963"],
+ ["Indonesia",1960,"Индонезия (условный контур)","1963"],
+ ["Pakistan",1960,"Пакистан (Западный и Восточный)","1971"],
+ ["Cameroon",1960,"Республика Камерун (условный контур)","1961"],
+ ["Mali",1960,"Республика Мали (условный контур)","22 сентября 1960"],
+ ["Senegal",1960,"Республика Сенегал (условный контур)","20 августа 1960"],
+ ["China",1960,"Китайская Народная Республика","Китайской Республики"],
+ ["Taiwan",1960,"Китайская Республика (Тайвань)","1971"],
+ ["Tibet",1960,"Тибет (условный контур)","1959"],
+ ["Samoa",1960,"Западное Самоа","1962"],
+ ["Niue",1960,"Ниуэ","1974"],
+ ["Suriname",1960,"Суринам","1975"],
+ ["Hong Kong",1960,"Гонконг","Британская администрация"],
+ ["South Africa",1960,"Южно-Африканский Союз","1961"],
+ ["Congo",1960,"Республика Конго (Браззавиль)","1960"],
+ ["Zaire",1960,"Республика Конго (Леопольдвиль)","1971"],
+ ["Philippines",1945,"Филиппины (Содружество)","1946"],
+ ["White Russia",1930,"СССР (условный контур)","исходная подпись"],
+ ["Far Eastern SSR",1920,"Дальневосточная республика (с апреля 1920 г.)","6 апреля 1920"],
+ ["Georgia",1930,"Грузинская ССР","Закавказская СФСР"],
+ ["Saint Martin",2000,"Сен-Мартен (французская часть)","2007"],
+ ["Saint Barthelemy",2010,"Сен-Бартелеми","Франции"],
+ ["Hejaz",1930,"Хиджаз (условный контур)","1932"],
+ ["United Kingdom of Great Britain and Ireland",1930,"Соединённое Королевство Великобритании и Северной Ирландии","1927"],
+ ["Mauryan Empire",-100,"Бывшие земли империи Маурьев (условный контур)","185 г. до н. э."],
+ ["Sasanian Empire",700,"Бывшие земли Сасанидов (условный контур)","651 г."],
+ ["Mongol Empire",1200,"Монгольские земли (условный контур)","1206 г."]
+]){
+ const result=geoExports.correctHistoricalLabels({type:"FeatureCollection",features:[named({NAME:name,SUBJECTO:name})]},year).features[0];
+ assert.equal(result.properties.ATLAS_HISTORICAL_LABEL,label,name+" "+year);
+ assert.ok(result.properties.ATLAS_HISTORICAL_AFFILIATION.includes(affiliation));
+ assert.equal(geoExports.correctedHistoricalIndexLabel(name,year),label);
+ assert.equal(geoExports.borderPrecision(result),1);
+ assert.ok(result.properties.ATLAS_HISTORICAL_SOURCE.startsWith("https://"));
+}
+// Optional exhaustive pass over the *actual* pinned source files. Download
+// them first; CI's offline fixture assertions above remain deterministic.
+if(process.env.LEKTRUS_ANNUAL_TIMELINE_DIR){
+ const root=process.env.LEKTRUS_ANNUAL_TIMELINE_DIR;
+ const manifest=JSON.parse(fs.readFileSync(`${root}/manifest.json`,"utf8"));
+ const seen=new Set();
+ for(const block of manifest.blocks){
+  const pack=JSON.parse(fs.readFileSync(`${root}/${block.file}`,"utf8"));
+  for(const [id,geometry] of Object.entries(pack.geometries)){
+   if(seen.has(id))continue;seen.add(id);
+   const path=geoExports.mapFeaturePath({type:"Feature",properties:{},geometry},.10);
+   assert.ok(path&&!/NaN|Infinity/.test(path),`Historical SVG contour ${id} missing or invalid`);
+  }
+ }
+ assert.equal(seen.size,manifest.counts.uniqueGeometries);
+ console.log(`Annual atlas: ${seen.size} unique geometries render at overview resolution.`);
+}
+if(process.env.LEKTRUS_ATLAS_DATA_DIR){
+ // 193 UN members (UNCHARTER list) and the two observer states are a
+ // coverage check, not a determination of the sovereignty of all map areas.
+ const unMembers="AFG ALB DZA AND AGO ATG ARG ARM AUS AUT AZE BHS BHR BGD BRB BLR BEL BLZ BEN BTN BOL BIH BWA BRA BRN BGR BFA BDI CPV KHM CMR CAN CAF TCD CHL CHN COL COM COG COD CRI CIV HRV CUB CYP CZE DNK DJI DMA DOM ECU EGY SLV GNQ ERI EST SWZ ETH FJI FIN FRA GAB GMB GEO DEU GHA GRC GRD GTM GIN GNB GUY HTI HND HUN ISL IND IDN IRN IRQ IRL ISR ITA JAM JPN JOR KAZ KEN KIR PRK KOR KWT KGZ LAO LVA LBN LSO LBR LBY LIE LTU LUX MDG MWI MYS MDV MLI MLT MHL MRT MUS MEX FSM MDA MCO MNG MNE MAR MOZ MMR NAM NRU NPL NLD NZL NIC NER NGA MKD NOR OMN PAK PLW PAN PNG PRY PER PHL POL PRT QAT ROU RUS RWA KNA LCA VCT WSM SMR STP SAU SEN SRB SYC SLE SGP SVK SVN SLB SOM ZAF SSD ESP LKA SDN SUR SWE CHE SYR TJK TZA THA TLS TGO TON TTO TUN TUR TKM TUV UGA UKR ARE GBR USA URY UZB VUT VEN VNM YEM ZMB ZWE".split(" ");
+ assert.equal(new Set(unMembers).size,193);
+ const modern=JSON.parse(fs.readFileSync(process.env.LEKTRUS_ATLAS_DATA_DIR+"/ne_10m_admin_0_countries_rus.geojson","utf8"));
+ const correctedModern=geoExports.correctModernTerritoryLabels(modern);
+ assert.equal(correctedModern.features.length,257);
+ assert.equal(correctedModern.features.filter(geoExports.hasAtlasName).length,257,"every geographic source record must be visible");
+ const correctedTerritories=correctedModern.features.filter(f=>f.properties.ATLAS_MODERN_TERRITORY_LABEL);
+ assert.equal(correctedTerritories.length,9);
+ for(const [i,f] of correctedModern.features.entries()){
+  assert.equal(f.geometry,modern.features[i].geometry,"source boundary must not change while correcting names");
+  if(f.properties.ATLAS_MODERN_TERRITORY_LABEL){
+   assert.ok(geoExports.modernAtlasTerritoryUpdate(f)?.url.startsWith("https://"));
+   assert.ok(geoExports.mapFeaturePath(f,.62),"corrected feature must be drawable");
+  }
+ }
+ const spratly=correctedTerritories.find(f=>f.properties.ADM0_A3==="PGA");
+ assert.equal(geoExports.geoFeatureName(spratly),"Острова Спратли");
+ assert.equal(spratly.properties.WIKIDATAID,null,"prevent unrelated Wake Island encyclopedia card");
+ assert.equal(spratly.properties.ATLAS_ORIGINAL_NAME_RU,"Уэйк");
+ for(const i of [24,57,59,73,137,140,141,171,172,173,174,226,227,239,240,247,249,250,254,255,256]){
+  const update=geoExports.modernAtlasTerritoryUpdate(correctedModern.features[i]);
+  assert.ok(update?.note&&update.url.startsWith("https://"),`archive territory ${i}: missing reviewed context`);
+ }
+ for(const iso of ["FRA","NOR","SRB","GEO"]){
+  const update=geoExports.modernAtlasTerritoryUpdate(correctedModern.features.find(f=>f.properties.ADM0_A3===iso));
+  assert.ok(update?.note&&update.url.startsWith("https://"),`${iso}: comparable territorial extent note missing`);
+ }
+ const unrelated={...modern.features[171],bbox:[0,0,1,1]};
+ assert.equal(geoExports.correctModernTerritoryLabels({type:"FeatureCollection",features:[unrelated]}).features[0],unrelated,"generic -99 code must not rename unrelated geometry");
+ const coverageSource=fs.readFileSync(new URL("../src/lektrusAtlasHistoricalCoverage.ts",import.meta.url),"utf8");
+ const coverageExports={};
+ new Function("exports",ts.transpileModule(coverageSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(coverageExports);
+ // A/RES/1514(XV), 14 December 1960: 99 voting members, including the
+ // Ukrainian and Byelorussian SSR seats that are not independent map polities.
+ // The China seat was represented by the Republic of China; Egypt and Syria
+ // were one UN member (UAR). Never compare this period against today's ISO list.
+ const un1960="Afghanistan|Albania|Argentina|Australia|Austria|Belgium|Bolivia|Brazil|Bulgaria|Burma|Cambodia|Cameroon|Canada|Central African Republic|Sri Lanka|Chad|Chile|Taiwan|Colombia|Congo|Zaire|Costa Rica|Cuba|Cyprus|Czechoslovakia|Benin|Denmark|Dominican Republic|Ecuador|El Salvador|Ethiopia|Malaysia|Finland|France|Gabon|Ghana|Greece|Guatemala|Guinea|Haiti|Honduras|Hungary|Iceland|India|Indonesia|Iran|Iraq|Ireland|Israel|Italy|Ivory Coast|Japan|Jordan|Laos|Lebanon|Liberia|Libya|Luxembourg|Madagascar|Mali|Mexico|Morocco|Nepal|Netherlands|New Zealand|Nicaragua|Niger|Nigeria|Norway|Pakistan|Panama|Paraguay|Peru|Philippines|Poland|Portugal|Romania|Saudi Arabia|Senegal|Somalia|Spain|Sudan|Sweden|Thailand|Togo|Tunisia|Turkey|South Africa|USSR|Egypt|United Kingdom|United States|Burkina Faso|Uruguay|Venezuela|Yemen|Yugoslavia".split("|");
+ assert.equal(new Set(un1960).size+2,99);
+ const raw1960=JSON.parse(fs.readFileSync(`${process.env.LEKTRUS_ATLAS_DATA_DIR}/world_1960.geojson`,"utf8"));
+ const named1960=new Set(raw1960.features.filter(f=>["MultiPolygon","Polygon"].includes(f.geometry?.type)).map(f=>f.properties?.NAME?.trim()));
+ assert.deepEqual(un1960.filter(n=>!named1960.has(n)),[]);
+ // Interior points demonstrate actual anachronistic coverage, not just a
+ // mismatch of labels. All points are well inland, away from the coastline
+ // simplification. Retain the original geometry, but mark it conditional.
+ for(const [name,point] of [["Yemen",[48.8,15.5]],["Malaysia",[112.5,2.7]],["Malaysia",[117,5]],["Indonesia",[138,-4]],["Cameroon",[9.4,5.6]]]){
+  const original=raw1960.features.find(f=>f.properties?.NAME===name&&capitalInsideCountry(point,f.geometry));
+  assert.ok(original,`1960: expected known composite outline for ${name}`);
+  const corrected=geoExports.correctHistoricalLabels(raw1960,1960).features.find(f=>f.geometry===original.geometry);
+  assert.match(corrected.properties.ATLAS_HISTORICAL_LABEL,/условный контур/);
+  assert.equal(geoExports.borderPrecision(corrected),1);
+ }
+ console.log("1960: 97/97 named outlines corresponding to 99 UN seats (two SSRs included in USSR); geometry acceptance remains open.");
+ // Verify minimum named coverage against all 193 present-day members, with
+ // the UN roster's actual year-end totals and explicit historical aliases.
+ const oldAliases={BLR:"Byelarus",COG:"Congo",COD:"Zaire",SWZ:"Swaziland",GMB:"Gambia, The",PRK:"Korea, Democratic People's Republic of",KOR:"Korea, Republic of",MMR:"Burma",MKD:"Macedonia",TZA:"Tanzania, United Republic of",TTO:"Trinidad",CPV:"Cape Verde"};
+ const admittedLater={SSD:2011,TLS:2002,MNE:2006,CHE:2002,KIR:1999,NRU:1999,TON:1999,TUV:2000};
+ for(const [year,expected,missingCount] of [[2010,192,19],[2000,189,18],[1994,185,15]]){
+  const raw=JSON.parse(fs.readFileSync(`${process.env.LEKTRUS_ATLAS_DATA_DIR}/world_${year}.geojson`,"utf8"));
+  const roster=unMembers.filter(iso=>(admittedLater[iso]??0)<=year);
+  assert.equal(roster.length,expected);
+  const named=new Set(raw.features.map(f=>String(f.properties?.NAME??"").trim().toLowerCase()).filter(Boolean));
+  const missing=roster.filter(iso=>{
+   const p=modern.features.find(f=>f.properties?.ADM0_A3===iso).properties;
+   return ![p.NAME,p.ADMIN,p.NAME_LONG,p.FORMAL_EN,p.BRK_NAME,oldAliases[iso]].filter(Boolean).some(n=>named.has(n.toLowerCase()));
+  }).sort();
+  const coverage=coverageExports.historicalMemberCoverage(year);
+  assert.equal(coverage.expected,expected);
+  assert.equal(missing.length,missingCount);
+  assert.deepEqual(coverage.missing.map(m=>m.iso).sort(),missing);
+  const restored=geoExports.correctHistoricalLabels(raw,year).features.filter(f=>f.properties?.NAME==="Switzerland"&&Object.hasOwn(f.properties,"ATLAS_ORIGINAL_NAME"));
+  assert.equal(restored.length,1,`${year}: missing main Swiss contour`);
+  assert.ok(raw.features.some(f=>!f.properties.NAME?.trim()&&f.geometry===restored[0].geometry),"Swiss geometry must be original, not recreated");
+  assert.equal(restored[0].geometry.coordinates[0][0].length,2857);
+  console.log(`${year}: ${expected-missingCount}/${expected} UN roster entries have named outlines; ${missingCount} missing; main Swiss contour identified.`);
+ }
+ for(const iso of [...unMembers,"PSE","VAT"]){
+  const adm={SSD:"SDS",PSE:"PSX"}[iso]??iso;
+  const feature=modern.features.find(f=>f.properties?.ADM0_A3===adm);
+  assert.ok(feature,`2026 overview missing ${iso}`);
+  assert.ok(geoExports.geoFeatureName(feature),`2026 overview missing Russian name for ${iso}`);
+  assert.ok(geoExports.mapFeaturePath(feature,.62),`2026 overview missing outline for ${iso}`);
+ }
+ for(const adm of ["KGZ","TJK","MUS","IOT","ARM","AZE","RUS","UKR"]){
+  const feature=modern.features.find(f=>f.properties?.ADM0_A3===adm);
+  const update=geoExports.modernAtlasTerritoryUpdate(feature);
+  const date=["ARM","AZE"].includes(adm)?"2024":["RUS","UKR"].includes(adm)?"2022":"2025";
+  assert.ok(update?.note.includes(date)&&update.url.startsWith("https://"),`dated note missing for ${adm}`);
+ }
+ console.log("2026 overview: 193/193 UN member states and 2/2 observer states present, named and drawable. Geometry is the archived 2022 layer, not a certified 2026 border survey.");
+ const roster=[...unMembers,"PSE","VAT"];
+ const statsExports={};
+ new Function("exports",ts.transpileModule(fs.readFileSync(new URL("../src/lektrusAtlasModernStats.ts",import.meta.url),"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(statsExports);
+ assert.deepEqual(Object.keys(statsExports.modernCountryStats).sort(),roster.slice().sort());
+ for(const iso of roster){
+  const feature=modern.features.find(f=>f.properties.ADM0_A3===({SSD:"SDS",PSE:"PSX"}[iso]??iso));
+  const s=statsExports.countryStatistics(feature);
+  assert.ok(s,`${iso}: missing modern statistical profile`);
+  assert.ok(iso==="VAT"?s.populationThousands===null:Number.isInteger(s.populationThousands)&&s.populationThousands>0);
+  assert.ok(["VAT","SSD","SDN"].includes(iso)?s.areaKm2===null:Number.isInteger(s.areaKm2)&&s.areaKm2>0);
+  assert.ok(statsExports.countryStatisticsFacts(s).every(f=>f.sourceUrl?f.sourceUrl.startsWith("https://")&&f.value:f.label.includes("2025")&&f.value));
+ }
+ assert.deepEqual(statsExports.modernCountryStats.RUS,{populationThousands:143997,areaKm2:17098246});
+ assert.deepEqual(statsExports.modernCountryStats.CHN,{populationThousands:1416096,areaKm2:9600000});
+ assert.deepEqual(statsExports.modernCountryStats.PSE,{populationThousands:5590,areaKm2:6025});
+ for(const [iso,area] of Object.entries({VAT:.44,MCO:2.08,SGP:745.1,LIE:160,SMR:61.2})){
+  const f=modern.features.find(f=>f.properties.ADM0_A3===iso);
+  assert.equal(statsExports.countryStatistics(f).nationalArea.areaKm2,area);
+  assert.ok(statsExports.countryStatisticsFacts(statsExports.countryStatistics(f)).some(f=>f.sourceUrl&&f.value.includes("км²")));
+ }
+ for(const iso of ["VAT","MCO","SGP"]){
+  const note=geoExports.modernAtlasTerritoryUpdate(modern.features.find(f=>f.properties.ADM0_A3===iso));
+  assert.ok(note?.note.includes("2022")||note?.note.includes("архивный")||note?.note.includes("Архивный"),`${iso}: geometry warning missing`);
+ }
+ console.log("2026 overview: 195/195 country statistics compared to UN's dated 2025 reference; 192 surface areas available, 3 not supplied.");
+ assert.deepEqual(Object.keys(un2025CapitalReference).sort(),roster.slice().sort(),"independent capital roster must cover all 195 entries");
+ for(const scale of [110,50,10]){
+  const layer=JSON.parse(fs.readFileSync(`${process.env.LEKTRUS_ATLAS_DATA_DIR}/ne_${scale}m_populated_places.geojson`,"utf8"));
+  const points=places.applyVerifiedCapitalUpdates2026(layer).features;
+  let spatialChecks=0;
+  for(const iso of roster){
+   const adm={SSD:"SDS",PSE:"PSX"}[iso]??iso;
+   const country=modern.features.find(f=>f.properties?.ADM0_A3===adm);
+   const actual=places.capitalsForCountry(country,points);
+   const wanted=modernCapitalOverrides[iso]??[un2025CapitalReference[iso]];
+   const found=actual.map(p=>normalizeCapital(p.properties.NAME));
+   if(iso==="KIR"){
+    assert.equal(found.length,1);
+    assert.ok(wanted.map(normalizeCapital).includes(found[0]));
+   }else assert.deepEqual(found.sort(),wanted.map(normalizeCapital).sort(),`2026 capital, 1:${scale}m, ${iso}`);
+   for(const capital of actual){
+    assert.ok(places.russianPlaceName(capital),`${iso}: untranslated capital`);
+    assert.ok(capital.geometry.coordinates.every(Number.isFinite),`${iso}: invalid capital coordinates`);
+    assert.ok(capitalInsideCountry(capital.geometry.coordinates,country.geometry),`${iso}: capital outside its source country`);
+    spatialChecks++;
+   }
+   if(!wanted.length)assert.ok(places.modernCapitalContext(country)?.url.startsWith("https://"),`${iso}: missing source-backed capital context`);
+  }
+  assert.equal(spatialChecks,197);
+  console.log(`2026 capital crosswalk: ${roster.length}/${roster.length} states checked at 1:${scale}m, ${spatialChecks} capital points inside corresponding source polygons.`);
+ }
+ for(const adm of ["NRU","PSX","ISR","BOL","NLD","MYS","IDN","SDN","YEM"]){
+  const feature=modern.features.find(f=>f.properties.ADM0_A3===adm);
+  const context=places.modernCapitalContext(feature);
+  assert.ok(context?.text&&context.url.startsWith("https://"),`${adm}: capital context missing`);
+ }
+ let featureCount=0,namedPairs=0,correctedCount=0,emptyPaths=0;
+ for(const snapshot of historicalSnapshots.filter(s=>s.year!==2026).slice().reverse()){
+  const actual=JSON.parse(fs.readFileSync(process.env.LEKTRUS_ATLAS_DATA_DIR+"/"+snapshot.file,"utf8"));
+  const result=geoExports.correctHistoricalLabels(actual,snapshot.year);
+  assert.equal(result.features.length,actual.features.length);
+  const drawable=geoExports.historicalMapFeatures(result);
+  const names=new Set();
+  for(const feature of drawable){
+   featureCount++;
+   const name=String(feature.properties?.NAME??"").trim();
+   if(name)names.add(name);
+   const rawPath=geoExports.mapFeaturePath(feature,.62);
+   if(!rawPath)emptyPaths++;
+   else assert.ok(!/NaN|Infinity/.test(rawPath),`${snapshot.year} ${name}: invalid map geometry`);
+   const facts=geoExports.historicalFeatureFacts(feature);
+   assert.ok(facts.every(f=>f.label&&f.value),`${snapshot.year} ${name}: empty card field`);
+   const corrected=feature.properties?.ATLAS_HISTORICAL_LABEL;
+   if(corrected){
+    correctedCount++;
+    assert.equal(geoExports.correctedHistoricalIndexLabel(name,snapshot.year),corrected);
+    assert.equal(geoExports.borderPrecision(feature),1);
+    assert.ok(feature.properties.ATLAS_HISTORICAL_SOURCE);
+    assert.ok(!facts.some(f=>f.label==="Подчинение / принадлежность в базе"));
+   }
+  }
+  namedPairs+=names.size;
+ }
+ assert.equal(emptyPaths,0,"every historical polygon must render at overview scale");
+ assert.equal(featureCount,17769,"actual pinned source polygon coverage changed");
+ console.log(`Actual historical dataset: ${featureCount} polygons, ${namedPairs} distinct name/year pairs, ${correctedCount} corrected polygons, ${emptyPaths} empty paths at overview scale.`);
+}
 assert.equal(geoExports.historicalCountryName("Japan"),"Япония");
 assert.equal(geoExports.historicalCountryName("United States of America"),"Соединённые Штаты Америки");
 assert.equal(geoExports.historicalCountryName("Czechoslovakia"),"Чехословакия");

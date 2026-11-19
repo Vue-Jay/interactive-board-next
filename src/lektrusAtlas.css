@@ -116,6 +116,8 @@
 .lektrus-atlas-search-results small{padding:6px;color:#68849c;font-size:10px}
 .lektrus-atlas-layer-warning{margin:0;color:#8d5c2c;background:#fff5e4;border:1px solid #f0ddbe;
  border-radius:7px;padding:6px;font-size:10px;line-height:1.4}
+.lektrus-atlas-layer-warning>summary{cursor:pointer;font-weight:600}
+.lektrus-atlas-layer-warning>ul{margin:4px 0;padding-left:17px}
 .lektrus-atlas-compare{display:flex;gap:6px;align-items:center;font-size:10px;color:#4f7595;line-height:1.35}
 .lektrus-atlas-compare input{width:auto;min-width:13px;accent-color:#bc4d4d}
 .lektrus-atlas-compare small{display:block;color:#a46a63}
