@@ -126,6 +126,21 @@ def native_ink_stroke():
    try{const data=JSON.parse(localStorage.getItem(key));const ink=data?.items?.find(i=>i.kind==='pen'&&i.points?.length>1);if(ink)return {key,points:ink.points.length};}catch{}
   }return null;""")
  return wait(persisted,'Native touch stroke not persisted',20)
+def native_undo_redo():
+ def ink_state():
+  return js("""for(const key of Object.keys(localStorage)){
+   if(!key.includes('document'))continue;
+   try{const data=JSON.parse(localStorage.getItem(key));if(Array.isArray(data?.items))
+    return data.items.filter(i=>i.kind==='pen').map(i=>({id:i.id,points:i.points?.length||0}));}catch{}
+  }return null;""")
+ before=wait(ink_state,'Board ink storage missing')
+ assert any(i['points']>1 for i in before),'No completed pen stroke before undo'
+ tap_selector('button[aria-label="Отменить"]')
+ wait(lambda:ink_state()!=before,'Undo did not change saved ink')
+ undone=ink_state()
+ tap_selector('button[aria-label="Повторить"]')
+ wait(lambda:ink_state()==before,'Redo did not restore saved ink')
+ return {'before':before,'undone':undone,'redone':ink_state()}
 def native_pinch_zoom():
  tap_selector('nav.mobile-board-tools button[data-interface-control="select"],.toolbar-pinned button[data-interface-control="select"]')
  before=js('return document.querySelector(".zoom-value")?.textContent')
@@ -190,6 +205,7 @@ try:
  check('native-keyboard-outside-touch',keyboard_outside_touch,requires=['installed-native-capacitor-and-layout'])
  check('native-create-board',create_board,requires=['native-keyboard-outside-touch'])
  check('native-touch-pen-persistence',native_ink_stroke,requires=['native-create-board'])
+ check('native-undo-redo',native_undo_redo,requires=['native-touch-pen-persistence'])
  check('native-two-finger-pinch',native_pinch_zoom,requires=['native-create-board'])
 except Exception as error:
  fatal_error={'type':type(error).__name__,'message':str(error),'traceback':traceback.format_exc()}
