@@ -264,7 +264,8 @@ new Function("exports",ts.transpileModule(regionDisplayNamesSource,{compilerOpti
 assert.equal(typeof regionDisplayNamesExports.regionDisplayNames,"function","Atlas region display name helper must export a function");
 const atlasDataRequire=(path)=>{
  if(path==="./regionDisplayNames")return regionDisplayNamesExports;
- return exports;
+ if(path==="./lektrusAtlasModel")return exports;
+ throw new Error("Unexpected atlas dependency: "+path);
 };
 const sourceBoundaryLine={type:"Feature",properties:{NAME:"Verified boundary"},geometry:{type:"LineString",coordinates:[[0,0],[1,1]]}};
 const noGeometry={type:"Feature",properties:{NAME:"Hawke's Bay - Waikato"},geometry:null};
