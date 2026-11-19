@@ -460,6 +460,16 @@ def choose_tool(tool):
     wait(lambda: js('return document.querySelector("section.board")?.classList.contains("board-tool-"+arguments[0]);', tool), f'Tool not active: {tool}')
 
 
+def tool_switch_roundtrip():
+    # Verify actual mobile tool buttons and active tool state, not merely
+    # the presence of entries in the tool catalogue.
+    states=[]
+    for tool in ('select','pen','marker','eraser','pen'):
+        choose_tool(tool)
+        states.append(tool)
+    return {'nativeToolSwitches':states}
+
+
 def ink():
     return js('''const keys=Object.keys(localStorage).filter(k=>k.includes(".local-test.board."));
       const id=location.pathname.split('/').pop();
@@ -1337,7 +1347,7 @@ EXPECTED_CHECKS=[
     'home-portrait-layout','more-and-native-keyboard',
     *['workspace-'+r for r in ('subjects','groups','students','assignments','schedule','progress','materials','templates','notifications','feedback','profile','settings')],
     'create-board-and-landscape','board-landscape-bounds','two-finger-pinch','pencil-touch','marker-touch',
-    'eraser-touch','undo-redo','navigation-dock-no-overlap','tool-catalogue','board-reopen-persistence',
+    'eraser-touch','undo-redo','navigation-dock-no-overlap','tool-catalogue','tool-switch-roundtrip','board-reopen-persistence',
     'native-back-and-deep-link','zoom-for-object-tests','create-rectangle-touch','move-object-touch',
     'resize-object-touch','rotate-duplicate-delete','text-native-keyboard','sticky-native-keyboard',
     'table-edit-and-save','all-objects-reopen-persistence','checklist-edit-and-save','flashcard-edit-and-save','quiz-edit-and-save','formula-edit-and-save',
@@ -1694,6 +1704,7 @@ def run_full():
     check('undo-redo', undo_redo)
     check('navigation-dock-no-overlap', navigation_dock_layout)
     check('tool-catalogue', tools_menu)
+    check('tool-switch-roundtrip', tool_switch_roundtrip)
     check('board-reopen-persistence', reopen)
     if results[-1]['status']!='passed':
         recover_reopen_after_failure()
