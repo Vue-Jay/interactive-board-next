@@ -1421,7 +1421,15 @@ def subject_panel(subject):
     labels=lambda:js('return Array.from(document.querySelectorAll(".lektrus-subject-tools-list button")).map(e=>e.getAttribute("aria-label"))')
     wait(lambda:sorted(labels())==sorted(expected), f'Subject tool catalogue mismatch, {subject}: {labels()}',10)
     bounds=check_layout(['#lektrus-subject-tools-panel','.lektrus-subject-tools-head','.lektrus-subject-tools-category select'])
-    return {'subject':subject,'tools':labels(),'bounds':bounds}
+    # Audit every subject tool button, not only the subset exercised by editors.
+    # A catalogue entry is not usable if disabled, zero-sized, or unreachable
+    # through the actual scrollable mobile tool panel.
+    controls=js('''return [...document.querySelectorAll(".lektrus-subject-tools-list button")].map(e=>{
+      const r=e.getBoundingClientRect();return {label:e.getAttribute("aria-label"),disabled:e.disabled,
+      width:r.width,height:r.height};});''')
+    assert len(controls)==len(expected), f'Subject tool count mismatch: {subject}: {controls}'
+    assert all(not e['disabled'] and e['width']>=24 and e['height']>=24 for e in controls), f'Unusable subject buttons: {subject}: {controls}'
+    return {'subject':subject,'tools':labels(),'controls':controls,'bounds':bounds}
 
 
 def subject_catalogue(subject):
