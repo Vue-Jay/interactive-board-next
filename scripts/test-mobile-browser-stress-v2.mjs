@@ -88,6 +88,18 @@ try{
     await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
     const savedInk=`(()=>{const frame=document.querySelector('.lektrus-browser-board-frame');if(!frame?.contentWindow)return null;const boardId=frame.contentWindow.location.pathname.split('/').pop();if(!boardId)return null;for(const key of Object.keys(frame.contentWindow.localStorage)){if(!key.includes('document')||!key.includes(boardId))continue;try{const data=JSON.parse(frame.contentWindow.localStorage.getItem(key));const ink=data?.items?.find(item=>item.kind==='pen'&&item.points?.length>1);if(ink)return {points:ink.points.length,key};}catch{}}return null})()`;
     await wait(savedInk,'Real touch pen stroke was not persisted in local board document',15000);
+    const firstInk=await evaluate(savedInk);
+    const boardButton=async selector=>{
+      const position=await evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),e=f?.contentDocument?.querySelector(${JSON.stringify(selector)});if(!e)return null;const r=e.getBoundingClientRect(),fr=f.getBoundingClientRect(),p={x:r.left+r.width/2,y:r.top+r.height/2};return f.parentElement.dataset.rotated==='true'?{x:fr.right-p.y,y:fr.top+p.x}:{x:fr.left+p.x,y:fr.top+p.y}})()`);
+      assert.ok(position,'Board button missing: '+selector);
+      await touch(position.x,position.y);
+    };
+    await boardButton('button[aria-label="Отменить"]');
+    await wait(`!(${savedInk})`,'Undo did not remove the newly created stroke',10000);
+    await boardButton('button[aria-label="Повторить"]');
+    await wait(`!!(${savedInk})`,'Redo did not restore the stroke',10000);
+    const restoredInk=await evaluate(savedInk);
+    assert.equal(restoredInk.points,firstInk.points,'Redo changed the stroke point count');
     // Switch out of drawing mode before pinching to avoid accidental ink.
     const selectPoint=await evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),d=f.contentDocument,e=[...d.querySelectorAll('nav.mobile-board-tools button[data-interface-control="select"],.toolbar-pinned button[data-interface-control="select"]')].find(x=>x.getBoundingClientRect().width>0);if(!e)return null;const r=e.getBoundingClientRect(),fr=f.getBoundingClientRect(),p={x:r.left+r.width/2,y:r.top+r.height/2};return f.parentElement.dataset.rotated==='true'?{x:fr.right-p.y,y:fr.top+p.x}:{x:fr.left+p.x,y:fr.top+p.y}})()`);
     assert.ok(selectPoint,'Select tool unavailable before pinch');
