@@ -258,9 +258,16 @@ assert.match(fs.readFileSync(new URL("../src/LektrusMapBase.tsx",import.meta.url
 
 const data=fs.readFileSync(new URL("../src/lektrusAtlasData.ts",import.meta.url),"utf8");
 const sourceLoader={};
+const regionDisplayNamesSource=fs.readFileSync(new URL("../src/regionDisplayNames.ts",import.meta.url),"utf8");
+const regionDisplayNamesExports={};
+new Function("exports",ts.transpileModule(regionDisplayNamesSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(regionDisplayNamesExports);
+const atlasDataRequire=(path)=>{
+ if(path==="./regionDisplayNames")return regionDisplayNamesExports;
+ return exports;
+};
 const sourceBoundaryLine={type:"Feature",properties:{NAME:"Verified boundary"},geometry:{type:"LineString",coordinates:[[0,0],[1,1]]}};
 const noGeometry={type:"Feature",properties:{NAME:"Hawke's Bay - Waikato"},geometry:null};
-new Function("exports","require","fetch",ts.transpileModule(data,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(sourceLoader,()=>exports,async()=>({ok:true,json:async()=>({type:"FeatureCollection",features:[sourceBoundaryLine,noGeometry]})}));
+new Function("exports","require","fetch",ts.transpileModule(data,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(sourceLoader,atlasDataRequire,async()=>({ok:true,json:async()=>({type:"FeatureCollection",features:[sourceBoundaryLine,noGeometry]})}));
 assert.deepEqual((await sourceLoader.loadAtlasLayer("admin-world-lines")).features,[sourceBoundaryLine],"A published geometry-less record must not suppress the entire detailed map");
 
 const historicalInsigniaSource=fs.readFileSync(new URL("../src/lektrusHistoricalInsignia.ts",import.meta.url),"utf8");
