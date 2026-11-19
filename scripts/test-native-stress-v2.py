@@ -3,7 +3,7 @@
 Requires a running Appium server and an installed debug APK/iOS simulator app.
 No production writes. Physical WebDriver taps, not DOM .click().
 """
-import argparse, json, time, urllib.request, urllib.error, sys, traceback
+import argparse, json, time, urllib.request, urllib.error, sys, traceback, base64
 from pathlib import Path
 
 p=argparse.ArgumentParser()
@@ -34,13 +34,27 @@ def wait(fn,reason,seconds=60):
   except Exception:pass
   time.sleep(.35)
  raise AssertionError(reason)
-def check(name,fn):
- started=time.monotonic()
+def capture(name):
+ if not session:return {'status':'unavailable','reason':'no session'}
  try:
-  detail=fn();results.append({'name':name,'status':'passed','detail':detail,'seconds':round(time.monotonic()-started,2)})
+  raw=base64.b64decode(cmd('GET','/screenshot'),validate=True)
+  if not raw.startswith(b'\\x89PNG\\r\\n\\x1a\\n'):raise ValueError('Not a PNG')
+  args.output.mkdir(parents=True,exist_ok=True)
+  target=args.output/(args.platform+'-'+name+'.png')
+  target.write_bytes(raw)
+  return {'status':'captured','path':str(target)}
+ except Exception as error:return {'status':'missing','error':str(error)}
+def check(name,fn,requires=None):
+ started=time.monotonic()
+ if requires and any(not any(x['name']==dep and x['status']=='passed' for x in results) for dep in requires):
+  results.append({'name':name,'status':'blocked','reason':'Prerequisite failed','requires':requires})
+  print('BLOCKED',name,flush=True)
+  return
+ try:
+  detail=fn();results.append({'name':name,'status':'passed','detail':detail,'seconds':round(time.monotonic()-started,2),'screenshot':capture(name)})
   print('PASS',name,flush=True)
  except Exception as error:
-  results.append({'name':name,'status':'failed','error':str(error),'seconds':round(time.monotonic()-started,2)})
+  results.append({'name':name,'status':'failed','error':str(error),'seconds':round(time.monotonic()-started,2),'screenshot':capture(name+'-failure')})
   print('FAIL',name,error,flush=True)
 def attach():
  errors=[]
@@ -156,11 +170,11 @@ try:
  if not session:raise RuntimeError('Appium did not return session ID')
  wait(lambda:attach(),'Native WebView never became ready',90)
  check('installed-native-capacitor-and-layout',home_layout)
- check('native-touch-navigation-storm',navigation_storm)
- check('native-keyboard-outside-touch',keyboard_outside_touch)
- check('native-create-board',create_board)
- check('native-touch-pen-persistence',native_ink_stroke)
- check('native-rotation-roundtrip',orientation)
+ check('native-touch-navigation-storm',navigation_storm,requires=['installed-native-capacitor-and-layout'])
+ check('native-keyboard-outside-touch',keyboard_outside_touch,requires=['installed-native-capacitor-and-layout'])
+ check('native-create-board',create_board,requires=['native-keyboard-outside-touch'])
+ check('native-touch-pen-persistence',native_ink_stroke,requires=['native-create-board'])
+ check('native-rotation-roundtrip',orientation,requires=['installed-native-capacitor-and-layout'])
 except Exception as error:
  fatal_error={'type':type(error).__name__,'message':str(error),'traceback':traceback.format_exc()}
  print('FATAL',str(error),flush=True)
