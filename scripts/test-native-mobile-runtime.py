@@ -292,7 +292,7 @@ def auth_portrait(expected):
     assert state['scrollWidth']<=state['width']+3 and not state['boardClass'] and not state['rotating'],state
     state['formLayout']=js('''const s=document.querySelector('.auth-shell'),c=s.querySelector('.auth-card'),r=c.getBoundingClientRect(),stage=s.querySelector('.auth-stage'),p=getComputedStyle(stage),w=innerWidth;
       const fields=[...s.querySelectorAll('.auth-field input')].filter(e=>e.getClientRects().length);
-      return {width:r.width,expectedWidth:Math.min(580,w-parseFloat(p.paddingLeft)-parseFloat(p.paddingRight)),left:r.left,right:r.right,top:r.top,bottom:r.bottom,height:r.height,viewport:s.clientHeight,scrollHeight:s.scrollHeight,ownScroll:getComputedStyle(s).overflowY,fields:fields.map(e=>({font:parseFloat(getComputedStyle(e).fontSize),height:e.getBoundingClientRect().height})),centered:Math.abs((r.top+r.bottom)/2-s.clientHeight/2)<8};''')
+      return {width:r.width,expectedWidth:Math.min(580,s.clientWidth-parseFloat(p.paddingLeft)-parseFloat(p.paddingRight)),left:r.left,right:r.right,top:r.top,bottom:r.bottom,height:r.height,viewport:s.clientHeight,scrollHeight:s.scrollHeight,ownScroll:getComputedStyle(s).overflowY,fields:fields.map(e=>({font:parseFloat(getComputedStyle(e).fontSize),height:e.getBoundingClientRect().height})),centered:Math.abs((r.top+r.bottom)/2-s.clientHeight/2)<8};''')
     layout=state['formLayout']
     assert layout['width']>=layout['expectedWidth']-3 and layout['width']<=layout['expectedWidth']+3,layout
     assert layout['left']>=0 and layout['right']<=state['width']+1 and layout['ownScroll']=='auto',layout
