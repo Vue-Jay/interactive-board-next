@@ -170,6 +170,7 @@ export default function App() {
     if(next.kind==="join")rememberShareToken(next.token);
     if(next.kind==="board")rememberBoardPath(next.boardId);
     setRoute(Capacitor.isNativePlatform()&&next.kind==="site"?{kind:"home"}:next);
+    window.dispatchEvent(new Event("lektrus:workspace-route"));
   }, []);
   useEffect(() => {
     if (route.kind==="home" && new URLSearchParams(window.location.search).get("section")==="ai") {

@@ -61,7 +61,9 @@ jobs:
           ls "${ANDROID_HOME}/platforms" | tail -5
       - run: npm ci --no-audit --no-fund
       - name: Verify native project
-        run: npm run native:check
+        run: |
+          npm run native:check
+          node scripts/test-android-update-policy.mjs
       - name: Verify Android API transport and authentication state
         run: node scripts/test-selfhost-client.mjs
       - name: Build bundled Lektrus

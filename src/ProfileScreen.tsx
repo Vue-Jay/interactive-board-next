@@ -48,7 +48,7 @@ export default function ProfileScreen({user,isAppAdmin,previewMode=false,onBack,
    {error&&<div className="profile-redesign-alert" role="alert">{error}</div>}
    {saved&&<div className="profile-redesign-success" role="status">✓ {saved}</div>}
    <section className="profile-redesign-card">
-    <div className="profile-section-heading"><div><span>01</span><div><h2>Личные данные</h2><p>Как вас будут видеть на досках и занятиях.</p></div></div></div>
+    <div className="profile-section-heading"><h2>Личные данные</h2><p>Как вас будут видеть на досках и занятиях.</p></div>
     <div className="profile-redesign-grid">
      <label className="profile-redesign-field profile-field-full"><span>Отображаемое имя</span><input value={profile.displayName} maxLength={80} onChange={e=>setProfile(current=>({...current,displayName:e.target.value}))} placeholder="Как к вам обращаться" autoComplete="nickname"/></label>
      {personalFields.map(([key,label,placeholder])=><label key={key} className="profile-redesign-field"><span>{label}</span><input value={details[key]} onChange={e=>setField(key,e.target.value)} placeholder={placeholder} autoComplete={key==="firstName"?"given-name":key==="lastName"?"family-name":"additional-name"} maxLength={80}/></label>)}
