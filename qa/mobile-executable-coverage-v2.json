@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "description": "Actual executable checks only. These are not 2813 verified tests; no execution evidence yet.",
+  "checks": [
+    {
+      "id": "browser-layout",
+      "driver": "scripts/test-mobile-browser-stress-v2.mjs",
+      "environment": "mobile-browser-emulation",
+      "oracle": "Viewport dimensions, visible controls and horizontal overflow",
+      "status": "implemented-unverified",
+      "lastRun": null
+    },
+    {
+      "id": "browser-create-board",
+      "driver": "scripts/test-mobile-browser-stress-v2.mjs",
+      "environment": "mobile-browser-emulation",
+      "oracle": "Physical touch creates board and title matches",
+      "status": "implemented-unverified",
+      "lastRun": null
+    },
+    {
+      "id": "browser-pen-persistence",
+      "driver": "scripts/test-mobile-browser-stress-v2.mjs",
+      "environment": "mobile-browser-emulation",
+      "oracle": "Physical stroke persists as multi-point pen item",
+      "status": "implemented-unverified",
+      "lastRun": null
+    },
+    {
+      "id": "browser-keyboard-blur",
+      "driver": "scripts/test-mobile-browser-stress-v2.mjs",
+      "environment": "mobile-browser-emulation",
+      "oracle": "Outside touch removes focus without losing value",
+      "status": "implemented-unverified",
+      "lastRun": null
+    },
+    {
+      "id": "browser-navigation-storm",
+      "driver": "scripts/test-mobile-browser-stress-v2.mjs",
+      "environment": "mobile-browser-emulation",
+      "oracle": "Repeated safe navigation taps cause no captured JS errors",
+      "status": "implemented-unverified",
+      "lastRun": null
+    },
+    {
+      "id": "native-startup-layout",
+      "driver": "scripts/test-native-stress-v2.py",
+      "environment": "installed-android-or-ios",
+      "oracle": "Capacitor native platform and viewport constraints",
+      "status": "implemented-unverified",
+      "lastRun": null
+    },
+    {
+      "id": "native-navigation-storm",
+      "driver": "scripts/test-native-stress-v2.py",
+      "environment": "installed-android-or-ios",
+      "oracle": "Repeated W3C navigation touch and WebView continuity",
+      "status": "implemented-unverified",
+      "lastRun": null
+    },
+    {
+      "id": "native-keyboard-blur",
+      "driver": "scripts/test-native-stress-v2.py",
+      "environment": "installed-android-or-ios",
+      "oracle": "Keyboard input survives outside tap",
+      "status": "implemented-unverified",
+      "lastRun": null
+    },
+    {
+      "id": "native-board-create",
+      "driver": "scripts/test-native-stress-v2.py",
+      "environment": "installed-android-or-ios",
+      "oracle": "Board created through installed WebView and title matches",
+      "status": "implemented-unverified",
+      "lastRun": null
+    },
+    {
+      "id": "native-pen-persistence",
+      "driver": "scripts/test-native-stress-v2.py",
+      "environment": "installed-android-or-ios",
+      "oracle": "W3C touch stroke persists as pen item",
+      "status": "implemented-unverified",
+      "lastRun": null
+    },
+    {
+      "id": "native-orientation",
+      "driver": "scripts/test-native-stress-v2.py",
+      "environment": "installed-android-or-ios",
+      "oracle": "Native landscape/portrait rotation and layout",
+      "status": "implemented-unverified",
+      "lastRun": null
+    }
+  ],
+  "excluded": [
+    "Chemistry lab exhaustive reactions",
+    "Historical atlas year-by-year verification",
+    "Realtime multiuser convergence",
+    "Complete subject editor coverage",
+    "Android 7-16 and iOS device matrix"
+  ],
+  "acceptanceStatus": "BLOCKED"
+}
