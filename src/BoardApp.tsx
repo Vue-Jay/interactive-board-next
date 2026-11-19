@@ -3,6 +3,7 @@ import UserAvatar from "./UserAvatar";
 import { lazy, memo, Suspense, useCallback, useEffect, useId, useMemo, useRef, useLayoutEffect, useState, useSyncExternalStore, type PointerEvent as PE, type CSSProperties } from "react";
 import { compileGraphExpression } from "./lektrusGraphExpression";
 import { boardWorldTransform, boardOverlayTransform, fitBoardCamera } from "./boardPanTransform";
+import { minimapViewport, minimapExtent, minimapViewBox, minimapTarget, minimapContentBounds, type MinimapRect } from "./boardMinimap";
 import { planCompositeBoardDrag, connectorDragEndpoints, paintBoardDeformedConnector, canCompositeBoardRotation, translatedBoardDragItems, paintBoardDragTranslation, clearBoardDragTranslation, paintBoardRotationPreview, clearBoardRotationPreview, type ConnectorDragTarget } from "./boardDragCompositor";
 import { canCompositeGroupRotation, rotatedGroupItems, paintGroupRotationFrame, clearGroupRotationFrame, type GroupRotationTarget } from "./boardGroupRotationCompositor";
 import { canCompositeBoardResize, paintBoardResizePreview, type ResizePreviewTarget } from "./boardResizeCompositor";
@@ -2637,6 +2638,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const viewerWheelTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const viewerPendingPan = useRef<View | null>(null);
   const fastPanWorld = useRef<HTMLDivElement>(null);
+  const minimapSvg = useRef<SVGSVGElement>(null);
+  const minimapFrame = useRef<SVGRectElement>(null);
+  const minimapDragExtent = useRef<MinimapRect | null>(null);
   const fastPanOverlay = useRef<HTMLDivElement>(null);
   // Screen-space selection handles and actions must follow compositor-only panning.
   const fastPanSelection = useRef<HTMLDivElement>(null);
@@ -2648,7 +2652,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const panBoardBounds = useRef<{left:number;top:number}|null>(null);
   const viewRef = useRef(view);
   // Pointermove only schedules DOM camera transforms. No React render, ink
-  // tile repaint, minimap reconstruction or object culling during a drag.
+  // tile repaint, minimap marker reconstruction or object culling during a drag.
   const paintPendingPan = (next: View) => {
     if (fastPanWorld.current)
       fastPanWorld.current.style.transform=boardWorldTransform(next);
@@ -2663,6 +2667,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     // translate by the remainder of a single grid period on the GPU.
     if (fastPanBackground.current)
       fastPanBackground.current.style.transform=boardGridTransform(next,viewRef.current);
+    // The small SVG camera rectangle follows the live compositor camera;
+    // the actual board and its hundreds of markers still do not rerender.
+    paintMinimap(next);
     fastPanDirty.current=true;
   };
   const scheduleViewerPan = (next: View) => {
@@ -7400,7 +7407,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const drawingCount = useMemo(() => items.filter(isInkItem).length, [items]);
   // Only actual objects need minimap markers; strokes are already rasterized.
   const minimapObjects = useMemo(() => visibleItems.filter(item => !isInkItem(item)), [visibleItems]);
-  const allBounds = useMemo(() => boundsOf(visibleItems), [visibleItems]);
+  const miniContentBounds = useMemo(() => minimapContentBounds(visibleItems), [visibleItems]);
   // Rasterize unselected, unlocked pen/marker runs in every role. Selected
   // ink remains a real DOM object for handles, moving and rotating. The
   // separate geometric hit test resolves clicks on canvas strokes.
@@ -7466,58 +7473,42 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         bounds.y + bounds.height >= top && bounds.y <= bottom;
     });
   }, [inkLayers, boardViewportSize.width, boardViewportSize.height, view.x, view.y, view.zoom, selectedIds, editing, remotePoseIds]);
-  const minimapBounds = allBounds ?? { x: -400, y: -300, width: 800, height: 600 };
-  // ResizeObserver already maintains these dimensions. Measuring layout in
-  // every pan render forced costly synchronous reflows on heavy boards.
-  const visibleWorld = boardViewportSize.width && boardViewportSize.height ? {
-    x: -view.x / view.zoom,
-    y: -view.y / view.zoom,
-    width: boardViewportSize.width / view.zoom,
-    height: boardViewportSize.height / view.zoom,
-  } : null;
-  const miniPad = 30;
-  // Stable content coordinates: panning should move only the viewport outline,
-  // not rebuild up to 400 minimap markers and resize the entire miniature.
-  const miniX = minimapBounds.x - miniPad;
-  const miniY = minimapBounds.y - miniPad;
-  const miniRight = minimapBounds.x + minimapBounds.width + miniPad;
-  const miniBottom = minimapBounds.y + minimapBounds.height + miniPad;
-  const miniW = Math.max(1, miniRight - miniX);
-  const miniH = Math.max(1, miniBottom - miniY);
-  function navigateMinimap(e: PE<HTMLDivElement>) {
-    const miniRect = e.currentTarget.getBoundingClientRect();
-    const mainRect = board.current?.getBoundingClientRect();
-    if (!mainRect || !miniRect.width || !miniRect.height) return;
-    const worldX = miniX + Math.max(0, Math.min(1, (e.clientX - miniRect.left) / miniRect.width)) * miniW;
-    const worldY = miniY + Math.max(0, Math.min(1, (e.clientY - miniRect.top) / miniRect.height)) * miniH;
-    setView(current => ({
-      ...current,
-      x: mainRect.width / 2 - worldX * current.zoom,
-      y: mainRect.height / 2 - worldY * current.zoom,
-    }));
+  const miniViewport = minimapViewport(view, boardViewportSize);
+  const miniBounds = minimapDragExtent.current ?? minimapExtent(miniContentBounds, miniViewport);
+  function paintMinimap(next: View) {
+    const map = minimapSvg.current, frame = minimapFrame.current;
+    if (!map || !frame) return;
+    const visible = minimapViewport(next, boardViewportSize);
+    if (!visible) return;
+    map.setAttribute("viewBox", minimapViewBox(minimapDragExtent.current ?? minimapExtent(miniContentBounds, visible)));
+    for (const key of ["x", "y", "width", "height"] as const) frame.setAttribute(key, String(visible[key]));
   }
-  // Draw the intersection inside the map instead of letting a huge viewport
-  // outline disappear behind its clipped edges (or leave a single blue line).
-  const miniViewport = visibleWorld ? {
-    left: Math.max(0, (visibleWorld.x - miniX) / miniW * 100),
-    top: Math.max(0, (visibleWorld.y - miniY) / miniH * 100),
-    right: Math.min(100, (visibleWorld.x + visibleWorld.width - miniX) / miniW * 100),
-    bottom: Math.min(100, (visibleWorld.y + visibleWorld.height - miniY) / miniH * 100),
-  } : null;
-  // Retain minimap React elements between camera frames. Their geometry
-  // depends on content/bounds and selection, not on every pointer movement.
+  function navigateMinimap(e: PE<SVGSVGElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const current = viewerPendingPan.current ?? viewRef.current;
+    const visible = minimapViewport(current, boardViewportSize);
+    if (!visible || !minimapDragExtent.current) return;
+    const target = minimapTarget({ x: e.clientX - rect.left, y: e.clientY - rect.top }, rect, minimapDragExtent.current, visible);
+    if (!target) return;
+    scheduleViewerPan({ ...current, x: boardViewportSize.width / 2 - target.x * current.zoom,
+      y: boardViewportSize.height / 2 - target.y * current.zoom });
+  }
+  function finishMinimap(cancel = false) {
+    if (!minimapDragExtent.current) return;
+    minimapDragExtent.current = null;
+    finishViewerPan(cancel);
+  }
+  // SVG marker geometry stays in world units; only its viewBox and the
+  // viewport outline change when the camera moves.
   const minimapMarkers = useMemo(() => minimapObjects.slice(0, 400).map(item => (
-    <span
+    <rect
       key={item.id}
       className={`minimap-item ${selectedIds.has(item.id) ? "selected" : ""}`}
-      style={{
-        left: `${((item.x - miniX) / miniW) * 100}%`,
-        top: `${((item.y - miniY) / miniH) * 100}%`,
-        width: `${Math.max(1.2, (item.width / miniW) * 100)}%`,
-        height: `${Math.max(1.2, (item.height / miniH) * 100)}%`,
-      }}
+      x={item.x} y={item.y} width={Math.max(0,item.width)} height={Math.max(0,item.height)}
+      transform={item.rotation ? `rotate(${item.rotation} ${item.x + item.width / 2} ${item.y + item.height / 2})` : undefined}
+      vectorEffect="non-scaling-stroke"
     />
-  )), [minimapObjects, selectedIds, miniX, miniY, miniW, miniH]);
+  )), [minimapObjects, selectedIds]);
   const layerRows = useMemo(() => {
     const seenGroups = new Set<string>();
     const rows: Item[] = [];
@@ -11046,27 +11037,25 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             <div
               className="minimap-world"
               title="Нажмите или проведите по карте, чтобы переместиться по доске"
-              onPointerDown={(e) => {
-                if (!e.isPrimary || e.button !== 0) return;
-                e.preventDefault();
-                e.currentTarget.setPointerCapture(e.pointerId);
-                navigateMinimap(e);
-              }}
-              onPointerMove={e => { if (e.currentTarget.hasPointerCapture(e.pointerId)) navigateMinimap(e); }}
             >
-              {minimapMarkers}
-              {miniViewport && miniViewport.right > miniViewport.left && miniViewport.bottom > miniViewport.top && (
-                <span
-                  className="minimap-viewport"
-                  style={{
-                    left: `calc(${miniViewport.left}% + 1px)`,
-                    top: `calc(${miniViewport.top}% + 1px)`,
-                    right: `calc(${100 - miniViewport.right}% + 1px)`,
-                    bottom: `calc(${100 - miniViewport.bottom}% + 1px)`,
-                    width: "auto", height: "auto",
-                  }}
-                />
-              )}
+              <svg ref={minimapSvg} className="minimap-canvas" viewBox={minimapViewBox(miniBounds)} preserveAspectRatio="xMidYMid meet"
+                aria-label="Карта расположения объектов и видимой области доски"
+                onPointerDown={e => {
+                  if (!e.isPrimary || e.button !== 0) return;
+                  e.preventDefault();
+                  const current=viewerPendingPan.current??viewRef.current;
+                  minimapDragExtent.current=minimapExtent(miniContentBounds,minimapViewport(current,boardViewportSize));
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  navigateMinimap(e);
+                }}
+                onPointerMove={e => { if (e.currentTarget.hasPointerCapture(e.pointerId)) navigateMinimap(e); }}
+                onPointerUp={() => finishMinimap()}
+                onPointerCancel={() => finishMinimap(true)}
+                onLostPointerCapture={() => finishMinimap()}
+              >
+                {minimapMarkers}
+                {miniViewport && <rect ref={minimapFrame} className="minimap-viewport" {...miniViewport} vectorEffect="non-scaling-stroke" />}
+              </svg>
             </div>
           </div>
         )}

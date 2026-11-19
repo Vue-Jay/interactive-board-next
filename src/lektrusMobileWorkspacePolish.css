@@ -198,15 +198,31 @@ html.lektrus-native-board body .topbar:not(.update-banner) {
   padding-top:var(--lektrus-safe-top)!important;padding-bottom:0!important;
 }
 @media (max-width:1100px) and (orientation:landscape) {
+  html body .workspace {--lektrus-minimap-width:224px;}
   html body .workspace .board-controls {
     position:fixed!important;left:calc(var(--lektrus-rail-left) + 72px)!important;right:auto!important;top:auto!important;
     bottom:calc(14px + var(--lektrus-safe-bottom))!important;margin:0!important;transform:none!important;translate:none!important;scale:none!important;
-    max-width:calc(100vw - var(--lektrus-rail-left) - var(--lektrus-safe-right) - 224px)!important;
+    max-width:calc(100vw - var(--lektrus-rail-left) - var(--lektrus-safe-right) - var(--lektrus-minimap-width) - 94px)!important;
   }
   html body .workspace .minimap {
     position:fixed!important;right:calc(12px + var(--lektrus-safe-right))!important;left:auto!important;bottom:calc(14px + var(--lektrus-safe-bottom))!important;top:auto!important;
+    width:var(--lektrus-minimap-width)!important;
+    box-sizing:border-box!important;
+    padding:6px!important;
   }
   html body .workspace .lectris-quick-properties.is-ink-properties {
     bottom:calc(68px + var(--lektrus-safe-bottom))!important;
   }
+}
+@media (min-width:720px) and (max-width:1100px) and (orientation:landscape) {
+  /* The old 900px cutoff hid the map on many landscape phones. Presentation,
+     focus mode and modal-editor hiding rules still win via !important. */
+  html body .workspace .minimap {display:block;}
+  html body .workspace .minimap-world {height:120px;}
+}
+@media (max-width:800px) and (orientation:landscape) {
+  html body .workspace {--lektrus-minimap-width:208px;}
+}
+@media (max-width:1100px) and (max-height:335px) and (orientation:landscape) {
+  html body .workspace {--lektrus-minimap-width:200px;}
 }
