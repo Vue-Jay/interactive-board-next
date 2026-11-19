@@ -72,7 +72,20 @@ try{
     await wait('!!document.querySelector(".lektrus-browser-board-frame")','Board did not open after touch submission',45000);
     const title=await evaluate('document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector(".board-title")?.value');
     assert.equal(title,boardTitle,'Created board title did not persist in board UI');
-    return {boardTitle: title,createdBy:'physical touch'};
+    // Draw with a real CDP touch stroke inside the newly created board.
+    const drawing=await evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),d=f?.contentDocument,b=d?.querySelector('section.board');if(!f||!b)return null;const r=b.getBoundingClientRect();return {frame:[f.getBoundingClientRect().left,f.getBoundingClientRect().top],points:Array.from({length:10},(_,i)=>({x:Math.round(r.left+r.width*.35+i*7),y:Math.round(r.top+r.height*.55)})),tool:!!d.querySelector('nav.mobile-board-tools button[data-interface-control="pen"],.toolbar-pinned button[data-interface-control="pen"]')}})()`);
+    assert.ok(drawing?.tool,'Pencil tool missing in created mobile board');
+    const penPoint=await evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),d=f.contentDocument,e=[...d.querySelectorAll('nav.mobile-board-tools button[data-interface-control="pen"],.toolbar-pinned button[data-interface-control="pen"]')].find(x=>x.getBoundingClientRect().width>0);if(!e)return null;const r=e.getBoundingClientRect(),fr=f.getBoundingClientRect();return {x:fr.left+r.left+r.width/2,y:fr.top+r.top+r.height/2}})()`);
+    assert.ok(penPoint,'Visible pencil control not found');
+    await touch(penPoint.x,penPoint.y);
+    await wait('document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector("section.board")?.classList.contains("board-tool-pen")','Pencil did not activate after touch');
+    const frame=await evaluate('(()=>{const f=document.querySelector(".lektrus-browser-board-frame"),r=f.getBoundingClientRect();return {left:r.left,top:r.top}})()');
+    const points=drawing.points.map(q=>({x:frame.left+q.x,y:frame.top+q.y}));
+    await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...points[0],id:1}]});
+    for(const point of points.slice(1)){await send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...point,id:1}]});await sleep(25);}
+    await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    await wait('(()=>{const f=document.querySelector(".lektrus-browser-board-frame");return !!f?.contentDocument?.querySelector(".board-object-pen, .pen-stroke, [data-kind=pen]")})()','Pen stroke did not render',8000).catch(async()=>{const count=await evaluate('document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelectorAll("section.board svg path").length');assert.ok(count>0,'No SVG stroke rendered after real touch');});
+    return {boardTitle:title,createdBy:'physical touch',stroke:'physical CDP gesture'};
    });
    await check(tag+'-touch-storm',async()=>{
     await send('Page.navigate',{url});
