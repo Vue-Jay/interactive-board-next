@@ -16,7 +16,8 @@ try {
  assert.equal(command.status,0,command.stderr||command.stdout);
  const data=JSON.parse(readFileSync(output,'utf8'));
  assert.equal(data.baselineCases,data.cases.length);
- assert.ok(data.baselineCases>=231);
+ assert.ok(data.baselineCases>=2813);
+ assert.equal(data.subjectSourceCases,480,'Subject-source scenarios must be merged');
  assert.equal(new Set(data.cases.map(c=>c.id)).size,data.cases.length,'Duplicate scenario IDs');
  assert.ok(data.environmentCombinations>0);
  assert.equal(data.environmentCases.length,data.environmentCombinations);
@@ -26,6 +27,7 @@ try {
  }
  for(const item of data.cases){
   assert.ok(item.id&&item.area&&item.platforms.length&&item.action);
+  if(item.area==='source-audited-subject')assert.ok(item.source&&item.toolId&&item.visibility,'Missing source evidence or visibility contract');
   assert.equal(item.implementation,'pending','No invented implemented cases');
  }
  // Verify the covering-array generator actually covers every pair of values.
