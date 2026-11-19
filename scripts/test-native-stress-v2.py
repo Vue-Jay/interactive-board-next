@@ -72,7 +72,7 @@ def visible_controls():
  return js("""return [...document.querySelectorAll('button')].filter(e=>{
   const r=e.getBoundingClientRect(),s=getComputedStyle(e);
   return r.width>=24&&r.height>=24&&s.visibility!=='hidden'&&r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight;
- }).map(e=>{const r=e.getBoundingClientRect();return {x:Math.round(r.left+r.width/2),y:Math.round(r.top+r.height/2),label:e.getAttribute('aria-label')||e.textContent.trim().slice(0,50)}});""")
+ }).map(e=>{const r=e.getBoundingClientRect();return {x:Math.round(r.left+r.width/2),y:Math.round(r.top+r.height/2),label:e.getAttribute('aria-label')||(e.textContent||'').trim().slice(0,50)}});""")
 def tap(x,y):
  # WebDriver W3C pointer touch action. Never fake DOM pointer events.
  cmd('POST','/actions',{'actions':[{'type':'pointer','id':'finger1','parameters':{'pointerType':'touch'},'actions':[{'type':'pointerMove','duration':0,'x':x,'y':y},{'type':'pointerDown','button':0},{'type':'pause','duration':60},{'type':'pointerUp','button':0}]}]})
@@ -109,12 +109,12 @@ def create_board():
  assert js('return document.querySelector(".lektrus-create-dialog input").value')==title
  tap_selector('.lektrus-create-dialog button[type="submit"]')
  wait(lambda:element('section.board'),'Native board did not render after submission',90)
- actual=js('return document.querySelector(".board-title")?.value')
+ actual=js('return (document.querySelector(".board-title")||{}).value')
  assert actual==title,{'expected':title,'actual':actual}
  return {'title':actual,'createdVia':'installed app'}
 def native_ink_stroke():
  tap_selector('nav.mobile-board-tools button[data-interface-control="pen"],.toolbar-pinned button[data-interface-control="pen"]')
- wait(lambda:js('return document.querySelector("section.board")?.classList.contains("board-tool-pen")'),'Pen did not activate')
+ wait(lambda:js('return !!(document.querySelector("section.board")&&document.querySelector("section.board").classList.contains("board-tool-pen"))'),'Pen did not activate')
  points=js("""const b=document.querySelector('section.board').getBoundingClientRect();
  return Array.from({length:12},(_,i)=>({x:Math.round(b.left+b.width*.35+i*5),y:Math.round(b.top+b.height*.55)}));""")
  assert points and all(0<=p['x']<=layout()['w'] and 0<=p['y']<=layout()['h'] for p in points),'Ink stroke outside native viewport'
@@ -126,15 +126,15 @@ def native_ink_stroke():
  def persisted():
   return js("""for(const key of Object.keys(localStorage)){
    if(!key.includes('document'))continue;
-   try{const data=JSON.parse(localStorage.getItem(key));const ink=data?.items?.find(i=>i.kind==='pen'&&i.points?.length>1);if(ink)return {key,points:ink.points.length};}catch{}
+   try{const data=JSON.parse(localStorage.getItem(key));const ink=(data&&data.items||[]).find(i=>i.kind==='pen'&&i.points&&i.points.length>1);if(ink)return {key,points:ink.points.length};}catch{}
   }return null;""")
  return wait(persisted,'Native touch stroke not persisted',20)
 def native_undo_redo():
  def ink_state():
   return js("""for(const key of Object.keys(localStorage)){
    if(!key.includes('document'))continue;
-   try{const data=JSON.parse(localStorage.getItem(key));if(Array.isArray(data?.items))
-    return data.items.filter(i=>i.kind==='pen').map(i=>({id:i.id,points:i.points?.length||0}));}catch{}
+   try{const data=JSON.parse(localStorage.getItem(key));if(Array.isArray(data&&data.items))
+    return data.items.filter(i=>i.kind==='pen').map(i=>({id:i.id,points:(i.points&&i.points.length)||0}));}catch{}
   }return null;""")
  before=wait(ink_state,'Board ink storage missing')
  assert any(i['points']>1 for i in before),'No completed pen stroke before undo'
@@ -146,7 +146,7 @@ def native_undo_redo():
  return {'before':before,'undone':undone,'redone':ink_state()}
 def native_pinch_zoom():
  tap_selector('nav.mobile-board-tools button[data-interface-control="select"],.toolbar-pinned button[data-interface-control="select"]')
- before=js('return document.querySelector(".zoom-value")?.textContent')
+ before=js('return (document.querySelector(".zoom-value")||{}).textContent')
  assert before,'Zoom indicator missing'
  center=js("""const b=document.querySelector('section.board').getBoundingClientRect();
  return {x:Math.round(b.left+b.width*.5),y:Math.round(b.top+b.height*.5)};""")
@@ -157,11 +157,11 @@ def native_pinch_zoom():
   return {'type':'pointer','id':id,'parameters':{'pointerType':'touch'},'actions':points}
  cmd('POST','/actions',{'actions':[finger('left-finger',-1),finger('right-finger',1)]})
  cmd('DELETE','/actions')
- wait(lambda:js('return document.querySelector(".zoom-value")?.textContent')!=before,'Two-finger native pinch did not zoom',15)
- return {'zoomBefore':before,'zoomAfter':js('return document.querySelector(".zoom-value")?.textContent')}
+ wait(lambda:js('return (document.querySelector(".zoom-value")||{}).textContent')!=before,'Two-finger native pinch did not zoom',15)
+ return {'zoomBefore':before,'zoomAfter':js('return (document.querySelector(".zoom-value")||{}).textContent')}
 def layout():
  return js("""return {w:innerWidth,h:innerHeight,scroll:document.documentElement.scrollWidth,
-  native:window.Capacitor?.isNativePlatform?.()===true,
+  native:!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()),
   visible:[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length).length};""")
 def home_layout():
  wait(lambda:js('return !!document.querySelector(".lektrus-calendar-grid")'),'Workspace not ready')
