@@ -1185,34 +1185,39 @@ button {
 
 /* Real minimap: content + viewport, click to navigate. */
 .minimap {
-  width: 190px;
-  padding: 8px;
+  width: 184px;
+  padding: 0;
+  overflow: hidden;
+  background: var(--lt-surface, #fff);
   pointer-events: auto;
   user-select: none;
 }
 .minimap-header {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
-  margin: 1px 2px 8px;
-  color: var(--lt-text, #34445d);
-  font-size: 12px;
-  font-weight: 650;
-  line-height: 1.35;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 8px;
+  margin: 0;
+  background: var(--lt-hover, #eef3fb);
+  border-bottom: 1px solid var(--ui-line, #dbe3ef);
+  color: var(--lt-text, #253b56);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
   letter-spacing: 0;
   text-transform: none;
 }
-.minimap-header svg { flex: none; color: var(--lt-primary, #4264b5); }
 .minimap-world {
   position: relative;
-  height: 92px;
+  height: 80px;
+  margin: 5px;
   overflow: hidden;
-  border: 1px solid #e2e4e8;
-  border-radius: 7px;
+  border: 1px solid var(--ui-line, #dbe3ef);
+  border-radius: 8px;
   cursor: crosshair;
-  background-color: #f5f6f8;
-  background-image: radial-gradient(#d5d8de .6px, transparent .6px);
+  background-color: var(--lt-subtle, #f1f5fb);
+  background-image: radial-gradient(var(--lt-line-strong, #cbd5e3) .6px, transparent .6px);
   background-size: 8px 8px;
 }
 .minimap-item {
@@ -1220,20 +1225,21 @@ button {
   min-width: 2px;
   min-height: 2px;
   border-radius: 1px;
-  background: #9da2ad;
+  background: var(--lt-muted, #8b9cb5);
   pointer-events: none;
 }
 .minimap-item.selected {
-  background: #5658ce;
+  background: var(--lt-selected-ink, #4263b8);
 }
 .minimap-viewport {
   position: absolute;
   transform: none;
-  min-width: 8px;
-  min-height: 6px;
-  border: 1.5px solid #5658ce;
-  border-radius: 3px;
-  background: rgba(91,91,214,.06);
+  box-sizing: border-box;
+  min-width: 2px;
+  min-height: 2px;
+  border: 1.5px solid var(--lt-selected-ink, #4263b8);
+  border-radius: 4px;
+  background: rgba(66,99,184,.08);
   pointer-events: none;
 }
 
