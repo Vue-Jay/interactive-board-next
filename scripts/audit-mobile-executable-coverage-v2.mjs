@@ -6,7 +6,7 @@ const inventory=JSON.parse(fs.readFileSync(new URL('../qa/mobile-executable-cove
 const checks=inventory.checks;
 assert.equal(inventory.acceptanceStatus,'BLOCKED');
 assert.equal(new Set(checks.map(x=>x.id)).size,checks.length,'Duplicate executable check IDs');
-assert.ok(checks.length>=15,'Unexpected loss of executable checks');
+assert.ok(checks.length>=16,'Unexpected loss of executable checks');
 for(const check of checks){
  assert.ok(check.id&&check.driver&&check.oracle&&check.environment);
  assert.equal(check.status,'implemented-unverified','Do not claim pass without evidence');
@@ -29,6 +29,7 @@ for(const check of checks){
  'native-orientation':"'native-rotation-roundtrip'",
  'native-pinch-zoom':"'native-two-finger-pinch'",
  'native-undo-redo':"'native-undo-redo'",
+ 'native-marker-eraser':"'native-marker-eraser'",
  }[check.id];
  assert.ok(key&&source.includes(key),'Declared check not found in driver: '+check.id);
 }
