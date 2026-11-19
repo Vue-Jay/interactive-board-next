@@ -9,7 +9,8 @@ import "./lektrusMarketingNews.css";
 
 import { Capacitor } from "@capacitor/core";
 import { pendingSharePath } from "./routes";
-import { isChunkLoadError, recoverOutdatedChunk } from "./chunkRecovery";
+import { recoverOutdatedChunk } from "./chunkRecovery";
+import {mountStartupUnavailable} from "./ServiceUnavailableScreen";
 import {installInterfacePreviewEnvironment} from "./lektrusInterfacePreview";
 import { installMobileKeyboardDismissal } from "./dismissMobileKeyboard";
 installInterfacePreviewEnvironment();
@@ -33,11 +34,6 @@ void (window.location.pathname==="/site-builder"&&!Capacitor.isNativePlatform()?
   if (await recoverOutdatedChunk(error, !Capacitor.isNativePlatform())) return;
   const root=document.getElementById("root");
   if (!root) return;
-  const message=document.createElement("p");
-  message.textContent=isChunkLoadError(error)?"Не удалось загрузить приложение. Проверьте подключение и обновите страницу.":"Не удалось запустить приложение.";
-  const retry=document.createElement("button");
-  retry.textContent="Обновить страницу";
-  retry.onclick=()=>window.location.reload();
-  root.replaceChildren(message,retry);
+  mountStartupUnavailable(root);
   console.error("Lektrus startup failed",error);
 });

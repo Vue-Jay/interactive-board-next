@@ -20,6 +20,8 @@ import { documentFingerprint } from "./boardSync";
 import { parseDocument, type DocumentData } from "./boardModel";
 import { ensureBoardAssets } from "./assetStore";
 import { cacheBoardPreview, cachedBoardPreview, previewFromRemoteDocument, scheduleBackgroundBoardPreview } from "./boardPreview";
+import {ServiceUnavailableScreen} from "./ServiceUnavailableScreen";
+import {useServiceAvailability} from "./useServiceAvailability";
 import {BoardLoadingScreen,BrowserBoardLandscape,wantsBrowserBoardLandscape,requestBrowserBoardLandscape,releaseBrowserBoardLandscape} from "./BrowserBoardLandscape";
 
 const INTERFACE_STUDIO_BOARD_ID="00000000-0000-4000-8000-00000000a11a";
@@ -224,6 +226,8 @@ export default function App() {
   const [adminInvisible,setAdminInvisible]=useState(()=>{try{return localStorage.getItem("onlinerepetitor.adminInvisible")==="1"}catch{return false}});
   const changeAdminInvisible=useCallback((value:boolean)=>{setAdminInvisible(value);try{localStorage.setItem("onlinerepetitor.adminInvisible",value?"1":"0")}catch{}},[]);
   const [activeBoard, setActiveBoard] = useState<BoardSummary | null>(null);
+  const serviceAvailability=useServiceAvailability(isSelfhostBackendEnabled()&&!LEKTRUS_LOCAL_TEST_MODE&&!activeBoard&&
+    (route.kind==="home"||route.kind==="join"||route.kind==="board"));
   const boardChanged = useCallback((updated: BoardSummary) => {
     setActiveBoard(current => current?.id === updated.id ? updated : current);
   }, []);
@@ -675,6 +679,8 @@ export default function App() {
     if(wantsBrowserBoardLandscape())return <BrowserBoardLandscape key={window.location.pathname+window.location.search} path={window.location.pathname+window.location.search} demo onBack={()=>window.location.assign("/")} onLogout={()=>window.location.assign("/")}/>;
     return <Suspense fallback={<BoardLoadingScreen/>}><PublicDemoBoard/></Suspense>;
   }
+
+  if(serviceAvailability.reason&&!activeBoard)return <ServiceUnavailableScreen reason={serviceAvailability.reason} checking={serviceAvailability.checking} automatic onRetry={serviceAvailability.check}/>;
 
   if (!authReady) {
     if (nativeBoardOpening) return <BoardLoadingScreen/>;

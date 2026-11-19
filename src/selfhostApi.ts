@@ -105,6 +105,8 @@ function saveSession(session:SelfhostSession|null){
   if(!session||loadSession()?.user.id!==session.user.id)documentBase=null;
   if(!session)localStorage.removeItem(SESSION_KEY);
   else localStorage.setItem(SESSION_KEY,JSON.stringify(session));
+  if(typeof window!=="undefined"&&typeof window.dispatchEvent==="function"&&typeof Event==="function")
+    window.dispatchEvent(new Event("lektrus:session-changed"));
 }
 export const cachedSelfhostSession=()=>loadSession();
 export function clearSelfhostSession(){refreshInFlight=null;saveSession(null);}
@@ -152,6 +154,13 @@ async function androidJsonRequest(url:string,init:RequestInit,headers:Headers,si
     throw new Error("Не удалось установить соединение с сервером Lektrus через Android. Проверьте интернет.");
   }finally{signal.removeEventListener("abort",onAbort);}
 }
+// Report transport failures, not auth/permission errors. Consumers must verify
+// the public health endpoint before treating an individual error as an outage.
+function notifyServiceRequestFailure(path:string){
+  if(path==="/api/v1/health"||path==="/api/v1/mobile/android-update"||path==="/api/v1/maintenance")return;
+  if(typeof window!=="undefined"&&typeof window.dispatchEvent==="function"&&typeof Event==="function")
+    window.dispatchEvent(new Event("lektrus:service-request-failed"));
+}
 async function rawRequest(path:string,init:RequestInit={},token?:string,timeoutMs=TIMEOUT_MS,binary=false):Promise<Response>{
   if(!path.startsWith("/api/v1/"))throw new Error("Неправильный путь API Lektrus.");
   const nativeJson=!binary&&!init.signal&&Capacitor.getPlatform()==="android"&&Capacitor.isPluginAvailable("CapacitorHttp")&&
@@ -167,11 +176,14 @@ async function rawRequest(path:string,init:RequestInit={},token?:string,timeoutM
     const headers=new Headers(init.headers);
     if(token)headers.set("Authorization","Bearer "+token);
     if(init.body!==undefined&&!headers.has("Content-Type"))headers.set("Content-Type","application/json");
-    if(nativeJson)return await androidJsonRequest(selfhostOrigin()+path,init,headers,controller.signal,timeoutMs);
-    return await fetch(selfhostOrigin()+path,{
-      ...init,headers,signal:controller.signal,cache:"no-store",credentials:"omit",
-    });
+    const response=nativeJson?await androidJsonRequest(selfhostOrigin()+path,init,headers,controller.signal,timeoutMs):
+      await fetch(selfhostOrigin()+path,{
+        ...init,headers,signal:controller.signal,cache:"no-store",credentials:"omit",
+      });
+    if(response.status>=500)notifyServiceRequestFailure(path);
+    return response;
   }catch(error){
+    if(!upstream?.aborted)notifyServiceRequestFailure(path);
     if(controller.signal.aborted&&!upstream?.aborted)
       throw new Error(nativeJson?"Сервер Lektrus не ответил на запрос Android вовремя. Проверьте соединение и повторите попытку.":"Время ожидания собственного сервера истекло.");
     throw error;
@@ -179,6 +191,15 @@ async function rawRequest(path:string,init:RequestInit={},token?:string,timeoutM
     clearTimeout(timer);
     upstream?.removeEventListener("abort",onAbort);
   }
+}
+/** Unauthenticated and uncached: no session refresh, no private data. */
+export async function selfhostServiceHealthy():Promise<boolean>{
+  try{
+    const response=await rawRequest("/api/v1/health",{},undefined,6500);
+    if(!response.ok)return false;
+    const data=await response.json() as {ok?:unknown;service?:unknown};
+    return data?.ok===true&&data.service==="lektrus-selfhost";
+  }catch{return false}
 }
 function normalizeSession(data:{
   access_token:string;refresh_token:string;expires_in:number;user:SelfhostUser;
@@ -291,6 +312,23 @@ export async function selfhostRequest<T>(path:string,init:RequestInit={},timeout
   if(response.status===204)return undefined as T;
   return await response.json() as T;
 }
+export type MaintenanceStatus={
+  state:"off"|"scheduled"|"active";starts_at:string|null;ends_at:string|null;
+  notice:string;access_allowed:boolean;server_time:string;
+};
+export type MaintenanceConfig=MaintenanceStatus&{allowed_accounts:string[]};
+export type MaintenanceSetting=Pick<MaintenanceConfig,"starts_at"|"ends_at"|"notice"|"allowed_accounts">&{start_now?:boolean};
+export async function selfhostMaintenanceStatus(authenticated=false):Promise<MaintenanceStatus>{
+  const session=authenticated?await selfhostSession():null;
+  const response=await rawRequest("/api/v1/maintenance",{},session?.access_token,6500);
+  if(!response.ok)throw await responseError(response);
+  const data=await response.json() as MaintenanceStatus;
+  if(!["off","scheduled","active"].includes(data?.state)||typeof data.access_allowed!=="boolean")
+    throw new Error("Не удалось проверить режим технических работ.");
+  return data;
+}
+export const selfhostMaintenanceAdmin=()=>selfhostRequest<MaintenanceConfig>("/api/v1/admin/maintenance");
+export const selfhostSaveMaintenance=(value:MaintenanceSetting)=>selfhostRequest<MaintenanceConfig>("/api/v1/admin/maintenance",{method:"PUT",body:JSON.stringify(value)});
 export const selfhostBoards=()=>selfhostRequest<SelfhostBoard[]>("/api/v1/boards");
 // Public update discovery must work before login, and must never refresh auth.
 export async function selfhostAndroidUpdate():Promise<unknown>{

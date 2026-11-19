@@ -279,11 +279,135 @@ def check_guest_and_registration(browser,ident):
         page.screenshot(path=str(OUT/f"registration-{width}.png"),full_page=True)
         ctx.close()
 
+def check_service_unavailable(browser, ident):
+    health_pattern=API+"/api/v1/health"
+    for width,height in ((1440,900),(390,844),(320,640),(768,1024),(844,390)):
+        ctx=browser.new_context(viewport={"width":width,"height":height},
+            color_scheme="dark" if width in (320,768) else "light",service_workers="block")
+        page=ctx.new_page()
+        def unavailable(route):
+            route.fulfill(status=503,headers={"Access-Control-Allow-Origin":BASE,"Content-Type":"application/json"},body='{"detail":"unavailable"}')
+        page.route(health_pattern,unavailable)
+        page.goto(BASE+"/app")
+        screen=page.locator(".lektrus-unavailable")
+        expect(screen).to_be_visible(timeout=30000)
+        expect(screen.get_by_role("heading",name="Скоро вернёмся")).to_be_visible()
+        expect(screen.get_by_role("button",name="Повторить попытку")).to_be_enabled()
+        geometry=screen.evaluate("""node => {
+          const card=node.querySelector('.u-card').getBoundingClientRect();
+          const retry=node.querySelector('.u-retry').getBoundingClientRect();
+          return {width:node.clientWidth,scrollWidth:node.scrollWidth,
+            left:card.left,right:card.right,top:card.top,bottom:card.bottom,retryHeight:retry.height}
+        }""")
+        assert geometry["scrollWidth"]<=width+1 and geometry["left"]>=0 and geometry["right"]<=width+1,geometry
+        assert geometry["retryHeight"]>=44 and geometry["top"]>=0 and geometry["bottom"]<=height+1,geometry
+        page.screenshot(path=str(OUT/f"service-unavailable-{width}x{height}.png"))
+        page.unroute(health_pattern,unavailable)
+        screen.get_by_role("button",name="Повторить попытку").click()
+        expect(page.get_by_label("Email",exact=True)).to_be_visible(timeout=30000)
+        expect(screen).to_have_count(0)
+        assert page.url==BASE+"/app"
+        ctx.close()
+
+    ctx=browser.new_context(viewport={"width":390,"height":844},service_workers="block")
+    page=ctx.new_page()
+    page.goto(BASE+"/app")
+    expect(page.get_by_label("Email",exact=True)).to_be_visible(timeout=30000)
+    ctx.set_offline(True)
+    expect(page.get_by_role("heading",name="Вы не в сети",exact=True)).to_be_visible(timeout=30000)
+    page.screenshot(path=str(OUT/"service-offline-phone.png"))
+    ctx.set_offline(False)
+    expect(page.get_by_label("Email",exact=True)).to_be_visible(timeout=30000)
+    ctx.close()
+
+    # An isolated error is not a service outage; the board retains its
+    # original recovery behavior, and a live board never gets replaced.
+    ctx=browser.new_context(viewport={"width":1440,"height":900},service_workers="block")
+    page=ctx.new_page()
+    login(page,"owner")
+    assert_board(page,ident,True,True)
+    page.route(health_pattern,unavailable)
+    page.evaluate("window.dispatchEvent(new Event('lektrus:service-request-failed'))")
+    expect(page.locator("section.board")).to_be_visible()
+    expect(page.locator(".lektrus-unavailable")).to_have_count(0)
+    ctx.close()
+    print("Service recovery: five responsive sizes, dark theme, offline/online, retry and active-board safety passed")
+
+def check_maintenance(browser):
+    async def promote():
+        conn=await asyncpg.connect(os.environ["DATABASE_URL"])
+        try:
+            await conn.execute("UPDATE account_users SET is_admin=true WHERE email='owner@roles.example'")
+        finally:
+            await conn.close()
+    # Playwright's sync API owns an event loop on this thread.
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        executor.submit(lambda: asyncio.run(promote())).result()
+    contexts=[browser.new_context(viewport={"width":1440,"height":900},service_workers="block"),
+              browser.new_context(viewport={"width":390,"height":844},service_workers="block"),
+              browser.new_context(viewport={"width":390,"height":844},service_workers="block"),
+              browser.new_context(viewport={"width":390,"height":844},service_workers="block")]
+    admin,ordinary,selected,site=[ctx.new_page() for ctx in contexts]
+    try:
+        login(admin,"owner")
+        login(ordinary,"learner")
+        login(selected,"colleague")
+        admin.goto(BASE+"/app?section=admin")
+        admin.get_by_role("button",name="Техработы",exact=True).click(timeout=30000)
+        panel=admin.locator(".admin-maintenance")
+        expect(panel.get_by_text("Сервис работает в обычном режиме")).to_be_visible(timeout=30000)
+        dates=admin.evaluate("""() => [1,2].map(h=>{const d=new Date(Date.now()+h*3600000);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16)})""")
+        panel.get_by_label("Начало",exact=True).fill(dates[0])
+        panel.get_by_label("Окончание (необязательно)",exact=True).fill(dates[1])
+        panel.get_by_label("Сообщение для пользователей").fill("Обновляем систему досок")
+        panel.locator("label").filter(has_text="colleague@roles.example").get_by_role("checkbox").check(timeout=30000)
+        panel.get_by_role("button",name="Сохранить расписание").click()
+        expect(panel.get_by_text("Работы запланированы",exact=True)).to_be_visible(timeout=15000)
+        site.goto(BASE+"/")
+        expect(site.locator(".maintenance-notice")).to_contain_text("Запланированы технические работы",timeout=15000)
+        ordinary.bring_to_front()
+        ordinary.evaluate("window.dispatchEvent(new Event('lektrus:maintenance-changed'))")
+        expect(ordinary.locator(".maintenance-notice")).to_contain_text("Запланированы технические работы",timeout=15000)
+        expect(ordinary.get_by_role("button",name="Я учусь",exact=True)).to_be_visible()
+        admin.once("dialog",lambda d:d.accept())
+        panel.get_by_role("button",name="Начать сейчас").click()
+        expect(panel.get_by_text("Сейчас ведутся технические работы",exact=True)).to_be_visible(timeout=15000)
+        for page in (ordinary,selected,site):
+            page.bring_to_front()
+            page.evaluate("window.dispatchEvent(new Event('lektrus:maintenance-changed'))")
+        expect(ordinary.locator(".maintenance-blocking")).to_contain_text("Технические работы",timeout=15000)
+        expect(ordinary.locator(".maintenance-blocking")).to_contain_text("Обновляем систему досок")
+        expect(selected.locator(".maintenance-notice")).to_contain_text("У вас есть доступ",timeout=15000)
+        expect(selected.get_by_role("button",name="Я учусь",exact=True)).to_be_visible()
+        expect(site.locator(".maintenance-notice")).to_contain_text("Ведутся технические работы",timeout=15000)
+        for page,name in [(admin,"admin"),(ordinary,"blocked-phone"),(selected,"allowed-phone"),(site,"site-phone")]:
+            page.screenshot(path=str(OUT/f"maintenance-{name}.png"))
+        # A new unauthenticated user can still reach the login form for an exception.
+        fresh=browser.new_context(viewport={"width":390,"height":844},service_workers="block")
+        try:
+            page=fresh.new_page();page.goto(BASE+"/app")
+            expect(page.locator(".maintenance-blocking")).to_be_visible(timeout=15000)
+            page.get_by_role("button",name="Войти с разрешённым аккаунтом").click()
+            expect(page.get_by_label("Email",exact=True)).to_be_visible(timeout=15000)
+        finally:
+            fresh.close()
+        panel.get_by_role("button",name="Завершить работы").click()
+        expect(panel.get_by_text("Сервис работает в обычном режиме",exact=True)).to_be_visible(timeout=15000)
+        ordinary.bring_to_front()
+        ordinary.evaluate("window.dispatchEvent(new Event('lektrus:maintenance-changed'))")
+        expect(ordinary.locator(".maintenance-blocking")).to_have_count(0,timeout=15000)
+        expect(ordinary.get_by_role("button",name="Я учусь",exact=True)).to_be_visible()
+    finally:
+        for ctx in contexts:ctx.close()
+    print("Maintenance: scheduled banner, admin and selected access, blocked account, login and automatic recovery passed")
+
 def main():
     asyncio.run(seed())
     ident=setup_board()
     with sync_playwright() as p:
         browser=p.chromium.launch(headless=True)
+        check_service_unavailable(browser,ident)
         for name,author,owner in [("owner",True,True),("learner",False,False),("colleague",True,False),("observer",False,False)]:
             context=browser.new_context(viewport={"width":1440,"height":900})
             page=context.new_page()
@@ -329,6 +453,7 @@ def main():
             assert not errors, f"{name}: browser exceptions {errors}"
             context.close()
         check_guest_and_registration(browser,ident)
+        check_maintenance(browser)
         browser.close()
     print("All registered and guest participant contexts, registration modes, and persistent learner drawing passed browser acceptance")
 

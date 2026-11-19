@@ -383,3 +383,61 @@ async def test_admin_delete_account_preserves_other_users_boards(client, tmp_pat
     assert (tmp_path / str(shared) / shared_storage.hex).exists()
     assert not (tmp_path / str(owned) / owned_storage.hex).exists()
     assert not (tmp_path / "materials" / material_storage.hex).exists()
+
+
+@pytest.mark.asyncio
+async def test_maintenance_schedule_exceptions_and_automatic_end(client):
+    from app import lookup_board_sessions
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET is_admin=true WHERE id=$1", TEACHER)
+    admin_data, admin = await sign_in(client, "teacher@example.test")
+    selected_data, selected = await sign_in(client, "student@example.test")
+    ordinary_data, ordinary = await sign_in(client, "outsider@example.test")
+    path, status = "/api/v1/admin/maintenance", "/api/v1/maintenance"
+    now = datetime.now(timezone.utc)
+    config = {"starts_at": (now + timedelta(hours=1)).isoformat(),
+              "ends_at": (now + timedelta(hours=2)).isoformat(),
+              "notice": "Обновляем Lektrus", "allowed_accounts": [str(STUDENT)]}
+    assert (await client.get(status)).json()["state"] == "off"
+    assert (await client.put(path, json=config, headers=ordinary)).status_code == 403
+    assert (await client.put(path, json={**config,"ends_at":now.isoformat()}, headers=admin)).status_code == 422
+    response = await client.put(path, json=config, headers=admin)
+    assert response.status_code == 200, response.text
+    public = (await client.get(status)).json()
+    assert public["state"] == "scheduled" and public["notice"] == config["notice"]
+    assert "allowed_accounts" not in public and public["access_allowed"]
+    board_id = UUID((await client.post("/api/v1/boards", headers=admin, json={"title":"Maintenance test"})).json()["id"])
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("INSERT INTO board_members(board_id,user_id,role) VALUES($1,$2,'viewer'),($1,$3,'viewer')", board_id, STUDENT, OUTSIDER)
+    assert (await client.get("/api/v1/boards", headers=ordinary)).status_code == 200
+    # Passing the scheduled start needs no process restart or manual action.
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE service_maintenance SET starts_at=now()-interval '1 minute'")
+    for headers in (admin, selected):
+        assert (await client.get(status, headers=headers)).json()["access_allowed"]
+        assert (await client.get("/api/v1/boards", headers=headers)).status_code == 200
+    for headers in (ordinary, {}, {"Authorization":"Bearer bogus"}):
+        public = (await client.get(status, headers=headers)).json()
+        assert public["state"] == "active" and not public["access_allowed"]
+        denied = await client.get("/api/v1/boards", headers=headers)
+        assert denied.status_code == 503 and denied.json()["code"] == "maintenance"
+    assert (await client.post("/api/v1/auth/signup", json={})).status_code == 503
+    assert (await client.get("/api/v1/health")).status_code == 200
+    assert (await client.get("/api/v1/news")).status_code == 200
+    assert (await client.get("/api/v1/auth/me", headers=ordinary)).status_code == 200
+    _, relogin = await sign_in(client, "outsider@example.test")
+    assert not (await client.get(status, headers=relogin)).json()["access_allowed"]
+    tokens = [admin_data["access_token"], selected_data["access_token"], ordinary_data["access_token"]]
+    rows = await lookup_board_sessions(app.state.pool, board_id, tokens)
+    assert set(rows) == set(tokens[:2])
+    # Removing the account from the allowlist applies immediately.
+    response = await client.put(path, headers=admin, json={**config,
+        "starts_at": (now-timedelta(minutes=1)).isoformat(), "allowed_accounts":[]})
+    assert response.status_code == 200, response.text
+    assert (await client.get("/api/v1/boards", headers=selected)).status_code == 503
+    assert (await client.get(path, headers=admin)).status_code == 200
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE service_maintenance SET ends_at=now()-interval '1 second'")
+    assert (await client.get(status)).json()["state"] == "off"
+    assert (await client.get("/api/v1/boards", headers=ordinary)).status_code == 200
+    assert (await client.put(path, headers=admin, json={"allowed_accounts":[]})).status_code == 200
