@@ -31,7 +31,9 @@ def wait_for(find, description, seconds=70):
     while time.monotonic() < end:
         try:
             value = find(snapshot())
-            if value:
+            # ElementTree nodes without children are falsy even if they are
+            # the exact enabled Android button we are waiting for.
+            if value is not None:
                 return value
         except (subprocess.SubprocessError, ET.ParseError) as exc:
             last = type(exc).__name__
@@ -40,7 +42,9 @@ def wait_for(find, description, seconds=70):
 
 
 def label(node):
-    return (node.get('text', '') + ' ' + node.get('content-desc', '')).strip()
+    text = node.get('text', '').strip()
+    description = node.get('content-desc', '').strip()
+    return text if text == description else (text + ' ' + description).strip()
 
 
 def fields(nodes):
