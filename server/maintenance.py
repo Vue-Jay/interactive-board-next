@@ -12,6 +12,7 @@ AUTH_ROUTES = {"/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logou
                "/api/v1/auth/verify-email"}
 
 class MaintenanceInput(BaseModel):
+    start_now: bool = False
     starts_at: datetime | None = None
     ends_at: datetime | None = None
     notice: str = Field(default="", max_length=500)
@@ -93,7 +94,7 @@ def install_maintenance(app, lookup_session, current_user):
     async def update(data: MaintenanceInput, request: Request, user=Depends(current_user)):
         if not user["is_admin"]:
             raise HTTPException(403, "Требуются права администратора.")
-        start, end = data.starts_at, data.ends_at
+        start, end = (datetime.now(timezone.utc) if data.start_now else data.starts_at), data.ends_at
         if any(value is not None and value.utcoffset() is None for value in (start, end)):
             raise HTTPException(422, "Укажите часовой пояс для дат.")
         if end and (not start or end <= start or end <= datetime.now(timezone.utc)):

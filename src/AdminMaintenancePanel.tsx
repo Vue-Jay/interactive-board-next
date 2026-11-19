@@ -35,7 +35,7 @@ export default function AdminMaintenancePanel({users}:{users:AdminUser[]}){
     if(mode==="schedule"&&config?.state==="active"&&a&&new Date(a).getTime()>Date.now()&&!window.confirm("Перенести текущие работы на будущее? Доступ пользователей будет восстановлен до нового начала."))return;
     setBusy(true);
     try{
-      const value=await selfhostSaveMaintenance({starts_at:a,ends_at:b,notice,allowed_accounts:accounts});
+      const value=await selfhostSaveMaintenance({starts_at:a,ends_at:b,notice,allowed_accounts:accounts,start_now:mode==="now"});
       install(value);setMessage(mode==="stop"?"Технические работы отключены.":mode==="now"?"Технические работы начались.":"Настройки сохранены.");
       window.dispatchEvent(new Event("lektrus:maintenance-changed"));
     }catch(e){setError(e instanceof Error?e.message:"Не удалось сохранить настройки.")}finally{setBusy(false)}

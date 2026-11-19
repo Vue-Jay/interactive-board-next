@@ -105,7 +105,8 @@ function saveSession(session:SelfhostSession|null){
   if(!session||loadSession()?.user.id!==session.user.id)documentBase=null;
   if(!session)localStorage.removeItem(SESSION_KEY);
   else localStorage.setItem(SESSION_KEY,JSON.stringify(session));
-  if(typeof window!=="undefined")window.dispatchEvent(new Event("lektrus:session-changed"));
+  if(typeof window!=="undefined"&&typeof window.dispatchEvent==="function"&&typeof Event==="function")
+    window.dispatchEvent(new Event("lektrus:session-changed"));
 }
 export const cachedSelfhostSession=()=>loadSession();
 export function clearSelfhostSession(){refreshInFlight=null;saveSession(null);}
@@ -316,7 +317,7 @@ export type MaintenanceStatus={
   notice:string;access_allowed:boolean;server_time:string;
 };
 export type MaintenanceConfig=MaintenanceStatus&{allowed_accounts:string[]};
-export type MaintenanceSetting=Pick<MaintenanceConfig,"starts_at"|"ends_at"|"notice"|"allowed_accounts">;
+export type MaintenanceSetting=Pick<MaintenanceConfig,"starts_at"|"ends_at"|"notice"|"allowed_accounts">&{start_now?:boolean};
 export async function selfhostMaintenanceStatus(authenticated=false):Promise<MaintenanceStatus>{
   const session=authenticated?await selfhostSession():null;
   const response=await rawRequest("/api/v1/maintenance",{},session?.access_token,6500);
