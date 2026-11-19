@@ -132,8 +132,9 @@ def native_ink_stroke():
  return wait(persisted,'Native touch stroke not persisted',20)
 def native_undo_redo():
  def ink_state():
-  return js("""for(const key of Object.keys(localStorage)){
-   if(!key.includes('document'))continue;
+  return js("""const boardId=location.pathname.split('/').pop();
+  for(const key of Object.keys(localStorage)){
+   if(!key.includes('document')||!key.includes(boardId))continue;
    try{const data=JSON.parse(localStorage.getItem(key));if(Array.isArray(data&&data.items))
     return data.items.filter(i=>i.kind==='pen').map(i=>({id:i.id,points:(i.points&&i.points.length)||0}));}catch{}
   }return null;""")
