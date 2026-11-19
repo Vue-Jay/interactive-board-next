@@ -95,13 +95,6 @@ app = FastAPI(
     lifespan=lifespan
 )
 app.include_router(android_updates_router)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins(),
-    allow_credentials=False,
-    allow_methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
-    allow_headers=["Authorization", "Content-Type", "X-File-Name", "X-Material-Title", "X-Material-Folder"],
-)
 
 
 
@@ -362,6 +355,17 @@ async def logout(request: Request, authorization: str | None = Header(None)):
 @app.get("/api/v1/auth/me")
 async def me(user=Depends(current_user)):
     return account_view(user)
+
+from maintenance import install_maintenance
+install_maintenance(app, lookup_session, current_user)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins(),
+    allow_credentials=False,
+    allow_methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type", "X-File-Name", "X-Material-Title", "X-Material-Folder"],
+)
+
 
 async def board_access(conn: asyncpg.Connection, board_id: UUID, user_id: UUID,
                        lock: bool = False):
@@ -626,7 +630,12 @@ async def lookup_board_sessions(pool: asyncpg.Pool, board_id: UUID, tokens,
                  LEFT JOIN board_documents d ON $4::boolean AND d.board_id = b.id
                 WHERE s.revoked_at IS NULL AND s.expires_at > now()
                   AND (u.email_confirmed_at IS NOT NULL OR u.guest_expires_at>now())
-                  AND (u.guest_board_id IS NULL OR (u.guest_board_id=$1 AND u.guest_expires_at>now()))""",
+                  AND (u.guest_board_id IS NULL OR (u.guest_board_id=$1 AND u.guest_expires_at>now()))
+                  AND NOT EXISTS (
+                    SELECT 1 FROM service_maintenance sm
+                    WHERE sm.starts_at<=now() AND (sm.ends_at IS NULL OR sm.ends_at>now())
+                      AND NOT (u.guest_board_id IS NULL AND (u.is_admin OR u.id=ANY(sm.allowed_accounts)))
+                  )""",
             board_id, [pair[0] for pair in pairs], [pair[1] for pair in pairs], include_version,
         )
     by_identity = {(row["id"], row["session_id"]): row for row in rows}

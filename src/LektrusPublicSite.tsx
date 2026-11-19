@@ -1,3 +1,4 @@
+import {PublicMaintenanceNotice} from "./MaintenanceGate";
 import {useEffect,useState,type CSSProperties,type MouseEvent,type ReactNode} from "react";
 import {defaultSiteDocument,loadPublishedSiteDocument,normalizeSiteDocument,SITE_PREVIEW_MESSAGE,type SiteDocument} from "./marketingSiteConfig";
 import {SiteCustomPage,SiteAnchorSlot} from "./SiteEditableSections";
@@ -255,6 +256,7 @@ export default function LektrusPublicSite(){
    </div>
   </header>
   {menuOpen&&<button type="button" className="marketing-sidebar-backdrop" onClick={()=>setMenuOpen(false)} aria-label="Закрыть боковое меню"/>}
+  <PublicMaintenanceNotice/>
   <main id="marketing-main" tabIndex={-1}>
    {page==="home"&&!copy?.replaceDefault&&<>
     {placed("before-0")}

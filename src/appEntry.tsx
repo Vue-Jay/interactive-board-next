@@ -87,6 +87,7 @@ import { initLectrisPalette } from "./lectrisPalette";
 import { initProfileAppearance } from "./profileStore";
 import { recoverOutdatedChunk } from "./chunkRecovery";
 import {AndroidUpdateGate} from "./AndroidUpdateGate";
+import {MaintenanceGate} from "./MaintenanceGate";
 import {ServiceUnavailableScreen} from "./ServiceUnavailableScreen";
 import {registerLektrusServiceWorker} from "./registerServiceWorker";
 
@@ -162,7 +163,7 @@ createRoot(root).render(
   isBrowserBoardFrame()?<ErrorBoundary><BrowserBoardFrameEntry/></ErrorBoundary>:
   Capacitor.isNativePlatform() && !LEKTRUS_LOCAL_TEST_MODE && !isSelfhostBackendEnabled() && !isRemoteBackendEnabled()
     ? <NativeConnectionSetup />
-    : <ErrorBoundary><AndroidUpdateGate><App /></AndroidUpdateGate></ErrorBoundary>
+    : <ErrorBoundary><AndroidUpdateGate><MaintenanceGate><App /></MaintenanceGate></AndroidUpdateGate></ErrorBoundary>
 );
 
 if(!isBrowserBoardFrame())registerLektrusServiceWorker();

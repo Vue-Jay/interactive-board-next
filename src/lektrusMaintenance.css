@@ -1,0 +1,27 @@
+.maintenance-notice{display:flex;align-items:center;gap:12px;padding:12px 20px;background:#fff5db;color:#654512;border-block:1px solid #eac470;font:500 13px/1.5 system-ui,sans-serif;overflow-wrap:anywhere}
+.maintenance-notice strong,.maintenance-notice span:not(.maintenance-notice-icon){display:block}
+.maintenance-notice strong{font-size:14px;color:#674107}
+.maintenance-notice-icon{display:grid;place-items:center;width:32px;height:32px;flex:none;border-radius:10px;background:#f3c76d;color:#533709;font-size:19px;font-weight:800}
+.maintenance-notice-app{position:fixed;z-index:10001;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);right:14px;max-width:min(450px,calc(100vw - 28px));max-height:40dvh;overflow:auto;border:1px solid #eac470;border-radius:15px;box-shadow:0 8px 32px #37250024}
+.maintenance-notice button{flex:none;align-self:flex-start;border:0;background:none;color:inherit;font-size:23px;line-height:1;cursor:pointer;padding:0 4px}
+.maintenance-blocking{position:fixed;inset:0;z-index:2147483000;overflow:auto;background:#eff4ff}
+.maintenance-blocking .u-sign-in{display:block;margin:12px auto 0;padding:9px 14px;border:0;background:transparent;color:inherit;text-decoration:underline;font:inherit;cursor:pointer}
+.maintenance-blocking .u-sign-in:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+.maintenance-checking{min-height:100dvh;display:grid;place-items:center}
+.maintenance-checking span{width:25px;height:25px;border:3px solid #9ba9c84a;border-top-color:#536bd2;border-radius:50%;animation:maintenanceSpin .9s linear infinite}
+@keyframes maintenanceSpin{to{transform:rotate(360deg)}}
+.admin-maintenance{display:grid;gap:16px;max-width:800px;padding:18px 0}
+.admin-maintenance h2,.admin-maintenance p{margin:0}
+.admin-maintenance .maintenance-admin-state{border:1px solid #eac470;border-radius:14px;padding:14px;background:#fff5db;color:#654512}
+.admin-maintenance-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.admin-maintenance label{display:grid;gap:6px;font-weight:600;min-width:0}
+.admin-maintenance input:not([type=checkbox]),.admin-maintenance textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid #97a3b080;border-radius:9px;background:transparent;color:inherit;font:inherit}
+.admin-maintenance-accounts{max-height:260px;overflow:auto;display:grid;gap:3px;border:1px solid #97a3b080;border-radius:12px;padding:8px}
+.admin-maintenance-accounts label{display:flex;align-items:center;gap:10px;padding:8px;font-weight:400;overflow-wrap:anywhere}
+.admin-maintenance-accounts small{display:block;opacity:.75}
+.admin-maintenance-actions{display:flex;flex-wrap:wrap;gap:10px}
+@media(prefers-color-scheme:dark){.maintenance-blocking{background:#111927}.maintenance-notice,.admin-maintenance .maintenance-admin-state{background:#3d301c;color:#ffdf9c;border-color:#806232}.maintenance-notice strong{color:#ffe4ab}}
+@media(max-width:600px){.maintenance-notice{padding:10px 14px;gap:9px;font-size:12px}.maintenance-notice-app{right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);max-width:calc(100vw - 20px)}}
+@media(prefers-reduced-motion:reduce){.maintenance-checking span{animation:none}}
+
+.maintenance-blocking [data-u-description]{overflow-wrap:anywhere}.maintenance-blocking .u-sign-in{min-height:44px}

@@ -113,6 +113,7 @@ async def client():
     _feedback_attempts.clear()
     connection = await asyncpg.connect(os.environ["DATABASE_URL"])
     await apply_schema(connection)
+    await connection.execute("UPDATE service_maintenance SET starts_at=NULL,ends_at=NULL,notice=\'\',allowed_accounts=\'{}\' WHERE singleton")
     await connection.execute(
         "TRUNCATE account_sessions,board_documents,board_members,boards,account_users,global_interface_layout CASCADE"
     )

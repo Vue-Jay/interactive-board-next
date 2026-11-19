@@ -333,6 +333,69 @@ def check_service_unavailable(browser, ident):
     ctx.close()
     print("Service recovery: five responsive sizes, dark theme, offline/online, retry and active-board safety passed")
 
+def check_maintenance(browser):
+    async def promote():
+        conn=await asyncpg.connect(os.environ["DATABASE_URL"])
+        try:
+            await conn.execute("UPDATE account_users SET is_admin=true WHERE email='owner@roles.example'")
+        finally:
+            await conn.close()
+    asyncio.run(promote())
+    contexts=[browser.new_context(viewport={"width":1440,"height":900},service_workers="block"),
+              browser.new_context(viewport={"width":390,"height":844},service_workers="block"),
+              browser.new_context(viewport={"width":390,"height":844},service_workers="block"),
+              browser.new_context(viewport={"width":390,"height":844},service_workers="block")]
+    admin,ordinary,selected,site=[ctx.new_page() for ctx in contexts]
+    try:
+        login(admin,"owner")
+        login(ordinary,"learner")
+        login(selected,"colleague")
+        admin.goto(BASE+"/app?section=admin")
+        admin.get_by_role("button",name="Техработы",exact=True).click(timeout=30000)
+        panel=admin.locator(".admin-maintenance")
+        expect(panel.get_by_text("Сервис работает в обычном режиме")).to_be_visible(timeout=30000)
+        dates=admin.evaluate("""() => [1,2].map(h=>{const d=new Date(Date.now()+h*3600000);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16)})""")
+        panel.get_by_label("Начало",exact=True).fill(dates[0])
+        panel.get_by_label("Окончание (необязательно)",exact=True).fill(dates[1])
+        panel.get_by_label("Сообщение для пользователей").fill("Обновляем систему досок")
+        panel.locator("label").filter(has_text="colleague@roles.example").get_by_role("checkbox").check(timeout=30000)
+        panel.get_by_role("button",name="Сохранить расписание").click()
+        expect(panel.get_by_text("Работы запланированы",exact=True)).to_be_visible(timeout=15000)
+        site.goto(BASE+"/")
+        expect(site.locator(".maintenance-notice")).to_contain_text("Запланированы технические работы",timeout=15000)
+        ordinary.evaluate("window.dispatchEvent(new Event('lektrus:maintenance-changed'))")
+        expect(ordinary.locator(".maintenance-notice")).to_contain_text("Запланированы технические работы",timeout=15000)
+        expect(ordinary.get_by_role("button",name="Я учусь",exact=True)).to_be_visible()
+        admin.once("dialog",lambda d:d.accept())
+        panel.get_by_role("button",name="Начать сейчас").click()
+        expect(panel.get_by_text("Сейчас ведутся технические работы",exact=True)).to_be_visible(timeout=15000)
+        for page in (ordinary,selected,site):
+            page.evaluate("window.dispatchEvent(new Event('lektrus:maintenance-changed'))")
+        expect(ordinary.locator(".maintenance-blocking")).to_contain_text("Технические работы",timeout=15000)
+        expect(ordinary.locator(".maintenance-blocking")).to_contain_text("Обновляем систему досок")
+        expect(selected.locator(".maintenance-notice")).to_contain_text("У вас есть доступ",timeout=15000)
+        expect(selected.get_by_role("button",name="Я учусь",exact=True)).to_be_visible()
+        expect(site.locator(".maintenance-notice")).to_contain_text("Ведутся технические работы",timeout=15000)
+        for page,name in [(admin,"admin"),(ordinary,"blocked-phone"),(selected,"allowed-phone"),(site,"site-phone")]:
+            page.screenshot(path=str(OUT/f"maintenance-{name}.png"))
+        # A new unauthenticated user can still reach the login form for an exception.
+        fresh=browser.new_context(viewport={"width":390,"height":844},service_workers="block")
+        try:
+            page=fresh.new_page();page.goto(BASE+"/app")
+            expect(page.locator(".maintenance-blocking")).to_be_visible(timeout=15000)
+            page.get_by_role("button",name="Войти с разрешённым аккаунтом").click()
+            expect(page.get_by_label("Email",exact=True)).to_be_visible(timeout=15000)
+        finally:
+            fresh.close()
+        panel.get_by_role("button",name="Завершить работы").click()
+        expect(panel.get_by_text("Сервис работает в обычном режиме",exact=True)).to_be_visible(timeout=15000)
+        ordinary.evaluate("window.dispatchEvent(new Event('lektrus:maintenance-changed'))")
+        expect(ordinary.locator(".maintenance-blocking")).to_have_count(0,timeout=15000)
+        expect(ordinary.get_by_role("button",name="Я учусь",exact=True)).to_be_visible()
+    finally:
+        for ctx in contexts:ctx.close()
+    print("Maintenance: scheduled banner, admin and selected access, blocked account, login and automatic recovery passed")
+
 def main():
     asyncio.run(seed())
     ident=setup_board()
@@ -384,6 +447,7 @@ def main():
             assert not errors, f"{name}: browser exceptions {errors}"
             context.close()
         check_guest_and_registration(browser,ident)
+        check_maintenance(browser)
         browser.close()
     print("All registered and guest participant contexts, registration modes, and persistent learner drawing passed browser acceptance")
 

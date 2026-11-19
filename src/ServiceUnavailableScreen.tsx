@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 
-export type UnavailableReason = "offline" | "server" | "startup";
+export type UnavailableReason = "offline" | "server" | "startup" | "maintenance";
 type ElementRoot = HTMLElement;
 
 function text(root:ElementRoot, selector:string, value:string){
@@ -13,8 +13,10 @@ function template(root:ElementRoot){
   root.textContent="";
   root.appendChild(source.content.cloneNode(true));
 }
-function update(root:ElementRoot,reason:UnavailableReason,checking:boolean,automatic:boolean){
-  const copy=reason==="offline"
+function update(root:ElementRoot,reason:UnavailableReason,checking:boolean,automatic:boolean,maintenanceMessage?:string,signInLabel?:string){
+  const copy=reason==="maintenance"
+    ? ["Технические работы","Скоро вернёмся",maintenanceMessage||"В Lektrus ведутся технические работы."]
+    :reason==="offline"
     ? ["Нет соединения","Вы не в сети","Проверьте Wi-Fi или мобильный интернет, чтобы снова открыть Lektrus."]
     :reason==="startup"
       ? ["Ошибка загрузки","Не удалось открыть Lektrus","Интерфейс не загрузился. Проверьте соединение и повторите попытку."]
@@ -23,23 +25,28 @@ function update(root:ElementRoot,reason:UnavailableReason,checking:boolean,autom
   text(root,"[data-u-title]",copy[1]);
   text(root,"[data-u-description]",copy[2]);
   text(root,"[data-u-button]",checking?"Проверяем…":"Повторить попытку");
-  text(root,"[data-u-note]",automatic
+  text(root,"[data-u-note]",reason==="maintenance"?"Доступ восстановится автоматически после окончания работ.":automatic
     ?"Проверяем доступность автоматически. Эта ошибка не означает, что ваши данные удалены."
     :"Эта ошибка не означает, что ваши данные удалены. Не переустанавливайте приложение.");
   const button=root.querySelector<HTMLButtonElement>("[data-u-retry]");
   if(button)button.disabled=checking;
+  let secondary=root.querySelector<HTMLButtonElement>(".u-sign-in");
+  if(reason==="maintenance"&&signInLabel){
+    if(!secondary){secondary=document.createElement("button");secondary.type="button";secondary.className="u-sign-in";button?.after(secondary);}
+    secondary.textContent=signInLabel;
+  }else secondary?.remove();
 }
 
 // The same self-contained markup is embedded in index.html at build time and
 // emitted as the service worker's standalone navigation fallback.
-export function ServiceUnavailableScreen({reason,checking=false,automatic=false,onRetry}:{
-  reason:UnavailableReason;checking?:boolean;automatic?:boolean;onRetry:()=>void;
+export function ServiceUnavailableScreen({reason,checking=false,automatic=false,onRetry,maintenanceMessage,onSignIn,signInLabel}:{
+  reason:UnavailableReason;checking?:boolean;automatic?:boolean;onRetry:()=>void;maintenanceMessage?:string;onSignIn?:()=>void;signInLabel?:string;
 }){
   const host=useRef<HTMLDivElement>(null);
   useLayoutEffect(()=>{if(host.current)template(host.current)},[]);
-  useLayoutEffect(()=>{if(host.current)update(host.current,reason,checking,automatic)},[reason,checking,automatic]);
+  useLayoutEffect(()=>{if(host.current)update(host.current,reason,checking,automatic,maintenanceMessage,signInLabel)},[reason,checking,automatic,maintenanceMessage,signInLabel]);
   return <div ref={host} onClick={event=>{
-    if(event.target instanceof Element&&event.target.closest("[data-u-retry]"))onRetry();
+    if(event.target instanceof Element){if(event.target.closest("[data-u-retry]"))onRetry();else if(event.target.closest(".u-sign-in"))onSignIn?.();}
   }}/>;
 }
 export function mountStartupUnavailable(root:HTMLElement){

@@ -105,6 +105,7 @@ function saveSession(session:SelfhostSession|null){
   if(!session||loadSession()?.user.id!==session.user.id)documentBase=null;
   if(!session)localStorage.removeItem(SESSION_KEY);
   else localStorage.setItem(SESSION_KEY,JSON.stringify(session));
+  if(typeof window!=="undefined")window.dispatchEvent(new Event("lektrus:session-changed"));
 }
 export const cachedSelfhostSession=()=>loadSession();
 export function clearSelfhostSession(){refreshInFlight=null;saveSession(null);}
@@ -155,7 +156,7 @@ async function androidJsonRequest(url:string,init:RequestInit,headers:Headers,si
 // Report transport failures, not auth/permission errors. Consumers must verify
 // the public health endpoint before treating an individual error as an outage.
 function notifyServiceRequestFailure(path:string){
-  if(path==="/api/v1/health"||path==="/api/v1/mobile/android-update")return;
+  if(path==="/api/v1/health"||path==="/api/v1/mobile/android-update"||path==="/api/v1/maintenance")return;
   if(typeof window!=="undefined"&&typeof window.dispatchEvent==="function"&&typeof Event==="function")
     window.dispatchEvent(new Event("lektrus:service-request-failed"));
 }
@@ -310,6 +311,23 @@ export async function selfhostRequest<T>(path:string,init:RequestInit={},timeout
   if(response.status===204)return undefined as T;
   return await response.json() as T;
 }
+export type MaintenanceStatus={
+  state:"off"|"scheduled"|"active";starts_at:string|null;ends_at:string|null;
+  notice:string;access_allowed:boolean;server_time:string;
+};
+export type MaintenanceConfig=MaintenanceStatus&{allowed_accounts:string[]};
+export type MaintenanceSetting=Pick<MaintenanceConfig,"starts_at"|"ends_at"|"notice"|"allowed_accounts">;
+export async function selfhostMaintenanceStatus(authenticated=false):Promise<MaintenanceStatus>{
+  const session=authenticated?await selfhostSession():null;
+  const response=await rawRequest("/api/v1/maintenance",{},session?.access_token,6500);
+  if(!response.ok)throw await responseError(response);
+  const data=await response.json() as MaintenanceStatus;
+  if(!["off","scheduled","active"].includes(data?.state)||typeof data.access_allowed!=="boolean")
+    throw new Error("Не удалось проверить режим технических работ.");
+  return data;
+}
+export const selfhostMaintenanceAdmin=()=>selfhostRequest<MaintenanceConfig>("/api/v1/admin/maintenance");
+export const selfhostSaveMaintenance=(value:MaintenanceSetting)=>selfhostRequest<MaintenanceConfig>("/api/v1/admin/maintenance",{method:"PUT",body:JSON.stringify(value)});
 export const selfhostBoards=()=>selfhostRequest<SelfhostBoard[]>("/api/v1/boards");
 // Public update discovery must work before login, and must never refresh auth.
 export async function selfhostAndroidUpdate():Promise<unknown>{
