@@ -171,10 +171,10 @@ try:
  wait(lambda:attach(),'Native WebView never became ready',90)
  check('installed-native-capacitor-and-layout',home_layout)
  check('native-touch-navigation-storm',navigation_storm,requires=['installed-native-capacitor-and-layout'])
+ check('native-rotation-roundtrip',orientation,requires=['installed-native-capacitor-and-layout'])
  check('native-keyboard-outside-touch',keyboard_outside_touch,requires=['installed-native-capacitor-and-layout'])
  check('native-create-board',create_board,requires=['native-keyboard-outside-touch'])
  check('native-touch-pen-persistence',native_ink_stroke,requires=['native-create-board'])
- check('native-rotation-roundtrip',orientation,requires=['installed-native-capacitor-and-layout'])
 except Exception as error:
  fatal_error={'type':type(error).__name__,'message':str(error),'traceback':traceback.format_exc()}
  print('FATAL',str(error),flush=True)
