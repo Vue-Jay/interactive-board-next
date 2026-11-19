@@ -1,6 +1,6 @@
 import { STORAGE_KEY } from "./boardModel";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
-import { getUserByEmail, getUserById, type AuthUser, type BoardRole } from "./authStore";
+import { getUserByEmail, getUserById, retrySelfhostInvitations, type AuthUser, type BoardRole } from "./authStore";
 import { claimRemoteInvitations, deleteRemoteStorageObjects, isRemoteBackendEnabled, listRemoteStorageObjects, remoteRequest } from "./backend";
 import { isSelfhostBackendEnabled, selfhostRequest, SelfhostHttpError, type SelfhostBoard, selfhostBoards, selfhostCreateBoard, selfhostRenameBoard, selfhostDeleteBoard, selfhostAccess, selfhostInvite, selfhostChangeMemberRole, selfhostRemoveMember, selfhostRevokeInvitation, selfhostAdminBoards, selfhostAdminUserWorkspace } from "./selfhostApi";
 
@@ -37,6 +37,7 @@ export const getUserBoards=async(user:AuthUser):Promise<BoardSummary[]>=>{
  if(isSelfhostBackendEnabled()){
   const stale=getCachedUserBoards(user);
   try{
+   await retrySelfhostInvitations(user.id);
    const result=(await selfhostBoards()).map(row=>rowToBoard(row,row.role));
    return rememberUserBoards(user,result);
   }catch(error){if(stale.length)return stale;throw error}

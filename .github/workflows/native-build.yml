@@ -42,6 +42,8 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Verify native project
         run: npm run native:check
+      - name: Verify Android API transport and authentication state
+        run: node scripts/test-selfhost-client.mjs
       - name: Build bundled Lektrus
         run: npm run native:build
       - name: Authentication viewport and visual geometry acceptance
@@ -93,6 +95,39 @@ jobs:
           name: Lektrus-Android-Update-APK
           path: Lektrus-Android.apk
           if-no-files-found: error
+          retention-days: 14
+
+  android-network:
+    name: Signed Android 7 APK — live HTTPS login smoke test
+    needs: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Lektrus-Android-Update-APK
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Exercise the signed release APK on Android 7
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 24
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: python3 scripts/test-signed-android-login.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Signed-Android-login-evidence
+          path: artifacts/android-login
+          if-no-files-found: warn
           retention-days: 14
 
   ios:
