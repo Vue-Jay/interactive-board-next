@@ -22,9 +22,12 @@ jobs:
           node --check scripts/test-mobile-browser-stress-v2.mjs
           node --check scripts/compile-mobile-stress-inventory.mjs
           node --check scripts/audit-mobile-stress-inventory.mjs
+          node --check scripts/audit-mobile-executable-coverage-v2.mjs
           python3 -m py_compile scripts/test-native-stress-v2.py
       - name: Audit planned mobile stress matrix (not an acceptance run)
-        run: node scripts/audit-mobile-stress-inventory.mjs
+        run: |
+          node scripts/audit-mobile-stress-inventory.mjs
+          node scripts/audit-mobile-executable-coverage-v2.mjs
       - name: Verify acceptance gate remains closed until implemented
         run: |
           if node scripts/compile-mobile-stress-inventory.mjs "$RUNNER_TEMP/mobile-matrix.json" --require-ready; then
