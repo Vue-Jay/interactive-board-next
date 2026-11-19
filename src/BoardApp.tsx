@@ -11021,8 +11021,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         {items.length > 0 && (
           <div className="minimap">
             <div className="minimap-header">
-              <span>Навигация</span>
-              <span>{visibleObjects.length} видно · {objectCount} всего</span>
+              <span>Карта</span>
             </div>
             <div
               className="minimap-world"

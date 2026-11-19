@@ -31,7 +31,7 @@ for(const text of [
 assert.ok(site.includes("marketing-sidebar-content")&&site.includes("marketing-sidebar-tools"),"navigation must be a separate left sidebar with standalone tools");
 assert.ok(site.includes('icon=false')&&site.includes('{icon&&<SiteMenuIcon name={id}/>}'),"body links should be text-only while sidebar links have icons");
 assert.ok(site.includes('className={previousShot?"marketing-showcase-fade":"marketing-showcase-base"}')&&css.includes(".marketing-showcase-motion"),"the first approved screenshot must appear immediately without waiting for an entrance animation");
-assert.ok(site.includes('siteNavigation.map(item=><NavLink')&&site.includes('<SiteMenuIcon name={id}/>'),"the remaining four site pages, including Home, must have branded navigation icons");
+assert.ok(site.includes('siteNavigation.filter(item=>item.id!=="download").map(item=><NavLink')&&site.includes('<SiteMenuIcon name={id}/>')&&site.includes('marketing-download-entry'),"the four section links and the separate application download action must have branded icons");
 assert.ok(site.includes('href="/tools/atlas"')&&site.includes('href="/tools/laboratory"'),"sidebar must link to both real standalone tools");
 assert.ok(site.includes("marketing-hero-split")&&site.includes("marketing-hero-copy"),"homepage must position text and real captures as sibling columns");
 assert.ok(css.includes(".marketing-site .marketing-hero-split")&&css.includes("--marketing-sidebar-width")&&css.includes(".marketing-sidebar-content"),"full-width desktop sidebar and split layout styles must exist");
@@ -441,6 +441,7 @@ assert.ok(site.includes('page==="download"')&&site.includes('href="#download"'),
 assert.ok(site.includes('releases/latest/download/Lektrus-Android.apk')&&site.includes('Lektrus-Android.apk.sha256'),"download must use the permanent signed release asset and checksum");
 assert.ok(site.includes('Не отключайте Play Защиту'),"installation guidance must preserve Android security");
 assert.ok(read("src/lektrusMarketingDownload.css").includes("@media(max-width:850px)"),"download cards must reflow on narrow screens");
+assert.ok(read("src/main.tsx").includes('import "./lektrusMarketingDownload.css"'),"download CSS must be bundled into the initial public stylesheet, including production hash navigation");
 const retiredAsCustom=model.normalizeSiteDocument({...defaultMarketing,customPages:[{id:"about",title:"Reintroduced About",blocks:[]},{id:"new-page",title:"New",blocks:[]}]});
 assert.ok(!retiredAsCustom.customPages.some(x=>x.id==="about"),"deleted page names stay reserved");
 assert.ok(retiredAsCustom.customPages.some(x=>x.id==="new-page"),"ordinary custom pages continue working");
