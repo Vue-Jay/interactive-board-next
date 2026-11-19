@@ -301,7 +301,7 @@ def compact_board_library():
         paddingBottom:parseFloat(getComputedStyle(s).paddingBottom)};''', toggle, actions)
     initial = wait(state, 'Compact board library controls unavailable')
     assert initial['expanded']=='false' and not initial['actionsVisible'], initial
-    assert initial['buttonHeight']>=39 and initial['buttonWidth']>=150, initial
+    assert initial['buttonHeight']>=39 and initial['buttonWidth']>=120, initial
     assert initial['scrollWidth']<=initial['width']+2, initial
     assert initial['stageBottom']<=initial['dockTop']+2 and initial['paddingBottom']<=16, initial
     for index in range(3):

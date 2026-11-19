@@ -10,6 +10,26 @@ permissions:
   contents: read
 
 jobs:
+  tls-chain:
+    name: Verify production HTTPS chain with embedded Android public roots
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify live certificate and hostname (without insecure flags)
+        shell: bash
+        run: |
+          mkdir -p artifacts/android-login
+          openssl s_client -connect lektrus.ru:443 -servername lektrus.ru \
+            -verify_hostname lektrus.ru -verify_return_error -showcerts \
+            -CAfile android/app/src/main/res/raw/lektrus_isrg_roots.pem \
+            -no-CApath -no-CAstore </dev/null 2>&1 | tee artifacts/android-login/tls-chain.txt
+          grep -F 'Verify return code: 0 (ok)' artifacts/android-login/tls-chain.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Lektrus-HTTPS-chain-diagnostics
+          path: artifacts/android-login/tls-chain.txt
   android:
     name: Build permanently signed Android update APK
     runs-on: ubuntu-latest
@@ -98,10 +118,16 @@ jobs:
           retention-days: 14
 
   android-network:
-    name: Signed Android 7 APK — live HTTPS login smoke test
-    needs: android
+    name: Signed Android API ${{ matrix.api }} APK — live HTTPS login smoke test
+    needs: [android, tls-chain]
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # Actual signed artifact on the oldest, Redmi/Android 11 and newest OS.
+        # The separate runtime workflow exercises every intermediate API.
+        api: [24, 30, 36]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -112,20 +138,20 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Exercise the signed release APK on Android 7
+      - name: Exercise the signed release APK on Android API ${{ matrix.api }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 24
-          target: google_apis
+          api-level: ${{ matrix.api }}
+          target: ${{ matrix.api >= 32 && 'default' || 'google_apis' }}
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          emulator-options: -no-window -gpu ${{ matrix.api >= 36 && 'swangle' || 'swiftshader_indirect' }} -no-snapshot -noaudio -no-boot-anim
           script: python3 scripts/test-signed-android-login.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Signed-Android-login-evidence
+          name: Signed-Android-API-${{ matrix.api }}-login-evidence
           path: artifacts/android-login
           if-no-files-found: warn
           retention-days: 14

@@ -129,8 +129,8 @@
 .lectris-library-hero-note{position:absolute;right:-15px;top:100px;transform:rotate(10deg);color:#fff;background:#6c87e4;border-radius:12px;padding:13px;font-size:15px;font-weight:850;box-shadow:0 6px 18px #355abd44}
 .lectris-library-new{position:relative;z-index:2;flex:0 0 auto;display:flex;align-items:center;gap:12px;background:#315bd8;color:#fff;border:1px solid #315bd8;border-radius:12px;padding:11px 18px;min-height:44px;font-size:13px;font-weight:800;box-shadow:0 7px 20px #355dba33;cursor:pointer}
 .lectris-library-new:hover{background:#214cbd}
-.lectris-library-new span:first-child{font-size:21px}
-.lectris-library-new span:last-child{margin-left:8px}
+.lectris-library-new>span:first-child{font-size:21px}
+.lectris-library-new>span:last-child{margin-left:8px}
 .lectris-library-section-title{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:29px 0 16px}
 .lectris-library-section-title span{color:#6888c0;font-size:10px;font-weight:850;letter-spacing:.13em}
 .lectris-library-section-title h2{color:#1e3557;letter-spacing:-.038em;font-size:23px;margin:5px 0 0}

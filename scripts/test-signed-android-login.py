@@ -4,6 +4,7 @@ Only a reserved invalid email and fake password are sent. No account is created,
 no actual credentials are used, and a backend HTTP 401 is the expected result.
 """
 import re
+import struct
 import subprocess
 import time
 import xml.etree.ElementTree as ET
@@ -58,14 +59,58 @@ def tap(node):
 
 
 def screenshot(name):
-    (OUT / name).write_bytes(adb('exec-out', 'screencap', '-p'))
+    data=adb('exec-out', 'screencap', '-p')
+    assert data.startswith(b'\x89PNG\r\n\x1a\n'), 'Native capture is not a PNG'
+    (OUT / name).write_bytes(data)
+    return struct.unpack('>II',data[16:24])
+
+
+def find_label(nodes, text):
+    return next((n for n in nodes if label(n)==text and n.get('enabled')=='true'),None)
+
+
+def tap_label(text):
+    tap(wait_for(lambda nodes:find_label(nodes,text), f'Native control unavailable: {text}'))
+
+
+def assert_portrait(name):
+    width,height=screenshot(name)
+    assert height>width, f'Auth unexpectedly rotated: {width}x{height}'
+
+
+def collect_diagnostics():
+    # A failed TLS handshake must expose the reason in the isolated runner.
+    try:
+        log=adb('logcat','-d','-t','8000',timeout=35).decode(errors='replace')
+        terms=('SSLHandshakeException','SSLPeerUnverifiedException','CertPathValidatorException','Trust anchor','CertificateException','CertPath','CapacitorHttp')
+        (OUT/'tls-device-diagnostics.txt').write_text('\n'.join(line for line in log.splitlines() if any(t in line for t in terms)))
+        (OUT/'device-version.txt').write_bytes(adb('shell','getprop','ro.build.version.release')+adb('shell','getprop','ro.build.version.sdk')+adb('shell','date','-u'))
+    except (subprocess.SubprocessError, OSError) as exc:
+        print(f'Diagnostic capture unavailable: {exc}',flush=True)
 
 
 try:
     adb('install', '-r', 'Lektrus-Android.apk', timeout=120)
-    adb('shell', 'am', 'start', '-W', '-n', PACKAGE + '/ru.lektrus.board.MainActivity')
-    form = wait_for(fields, 'Release APK did not render the login form')
-    screenshot('01-login.png')
+    # Three independent cold launches with the emulator held sideways.
+    # Authentication must always request a portrait activity, including after
+    # leaving registration/recovery. Do not clear or alter the installed APK.
+    adb('shell','settings','put','system','accelerometer_rotation','0')
+    adb('shell','settings','put','system','user_rotation','1')
+    for round_number in range(1,4):
+        adb('shell','am','force-stop',PACKAGE)
+        adb('shell', 'am', 'start', '-W', '-n', PACKAGE + '/ru.lektrus.board.MainActivity')
+        form = wait_for(fields, f'Release APK did not render login, round {round_number}')
+        assert_portrait(f'01-login-round-{round_number}.png')
+        if round_number==1:
+            tap_label('Регистрация')
+            wait_for(lambda nodes: True if all(any(text in label(n) for n in nodes) for text in ('Я хочу преподавать','Я хочу учиться')) else None, 'Registration role choices unavailable in native app')
+            assert_portrait('01-registration.png')
+            tap_label('Вход')
+            wait_for(fields,'Login form did not return from registration')
+        elif round_number==2:
+            tap_label('Забыли пароль?')
+            wait_for(lambda nodes:True if any('Восстановление пароля' in label(n) for n in nodes) else None,'Password recovery unavailable in native app')
+            assert_portrait('01-recovery.png')
     tap(form[0])
     adb('shell', 'input', 'text', 'android-release-qa@example.invalid')
     adb('shell', 'input', 'keyevent', '4')
@@ -88,3 +133,4 @@ try:
     print('Signed Android APK: production HTTPS login returned the expected invalid-credentials response.')
 finally:
     screenshot('03-final-state.png')
+    collect_diagnostics()

@@ -74,6 +74,19 @@ def assert_compact_workspace(page, name, width, height):
         expect(page.locator("#library-board-actions")).to_be_visible()
         toggle.click()
         expect(page.locator("#library-board-actions")).to_be_hidden()
+        page.locator(".lectris-workspace-stage").evaluate("node=>node.scrollTop=0")
+        expect(page.locator(".lectris-library-card").first).to_be_visible(timeout=30000)
+        gallery=page.evaluate("""() => {
+          const preview=document.querySelector('.lectris-library-card .lectris-library-preview').getBoundingClientRect();
+          const dock=document.querySelector('.lectris-mobile-bottom').getBoundingClientRect();
+          const sort=document.querySelector('.lectris-library-sort').getBoundingClientRect();
+          const actions=document.querySelector('.lectris-library-actions-toggle').getBoundingClientRect();
+          return {previewTop:preview.top,dockTop:dock.top,sort:[sort.left,sort.right,sort.top,sort.height],actions:[actions.left,actions.right,actions.top,actions.height]};
+        }""")
+        assert gallery["previewTop"]+50<gallery["dockTop"], (name,width,gallery)
+        assert gallery["sort"][1]<=gallery["actions"][0] and abs(gallery["sort"][2]-gallery["actions"][2])<3, gallery
+        assert gallery["sort"][3]>=39 and gallery["actions"][3]>=39, gallery
+        expect(page.locator(".lectris-library-create-tile")).to_be_hidden()
     page.screenshot(path=str(OUT/f"{name}-compact-{width}x{height}.png"))
 
 def assert_board(page,ident,can_author,owner,*,navigate=True,embedded=False):
