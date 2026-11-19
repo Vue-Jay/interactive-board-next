@@ -298,7 +298,18 @@ def workspace_section(label, route, selector):
         click(primary)
     else:
         click('.lectris-mobile-bottom button[aria-label="Ещё разделы"]')
-        element = wait(lambda: js('return [...document.querySelectorAll(".lektrus-more-page-item")].find(e=>e.querySelector(".lektrus-more-page-label")?.textContent===arguments[0])||null', label), f'Missing section: {label}')
+        # Verify the menu is open before checking its entries on old WebViews.
+        wait(lambda: visible_id('.lektrus-more-page-search input'), f'More menu did not open for: {label}')
+        def menu_entry():
+            return js('return [...document.querySelectorAll(".lektrus-more-page-item")].find(e=>e.querySelector(".lektrus-more-page-label")?.textContent===arguments[0])||null', label)
+        try:
+            element = wait(menu_entry, f'Missing section: {label}', 12)
+        except AssertionError:
+            diagnostic = js('return {query:document.querySelector(".lektrus-more-page-search input")?.value, entries:[...document.querySelectorAll(".lektrus-more-page-label")].map(e=>e.textContent)}')
+            print('More navigation diagnostic:', diagnostic, flush=True)
+            # Retry one real WebDriver tap, preserving the diagnostic if absent.
+            click('.lectris-mobile-bottom button[aria-label="Ещё разделы"]')
+            element = wait(menu_entry, f'Missing section after reopening menu: {label}', 15)
         command('POST', f'/element/{element[ELEMENT]}/click', {})
     wait(lambda: visible_id(selector), f'Section did not render: {label}')
     assert js('return new URLSearchParams(location.search).get("section")') == route, f'Wrong page: {label}'
