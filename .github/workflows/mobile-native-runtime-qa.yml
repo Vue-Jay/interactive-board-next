@@ -28,7 +28,7 @@ jobs:
     name: Mobile and tablet browser touch regression
     # Recheck touch dismissal after the WKWebView compatibility-click fix.
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,6 +39,18 @@ jobs:
       - run: python3 -m py_compile scripts/test-native-mobile-runtime.py
       - run: node scripts/test-mobile-keyboard-dismissal.mjs
       - run: node scripts/test-native-file-export.mjs
+      - name: Comprehensive application functionality regression for mobile release
+        run: |
+          npm run test:ui
+          npm run test:subject-boards
+          npm run test:lab-acceptance
+          npm run test:atlas
+          npm run test:product-screens
+          npm run test:board-links
+          npm run test:realtime
+          npm run test:brush-crop
+          npm run test:math-gesture
+          npm run native:check
       - name: Validate same-origin board frame security headers
         run: |
           docker run --rm -v "${{ github.workspace }}/deploy/amvera/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2.10.2-alpine caddy adapt --config /etc/caddy/Caddyfile --validate
