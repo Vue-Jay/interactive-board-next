@@ -42,7 +42,8 @@ assert.ok(app.includes('itemsInsideRect(itemsRef.current,startWorld,last)'));
 assert.ok(app.includes('e.button===2 && e.pointerType==="mouse"'));
 assert.ok(app.includes('const dragged=right.dragged'));
 assert.ok(app.includes('if(!dragged)openBoardContextMenu'));
-assert.ok(app.includes('if(e.nativeEvent.button!==2)'));
+assert.match(app,/if\(e\.nativeEvent\.button!==2&&tool==="select"&&!gesture\.current&&!eraserSession\.current&&!pinchState\.current\)/,
+ "Synthetic long-press context menus are allowed only in idle selection, never during drawing or pinch");
 assert.ok(app.includes('createPortal('));
 assert.ok(css.includes('z-index:2147482400!important'));
 assert.ok(css.includes('cursor:grabbing!important'));

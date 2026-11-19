@@ -56,6 +56,7 @@ export default function BoardsScreen({user,accountRole,workspaceMode,onOpenBoard
  },[previewIds,user.id]); const [editingId,setEditingId]=useState<string|null>(null); const [draftTitle,setDraftTitle]=useState("");
  const [filter,setFilter]=useState<BoardFilter>("all"); const [sort,setSort]=useState<BoardSort>("recent"); const [trashOpen,setTrashOpen]=useState(false); const [trash,setTrash]=useState<BoardSummary[]>([]);
  const [boardActionsOpen,setBoardActionsOpen]=useState(false);
+ const [cardActionsId,setCardActionsId]=useState<string|null>(null);
  const [createOpen,setCreateOpen]=useState(false); const [createAssociation,setCreateAssociation]=useState<{subject?:string;group?:string}>({});
  const [manage,setManage]=useState<BoardSummary|null>(null); const [notice,setNotice]=useState(""); const [busy,setBusy]=useState(false);
  const [access,setAccess]=useState<{members:BoardAccessMember[];invites:BoardInvitation[]}>({members:[],invites:[]});
@@ -227,7 +228,7 @@ export default function BoardsScreen({user,accountRole,workspaceMode,onOpenBoard
             <div className="board-card-meta">{!isSelfhostBackendEnabled()&&<span>{BOARD_ROLE_LABELS[b.role]}</span>}<time dateTime={b.updatedAt}>{fmt(b.updatedAt)}</time></div>
             <div className="board-card-actions">
               <button className="lectris-library-open" onClick={()=>onOpenBoard(b)}>Открыть <span aria-hidden="true">↗</span></button>
-              {b.role==="owner"&&<><button onClick={()=>{setEditingId(b.id);setDraftTitle(b.title)}}>Название</button><button onClick={()=>{setManage(b);setNotice("");setCreatedUrl("")}}>Доступ</button><button className="danger" onClick={async()=>{if(confirm(`Переместить доску «${b.title}» в корзину? Её можно будет восстановить.`)){await deleteBoard(user.id,b.id);setNotice("Доска перемещена в корзину");await refresh()}}}>Удалить</button></>}
+              {b.role==="owner"&&<><button type="button" className="lectris-card-menu-toggle" aria-label={`Действия с доской ${b.title}`} aria-expanded={cardActionsId===b.id} aria-controls={`board-actions-${b.id}`} onClick={()=>setCardActionsId(id=>id===b.id?null:b.id)}><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg></button><div id={`board-actions-${b.id}`} className={`lectris-card-secondary-actions${cardActionsId===b.id?" is-expanded":""}`}><button onClick={()=>{setEditingId(b.id);setDraftTitle(b.title);setCardActionsId(null)}}>Название</button><button onClick={()=>{setManage(b);setNotice("");setCreatedUrl("");setCardActionsId(null)}}>Доступ</button><button className="danger" onClick={async()=>{setCardActionsId(null);if(confirm(`Переместить доску «${b.title}» в корзину? Её можно будет восстановить.`)){await deleteBoard(user.id,b.id);setNotice("Доска перемещена в корзину");await refresh()}}}>Удалить</button></div></>}
             </div>
           </div>
         </article>)}

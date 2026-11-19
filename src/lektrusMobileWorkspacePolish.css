@@ -45,6 +45,8 @@
 .access-backdrop .board-invite-role-grid>button>small {font-size:11px!important;line-height:1.35;color:var(--lt-secondary)!important}
 .access-backdrop .board-invite-role-grid>button>span {background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important}
 .lectris-library-actions-toggle {display:none!important}
+.lectris-card-menu-toggle {display:none!important}
+.lectris-card-secondary-actions {display:contents}
 
 @media(max-width:700px) and (orientation:portrait) {
   /* There is exactly one space reservation for the fixed dock: the body.
@@ -129,6 +131,37 @@
   .lectris-workspace-stage .lectris-library-grid .board-card-meta {font-size:11px;line-height:1.3}
   .lectris-workspace-stage .lectris-library-grid .board-card-actions {margin-top:2px!important;gap:5px!important}
   .lectris-workspace-stage .lectris-library-grid .board-card-actions button {min-height:40px!important;padding:5px 8px!important;white-space:nowrap;font-size:11px!important}
+  /* Phone library: a restrained app header, one main action, and a
+     separate disclosure for management. Keep the preview genuinely useful. */
+  .lectris-workspace-header .lectris-brand {max-width:none!important;flex:1 1 auto!important}
+  .lectris-workspace-header .lektrus-brand-tagline {display:none!important}
+  .lectris-workspace-header .lektrus-brand-wordmark {font-size:22px!important;letter-spacing:-.045em!important}
+  .lectris-workspace-header .lectris-header-actions {gap:5px!important}
+  .lectris-workspace-header :is(.lectris-header-search,.lectris-header-icon,.lectris-header-account) {min-width:44px!important;min-height:44px!important;border:0!important;background:transparent!important;box-shadow:none!important}
+  .lectris-workspace-mode {padding:8px 12px 0}
+  .lectris-mode-segment {border:0;background:var(--lt-subtle);border-radius:14px;padding:4px}
+  .lectris-mode-segment .lectris-mode-option {min-height:44px;border:0}
+  .lectris-mode-segment .lectris-mode-option[aria-pressed="true"] {border:0;box-shadow:0 1px 5px #101c3515}
+  .lectris-workspace-stage .lectris-library-intro {background:transparent!important;border:0!important;box-shadow:none!important;padding:9px 2px 5px!important;gap:8px!important}
+  .lectris-workspace-stage .lectris-library-intro .lectris-library-heading>h1 {font-size:28px!important;letter-spacing:-.045em}
+  .lectris-workspace-stage .lectris-library-metrics>span {border:0!important;background:transparent!important;padding:3px 8px 3px 0!important;box-shadow:none!important}
+  .lectris-workspace-stage .lectris-library-metrics>span+span {border-left:1px solid var(--lt-line)!important;padding-left:8px!important}
+  .lectris-workspace-stage .lectris-library-new {box-shadow:none!important;border-radius:14px!important}
+  .lectris-workspace-stage .lectris-library-toolbar {border:0!important;box-shadow:none!important;background:transparent!important;padding:0!important;gap:8px!important}
+  .lectris-workspace-stage .lectris-library-search {min-height:46px!important;border-radius:12px!important;background:var(--lt-raised)!important}
+  .lectris-workspace-stage .lectris-library-filters {border:0!important;background:transparent!important;padding:0!important;gap:5px!important}
+  .lectris-workspace-stage .lectris-library-filters>button {border:0!important;background:var(--lt-subtle)!important;min-height:42px!important;border-radius:11px!important;box-shadow:none!important}
+  .lectris-workspace-stage .lectris-library-filters>button.active {background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important}
+  .lectris-workspace-stage .lectris-library-grid .lectris-library-card {border:1px solid var(--lt-line)!important;box-shadow:none!important;border-radius:16px!important}
+  .lectris-workspace-stage .lectris-library-grid .board-card-title {font-size:16px!important;letter-spacing:-.025em}
+  .lectris-workspace-stage .lectris-library-grid .board-card-actions {display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:6px!important;margin-top:auto!important}
+  .lectris-workspace-stage .lectris-library-grid .board-card-actions .lectris-library-open {min-height:44px!important;flex:1 1 auto!important;font-size:13px!important;border-radius:11px!important;box-shadow:none!important}
+  .lectris-workspace-stage .lectris-library-grid .board-card-actions .lectris-card-menu-toggle {display:grid!important;place-items:center!important;width:44px!important;min-width:44px!important;min-height:44px!important;flex:none!important;padding:0!important;background:var(--lt-subtle)!important;color:var(--lt-text)!important;border:0!important;border-radius:11px!important}
+  .lectris-workspace-stage .lectris-library-grid .lectris-card-secondary-actions {display:none}
+  .lectris-workspace-stage .lectris-library-grid .lectris-card-secondary-actions.is-expanded {display:flex;flex:1 0 100%;min-width:0;flex-wrap:wrap;gap:5px;padding-top:3px}
+  .lectris-workspace-stage .lectris-library-grid .lectris-card-secondary-actions button {flex:1 1 auto;min-height:44px!important}
+  .lectris-workspace .lectris-mobile-bottom .lectris-mobile-tab {border:0!important;box-shadow:none!important;background:transparent!important;border-radius:13px!important;font-size:11px!important;gap:3px!important}
+  .lectris-workspace .lectris-mobile-bottom .lectris-mobile-tab.is-active {background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important;box-shadow:none!important;border:0!important}
   .lectris-workspace-stage .settings-row-card {padding:12px!important;gap:8px!important;border-radius:13px!important}
   .lectris-workspace-stage .settings-row-card>button {min-height:40px;border-radius:10px}
   .lectris-workspace-stage .lektrus-more-page {padding:12px!important;min-height:0!important}
