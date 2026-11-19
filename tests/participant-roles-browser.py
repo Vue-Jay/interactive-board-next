@@ -340,7 +340,10 @@ def check_maintenance(browser):
             await conn.execute("UPDATE account_users SET is_admin=true WHERE email='owner@roles.example'")
         finally:
             await conn.close()
-    asyncio.run(promote())
+    # Playwright's sync API owns an event loop on this thread.
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        executor.submit(lambda: asyncio.run(promote())).result()
     contexts=[browser.new_context(viewport={"width":1440,"height":900},service_workers="block"),
               browser.new_context(viewport={"width":390,"height":844},service_workers="block"),
               browser.new_context(viewport={"width":390,"height":844},service_workers="block"),
@@ -363,6 +366,7 @@ def check_maintenance(browser):
         expect(panel.get_by_text("Работы запланированы",exact=True)).to_be_visible(timeout=15000)
         site.goto(BASE+"/")
         expect(site.locator(".maintenance-notice")).to_contain_text("Запланированы технические работы",timeout=15000)
+        ordinary.bring_to_front()
         ordinary.evaluate("window.dispatchEvent(new Event('lektrus:maintenance-changed'))")
         expect(ordinary.locator(".maintenance-notice")).to_contain_text("Запланированы технические работы",timeout=15000)
         expect(ordinary.get_by_role("button",name="Я учусь",exact=True)).to_be_visible()
@@ -370,6 +374,7 @@ def check_maintenance(browser):
         panel.get_by_role("button",name="Начать сейчас").click()
         expect(panel.get_by_text("Сейчас ведутся технические работы",exact=True)).to_be_visible(timeout=15000)
         for page in (ordinary,selected,site):
+            page.bring_to_front()
             page.evaluate("window.dispatchEvent(new Event('lektrus:maintenance-changed'))")
         expect(ordinary.locator(".maintenance-blocking")).to_contain_text("Технические работы",timeout=15000)
         expect(ordinary.locator(".maintenance-blocking")).to_contain_text("Обновляем систему досок")
@@ -389,6 +394,7 @@ def check_maintenance(browser):
             fresh.close()
         panel.get_by_role("button",name="Завершить работы").click()
         expect(panel.get_by_text("Сервис работает в обычном режиме",exact=True)).to_be_visible(timeout=15000)
+        ordinary.bring_to_front()
         ordinary.evaluate("window.dispatchEvent(new Event('lektrus:maintenance-changed'))")
         expect(ordinary.locator(".maintenance-blocking")).to_have_count(0,timeout=15000)
         expect(ordinary.get_by_role("button",name="Я учусь",exact=True)).to_be_visible()
