@@ -16,13 +16,13 @@ args=p.parse_args()
 if not 1<=args.iterations<=10000:p.error('iterations must be between 1 and 10000')
 if args.platform=='ios' and not args.udid:p.error('--udid required for iOS')
 BASE='http://127.0.0.1:4723'; session=None; results=[]
-def request(method,route,payload=None):
+def request(method,route,payload=None,full=False):
  data=None if payload is None else json.dumps(payload).encode()
  req=urllib.request.Request(BASE+route,data=data,method=method,headers={'Content-Type':'application/json'})
  with urllib.request.urlopen(req,timeout=120) as response:
   raw=json.load(response)
   if 'value' not in raw:raise RuntimeError(str(raw))
-  return raw['value']
+  return raw if full else raw['value']
 def cmd(method,route,payload=None):return request(method,'/session/'+session+route,payload)
 def js(source,*arguments):return cmd('POST','/execute/sync',{'script':source,'args':list(arguments)})
 def wait(fn,reason,seconds=60):
@@ -91,9 +91,8 @@ def orientation():
  return {'orientations':['LANDSCAPE','PORTRAIT']}
 try:
  capabilities=({'platformName':'Android','appium:automationName':'UiAutomator2','appium:app':args.app,'appium:autoGrantPermissions':True} if args.platform=='android' else {'platformName':'iOS','appium:automationName':'XCUITest','appium:app':args.app,'appium:udid':args.udid})
- value=request('POST','/session',{'capabilities':{'alwaysMatch':capabilities,'firstMatch':[{}]}})
- # W3C returns sessionId outside value on some older drivers.
- session=value.get('sessionId')
+ response=request('POST','/session',{'capabilities':{'alwaysMatch':capabilities,'firstMatch':[{}]}},full=True)
+ session=response.get('sessionId') or (response.get('value') or {}).get('sessionId')
  if not session:raise RuntimeError('Appium did not return session ID')
  wait(lambda:attach(),'Native WebView never became ready',90)
  check('installed-native-capacitor-and-layout',home_layout)
