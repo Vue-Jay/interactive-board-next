@@ -74,8 +74,9 @@ let refreshInFlight:Promise<SelfhostSession|null>|null=null;
 
 export class SelfhostHttpError extends Error {
   readonly status:number;
-  constructor(status:number,message:string,readonly code?:string){
-    super(message);this.name="SelfhostHttpError";this.status=status;
+  readonly code?:string;
+  constructor(status:number,message:string,code?:string){
+    super(message);this.name="SelfhostHttpError";this.status=status;this.code=code;
   }
 }
 export function selfhostOrigin():string{
