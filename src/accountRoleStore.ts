@@ -2,7 +2,7 @@ import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import { getCachedRemoteSession, isRemoteBackendEnabled,remoteRequest } from "./backend";
 import {
  getCachedSelfhostSession,isSelfhostBackendEnabled,selfhostMe,
- selfhostRequestTeacherAccess,selfhostSetStudentRole,selfhostAdminUsers,
+ selfhostRequestTeacherAccess,selfhostEnableTeacherRole,selfhostSetStudentRole,selfhostAdminUsers,
  selfhostAdminTeacherRequests,selfhostReviewTeacherRequest,selfhostAdminSetSubscription,selfhostAdminDeleteUser,
 } from "./selfhostApi";
 export type AccountRole="teacher"|"student";
@@ -120,6 +120,12 @@ export async function getAccountAccess():Promise<AccountAccess>{
  }
 }
 export async function getAccountRole():Promise<AccountRole>{return (await getAccountAccess()).role}
+export async function enableTeacherRole():Promise<AccountAccess>{
+ if(!isSelfhostBackendEnabled())throw new Error("Подключение преподавательских функций доступно на основном сервере Lektrus.");
+ clearAccountAccessCache();
+ return mapAccess(await selfhostEnableTeacherRole());
+}
+
 export async function requestTeacherAccess(application:TeacherApplication):Promise<AccountAccess>{
  if(isSelfhostBackendEnabled()){
   clearAccountAccessCache();

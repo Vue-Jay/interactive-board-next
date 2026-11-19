@@ -1,0 +1,97 @@
+/* Shared workspace mode control: account capabilities remain independent of board roles. */
+.lectris-workspace-mode {
+  display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+  padding:10px 20px 0;min-width:0;
+}
+.lectris-mode-segment {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;
+  width:100%;max-width:340px;padding:3px;box-sizing:border-box;
+  border:1px solid var(--lt-line);border-radius:13px;background:var(--lt-subtle);
+}
+.lectris-mode-segment .lectris-mode-option {
+  min-width:0;min-height:40px;display:flex;align-items:center;justify-content:center;
+  gap:7px;padding:7px 10px;border:1px solid transparent;border-radius:10px;
+  background:transparent;color:var(--lt-secondary);font:inherit;font-size:13px;font-weight:700;
+  cursor:pointer;white-space:nowrap;
+}
+.lectris-mode-option svg {width:18px;height:18px;flex:none}
+.lectris-mode-segment .lectris-mode-option[aria-pressed="true"] {
+  background:var(--lt-raised);border-color:var(--lt-line);color:var(--lt-primary);
+  box-shadow:0 1px 4px rgba(16,32,60,.08);
+}
+.lectris-mode-option:focus-visible {outline:2px solid var(--lt-primary);outline-offset:1px}
+.lectris-mode-option:disabled {opacity:.65;cursor:wait}
+.lectris-workspace-mode>small {font-size:12px;color:var(--lt-secondary);line-height:1.4;overflow-wrap:anywhere}
+.lectris-workspace-mode>small[role="alert"] {flex:1 1 100%}
+
+/* Three explicit board roles never squeeze into two equal legacy cards. */
+.access-backdrop .invite-modal .lektrus-share-roles.lektrus-share-participant-roles {
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+.access-backdrop .invite-modal .lektrus-share-roles>button {
+  position:relative;min-height:58px;padding:11px 12px;gap:4px;
+  border-radius:12px;overflow-wrap:anywhere;
+}
+.access-backdrop .invite-modal .lektrus-share-roles>button.active {
+  box-shadow:none;border-width:1px;
+}
+.access-backdrop .invite-modal .lektrus-share-roles>button.active>b::after {
+  content:" ✓";color:var(--lt-primary);font-weight:800;
+}
+.access-backdrop .invite-modal .lektrus-share-roles small {line-height:1.35}
+.access-backdrop .board-invite-link-panel {background:var(--lt-subtle)!important;border-color:var(--lt-line)!important}
+.access-backdrop .board-invite-role-grid>button {background:var(--lt-raised)!important;border-color:var(--lt-line)!important;color:var(--lt-text)!important}
+.access-backdrop .board-invite-role-grid>button>b {font-size:13px!important;line-height:1.25;overflow-wrap:anywhere}
+.access-backdrop .board-invite-role-grid>button>small {font-size:11px!important;line-height:1.35;color:var(--lt-secondary)!important}
+.access-backdrop .board-invite-role-grid>button>span {background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important}
+
+@media(max-width:700px) and (orientation:portrait) {
+  /* There is exactly one space reservation for the fixed dock: the body.
+     Older layers reserved it again in the stage, every page, and the hub. */
+  html body .lectris-workspace {height:100vh!important;height:100dvh!important;min-height:0!important}
+  html body .lectris-workspace>.lectris-workspace-body {
+    min-height:0!important;padding-bottom:var(--lektrus-mobile-dock-height,64px)!important;
+  }
+  html body .lectris-workspace .lectris-workspace-stage {
+    min-height:0!important;height:100%!important;max-height:100%!important;
+    padding-bottom:10px!important;scroll-padding-bottom:10px!important;
+    overflow-y:auto!important;overflow-x:hidden!important;
+  }
+  html body .lectris-workspace .lectris-workspace-stage>main,
+  html body .lectris-workspace .lectris-workspace-stage .lectris-hub {
+    min-height:0!important;padding-bottom:12px!important;
+  }
+  html body .lectris-workspace .lectris-workspace-stage .schedule-content {padding-bottom:12px!important}
+  .lectris-workspace-mode {padding:8px 12px 2px;gap:6px}
+  .lectris-mode-segment {width:100%;max-width:none}
+  .lectris-mode-segment .lectris-mode-option {min-height:40px;font-size:13px}
+  .lectris-workspace-stage .lectris-hub {padding-top:10px!important}
+  .lectris-workspace-stage .lectris-hub .lectris-hub-hero.lectris-hub-hero-compact {
+    min-height:0!important;padding:14px!important;gap:10px!important;
+  }
+  .lectris-workspace-stage .lectris-hub .lectris-hub-tile {
+    min-height:84px!important;padding:12px!important;border-radius:14px!important;gap:7px!important;
+  }
+  .lectris-workspace-stage .lectris-hub .lectris-hub-tile-copy strong {font-size:15px!important;line-height:1.25}
+  .lectris-workspace-stage .lectris-hub .lectris-hub-tile-copy small {font-size:11px!important;line-height:1.35}
+  .lectris-workspace-stage .lectris-library-intro {padding:14px!important;min-height:0!important}
+  .lectris-workspace-stage .lectris-library-new {min-height:44px!important;border-radius:12px!important}
+  .lectris-workspace-stage .settings-row-card {padding:12px!important;gap:8px!important;border-radius:13px!important}
+  .lectris-workspace-stage .settings-row-card>button {min-height:40px;border-radius:10px}
+  .lectris-workspace-stage .lektrus-more-page {padding:12px!important;min-height:0!important}
+  .lektrus-more-page-title {margin-bottom:10px}
+  .lektrus-more-page-grid {gap:7px}
+  .lektrus-more-page-item {min-height:56px;padding:8px 10px;background:var(--lt-surface);color:var(--lt-text);border-color:var(--lt-line)}
+  .lektrus-more-page-icon {background:var(--lt-selected);color:var(--lt-selected-ink)}
+  .lektrus-more-page-search {background:var(--lt-raised);color:var(--lt-secondary);border-color:var(--lt-line)}
+  .lektrus-more-page-search input {color:var(--lt-text)}
+  .access-backdrop .invite-modal .lektrus-share-roles {grid-template-columns:1fr!important;gap:6px}
+  .access-backdrop .invite-modal .lektrus-share-roles>button {min-height:52px;padding:9px 12px}
+  .access-backdrop .invite-modal .access-person select {max-width:100%;min-height:40px}
+}
+
+@media(max-height:480px) and (orientation:landscape) {
+  .access-backdrop .invite-modal .lektrus-share-roles {grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:6px}
+  .access-backdrop .invite-modal .lektrus-share-roles>button {padding:8px 10px;min-height:56px}
+  .access-backdrop .invite-modal .lektrus-share-tabs>button {min-height:40px}
+}

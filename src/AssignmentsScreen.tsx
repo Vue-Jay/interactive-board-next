@@ -21,7 +21,7 @@ export default function AssignmentsScreen({user,accountRole,onBack,onOpenBoard}:
  const load=async()=>{setLoading(true);try{const [a,b,s]=await Promise.all([listAssignments(user.id),getUserBoards(user),accountRole==="teacher"?getStudentsForTeacher(user).catch(()=>[]):Promise.resolve([])]);setRows(a);setBoards(b);setStudents(s)}catch(e){setNotice(e instanceof Error?e.message:"Не удалось загрузить задания")}finally{setLoading(false)}};
  useEffect(()=>{void load();if(accountRole==="teacher")void listMaterials(user.id).then(setMaterials).catch(()=>setMaterials([]));else setMaterials([])},[user.id,accountRole]);
  const isTeacher=accountRole==="teacher";
- const own=useMemo(()=>rows.filter(a=>a.teacherId===user.id||a.studentId===user.id),[rows,user.id]);
+ const own=useMemo(()=>rows.filter(a=>isTeacher?a.teacherId===user.id:a.studentId===user.id),[rows,user.id,isTeacher]);
  const visible=useMemo(()=>own.filter(a=>{
   const overdue=assignmentUrgency(a)==="overdue";
   const matchesStatus=filter==="all"||(filter==="overdue"?overdue:a.status===filter);

@@ -1,7 +1,7 @@
 import { isRemoteBackendEnabled, remoteRequest } from "./backend";
 import { isSelfhostBackendEnabled, selfhostRequest } from "./selfhostApi";
 import type { BoardSummary } from "./boardStore";
-import type { BoardRole } from "./authStore";
+import type { BoardRole, BoardParticipantRole, InvitedParticipantRole } from "./authStore";
 
 export type ShareRole = Exclude<BoardRole, "owner">;
 
@@ -10,6 +10,7 @@ export type ShareLink = {
   id: string;
   board_id: string;
   role: ShareRole;
+  participant_role?: InvitedParticipantRole;
   created_at: string;
   expires_at: string | null;
   revoked_at: string | null;
@@ -25,6 +26,7 @@ export type BoardShareLink = {
   id: string;
   boardId: string;
   role: ShareRole;
+  participantRole?: InvitedParticipantRole;
   createdAt: string;
   expiresAt: string | null;
   revokedAt: string | null;
@@ -45,6 +47,7 @@ const normalizeServerLink = (row: any): ShareLink => ({
   id: String(row.id),
   board_id: String(row.board_id),
   role: row.role as ShareRole,
+  participant_role: row.participant_role,
   created_at: String(row.created_at),
   expires_at: row.expires_at ?? null,
   revoked_at: row.revoked_at ?? null,
@@ -54,12 +57,12 @@ const normalizeServerLink = (row: any): ShareLink => ({
 });
 
 /* API expected by the current Codex-created App.tsx / ShareDialog.tsx. */
-export async function createShareLink(boardId: string, role: ShareRole, options?: { expiresAt?: string | null; maxUses?: number | null; password?: string | null }): Promise<CreatedShareLink> {
+export async function createShareLink(boardId: string, role: ShareRole, options?: { expiresAt?: string | null; maxUses?: number | null; password?: string | null; participantRole?: InvitedParticipantRole }): Promise<CreatedShareLink> {
   requireRemote();
   if (isSelfhostBackendEnabled()) {
     return selfhostRequest<CreatedShareLink>(`/api/v1/boards/${encodeURIComponent(boardId)}/share-links`, {
       method: "POST",
-      body: JSON.stringify({ role, expires_at: options?.expiresAt, max_uses: options?.maxUses || null, password: options?.password }),
+      body: JSON.stringify({ role, participant_role: options?.participantRole, expires_at: options?.expiresAt, max_uses: options?.maxUses || null, password: options?.password }),
     });
   }
   const row = await remoteRequest<any>("/rest/v1/rpc/create_board_share_link", {
@@ -105,6 +108,7 @@ export async function redeemShareLink(token: string, password?: string): Promise
   title: string;
   owner_id: string;
   role: BoardRole;
+  participant_role?: BoardParticipantRole;
   created_at: string;
   updated_at: string;
 }> {
@@ -125,12 +129,14 @@ export async function redeemShareLink(token: string, password?: string): Promise
 export async function createBoardShareLink(
   boardId: string,
   role: ShareRole,
+  participantRole?: InvitedParticipantRole,
 ): Promise<BoardShareLink & { token: string }> {
-  const row = await createShareLink(boardId, role);
+  const row = await createShareLink(boardId, role,{participantRole});
   return {
     id: row.id,
     boardId: row.board_id,
     role: row.role,
+    participantRole: row.participant_role,
     createdAt: row.created_at,
     expiresAt: row.expires_at,
     revokedAt: row.revoked_at,
@@ -147,6 +153,7 @@ export async function listBoardShareLinks(boardId: string): Promise<BoardShareLi
     id: row.id,
     boardId: row.board_id,
     role: row.role,
+    participantRole: row.participant_role,
     createdAt: row.created_at,
     expiresAt: row.expires_at,
     revokedAt: row.revoked_at,
@@ -165,6 +172,7 @@ export async function redeemBoardShareLink(token: string): Promise<BoardSummary>
     title: row.title,
     ownerId: row.owner_id,
     role: row.role,
+    participantRole: row.participant_role,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

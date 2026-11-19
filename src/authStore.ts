@@ -4,6 +4,16 @@ import { claimRemoteInvitations, completeEmailConfirmationRemote, getCachedRemot
 import { clearSelfhostSession, getCachedSelfhostSession, getSelfhostSession, isSelfhostBackendEnabled, selfhostClaimInvitations, selfhostLogin, selfhostGuestLogin, selfhostLogout, selfhostSignup, selfhostVerifyEmail, selfhostRequestPasswordReset, selfhostCompletePasswordReset, type SelfhostSession } from "./selfhostApi";
 
 export type BoardRole = "owner" | "editor" | "viewer";
+/** Independent, owner-assigned educational context. Never inferred from an upgraded account. */
+export type BoardParticipantRole = "owner" | "co_teacher" | "student" | "observer";
+export type InvitedParticipantRole = Exclude<BoardParticipantRole,"owner">;
+export const PARTICIPANT_ROLE_LABELS: Record<BoardParticipantRole,string> = {
+ owner:"Владелец",co_teacher:"Сопреподаватель",student:"Ученик",observer:"Наблюдатель"
+};
+export const participantAccess=(role:InvitedParticipantRole):Exclude<BoardRole,"owner">=>role==="observer"?"viewer":"editor";
+export const participantRoleFor=(role:BoardRole,participant?:BoardParticipantRole|null):BoardParticipantRole=>
+ role==="owner"?"owner":role==="viewer"?"observer":participant==="co_teacher"?"co_teacher":"student";
+
 export const BOARD_ROLE_LABELS: Record<BoardRole, string> = { owner:"Владелец", editor:"Редактор", viewer:"Просмотр" };
 export type AuthUser = { id:string; name:string; email:string; createdAt:string; isGuest?:boolean; guestBoardId?:string; accountRole?:"teacher"|"student"; teacherStatus?:"none"|"pending"|"approved"|"rejected"; isAdmin?:boolean };
 type StoredUser = AuthUser & { passwordHash:string; passwordSalt:string };

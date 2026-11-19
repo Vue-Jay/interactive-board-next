@@ -193,6 +193,25 @@ def make_admin_router(current_user) -> APIRouter:
             )
         return access_view(row)
 
+    @router.post("/api/v1/account/role/teacher")
+    async def enable_teacher_role(request: Request, user=Depends(current_user)):
+        # Same eligibility as registering directly as a teacher: verified,
+        # non-guest account. Never touches board_members or administrator rights.
+        async with request.app.state.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """UPDATE account_users SET account_role='teacher',teacher_status='approved',
+                           teacher_requested_at=COALESCE(teacher_requested_at,now()),
+                           teacher_reviewed_at=COALESCE(teacher_reviewed_at,now())
+                     WHERE id=$1 AND email_confirmed_at IS NOT NULL
+                       AND guest_board_id IS NULL AND teacher_status<>'rejected'
+                    RETURNING id,email,account_role,teacher_status,is_admin,
+                              teacher_requested_at,teacher_reviewed_at,subscription_plan,subscription_until""",
+                user["id"],
+            )
+        if row is None:
+            raise HTTPException(403, "Не удалось подключить преподавательские функции. Обратитесь в поддержку.")
+        return access_view(row)
+
     @router.post("/api/v1/account/role/student")
     async def set_student_role(request: Request, user=Depends(current_user)):
         async with request.app.state.pool.acquire() as conn:

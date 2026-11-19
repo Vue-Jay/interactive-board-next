@@ -11,12 +11,13 @@ const entry=read("src/appEntry.tsx");
 const html=read("index.html");
 const migration=read("supabase/v260_self_selected_registration_roles.sql");
 
-assert.match(form,/Кем вы регистрируетесь\?/,"Role question must be visible at signup");
+assert.match(form,/Как вы хотите начать\?/,"Initial workspace choice must be visible at signup");
 for(const role of ["teacher","student"]) {
   assert.match(form,new RegExp('value="'+role+'" required checked='),"Role "+role+" must be a required radio");
 }
-assert.match(form,/Я учитель/);
-assert.match(form,/Я ученик/);
+assert.match(form,/Я хочу преподавать/);
+assert.match(form,/Я хочу учиться/);
+assert.match(form,/Это начальный режим/);
 assert.match(form,/registrationRole!\s*\}/,"Role must reach signup store");
 assert.match(store,/role:AccountRole/,"Signup role is required");
 assert.match(store,/role:input\.role/,"Chosen role must reach backend signup");

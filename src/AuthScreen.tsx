@@ -212,17 +212,18 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
       </>:<>
       <div><h1 id="auth-title">{awaitingConfirmation?"Проверьте почту":mode==="register"?"Создать аккаунт":"С возвращением"}</h1><p>{awaitingConfirmation?previewMode?`Предпросмотр ссылки подтверждения для ${email}.`: `Мы отправили ссылку на ${email}. Откройте её, чтобы подтвердить адрес и автоматически войти в Lektrus. Если письма нет во входящих, проверьте папку «Спам».`:joining?"После входа откроется доска, которой с вами поделились.":mode==="register"?previewMode?"Заполните форму и проверьте собственный экран подтверждения Lektrus.":"Заполните данные, чтобы создать пространство для учёбы.":"Войдите, чтобы продолжить занятие или открыть свои доски."}</p></div>
       {mode==="register"&&!awaitingConfirmation&&<fieldset className="auth-role-choice">
-        <legend>Кем вы регистрируетесь?</legend>
+        <legend>Как вы хотите начать?</legend>
         <div className="auth-role-grid">
           <label className={`auth-role-option${registrationRole==="teacher"?" is-selected":""}`}>
             <input type="radio" name="registrationRole" value="teacher" required checked={registrationRole==="teacher"} onChange={()=>setRegistrationRole("teacher")}/>
-            <span><strong>Я учитель</strong><small>Создавать уроки и работать с учениками</small></span>
+            <span><strong>Я хочу преподавать</strong><small>Создавать уроки и работать с учениками</small></span>
           </label>
           <label className={`auth-role-option${registrationRole==="student"?" is-selected":""}`}>
             <input type="radio" name="registrationRole" value="student" required checked={registrationRole==="student"} onChange={()=>setRegistrationRole("student")}/>
-            <span><strong>Я ученик</strong><small>Участвовать в занятиях и выполнять задания</small></span>
+            <span><strong>Я хочу учиться</strong><small>Участвовать в занятиях и выполнять задания</small></span>
           </label>
         </div>
+        <small>Это начальный режим. Учиться можно с любым аккаунтом, а преподавательские возможности можно подключить позже.</small>
       </fieldset>}
       {mode==="register"&&!awaitingConfirmation&&<div className="auth-register-name-grid"><label className="auth-field"><span>Имя</span><input required value={firstName} onChange={e=>fieldEdited(e.target.value,setFirstName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="given-name" autoCapitalize="words" placeholder="Ваше имя" maxLength={80} /></label><label className="auth-field"><span>Фамилия</span><input required value={lastName} onChange={e=>fieldEdited(e.target.value,setLastName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="family-name" autoCapitalize="words" placeholder="Ваша фамилия" maxLength={80} /></label><label className="auth-field auth-register-display-name"><span>Как к вам обращаться</span><input value={name} onChange={e=>fieldEdited(e.target.value,setName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="nickname" autoCapitalize="words" placeholder="Имя для участников доски" maxLength={80}/></label></div>}
       <label className="auth-field"><span>Email</span><input required type="email" value={email} readOnly={awaitingConfirmation&&!previewMode} onChange={e=>fieldEdited(e.target.value,setEmail)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="name@example.com" maxLength={180} /></label>

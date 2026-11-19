@@ -36,4 +36,4 @@ jobs:
       - name: Verify mobile HTTP, JWT, invitation, private assets and WebSocket roundtrip
         run: python -m pytest -q -rP server/test_native_mobile_api.py
       - name: Run broader API and permission regression tests
-        run: python -m pytest -q -rP server/test_api.py server/test_assets.py server/test_invitations.py server/test_registration.py server/test_guest_history_visits.py server/test_native_realtime_events.py server/test_ws_e2e.py
+        run: python -m pytest -q -rP server/test_api.py server/test_assets.py server/test_invitations.py server/test_registration.py server/test_guest_history_visits.py server/test_native_realtime_events.py server/test_ws_e2e.py server/test_participant_roles.py

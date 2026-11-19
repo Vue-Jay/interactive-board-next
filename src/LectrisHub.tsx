@@ -5,6 +5,7 @@ import UserAvatar from "./UserAvatar";
 import type { AccountRole } from "./accountRoleStore";
 import type { AuthUser } from "./authStore";
 import type { BoardSummary } from "./boardStore";
+import { PARTICIPANT_ROLE_LABELS, participantRoleFor } from "./authStore";
 import { getStudentsForTeacher, type StudentRecord } from "./studentsStore";
 import { listScheduledLessons, type ScheduledLesson } from "./scheduleStore";
 import { readGroupMembership, setGroupMembership } from "./lektrusGroupMembers";
@@ -203,7 +204,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
       <span className="lectris-hub-board-info">
         <span className="lectris-hub-board-kind">{label(board).subject||"Рабочая доска"}{label(board).group?" · "+label(board).group:""}</span>
         <strong>{board.title}</strong>
-        <small>{board.role==="owner"?"Моя доска":"Общая доска"} · {shortDate(board.updatedAt)}</small>
+        <small>{board.participantRole?PARTICIPANT_ROLE_LABELS[participantRoleFor(board.role,board.participantRole)]:board.role==="owner"?"Моя доска":"Общая доска"} · {shortDate(board.updatedAt)}</small>
       </span>
       <span className="lectris-hub-board-arrow" aria-hidden="true">↗</span>
     </button>

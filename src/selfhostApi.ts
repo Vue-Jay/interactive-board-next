@@ -8,6 +8,8 @@ const backendMode = String(import.meta.env.VITE_LEKTRUS_BACKEND || "").trim().to
 export const SELFHOST_BACKEND_ENABLED = backendMode === "selfhost";
 export type SelfhostRole = "teacher" | "student";
 export type SelfhostBoardRole = "owner" | "editor" | "viewer";
+export type SelfhostParticipantRole = "owner" | "co_teacher" | "student" | "observer";
+type InvitedParticipantRole = Exclude<SelfhostParticipantRole,"owner">;
 export type SelfhostUser = {
   id: string; email: string;
   guest_board_id?: string | null;
@@ -22,7 +24,7 @@ export type SelfhostUser = {
 };
 export type SelfhostSession = {access_token:string;refresh_token:string;expires_at:number;user:SelfhostUser};
 export type SelfhostBoard = {
-  id:string;owner_id:string;title:string;role:SelfhostBoardRole;
+  id:string;owner_id:string;title:string;role:SelfhostBoardRole;participant_role?:SelfhostParticipantRole;
   created_at:string;updated_at:string;
 };
 export type SelfhostDocument = {
@@ -30,8 +32,8 @@ export type SelfhostDocument = {
   updated_by:string|null;updated_at:string|null;
 };
 export type SelfhostAccess = {
-  members:Array<{user_id:string;name:string;email:string;role:"editor"|"viewer";added_at:string}>;
-  invites:Array<{id:string;email:string;role:"editor"|"viewer";created_at:string}>;
+  members:Array<{user_id:string;name:string;email:string;role:"editor"|"viewer";participant_role?:InvitedParticipantRole;added_at:string}>;
+  invites:Array<{id:string;email:string;role:"editor"|"viewer";participant_role?:InvitedParticipantRole;created_at:string}>;
 };
 export type SelfhostRealtimeStatus = "online"|"reconnecting"|"offline";
 export type SelfhostPoint={x:number;y:number};
@@ -561,10 +563,10 @@ export type SelfhostRemoteObjectPreview=SelfhostObjectPreview&{
 export const selfhostAccess=(boardId:string)=>selfhostRequest<SelfhostAccess>(
   "/api/v1/boards/"+encodeURIComponent(boardId)+"/access"
 );
-export const selfhostInvite=(boardId:string,email:string,role:"editor"|"viewer")=>
+export const selfhostInvite=(boardId:string,email:string,role:"editor"|"viewer",participant_role?:InvitedParticipantRole)=>
   selfhostRequest<{kind:"member"|"invite"}>(
     "/api/v1/boards/"+encodeURIComponent(boardId)+"/invitations",{
-      method:"POST",body:JSON.stringify({email,role}),
+      method:"POST",body:JSON.stringify({email,role,participant_role}),
     });
 export const selfhostClaimInvitations=(timeoutMs=TIMEOUT_MS)=>selfhostRequest<{claimed:number}>(
   "/api/v1/invitations/claim",{method:"POST"},timeoutMs
@@ -581,6 +583,7 @@ export const selfhostRequestTeacherAccess=(application:{
 })=>selfhostRequest<SelfhostUser>("/api/v1/account/teacher-request",{
   method:"POST",body:JSON.stringify(application),
 });
+export const selfhostEnableTeacherRole=()=>selfhostRequest<SelfhostUser>("/api/v1/account/role/teacher",{method:"POST"});
 export const selfhostSetStudentRole=()=>selfhostRequest<SelfhostUser>(
   "/api/v1/account/role/student",{method:"POST"}
 );
@@ -1175,10 +1178,10 @@ export const selfhostRenameBoard = (boardId:string,title:string) =>
   });
 export const selfhostDeleteBoard = (boardId:string) =>
   selfhostRequest<{ok:boolean}>("/api/v1/boards/"+encodeURIComponent(boardId),{method:"DELETE"});
-export const selfhostChangeMemberRole = (boardId:string,memberId:string,role:"editor"|"viewer") =>
+export const selfhostChangeMemberRole = (boardId:string,memberId:string,role:"editor"|"viewer",participant_role?:InvitedParticipantRole) =>
   selfhostRequest<{ok:boolean;role:string}>(
     "/api/v1/boards/"+encodeURIComponent(boardId)+"/members/"+encodeURIComponent(memberId),{
-      method:"PATCH",body:JSON.stringify({role}),
+      method:"PATCH",body:JSON.stringify({role,participant_role}),
     });
 export const selfhostRemoveMember = (boardId:string,memberId:string) =>
   selfhostRequest<void>(

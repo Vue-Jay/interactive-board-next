@@ -38,7 +38,7 @@ async def test_guest_access_is_atomic_scoped_and_expiring(client):
     assert (await client.get(root+"/access",headers=guest)).status_code==403
     assert (await client.get(root+"/history",headers=guest)).status_code==403
     assert (await client.get(root+"/visits",headers=guest)).status_code==403
-    assert (await client.put(root+"/document",headers=guest,json={"expected_version":0,"document":{"version":1,"items":[{"id":"ink","kind":"pen"}]}})).status_code==200
+    assert (await client.put(root+"/document",headers=guest,json={"expected_version":0,"document":{"version":1,"items":[{"id":"ink","kind":"pen","createdBy":session["user"]["id"]}]}})).status_code==200
     assert (await client.get(root+"/document",headers=owner)).json()["document"]["items"][0]["id"]=="ink"
     live = await lookup_board_sessions(app.state.pool,UUID(target),[session["access_token"]])
     assert live[session["access_token"]]["role"]=="editor"
