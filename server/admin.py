@@ -39,7 +39,7 @@ class TeacherReviewInput(BaseModel):
 
 
 class SubscriptionInput(BaseModel):
-    plan: Literal["free", "teacher", "pro"]
+    plan: Literal["free", "pro"]
     until: datetime | None = None
 
 
@@ -112,9 +112,9 @@ def access_view(row):
         bool(row["is_admin"]) or
         (row["account_role"] == "teacher" and row["teacher_status"] == "approved")
     ) else "student"
-    plan = row["subscription_plan"] or "free"
+    plan = "pro" if row["subscription_plan"] == "pro" else "free"
     until = row["subscription_until"]
-    if plan != "free" and until is not None and until < datetime.now(timezone.utc):
+    if plan != "pro" or until is None or until <= datetime.now(timezone.utc):
         plan, until = "free", None
     return {
         "role": role,

@@ -1,6 +1,7 @@
 import "./cryptoUuidCompatibility";
 import { Component, useState, type FormEvent, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
+import BillingLimitNotice from "./BillingLimitNotice";
 import { Capacitor } from "@capacitor/core";
 import "./index.css";
 import "./nextTheme.css";
@@ -163,7 +164,7 @@ createRoot(root).render(
   isBrowserBoardFrame()?<ErrorBoundary><BrowserBoardFrameEntry/></ErrorBoundary>:
   Capacitor.isNativePlatform() && !LEKTRUS_LOCAL_TEST_MODE && !isSelfhostBackendEnabled() && !isRemoteBackendEnabled()
     ? <NativeConnectionSetup />
-    : <ErrorBoundary><AndroidUpdateGate><MaintenanceGate><App /></MaintenanceGate></AndroidUpdateGate></ErrorBoundary>
+    : <ErrorBoundary><AndroidUpdateGate><MaintenanceGate><App /><BillingLimitNotice/></MaintenanceGate></AndroidUpdateGate></ErrorBoundary>
 );
 
 if(!isBrowserBoardFrame())registerLektrusServiceWorker();

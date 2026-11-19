@@ -249,7 +249,7 @@ async def test_admin_can_manage_accounts_boards_and_feedback_but_students_cannot
     until = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
     grant = await client.patch(
         f"/api/v1/admin/users/{OUTSIDER}/subscription", headers=admin,
-        json={"plan": "teacher", "until": until},
+        json={"plan": "pro", "until": until},
     )
     assert grant.status_code == 200, grant.text
     async with app.state.pool.acquire() as conn:
@@ -257,7 +257,7 @@ async def test_admin_can_manage_accounts_boards_and_feedback_but_students_cannot
             "SELECT subscription_plan,subscription_until FROM account_users WHERE id=$1",
             OUTSIDER,
         )
-    assert plan["subscription_plan"] == "teacher"
+    assert plan["subscription_plan"] == "pro"
     assert plan["subscription_until"] is not None
 
     application = {

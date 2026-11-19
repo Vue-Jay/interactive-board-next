@@ -200,7 +200,7 @@ export default function BoardsScreen({user,accountRole,workspaceMode,onOpenBoard
             {previews[b.id]
               ?<img className="lectris-library-preview-image" src={previews[b.id]} alt="" decoding="async"/>
               :<><span className="board-card-grid"/><span className="lectris-library-preview-empty" aria-hidden="true">Пустой холст</span></>}
-            <span className="lectris-library-preview-label">{isSelfhostBackendEnabled()?PARTICIPANT_ROLE_LABELS[participantRoleFor(b.role,b.participantRole)]:b.role==="owner"?"Моя доска":"Совместная работа"}</span>
+            <span className="lectris-library-preview-label">{b.planReadOnly?"Только просмотр":isSelfhostBackendEnabled()?PARTICIPANT_ROLE_LABELS[participantRoleFor(b.role,b.participantRole)]:b.role==="owner"?"Моя доска":"Совместная работа"}</span>
             <span className="lectris-library-preview-open" aria-hidden="true">↗</span>
           </button>
           <div className="board-card-body lectris-library-card-body">

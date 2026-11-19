@@ -1,0 +1,17 @@
+# Free / Pro and payment integration
+
+Checkout is disabled. Migration 104 resets existing test subscriptions once; subsequent administrator grants are effective on the server, not in local storage.
+
+- Free: five own boards, six simultaneous unique participants (owner seat reserved), five registered students, one group, 250 MiB retained file storage, 25 MiB per file, three personal templates, seven days of available history.
+- Pro: no commercial count/storage/time limits. Existing technical safety limits (50 MiB per file, 100 WebSocket connections per board and 100 retained history revisions) are unchanged.
+- Shared board consumption is billed to its owner. An expired subscription never removes boards or files.
+
+## Connecting a provider
+1. Obtain test merchant credentials; store in server secrets only.
+2. Implement PaymentAdapter in server/finance.py and register authenticated checkout and provider-specific webhook endpoints. Use order UUID for provider idempotency and server-side PRICES (29900 / 299000 kopecks). Return only provider-approved hosted checkout URLs.
+3. Verify webhook signatures, authoritative payment status, merchant, order identity, exact amount and RUB currency before calling settle_verified_order. Duplicate confirmed events are idempotent; unique provider payment IDs prevent double credit. Store refund transactions and define an entitlement/refund policy before enabling.
+4. Test payment success, signature rejection, duplicate delivery, failure, refund and expiry. Enable checkout only after testing and receipt/legal configuration. No credentials or checkout route currently enabled.
+5. Switch checkout-status response and frontend controls after approval.
+
+## Admin finance
+The report distinguishes purchases from manual Pro grants and records actual transactions. Amounts are integer kopecks. Finance entries are append-only; correct mistakes with a documented compensating transaction. Amvera top-ups are separate from hosting consumption so they are not counted twice. Amvera balance is a manually recorded snapshot with date; use the provider dashboard until supported authenticated read-only billing integration is selected. CSV is for management accounting, not official tax reports.

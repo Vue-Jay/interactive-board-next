@@ -99,6 +99,7 @@ def make_history_router(current_user, board_access):
                 FROM current d LEFT JOIN account_users u ON u.id=d.updated_by
                 WHERE NOT EXISTS(SELECT 1 FROM board_history h WHERE h.board_id=$1 AND h.version=d.version)
             ) SELECT * FROM revisions WHERE version >= COALESCE((SELECT version FROM current),0)-99
+              AND (billing_unlimited((SELECT owner_id FROM boards WHERE id=$1)) OR saved_at>=now()-interval '7 days' OR version=(SELECT version FROM current))
               ORDER BY version DESC LIMIT $2""", board_id, limit)
         return [{**dict(row), "id": row["version"]} for row in rows]
 
@@ -116,6 +117,12 @@ def make_history_router(current_user, board_access):
                 raise HTTPException(404, "Версия не найдена.")
             if version == current:
                 return decode(await conn.fetchval("SELECT lektrus_board_document(d) FROM board_documents d WHERE board_id=$1", board_id))
+            allowed = await conn.fetchval("""SELECT billing_unlimited(b.owner_id) OR EXISTS(
+                SELECT 1 FROM board_history h WHERE h.board_id=b.id AND h.version=$2 AND h.saved_at>=now()-interval '7 days')
+                FROM boards b WHERE b.id=$1""", board_id, version)
+            if not allowed:
+                from billing import limit_detail
+                raise HTTPException(409, limit_detail("history"))
             return await load_history_document(conn,board_id,version)
 
     return router
