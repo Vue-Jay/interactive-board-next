@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 import pytest
 
 from app import app, lookup_board_sessions
-from test_api import client, sign_in, STUDENT
+from test_api import client, sign_in, STUDENT, TEACHER
 
 
 async def board(client, owner):
@@ -86,6 +86,8 @@ async def test_guest_viewer_and_visit_history(client):
 @pytest.mark.asyncio
 async def test_durable_history_checkpoints_retention_restore_and_permissions(client):
     _, owner=await sign_in(client,"teacher@example.test")
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET subscription_plan='pro',subscription_until=now()+interval '1 day' WHERE id=$1",TEACHER)
     _, student=await sign_in(client,"student@example.test")
     _, outsider=await sign_in(client,"outsider@example.test")
     target=await board(client,owner)
@@ -118,3 +120,22 @@ async def test_durable_history_checkpoints_retention_restore_and_permissions(cli
         assert count<=109 and checkpoints<=11
     assert (await client.put(url,headers=owner,json={"expected_version":111,"document":old})).json()=={"version":112}
     assert (await client.get(root+"/document",headers=owner)).json()["document"]==old
+
+
+@pytest.mark.asyncio
+async def test_free_history_retention_25_versions(client):
+    _, owner=await sign_in(client,"teacher@example.test")
+    target=await board(client,owner)
+    root=f"/api/v1/boards/{target}"
+    url=root+"/document?version_only=true"
+    initial={"version":1,"title":"Initial","items":[]}
+    assert (await client.put(url,headers=owner,json={"expected_version":0,"document":initial})).status_code==200
+    for version in range(1,35):
+        result=await client.patch(url,headers=owner,json={"expected_version":version,"delta":{"set":{"title":str(version+1)}}})
+        assert result.status_code==200,result.text
+    rows=(await client.get(root+"/history?limit=100",headers=owner)).json()
+    assert len(rows)==25 and rows[0]["version"]==35 and rows[-1]["version"]==11
+    assert (await client.get(root+"/history/11",headers=owner)).status_code==200
+    assert (await client.get(root+"/history/10",headers=owner)).status_code==409
+    async with app.state.pool.acquire() as conn:
+        assert await conn.fetchval("SELECT count(*) FROM board_history WHERE board_id=$1",UUID(target))<=34
