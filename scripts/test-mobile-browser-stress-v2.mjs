@@ -22,7 +22,7 @@ const iterations=Math.max(1,Math.min(1000,Number(process.env.LEKTRUS_STRESS_ITER
 const profiles=[{name:'android-phone',width:393,height:851,scale:3},{name:'small-phone',width:320,height:640,scale:2},{name:'tablet',width:820,height:1180,scale:2}];
 process.env.VITE_LEKTRUS_LOCAL_TEST='true';
 const server=await createServer({configFile:'./vite.config.ts',server:{host:'127.0.0.1',port:0,strictPort:false}});
-let chrome,ws,profileDir;const results=[];const pending=new Map();let seq=0;
+let chrome,ws,profileDir;const results=[];const pending=new Map();const browserExceptions=[];let seq=0;
 const send=(method,params={})=>new Promise((resolve,reject)=>{const id=++seq;pending.set(id,{resolve,reject});ws.send(JSON.stringify({id,method,params}));});
 const evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result?.value;};
 const touch=async(x,y)=>{await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});};
@@ -133,13 +133,14 @@ try{
     }
     const errors=await evaluate('window.__stressErrors||[]');
     assert.deepEqual(errors,[],'Browser runtime errors after touch storm');
+    assert.deepEqual(browserExceptions,[],'CDP uncaught exceptions across page navigation');
     return {touches:iterations,target:safe.label};
    });
   }
  }
 }finally{
  await mkdir(output,{recursive:true});
- await writeFile(path.join(output,'mobile-browser-stress-results.json'),JSON.stringify({schema:1,platform:'mobile-browser-chromium-emulated',iterations,results},null,2)+'\n');
+ await writeFile(path.join(output,'mobile-browser-stress-results.json'),JSON.stringify({schema:1,platform:'mobile-browser-chromium-emulated',iterations,results,browserExceptions},null,2)+'\n');
  if(ws){try{ws.close();}catch{}}
  if(chrome){chrome.kill('SIGTERM');}
  await server.close();if(profileDir)await rm(profileDir,{recursive:true,force:true});
