@@ -51,8 +51,11 @@ def check(name,fn,requires=None):
   print('BLOCKED',name,flush=True)
   return
  try:
-  detail=fn();results.append({'name':name,'status':'passed','detail':detail,'seconds':round(time.monotonic()-started,2),'screenshot':capture(name)})
-  print('PASS',name,flush=True)
+  detail=fn()
+  evidence=capture(name)
+  status='passed' if evidence['status']=='captured' else 'blocked'
+  results.append({'name':name,'status':status,'detail':detail,'seconds':round(time.monotonic()-started,2),'screenshot':evidence})
+  print(status.upper(),name,flush=True)
  except Exception as error:
   results.append({'name':name,'status':'failed','error':str(error),'seconds':round(time.monotonic()-started,2),'screenshot':capture(name+'-failure')})
   print('FAIL',name,error,flush=True)
