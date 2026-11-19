@@ -72,7 +72,10 @@ with sync_playwright() as p:
     for width,height in [(1440,900),(844,390)]:
         page=browser.new_page(viewport={"width":width,"height":height},has_touch=width<1000)
         page.goto(BASE+"/demo/board?scene=math",wait_until="domcontentloaded")
-        more=page.locator(".topbar-more-trigger")
+        # Touch browsers open the logical landscape board in a same-origin
+        # iframe, even if their physical viewport is already landscape.
+        more=(page.frame_locator("iframe.lektrus-browser-board-frame").locator(".topbar-more-trigger")
+              if width<1000 else page.locator(".topbar-more-trigger"))
         more.wait_for(timeout=25000)
         if width<1000:
             assert more.evaluate("el=>innerWidth-el.getBoundingClientRect().right") >= 16
