@@ -3,7 +3,7 @@ import json
 import os
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, expect
 
 BASE = os.environ.get("LEKTRUS_TEST_SITE_URL", "http://127.0.0.1:4173")
 OUT = Path("artifacts/site-studio")
@@ -36,12 +36,12 @@ with sync_playwright() as p:
         assert page.evaluate("document.documentElement.scrollWidth<=innerWidth+1"), width
         page.screenshot(path=OUT/f"news-{width}.png",full_page=True)
         page.get_by_role("button",name="Анонсы",exact=True).click()
+        expect(page.locator(".marketing-news-card")).to_have_count(1)
         page.get_by_role("heading",name="Что дальше").wait_for()
-        assert page.locator(".marketing-news-card").count() == 1
         page.locator(".marketing-news-detail summary").click()
         assert page.get_by_text("Подробности анонса.",exact=True).is_visible()
         page.get_by_role("button",name="Все записи",exact=True).click()
+        expect(page.locator(".marketing-news-card")).to_have_count(3)
         page.get_by_role("heading",name="Lektrus на Android").wait_for()
-        assert page.locator(".marketing-news-card").count() == 3
         page.close()
     browser.close()
