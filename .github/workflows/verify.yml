@@ -32,6 +32,8 @@ jobs:
         run: |
           CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
           CHROME_PATH="$CHROME_BIN" node scripts/test-lektrus-release-browser-smoke.mjs
+      - name: Validate TatNet Free static deployment guard and SPA routing
+        run: node scripts/test-tatnet-free-preflight.mjs
       - name: Check board links, invitations and auth callback routing
         run: npm run test:board-links
       - name: Check geometry names, closure and touch gestures
