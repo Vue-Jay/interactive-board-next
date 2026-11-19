@@ -108,6 +108,9 @@ jobs:
           # apksigner verify exits nonzero for an invalid APK signature.
           # Don't hard-code one signing scheme: valid releases can vary by SDK.
           cat signing-report.txt
+          # Public certificate fingerprint, verified on the previous working APK.
+          # Reject accidentally rotated or temporary keys before any publication.
+          grep -Fiq 'certificate SHA-256 digest: ff311eb58be2e59932c28933f1d47f4b14220c64a0764dcefaaff96490fb7c88' signing-report.txt
           echo "Package ru.lektrus.board, versionCode $LEKTRUS_ANDROID_VERSION_CODE"
           test -s Lektrus-Android.apk
       - uses: actions/upload-artifact@v4
@@ -219,7 +222,8 @@ jobs:
           expected="$(git rev-parse HEAD)"
           [[ "$(git ls-remote origin refs/heads/main | cut -f1)" = "$expected" ]] || { echo 'Superseded release; skip publication'; exit 0; }
           APK_SIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
-          "$APK_SIGNER" verify --verbose --print-certs Lektrus-Android.apk
+          "$APK_SIGNER" verify --verbose --print-certs Lektrus-Android.apk | tee signing-report.txt
+          grep -Fiq 'certificate SHA-256 digest: ff311eb58be2e59932c28933f1d47f4b14220c64a0764dcefaaff96490fb7c88' signing-report.txt
           sha256sum Lektrus-Android.apk > Lektrus-Android.apk.sha256
           version="1.0.${GITHUB_RUN_NUMBER}"
           tag="android-v${version}"
