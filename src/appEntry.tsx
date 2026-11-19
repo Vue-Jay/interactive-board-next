@@ -78,6 +78,7 @@ import "./lektrusSelectionCursor.css";
 // Auth renders before lazy BoardApp, so its layout cannot depend on App.css.
 import "./lektrusAuthLayout.css";
 import "./lektrusMobileWorkspacePolish.css";
+import "./lektrusLearningPages.css";
 import {installInterfaceLayout} from "./lektrusInterfaceLayout";
 import { isRemoteBackendEnabled, saveNativeBackendConnection } from "./backend";
 import { isSelfhostBackendEnabled } from "./selfhostApi";
