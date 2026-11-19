@@ -167,6 +167,20 @@ def screenshot(label):
         return True
     except Exception as error:
         errors.append(str(error))
+        # Xcode simulator screenshot service occasionally stalls while the UI
+        # is rotating or the keyboard closes. Retry once after it settles.
+        if args.platform=='ios':
+            try:
+                time.sleep(1)
+                subprocess.run(['xcrun','simctl','io',args.udid,'screenshot',str(path)],check=True,timeout=25,capture_output=True)
+                raw=path.read_bytes()
+                if not raw.startswith(b'\x89PNG\r\n\x1a\n'):
+                    raise ValueError('Retry screenshot was not a PNG')
+                screenshot_evidence.append({'label':label,'status':'captured','method':'simctl-retry','previous_errors':errors})
+                print(f'CAPTURE RETRY: {label}',flush=True)
+                return True
+            except Exception as retry_error:
+                errors.append(str(retry_error))
         screenshot_evidence.append({'label':label,'status':'missing','errors':errors})
         print(f'CAPTURE MISSING: {label}: {errors}',flush=True)
         return False
