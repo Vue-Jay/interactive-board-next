@@ -1,6 +1,7 @@
 """Real-browser acceptance against disposable Lektrus API/Postgres, not DOM mocks."""
 import asyncio
 import os
+import re
 from pathlib import Path
 from uuid import uuid4
 import asyncpg
@@ -45,6 +46,77 @@ def login(page,name):
     page.get_by_label("Пароль",exact=True).fill(PASSWORD)
     page.get_by_role("button",name="Войти",exact=True).click()
     expect(page.get_by_role("button",name="Я учусь",exact=True)).to_be_visible(timeout=60000)
+
+def check_board_read_recovery(page, ident):
+    board_path = BASE + "/board/" + ident
+    metadata = re.compile(re.escape(API + "/api/v1/boards/" + ident) + r"(?:\?.*)?$")
+    document = re.compile(re.escape(API + "/api/v1/boards/" + ident + "/document") + r"(?:\?.*)?$")
+
+    # An interrupted initial GET may recover automatically. Only reads are retried.
+    first = []
+    def transient(route):
+        if route.request.method != "GET":
+            route.continue_(); return
+        first.append(route.request.url)
+        if len(first)==1: route.abort("failed")
+        else: route.continue_()
+    page.route(metadata, transient)
+    page.goto(board_path)
+    expect(page.locator("section.board")).to_be_visible(timeout=90000)
+    assert len(first)>=2, first
+    page.unroute(metadata, transient)
+
+    # Both stages can fail before the lazy board bundle loads. The error card
+    # must be styled, localized and retry without losing the exact deep link.
+    for phase, pattern in [("metadata",metadata),("document",document)]:
+        attempts = []
+        def blocked(route):
+            if route.request.method == "GET":
+                attempts.append(route.request.url)
+                route.abort("failed")
+            else: route.continue_()
+        page.route(pattern, blocked)
+        page.goto(board_path)
+        card=page.get_by_role("alertdialog",name="Не удалось открыть доску")
+        expect(card).to_be_visible(timeout=45000)
+        expect(card).to_contain_text("Не удалось связаться с сервером Lektrus")
+        expect(card).not_to_contain_text("Failed to fetch")
+        assert len(attempts)==2, (phase,attempts)
+        for width,height in [(1440,900),(320,640)]:
+            page.set_viewport_size({"width":width,"height":height})
+            geometry=page.evaluate("""() => {
+              const overlay=document.querySelector('.board-recovery-overlay'), card=document.querySelector('.board-recovery-card'),r=card.getBoundingClientRect();
+              return {position:getComputedStyle(overlay).position,display:getComputedStyle(card).display,left:r.left,right:r.right,top:r.top,bottom:r.bottom,viewport:[innerWidth,innerHeight],buttons:[...card.querySelectorAll('button')].map(x=>x.getBoundingClientRect().height)};
+            }""")
+            assert geometry["position"]=="fixed" and geometry["display"]=="grid", geometry
+            assert 0<=geometry["left"]<geometry["right"]<=width+1 and 0<=geometry["top"]<geometry["bottom"]<=height+1, geometry
+            assert all(h>=43 for h in geometry["buttons"]), geometry
+            page.screenshot(path=str(OUT/f"board-recovery-{phase}-{width}.png"))
+        page.set_viewport_size({"width":1440,"height":900})
+        page.unroute(pattern,blocked)
+        card.get_by_role("button",name="Повторить").click()
+        expect(page.locator("section.board")).to_be_visible(timeout=90000)
+        assert page.url==board_path, page.url
+
+    # A revoked/expired session is different from a network error. A user can
+    # authenticate again without the board link disappearing from the address bar.
+    def unauthorized(route):
+        if route.request.method=="GET":
+            route.fulfill(status=401,headers={"Access-Control-Allow-Origin":BASE,"Content-Type":"application/json"},body='{"detail":"expired session"}')
+        else: route.continue_()
+    page.route(metadata,unauthorized)
+    page.goto(board_path)
+    card=page.get_by_role("alertdialog",name="Не удалось открыть доску")
+    expect(card).to_contain_text("Сессия завершена",timeout=45000)
+    page.unroute(metadata,unauthorized)
+    card.get_by_role("button",name="Войти заново").click()
+    page.get_by_label("Email",exact=True).fill("owner@roles.example")
+    page.get_by_label("Пароль",exact=True).fill(PASSWORD)
+    page.get_by_role("button",name="Войти",exact=True).click()
+    expect(page.locator("section.board")).to_be_visible(timeout=90000)
+    assert page.url==board_path, page.url
+
+    print("Board network recovery: automatic GET retry, metadata/document failure with styled card, manual retry and reauthentication passed")
 
 def assert_compact_workspace(page, name, width, height):
     page.set_viewport_size({"width":width,"height":height})
@@ -212,6 +284,7 @@ def main():
                 expect(page.get_by_role("button",name="Я учусь",exact=True)).to_have_attribute("aria-pressed","true")
                 with httpx.Client(base_url=API,headers=headers(name)) as client:
                     assert client.get(f"/api/v1/boards/{ident}").json()["participant_role"]=="student"
+            if owner: check_board_read_recovery(page,ident)
             assert_board(page,ident,author,owner)
             page.screenshot(path=str(OUT/(name+"-desktop-board.png")))
             if name=="learner":

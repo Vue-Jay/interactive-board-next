@@ -57,6 +57,33 @@ const FeedbackScreen = lazy(() => import("./FeedbackScreen"));
 
 const BoardApp = lazy(() => import("./BoardApp"));
 
+type BoardLoadFailure = {message:string;reauth:boolean};
+function isTransientBoardRead(error:unknown):boolean{
+  if(error instanceof SelfhostHttpError)return [502,503,504].includes(error.status);
+  return error instanceof Error && /failed to fetch|networkerror|network error|network request failed|load failed|timeout|timed out|время ожидания|не ответил на запрос|не удалось установить соединение/i.test(error.message);
+}
+function describeBoardLoadFailure(error:unknown):BoardLoadFailure{
+  if(error instanceof SelfhostHttpError){
+    if(error.status===401)return {message:"Сессия завершена. Войдите снова, чтобы открыть эту доску.",reauth:true};
+    if(error.status===403||error.status===404)return {message:"Доска недоступна. Попросите владельца прислать действующую ссылку.",reauth:false};
+    if(error.status===429)return {message:"Слишком много запросов. Подождите немного и повторите попытку.",reauth:false};
+    if(error.status>=500)return {message:"Сервер Lektrus временно недоступен. Нажмите «Повторить» чуть позже.",reauth:false};
+  }
+  if(isTransientBoardRead(error))return {message:"Не удалось связаться с сервером Lektrus. Проверьте интернет-соединение и повторите попытку.",reauth:false};
+  return {message:error instanceof Error&&error.message?error.message:"Не удалось загрузить доску с сервера.",reauth:false};
+}
+// Only reads: never retry acceptance of invitations, writes or login requests.
+// A superseded navigation must not issue the second request.
+async function readBoardWithRetry<T>(read:()=>Promise<T>,isCurrent:()=>boolean):Promise<T>{
+  try{return await read()}
+  catch(error){
+    if(!isCurrent()||!isTransientBoardRead(error))throw error;
+    await new Promise<void>(resolve=>window.setTimeout(resolve,450));
+    if(!isCurrent())throw error;
+    return await read();
+  }
+}
+
 export default function App() {
   const [route, setRoute] = useState<AppRoute>(() => {
     const initial=initialRoute();
@@ -275,7 +302,7 @@ export default function App() {
       window.visualViewport?.removeEventListener("resize", check);
     };
   }, [nativeBoardOpening, lockNativeOrientation]);
-  const [boardLoadError, setBoardLoadError] = useState("");
+  const [boardLoadError, setBoardLoadError] = useState<BoardLoadFailure|null>(null);
   const [sharePassword, setSharePassword] = useState("");
   const [submittedSharePassword, setSubmittedSharePassword] = useState<{token:string;value:string}|null>(null);
   const [sharePasswordRequired, setSharePasswordRequired] = useState(false);
@@ -435,12 +462,12 @@ export default function App() {
     // Interface editing is a read-only view of the REAL board, not a new
     // board session: never initialize templates or upload unsaved snapshots.
     const editingLayout=new URLSearchParams(window.location.search).get("layout-editor")==="1";
-    setBoardLoadError("");
+    setBoardLoadError(null);
     setBoardLoading(true);
     try {
       if (isRemoteBackendEnabled() || isSelfhostBackendEnabled()) {
         const selfhost=isSelfhostBackendEnabled();
-        const remote = selfhost ? await selfhostReadDocument(board.id) : await getRemoteBoardDocument(board.id);
+        const remote = selfhost ? await readBoardWithRetry(()=>selfhostReadDocument(board.id),isCurrent) : await readBoardWithRetry(()=>getRemoteBoardDocument(board.id),isCurrent);
         const saveBoardDocument=async(document:DocumentData,expectedVersion:number|null)=>{
           if(!selfhost)return saveRemoteBoardDocument(board.id,document,expectedVersion);
           try{
@@ -544,17 +571,21 @@ export default function App() {
       clearPendingBoardPath();
       setBoardMountKey((value) => value + 1);
     } catch (error) {
-      if (isCurrent()) setBoardLoadError(error instanceof Error ? error.message : "Не удалось загрузить доску с сервера");
+      if (isCurrent()) setBoardLoadError(describeBoardLoadFailure(error));
     } finally {
       if (isCurrent()) setBoardLoading(false);
     }
-  }, [isAppAdmin]);
+  }, []);
 
+  // Refreshing the same cached identity must not remount an already opening
+  // board or spend the retry budget again. A genuine user/permission change
+  // still reloads with the fresh server-authorized board role.
+  const studioAdminAccess=route.kind==="board"&&route.boardId===INTERFACE_STUDIO_BOARD_ID&&isAppAdmin;
   useEffect(() => {
     if (!authReady || !authUser) return;
     let alive = true;
     setActiveBoard(null);
-    setBoardLoadError("");
+    setBoardLoadError(null);
     setSharePasswordRequired(false);
     if (route.kind === "site") { setBoardLoading(false); return; }
     if (route.kind === "tool") { setBoardLoading(false); return; }
@@ -578,7 +609,7 @@ export default function App() {
         }
         setAdminInspecting(false);
         if(route.boardId===INTERFACE_STUDIO_BOARD_ID){
-          if(!isAppAdmin||new URLSearchParams(window.location.search).get("layout-editor")!=="1")
+          if(!studioAdminAccess||new URLSearchParams(window.location.search).get("layout-editor")!=="1")
            throw new Error("Редактор интерфейса доступен только администратору.");
           const board:BoardSummary={id:INTERFACE_STUDIO_BOARD_ID,title:"Новая доска",
            ownerId:authUser.id,role:"owner",createdAt:new Date().toISOString(),
@@ -586,7 +617,8 @@ export default function App() {
           setRemoteVersion(null);setActiveBoard(board);setBoardMountKey(key=>key+1);
           setBoardLoading(false);return;
         }
-        const board = await getBoardForUser(authUser, route.boardId);
+        const boardId=route.boardId;
+        const board = await readBoardWithRetry(()=>getBoardForUser(authUser,boardId),()=>alive);
         if (!alive) return;
         if (!board) throw new Error("Доска недоступна. Попросите владельца прислать ссылку для доступа.");
         await openBoard(board, () => alive);
@@ -596,17 +628,16 @@ export default function App() {
         const message=error instanceof Error ? error.message : "Не удалось открыть доску";
         if(route.kind==="join" && /парол/i.test(message)){
           setSharePasswordRequired(true);
-          setBoardLoadError("");
+          setBoardLoadError(null);
         }else{
           setSharePasswordRequired(false);
-          setBoardLoadError(route.kind === "join"
-            ? message || "Не удалось принять ссылку. Возможно, она отозвана, истекла или сервер недоступен."
-            : message);
+          setBoardLoadError(describeBoardLoadFailure(error));
         }
       }
     })();
     return () => { alive = false; };
-  }, [route, authReady, authUser, navigate, openBoard, submittedSharePassword, mobileJoinUrl]);
+  }, [route, authReady, authUser?.id, authUser?.email, authUser?.guestBoardId, authUser?.accountRole,
+      authUser?.teacherStatus, authUser?.isAdmin, studioAdminAccess, navigate, openBoard, submittedSharePassword, mobileJoinUrl]);
 
   useEffect(()=>{
     if(!authUser)return;
@@ -704,7 +735,18 @@ export default function App() {
           : <BoardsScreen user={authUser} accountRole={workspaceRole} workspaceMode={modeEnabled?workspaceMode:undefined} isAppAdmin={isAppAdmin&&appRolePreview==="actual"} onOpenBoard={(board) => navigate(`/board/${board.id}`)} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} />})()}</Suspense></LectrisWorkspaceShell>}
         {sharePasswordRequired && route.kind==="join" && <div className="board-server-overlay"><form className="board-server-card share-password-card" onSubmit={e=>{e.preventDefault();if(!sharePassword.trim())return;setSharePasswordRequired(false);setSubmittedSharePassword({token:route.token,value:sharePassword});}}><strong>Ссылка защищена паролем</strong><span>Введите пароль, который сообщил владелец доски.</span><input type="password" value={sharePassword} onChange={e=>setSharePassword(e.target.value)} placeholder="Пароль ссылки" autoComplete="off"/><div className="share-password-actions"><button className="primary" type="submit" disabled={!sharePassword.trim()}>Открыть доску</button><button type="button" onClick={()=>{setSharePassword("");clearPendingShare();navigate("/",true)}}>Отмена</button></div></form></div>}
         {boardLoading && <BoardLoadingScreen browserRotate={adminInspecting&&wantsBrowserBoardLandscape()}/>}
-        {boardLoadError && <div className="board-server-overlay"><div className="board-server-card"><strong>Не удалось открыть доску</strong><span>{boardLoadError}</span><button className="primary" onClick={() => setRoute({ ...route })}>Повторить</button><button onClick={() => { clearPendingShare(); navigate("/", true); }}>К моим доскам</button></div></div>}
+        {boardLoadError && <div className="board-server-overlay board-recovery-overlay"><section className="board-server-card board-recovery-card" role="alertdialog" aria-modal="true" aria-labelledby="board-recovery-title" aria-describedby="board-recovery-description">
+          <div className="board-recovery-mark" aria-hidden="true"><img src="/lektrus-icon-192.png" alt=""/></div>
+          <span className="board-recovery-kicker">LEKTRUS · ДОСКА</span><h1 id="board-recovery-title">Не удалось открыть доску</h1><p id="board-recovery-description">{boardLoadError.message}</p>
+          <div className="board-recovery-actions">
+            {boardLoadError.reauth?<button className="primary" type="button" autoFocus onClick={()=>{
+              if(route.kind==="board")rememberBoardPath(route.boardId);
+              if(route.kind==="join")rememberShareToken(route.token);
+              void logoutUser().catch(()=>{});
+              clearAccountAccessCache();clearNotificationCache();setActiveBoard(null);setAuthUser(null);setBoardLoadError(null);
+            }}>Войти заново</button>:<button type="button" className="primary" autoFocus onClick={()=>setRoute({...route})}>Повторить</button>}
+            <button type="button" onClick={()=>{if(authUser.guestBoardId){logout();return}clearPendingShare();clearPendingBoardPath();navigate("/app?section=boards",true)}}>{authUser.guestBoardId?"Выйти":"К моим доскам"}</button>
+          </div></section></div>}
       </>
     );
   }
