@@ -256,8 +256,8 @@ export default function LektrusPublicSite(){
    </div>
   </header>
   {menuOpen&&<button type="button" className="marketing-sidebar-backdrop" onClick={()=>setMenuOpen(false)} aria-label="Закрыть боковое меню"/>}
-  <PublicMaintenanceNotice/>
   <main id="marketing-main" tabIndex={-1}>
+   <PublicMaintenanceNotice/>
    {page==="home"&&!copy?.replaceDefault&&<>
     {placed("before-0")}
     <section data-site-section-id="native-0" data-site-page-hero className="marketing-hero marketing-container marketing-hero-split" aria-labelledby="marketing-title">

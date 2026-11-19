@@ -1,8 +1,8 @@
 import {useCallback,useEffect,useLayoutEffect,useRef,useState,type ReactNode} from "react";
 import {createPortal} from "react-dom";
-import {cachedSelfhostSession,isSelfhostBackendEnabled,selfhostMaintenanceStatus,selfhostLogout,type MaintenanceStatus} from "./selfhostApi";
+import {cachedSelfhostSession,isSelfhostBackendEnabled,selfhostMaintenanceStatus,type MaintenanceStatus} from "./selfhostApi";
 import {LEKTRUS_LOCAL_TEST_MODE} from "./lektrusLocalTestMode";
-import {ServiceUnavailableScreen} from "./ServiceUnavailableScreen";
+import {MaintenanceScreen} from "./MaintenanceScreen";
 import "./lektrusMaintenance.css";
 
 const enabled=()=>isSelfhostBackendEnabled()&&!LEKTRUS_LOCAL_TEST_MODE;
@@ -15,13 +15,12 @@ export function maintenanceTime(status:MaintenanceStatus){
 function useMaintenance(authenticated:boolean){
   const [snapshot,setSnapshot]=useState<{status:MaintenanceStatus;account:string|null}|null>(null);
   const [ready,setReady]=useState(!enabled());
-  const [checking,setChecking]=useState(false);
   const [identity,setIdentity]=useState(accountId);
   const inFlight=useRef(false),pending=useRef(false),alive=useRef(true),last=useRef(0);
   const refresh=useCallback(async()=>{
     if(!enabled())return;
     if(inFlight.current){pending.current=true;return;}
-    inFlight.current=true;setChecking(true);
+    inFlight.current=true;
     do{
       pending.current=false;
       const id=authenticated?accountId():null;
@@ -32,7 +31,7 @@ function useMaintenance(authenticated:boolean){
       last.current=Date.now();
     }while(pending.current&&alive.current);
     inFlight.current=false;
-    if(alive.current){setReady(true);setChecking(false);}
+    if(alive.current)setReady(true);
   },[authenticated]);
   useEffect(()=>{
     alive.current=true;
@@ -69,17 +68,17 @@ function useMaintenance(authenticated:boolean){
     const timer=window.setTimeout(()=>void refresh(),delay+250);
     return ()=>window.clearTimeout(timer);
   },[snapshot,refresh]);
-  return {status:snapshot?.status,verified:!authenticated||snapshot?.account===identity,identity,ready,checking,refresh};
+  return {status:snapshot?.status,verified:!authenticated||snapshot?.account===identity,identity,ready};
 }
 function Notice({status,app=false,allowed=false}:{status:MaintenanceStatus;app?:boolean;allowed?:boolean}){
-  const [dismissed,setDismissed]=useState("");
-  const key=status.state+status.starts_at+status.ends_at+status.notice;
-  if(status.state==="off"||dismissed===key)return null;
-  return <aside className={"maintenance-notice"+(app?" maintenance-notice-app":"")} aria-label="Технические работы" role="status">
-    <span className="maintenance-notice-icon" aria-hidden="true">!</span>
-    <div><strong>{status.state==="scheduled"?"Запланированы технические работы":"Ведутся технические работы"}{allowed?" · У вас есть доступ":""}</strong>
-      <span>{maintenanceTime(status)}{status.notice?" · "+status.notice:""}</span></div>
-    {app&&<button type="button" aria-label="Скрыть уведомление" onClick={()=>setDismissed(key)}>×</button>}
+  if(status.state==="off")return null;
+  const active=status.state==="active";
+  return <aside className={"maintenance-notice "+(app?"maintenance-notice-app":"maintenance-notice-public")} aria-label="Технические работы" role="status">
+    <span className="maintenance-notice-icon" aria-hidden="true"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v5m0 3h.01"/><circle cx="12" cy="12" r="9"/></svg></span>
+    <div className="maintenance-notice-copy"><strong>{active?"Ведутся технические работы":"Запланированы технические работы"}{allowed?" · У вас есть доступ":""}</strong>
+      <span className="maintenance-notice-detail">{status.notice||(active?"Временно ограничен доступ к платформе.":"Платформа будет временно недоступна.")}</span>
+      <span className="maintenance-notice-time">{maintenanceTime(status)}</span>
+    </div>
   </aside>;
 }
 export function PublicMaintenanceNotice(){
@@ -87,11 +86,20 @@ export function PublicMaintenanceNotice(){
   return status?<Notice status={status}/>:null;
 }
 export function MaintenanceGate({children}:{children:ReactNode}){
-  const {status,verified,identity,ready,checking,refresh}=useMaintenance(true);
-  const [login,setLogin]=useState(false);
+  const {status,verified,identity,ready}=useMaintenance(true);
   const everMounted=useRef(false);
   const restricted=status?.state==="active"&&(!verified||!status.access_allowed);
-  const blocked=restricted&&!(login&&!identity);
+  // The ordinary sign-in entry remains open without a session. Direct board,
+  // invitation and tool routes remain blocked; authenticated users cannot bypass
+  // maintenance by navigating to the sign-in entry.
+  const [path,setPath]=useState(()=>window.location.pathname);
+  useEffect(()=>{
+    const routeChanged=()=>setPath(window.location.pathname);
+    window.addEventListener("popstate",routeChanged);
+    return ()=>window.removeEventListener("popstate",routeChanged);
+  },[]);
+  const loginEntry=!identity&&(path==="/app"||path==="/app/"||path==="/"||path==="/confirm-email"||path==="/confirm-email/");
+  const blocked=restricted&&!loginEntry;
   if(ready&&!blocked)everMounted.current=true;
   useLayoutEffect(()=>{
     const root=document.getElementById("root");
@@ -100,15 +108,11 @@ export function MaintenanceGate({children}:{children:ReactNode}){
     if(blocked)root.setAttribute("aria-hidden","true");else root.removeAttribute("aria-hidden");
     return ()=>{root.removeAttribute("inert");root.removeAttribute("aria-hidden");};
   },[blocked]);
-  const switchAccount=async()=>{
-    if(identity){await selfhostLogout();window.location.assign("/app");}
-    else setLogin(true);
-  };
   return <>
     {everMounted.current&&children}
     {!ready&&<div className="maintenance-checking" role="status" aria-label="Проверяем доступность Lektrus"><span/></div>}
     {blocked&&status&&createPortal(<div className="maintenance-blocking">
-      <ServiceUnavailableScreen reason="maintenance" checking={checking} automatic onRetry={()=>void refresh()} maintenanceMessage={(status.notice?status.notice+" ":"Проводим обслуживание Lektrus, чтобы сервис работал стабильнее. ")+maintenanceTime(status)} onSignIn={()=>void switchAccount()} signInLabel={identity?"Войти в другой аккаунт":"Войти с разрешённым аккаунтом"}/>
+      <MaintenanceScreen status={status} time={maintenanceTime(status)}/>
     </div>,document.body)}
     {!blocked&&status&&status.state!=="off"&&createPortal(<Notice status={status} app allowed={status.state==="active"&&!!identity&&verified&&status.access_allowed}/>,document.body)}
   </>;
