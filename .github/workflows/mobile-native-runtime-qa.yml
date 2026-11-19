@@ -41,16 +41,22 @@ jobs:
       - run: node scripts/test-native-file-export.mjs
       - name: Comprehensive application functionality regression for mobile release
         run: |
-          npm run test:ui
-          npm run test:subject-boards
-          npm run test:lab-acceptance
-          npm run test:atlas
-          npm run test:product-screens
-          npm run test:board-links
-          npm run test:realtime
-          npm run test:brush-crop
-          npm run test:math-gesture
-          npm run native:check
+          # Collect ALL regression failures in one run instead of stopping at
+          # the first failure and hiding defects in subsequent suites.
+          failures=0
+          for suite in test:ui test:subject-boards test:lab-acceptance test:atlas test:board-links test:realtime test:brush-crop test:math-gesture native:check; do
+            echo "::group::Mobile release regression: $suite"
+            if npm run "$suite"; then
+              echo "PASS $suite" | tee -a "$RUNNER_TEMP/mobile-regression-summary.txt"
+            else
+              echo "FAIL $suite" | tee -a "$RUNNER_TEMP/mobile-regression-summary.txt"
+              failures=$((failures+1))
+            fi
+            echo "::endgroup::"
+          done
+          echo "=== Complete mobile regression summary ==="
+          cat "$RUNNER_TEMP/mobile-regression-summary.txt"
+          test "$failures" -eq 0
       - name: Validate same-origin board frame security headers
         run: |
           docker run --rm -v "${{ github.workspace }}/deploy/amvera/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2.10.2-alpine caddy adapt --config /etc/caddy/Caddyfile --validate
