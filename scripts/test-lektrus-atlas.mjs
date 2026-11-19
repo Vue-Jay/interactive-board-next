@@ -261,6 +261,7 @@ const sourceLoader={};
 const regionDisplayNamesSource=fs.readFileSync(new URL("../src/regionDisplayNames.ts",import.meta.url),"utf8");
 const regionDisplayNamesExports={};
 new Function("exports",ts.transpileModule(regionDisplayNamesSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(regionDisplayNamesExports);
+assert.equal(typeof regionDisplayNamesExports.regionDisplayNames,"function","Atlas region display name helper must export a function");
 const atlasDataRequire=(path)=>{
  if(path==="./regionDisplayNames")return regionDisplayNamesExports;
  return exports;
