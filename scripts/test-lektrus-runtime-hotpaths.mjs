@@ -36,7 +36,7 @@ for(let trial=0;trial<4;trial++){
 }
 
 const receivedStart=app.indexOf("  receiveRemote.current = row => {");
-const receivedEnd=app.indexOf("  useEffect(() => layoutEditing?",receivedStart);
+const receivedEnd=app.indexOf("  useEffect(() => demoMode||layoutEditing?",receivedStart);
 assert.ok(receivedStart>=0 && receivedEnd>receivedStart);
 const receiver=app.slice(receivedStart,receivedEnd);
 assert.ok(receiver.indexOf('if (preliminary === "ignore") return;')>=0);
