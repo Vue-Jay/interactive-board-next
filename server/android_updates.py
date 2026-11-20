@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import re
 import time
@@ -14,6 +15,15 @@ REPOSITORY = "Vue-Jay/interactive-board-next"
 RELEASES = f"https://api.github.com/repos/{REPOSITORY}/releases?per_page=20"
 VERSION = re.compile(r"(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})")
 DEFAULT_MINIMUM = "1.0.0"
+logger = logging.getLogger(__name__)
+# Verified public, signed release with both APK and SHA-256 assets uploaded.
+# Cold starts can still offer this known release during GitHub outages. It is
+# not a substitute for the live catalog, which discovers every newer release.
+LAST_VERIFIED_RELEASE = {
+    "version": "1.0.4706",
+    "download_url": f"https://github.com/{REPOSITORY}/releases/download/android-v1.0.4706/Lektrus-Android.apk",
+    "size_bytes": 14_727_547,
+}
 
 
 def version_key(value):
@@ -81,10 +91,13 @@ def fetch_releases():
 
 
 class AndroidUpdateCatalog:
-    def __init__(self, loader=fetch_releases, clock=time.monotonic):
+    def __init__(self, loader=fetch_releases, clock=time.monotonic, fallback=None):
         self.loader = loader
         self.clock = clock
         self.cached = None
+        self.fallback = fallback
+        self.known_empty = False
+        self.stale = False
         self.refresh_after = 0
         self.lock = asyncio.Lock()
 
@@ -92,18 +105,31 @@ class AndroidUpdateCatalog:
         async with self.lock:
             if self.clock() >= self.refresh_after:
                 try:
-                    self.cached = select_android_release(await asyncio.to_thread(self.loader))
-                except (OSError, ValueError, TypeError):
-                    self.cached = None
-                self.refresh_after = self.clock() + (300 if self.cached else 60)
-            if self.cached is None:
+                    releases = await asyncio.to_thread(self.loader)
+                    if not isinstance(releases, list):
+                        raise ValueError("Invalid release catalog")
+                    self.cached = select_android_release(releases)
+                    self.known_empty = self.cached is None
+                    self.stale = False
+                    self.refresh_after = self.clock() + (300 if self.cached else 60)
+                except (OSError, ValueError, TypeError) as error:
+                    # A failed refresh is not evidence that a published release
+                    # disappeared. Keep the last confirmed entry and retry soon.
+                    logger.warning("Android release catalog refresh failed: %s", type(error).__name__)
+                    self.stale = True
+                    self.refresh_after = self.clock() + 60
+            release = self.cached or (None if self.known_empty else self.fallback)
+            if release is None:
                 raise HTTPException(503, "Каталог обновлений временно недоступен")
             minimum = os.getenv("LEKTRUS_ANDROID_MINIMUM_VERSION", DEFAULT_MINIMUM).strip()
-            return apply_policy(self.cached, minimum)
+            result = apply_policy(release, minimum)
+            if self.stale:
+                result["catalog_stale"] = True
+            return result
 
 
 router = APIRouter()
-catalog = AndroidUpdateCatalog()
+catalog = AndroidUpdateCatalog(fallback=LAST_VERIFIED_RELEASE)
 
 
 @router.get("/api/v1/mobile/android-update")

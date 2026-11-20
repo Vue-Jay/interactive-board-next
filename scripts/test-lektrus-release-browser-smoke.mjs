@@ -534,16 +534,16 @@ try{
   await wait('!!document.querySelector(".notification-settings")',"Notification settings did not open");
   await click('.notification-settings .access-head button');
   await wait('!document.querySelector(".notification-settings")',"Notification settings did not close");
-  await click('.lectris-header-search');
-  await wait('!!document.querySelector(".lectris-command-dialog")',"Command search did not open");
-  await evaluate('[...document.querySelectorAll(".lectris-command-results button")].find(b=>b.textContent.includes("Шаблоны")).click()');
+  await wait('!document.querySelector(".lectris-header-search")',"Unneeded desktop header search is visible");
+  await click('.lectris-workspace-sidebar button[aria-label="Шаблоны"]');
   await checkSection("templates",".templates-shell");
   await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:false});
+  await wait('!document.querySelector(".lectris-header-search")',"Unneeded mobile header search is visible");
   await click('.lectris-mobile-bottom button[aria-label="Ещё разделы"]');
   await wait('!!document.querySelector(".lektrus-more-page")',"Mobile More did not open");
   await evaluate('[...document.querySelectorAll(".lektrus-more-page-item")].find(b=>b.textContent.includes("Настройки")).click()');
   await checkSection("settings",".settings-shell");
-  console.log('✓ Desktop tiles, schedule controls, progress tabs, board-only AI routing, billing, notifications dialog, command search and mobile More');
+  console.log('✓ Desktop tiles, schedule controls, progress tabs, board-only AI routing, billing, notifications dialog, header without search and mobile More');
  }else{
 
  // Public demo: verify absence of seed content, no persisted board, no double outline.
