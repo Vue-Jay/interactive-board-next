@@ -564,7 +564,9 @@ try{
  await mouse("mouseReleased",demoCanvas.x+84,demoCanvas.y+20);
  await wait('!!document.querySelector(".viewer-ink-canvas")',"Demo pencil did not render");
  // Sticker ink is part of the card, not an independent canvas object.
- await evaluate('window.dispatchEvent(new KeyboardEvent("keydown",{code:"KeyS",bubbles:true}))');
+ await click('.lektrus-desktop-sections button[aria-label="Текст"]');
+ await wait('!!document.querySelector(".lektrus-tool-overflow-group--create")',"Text tool catalogue did not open");
+ assert.ok(await evaluate('(()=>{const b=[...document.querySelectorAll(".lektrus-tool-overflow-group--create button")].find(b=>b.textContent.trim()==="Стикер");b?.click();return !!b})()'),"Sticker tool missing");
  await wait('document.querySelector("section.board")?.classList.contains("board-tool-sticky")',"Sticker tool not selected");
  await mouse("mousePressed",demoCanvas.x-180,demoCanvas.y-120,{pressed:true});
  await mouse("mouseReleased",demoCanvas.x-180,demoCanvas.y-120);
@@ -590,7 +592,9 @@ try{
    [...el.children].every(child=>{const c=child.getBoundingClientRect();return !c.width||(c.left>=p.left-1&&c.right<=p.right+1&&c.top>=p.top-1&&c.bottom<=p.bottom+1)});
  })()`;
  await wait(panelFits,"Sticker action panel extends outside its background or board");
- await evaluate('window.dispatchEvent(new KeyboardEvent("keydown",{code:"KeyT",bubbles:true}))');
+ await click('.lektrus-desktop-sections button[aria-label="Текст"]');
+ await wait('!!document.querySelector(".lektrus-tool-overflow-group--create")',"Text tool catalogue did not open");
+ assert.ok(await evaluate('(()=>{const b=[...document.querySelectorAll(".lektrus-tool-overflow-group--create button")].find(b=>b.textContent.trim()==="Текст");b?.click();return !!b})()'),"Text tool missing");
  await wait('document.querySelector("section.board")?.classList.contains("board-tool-text")',"Text tool not selected");
  await mouse("mousePressed",demoCanvas.x+190,demoCanvas.y-100,{pressed:true});
  await mouse("mouseReleased",demoCanvas.x+190,demoCanvas.y-100);
