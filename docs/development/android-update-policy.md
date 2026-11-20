@@ -11,6 +11,12 @@ APK URL, size, latest version and minimum supported version. A release becomes
 visible automatically after the existing permanent-signing and login-smoke
 publication job succeeds.
 
+Temporary GitHub fetch failures retain the last verified release and are
+retried after one minute. On a cold start during an outage, the catalog can
+offer the checked-in, previously verified signed release (1.0.4706) until the
+live catalog recovers. A successful empty catalog invalidates that fallback;
+it does not advertise a release the live catalog no longer lists.
+
 - Ordinary releases: leave `LEKTRUS_ANDROID_MINIMUM_VERSION` at its default
   `1.0.0`. The prompt can be deferred for 24 hours for that exact release.
 - Breaking releases: only **after** a compatible signed APK is published, set

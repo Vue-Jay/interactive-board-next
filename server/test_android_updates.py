@@ -1,7 +1,7 @@
 import asyncio
 import pytest
 from fastapi import HTTPException
-from android_updates import AndroidUpdateCatalog, apply_policy, select_android_release
+from android_updates import AndroidUpdateCatalog, LAST_VERIFIED_RELEASE, apply_policy, select_android_release
 
 
 def release(version, **overrides):
@@ -54,8 +54,43 @@ def test_catalog_cache_refresh_and_fail_open(monkeypatch):
         assert first["minimum_version"] == "1.0.4600"
         now[0] = 400
         for _ in range(2):
+            assert await catalog.get() == {**first, "catalog_stale": True}
+        assert len(calls) == 2
+    asyncio.run(scenario())
+
+
+def test_cold_start_fallback_then_live_recovery(monkeypatch):
+    now = [100.0]
+    def loader():
+        if now[0] < 160 or now[0] >= 460:
+            raise OSError("upstream unavailable")
+        return [release("1.0.4710")]
+
+    async def scenario():
+        monkeypatch.setenv("LEKTRUS_ANDROID_MINIMUM_VERSION", "1.0.0")
+        catalog = AndroidUpdateCatalog(loader=loader, clock=lambda: now[0], fallback=LAST_VERIFIED_RELEASE)
+        cold = await catalog.get()
+        assert cold["version"] == "1.0.4706" and cold["catalog_stale"] is True
+        now[0] = 160
+        live = await catalog.get()
+        assert live["version"] == "1.0.4710" and "catalog_stale" not in live
+        now[0] = 460
+        assert (await catalog.get())["version"] == "1.0.4710"
+    asyncio.run(scenario())
+
+
+def test_empty_successful_catalog_never_offers_removed_release():
+    now = [100.0]
+    def loader():
+        if now[0] >= 160:
+            raise OSError("upstream unavailable")
+        return []
+
+    async def scenario():
+        catalog = AndroidUpdateCatalog(loader=loader, clock=lambda: now[0], fallback=LAST_VERIFIED_RELEASE)
+        for moment in (100, 160):
+            now[0] = moment
             with pytest.raises(HTTPException) as error:
                 await catalog.get()
             assert error.value.status_code == 503
-        assert len(calls) == 2
     asyncio.run(scenario())

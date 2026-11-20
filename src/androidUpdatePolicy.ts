@@ -1,4 +1,4 @@
-export type AndroidUpdate = {version:string;minimum_version:string;download_url:string;size_bytes:number};
+export type AndroidUpdate = {version:string;minimum_version:string;download_url:string;size_bytes:number;catalog_stale?:true};
 const VERSION=/^(0|[1-9]\d{0,8})\.(0|[1-9]\d{0,8})\.(0|[1-9]\d{0,8})$/;
 const RELEASE="https://github.com/Vue-Jay/interactive-board-next/releases/download/android-v";
 
@@ -10,12 +10,12 @@ export function compareAndroidVersions(a:string,b:string):number|null{
 }
 export function parseAndroidUpdate(value:unknown):AndroidUpdate|null{
   if(!value||typeof value!=="object")return null;
-  const {version,minimum_version,download_url,size_bytes}=value as Partial<AndroidUpdate>;
+  const {version,minimum_version,download_url,size_bytes,catalog_stale}=value as Partial<AndroidUpdate>;
   if(typeof version!=="string"||typeof minimum_version!=="string"||typeof download_url!=="string"||
     !VERSION.test(version)||!VERSION.test(minimum_version)||compareAndroidVersions(minimum_version,version)===1||
     download_url!==RELEASE+version+"/Lektrus-Android.apk"||
     typeof size_bytes!=="number"||!Number.isSafeInteger(size_bytes)||size_bytes<=0)return null;
-  return {version,minimum_version,download_url,size_bytes};
+  return {version,minimum_version,download_url,size_bytes,...(catalog_stale===true?{catalog_stale:true as const}:{})};
 }
 export function androidUpdateKind(installed:string,update:AndroidUpdate):"none"|"optional"|"required"{
   if(compareAndroidVersions(installed,update.version)!==-1)return "none";

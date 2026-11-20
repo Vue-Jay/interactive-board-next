@@ -3,6 +3,7 @@ import {readFileSync} from "node:fs";
 import {androidUpdateKind,compareAndroidVersions,parseAndroidUpdate,shouldOfferAndroidUpdate} from "../src/androidUpdatePolicy.ts";
 const update={version:"1.0.4670",minimum_version:"1.0.4668",download_url:"https://github.com/Vue-Jay/interactive-board-next/releases/download/android-v1.0.4670/Lektrus-Android.apk",size_bytes:14685710};
 assert.deepEqual(parseAndroidUpdate(update),update);
+assert.deepEqual(parseAndroidUpdate({...update,catalog_stale:true}),{...update,catalog_stale:true});
 assert.equal(compareAndroidVersions("1.0.99","1.0.100"),-1);
 assert.equal(compareAndroidVersions("1.0.4669","1.0.4669"),0);
 assert.equal(androidUpdateKind("1.0.4667",update),"required");

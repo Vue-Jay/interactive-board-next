@@ -3,7 +3,7 @@ import {App as CapacitorApp} from "@capacitor/app";
 import {Capacitor,registerPlugin} from "@capacitor/core";
 import {isSelfhostBackendEnabled,selfhostAndroidUpdate} from "./selfhostApi";
 import {LEKTRUS_LOCAL_TEST_MODE} from "./lektrusLocalTestMode";
-import {androidUpdateKind,parseAndroidUpdate,shouldOfferAndroidUpdate,type AndroidUpdate} from "./androidUpdatePolicy";
+import {androidUpdateKind,compareAndroidVersions,parseAndroidUpdate,shouldOfferAndroidUpdate,type AndroidUpdate} from "./androidUpdatePolicy";
 import "./lektrusAndroidUpdate.css";
 
 const nativeUi=registerPlugin<{openAndroidUpdate(options:{version:string}):Promise<void>}>("LektrusSystemUi");
@@ -46,6 +46,13 @@ function AndroidUpdateController({children}:{children:ReactNode}){
       const update=parseAndroidUpdate(await selfhostAndroidUpdate());
       if(!alive.current)return;
       if(!update)throw new Error("Invalid release metadata");
+      // A stale fallback must not clear or downgrade a previously confirmed
+      // mandatory update, or claim that an installed build is the newest.
+      if(update.catalog_stale&&pending.current&&androidUpdateKind(info.version,pending.current)==="required"&&
+        (compareAndroidVersions(update.version,pending.current.version)===-1||androidUpdateKind(info.version,update)!=="required")){
+        if(manual)setMessage("Доступна версия "+pending.current.version);
+        return;
+      }
       const kind=androidUpdateKind(info.version,update);
       const deferred=readDefer();
       if(shouldOfferAndroidUpdate(info.version,update,deferred.version,deferred.until,Date.now(),manual)){
@@ -56,7 +63,7 @@ function AndroidUpdateController({children}:{children:ReactNode}){
         if(manual)setMessage("Доступна версия "+update.version);
       }else{
         pending.current=null;setOffer(null);
-        if(manual)setMessage(kind==="none"?"Установлена актуальная версия.":"Обновление можно установить позже.");
+        if(manual)setMessage(kind==="none"?(update.catalog_stale?"Не удалось проверить наличие более новой версии. Попробуйте ещё раз.":"Установлена актуальная версия."):"Обновление можно установить позже.");
       }
     }catch{
       // Network failures must not block login, local boards, or the workspace.
