@@ -30,7 +30,7 @@ const inkWidthIndex=(tool:"pen"|"marker"|"eraser",width:number)=>{
  return values.reduce((best,v,i)=>Math.abs(v-width)<Math.abs(values[best]-width)?i:best,0);
 };
 const colorKinds = new Set<Item["kind"]>(["pen","marker","shape","text","sticky","connector","comment","formula","graph","checklist","quiz","flashcard","frame"]);
-const advancedKinds = new Set<Item["kind"]>(["text","sticky","frame","comment","graph","formula","fraction","table","checklist","quiz","flashcard","linkmedia","image"]);
+const advancedKinds = new Set<Item["kind"]>(["text","frame","comment","graph","formula","fraction","table","checklist","quiz","flashcard","linkmedia","image"]);
 
 
 type QuickProps = {
@@ -144,7 +144,7 @@ export function LectrisObjectInspector({item,pdfPageCount,canModify,userId,canTo
   const [locationOpen,setLocationOpen]=useState(false);
   const [textDraft,setTextDraft]=useState(item.text);
   useEffect(()=>setTextDraft(item.text),[item.id,item.text]);
-  const textEditable=["text","sticky","frame","comment"].includes(item.kind);
+  const textEditable=["text","frame","comment"].includes(item.kind);
   const saveText=()=>{if(!canModify||textDraft===item.text)return;onPatch({text:item.kind==="frame"?textDraft.replace(/\s*\n+\s*/g," ").trim().slice(0,120):textDraft});};
   const currentColor = /^#[0-9a-fA-F]{6}$/.test(item.color||"") ? (item.color ?? "#365fd0") : "#365fd0";
   const rotation=item.rotation??0;

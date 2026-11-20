@@ -429,6 +429,8 @@ export function normalizeBoardBackground(value:unknown):BoardBackground{
 }
 
 export type Point = { x: number; y: number };
+/** Coordinates and width are relative to the sticker, not the board. */
+export type StickerInk = { id: string; kind: "pen" | "marker"; color: string; weight: number; points: Point[] };
 /** Non-destructive crop, normalized against the ORIGINAL stored image. */
 export type ImageCropRect = { x: number; y: number; width: number; height: number };
 export function validImageCrop(value: unknown): value is ImageCropRect {
@@ -525,6 +527,7 @@ export type Item = {
   height: number;
   text: string;
   points?: Point[];
+  stickerInk?: StickerInk[];
   color?: string;
   weight?: number;
   fontSize?: number;
@@ -753,6 +756,16 @@ export function parseDocument(raw: string): DocumentData {
     if (i.kind === "pen" || i.kind === "marker") {
       if (!Array.isArray(i.points) || !i.points.length || !i.points.every(point) || !finite(i.weight) || i.weight <= 0 || i.weight > 100 || !color(i.color)) throw new Error("Повреждён штрих");
       pointCount += i.points.length;
+      if (pointCount > 500000) throw new Error("Слишком много точек в рисунках");
+    }
+    if (i.stickerInk != null) {
+      if (i.kind !== "sticky" || !Array.isArray(i.stickerInk) ||
+          !i.stickerInk.every((ink: StickerInk) => ink && typeof ink.id === "string" &&
+            (ink.kind === "pen" || ink.kind === "marker") && color(ink.color) &&
+            finite(ink.weight) && ink.weight > 0 && Array.isArray(ink.points) &&
+            ink.points.length > 0 && ink.points.every(point)))
+        throw new Error("Повреждён рисунок стикера");
+      for (const ink of i.stickerInk) pointCount += ink.points.length;
       if (pointCount > 500000) throw new Error("Слишком много точек в рисунках");
     }
     if (i.kind === "connector") {
@@ -1469,6 +1482,9 @@ export function parseDocument(raw: string): DocumentData {
         fractionDenominator:i.fractionDenominator,
       } : {}),
       ...(i.kind === "pen" || i.kind === "marker" ? { color: i.color, weight: i.weight, points: i.points!.map(p => ({ x: p.x, y: p.y })) } : {}),
+      ...(i.kind === "sticky" && i.stickerInk ? { stickerInk: i.stickerInk.map(ink => ({
+        id:ink.id, kind:ink.kind, color:ink.color, weight:ink.weight, points:ink.points.map(p=>({x:p.x,y:p.y})),
+      })) } : {}),
       ...(i.kind === "shape" ? { shapeType: i.shapeType ?? "rounded", ...(color(i.color) ? { color: i.color } : {}) } : {}),
       ...(i.kind === "instrument" ? {
         instrumentType:i.instrumentType,

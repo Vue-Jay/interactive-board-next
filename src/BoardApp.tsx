@@ -129,6 +129,7 @@ import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals,
 import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, stroke, graphPointLimit, graphSegmentLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
 import { boardBackgroundAppearance } from "./boardBackground";
 import { eraseInkAlongPath } from "./inkEraser";
+import { eraseStickerInk, makeStickerInk, stickerAt, stickerInkPixels } from "./stickerInk";
 import { inkIdsInLasso } from "./inkLasso";
 import { hitTestInk } from "./inkHitTest";
 import { ensureBoardAssets, getAsset, getDisplayAsset, putAsset } from "./assetStore";
@@ -387,6 +388,7 @@ type Gesture = {
   transformItems?: Item[];
   transformBounds?: Bounds;
   ink?: { id: string; kind: "pen" | "marker"; color: string; weight: number };
+  sticker?: Item;
   additive: boolean;
   connectorStartBinding?: ConnectorBinding;
   connectorEndBinding?: ConnectorBinding;
@@ -402,7 +404,6 @@ const tools: { id: Tool; icon: IconName; label: string; dividerAfter?: boolean }
   { id: "eraser", icon: "eraser", label: "Ластик · E / У", dividerAfter: true },
   { id: "connector", icon: "connector", label: "Связь / стрелка · C / С" },
   { id: "frame", icon: "frame", label: "Фрейм / раздел · F / А" },
-  { id: "comment", icon: "comment", label: "Комментарий · N / Т", dividerAfter: true },
   { id: "text", icon: "text", label: "Текст · T / Е" },
   { id: "sticky", icon: "sticky", label: "Стикер · S / Ы" },
   { id: "shape", icon: "shape", label: "Фигуры · R / К" },
@@ -447,7 +448,6 @@ const keyTools: Record<string, Tool> = {
   KeyE: "eraser",
   KeyC: "connector",
   KeyF: "frame",
-  KeyN: "comment",
   KeyB: "table",
   KeyX: "formula",
   KeyY: "graph",
@@ -2100,7 +2100,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const isBoardOwner=boardSummary.role==="owner"&&boardSummary.ownerId===authUser.id;
   const canSaveTemplate=isBoardOwner && accountRole==="teacher" && !isStudent && !authUser.isGuest && !demoMode && !layoutEditing;
   const adminHidden = showAdminControls && adminInvisible;
-  const toolAllowedForRole = (id:Tool) => (!demoMode||id!=="linkmedia")&&canUseBoardCreationTool(id,roleCapabilities);
+  const toolAllowedForRole = (id:Tool) => id!=="comment"&&(!demoMode||id!=="linkmedia")&&canUseBoardCreationTool(id,roleCapabilities);
   const structurallyLockedForStudent = (item:Item|undefined|null) =>
     !!item&&isStudentProtectedBoardObject(item.kind,roleCapabilities);
   const canTransformBoardObject=(item:Item|null|undefined)=>
@@ -2290,6 +2290,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [remoteWork, setRemoteWork] = useState<Record<string, RemoteWorkState>>({});
   const workChannel = useRef<BoardWorkChannel | null>(null);
   const board = useRef<HTMLElement>(null);
+  const selectionToolbarRef = useRef<HTMLDivElement>(null);
+  const [selectionToolbarSize,setSelectionToolbarSize] = useState({width:0,height:0,boardWidth:0,boardHeight:0});
   const [boardViewportSize,setBoardViewportSize]=useState({width:0,height:0});
   const globalHandlersRef = useRef<{
     keyDown:(event:KeyboardEvent)=>void; keyUp:(event:KeyboardEvent)=>void; blur:()=>void;
@@ -2354,7 +2356,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [templateCategory,setTemplateCategory]=useState("");
   const [templateBusy,setTemplateBusy]=useState(false);
   const [templateError,setTemplateError]=useState("");
-  const [commentsOpen, setCommentsOpen] = useState(false);
   const [tableEditorId, setTableEditorId] = useState<string | null>(null);
   const [tableDraft, setTableDraft] = useState<{ rows: number; cols: number; cells: string[]; header: boolean; fontSize: number; align: "left" | "center" | "right"; stripe: boolean; compact: boolean } | null>(null);
   const [pendingStudyItem, setPendingStudyItem] = useState<Item | null>(null);
@@ -2785,6 +2786,16 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     ctx.setTransform(1,0,0,1,0,0);
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.setTransform(ratio*g.view.zoom,0,0,ratio*g.view.zoom,ratio*g.view.x,ratio*g.view.y);
+    if(g.sticker){
+      const item=g.sticker,cx=item.x+item.width/2,cy=item.y+item.height/2;
+      const a=(item.rotation??0)*Math.PI/180,c=Math.cos(a),s=Math.sin(a);
+      ctx.beginPath();
+      for(const [i,[x,y]] of [[-item.width/2,-item.height/2],[item.width/2,-item.height/2],[item.width/2,item.height/2],[-item.width/2,item.height/2]].entries()){
+        const px=cx+x*c-y*s,py=cy+x*s+y*c;
+        if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+      }
+      ctx.closePath();ctx.clip();
+    }
     // Composite the entire active stroke once. Alpha on each incremental
     // batch would darken round caps and self-intersections on the sender.
     ctx.globalAlpha=1;
@@ -3720,8 +3731,16 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     eraserSession.current=null;
     // The model is changed once per gesture, as one undo/history operation.
     const before=itemsRef.current;
-    const next=eraseInkAlongPath(before,g.path,g.weight/2,
+    const erased=eraseInkAlongPath(before,g.path,g.weight/2,
       item=>canRemoveBoardItem(item,authUser.id,isStudent,isBoardOwner));
+    let stickerChanged=false;
+    const withStickers=erased.map(item=>{
+      if(item.kind!=="sticky"||item.hidden||item.locked||!canTransformBoardObject(item))return item;
+      const next=eraseStickerInk(item,g.path,g.weight/2);
+      if(next!==item)stickerChanged=true;
+      return next;
+    });
+    const next=stickerChanged?withStickers:erased;
     const remaining=next===before?null:new Set(next.map(item=>item.id));
     const cutIds=remaining?before.filter(item=>isInkItem(item)&&!remaining.has(item.id)).map(item=>item.id).slice(0,500):[];
     sendLiveEraser(g,true,next===before,cutIds);
@@ -3884,7 +3903,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }else{
       history.current.push(normalized);
       // Preserve user undo history even during a long continuously running experiment.
-      const inkPoints = normalized.reduce((sum, item) => sum + (item.points?.length ?? 0), 0);
+      const inkPoints = normalized.reduce((sum, item) => sum + (item.points?.length ?? 0) + (item.stickerInk??[]).reduce((count,ink)=>count+ink.points.length,0), 0);
       const historyLimit = normalized.length > 1200 || inkPoints > 120_000 ? 30 : normalized.length > 500 || inkPoints > 50_000 ? 50 : 80;
       while (history.current.length > historyLimit) history.current.shift();
       index.current = history.current.length - 1;
@@ -3915,7 +3934,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   const startEdit = (item: Item) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
-    if (item.kind !== "text" && item.kind !== "sticky" && item.kind !== "frame" && item.kind !== "comment") return;
+    if (item.kind !== "text" && item.kind !== "frame" && item.kind !== "comment") return;
     setSelected([item.id]);
     setTool("select");
     setSpace(false);
@@ -4149,11 +4168,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           respond(command.mediaType==="image"?"Выберите изображение на устройстве — после выбора я добавлю его на доску.":"Выберите PDF на устройстве — после выбора я добавлю его на доску.");
           input.click();
         }
-      }else if(command.kind==="create-sticky"||command.kind==="create-text"||command.kind==="create-checklist"||command.kind==="create-formula"||command.kind==="create-table"||command.kind==="create-chart"||command.kind==="create-quiz"||command.kind==="create-flashcard"||command.kind==="create-comment"||command.kind==="create-fraction"||command.kind==="create-linkmedia"||command.kind==="create-frame"||command.kind==="create-shape"||command.kind==="create-graph"||command.kind==="create-instrument"||command.kind==="create-cover"||command.kind==="create-connector"||command.kind==="create-ink"){
+      }else if(command.kind==="create-comment"){
+        respond("Инструмент комментариев удалён. Для заметок используйте текстовый объект.");
+      }else if(command.kind==="create-sticky"||command.kind==="create-text"||command.kind==="create-checklist"||command.kind==="create-formula"||command.kind==="create-table"||command.kind==="create-chart"||command.kind==="create-quiz"||command.kind==="create-flashcard"||command.kind==="create-fraction"||command.kind==="create-linkmedia"||command.kind==="create-frame"||command.kind==="create-shape"||command.kind==="create-graph"||command.kind==="create-instrument"||command.kind==="create-cover"||command.kind==="create-connector"||command.kind==="create-ink"){
         const rect=board.current?.getBoundingClientRect();
         if(!rect)throw new Error("Не удалось определить область доски");
         const center=world({x:rect.width/2,y:rect.height/2});
-        const created=createBoardAssistantObject(command,center,createId);
+        const created=createBoardAssistantObject(command.kind==="create-sticky"?{kind:"create-text",text:command.text}:command,center,createId);
         if(!created)respond(command.kind==="create-chart"?"Не получилось разобрать данные диаграммы. Запишите пары через точку с запятой: «создай столбчатую диаграмму Продажи: Январь | 12; Февраль | 18».":command.kind==="create-quiz"?"Не получилось собрать викторину. Укажите вопрос, от двух до шести вариантов и правильный ответ, например: «создай викторину: Сколько будет 2 + 2?; 3; 4; ответ: 2».":command.kind==="create-flashcard"?"Укажите обе стороны карточки через вертикальную черту: «создай карточку для повторения: Вопрос | Ответ».":command.kind==="create-fraction"?"Укажите дробь с числителем не больше знаменателя, например: «создай дробь: 3/4».":command.kind==="create-linkmedia"?"Нужна корректная ссылка http/https. Например: «добавь видео: Название | https://example.com/урок».":"Напишите содержание нового объекта после двоеточия. Например: «создай заметку: повторить урок».");
         else{
           if(created.kind==="frame")created.presentationOrder=Math.max(-1,...itemsRef.current.filter(item=>item.kind==="frame").map((item,indexValue)=>item.presentationOrder??indexValue))+1;
@@ -4552,7 +4573,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }
       if(poses.length>0&&poses.length<=64)workChannel.current?.publishTransform(poses,true);
     }
-    if (g.mode === "draw" && g.ink) cursorChannel.current?.sendInk({id:g.ink.id,kind:g.ink.kind,color:g.ink.color,weight:g.ink.weight,points:g.path.slice(-500),offset:Math.max(0,g.path.length-500),finished:true});
+    if (g.mode === "draw" && g.ink && !g.sticker) cursorChannel.current?.sendInk({id:g.ink.id,kind:g.ink.kind,color:g.ink.color,weight:g.ink.weight,points:g.path.slice(-500),offset:Math.max(0,g.path.length-500),finished:true});
     if (cancel) {
       display(g.restore ?? g.before);
       setView(g.view);
@@ -4569,6 +4590,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if(dragPreview||rotatePreview||groupRotatePreview||resizePreview)
             flushSync(()=>commit(itemsRef.current,{immediatePaint:true}));
       else commit(itemsRef.current);
+    }
+    else if (g.mode === "draw" && g.ink && g.sticker) {
+      const sticker=g.sticker;
+      const ink=makeStickerInk(sticker,g.ink,g.path,g.view.zoom);
+      flushSync(()=>commit(g.before.map(item=>item.id===sticker.id?
+        {...item,stickerInk:[...(item.stickerInk??[]),ink]}:item),{immediatePaint:true}));
     }
     else if (g.mode === "draw" && g.ink)
       flushSync(()=>commit([
@@ -4893,7 +4920,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       !hit.locked &&
       !space &&
       e.button === 0 &&
-      (hit.kind === "text" || hit.kind === "sticky")
+      hit.kind === "text"
     ) {
       e.preventDefault();
       startEdit(hit);
@@ -4978,20 +5005,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       setTool("select");
       window.setTimeout(() => startEdit(item), 0);
       return;
-    } else if (tool === "comment") {
-      e.preventDefault();
-      const targetId = hit && hit.kind !== "comment" ? hit.id : undefined;
-      const item: Item = {
-        id: createId(), kind: "comment",
-        x: p.x + 18, y: p.y + 18, width: 250, height: 132,
-        text: "", color: "#fff8d6", resolved: false,
-        ...(targetId ? { commentTargetId: targetId } : {}),
-      };
-      commit([...itemsRef.current, item]);
-      setSelected([item.id]);
-      setTool("select");
-      // Keep the new frame movable immediately; edit its name using the selection bar.
-      return;
     } else if (tool === "table") {
       e.preventDefault();
       const rows = 3, cols = 3;
@@ -5045,13 +5058,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         height,
         text: "",
         ...(tool === "shape" ? { shapeType: shapeType ?? "rectangle", color: "#6064d4" } : {}),
-        ...(tool === "sticky" ? { color: "#fff3a6", fontSize: 20, textAlign: "left" as const, fontWeight: "normal" as const, fontStyle: "normal" as const, textDecoration: "none" as const, textList: "none" as const, lineHeight: 1.45 } : {}),
+        ...(tool === "sticky" ? { color: "#fff3a6" } : {}),
         ...(tool === "text" ? { color: "#202124", fontSize: 20, textAlign: "left" as const, fontWeight: "normal" as const, fontStyle: "normal" as const, textDecoration: "none" as const, textList: "none" as const, lineHeight: 1.45 } : {}),
       };
       commit([...itemsRef.current, item]);
       setSelected([item.id]);
       setTool("select");
-      if (item.kind === "text" || item.kind === "sticky") startEdit(item);
+      if (item.kind === "text") startEdit(item);
       return;
     } else if (id && hit) {
       const family = familyIdsFor(hit);
@@ -5105,6 +5118,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const gesturePoint = mode === "connector"
       ? (connectorStartHit?.point ?? p)
       : p;
+    const sticker=mode==="draw"?stickerAt(gestureBefore,p):undefined;
     gesture.current = {
       pointer: e.pointerId,
       mode,
@@ -5116,6 +5130,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       path: [gesturePoint],
       additive: e.shiftKey,
       connectorStartBinding: connectorStartHit?.binding,
+      sticker:sticker&&!sticker.locked&&canTransformBoardObject(sticker)?sticker:undefined,
       ink:
         tool === "pen" || tool === "marker"
           ? {
@@ -5129,7 +5144,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (mode === "draw") {
       const ink = gesture.current.ink!;
       beginInkPreview(gesture.current,p);
-      cursorChannel.current?.sendInk({id:ink.id,kind:ink.kind,color:ink.color,weight:ink.weight,points:[p],finished:false});
+      if(!gesture.current.sticker)cursorChannel.current?.sendInk({id:ink.id,kind:ink.kind,color:ink.color,weight:ink.weight,points:[p],finished:false});
     }
     if (mode === "connector") {
       setPreview(connectorItemFromPoints(gesturePoint, gesturePoint, connectorStyle, color, connectorWeight, createId(), connectorRouting, connectorStartHit?.binding,undefined,"",arrowHeadStyle,arrowHeadSize));
@@ -5489,7 +5504,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       // Publish directly from the pointer stream, independently of cursor visibility
       // and React preview paint scheduling (including invisible admin sessions).
       if (g.mode === "draw" && g.ink) {
-        cursorChannel.current?.sendInk({
+        if(!g.sticker)cursorChannel.current?.sendInk({
           id: g.ink.id, kind: g.ink.kind, color: g.ink.color,
           weight: g.ink.weight, points: g.path.slice(-500),
           offset: Math.max(0,g.path.length-500), finished: false,
@@ -5548,7 +5563,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         if (commandPaletteOpen) { setCommandPaletteOpen(false); setCommandPaletteQuery(""); setCommandPaletteIndex(0); return; }
         if (shortcutsOpen) { setShortcutsOpen(false); return; }
         if (templatesOpen) { setTemplatesOpen(false); return; }
-        if (commentsOpen) { setCommentsOpen(false); return; }
         if (searchOpen) { setSearchOpen(false); setSearchQuery(""); return; }
         if (contextMenu) {
           setContextMenu(null);
@@ -5574,7 +5588,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if (gesture.current) return;
       if ((e.code === "Enter" || e.code === "F2") && selected.length === 1) {
         const item = itemsRef.current.find((i) => i.id === selected[0]);
-        if (item && !item.locked && (item.kind === "text" || item.kind === "sticky" || item.kind === "frame" || item.kind === "comment" || item.kind === "formula" || item.kind === "table" || item.kind === "checklist" || item.kind === "quiz" || item.kind === "flashcard" || item.kind === "cover" || item.kind === "linkmedia")) {
+        if (item && !item.locked && (item.kind === "text" || item.kind === "frame" || item.kind === "comment" || item.kind === "formula" || item.kind === "table" || item.kind === "checklist" || item.kind === "quiz" || item.kind === "flashcard" || item.kind === "cover" || item.kind === "linkmedia")) {
           e.preventDefault();
           if (item.kind === "table") openTableEditor(item); else if (item.kind === "formula") openFormulaEditor(item); else if (item.kind === "checklist") openChecklistEditor(item); else if (item.kind === "quiz") openQuizEditor(item); else if (item.kind === "flashcard") openFlashcardEditor(item); else if (item.kind === "linkmedia") openLinkMediaEditor(item); else startEdit(item);
           return;
@@ -5810,16 +5824,34 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     width: selectionBounds.width * view.zoom,
     height: selectionBounds.height * view.zoom,
   } : null;
+  useLayoutEffect(()=>{
+    const toolbar=selectionToolbarRef.current, host=board.current;
+    if(!toolbar||!host)return;
+    const measure=()=>{
+      const next={width:toolbar.offsetWidth,height:toolbar.offsetHeight,boardWidth:host.clientWidth,boardHeight:host.clientHeight};
+      setSelectionToolbarSize(old=>Object.keys(next).every(key=>old[key as keyof typeof old]===next[key as keyof typeof next])?old:next);
+    };
+    measure();
+    const observer=new ResizeObserver(measure);
+    observer.observe(toolbar);observer.observe(host);
+    return ()=>observer.disconnect();
+  },[selected.length,objectEditorOpen,boardAiOpen]);
   const selectionToolbarTop = selectionScreenBounds
     ? (() => {
-        const boardHeight=board.current?.clientHeight ?? window.innerHeight;
+        const boardHeight=selectionToolbarSize.boardHeight||board.current?.clientHeight||window.innerHeight;
+        const height=selectionToolbarSize.height||48;
         const below=selectionScreenBounds.top+selectionScreenBounds.height+12;
-        const above=selectionScreenBounds.top-48;
-        return below>boardHeight-54 ? Math.max(8,above) : Math.max(8,below);
+        const above=selectionScreenBounds.top-height-12;
+        return Math.max(8,Math.min(boardHeight-height-8,below+height>boardHeight-8?above:below));
       })()
     : 0;
   const selectionToolbarLeft = selectionScreenBounds
-    ? Math.max(54,Math.min((board.current?.clientWidth??window.innerWidth)-54,selectionScreenBounds.left+selectionScreenBounds.width/2))
+    ? (() => {
+        const rightRail=lectrisPanelLayout.toolbarSide==="right";
+        const half=selectionToolbarSize.width/2;
+        const available=selectionToolbarSize.boardWidth||board.current?.clientWidth||window.innerWidth;
+        return Math.max((rightRail?12:84)+half,Math.min(available-(rightRail?84:12)-half,selectionScreenBounds.left+selectionScreenBounds.width/2));
+      })()
     : 0;
 
   const lectrisPatchSelected = (patch: Partial<Item>) => {
@@ -5834,7 +5866,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setLectrisInspectorOpen(false);
     if (!singleSelected || !canEdit || (singleSelected.locked&&!contourWorksheet) || (isStudent && structurallyLockedForStudent(singleSelected)&&!contourWorksheet)) return;
     switch (singleSelected.kind) {
-      case "text": case "sticky": case "frame": case "comment": startEdit(singleSelected); break;
+      case "text": case "frame": case "comment": startEdit(singleSelected); break;
       case "formula": openFormulaEditor(singleSelected); break;
       case "graph": openGraphEditor(singleSelected); break;
       case "fraction": setFractionEditorId(singleSelected.id); break;
@@ -5844,7 +5876,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       case "flashcard": openFlashcardEditor(singleSelected); break;
       case "linkmedia": openLinkMediaEditor(singleSelected); break;
       case "image": setImageCropEditorId(singleSelected.id); break;
-      default: setLectrisInspectorOpen(true); break;
+      default: break;
     }
   };
   const selectionToolbarPointerDown=(event:React.PointerEvent<HTMLDivElement>)=>{
@@ -6073,6 +6105,16 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         } else if (item.kind === "sticky") {
           ctx.fillStyle = item.color ?? "#fff3a6"; roundedRect(item.x, item.y, item.width, item.height, 10); ctx.fill();
           ctx.fillStyle = "#252733"; ctx.font = `${item.fontSize ?? 20}px Arial, sans-serif`; wrapText(item.text, item.x + 14, item.y + 30, Math.max(20, item.width - 28), (item.fontSize ?? 20) * 1.25, 18);
+          ctx.save();roundedRect(item.x,item.y,item.width,item.height,10);ctx.clip();
+          for(const ink of item.stickerInk??[]){
+            const {points,weight}=stickerInkPixels(item,ink);
+            ctx.globalAlpha=ink.kind==="marker"?.32:1;ctx.lineWidth=weight;
+            ctx.strokeStyle=ctx.fillStyle=ink.color;ctx.lineCap=ctx.lineJoin="round";
+            ctx.beginPath();ctx.moveTo(item.x+points[0].x,item.y+points[0].y);
+            if(points.length===1){ctx.arc(item.x+points[0].x,item.y+points[0].y,weight/2,0,Math.PI*2);ctx.fill();}
+            else{for(const p of points.slice(1))ctx.lineTo(item.x+p.x,item.y+p.y);ctx.stroke();}
+          }
+          ctx.restore();
         } else if (item.kind === "text") {
           ctx.fillStyle = "#252733"; ctx.font = `${item.fontSize ?? 20}px Arial, sans-serif`; wrapText(item.text, item.x, item.y + (item.fontSize ?? 20), Math.max(20, item.width), (item.fontSize ?? 20) * 1.25, 30);
         } else if (item.kind === "shape") {
@@ -7247,20 +7289,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setNotice("Комментарий отвязан от объекта");
   };
 
-  const addCommentToSelection = () => {
-    if (selectedItems.length !== 1) { setTool("comment"); setNotice("Щёлкните по объекту или пустому месту, чтобы добавить комментарий"); return; }
-    const target = selectedItems[0];
-    const item: Item = {
-      id: createId(), kind: "comment",
-      x: target.x + target.width + 28, y: target.y + 18,
-      width: 250, height: 132, text: "", color: "#fff8d6", resolved: false,
-      commentTargetId: target.id,
-    };
-    commit([...itemsRef.current, item]);
-    setSelected([item.id]);
-    window.setTimeout(() => startEdit(item), 0);
-  };
-
   const nextPresentationOrder = () => Math.max(-1, ...itemsRef.current.filter((item) => item.kind === "frame").map((item, index) => item.presentationOrder ?? index)) + 1;
 
   const openSaveTemplate=()=>{
@@ -7363,7 +7391,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const setSelectedTextStyle = (patch: Partial<Pick<Item, "textAlign" | "fontWeight" | "fontStyle" | "textDecoration" | "textList" | "lineHeight">>) => {
-    if (!singleSelected || selectionLocked || (singleSelected.kind !== "text" && singleSelected.kind !== "sticky")) return;
+    if (!singleSelected || selectionLocked || singleSelected.kind !== "text") return;
     commit(itemsRef.current.map((item) => item.id === singleSelected.id ? { ...item, ...patch } : item));
   };
 
@@ -7539,7 +7567,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     return rows;
   }, [items]);
 
-  const { comments, openComments, linkedComments, presentationFrames } = useMemo(() => {
+  const { linkedComments, presentationFrames } = useMemo(() => {
     const comments: Item[] = [];
     const frames: Array<{ item: Item; index: number }> = [];
     items.forEach((item, indexValue) => {
@@ -7548,8 +7576,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     });
     frames.sort((a, b) => (a.item.presentationOrder ?? a.index) - (b.item.presentationOrder ?? b.index));
     return {
-      comments,
-      openComments: comments.filter((item) => !item.resolved && !item.hidden),
       linkedComments: comments.filter((item) => !item.hidden && item.commentTargetId),
       presentationFrames: frames.map((entry) => entry.item),
     };
@@ -7582,7 +7608,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setLayersOpen(false);
     setSearchOpen(false);
     setTemplatesOpen(false);
-    setCommentsOpen(false);
     setTableEditorId(null);
     setTableDraft(null);
     setChecklistEditorId(null);
@@ -8394,7 +8419,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");void exportItemsToPng("all")}}><Icon name="download" size={16}/><span>Экспорт PNG</span></button>
                 {canSaveTemplate&&<button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");openSaveTemplate()}}><Icon name="templates" size={16}/><span>Сохранить как шаблон</span></button>}
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setShortcutsOpen(v=>!v)}}><Icon name="keyboard" size={16}/><span>Горячие клавиши</span></button>
-                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setCommentsOpen(v=>!v)}}><Icon name="comments" size={16}/><span>Комментарии</span>{openComments.length>0&&<b>{openComments.length}</b>}</button>
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setSearchOpen(v=>!v)}}><Icon name="search" size={16}/><span>Поиск по доске</span></button>
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setLayersOpen(v=>!v)}}><Icon name="layers" size={16}/><span>Слои и объекты</span></button>
                 <button type="button" disabled={index.current===0} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(-1)}}><Icon name="undo" size={16}/><span>Отменить</span><b>Ctrl+Z</b></button>
@@ -8598,7 +8622,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             ["Формула","Интерактив",() => setTool("formula"),"formula"],["График","Интерактив",() => setTool("graph"),"graph"],["Чек-лист","Задание",() => setTool("checklist"),"checklist"],
             ["Мини-тест","Задание",() => setTool("quiz"),"quiz"],["Карточка вопрос–ответ","Задание",() => setTool("flashcard"),"flashcard"],["Шторка","Интерактив",() => setTool("cover"),"cover"],
             ["Фото / PDF","Материалы",() => setTool("media"),"media"],["Поиск по доске","Панель",() => setSearchOpen(true)],
-            ["Комментарии","Панель",() => setCommentsOpen(true)],["Слои","Панель",() => setLayersOpen(true)],["Горячие клавиши","Справка",() => setShortcutsOpen(true)],
+            ["Слои","Панель",() => setLayersOpen(true)],["Горячие клавиши","Справка",() => setShortcutsOpen(true)],
             ["Режим показа","Презентация",() => { setPresentation(true); setPresentationFrameIndex(0); }],
           ];
           if(canSaveTemplate)commands.push(["Сохранить как шаблон","Доска",openSaveTemplate]);
@@ -8662,27 +8686,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               {templateError&&<div role="alert">{templateError}</div>}
               <button type="submit" className="students-primary" disabled={templateBusy||!templateTitle.trim()}>{templateBusy?"Сохранение…":"Сохранить шаблон"}</button>
             </form>
-          </aside>
-        )}
-        {commentsOpen && (
-          <aside className="comments-panel" aria-label="Комментарии">
-            <div className="panel-heading">
-              <div><strong>Комментарии</strong><span>{openComments.length} открыто · {comments.length} всего</span></div>
-              <button onClick={() => setCommentsOpen(false)} aria-label="Закрыть комментарии"><Icon name="close" size={17} /></button>
-            </div>
-            <button className="new-comment-button" onClick={() => { setTool("comment"); setCommentsOpen(false); setNotice("Щёлкните по объекту или пустому месту, чтобы добавить комментарий"); }}><Icon name="plus" size={15}/> Новый комментарий</button>
-            <div className="comments-list">
-              {[...comments].reverse().map((comment) => (
-                <div key={comment.id} className={`comment-list-row ${comment.resolved ? "resolved" : ""}`}>
-                  <button className="comment-list-main" onClick={() => focusItem(comment)}>
-                    <span className="comment-list-status"><Icon name={comment.resolved ? "check" : "comment"} size={15}/></span>
-                    <span><strong>{comment.text.trim().replace(/\s+/g," ").slice(0,72) || "Пустой комментарий"}</strong><small>{comment.commentTargetId ? "Привязан к объекту" : "На доске"}</small></span>
-                  </button>
-                  <button className="comment-resolve-button" title={comment.resolved ? "Открыть снова" : "Отметить решённым"} onClick={() => commit(itemsRef.current.map((item) => item.id === comment.id ? { ...item, resolved: !comment.resolved } : item))}><Icon name="check" size={14}/></button>
-                </div>
-              ))}
-              {!comments.length && <div className="comments-empty">Комментариев пока нет. Добавьте замечание прямо к объекту или на свободное место.</div>}
-            </div>
           </aside>
         )}
         {searchOpen && (
@@ -9306,27 +9309,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           </div>
         )}
         </MobileBoardEditorPortal>
-        {selected.length === 1 &&
-          !objectEditorOpen &&
-          items.some(
-            (i) =>
-              i.id === selected[0] &&
-              !i.locked &&
-              (i.kind === "text" || i.kind === "sticky" || i.kind === "frame" || i.kind === "comment" || i.kind === "formula" || i.kind === "table" || i.kind === "checklist" || i.kind === "quiz" || i.kind === "flashcard" || i.kind === "cover"),
-          ) && (
-            <button
-              className="edit-selected"
-              onClick={() => {
-                const item = itemsRef.current.find((i) => i.id === selected[0]);
-                if (!item || !canEdit || structurallyLockedForStudent(item)) return;
-                if (item.kind === "table") openTableEditor(item); else if (item.kind === "formula") openFormulaEditor(item); else if (item.kind === "checklist") openChecklistEditor(item); else if (item.kind === "quiz") openQuizEditor(item); else if (item.kind === "flashcard") openFlashcardEditor(item); else startEdit(item);
-              }}
-            >
-              <Icon name="rename" size={15} />
-              {items.find((i) => i.id === selected[0])?.kind === "frame" ? "Переименовать фрейм" : items.find((i) => i.id === selected[0])?.kind === "table" ? "Редактировать таблицу" : items.find((i) => i.id === selected[0])?.kind === "formula" ? "Редактировать формулу" : items.find((i) => i.id === selected[0])?.kind === "checklist" ? "Редактировать чек-лист" : items.find((i) => i.id === selected[0])?.kind === "quiz" ? "Редактировать мини-тест" : items.find((i) => i.id === selected[0])?.kind === "flashcard" ? "Редактировать карточку" : items.find((i) => i.id === selected[0])?.kind === "comment" ? "Редактировать комментарий" : "Редактировать текст"}
-              <kbd>Enter</kbd>
-            </button>
-          )}
         {(tool === "pen" || tool === "marker" || tool === "eraser") && (
           <div className="ink-settings lektrus-ink-settings-direct"
             role="group" aria-label={"Параметры инструмента: "+(tool==="eraser"?"ластик":tool==="marker"?"маркер":"карандаш")}
@@ -9405,7 +9387,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             {desktopToolSections.filter(g=>g.ids.some(toolAllowedForRole)).map(group=><button key={group.id} type="button" className={`tool-button ${desktopToolsExpanded&&desktopToolSection===group.id?"active":""}`} aria-label={group.label} title={group.label} aria-expanded={desktopToolsExpanded&&desktopToolSection===group.id} onClick={()=>{if(desktopToolSection===group.id)setDesktopToolsExpanded(v=>!v);else{setDesktopToolSection(group.id);setDesktopToolsExpanded(true)}}}><span className="lektrus-section-icon" aria-hidden="true"><Icon name={group.icon} size={22}/></span><span className="tool-tooltip">{group.label}</span></button>)}
           </div>
           {canCreateAssignments&&<button type="button" className={`tool-button lektrus-desktop-subject-trigger ${subjectToolsOpen?"active":""}`} aria-label="Предметные инструменты" title="Предметные инструменты" aria-expanded={subjectToolsOpen} aria-haspopup="dialog" aria-controls="lektrus-subject-tools-panel" onClick={e=>toggleSubjectTools(e.currentTarget)}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5.5c3.4-.9 6.4-.6 9 1.4 2.6-2 5.6-2.3 9-1.4v13c-3.4-.9-6.4-.6-9 1.4-2.6-2-5.6-2.3-9-1.4z"/><path d="M12 7v13M6 10h3M15 10h3M6 13h2M15 13h2"/></svg><span className="tool-tooltip">Предметные инструменты</span></button>}
-          {toolAllowedForRole("comment")&&<button type="button" className={`tool-button lektrus-direct-comment ${tool==="comment"?"active":""}`} title="Комментарий" aria-label="Комментарий" onClick={()=>{finishEdit();setTool("comment");setDesktopToolsExpanded(false)}}><Icon name="comment" size={20}/><span className="tool-tooltip">Комментарий</span></button>}
           <div className="lektrus-toolbar-measure" aria-label="Измерительные инструменты">
             <GeometryInstruments view={view} boardRef={board}
               portalContainer={instrumentViewportHost}
@@ -10133,7 +10114,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                     tool === "select" &&
                     !space &&
                     !item.locked &&
-                    (item.kind === "text" || item.kind === "sticky" || item.kind === "frame" || item.kind === "comment")
+                    (item.kind === "text" || item.kind === "frame" || item.kind === "comment")
                   ) {
                     startEdit(item);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "formula") {
@@ -10369,14 +10350,26 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 {item.kind === "flashcard" && <FlashcardView item={item} onFlip={!item.locked ? () => flipFlashcard(item) : undefined} />}
                 {item.kind === "cover" && editing !== item.id && <CoverView item={item} onToggle={!isStudent && !item.locked ? () => toggleCover(item) : undefined} />}
                 {item.locked && <div className="object-lock-badge" aria-label="Объект заблокирован"><Icon name="lock" size={13} /></div>}
-                {(item.kind === "text" || item.kind === "sticky" || item.kind === "frame" || item.kind === "comment") &&
+                {item.kind === "sticky" && <>
+                  {item.text && <div className="text-display" style={{fontSize:item.fontSize??20,lineHeight:item.lineHeight??1.45,textAlign:item.textAlign??"left",fontWeight:item.fontWeight??"normal",fontStyle:item.fontStyle??"normal",textDecoration:item.textDecoration??"none"}}>{item.text}</div>}
+                  <svg className="sticker-ink-layer" viewBox={`0 0 ${item.width} ${item.height}`} aria-hidden="true">
+                    {(item.stickerInk??[]).map(ink=>{
+                      const {points,weight}=stickerInkPixels(item,ink);
+                      return <g key={ink.id} opacity={ink.kind==="marker"?.32:1}>
+                        {points.length===1?<circle cx={points[0].x} cy={points[0].y} r={weight/2} fill={ink.color}/>:
+                          <polyline points={points.map(p=>`${p.x},${p.y}`).join(" ")} fill="none" stroke={ink.color} strokeWidth={weight} strokeLinecap="round" strokeLinejoin="round"/>}
+                      </g>;
+                    })}
+                  </svg>
+                </>}
+                {(item.kind === "text" || item.kind === "frame" || item.kind === "comment") &&
                   (editing === item.id ? (
                     <textarea
                       ref={editor}
                       key={item.id}
                       aria-label="Текст объекта"
                       className={item.kind === "frame" ? "text-editor frame-editor" : item.kind === "comment" ? "text-editor comment-editor" : "text-editor"}
-                      style={item.kind === "frame" || item.kind === "comment" ? undefined : { fontSize: item.fontSize ?? 20, ...(item.kind === "text" || item.kind === "sticky" ? { color:item.kind==="text"?(item.color??"#202124"):undefined, lineHeight:item.lineHeight??1.45, textAlign: item.textAlign ?? "left", fontWeight: item.fontWeight ?? "normal", fontStyle: item.fontStyle ?? "normal", textDecoration: item.textDecoration ?? "none" } : {}) }}
+                      style={item.kind === "text" ? { fontSize: item.fontSize ?? 20, color:item.color??"#202124", lineHeight:item.lineHeight??1.45, textAlign: item.textAlign ?? "left", fontWeight: item.fontWeight ?? "normal", fontStyle: item.fontStyle ?? "normal", textDecoration: item.textDecoration ?? "none" } : undefined}
                       value={draft}
                       placeholder="Введите текст…"
                       onChange={(e) => {
@@ -10587,6 +10580,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             />}
           {selectionScreenBounds && selectedItems.length > 0 && !objectEditorOpen && !boardAiOpen && (
             <div
+              ref={selectionToolbarRef}
               className={`selection-toolbar-screen ${singleSelected?.kind==="graph"?"lektrus-graph-selection-toolbar":""}`}
               data-more-direction={selectionToolbarTop<440?"down":"up"}
               style={{
@@ -10603,10 +10597,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               </span>
 
               {singleSelected&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&
-                (["text","sticky","frame","comment","formula","fraction","table","checklist","quiz","flashcard","linkmedia","image"].includes(singleSelected.kind))&&
+                (["text","image"].includes(singleSelected.kind))&&
                 <button type="button" className="selection-edit-action" data-board-interactive="true"
-                  title="Редактировать содержимое" aria-label="Редактировать содержимое"
-                  onClick={lectrisEditSelected}><Icon name="rename" size={15}/><span>Редактировать</span></button>}
+                  title={singleSelected.kind==="image"?"Обрезать изображение":"Редактировать текст"} aria-label={singleSelected.kind==="image"?"Обрезать изображение":"Редактировать текст"}
+                  onClick={lectrisEditSelected}><Icon name="rename" size={15}/><span>{singleSelected.kind==="image"?"Обрезать":"Редактировать"}</span></button>}
               {singleSelected?.kind === "linkmedia" && !selectionLocked && (<span className="linkmedia-selection-controls"><button type="button" onClick={()=>openLinkMediaEditor(singleSelected)} title="Изменить ссылку"><Icon name="rename" size={15}/><span>Ссылка</span></button><a href={singleSelected.mediaUrl} target="_blank" rel="noreferrer" onPointerDown={e=>e.stopPropagation()} title="Открыть источник"><Icon name="open" size={15}/></a></span>)}
               {singleSelected?.kind === "frame" && !selectionLocked && (
                 <button type="button" className="frame-name-action" onClick={renameSelectedFrame} title="Переименовать фрейм · Enter / F2">
@@ -10686,27 +10680,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               {(singleSelected?.kind === "text" || singleSelected?.kind === "sticky" || singleSelected?.kind === "shape" || singleSelected?.kind === "frame" || singleSelected?.kind === "formula" || singleSelected?.kind === "checklist" || singleSelected?.kind === "quiz" || singleSelected?.kind === "flashcard" || singleSelected?.kind === "cover" || singleSelected?.kind === "connector") && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
                 <span className="object-color-menu"><button type="button" className="object-color-trigger" onClick={()=>setColorMenuOpen(v=>!v)} title="Цвет"><span style={{background:singleSelected.color??"#5355c9"}}/>Цвет</button>{colorMenuOpen&&<span className="object-color-popover">{(singleSelected.kind==="sticky"?["#fff3a6","#ffd9de","#dff5c8","#dcecff","#eadcff","#ffffff"]:["#202124","#5355c9","#2f855a","#d97706","#dc4c64","#8b5cf6","#0ea5e9","#64748b","#ffffff"]).map(value=><button type="button" key={value} className="object-color-square" style={{background:value}} onClick={()=>{recolorSelected(value);setColorMenuOpen(false)}} aria-label={`Цвет ${value}`}/>)}</span>}</span>
               )}
-              {(singleSelected?.kind === "text" || singleSelected?.kind === "sticky" || singleSelected?.kind === "formula" || singleSelected?.kind === "table" || singleSelected?.kind === "checklist" || singleSelected?.kind === "quiz" || singleSelected?.kind === "flashcard" || singleSelected?.kind === "cover") && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
+              {(singleSelected?.kind === "text" || singleSelected?.kind === "formula" || singleSelected?.kind === "table" || singleSelected?.kind === "checklist" || singleSelected?.kind === "quiz" || singleSelected?.kind === "flashcard" || singleSelected?.kind === "cover") && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
                 <span className="font-size-controls" title={singleSelected.kind === "formula" ? "Размер формулы" : singleSelected.kind === "table" ? "Размер текста таблицы" : singleSelected.kind === "checklist" ? "Размер текста чек-листа" : singleSelected.kind === "quiz" ? "Размер текста вопроса" : singleSelected.kind === "flashcard" ? "Размер текста карточки" : singleSelected.kind === "cover" ? "Размер текста шторки" : "Размер текста"}>
                   <button type="button" onClick={() => changeFontSize(-2)} aria-label="Уменьшить размер">A−</button>
                   <span>{singleSelected.fontSize ?? (singleSelected.kind === "formula" ? 28 : singleSelected.kind === "table" ? 13 : singleSelected.kind === "checklist" || singleSelected.kind === "quiz" ? 15 : singleSelected.kind === "flashcard" ? 18 : singleSelected.kind === "cover" ? 17 : 20)}</span>
                   <button type="button" onClick={() => changeFontSize(2)} aria-label="Увеличить размер">A+</button>
-                </span>
-              )}
-              {(singleSelected?.kind === "text" || singleSelected?.kind === "sticky") && !selectionLocked && (
-                <span className="text-format-controls" title="Форматирование текста">
-                  <button type="button" className={singleSelected.fontWeight === "bold" ? "active" : ""} onClick={() => setSelectedTextStyle({ fontWeight: singleSelected.fontWeight === "bold" ? "normal" : "bold" })} title="Полужирный"><b>B</b></button>
-                  <button type="button" className={singleSelected.fontStyle === "italic" ? "active" : ""} onClick={() => setSelectedTextStyle({ fontStyle: singleSelected.fontStyle === "italic" ? "normal" : "italic" })} title="Курсив"><i>I</i></button>
-                  <button type="button" className={singleSelected.textDecoration === "underline" ? "active" : ""} onClick={() => setSelectedTextStyle({ textDecoration: singleSelected.textDecoration === "underline" ? "none" : "underline" })} title="Подчёркивание"><u>U</u></button>
-                  <span className="connector-control-separator" />
-                  <button type="button" className={(singleSelected.textAlign ?? "left") === "left" ? "active" : ""} onClick={() => setSelectedTextStyle({ textAlign: "left" })} title="По левому краю">≡</button>
-                  <button type="button" className={singleSelected.textAlign === "center" ? "active" : ""} onClick={() => setSelectedTextStyle({ textAlign: "center" })} title="По центру">≣</button>
-                  <button type="button" className={singleSelected.textAlign === "right" ? "active" : ""} onClick={() => setSelectedTextStyle({ textAlign: "right" })} title="По правому краю">≡</button>
-                  <span className="connector-control-separator" />
-                  <button type="button" className={(singleSelected.textList??"none")==="bullet"?"active":""} onClick={()=>setSelectedTextStyle({textList:(singleSelected.textList??"none")==="bullet"?"none":"bullet"})} title="Маркированный список">•≡</button>
-                  <button type="button" className={singleSelected.textList==="number"?"active":""} onClick={()=>setSelectedTextStyle({textList:singleSelected.textList==="number"?"none":"number"})} title="Нумерованный список">1≡</button>
-                  <select className="text-line-height" value={singleSelected.lineHeight??1.45} onChange={e=>setSelectedTextStyle({lineHeight:Number(e.target.value)})} title="Межстрочный интервал"><option value={1}>1,0</option><option value={1.2}>1,2</option><option value={1.45}>1,45</option><option value={1.75}>1,75</option><option value={2}>2,0</option></select>
-
                 </span>
               )}
               {singleSelected?.kind==="connector"&&!selectionLocked&&<span className="lektrus-connector-quick">
@@ -10749,16 +10727,27 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               }}>
                 <summary title="Ещё действия" aria-label="Ещё действия"><Icon name="more" size={17} /></summary>
                 <div className="selection-more-menu">
+                  {singleSelected?.kind === "text" && !selectionLocked && (
+                    <span className="text-format-controls selection-text-format-section" title="Форматирование текста">
+                      <button type="button" className={singleSelected.fontWeight === "bold" ? "active" : ""} onClick={() => setSelectedTextStyle({ fontWeight: singleSelected.fontWeight === "bold" ? "normal" : "bold" })} title="Полужирный"><b>B</b></button>
+                      <button type="button" className={singleSelected.fontStyle === "italic" ? "active" : ""} onClick={() => setSelectedTextStyle({ fontStyle: singleSelected.fontStyle === "italic" ? "normal" : "italic" })} title="Курсив"><i>I</i></button>
+                      <button type="button" className={singleSelected.textDecoration === "underline" ? "active" : ""} onClick={() => setSelectedTextStyle({ textDecoration: singleSelected.textDecoration === "underline" ? "none" : "underline" })} title="Подчёркивание"><u>U</u></button>
+                      <span className="connector-control-separator" />
+                      <button type="button" className={(singleSelected.textAlign ?? "left") === "left" ? "active" : ""} onClick={() => setSelectedTextStyle({ textAlign: "left" })} title="По левому краю">≡</button>
+                      <button type="button" className={singleSelected.textAlign === "center" ? "active" : ""} onClick={() => setSelectedTextStyle({ textAlign: "center" })} title="По центру">≣</button>
+                      <button type="button" className={singleSelected.textAlign === "right" ? "active" : ""} onClick={() => setSelectedTextStyle({ textAlign: "right" })} title="По правому краю">≡</button>
+                      <span className="connector-control-separator" />
+                      <button type="button" className={(singleSelected.textList??"none")==="bullet"?"active":""} onClick={()=>setSelectedTextStyle({textList:(singleSelected.textList??"none")==="bullet"?"none":"bullet"})} title="Маркированный список">•≡</button>
+                      <button type="button" className={singleSelected.textList==="number"?"active":""} onClick={()=>setSelectedTextStyle({textList:singleSelected.textList==="number"?"none":"number"})} title="Нумерованный список">1≡</button>
+                      <select className="text-line-height" value={singleSelected.lineHeight??1.45} onChange={e=>setSelectedTextStyle({lineHeight:Number(e.target.value)})} title="Межстрочный интервал"><option value={1}>1,0</option><option value={1.2}>1,2</option><option value={1.45}>1,45</option><option value={1.75}>1,75</option><option value={2}>2,0</option></select>
+
+                    </span>
+                  )}
                   {singleSelected&&!isInkItem(singleSelected)&&
                     <button type="button" onClick={()=>setLectrisInspectorOpen(true)}>
                       <Icon name="settings" size={16}/><span>Настройки и свойства</span>
                     </button>}
-                  {singleSelected&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&
-                    <button type="button" onClick={lectrisEditSelected}>
-                      <Icon name="rename" size={16}/><span>Редактировать</span>
-                    </button>}
                   <button type="button" onClick={copySelected}><Icon name="copy" size={16} /><span>Копировать</span><kbd>Ctrl+C</kbd></button>
-                  {selectedItems.length === 1 && singleSelected?.kind !== "comment" && <button type="button" onClick={addCommentToSelection}><Icon name="comment" size={16}/><span>Добавить комментарий</span></button>}
                   <button type="button" onClick={() => void exportItemsToPng("selection")}><Icon name="download" size={16} /><span>Скачать выделение PNG</span><kbd>Ctrl+Shift+E</kbd></button>
                   {singleSelected?.kind === "frame" && !selectionLocked && (
                     <>
@@ -10844,7 +10833,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 <>
                   <button onClick={() => { duplicateSelected(); setContextMenu(null); }}>Дублировать <span>Ctrl+D</span></button>
                   <button onClick={() => { copySelected(); setContextMenu(null); }}>Копировать <span>Ctrl+C</span></button>
-                  {singleSelected?.kind !== "comment" && <button onClick={() => { addCommentToSelection(); setContextMenu(null); }}>Добавить комментарий</button>}
                   {singleSelected?.kind==="connector"&&!selectionLocked&&<section className="lektrus-connector-context" role="group" aria-label="Редактирование линии и стрелки">
                     <strong>Линия и стрелка</strong>
                     <div className="lektrus-connector-context-types" role="group" aria-label="Тип линии">
