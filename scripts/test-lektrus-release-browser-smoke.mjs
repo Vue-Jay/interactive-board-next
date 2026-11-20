@@ -569,6 +569,10 @@ try{
  await wait('document.querySelector(".board-title")?.value==="Демо-версия доски"',"Demo did not reopen",45000);
  assert.equal(await evaluate('document.querySelectorAll(".board-object[data-object]").length'),0);
  assert.equal(await evaluate('!!document.querySelector(".viewer-ink-canvas")'),false,"Demo ink survived reload");
+ await click('button[aria-label="Фото / PDF"]');
+ await wait('!!document.querySelector(".lektrus-tool-overflow-content")',"Demo media menu unavailable");
+ assert.equal(await evaluate('!!document.querySelector(\'button[aria-label="Видео"]\')'),false,"Video shown in demo");
+ await click('button[aria-label="Закрыть меню инструментов"]');
  await click(".lektrus-desktop-subject-trigger");
  await wait('!!document.querySelector("#lektrus-subject-tools-panel select")',"Demo subject tools unavailable");
  await evaluate(`(()=>{const s=document.querySelector("#lektrus-subject-tools-panel select");Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,"value").set.call(s,"История");s.dispatchEvent(new Event("change",{bubbles:true}))})()`);
