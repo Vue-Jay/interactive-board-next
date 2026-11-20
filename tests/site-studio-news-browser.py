@@ -83,8 +83,22 @@ with sync_playwright() as p:
         more.wait_for(timeout=25000)
         if width<1000:
             assert more.evaluate("el=>innerWidth-el.getBoundingClientRect().right") >= 16
+        # The public sandbox is intentionally blank. Create real ink first;
+        # the navigator is only rendered once there is content to navigate.
         navigator=scope.get_by_role("region",name="Навигатор доски")
+        expect(navigator).to_have_count(0)
+        scope.locator('button[data-interface-control="pen"]:visible').first.click()
+        board_bounds=scope.locator("section.board").bounding_box()
+        assert board_bounds, "Demo board canvas unavailable"
+        x=board_bounds["x"]+board_bounds["width"]*0.45
+        y=board_bounds["y"]+board_bounds["height"]*0.40
+        page.mouse.move(x,y)
+        page.mouse.down()
+        page.mouse.move(x+80,y+28,steps=8)
+        page.mouse.up()
         navigator.wait_for()
+        expect(navigator.locator(".minimap-viewport")).to_be_visible()
+        expect(scope.locator(".viewer-ink-canvas").first).to_be_visible()
         assert navigator.get_by_text("Навигатор",exact=True).is_visible()
         assert navigator.locator(".minimap-header svg").count()==0
         map_surface=navigator.locator(".minimap-canvas")

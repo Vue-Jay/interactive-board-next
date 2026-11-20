@@ -53,7 +53,7 @@ const selfhostAdapter={
  selfhostDownloadAsset:async(board,id)=>adapter.remoteAssetRequest(`${board}/${id}`),
  selfhostUploadAsset:async(board,id,blob)=>adapter.remoteAssetRequest(`${board}/${id}`,blob),
 };
-const inject=source.replace(/const DB_NAME[\s\S]*?const synchronized/,
+const inject=source.replace(/let databasePromise[\s\S]*?const synchronized/,
  `const getLocalAsset=async (id:string)=>local.get(id)??null;
  const putLocalAsset=async (id:string,blob:Blob)=>{local.set(id,blob);};
  const synchronized`);
@@ -63,6 +63,23 @@ new Function("exports","require","Blob","local",ts.transpileModule(inject,{compi
  api,path=>path==="./selfhostApi"?selfhostAdapter:adapter,Blob,local
 );
 const pdf=new Blob(["A".repeat(1024)],{type:"application/pdf"});
+// Exercise actual demo paths with both remote backends enabled. This must
+// neither use the local database nor issue a network request, even for misses.
+const demoId="lektrus-demo-first",otherDemoId="lektrus-demo-second";
+const beforeDemoLocal=[...local.entries()],beforeDemoCalls=calls.length;
+api.setSelfhostBoardMode(demoId,true);
+await api.putAsset("pdf",pdf,demoId,false);
+await api.putAsset("pdf",pdf,otherDemoId,true);
+assert.equal(await api.getAsset("pdf",demoId),pdf);
+assert.equal(await api.getDisplayAsset("pdf",demoId),pdf);
+assert.equal(await api.getAsset("missing",demoId),null);
+await api.ensureBoardAssets(demoId,{items:[{kind:"pdf",assetId:"pdf"},{kind:"pdf",assetId:"missing"}]});
+api.clearDemoBoardAssets(demoId);
+assert.equal(await api.getAsset("pdf",demoId),null,"Demo assets must disappear on exit");
+assert.equal(await api.getAsset("pdf",otherDemoId),pdf,"Separate demos must be isolated");
+api.clearDemoBoardAssets(otherDemoId);
+assert.deepEqual([...local.entries()],beforeDemoLocal,"Demo must not write local attachment storage");
+assert.equal(calls.length,beforeDemoCalls,"Demo asset paths must never touch either backend");
 server.set("board/large-pdf",pdf);
 await api.ensureBoardAssets("board",{items:[{kind:"pdf",assetId:"large-pdf"}]});
 assert.deepEqual(calls,[["head","board/large-pdf"]],

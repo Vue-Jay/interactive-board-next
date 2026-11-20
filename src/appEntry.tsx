@@ -172,7 +172,7 @@ function AppRoot(){
   // The public sandbox has no server resources, even during maintenance.
   // All protected routes continue through the existing gates.
   if(demo)return <ErrorBoundary><App/></ErrorBoundary>;
-  if(Capacitor.isNativePlatform()&&!LEKTRUS_LOCAL_TEST_MODE&&!isSelfhostBackendEnabled()&&!isRemoteBackendEnabled())
+  if (Capacitor.isNativePlatform() && !LEKTRUS_LOCAL_TEST_MODE && !isSelfhostBackendEnabled() && !isRemoteBackendEnabled())
     return <NativeConnectionSetup/>;
   return <ErrorBoundary><AndroidUpdateGate><MaintenanceGate><App/><BillingLimitNotice/></MaintenanceGate></AndroidUpdateGate></ErrorBoundary>;
 }
