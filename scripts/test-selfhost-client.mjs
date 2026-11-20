@@ -696,3 +696,49 @@ for(const platform of ["web","android","ios"]){
   assert.ok(health.records.every(r=>r.path==="/api/v1/health"&&r.bearer===null));
 }
 console.log("Public health probe: browser, Android transport and iOS, no auth or session mutation.");
+
+// A background health failure must not remove the native auth view or reload
+// its input state on recovery. Full-page browser/connected-workspace recovery
+// is still required. Drive the actual hook using isolated events and timers.
+const availabilitySource=readFileSync(new URL("../src/useServiceAvailability.ts",import.meta.url),"utf8");
+const availabilityCode=ts.transpileModule(availabilitySource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
+function availabilityFixture(preserveView){
+  const win=new EventTarget(),doc=new EventTarget(),nav={onLine:true};
+  doc.visibilityState="visible";
+  let reason=null,checking=false,reloads=0,reads=0,healthy=false,cleanup;
+  win.location={reload(){reloads++}};
+  let stateIndex=0;const timers=new Map();let timerId=0;
+  const react={useState(initial){const index=stateIndex++;return [initial,value=>{if(index===0)reason=value;else checking=value}]},useRef(current){return {current}},useEffect(effect){cleanup=effect()}};
+  const exports={};
+  vm.runInNewContext(availabilityCode,{exports,require(name){
+    if(name==="react")return react;
+    if(name==="@capacitor/core")return {Capacitor:{isNativePlatform:()=>false}};
+    if(name==="@capacitor/app")return {App:{}};
+    if(name==="./selfhostApi")return {selfhostServiceHealthy:async()=>{reads++;return healthy}};
+    throw Error(name);
+  },window:win,document:doc,navigator:nav,Date,setTimeout(fn){const id=++timerId;timers.set(id,fn);return id},clearTimeout(id){timers.delete(id)}});
+  const hook=exports.useServiceAvailability(true,preserveView);
+  return {hook,cleanup,win,nav,timers,setHealthy(value){healthy=value},state(){return {reason,checking,reloads,reads}}};
+}
+const flush=()=>new Promise(resolve=>setImmediate(resolve));
+for(const preserve of [true,false]){
+  const f=availabilityFixture(preserve);
+  await flush();
+  assert.deepEqual(f.state(),{reason:"server", checking:false,reloads:0,reads:1});
+  assert.equal(f.timers.size,1,"Unavailable service must retain its automatic retry");
+  f.setHealthy(true);f.hook.check();await flush();
+  assert.equal(f.state().reloads,preserve?0:1,"Native auth must recover without destroying input state; full-screen route must restore");
+  if(preserve){
+    assert.equal(f.state().reason,null);
+    f.nav.onLine=false;f.win.dispatchEvent(new Event("offline"));
+    assert.equal(f.state().reason,"offline");
+    f.nav.onLine=true;f.win.dispatchEvent(new Event("online"));await flush();
+    assert.equal(f.state().reason,null);assert.equal(f.state().reloads,0);
+  }
+  f.cleanup();assert.equal(f.timers.size,0);
+}
+assert.match(appSource,/serviceAvailability\.reason&&!activeBoard&&!preserveNativeAuth/);
+assert.match(appSource,/connectionIssue=\{preserveNativeAuth&&serviceAvailability\.reason\?/);
+assert.match(registrationForm,/auth-connection-notice/);
+assert.match(registrationForm,/onClick=\{connectionIssue\.onRetry\}/);
+console.log("Native authentication: connection warning, preserved form, automatic recovery without reload; browser outage recovery unchanged.");

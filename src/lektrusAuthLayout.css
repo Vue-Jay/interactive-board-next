@@ -63,6 +63,16 @@
   font-size: 13px;
   line-height: 1.4;
 }
+.auth-connection-notice {
+  display:grid;
+  gap:4px;
+  margin-bottom:12px;
+}
+.auth-connection-notice button.auth-text-action {
+  justify-self:start;
+  min-height:44px;
+  text-align:left;
+}
 .auth-remembered { display: grid; align-items: center; }
 .auth-remembered-avatar { display: grid; place-items: center; }
 .auth-remembered-copy { display: flex; flex-direction: column; min-width: 0; }
